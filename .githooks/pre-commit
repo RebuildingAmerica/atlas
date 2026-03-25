@@ -1,0 +1,154 @@
+#!/bin/bash
+set -euo pipefail
+
+# Color codes for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# Helper functions
+print_header() {
+    echo -e "\n${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${BLUE}$1${NC}"
+    echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+}
+
+print_success() {
+    echo -e "${GREEN}✓ $1${NC}"
+}
+
+print_error() {
+    echo -e "${RED}✗ $1${NC}"
+}
+
+print_info() {
+    echo -e "${YELLOW}ℹ $1${NC}"
+}
+
+# Get list of staged files
+get_staged_files() {
+    git diff --cached --name-only --diff-filter=ACM
+}
+
+# Get staged Python files
+get_staged_python_files() {
+    get_staged_files | grep -E '\.py$' || echo ""
+}
+
+# Get staged frontend files
+get_staged_frontend_files() {
+    get_staged_files | grep -E '\.(js|jsx|ts|tsx|vue|svelte)$' || echo ""
+}
+
+print_header "Pre-commit Quality Checks"
+
+# Track if any check failed
+FAILED=0
+
+# ============================================
+# Python Checks
+# ============================================
+PYTHON_FILES=$(get_staged_python_files)
+
+if [ -n "$PYTHON_FILES" ]; then
+    print_info "Found $(echo "$PYTHON_FILES" | wc -l) Python file(s) to check"
+
+    # 1. Ruff Format Check
+    print_info "Running ruff format check..."
+    if ! cd backend && ruff format --check . > /dev/null 2>&1; then
+        print_error "Ruff format check failed"
+        echo ""
+        echo -e "${YELLOW}HOW TO FIX:${NC}"
+        echo "  Run: cd backend && ruff format ."
+        echo ""
+        FAILED=1
+    else
+        print_success "Ruff format check passed"
+    fi
+    cd - > /dev/null
+
+    # 2. Ruff Lint Check (zero tolerance)
+    print_info "Running ruff lint (strict mode)..."
+    if ! cd backend && ruff check . > /dev/null 2>&1; then
+        print_error "Ruff lint found issues"
+        echo ""
+        echo -e "${YELLOW}HOW TO FIX:${NC}"
+        echo "  Run: cd backend && ruff check . --fix"
+        echo "  Then review and commit the changes"
+        echo ""
+        FAILED=1
+    else
+        print_success "Ruff lint check passed"
+    fi
+    cd - > /dev/null
+
+    # 3. MyPy Type Check
+    print_info "Running mypy type checking..."
+    if ! cd backend && mypy atlas > /dev/null 2>&1; then
+        print_error "MyPy type check found issues"
+        echo ""
+        echo -e "${YELLOW}HOW TO FIX:${NC}"
+        echo "  Run: cd backend && mypy atlas"
+        echo "  Fix the type errors in your code"
+        echo ""
+        FAILED=1
+    else
+        print_success "MyPy type check passed"
+    fi
+    cd - > /dev/null
+else
+    print_info "No Python files staged, skipping Python checks"
+fi
+
+# ============================================
+# Frontend Checks
+# ============================================
+FRONTEND_FILES=$(get_staged_frontend_files)
+
+if [ -n "$FRONTEND_FILES" ]; then
+    print_info "Found $(echo "$FRONTEND_FILES" | wc -l) frontend file(s) to check"
+
+    # 4. Prettier Format Check
+    print_info "Running prettier format check..."
+    if ! cd frontend && npm run format:check > /dev/null 2>&1; then
+        print_error "Prettier format check failed"
+        echo ""
+        echo -e "${YELLOW}HOW TO FIX:${NC}"
+        echo "  Run: cd frontend && npm run format"
+        echo ""
+        FAILED=1
+    else
+        print_success "Prettier format check passed"
+    fi
+    cd - > /dev/null
+
+    # 5. ESLint Check (zero warnings tolerance)
+    print_info "Running eslint (strict mode, --max-warnings 0)..."
+    if ! cd frontend && npm run lint > /dev/null 2>&1; then
+        print_error "ESLint found issues"
+        echo ""
+        echo -e "${YELLOW}HOW TO FIX:${NC}"
+        echo "  Run: cd frontend && npm run lint:fix"
+        echo "  Review any remaining issues and fix them"
+        echo ""
+        FAILED=1
+    else
+        print_success "ESLint check passed"
+    fi
+    cd - > /dev/null
+else
+    print_info "No frontend files staged, skipping frontend checks"
+fi
+
+# ============================================
+# Final Result
+# ============================================
+if [ $FAILED -eq 0 ]; then
+    print_header "All checks passed! Proceeding with commit..."
+    exit 0
+else
+    print_header "Commit blocked: Fix the issues above and try again"
+    exit 1
+fi
