@@ -142,7 +142,7 @@ python3 --version          # Should be 3.12+
 
 # Node
 node --version             # Should be v20+
-npm --version              # Should be 9+ (comes with Node)
+pnpm --version             # Should be 10+ (enable with `corepack enable`)
 
 # Make
 make --version             # Should show version

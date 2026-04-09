@@ -31,7 +31,7 @@ How the system is built. Reference these to understand what exists and how piece
 - [System Overview](./architecture/system-overview.md) — High-level layers and flow
 - [Data Model](./architecture/data-model.md) — Tables, fields, and relationships
 - [Pipeline Architecture](./architecture/pipeline.md) — The 6-step autodiscovery pipeline
-- [Frontend Architecture](./architecture/frontend.md) — TanStack Start, routes, and SSR strategy
+- [App Architecture](./architecture/app.md) — TanStack Start, routes, and SSR strategy
 - [API Reference](./architecture/api-reference.md) — REST endpoints and schemas
 
 ### Development
@@ -39,8 +39,8 @@ How to build and maintain the project. Follow these when making changes.
 
 - [Development Guide](./development/README.md) — Hub for all development docs
 - [Workflow](./development/workflow.md) — Day-to-day development practices
-- [Backend Development](./development/backend.md) — Adding models, endpoints, pipeline steps
-- [Frontend Development](./development/frontend.md) — Adding routes, components, hooks
+- [API Development](./development/api.md) — Adding models, endpoints, pipeline steps
+- [App Development](./development/app.md) — Adding routes, components, hooks
 - [Testing](./development/testing.md) — Test strategies and running tests
 - [Code Quality](./development/code-quality.md) — Quality gates and tooling
 
@@ -67,8 +67,8 @@ Product vision, system design, and taxonomy. Reference documents that define wha
 **The Atlas** is a national directory and autodiscovery engine for organizations, people, and initiatives working on transformative change across America.
 
 **Tech Stack:**
-- Backend: Python 3.12 + FastAPI + SQLite (FTS5)
-- Frontend: TanStack Start (React + TypeScript)
+- API: Python 3.12 + FastAPI + SQLite (FTS5)
+- App: TanStack Start (React + TypeScript)
 - AI: Anthropic Claude API for extraction
 - DevOps: Docker Compose, Makefile, git hooks
 

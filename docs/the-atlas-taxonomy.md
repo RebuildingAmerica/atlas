@@ -7,8 +7,9 @@ is tagged with one or more issue areas from this taxonomy. The autodiscovery
 pipeline uses it to classify extracted entries. The search interface uses it
 for filtering. Gap analysis uses it to identify missing coverage.
 
-Derived from the Rebuilding America series issues guide. Will evolve as
-the initiative evolves.
+Originally developed for the Rebuilding America initiative.
+The taxonomy evolves based on what the data reveals and what contributors
+propose.
 
 ## Structure
 
@@ -104,7 +105,7 @@ Cross-cutting work is the norm, not the exception.
 in a flood-prone neighborhood might be tagged `housing_affordability` +
 `climate_adaptation_and_resilience` + `environmental_justice_and_pollution`.
 That's not over-tagging — it's how the Atlas surfaces the connections between
-issues that the series is built to explore.
+issues that define how civic work connects across communities.
 
 **Granularity is at the "conversation" level.** Each issue area should be
 specific enough that two entries tagged the same way are recognizably working
@@ -112,7 +113,7 @@ on related things, but broad enough that the taxonomy doesn't balloon. If
 finer distinction is needed, that's what the entry description and free-text
 search are for.
 
-**This will change.** The tour will reveal issues and framings not captured
-here. New issue areas get added when existing ones can't describe a meaningful
+**This will change.** As the Atlas covers more cities, new issues and framings
+will emerge. New issue areas get added when existing ones can't describe a meaningful
 cluster of entries. Issue areas get split when they're too broad to be useful.
 The taxonomy serves the Atlas, not the other way around.

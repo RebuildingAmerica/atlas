@@ -1,7 +1,7 @@
 # The Atlas
 ## A Map of Who's Rebuilding America, and Where
 
-*Part of the Rebuilding America initiative*
+*Created for the Rebuilding America initiative — open-source and independently useful*
 
 ---
 
@@ -47,24 +47,24 @@ the pipeline finds.
 
 ### Who It's For
 
-**The production team** (during the Connecting America Tour): Go from "I'm
-heading to Kansas City next week" to "here are 40 source-linked leads
-organized by issue area, with contact surfaces and gap analysis" in under
-an hour. The Atlas is how episodes get populated with real people and
-real stories.
+**Researchers and organizers**: Go from "I'm heading to Kansas City next
+week" to "here are 40 source-linked leads organized by issue area, with
+contact surfaces and gap analysis" in under an hour. Whether you're a
+journalist finding sources, an advocacy group scoping a new city, or a
+documentary production team (like Rebuilding America's) looking for people
+to talk to — the Atlas turns location-based civic research from days of
+manual searching into a structured, repeatable process.
 
-**The public** (permanently): A searchable, browsable directory that anyone
-can use. A viewer watches an episode about transit in Kansas City, opens
-the Atlas, and finds not just the people in the episode but others doing
-related work nearby. An organizer in Boise looks up who's working on
-housing affordability in their city. A journalist finds sources for a story
-about environmental justice in Louisiana.
+**The public**: A searchable, browsable directory that anyone can use.
+Someone reads about transit issues in Kansas City, opens the Atlas, and
+finds the people and organizations doing that work. An organizer in Boise
+looks up who's working on housing affordability in their city. A journalist
+finds sources for a story about environmental justice in Louisiana.
 
-**The broader Rebuilding America initiative**: The Atlas is the connective
-layer between the documentary series (which drives attention), Project
-Lovelace (which drives civic engagement), and the communities doing the
-actual work. The series tells stories. The Atlas makes those stories
-actionable by showing people where to go and who to connect with.
+**Developers and integrators**: Atlas exposes a REST API. Build on top of
+it — embed directory data in your own site, connect it to other civic tech
+tools, or extend the pipeline with new source types and extraction
+strategies.
 
 ### What An Entry Looks Like
 
@@ -109,24 +109,26 @@ interviews, organizational profiles with program-level descriptions.
    for KC. Zero leads for harm reduction, environmental justice, and
    broadband." You decide what to do about it.
 
-The pipeline re-runs over time. Pre-tour research runs weeks ahead. A
-refresh runs the week of arrival. The public Atlas stays current as the
-pipeline keeps discovering.
+The pipeline can run on a schedule — initial deep research ahead of time,
+periodic refreshes to keep entries current. The public Atlas stays up to
+date as the pipeline keeps discovering.
 
-### How It Fits
+### Integration
 
-- **The Connecting America Tour** is the primary consumer during production.
-  The Atlas is how the producer finds the people worth talking to.
+- **REST API** — Atlas exposes all directory data through a public API.
+  Other applications can pull entries, sources, and discovery results.
 
-- **The Rebuilding America website** hosts the public Atlas. Viewers go from
-  watching content to finding the people and organizations doing the work.
+- **Embeddable** — the public Atlas can be self-hosted or embedded on
+  any website.
 
-- **Project Lovelace** integrates with the Atlas via API. The civic
-  engagement app connects users to action; the Atlas provides the map
-  of who's doing that work and where.
+- **Extensible taxonomy** — the issue taxonomy is maintained in the
+  project and open to contribution. Originally developed for the
+  Rebuilding America initiative, it covers the major domains of civic
+  work across the U.S.
 
-- **The series issues guide** is the source of the issue taxonomy that
-  the Atlas tags against. As the guide evolves, the taxonomy evolves.
+Atlas was created alongside other Rebuilding America tools — including a
+documentary series and a civic engagement platform. It's designed to stand
+on its own as a public directory and open-source project.
 
 ### What Gets Built and When
 
@@ -136,10 +138,11 @@ dedup, ranking, gap analysis. Minimal storage and triage interface. Done when
 you can type a city, select issue areas, and get back real entries with
 source links.
 
-**Phase 2: The internal interface.**
-Production-facing tool for searching, filtering, and managing entries.
-Contact tracking, outreach logging, tour route integration.
+**Phase 2: The admin interface.**
+Admin tool for searching, filtering, and managing entries. Contact
+tracking, outreach logging, CRM-like workflows for teams coordinating
+with the people in the directory.
 
 **Phase 3: The public Atlas.**
 Public-facing browse and search. Source-attributed entries. Embeddable on
-the Rebuilding America website. API for Lovelace integration.
+any website. Public API for third-party integration.

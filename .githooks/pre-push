@@ -27,6 +27,10 @@ print_info() {
     echo -e "${YELLOW}ℹ $1${NC}"
 }
 
+ROOT_DIR="$(git rev-parse --show-toplevel)"
+API_DIR="$ROOT_DIR/api"
+APP_DIR="$ROOT_DIR/app"
+
 print_header "Pre-push Quality Gates"
 
 FAILED=0
@@ -49,57 +53,53 @@ fi
 print_info "Running full typecheck suite..."
 
 print_info "  Backend: mypy..."
-if ! cd backend && mypy atlas > /dev/null 2>&1; then
+if ! (cd "$API_DIR" && mypy atlas > /dev/null 2>&1); then
     print_error "MyPy type check failed"
     echo ""
     echo -e "${YELLOW}HOW TO FIX:${NC}"
-    echo "  Run: cd backend && mypy atlas"
+    echo "  Run: cd api && mypy atlas"
     echo "  Fix type errors and commit"
     echo ""
     FAILED=1
 else
     print_success "Backend types OK"
 fi
-cd - > /dev/null
 
 print_info "  Frontend: TypeScript..."
-if ! cd frontend && npm run typecheck > /dev/null 2>&1; then
+if ! (cd "$APP_DIR" && pnpm run typecheck > /dev/null 2>&1); then
     print_error "TypeScript check failed"
     echo ""
     echo -e "${YELLOW}HOW TO FIX:${NC}"
-    echo "  Run: cd frontend && npm run typecheck"
+    echo "  Run: cd app && pnpm run typecheck"
     echo "  Fix type errors and commit"
     echo ""
     FAILED=1
 else
     print_success "Frontend types OK"
 fi
-cd - > /dev/null
 
 # 3. Run full test suite with coverage
 print_info "Running full test suite..."
 
 print_info "  Backend: pytest with coverage (minimum 90%)..."
-if ! cd backend && pytest --cov=atlas --cov-fail-under=90 > /dev/null 2>&1; then
+if ! (cd "$API_DIR" && pytest --cov=atlas --cov-fail-under=90 > /dev/null 2>&1); then
     print_error "Backend tests failed or coverage below 90%"
     echo ""
     echo -e "${YELLOW}HOW TO FIX:${NC}"
-    echo "  Run: cd backend && pytest --cov=atlas --cov-report=term-missing"
+    echo "  Run: cd api && pytest --cov=atlas --cov-report=term-missing"
     echo "  Write tests for uncovered code"
     echo ""
     FAILED=1
 else
     print_success "Backend tests passed with 90%+ coverage"
 fi
-cd - > /dev/null
 
-print_info "  Frontend: npm test..."
-if ! cd frontend && npm run test > /dev/null 2>&1; then
+print_info "  Frontend: pnpm test..."
+if ! (cd "$APP_DIR" && pnpm run test > /dev/null 2>&1); then
     print_info "Frontend tests not yet configured (skipping)"
 else
     print_success "Frontend tests passed"
 fi
-cd - > /dev/null
 
 # Final result
 if [ $FAILED -eq 0 ]; then

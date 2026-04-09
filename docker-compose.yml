@@ -1,12 +1,12 @@
 services:
-  backend:
+  api:
     build:
-      context: ./backend
+      context: ./api
       dockerfile: Dockerfile
     ports:
       - "8000:8000"
     volumes:
-      - ./backend:/app
+      - ./api:/app
       - atlas-data:/app/data
     env_file: .env
     environment:
@@ -18,18 +18,18 @@ services:
       timeout: 5s
       retries: 3
 
-  frontend:
+  app:
     build:
-      context: ./frontend
+      context: ./app
       dockerfile: Dockerfile
     ports:
       - "5173:5173"
     volumes:
-      - ./frontend/src:/app/src
+      - ./app/src:/app/src
     depends_on:
-      backend:
+      api:
         condition: service_healthy
-    command: npm run dev -- --host 0.0.0.0
+    command: pnpm run dev -- --host 0.0.0.0
 
 volumes:
   atlas-data:

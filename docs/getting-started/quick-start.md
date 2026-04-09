@@ -38,8 +38,8 @@ make setup
 ```
 
 This command:
-- Installs Python backend dependencies
-- Installs Node.js frontend dependencies
+- Installs Python api dependencies
+- Installs Node.js app dependencies
 - Initializes the SQLite database with schema
 
 Takes about 2-3 minutes on first run.
@@ -50,7 +50,7 @@ Takes about 2-3 minutes on first run.
 make dev
 ```
 
-This starts both the backend and frontend servers:
+This starts both the api and app servers:
 - **Backend API:** http://localhost:8000
 - **Frontend:** http://localhost:3000
 - **API Docs (Swagger):** http://localhost:8000/docs
@@ -66,14 +66,14 @@ VITE v5.0.0  ready in 245 ms
 
 ### make setup
 1. Copies `.env.example` to `.env` (local configuration)
-2. Installs Python dependencies in `backend/` (FastAPI, SQLite tools, testing frameworks)
-3. Installs Node.js dependencies in `frontend/` (React, TanStack Start, build tools)
+2. Installs Python dependencies in `api/` (FastAPI, SQLite tools, testing frameworks)
+3. Installs Node.js dependencies in `app/` (React, TanStack Start, build tools)
 4. Initializes SQLite database with schema (creates `atlas.db`)
 
 ### make dev
-1. Starts the FastAPI backend server on port 8000 with hot-reload enabled
-2. Starts the Vite frontend development server on port 3000 with hot-reload enabled
-3. Any code changes you make will automatically reload the browser and backend
+1. Starts the FastAPI api server on port 8000 with hot-reload enabled
+2. Starts the Vite app development server on port 3000 with hot-reload enabled
+3. Any code changes you make will automatically reload the browser and api
 
 ## Verify It Works
 
@@ -105,18 +105,18 @@ To stop development servers, press `Ctrl+C` in your terminal.
 ### "ModuleNotFoundError" on make setup
 Make sure Python 3.12+ is installed and activated. Try:
 ```bash
-cd backend && pip install -e ".[dev]" --break-system-packages
+cd api && pip install -e ".[dev]" --break-system-packages
 cd ..
 ```
 
-### "command not found: npm" on make setup
-Make sure Node.js 20+ is installed. Verify with `node --version`.
+### "command not found: pnpm" on make setup
+Make sure Node.js 20+ is installed and run `corepack enable`. Verify with `node --version` and `pnpm --version`.
 
 ### Port 8000 or 3000 already in use
 Kill the process using the port, or change the port in the start commands:
 ```bash
-cd backend && uvicorn atlas.main:app --reload --host 0.0.0.0 --port 8001
-cd frontend && npm run dev -- --port 3001
+cd api && uvicorn atlas.main:app --reload --host 0.0.0.0 --port 8001
+cd app && pnpm run dev -- --port 3001
 ```
 
 ### Database errors

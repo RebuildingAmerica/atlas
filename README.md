@@ -60,9 +60,9 @@ Or jump to [docs/README.md](./docs/README.md) for the full documentation hub.
 Common commands. Run `make help` for all:
 
 ```bash
-make dev              # Start full stack (backend + frontend)
-make dev-backend      # Start backend only
-make dev-frontend     # Start frontend only
+make dev              # Start full stack (api + app)
+make dev-api          # Start API server only
+make dev-app          # Start app only
 
 make quality          # Run all quality checks
 make format           # Format code
@@ -80,7 +80,7 @@ docker compose up     # Run with Docker
 
 ```
 atlas/
-├── backend/                  # Python/FastAPI backend
+├── api/                      # Python/FastAPI API server
 │   ├── atlas/
 │   │   ├── api/              # REST endpoints
 │   │   ├── models/           # Database models
@@ -89,7 +89,7 @@ atlas/
 │   │   └── taxonomy/         # Issue area definitions
 │   └── tests/                # Test suite
 │
-├── frontend/                 # TanStack Start (React/TypeScript)
+├── app/                      # TanStack Start (React/TypeScript)
 │   ├── src/
 │   │   ├── routes/           # File-based routes
 │   │   ├── components/       # Reusable components
@@ -126,7 +126,7 @@ See [Code Quality](./docs/development/code-quality.md) for how to fix issues.
 
 Three-layer design:
 
-1. **Interface Layer** — REST API + React frontend
+1. **Interface Layer** — REST API + React app
 2. **Business Logic Layer** — FastAPI endpoints + autodiscovery pipeline
 3. **Storage Layer** — SQLite database with FTS5 full-text search
 

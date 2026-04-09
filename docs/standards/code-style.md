@@ -177,7 +177,7 @@ def function2():  # ✅ Two blank lines between functions
 
 Run:
 ```bash
-cd backend
+cd api
 ruff format .
 ```
 
@@ -365,9 +365,9 @@ Use `prettier` and `eslint` to enforce.
 
 Run:
 ```bash
-cd frontend
-npm run format      # Auto-format
-npm run lint:fix    # Auto-fix lint issues
+cd app
+pnpm run format      # Auto-format
+pnpm run lint:fix    # Auto-fix lint issues
 ```
 
 ---

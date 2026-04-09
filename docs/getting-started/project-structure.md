@@ -209,7 +209,7 @@ Useful for UI development. Will call backend on localhost:8000.
 ```bash
 make test
 ```
-Runs pytest (backend) and npm test (frontend, if configured).
+Runs pytest (backend) and pnpm test (frontend, if configured).
 
 ### Linting and Formatting
 ```bash

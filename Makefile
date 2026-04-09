@@ -1,4 +1,4 @@
-.PHONY: help setup dev dev-backend dev-frontend build test lint format typecheck quality clean docker-up docker-down docker-build
+.PHONY: help setup dev dev-api dev-app build test lint format typecheck quality clean docker-up docker-down docker-build
 
 # Default target
 help: ## Show this help
@@ -10,50 +10,50 @@ help: ## Show this help
 setup: ## First-time project setup
 	@echo "Setting up The Atlas..."
 	cp -n .env.example .env || true
-	cd backend && pip install -e ".[dev]" --break-system-packages
-	cd frontend && npm install
-	cd backend && python -m atlas.models.database --init
+	cd api && pip install -e ".[dev]" --break-system-packages
+	cd app && pnpm install
+	cd api && python3 -m atlas.db_init
 	@echo "Setup complete! Run 'make dev' to start."
 
 # ============================================
 # Development
 # ============================================
-dev: ## Start full-stack development (backend + frontend)
+dev: ## Start full-stack development (api + app)
 	@echo "Starting The Atlas..."
-	$(MAKE) -j2 dev-backend dev-frontend
+	$(MAKE) -j2 dev-api dev-app
 
-dev-backend: ## Start backend only
-	cd backend && uvicorn atlas.main:app --reload --host 0.0.0.0 --port 8000
+dev-api: ## Start API server only
+	cd api && uvicorn atlas.main:app --reload --host 0.0.0.0 --port 8000
 
-dev-frontend: ## Start frontend only
-	cd frontend && npm run dev
+dev-app: ## Start app only
+	cd app && pnpm run dev
 
 # ============================================
 # Quality Gates (ALL automated, ALL strict)
 # ============================================
 lint: ## Run all linters (ruff + eslint)
-	cd backend && ruff check .
-	cd frontend && npm run lint
+	cd api && ruff check .
+	cd app && pnpm run lint
 
 lint-fix: ## Auto-fix lint issues
-	cd backend && ruff check . --fix
-	cd frontend && npm run lint:fix
+	cd api && ruff check . --fix
+	cd app && pnpm run lint:fix
 
 format: ## Format all code (ruff + prettier)
-	cd backend && ruff format .
-	cd frontend && npm run format
+	cd api && ruff format .
+	cd app && pnpm run format
 
 format-check: ## Check formatting without changes
-	cd backend && ruff format . --check
-	cd frontend && npm run format:check
+	cd api && ruff format . --check
+	cd app && pnpm run format:check
 
 typecheck: ## Type-check everything (mypy + tsc)
-	cd backend && mypy atlas
-	cd frontend && npm run typecheck
+	cd api && mypy atlas
+	cd app && pnpm run typecheck
 
 test: ## Run all tests with coverage
-	cd backend && pytest --cov=atlas --cov-report=term-missing --cov-fail-under=90
-	cd frontend && npm run test 2>/dev/null || echo "Frontend tests not yet configured"
+	cd api && pytest --cov=atlas --cov-report=term-missing --cov-fail-under=90
+	cd app && pnpm run test 2>/dev/null || echo "App tests not yet configured"
 
 quality: ## Run ALL quality checks (lint + format + typecheck + test)
 	@echo "Running full quality suite..."
@@ -67,8 +67,8 @@ quality: ## Run ALL quality checks (lint + format + typecheck + test)
 # Build
 # ============================================
 build: ## Build for production
-	cd frontend && npm run build
-	@echo "Build complete. Frontend assets in frontend/dist/"
+	cd app && pnpm run build
+	@echo "Build complete. App assets in app/dist/"
 
 # ============================================
 # Docker
@@ -89,16 +89,16 @@ docker-logs: ## Tail Docker logs
 # Database
 # ============================================
 db-init: ## Initialize database schema
-	cd backend && python -m atlas.models.database --init
+	cd api && python3 -m atlas.db_init
 
 db-reset: ## Reset database (WARNING: deletes all data)
-	cd backend && rm -f atlas.db && python -m atlas.models.database --init
+	cd api && rm -f atlas.db && python3 -m atlas.db_init
 
 # ============================================
 # Cleanup
 # ============================================
 clean: ## Remove all build artifacts and caches
-	rm -rf backend/__pycache__ backend/.pytest_cache backend/.mypy_cache backend/.ruff_cache
-	rm -rf frontend/dist frontend/node_modules/.vite
+	rm -rf api/__pycache__ api/.pytest_cache api/.mypy_cache api/.ruff_cache
+	rm -rf app/dist app/node_modules/.vite
 	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
 	find . -type f -name "*.pyc" -delete 2>/dev/null || true

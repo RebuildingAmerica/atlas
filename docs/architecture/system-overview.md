@@ -44,7 +44,7 @@ The Atlas has three layers working together to build a national directory of peo
 - **Entry-Source relationships** — Which entries came from which sources and the extraction context.
 - **Entry-Issue relationships** — Which issues each entry is tagged with.
 - **DiscoveryRun** — Log of each pipeline execution (request, results, timestamp).
-- **Internal data** — Outreach logs, episode associations (hidden from public API).
+- **Admin data** — Outreach logs, content associations (excluded from public API).
 
 **Why SQLite?**
 
@@ -88,7 +88,7 @@ Fast startup, great performance, automatic API documentation (Swagger). Type hin
   - Entry detail pages with all sources and related entries
   - Issue area pages (see all entries for a topic)
 
-- **Internal Admin Interface** — For the production team.
+- **Admin Interface** — For teams managing the directory.
   - Trigger discovery runs manually
   - Review and edit entries before publishing
   - See outreach status

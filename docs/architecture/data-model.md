@@ -26,9 +26,9 @@ A person, organization, initiative, campaign, or event tied to a place and issue
 | active | Boolean | Yes | Default true. Is this entry current? |
 | verified | Boolean | Yes | Default false. Has someone confirmed this? |
 | last_verified | Date | No | When was this last verified? |
-| contact_status | enum | No | not_contacted, contacted, responded, confirmed, declined (internal only) |
-| editorial_notes | Text | No | Internal notes (not public) |
-| priority | enum | No | high, medium, low (internal only) |
+| contact_status | enum | No | not_contacted, contacted, responded, confirmed, declined (admin-only) |
+| editorial_notes | Text | No | Admin notes (not public) |
+| priority | enum | No | high, medium, low (admin-only) |
 | created_at | DateTime | Yes | When entry was created |
 | updated_at | DateTime | Yes | When entry was last updated |
 
@@ -105,7 +105,7 @@ Log of each autodiscovery pipeline execution. Enables re-runs, debugging, and tr
 
 **Purpose:** Audit trail. Enables tracking what's been discovered where. Can re-run same query to see if new entries are found.
 
-## OutreachLog (Internal Only)
+## OutreachLog (Admin-Only)
 
 Tracks outreach attempts to entries (email, phone, in-person visits).
 
@@ -119,11 +119,11 @@ Tracks outreach attempts to entries (email, phone, in-person visits).
 | response | enum | Yes | no_response, positive, negative, deferred |
 | created_at | DateTime | Yes | When log created |
 
-**Purpose:** Track outreach for internal team. Not visible in public API.
+**Purpose:** Track outreach for admin users. Not visible in public API.
 
-## EpisodeAssociation (Internal Only)
+## EpisodeAssociation (Admin-Only)
 
-Links entries to Rebuilding America episodes.
+Links entries to content (episodes, articles, features).
 
 | Field | Type | Required | Notes |
 |---|---|---|---|
@@ -134,7 +134,7 @@ Links entries to Rebuilding America episodes.
 
 **Primary Key:** (entry_id, episode)
 
-**Purpose:** Track which entries are featured in which episodes. Enables "people in this episode" views.
+**Purpose:** Track which entries are featured in content. Enables "people in this episode/article" views.
 
 ---
 
@@ -196,14 +196,14 @@ ORDER BY started_at DESC
 
 ---
 
-## Public vs. Internal Fields
+## Public vs. Admin Fields
 
 **Visible in public API:**
 - Entry: id, type, name, description, city, state, region, geo_specificity, website, active (not verified or contact_status)
 - Source: id, url, title, publication, published_date, type
 - EntrySource: extraction_context
 
-**Hidden from public API:**
+**Hidden from public API (admin-only):**
 - Entry: contact_status, editorial_notes, priority, email, phone (unless marked public)
 - OutreachLog: entire table
 - EpisodeAssociation: entire table

@@ -334,7 +334,7 @@ Currently no rate limiting. May be added in future based on usage patterns.
 
 ## CORS
 
-All endpoints allow cross-origin requests from the frontend domain.
+All endpoints allow cross-origin requests from the app domain.
 
 ## Caching
 
@@ -388,7 +388,7 @@ Before adding a new endpoint, make sure:
 ## See Also
 
 - [API Reference](../architecture/api-reference.md) — Actual endpoints
-- [Backend Development](../development/backend.md) — How to add endpoints
+- [API Development](../development/api.md) — How to add endpoints
 
 ---
 

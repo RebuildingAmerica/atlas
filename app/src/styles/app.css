@@ -1,0 +1,21 @@
+@import url("https://fonts.googleapis.com/css2?family=Public+Sans:wght@100..900&display=swap");
+@import "tailwindcss";
+
+:root {
+  font-family:
+    "Public Sans",
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+}
+
+body {
+  font-family: inherit;
+  background:
+    radial-gradient(circle at top, rgba(120, 113, 108, 0.08), transparent 28%),
+    linear-gradient(180deg, #f6f1e7 0%, #f2ede3 100%);
+  color: #1c1917;
+}

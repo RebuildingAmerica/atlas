@@ -13,8 +13,8 @@ Three layers:
 2. **Storage layer** — persists entries, sources, and their relationships.
    Supports query patterns for both internal and public interfaces.
 
-3. **Interface layer** — internal (production) and public (Atlas) views
-   over the same data, with different field visibility.
+3. **Interface layer** — admin and public views over the same data, with
+   different field visibility.
 
 ---
 
@@ -56,7 +56,8 @@ Entry {
     verified:           boolean (default false)
     last_verified:      date (nullable)
 
-    -- Internal only (excluded from public views)
+    -- Admin fields (excluded from public API)
+    -- These support optional CRM-like workflows for teams tracking outreach.
     contact_status:     enum [not_contacted, contacted, responded, confirmed, declined]
                         (default not_contacted)
     editorial_notes:    text (nullable)
@@ -113,7 +114,10 @@ EntryIssueArea {
 }
 ```
 
-### OutreachLog (internal only)
+### OutreachLog (admin-only)
+
+For teams using Atlas to coordinate outreach to people and organizations
+in the directory. Excluded from public API responses.
 
 ```
 OutreachLog {
@@ -127,7 +131,11 @@ OutreachLog {
 }
 ```
 
-### EpisodeAssociation (internal only)
+### EpisodeAssociation (admin-only)
+
+Links entries to content produced about them — episodes, articles, features.
+Originally designed for Rebuilding America's documentary series, usable for
+any content-to-entry linking. Excluded from public API responses.
 
 ```
 EpisodeAssociation {
@@ -257,8 +265,8 @@ instructions to cite specific passages.
 
 ```
 You are extracting structured data from a source document for the
-Rebuilding America Atlas — a national directory of people, organizations,
-and initiatives working on contemporary American issues.
+Atlas — a national directory of people, organizations, and initiatives
+working on contemporary American issues.
 
 Target location: {city}, {state}
 
@@ -384,7 +392,7 @@ missing areas.
 
 ## Query Patterns
 
-### Internal (production)
+### Admin
 
 ```sql
 -- All entries in a state, filtered by issue area
@@ -398,7 +406,7 @@ JOIN entry_sources es ON e.id = es.entry_id
 WHERE e.state = 'MO'
 GROUP BY e.id ORDER BY source_count DESC;
 
--- Uncontacted high-priority entries
+-- Admin: find high-priority entries not yet contacted (CRM workflow)
 SELECT * FROM entries
 WHERE contact_status = 'not_contacted' AND priority = 'high'
 AND state IN ('MO', 'KS', 'NE');
@@ -440,37 +448,39 @@ Full-text search via SQLite FTS5.
   structured JSON output.
 - **Web search:** Search API for pipeline query execution.
 - **Web fetching:** httpx + trafilatura (or similar) for HTML-to-text.
-- **Frontend:** React (Phase 2-3). Phase 1 triage can be CLI.
+- **App:** TanStack Start (React + TypeScript)
 
 ---
 
-## File Structure (Phase 1)
+## File Structure
 
 ```
-the-atlas/
-├── pipeline/
-│   ├── __init__.py
-│   ├── query_generator.py      # Step 1: location + issues → search queries
-│   ├── source_fetcher.py       # Step 2: queries → fetched source content
-│   ├── extractor.py            # Step 3: source content → structured entries
-│   ├── deduplicator.py         # Step 4: merge duplicate entries
-│   ├── ranker.py               # Step 5: rank entries
-│   └── gap_analyzer.py         # Step 6: report missing coverage
-├── models/
-│   ├── __init__.py
-│   ├── database.py             # SQLite setup, connection management
-│   ├── entry.py                # Entry CRUD
-│   ├── source.py               # Source CRUD
-│   └── discovery_run.py        # Pipeline run tracking
-├── taxonomy/
-│   ├── issue_areas.py          # Taxonomy definition
-│   └── search_terms.py         # Issue area → search keyword mappings
-├── config/
-│   ├── local_context.py        # City/state → local knowledge
-│   └── settings.py             # API keys, thresholds, rate limits
-├── cli.py                      # CLI for pipeline runs + triage
-├── requirements.txt
-└── README.md
+atlas/
+├── api/                            # Python/FastAPI API server
+│   ├── atlas/
+│   │   ├── api/                    # REST endpoints
+│   │   ├── pipeline/
+│   │   │   ├── query_generator.py  # Step 1: location + issues → search queries
+│   │   │   ├── source_fetcher.py   # Step 2: queries → fetched source content
+│   │   │   ├── extractor.py        # Step 3: source content → structured entries
+│   │   │   ├── deduplicator.py     # Step 4: merge duplicate entries
+│   │   │   ├── ranker.py           # Step 5: rank entries
+│   │   │   └── gap_analyzer.py     # Step 6: report missing coverage
+│   │   ├── models/                 # Database models + CRUD
+│   │   ├── schemas/                # Pydantic schemas
+│   │   ├── taxonomy/               # Issue area definitions + search terms
+│   │   └── config/                 # Settings, local context
+│   └── tests/
+├── app/                            # TanStack Start (React + TypeScript)
+│   └── src/
+│       ├── routes/                 # File-based routes
+│       ├── components/             # Reusable components
+│       ├── hooks/                  # Custom hooks
+│       ├── types/                  # TypeScript types
+│       └── lib/                    # API client, utils
+├── docs/
+├── Makefile
+└── docker-compose.yml
 ```
 
 ---

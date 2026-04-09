@@ -145,13 +145,13 @@ Runs before pushing to the remote. Checks everything (not just staged files).
 1. **Working directory is clean** — No uncommitted changes
 2. **Full type checking** — All code, entire project
    - Python: `mypy atlas`
-   - TypeScript: `npm run typecheck`
+   - TypeScript: `pnpm run typecheck`
 
 3. **Full test suite** — All tests pass, 90%+ coverage
    - Python: `pytest --cov-fail-under=90`
 
 4. **Build succeeds** — Project compiles
-   - Frontend: `npm run build`
+   - Frontend: `pnpm run build`
 
 **If it fails:**
 
@@ -277,7 +277,7 @@ ruff check . --fix
 **Auto-fix:**
 ```bash
 cd frontend
-npm run lint:fix
+pnpm run lint:fix
 ```
 
 ---
