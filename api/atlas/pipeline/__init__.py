@@ -16,5 +16,6 @@ __all__ = [
     "gap_analyzer",
     "query_generator",
     "ranker",
+    "runner",
     "source_fetcher",
 ]

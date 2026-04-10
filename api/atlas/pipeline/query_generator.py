@@ -7,6 +7,7 @@ pipeline.
 
 from dataclasses import dataclass
 
+from atlas.pipeline.local_context import LOCAL_CONTEXT
 from atlas.taxonomy import ISSUE_SEARCH_TERMS
 
 __all__ = ["SearchQuery", "generate_queries"]
@@ -50,10 +51,13 @@ def generate_queries(
     """
     queries: list[SearchQuery] = []
     location = f"{city}, {state}"
+    local_context = LOCAL_CONTEXT.get(location, {})
+    outlets = local_context.get("outlets", [])
 
     source_patterns = {
         "local_journalism": [
             "{location} {keywords}",
+            "{location} {keywords} {local_outlet}",
         ],
         "nonprofits": [
             "{location} {keywords} nonprofit",
@@ -83,14 +87,20 @@ def generate_queries(
 
         for source_category, patterns in source_patterns.items():
             for pattern in patterns:
+                expansions = outlets if "{local_outlet}" in pattern and outlets else [None]
                 for keywords in keywords_list:
-                    query_text = pattern.format(location=location, keywords=keywords)
-                    queries.append(
-                        SearchQuery(
-                            query=query_text,
-                            source_category=source_category,
-                            issue_area=issue_area_slug,
+                    for local_outlet in expansions:
+                        query_text = pattern.format(
+                            location=location,
+                            keywords=keywords,
+                            local_outlet=local_outlet or "",
+                        ).strip()
+                        queries.append(
+                            SearchQuery(
+                                query=" ".join(query_text.split()),
+                                source_category=source_category,
+                                issue_area=issue_area_slug,
+                            )
                         )
-                    )
 
     return queries
