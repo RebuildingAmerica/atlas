@@ -9,42 +9,45 @@ BLUE='\033[0;34m'
 NC='\033[0m'
 
 COMMIT_MSG_FILE="$1"
-COMMIT_MSG=$(cat "$COMMIT_MSG_FILE")
+COMMIT_HEADER=$(head -n 1 "$COMMIT_MSG_FILE")
 
 # Conventional Commits pattern
 # Format: type(scope)?: message
-# where type is one of: feat, fix, docs, refactor, test, chore, perf, ci, build, style
-PATTERN='^(feat|fix|docs|refactor|test|chore|perf|ci|build|style)(\([a-z0-9-]+\))?!?: .+'
+# Scopes are optional, but when present they must use an approved repo term.
+# Descriptions must start with sentence case.
+PATTERN='^(feat|fix|docs|chore|refactor)(\((api|app|pipeline|scout|docs|dx)\))?!?: [A-Z0-9].+'
 
-if ! echo "$COMMIT_MSG" | grep -qE "$PATTERN"; then
+if ! echo "$COMMIT_HEADER" | grep -qE "$PATTERN"; then
     echo -e "\n${RED}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo -e "${RED}✗ Commit message does not follow Conventional Commits${NC}"
     echo -e "${RED}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}\n"
 
-    echo "Your message: ${YELLOW}$COMMIT_MSG${NC}"
+    echo "Your message: ${YELLOW}$COMMIT_HEADER${NC}"
     echo ""
     echo "Format: ${BLUE}type(scope)?: message${NC}"
     echo ""
     echo "Valid types:"
-    echo "  - ${BLUE}feat${NC}:     A new feature"
-    echo "  - ${BLUE}fix${NC}:      A bug fix"
-    echo "  - ${BLUE}docs${NC}:     Documentation only"
-    echo "  - ${BLUE}refactor${NC}: Code refactoring (no feature change)"
-    echo "  - ${BLUE}test${NC}:     Adding or updating tests"
-    echo "  - ${BLUE}chore${NC}:    Dependency, tooling, or config changes"
-    echo "  - ${BLUE}perf${NC}:     Performance improvements"
-    echo "  - ${BLUE}ci${NC}:       CI/CD config changes"
-    echo "  - ${BLUE}build${NC}:    Build process or deps changes"
-    echo "  - ${BLUE}style${NC}:    Code style changes (formatting, etc.)"
+    echo "  - ${BLUE}feat${NC}:     Consumer-facing capability added to the product"
+    echo "  - ${BLUE}fix${NC}:      Consumer-facing bug fix in shipped behavior"
+    echo "  - ${BLUE}docs${NC}:     Documentation-only changes"
+    echo "  - ${BLUE}chore${NC}:    Documentation, tests, tooling, dependencies, or internal maintenance"
+    echo "  - ${BLUE}refactor${NC}: Internal code reshaping with no behavior change"
     echo ""
-    echo "Scope (optional): The area of code affected (e.g., auth, database)"
+    echo "Valid scopes (optional):"
+    echo "  - ${BLUE}api${NC}:         Python/FastAPI application code"
+    echo "  - ${BLUE}app${NC}:         React/TanStack Start application code"
+    echo "  - ${BLUE}pipeline${NC}:    Discovery pipeline
+  - ${BLUE}scout${NC}:       Atlas Scout autonomous discovery package"
+    echo "  - ${BLUE}docs${NC}:        Documentation files"
+    echo "  - ${BLUE}dx${NC}:          Developer experience, tooling, deployment, CI/CD"
+    echo "  Use no scope for broad or cross-cutting changes."
     echo ""
     echo "Examples:"
-    echo "  ${BLUE}feat: Add user authentication${NC}"
-    echo "  ${BLUE}fix(auth): Handle expired tokens correctly${NC}"
-    echo "  ${BLUE}docs: Update README with setup instructions${NC}"
-    echo "  ${BLUE}refactor(api): Simplify error handling${NC}"
-    echo "  ${BLUE}test(integration): Add E2E tests for checkout flow${NC}"
+    echo "  ${BLUE}feat(app): Add browse experience for issue areas${NC}"
+    echo "  ${BLUE}fix(api): Return correct pagination metadata${NC}"
+    echo "  ${BLUE}docs: Clarify local development workflow${NC}"
+    echo "  ${BLUE}chore(dx): Improve setup guidance for junior developers${NC}"
+    echo "  ${BLUE}refactor(pipeline): Simplify deduplication helpers${NC}"
     echo ""
 
     exit 1
