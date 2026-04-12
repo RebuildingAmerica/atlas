@@ -1,8 +1,9 @@
 import { Link } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
 import { EntryDetail } from "@/domains/catalog/components/entries/entry-detail";
+import { OrgProfile } from "@/domains/catalog/components/profiles/org-profile";
 import { PersonProfile } from "@/domains/catalog/components/profiles/person-profile";
-import { useEntry } from "@/domains/catalog/hooks/use-entries";
+import { useEntries, useEntry } from "@/domains/catalog/hooks/use-entries";
 import { useTaxonomy } from "@/domains/catalog/hooks/use-taxonomy";
 import { PageLayout } from "@/platform/layout/page-layout";
 
@@ -17,6 +18,17 @@ export function EntryPage({ entryId }: { entryId: string }) {
   const affiliatedOrgQuery = useEntry(entry?.affiliated_org_id ?? "", {
     enabled: !!entry?.affiliated_org_id,
   });
+
+  // Fetch people affiliated with this org.
+  // NOTE: The API does not yet support filtering by affiliated_org_id.
+  // When that filter is added to ListEntitiesParams, pass it here to get
+  // server-side filtering instead of an empty result.
+  const affiliatedPeopleQuery = useEntries(
+    entry?.type === "organization" ? { entry_types: ["person"], limit: 50 } : undefined,
+  );
+  const affiliatedPeople = (affiliatedPeopleQuery.data?.data ?? []).filter(
+    (p) => p.affiliated_org_id === entryId,
+  );
 
   const issueAreaLabels = Object.fromEntries(
     Object.values(taxonomyQuery.data ?? {})
@@ -69,6 +81,12 @@ export function EntryPage({ entryId }: { entryId: string }) {
           entry={entry}
           issueAreaLabels={issueAreaLabels}
           affiliatedOrg={affiliatedOrgQuery.data}
+        />
+      ) : entry?.type === "organization" ? (
+        <OrgProfile
+          entry={entry}
+          issueAreaLabels={issueAreaLabels}
+          affiliatedPeople={affiliatedPeople}
         />
       ) : (
         <EntryDetail
