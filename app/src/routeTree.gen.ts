@@ -9,114 +9,319 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as DiscoveryRouteImport } from './routes/discovery'
-import { Route as DashboardRouteImport } from './routes/dashboard'
-import { Route as IndexRouteImport } from './routes/index'
-import { Route as EntriesEntryIdRouteImport } from './routes/entries.$entryId'
+import { Route as WorkspaceRouteImport } from './routes/_workspace'
+import { Route as PublicRouteImport } from './routes/_public'
+import { Route as AuthRouteImport } from './routes/_auth'
+import { Route as PublicIndexRouteImport } from './routes/_public/index'
+import { Route as WorkspaceDiscoveryRouteImport } from './routes/_workspace/discovery'
+import { Route as WorkspaceAccountRouteImport } from './routes/_workspace/account'
+import { Route as PublicBrowseRouteImport } from './routes/_public/browse'
+import { Route as AuthSignInRouteImport } from './routes/_auth/sign-in'
+import { Route as AuthAccountSetupRouteImport } from './routes/_auth/account-setup'
+import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as PublicEntriesEntryIdRouteImport } from './routes/_public/entries.$entryId'
+import { Route as AuthOauthConsentRouteImport } from './routes/_auth/oauth/consent'
+import { Route as ApiAuthInternalApiKeyRouteImport } from './routes/api/auth/internal/api-key'
 
-const DiscoveryRoute = DiscoveryRouteImport.update({
-  id: '/discovery',
-  path: '/discovery',
+const WorkspaceRoute = WorkspaceRouteImport.update({
+  id: '/_workspace',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DashboardRoute = DashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
+const PublicRoute = PublicRouteImport.update({
+  id: '/_public',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
+const AuthRoute = AuthRouteImport.update({
+  id: '/_auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PublicIndexRoute = PublicIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => PublicRoute,
+} as any)
+const WorkspaceDiscoveryRoute = WorkspaceDiscoveryRouteImport.update({
+  id: '/discovery',
+  path: '/discovery',
+  getParentRoute: () => WorkspaceRoute,
+} as any)
+const WorkspaceAccountRoute = WorkspaceAccountRouteImport.update({
+  id: '/account',
+  path: '/account',
+  getParentRoute: () => WorkspaceRoute,
+} as any)
+const PublicBrowseRoute = PublicBrowseRouteImport.update({
+  id: '/browse',
+  path: '/browse',
+  getParentRoute: () => PublicRoute,
+} as any)
+const AuthSignInRoute = AuthSignInRouteImport.update({
+  id: '/sign-in',
+  path: '/sign-in',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthAccountSetupRoute = AuthAccountSetupRouteImport.update({
+  id: '/account-setup',
+  path: '/account-setup',
+  getParentRoute: () => AuthRoute,
+} as any)
+const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
+  id: '/api/auth/$',
+  path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
-const EntriesEntryIdRoute = EntriesEntryIdRouteImport.update({
+const PublicEntriesEntryIdRoute = PublicEntriesEntryIdRouteImport.update({
   id: '/entries/$entryId',
   path: '/entries/$entryId',
+  getParentRoute: () => PublicRoute,
+} as any)
+const AuthOauthConsentRoute = AuthOauthConsentRouteImport.update({
+  id: '/oauth/consent',
+  path: '/oauth/consent',
+  getParentRoute: () => AuthRoute,
+} as any)
+const ApiAuthInternalApiKeyRoute = ApiAuthInternalApiKeyRouteImport.update({
+  id: '/api/auth/internal/api-key',
+  path: '/api/auth/internal/api-key',
   getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
-  '/dashboard': typeof DashboardRoute
-  '/discovery': typeof DiscoveryRoute
-  '/entries/$entryId': typeof EntriesEntryIdRoute
+  '/': typeof PublicIndexRoute
+  '/account-setup': typeof AuthAccountSetupRoute
+  '/sign-in': typeof AuthSignInRoute
+  '/browse': typeof PublicBrowseRoute
+  '/account': typeof WorkspaceAccountRoute
+  '/discovery': typeof WorkspaceDiscoveryRoute
+  '/oauth/consent': typeof AuthOauthConsentRoute
+  '/entries/$entryId': typeof PublicEntriesEntryIdRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/auth/internal/api-key': typeof ApiAuthInternalApiKeyRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
-  '/dashboard': typeof DashboardRoute
-  '/discovery': typeof DiscoveryRoute
-  '/entries/$entryId': typeof EntriesEntryIdRoute
+  '/': typeof PublicIndexRoute
+  '/account-setup': typeof AuthAccountSetupRoute
+  '/sign-in': typeof AuthSignInRoute
+  '/browse': typeof PublicBrowseRoute
+  '/account': typeof WorkspaceAccountRoute
+  '/discovery': typeof WorkspaceDiscoveryRoute
+  '/oauth/consent': typeof AuthOauthConsentRoute
+  '/entries/$entryId': typeof PublicEntriesEntryIdRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/auth/internal/api-key': typeof ApiAuthInternalApiKeyRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
-  '/dashboard': typeof DashboardRoute
-  '/discovery': typeof DiscoveryRoute
-  '/entries/$entryId': typeof EntriesEntryIdRoute
+  '/_auth': typeof AuthRouteWithChildren
+  '/_public': typeof PublicRouteWithChildren
+  '/_workspace': typeof WorkspaceRouteWithChildren
+  '/_auth/account-setup': typeof AuthAccountSetupRoute
+  '/_auth/sign-in': typeof AuthSignInRoute
+  '/_public/browse': typeof PublicBrowseRoute
+  '/_workspace/account': typeof WorkspaceAccountRoute
+  '/_workspace/discovery': typeof WorkspaceDiscoveryRoute
+  '/_public/': typeof PublicIndexRoute
+  '/_auth/oauth/consent': typeof AuthOauthConsentRoute
+  '/_public/entries/$entryId': typeof PublicEntriesEntryIdRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/auth/internal/api-key': typeof ApiAuthInternalApiKeyRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/dashboard' | '/discovery' | '/entries/$entryId'
+  fullPaths:
+    | '/'
+    | '/account-setup'
+    | '/sign-in'
+    | '/browse'
+    | '/account'
+    | '/discovery'
+    | '/oauth/consent'
+    | '/entries/$entryId'
+    | '/api/auth/$'
+    | '/api/auth/internal/api-key'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/dashboard' | '/discovery' | '/entries/$entryId'
-  id: '__root__' | '/' | '/dashboard' | '/discovery' | '/entries/$entryId'
+  to:
+    | '/'
+    | '/account-setup'
+    | '/sign-in'
+    | '/browse'
+    | '/account'
+    | '/discovery'
+    | '/oauth/consent'
+    | '/entries/$entryId'
+    | '/api/auth/$'
+    | '/api/auth/internal/api-key'
+  id:
+    | '__root__'
+    | '/_auth'
+    | '/_public'
+    | '/_workspace'
+    | '/_auth/account-setup'
+    | '/_auth/sign-in'
+    | '/_public/browse'
+    | '/_workspace/account'
+    | '/_workspace/discovery'
+    | '/_public/'
+    | '/_auth/oauth/consent'
+    | '/_public/entries/$entryId'
+    | '/api/auth/$'
+    | '/api/auth/internal/api-key'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
-  DashboardRoute: typeof DashboardRoute
-  DiscoveryRoute: typeof DiscoveryRoute
-  EntriesEntryIdRoute: typeof EntriesEntryIdRoute
+  AuthRoute: typeof AuthRouteWithChildren
+  PublicRoute: typeof PublicRouteWithChildren
+  WorkspaceRoute: typeof WorkspaceRouteWithChildren
+  ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  ApiAuthInternalApiKeyRoute: typeof ApiAuthInternalApiKeyRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/discovery': {
-      id: '/discovery'
-      path: '/discovery'
-      fullPath: '/discovery'
-      preLoaderRoute: typeof DiscoveryRouteImport
+    '/_workspace': {
+      id: '/_workspace'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof WorkspaceRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/dashboard': {
-      id: '/dashboard'
-      path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof DashboardRouteImport
+    '/_public': {
+      id: '/_public'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof PublicRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
+    '/_auth': {
+      id: '/_auth'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_public/': {
+      id: '/_public/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+      preLoaderRoute: typeof PublicIndexRouteImport
+      parentRoute: typeof PublicRoute
+    }
+    '/_workspace/discovery': {
+      id: '/_workspace/discovery'
+      path: '/discovery'
+      fullPath: '/discovery'
+      preLoaderRoute: typeof WorkspaceDiscoveryRouteImport
+      parentRoute: typeof WorkspaceRoute
+    }
+    '/_workspace/account': {
+      id: '/_workspace/account'
+      path: '/account'
+      fullPath: '/account'
+      preLoaderRoute: typeof WorkspaceAccountRouteImport
+      parentRoute: typeof WorkspaceRoute
+    }
+    '/_public/browse': {
+      id: '/_public/browse'
+      path: '/browse'
+      fullPath: '/browse'
+      preLoaderRoute: typeof PublicBrowseRouteImport
+      parentRoute: typeof PublicRoute
+    }
+    '/_auth/sign-in': {
+      id: '/_auth/sign-in'
+      path: '/sign-in'
+      fullPath: '/sign-in'
+      preLoaderRoute: typeof AuthSignInRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/_auth/account-setup': {
+      id: '/_auth/account-setup'
+      path: '/account-setup'
+      fullPath: '/account-setup'
+      preLoaderRoute: typeof AuthAccountSetupRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/api/auth/$': {
+      id: '/api/auth/$'
+      path: '/api/auth/$'
+      fullPath: '/api/auth/$'
+      preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/entries/$entryId': {
-      id: '/entries/$entryId'
+    '/_public/entries/$entryId': {
+      id: '/_public/entries/$entryId'
       path: '/entries/$entryId'
       fullPath: '/entries/$entryId'
-      preLoaderRoute: typeof EntriesEntryIdRouteImport
+      preLoaderRoute: typeof PublicEntriesEntryIdRouteImport
+      parentRoute: typeof PublicRoute
+    }
+    '/_auth/oauth/consent': {
+      id: '/_auth/oauth/consent'
+      path: '/oauth/consent'
+      fullPath: '/oauth/consent'
+      preLoaderRoute: typeof AuthOauthConsentRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/api/auth/internal/api-key': {
+      id: '/api/auth/internal/api-key'
+      path: '/api/auth/internal/api-key'
+      fullPath: '/api/auth/internal/api-key'
+      preLoaderRoute: typeof ApiAuthInternalApiKeyRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
 }
 
+interface AuthRouteChildren {
+  AuthAccountSetupRoute: typeof AuthAccountSetupRoute
+  AuthSignInRoute: typeof AuthSignInRoute
+  AuthOauthConsentRoute: typeof AuthOauthConsentRoute
+}
+
+const AuthRouteChildren: AuthRouteChildren = {
+  AuthAccountSetupRoute: AuthAccountSetupRoute,
+  AuthSignInRoute: AuthSignInRoute,
+  AuthOauthConsentRoute: AuthOauthConsentRoute,
+}
+
+const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
+
+interface PublicRouteChildren {
+  PublicBrowseRoute: typeof PublicBrowseRoute
+  PublicIndexRoute: typeof PublicIndexRoute
+  PublicEntriesEntryIdRoute: typeof PublicEntriesEntryIdRoute
+}
+
+const PublicRouteChildren: PublicRouteChildren = {
+  PublicBrowseRoute: PublicBrowseRoute,
+  PublicIndexRoute: PublicIndexRoute,
+  PublicEntriesEntryIdRoute: PublicEntriesEntryIdRoute,
+}
+
+const PublicRouteWithChildren =
+  PublicRoute._addFileChildren(PublicRouteChildren)
+
+interface WorkspaceRouteChildren {
+  WorkspaceAccountRoute: typeof WorkspaceAccountRoute
+  WorkspaceDiscoveryRoute: typeof WorkspaceDiscoveryRoute
+}
+
+const WorkspaceRouteChildren: WorkspaceRouteChildren = {
+  WorkspaceAccountRoute: WorkspaceAccountRoute,
+  WorkspaceDiscoveryRoute: WorkspaceDiscoveryRoute,
+}
+
+const WorkspaceRouteWithChildren = WorkspaceRoute._addFileChildren(
+  WorkspaceRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
-  DashboardRoute: DashboardRoute,
-  DiscoveryRoute: DiscoveryRoute,
-  EntriesEntryIdRoute: EntriesEntryIdRoute,
+  AuthRoute: AuthRouteWithChildren,
+  PublicRoute: PublicRouteWithChildren,
+  WorkspaceRoute: WorkspaceRouteWithChildren,
+  ApiAuthSplatRoute: ApiAuthSplatRoute,
+  ApiAuthInternalApiKeyRoute: ApiAuthInternalApiKeyRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-  }
-}
