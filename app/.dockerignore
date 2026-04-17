@@ -1,0 +1,7 @@
+.env
+.env.*
+.turbo
+dist
+node_modules
+coverage
+vitest.config.*

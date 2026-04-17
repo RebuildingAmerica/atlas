@@ -5,3 +5,6 @@ dist/
 .nitro/
 *.local
 .DS_Store
+coverage/
+test-results/
+.tanstack/

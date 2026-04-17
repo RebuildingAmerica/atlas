@@ -1,0 +1,210 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+interface ServerFnResponse {
+  context: unknown;
+  error: unknown;
+  result: unknown;
+}
+
+const mocks = vi.hoisted(() => ({
+  createServerFn: (() => {
+    return () => {
+      let validateInput: ((input: unknown) => unknown) | undefined;
+
+      const builder = {
+        inputValidator(
+          validator: { parse?: (input: unknown) => unknown } | ((input: unknown) => unknown),
+        ) {
+          validateInput =
+            typeof validator === "function"
+              ? validator
+              : (input) => validator.parse?.(input) ?? input;
+          return builder;
+        },
+        middleware() {
+          return builder;
+        },
+        handler(handler: (input: { data: unknown }) => unknown) {
+          const execute = (input?: { data?: unknown }) =>
+            Promise.resolve(
+              handler({
+                data: validateInput ? validateInput(input?.data) : input?.data,
+              }),
+            );
+
+          return Object.assign(async (input?: { data?: unknown }) => execute(input), {
+            __executeServer: async (
+              input: {
+                method?: string;
+                data?: unknown;
+                headers?: HeadersInit;
+                context?: unknown;
+              } = {},
+            ): Promise<ServerFnResponse> => {
+              try {
+                return {
+                  context: input?.context,
+                  error: undefined,
+                  result: await execute(input),
+                };
+              } catch (error) {
+                return {
+                  context: input?.context,
+                  error,
+                  result: undefined,
+                };
+              }
+            },
+          });
+        },
+      };
+
+      return builder;
+    };
+  })(),
+  loadAtlasSession: vi.fn(),
+  requestMagicLinkForEmail: vi.fn(),
+  requireAtlasSessionState: vi.fn(),
+  requireReadyAtlasSessionState: vi.fn(),
+  sendVerificationEmailForCurrentSession: vi.fn(),
+}));
+
+vi.mock("@tanstack/react-start", () => ({
+  createServerFn: mocks.createServerFn,
+}));
+
+vi.mock("@/domains/access/server/session-state", () => ({
+  loadAtlasSession: mocks.loadAtlasSession,
+  requestMagicLinkForEmail: mocks.requestMagicLinkForEmail,
+  requireAtlasSessionState: mocks.requireAtlasSessionState,
+  requireReadyAtlasSessionState: mocks.requireReadyAtlasSessionState,
+  sendVerificationEmailForCurrentSession: mocks.sendVerificationEmailForCurrentSession,
+}));
+
+describe("session.functions", () => {
+  beforeEach(() => {
+    vi.resetModules();
+    mocks.loadAtlasSession.mockReset();
+    mocks.requestMagicLinkForEmail.mockReset();
+    mocks.requireAtlasSessionState.mockReset();
+    mocks.requireReadyAtlasSessionState.mockReset();
+    mocks.sendVerificationEmailForCurrentSession.mockReset();
+  });
+
+  it("returns the current Atlas session", async () => {
+    const session = {
+      accountReady: true,
+      hasPasskey: true,
+      isLocal: false,
+      passkeyCount: 1,
+      session: { id: "session_123" },
+      user: {
+        email: "operator@atlas.test",
+        emailVerified: true,
+        id: "user_123",
+        name: "Operator",
+      },
+    };
+    mocks.loadAtlasSession.mockResolvedValue(session);
+
+    const { getAtlasSession } = await import("@/domains/access/session.functions");
+    const response = await getAtlasSession.__executeServer({ method: "GET", data: undefined });
+
+    expect(response).toMatchObject({
+      error: undefined,
+      result: session,
+    });
+  });
+
+  it("returns the authenticated Atlas session requirement", async () => {
+    const session = {
+      accountReady: false,
+      hasPasskey: false,
+      isLocal: false,
+      passkeyCount: 0,
+      session: { id: "session_123" },
+      user: {
+        email: "operator@atlas.test",
+        emailVerified: false,
+        id: "user_123",
+        name: "Operator",
+      },
+    };
+    mocks.requireAtlasSessionState.mockResolvedValue(session);
+
+    const { ensureAtlasSession } = await import("@/domains/access/session.functions");
+    const response = await ensureAtlasSession.__executeServer({ method: "GET", data: undefined });
+
+    expect(response).toMatchObject({
+      error: undefined,
+      result: session,
+    });
+  });
+
+  it("returns the ready Atlas session requirement", async () => {
+    const session = {
+      accountReady: true,
+      hasPasskey: true,
+      isLocal: false,
+      passkeyCount: 1,
+      session: { id: "session_123" },
+      user: {
+        email: "operator@atlas.test",
+        emailVerified: true,
+        id: "user_123",
+        name: "Operator",
+      },
+    };
+    mocks.requireReadyAtlasSessionState.mockResolvedValue(session);
+
+    const { ensureReadyAtlasSession } = await import("@/domains/access/session.functions");
+    const response = await ensureReadyAtlasSession.__executeServer({
+      method: "GET",
+      data: undefined,
+    });
+
+    expect(response).toMatchObject({
+      error: undefined,
+      result: session,
+    });
+  });
+
+  it("forwards magic-link requests to the session state runtime", async () => {
+    mocks.requestMagicLinkForEmail.mockResolvedValue({ ok: true });
+
+    const { requestMagicLink } = await import("@/domains/access/session.functions");
+    const response = await requestMagicLink.__executeServer({
+      method: "POST",
+      data: {
+        callbackURL: "/account",
+        email: "operator@atlas.test",
+        name: "Operator",
+      },
+    });
+
+    expect(response).toMatchObject({
+      error: undefined,
+      result: { ok: true },
+    });
+    expect(mocks.requestMagicLinkForEmail).toHaveBeenCalledWith({
+      callbackURL: "/account",
+      email: "operator@atlas.test",
+      name: "Operator",
+    });
+  });
+
+  it("forwards verification email requests to the session state runtime", async () => {
+    mocks.sendVerificationEmailForCurrentSession.mockResolvedValue({ ok: true });
+
+    const { sendVerificationEmail } = await import("@/domains/access/session.functions");
+    const response = await sendVerificationEmail.__executeServer({
+      method: "POST",
+      data: undefined,
+    });
+
+    expect(response).toMatchObject({
+      error: undefined,
+      result: { ok: true },
+    });
+  });
+});

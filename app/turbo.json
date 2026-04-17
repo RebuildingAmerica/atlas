@@ -1,0 +1,131 @@
+{
+  "extends": ["//"],
+  "tasks": {
+    "dev": {
+      "cache": false,
+      "persistent": true
+    },
+    "dev:e2e": {
+      "cache": false,
+      "env": [
+        "ATLAS_AUTH_ALLOWED_EMAILS",
+        "ATLAS_AUTH_BASE_PATH",
+        "ATLAS_AUTH_DB_PATH",
+        "ATLAS_AUTH_API_KEY_INTROSPECTION_URL",
+        "ATLAS_AUTH_INTERNAL_SECRET",
+        "ATLAS_DEPLOY_MODE",
+        "ATLAS_EMAIL_CAPTURE_URL",
+        "ATLAS_EMAIL_FROM",
+        "ATLAS_EMAIL_PROVIDER",
+        "ATLAS_EMAIL_RESEND_API_KEY",
+        "ATLAS_DEV_API_PROXY_TARGET",
+        "ATLAS_PUBLIC_URL"
+      ],
+      "persistent": true
+    },
+    "start:e2e": {
+      "cache": false,
+      "dependsOn": ["build"],
+      "env": [
+        "ATLAS_AUTH_ALLOWED_EMAILS",
+        "ATLAS_AUTH_API_KEY_INTROSPECTION_URL",
+        "ATLAS_AUTH_BASE_PATH",
+        "ATLAS_AUTH_DB_PATH",
+        "ATLAS_AUTH_INTERNAL_SECRET",
+        "ATLAS_DEPLOY_MODE",
+        "ATLAS_EMAIL_CAPTURE_URL",
+        "ATLAS_EMAIL_FROM",
+        "ATLAS_EMAIL_PROVIDER",
+        "ATLAS_EMAIL_RESEND_API_KEY",
+        "NODE_ENV",
+        "ATLAS_PUBLIC_URL",
+        "ATLAS_SERVER_API_PROXY_TARGET",
+        "PORT"
+      ],
+      "persistent": true
+    },
+    "e2e:cleanup": {
+      "cache": false,
+      "outputs": []
+    },
+    "e2e:mail": {
+      "cache": false,
+      "env": [
+        "MAIL_CAPTURE_FILE",
+        "MAIL_CAPTURE_HOST",
+        "MAIL_CAPTURE_PORT"
+      ],
+      "persistent": true
+    },
+    "build": {
+      "dependsOn": ["api-client"],
+      "env": [
+        "ATLAS_AUTH_BASE_PATH",
+        "ATLAS_DEPLOY_MODE",
+        "ATLAS_PUBLIC_URL"
+      ],
+      "outputs": ["dist/**"]
+    },
+    "api-client": {
+      "dependsOn": ["//#openapi"],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/openapi/atlas.openapi.json"
+      ],
+      "outputs": ["src/lib/generated/atlas.ts"]
+    },
+    "openapi:lint": {
+      "dependsOn": ["//#openapi"],
+      "inputs": [
+        ".spectral.yaml",
+        "$TURBO_ROOT$/openapi/atlas.openapi.json"
+      ],
+      "outputs": []
+    },
+    "typecheck": {
+      "dependsOn": ["api-client"],
+      "outputs": []
+    },
+    "lint": {
+      "dependsOn": ["api-client"],
+      "outputs": []
+    },
+    "format:check": {
+      "outputs": []
+    },
+    "quality": {
+      "dependsOn": ["typecheck", "lint", "format:check"],
+      "outputs": []
+    },
+    "test": {
+      "dependsOn": ["api-client"],
+      "outputs": []
+    },
+    "test:coverage": {
+      "dependsOn": ["api-client"],
+      "outputs": ["coverage/**"]
+    },
+    "test:e2e": {
+      "dependsOn": ["api-client", "e2e:cleanup"],
+      "env": [
+        "ATLAS_E2E_API_URL",
+        "ATLAS_E2E_APP_URL",
+        "ATLAS_E2E_AUTH_INTROSPECTION_URL",
+        "ATLAS_E2E_MAILBOX_URL"
+      ],
+      "outputs": ["playwright-report/**", "test-results/**"],
+      "cache": false
+    },
+    "test:e2e:headed": {
+      "dependsOn": ["api-client", "e2e:cleanup"],
+      "env": [
+        "ATLAS_E2E_API_URL",
+        "ATLAS_E2E_APP_URL",
+        "ATLAS_E2E_AUTH_INTROSPECTION_URL",
+        "ATLAS_E2E_MAILBOX_URL"
+      ],
+      "outputs": ["playwright-report/**", "test-results/**"],
+      "cache": false
+    }
+  }
+}

@@ -1,0 +1,81 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { atlasFetch } from "@/lib/orval/fetcher";
+
+describe("atlasFetch additional branches", () => {
+  const originalFetch = global.fetch;
+  const originalPublicUrl = process.env.ATLAS_PUBLIC_URL;
+
+  beforeEach(() => {
+    vi.stubGlobal("fetch", vi.fn());
+    process.env.ATLAS_PUBLIC_URL = "https://atlas.test";
+  });
+
+  afterEach(() => {
+    global.fetch = originalFetch;
+    if (originalPublicUrl === undefined) {
+      delete process.env.ATLAS_PUBLIC_URL;
+    } else {
+      process.env.ATLAS_PUBLIC_URL = originalPublicUrl;
+    }
+    vi.unstubAllGlobals();
+  });
+
+  it("preserves absolute request urls and adds json content headers for request bodies", async () => {
+    const fetchMock = vi.mocked(global.fetch);
+    fetchMock.mockResolvedValue({
+      json: vi.fn().mockResolvedValue({ ok: true }),
+      ok: true,
+      status: 200,
+      text: vi.fn().mockResolvedValue(""),
+    } as unknown as Response);
+
+    await atlasFetch("https://api.atlas.test/entities", {
+      body: JSON.stringify({ ok: true }),
+      method: "POST",
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://api.atlas.test/entities",
+      expect.objectContaining({
+        body: JSON.stringify({ ok: true }),
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        method: "POST",
+      }),
+    );
+  });
+
+  it("throws the response body when the Atlas API returns an explicit error message", async () => {
+    const fetchMock = vi.mocked(global.fetch);
+    fetchMock.mockResolvedValue({
+      json: vi.fn(),
+      ok: false,
+      status: 500,
+      text: vi.fn().mockResolvedValue("boom"),
+    } as unknown as Response);
+
+    await expect(atlasFetch("/api/entities")).rejects.toThrow("boom");
+  });
+
+  it("falls back to a status-based error message and handles 204 responses", async () => {
+    const fetchMock = vi.mocked(global.fetch);
+    fetchMock
+      .mockResolvedValueOnce({
+        json: vi.fn(),
+        ok: false,
+        status: 404,
+        text: vi.fn().mockResolvedValue(""),
+      } as unknown as Response)
+      .mockResolvedValueOnce({
+        json: vi.fn(),
+        ok: true,
+        status: 204,
+        text: vi.fn().mockResolvedValue(""),
+      } as unknown as Response);
+
+    await expect(atlasFetch("/api/entities")).rejects.toThrow("Atlas API request failed (404)");
+    await expect(atlasFetch("/api/entities")).resolves.toBeUndefined();
+  });
+});

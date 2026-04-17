@@ -6,7 +6,7 @@ import eslintConfigPrettier from "eslint-config-prettier";
 
 export default [
   {
-    ignores: ["node_modules/", "dist/", ".output/", ".vinxi/", ".nitro/"],
+    ignores: ["node_modules/", "dist/", ".output/", ".vinxi/", ".nitro/", "src/lib/generated/"],
   },
   js.configs.recommended,
   ...typescriptEslint.configs.strictTypeChecked,
