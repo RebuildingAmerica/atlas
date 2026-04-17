@@ -38,19 +38,19 @@ winget install Python.Python.3.12
 python --version  # Verify
 ```
 
-### Node.js 20+
+### Node.js 24+
 
-The frontend runs on Node.js 20+.
+The frontend runs on Node.js 24+.
 
 **macOS (Homebrew):**
 ```bash
-brew install node@20
-node --version  # Verify (should be v20.x.x)
+brew install node@24
+node --version  # Verify (should be v24.x.x)
 ```
 
 **Linux (Ubuntu/Debian):**
 ```bash
-curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+curl -fsSL https://deb.nodesource.com/setup_24.x | sudo -E bash -
 sudo apt-get install -y nodejs
 node --version  # Verify
 ```
@@ -58,8 +58,8 @@ node --version  # Verify
 **macOS/Linux (nvm - Node Version Manager):**
 ```bash
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
-nvm install 20
-nvm use 20
+nvm install 24
+nvm use 24
 node --version  # Verify
 ```
 
@@ -141,7 +141,7 @@ Run these commands to verify everything is installed:
 python3 --version          # Should be 3.12+
 
 # Node
-node --version             # Should be v20+
+node --version             # Should be v24+
 pnpm --version             # Should be 10+ (enable with `corepack enable`)
 
 # Make
@@ -165,7 +165,7 @@ If all commands return versions without errors, you're ready for [Quick Start](.
 Make sure Python 3.12+ is installed and in your PATH. On macOS with Homebrew, you may need to use `python3.12` instead of `python3`.
 
 ### "node command not found"
-Make sure Node.js 20+ is installed. If you installed with nvm, run `nvm use 20` first.
+Make sure Node.js 24+ is installed. If you installed with nvm, run `nvm use 24` first.
 
 ### "make command not found"
 Install Make (see instructions above). On Windows, consider using WSL or MinGW.

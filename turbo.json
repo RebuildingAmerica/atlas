@@ -1,0 +1,93 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "ui": "stream",
+  "envMode": "strict",
+  "globalDependencies": [
+    "pnpm-workspace.yaml",
+    "package.json",
+    "api/pyproject.toml"
+  ],
+  "tasks": {
+    "//#openapi": {
+      "inputs": [
+        "api/atlas/**/*.py",
+        "api/pyproject.toml"
+      ],
+      "outputs": ["openapi/atlas.openapi.json"]
+    },
+    "//#api:test": {
+      "dependsOn": ["//#openapi"],
+      "inputs": [
+        "api/**",
+        "openapi/atlas.openapi.json"
+      ],
+      "cache": false
+    },
+    "//#contract:test": {
+      "dependsOn": ["//#openapi"],
+      "inputs": [
+        "api/**",
+        "openapi/atlas.openapi.json"
+      ],
+      "cache": false
+    },
+    "//#compose:validate": {
+      "inputs": [
+        "compose.yaml",
+        ".env.production.example",
+        ".env.example",
+        "deploy/Caddyfile"
+      ],
+      "cache": false
+    },
+    "//#secrets:scan": {
+      "inputs": [
+        ".secrets.baseline",
+        ".env.example",
+        ".env.production.example",
+        "api/.env.example",
+        "app/.env.example",
+        "api/uv.lock",
+        "package.json",
+        ".githooks/pre-push"
+      ],
+      "cache": false
+    },
+    "//#e2e:api": {
+      "inputs": [
+        "api/**",
+        "openapi/atlas.openapi.json"
+      ],
+      "env": [
+        "ANTHROPIC_API_KEY",
+        "ATLAS_AUTH_API_KEY_INTROSPECTION_URL",
+        "ATLAS_AUTH_INTERNAL_SECRET",
+        "CORS_ORIGINS",
+        "DATABASE_URL",
+        "ENABLE_API_DOCS_UI",
+        "ENABLE_OPENAPI_SPEC",
+        "ENVIRONMENT",
+        "LOG_LEVEL",
+        "PORT",
+        "SEARCH_API_KEY"
+      ],
+      "cache": false,
+      "persistent": true
+    },
+    "//#prod:verify": {
+      "dependsOn": [
+        "//#api:test",
+        "//#contract:test",
+        "//#compose:validate",
+        "//#secrets:scan",
+        "frontend#api-client",
+        "frontend#openapi:lint",
+        "frontend#quality",
+        "frontend#test",
+        "frontend#test:e2e",
+        "frontend#build"
+      ],
+      "cache": false
+    }
+  }
+}

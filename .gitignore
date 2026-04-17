@@ -4,6 +4,7 @@
 .env
 .env.local
 .env.*.local
+.env.production
 .env.production.local
 .env.test.local
 
@@ -105,6 +106,11 @@ atlas.db
 data/
 
 # ============================================
+# Testing & Coverage
+# ============================================
+.playwright-mcp/
+
+# ============================================
 # Docker
 # ============================================
 .docker/
@@ -118,4 +124,3 @@ Vagrantfile
 *.tar.gz
 *.zip
 *.rar
-node_modules/

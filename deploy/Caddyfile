@@ -1,0 +1,17 @@
+{$ATLAS_PUBLIC_URL} {
+  encode gzip zstd
+
+  @auth path /api/auth/*
+  handle @auth {
+    reverse_proxy atlas-web:3000
+  }
+
+  @api path /api/* /health /openapi.json /docs /redoc
+  handle @api {
+    reverse_proxy atlas-api:8000
+  }
+
+  handle {
+    reverse_proxy atlas-web:3000
+  }
+}

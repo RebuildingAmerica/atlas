@@ -6,7 +6,7 @@ How to build features on the React/TanStack Start frontend. Adding routes, compo
 
 ## Prerequisites
 
-- Node.js 20+ installed
+- Node.js 24+ installed
 - Frontend dependencies installed (`make setup` or `cd frontend && pnpm install`)
 - Familiar with React and TypeScript
 

@@ -26,6 +26,12 @@ How the frontend is organized. TanStack Start, selective SSR, component structur
 
 → [Read: Frontend Architecture](./frontend.md)
 
+### Organization And Enterprise SSO
+How Atlas uses Better Auth organizations and Better Auth SSO together, including
+workspace metadata, pre-auth provider resolution, and progressive enhancement rules.
+
+→ [Read: Organization And Enterprise SSO](./organization-and-enterprise-sso.md)
+
 ### API Reference
 REST API endpoints, schemas, pagination, error handling, versioning strategy.
 

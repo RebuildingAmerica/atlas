@@ -1,0 +1,25 @@
+{
+  "name": "atlas",
+  "private": true,
+  "packageManager": "pnpm@10.33.0",
+  "engines": {
+    "node": ">=24.3.0 <25"
+  },
+  "scripts": {
+    "secrets:update-baseline": "sh ./scripts/secrets-update-baseline.sh",
+    "secrets:scan": "sh ./scripts/secrets-scan.sh",
+    "openapi": "sh ./scripts/openapi-export.sh",
+    "api:test": "sh ./scripts/api-test.sh",
+    "test:coverage": "turbo run //#api:test frontend#test:coverage",
+    "test:e2e": "turbo run frontend#test:e2e",
+    "test:e2e:headed": "turbo run frontend#test:e2e:headed",
+    "contract:test": "sh ./scripts/contract-test.sh",
+    "compose:validate": "sh ./scripts/compose-validate.sh",
+    "e2e:api": "uv --directory ./api run python -m atlas.platform.e2e_server",
+    "prod:verify": "printf 'Atlas production verification graph completed\\n'",
+    "verify": "turbo run //#prod:verify"
+  },
+  "devDependencies": {
+    "turbo": "^2.5.3"
+  }
+}

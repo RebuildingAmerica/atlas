@@ -1,0 +1,76 @@
+services:
+  atlas-api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      SEARCH_API_KEY: ${SEARCH_API_KEY}
+      CORS_ORIGINS: ${CORS_ORIGINS}
+      LOG_LEVEL: ${LOG_LEVEL}
+      ENVIRONMENT: ${ENVIRONMENT}
+      ENABLE_OPENAPI_SPEC: ${ENABLE_OPENAPI_SPEC}
+      ENABLE_API_DOCS_UI: ${ENABLE_API_DOCS_UI}
+      ATLAS_AUTH_INTERNAL_SECRET: ${ATLAS_AUTH_INTERNAL_SECRET}
+      ATLAS_AUTH_API_KEY_INTROSPECTION_URL: http://atlas-web:3000/api/auth/internal/api-key
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - atlas-data:/app/data
+
+  atlas-web:
+    build:
+      context: .
+      dockerfile: app/Dockerfile
+    depends_on:
+      atlas-api:
+        condition: service_healthy
+    environment:
+      ATLAS_AUTH_ALLOWED_EMAILS: ${ATLAS_AUTH_ALLOWED_EMAILS}
+      ATLAS_AUTH_API_KEY_INTROSPECTION_URL: http://atlas-web:3000/api/auth/internal/api-key
+      ATLAS_AUTH_BASE_PATH: /api/auth
+      ATLAS_AUTH_DB_PATH: /app/data/auth/atlas-auth.sqlite
+      ATLAS_AUTH_INTERNAL_SECRET: ${ATLAS_AUTH_INTERNAL_SECRET}
+      ATLAS_DEPLOY_MODE: ${ATLAS_DEPLOY_MODE}
+      ATLAS_EMAIL_FROM: ${ATLAS_EMAIL_FROM}
+      ATLAS_EMAIL_PROVIDER: ${ATLAS_EMAIL_PROVIDER}
+      ATLAS_EMAIL_RESEND_API_KEY: ${ATLAS_EMAIL_RESEND_API_KEY}
+      ATLAS_EMAIL_CAPTURE_URL: ${ATLAS_EMAIL_CAPTURE_URL}
+      ATLAS_PUBLIC_URL: ${ATLAS_PUBLIC_URL}
+    restart: unless-stopped
+    volumes:
+      - atlas-data:/app/data
+
+  atlas-edge:
+    image: caddy:2.10-alpine
+    restart: unless-stopped
+    depends_on:
+      atlas-api:
+        condition: service_healthy
+      atlas-web:
+        condition: service_started
+    environment:
+      ATLAS_PUBLIC_URL: ${ATLAS_PUBLIC_URL}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  atlas-data:
+  caddy-data:
+  caddy-config:

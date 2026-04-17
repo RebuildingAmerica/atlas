@@ -8,7 +8,7 @@ help: ## Show this help
 # Setup
 # ============================================
 setup: ## First-time project setup
-	@echo "Setting up The Atlas..."
+	@echo "Setting up Atlas..."
 	cp -n .env.example .env || true
 	cd api && pip install -e ".[dev]" --break-system-packages
 	cd app && pnpm install
@@ -18,12 +18,18 @@ setup: ## First-time project setup
 # ============================================
 # Development
 # ============================================
-dev: ## Start full-stack development (api + app)
-	@echo "Starting The Atlas..."
-	$(MAKE) -j2 dev-api dev-app
+dev: ## Start full-stack development (mail + api + app)
+	@echo "Starting Atlas..."
+	@echo "Mail:  http://127.0.0.1:8025/messages"
+	@echo "API:   http://localhost:8000"
+	@echo "App:   http://localhost:3000"
+	$(MAKE) -j3 dev-mail dev-api dev-app
+
+dev-mail: ## Start local mail capture service
+	@cd app && node scripts/e2e/mail-capture.mjs
 
 dev-api: ## Start API server only
-	cd api && uvicorn atlas.main:app --reload --host 0.0.0.0 --port 8000
+	cd api && uv run uvicorn atlas.main:app --reload --host 0.0.0.0 --port 8000
 
 dev-app: ## Start app only
 	cd app && pnpm run dev

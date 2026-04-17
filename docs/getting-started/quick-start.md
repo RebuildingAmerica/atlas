@@ -8,7 +8,7 @@ Get The Atlas running on your machine in 4 steps.
 
 First, make sure you have installed:
 - Python 3.12+
-- Node.js 20+
+- Node.js 24+
 - Make
 - Git
 
@@ -110,7 +110,7 @@ cd ..
 ```
 
 ### "command not found: pnpm" on make setup
-Make sure Node.js 20+ is installed and run `corepack enable`. Verify with `node --version` and `pnpm --version`.
+Make sure Node.js 24+ is installed and run `corepack enable`. Verify with `node --version` and `pnpm --version`.
 
 ### Port 8000 or 3000 already in use
 Kill the process using the port, or change the port in the start commands:
