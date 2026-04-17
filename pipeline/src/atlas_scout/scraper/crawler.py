@@ -3,19 +3,23 @@
 from __future__ import annotations
 
 from html.parser import HTMLParser
+from typing import TYPE_CHECKING
 from urllib.parse import urljoin, urlparse
 
-from atlas_shared import PageContent
+if TYPE_CHECKING:
+    from atlas_shared import PageContent
 
 
 class _LinkExtractor(HTMLParser):
     """Simple HTML parser that collects href values from anchor tags."""
 
     def __init__(self) -> None:
+        """Initialize the parser with an empty link list."""
         super().__init__()
         self.links: list[str] = []
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        """Collect href values from anchor tags."""
         if tag == "a":
             for name, value in attrs:
                 if name == "href" and value:
@@ -59,6 +63,7 @@ class LinkCrawler:
         max_pages: int = 20,
         same_domain: bool = True,
     ) -> None:
+        """Configure the crawler with a fetcher instance and depth/page limits."""
         self._fetcher = fetcher
         self._max_depth = max_depth
         self._max_pages = max_pages

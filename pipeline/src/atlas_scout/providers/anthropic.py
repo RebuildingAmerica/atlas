@@ -4,25 +4,19 @@ from __future__ import annotations
 
 import json
 import os
-import re
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import httpx
-from pydantic import BaseModel
 
+from atlas_scout.pipeline_support import strip_code_fence as _strip_code_fence
 from atlas_scout.providers.base import Completion, Message
+
+if TYPE_CHECKING:
+    from pydantic import BaseModel
 
 _ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages"
 _ANTHROPIC_VERSION = "2023-06-01"
 _MAX_TOKENS = 4096
-
-# Matches optional leading ```json or ``` and trailing ```
-_CODE_FENCE_RE = re.compile(r"^```(?:json)?\s*(.*?)\s*```$", re.DOTALL)
-
-
-def _strip_code_fence(text: str) -> str:
-    match = _CODE_FENCE_RE.match(text.strip())
-    return match.group(1) if match else text
 
 
 class AnthropicProvider:
@@ -33,20 +27,36 @@ class AnthropicProvider:
         model: str,
         api_key: str | None = None,
         max_concurrent: int = 10,
+        timeout_seconds: float = 120.0,
     ) -> None:
+        """Initialize the provider with a model, optional API key, and concurrency limit."""
         self._model = model
         self._api_key = api_key or os.environ.get("ANTHROPIC_API_KEY") or ""
         self._max_concurrent = max_concurrent
+        self._client = httpx.AsyncClient(
+            timeout=httpx.Timeout(timeout_seconds, connect=min(timeout_seconds, 10.0))
+        )
 
     @property
     def max_concurrent(self) -> int:
+        """Maximum number of concurrent LLM requests allowed."""
         return self._max_concurrent
+
+    @property
+    def cache_identity(self) -> str:
+        """Stable cache key fragment for reuse of extraction results."""
+        return f"anthropic:{self._model}"
+
+    async def aclose(self) -> None:
+        """Close the shared HTTP client."""
+        await self._client.aclose()
 
     async def complete(
         self,
         messages: list[Message],
         response_schema: type[BaseModel] | None = None,
     ) -> Completion:
+        """Send messages to the Anthropic API and return a Completion."""
         # Separate system messages from the rest
         system_parts: list[str] = []
         chat_messages: list[dict[str, str]] = []
@@ -72,14 +82,13 @@ class AnthropicProvider:
             "content-type": "application/json",
         }
 
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                _ANTHROPIC_API_URL,
-                json=payload,
-                headers=headers,
-            )
-            response.raise_for_status()
-            data = response.json()
+        response = await self._client.post(
+            _ANTHROPIC_API_URL,
+            json=payload,
+            headers=headers,
+        )
+        response.raise_for_status()
+        data = response.json()
 
         text: str = data["content"][0]["text"]
         raw_usage: dict[str, int] = data.get("usage", {})
@@ -92,6 +101,7 @@ class AnthropicProvider:
         parsed: dict[str, Any] | None = None
         if response_schema is not None:
             clean = _strip_code_fence(text)
-            parsed = json.loads(clean)
+            parsed_raw = json.loads(clean)
+            parsed = response_schema.model_validate(parsed_raw).model_dump()
 
         return Completion(text=text, parsed=parsed, usage=usage)

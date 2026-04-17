@@ -7,10 +7,13 @@ Streaming deduplication that merges duplicate entries as they arrive.
 from __future__ import annotations
 
 import logging
-from collections.abc import AsyncIterator
 from difflib import SequenceMatcher
+from typing import TYPE_CHECKING
 
 from atlas_shared import DeduplicatedEntry, RawEntry
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncIterator
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +53,7 @@ async def deduplicate_stream(
     batch: list[RawEntry] = []
 
     async def _flush(batch: list[RawEntry]) -> None:
+        """Merge a batch of raw entries into the canonical list."""
         for raw in batch:
             dedup = _raw_to_dedup(raw)
             matched = _find_match(dedup, canonical)
@@ -75,6 +79,7 @@ def _raw_to_dedup(raw: RawEntry) -> DeduplicatedEntry:
     """Convert a RawEntry to a DeduplicatedEntry."""
     source_urls = [raw.source_url] if raw.source_url else []
     source_contexts = {raw.source_url: raw.extraction_context} if raw.source_url else {}
+    source_dates = [raw.source_date] if raw.source_date else []
     return DeduplicatedEntry(
         name=raw.name,
         entry_type=raw.entry_type,
@@ -90,6 +95,8 @@ def _raw_to_dedup(raw: RawEntry) -> DeduplicatedEntry:
         affiliated_org=raw.affiliated_org,
         source_urls=source_urls,
         source_contexts=source_contexts,
+        source_dates=source_dates,
+        last_seen=raw.source_date,
     )
 
 
@@ -111,10 +118,7 @@ def _should_merge(left: DeduplicatedEntry, right: DeduplicatedEntry) -> bool:
         return True
 
     similarity = SequenceMatcher(None, left.name.lower(), right.name.lower()).ratio()
-    if similarity >= _HIGH_SIMILARITY_THRESHOLD and same_city:
-        return True
-
-    return False
+    return similarity >= _HIGH_SIMILARITY_THRESHOLD and same_city
 
 
 def _merge(left: DeduplicatedEntry, right: DeduplicatedEntry) -> DeduplicatedEntry:
@@ -123,9 +127,11 @@ def _merge(left: DeduplicatedEntry, right: DeduplicatedEntry) -> DeduplicatedEnt
     descriptions = [d for d in [left.description, right.description] if d]
     best_description = max(descriptions, key=len) if descriptions else ""
 
-    # Combine source_urls and source_contexts
+    # Combine source_urls, source_contexts, and source_dates
     combined_urls = sorted(set(left.source_urls) | set(right.source_urls))
     combined_contexts = {**left.source_contexts, **right.source_contexts}
+    combined_dates = sorted(set(left.source_dates) | set(right.source_dates))
+    last_seen = max(combined_dates) if combined_dates else None
 
     # Combine issue_areas
     combined_issues = sorted(set(left.issue_areas) | set(right.issue_areas))
@@ -155,4 +161,6 @@ def _merge(left: DeduplicatedEntry, right: DeduplicatedEntry) -> DeduplicatedEnt
         affiliated_org=affiliated_org,
         source_urls=combined_urls,
         source_contexts=combined_contexts,
+        source_dates=combined_dates,
+        last_seen=last_seen,
     )

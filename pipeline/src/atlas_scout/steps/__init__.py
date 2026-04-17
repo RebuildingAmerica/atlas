@@ -9,11 +9,11 @@ from atlas_scout.steps.source_fetch import fetch_sources_stream
 
 __all__ = [
     "SearchQuery",
+    "analyze_gaps",
+    "deduplicate_stream",
+    "extract_entries_stream",
+    "fetch_sources_stream",
     "generate_queries",
     "generate_queries_stream",
-    "fetch_sources_stream",
-    "extract_entries_stream",
-    "deduplicate_stream",
     "rank_entries_stream",
-    "analyze_gaps",
 ]

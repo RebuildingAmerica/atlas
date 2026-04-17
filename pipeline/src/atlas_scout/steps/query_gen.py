@@ -7,10 +7,13 @@ pipeline.
 
 from __future__ import annotations
 
-from collections.abc import AsyncIterator
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from atlas_shared import ISSUE_SEARCH_TERMS
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncIterator
 
 __all__ = ["SearchQuery", "generate_queries", "generate_queries_stream"]
 
@@ -23,6 +26,7 @@ _SOURCE_PATTERNS: dict[str, list[str]] = {
     "individuals": [
         "{location} {keywords} organizer",
         "{location} {keywords} advocate",
+        "{location} {keywords} leader",
     ],
     "campaigns": [
         "{location} {keywords} campaign",
@@ -31,6 +35,28 @@ _SOURCE_PATTERNS: dict[str, list[str]] = {
     "academic_policy": [
         "{location} {keywords} study",
         "{location} {keywords} university research",
+    ],
+    "government": [
+        "{location} {keywords} city council",
+        "{location} {keywords} government program",
+        "{location} {keywords} public hearing",
+    ],
+    "coalitions": [
+        "{location} {keywords} coalition",
+        "{location} {keywords} alliance",
+        "{location} {keywords} network",
+    ],
+    "events": [
+        "{location} {keywords} rally",
+        "{location} {keywords} town hall",
+        "{location} {keywords} community meeting",
+    ],
+    "directories": [
+        'site:guidestar.org "{keywords}" {location}',
+        'site:greatnonprofits.org "{keywords}" {location}',
+    ],
+    "social_media": [
+        'site:linkedin.com "{keywords}" {location}',
     ],
 }
 
