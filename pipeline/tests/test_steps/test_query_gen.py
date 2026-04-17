@@ -39,7 +39,11 @@ def test_source_categories_are_populated() -> None:
     """Each query has a non-empty source_category from the defined patterns."""
     queries = generate_queries("Portland", "OR", ["energy_transition"])
     categories = {q.source_category for q in queries}
-    expected = {"local_journalism", "nonprofits", "individuals", "campaigns", "academic_policy"}
+    expected = {
+        "local_journalism", "nonprofits", "individuals", "campaigns",
+        "academic_policy", "government", "coalitions", "events",
+        "directories", "social_media",
+    }
     assert categories == expected
 
 

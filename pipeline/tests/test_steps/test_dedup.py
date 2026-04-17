@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
-from collections.abc import AsyncIterator
+from typing import TYPE_CHECKING
 
 import pytest
-
 from atlas_shared import RawEntry
+
 from atlas_scout.steps.dedup import deduplicate_stream
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncIterator
 
 
 def _make_raw(

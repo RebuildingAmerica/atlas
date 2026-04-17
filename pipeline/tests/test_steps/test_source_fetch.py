@@ -4,13 +4,12 @@ from __future__ import annotations
 
 import pytest
 import respx
+from atlas_shared import PageContent
 from httpx import Response
 
-from atlas_shared import PageContent
 from atlas_scout.scraper.fetcher import AsyncFetcher
 from atlas_scout.steps.query_gen import SearchQuery
 from atlas_scout.steps.source_fetch import _search_brave, fetch_sources_stream
-
 
 _BRAVE_SEARCH_URL = "https://api.search.brave.com/res/v1/web/search"
 _FAKE_API_KEY = "test-key-123"

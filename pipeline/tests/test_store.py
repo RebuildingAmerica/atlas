@@ -76,6 +76,62 @@ async def test_page_cache_respects_ttl(store):
     assert cached is None
 
 
+async def test_page_cache_can_ignore_ttl(store):
+    await store.cache_page("https://example.com", "Hello", {})
+    await store._execute(
+        "UPDATE pages SET fetched_at = datetime('now', '-30 days') WHERE url = ?",
+        ("https://example.com",),
+    )
+    cached = await store.get_cached_page("https://example.com", ttl_days=None)
+    assert cached is not None
+    assert cached["text"] == "Hello"
+
+
+async def test_work_claims_block_until_completed(store):
+    assert await store.claim_work("fetch:https://example.com", owner_run_id="run-1")
+    assert not await store.claim_work("fetch:https://example.com", owner_run_id="run-2")
+
+    await store.complete_work("fetch:https://example.com")
+
+    assert await store.claim_work("fetch:https://example.com", owner_run_id="run-2")
+
+
+async def test_work_claims_reclaim_from_cancelled_run(store):
+    run_1 = await store.create_run(location="", issues=[], search_depth="standard")
+    run_2 = await store.create_run(location="", issues=[], search_depth="standard")
+    await store.update_run_status(run_1, "running")
+    await store.update_run_status(run_2, "running")
+
+    assert await store.claim_work("extract:https://example.com", owner_run_id=run_1, lease_seconds=300)
+    await store.cancel_run(run_1, "cancelled")
+
+    assert await store.claim_work("extract:https://example.com", owner_run_id=run_2, lease_seconds=300)
+
+
+async def test_extraction_cache_round_trip(store):
+    entries = [
+        {
+            "name": "Test Org",
+            "entry_type": "organization",
+            "description": "Affordable housing advocacy",
+            "city": "Austin",
+            "state": "TX",
+        }
+    ]
+    await store.cache_extraction(
+        cache_key="extract:abc",
+        source_fingerprint="hash-1",
+        provider_key="ollama:llama",
+        prompt_key="prompt-1",
+        entries=entries,
+    )
+
+    cached = await store.get_cached_extraction("extract:abc")
+
+    assert cached is not None
+    assert cached["entries"] == entries
+
+
 async def test_save_and_list_entries(store):
     run_id = await store.create_run(
         location="Austin, TX", issues=[], search_depth="standard"

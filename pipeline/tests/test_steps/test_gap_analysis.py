@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-import pytest
-
 from atlas_shared import DeduplicatedEntry, RankedEntry
+
 from atlas_scout.steps.gap_analysis import analyze_gaps
 
 

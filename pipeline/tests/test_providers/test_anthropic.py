@@ -5,12 +5,11 @@ from __future__ import annotations
 import json
 
 import httpx
-import pytest
 import respx
 from pydantic import BaseModel
 
 from atlas_scout.providers.anthropic import AnthropicProvider
-from atlas_scout.providers.base import Completion, LLMProvider, Message
+from atlas_scout.providers.base import LLMProvider, Message
 
 
 def test_anthropic_is_llm_provider() -> None:

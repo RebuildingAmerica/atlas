@@ -2,15 +2,19 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
-from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock
+from typing import TYPE_CHECKING
+from unittest.mock import AsyncMock
 
 import pytest
+from atlas_shared import PageContent
 
-from atlas_shared import PageContent, RankedEntry
 from atlas_scout.pipeline import PipelineResult, _parse_location, run_pipeline
-from atlas_scout.providers.base import Completion
+from atlas_scout.providers.base import Completion, Message
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 # ---------------------------------------------------------------------------
@@ -190,21 +194,125 @@ async def test_run_pipeline_marks_run_failed_on_error(mock_provider, mock_fetche
     with patch(
         "atlas_scout.pipeline.analyze_gaps",
         side_effect=RuntimeError("gap analysis exploded"),
-    ):
-        with pytest.raises(RuntimeError, match="gap analysis exploded"):
-            await run_pipeline(
-                location="Austin, TX",
-                issues=["housing_affordability"],
-                provider=mock_provider,
-                store=store,
-                search_api_key="test-key",
-                fetcher=mock_fetcher,
-            )
+    ), pytest.raises(RuntimeError, match="gap analysis exploded"):
+        await run_pipeline(
+            location="Austin, TX",
+            issues=["housing_affordability"],
+            provider=mock_provider,
+            store=store,
+            search_api_key="test-key",
+            fetcher=mock_fetcher,
+        )
 
     runs = await store.list_runs()
     assert len(runs) == 1
     assert runs[0]["status"] == "failed"
     assert "gap analysis exploded" in runs[0]["error"]
+
+    await store.close()
+
+
+@pytest.mark.asyncio
+async def test_run_pipeline_marks_run_cancelled_on_interrupt(
+    mock_provider,
+    mock_fetcher,
+    tmp_db_path: Path,
+):
+    from unittest.mock import patch
+
+    from atlas_scout.store import ScoutStore
+
+    store = ScoutStore(str(tmp_db_path))
+    await store.initialize()
+
+    async def cancelled_rank(*_args, **_kwargs):
+        raise asyncio.CancelledError()
+        yield  # pragma: no cover
+
+    with patch("atlas_scout.pipeline.rank_entries_stream", side_effect=cancelled_rank), pytest.raises(
+        asyncio.CancelledError
+    ):
+        await run_pipeline(
+            location="Austin, TX",
+            issues=["housing_affordability"],
+            provider=mock_provider,
+            store=store,
+            search_api_key="test-key",
+            fetcher=mock_fetcher,
+        )
+
+    runs = await store.list_runs()
+    assert len(runs) == 1
+    assert runs[0]["status"] == "cancelled"
+
+    await store.close()
+
+
+@pytest.mark.asyncio
+async def test_run_pipeline_cancels_workers_before_returning_on_interrupt(
+    tmp_db_path: Path,
+):
+    from atlas_scout.store import ScoutStore
+
+    started = asyncio.Event()
+
+    class _SinglePageFetcher:
+        max_concurrent = 1
+
+        async def fetch_tracked(self, url: str, task_id: str, _store) -> PageContent | None:
+            return PageContent(
+                url=url,
+                title="Seed",
+                text="Tenant defense organizers are active locally. " * 80,
+                task_id=task_id,
+            )
+
+    class _BlockingProvider:
+        max_concurrent = 1
+
+        async def complete(
+            self,
+            _messages: list[Message],
+            _response_schema=None,
+        ) -> Completion:
+            started.set()
+            await asyncio.Future()
+            return Completion(text="[]")  # pragma: no cover
+
+    store = ScoutStore(str(tmp_db_path))
+    await store.initialize()
+
+    task = asyncio.create_task(
+        run_pipeline(
+            location="Austin, TX",
+            issues=["housing_affordability"],
+            provider=_BlockingProvider(),
+            store=store,
+            direct_urls=["https://example.com/seed"],
+            fetcher=_SinglePageFetcher(),
+        )
+    )
+
+    await asyncio.wait_for(started.wait(), timeout=1.0)
+    task.cancel()
+
+    with pytest.raises(asyncio.CancelledError):
+        await task
+
+    await asyncio.sleep(0)
+
+    worker_tasks = [
+        pending
+        for pending in asyncio.all_tasks()
+        if pending is not asyncio.current_task()
+        and getattr(pending.get_coro(), "__name__", "") in {"fetch_worker", "extract_worker"}
+        and not pending.done()
+    ]
+    assert worker_tasks == []
+
+    runs = await store.list_runs()
+    assert len(runs) == 1
+    assert runs[0]["status"] == "cancelled"
 
     await store.close()
 

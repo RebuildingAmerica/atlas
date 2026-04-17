@@ -3,19 +3,21 @@
 from __future__ import annotations
 
 import json
-from collections.abc import AsyncIterator
-from typing import Any
-from unittest.mock import AsyncMock
+from typing import TYPE_CHECKING, Any
 
 import pytest
-
 from atlas_shared import PageContent, RawEntry
+
 from atlas_scout.providers.base import Completion, Message
 from atlas_scout.steps.entry_extract import (
     _build_system_prompt,
     _strip_code_fence,
     extract_entries_stream,
+    extract_page_entries,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncIterator
 
 
 class _MockProvider:
@@ -29,7 +31,7 @@ class _MockProvider:
     async def complete(
         self,
         messages: list[Message],
-        response_schema: Any = None,
+        _response_schema: Any = None,
     ) -> Completion:
         self.calls.append(messages)
         return Completion(text=self._response_text)
@@ -68,6 +70,14 @@ async def test_builds_extraction_prompt_with_taxonomy() -> None:
     assert "housing_affordability" in prompt
     assert "union_organizing" in prompt
     assert "Austin, TX" in prompt
+
+
+@pytest.mark.asyncio
+async def test_builds_direct_url_prompt_that_allows_location_inference() -> None:
+    """When location is omitted, the prompt should instruct the model to infer it."""
+    prompt = _build_system_prompt("", "")
+    assert "Infer the primary geography from the source text" in prompt
+    assert "Target location:" not in prompt
 
 
 @pytest.mark.asyncio
@@ -114,7 +124,7 @@ async def test_strips_code_fences() -> None:
     assert _strip_code_fence(fenced) == _make_entry_json("Fenced Org")
 
     provider = _MockProvider(response_text=fenced)
-    page = PageContent(url="https://example.com", text="Some content about housing.", title="")
+    page = PageContent(url="https://example.com", text="Fenced Org is a local housing organization in Austin.", title="")
     entries = [e async for e in extract_entries_stream(_pages_iter(page), provider, "Austin", "TX")]
 
     assert len(entries) == 1
@@ -126,7 +136,7 @@ async def test_multiple_pages_all_extracted() -> None:
     """Entries from multiple pages are all yielded."""
     provider = _MockProvider(response_text=_make_entry_json())
     pages = [
-        PageContent(url=f"https://example.com/page{i}", text="Content about housing here.", title="")
+        PageContent(url=f"https://example.com/page{i}", text="Test Org provides housing assistance in Austin TX.", title="")
         for i in range(3)
     ]
 
@@ -135,3 +145,163 @@ async def test_multiple_pages_all_extracted() -> None:
     assert len(entries) == 3
     source_urls = {e.source_url for e in entries}
     assert source_urls == {p.url for p in pages}
+
+
+@pytest.mark.asyncio
+async def test_reuses_cached_extraction_for_same_content(tmp_db_path) -> None:
+    from atlas_scout.store import ScoutStore
+
+    store = ScoutStore(str(tmp_db_path))
+    await store.initialize()
+    provider = _MockProvider(response_text=_make_entry_json("Cached Org"))
+    page = PageContent(url="https://example.com/a", text="Cached Org does housing advocacy. Shared body " * 40, title="Same title")
+
+    first_entries = [
+        e
+        async for e in extract_entries_stream(
+            _pages_iter(page),
+            provider,
+            "Austin",
+            "TX",
+            store=store,
+        )
+    ]
+    second_entries = [
+        e
+        async for e in extract_entries_stream(
+            _pages_iter(page),
+            provider,
+            "Austin",
+            "TX",
+            store=store,
+        )
+    ]
+
+    await store.close()
+
+    assert len(first_entries) == 1
+    assert len(second_entries) == 1
+    # Two-pass extraction: identify + enrich = 2 calls on first run, 0 on cached second run
+    first_run_calls = len(provider.calls)
+    assert first_run_calls == 2
+
+
+@pytest.mark.asyncio
+async def test_cached_extraction_is_reused_across_urls_with_same_content(tmp_db_path) -> None:
+    from atlas_scout.store import ScoutStore
+
+    store = ScoutStore(str(tmp_db_path))
+    await store.initialize()
+    provider = _MockProvider(response_text=_make_entry_json("Shared Org"))
+    page_one = PageContent(url="https://example.com/a", text="Shared Org provides housing services. Shared body " * 40, title="Same title")
+    page_two = PageContent(url="https://example.com/b", text="Shared Org provides housing services. Shared body " * 40, title="Same title")
+
+    first_entries = [
+        e
+        async for e in extract_entries_stream(
+            _pages_iter(page_one),
+            provider,
+            "Austin",
+            "TX",
+            store=store,
+        )
+    ]
+    second_entries = [
+        e
+        async for e in extract_entries_stream(
+            _pages_iter(page_two),
+            provider,
+            "Austin",
+            "TX",
+            store=store,
+        )
+    ]
+
+    await store.close()
+
+    # Two-pass extraction: 2 calls for first page, 0 for cached second page
+    assert len(provider.calls) == 2
+    assert first_entries[0].source_url == "https://example.com/a"
+    assert second_entries[0].source_url == "https://example.com/b"
+
+
+@pytest.mark.asyncio
+async def test_refresh_extractions_bypasses_cache(tmp_db_path) -> None:
+    from atlas_scout.store import ScoutStore
+
+    store = ScoutStore(str(tmp_db_path))
+    await store.initialize()
+    provider = _MockProvider(response_text=_make_entry_json("Refreshed Org"))
+    page = PageContent(url="https://example.com/a", text="Refreshed Org serves the Austin housing community. Shared body " * 40, title="Same title")
+
+    _ = [
+        e
+        async for e in extract_entries_stream(
+            _pages_iter(page),
+            provider,
+            "Austin",
+            "TX",
+            store=store,
+        )
+    ]
+    _ = [
+        e
+        async for e in extract_entries_stream(
+            _pages_iter(page),
+            provider,
+            "Austin",
+            "TX",
+            store=store,
+            reuse_cached_extractions=False,
+        )
+    ]
+
+    await store.close()
+
+    # 2 calls per run × 2 runs (refresh bypasses cache) = 4
+    assert len(provider.calls) == 4
+
+
+@pytest.mark.asyncio
+async def test_claim_wait_timeout_falls_back_to_local_extraction(monkeypatch) -> None:
+    from atlas_scout.steps import entry_extract as entry_extract_module
+
+    class _WaitingStore:
+        async def get_cached_extraction(self, _cache_key):
+            return None
+
+        async def claim_work(self, *_args, **_kwargs):
+            return False
+
+        async def get_work_claim(self, _claim_key):
+            return {"status": "inflight"}
+
+        async def cache_extraction(self, **_kwargs):
+            return None
+
+        async def complete_work(self, _claim_key):
+            return None
+
+        async def fail_work(self, _claim_key, _error):
+            return None
+
+    monkeypatch.setattr(entry_extract_module, "_CLAIM_WAIT_SECONDS", 0.0)
+    monkeypatch.setattr(entry_extract_module, "_CLAIM_POLL_SECONDS", 0.0)
+
+    provider = _MockProvider(response_text=_make_entry_json("Fallback Org"))
+    page = PageContent(url="https://example.com", text="Fallback Org organizes housing support. Shared body " * 40, title="Same title")
+
+    entries = await extract_page_entries(
+        page,
+        provider,
+        "Austin",
+        "TX",
+        store=_WaitingStore(),
+        run_id="run-1",
+        reuse_cached_extractions=True,
+    )
+
+    assert len(entries) == 1
+    assert entries[0].name == "Fallback Org"
+    # Two-pass extraction: identify + enrich = 2 calls
+    assert len(provider.calls) == 2
