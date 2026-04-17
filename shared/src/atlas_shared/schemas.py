@@ -53,6 +53,15 @@ class RawEntry(BaseModel):
         description="Verbatim snippet from the source that mentioned this entity.",
     )
     source_url: str = Field(default="", description="URL the entry was extracted from.")
+    source_date: date | None = Field(None, description="Publication date of the source page.")
+    mentioned_entities: list[dict[str, str]] = Field(
+        default_factory=list,
+        description="Other entities mentioned in the same source (name, type, relationship).",
+    )
+    discovery_leads: list[str] = Field(
+        default_factory=list,
+        description="URLs or entity names worth following up for further discovery.",
+    )
 
 
 class DeduplicatedEntry(BaseModel):
@@ -113,7 +122,7 @@ class CoverageGap(BaseModel):
     entry_count: int = Field(default=0, description="Number of entries found for this issue area.")
     severity: float = Field(
         default=0.0,
-        description="Gap severity score (0.0–1.0, higher means worse coverage).",
+        description="Gap severity score (0.0-1.0, higher means worse coverage).",
     )
 
 
@@ -146,9 +155,18 @@ class PageContent(BaseModel):
     url: str = Field(..., description="Source URL.")
     title: str = Field(default="", description="Page title.")
     text: str = Field(default="", description="Main extracted text content.")
+    task_id: str | None = Field(None, description="Owning Scout page-task ID.")
+    discovered_links: list[str] = Field(
+        default_factory=list,
+        description="Same-domain links discovered while fetching this page.",
+    )
     publication: str | None = Field(None, description="Publication or site name.")
     published_date: datetime | None = Field(None, description="Article publication datetime.")
     source_type: SourceType = Field(
         default=SourceType.WEBSITE,
         description="Classified source type.",
+    )
+    structured_data: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Structured data extracted from HTML (JSON-LD, OpenGraph, meta tags).",
     )
