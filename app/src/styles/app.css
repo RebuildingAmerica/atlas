@@ -1,7 +1,84 @@
 @import url("https://fonts.googleapis.com/css2?family=Public+Sans:wght@100..900&display=swap");
 @import "tailwindcss";
 
-:root {
+@theme {
+  /* Surface hierarchy (warm stone palette) */
+  --color-surface: #faf6ee;
+  --color-surface-alt: #f5f0e6;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-low: #f5f0e6;
+  --color-surface-container: #efe9dd;
+  --color-surface-container-high: #e9e3d7;
+  --color-surface-container-highest: #e3ddd1;
+
+  /* Ink hierarchy */
+  --color-ink: #44403c;
+  --color-ink-strong: #1c1917;
+  --color-ink-soft: #78716c;
+  --color-ink-muted: #a8a29e;
+
+  /* Borders */
+  --color-border: #e7e0d4;
+  --color-border-strong: #d6cfc3;
+
+  /* Accent (warm terracotta) */
+  --color-accent: #c2956a;
+  --color-accent-soft: #d4b896;
+  --color-accent-deep: #a67b50;
+  --color-accent-ink: #ffffff;
+
+  /* Page background */
+  --color-page-bg: #f6f1e7;
+
+  /* Shadows */
+  --shadow-soft: 0 1px 3px rgba(28, 25, 23, 0.06), 0 1px 2px rgba(28, 25, 23, 0.04);
+
+  /* MD3 Type Scale — font sizes with paired line heights */
+  /* Creates text-display-large, text-headline-medium, etc. */
+  --font-size-display-large: 3.5625rem;
+  --font-size-display-large--line-height: 4rem;
+  --font-size-display-medium: 2.8125rem;
+  --font-size-display-medium--line-height: 3.25rem;
+  --font-size-display-small: 2.25rem;
+  --font-size-display-small--line-height: 2.75rem;
+  --font-size-headline-large: 2rem;
+  --font-size-headline-large--line-height: 2.5rem;
+  --font-size-headline-medium: 1.75rem;
+  --font-size-headline-medium--line-height: 2.25rem;
+  --font-size-headline-small: 1.5rem;
+  --font-size-headline-small--line-height: 2rem;
+  --font-size-title-large: 1.375rem;
+  --font-size-title-large--line-height: 1.75rem;
+  --font-size-title-medium: 1rem;
+  --font-size-title-medium--line-height: 1.5rem;
+  --font-size-title-small: 0.875rem;
+  --font-size-title-small--line-height: 1.25rem;
+  --font-size-body-large: 1rem;
+  --font-size-body-large--line-height: 1.5rem;
+  --font-size-body-medium: 0.875rem;
+  --font-size-body-medium--line-height: 1.25rem;
+  --font-size-body-small: 0.75rem;
+  --font-size-body-small--line-height: 1rem;
+  --font-size-label-large: 0.875rem;
+  --font-size-label-large--line-height: 1.25rem;
+  --font-size-label-medium: 0.75rem;
+  --font-size-label-medium--line-height: 1rem;
+  --font-size-label-small: 0.6875rem;
+  --font-size-label-small--line-height: 1rem;
+
+  /* MD3 letter spacing tokens */
+  --tracking-display-large: -0.015625rem;
+  --tracking-title-medium: 0.009375rem;
+  --tracking-title-small: 0.00625rem;
+  --tracking-body-large: 0.03125rem;
+  --tracking-body-medium: 0.015625rem;
+  --tracking-body-small: 0.025rem;
+  --tracking-label-large: 0.00625rem;
+  --tracking-label-medium: 0.03125rem;
+  --tracking-label-small: 0.03125rem;
+}
+
+html {
   font-family:
     "Public Sans",
     ui-sans-serif,
@@ -12,10 +89,119 @@
     sans-serif;
 }
 
+html {
+  background-color: var(--color-page-bg);
+}
+
 body {
   font-family: inherit;
-  background:
-    radial-gradient(circle at top, rgba(120, 113, 108, 0.08), transparent 28%),
-    linear-gradient(180deg, #f6f1e7 0%, #f2ede3 100%);
-  color: #1c1917;
+  color: var(--ink-strong);
+}
+
+/* MD3 Type Scale — exact spec values */
+/* https://m3.material.io/styles/typography/type-scale-tokens */
+
+@utility type-display-large {
+  font-size: 3.5625rem; /* 57px */
+  line-height: 4rem; /* 64px */
+  font-weight: 400;
+  letter-spacing: -0.015625rem; /* -0.25px */
+}
+
+@utility type-display-medium {
+  font-size: 2.8125rem; /* 45px */
+  line-height: 3.25rem; /* 52px */
+  font-weight: 400;
+  letter-spacing: 0;
+}
+
+@utility type-display-small {
+  font-size: 2.25rem; /* 36px */
+  line-height: 2.75rem; /* 44px */
+  font-weight: 400;
+  letter-spacing: 0;
+}
+
+@utility type-headline-large {
+  font-size: 2rem; /* 32px */
+  line-height: 2.5rem; /* 40px */
+  font-weight: 400;
+  letter-spacing: 0;
+}
+
+@utility type-headline-medium {
+  font-size: 1.75rem; /* 28px */
+  line-height: 2.25rem; /* 36px */
+  font-weight: 400;
+  letter-spacing: 0;
+}
+
+@utility type-headline-small {
+  font-size: 1.5rem; /* 24px */
+  line-height: 2rem; /* 32px */
+  font-weight: 400;
+  letter-spacing: 0;
+}
+
+@utility type-title-large {
+  font-size: 1.375rem; /* 22px */
+  line-height: 1.75rem; /* 28px */
+  font-weight: 400;
+  letter-spacing: 0;
+}
+
+@utility type-title-medium {
+  font-size: 1rem; /* 16px */
+  line-height: 1.5rem; /* 24px */
+  font-weight: 500;
+  letter-spacing: 0.009375rem; /* 0.15px */
+}
+
+@utility type-title-small {
+  font-size: 0.875rem; /* 14px */
+  line-height: 1.25rem; /* 20px */
+  font-weight: 500;
+  letter-spacing: 0.00625rem; /* 0.1px */
+}
+
+@utility type-body-large {
+  font-size: 1rem; /* 16px */
+  line-height: 1.5rem; /* 24px */
+  font-weight: 400;
+  letter-spacing: 0.03125rem; /* 0.5px */
+}
+
+@utility type-body-medium {
+  font-size: 0.875rem; /* 14px */
+  line-height: 1.25rem; /* 20px */
+  font-weight: 400;
+  letter-spacing: 0.015625rem; /* 0.25px */
+}
+
+@utility type-body-small {
+  font-size: 0.75rem; /* 12px */
+  line-height: 1rem; /* 16px */
+  font-weight: 400;
+  letter-spacing: 0.025rem; /* 0.4px */
+}
+
+@utility type-label-large {
+  font-size: 0.875rem; /* 14px */
+  line-height: 1.25rem; /* 20px */
+  font-weight: 500;
+  letter-spacing: 0.00625rem; /* 0.1px */
+}
+
+@utility type-label-medium {
+  font-size: 0.75rem; /* 12px */
+  line-height: 1rem; /* 16px */
+  font-weight: 500;
+  letter-spacing: 0.03125rem; /* 0.5px */
+}
+
+@utility type-label-small {
+  font-size: 0.6875rem; /* 11px */
+  line-height: 1rem; /* 16px */
+  font-weight: 500;
+  letter-spacing: 0.03125rem; /* 0.5px */
 }

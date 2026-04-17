@@ -31,17 +31,17 @@ interface PersonDetailPanelProps {
 
 function PersonDetailPanel({ person }: PersonDetailPanelProps) {
   return (
-    <div className="mt-3 rounded-2xl border border-[var(--border)] bg-[var(--surface-container-lowest)] p-4">
+    <div className="border-border bg-surface-container-lowest mt-3 rounded-2xl border p-4">
       <div className="flex items-start gap-4">
         <ActorAvatar name={person.name} type="person" size="lg" />
         <div className="min-w-0 flex-1">
-          <p className="type-title-small font-semibold text-[var(--ink-strong)]">{person.name}</p>
+          <p className="type-title-small text-ink-strong font-semibold">{person.name}</p>
           {person.description ? (
-            <p className="type-body-small mt-0.5 text-[var(--ink-muted)]">
+            <p className="type-body-small text-ink-muted mt-0.5">
               {firstSentence(person.description)}
             </p>
           ) : null}
-          <p className="type-label-small mt-1 text-[var(--ink-muted)]">
+          <p className="type-label-small text-ink-muted mt-1">
             {person.source_count} {person.source_count === 1 ? "mention" : "mentions"}
           </p>
         </div>
@@ -52,7 +52,7 @@ function PersonDetailPanel({ person }: PersonDetailPanelProps) {
           {person.issue_areas.map((area) => (
             <span
               key={area}
-              className="type-label-small inline-block rounded-full bg-[var(--accent-soft)] px-2 py-0.5 text-[var(--accent-ink)]"
+              className="type-label-small bg-accent-soft text-accent-ink inline-block rounded-full px-2 py-0.5"
             >
               {humanize(area)}
             </span>
@@ -64,7 +64,7 @@ function PersonDetailPanel({ person }: PersonDetailPanelProps) {
         <Link
           to="/entries/$entryId"
           params={{ entryId: person.id }}
-          className="type-label-medium inline-flex items-center gap-1 font-medium text-[var(--accent)] hover:underline"
+          className="type-label-medium text-accent inline-flex items-center gap-1 font-medium hover:underline"
         >
           View full profile
           <ArrowRight className="h-3.5 w-3.5" />
@@ -85,7 +85,7 @@ export function AvatarRow({ people }: AvatarRowProps) {
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2">
-        <p className="type-label-small tracking-widest text-[var(--ink-muted)] uppercase">People</p>
+        <p className="type-label-small text-ink-muted tracking-widest uppercase">People</p>
         <Badge>{people.length}</Badge>
       </div>
 
@@ -101,14 +101,14 @@ export function AvatarRow({ people }: AvatarRowProps) {
           >
             <div
               className={`rounded-full border-2 p-0.5 shadow-sm transition-all ${
-                index === selectedIndex ? "border-[var(--accent)] shadow-md" : "border-white"
+                index === selectedIndex ? "border-accent shadow-md" : "border-white"
               }`}
             >
               <ActorAvatar name={person.name} type="person" size="md" />
             </div>
             <span
               className={`type-label-small max-w-[56px] truncate ${
-                index === selectedIndex ? "text-[var(--ink-strong)]" : "text-[var(--ink-muted)]"
+                index === selectedIndex ? "text-ink-strong" : "text-ink-muted"
               }`}
             >
               {firstName(person.name)}

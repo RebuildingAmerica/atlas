@@ -16,12 +16,12 @@ interface ContactCardProps {
 function ContactCard({ icon, label, value }: ContactCardProps) {
   return (
     <div className="flex items-center gap-3">
-      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[var(--surface-container)]">
+      <div className="bg-surface-container flex h-7 w-7 shrink-0 items-center justify-center rounded-lg">
         {icon}
       </div>
       <div className="min-w-0">
-        <p className="type-label-small text-[var(--ink-muted)] uppercase">{label}</p>
-        <p className="type-body-medium text-[var(--ink-strong)]">{value}</p>
+        <p className="type-label-small text-ink-muted uppercase">{label}</p>
+        <p className="type-body-medium text-ink-strong">{value}</p>
       </div>
     </div>
   );
@@ -33,14 +33,14 @@ export function ReachSection({ email, website, phone }: ReachSectionProps) {
 
   return (
     <div className="space-y-3">
-      <p className="type-label-small tracking-widest text-[var(--ink-muted)] uppercase">Reach</p>
+      <p className="type-label-small text-ink-muted tracking-widest uppercase">Reach</p>
       <div className="space-y-3">
         {email ? (
           <ContactCard
-            icon={<Mail className="h-4 w-4 text-[var(--ink-muted)]" />}
+            icon={<Mail className="text-ink-muted h-4 w-4" />}
             label="Email"
             value={
-              <a href={`mailto:${email}`} className="text-[var(--accent)] hover:underline">
+              <a href={`mailto:${email}`} className="text-accent hover:underline">
                 {email}
               </a>
             }
@@ -48,14 +48,14 @@ export function ReachSection({ email, website, phone }: ReachSectionProps) {
         ) : null}
         {website ? (
           <ContactCard
-            icon={<Globe className="h-4 w-4 text-[var(--ink-muted)]" />}
+            icon={<Globe className="text-ink-muted h-4 w-4" />}
             label="Website"
             value={
               <a
                 href={website}
                 target="_blank"
                 rel="noreferrer"
-                className="text-[var(--accent)] hover:underline"
+                className="text-accent hover:underline"
               >
                 {website}
               </a>
@@ -64,7 +64,7 @@ export function ReachSection({ email, website, phone }: ReachSectionProps) {
         ) : null}
         {phone ? (
           <ContactCard
-            icon={<Phone className="h-4 w-4 text-[var(--ink-muted)]" />}
+            icon={<Phone className="text-ink-muted h-4 w-4" />}
             label="Phone"
             value={phone}
           />

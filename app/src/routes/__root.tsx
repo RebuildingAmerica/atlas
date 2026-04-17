@@ -38,7 +38,7 @@ function RootDocument() {
         />
         <title>The Atlas</title>
       </head>
-      <body className="flex min-h-screen flex-col bg-[var(--page-bg)] text-[var(--ink)]">
+      <body className="text-ink flex min-h-screen flex-col">
         <Outlet />
         <Scripts />
       </body>

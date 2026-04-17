@@ -30,8 +30,8 @@ export function ActorAvatar({ name, type, size = "md", photoUrl }: ActorAvatarPr
   const shapeClass = type === "person" ? "rounded-full" : "rounded-xl";
   const gradientClass =
     type === "person"
-      ? "bg-gradient-to-br from-[var(--accent)] to-[var(--accent-deep)]"
-      : "bg-gradient-to-br from-[var(--ink-muted)] to-[var(--ink-soft)]";
+      ? "bg-gradient-to-br from-accent to-accent-deep"
+      : "bg-gradient-to-br from-ink-muted to-ink-soft";
 
   if (photoUrl) {
     return (

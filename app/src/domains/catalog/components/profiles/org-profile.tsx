@@ -34,7 +34,7 @@ export function OrgProfile({
   ) : null;
 
   return (
-    <div className="overflow-hidden rounded-3xl border border-[var(--border)] shadow-[var(--shadow-soft)]">
+    <div className="border-border shadow-soft overflow-hidden rounded-3xl border">
       <ProfileHeader
         type="organization"
         name={entry.name}
@@ -46,14 +46,12 @@ export function OrgProfile({
         additionalBadges={activeBadge}
       />
 
-      <div className="space-y-6 bg-[var(--surface)] px-6 py-6">
+      <div className="bg-surface space-y-6 px-6 py-6">
         {/* Mission */}
         {entry.description ? (
           <div className="space-y-2">
-            <p className="type-label-small tracking-widest text-[var(--ink-muted)] uppercase">
-              Mission
-            </p>
-            <p className="type-body-large text-[var(--ink-soft)]">{entry.description}</p>
+            <p className="type-label-small text-ink-muted tracking-widest uppercase">Mission</p>
+            <p className="type-body-large text-ink-soft">{entry.description}</p>
           </div>
         ) : null}
 

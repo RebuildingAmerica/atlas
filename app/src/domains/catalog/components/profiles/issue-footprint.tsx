@@ -19,19 +19,17 @@ export function IssueFootprint({ issueAreas, issueAreaLabels = {} }: IssueFootpr
 
   return (
     <div className="space-y-3">
-      <p className="type-label-small tracking-widest text-[var(--ink-muted)] uppercase">
-        Issue footprint
-      </p>
+      <p className="type-label-small text-ink-muted tracking-widest uppercase">Issue footprint</p>
 
       <div className="space-y-4">
         {Array.from(grouped.entries()).map(([domain, slugs]) => (
           <div key={domain} className="space-y-1.5">
-            <p className="type-label-small text-[var(--ink-muted)]">{domain}</p>
+            <p className="type-label-small text-ink-muted">{domain}</p>
             <div className="flex flex-wrap gap-2">
               {slugs.map((slug) => (
                 <span
                   key={slug}
-                  className="type-label-medium inline-block rounded-full bg-[var(--accent-soft)] px-3 py-1 font-semibold text-[var(--accent-ink)]"
+                  className="type-label-medium bg-accent-soft text-accent-ink inline-block rounded-full px-3 py-1 font-semibold"
                 >
                   {issueAreaLabels[slug] ?? humanize(slug)}
                 </span>

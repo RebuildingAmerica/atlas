@@ -47,7 +47,7 @@ export function PersonProfile({ entry, issueAreaLabels = {}, affiliatedOrg }: Pe
   const subtitle = deriveSubtitle(entry, affiliatedOrg);
 
   return (
-    <div className="overflow-hidden rounded-3xl border border-[var(--border)] shadow-[var(--shadow-soft)]">
+    <div className="border-border shadow-soft overflow-hidden rounded-3xl border">
       <ProfileHeader
         type="person"
         name={entry.name}
@@ -59,28 +59,24 @@ export function PersonProfile({ entry, issueAreaLabels = {}, affiliatedOrg }: Pe
         geoSpecificity={entry.geo_specificity}
       />
 
-      <div className="space-y-6 bg-[var(--surface)] px-6 py-6">
+      <div className="bg-surface space-y-6 px-6 py-6">
         {/* About */}
         {entry.description ? (
           <div className="space-y-2">
-            <p className="type-label-small tracking-widest text-[var(--ink-muted)] uppercase">
-              About
-            </p>
-            <p className="type-body-large text-[var(--ink-soft)]">{entry.description}</p>
+            <p className="type-label-small text-ink-muted tracking-widest uppercase">About</p>
+            <p className="type-body-large text-ink-soft">{entry.description}</p>
           </div>
         ) : null}
 
         {/* Issue focus */}
         {entry.issue_areas.length > 0 ? (
           <div className="space-y-2">
-            <p className="type-label-small tracking-widest text-[var(--ink-muted)] uppercase">
-              Issue focus
-            </p>
+            <p className="type-label-small text-ink-muted tracking-widest uppercase">Issue focus</p>
             <div className="flex flex-wrap gap-2">
               {entry.issue_areas.map((area) => (
                 <span
                   key={area}
-                  className="type-label-medium inline-block rounded-full bg-[var(--accent-soft)] px-3 py-1 font-semibold text-[var(--accent-ink)]"
+                  className="type-label-medium bg-accent-soft text-accent-ink inline-block rounded-full px-3 py-1 font-semibold"
                 >
                   {issueAreaLabels[area] ?? humanize(area)}
                 </span>
@@ -92,22 +88,20 @@ export function PersonProfile({ entry, issueAreaLabels = {}, affiliatedOrg }: Pe
         {/* Organization */}
         {affiliatedOrg ? (
           <div className="space-y-2">
-            <p className="type-label-small tracking-widest text-[var(--ink-muted)] uppercase">
+            <p className="type-label-small text-ink-muted tracking-widest uppercase">
               Organization
             </p>
             <Link
               to="/entries/$entryId"
               params={{ entryId: affiliatedOrg.id }}
-              className="flex items-center gap-3 rounded-2xl border border-[var(--border)] bg-[var(--surface-container-lowest)] p-4 transition-colors hover:bg-[var(--surface-container-low)]"
+              className="border-border bg-surface-container-lowest hover:bg-surface-container-low flex items-center gap-3 rounded-2xl border p-4 transition-colors"
             >
               <ActorAvatar name={affiliatedOrg.name} type="organization" size="md" />
               <div className="min-w-0 flex-1">
-                <p className="type-title-small text-[var(--ink-strong)]">{affiliatedOrg.name}</p>
-                <p className="type-body-small text-[var(--ink-muted)]">
-                  {formatLocation(affiliatedOrg)}
-                </p>
+                <p className="type-title-small text-ink-strong">{affiliatedOrg.name}</p>
+                <p className="type-body-small text-ink-muted">{formatLocation(affiliatedOrg)}</p>
               </div>
-              <ArrowRight className="h-4 w-4 shrink-0 text-[var(--ink-muted)]" />
+              <ArrowRight className="text-ink-muted h-4 w-4 shrink-0" />
             </Link>
           </div>
         ) : null}

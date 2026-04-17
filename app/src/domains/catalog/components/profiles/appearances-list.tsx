@@ -9,13 +9,13 @@ interface AppearancesListProps {
 }
 
 const SOURCE_TYPE_COLORS: Record<string, string> = {
-  news_article: "var(--ink-strong)",
-  podcast: "var(--accent)",
-  report: "var(--accent-soft)",
+  news_article: "var(--color-ink-strong)",
+  podcast: "var(--color-accent)",
+  report: "var(--color-accent-soft)",
 };
 
 function getSourceTypeColor(type: SourceType): string {
-  return SOURCE_TYPE_COLORS[type] ?? "var(--surface-container-high)";
+  return SOURCE_TYPE_COLORS[type] ?? "var(--color-surface-container-high)";
 }
 
 function humanize(value: string): string {
@@ -42,10 +42,10 @@ function CompactSourceRow({ source }: { source: Source }) {
     <div className="flex items-center gap-3 py-2">
       <SourceTypeBadge type={source.type} />
       {source.publication ? (
-        <span className="type-body-medium text-[var(--ink-soft)]">{source.publication}</span>
+        <span className="type-body-medium text-ink-soft">{source.publication}</span>
       ) : null}
       {source.published_date ? (
-        <span className="type-body-small text-[var(--ink-muted)]">{source.published_date}</span>
+        <span className="type-body-small text-ink-muted">{source.published_date}</span>
       ) : null}
     </div>
   );
@@ -57,28 +57,26 @@ function ExpandedSource({ source }: { source: Source }) {
       <div className="flex flex-wrap items-center gap-2">
         <SourceTypeBadge type={source.type} />
         {source.publication ? (
-          <span className="type-body-medium font-medium text-[var(--ink-soft)]">
-            {source.publication}
-          </span>
+          <span className="type-body-medium text-ink-soft font-medium">{source.publication}</span>
         ) : null}
         {source.published_date ? (
-          <span className="type-body-small text-[var(--ink-muted)]">{source.published_date}</span>
+          <span className="type-body-small text-ink-muted">{source.published_date}</span>
         ) : null}
       </div>
       <a
         href={source.url}
         target="_blank"
         rel="noreferrer"
-        className="type-title-medium block text-[var(--accent)] hover:underline"
+        className="type-title-medium text-accent block hover:underline"
       >
         {source.title ?? source.url}
       </a>
       {source.extraction_context ? (
         <div
-          className="rounded-r-lg border-l-[3px] border-l-[var(--accent)] py-2 pr-3 pl-3"
-          style={{ backgroundColor: "var(--surface-container-lowest)" }}
+          className="border-l-accent rounded-r-lg border-l-[3px] py-2 pr-3 pl-3"
+          style={{ backgroundColor: "var(--color-surface-container-lowest)" }}
         >
-          <p className="type-body-medium text-[var(--ink-soft)]">{source.extraction_context}</p>
+          <p className="type-body-medium text-ink-soft">{source.extraction_context}</p>
         </div>
       ) : null}
     </div>
@@ -118,7 +116,7 @@ function CoverageBar({ sources }: CoverageBarProps) {
               className="h-2.5 w-2.5 rounded-full"
               style={{ backgroundColor: getSourceTypeColor(type) }}
             />
-            <span className="type-label-small text-[var(--ink-muted)]">
+            <span className="type-label-small text-ink-muted">
               {humanize(type)} ({count})
             </span>
           </div>
@@ -132,10 +130,10 @@ export function AppearancesList({ sources, mode }: AppearancesListProps) {
   if (sources.length === 0) {
     return (
       <div className="space-y-3">
-        <p className="type-label-small tracking-widest text-[var(--ink-muted)] uppercase">
+        <p className="type-label-small text-ink-muted tracking-widest uppercase">
           {mode === "person" ? "Appearances & mentions" : "Appearances & coverage"}
         </p>
-        <p className="type-body-medium text-[var(--ink-muted)]">No linked sources yet.</p>
+        <p className="type-body-medium text-ink-muted">No linked sources yet.</p>
       </div>
     );
   }
@@ -144,9 +142,7 @@ export function AppearancesList({ sources, mode }: AppearancesListProps) {
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2">
-        <p className="type-label-small tracking-widest text-[var(--ink-muted)] uppercase">
-          {sectionTitle}
-        </p>
+        <p className="type-label-small text-ink-muted tracking-widest uppercase">{sectionTitle}</p>
         <Badge>{sources.length}</Badge>
       </div>
 
@@ -164,7 +160,7 @@ export function AppearancesList({ sources, mode }: AppearancesListProps) {
 
       <button
         type="button"
-        className="type-label-medium w-full rounded-xl border border-dashed border-[var(--border-strong)] py-2.5 text-center text-[var(--ink-muted)] transition-colors hover:bg-[var(--surface-container)]"
+        className="type-label-medium border-border-strong text-ink-muted hover:bg-surface-container w-full rounded-xl border border-dashed py-2.5 text-center transition-colors"
       >
         View all {sources.length} appearances
       </button>

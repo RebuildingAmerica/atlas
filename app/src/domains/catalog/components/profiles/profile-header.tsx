@@ -34,13 +34,11 @@ export function ProfileHeader({
   additionalBadges,
 }: ProfileHeaderProps) {
   return (
-    <div className="rounded-t-3xl bg-[var(--ink-strong)] px-6 py-6 text-white">
+    <div className="bg-ink-strong rounded-t-3xl px-6 py-6 text-white">
       <div className="flex items-center justify-between">
         <span className="type-label-small tracking-widest text-white/50 uppercase">{type}</span>
         <div className="flex items-center gap-2">
-          {verified ? (
-            <Badge className="border-0 bg-[var(--accent)] text-white">Verified</Badge>
-          ) : null}
+          {verified ? <Badge className="bg-accent border-0 text-white">Verified</Badge> : null}
           <Badge className="border-0 bg-white/10 text-white/70">
             {sourceCount} {sourceCount === 1 ? "source" : "sources"}
           </Badge>
