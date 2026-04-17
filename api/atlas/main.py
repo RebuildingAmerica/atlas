@@ -12,13 +12,26 @@ Configures:
 import logging
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from typing import Any
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
 
-from atlas.api import create_router
 from atlas.config import get_settings
 from atlas.models import init_db
+from atlas.platform.http import create_router
+from atlas.platform.http.cache import apply_no_store_headers, apply_static_public_cache
+from atlas.platform.openapi import (
+    OPENAPI_CONTACT,
+    OPENAPI_DESCRIPTION,
+    OPENAPI_LICENSE,
+    OPENAPI_SERVERS,
+    OPENAPI_SUMMARY,
+    OPENAPI_TAGS,
+    OPENAPI_TITLE,
+    OPENAPI_VERSION,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +43,7 @@ logging.basicConfig(
 
 
 @asynccontextmanager
-async def lifespan(_app: FastAPI) -> AsyncGenerator:
+async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
     """
     Lifespan context manager for startup and shutdown.
 
@@ -63,12 +76,17 @@ def create_app() -> FastAPI:
     settings = get_settings()
 
     app = FastAPI(
-        title="The Atlas Backend",
-        description="Discovery platform for people, organizations, and initiatives working on contemporary American issues",
-        version="0.1.0",
-        docs_url="/docs" if settings.enable_api_docs else None,
-        redoc_url="/redoc" if settings.enable_api_docs else None,
-        openapi_url="/openapi.json" if settings.enable_api_docs else None,
+        title=OPENAPI_TITLE,
+        summary=OPENAPI_SUMMARY,
+        description=OPENAPI_DESCRIPTION,
+        version=OPENAPI_VERSION,
+        contact=OPENAPI_CONTACT,
+        license_info=OPENAPI_LICENSE,
+        openapi_tags=OPENAPI_TAGS,
+        servers=OPENAPI_SERVERS,
+        docs_url=None,
+        redoc_url=None,
+        openapi_url=None,
         lifespan=lifespan,
     )
 
@@ -83,7 +101,7 @@ def create_app() -> FastAPI:
 
     # Health check endpoint
     @app.get("/health")
-    async def health_check() -> dict[str, str]:
+    async def health_check(response: Response) -> dict[str, str]:
         """
         Health check endpoint.
 
@@ -92,7 +110,38 @@ def create_app() -> FastAPI:
         dict[str, str]
             Simple status response.
         """
+        apply_no_store_headers(response)
         return {"status": "ok"}
+
+    if settings.enable_openapi_spec:
+
+        @app.get("/openapi.json", include_in_schema=False)
+        async def openapi_schema(response: Response) -> dict[str, Any]:
+            """Serve the OpenAPI document with static-public cache headers."""
+            apply_static_public_cache(response)
+            return app.openapi()
+
+    if settings.enable_api_docs_ui:
+
+        @app.get("/docs", include_in_schema=False)
+        async def swagger_ui() -> Response:
+            """Serve Swagger UI for the current OpenAPI document."""
+            swagger_response = get_swagger_ui_html(
+                openapi_url="/openapi.json",
+                title=f"{app.title} - Swagger UI",
+            )
+            apply_static_public_cache(swagger_response)
+            return swagger_response
+
+        @app.get("/redoc", include_in_schema=False)
+        async def redoc_ui() -> Response:
+            """Serve ReDoc for the current OpenAPI document."""
+            redoc_response = get_redoc_html(
+                openapi_url="/openapi.json",
+                title=f"{app.title} - ReDoc",
+            )
+            apply_static_public_cache(redoc_response)
+            return redoc_response
 
     # Include API router
     app.include_router(create_router())

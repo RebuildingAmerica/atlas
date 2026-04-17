@@ -11,11 +11,12 @@ This is a stub implementation. In production, this would:
 - Rate limiting and error handling
 """
 
-from dataclasses import dataclass
+import datetime
 import logging
 import re
-from collections.abc import Iterable
-from datetime import date, datetime, timedelta
+from collections.abc import Iterable, Sequence
+from dataclasses import dataclass
+from datetime import date, timedelta
 
 import httpx
 import trafilatura
@@ -23,6 +24,9 @@ import trafilatura
 logger = logging.getLogger(__name__)
 
 __all__ = ["FetchedSource", "fetch_sources"]
+
+_MIN_WORD_COUNT = 200
+_MAX_SOURCE_AGE_DAYS = 730
 
 
 @dataclass
@@ -49,7 +53,7 @@ class FetchedSource:
 
 
 async def fetch_sources(
-    queries: list[object],
+    queries: Sequence[object],
     _api_key: str | None = None,
 ) -> list[FetchedSource]:
     """
@@ -117,7 +121,7 @@ def _normalize_queries(queries: Iterable[object]) -> list[str]:
     normalized: list[str] = []
     for query in queries:
         if hasattr(query, "query"):
-            normalized.append(str(getattr(query, "query")))
+            normalized.append(str(query.query))
         else:
             normalized.append(str(query))
     return normalized
@@ -136,15 +140,15 @@ async def _search_brave(queries: list[str], api_key: str) -> list[dict[str, str 
             )
             response.raise_for_status()
             payload = response.json()
-            for item in payload.get("web", {}).get("results", []):
-                results.append(
-                    {
-                        "url": item.get("url"),
-                        "title": item.get("title"),
-                        "publication": item.get("profile", {}).get("name"),
-                        "age": _parse_result_age(item.get("age")),
-                    }
-                )
+            results.extend(
+                {
+                    "url": item.get("url"),
+                    "title": item.get("title"),
+                    "publication": item.get("profile", {}).get("name"),
+                    "age": _parse_result_age(item.get("age")),
+                }
+                for item in payload.get("web", {}).get("results", [])
+            )
     return results
 
 
@@ -158,11 +162,13 @@ async def _extract_page_text(client: httpx.AsyncClient, url: str) -> str:
 
 def _should_keep_source(content: str, published_date: str | None) -> bool:
     """Apply coarse filtering to fetched content."""
-    if len(content.split()) < 200:
+    if len(content.split()) < _MIN_WORD_COUNT:
         return False
     if published_date:
         published = date.fromisoformat(published_date)
-        if published < date.today() - timedelta(days=730):
+        if published < datetime.datetime.now(tz=datetime.UTC).date() - timedelta(
+            days=_MAX_SOURCE_AGE_DAYS
+        ):
             return False
     return True
 

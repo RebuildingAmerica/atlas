@@ -4,10 +4,11 @@ import logging
 from collections.abc import AsyncGenerator
 from typing import Any
 
+import aiosqlite
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from atlas.config import Settings, get_settings
-from atlas.models import EntryCRUD, get_db_connection
+from atlas.models import EntryCRUD, EntryModel, get_db_connection
 from atlas.schemas import (
     EntryCreateRequest,
     EntryDetailResponse,
@@ -17,8 +18,8 @@ from atlas.schemas import (
     EntryUpdateRequest,
     FacetOption,
     PaginationResponse,
-    SourceResponse,
 )
+from atlas.schemas.source import SourceResponse
 from atlas.taxonomy import ALL_ISSUE_SLUGS
 
 logger = logging.getLogger(__name__)
@@ -28,7 +29,9 @@ router = APIRouter()
 __all__ = ["router"]
 
 
-async def get_db(settings: Settings = Depends(get_settings)) -> AsyncGenerator:
+async def get_db(
+    settings: Settings = Depends(get_settings),
+) -> AsyncGenerator[aiosqlite.Connection, None]:
     """Dependency to get database connection."""
     conn = await get_db_connection(settings.database_url)
     try:
@@ -48,7 +51,7 @@ async def list_entries(  # noqa: PLR0913
     source_type: list[str] | None = Query(None),
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
-    db: AsyncGenerator = Depends(get_db),
+    db: aiosqlite.Connection = Depends(get_db),
 ) -> EntryListResponse:
     """
     Search public entry results across multiple facets.
@@ -62,11 +65,7 @@ async def list_entries(  # noqa: PLR0913
     - limit: results per page (default: 20, max: 100)
     - offset: pagination offset (default: 0)
     """
-    invalid_issue_areas = [
-        value
-        for value in issue_area or []
-        if value not in ALL_ISSUE_SLUGS
-    ]
+    invalid_issue_areas = [value for value in issue_area or [] if value not in ALL_ISSUE_SLUGS]
     if invalid_issue_areas:
         raise HTTPException(
             status_code=400,
@@ -113,7 +112,7 @@ async def list_entries(  # noqa: PLR0913
 @router.get("/{entry_id}", response_model=EntryDetailResponse)
 async def get_entry(
     entry_id: str,
-    db: AsyncGenerator = Depends(get_db),
+    db: aiosqlite.Connection = Depends(get_db),
 ) -> EntryDetailResponse:
     """Get a single entry by ID with full source provenance."""
     entry, sources = await EntryCRUD.get_with_sources(db, entry_id)
@@ -131,7 +130,7 @@ async def get_entry(
 @router.post("", response_model=EntryDetailResponse, status_code=201)
 async def create_entry(
     req: EntryCreateRequest,
-    db: AsyncGenerator = Depends(get_db),
+    db: aiosqlite.Connection = Depends(get_db),
 ) -> EntryDetailResponse:
     """
     Create a new entry.
@@ -139,9 +138,7 @@ async def create_entry(
     Validates issue areas against the taxonomy.
     """
     invalid_issue_areas = [
-        issue_area
-        for issue_area in req.issue_areas
-        if issue_area not in ALL_ISSUE_SLUGS
+        issue_area for issue_area in req.issue_areas if issue_area not in ALL_ISSUE_SLUGS
     ]
     if invalid_issue_areas:
         raise HTTPException(
@@ -196,7 +193,7 @@ async def create_entry(
 async def update_entry(
     entry_id: str,
     req: EntryUpdateRequest,
-    db: AsyncGenerator = Depends(get_db),
+    db: aiosqlite.Connection = Depends(get_db),
 ) -> EntryDetailResponse:
     """Update an entry (partial update)."""
     entry = await EntryCRUD.get_by_id(db, entry_id)
@@ -227,7 +224,7 @@ async def update_entry(
 @router.delete("/{entry_id}", status_code=204)
 async def delete_entry(
     entry_id: str,
-    db: AsyncGenerator = Depends(get_db),
+    db: aiosqlite.Connection = Depends(get_db),
 ) -> None:
     """Delete an entry."""
     success = await EntryCRUD.delete(db, entry_id)
@@ -236,7 +233,7 @@ async def delete_entry(
 
 
 def _entry_to_response(
-    entry: Any,
+    entry: EntryModel,
     *,
     issue_areas: list[str],
     source_types: list[str],
@@ -274,7 +271,7 @@ def _entry_to_response(
 
 
 def _entry_to_detail_response(
-    entry: Any,
+    entry: EntryModel,
     *,
     issue_areas: list[str],
     sources: list[dict[str, Any]],

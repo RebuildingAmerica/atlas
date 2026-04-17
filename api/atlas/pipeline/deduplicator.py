@@ -13,6 +13,8 @@ from typing import Any
 
 __all__ = ["DedupResult", "DeduplicationFlag", "deduplicate_entries"]
 
+_SIMILARITY_THRESHOLD = 0.9
+
 
 @dataclass
 class DeduplicationFlag:
@@ -105,11 +107,7 @@ def deduplicate_entries(
             kept_indices.append(idx)
 
     deduped_entries = [
-        {
-            key: value
-            for key, value in combined[idx].items()
-            if not key.startswith("_")
-        }
+        {key: value for key, value in combined[idx].items() if not key.startswith("_")}
         for idx in kept_indices
     ]
 
@@ -135,7 +133,7 @@ def _similarity_ratio(a: str, b: str) -> float:
     return SequenceMatcher(None, a.lower(), b.lower()).ratio()
 
 
-def _match_type(left: dict[str, Any], right: dict[str, Any]) -> str | None:
+def _match_type(left: dict[str, Any], right: dict[str, Any]) -> str | None:  # noqa: PLR0911
     """Determine whether two entries should merge or be flagged."""
     same_city = left.get("city") == right.get("city")
     same_type = left.get("entry_type") == right.get("entry_type")
@@ -155,12 +153,16 @@ def _match_type(left: dict[str, Any], right: dict[str, Any]) -> str | None:
         and exact_name
     ):
         return "merge"
-    if left.get("entry_type") == "person" and right.get("entry_type") == "person" and affiliated_match:
+    if (
+        left.get("entry_type") == "person"
+        and right.get("entry_type") == "person"
+        and affiliated_match
+    ):
         if exact_name:
             return "merge"
-        if same_city and similarity >= 0.9:
+        if same_city and similarity >= _SIMILARITY_THRESHOLD:
             return "flag"
-    if same_city and similarity >= 0.9:
+    if same_city and similarity >= _SIMILARITY_THRESHOLD:
         return "flag"
     if exact_name and left.get("city") != right.get("city"):
         return "flag"
@@ -174,10 +176,18 @@ def _merge_entries(left: dict[str, Any], right: dict[str, Any]) -> dict[str, Any
         [value for value in [left.get("description"), right.get("description")] if value],
         key=len,
     )
-    merged["issue_areas"] = sorted(set(left.get("issue_areas", [])) | set(right.get("issue_areas", [])))
-    merged["source_urls"] = sorted(set(left.get("source_urls", [])) | set(right.get("source_urls", [])))
-    merged["source_dates"] = sorted(set(left.get("source_dates", [])) | set(right.get("source_dates", [])))
-    merged["last_seen"] = max(merged["source_dates"], default=left.get("last_seen") or right.get("last_seen"))
+    merged["issue_areas"] = sorted(
+        set(left.get("issue_areas", [])) | set(right.get("issue_areas", []))
+    )
+    merged["source_urls"] = sorted(
+        set(left.get("source_urls", [])) | set(right.get("source_urls", []))
+    )
+    merged["source_dates"] = sorted(
+        set(left.get("source_dates", [])) | set(right.get("source_dates", []))
+    )
+    merged["last_seen"] = max(
+        merged["source_dates"], default=left.get("last_seen") or right.get("last_seen")
+    )
 
     source_contexts = dict(left.get("source_contexts", {}))
     source_contexts.update(right.get("source_contexts", {}))

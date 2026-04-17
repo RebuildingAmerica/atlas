@@ -3,10 +3,11 @@
 import logging
 from collections.abc import AsyncGenerator
 
+import aiosqlite
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from atlas.config import Settings, get_settings
-from atlas.models import DiscoveryRunCRUD, get_db_connection
+from atlas.models import DiscoveryRunCRUD, DiscoveryRunModel, get_db_connection
 from atlas.schemas import DiscoveryRunResponse, DiscoveryRunStartRequest
 from atlas.taxonomy import ALL_ISSUE_SLUGS
 
@@ -17,7 +18,9 @@ router = APIRouter()
 __all__ = ["router"]
 
 
-async def get_db(settings: Settings = Depends(get_settings)) -> AsyncGenerator:
+async def get_db(
+    settings: Settings = Depends(get_settings),
+) -> AsyncGenerator[aiosqlite.Connection, None]:
     """Dependency to get database connection."""
     conn = await get_db_connection(settings.database_url)
     try:
@@ -29,7 +32,7 @@ async def get_db(settings: Settings = Depends(get_settings)) -> AsyncGenerator:
 @router.post("/run", response_model=DiscoveryRunResponse, status_code=202)
 async def start_discovery_run(
     req: DiscoveryRunStartRequest,
-    db: AsyncGenerator = Depends(get_db),
+    db: aiosqlite.Connection = Depends(get_db),
 ) -> DiscoveryRunResponse:
     """
     Start a discovery run for a location and issue areas.
@@ -61,7 +64,7 @@ async def list_discovery_runs(
     status: str | None = Query(None),
     limit: int = Query(50, ge=1, le=500),
     offset: int = Query(0, ge=0),
-    db: AsyncGenerator = Depends(get_db),
+    db: aiosqlite.Connection = Depends(get_db),
 ) -> list[DiscoveryRunResponse]:
     """
     List discovery runs with optional filtering.
@@ -85,7 +88,7 @@ async def list_discovery_runs(
 @router.get("/runs/{run_id}", response_model=DiscoveryRunResponse)
 async def get_discovery_run(
     run_id: str,
-    db: AsyncGenerator = Depends(get_db),
+    db: aiosqlite.Connection = Depends(get_db),
 ) -> DiscoveryRunResponse:
     """Get a discovery run by ID."""
     run = await DiscoveryRunCRUD.get_by_id(db, run_id)
@@ -94,7 +97,7 @@ async def get_discovery_run(
     return _run_to_response(run)
 
 
-def _run_to_response(run: any) -> DiscoveryRunResponse:
+def _run_to_response(run: DiscoveryRunModel) -> DiscoveryRunResponse:
     """Convert DiscoveryRunModel to DiscoveryRunResponse."""
     return DiscoveryRunResponse(
         id=run.id,

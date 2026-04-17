@@ -5,16 +5,25 @@ Entries are the core entity in The Atlas: people, organizations, initiatives,
 campaigns, and events tied to a place and set of issues.
 """
 
+from __future__ import annotations
+
+import builtins
 import logging
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
-from typing import Any
-
-import aiosqlite
+from typing import TYPE_CHECKING, Any
 
 from atlas.models.database import db
 
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    import aiosqlite
+
 logger = logging.getLogger(__name__)
+
+# Alias to prevent shadowing by EntryCRUD.list
+_list = builtins.list
 
 __all__ = ["EntryCRUD", "EntryModel"]
 
@@ -249,7 +258,7 @@ class EntryCRUD:
         active_only: bool = True,
         limit: int = 100,
         offset: int = 0,
-    ) -> list[EntryModel]:
+    ) -> _list[EntryModel]:
         """
         List entries with optional filtering.
 
@@ -276,7 +285,7 @@ class EntryCRUD:
             List of entries.
         """
         query = "SELECT * FROM entries WHERE 1=1"
-        params: list[Any] = []
+        params: _list[Any] = []
 
         if active_only:
             query += " AND active = 1"
@@ -307,7 +316,7 @@ class EntryCRUD:
         conn: aiosqlite.Connection,
         query: str,
         limit: int = 50,
-    ) -> list[EntryModel]:  # noqa: A003
+    ) -> _list[EntryModel]:
         """
         Full-text search entries by name and description.
 
@@ -349,7 +358,7 @@ class EntryCRUD:
         state: str | None = None,
         limit: int = 100,
         offset: int = 0,
-    ) -> list[EntryModel]:  # noqa: A003
+    ) -> _list[EntryModel]:
         """
         Get entries for a specific issue area.
 
@@ -376,7 +385,7 @@ class EntryCRUD:
             JOIN entry_issue_areas eia ON e.id = eia.entry_id
             WHERE eia.issue_area = ? AND e.active = 1
         """
-        params: list[Any] = [issue_area]
+        params: _list[Any] = [issue_area]
 
         if state:
             query += " AND e.state = ?"
@@ -482,7 +491,7 @@ class EntryCRUD:
     @staticmethod
     async def get_with_sources(
         conn: aiosqlite.Connection, entry_id: str
-    ) -> tuple[EntryModel | None, list[dict[str, Any]]]:  # noqa: A003
+    ) -> tuple[EntryModel | None, _list[dict[str, Any]]]:
         """
         Get an entry with its sources.
 
@@ -521,7 +530,7 @@ class EntryCRUD:
         return entry, sources
 
     @staticmethod
-    async def get_issue_areas(conn: aiosqlite.Connection, entry_id: str) -> list[str]:
+    async def get_issue_areas(conn: aiosqlite.Connection, entry_id: str) -> _list[str]:
         """
         Get the issue-area slugs linked to an entry.
 
@@ -552,8 +561,8 @@ class EntryCRUD:
     @staticmethod
     async def get_issue_areas_for_entries(
         conn: aiosqlite.Connection,
-        entry_ids: list[str],
-    ) -> dict[str, list[str]]:
+        entry_ids: _list[str],
+    ) -> dict[str, _list[str]]:
         """
         Get issue-area slugs for multiple entries.
 
@@ -583,7 +592,7 @@ class EntryCRUD:
             entry_ids,
         )
         rows = await cursor.fetchall()
-        result = {entry_id: [] for entry_id in entry_ids}
+        result: dict[str, _list[str]] = {entry_id: [] for entry_id in entry_ids}
         for entry_id, issue_area in rows:
             result.setdefault(entry_id, []).append(issue_area)
         return result
@@ -591,8 +600,8 @@ class EntryCRUD:
     @staticmethod
     async def get_sources_for_entries(
         conn: aiosqlite.Connection,
-        entry_ids: list[str],
-    ) -> dict[str, list[dict[str, Any]]]:
+        entry_ids: _list[str],
+    ) -> dict[str, _list[dict[str, Any]]]:
         """
         Get linked sources for multiple entries.
 
@@ -634,7 +643,7 @@ class EntryCRUD:
             entry_ids,
         )
         rows = await cursor.fetchall()
-        result = {entry_id: [] for entry_id in entry_ids}
+        result: dict[str, _list[dict[str, Any]]] = {entry_id: [] for entry_id in entry_ids}
         for row in rows:
             result.setdefault(row[0], []).append(
                 {
@@ -656,12 +665,12 @@ class EntryCRUD:
     async def search_public(  # noqa: PLR0913
         conn: aiosqlite.Connection,
         query: str | None = None,
-        states: list[str] | None = None,
-        cities: list[str] | None = None,
-        regions: list[str] | None = None,
-        issue_areas: list[str] | None = None,
-        entry_types: list[str] | None = None,
-        source_types: list[str] | None = None,
+        states: _list[str] | None = None,
+        cities: _list[str] | None = None,
+        regions: _list[str] | None = None,
+        issue_areas: _list[str] | None = None,
+        entry_types: _list[str] | None = None,
+        source_types: _list[str] | None = None,
         limit: int = 20,
         offset: int = 0,
     ) -> dict[str, Any]:
@@ -749,13 +758,13 @@ class EntryCRUD:
     async def _search_public_ids(  # noqa: PLR0913
         conn: aiosqlite.Connection,
         query: str | None = None,
-        states: list[str] | None = None,
-        cities: list[str] | None = None,
-        regions: list[str] | None = None,
-        issue_areas: list[str] | None = None,
-        entry_types: list[str] | None = None,
-        source_types: list[str] | None = None,
-    ) -> list[str]:
+        states: _list[str] | None = None,
+        cities: _list[str] | None = None,
+        regions: _list[str] | None = None,
+        issue_areas: _list[str] | None = None,
+        entry_types: _list[str] | None = None,
+        source_types: _list[str] | None = None,
+    ) -> _list[str]:
         query_sql = """
             SELECT DISTINCT e.id
             FROM entries e
@@ -764,7 +773,7 @@ class EntryCRUD:
             LEFT JOIN sources s ON es.source_id = s.id
             WHERE e.active = 1
         """
-        params: list[Any] = []
+        params: _list[Any] = []
 
         if query:
             query_sql += """
@@ -799,10 +808,10 @@ class EntryCRUD:
     @staticmethod
     async def _load_entries_with_metrics(
         conn: aiosqlite.Connection,
-        entry_ids: list[str],
+        entry_ids: _list[str],
         limit: int,
         offset: int,
-    ) -> list[dict[str, Any]]:
+    ) -> _list[dict[str, Any]]:
         if not entry_ids:
             return []
 
@@ -843,17 +852,17 @@ class EntryCRUD:
     @staticmethod
     async def _build_facets(
         conn: aiosqlite.Connection,
-        entry_ids: list[str],
-    ) -> dict[str, list[dict[str, Any]]]:
+        entry_ids: _list[str],
+    ) -> dict[str, _list[dict[str, Any]]]:
         if not entry_ids:
             return _empty_facets()
 
         placeholders = _make_placeholders(entry_ids)
         params = entry_ids
 
-        async def fetch_pairs(sql: str, query_params: list[Any]) -> list[tuple[Any, Any]]:
+        async def fetch_pairs(sql: str, query_params: _list[Any]) -> _list[tuple[Any, Any]]:
             cursor = await conn.execute(sql, query_params)
-            return await cursor.fetchall()
+            return await cursor.fetchall()  # type: ignore[return-value]
 
         state_rows = await fetch_pairs(
             f"""
@@ -942,7 +951,7 @@ def _row_to_entry(row: dict[str, Any]) -> EntryModel:
         website=row["website"],
         email=row["email"],
         phone=row["phone"],
-        social_media=db.decode_json(row["social_media"]) if row["social_media"] else None,
+        social_media=db.decode_json(row["social_media"]) if row["social_media"] else None,  # type: ignore[arg-type]
         affiliated_org_id=row["affiliated_org_id"],
         active=bool(row["active"]),
         verified=bool(row["verified"]),
@@ -957,7 +966,7 @@ def _row_to_entry(row: dict[str, Any]) -> EntryModel:
     )
 
 
-def _make_placeholders(values: list[object]) -> str:
+def _make_placeholders(values: Sequence[object]) -> str:
     """Create a comma-separated placeholder list for SQLite IN clauses."""
     return ", ".join(["?"] * len(values))
 

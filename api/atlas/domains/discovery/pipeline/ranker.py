@@ -1,0 +1,117 @@
+"""
+Step 5: Ranking.
+
+Ranks entries by source density, recency, geo specificity, contact surface,
+and description quality.
+"""
+
+from dataclasses import dataclass
+from datetime import UTC, date, datetime
+from typing import Any
+
+__all__ = ["RankedEntry", "rank_entries"]
+
+DateLike = date | str | None
+DEFAULT_STALENESS_DAYS = 365
+
+
+@dataclass
+class RankedEntry:
+    """An entry with a ranking score."""
+
+    entry: dict[str, Any]
+    """The entry data."""
+
+    score: float
+    """Ranking score (higher is better)."""
+
+    components: dict[str, float]
+    """Component scores (source_density, recency, etc.)."""
+
+
+def rank_entries(
+    entries: list[dict[str, Any]],
+    source_counts: dict[str, int] | None = None,
+) -> list[RankedEntry]:
+    """
+    Rank entries by multiple criteria.
+
+    Parameters
+    ----------
+    entries : list[dict[str, Any]]
+        Entries to rank.
+    source_counts : dict[str, int] | None, optional
+        Entry ID → number of sources. Default is None.
+
+    Returns
+    -------
+    list[RankedEntry]
+        Entries ranked with scores.
+
+    Notes
+    -----
+    Ranking criteria (weighted):
+    1. Source density (highest): distinct source count
+    2. Recency: most recent source date
+    3. Geographic specificity: local > regional > statewide > national
+    4. Contact surface: website + email > website > nothing
+    5. Description quality: detailed > generic
+    """
+    if source_counts is None:
+        source_counts = {}
+
+    ranked: list[RankedEntry] = []
+    recency_values = [
+        _days_since(entry.get("last_seen")) for entry in entries if entry.get("last_seen")
+    ]
+    max_days_since = max(recency_values, default=DEFAULT_STALENESS_DAYS)
+
+    for entry in entries:
+        entry_id: str = entry.get("id") or entry.get("name") or ""
+        density_score = float(source_counts.get(entry_id, len(entry.get("source_urls", []))))
+        recency_score = 1.0 - min(_days_since(entry.get("last_seen")), max_days_since) / max(
+            max_days_since, 1
+        )
+        geo_specificity: str = entry.get("geo_specificity") or ""
+        geo_score = {
+            "local": 1.0,
+            "regional": 0.75,
+            "statewide": 0.5,
+            "national": 0.25,
+        }.get(geo_specificity, 0.0)
+        contact_score = (
+            1.0
+            if entry.get("website") and entry.get("email")
+            else (0.6 if entry.get("website") else 0.0)
+        )
+        description_score = min(len((entry.get("description") or "").split()) / 25.0, 1.0)
+        components = {
+            "source_density": density_score,
+            "recency": recency_score,
+            "geo_specificity": geo_score,
+            "contact_surface": contact_score,
+            "description_quality": description_score,
+        }
+        score = (
+            density_score * 0.4
+            + recency_score * 0.2
+            + geo_score * 0.15
+            + contact_score * 0.15
+            + description_score * 0.1
+        )
+        ranked.append(RankedEntry(entry=entry, score=score, components=components))
+
+    return sorted(ranked, key=lambda x: x.score, reverse=True)
+
+
+def _days_since(value: DateLike) -> int:
+    """Get integer day distance from today for a date-like value."""
+    if not value:
+        return DEFAULT_STALENESS_DAYS
+    target = value if isinstance(value, date) else date.fromisoformat(value)
+    return abs((_today_date() - target).days)
+
+
+def _today_date() -> date:
+    """Return the current UTC calendar date for ranking calculations."""
+    return datetime.now(UTC).date()

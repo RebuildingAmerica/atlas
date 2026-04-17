@@ -7,9 +7,9 @@ This is a stub. In production, this would make API calls to Claude with
 the extraction prompt described in the system design.
 """
 
-from dataclasses import dataclass
 import json
 import logging
+from dataclasses import dataclass
 
 from anthropic import AsyncAnthropic
 
@@ -121,16 +121,19 @@ async def extract_entries(
             }
         ],
     )
-    text_blocks = [block.text for block in response.content if getattr(block, "type", None) == "text"]
+    text_blocks = [
+        block.text  # type: ignore[union-attr]
+        for block in response.content
+        if getattr(block, "type", None) == "text"
+    ]
     return _parse_extraction_response("\n".join(text_blocks))
 
 
 def _build_system_prompt(city: str, state: str) -> str:
     """Build the extraction prompt with taxonomy context."""
-    taxonomy_lines = []
+    taxonomy_lines: list[str] = []
     for issues in ISSUE_AREAS_BY_DOMAIN.values():
-        for issue in issues:
-            taxonomy_lines.append(f"- {issue.slug}: {issue.name}")
+        taxonomy_lines.extend(f"- {issue.slug}: {issue.name}" for issue in issues)
     taxonomy_text = "\n".join(taxonomy_lines)
     return (
         "You are extracting structured data from a source document for Atlas.\n\n"
@@ -162,7 +165,8 @@ def _parse_extraction_response(response_text: str) -> list[ExtractedEntry]:
             region=item.get("region"),
             website=item.get("website") or item.get("contact_surface", {}).get("website"),
             email=item.get("email") or item.get("contact_surface", {}).get("email"),
-            social_media=item.get("social_media") or item.get("contact_surface", {}).get("social_media"),
+            social_media=item.get("social_media")
+            or item.get("contact_surface", {}).get("social_media"),
             affiliated_org=item.get("affiliated_org"),
             extraction_context=item.get("extraction_context"),
         )

@@ -11,11 +11,11 @@ from atlas.taxonomy.issue_areas import (
 from atlas.taxonomy.search_terms import ISSUE_SEARCH_TERMS
 
 __all__ = [
+    "ALL_ISSUE_SLUGS",
     "DOMAINS",
     "ISSUE_AREAS_BY_DOMAIN",
     "ISSUE_SEARCH_TERMS",
     "IssueArea",
-    "ALL_ISSUE_SLUGS",
     "get_issue_area_by_slug",
     "get_issues_by_domain",
 ]

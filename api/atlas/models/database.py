@@ -286,7 +286,7 @@ class DatabaseManager:
         str
             JSON string.
         """
-        return json.dumps(data)  # type: ignore[arg-type]
+        return json.dumps(data)
 
     @staticmethod
     def decode_json(data: str) -> object:

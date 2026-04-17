@@ -2,12 +2,10 @@
 
 from __future__ import annotations
 
+import datetime
 import logging
-from collections import defaultdict
 from datetime import date
-from typing import Any
-
-from aiosqlite import Connection
+from typing import TYPE_CHECKING, Any
 
 from atlas.models import DiscoveryRunCRUD, EntryCRUD, SourceCRUD
 from atlas.models.database import get_db_connection
@@ -18,10 +16,13 @@ from atlas.pipeline.query_generator import generate_queries
 from atlas.pipeline.ranker import rank_entries
 from atlas.pipeline.source_fetcher import fetch_sources
 
+if TYPE_CHECKING:
+    from aiosqlite import Connection
+
 logger = logging.getLogger(__name__)
 
 
-async def run_discovery_pipeline(
+async def run_discovery_pipeline(  # noqa: PLR0913
     conn: Connection,
     *,
     run_id: str,
@@ -33,7 +34,7 @@ async def run_discovery_pipeline(
 ) -> None:
     """Execute the full discovery pipeline for an existing run."""
     try:
-        city = location_query.split(",")[0].strip()
+        city = location_query.split(",", maxsplit=1)[0].strip()
         queries = generate_queries(city=city, state=state, issue_areas=issue_areas)
         fetched_sources = await fetch_sources(queries, search_api_key)
 
@@ -48,27 +49,27 @@ async def run_discovery_pipeline(
                 state,
                 anthropic_api_key,
             )
-            for item in source_entries:
-                extracted_entries.append(
-                    {
-                        "name": item.name,
-                        "entry_type": item.entry_type,
-                        "description": item.description,
-                        "city": item.city,
-                        "state": item.state,
-                        "region": item.region,
-                        "geo_specificity": item.geo_specificity,
-                        "issue_areas": sorted(set(item.issue_areas)),
-                        "website": item.website,
-                        "email": item.email,
-                        "social_media": item.social_media,
-                        "affiliated_org": item.affiliated_org,
-                        "source_urls": [source.url],
-                        "source_dates": [source.published_date or date.today().isoformat()],
-                        "source_contexts": {source.url: item.extraction_context},
-                        "last_seen": source.published_date or date.today().isoformat(),
-                    }
-                )
+            extracted_entries.extend(
+                {
+                    "name": item.name,
+                    "entry_type": item.entry_type,
+                    "description": item.description,
+                    "city": item.city,
+                    "state": item.state,
+                    "region": item.region,
+                    "geo_specificity": item.geo_specificity,
+                    "issue_areas": sorted(set(item.issue_areas)),
+                    "website": item.website,
+                    "email": item.email,
+                    "social_media": item.social_media,
+                    "affiliated_org": item.affiliated_org,
+                    "source_urls": [source.url],
+                    "source_dates": [source.published_date or _today_iso()],
+                    "source_contexts": {source.url: item.extraction_context},
+                    "last_seen": source.published_date or _today_iso(),
+                }
+                for item in source_entries
+            )
 
         existing_entries = [
             {
@@ -76,11 +77,16 @@ async def run_discovery_pipeline(
                 "entry_type": entry.type,
                 "issue_areas": await EntryCRUD.get_issue_areas(conn, entry.id),
             }
-            for entry in await EntryCRUD.list(conn, state=state, city=city, active_only=False, limit=1000)
+            for entry in await EntryCRUD.list(
+                conn, state=state, city=city, active_only=False, limit=1000
+            )
         ]
         deduped = deduplicate_entries(extracted_entries, existing_entries)
 
-        source_counts = {entry.get("id") or entry["name"]: len(entry.get("source_urls", [])) for entry in deduped.entries}
+        source_counts = {
+            entry.get("id") or entry["name"]: len(entry.get("source_urls", []))
+            for entry in deduped.entries
+        }
         ranked = rank_entries(deduped.entries, source_counts=source_counts)
 
         confirmed_entry_ids: list[str] = []
@@ -130,7 +136,7 @@ async def run_discovery_pipeline(
         raise
 
 
-async def run_discovery_pipeline_for_run(
+async def run_discovery_pipeline_for_run(  # noqa: PLR0913
     *,
     database_url: str,
     run_id: str,
@@ -184,8 +190,8 @@ async def _upsert_entry(conn: Connection, entry: dict[str, Any]) -> str:
             website=entry.get("website"),
             email=entry.get("email"),
             social_media=entry.get("social_media"),
-            first_seen=_parse_date(min(entry.get("source_dates", [date.today().isoformat()]))),
-            last_seen=_parse_date(entry.get("last_seen") or date.today().isoformat()),
+            first_seen=_parse_date(min(entry.get("source_dates", [_today_iso()]))),
+            last_seen=_parse_date(entry.get("last_seen") or _today_iso()),
         )
 
     await EntryCRUD.update(
@@ -196,7 +202,7 @@ async def _upsert_entry(conn: Connection, entry: dict[str, Any]) -> str:
         website=entry.get("website") or match.website,
         email=entry.get("email") or match.email,
         social_media=entry.get("social_media") or match.social_media,
-        last_seen=_parse_date(entry.get("last_seen") or date.today().isoformat()),
+        last_seen=_parse_date(entry.get("last_seen") or _today_iso()),
     )
     return match.id
 
@@ -226,15 +232,21 @@ async def _persist_sources(
     for source_url in sorted(set(source_urls)):
         source = source_by_url[source_url]
         existing = await SourceCRUD.get_by_url(conn, source_url)
-        source_id = existing.id if existing else await SourceCRUD.create(
-            conn,
-            url=source.url,
-            source_type=source.source_type,
-            extraction_method="autodiscovery",
-            title=source.title,
-            publication=source.publication,
-            published_date=_parse_date(source.published_date) if source.published_date else None,
-            raw_content=source.content,
+        source_id = (
+            existing.id
+            if existing
+            else await SourceCRUD.create(
+                conn,
+                url=source.url,
+                source_type=source.source_type,
+                extraction_method="autodiscovery",
+                title=source.title,
+                publication=source.publication,
+                published_date=_parse_date(source.published_date)
+                if source.published_date
+                else None,
+                raw_content=source.content,
+            )
         )
         await SourceCRUD.link_to_entry(
             conn,
@@ -242,6 +254,11 @@ async def _persist_sources(
             source_id,
             extraction_context=source_contexts.get(source_url),
         )
+
+
+def _today_iso() -> str:
+    """Return today's date as ISO string using timezone-aware datetime."""
+    return datetime.datetime.now(tz=datetime.UTC).date().isoformat()
 
 
 def _parse_date(value: str) -> date:

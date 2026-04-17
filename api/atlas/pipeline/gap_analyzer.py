@@ -6,7 +6,7 @@ Identifies missing issue area coverage for a location.
 
 from dataclasses import dataclass
 
-from atlas.taxonomy import DOMAINS, ISSUE_AREAS_BY_DOMAIN
+from atlas.taxonomy import DOMAINS, ISSUE_AREAS_BY_DOMAIN, IssueArea
 
 __all__ = ["CoverageGap", "GapReport", "analyze_gaps"]
 
@@ -95,16 +95,16 @@ def analyze_gaps(
     thin: list[CoverageGap] = []
 
     # Get all issue areas from taxonomy
-    all_issues = {}
+    all_issues: dict[str, IssueArea] = {}
     for domain in DOMAINS:
-        for issue in ISSUE_AREAS_BY_DOMAIN[domain]:
-            all_issues[issue.slug] = issue
+        for area in ISSUE_AREAS_BY_DOMAIN[domain]:
+            all_issues[area.slug] = area
 
-    for slug, issue in all_issues.items():
+    for slug, issue_area in all_issues.items():
         count = issue_counts.get(slug, 0)
         gap = CoverageGap(
             issue_area_slug=slug,
-            issue_area_name=issue.name,
+            issue_area_name=issue_area.name,
             entry_count=count,
             severity="covered"
             if count >= COVERED_THRESHOLD
@@ -122,7 +122,7 @@ def analyze_gaps(
     uncovered_domains = [
         domain
         for domain in DOMAINS
-        if not any(issue_counts.get(issue.slug, 0) > 0 for issue in ISSUE_AREAS_BY_DOMAIN[domain])
+        if not any(issue_counts.get(area.slug, 0) > 0 for area in ISSUE_AREAS_BY_DOMAIN[domain])
     ]
 
     return GapReport(

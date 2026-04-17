@@ -324,7 +324,7 @@ def _row_to_discovery_run(row: dict[str, Any]) -> DiscoveryRunModel:
         id=row["id"],
         location_query=row["location_query"],
         state=row["state"],
-        issue_areas=db.decode_json(row["issue_areas"]),
+        issue_areas=db.decode_json(row["issue_areas"]),  # type: ignore[arg-type]
         queries_generated=row["queries_generated"],
         sources_fetched=row["sources_fetched"],
         sources_processed=row["sources_processed"],
