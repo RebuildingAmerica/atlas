@@ -1,0 +1,154 @@
+<h2>Org Profile — People Section</h2>
+<p class="subtitle">Which layout feels more modern and responsive for showing affiliated people on an organization profile?</p>
+
+<div class="cards">
+
+  <!-- OPTION A: Horizontal scroll cards -->
+  <div class="card" data-choice="scroll-cards" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:20px; background:#f1eadf;">
+      <div style="border-radius:16px; background:#fbf7f0; border:1px solid rgba(111,91,74,0.18); padding:16px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+          <p style="font-size:9px; font-weight:600; letter-spacing:0.05em; text-transform:uppercase; color:#857362; margin:0;">People</p>
+          <p style="font-size:10px; color:#857362; margin:0;">3 affiliated &rarr;</p>
+        </div>
+        <div style="display:flex; gap:10px; overflow:hidden;">
+          <!-- Person card 1 -->
+          <div style="min-width:140px; padding:14px; border-radius:14px; background:white; border:1px solid rgba(111,91,74,0.12); text-align:center;">
+            <div style="width:48px; height:48px; border-radius:50%; background:linear-gradient(135deg, #d07534, #af5b22); display:flex; align-items:center; justify-content:center; font-size:16px; font-weight:600; color:#fbf7f0; margin:0 auto 10px;">MG</div>
+            <p style="font-size:12px; font-weight:600; color:#1f1812; margin:0;">Maria Gonzalez</p>
+            <p style="font-size:10px; color:#857362; margin:3px 0 0;">Founder</p>
+            <div style="margin-top:8px; padding:3px 8px; border-radius:999px; background:#f4ecdf; font-size:9px; font-weight:600; color:#54463a; display:inline-block;">7 mentions</div>
+          </div>
+          <!-- Person card 2 -->
+          <div style="min-width:140px; padding:14px; border-radius:14px; background:white; border:1px solid rgba(111,91,74,0.12); text-align:center;">
+            <div style="width:48px; height:48px; border-radius:50%; background:linear-gradient(135deg, #857362, #54463a); display:flex; align-items:center; justify-content:center; font-size:16px; font-weight:600; color:#fbf7f0; margin:0 auto 10px;">DP</div>
+            <p style="font-size:12px; font-weight:600; color:#1f1812; margin:0;">David Park</p>
+            <p style="font-size:10px; color:#857362; margin:3px 0 0;">Ops Director</p>
+            <div style="margin-top:8px; padding:3px 8px; border-radius:999px; background:#f4ecdf; font-size:9px; font-weight:600; color:#54463a; display:inline-block;">3 mentions</div>
+          </div>
+          <!-- Person card 3 (partially visible = scroll hint) -->
+          <div style="min-width:140px; padding:14px; border-radius:14px; background:white; border:1px solid rgba(111,91,74,0.12); text-align:center;">
+            <div style="width:48px; height:48px; border-radius:50%; background:linear-gradient(135deg, #c4a882, #857362); display:flex; align-items:center; justify-content:center; font-size:16px; font-weight:600; color:#fbf7f0; margin:0 auto 10px;">RL</div>
+            <p style="font-size:12px; font-weight:600; color:#1f1812; margin:0;">Rosa Lopez</p>
+            <p style="font-size:10px; color:#857362; margin:3px 0 0;">Outreach Lead</p>
+            <div style="margin-top:8px; padding:3px 8px; border-radius:999px; background:#f4ecdf; font-size:9px; font-weight:600; color:#54463a; display:inline-block;">2 mentions</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Horizontal Scroll Cards</h3>
+      <p>Each person gets a centered card with avatar, name, role, and mention count. Horizontally scrollable — works naturally on mobile with swipe, clips on desktop to hint at more.</p>
+    </div>
+  </div>
+
+  <!-- OPTION B: Grid with hover/tap reveal -->
+  <div class="card" data-choice="avatar-grid" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:20px; background:#f1eadf;">
+      <div style="border-radius:16px; background:#fbf7f0; border:1px solid rgba(111,91,74,0.18); padding:16px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+          <p style="font-size:9px; font-weight:600; letter-spacing:0.05em; text-transform:uppercase; color:#857362; margin:0;">People</p>
+          <p style="font-size:10px; color:#857362; margin:0;">3 affiliated</p>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px;">
+          <!-- Person tile 1 -->
+          <div style="padding:14px 10px; border-radius:14px; background:white; border:1px solid rgba(111,91,74,0.12);">
+            <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
+              <div style="width:40px; height:40px; border-radius:50%; background:linear-gradient(135deg, #d07534, #af5b22); display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:600; color:#fbf7f0; flex-shrink:0;">MG</div>
+              <div style="min-width:0;">
+                <p style="font-size:11px; font-weight:600; color:#1f1812; margin:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Maria Gonzalez</p>
+                <p style="font-size:9px; color:#857362; margin:2px 0 0;">Founder</p>
+              </div>
+            </div>
+            <div style="display:flex; gap:4px; flex-wrap:wrap;">
+              <div style="padding:2px 6px; border-radius:999px; background:#f4d3b6; font-size:8px; font-weight:600; color:#773714;">Worker Co-ops</div>
+              <div style="padding:2px 6px; border-radius:999px; background:#f4ecdf; font-size:8px; font-weight:600; color:#54463a;">7 mentions</div>
+            </div>
+          </div>
+          <!-- Person tile 2 -->
+          <div style="padding:14px 10px; border-radius:14px; background:white; border:1px solid rgba(111,91,74,0.12);">
+            <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
+              <div style="width:40px; height:40px; border-radius:50%; background:linear-gradient(135deg, #857362, #54463a); display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:600; color:#fbf7f0; flex-shrink:0;">DP</div>
+              <div style="min-width:0;">
+                <p style="font-size:11px; font-weight:600; color:#1f1812; margin:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">David Park</p>
+                <p style="font-size:9px; color:#857362; margin:2px 0 0;">Ops Director</p>
+              </div>
+            </div>
+            <div style="display:flex; gap:4px; flex-wrap:wrap;">
+              <div style="padding:2px 6px; border-radius:999px; background:#f4d3b6; font-size:8px; font-weight:600; color:#773714;">Labor Rights</div>
+              <div style="padding:2px 6px; border-radius:999px; background:#f4ecdf; font-size:8px; font-weight:600; color:#54463a;">3 mentions</div>
+            </div>
+          </div>
+          <!-- Person tile 3 -->
+          <div style="padding:14px 10px; border-radius:14px; background:white; border:1px solid rgba(111,91,74,0.12);">
+            <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
+              <div style="width:40px; height:40px; border-radius:50%; background:linear-gradient(135deg, #c4a882, #857362); display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:600; color:#fbf7f0; flex-shrink:0;">RL</div>
+              <div style="min-width:0;">
+                <p style="font-size:11px; font-weight:600; color:#1f1812; margin:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Rosa Lopez</p>
+                <p style="font-size:9px; color:#857362; margin:2px 0 0;">Outreach Lead</p>
+              </div>
+            </div>
+            <div style="display:flex; gap:4px; flex-wrap:wrap;">
+              <div style="padding:2px 6px; border-radius:999px; background:#f4d3b6; font-size:8px; font-weight:600; color:#773714;">Housing</div>
+              <div style="padding:2px 6px; border-radius:999px; background:#f4ecdf; font-size:8px; font-weight:600; color:#54463a;">2 mentions</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Responsive Grid Tiles</h3>
+      <p>3-column grid on desktop, 2-col on tablet, 1-col stack on mobile. Each tile shows avatar, name, role, primary issue tag, and mention count. Richer at a glance — each person feels like a mini-profile.</p>
+    </div>
+  </div>
+
+  <!-- OPTION C: Compact avatar row + expandable -->
+  <div class="card" data-choice="avatar-row" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:20px; background:#f1eadf;">
+      <div style="border-radius:16px; background:#fbf7f0; border:1px solid rgba(111,91,74,0.18); padding:16px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+          <p style="font-size:9px; font-weight:600; letter-spacing:0.05em; text-transform:uppercase; color:#857362; margin:0;">People</p>
+          <p style="font-size:10px; color:#857362; margin:0;">3 affiliated</p>
+        </div>
+        <!-- Avatar stack row -->
+        <div style="display:flex; gap:12px; margin-bottom:12px; padding-bottom:12px; border-bottom:1px solid rgba(111,91,74,0.1);">
+          <div style="text-align:center;">
+            <div style="width:44px; height:44px; border-radius:50%; background:linear-gradient(135deg, #d07534, #af5b22); display:flex; align-items:center; justify-content:center; font-size:15px; font-weight:600; color:#fbf7f0; margin:0 auto 4px; border:2px solid #fbf7f0; box-shadow:0 2px 8px rgba(0,0,0,0.1);">MG</div>
+            <p style="font-size:9px; font-weight:600; color:#1f1812; margin:0;">Maria</p>
+          </div>
+          <div style="text-align:center;">
+            <div style="width:44px; height:44px; border-radius:50%; background:linear-gradient(135deg, #857362, #54463a); display:flex; align-items:center; justify-content:center; font-size:15px; font-weight:600; color:#fbf7f0; margin:0 auto 4px; border:2px solid #fbf7f0; box-shadow:0 2px 8px rgba(0,0,0,0.1);">DP</div>
+            <p style="font-size:9px; font-weight:600; color:#1f1812; margin:0;">David</p>
+          </div>
+          <div style="text-align:center;">
+            <div style="width:44px; height:44px; border-radius:50%; background:linear-gradient(135deg, #c4a882, #857362); display:flex; align-items:center; justify-content:center; font-size:15px; font-weight:600; color:#fbf7f0; margin:0 auto 4px; border:2px solid #fbf7f0; box-shadow:0 2px 8px rgba(0,0,0,0.1);">RL</div>
+            <p style="font-size:9px; font-weight:600; color:#1f1812; margin:0;">Rosa</p>
+          </div>
+        </div>
+        <!-- Expanded detail for selected/first person -->
+        <div style="padding:12px; border-radius:12px; background:white; border:1px solid rgba(111,91,74,0.12);">
+          <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
+            <div style="width:36px; height:36px; border-radius:50%; background:linear-gradient(135deg, #d07534, #af5b22); display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:600; color:#fbf7f0; flex-shrink:0;">MG</div>
+            <div>
+              <p style="font-size:13px; font-weight:600; color:#1f1812; margin:0;">Maria Gonzalez</p>
+              <p style="font-size:10px; color:#857362; margin:2px 0 0;">Founder &middot; 7 mentions</p>
+            </div>
+          </div>
+          <p style="font-size:11px; color:#54463a; line-height:1.5; margin:0 0 8px;">Founded the cooperative after meatpacking plant automation displaced 200+ workers.</p>
+          <div style="display:flex; gap:4px;">
+            <div style="padding:3px 8px; border-radius:999px; background:#f4d3b6; font-size:9px; font-weight:600; color:#773714;">Worker Co-ops</div>
+            <div style="padding:3px 8px; border-radius:999px; background:#f4d3b6; font-size:9px; font-weight:600; color:#773714;">Automation</div>
+          </div>
+          <div style="margin-top:8px; text-align:right;">
+            <span style="font-size:10px; font-weight:500; color:#857362;">View full profile &rarr;</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Avatar Row + Detail Panel</h3>
+      <p>Compact avatar row at top shows all people at a glance. Tap/click an avatar to expand a detail panel below with bio snippet, issues, and profile link. Best of both: scannable overview with depth on demand.</p>
+    </div>
+  </div>
+
+</div>

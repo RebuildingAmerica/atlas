@@ -1,0 +1,19 @@
+# Codex CLI project settings for Atlas
+# Blocks destructive git commands to prevent regressions from agent actions.
+
+[sandbox]
+deny = [
+  "git stash",
+  "git reset",
+  "git checkout --",
+  "git clean",
+  "git push --force",
+  "git push -f",
+  "git rebase",
+  "git cherry-pick",
+  "git merge",
+  "git branch -D",
+  "git branch -d",
+  "git restore",
+  "git rm",
+]

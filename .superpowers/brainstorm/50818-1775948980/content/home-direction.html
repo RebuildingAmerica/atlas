@@ -1,0 +1,144 @@
+<h2>Home Page Direction</h2>
+<p class="subtitle">The home page sets the tone for "exploratory, not SaaS." Which direction feels right?</p>
+
+<div class="cards">
+  <div class="card" data-choice="map-first" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding: 24px; background: #f1eadf;">
+      <div style="position:relative; border-radius: 16px; overflow: hidden; background: #fbf7f0; border: 1px solid rgba(111,91,74,0.18); height: 280px;">
+        <!-- Floating minimal nav -->
+        <div style="position:absolute; top:16px; left:16px; right:16px; display:flex; justify-content:space-between; align-items:center; z-index:2;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <div style="width:28px; height:28px; border-radius:10px; background:#efe5d6; display:flex; align-items:center; justify-content:center; font-size:14px;">🌐</div>
+            <span style="font-weight:600; font-size:14px; color:#1f1812;">Atlas</span>
+          </div>
+          <div style="display:flex; gap:8px;">
+            <div style="padding:6px 14px; border-radius:999px; background:rgba(255,255,255,0.7); backdrop-filter:blur(8px); font-size:12px; font-weight:600; color:#54463a; border:1px solid rgba(111,91,74,0.12);">Browse</div>
+            <div style="padding:6px 14px; border-radius:999px; background:#1f1812; font-size:12px; font-weight:600; color:#fbf7f0;">Sign in</div>
+          </div>
+        </div>
+        <!-- US Map placeholder -->
+        <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center;">
+          <svg viewBox="0 0 400 200" style="width:85%; opacity:0.25;">
+            <rect x="20" y="40" width="60" height="50" rx="4" fill="#d07534"/>
+            <rect x="90" y="30" width="50" height="60" rx="4" fill="#d07534" opacity="0.7"/>
+            <rect x="150" y="50" width="45" height="40" rx="4" fill="#d07534" opacity="0.5"/>
+            <rect x="205" y="35" width="55" height="55" rx="4" fill="#d07534" opacity="0.8"/>
+            <rect x="270" y="45" width="40" height="45" rx="4" fill="#d07534" opacity="0.6"/>
+            <rect x="320" y="55" width="50" height="35" rx="4" fill="#d07534" opacity="0.4"/>
+            <rect x="50" y="100" width="70" height="50" rx="4" fill="#d07534" opacity="0.65"/>
+            <rect x="130" y="100" width="55" height="50" rx="4" fill="#d07534" opacity="0.45"/>
+            <rect x="195" y="100" width="65" height="50" rx="4" fill="#d07534" opacity="0.75"/>
+            <rect x="270" y="100" width="55" height="50" rx="4" fill="#d07534" opacity="0.55"/>
+          </svg>
+        </div>
+        <!-- Floating search + title -->
+        <div style="position:absolute; bottom:0; left:0; right:0; padding:24px; background:linear-gradient(transparent, rgba(241,234,223,0.95));">
+          <p style="font-size:22px; font-weight:500; color:#1f1812; margin:0 0 12px;">Find people and organizations rebuilding America.</p>
+          <div style="display:flex; gap:8px;">
+            <div style="flex:1; padding:10px 16px; border-radius:999px; background:white; border:1px solid rgba(111,91,74,0.18); font-size:13px; color:#857362;">Search housing in Detroit, transit in KC...</div>
+            <div style="padding:10px 20px; border-radius:999px; background:#1f1812; color:#fbf7f0; font-size:13px; font-weight:600;">Search</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Map-First Explorer</h3>
+      <p>Full-viewport US map as the hero. Search and navigation float over it. The map IS the interface — click a state to drill in. Feels like a data visualization you walk into.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="narrative-entry" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding: 24px; background: #f1eadf;">
+      <div style="position:relative; border-radius: 16px; overflow: hidden; background: #fbf7f0; border: 1px solid rgba(111,91,74,0.18); height: 280px; padding: 20px;">
+        <!-- Small logo top-left -->
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <div style="width:24px; height:24px; border-radius:8px; background:#efe5d6; display:flex; align-items:center; justify-content:center; font-size:12px;">🌐</div>
+            <span style="font-weight:600; font-size:13px; color:#1f1812;">Atlas</span>
+          </div>
+          <div style="font-size:11px; color:#857362;">Sign in →</div>
+        </div>
+        <!-- Big editorial headline -->
+        <p style="font-size:9px; font-weight:600; letter-spacing:0.05em; text-transform:uppercase; color:#857362; margin:0 0 6px;">Rebuilding America</p>
+        <p style="font-size:20px; font-weight:500; color:#1f1812; margin:0 0 16px; line-height:1.3;">Who is doing the work<br/>in your community?</p>
+        <!-- Horizontal scroll of cards -->
+        <div style="display:flex; gap:10px; overflow:hidden;">
+          <div style="min-width:120px; padding:12px; border-radius:14px; background:#f4ecdf;">
+            <div style="width:100%; height:40px; border-radius:8px; background:#efe5d6; margin-bottom:8px;"></div>
+            <p style="font-size:11px; font-weight:600; color:#1f1812; margin:0;">Detroit Housing</p>
+            <p style="font-size:10px; color:#857362; margin:2px 0 0;">23 orgs</p>
+          </div>
+          <div style="min-width:120px; padding:12px; border-radius:14px; background:#f4ecdf;">
+            <div style="width:100%; height:40px; border-radius:8px; background:#efe5d6; margin-bottom:8px;"></div>
+            <p style="font-size:11px; font-weight:600; color:#1f1812; margin:0;">KC Transit</p>
+            <p style="font-size:10px; color:#857362; margin:2px 0 0;">14 orgs</p>
+          </div>
+          <div style="min-width:120px; padding:12px; border-radius:14px; background:#f4ecdf;">
+            <div style="width:100%; height:40px; border-radius:8px; background:#efe5d6; margin-bottom:8px;"></div>
+            <p style="font-size:11px; font-weight:600; color:#1f1812; margin:0;">Rural Health</p>
+            <p style="font-size:10px; color:#857362; margin:2px 0 0;">31 orgs</p>
+          </div>
+        </div>
+        <!-- Search at bottom -->
+        <div style="position:absolute; bottom:16px; left:20px; right:20px;">
+          <div style="padding:8px 14px; border-radius:999px; background:white; border:1px solid rgba(111,91,74,0.18); font-size:12px; color:#857362; display:flex; align-items:center; gap:6px;">
+            <span>🔍</span> Search people, orgs, issues...
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Narrative Entry Point</h3>
+      <p>Editorial headline draws you in. Featured collections (curated clusters by issue/place) invite browsing. Search is secondary. Feels like a magazine or research portal, not a search engine.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="data-canvas" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding: 24px; background: #f1eadf;">
+      <div style="position:relative; border-radius: 16px; overflow: hidden; background: #1f1812; border: 1px solid rgba(111,91,74,0.18); height: 280px;">
+        <!-- Floating logo -->
+        <div style="position:absolute; top:16px; left:16px; display:flex; align-items:center; gap:8px; z-index:2;">
+          <div style="width:28px; height:28px; border-radius:10px; background:rgba(255,255,255,0.1); display:flex; align-items:center; justify-content:center; font-size:14px;">🌐</div>
+          <span style="font-weight:600; font-size:14px; color:#fbf7f0;">Atlas</span>
+        </div>
+        <!-- Data viz dots -->
+        <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center;">
+          <svg viewBox="0 0 300 200" style="width:80%;">
+            <circle cx="50" cy="80" r="18" fill="#d07534" opacity="0.8"/>
+            <circle cx="120" cy="60" r="12" fill="#d07534" opacity="0.6"/>
+            <circle cx="90" cy="130" r="24" fill="#d07534" opacity="0.5"/>
+            <circle cx="180" cy="90" r="15" fill="#d07534" opacity="0.7"/>
+            <circle cx="220" cy="50" r="20" fill="#d07534" opacity="0.4"/>
+            <circle cx="250" cy="120" r="10" fill="#d07534" opacity="0.9"/>
+            <circle cx="160" cy="150" r="8" fill="#d07534" opacity="0.6"/>
+            <circle cx="280" cy="80" r="14" fill="#d07534" opacity="0.5"/>
+            <circle cx="30" cy="40" r="6" fill="#f4d3b6" opacity="0.4"/>
+            <circle cx="200" cy="160" r="16" fill="#d07534" opacity="0.3"/>
+            <!-- Connection lines -->
+            <line x1="50" y1="80" x2="120" y2="60" stroke="#d07534" stroke-width="0.5" opacity="0.2"/>
+            <line x1="120" y1="60" x2="180" y2="90" stroke="#d07534" stroke-width="0.5" opacity="0.2"/>
+            <line x1="90" y1="130" x2="160" y2="150" stroke="#d07534" stroke-width="0.5" opacity="0.2"/>
+            <line x1="180" y1="90" x2="220" y2="50" stroke="#d07534" stroke-width="0.5" opacity="0.2"/>
+          </svg>
+        </div>
+        <!-- Floating panel -->
+        <div style="position:absolute; bottom:16px; left:16px; right:16px; padding:16px; border-radius:14px; background:rgba(251,247,240,0.95); backdrop-filter:blur(8px);">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+            <p style="font-size:14px; font-weight:500; color:#1f1812; margin:0;">Explore the network</p>
+            <div style="font-size:11px; color:#857362;">4,231 entries</div>
+          </div>
+          <div style="display:flex; gap:6px;">
+            <div style="padding:6px 12px; border-radius:999px; background:#f4ecdf; font-size:11px; font-weight:600; color:#54463a;">By place</div>
+            <div style="padding:6px 12px; border-radius:999px; background:#f4ecdf; font-size:11px; font-weight:600; color:#54463a;">By issue</div>
+            <div style="padding:6px 12px; border-radius:999px; background:#f4ecdf; font-size:11px; font-weight:600; color:#54463a;">By type</div>
+            <div style="flex:1; padding:6px 12px; border-radius:999px; background:white; border:1px solid rgba(111,91,74,0.12); font-size:11px; color:#857362;">Search...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Data Canvas</h3>
+      <p>Dark background with abstract data visualization (network graph, particle field). A floating panel at the bottom invites exploration. Most dramatic departure — feels like a research instrument.</p>
+    </div>
+  </div>
+</div>
