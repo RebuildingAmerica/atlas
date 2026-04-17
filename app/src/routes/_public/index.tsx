@@ -1,8 +1,99 @@
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Compass, KeyRound, Search, Zap } from "lucide-react";
+import { Compass, Search, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 import { PageLayout } from "@/platform/layout/page-layout";
 import { Button } from "@/platform/ui/button";
+
+/**
+ * Props for the public homepage action row.
+ */
+interface HomeHeroActionsProps {
+  onSearch: () => void;
+  query: string;
+  onQueryChange: (value: string) => void;
+}
+
+function HomeHeroActions({ onQueryChange, onSearch, query }: HomeHeroActionsProps) {
+  return (
+    <>
+      <form
+        className="mx-auto mt-8 max-w-2xl"
+        onSubmit={(event) => {
+          event.preventDefault();
+          onSearch();
+        }}
+      >
+        <div className="border-border-strong shadow-soft rounded-[1.8rem] border bg-white/80 p-4">
+          <div className="grid gap-3">
+            <label className="border-border bg-surface flex items-center gap-3 rounded-[1.25rem] border px-4 py-4">
+              <Search className="text-ink-muted h-4 w-4" />
+              <input
+                value={query}
+                onChange={(event) => {
+                  onQueryChange(event.target.value);
+                }}
+                placeholder="Search housing in Detroit, labor in Kansas City, transit organizers"
+                className="type-body-large text-ink-strong placeholder:text-ink-muted w-full bg-transparent outline-none"
+              />
+            </label>
+
+            <div className="flex justify-center">
+              <Button
+                type="submit"
+                className="bg-ink-strong text-surface hover:bg-ink justify-center rounded-full px-8"
+              >
+                Search Atlas
+              </Button>
+            </div>
+          </div>
+        </div>
+      </form>
+
+      <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+        <Link
+          to="/browse"
+          className="type-label-large border-border-strong text-ink-strong hover:bg-surface-alt inline-flex items-center gap-2 rounded-full border px-5 py-2.5 transition-colors"
+        >
+          <Compass className="h-4 w-4" />
+          Browse all entries
+        </Link>
+
+        <Link
+          to="/sign-in"
+          className="type-label-large border-border text-ink-soft inline-flex items-center gap-2 rounded-full border bg-white/60 px-5 py-2.5 transition-colors hover:bg-white"
+        >
+          <ShieldCheck className="h-4 w-4" />
+          Workspace sign in
+        </Link>
+      </div>
+    </>
+  );
+}
+
+function HomeHighlights() {
+  return (
+    <div className="mt-12 grid gap-3 text-left sm:grid-cols-3">
+      <div className="border-border rounded-[1.4rem] border bg-white/70 p-4">
+        <p className="type-title-small text-ink-strong">Search</p>
+        <p className="type-body-medium text-ink-soft mt-1">
+          Start with a person, group, issue, or city.
+        </p>
+      </div>
+      <div className="border-border rounded-[1.4rem] border bg-white/70 p-4">
+        <p className="type-title-small text-ink-strong">Browse</p>
+        <p className="type-body-medium text-ink-soft mt-1">
+          Narrow results with filters and facets.
+        </p>
+      </div>
+      <div className="border-border rounded-[1.4rem] border bg-white/70 p-4">
+        <p className="type-title-small text-ink-strong">Verify</p>
+        <p className="type-body-medium text-ink-soft mt-1">
+          Every entry links back to public sources.
+        </p>
+      </div>
+    </div>
+  );
+}
 
 export const Route = createFileRoute("/_public/")({
   ssr: false,
@@ -14,109 +105,35 @@ function HomePage() {
   const [query, setQuery] = useState("");
 
   const goToBrowse = () => {
-    void navigate({
-      to: "/browse",
+    const navigationPromise = navigate({
       search: {
-        query: query || undefined,
         offset: 0,
+        query: query || undefined,
       },
+      to: "/browse",
     });
+    navigationPromise.catch(() => undefined);
   };
 
   return (
     <PageLayout className="flex min-h-[calc(100vh-11rem)] items-center py-10 lg:py-16">
       <section className="mx-auto w-full max-w-4xl">
         <div className="text-center">
-          <p className="type-label-medium text-[var(--ink-muted)]">Atlas</p>
+          <p className="type-label-medium text-ink-muted">Atlas</p>
 
-          <h1 className="type-display-large mx-auto mt-4 max-w-3xl text-[var(--ink-strong)]">
+          <h1 className="type-display-large text-ink-strong mx-auto mt-4 max-w-3xl">
             Find people, organizations, and initiatives.
           </h1>
 
-          <p className="type-body-large mx-auto mt-4 max-w-2xl text-[var(--ink-soft)]">
+          <p className="type-body-large text-ink-soft mx-auto mt-4 max-w-2xl">
             Search by name, place, issue area, or source type. Open a record to see the sources
             behind it.
           </p>
 
-          <form
-            className="mx-auto mt-8 max-w-2xl"
-            onSubmit={(event) => {
-              event.preventDefault();
-              goToBrowse();
-            }}
-          >
-            <div className="rounded-[1.8rem] border border-[var(--border-strong)] bg-white/80 p-4 shadow-[var(--shadow-soft)]">
-              <div className="grid gap-3">
-                <label className="flex items-center gap-3 rounded-[1.25rem] border border-[var(--border)] bg-[var(--surface)] px-4 py-4">
-                  <Search className="h-4 w-4 text-[var(--ink-muted)]" />
-                  <input
-                    value={query}
-                    onChange={(event) => {
-                      setQuery(event.target.value);
-                    }}
-                    placeholder="Search housing in Detroit, labor in Kansas City, transit organizers"
-                    className="type-body-large w-full bg-transparent text-[var(--ink-strong)] outline-none placeholder:text-[var(--ink-muted)]"
-                  />
-                </label>
-
-                <div className="flex justify-center">
-                  <Button
-                    type="submit"
-                    className="justify-center rounded-full bg-[var(--ink-strong)] px-8 text-[var(--surface)] hover:bg-[var(--ink)]"
-                  >
-                    Search Atlas
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </form>
-
-          <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-            <Link
-              to="/browse"
-              className="type-label-large inline-flex items-center gap-2 rounded-full border border-[var(--border-strong)] px-5 py-2.5 text-[var(--ink-strong)] transition-colors hover:bg-[var(--surface-alt)]"
-            >
-              <Compass className="h-4 w-4" />
-              Browse all entries
-            </Link>
-
-            <Link
-              to="/discovery"
-              className="type-label-large inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-white/60 px-5 py-2.5 text-[var(--ink-soft)] transition-colors hover:bg-white"
-            >
-              <Zap className="h-4 w-4" />
-              Open admin
-            </Link>
-            <Link
-              to="/account"
-              className="type-label-large inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-white/60 px-5 py-2.5 text-[var(--ink-soft)] transition-colors hover:bg-white"
-            >
-              <KeyRound className="h-4 w-4" />
-              Account
-            </Link>
-          </div>
+          <HomeHeroActions onQueryChange={setQuery} onSearch={goToBrowse} query={query} />
         </div>
 
-        <div className="mt-12 grid gap-3 text-left sm:grid-cols-3">
-          <div className="rounded-[1.4rem] border border-[var(--border)] bg-white/70 p-4">
-            <p className="type-title-small text-[var(--ink-strong)]">Search</p>
-            <p className="type-body-medium mt-1 text-[var(--ink-soft)]">
-              Start with a person, group, issue, or city.
-            </p>
-          </div>
-          <div className="rounded-[1.4rem] border border-[var(--border)] bg-white/70 p-4">
-            <p className="type-title-small text-[var(--ink-strong)]">Browse</p>
-            <p className="type-body-medium mt-1 text-[var(--ink-soft)]">
-              Narrow results with filters and facets.
-            </p>
-          </div>
-          <div className="rounded-[1.4rem] border border-[var(--border)] bg-white/70 p-4">
-            <p className="type-title-small text-[var(--ink-strong)]">Verify</p>
-            <p className="type-body-medium mt-1 text-[var(--ink-soft)]">
-              Every entry links back to public sources.
-            </p>
-          </div>
-        </div>
+        <HomeHighlights />
       </section>
     </PageLayout>
   );

@@ -6,20 +6,18 @@
  */
 export function AuthBrandPanel() {
   return (
-    <div className="relative flex h-full flex-col justify-between bg-[var(--ink-strong)] px-8 py-10 lg:px-12 lg:py-14">
+    <div className="bg-ink-strong relative flex h-full flex-col justify-between px-8 py-10 lg:px-12 lg:py-14">
       <div className="space-y-6">
         <div className="flex items-center gap-3">
-          <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-[var(--accent)] text-white">
+          <div className="bg-accent flex h-7 w-7 items-center justify-center rounded-xl text-white">
             <span className="type-label-medium leading-none">A</span>
           </div>
-          <span className="type-title-medium text-[var(--surface)]">Atlas</span>
+          <span className="type-title-medium text-surface">Atlas</span>
         </div>
 
         <div className="space-y-3">
-          <p className="type-headline-medium text-[var(--surface)]">
-            Map the people rebuilding America.
-          </p>
-          <p className="type-body-large text-[var(--accent-soft)]">Operator workspace</p>
+          <p className="type-headline-medium text-surface">Map the people rebuilding America.</p>
+          <p className="type-body-large text-accent-soft">Operator workspace</p>
         </div>
       </div>
 
@@ -33,11 +31,11 @@ export function AuthBrandPanel() {
  */
 export function AuthBrandHeader() {
   return (
-    <div className="flex items-center gap-3 bg-[var(--ink-strong)] px-6 py-4">
-      <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-[var(--accent)] text-white">
+    <div className="bg-ink-strong flex items-center gap-3 px-6 py-4">
+      <div className="bg-accent flex h-7 w-7 items-center justify-center rounded-xl text-white">
         <span className="type-label-medium leading-none">A</span>
       </div>
-      <span className="type-title-medium text-[var(--surface)]">Atlas</span>
+      <span className="type-title-medium text-surface">Atlas</span>
     </div>
   );
 }
@@ -67,7 +65,7 @@ function DecorativeDots() {
       {DOTS.map((dot, index) => (
         <span
           key={index}
-          className="absolute rounded-full bg-[var(--accent)]"
+          className="bg-accent absolute rounded-full"
           style={{
             width: dot.width,
             height: dot.height,

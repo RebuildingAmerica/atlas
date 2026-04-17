@@ -1,73 +1,64 @@
+import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
-import { LogOut } from "lucide-react";
-import { useAtlasSession } from "@/domains/access";
-import { getAuthClient } from "@/domains/access/client/auth-client";
 
 /**
- * Top navigation bar for the authenticated operator workspace.
- *
- * Displays the Atlas brand mark, section tabs with active state, and the
- * signed-in operator's identity with a sign-out control.
+ * Navigation tab configuration for the shared workspace shell.
  */
-export function WorkspaceNav() {
-  const session = useAtlasSession();
-
-  const displayName = session.data?.user.name?.trim() || session.data?.user.email || "Operator";
-
-  const handleSignOut = async () => {
-    await getAuthClient().signOut();
-    window.location.assign("/");
-  };
-
-  return (
-    <nav className="border-b border-[var(--border)] bg-[var(--surface)]">
-      <div className="mx-auto flex h-14 max-w-[88rem] items-center gap-6 px-6">
-        <Link to="/" className="flex items-center gap-2.5 no-underline">
-          <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-[var(--accent)] text-white">
-            <span className="type-label-medium leading-none">A</span>
-          </div>
-          <span className="type-title-medium text-[var(--ink-strong)]">Atlas</span>
-        </Link>
-
-        <div className="flex items-center gap-1">
-          <NavTab to="/account" label="Account" />
-          <NavTab to="/discovery" label="Discovery" />
-        </div>
-
-        <div className="ml-auto flex items-center gap-4">
-          <span className="type-body-medium text-[var(--ink-soft)]">{displayName}</span>
-          <button
-            type="button"
-            onClick={() => {
-              void handleSignOut();
-            }}
-            className="type-label-large inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[var(--ink-muted)] hover:bg-[var(--surface-container)] hover:text-[var(--ink-strong)]"
-          >
-            <LogOut className="h-4 w-4" />
-            Sign out
-          </button>
-        </div>
-      </div>
-    </nav>
-  );
-}
-
-interface NavTabProps {
-  to: string;
+interface WorkspaceTabConfig {
   label: string;
+  to: string;
 }
 
-function NavTab({ to, label }: NavTabProps) {
+/**
+ * Props accepted by the shared workspace navigation bar.
+ */
+interface WorkspaceNavProps {
+  identitySlot?: ReactNode;
+  tabs?: WorkspaceTabConfig[];
+}
+
+const defaultTabs: WorkspaceTabConfig[] = [{ label: "Discovery", to: "/discovery" }];
+
+function WorkspaceNavTab({ label, to }: WorkspaceTabConfig) {
   return (
     <Link
       to={to}
-      className="type-label-large rounded-lg px-3 py-1.5 text-[var(--ink-muted)] no-underline hover:bg-[var(--surface-container)] hover:text-[var(--ink-strong)]"
+      className="type-label-large text-ink-muted hover:bg-surface-container hover:text-ink-strong rounded-lg px-3 py-1.5 no-underline"
       activeProps={{
         className:
-          "type-label-large rounded-lg px-3 py-1.5 no-underline bg-[var(--surface-container-high)] text-[var(--ink-strong)]",
+          "type-label-large rounded-lg px-3 py-1.5 no-underline bg-surface-container-high text-ink-strong",
       }}
     >
       {label}
     </Link>
+  );
+}
+
+/**
+ * Top navigation bar for the authenticated workspace shell.
+ *
+ * Domain-specific identity controls flow in through `identitySlot`, while the
+ * route decides which tabs are relevant for the current session.
+ */
+export function WorkspaceNav({ identitySlot, tabs = defaultTabs }: WorkspaceNavProps) {
+  return (
+    <nav className="border-border bg-surface border-b">
+      <div className="mx-auto flex min-h-14 max-w-[88rem] flex-wrap items-center gap-6 px-6 py-3">
+        <Link to="/" className="flex items-center gap-2.5 no-underline">
+          <div className="bg-accent flex h-7 w-7 items-center justify-center rounded-xl text-white">
+            <span className="type-label-medium leading-none">A</span>
+          </div>
+          <span className="type-title-medium text-ink-strong">Atlas</span>
+        </Link>
+
+        <div className="flex items-center gap-1">
+          {tabs.map((tab) => (
+            <WorkspaceNavTab key={tab.to} label={tab.label} to={tab.to} />
+          ))}
+        </div>
+
+        {identitySlot ? <div className="ml-auto">{identitySlot}</div> : null}
+      </div>
+    </nav>
   );
 }

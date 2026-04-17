@@ -9,5 +9,5 @@ export const Route = createFileRoute("/_auth/sign-in")({
 
 function SignInRoute() {
   const search = Route.useSearch();
-  return <SignInPage redirectTo={search.redirect} />;
+  return <SignInPage invitationId={search.invitation} redirectTo={search.redirect} />;
 }

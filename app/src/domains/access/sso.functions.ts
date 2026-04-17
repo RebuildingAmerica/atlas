@@ -1,0 +1,370 @@
+import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
+import {
+  buildGoogleWorkspaceOIDCProviderId,
+  buildGoogleWorkspaceSAMLProviderId,
+  buildWorkspaceOIDCRedirectUrl,
+  buildWorkspaceSamlAcsUrl,
+  buildWorkspaceSamlEntityId,
+  buildWorkspaceSamlMetadataUrl,
+} from "./organization-sso";
+import { mergeAtlasOrganizationMetadata } from "./organization-metadata";
+import {
+  loadOrganizationRequestContext,
+  requireManagedTeamWorkspace,
+} from "./organization-server-helpers";
+import {
+  groupStoredProvidersByWorkspace,
+  resolveStoredWorkspaceSSOSignIn,
+} from "./sso-sign-in-resolution";
+import { ensureAuthReady } from "./server/auth";
+import { getBrowserSessionHeaders } from "./server/request-headers";
+import {
+  listStoredWorkspaceSSOProviders,
+  loadStoredWorkspaceIdentity,
+} from "./server/sso-provider-store";
+import { getAuthRuntimeConfig } from "./server/runtime";
+
+const googleWorkspaceOIDCProviderSchema = z.object({
+  clientId: z.string().trim().min(1),
+  clientSecret: z.string().trim().min(1),
+  domain: z.string().trim().min(1),
+  providerId: z.string().trim().min(1).optional(),
+  setAsPrimary: z.boolean().default(false),
+});
+
+const googleWorkspaceSAMLProviderSchema = z.object({
+  certificate: z.string().trim().min(1),
+  domain: z.string().trim().min(1),
+  entryPoint: z.string().trim().url(),
+  issuer: z.string().trim().min(1),
+  providerId: z.string().trim().min(1).optional(),
+  setAsPrimary: z.boolean().default(true),
+});
+
+const workspaceProviderIdSchema = z.object({
+  providerId: z.string().trim().min(1),
+});
+
+const workspacePrimaryProviderSchema = z.object({
+  providerId: z.string().trim().min(1).nullable(),
+});
+
+const publicSSOResolutionSchema = z.object({
+  email: z.string().trim().email(),
+  invitationId: z.string().trim().min(1).optional(),
+});
+
+/**
+ * Provider-registration payload Atlas returns after an owner saves a new
+ * enterprise identity provider.
+ */
+export interface AtlasWorkspaceSSORegistrationResult {
+  domainVerificationToken: string;
+  providerId: string;
+  redirectUrl: string;
+  samlAcsUrl: string;
+  samlEntityId: string;
+  samlMetadataUrl: string;
+}
+
+/**
+ * Persists one workspace-level primary SSO provider choice inside Better
+ * Auth's organization metadata.
+ *
+ * @param providerId - The provider id Atlas should mark as primary.
+ */
+async function saveWorkspacePrimarySSOProvider(providerId: string | null): Promise<void> {
+  const organizationRequestContext = await loadOrganizationRequestContext();
+  const { auth, headers, session } = organizationRequestContext;
+  const activeWorkspace = requireManagedTeamWorkspace(session);
+  const fullOrganization = await auth.api.getFullOrganization({
+    headers,
+    query: {
+      organizationId: activeWorkspace.id,
+    },
+  });
+  const mergedMetadata = mergeAtlasOrganizationMetadata(fullOrganization?.metadata, {
+    ssoPrimaryProviderId: providerId,
+  });
+
+  await auth.api.updateOrganization({
+    body: {
+      data: {
+        metadata: mergedMetadata,
+      },
+      organizationId: activeWorkspace.id,
+    },
+    headers,
+  });
+}
+
+/**
+ * Builds the provider identifiers and callback values Atlas derives from the
+ * active workspace.
+ *
+ * @param params - The active workspace context.
+ * @param params.providerId - The optional provider id supplied by the operator.
+ * @param params.workspaceSlug - The active workspace slug.
+ */
+function buildWorkspaceSSORegistrationDefaults(params: {
+  providerId?: string;
+  workspaceSlug: string;
+}) {
+  const runtime = getAuthRuntimeConfig();
+  const oidcProviderId =
+    params.providerId ?? buildGoogleWorkspaceOIDCProviderId(params.workspaceSlug);
+  const samlProviderId =
+    params.providerId ?? buildGoogleWorkspaceSAMLProviderId(params.workspaceSlug);
+
+  return {
+    oidcProviderId,
+    oidcRedirectUrl: buildWorkspaceOIDCRedirectUrl(runtime.publicBaseUrl),
+    samlAcsUrl: buildWorkspaceSamlAcsUrl(runtime.publicBaseUrl, samlProviderId),
+    samlEntityId: buildWorkspaceSamlEntityId(runtime.publicBaseUrl, samlProviderId),
+    samlMetadataUrl: buildWorkspaceSamlMetadataUrl(runtime.publicBaseUrl, samlProviderId),
+    samlProviderId,
+  };
+}
+
+/**
+ * Registers a Google Workspace OIDC provider for the active team workspace.
+ */
+export const registerWorkspaceGoogleOIDCProvider = createServerFn({ method: "POST" })
+  .inputValidator(googleWorkspaceOIDCProviderSchema)
+  .handler(async ({ data }) => {
+    const organizationRequestContext = await loadOrganizationRequestContext();
+    const { auth, headers, session } = organizationRequestContext;
+    const activeWorkspace = requireManagedTeamWorkspace(session);
+    const registrationDefaults = buildWorkspaceSSORegistrationDefaults({
+      providerId: data.providerId,
+      workspaceSlug: activeWorkspace.slug,
+    });
+    const registrationResult = await auth.api.registerSSOProvider({
+      body: {
+        domain: data.domain,
+        issuer: "https://accounts.google.com",
+        oidcConfig: {
+          clientId: data.clientId,
+          clientSecret: data.clientSecret,
+          scopes: ["openid", "email", "profile"],
+        },
+        organizationId: activeWorkspace.id,
+        providerId: registrationDefaults.oidcProviderId,
+      },
+      headers,
+    });
+
+    if (data.setAsPrimary) {
+      await saveWorkspacePrimarySSOProvider(registrationResult.providerId);
+    }
+
+    return {
+      domainVerificationToken: registrationResult.domainVerificationToken,
+      providerId: registrationResult.providerId,
+      redirectUrl: registrationResult.redirectURI,
+      samlAcsUrl: registrationDefaults.samlAcsUrl,
+      samlEntityId: registrationDefaults.samlEntityId,
+      samlMetadataUrl: registrationDefaults.samlMetadataUrl,
+    } satisfies AtlasWorkspaceSSORegistrationResult;
+  });
+
+/**
+ * Registers a Google Workspace SAML provider for the active team workspace.
+ */
+export const registerWorkspaceSAMLProvider = createServerFn({ method: "POST" })
+  .inputValidator(googleWorkspaceSAMLProviderSchema)
+  .handler(async ({ data }) => {
+    const organizationRequestContext = await loadOrganizationRequestContext();
+    const { auth, headers, session } = organizationRequestContext;
+    const activeWorkspace = requireManagedTeamWorkspace(session);
+    const registrationDefaults = buildWorkspaceSSORegistrationDefaults({
+      providerId: data.providerId,
+      workspaceSlug: activeWorkspace.slug,
+    });
+    const registrationResult = await auth.api.registerSSOProvider({
+      body: {
+        domain: data.domain,
+        issuer: data.issuer,
+        organizationId: activeWorkspace.id,
+        providerId: registrationDefaults.samlProviderId,
+        samlConfig: {
+          audience: registrationDefaults.samlEntityId,
+          authnRequestsSigned: false,
+          callbackUrl: registrationDefaults.samlAcsUrl,
+          cert: data.certificate,
+          entryPoint: data.entryPoint,
+          identifierFormat: "urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress",
+          spMetadata: {
+            entityID: registrationDefaults.samlEntityId,
+          },
+          wantAssertionsSigned: true,
+        },
+      },
+      headers,
+    });
+
+    if (data.setAsPrimary) {
+      await saveWorkspacePrimarySSOProvider(registrationResult.providerId);
+    }
+
+    return {
+      domainVerificationToken: registrationResult.domainVerificationToken,
+      providerId: registrationResult.providerId,
+      redirectUrl: registrationResult.redirectURI,
+      samlAcsUrl: registrationDefaults.samlAcsUrl,
+      samlEntityId: registrationDefaults.samlEntityId,
+      samlMetadataUrl: registrationDefaults.samlMetadataUrl,
+    } satisfies AtlasWorkspaceSSORegistrationResult;
+  });
+
+/**
+ * Marks one configured provider as the workspace's primary enterprise entry
+ * point.
+ */
+export const setWorkspacePrimarySSOProvider = createServerFn({ method: "POST" })
+  .inputValidator(workspacePrimaryProviderSchema)
+  .handler(async ({ data }) => {
+    await saveWorkspacePrimarySSOProvider(data.providerId);
+
+    return { ok: true };
+  });
+
+/**
+ * Requests a fresh Better Auth domain-verification token for one provider.
+ */
+export const requestWorkspaceSSODomainVerification = createServerFn({ method: "POST" })
+  .inputValidator(workspaceProviderIdSchema)
+  .handler(async ({ data }) => {
+    const organizationRequestContext = await loadOrganizationRequestContext();
+    const { auth, headers, session } = organizationRequestContext;
+
+    requireManagedTeamWorkspace(session);
+
+    const verificationResult = await auth.api.requestDomainVerification({
+      body: {
+        providerId: data.providerId,
+      },
+      headers,
+    });
+
+    return verificationResult;
+  });
+
+/**
+ * Submits a Better Auth domain-verification check for one provider.
+ */
+export const verifyWorkspaceSSODomain = createServerFn({ method: "POST" })
+  .inputValidator(workspaceProviderIdSchema)
+  .handler(async ({ data }) => {
+    const organizationRequestContext = await loadOrganizationRequestContext();
+    const { auth, headers, session } = organizationRequestContext;
+
+    requireManagedTeamWorkspace(session);
+
+    await auth.api.verifyDomain({
+      body: {
+        providerId: data.providerId,
+      },
+      headers,
+    });
+
+    return { ok: true };
+  });
+
+/**
+ * Deletes one SSO provider from the active team workspace.
+ */
+export const deleteWorkspaceSSOProvider = createServerFn({ method: "POST" })
+  .inputValidator(workspaceProviderIdSchema)
+  .handler(async ({ data }) => {
+    const organizationRequestContext = await loadOrganizationRequestContext();
+    const { auth, headers, session } = organizationRequestContext;
+    const activeWorkspace = requireManagedTeamWorkspace(session);
+
+    await auth.api.deleteSSOProvider({
+      body: {
+        providerId: data.providerId,
+      },
+      headers,
+    });
+
+    const workspaceIdentity = loadStoredWorkspaceIdentity(activeWorkspace.id);
+    if (workspaceIdentity?.primaryProviderId === data.providerId) {
+      await saveWorkspacePrimarySSOProvider(null);
+    }
+
+    return { ok: true };
+  });
+
+/**
+ * Resolves whether Atlas should route a sign-in attempt through enterprise SSO.
+ *
+ * The Better Auth provider-management endpoints require a session, so Atlas
+ * reads the internal auth tables directly for this public pre-auth routing
+ * decision.
+ */
+export const resolveWorkspaceSSOSignIn = createServerFn({ method: "POST" })
+  .inputValidator(publicSSOResolutionSchema)
+  .handler(async ({ data }) => {
+    const emailDomain = data.email.split("@")[1]?.trim().toLowerCase() ?? "";
+    const authPromise = ensureAuthReady();
+    const auth = await authPromise;
+    const headers = getBrowserSessionHeaders();
+    const storedProviders = listStoredWorkspaceSSOProviders();
+
+    if (data.invitationId) {
+      const invitation = await auth.api.getInvitation({
+        headers,
+        query: {
+          id: data.invitationId,
+        },
+      });
+
+      if (invitation?.organizationId) {
+        const workspaceIdentity = loadStoredWorkspaceIdentity(invitation.organizationId);
+        const workspaceProviders = storedProviders.filter(
+          (provider) => provider.organizationId === invitation.organizationId,
+        );
+
+        if (workspaceIdentity) {
+          const signInResolution = resolveStoredWorkspaceSSOSignIn({
+            emailDomain,
+            workspaceIdentity,
+            workspaceProviders,
+          });
+
+          if (signInResolution) {
+            return signInResolution;
+          }
+        }
+      }
+    }
+
+    const providersByWorkspace = groupStoredProvidersByWorkspace({
+      emailDomain,
+      storedProviders,
+    });
+
+    if (providersByWorkspace.size !== 1) {
+      return null;
+    }
+
+    const groupedWorkspaces = [...providersByWorkspace.entries()];
+    const [organizationId, workspaceProviders] = groupedWorkspaces[0] ?? [];
+
+    if (!organizationId || !workspaceProviders) {
+      return null;
+    }
+
+    const workspaceIdentity = loadStoredWorkspaceIdentity(organizationId);
+    if (!workspaceIdentity) {
+      return null;
+    }
+
+    return resolveStoredWorkspaceSSOSignIn({
+      emailDomain,
+      workspaceIdentity,
+      workspaceProviders,
+    });
+  });

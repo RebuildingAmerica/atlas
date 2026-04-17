@@ -35,10 +35,10 @@ function NavLink({ to, label }: NavLinkProps) {
   return (
     <Link
       to={to}
-      className="type-label-large rounded-lg px-3 py-1.5 text-[var(--ink-muted)] no-underline hover:bg-[var(--surface-container)] hover:text-[var(--ink-strong)]"
+      className="type-label-large text-ink-muted hover:bg-surface-container hover:text-ink-strong rounded-lg px-3 py-1.5 no-underline"
       activeProps={{
         className:
-          "type-label-large rounded-lg px-3 py-1.5 no-underline bg-[var(--surface-container-high)] text-[var(--ink-strong)]",
+          "type-label-large rounded-lg px-3 py-1.5 no-underline bg-surface-container-high text-ink-strong",
       }}
     >
       {label}
@@ -50,7 +50,7 @@ function NavLink({ to, label }: NavLinkProps) {
  * Renders the session-aware auth link.
  *
  * Before hydration we always show "Sign in" so the server-rendered HTML
- * matches the first client render. After hydration we switch to "Account"
+ * matches the first client render. After hydration we switch to "Workspace"
  * when a session is present.
  */
 function AuthNavLink() {
@@ -60,7 +60,7 @@ function AuthNavLink() {
   const isAuthenticated = hydrated && session != null;
 
   if (isAuthenticated) {
-    return <NavLink to="/account" label="Account" />;
+    return <NavLink to="/discovery" label="Workspace" />;
   }
 
   return <NavLink to="/sign-in" label="Sign in" />;
@@ -76,15 +76,15 @@ function AuthNavLink() {
 export function PublicFloatingNav() {
   return (
     <nav
-      className="fixed top-4 right-4 left-4 z-30 mx-auto flex max-w-3xl items-center justify-between rounded-2xl border border-[var(--border)] px-4 py-2.5 shadow-sm backdrop-blur-md md:px-5 md:py-3"
+      className="border-border mx-auto flex max-w-3xl items-center justify-between rounded-2xl border px-4 py-2.5 shadow-sm backdrop-blur-md md:px-5 md:py-3"
       style={{ backgroundColor: "rgba(248, 241, 230, 0.8)" }}
     >
       {/* Brand */}
       <Link to="/" className="flex items-center gap-2.5 no-underline">
-        <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-[var(--accent)] text-white">
+        <div className="bg-accent flex h-7 w-7 items-center justify-center rounded-xl text-white">
           <span className="type-label-medium leading-none">A</span>
         </div>
-        <span className="type-title-medium text-[var(--ink-strong)]">Atlas</span>
+        <span className="type-title-medium text-ink-strong">Atlas</span>
       </Link>
 
       {/* Links */}

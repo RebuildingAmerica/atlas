@@ -26,13 +26,13 @@ export function AuthFlowLayout({ children }: AuthFlowLayoutProps) {
       </div>
 
       {/* Form content */}
-      <div className="flex flex-1 flex-col bg-[var(--surface)] lg:w-3/5">
+      <div className="bg-surface flex flex-1 flex-col lg:w-3/5">
         <div className="flex flex-1 items-center justify-center px-6 py-12 lg:px-12">
           <div className="w-full max-w-xl">{children}</div>
         </div>
 
         <div className="px-6 pb-8 text-center">
-          <Link to="/" className="type-body-medium text-[var(--ink-muted)] hover:text-[var(--ink)]">
+          <Link to="/" className="type-body-medium text-ink-muted hover:text-ink">
             Back to Atlas
           </Link>
         </div>
