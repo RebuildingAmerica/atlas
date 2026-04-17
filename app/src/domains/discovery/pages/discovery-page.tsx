@@ -1,12 +1,278 @@
+import { Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
+import { useAtlasSession } from "@/domains/access";
 import { useTaxonomy } from "@/domains/catalog/hooks/use-taxonomy";
 import { useDiscoveryRuns, useStartDiscovery } from "@/domains/discovery/hooks/use-discovery";
 import { Button } from "@/platform/ui/button";
+import type { DiscoveryRun } from "@/types";
 
 /**
- * Renders the operator-facing discovery workspace.
+ * Discovery run shape used by the UI while older responses may still include
+ * an optional `error_message`.
+ */
+interface DiscoveryRunRecord extends DiscoveryRun {
+  error_message?: string | null;
+}
+
+/**
+ * Props for the discovery hero section.
+ */
+interface DiscoveryHeroProps {
+  description: string;
+  eyebrow: string;
+  title: string;
+  workspaceBadge: string | null;
+}
+
+/**
+ * Props for the discovery setup notice.
+ */
+interface DiscoverySetupNoticeProps {
+  body: string;
+  cta: string;
+  title: string;
+}
+
+/**
+ * Props for the discovery run form.
+ */
+interface DiscoveryRunFormProps {
+  issueAreas: {
+    description?: string | null;
+    name: string;
+    slug: string;
+  }[];
+  isPending: boolean;
+  isTaxonomyLoading: boolean;
+  locationQuery: string;
+  selectedIssues: string[];
+  startError: boolean;
+  state: string;
+  onLocationChange: (value: string) => void;
+  onStateChange: (value: string) => void;
+  onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
+  onToggleIssue: (slug: string) => void;
+}
+
+/**
+ * Props for the recent-runs panel.
+ */
+interface DiscoveryRunsPanelProps {
+  isLoading: boolean;
+  runs: DiscoveryRunRecord[];
+}
+
+function DiscoveryHero({ description, eyebrow, title, workspaceBadge }: DiscoveryHeroProps) {
+  return (
+    <section className="space-y-3">
+      <p className="type-label-medium text-ink-muted">{eyebrow}</p>
+      <div className="flex flex-wrap items-center gap-3">
+        <h1 className="type-headline-large text-ink-strong">{title}</h1>
+        {workspaceBadge ? (
+          <span className="type-label-large border-border text-ink-soft rounded-full border px-3 py-1">
+            {workspaceBadge}
+          </span>
+        ) : null}
+      </div>
+      <p className="type-body-large text-ink-soft max-w-3xl">{description}</p>
+    </section>
+  );
+}
+
+function DiscoverySetupNotice({ body, cta, title }: DiscoverySetupNoticeProps) {
+  return (
+    <section className="border-border-strong bg-surface rounded-[1.5rem] border p-5">
+      <p className="type-title-medium text-ink-strong">{title}</p>
+      <p className="type-body-medium text-ink-soft mt-2">{body}</p>
+      <div className="mt-4">
+        <Link className="type-label-large text-ink-strong underline" to="/organization">
+          {cta}
+        </Link>
+      </div>
+    </section>
+  );
+}
+
+function DiscoveryRunForm({
+  issueAreas,
+  isPending,
+  isTaxonomyLoading,
+  locationQuery,
+  onLocationChange,
+  onStateChange,
+  onSubmit,
+  onToggleIssue,
+  selectedIssues,
+  startError,
+  state,
+}: DiscoveryRunFormProps) {
+  return (
+    <form
+      onSubmit={onSubmit}
+      className="border-border-strong bg-surface space-y-6 rounded-[1.5rem] border p-6"
+    >
+      <div className="space-y-2">
+        <h2 className="type-title-large text-ink-strong">Start a discovery run</h2>
+        <p className="type-body-medium text-ink-muted">
+          Enter a location, state, and at least one issue area.
+        </p>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_8rem]">
+        <label className="space-y-2">
+          <span className="type-label-large text-ink-strong">Location</span>
+          <input
+            value={locationQuery}
+            onChange={(event) => {
+              onLocationChange(event.target.value);
+            }}
+            placeholder="Kansas City, MO"
+            className="type-body-large border-border text-ink-strong w-full rounded-xl border bg-white px-4 py-3 outline-none"
+          />
+        </label>
+
+        <label className="space-y-2">
+          <span className="type-label-large text-ink-strong">State</span>
+          <input
+            value={state}
+            onChange={(event) => {
+              onStateChange(event.target.value);
+            }}
+            placeholder="MO"
+            className="type-body-large border-border text-ink-strong w-full rounded-xl border bg-white px-4 py-3 outline-none"
+          />
+        </label>
+      </div>
+
+      <div className="space-y-3">
+        <div className="flex items-center justify-between gap-4">
+          <p className="type-label-large text-ink-strong">Issue areas</p>
+          <p className="type-body-medium text-ink-muted">{selectedIssues.length} selected</p>
+        </div>
+
+        <div className="border-border max-h-72 overflow-y-auto rounded-xl border bg-white p-3">
+          {isTaxonomyLoading ? (
+            <p className="type-body-medium text-ink-muted">Loading issue areas...</p>
+          ) : issueAreas.length > 0 ? (
+            <div className="grid gap-2 sm:grid-cols-2">
+              {issueAreas.map((issue) => (
+                <label
+                  key={issue.slug}
+                  className="hover:border-border flex items-start gap-3 rounded-lg border border-transparent px-2 py-2"
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedIssues.includes(issue.slug)}
+                    onChange={() => {
+                      onToggleIssue(issue.slug);
+                    }}
+                    className="mt-1"
+                  />
+                  <span>
+                    <span className="type-title-small text-ink-strong block">{issue.name}</span>
+                    <span className="type-body-small text-ink-muted mt-1 block">
+                      {issue.description}
+                    </span>
+                  </span>
+                </label>
+              ))}
+            </div>
+          ) : (
+            <p className="type-body-medium text-ink-muted">
+              Issue areas are unavailable right now.
+            </p>
+          )}
+        </div>
+      </div>
+
+      {startError ? (
+        <p className="type-body-medium text-red-700">
+          Could not start the run. Check the fields and try again.
+        </p>
+      ) : null}
+
+      <div className="flex items-center gap-3">
+        <Button
+          type="submit"
+          disabled={
+            isPending ||
+            !locationQuery.trim() ||
+            state.trim().length !== 2 ||
+            selectedIssues.length === 0
+          }
+        >
+          {isPending ? "Starting..." : "Start run"}
+        </Button>
+        <p className="type-body-medium text-ink-muted">Runs are added to the list below.</p>
+      </div>
+    </form>
+  );
+}
+
+function DiscoveryRunsPanel({ isLoading, runs }: DiscoveryRunsPanelProps) {
+  return (
+    <section className="border-border-strong bg-surface space-y-4 rounded-[1.5rem] border p-6">
+      <div className="space-y-2">
+        <h2 className="type-title-large text-ink-strong">Recent runs</h2>
+        <p className="type-body-medium text-ink-muted">
+          The latest discovery runs and their current status.
+        </p>
+      </div>
+
+      {isLoading ? (
+        <p className="type-body-medium text-ink-muted">Loading runs...</p>
+      ) : runs.length > 0 ? (
+        <div className="space-y-3">
+          {runs.map((run) => (
+            <article
+              key={run.id}
+              className="border-border space-y-3 rounded-xl border bg-white p-4"
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="type-title-small text-ink-strong">{run.location_query}</p>
+                  <p className="type-body-small text-ink-muted mt-1">
+                    {new Date(run.started_at).toLocaleString()} · {run.state}
+                  </p>
+                </div>
+                <span className="type-label-large border-border text-ink-soft rounded-full border px-3 py-1">
+                  {run.status}
+                </span>
+              </div>
+
+              <div className="grid gap-2 sm:grid-cols-2">
+                <p className="type-body-medium text-ink-soft">
+                  {run.issue_areas.length} issue areas
+                </p>
+                <p className="type-body-medium text-ink-soft">
+                  {run.entries_extracted} entries extracted
+                </p>
+                <p className="type-body-medium text-ink-soft">
+                  {run.sources_fetched} sources fetched
+                </p>
+                <p className="type-body-medium text-ink-soft">
+                  {run.entries_after_dedup} entries after dedup
+                </p>
+              </div>
+
+              {run.error_message ? (
+                <p className="type-body-small text-red-700">{run.error_message}</p>
+              ) : null}
+            </article>
+          ))}
+        </div>
+      ) : (
+        <p className="type-body-medium text-ink-muted">No discovery runs yet.</p>
+      )}
+    </section>
+  );
+}
+
+/**
+ * Renders the workspace discovery surface.
  */
 export function DiscoveryPage() {
+  const atlasSession = useAtlasSession();
   const runsQuery = useDiscoveryRuns();
   const startDiscovery = useStartDiscovery();
   const taxonomyQuery = useTaxonomy();
@@ -22,12 +288,21 @@ export function DiscoveryPage() {
       .sort((left, right) => left.name.localeCompare(right.name));
   }, [taxonomyQuery.data]);
 
+  const activeWorkspace = atlasSession.data?.workspace.activeOrganization ?? null;
+  const canUseTeamFeatures = atlasSession.data?.workspace.capabilities.canUseTeamFeatures ?? false;
+  const needsWorkspace = atlasSession.data?.workspace.onboarding.needsWorkspace ?? false;
+  const hasPendingInvitations =
+    atlasSession.data?.workspace.onboarding.hasPendingInvitations ?? false;
   const latestRuns = runsQuery.data?.items ?? [];
 
   const handleToggleIssue = (slug: string) => {
     setSelectedIssues((current) =>
       current.includes(slug) ? current.filter((value) => value !== slug) : [...current, slug],
     );
+  };
+
+  const handleStateChange = (value: string) => {
+    setState(value.toUpperCase().slice(0, 2));
   };
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
@@ -39,9 +314,9 @@ export function DiscoveryPage() {
 
     startDiscovery.mutate(
       {
+        issue_areas: selectedIssues,
         location_query: locationQuery.trim(),
         state: state.trim().toUpperCase(),
-        issue_areas: selectedIssues,
       },
       {
         onSuccess: () => {
@@ -53,178 +328,58 @@ export function DiscoveryPage() {
     );
   };
 
+  const heroEyebrow = canUseTeamFeatures ? "Team discovery" : "Discovery";
+  const heroTitle =
+    canUseTeamFeatures && activeWorkspace ? `${activeWorkspace.name} discovery` : "Discovery";
+  const heroDescription = needsWorkspace
+    ? "You can start discovery immediately, but creating a workspace now keeps the rest of the product organized around the right context."
+    : canUseTeamFeatures && activeWorkspace
+      ? `Start runs for ${activeWorkspace.name} and keep the team aligned on what Atlas is actively researching.`
+      : "Start discovery runs and check recent run status in one place.";
+  const workspaceBadge = activeWorkspace
+    ? `${activeWorkspace.workspaceType} · ${activeWorkspace.role}`
+    : null;
+
   return (
     <div className="space-y-10">
-      <section className="space-y-3">
-        <h1 className="type-headline-large text-[var(--ink-strong)]">Admin</h1>
-        <p className="type-body-large max-w-3xl text-[var(--ink-soft)]">
-          Start discovery runs and check recent run status in one place.
-        </p>
-      </section>
+      <DiscoveryHero
+        description={heroDescription}
+        eyebrow={heroEyebrow}
+        title={heroTitle}
+        workspaceBadge={workspaceBadge}
+      />
+
+      {needsWorkspace ? (
+        <DiscoverySetupNotice
+          title="Create your workspace before Atlas sprawls"
+          body="Individual workspaces stay intentionally quiet, while team workspaces unlock collaboration only where it belongs."
+          cta="Create a workspace"
+        />
+      ) : null}
+
+      {hasPendingInvitations ? (
+        <DiscoverySetupNotice
+          title="You have workspace invitations waiting"
+          body="Review them before you decide which workspace Atlas should use as your active context."
+          cta="Review invitations"
+        />
+      ) : null}
 
       <section className="grid gap-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
-        <form
+        <DiscoveryRunForm
+          issueAreas={issueAreas}
+          isPending={startDiscovery.isPending}
+          isTaxonomyLoading={taxonomyQuery.isLoading}
+          locationQuery={locationQuery}
+          selectedIssues={selectedIssues}
+          startError={Boolean(startDiscovery.error)}
+          state={state}
+          onLocationChange={setLocationQuery}
+          onStateChange={handleStateChange}
           onSubmit={handleSubmit}
-          className="space-y-6 rounded-[1.5rem] border border-[var(--border-strong)] bg-[var(--surface)] p-6"
-        >
-          <div className="space-y-2">
-            <h2 className="type-title-large text-[var(--ink-strong)]">Start a discovery run</h2>
-            <p className="type-body-medium text-[var(--ink-muted)]">
-              Enter a location, state, and at least one issue area.
-            </p>
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_8rem]">
-            <label className="space-y-2">
-              <span className="type-label-large text-[var(--ink-strong)]">Location</span>
-              <input
-                value={locationQuery}
-                onChange={(event) => {
-                  setLocationQuery(event.target.value);
-                }}
-                placeholder="Kansas City, MO"
-                className="type-body-large w-full rounded-xl border border-[var(--border)] bg-white px-4 py-3 text-[var(--ink-strong)] outline-none"
-              />
-            </label>
-
-            <label className="space-y-2">
-              <span className="type-label-large text-[var(--ink-strong)]">State</span>
-              <input
-                value={state}
-                onChange={(event) => {
-                  setState(event.target.value.toUpperCase().slice(0, 2));
-                }}
-                placeholder="MO"
-                className="type-body-large w-full rounded-xl border border-[var(--border)] bg-white px-4 py-3 text-[var(--ink-strong)] outline-none"
-              />
-            </label>
-          </div>
-
-          <div className="space-y-3">
-            <div className="flex items-center justify-between gap-4">
-              <p className="type-label-large text-[var(--ink-strong)]">Issue areas</p>
-              <p className="type-body-medium text-[var(--ink-muted)]">
-                {selectedIssues.length} selected
-              </p>
-            </div>
-
-            <div className="max-h-72 overflow-y-auto rounded-xl border border-[var(--border)] bg-white p-3">
-              {taxonomyQuery.isLoading ? (
-                <p className="type-body-medium text-[var(--ink-muted)]">Loading issue areas...</p>
-              ) : issueAreas.length > 0 ? (
-                <div className="grid gap-2 sm:grid-cols-2">
-                  {issueAreas.map((issue) => (
-                    <label
-                      key={issue.slug}
-                      className="flex items-start gap-3 rounded-lg border border-transparent px-2 py-2 hover:border-[var(--border)]"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={selectedIssues.includes(issue.slug)}
-                        onChange={() => {
-                          handleToggleIssue(issue.slug);
-                        }}
-                        className="mt-1"
-                      />
-                      <span>
-                        <span className="type-title-small block text-[var(--ink-strong)]">
-                          {issue.name}
-                        </span>
-                        <span className="type-body-small mt-1 block text-[var(--ink-muted)]">
-                          {issue.description}
-                        </span>
-                      </span>
-                    </label>
-                  ))}
-                </div>
-              ) : (
-                <p className="type-body-medium text-[var(--ink-muted)]">
-                  Issue areas are unavailable right now.
-                </p>
-              )}
-            </div>
-          </div>
-
-          {startDiscovery.error ? (
-            <p className="type-body-medium text-red-700">
-              Could not start the run. Check the fields and try again.
-            </p>
-          ) : null}
-
-          <div className="flex items-center gap-3">
-            <Button
-              type="submit"
-              disabled={
-                startDiscovery.isPending ||
-                !locationQuery.trim() ||
-                state.trim().length !== 2 ||
-                selectedIssues.length === 0
-              }
-            >
-              {startDiscovery.isPending ? "Starting..." : "Start run"}
-            </Button>
-            <p className="type-body-medium text-[var(--ink-muted)]">
-              Runs are added to the list below.
-            </p>
-          </div>
-        </form>
-
-        <section className="space-y-4 rounded-[1.5rem] border border-[var(--border-strong)] bg-[var(--surface)] p-6">
-          <div className="space-y-2">
-            <h2 className="type-title-large text-[var(--ink-strong)]">Recent runs</h2>
-            <p className="type-body-medium text-[var(--ink-muted)]">
-              The latest discovery runs and their current status.
-            </p>
-          </div>
-
-          {runsQuery.isLoading ? (
-            <p className="type-body-medium text-[var(--ink-muted)]">Loading runs...</p>
-          ) : latestRuns.length > 0 ? (
-            <div className="space-y-3">
-              {latestRuns.map((run) => (
-                <article
-                  key={run.id}
-                  className="space-y-3 rounded-xl border border-[var(--border)] bg-white p-4"
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <p className="type-title-small text-[var(--ink-strong)]">
-                        {run.location_query}
-                      </p>
-                      <p className="type-body-small mt-1 text-[var(--ink-muted)]">
-                        {new Date(run.started_at).toLocaleString()} · {run.state}
-                      </p>
-                    </div>
-                    <span className="type-label-large rounded-full border border-[var(--border)] px-3 py-1 text-[var(--ink-soft)]">
-                      {run.status}
-                    </span>
-                  </div>
-
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    <p className="type-body-medium text-[var(--ink-soft)]">
-                      {run.issue_areas.length} issue areas
-                    </p>
-                    <p className="type-body-medium text-[var(--ink-soft)]">
-                      {run.entries_extracted} entries extracted
-                    </p>
-                    <p className="type-body-medium text-[var(--ink-soft)]">
-                      {run.sources_fetched} sources fetched
-                    </p>
-                    <p className="type-body-medium text-[var(--ink-soft)]">
-                      {run.entries_after_dedup} entries after dedup
-                    </p>
-                  </div>
-
-                  {run.error_message ? (
-                    <p className="type-body-small text-red-700">{run.error_message}</p>
-                  ) : null}
-                </article>
-              ))}
-            </div>
-          ) : (
-            <p className="type-body-medium text-[var(--ink-muted)]">No discovery runs yet.</p>
-          )}
-        </section>
+          onToggleIssue={handleToggleIssue}
+        />
+        <DiscoveryRunsPanel isLoading={runsQuery.isLoading} runs={latestRuns} />
       </section>
     </div>
   );

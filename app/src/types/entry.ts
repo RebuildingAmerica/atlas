@@ -2,12 +2,7 @@ import type { Source, SourceType } from "./source";
 
 export type EntryType = "person" | "organization" | "initiative" | "campaign" | "event";
 export type GeoSpecificity = "local" | "regional" | "statewide" | "national";
-export type ContactStatus =
-  | "not_contacted"
-  | "contacted"
-  | "responded"
-  | "confirmed"
-  | "declined";
+export type ContactStatus = "not_contacted" | "contacted" | "responded" | "confirmed" | "declined";
 export type Priority = "high" | "medium" | "low";
 
 export interface Entry {
@@ -74,6 +69,10 @@ export interface EntryFilterParams {
   issue_areas?: string[];
   entry_types?: EntryType[];
   source_types?: SourceType[];
+  /**
+   * Optional affiliated-organization filter used by entry list API calls.
+   */
+  affiliated_org_id?: string;
   limit?: number;
   offset?: number;
 }

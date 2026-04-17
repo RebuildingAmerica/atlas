@@ -21,7 +21,11 @@ export function AccountSetupPage({ redirectTo }: AccountSetupPageProps) {
   const queryClient = useQueryClient();
   const atlasSession = useAtlasSession();
   const session = atlasSession.data;
-  const destination = redirectTo || "/account";
+  const destination =
+    session?.workspace.onboarding.needsWorkspace ||
+    session?.workspace.onboarding.hasPendingInvitations
+      ? "/organization"
+      : redirectTo || "/account";
 
   const refreshReadiness = async () => {
     await queryClient.invalidateQueries({ queryKey: atlasSessionQueryKey });
@@ -87,8 +91,8 @@ export function AccountSetupPage({ redirectTo }: AccountSetupPageProps) {
   if (atlasSession.isPending || !session) {
     return (
       <div className="space-y-3">
-        <p className="type-title-large text-[var(--ink-strong)]">Loading account setup...</p>
-        <p className="type-body-medium text-[var(--ink-soft)]">
+        <p className="type-title-large text-ink-strong">Loading account setup...</p>
+        <p className="type-body-medium text-ink-soft">
           Checking your email verification and passkey status.
         </p>
       </div>
@@ -98,11 +102,9 @@ export function AccountSetupPage({ redirectTo }: AccountSetupPageProps) {
   return (
     <div className="space-y-8">
       <div className="space-y-2">
-        <p className="type-label-medium text-[var(--ink-muted)]">Account setup</p>
-        <h1 className="type-display-small text-[var(--ink-strong)]">
-          Finish securing your Atlas account
-        </h1>
-        <p className="type-body-large text-[var(--ink-soft)]">
+        <p className="type-label-medium text-ink-muted">Account setup</p>
+        <h1 className="type-display-small text-ink-strong">Finish securing your Atlas account</h1>
+        <p className="type-body-large text-ink-soft">
           Atlas only enables account-scoped actions after your email is verified and at least one
           passkey is registered.
         </p>
@@ -113,18 +115,18 @@ export function AccountSetupPage({ redirectTo }: AccountSetupPageProps) {
           {checklist.map((item) => (
             <article
               key={item.title}
-              className="rounded-[1.4rem] border border-[var(--border)] bg-white/70 p-4"
+              className="border-border rounded-[1.4rem] border bg-white/70 p-4"
             >
               <div className="flex items-start justify-between gap-4">
                 <div className="space-y-1">
-                  <p className="type-title-small text-[var(--ink-strong)]">{item.title}</p>
-                  <p className="type-body-medium text-[var(--ink-soft)]">{item.description}</p>
+                  <p className="type-title-small text-ink-strong">{item.title}</p>
+                  <p className="type-body-medium text-ink-soft">{item.description}</p>
                 </div>
                 <span
                   className={
                     item.complete
                       ? "inline-flex items-center gap-1 rounded-full bg-emerald-50 px-3 py-1 text-emerald-700"
-                      : "inline-flex items-center gap-1 rounded-full border border-[var(--border)] px-3 py-1 text-[var(--ink-soft)]"
+                      : "border-border text-ink-soft inline-flex items-center gap-1 rounded-full border px-3 py-1"
                   }
                 >
                   <CheckCircle2 className="h-4 w-4" />
@@ -136,9 +138,9 @@ export function AccountSetupPage({ redirectTo }: AccountSetupPageProps) {
         </div>
 
         {!session?.user.emailVerified ? (
-          <div className="rounded-[1.4rem] border border-[var(--border)] bg-[var(--surface-container-lowest)] p-5">
-            <p className="type-title-small text-[var(--ink-strong)]">Verify your email</p>
-            <p className="type-body-medium mt-2 text-[var(--ink-soft)]">
+          <div className="border-border bg-surface-container-lowest rounded-[1.4rem] border p-5">
+            <p className="type-title-small text-ink-strong">Verify your email</p>
+            <p className="type-body-medium text-ink-soft mt-2">
               We&apos;ll send a verification link to {session?.user.email}. After you open it, come
               back here and refresh your status.
             </p>
@@ -157,7 +159,7 @@ export function AccountSetupPage({ redirectTo }: AccountSetupPageProps) {
                 </span>
               </Button>
               {sendVerificationMutation.isSuccess ? (
-                <p className="type-body-medium text-[var(--ink-soft)]">Verification email sent.</p>
+                <p className="type-body-medium text-ink-soft">Verification email sent.</p>
               ) : null}
               {sendVerificationMutation.isError ? (
                 <p className="type-body-medium text-red-700">
@@ -169,9 +171,9 @@ export function AccountSetupPage({ redirectTo }: AccountSetupPageProps) {
         ) : null}
 
         {!session?.hasPasskey ? (
-          <div className="rounded-[1.4rem] border border-[var(--border)] bg-[var(--surface-container-lowest)] p-5">
-            <p className="type-title-small text-[var(--ink-strong)]">Add a passkey</p>
-            <p className="type-body-medium mt-2 text-[var(--ink-soft)]">
+          <div className="border-border bg-surface-container-lowest rounded-[1.4rem] border p-5">
+            <p className="type-title-small text-ink-strong">Add a passkey</p>
+            <p className="type-body-medium text-ink-soft mt-2">
               Register a passkey on this device or with a hardware key. Atlas uses that passkey as
               your required secure second factor.
             </p>
@@ -200,10 +202,10 @@ export function AccountSetupPage({ redirectTo }: AccountSetupPageProps) {
         ) : null}
       </div>
 
-      <div className="space-y-4 rounded-[1.4rem] border border-[var(--border)] bg-[var(--surface-container-lowest)] p-5">
+      <div className="border-border bg-surface-container-lowest space-y-4 rounded-[1.4rem] border p-5">
         <div className="space-y-2">
-          <p className="type-title-medium text-[var(--ink-strong)]">Next step</p>
-          <p className="type-body-medium text-[var(--ink-soft)]">
+          <p className="type-title-medium text-ink-strong">Next step</p>
+          <p className="type-body-medium text-ink-soft">
             Refresh your status after each step. As soon as both checks are complete, Atlas will
             send you on.
           </p>

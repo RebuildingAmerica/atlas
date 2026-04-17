@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, KeyRound, LogOut, Pencil, Plus, Trash2, X } from "lucide-react";
 import { useState } from "react";
+import { Link } from "@tanstack/react-router";
 import { Button } from "@/platform/ui/button";
 import { Input } from "@/platform/ui/input";
 import { API_KEY_SCOPES, type ApiKeyScope } from "../api-key-scopes";
@@ -30,6 +31,40 @@ interface AtlasPasskeyRecord {
 }
 
 /**
+ * Loads passkeys into the account page's local record shape.
+ */
+async function loadAtlasPasskeys(): Promise<AtlasPasskeyRecord[]> {
+  const passkeys = await listPasskeys();
+  return passkeys;
+}
+
+/**
+ * Loads API keys into the account page's local record shape.
+ */
+async function loadAtlasApiKeys(): Promise<AtlasApiKeyRecord[]> {
+  const apiKeys = await listApiKeys();
+  return apiKeys;
+}
+
+/**
+ * Reads the newly created API-key secret from the server response.
+ *
+ * @param result - The API-key creation response.
+ */
+function readCreatedApiKeySecret(result: unknown): string | null {
+  if (!result || typeof result !== "object") {
+    return null;
+  }
+
+  if (!("key" in result)) {
+    return null;
+  }
+
+  const { key } = result;
+  return typeof key === "string" ? key : null;
+}
+
+/**
  * Operator account screen for passkeys and direct API-key management.
  *
  * This page is session-only; API keys are intentionally managed from the
@@ -38,6 +73,15 @@ interface AtlasPasskeyRecord {
 export function AccountPage() {
   const queryClient = useQueryClient();
   const atlasSession = useAtlasSession();
+  const activeWorkspace = atlasSession.data?.workspace.activeOrganization ?? null;
+  const needsWorkspace = atlasSession.data?.workspace.onboarding.needsWorkspace ?? false;
+  const hasPendingInvitations =
+    atlasSession.data?.workspace.onboarding.hasPendingInvitations ?? false;
+  const shouldShowOrganizationLink =
+    atlasSession.data?.workspace.capabilities.canSwitchOrganizations ||
+    activeWorkspace?.workspaceType === "team" ||
+    needsWorkspace ||
+    hasPendingInvitations;
   const [apiKeyName, setApiKeyName] = useState("");
   const [apiKeyScopes, setApiKeyScopes] = useState<ApiKeyScope[]>(["discovery:read"]);
   const [flashMessage, setFlashMessage] = useState<string | null>(null);
@@ -48,7 +92,7 @@ export function AccountPage() {
   const [editingPasskeyName, setEditingPasskeyName] = useState("");
   const passkeysQuery = useQuery<AtlasPasskeyRecord[]>({
     queryKey: PASSKEYS_QUERY_KEY,
-    queryFn: () => listPasskeys() as Promise<AtlasPasskeyRecord[]>,
+    queryFn: loadAtlasPasskeys,
   });
   const deletePasskeyMutation = useMutation({
     mutationFn: (id: string) => deletePasskey({ data: { id } }),
@@ -77,7 +121,7 @@ export function AccountPage() {
   });
   const apiKeysQuery = useQuery<AtlasApiKeyRecord[]>({
     queryKey: API_KEYS_QUERY_KEY,
-    queryFn: () => listApiKeys() as Promise<AtlasApiKeyRecord[]>,
+    queryFn: loadAtlasApiKeys,
   });
 
   const createApiKeyMutation = useMutation({
@@ -86,8 +130,10 @@ export function AccountPage() {
       setErrorMessage(null);
       setApiKeyName("");
       setApiKeyScopes(["discovery:read"]);
-      setApiKeySecret((result as { key?: string } | null)?.key ?? null);
-      setFlashMessage("API key created. Copy it now, because Atlas will only show it once.");
+      setApiKeySecret(readCreatedApiKeySecret(result));
+      setFlashMessage(
+        "API key created. Copy it now, because Atlas will only show it once. Activation can take a few seconds.",
+      );
       await queryClient.invalidateQueries({ queryKey: API_KEYS_QUERY_KEY });
     },
     onError: () => {
@@ -150,11 +196,11 @@ export function AccountPage() {
     <div className="space-y-8 py-2">
       <section className="flex flex-wrap items-start justify-between gap-4">
         <div className="space-y-2">
-          <p className="type-label-medium text-[var(--ink-muted)]">Account</p>
-          <h1 className="type-headline-large text-[var(--ink-strong)]">
+          <p className="type-label-medium text-ink-muted">Account</p>
+          <h1 className="type-headline-large text-ink-strong">
             {atlasSession.data?.user.name?.trim() || "Atlas Operator"}
           </h1>
-          <p className="type-body-large text-[var(--ink-soft)]">{atlasSession.data?.user.email}</p>
+          <p className="type-body-large text-ink-soft">{atlasSession.data?.user.email}</p>
         </div>
         <Button
           variant="secondary"
@@ -170,29 +216,74 @@ export function AccountPage() {
       </section>
 
       {flashMessage ? (
-        <p className="type-body-medium rounded-2xl bg-[var(--surface-container-lowest)] px-4 py-3 text-[var(--ink-strong)]">
+        <p className="type-body-medium bg-surface-container-lowest text-ink-strong rounded-2xl px-4 py-3">
           {flashMessage}
         </p>
       ) : null}
 
       {errorMessage ? (
-        <p className="type-body-medium rounded-2xl border border-[var(--border-strong)] bg-[var(--surface)] px-4 py-3 text-[var(--ink-strong)]">
+        <p className="type-body-medium border-border-strong bg-surface text-ink-strong rounded-2xl border px-4 py-3">
           {errorMessage}
         </p>
       ) : null}
 
       {apiKeySecret ? (
-        <div className="rounded-[1.5rem] border border-[var(--border-strong)] bg-[var(--surface)] p-5">
-          <p className="type-title-small text-[var(--ink-strong)]">New API key</p>
-          <p className="type-body-medium mt-2 break-all text-[var(--ink-soft)]">{apiKeySecret}</p>
+        <div className="border-border-strong bg-surface rounded-[1.5rem] border p-5">
+          <p className="type-title-small text-ink-strong">New API key</p>
+          <p className="type-body-medium text-ink-soft mt-2 break-all">{apiKeySecret}</p>
+        </div>
+      ) : null}
+
+      {needsWorkspace ? (
+        <div className="border-border-strong bg-surface rounded-[1.5rem] border p-5">
+          <p className="type-title-small text-ink-strong">Workspace setup is waiting</p>
+          <p className="type-body-medium text-ink-soft mt-2">
+            Finish creating your first workspace so Atlas can keep account security separate from
+            workspace context.
+          </p>
+          <div className="mt-4">
+            <Link className="type-label-large text-ink-strong underline" to="/organization">
+              Open workspace setup
+            </Link>
+          </div>
+        </div>
+      ) : null}
+
+      {hasPendingInvitations ? (
+        <div className="border-border-strong bg-surface rounded-[1.5rem] border p-5">
+          <p className="type-title-small text-ink-strong">Workspace invitations waiting</p>
+          <p className="type-body-medium text-ink-soft mt-2">
+            Review your pending invitations before Atlas decides which workspace should open next.
+          </p>
+          <div className="mt-4">
+            <Link className="type-label-large text-ink-strong underline" to="/organization">
+              Review invitations
+            </Link>
+          </div>
+        </div>
+      ) : null}
+
+      {activeWorkspace ? (
+        <div className="border-border bg-surface-container-lowest rounded-[1.5rem] border p-5">
+          <p className="type-title-small text-ink-strong">Current workspace</p>
+          <p className="type-body-medium text-ink-soft mt-2">
+            {activeWorkspace.name} · {activeWorkspace.workspaceType} · {activeWorkspace.role}
+          </p>
+          {shouldShowOrganizationLink ? (
+            <div className="mt-4">
+              <Link className="type-label-large text-ink-strong underline" to="/organization">
+                Manage workspace
+              </Link>
+            </div>
+          ) : null}
         </div>
       ) : null}
 
       <section className="grid gap-6 lg:grid-cols-2">
-        <div className="space-y-4 rounded-[1.5rem] border border-[var(--border-strong)] bg-[var(--surface)] p-6">
+        <div className="border-border-strong bg-surface space-y-4 rounded-[1.5rem] border p-6">
           <div className="space-y-2">
-            <h2 className="type-title-large text-[var(--ink-strong)]">Passkeys</h2>
-            <p className="type-body-medium text-[var(--ink-soft)]">
+            <h2 className="type-title-large text-ink-strong">Passkeys</h2>
+            <p className="type-body-medium text-ink-soft">
               Register a passkey after your email-based sign-in so future access is faster.
             </p>
           </div>
@@ -213,7 +304,7 @@ export function AccountPage() {
             {passkeysQuery.data?.map((pk) => (
               <article
                 key={pk.id}
-                className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--border)] bg-white/70 px-4 py-3"
+                className="border-border flex items-center justify-between gap-3 rounded-2xl border bg-white/70 px-4 py-3"
               >
                 <div className="min-w-0 flex-1 space-y-1">
                   {editingPasskeyId === pk.id ? (
@@ -244,11 +335,11 @@ export function AccountPage() {
                       </Button>
                     </form>
                   ) : (
-                    <p className="type-title-small text-[var(--ink-strong)]">
+                    <p className="type-title-small text-ink-strong">
                       {pk.name || "Unnamed passkey"}
                     </p>
                   )}
-                  <p className="type-body-small text-[var(--ink-soft)]">
+                  <p className="type-body-small text-ink-soft">
                     {pk.deviceType === "platform" ? "Device passkey" : "Hardware key"}
                     {pk.backedUp ? " · synced" : ""}
                     {" · "}
@@ -281,23 +372,23 @@ export function AccountPage() {
             ))}
 
             {passkeysQuery.isError ? (
-              <p className="type-body-medium text-[var(--ink-soft)]">
+              <p className="type-body-medium text-ink-soft">
                 Atlas could not load your passkeys right now.
               </p>
             ) : null}
 
             {passkeysQuery.data?.length === 0 ? (
-              <p className="type-body-medium text-[var(--ink-soft)]">
+              <p className="type-body-medium text-ink-soft">
                 No passkeys yet. Add one above for faster sign-in.
               </p>
             ) : null}
           </div>
         </div>
 
-        <div className="space-y-4 rounded-[1.5rem] border border-[var(--border-strong)] bg-[var(--surface)] p-6">
+        <div className="border-border-strong bg-surface space-y-4 rounded-[1.5rem] border p-6">
           <div className="space-y-2">
-            <h2 className="type-title-large text-[var(--ink-strong)]">API keys</h2>
-            <p className="type-body-medium text-[var(--ink-soft)]">
+            <h2 className="type-title-large text-ink-strong">API keys</h2>
+            <p className="type-body-medium text-ink-soft">
               Create keys for direct API access to protected Atlas endpoints.
             </p>
           </div>
@@ -329,12 +420,12 @@ export function AccountPage() {
           </div>
 
           <div className="space-y-2">
-            <p className="type-label-large text-[var(--ink-strong)]">Scopes</p>
+            <p className="type-label-large text-ink-strong">Scopes</p>
             <div className="grid gap-2 sm:grid-cols-2">
               {API_KEY_SCOPES.map((scope) => (
                 <label
                   key={scope}
-                  className="flex items-start gap-3 rounded-lg border border-[var(--border)] px-3 py-3"
+                  className="border-border flex items-start gap-3 rounded-lg border px-3 py-3"
                 >
                   <input
                     type="checkbox"
@@ -344,7 +435,7 @@ export function AccountPage() {
                     }}
                     className="mt-1"
                   />
-                  <span className="type-title-small block text-[var(--ink-strong)]">{scope}</span>
+                  <span className="type-title-small text-ink-strong block">{scope}</span>
                 </label>
               ))}
             </div>
@@ -354,16 +445,16 @@ export function AccountPage() {
             {apiKeysQuery.data?.map((apiKey) => (
               <article
                 key={apiKey.id}
-                className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--border)] bg-white/70 px-4 py-3"
+                className="border-border flex items-center justify-between gap-3 rounded-2xl border bg-white/70 px-4 py-3"
               >
                 <div>
-                  <p className="type-title-small text-[var(--ink-strong)]">
+                  <p className="type-title-small text-ink-strong">
                     {apiKey.name || "Untitled key"}
                   </p>
-                  <p className="type-body-small text-[var(--ink-soft)]">
+                  <p className="type-body-small text-ink-soft">
                     {apiKey.prefix || "atlas"} · {apiKey.createdAt}
                   </p>
-                  <p className="type-body-small text-[var(--ink-soft)]">
+                  <p className="type-body-small text-ink-soft">
                     {(apiKey.scopes ?? []).join(", ") || "No scopes"}
                   </p>
                 </div>
@@ -382,13 +473,13 @@ export function AccountPage() {
             ))}
 
             {apiKeysQuery.isError ? (
-              <p className="type-body-medium text-[var(--ink-soft)]">
+              <p className="type-body-medium text-ink-soft">
                 Atlas could not load your API keys right now.
               </p>
             ) : null}
 
             {!apiKeysQuery.data?.length ? (
-              <p className="type-body-medium text-[var(--ink-soft)]">
+              <p className="type-body-medium text-ink-soft">
                 No API keys yet. Create one for scripts or CLI access.
               </p>
             ) : null}

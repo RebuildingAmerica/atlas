@@ -132,13 +132,13 @@ export function OAuthConsentPage({ clientId, scope }: { clientId: string; scope?
   return (
     <div className="space-y-6">
       <div className="space-y-2">
-        <p className="type-label-medium text-[var(--ink-muted)]">Authorization Request</p>
-        <h1 className="type-display-small text-[var(--ink-strong)]">Grant access?</h1>
+        <p className="type-label-medium text-ink-muted">Authorization Request</p>
+        <h1 className="type-display-small text-ink-strong">Grant access?</h1>
       </div>
 
-      <div className="space-y-5 rounded-[1.8rem] border border-[var(--border-strong)] bg-[var(--surface-container-lowest)] p-6">
+      <div className="border-border-strong bg-surface-container-lowest space-y-5 rounded-[1.8rem] border p-6">
         {isLoadingClient ? (
-          <p className="type-body-medium text-[var(--ink-soft)]">Loading application details...</p>
+          <p className="type-body-medium text-ink-soft">Loading application details...</p>
         ) : clientError ? (
           <p className="type-body-medium rounded-2xl bg-red-50 px-4 py-3 text-red-700">
             {clientError}
@@ -150,44 +150,40 @@ export function OAuthConsentPage({ clientId, scope }: { clientId: string; scope?
                 <img
                   src={clientInfo.icon}
                   alt=""
-                  className="h-10 w-10 rounded-xl border border-[var(--border)]"
+                  className="border-border h-10 w-10 rounded-xl border"
                 />
               ) : (
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--surface-container-lowest)] text-[var(--ink-muted)]">
+                <div className="border-border bg-surface-container-lowest text-ink-muted flex h-10 w-10 items-center justify-center rounded-xl border">
                   <span className="type-title-small">{clientName.charAt(0).toUpperCase()}</span>
                 </div>
               )}
               <div>
-                <p className="type-title-medium text-[var(--ink-strong)]">{clientName}</p>
+                <p className="type-title-medium text-ink-strong">{clientName}</p>
                 {clientInfo?.uri ? (
-                  <p className="type-body-small text-[var(--ink-muted)]">{clientInfo.uri}</p>
+                  <p className="type-body-small text-ink-muted">{clientInfo.uri}</p>
                 ) : null}
               </div>
             </div>
 
-            <p className="type-body-medium text-[var(--ink-soft)]">
-              <span className="font-medium text-[var(--ink-strong)]">{clientName}</span> is
-              requesting access to your Atlas account.
+            <p className="type-body-medium text-ink-soft">
+              <span className="text-ink-strong font-medium">{clientName}</span> is requesting access
+              to your Atlas account.
             </p>
 
             {scopes.length > 0 ? (
               <div className="space-y-2">
-                <p className="type-label-medium text-[var(--ink-muted)]">
-                  This will allow the app to:
-                </p>
+                <p className="type-label-medium text-ink-muted">This will allow the app to:</p>
                 <ul className="space-y-2">
                   {scopes.map((s) => {
                     const label = SCOPE_LABELS[s];
                     return (
                       <li
                         key={s}
-                        className="rounded-[1.4rem] border border-[var(--border)] bg-[var(--surface-container-lowest)] px-4 py-3"
+                        className="border-border bg-surface-container-lowest rounded-[1.4rem] border px-4 py-3"
                       >
-                        <p className="type-title-small text-[var(--ink-strong)]">
-                          {label?.title ?? s}
-                        </p>
+                        <p className="type-title-small text-ink-strong">{label?.title ?? s}</p>
                         {label?.description ? (
-                          <p className="type-body-small mt-0.5 text-[var(--ink-soft)]">
+                          <p className="type-body-small text-ink-soft mt-0.5">
                             {label.description}
                           </p>
                         ) : null}

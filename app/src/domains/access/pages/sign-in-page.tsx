@@ -1,36 +1,56 @@
-import { Mail, KeyRound } from "lucide-react";
+import { KeyRound, Mail } from "lucide-react";
 import { useEffect, useState } from "react";
 import { z } from "zod";
+import { getAuthClient } from "../client/auth-client";
+import { setLastUsedAtlasLoginMethod } from "../client/last-login-method";
+import { waitForAtlasAuthenticatedSession } from "../client/session-confirmation";
+import { getAuthConfig } from "../config";
+import { requestMagicLink } from "../session.functions";
+import { resolveWorkspaceSSOSignIn } from "../sso.functions";
+import {
+  buildMagicLinkStatusMessage,
+  buildSignInCallbackURL,
+  buildSignInErrorCallbackURL,
+  extractSSORedirectUrl,
+} from "./sign-in-page-helpers";
 import { Button } from "@/platform/ui/button";
 import { Input } from "@/platform/ui/input";
-import { getAuthConfig } from "../config";
-import { getAuthClient } from "../client/auth-client";
-import { waitForAtlasAuthenticatedSession } from "../client/session-confirmation";
-import { requestMagicLink } from "../session.functions";
 
 /**
  * Search params accepted by the sign-in route.
  */
 export const signInSearchSchema = z.object({
+  invitation: z.string().optional(),
   redirect: z.string().optional(),
 });
 
 /**
+ * Props accepted by the sign-in page.
+ */
+interface SignInPageProps {
+  invitationId?: string;
+  redirectTo?: string;
+}
+
+/**
  * Sign-in experience for Atlas operator access.
  *
- * Magic-link email is the easiest onboarding path; passkey sign-in becomes
- * available after the operator has registered a passkey on their account.
+ * Atlas resolves enterprise providers server-side from the submitted email
+ * address before falling back to the privacy-preserving magic-link path.
  */
-export function SignInPage({ redirectTo }: { redirectTo?: string }) {
+export function SignInPage({ invitationId, redirectTo }: SignInPageProps) {
   const authConfig = getAuthConfig();
-  const lastMethod = getAuthClient().getLastUsedLoginMethod();
+  const authClient = getAuthClient();
+  const lastMethod = authClient.getLastUsedLoginMethod();
   const [email, setEmail] = useState("");
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isEmailFlowPending, setIsEmailFlowPending] = useState(false);
   const [isPasskeyPending, setIsPasskeyPending] = useState(false);
 
-  const callbackURL = redirectTo || "/account";
+  const isInvitationFlow = Boolean(invitationId);
+  const callbackURL = buildSignInCallbackURL(invitationId, redirectTo);
+  const errorCallbackURL = buildSignInErrorCallbackURL(invitationId, redirectTo);
 
   useEffect(() => {
     if (
@@ -42,45 +62,99 @@ export function SignInPage({ redirectTo }: { redirectTo?: string }) {
 
     let active = true;
 
-    void PublicKeyCredential.isConditionalMediationAvailable().then((available) => {
-      if (!available || !active) return;
-      void getAuthClient().signIn.passkey({
-        autoFill: true,
-        fetchOptions: {
-          onSuccess: async () => {
-            if (!active) return;
-            await waitForAtlasAuthenticatedSession();
-            window.location.assign(callbackURL);
+    const startConditionalPasskeyAutofill = async () => {
+      try {
+        const conditionalMediationAvailabilityPromise =
+          PublicKeyCredential.isConditionalMediationAvailable();
+        const conditionalMediationAvailable = await conditionalMediationAvailabilityPromise;
+
+        if (!conditionalMediationAvailable || !active) {
+          return;
+        }
+
+        const passkeySignInPromise = authClient.signIn.passkey({
+          autoFill: true,
+          fetchOptions: {
+            onSuccess: async () => {
+              if (!active) {
+                return;
+              }
+
+              const sessionConfirmationPromise = waitForAtlasAuthenticatedSession();
+              await sessionConfirmationPromise;
+              setLastUsedAtlasLoginMethod("passkey");
+              window.location.assign(callbackURL);
+            },
           },
-        },
-      });
-    });
+        });
+
+        await passkeySignInPromise;
+      } catch {
+        return;
+      }
+    };
+
+    void startConditionalPasskeyAutofill();
 
     return () => {
       active = false;
     };
-  }, [callbackURL]);
+  }, [authClient, callbackURL]);
 
-  const handleMagicLink = async (event: React.FormEvent<HTMLFormElement>) => {
+  const handleEmailContinue = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setErrorMessage(null);
     setStatusMessage(null);
-    setIsSubmitting(true);
+    setIsEmailFlowPending(true);
 
     try {
-      await requestMagicLink({
+      const ssoResolutionPromise = resolveWorkspaceSSOSignIn({
+        data: {
+          email,
+          invitationId,
+        },
+      });
+      const ssoResolution = await ssoResolutionPromise;
+
+      if (ssoResolution) {
+        const organizationLabel = ssoResolution.organizationName ?? "your organization";
+
+        setStatusMessage(`Redirecting to ${organizationLabel} sign-in...`);
+
+        const ssoSignInPromise = authClient.signIn.sso({
+          callbackURL,
+          email,
+          errorCallbackURL,
+          loginHint: email,
+          providerId: ssoResolution.providerId,
+          providerType: ssoResolution.providerType,
+        });
+        const ssoResult = await ssoSignInPromise;
+        const redirectUrl = extractSSORedirectUrl(ssoResult);
+
+        if (redirectUrl) {
+          window.location.assign(redirectUrl);
+        }
+
+        return;
+      }
+
+      const magicLinkRequestPromise = requestMagicLink({
         data: {
           callbackURL,
           email,
         },
       });
-      setStatusMessage("If the email can access Atlas, a sign-in link is on the way.");
+
+      await magicLinkRequestPromise;
+      setLastUsedAtlasLoginMethod("magic-link");
+      setStatusMessage(buildMagicLinkStatusMessage(invitationId));
     } catch (error) {
-      setErrorMessage(
-        error instanceof Error ? error.message : "Sign-in is temporarily unavailable.",
-      );
+      const message =
+        error instanceof Error ? error.message : "Sign-in is temporarily unavailable.";
+      setErrorMessage(message);
     } finally {
-      setIsSubmitting(false);
+      setIsEmailFlowPending(false);
     }
   };
 
@@ -90,14 +164,20 @@ export function SignInPage({ redirectTo }: { redirectTo?: string }) {
     setIsPasskeyPending(true);
 
     try {
-      const result = await getAuthClient().signIn.passkey();
+      const passkeySignInPromise = authClient.signIn.passkey();
+      const result = await passkeySignInPromise;
+
       if (result.error) {
         throw new Error(result.error.message || "Could not sign in with a passkey.");
       }
-      await waitForAtlasAuthenticatedSession();
+
+      const sessionConfirmationPromise = waitForAtlasAuthenticatedSession();
+      await sessionConfirmationPromise;
+      setLastUsedAtlasLoginMethod("passkey");
       window.location.assign(callbackURL);
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Could not sign in with a passkey.");
+      const message = error instanceof Error ? error.message : "Could not sign in with a passkey.";
+      setErrorMessage(message);
     } finally {
       setIsPasskeyPending(false);
     }
@@ -106,15 +186,24 @@ export function SignInPage({ redirectTo }: { redirectTo?: string }) {
   return (
     <div className="space-y-8">
       <div className="space-y-2">
-        <p className="type-label-medium text-[var(--ink-muted)]">Operator access</p>
-        <h1 className="type-display-small text-[var(--ink-strong)]">Sign in to Atlas</h1>
+        <p className="type-label-medium text-ink-muted">
+          {isInvitationFlow ? "Workspace invitation" : "Operator access"}
+        </p>
+        <h1 className="type-display-small text-ink-strong">
+          {isInvitationFlow ? "Sign in to review your workspace invite" : "Sign in to Atlas"}
+        </h1>
+        <p className="type-body-large text-ink-soft">
+          {isInvitationFlow
+            ? "Atlas will route you through the workspace sign-in policy when your email matches a verified enterprise provider, then take you straight back to the invitation."
+            : "Enter your work email and Atlas will prefer a verified enterprise sign-in path before falling back to magic link."}
+        </p>
       </div>
 
       <div className="space-y-5">
         <form
           className="space-y-4"
-          onSubmit={(event) => {
-            void handleMagicLink(event);
+          onSubmit={(e) => {
+            void handleEmailContinue(e);
           }}
         >
           <Input
@@ -122,18 +211,21 @@ export function SignInPage({ redirectTo }: { redirectTo?: string }) {
             type="email"
             value={email}
             onChange={setEmail}
-            placeholder="you@rebuildingus.org"
+            placeholder="you@your-org.example"
             autoComplete="username webauthn"
             required
             icon={<Mail className="h-4 w-4" />}
           />
 
           <div className="relative inline-block">
-            <Button type="submit" disabled={isSubmitting || authConfig.localMode || !email}>
-              {isSubmitting ? "Sending..." : "Send magic link"}
+            <Button
+              type="submit"
+              disabled={isEmailFlowPending || authConfig.localMode || !email.trim()}
+            >
+              {isEmailFlowPending ? "Continuing..." : "Continue with email"}
             </Button>
             {lastMethod === "magic-link" ? (
-              <span className="type-label-small absolute -top-2 -right-2 rounded-full bg-[var(--ink-strong)] px-1.5 py-0.5 text-[var(--surface)]">
+              <span className="type-label-small bg-ink-strong text-surface absolute -top-2 -right-2 rounded-full px-1.5 py-0.5">
                 Last used
               </span>
             ) : null}
@@ -141,9 +233,9 @@ export function SignInPage({ redirectTo }: { redirectTo?: string }) {
         </form>
 
         <div className="flex items-center gap-3">
-          <div className="h-px flex-1 bg-[var(--border)]" />
-          <span className="type-label-small text-[var(--ink-muted)]">or</span>
-          <div className="h-px flex-1 bg-[var(--border)]" />
+          <div className="bg-border h-px flex-1" />
+          <span className="type-label-small text-ink-muted">or</span>
+          <div className="bg-border h-px flex-1" />
         </div>
 
         <div className="relative inline-block">
@@ -160,14 +252,14 @@ export function SignInPage({ redirectTo }: { redirectTo?: string }) {
             </span>
           </Button>
           {lastMethod === "passkey" ? (
-            <span className="type-label-small absolute -top-2 -right-2 rounded-full bg-[var(--ink-strong)] px-1.5 py-0.5 text-[var(--surface)]">
+            <span className="type-label-small bg-ink-strong text-surface absolute -top-2 -right-2 rounded-full px-1.5 py-0.5">
               Last used
             </span>
           ) : null}
         </div>
 
         {statusMessage ? (
-          <p className="type-body-medium rounded-2xl bg-[var(--surface-container-lowest)] px-4 py-3 text-[var(--ink-strong)]">
+          <p className="type-body-medium bg-surface-container-lowest text-ink-strong rounded-2xl px-4 py-3">
             {statusMessage}
           </p>
         ) : null}
@@ -180,18 +272,30 @@ export function SignInPage({ redirectTo }: { redirectTo?: string }) {
       </div>
 
       <div className="space-y-3 pt-4">
-        <div className="rounded-[1.4rem] border border-[var(--border)] bg-[var(--surface-container-lowest)] p-5">
-          <p className="type-title-small text-[var(--ink-strong)]">Access policy</p>
-          <p className="type-body-medium mt-2 text-[var(--ink-soft)]">
-            Atlas keeps public discovery open, but the operator workspace is invite-only.
-          </p>
-        </div>
+        {isInvitationFlow ? (
+          <div className="border-border bg-surface-container-lowest rounded-[1.4rem] border p-5">
+            <p className="type-title-small text-ink-strong">Invitation flow</p>
+            <p className="type-body-medium text-ink-soft mt-2">
+              This link does not expose team controls publicly. It just routes eligible operators
+              back into the private workspace flow, including enterprise SSO when the workspace has
+              a verified provider for the submitted email domain.
+            </p>
+          </div>
+        ) : (
+          <div className="border-border bg-surface-container-lowest rounded-[1.4rem] border p-5">
+            <p className="type-title-small text-ink-strong">Access policy</p>
+            <p className="type-body-medium text-ink-soft mt-2">
+              Atlas keeps public discovery open, but the operator workspace stays invite-only and
+              can route eligible teams through verified enterprise sign-in.
+            </p>
+          </div>
+        )}
+
         {authConfig.localMode ? (
-          <div className="rounded-[1.4rem] border border-[var(--border)] bg-[var(--surface-container-lowest)] p-5">
-            <p className="type-title-small text-[var(--ink-strong)]">Local mode is active</p>
-            <p className="type-body-medium mt-2 text-[var(--ink-soft)]">
-              Auth is disabled in local mode, so you can open the admin workspace without signing
-              in.
+          <div className="border-border bg-surface-container-lowest rounded-[1.4rem] border p-5">
+            <p className="type-title-small text-ink-strong">Local mode is active</p>
+            <p className="type-body-medium text-ink-soft mt-2">
+              Auth is disabled in local mode, so you can open the workspace without signing in.
             </p>
           </div>
         ) : null}
