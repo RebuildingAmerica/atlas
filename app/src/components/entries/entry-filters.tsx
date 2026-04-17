@@ -44,7 +44,7 @@ function FacetGroup({
 
   return (
     <div className="space-y-3">
-      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-stone-500">{title}</p>
+      <p className="text-xs font-semibold tracking-[0.2em] text-stone-500 uppercase">{title}</p>
       <div className="flex flex-wrap gap-2">
         {options.slice(0, 10).map((option) => {
           const isSelected = selected.includes(option.value);
@@ -52,7 +52,9 @@ function FacetGroup({
             <button
               key={option.value}
               type="button"
-              onClick={() => onToggle(facetKey, option.value)}
+              onClick={() => {
+                onToggle(facetKey, option.value);
+              }}
               className={[
                 "rounded-full border px-3 py-1.5 text-sm transition-colors",
                 isSelected
@@ -90,7 +92,7 @@ export function EntryFilters({
         className="space-y-6"
       >
         <div className="space-y-3">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-stone-500">
+          <p className="text-xs font-semibold tracking-[0.2em] text-stone-500 uppercase">
             Search the map
           </p>
           <Input

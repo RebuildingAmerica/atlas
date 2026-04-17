@@ -50,7 +50,11 @@ export function EntryDetail({
         <CardHeader className="space-y-4 border-b-stone-200">
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant="info">{humanize(entry.type)}</Badge>
-            {entry.verified ? <Badge variant="success">Verified</Badge> : <Badge>Source-linked</Badge>}
+            {entry.verified ? (
+              <Badge variant="success">Verified</Badge>
+            ) : (
+              <Badge>Source-linked</Badge>
+            )}
             <Badge>{entry.source_count} sources</Badge>
           </div>
           <div className="space-y-2">
@@ -66,7 +70,7 @@ export function EntryDetail({
 
           <div className="grid gap-5 md:grid-cols-2">
             <div className="space-y-2">
-              <p className="text-sm font-semibold uppercase tracking-wide text-stone-500">
+              <p className="text-sm font-semibold tracking-wide text-stone-500 uppercase">
                 Contact
               </p>
               <div className="space-y-1 text-sm text-stone-700">
@@ -88,7 +92,7 @@ export function EntryDetail({
             </div>
 
             <div className="space-y-2">
-              <p className="text-sm font-semibold uppercase tracking-wide text-stone-500">
+              <p className="text-sm font-semibold tracking-wide text-stone-500 uppercase">
                 Mention types
               </p>
               <div className="flex flex-wrap gap-2">
@@ -101,7 +105,7 @@ export function EntryDetail({
 
           {entry.issue_areas.length > 0 ? (
             <div className="space-y-2">
-              <p className="text-sm font-semibold uppercase tracking-wide text-stone-500">
+              <p className="text-sm font-semibold tracking-wide text-stone-500 uppercase">
                 Issue areas
               </p>
               <div className="flex flex-wrap gap-2">
@@ -142,7 +146,9 @@ export function EntryDetail({
                   {source.title ?? source.url}
                 </a>
                 {source.extraction_context ? (
-                  <p className="mt-3 text-sm leading-6 text-stone-600">{source.extraction_context}</p>
+                  <p className="mt-3 text-sm leading-6 text-stone-600">
+                    {source.extraction_context}
+                  </p>
                 ) : null}
               </div>
             ))
