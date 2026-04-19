@@ -2,6 +2,8 @@
   "name": "@atlas/api",
   "private": true,
   "scripts": {
-    "quality": "uv run ruff check atlas && uv run mypy atlas && uv run pytest --cov=atlas --cov-report=term-missing --ignore=tests/platform/test_mcp_server.py --ignore=tests/platform/test_runtime_contracts.py --ignore=tests/platform/test_mcp_auth_middleware.py"
+    "typecheck": "uv run mypy atlas",
+    "lint": "uv run ruff check atlas",
+    "test": "uv run pytest --cov=atlas --cov-report=term-missing --ignore=tests/platform/test_mcp_server.py --ignore=tests/platform/test_runtime_contracts.py --ignore=tests/platform/test_mcp_auth_middleware.py"
   }
 }
