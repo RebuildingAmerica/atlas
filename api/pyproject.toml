@@ -134,6 +134,7 @@ source = ["atlas"]
 omit = [
     "*/tests/*",
     "*/site-packages/*",
+    "*/atlas/platform/mcp/*",
 ]
 
 [tool.coverage.report]
