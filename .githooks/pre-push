@@ -41,6 +41,13 @@ APP_DIR="$ROOT_DIR/app"
 
 print_header "Pre-push Quality Gates"
 
+# Early exit if there's nothing to push
+refs_content=$(cat)
+if [ -z "$refs_content" ]; then
+    print_info "No refs to push, skipping quality gates"
+    exit 0
+fi
+
 FAILED=0
 
 # 1. Check if working directory is clean
