@@ -21,6 +21,6 @@
     "verify": "turbo run //#prod:verify"
   },
   "devDependencies": {
-    "turbo": "^2.5.3"
+    "turbo": "^2.9.6"
   }
 }
