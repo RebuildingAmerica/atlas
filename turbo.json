@@ -8,6 +8,9 @@
     "api/pyproject.toml"
   ],
   "tasks": {
+    "quality": {
+      "cache": false
+    },
     "//#openapi": {
       "inputs": [
         "api/atlas/**/*.py",

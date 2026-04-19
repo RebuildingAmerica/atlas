@@ -10,6 +10,7 @@
     "secrets:scan": "sh ./scripts/secrets-scan.sh",
     "openapi": "sh ./scripts/openapi-export.sh",
     "api:test": "sh ./scripts/api-test.sh",
+    "quality": "turbo quality",
     "test:coverage": "turbo run //#api:test app#test:coverage",
     "test:e2e": "turbo run app#test:e2e",
     "test:e2e:headed": "turbo run app#test:e2e:headed",
