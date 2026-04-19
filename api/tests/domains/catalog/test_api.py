@@ -245,7 +245,8 @@ class TestDiscoveryRunEndpoints:
         assert response.status_code == STATUS_ACCEPTED
         data = response.json()
         assert data["state"] == "MO"
-        assert data["status"] == "running"
+        # Status is 'completed' in test mode due to discovery_inline=True in test_settings
+        assert data["status"] == "completed"
 
     @pytest.mark.asyncio
     async def test_start_discovery_run_invalid_issue_area(self, test_client: object) -> None:
