@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Any
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 
 from atlas.domains.access import AuthenticatedActor, require_actor_permission
+from atlas.domains.catalog.schemas.public import FacetOption
 from atlas.domains.catalog.taxonomy import ALL_ISSUE_SLUGS
 from atlas.models import EntryCRUD, FlagCRUD, get_db_connection
 from atlas.platform.config import Settings, get_settings
@@ -21,7 +22,6 @@ from atlas.schemas import (
     EntityResponse,
     EntitySourcesResponse,
     EntityUpdateRequest,
-    FacetOption,
     SourceResponse,
 )
 
