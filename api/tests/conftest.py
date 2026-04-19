@@ -51,6 +51,8 @@ def test_settings(db_url: str) -> Settings:
         anthropic_api_key="test-key",
         environment="dev",
         cors_origins=["http://localhost:3000"],
+        deploy_mode="local",  # Disable auth for testing
+        discovery_inline=True,  # Run discovery synchronously in tests
     )
 
 
