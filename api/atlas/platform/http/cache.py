@@ -14,18 +14,24 @@ __all__ = [
 ]
 
 
-def apply_static_public_cache(response: Response) -> None:
+def apply_static_public_cache(response: Response | None) -> None:
     """Cache stable public resources aggressively with revalidation."""
+    if response is None:
+        return
     response.headers["Cache-Control"] = "public, max-age=3600, stale-while-revalidate=86400"
     response.headers["Vary"] = "Accept, Accept-Encoding"
 
 
-def apply_short_public_cache(response: Response) -> None:
+def apply_short_public_cache(response: Response | None) -> None:
     """Cache public search/aggregation resources briefly."""
+    if response is None:
+        return
     response.headers["Cache-Control"] = "public, max-age=60, stale-while-revalidate=300"
     response.headers["Vary"] = "Accept, Accept-Encoding"
 
 
-def apply_no_store_headers(response: Response) -> None:
+def apply_no_store_headers(response: Response | None) -> None:
     """Disable caching for mutable or operator-oriented resources."""
+    if response is None:
+        return
     response.headers["Cache-Control"] = "no-store"
