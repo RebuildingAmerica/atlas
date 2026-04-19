@@ -1,8 +1,8 @@
-# Frontend Architecture
+# App Architecture
 
-[Docs](../README.md) > [Architecture](./README.md) > Frontend Architecture
+[Docs](../README.md) > [Architecture](./README.md) > App Architecture
 
-How the frontend is organized, why we chose TanStack Start, and how to add new features.
+How the app is organized, why we chose TanStack Start, and how to add new features.
 
 ## Tech Stack
 
@@ -10,7 +10,7 @@ How the frontend is organized, why we chose TanStack Start, and how to add new f
 **Language:** TypeScript
 **Styling:** Tailwind CSS
 **State Management:** React Query (server state) + React hooks (UI state)
-**Type Safety:** TypeScript types mirror Pydantic schemas from backend
+**Type Safety:** TypeScript types mirror Pydantic schemas from API
 
 ## Why TanStack Start?
 
@@ -32,7 +32,7 @@ How the frontend is organized, why we chose TanStack Start, and how to add new f
 ## Directory Structure
 
 ```
-frontend/src/
+app/src/
 ├── routes/                    # File-based routes (TanStack Start)
 │   ├── __root.tsx            # Root layout (wraps all routes)
 │   ├── index.tsx             # Home page (/)
@@ -202,7 +202,7 @@ function SearchResults({ state, location }) {
 
 ## Type Safety
 
-TypeScript types on frontend **mirror** Pydantic schemas on backend.
+TypeScript types on app **mirror** Pydantic schemas on API.
 
 **Backend (Python):**
 ```python
@@ -216,7 +216,7 @@ class EntryResponse(BaseModel):
     sources: List[SourceResponse]
 ```
 
-**Frontend (TypeScript):**
+**App (TypeScript):**
 ```tsx
 interface EntryResponse {
   id: string
@@ -333,7 +333,7 @@ function Card({ title, children }) {
 | Hooks | Partial | useEntries, useSearch stubbed. Need implementation. |
 
 **Next priorities:**
-1. Implement useEntries and useSearch hooks (connect to backend)
+1. Implement useEntries and useSearch hooks (connect to API)
 2. Test API integration
 3. Add more UI components (forms, modals, etc.)
 4. Implement admin discovery form
@@ -341,36 +341,36 @@ function Card({ title, children }) {
 
 ## Development Workflow
 
-### Running Frontend Only
+### Running App Only
 ```bash
-make dev-frontend
+make dev-app
 ```
 Starts Vite dev server on http://localhost:3000 with HMR.
 
 ### Type Checking
 ```bash
-cd frontend && pnpm run typecheck
+cd app && pnpm run typecheck
 ```
 Runs TypeScript type checker.
 
 ### Linting
 ```bash
-cd frontend && pnpm run lint
+cd app && pnpm run lint
 ```
 Runs ESLint.
 
 ### Building for Production
 ```bash
-cd frontend && pnpm run build
+cd app && pnpm run build
 ```
-Outputs optimized bundle to `frontend/dist/`.
+Outputs optimized bundle to `app/dist/`.
 
 ---
 
 ## See Also
 
-- [System Overview](./system-overview.md) — How frontend fits in architecture
-- [Frontend Development](../development/frontend.md) — Step-by-step guide to adding features
+- [System Overview](./system-overview.md) — How app fits in architecture
+- [App Development](../development/app.md) — Step-by-step guide to adding features
 - [API Reference](./api-reference.md) — REST endpoints and schemas
 
 ---

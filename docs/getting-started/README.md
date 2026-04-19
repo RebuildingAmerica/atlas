@@ -34,7 +34,7 @@ The product has three key pieces:
 
 **Current Phase:** Phase 1 (Scaffold)
 
-The core APIs and database schema are in place. The pipeline is stubbed with all 6 steps. Frontend is built with routing and components. See individual docs for what's working vs. what's pending.
+The core APIs and database schema are in place. The pipeline is stubbed with all 6 steps. App is built with routing and components. See individual docs for what's working vs. what's pending.
 
 ## Quick Links
 

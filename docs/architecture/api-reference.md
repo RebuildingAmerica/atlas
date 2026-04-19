@@ -11,7 +11,7 @@ All requests go to:
 http://localhost:8000/api/v1
 ```
 
-**In production:** Replace `localhost:8000` with the deployed backend domain.
+**In production:** Replace `localhost:8000` with the deployed API domain.
 
 ## Authentication
 
@@ -397,7 +397,7 @@ Common error types returned in error responses:
 
 ## Interactive Documentation
 
-When the backend is running, visit:
+When the API is running, visit:
 
 ```
 http://localhost:8000/docs
@@ -450,7 +450,7 @@ If we make breaking changes, we'll create `/api/v2` while maintaining `/api/v1` 
 ## See Also
 
 - [System Overview](./system-overview.md) — How API fits in architecture
-- [Backend Development](../development/backend.md) — How to add new endpoints
+- [API Development](../development/api.md) — How to add new endpoints
 - [Data Model](./data-model.md) — Schema reference
 
 ---

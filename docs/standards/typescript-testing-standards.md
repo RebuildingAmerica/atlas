@@ -724,4 +724,4 @@ All packages must meet these standards before being accepted into the monorepo. 
 ## Related
 
 - [Performance Standards](./performance-standards.md) --- For service instrumentation requirements and performance-sensitive code rules
-- [Service-Level Objectives](./service-level-objectives.md) --- Service and frontend performance targets
+- [Service-Level Objectives](./service-level-objectives.md) --- Service and app performance targets

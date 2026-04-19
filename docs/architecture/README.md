@@ -21,10 +21,10 @@ Deep dive into the 6-step autodiscovery pipeline. What each step does, what it t
 
 → [Read: Pipeline Architecture](./pipeline.md)
 
-### Frontend Architecture
-How the frontend is organized. TanStack Start, selective SSR, component structure, type safety.
+### App Architecture
+How the app is organized. TanStack Start, selective SSR, component structure, type safety.
 
-→ [Read: Frontend Architecture](./frontend.md)
+→ [Read: App Architecture](./app.md)
 
 ### Organization And Enterprise SSO
 How Atlas uses Better Auth organizations and Better Auth SSO together, including
@@ -52,7 +52,7 @@ For the complete design including problem statement, vision, and constraints, se
 ```
 User Input
     ↓
-Frontend UI
+App UI
     ↓
 REST API (/api/v1/...)
     ↓
@@ -62,7 +62,7 @@ SQLite Database
     ↓
 Results back through API
     ↓
-Frontend Display
+App Display
 ```
 
 ### When to Reference Each Doc
@@ -73,7 +73,7 @@ Frontend Display
 | See the three-layer architecture | [System Overview](./system-overview.md) |
 | Design a new database table | [Data Model](./data-model.md) + System Design |
 | Improve the autodiscovery pipeline | [Pipeline Architecture](./pipeline.md) |
-| Add a new page/component | [Frontend Architecture](./frontend.md) |
+| Add a new page/component | [App Architecture](./app.md) |
 | Add a new API endpoint | [API Reference](./api-reference.md) |
 | Add a new issue area | Issue Area Taxonomy + [Pipeline Architecture](./pipeline.md) |
 
@@ -93,9 +93,9 @@ A single execution of the pipeline. Stores the request (location, issues) and re
 
 ## Architecture Principles
 
-1. **Three Layers** — Pipeline (discovery logic) → Storage (database) → Interface (REST + frontend). Separation of concerns makes each layer testable and replaceable.
+1. **Three Layers** — Pipeline (discovery logic) → Storage (database) → Interface (REST + app). Separation of concerns makes each layer testable and replaceable.
 
-2. **Type Safety** — TypeScript types on frontend mirror Pydantic schemas on backend. Ensures frontend and backend stay in sync.
+2. **Type Safety** — TypeScript types on app mirror Pydantic schemas on API. Ensures app and API stay in sync.
 
 3. **Selective SSR** — Most routes are SPAs for interactivity. Some routes (home, entry detail) use SSR for initial page load performance and SEO.
 

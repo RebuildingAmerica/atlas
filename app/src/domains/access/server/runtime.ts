@@ -83,7 +83,7 @@ function resolveApiKeyIntrospectionUrl(env: NodeJS.ProcessEnv): string | null {
 }
 
 /**
- * Resolves the direct backend API origin when the app proxies Atlas API
+ * Resolves the direct API origin when the app proxies Atlas API
  * traffic to a separate service.
  *
  * @param env - The current process environment.

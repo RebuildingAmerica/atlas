@@ -72,7 +72,7 @@ class TestProductionConfig:
     def test_auth_settings_use_atlas_prefixed_environment_variables(
         self, monkeypatch: MonkeyPatch
     ) -> None:
-        """The backend should consume the canonical ATLAS_* auth environment variables."""
+        """The API should consume the canonical ATLAS_* auth environment variables."""
         monkeypatch.setenv("ATLAS_DEPLOY_MODE", "")
         monkeypatch.setenv(
             "ATLAS_AUTH_API_KEY_INTROSPECTION_URL",
@@ -90,7 +90,7 @@ class TestProductionConfig:
         assert settings.auth_internal_secret == "internal-secret"
 
     def test_database_url_uses_environment_override(self, monkeypatch: MonkeyPatch) -> None:
-        """The backend should respect DATABASE_URL when the API process is booted by env."""
+        """The API should respect DATABASE_URL when the API process is booted by env."""
         monkeypatch.setenv("DATABASE_URL", "sqlite:////tmp/e2e-atlas.db")
 
         settings = Settings(environment="production")

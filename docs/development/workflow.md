@@ -49,8 +49,8 @@ Use Conventional Commits format. Enforced by pre-commit hook.
 - `perf` — Performance improvements
 
 **Scopes:** (optional but recommended)
-- `backend` — Backend changes
-- `frontend` — Frontend changes
+- `api` — Backend changes
+- `app` — App changes
 - `pipeline` — Pipeline/discovery changes
 - `db` — Database/schema changes
 - `taxonomy` — Issue areas or search terms
@@ -67,7 +67,7 @@ git commit -m "feat(api): add full-text search endpoint"
 git commit -m "fix(pipeline): handle null values in extraction"
 
 # With body for more context
-git commit -m "feat(backend): add entry deduplication logic
+git commit -m "feat(api): add entry deduplication logic
 
 Deduplicates entries by fuzzy matching on name and location.
 Merges sources from duplicate entries into single record."
@@ -76,7 +76,7 @@ Merges sources from duplicate entries into single record."
 git commit -m "docs: add pipeline architecture overview"
 
 # Test
-git commit -m "test(backend): add 15 new tests for deduplicator"
+git commit -m "test(api): add 15 new tests for deduplicator"
 ```
 
 **Avoid:**

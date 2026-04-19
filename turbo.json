@@ -80,12 +80,12 @@
         "//#contract:test",
         "//#compose:validate",
         "//#secrets:scan",
-        "frontend#api-client",
-        "frontend#openapi:lint",
-        "frontend#quality",
-        "frontend#test",
-        "frontend#test:e2e",
-        "frontend#build"
+        "app#api-client",
+        "app#openapi:lint",
+        "app#quality",
+        "app#test",
+        "app#test:e2e",
+        "app#build"
       ],
       "cache": false
     }

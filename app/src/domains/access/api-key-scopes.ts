@@ -2,7 +2,7 @@
  * The v1 scope surface for direct API keys.
  *
  * Browser sessions still carry full operator access; these scopes are only
- * used when the backend authorizes requests authenticated by API key.
+ * used when the API authorizes requests authenticated by API key.
  */
 export const API_KEY_SCOPES = ["discovery:read", "discovery:write", "entities:write"] as const;
 

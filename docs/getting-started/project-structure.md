@@ -6,7 +6,7 @@ A guided tour of the codebase. Where things live and when you'd work in them.
 
 ```
 atlas/
-├── backend/                          # Python/FastAPI backend
+├── api/                          # Python/FastAPI API
 │   ├── atlas/                        # Main package
 │   │   ├── __init__.py
 │   │   ├── main.py                   # FastAPI app initialization
@@ -50,10 +50,10 @@ atlas/
 │   │   └── test_taxonomy.py          # Taxonomy tests
 │   │
 │   ├── pyproject.toml                # Python package config and dependencies
-│   ├── Dockerfile                    # Container image for backend
+│   ├── Dockerfile                    # Container image for API
 │   └── .gitignore                    # Python-specific ignores
 │
-├── frontend/                         # TanStack Start (React + TypeScript)
+├── app/                         # TanStack Start (React + TypeScript)
 │   ├── src/
 │   │   ├── entry.client.tsx          # Client entry point
 │   │   ├── entry.server.tsx          # Server entry point
@@ -94,7 +94,7 @@ atlas/
 │   │   │   ├── utils.ts              # Helper functions
 │   │   │   └── constants.ts          # Shared constants
 │   │   │
-│   │   ├── types/                    # TypeScript types (mirror backend Pydantic schemas)
+│   │   ├── types/                    # TypeScript types (mirror API Pydantic schemas)
 │   │   │   ├── entry.ts              # Entry type definitions
 │   │   │   ├── source.ts             # Source type definitions
 │   │   │   └── ...
@@ -106,7 +106,7 @@ atlas/
 │   ├── vite.config.ts                # Vite build configuration
 │   ├── tsconfig.json                 # TypeScript configuration
 │   ├── package.json                  # Node.js dependencies
-│   ├── Dockerfile                    # Container image for frontend
+│   ├── Dockerfile                    # Container image for app
 │   └── .gitignore                    # Node-specific ignores
 │
 ├── docs/                             # Documentation (this directory)
@@ -137,7 +137,7 @@ atlas/
 
 ## Key Directories Explained
 
-### backend/atlas/api/
+### api/atlas/api/
 Where HTTP endpoints are defined. Add new features here:
 - **entries.py** — Entry CRUD operations
 - **discovery.py** — Trigger the autodiscovery pipeline
@@ -145,7 +145,7 @@ Where HTTP endpoints are defined. Add new features here:
 
 **When to work here:** Adding new endpoints or changing API responses
 
-### backend/atlas/models/
+### api/atlas/models/
 Database models and how to read/write data. The single source of truth for database schema.
 
 - **database.py** — Database connection and initialization
@@ -154,7 +154,7 @@ Database models and how to read/write data. The single source of truth for datab
 
 **When to work here:** Adding new database tables, changing schema, or adding CRUD operations
 
-### backend/atlas/pipeline/
+### api/atlas/pipeline/
 The heart of the product. Six steps that autodiscover entries.
 
 1. **query_generator.py** — Generate dozens of search queries from location + issues
@@ -168,7 +168,7 @@ The main orchestrator in `__init__.py` runs all 6 steps in sequence.
 
 **When to work here:** Improving discovery quality, tweaking extraction logic, or adding new pipeline steps
 
-### backend/atlas/taxonomy/
+### api/atlas/taxonomy/
 Issue areas (housing, labor, climate, etc.) and their search terms. Used by query_generator to create targeted searches.
 
 - **issue_areas.py** — All issue area definitions
@@ -176,7 +176,7 @@ Issue areas (housing, labor, climate, etc.) and their search terms. Used by quer
 
 **When to work here:** Adding new issue areas or tweaking search terms for existing ones
 
-### frontend/src/routes/
+### app/src/routes/
 File-based routing (TanStack Start convention). Each `.tsx` file is a route.
 
 - `index.tsx` → `/` (home page)
@@ -186,8 +186,8 @@ File-based routing (TanStack Start convention). Each `.tsx` file is a route.
 
 **When to work here:** Adding new pages or changing URL structure
 
-### frontend/src/hooks/
-Custom React hooks that talk to the backend API. Encapsulates data fetching and state management.
+### app/src/hooks/
+Custom React hooks that talk to the API API. Encapsulates data fetching and state management.
 
 **When to work here:** Adding new API calls or complex data logic
 
@@ -195,21 +195,21 @@ Custom React hooks that talk to the backend API. Encapsulates data fetching and 
 
 ### Backend Only
 ```bash
-make dev-backend
+make dev-api
 ```
-Useful for API development without frontend overhead.
+Useful for API development without app overhead.
 
-### Frontend Only
+### App Only
 ```bash
-make dev-frontend
+make dev-app
 ```
-Useful for UI development. Will call backend on localhost:8000.
+Useful for UI development. Will call API on localhost:8000.
 
 ### Tests
 ```bash
 make test
 ```
-Runs pytest (backend) and pnpm test (frontend, if configured).
+Runs pytest (API) and pnpm test (app, if configured).
 
 ### Linting and Formatting
 ```bash
@@ -224,9 +224,9 @@ make typecheck      # Type check everything
 
 The project is organized in three logical layers:
 
-1. **API Layer** (backend/atlas/api/) — HTTP endpoints
-2. **Business Logic Layer** (backend/atlas/pipeline/, backend/atlas/models/) — Core algorithms and data access
-3. **Interface Layer** (frontend/) — What users see
+1. **API Layer** (api/atlas/api/) — HTTP endpoints
+2. **Business Logic Layer** (api/atlas/pipeline/, api/atlas/models/) — Core algorithms and data access
+3. **Interface Layer** (app/) — What users see
 
 This separation makes it easy to:
 - Test business logic independently of HTTP

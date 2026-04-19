@@ -1,5 +1,5 @@
 """
-FastAPI application entry point for The Atlas backend.
+FastAPI application entry point for The Atlas API.
 
 Configures:
 - CORS middleware

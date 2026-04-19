@@ -17,7 +17,7 @@ export function getAuthConfig(env: AuthEnv = import.meta.env) {
 }
 
 /**
- * Builds the trusted actor headers the app uses when it calls the backend on
+ * Builds the trusted actor headers the app uses when it calls the API on
  * behalf of an authenticated browser operator.
  */
 export function createInternalAuthHeaders(

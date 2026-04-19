@@ -51,8 +51,8 @@ make dev
 ```
 
 This starts both the api and app servers:
-- **Backend API:** http://localhost:8000
-- **Frontend:** http://localhost:3000
+- **API:** http://localhost:8000
+- **App:** http://localhost:3000
 - **API Docs (Swagger):** http://localhost:8000/docs
 
 You should see output like:
@@ -79,11 +79,11 @@ VITE v5.0.0  ready in 245 ms
 
 Open your browser and check:
 
-1. **Frontend:** http://localhost:3000
+1. **App:** http://localhost:3000
    - Should show the Atlas homepage
    - Try navigating around
 
-2. **Backend API:** http://localhost:8000/docs
+2. **API:** http://localhost:8000/docs
    - Should show interactive Swagger documentation
    - All endpoints are listed here with test buttons
 

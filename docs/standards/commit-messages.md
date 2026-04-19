@@ -36,8 +36,8 @@ What part of the code does this change?
 
 | Scope | Applies to |
 |---|---|
-| `backend` | Python/FastAPI code |
-| `frontend` | React/TypeScript code |
+| `api` | Python/FastAPI code |
+| `app` | React/TypeScript code |
 | `pipeline` | Autodiscovery pipeline |
 | `db` | Database/schema |
 | `taxonomy` | Issue areas or search terms |
@@ -125,7 +125,7 @@ Links to implementation files for each step.
 ### Test
 
 ```
-test(backend): add 20 tests for entry model
+test(api): add 20 tests for entry model
 
 Tests CRUD operations, validation, and edge cases.
 Coverage for entry.py increased from 65% to 92%.
@@ -134,7 +134,7 @@ Coverage for entry.py increased from 65% to 92%.
 ### Refactoring
 
 ```
-refactor(frontend): extract search form to component
+refactor(app): extract search form to component
 
 Moves SearchForm from SearchPage to separate component.
 Improves reusability and testability.
@@ -200,7 +200,7 @@ git commit -m "feat: add new feature"
 If the hook rejects your message:
 
 ```bash
-git commit --amend -m "feat(backend): add new endpoint"
+git commit --amend -m "feat(api): add new endpoint"
 ```
 
 ---

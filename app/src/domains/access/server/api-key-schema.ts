@@ -36,7 +36,7 @@ export const createdApiKeySchema = z.object({
 
 /**
  * Parsed shape for the private API-key verification response used by the
- * backend.
+ * API.
  */
 export const verifyApiKeyResultSchema = z
   .object({

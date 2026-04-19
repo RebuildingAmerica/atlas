@@ -1,5 +1,5 @@
 """
-Configuration management for The Atlas backend.
+Configuration management for The Atlas API.
 
 Uses pydantic-settings to load configuration from environment variables
 with sensible defaults. Supports dev, staging, and production environments.
@@ -11,7 +11,7 @@ from typing import Literal
 from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-BACKEND_ENV_FILE = Path(__file__).resolve().parents[1] / ".env"
+API_ENV_FILE = Path(__file__).resolve().parents[1] / ".env"
 
 
 class Settings(BaseSettings):
@@ -30,7 +30,7 @@ class Settings(BaseSettings):
 
     # CORS
     cors_origins: list[str] = ["http://localhost:5173"]
-    """Allowed CORS origins for frontend access."""
+    """Allowed CORS origins for app access."""
 
     # Logging
     log_level: Literal["debug", "info", "warning", "error", "critical"] = "info"
@@ -82,7 +82,7 @@ class Settings(BaseSettings):
     """Enable interactive documentation UIs (/docs, /redoc)."""
 
     model_config = SettingsConfigDict(
-        env_file=BACKEND_ENV_FILE,
+        env_file=API_ENV_FILE,
         env_file_encoding="utf-8",
         case_sensitive=False,
         populate_by_name=True,

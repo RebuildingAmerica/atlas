@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 /**
- * Private API-key introspection route used by the backend API service.
+ * Private API-key introspection route used by the API service.
  */
 export const Route = createFileRoute("/api/auth/internal/api-key")({
   server: {

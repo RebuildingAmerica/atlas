@@ -19,15 +19,15 @@ Day-to-day development practices. Branch naming, commits, PR process, quality ch
 
 → [Read: Workflow](./workflow.md)
 
-### Backend Development
+### API Development
 Building Python features. Adding endpoints, models, pipeline steps, issue areas.
 
-→ [Read: Backend Development](./backend.md)
+→ [Read: API Development](./api.md)
 
-### Frontend Development
+### App Development
 Building React features. Adding pages, components, hooks.
 
-→ [Read: Frontend Development](./frontend.md)
+→ [Read: App Development](./app.md)
 
 ### Testing
 Test strategies for both stacks. Running tests, coverage requirements.
@@ -48,14 +48,14 @@ Quality gates and tooling. Pre-commit hooks, linting, formatting, type checking.
 make dev
 ```
 
-**Backend only:**
+**API only:**
 ```bash
-make dev-backend
+make dev-api
 ```
 
-**Frontend only:**
+**App only:**
 ```bash
-make dev-frontend
+make dev-app
 ```
 
 ### Quality Checks
@@ -118,7 +118,7 @@ make db-reset
 
 4. Commit with a proper message (see [Workflow](./workflow.md)):
    ```bash
-   git commit -m "feat(backend): add new endpoint for searching entries"
+   git commit -m "feat(api): add new endpoint for searching entries"
    ```
 
 5. Push and create a PR:
@@ -131,12 +131,12 @@ make db-reset
 | I need to... | Read this |
 |---|---|
 | Understand how to work on a feature | [Workflow](./workflow.md) |
-| Add a new API endpoint | [Backend Development](./backend.md) |
-| Add a new database table | [Backend Development](./backend.md) |
-| Add a new pipeline step | [Backend Development](./backend.md) |
-| Add a new issue area | [Backend Development](./backend.md) |
-| Add a new page | [Frontend Development](./frontend.md) |
-| Add a new component | [Frontend Development](./frontend.md) |
+| Add a new API endpoint | [API Development](./api.md) |
+| Add a new database table | [API Development](./api.md) |
+| Add a new pipeline step | [API Development](./api.md) |
+| Add a new issue area | [API Development](./api.md) |
+| Add a new page | [App Development](./app.md) |
+| Add a new component | [App Development](./app.md) |
 | Fix a type error | [Code Quality](./code-quality.md) |
 | Write tests | [Testing](./testing.md) |
 
@@ -146,7 +146,7 @@ Before starting work, understand how the system is built:
 - [System Overview](../architecture/system-overview.md)
 - [Pipeline Architecture](../architecture/pipeline.md)
 - [API Reference](../architecture/api-reference.md)
-- [Frontend Architecture](../architecture/frontend.md)
+- [App Architecture](../architecture/app.md)
 
 ## Standards to Follow
 

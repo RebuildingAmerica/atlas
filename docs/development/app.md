@@ -1,23 +1,23 @@
-# Frontend Development
+# App Development
 
-[Docs](../README.md) > [Development](./README.md) > Frontend Development
+[Docs](../README.md) > [Development](./README.md) > App Development
 
-How to build features on the React/TanStack Start frontend. Adding routes, components, and hooks.
+How to build features on the React/TanStack Start app. Adding routes, components, and hooks.
 
 ## Prerequisites
 
 - Node.js 24+ installed
-- Frontend dependencies installed (`make setup` or `cd frontend && pnpm install`)
+- App dependencies installed (`make setup` or `cd app && pnpm install`)
 - Familiar with React and TypeScript
 
 ## Adding a New Route/Page
 
 ### 1. Create the Route File
 
-Routes use file-based convention in `frontend/src/routes/`:
+Routes use file-based convention in `app/src/routes/`:
 
 ```tsx
-// frontend/src/routes/my-page.tsx
+// app/src/routes/my-page.tsx
 import { useEffect, useState } from 'react'
 
 export default function MyPageComponent() {
@@ -38,14 +38,14 @@ export default function MyPageComponent() {
 }
 ```
 
-The file `frontend/src/routes/my-page.tsx` automatically becomes route `/my-page`.
+The file `app/src/routes/my-page.tsx` automatically becomes route `/my-page`.
 
 ### 2. Nested Routes
 
 Use folder structure to create nested routes:
 
 ```tsx
-// frontend/src/routes/entries/$id.tsx
+// app/src/routes/entries/$id.tsx
 // This becomes /entries/:id
 
 import { useParams } from '@tanstack/react-router'
@@ -92,7 +92,7 @@ export default function MyPage() {
 
 ### 5. Link to the Page
 
-In `frontend/src/components/features/Nav.tsx` or root layout:
+In `app/src/components/features/Nav.tsx` or root layout:
 
 ```tsx
 import { Link } from '@tanstack/react-router'
@@ -111,7 +111,7 @@ export function Navigation() {
 ### 6. Test the Route
 
 ```bash
-cd frontend && pnpm run dev
+cd app && pnpm run dev
 ```
 
 Navigate to `http://localhost:3000/my-page`
@@ -122,12 +122,12 @@ Navigate to `http://localhost:3000/my-page`
 
 ### 1. Create the Component
 
-Components go in `frontend/src/components/`:
+Components go in `app/src/components/`:
 
 **UI Component (reusable, no business logic):**
 
 ```tsx
-// frontend/src/components/ui/Badge.tsx
+// app/src/components/ui/Badge.tsx
 interface BadgeProps {
   label: string
   color?: 'blue' | 'green' | 'red' | 'gray'
@@ -152,7 +152,7 @@ export function Badge({ label, color = 'gray' }: BadgeProps) {
 **Feature Component (domain-specific):**
 
 ```tsx
-// frontend/src/components/features/EntryCard.tsx
+// app/src/components/features/EntryCard.tsx
 import { Badge } from '../ui/Badge'
 import { Entry } from '../../types/entry'
 
@@ -209,10 +209,10 @@ export function MyPage() {
 
 ### 3. Export from Index
 
-Optionally create `frontend/src/components/index.ts` for easy importing:
+Optionally create `app/src/components/index.ts` for easy importing:
 
 ```tsx
-// frontend/src/components/index.ts
+// app/src/components/index.ts
 export { Badge } from './ui/Badge'
 export { Button } from './ui/Button'
 export { EntryCard } from './features/EntryCard'
@@ -232,7 +232,7 @@ Hooks encapsulate data fetching and state logic.
 ### 1. Create the Hook
 
 ```tsx
-// frontend/src/hooks/useEntries.ts
+// app/src/hooks/useEntries.ts
 import { useEffect, useState } from 'react'
 import { api } from '../lib/api'
 import { Entry } from '../types/entry'
@@ -303,12 +303,12 @@ export default function SearchPage() {
 
 ## Adding a New Type Definition
 
-TypeScript types mirror Pydantic schemas from the backend.
+TypeScript types mirror Pydantic schemas from the API.
 
 ### 1. Create Type File
 
 ```tsx
-// frontend/src/types/entry.ts
+// app/src/types/entry.ts
 export interface Entry {
   id: string
   type: 'person' | 'organization' | 'initiative' | 'campaign' | 'event'
@@ -474,7 +474,7 @@ TanStack Start supports selective SSR. By default, routes are SPAs (rendered in 
 ### Mark a Route as SSR
 
 ```tsx
-// frontend/src/routes/index.tsx (home page)
+// app/src/routes/index.tsx (home page)
 
 // Option 1: Export metadata
 export const route = {
@@ -491,7 +491,7 @@ export default function HomePage() {
 ### Mark a Route as SPA
 
 ```tsx
-// frontend/src/routes/admin/discovery.tsx (admin page)
+// app/src/routes/admin/discovery.tsx (admin page)
 
 export const route = {
   ssr: false  // Render in browser only
@@ -509,7 +509,7 @@ export default function AdminDiscoveryPage() {
 ## Running Linting and Type Checks
 
 ```bash
-cd frontend
+cd app
 
 # Type check
 pnpm run typecheck
@@ -531,10 +531,10 @@ All must pass before committing.
 
 ## Testing (When Configured)
 
-Frontend testing is not yet configured. Once set up:
+App testing is not yet configured. Once set up:
 
 ```bash
-cd frontend
+cd app
 
 # Run tests
 pnpm run test
@@ -609,8 +609,8 @@ return (
 
 ## See Also
 
-- [Frontend Architecture](../architecture/frontend.md) — How TanStack Start works
-- [API Reference](../architecture/api-reference.md) — Backend endpoints
+- [App Architecture](../architecture/app.md) — How TanStack Start works
+- [API Reference](../architecture/api-reference.md) — API endpoints
 - [Code Quality](./code-quality.md) — Fix lint/type errors
 
 ---

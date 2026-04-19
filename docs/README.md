@@ -74,7 +74,7 @@ Product vision, system design, and taxonomy. Reference documents that define wha
 
 **Current Phase:** Phase 1 (Scaffold)
 
-The platform is in early development. Core APIs and database schema are in place. The autodiscovery pipeline is scaffolded with all 6 steps stubbed. Frontend is built out with routing and basic components. See individual docs for what's implemented vs. what's pending.
+The platform is in early development. Core APIs and database schema are in place. The autodiscovery pipeline is scaffolded with all 6 steps stubbed. App is built out with routing and basic components. See individual docs for what's implemented vs. what's pending.
 
 ---
 

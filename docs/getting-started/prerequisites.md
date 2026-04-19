@@ -8,7 +8,7 @@ Before you can run The Atlas locally, make sure you have the following installed
 
 ### Python 3.12+
 
-The backend runs on Python 3.12+.
+The API runs on Python 3.12+.
 
 **macOS (Homebrew):**
 ```bash
@@ -40,7 +40,7 @@ python --version  # Verify
 
 ### Node.js 24+
 
-The frontend runs on Node.js 24+.
+The app runs on Node.js 24+.
 
 **macOS (Homebrew):**
 ```bash

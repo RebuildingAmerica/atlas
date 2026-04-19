@@ -1,5 +1,5 @@
 """
-The Atlas Backend — a discovery platform for people, organizations, and initiatives
+The Atlas API — a discovery platform for people, organizations, and initiatives
 working on contemporary American issues.
 
 This package provides:

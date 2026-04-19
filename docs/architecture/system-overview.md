@@ -9,7 +9,7 @@ The Atlas has three layers working together to build a national directory of peo
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                    INTERFACE LAYER                              │
-│  React Frontend (TanStack Start) + REST API                     │
+│  React App (TanStack Start) + REST API                     │
 │  - Public directory (searchable, browsable)                     │
 │  - Internal admin interface                                      │
 │  - Real-time updates via API polling                            │
@@ -94,42 +94,42 @@ Fast startup, great performance, automatic API documentation (Swagger). Type hin
   - See outreach status
   - View gap analysis results
 
-- **HTTP Client** — Calls the FastAPI backend.
+- **HTTP Client** — Calls the FastAPI API.
 
 **Why TanStack Start?**
 
 Meta-framework built on Vite and React Router. Provides file-based routing, selective SSR (some routes render on server, some in browser), and TypeScript first. Cleaner than Next.js for our use case.
 
-**See also:** [Frontend Architecture](./frontend.md)
+**See also:** [App Architecture](./app.md)
 
 ## Data Flow
 
 ### Reading (User browsing)
 
 ```
-1. User opens homepage → Frontend requests /api/v1/entries
-2. Backend queries SQLite → returns latest entries (with sources)
-3. Frontend renders entry cards in a list
-4. User clicks search → Frontend calls /api/v1/entries?q=query
-5. Backend does FTS search in SQLite → returns results
-6. Frontend renders in real-time as user types
+1. User opens homepage → App requests /api/v1/entries
+2. API queries SQLite → returns latest entries (with sources)
+3. App renders entry cards in a list
+4. User clicks search → App calls /api/v1/entries?q=query
+5. API does FTS search in SQLite → returns results
+6. App renders in real-time as user types
 ```
 
 ### Writing (Pipeline discovery)
 
 ```
-1. Admin triggers discovery run on frontend
-2. Frontend POSTs to /api/v1/discovery with location + issue areas
-3. Backend starts pipeline:
+1. Admin triggers discovery run on app
+2. App POSTs to /api/v1/discovery with location + issue areas
+3. API starts pipeline:
    a. Generate ~40 search queries
    b. Fetch ~200 sources from web
    c. Extract entries from each source using Claude API
    d. Deduplicate (merge same entries from different sources)
    e. Rank by relevance
    f. Analyze gaps (what's missing?)
-4. Backend stores all new/updated entries in SQLite
-5. Frontend polls /api/v1/discovery/{run_id} to see progress
-6. When complete, frontend shows admin the results
+4. API stores all new/updated entries in SQLite
+5. App polls /api/v1/discovery/{run_id} to see progress
+6. When complete, app shows admin the results
 7. Admin can publish entries to public directory
 ```
 
@@ -160,7 +160,7 @@ Most routes are SPAs (rendered in browser) for interactivity. Home page and entr
 
 ### Type Safety Across Stacks
 
-Pydantic schemas on backend → TypeScript types on frontend. Same type, different syntax. Means when you add a field to an Entry, it automatically shows up in the frontend type-checking.
+Pydantic schemas on API → TypeScript types on app. Same type, different syntax. Means when you add a field to an Entry, it automatically shows up in the app type-checking.
 
 ---
 
@@ -169,7 +169,7 @@ Pydantic schemas on backend → TypeScript types on frontend. Same type, differe
 - Understand the full design: [System Design](../../docs/the-atlas-system-design.md)
 - Deep dive on pipeline: [Pipeline Architecture](./pipeline.md)
 - REST API details: [API Reference](./api-reference.md)
-- Frontend details: [Frontend Architecture](./frontend.md)
+- App details: [App Architecture](./app.md)
 
 ---
 

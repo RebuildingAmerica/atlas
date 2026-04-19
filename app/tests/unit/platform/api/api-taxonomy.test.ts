@@ -14,7 +14,7 @@ describe("api.taxonomy.list", () => {
     listIssueAreasMock.mockReset();
   });
 
-  it("uses backend-compatible pagination and groups issue areas by domain", async () => {
+  it("uses API-compatible pagination and groups issue areas by domain", async () => {
     listIssueAreasMock
       .mockResolvedValueOnce({
         items: [
@@ -66,7 +66,7 @@ describe("api.taxonomy.list", () => {
     });
   });
 
-  it("returns an empty taxonomy when the backend responds without issue-area items", async () => {
+  it("returns an empty taxonomy when the API responds without issue-area items", async () => {
     listIssueAreasMock.mockResolvedValue({
       items: null,
       next_cursor: null,

@@ -80,7 +80,7 @@ ensure_env_value() {
   fi
 }
 
-ensure_backend_env() {
+ensure_api_env() {
   if [ ! -f "$repo_root/api/.env" ]; then
     cp "$repo_root/api/.env.example" "$repo_root/api/.env"
     note "Created api/.env from api/.env.example"
@@ -89,17 +89,17 @@ ensure_backend_env() {
   fi
 }
 
-ensure_frontend_env() {
-  frontend_env="$repo_root/app/.env.local"
-  frontend_secret=$(generate_secret)
+ensure_app_env() {
+  app_env="$repo_root/app/.env.local"
+  app_secret=$(generate_secret)
 
-  if [ ! -f "$frontend_env" ]; then
-    cat >"$frontend_env" <<EOF
+  if [ ! -f "$app_env" ]; then
+    cat >"$app_env" <<EOF
 ATLAS_PUBLIC_URL=http://localhost:3000
 ATLAS_DEPLOY_MODE=local
 ATLAS_DEV_API_PROXY_TARGET=http://localhost:8000
 ATLAS_AUTH_BASE_PATH=/api/auth
-ATLAS_AUTH_INTERNAL_SECRET=$frontend_secret
+ATLAS_AUTH_INTERNAL_SECRET=$app_secret
 ATLAS_AUTH_API_KEY_INTROSPECTION_URL=http://localhost:3000/api/auth/internal/api-key
 ATLAS_EMAIL_PROVIDER=capture
 ATLAS_EMAIL_FROM=Atlas <noreply@localhost>
@@ -111,23 +111,23 @@ EOF
   fi
 
   note "Keeping existing app/.env.local"
-  remove_env_key "$frontend_env" "ATLAS_LOCAL"
-  ensure_env_value "$frontend_env" "ATLAS_DEPLOY_MODE" "local"
-  ensure_env_value "$frontend_env" "ATLAS_DEV_API_PROXY_TARGET" "http://localhost:8000"
-  ensure_env_value "$frontend_env" "ATLAS_AUTH_API_KEY_INTROSPECTION_URL" "http://localhost:3000/api/auth/internal/api-key"
-  current_secret=$(get_env_value "$frontend_env" "ATLAS_AUTH_INTERNAL_SECRET")
+  remove_env_key "$app_env" "ATLAS_LOCAL"
+  ensure_env_value "$app_env" "ATLAS_DEPLOY_MODE" "local"
+  ensure_env_value "$app_env" "ATLAS_DEV_API_PROXY_TARGET" "http://localhost:8000"
+  ensure_env_value "$app_env" "ATLAS_AUTH_API_KEY_INTROSPECTION_URL" "http://localhost:3000/api/auth/internal/api-key"
+  current_secret=$(get_env_value "$app_env" "ATLAS_AUTH_INTERNAL_SECRET")
   if is_blank_or_placeholder "$current_secret" "replace-with-a-local-secret-if-you-enable-auth" || \
     is_blank_or_placeholder "$current_secret" "replace-with-a-local-secret"; then
-    set_env_value "$frontend_env" "ATLAS_AUTH_INTERNAL_SECRET" "$frontend_secret"
+    set_env_value "$app_env" "ATLAS_AUTH_INTERNAL_SECRET" "$app_secret"
     note "Generated app/.env.local auth secret"
   fi
 }
 
-ensure_frontend_e2e_env() {
-  frontend_e2e_env="$repo_root/app/.env.e2e"
+ensure_app_e2e_env() {
+  app_e2e_env="$repo_root/app/.env.e2e"
 
-  if [ ! -f "$frontend_e2e_env" ]; then
-    cat >"$frontend_e2e_env" <<'EOF'
+  if [ ! -f "$app_e2e_env" ]; then
+    cat >"$app_e2e_env" <<'EOF'
 ATLAS_E2E_APP_URL=http://localhost:3100
 ATLAS_E2E_API_URL=http://localhost:38000
 ATLAS_E2E_AUTH_INTROSPECTION_URL=http://127.0.0.1:3100/api/auth/internal/api-key
@@ -220,8 +220,8 @@ ensure_production_env() {
   fi
 }
 
-ensure_backend_env
-ensure_frontend_env
-ensure_frontend_e2e_env
+ensure_api_env
+ensure_app_env
+ensure_app_e2e_env
 ensure_compose_local_env
 ensure_production_env

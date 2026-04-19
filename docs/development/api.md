@@ -1,23 +1,23 @@
-# Backend Development
+# API Development
 
-[Docs](../README.md) > [Development](./README.md) > Backend Development
+[Docs](../README.md) > [Development](./README.md) > API Development
 
-How to build features on the Python/FastAPI backend. Adding endpoints, models, pipeline steps, and issue areas.
+How to build features on the Python/FastAPI API. Adding endpoints, models, pipeline steps, and issue areas.
 
 ## Prerequisites
 
 - Python 3.12+ installed
-- Backend dependencies installed (`make setup` or `cd backend && pip install -e ".[dev]"`)
+- API dependencies installed (`make setup` or `cd api && pip install -e ".[dev]"`)
 - Familiar with FastAPI and SQLAlchemy/Pydantic
 
 ## Adding a New API Endpoint
 
 ### 1. Define the Request/Response Schema
 
-In `backend/atlas/schemas/`:
+In `api/atlas/schemas/`:
 
 ```python
-# backend/atlas/schemas/my_feature.py
+# api/atlas/schemas/my_feature.py
 from pydantic import BaseModel
 from typing import Optional
 from uuid import UUID
@@ -38,10 +38,10 @@ class MyFeatureResponse(BaseModel):
 
 ### 2. Create the Route Handler
 
-In `backend/atlas/api/`:
+In `api/atlas/api/`:
 
 ```python
-# backend/atlas/api/my_feature.py
+# api/atlas/api/my_feature.py
 from fastapi import APIRouter, HTTPException, status
 from ..schemas.my_feature import MyFeatureRequest, MyFeatureResponse
 from ..models import db  # or import your model functions
@@ -75,7 +75,7 @@ async def get_my_feature(id: UUID):
 
 ### 3. Register the Route in Main Router
 
-In `backend/atlas/api/router.py`:
+In `api/atlas/api/router.py`:
 
 ```python
 from . import entries, discovery, taxonomy, my_feature  # Add import
@@ -96,7 +96,7 @@ def get_routes():
 
 ### 4. Add Database Layer (if needed)
 
-In `backend/atlas/models/my_feature.py`:
+In `api/atlas/models/my_feature.py`:
 
 ```python
 from atlas.db import get_db
@@ -141,7 +141,7 @@ def get_my_feature_by_id(id: UUID) -> dict | None:
 See [Testing](./testing.md).
 
 ```python
-# backend/tests/test_my_feature.py
+# api/tests/test_my_feature.py
 def test_create_my_feature(client):
     response = client.post(
         "/api/v1/my-feature",
@@ -157,7 +157,7 @@ def test_create_my_feature(client):
 ### 6. Check Everything Works
 
 ```bash
-cd backend
+cd api
 
 # Type check
 mypy atlas
@@ -182,7 +182,7 @@ make quality
 
 ### 1. Create the Schema
 
-In `backend/atlas/models/database.py`:
+In `api/atlas/models/database.py`:
 
 ```python
 def init_db():
@@ -208,7 +208,7 @@ def init_db():
 
 ### 2. Create CRUD Functions
 
-In `backend/atlas/models/my_table.py`:
+In `api/atlas/models/my_table.py`:
 
 ```python
 from datetime import datetime
@@ -279,18 +279,18 @@ def list_all(skip: int = 0, limit: int = 20) -> list[dict]:
 ### 3. Test the Table
 
 ```bash
-cd backend && pytest tests/test_models.py -v
+cd api && pytest tests/test_models.py -v
 ```
 
 ---
 
 ## Adding a Pipeline Step
 
-The pipeline is in `backend/atlas/pipeline/`. It has 6 steps that run in sequence.
+The pipeline is in `api/atlas/pipeline/`. It has 6 steps that run in sequence.
 
 ### Example: Improving Step 1 (Query Generation)
 
-Current implementation in `backend/atlas/pipeline/query_generator.py`:
+Current implementation in `api/atlas/pipeline/query_generator.py`:
 
 ```python
 def generate_queries(location: str, issue_areas: list[str]) -> list[str]:
@@ -347,7 +347,7 @@ def generate_queries(location: str, issue_areas: list[str]) -> list[str]:
 
 Test it:
 ```python
-# backend/tests/test_pipeline.py
+# api/tests/test_pipeline.py
 def test_generate_queries():
     queries = generate_queries("Kansas City, MO", ["labor", "housing"])
 
@@ -367,11 +367,11 @@ def test_generate_queries():
 
 ## Adding a New Issue Area
 
-Issue areas are defined in `backend/atlas/taxonomy/`.
+Issue areas are defined in `api/atlas/taxonomy/`.
 
 ### 1. Add to Issue Areas Enum
 
-In `backend/atlas/taxonomy/issue_areas.py`:
+In `api/atlas/taxonomy/issue_areas.py`:
 
 ```python
 from enum import Enum
@@ -397,7 +397,7 @@ ISSUE_AREA_METADATA = {
 
 ### 2. Add Search Terms
 
-In `backend/atlas/taxonomy/search_terms.py`:
+In `api/atlas/taxonomy/search_terms.py`:
 
 ```python
 SEARCH_TERMS = {
@@ -413,7 +413,7 @@ SEARCH_TERMS = {
 ### 3. Test It
 
 ```python
-# backend/tests/test_taxonomy.py
+# api/tests/test_taxonomy.py
 def test_my_new_area_is_recognized():
     from atlas.taxonomy import IssueArea
     assert IssueArea.MY_NEW_AREA in IssueArea
@@ -430,7 +430,7 @@ def test_my_new_area_has_search_terms():
 ## Running Tests
 
 ```bash
-cd backend
+cd api
 
 # Run all tests
 pytest
@@ -456,7 +456,7 @@ ptw
 ## Type Checking
 
 ```bash
-cd backend
+cd api
 
 # Check all code
 mypy atlas
@@ -489,7 +489,7 @@ def create_entry(name, location) -> dict:
 ## Linting and Formatting
 
 ```bash
-cd backend
+cd api
 
 # Check formatting
 ruff format . --check
@@ -508,7 +508,7 @@ ruff check . --fix
 
 ## Environment Variables
 
-Backend configuration is in `backend/atlas/config.py`. Environment variables are loaded from `.env`:
+API configuration is in `api/atlas/config.py`. Environment variables are loaded from `.env`:
 
 ```python
 # .env (local development)
@@ -602,7 +602,7 @@ async def get_entry(id: str):
 
 - [Testing](./testing.md) — Write tests for your code
 - [Code Quality](./code-quality.md) — Fix lint/type errors
-- [Backend Architecture](../architecture/pipeline.md) — How pipeline works
+- [API Architecture](../architecture/pipeline.md) — How pipeline works
 - [API Reference](../architecture/api-reference.md) — API endpoints
 
 ---

@@ -7,7 +7,7 @@ import { permissionsToScopes } from "../api-key-scopes";
 import { getAuthRuntimeConfig } from "./runtime";
 
 /**
- * Private app-to-backend API-key verification endpoint.
+ * Private app-to-API API-key verification endpoint.
  *
  * FastAPI uses this to verify direct API-key requests without treating those
  * keys as browser sessions inside the app.

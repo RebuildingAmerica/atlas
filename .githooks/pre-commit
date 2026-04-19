@@ -50,8 +50,8 @@ get_staged_api_python_files() {
     get_staged_files | grep -E '^api/.*\.py$' || echo ""
 }
 
-# Get staged frontend files
-get_staged_frontend_files() {
+# Get staged app files
+get_staged_app_files() {
     get_staged_files | grep -E '\.(js|jsx|ts|tsx|vue|svelte)$' || echo ""
 }
 
@@ -120,12 +120,12 @@ else
 fi
 
 # ============================================
-# Frontend Checks
+# App Checks
 # ============================================
-FRONTEND_FILES=$(get_staged_frontend_files)
+APP_FILES=$(get_staged_app_files)
 
-if [ -n "$FRONTEND_FILES" ]; then
-    print_info "Found $(echo "$FRONTEND_FILES" | wc -l) frontend file(s) to check"
+if [ -n "$APP_FILES" ]; then
+    print_info "Found $(echo "$APP_FILES" | wc -l) app file(s) to check"
 
     # 4. Prettier Format Check
     print_info "Running prettier format check..."
@@ -154,7 +154,7 @@ if [ -n "$FRONTEND_FILES" ]; then
         print_success "ESLint check passed"
     fi
 else
-    print_info "No frontend files staged, skipping frontend checks"
+    print_info "No app files staged, skipping app checks"
 fi
 
 # ============================================

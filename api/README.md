@@ -1,6 +1,6 @@
-# The Atlas Backend
+# The Atlas API
 
-A FastAPI + SQLite backend for The Atlas — a discovery platform for people, organizations, and initiatives working on contemporary American issues.
+A FastAPI + SQLite API for The Atlas — a discovery platform for people, organizations, and initiatives working on contemporary American issues.
 
 ## Setup
 
@@ -19,7 +19,7 @@ A FastAPI + SQLite backend for The Atlas — a discovery platform for people, or
 
 ### Environment Variables
 
-Create a `.env` file in the backend directory:
+Create a `.env` file in the api directory:
 
 ```env
 DATABASE_URL=sqlite:///atlas.db
@@ -101,7 +101,7 @@ ruff check . && mypy atlas && pytest
 ## Project Structure
 
 ```
-backend/
+api/
 ├── atlas/
 │   ├── __init__.py
 │   ├── main.py                 # FastAPI app entry point
@@ -254,7 +254,7 @@ Steps 2-6 of the pipeline are implemented as stubs with proper signatures. Ready
 
 1. Implement pipeline steps 2-6 (source fetching, extraction, deduplication, ranking, gap analysis)
 2. Add authentication and authorization
-3. Build React frontend for triage and editing
+3. Build React app for triage and editing
 4. Implement batch operations for managing entries
 5. Add CSV export and import
 6. Deploy to production with Postgres

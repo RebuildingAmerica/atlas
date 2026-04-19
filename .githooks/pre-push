@@ -60,7 +60,7 @@ fi
 # 2. Run full typecheck (mypy + tsc)
 print_info "Running full typecheck suite..."
 
-print_info "  Backend: mypy..."
+print_info "  API: mypy..."
 if ! (cd "$API_DIR" && uv run mypy atlas > /dev/null 2>&1); then
     print_error "MyPy type check failed"
     echo ""
@@ -70,10 +70,10 @@ if ! (cd "$API_DIR" && uv run mypy atlas > /dev/null 2>&1); then
     echo ""
     FAILED=1
 else
-    print_success "Backend types OK"
+    print_success "API types OK"
 fi
 
-print_info "  Frontend: TypeScript..."
+print_info "  App: TypeScript..."
 if ! (cd "$APP_DIR" && pnpm run typecheck > /dev/null 2>&1); then
     print_error "TypeScript check failed"
     echo ""
@@ -83,15 +83,15 @@ if ! (cd "$APP_DIR" && pnpm run typecheck > /dev/null 2>&1); then
     echo ""
     FAILED=1
 else
-    print_success "Frontend types OK"
+    print_success "App types OK"
 fi
 
 # 3. Run full test suite with coverage
 print_info "Running full test suite..."
 
-print_info "  Backend: pytest with coverage (minimum 90%)..."
+print_info "  API: pytest with coverage (minimum 90%)..."
 if ! (cd "$API_DIR" && uv run pytest --cov=atlas --cov-fail-under=90 > /dev/null 2>&1); then
-    print_error "Backend tests failed or coverage below 90%"
+    print_error "API tests failed or coverage below 90%"
     echo ""
     echo -e "${YELLOW}HOW TO FIX:${NC}"
     echo "  Run: cd api && uv run pytest --cov=atlas --cov-report=term-missing"
@@ -99,14 +99,14 @@ if ! (cd "$API_DIR" && uv run pytest --cov=atlas --cov-fail-under=90 > /dev/null
     echo ""
     FAILED=1
 else
-    print_success "Backend tests passed with 90%+ coverage"
+    print_success "API tests passed with 90%+ coverage"
 fi
 
-print_info "  Frontend: pnpm test..."
+print_info "  App: pnpm test..."
 if ! (cd "$APP_DIR" && pnpm run test > /dev/null 2>&1); then
-    print_info "Frontend tests not yet configured (skipping)"
+    print_info "App tests not yet configured (skipping)"
 else
-    print_success "Frontend tests passed"
+    print_success "App tests passed"
 fi
 
 # Final result

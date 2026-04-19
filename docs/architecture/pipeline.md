@@ -68,7 +68,7 @@ For each issue area, generate queries targeting different sources:
 - Social media: "housing affordability Kansas City twitter"
 
 **Implementation:**
-- File: `backend/atlas/pipeline/query_generator.py`
+- File: `api/atlas/pipeline/query_generator.py`
 - Input: DiscoveryRun (location, issue_areas)
 - Output: List of query strings
 
@@ -94,7 +94,7 @@ For each query, hit search engines and directories:
 Deduplicate URLs (same article found multiple times) before passing to Step 3.
 
 **Implementation:**
-- File: `backend/atlas/pipeline/source_fetcher.py`
+- File: `api/atlas/pipeline/source_fetcher.py`
 - Input: List of query strings
 - Output: List of Source objects (with raw_content)
 
@@ -133,7 +133,7 @@ Return as JSON array.
 Claude returns structured JSON. Parse and convert to Entry objects.
 
 **Implementation:**
-- File: `backend/atlas/pipeline/extractor.py`
+- File: `api/atlas/pipeline/extractor.py`
 - Input: List of Source objects with raw_content
 - Output: List of Entry objects (not yet in database)
 - Uses: `ANTHROPIC_API_KEY` from config
@@ -163,7 +163,7 @@ When duplicates are found:
 - Resolve conflicting fields (if sources disagree, take most frequent)
 
 **Implementation:**
-- File: `backend/atlas/pipeline/deduplicator.py`
+- File: `api/atlas/pipeline/deduplicator.py`
 - Input: List of Entry objects from Step 3
 - Output: Deduplicated list of Entry objects with merged source lists
 
@@ -189,7 +189,7 @@ Score each entry by:
 Sort by combined score, highest first.
 
 **Implementation:**
-- File: `backend/atlas/pipeline/ranker.py`
+- File: `api/atlas/pipeline/ranker.py`
 - Input: List of Entry objects from Step 4
 - Output: Same list, sorted by relevance score
 
@@ -214,7 +214,7 @@ Analyze coverage:
 Recommend additional searches to fill gaps.
 
 **Implementation:**
-- File: `backend/atlas/pipeline/gap_analyzer.py`
+- File: `api/atlas/pipeline/gap_analyzer.py`
 - Input: Ranked entries from Step 5 + original query
 - Output: GapAnalysis object with findings and recommendations
 
@@ -224,7 +224,7 @@ Recommend additional searches to fill gaps.
 
 ## Pipeline Orchestration
 
-**File:** `backend/atlas/pipeline/__init__.py`
+**File:** `api/atlas/pipeline/__init__.py`
 
 The main entry point that runs all 6 steps in sequence:
 
@@ -287,7 +287,7 @@ Then poll: `GET /api/v1/discovery/{run_id}` to check progress.
 
 ### From Frontend
 
-Admin goes to `/admin/discovery`, fills in location and checkboxes for issue areas, clicks "Run Discovery". Frontend POSTs to `/api/v1/discovery`, then polls for completion.
+Admin goes to `/admin/discovery`, fills in location and checkboxes for issue areas, clicks "Run Discovery". App POSTs to `/api/v1/discovery`, then polls for completion.
 
 ---
 
@@ -330,7 +330,7 @@ Every entry knows which sources it came from. Every source is timestamped. Disco
 
 - [System Overview](./system-overview.md) — How pipeline fits in three-layer architecture
 - [System Design](../../docs/the-atlas-system-design.md) — Complete pipeline spec
-- [Backend Development](../development/backend.md) — How to implement a pipeline step
+- [API Development](../development/api.md) — How to implement a pipeline step
 
 ---
 

@@ -1,11 +1,11 @@
-# The Atlas - Frontend
+# The Atlas - App
 
-A TanStack Start-based React frontend for The Atlas infrastructure discovery and cataloging platform.
+A TanStack Start-based React app for The Atlas infrastructure discovery and cataloging platform.
 
 ## Project Structure
 
 ```
-frontend/
+app/
 ├── src/
 │   ├── routes/              # TanStack Router file-based routes
 │   │   ├── __root.tsx       # Root layout with navigation
@@ -92,8 +92,8 @@ Builds the production bundle (output in `.output/`).
 ### Docker Build
 
 ```bash
-docker build -t atlas-frontend .
-docker run -p 3000:3000 atlas-frontend
+docker build -t atlas-app .
+docker run -p 3000:3000 atlas-app
 ```
 
 ## Architecture
@@ -106,7 +106,7 @@ docker run -p 3000:3000 atlas-frontend
 
 ### API Integration
 
-The frontend communicates with the backend at `/api/v1`:
+The app communicates with the API at `/api/v1`:
 
 - **Entries**: List, filter, and fetch individual entries
 - **Discovery**: Start runs, poll status, list run history
@@ -169,7 +169,7 @@ pnpm run quality
 
 ### Type Errors
 
-Regenerate types if backend schema changes:
+Regenerate types if API schema changes:
 
 ```bash
 pnpm run typecheck
@@ -186,13 +186,13 @@ pnpm install
 
 ## Deployment
 
-The frontend is designed to be deployed as a Docker container or static build.
+The app is designed to be deployed as a Docker container or static build.
 
 ### Docker Deployment
 
 ```bash
-docker build -t atlas-frontend .
-docker run -p 3000:3000 -e API_BASE_URL=https://api.example.com atlas-frontend
+docker build -t atlas-app .
+docker run -p 3000:3000 -e API_BASE_URL=https://api.example.com atlas-app
 ```
 
 ### Static Deployment

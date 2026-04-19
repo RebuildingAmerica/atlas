@@ -32,7 +32,7 @@ REST API design standards. Base path, pagination, errors, versioning.
 ```
 
 Valid types: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, `perf`
-Valid scopes: `backend`, `frontend`, `pipeline`, `db`, `taxonomy`, `devops`, `docs`
+Valid scopes: `api`, `app`, `pipeline`, `db`, `taxonomy`, `devops`, `docs`
 
 Example:
 ```

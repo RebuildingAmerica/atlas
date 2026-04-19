@@ -1,1 +1,1 @@
-"""Tests for The Atlas backend."""
+"""Tests for The Atlas API."""

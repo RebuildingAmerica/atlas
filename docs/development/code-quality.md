@@ -109,7 +109,7 @@ Validates that commit messages follow Conventional Commits format.
 - `build` — Build changes
 
 **Valid scopes:** (optional)
-- `backend`, `frontend`, `pipeline`, `db`, `taxonomy`, `devops`, `docs`
+- `api`, `app`, `pipeline`, `db`, `taxonomy`, `devops`, `docs`
 
 **If it fails:**
 
@@ -123,7 +123,7 @@ your message: fixed some stuff
 
 ```bash
 # Use --amend to fix the message
-git commit --amend -m "fix(backend): correct error handling"
+git commit --amend -m "fix(api): correct error handling"
 
 # Then the commit goes through
 ```
@@ -133,8 +133,8 @@ git commit --amend -m "fix(backend): correct error handling"
 ✅ feat(pipeline): add query generation
 ✅ fix: handle null values
 ✅ docs: update API reference
-✅ test(backend): add 10 new tests
-✅ refactor(frontend): simplify component
+✅ test(api): add 10 new tests
+✅ refactor(app): simplify component
 ```
 
 ## Pre-Push Hook
@@ -151,7 +151,7 @@ Runs before pushing to the remote. Checks everything (not just staged files).
    - Python: `pytest --cov-fail-under=90`
 
 4. **Build succeeds** — Project compiles
-   - Frontend: `pnpm run build`
+   - App: `pnpm run build`
 
 **If it fails:**
 
@@ -170,11 +170,11 @@ git add .
 git commit -m "fix: address review feedback"
 
 # Fix type errors
-cd backend && mypy atlas --show-error-codes
+cd api && mypy atlas --show-error-codes
 # Fix manually
 
 # Fix test failures
-cd backend && pytest -v
+cd api && pytest -v
 # Fix failing tests
 
 # Improve coverage
@@ -213,7 +213,7 @@ make typecheck
 make test
 
 # Full test with coverage
-cd backend && pytest --cov=atlas --cov-report=term-missing --cov-fail-under=90
+cd api && pytest --cov=atlas --cov-report=term-missing --cov-fail-under=90
 ```
 
 ---
@@ -250,7 +250,7 @@ cd backend && pytest --cov=atlas --cov-report=term-missing --cov-fail-under=90
 
 **Auto-fix:**
 ```bash
-cd backend
+cd api
 ruff check . --fix
 ```
 
@@ -276,7 +276,7 @@ ruff check . --fix
 
 **Auto-fix:**
 ```bash
-cd frontend
+cd app
 pnpm run lint:fix
 ```
 
@@ -338,7 +338,7 @@ pnpm run lint:fix
 **Minimum: 90%** on all changed code.
 
 ```bash
-cd backend
+cd api
 
 # Check coverage
 pytest --cov=atlas --cov-report=term-missing --cov-fail-under=90
@@ -463,13 +463,13 @@ Pre-commit hooks can be slow. To speed up local development:
 
 ```bash
 # Check only staged files (what pre-commit does)
-cd backend && ruff check --staged .
+cd api && ruff check --staged .
 
 # Type check only changed files
-cd backend && mypy atlas/models/entry.py
+cd api && mypy atlas/models/entry.py
 
 # Run only one test
-cd backend && pytest tests/test_models.py::test_create_entry
+cd api && pytest tests/test_models.py::test_create_entry
 ```
 
 Then run full `make quality` before pushing to ensure nothing breaks.

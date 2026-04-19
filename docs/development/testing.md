@@ -2,7 +2,7 @@
 
 [Docs](../README.md) > [Development](./README.md) > Testing
 
-Test strategies and how to write tests for both backend and frontend. Running tests and coverage requirements.
+Test strategies and how to write tests for both API and app. Running tests and coverage requirements.
 
 ## Testing Philosophy
 
@@ -18,7 +18,7 @@ Code + tests + docs are one artifact. New behavior must be tested or it's incomp
 ### Running Tests
 
 ```bash
-cd backend
+cd api
 
 # Run all tests
 pytest
@@ -40,7 +40,7 @@ ptw
 ### Test Structure
 
 ```
-backend/tests/
+api/tests/
 ├── conftest.py          # Fixtures and test configuration
 ├── test_models.py       # Database model tests
 ├── test_api.py          # API endpoint tests
@@ -51,7 +51,7 @@ backend/tests/
 ### Writing Unit Tests
 
 ```python
-# backend/tests/test_models.py
+# api/tests/test_models.py
 import pytest
 from atlas.models import entry as entry_model
 
@@ -104,7 +104,7 @@ class TestEntryModel:
 ### Testing API Endpoints
 
 ```python
-# backend/tests/test_api.py
+# api/tests/test_api.py
 import pytest
 from fastapi.testclient import TestClient
 from atlas.main import app
@@ -168,7 +168,7 @@ class TestEntriesAPI:
 ### Testing Pipeline Steps
 
 ```python
-# backend/tests/test_pipeline.py
+# api/tests/test_pipeline.py
 import pytest
 from atlas.pipeline import query_generator
 
@@ -217,7 +217,7 @@ class TestQueryGenerator:
 Fixtures are reusable test setup:
 
 ```python
-# backend/tests/conftest.py
+# api/tests/conftest.py
 import pytest
 import sqlite3
 from atlas.models import database
@@ -283,14 +283,14 @@ class TestExtractor:
 
 ---
 
-## Frontend Testing (When Configured)
+## App Testing (When Configured)
 
-Frontend testing is not yet set up. When it is, use Vitest + React Testing Library.
+App testing is not yet set up. When it is, use Vitest + React Testing Library.
 
 ### Basic Test Template
 
 ```tsx
-// frontend/tests/components/EntryCard.test.tsx
+// app/tests/components/EntryCard.test.tsx
 import { describe, it, expect } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { EntryCard } from '../../src/components/features/EntryCard'
@@ -336,7 +336,7 @@ describe('EntryCard', () => {
 **Minimum: 90%** on all changed code.
 
 ```bash
-cd backend
+cd api
 
 # Check coverage
 pytest --cov=atlas --cov-report=term-missing --cov-fail-under=90
@@ -502,9 +502,9 @@ Usually involves timing, randomness, or shared state:
 
 ### "No module named 'atlas'"
 
-Make sure backend is installed in dev mode:
+Make sure API is installed in dev mode:
 ```bash
-cd backend
+cd api
 pip install -e ".[dev]"
 ```
 
@@ -512,7 +512,7 @@ pip install -e ".[dev]"
 
 ## See Also
 
-- [Backend Development](./backend.md) — How to write the code
+- [API Development](./api.md) — How to write the code
 - [Code Quality](./code-quality.md) — Running checks
 - [Workflow](./workflow.md) — Git workflow and CI/CD
 
