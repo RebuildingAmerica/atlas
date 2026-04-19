@@ -24,8 +24,7 @@
     "lint:fix": "eslint src tests --fix",
     "format": "prettier --write \"src/**/*.{ts,tsx,css}\" \"tests/**/*.{ts,tsx}\"",
     "format:check": "prettier --check \"src/**/*.{ts,tsx,css}\" \"tests/**/*.{ts,tsx}\"",
-    "typecheck": "tsc --noEmit",
-    "quality": "pnpm run typecheck && pnpm run lint && pnpm run format:check"
+    "typecheck": "tsc --noEmit"
   },
   "keywords": [],
   "author": "",

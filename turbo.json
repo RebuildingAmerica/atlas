@@ -8,7 +8,20 @@
     "api/pyproject.toml"
   ],
   "tasks": {
+    "typecheck": {
+      "cache": false
+    },
+    "lint": {
+      "cache": false
+    },
+    "test": {
+      "cache": false
+    },
+    "format:check": {
+      "cache": false
+    },
     "quality": {
+      "dependsOn": ["typecheck", "lint", "test", "format:check"],
       "cache": false
     },
     "//#openapi": {
