@@ -193,6 +193,28 @@ CREATE TABLE IF NOT EXISTS discovery_runs (
     created_at DATETIME NOT NULL
 );
 
+-- Entity flags (anonymous public flagging)
+CREATE TABLE IF NOT EXISTS entity_flags (
+    id TEXT PRIMARY KEY,
+    entity_id TEXT NOT NULL,
+    reason TEXT NOT NULL,
+    note TEXT,
+    status TEXT NOT NULL DEFAULT 'open' CHECK(status IN ('open', 'reviewed', 'resolved')),
+    created_at DATETIME NOT NULL,
+    FOREIGN KEY (entity_id) REFERENCES entries(id) ON DELETE CASCADE
+);
+
+-- Source flags (anonymous public flagging)
+CREATE TABLE IF NOT EXISTS source_flags (
+    id TEXT PRIMARY KEY,
+    source_id TEXT NOT NULL,
+    reason TEXT NOT NULL,
+    note TEXT,
+    status TEXT NOT NULL DEFAULT 'open' CHECK(status IN ('open', 'reviewed', 'resolved')),
+    created_at DATETIME NOT NULL,
+    FOREIGN KEY (source_id) REFERENCES sources(id) ON DELETE CASCADE
+);
+
 -- Full-text search virtual table
 CREATE VIRTUAL TABLE IF NOT EXISTS entries_fts USING fts5(
     name,
@@ -220,6 +242,10 @@ CREATE INDEX IF NOT EXISTS idx_discovery_runs_state ON discovery_runs(state);
 CREATE INDEX IF NOT EXISTS idx_discovery_runs_status ON discovery_runs(status);
 CREATE INDEX IF NOT EXISTS idx_sources_url ON sources(url);
 CREATE INDEX IF NOT EXISTS idx_sources_ingested ON sources(ingested_at);
+CREATE INDEX IF NOT EXISTS idx_entity_flags_entity_id ON entity_flags(entity_id);
+CREATE INDEX IF NOT EXISTS idx_entity_flags_status ON entity_flags(status);
+CREATE INDEX IF NOT EXISTS idx_source_flags_source_id ON source_flags(source_id);
+CREATE INDEX IF NOT EXISTS idx_source_flags_status ON source_flags(status);
 
 -- Keep FTS content synchronized with entries.
 CREATE TRIGGER IF NOT EXISTS entries_ai AFTER INSERT ON entries BEGIN
