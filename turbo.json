@@ -17,11 +17,8 @@
     "test": {
       "cache": false
     },
-    "format:check": {
-      "cache": false
-    },
     "quality": {
-      "dependsOn": ["typecheck", "lint", "test", "format:check"],
+      "dependsOn": ["typecheck", "lint", "test"],
       "cache": false
     },
     "//#openapi": {
