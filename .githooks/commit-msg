@@ -1,12 +1,20 @@
 #!/bin/bash
 set -euo pipefail
 
-# Color codes
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m'
+# Color codes (disabled when not in TTY to prevent escape sequence leakage)
+if [[ -t 1 ]]; then
+  RED='\033[0;31m'
+  GREEN='\033[0;32m'
+  YELLOW='\033[1;33m'
+  BLUE='\033[0;34m'
+  NC='\033[0m'
+else
+  RED=''
+  GREEN=''
+  YELLOW=''
+  BLUE=''
+  NC=''
+fi
 
 COMMIT_MSG_FILE="$1"
 COMMIT_HEADER=$(head -n 1 "$COMMIT_MSG_FILE")
@@ -36,8 +44,8 @@ if ! echo "$COMMIT_HEADER" | grep -qE "$PATTERN"; then
     echo "Valid scopes (optional):"
     echo "  - ${BLUE}api${NC}:         Python/FastAPI application code"
     echo "  - ${BLUE}app${NC}:         React/TanStack Start application code"
-    echo "  - ${BLUE}pipeline${NC}:    Discovery pipeline
-  - ${BLUE}scout${NC}:       Atlas Scout autonomous discovery package"
+    echo "  - ${BLUE}pipeline${NC}:    Discovery pipeline"
+    echo "  - ${BLUE}scout${NC}:       Atlas Scout autonomous discovery package"
     echo "  - ${BLUE}docs${NC}:        Documentation files"
     echo "  - ${BLUE}dx${NC}:          Developer experience, tooling, deployment, CI/CD"
     echo "  Use no scope for broad or cross-cutting changes."

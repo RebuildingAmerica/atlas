@@ -299,8 +299,10 @@ describe("OrganizationPage", () => {
     await renderOrganizationSSOPage();
 
     const workspaceDomainInputs = screen.getAllByLabelText("Workspace domain");
-    expect(workspaceDomainInputs.length).toBeGreaterThan(0);
-    const oidcWorkspaceDomainInput = workspaceDomainInputs[0];
+    const oidcWorkspaceDomainInput = workspaceDomainInputs.at(0);
+    if (!oidcWorkspaceDomainInput) {
+      throw new Error("No workspace domain inputs found");
+    }
 
     fireEvent.change(oidcWorkspaceDomainInput, {
       target: { value: "policy.example" },
