@@ -11,7 +11,7 @@ from atlas.taxonomy import (
 
 # Constants
 EXPECTED_DOMAIN_COUNT = 11
-EXPECTED_TOTAL_ISSUES = 47
+EXPECTED_TOTAL_ISSUES = 51
 EXPECTED_ECONOMIC_SECURITY_ISSUES = 5
 
 
@@ -37,7 +37,7 @@ class TestTaxonomy:
         assert set(DOMAINS) == expected_domains
 
     def test_issue_count(self) -> None:
-        """Test that we have 47 issue areas total."""
+        """Test that we have 51 issue areas total."""
         total_issues = sum(len(issues) for issues in ISSUE_AREAS_BY_DOMAIN.values())
         assert total_issues == EXPECTED_TOTAL_ISSUES
 

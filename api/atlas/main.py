@@ -35,11 +35,17 @@ from atlas.platform.openapi import (
 
 logger = logging.getLogger(__name__)
 
+
+def configure_logging() -> None:
+    """Configure logging for the application."""
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    )
+
+
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-)
+configure_logging()
 
 
 @asynccontextmanager

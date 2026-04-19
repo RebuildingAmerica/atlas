@@ -1,7 +1,7 @@
 """
 Issue area taxonomy for The Atlas.
 
-Defines 11 domains with 47 issue areas that entries can be tagged with.
+Defines 11 domains with 51 issue areas that entries can be tagged with.
 Each issue area has a slug, display name, and description.
 """
 
