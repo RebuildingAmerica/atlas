@@ -1,5 +1,4 @@
 import { vi } from "vitest";
-import type { getAuth } from "@/domains/access/server/auth";
 import {
   createBetterAuthOrganization,
   createBetterAuthSession,
@@ -20,14 +19,5 @@ export function createSessionStateAuthApi() {
     listUserInvitations: vi.fn().mockResolvedValue([]),
     sendVerificationEmail: vi.fn().mockResolvedValue(undefined),
     signInMagicLink: vi.fn().mockResolvedValue(undefined),
-  } satisfies Pick<
-    ReturnType<typeof getAuth>["api"],
-    | "getActiveMemberRole"
-    | "getSession"
-    | "listOrganizations"
-    | "listPasskeys"
-    | "listUserInvitations"
-    | "sendVerificationEmail"
-    | "signInMagicLink"
-  >;
+  };
 }

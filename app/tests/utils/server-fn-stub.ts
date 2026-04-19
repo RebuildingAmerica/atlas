@@ -17,15 +17,7 @@ interface ParsedValidator {
 /**
  * Result value supported by the shared server-function test stub.
  */
-type ServerFnResult<TResult = unknown> =
-  | Promise<TResult>
-  | TResult
-  | object
-  | string
-  | number
-  | boolean
-  | null
-  | undefined;
+type ServerFnResult<TResult = unknown> = Promise<TResult> | TResult;
 
 /**
  * Builds a reusable `createServerFn` stub for unit tests that exercise Atlas

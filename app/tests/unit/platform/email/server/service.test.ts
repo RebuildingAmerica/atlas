@@ -18,6 +18,7 @@ vi.mock("resend", () => ({
 function buildRuntime(overrides: Partial<AuthRuntimeConfig> = {}): AuthRuntimeConfig {
   return {
     apiAudience: null,
+    apiBaseUrl: null,
     apiKeyIntrospectionUrl: "https://atlas.example.com/api/auth/internal/api-key",
     allowedEmails: new Set(),
     localMode: false,

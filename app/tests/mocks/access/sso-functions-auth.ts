@@ -1,5 +1,4 @@
 import { vi } from "vitest";
-import type { getAuth } from "@/domains/access/server/auth";
 
 /**
  * Builds the Better Auth API mock used by `sso.functions` unit tests.
@@ -12,7 +11,7 @@ export function createSSOFunctionsAuthApi() {
     deleteSSOProvider: vi.fn().mockResolvedValue(undefined),
     getFullOrganization: vi.fn().mockResolvedValue({
       metadata: {
-        workspaceType: "team",
+        workspaceType: "team" as const,
       },
     }),
     getInvitation: vi.fn().mockResolvedValue(null),
@@ -26,14 +25,5 @@ export function createSSOFunctionsAuthApi() {
     }),
     updateOrganization: vi.fn().mockResolvedValue(undefined),
     verifyDomain: vi.fn().mockResolvedValue(undefined),
-  } satisfies Pick<
-    ReturnType<typeof getAuth>["api"],
-    | "deleteSSOProvider"
-    | "getFullOrganization"
-    | "getInvitation"
-    | "registerSSOProvider"
-    | "requestDomainVerification"
-    | "updateOrganization"
-    | "verifyDomain"
-  >;
+  };
 }

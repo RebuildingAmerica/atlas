@@ -299,6 +299,7 @@ describe("OrganizationPage", () => {
     await renderOrganizationSSOPage();
 
     const workspaceDomainInputs = screen.getAllByLabelText("Workspace domain");
+    expect(workspaceDomainInputs.length).toBeGreaterThan(0);
     const oidcWorkspaceDomainInput = workspaceDomainInputs[0];
 
     fireEvent.change(oidcWorkspaceDomainInput, {

@@ -1,4 +1,8 @@
-import type { AtlasSessionPayload, AtlasWorkspaceState } from "@/domains/access/session.types";
+import type {
+  AtlasSessionPayload,
+  AtlasWorkspaceMembership,
+  AtlasWorkspaceState,
+} from "@/domains/access/session.types";
 
 /**
  * Builds the Better Auth session payload Atlas reads through
@@ -108,13 +112,13 @@ export function createAtlasWorkspace(
 ): AtlasWorkspaceState {
   const activeOrganization =
     options.activeOrganization === undefined
-      ? {
+      ? ({
           id: "org_team",
           name: "Atlas Team",
           role: "owner",
           slug: "atlas-team",
           workspaceType: "team",
-        }
+        } as const as AtlasWorkspaceMembership)
       : options.activeOrganization;
 
   return {
@@ -131,7 +135,7 @@ export function createAtlasWorkspace(
         name: "Atlas Team",
         role: "owner",
         slug: "atlas-team",
-        workspaceType: "team",
+        workspaceType: "team" as const,
       },
     ],
     onboarding: {
