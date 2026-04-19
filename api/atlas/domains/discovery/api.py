@@ -62,8 +62,8 @@ async def start_discovery_run(  # noqa: PLR0913
     background_tasks: BackgroundTasks,
     actor: AuthenticatedActor = Depends(require_actor_permission("discovery", "write")),
     settings: Settings = Depends(get_settings),
-    response: Response | None = None,
     db: aiosqlite.Connection = Depends(get_db),
+    response: Response = Response(),
 ) -> DiscoveryRunResponse:
     """
     Start a discovery run for a location and issue areas.
@@ -114,8 +114,7 @@ async def start_discovery_run(  # noqa: PLR0913
             credentials=pipeline_credentials,
         )
 
-    if response is not None:
-        apply_no_store_headers(response)
+    apply_no_store_headers(response)
     return _run_to_response(run)
 
 
@@ -129,12 +128,13 @@ async def start_discovery_run(  # noqa: PLR0913
     tags=["discovery-runs"],
 )
 async def list_discovery_runs(  # noqa: PLR0913
+    response: Response,
+    *,
     state: str | None = Query(None, min_length=2, max_length=2),
     status: str | None = Query(None),
     limit: int = Query(50, ge=1, le=500),
     cursor: str | None = Query(None),
     actor: AuthenticatedActor = Depends(require_actor_permission("discovery", "read")),
-    response: Response | None = None,
     db: aiosqlite.Connection = Depends(get_db),
 ) -> DiscoveryRunCollectionResponse:
     """
@@ -159,8 +159,7 @@ async def list_discovery_runs(  # noqa: PLR0913
         total = await DiscoveryRunCRUD.count(db, state=state, status=status)
         items = [_run_to_response(r).model_dump(mode="json") for r in runs]
         next_cursor = str(offset + limit) if offset + limit < total else None
-        if response is not None:
-            apply_no_store_headers(response)
+        apply_no_store_headers(response)
         return DiscoveryRunCollectionResponse(items=items, total=total, next_cursor=next_cursor)
     except Exception:
         logger.exception(
@@ -189,8 +188,8 @@ async def list_discovery_runs(  # noqa: PLR0913
 )
 async def get_discovery_run(
     run_id: str,
+    response: Response = Response(),
     actor: AuthenticatedActor = Depends(require_actor_permission("discovery", "read")),
-    response: Response | None = None,
     db: aiosqlite.Connection = Depends(get_db),
 ) -> DiscoveryRunResponse:
     """Get a discovery run by ID."""
@@ -198,8 +197,7 @@ async def get_discovery_run(
     run = await DiscoveryRunCRUD.get_by_id(db, run_id)
     if not run:
         raise HTTPException(status_code=404, detail="Discovery run not found")
-    if response is not None:
-        apply_no_store_headers(response)
+    apply_no_store_headers(response)
     return _run_to_response(run)
 
 

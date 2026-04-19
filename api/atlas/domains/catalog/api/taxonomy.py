@@ -39,13 +39,13 @@ def _domain_slug(domain: str) -> str:
     tags=["domains"],
 )
 async def list_domains(
+    response: Response,
+    *,
     limit: int = Query(25, ge=1, le=100),
     cursor: str | None = Query(None),
-    response: Response | None = None,
 ) -> DomainListResponse:
     """List Atlas domains as a collection resource."""
-    if response is not None:
-        apply_static_public_cache(response)
+    apply_static_public_cache(response)
     offset = max(int(cursor), 0) if cursor is not None else 0
     all_items = [
         DomainResponse(
@@ -103,14 +103,14 @@ async def get_domain(domain_slug: str, response: Response) -> DomainDetailRespon
     tags=["issue-areas"],
 )
 async def list_issue_areas(
+    response: Response,
+    *,
     query: str | None = Query(None, min_length=1),
     limit: int = Query(25, ge=1, le=100),
     cursor: str | None = Query(None),
-    response: Response | None = None,
 ) -> IssueAreaListResponse:
     """List issue areas, optionally filtered by a natural-language query."""
-    if response is not None:
-        apply_static_public_cache(response)
+    apply_static_public_cache(response)
     offset = max(int(cursor), 0) if cursor is not None else 0
     if query:
         resolved = await AtlasDataService("sqlite:///unused").resolve_issue_areas(query, limit=200)
