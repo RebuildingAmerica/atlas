@@ -8,7 +8,8 @@ from typing import TYPE_CHECKING, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 
-from atlas.domains.access import AuthenticatedActor, require_actor_permission
+from atlas.domains.access.dependencies import require_org_actor_permission
+from atlas.domains.catalog.models.ownership import OwnershipCRUD
 from atlas.domains.catalog.schemas.public import FacetOption
 from atlas.domains.catalog.taxonomy import ALL_ISSUE_SLUGS
 from atlas.models import EntryCRUD, FlagCRUD, get_db_connection
@@ -27,6 +28,8 @@ from atlas.schemas import (
 
 if TYPE_CHECKING:
     import aiosqlite
+
+    from atlas.domains.access import AuthenticatedActor
 
 logger = logging.getLogger(__name__)
 
@@ -230,7 +233,7 @@ async def get_entity_sources(
 async def create_entity(
     req: EntityCreateRequest,
     response: Response,
-    actor: AuthenticatedActor = Depends(require_actor_permission("entities", "write")),
+    actor: AuthenticatedActor = Depends(require_org_actor_permission("entities", "write")),
     db: aiosqlite.Connection = Depends(get_db),
 ) -> EntityDetailResponse:
     """
@@ -238,7 +241,6 @@ async def create_entity(
 
     Validates issue areas against the taxonomy.
     """
-    _ = actor
     invalid_issue_areas = [
         issue_area for issue_area in req.issue_areas if issue_area not in ALL_ISSUE_SLUGS
     ]
@@ -281,6 +283,16 @@ async def create_entity(
         )
     await db.commit()
 
+    assert actor.org_id is not None  # guaranteed by require_org_actor_permission
+    await OwnershipCRUD.create_ownership(
+        db,
+        resource_id=entity_id,
+        resource_type="entry",
+        org_id=actor.org_id,
+        visibility="public",
+        created_by=actor.user_id,
+    )
+
     entry = await EntryCRUD.get_by_id(db, entity_id)
     if not entry:
         raise HTTPException(status_code=500, detail="Failed to create entity")
@@ -308,14 +320,19 @@ async def update_entity(
     entity_id: str,
     req: EntityUpdateRequest,
     response: Response,
-    actor: AuthenticatedActor = Depends(require_actor_permission("entities", "write")),
+    actor: AuthenticatedActor = Depends(require_org_actor_permission("entities", "write")),
     db: aiosqlite.Connection = Depends(get_db),
 ) -> EntityDetailResponse:
     """Update an entity (partial update)."""
-    _ = actor
     entry = await EntryCRUD.get_by_id(db, entity_id)
     if not entry:
         raise HTTPException(status_code=404, detail="Entity not found")
+
+    ownership = await OwnershipCRUD.get_ownership(db, entity_id, "entry")
+    if ownership is not None and ownership.org_id != actor.org_id:
+        raise HTTPException(
+            status_code=403, detail="Only the owning organization can modify this entity"
+        )
 
     update_dict = {
         field: value
@@ -355,19 +372,27 @@ async def update_entity(
 async def delete_entity(
     entity_id: str,
     response: Response,
-    actor: AuthenticatedActor = Depends(require_actor_permission("entities", "write")),
+    actor: AuthenticatedActor = Depends(require_org_actor_permission("entities", "write")),
     db: aiosqlite.Connection = Depends(get_db),
 ) -> None:
     """Delete an entity."""
-    _ = actor
-    success = await EntryCRUD.delete(db, entity_id)
-    if not success:
+    entry = await EntryCRUD.get_by_id(db, entity_id)
+    if not entry:
         raise HTTPException(status_code=404, detail="Entity not found")
+
+    ownership = await OwnershipCRUD.get_ownership(db, entity_id, "entry")
+    if ownership is not None and ownership.org_id != actor.org_id:
+        raise HTTPException(
+            status_code=403, detail="Only the owning organization can delete this entity"
+        )
+
+    await EntryCRUD.delete(db, entity_id)
+    await OwnershipCRUD.delete_ownership(db, entity_id, "entry")
     apply_no_store_headers(response)
 
 
 def _entity_to_response(  # noqa: PLR0913
-    entry: Any,  # noqa: ANN401
+    entry: Any,
     *,
     issue_areas: list[str],
     source_types: list[str],
@@ -391,7 +416,7 @@ def _entity_to_response(  # noqa: PLR0913
 
 
 def _entity_to_detail_response(
-    entry: Any,  # noqa: ANN401
+    entry: Any,
     *,
     issue_areas: list[str],
     sources: list[dict[str, Any]],
