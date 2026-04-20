@@ -3,9 +3,12 @@
 from fastapi import APIRouter
 
 from atlas.domains.catalog.api.entries import router as entries_router
+from atlas.domains.catalog.api.org_annotations import router as org_annotations_router
+from atlas.domains.catalog.api.org_resources import router as org_resources_router
 from atlas.domains.catalog.api.public import router as public_router
 from atlas.domains.catalog.api.taxonomy import router as taxonomy_router
 from atlas.domains.discovery.api import router as discovery_router
+from atlas.domains.discovery.api_org import router as org_discovery_router
 from atlas.domains.moderation.api import router as flags_router
 
 __all__ = ["create_router"]
@@ -28,5 +31,10 @@ def create_router() -> APIRouter:
     router.include_router(flags_router, prefix="/api")
     router.include_router(taxonomy_router, prefix="/api")
     router.include_router(public_router, prefix="/api")
+
+    # Org-scoped private resource routers
+    router.include_router(org_resources_router, prefix="/api/orgs/{org_id}/entries")
+    router.include_router(org_annotations_router, prefix="/api/orgs/{org_id}/annotations")
+    router.include_router(org_discovery_router, prefix="/api/orgs/{org_id}/discovery-runs")
 
     return router
