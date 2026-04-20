@@ -2,7 +2,10 @@ import { defineConfig } from "vite";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
-import { join } from "path";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
   plugins: [tanstackStart(), react(), tailwindcss()],
@@ -16,7 +19,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      "@": join(import.meta.dirname, "src"),
+      "@": resolve(__dirname, "src"),
     },
   },
 });

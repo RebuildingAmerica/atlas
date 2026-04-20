@@ -8,6 +8,9 @@
     "api/pyproject.toml"
   ],
   "tasks": {
+    "build": {
+      "outputs": ["dist/**"]
+    },
     "typecheck": {
       "cache": false
     },
