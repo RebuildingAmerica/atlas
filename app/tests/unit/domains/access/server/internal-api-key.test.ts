@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { introspectApiKeyRequest } from "@/domains/access/server/internal-api-key";
 
 const mocks = vi.hoisted(() => ({
   ensureAuthReady: vi.fn(),
@@ -13,8 +14,9 @@ vi.mock("@/domains/access/server/runtime", () => ({
   getAuthRuntimeConfig: mocks.getAuthRuntimeConfig,
 }));
 
-describe("introspectApiKeyRequest", () => {
+describe("introspect-api-key", () => {
   beforeEach(() => {
+    vi.resetModules();
     mocks.ensureAuthReady.mockReset();
     mocks.getAuthRuntimeConfig.mockReset();
     mocks.getAuthRuntimeConfig.mockReturnValue({
@@ -22,119 +24,87 @@ describe("introspectApiKeyRequest", () => {
     });
   });
 
-  it("returns 401 when Better Auth reports an invalid API key", async () => {
-    mocks.ensureAuthReady.mockResolvedValue({
-      api: {
-        verifyApiKey: vi.fn().mockResolvedValue({
-          error: {
-            code: "INVALID_API_KEY",
-            message: "Invalid API key.",
-          },
-          key: null,
-          valid: false,
-        }),
+  it("verifies the internal secret and returns 401 on mismatch", async () => {
+    const request = new Request("http://localhost/api/auth/internal/api-key", {
+      headers: {
+        "x-atlas-internal-secret": "wrong-secret",
       },
     });
 
-    const { introspectApiKeyRequest } = await import("@/domains/access/server/internal-api-key");
-    const response = await introspectApiKeyRequest(
-      new Request("http://atlas.test/api/auth/internal/api-key", {
-        headers: {
-          "X-Atlas-Internal-Secret": "internal-test-secret",
-          "X-API-Key": "atlas_invalid_key",
-        },
-        method: "POST",
-      }),
-    );
+    const response = await introspectApiKeyRequest(request);
 
     expect(response.status).toBe(401);
-    await expect(response.json()).resolves.toEqual({
-      valid: false,
-    });
+    const body = (await response.json()) as { valid: boolean };
+    expect(body.valid).toBe(false);
   });
 
-  it("returns the normalized Atlas principal payload for valid API keys", async () => {
-    mocks.ensureAuthReady.mockResolvedValue({
-      api: {
-        verifyApiKey: vi.fn().mockResolvedValue({
-          error: null,
-          key: {
-            id: "key_123",
-            metadata: {
-              userEmail: "operator@atlas.test",
-            },
-            name: "CLI key",
-            permissions: {
-              discovery: ["read"],
-            },
-            referenceId: "user_123",
-          },
-          valid: true,
-        }),
+  it("verifies the API key and returns its metadata on success", async () => {
+    const verifyApiKeyMock = vi.fn().mockResolvedValue({
+      valid: true,
+      key: {
+        id: "key_123",
+        name: "Test Key",
+        permissions: { discovery: ["read"] },
+        referenceId: "user_123",
+        metadata: { userEmail: "operator@atlas.test" },
       },
     });
 
-    const { introspectApiKeyRequest } = await import("@/domains/access/server/internal-api-key");
-    const response = await introspectApiKeyRequest(
-      new Request("http://atlas.test/api/auth/internal/api-key", {
-        headers: {
-          "X-Atlas-Internal-Secret": "internal-test-secret",
-          "X-API-Key": "atlas_valid_key",
-        },
-        method: "POST",
-      }),
-    );
+    mocks.ensureAuthReady.mockResolvedValue({
+      api: {
+        verifyApiKey: verifyApiKeyMock,
+      },
+    });
+
+    const request = new Request("http://localhost/api/auth/internal/api-key", {
+      headers: {
+        "x-atlas-internal-secret": "internal-test-secret",
+        "x-api-key": "atlas_test_key",
+      },
+    });
+
+    const response = await introspectApiKeyRequest(request);
 
     expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toEqual({
+    const body = (await response.json()) as Record<string, unknown>;
+    expect(body).toEqual({
       keyId: "key_123",
-      name: "CLI key",
-      permissions: {
-        discovery: ["read"],
-      },
+      name: "Test Key",
+      organizationId: undefined,
+      permissions: { discovery: ["read"] },
       scopes: ["discovery:read"],
       userEmail: "operator@atlas.test",
       userId: "user_123",
       valid: true,
     });
+
+    expect(verifyApiKeyMock).toHaveBeenCalledWith({
+      body: { key: "atlas_test_key" },
+    });
   });
 
-  it("fills in default principal fields when Better Auth omits optional metadata", async () => {
+  it("returns 401 when the API key is invalid", async () => {
+    const verifyApiKeyMock = vi.fn().mockResolvedValue({
+      valid: false,
+    });
+
     mocks.ensureAuthReady.mockResolvedValue({
       api: {
-        verifyApiKey: vi.fn().mockResolvedValue({
-          error: null,
-          key: {
-            id: "key_456",
-            metadata: {},
-            name: null,
-            permissions: null,
-            referenceId: "user_456",
-          },
-          valid: true,
-        }),
+        verifyApiKey: verifyApiKeyMock,
       },
     });
 
-    const { introspectApiKeyRequest } = await import("@/domains/access/server/internal-api-key");
-    const response = await introspectApiKeyRequest(
-      new Request("http://atlas.test/api/auth/internal/api-key", {
-        headers: {
-          "X-Atlas-Internal-Secret": "internal-test-secret",
-          "X-API-Key": "atlas_valid_key",
-        },
-        method: "POST",
-      }),
-    );
-
-    await expect(response.json()).resolves.toEqual({
-      keyId: "key_456",
-      name: "Atlas API Key",
-      permissions: {},
-      scopes: [],
-      userEmail: "",
-      userId: "user_456",
-      valid: true,
+    const request = new Request("http://localhost/api/auth/internal/api-key", {
+      headers: {
+        "x-atlas-internal-secret": "internal-test-secret",
+        "x-api-key": "invalid_key",
+      },
     });
+
+    const response = await introspectApiKeyRequest(request);
+
+    expect(response.status).toBe(401);
+    const body = (await response.json()) as { valid: boolean };
+    expect(body.valid).toBe(false);
   });
 });

@@ -1,121 +1,103 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { createAtlasSessionFixture } from "../../../../fixtures/access/sessions";
+import {
+  requireAtlasSession,
+  requireIncompleteAtlasSession,
+  requireReadyAtlasSession,
+} from "@/domains/access/server/route-guard";
 
-const getAtlasSessionMock = vi.fn();
-
-vi.mock("@/domains/access/session.functions", () => ({
-  getAtlasSession: getAtlasSessionMock,
+const mocks = vi.hoisted(() => ({
+  getAtlasSession: Object.assign(vi.fn(), { __executeServer: vi.fn() }),
+  getAuthRuntimeConfig: vi.fn(() => ({ localMode: true })),
+  getBrowserSessionHeaders: vi.fn(() => new Headers()),
+  redirect: vi.fn((options: Record<string, unknown>) => {
+    const err = new Error("Redirect") as Error & { options: Record<string, unknown> };
+    err.options = options;
+    throw err;
+  }),
 }));
 
-describe("requireAtlasSession", () => {
+vi.mock("@tanstack/react-router", () => ({
+  redirect: mocks.redirect,
+}));
+
+vi.mock("@/domains/access/server/request-headers", () => ({
+  getBrowserSessionHeaders: mocks.getBrowserSessionHeaders,
+}));
+
+vi.mock("@/domains/access/server/runtime", () => ({
+  getAuthRuntimeConfig: mocks.getAuthRuntimeConfig,
+}));
+
+vi.mock("@/domains/access/session.functions", () => ({
+  getAtlasSession: mocks.getAtlasSession,
+}));
+
+describe("route-guard", () => {
   beforeEach(() => {
-    getAtlasSessionMock.mockReset();
+    vi.resetModules();
+    mocks.getAtlasSession.mockReset();
+    mocks.redirect.mockClear();
   });
 
-  it("returns the session when one exists", async () => {
-    const session = createAtlasSessionFixture();
-    getAtlasSessionMock.mockResolvedValue(session);
+  it("redirects to sign-in when no session is present", async () => {
+    mocks.getAtlasSession.mockResolvedValue(null);
 
-    const { requireAtlasSession } = await import("@/domains/access/server/route-guard");
-
-    await expect(requireAtlasSession("/discovery")).resolves.toEqual(session);
-  });
-
-  it("redirects to sign-in when the operator is not authenticated", async () => {
-    getAtlasSessionMock.mockResolvedValue(null);
-    const { requireAtlasSession } = await import("@/domains/access/server/route-guard");
-
-    await expect(requireAtlasSession("/discovery")).rejects.toBeInstanceOf(Response);
-    await expect(requireAtlasSession("/discovery")).rejects.toMatchObject({
-      status: 307,
-    });
-  });
-});
-
-describe("requireReadyAtlasSession", () => {
-  beforeEach(() => {
-    getAtlasSessionMock.mockReset();
-  });
-
-  it("returns the session when account setup is complete", async () => {
-    const session = createAtlasSessionFixture();
-    getAtlasSessionMock.mockResolvedValue(session);
-
-    const { requireReadyAtlasSession } = await import("@/domains/access/server/route-guard");
-
-    await expect(requireReadyAtlasSession("/discovery")).resolves.toEqual(session);
-  });
-
-  it("redirects incomplete operators to account setup", async () => {
-    getAtlasSessionMock.mockResolvedValue(
-      createAtlasSessionFixture({
-        accountReady: false,
-        hasPasskey: false,
-        passkeyCount: 0,
-        user: {
-          emailVerified: false,
-        },
+    await expect(requireAtlasSession("/dashboard")).rejects.toThrow("Redirect");
+    expect(mocks.redirect).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: "/sign-in",
+        search: { redirect: "/dashboard" },
       }),
     );
-    const { requireReadyAtlasSession } = await import("@/domains/access/server/route-guard");
-
-    try {
-      await requireReadyAtlasSession("/discovery");
-      throw new Error("Expected requireReadyAtlasSession to redirect incomplete operators.");
-    } catch (error) {
-      expect(error).toBeInstanceOf(Response);
-      const response = error as Response & {
-        options?: {
-          search?: {
-            redirect?: string;
-          };
-          to?: string;
-        };
-      };
-      expect(response.status).toBe(307);
-      expect(response.options?.search?.redirect).toBe("/discovery");
-      expect(response.options?.to).toBe("/account-setup");
-    }
-  });
-});
-
-describe("requireIncompleteAtlasSession", () => {
-  beforeEach(() => {
-    getAtlasSessionMock.mockReset();
   });
 
-  it("returns the session when setup is still incomplete", async () => {
-    const session = createAtlasSessionFixture({
-      accountReady: false,
-      hasPasskey: false,
-      passkeyCount: 0,
-      user: {
-        emailVerified: false,
-      },
-    });
-    getAtlasSessionMock.mockResolvedValue(session);
+  it("returns the session when authenticated", async () => {
+    const session = { accountReady: true };
+    mocks.getAtlasSession.mockResolvedValue(session);
 
-    const { requireIncompleteAtlasSession } = await import("@/domains/access/server/route-guard");
-
-    await expect(requireIncompleteAtlasSession("/account-setup")).resolves.toEqual(session);
+    const result = await requireAtlasSession("/dashboard");
+    expect(result).toBe(session);
   });
 
-  it("redirects ready operators away from account setup", async () => {
-    getAtlasSessionMock.mockResolvedValue(createAtlasSessionFixture());
-    const { requireIncompleteAtlasSession } = await import("@/domains/access/server/route-guard");
+  it("redirects to account-setup when the account is not ready", async () => {
+    const session = { accountReady: false };
+    mocks.getAtlasSession.mockResolvedValue(session);
 
-    try {
-      await requireIncompleteAtlasSession("/account-setup", "/account");
-      throw new Error("Expected requireIncompleteAtlasSession to redirect ready operators.");
-    } catch (error) {
-      expect(error).toBeInstanceOf(Response);
-      const response = error as Response & {
-        options?: {
-          to?: string;
-        };
-      };
-      expect(response.status).toBe(307);
-      expect(response.options?.to).toBe("/account");
-    }
+    await expect(requireReadyAtlasSession("/dashboard")).rejects.toThrow("Redirect");
+    expect(mocks.redirect).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: "/account-setup",
+      }),
+    );
+  });
+
+  it("redirects a ready operator away from account-setup", async () => {
+    const session = {
+      accountReady: true,
+      workspace: { onboarding: { needsWorkspace: false, hasPendingInvitations: false } },
+    };
+    mocks.getAtlasSession.mockResolvedValue(session);
+
+    await expect(requireIncompleteAtlasSession("/account-setup")).rejects.toThrow("Redirect");
+    expect(mocks.redirect).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: "/account",
+      }),
+    );
+  });
+
+  it("redirects to organization when a workspace is needed", async () => {
+    const session = {
+      accountReady: true,
+      workspace: { onboarding: { needsWorkspace: true, hasPendingInvitations: false } },
+    };
+    mocks.getAtlasSession.mockResolvedValue(session);
+
+    await expect(requireIncompleteAtlasSession("/account-setup")).rejects.toThrow("Redirect");
+    expect(mocks.redirect).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: "/organization",
+      }),
+    );
   });
 });

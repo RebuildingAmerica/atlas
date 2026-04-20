@@ -48,6 +48,7 @@ describe("auth api-key server functions", () => {
       apiKeyIntrospectionUrl: "http://127.0.0.1:3100/api/auth/internal/api-key",
       localMode: false,
       internalSecret: "internal-test-secret",
+      publicBaseUrl: "http://127.0.0.1:3100",
     });
     mocks.getBrowserSessionHeaders.mockReturnValue(browserSessionHeaders);
     mocks.validateAuthRuntimeConfig.mockReturnValue(undefined);
@@ -100,6 +101,7 @@ describe("auth api-key server functions", () => {
         email: "operator@atlas.test",
         id: "user_123",
       },
+      workspace: { activeOrganization: { id: "org_123" } },
     });
     mocks.ensureAuthReady.mockResolvedValue({
       api: {
@@ -117,6 +119,10 @@ describe("auth api-key server functions", () => {
 
     expect(createApiKeyMock).toHaveBeenCalledWith({
       body: {
+        metadata: {
+          organizationId: "org_123",
+          userEmail: "user_123",
+        },
         name: "CLI key",
         permissions: {
           discovery: ["read"],
@@ -124,12 +130,11 @@ describe("auth api-key server functions", () => {
         userId: "user_123",
       },
     });
-    expect(fetchMock).toHaveBeenCalledWith("http://127.0.0.1:3100/api/auth/internal/api-key", {
+    expect(fetchMock).toHaveBeenCalledWith("http://127.0.0.1:3100/api/discovery-runs", {
       headers: {
         "x-api-key": "atlas_secret_key_1234567890",
-        "x-atlas-internal-secret": "internal-test-secret",
       },
-      method: "POST",
+      method: "GET",
     });
   });
 });

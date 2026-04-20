@@ -215,6 +215,43 @@ describe("sso.functions", () => {
     });
   });
 
+  it("sets a workspace primary SSO provider", async () => {
+    const modulePromise = import("@/domains/access/sso.functions");
+    const { setWorkspacePrimarySSOProvider } = await modulePromise;
+
+    const responsePromise = setWorkspacePrimarySSOProvider.__executeServer({
+      method: "POST",
+      data: {
+        providerId: "google-oidc",
+      },
+    });
+    const response = (await responsePromise) as ServerFnExecutionResponse;
+
+    expect(response.error).toBeUndefined();
+    expect(authApi.updateOrganization).toHaveBeenCalled();
+    expect(response.result).toEqual({ ok: true });
+  });
+
+  it("verifies a workspace SSO domain", async () => {
+    const modulePromise = import("@/domains/access/sso.functions");
+    const { verifyWorkspaceSSODomain } = await modulePromise;
+
+    const responsePromise = verifyWorkspaceSSODomain.__executeServer({
+      method: "POST",
+      data: {
+        providerId: "google-oidc",
+      },
+    });
+    const response = (await responsePromise) as ServerFnExecutionResponse;
+
+    expect(response.error).toBeUndefined();
+    expect(authApi.verifyDomain).toHaveBeenCalledWith({
+      body: { providerId: "google-oidc" },
+      headers: browserSessionHeaders,
+    });
+    expect(response.result).toEqual({ ok: true });
+  });
+
   it("requests a fresh domain verification token for one provider", async () => {
     const modulePromise = import("@/domains/access/sso.functions");
     const { requestWorkspaceSSODomainVerification } = await modulePromise;

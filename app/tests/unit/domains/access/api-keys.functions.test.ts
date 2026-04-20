@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { createAtlasSessionFixture } from "../../../fixtures/access/sessions";
 
 interface ServerFnResponse {
   context: unknown;
@@ -269,12 +270,14 @@ describe("api-keys.functions", () => {
         ok: true,
       });
 
-    mocks.ensureReadyAtlasSession.mockResolvedValue({
-      user: {
-        email: "operator@atlas.test",
-        id: "user_123",
-      },
-    });
+    mocks.ensureReadyAtlasSession.mockResolvedValue(
+      createAtlasSessionFixture({
+        user: {
+          email: "operator@atlas.test",
+          id: "user_123",
+        },
+      }),
+    );
     mocks.ensureAuthReady.mockResolvedValue({
       api: {
         createApiKey: createApiKeyMock,
@@ -328,12 +331,14 @@ describe("api-keys.functions", () => {
         ok: true,
       });
 
-    mocks.ensureReadyAtlasSession.mockResolvedValue({
-      user: {
-        email: "operator@atlas.test",
-        id: "user_123",
-      },
-    });
+    mocks.ensureReadyAtlasSession.mockResolvedValue(
+      createAtlasSessionFixture({
+        user: {
+          email: "operator@atlas.test",
+          id: "user_123",
+        },
+      }),
+    );
     mocks.ensureAuthReady.mockResolvedValue({
       api: {
         createApiKey: createApiKeyMock,
@@ -376,12 +381,14 @@ describe("api-keys.functions", () => {
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {
       /* suppress */
     });
-    mocks.ensureReadyAtlasSession.mockResolvedValue({
-      user: {
-        email: "operator@atlas.test",
-        id: "user_123",
-      },
-    });
+    mocks.ensureReadyAtlasSession.mockResolvedValue(
+      createAtlasSessionFixture({
+        user: {
+          email: "operator@atlas.test",
+          id: "user_123",
+        },
+      }),
+    );
     mocks.ensureAuthReady.mockResolvedValue({
       api: {
         createApiKey: vi.fn().mockResolvedValue({
@@ -424,12 +431,14 @@ describe("api-keys.functions", () => {
   it("returns created API keys immediately when Better Auth does not expose the secret value", async () => {
     const createApiKeyMock = vi.fn().mockResolvedValue({});
 
-    mocks.ensureReadyAtlasSession.mockResolvedValue({
-      user: {
-        email: "operator@atlas.test",
-        id: "user_123",
-      },
-    });
+    mocks.ensureReadyAtlasSession.mockResolvedValue(
+      createAtlasSessionFixture({
+        user: {
+          email: "operator@atlas.test",
+          id: "user_123",
+        },
+      }),
+    );
     mocks.ensureAuthReady.mockResolvedValue({
       api: {
         createApiKey: createApiKeyMock,

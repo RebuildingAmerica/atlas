@@ -14,7 +14,21 @@ describe("typographyScale", () => {
 });
 
 describe("getTypographyClass", () => {
-  it("returns the class name for a supported MD3 role", () => {
+  it("returns the class name for all supported MD3 roles", () => {
+    expect(getTypographyClass("displayLarge")).toBe("type-display-large");
+    expect(getTypographyClass("displayMedium")).toBe("type-display-medium");
+    expect(getTypographyClass("displaySmall")).toBe("type-display-small");
+    expect(getTypographyClass("headlineLarge")).toBe("type-headline-large");
     expect(getTypographyClass("headlineMedium")).toBe("type-headline-medium");
+    expect(getTypographyClass("headlineSmall")).toBe("type-headline-small");
+    expect(getTypographyClass("titleLarge")).toBe("type-title-large");
+    expect(getTypographyClass("titleMedium")).toBe("type-title-medium");
+    expect(getTypographyClass("titleSmall")).toBe("type-title-small");
+    expect(getTypographyClass("bodyLarge")).toBe("type-body-large");
+    expect(getTypographyClass("bodyMedium")).toBe("type-body-medium");
+    expect(getTypographyClass("bodySmall")).toBe("type-body-small");
+    expect(getTypographyClass("labelLarge")).toBe("type-label-large");
+    expect(getTypographyClass("labelMedium")).toBe("type-label-medium");
+    expect(getTypographyClass("labelSmall")).toBe("type-label-small");
   });
 });

@@ -19,6 +19,20 @@ describe("runtime additional branches", () => {
     expect(runtime.emailProvider).toBe("resend");
   });
 
+  it("handles invalid URLs gracefully by returning null", () => {
+    const runtime = resolveAuthRuntimeConfig(
+      {
+        ATLAS_AUTH_API_KEY_INTROSPECTION_URL: "not a url",
+        ATLAS_SERVER_API_PROXY_TARGET: "also not a url",
+        ATLAS_PUBLIC_URL: "https://atlas.example.com",
+      },
+      "/workspace",
+    );
+
+    expect(runtime.apiKeyIntrospectionUrl).toBeNull();
+    expect(runtime.apiBaseUrl).toBeNull();
+  });
+
   it("does not require enabled-mode settings when auth is disabled", () => {
     expect(() => {
       validateAuthRuntimeConfig({
@@ -26,6 +40,7 @@ describe("runtime additional branches", () => {
         apiBaseUrl: null,
         allowedEmails: new Set(),
         apiKeyIntrospectionUrl: null,
+        databaseUrl: null,
         localMode: true,
         captureUrl: null,
         dbPath: "/tmp/atlas-auth.sqlite",

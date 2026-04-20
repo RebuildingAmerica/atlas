@@ -25,7 +25,7 @@ describe("app-config additional branches", () => {
   });
 
   it("requires either a public url or browser origin for browser-visible api calls", () => {
-    expect(() => getAbsoluteApiBaseUrl()).toThrow(
+    expect(() => getAbsoluteApiBaseUrl({ env: {} })).toThrow(
       "ATLAS_PUBLIC_URL is required when the current browser origin is unavailable for browser-visible API calls.",
     );
   });

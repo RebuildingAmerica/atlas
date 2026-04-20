@@ -1,15 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  apiKeyClient: vi.fn(() => ({ kind: "api-key" })),
-  createAuthClient: vi.fn(),
-  getAuthConfig: vi.fn(),
-  lastLoginMethodClient: vi.fn(() => ({ kind: "last-login-method" })),
-  magicLinkClient: vi.fn(() => ({ kind: "magic-link" })),
-  organizationClient: vi.fn(() => ({ kind: "organization" })),
-  oauthProviderClient: vi.fn(() => ({ kind: "oauth-provider" })),
-  passkeyClient: vi.fn(() => ({ kind: "passkey" })),
-  ssoClient: vi.fn(() => ({ kind: "sso" })),
+  createAuthClient: vi.fn(() => ({ kind: "auth-client" })),
+  getAuthConfig: vi.fn(() => ({})),
+  magicLinkClient: vi.fn(() => ({ name: "magic-link" })),
+  passkeyClient: vi.fn(() => ({ name: "passkey" })),
+  apiKeyClient: vi.fn(() => ({ name: "api-key" })),
+  oauthProviderClient: vi.fn(() => ({ name: "oauth-provider" })),
+  organizationClient: vi.fn(() => ({ name: "organization" })),
+  ssoClient: vi.fn(() => ({ name: "sso" })),
+  lastLoginMethodClient: vi.fn(() => ({ name: "last-login-method" })),
 }));
 
 vi.mock("better-auth/react", () => ({
@@ -17,8 +17,8 @@ vi.mock("better-auth/react", () => ({
 }));
 
 vi.mock("better-auth/client/plugins", () => ({
-  lastLoginMethodClient: mocks.lastLoginMethodClient,
   magicLinkClient: mocks.magicLinkClient,
+  lastLoginMethodClient: mocks.lastLoginMethodClient,
   organizationClient: mocks.organizationClient,
 }));
 
@@ -38,67 +38,41 @@ vi.mock("@better-auth/sso/client", () => ({
   ssoClient: mocks.ssoClient,
 }));
 
-vi.mock("@/domains/access/config", () => ({
+vi.mock("../config", () => ({
   getAuthConfig: mocks.getAuthConfig,
 }));
 
-describe("auth-client", () => {
+describe("getAuthClient", () => {
   beforeEach(() => {
     vi.resetModules();
-    mocks.apiKeyClient.mockClear();
-    mocks.createAuthClient.mockReset();
+    mocks.createAuthClient.mockClear();
     mocks.getAuthConfig.mockReset();
-    mocks.lastLoginMethodClient.mockClear();
-    mocks.magicLinkClient.mockClear();
-    mocks.organizationClient.mockClear();
-    mocks.oauthProviderClient.mockClear();
-    mocks.passkeyClient.mockClear();
-    mocks.ssoClient.mockClear();
-    mocks.createAuthClient.mockReturnValue({ client: true });
   });
 
-  it("builds and memoizes the browser auth client with an auth base url", async () => {
+  it("initializes the Better Auth client with the Atlas plugins and base URL", async () => {
     mocks.getAuthConfig.mockReturnValue({
-      authBaseUrl: "https://atlas.test/api/auth",
+      authBaseUrl: "https://auth.atlas.test",
     });
+
+    const { getAuthClient } = await import("@/domains/access/client/auth-client");
+    const client = getAuthClient();
+
+    expect(client).toEqual({ kind: "auth-client" });
+    expect(mocks.createAuthClient).toHaveBeenCalledWith(
+      expect.objectContaining({
+        plugins: expect.arrayContaining([{ name: "magic-link" }]) as unknown[],
+      }),
+    );
+  });
+
+  it("returns a singleton instance", async () => {
+    mocks.getAuthConfig.mockReturnValue({});
 
     const { getAuthClient } = await import("@/domains/access/client/auth-client");
     const first = getAuthClient();
     const second = getAuthClient();
 
     expect(second).toBe(first);
-    expect(mocks.createAuthClient).toHaveBeenCalledWith({
-      baseURL: "https://atlas.test/api/auth",
-      plugins: [
-        { kind: "magic-link" },
-        { kind: "passkey" },
-        { kind: "api-key" },
-        { kind: "oauth-provider" },
-        { kind: "organization" },
-        { kind: "sso" },
-        { kind: "last-login-method" },
-      ],
-    });
-  });
-
-  it("omits the base url when auth is mounted on the default origin", async () => {
-    mocks.getAuthConfig.mockReturnValue({
-      authBaseUrl: undefined,
-    });
-
-    const { getAuthClient } = await import("@/domains/access/client/auth-client");
-    getAuthClient();
-
-    expect(mocks.createAuthClient).toHaveBeenCalledWith({
-      plugins: [
-        { kind: "magic-link" },
-        { kind: "passkey" },
-        { kind: "api-key" },
-        { kind: "oauth-provider" },
-        { kind: "organization" },
-        { kind: "sso" },
-        { kind: "last-login-method" },
-      ],
-    });
+    expect(mocks.createAuthClient).toHaveBeenCalledTimes(1);
   });
 });

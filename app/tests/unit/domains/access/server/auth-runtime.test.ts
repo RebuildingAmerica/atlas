@@ -208,6 +208,9 @@ describe("auth runtime wiring", () => {
     expect(mocks.apiKey).toHaveBeenCalledWith({
       defaultKeyLength: 40,
       enableSessionForAPIKeys: false,
+      rateLimit: {
+        enabled: false,
+      },
     });
 
     await typedOptions.emailVerification.sendVerificationEmail({

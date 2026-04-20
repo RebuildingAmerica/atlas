@@ -1,29 +1,9 @@
 // @vitest-environment jsdom
 
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { nameFromAaguid, resolvePasskeyName } from "@/domains/access/passkey-names";
 
 describe("passkey names", () => {
-  const originalNavigator = globalThis.navigator;
-
-  beforeEach(() => {
-    Object.defineProperty(globalThis, "navigator", {
-      configurable: true,
-      value: {
-        platform: "MacIntel",
-        userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X)",
-        userAgentData: { platform: "macOS" },
-      },
-    });
-  });
-
-  afterEach(() => {
-    Object.defineProperty(globalThis, "navigator", {
-      configurable: true,
-      value: originalNavigator,
-    });
-  });
-
   it("maps known authenticator AAGUIDs and ignores privacy-preserving values", () => {
     expect(nameFromAaguid("fbfc3007-154e-4ecc-8c0b-6e020557d7bd")).toBe("iCloud Keychain");
     expect(nameFromAaguid("BADA5566-A7AA-401F-BD96-45619A55120D")).toBe("1Password");
@@ -36,74 +16,55 @@ describe("passkey names", () => {
   });
 
   it("falls back to platform-specific names and a generic default", () => {
-    expect(resolvePasskeyName(undefined)).toBe("Mac passkey");
+    const macNav = {
+      platform: "MacIntel",
+      userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X)",
+      userAgentData: { platform: "macOS" },
+    } as unknown as typeof navigator;
+    expect(resolvePasskeyName(undefined, macNav)).toBe("Mac passkey");
 
-    Object.defineProperty(globalThis, "navigator", {
-      configurable: true,
-      value: {
-        platform: "iPhone",
-        userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)",
-        userAgentData: undefined,
-      },
-    });
-    expect(resolvePasskeyName(undefined)).toBe("iPhone passkey");
+    const iphoneNav = {
+      platform: "iPhone",
+      userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)",
+      userAgentData: undefined,
+    } as unknown as typeof navigator;
+    expect(resolvePasskeyName(undefined, iphoneNav)).toBe("iPhone passkey");
 
-    Object.defineProperty(globalThis, "navigator", {
-      configurable: true,
-      value: {
-        platform: "Win32",
-        userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
-        userAgentData: undefined,
-      },
-    });
-    expect(resolvePasskeyName(undefined)).toBe("Windows passkey");
+    const winNav = {
+      platform: "Win32",
+      userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+      userAgentData: undefined,
+    } as unknown as typeof navigator;
+    expect(resolvePasskeyName(undefined, winNav)).toBe("Windows passkey");
 
-    Object.defineProperty(globalThis, "navigator", {
-      configurable: true,
-      value: {
-        platform: "",
-        userAgent: "Mozilla/5.0 (Linux; Android 14)",
-        userAgentData: undefined,
-      },
-    });
-    expect(resolvePasskeyName(undefined)).toBe("Android passkey");
+    const androidNav = {
+      platform: "",
+      userAgent: "Mozilla/5.0 (Linux; Android 14)",
+      userAgentData: undefined,
+    } as unknown as typeof navigator;
+    expect(resolvePasskeyName(undefined, androidNav)).toBe("Android passkey");
 
-    Object.defineProperty(globalThis, "navigator", {
-      configurable: true,
-      value: {
-        platform: "Linux x86_64",
-        userAgent: "Mozilla/5.0 (X11; Linux x86_64)",
-        userAgentData: undefined,
-      },
-    });
-    expect(resolvePasskeyName(undefined)).toBe("Linux passkey");
+    const linuxNav = {
+      platform: "Linux x86_64",
+      userAgent: "Mozilla/5.0 (X11; Linux x86_64)",
+      userAgentData: undefined,
+    } as unknown as typeof navigator;
+    expect(resolvePasskeyName(undefined, linuxNav)).toBe("Linux passkey");
 
-    Object.defineProperty(globalThis, "navigator", {
-      configurable: true,
-      value: {
-        platform: undefined,
-        userAgent: undefined,
-        userAgentData: {},
-      },
-    });
-    expect(resolvePasskeyName(undefined)).toBe("My passkey");
+    const unknownNav = {
+      platform: undefined,
+      userAgent: undefined,
+      userAgentData: {},
+    } as unknown as typeof navigator;
+    expect(resolvePasskeyName(undefined, unknownNav)).toBe("My passkey");
 
-    Object.defineProperty(globalThis, "navigator", {
-      configurable: true,
-      value: {
-        platform: "",
-        userAgent: "",
-        userAgentData: undefined,
-      },
-    });
+    const emptyNav = {
+      platform: "",
+      userAgent: "",
+      userAgentData: undefined,
+    } as unknown as typeof navigator;
+    expect(resolvePasskeyName(undefined, emptyNav)).toBe("My passkey");
 
-    expect(resolvePasskeyName(undefined)).toBe("My passkey");
-
-    Object.defineProperty(globalThis, "navigator", {
-      configurable: true,
-      value: undefined,
-    });
-
-    expect(resolvePasskeyName(undefined)).toBe("My passkey");
+    expect(resolvePasskeyName(undefined, null)).toBe("My passkey");
   });
 });

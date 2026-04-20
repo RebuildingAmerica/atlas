@@ -21,6 +21,7 @@ function buildRuntime(overrides: Partial<AuthRuntimeConfig> = {}): AuthRuntimeCo
     apiBaseUrl: null,
     apiKeyIntrospectionUrl: "https://atlas.example.com/api/auth/internal/api-key",
     allowedEmails: new Set(),
+    databaseUrl: null,
     localMode: false,
     captureUrl: "http://127.0.0.1:8025/messages",
     dbPath: "/tmp/atlas-auth.sqlite",

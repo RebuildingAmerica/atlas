@@ -58,6 +58,7 @@ describe("getAbsoluteApiBaseUrl", () => {
   it("resolves a relative API path against the current browser origin", () => {
     expect(
       getAbsoluteApiBaseUrl({
+        env: {},
         origin: "https://atlas.example.com",
       }),
     ).toBe("https://atlas.example.com/api");

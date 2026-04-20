@@ -1,13 +1,10 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { requestAtlasApi } from "@/domains/discovery/server/api-client";
 
 const mocks = vi.hoisted(() => ({
-  createInternalAuthHeaders: vi.fn(),
-  getServerApiBaseUrl: vi.fn(),
   requireReadyAtlasSessionState: vi.fn(),
-}));
-
-vi.mock("@/domains/access/config", () => ({
-  createInternalAuthHeaders: mocks.createInternalAuthHeaders,
+  getServerApiBaseUrl: vi.fn(),
+  fetch: vi.fn(),
 }));
 
 vi.mock("@/domains/access/server/session-state", () => ({
@@ -18,129 +15,104 @@ vi.mock("@/platform/config/app-config", () => ({
   getServerApiBaseUrl: mocks.getServerApiBaseUrl,
 }));
 
-describe("requestAtlasApi", () => {
-  const originalFetch = global.fetch;
-  const originalInternalSecret = process.env.ATLAS_AUTH_INTERNAL_SECRET;
+globalThis.fetch = mocks.fetch;
 
+describe("api-client", () => {
   beforeEach(() => {
     vi.resetModules();
-    mocks.createInternalAuthHeaders.mockReset();
-    mocks.getServerApiBaseUrl.mockReset();
     mocks.requireReadyAtlasSessionState.mockReset();
-    mocks.getServerApiBaseUrl.mockReturnValue("https://atlas.test/api");
-    vi.stubGlobal("fetch", vi.fn());
+    mocks.getServerApiBaseUrl.mockReset();
+    mocks.fetch.mockReset();
+
+    process.env.ATLAS_AUTH_INTERNAL_SECRET = "test-secret";
   });
 
-  afterEach(() => {
-    global.fetch = originalFetch;
-    if (originalInternalSecret === undefined) {
-      delete process.env.ATLAS_AUTH_INTERNAL_SECRET;
-    } else {
-      process.env.ATLAS_AUTH_INTERNAL_SECRET = originalInternalSecret;
-    }
-    vi.unstubAllGlobals();
-  });
-
-  it("calls the Atlas API without internal headers for local sessions", async () => {
-    const fetchMock = vi.mocked(global.fetch);
-    fetchMock.mockResolvedValue({
-      json: vi.fn().mockResolvedValue({ ok: true }),
-      ok: true,
-      status: 200,
-    } as unknown as Response);
+  it("sends an authenticated request to the Atlas API", async () => {
     mocks.requireReadyAtlasSessionState.mockResolvedValue({
-      isLocal: true,
-      user: { email: "local@atlas.test", id: "local-operator" },
+      isLocal: false,
+      user: { email: "operator@atlas.test", id: "user_123" },
+      workspace: { activeOrganization: { id: "org_123" } },
     });
+    mocks.getServerApiBaseUrl.mockReturnValue("https://api.atlas.test");
+    mocks.fetch.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ data: "test" }),
+    });
+
+    const result = await requestAtlasApi("/test-endpoint");
+
+    expect(result).toEqual({ data: "test" });
+    expect(mocks.fetch).toHaveBeenCalledWith(
+      "https://api.atlas.test/test-endpoint",
+      expect.objectContaining({
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- expect.objectContaining returns any
+        headers: expect.objectContaining({
+          "X-Atlas-Actor-Email": "operator@atlas.test",
+          "X-Atlas-Actor-Id": "user_123",
+          "X-Atlas-Internal-Secret": "test-secret",
+        }),
+      }),
+    );
+  });
+
+  it("sends an unauthenticated request when internal secret is missing", async () => {
     delete process.env.ATLAS_AUTH_INTERNAL_SECRET;
-
-    const { requestAtlasApi } = await import("@/domains/discovery/server/api-client");
-    await expect(requestAtlasApi("/discovery-runs")).resolves.toEqual({ ok: true });
-
-    expect(fetchMock).toHaveBeenCalledWith("https://atlas.test/api/discovery-runs", {
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-      },
-    });
-    expect(mocks.createInternalAuthHeaders).not.toHaveBeenCalled();
-  });
-
-  it("adds internal auth headers for remote sessions and merges request init", async () => {
-    const fetchMock = vi.mocked(global.fetch);
-    fetchMock.mockResolvedValue({
-      json: vi.fn().mockResolvedValue({ ok: true }),
-      ok: true,
-      status: 200,
-    } as unknown as Response);
     mocks.requireReadyAtlasSessionState.mockResolvedValue({
       isLocal: false,
       user: { email: "operator@atlas.test", id: "user_123" },
+      workspace: { activeOrganization: { id: "org_123" } },
     });
-    mocks.createInternalAuthHeaders.mockReturnValue({
-      "x-atlas-internal-secret": "secret",
-      "x-authenticated-user-email": "operator@atlas.test",
-    });
-    process.env.ATLAS_AUTH_INTERNAL_SECRET = "secret";
-
-    const { requestAtlasApi } = await import("@/domains/discovery/server/api-client");
-    await requestAtlasApi("/discovery-runs", {
-      headers: {
-        "x-extra": "1",
-      },
-      method: "POST",
+    mocks.getServerApiBaseUrl.mockReturnValue("https://api.atlas.test");
+    mocks.fetch.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ data: "test" }),
     });
 
-    expect(mocks.createInternalAuthHeaders).toHaveBeenCalledWith(
-      { email: "operator@atlas.test", id: "user_123" },
-      "secret",
+    await requestAtlasApi("/test-endpoint");
+
+    expect(mocks.fetch).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+      }),
     );
-    expect(fetchMock).toHaveBeenCalledWith("https://atlas.test/api/discovery-runs", {
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-        "x-atlas-internal-secret": "secret",
-        "x-authenticated-user-email": "operator@atlas.test",
-        "x-extra": "1",
-      },
-      method: "POST",
-    });
   });
 
-  it("throws when the Atlas API responds with an error", async () => {
-    const fetchMock = vi.mocked(global.fetch);
-    fetchMock.mockResolvedValue({
-      json: vi.fn(),
-      ok: false,
-      status: 502,
-    } as unknown as Response);
+  it("sends an unauthenticated request in local mode", async () => {
     mocks.requireReadyAtlasSessionState.mockResolvedValue({
       isLocal: true,
-      user: { email: "local@atlas.test", id: "local-operator" },
+      user: { email: "local@atlas.local", id: "local-user" },
+    });
+    mocks.getServerApiBaseUrl.mockReturnValue("https://api.atlas.test");
+    mocks.fetch.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ data: "test" }),
     });
 
-    const { requestAtlasApi } = await import("@/domains/discovery/server/api-client");
-    await expect(requestAtlasApi("/discovery-runs")).rejects.toThrow(
-      "Atlas API request failed (502)",
+    await requestAtlasApi("/test-endpoint");
+
+    expect(mocks.fetch).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+      }),
     );
   });
 
-  it("treats blank internal secrets as disabled for remote sessions", async () => {
-    const fetchMock = vi.mocked(global.fetch);
-    fetchMock.mockResolvedValue({
-      json: vi.fn().mockResolvedValue({ ok: true }),
-      ok: true,
-      status: 200,
-    } as unknown as Response);
-    mocks.requireReadyAtlasSessionState.mockResolvedValue({
-      isLocal: false,
-      user: { email: "operator@atlas.test", id: "user_123" },
+  it("throws when the API response is not ok", async () => {
+    mocks.requireReadyAtlasSessionState.mockResolvedValue({ isLocal: true });
+    mocks.getServerApiBaseUrl.mockReturnValue("https://api.atlas.test");
+    mocks.fetch.mockResolvedValue({
+      ok: false,
+      status: 404,
     });
-    process.env.ATLAS_AUTH_INTERNAL_SECRET = "   ";
 
-    const { requestAtlasApi } = await import("@/domains/discovery/server/api-client");
-    await expect(requestAtlasApi("/discovery-runs")).resolves.toEqual({ ok: true });
-
-    expect(mocks.createInternalAuthHeaders).not.toHaveBeenCalled();
+    await expect(requestAtlasApi("/not-found")).rejects.toThrow("Atlas API request failed (404)");
   });
 });

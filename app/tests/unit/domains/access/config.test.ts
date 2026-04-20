@@ -4,6 +4,7 @@ import { createInternalAuthHeaders, getAuthConfig } from "@/domains/access/confi
 describe("getAuthConfig", () => {
   it("defaults to auth enabled without local mode", () => {
     expect(getAuthConfig({})).toEqual({
+      apiBaseUrl: "https://localhost/api",
       authBasePath: "/api/auth",
       localMode: false,
     });
