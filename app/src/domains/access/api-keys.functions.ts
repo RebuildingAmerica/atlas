@@ -164,12 +164,14 @@ async function createScopedApiKey(
   name: string,
   scopes: ApiKeyScope[],
   userId: string,
+  organizationId: string | undefined,
 ) {
   const authPromise = ensureAuthReady();
   const auth = await authPromise;
   const createApiKeyPromise = auth.api.createApiKey({
     body: {
       name,
+      metadata: { organizationId, userEmail: userId },
       permissions: scopesToPermissions(scopes),
       userId,
     },
@@ -244,6 +246,7 @@ export const createApiKey = createServerFn({ method: "POST" })
       data.name,
       data.scopes,
       session.user.id,
+      session.workspace.activeOrganization?.id,
     );
     const createdApiKey = await createApiKeyPromise;
     return createdApiKey;

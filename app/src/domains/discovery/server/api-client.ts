@@ -19,7 +19,9 @@ export async function requestAtlasApi<T>(path: string, init?: RequestInit): Prom
   const headers =
     session.isLocal || !getInternalSecret()
       ? {}
-      : createInternalAuthHeaders(session.user, getInternalSecret());
+      : createInternalAuthHeaders(session.user, getInternalSecret(), {
+          organizationId: session.workspace.activeOrganization?.id,
+        });
   const response = await fetch(`${getServerApiBaseUrl()}${path}`, {
     ...init,
     headers: {
