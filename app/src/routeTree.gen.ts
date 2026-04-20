@@ -26,6 +26,7 @@ import { Route as WorkspaceOrganizationSsoRouteImport } from './routes/_workspac
 import { Route as PublicEntriesEntryIdRouteImport } from './routes/_public/entries.$entryId'
 import { Route as AuthOauthConsentRouteImport } from './routes/_auth/oauth/consent'
 import { Route as ApiAuthInternalApiKeyRouteImport } from './routes/api/auth/internal/api-key'
+import { Route as ApiAuthInternalMembershipsOrganizationIdMembersUserIdRouteImport } from './routes/api/auth/internal/memberships.$organizationId.members.$userId'
 
 const DashboardRoute = DashboardRouteImport.update({
   id: '/dashboard',
@@ -111,6 +112,12 @@ const ApiAuthInternalApiKeyRoute = ApiAuthInternalApiKeyRouteImport.update({
   path: '/api/auth/internal/api-key',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAuthInternalMembershipsOrganizationIdMembersUserIdRoute =
+  ApiAuthInternalMembershipsOrganizationIdMembersUserIdRouteImport.update({
+    id: '/api/auth/internal/memberships/$organizationId/members/$userId',
+    path: '/api/auth/internal/memberships/$organizationId/members/$userId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof PublicIndexRoute
@@ -127,6 +134,7 @@ export interface FileRoutesByFullPath {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/organization/': typeof WorkspaceOrganizationIndexRoute
   '/api/auth/internal/api-key': typeof ApiAuthInternalApiKeyRoute
+  '/api/auth/internal/memberships/$organizationId/members/$userId': typeof ApiAuthInternalMembershipsOrganizationIdMembersUserIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof PublicIndexRoute
@@ -142,6 +150,7 @@ export interface FileRoutesByTo {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/organization': typeof WorkspaceOrganizationIndexRoute
   '/api/auth/internal/api-key': typeof ApiAuthInternalApiKeyRoute
+  '/api/auth/internal/memberships/$organizationId/members/$userId': typeof ApiAuthInternalMembershipsOrganizationIdMembersUserIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -162,6 +171,7 @@ export interface FileRoutesById {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/_workspace/organization/': typeof WorkspaceOrganizationIndexRoute
   '/api/auth/internal/api-key': typeof ApiAuthInternalApiKeyRoute
+  '/api/auth/internal/memberships/$organizationId/members/$userId': typeof ApiAuthInternalMembershipsOrganizationIdMembersUserIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -180,6 +190,7 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/organization/'
     | '/api/auth/internal/api-key'
+    | '/api/auth/internal/memberships/$organizationId/members/$userId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -195,6 +206,7 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/organization'
     | '/api/auth/internal/api-key'
+    | '/api/auth/internal/memberships/$organizationId/members/$userId'
   id:
     | '__root__'
     | '/_auth'
@@ -214,6 +226,7 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/_workspace/organization/'
     | '/api/auth/internal/api-key'
+    | '/api/auth/internal/memberships/$organizationId/members/$userId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -223,6 +236,7 @@ export interface RootRouteChildren {
   DashboardRoute: typeof DashboardRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiAuthInternalApiKeyRoute: typeof ApiAuthInternalApiKeyRoute
+  ApiAuthInternalMembershipsOrganizationIdMembersUserIdRoute: typeof ApiAuthInternalMembershipsOrganizationIdMembersUserIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -346,6 +360,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthInternalApiKeyRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/auth/internal/memberships/$organizationId/members/$userId': {
+      id: '/api/auth/internal/memberships/$organizationId/members/$userId'
+      path: '/api/auth/internal/memberships/$organizationId/members/$userId'
+      fullPath: '/api/auth/internal/memberships/$organizationId/members/$userId'
+      preLoaderRoute: typeof ApiAuthInternalMembershipsOrganizationIdMembersUserIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -416,6 +437,8 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardRoute: DashboardRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiAuthInternalApiKeyRoute: ApiAuthInternalApiKeyRoute,
+  ApiAuthInternalMembershipsOrganizationIdMembersUserIdRoute:
+    ApiAuthInternalMembershipsOrganizationIdMembersUserIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -3,6 +3,7 @@ import "@tanstack/react-start/server-only";
 import fs from "node:fs";
 import path from "node:path";
 import Database from "better-sqlite3";
+import { Pool } from "pg";
 import { sso } from "@better-auth/sso";
 import { betterAuth } from "better-auth";
 import { jwt } from "better-auth/plugins/jwt";
@@ -59,16 +60,39 @@ function collectAtlasResourceScopes(scopes: string[]): ApiKeyScope[] {
 }
 
 /**
+ * Parameters provided by Better Auth's oauthProvider plugin to the
+ * customAccessTokenClaims callback.
+ */
+interface OAuthAccessTokenClaimsParams {
+  metadata?: Record<string, unknown>;
+  referenceId?: string;
+  resource?: string;
+  scopes: string[];
+  user?: (Record<string, unknown> & { id: string }) | null;
+}
+
+/**
  * Builds Atlas-specific OAuth access-token claims from Better Auth's scope
  * payload.
  *
  * @param params - Better Auth's custom-claim payload.
  * @param params.scopes - The OAuth scopes granted to the current client.
+ * @param params.user - The user associated with the token, if any.
+ * @param params.metadata - The OAuth client metadata, if any.
  */
-function buildAtlasAccessTokenClaims(params: { scopes: string[] }) {
+function buildAtlasAccessTokenClaims(params: OAuthAccessTokenClaimsParams) {
   const { scopes } = params;
   const resourceScopes = collectAtlasResourceScopes(scopes);
 
+  // TODO: Include org_id in access token claims. The oauthProvider plugin's
+  // customAccessTokenClaims callback receives { user, scopes, resource,
+  // referenceId, metadata } but does NOT include session or active organization
+  // context. The active org_id will need to come from a different mechanism,
+  // such as:
+  //   - Encoding the org in the OAuth authorization request (e.g. via a custom
+  //     parameter or scope prefix)
+  //   - Looking up the user's active org from the session store using user.id
+  //   - Passing org context through client metadata during the consent flow
   return { permissions: scopesToPermissions(resourceScopes) };
 }
 
@@ -107,7 +131,7 @@ function createAtlasAuth(runtime: AuthRuntimeConfig) {
     appName: "Atlas",
     basePath: "/api/auth",
     baseURL: runtime.publicBaseUrl,
-    database: ensureAuthDatabase(),
+    database: getAuthDatabaseConfig(),
     disabledPaths: ["/token"],
     secret: runtime.internalSecret,
     trustedOrigins: buildAtlasTrustedOrigins(runtime.publicBaseUrl),
@@ -210,16 +234,22 @@ type AtlasAuthContext = Awaited<AtlasAuthInstance["$context"]>;
 
 let authInstance: AtlasAuthInstance | null = null;
 let database: Database.Database | null = null;
+let pgPool: Pool | null = null;
 let authReadyPromise: Promise<AtlasAuthInstance> | null = null;
+
+/**
+ * Returns true when the auth runtime is configured to use PostgreSQL.
+ */
+function isPostgresMode(): boolean {
+  const runtime = getAuthRuntimeConfig();
+  return runtime.databaseUrl?.startsWith("postgres") ?? false;
+}
 
 /**
  * Opens the persistent SQLite database Better Auth uses for its own state.
  */
 function ensureAuthDatabase() {
   const runtime = getAuthRuntimeConfig();
-  /* c8 ignore next 3 -- getAuth() memoizes the auth runtime, so this
-   * lower-level cache only protects module-internal re-entry.
-   */
   if (database) {
     return database;
   }
@@ -231,12 +261,43 @@ function ensureAuthDatabase() {
 }
 
 /**
- * Returns the SQLite database Better Auth uses for its internal tables.
+ * Returns the database configuration for Better Auth.
  *
- * Atlas uses this read-only for public SSO routing decisions that need to
- * inspect configured enterprise providers before a session exists.
+ * When DATABASE_URL is set to a PostgreSQL URL, Better Auth uses pg directly.
+ * Otherwise falls back to the local SQLite database.
  */
-export function getAuthDatabase() {
+function getAuthDatabaseConfig(): Database.Database | { type: "postgres"; url: string } {
+  const runtime = getAuthRuntimeConfig();
+  if (runtime.databaseUrl?.startsWith("postgres")) {
+    return { type: "postgres", url: runtime.databaseUrl };
+  }
+  return ensureAuthDatabase();
+}
+
+/**
+ * Returns a Pool for direct queries in PostgreSQL mode.
+ */
+export function getAuthPgPool(): Pool | null {
+  if (!isPostgresMode()) {
+    return null;
+  }
+  if (pgPool) {
+    return pgPool;
+  }
+  const runtime = getAuthRuntimeConfig();
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by isPostgresMode() above
+  pgPool = new Pool({ connectionString: runtime.databaseUrl! });
+  return pgPool;
+}
+
+/**
+ * Returns the SQLite database Better Auth uses for its internal tables.
+ * Returns null in PostgreSQL mode — use getAuthPgPool() instead.
+ */
+export function getAuthDatabase(): Database.Database | null {
+  if (isPostgresMode()) {
+    return null;
+  }
   return ensureAuthDatabase();
 }
 
@@ -362,8 +423,20 @@ async function hasPendingOrganizationInvitation(email: string): Promise<boolean>
  *
  * @param email - The normalized email address to look up.
  */
-function hasExistingOrganizationMembership(email: string): boolean {
+async function hasExistingOrganizationMembership(email: string): Promise<boolean> {
+  const pool = getAuthPgPool();
+  if (pool) {
+    const result = await pool.query(
+      'select count(member.id) as "membershipCount" from "user" inner join member on member."userId" = "user".id where lower("user".email) = $1',
+      [email],
+    );
+    return ((result.rows[0] as StoredMembershipCountRow | undefined)?.membershipCount ?? 0) > 0;
+  }
+
   const database = getAuthDatabase();
+  if (!database) {
+    throw new Error("Auth database unavailable in current mode");
+  }
   const statement = database.prepare(
     [
       "select count(member.id) as membershipCount",
@@ -396,7 +469,7 @@ export async function canEmailAccessAtlas(email: string): Promise<boolean> {
     return false;
   }
 
-  if (hasExistingOrganizationMembership(normalizedEmail)) {
+  if (await hasExistingOrganizationMembership(normalizedEmail)) {
     return true;
   }
 

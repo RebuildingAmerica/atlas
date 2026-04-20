@@ -12,8 +12,16 @@ interface AuthEnv {
  * This keeps auth code consuming product-level config rather than reading
  * env vars directly.
  */
-export function getAuthConfig(env: AuthEnv = import.meta.env) {
-  return getAppConfig(env);
+export function getAuthConfig(env: AuthEnv = {}) {
+  const mergedEnv = {
+    ...(import.meta?.env ?? {}),
+    ...env,
+  };
+  return getAppConfig(mergedEnv);
+}
+
+interface InternalAuthHeadersOptions {
+  organizationId?: string;
 }
 
 /**
@@ -26,10 +34,17 @@ export function createInternalAuthHeaders(
     id: string;
   },
   internalSecret: string,
+  options?: InternalAuthHeadersOptions,
 ): Record<string, string> {
-  return {
+  const headers: Record<string, string> = {
     "X-Atlas-Actor-Email": actor.email,
     "X-Atlas-Actor-Id": actor.id,
     "X-Atlas-Internal-Secret": internalSecret,
   };
+
+  if (options?.organizationId) {
+    headers["X-Atlas-Organization-Id"] = options.organizationId;
+  }
+
+  return headers;
 }

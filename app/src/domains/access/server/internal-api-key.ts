@@ -63,9 +63,15 @@ export async function introspectApiKeyRequest(request: Request) {
     );
   }
 
+  const organizationId =
+    typeof result.key.metadata?.organizationId === "string"
+      ? result.key.metadata.organizationId
+      : undefined;
+
   return Response.json({
     keyId: result.key.id,
     name: result.key.name ?? "Atlas API Key",
+    organizationId,
     permissions: result.key.permissions ?? {},
     scopes: permissionsToScopes(result.key.permissions ?? {}),
     userEmail:

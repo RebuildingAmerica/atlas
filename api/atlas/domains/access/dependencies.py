@@ -15,6 +15,7 @@ from atlas.platform.config import Settings, get_settings
 from .api_keys import verify_api_key
 from .internal import build_local_actor, verify_internal_actor
 from .jwt import verify_bearer_jwt
+from .membership import verify_org_membership
 from .permissions import require_permission
 from .principals import AuthenticatedActor
 
@@ -107,5 +108,80 @@ def require_actor_permission(
         actor: AuthenticatedActor = Depends(require_actor),
     ) -> AuthenticatedActor:
         return require_permission(actor, resource, action)
+
+    return dependency
+
+
+def require_org_actor_permission(
+    resource: str,
+    action: str,
+) -> Callable[..., Awaitable[AuthenticatedActor]]:
+    """Create a dependency that enforces org context and a resource permission."""
+
+    async def dependency(
+        actor: AuthenticatedActor = Depends(require_org_actor),
+    ) -> AuthenticatedActor:
+        return require_permission(actor, resource, action)
+
+    return dependency
+
+
+_ORG_ROLE_HIERARCHY: dict[str, int] = {
+    "member": 0,
+    "admin": 1,
+    "owner": 2,
+}
+
+
+async def require_org_actor(
+    actor: AuthenticatedActor = Depends(require_actor),
+    settings: Settings = Depends(get_settings),
+) -> AuthenticatedActor:
+    """Require auth + verified org context. Raises 403 if no org or membership invalid."""
+    if actor.org_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Organization context required",
+        )
+
+    if not settings.auth_membership_verification_url:
+        # Dev/local mode: trust the org_id from the token as-is.
+        return actor
+
+    result = await verify_org_membership(actor.user_id, actor.org_id, settings)
+    if result is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not a member of the specified organization",
+        )
+
+    actor.org_role = result.role
+    actor.org_slug = result.slug
+    actor.workspace_type = result.workspace_type
+    return actor
+
+
+def require_org_role(
+    min_role: str,
+) -> Callable[..., Awaitable[AuthenticatedActor]]:
+    """Create a dependency requiring at least the specified org role.
+
+    Role hierarchy: member < admin < owner.
+    """
+    min_level = _ORG_ROLE_HIERARCHY.get(min_role)
+    if min_level is None:
+        msg = f"Unknown org role: {min_role!r}. Expected one of {list(_ORG_ROLE_HIERARCHY)}"
+        raise ValueError(msg)
+
+    async def dependency(
+        actor: AuthenticatedActor = Depends(require_org_actor),
+    ) -> AuthenticatedActor:
+        actor_level = _ORG_ROLE_HIERARCHY.get(actor.org_role or "", -1)
+        if actor_level < min_level:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Requires at least '{min_role}' role in the organization",
+            )
+        return actor
 
     return dependency
