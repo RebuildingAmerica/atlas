@@ -122,6 +122,28 @@ CREATE TABLE IF NOT EXISTS source_flags (
     created_at TIMESTAMPTZ NOT NULL
 );
 
+-- Resource ownership (organization attribution and visibility)
+CREATE TABLE IF NOT EXISTS resource_ownership (
+    resource_id TEXT NOT NULL,
+    resource_type TEXT NOT NULL CHECK(resource_type IN ('entry', 'source', 'discovery_run')),
+    org_id TEXT NOT NULL,
+    visibility TEXT NOT NULL DEFAULT 'public' CHECK(visibility IN ('public', 'private')),
+    created_by TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (resource_id, resource_type)
+);
+
+-- Organization annotations (private notes on shared entries)
+CREATE TABLE IF NOT EXISTS org_annotations (
+    id TEXT PRIMARY KEY,
+    org_id TEXT NOT NULL,
+    entry_id TEXT NOT NULL REFERENCES entries(id),
+    content TEXT NOT NULL,
+    author_id TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 -- Indexes for common queries
 CREATE INDEX IF NOT EXISTS idx_entries_state ON entries(state);
 CREATE INDEX IF NOT EXISTS idx_entries_city ON entries(city);
@@ -146,3 +168,7 @@ CREATE INDEX IF NOT EXISTS idx_entity_flags_entity_id ON entity_flags(entity_id)
 CREATE INDEX IF NOT EXISTS idx_entity_flags_status ON entity_flags(status);
 CREATE INDEX IF NOT EXISTS idx_source_flags_source_id ON source_flags(source_id);
 CREATE INDEX IF NOT EXISTS idx_source_flags_status ON source_flags(status);
+CREATE INDEX IF NOT EXISTS idx_resource_ownership_org ON resource_ownership(org_id);
+CREATE INDEX IF NOT EXISTS idx_resource_ownership_org_visibility ON resource_ownership(org_id, visibility);
+CREATE INDEX IF NOT EXISTS idx_org_annotations_org ON org_annotations(org_id);
+CREATE INDEX IF NOT EXISTS idx_org_annotations_entry ON org_annotations(entry_id);

@@ -346,6 +346,29 @@ CREATE TABLE IF NOT EXISTS source_flags (
     FOREIGN KEY (source_id) REFERENCES sources(id) ON DELETE CASCADE
 );
 
+-- Resource ownership (organization attribution and visibility)
+CREATE TABLE IF NOT EXISTS resource_ownership (
+    resource_id TEXT NOT NULL,
+    resource_type TEXT NOT NULL CHECK(resource_type IN ('entry', 'source', 'discovery_run')),
+    org_id TEXT NOT NULL,
+    visibility TEXT NOT NULL DEFAULT 'public' CHECK(visibility IN ('public', 'private')),
+    created_by TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    PRIMARY KEY (resource_id, resource_type)
+);
+
+-- Organization annotations (private notes on shared entries)
+CREATE TABLE IF NOT EXISTS org_annotations (
+    id TEXT PRIMARY KEY,
+    org_id TEXT NOT NULL,
+    entry_id TEXT NOT NULL,
+    content TEXT NOT NULL,
+    author_id TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    FOREIGN KEY (entry_id) REFERENCES entries(id)
+);
+
 -- Full-text search virtual table
 CREATE VIRTUAL TABLE IF NOT EXISTS entries_fts USING fts5(
     name,
@@ -377,6 +400,10 @@ CREATE INDEX IF NOT EXISTS idx_entity_flags_entity_id ON entity_flags(entity_id)
 CREATE INDEX IF NOT EXISTS idx_entity_flags_status ON entity_flags(status);
 CREATE INDEX IF NOT EXISTS idx_source_flags_source_id ON source_flags(source_id);
 CREATE INDEX IF NOT EXISTS idx_source_flags_status ON source_flags(status);
+CREATE INDEX IF NOT EXISTS idx_resource_ownership_org ON resource_ownership(org_id);
+CREATE INDEX IF NOT EXISTS idx_resource_ownership_org_visibility ON resource_ownership(org_id, visibility);
+CREATE INDEX IF NOT EXISTS idx_org_annotations_org ON org_annotations(org_id);
+CREATE INDEX IF NOT EXISTS idx_org_annotations_entry ON org_annotations(entry_id);
 
 -- Keep FTS content synchronized with entries.
 CREATE TRIGGER IF NOT EXISTS entries_ai AFTER INSERT ON entries BEGIN
