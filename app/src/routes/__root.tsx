@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createRootRoute, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
+import { Analytics } from "@vercel/analytics/react";
 import "@/styles/app.css";
 
 const queryClient = new QueryClient({
@@ -41,6 +42,7 @@ function RootDocument() {
       <body className="text-ink flex min-h-screen flex-col">
         <Outlet />
         <Scripts />
+        <Analytics />
       </body>
     </html>
   );
