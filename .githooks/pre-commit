@@ -125,11 +125,13 @@ fi
 APP_FILES=$(get_staged_app_files)
 
 if [ -n "$APP_FILES" ]; then
+    # Build file list relative to app/ for targeted checks
+    APP_RELATIVE_FILES=$(echo "$APP_FILES" | sed 's|^app/||')
     print_info "Found $(echo "$APP_FILES" | wc -l) app file(s) to check"
 
-    # 4. Prettier Format Check
+    # 4. Prettier Format Check (staged files only)
     print_info "Running prettier format check..."
-    if ! (cd "$APP_DIR" && pnpm run format:check > /dev/null 2>&1); then
+    if ! (cd "$APP_DIR" && echo "$APP_RELATIVE_FILES" | xargs npx prettier --check > /dev/null 2>&1); then
         print_error "Prettier format check failed"
         echo ""
         echo -e "${YELLOW}HOW TO FIX:${NC}"
@@ -140,18 +142,21 @@ if [ -n "$APP_FILES" ]; then
         print_success "Prettier format check passed"
     fi
 
-    # 5. ESLint Check (zero warnings tolerance)
-    print_info "Running eslint (strict mode, --max-warnings 0)..."
-    if ! (cd "$APP_DIR" && pnpm run lint > /dev/null 2>&1); then
-        print_error "ESLint found issues"
-        echo ""
-        echo -e "${YELLOW}HOW TO FIX:${NC}"
-        echo "  Run: cd app && pnpm run lint:fix"
-        echo "  Review any remaining issues and fix them"
-        echo ""
-        FAILED=1
-    else
-        print_success "ESLint check passed"
+    # 5. ESLint Check (staged .ts/.tsx source files only, zero warnings)
+    ESLINT_FILES=$(echo "$APP_RELATIVE_FILES" | grep -E '\.(ts|tsx)$' | grep -v '\.config\.' || echo "")
+    if [ -n "$ESLINT_FILES" ]; then
+        print_info "Running eslint (strict mode, --max-warnings 0)..."
+        if ! (cd "$APP_DIR" && echo "$ESLINT_FILES" | xargs npx eslint --max-warnings 0 > /dev/null 2>&1); then
+            print_error "ESLint found issues"
+            echo ""
+            echo -e "${YELLOW}HOW TO FIX:${NC}"
+            echo "  Run: cd app && pnpm run lint:fix"
+            echo "  Review any remaining issues and fix them"
+            echo ""
+            FAILED=1
+        else
+            print_success "ESLint check passed"
+        fi
     fi
 else
     print_info "No app files staged, skipping app checks"

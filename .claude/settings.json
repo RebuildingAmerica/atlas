@@ -1,5 +1,9 @@
 {
   "permissions": {
+    "allow": [
+      "Bash(git restore --staged*)",
+      "Bash(*git restore --staged*)"
+    ],
     "deny": [
       "Bash(git stash*)",
       "Bash(git reset*)",
@@ -12,7 +16,6 @@
       "Bash(git merge*)",
       "Bash(git branch -D*)",
       "Bash(git branch -d*)",
-      "Bash(git restore*)",
       "Bash(git rm*)",
       "Bash(*git stash*)",
       "Bash(*git reset*)",

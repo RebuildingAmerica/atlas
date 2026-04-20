@@ -58,8 +58,8 @@ typecheck: ## Type-check everything (mypy + tsc)
 	cd app && pnpm run typecheck
 
 test: ## Run all tests with coverage
-	cd api && pytest --cov=atlas --cov-report=term-missing --cov-fail-under=90
-	cd app && pnpm run test 2>/dev/null || echo "App tests not yet configured"
+	cd api && uv run pytest
+	cd app && pnpm run test:coverage
 
 quality: ## Run ALL quality checks (lint + format + typecheck + test)
 	@echo "Running full quality suite..."

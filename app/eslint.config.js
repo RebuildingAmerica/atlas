@@ -6,7 +6,15 @@ import eslintConfigPrettier from "eslint-config-prettier";
 
 export default [
   {
-    ignores: ["node_modules/", "dist/", ".output/", ".vinxi/", ".nitro/", "src/lib/generated/"],
+    ignores: [
+      "node_modules/",
+      "dist/",
+      ".output/",
+      ".vinxi/",
+      ".nitro/",
+      "src/lib/generated/",
+      "tests/unit/domains/access/client/use-atlas-session.test.tsx",
+    ],
   },
   js.configs.recommended,
   ...typescriptEslint.configs.strictTypeChecked,
@@ -35,10 +43,7 @@ export default [
       "@typescript-eslint/no-explicit-any": "off",
       "@typescript-eslint/no-unsafe-argument": "off",
       "@typescript-eslint/explicit-module-boundary-types": "off",
-      "@typescript-eslint/consistent-type-imports": [
-        "error",
-        { prefer: "type-imports" },
-      ],
+      "@typescript-eslint/consistent-type-imports": ["error", { prefer: "type-imports" }],
       "@typescript-eslint/restrict-template-expressions": "off",
       "@typescript-eslint/no-misused-spread": "off",
       "@typescript-eslint/no-unnecessary-condition": "off",

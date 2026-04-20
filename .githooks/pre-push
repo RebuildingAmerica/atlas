@@ -109,11 +109,17 @@ else
     print_success "API tests passed with 90%+ coverage"
 fi
 
-print_info "  App: pnpm test..."
-if ! (cd "$APP_DIR" && pnpm run test > /dev/null 2>&1); then
-    print_info "App tests not yet configured (skipping)"
+print_info "  App: vitest with coverage (minimum 70%)..."
+if ! (cd "$APP_DIR" && pnpm run test:coverage > /dev/null 2>&1); then
+    print_error "App tests failed or coverage threshold not met"
+    echo ""
+    echo -e "${YELLOW}HOW TO FIX:${NC}"
+    echo "  Run: cd app && pnpm run test:coverage"
+    echo "  Fix test failures or improve coverage and commit"
+    echo ""
+    FAILED=1
 else
-    print_success "App tests passed"
+    print_success "App tests passed with 70%+ coverage"
 fi
 
 # Final result
