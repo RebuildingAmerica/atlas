@@ -724,8 +724,8 @@ class TestDiscoveryApiIntegration:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Inline mode should run the pipeline before returning the response."""
-        from atlas.main import create_app  # noqa: PLC0415
-        from atlas.platform.config import get_settings  # noqa: PLC0415
+        from atlas.main import create_app
+        from atlas.platform.config import get_settings
 
         async def fake_runner(**_kwargs: object) -> None:
             job = _kwargs["job"]
@@ -996,6 +996,6 @@ class TestRunnerHelpers:
 
 async def _get_db_connection(database_url: str) -> object:
     """Import lazily to avoid cluttering the top-level test dependencies."""
-    from atlas.models import get_db_connection  # noqa: PLC0415
+    from atlas.models import get_db_connection
 
     return await get_db_connection(database_url)

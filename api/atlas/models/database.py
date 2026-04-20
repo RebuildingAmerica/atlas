@@ -1,36 +1,57 @@
 """
 Database setup, schema management, and connection pooling.
 
-Provides SQLite database initialization with full schema including FTS5
-full-text search capabilities and proper indexes.
+Supports both SQLite (via aiosqlite) for local development and
+PostgreSQL (via psycopg) for production deployments.
 """
 
+from __future__ import annotations
+
+import functools
+import importlib.resources
 import json
 import logging
 import uuid
 from datetime import UTC, datetime
+from typing import TYPE_CHECKING, Any, Protocol
 
 import aiosqlite
 
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
 logger = logging.getLogger(__name__)
 
-__all__ = ["DB_SCHEMA", "get_db_connection", "init_db"]
+__all__ = ["DB_SCHEMA", "DatabaseManager", "db", "get_db_connection", "init_db"]
 
 
-def _get_db_path(database_url: str) -> str:
-    """
-    Extract file path from database URL.
+class CursorProtocol(Protocol):
+    """Protocol for database cursor objects."""
 
-    Parameters
-    ----------
-    database_url : str
-        Database URL (e.g., "sqlite:///atlas.db").
+    @property
+    def description(self) -> Any: ...
+    @property
+    def rowcount(self) -> int: ...
+    async def fetchall(self) -> list[tuple[Any, ...]]: ...
+    async def fetchone(self) -> tuple[Any, ...] | None: ...
 
-    Returns
-    -------
-    str
-        The file path (e.g., "atlas.db").
-    """
+
+class ConnectionProtocol(Protocol):
+    """Protocol for database connection objects."""
+
+    async def execute(self, sql: str, parameters: Sequence[Any] = ()) -> CursorProtocol: ...
+    async def executemany(
+        self, sql: str, parameters: Sequence[Sequence[Any]]
+    ) -> CursorProtocol: ...
+    async def commit(self) -> None: ...
+    async def close(self) -> None: ...
+
+
+def _is_postgres_url(database_url: str) -> bool:
+    return database_url.startswith(("postgresql://", "postgres://"))
+
+
+def _get_sqlite_path(database_url: str) -> str:
     if database_url.startswith("sqlite:///"):
         return database_url[10:]
     if database_url.startswith("sqlite://"):
@@ -38,25 +59,103 @@ def _get_db_path(database_url: str) -> str:
     return database_url
 
 
-async def get_db_connection(database_url: str) -> aiosqlite.Connection:
+@functools.lru_cache(maxsize=256)
+def _translate_placeholders(sql: str) -> str:
+    """Translate ? placeholders to %s for psycopg."""
+    result = []
+    in_single_quote = False
+    in_double_quote = False
+    i = 0
+    while i < len(sql):
+        char = sql[i]
+        if char == "'" and not in_double_quote:
+            in_single_quote = not in_single_quote
+            result.append(char)
+        elif char == '"' and not in_single_quote:
+            in_double_quote = not in_double_quote
+            result.append(char)
+        elif char == "?" and not in_single_quote and not in_double_quote:
+            result.append("%s")
+        else:
+            result.append(char)
+        i += 1
+    return "".join(result)
+
+
+class PostgresCursor:
+    """Adapter that wraps a psycopg AsyncCursor to match the aiosqlite cursor interface."""
+
+    def __init__(self, cursor: Any) -> None:
+        self._cursor = cursor
+
+    @property
+    def description(self) -> Any:
+        return self._cursor.description
+
+    @property
+    def rowcount(self) -> int:
+        return self._cursor.rowcount  # type: ignore[no-any-return]
+
+    async def fetchall(self) -> list[tuple[Any, ...]]:
+        return await self._cursor.fetchall()  # type: ignore[no-any-return]
+
+    async def fetchone(self) -> tuple[Any, ...] | None:
+        return await self._cursor.fetchone()  # type: ignore[no-any-return]
+
+
+class PostgresConnection:
+    """Adapter that wraps a psycopg AsyncConnection to match the aiosqlite interface."""
+
+    backend = "postgres"
+
+    def __init__(self, conn: Any) -> None:
+        self._conn = conn
+
+    async def execute(self, sql: str, parameters: Sequence[Any] = ()) -> PostgresCursor:
+        translated = _translate_placeholders(sql)
+        cursor = await self._conn.execute(translated, parameters or None)
+        return PostgresCursor(cursor)
+
+    async def executemany(self, sql: str, parameters: Sequence[Sequence[Any]]) -> PostgresCursor:
+        translated = _translate_placeholders(sql)
+        cursor = await self._conn.executemany(translated, parameters)
+        return PostgresCursor(cursor)
+
+    async def commit(self) -> None:
+        await self._conn.commit()
+
+    async def close(self) -> None:
+        await self._conn.close()
+
+
+async def get_db_connection(database_url: str) -> Any:
     """
-    Get an async SQLite connection.
+    Get an async database connection.
+
+    Automatically selects the appropriate backend based on the URL scheme:
+    - postgresql:// or postgres:// → psycopg AsyncConnection
+    - sqlite:/// → aiosqlite Connection
 
     Parameters
     ----------
     database_url : str
-        Database URL (e.g., "sqlite:///atlas.db").
+        Database URL.
 
     Returns
     -------
-    aiosqlite.Connection
-        An async SQLite connection.
+    Connection adapter (PostgresConnection or aiosqlite.Connection)
     """
-    db_path = _get_db_path(database_url)
-    conn = await aiosqlite.connect(db_path)
-    await conn.execute("PRAGMA foreign_keys = ON")
-    await conn.execute("PRAGMA journal_mode = WAL")
-    return conn
+    if _is_postgres_url(database_url):
+        import psycopg
+
+        conn = await psycopg.AsyncConnection.connect(database_url, autocommit=False)
+        return PostgresConnection(conn)
+
+    db_path = _get_sqlite_path(database_url)
+    sqlite_conn = await aiosqlite.connect(db_path)
+    await sqlite_conn.execute("PRAGMA foreign_keys = ON")
+    await sqlite_conn.execute("PRAGMA journal_mode = WAL")
+    return sqlite_conn
 
 
 async def init_db(database_url: str) -> None:
@@ -69,22 +168,54 @@ async def init_db(database_url: str) -> None:
     Parameters
     ----------
     database_url : str
-        Database URL (e.g., "sqlite:///atlas.db").
+        Database URL.
     """
-    conn = await get_db_connection(database_url)
+    if _is_postgres_url(database_url):
+        await _init_postgres(database_url)
+    else:
+        await _init_sqlite(database_url)
+
+
+async def _init_postgres(database_url: str) -> None:
+    """Initialize PostgreSQL schema."""
+    import psycopg
+
+    conn = await psycopg.AsyncConnection.connect(database_url, autocommit=False)
     try:
-        await conn.executescript(DB_SCHEMA)
-        await _ensure_entry_columns(conn)
+        schema_sql = _load_postgres_schema()
+        await conn.execute(schema_sql)
         await conn.commit()
-        logger.info("Database schema initialized successfully")
+        logger.info("PostgreSQL schema initialized successfully")
     except Exception:
-        logger.exception("Failed to initialize database")
+        await conn.rollback()
+        logger.exception("Failed to initialize PostgreSQL database")
         raise
     finally:
         await conn.close()
 
 
-# Full SQLite schema with FTS5 and proper indexes
+def _load_postgres_schema() -> str:
+    """Load the PostgreSQL schema from the bundled SQL file."""
+    schema_path = importlib.resources.files("atlas.models") / "schema.sql"
+    return schema_path.read_text(encoding="utf-8")
+
+
+async def _init_sqlite(database_url: str) -> None:
+    """Initialize SQLite schema."""
+    conn = await get_db_connection(database_url)
+    try:
+        await conn.executescript(DB_SCHEMA)
+        await _ensure_entry_columns(conn)
+        await conn.commit()
+        logger.info("SQLite schema initialized successfully")
+    except Exception:
+        logger.exception("Failed to initialize SQLite database")
+        raise
+    finally:
+        await conn.close()
+
+
+# Full SQLite schema with FTS5 and proper indexes (kept for local development)
 DB_SCHEMA = """
 -- Enable extensions
 PRAGMA foreign_keys = ON;
@@ -275,60 +406,18 @@ class DatabaseManager:
 
     @staticmethod
     def generate_uuid() -> str:
-        """
-        Generate a UUID for database records.
-
-        Returns
-        -------
-        str
-            A new UUID as a string.
-        """
         return str(uuid.uuid4())
 
     @staticmethod
     def now_iso() -> str:
-        """
-        Get the current time in ISO format.
-
-        Returns
-        -------
-        str
-            Current datetime in ISO 8601 format with UTC timezone.
-        """
         return datetime.now(UTC).isoformat()
 
     @staticmethod
     def encode_json(data: object) -> str:
-        """
-        Encode Python object as JSON for storage.
-
-        Parameters
-        ----------
-        data : object
-            The data to encode.
-
-        Returns
-        -------
-        str
-            JSON string.
-        """
         return json.dumps(data)
 
     @staticmethod
     def decode_json(data: str) -> object:
-        """
-        Decode JSON from storage.
-
-        Parameters
-        ----------
-        data : str
-            JSON string.
-
-        Returns
-        -------
-        object
-            Decoded Python object.
-        """
         return json.loads(data)
 
 
@@ -336,8 +425,8 @@ class DatabaseManager:
 db = DatabaseManager()
 
 
-async def _ensure_entry_columns(conn: aiosqlite.Connection) -> None:
-    """Apply additive entry-table migrations for local databases."""
+async def _ensure_entry_columns(conn: Any) -> None:
+    """Apply additive entry-table migrations for local SQLite databases."""
     cursor = await conn.execute("PRAGMA table_info(entries)")
     rows = await cursor.fetchall()
     existing_columns = {row[1] for row in rows}

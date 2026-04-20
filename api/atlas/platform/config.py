@@ -19,7 +19,7 @@ class Settings(BaseSettings):
 
     # Database
     database_url: str = Field(default="sqlite:///atlas.db", validation_alias="DATABASE_URL")
-    """SQLite database URL."""
+    """Database URL. Supports sqlite:/// for local dev or postgresql:// for production."""
 
     # API Keys
     anthropic_api_key: str = ""
@@ -51,6 +51,11 @@ class Settings(BaseSettings):
         default=None, validation_alias="ATLAS_AUTH_API_KEY_INTROSPECTION_URL"
     )
     """Internal endpoint used to verify API keys."""
+
+    auth_membership_verification_url: str = Field(
+        default="", validation_alias="ATLAS_AUTH_MEMBERSHIP_URL"
+    )
+    """Base URL for the membership verification endpoint."""
 
     auth_jwt_issuer: str = Field(default="", validation_alias="ATLAS_PUBLIC_URL")
     """JWT issuer (typically the public URL of the auth server)."""

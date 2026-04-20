@@ -285,7 +285,7 @@ class EntryCRUD:
         params: builtins.list[Any] = []
 
         if active_only:
-            query += " AND active = 1"
+            query += " AND active = TRUE"
         if state:
             query += " AND state = ?"
             params.append(state)
@@ -331,15 +331,20 @@ class EntryCRUD:
         list[EntryModel]
             Matching entries.
         """
-        cursor = await conn.execute(
+        if getattr(conn, "backend", None) == "postgres":
+            sql = """
+                SELECT e.* FROM entries e
+                WHERE e.search_vector @@ plainto_tsquery('english', ?)
+                LIMIT ?
             """
-            SELECT e.* FROM entries e
-            JOIN entries_fts fts ON e.rowid = fts.rowid
-            WHERE entries_fts MATCH ?
-            LIMIT ?
-            """,
-            (query, limit),
-        )
+        else:
+            sql = """
+                SELECT e.* FROM entries e
+                JOIN entries_fts fts ON e.rowid = fts.rowid
+                WHERE entries_fts MATCH ?
+                LIMIT ?
+            """
+        cursor = await conn.execute(sql, (query, limit))
         rows = await cursor.fetchall()
 
         if not rows:
@@ -380,7 +385,7 @@ class EntryCRUD:
         query = """
             SELECT DISTINCT e.* FROM entries e
             JOIN entry_issue_areas eia ON e.id = eia.entry_id
-            WHERE eia.issue_area = ? AND e.active = 1
+            WHERE eia.issue_area = ? AND e.active = TRUE
         """
         params: builtins.list[Any] = [issue_area]
 
@@ -777,16 +782,21 @@ class EntryCRUD:
             LEFT JOIN entry_issue_areas eia ON e.id = eia.entry_id
             LEFT JOIN entry_sources es ON e.id = es.entry_id
             LEFT JOIN sources s ON es.source_id = s.id
-            WHERE e.active = 1
+            WHERE e.active = TRUE
         """
         params: builtins.list[Any] = []
 
         if query:
-            query_sql += """
-                AND e.rowid IN (
-                    SELECT rowid FROM entries_fts WHERE entries_fts MATCH ?
-                )
-            """
+            if getattr(conn, "backend", None) == "postgres":
+                query_sql += """
+                    AND e.search_vector @@ plainto_tsquery('english', ?)
+                """
+            else:
+                query_sql += """
+                    AND e.rowid IN (
+                        SELECT rowid FROM entries_fts WHERE entries_fts MATCH ?
+                    )
+                """
             params.append(query)
         if states:
             query_sql += f" AND e.state IN ({_make_placeholders(states)})"

@@ -34,6 +34,7 @@ dependencies = [
     "PyJWT>=2.10.0",
     "trafilatura>=1.6.0",
     "aiosqlite>=0.19.0",
+    "psycopg[binary]>=3.1",
 ]
 
 [project.optional-dependencies]
@@ -101,6 +102,8 @@ ignore = [
     "ISC001",  # single-line-implicit-string-concatenation (conflicts with formatter)
     "B008",    # function-call-in-default-argument (FastAPI Depends pattern)
     "PLW1641", # __eq__-without-__hash__ (not relevant for dataclasses)
+    "ANN401",  # disallow-Any (needed for database adapter layer)
+    "PLC0415", # import-not-at-top (needed for lazy imports to avoid circular deps)
 ]
 
 [tool.mypy]
@@ -121,6 +124,7 @@ plugins = ["pydantic.mypy"]
 module = [
     "trafilatura.*",
     "aiosqlite.*",
+    "psycopg.*",
 ]
 ignore_missing_imports = true
 
