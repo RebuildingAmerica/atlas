@@ -16,10 +16,11 @@ FROM node:24-alpine AS runner
 
 WORKDIR /app
 
-RUN corepack enable
-
-COPY --from=builder /app/.output ./.output
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/server.mjs ./server.mjs
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/package.json ./package.json
 
 EXPOSE 3000
 
-CMD ["node", ".output/server/index.mjs"]
+CMD ["node", "server.mjs"]
