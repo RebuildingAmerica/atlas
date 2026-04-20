@@ -27,6 +27,7 @@ async def require_actor(  # noqa: PLR0913
     x_atlas_internal_secret: str | None = Header(None),
     x_atlas_actor_id: str | None = Header(None),
     x_atlas_actor_email: str | None = Header(None),
+    x_atlas_organization_id: str | None = Header(None),
     x_api_key: str | None = Header(None),
 ) -> AuthenticatedActor:
     """Require an authenticated actor unless local mode disables auth."""
@@ -38,6 +39,7 @@ async def require_actor(  # noqa: PLR0913
         x_atlas_internal_secret,
         x_atlas_actor_id,
         x_atlas_actor_email,
+        org_id=x_atlas_organization_id,
     )
     if trusted_actor is not None:
         return trusted_actor
@@ -59,6 +61,7 @@ async def require_actor(  # noqa: PLR0913
                 auth_type="api_key",
                 api_key_id=principal.key_id,
                 permissions=principal.permissions,
+                org_id=principal.org_id,
             )
 
     jwt_payload = verify_bearer_jwt(
@@ -68,11 +71,13 @@ async def require_actor(  # noqa: PLR0913
         jwks_url=settings.auth_jwt_jwks_url,
     )
     if jwt_payload:
+        raw_org_id = jwt_payload.get("org_id")
         return AuthenticatedActor(
             user_id=str(jwt_payload["sub"]),
             email=str(jwt_payload.get("email", "")),
             auth_type="oauth_jwt",
             permissions=jwt_payload.get("permissions"),  # type: ignore[arg-type]
+            org_id=str(raw_org_id) if raw_org_id is not None else None,
         )
 
     # MCP clients use the WWW-Authenticate header to discover the auth server.

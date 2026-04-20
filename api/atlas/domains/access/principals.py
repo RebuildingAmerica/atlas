@@ -14,6 +14,7 @@ class ApiKeyPrincipal:
     permissions: dict[str, list[str]] | None
     user_id: str
     user_email: str
+    org_id: str | None = None
 
 
 @dataclass(slots=True)
@@ -26,3 +27,7 @@ class AuthenticatedActor:
     api_key_id: str | None = None
     is_local: bool = False
     permissions: dict[str, list[str]] | None = None
+    org_id: str | None = None
+    org_role: str | None = None
+    org_slug: str | None = None
+    workspace_type: str | None = None

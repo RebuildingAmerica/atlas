@@ -55,10 +55,12 @@ async def verify_api_key(api_key: str, settings: Settings) -> ApiKeyPrincipal | 
     if not payload.get("valid"):
         return None
 
+    raw_org_id = payload.get("organizationId")
     return ApiKeyPrincipal(
         key_id=str(payload["keyId"]),
         name=str(payload["name"]),
         permissions=payload.get("permissions"),
         user_id=str(payload["userId"]),
         user_email=str(payload["userEmail"]),
+        org_id=str(raw_org_id) if raw_org_id is not None else None,
     )

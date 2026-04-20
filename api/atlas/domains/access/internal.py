@@ -28,6 +28,7 @@ def verify_internal_actor(
     internal_secret: str | None,
     actor_id: str | None,
     actor_email: str | None,
+    org_id: str | None = None,
 ) -> AuthenticatedActor | None:
     """Validate trusted app-to-API headers."""
     if not (
@@ -47,4 +48,5 @@ def verify_internal_actor(
         user_id=actor_id,
         email=actor_email,
         auth_type="internal",
+        org_id=org_id,
     )
