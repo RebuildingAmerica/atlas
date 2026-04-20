@@ -11,6 +11,7 @@ export interface AuthRuntimeConfig {
   apiKeyIntrospectionUrl: string | null;
   allowedEmails: Set<string>;
   apiBaseUrl: string | null;
+  databaseUrl: string | null;
   localMode: boolean;
   captureUrl: string | null;
   dbPath: string;
@@ -79,7 +80,11 @@ function resolveApiKeyIntrospectionUrl(env: NodeJS.ProcessEnv): string | null {
     return null;
   }
 
-  return new URL(configuredUrl).toString();
+  try {
+    return new URL(configuredUrl).toString();
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -94,7 +99,11 @@ function resolveApiBaseUrl(env: NodeJS.ProcessEnv): string | null {
     return null;
   }
 
-  return trimTrailingSlash(new URL(configuredUrl).toString());
+  try {
+    return trimTrailingSlash(new URL(configuredUrl).toString());
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -111,11 +120,14 @@ export function resolveAuthRuntimeConfig(env: NodeJS.ProcessEnv, cwd: string): A
   const localMode = env.ATLAS_DEPLOY_MODE === "local";
   const emailProvider = resolveEmailProvider(env);
 
+  const databaseUrl = env.DATABASE_URL?.trim() || null;
+
   return {
     apiAudience: env.ATLAS_API_AUDIENCE?.trim() || null,
     apiBaseUrl: resolveApiBaseUrl(env),
     apiKeyIntrospectionUrl: resolveApiKeyIntrospectionUrl(env),
     allowedEmails: normalizeEmailList(env.ATLAS_AUTH_ALLOWED_EMAILS),
+    databaseUrl,
     localMode,
     captureUrl: env.ATLAS_EMAIL_CAPTURE_URL?.trim() || null,
     dbPath: env.ATLAS_AUTH_DB_PATH?.trim() || path.join(cwd, "data", "auth", "atlas-auth.sqlite"),
@@ -128,11 +140,16 @@ export function resolveAuthRuntimeConfig(env: NodeJS.ProcessEnv, cwd: string): A
   };
 }
 
+let _cachedConfig: AuthRuntimeConfig | null = null;
+
 /**
- * Returns the current process auth runtime config.
+ * Returns the current process auth runtime config (cached after first call).
  */
 export function getAuthRuntimeConfig(): AuthRuntimeConfig {
-  return resolveAuthRuntimeConfig(process.env, process.cwd());
+  if (!_cachedConfig) {
+    _cachedConfig = resolveAuthRuntimeConfig(process.env, process.cwd());
+  }
+  return _cachedConfig;
 }
 
 /**

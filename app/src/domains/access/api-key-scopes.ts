@@ -30,11 +30,18 @@ export function scopeToPermission(scope: ApiKeyScope): [string, string] {
  * Converts the Atlas scope list into Better Auth's permissions payload shape.
  */
 export function scopesToPermissions(scopes: ApiKeyScope[]): ApiKeyPermissions {
-  return scopes.reduce<ApiKeyPermissions>((permissions, scope) => {
+  const permissions: ApiKeyPermissions = {};
+
+  for (const scope of scopes) {
     const [resource, action] = scopeToPermission(scope);
-    permissions[resource] = Array.from(new Set([...(permissions[resource] ?? []), action]));
-    return permissions;
-  }, {});
+    const actions = permissions[resource] ?? [];
+    if (!actions.includes(action)) {
+      actions.push(action);
+    }
+    permissions[resource] = actions;
+  }
+
+  return permissions;
 }
 
 /**

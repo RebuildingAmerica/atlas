@@ -53,16 +53,18 @@ export function nameFromAaguid(aaguid: string | null | undefined): string | null
  * Returns a best-effort display name for a passkey using the AAGUID first,
  * then falling back to OS detection from the User-Agent.
  */
-export function resolvePasskeyName(aaguid: string | null | undefined): string {
+export function resolvePasskeyName(
+  aaguid: string | null | undefined,
+  nav: typeof navigator | null = typeof navigator !== "undefined" ? navigator : null,
+): string {
   const fromAaguid = nameFromAaguid(aaguid);
   if (fromAaguid) return fromAaguid;
 
   // UA fallback — less precise but better than a generic label
-  if (typeof navigator !== "undefined") {
-    const uaPlatform = (navigator as { userAgentData?: { platform?: string } }).userAgentData
-      ?.platform;
-    const platform = uaPlatform ?? navigator.platform ?? "";
-    const ua = navigator.userAgent ?? "";
+  if (nav) {
+    const uaPlatform = (nav as { userAgentData?: { platform?: string } }).userAgentData?.platform;
+    const platform = uaPlatform ?? nav.platform ?? "";
+    const ua = nav.userAgent ?? "";
 
     if (/iphone|ipad/i.test(ua)) return "iPhone passkey";
     if (/mac/i.test(platform) || /mac/i.test(ua)) return "Mac passkey";

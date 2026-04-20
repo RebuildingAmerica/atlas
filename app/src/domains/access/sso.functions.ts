@@ -289,7 +289,7 @@ export const deleteWorkspaceSSOProvider = createServerFn({ method: "POST" })
       headers,
     });
 
-    const workspaceIdentity = loadStoredWorkspaceIdentity(activeWorkspace.id);
+    const workspaceIdentity = await loadStoredWorkspaceIdentity(activeWorkspace.id);
     if (workspaceIdentity?.primaryProviderId === data.providerId) {
       await saveWorkspacePrimarySSOProvider(null);
     }
@@ -311,7 +311,7 @@ export const resolveWorkspaceSSOSignIn = createServerFn({ method: "POST" })
     const authPromise = ensureAuthReady();
     const auth = await authPromise;
     const headers = getBrowserSessionHeaders();
-    const storedProviders = listStoredWorkspaceSSOProviders();
+    const storedProviders = await listStoredWorkspaceSSOProviders();
 
     if (data.invitationId) {
       const invitation = await auth.api.getInvitation({
@@ -322,7 +322,7 @@ export const resolveWorkspaceSSOSignIn = createServerFn({ method: "POST" })
       });
 
       if (invitation?.organizationId) {
-        const workspaceIdentity = loadStoredWorkspaceIdentity(invitation.organizationId);
+        const workspaceIdentity = await loadStoredWorkspaceIdentity(invitation.organizationId);
         const workspaceProviders = storedProviders.filter(
           (provider) => provider.organizationId === invitation.organizationId,
         );
@@ -357,7 +357,7 @@ export const resolveWorkspaceSSOSignIn = createServerFn({ method: "POST" })
       return null;
     }
 
-    const workspaceIdentity = loadStoredWorkspaceIdentity(organizationId);
+    const workspaceIdentity = await loadStoredWorkspaceIdentity(organizationId);
     if (!workspaceIdentity) {
       return null;
     }

@@ -1,7 +1,7 @@
 import "@tanstack/react-start/server-only";
 
 import { getAuthRuntimeConfig } from "./runtime";
-import { getAuthDatabase } from "./auth";
+import { getAuthDatabase, getAuthPgPool } from "./auth";
 import {
   buildWorkspaceSamlMetadataUrl,
   rawWorkspaceSSOProviderSchema,
@@ -38,7 +38,7 @@ export interface StoredWorkspaceIdentity {
 }
 
 /**
- * Redacted SSO provider record Atlas reads from Better Auth's internal SQLite
+ * Redacted SSO provider record Atlas reads from Better Auth's internal
  * store when the public sign-in page needs provider routing hints.
  */
 export interface StoredWorkspaceSSOProvider {
@@ -55,7 +55,7 @@ export interface StoredWorkspaceSSOProvider {
 /**
  * Parses one JSON field persisted by Better Auth.
  *
- * @param value - The raw JSON string stored in SQLite.
+ * @param value - The raw JSON string stored in the database.
  */
 function parseStoredJson(value: string | null): unknown {
   if (!value) {
@@ -74,14 +74,25 @@ function parseStoredJson(value: string | null): unknown {
  *
  * @param organizationId - The Better Auth organization identifier.
  */
-export function loadStoredWorkspaceIdentity(
+export async function loadStoredWorkspaceIdentity(
   organizationId: string,
-): StoredWorkspaceIdentity | null {
-  const database = getAuthDatabase();
-  const statement = database.prepare(
-    "select id, metadata, name, slug from organization where id = ? limit 1",
-  );
-  const workspace = statement.get(organizationId) as StoredWorkspaceRow | undefined;
+): Promise<StoredWorkspaceIdentity | null> {
+  const pool = getAuthPgPool();
+  let workspace: StoredWorkspaceRow | undefined;
+
+  if (pool) {
+    const result = await pool.query(
+      "select id, metadata, name, slug from organization where id = $1 limit 1",
+      [organizationId],
+    );
+    workspace = result.rows[0] as StoredWorkspaceRow | undefined;
+  } else {
+    const database = getAuthDatabase();
+    const statement = database.prepare(
+      "select id, metadata, name, slug from organization where id = ? limit 1",
+    );
+    workspace = statement.get(organizationId) as StoredWorkspaceRow | undefined;
+  }
 
   if (!workspace) {
     return null;
@@ -101,12 +112,23 @@ export function loadStoredWorkspaceIdentity(
  * Lists the persisted SSO providers Atlas can inspect before an authenticated
  * Better Auth session exists.
  */
-export function listStoredWorkspaceSSOProviders(): StoredWorkspaceSSOProvider[] {
-  const database = getAuthDatabase();
-  const statement = database.prepare(
-    "select providerId, issuer, domain, organizationId, domainVerified, oidcConfig, samlConfig from ssoProvider",
-  );
-  const providerRows = statement.all() as StoredWorkspaceSSOProviderRow[];
+export async function listStoredWorkspaceSSOProviders(): Promise<StoredWorkspaceSSOProvider[]> {
+  const pool = getAuthPgPool();
+  let providerRows: StoredWorkspaceSSOProviderRow[];
+
+  if (pool) {
+    const result = await pool.query(
+      'select "providerId", issuer, domain, "organizationId", "domainVerified", "oidcConfig", "samlConfig" from "ssoProvider"',
+    );
+    providerRows = result.rows as StoredWorkspaceSSOProviderRow[];
+  } else {
+    const database = getAuthDatabase();
+    const statement = database.prepare(
+      "select providerId, issuer, domain, organizationId, domainVerified, oidcConfig, samlConfig from ssoProvider",
+    );
+    providerRows = statement.all() as StoredWorkspaceSSOProviderRow[];
+  }
+
   const runtime = getAuthRuntimeConfig();
   const providers: StoredWorkspaceSSOProvider[] = [];
 

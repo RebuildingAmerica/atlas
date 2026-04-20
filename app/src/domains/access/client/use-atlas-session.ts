@@ -2,8 +2,6 @@ import { useQuery } from "@tanstack/react-query";
 import { getAuthConfig } from "../config";
 import { getAtlasSession, type AtlasSessionPayload } from "../session.functions";
 
-const authConfig = getAuthConfig();
-
 /**
  * Shared React Query key for Atlas session reads and readiness refreshes.
  */
@@ -17,6 +15,7 @@ export const atlasSessionQueryKey = ["auth", "session"] as const;
  * to Better Auth's browser session hook.
  */
 export function useAtlasSession() {
+  const authConfig = getAuthConfig();
   return useQuery<AtlasSessionPayload | null>({
     queryFn: getAtlasSession,
     queryKey: [...atlasSessionQueryKey, authConfig.localMode],
