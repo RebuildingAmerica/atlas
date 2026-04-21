@@ -9,7 +9,7 @@
   ],
   "tasks": {
     "build": {
-      "outputs": ["dist/**"]
+      "outputs": [".output/**"]
     },
     "typecheck": {},
     "lint": {},

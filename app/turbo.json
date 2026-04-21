@@ -64,7 +64,7 @@
         "ATLAS_DEPLOY_MODE",
         "ATLAS_PUBLIC_URL"
       ],
-      "outputs": ["dist/**"]
+      "outputs": [".output/**"]
     },
     "api-client": {
       "dependsOn": ["//#openapi"],
