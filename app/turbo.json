@@ -64,7 +64,7 @@
         "ATLAS_DEPLOY_MODE",
         "ATLAS_PUBLIC_URL"
       ],
-      "outputs": [".output/**"]
+      "outputs": [".output/**", ".vercel/output/**"]
     },
     "api-client": {
       "dependsOn": ["//#openapi"],
