@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel, Field
 
+from atlas.domains.access.capabilities import enforce_limit, require_capability
 from atlas.domains.access.dependencies import require_org_actor
 from atlas.domains.catalog.models.ownership import OwnershipCRUD
 from atlas.domains.catalog.taxonomy import ALL_ISSUE_SLUGS
@@ -198,6 +199,8 @@ async def start_org_discovery_run(
     response: Response,
     actor: AuthenticatedActor = Depends(require_org_actor),
     db: aiosqlite.Connection = Depends(get_db),
+    _cap: None = Depends(require_capability("research.run")),
+    _run_limit: int | None = Depends(enforce_limit("research_runs_per_month")),
 ) -> OrgDiscoveryRunResponse:
     """Start a private discovery run for the org (record only, no pipeline execution)."""
     _verify_org_access(actor, org_id)

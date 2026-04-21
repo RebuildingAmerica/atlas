@@ -3,15 +3,19 @@
 Maps active product subscriptions to a resolved set of capabilities and
 resource limits. Mirrors the TypeScript resolver on the web side — same
 static config, same merge logic, different language.
-
-FastAPI dependencies (require_capability, enforce_limit) are intentionally
-absent here; they will be added in Task 8 after the dependency chain is
-updated.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
+
+from fastapi import Depends, HTTPException, status
+
+if TYPE_CHECKING:
+    from collections.abc import Awaitable, Callable
+
+    from .principals import AuthenticatedActor
 
 # ---------------------------------------------------------------------------
 # Capability sets
@@ -159,3 +163,40 @@ def has_capability(resolved: ResolvedCapabilities, cap: str) -> bool:
 def get_limit(resolved: ResolvedCapabilities, limit: str) -> int | None:
     """Return the resolved value for *limit*, or None if unlimited."""
     return resolved.limits[limit]
+
+
+def require_capability(cap: str) -> Callable[..., Awaitable[None]]:
+    """Return a FastAPI dependency that raises 403 if the actor lacks the capability."""
+    from .dependencies import require_org_actor
+
+    async def dependency(
+        actor: AuthenticatedActor = Depends(require_org_actor),
+    ) -> None:
+        if (
+            actor.resolved_capabilities is None
+            or cap not in actor.resolved_capabilities.capabilities
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={"message": "Capability required", "capability": cap},
+            )
+
+    return dependency
+
+
+def enforce_limit(limit: str) -> Callable[..., Awaitable[int | None]]:
+    """Return a FastAPI dependency that provides the actor's limit value.
+
+    Returns None for unlimited, or the numeric cap. The endpoint is
+    responsible for checking current usage against this value.
+    """
+    from .dependencies import require_org_actor
+
+    async def dependency(
+        actor: AuthenticatedActor = Depends(require_org_actor),
+    ) -> int | None:
+        if actor.resolved_capabilities is None:
+            return DEFAULT_LIMITS.get(limit)
+        return actor.resolved_capabilities.limits.get(limit)
+
+    return dependency

@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Response
 
 from atlas.domains.access import AuthenticatedActor, require_actor_permission
+from atlas.domains.access.capabilities import enforce_limit, require_capability
 from atlas.domains.catalog.taxonomy import ALL_ISSUE_SLUGS
 from atlas.domains.discovery.pipeline.runner import (
     DiscoveryPipelineCredentials,
@@ -64,6 +65,8 @@ async def start_discovery_run(  # noqa: PLR0913
     settings: Settings = Depends(get_settings),
     db: aiosqlite.Connection = Depends(get_db),
     response: Response = Response(),
+    _cap: None = Depends(require_capability("research.run")),
+    _run_limit: int | None = Depends(enforce_limit("research_runs_per_month")),
 ) -> DiscoveryRunResponse:
     """
     Start a discovery run for a location and issue areas.

@@ -65,6 +65,7 @@ async def test_protected_discovery_accepts_internal_actor_headers(
             "X-Atlas-Internal-Secret": "internal-test-secret",
             "X-Atlas-Actor-Id": "user_123",
             "X-Atlas-Actor-Email": "operator@example.com",
+            "X-Atlas-Organization-Id": "org_123",
         },
         json={
             "location_query": "Gary, IN",
@@ -100,6 +101,7 @@ async def test_protected_discovery_accepts_valid_api_key(
             permissions={"discovery": ["write"]},
             user_id="user_123",
             user_email="operator@example.com",
+            org_id="org_123",
         )
 
     monkeypatch.setattr("atlas.domains.access.dependencies.verify_api_key", fake_verify_api_key)

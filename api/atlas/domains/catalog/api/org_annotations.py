@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel, Field
 
+from atlas.domains.access.capabilities import require_capability
 from atlas.domains.access.dependencies import require_org_actor
 from atlas.domains.catalog.models.ownership import OwnershipCRUD
 from atlas.models import EntryCRUD, get_db_connection
@@ -128,6 +129,7 @@ async def create_org_annotation(
     response: Response,
     actor: AuthenticatedActor = Depends(require_org_actor),
     db: aiosqlite.Connection = Depends(get_db),
+    _cap: None = Depends(require_capability("workspace.notes")),
 ) -> AnnotationResponse:
     """Create an annotation on a shared entry."""
     _verify_org_access(actor, org_id)
