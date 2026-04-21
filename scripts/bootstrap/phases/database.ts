@@ -7,6 +7,7 @@ import { runCommand, commandOutput } from "../lib/shell.js";
 import { parseEnvFile, mergeEnvFile } from "../lib/env-file.js";
 import { promptOrExit, promptConfirm, logSubline } from "../lib/ui.js";
 import type { ReadinessState } from "../state.js";
+import { getVercelScope, syncEnvVars, type VercelVar } from "../lib/vercel.js";
 
 const SCHEMA_RELATIVE_PATH = "api/atlas/models/schema.sql";
 
@@ -121,6 +122,26 @@ export async function runDatabasePhase(
   // ── Write to env files ────────────────────────────────────────────────────
   if (!doctorMode && databaseUrl) {
     writeToEnvFiles(projectRoot, databaseUrl);
+
+    // Sync DATABASE_URL to Vercel if deploy-vercel capability is ready
+    if (state.capabilities["deploy-vercel"]?.status === "ready") {
+      const appDir = path.join(projectRoot, "app");
+      const scope = getVercelScope(appDir);
+      if (scope) {
+        const vars: VercelVar[] = [
+          {
+            key: "DATABASE_URL",
+            value: databaseUrl,
+            environments: ["production"],
+          },
+        ];
+        await syncEnvVars(vars, scope);
+      } else {
+        result.followUpItems.push(
+          "Vercel project not linked — DATABASE_URL not synced to Vercel",
+        );
+      }
+    }
   }
 
   return result;
