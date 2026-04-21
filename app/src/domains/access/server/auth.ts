@@ -460,11 +460,16 @@ async function hasExistingOrganizationMembership(email: string): Promise<boolean
  */
 export async function canEmailAccessAtlas(email: string): Promise<boolean> {
   const normalizedEmail = normalizeEmail(email);
+  const runtime = getAuthRuntimeConfig();
+
+  if (runtime.openRegistration) {
+    return true;
+  }
+
   if (isAllowedEmail(normalizedEmail)) {
     return true;
   }
 
-  const runtime = getAuthRuntimeConfig();
   if (runtime.localMode) {
     return false;
   }
@@ -566,6 +571,18 @@ export function getAuth() {
  */
 async function runAtlasAuthMigrations(context: AtlasAuthContext): Promise<AtlasAuthInstance> {
   await context.runMigrations();
+
+  const { ATLAS_MIGRATIONS, runAtlasCustomMigrations, runAtlasCustomMigrationsPg } =
+    await import("./atlas-migrations");
+  const pool = getAuthPgPool();
+  if (pool) {
+    await runAtlasCustomMigrationsPg(pool, ATLAS_MIGRATIONS);
+  } else {
+    const db = getAuthDatabase();
+    if (db) {
+      runAtlasCustomMigrations(db, ATLAS_MIGRATIONS);
+    }
+  }
 
   const auth = getAuth();
   return auth;

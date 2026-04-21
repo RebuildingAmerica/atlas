@@ -13,6 +13,7 @@ export interface AuthRuntimeConfig {
   apiBaseUrl: string | null;
   databaseUrl: string | null;
   localMode: boolean;
+  openRegistration: boolean;
   captureUrl: string | null;
   dbPath: string;
   emailFrom: string;
@@ -129,6 +130,7 @@ export function resolveAuthRuntimeConfig(env: NodeJS.ProcessEnv, cwd: string): A
     allowedEmails: normalizeEmailList(env.ATLAS_AUTH_ALLOWED_EMAILS),
     databaseUrl,
     localMode,
+    openRegistration: env.ATLAS_AUTH_OPEN_REGISTRATION !== "false",
     captureUrl: env.ATLAS_EMAIL_CAPTURE_URL?.trim() || null,
     dbPath: env.ATLAS_AUTH_DB_PATH?.trim() || path.join(cwd, "data", "auth", "atlas-auth.sqlite"),
     emailFrom: env.ATLAS_EMAIL_FROM?.trim() || `Atlas <noreply@${publicDomain}>`,
