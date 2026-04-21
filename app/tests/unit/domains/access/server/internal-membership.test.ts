@@ -14,6 +14,10 @@ vi.mock("@/domains/access/server/auth", () => ({
   ensureAuthReady: mocks.ensureAuthReady,
 }));
 
+vi.mock("@/domains/access/server/workspace-products", () => ({
+  queryActiveProducts: vi.fn().mockResolvedValue([]),
+}));
+
 describe("internal-membership", () => {
   beforeEach(() => {
     vi.resetModules();
@@ -88,6 +92,7 @@ describe("internal-membership", () => {
     expect(response.status).toBe(200);
     const body = (await response.json()) as Record<string, unknown>;
     expect(body).toEqual({
+      activeProducts: [],
       name: "Atlas",
       role: "admin",
       slug: "atlas",

@@ -4,12 +4,14 @@ import { timingSafeEqual } from "node:crypto";
 import { normalizeAtlasOrganizationMetadata } from "../organization-metadata";
 import { ensureAuthReady } from "./auth";
 import { getAuthRuntimeConfig } from "./runtime";
+import { queryActiveProducts } from "./workspace-products";
 
 /**
  * Response shape returned by the internal membership verification endpoint
  * when the user is confirmed as a member of the organization.
  */
 interface MembershipVerificationResponse {
+  activeProducts: string[];
   name: string;
   role: string;
   slug: string;
@@ -57,8 +59,10 @@ export async function verifyMembershipRequest(
   }
 
   const metadata = normalizeAtlasOrganizationMetadata(fullOrganization.metadata);
+  const activeProducts = await queryActiveProducts(organizationId);
 
   const body: MembershipVerificationResponse = {
+    activeProducts,
     name: fullOrganization.name,
     role: member.role,
     slug: fullOrganization.slug,
