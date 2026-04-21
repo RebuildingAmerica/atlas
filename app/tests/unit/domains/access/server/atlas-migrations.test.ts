@@ -60,7 +60,9 @@ describe("atlas-migrations", () => {
       name: string;
     }[];
     expect(applied).toHaveLength(1);
-    expect(applied[0].version).toBe(1);
-    expect(applied[0].name).toBe("create_foo");
+    const firstApplied = applied[0];
+    expect(firstApplied).toBeDefined();
+    expect(firstApplied?.version).toBe(1);
+    expect(firstApplied?.name).toBe("create_foo");
   });
 });

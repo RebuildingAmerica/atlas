@@ -6,7 +6,7 @@ import {
   type organizationDetailsSchema,
 } from "@/domains/access/organization-contracts";
 import type { AtlasWorkspaceSSOState } from "@/domains/access/organization-sso";
-import { createAtlasSessionFixture } from "../../../fixtures/access/sessions";
+import { createAtlasSessionFixture, createAtlasWorkspace } from "../../../fixtures/access/sessions";
 
 type OrganizationDetails = z.infer<typeof organizationDetailsSchema>;
 
@@ -25,7 +25,7 @@ describe("organization-contracts", () => {
   describe("toAtlasOrganizationDetails", () => {
     const session = createAtlasSessionFixture({
       role: "admin",
-      workspace: {
+      workspace: createAtlasWorkspace({
         activeOrganization: {
           id: "org_1",
           name: "Org 1",
@@ -43,8 +43,7 @@ describe("organization-contracts", () => {
           canUseTeamFeatures: true,
         },
         onboarding: { hasPendingInvitations: false, needsWorkspace: false },
-        pendingInvitations: [],
-      },
+      }),
     });
 
     const ssoState: AtlasWorkspaceSSOState = {

@@ -3,10 +3,9 @@ import { createInternalAuthHeaders, getAuthConfig } from "@/domains/access/confi
 
 describe("getAuthConfig", () => {
   it("defaults to auth enabled without local mode", () => {
-    expect(getAuthConfig({})).toEqual({
-      authBasePath: "/api/auth",
-      localMode: false,
-    });
+    const config = getAuthConfig({});
+    expect(config.authBasePath).toBe("/api/auth");
+    expect(config.localMode).toBe(false);
   });
 
   it("returns localMode false when ATLAS_DEPLOY_MODE is not local", () => {

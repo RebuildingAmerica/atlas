@@ -23,6 +23,7 @@ function buildRuntime(overrides: Partial<AuthRuntimeConfig> = {}): AuthRuntimeCo
     allowedEmails: new Set(),
     databaseUrl: null,
     localMode: false,
+    openRegistration: true,
     captureUrl: "http://127.0.0.1:8025/messages",
     dbPath: "/tmp/atlas-auth.sqlite",
     emailFrom: "Atlas <auth@atlas.example.com>",

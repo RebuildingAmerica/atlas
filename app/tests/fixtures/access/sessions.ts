@@ -1,8 +1,26 @@
+import type { AtlasProduct, SerializedResolvedCapabilities } from "@/domains/access/capabilities";
 import type {
   AtlasSessionPayload,
   AtlasWorkspaceMembership,
   AtlasWorkspaceState,
 } from "@/domains/access/session.types";
+
+/**
+ * Default resolved capabilities for a free-tier workspace with no active
+ * products. Matches the values produced by `resolveCapabilities([])`.
+ */
+const DEFAULT_RESOLVED_CAPABILITIES: SerializedResolvedCapabilities = {
+  capabilities: ["research.run"],
+  limits: {
+    research_runs_per_month: 2,
+    max_shortlists: 1,
+    max_shortlist_entries: 25,
+    max_api_keys: 0,
+    api_requests_per_day: 0,
+    public_api_requests_per_hour: 100,
+    max_members: 1,
+  },
+};
 
 /**
  * Builds the Better Auth session payload Atlas reads through
@@ -104,10 +122,12 @@ export function createBetterAuthInvitation(
 export function createAtlasWorkspace(
   options: {
     activeOrganization?: AtlasWorkspaceState["activeOrganization"];
+    activeProducts?: AtlasProduct[];
     capabilities?: Partial<AtlasWorkspaceState["capabilities"]>;
     memberships?: AtlasWorkspaceState["memberships"];
     onboarding?: Partial<AtlasWorkspaceState["onboarding"]>;
     pendingInvitations?: AtlasWorkspaceState["pendingInvitations"];
+    resolvedCapabilities?: SerializedResolvedCapabilities;
     role?: string;
   } = {},
 ): AtlasWorkspaceState {
@@ -125,12 +145,14 @@ export function createAtlasWorkspace(
 
   return {
     activeOrganization,
+    activeProducts: options.activeProducts ?? [],
     capabilities: {
       canInviteMembers: options.capabilities?.canInviteMembers ?? true,
       canManageOrganization: options.capabilities?.canManageOrganization ?? true,
       canSwitchOrganizations: options.capabilities?.canSwitchOrganizations ?? false,
       canUseTeamFeatures: options.capabilities?.canUseTeamFeatures ?? true,
     },
+    resolvedCapabilities: options.resolvedCapabilities ?? DEFAULT_RESOLVED_CAPABILITIES,
     memberships: options.memberships ?? [
       {
         id: "org_team",

@@ -42,6 +42,7 @@ describe("runtime additional branches", () => {
         apiKeyIntrospectionUrl: null,
         databaseUrl: null,
         localMode: true,
+        openRegistration: true,
         captureUrl: null,
         dbPath: "/tmp/atlas-auth.sqlite",
         emailFrom: "Atlas <auth@atlas.test>",
