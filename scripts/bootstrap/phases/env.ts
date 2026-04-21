@@ -1,6 +1,6 @@
 import { existsSync, copyFileSync } from "node:fs";
 import path from "node:path";
-import { log, text, password } from "@clack/prompts";
+import { log, note, text, password } from "@clack/prompts";
 import pc from "picocolors";
 import type { PhaseResult } from "../lib/types.js";
 import { parseEnvFile, mergeEnvFile } from "../lib/env-file.js";
@@ -17,21 +17,35 @@ import {
 
 const AUTO_GENERATED_SECRETS = new Set(["ATLAS_AUTH_INTERNAL_SECRET"]);
 
-const REQUIRED_KEYS: Record<string, { prompt: string; sensitive: boolean }> = {
-  ANTHROPIC_API_KEY: { prompt: "Anthropic API key", sensitive: true },
-};
+interface EnvKeyConfig {
+  prompt: string;
+  sensitive: boolean;
+  hint: string;
+  required: boolean;
+  localOnly: boolean;
+}
 
-const OPTIONAL_PROMPTED_KEYS: Record<
-  string,
-  { prompt: string; sensitive: boolean }
-> = {
-  ATLAS_EMAIL_RESEND_API_KEY: {
-    prompt: "Resend API key (for email delivery, leave blank to skip)",
+const PROMPTED_KEYS: Record<string, EnvKeyConfig> = {
+  ANTHROPIC_API_KEY: {
+    prompt: "Anthropic API key",
     sensitive: true,
+    hint: "Create one at https://console.anthropic.com/settings/keys — you need a key with Claude API access.",
+    required: true,
+    localOnly: true,
+  },
+  ATLAS_EMAIL_RESEND_API_KEY: {
+    prompt: "Resend API key",
+    sensitive: true,
+    hint: "Sign up at https://resend.com and create an API key. This is used to send magic-link sign-in emails. Leave blank to use the local email capture provider instead.",
+    required: false,
+    localOnly: false,
   },
   SEARCH_API_KEY: {
-    prompt: "Search API key (optional, leave blank to skip)",
+    prompt: "Search API key (Brave Search)",
     sensitive: true,
+    hint: "Get a free key at https://brave.com/search/api/ — used by the discovery pipeline to find local civic actors. Leave blank to skip (discovery will still work but with fewer sources).",
+    required: false,
+    localOnly: false,
   },
 };
 
@@ -104,37 +118,37 @@ export async function runEnvPhase(
     }
   }
 
-  // Step 3: Prompt for required keys
-  for (const [key, config] of Object.entries(REQUIRED_KEYS)) {
+  // Step 3: Prompt for keys that need user input
+  for (const [key, config] of Object.entries(PROMPTED_KEYS)) {
     const current = rootEnv.get(key);
     if (current && !isPlaceholder(current)) continue;
 
+    note(config.hint, config.prompt);
+
     const value = await promptOrExit(
       config.sensitive
-        ? password({ message: config.prompt })
-        : text({ message: config.prompt }),
+        ? password({
+            message: `Paste your ${config.prompt}${config.required ? "" : " (or leave blank to skip)"}`,
+            validate: (v) => {
+              if (config.required && !v.trim()) {
+                return `${config.prompt} is required.`;
+              }
+            },
+          })
+        : text({
+            message: `Enter your ${config.prompt}${config.required ? "" : " (or leave blank to skip)"}`,
+            validate: (v) => {
+              if (config.required && !v.trim()) {
+                return `${config.prompt} is required.`;
+              }
+            },
+          }),
     );
 
     if (typeof value === "string" && value.trim()) {
       updates.set(key, value.trim());
-    } else {
-      followUpItems.push(`Set ${key} in .env`);
-    }
-  }
-
-  // Step 4: Prompt for optional keys
-  for (const [key, config] of Object.entries(OPTIONAL_PROMPTED_KEYS)) {
-    const current = rootEnv.get(key);
-    if (current && !isPlaceholder(current)) continue;
-
-    const value = await promptOrExit(
-      config.sensitive
-        ? password({ message: config.prompt })
-        : text({ message: config.prompt }),
-    );
-
-    if (typeof value === "string" && value.trim()) {
-      updates.set(key, value.trim());
+    } else if (config.required) {
+      followUpItems.push(`Set ${key} in .env — ${config.hint}`);
     }
   }
 
