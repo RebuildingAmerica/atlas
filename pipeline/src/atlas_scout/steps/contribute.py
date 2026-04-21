@@ -46,7 +46,7 @@ async def contribute_entries(
     entries : list[RankedEntry]
         Ranked entries from the pipeline.
     atlas_url : str
-        Base URL of the Atlas API (e.g., ``https://atlas.rebuilding.us``).
+        Base URL of the Atlas API (e.g., ``https://atlas.rebuildingus.org``).
     api_key : str
         API key for authentication.
     min_score : float

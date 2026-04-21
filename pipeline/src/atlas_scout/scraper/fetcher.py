@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-USER_AGENT = "AtlasScout/1.0 (+https://atlas.rebuilding.us/scout)"
+USER_AGENT = "AtlasScout/1.0 (+https://atlas.rebuildingus.org/scout)"
 _CLAIM_POLL_SECONDS = 0.25
 
 

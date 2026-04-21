@@ -2041,9 +2041,9 @@
   },
   "info": {
     "contact": {
-      "email": "atlas@example.com",
+      "email": "contact@rebuildingus.org",
       "name": "Rebuilding America",
-      "url": "https://atlas.example.com/"
+      "url": "https://atlas.rebuildingus.org/"
     },
     "description": "Atlas exposes place-first civic research data through a typed REST API. The public contract includes entities, sources, issue areas, domains, place profiles, issue signals, discovery runs, and anonymous data flags.",
     "license": {
@@ -3983,10 +3983,10 @@
   },
   "servers": [
     {
-      "url": "https://atlas.example.com"
+      "url": "https://atlas.rebuildingus.org"
     },
     {
-      "url": "http://localhost:8000"
+      "url": "http://api.localhost:1355"
     },
     {
       "url": "/"

@@ -155,7 +155,7 @@ class ContributionConfig(BaseModel):
 
     enabled: bool = False
     api_key: str = ""
-    atlas_url: str = "https://atlas.rebuilding.us"
+    atlas_url: str = "https://atlas.rebuildingus.org"
     min_score: float = 0.7
 
 

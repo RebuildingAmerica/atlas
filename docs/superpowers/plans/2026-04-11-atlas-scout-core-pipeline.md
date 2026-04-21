@@ -640,7 +640,7 @@ class ScheduleConfig(BaseModel):
 class ContributionConfig(BaseModel):
     enabled: bool = False
     api_key: str = ""
-    atlas_url: str = "https://atlas.rebuilding.us"
+    atlas_url: str = "https://atlas.rebuildingus.org"
     min_score: float = 0.7
 
 
@@ -1699,7 +1699,7 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-USER_AGENT = "AtlasScout/1.0 (+https://atlas.rebuilding.us/scout)"
+USER_AGENT = "AtlasScout/1.0 (+https://atlas.rebuildingus.org/scout)"
 
 
 class AsyncFetcher:

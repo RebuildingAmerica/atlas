@@ -23,8 +23,8 @@ OPENAPI_DESCRIPTION = (
 OPENAPI_VERSION = "1.0.0"
 OPENAPI_CONTACT = {
     "name": "Rebuilding America",
-    "url": "https://atlas.example.com",
-    "email": "atlas@example.com",
+    "url": "https://atlas.rebuildingus.org",
+    "email": "contact@rebuildingus.org",
 }
 OPENAPI_LICENSE = {
     "name": "MIT",
@@ -49,9 +49,9 @@ OPENAPI_TAGS = [
     {"name": "health", "description": "Operational health and environment metadata."},
 ]
 OPENAPI_SERVERS = [
-    {"url": "https://atlas.example.com"},
-    {"url": "http://localhost:8000"},
-    {"url": "/"},
+    {"url": "https://atlas.rebuildingus.org", "description": "Production environment"},
+    {"url": "http://api.localhost:1355", "description": "Local development"},
+    {"url": "/", "description": "Relative to current host"},
 ]
 
 
@@ -62,6 +62,7 @@ def generate_operation_id(route: APIRoute) -> str:
 
 def export_openapi_schema(app: FastAPI, output_path: Path) -> Path:
     """Export the app OpenAPI schema to a deterministic JSON artifact."""
+    app.openapi_schema = None  # Force regeneration
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(
         json.dumps(app.openapi(), indent=2, sort_keys=True) + "\n",

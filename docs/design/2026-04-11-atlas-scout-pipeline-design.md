@@ -159,7 +159,7 @@ Scout's scraping layer is commodity infrastructure. The value is in the pipeline
 - Per-domain rate limiting via token bucket
 - `robots.txt` respect (cached per domain, refreshed daily)
 - Configurable inter-request delay (default: 200ms per domain)
-- User-agent: `AtlasScout/1.0 (+https://atlas.rebuilding.us/scout)`
+- User-agent: `AtlasScout/1.0 (+https://atlas.rebuildingus.org/scout)`
 - Adaptive concurrency: starts at configured max, backs off on 429s/timeouts
 
 ### Page Cache
@@ -356,7 +356,7 @@ Contribution is **opt-in once, then fully automatic**. After a user enables it, 
 [contribution]
 enabled = true
 api_key = "sk-..."                     # Issued from Atlas web UI
-atlas_url = "https://atlas.rebuilding.us"
+atlas_url = "https://atlas.rebuildingus.org"
 min_score = 0.7                        # Only submit entries scoring above this
 ```
 
@@ -476,7 +476,7 @@ search_depth = "standard"
 [contribution]
 enabled = false               # Opt-in
 api_key = ""
-atlas_url = "https://atlas.rebuilding.us"
+atlas_url = "https://atlas.rebuildingus.org"
 min_score = 0.7
 
 [store]

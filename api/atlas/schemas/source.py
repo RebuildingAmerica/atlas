@@ -23,7 +23,7 @@ class SourceResponse(BaseModel):
         "json_schema_extra": {
             "example": {
                 "id": "550e8400-e29b-41d4-a716-446655440001",
-                "url": "https://example.com/article",
+                "url": "https://atlas.rebuildingus.org/article",
                 "title": "Garden City cooperative offers new model",
                 "publication": "Wichita Eagle",
                 "published_date": "2026-01-15",
