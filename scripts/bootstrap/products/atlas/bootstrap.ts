@@ -7,11 +7,7 @@ import { mergeEnvFile } from "../../lib/env-file.js";
 import { logSubline, promptOrExit } from "../../lib/ui.js";
 import type { ReadinessState } from "../../state.js";
 import { markPhase } from "../../state.js";
-import {
-  resolveStripeApiKey,
-  isStripeCliAuthenticated,
-  runStripeCli,
-} from "../stripe-cli-client.js";
+import { resolveStripeApiKey } from "../stripe-cli-client.js";
 import {
   ensureProduct,
   ensurePrice,
@@ -48,9 +44,7 @@ export async function runProductPhase(
       markPhase(state, "product", "failed", "Missing Stripe API key");
       return {
         success: false,
-        followUpItems: [
-          "Set STRIPE_API_KEY in .env or run `stripe login`",
-        ],
+        followUpItems: ["Set STRIPE_API_KEY in .env or run `stripe login`"],
       };
     }
 
@@ -180,8 +174,8 @@ async function processKeepProduct(
     );
   }
 
-  // Verify the product exists in Stripe
-  const product = await stripe.products.retrieve(productId);
+  // Verify the product exists in Stripe (throws if not found)
+  await stripe.products.retrieve(productId);
   log.success(
     `${pc.bold(definition.stripeName)} -- verified (${pc.dim(productId)})`,
   );
@@ -199,9 +193,7 @@ async function processKeepProduct(
 
     if (matchedPrice) {
       envValues.set(priceDef.envKey, matchedPrice.id);
-      logSubline(
-        `${priceDef.id}: ${pc.dim(matchedPrice.id)} (existing)`,
-      );
+      logSubline(`${priceDef.id}: ${pc.dim(matchedPrice.id)} (existing)`);
     } else {
       // Create the price if it doesn't exist yet
       const newPrice = await ensurePrice(stripe, productId, priceDef);
@@ -260,9 +252,7 @@ async function processArchiveProduct(
     // Product may not exist (e.g. different environment) -- that's fine
     const message = err instanceof Error ? err.message : String(err);
     if (message.includes("No such product")) {
-      logSubline(
-        `${definition.stripeName}: not found, nothing to archive`,
-      );
+      logSubline(`${definition.stripeName}: not found, nothing to archive`);
     } else {
       throw err;
     }

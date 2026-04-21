@@ -1,12 +1,12 @@
 import { existsSync, writeFileSync, unlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { log, spinner, text } from "@clack/prompts";
+import { log, spinner } from "@clack/prompts";
 import pc from "picocolors";
 import type { PhaseResult } from "../lib/types.js";
 import { runCommand, commandOutput } from "../lib/shell.js";
 import { parseEnvFile } from "../lib/env-file.js";
-import { promptOrExit, promptConfirm, logSubline } from "../lib/ui.js";
+import { promptConfirm, logSubline } from "../lib/ui.js";
 import type { ReadinessState } from "../state.js";
 
 const REPO_NAME = "atlas-images";
@@ -41,7 +41,9 @@ export async function runDeployPhase(
   );
 
   if (!shouldDeploy) {
-    log.info("Skipped initial deploy. Push to main to trigger automated deployment.");
+    log.info(
+      "Skipped initial deploy. Push to main to trigger automated deployment.",
+    );
     return { success: true, followUpItems: [] };
   }
 
@@ -52,7 +54,9 @@ export async function runDeployPhase(
     log.error(
       "Missing required configuration. Run the infra and database phases first.",
     );
-    followUpItems.push("Complete infrastructure and database setup before deploying");
+    followUpItems.push(
+      "Complete infrastructure and database setup before deploying",
+    );
     return { success: false, followUpItems };
   }
 
@@ -77,7 +81,7 @@ export async function runDeployPhase(
   const apiImage = `${config.imageBase}/atlas-api:initial`;
   const webImage = `${config.imageBase}/atlas-web:initial`;
 
-  const apiBuilt = await buildAndPushImage(
+  const apiBuilt = buildAndPushImage(
     projectRoot,
     "atlas-api",
     path.join(projectRoot, "api"),
@@ -89,7 +93,7 @@ export async function runDeployPhase(
     return { success: false, followUpItems };
   }
 
-  const webBuilt = await buildAndPushImage(
+  const webBuilt = buildAndPushImage(
     projectRoot,
     "atlas-web",
     path.join(projectRoot, "app"),
@@ -102,7 +106,7 @@ export async function runDeployPhase(
   }
 
   // ── Deploy atlas-api (internal) ───────────────────────────────────────────
-  const apiUrl = await deployService(
+  const apiUrl = deployService(
     "atlas-api",
     apiImage,
     config,
@@ -135,7 +139,7 @@ export async function runDeployPhase(
     ATLAS_AUTH_ALLOWED_EMAILS: config.allowedEmails,
   };
 
-  const webUrl = await deployService(
+  const webUrl = deployService(
     "atlas-web",
     webImage,
     config,
@@ -164,13 +168,13 @@ export async function runDeployPhase(
 
 // ── Build & Push ──────────────────────────────────────────────────────────────
 
-async function buildAndPushImage(
+function buildAndPushImage(
   projectRoot: string,
   serviceName: string,
   contextDir: string,
   imageTag: string,
   followUpItems: string[],
-): Promise<boolean> {
+): boolean {
   // Build
   const buildSpinner = spinner();
   buildSpinner.start(`Building ${serviceName}...`);
@@ -213,15 +217,18 @@ interface ServiceDeployOptions {
   envVars: Record<string, string>;
 }
 
-async function deployService(
+function deployService(
   serviceName: string,
   imageTag: string,
   config: DeployConfig,
   options: ServiceDeployOptions,
   followUpItems: string[],
-): Promise<string | undefined> {
+): string | undefined {
   // Write env vars to a temp file to avoid comma injection with --set-env-vars
-  const envFilePath = path.join(tmpdir(), `atlas-${serviceName}-env-${Date.now()}.yaml`);
+  const envFilePath = path.join(
+    tmpdir(),
+    `atlas-${serviceName}-env-${Date.now()}.yaml`,
+  );
 
   try {
     const envFileContent = Object.entries(options.envVars)
@@ -323,8 +330,14 @@ async function mapCustomDomain(
     logSubline(`  Name:  ${domain}`);
     logSubline(`  Value: ghs.googlehosted.com.`);
     logSubline("");
-    logSubline(pc.dim("Tip: Install wrangler (pnpm add -g wrangler) to auto-configure Cloudflare DNS."));
-    followUpItems.push(`Add CNAME record for ${domain} pointing to ghs.googlehosted.com`);
+    logSubline(
+      pc.dim(
+        "Tip: Install wrangler (pnpm add -g wrangler) to auto-configure Cloudflare DNS.",
+      ),
+    );
+    followUpItems.push(
+      `Add CNAME record for ${domain} pointing to ghs.googlehosted.com`,
+    );
   }
 }
 
@@ -338,7 +351,9 @@ async function configureCloudflare(
   );
 
   if (!shouldConfigure) {
-    followUpItems.push(`Add CNAME record for ${domain} pointing to ghs.googlehosted.com`);
+    followUpItems.push(
+      `Add CNAME record for ${domain} pointing to ghs.googlehosted.com`,
+    );
     return;
   }
 
@@ -350,13 +365,13 @@ async function configureCloudflare(
   const s = spinner();
   s.start(`Detecting Cloudflare zone for ${rootDomain}...`);
 
-  const zoneResult = runCommand(
-    `wrangler dns list-zones 2>/dev/null`,
-  );
+  const zoneResult = runCommand(`wrangler dns list-zones 2>/dev/null`);
 
   if (!zoneResult.ok) {
     s.stop("Failed to query Cloudflare zones");
-    followUpItems.push(`Add CNAME record for ${domain} pointing to ghs.googlehosted.com`);
+    followUpItems.push(
+      `Add CNAME record for ${domain} pointing to ghs.googlehosted.com`,
+    );
     return;
   }
 
@@ -371,7 +386,9 @@ async function configureCloudflare(
     logSubline(`  Type:  CNAME`);
     logSubline(`  Name:  ${subdomain || "@"}`);
     logSubline(`  Value: ghs.googlehosted.com.`);
-    followUpItems.push(`Add CNAME record for ${domain} pointing to ghs.googlehosted.com`);
+    followUpItems.push(
+      `Add CNAME record for ${domain} pointing to ghs.googlehosted.com`,
+    );
     return;
   }
 
@@ -390,7 +407,9 @@ async function configureCloudflare(
 
   // Create CNAME record
   const createSpinner = spinner();
-  createSpinner.start(`Creating CNAME record: ${domain} -> ghs.googlehosted.com`);
+  createSpinner.start(
+    `Creating CNAME record: ${domain} -> ghs.googlehosted.com`,
+  );
 
   const createResult = runCommand(
     `wrangler dns create "${zoneId}" ` +
@@ -404,7 +423,9 @@ async function configureCloudflare(
     createSpinner.stop("Cloudflare DNS record created");
   } else {
     createSpinner.stop("Failed to create DNS record");
-    followUpItems.push(`Add CNAME record for ${domain} pointing to ghs.googlehosted.com`);
+    followUpItems.push(
+      `Add CNAME record for ${domain} pointing to ghs.googlehosted.com`,
+    );
   }
 }
 

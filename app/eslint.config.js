@@ -1,8 +1,4 @@
-import js from "@eslint/js";
-import globals from "globals";
-import reactHooks from "eslint-plugin-react-hooks";
-import typescriptEslint from "typescript-eslint";
-import eslintConfigPrettier from "eslint-config-prettier";
+import { reactConfig } from "@atlas/eslint-config/react";
 
 export default [
   {
@@ -18,41 +14,5 @@ export default [
       "**/*.js",
     ],
   },
-  js.configs.recommended,
-  ...typescriptEslint.configs.strictTypeChecked,
-  ...typescriptEslint.configs.stylisticTypeChecked,
-  {
-    languageOptions: {
-      globals: {
-        ...globals.browser,
-        ...globals.node,
-      },
-      parserOptions: {
-        projectService: true,
-        tsconfigRootDir: import.meta.dirname,
-      },
-    },
-    plugins: {
-      "react-hooks": reactHooks,
-      "@typescript-eslint": typescriptEslint.plugin,
-    },
-    rules: {
-      ...reactHooks.configs.recommended.rules,
-      "@typescript-eslint/no-unused-vars": [
-        "error",
-        { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
-      ],
-      "@typescript-eslint/no-explicit-any": "error",
-      "@typescript-eslint/no-unsafe-argument": "error",
-      "@typescript-eslint/explicit-module-boundary-types": "off",
-      "@typescript-eslint/consistent-type-imports": ["error", { prefer: "type-imports" }],
-      "@typescript-eslint/restrict-template-expressions": "off",
-      "@typescript-eslint/no-misused-spread": "off",
-      "@typescript-eslint/no-unnecessary-condition": "off",
-      "@typescript-eslint/prefer-nullish-coalescing": "off",
-      "@typescript-eslint/no-deprecated": "off",
-      "no-console": ["warn", { allow: ["warn", "error"] }],
-    },
-  },
-  eslintConfigPrettier,
+  ...reactConfig(import.meta.dirname),
 ];

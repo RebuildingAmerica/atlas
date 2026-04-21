@@ -13,8 +13,10 @@ export function parseEnvFile(filePath: string): Map<string, string> {
     const key = trimmed.slice(0, eqIndex).trim();
     let value = trimmed.slice(eqIndex + 1).trim();
     // Strip surrounding quotes
-    if ((value.startsWith('"') && value.endsWith('"')) ||
-        (value.startsWith("'") && value.endsWith("'"))) {
+    if (
+      (value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith("'") && value.endsWith("'"))
+    ) {
       value = value.slice(1, -1);
     }
     entries.set(key, value);
@@ -50,7 +52,10 @@ export function mergeEnvFile(
     const key = trimmed.slice(0, eqIndex).trim();
     existingKeys.add(key);
     if (updates.has(key)) {
-      result.push(`${key}=${quoteEnvValue(updates.get(key)!)}`);
+      const updatedValue = updates.get(key);
+      if (updatedValue !== undefined) {
+        result.push(`${key}=${quoteEnvValue(updatedValue)}`);
+      }
     } else {
       result.push(line);
     }
@@ -67,8 +72,13 @@ export function mergeEnvFile(
 }
 
 function quoteEnvValue(value: string): string {
-  if (value.includes(" ") || value.includes('"') || value.includes("'") ||
-      value.includes("#") || value.includes("\n")) {
+  if (
+    value.includes(" ") ||
+    value.includes('"') ||
+    value.includes("'") ||
+    value.includes("#") ||
+    value.includes("\n")
+  ) {
     return `"${value.replace(/"/g, '\\"')}"`;
   }
   return value;

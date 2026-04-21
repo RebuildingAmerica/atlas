@@ -8,12 +8,21 @@ importers:
 
   .:
     devDependencies:
+      '@atlas/eslint-config':
+        specifier: workspace:*
+        version: link:packages/eslint-config
       '@clack/prompts':
         specifier: ^0.11.0
         version: 0.11.0
+      eslint:
+        specifier: ^9.17.0
+        version: 9.39.4(jiti@2.6.1)
       picocolors:
         specifier: ^1.1.0
         version: 1.1.1
+      prettier:
+        specifier: ^3.4.0
+        version: 3.8.2
       stripe:
         specifier: ^18.0.0
         version: 18.5.0(@types/node@24.12.2)
@@ -98,9 +107,9 @@ importers:
         specifier: ^4.1.12
         version: 4.3.6
     devDependencies:
-      '@eslint/js':
-        specifier: ^9.17.0
-        version: 9.39.4
+      '@atlas/eslint-config':
+        specifier: workspace:*
+        version: link:../packages/eslint-config
       '@playwright/test':
         specifier: ^1.59.1
         version: 1.59.1
@@ -143,15 +152,6 @@ importers:
       eslint:
         specifier: ^9.17.0
         version: 9.39.4(jiti@2.6.1)
-      eslint-config-prettier:
-        specifier: ^10.0.0
-        version: 10.1.8(eslint@9.39.4(jiti@2.6.1))
-      eslint-plugin-react-hooks:
-        specifier: ^5.1.0
-        version: 5.2.0(eslint@9.39.4(jiti@2.6.1))
-      globals:
-        specifier: ^17.5.0
-        version: 17.5.0
       jsdom:
         specifier: ^29.0.2
         version: 29.0.2(@noble/hashes@2.2.0)
@@ -170,15 +170,33 @@ importers:
       typescript:
         specifier: ^5.7.0
         version: 5.9.3
-      typescript-eslint:
-        specifier: ^8.18.0
-        version: 8.58.1(eslint@9.39.4(jiti@2.6.1))(typescript@5.9.3)
       vite:
         specifier: ^7.0.0
         version: 7.3.2(@types/node@24.12.2)(jiti@2.6.1)(lightningcss@1.32.0)(tsx@4.21.0)(yaml@2.8.3)
       vitest:
         specifier: ^4.1.4
         version: 4.1.4(@opentelemetry/api@1.9.1)(@types/node@24.12.2)(@vitest/coverage-v8@4.1.4)(jsdom@29.0.2(@noble/hashes@2.2.0))(vite@7.3.2(@types/node@24.12.2)(jiti@2.6.1)(lightningcss@1.32.0)(tsx@4.21.0)(yaml@2.8.3))
+
+  packages/eslint-config:
+    dependencies:
+      '@eslint/js':
+        specifier: ^9.17.0
+        version: 9.39.4
+      eslint:
+        specifier: '>=9'
+        version: 9.39.4(jiti@2.6.1)
+      eslint-config-prettier:
+        specifier: ^10.0.0
+        version: 10.1.8(eslint@9.39.4(jiti@2.6.1))
+      eslint-plugin-react-hooks:
+        specifier: ^5.1.0
+        version: 5.2.0(eslint@9.39.4(jiti@2.6.1))
+      globals:
+        specifier: ^17.5.0
+        version: 17.5.0
+      typescript-eslint:
+        specifier: ^8.18.0
+        version: 8.58.1(eslint@9.39.4(jiti@2.6.1))(typescript@5.9.3)
 
 packages:
 

@@ -22,17 +22,25 @@ export async function runDatabasePhase(
   const rootEnvPath = path.join(projectRoot, ".env");
   const apiEnvPath = path.join(projectRoot, "api", ".env");
 
-  let databaseUrl = readDatabaseUrl(prodEnvPath) || readDatabaseUrl(rootEnvPath) || readDatabaseUrl(apiEnvPath);
+  let databaseUrl =
+    readDatabaseUrl(prodEnvPath) ||
+    readDatabaseUrl(rootEnvPath) ||
+    readDatabaseUrl(apiEnvPath);
 
   if (databaseUrl) {
     log.success("DATABASE_URL already configured");
     logSubline(pc.dim(redactConnectionString(databaseUrl)));
 
     if (doctorMode) {
-      return validateAndMigrate(projectRoot, databaseUrl, doctorMode, followUpItems);
+      return validateAndMigrate(
+        projectRoot,
+        databaseUrl,
+        doctorMode,
+        followUpItems,
+      );
     }
 
-    const action = await promptOrExit(
+    const action = (await promptOrExit(
       select({
         message: "A DATABASE_URL is already set. What would you like to do?",
         options: [
@@ -40,10 +48,15 @@ export async function runDatabasePhase(
           { value: "replace", label: "Enter a new connection string" },
         ],
       }),
-    ) as string;
+    )) as string;
 
     if (action === "keep") {
-      return validateAndMigrate(projectRoot, databaseUrl, doctorMode, followUpItems);
+      return validateAndMigrate(
+        projectRoot,
+        databaseUrl,
+        doctorMode,
+        followUpItems,
+      );
     }
 
     // Fall through to prompt for new URL
@@ -54,7 +67,7 @@ export async function runDatabasePhase(
   const hasNeonctl = runCommand("command -v neonctl").ok;
 
   if (hasNeonctl && !doctorMode) {
-    const source = await promptOrExit(
+    const source = (await promptOrExit(
       select({
         message: "How would you like to configure the database?",
         options: [
@@ -62,7 +75,7 @@ export async function runDatabasePhase(
           { value: "manual", label: "Enter a connection string manually" },
         ],
       }),
-    ) as string;
+    )) as string;
 
     if (source === "neonctl") {
       databaseUrl = await createNeonProject(followUpItems);
@@ -76,16 +89,19 @@ export async function runDatabasePhase(
       return { success: false, followUpItems };
     }
 
-    databaseUrl = await promptOrExit(
+    databaseUrl = (await promptOrExit(
       text({
         message: "Neon connection string (postgresql://...)",
         validate(value) {
-          if (!value.startsWith("postgres://") && !value.startsWith("postgresql://")) {
+          if (
+            !value.startsWith("postgres://") &&
+            !value.startsWith("postgresql://")
+          ) {
             return "Must start with postgresql:// or postgres://";
           }
         },
       }),
-    ) as string;
+    )) as string;
   }
 
   if (!databaseUrl) {
@@ -95,7 +111,12 @@ export async function runDatabasePhase(
   }
 
   // ── Validate & Migrate ────────────────────────────────────────────────────
-  const result = await validateAndMigrate(projectRoot, databaseUrl, doctorMode, followUpItems);
+  const result = await validateAndMigrate(
+    projectRoot,
+    databaseUrl,
+    doctorMode,
+    followUpItems,
+  );
 
   // ── Write to env files ────────────────────────────────────────────────────
   if (!doctorMode && databaseUrl) {
@@ -110,12 +131,12 @@ export async function runDatabasePhase(
 async function createNeonProject(
   followUpItems: string[],
 ): Promise<string | undefined> {
-  const projectName = await promptOrExit(
+  const projectName = (await promptOrExit(
     text({
       message: "Neon project name",
       initialValue: "atlas",
     }),
-  ) as string;
+  )) as string;
 
   const s = spinner();
   s.start(`Creating Neon project '${projectName}'...`);
@@ -135,10 +156,15 @@ async function createNeonProject(
 
   // Extract connection URI from neonctl output
   try {
-    const output = JSON.parse(result.stdout);
-    const connectionUri: string | undefined = output.connection_uris?.[0]?.connection_uri;
+    const output = JSON.parse(result.stdout) as {
+      connection_uris?: { connection_uri?: string }[];
+    };
+    const connectionUri: string | undefined =
+      output.connection_uris?.[0]?.connection_uri;
     if (connectionUri) {
-      logSubline(`Connection: ${pc.dim(redactConnectionString(connectionUri))}`);
+      logSubline(
+        `Connection: ${pc.dim(redactConnectionString(connectionUri))}`,
+      );
       return connectionUri;
     }
   } catch {
@@ -187,10 +213,7 @@ async function validateAndMigrate(
         return { success: false, followUpItems };
       }
 
-      const shouldContinue = await promptConfirm(
-        "Continue anyway?",
-        false,
-      );
+      const shouldContinue = await promptConfirm("Continue anyway?", false);
       if (!shouldContinue) {
         followUpItems.push("Fix DATABASE_URL and re-run");
         return { success: false, followUpItems };
@@ -216,7 +239,9 @@ async function validateAndMigrate(
 
   if (!hasPsql) {
     logSubline(pc.dim("psql not available — skipping schema migration"));
-    followUpItems.push(`Run schema migration: psql $DATABASE_URL -f ${SCHEMA_RELATIVE_PATH}`);
+    followUpItems.push(
+      `Run schema migration: psql $DATABASE_URL -f ${SCHEMA_RELATIVE_PATH}`,
+    );
     return { success: true, followUpItems };
   }
 
@@ -226,16 +251,16 @@ async function validateAndMigrate(
   );
 
   if (!shouldMigrate) {
-    followUpItems.push(`Run schema migration: psql $DATABASE_URL -f ${SCHEMA_RELATIVE_PATH}`);
+    followUpItems.push(
+      `Run schema migration: psql $DATABASE_URL -f ${SCHEMA_RELATIVE_PATH}`,
+    );
     return { success: true, followUpItems };
   }
 
   const s = spinner();
   s.start("Running schema migration...");
 
-  const migrateResult = runCommand(
-    `psql "${databaseUrl}" -f "${schemaPath}"`,
-  );
+  const migrateResult = runCommand(`psql "${databaseUrl}" -f "${schemaPath}"`);
 
   if (migrateResult.ok) {
     s.stop("Schema migration complete");
@@ -253,11 +278,7 @@ async function validateAndMigrate(
 function writeToEnvFiles(projectRoot: string, databaseUrl: string): void {
   const updates = new Map([["DATABASE_URL", databaseUrl]]);
 
-  const envTargets = [
-    ".env",
-    ".env.production",
-    "api/.env",
-  ];
+  const envTargets = [".env", ".env.production", "api/.env"];
 
   for (const target of envTargets) {
     const targetPath = path.join(projectRoot, target);
@@ -276,7 +297,8 @@ function readDatabaseUrl(envPath: string): string | undefined {
   if (!existsSync(envPath)) return undefined;
   const env = parseEnvFile(envPath);
   const value = env.get("DATABASE_URL");
-  if (!value || value === "" || value.includes("replace-with-")) return undefined;
+  if (!value || value === "" || value.includes("replace-with-"))
+    return undefined;
   return value;
 }
 

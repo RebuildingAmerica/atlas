@@ -14,7 +14,7 @@ export async function runAuthPhase(
   const followUpItems: string[] = [];
   let allReady = true;
 
-  const capsWithAuth = CAPABILITY_SPECS.filter(cap => {
+  const capsWithAuth = CAPABILITY_SPECS.filter((cap) => {
     if (!cap.auth) return false;
     if (localOnly && cap.category !== "core") return false;
     // Only check auth for capabilities that are installed
@@ -28,7 +28,8 @@ export async function runAuthPhase(
   }
 
   for (const cap of capsWithAuth) {
-    const auth = cap.auth!;
+    const auth = cap.auth;
+    if (!auth) continue;
     const checkResult = runCommand(auth.checkCommand);
 
     if (checkResult.ok) {
@@ -67,7 +68,10 @@ export async function runAuthPhase(
         markCapability(state, cap.id, { authStatus: "ready" });
       } else {
         log.warn(`${cap.label} — login completed but verification failed`);
-        markCapability(state, cap.id, { authStatus: "failed", details: "login succeeded but re-check failed" });
+        markCapability(state, cap.id, {
+          authStatus: "failed",
+          details: "login succeeded but re-check failed",
+        });
         allReady = false;
       }
     } else {

@@ -1,4 +1,3 @@
-import path from "node:path";
 import { log, spinner, text, select } from "@clack/prompts";
 import pc from "picocolors";
 import type { PhaseResult } from "../lib/types.js";
@@ -45,39 +44,44 @@ export async function runInfraPhase(
     "gh repo view --json nameWithOwner -q '.nameWithOwner'",
   );
   if (!repoResult.ok) {
-    log.error("Could not detect GitHub repo. Ensure gh is authenticated and you are in the atlas repo root.");
+    log.error(
+      "Could not detect GitHub repo. Ensure gh is authenticated and you are in the atlas repo root.",
+    );
     return emptyResult(followUpItems, false);
   }
   const githubRepo = repoResult.stdout;
   logSubline(`GitHub repo: ${pc.cyan(githubRepo)}`);
 
   // ── GCP Project ───────────────────────────────────────────────────────────
-  const { projectId, projectNumber } = await setupProject(doctorMode, followUpItems);
+  const { projectId, projectNumber } = await setupProject(
+    doctorMode,
+    followUpItems,
+  );
   if (!projectId) {
     return emptyResult(followUpItems, false);
   }
 
   // ── Region ────────────────────────────────────────────────────────────────
-  const region = await promptOrExit(
+  const region = (await promptOrExit(
     text({
       message: "GCP region for Cloud Run & Artifact Registry",
       initialValue: "us-central1",
     }),
-  ) as string;
+  )) as string;
   logSubline(`Region: ${pc.cyan(region)}`);
 
   // ── Enable APIs ───────────────────────────────────────────────────────────
-  await enableApis(projectId, doctorMode, followUpItems);
+  enableApis(projectId, doctorMode, followUpItems);
 
   // ── Artifact Registry ─────────────────────────────────────────────────────
-  await ensureArtifactRegistry(region, doctorMode, followUpItems);
+  ensureArtifactRegistry(region, doctorMode, followUpItems);
 
   // ── Service Account ───────────────────────────────────────────────────────
   const saEmail = `${SA_NAME}@${projectId}.iam.gserviceaccount.com`;
-  await ensureServiceAccount(projectId, saEmail, doctorMode, followUpItems);
+  ensureServiceAccount(projectId, saEmail, doctorMode, followUpItems);
 
   // ── Workload Identity Federation ──────────────────────────────────────────
-  const wifProvider = await ensureWorkloadIdentityFederation(
+  const wifProvider = ensureWorkloadIdentityFederation(
     projectId,
     projectNumber,
     saEmail,
@@ -132,7 +136,7 @@ async function setupProject(
     }
   }
 
-  const projectAction = await promptOrExit(
+  const projectAction = (await promptOrExit(
     select({
       message: "GCP project",
       options: [
@@ -140,19 +144,21 @@ async function setupProject(
         { value: "new", label: "Create a new project" },
       ],
     }),
-  ) as string;
+  )) as string;
 
-  const projectId = await promptOrExit(
+  const projectId = (await promptOrExit(
     text({
       message:
         projectAction === "new"
           ? "New GCP project ID"
           : "Existing GCP project ID",
     }),
-  ) as string;
+  )) as string;
 
   if (doctorMode) {
-    const describeResult = runCommand(`gcloud projects describe "${projectId}" 2>/dev/null`);
+    const describeResult = runCommand(
+      `gcloud projects describe "${projectId}" 2>/dev/null`,
+    );
     if (!describeResult.ok) {
       log.warn(`Project '${projectId}' does not exist or is inaccessible`);
       followUpItems.push(`Create or verify GCP project: ${projectId}`);
@@ -166,7 +172,9 @@ async function setupProject(
   }
 
   // Check if project exists
-  const describeResult = runCommand(`gcloud projects describe "${projectId}" 2>/dev/null`);
+  const describeResult = runCommand(
+    `gcloud projects describe "${projectId}" 2>/dev/null`,
+  );
 
   if (describeResult.ok) {
     log.success(`Project '${projectId}' exists`);
@@ -221,10 +229,7 @@ async function setupProject(
     logSubline(
       `Link one at: https://console.cloud.google.com/billing/linkedaccount?project=${projectId}`,
     );
-    const billingReady = await promptConfirm(
-      "Is billing now enabled?",
-      false,
-    );
+    const billingReady = await promptConfirm("Is billing now enabled?", false);
     if (!billingReady) {
       log.error("Cloud Run requires billing. Cannot proceed.");
       followUpItems.push(`Enable billing for GCP project: ${projectId}`);
@@ -239,11 +244,11 @@ async function setupProject(
 
 // ── Enable APIs ───────────────────────────────────────────────────────────────
 
-async function enableApis(
+function enableApis(
   projectId: string,
   doctorMode: boolean,
   followUpItems: string[],
-): Promise<void> {
+): void {
   const s = spinner();
   s.start("Enabling required GCP APIs...");
 
@@ -269,11 +274,11 @@ async function enableApis(
 
 // ── Artifact Registry ─────────────────────────────────────────────────────────
 
-async function ensureArtifactRegistry(
+function ensureArtifactRegistry(
   region: string,
   doctorMode: boolean,
   followUpItems: string[],
-): Promise<void> {
+): void {
   const checkResult = runCommand(
     `gcloud artifacts repositories describe "${REPO_NAME}" --location="${region}" 2>/dev/null`,
   );
@@ -314,12 +319,12 @@ async function ensureArtifactRegistry(
 
 // ── Service Account ───────────────────────────────────────────────────────────
 
-async function ensureServiceAccount(
+function ensureServiceAccount(
   projectId: string,
   saEmail: string,
   doctorMode: boolean,
   followUpItems: string[],
-): Promise<void> {
+): void {
   const checkResult = runCommand(
     `gcloud iam service-accounts describe "${saEmail}" 2>/dev/null`,
   );
@@ -378,16 +383,15 @@ async function ensureServiceAccount(
 
 // ── Workload Identity Federation ──────────────────────────────────────────────
 
-async function ensureWorkloadIdentityFederation(
+function ensureWorkloadIdentityFederation(
   projectId: string,
   projectNumber: string,
   saEmail: string,
   githubRepo: string,
   doctorMode: boolean,
   followUpItems: string[],
-): Promise<string> {
-  const wifProvider =
-    `projects/${projectNumber}/locations/global/workloadIdentityPools/${POOL_NAME}/providers/${PROVIDER_NAME}`;
+): string {
+  const wifProvider = `projects/${projectNumber}/locations/global/workloadIdentityPools/${POOL_NAME}/providers/${PROVIDER_NAME}`;
 
   // Create pool
   const poolCheck = runCommand(
@@ -466,8 +470,7 @@ async function ensureWorkloadIdentityFederation(
   const s = spinner();
   s.start("Binding service account to workload identity pool...");
 
-  const bindingMember =
-    `principalSet://iam.googleapis.com/projects/${projectNumber}/locations/global/workloadIdentityPools/${POOL_NAME}/attribute.repository/${githubRepo}`;
+  const bindingMember = `principalSet://iam.googleapis.com/projects/${projectNumber}/locations/global/workloadIdentityPools/${POOL_NAME}/attribute.repository/${githubRepo}`;
 
   const bindResult = runCommand(
     `gcloud iam service-accounts add-iam-policy-binding "${saEmail}" ` +
@@ -539,7 +542,9 @@ async function setGithubSecrets(
   }
 
   if (failedSecrets > 0) {
-    s.stop(`Set ${Object.keys(secrets).length - failedSecrets}/${Object.keys(secrets).length} GitHub secrets`);
+    s.stop(
+      `Set ${Object.keys(secrets).length - failedSecrets}/${Object.keys(secrets).length} GitHub secrets`,
+    );
     log.warn(`${failedSecrets} secret(s) failed to set`);
   } else {
     s.stop("GitHub infrastructure secrets configured");

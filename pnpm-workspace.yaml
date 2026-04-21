@@ -1,6 +1,7 @@
 packages:
   - app
   - api
+  - packages/*
 
 nodeLinker: isolated
 
