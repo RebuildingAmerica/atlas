@@ -22,19 +22,22 @@ Whether you're a developer, researcher, organizer, or just curious — welcome. 
 
 ### Quick Start
 
-**Prerequisites:** Python 3.12+, Node.js 20+, and Make. See [full prerequisites](./docs/getting-started/prerequisites.md).
+**Prerequisites:** Python 3.12+, Node.js 24+, and Make. See [full prerequisites](./docs/getting-started/prerequisites.md).
 
 ```bash
 cd atlas
 make setup
-make dev
+pnpm dev
 ```
 
-| Service  | URL                          |
-|----------|------------------------------|
-| Frontend | http://localhost:3000        |
-| API      | http://localhost:8000        |
-| API Docs | http://localhost:8000/docs   |
+| Service  | URL                                |
+|----------|------------------------------------|
+| Frontend | http://app.localhost:1355          |
+| API      | http://api.localhost:1355          |
+| API Docs | http://api.localhost:1355/docs     |
+
+> [!TIP]
+> We use [Portless](https://github.com/vercel-labs/portless) to manage local services. It eliminates port conflicts by providing stable, named URLs for each service. Ensure your local environment variables (e.g., in `app/.env.local`) are updated to point to these URLs.
 
 ### Documentation
 

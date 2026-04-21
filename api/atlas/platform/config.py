@@ -70,7 +70,7 @@ class Settings(BaseSettings):
     host: str = "0.0.0.0"
     """Server host address."""
 
-    port: int = 8000
+    port: int = Field(default=8000, validation_alias="PORT")
     """Server port number."""
 
     discovery_inline: bool = False

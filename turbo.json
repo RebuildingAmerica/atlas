@@ -11,6 +11,10 @@
     "build": {
       "outputs": [".output/**"]
     },
+    "dev": {
+      "cache": false,
+      "persistent": true
+    },
     "typecheck": {},
     "lint": {},
     "test": {},

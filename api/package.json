@@ -2,6 +2,7 @@
   "name": "@atlas/api",
   "private": true,
   "scripts": {
+    "dev": "portless api uv run python -m atlas.main",
     "typecheck": "uv run mypy atlas",
     "lint": "uv run ruff check atlas",
     "test": "uv run pytest --cov=atlas --cov-report=term-missing"

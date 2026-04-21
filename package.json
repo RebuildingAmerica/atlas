@@ -7,6 +7,7 @@
     "node": ">=24.3.0 <25"
   },
   "scripts": {
+    "dev": "turbo run dev",
     "secrets:update-baseline": "sh ./scripts/secrets-update-baseline.sh",
     "secrets:scan": "sh ./scripts/secrets-scan.sh",
     "openapi": "sh ./scripts/openapi-export.sh",
@@ -28,13 +29,14 @@
     "doctor": "tsx scripts/bootstrap/cold-start.ts --doctor"
   },
   "devDependencies": {
-    "@clack/prompts": "^0.11.0",
     "@atlas/eslint-config": "workspace:*",
-    "eslint": "^9.17.0",
-    "picocolors": "^1.1.0",
-    "prettier": "^3.4.0",
-    "stripe": "^18.0.0",
-    "tsx": "^4.19.0",
-    "turbo": "^2.9.6"
+    "@clack/prompts": "0.11.0",
+    "eslint": "9.17.0",
+    "picocolors": "1.1.0",
+    "portless": "0.10.3",
+    "prettier": "3.4.0",
+    "stripe": "18.0.0",
+    "tsx": "4.19.0",
+    "turbo": "2.9.6"
   }
 }

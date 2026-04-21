@@ -20,6 +20,9 @@ importers:
       picocolors:
         specifier: ^1.1.0
         version: 1.1.1
+      portless:
+        specifier: ^0.10.3
+        version: 0.10.3
       prettier:
         specifier: ^3.4.0
         version: 3.8.2
@@ -3092,6 +3095,12 @@ packages:
   playwright@1.59.1:
     resolution: {integrity: sha512-C8oWjPR3F81yljW9o5OxcWzfh6avkVwDD2VYdwIGqTkl+OGFISgypqzfu7dOe4QNLL2aqcWBmI3PMtLIK233lw==}
     engines: {node: '>=18'}
+    hasBin: true
+
+  portless@0.10.3:
+    resolution: {integrity: sha512-lXbVUsNiwWMKJGMi49HhTMW0lS7u0EzawonDZQ+yglSnHioiQK18Y4Fe0Ilk+TuXej71E/nTOHIFIBjUGvTm9w==}
+    engines: {node: '>=20'}
+    os: [darwin, linux, win32]
     hasBin: true
 
   postal-mime@2.7.4:
@@ -6836,6 +6845,8 @@ snapshots:
       playwright-core: 1.59.1
     optionalDependencies:
       fsevents: 2.3.2
+
+  portless@0.10.3: {}
 
   postal-mime@2.7.4: {}
 

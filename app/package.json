@@ -9,7 +9,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "vite dev --port 3000",
+    "dev": "portless app vite dev",
     "dev:e2e": "vite dev --host 127.0.0.1 --port 3100 --strictPort",
     "api-client": "orval",
     "build": "vite build",
