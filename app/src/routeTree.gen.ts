@@ -9,11 +9,14 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as OpenapiDotjsonRouteImport } from './routes/openapi[.]json'
+import { Route as DocsRouteImport } from './routes/docs'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as WorkspaceRouteImport } from './routes/_workspace'
 import { Route as PublicRouteImport } from './routes/_public'
 import { Route as AuthRouteImport } from './routes/_auth'
 import { Route as PublicIndexRouteImport } from './routes/_public/index'
+import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as WorkspaceOrganizationRouteImport } from './routes/_workspace/organization'
 import { Route as WorkspaceDiscoveryRouteImport } from './routes/_workspace/discovery'
 import { Route as WorkspaceAccountRouteImport } from './routes/_workspace/account'
@@ -30,6 +33,16 @@ import { Route as AuthOauthConsentRouteImport } from './routes/_auth/oauth/conse
 import { Route as ApiAuthInternalApiKeyRouteImport } from './routes/api/auth/internal/api-key'
 import { Route as ApiAuthInternalMembershipsOrganizationIdMembersUserIdRouteImport } from './routes/api/auth/internal/memberships.$organizationId.members.$userId'
 
+const OpenapiDotjsonRoute = OpenapiDotjsonRouteImport.update({
+  id: '/openapi.json',
+  path: '/openapi.json',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocsRoute = DocsRouteImport.update({
+  id: '/docs',
+  path: '/docs',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DashboardRoute = DashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -51,6 +64,11 @@ const PublicIndexRoute = PublicIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => PublicRoute,
+} as any)
+const ApiHealthRoute = ApiHealthRouteImport.update({
+  id: '/api/health',
+  path: '/api/health',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const WorkspaceOrganizationRoute = WorkspaceOrganizationRouteImport.update({
   id: '/organization',
@@ -134,6 +152,8 @@ const ApiAuthInternalMembershipsOrganizationIdMembersUserIdRoute =
 export interface FileRoutesByFullPath {
   '/': typeof PublicIndexRoute
   '/dashboard': typeof DashboardRoute
+  '/docs': typeof DocsRoute
+  '/openapi.json': typeof OpenapiDotjsonRoute
   '/account-setup': typeof AuthAccountSetupRoute
   '/sign-in': typeof AuthSignInRoute
   '/browse': typeof PublicBrowseRoute
@@ -141,6 +161,7 @@ export interface FileRoutesByFullPath {
   '/account': typeof WorkspaceAccountRoute
   '/discovery': typeof WorkspaceDiscoveryRoute
   '/organization': typeof WorkspaceOrganizationRouteWithChildren
+  '/api/health': typeof ApiHealthRoute
   '/oauth/consent': typeof AuthOauthConsentRoute
   '/entries/$entryId': typeof PublicEntriesEntryIdRoute
   '/organization/sso': typeof WorkspaceOrganizationSsoRoute
@@ -153,12 +174,15 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof PublicIndexRoute
   '/dashboard': typeof DashboardRoute
+  '/docs': typeof DocsRoute
+  '/openapi.json': typeof OpenapiDotjsonRoute
   '/account-setup': typeof AuthAccountSetupRoute
   '/sign-in': typeof AuthSignInRoute
   '/browse': typeof PublicBrowseRoute
   '/pricing': typeof PublicPricingRoute
   '/account': typeof WorkspaceAccountRoute
   '/discovery': typeof WorkspaceDiscoveryRoute
+  '/api/health': typeof ApiHealthRoute
   '/oauth/consent': typeof AuthOauthConsentRoute
   '/entries/$entryId': typeof PublicEntriesEntryIdRoute
   '/organization/sso': typeof WorkspaceOrganizationSsoRoute
@@ -174,6 +198,8 @@ export interface FileRoutesById {
   '/_public': typeof PublicRouteWithChildren
   '/_workspace': typeof WorkspaceRouteWithChildren
   '/dashboard': typeof DashboardRoute
+  '/docs': typeof DocsRoute
+  '/openapi.json': typeof OpenapiDotjsonRoute
   '/_auth/account-setup': typeof AuthAccountSetupRoute
   '/_auth/sign-in': typeof AuthSignInRoute
   '/_public/browse': typeof PublicBrowseRoute
@@ -181,6 +207,7 @@ export interface FileRoutesById {
   '/_workspace/account': typeof WorkspaceAccountRoute
   '/_workspace/discovery': typeof WorkspaceDiscoveryRoute
   '/_workspace/organization': typeof WorkspaceOrganizationRouteWithChildren
+  '/api/health': typeof ApiHealthRoute
   '/_public/': typeof PublicIndexRoute
   '/_auth/oauth/consent': typeof AuthOauthConsentRoute
   '/_public/entries/$entryId': typeof PublicEntriesEntryIdRoute
@@ -196,6 +223,8 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/dashboard'
+    | '/docs'
+    | '/openapi.json'
     | '/account-setup'
     | '/sign-in'
     | '/browse'
@@ -203,6 +232,7 @@ export interface FileRouteTypes {
     | '/account'
     | '/discovery'
     | '/organization'
+    | '/api/health'
     | '/oauth/consent'
     | '/entries/$entryId'
     | '/organization/sso'
@@ -215,12 +245,15 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/dashboard'
+    | '/docs'
+    | '/openapi.json'
     | '/account-setup'
     | '/sign-in'
     | '/browse'
     | '/pricing'
     | '/account'
     | '/discovery'
+    | '/api/health'
     | '/oauth/consent'
     | '/entries/$entryId'
     | '/organization/sso'
@@ -235,6 +268,8 @@ export interface FileRouteTypes {
     | '/_public'
     | '/_workspace'
     | '/dashboard'
+    | '/docs'
+    | '/openapi.json'
     | '/_auth/account-setup'
     | '/_auth/sign-in'
     | '/_public/browse'
@@ -242,6 +277,7 @@ export interface FileRouteTypes {
     | '/_workspace/account'
     | '/_workspace/discovery'
     | '/_workspace/organization'
+    | '/api/health'
     | '/_public/'
     | '/_auth/oauth/consent'
     | '/_public/entries/$entryId'
@@ -258,6 +294,9 @@ export interface RootRouteChildren {
   PublicRoute: typeof PublicRouteWithChildren
   WorkspaceRoute: typeof WorkspaceRouteWithChildren
   DashboardRoute: typeof DashboardRoute
+  DocsRoute: typeof DocsRoute
+  OpenapiDotjsonRoute: typeof OpenapiDotjsonRoute
+  ApiHealthRoute: typeof ApiHealthRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiStripeWebhookRoute: typeof ApiStripeWebhookRoute
   ApiAuthInternalApiKeyRoute: typeof ApiAuthInternalApiKeyRoute
@@ -266,6 +305,20 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/openapi.json': {
+      id: '/openapi.json'
+      path: '/openapi.json'
+      fullPath: '/openapi.json'
+      preLoaderRoute: typeof OpenapiDotjsonRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/docs': {
+      id: '/docs'
+      path: '/docs'
+      fullPath: '/docs'
+      preLoaderRoute: typeof DocsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/dashboard': {
       id: '/dashboard'
       path: '/dashboard'
@@ -300,6 +353,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof PublicIndexRouteImport
       parentRoute: typeof PublicRoute
+    }
+    '/api/health': {
+      id: '/api/health'
+      path: '/api/health'
+      fullPath: '/api/health'
+      preLoaderRoute: typeof ApiHealthRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_workspace/organization': {
       id: '/_workspace/organization'
@@ -476,6 +536,9 @@ const rootRouteChildren: RootRouteChildren = {
   PublicRoute: PublicRouteWithChildren,
   WorkspaceRoute: WorkspaceRouteWithChildren,
   DashboardRoute: DashboardRoute,
+  DocsRoute: DocsRoute,
+  OpenapiDotjsonRoute: OpenapiDotjsonRoute,
+  ApiHealthRoute: ApiHealthRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiStripeWebhookRoute: ApiStripeWebhookRoute,
   ApiAuthInternalApiKeyRoute: ApiAuthInternalApiKeyRoute,

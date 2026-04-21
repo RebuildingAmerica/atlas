@@ -79,7 +79,7 @@ export function GrassrootsNonprofitForm({
       </Button>
 
       <p className="text-ink-soft text-xs">
-        We'll verify your 501(c)(3) status and budget via IRS records or Form 990.
+        We'll verify your 501(c)(3) status and budget via manual review.
       </p>
     </form>
   );

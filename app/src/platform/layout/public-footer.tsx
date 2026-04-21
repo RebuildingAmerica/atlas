@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
-import { ArrowUpRight } from "lucide-react";
+import { ArrowUpRight, Leaf } from "lucide-react";
+import type { Status } from "@openstatus/react";
 
 interface FooterInternalLinkProps {
   to: string;
@@ -93,6 +94,20 @@ function TopographicTexture() {
   );
 }
 
+const STATUS_CONFIG: Record<Status, { label: string; color: string; pulse: boolean }> = {
+  operational: { label: "All systems operational", color: "bg-green-500", pulse: true },
+  degraded_performance: { label: "Degraded performance", color: "bg-yellow-500", pulse: false },
+  partial_outage: { label: "Partial outage", color: "bg-yellow-500", pulse: false },
+  major_outage: { label: "Major outage", color: "bg-red-500", pulse: false },
+  under_maintenance: { label: "Under maintenance", color: "bg-blue-400", pulse: false },
+  incident: { label: "Active incident", color: "bg-red-500", pulse: false },
+  unknown: { label: "Status unavailable", color: "bg-stone-400", pulse: false },
+};
+
+interface PublicFooterProps {
+  status: Status;
+}
+
 /**
  * Grounded public footer for Atlas.
  *
@@ -100,7 +115,8 @@ function TopographicTexture() {
  * SVG pattern for texture. Staggered fade-in via CSS scroll-driven animations.
  * Sits flush at page bottom — no border-radius, not floating.
  */
-export function PublicFooter() {
+export function PublicFooter({ status }: PublicFooterProps) {
+  const { label, color, pulse } = STATUS_CONFIG[status];
   return (
     <footer
       aria-label="Site footer"
@@ -135,10 +151,14 @@ export function PublicFooter() {
               className="border-border-strong text-ink-muted hover:text-ink inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 no-underline transition-colors duration-150"
             >
               <span className="relative flex h-1.5 w-1.5">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-500 opacity-60" />
-                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-green-500" />
+                {pulse && (
+                  <span
+                    className={`absolute inline-flex h-full w-full animate-ping rounded-full opacity-60 ${color}`}
+                  />
+                )}
+                <span className={`relative inline-flex h-1.5 w-1.5 rounded-full ${color}`} />
               </span>
-              <span className="type-label-small">All systems operational</span>
+              <span className="type-label-small">{label}</span>
             </a>
           </div>
 
@@ -178,18 +198,29 @@ export function PublicFooter() {
 
         {/* Bottom bar */}
         <div className="border-border mt-12 flex flex-wrap items-center justify-between gap-4 border-t pt-6">
-          <p className="type-body-small text-ink-muted">
-            &copy; 2026{" "}
+          <div className="flex flex-wrap items-center gap-3">
+            <p className="type-body-small text-ink-muted">
+              &copy; 2026{" "}
+              <a
+                href="https://rebuildingus.org"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-ink-muted hover:text-ink decoration-ink-muted/40 hover:decoration-ink/40 underline decoration-dotted underline-offset-2 transition-colors duration-150 hover:decoration-solid"
+              >
+                Rebuilding America Project
+              </a>
+            </p>
             <a
-              href="https://rebuildingus.org"
+              href="https://climate.stripe.com/IbySpr"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-ink-muted hover:text-ink decoration-ink-muted/40 hover:decoration-ink/40 underline decoration-dotted underline-offset-2 transition-colors duration-150 hover:decoration-solid"
+              className="border-border-strong text-ink-muted hover:text-ink inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 no-underline transition-colors duration-150"
             >
-              Rebuilding America Project
+              <Leaf className="h-2.5 w-2.5 text-green-600" />
+              <span className="type-label-small">Carbon neutral</span>
             </a>
-          </p>
-          <p className="type-body-small text-ink-muted">Open source. Community-powered.</p>
+          </div>
+          <p className="type-body-small text-ink-muted">Civic infrastructure, openly built.</p>
         </div>
       </div>
     </footer>

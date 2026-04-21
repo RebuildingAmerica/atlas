@@ -36,6 +36,7 @@
     "@better-auth/passkey": "^1.6.2",
     "@better-auth/sso": "^1.6.2",
     "@headlessui/react": "^2.2.10",
+    "@openstatus/react": "^0.0.3",
     "@tanstack/react-query": "^5.95.2",
     "@tanstack/react-router": "^1.168.3",
     "@tanstack/react-start": "^1.167.6",
