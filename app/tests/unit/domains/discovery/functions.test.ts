@@ -1,11 +1,14 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- test assertions on mock returns */
 import { beforeEach, describe, expect, it, vi } from "vitest";
+
+interface ServerFnStub {
+  __executeServer: (args?: { data: Record<string, unknown> }) => Promise<{ result: unknown }>;
+}
 
 const mocks = vi.hoisted(() => ({
   requestAtlasApi: vi.fn(),
 }));
 
-vi.mock("./server/api-client", () => ({
+vi.mock("@/domains/discovery/server/api-client", () => ({
   requestAtlasApi: mocks.requestAtlasApi,
 }));
 
@@ -14,19 +17,22 @@ vi.mock("@/domains/discovery/functions", () => {
   return {
     listDiscoveryRuns: {
       __executeServer: async () => {
-        const res = await mocks.requestAtlasApi("/discovery-runs");
+        const { requestAtlasApi } = await import("@/domains/discovery/server/api-client");
+        const res: unknown = await requestAtlasApi("/discovery-runs");
         return { result: res };
       },
     },
     getDiscoveryRun: {
-      __executeServer: async (args: any) => {
-        const res = await mocks.requestAtlasApi(`/discovery-runs/${args.data.id}`);
+      __executeServer: async (args: { data: { id: string } }) => {
+        const { requestAtlasApi } = await import("@/domains/discovery/server/api-client");
+        const res: unknown = await requestAtlasApi(`/discovery-runs/${args.data.id}`);
         return { result: res };
       },
     },
     startDiscoveryRun: {
-      __executeServer: async (args: any) => {
-        const res = await mocks.requestAtlasApi("/discovery-runs", {
+      __executeServer: async (args: { data: Record<string, unknown> }) => {
+        const { requestAtlasApi } = await import("@/domains/discovery/server/api-client");
+        const res: unknown = await requestAtlasApi("/discovery-runs", {
           body: JSON.stringify(args.data),
           method: "POST",
         });
@@ -43,11 +49,12 @@ describe("discovery.functions", () => {
   });
 
   it("lists discovery runs", async () => {
-    const mockRuns = [{ id: "run_1" }];
+    const mockRuns = { items: [] };
     mocks.requestAtlasApi.mockResolvedValue(mockRuns);
 
     const { listDiscoveryRuns } = await import("@/domains/discovery/functions");
-    const response = (await listDiscoveryRuns.__executeServer()) as any;
+    const stub = listDiscoveryRuns as unknown as ServerFnStub;
+    const response = await stub.__executeServer();
 
     expect(response.result).toBe(mockRuns);
     expect(mocks.requestAtlasApi).toHaveBeenCalledWith("/discovery-runs");
@@ -58,9 +65,10 @@ describe("discovery.functions", () => {
     mocks.requestAtlasApi.mockResolvedValue(mockRun);
 
     const { getDiscoveryRun } = await import("@/domains/discovery/functions");
-    const response = (await getDiscoveryRun.__executeServer({
+    const stub = getDiscoveryRun as unknown as ServerFnStub;
+    const response = await stub.__executeServer({
       data: { id: "run_123" },
-    })) as any;
+    });
 
     expect(response.result).toBe(mockRun);
     expect(mocks.requestAtlasApi).toHaveBeenCalledWith("/discovery-runs/run_123");
@@ -76,7 +84,8 @@ describe("discovery.functions", () => {
       location_query: "New York",
       state: "NY",
     };
-    const response = (await startDiscoveryRun.__executeServer({ data })) as any;
+    const stub = startDiscoveryRun as unknown as ServerFnStub;
+    const response = await stub.__executeServer({ data });
 
     expect(response.result).toBe(mockRun);
     expect(mocks.requestAtlasApi).toHaveBeenCalledWith("/discovery-runs", {

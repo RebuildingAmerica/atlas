@@ -52,6 +52,56 @@ describe("getAppConfig", () => {
       localMode: true,
     });
   });
+
+  it("supports an absolute auth base path", () => {
+    expect(getAppConfig({ ATLAS_AUTH_BASE_PATH: "https://auth.example.com" })).toEqual({
+      authBasePath: "https://auth.example.com",
+      authBaseUrl: "https://auth.example.com",
+      localMode: false,
+    });
+  });
+
+  it("resolves a custom relative auth path against the public url", () => {
+    expect(
+      getAppConfig({
+        ATLAS_AUTH_BASE_PATH: "/custom-auth",
+        ATLAS_PUBLIC_URL: "https://atlas.example.com",
+      }),
+    ).toEqual({
+      apiBaseUrl: "https://atlas.example.com/api",
+      authBasePath: "/custom-auth",
+      authBaseUrl: "https://atlas.example.com/custom-auth",
+      localMode: false,
+    });
+  });
+
+  it("does not resolve authBaseUrl when using default auth path", () => {
+    expect(
+      getAppConfig({ ATLAS_PUBLIC_URL: "https://atlas.example.com" }).authBaseUrl,
+    ).toBeUndefined();
+  });
+
+  it("does not resolve authBaseUrl when public url is missing", () => {
+    expect(getAppConfig({ ATLAS_AUTH_BASE_PATH: "/custom" }).authBaseUrl).toBeUndefined();
+  });
+
+  it("rejects non-absolute public urls", () => {
+    expect(() => getAppConfig({ ATLAS_PUBLIC_URL: "relative/path" })).toThrow(
+      "ATLAS_PUBLIC_URL must be an absolute URL.",
+    );
+  });
+
+  it("handles missing origin in getAbsoluteApiBaseUrl", () => {
+    expect(() => getAbsoluteApiBaseUrl({ env: {}, origin: "" })).toThrow(
+      "ATLAS_PUBLIC_URL is required when the current browser origin is unavailable",
+    );
+  });
+
+  it("resolves default API base URL when no public URL is provided", () => {
+    expect(getAbsoluteApiBaseUrl({ env: {}, origin: "https://local.test" })).toBe(
+      "https://local.test/api",
+    );
+  });
 });
 
 describe("getAbsoluteApiBaseUrl", () => {
@@ -60,6 +110,15 @@ describe("getAbsoluteApiBaseUrl", () => {
       getAbsoluteApiBaseUrl({
         env: {},
         origin: "https://atlas.example.com",
+      }),
+    ).toBe("https://atlas.example.com/api");
+  });
+
+  it("normalizes an already-suffixed origin", () => {
+    expect(
+      getAbsoluteApiBaseUrl({
+        env: {},
+        origin: "https://atlas.example.com/api",
       }),
     ).toBe("https://atlas.example.com/api");
   });
@@ -84,9 +143,28 @@ describe("getServerApiBaseUrl", () => {
     ).toBe("https://atlas.example.com/api");
   });
 
+  it("handles default env in getServerApiBaseUrl", () => {
+    const originalUrl = process.env.ATLAS_PUBLIC_URL;
+    process.env.ATLAS_PUBLIC_URL = "https://default.test";
+    try {
+      expect(getServerApiBaseUrl()).toBe("https://default.test/api");
+    } finally {
+      process.env.ATLAS_PUBLIC_URL = originalUrl;
+    }
+  });
+
   it("rejects missing server-call origins", () => {
     expect(() => getServerApiBaseUrl({})).toThrow(
       "ATLAS_PUBLIC_URL is required for server-side Atlas API calls.",
     );
+  });
+});
+
+describe("default exports and parameters", () => {
+  it("uses default parameters where applicable", () => {
+    // This mostly hits the branch where the default value is assigned
+    expect(() => getAppConfig()).not.toThrow();
+    expect(() => getApiBaseUrl()).not.toThrow();
+    expect(() => getAbsoluteApiBaseUrl({ origin: "http://localhost" })).not.toThrow();
   });
 });

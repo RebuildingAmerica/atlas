@@ -80,7 +80,6 @@ export function buildEntityListParams(filters: EntryFilterParams = {}): ListEnti
     issue_area: filters.issue_areas,
     entity_type: filters.entry_types,
     source_type: filters.source_types,
-    affiliated_org_id: filters.affiliated_org_id,
     limit: filters.limit,
     cursor: typeof filters.offset === "number" ? String(filters.offset) : undefined,
   };

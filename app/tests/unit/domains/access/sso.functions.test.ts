@@ -444,4 +444,85 @@ describe("sso.functions", () => {
     expect(response.error).toBeUndefined();
     expect(response.result).toBeNull();
   });
+
+  it("returns null for generic domain sign-in when the domain has no providers", async () => {
+    const { resolveWorkspaceSSOSignIn } = await import("@/domains/access/sso.functions");
+    const response = (await resolveWorkspaceSSOSignIn.__executeServer({
+      method: "POST",
+      data: { email: "nobody@unknown-domain.com" },
+    })) as ServerFnExecutionResponse;
+
+    expect(response.error).toBeUndefined();
+    expect(response.result).toBeNull();
+  });
+
+  it("returns null for invitation sign-in when the organization is missing", async () => {
+    authApi.getInvitation.mockResolvedValue({ organizationId: "missing_org" });
+    mocks.loadStoredWorkspaceIdentity.mockReturnValue(null);
+
+    const { resolveWorkspaceSSOSignIn } = await import("@/domains/access/sso.functions");
+    const response = (await resolveWorkspaceSSOSignIn.__executeServer({
+      method: "POST",
+      data: { email: "user@atlas.test", invitationId: "inv_123" },
+    })) as ServerFnExecutionResponse;
+
+    expect(response.result).toBeNull();
+  });
+
+  it("skips primary provider update when setAsPrimary is false", async () => {
+    authApi.registerSSOProvider.mockResolvedValue({
+      domainVerificationToken: "token_123",
+      providerId: "oidc_123",
+      redirectURI: "https://atlas.test/callback",
+    });
+
+    const { registerWorkspaceGoogleOIDCProvider } = await import("@/domains/access/sso.functions");
+    await registerWorkspaceGoogleOIDCProvider.__executeServer({
+      method: "POST",
+      data: {
+        clientId: "c",
+        clientSecret: "s",
+        domain: "d.com",
+        setAsPrimary: false,
+      },
+    });
+
+    expect(authApi.updateOrganization).not.toHaveBeenCalled();
+  });
+
+  it("updates primary provider during SAML registration when requested", async () => {
+    authApi.registerSSOProvider.mockResolvedValue({
+      domainVerificationToken: "token_123",
+      providerId: "saml_123",
+      redirectURI: "https://atlas.test/callback",
+    });
+
+    const { registerWorkspaceSAMLProvider } = await import("@/domains/access/sso.functions");
+    await registerWorkspaceSAMLProvider.__executeServer({
+      method: "POST",
+      data: {
+        certificate: "c",
+        domain: "d.com",
+        entryPoint: "https://idp.com",
+        issuer: "i",
+        setAsPrimary: true,
+      },
+    });
+
+    expect(authApi.updateOrganization).toHaveBeenCalled();
+  });
+
+  it("skips primary marker clearing when deleting a non-primary provider", async () => {
+    mocks.loadStoredWorkspaceIdentity.mockReturnValue({
+      primaryProviderId: "other_provider",
+    });
+
+    const { deleteWorkspaceSSOProvider } = await import("@/domains/access/sso.functions");
+    await deleteWorkspaceSSOProvider.__executeServer({
+      method: "POST",
+      data: { providerId: "saml_123" },
+    });
+
+    expect(authApi.updateOrganization).not.toHaveBeenCalled();
+  });
 });

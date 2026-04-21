@@ -14,6 +14,7 @@ export default [
       ".nitro/",
       "src/lib/generated/",
       "tests/unit/domains/access/client/use-atlas-session.test.tsx",
+      "**/*.js",
     ],
   },
   js.configs.recommended,

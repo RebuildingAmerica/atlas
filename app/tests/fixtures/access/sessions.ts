@@ -108,14 +108,16 @@ export function createAtlasWorkspace(
     memberships?: AtlasWorkspaceState["memberships"];
     onboarding?: Partial<AtlasWorkspaceState["onboarding"]>;
     pendingInvitations?: AtlasWorkspaceState["pendingInvitations"];
+    role?: string;
   } = {},
 ): AtlasWorkspaceState {
+  const role = options.role ?? "owner";
   const activeOrganization =
     options.activeOrganization === undefined
       ? ({
           id: "org_team",
           name: "Atlas Team",
-          role: "owner",
+          role,
           slug: "atlas-team",
           workspaceType: "team",
         } as const as AtlasWorkspaceMembership)
@@ -133,7 +135,7 @@ export function createAtlasWorkspace(
       {
         id: "org_team",
         name: "Atlas Team",
-        role: "owner",
+        role: role,
         slug: "atlas-team",
         workspaceType: "team" as const,
       },
@@ -160,6 +162,7 @@ export function createAtlasSessionFixture(
     sessionId?: string;
     user?: Partial<AtlasSessionPayload["user"]>;
     workspace?: AtlasWorkspaceState;
+    role?: string;
   } = {},
 ): AtlasSessionPayload {
   return {
@@ -176,6 +179,6 @@ export function createAtlasSessionFixture(
       id: options.user?.id ?? "user_123",
       name: options.user?.name ?? "Operator",
     },
-    workspace: options.workspace ?? createAtlasWorkspace(),
+    workspace: options.workspace ?? createAtlasWorkspace({ role: options.role }),
   };
 }

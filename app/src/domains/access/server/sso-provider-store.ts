@@ -88,6 +88,7 @@ export async function loadStoredWorkspaceIdentity(
     workspace = result.rows[0] as StoredWorkspaceRow | undefined;
   } else {
     const database = getAuthDatabase();
+    if (!database) throw new Error("No database configured for SSO provider lookup");
     const statement = database.prepare(
       "select id, metadata, name, slug from organization where id = ? limit 1",
     );
@@ -123,6 +124,7 @@ export async function listStoredWorkspaceSSOProviders(): Promise<StoredWorkspace
     providerRows = result.rows as StoredWorkspaceSSOProviderRow[];
   } else {
     const database = getAuthDatabase();
+    if (!database) throw new Error("No database configured for SSO provider listing");
     const statement = database.prepare(
       "select providerId, issuer, domain, organizationId, domainVerified, oidcConfig, samlConfig from ssoProvider",
     );

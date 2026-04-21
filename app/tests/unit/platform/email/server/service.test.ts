@@ -1,5 +1,4 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { AuthRuntimeConfig } from "@/domains/access/server/runtime";
 import { createEmailService } from "@/platform/email/server/service";
 
 const { fetchMock, resendEmailsSendMock } = vi.hoisted(() => ({
@@ -15,84 +14,74 @@ vi.mock("resend", () => ({
   },
 }));
 
-function buildRuntime(overrides: Partial<AuthRuntimeConfig> = {}): AuthRuntimeConfig {
-  return {
-    apiAudience: null,
-    apiBaseUrl: null,
-    apiKeyIntrospectionUrl: "https://atlas.example.com/api/auth/internal/api-key",
-    allowedEmails: new Set(),
-    databaseUrl: null,
-    localMode: false,
-    captureUrl: "http://127.0.0.1:8025/messages",
-    dbPath: "/tmp/atlas-auth.sqlite",
-    emailFrom: "Atlas <auth@atlas.example.com>",
-    emailProvider: "capture",
-    internalSecret: "internal-test-secret",
-    publicBaseUrl: "https://atlas.example.com",
-    publicDomain: "atlas.example.com",
-    resendApiKey: null,
-    ...overrides,
-  };
-}
-
-describe("createEmailService", () => {
+describe("EmailService", () => {
   afterEach(() => {
     fetchMock.mockReset();
     resendEmailsSendMock.mockReset();
     vi.unstubAllGlobals();
   });
 
-  it("sends mail through capture when capture is configured", async () => {
-    fetchMock.mockResolvedValue({
-      ok: true,
-      text: vi.fn().mockResolvedValue(""),
-    });
-    vi.stubGlobal("fetch", fetchMock);
+  describe("CaptureEmailService", () => {
+    it("delivers email via fetch to the capture URL", async () => {
+      fetchMock.mockResolvedValue({
+        ok: true,
+      });
+      vi.stubGlobal("fetch", fetchMock);
 
-    const service = createEmailService(buildRuntime());
+      const service = createEmailService({
+        emailFrom: "Atlas <auth@atlas.test>",
+        emailProvider: "capture",
+        captureUrl: "http://localhost:8025/messages",
+        resendApiKey: null,
+      });
 
-    await service.send({
-      subject: "Sign in to Atlas",
-      text: "Use this link",
-      to: "operator@atlas.test",
-    });
+      await service.send({
+        subject: "Test",
+        text: "Hello",
+        to: "user@atlas.test",
+      });
 
-    expect(fetchMock).toHaveBeenCalledWith("http://127.0.0.1:8025/messages", {
-      body: JSON.stringify({
-        from: "Atlas <auth@atlas.example.com>",
-        subject: "Sign in to Atlas",
-        text: "Use this link",
-        to: "operator@atlas.test",
-      }),
-      headers: {
-        "Content-Type": "application/json",
-      },
-      method: "POST",
+      expect(fetchMock).toHaveBeenCalledWith(
+        "http://localhost:8025/messages",
+        expect.objectContaining({
+          method: "POST",
+          body: JSON.stringify({
+            from: "Atlas <auth@atlas.test>",
+            subject: "Test",
+            text: "Hello",
+            to: "user@atlas.test",
+          }),
+        }),
+      );
     });
   });
 
-  it("sends mail through resend when resend is configured", async () => {
-    resendEmailsSendMock.mockResolvedValue({ data: { id: "email_123" }, error: null });
+  describe("ResendEmailService", () => {
+    it("delivers email via Resend client", async () => {
+      resendEmailsSendMock.mockResolvedValue({
+        data: { id: "msg_123" },
+        error: null,
+      });
 
-    const service = createEmailService(
-      buildRuntime({
-        captureUrl: null,
+      const service = createEmailService({
+        emailFrom: "Atlas <auth@atlas.test>",
         emailProvider: "resend",
+        captureUrl: null,
         resendApiKey: "re_test_123",
-      }),
-    );
+      });
 
-    await service.send({
-      subject: "Verify your Atlas email",
-      text: "Open this link",
-      to: "operator@atlas.test",
-    });
+      await service.send({
+        subject: "Test",
+        text: "Hello",
+        to: "user@atlas.test",
+      });
 
-    expect(resendEmailsSendMock).toHaveBeenCalledWith({
-      from: "Atlas <auth@atlas.example.com>",
-      subject: "Verify your Atlas email",
-      text: "Open this link",
-      to: "operator@atlas.test",
+      expect(resendEmailsSendMock).toHaveBeenCalledWith({
+        from: "Atlas <auth@atlas.test>",
+        subject: "Test",
+        text: "Hello",
+        to: "user@atlas.test",
+      });
     });
   });
 });

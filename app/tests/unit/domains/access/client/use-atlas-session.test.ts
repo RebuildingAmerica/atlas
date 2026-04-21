@@ -14,7 +14,7 @@ vi.mock("@/domains/access/config", () => ({
 
 describe("useAtlasSession", () => {
   it("configures the session query for local mode", () => {
-    vi.mocked(getAuthConfig).mockReturnValue({ localMode: true });
+    vi.mocked(getAuthConfig).mockReturnValue({ authBasePath: "/api/auth", localMode: true });
     vi.mocked(useQuery).mockReturnValue({ kind: "query-result" } as unknown as ReturnType<
       typeof useQuery
     >);
@@ -32,7 +32,7 @@ describe("useAtlasSession", () => {
   });
 
   it("configures the session query for auth-enabled mode", () => {
-    vi.mocked(getAuthConfig).mockReturnValue({ localMode: false });
+    vi.mocked(getAuthConfig).mockReturnValue({ authBasePath: "/api/auth", localMode: false });
     vi.mocked(useQuery).mockReturnValue({ kind: "query-result" } as unknown as ReturnType<
       typeof useQuery
     >);

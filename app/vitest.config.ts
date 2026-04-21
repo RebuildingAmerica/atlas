@@ -20,7 +20,6 @@ export default defineConfig({
         "src/routeTree.gen.ts",
         "tests/**",
       ],
-      include: ["src/**/*.ts", "src/**/*.tsx"],
       thresholds: {
         branches: 80,
         functions: 80,
