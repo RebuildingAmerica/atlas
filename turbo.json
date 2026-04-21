@@ -5,26 +5,47 @@
   "globalDependencies": [
     "pnpm-workspace.yaml",
     "package.json",
-    "api/pyproject.toml"
+    "pnpm-lock.yaml",
+    "api/pyproject.toml",
+    "api/uv.lock",
+    ".env.example"
   ],
   "tasks": {
     "build": {
-      "outputs": [".output/**"]
+      "inputs": ["$TURBO_DEFAULT$"],
+      "outputs": [".output/**", "dist/**"],
+      "env": ["ATLAS_DEPLOY_MODE", "ATLAS_PUBLIC_URL", "ATLAS_AUTH_BASE_PATH"]
     },
     "dev": {
       "cache": false,
       "persistent": true
     },
-    "typecheck": {},
-    "lint": {},
-    "test": {},
+    "typecheck": {
+      "inputs": ["$TURBO_DEFAULT$", "tsconfig.json", "package.json", "pyproject.toml", "uv.lock"],
+      "env": ["ATLAS_DEPLOY_MODE"]
+    },
+    "lint": {
+      "inputs": ["$TURBO_DEFAULT$", "eslint.config.js", ".eslintrc.*", "pyproject.toml", "ruff.toml"]
+    },
+    "test": {
+      "inputs": ["$TURBO_DEFAULT$", "vitest.config.ts", "pytest.ini", "pyproject.toml", "uv.lock"],
+      "env": [
+        "DATABASE_URL",
+        "ATLAS_DEPLOY_MODE",
+        "ATLAS_AUTH_INTERNAL_SECRET",
+        "ENVIRONMENT",
+        "LOG_LEVEL",
+        "ATLAS_PUBLIC_URL"
+      ]
+    },
     "quality": {
       "dependsOn": ["typecheck", "lint", "test"]
     },
     "//#openapi": {
       "inputs": [
         "api/atlas/**/*.py",
-        "api/pyproject.toml"
+        "api/pyproject.toml",
+        "api/uv.lock"
       ],
       "outputs": ["openapi/atlas.openapi.json"]
     },
