@@ -28,6 +28,11 @@ export async function runDatabasePhase(
     readDatabaseUrl(rootEnvPath) ||
     readDatabaseUrl(apiEnvPath);
 
+  // Ignore SQLite URLs — they're local dev defaults, not production config
+  if (databaseUrl?.startsWith("sqlite:")) {
+    databaseUrl = undefined;
+  }
+
   if (databaseUrl) {
     log.success("DATABASE_URL already configured");
     logSubline(pc.dim(redactConnectionString(databaseUrl)));
@@ -90,9 +95,22 @@ export async function runDatabasePhase(
       return { success: false, followUpItems };
     }
 
+    logSubline(
+      pc.dim(
+        "Atlas needs a PostgreSQL database for production. Create a free one at https://neon.tech:\n" +
+          pc.dim("  1. Sign up or log in at https://console.neon.tech\n") +
+          pc.dim("  2. Create a project (any name, e.g., 'atlas')\n") +
+          pc.dim(
+            "  3. Copy the connection string from the dashboard (starts with postgresql://)",
+          ),
+      ),
+    );
+
     databaseUrl = (await promptOrExit(
       text({
-        message: "Neon connection string (postgresql://...)",
+        message: "Paste your Neon connection string",
+        placeholder:
+          "postgresql://user:password@ep-xxx.us-east-2.aws.neon.tech/atlas?sslmode=require",
         validate(value) {
           if (
             !value.startsWith("postgres://") &&

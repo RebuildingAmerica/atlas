@@ -37,7 +37,7 @@ export default defineConfig({
   server: {
     proxy: {
       "/api": {
-        target: "http://localhost:8000",
+        target: process.env.ATLAS_DEV_API_PROXY_TARGET,
         changeOrigin: true,
       },
     },

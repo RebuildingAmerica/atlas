@@ -1,7 +1,9 @@
+import path from "node:path";
 import { log, spinner, text, select } from "@clack/prompts";
 import pc from "picocolors";
 import type { PhaseResult } from "../lib/types.js";
 import { runCommand, commandOutput } from "../lib/shell.js";
+import { mergeEnvFile } from "../lib/env-file.js";
 import { promptOrExit, promptConfirm, logSubline } from "../lib/ui.js";
 import type { ReadinessState } from "../state.js";
 
@@ -39,13 +41,32 @@ export async function runInfraPhase(
 ): Promise<InfraResult> {
   const followUpItems: string[] = [];
 
+  // ── Gate: require gcloud + gh auth ────────────────────────────────────────
+  const gcloudAuth = runCommand(
+    "gcloud auth list --filter=status:ACTIVE --format='value(account)' 2>/dev/null | head -1 | grep -q .",
+  );
+  if (!gcloudAuth.ok) {
+    log.error(
+      "gcloud is not authenticated. Run 'gcloud auth login' first, then re-run bootstrap.",
+    );
+    return emptyResult(["Authenticate gcloud: gcloud auth login"], false);
+  }
+
+  const ghAuth = runCommand("gh auth status 2>/dev/null");
+  if (!ghAuth.ok) {
+    log.error(
+      "GitHub CLI is not authenticated. Run 'gh auth login' first, then re-run bootstrap.",
+    );
+    return emptyResult(["Authenticate GitHub CLI: gh auth login"], false);
+  }
+
   // ── Detect GitHub repo ────────────────────────────────────────────────────
   const repoResult = runCommand(
     "gh repo view --json nameWithOwner -q '.nameWithOwner'",
   );
   if (!repoResult.ok) {
     log.error(
-      "Could not detect GitHub repo. Ensure gh is authenticated and you are in the atlas repo root.",
+      "Could not detect GitHub repo. Make sure you are in the atlas repo root.",
     );
     return emptyResult(followUpItems, false);
   }
@@ -62,9 +83,14 @@ export async function runInfraPhase(
   }
 
   // ── Region ────────────────────────────────────────────────────────────────
+  logSubline(
+    pc.dim(
+      "Pick the GCP region closest to your users. us-central1 (Iowa) is the cheapest for Cloud Run and has the widest free tier. See https://cloud.google.com/run/docs/locations",
+    ),
+  );
   const region = (await promptOrExit(
     text({
-      message: "GCP region for Cloud Run & Artifact Registry",
+      message: "GCP region",
       initialValue: "us-central1",
     }),
   )) as string;
@@ -101,6 +127,19 @@ export async function runInfraPhase(
     followUpItems,
   );
 
+  // ── Write infra values to env files ────────────────────────────────────────
+  if (!doctorMode) {
+    const infraVars = new Map([
+      ["GCP_PROJECT_ID", projectId],
+      ["GCP_REGION", region],
+      ["GCP_SERVICE_ACCOUNT", saEmail],
+      ["GCP_WORKLOAD_IDENTITY_PROVIDER", wifProvider],
+    ]);
+    const prodEnvPath = path.join(projectRoot, ".env.production");
+    mergeEnvFile(prodEnvPath, infraVars);
+    log.success("Infrastructure values written to .env.production");
+  }
+
   const allSucceeded = followUpItems.length === 0;
   return {
     success: allSucceeded,
@@ -136,6 +175,12 @@ async function setupProject(
     }
   }
 
+  logSubline(
+    pc.dim(
+      "Atlas needs a GCP project for Cloud Run hosting. You can use an existing project or create a new one. Project IDs are globally unique (e.g., 'atlas-prod-123').",
+    ),
+  );
+
   const projectAction = (await promptOrExit(
     select({
       message: "GCP project",
@@ -150,8 +195,9 @@ async function setupProject(
     text({
       message:
         projectAction === "new"
-          ? "New GCP project ID"
+          ? "New GCP project ID (globally unique, lowercase, hyphens allowed)"
           : "Existing GCP project ID",
+      placeholder: "atlas-prod",
     }),
   )) as string;
 

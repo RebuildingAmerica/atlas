@@ -168,39 +168,40 @@ async function processKeepProduct(
   envValues: Map<string, string>,
 ): Promise<void> {
   const productId = definition.existingProductId;
-  if (!productId) {
-    throw new Error(
-      `Product "${definition.id}" has action "keep" but no existingProductId`,
-    );
-  }
 
-  // Verify the product exists in Stripe (throws if not found)
-  await stripe.products.retrieve(productId);
-  log.success(
-    `${pc.bold(definition.stripeName)} -- verified (${pc.dim(productId)})`,
-  );
+  // Try to find the existing product (may fail in test mode if ID is from live)
+  if (productId) {
+    try {
+      await stripe.products.retrieve(productId);
+      log.success(
+        `${pc.bold(definition.stripeName)} -- verified (${pc.dim(productId)})`,
+      );
+      envValues.set(definition.envProductKey, productId);
 
-  envValues.set(definition.envProductKey, productId);
-
-  // Fetch existing prices and record their IDs
-  const existingPrices = await fetchExistingPrices(stripe, productId);
-
-  for (const priceDef of definition.prices) {
-    // Try to match by metadata first, fall back to searching all existing prices
-    const matchedPrice = existingPrices.find(
-      (p) => p.metadata?.atlas_price_id === priceDef.id,
-    );
-
-    if (matchedPrice) {
-      envValues.set(priceDef.envKey, matchedPrice.id);
-      logSubline(`${priceDef.id}: ${pc.dim(matchedPrice.id)} (existing)`);
-    } else {
-      // Create the price if it doesn't exist yet
-      const newPrice = await ensurePrice(stripe, productId, priceDef);
-      envValues.set(priceDef.envKey, newPrice.id);
-      logSubline(`${priceDef.id}: ${pc.dim(newPrice.id)} (created)`);
+      const existingPrices = await fetchExistingPrices(stripe, productId);
+      for (const priceDef of definition.prices) {
+        const matchedPrice = existingPrices.find(
+          (p) => p.metadata?.atlas_price_id === priceDef.id,
+        );
+        if (matchedPrice) {
+          envValues.set(priceDef.envKey, matchedPrice.id);
+          logSubline(`${priceDef.id}: ${pc.dim(matchedPrice.id)} (existing)`);
+        } else {
+          const newPrice = await ensurePrice(stripe, productId, priceDef);
+          envValues.set(priceDef.envKey, newPrice.id);
+          logSubline(`${priceDef.id}: ${pc.dim(newPrice.id)} (created)`);
+        }
+      }
+      return;
+    } catch {
+      logSubline(
+        `Product ${productId} not found in current mode — creating a copy`,
+      );
     }
   }
+
+  // Fall back to create (e.g., test mode doesn't have the live product)
+  await processCreateProduct(stripe, definition, envValues);
 }
 
 async function processCreateProduct(
