@@ -29,12 +29,14 @@ export interface AtlasWorkspaceCapabilities {
  */
 export interface AtlasOrganizationMetadata {
   ssoPrimaryProviderId: string | null;
+  stripeCustomerId: string | null;
   workspaceType: AtlasWorkspaceType;
 }
 
 const atlasOrganizationMetadataSchema = z
   .object({
     ssoPrimaryProviderId: z.string().trim().min(1).nullish(),
+    stripeCustomerId: z.string().trim().min(1).nullish(),
     workspaceType: atlasWorkspaceTypeSchema.optional(),
   })
   .passthrough();
@@ -70,6 +72,8 @@ export function normalizeAtlasOrganizationMetadata(metadata: unknown): AtlasOrga
   return {
     ssoPrimaryProviderId:
       parsed.success && parsed.data.ssoPrimaryProviderId ? parsed.data.ssoPrimaryProviderId : null,
+    stripeCustomerId:
+      parsed.success && parsed.data.stripeCustomerId ? parsed.data.stripeCustomerId : null,
     workspaceType:
       parsed.success && parsed.data.workspaceType ? parsed.data.workspaceType : "individual",
   };
@@ -93,6 +97,10 @@ export function mergeAtlasOrganizationMetadata(
       updates.ssoPrimaryProviderId === undefined
         ? normalizedMetadata.ssoPrimaryProviderId
         : updates.ssoPrimaryProviderId,
+    stripeCustomerId:
+      updates.stripeCustomerId === undefined
+        ? normalizedMetadata.stripeCustomerId
+        : updates.stripeCustomerId,
     workspaceType: updates.workspaceType ?? normalizedMetadata.workspaceType,
   };
 }

@@ -16,6 +16,7 @@ describe("organization-metadata", () => {
       ).toEqual({
         workspaceType: "team",
         ssoPrimaryProviderId: "google",
+        stripeCustomerId: null,
       });
     });
 
@@ -27,6 +28,7 @@ describe("organization-metadata", () => {
       ).toEqual({
         workspaceType: "team",
         ssoPrimaryProviderId: "google",
+        stripeCustomerId: null,
       });
     });
 
@@ -34,14 +36,39 @@ describe("organization-metadata", () => {
       expect(normalizeAtlasOrganizationMetadata({})).toEqual({
         workspaceType: "individual",
         ssoPrimaryProviderId: null,
+        stripeCustomerId: null,
       });
       expect(normalizeAtlasOrganizationMetadata(null)).toEqual({
         workspaceType: "individual",
         ssoPrimaryProviderId: null,
+        stripeCustomerId: null,
       });
       expect(normalizeAtlasOrganizationMetadata("{invalid json")).toEqual({
         workspaceType: "individual",
         ssoPrimaryProviderId: null,
+        stripeCustomerId: null,
+      });
+    });
+
+    it("normalizes stripeCustomerId", () => {
+      expect(
+        normalizeAtlasOrganizationMetadata({
+          workspaceType: "team",
+          ssoPrimaryProviderId: null,
+          stripeCustomerId: "cus_abc123",
+        }),
+      ).toEqual({
+        workspaceType: "team",
+        ssoPrimaryProviderId: null,
+        stripeCustomerId: "cus_abc123",
+      });
+    });
+
+    it("defaults stripeCustomerId to null", () => {
+      expect(normalizeAtlasOrganizationMetadata({})).toEqual({
+        workspaceType: "individual",
+        ssoPrimaryProviderId: null,
+        stripeCustomerId: null,
       });
     });
   });
@@ -53,6 +80,7 @@ describe("organization-metadata", () => {
       expect(mergeAtlasOrganizationMetadata(original, updates)).toEqual({
         workspaceType: "team",
         ssoPrimaryProviderId: null,
+        stripeCustomerId: null,
       });
     });
 
@@ -62,6 +90,21 @@ describe("organization-metadata", () => {
       expect(mergeAtlasOrganizationMetadata(original, updates)).toEqual({
         workspaceType: "team",
         ssoPrimaryProviderId: null,
+        stripeCustomerId: null,
+      });
+    });
+
+    it("preserves stripeCustomerId across merges", () => {
+      const original = {
+        workspaceType: "team" as const,
+        ssoPrimaryProviderId: null,
+        stripeCustomerId: "cus_abc123",
+      };
+      const updates = { ssoPrimaryProviderId: "google" };
+      expect(mergeAtlasOrganizationMetadata(original, updates)).toEqual({
+        workspaceType: "team",
+        ssoPrimaryProviderId: "google",
+        stripeCustomerId: "cus_abc123",
       });
     });
   });
@@ -111,6 +154,7 @@ describe("organization-metadata", () => {
       expect(normalizeAtlasOrganizationMetadata({ workspaceType: "team" })).toEqual({
         workspaceType: "team",
         ssoPrimaryProviderId: null,
+        stripeCustomerId: null,
       });
     });
 
@@ -119,6 +163,7 @@ describe("organization-metadata", () => {
       expect(mergeAtlasOrganizationMetadata(original, { ssoPrimaryProviderId: "new" })).toEqual({
         workspaceType: "team",
         ssoPrimaryProviderId: "new",
+        stripeCustomerId: null,
       });
     });
   });
