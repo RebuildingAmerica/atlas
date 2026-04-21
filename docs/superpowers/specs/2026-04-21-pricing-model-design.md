@@ -47,7 +47,7 @@ your workspace).
 |---|---|---|---|
 | Atlas Pro | Subscription ($5/mo, $48/yr) | Sets workspace tier to Pro | Individual researchers |
 | Atlas Team | Subscription ($25/mo base + $8/seat/mo) | Sets workspace tier to Team | Newsrooms, nonprofits |
-| Atlas Research Pass | One-time ($50/30 days) or weekly ($12/wk) | Grants Pro capabilities temporarily | Short-term projects |
+| Atlas Research Pass | One-time ($9/30 days or $4/7 days) | Grants Pro capabilities temporarily | Short-term projects |
 
 There is no "Free" product. Free is the default state of every
 workspace — it is the absence of an active subscription or pass.
@@ -219,7 +219,7 @@ and vice versa.
 
 | Stripe Product | Prices | Bootstrap Action |
 |---|---|---|
-| Atlas Research Pass | $50 one-time, $12/week | Create (or verify if existing) |
+| Atlas Research Pass | $9 one-time (30d), $4 one-time (7d) | Create (or verify if existing) |
 | Atlas Pro | $5/month, $48/year | Create |
 | Atlas Team Base | $25/month, $250/year | Create |
 | Atlas Team Seat (per unit) | $8/month, $80/year | Create |

@@ -33,15 +33,14 @@ export const ATLAS_PRODUCTS: AtlasProductDefinition[] = [
       {
         id: "research-pass-once",
         envKey: "STRIPE_PRICE_ATLAS_RESEARCH_PASS_ONCE",
-        unitAmountCents: 5000,
+        unitAmountCents: 900,
         currency: "usd",
       },
       {
         id: "research-pass-weekly",
         envKey: "STRIPE_PRICE_ATLAS_RESEARCH_PASS_WEEKLY",
-        unitAmountCents: 1200,
+        unitAmountCents: 400,
         currency: "usd",
-        recurring: { interval: "week" },
       },
     ],
   },
