@@ -36,6 +36,22 @@ describe("getApiBaseUrl", () => {
       "ATLAS_PUBLIC_URL is required for configured Atlas API calls.",
     );
   });
+
+  it("handles empty public url string", () => {
+    expect(() => getApiBaseUrl({ ATLAS_PUBLIC_URL: "  " })).toThrow("ATLAS_PUBLIC_URL is required");
+  });
+
+  it("normalizes origins without api suffix", () => {
+    expect(getApiBaseUrl({ ATLAS_PUBLIC_URL: "https://atlas.test" })).toBe(
+      "https://atlas.test/api",
+    );
+  });
+
+  it("handles multiple trailing slashes", () => {
+    expect(getApiBaseUrl({ ATLAS_PUBLIC_URL: "https://atlas.test///" })).toBe(
+      "https://atlas.test/api",
+    );
+  });
 });
 
 describe("getAppConfig", () => {
@@ -161,10 +177,15 @@ describe("getServerApiBaseUrl", () => {
 });
 
 describe("default exports and parameters", () => {
-  it("uses default parameters where applicable", () => {
-    // This mostly hits the branch where the default value is assigned
-    expect(() => getAppConfig()).not.toThrow();
-    expect(() => getApiBaseUrl()).not.toThrow();
-    expect(() => getAbsoluteApiBaseUrl({ origin: "http://localhost" })).not.toThrow();
+  it("getAppConfig returns localMode false for empty env", () => {
+    const config = getAppConfig({});
+    expect(config.localMode).toBe(false);
+    expect(config.authBasePath).toBe("/api/auth");
+  });
+
+  it("getAbsoluteApiBaseUrl falls back to origin", () => {
+    expect(getAbsoluteApiBaseUrl({ env: {}, origin: "http://localhost" })).toBe(
+      "http://localhost/api",
+    );
   });
 });

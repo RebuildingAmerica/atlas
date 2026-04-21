@@ -4,7 +4,6 @@ import { createInternalAuthHeaders, getAuthConfig } from "@/domains/access/confi
 describe("getAuthConfig", () => {
   it("defaults to auth enabled without local mode", () => {
     expect(getAuthConfig({})).toEqual({
-      apiBaseUrl: "https://localhost/api",
       authBasePath: "/api/auth",
       localMode: false,
     });
@@ -52,5 +51,22 @@ describe("createInternalAuthHeaders", () => {
       "X-Atlas-Actor-Id": "user_123",
       "X-Atlas-Internal-Secret": "internal-test-secret",
     });
+  });
+
+  it("includes organization id when provided", () => {
+    expect(
+      createInternalAuthHeaders({ email: "a@b.com", id: "u1" }, "s", { organizationId: "org_1" }),
+    ).toEqual({
+      "X-Atlas-Actor-Email": "a@b.com",
+      "X-Atlas-Actor-Id": "u1",
+      "X-Atlas-Internal-Secret": "s",
+      "X-Atlas-Organization-Id": "org_1",
+    });
+  });
+});
+
+describe("getAuthConfig defaults", () => {
+  it("uses default parameters", () => {
+    expect(() => getAuthConfig()).not.toThrow();
   });
 });

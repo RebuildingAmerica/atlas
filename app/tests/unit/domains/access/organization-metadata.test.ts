@@ -99,5 +99,27 @@ describe("organization-metadata", () => {
         true,
       );
     });
+
+    it("handles null workspace type", () => {
+      expect(buildAtlasWorkspaceCapabilities(null, "owner", 1).canUseTeamFeatures).toBe(false);
+    });
+  });
+
+  describe("extra normalization branches", () => {
+    it("handles partial success in normalize", () => {
+      // workspaceType matches but ssoPrimaryProviderId is missing
+      expect(normalizeAtlasOrganizationMetadata({ workspaceType: "team" })).toEqual({
+        workspaceType: "team",
+        ssoPrimaryProviderId: null,
+      });
+    });
+
+    it("handles missing workspaceType update in merge", () => {
+      const original = { workspaceType: "team" as const, ssoPrimaryProviderId: "google" };
+      expect(mergeAtlasOrganizationMetadata(original, { ssoPrimaryProviderId: "new" })).toEqual({
+        workspaceType: "team",
+        ssoPrimaryProviderId: "new",
+      });
+    });
   });
 });

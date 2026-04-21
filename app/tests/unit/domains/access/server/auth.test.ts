@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   sqlitePrepare: vi.fn(),
   getAuthRuntimeConfig: vi.fn(),
   isAllowedEmail: vi.fn(),
+  listUserInvitations: vi.fn(),
 }));
 
 vi.mock("pg", () => ({
@@ -39,7 +40,11 @@ vi.mock("@/domains/access/server/auth", async (importOriginal) => {
   const actual = await importOriginal<Record<string, unknown>>();
   return {
     ...actual,
-    ensureAuthReady: vi.fn(),
+    ensureAuthReady: vi.fn().mockResolvedValue({
+      api: {
+        listUserInvitations: mocks.listUserInvitations,
+      },
+    }),
   };
 });
 
@@ -58,7 +63,8 @@ describe("canEmailAccessAtlas", () => {
     mocks.sqlitePrepare.mockReset();
     mocks.getAuthRuntimeConfig.mockReset();
     mocks.isAllowedEmail.mockReset();
-    vi.mocked(ensureAuthReady).mockReset();
+    mocks.listUserInvitations.mockReset();
+    vi.mocked(ensureAuthReady).mockClear();
 
     mocks.getAuthRuntimeConfig.mockReturnValue({ localMode: false });
     mocks.isAllowedEmail.mockReturnValue(false);
@@ -98,11 +104,7 @@ describe("canEmailAccessAtlas", () => {
     mocks.getAuthRuntimeConfig.mockReturnValue({ localMode: false, databaseUrl: "postgres://..." });
     mocks.pgPoolQuery.mockResolvedValue({ rows: [{ membershipCount: 0 }] });
 
-    vi.mocked(ensureAuthReady).mockResolvedValue({
-      api: {
-        listUserInvitations: vi.fn().mockResolvedValue([]),
-      },
-    } as unknown as Awaited<ReturnType<typeof ensureAuthReady>>);
+    mocks.listUserInvitations.mockResolvedValue([]);
 
     expect(await canEmailAccessAtlas("nobody@atlas.test")).toBe(false);
   });
@@ -111,7 +113,7 @@ describe("canEmailAccessAtlas", () => {
     mocks.getAuthRuntimeConfig.mockReturnValue({ localMode: false, databaseUrl: "postgres://..." });
     mocks.pgPoolQuery.mockResolvedValue({ rows: [{ membershipCount: 0 }] });
 
-    vi.mocked(ensureAuthReady).mockRejectedValue(new Error("API down"));
+    mocks.listUserInvitations.mockRejectedValue(new Error("API down"));
 
     expect(await canEmailAccessAtlas("invited@atlas.test")).toBe(false);
   });

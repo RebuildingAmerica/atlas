@@ -45,4 +45,27 @@ describe("Select", () => {
     render(<Select options={options} disabled={true} />);
     expect(screen.getByRole("combobox")).toBeDisabled();
   });
+
+  it("handles missing label and optional props", () => {
+    const { container } = render(<Select options={options} />);
+    expect(container.querySelector("label")).not.toBeInTheDocument();
+  });
+
+  it("handles missing onChange gracefully", () => {
+    render(<Select options={options} />);
+    const select = screen.getByRole("combobox");
+    fireEvent.change(select, { target: { value: "v1" } });
+    // No error should be thrown
+  });
+
+  it("applies custom className", () => {
+    render(<Select options={options} className="custom-class" />);
+    expect(screen.getByRole("combobox")).toHaveClass("custom-class");
+  });
+
+  it("handles empty options and null value", () => {
+    render(<Select options={[]} value={undefined} />);
+    expect(screen.getByRole("combobox").getAttribute("value")).toBe(null);
+    // Alternatively just check it renders
+  });
 });

@@ -1,6 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { introspectApiKeyRequest } from "@/domains/access/server/internal-api-key";
 
+interface ApiKeyIntrospectionResult {
+  name: string;
+  organizationId?: string;
+  userEmail: string;
+}
+
 const mocks = vi.hoisted(() => ({
   ensureAuthReady: vi.fn(),
   getAuthRuntimeConfig: vi.fn(),
@@ -175,5 +181,60 @@ describe("introspect-api-key", () => {
 
     expect(body.organizationId).toBe("org_1");
     expect(body.userEmail).toBe("user@atlas.test");
+  });
+
+  it("handles missing optional fields in introspection result", async () => {
+    mocks.ensureAuthReady.mockResolvedValue({
+      api: {
+        verifyApiKey: vi.fn().mockResolvedValue({
+          valid: true,
+          key: {
+            id: "key_1",
+            referenceId: "user_1",
+            metadata: {},
+          },
+        }),
+      },
+    });
+
+    const request = new Request("http://localhost/api/auth/internal/api-key", {
+      headers: {
+        "x-atlas-internal-secret": "internal-test-secret",
+        "x-api-key": "some_key",
+      },
+    });
+
+    const response = await introspectApiKeyRequest(request);
+    const body = (await response.json()) as ApiKeyIntrospectionResult;
+
+    expect(body.name).toBe("Atlas API Key");
+    expect(body.organizationId).toBeUndefined();
+    expect(body.userEmail).toBe("");
+  });
+
+  it("fails when internal secret is not configured", async () => {
+    mocks.getAuthRuntimeConfig.mockReturnValue({
+      internalSecret: undefined,
+    });
+
+    const request = new Request("http://localhost/api/auth/internal/api-key", {
+      headers: {
+        "x-atlas-internal-secret": "some-secret",
+      },
+    });
+
+    const response = await introspectApiKeyRequest(request);
+    expect(response.status).toBe(401);
+  });
+
+  it("fails when secret length mismatches", async () => {
+    const request = new Request("http://localhost/api/auth/internal/api-key", {
+      headers: {
+        "x-atlas-internal-secret": "too-long-secret",
+      },
+    });
+
+    const response = await introspectApiKeyRequest(request);
+    expect(response.status).toBe(401);
   });
 });
