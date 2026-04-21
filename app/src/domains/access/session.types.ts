@@ -1,3 +1,4 @@
+import type { AtlasProduct, SerializedResolvedCapabilities } from "./capabilities";
 import type { AtlasWorkspaceCapabilities, AtlasWorkspaceType } from "./organization-metadata";
 
 /**
@@ -37,7 +38,9 @@ export interface AtlasWorkspaceInvitation {
  */
 export interface AtlasWorkspaceState {
   activeOrganization: AtlasWorkspaceMembership | null;
+  activeProducts: AtlasProduct[];
   capabilities: AtlasWorkspaceCapabilities;
+  resolvedCapabilities: SerializedResolvedCapabilities;
   memberships: AtlasWorkspaceMembership[];
   onboarding: {
     hasPendingInvitations: boolean;

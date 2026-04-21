@@ -1,10 +1,12 @@
 import "@tanstack/react-start/server-only";
 
 import { z } from "zod";
+import { resolveCapabilities, serializeResolvedCapabilities } from "../capabilities";
 import {
   buildAtlasWorkspaceCapabilities,
   normalizeAtlasOrganizationMetadata,
 } from "../organization-metadata";
+import { queryActiveProducts } from "./workspace-products";
 import type { AtlasSessionPayload } from "../session.types";
 import type { getAuth } from "./auth";
 import type { atlasSessionSchema } from "./session-schema";
@@ -192,6 +194,9 @@ export async function loadAtlasWorkspaceState(
     session.session.activeOrganizationId,
   );
 
+  const activeProducts = activeOrganization ? await queryActiveProducts(activeOrganization.id) : [];
+  const resolvedCaps = resolveCapabilities(activeProducts);
+
   const pendingInvitations: AtlasSessionPayload["workspace"]["pendingInvitations"] = [];
   for (const invitation of invitations) {
     if (invitation.status !== "pending") {
@@ -204,11 +209,13 @@ export async function loadAtlasWorkspaceState(
 
   return {
     activeOrganization,
+    activeProducts,
     capabilities: buildAtlasWorkspaceCapabilities(
       activeOrganization?.workspaceType ?? null,
       activeOrganization?.role,
       memberships.length,
     ),
+    resolvedCapabilities: serializeResolvedCapabilities(resolvedCaps),
     memberships,
     onboarding: {
       hasPendingInvitations: pendingInvitations.length > 0,

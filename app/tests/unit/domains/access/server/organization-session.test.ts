@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import { loadAtlasWorkspaceState } from "@/domains/access/server/organization-session";
 
+vi.mock("@/domains/access/server/workspace-products", () => ({
+  queryActiveProducts: vi.fn().mockResolvedValue([]),
+}));
+
 type AuthParam = Parameters<typeof loadAtlasWorkspaceState>[0];
 type SessionParam = Parameters<typeof loadAtlasWorkspaceState>[2];
 
@@ -72,11 +76,24 @@ describe("organization-session", () => {
         slug: "atlas",
         workspaceType: "team",
       },
+      activeProducts: [],
       capabilities: {
         canInviteMembers: true,
         canManageOrganization: true,
         canSwitchOrganizations: false,
         canUseTeamFeatures: true,
+      },
+      resolvedCapabilities: {
+        capabilities: ["research.run"],
+        limits: {
+          research_runs_per_month: 2,
+          max_shortlists: 1,
+          max_shortlist_entries: 25,
+          max_api_keys: 0,
+          api_requests_per_day: 0,
+          public_api_requests_per_hour: 100,
+          max_members: 1,
+        },
       },
       memberships: [
         {
