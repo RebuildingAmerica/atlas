@@ -20,6 +20,7 @@ def build_local_actor() -> AuthenticatedActor:
         email="local@atlas.example.com",
         auth_type="local",
         is_local=True,
+        org_id="local",
     )
 
 

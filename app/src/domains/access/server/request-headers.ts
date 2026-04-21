@@ -10,5 +10,7 @@ import { sanitizeBrowserSessionHeaders } from "./runtime";
  * safe to import from routes that participate in the client route tree.
  */
 export function getBrowserSessionHeaders(): Headers {
+  // getRequestHeaders() returns Headers at runtime but TanStack types it loosely
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
   return sanitizeBrowserSessionHeaders(getRequestHeaders());
 }

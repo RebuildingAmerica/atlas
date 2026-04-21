@@ -36,8 +36,6 @@ print_info() {
 }
 
 ROOT_DIR="$(git rev-parse --show-toplevel)"
-API_DIR="$ROOT_DIR/api"
-APP_DIR="$ROOT_DIR/app"
 
 print_header "Pre-push Quality Gates"
 
@@ -64,62 +62,20 @@ else
     print_success "Working directory is clean"
 fi
 
-# 2. Run full typecheck (mypy + tsc)
-print_info "Running full typecheck suite..."
-
-print_info "  API: mypy..."
-if ! (cd "$API_DIR" && uv run mypy atlas > /dev/null 2>&1); then
-    print_error "MyPy type check failed"
-    echo ""
-    echo -e "${YELLOW}HOW TO FIX:${NC}"
-    echo "  Run: cd api && uv run mypy atlas"
-    echo "  Fix type errors and commit"
-    echo ""
-    FAILED=1
-else
-    print_success "API types OK"
-fi
-
-print_info "  App: TypeScript..."
-if ! (cd "$APP_DIR" && pnpm run typecheck > /dev/null 2>&1); then
-    print_error "TypeScript check failed"
-    echo ""
-    echo -e "${YELLOW}HOW TO FIX:${NC}"
-    echo "  Run: cd app && pnpm run typecheck"
-    echo "  Fix type errors and commit"
-    echo ""
-    FAILED=1
-else
-    print_success "App types OK"
-fi
-
-# 3. Run full test suite with coverage
-print_info "Running full test suite..."
-
-print_info "  API: pytest with coverage (minimum 90%)..."
-if ! (cd "$API_DIR" && uv run pytest --cov=atlas --cov-fail-under=90 > /dev/null 2>&1); then
-    print_error "API tests failed or coverage below 90%"
-    echo ""
-    echo -e "${YELLOW}HOW TO FIX:${NC}"
-    echo "  Run: cd api && uv run pytest --cov=atlas --cov-report=term-missing"
-    echo "  Write tests for uncovered code"
-    echo ""
-    FAILED=1
-else
-    print_success "API tests passed with 90%+ coverage"
-fi
-
-print_info "  App: vitest with coverage (minimum 70%)..."
-if ! (cd "$APP_DIR" && pnpm run test:coverage > /dev/null 2>&1); then
-    print_error "App tests failed or coverage threshold not met"
-    echo ""
-    echo -e "${YELLOW}HOW TO FIX:${NC}"
-    echo "  Run: cd app && pnpm run test:coverage"
-    echo "  Fix test failures or improve coverage and commit"
-    echo ""
-    FAILED=1
-else
-    print_success "App tests passed with 70%+ coverage"
+# 2. Run full quality suite via turbo (typecheck + lint + test for all packages)
+if [ $FAILED -eq 0 ]; then
+    print_info "Running full quality suite (turbo run typecheck lint test)..."
+    if ! (cd "$ROOT_DIR" && pnpm run quality 2>&1); then
+        print_error "Quality checks failed"
+        echo ""
+        echo -e "${YELLOW}HOW TO FIX:${NC}"
+        echo "  Run: pnpm run quality"
+        echo "  Fix any typecheck, lint, or test failures and commit"
+        echo ""
+        FAILED=1
+    else
+        print_success "All quality checks passed"
+    fi
 fi
 
 # Final result

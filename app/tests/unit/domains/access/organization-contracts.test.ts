@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { toAtlasOrganizationDetails, toIsoString } from "@/domains/access/organization-contracts";
+import type { z } from "zod";
+import {
+  toAtlasOrganizationDetails,
+  toIsoString,
+  type organizationDetailsSchema,
+} from "@/domains/access/organization-contracts";
+import type { AtlasWorkspaceSSOState } from "@/domains/access/organization-sso";
 import { createAtlasSessionFixture } from "../../../fixtures/access/sessions";
+
+type OrganizationDetails = z.infer<typeof organizationDetailsSchema>;
 
 describe("organization-contracts", () => {
   describe("toIsoString", () => {
@@ -39,14 +47,29 @@ describe("organization-contracts", () => {
       },
     });
 
-    const ssoState = { providers: [], setup: { workspaceDomainSuggestion: "test" } };
+    const ssoState: AtlasWorkspaceSSOState = {
+      primaryProviderId: null,
+      providers: [],
+      setup: {
+        dnsTokenPrefix: "",
+        googleWorkspaceIssuer: "",
+        googleWorkspaceScopes: [],
+        oidcProviderIdSuggestion: "",
+        oidcRedirectUrl: "",
+        samlAcsUrl: "",
+        samlEntityId: "",
+        samlMetadataUrl: "",
+        samlProviderIdSuggestion: "",
+        workspaceDomainSuggestion: "test",
+      },
+    };
 
     it("returns null when details are missing", () => {
-      expect(toAtlasOrganizationDetails(null, session, ssoState as any)).toBeNull();
+      expect(toAtlasOrganizationDetails(null, session, ssoState)).toBeNull();
     });
 
     it("normalizes full organization details", () => {
-      const details = {
+      const details: OrganizationDetails = {
         id: "org_1",
         name: "Org 1",
         slug: "org-1",
@@ -79,17 +102,20 @@ describe("organization-contracts", () => {
         ],
       };
 
-      const result = toAtlasOrganizationDetails(details as any, session, ssoState as any);
+      const result = toAtlasOrganizationDetails(details, session, ssoState);
 
       expect(result).not.toBeNull();
-      expect(result?.id).toBe("org_1");
-      expect(result?.role).toBe("admin");
-      expect(result?.members[0].image).toBe("img_url");
-      expect(result?.invitations[0].status).toBe("pending");
+      if (!result) return;
+      expect(result.id).toBe("org_1");
+      expect(result.role).toBe("admin");
+      expect(result.members).toHaveLength(1);
+      expect(result.members[0]?.image).toBe("img_url");
+      expect(result.invitations).toHaveLength(1);
+      expect(result.invitations[0]?.status).toBe("pending");
     });
 
     it("defaults to member role when membership is not found", () => {
-      const details = {
+      const details: OrganizationDetails = {
         id: "org_unknown",
         name: "Unknown",
         slug: "unknown",
@@ -97,12 +123,12 @@ describe("organization-contracts", () => {
         invitations: [],
         members: [],
       };
-      const result = toAtlasOrganizationDetails(details as any, session, ssoState as any);
+      const result = toAtlasOrganizationDetails(details, session, ssoState);
       expect(result?.role).toBe("member");
     });
 
     it("handles missing user images", () => {
-      const details = {
+      const details: OrganizationDetails = {
         id: "org_1",
         name: "Org 1",
         slug: "org-1",
@@ -111,6 +137,7 @@ describe("organization-contracts", () => {
         members: [
           {
             id: "mem_1",
+            organizationId: "org_1",
             role: "owner",
             userId: "u1",
             createdAt: new Date(),
@@ -118,8 +145,11 @@ describe("organization-contracts", () => {
           },
         ],
       };
-      const result = toAtlasOrganizationDetails(details as any, session, ssoState as any);
-      expect(result?.members[0].image).toBeNull();
+      const result = toAtlasOrganizationDetails(details, session, ssoState);
+      expect(result).not.toBeNull();
+      if (!result) return;
+      expect(result.members).toHaveLength(1);
+      expect(result.members[0]?.image).toBeNull();
     });
   });
 });
