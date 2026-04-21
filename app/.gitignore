@@ -9,3 +9,4 @@ coverage/
 test-results/
 .tanstack/
 src/lib/generated/
+.vercel/output/
