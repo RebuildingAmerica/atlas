@@ -3,7 +3,10 @@
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { createAtlasSessionFixture } from "../../../../fixtures/access/sessions";
+import {
+  createAtlasSessionFixture,
+  createAtlasWorkspace,
+} from "../../../../fixtures/access/sessions";
 
 const mocks = vi.hoisted(() => ({
   addPasskey: vi.fn(),
@@ -117,6 +120,10 @@ vi.mock("@/domains/access/passkeys.functions", () => ({
   deletePasskey: mocks.deletePasskey,
   listPasskeys: vi.fn(),
   updatePasskey: mocks.updatePasskey,
+}));
+
+vi.mock("@/domains/billing/components/workspace-billing-section", () => ({
+  WorkspaceBillingSection: () => <div data-testid="billing-section">Billing</div>,
 }));
 
 afterEach(() => {
@@ -244,7 +251,29 @@ describe("AccountPage", () => {
       }),
     );
     mocks.useAtlasSession.mockReturnValue({
-      data: createAtlasSessionFixture(),
+      data: createAtlasSessionFixture({
+        workspace: createAtlasWorkspace({
+          resolvedCapabilities: {
+            capabilities: [
+              "research.run",
+              "research.unlimited",
+              "workspace.notes",
+              "workspace.export",
+              "api.keys",
+              "api.mcp",
+            ],
+            limits: {
+              research_runs_per_month: null,
+              max_shortlists: null,
+              max_shortlist_entries: null,
+              max_api_keys: 1,
+              api_requests_per_day: 1000,
+              public_api_requests_per_hour: null,
+              max_members: 1,
+            },
+          },
+        }),
+      }),
     });
     setQueryResults({});
     mocks.addPasskey.mockResolvedValue({
@@ -338,6 +367,27 @@ describe("AccountPage", () => {
         user: {
           name: "   ",
         },
+        workspace: createAtlasWorkspace({
+          resolvedCapabilities: {
+            capabilities: [
+              "research.run",
+              "research.unlimited",
+              "workspace.notes",
+              "workspace.export",
+              "api.keys",
+              "api.mcp",
+            ],
+            limits: {
+              research_runs_per_month: null,
+              max_shortlists: null,
+              max_shortlist_entries: null,
+              max_api_keys: 1,
+              api_requests_per_day: 1000,
+              public_api_requests_per_hour: null,
+              max_members: 1,
+            },
+          },
+        }),
       }),
     });
     setQueryResults({
