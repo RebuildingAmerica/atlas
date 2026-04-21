@@ -1,144 +1,65 @@
-# The Atlas
+# Atlas
 
-A national directory and autodiscovery engine for organizations, people, and initiatives working on transformative change across America.
+**A free, open-source directory helping people discover who's working on the issues that matter most — in every community across America.**
 
-## What Is The Atlas?
+## What is Atlas?
 
-The Atlas is a searchable directory that helps people discover who's doing work on issues they care about — housing, labor, climate, democracy, justice — in any city or region across the country.
+Across the country, thousands of organizations and individuals are working on housing, labor, climate, democracy, justice, and more. But finding them isn't easy. Information is scattered, outdated, or buried in search results.
 
-The core product is an **autodiscovery pipeline**: feed it a location and set of issues, and it searches the web, extracts structured data using AI, deduplicates results, and ranks them by relevance. Every entry traces back to the public sources where it came from.
+Atlas changes that. It's a searchable, public directory powered by an AI-driven discovery engine that continuously finds and organizes information about the people and groups doing meaningful work in communities everywhere. Every entry is traced back to public sources, so you can see exactly where the information comes from.
 
-**Current Phase:** Phase 1 (Scaffold) — Core APIs and database schema in place. Pipeline is stubbed. Frontend is built with routing and components.
+This is a nonprofit, open-source project. To learn more about our mission and goals, see the [Product Vision](./docs/the-atlas-product.md).
 
-## Quick Start
+## Getting Started
 
-### Prerequisites
-- Python 3.12+
-- Node.js 20+
-- Make
+Whether you're a developer, researcher, organizer, or just curious — welcome. Here's how to get involved:
 
-Full setup instructions: [Prerequisites](./docs/getting-started/prerequisites.md)
+- **Explore the project** — Read the [Product Vision](./docs/the-atlas-product.md) to understand what we're building and why
+- **Set up a development environment** — Follow the [Getting Started](./docs/getting-started/README.md) guide
+- **Contribute** — Check the [Development Workflow](./docs/development/workflow.md) for how we work together
 
-### 3-Step Setup
+## For Developers
+
+### Quick Start
+
+**Prerequisites:** Python 3.12+, Node.js 20+, and Make. See [full prerequisites](./docs/getting-started/prerequisites.md).
 
 ```bash
-# 1. Clone and navigate to the project
 cd atlas
-
-# 2. Run first-time setup
 make setup
-
-# 3. Start development
 make dev
 ```
 
-- Backend API: http://localhost:8000
-- Frontend: http://localhost:3000
-- API Docs: http://localhost:8000/docs (Swagger)
+| Service  | URL                          |
+|----------|------------------------------|
+| Frontend | http://localhost:3000        |
+| API      | http://localhost:8000        |
+| API Docs | http://localhost:8000/docs   |
 
-## Documentation
+### Documentation
 
-Full documentation is in `docs/`:
+All technical documentation lives in [`docs/`](./docs/README.md):
 
-- **[Getting Started](./docs/getting-started/README.md)** — New to the project? Start here
-- **[Architecture](./docs/architecture/README.md)** — How the system is built
-- **[Development Guide](./docs/development/README.md)** — Build features
-- **[Standards](./docs/standards/README.md)** — Code style and conventions
-- **[Design](./docs/design/README.md)** — Product vision and system design
+| Section | Description |
+|---------|-------------|
+| [Getting Started](./docs/getting-started/README.md) | Installation, setup, and project orientation |
+| [Architecture](./docs/architecture/README.md) | System design, data model, and pipeline |
+| [Development](./docs/development/README.md) | Workflow, building features, and testing |
+| [Standards](./docs/standards/README.md) | Code style, commit conventions, and API design |
+| [Deployment](./docs/deployment/README.md) | Production deployment and release process |
+| [Design](./docs/design/README.md) | Product vision and system design documents |
 
-Or jump to [docs/README.md](./docs/README.md) for the full documentation hub.
+### Tech Stack
 
-## Tech Stack
-
-- **Backend:** Python 3.12 + FastAPI + SQLite (FTS5)
+- **Backend:** Python 3.12, FastAPI, SQLite (FTS5)
 - **Frontend:** TanStack Start (React + TypeScript)
-- **AI:** Anthropic Claude API for extraction
-- **DevOps:** Docker Compose, Makefile, git hooks
+- **AI:** Anthropic Claude API for structured data extraction
+- **DevOps:** Docker Compose, Makefile, Turborepo
 
-## Development Commands
+### Contributing
 
-Common commands. Run `make help` for all:
+Start with the [Getting Started](./docs/getting-started/README.md) guide, then follow the [Development Workflow](./docs/development/workflow.md) for day-to-day practices. All commits must follow the [Conventional Commits](./docs/standards/commit-messages.md) format, enforced automatically by git hooks.
 
-```bash
-make dev              # Start full stack (api + app)
-make dev-api          # Start API server only
-make dev-app          # Start app only
+## License
 
-make quality          # Run all quality checks
-make format           # Format code
-make lint             # Lint code
-make typecheck        # Type-check code
-make test             # Run tests with coverage
-
-make db-init          # Initialize database
-make db-reset         # Reset database (deletes data)
-
-docker compose up     # Run with Docker
-```
-
-## Project Structure
-
-```
-atlas/
-├── api/                      # Python/FastAPI API server
-│   ├── atlas/
-│   │   ├── api/              # REST endpoints
-│   │   ├── models/           # Database models
-│   │   ├── pipeline/         # Autodiscovery pipeline (6 steps)
-│   │   ├── schemas/          # Pydantic schemas
-│   │   └── taxonomy/         # Issue area definitions
-│   └── tests/                # Test suite
-│
-├── app/                      # TanStack Start (React/TypeScript)
-│   ├── src/
-│   │   ├── routes/           # File-based routes
-│   │   ├── components/       # Reusable components
-│   │   ├── hooks/            # Custom hooks
-│   │   ├── types/            # TypeScript types
-│   │   └── lib/              # API client, utils
-│
-├── docs/                     # Documentation
-│   ├── getting-started/      # Onboarding
-│   ├── architecture/         # System design
-│   ├── development/          # Development guide
-│   ├── standards/            # Code standards
-│   └── design/               # Product vision
-│
-├── .githooks/                # Git hooks (quality gates)
-├── Makefile                  # Development commands
-├── docker-compose.yml        # Multi-container setup
-└── .env.example              # Environment template
-```
-
-For details: [Project Structure](./docs/getting-started/project-structure.md)
-
-## Quality & Standards
-
-All code is checked automatically:
-
-- **Pre-commit hook:** Format, lint, types on every commit
-- **Commit-msg hook:** Enforces Conventional Commits format
-- **Pre-push hook:** Full test suite, 90%+ coverage, build succeeds
-
-See [Code Quality](./docs/development/code-quality.md) for how to fix issues.
-
-## Architecture
-
-Three-layer design:
-
-1. **Interface Layer** — REST API + React app
-2. **Business Logic Layer** — FastAPI endpoints + autodiscovery pipeline
-3. **Storage Layer** — SQLite database with FTS5 full-text search
-
-The pipeline is the core: it takes a location and issue areas, searches the web, extracts entries using Claude AI, deduplicates, ranks, and identifies gaps.
-
-See [System Overview](./docs/architecture/system-overview.md) for details.
-
-## Contributing
-
-1. Read the [Getting Started](./docs/getting-started/README.md) guide
-2. Follow [Development Workflow](./docs/development/workflow.md)
-3. Reference [Standards](./docs/standards/README.md) for code style
-4. Write tests and ensure all quality checks pass
-
-Commits must follow [Conventional Commits](./docs/standards/commit-messages.md) format. Hooks enforce this automatically.
+This project is licensed under the [MIT License](./LICENSE).
