@@ -21,12 +21,7 @@ export async function runInstallPhase(
   const followUpItems: string[] = [];
   let allReady = true;
 
-  const caps = CAPABILITY_SPECS.filter((cap) => {
-    if (localOnly && cap.category !== "core") return false;
-    return cap.requiredByDefault || cap.category === "core";
-  });
-
-  for (const cap of caps) {
+  for (const cap of CAPABILITY_SPECS) {
     const result = checkCapability(cap);
 
     if (result.installed) {
@@ -36,6 +31,20 @@ export async function runInstallPhase(
         status: "ready",
         installStatus: "ready",
         detectedVersion: result.version,
+      });
+      continue;
+    }
+
+    // Not installed — decide whether to offer installation
+    const isRequired = cap.requiredByDefault || cap.category === "core";
+    const skippedByLocalOnly = localOnly && cap.category !== "core";
+
+    if (skippedByLocalOnly) {
+      log.info(`${cap.label} — not installed (not needed for local dev)`);
+      markCapability(state, cap.id, {
+        status: "skipped",
+        installStatus: "skipped",
+        details: "not needed for --local-only",
       });
       continue;
     }
@@ -53,8 +62,8 @@ export async function runInstallPhase(
     }
 
     const shouldInstall = await promptConfirm(
-      `${cap.label} is not installed. Install it?`,
-      true,
+      `${cap.label} is not installed${isRequired ? " (required)" : ""}. Install it?`,
+      isRequired,
     );
 
     if (!shouldInstall) {

@@ -14,13 +14,7 @@ export async function runAuthPhase(
   const followUpItems: string[] = [];
   let allReady = true;
 
-  const capsWithAuth = CAPABILITY_SPECS.filter((cap) => {
-    if (!cap.auth) return false;
-    if (localOnly && cap.category !== "core") return false;
-    // Only check auth for capabilities that are installed
-    const capState = state.capabilities[cap.id];
-    return capState?.installStatus === "ready";
-  });
+  const capsWithAuth = CAPABILITY_SPECS.filter((cap) => cap.auth);
 
   if (capsWithAuth.length === 0) {
     log.info("No CLI tools require authentication.");
@@ -30,6 +24,28 @@ export async function runAuthPhase(
   for (const cap of capsWithAuth) {
     const auth = cap.auth;
     if (!auth) continue;
+
+    const capState = state.capabilities[cap.id];
+
+    // Not installed — show status but don't try to auth
+    if (capState?.installStatus !== "ready") {
+      log.info(`${cap.label} — not installed, skipping auth`);
+      continue;
+    }
+
+    // Installed but skipped for local-only
+    if (localOnly && cap.category !== "core") {
+      const checkResult = runCommand(auth.checkCommand);
+      if (checkResult.ok) {
+        log.success(`${cap.label} — authenticated`);
+        markCapability(state, cap.id, { authStatus: "ready" });
+      } else {
+        log.info(`${cap.label} — not authenticated (not needed for local dev)`);
+        markCapability(state, cap.id, { authStatus: "skipped" });
+      }
+      continue;
+    }
+
     const checkResult = runCommand(auth.checkCommand);
 
     if (checkResult.ok) {
