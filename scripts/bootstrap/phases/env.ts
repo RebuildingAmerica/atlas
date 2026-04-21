@@ -161,7 +161,7 @@ export async function runEnvPhase(
   }
 
   // Step 6: Sync to Vercel if deploy-vercel capability is ready
-  if (!doctorMode && state.capabilities["deploy-vercel"]?.status === "ready") {
+  if (state.capabilities["deploy-vercel"]?.status === "ready") {
     const appDir = path.join(projectRoot, "app");
     await detectAndLink(appDir);
 
