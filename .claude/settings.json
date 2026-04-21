@@ -16,7 +16,6 @@
       "Bash(git merge*)",
       "Bash(git branch -D*)",
       "Bash(git branch -d*)",
-      "Bash(git rm*)",
       "Bash(*git stash*)",
       "Bash(*git reset*)",
       "Bash(*&& git stash*)",
