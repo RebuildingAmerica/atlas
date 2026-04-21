@@ -99,7 +99,7 @@ member beyond the first is one seat.
 For short-term projects that need Pro capabilities without a
 subscription commitment.
 
-**Billing:** $50 one-time (30 days) or $12/week (auto-renewing).
+**Billing:** $9 one-time (30 days) or $4 one-time (7 days).
 
 **What it grants:** Pro-level capabilities for the pass duration.
 
@@ -108,6 +108,14 @@ Free). Shortlists, notes, and saved research remain accessible
 read-only until the user subscribes or buys another pass.
 
 **Stacking:** No effect if the workspace already has Pro or Team.
+
+**Pricing rationale:** The pass is a side-grade to monthly Pro — same
+capabilities, time-limited instead of ongoing. Both options are one-time
+(non-auto-renewing) to match the "pass" concept. Priced higher per-day
+than Pro ($0.30/day for 30-day pass vs Pro's $0.17/day) to cover compute
+costs while remaining accessible for deadline-driven research. The 7-day
+option costs $4; four weeks of 7-day passes ($16 total) exceeds the $5
+monthly Pro, maintaining the incentive to subscribe for ongoing use.
 
 ## Plan Comparison
 
