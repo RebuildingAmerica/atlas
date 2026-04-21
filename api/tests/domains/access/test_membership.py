@@ -74,6 +74,7 @@ async def test_cache_hit_returns_cached_result_without_http(
         "slug": "test-org",
         "name": "Test Org",
         "workspaceType": "team",
+        "activeProducts": [],
     }
     response = httpx.Response(
         200,
@@ -122,6 +123,7 @@ async def test_cache_miss_makes_http_get(
             "slug": "my-org",
             "name": "My Org",
             "workspaceType": "personal",
+            "activeProducts": [],
         },
         request=httpx.Request(
             "GET",
@@ -185,6 +187,7 @@ async def test_200_response_returns_membership_result(
         "slug": "acme-corp",
         "name": "Acme Corp",
         "workspaceType": "enterprise",
+        "activeProducts": ["atlas_team"],
     }
     response = httpx.Response(
         200,
@@ -212,6 +215,7 @@ async def test_200_response_returns_membership_result(
     assert result.slug == "acme-corp"
     assert result.name == "Acme Corp"
     assert result.workspace_type == "enterprise"
+    assert result.active_products == ["atlas_team"]
 
 
 async def test_non_200_non_404_raises_error(

@@ -3,6 +3,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .capabilities import ResolvedCapabilities
 
 
 @dataclass(slots=True)
@@ -31,3 +35,5 @@ class AuthenticatedActor:
     org_role: str | None = None
     org_slug: str | None = None
     workspace_type: str | None = None
+    active_products: list[str] | None = None
+    resolved_capabilities: ResolvedCapabilities | None = None

@@ -13,6 +13,7 @@ if TYPE_CHECKING:
 from atlas.platform.config import Settings, get_settings
 
 from .api_keys import verify_api_key
+from .capabilities import resolve_capabilities
 from .internal import build_local_actor, verify_internal_actor
 from .jwt import verify_bearer_jwt
 from .membership import verify_org_membership
@@ -146,6 +147,8 @@ async def require_org_actor(
 
     if not settings.auth_membership_verification_url:
         # Dev/local mode: trust the org_id from the token as-is.
+        actor.active_products = []
+        actor.resolved_capabilities = resolve_capabilities([])
         return actor
 
     result = await verify_org_membership(actor.user_id, actor.org_id, settings)
@@ -158,6 +161,8 @@ async def require_org_actor(
     actor.org_role = result.role
     actor.org_slug = result.slug
     actor.workspace_type = result.workspace_type
+    actor.active_products = result.active_products
+    actor.resolved_capabilities = resolve_capabilities(result.active_products)
     return actor
 
 

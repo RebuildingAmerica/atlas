@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 import httpx
@@ -28,6 +28,7 @@ class MembershipResult:
     slug: str
     name: str
     workspace_type: str
+    active_products: list[str] = field(default_factory=list)
 
 
 @dataclass(slots=True)
@@ -115,6 +116,7 @@ async def verify_org_membership(
         slug=str(payload["slug"]),
         name=str(payload["name"]),
         workspace_type=str(payload["workspaceType"]),
+        active_products=[str(p) for p in payload.get("activeProducts", [])],
     )
 
     _set_cached(user_id, org_id, result)

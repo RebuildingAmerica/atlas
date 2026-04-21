@@ -98,6 +98,7 @@ async def test_require_org_actor_populates_org_fields_on_success(
             slug="verified-org",
             name="Verified Org",
             workspace_type="team",
+            active_products=[],
         )
 
     monkeypatch.setattr(
@@ -110,6 +111,8 @@ async def test_require_org_actor_populates_org_fields_on_success(
     assert result.org_role == "admin"
     assert result.org_slug == "verified-org"
     assert result.workspace_type == "team"
+    assert result.active_products == []
+    assert result.resolved_capabilities is not None
 
 
 async def test_require_org_role_admin_raises_403_for_member_role() -> None:
