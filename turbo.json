@@ -11,18 +11,11 @@
     "build": {
       "outputs": ["dist/**"]
     },
-    "typecheck": {
-      "cache": false
-    },
-    "lint": {
-      "cache": false
-    },
-    "test": {
-      "cache": false
-    },
+    "typecheck": {},
+    "lint": {},
+    "test": {},
     "quality": {
-      "dependsOn": ["typecheck", "lint", "test"],
-      "cache": false
+      "dependsOn": ["typecheck", "lint", "test"]
     },
     "//#openapi": {
       "inputs": [
@@ -36,16 +29,14 @@
       "inputs": [
         "api/**",
         "openapi/atlas.openapi.json"
-      ],
-      "cache": false
+      ]
     },
     "//#contract:test": {
       "dependsOn": ["//#openapi"],
       "inputs": [
         "api/**",
         "openapi/atlas.openapi.json"
-      ],
-      "cache": false
+      ]
     },
     "//#compose:validate": {
       "inputs": [
@@ -53,8 +44,7 @@
         ".env.production.example",
         ".env.example",
         "deploy/Caddyfile"
-      ],
-      "cache": false
+      ]
     },
     "//#secrets:scan": {
       "inputs": [
@@ -66,8 +56,7 @@
         "api/uv.lock",
         "package.json",
         ".githooks/pre-push"
-      ],
-      "cache": false
+      ]
     },
     "//#e2e:api": {
       "inputs": [
@@ -87,7 +76,6 @@
         "PORT",
         "SEARCH_API_KEY"
       ],
-      "cache": false,
       "persistent": true
     },
     "//#prod:verify": {
@@ -102,8 +90,7 @@
         "app#test",
         "app#test:e2e",
         "app#build"
-      ],
-      "cache": false
+      ]
     }
   }
 }

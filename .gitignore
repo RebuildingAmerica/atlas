@@ -125,3 +125,6 @@ Vagrantfile
 *.tar.gz
 *.zip
 *.rar
+
+# Turborepo
+.turbo

@@ -39,6 +39,11 @@ Quality gates and tooling. Pre-commit hooks, linting, formatting, type checking.
 
 → [Read: Code Quality](./code-quality.md)
 
+### Turborepo
+Task orchestration, caching, and the task dependency graph. How tasks are connected, how caching works, and how to run or add tasks.
+
+→ [Read: Turborepo](./turborepo.md)
+
 ## Quick Reference
 
 ### Running Locally
@@ -137,8 +142,11 @@ make db-reset
 | Add a new issue area | [API Development](./api.md) |
 | Add a new page | [App Development](./app.md) |
 | Add a new component | [App Development](./app.md) |
-| Fix a type error | [Code Quality](./code-quality.md) |
+| Fix a type error | [Code Quality](./code-quality.md#common-type-errors-and-fixes) |
 | Write tests | [Testing](./testing.md) |
+| Understand the task graph | [Turborepo](./turborepo.md#task-graph) |
+| Add a new monorepo task | [Turborepo](./turborepo.md#adding-a-new-task) |
+| Debug a cached/stale build | [Turborepo](./turborepo.md#debugging) |
 
 ## Architecture Review
 
