@@ -2,6 +2,7 @@
 # Bootstrap State
 # ============================================
 .atlas/
+.superpowers/
 
 # ============================================
 # Environment & Configuration

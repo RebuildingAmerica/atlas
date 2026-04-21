@@ -10,3 +10,4 @@ test-results/
 .tanstack/
 src/lib/generated/
 .vercel/output/
+.vercel
