@@ -125,4 +125,119 @@ export const ATLAS_PRODUCTS: AtlasProductDefinition[] = [
     existingProductId: "prod_UMku0d4n2sHTkm",
     prices: [],
   },
+  {
+    id: "independent-journalist-pro",
+    stripeName: "Atlas Pro (Independent Journalist)",
+    description: "Discounted Pro tier for independent journalists — 50% off",
+    envProductKey: "STRIPE_PRODUCT_INDEPENDENT_JOURNALIST_PRO",
+    action: "create",
+    prices: [
+      {
+        id: "independent-journalist-pro-monthly",
+        envKey: "STRIPE_PRICE_INDEPENDENT_JOURNALIST_PRO_MONTHLY",
+        unitAmountCents: 250, // $2.50 = 50% of $5
+        currency: "usd",
+        recurring: { interval: "month" },
+      },
+      {
+        id: "independent-journalist-pro-yearly",
+        envKey: "STRIPE_PRICE_INDEPENDENT_JOURNALIST_PRO_YEARLY",
+        unitAmountCents: 2400, // $24 = 50% of $48
+        currency: "usd",
+        recurring: { interval: "year" },
+      },
+    ],
+  },
+  {
+    id: "independent-journalist-team",
+    stripeName: "Atlas Team (Independent Journalist)",
+    description: "Discounted Team tier for independent journalists — 50% off",
+    envProductKey: "STRIPE_PRODUCT_INDEPENDENT_JOURNALIST_TEAM",
+    action: "create",
+    prices: [
+      {
+        id: "independent-journalist-team-monthly",
+        envKey: "STRIPE_PRICE_INDEPENDENT_JOURNALIST_TEAM_MONTHLY",
+        unitAmountCents: 1250, // $12.50 base = 50% of $25
+        currency: "usd",
+        recurring: { interval: "month" },
+      },
+      {
+        id: "independent-journalist-team-yearly",
+        envKey: "STRIPE_PRICE_INDEPENDENT_JOURNALIST_TEAM_YEARLY",
+        unitAmountCents: 12500, // $125 base = 50% of $250
+        currency: "usd",
+        recurring: { interval: "year" },
+      },
+    ],
+  },
+  {
+    id: "grassroots-nonprofit-team",
+    stripeName: "Atlas Team (Grassroots Nonprofit)",
+    description: "Discounted Team tier for nonprofits <$2M — 40% off",
+    envProductKey: "STRIPE_PRODUCT_GRASSROOTS_NONPROFIT_TEAM",
+    action: "create",
+    prices: [
+      {
+        id: "grassroots-nonprofit-team-monthly",
+        envKey: "STRIPE_PRICE_GRASSROOTS_NONPROFIT_TEAM_MONTHLY",
+        unitAmountCents: 1500, // $15 base = 40% of $25
+        currency: "usd",
+        recurring: { interval: "month" },
+      },
+      {
+        id: "grassroots-nonprofit-team-yearly",
+        envKey: "STRIPE_PRICE_GRASSROOTS_NONPROFIT_TEAM_YEARLY",
+        unitAmountCents: 15000, // $150 base = 40% of $250
+        currency: "usd",
+        recurring: { interval: "year" },
+      },
+    ],
+  },
+  {
+    id: "civic-tech-pro",
+    stripeName: "Atlas Pro (Civic Tech Worker)",
+    description: "Discounted Pro tier for civic tech workers — 50% off",
+    envProductKey: "STRIPE_PRODUCT_CIVIC_TECH_PRO",
+    action: "create",
+    prices: [
+      {
+        id: "civic-tech-pro-monthly",
+        envKey: "STRIPE_PRICE_CIVIC_TECH_PRO_MONTHLY",
+        unitAmountCents: 250, // $2.50 = 50% of $5
+        currency: "usd",
+        recurring: { interval: "month" },
+      },
+      {
+        id: "civic-tech-pro-yearly",
+        envKey: "STRIPE_PRICE_CIVIC_TECH_PRO_YEARLY",
+        unitAmountCents: 2400, // $24 = 50% of $48
+        currency: "usd",
+        recurring: { interval: "year" },
+      },
+    ],
+  },
+  {
+    id: "civic-tech-team",
+    stripeName: "Atlas Team (Civic Tech Worker)",
+    description: "Discounted Team tier for civic tech workers — 50% off",
+    envProductKey: "STRIPE_PRODUCT_CIVIC_TECH_TEAM",
+    action: "create",
+    prices: [
+      {
+        id: "civic-tech-team-monthly",
+        envKey: "STRIPE_PRICE_CIVIC_TECH_TEAM_MONTHLY",
+        unitAmountCents: 1250, // $12.50 base = 50% of $25
+        currency: "usd",
+        recurring: { interval: "month" },
+      },
+      {
+        id: "civic-tech-team-yearly",
+        envKey: "STRIPE_PRICE_CIVIC_TECH_TEAM_YEARLY",
+        unitAmountCents: 12500, // $125 base = 50% of $250
+        currency: "usd",
+        recurring: { interval: "year" },
+      },
+    ],
+  },
 ];
