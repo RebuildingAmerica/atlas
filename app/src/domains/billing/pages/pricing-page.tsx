@@ -1,12 +1,19 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import type { ReactNode } from "react";
+import type { AtlasProduct } from "../../access/capabilities";
+import { useAtlasSession } from "../../access/client/use-atlas-session";
+import { startCheckout } from "../checkout.functions";
 
 // ---------------------------------------------------------------------------
-// Placeholder checkout handler — wire to real startCheckout when ready
+// Checkout handler
 // ---------------------------------------------------------------------------
 
-function startCheckout(_planId: string) {
-  // TODO: Wire to real checkout flow once Stripe integration is complete
+/**
+ * Parameters for initiating a checkout flow from the pricing page.
+ */
+interface CheckoutParams {
+  product: AtlasProduct;
+  interval: "monthly" | "yearly" | "once" | "weekly";
 }
 
 // ---------------------------------------------------------------------------
@@ -24,7 +31,7 @@ interface ProductCardProps {
   features: Feature[];
   cta?: {
     label: string;
-    planId: string;
+    onCheckout: () => void;
   };
   featured?: boolean;
 }
@@ -89,9 +96,7 @@ function ProductCard({ label, price, description, features, cta, featured }: Pro
         <div className="mt-auto pt-6">
           <button
             type="button"
-            onClick={() => {
-              startCheckout(cta.planId);
-            }}
+            onClick={cta.onCheckout}
             className={[
               "type-label-large w-full rounded-full px-4 py-2.5 text-center font-medium transition-[background-color,border-color] duration-150 focus:ring-2 focus:ring-offset-2 focus:outline-none",
               featured
@@ -157,10 +162,24 @@ function ResearchPassPrice() {
  * Public-facing pricing page.
  *
  * Accessible without authentication. Shows Atlas's three product tiers and
- * a Research Pass option. CTA buttons call startCheckout(), which will be
- * wired to the actual checkout flow separately.
+ * a Research Pass option. CTA buttons call startCheckout(), which redirects
+ * through Stripe Checkout. Users must be signed in to purchase; unauthenticated
+ * users are redirected to /sign-in first.
  */
 export function PricingPage() {
+  const navigate = useNavigate();
+  const session = useAtlasSession();
+
+  async function handleCheckout({ product, interval }: CheckoutParams) {
+    if (!session.data) {
+      void navigate({ to: "/sign-in", search: { redirect: "/pricing" } });
+      return;
+    }
+
+    const result = await startCheckout({ data: { product, interval } });
+    window.location.assign(result.url);
+  }
+
   return (
     <div className="bg-page-bg flex min-h-screen flex-col">
       {/* Minimal nav */}
@@ -235,7 +254,15 @@ export function PricingPage() {
               { text: "1 API key (1,000 req/day)" },
               { text: "MCP and OAuth access" },
             ]}
-            cta={{ label: "Get Pro", planId: "atlas-pro" }}
+            cta={{
+              label: "Get Pro",
+              onCheckout: () => {
+                void handleCheckout({
+                  product: "atlas_pro",
+                  interval: "monthly",
+                });
+              },
+            }}
             featured
           />
 
@@ -252,7 +279,15 @@ export function PricingPage() {
               { text: "SSO (SAML/OIDC)" },
               { text: "Up to 50 members" },
             ]}
-            cta={{ label: "Get Team", planId: "atlas-team" }}
+            cta={{
+              label: "Get Team",
+              onCheckout: () => {
+                void handleCheckout({
+                  product: "atlas_team",
+                  interval: "monthly",
+                });
+              },
+            }}
           />
         </section>
 
@@ -286,7 +321,10 @@ export function PricingPage() {
                 <button
                   type="button"
                   onClick={() => {
-                    startCheckout("atlas-research-pass");
+                    void handleCheckout({
+                      product: "atlas_research_pass",
+                      interval: "once",
+                    });
                   }}
                   className="type-label-large border-border text-ink-strong hover:border-border-strong hover:bg-surface-container-high focus:ring-border-strong w-full rounded-full border bg-transparent px-6 py-2.5 text-center font-medium transition-[background-color,border-color] duration-150 focus:ring-2 focus:ring-offset-2 focus:outline-none sm:w-auto"
                 >

@@ -11,6 +11,7 @@ import { deletePasskey, listPasskeys, updatePasskey } from "../passkeys.function
 import { resolvePasskeyName } from "../passkey-names";
 import { getAuthClient } from "../client/auth-client";
 import { atlasSessionQueryKey, useAtlasSession } from "../client/use-atlas-session";
+import { WorkspaceBillingSection } from "../../billing/components/workspace-billing-section";
 
 const PASSKEYS_QUERY_KEY = ["auth", "passkeys"] as const;
 const API_KEYS_QUERY_KEY = ["auth", "api-keys"] as const;
@@ -282,6 +283,8 @@ export function AccountPage() {
           ) : null}
         </div>
       ) : null}
+
+      <WorkspaceBillingSection activeProducts={atlasSession.data?.workspace.activeProducts ?? []} />
 
       <section className="grid gap-6 lg:grid-cols-2">
         <div className="border-border-strong bg-surface space-y-4 rounded-[1.5rem] border p-6">

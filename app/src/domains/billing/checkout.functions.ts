@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { createCheckoutSession } from "./server/checkout";
+import { ATLAS_PRODUCTS } from "./products";
 import { ensureAuthReady } from "../access/server/auth";
 import { getBrowserSessionHeaders } from "../access/server/request-headers";
 import { getAuthRuntimeConfig } from "../access/server/runtime";
@@ -9,8 +10,30 @@ import { normalizeAtlasOrganizationMetadata } from "../access/organization-metad
 
 const checkoutInputSchema = z.object({
   product: z.enum(["atlas_pro", "atlas_team", "atlas_research_pass"]),
-  priceId: z.string().min(1),
+  interval: z.enum(["monthly", "yearly", "once", "weekly"]),
 });
+
+/**
+ * Resolves the Stripe price ID for a product and billing interval.
+ */
+function resolvePriceId(product: string, interval: string): string {
+  if (product === "atlas_pro") {
+    return interval === "yearly"
+      ? ATLAS_PRODUCTS.atlas_pro.yearlyPriceId
+      : ATLAS_PRODUCTS.atlas_pro.monthlyPriceId;
+  }
+  if (product === "atlas_team") {
+    return interval === "yearly"
+      ? ATLAS_PRODUCTS.atlas_team.yearlyPriceId
+      : ATLAS_PRODUCTS.atlas_team.monthlyPriceId;
+  }
+  if (product === "atlas_research_pass") {
+    return interval === "weekly"
+      ? ATLAS_PRODUCTS.atlas_research_pass.weeklyPriceId
+      : ATLAS_PRODUCTS.atlas_research_pass.oncePriceId;
+  }
+  throw new Error(`Unknown product: ${product}`);
+}
 
 /**
  * Creates a Stripe Checkout Session and returns the redirect URL.
@@ -21,6 +44,11 @@ const checkoutInputSchema = z.object({
 export const startCheckout = createServerFn({ method: "POST" })
   .inputValidator(checkoutInputSchema)
   .handler(async ({ data }) => {
+    const priceId = resolvePriceId(data.product, data.interval);
+    if (!priceId) {
+      throw new Error("Stripe price not configured for this product. Check environment variables.");
+    }
+
     const session = await requireAtlasSessionState();
     const activeWorkspace = session.workspace.activeOrganization;
 
@@ -39,13 +67,13 @@ export const startCheckout = createServerFn({ method: "POST" })
 
     const orgMetadata = normalizeAtlasOrganizationMetadata(fullOrganization?.metadata);
 
-    const successUrl = `${runtime.publicBaseUrl}/billing?session_id={CHECKOUT_SESSION_ID}`;
-    const cancelUrl = `${runtime.publicBaseUrl}/billing`;
+    const successUrl = `${runtime.publicBaseUrl}/account?checkout=success`;
+    const cancelUrl = `${runtime.publicBaseUrl}/pricing`;
 
     const result = await createCheckoutSession({
       workspaceId: activeWorkspace.id,
       product: data.product,
-      priceId: data.priceId,
+      priceId,
       successUrl,
       cancelUrl,
       customerEmail: session.user.email,
