@@ -51,6 +51,7 @@
     "react-dom": "^19.2.4",
     "react-simple-maps": "^3.0.0",
     "resend": "^6.10.0",
+    "stripe": "^18.5.0",
     "tailwind-merge": "^2.6.0",
     "us-atlas": "^3.0.1",
     "zod": "^4.1.12"

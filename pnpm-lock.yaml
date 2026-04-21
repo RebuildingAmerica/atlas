@@ -97,6 +97,9 @@ importers:
       resend:
         specifier: ^6.10.0
         version: 6.10.0
+      stripe:
+        specifier: ^18.5.0
+        version: 18.5.0(@types/node@24.12.2)
       tailwind-merge:
         specifier: ^2.6.0
         version: 2.6.1
