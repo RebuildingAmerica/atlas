@@ -79,24 +79,20 @@ class TestMain:
         mock_module.create_app.return_value = mock_app
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            # Create a fake __file__ path so parents[2] resolves to tmpdir
             fake_file = str(Path(tmpdir) / "atlas" / "platform" / "openapi.py")
+            expected = Path(tmpdir) / "openapi" / "atlas.openapi.json"
 
-            original_file = openapi_module.__file__
-            try:
-                openapi_module.__file__ = fake_file
-                with patch(
+            with (
+                patch.object(openapi_module, "__file__", fake_file),
+                patch(
                     "atlas.platform.openapi.importlib.import_module",
                     return_value=mock_module,
-                ):
-                    main()
+                ),
+            ):
+                main()
 
-                    mock_module.create_app.assert_called_once()
+            mock_module.create_app.assert_called_once()
+            assert expected.exists()
 
-                    expected = Path(tmpdir) / "openapi" / "atlas.openapi.json"
-                    assert expected.exists()
-
-                    captured = capsys.readouterr()
-                    assert str(expected) in captured.out
-            finally:
-                openapi_module.__file__ = original_file
+            captured = capsys.readouterr()
+            assert str(expected) in captured.out
