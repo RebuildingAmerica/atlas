@@ -32,7 +32,23 @@ describe("OrganizationWorkspacePageView", () => {
       sso: { providers: [] },
     },
     activeWorkspace: { id: "org_1", name: "Atlas" },
-    session: { user: { id: "user_1" } },
+    session: {
+      user: { id: "user_1" },
+      workspace: {
+        resolvedCapabilities: {
+          capabilities: ["research.run", "workspace.shared"],
+          limits: {
+            research_runs_per_month: 2,
+            max_shortlists: 1,
+            max_shortlist_entries: 25,
+            max_api_keys: 0,
+            api_requests_per_day: 0,
+            public_api_requests_per_hour: 100,
+            max_members: 1,
+          },
+        },
+      },
+    },
     workspaceName: "Atlas",
     workspaceSlug: "atlas",
     workspaceType: "team",

@@ -228,7 +228,35 @@ describe("OrganizationPage", () => {
     });
     organizationPageDependencyMocks.verifyWorkspaceSSODomain.mockResolvedValue({ ok: true });
 
-    setAtlasSession(createAtlasSessionFixture());
+    setAtlasSession(
+      createAtlasSessionFixture({
+        workspace: createAtlasWorkspace({
+          resolvedCapabilities: {
+            capabilities: [
+              "research.run",
+              "research.unlimited",
+              "workspace.notes",
+              "workspace.export",
+              "workspace.shared",
+              "api.keys",
+              "api.mcp",
+              "monitoring.watchlists",
+              "integrations.slack",
+              "auth.sso",
+            ],
+            limits: {
+              research_runs_per_month: null,
+              max_shortlists: null,
+              max_shortlist_entries: null,
+              max_api_keys: null,
+              api_requests_per_day: 10000,
+              public_api_requests_per_hour: null,
+              max_members: 50,
+            },
+          },
+        }),
+      }),
+    );
     setOrganizationDetails(createOrganizationDetailsFixture());
   });
 

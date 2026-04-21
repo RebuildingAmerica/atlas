@@ -18,6 +18,23 @@ describe("OrganizationSSOPageView", () => {
     canSwitchOrganizations: false,
     hasPendingInvitations: false,
     organizationLoading: false,
+    session: {
+      user: { id: "user_1" },
+      workspace: {
+        resolvedCapabilities: {
+          capabilities: ["research.run", "workspace.shared", "auth.sso"],
+          limits: {
+            research_runs_per_month: null,
+            max_shortlists: null,
+            max_shortlist_entries: null,
+            max_api_keys: null,
+            api_requests_per_day: 10000,
+            public_api_requests_per_hour: null,
+            max_members: 50,
+          },
+        },
+      },
+    },
     organization: {
       id: "org_1",
       name: "Atlas",
@@ -75,10 +92,29 @@ describe("OrganizationSSOPageView", () => {
   it("shows team requirement message for personal workspaces", () => {
     const controller = buildController({
       canUseTeamFeatures: false,
+      session: {
+        user: { id: "user_1" },
+        workspace: {
+          resolvedCapabilities: {
+            capabilities: ["research.run"],
+            limits: {
+              research_runs_per_month: 2,
+              max_shortlists: 1,
+              max_shortlist_entries: 25,
+              max_api_keys: 0,
+              api_requests_per_day: 0,
+              public_api_requests_per_hour: 100,
+              max_members: 1,
+            },
+          },
+        },
+      },
     }) as unknown as OrganizationPageController;
     render(<OrganizationSSOPageView controller={controller} />);
     expect(
-      screen.getByText(/Enterprise SSO is available only for team workspaces/i),
+      screen.getByText(
+        /Enterprise SSO configuration is not available for your current workspace plan/i,
+      ),
     ).toBeInTheDocument();
   });
 });

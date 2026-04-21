@@ -136,6 +136,7 @@ describe("sso.functions", () => {
         data: {
           metadata: {
             ssoPrimaryProviderId: "atlas-team-google-workspace-oidc",
+            stripeCustomerId: null,
             workspaceType: "team",
           },
         },
@@ -306,6 +307,7 @@ describe("sso.functions", () => {
         data: {
           metadata: {
             ssoPrimaryProviderId: null,
+            stripeCustomerId: null,
             workspaceType: "team",
           },
         },

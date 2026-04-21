@@ -39,9 +39,17 @@ const mocks = vi.hoisted(() => ({
   betterAuth: vi.fn(),
   createEmailService: vi.fn(),
   emailSend: vi.fn(),
-  databaseInstances: [] as { pragma: ReturnType<typeof vi.fn> }[],
+  databaseInstances: [] as {
+    exec: ReturnType<typeof vi.fn>;
+    pragma: ReturnType<typeof vi.fn>;
+    prepare: ReturnType<typeof vi.fn>;
+    transaction: ReturnType<typeof vi.fn>;
+  }[],
   Database: class MockDatabase {
+    exec = vi.fn();
     pragma = vi.fn();
+    prepare = vi.fn().mockReturnValue({ all: vi.fn().mockReturnValue([]), run: vi.fn() });
+    transaction = vi.fn((fn: () => void) => fn);
 
     constructor(_path: string) {
       mocks.databaseInstances.push(this);

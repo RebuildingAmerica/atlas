@@ -58,6 +58,18 @@ describe("DiscoveryPage", () => {
         workspace: {
           activeOrganization: null,
           capabilities: { canUseTeamFeatures: false },
+          resolvedCapabilities: {
+            capabilities: ["research.run"],
+            limits: {
+              research_runs_per_month: 2,
+              max_shortlists: 1,
+              max_shortlist_entries: 25,
+              max_api_keys: 0,
+              api_requests_per_day: 0,
+              public_api_requests_per_hour: 100,
+              max_members: 1,
+            },
+          },
           onboarding: { needsWorkspace: true, hasPendingInvitations: false },
         },
       },
@@ -93,6 +105,27 @@ describe("DiscoveryPage", () => {
   it("submits a discovery run", () => {
     const mutate = vi.fn();
     mocks.useStartDiscovery.mockReturnValue({ mutate, isPending: false, error: null });
+    mocks.useAtlasSession.mockReturnValue({
+      data: {
+        workspace: {
+          activeOrganization: null,
+          capabilities: { canUseTeamFeatures: false },
+          resolvedCapabilities: {
+            capabilities: ["research.run"],
+            limits: {
+              research_runs_per_month: 2,
+              max_shortlists: 1,
+              max_shortlist_entries: 25,
+              max_api_keys: 0,
+              api_requests_per_day: 0,
+              public_api_requests_per_hour: 100,
+              max_members: 1,
+            },
+          },
+          onboarding: { needsWorkspace: false, hasPendingInvitations: false },
+        },
+      },
+    });
 
     render(<DiscoveryPage />);
 
@@ -178,6 +211,18 @@ describe("DiscoveryPage", () => {
             workspaceType: "team",
           },
           capabilities: { canUseTeamFeatures: true },
+          resolvedCapabilities: {
+            capabilities: ["research.run"],
+            limits: {
+              research_runs_per_month: 2,
+              max_shortlists: 1,
+              max_shortlist_entries: 25,
+              max_api_keys: 0,
+              api_requests_per_day: 0,
+              public_api_requests_per_hour: 100,
+              max_members: 1,
+            },
+          },
           onboarding: { needsWorkspace: false, hasPendingInvitations: false },
         },
       },
@@ -197,6 +242,27 @@ describe("DiscoveryPage", () => {
         successCallback = options.onSuccess;
       });
     mocks.useStartDiscovery.mockReturnValue({ mutate, isPending: false, error: null });
+    mocks.useAtlasSession.mockReturnValue({
+      data: {
+        workspace: {
+          activeOrganization: null,
+          capabilities: { canUseTeamFeatures: false },
+          resolvedCapabilities: {
+            capabilities: ["research.run"],
+            limits: {
+              research_runs_per_month: 2,
+              max_shortlists: 1,
+              max_shortlist_entries: 25,
+              max_api_keys: 0,
+              api_requests_per_day: 0,
+              public_api_requests_per_hour: 100,
+              max_members: 1,
+            },
+          },
+          onboarding: { needsWorkspace: false, hasPendingInvitations: false },
+        },
+      },
+    });
 
     render(<DiscoveryPage />);
 

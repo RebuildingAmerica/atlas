@@ -30,6 +30,10 @@ vi.mock("@/domains/access/server/runtime", () => ({
   validateAuthRuntimeConfig: mocks.validateAuthRuntimeConfig,
 }));
 
+vi.mock("@/domains/access/server/workspace-products", () => ({
+  queryActiveProducts: vi.fn().mockResolvedValue([]),
+}));
+
 describe("session-state", () => {
   const browserSessionHeaders = new Headers({
     cookie: "better-auth.session_token=test-token",
@@ -74,11 +78,24 @@ describe("session-state", () => {
           slug: "local",
           workspaceType: "individual",
         },
+        activeProducts: [],
         capabilities: {
           canInviteMembers: false,
           canManageOrganization: false,
           canSwitchOrganizations: false,
           canUseTeamFeatures: false,
+        },
+        resolvedCapabilities: {
+          capabilities: ["research.run"],
+          limits: {
+            research_runs_per_month: 2,
+            max_shortlists: 1,
+            max_shortlist_entries: 25,
+            max_api_keys: 0,
+            api_requests_per_day: 0,
+            public_api_requests_per_hour: 100,
+            max_members: 1,
+          },
         },
         memberships: [
           {

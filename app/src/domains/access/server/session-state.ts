@@ -1,6 +1,7 @@
 import "@tanstack/react-start/server-only";
 
 import { atlasSessionSchema } from "./session-schema";
+import { DEFAULT_CAPABILITIES, DEFAULT_LIMITS } from "../capabilities";
 import { canEmailAccessAtlas, ensureAuthReady, type getAuth } from "./auth";
 import { loadAtlasWorkspaceState } from "./organization-session";
 import { getBrowserSessionHeaders } from "./request-headers";
@@ -38,11 +39,16 @@ function getLocalSession(): AtlasSessionPayload {
         slug: "local",
         workspaceType: "individual",
       },
+      activeProducts: [],
       capabilities: {
         canInviteMembers: false,
         canManageOrganization: false,
         canSwitchOrganizations: false,
         canUseTeamFeatures: false,
+      },
+      resolvedCapabilities: {
+        capabilities: Array.from(DEFAULT_CAPABILITIES),
+        limits: { ...DEFAULT_LIMITS },
       },
       memberships: [
         {
