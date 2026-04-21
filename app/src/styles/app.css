@@ -205,3 +205,30 @@ body {
   font-weight: 500;
   letter-spacing: 0.03125rem; /* 0.5px */
 }
+
+/* ─── Footer scroll-triggered staggered fade-in ──────────────────────────── */
+
+@keyframes footer-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.footer-fade-item {
+  animation: footer-fade-up 0.45s ease-out both;
+  animation-timeline: view();
+  animation-range: entry 0% entry 30%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .footer-fade-item {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}

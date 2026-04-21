@@ -1,5 +1,6 @@
 import { Outlet, createFileRoute } from "@tanstack/react-router";
 import { PublicFloatingNav } from "@/platform/layout/public-nav";
+import { PublicFooter } from "@/platform/layout/public-footer";
 
 export const Route = createFileRoute("/_public")({
   component: PublicLayout,
@@ -14,6 +15,7 @@ function PublicLayout() {
       <main className="flex flex-1 flex-col">
         <Outlet />
       </main>
+      <PublicFooter />
     </div>
   );
 }

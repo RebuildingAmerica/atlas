@@ -90,6 +90,7 @@ export function PublicFloatingNav() {
       {/* Links */}
       <div className="flex items-center gap-1">
         <NavLink to="/browse" label="Browse" />
+        <NavLink to="/pricing" label="Pricing" />
         <AuthNavLink />
       </div>
     </nav>

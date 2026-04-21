@@ -1,8 +1,11 @@
 import { Link, useNavigate } from "@tanstack/react-router";
+import { useState } from "react";
 import type { ReactNode } from "react";
 import type { AtlasProduct } from "../../access/capabilities";
 import { useAtlasSession } from "../../access/client/use-atlas-session";
 import { startCheckout } from "../checkout.functions";
+import { PageLayout } from "@/platform/layout/page-layout";
+import { Button } from "@/platform/ui/button";
 
 // ---------------------------------------------------------------------------
 // Checkout handler
@@ -20,137 +23,114 @@ interface CheckoutParams {
 // Internal types
 // ---------------------------------------------------------------------------
 
-interface Feature {
-  text: string;
-}
+type BillingPeriod = "monthly" | "annual";
 
-interface ProductCardProps {
+interface PlanCardProps {
   label: string;
-  price: ReactNode;
-  description: string;
-  features: Feature[];
-  cta?: {
-    label: string;
-    onCheckout: () => void;
-  };
-  featured?: boolean;
+  name: string;
+  tagline: string;
+  features: string[];
+  monthlyPrice: string | ReactNode;
+  annualPrice?: string | ReactNode;
+  annualNote?: string;
+  billing: BillingPeriod;
+  ctaText: string;
+  ctaProduct?: AtlasProduct;
+  ctaInterval?: "monthly" | "yearly" | "once" | "weekly";
+  onCheckout?: (params: CheckoutParams) => Promise<void>;
+  isTeam?: boolean;
 }
 
 // ---------------------------------------------------------------------------
 // Sub-components
 // ---------------------------------------------------------------------------
 
-function FeatureList({ features }: { features: Feature[] }) {
-  return (
-    <ul className="mt-5 space-y-2.5" aria-label="Included features">
-      {features.map((feature) => (
-        <li key={feature.text} className="flex items-start gap-2.5">
-          <span
-            className="bg-accent-soft text-accent-deep mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full"
-            aria-hidden="true"
-          >
-            <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
-              <path
-                d="M1.5 4L3.25 5.75L6.5 2.5"
-                stroke="currentColor"
-                strokeWidth="1.25"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </span>
-          <span className="type-body-medium text-ink-soft">{feature.text}</span>
-        </li>
-      ))}
-    </ul>
-  );
-}
+function PlanCard({
+  label,
+  name,
+  tagline,
+  features,
+  monthlyPrice,
+  annualPrice,
+  annualNote,
+  billing,
+  ctaText,
+  ctaProduct,
+  ctaInterval,
+  onCheckout,
+  isTeam,
+}: PlanCardProps) {
+  const isDark = isTeam;
+  const bgClass = isDark ? "bg-ink-strong" : "bg-white";
+  const borderClass = isDark ? "border-transparent" : "border-border";
+  const labelColorClass = isDark ? "text-ink-muted" : "text-ink-muted";
+  const nameColorClass = isDark ? "text-surface-container-lowest" : "text-ink-strong";
+  const taglineColorClass = isDark ? "text-ink-muted" : "text-ink-soft";
+  const featureColorClass = isDark ? "text-ink-muted" : "text-ink-strong";
+  const priceColorClass = isDark ? "text-surface-container-lowest" : "text-ink-strong";
+  const priceSubColorClass = isDark ? "text-ink-muted" : "text-ink-soft";
 
-function ProductCard({ label, price, description, features, cta, featured }: ProductCardProps) {
+  const showPrice = billing === "monthly" ? monthlyPrice : annualPrice || monthlyPrice;
+
+  const handleCta = async () => {
+    if (ctaProduct && ctaInterval && onCheckout) {
+      await onCheckout({ product: ctaProduct, interval: ctaInterval });
+    }
+  };
+
   return (
-    <article
-      className={[
-        "flex flex-col rounded-[1.4rem] border p-6",
-        featured
-          ? "border-accent bg-surface-container-lowest shadow-soft"
-          : "border-border bg-surface-container-lowest",
-      ].join(" ")}
+    <div
+      className={`${bgClass} ${borderClass} flex flex-col rounded-[1.125rem] border px-5 py-5 sm:rounded-[1.125rem] sm:px-5 sm:py-5`}
     >
-      {/* Header */}
-      <header>
-        {featured ? (
-          <p className="type-label-medium text-accent mb-2 tracking-widest uppercase">
-            Most popular
-          </p>
-        ) : null}
-        <h2 className="type-title-large text-ink-strong">{label}</h2>
-        <div className="mt-2">{price}</div>
-        <p className="type-body-medium text-ink-muted mt-2">{description}</p>
-      </header>
+      <p className={`${labelColorClass} type-label-small mb-1 tracking-wider uppercase`}>{label}</p>
+      <p className={`${nameColorClass} type-title-small mb-2 font-medium`}>{name}</p>
+      <p className={`${taglineColorClass} type-body-small mb-4 leading-relaxed`}>{tagline}</p>
 
-      {/* Features */}
-      <FeatureList features={features} />
+      <div
+        className={`mb-4 border-t pt-4 ${isDark ? "border-ink-strong" : "border-surface-container"}`}
+      >
+        <ul className={`${featureColorClass} type-body-small space-y-2`}>
+          {features.map((feature, idx) => (
+            <li key={idx}>→ {feature}</li>
+          ))}
+        </ul>
+      </div>
 
-      {/* CTA */}
-      {cta ? (
-        <div className="mt-auto pt-6">
-          <button
-            type="button"
-            onClick={cta.onCheckout}
-            className={[
-              "type-label-large w-full rounded-full px-4 py-2.5 text-center font-medium transition-[background-color,border-color] duration-150 focus:ring-2 focus:ring-offset-2 focus:outline-none",
-              featured
-                ? "bg-accent hover:bg-accent-deep focus:ring-accent text-white"
-                : "border-border text-ink-strong hover:border-border-strong hover:bg-surface-container-high focus:ring-border-strong border bg-transparent",
-            ].join(" ")}
-          >
-            {cta.label}
-          </button>
-        </div>
+      <div className="mb-4 flex-1">
+        <p className={`${priceColorClass} text-xl font-semibold`}>{showPrice}</p>
+        {annualNote && billing === "annual" && (
+          <p className={`${priceSubColorClass} type-body-small mt-1`}>{annualNote}</p>
+        )}
+      </div>
+
+      {ctaText === "Browse the Atlas" ? (
+        <Link to="/browse" className="no-underline">
+          <Button variant="secondary" className="w-full justify-center">
+            {ctaText}
+          </Button>
+        </Link>
       ) : (
-        <div className="mt-auto pt-6">
-          <p className="type-label-medium text-ink-muted text-center">No card required</p>
-        </div>
+        <Button
+          variant={isTeam ? "ghost" : "primary"}
+          className={`w-full justify-center ${isTeam ? "border-ink-strong border" : ""}`}
+          onClick={() => void handleCta()}
+        >
+          {ctaText}
+        </Button>
       )}
-    </article>
-  );
-}
 
-// ---------------------------------------------------------------------------
-// Price displays
-// ---------------------------------------------------------------------------
-
-function FreePrice() {
-  return <p className="type-headline-medium text-ink-strong">Free</p>;
-}
-
-function ProPrice() {
-  return (
-    <p className="type-headline-medium text-ink-strong">
-      $5
-      <span className="type-body-large text-ink-muted font-normal">/month</span>
-      <span className="type-label-medium text-ink-muted ml-2 font-normal">or $48/year</span>
-    </p>
-  );
-}
-
-function TeamPrice() {
-  return (
-    <p className="type-headline-medium text-ink-strong">
-      $25
-      <span className="type-body-large text-ink-muted font-normal">/month</span>
-      <span className="type-label-medium text-ink-muted ml-2 font-normal">+ $8/seat</span>
-    </p>
-  );
-}
-
-function ResearchPassPrice() {
-  return (
-    <p className="type-headline-medium text-ink-strong">
-      $50
-      <span className="type-body-large text-ink-muted font-normal">/30 days</span>
-      <span className="type-label-medium text-ink-muted ml-2 font-normal">or $12/week</span>
-    </p>
+      {isTeam && (
+        <p className="type-body-small text-ink-soft mt-3 text-center">
+          Setting up a large org?{" "}
+          <a
+            href="mailto:hello@rebuildingamerica.us"
+            className="text-ink-muted hover:text-ink-strong underline"
+          >
+            Talk to us
+          </a>
+        </p>
+      )}
+    </div>
   );
 }
 
@@ -165,10 +145,15 @@ function ResearchPassPrice() {
  * a Research Pass option. CTA buttons call startCheckout(), which redirects
  * through Stripe Checkout. Users must be signed in to purchase; unauthenticated
  * users are redirected to /sign-in first.
+ *
+ * Designed with mission-first framing: editorial lede explains why Atlas costs
+ * money, Free is a first-class plan card (not a disclaimer), and monthly/annual
+ * toggle switches pricing dynamically.
  */
 export function PricingPage() {
   const navigate = useNavigate();
   const session = useAtlasSession();
+  const [billing, setBilling] = useState<BillingPeriod>("monthly");
 
   async function handleCheckout({ product, interval }: CheckoutParams) {
     if (!session.data) {
@@ -181,174 +166,184 @@ export function PricingPage() {
   }
 
   return (
-    <div className="bg-page-bg flex min-h-screen flex-col">
-      {/* Minimal nav */}
-      <header className="sticky top-0 z-30 md:p-4">
-        <nav
-          className="border-border mx-auto flex max-w-3xl items-center justify-between rounded-2xl border px-4 py-2.5 shadow-sm backdrop-blur-md md:px-5 md:py-3"
-          style={{ backgroundColor: "rgba(248, 241, 230, 0.8)" }}
-          aria-label="Site navigation"
-        >
-          <Link to="/" className="flex items-center gap-2.5 no-underline">
-            <div className="bg-accent flex h-7 w-7 items-center justify-center rounded-xl text-white">
-              <span className="type-label-medium leading-none">A</span>
-            </div>
-            <span className="type-title-medium text-ink-strong">Atlas</span>
-          </Link>
-
-          <div className="flex items-center gap-1">
-            <Link
-              to="/browse"
-              className="type-label-large text-ink-muted hover:bg-surface-container hover:text-ink-strong rounded-lg px-3 py-1.5 no-underline"
-            >
-              Browse
-            </Link>
-            <Link
-              to="/sign-in"
-              className="type-label-large text-ink-muted hover:bg-surface-container hover:text-ink-strong rounded-lg px-3 py-1.5 no-underline"
-            >
-              Sign in
-            </Link>
-          </div>
-        </nav>
-      </header>
-
-      {/* Page body */}
-      <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-12 md:py-20">
-        {/* Page header */}
-        <section aria-labelledby="pricing-heading" className="mx-auto max-w-2xl text-center">
-          <p className="type-label-medium text-ink-muted tracking-widest uppercase">Pricing</p>
-          <h1 id="pricing-heading" className="type-display-small text-ink-strong mt-3">
-            Atlas Pricing
+    <PageLayout className="py-10 lg:py-16">
+      <section className="mx-auto w-full max-w-3xl">
+        {/* Lede */}
+        <div className="mb-8 sm:mb-10">
+          <p className="type-label-medium text-ink-muted mb-3 tracking-wider uppercase">
+            How Atlas is funded
+          </p>
+          <h1 className="type-display-small text-ink-strong mb-4 leading-tight">
+            Atlas is free to use. <br />
+            Here's how we keep it that way.
           </h1>
-          <p className="type-body-large text-ink-soft mt-4">
-            You never pay to see civic data. You pay to work with it professionally.
+          <p className="type-body-large text-ink-soft mb-4 leading-relaxed">
+            The costs of running Atlas — the pipeline, the infrastructure, the research tools — are
+            covered by researchers, journalists, and organizations who use it professionally. If
+            that's you, consider supporting the work.
           </p>
-        </section>
+        </div>
 
-        {/* Product cards — main three tiers */}
-        <section
-          aria-label="Subscription plans"
-          className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
-        >
-          <ProductCard
-            label="Default"
-            price={<FreePrice />}
-            description="Everything you need to explore Atlas without a commitment."
-            features={[
-              { text: "Browse, search, and profiles — unlimited" },
-              { text: "2 research runs / month" },
-              { text: "1 shortlist (25 entries)" },
-            ]}
-          />
-
-          <ProductCard
-            label="Atlas Pro"
-            price={<ProPrice />}
-            description="For researchers and professionals who need the full toolkit."
-            features={[
-              { text: "Everything in Default" },
-              { text: "Unlimited research runs" },
-              { text: "Unlimited shortlists and notes" },
-              { text: "CSV and JSON export" },
-              { text: "1 API key (1,000 req/day)" },
-              { text: "MCP and OAuth access" },
-            ]}
-            cta={{
-              label: "Get Pro",
-              onCheckout: () => {
-                void handleCheckout({
-                  product: "atlas_pro",
-                  interval: "monthly",
-                });
-              },
-            }}
-            featured
-          />
-
-          <ProductCard
-            label="Atlas Team"
-            price={<TeamPrice />}
-            description="Shared workspace for organizations doing civic research at scale."
-            features={[
-              { text: "Everything in Pro" },
-              { text: "Shared workspace" },
-              { text: "Unlimited API keys (10,000 req/day/key)" },
-              { text: "Watchlists and monitoring" },
-              { text: "Slack integration" },
-              { text: "SSO (SAML/OIDC)" },
-              { text: "Up to 50 members" },
-            ]}
-            cta={{
-              label: "Get Team",
-              onCheckout: () => {
-                void handleCheckout({
-                  product: "atlas_team",
-                  interval: "monthly",
-                });
-              },
-            }}
-          />
-        </section>
-
-        {/* Research Pass — separate row, shorter card */}
-        <section aria-label="Research Pass" className="mt-4">
-          <div className="border-border bg-surface-container-lowest rounded-[1.4rem] border p-6">
-            <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex-1">
-                <h2 className="type-title-large text-ink-strong">Atlas Research Pass</h2>
-                <div className="mt-1">
-                  <ResearchPassPrice />
-                </div>
-                <p className="type-body-medium text-ink-muted mt-2">
-                  Full Pro capabilities for a fixed window. No subscription, no commitment.
-                </p>
-              </div>
-
-              <ul
-                className="type-body-medium text-ink-soft flex flex-col gap-1.5 sm:min-w-48"
-                aria-label="Research Pass features"
+        {/* Plans section */}
+        <div className="border-border mb-10 border-t pt-8">
+          {/* Section label + toggle */}
+          <div className="mb-6 flex flex-wrap items-center justify-between gap-2 sm:gap-4">
+            <p className="type-label-medium text-ink-muted tracking-wider uppercase">Plans</p>
+            <div className="border-border inline-flex items-center gap-0.5 rounded-full border bg-white px-1 py-1">
+              <button
+                onClick={() => {
+                  setBilling("monthly");
+                }}
+                className={`type-label-small rounded-full px-4 py-1.5 font-medium transition-colors ${
+                  billing === "monthly"
+                    ? "bg-accent text-white"
+                    : "text-ink-muted hover:text-ink-strong"
+                }`}
               >
-                <li className="flex items-center gap-2">
-                  <span className="text-accent">--</span> Pro capabilities, temporarily
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="text-accent">--</span> No commitment
-                </li>
-              </ul>
-
-              <div className="sm:ml-6 sm:shrink-0">
-                <button
-                  type="button"
-                  onClick={() => {
-                    void handleCheckout({
-                      product: "atlas_research_pass",
-                      interval: "once",
-                    });
-                  }}
-                  className="type-label-large border-border text-ink-strong hover:border-border-strong hover:bg-surface-container-high focus:ring-border-strong w-full rounded-full border bg-transparent px-6 py-2.5 text-center font-medium transition-[background-color,border-color] duration-150 focus:ring-2 focus:ring-offset-2 focus:outline-none sm:w-auto"
-                >
-                  Get Research Pass
-                </button>
-              </div>
+                Monthly
+              </button>
+              <button
+                onClick={() => {
+                  setBilling("annual");
+                }}
+                className={`type-label-small rounded-full px-4 py-1.5 font-medium transition-colors ${
+                  billing === "annual"
+                    ? "bg-accent text-white"
+                    : "text-ink-muted hover:text-ink-strong"
+                }`}
+              >
+                Annual <span className="type-body-small text-accent-soft">— save 20%</span>
+              </button>
             </div>
           </div>
-        </section>
 
-        {/* Footer note */}
-        <footer className="border-border mt-12 border-t pt-8 text-center">
-          <p className="type-body-medium text-ink-muted">
-            All plans are billed in USD. Subscriptions can be cancelled at any time.{" "}
-            <Link
-              to="/sign-in"
-              className="text-ink-soft hover:text-ink-strong underline underline-offset-2"
-            >
-              Sign in
-            </Link>{" "}
-            to manage your account.
+          {/* Plan grid */}
+          <div className="mb-4 grid gap-3 sm:grid-cols-3">
+            <PlanCard
+              label="Free"
+              name="For anyone curious"
+              tagline="Browse and search the Atlas. No account needed."
+              features={[
+                "Browse & search",
+                "Read any profile",
+                "2 research runs/month",
+                "1 shortlist (25 entries)",
+                "Public API 100 req/hr",
+              ]}
+              monthlyPrice="Free"
+              billing={billing}
+              ctaText="Browse the Atlas"
+            />
+
+            <PlanCard
+              label="Atlas Pro"
+              name="For the individual researcher"
+              tagline="Journalists, organizers, and creators who use Atlas as a regular part of their work."
+              features={[
+                "Unlimited research runs",
+                "Notes and shortlists",
+                "Export to CSV and JSON",
+                "API key · 1,000 req/day",
+                "MCP and OAuth access",
+              ]}
+              monthlyPrice="$5/month"
+              annualPrice={
+                <>
+                  $48<span className="type-body-small text-ink-soft">/year</span>
+                  <span className="bg-surface-container text-accent-deep ml-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium">
+                    2 months free
+                  </span>
+                </>
+              }
+              annualNote="$4/month, billed annually"
+              billing={billing}
+              ctaText="Get Atlas Pro"
+              ctaProduct="atlas_pro"
+              ctaInterval={billing === "annual" ? "yearly" : "monthly"}
+              onCheckout={handleCheckout}
+            />
+
+            <PlanCard
+              label="Atlas Team"
+              name="For newsrooms and nonprofits"
+              tagline="Teams that coordinate research — shared workspace, monitoring, and org-level integrations."
+              features={[
+                "Everything in Atlas Pro",
+                "Shared workspace and notes",
+                "Watchlists and monitoring digests",
+                "Slack integration",
+                "SSO (SAML/OIDC) · Up to 50 members",
+              ]}
+              monthlyPrice={
+                <>
+                  $25<span className="type-body-small text-ink-soft">/month base</span>
+                  <p className="type-body-small text-ink-soft mt-2">
+                    + $8/seat/month per additional member
+                  </p>
+                </>
+              }
+              annualPrice={
+                <>
+                  $250<span className="type-body-small text-ink-soft">/year base</span>
+                  <span className="bg-ink-strong text-accent-soft ml-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium">
+                    2 months free
+                  </span>
+                  <p className="type-body-small text-ink-soft mt-2">
+                    + $80/seat/year, billed annually
+                  </p>
+                </>
+              }
+              billing={billing}
+              ctaText="Get Atlas Team"
+              ctaProduct="atlas_team"
+              ctaInterval={billing === "annual" ? "yearly" : "monthly"}
+              onCheckout={handleCheckout}
+              isTeam
+            />
+          </div>
+
+          <p className="type-body-small text-ink-soft leading-relaxed">
+            All plans include full access to the Atlas graph. Professional plans can be cancelled
+            anytime.
           </p>
-        </footer>
-      </main>
-    </div>
+        </div>
+
+        {/* Research Pass section */}
+        <div>
+          <p className="type-label-medium text-ink-muted mb-4 tracking-wider uppercase">
+            Project access
+          </p>
+          <div className="border-border rounded-[1rem] border bg-white p-4 sm:flex sm:items-start sm:gap-5">
+            <div className="mb-4 flex-1 sm:mb-0">
+              <p className="type-title-small text-ink-strong mb-2 font-medium">
+                Atlas Research Pass
+              </p>
+              <p className="type-body-small text-ink-soft leading-relaxed">
+                Full Pro access without a subscription — useful for one-time investigations,
+                grant-funded projects, or trying Atlas before committing. Your shortlists and notes
+                stay readable after the pass expires.
+              </p>
+            </div>
+            <div className="flex-shrink-0 text-right">
+              <p className="type-title-small text-ink-strong mb-1 font-medium">
+                $9 <span className="type-body-small text-ink-soft font-normal">/ 30 days</span>
+              </p>
+              <p className="type-body-small text-ink-soft mb-3">or $4 / 7 days</p>
+              <Button
+                variant="primary"
+                onClick={() => {
+                  void handleCheckout({
+                    product: "atlas_research_pass",
+                    interval: "once",
+                  });
+                }}
+              >
+                Get a pass
+              </Button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </PageLayout>
   );
 }

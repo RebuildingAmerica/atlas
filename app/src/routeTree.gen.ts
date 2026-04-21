@@ -17,10 +17,12 @@ import { Route as PublicIndexRouteImport } from './routes/_public/index'
 import { Route as WorkspaceOrganizationRouteImport } from './routes/_workspace/organization'
 import { Route as WorkspaceDiscoveryRouteImport } from './routes/_workspace/discovery'
 import { Route as WorkspaceAccountRouteImport } from './routes/_workspace/account'
+import { Route as PublicPricingRouteImport } from './routes/_public/pricing'
 import { Route as PublicBrowseRouteImport } from './routes/_public/browse'
 import { Route as AuthSignInRouteImport } from './routes/_auth/sign-in'
 import { Route as AuthAccountSetupRouteImport } from './routes/_auth/account-setup'
 import { Route as WorkspaceOrganizationIndexRouteImport } from './routes/_workspace/organization.index'
+import { Route as ApiStripeWebhookRouteImport } from './routes/api/stripe/webhook'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as WorkspaceOrganizationSsoRouteImport } from './routes/_workspace/organization.sso'
 import { Route as PublicEntriesEntryIdRouteImport } from './routes/_public/entries.$entryId'
@@ -65,6 +67,11 @@ const WorkspaceAccountRoute = WorkspaceAccountRouteImport.update({
   path: '/account',
   getParentRoute: () => WorkspaceRoute,
 } as any)
+const PublicPricingRoute = PublicPricingRouteImport.update({
+  id: '/pricing',
+  path: '/pricing',
+  getParentRoute: () => PublicRoute,
+} as any)
 const PublicBrowseRoute = PublicBrowseRouteImport.update({
   id: '/browse',
   path: '/browse',
@@ -86,6 +93,11 @@ const WorkspaceOrganizationIndexRoute =
     path: '/',
     getParentRoute: () => WorkspaceOrganizationRoute,
   } as any)
+const ApiStripeWebhookRoute = ApiStripeWebhookRouteImport.update({
+  id: '/api/stripe/webhook',
+  path: '/api/stripe/webhook',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
@@ -125,6 +137,7 @@ export interface FileRoutesByFullPath {
   '/account-setup': typeof AuthAccountSetupRoute
   '/sign-in': typeof AuthSignInRoute
   '/browse': typeof PublicBrowseRoute
+  '/pricing': typeof PublicPricingRoute
   '/account': typeof WorkspaceAccountRoute
   '/discovery': typeof WorkspaceDiscoveryRoute
   '/organization': typeof WorkspaceOrganizationRouteWithChildren
@@ -132,6 +145,7 @@ export interface FileRoutesByFullPath {
   '/entries/$entryId': typeof PublicEntriesEntryIdRoute
   '/organization/sso': typeof WorkspaceOrganizationSsoRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/stripe/webhook': typeof ApiStripeWebhookRoute
   '/organization/': typeof WorkspaceOrganizationIndexRoute
   '/api/auth/internal/api-key': typeof ApiAuthInternalApiKeyRoute
   '/api/auth/internal/memberships/$organizationId/members/$userId': typeof ApiAuthInternalMembershipsOrganizationIdMembersUserIdRoute
@@ -142,12 +156,14 @@ export interface FileRoutesByTo {
   '/account-setup': typeof AuthAccountSetupRoute
   '/sign-in': typeof AuthSignInRoute
   '/browse': typeof PublicBrowseRoute
+  '/pricing': typeof PublicPricingRoute
   '/account': typeof WorkspaceAccountRoute
   '/discovery': typeof WorkspaceDiscoveryRoute
   '/oauth/consent': typeof AuthOauthConsentRoute
   '/entries/$entryId': typeof PublicEntriesEntryIdRoute
   '/organization/sso': typeof WorkspaceOrganizationSsoRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/stripe/webhook': typeof ApiStripeWebhookRoute
   '/organization': typeof WorkspaceOrganizationIndexRoute
   '/api/auth/internal/api-key': typeof ApiAuthInternalApiKeyRoute
   '/api/auth/internal/memberships/$organizationId/members/$userId': typeof ApiAuthInternalMembershipsOrganizationIdMembersUserIdRoute
@@ -161,6 +177,7 @@ export interface FileRoutesById {
   '/_auth/account-setup': typeof AuthAccountSetupRoute
   '/_auth/sign-in': typeof AuthSignInRoute
   '/_public/browse': typeof PublicBrowseRoute
+  '/_public/pricing': typeof PublicPricingRoute
   '/_workspace/account': typeof WorkspaceAccountRoute
   '/_workspace/discovery': typeof WorkspaceDiscoveryRoute
   '/_workspace/organization': typeof WorkspaceOrganizationRouteWithChildren
@@ -169,6 +186,7 @@ export interface FileRoutesById {
   '/_public/entries/$entryId': typeof PublicEntriesEntryIdRoute
   '/_workspace/organization/sso': typeof WorkspaceOrganizationSsoRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/stripe/webhook': typeof ApiStripeWebhookRoute
   '/_workspace/organization/': typeof WorkspaceOrganizationIndexRoute
   '/api/auth/internal/api-key': typeof ApiAuthInternalApiKeyRoute
   '/api/auth/internal/memberships/$organizationId/members/$userId': typeof ApiAuthInternalMembershipsOrganizationIdMembersUserIdRoute
@@ -181,6 +199,7 @@ export interface FileRouteTypes {
     | '/account-setup'
     | '/sign-in'
     | '/browse'
+    | '/pricing'
     | '/account'
     | '/discovery'
     | '/organization'
@@ -188,6 +207,7 @@ export interface FileRouteTypes {
     | '/entries/$entryId'
     | '/organization/sso'
     | '/api/auth/$'
+    | '/api/stripe/webhook'
     | '/organization/'
     | '/api/auth/internal/api-key'
     | '/api/auth/internal/memberships/$organizationId/members/$userId'
@@ -198,12 +218,14 @@ export interface FileRouteTypes {
     | '/account-setup'
     | '/sign-in'
     | '/browse'
+    | '/pricing'
     | '/account'
     | '/discovery'
     | '/oauth/consent'
     | '/entries/$entryId'
     | '/organization/sso'
     | '/api/auth/$'
+    | '/api/stripe/webhook'
     | '/organization'
     | '/api/auth/internal/api-key'
     | '/api/auth/internal/memberships/$organizationId/members/$userId'
@@ -216,6 +238,7 @@ export interface FileRouteTypes {
     | '/_auth/account-setup'
     | '/_auth/sign-in'
     | '/_public/browse'
+    | '/_public/pricing'
     | '/_workspace/account'
     | '/_workspace/discovery'
     | '/_workspace/organization'
@@ -224,6 +247,7 @@ export interface FileRouteTypes {
     | '/_public/entries/$entryId'
     | '/_workspace/organization/sso'
     | '/api/auth/$'
+    | '/api/stripe/webhook'
     | '/_workspace/organization/'
     | '/api/auth/internal/api-key'
     | '/api/auth/internal/memberships/$organizationId/members/$userId'
@@ -235,6 +259,7 @@ export interface RootRouteChildren {
   WorkspaceRoute: typeof WorkspaceRouteWithChildren
   DashboardRoute: typeof DashboardRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  ApiStripeWebhookRoute: typeof ApiStripeWebhookRoute
   ApiAuthInternalApiKeyRoute: typeof ApiAuthInternalApiKeyRoute
   ApiAuthInternalMembershipsOrganizationIdMembersUserIdRoute: typeof ApiAuthInternalMembershipsOrganizationIdMembersUserIdRoute
 }
@@ -297,6 +322,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WorkspaceAccountRouteImport
       parentRoute: typeof WorkspaceRoute
     }
+    '/_public/pricing': {
+      id: '/_public/pricing'
+      path: '/pricing'
+      fullPath: '/pricing'
+      preLoaderRoute: typeof PublicPricingRouteImport
+      parentRoute: typeof PublicRoute
+    }
     '/_public/browse': {
       id: '/_public/browse'
       path: '/browse'
@@ -324,6 +356,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/organization/'
       preLoaderRoute: typeof WorkspaceOrganizationIndexRouteImport
       parentRoute: typeof WorkspaceOrganizationRoute
+    }
+    '/api/stripe/webhook': {
+      id: '/api/stripe/webhook'
+      path: '/api/stripe/webhook'
+      fullPath: '/api/stripe/webhook'
+      preLoaderRoute: typeof ApiStripeWebhookRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/auth/$': {
       id: '/api/auth/$'
@@ -386,12 +425,14 @@ const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
 
 interface PublicRouteChildren {
   PublicBrowseRoute: typeof PublicBrowseRoute
+  PublicPricingRoute: typeof PublicPricingRoute
   PublicIndexRoute: typeof PublicIndexRoute
   PublicEntriesEntryIdRoute: typeof PublicEntriesEntryIdRoute
 }
 
 const PublicRouteChildren: PublicRouteChildren = {
   PublicBrowseRoute: PublicBrowseRoute,
+  PublicPricingRoute: PublicPricingRoute,
   PublicIndexRoute: PublicIndexRoute,
   PublicEntriesEntryIdRoute: PublicEntriesEntryIdRoute,
 }
@@ -436,6 +477,7 @@ const rootRouteChildren: RootRouteChildren = {
   WorkspaceRoute: WorkspaceRouteWithChildren,
   DashboardRoute: DashboardRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
+  ApiStripeWebhookRoute: ApiStripeWebhookRoute,
   ApiAuthInternalApiKeyRoute: ApiAuthInternalApiKeyRoute,
   ApiAuthInternalMembershipsOrganizationIdMembersUserIdRoute:
     ApiAuthInternalMembershipsOrganizationIdMembersUserIdRoute,
