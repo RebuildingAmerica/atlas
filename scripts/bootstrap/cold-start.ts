@@ -42,7 +42,9 @@ function parseArgs(argv: string[]): CliArgs {
     localOnly: argv.includes("--local-only"),
     doctorMode: argv.includes("--doctor"),
     resume: argv.includes("--resume"),
-    productOnly: argv.includes("--product") ? argv[argv.indexOf("--product") + 1] ?? null : null,
+    productOnly: argv.includes("--product")
+      ? (argv[argv.indexOf("--product") + 1] ?? null)
+      : null,
     live: argv.includes("--live"),
   };
 }
@@ -63,7 +65,9 @@ async function confirmResumeSkip(phaseName: string): Promise<boolean> {
   ));
 }
 
-function recomputeCommandReadiness(state: ReturnType<typeof loadReadiness>): void {
+function recomputeCommandReadiness(
+  state: ReturnType<typeof loadReadiness>,
+): void {
   for (const [group, requiredCaps] of Object.entries(COMMAND_CAPABILITY_MAP)) {
     const allReady = requiredCaps.every(
       (capId) => state.capabilities[capId]?.status === "ready",
@@ -120,20 +124,35 @@ async function main(): Promise<void> {
   // Product-only mode
   if (args.productOnly === "atlas") {
     log.info("Running Stripe product sync only.");
-    const result = await runProductPhase(projectRoot, state, args.doctorMode, args.live);
+    const result = await runProductPhase(
+      projectRoot,
+      state,
+      args.doctorMode,
+      args.live,
+    );
     markPhase(state, "product", result.success ? "complete" : "failed");
     saveReadiness(projectRoot, state);
     if (result.followUpItems.length > 0) {
       note(result.followUpItems.join("\n"), "Follow-up");
     }
-    outro(result.success ? "Product sync complete." : "Product sync had issues.");
+    outro(
+      result.success ? "Product sync complete." : "Product sync had issues.",
+    );
     return;
   }
 
   // Phase 1: Install
-  if (!shouldSkipPhase("install", state, args.resume) || !(await confirmResumeSkip("Install"))) {
+  if (
+    !shouldSkipPhase("install", state, args.resume) ||
+    !(await confirmResumeSkip("Install"))
+  ) {
     log.step("Phase 1: System Dependencies");
-    const result = await runInstallPhase(state, os, args.doctorMode, args.localOnly);
+    const result = await runInstallPhase(
+      state,
+      os,
+      args.doctorMode,
+      args.localOnly,
+    );
     markPhase(state, "install", result.success ? "complete" : "partial");
     saveReadiness(projectRoot, state);
     allFollowUp.push(...result.followUpItems);
@@ -154,7 +173,10 @@ async function main(): Promise<void> {
   }
 
   // Phase 2: Auth
-  if (!shouldSkipPhase("auth", state, args.resume) || !(await confirmResumeSkip("Auth"))) {
+  if (
+    !shouldSkipPhase("auth", state, args.resume) ||
+    !(await confirmResumeSkip("Auth"))
+  ) {
     log.step("Phase 2: CLI Authentication");
     const result = await runAuthPhase(state, args.doctorMode, args.localOnly);
     markPhase(state, "auth", result.success ? "complete" : "partial");
@@ -163,9 +185,12 @@ async function main(): Promise<void> {
   }
 
   // Phase 3: Environment
-  if (!shouldSkipPhase("env", state, args.resume) || !(await confirmResumeSkip("Environment"))) {
+  if (
+    !shouldSkipPhase("env", state, args.resume) ||
+    !(await confirmResumeSkip("Environment"))
+  ) {
     log.step("Phase 3: Environment Configuration");
-    const result = await runEnvPhase(projectRoot, args.doctorMode);
+    const result = await runEnvPhase(projectRoot, args.doctorMode, state);
     markPhase(state, "env", result.success ? "complete" : "partial");
     saveReadiness(projectRoot, state);
     allFollowUp.push(...result.followUpItems);
@@ -173,7 +198,10 @@ async function main(): Promise<void> {
 
   if (!args.localOnly) {
     // Phase 4: Infrastructure
-    if (!shouldSkipPhase("infra", state, args.resume) || !(await confirmResumeSkip("Infrastructure"))) {
+    if (
+      !shouldSkipPhase("infra", state, args.resume) ||
+      !(await confirmResumeSkip("Infrastructure"))
+    ) {
       log.step("Phase 4: Cloud Infrastructure");
       const result = await runInfraPhase(projectRoot, state, args.doctorMode);
       markPhase(state, "infra", result.success ? "complete" : "failed");
@@ -182,25 +210,43 @@ async function main(): Promise<void> {
     }
 
     // Phase 5: Database
-    if (!shouldSkipPhase("database", state, args.resume) || !(await confirmResumeSkip("Database"))) {
+    if (
+      !shouldSkipPhase("database", state, args.resume) ||
+      !(await confirmResumeSkip("Database"))
+    ) {
       log.step("Phase 5: Database");
-      const result = await runDatabasePhase(projectRoot, state, args.doctorMode);
+      const result = await runDatabasePhase(
+        projectRoot,
+        state,
+        args.doctorMode,
+      );
       markPhase(state, "database", result.success ? "complete" : "failed");
       saveReadiness(projectRoot, state);
       allFollowUp.push(...result.followUpItems);
     }
 
     // Phase 6: Product (Stripe)
-    if (!shouldSkipPhase("product", state, args.resume) || !(await confirmResumeSkip("Product"))) {
+    if (
+      !shouldSkipPhase("product", state, args.resume) ||
+      !(await confirmResumeSkip("Product"))
+    ) {
       log.step("Phase 6: Stripe Products");
-      const result = await runProductPhase(projectRoot, state, args.doctorMode, args.live);
+      const result = await runProductPhase(
+        projectRoot,
+        state,
+        args.doctorMode,
+        args.live,
+      );
       markPhase(state, "product", result.success ? "complete" : "failed");
       saveReadiness(projectRoot, state);
       allFollowUp.push(...result.followUpItems);
     }
 
     // Phase 7: Deploy
-    if (!shouldSkipPhase("deploy", state, args.resume) || !(await confirmResumeSkip("Deploy"))) {
+    if (
+      !shouldSkipPhase("deploy", state, args.resume) ||
+      !(await confirmResumeSkip("Deploy"))
+    ) {
       log.step("Phase 7: Initial Deployment");
       const result = await runDeployPhase(projectRoot, state, args.doctorMode);
       markPhase(state, "deploy", result.success ? "complete" : "skipped");
