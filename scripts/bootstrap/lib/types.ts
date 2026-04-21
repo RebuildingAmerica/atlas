@@ -8,12 +8,28 @@ export interface CommandResult {
 }
 
 export type CapabilityId =
-  | "core-node" | "core-pnpm" | "core-python" | "core-uv" | "core-docker"
-  | "deploy-gcloud" | "deploy-gh" | "deploy-wrangler"
-  | "product-stripe" | "product-neonctl" | "product-psql";
+  | "core-node"
+  | "core-pnpm"
+  | "core-python"
+  | "core-uv"
+  | "core-docker"
+  | "deploy-gcloud"
+  | "deploy-gh"
+  | "deploy-wrangler"
+  | "deploy-vercel"
+  | "product-stripe"
+  | "product-neonctl"
+  | "product-psql";
 
 export type CommandGroup = "dev" | "test" | "build" | "deploy" | "product";
-export type PhaseId = "install" | "auth" | "env" | "infra" | "database" | "product" | "deploy";
+export type PhaseId =
+  | "install"
+  | "auth"
+  | "env"
+  | "infra"
+  | "database"
+  | "product"
+  | "deploy";
 
 export type CapabilityStatus = "ready" | "failed" | "deferred" | "skipped";
 

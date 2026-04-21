@@ -34,7 +34,10 @@ export const CAPABILITY_SPECS: CapabilityConfig[] = [
     minVersion: "24.0.0",
     installCommands: {
       macos: ["brew install node@24"],
-      linux: ["curl -fsSL https://deb.nodesource.com/setup_24.x | sudo -E bash -", "sudo apt-get install -y nodejs"],
+      linux: [
+        "curl -fsSL https://deb.nodesource.com/setup_24.x | sudo -E bash -",
+        "sudo apt-get install -y nodejs",
+      ],
     },
   },
   {
@@ -77,7 +80,8 @@ export const CAPABILITY_SPECS: CapabilityConfig[] = [
       macos: ["curl -LsSf https://astral.sh/uv/install.sh | sh"],
       linux: ["curl -LsSf https://astral.sh/uv/install.sh | sh"],
     },
-    postInstallHint: "You may need to restart your shell or run: source $HOME/.local/bin/env",
+    postInstallHint:
+      "You may need to restart your shell or run: source $HOME/.local/bin/env",
   },
   {
     id: "core-docker",
@@ -104,7 +108,8 @@ export const CAPABILITY_SPECS: CapabilityConfig[] = [
       linux: ["curl https://sdk.cloud.google.com | bash"],
     },
     auth: {
-      checkCommand: "gcloud auth list --filter=status:ACTIVE --format='value(account)' 2>/dev/null | head -1 | grep -q .",
+      checkCommand:
+        "gcloud auth list --filter=status:ACTIVE --format='value(account)' 2>/dev/null | head -1 | grep -q .",
       loginCommand: "gcloud auth login",
       interactive: true,
     },
@@ -152,7 +157,9 @@ export const CAPABILITY_SPECS: CapabilityConfig[] = [
     binaryCommand: "command -v stripe",
     installCommands: {
       macos: ["brew install stripe/stripe-cli/stripe"],
-      linux: ["curl -s https://packages.stripe.dev/api/security/keypair/stripe-cli-gpg/public | gpg --dearmor | sudo tee /usr/share/keyrings/stripe.gpg && echo 'deb [signed-by=/usr/share/keyrings/stripe.gpg] https://packages.stripe.dev/stripe-cli-debian-local stable main' | sudo tee /etc/apt/sources.list.d/stripe.list && sudo apt update && sudo apt install stripe"],
+      linux: [
+        "curl -s https://packages.stripe.dev/api/security/keypair/stripe-cli-gpg/public | gpg --dearmor | sudo tee /usr/share/keyrings/stripe.gpg && echo 'deb [signed-by=/usr/share/keyrings/stripe.gpg] https://packages.stripe.dev/stripe-cli-debian-local stable main' | sudo tee /etc/apt/sources.list.d/stripe.list && sudo apt update && sudo apt install stripe",
+      ],
     },
     auth: {
       checkCommand: "stripe get /v1/account 2>/dev/null | grep -q 'id'",
@@ -188,7 +195,28 @@ export const CAPABILITY_SPECS: CapabilityConfig[] = [
       macos: ["brew install libpq"],
       linux: ["sudo apt-get install -y postgresql-client"],
     },
-    pathCandidates: ["/opt/homebrew/opt/libpq/bin/psql", "/usr/local/opt/libpq/bin/psql"],
+    pathCandidates: [
+      "/opt/homebrew/opt/libpq/bin/psql",
+      "/usr/local/opt/libpq/bin/psql",
+    ],
+  },
+  {
+    id: "deploy-vercel",
+    label: "Vercel CLI",
+    category: "deploy",
+    requiredFor: ["deploy"],
+    requiredByDefault: false,
+    binaryCommand: "command -v vercel",
+    versionCommand: "vercel --version",
+    installCommands: {
+      macos: ["pnpm add -g vercel"],
+      linux: ["pnpm add -g vercel"],
+    },
+    auth: {
+      checkCommand: "vercel whoami 2>/dev/null | grep -qv 'Error'",
+      loginCommand: "vercel login",
+      interactive: true,
+    },
   },
 ];
 
@@ -196,6 +224,12 @@ export const COMMAND_CAPABILITY_MAP: Record<CommandGroup, CapabilityId[]> = {
   dev: ["core-node", "core-pnpm", "core-python", "core-uv"],
   test: ["core-node", "core-pnpm", "core-python", "core-uv"],
   build: ["core-node", "core-pnpm"],
-  deploy: ["core-node", "core-pnpm", "core-docker", "deploy-gcloud", "deploy-gh"],
+  deploy: [
+    "core-node",
+    "core-pnpm",
+    "core-docker",
+    "deploy-gcloud",
+    "deploy-gh",
+  ],
   product: ["product-stripe"],
 };
