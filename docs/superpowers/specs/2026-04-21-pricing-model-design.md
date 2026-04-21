@@ -203,31 +203,42 @@ Atlas Research Pass resolves to Pro capabilities and limits.
 
 ## Stripe Product Mapping
 
-| Stripe Product | Prices | Status |
+Stripe has separate test and live modes with independent product
+catalogs. The bootstrap (`pnpm bootstrap`) creates products in test
+mode by default. Use `pnpm bootstrap --live` for production. Each
+mode gets its own product IDs — test IDs cannot be used in live mode
+and vice versa.
+
+| Stripe Product | Prices | Bootstrap Action |
 |---|---|---|
-| Atlas Research Pass | $50 one-time, $12/week | Exists (`prod_UMkuPoP6VUIIyT`) |
-| Atlas Pro | $5/month, $48/year | Create new |
-| Atlas Team Base | $25/month, $250/year | Create new |
-| Atlas Team Seat (per unit) | $8/month, $80/year | Create new |
-| Atlas Team (legacy) | — | Archive (`prod_UMku0d4n2sHTkm`) |
+| Atlas Research Pass | $50 one-time, $12/week | Create (or verify if existing) |
+| Atlas Pro | $5/month, $48/year | Create |
+| Atlas Team Base | $25/month, $250/year | Create |
+| Atlas Team Seat (per unit) | $8/month, $80/year | Create |
+| Atlas Team (legacy) | — | Archive if found |
+
+**Live mode reference IDs** (for auditing only — do not hardcode):
+- Research Pass: `prod_UMkuPoP6VUIIyT`
+- Legacy Team: `prod_UMku0d4n2sHTkm`
 
 ### Environment Variables
 
-Populated by the bootstrap script after product sync:
+Populated by the bootstrap script after product sync. Values are
+mode-specific — test and live runs produce different IDs:
 
 ```
-STRIPE_PRODUCT_ATLAS_RESEARCH_PASS=prod_UMkuPoP6VUIIyT
-STRIPE_PRICE_ATLAS_RESEARCH_PASS_ONCE=price_1TO1Oc00LmJOIDM0x5zRKXNT
-STRIPE_PRICE_ATLAS_RESEARCH_PASS_WEEKLY=price_1TO1Oc00LmJOIDM0exBKYlvP
-STRIPE_PRODUCT_ATLAS_PRO=prod_xxx
-STRIPE_PRICE_ATLAS_PRO_MONTHLY=price_xxx
-STRIPE_PRICE_ATLAS_PRO_YEARLY=price_xxx
-STRIPE_PRODUCT_ATLAS_TEAM_BASE=prod_xxx
-STRIPE_PRICE_ATLAS_TEAM_BASE_MONTHLY=price_xxx
-STRIPE_PRICE_ATLAS_TEAM_BASE_YEARLY=price_xxx
-STRIPE_PRODUCT_ATLAS_TEAM_SEAT=prod_xxx
-STRIPE_PRICE_ATLAS_TEAM_SEAT_MONTHLY=price_xxx
-STRIPE_PRICE_ATLAS_TEAM_SEAT_YEARLY=price_xxx
+STRIPE_PRODUCT_ATLAS_RESEARCH_PASS=<mode-specific>
+STRIPE_PRICE_ATLAS_RESEARCH_PASS_ONCE=<mode-specific>
+STRIPE_PRICE_ATLAS_RESEARCH_PASS_WEEKLY=<mode-specific>
+STRIPE_PRODUCT_ATLAS_PRO=<mode-specific>
+STRIPE_PRICE_ATLAS_PRO_MONTHLY=<mode-specific>
+STRIPE_PRICE_ATLAS_PRO_YEARLY=<mode-specific>
+STRIPE_PRODUCT_ATLAS_TEAM_BASE=<mode-specific>
+STRIPE_PRICE_ATLAS_TEAM_BASE_MONTHLY=<mode-specific>
+STRIPE_PRICE_ATLAS_TEAM_BASE_YEARLY=<mode-specific>
+STRIPE_PRODUCT_ATLAS_TEAM_SEAT=<mode-specific>
+STRIPE_PRICE_ATLAS_TEAM_SEAT_MONTHLY=<mode-specific>
+STRIPE_PRICE_ATLAS_TEAM_SEAT_YEARLY=<mode-specific>
 ```
 
 ## Implementation Seams
