@@ -24,7 +24,8 @@ export const ATLAS_PRODUCTS: AtlasProductDefinition[] = [
   {
     id: "research-pass",
     stripeName: "Atlas Research Pass",
-    description: "The Atlas plan for people doing a short-term research project that can fit in a month.",
+    description:
+      "The Atlas plan for people doing a short-term research project that can fit in a month.",
     envProductKey: "STRIPE_PRODUCT_ATLAS_RESEARCH_PASS",
     action: "keep",
     existingProductId: "prod_UMkuPoP6VUIIyT",
@@ -47,7 +48,8 @@ export const ATLAS_PRODUCTS: AtlasProductDefinition[] = [
   {
     id: "pro",
     stripeName: "Atlas Pro",
-    description: "Professional workspace for individual researchers with unlimited research runs, exports, and API access.",
+    description:
+      "Professional workspace for individual researchers with unlimited research runs, exports, and API access.",
     envProductKey: "STRIPE_PRODUCT_ATLAS_PRO",
     action: "create",
     prices: [
@@ -70,7 +72,8 @@ export const ATLAS_PRODUCTS: AtlasProductDefinition[] = [
   {
     id: "team-base",
     stripeName: "Atlas Team",
-    description: "Shared workspace for newsrooms, nonprofits, and research teams.",
+    description:
+      "Shared workspace for newsrooms, nonprofits, and research teams.",
     envProductKey: "STRIPE_PRODUCT_ATLAS_TEAM_BASE",
     action: "create",
     prices: [

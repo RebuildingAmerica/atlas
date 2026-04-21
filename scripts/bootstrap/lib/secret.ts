@@ -14,5 +14,5 @@ const PLACEHOLDER_PATTERNS = [
 
 export function isPlaceholder(value: string): boolean {
   if (!value || value === "") return true;
-  return PLACEHOLDER_PATTERNS.some(pattern => pattern.test(value));
+  return PLACEHOLDER_PATTERNS.some((pattern) => pattern.test(value));
 }

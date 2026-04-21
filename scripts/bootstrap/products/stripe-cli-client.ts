@@ -99,10 +99,7 @@ export function resolveStripeApiKey(
  * Execute the Stripe CLI with the given arguments. When `live` is true the
  * `--live` flag is appended automatically.
  */
-export function runStripeCli(
-  args: string[],
-  live: boolean,
-): CommandResult {
+export function runStripeCli(args: string[], live: boolean): CommandResult {
   const modeArgs = live ? [...args, "--live"] : args;
   const command = `stripe ${modeArgs.join(" ")}`;
   return runCommand(command);

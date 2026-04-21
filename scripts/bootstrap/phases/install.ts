@@ -1,6 +1,9 @@
 import { log, spinner } from "@clack/prompts";
 import pc from "picocolors";
-import { CAPABILITY_SPECS, type CapabilityConfig } from "../config/prerequisites.js";
+import {
+  CAPABILITY_SPECS,
+  type CapabilityConfig,
+} from "../config/prerequisites.js";
 import type { SupportedOs } from "../lib/types.js";
 import type { PhaseResult } from "../lib/types.js";
 import { runCommand, summarizeOutputLine } from "../lib/shell.js";
@@ -18,7 +21,7 @@ export async function runInstallPhase(
   const followUpItems: string[] = [];
   let allReady = true;
 
-  const caps = CAPABILITY_SPECS.filter(cap => {
+  const caps = CAPABILITY_SPECS.filter((cap) => {
     if (localOnly && cap.category !== "core") return false;
     return cap.requiredByDefault || cap.category === "core";
   });
@@ -40,7 +43,11 @@ export async function runInstallPhase(
     if (doctorMode) {
       log.warn(`${cap.label} — not installed`);
       if (cap.postInstallHint) logSubline(pc.dim(cap.postInstallHint));
-      markCapability(state, cap.id, { status: "failed", installStatus: "failed", details: "not installed" });
+      markCapability(state, cap.id, {
+        status: "failed",
+        installStatus: "failed",
+        details: "not installed",
+      });
       allReady = false;
       continue;
     }
@@ -52,8 +59,13 @@ export async function runInstallPhase(
 
     if (!shouldInstall) {
       log.warn(`${cap.label} — skipped`);
-      markCapability(state, cap.id, { status: "deferred", installStatus: "deferred" });
-      followUpItems.push(`Install ${cap.label}: ${cap.installCommands[os].join(" && ")}`);
+      markCapability(state, cap.id, {
+        status: "deferred",
+        installStatus: "deferred",
+      });
+      followUpItems.push(
+        `Install ${cap.label}: ${cap.installCommands[os].join(" && ")}`,
+      );
       continue;
     }
 
@@ -66,7 +78,11 @@ export async function runInstallPhase(
       if (!cmdResult.ok) {
         s.stop(`${cap.label} — install failed`);
         log.error(summarizeOutputLine(cmdResult));
-        markCapability(state, cap.id, { status: "failed", installStatus: "failed", details: cmdResult.stderr });
+        markCapability(state, cap.id, {
+          status: "failed",
+          installStatus: "failed",
+          details: cmdResult.stderr,
+        });
         followUpItems.push(`Install ${cap.label} manually: ${cmd}`);
         installOk = false;
         allReady = false;
@@ -78,10 +94,18 @@ export async function runInstallPhase(
       const recheck = checkCapability(cap);
       if (recheck.installed) {
         s.stop(`${cap.label} installed`);
-        markCapability(state, cap.id, { status: "ready", installStatus: "ready", detectedVersion: recheck.version });
+        markCapability(state, cap.id, {
+          status: "ready",
+          installStatus: "ready",
+          detectedVersion: recheck.version,
+        });
       } else {
         s.stop(`${cap.label} — installed but not detected`);
-        markCapability(state, cap.id, { status: "failed", installStatus: "failed", details: "installed but not on PATH" });
+        markCapability(state, cap.id, {
+          status: "failed",
+          installStatus: "failed",
+          details: "installed but not on PATH",
+        });
         if (cap.postInstallHint) followUpItems.push(cap.postInstallHint);
         allReady = false;
       }

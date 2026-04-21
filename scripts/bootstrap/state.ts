@@ -1,6 +1,12 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import type { CapabilityId, CapabilityState, CommandGroup, PhaseId, PhaseState } from "./lib/types.js";
+import type {
+  CapabilityId,
+  CapabilityState,
+  CommandGroup,
+  PhaseId,
+  PhaseState,
+} from "./lib/types.js";
 
 const STATE_VERSION = 1;
 
@@ -28,7 +34,10 @@ export function loadReadiness(projectRoot: string): ReadinessState {
   return createEmptyState();
 }
 
-export function saveReadiness(projectRoot: string, state: ReadinessState): void {
+export function saveReadiness(
+  projectRoot: string,
+  state: ReadinessState,
+): void {
   const filePath = stateFilePath(projectRoot);
   const dir = path.dirname(filePath);
   if (!existsSync(dir)) {

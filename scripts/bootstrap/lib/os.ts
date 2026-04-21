@@ -2,8 +2,12 @@ import { spawnSync } from "node:child_process";
 import type { SupportedOs } from "./types.js";
 
 export function parseSemver(raw: string): number[] {
-  return raw.replace(/^v/, "").replace(/^Python /, "").trim().split(".")
-    .map(part => {
+  return raw
+    .replace(/^v/, "")
+    .replace(/^Python /, "")
+    .trim()
+    .split(".")
+    .map((part) => {
       const parsed = parseInt(part.replace(/\D+$/, ""), 10);
       return Number.isNaN(parsed) ? 0 : parsed;
     });
@@ -23,7 +27,10 @@ export function isVersionGte(currentRaw: string, minimumRaw: string): boolean {
 }
 
 export function detectOs(): SupportedOs | null {
-  const result = spawnSync("uname", ["-s"], { stdio: "pipe", encoding: "utf8" });
+  const result = spawnSync("uname", ["-s"], {
+    stdio: "pipe",
+    encoding: "utf8",
+  });
   if (result.status !== 0) return null;
   const os = result.stdout.trim();
   if (os === "Darwin") return "macos";
