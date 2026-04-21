@@ -6,6 +6,14 @@ import pc from "picocolors";
 import { runCommand } from "./shell.js";
 import { promptOrExit, promptConfirm, logSubline } from "./ui.js";
 
+function assertSafeCliArg(value: string, name: string): void {
+  if (!/^[a-zA-Z0-9_.-]+$/.test(value)) {
+    throw new Error(
+      `Invalid ${name}: ${JSON.stringify(value)} — must match [a-zA-Z0-9_.-]+`,
+    );
+  }
+}
+
 export type VercelEnvironment = "production" | "preview" | "development";
 
 export interface VercelVar {
@@ -68,7 +76,7 @@ function findAtlasInTeams(): { team: string; url: string } | undefined {
     for (const line of result.stdout.split("\n")) {
       const trimmed = line.trim();
       // Match a line starting with "atlas" followed by whitespace
-      if (/^atlas\s/.test(trimmed)) {
+      if (/^atlas(\s|$)/.test(trimmed)) {
         const urlMatch = /https:\/\/\S+/.exec(trimmed);
         return { team, url: urlMatch?.[0] ?? "" };
       }
@@ -125,6 +133,9 @@ export async function detectAndLink(appDir: string): Promise<void> {
     )) as string;
   }
 
+  assertSafeCliArg(team, "team");
+  assertSafeCliArg(project, "project");
+
   const s = spinner();
   s.start(`Linking to ${project} on ${team}...`);
 
@@ -151,20 +162,20 @@ function vercelEnvAdd(
   environment: VercelEnvironment,
   scope: string,
 ): boolean {
-  const shell = process.env.SHELL ?? "sh";
   const result = spawnSync(
-    shell,
-    [
-      "-c",
-      `vercel env add "${key}" "${environment}" --scope "${scope}" --force 2>/dev/null`,
-    ],
+    "vercel",
+    ["env", "add", key, environment, "--scope", scope, "--force"],
     { input: value, stdio: ["pipe", "pipe", "pipe"], encoding: "utf8" },
   );
+  if (result.error) {
+    throw new Error(`Failed to spawn vercel CLI: ${result.error.message}`);
+  }
   return result.status === 0;
 }
 
 // Returns a Set of "KEY:environment" strings for vars already present on the project.
 function fetchExistingKeys(scope: string): Set<string> {
+  assertSafeCliArg(scope, "scope");
   const existing = new Set<string>();
   const result = runCommand(`vercel env ls --scope "${scope}" 2>/dev/null`);
   if (!result.ok) return existing;
@@ -237,6 +248,7 @@ export async function syncEnvVars(
   vars: VercelVar[],
   scope: string,
 ): Promise<void> {
+  assertSafeCliArg(scope, "scope");
   if (vars.length === 0) return;
 
   const { toAdd, toOverwrite } = buildSyncPreview(vars, scope);
