@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useAtlasSession } from "@/domains/access";
+import { hasSerializedCapability } from "@/domains/access/capabilities";
 import { useTaxonomy } from "@/domains/catalog/hooks/use-taxonomy";
 import { useDiscoveryRuns, useStartDiscovery } from "@/domains/discovery/hooks/use-discovery";
 import { Button } from "@/platform/ui/button";
@@ -37,6 +38,7 @@ interface DiscoverySetupNoticeProps {
  * Props for the discovery run form.
  */
 interface DiscoveryRunFormProps {
+  canRunResearch: boolean;
   issueAreas: {
     description?: string | null;
     name: string;
@@ -94,6 +96,7 @@ function DiscoverySetupNotice({ body, cta, title }: DiscoverySetupNoticeProps) {
 }
 
 function DiscoveryRunForm({
+  canRunResearch,
   issueAreas,
   isPending,
   isTaxonomyLoading,
@@ -195,6 +198,7 @@ function DiscoveryRunForm({
         <Button
           type="submit"
           disabled={
+            !canRunResearch ||
             isPending ||
             !locationQuery.trim() ||
             state.trim().length !== 2 ||
@@ -291,6 +295,9 @@ export function DiscoveryPage() {
   const activeWorkspace = atlasSession.data?.workspace.activeOrganization ?? null;
   const canUseTeamFeatures = atlasSession.data?.workspace.capabilities.canUseTeamFeatures ?? false;
   const needsWorkspace = atlasSession.data?.workspace.onboarding.needsWorkspace ?? false;
+  const canRunResearch = atlasSession.data
+    ? hasSerializedCapability(atlasSession.data.workspace.resolvedCapabilities, "research.run")
+    : false;
   const hasPendingInvitations =
     atlasSession.data?.workspace.onboarding.hasPendingInvitations ?? false;
   const latestRuns = runsQuery.data?.items ?? [];
@@ -367,6 +374,7 @@ export function DiscoveryPage() {
 
       <section className="grid gap-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
         <DiscoveryRunForm
+          canRunResearch={canRunResearch}
           issueAreas={issueAreas}
           isPending={startDiscovery.isPending}
           isTaxonomyLoading={taxonomyQuery.isLoading}

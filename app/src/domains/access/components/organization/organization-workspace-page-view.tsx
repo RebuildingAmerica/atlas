@@ -1,3 +1,4 @@
+import { hasSerializedCapability } from "@/domains/access/capabilities";
 import type { OrganizationPageController } from "./organization-page-types";
 import { OrganizationEmptyState } from "./organization-empty-state";
 import { OrganizationLoadingState } from "./organization-loading-state";
@@ -24,6 +25,9 @@ interface OrganizationWorkspacePageViewProps {
  * invitations.
  */
 export function OrganizationWorkspacePageView({ controller }: OrganizationWorkspacePageViewProps) {
+  const canInviteMembers = controller.session
+    ? hasSerializedCapability(controller.session.workspace.resolvedCapabilities, "workspace.shared")
+    : false;
   const inviteOnlyMode = true;
   const pageLabel = controller.needsWorkspace
     ? "Workspace setup"
@@ -145,7 +149,7 @@ export function OrganizationWorkspacePageView({ controller }: OrganizationWorksp
             ) : null}
           </section>
 
-          {controller.canUseTeamFeatures ? (
+          {controller.canUseTeamFeatures && canInviteMembers ? (
             <TeamInvitationsSection
               canManageOrganization={controller.canManageOrganization}
               inviteEmail={controller.inviteEmail}

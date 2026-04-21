@@ -1,3 +1,4 @@
+import { hasSerializedCapability } from "@/domains/access/capabilities";
 import type { OrganizationPageController } from "./organization-page-types";
 import { OrganizationEmptyState } from "./organization-empty-state";
 import { OrganizationLoadingState } from "./organization-loading-state";
@@ -21,7 +22,23 @@ interface OrganizationSSOPageViewProps {
  * verification.
  */
 export function OrganizationSSOPageView({ controller }: OrganizationSSOPageViewProps) {
+  const canConfigureSSO = controller.session
+    ? hasSerializedCapability(controller.session.workspace.resolvedCapabilities, "auth.sso")
+    : false;
   const inviteOnlyMode = true;
+
+  if (!canConfigureSSO) {
+    return (
+      <div className="space-y-8 py-2">
+        <OrganizationPageHeader
+          description="Enterprise SSO configuration is not available for your current workspace plan."
+          label="Enterprise SSO setup"
+          links={[{ label: "View full organization settings", to: "/organization" }]}
+          title="Enterprise sign-in"
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8 py-2">

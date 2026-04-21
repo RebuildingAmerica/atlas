@@ -5,6 +5,7 @@ import { Link } from "@tanstack/react-router";
 import { Button } from "@/platform/ui/button";
 import { Input } from "@/platform/ui/input";
 import { API_KEY_SCOPES, type ApiKeyScope } from "../api-key-scopes";
+import { hasSerializedCapability } from "../capabilities";
 import { createApiKey, deleteApiKey, listApiKeys } from "../api-keys.functions";
 import { deletePasskey, listPasskeys, updatePasskey } from "../passkeys.functions";
 import { resolvePasskeyName } from "../passkey-names";
@@ -77,6 +78,9 @@ export function AccountPage() {
   const needsWorkspace = atlasSession.data?.workspace.onboarding.needsWorkspace ?? false;
   const hasPendingInvitations =
     atlasSession.data?.workspace.onboarding.hasPendingInvitations ?? false;
+  const canCreateApiKeys = atlasSession.data
+    ? hasSerializedCapability(atlasSession.data.workspace.resolvedCapabilities, "api.keys")
+    : false;
   const shouldShowOrganizationLink =
     atlasSession.data?.workspace.capabilities.canSwitchOrganizations ||
     activeWorkspace?.workspaceType === "team" ||
@@ -385,106 +389,108 @@ export function AccountPage() {
           </div>
         </div>
 
-        <div className="border-border-strong bg-surface space-y-4 rounded-[1.5rem] border p-6">
-          <div className="space-y-2">
-            <h2 className="type-title-large text-ink-strong">API keys</h2>
-            <p className="type-body-medium text-ink-soft">
-              Create keys for direct API access to protected Atlas endpoints.
-            </p>
-          </div>
-
-          <div className="flex gap-3">
-            <Input
-              value={apiKeyName}
-              onChange={setApiKeyName}
-              placeholder="Desktop script"
-              label="Key name"
-            />
-            <div className="pt-7">
-              <Button
-                onClick={() => {
-                  setFlashMessage(null);
-                  setErrorMessage(null);
-                  createApiKeyMutation.mutate({ name: apiKeyName, scopes: apiKeyScopes });
-                }}
-                disabled={
-                  !apiKeyName || apiKeyScopes.length === 0 || createApiKeyMutation.isPending
-                }
-              >
-                <span className="inline-flex items-center gap-2">
-                  <Plus className="h-4 w-4" />
-                  Create
-                </span>
-              </Button>
+        {canCreateApiKeys ? (
+          <div className="border-border-strong bg-surface space-y-4 rounded-[1.5rem] border p-6">
+            <div className="space-y-2">
+              <h2 className="type-title-large text-ink-strong">API keys</h2>
+              <p className="type-body-medium text-ink-soft">
+                Create keys for direct API access to protected Atlas endpoints.
+              </p>
             </div>
-          </div>
 
-          <div className="space-y-2">
-            <p className="type-label-large text-ink-strong">Scopes</p>
-            <div className="grid gap-2 sm:grid-cols-2">
-              {API_KEY_SCOPES.map((scope) => (
-                <label
-                  key={scope}
-                  className="border-border flex items-start gap-3 rounded-lg border px-3 py-3"
-                >
-                  <input
-                    type="checkbox"
-                    checked={apiKeyScopes.includes(scope)}
-                    onChange={() => {
-                      toggleScope(scope);
-                    }}
-                    className="mt-1"
-                  />
-                  <span className="type-title-small text-ink-strong block">{scope}</span>
-                </label>
-              ))}
-            </div>
-          </div>
-
-          <div className="space-y-3">
-            {apiKeysQuery.data?.map((apiKey) => (
-              <article
-                key={apiKey.id}
-                className="border-border flex items-center justify-between gap-3 rounded-2xl border bg-white/70 px-4 py-3"
-              >
-                <div>
-                  <p className="type-title-small text-ink-strong">
-                    {apiKey.name || "Untitled key"}
-                  </p>
-                  <p className="type-body-small text-ink-soft">
-                    {apiKey.prefix || "atlas"} · {apiKey.createdAt}
-                  </p>
-                  <p className="type-body-small text-ink-soft">
-                    {(apiKey.scopes ?? []).join(", ") || "No scopes"}
-                  </p>
-                </div>
+            <div className="flex gap-3">
+              <Input
+                value={apiKeyName}
+                onChange={setApiKeyName}
+                placeholder="Desktop script"
+                label="Key name"
+              />
+              <div className="pt-7">
                 <Button
-                  variant="ghost"
                   onClick={() => {
                     setFlashMessage(null);
                     setErrorMessage(null);
-                    deleteApiKeyMutation.mutate(apiKey.id);
+                    createApiKeyMutation.mutate({ name: apiKeyName, scopes: apiKeyScopes });
                   }}
-                  disabled={deleteApiKeyMutation.isPending}
+                  disabled={
+                    !apiKeyName || apiKeyScopes.length === 0 || createApiKeyMutation.isPending
+                  }
                 >
-                  Revoke
+                  <span className="inline-flex items-center gap-2">
+                    <Plus className="h-4 w-4" />
+                    Create
+                  </span>
                 </Button>
-              </article>
-            ))}
+              </div>
+            </div>
 
-            {apiKeysQuery.isError ? (
-              <p className="type-body-medium text-ink-soft">
-                Atlas could not load your API keys right now.
-              </p>
-            ) : null}
+            <div className="space-y-2">
+              <p className="type-label-large text-ink-strong">Scopes</p>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {API_KEY_SCOPES.map((scope) => (
+                  <label
+                    key={scope}
+                    className="border-border flex items-start gap-3 rounded-lg border px-3 py-3"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={apiKeyScopes.includes(scope)}
+                      onChange={() => {
+                        toggleScope(scope);
+                      }}
+                      className="mt-1"
+                    />
+                    <span className="type-title-small text-ink-strong block">{scope}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
 
-            {!apiKeysQuery.data?.length ? (
-              <p className="type-body-medium text-ink-soft">
-                No API keys yet. Create one for scripts or CLI access.
-              </p>
-            ) : null}
+            <div className="space-y-3">
+              {apiKeysQuery.data?.map((apiKey) => (
+                <article
+                  key={apiKey.id}
+                  className="border-border flex items-center justify-between gap-3 rounded-2xl border bg-white/70 px-4 py-3"
+                >
+                  <div>
+                    <p className="type-title-small text-ink-strong">
+                      {apiKey.name || "Untitled key"}
+                    </p>
+                    <p className="type-body-small text-ink-soft">
+                      {apiKey.prefix || "atlas"} · {apiKey.createdAt}
+                    </p>
+                    <p className="type-body-small text-ink-soft">
+                      {(apiKey.scopes ?? []).join(", ") || "No scopes"}
+                    </p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    onClick={() => {
+                      setFlashMessage(null);
+                      setErrorMessage(null);
+                      deleteApiKeyMutation.mutate(apiKey.id);
+                    }}
+                    disabled={deleteApiKeyMutation.isPending}
+                  >
+                    Revoke
+                  </Button>
+                </article>
+              ))}
+
+              {apiKeysQuery.isError ? (
+                <p className="type-body-medium text-ink-soft">
+                  Atlas could not load your API keys right now.
+                </p>
+              ) : null}
+
+              {!apiKeysQuery.data?.length ? (
+                <p className="type-body-medium text-ink-soft">
+                  No API keys yet. Create one for scripts or CLI access.
+                </p>
+              ) : null}
+            </div>
           </div>
-        </div>
+        ) : null}
       </section>
     </div>
   );
