@@ -31,6 +31,11 @@ export interface AtlasOrganizationMetadata {
   ssoPrimaryProviderId: string | null;
   stripeCustomerId: string | null;
   workspaceType: AtlasWorkspaceType;
+  // Discount verification fields
+  discountSegment?: "independent_journalist" | "grassroots_nonprofit" | "civic_tech_worker";
+  verificationStatus?: "pending" | "verified" | "rejected" | "expired";
+  verifiedAt?: string; // ISO timestamp
+  verificationMethod?: "portfolio" | "irs_lookup" | "self_attestation";
 }
 
 const atlasOrganizationMetadataSchema = z
@@ -38,6 +43,12 @@ const atlasOrganizationMetadataSchema = z
     ssoPrimaryProviderId: z.string().trim().min(1).nullish(),
     stripeCustomerId: z.string().trim().min(1).nullish(),
     workspaceType: atlasWorkspaceTypeSchema.optional(),
+    discountSegment: z
+      .enum(["independent_journalist", "grassroots_nonprofit", "civic_tech_worker"])
+      .optional(),
+    verificationStatus: z.enum(["pending", "verified", "rejected", "expired"]).optional(),
+    verifiedAt: z.string().optional(),
+    verificationMethod: z.enum(["portfolio", "irs_lookup", "self_attestation"]).optional(),
   })
   .passthrough();
 
@@ -76,6 +87,10 @@ export function normalizeAtlasOrganizationMetadata(metadata: unknown): AtlasOrga
       parsed.success && parsed.data.stripeCustomerId ? parsed.data.stripeCustomerId : null,
     workspaceType:
       parsed.success && parsed.data.workspaceType ? parsed.data.workspaceType : "individual",
+    discountSegment: parsed.success ? parsed.data.discountSegment : undefined,
+    verificationStatus: parsed.success ? parsed.data.verificationStatus : undefined,
+    verifiedAt: parsed.success ? parsed.data.verifiedAt : undefined,
+    verificationMethod: parsed.success ? parsed.data.verificationMethod : undefined,
   };
 }
 
@@ -102,6 +117,10 @@ export function mergeAtlasOrganizationMetadata(
         ? normalizedMetadata.stripeCustomerId
         : updates.stripeCustomerId,
     workspaceType: updates.workspaceType ?? normalizedMetadata.workspaceType,
+    discountSegment: updates.discountSegment ?? normalizedMetadata.discountSegment,
+    verificationStatus: updates.verificationStatus ?? normalizedMetadata.verificationStatus,
+    verifiedAt: updates.verifiedAt ?? normalizedMetadata.verifiedAt,
+    verificationMethod: updates.verificationMethod ?? normalizedMetadata.verificationMethod,
   };
 }
 
