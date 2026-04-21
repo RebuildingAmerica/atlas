@@ -18,9 +18,15 @@
     "compose:validate": "sh ./scripts/compose-validate.sh",
     "e2e:api": "uv --directory ./api run python -m atlas.platform.e2e_server",
     "prod:verify": "printf 'Atlas production verification graph completed\\n'",
-    "verify": "turbo run //#prod:verify"
+    "verify": "turbo run //#prod:verify",
+    "bootstrap": "tsx scripts/bootstrap/cold-start.ts",
+    "doctor": "tsx scripts/bootstrap/cold-start.ts --doctor"
   },
   "devDependencies": {
+    "@clack/prompts": "^0.11.0",
+    "picocolors": "^1.1.0",
+    "stripe": "^18.0.0",
+    "tsx": "^4.19.0",
     "turbo": "^2.9.6"
   }
 }

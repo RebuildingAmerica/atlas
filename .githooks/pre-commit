@@ -50,9 +50,9 @@ get_staged_api_python_files() {
     get_staged_files | grep -E '^api/.*\.py$' || echo ""
 }
 
-# Get staged app files
+# Get staged app files (only files under app/)
 get_staged_app_files() {
-    get_staged_files | grep -E '\.(js|jsx|ts|tsx|vue|svelte)$' || echo ""
+    get_staged_files | grep -E '^app/.*\.(js|jsx|ts|tsx|vue|svelte)$' || echo ""
 }
 
 ROOT_DIR="$(git rev-parse --show-toplevel)"
