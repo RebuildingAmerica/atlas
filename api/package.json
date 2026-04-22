@@ -1,5 +1,5 @@
 {
-  "name": "@atlas/api",
+  "name": "@rebuildingamerica/atlas-api",
   "private": true,
   "scripts": {
     "dev": "portless api uv run python -m atlas.main",
