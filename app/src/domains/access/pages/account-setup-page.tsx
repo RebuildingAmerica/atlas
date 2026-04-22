@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, KeyRound, LogOut, Mail, RefreshCw } from "lucide-react";
 import { Button } from "@/platform/ui/button";
+import { DiscountVerificationSection } from "@/domains/billing/verification/discount-verification-section";
 import { getAuthClient } from "../client/auth-client";
 import { atlasSessionQueryKey, useAtlasSession } from "../client/use-atlas-session";
 import { waitForAtlasPasskeyRegistration } from "../client/session-confirmation";
@@ -200,6 +201,8 @@ export function AccountSetupPage({ redirectTo }: AccountSetupPageProps) {
             </div>
           </div>
         ) : null}
+
+        <DiscountVerificationSection userId={session?.user.id || ""} />
       </div>
 
       <div className="border-border bg-surface-container-lowest space-y-4 rounded-[1.4rem] border p-5">
