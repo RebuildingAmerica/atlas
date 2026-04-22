@@ -1,6 +1,6 @@
 """Tests for discount verification API."""
 
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -18,10 +18,10 @@ def verifier() -> DiscountVerifier:
 
 
 class TestIndependentJournalistVerification:
-    """Test independent journalist verification."""
+    """Test independent journalist verification (format validation only)."""
 
     def test_valid_portfolio_url(self, verifier: DiscountVerifier) -> None:
-        """Test that valid portfolio URLs are accepted."""
+        """Test that valid portfolio URLs are accepted for manual review."""
         is_valid, error = verifier.verify_independent_journalist("https://example.com/portfolio")
         assert is_valid
         assert error is None
@@ -40,10 +40,10 @@ class TestIndependentJournalistVerification:
 
 
 class TestGrassrootsNonprofitVerification:
-    """Test grassroots nonprofit verification."""
+    """Test grassroots nonprofit verification (format validation + manual review)."""
 
     def test_valid_ein_and_budget(self, verifier: DiscountVerifier) -> None:
-        """Test verification with valid EIN and budget."""
+        """Test verification with valid EIN format and budget."""
         is_valid, error = verifier.verify_grassroots_nonprofit("04-1798922", "$500,000")
         assert is_valid
         assert error is None
@@ -79,9 +79,16 @@ class TestGrassrootsNonprofitVerification:
         is_valid, _error = verifier.verify_grassroots_nonprofit("123", "$500,000")
         assert not is_valid
 
+    def test_ein_normalization(self, verifier: DiscountVerifier) -> None:
+        """Test that EINs with and without dashes both validate."""
+        is_valid_dash, _ = verifier.verify_grassroots_nonprofit("04-1798922", "$500,000")
+        is_valid_no_dash, _ = verifier.verify_grassroots_nonprofit("041798922", "$500,000")
+        assert is_valid_dash
+        assert is_valid_no_dash
+
 
 class TestCivicTechVerification:
-    """Test civic tech worker verification."""
+    """Test civic tech worker verification (format validation only)."""
 
     def test_valid_project_url_and_mission(self, verifier: DiscountVerifier) -> None:
         """Test verification with valid project URL and mission."""
@@ -135,31 +142,32 @@ class TestVerificationRecord:
         assert req.data["portfolio_url"] == "https://example.com"
 
     def test_create_verification_record(self, verifier: DiscountVerifier) -> None:
-        """Test creating a verification record."""
+        """Test creating a verification record (starts as PENDING)."""
         record = verifier.create_verification_record(
             "user123",
             "grassroots_nonprofit",
-            VerificationMethod.IRS_LOOKUP,
+            VerificationMethod.EIN_SUBMISSION,
             VerificationStatus.PENDING,
         )
         assert record.user_id == "user123"
         assert record.status == VerificationStatus.PENDING
-        assert record.method == VerificationMethod.IRS_LOOKUP
+        assert record.method == VerificationMethod.EIN_SUBMISSION
+        assert "manual" in record.notes.lower()
 
     def test_mark_verified(self, verifier: DiscountVerifier) -> None:
-        """Test marking a record as verified."""
+        """Test marking a record as verified (after manual review)."""
         record = verifier.create_verification_record(
             "user123",
             "civic_tech_worker",
-            VerificationMethod.SELF_ATTESTATION,
+            VerificationMethod.MISSION_STATEMENT,
         )
         assert record.status == VerificationStatus.PENDING
         assert record.verified_at is None
 
-        record = verifier.mark_verified(record, notes="Verified via manual review")
+        record = verifier.mark_verified(record, notes="Approved by reviewer")
         assert record.status == VerificationStatus.VERIFIED
         assert record.verified_at is not None
-        assert record.notes == "Verified via manual review"
+        assert record.notes == "Approved by reviewer"
 
     def test_mark_rejected(self, verifier: DiscountVerifier) -> None:
         """Test marking a record as rejected."""
@@ -174,8 +182,6 @@ class TestVerificationRecord:
 
     def test_is_verification_expired(self, verifier: DiscountVerifier) -> None:
         """Test checking if verification is expired."""
-        from datetime import UTC, timedelta
-
         old_date = datetime.now(tz=UTC) - timedelta(days=400)
         recent_date = datetime.now(tz=UTC) - timedelta(days=10)
 

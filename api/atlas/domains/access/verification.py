@@ -1,11 +1,13 @@
-"""Discount verification API and data models."""
+"""Discount verification API and data models.
+
+TODO: Integrate ProPublica Nonprofit Explorer API (https://projects.propublica.org/nonprofits/api)
+for real-time nonprofit EIN lookups. Currently all verifications require manual review.
+"""
 
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from enum import StrEnum
 from typing import Literal
-
-from .irs_lookup import is_valid_ein, lookup_nonprofit_by_ein
 
 # Constants for validation
 MIN_MISSION_LENGTH = 20
@@ -16,7 +18,7 @@ EIN_LENGTH = 9
 class VerificationStatus(StrEnum):
     """Status of a discount verification."""
 
-    PENDING = "pending"
+    PENDING = "pending"  # Awaiting manual review
     VERIFIED = "verified"
     REJECTED = "rejected"
     EXPIRED = "expired"
@@ -26,8 +28,8 @@ class VerificationMethod(StrEnum):
     """Method used to verify a discount claim."""
 
     PORTFOLIO = "portfolio"
-    IRS_LOOKUP = "irs_lookup"
-    SELF_ATTESTATION = "self_attestation"
+    EIN_SUBMISSION = "ein_submission"
+    MISSION_STATEMENT = "mission_statement"
 
 
 @dataclass
@@ -55,14 +57,17 @@ class VerificationRecord:
 
 
 class DiscountVerifier:
-    """Handles verification of discount claims."""
+    """Handles verification of discount claims.
+
+    NOTE: All verifications currently return PENDING status, requiring manual review.
+    TODO: Integrate ProPublica API for automated nonprofit verification.
+    """
 
     def verify_independent_journalist(self, portfolio_url: str) -> tuple[bool, str | None]:
         """
         Verify an independent journalist claim.
 
-        For launch, this is manual review (returns pending).
-        In production, could use URL/portfolio checking.
+        NOTE: Manual review required. This validates format only.
 
         Args:
             portfolio_url: URL to journalist's portfolio or byline
@@ -77,14 +82,14 @@ class DiscountVerifier:
         if not portfolio_url.startswith(("http://", "https://")):
             return False, "Portfolio URL must be a valid HTTP(S) URL"
 
-        # For launch: accept valid URLs, mark as pending for manual review
         return True, None
 
-    def verify_grassroots_nonprofit(self, ein_or_name: str, budget: str) -> tuple[bool, str | None]:  # noqa: PLR0911
+    def verify_grassroots_nonprofit(self, ein_or_name: str, budget: str) -> tuple[bool, str | None]:
         """
         Verify a grassroots nonprofit claim.
 
-        Checks EIN against IRS database if provided, validates budget < $2M.
+        NOTE: Manual review required. IRS lookup stub only validates format.
+        TODO: Call ProPublica API to verify EIN and check 501(c)(3) status.
 
         Args:
             ein_or_name: EIN (XX-XXXXXXX format) or organization name
@@ -100,15 +105,11 @@ class DiscountVerifier:
             return False, "Annual budget is required"
 
         # Try to parse as EIN if it looks like one
-        if "-" in ein_or_name or ein_or_name.replace(" ", "").isdigit():
-            if is_valid_ein(ein_or_name):
-                # Look up in IRS database
-                nonprofit = lookup_nonprofit_by_ein(ein_or_name)
-                if not nonprofit:
-                    return False, "EIN not found in IRS database"
-                # TODO: Check Form 990 data for budget
-            else:
-                return False, "Invalid EIN format (expected XX-XXXXXXX)"
+        if (
+            "-" in ein_or_name or ein_or_name.replace(" ", "").isdigit()
+        ) and not self._is_valid_ein_format(ein_or_name):
+            return False, "Invalid EIN format (expected XX-XXXXXXX or 9 digits)"
+        # TODO: Call ProPublica API here to verify EIN exists and is 501(c)(3)
 
         # Parse budget
         try:
@@ -126,7 +127,7 @@ class DiscountVerifier:
         """
         Verify a civic tech worker claim.
 
-        Validates project URL and mission statement length.
+        NOTE: Manual review required. This validates format only.
 
         Args:
             project_url: URL to GitHub repo or project website
@@ -151,6 +152,11 @@ class DiscountVerifier:
 
         return True, None
 
+    def _is_valid_ein_format(self, ein: str) -> bool:
+        """Validate EIN format (XX-XXXXXXX or 9 digits)."""
+        normalized = ein.replace("-", "").replace(" ", "")
+        return len(normalized) == EIN_LENGTH and normalized.isdigit()
+
     def create_verification_request(
         self,
         segment: Literal["independent_journalist", "grassroots_nonprofit", "civic_tech_worker"],
@@ -174,7 +180,7 @@ class DiscountVerifier:
         verification_data: dict[str, str] | None = None,
         notes: str | None = None,
     ) -> VerificationRecord:
-        """Create a verification record."""
+        """Create a verification record. All new records start as PENDING (manual review)."""
         return VerificationRecord(
             user_id=user_id,
             segment=segment,
@@ -182,13 +188,13 @@ class DiscountVerifier:
             method=method,
             submitted_at=datetime.now(tz=UTC),
             verification_data=verification_data,
-            notes=notes,
+            notes=notes or "Awaiting manual verification review",
         )
 
     def mark_verified(
         self, record: VerificationRecord, notes: str | None = None
     ) -> VerificationRecord:
-        """Mark a verification record as verified."""
+        """Mark a verification record as verified (after manual review)."""
         record.status = VerificationStatus.VERIFIED
         record.verified_at = datetime.now(tz=UTC)
         if notes:
