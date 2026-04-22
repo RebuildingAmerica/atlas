@@ -1,16 +1,11 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { SignInPage, signInSearchSchema } from "@/domains/access";
-import { getAtlasSession } from "@/domains/access/session.functions";
+import { redirectIfLocalSession } from "@/domains/access/server";
 
 export const Route = createFileRoute("/_auth/sign-in")({
   ssr: false,
   validateSearch: signInSearchSchema,
-  beforeLoad: async () => {
-    const session = await getAtlasSession();
-    if (session?.isLocal) {
-      throw redirect({ to: "/discovery" });
-    }
-  },
+  beforeLoad: () => redirectIfLocalSession("/discovery"),
   component: SignInRoute,
 });
 

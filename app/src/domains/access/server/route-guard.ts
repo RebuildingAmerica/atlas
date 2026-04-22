@@ -56,6 +56,18 @@ function resolveReadySessionDestination(
 }
 
 /**
+ * Redirects to a target route when the session is a synthetic local operator.
+ *
+ * @param to - The route to redirect to in local mode.
+ */
+export async function redirectIfLocalSession(to: string) {
+  const session = await getAtlasSession();
+  if (session?.isLocal) {
+    throw redirect({ to });
+  }
+}
+
+/**
  * Protects app routes that require an authenticated operator session.
  *
  * In local mode this resolves immediately because `getAtlasSession()` returns

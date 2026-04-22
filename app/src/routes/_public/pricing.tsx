@@ -1,13 +1,8 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { PricingPage } from "@/domains/billing/pages/pricing-page";
-import { getAtlasSession } from "@/domains/access/session.functions";
+import { redirectIfLocalSession } from "@/domains/access/server";
 
 export const Route = createFileRoute("/_public/pricing")({
-  beforeLoad: async () => {
-    const session = await getAtlasSession();
-    if (session?.isLocal) {
-      throw redirect({ to: "/" });
-    }
-  },
+  beforeLoad: () => redirectIfLocalSession("/"),
   component: PricingPage,
 });

@@ -1,15 +1,10 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { SignUpPage } from "@/domains/access/pages/sign-up-page";
-import { getAtlasSession } from "@/domains/access/session.functions";
+import { redirectIfLocalSession } from "@/domains/access/server";
 
 export const Route = createFileRoute("/_auth/sign-up")({
   ssr: false,
-  beforeLoad: async () => {
-    const session = await getAtlasSession();
-    if (session?.isLocal) {
-      throw redirect({ to: "/discovery" });
-    }
-  },
+  beforeLoad: () => redirectIfLocalSession("/discovery"),
   component: SignUpRoute,
 });
 
