@@ -111,6 +111,7 @@ describe("api runtime adapters", () => {
           region: undefined,
           social_media: undefined,
           source_count: 0,
+          slug: "",
           source_types: ["news_article"],
           state: "MO",
           type: "organization",

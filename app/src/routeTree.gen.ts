@@ -35,6 +35,8 @@ import { Route as WorkspaceAdminDiscountsRouteImport } from './routes/_workspace
 import { Route as PublicEntriesEntryIdRouteImport } from './routes/_public/entries.$entryId'
 import { Route as AuthOauthConsentRouteImport } from './routes/_auth/oauth/consent'
 import { Route as ApiAuthInternalApiKeyRouteImport } from './routes/api/auth/internal/api-key'
+import { Route as PublicProfilesPeopleSlugRouteImport } from './routes/_public/profiles/people.$slug'
+import { Route as PublicProfilesOrganizationsSlugRouteImport } from './routes/_public/profiles/organizations.$slug'
 import { Route as ApiAuthInternalMembershipsOrganizationIdMembersUserIdRouteImport } from './routes/api/auth/internal/memberships.$organizationId.members.$userId'
 
 const OpenapiDotjsonRoute = OpenapiDotjsonRouteImport.update({
@@ -166,6 +168,18 @@ const ApiAuthInternalApiKeyRoute = ApiAuthInternalApiKeyRouteImport.update({
   path: '/api/auth/internal/api-key',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PublicProfilesPeopleSlugRoute =
+  PublicProfilesPeopleSlugRouteImport.update({
+    id: '/profiles/people/$slug',
+    path: '/profiles/people/$slug',
+    getParentRoute: () => PublicRoute,
+  } as any)
+const PublicProfilesOrganizationsSlugRoute =
+  PublicProfilesOrganizationsSlugRouteImport.update({
+    id: '/profiles/organizations/$slug',
+    path: '/profiles/organizations/$slug',
+    getParentRoute: () => PublicRoute,
+  } as any)
 const ApiAuthInternalMembershipsOrganizationIdMembersUserIdRoute =
   ApiAuthInternalMembershipsOrganizationIdMembersUserIdRouteImport.update({
     id: '/api/auth/internal/memberships/$organizationId/members/$userId',
@@ -196,6 +210,8 @@ export interface FileRoutesByFullPath {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/stripe/webhook': typeof ApiStripeWebhookRoute
   '/organization/': typeof WorkspaceOrganizationIndexRoute
+  '/profiles/organizations/$slug': typeof PublicProfilesOrganizationsSlugRoute
+  '/profiles/people/$slug': typeof PublicProfilesPeopleSlugRoute
   '/api/auth/internal/api-key': typeof ApiAuthInternalApiKeyRoute
   '/api/auth/internal/memberships/$organizationId/members/$userId': typeof ApiAuthInternalMembershipsOrganizationIdMembersUserIdRoute
 }
@@ -221,6 +237,8 @@ export interface FileRoutesByTo {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/stripe/webhook': typeof ApiStripeWebhookRoute
   '/organization': typeof WorkspaceOrganizationIndexRoute
+  '/profiles/organizations/$slug': typeof PublicProfilesOrganizationsSlugRoute
+  '/profiles/people/$slug': typeof PublicProfilesPeopleSlugRoute
   '/api/auth/internal/api-key': typeof ApiAuthInternalApiKeyRoute
   '/api/auth/internal/memberships/$organizationId/members/$userId': typeof ApiAuthInternalMembershipsOrganizationIdMembersUserIdRoute
 }
@@ -251,6 +269,8 @@ export interface FileRoutesById {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/stripe/webhook': typeof ApiStripeWebhookRoute
   '/_workspace/organization/': typeof WorkspaceOrganizationIndexRoute
+  '/_public/profiles/organizations/$slug': typeof PublicProfilesOrganizationsSlugRoute
+  '/_public/profiles/people/$slug': typeof PublicProfilesPeopleSlugRoute
   '/api/auth/internal/api-key': typeof ApiAuthInternalApiKeyRoute
   '/api/auth/internal/memberships/$organizationId/members/$userId': typeof ApiAuthInternalMembershipsOrganizationIdMembersUserIdRoute
 }
@@ -279,6 +299,8 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/api/stripe/webhook'
     | '/organization/'
+    | '/profiles/organizations/$slug'
+    | '/profiles/people/$slug'
     | '/api/auth/internal/api-key'
     | '/api/auth/internal/memberships/$organizationId/members/$userId'
   fileRoutesByTo: FileRoutesByTo
@@ -304,6 +326,8 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/api/stripe/webhook'
     | '/organization'
+    | '/profiles/organizations/$slug'
+    | '/profiles/people/$slug'
     | '/api/auth/internal/api-key'
     | '/api/auth/internal/memberships/$organizationId/members/$userId'
   id:
@@ -333,6 +357,8 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/api/stripe/webhook'
     | '/_workspace/organization/'
+    | '/_public/profiles/organizations/$slug'
+    | '/_public/profiles/people/$slug'
     | '/api/auth/internal/api-key'
     | '/api/auth/internal/memberships/$organizationId/members/$userId'
   fileRoutesById: FileRoutesById
@@ -536,6 +562,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthInternalApiKeyRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_public/profiles/people/$slug': {
+      id: '/_public/profiles/people/$slug'
+      path: '/profiles/people/$slug'
+      fullPath: '/profiles/people/$slug'
+      preLoaderRoute: typeof PublicProfilesPeopleSlugRouteImport
+      parentRoute: typeof PublicRoute
+    }
+    '/_public/profiles/organizations/$slug': {
+      id: '/_public/profiles/organizations/$slug'
+      path: '/profiles/organizations/$slug'
+      fullPath: '/profiles/organizations/$slug'
+      preLoaderRoute: typeof PublicProfilesOrganizationsSlugRouteImport
+      parentRoute: typeof PublicRoute
+    }
     '/api/auth/internal/memberships/$organizationId/members/$userId': {
       id: '/api/auth/internal/memberships/$organizationId/members/$userId'
       path: '/api/auth/internal/memberships/$organizationId/members/$userId'
@@ -568,6 +608,8 @@ interface PublicRouteChildren {
   PublicRequestDiscountRoute: typeof PublicRequestDiscountRoute
   PublicIndexRoute: typeof PublicIndexRoute
   PublicEntriesEntryIdRoute: typeof PublicEntriesEntryIdRoute
+  PublicProfilesOrganizationsSlugRoute: typeof PublicProfilesOrganizationsSlugRoute
+  PublicProfilesPeopleSlugRoute: typeof PublicProfilesPeopleSlugRoute
 }
 
 const PublicRouteChildren: PublicRouteChildren = {
@@ -576,6 +618,8 @@ const PublicRouteChildren: PublicRouteChildren = {
   PublicRequestDiscountRoute: PublicRequestDiscountRoute,
   PublicIndexRoute: PublicIndexRoute,
   PublicEntriesEntryIdRoute: PublicEntriesEntryIdRoute,
+  PublicProfilesOrganizationsSlugRoute: PublicProfilesOrganizationsSlugRoute,
+  PublicProfilesPeopleSlugRoute: PublicProfilesPeopleSlugRoute,
 }
 
 const PublicRouteWithChildren =
