@@ -1,6 +1,7 @@
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Compass, Search } from "lucide-react";
 import { useState } from "react";
+import { useAtlasSession } from "@/domains/access";
 import { PageLayout } from "@/platform/layout/page-layout";
 import { Button } from "@/platform/ui/button";
 
@@ -62,7 +63,7 @@ function HomeHeroActions({ onQueryChange, onSearch, query }: HomeHeroActionsProp
   );
 }
 
-function HomeHighlights() {
+function HomeHighlights({ isLocal }: { isLocal: boolean }) {
   return (
     <div className="mt-12 grid gap-3 text-left sm:grid-cols-3">
       <div className="border-border rounded-[1.4rem] border bg-white/70 p-4">
@@ -78,9 +79,11 @@ function HomeHighlights() {
         </p>
       </div>
       <div className="border-border rounded-[1.4rem] border bg-white/70 p-4">
-        <p className="type-title-small text-ink-strong">Save</p>
+        <p className="type-title-small text-ink-strong">{isLocal ? "Verify" : "Save"}</p>
         <p className="type-body-medium text-ink-soft mt-1">
-          Create a free account to save research.
+          {isLocal
+            ? "Every entry links back to public sources."
+            : "Create a free account to save research."}
         </p>
       </div>
     </div>
@@ -94,6 +97,8 @@ export const Route = createFileRoute("/_public/")({
 
 function HomePage() {
   const navigate = useNavigate();
+  const { data: session } = useAtlasSession();
+  const isLocal = session?.isLocal ?? false;
   const [query, setQuery] = useState("");
 
   const goToBrowse = () => {
@@ -125,14 +130,16 @@ function HomePage() {
           <HomeHeroActions onQueryChange={setQuery} onSearch={goToBrowse} query={query} />
         </div>
 
-        <HomeHighlights />
+        <HomeHighlights isLocal={isLocal} />
 
-        <p className="type-body-medium text-ink-soft mt-6 text-center">
-          Want to save your work?{" "}
-          <Link to="/sign-up" className="text-accent type-label-medium hover:underline">
-            Create a free account &rarr;
-          </Link>
-        </p>
+        {!isLocal ? (
+          <p className="type-body-medium text-ink-soft mt-6 text-center">
+            Want to save your work?{" "}
+            <Link to="/sign-up" className="text-accent type-label-medium hover:underline">
+              Create a free account &rarr;
+            </Link>
+          </p>
+        ) : null}
       </section>
     </PageLayout>
   );

@@ -6,7 +6,6 @@ export const Route = createFileRoute("/docs")({
   loader: () => {
     const docsUrl = getDocsUrl(import.meta.env);
     if (docsUrl) {
-      // eslint-disable-next-line @typescript-eslint/only-throw-error
       throw redirect({
         href: docsUrl,
         statusCode: 308,

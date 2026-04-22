@@ -53,9 +53,23 @@ function NavLink({ to, label }: NavLinkProps) {
  * matches the first client render. After hydration we switch to "Workspace"
  * when a session is present.
  */
+function PricingNavLink() {
+  const { data: session } = useAtlasSession();
+
+  if (session?.isLocal) {
+    return null;
+  }
+
+  return <NavLink to="/pricing" label="Pricing" />;
+}
+
 function AuthNavLink() {
   const hydrated = useHydrated();
   const { data: session } = useAtlasSession();
+
+  if (session?.isLocal) {
+    return null;
+  }
 
   const isAuthenticated = hydrated && session != null;
 
@@ -90,7 +104,7 @@ export function PublicFloatingNav() {
       {/* Links */}
       <div className="flex items-center gap-1">
         <NavLink to="/browse" label="Browse" />
-        <NavLink to="/pricing" label="Pricing" />
+        <PricingNavLink />
         <AuthNavLink />
       </div>
     </nav>

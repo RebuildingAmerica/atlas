@@ -15,4 +15,10 @@ export default [
     ],
   },
   ...reactConfig(import.meta.dirname),
+  {
+    files: ["src/routes/**/*.tsx", "src/domains/**/route-guard.ts"],
+    rules: {
+      "@typescript-eslint/only-throw-error": "off",
+    },
+  },
 ];

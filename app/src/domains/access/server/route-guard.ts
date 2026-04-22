@@ -5,7 +5,6 @@ import { getAtlasSession } from "../session.functions";
  * Redirects unauthenticated operators into the sign-in flow.
  */
 function redirectToSignIn(locationHref: string): never {
-  // eslint-disable-next-line @typescript-eslint/only-throw-error
   throw redirect({
     to: "/sign-in",
     search: { redirect: locationHref },
@@ -81,7 +80,6 @@ export async function requireReadyAtlasSession(locationHref: string) {
   }
 
   if (!session.accountReady) {
-    // eslint-disable-next-line @typescript-eslint/only-throw-error
     throw redirect({
       to: "/account-setup",
       search: { redirect: locationHref },
@@ -103,7 +101,7 @@ export async function requireIncompleteAtlasSession(locationHref: string, redire
 
   if (session.accountReady) {
     const destination = resolveReadySessionDestination(session, redirectTo);
-    // eslint-disable-next-line @typescript-eslint/only-throw-error
+
     throw redirect({
       to: destination,
     });
