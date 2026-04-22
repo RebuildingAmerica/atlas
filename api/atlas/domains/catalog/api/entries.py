@@ -7,6 +7,7 @@ from collections.abc import AsyncGenerator  # noqa: TC003
 from typing import TYPE_CHECKING, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from fastapi.responses import JSONResponse
 
 from atlas.domains.access.dependencies import require_org_actor_permission
 from atlas.domains.catalog.models.ownership import OwnershipCRUD
@@ -144,6 +145,58 @@ async def list_entities(  # noqa: PLR0913
         total=total,
         next_cursor=next_cursor,
         facets=_facets_to_response(search_results["facets"]),
+    )
+
+
+@router.get(
+    "/by-slug/{entity_type}/{slug}",
+    response_model=None,
+    summary="Resolve entity by slug",
+    description="Resolve a type + slug pair to a full entity detail response.",
+    operation_id="resolveEntityBySlug",
+    tags=["entities"],
+)
+async def resolve_by_slug(
+    entity_type: str,
+    slug: str,
+    response: Response,
+    db: aiosqlite.Connection = Depends(get_db),
+) -> EntityDetailResponse | JSONResponse:
+    """Resolve a type + slug pair to an entity."""
+    type_map = {"people": "person", "organizations": "organization"}
+    entry_type = type_map.get(entity_type)
+    if entry_type is None:
+        raise HTTPException(status_code=400, detail=f"Invalid entity type: {entity_type}")
+
+    result = await EntryCRUD.resolve_slug(db, slug)
+    if result is None:
+        raise HTTPException(status_code=404, detail="Entity not found")
+
+    entry = result["entry"]
+    if entry.type != entry_type:
+        raise HTTPException(status_code=404, detail="Entity not found")
+
+    if result["is_alias"]:
+        canonical_slug = result["canonical_slug"]
+        return JSONResponse(
+            status_code=301,
+            headers={"Location": f"/api/entities/by-slug/{entity_type}/{canonical_slug}"},
+            content={"redirect_to": f"/api/entities/by-slug/{entity_type}/{canonical_slug}"},
+        )
+
+    _entry, sources = await EntryCRUD.get_with_sources(db, entry.id)
+    issue_areas = await EntryCRUD.get_issue_areas(db, entry.id)
+    entity_flag_summaries = await FlagCRUD.entity_flag_summaries(db, [entry.id])
+    source_flag_summaries = await FlagCRUD.source_flag_summaries(
+        db, [source["id"] for source in sources]
+    )
+    apply_short_public_cache(response)
+    return _entity_to_detail_response(
+        entry,
+        issue_areas=issue_areas,
+        sources=sources,
+        flag_summary=entity_flag_summaries.get(entry.id),
+        source_flag_summaries=source_flag_summaries,
     )
 
 

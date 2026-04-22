@@ -101,3 +101,50 @@ class TestSlugResolution:
         assert result is not None
         assert result["entry"].id == entry_id
         assert result["is_alias"] is False
+
+
+class TestSlugResolutionEndpoint:
+    @pytest.mark.asyncio
+    async def test_resolve_slug_returns_entity(self, test_client: object, test_db: object) -> None:
+        conn = test_db
+        entry_id = await EntryCRUD.create(
+            conn,
+            entry_type="person",
+            name="Jane Doe",
+            description="Test person for slug resolution",
+            city=None,
+            state=None,
+            geo_specificity="local",
+        )
+        entry = await EntryCRUD.get_by_id(conn, entry_id)
+        assert entry is not None
+        assert entry.slug is not None
+
+        resolve_response = await test_client.get(f"/api/entities/by-slug/people/{entry.slug}")
+        assert resolve_response.status_code == STATUS_OK
+        assert resolve_response.json()["id"] == entry_id
+
+    @pytest.mark.asyncio
+    async def test_resolve_unknown_slug_returns_404(self, test_client: object) -> None:
+        response = await test_client.get("/api/entities/by-slug/people/nonexistent-xxxx")
+        assert response.status_code == STATUS_NOT_FOUND
+
+    @pytest.mark.asyncio
+    async def test_resolve_wrong_type_returns_404(
+        self, test_client: object, test_db: object
+    ) -> None:
+        conn = test_db
+        entry_id = await EntryCRUD.create(
+            conn,
+            entry_type="person",
+            name="Jane Doe",
+            description="Test",
+            city=None,
+            state=None,
+            geo_specificity="local",
+        )
+        entry = await EntryCRUD.get_by_id(conn, entry_id)
+        assert entry is not None
+
+        response = await test_client.get(f"/api/entities/by-slug/organizations/{entry.slug}")
+        assert response.status_code == STATUS_NOT_FOUND
