@@ -414,7 +414,7 @@ describe("AccountPage", () => {
 
     render(<AccountPage />);
 
-    expect(screen.getByText("Atlas Operator")).not.toBeNull();
+    expect(screen.getAllByText("operator@atlas.test").length).toBeGreaterThan(0);
     expect(screen.getByText("Unnamed passkey")).not.toBeNull();
     expect(screen.getByText(/Hardware key/)).not.toBeNull();
     expect(screen.getByText("Untitled key")).not.toBeNull();

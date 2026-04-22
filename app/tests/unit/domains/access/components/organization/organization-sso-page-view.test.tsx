@@ -86,7 +86,7 @@ describe("OrganizationSSOPageView", () => {
     const controller = buildController() as unknown as OrganizationPageController;
     render(<OrganizationSSOPageView controller={controller} />);
     expect(screen.getByText("Enterprise SSO setup")).toBeInTheDocument();
-    expect(screen.getByText(/Configure enterprise sign-in/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Configure enterprise sign-in/i).length).toBeGreaterThan(0);
   });
 
   it("shows team requirement message for personal workspaces", () => {

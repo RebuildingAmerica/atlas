@@ -61,7 +61,9 @@ describe("WorkspaceCreationSection", () => {
 
   it("renders invite-only mode hint when enabled", () => {
     render(<WorkspaceCreationSection {...defaultProps} inviteOnlyMode={true} />);
-    expect(screen.getByText(/Workspace creation stays private/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Workspace creation is available by invitation only/i),
+    ).toBeInTheDocument();
   });
 
   it("triggers onSubmit when form is submitted", () => {
