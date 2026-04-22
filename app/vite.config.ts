@@ -25,6 +25,12 @@ export default defineConfig({
       rollupConfig: {
         onwarn,
       },
+      vercel: {
+        functions: {
+          maxDuration: 30,
+        },
+        regions: ["cle1"],
+      },
     }),
     react(),
     tailwindcss(),
