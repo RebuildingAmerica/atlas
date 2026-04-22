@@ -1,0 +1,150 @@
+---
+title: "TypeScript SDK"
+description: "A typed TypeScript client auto-generated from the Atlas OpenAPI spec."
+---
+
+# TypeScript SDK
+
+Atlas provides a typed TypeScript client generated from the same OpenAPI spec that powers the interactive API playground. Every function has typed parameters and return values, so your editor catches mistakes before you run the code.
+
+<Note>
+The SDK is generated using [Orval](https://orval.dev/) from `openapi/atlas.openapi.json`. It uses the native `fetch` API with no external HTTP library dependencies.
+</Note>
+
+## Installation
+
+Clone the Atlas repository and generate the client:
+
+```bash
+git clone https://github.com/RebuildingAmerica/atlas.git
+cd atlas/app
+pnpm install
+pnpm api-client
+```
+
+The generated client is written to `src/lib/generated/atlas.ts`.
+
+## Usage
+
+Import the functions you need and call them directly:
+
+```typescript
+import { listEntities, getEntity, listPlaceEntities } from "./lib/generated/atlas";
+
+// Search entities by issue area
+const entities = await listEntities({
+  issue_area: ["housing_affordability"],
+  limit: 10,
+});
+
+console.log(`Found ${entities.total} entities`);
+for (const entity of entities.items) {
+  console.log(`${entity.name} — ${entity.type}`);
+}
+
+// Get a single entity
+const entity = await getEntity("entity-id-here");
+console.log(entity.data.name);
+console.log(entity.data.address?.city, entity.data.address?.state);
+
+// Search by place
+const kcEntities = await listPlaceEntities("kansas-city,missouri", {
+  issue_area: ["union_organizing"],
+});
+```
+
+## Available functions
+
+### Discovery
+
+| Function | Description |
+|----------|-------------|
+| `listDiscoveryRuns(params?)` | List discovery runs with optional filters |
+| `createDiscoveryRun(body)` | Start a new discovery run |
+| `getDiscoveryRun(runId)` | Get status and results for a run |
+
+### Entities
+
+| Function | Description |
+|----------|-------------|
+| `listEntities(params?)` | Search and list entities with filters |
+| `getEntity(entityId)` | Get full entity details |
+| `createEntity(body)` | Create a new entity |
+| `updateEntity(entityId, body)` | Update an existing entity |
+| `deleteEntity(entityId)` | Delete an entity |
+| `listEntitySources(entityId)` | Get sources backing an entity |
+
+### Places
+
+| Function | Description |
+|----------|-------------|
+| `getPlace(placeKey)` | Get canonical place identity |
+| `listPlaceEntities(placeKey, params?)` | List entities in a place |
+| `getPlaceCoverage(placeKey)` | Coverage gaps and entity counts |
+| `getPlaceProfile(placeKey)` | Demographic and socioeconomic context |
+| `getPlaceIssueSignals(placeKey)` | Issue area summary |
+| `listPlaceSources(placeKey)` | Sources associated with a place |
+
+### Taxonomy
+
+| Function | Description |
+|----------|-------------|
+| `listDomains(params?)` | List all domains |
+| `getDomain(domainSlug)` | Get domain details |
+| `listIssueAreas(params?)` | List all issue areas |
+| `getIssueArea(issueAreaSlug)` | Get issue area details |
+
+### Flags
+
+| Function | Description |
+|----------|-------------|
+| `listEntityFlags(params)` | List flags for an entity |
+| `createEntityFlag(body)` | Flag an entity |
+| `listSourceFlags(params)` | List flags for a source |
+| `createSourceFlag(body)` | Flag a source |
+
+## Key types
+
+```typescript
+import type {
+  EntityDetailResponse,
+  EntityCollectionResponse,
+  EntityCreateRequest,
+  EntityUpdateRequest,
+  DiscoveryRunResponse,
+  DiscoveryRunStartRequest,
+  PlaceProfileResponse,
+  PlaceCoverageResponse,
+  IssueAreaResponse,
+  DomainDetailResponse,
+  Address,
+  ContactInfo,
+} from "./lib/generated/atlas";
+```
+
+## Custom fetch configuration
+
+The SDK uses a custom `atlasFetch` wrapper that:
+- Automatically detects whether it's running in a browser or server environment
+- Sets `Accept: application/json` and `Content-Type: application/json` headers
+- Throws descriptive errors for non-2xx responses
+
+To use your own API key, pass custom headers via the `options` parameter:
+
+```typescript
+const entities = await listEntities(
+  { issue_area: ["housing_affordability"] },
+  { headers: { "X-API-Key": "your-api-key" } }
+);
+```
+
+## Regenerating the client
+
+When the API changes, regenerate the client to stay in sync:
+
+```bash
+pnpm openapi      # Regenerate the OpenAPI spec from the API
+pnpm api-client   # Regenerate the TypeScript client from the spec
+```
+
+The client is always derived from `openapi/atlas.openapi.json` — the same spec that generates the [interactive API playground](/api-reference/overview).

@@ -5,40 +5,43 @@ description: "What's new in Atlas."
 
 # Changelog
 
-## April 2026
+<Steps>
 
-### Documentation overhaul — April 22
+<Step title="Documentation overhaul — April 22, 2026">
+The public docs site has been restructured into a 4-tab, 40+ page resource organized by user intent:
 
-The public documentation site has been completely restructured into a 4-tab, 40+ page resource:
+- [Guides](/what-is-atlas) — Product overview, use cases, taxonomy, pricing, self-hosting
+- [MCP & Agents](/mcp/overview) — Setup for 7 clients, tools reference, tutorials
+- [API Reference](/api-reference/overview) — Auth, quickstart, rate limits, resource guides, endpoint reference
+- [Resources](/resources/data-model) — Data model, glossary, FAQ, troubleshooting
+</Step>
 
-- **Guides** — Product overview, use-case walkthroughs for journalists, organizers, documentary teams, and developers, taxonomy reference, pricing, and self-hosting
-- **MCP & Agents** — Setup guides for Claude Desktop, Claude Code, VS Code/Copilot, Gemini CLI, Codex CLI, Copilot CLI, and generic MCP clients, plus tutorials
-- **API Reference** — Authentication, quickstart, rate limits, errors, resource guides for entities, places, taxonomy, discovery, and sources/flags
-- **Resources** — Data model, trust & provenance, glossary, FAQ, and troubleshooting
-
-### Capability system and pricing — April 21
-
-Atlas now has a structured capability system with three subscription tiers:
+<Step title="Pricing and capability system — April 21, 2026">
+Atlas now has a structured [capability system](/account/pricing) with three subscription tiers:
 
 - **Free** — Browse, search, 2 research runs/month, public API at 100 req/hr
-- **Atlas Pro** ($5/month) — Unlimited research, exports, 1 API key, MCP/OAuth access
+- **Atlas Pro** ($5/month) — Unlimited research, exports, 1 API key, MCP/OAuth
 - **Atlas Team** ($25/month + $8/seat) — Shared workspace, unlimited API keys, watchlists, Slack, SSO
+- **Research Pass** — Short-term Pro access ($9/30 days, $4/7 days)
 
-Research Pass available for short-term access ($9/30 days, $4/7 days). Discounts for journalists, nonprofits, and civic tech workers.
+Discounts available for journalists, nonprofits, and civic tech workers.
+</Step>
 
-### MCP server — April 2026
-
-Atlas now exposes a remote MCP server at `https://atlas.rebuildingus.org/mcp` with:
+<Step title="MCP server — April 2026">
+Atlas exposes a remote [MCP server](/mcp/overview) for AI assistants with:
 
 - OAuth 2.1 authentication with PKCE and dynamic client registration
 - Streamable HTTP transport
-- 10 tools: entity search, place profiles, coverage gaps, taxonomy resolution, and more
-- Setup guides for 7 MCP clients
+- [10 tools](/mcp/tools) for entity search, place analysis, coverage gaps, and taxonomy resolution
+- Setup guides for Claude Desktop, Claude Code, VS Code/Copilot, Gemini, Codex, and Copilot CLI
+</Step>
 
-### Enterprise SSO — April 2026
-
+<Step title="Enterprise SSO — April 2026">
 Atlas Team workspaces now support enterprise single sign-on:
 
 - Google Workspace OIDC
 - Google Workspace SAML
 - Domain-verified provider configuration
+</Step>
+
+</Steps>

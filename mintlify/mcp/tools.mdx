@@ -3,6 +3,8 @@ title: "Available tools"
 description: "Reference for all 10 Atlas MCP tools with parameters and example prompts."
 ---
 
+import PlaceKeyFormat from '/snippets/place-key-format.mdx';
+
 # Available MCP tools
 
 Once you've connected an AI assistant to Atlas ([setup guide](/mcp/overview)), these tools are available in your conversations.
@@ -160,11 +162,6 @@ Map natural language to Atlas issue area slugs.
 
 ## Place key format
 
-Atlas uses normalized place keys in the format `city,state` (lowercase, hyphenated):
-- `kansas-city,missouri`
-- `boise,idaho`
-- `garden-city,kansas`
-
-State-level queries use just the state name: `kansas`, `idaho`.
+<PlaceKeyFormat />
 
 Your AI assistant handles this normalization automatically — you can say "Kansas City" naturally.

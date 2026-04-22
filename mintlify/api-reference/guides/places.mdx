@@ -3,21 +3,15 @@ title: "Places"
 description: "Working with Atlas places: profiles, entities, coverage, issue signals, and sources."
 ---
 
+import PlaceKeyFormat from '/snippets/place-key-format.mdx';
+
 # Places
 
 Places are the geographic lens through which Atlas organizes civic work. Every entity is tied to a place, and Atlas provides rich place-level data including demographic profiles, coverage analysis, and issue signals.
 
 ## Place keys
 
-Atlas identifies places with normalized keys in the format `city,state` (lowercase, hyphenated):
-
-| Place | Key |
-|-------|-----|
-| Kansas City, Missouri | `kansas-city,missouri` |
-| Boise, Idaho | `boise,idaho` |
-| Garden City, Kansas | `garden-city,kansas` |
-
-State-level queries use just the state name: `kansas`, `idaho`, `missouri`.
+<PlaceKeyFormat />
 
 ## Get place identity
 

@@ -4,6 +4,9 @@
   "name": "Atlas Docs",
   "basePath": "/docs",
   "favicon": "https://atlas.rebuildingus.org/favicon.ico",
+  "appearance": {
+    "default": "system"
+  },
   "colors": {
     "primary": "#c2956a",
     "light": "#d4b896",
@@ -46,7 +49,7 @@
           },
           {
             "group": "Getting started",
-            "pages": ["quickstart-browse", "account/pricing"]
+            "pages": ["quickstart-learn", "quickstart-browse", "account/pricing"]
           },
           {
             "group": "Self-hosting",
@@ -93,6 +96,7 @@
               "api-reference/overview",
               "api-reference/authentication",
               "api-reference/quickstart",
+              "api-reference/typescript-sdk",
               "api-reference/rate-limits",
               "api-reference/errors"
             ]
