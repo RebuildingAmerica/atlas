@@ -7,6 +7,7 @@
  */
 import { Link } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
+import { ProfileJsonLd } from "@/domains/catalog/components/profiles/profile-head";
 import { PersonProfile } from "@/domains/catalog/components/profiles/person-profile";
 import { useEntry } from "@/domains/catalog/hooks/use-entries";
 import { useTaxonomy } from "@/domains/catalog/hooks/use-taxonomy";
@@ -33,6 +34,7 @@ export function PersonProfilePage({ entry }: PersonProfilePageProps) {
 
   return (
     <PageLayout className="space-y-6 py-10">
+      <ProfileJsonLd entry={entry} affiliatedOrg={affiliatedOrgQuery.data} />
       <Link
         to="/browse"
         className="type-label-large inline-flex items-center gap-2 font-medium text-stone-600 transition-colors hover:text-stone-900"
