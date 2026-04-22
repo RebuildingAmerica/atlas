@@ -39,6 +39,7 @@ interface PlanCardProps {
   ctaInterval?: "monthly" | "yearly" | "once" | "weekly";
   onCheckout?: (params: CheckoutParams) => Promise<void>;
   isTeam?: boolean;
+  discountNote?: ReactNode;
 }
 
 // ---------------------------------------------------------------------------
@@ -59,6 +60,7 @@ function PlanCard({
   ctaInterval,
   onCheckout,
   isTeam,
+  discountNote,
 }: PlanCardProps) {
   const isDark = isTeam;
   const bgClass = isDark ? "bg-ink-strong" : "bg-white";
@@ -117,6 +119,14 @@ function PlanCard({
         >
           {ctaText}
         </Button>
+      )}
+
+      {discountNote && (
+        <p
+          className={`type-body-small mt-3 text-center ${isDark ? "text-ink-soft" : "text-accent"}`}
+        >
+          {discountNote}
+        </p>
       )}
 
       {isTeam && (
@@ -261,6 +271,7 @@ export function PricingPage() {
               ctaProduct="atlas_pro"
               ctaInterval={billing === "annual" ? "yearly" : "monthly"}
               onCheckout={handleCheckout}
+              discountNote="Qualified journalists, nonprofits, and civic tech workers get 40–50% off"
             />
 
             <PlanCard
@@ -298,6 +309,7 @@ export function PricingPage() {
               ctaProduct="atlas_team"
               ctaInterval={billing === "annual" ? "yearly" : "monthly"}
               onCheckout={handleCheckout}
+              discountNote="Qualified nonprofits and newsrooms get 40% off"
               isTeam
             />
           </div>
