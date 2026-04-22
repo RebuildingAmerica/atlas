@@ -28,20 +28,19 @@ export function OrganizationWorkspacePageView({ controller }: OrganizationWorksp
   const canInviteMembers = controller.session
     ? hasSerializedCapability(controller.session.workspace.resolvedCapabilities, "workspace.shared")
     : false;
-  const inviteOnlyMode = true;
   const pageLabel = controller.needsWorkspace
     ? "Workspace setup"
     : controller.canUseTeamFeatures
       ? "Organization"
       : "Workspace";
   const pageTitle = controller.needsWorkspace
-    ? "Choose the workspace you want to run"
+    ? "Create your workspace"
     : (controller.organization?.name ?? controller.activeWorkspace?.name ?? "Workspace management");
   const pageDescription = controller.needsWorkspace
-    ? "Create your first workspace so Atlas can keep roles, invitations, and workspace context consistent from the start."
+    ? "Create a workspace to start organizing your research."
     : controller.canUseTeamFeatures
-      ? "Manage your shared workspace, keep invitations moving, and jump into focused enterprise sign-in setup only when you need it."
-      : "Atlas keeps personal account security under Account and only surfaces shared workspace controls when they are actually useful.";
+      ? "Manage your shared workspace, team members, and invitations."
+      : "Your personal workspace for individual research.";
 
   async function handleLeaveWorkspace() {
     const leaveWorkspacePromise = controller.onLeaveWorkspace();
@@ -85,7 +84,6 @@ export function OrganizationWorkspacePageView({ controller }: OrganizationWorksp
 
       {controller.needsWorkspace ? (
         <WorkspaceCreationSection
-          inviteOnlyMode={inviteOnlyMode}
           isPending={controller.createWorkspacePending}
           workspaceName={controller.workspaceName}
           workspaceSlug={controller.workspaceSlug}

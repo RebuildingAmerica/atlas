@@ -37,6 +37,21 @@ vi.mock("@/domains/access/client/last-login-method", () => ({
   setLastUsedAtlasLoginMethod: mocks.setLastUsedAtlasLoginMethod,
 }));
 
+vi.mock("@tanstack/react-router", () => ({
+  Link: ({
+    children,
+    ...props
+  }: {
+    children: React.ReactNode;
+    to?: string;
+    className?: string;
+  }) => (
+    <a href={props.to} className={props.className}>
+      {children}
+    </a>
+  ),
+}));
+
 describe("SignInPage", () => {
   const authClient = {
     getLastUsedLoginMethod: vi.fn(),

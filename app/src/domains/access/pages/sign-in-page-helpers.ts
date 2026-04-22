@@ -43,10 +43,10 @@ export function buildSignInErrorCallbackURL(invitationId?: string, redirectTo?: 
  */
 export function buildMagicLinkStatusMessage(invitationId?: string): string {
   if (invitationId) {
-    return "If the email can access Atlas, a sign-in link is on the way so you can review the invitation.";
+    return "A sign-in link is on the way so you can review the invitation.";
   }
 
-  return "If the email can access Atlas, a sign-in link is on the way.";
+  return "A sign-in link is on the way. Check your inbox.";
 }
 
 /**

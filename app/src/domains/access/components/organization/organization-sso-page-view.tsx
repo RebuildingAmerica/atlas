@@ -25,8 +25,6 @@ export function OrganizationSSOPageView({ controller }: OrganizationSSOPageViewP
   const canConfigureSSO = controller.session
     ? hasSerializedCapability(controller.session.workspace.resolvedCapabilities, "auth.sso")
     : false;
-  const inviteOnlyMode = true;
-
   if (!canConfigureSSO) {
     return (
       <div className="space-y-8 py-2">
@@ -77,7 +75,6 @@ export function OrganizationSSOPageView({ controller }: OrganizationSSOPageViewP
 
       {controller.needsWorkspace ? (
         <WorkspaceCreationSection
-          inviteOnlyMode={inviteOnlyMode}
           isPending={controller.createWorkspacePending}
           workspaceName={controller.workspaceName}
           workspaceSlug={controller.workspaceSlug}

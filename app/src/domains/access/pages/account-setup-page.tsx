@@ -1,10 +1,10 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, KeyRound, LogOut, Mail, RefreshCw } from "lucide-react";
 import { Button } from "@/platform/ui/button";
-import { DiscountVerificationSection } from "@/domains/billing/verification/discount-verification-section";
 import { getAuthClient } from "../client/auth-client";
 import { atlasSessionQueryKey, useAtlasSession } from "../client/use-atlas-session";
 import { waitForAtlasPasskeyRegistration } from "../client/session-confirmation";
+import { createWorkspace } from "../organizations.functions";
 import { resolvePasskeyName } from "../passkey-names";
 import { updatePasskey } from "../passkeys.functions";
 import { sendVerificationEmail } from "../session.functions";
@@ -22,11 +22,6 @@ export function AccountSetupPage({ redirectTo }: AccountSetupPageProps) {
   const queryClient = useQueryClient();
   const atlasSession = useAtlasSession();
   const session = atlasSession.data;
-  const destination =
-    session?.workspace.onboarding.needsWorkspace ||
-    session?.workspace.onboarding.hasPendingInvitations
-      ? "/organization"
-      : redirectTo || "/account";
 
   const refreshReadiness = async () => {
     await queryClient.invalidateQueries({ queryKey: atlasSessionQueryKey });
@@ -61,9 +56,36 @@ export function AccountSetupPage({ redirectTo }: AccountSetupPageProps) {
 
   const handleRefresh = async () => {
     const refreshedSession = await refreshReadiness();
-    if (refreshedSession.data?.accountReady) {
-      window.location.assign(destination);
+    if (!refreshedSession.data?.accountReady) {
+      return;
     }
+
+    const refreshedNeedsWorkspace = refreshedSession.data.workspace.onboarding.needsWorkspace;
+    const refreshedHasPendingInvitations =
+      refreshedSession.data.workspace.onboarding.hasPendingInvitations;
+
+    if (refreshedNeedsWorkspace && !refreshedHasPendingInvitations) {
+      const displayName = refreshedSession.data.user.name;
+      const workspaceName = displayName ? `${displayName}'s Workspace` : "My Workspace";
+      const workspaceSlug = workspaceName
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-|-$/g, "");
+
+      await createWorkspace({
+        data: {
+          name: workspaceName,
+          slug: workspaceSlug,
+          workspaceType: "individual",
+        },
+      });
+    }
+
+    const resolvedDestination = refreshedHasPendingInvitations
+      ? "/organization"
+      : redirectTo || "/discovery";
+
+    window.location.assign(resolvedDestination);
   };
 
   const handleAddPasskey = async () => {
@@ -84,7 +106,7 @@ export function AccountSetupPage({ redirectTo }: AccountSetupPageProps) {
       complete: Boolean(session?.hasPasskey),
       description: session?.hasPasskey
         ? `You have ${session?.passkeyCount ?? 0} passkey${session?.passkeyCount === 1 ? "" : "s"} on this account.`
-        : "Add a passkey so Atlas has a phishing-resistant second factor on file.",
+        : "Add a passkey so you can sign in instantly and securely — no passwords, no codes.",
       title: "Registered passkey",
     },
   ];
@@ -106,8 +128,7 @@ export function AccountSetupPage({ redirectTo }: AccountSetupPageProps) {
         <p className="type-label-medium text-ink-muted">Account setup</p>
         <h1 className="type-display-small text-ink-strong">Finish securing your Atlas account</h1>
         <p className="type-body-large text-ink-soft">
-          Atlas only enables account-scoped actions after your email is verified and at least one
-          passkey is registered.
+          Verify your email and add a passkey to finish setting up your account.
         </p>
       </div>
 
@@ -175,8 +196,8 @@ export function AccountSetupPage({ redirectTo }: AccountSetupPageProps) {
           <div className="border-border bg-surface-container-lowest rounded-[1.4rem] border p-5">
             <p className="type-title-small text-ink-strong">Add a passkey</p>
             <p className="type-body-medium text-ink-soft mt-2">
-              Register a passkey on this device or with a hardware key. Atlas uses that passkey as
-              your required secure second factor.
+              Register a passkey on this device or with a hardware key. Passkeys are faster and more
+              secure than passwords or email links.
             </p>
             <div className="mt-4 flex flex-wrap items-center gap-3">
               <Button
@@ -201,16 +222,13 @@ export function AccountSetupPage({ redirectTo }: AccountSetupPageProps) {
             </div>
           </div>
         ) : null}
-
-        <DiscountVerificationSection userId={session?.user.id || ""} />
       </div>
 
       <div className="border-border bg-surface-container-lowest space-y-4 rounded-[1.4rem] border p-5">
         <div className="space-y-2">
           <p className="type-title-medium text-ink-strong">Next step</p>
           <p className="type-body-medium text-ink-soft">
-            Refresh your status after each step. As soon as both checks are complete, Atlas will
-            send you on.
+            Refresh your status after each step. Once both are done, you&apos;re in.
           </p>
         </div>
 

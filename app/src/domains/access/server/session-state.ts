@@ -2,7 +2,7 @@ import "@tanstack/react-start/server-only";
 
 import { atlasSessionSchema } from "./session-schema";
 import { DEFAULT_CAPABILITIES, DEFAULT_LIMITS } from "../capabilities";
-import { canEmailAccessAtlas, ensureAuthReady, type getAuth } from "./auth";
+import { canEmailAccessAtlas, ensureAuthReady, hasExistingAccount, type getAuth } from "./auth";
 import { loadAtlasWorkspaceState } from "./organization-session";
 import { getBrowserSessionHeaders } from "./request-headers";
 import { getAuthRuntimeConfig, validateAuthRuntimeConfig } from "./runtime";
@@ -229,4 +229,13 @@ export async function sendVerificationEmailForCurrentSession(): Promise<{ ok: tr
   return {
     ok: true,
   };
+}
+
+/**
+ * Checks whether an Atlas account already exists for a given email address.
+ *
+ * @param email - The email address to look up.
+ */
+export async function checkEmailAccountExists(email: string): Promise<boolean> {
+  return await hasExistingAccount(email);
 }

@@ -112,7 +112,7 @@ describe("OrganizationWorkspacePageView", () => {
       organization: null,
     }) as unknown as OrganizationPageController;
     render(<OrganizationWorkspacePageView controller={controller} />);
-    expect(screen.getByText(/Choose the workspace you want to run/i)).toBeInTheDocument();
+    expect(screen.getByText(/Create your workspace/i)).toBeInTheDocument();
     expect(screen.getByText(/Create workspace/i)).toBeInTheDocument();
   });
 });

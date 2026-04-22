@@ -47,7 +47,7 @@ export function WorkspaceSwitcherSection({
           onChange={onChange}
           disabled={isPending}
           options={memberships.map((membership) => ({
-            label: `${membership.name} · ${membership.workspaceType}`,
+            label: membership.name,
             value: membership.id,
           }))}
         />

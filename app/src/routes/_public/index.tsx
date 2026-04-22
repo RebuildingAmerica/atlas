@@ -1,5 +1,5 @@
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Compass, Search, ShieldCheck } from "lucide-react";
+import { Compass, Search } from "lucide-react";
 import { useState } from "react";
 import { PageLayout } from "@/platform/layout/page-layout";
 import { Button } from "@/platform/ui/button";
@@ -57,14 +57,6 @@ function HomeHeroActions({ onQueryChange, onSearch, query }: HomeHeroActionsProp
           <Compass className="h-4 w-4" />
           Browse all entries
         </Link>
-
-        <Link
-          to="/sign-in"
-          className="type-label-large border-border text-ink-soft inline-flex items-center gap-2 rounded-full border bg-white/60 px-5 py-2.5 transition-colors hover:bg-white"
-        >
-          <ShieldCheck className="h-4 w-4" />
-          Workspace sign in
-        </Link>
       </div>
     </>
   );
@@ -86,9 +78,9 @@ function HomeHighlights() {
         </p>
       </div>
       <div className="border-border rounded-[1.4rem] border bg-white/70 p-4">
-        <p className="type-title-small text-ink-strong">Verify</p>
+        <p className="type-title-small text-ink-strong">Save</p>
         <p className="type-body-medium text-ink-soft mt-1">
-          Every entry links back to public sources.
+          Create a free account to save research.
         </p>
       </div>
     </div>
@@ -134,6 +126,13 @@ function HomePage() {
         </div>
 
         <HomeHighlights />
+
+        <p className="type-body-medium text-ink-soft mt-6 text-center">
+          Want to save your work?{" "}
+          <Link to="/sign-up" className="text-accent type-label-medium hover:underline">
+            Create a free account &rarr;
+          </Link>
+        </p>
       </section>
     </PageLayout>
   );

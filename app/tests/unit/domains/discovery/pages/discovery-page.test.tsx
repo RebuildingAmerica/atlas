@@ -76,7 +76,7 @@ describe("DiscoveryPage", () => {
     });
 
     render(<DiscoveryPage />);
-    expect(screen.getByText(/Create your workspace before Atlas sprawls/i)).toBeInTheDocument();
+    expect(screen.getByText(/Create your workspace/i)).toBeInTheDocument();
   });
 
   it("renders issue areas from taxonomy", () => {
@@ -231,7 +231,7 @@ describe("DiscoveryPage", () => {
     render(<DiscoveryPage />);
     expect(screen.getByText("Team discovery")).toBeInTheDocument();
     expect(screen.getByText("Atlas Team discovery")).toBeInTheDocument();
-    expect(screen.getByText(/team · owner/i)).toBeInTheDocument();
+    expect(screen.getByText("Atlas Team")).toBeInTheDocument();
   });
 
   it("clears form on successful submission", () => {

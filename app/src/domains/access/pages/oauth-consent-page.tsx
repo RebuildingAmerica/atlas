@@ -15,7 +15,7 @@ const SCOPE_LABELS: Record<string, { title: string; description: string }> = {
   openid: { title: "Basic identity", description: "Your account identifier" },
   profile: { title: "Profile", description: "Your name and avatar" },
   email: { title: "Email address", description: "Your verified email" },
-  offline_access: { title: "Persistent access", description: "Access when you're offline" },
+  offline_access: { title: "Persistent access", description: "Maintain access between sessions" },
   "discovery:read": { title: "View discoveries", description: "Read discovery runs and results" },
   "discovery:write": { title: "Manage discoveries", description: "Create and run discoveries" },
   "entities:write": { title: "Edit entities", description: "Create and update catalog entries" },
@@ -133,7 +133,7 @@ export function OAuthConsentPage({ clientId, scope }: { clientId: string; scope?
     <div className="space-y-6">
       <div className="space-y-2">
         <p className="type-label-medium text-ink-muted">Authorization Request</p>
-        <h1 className="type-display-small text-ink-strong">Grant access?</h1>
+        <h1 className="type-display-small text-ink-strong">Allow access to Atlas?</h1>
       </div>
 
       <div className="border-border-strong bg-surface-container-lowest space-y-5 rounded-[1.8rem] border p-6">

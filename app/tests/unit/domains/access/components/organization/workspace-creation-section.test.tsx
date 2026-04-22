@@ -6,7 +6,6 @@ import { WorkspaceCreationSection } from "@/domains/access/components/organizati
 
 describe("WorkspaceCreationSection", () => {
   const defaultProps = {
-    inviteOnlyMode: false,
     isPending: false,
     workspaceName: "Atlas",
     workspaceSlug: "atlas",
@@ -57,13 +56,6 @@ describe("WorkspaceCreationSection", () => {
   it("disables the submit button and shows loading state when pending", () => {
     render(<WorkspaceCreationSection {...defaultProps} isPending={true} />);
     expect(screen.getByText(/Creating.../i)).toBeDisabled();
-  });
-
-  it("renders invite-only mode hint when enabled", () => {
-    render(<WorkspaceCreationSection {...defaultProps} inviteOnlyMode={true} />);
-    expect(
-      screen.getByText(/Workspace creation is available by invitation only/i),
-    ).toBeInTheDocument();
   });
 
   it("triggers onSubmit when form is submitted", () => {

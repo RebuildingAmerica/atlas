@@ -9,5 +9,12 @@ export const Route = createFileRoute("/_auth/sign-in")({
 
 function SignInRoute() {
   const search = Route.useSearch();
-  return <SignInPage invitationId={search.invitation} redirectTo={search.redirect} />;
+  return (
+    <SignInPage
+      existingAccount={search.existing}
+      initialEmail={search.email}
+      invitationId={search.invitation}
+      redirectTo={search.redirect}
+    />
+  );
 }

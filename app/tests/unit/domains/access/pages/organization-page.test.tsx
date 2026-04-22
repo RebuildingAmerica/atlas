@@ -493,10 +493,6 @@ describe("OrganizationPage", () => {
 
     expect(screen.queryByText("Invitations")).toBeNull();
     expect(screen.queryByText("Enterprise sign-in")).toBeNull();
-    expect(
-      screen.getByText(
-        "This is a personal workspace, so Atlas keeps the shared-team controls out of the way.",
-      ),
-    ).not.toBeNull();
+    expect(screen.getByText("This is a personal workspace.")).not.toBeNull();
   });
 });

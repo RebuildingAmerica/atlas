@@ -8,7 +8,7 @@ import { atlasSessionQueryKey } from "@/domains/access/client/use-atlas-session"
 import { setActiveWorkspace } from "@/domains/access/organizations.functions";
 import { requireReadyAtlasSession } from "@/domains/access/server";
 import type { AtlasSessionPayload } from "@/domains/access/session.types";
-import { getAppConfig } from "@/platform/config/app-config";
+
 import { WorkspaceLayout } from "@/platform/layout/workspace-layout";
 import { Select } from "@/platform/ui/select";
 
@@ -56,13 +56,10 @@ function shouldShowOrganizationTab(session: AtlasSessionPayload): boolean {
  * @param localMode - Whether Atlas is running with auth disabled.
  * @param session - The current Atlas session payload.
  */
-function buildWorkspaceTabs(
-  localMode: boolean,
-  session: AtlasSessionPayload | null | undefined,
-): WorkspaceTabConfig[] {
+function buildWorkspaceTabs(session: AtlasSessionPayload | null | undefined): WorkspaceTabConfig[] {
   const tabs: WorkspaceTabConfig[] = [{ label: "Discovery", to: "/discovery" }];
 
-  if (localMode || !session) {
+  if (!session || session.isLocal) {
     return tabs;
   }
 
@@ -76,14 +73,14 @@ function buildWorkspaceTabs(
 }
 
 function WorkspaceRoute() {
-  const { localMode } = getAppConfig();
   const session = useAtlasSession();
-  const tabs = buildWorkspaceTabs(localMode, session.data);
+  const isLocal = session.data?.isLocal;
+  const tabs = buildWorkspaceTabs(session.data);
 
   return (
     <WorkspaceLayout
       tabs={tabs}
-      identitySlot={localMode || !session.data ? null : <OperatorIdentity session={session.data} />}
+      identitySlot={isLocal || !session.data ? null : <OperatorIdentity session={session.data} />}
     >
       <Outlet />
     </WorkspaceLayout>
@@ -144,7 +141,7 @@ function OperatorIdentity({ session }: OperatorIdentityProps) {
               disabled={setActiveWorkspaceMutation.isPending}
               options={session.workspace.memberships.map(
                 (membership: AtlasSessionPayload["workspace"]["memberships"][number]) => ({
-                  label: `${membership.name} · ${membership.workspaceType}`,
+                  label: membership.name,
                   value: membership.id,
                 }),
               )}
@@ -152,7 +149,7 @@ function OperatorIdentity({ session }: OperatorIdentityProps) {
           </div>
         ) : activeWorkspace ? (
           <span className="type-body-medium border-outline-variant text-outline rounded-full border px-3 py-1">
-            {activeWorkspace.name} · {activeWorkspace.workspaceType}
+            {activeWorkspace.name}
           </span>
         ) : null}
 

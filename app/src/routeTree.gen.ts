@@ -24,6 +24,7 @@ import { Route as WorkspaceAccountRouteImport } from './routes/_workspace/accoun
 import { Route as PublicRequestDiscountRouteImport } from './routes/_public/request-discount'
 import { Route as PublicPricingRouteImport } from './routes/_public/pricing'
 import { Route as PublicBrowseRouteImport } from './routes/_public/browse'
+import { Route as AuthSignUpRouteImport } from './routes/_auth/sign-up'
 import { Route as AuthSignInRouteImport } from './routes/_auth/sign-in'
 import { Route as AuthAccountSetupRouteImport } from './routes/_auth/account-setup'
 import { Route as WorkspaceOrganizationIndexRouteImport } from './routes/_workspace/organization.index'
@@ -108,6 +109,11 @@ const PublicBrowseRoute = PublicBrowseRouteImport.update({
   path: '/browse',
   getParentRoute: () => PublicRoute,
 } as any)
+const AuthSignUpRoute = AuthSignUpRouteImport.update({
+  id: '/sign-up',
+  path: '/sign-up',
+  getParentRoute: () => AuthRoute,
+} as any)
 const AuthSignInRoute = AuthSignInRouteImport.update({
   id: '/sign-in',
   path: '/sign-in',
@@ -174,6 +180,7 @@ export interface FileRoutesByFullPath {
   '/openapi.json': typeof OpenapiDotjsonRoute
   '/account-setup': typeof AuthAccountSetupRoute
   '/sign-in': typeof AuthSignInRoute
+  '/sign-up': typeof AuthSignUpRoute
   '/browse': typeof PublicBrowseRoute
   '/pricing': typeof PublicPricingRoute
   '/request-discount': typeof PublicRequestDiscountRoute
@@ -199,6 +206,7 @@ export interface FileRoutesByTo {
   '/openapi.json': typeof OpenapiDotjsonRoute
   '/account-setup': typeof AuthAccountSetupRoute
   '/sign-in': typeof AuthSignInRoute
+  '/sign-up': typeof AuthSignUpRoute
   '/browse': typeof PublicBrowseRoute
   '/pricing': typeof PublicPricingRoute
   '/request-discount': typeof PublicRequestDiscountRoute
@@ -226,6 +234,7 @@ export interface FileRoutesById {
   '/openapi.json': typeof OpenapiDotjsonRoute
   '/_auth/account-setup': typeof AuthAccountSetupRoute
   '/_auth/sign-in': typeof AuthSignInRoute
+  '/_auth/sign-up': typeof AuthSignUpRoute
   '/_public/browse': typeof PublicBrowseRoute
   '/_public/pricing': typeof PublicPricingRoute
   '/_public/request-discount': typeof PublicRequestDiscountRoute
@@ -254,6 +263,7 @@ export interface FileRouteTypes {
     | '/openapi.json'
     | '/account-setup'
     | '/sign-in'
+    | '/sign-up'
     | '/browse'
     | '/pricing'
     | '/request-discount'
@@ -279,6 +289,7 @@ export interface FileRouteTypes {
     | '/openapi.json'
     | '/account-setup'
     | '/sign-in'
+    | '/sign-up'
     | '/browse'
     | '/pricing'
     | '/request-discount'
@@ -305,6 +316,7 @@ export interface FileRouteTypes {
     | '/openapi.json'
     | '/_auth/account-setup'
     | '/_auth/sign-in'
+    | '/_auth/sign-up'
     | '/_public/browse'
     | '/_public/pricing'
     | '/_public/request-discount'
@@ -447,6 +459,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PublicBrowseRouteImport
       parentRoute: typeof PublicRoute
     }
+    '/_auth/sign-up': {
+      id: '/_auth/sign-up'
+      path: '/sign-up'
+      fullPath: '/sign-up'
+      preLoaderRoute: typeof AuthSignUpRouteImport
+      parentRoute: typeof AuthRoute
+    }
     '/_auth/sign-in': {
       id: '/_auth/sign-in'
       path: '/sign-in'
@@ -530,12 +549,14 @@ declare module '@tanstack/react-router' {
 interface AuthRouteChildren {
   AuthAccountSetupRoute: typeof AuthAccountSetupRoute
   AuthSignInRoute: typeof AuthSignInRoute
+  AuthSignUpRoute: typeof AuthSignUpRoute
   AuthOauthConsentRoute: typeof AuthOauthConsentRoute
 }
 
 const AuthRouteChildren: AuthRouteChildren = {
   AuthAccountSetupRoute: AuthAccountSetupRoute,
   AuthSignInRoute: AuthSignInRoute,
+  AuthSignUpRoute: AuthSignUpRoute,
   AuthOauthConsentRoute: AuthOauthConsentRoute,
 }
 

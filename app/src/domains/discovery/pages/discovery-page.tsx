@@ -339,13 +339,11 @@ export function DiscoveryPage() {
   const heroTitle =
     canUseTeamFeatures && activeWorkspace ? `${activeWorkspace.name} discovery` : "Discovery";
   const heroDescription = needsWorkspace
-    ? "You can start discovery immediately, but creating a workspace now keeps the rest of the product organized around the right context."
+    ? "Create a workspace to keep your discovery runs organized."
     : canUseTeamFeatures && activeWorkspace
       ? `Start runs for ${activeWorkspace.name} and keep the team aligned on what Atlas is actively researching.`
       : "Start discovery runs and check recent run status in one place.";
-  const workspaceBadge = activeWorkspace
-    ? `${activeWorkspace.workspaceType} · ${activeWorkspace.role}`
-    : null;
+  const workspaceBadge = activeWorkspace ? activeWorkspace.name : null;
 
   return (
     <div className="space-y-10">
@@ -358,8 +356,8 @@ export function DiscoveryPage() {
 
       {needsWorkspace ? (
         <DiscoverySetupNotice
-          title="Create your workspace before Atlas sprawls"
-          body="Individual workspaces stay intentionally quiet, while team workspaces unlock collaboration only where it belongs."
+          title="Create your workspace"
+          body="Set up a workspace to organize your discovery runs and research."
           cta="Create a workspace"
         />
       ) : null}
@@ -367,7 +365,7 @@ export function DiscoveryPage() {
       {hasPendingInvitations ? (
         <DiscoverySetupNotice
           title="You have workspace invitations waiting"
-          body="Review them before you decide which workspace Atlas should use as your active context."
+          body="Review your pending workspace invitations."
           cta="Review invitations"
         />
       ) : null}

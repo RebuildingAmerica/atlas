@@ -6,6 +6,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 
 const mocks = vi.hoisted(() => ({
   addPasskey: vi.fn(),
+  createWorkspace: vi.fn(),
   invalidateQueries: vi.fn(),
   mutateStates: [] as Record<string, unknown>[],
   refetch: vi.fn(),
@@ -73,6 +74,10 @@ vi.mock("@/domains/access/passkeys.functions", () => ({
   updatePasskey: mocks.updatePasskey,
 }));
 
+vi.mock("@/domains/access/organizations.functions", () => ({
+  createWorkspace: mocks.createWorkspace,
+}));
+
 vi.mock("@/domains/access/session.functions", () => ({
   sendVerificationEmail: mocks.sendVerificationEmail,
 }));
@@ -88,6 +93,8 @@ describe("AccountSetupPage", () => {
   beforeEach(() => {
     vi.resetModules();
     mocks.addPasskey.mockReset();
+    mocks.createWorkspace.mockReset();
+    mocks.createWorkspace.mockResolvedValue(undefined);
     mocks.invalidateQueries.mockReset();
     mocks.mutateStates.length = 0;
     mocks.refetch.mockReset();
@@ -159,6 +166,13 @@ describe("AccountSetupPage", () => {
       refetch: mocks.refetch.mockResolvedValue({
         data: {
           accountReady: true,
+          user: { name: "Test Operator", email: "operator@atlas.test", emailVerified: true },
+          workspace: {
+            onboarding: {
+              hasPendingInvitations: false,
+              needsWorkspace: true,
+            },
+          },
         },
       }),
     });
@@ -190,6 +204,13 @@ describe("AccountSetupPage", () => {
       queryKey: ["auth", "session"],
     });
     expect(screen.getByText("Verification email sent.")).not.toBeNull();
+    expect(mocks.createWorkspace).toHaveBeenCalledWith({
+      data: {
+        name: "Test Operator's Workspace",
+        slug: "test-operator-s-workspace",
+        workspaceType: "individual",
+      },
+    });
     expect(assignMock).toHaveBeenCalledWith("/account");
   });
 

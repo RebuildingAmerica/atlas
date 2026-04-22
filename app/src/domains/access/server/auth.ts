@@ -32,6 +32,14 @@ interface StoredMembershipCountRow {
 }
 
 /**
+ * Result row returned when Atlas checks whether an account exists for a given
+ * email address.
+ */
+interface StoredUserCountRow {
+  userCount: number;
+}
+
+/**
  * Normalizes an email address before Atlas checks access or sends mail.
  *
  * @param email - The raw email address supplied by the current auth flow.
@@ -448,6 +456,35 @@ async function hasExistingOrganizationMembership(email: string): Promise<boolean
   const membershipCountRow = statement.get(email) as StoredMembershipCountRow | undefined;
 
   return (membershipCountRow?.membershipCount ?? 0) > 0;
+}
+
+/**
+ * Checks whether an Atlas account already exists for a given email address.
+ *
+ * @param email - The raw email address to look up.
+ */
+export async function hasExistingAccount(email: string): Promise<boolean> {
+  const normalizedEmail = normalizeEmail(email);
+  const pool = getAuthPgPool();
+
+  if (pool) {
+    const result = await pool.query(
+      'select count(id) as "userCount" from "user" where lower(email) = $1',
+      [normalizedEmail],
+    );
+    return ((result.rows[0] as StoredUserCountRow | undefined)?.userCount ?? 0) > 0;
+  }
+
+  const database = getAuthDatabase();
+  if (!database) {
+    throw new Error("Auth database unavailable in current mode");
+  }
+
+  const statement = database.prepare(
+    "select count(id) as userCount from user where lower(email) = ?",
+  );
+  const row = statement.get(normalizedEmail) as StoredUserCountRow | undefined;
+  return (row?.userCount ?? 0) > 0;
 }
 
 /**

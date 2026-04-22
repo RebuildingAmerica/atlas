@@ -7,7 +7,6 @@ import { workspaceTypeOptions } from "./organization-page-helpers";
  * Props for the first-workspace creation section.
  */
 interface WorkspaceCreationSectionProps {
-  inviteOnlyMode: boolean;
   isPending: boolean;
   workspaceName: string;
   workspaceSlug: string;
@@ -23,7 +22,6 @@ interface WorkspaceCreationSectionProps {
  * joined a workspace yet.
  */
 export function WorkspaceCreationSection({
-  inviteOnlyMode,
   isPending,
   onNameChange,
   onSlugChange,
@@ -47,16 +45,9 @@ export function WorkspaceCreationSection({
           <div className="border-outline-variant rounded-[1.25rem] border bg-white/70 p-4">
             <p className="type-title-small text-on-surface">Team workspace</p>
             <p className="type-body-medium text-outline mt-2">
-              Built for shared discovery, role-based administration, invitations, and a cleaner
-              story when Atlas needs to be sold as a collaborative product.
+              Built for shared discovery, role-based access, and team invitations.
             </p>
           </div>
-
-          {inviteOnlyMode ? (
-            <p className="type-body-medium text-outline">
-              Workspace creation is available by invitation only.
-            </p>
-          ) : null}
         </div>
 
         <form className="space-y-4" onSubmit={onSubmit}>

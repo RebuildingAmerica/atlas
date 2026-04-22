@@ -31,7 +31,7 @@ describe("PendingWorkspaceInvitationsSection", () => {
   it("renders pending invitations", () => {
     render(<PendingWorkspaceInvitationsSection {...defaultProps} />);
     expect(screen.getByText("Atlas Team")).toBeInTheDocument();
-    expect(screen.getByText(/admin access · team workspace/i)).toBeInTheDocument();
+    expect(screen.getByText(/Invited as admin/i)).toBeInTheDocument();
   });
 
   it("triggers onDecision with 'accept' when clicking Accept", () => {

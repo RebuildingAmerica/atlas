@@ -35,9 +35,7 @@ export function WorkspaceMembershipSection({
 
       <div className="border-outline-variant rounded-[1.25rem] border bg-white/70 p-4">
         <p className="type-title-small text-on-surface">{organization.name}</p>
-        <p className="type-body-medium text-outline mt-2">
-          Role: {currentRole} · Workspace type: {organization.workspaceType}
-        </p>
+        <p className="type-body-medium text-outline mt-2">Your role: {currentRole}</p>
       </div>
 
       {ownerCannotLeave ? (

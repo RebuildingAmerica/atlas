@@ -38,13 +38,13 @@ export function WorkspaceProfileSection({
           <h2 className="type-title-large text-ink-strong">Workspace profile</h2>
           <p className="type-body-medium text-ink-soft">
             {organization.capabilities.canUseTeamFeatures
-              ? "Shared team settings stay here so Account can remain personal and security-focused."
-              : "This is a personal workspace, so Atlas keeps the shared-team controls out of the way."}
+              ? "Manage your shared workspace profile."
+              : "This is a personal workspace."}
           </p>
         </div>
         <span className="border-border text-ink-soft inline-flex items-center gap-2 rounded-full border px-3 py-1">
           <Building2 className="h-4 w-4" />
-          {organization.workspaceType}
+          {organization.workspaceType === "team" ? "Team" : "Personal"}
         </span>
       </div>
 

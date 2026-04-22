@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import {
+  checkEmailAccountExists,
   loadAtlasSession,
   requestMagicLinkForEmail,
   requireAtlasSessionState,
@@ -55,3 +56,17 @@ export const requestMagicLink = createServerFn({ method: "POST" })
 export const sendVerificationEmail = createServerFn({ method: "POST" }).handler(async () => {
   return await sendVerificationEmailForCurrentSession();
 });
+
+/**
+ * Checks whether an Atlas account already exists for a given email address.
+ */
+export const checkAccountExists = createServerFn({ method: "POST" })
+  .inputValidator(
+    z.object({
+      email: z.string().email(),
+    }),
+  )
+  .handler(async ({ data }) => {
+    const exists = await checkEmailAccountExists(data.email);
+    return { exists };
+  });

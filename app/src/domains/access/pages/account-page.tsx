@@ -75,6 +75,7 @@ function readCreatedApiKeySecret(result: unknown): string | null {
 export function AccountPage() {
   const queryClient = useQueryClient();
   const atlasSession = useAtlasSession();
+  const isLocal = atlasSession.data?.isLocal ?? false;
   const activeWorkspace = atlasSession.data?.workspace.activeOrganization ?? null;
   const needsWorkspace = atlasSession.data?.workspace.onboarding.needsWorkspace ?? false;
   const hasPendingInvitations =
@@ -82,11 +83,7 @@ export function AccountPage() {
   const canCreateApiKeys = atlasSession.data
     ? hasSerializedCapability(atlasSession.data.workspace.resolvedCapabilities, "api.keys")
     : false;
-  const shouldShowOrganizationLink =
-    atlasSession.data?.workspace.capabilities.canSwitchOrganizations ||
-    activeWorkspace?.workspaceType === "team" ||
-    needsWorkspace ||
-    hasPendingInvitations;
+  const shouldShowOrganizationLink = Boolean(activeWorkspace);
   const [apiKeyName, setApiKeyName] = useState("");
   const [apiKeyScopes, setApiKeyScopes] = useState<ApiKeyScope[]>(["discovery:read"]);
   const [flashMessage, setFlashMessage] = useState<string | null>(null);
@@ -207,17 +204,19 @@ export function AccountPage() {
           </h1>
           <p className="type-body-large text-outline">{atlasSession.data?.user.email}</p>
         </div>
-        <Button
-          variant="secondary"
-          onClick={() => {
-            void handleSignOut();
-          }}
-        >
-          <span className="inline-flex items-center gap-2">
-            <LogOut className="h-4 w-4" />
-            Sign out
-          </span>
-        </Button>
+        {!isLocal ? (
+          <Button
+            variant="secondary"
+            onClick={() => {
+              void handleSignOut();
+            }}
+          >
+            <span className="inline-flex items-center gap-2">
+              <LogOut className="h-4 w-4" />
+              Sign out
+            </span>
+          </Button>
+        ) : null}
       </section>
 
       {flashMessage ? (
@@ -239,7 +238,7 @@ export function AccountPage() {
         </div>
       ) : null}
 
-      {needsWorkspace ? (
+      {needsWorkspace && !isLocal ? (
         <div className="border-outline bg-surface rounded-[1.5rem] border p-5">
           <p className="type-title-small text-on-surface">Workspace setup is waiting</p>
           <p className="type-body-medium text-outline mt-2">
@@ -254,7 +253,7 @@ export function AccountPage() {
         </div>
       ) : null}
 
-      {hasPendingInvitations ? (
+      {hasPendingInvitations && !isLocal ? (
         <div className="border-outline bg-surface rounded-[1.5rem] border p-5">
           <p className="type-title-small text-on-surface">Workspace invitations waiting</p>
           <p className="type-body-medium text-outline mt-2">
@@ -268,12 +267,10 @@ export function AccountPage() {
         </div>
       ) : null}
 
-      {activeWorkspace ? (
+      {activeWorkspace && !isLocal ? (
         <div className="border-outline-variant bg-surface-container-lowest rounded-[1.5rem] border p-5">
           <p className="type-title-small text-on-surface">Current workspace</p>
-          <p className="type-body-medium text-outline mt-2">
-            {activeWorkspace.name} · {activeWorkspace.workspaceType} · {activeWorkspace.role}
-          </p>
+          <p className="type-body-medium text-outline mt-2">{activeWorkspace.name}</p>
           {shouldShowOrganizationLink ? (
             <div className="mt-4">
               <Link className="type-label-large text-on-surface underline" to="/organization">
@@ -284,113 +281,123 @@ export function AccountPage() {
         </div>
       ) : null}
 
-      <WorkspaceBillingSection activeProducts={atlasSession.data?.workspace.activeProducts ?? []} />
+      {!isLocal ? (
+        <WorkspaceBillingSection
+          activeProducts={atlasSession.data?.workspace.activeProducts ?? []}
+        />
+      ) : null}
 
       <section className="grid gap-6 lg:grid-cols-2">
-        <div className="border-outline bg-surface space-y-4 rounded-[1.5rem] border p-6">
-          <div className="space-y-2">
-            <h2 className="type-title-large text-on-surface">Passkeys</h2>
-            <p className="type-body-medium text-outline">
-              Register a passkey after your email-based sign-in so future access is faster.
-            </p>
-          </div>
-          <Button
-            variant="secondary"
-            disabled={isAddingPasskey}
-            onClick={() => {
-              void handlePasskeyAdd();
-            }}
-          >
-            <span className="inline-flex items-center gap-2">
-              <KeyRound className="h-4 w-4" />
-              {isAddingPasskey ? "Adding passkey..." : "Add passkey"}
-            </span>
-          </Button>
+        {!isLocal ? (
+          <div className="border-outline bg-surface space-y-4 rounded-[1.5rem] border p-6">
+            <div className="space-y-2">
+              <h2 className="type-title-large text-on-surface">Passkeys</h2>
+              <p className="type-body-medium text-outline">
+                Register a passkey after your email-based sign-in so future access is faster.
+              </p>
+            </div>
+            <Button
+              variant="secondary"
+              disabled={isAddingPasskey}
+              onClick={() => {
+                void handlePasskeyAdd();
+              }}
+            >
+              <span className="inline-flex items-center gap-2">
+                <KeyRound className="h-4 w-4" />
+                {isAddingPasskey ? "Adding passkey..." : "Add passkey"}
+              </span>
+            </Button>
 
-          <div className="space-y-3">
-            {passkeysQuery.data?.map((pk) => (
-              <article
-                key={pk.id}
-                className="border-outline-variant flex items-center justify-between gap-3 rounded-2xl border bg-white/70 px-4 py-3"
-              >
-                <div className="min-w-0 flex-1 space-y-1">
-                  {editingPasskeyId === pk.id ? (
-                    <form
-                      className="flex items-center gap-2"
-                      onSubmit={(event) => {
-                        event.preventDefault();
-                        renamePasskeyMutation.mutate({ id: pk.id, name: editingPasskeyName });
-                      }}
-                    >
-                      <Input value={editingPasskeyName} onChange={setEditingPasskeyName} label="" />
-                      <Button
-                        type="submit"
-                        variant="ghost"
-                        disabled={!editingPasskeyName.trim() || renamePasskeyMutation.isPending}
-                      >
-                        <Check className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        onClick={() => {
-                          setEditingPasskeyId(null);
-                          setEditingPasskeyName("");
+            <div className="space-y-3">
+              {passkeysQuery.data?.map((pk) => (
+                <article
+                  key={pk.id}
+                  className="border-outline-variant flex items-center justify-between gap-3 rounded-2xl border bg-white/70 px-4 py-3"
+                >
+                  <div className="min-w-0 flex-1 space-y-1">
+                    {editingPasskeyId === pk.id ? (
+                      <form
+                        className="flex items-center gap-2"
+                        onSubmit={(event) => {
+                          event.preventDefault();
+                          renamePasskeyMutation.mutate({ id: pk.id, name: editingPasskeyName });
                         }}
                       >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </form>
-                  ) : (
-                    <p className="type-title-small text-on-surface">
-                      {pk.name || "Unnamed passkey"}
+                        <Input
+                          value={editingPasskeyName}
+                          onChange={setEditingPasskeyName}
+                          label=""
+                        />
+                        <Button
+                          type="submit"
+                          variant="ghost"
+                          disabled={!editingPasskeyName.trim() || renamePasskeyMutation.isPending}
+                        >
+                          <Check className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          onClick={() => {
+                            setEditingPasskeyId(null);
+                            setEditingPasskeyName("");
+                          }}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </form>
+                    ) : (
+                      <p className="type-title-small text-on-surface">
+                        {pk.name || "Unnamed passkey"}
+                      </p>
+                    )}
+                    <p className="type-body-small text-outline">
+                      {pk.deviceType === "platform" ? "Device passkey" : "Hardware key"}
+                      {pk.backedUp ? " · synced" : ""}
+                      {" · "}
+                      {new Date(pk.createdAt).toLocaleDateString()}
                     </p>
-                  )}
-                  <p className="type-body-small text-outline">
-                    {pk.deviceType === "platform" ? "Device passkey" : "Hardware key"}
-                    {pk.backedUp ? " · synced" : ""}
-                    {" · "}
-                    {new Date(pk.createdAt).toLocaleDateString()}
-                  </p>
-                </div>
-                {editingPasskeyId !== pk.id ? (
-                  <div className="flex items-center gap-1">
-                    <Button
-                      variant="ghost"
-                      onClick={() => {
-                        setEditingPasskeyId(pk.id);
-                        setEditingPasskeyName(pk.name ?? "");
-                      }}
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      onClick={() => {
-                        deletePasskeyMutation.mutate(pk.id);
-                      }}
-                      disabled={deletePasskeyMutation.isPending}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
                   </div>
-                ) : null}
-              </article>
-            ))}
+                  {editingPasskeyId !== pk.id ? (
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        onClick={() => {
+                          setEditingPasskeyId(pk.id);
+                          setEditingPasskeyName(pk.name ?? "");
+                        }}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        onClick={() => {
+                          deletePasskeyMutation.mutate(pk.id);
+                        }}
+                        disabled={deletePasskeyMutation.isPending}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ) : null}
+                </article>
+              ))}
 
-            {passkeysQuery.isError ? (
-              <p className="type-body-medium text-outline">
-                Atlas could not load your passkeys right now.
-              </p>
-            ) : null}
+              {passkeysQuery.isError ? (
+                <p className="type-body-medium text-outline">
+                  Atlas could not load your passkeys right now.
+                </p>
+              ) : null}
 
-            {passkeysQuery.data?.length === 0 ? (
-              <p className="type-body-medium text-outline">
-                No passkeys yet. Add one above for faster sign-in.
-              </p>
-            ) : null}
+              {passkeysQuery.data?.length === 0 ? (
+                <p className="type-body-medium text-outline">
+                  No passkeys yet. Add one above for faster sign-in.
+                </p>
+              ) : null}
+            </div>
           </div>
-        </div>
+        ) : null}
 
         {canCreateApiKeys ? (
           <div className="border-outline bg-surface space-y-4 rounded-[1.5rem] border p-6">

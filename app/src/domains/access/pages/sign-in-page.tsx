@@ -1,4 +1,5 @@
-import { KeyRound, Mail } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { Info, KeyRound, Mail } from "lucide-react";
 import { useEffect, useState } from "react";
 import { z } from "zod";
 import { getAuthClient } from "../client/auth-client";
@@ -20,6 +21,8 @@ import { Input } from "@/platform/ui/input";
  * Search params accepted by the sign-in route.
  */
 export const signInSearchSchema = z.object({
+  email: z.string().optional(),
+  existing: z.coerce.boolean().optional(),
   invitation: z.string().optional(),
   redirect: z.string().optional(),
 });
@@ -28,6 +31,8 @@ export const signInSearchSchema = z.object({
  * Props accepted by the sign-in page.
  */
 interface SignInPageProps {
+  existingAccount?: boolean;
+  initialEmail?: string;
   invitationId?: string;
   redirectTo?: string;
 }
@@ -38,11 +43,16 @@ interface SignInPageProps {
  * Atlas resolves enterprise providers server-side from the submitted email
  * address before falling back to the privacy-preserving magic-link path.
  */
-export function SignInPage({ invitationId, redirectTo }: SignInPageProps) {
+export function SignInPage({
+  existingAccount,
+  initialEmail,
+  invitationId,
+  redirectTo,
+}: SignInPageProps) {
   const authConfig = getAuthConfig();
   const authClient = getAuthClient();
   const lastMethod = authClient.getLastUsedLoginMethod();
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(initialEmail ?? "");
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isEmailFlowPending, setIsEmailFlowPending] = useState(false);
@@ -119,7 +129,7 @@ export function SignInPage({ invitationId, redirectTo }: SignInPageProps) {
       if (ssoResolution) {
         const organizationLabel = ssoResolution.organizationName ?? "your organization";
 
-        setStatusMessage(`Redirecting to ${organizationLabel} sign-in...`);
+        setStatusMessage(`Redirecting to ${organizationLabel}'s sign-in...`);
 
         const ssoSignInPromise = authClient.signIn.sso({
           callbackURL,
@@ -187,60 +197,30 @@ export function SignInPage({ invitationId, redirectTo }: SignInPageProps) {
     <div className="space-y-8">
       <div className="space-y-2">
         <p className="type-label-medium text-outline">
-          {isInvitationFlow ? "Workspace invitation" : "Workspace access"}
+          {isInvitationFlow ? "Workspace invitation" : "Account access"}
         </p>
         <h1 className="type-display-small text-on-surface">
-          {isInvitationFlow ? "Sign in to review your workspace invite" : "Sign in to Atlas"}
+          {isInvitationFlow ? "Accept your workspace invitation" : "Sign in to Atlas"}
         </h1>
         <p className="type-body-large text-outline">
           {isInvitationFlow
-            ? "Atlas will route you through the workspace sign-in policy when your email matches a verified enterprise provider, then take you straight back to the invitation."
-            : "Enter your work email and Atlas will prefer a verified enterprise sign-in path before falling back to magic link."}
+            ? "Enter the email address where you received the invitation."
+            : "Use your passkey, or enter your email for a sign-in link."}
         </p>
       </div>
 
-      <div className="space-y-5">
-        <form
-          className="space-y-4"
-          onSubmit={(e) => {
-            void handleEmailContinue(e);
-          }}
-        >
-          <Input
-            label="Email"
-            type="email"
-            value={email}
-            onChange={setEmail}
-            placeholder="you@your-org.example"
-            autoComplete="username webauthn"
-            required
-            icon={<Mail className="h-4 w-4" />}
-          />
-
-          <div className="relative inline-block">
-            <Button
-              type="submit"
-              disabled={isEmailFlowPending || authConfig.localMode || !email.trim()}
-            >
-              {isEmailFlowPending ? "Continuing..." : "Continue with email"}
-            </Button>
-            {lastMethod === "magic-link" ? (
-              <span className="type-label-small bg-inverse-surface text-inverse-on-surface absolute -top-2 -right-2 rounded-full px-1.5 py-0.5">
-                Last used
-              </span>
-            ) : null}
-          </div>
-        </form>
-
-        <div className="flex items-center gap-3">
-          <div className="bg-border h-px flex-1" />
-          <span className="type-label-small text-outline">or</span>
-          <div className="bg-border h-px flex-1" />
+      {existingAccount ? (
+        <div className="flex items-start gap-3 rounded-2xl bg-blue-50 px-4 py-3">
+          <Info className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" />
+          <p className="type-body-medium text-blue-800">
+            Looks like you already have an account. Sign in below.
+          </p>
         </div>
+      ) : null}
 
+      <div className="space-y-5">
         <div className="relative inline-block">
           <Button
-            variant="secondary"
             onClick={() => {
               void handlePasskey();
             }}
@@ -257,6 +237,45 @@ export function SignInPage({ invitationId, redirectTo }: SignInPageProps) {
             </span>
           ) : null}
         </div>
+
+        <div className="flex items-center gap-3">
+          <div className="bg-border h-px flex-1" />
+          <span className="type-label-small text-outline">or</span>
+          <div className="bg-border h-px flex-1" />
+        </div>
+
+        <form
+          className="space-y-4"
+          onSubmit={(e) => {
+            void handleEmailContinue(e);
+          }}
+        >
+          <Input
+            label="Email"
+            type="email"
+            value={email}
+            onChange={setEmail}
+            placeholder="you@example.com"
+            autoComplete="username webauthn"
+            required
+            icon={<Mail className="h-4 w-4" />}
+          />
+
+          <div className="relative inline-block">
+            <Button
+              type="submit"
+              variant="secondary"
+              disabled={isEmailFlowPending || authConfig.localMode || !email.trim()}
+            >
+              {isEmailFlowPending ? "Continuing..." : "Continue with email"}
+            </Button>
+            {lastMethod === "magic-link" ? (
+              <span className="type-label-small bg-inverse-surface text-inverse-on-surface absolute -top-2 -right-2 rounded-full px-1.5 py-0.5">
+                Last used
+              </span>
+            ) : null}
+          </div>
+        </form>
 
         {statusMessage ? (
           <p className="type-body-medium bg-surface-container-lowest text-on-surface rounded-2xl px-4 py-3">
@@ -275,6 +294,15 @@ export function SignInPage({ invitationId, redirectTo }: SignInPageProps) {
         <div className="border-outline-variant bg-surface-container-lowest rounded-[1.4rem] border p-5">
           <p className="type-body-medium text-outline">Sign-in is disabled in this environment.</p>
         </div>
+      ) : null}
+
+      {!isInvitationFlow ? (
+        <p className="type-body-medium text-outline">
+          New to Atlas?{" "}
+          <Link to="/sign-up" className="text-accent type-label-medium hover:underline">
+            Create a free account &rarr;
+          </Link>
+        </p>
       ) : null}
     </div>
   );
