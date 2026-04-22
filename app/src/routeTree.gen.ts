@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as OpenapiDotjsonRouteImport } from './routes/openapi[.]json'
 import { Route as DocsRouteImport } from './routes/docs'
 import { Route as DashboardRouteImport } from './routes/dashboard'
@@ -39,6 +40,11 @@ import { Route as PublicProfilesPeopleSlugRouteImport } from './routes/_public/p
 import { Route as PublicProfilesOrganizationsSlugRouteImport } from './routes/_public/profiles/organizations.$slug'
 import { Route as ApiAuthInternalMembershipsOrganizationIdMembersUserIdRouteImport } from './routes/api/auth/internal/memberships.$organizationId.members.$userId'
 
+const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
+  id: '/sitemap.xml',
+  path: '/sitemap.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const OpenapiDotjsonRoute = OpenapiDotjsonRouteImport.update({
   id: '/openapi.json',
   path: '/openapi.json',
@@ -192,6 +198,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof DashboardRoute
   '/docs': typeof DocsRoute
   '/openapi.json': typeof OpenapiDotjsonRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/account-setup': typeof AuthAccountSetupRoute
   '/sign-in': typeof AuthSignInRoute
   '/sign-up': typeof AuthSignUpRoute
@@ -220,6 +227,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof DashboardRoute
   '/docs': typeof DocsRoute
   '/openapi.json': typeof OpenapiDotjsonRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/account-setup': typeof AuthAccountSetupRoute
   '/sign-in': typeof AuthSignInRoute
   '/sign-up': typeof AuthSignUpRoute
@@ -250,6 +258,7 @@ export interface FileRoutesById {
   '/dashboard': typeof DashboardRoute
   '/docs': typeof DocsRoute
   '/openapi.json': typeof OpenapiDotjsonRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/_auth/account-setup': typeof AuthAccountSetupRoute
   '/_auth/sign-in': typeof AuthSignInRoute
   '/_auth/sign-up': typeof AuthSignUpRoute
@@ -281,6 +290,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/docs'
     | '/openapi.json'
+    | '/sitemap.xml'
     | '/account-setup'
     | '/sign-in'
     | '/sign-up'
@@ -309,6 +319,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/docs'
     | '/openapi.json'
+    | '/sitemap.xml'
     | '/account-setup'
     | '/sign-in'
     | '/sign-up'
@@ -338,6 +349,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/docs'
     | '/openapi.json'
+    | '/sitemap.xml'
     | '/_auth/account-setup'
     | '/_auth/sign-in'
     | '/_auth/sign-up'
@@ -370,6 +382,7 @@ export interface RootRouteChildren {
   DashboardRoute: typeof DashboardRoute
   DocsRoute: typeof DocsRoute
   OpenapiDotjsonRoute: typeof OpenapiDotjsonRoute
+  SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   ApiSplatRoute: typeof ApiSplatRoute
   ApiHealthRoute: typeof ApiHealthRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
@@ -380,6 +393,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/sitemap.xml': {
+      id: '/sitemap.xml'
+      path: '/sitemap.xml'
+      fullPath: '/sitemap.xml'
+      preLoaderRoute: typeof SitemapDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/openapi.json': {
       id: '/openapi.json'
       path: '/openapi.json'
@@ -665,6 +685,7 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardRoute: DashboardRoute,
   DocsRoute: DocsRoute,
   OpenapiDotjsonRoute: OpenapiDotjsonRoute,
+  SitemapDotxmlRoute: SitemapDotxmlRoute,
   ApiSplatRoute: ApiSplatRoute,
   ApiHealthRoute: ApiHealthRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
