@@ -1,0 +1,42 @@
+---
+title: "Atlas overview"
+description: "What Atlas is, who it serves, and how the API fits into the platform."
+---
+
+# Atlas overview
+
+Atlas is a national directory and autodiscovery platform for finding the people, organizations, initiatives, and sources shaping public life across America.
+
+Every Atlas record is tied to a place, connected to issue areas, and traced back to public evidence.
+
+## What the platform exposes
+
+Atlas currently brings together three connected surfaces:
+
+- A public-facing directory and browse experience
+- A typed REST API for places, entities, issue areas, sources, and discovery runs
+- An autodiscovery pipeline that finds, extracts, ranks, and updates civic research data
+
+## Why the API matters first
+
+The API is the best first Mintlify slice because it already has a generated OpenAPI contract and stable resource groupings:
+
+- `entities`
+- `places`
+- `issue-areas`
+- `domains`
+- `discovery-runs`
+- `flags`
+- `health`
+
+That makes it possible to move Atlas toward a better docs experience without hand-maintaining endpoint prose in multiple places.
+
+## Product stance
+
+Atlas is meant to be useful to:
+
+- Researchers and organizers who need structured, place-first discovery
+- Journalists and producers looking for credible, source-linked leads
+- Developers and integrators building on top of Atlas data and workflows
+
+From a docs standpoint, Mintlify is now the destination experience, while the legacy `docs/` tree remains available during migration.

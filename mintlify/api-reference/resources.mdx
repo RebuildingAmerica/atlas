@@ -1,0 +1,43 @@
+---
+title: "API resources"
+description: "A map of the Atlas API resource groups and how to navigate the generated reference."
+---
+
+# API resources
+
+The generated Mintlify reference is organized around the Atlas API's existing OpenAPI tags and path families.
+
+## Health
+
+Use the health endpoint for service liveness and environment checks.
+
+## Discovery runs
+
+Discovery run endpoints expose the state of Atlas pipeline executions, including listing runs, starting a run, and retrieving a single run by identifier.
+
+## Domains and issue areas
+
+These endpoints expose the Atlas taxonomy so clients can discover top-level domains and the issue-area vocabulary that Atlas uses for filtering and place analysis.
+
+## Places
+
+Place endpoints are the most Atlas-specific part of the public contract. They expose:
+
+- Place metadata
+- Coverage summaries
+- Related entities
+- Issue signals
+- Place profiles
+- Place-linked sources
+
+## Entities
+
+Entity endpoints are the CRUD and linkage layer for the public data model. They cover list/create/update/delete flows plus source linkage for a single entity.
+
+## Flags
+
+Flag endpoints support anonymous correction workflows for entity and source data.
+
+## How to use this section
+
+Use the manual pages in this tab for context, then use the generated endpoint pages in the sidebar for request, response, parameter, and example details.

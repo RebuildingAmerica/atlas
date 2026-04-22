@@ -1,0 +1,41 @@
+---
+title: "API overview"
+description: "How the Atlas REST API is structured and how Mintlify uses the generated OpenAPI spec."
+---
+
+# API overview
+
+The Atlas REST API exposes structured civic research data through a typed contract generated from the FastAPI application.
+
+Mintlify reads `mintlify/openapi/atlas.openapi.json`, which is synced from the root `openapi/atlas.openapi.json` artifact. That keeps the endpoint reference in the sidebar aligned with the exported OpenAPI document instead of relying on hand-maintained endpoint pages.
+
+## Base URLs
+
+The current OpenAPI document advertises three server targets:
+
+- `https://atlas.rebuildingus.org`
+- `http://api.localhost:1355`
+- `/`
+
+Those values come from the application OpenAPI metadata and drive the interactive playground configuration.
+
+## Resource families
+
+The current public contract is organized around these resource groups:
+
+- **Entities** for create, read, update, delete, and source linkage
+- **Places** for place profiles, coverage, issue signals, entities, and sources
+- **Issue areas** and **domains** for taxonomy lookups
+- **Discovery runs** for pipeline execution state
+- **Flags** for anonymous corrections and stale-data reporting
+- **Health** for operational status
+
+## Source of truth
+
+When the API changes:
+
+1. Regenerate the OpenAPI spec with `pnpm openapi`
+2. Validate the docs shell with `pnpm docs:validate`
+3. Let Mintlify regenerate endpoint pages from the spec
+
+This keeps the API reference synchronized with the codebase and avoids drift between docs and implementation.

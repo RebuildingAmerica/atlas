@@ -1,0 +1,4025 @@
+{
+  "components": {
+    "schemas": {
+      "Address": {
+        "description": "Canonical address and place metadata.",
+        "properties": {
+          "city": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "City"
+          },
+          "display": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display"
+          },
+          "full_address": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Full Address"
+          },
+          "geo_specificity": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Geo Specificity"
+          },
+          "region": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Region"
+          },
+          "state": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "State"
+          }
+        },
+        "title": "Address",
+        "type": "object"
+      },
+      "ContactInfo": {
+        "description": "Canonical public contact surface.",
+        "properties": {
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "social_media": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Social Media"
+          },
+          "website": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Website"
+          }
+        },
+        "title": "ContactInfo",
+        "type": "object"
+      },
+      "CoverageCount": {
+        "description": "Issue coverage count.",
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "issue_area_id": {
+            "title": "Issue Area Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "issue_area_id",
+          "count"
+        ],
+        "title": "CoverageCount",
+        "type": "object"
+      },
+      "DiscoveryRunCollectionResponse": {
+        "description": "Collection response for discovery runs.",
+        "properties": {
+          "items": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total"
+        ],
+        "title": "DiscoveryRunCollectionResponse",
+        "type": "object"
+      },
+      "DiscoveryRunResponse": {
+        "description": "Discovery run response model.",
+        "example": {
+          "completed_at": "2026-01-15T12:30:00+00:00",
+          "created_at": "2026-01-15T10:00:00+00:00",
+          "entries_after_dedup": 35,
+          "entries_confirmed": 30,
+          "entries_extracted": 38,
+          "id": "550e8400-e29b-41d4-a716-446655440002",
+          "issue_areas": [
+            "worker_cooperatives",
+            "housing_affordability"
+          ],
+          "location_query": "Kansas City, MO",
+          "queries_generated": 150,
+          "sources_fetched": 45,
+          "sources_processed": 42,
+          "started_at": "2026-01-15T10:00:00+00:00",
+          "state": "MO",
+          "status": "completed"
+        },
+        "properties": {
+          "completed_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Completion timestamp",
+            "title": "Completed At"
+          },
+          "created_at": {
+            "description": "Creation timestamp",
+            "title": "Created At",
+            "type": "string"
+          },
+          "entries_after_dedup": {
+            "description": "Entries after deduplication",
+            "title": "Entries After Dedup",
+            "type": "integer"
+          },
+          "entries_confirmed": {
+            "description": "Entries confirmed",
+            "title": "Entries Confirmed",
+            "type": "integer"
+          },
+          "entries_extracted": {
+            "description": "Entries extracted",
+            "title": "Entries Extracted",
+            "type": "integer"
+          },
+          "error_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Error message if failed",
+            "title": "Error Message"
+          },
+          "id": {
+            "description": "Discovery run ID",
+            "title": "Id",
+            "type": "string"
+          },
+          "issue_areas": {
+            "description": "Issue areas queried",
+            "items": {
+              "type": "string"
+            },
+            "title": "Issue Areas",
+            "type": "array"
+          },
+          "location_query": {
+            "description": "Location query",
+            "title": "Location Query",
+            "type": "string"
+          },
+          "queries_generated": {
+            "description": "Search queries generated",
+            "title": "Queries Generated",
+            "type": "integer"
+          },
+          "sources_fetched": {
+            "description": "Sources fetched",
+            "title": "Sources Fetched",
+            "type": "integer"
+          },
+          "sources_processed": {
+            "description": "Sources processed",
+            "title": "Sources Processed",
+            "type": "integer"
+          },
+          "started_at": {
+            "description": "Start timestamp",
+            "title": "Started At",
+            "type": "string"
+          },
+          "state": {
+            "description": "State code",
+            "title": "State",
+            "type": "string"
+          },
+          "status": {
+            "description": "Status (running, completed, failed)",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "location_query",
+          "state",
+          "issue_areas",
+          "queries_generated",
+          "sources_fetched",
+          "sources_processed",
+          "entries_extracted",
+          "entries_after_dedup",
+          "entries_confirmed",
+          "started_at",
+          "status",
+          "created_at"
+        ],
+        "title": "DiscoveryRunResponse",
+        "type": "object"
+      },
+      "DiscoveryRunStartRequest": {
+        "description": "Request to start a discovery run.",
+        "example": {
+          "issue_areas": [
+            "worker_cooperatives",
+            "housing_affordability",
+            "local_government_and_civic_engagement"
+          ],
+          "location_query": "Kansas City, MO",
+          "state": "MO"
+        },
+        "properties": {
+          "issue_areas": {
+            "description": "List of issue area slugs to query",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "title": "Issue Areas",
+            "type": "array"
+          },
+          "location_query": {
+            "description": "Location query (e.g., 'Kansas City, MO')",
+            "examples": [
+              "Kansas City, MO",
+              "New York, NY"
+            ],
+            "title": "Location Query",
+            "type": "string"
+          },
+          "state": {
+            "description": "2-letter state code",
+            "maxLength": 2,
+            "minLength": 2,
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "location_query",
+          "state",
+          "issue_areas"
+        ],
+        "title": "DiscoveryRunStartRequest",
+        "type": "object"
+      },
+      "DomainDetailResponse": {
+        "description": "Domain detail resource.",
+        "properties": {
+          "issue_areas": {
+            "items": {
+              "$ref": "#/components/schemas/IssueAreaResponse"
+            },
+            "title": "Issue Areas",
+            "type": "array"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "name"
+        ],
+        "title": "DomainDetailResponse",
+        "type": "object"
+      },
+      "DomainListResponse": {
+        "description": "Collection response for domains.",
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/DomainResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total"
+        ],
+        "title": "DomainListResponse",
+        "type": "object"
+      },
+      "DomainResponse": {
+        "description": "Domain summary resource.",
+        "properties": {
+          "issue_area_count": {
+            "title": "Issue Area Count",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "name",
+          "issue_area_count"
+        ],
+        "title": "DomainResponse",
+        "type": "object"
+      },
+      "EntityCollectionResponse": {
+        "description": "Collection response for entities.",
+        "properties": {
+          "facets": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "items": {
+                    "$ref": "#/components/schemas/FacetOption"
+                  },
+                  "type": "array"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Facets"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/EntityResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          },
+          "place": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Address"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total"
+        ],
+        "title": "EntityCollectionResponse",
+        "type": "object"
+      },
+      "EntityCreateRequest": {
+        "description": "Request to create an entity.",
+        "properties": {
+          "address": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Address"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "affiliated_org_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Affiliated organization ID",
+            "title": "Affiliated Org Id"
+          },
+          "city": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Legacy flat city",
+            "title": "City"
+          },
+          "contact": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ContactInfo"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "contact_status": {
+            "default": "not_contacted",
+            "description": "Contact status",
+            "title": "Contact Status",
+            "type": "string"
+          },
+          "description": {
+            "description": "1-3 sentence description",
+            "maxLength": 500,
+            "minLength": 10,
+            "title": "Description",
+            "type": "string"
+          },
+          "editorial_notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Internal notes",
+            "title": "Editorial Notes"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Legacy flat email",
+            "title": "Email"
+          },
+          "first_seen": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "First discovery date",
+            "title": "First Seen"
+          },
+          "full_address": {
+            "anyOf": [
+              {
+                "maxLength": 300,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Legacy flat full address",
+            "title": "Full Address"
+          },
+          "geo_specificity": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Legacy flat geographic scope",
+            "title": "Geo Specificity"
+          },
+          "issue_area_ids": {
+            "description": "Canonical issue-area IDs",
+            "items": {
+              "type": "string"
+            },
+            "title": "Issue Area Ids",
+            "type": "array"
+          },
+          "issue_areas": {
+            "description": "Legacy issue-area slugs",
+            "items": {
+              "type": "string"
+            },
+            "title": "Issue Areas",
+            "type": "array"
+          },
+          "last_seen": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Last discovery date",
+            "title": "Last Seen"
+          },
+          "name": {
+            "description": "Entity name",
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Legacy flat phone",
+            "title": "Phone"
+          },
+          "priority": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Priority level",
+            "title": "Priority"
+          },
+          "region": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Legacy flat region",
+            "title": "Region"
+          },
+          "social_media": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Legacy flat social media",
+            "title": "Social Media"
+          },
+          "state": {
+            "anyOf": [
+              {
+                "maxLength": 2,
+                "minLength": 2,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Legacy flat state",
+            "title": "State"
+          },
+          "type": {
+            "description": "Entity type",
+            "examples": [
+              "person",
+              "organization",
+              "initiative",
+              "campaign",
+              "event"
+            ],
+            "title": "Type",
+            "type": "string"
+          },
+          "website": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Legacy flat website",
+            "title": "Website"
+          }
+        },
+        "required": [
+          "type",
+          "name",
+          "description"
+        ],
+        "title": "EntityCreateRequest",
+        "type": "object"
+      },
+      "EntityDetailResponse": {
+        "description": "Expanded entity detail record.",
+        "properties": {
+          "active": {
+            "title": "Active",
+            "type": "boolean"
+          },
+          "address": {
+            "$ref": "#/components/schemas/Address"
+          },
+          "affiliated_org_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Affiliated Org Id"
+          },
+          "contact": {
+            "$ref": "#/components/schemas/ContactInfo"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "flag_summary": {
+            "$ref": "#/components/schemas/FlagSummary"
+          },
+          "freshness": {
+            "$ref": "#/components/schemas/FreshnessInfo"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "issue_area_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Issue Area Ids",
+            "type": "array"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "relationship_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Relationship Ids",
+            "type": "array"
+          },
+          "resource_uri": {
+            "title": "Resource Uri",
+            "type": "string"
+          },
+          "source_count": {
+            "default": 0,
+            "title": "Source Count",
+            "type": "integer"
+          },
+          "source_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Source Ids",
+            "type": "array"
+          },
+          "source_types": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Source Types",
+            "type": "array"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/SourceResponse"
+            },
+            "title": "Sources",
+            "type": "array"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": "string"
+          },
+          "verified": {
+            "title": "Verified",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "name",
+          "description",
+          "address",
+          "contact",
+          "active",
+          "verified",
+          "freshness",
+          "created_at",
+          "updated_at",
+          "resource_uri"
+        ],
+        "title": "EntityDetailResponse",
+        "type": "object"
+      },
+      "EntityFlagCreateRequest": {
+        "description": "Anonymous flag submission for an entity.",
+        "properties": {
+          "entity_id": {
+            "title": "Entity Id",
+            "type": "string"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "entity_id",
+          "reason"
+        ],
+        "title": "EntityFlagCreateRequest",
+        "type": "object"
+      },
+      "EntityFlagListResponse": {
+        "description": "Entity flags collection.",
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/FlagResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total"
+        ],
+        "title": "EntityFlagListResponse",
+        "type": "object"
+      },
+      "EntityResponse": {
+        "description": "Canonical public entity shape.",
+        "properties": {
+          "active": {
+            "title": "Active",
+            "type": "boolean"
+          },
+          "address": {
+            "$ref": "#/components/schemas/Address"
+          },
+          "affiliated_org_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Affiliated Org Id"
+          },
+          "contact": {
+            "$ref": "#/components/schemas/ContactInfo"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "flag_summary": {
+            "$ref": "#/components/schemas/FlagSummary"
+          },
+          "freshness": {
+            "$ref": "#/components/schemas/FreshnessInfo"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "issue_area_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Issue Area Ids",
+            "type": "array"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "resource_uri": {
+            "title": "Resource Uri",
+            "type": "string"
+          },
+          "source_count": {
+            "default": 0,
+            "title": "Source Count",
+            "type": "integer"
+          },
+          "source_types": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Source Types",
+            "type": "array"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": "string"
+          },
+          "verified": {
+            "title": "Verified",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "name",
+          "description",
+          "address",
+          "contact",
+          "active",
+          "verified",
+          "freshness",
+          "created_at",
+          "updated_at",
+          "resource_uri"
+        ],
+        "title": "EntityResponse",
+        "type": "object"
+      },
+      "EntitySourcesResponse": {
+        "description": "Source list for a single entity.",
+        "properties": {
+          "entity_id": {
+            "title": "Entity Id",
+            "type": "string"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/SourceResponse"
+            },
+            "title": "Sources",
+            "type": "array"
+          }
+        },
+        "required": [
+          "entity_id"
+        ],
+        "title": "EntitySourcesResponse",
+        "type": "object"
+      },
+      "EntityUpdateRequest": {
+        "description": "Request to update an entity.",
+        "properties": {
+          "active": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Is entity active",
+            "title": "Active"
+          },
+          "address": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Address"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "city": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Legacy flat city",
+            "title": "City"
+          },
+          "contact": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ContactInfo"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "contact_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Contact status",
+            "title": "Contact Status"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Description",
+            "title": "Description"
+          },
+          "editorial_notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Internal notes",
+            "title": "Editorial Notes"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Legacy flat email",
+            "title": "Email"
+          },
+          "full_address": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Legacy flat full address",
+            "title": "Full Address"
+          },
+          "geo_specificity": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Legacy flat geographic scope",
+            "title": "Geo Specificity"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Entity name",
+            "title": "Name"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Legacy flat phone",
+            "title": "Phone"
+          },
+          "priority": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Priority level",
+            "title": "Priority"
+          },
+          "region": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Legacy flat region",
+            "title": "Region"
+          },
+          "social_media": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Legacy flat social media",
+            "title": "Social Media"
+          },
+          "state": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Legacy flat state",
+            "title": "State"
+          },
+          "verified": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Is entity verified",
+            "title": "Verified"
+          },
+          "website": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Legacy flat website",
+            "title": "Website"
+          }
+        },
+        "title": "EntityUpdateRequest",
+        "type": "object"
+      },
+      "FacetOption": {
+        "description": "A single filter option with result count.",
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "value": {
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "value",
+          "count"
+        ],
+        "title": "FacetOption",
+        "type": "object"
+      },
+      "FlagResponse": {
+        "description": "Flag resource for an entity or source.",
+        "properties": {
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "target_id": {
+            "title": "Target Id",
+            "type": "string"
+          },
+          "target_type": {
+            "title": "Target Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "target_type",
+          "target_id",
+          "reason",
+          "status",
+          "created_at"
+        ],
+        "title": "FlagResponse",
+        "type": "object"
+      },
+      "FlagSummary": {
+        "description": "Aggregate flag state for a target.",
+        "properties": {
+          "flag_count": {
+            "default": 0,
+            "title": "Flag Count",
+            "type": "integer"
+          },
+          "has_open_flags": {
+            "default": false,
+            "title": "Has Open Flags",
+            "type": "boolean"
+          },
+          "latest_flagged_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Flagged At"
+          },
+          "open_flag_count": {
+            "default": 0,
+            "title": "Open Flag Count",
+            "type": "integer"
+          }
+        },
+        "title": "FlagSummary",
+        "type": "object"
+      },
+      "FreshnessInfo": {
+        "description": "Signals describing how current a record is.",
+        "properties": {
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "ingested_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ingested At"
+          },
+          "last_seen": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Seen"
+          },
+          "last_verified": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Verified"
+          },
+          "latest_source_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Source Date"
+          },
+          "published_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published Date"
+          },
+          "staleness_reason": {
+            "title": "Staleness Reason",
+            "type": "string"
+          },
+          "staleness_status": {
+            "title": "Staleness Status",
+            "type": "string"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          }
+        },
+        "required": [
+          "staleness_status",
+          "staleness_reason"
+        ],
+        "title": "FreshnessInfo",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "IssueAreaListResponse": {
+        "description": "Collection response for issue areas.",
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/IssueAreaResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total"
+        ],
+        "title": "IssueAreaListResponse",
+        "type": "object"
+      },
+      "IssueAreaResponse": {
+        "description": "Canonical issue area resource.",
+        "properties": {
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "domain": {
+            "title": "Domain",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "match_score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Match Score"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "slug",
+          "name",
+          "description",
+          "domain"
+        ],
+        "title": "IssueAreaResponse",
+        "type": "object"
+      },
+      "IssueSignalSummary": {
+        "description": "Summary of support for one issue area in a place.",
+        "properties": {
+          "domain": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Domain"
+          },
+          "entity_count": {
+            "title": "Entity Count",
+            "type": "integer"
+          },
+          "entity_type_counts": {
+            "items": {
+              "$ref": "#/components/schemas/PlaceTypeCount"
+            },
+            "title": "Entity Type Counts",
+            "type": "array"
+          },
+          "issue_area_id": {
+            "title": "Issue Area Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "source_count": {
+            "title": "Source Count",
+            "type": "integer"
+          },
+          "top_entities": {
+            "items": {
+              "$ref": "#/components/schemas/EntityResponse"
+            },
+            "title": "Top Entities",
+            "type": "array"
+          }
+        },
+        "required": [
+          "issue_area_id",
+          "name",
+          "entity_count",
+          "source_count"
+        ],
+        "title": "IssueSignalSummary",
+        "type": "object"
+      },
+      "IssueSignalsResponse": {
+        "description": "Issue signal response for a place.",
+        "properties": {
+          "issues": {
+            "items": {
+              "$ref": "#/components/schemas/IssueSignalSummary"
+            },
+            "title": "Issues",
+            "type": "array"
+          },
+          "place": {
+            "$ref": "#/components/schemas/Address"
+          },
+          "resource_uri": {
+            "title": "Resource Uri",
+            "type": "string"
+          }
+        },
+        "required": [
+          "place",
+          "resource_uri"
+        ],
+        "title": "IssueSignalsResponse",
+        "type": "object"
+      },
+      "PlaceCoverageResponse": {
+        "description": "Coverage summary for a place.",
+        "properties": {
+          "covered_issue_area_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Covered Issue Area Ids",
+            "type": "array"
+          },
+          "entity_count": {
+            "title": "Entity Count",
+            "type": "integer"
+          },
+          "issue_counts": {
+            "items": {
+              "$ref": "#/components/schemas/CoverageCount"
+            },
+            "title": "Issue Counts",
+            "type": "array"
+          },
+          "missing_issue_area_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Missing Issue Area Ids",
+            "type": "array"
+          },
+          "place": {
+            "$ref": "#/components/schemas/Address"
+          },
+          "resource_uri": {
+            "title": "Resource Uri",
+            "type": "string"
+          },
+          "thin_issue_area_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Thin Issue Area Ids",
+            "type": "array"
+          },
+          "uncovered_domains": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Uncovered Domains",
+            "type": "array"
+          }
+        },
+        "required": [
+          "place",
+          "entity_count",
+          "resource_uri"
+        ],
+        "title": "PlaceCoverageResponse",
+        "type": "object"
+      },
+      "PlaceIdentityResponse": {
+        "description": "REST or MCP representation of a place resource.",
+        "properties": {
+          "place": {
+            "$ref": "#/components/schemas/Address"
+          },
+          "resource_uri": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resource Uri"
+          }
+        },
+        "required": [
+          "place"
+        ],
+        "title": "PlaceIdentityResponse",
+        "type": "object"
+      },
+      "PlaceProfileResponse": {
+        "description": "Structured place profile with flexible data blocks.",
+        "properties": {
+          "demographics": {
+            "additionalProperties": true,
+            "title": "Demographics",
+            "type": "object"
+          },
+          "economics": {
+            "additionalProperties": true,
+            "title": "Economics",
+            "type": "object"
+          },
+          "education": {
+            "additionalProperties": true,
+            "title": "Education",
+            "type": "object"
+          },
+          "health": {
+            "additionalProperties": true,
+            "title": "Health",
+            "type": "object"
+          },
+          "housing": {
+            "additionalProperties": true,
+            "title": "Housing",
+            "type": "object"
+          },
+          "place": {
+            "$ref": "#/components/schemas/Address"
+          },
+          "provenance": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Provenance",
+            "type": "array"
+          },
+          "resource_uri": {
+            "title": "Resource Uri",
+            "type": "string"
+          }
+        },
+        "required": [
+          "place",
+          "resource_uri"
+        ],
+        "title": "PlaceProfileResponse",
+        "type": "object"
+      },
+      "PlaceTypeCount": {
+        "description": "Entity type count inside an issue signal.",
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "count"
+        ],
+        "title": "PlaceTypeCount",
+        "type": "object"
+      },
+      "SourceCollectionResponse": {
+        "description": "Collection response for sources.",
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/SourceResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          },
+          "place": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Address"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total"
+        ],
+        "title": "SourceCollectionResponse",
+        "type": "object"
+      },
+      "SourceFlagCreateRequest": {
+        "description": "Anonymous flag submission for a source.",
+        "properties": {
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "source_id": {
+            "title": "Source Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source_id",
+          "reason"
+        ],
+        "title": "SourceFlagCreateRequest",
+        "type": "object"
+      },
+      "SourceFlagListResponse": {
+        "description": "Source flags collection.",
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/FlagResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total"
+        ],
+        "title": "SourceFlagListResponse",
+        "type": "object"
+      },
+      "SourceResponse": {
+        "description": "Canonical public source shape.",
+        "properties": {
+          "extraction_context": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Extraction Context"
+          },
+          "extraction_method": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Extraction Method"
+          },
+          "flag_summary": {
+            "$ref": "#/components/schemas/FlagSummary"
+          },
+          "freshness": {
+            "$ref": "#/components/schemas/FreshnessInfo"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "linked_entity_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Linked Entity Ids",
+            "type": "array"
+          },
+          "publication": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Publication"
+          },
+          "resource_uri": {
+            "title": "Resource Uri",
+            "type": "string"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Type"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "url",
+          "freshness",
+          "resource_uri"
+        ],
+        "title": "SourceResponse",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "contact": {
+      "email": "contact@rebuildingus.org",
+      "name": "Rebuilding America",
+      "url": "https://atlas.rebuildingus.org/"
+    },
+    "description": "Atlas exposes place-first civic research data through a typed REST API. The public contract includes entities, sources, issue areas, domains, place profiles, issue signals, discovery runs, and anonymous data flags.",
+    "license": {
+      "identifier": "MIT",
+      "name": "MIT"
+    },
+    "summary": "Structured civic research data for Atlas places, entities, sources, and discovery runs.",
+    "title": "Atlas REST API",
+    "version": "1.0.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/discovery-runs": {
+      "get": {
+        "description": "List Atlas discovery pipeline runs with optional state and status filters.",
+        "operationId": "listDiscoveryRuns",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "state",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 2,
+                  "minLength": 2,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "State"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-internal-secret",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Internal-Secret"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-email",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Email"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DiscoveryRunCollectionResponse"
+                }
+              }
+            },
+            "description": "A paginated collection of discovery runs."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List discovery runs",
+        "tags": [
+          "discovery-runs"
+        ]
+      },
+      "post": {
+        "description": "Start an Atlas discovery pipeline run for a place and set of issue areas.",
+        "operationId": "createDiscoveryRun",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-atlas-internal-secret",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Internal-Secret"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-email",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Email"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DiscoveryRunStartRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DiscoveryRunResponse"
+                }
+              }
+            },
+            "description": "The accepted discovery run."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Start a discovery run",
+        "tags": [
+          "discovery-runs"
+        ]
+      }
+    },
+    "/api/discovery-runs/{run_id}": {
+      "get": {
+        "description": "Return one Atlas discovery run by ID.",
+        "operationId": "getDiscoveryRun",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-internal-secret",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Internal-Secret"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-email",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Email"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DiscoveryRunResponse"
+                }
+              }
+            },
+            "description": "The requested discovery run."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get a discovery run",
+        "tags": [
+          "discovery-runs"
+        ]
+      }
+    },
+    "/api/domains": {
+      "get": {
+        "description": "List top-level Atlas issue domains.",
+        "operationId": "listDomains",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DomainListResponse"
+                }
+              }
+            },
+            "description": "A paginated collection of Atlas domains."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List domains",
+        "tags": [
+          "domains"
+        ]
+      }
+    },
+    "/api/domains/{domain_slug}": {
+      "get": {
+        "description": "Return a single Atlas domain and its issue areas.",
+        "operationId": "getDomain",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "domain_slug",
+            "required": true,
+            "schema": {
+              "title": "Domain Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DomainDetailResponse"
+                }
+              }
+            },
+            "description": "The requested Atlas domain."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get a domain",
+        "tags": [
+          "domains"
+        ]
+      }
+    },
+    "/api/entities": {
+      "get": {
+        "description": "Search Atlas entities with text, geography, issue-area, entity-type, and source-type filters.",
+        "operationId": "listEntities",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Query"
+            }
+          },
+          {
+            "in": "query",
+            "name": "state",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "State"
+            }
+          },
+          {
+            "in": "query",
+            "name": "city",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "City"
+            }
+          },
+          {
+            "in": "query",
+            "name": "region",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Region"
+            }
+          },
+          {
+            "in": "query",
+            "name": "entity_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Entity Type"
+            }
+          },
+          {
+            "in": "query",
+            "name": "issue_area",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Issue Area"
+            }
+          },
+          {
+            "in": "query",
+            "name": "source_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Source Type"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EntityCollectionResponse"
+                }
+              }
+            },
+            "description": "A paginated collection of Atlas entities."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List entities",
+        "tags": [
+          "entities"
+        ]
+      },
+      "post": {
+        "description": "Create a new Atlas entity using the canonical nested address and contact request shape.",
+        "operationId": "createEntity",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-atlas-internal-secret",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Internal-Secret"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-email",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Email"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EntityCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EntityDetailResponse"
+                }
+              }
+            },
+            "description": "The newly created Atlas entity."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create an entity",
+        "tags": [
+          "entities"
+        ]
+      }
+    },
+    "/api/entities/{entity_id}": {
+      "delete": {
+        "description": "Delete an Atlas entity by ID.",
+        "operationId": "deleteEntity",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "entity_id",
+            "required": true,
+            "schema": {
+              "title": "Entity Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-internal-secret",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Internal-Secret"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-email",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Email"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "The entity was deleted."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete an entity",
+        "tags": [
+          "entities"
+        ]
+      },
+      "get": {
+        "description": "Return one Atlas entity with normalized contact, freshness, flag summary, and linked source provenance.",
+        "operationId": "getEntity",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "entity_id",
+            "required": true,
+            "schema": {
+              "title": "Entity Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EntityDetailResponse"
+                }
+              }
+            },
+            "description": "The requested Atlas entity."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get an entity",
+        "tags": [
+          "entities"
+        ]
+      },
+      "patch": {
+        "description": "Apply a partial update to an Atlas entity.",
+        "operationId": "updateEntity",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "entity_id",
+            "required": true,
+            "schema": {
+              "title": "Entity Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-internal-secret",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Internal-Secret"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-email",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Email"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EntityUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EntityDetailResponse"
+                }
+              }
+            },
+            "description": "The updated Atlas entity."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update an entity",
+        "tags": [
+          "entities"
+        ]
+      }
+    },
+    "/api/entities/{entity_id}/sources": {
+      "get": {
+        "description": "Return the source trail for one Atlas entity.",
+        "operationId": "listEntitySources",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "entity_id",
+            "required": true,
+            "schema": {
+              "title": "Entity Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EntitySourcesResponse"
+                }
+              }
+            },
+            "description": "The source records linked to the requested entity."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List entity sources",
+        "tags": [
+          "entities"
+        ]
+      }
+    },
+    "/api/entity-flags": {
+      "get": {
+        "description": "List anonymous flags that have been submitted for one Atlas entity.",
+        "operationId": "listEntityFlags",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "entity_id",
+            "required": true,
+            "schema": {
+              "title": "Entity Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EntityFlagListResponse"
+                }
+              }
+            },
+            "description": "A paginated collection of entity flags."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List entity flags",
+        "tags": [
+          "flags"
+        ]
+      },
+      "post": {
+        "description": "Submit an anonymous flag for an Atlas entity that looks stale or incorrect.",
+        "operationId": "createEntityFlag",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EntityFlagCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FlagResponse"
+                }
+              }
+            },
+            "description": "The newly created entity flag."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create an entity flag",
+        "tags": [
+          "flags"
+        ]
+      }
+    },
+    "/api/issue-areas": {
+      "get": {
+        "description": "List Atlas issue areas or resolve natural-language issue queries against the taxonomy.",
+        "operationId": "listIssueAreas",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Query"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueAreaListResponse"
+                }
+              }
+            },
+            "description": "A paginated collection of Atlas issue areas."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List issue areas",
+        "tags": [
+          "issue-areas"
+        ]
+      }
+    },
+    "/api/issue-areas/{issue_area_slug}": {
+      "get": {
+        "description": "Return one Atlas issue area by slug.",
+        "operationId": "getIssueArea",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "issue_area_slug",
+            "required": true,
+            "schema": {
+              "title": "Issue Area Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueAreaResponse"
+                }
+              }
+            },
+            "description": "The requested Atlas issue area."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get an issue area",
+        "tags": [
+          "issue-areas"
+        ]
+      }
+    },
+    "/api/places/{place_key}": {
+      "get": {
+        "description": "Return the canonical Atlas identity for a normalized place key.",
+        "operationId": "getPlace",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "place_key",
+            "required": true,
+            "schema": {
+              "title": "Place Key",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlaceIdentityResponse"
+                }
+              }
+            },
+            "description": "The canonical Atlas place resource."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get a place",
+        "tags": [
+          "places"
+        ]
+      }
+    },
+    "/api/places/{place_key}/coverage": {
+      "get": {
+        "description": "Return Atlas coverage counts and gaps for one place.",
+        "operationId": "getPlaceCoverage",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "place_key",
+            "required": true,
+            "schema": {
+              "title": "Place Key",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "issue_area",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Issue Area"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlaceCoverageResponse"
+                }
+              }
+            },
+            "description": "Atlas coverage metadata for the requested place."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get place coverage",
+        "tags": [
+          "places"
+        ]
+      }
+    },
+    "/api/places/{place_key}/entities": {
+      "get": {
+        "description": "List Atlas entities associated with one place, with optional issue-area, entity-type, source-type, and text filters.",
+        "operationId": "listPlaceEntities",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "place_key",
+            "required": true,
+            "schema": {
+              "title": "Place Key",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "issue_area",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Issue Area"
+            }
+          },
+          {
+            "in": "query",
+            "name": "entity_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Entity Type"
+            }
+          },
+          {
+            "in": "query",
+            "name": "source_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Source Type"
+            }
+          },
+          {
+            "in": "query",
+            "name": "text",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Text"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EntityCollectionResponse"
+                }
+              }
+            },
+            "description": "A paginated collection of Atlas entities for the requested place."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List place entities",
+        "tags": [
+          "places"
+        ]
+      }
+    },
+    "/api/places/{place_key}/issue-signals": {
+      "get": {
+        "description": "Return structured issue-area signals for one place based on Atlas entities and sources.",
+        "operationId": "getPlaceIssueSignals",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "place_key",
+            "required": true,
+            "schema": {
+              "title": "Place Key",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "issue_area",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Issue Area"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueSignalsResponse"
+                }
+              }
+            },
+            "description": "Issue-area signal summaries for the requested place."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get place issue signals",
+        "tags": [
+          "places"
+        ]
+      }
+    },
+    "/api/places/{place_key}/profile": {
+      "get": {
+        "description": "Return structured demographic and socioeconomic context for one place.",
+        "operationId": "getPlaceProfile",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "place_key",
+            "required": true,
+            "schema": {
+              "title": "Place Key",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlaceProfileResponse"
+                }
+              }
+            },
+            "description": "The Atlas place profile for the requested place."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get a place profile",
+        "tags": [
+          "places"
+        ]
+      }
+    },
+    "/api/places/{place_key}/sources": {
+      "get": {
+        "description": "List source records associated with one place, with optional issue-area, source-type, and text filters.",
+        "operationId": "listPlaceSources",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "place_key",
+            "required": true,
+            "schema": {
+              "title": "Place Key",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "issue_area",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Issue Area"
+            }
+          },
+          {
+            "in": "query",
+            "name": "source_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Source Type"
+            }
+          },
+          {
+            "in": "query",
+            "name": "text",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Text"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SourceCollectionResponse"
+                }
+              }
+            },
+            "description": "A paginated collection of Atlas sources for the requested place."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List place sources",
+        "tags": [
+          "places"
+        ]
+      }
+    },
+    "/api/source-flags": {
+      "get": {
+        "description": "List anonymous flags that have been submitted for one Atlas source.",
+        "operationId": "listSourceFlags",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "source_id",
+            "required": true,
+            "schema": {
+              "title": "Source Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SourceFlagListResponse"
+                }
+              }
+            },
+            "description": "A paginated collection of source flags."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List source flags",
+        "tags": [
+          "flags"
+        ]
+      },
+      "post": {
+        "description": "Submit an anonymous flag for an Atlas source record that looks stale or incorrect.",
+        "operationId": "createSourceFlag",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SourceFlagCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FlagResponse"
+                }
+              }
+            },
+            "description": "The newly created source flag."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create a source flag",
+        "tags": [
+          "flags"
+        ]
+      }
+    },
+    "/health": {
+      "get": {
+        "description": "Return a lightweight health status and the active runtime environment.",
+        "operationId": "getHealth",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Gethealth",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Atlas health status."
+          }
+        },
+        "summary": "Get service health",
+        "tags": [
+          "health"
+        ]
+      }
+    }
+  },
+  "servers": [
+    {
+      "url": "https://atlas.rebuildingus.org"
+    },
+    {
+      "url": "http://api.localhost:1355"
+    },
+    {
+      "url": "/"
+    }
+  ],
+  "tags": [
+    {
+      "description": "Create, inspect, update, and source Atlas entities.",
+      "name": "entities"
+    },
+    {
+      "description": "Place-first Atlas resources such as entities, sources, coverage, and profiles.",
+      "name": "places"
+    },
+    {
+      "description": "Atlas issue-area taxonomy resources and natural-language lookup.",
+      "name": "issue-areas"
+    },
+    {
+      "description": "Top-level Atlas policy and issue domains.",
+      "name": "domains"
+    },
+    {
+      "description": "Manage and inspect Atlas discovery pipeline runs.",
+      "name": "discovery-runs"
+    },
+    {
+      "description": "Anonymous flags for stale or incorrect Atlas entities and sources.",
+      "name": "flags"
+    },
+    {
+      "description": "Operational health and environment metadata.",
+      "name": "health"
+    }
+  ]
+}

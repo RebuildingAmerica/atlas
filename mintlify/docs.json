@@ -1,0 +1,142 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "mint",
+  "name": "Atlas Docs",
+  "colors": {
+    "primary": "#c2956a",
+    "light": "#d4b896",
+    "dark": "#a67b50"
+  },
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Guides",
+        "groups": [
+          {
+            "group": "Start here",
+            "pages": ["introduction", "migration"]
+          },
+          {
+            "group": "Atlas",
+            "pages": ["product/overview"]
+          }
+        ]
+      },
+      {
+        "tab": "API reference",
+        "openapi": "openapi/atlas.openapi.json",
+        "groups": [
+          {
+            "group": "Atlas API",
+            "pages": [
+              "api-reference/overview",
+              "api-reference/quickstart",
+              "api-reference/resources"
+            ]
+          },
+          {
+            "group": "Core endpoints",
+            "pages": [
+              "GET /health",
+              {
+                "group": "Discovery runs",
+                "pages": [
+                  "GET /api/discovery-runs",
+                  "POST /api/discovery-runs",
+                  "GET /api/discovery-runs/{run_id}"
+                ]
+              },
+              {
+                "group": "Domains and issue areas",
+                "pages": [
+                  "GET /api/domains",
+                  "GET /api/domains/{domain_slug}",
+                  "GET /api/issue-areas",
+                  "GET /api/issue-areas/{issue_area_slug}"
+                ]
+              },
+              {
+                "group": "Places",
+                "pages": [
+                  "GET /api/places/{place_key}",
+                  "GET /api/places/{place_key}/coverage",
+                  "GET /api/places/{place_key}/entities",
+                  "GET /api/places/{place_key}/issue-signals",
+                  "GET /api/places/{place_key}/profile",
+                  "GET /api/places/{place_key}/sources"
+                ]
+              },
+              {
+                "group": "Entities",
+                "pages": [
+                  "GET /api/entities",
+                  "POST /api/entities",
+                  "GET /api/entities/{entity_id}",
+                  "PATCH /api/entities/{entity_id}",
+                  "DELETE /api/entities/{entity_id}",
+                  "GET /api/entities/{entity_id}/sources"
+                ]
+              },
+              {
+                "group": "Flags",
+                "pages": [
+                  "GET /api/entity-flags",
+                  "POST /api/entity-flags",
+                  "GET /api/source-flags",
+                  "POST /api/source-flags"
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "global": {
+      "anchors": [
+        {
+          "anchor": "Repository",
+          "href": "https://github.com/RebuildingAmerica/atlas",
+          "icon": "github"
+        },
+        {
+          "anchor": "Legacy docs",
+          "href": "https://github.com/RebuildingAmerica/atlas/tree/main/docs",
+          "icon": "book-open-cover"
+        }
+      ]
+    }
+  },
+  "navbar": {
+    "links": [
+      {
+        "label": "Atlas",
+        "href": "https://atlas.rebuildingus.org"
+      },
+      {
+        "label": "GitHub",
+        "href": "https://github.com/RebuildingAmerica/atlas"
+      }
+    ]
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/RebuildingAmerica/atlas"
+    }
+  },
+  "api": {
+    "openapi": "openapi/atlas.openapi.json",
+    "playground": {
+      "display": "interactive"
+    },
+    "params": {
+      "expanded": "all"
+    },
+    "url": "full",
+    "examples": {
+      "languages": ["bash", "python", "javascript", "typescript"],
+      "defaults": "required",
+      "prefill": true,
+      "autogenerate": true
+    }
+  }
+}

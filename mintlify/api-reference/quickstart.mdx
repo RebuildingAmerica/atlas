@@ -1,0 +1,42 @@
+---
+title: "API quickstart"
+description: "Run, validate, and update the Atlas Mintlify API docs locally."
+---
+
+# API quickstart
+
+The new Mintlify docs surface is repo-local and driven from the same OpenAPI artifact the rest of Atlas already uses.
+
+## Run the docs locally
+
+```bash
+pnpm docs:dev
+```
+
+This starts the Mintlify local preview from the repo root using `docs.json`.
+
+## Update the API contract
+
+```bash
+pnpm openapi
+```
+
+That command regenerates `openapi/atlas.openapi.json` from the FastAPI app and refreshes the Mintlify-local copy at `mintlify/openapi/atlas.openapi.json`.
+
+## Validate docs before shipping
+
+```bash
+pnpm docs:validate
+```
+
+`pnpm docs:validate` covers both the Mintlify build and the OpenAPI document that powers the generated endpoint pages.
+
+## First request
+
+Once the local API is running, the simplest smoke test is the health endpoint:
+
+```bash
+curl http://api.localhost:1355/health
+```
+
+From there, use the generated sidebar reference to explore resource families like entities, places, taxonomy, and discovery runs.
