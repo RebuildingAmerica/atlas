@@ -7,8 +7,10 @@
  */
 import { Link } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
+import { ConnectionsSection } from "@/domains/catalog/components/profiles/connections-section";
 import { ProfileJsonLd } from "@/domains/catalog/components/profiles/profile-head";
 import { PersonProfile } from "@/domains/catalog/components/profiles/person-profile";
+import { useConnections } from "@/domains/catalog/hooks/use-connections";
 import { useEntry } from "@/domains/catalog/hooks/use-entries";
 import { useTaxonomy } from "@/domains/catalog/hooks/use-taxonomy";
 import { PageLayout } from "@/platform/layout/page-layout";
@@ -21,6 +23,7 @@ interface PersonProfilePageProps {
 
 export function PersonProfilePage({ entry }: PersonProfilePageProps) {
   const taxonomyQuery = useTaxonomy();
+  const connectionsQuery = useConnections(entry.id);
 
   const affiliatedOrgQuery = useEntry(entry.affiliated_org_id ?? "", {
     enabled: !!entry.affiliated_org_id,
@@ -51,7 +54,12 @@ export function PersonProfilePage({ entry }: PersonProfilePageProps) {
             affiliatedOrg={affiliatedOrgQuery.data}
           />
         </div>
-        <aside className="flex-[2] lg:max-w-sm">{/* Connections section added in Task 8 */}</aside>
+        <aside className="flex-[2] lg:max-w-sm">
+          <ConnectionsSection
+            connections={connectionsQuery.data ?? []}
+            isLoading={connectionsQuery.isLoading}
+          />
+        </aside>
       </div>
     </PageLayout>
   );

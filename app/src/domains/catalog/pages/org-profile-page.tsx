@@ -7,8 +7,10 @@
  */
 import { Link } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
+import { ConnectionsSection } from "@/domains/catalog/components/profiles/connections-section";
 import { ProfileJsonLd } from "@/domains/catalog/components/profiles/profile-head";
 import { OrgProfile } from "@/domains/catalog/components/profiles/org-profile";
+import { useConnections } from "@/domains/catalog/hooks/use-connections";
 import { useEntries } from "@/domains/catalog/hooks/use-entries";
 import { useTaxonomy } from "@/domains/catalog/hooks/use-taxonomy";
 import { PageLayout } from "@/platform/layout/page-layout";
@@ -21,6 +23,7 @@ interface OrgProfilePageProps {
 
 export function OrgProfilePage({ entry }: OrgProfilePageProps) {
   const taxonomyQuery = useTaxonomy();
+  const connectionsQuery = useConnections(entry.id);
 
   // Fetch people affiliated with this org.
   // NOTE: The API does not yet support filtering by affiliated_org_id.
@@ -56,7 +59,12 @@ export function OrgProfilePage({ entry }: OrgProfilePageProps) {
             affiliatedPeople={affiliatedPeople}
           />
         </div>
-        <aside className="flex-[2] lg:max-w-sm">{/* Connections section added in Task 8 */}</aside>
+        <aside className="flex-[2] lg:max-w-sm">
+          <ConnectionsSection
+            connections={connectionsQuery.data ?? []}
+            isLoading={connectionsQuery.isLoading}
+          />
+        </aside>
       </div>
     </PageLayout>
   );
