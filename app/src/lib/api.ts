@@ -7,7 +7,9 @@ import {
   type ListEntitiesParams,
   type SourceResponse,
 } from "@/lib/generated/atlas";
+import { atlasFetch } from "@/lib/orval/fetcher";
 import type {
+  ConnectionGroup,
   DiscoveryRun,
   DiscoveryRunListResponse,
   Entry,
@@ -59,6 +61,7 @@ function mapEntity(entity: EntityResponse): Entry {
     source_types: entity.source_types as Entry["source_types"],
     source_count: entity.source_count ?? 0,
     latest_source_date: entity.freshness.latest_source_date ?? undefined,
+    slug: entity.slug ?? "",
     created_at: entity.created_at,
     updated_at: entity.updated_at,
   };
@@ -135,10 +138,29 @@ async function listTaxonomy(): Promise<TaxonomyResponse> {
   }, {});
 }
 
+/** Shape returned by the connections endpoint. */
+interface ConnectionsResponse {
+  connections: ConnectionGroup[];
+}
+
+/** Resolve an entry by its type-prefixed slug (e.g., people/jane-doe-a3f2). */
+async function getEntryBySlug(type: "people" | "organizations", slug: string): Promise<Entry> {
+  const response = await atlasFetch<EntityDetailResponse>(`/api/entities/by-slug/${type}/${slug}`);
+  return mapEntityDetail(response);
+}
+
+/** Fetch related actors for an entry, grouped by relationship type. */
+async function getConnections(entryId: string): Promise<ConnectionGroup[]> {
+  const response = await atlasFetch<ConnectionsResponse>(`/api/entities/${entryId}/connections`);
+  return response.connections;
+}
+
 export const api = {
   entries: {
     list: listEntries,
     get: getEntry,
+    getBySlug: getEntryBySlug,
+    getConnections,
   },
   discovery: {
     list(): Promise<DiscoveryRunListResponse> {

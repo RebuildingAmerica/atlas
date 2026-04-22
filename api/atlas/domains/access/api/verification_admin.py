@@ -78,7 +78,7 @@ async def list_verifications(
 @router.patch("/api/admin/verifications/{user_id}", response_model=VerificationUpdateResponse)
 async def update_verification(
     _response_obj: Response,
-    _user_id: str,
+    user_id: str,  # noqa: ARG001 - must match {user_id} in route path
     _request: VerificationUpdateRequest,
 ) -> VerificationUpdateResponse:
     """

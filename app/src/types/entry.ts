@@ -30,8 +30,29 @@ export interface Entry {
   source_count: number;
   latest_source_date?: string;
   sources?: Source[];
+  slug: string;
   created_at: string;
   updated_at: string;
+}
+
+export type ConnectionType =
+  | "same_organization"
+  | "same_issue_area"
+  | "same_geography"
+  | "co_mentioned";
+
+export interface ConnectedActor {
+  id: string;
+  name: string;
+  type: EntryType;
+  slug: string | null;
+  description_snippet: string | null;
+  evidence: string;
+}
+
+export interface ConnectionGroup {
+  type: ConnectionType;
+  actors: ConnectedActor[];
 }
 
 export interface FacetOption {

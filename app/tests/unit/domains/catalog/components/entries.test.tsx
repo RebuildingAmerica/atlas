@@ -52,6 +52,7 @@ const sampleEntry: Entry = {
   website: "https://atlas.test",
   email: "operator@atlas.test",
   phone: "555-1111",
+  slug: "housing-justice-kc-a1b2",
   sources: [sampleSource],
 };
 
