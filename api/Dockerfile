@@ -2,12 +2,9 @@ FROM python:3.12-slim AS builder
 
 WORKDIR /app
 
-RUN pip install uv --no-cache-dir
-
-COPY pyproject.toml uv.lock ./
-RUN uv pip install --system --no-cache-dir .
-
-COPY . .
+COPY pyproject.toml README.md uv.lock ./
+COPY atlas ./atlas
+RUN pip install --no-cache-dir .
 
 FROM python:3.12-slim
 

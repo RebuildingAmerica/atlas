@@ -11,3 +11,4 @@ test-results/
 src/lib/generated/
 .vercel/output/
 .vercel
+.env.vercel.*
