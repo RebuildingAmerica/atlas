@@ -51,9 +51,35 @@ This is the most common starting point for research — "who's working on X in t
 
 **Example:** Find all housing-related entities in Kansas City:
 
-```bash
+<CodeGroup>
+
+```bash cURL
 curl "https://atlas.rebuildingus.org/api/places/kansas-city,missouri/entities?issue_area=housing_affordability"
 ```
+
+```python Python
+import httpx
+
+response = httpx.get(
+    "https://atlas.rebuildingus.org/api/places/kansas-city,missouri/entities",
+    params={"issue_area": "housing_affordability"},
+)
+
+for entity in response.json()["data"]:
+    print(f"{entity['name']} — {entity['type']}")
+```
+
+```typescript TypeScript
+const params = new URLSearchParams({ issue_area: "housing_affordability" });
+
+const response = await fetch(
+  `https://atlas.rebuildingus.org/api/places/kansas-city,missouri/entities?${params}`
+);
+
+const { data } = await response.json();
+```
+
+</CodeGroup>
 
 ## Get place coverage
 

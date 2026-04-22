@@ -7,20 +7,39 @@ description: "Atlas's open source status, license, and relationship to Rebuildin
 
 Atlas is open source and designed to be independently useful beyond any single organization or initiative.
 
-## License
+## Repository
 
-Atlas is available on [GitHub](https://github.com/RebuildingAmerica/atlas). Check the repository for the current license terms.
+The full source code is available at [github.com/RebuildingAmerica/atlas](https://github.com/RebuildingAmerica/atlas). The repository includes:
+
+- `app/` — Web application (TanStack Start + React + TypeScript)
+- `api/` — REST API and autodiscovery pipeline (Python + FastAPI)
+- `mintlify/` — This documentation site
+- `docs/` — Internal development documentation
+
+Check the repository for the current license terms.
 
 ## Relationship to Rebuilding America
 
-Atlas is maintained by [The Rebuilding America Project](https://rebuildingus.org). It was created to support the broader mission of surfacing the people, organizations, and ideas rebuilding public life across America.
+Atlas is maintained by [The Rebuilding America Project](https://rebuildingus.org), which supports the broader mission of surfacing the people, organizations, and ideas rebuilding public life across America.
 
-At the same time, Atlas is designed to stand on its own as a public resource. Its value is not limited to one organization or one media effort — it should be useful to anyone doing civic research, whether or not they've heard of Rebuilding America.
+For Rebuilding America, Atlas helps:
+- Identify credible local people to feature, interview, or learn from
+- Compare civic work across issue areas and places
+- Create reusable research assets instead of one-off investigations
+
+At the same time, Atlas is designed to stand on its own as a public resource. It should be useful to anyone doing civic research — journalists, organizers, researchers, developers — whether or not they've heard of Rebuilding America.
 
 ## Self-hosting
 
-You can run your own Atlas instance. See the [self-hosting guide](/self-hosting/guide) for deployment instructions.
+You can run your own Atlas instance on your own infrastructure. Atlas is designed for this — the [self-hosting guide](/self-hosting/guide) covers the recommended deployment topology, environment configuration, and verification steps.
 
 ## Contributing
 
-Atlas welcomes contributions — bug reports, feature suggestions, code, and documentation. See the [contributing guide](/resources/contributing).
+Atlas welcomes contributions of all kinds:
+
+- **Bug reports and feature suggestions** — [Open an issue](https://github.com/RebuildingAmerica/atlas/issues) on GitHub
+- **Code contributions** — Fork the repo, create a branch, submit a PR
+- **Documentation** — PRs to the `mintlify/` directory improve this site
+- **Data quality** — Flag incorrect entries, suggest new sources, run discovery in underserved areas
+
+See the [contributing guide](/resources/contributing) for setup instructions and code conventions.

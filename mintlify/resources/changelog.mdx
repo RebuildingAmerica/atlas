@@ -7,18 +7,38 @@ description: "What's new in Atlas."
 
 ## April 2026
 
-### Public documentation launch
+### Documentation overhaul — April 22
 
-Atlas documentation has been restructured into a complete, audience-driven site:
-- **Guides** — Product overview, use cases, taxonomy, pricing, self-hosting
-- **MCP & Agents** — Setup guides for Claude Desktop, Claude Code, VS Code/Copilot, Gemini CLI, Codex CLI, and Copilot CLI
-- **API Reference** — Authentication, quickstart, rate limits, resource guides, and auto-generated endpoint reference
-- **Resources** — Data model, glossary, FAQ, troubleshooting, and trust documentation
+The public documentation site has been completely restructured into a 4-tab, 40+ page resource:
 
-### MCP server
+- **Guides** — Product overview, use-case walkthroughs for journalists, organizers, documentary teams, and developers, taxonomy reference, pricing, and self-hosting
+- **MCP & Agents** — Setup guides for Claude Desktop, Claude Code, VS Code/Copilot, Gemini CLI, Codex CLI, Copilot CLI, and generic MCP clients, plus tutorials
+- **API Reference** — Authentication, quickstart, rate limits, errors, resource guides for entities, places, taxonomy, discovery, and sources/flags
+- **Resources** — Data model, trust & provenance, glossary, FAQ, and troubleshooting
 
-Atlas now exposes a remote MCP server at `https://atlas.rebuildingus.org/mcp` supporting OAuth 2.1 authentication and Streamable HTTP transport. 10 tools available for entity search, place analysis, coverage gaps, and taxonomy resolution.
+### Capability system and pricing — April 21
 
-### Pricing and capabilities
+Atlas now has a structured capability system with three subscription tiers:
 
-Atlas Pro ($5/month), Atlas Team ($25/month base + $8/seat), and Research Pass (from $4) are now available. Free tier includes browsing, searching, and 2 research runs per month.
+- **Free** — Browse, search, 2 research runs/month, public API at 100 req/hr
+- **Atlas Pro** ($5/month) — Unlimited research, exports, 1 API key, MCP/OAuth access
+- **Atlas Team** ($25/month + $8/seat) — Shared workspace, unlimited API keys, watchlists, Slack, SSO
+
+Research Pass available for short-term access ($9/30 days, $4/7 days). Discounts for journalists, nonprofits, and civic tech workers.
+
+### MCP server — April 2026
+
+Atlas now exposes a remote MCP server at `https://atlas.rebuildingus.org/mcp` with:
+
+- OAuth 2.1 authentication with PKCE and dynamic client registration
+- Streamable HTTP transport
+- 10 tools: entity search, place profiles, coverage gaps, taxonomy resolution, and more
+- Setup guides for 7 MCP clients
+
+### Enterprise SSO — April 2026
+
+Atlas Team workspaces now support enterprise single sign-on:
+
+- Google Workspace OIDC
+- Google Workspace SAML
+- Domain-verified provider configuration

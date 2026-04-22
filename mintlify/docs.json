@@ -3,11 +3,29 @@
   "theme": "mint",
   "name": "Atlas Docs",
   "basePath": "/docs",
+  "favicon": "https://atlas.rebuildingus.org/favicon.ico",
   "colors": {
     "primary": "#c2956a",
     "light": "#d4b896",
     "dark": "#a67b50"
   },
+  "feedback": {
+    "thumbsRating": true
+  },
+  "redirects": [
+    {
+      "source": "/product/overview",
+      "destination": "/what-is-atlas"
+    },
+    {
+      "source": "/introduction",
+      "destination": "/what-is-atlas"
+    },
+    {
+      "source": "/migration",
+      "destination": "/what-is-atlas"
+    }
+  ],
   "navigation": {
     "tabs": [
       {

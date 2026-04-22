@@ -7,56 +7,82 @@ description: "Common questions about Atlas."
 
 ## General
 
-### Is Atlas free?
+<AccordionGroup>
 
+<Accordion title="Is Atlas free?">
 **Browsing and searching are free, forever.** You can search the directory, view entries, read source attributions, and use the public API (100 requests/hour) without paying anything.
 
 Professional research tools — unlimited research runs, exports, API keys, and MCP access — require [Atlas Pro](/account/pricing) ($5/month) or [Atlas Team](/account/pricing) ($25/month base).
+</Accordion>
 
-### Where does the data come from?
+<Accordion title="Where does the data come from?">
+Atlas's autodiscovery pipeline searches across public sources: local news articles, nonprofit directory listings, organizational websites, academic research, government records, podcasts, and more. Every entry traces back to the specific sources where the information was found. See [How Atlas works](/how-it-works) for the full pipeline breakdown.
+</Accordion>
 
-Atlas's autodiscovery pipeline searches across public sources: local news articles, nonprofit directory listings, organizational websites, academic research, government records, podcasts, and more. Every entry traces back to the specific sources where the information was found.
+<Accordion title="How current is the data?">
+Each entry shows when it was first discovered and when its most recent source was published. The pipeline runs on demand (when users start discovery runs) and can be scheduled for periodic refreshes. Source dates tell you how fresh the information is — check the `published_date` on each source.
+</Accordion>
 
-### How current is the data?
+<Accordion title="Can I correct an entry?">
+Yes. You can [flag an entity](/api-reference/guides/sources-flags) as stale or incorrect directly through the API or browse interface — no account required. Flags are reviewed and resolved by Atlas maintainers.
+</Accordion>
 
-Each entry shows when it was first discovered and when its most recent source was published. The pipeline runs on demand (when users start discovery runs) and can be scheduled for periodic refreshes.
+<Accordion title="Is Atlas open source?">
+Yes. Atlas is open source on [GitHub](https://github.com/RebuildingAmerica/atlas). You can run your own instance — see the [self-hosting guide](/self-hosting/guide). Contributions are welcome.
+</Accordion>
 
-### Can I correct an entry?
+<Accordion title="Who maintains Atlas?">
+Atlas is maintained by [The Rebuilding America Project](https://rebuildingus.org). It was created to support civic research and designed to stand on its own as an independently useful public resource. See [Open source](/resources/open-source) for more.
+</Accordion>
 
-Yes. You can [flag an entity](/api-reference/guides/sources-flags) as stale or incorrect directly through the API — no account required. Flags are reviewed and resolved by Atlas maintainers.
-
-### Is Atlas open source?
-
-Yes. Atlas is open source under the [repository on GitHub](https://github.com/RebuildingAmerica/atlas). You can run your own instance — see the [self-hosting guide](/self-hosting/guide).
+</AccordionGroup>
 
 ## API & integration
 
-### How do I get API access?
+<AccordionGroup>
 
-The public API is available to everyone at 100 requests/hour without authentication. For higher limits and authenticated endpoints (creating entities, running discovery), you need an [Atlas Pro or Team plan](/account/pricing) and an API key. Create one in your account settings.
+<Accordion title="How do I get API access?">
+The public API is available to everyone at 100 requests/hour without authentication. For higher limits and authenticated endpoints (creating entities, running discovery), you need an [Atlas Pro or Team plan](/account/pricing) and an API key. Create one in your account settings after subscribing.
+</Accordion>
 
-### How do I connect an AI assistant?
+<Accordion title="How do I connect an AI assistant?">
+Atlas supports the Model Context Protocol (MCP) for AI assistants like Claude, GitHub Copilot, Google Gemini, Codex CLI, and others. See the [MCP setup guides](/mcp/overview) for step-by-step instructions for your specific client. MCP requires Atlas Pro or Team.
+</Accordion>
 
-Atlas supports the Model Context Protocol (MCP) for AI assistants like Claude, GitHub Copilot, Google Gemini, and others. See the [MCP setup guides](/mcp/overview) for step-by-step instructions for your specific client.
+<Accordion title="What's the difference between MCP and the API?">
+MCP lets you use Atlas through AI assistants in natural language — you ask questions and get structured answers. The REST API gives you programmatic access for building integrations, scripts, and applications. Under the hood, MCP tools call the same API — they're different interfaces to the same data.
 
-### What's the difference between MCP and the API?
+Use MCP for conversational research. Use the API for automation, embedding, and custom integrations.
+</Accordion>
 
-MCP lets you use Atlas through AI assistants in natural language. The REST API gives you programmatic access for building integrations, scripts, and applications. Under the hood, MCP tools call the same API — they're different interfaces to the same data.
-
-### Can I use Atlas data in my own application?
-
+<Accordion title="Can I use Atlas data in my own application?">
 Yes. The REST API is designed for integration. Authenticated requests with an API key give you access to all public data. See the [API quickstart](/api-reference/quickstart) to get started.
+</Accordion>
+
+<Accordion title="What formats does the API return?">
+All responses are JSON. Field names use `snake_case` and timestamps use ISO 8601 in UTC. See the [API overview](/api-reference/overview) for full format details.
+</Accordion>
+
+</AccordionGroup>
 
 ## Accounts & billing
 
-### Do I need an account to use Atlas?
+<AccordionGroup>
 
+<Accordion title="Do I need an account to use Atlas?">
 No account is needed to browse the directory or use the public API. You need an account to save shortlists, run research, use MCP, or create API keys.
+</Accordion>
 
-### What's the Research Pass?
+<Accordion title="What's the Research Pass?">
+A one-time purchase ($9 for 30 days, $4 for 7 days) that gives you Pro-level capabilities temporarily — useful for short-term projects without a subscription commitment. When it expires, your workspace reverts to Free but your saved research remains accessible read-only. See [Plans & pricing](/account/pricing).
+</Accordion>
 
-A one-time purchase ($9 for 30 days, $4 for 7 days) that gives you Pro-level access temporarily — useful for short-term projects without a subscription commitment. See [Plans & pricing](/account/pricing).
+<Accordion title="Are there discounts?">
+Yes. Atlas offers 40–50% discounts for verified journalists, grassroots nonprofits, and civic tech workers. Apply at [atlas.rebuildingus.org/request-discount](https://atlas.rebuildingus.org/request-discount). Applications are reviewed within a few business days.
+</Accordion>
 
-### Are there discounts?
+<Accordion title="Can I cancel anytime?">
+Yes. Atlas subscriptions can be cancelled at any time through the Stripe Customer Portal linked from your account settings. You retain access until the end of your billing period.
+</Accordion>
 
-Yes. Atlas offers 40–50% discounts for verified journalists, grassroots nonprofits, and civic tech workers. Apply at [atlas.rebuildingus.org/request-discount](https://atlas.rebuildingus.org/request-discount).
+</AccordionGroup>
