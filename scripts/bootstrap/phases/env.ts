@@ -47,6 +47,13 @@ const PROMPTED_KEYS: Record<string, EnvKeyConfig> = {
     required: false,
     localOnly: false,
   },
+  OPENSTATUS_API_KEY: {
+    prompt: "OpenStatus API key",
+    sensitive: true,
+    hint: "Get your API key from Settings → API Token at https://www.openstatus.dev/app/settings. Used to run synthetic monitors after every deploy via GitHub Actions. Leave blank to skip.",
+    required: false,
+    localOnly: false,
+  },
 };
 
 interface EnvFileSpec {
