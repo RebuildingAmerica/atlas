@@ -2,6 +2,30 @@ import { redirect } from "@tanstack/react-router";
 import { getAtlasSession } from "../session.functions";
 
 /**
+ * Route guards for TanStack Router `beforeLoad` hooks.
+ *
+ * These functions are the only safe way to perform session checks inside route
+ * definitions. They are exported through `@/domains/access/server` and run as
+ * server functions during both SSR and client-side navigation.
+ *
+ * **Do not import `getAtlasSession` (or anything from `session.functions`)
+ * directly into route files.** Doing so pulls the server function module into
+ * the client route chunk, which breaks React Query's QueryClient initialization
+ * during route resolution. Always use the guards from this module instead.
+ *
+ * ## Local mode
+ *
+ * When Atlas runs in local/single-user mode (`session.isLocal === true`), all
+ * auth, billing, account, and organization UI must be completely hidden. Any
+ * route that surfaces account-specific UI should call `redirectIfLocalSession`
+ * in its `beforeLoad` to redirect to a safe destination (usually `/discovery`).
+ *
+ * The public nav and home page also check `session.isLocal` via the
+ * `useAtlasSession` hook (which is safe inside React components rendered under
+ * the QueryClientProvider) to hide auth links and sign-up CTAs.
+ */
+
+/**
  * Redirects unauthenticated operators into the sign-in flow.
  */
 function redirectToSignIn(locationHref: string): never {
@@ -57,6 +81,17 @@ function resolveReadySessionDestination(
 
 /**
  * Redirects to a target route when the session is a synthetic local operator.
+ *
+ * Use this in `beforeLoad` for any route that should not be reachable in
+ * local/single-user mode (sign-in, sign-up, pricing, account, organization).
+ *
+ * @example
+ * ```ts
+ * export const Route = createFileRoute("/_auth/sign-in")({
+ *   beforeLoad: () => redirectIfLocalSession("/discovery"),
+ *   component: SignInPage,
+ * });
+ * ```
  *
  * @param to - The route to redirect to in local mode.
  */

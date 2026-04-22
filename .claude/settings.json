@@ -5,6 +5,9 @@
       "Bash(*git restore --staged*)"
     ],
     "deny": [
+      "Bash(git commit --no-verify*)",
+      "Bash(git push --no-verify*)",
+      "Bash(*--no-verify*)",
       "Bash(git stash*)",
       "Bash(git reset*)",
       "Bash(git checkout -- *)",
@@ -20,6 +23,19 @@
       "Bash(*git reset*)",
       "Bash(*&& git stash*)",
       "Bash(*; git stash*)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '.tool_input.command' | grep -q -- '--no-verify' && echo '{\"decision\":\"block\",\"reason\":\"--no-verify is banned. Fix the underlying issue instead of skipping hooks.\"}' && exit 1 || true"
+          }
+        ]
+      }
     ]
   }
 }
