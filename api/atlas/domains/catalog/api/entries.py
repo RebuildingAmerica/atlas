@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from fastapi.responses import JSONResponse
 
 from atlas.domains.access.dependencies import require_org_actor_permission
+from atlas.domains.catalog.models.connections import compute_connections
 from atlas.domains.catalog.models.ownership import OwnershipCRUD
 from atlas.domains.catalog.schemas.public import FacetOption
 from atlas.domains.catalog.taxonomy import ALL_ISSUE_SLUGS
@@ -198,6 +199,24 @@ async def resolve_by_slug(
         flag_summary=entity_flag_summaries.get(entry.id),
         source_flag_summaries=source_flag_summaries,
     )
+
+
+@router.get(
+    "/{entry_id}/connections",
+    summary="Get entity connections",
+    description="Return related actors grouped by relationship type with evidence.",
+    operation_id="getEntityConnections",
+    tags=["entities"],
+)
+async def get_entity_connections(
+    entry_id: str,
+    response: Response,
+    db: aiosqlite.Connection = Depends(get_db),
+) -> dict[str, list[dict[str, Any]]]:
+    """Compute and return related actors for a given entry."""
+    connections = await compute_connections(db, entry_id)
+    apply_short_public_cache(response)
+    return {"connections": connections}
 
 
 @router.get(
