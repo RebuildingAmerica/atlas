@@ -34,29 +34,27 @@ export function WorkspaceCreationSection({
   workspaceType,
 }: WorkspaceCreationSectionProps) {
   return (
-    <section className="border-border-strong bg-surface rounded-[1.5rem] border p-6">
+    <section className="border-outline bg-surface rounded-[1.5rem] border p-6">
       <div className="grid gap-6 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
         <div className="space-y-4">
-          <div className="border-border rounded-[1.25rem] border bg-white/70 p-4">
-            <p className="type-title-small text-ink-strong">Individual workspace</p>
-            <p className="type-body-medium text-ink-soft mt-2">
-              Best when one operator is doing the work alone and should not see team-management
-              controls all over the product.
+          <div className="border-outline-variant rounded-[1.25rem] border bg-white/70 p-4">
+            <p className="type-title-small text-on-surface">Individual workspace</p>
+            <p className="type-body-medium text-outline mt-2">
+              Best for solo work — no team management controls.
             </p>
           </div>
 
-          <div className="border-border rounded-[1.25rem] border bg-white/70 p-4">
-            <p className="type-title-small text-ink-strong">Team workspace</p>
-            <p className="type-body-medium text-ink-soft mt-2">
+          <div className="border-outline-variant rounded-[1.25rem] border bg-white/70 p-4">
+            <p className="type-title-small text-on-surface">Team workspace</p>
+            <p className="type-body-medium text-outline mt-2">
               Built for shared discovery, role-based administration, invitations, and a cleaner
               story when Atlas needs to be sold as a collaborative product.
             </p>
           </div>
 
           {inviteOnlyMode ? (
-            <p className="type-body-medium text-ink-soft">
-              Workspace creation stays private. Public pages keep sign-in understated while this
-              setup flow stays explicit and operator-only.
+            <p className="type-body-medium text-outline">
+              Workspace creation is available by invitation only.
             </p>
           ) : null}
         </div>
@@ -91,7 +89,7 @@ export function WorkspaceCreationSection({
             >
               {isPending ? "Creating..." : "Create workspace"}
             </Button>
-            <p className="type-body-medium text-ink-soft">
+            <p className="type-body-medium text-outline">
               The first workspace becomes your active context automatically.
             </p>
           </div>

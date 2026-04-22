@@ -25,34 +25,32 @@ export function WorkspaceMembershipSection({
   const ownerCannotLeave = currentRole === "owner";
 
   return (
-    <article className="border-border-strong bg-surface space-y-4 rounded-[1.5rem] border p-6">
+    <article className="border-outline bg-surface space-y-4 rounded-[1.5rem] border p-6">
       <div className="space-y-2">
-        <h2 className="type-title-large text-ink-strong">Your membership</h2>
-        <p className="type-body-medium text-ink-soft">
-          Atlas keeps workspace membership controls visible, but only when they help the current
-          operator make a clean decision.
+        <h2 className="type-title-large text-on-surface">Your membership</h2>
+        <p className="type-body-medium text-outline">
+          Manage your membership and role in this workspace.
         </p>
       </div>
 
-      <div className="border-border rounded-[1.25rem] border bg-white/70 p-4">
-        <p className="type-title-small text-ink-strong">{organization.name}</p>
-        <p className="type-body-medium text-ink-soft mt-2">
+      <div className="border-outline-variant rounded-[1.25rem] border bg-white/70 p-4">
+        <p className="type-title-small text-on-surface">{organization.name}</p>
+        <p className="type-body-medium text-outline mt-2">
           Role: {currentRole} · Workspace type: {organization.workspaceType}
         </p>
       </div>
 
       {ownerCannotLeave ? (
-        <div className="border-border bg-surface-container-lowest rounded-[1.25rem] border p-4">
-          <p className="type-title-small text-ink-strong">Owner leave is blocked</p>
-          <p className="type-body-medium text-ink-soft mt-2">
-            Transfer ownership before leaving this team so Atlas never strands a workspace without
-            an accountable operator.
+        <div className="border-outline-variant bg-surface-container-lowest rounded-[1.25rem] border p-4">
+          <p className="type-title-small text-on-surface">Owner leave is blocked</p>
+          <p className="type-body-medium text-outline mt-2">
+            Transfer ownership before leaving so the workspace always has an admin.
           </p>
         </div>
       ) : (
-        <div className="border-border bg-surface-container-lowest space-y-3 rounded-[1.25rem] border p-4">
-          <p className="type-title-small text-ink-strong">Leave this workspace</p>
-          <p className="type-body-medium text-ink-soft">
+        <div className="border-outline-variant bg-surface-container-lowest space-y-3 rounded-[1.25rem] border p-4">
+          <p className="type-title-small text-on-surface">Leave this workspace</p>
+          <p className="type-body-medium text-outline">
             You will keep your Atlas account, but this shared workspace will disappear from your
             navigation and team features until you are invited back.
           </p>

@@ -186,13 +186,13 @@ export function SignInPage({ invitationId, redirectTo }: SignInPageProps) {
   return (
     <div className="space-y-8">
       <div className="space-y-2">
-        <p className="type-label-medium text-ink-muted">
-          {isInvitationFlow ? "Workspace invitation" : "Operator access"}
+        <p className="type-label-medium text-outline">
+          {isInvitationFlow ? "Workspace invitation" : "Workspace access"}
         </p>
-        <h1 className="type-display-small text-ink-strong">
+        <h1 className="type-display-small text-on-surface">
           {isInvitationFlow ? "Sign in to review your workspace invite" : "Sign in to Atlas"}
         </h1>
-        <p className="type-body-large text-ink-soft">
+        <p className="type-body-large text-outline">
           {isInvitationFlow
             ? "Atlas will route you through the workspace sign-in policy when your email matches a verified enterprise provider, then take you straight back to the invitation."
             : "Enter your work email and Atlas will prefer a verified enterprise sign-in path before falling back to magic link."}
@@ -225,7 +225,7 @@ export function SignInPage({ invitationId, redirectTo }: SignInPageProps) {
               {isEmailFlowPending ? "Continuing..." : "Continue with email"}
             </Button>
             {lastMethod === "magic-link" ? (
-              <span className="type-label-small bg-ink-strong text-surface absolute -top-2 -right-2 rounded-full px-1.5 py-0.5">
+              <span className="type-label-small bg-inverse-surface text-inverse-on-surface absolute -top-2 -right-2 rounded-full px-1.5 py-0.5">
                 Last used
               </span>
             ) : null}
@@ -234,7 +234,7 @@ export function SignInPage({ invitationId, redirectTo }: SignInPageProps) {
 
         <div className="flex items-center gap-3">
           <div className="bg-border h-px flex-1" />
-          <span className="type-label-small text-ink-muted">or</span>
+          <span className="type-label-small text-outline">or</span>
           <div className="bg-border h-px flex-1" />
         </div>
 
@@ -252,14 +252,14 @@ export function SignInPage({ invitationId, redirectTo }: SignInPageProps) {
             </span>
           </Button>
           {lastMethod === "passkey" ? (
-            <span className="type-label-small bg-ink-strong text-surface absolute -top-2 -right-2 rounded-full px-1.5 py-0.5">
+            <span className="type-label-small bg-inverse-surface text-inverse-on-surface absolute -top-2 -right-2 rounded-full px-1.5 py-0.5">
               Last used
             </span>
           ) : null}
         </div>
 
         {statusMessage ? (
-          <p className="type-body-medium bg-surface-container-lowest text-ink-strong rounded-2xl px-4 py-3">
+          <p className="type-body-medium bg-surface-container-lowest text-on-surface rounded-2xl px-4 py-3">
             {statusMessage}
           </p>
         ) : null}
@@ -271,35 +271,11 @@ export function SignInPage({ invitationId, redirectTo }: SignInPageProps) {
         ) : null}
       </div>
 
-      <div className="space-y-3 pt-4">
-        {isInvitationFlow ? (
-          <div className="border-border bg-surface-container-lowest rounded-[1.4rem] border p-5">
-            <p className="type-title-small text-ink-strong">Invitation flow</p>
-            <p className="type-body-medium text-ink-soft mt-2">
-              This link does not expose team controls publicly. It just routes eligible operators
-              back into the private workspace flow, including enterprise SSO when the workspace has
-              a verified provider for the submitted email domain.
-            </p>
-          </div>
-        ) : (
-          <div className="border-border bg-surface-container-lowest rounded-[1.4rem] border p-5">
-            <p className="type-title-small text-ink-strong">Access policy</p>
-            <p className="type-body-medium text-ink-soft mt-2">
-              Atlas keeps public discovery open, but the operator workspace stays invite-only and
-              can route eligible teams through verified enterprise sign-in.
-            </p>
-          </div>
-        )}
-
-        {authConfig.localMode ? (
-          <div className="border-border bg-surface-container-lowest rounded-[1.4rem] border p-5">
-            <p className="type-title-small text-ink-strong">Local mode is active</p>
-            <p className="type-body-medium text-ink-soft mt-2">
-              Auth is disabled in local mode, so you can open the workspace without signing in.
-            </p>
-          </div>
-        ) : null}
-      </div>
+      {authConfig.localMode ? (
+        <div className="border-outline-variant bg-surface-container-lowest rounded-[1.4rem] border p-5">
+          <p className="type-body-medium text-outline">Sign-in is disabled in this environment.</p>
+        </div>
+      ) : null}
     </div>
   );
 }

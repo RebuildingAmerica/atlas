@@ -6,18 +6,20 @@
  */
 export function AuthBrandPanel() {
   return (
-    <div className="bg-ink-strong relative flex h-full flex-col justify-between px-8 py-10 lg:px-12 lg:py-14">
+    <div className="bg-inverse-surface relative flex h-full flex-col justify-between px-8 py-10 lg:px-12 lg:py-14">
       <div className="space-y-6">
         <div className="flex items-center gap-3">
-          <div className="bg-accent flex h-7 w-7 items-center justify-center rounded-xl text-white">
+          <div className="bg-primary flex h-7 w-7 items-center justify-center rounded-xl text-white">
             <span className="type-label-medium leading-none">A</span>
           </div>
-          <span className="type-title-medium text-surface">Atlas</span>
+          <span className="type-title-medium text-inverse-on-surface">Atlas</span>
         </div>
 
         <div className="space-y-3">
-          <p className="type-headline-medium text-surface">Map the people rebuilding America.</p>
-          <p className="type-body-large text-accent-soft">Operator workspace</p>
+          <p className="type-headline-medium text-inverse-on-surface">
+            Map the people rebuilding America.
+          </p>
+          <p className="type-body-large text-inverse-primary">Team workspace</p>
         </div>
       </div>
 
@@ -31,11 +33,11 @@ export function AuthBrandPanel() {
  */
 export function AuthBrandHeader() {
   return (
-    <div className="bg-ink-strong flex items-center gap-3 px-6 py-4">
-      <div className="bg-accent flex h-7 w-7 items-center justify-center rounded-xl text-white">
+    <div className="bg-inverse-surface flex items-center gap-3 px-6 py-4">
+      <div className="bg-primary flex h-7 w-7 items-center justify-center rounded-xl text-white">
         <span className="type-label-medium leading-none">A</span>
       </div>
-      <span className="type-title-medium text-surface">Atlas</span>
+      <span className="type-title-medium text-inverse-on-surface">Atlas</span>
     </div>
   );
 }
@@ -65,7 +67,7 @@ function DecorativeDots() {
       {DOTS.map((dot, index) => (
         <span
           key={index}
-          className="bg-accent absolute rounded-full"
+          className="bg-primary absolute rounded-full"
           style={{
             width: dot.width,
             height: dot.height,

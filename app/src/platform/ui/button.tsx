@@ -24,11 +24,11 @@ export function Button({
     "type-label-large rounded-full font-medium transition-[color,background-color,border-color,transform] duration-150 ease-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-transparent active:translate-y-[1px]";
 
   const variants = {
-    primary: "bg-accent text-white hover:bg-accent-deep focus:ring-accent",
+    primary: "bg-primary text-white hover:bg-on-primary-container focus:ring-primary",
     secondary:
-      "border border-border bg-surface-container-lowest text-ink-strong hover:border-border-strong hover:bg-surface-container-high focus:ring-border-strong",
+      "border border-outline-variant bg-surface-container-lowest text-on-surface hover:border-outline hover:bg-surface-container-high focus:ring-border-strong",
     ghost:
-      "bg-transparent text-ink-soft shadow-none hover:bg-surface-container-high hover:text-ink-strong focus:ring-border",
+      "bg-transparent text-outline shadow-none hover:bg-surface-container-high hover:text-on-surface focus:ring-border",
   };
 
   const sizes = {

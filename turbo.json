@@ -14,7 +14,26 @@
     "build": {
       "inputs": ["$TURBO_DEFAULT$"],
       "outputs": [".output/**", "dist/**"],
-      "env": ["ATLAS_DEPLOY_MODE", "ATLAS_PUBLIC_URL", "ATLAS_AUTH_BASE_PATH"]
+      "env": [
+        "ATLAS_DEPLOY_MODE",
+        "ATLAS_PUBLIC_URL",
+        "ATLAS_AUTH_BASE_PATH",
+        "ATLAS_API_AUDIENCE",
+        "ATLAS_EMAIL_PROVIDER",
+        "ATLAS_SERVER_API_PROXY_TARGET",
+        "NITRO_PRESET"
+      ]
+    },
+    "app#api-client": {
+      "inputs": ["$TURBO_DEFAULT$", "orval.config.ts"],
+      "outputs": ["src/lib/generated/**"],
+      "env": [
+        "ATLAS_PUBLIC_URL",
+        "ATLAS_API_AUDIENCE",
+        "ATLAS_EMAIL_PROVIDER",
+        "ATLAS_AUTH_BASE_PATH",
+        "ATLAS_SERVER_API_PROXY_TARGET"
+      ]
     },
     "dev": {
       "cache": false,
@@ -47,7 +66,15 @@
         "api/pyproject.toml",
         "api/uv.lock"
       ],
-      "outputs": ["openapi/atlas.openapi.json", "mintlify/openapi/atlas.openapi.json"]
+      "outputs": ["openapi/atlas.openapi.json", "mintlify/openapi/atlas.openapi.json"],
+      "env": [
+        "NITRO_PRESET",
+        "ATLAS_PUBLIC_URL",
+        "ATLAS_API_AUDIENCE",
+        "ATLAS_EMAIL_PROVIDER",
+        "ATLAS_AUTH_BASE_PATH",
+        "ATLAS_SERVER_API_PROXY_TARGET"
+      ]
     },
     "//#api:test": {
       "dependsOn": ["//#openapi"],

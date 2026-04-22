@@ -201,11 +201,11 @@ export function AccountPage() {
     <div className="space-y-8 py-2">
       <section className="flex flex-wrap items-start justify-between gap-4">
         <div className="space-y-2">
-          <p className="type-label-medium text-ink-muted">Account</p>
-          <h1 className="type-headline-large text-ink-strong">
-            {atlasSession.data?.user.name?.trim() || "Atlas Operator"}
+          <p className="type-label-medium text-outline">Account</p>
+          <h1 className="type-headline-large text-on-surface">
+            {atlasSession.data?.user.name?.trim() || atlasSession.data?.user.email}
           </h1>
-          <p className="type-body-large text-ink-soft">{atlasSession.data?.user.email}</p>
+          <p className="type-body-large text-outline">{atlasSession.data?.user.email}</p>
         </div>
         <Button
           variant="secondary"
@@ -221,33 +221,33 @@ export function AccountPage() {
       </section>
 
       {flashMessage ? (
-        <p className="type-body-medium bg-surface-container-lowest text-ink-strong rounded-2xl px-4 py-3">
+        <p className="type-body-medium bg-surface-container-lowest text-on-surface rounded-2xl px-4 py-3">
           {flashMessage}
         </p>
       ) : null}
 
       {errorMessage ? (
-        <p className="type-body-medium border-border-strong bg-surface text-ink-strong rounded-2xl border px-4 py-3">
+        <p className="type-body-medium border-outline bg-surface text-on-surface rounded-2xl border px-4 py-3">
           {errorMessage}
         </p>
       ) : null}
 
       {apiKeySecret ? (
-        <div className="border-border-strong bg-surface rounded-[1.5rem] border p-5">
-          <p className="type-title-small text-ink-strong">New API key</p>
-          <p className="type-body-medium text-ink-soft mt-2 break-all">{apiKeySecret}</p>
+        <div className="border-outline bg-surface rounded-[1.5rem] border p-5">
+          <p className="type-title-small text-on-surface">New API key</p>
+          <p className="type-body-medium text-outline mt-2 break-all">{apiKeySecret}</p>
         </div>
       ) : null}
 
       {needsWorkspace ? (
-        <div className="border-border-strong bg-surface rounded-[1.5rem] border p-5">
-          <p className="type-title-small text-ink-strong">Workspace setup is waiting</p>
-          <p className="type-body-medium text-ink-soft mt-2">
+        <div className="border-outline bg-surface rounded-[1.5rem] border p-5">
+          <p className="type-title-small text-on-surface">Workspace setup is waiting</p>
+          <p className="type-body-medium text-outline mt-2">
             Finish creating your first workspace so Atlas can keep account security separate from
             workspace context.
           </p>
           <div className="mt-4">
-            <Link className="type-label-large text-ink-strong underline" to="/organization">
+            <Link className="type-label-large text-on-surface underline" to="/organization">
               Open workspace setup
             </Link>
           </div>
@@ -255,13 +255,13 @@ export function AccountPage() {
       ) : null}
 
       {hasPendingInvitations ? (
-        <div className="border-border-strong bg-surface rounded-[1.5rem] border p-5">
-          <p className="type-title-small text-ink-strong">Workspace invitations waiting</p>
-          <p className="type-body-medium text-ink-soft mt-2">
+        <div className="border-outline bg-surface rounded-[1.5rem] border p-5">
+          <p className="type-title-small text-on-surface">Workspace invitations waiting</p>
+          <p className="type-body-medium text-outline mt-2">
             Review your pending invitations before Atlas decides which workspace should open next.
           </p>
           <div className="mt-4">
-            <Link className="type-label-large text-ink-strong underline" to="/organization">
+            <Link className="type-label-large text-on-surface underline" to="/organization">
               Review invitations
             </Link>
           </div>
@@ -269,14 +269,14 @@ export function AccountPage() {
       ) : null}
 
       {activeWorkspace ? (
-        <div className="border-border bg-surface-container-lowest rounded-[1.5rem] border p-5">
-          <p className="type-title-small text-ink-strong">Current workspace</p>
-          <p className="type-body-medium text-ink-soft mt-2">
+        <div className="border-outline-variant bg-surface-container-lowest rounded-[1.5rem] border p-5">
+          <p className="type-title-small text-on-surface">Current workspace</p>
+          <p className="type-body-medium text-outline mt-2">
             {activeWorkspace.name} · {activeWorkspace.workspaceType} · {activeWorkspace.role}
           </p>
           {shouldShowOrganizationLink ? (
             <div className="mt-4">
-              <Link className="type-label-large text-ink-strong underline" to="/organization">
+              <Link className="type-label-large text-on-surface underline" to="/organization">
                 Manage workspace
               </Link>
             </div>
@@ -287,10 +287,10 @@ export function AccountPage() {
       <WorkspaceBillingSection activeProducts={atlasSession.data?.workspace.activeProducts ?? []} />
 
       <section className="grid gap-6 lg:grid-cols-2">
-        <div className="border-border-strong bg-surface space-y-4 rounded-[1.5rem] border p-6">
+        <div className="border-outline bg-surface space-y-4 rounded-[1.5rem] border p-6">
           <div className="space-y-2">
-            <h2 className="type-title-large text-ink-strong">Passkeys</h2>
-            <p className="type-body-medium text-ink-soft">
+            <h2 className="type-title-large text-on-surface">Passkeys</h2>
+            <p className="type-body-medium text-outline">
               Register a passkey after your email-based sign-in so future access is faster.
             </p>
           </div>
@@ -311,7 +311,7 @@ export function AccountPage() {
             {passkeysQuery.data?.map((pk) => (
               <article
                 key={pk.id}
-                className="border-border flex items-center justify-between gap-3 rounded-2xl border bg-white/70 px-4 py-3"
+                className="border-outline-variant flex items-center justify-between gap-3 rounded-2xl border bg-white/70 px-4 py-3"
               >
                 <div className="min-w-0 flex-1 space-y-1">
                   {editingPasskeyId === pk.id ? (
@@ -342,11 +342,11 @@ export function AccountPage() {
                       </Button>
                     </form>
                   ) : (
-                    <p className="type-title-small text-ink-strong">
+                    <p className="type-title-small text-on-surface">
                       {pk.name || "Unnamed passkey"}
                     </p>
                   )}
-                  <p className="type-body-small text-ink-soft">
+                  <p className="type-body-small text-outline">
                     {pk.deviceType === "platform" ? "Device passkey" : "Hardware key"}
                     {pk.backedUp ? " · synced" : ""}
                     {" · "}
@@ -379,13 +379,13 @@ export function AccountPage() {
             ))}
 
             {passkeysQuery.isError ? (
-              <p className="type-body-medium text-ink-soft">
+              <p className="type-body-medium text-outline">
                 Atlas could not load your passkeys right now.
               </p>
             ) : null}
 
             {passkeysQuery.data?.length === 0 ? (
-              <p className="type-body-medium text-ink-soft">
+              <p className="type-body-medium text-outline">
                 No passkeys yet. Add one above for faster sign-in.
               </p>
             ) : null}
@@ -393,10 +393,10 @@ export function AccountPage() {
         </div>
 
         {canCreateApiKeys ? (
-          <div className="border-border-strong bg-surface space-y-4 rounded-[1.5rem] border p-6">
+          <div className="border-outline bg-surface space-y-4 rounded-[1.5rem] border p-6">
             <div className="space-y-2">
-              <h2 className="type-title-large text-ink-strong">API keys</h2>
-              <p className="type-body-medium text-ink-soft">
+              <h2 className="type-title-large text-on-surface">API keys</h2>
+              <p className="type-body-medium text-outline">
                 Create keys for direct API access to protected Atlas endpoints.
               </p>
             </div>
@@ -428,12 +428,12 @@ export function AccountPage() {
             </div>
 
             <div className="space-y-2">
-              <p className="type-label-large text-ink-strong">Scopes</p>
+              <p className="type-label-large text-on-surface">Scopes</p>
               <div className="grid gap-2 sm:grid-cols-2">
                 {API_KEY_SCOPES.map((scope) => (
                   <label
                     key={scope}
-                    className="border-border flex items-start gap-3 rounded-lg border px-3 py-3"
+                    className="border-outline-variant flex items-start gap-3 rounded-lg border px-3 py-3"
                   >
                     <input
                       type="checkbox"
@@ -443,7 +443,7 @@ export function AccountPage() {
                       }}
                       className="mt-1"
                     />
-                    <span className="type-title-small text-ink-strong block">{scope}</span>
+                    <span className="type-title-small text-on-surface block">{scope}</span>
                   </label>
                 ))}
               </div>
@@ -453,16 +453,16 @@ export function AccountPage() {
               {apiKeysQuery.data?.map((apiKey) => (
                 <article
                   key={apiKey.id}
-                  className="border-border flex items-center justify-between gap-3 rounded-2xl border bg-white/70 px-4 py-3"
+                  className="border-outline-variant flex items-center justify-between gap-3 rounded-2xl border bg-white/70 px-4 py-3"
                 >
                   <div>
-                    <p className="type-title-small text-ink-strong">
+                    <p className="type-title-small text-on-surface">
                       {apiKey.name || "Untitled key"}
                     </p>
-                    <p className="type-body-small text-ink-soft">
+                    <p className="type-body-small text-outline">
                       {apiKey.prefix || "atlas"} · {apiKey.createdAt}
                     </p>
-                    <p className="type-body-small text-ink-soft">
+                    <p className="type-body-small text-outline">
                       {(apiKey.scopes ?? []).join(", ") || "No scopes"}
                     </p>
                   </div>
@@ -481,13 +481,13 @@ export function AccountPage() {
               ))}
 
               {apiKeysQuery.isError ? (
-                <p className="type-body-medium text-ink-soft">
+                <p className="type-body-medium text-outline">
                   Atlas could not load your API keys right now.
                 </p>
               ) : null}
 
               {!apiKeysQuery.data?.length ? (
-                <p className="type-body-medium text-ink-soft">
+                <p className="type-body-medium text-outline">
                   No API keys yet. Create one for scripts or CLI access.
                 </p>
               ) : null}

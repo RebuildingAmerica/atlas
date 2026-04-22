@@ -35,7 +35,7 @@ describe("Button", () => {
 
   it("supports variants", () => {
     const { rerender } = render(<Button variant="primary">P</Button>);
-    expect(screen.getByText("P")).toHaveClass("bg-accent");
+    expect(screen.getByText("P")).toHaveClass("bg-primary");
 
     rerender(<Button variant="secondary">S</Button>);
     expect(screen.getByText("S")).toHaveClass("bg-surface-container-lowest");

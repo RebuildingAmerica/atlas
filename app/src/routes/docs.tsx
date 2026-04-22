@@ -21,12 +21,11 @@ export const Route = createFileRoute("/docs")({
 function DocsUnavailablePage() {
   return (
     <PageLayout className="py-20">
-      <div className="border-border mx-auto max-w-2xl rounded-[1.8rem] border bg-white/80 p-8 text-center shadow-sm">
-        <p className="type-label-medium text-ink-muted">Atlas Docs</p>
-        <h1 className="type-headline-medium text-ink-strong mt-4">Docs URL is not configured</h1>
-        <p className="type-body-large text-ink-soft mt-4">
-          Set <code>ATLAS_DOCS_URL</code> to the Mintlify origin so Vercel can proxy{" "}
-          <code>/docs</code> to the hosted docs site.
+      <div className="border-outline-variant mx-auto max-w-2xl rounded-[1.8rem] border bg-white/80 p-8 text-center shadow-sm">
+        <p className="type-label-medium text-outline">Atlas Docs</p>
+        <h1 className="type-headline-medium text-on-surface mt-4">Documentation unavailable</h1>
+        <p className="type-body-large text-outline mt-4">
+          The documentation site could not be reached. Try again later.
         </p>
       </div>
     </PageLayout>

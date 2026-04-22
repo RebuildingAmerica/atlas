@@ -58,23 +58,12 @@ export function WorkspaceSSOSection({
 
   return (
     <section className="space-y-6">
-      <article className="border-border-strong bg-surface space-y-4 rounded-[1.5rem] border p-6">
+      <article className="border-outline bg-surface space-y-4 rounded-[1.5rem] border p-6">
         <div className="space-y-2">
-          <h2 className="type-title-large text-ink-strong">Enterprise SSO</h2>
-          <p className="type-body-medium text-ink-soft">
-            Atlas keeps team sign-in explicit. The workspace domain stays editable, while Atlas
-            suggests it from the signed-in operator email and generates the provider IDs and
-            callback URLs you can copy directly into Google Workspace or any SAML 2.0 admin console.
-          </p>
-        </div>
-
-        <div className="border-border bg-surface-container-lowest rounded-[1.25rem] border p-4">
-          <p className="type-title-small text-ink-strong">How Better Auth SSO works</p>
-          <p className="type-body-medium text-ink-soft mt-2">
-            Each provider is linked to this workspace by Better Auth. Atlas uses the verified domain
-            and the workspace primary-provider setting to route sign-in attempts through the right
-            OIDC or SAML flow, then Better Auth provisions successful users into the organization as
-            members.
+          <h2 className="type-title-large text-on-surface">Enterprise SSO</h2>
+          <p className="type-body-medium text-outline">
+            Configure enterprise sign-in for your team. Atlas generates the provider IDs and
+            callback URLs to copy directly into Google Workspace or any SAML 2.0 admin console.
           </p>
         </div>
       </article>
@@ -91,16 +80,15 @@ export function WorkspaceSSOSection({
       />
 
       <div className="grid gap-6 xl:grid-cols-2">
-        <article className="border-border-strong bg-surface space-y-5 rounded-[1.5rem] border p-6">
+        <article className="border-outline bg-surface space-y-5 rounded-[1.5rem] border p-6">
           <div className="space-y-2">
-            <h3 className="type-title-large text-ink-strong">Google Workspace OIDC</h3>
-            <p className="type-body-medium text-ink-soft">
-              Use this when the customer wants Google Workspace managed sign-in with Google as the
-              OpenID Connect identity provider.
+            <h3 className="type-title-large text-on-surface">Google Workspace OIDC</h3>
+            <p className="type-body-medium text-outline">
+              Use this for teams signing in through Google Workspace.
             </p>
           </div>
 
-          <ol className="type-body-medium text-ink-soft list-decimal space-y-2 pl-5">
+          <ol className="type-body-medium text-outline list-decimal space-y-2 pl-5">
             <li>Create or open the Google Cloud OAuth client for this workspace.</li>
             <li>Paste the redirect URI and issuer details shown below into Google.</li>
             <li>Paste the workspace domain, client ID, and client secret into Atlas.</li>
@@ -175,7 +163,7 @@ export function WorkspaceSSOSection({
                   }));
                 }}
               />
-              <label className="text-ink-soft flex items-center gap-2">
+              <label className="text-outline flex items-center gap-2">
                 <input
                   type="checkbox"
                   checked={oidcSetupForm.setAsPrimary}
@@ -204,22 +192,21 @@ export function WorkspaceSSOSection({
               </Button>
             </form>
           ) : (
-            <p className="type-body-medium text-ink-soft">
+            <p className="type-body-medium text-outline">
               Only owners and admins can register enterprise providers.
             </p>
           )}
         </article>
 
-        <article className="border-border-strong bg-surface space-y-5 rounded-[1.5rem] border p-6">
+        <article className="border-outline bg-surface space-y-5 rounded-[1.5rem] border p-6">
           <div className="space-y-2">
-            <h3 className="type-title-large text-ink-strong">SAML 2.0</h3>
-            <p className="type-body-medium text-ink-soft">
-              Use this when the customer wants a SAML app in Google Workspace or another enterprise
-              identity provider and needs Atlas to act as the service provider.
+            <h3 className="type-title-large text-on-surface">SAML 2.0</h3>
+            <p className="type-body-medium text-outline">
+              Use this for organizations using a SAML identity provider.
             </p>
           </div>
 
-          <ol className="type-body-medium text-ink-soft list-decimal space-y-2 pl-5">
+          <ol className="type-body-medium text-outline list-decimal space-y-2 pl-5">
             <li>Create a custom SAML app in the customer identity provider.</li>
             <li>Paste the ACS URL, metadata URL, and entity ID shown below into that app.</li>
             <li>Copy the IdP issuer, sign-in URL, and certificate back into Atlas.</li>
@@ -304,7 +291,7 @@ export function WorkspaceSSOSection({
                 }}
                 placeholder="-----BEGIN CERTIFICATE-----"
               />
-              <label className="text-ink-soft flex items-center gap-2">
+              <label className="text-outline flex items-center gap-2">
                 <input
                   type="checkbox"
                   checked={samlSetupForm.setAsPrimary}
@@ -334,7 +321,7 @@ export function WorkspaceSSOSection({
               </Button>
             </form>
           ) : (
-            <p className="type-body-medium text-ink-soft">
+            <p className="type-body-medium text-outline">
               Only owners and admins can register enterprise providers.
             </p>
           )}

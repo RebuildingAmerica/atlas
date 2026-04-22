@@ -32,19 +32,19 @@ export function WorkspaceSSOProviderList({
   const providers = organization.sso.providers;
 
   return (
-    <article className="border-border-strong bg-surface space-y-4 rounded-[1.5rem] border p-6">
+    <article className="border-outline bg-surface space-y-4 rounded-[1.5rem] border p-6">
       <div className="space-y-2">
-        <h3 className="type-title-large text-ink-strong">Configured providers</h3>
-        <p className="type-body-medium text-ink-soft">
-          Every saved provider stays visible here with its verification status and the exact values
-          Atlas expects the operator to copy into the identity provider.
+        <h3 className="type-title-large text-on-surface">Configured providers</h3>
+        <p className="type-body-medium text-outline">
+          Every saved provider shows its verification status and the values you need to copy into
+          your identity provider.
         </p>
       </div>
 
       {providers.length === 0 ? (
-        <div className="border-border bg-surface-container-lowest rounded-[1.25rem] border p-4">
-          <p className="type-title-small text-ink-strong">No enterprise providers yet</p>
-          <p className="type-body-medium text-ink-soft mt-2">
+        <div className="border-outline-variant bg-surface-container-lowest rounded-[1.25rem] border p-4">
+          <p className="type-title-small text-on-surface">No enterprise providers yet</p>
+          <p className="type-body-medium text-outline mt-2">
             Save either Google Workspace OIDC or SAML below to enable organization-managed sign-in.
           </p>
         </div>
@@ -56,22 +56,22 @@ export function WorkspaceSSOProviderList({
             return (
               <article
                 key={provider.providerId}
-                className="border-border space-y-4 rounded-[1.25rem] border bg-white/70 p-4"
+                className="border-outline-variant space-y-4 rounded-[1.25rem] border bg-white/70 p-4"
               >
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="space-y-1">
-                    <p className="type-title-small text-ink-strong">{provider.providerId}</p>
-                    <p className="type-body-medium text-ink-soft">
+                    <p className="type-title-small text-on-surface">{provider.providerId}</p>
+                    <p className="type-body-medium text-outline">
                       {provider.providerType.toUpperCase()} · {provider.domain}
                     </p>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
                     {provider.isPrimary ? (
-                      <span className="type-label-large border-border text-ink-soft rounded-full border px-3 py-1">
+                      <span className="type-label-large border-outline-variant text-outline rounded-full border px-3 py-1">
                         Primary
                       </span>
                     ) : null}
-                    <span className="type-label-large border-border text-ink-soft rounded-full border px-3 py-1">
+                    <span className="type-label-large border-outline-variant text-outline rounded-full border px-3 py-1">
                       {provider.domainVerified ? "Domain verified" : "Verification pending"}
                     </span>
                   </div>
@@ -125,9 +125,9 @@ export function WorkspaceSSOProviderList({
                 ) : null}
 
                 {!provider.domainVerified ? (
-                  <div className="border-border bg-surface-container-lowest space-y-3 rounded-[1rem] border p-4">
-                    <p className="type-title-small text-ink-strong">DNS verification record</p>
-                    <p className="type-body-medium text-ink-soft">
+                  <div className="border-outline-variant bg-surface-container-lowest space-y-3 rounded-[1rem] border p-4">
+                    <p className="type-title-small text-on-surface">DNS verification record</p>
+                    <p className="type-body-medium text-outline">
                       Create a TXT record for the host below. If you need a fresh token, generate
                       one here and Atlas will show the exact value to paste.
                     </p>

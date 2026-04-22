@@ -94,7 +94,7 @@ function OperatorIdentity({ session }: OperatorIdentityProps) {
   const queryClient = useQueryClient();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const activeWorkspace = session.workspace.activeOrganization;
-  const displayName = session.user.name.trim() || session.user.email || "Operator";
+  const displayName = session.user.name.trim() || session.user.email;
   const setActiveWorkspaceMutation = useMutation({
     mutationFn: (input: Parameters<typeof setActiveWorkspace>[0]) => setActiveWorkspace(input),
   });
@@ -151,25 +151,25 @@ function OperatorIdentity({ session }: OperatorIdentityProps) {
             />
           </div>
         ) : activeWorkspace ? (
-          <span className="type-body-medium border-border text-ink-soft rounded-full border px-3 py-1">
+          <span className="type-body-medium border-outline-variant text-outline rounded-full border px-3 py-1">
             {activeWorkspace.name} · {activeWorkspace.workspaceType}
           </span>
         ) : null}
 
-        <span className="type-body-medium text-ink-soft">{displayName}</span>
+        <span className="type-body-medium text-outline">{displayName}</span>
         <button
           type="button"
           onClick={() => {
             void handleSignOut();
           }}
-          className="type-label-large text-ink-muted hover:bg-surface-container hover:text-ink-strong inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5"
+          className="type-label-large text-outline hover:bg-surface-container hover:text-on-surface inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5"
         >
           <LogOut className="h-4 w-4" />
           Sign out
         </button>
       </div>
 
-      {errorMessage ? <p className="type-body-small text-ink-soft">{errorMessage}</p> : null}
+      {errorMessage ? <p className="type-body-small text-outline">{errorMessage}</p> : null}
     </div>
   );
 }
