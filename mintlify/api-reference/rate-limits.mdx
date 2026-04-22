@@ -1,0 +1,66 @@
+---
+title: "Rate limits"
+description: "API usage limits by plan and how to handle rate limiting."
+---
+
+# Rate limits
+
+Atlas enforces rate limits to ensure fair access for all users. Limits vary by plan and authentication method.
+
+## Limits by plan
+
+| | **Free (unauthenticated)** | **Pro** | **Team** |
+|---|---|---|---|
+| **Public API** | 100 requests/hour | Unlimited | Unlimited |
+| **API key requests** | — | 1,000/day per key | 10,000/day per key |
+| **Max API keys** | 0 | 1 | Unlimited |
+| **Research runs** | 2/month | Unlimited | Unlimited |
+
+<Note>
+Unauthenticated requests (no API key or OAuth token) use the Free tier limits regardless of your account status. Always authenticate to get your plan's full limits.
+</Note>
+
+## Rate limit headers
+
+When you approach your limit, the API returns rate limit information in response headers:
+
+| Header | Description |
+|--------|-------------|
+| `X-RateLimit-Limit` | Maximum requests allowed in the current window |
+| `X-RateLimit-Remaining` | Requests remaining in the current window |
+| `X-RateLimit-Reset` | Unix timestamp when the window resets |
+
+## Handling rate limits
+
+When you exceed your limit, the API returns `429 Too Many Requests`:
+
+```json
+{
+  "error": {
+    "type": "RATE_LIMITED",
+    "message": "Rate limit exceeded",
+    "detail": "You have exceeded 100 requests per hour. Upgrade to Pro for higher limits."
+  }
+}
+```
+
+**Best practices:**
+
+- **Check response headers** — Monitor `X-RateLimit-Remaining` to avoid hitting the limit
+- **Use exponential backoff** — If you get a 429, wait and retry with increasing delays
+- **Cache responses** — Store results locally to avoid redundant requests
+- **Authenticate your requests** — Unauthenticated requests have the lowest limits
+
+## Need higher limits?
+
+<CardGroup cols={2}>
+
+<Card title="Atlas Pro" icon="rocket" href="/account/pricing">
+1,000 API requests/day for $5/month.
+</Card>
+
+<Card title="Atlas Team" icon="users" href="/account/pricing">
+10,000 requests/day per key, unlimited keys.
+</Card>
+
+</CardGroup>

@@ -1,41 +1,166 @@
 ---
 title: "API overview"
-description: "How the Atlas REST API is structured and how Mintlify uses the generated OpenAPI spec."
+description: "How the Atlas REST API is structured: base URL, response format, pagination, filtering, and errors."
 ---
 
 # API overview
 
-The Atlas REST API exposes structured civic research data through a typed contract generated from the FastAPI application.
+The Atlas REST API gives you programmatic access to the civic research directory — entities, places, sources, issue areas, discovery runs, and flags.
 
-Mintlify reads `mintlify/openapi/atlas.openapi.json`, which is synced from the root `openapi/atlas.openapi.json` artifact. That keeps the endpoint reference in the sidebar aligned with the exported OpenAPI document instead of relying on hand-maintained endpoint pages.
+## Base URL
 
-## Base URLs
+```
+https://atlas.rebuildingus.org/api
+```
 
-The current OpenAPI document advertises three server targets:
+All endpoint paths in this documentation are relative to this base URL.
 
-- `https://atlas.rebuildingus.org`
-- `http://api.localhost:1355`
-- `/`
+## Response format
 
-Those values come from the application OpenAPI metadata and drive the interactive playground configuration.
+All responses are JSON. Successful responses wrap data in a `data` field:
+
+```json
+{
+  "data": {
+    "id": "a1b2c3d4-...",
+    "name": "KC Tenants",
+    "type": "organization"
+  }
+}
+```
+
+List endpoints include pagination metadata:
+
+```json
+{
+  "data": [
+    { "id": "...", "name": "..." },
+    { "id": "...", "name": "..." }
+  ],
+  "pagination": {
+    "total": 150,
+    "has_more": true
+  }
+}
+```
+
+## Pagination
+
+List endpoints support pagination via query parameters:
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `limit` | 20 | Items per page (max 100) |
+| `cursor` | — | Cursor from a previous response for the next page |
+
+Check `pagination.has_more` to determine if more results are available.
+
+## Filtering and search
+
+List endpoints accept query parameters for filtering:
+
+```
+GET /api/places/kansas-city,missouri/entities?issue_area=housing&text=cooperative
+```
+
+Common filter parameters:
+
+| Parameter | Description |
+|-----------|-------------|
+| `text` | Full-text search |
+| `issue_area` | Filter by issue area slug (repeatable) |
+| `entity_type` | Filter by type: `person`, `organization`, `initiative`, `campaign`, `event` |
+| `source_type` | Filter by source type: `journalism`, `nonprofit_listing`, `organizational_website`, etc. |
+
+All filters are combined with AND logic.
+
+## Field naming
+
+All JSON fields use `snake_case`:
+
+```json
+{
+  "issue_areas": ["housing_affordability"],
+  "published_date": "2026-03-25",
+  "created_at": "2026-03-20T10:00:00Z"
+}
+```
+
+Timestamps use ISO 8601 format in UTC.
+
+## Errors
+
+Error responses include a structured error object:
+
+```json
+{
+  "error": {
+    "type": "NOT_FOUND",
+    "message": "Entry not found",
+    "detail": "No entry with id=nonexistent"
+  }
+}
+```
+
+| Field | Description |
+|-------|-------------|
+| `type` | Machine-readable error code |
+| `message` | Human-readable summary |
+| `detail` | Additional context (optional) |
+
+Common error types:
+
+| Type | HTTP | Meaning |
+|------|------|---------|
+| `VALIDATION_ERROR` | 400 | Request validation failed |
+| `UNAUTHORIZED` | 401 | Authentication required |
+| `FORBIDDEN` | 403 | Authenticated but not authorized |
+| `NOT_FOUND` | 404 | Resource not found |
+| `RATE_LIMITED` | 429 | Too many requests |
+| `INTERNAL_ERROR` | 500 | Server error |
 
 ## Resource families
 
-The current public contract is organized around these resource groups:
+The API is organized around these resource groups:
 
-- **Entities** for create, read, update, delete, and source linkage
-- **Places** for place profiles, coverage, issue signals, entities, and sources
-- **Issue areas** and **domains** for taxonomy lookups
-- **Discovery runs** for pipeline execution state
-- **Flags** for anonymous corrections and stale-data reporting
-- **Health** for operational status
+| Resource | Description | Auth required |
+|----------|-------------|---------------|
+| **Entities** | People, organizations, initiatives, campaigns, events | Read: No. Write: Yes |
+| **Places** | Place identity, entities by place, coverage, profiles | No |
+| **Issue areas & domains** | Taxonomy lookups | No |
+| **Discovery runs** | Pipeline execution and results | Yes |
+| **Flags** | Anonymous corrections and stale-data reporting | No |
+| **Health** | Operational status | No |
 
-## Source of truth
+See the [authentication guide](/api-reference/authentication) for details on which endpoints require credentials.
 
-When the API changes:
+## HTTP methods
 
-1. Regenerate the OpenAPI spec with `pnpm openapi`
-2. Validate the docs shell with `pnpm docs:validate`
-3. Let Mintlify regenerate endpoint pages from the spec
+| Method | Action | Typical response |
+|--------|--------|-----------------|
+| `GET` | Fetch data | 200 |
+| `POST` | Create resource or start action | 201 or 202 |
+| `PATCH` | Update resource | 200 |
+| `DELETE` | Delete resource | 204 |
 
-This keeps the API reference synchronized with the codebase and avoids drift between docs and implementation.
+## What's next
+
+<CardGroup cols={2}>
+
+<Card title="Authentication" icon="key" href="/api-reference/authentication">
+API keys, OAuth 2.1, and endpoint-level auth requirements.
+</Card>
+
+<Card title="Quickstart" icon="rocket" href="/api-reference/quickstart">
+Make your first API call in under 5 minutes.
+</Card>
+
+<Card title="Rate limits" icon="gauge" href="/api-reference/rate-limits">
+Usage limits by plan.
+</Card>
+
+<Card title="MCP & Agents" icon="robot" href="/mcp/overview">
+Use Atlas through AI assistants instead of raw API calls.
+</Card>
+
+</CardGroup>

@@ -1,0 +1,33 @@
+---
+title: "Scopes & permissions"
+description: "OAuth scopes that control what Atlas MCP tools can access."
+---
+
+# Scopes & permissions
+
+When you connect an MCP client to Atlas, the OAuth flow asks you to approve specific permissions. These scopes control what your AI assistant can do.
+
+## Available scopes
+
+| Scope | What it allows | Required for |
+|-------|----------------|-------------|
+| `openid` | Basic identity verification | All connections |
+| `profile` | Read your name and account details | All connections |
+| `email` | Read your email address | All connections |
+| `discovery:read` | Read discovery runs and their results | Viewing past research runs |
+| `discovery:write` | Create and manage discovery runs | Running new research |
+| `entities:write` | Create and update catalog entries | Adding or editing entities |
+
+## Default scopes
+
+Most MCP clients request `openid`, `profile`, and `email` by default. The `discovery:*` and `entities:write` scopes are requested when you use tools that require them.
+
+## Revoking access
+
+To disconnect an MCP client and revoke its access:
+
+1. Sign in to [Atlas](https://atlas.rebuildingus.org)
+2. Go to **Account** settings
+3. Under **Connected apps**, find the client and click **Revoke**
+
+After revoking, the client will need to re-authorize on its next use.

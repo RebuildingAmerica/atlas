@@ -1,0 +1,114 @@
+---
+title: "How Atlas works"
+description: "The autodiscovery pipeline that powers the Atlas directory."
+---
+
+# How Atlas works
+
+Atlas is more than a static directory. At its core is an **autodiscovery pipeline** — a system that takes a location and a set of issues as input, searches across public sources, extracts structured information, and produces a ranked list of people and organizations doing civic work.
+
+The pipeline is what makes Atlas different from a manually curated directory. It can systematically discover civic actors across entire cities, report what it found, and tell you what's missing.
+
+## The pipeline in action
+
+Here's what happens when you run a discovery on "Kansas City" + "labor, housing":
+
+<Steps>
+
+<Step title="Query generation">
+Atlas creates dozens of targeted search queries across different source types. For example:
+
+- `"worker cooperatives Kansas City Missouri"` (local news)
+- `"housing advocacy Kansas City"` (nonprofit directories)
+- `"tenant organizing Kansas City"` (organizational websites)
+- `"labor economics Kansas City"` (academic research)
+
+A typical discovery run generates around **40 search queries** covering local journalism, nonprofit listings, organizational websites, academic research, and civic records.
+</Step>
+
+<Step title="Source fetching">
+Atlas searches the web for each query and collects the results — news articles, organization websites, directory listings, research papers, and public records.
+
+A typical run returns around **200 source documents** (after deduplicating URLs that appear in multiple searches).
+</Step>
+
+<Step title="AI-powered extraction">
+Each source is read by an AI model that extracts structured information: names, organizations, what they do, where they work, which issues they connect to, and any public contact information.
+
+This is the core innovation — Atlas uses AI to turn unstructured public text into structured directory entries, rather than relying on manual data entry.
+</Step>
+
+<Step title="Deduplication">
+The same person or organization often appears in multiple sources. Atlas detects duplicates using name similarity, location matching, and description analysis, then merges them into a single entry with multiple source links.
+
+Maria Gonzalez mentioned in three different articles becomes **one entry with three sources** — giving you more confidence in the data.
+</Step>
+
+<Step title="Ranking">
+Entries are scored and sorted by:
+
+- **Source density** — More independent sources mentioning an entity means higher confidence
+- **Specificity** — "Maria Gonzalez, founder of Prairie Workers Cooperative" ranks higher than "The Sierra Club has a Kansas chapter"
+- **Recency** — Newer sources score higher
+- **Contact surface** — Can you actually reach this person or organization?
+</Step>
+
+<Step title="Gap analysis">
+Finally, Atlas reports what's *missing*. For example:
+
+> "Strong coverage on transit and housing for Kansas City. Zero leads for harm reduction, environmental justice, and broadband."
+
+This helps researchers know where to dig deeper manually, or where to run additional targeted discovery.
+</Step>
+
+</Steps>
+
+## Running discovery
+
+There are three ways to run the autodiscovery pipeline:
+
+| Method | How | Best for |
+|--------|-----|----------|
+| **Atlas web app** | Go to the Discovery page, enter a location and select issue areas | Researchers who want a visual workflow |
+| **MCP / AI assistant** | Ask Claude or another connected assistant to research a city | Conversational, exploratory research |
+| **REST API** | `POST /api/discovery-runs` with location and issue areas | Programmatic or automated workflows |
+
+Discovery runs are asynchronous — you start a run and check back for results. The API returns `202 Accepted` with a run ID that you can poll for status.
+
+<Note>
+Free accounts get 2 research runs per month. Atlas Pro and Team plans include unlimited runs. See [Plans & pricing](/account/pricing).
+</Note>
+
+## Source attribution
+
+Every entry in Atlas traces back to the public sources where the information was found. This is a fundamental design principle, not an afterthought.
+
+Source attribution serves three purposes:
+
+1. **Trust** — You can verify any entry by checking its sources
+2. **Freshness** — Source dates tell you how current the information is
+3. **Depth** — More sources for an entry means more independent corroboration
+
+When you view an entry, you see every source that contributed to it — the publication, article title, publication date, and the specific context in which the entity was mentioned.
+
+## What's next
+
+<CardGroup cols={2}>
+
+<Card title="Issue areas & domains" icon="tags" href="/taxonomy">
+The 11 domains and 47 issue areas Atlas tracks.
+</Card>
+
+<Card title="Connect an AI assistant" icon="robot" href="/mcp/overview">
+Run discovery conversationally through Claude, Copilot, or Gemini.
+</Card>
+
+<Card title="Discovery API" icon="code" href="/api-reference/overview">
+Run discovery programmatically via the REST API.
+</Card>
+
+<Card title="Browse the directory" icon="magnifying-glass" href="/quickstart-browse">
+See what the pipeline has already found.
+</Card>
+
+</CardGroup>

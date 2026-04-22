@@ -1,0 +1,175 @@
+---
+title: "Authentication"
+description: "How to authenticate with the Atlas API using API keys or OAuth 2.1."
+---
+
+# Authentication
+
+Atlas supports three authentication methods depending on your use case. Many endpoints are publicly accessible without any authentication — you only need credentials when creating or modifying data, running discovery, or accessing workspace resources.
+
+## Public vs. protected endpoints
+
+You can read most Atlas data without authentication:
+
+| Endpoint pattern | Auth required | Description |
+|---|---|---|
+| `GET /health` | No | Health check |
+| `GET /api/places/*` | No | Place identity, entities, sources, coverage, profiles |
+| `GET /api/entities` | No | List and search entities |
+| `GET /api/entities/{id}` | No | Get entity details |
+| `GET /api/entities/{id}/sources` | No | Get entity sources |
+| `GET /api/domains/*` | No | List domains and domain details |
+| `GET /api/issue-areas/*` | No | List issue areas and details |
+| `POST /api/entity-flags` | No | Flag an entity (anonymous) |
+| `POST /api/source-flags` | No | Flag a source (anonymous) |
+| `POST /api/entities` | **Yes** | Create an entity |
+| `PATCH /api/entities/{id}` | **Yes** | Update an entity |
+| `DELETE /api/entities/{id}` | **Yes** | Delete an entity |
+| `POST /api/discovery-runs` | **Yes** | Start a discovery run |
+| `GET /api/discovery-runs/*` | **Yes** | List or get discovery runs |
+| `* /api/orgs/{org_id}/*` | **Yes** | All organization-scoped resources |
+
+<Note>
+Unauthenticated public API access is rate-limited to **100 requests per hour**. Authenticated requests have higher limits based on your plan. See [rate limits](/api-reference/rate-limits).
+</Note>
+
+## API keys
+
+API keys are the simplest way to authenticate server-to-server requests. They're available on **Atlas Pro** and **Atlas Team** plans.
+
+### Get an API key
+
+1. Sign in to [Atlas](https://atlas.rebuildingus.org)
+2. Go to your **Account** settings
+3. Under **API keys**, click **Create key**
+4. Copy the key — it won't be shown again
+
+### Use the key
+
+Include your API key in the `X-API-Key` header on every request:
+
+<CodeGroup>
+
+```bash cURL
+curl -H "X-API-Key: your-api-key" \
+  https://atlas.rebuildingus.org/api/discovery-runs
+```
+
+```python Python
+import httpx
+
+client = httpx.Client(
+    base_url="https://atlas.rebuildingus.org/api",
+    headers={"X-API-Key": "your-api-key"},
+)
+
+response = client.get("/discovery-runs")
+runs = response.json()
+```
+
+```typescript TypeScript
+const response = await fetch(
+  "https://atlas.rebuildingus.org/api/discovery-runs",
+  {
+    headers: { "X-API-Key": "your-api-key" },
+  }
+);
+
+const runs = await response.json();
+```
+
+</CodeGroup>
+
+### API key limits
+
+| Plan | Max keys | Requests per day (per key) |
+|------|----------|---------------------------|
+| Free | 0 | — |
+| Pro | 1 | 1,000 |
+| Team | Unlimited | 10,000 |
+
+## OAuth 2.1 (for MCP and programmatic access)
+
+Atlas uses OAuth 2.1 with JWT bearer tokens for MCP connections and advanced programmatic access. This is the same flow used when you connect an AI assistant like Claude or Copilot.
+
+OAuth access is available on **Atlas Pro** and **Atlas Team** plans.
+
+### How it works
+
+1. Your client discovers Atlas's OAuth configuration via [OIDC discovery](https://atlas.rebuildingus.org/api/auth/.well-known/openid-configuration)
+2. The client registers dynamically (no pre-registration needed) via the [registration endpoint](https://atlas.rebuildingus.org/api/auth/oauth2/register)
+3. You're redirected to Atlas to sign in and approve access
+4. Your client receives a JWT access token
+5. Include the token in the `Authorization` header
+
+```bash
+curl -H "Authorization: Bearer eyJhbG..." \
+  https://atlas.rebuildingus.org/api/discovery-runs
+```
+
+### OAuth details
+
+| Setting | Value |
+|---------|-------|
+| OIDC discovery | `https://atlas.rebuildingus.org/api/auth/.well-known/openid-configuration` |
+| Dynamic client registration | `https://atlas.rebuildingus.org/api/auth/oauth2/register` |
+| Protected resource metadata | `https://atlas.rebuildingus.org/.well-known/oauth-protected-resource` |
+| JWKS endpoint | `https://atlas.rebuildingus.org/api/auth/jwks` |
+| PKCE | Required |
+| Algorithms | RS256, ES256 |
+| Transport | Streamable HTTP (SSE is not supported) |
+
+<Tip>
+Most MCP clients handle the OAuth flow automatically. You typically just provide the server URL (`https://atlas.rebuildingus.org/mcp`) and the client takes care of discovery, registration, and token management. See the [MCP setup guides](/mcp/overview) for step-by-step instructions.
+</Tip>
+
+### OAuth scopes
+
+When authorizing, Atlas will ask you to approve one or more of these permissions:
+
+| Scope | What it allows |
+|-------|----------------|
+| `openid` | Basic identity information |
+| `profile` | User profile details |
+| `email` | Email address |
+| `discovery:read` | Read discovery runs and results |
+| `discovery:write` | Create and manage discovery runs |
+| `entities:write` | Create and update catalog entries |
+
+## Error responses
+
+If authentication fails, the API returns `401 Unauthorized`:
+
+```json
+{
+  "error": {
+    "type": "UNAUTHORIZED",
+    "message": "Authentication required",
+    "detail": "Provide a valid API key via X-API-Key header or a Bearer token via Authorization header"
+  }
+}
+```
+
+For OAuth-protected endpoints, the response includes a `WWW-Authenticate` header pointing to the OAuth metadata for automatic client discovery.
+
+## What's next
+
+<CardGroup cols={2}>
+
+<Card title="API quickstart" icon="rocket" href="/api-reference/quickstart">
+Make your first API call in under 5 minutes.
+</Card>
+
+<Card title="Rate limits" icon="gauge" href="/api-reference/rate-limits">
+Understand usage limits for your plan.
+</Card>
+
+<Card title="MCP setup" icon="robot" href="/mcp/overview">
+Connect an AI assistant via OAuth.
+</Card>
+
+<Card title="Plans & pricing" icon="credit-card" href="/account/pricing">
+See which plan includes API access.
+</Card>
+
+</CardGroup>

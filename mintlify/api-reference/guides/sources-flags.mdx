@@ -1,0 +1,101 @@
+---
+title: "Sources & flags"
+description: "Working with source attribution and community corrections."
+---
+
+# Sources & flags
+
+Source attribution is a core design principle of Atlas — every entity traces back to the public sources where it was found. Flags let anyone help maintain data quality by reporting stale or incorrect information.
+
+## Sources
+
+### Get sources for an entity
+
+```bash
+GET /api/entities/{entity_id}/sources
+```
+
+Returns all sources backing a specific entity:
+
+```bash
+curl https://atlas.rebuildingus.org/api/entities/{entity_id}/sources
+```
+
+Each source includes:
+- `url` — Link to the original document
+- `title` — Article or page title
+- `publication` — Publication name
+- `published_date` — When the source was published
+- `type` — Category (journalism, nonprofit_listing, organizational_website, etc.)
+- `extraction_context` — The passage where the entity was mentioned
+
+### Get sources for a place
+
+```bash
+GET /api/places/{place_key}/sources
+```
+
+Returns all sources associated with entities in a given place.
+
+## Flags
+
+Flags let anyone report problems with Atlas data. Flagging is **anonymous** — no authentication required.
+
+### Flag an entity
+
+```bash
+POST /api/entity-flags
+```
+
+Report that an entity's information is stale, incorrect, or inappropriate:
+
+```bash
+curl -X POST https://atlas.rebuildingus.org/api/entity-flags \
+  -H "Content-Type: application/json" \
+  -d '{
+    "entity_id": "entity-abc123",
+    "reason": "Organization closed in 2025",
+    "flag_type": "stale"
+  }'
+```
+
+### Flag a source
+
+```bash
+POST /api/source-flags
+```
+
+Report that a source is broken, misattributed, or contains incorrect information:
+
+```bash
+curl -X POST https://atlas.rebuildingus.org/api/source-flags \
+  -H "Content-Type: application/json" \
+  -d '{
+    "source_id": "src-abc123",
+    "reason": "Link is broken (404)",
+    "flag_type": "broken_link"
+  }'
+```
+
+### List flags
+
+```bash
+GET /api/entity-flags?entity_id={entity_id}
+GET /api/source-flags?source_id={source_id}
+```
+
+View existing flags for an entity or source.
+
+## What's next
+
+<CardGroup cols={2}>
+
+<Card title="Entities" icon="users" href="/api-reference/guides/entities">
+Working with entity records.
+</Card>
+
+<Card title="Data model" icon="database" href="/resources/data-model">
+Understanding how sources relate to entities.
+</Card>
+
+</CardGroup>

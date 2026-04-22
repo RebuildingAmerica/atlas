@@ -1,0 +1,181 @@
+---
+title: "Issue areas & domains"
+description: "The 11 domains and 47 issue areas that Atlas uses to classify civic work."
+---
+
+# Issue areas & domains
+
+Atlas organizes civic work into a two-level taxonomy: **domains** (broad categories) and **issue areas** (specific topics). Every entry in the directory is tagged with one or more issue areas. The autodiscovery pipeline uses these to classify what it finds, and the search interface uses them for filtering.
+
+## How it works
+
+- Entries are tagged at the **issue area** level, not the domain level
+- An entry can be tagged with **multiple issue areas across multiple domains** — cross-cutting work is the norm
+- Domains exist for grouping and navigation only
+- The taxonomy evolves as Atlas covers more cities and issues emerge
+
+<Tip>
+You can retrieve the full taxonomy programmatically via `GET /api/issue-areas` and `GET /api/domains`. See the [API reference](/api-reference/overview).
+</Tip>
+
+## The taxonomy
+
+### Economic Security
+
+Issues around financial stability, employment, and economic opportunity.
+
+| Issue area | Slug |
+|-----------|------|
+| Automation and AI displacement | `automation_and_ai_displacement` |
+| Gig economy and precarious work | `gig_economy_and_precarious_work` |
+| Income inequality and wealth concentration | `income_inequality_and_wealth_concentration` |
+| Healthcare economics and medical debt | `healthcare_economics_and_medical_debt` |
+| Student debt and college affordability | `student_debt_and_college_affordability` |
+
+### Housing and the Built Environment
+
+Issues around where and how people live.
+
+| Issue area | Slug |
+|-----------|------|
+| Housing affordability | `housing_affordability` |
+| Suburban sprawl and car dependency | `suburban_sprawl_and_car_dependency` |
+| Homelessness and housing insecurity | `homelessness_and_housing_insecurity` |
+| Zoning and land use | `zoning_and_land_use` |
+
+### Climate and Environment
+
+Issues around environmental health, climate change, and sustainability.
+
+| Issue area | Slug |
+|-----------|------|
+| Climate adaptation and resilience | `climate_adaptation_and_resilience` |
+| Environmental justice and pollution | `environmental_justice_and_pollution` |
+| Sustainable agriculture and food systems | `sustainable_agriculture_and_food_systems` |
+| Water access and infrastructure | `water_access_and_infrastructure` |
+| Energy transition | `energy_transition` |
+
+### Democracy and Governance
+
+Issues around civic participation, electoral systems, and democratic institutions.
+
+| Issue area | Slug |
+|-----------|------|
+| Voter suppression and electoral access | `voter_suppression_and_electoral_access` |
+| Local government and civic engagement | `local_government_and_civic_engagement` |
+| Political polarization and democratic norms | `political_polarization_and_democratic_norms` |
+| Money in politics | `money_in_politics` |
+| Electoral reform | `electoral_reform` |
+
+### Technology and Information
+
+Issues around digital life, information systems, and tech accountability.
+
+| Issue area | Slug |
+|-----------|------|
+| Social media and mental health | `social_media_and_mental_health` |
+| Misinformation and epistemic crisis | `misinformation_and_epistemic_crisis` |
+| Digital privacy and surveillance | `digital_privacy_and_surveillance` |
+| Broadband access and digital divide | `broadband_access_and_digital_divide` |
+| Platform monopolies and tech accountability | `platform_monopolies_and_tech_accountability` |
+
+### Education
+
+Issues around learning, access to education, and educational institutions.
+
+| Issue area | Slug |
+|-----------|------|
+| K-12 education inequality | `k12_education_inequality` |
+| Higher education affordability | `higher_education_affordability` |
+| Vocational and alternative pathways | `vocational_and_alternative_pathways` |
+| Education funding and policy | `education_funding_and_policy` |
+
+### Health and Social Connection
+
+Issues around physical and mental health, community bonds, and care systems.
+
+| Issue area | Slug |
+|-----------|------|
+| Mental health crisis and access | `mental_health_crisis_and_access` |
+| Loneliness and social isolation | `loneliness_and_social_isolation` |
+| Addiction and harm reduction | `addiction_and_harm_reduction` |
+| Healthcare access and coverage | `healthcare_access_and_coverage` |
+| Community health infrastructure | `community_health_infrastructure` |
+
+### Infrastructure and Public Goods
+
+Issues around the physical systems that communities depend on.
+
+| Issue area | Slug |
+|-----------|------|
+| Transportation and mobility | `transportation_and_mobility` |
+| Public transit | `public_transit` |
+| Broadband and digital access | `broadband_and_digital_access` |
+| Water infrastructure | `water_infrastructure` |
+| Physical infrastructure decay | `physical_infrastructure_decay` |
+
+### Justice and Public Safety
+
+Issues around criminal justice, policing, and community safety.
+
+| Issue area | Slug |
+|-----------|------|
+| Criminal justice reform and mass incarceration | `criminal_justice_reform_and_mass_incarceration` |
+| Policing and community safety | `policing_and_community_safety` |
+| Immigration and belonging | `immigration_and_belonging` |
+| Restorative justice | `restorative_justice` |
+
+### Rural-Urban Divide
+
+Issues around the diverging realities of rural and urban communities.
+
+| Issue area | Slug |
+|-----------|------|
+| Rural economic decline and brain drain | `rural_economic_decline_and_brain_drain` |
+| Cultural resentment and political division | `cultural_resentment_and_political_division` |
+| Rural healthcare and services | `rural_healthcare_and_services` |
+| Urban-rural coalition building | `urban_rural_coalition_building` |
+
+### Labor and Worker Power
+
+Issues around workers' rights, organizing, and economic democracy.
+
+| Issue area | Slug |
+|-----------|------|
+| Union organizing | `union_organizing` |
+| Worker cooperatives | `worker_cooperatives` |
+| Workplace safety and conditions | `workplace_safety_and_conditions` |
+| Wage theft and labor rights | `wage_theft_and_labor_rights` |
+| Just transition | `just_transition` |
+
+## Design principles
+
+**Multi-tagging is expected.** A community land trust fighting displacement in a flood-prone neighborhood might be tagged `housing_affordability` + `climate_adaptation_and_resilience` + `environmental_justice_and_pollution`. That's not over-tagging — it's how Atlas surfaces the connections between issues.
+
+**Granularity is at the "conversation" level.** Each issue area is specific enough that two entries tagged the same way are recognizably working on related things, but broad enough that the taxonomy doesn't balloon.
+
+**The taxonomy evolves.** As Atlas covers more cities, new issues and framings will emerge. New issue areas get added when existing ones can't describe a meaningful cluster of entries.
+
+## Using the taxonomy in the API
+
+Filter entities by issue area:
+
+```bash
+curl "https://atlas.rebuildingus.org/api/places/kansas-city,missouri/entities?issue_area=housing_affordability"
+```
+
+Retrieve all issue areas:
+
+```bash
+curl https://atlas.rebuildingus.org/api/issue-areas
+```
+
+Get details for a specific issue area:
+
+```bash
+curl https://atlas.rebuildingus.org/api/issue-areas/housing_affordability
+```
+
+Use the MCP tool `resolve_issue_areas` to map natural language to Atlas issue area slugs:
+
+> "What Atlas issue areas relate to affordable childcare?"

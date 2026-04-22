@@ -1,0 +1,53 @@
+---
+title: "Contributing"
+description: "How to contribute to Atlas development."
+---
+
+# Contributing
+
+Atlas is open source and welcomes contributions. Here's how to get involved.
+
+## Repository
+
+Atlas lives at [github.com/RebuildingAmerica/atlas](https://github.com/RebuildingAmerica/atlas).
+
+## Getting started
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/RebuildingAmerica/atlas.git
+   cd atlas
+   ```
+
+2. **Run the bootstrap script**
+   ```bash
+   pnpm bootstrap
+   ```
+   This sets up your local environment, creates config files, and installs dependencies.
+
+3. **Start the development server**
+   ```bash
+   pnpm dev
+   ```
+
+## Project structure
+
+| Directory | What it is |
+|-----------|-----------|
+| `app/` | Web application (TanStack Start + React + TypeScript) |
+| `api/` | REST API (Python + FastAPI) |
+| `mintlify/` | Public documentation (this site) |
+| `docs/` | Internal development documentation |
+| `scripts/` | Build and bootstrap tooling |
+
+## How to contribute
+
+- **Report bugs** — Open an issue on GitHub with reproduction steps
+- **Suggest features** — Open a discussion or issue describing the use case
+- **Fix bugs** — Fork the repo, create a branch, submit a PR
+- **Improve docs** — Documentation PRs are always welcome
+- **Add data** — Flag incorrect entries, suggest new sources, or run discovery in underserved areas
+
+## Code conventions
+
+Atlas follows conventional commits, uses `pnpm` for package management, and enforces code quality through pre-commit hooks. See the internal `docs/` directory for detailed development standards.

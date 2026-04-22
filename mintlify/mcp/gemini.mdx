@@ -1,0 +1,58 @@
+---
+title: "Gemini CLI"
+description: "Connect Atlas to Google's Gemini CLI for terminal-based civic research."
+---
+
+# Connect Atlas to Gemini CLI
+
+Google's Gemini CLI supports remote MCP servers with automatic OAuth discovery.
+
+## Add the server
+
+```bash
+gemini mcp add atlas "https://atlas.rebuildingus.org/mcp" \
+  --transport http \
+  --scope user
+```
+
+Or edit `~/.gemini/settings.json` directly:
+
+```json
+{
+  "mcpServers": {
+    "atlas": {
+      "url": "https://atlas.rebuildingus.org/mcp",
+      "type": "http"
+    }
+  }
+}
+```
+
+## Authorize
+
+Gemini CLI discovers the OAuth server automatically via Atlas's protected resource metadata. On first use, it opens a browser for you to sign in and approve access. Tokens are persisted and refreshed automatically.
+
+You can also trigger the OAuth flow manually:
+
+```
+/mcp auth atlas
+```
+
+## Requirements
+
+- Gemini CLI (latest version)
+- Atlas Pro or Team plan — [see pricing](/account/pricing)
+
+## Next steps
+
+<CardGroup cols={2}>
+
+<Card title="Available tools" icon="wrench" href="/mcp/tools">
+All 10 Atlas MCP tools with parameters and examples.
+</Card>
+
+<Card title="Tutorial: Research a city" icon="map" href="/mcp/tutorials/research-city">
+Walk through a complete research session.
+</Card>
+
+</CardGroup>

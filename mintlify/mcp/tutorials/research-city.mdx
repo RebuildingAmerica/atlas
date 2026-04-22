@@ -1,0 +1,113 @@
+---
+title: "Tutorial: Research a city"
+description: "Walk through a complete civic research session using Claude and Atlas MCP."
+---
+
+# Tutorial: Research a city with Claude
+
+This tutorial walks through a complete research session using Claude and Atlas MCP. By the end, you'll have a structured picture of civic work in a city, including who's active, what sources back them, and where the gaps are.
+
+**Prerequisites:**
+- Atlas account with Pro or Team plan
+- Claude Desktop or Claude Code connected to Atlas ([setup guide](/mcp/overview))
+
+## Step 1: Start with a broad question
+
+Open Claude and ask about the city you're researching:
+
+> **You:** Who's working on housing and labor issues in Kansas City?
+
+Claude will use Atlas's `search_entities` tool to find matching entities and return a summary. You might see something like:
+
+> **Claude:** I found 31 entities related to housing and labor in Kansas City. Here are the most prominent:
+>
+> 1. **KC Tenants** (organization) — Tenant organizing collective fighting for housing justice. Sources: Kansas City Star, KCUR
+> 2. **Stand Up KC** (campaign) — Fight for $15 minimum wage campaign. Sources: The Pitch KC, KSHB
+> 3. **Habitat for Humanity KC** (organization) — Affordable housing construction. Sources: Kansas City Business Journal
+> ...
+
+## Step 2: Drill into specifics
+
+Pick an entity that interests you and ask for details:
+
+> **You:** Tell me more about KC Tenants. What are all the sources?
+
+Claude will use `get_entity` and `get_entity_sources` to retrieve the full record:
+
+> **Claude:** **KC Tenants** is a citywide tenant organizing collective in Kansas City, MO focused on housing justice and tenant rights.
+>
+> **Sources (4):**
+> 1. "KC Tenants escalates fight against corporate landlords" — *Kansas City Star*, March 2026
+> 2. "Inside Kansas City's tenant organizing movement" — *KCUR*, January 2026
+> 3. "Housing advocates push for rent stabilization" — *The Pitch KC*, December 2025
+> 4. "Tenant union wins first eviction moratorium" — *Flatland KC*, November 2025
+
+Notice that every claim is backed by specific, dated, verifiable sources.
+
+## Step 3: Check coverage gaps
+
+Ask what Atlas *doesn't* know about:
+
+> **You:** What issue areas have low coverage in Kansas City?
+
+Claude will use `get_place_coverage` to analyze gaps:
+
+> **Claude:** Kansas City coverage analysis:
+>
+> **Strong coverage:** Housing affordability (18 entities), labor and worker power (9 entities), local government (7 entities)
+>
+> **Limited coverage:** Environmental justice (2 entities), broadband access (1 entity), restorative justice (0 entities), addiction and harm reduction (1 entity)
+>
+> The gaps may indicate areas where Atlas needs more discovery, or where fewer organizations are publicly active.
+
+## Step 4: Explore the broader context
+
+Ask about the city's profile and issue landscape:
+
+> **You:** What's the socioeconomic profile of Kansas City? What are the main civic issues?
+
+Claude will use `get_place_profile` and `get_place_issue_signals` to provide context.
+
+## Step 5: Follow threads
+
+Use what you've learned to go deeper:
+
+> **You:** Find organizations working on environmental justice in the broader Kansas City metro area
+
+> **You:** Are there any worker cooperatives in Kansas City?
+
+> **You:** What other entities are connected to Stand Up KC?
+
+Each question gives Claude a new angle to query Atlas, building up a layered picture of civic work in the city.
+
+## What you've accomplished
+
+In a single conversation, you've:
+- Identified 30+ people and organizations working on your issues
+- Verified entries against specific, dated sources
+- Discovered coverage gaps that might inform further research
+- Built a contextual understanding of the city's civic landscape
+
+All without opening a browser tab, scrolling through search results, or maintaining a spreadsheet.
+
+## Next steps
+
+<CardGroup cols={2}>
+
+<Card title="For journalists" icon="newspaper" href="/use-cases/journalists">
+How to use Atlas for investigative source discovery.
+</Card>
+
+<Card title="For organizers" icon="people-group" href="/use-cases/organizers">
+How to use Atlas for scoping a new city.
+</Card>
+
+<Card title="MCP tools reference" icon="wrench" href="/mcp/tools">
+All 10 Atlas tools with parameters and example prompts.
+</Card>
+
+<Card title="API quickstart" icon="code" href="/api-reference/quickstart">
+Automate research programmatically.
+</Card>
+
+</CardGroup>

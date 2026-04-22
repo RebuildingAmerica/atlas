@@ -1,0 +1,70 @@
+---
+title: "Glossary"
+description: "Definitions of Atlas-specific terms."
+---
+
+# Glossary
+
+### Autodiscovery pipeline
+
+The AI-powered system at the core of Atlas that takes a location and issue areas as input, searches public sources, extracts structured data, and produces ranked entity entries. See [How Atlas works](/how-it-works).
+
+### Coverage
+
+A measure of how many entities Atlas knows about for a given place and issue area combination. The [coverage endpoint](/api-reference/guides/places) reports entity counts and highlights gaps.
+
+### Discovery run
+
+A single execution of the autodiscovery pipeline for a specific location and set of issue areas. Discovery runs are asynchronous — you start one and check back for results. See [Discovery runs API](/api-reference/guides/discovery).
+
+### Domain
+
+A broad category that groups related issue areas. Atlas has 11 domains (e.g., "Housing and the Built Environment", "Labor and Worker Power"). Entries are not tagged with domains directly — domains exist for navigation and grouping. See [Taxonomy](/taxonomy).
+
+### Entity
+
+The central record in Atlas. Represents a person, organization, initiative, campaign, or event doing civic work in a specific place. Every entity is tagged with issue areas and backed by sources. See [Entities API](/api-reference/guides/entities).
+
+### Entity type
+
+One of five categories for entities: `person`, `organization`, `initiative`, `campaign`, or `event`.
+
+### Flag
+
+A community-submitted report that an entity or source has a problem (stale data, incorrect information, broken link). Flags can be submitted anonymously. See [Sources & flags](/api-reference/guides/sources-flags).
+
+### Gap analysis
+
+The final step of the autodiscovery pipeline that identifies what's *missing* from discovery results. Reports which issue areas and entity types are underrepresented for a location.
+
+### Issue area
+
+A specific civic topic from Atlas's taxonomy (e.g., `housing_affordability`, `union_organizing`). Entities are tagged with one or more issue areas. Atlas has 47 issue areas across 11 domains. See [Taxonomy](/taxonomy).
+
+### Issue signal
+
+A summary of which issue areas have active coverage in a place and how strong that coverage is. Retrieved via the [issue signals endpoint](/api-reference/guides/places).
+
+### MCP (Model Context Protocol)
+
+An open protocol that lets AI assistants connect to external data sources and tools. Atlas exposes an MCP server that gives assistants like Claude, Copilot, and Gemini direct access to the Atlas directory. See [MCP overview](/mcp/overview).
+
+### Place key
+
+The normalized identifier Atlas uses for geographic locations. Format: `city,state` (lowercase, hyphenated) — e.g., `kansas-city,missouri`, `boise,idaho`. State-level keys use just the state name.
+
+### Research run
+
+Another name for a [discovery run](#discovery-run). Used interchangeably in the Atlas interface.
+
+### Source
+
+A public document where Atlas found information about an entity — a news article, nonprofit listing, organizational website, research paper, etc. Every entity has at least one source. See [Sources & flags](/api-reference/guides/sources-flags).
+
+### Source attribution
+
+The design principle that every Atlas entry traces back to the public sources where the information was found. This enables verification, measures freshness, and builds trust.
+
+### Workspace
+
+Your Atlas account context. Free accounts have an individual workspace. Team accounts have a shared workspace where multiple members can collaborate on shortlists, notes, and research.

@@ -1,0 +1,133 @@
+---
+title: "Data model"
+description: "How Atlas data is structured: entities, sources, issue areas, and their relationships."
+---
+
+# Data model
+
+Atlas organizes civic research data around a few core concepts. Understanding how they relate helps you make the most of the API and interpret search results.
+
+## Core concepts
+
+```
+┌─────────────┐         ┌─────────────┐
+│   Entity    │────────▶│   Source     │
+│             │  many   │             │
+│ person,     │  to     │ article,    │
+│ org,        │  many   │ listing,    │
+│ initiative  │         │ website     │
+└──────┬──────┘         └─────────────┘
+       │
+       │ tagged with
+       ▼
+┌─────────────┐
+│ Issue Area  │
+│             │
+│ part of a   │
+│ Domain      │
+└─────────────┘
+```
+
+### Entity
+
+The central record in Atlas. Represents a person, organization, initiative, campaign, or event doing civic work.
+
+| Field | Description |
+|-------|-------------|
+| `id` | Unique identifier |
+| `type` | `person`, `organization`, `initiative`, `campaign`, or `event` |
+| `name` | Display name |
+| `description` | What this entity does (1–3 sentences) |
+| `address` | City, state, region, geo specificity |
+| `contact` | Website, email, phone, social media (when publicly available) |
+| `issue_areas` | List of issue area slugs this entity is tagged with |
+| `active` | Whether the entity is currently active |
+| `first_seen` | When Atlas first discovered this entity |
+| `last_seen` | When the most recent source was added |
+| `created_at` | Record creation timestamp |
+| `updated_at` | Last modification timestamp |
+
+### Source
+
+A public document or record where Atlas found information about an entity. Every entity has at least one source.
+
+| Field | Description |
+|-------|-------------|
+| `id` | Unique identifier |
+| `url` | Link to the original document |
+| `title` | Article or page title |
+| `publication` | Publication name (e.g., "Kansas City Star") |
+| `published_date` | When the source was published |
+| `type` | Source category (see below) |
+| `extraction_context` | The specific passage where the entity was mentioned |
+| `ingested_at` | When Atlas processed this source |
+
+**Source types:**
+
+| Type | Description |
+|------|-------------|
+| `journalism` | News articles, investigative reporting |
+| `nonprofit_listing` | Directory entries (GuideStar, etc.) |
+| `organizational_website` | Organization "about" pages, program descriptions |
+| `academic` | Research papers, policy briefs |
+| `government` | Public records, meeting minutes, council agendas |
+| `podcast` | Podcast episodes, audio interviews |
+| `video` | Documentary segments, recorded talks |
+| `social_media` | Social media posts with substantive content |
+
+### Issue area
+
+A specific civic topic from Atlas's [taxonomy](/taxonomy). Entities are tagged with one or more issue areas.
+
+| Field | Description |
+|-------|-------------|
+| `slug` | Machine-readable identifier (e.g., `housing_affordability`) |
+| `label` | Human-readable name (e.g., "Housing affordability") |
+| `description` | What this issue area covers |
+| `domain` | The parent domain this issue area belongs to |
+
+### Domain
+
+A broad category that groups related issue areas. Atlas has 11 domains containing 47 issue areas total.
+
+| Field | Description |
+|-------|-------------|
+| `slug` | Machine-readable identifier |
+| `label` | Human-readable name |
+| `issue_areas` | List of issue areas in this domain |
+
+### Discovery run
+
+A record of a pipeline execution — when someone asked Atlas to discover entities for a location and set of issues.
+
+| Field | Description |
+|-------|-------------|
+| `id` | Unique identifier |
+| `location_query` | The location that was searched |
+| `issue_areas` | Issue areas that were searched |
+| `status` | `pending`, `running`, `completed`, or `failed` |
+| `started_at` | When the run began |
+| `completed_at` | When the run finished |
+| `entries_found` | Number of entities discovered |
+| `sources_processed` | Number of sources analyzed |
+
+## Relationships
+
+- An entity can have **many sources** and a source can back **many entities** (many-to-many)
+- An entity can be tagged with **many issue areas** across **many domains** (many-to-many)
+- Each issue area belongs to exactly **one domain**
+- A discovery run produces **many entities** from **many sources**
+
+## What's next
+
+<CardGroup cols={2}>
+
+<Card title="Issue areas & domains" icon="tags" href="/taxonomy">
+The full taxonomy with all 11 domains and 47 issue areas.
+</Card>
+
+<Card title="Entities API" icon="users" href="/api-reference/guides/entities">
+Working with entity records through the API.
+</Card>
+
+</CardGroup>

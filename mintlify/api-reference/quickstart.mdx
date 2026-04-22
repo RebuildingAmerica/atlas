@@ -1,42 +1,188 @@
 ---
 title: "API quickstart"
-description: "Run, validate, and update the Atlas Mintlify API docs locally."
+description: "Make your first Atlas API call in under 5 minutes."
 ---
 
 # API quickstart
 
-The new Mintlify docs surface is repo-local and driven from the same OpenAPI artifact the rest of Atlas already uses.
+The Atlas API lets you search the civic research directory, explore places, and run discovery programmatically. This guide gets you from zero to a working API call in under 5 minutes.
 
-## Run the docs locally
+## Base URL
 
-```bash
-pnpm docs:dev
+All API requests go to:
+
+```
+https://atlas.rebuildingus.org/api
 ```
 
-This starts the Mintlify local preview from the repo root using `docs.json`.
+## Your first request
 
-## Update the API contract
+The simplest way to verify the API is reachable:
 
-```bash
-pnpm openapi
+<CodeGroup>
+
+```bash cURL
+curl https://atlas.rebuildingus.org/health
 ```
 
-That command regenerates `openapi/atlas.openapi.json` from the FastAPI app and refreshes the Mintlify-local copy at `mintlify/openapi/atlas.openapi.json`.
+```python Python
+import httpx
 
-## Validate docs before shipping
-
-```bash
-pnpm docs:validate
+response = httpx.get("https://atlas.rebuildingus.org/health")
+print(response.json())
 ```
 
-`pnpm docs:validate` covers both the Mintlify build and the OpenAPI document that powers the generated endpoint pages.
-
-## First request
-
-Once the local API is running, the simplest smoke test is the health endpoint:
-
-```bash
-curl http://api.localhost:1355/health
+```typescript TypeScript
+const response = await fetch("https://atlas.rebuildingus.org/health");
+const data = await response.json();
+console.log(data);
 ```
 
-From there, use the generated sidebar reference to explore resource families like entities, places, taxonomy, and discovery runs.
+</CodeGroup>
+
+## Search for entities
+
+Find people and organizations working on an issue in a place. This endpoint is public — no authentication required.
+
+<CodeGroup>
+
+```bash cURL
+curl "https://atlas.rebuildingus.org/api/places/kansas-city,missouri/entities?issue_area=housing"
+```
+
+```python Python
+import httpx
+
+response = httpx.get(
+    "https://atlas.rebuildingus.org/api/places/kansas-city,missouri/entities",
+    params={"issue_area": "housing"},
+)
+
+data = response.json()
+for entity in data["data"]:
+    print(f"{entity['name']} — {entity['description']}")
+```
+
+```typescript TypeScript
+const params = new URLSearchParams({ issue_area: "housing" });
+
+const response = await fetch(
+  `https://atlas.rebuildingus.org/api/places/kansas-city,missouri/entities?${params}`
+);
+
+const { data } = await response.json();
+data.forEach((entity) => {
+  console.log(`${entity.name} — ${entity.description}`);
+});
+```
+
+</CodeGroup>
+
+### Example response
+
+```json
+{
+  "data": [
+    {
+      "id": "a1b2c3d4-...",
+      "type": "organization",
+      "name": "KC Tenants",
+      "description": "Tenant organizing collective fighting for housing justice...",
+      "address": {
+        "city": "Kansas City",
+        "state": "MO"
+      },
+      "issue_areas": ["housing", "tenant_organizing"],
+      "contact": {
+        "website": "https://kctenants.org"
+      }
+    }
+  ],
+  "pagination": {
+    "total": 23,
+    "has_more": true
+  }
+}
+```
+
+## Get entity details
+
+Retrieve full details for a specific entity, including all its sources:
+
+<CodeGroup>
+
+```bash cURL
+curl https://atlas.rebuildingus.org/api/entities/{entity_id}
+```
+
+```python Python
+entity = httpx.get(
+    f"https://atlas.rebuildingus.org/api/entities/{entity_id}"
+).json()
+
+print(entity["data"]["name"])
+for source in entity["data"].get("sources", []):
+    print(f"  Source: {source['title']} ({source['publication']})")
+```
+
+</CodeGroup>
+
+## Explore issue areas
+
+Discover what issue areas Atlas tracks:
+
+```bash
+curl https://atlas.rebuildingus.org/api/issue-areas
+```
+
+Atlas organizes civic work into 11 domains and 47 issue areas. See the [taxonomy reference](/taxonomy) for the full listing.
+
+## Check place coverage
+
+See what Atlas knows about a place — and what's missing:
+
+```bash
+curl https://atlas.rebuildingus.org/api/places/kansas-city,missouri/coverage
+```
+
+The coverage endpoint returns entity counts by issue area and highlights gaps where Atlas has limited data.
+
+## Authenticate for protected endpoints
+
+To create entities, run discovery, or use workspace features, you need to authenticate. Atlas supports API keys and OAuth 2.1.
+
+The quickest way to get started:
+
+1. Sign up at [atlas.rebuildingus.org](https://atlas.rebuildingus.org)
+2. Subscribe to [Atlas Pro](/account/pricing) ($5/month)
+3. Go to **Account** > **API keys** > **Create key**
+4. Add the key to your requests:
+
+```bash
+curl -H "X-API-Key: your-api-key" \
+  https://atlas.rebuildingus.org/api/discovery-runs
+```
+
+See the full [authentication guide](/api-reference/authentication) for details on API keys, OAuth, and per-endpoint requirements.
+
+## What's next
+
+<CardGroup cols={2}>
+
+<Card title="Authentication" icon="key" href="/api-reference/authentication">
+API keys, OAuth 2.1, and which endpoints require auth.
+</Card>
+
+<Card title="API overview" icon="book" href="/api-reference/overview">
+Response format, pagination, filtering, and error handling.
+</Card>
+
+<Card title="Rate limits" icon="gauge" href="/api-reference/rate-limits">
+Usage limits by plan.
+</Card>
+
+<Card title="Connect an AI assistant" icon="robot" href="/mcp/overview">
+Use Atlas through Claude, Copilot, or Gemini instead of raw API calls.
+</Card>
+
+</CardGroup>

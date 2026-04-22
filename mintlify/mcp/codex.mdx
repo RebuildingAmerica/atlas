@@ -1,0 +1,46 @@
+---
+title: "Codex CLI"
+description: "Connect Atlas to OpenAI's Codex CLI for AI-powered civic research."
+---
+
+# Connect Atlas to Codex CLI
+
+OpenAI's Codex CLI uses TOML configuration and has an explicit OAuth login command.
+
+## Add the server
+
+Edit `~/.codex/config.toml` (or `.codex/config.toml` in your project root):
+
+```toml
+[mcp_servers.atlas]
+url = "https://atlas.rebuildingus.org/mcp"
+```
+
+## Authorize
+
+Run the OAuth login command to open a browser flow:
+
+```bash
+codex mcp login atlas
+```
+
+Codex starts a local callback server, opens your browser, and stores the tokens securely. Subsequent sessions reuse the stored credentials automatically.
+
+## Requirements
+
+- Codex CLI (latest version)
+- Atlas Pro or Team plan — [see pricing](/account/pricing)
+
+## Next steps
+
+<CardGroup cols={2}>
+
+<Card title="Available tools" icon="wrench" href="/mcp/tools">
+All 10 Atlas MCP tools with parameters and examples.
+</Card>
+
+<Card title="Tutorial: Research a city" icon="map" href="/mcp/tutorials/research-city">
+Walk through a complete research session.
+</Card>
+
+</CardGroup>

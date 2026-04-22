@@ -1,0 +1,60 @@
+---
+title: "Claude Code"
+description: "Connect Atlas to Claude Code for terminal-based civic research."
+---
+
+# Connect Atlas to Claude Code
+
+Claude Code supports remote MCP servers via the `claude mcp add` command.
+
+## Add the server
+
+```bash
+claude mcp add --transport http atlas https://atlas.rebuildingus.org/mcp
+```
+
+This registers Atlas as an MCP server for the current project. To make it available across all projects, add `--scope user`:
+
+```bash
+claude mcp add --transport http --scope user atlas https://atlas.rebuildingus.org/mcp
+```
+
+## Authorize
+
+Run `/mcp` inside a Claude Code session to trigger the OAuth flow. A browser window will open for you to sign in and approve access. Tokens are stored securely and refreshed automatically.
+
+## Share with your team
+
+To share the Atlas connection with collaborators, add it to your project's `.mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "atlas": {
+      "type": "http",
+      "url": "https://atlas.rebuildingus.org/mcp"
+    }
+  }
+}
+```
+
+Commit this file to version control. Each collaborator will complete their own OAuth flow on first use.
+
+## Requirements
+
+- Claude Code (latest version)
+- Atlas Pro or Team plan — [see pricing](/account/pricing)
+
+## Next steps
+
+<CardGroup cols={2}>
+
+<Card title="Available tools" icon="wrench" href="/mcp/tools">
+See all 10 Atlas MCP tools with parameters and example prompts.
+</Card>
+
+<Card title="Build an agent workflow" icon="robot" href="/mcp/tutorials/agent-workflow">
+Use Claude Code to systematically research multiple cities.
+</Card>
+
+</CardGroup>

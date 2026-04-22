@@ -1,0 +1,118 @@
+---
+title: "What is Atlas?"
+description: "A source-linked civic research directory powered by AI-driven autodiscovery."
+---
+
+# What is Atlas?
+
+Atlas is a national directory of people, organizations, and initiatives working on the issues that define this moment in American life — housing, healthcare, climate, democracy, labor, education, justice, infrastructure, and the connective tissue between them.
+
+Every entry is tied to a specific place and tagged with the issues it connects to. Every entry traces back to the public sources where the information came from. Atlas doesn't assert — it documents, links, and organizes what's already in the public record.
+
+## The problem
+
+People across the United States are doing serious work to rebuild civic life: organizing tenants, building worker power, expanding healthcare access, advocating for transit, protecting water, strengthening democracy. The problem is not that this work doesn't exist. The problem is that it's genuinely hard to find.
+
+Important people and organizations are often visible only within their immediate local context. Their work is scattered across local news articles, nonprofit websites, podcast interviews, city council records, and social media. If you want to find them, there is no single place to go. You have to piece the picture together yourself.
+
+Atlas is that single place.
+
+## What a strong entry looks like
+
+Every entry in Atlas represents a person, organization, initiative, campaign, or event tied to a place and a set of issues.
+
+<Card title="Strong entry">
+**Maria Gonzalez** — founder of Prairie Workers Cooperative in Garden City, KS. A worker-owned cleaning cooperative started after meatpacking plant automation displaced 200+ workers. The co-op now employs 45 people.
+
+*Sources: Wichita Eagle (Jan 2026), KMUW (Dec 2025)*
+</Card>
+
+Atlas is designed to surface entries like this — specific people doing specific things in specific places — by prioritizing sources that contain that level of detail: local journalism, longform features, podcast interviews, organizational profiles with program-level descriptions.
+
+## How Atlas works
+
+At its core is an **autodiscovery engine**: a pipeline that takes a location and a set of issues as input and systematically finds who's doing what there.
+
+<Steps>
+
+<Step title="You specify a location and issue areas">
+For example: "Kansas City" + transit, housing, worker power.
+</Step>
+
+<Step title="Atlas generates targeted searches">
+The system creates dozens of search queries across source types — local news, nonprofit directories, organizational websites, academic research, and civic records.
+</Step>
+
+<Step title="AI reads each source and extracts structured data">
+Names, organizations, what they do, where, which issues they connect to, and any public contact information.
+</Step>
+
+<Step title="Duplicates are detected and merged">
+The same person appearing in three different articles becomes one entry with three source links.
+</Step>
+
+<Step title="Results are ranked">
+By source density (how many independent sources mention them), recency, and contact surface completeness.
+</Step>
+
+<Step title="Gaps are reported">
+"Strong coverage on transit and housing for KC. Zero leads for harm reduction, environmental justice, and broadband." You decide what to do about it.
+</Step>
+
+</Steps>
+
+## Three ways to use Atlas
+
+<CardGroup cols={3}>
+
+<Card title="Browse the directory" icon="magnifying-glass">
+Search and filter the public directory by place, issue area, or keyword. Every entry links back to its sources so you can verify what you find.
+</Card>
+
+<Card title="Connect an AI assistant" icon="robot">
+Use Atlas through Claude, Copilot, Gemini, or any MCP-compatible AI assistant. Ask questions in natural language instead of clicking through a website.
+</Card>
+
+<Card title="Build on the API" icon="code">
+Atlas exposes a REST API for all directory data. Embed entries in your own site, build civic dashboards, or extend the pipeline with new source types.
+</Card>
+
+</CardGroup>
+
+## Who Atlas is for
+
+**Researchers and organizers.** Go from "I'm heading to Kansas City next week" to "here are 40 source-linked leads organized by issue area, with contact surfaces and gap analysis" in under an hour. Whether you're a journalist finding sources, an advocacy group scoping a new city, or a documentary production team looking for people to talk to — Atlas turns location-based civic research from days of manual searching into a structured, repeatable process.
+
+**The public.** A searchable, browsable directory that anyone can use. Someone reads about transit issues in Kansas City, opens Atlas, and finds the people and organizations doing that work. An organizer in Boise looks up who's working on housing affordability in their city.
+
+**Developers and integrators.** Build on top of the Atlas API — embed directory data in your own site, connect it to other civic tech tools, or extend the pipeline with new source types and extraction strategies.
+
+## Why Atlas exists
+
+Atlas is maintained by [The Rebuilding America Project](https://rebuildingus.org) because it supports the broader mission of surfacing the people, organizations, and ideas rebuilding public life across the country.
+
+Atlas starts from a simple belief: if the public record already contains evidence of who is rebuilding a place, we should be able to discover, organize, and revisit that information without redoing the same manual search every time.
+
+Atlas is open source and designed to stand on its own as a public resource. Its value is not limited to one organization or one media effort — it should be useful even to people who have never heard of Rebuilding America.
+
+## What's next
+
+<CardGroup cols={2}>
+
+<Card title="See it in action" icon="play" href="/quickstart-browse">
+Walk through the public directory in 5 minutes.
+</Card>
+
+<Card title="Connect an AI assistant" icon="robot" href="/mcp/overview">
+Set up Atlas with Claude, Copilot, or another MCP client.
+</Card>
+
+<Card title="Explore the API" icon="code" href="/api-reference/quickstart">
+Make your first API call in under 5 minutes.
+</Card>
+
+<Card title="Plans & pricing" icon="credit-card" href="/account/pricing">
+See what's free and what's included in each plan.
+</Card>
+
+</CardGroup>

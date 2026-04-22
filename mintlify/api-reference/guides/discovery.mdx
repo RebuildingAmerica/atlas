@@ -1,0 +1,154 @@
+---
+title: "Discovery runs"
+description: "Running the Atlas autodiscovery pipeline programmatically."
+---
+
+# Discovery runs
+
+Discovery runs are how you trigger Atlas's autodiscovery pipeline through the API. You provide a location and issue areas, and Atlas searches public sources, extracts structured data, and produces ranked results.
+
+<Note>
+Discovery runs require authentication and an Atlas Pro or Team plan. See [authentication](/api-reference/authentication).
+</Note>
+
+## Start a discovery run
+
+```bash
+POST /api/discovery-runs
+```
+
+Discovery runs are **asynchronous** — the API returns `202 Accepted` immediately with a run ID. The pipeline executes in the background.
+
+<CodeGroup>
+
+```bash cURL
+curl -X POST https://atlas.rebuildingus.org/api/discovery-runs \
+  -H "X-API-Key: your-api-key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "location": "Kansas City, MO",
+    "issue_areas": ["housing_affordability", "union_organizing"]
+  }'
+```
+
+```python Python
+import httpx
+
+response = httpx.post(
+    "https://atlas.rebuildingus.org/api/discovery-runs",
+    headers={"X-API-Key": "your-api-key"},
+    json={
+        "location": "Kansas City, MO",
+        "issue_areas": ["housing_affordability", "union_organizing"],
+    },
+)
+
+run = response.json()["data"]
+print(f"Run started: {run['id']} — status: {run['status']}")
+```
+
+</CodeGroup>
+
+**Response (202 Accepted):**
+
+```json
+{
+  "data": {
+    "id": "run-abc123",
+    "location_query": "Kansas City, MO",
+    "issue_areas": ["housing_affordability", "union_organizing"],
+    "status": "pending",
+    "started_at": "2026-04-22T15:00:00Z",
+    "completed_at": null,
+    "entries_found": 0,
+    "sources_processed": 0
+  }
+}
+```
+
+## Check run status
+
+```bash
+GET /api/discovery-runs/{run_id}
+```
+
+Poll this endpoint to check progress:
+
+```bash
+curl -H "X-API-Key: your-api-key" \
+  https://atlas.rebuildingus.org/api/discovery-runs/run-abc123
+```
+
+**Run statuses:**
+
+| Status | Meaning |
+|--------|---------|
+| `pending` | Run created, waiting to start |
+| `running` | Pipeline is executing |
+| `completed` | Pipeline finished successfully |
+| `failed` | Pipeline encountered an error |
+
+When `status` is `completed`, `entries_found` and `sources_processed` show the results.
+
+## List discovery runs
+
+```bash
+GET /api/discovery-runs
+```
+
+Returns your discovery run history:
+
+```bash
+curl -H "X-API-Key: your-api-key" \
+  https://atlas.rebuildingus.org/api/discovery-runs
+```
+
+## Polling pattern
+
+A simple polling loop to wait for completion:
+
+```python
+import httpx
+import time
+
+client = httpx.Client(
+    base_url="https://atlas.rebuildingus.org/api",
+    headers={"X-API-Key": "your-api-key"},
+)
+
+# Start the run
+run = client.post("/discovery-runs", json={
+    "location": "Kansas City, MO",
+    "issue_areas": ["housing_affordability"],
+}).json()["data"]
+
+# Poll until done
+while run["status"] in ("pending", "running"):
+    time.sleep(10)
+    run = client.get(f"/discovery-runs/{run['id']}").json()["data"]
+    print(f"Status: {run['status']}")
+
+print(f"Done! Found {run['entries_found']} entries from {run['sources_processed']} sources.")
+```
+
+## Rate limits
+
+| Plan | Research runs |
+|------|--------------|
+| Free | 2/month |
+| Pro | Unlimited |
+| Team | Unlimited |
+
+## What's next
+
+<CardGroup cols={2}>
+
+<Card title="Entities" icon="users" href="/api-reference/guides/entities">
+Query the entities that discovery found.
+</Card>
+
+<Card title="How Atlas works" icon="gears" href="/how-it-works">
+Understand the 6-step pipeline in detail.
+</Card>
+
+</CardGroup>

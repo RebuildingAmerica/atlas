@@ -1,0 +1,86 @@
+---
+title: "Troubleshooting"
+description: "Common issues and how to resolve them."
+---
+
+# Troubleshooting
+
+## MCP connection issues
+
+### "Connection failed" or timeout
+
+1. Check that `https://atlas.rebuildingus.org/mcp` is reachable from your network
+2. If you're behind a corporate proxy, ensure it allows outbound HTTPS to `atlas.rebuildingus.org`
+3. Verify your internet connection is stable
+
+### OAuth window doesn't open
+
+- Make sure your default browser is set correctly in your OS settings
+- Some terminal-based clients need a working `open` / `xdg-open` command
+- Try manually navigating to the URL printed in the terminal
+
+### "Unauthorized" after connecting
+
+Your OAuth token may have expired. Disconnect the Atlas server from your MCP client and reconnect to trigger a fresh authorization flow.
+
+### Tools don't appear after connecting
+
+- Restart your MCP client after connecting
+- Some clients (Claude Desktop, VS Code) require a window reload to discover newly available tools
+- Verify the connection status in your client's MCP settings
+
+### "Transport not supported" or SSE errors
+
+Atlas uses **Streamable HTTP** transport only — SSE (Server-Sent Events) is not supported. Make sure your MCP client is configured with `"type": "http"`, not `"type": "sse"`.
+
+## API issues
+
+### 401 Unauthorized
+
+- **Missing key:** Add `X-API-Key: your-key` header to the request
+- **Invalid key:** Verify the key in your account settings — it may have been revoked
+- **Wrong header:** The header is `X-API-Key`, not `Authorization` (unless using OAuth)
+
+### 429 Rate Limited
+
+You've exceeded your plan's request limit. Check these headers in the response:
+- `X-RateLimit-Remaining` — how many requests you have left
+- `X-RateLimit-Reset` — when the window resets (Unix timestamp)
+
+Options:
+- Wait for the rate limit to reset
+- Upgrade to [Atlas Pro or Team](/account/pricing) for higher limits
+- Cache API responses to reduce requests
+
+### 404 Not Found for an entity
+
+Entity IDs are UUIDs. Common issues:
+- Truncated ID (check you're using the full UUID)
+- The entity was deleted or merged with another
+- Typo in the place key format (use `kansas-city,missouri`, not `Kansas City, MO`)
+
+### Empty results
+
+- Check your query parameters — misspelled issue area slugs return no matches
+- Use `GET /api/issue-areas` to see valid slugs
+- Try a broader search (remove filters one at a time)
+
+## Account issues
+
+### Can't sign in
+
+Atlas uses magic links (email sign-in). Check:
+- Your email inbox and spam folder
+- That you're using the same email you signed up with
+- Email delivery may take a few minutes
+
+### API key not working
+
+- Keys are tied to your account — make sure you're using a key from the right account
+- Keys can be revoked — check your account settings
+- Free accounts don't have API key access — you need [Atlas Pro or Team](/account/pricing)
+
+## Still stuck?
+
+- Check the [GitHub repository](https://github.com/RebuildingAmerica/atlas) for known issues
+- Open an issue if you've found a bug

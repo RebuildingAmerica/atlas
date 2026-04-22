@@ -1,0 +1,88 @@
+---
+title: "For developers"
+description: "How developers and integrators build on top of Atlas."
+---
+
+# Atlas for developers
+
+Atlas exposes a REST API and an MCP server for building civic tech applications, research tools, and integrations.
+
+## What you can build
+
+- **Civic dashboards** — Embed Atlas entity data in geographic visualizations
+- **Research automation** — Script multi-city discovery runs and compile results
+- **Directory integrations** — Pull Atlas data into your own directory or CMS
+- **Monitoring tools** — Watch for new entities in specific places and issue areas
+- **AI-powered research** — Build custom agents that use Atlas MCP tools
+
+## Getting started
+
+<CardGroup cols={2}>
+
+<Card title="API quickstart" icon="rocket" href="/api-reference/quickstart">
+Make your first API call in under 5 minutes.
+</Card>
+
+<Card title="Authentication" icon="key" href="/api-reference/authentication">
+Set up API keys or OAuth 2.1 access.
+</Card>
+
+<Card title="MCP tools" icon="wrench" href="/mcp/tools">
+Use Atlas through AI assistants and agents.
+</Card>
+
+<Card title="Data model" icon="database" href="/resources/data-model">
+Understand how Atlas data is structured.
+</Card>
+
+</CardGroup>
+
+## Key integration patterns
+
+### Read-only public access
+
+No authentication needed for most read endpoints. Good for embedding Atlas data in public-facing applications:
+
+```bash
+# Search entities
+curl "https://atlas.rebuildingus.org/api/places/kansas-city,missouri/entities?issue_area=housing_affordability"
+
+# Get place coverage
+curl "https://atlas.rebuildingus.org/api/places/kansas-city,missouri/coverage"
+
+# Browse the taxonomy
+curl "https://atlas.rebuildingus.org/api/issue-areas"
+```
+
+Free tier: 100 requests/hour.
+
+### Authenticated access
+
+API keys unlock higher rate limits and protected endpoints (discovery runs, entity creation). Available on [Atlas Pro](/account/pricing) ($5/month):
+
+```bash
+curl -H "X-API-Key: your-key" \
+  https://atlas.rebuildingus.org/api/discovery-runs
+```
+
+### MCP for agents
+
+Build AI agents that use Atlas MCP tools. Point any MCP-compatible agent framework at `https://atlas.rebuildingus.org/mcp`. See [Other MCP clients](/mcp/other-clients) for OAuth details.
+
+## Self-hosting
+
+If you need full control, Atlas is open source and can be self-hosted. See the [self-hosting guide](/self-hosting/guide).
+
+## What's next
+
+<CardGroup cols={2}>
+
+<Card title="API overview" icon="book" href="/api-reference/overview">
+Response format, pagination, filtering, and errors.
+</Card>
+
+<Card title="Rate limits" icon="gauge" href="/api-reference/rate-limits">
+Usage limits by plan.
+</Card>
+
+</CardGroup>

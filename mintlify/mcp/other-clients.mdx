@@ -1,0 +1,64 @@
+---
+title: "Other MCP clients"
+description: "Connect any MCP-compatible client to Atlas using OAuth 2.1 and Streamable HTTP."
+---
+
+# Connect any MCP client to Atlas
+
+Any MCP client that supports Streamable HTTP transport and OAuth 2.1 can connect to Atlas.
+
+## Server URL
+
+```
+https://atlas.rebuildingus.org/mcp
+```
+
+## OAuth 2.1 details
+
+Atlas implements standard OAuth 2.1. Most clients that support remote MCP servers will handle the flow automatically using these discovery endpoints:
+
+| Endpoint | URL |
+|----------|-----|
+| OIDC discovery | `https://atlas.rebuildingus.org/api/auth/.well-known/openid-configuration` |
+| Dynamic client registration | `https://atlas.rebuildingus.org/api/auth/oauth2/register` |
+| Protected resource metadata | `https://atlas.rebuildingus.org/.well-known/oauth-protected-resource` |
+| JWKS | `https://atlas.rebuildingus.org/api/auth/jwks` |
+
+**Requirements:**
+- **PKCE** is required for all authorization flows
+- **Streamable HTTP** transport (SSE is not supported)
+- **Dynamic client registration** — no pre-registration needed
+- **Algorithms**: RS256, ES256
+
+## Manual configuration
+
+If your client requires explicit OAuth parameters rather than auto-discovery, you can retrieve them from the OIDC discovery endpoint:
+
+```bash
+curl https://atlas.rebuildingus.org/api/auth/.well-known/openid-configuration
+```
+
+## Available scopes
+
+| Scope | What it allows |
+|-------|----------------|
+| `openid` | Basic identity information |
+| `profile` | User profile details |
+| `email` | Email address |
+| `discovery:read` | Read discovery runs and results |
+| `discovery:write` | Create and manage discovery runs |
+| `entities:write` | Create and update catalog entries |
+
+## Requirements
+
+- Atlas Pro or Team plan — [see pricing](/account/pricing)
+- An MCP client that supports Streamable HTTP transport and OAuth 2.1
+
+## Need help?
+
+If your MCP client doesn't connect, check:
+1. The client supports **Streamable HTTP** transport (not just SSE or stdio)
+2. The client supports **OAuth 2.1** with PKCE
+3. The server URL is exactly `https://atlas.rebuildingus.org/mcp`
+
+See [Troubleshooting](/resources/troubleshooting) for common issues.

@@ -1,0 +1,64 @@
+---
+title: "VS Code / Copilot"
+description: "Connect Atlas to VS Code with GitHub Copilot for in-editor civic research."
+---
+
+# Connect Atlas to VS Code with Copilot
+
+VS Code supports remote MCP servers for GitHub Copilot with automatic OAuth discovery.
+
+## Quick install
+
+[Install Atlas in VS Code](vscode:mcp/install?%7B%22name%22%3A%22atlas%22%2C%22type%22%3A%22http%22%2C%22url%22%3A%22https%3A%2F%2Fatlas.rebuildingus.org%2Fmcp%22%7D)
+
+Or configure manually using one of the options below.
+
+## Option A: Workspace config
+
+Create `.vscode/mcp.json` in your project root:
+
+```json
+{
+  "servers": {
+    "atlas": {
+      "type": "http",
+      "url": "https://atlas.rebuildingus.org/mcp"
+    }
+  }
+}
+```
+
+This makes Atlas available to everyone who opens the project in VS Code.
+
+## Option B: User settings
+
+Open the Command Palette (`Cmd+Shift+P` / `Ctrl+Shift+P`), search for **MCP: Add Server**, and enter the URL when prompted:
+
+```
+https://atlas.rebuildingus.org/mcp
+```
+
+This makes Atlas available across all your VS Code projects.
+
+## Authorize
+
+The first time Copilot connects to Atlas, VS Code will open a browser window for you to sign in and approve access. This happens automatically — no extra auth configuration is needed.
+
+## Requirements
+
+- VS Code with GitHub Copilot extension
+- Atlas Pro or Team plan — [see pricing](/account/pricing)
+
+## Next steps
+
+<CardGroup cols={2}>
+
+<Card title="Available tools" icon="wrench" href="/mcp/tools">
+See all 10 Atlas MCP tools with parameters and example prompts.
+</Card>
+
+<Card title="Tutorial: Research a city" icon="map" href="/mcp/tutorials/research-city">
+Walk through a complete research session.
+</Card>
+
+</CardGroup>

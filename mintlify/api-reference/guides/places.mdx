@@ -1,0 +1,137 @@
+---
+title: "Places"
+description: "Working with Atlas places: profiles, entities, coverage, issue signals, and sources."
+---
+
+# Places
+
+Places are the geographic lens through which Atlas organizes civic work. Every entity is tied to a place, and Atlas provides rich place-level data including demographic profiles, coverage analysis, and issue signals.
+
+## Place keys
+
+Atlas identifies places with normalized keys in the format `city,state` (lowercase, hyphenated):
+
+| Place | Key |
+|-------|-----|
+| Kansas City, Missouri | `kansas-city,missouri` |
+| Boise, Idaho | `boise,idaho` |
+| Garden City, Kansas | `garden-city,kansas` |
+
+State-level queries use just the state name: `kansas`, `idaho`, `missouri`.
+
+## Get place identity
+
+```bash
+GET /api/places/{place_key}
+```
+
+Returns the canonical place record with normalized naming.
+
+```bash
+curl https://atlas.rebuildingus.org/api/places/kansas-city,missouri
+```
+
+## List entities in a place
+
+```bash
+GET /api/places/{place_key}/entities
+```
+
+This is the most common starting point for research — "who's working on X in this city?"
+
+**Query parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `issue_area` | string | Filter by issue area slug (repeatable) |
+| `entity_type` | string | Filter by type |
+| `text` | string | Full-text search within this place |
+| `limit` | integer | Results per page |
+| `cursor` | string | Pagination cursor |
+
+**Example:** Find all housing-related entities in Kansas City:
+
+```bash
+curl "https://atlas.rebuildingus.org/api/places/kansas-city,missouri/entities?issue_area=housing_affordability"
+```
+
+## Get place coverage
+
+```bash
+GET /api/places/{place_key}/coverage
+```
+
+Returns entity counts by issue area and highlights gaps. This is the endpoint that powers Atlas's gap analysis — showing you not just what Atlas found, but what's missing.
+
+```bash
+curl https://atlas.rebuildingus.org/api/places/kansas-city,missouri/coverage
+```
+
+**Example response:**
+
+```json
+{
+  "data": {
+    "place_key": "kansas-city,missouri",
+    "total_entities": 87,
+    "by_issue_area": {
+      "housing_affordability": 18,
+      "union_organizing": 9,
+      "local_government_and_civic_engagement": 7,
+      "environmental_justice_and_pollution": 2,
+      "broadband_access_and_digital_divide": 1,
+      "restorative_justice": 0
+    }
+  }
+}
+```
+
+## Get place profile
+
+```bash
+GET /api/places/{place_key}/profile
+```
+
+Returns demographic and socioeconomic context for a place — population, income, demographics, and other contextual data that helps researchers understand the community.
+
+```bash
+curl https://atlas.rebuildingus.org/api/places/kansas-city,missouri/profile
+```
+
+## Get issue signals
+
+```bash
+GET /api/places/{place_key}/issue-signals
+```
+
+Returns an issue area summary for a place — which issues have active coverage and how strong that coverage is.
+
+```bash
+curl https://atlas.rebuildingus.org/api/places/kansas-city,missouri/issue-signals
+```
+
+## List sources for a place
+
+```bash
+GET /api/places/{place_key}/sources
+```
+
+Returns all sources associated with entities in this place.
+
+```bash
+curl https://atlas.rebuildingus.org/api/places/kansas-city,missouri/sources
+```
+
+## What's next
+
+<CardGroup cols={2}>
+
+<Card title="Entities" icon="users" href="/api-reference/guides/entities">
+Working with individual entity records.
+</Card>
+
+<Card title="Discovery runs" icon="rocket" href="/api-reference/guides/discovery">
+Run the autodiscovery pipeline programmatically.
+</Card>
+
+</CardGroup>

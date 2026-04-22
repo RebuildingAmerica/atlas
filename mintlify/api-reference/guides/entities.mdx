@@ -1,0 +1,159 @@
+---
+title: "Entities"
+description: "Working with Atlas entities: searching, filtering, creating, and understanding source linkage."
+---
+
+# Entities
+
+Entities are the core resource in Atlas. Each entity represents a person, organization, initiative, campaign, or event working on civic issues in a specific place.
+
+## List and search entities
+
+```bash
+GET /api/entities
+```
+
+**Query parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `text` | string | Full-text search |
+| `issue_area` | string | Filter by issue area slug (repeatable) |
+| `entity_type` | string | Filter by type: `person`, `organization`, `initiative`, `campaign`, `event` |
+| `source_type` | string | Filter by source type |
+| `limit` | integer | Results per page (1–100, default 20) |
+| `cursor` | string | Pagination cursor |
+
+**Example:** Find housing organizations in Missouri:
+
+<CodeGroup>
+
+```bash cURL
+curl "https://atlas.rebuildingus.org/api/entities?text=housing&entity_type=organization"
+```
+
+```python Python
+import httpx
+
+response = httpx.get(
+    "https://atlas.rebuildingus.org/api/entities",
+    params={
+        "text": "housing",
+        "entity_type": "organization",
+    },
+)
+
+for entity in response.json()["data"]:
+    print(f"{entity['name']} — {entity['address']['city']}, {entity['address']['state']}")
+```
+
+</CodeGroup>
+
+## Get entity by place
+
+A more natural way to search — start with a place, then filter:
+
+```bash
+GET /api/places/{place_key}/entities
+```
+
+```bash
+curl "https://atlas.rebuildingus.org/api/places/kansas-city,missouri/entities?issue_area=housing_affordability"
+```
+
+Place keys use the format `city,state` (lowercase, hyphenated): `kansas-city,missouri`, `boise,idaho`, `garden-city,kansas`.
+
+## Get a single entity
+
+```bash
+GET /api/entities/{entity_id}
+```
+
+Returns the full entity record including address, contact information, issue areas, and metadata.
+
+## Get entity sources
+
+```bash
+GET /api/entities/{entity_id}/sources
+```
+
+Returns all sources backing an entity — the articles, listings, and records where Atlas found information about this entity.
+
+**Example response:**
+
+```json
+{
+  "data": [
+    {
+      "id": "src-123",
+      "url": "https://kcstar.com/article/...",
+      "title": "KC Tenants escalates fight against corporate landlords",
+      "publication": "Kansas City Star",
+      "published_date": "2026-03-15",
+      "type": "journalism",
+      "extraction_context": "KC Tenants, a citywide tenant union, announced..."
+    }
+  ]
+}
+```
+
+## Create an entity <sup>auth required</sup>
+
+```bash
+POST /api/entities
+```
+
+Requires authentication via API key or OAuth. See [authentication](/api-reference/authentication).
+
+```bash
+curl -X POST https://atlas.rebuildingus.org/api/entities \
+  -H "X-API-Key: your-api-key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "type": "organization",
+    "name": "Prairie Workers Cooperative",
+    "description": "Worker-owned cleaning cooperative in Garden City, KS",
+    "city": "Garden City",
+    "state": "KS",
+    "issue_areas": ["worker_cooperatives", "just_transition"]
+  }'
+```
+
+## Update an entity <sup>auth required</sup>
+
+```bash
+PATCH /api/entities/{entity_id}
+```
+
+Send only the fields you want to update:
+
+```bash
+curl -X PATCH https://atlas.rebuildingus.org/api/entities/{entity_id} \
+  -H "X-API-Key: your-api-key" \
+  -H "Content-Type: application/json" \
+  -d '{"description": "Updated description"}'
+```
+
+## Entity types
+
+| Type | Description |
+|------|-------------|
+| `person` | An individual doing civic work |
+| `organization` | A nonprofit, advocacy group, cooperative, or other org |
+| `initiative` | A program, project, or ongoing effort |
+| `campaign` | A time-bound advocacy or organizing campaign |
+| `event` | A civic event, summit, or gathering |
+
+## What's next
+
+<CardGroup cols={2}>
+
+<Card title="Places" icon="map" href="/api-reference/guides/places">
+Place-first queries, profiles, and coverage data.
+</Card>
+
+<Card title="Taxonomy" icon="tags" href="/api-reference/guides/taxonomy">
+Understanding domains and issue areas programmatically.
+</Card>
+
+</CardGroup>

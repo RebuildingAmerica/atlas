@@ -1,0 +1,66 @@
+---
+title: "Trust & provenance"
+description: "How Atlas ensures data quality through source attribution, freshness signals, and community corrections."
+---
+
+# Trust & provenance
+
+Atlas is designed around a simple principle: **every claim traces back to a public source**. This is not an afterthought — it's the core mechanism that makes Atlas trustworthy.
+
+## Source attribution
+
+Every entity in Atlas is backed by at least one source — the news article, nonprofit listing, organizational website, or public record where Atlas found the information. When you look at an entry, you see:
+
+- **What** was published (title, publication)
+- **When** it was published (date)
+- **Where** to verify it (URL)
+- **What was said** (extraction context — the specific passage that mentioned this entity)
+
+This means you never have to take Atlas at its word. You can click through to the original source and verify.
+
+## Freshness signals
+
+Source dates tell you how current the information is:
+
+- An entity backed by a March 2026 article is more actionable than one last mentioned in 2023
+- `first_seen` tells you when Atlas first discovered an entity
+- `last_seen` tells you when the most recent source was added
+
+When source dates are old, it may mean the entity is no longer active — or it may mean Atlas hasn't run recent discovery in that area.
+
+## Multi-source corroboration
+
+Entities that appear in multiple independent sources earn higher confidence:
+
+- 1 source: Atlas found a mention, but it's a single data point
+- 3+ sources: Multiple independent publications confirm this entity's work
+- The [ranking system](/how-it-works) scores entities higher when they have more independent sources
+
+## Community corrections
+
+Atlas provides anonymous flagging to help maintain data quality:
+
+- **Entity flags** — report that an entry is stale, incorrect, or inappropriate
+- **Source flags** — report that a source link is broken or misattributed
+
+Flags don't require an account. They're reviewed by Atlas maintainers and used to update or remove entries. See [Sources & flags](/api-reference/guides/sources-flags) for the API.
+
+## What Atlas doesn't do
+
+- Atlas does not independently verify claims made in sources
+- Atlas does not rank entities by "importance" or "impact" — ranking is based on source density, recency, and specificity
+- Atlas does not assert opinions — it documents, links, and organizes what's already in the public record
+
+## What's next
+
+<CardGroup cols={2}>
+
+<Card title="How Atlas works" icon="gears" href="/how-it-works">
+The autodiscovery pipeline and ranking system.
+</Card>
+
+<Card title="Data model" icon="database" href="/resources/data-model">
+How entities, sources, and issue areas relate.
+</Card>
+
+</CardGroup>

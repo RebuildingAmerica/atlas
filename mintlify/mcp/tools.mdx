@@ -1,0 +1,170 @@
+---
+title: "Available tools"
+description: "Reference for all 10 Atlas MCP tools with parameters and example prompts."
+---
+
+# Available MCP tools
+
+Once you've connected an AI assistant to Atlas ([setup guide](/mcp/overview)), these tools are available in your conversations.
+
+You don't need to call these tools directly — your AI assistant uses them automatically when you ask relevant questions. The reference below helps you understand what's possible and craft more effective prompts.
+
+## Entity tools
+
+### search_entities
+
+Search Atlas entities by place, topic, or free text.
+
+**Parameters:**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `place_key` | string | Normalized place key (e.g., `kansas-city,missouri`) |
+| `issue_area` | string[] | Issue area slugs to filter by |
+| `text` | string | Free-text search query |
+| `entity_type` | string | Filter by type: `person`, `organization`, `initiative`, `campaign`, `event` |
+| `limit` | integer | Max results (default: 20) |
+
+**Example prompts:**
+- "Find labor organizers in Detroit"
+- "Search for organizations working on housing affordability in Kansas City"
+- "Who's working on climate issues in rural Montana?"
+
+### get_entity
+
+Get full details for a specific entity by ID.
+
+**Parameters:**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `entity_id` | string | The entity's unique ID |
+
+**Example prompts:**
+- "Tell me more about that first organization"
+- "Get the full details for Prairie Workers Cooperative"
+
+### get_entity_sources
+
+Get all sources backing a specific entity.
+
+**Parameters:**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `entity_id` | string | The entity's unique ID |
+
+**Example prompts:**
+- "What are the sources for KC Tenants?"
+- "Show me where this information came from"
+
+### get_related_entities
+
+Find entities related through Atlas relationships.
+
+**Parameters:**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `entity_id` | string | The entity's unique ID |
+
+**Example prompts:**
+- "Who else is connected to this organization?"
+- "What other entities are related to Maria Gonzalez?"
+
+## Source tools
+
+### search_sources
+
+Search across all Atlas sources.
+
+**Parameters:**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `text` | string | Free-text search query |
+| `source_type` | string | Filter by type: `journalism`, `nonprofit_listing`, `organizational_website`, etc. |
+| `limit` | integer | Max results (default: 20) |
+
+**Example prompts:**
+- "Find news articles about tenant organizing in Kansas City"
+- "Search for nonprofit listings related to environmental justice"
+
+## Place tools
+
+### get_place_entities
+
+Get entities for a specific place. Alias for `search_entities` with a place filter.
+
+**Parameters:**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `place_key` | string | Normalized place key (e.g., `kansas-city,missouri`) |
+| `issue_area` | string[] | Issue area slugs to filter by |
+| `limit` | integer | Max results |
+
+**Example prompts:**
+- "What civic organizations are active in Boise, Idaho?"
+- "Show me all entities in Kansas City working on housing"
+
+### get_place_profile
+
+Get demographic and socioeconomic context for a place.
+
+**Parameters:**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `place_key` | string | Normalized place key |
+
+**Example prompts:**
+- "What's the demographic profile of Garden City, Kansas?"
+- "Tell me about the socioeconomic context of this city"
+
+### get_place_coverage
+
+Get coverage gaps and entity counts for a place.
+
+**Parameters:**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `place_key` | string | Normalized place key |
+
+**Example prompts:**
+- "What issue areas are underrepresented in Kansas City?"
+- "Where are the coverage gaps in Boise?"
+- "Which issues have the most entities in Detroit?"
+
+### get_place_issue_signals
+
+Get an issue area summary for a place.
+
+**Parameters:**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `place_key` | string | Normalized place key |
+
+**Example prompts:**
+- "What are the main civic issues in Kansas City?"
+- "Give me an issue area breakdown for this city"
+
+## Taxonomy tools
+
+### resolve_issue_areas
+
+Map natural language to Atlas issue area slugs.
+
+**Parameters:**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `query` | string | Natural language description of issues |
+
+**Example prompts:**
+- "What Atlas issue areas relate to affordable childcare?"
+- "Map 'clean water' to Atlas categories"
+- "What issue areas cover worker rights?"
+
+## Place key format
+
+Atlas uses normalized place keys in the format `city,state` (lowercase, hyphenated):
+- `kansas-city,missouri`
+- `boise,idaho`
+- `garden-city,kansas`
+
+State-level queries use just the state name: `kansas`, `idaho`.
+
+Your AI assistant handles this normalization automatically — you can say "Kansas City" naturally.

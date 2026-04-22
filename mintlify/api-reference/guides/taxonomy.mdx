@@ -1,0 +1,90 @@
+---
+title: "Taxonomy"
+description: "Working with domains and issue areas programmatically."
+---
+
+# Taxonomy API
+
+Atlas organizes civic work into 11 domains and 47 issue areas. Use the taxonomy endpoints to discover what categories are available and how entities are tagged.
+
+For the full human-readable taxonomy, see [Issue areas & domains](/taxonomy).
+
+## List all issue areas
+
+```bash
+GET /api/issue-areas
+```
+
+Returns all 47 issue areas with their labels, descriptions, and domain associations.
+
+```bash
+curl https://atlas.rebuildingus.org/api/issue-areas
+```
+
+## Get a specific issue area
+
+```bash
+GET /api/issue-areas/{issue_area_slug}
+```
+
+```bash
+curl https://atlas.rebuildingus.org/api/issue-areas/housing_affordability
+```
+
+Returns the issue area's label, description, search terms used by the discovery pipeline, and parent domain.
+
+## List all domains
+
+```bash
+GET /api/domains
+```
+
+Returns all 11 domains with their issue areas.
+
+```bash
+curl https://atlas.rebuildingus.org/api/domains
+```
+
+## Get a specific domain
+
+```bash
+GET /api/domains/{domain_slug}
+```
+
+```bash
+curl https://atlas.rebuildingus.org/api/domains/housing-and-the-built-environment
+```
+
+## Filtering entities by issue area
+
+Use the `issue_area` query parameter on entity endpoints. It accepts issue area slugs and can be repeated for multiple filters:
+
+```bash
+# Single issue area
+curl "https://atlas.rebuildingus.org/api/places/kansas-city,missouri/entities?issue_area=housing_affordability"
+
+# Multiple issue areas (OR logic)
+curl "https://atlas.rebuildingus.org/api/places/kansas-city,missouri/entities?issue_area=housing_affordability&issue_area=union_organizing"
+```
+
+## MCP tool: resolve_issue_areas
+
+When using Atlas through an AI assistant, the `resolve_issue_areas` tool maps natural language to Atlas slugs:
+
+> "What Atlas categories relate to affordable childcare?"
+
+This is useful when you're not sure which exact slug to use — the AI assistant handles the mapping for you.
+
+## What's next
+
+<CardGroup cols={2}>
+
+<Card title="Full taxonomy" icon="tags" href="/taxonomy">
+Human-readable listing of all 11 domains and 47 issue areas.
+</Card>
+
+<Card title="Entities" icon="users" href="/api-reference/guides/entities">
+Working with entity records.
+</Card>
+
+</CardGroup>

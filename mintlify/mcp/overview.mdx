@@ -1,0 +1,105 @@
+---
+title: "MCP overview"
+description: "Use Atlas through AI assistants like Claude, Copilot, and Gemini with the Model Context Protocol."
+---
+
+# Use Atlas with AI assistants
+
+Atlas supports the [Model Context Protocol](https://modelcontextprotocol.io/) (MCP), which lets you use Atlas through AI assistants like Claude, GitHub Copilot, Google Gemini, and others. Instead of clicking through a website or writing API calls, you ask questions in natural language and get structured answers backed by Atlas data.
+
+**Example conversation with Claude:**
+
+> **You:** Who's working on housing issues in Kansas City?
+>
+> **Claude:** I found 23 entities working on housing in Kansas City. Here are the most prominent...
+>
+> **You:** What are the coverage gaps?
+>
+> **Claude:** Kansas City has strong coverage on housing affordability and tenant organizing, but limited coverage on homelessness services and community land trusts...
+
+## What you need
+
+1. **An Atlas account** — [Sign up](https://atlas.rebuildingus.org) if you haven't already
+2. **Atlas Pro or Team plan** — MCP access requires a paid plan ([see pricing](/account/pricing))
+3. **An MCP-compatible client** — Claude Desktop, Claude Code, VS Code with Copilot, Gemini CLI, Codex CLI, or Copilot CLI
+
+## How it works
+
+Atlas runs a remote MCP server at:
+
+```
+https://atlas.rebuildingus.org/mcp
+```
+
+When you connect your AI assistant to this server, it gains access to Atlas's search, discovery, and place-level civic data tools. Authentication happens automatically through OAuth 2.1 — your client will open a browser window for you to sign in and approve access on first use.
+
+## Available tools
+
+Once connected, your AI assistant can use these tools:
+
+| Tool | What it does |
+|------|-------------|
+| `search_entities` | Search Atlas entities by place, topic, or text |
+| `get_entity` | Get details for a specific entity |
+| `get_entity_sources` | Get the sources backing an entity |
+| `search_sources` | Search across all Atlas sources |
+| `get_place_entities` | Get entities for a specific place |
+| `get_place_profile` | Demographic and socioeconomic context for a place |
+| `get_place_coverage` | Coverage gaps and entity counts for a place |
+| `get_place_issue_signals` | Issue area summary for a place |
+| `get_related_entities` | Entities related through Atlas relationships |
+| `resolve_issue_areas` | Map natural language to Atlas issue area slugs |
+
+<Tip>
+See [Available tools](/mcp/tools) for detailed parameter descriptions and example prompts for each tool.
+</Tip>
+
+## Choose your client
+
+Pick the AI assistant you use and follow the setup guide:
+
+<CardGroup cols={2}>
+
+<Card title="Claude Desktop" icon="message" href="/mcp/claude-desktop">
+Connect through the Connectors UI. No config file needed.
+</Card>
+
+<Card title="Claude Code" icon="terminal" href="/mcp/claude-code">
+Add via CLI command or `.mcp.json` for team sharing.
+</Card>
+
+<Card title="VS Code / Copilot" icon="code" href="/mcp/vscode-copilot">
+Configure in workspace or user settings.
+</Card>
+
+<Card title="Gemini CLI" icon="sparkles" href="/mcp/gemini">
+Add via CLI command or `settings.json`.
+</Card>
+
+<Card title="Codex CLI" icon="robot" href="/mcp/codex">
+Configure via TOML config file.
+</Card>
+
+<Card title="Copilot CLI" icon="github" href="/mcp/copilot-cli">
+Configure via JSON config file.
+</Card>
+
+</CardGroup>
+
+Using a different MCP client? See [Other MCP clients](/mcp/other-clients) for generic connection instructions.
+
+## Troubleshooting
+
+**"Connection failed" or timeout**
+Check that `https://atlas.rebuildingus.org/mcp` is reachable from your network. If you're behind a corporate proxy, ensure it allows outbound HTTPS.
+
+**OAuth window doesn't open**
+Make sure your default browser is set correctly. Some clients require a specific callback URL to be reachable — check the client-specific guide.
+
+**"Unauthorized" after connecting**
+Your OAuth token may have expired. Disconnect and reconnect the server in your client to trigger a fresh authorization flow.
+
+**Tools don't appear**
+Restart your MCP client after connecting. Some clients require a reload to discover newly available tools.
+
+For more help, see [Troubleshooting](/resources/troubleshooting).

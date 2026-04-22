@@ -1,0 +1,95 @@
+---
+title: "For journalists"
+description: "How journalists and media professionals use Atlas to find credible local sources."
+---
+
+# Atlas for journalists
+
+You need credible local sources for a story. Atlas turns location-based source discovery from days of manual Google searches into a structured, repeatable process backed by public evidence.
+
+## The scenario
+
+You're a reporter covering housing issues in Kansas City. You need to find:
+- Who's organizing tenants
+- Which nonprofits are working on housing affordability
+- What advocacy campaigns are active
+- People with firsthand experience you can interview
+
+Normally, this means hours of searching local news archives, scrolling through nonprofit directories, checking social media, and hoping you don't miss someone important. Atlas compresses that into minutes.
+
+## Three ways to research
+
+### 1. Browse the directory
+
+Go to [atlas.rebuildingus.org/browse](https://atlas.rebuildingus.org/browse) and search:
+
+1. Enter "Kansas City" as your location
+2. Filter by issue area: **Housing and the Built Environment**
+3. Browse the results — each entry shows the person or organization, what they do, and where the information came from
+
+Click any entry to see its full source list. Every source includes the publication, article title, and date — so you can verify independently and cite the original reporting.
+
+### 2. Ask an AI assistant
+
+If you have Claude Desktop, Copilot, or another MCP client connected to Atlas ([setup guide](/mcp/overview)), you can research conversationally:
+
+> **You:** Who's working on housing issues in Kansas City?
+>
+> **Claude:** I found 23 entities working on housing in Kansas City. The most prominent include KC Tenants (tenant organizing collective), Habitat for Humanity Kansas City, and the Metropolitan Housing Coalition...
+>
+> **You:** Tell me more about KC Tenants. What are the sources?
+>
+> **Claude:** KC Tenants is a tenant organizing collective focused on housing justice. Sources include: Kansas City Star (March 2026), KCUR (January 2026)...
+>
+> **You:** Are there any coverage gaps?
+>
+> **Claude:** Kansas City has strong coverage on tenant organizing and housing affordability. Limited coverage on: community land trusts, manufactured housing, and housing for formerly incarcerated people.
+
+### 3. Use the API
+
+For systematic research across multiple cities:
+
+```bash
+# Find housing entities in Kansas City
+curl "https://atlas.rebuildingus.org/api/places/kansas-city,missouri/entities?issue_area=housing_affordability"
+
+# Check coverage gaps
+curl "https://atlas.rebuildingus.org/api/places/kansas-city,missouri/coverage"
+
+# Get sources for a specific entity
+curl "https://atlas.rebuildingus.org/api/entities/{entity_id}/sources"
+```
+
+## What makes Atlas different for journalists
+
+**Source attribution.** Every entry traces back to public sources — news articles, nonprofit listings, organizational websites. You're not trusting a database; you're seeing where the information came from and can verify it yourself.
+
+**Gap reporting.** Atlas tells you what's *missing*, not just what it found. "Zero leads for harm reduction in this city" is a signal worth following up on.
+
+**Freshness signals.** Source dates tell you how current the information is. An entity backed by a 2026 article is more actionable than one last mentioned in 2023.
+
+## Discount for working journalists
+
+Atlas offers 40–50% discounts for verified journalists. Apply at [atlas.rebuildingus.org/request-discount](https://atlas.rebuildingus.org/request-discount).
+
+## What's next
+
+<CardGroup cols={2}>
+
+<Card title="Browse Atlas" icon="magnifying-glass" href="https://atlas.rebuildingus.org/browse">
+Start searching the directory now.
+</Card>
+
+<Card title="Connect Claude Desktop" icon="message" href="/mcp/claude-desktop">
+Set up conversational research in 2 minutes.
+</Card>
+
+<Card title="API quickstart" icon="code" href="/api-reference/quickstart">
+Automate research across multiple cities.
+</Card>
+
+<Card title="Plans & pricing" icon="credit-card" href="/account/pricing">
+See what's free and what requires a plan.
+</Card>
+
+</CardGroup>

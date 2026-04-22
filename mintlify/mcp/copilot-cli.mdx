@@ -1,0 +1,61 @@
+---
+title: "Copilot CLI"
+description: "Connect Atlas to GitHub's Copilot CLI for terminal-based civic research."
+---
+
+# Connect Atlas to Copilot CLI
+
+GitHub's Copilot CLI supports remote MCP servers with automatic OAuth via Dynamic Client Registration.
+
+## Option A: Global config
+
+Edit `~/.copilot/mcp-config.json`:
+
+```json
+{
+  "mcpServers": {
+    "atlas": {
+      "type": "http",
+      "url": "https://atlas.rebuildingus.org/mcp"
+    }
+  }
+}
+```
+
+## Option B: Workspace config
+
+Create `.mcp.json` in your project root:
+
+```json
+{
+  "mcpServers": {
+    "atlas": {
+      "type": "http",
+      "url": "https://atlas.rebuildingus.org/mcp"
+    }
+  }
+}
+```
+
+## Authorize
+
+Copilot CLI handles OAuth automatically. The first time a tool call requires authentication, it opens a browser window for you to sign in and approve access.
+
+## Requirements
+
+- GitHub Copilot CLI (latest version)
+- Atlas Pro or Team plan — [see pricing](/account/pricing)
+
+## Next steps
+
+<CardGroup cols={2}>
+
+<Card title="Available tools" icon="wrench" href="/mcp/tools">
+All 10 Atlas MCP tools with parameters and examples.
+</Card>
+
+<Card title="Tutorial: Research a city" icon="map" href="/mcp/tutorials/research-city">
+Walk through a complete research session.
+</Card>
+
+</CardGroup>

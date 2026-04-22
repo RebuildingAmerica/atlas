@@ -14,25 +14,79 @@
         "tab": "Guides",
         "groups": [
           {
-            "group": "Start here",
-            "pages": ["introduction", "migration"]
+            "group": "Why Atlas exists",
+            "pages": ["what-is-atlas", "how-it-works", "taxonomy"]
           },
           {
-            "group": "Atlas",
-            "pages": ["product/overview"]
+            "group": "Use cases",
+            "pages": [
+              "use-cases/journalists",
+              "use-cases/organizers",
+              "use-cases/documentary",
+              "use-cases/developers"
+            ]
+          },
+          {
+            "group": "Getting started",
+            "pages": ["quickstart-browse", "account/pricing"]
+          },
+          {
+            "group": "Self-hosting",
+            "pages": ["self-hosting/guide"]
           }
         ]
       },
       {
-        "tab": "API reference",
+        "tab": "MCP & Agents",
+        "groups": [
+          {
+            "group": "Get connected",
+            "pages": [
+              "mcp/overview",
+              "mcp/claude-desktop",
+              "mcp/claude-code",
+              "mcp/vscode-copilot",
+              "mcp/gemini",
+              "mcp/codex",
+              "mcp/copilot-cli",
+              "mcp/other-clients"
+            ]
+          },
+          {
+            "group": "Tools & permissions",
+            "pages": ["mcp/tools", "mcp/scopes"]
+          },
+          {
+            "group": "Tutorials",
+            "pages": [
+              "mcp/tutorials/research-city",
+              "mcp/tutorials/agent-workflow"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
         "openapi": "openapi/atlas.openapi.json",
         "groups": [
           {
-            "group": "Atlas API",
+            "group": "Getting started",
             "pages": [
               "api-reference/overview",
+              "api-reference/authentication",
               "api-reference/quickstart",
-              "api-reference/resources"
+              "api-reference/rate-limits",
+              "api-reference/errors"
+            ]
+          },
+          {
+            "group": "Resource guides",
+            "pages": [
+              "api-reference/guides/entities",
+              "api-reference/guides/places",
+              "api-reference/guides/taxonomy",
+              "api-reference/guides/discovery",
+              "api-reference/guides/sources-flags"
             ]
           },
           {
@@ -90,6 +144,31 @@
             ]
           }
         ]
+      },
+      {
+        "tab": "Resources",
+        "groups": [
+          {
+            "group": "Concepts",
+            "pages": [
+              "resources/data-model",
+              "resources/trust",
+              "resources/glossary"
+            ]
+          },
+          {
+            "group": "Help",
+            "pages": ["resources/faq", "resources/troubleshooting"]
+          },
+          {
+            "group": "Project",
+            "pages": [
+              "resources/changelog",
+              "resources/contributing",
+              "resources/open-source"
+            ]
+          }
+        ]
       }
     ],
     "global": {
@@ -98,11 +177,6 @@
           "anchor": "Repository",
           "href": "https://github.com/RebuildingAmerica/atlas",
           "icon": "github"
-        },
-        {
-          "anchor": "Legacy docs",
-          "href": "https://github.com/RebuildingAmerica/atlas/tree/main/docs",
-          "icon": "book-open-cover"
         }
       ]
     }

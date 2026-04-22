@@ -1,0 +1,90 @@
+---
+title: "Tutorial: Build an agent workflow"
+description: "Use Claude Code or a custom agent to systematically research multiple cities."
+---
+
+# Tutorial: Build an agent workflow
+
+This tutorial shows how to use Atlas MCP tools programmatically to research multiple cities and compile structured results. This is for developers who want to automate civic research beyond individual conversations.
+
+**Prerequisites:**
+- Atlas Pro or Team plan with API key or MCP access
+- Claude Code connected to Atlas ([setup guide](/mcp/claude-code))
+
+## The goal
+
+Systematically research housing and labor organizations across 5 cities and produce a structured summary with coverage gaps for each.
+
+## Approach: Claude Code with MCP
+
+With Atlas connected to Claude Code, you can ask it to perform systematic research:
+
+> **You:** Research housing and labor organizations in these 5 cities: Kansas City MO, Detroit MI, Boise ID, Austin TX, and Portland OR. For each city, find the top entities, check coverage gaps, and compile the results into a markdown table.
+
+Claude Code will use Atlas MCP tools (`search_entities`, `get_place_coverage`) for each city and compile the results.
+
+## Approach: Python with the API
+
+For more control, use the REST API directly:
+
+```python
+import httpx
+
+client = httpx.Client(
+    base_url="https://atlas.rebuildingus.org/api",
+    headers={"X-API-Key": "your-api-key"},
+)
+
+cities = [
+    "kansas-city,missouri",
+    "detroit,michigan",
+    "boise,idaho",
+    "austin,texas",
+    "portland,oregon",
+]
+
+issue_areas = ["housing_affordability", "union_organizing"]
+
+for city in cities:
+    # Get entities
+    entities = client.get(
+        f"/places/{city}/entities",
+        params={"issue_area": issue_areas, "limit": 10},
+    ).json()
+
+    # Get coverage
+    coverage = client.get(f"/places/{city}/coverage").json()
+
+    print(f"\n## {city}")
+    print(f"Entities found: {len(entities['data'])}")
+    for entity in entities["data"]:
+        print(f"  - {entity['name']} ({entity['type']})")
+
+    print(f"\nCoverage gaps:")
+    for area, count in coverage["data"].get("by_issue_area", {}).items():
+        if count == 0:
+            print(f"  - {area}: no entities")
+```
+
+## Scaling up
+
+For larger research projects:
+
+- **Run discovery first** — Use `POST /api/discovery-runs` to generate fresh data before querying
+- **Paginate** — Use `cursor` to iterate through large result sets
+- **Cache results** — Store API responses locally to avoid repeated requests
+- **Respect rate limits** — Pro allows 1,000 requests/day; Team allows 10,000/day per key
+
+## What's next
+
+<CardGroup cols={2}>
+
+<Card title="Discovery runs API" icon="rocket" href="/api-reference/guides/discovery">
+Trigger the autodiscovery pipeline programmatically.
+</Card>
+
+<Card title="API authentication" icon="key" href="/api-reference/authentication">
+Set up API keys for automated workflows.
+</Card>
+
+</CardGroup>

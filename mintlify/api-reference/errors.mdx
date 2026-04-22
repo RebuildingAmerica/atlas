@@ -1,0 +1,97 @@
+---
+title: "Errors"
+description: "Atlas API error format, status codes, and common error types."
+---
+
+# Errors
+
+When something goes wrong, the Atlas API returns a structured error response.
+
+## Error format
+
+```json
+{
+  "error": {
+    "type": "NOT_FOUND",
+    "message": "Entry not found",
+    "detail": "No entry with id=nonexistent"
+  }
+}
+```
+
+| Field | Description |
+|-------|-------------|
+| `type` | Machine-readable error code (use this for programmatic handling) |
+| `message` | Human-readable summary |
+| `detail` | Additional context (optional) |
+
+## Error types
+
+| Type | HTTP status | Meaning |
+|------|-------------|---------|
+| `VALIDATION_ERROR` | 400 | Request body or query parameters are invalid |
+| `UNAUTHORIZED` | 401 | No valid authentication provided |
+| `FORBIDDEN` | 403 | Authenticated but not authorized for this action |
+| `NOT_FOUND` | 404 | Resource doesn't exist |
+| `CONFLICT` | 409 | Resource already exists or conflicts with current state |
+| `RATE_LIMITED` | 429 | Too many requests — see [rate limits](/api-reference/rate-limits) |
+| `INTERNAL_ERROR` | 500 | Server error |
+| `SERVICE_UNAVAILABLE` | 503 | Service temporarily unavailable |
+
+## Common scenarios
+
+### Invalid request (400)
+
+```json
+{
+  "error": {
+    "type": "VALIDATION_ERROR",
+    "message": "Invalid request",
+    "detail": "Field 'state' must be a 2-letter code"
+  }
+}
+```
+
+**Fix:** Check request body and query parameters against the API reference.
+
+### Missing authentication (401)
+
+```json
+{
+  "error": {
+    "type": "UNAUTHORIZED",
+    "message": "Authentication required",
+    "detail": "Provide a valid API key via X-API-Key header or a Bearer token via Authorization header"
+  }
+}
+```
+
+**Fix:** Add your API key or OAuth token. See [authentication](/api-reference/authentication).
+
+### Rate limited (429)
+
+```json
+{
+  "error": {
+    "type": "RATE_LIMITED",
+    "message": "Rate limit exceeded",
+    "detail": "You have exceeded 100 requests per hour. Upgrade to Pro for higher limits."
+  }
+}
+```
+
+**Fix:** Wait for the rate limit window to reset (check the `X-RateLimit-Reset` header), or upgrade your plan for higher limits.
+
+### Not found (404)
+
+```json
+{
+  "error": {
+    "type": "NOT_FOUND",
+    "message": "Entity not found",
+    "detail": "No entity with id=abc123"
+  }
+}
+```
+
+**Fix:** Verify the resource ID. Entity IDs are UUIDs — make sure you're using the full ID.
