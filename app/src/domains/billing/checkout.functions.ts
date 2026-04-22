@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { createCheckoutSession } from "./server/checkout";
+import { getDiscountCouponId } from "./server/discount-coupons";
 import { ATLAS_PRODUCTS } from "./products";
 import { ensureAuthReady } from "../access/server/auth";
 import { getBrowserSessionHeaders } from "../access/server/request-headers";
@@ -67,6 +68,13 @@ export const startCheckout = createServerFn({ method: "POST" })
 
     const orgMetadata = normalizeAtlasOrganizationMetadata(fullOrganization?.metadata);
 
+    // TODO: Fetch verified discount from database to apply coupon
+    // For now, check if org metadata has a discount segment
+    let discountCouponId: string | null = null;
+    if (orgMetadata.verificationStatus === "verified" && orgMetadata.discountSegment) {
+      discountCouponId = getDiscountCouponId(orgMetadata.discountSegment);
+    }
+
     const successUrl = `${runtime.publicBaseUrl}/account?checkout=success`;
     const cancelUrl = `${runtime.publicBaseUrl}/pricing`;
 
@@ -78,6 +86,7 @@ export const startCheckout = createServerFn({ method: "POST" })
       cancelUrl,
       customerEmail: session.user.email,
       stripeCustomerId: orgMetadata.stripeCustomerId,
+      discountCouponId,
     });
 
     if (!result.url) {

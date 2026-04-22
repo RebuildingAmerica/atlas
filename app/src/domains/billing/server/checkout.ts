@@ -15,6 +15,7 @@ interface CreateCheckoutOptions {
   cancelUrl: string;
   customerEmail: string;
   stripeCustomerId?: string | null;
+  discountCouponId?: string | null;
 }
 
 /**
@@ -48,14 +49,19 @@ export async function createCheckoutSession(
 
   let sessionParams: Stripe.Checkout.SessionCreateParams;
 
+  const baseParams = {
+    ...sharedParams,
+    ...(options.discountCouponId && { discounts: [{ coupon: options.discountCouponId }] }),
+  };
+
   if (options.stripeCustomerId) {
     sessionParams = {
-      ...sharedParams,
+      ...baseParams,
       customer: options.stripeCustomerId,
     };
   } else {
     sessionParams = {
-      ...sharedParams,
+      ...baseParams,
       customer_email: options.customerEmail,
     };
   }
