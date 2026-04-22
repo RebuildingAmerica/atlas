@@ -7,7 +7,10 @@ campaigns, and events tied to a place and set of issues.
 
 from __future__ import annotations
 
+import hashlib
 import logging
+import re
+import unicodedata
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from typing import TYPE_CHECKING, Any
@@ -53,6 +56,7 @@ class EntryModel:
     last_seen: date
     created_at: str
     updated_at: str
+    slug: str | None = None
 
     def to_dict(self, include_internal: bool = True) -> dict[str, Any]:
         """
@@ -91,6 +95,7 @@ class EntryModel:
             "last_seen": self.last_seen.isoformat(),
             "created_at": self.created_at,
             "updated_at": self.updated_at,
+            "slug": self.slug,
         }
         if include_internal:
             result.update(
@@ -105,6 +110,20 @@ class EntryModel:
 
 class EntryCRUD:
     """CRUD operations for entries."""
+
+    @staticmethod
+    def generate_slug(name: str, entry_id: str) -> str:
+        """Generate a URL slug from name + short hash of entry ID.
+
+        Format: {name-slug}-{4-char-hash}
+        Example: jane-doe-a3f2
+        """
+        normalized = unicodedata.normalize("NFKD", name)
+        ascii_name = normalized.encode("ascii", "ignore").decode("ascii")
+        slug_name = re.sub(r"[^a-z0-9]+", "-", ascii_name.lower()).strip("-")
+        slug_name = re.sub(r"-{2,}", "-", slug_name)
+        short_hash = hashlib.sha256(entry_id.encode()).hexdigest()[:4]
+        return f"{slug_name}-{short_hash}"
 
     @staticmethod
     async def create(  # noqa: PLR0913
@@ -178,6 +197,7 @@ class EntryCRUD:
             The created entry ID.
         """
         entry_id = db.generate_uuid()
+        slug = EntryCRUD.generate_slug(name, entry_id)
         now = db.now_iso()
         today = datetime.now(tz=UTC).date()
         first_seen_val = first_seen or today
@@ -189,8 +209,8 @@ class EntryCRUD:
                 id, type, name, description, city, state, region,
                 geo_specificity, full_address, website, email, phone, social_media,
                 affiliated_org_id, contact_status, editorial_notes, priority,
-                first_seen, last_seen, created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                first_seen, last_seen, created_at, updated_at, slug
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 entry_id,
@@ -214,6 +234,7 @@ class EntryCRUD:
                 last_seen_val.isoformat(),
                 now,
                 now,
+                slug,
             ),
         )
         await conn.commit()
@@ -245,6 +266,68 @@ class EntryCRUD:
         data = dict(zip(columns, row, strict=False))
 
         return _row_to_entry(data)
+
+    @staticmethod
+    async def get_by_slug(conn: aiosqlite.Connection, slug: str) -> EntryModel | None:
+        """Resolve a slug to an EntryModel. Returns None if not found."""
+        cursor = await conn.execute(
+            "SELECT * FROM entries WHERE slug = ? AND active = 1",
+            (slug,),
+        )
+        row = await cursor.fetchone()
+        if row is None:
+            return None
+        columns = [desc[0] for desc in cursor.description]
+        return _row_to_entry(dict(zip(columns, row, strict=False)))
+
+    @staticmethod
+    async def resolve_slug(conn: aiosqlite.Connection, slug: str) -> dict[str, Any] | None:
+        """Resolve a slug, checking aliases if primary lookup fails.
+
+        Returns dict with keys: entry, canonical_slug, is_alias.
+        Returns None if slug not found anywhere.
+        """
+        entry = await EntryCRUD.get_by_slug(conn, slug)
+        if entry is not None:
+            return {"entry": entry, "canonical_slug": entry.slug, "is_alias": False}
+
+        cursor = await conn.execute(
+            "SELECT entry_id FROM slug_aliases WHERE old_slug = ?",
+            (slug,),
+        )
+        alias_row = await cursor.fetchone()
+        if alias_row is None:
+            return None
+
+        entry_id = alias_row[0]
+        entry = await EntryCRUD.get_by_id(conn, entry_id)
+        if entry is None:
+            return None
+        return {"entry": entry, "canonical_slug": entry.slug, "is_alias": True}
+
+    @staticmethod
+    async def set_vanity_slug(conn: aiosqlite.Connection, entry_id: str, new_slug: str) -> bool:
+        """Set a vanity slug for an entry, preserving the old slug as an alias."""
+        entry = await EntryCRUD.get_by_id(conn, entry_id)
+        if entry is None:
+            return False
+
+        old_slug = entry.slug
+        if old_slug == new_slug:
+            return True
+
+        if old_slug is not None:
+            await conn.execute(
+                "INSERT OR IGNORE INTO slug_aliases (old_slug, entry_id) VALUES (?, ?)",
+                (old_slug, entry_id),
+            )
+
+        await conn.execute(
+            "UPDATE entries SET slug = ?, updated_at = ? WHERE id = ?",
+            (new_slug, db.now_iso(), entry_id),
+        )
+        await conn.commit()
+        return True
 
     @staticmethod
     async def list(  # noqa: PLR0913
@@ -984,6 +1067,7 @@ def _row_to_entry(row: dict[str, Any]) -> EntryModel:
         last_seen=date.fromisoformat(row["last_seen"]),
         created_at=row["created_at"],
         updated_at=row["updated_at"],
+        slug=row.get("slug"),
     )
 
 
