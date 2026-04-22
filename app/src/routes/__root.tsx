@@ -2,6 +2,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createRootRoute, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/react";
+import { NotFoundPage } from "@/platform/pages/not-found-page";
+import { ErrorPage } from "@/platform/pages/error-page";
 import "@/styles/app.css";
 
 const queryClient = new QueryClient({
@@ -17,19 +19,8 @@ const queryClient = new QueryClient({
 
 export const Route = createRootRoute({
   component: RootLayout,
-  notFoundComponent: () => {
-    return (
-      <div className="flex flex-1 flex-col items-center justify-center space-y-4 p-8">
-        <h1 className="text-4xl font-bold tracking-tight">404</h1>
-        <p className="text-muted-foreground text-lg">
-          We couldn't find the page you're looking for.
-        </p>
-        <a href="/" className="text-primary hover:underline">
-          Return to home
-        </a>
-      </div>
-    );
-  },
+  notFoundComponent: NotFoundPage,
+  errorComponent: ErrorPage,
 });
 
 function RootLayout() {
@@ -53,7 +44,7 @@ function RootDocument() {
         />
         <title>The Atlas</title>
       </head>
-      <body className="text-ink flex min-h-screen flex-col">
+      <body className="text-on-surface-variant flex min-h-screen flex-col">
         <Outlet />
         <Scripts />
         <Analytics />
