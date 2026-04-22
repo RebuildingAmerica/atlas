@@ -2,6 +2,13 @@
   "$schema": "https://turbo.build/schema.json",
   "ui": "tui",
   "envMode": "strict",
+  "globalEnv": [
+    "ATLAS_PUBLIC_URL",
+    "ATLAS_API_AUDIENCE",
+    "ATLAS_EMAIL_PROVIDER",
+    "ATLAS_SERVER_API_PROXY_TARGET",
+    "ATLAS_DOCS_URL"
+  ],
   "globalDependencies": [
     "pnpm-workspace.yaml",
     "package.json",
