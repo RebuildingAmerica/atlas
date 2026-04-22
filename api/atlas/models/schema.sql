@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS entries (
     last_seen DATE NOT NULL,
     created_at TIMESTAMPTZ NOT NULL,
     updated_at TIMESTAMPTZ NOT NULL,
+    slug TEXT UNIQUE,
     search_vector tsvector GENERATED ALWAYS AS (
         to_tsvector('english', coalesce(name, '') || ' ' || coalesce(description, ''))
     ) STORED
@@ -172,3 +173,12 @@ CREATE INDEX IF NOT EXISTS idx_resource_ownership_org ON resource_ownership(org_
 CREATE INDEX IF NOT EXISTS idx_resource_ownership_org_visibility ON resource_ownership(org_id, visibility);
 CREATE INDEX IF NOT EXISTS idx_org_annotations_org ON org_annotations(org_id);
 CREATE INDEX IF NOT EXISTS idx_org_annotations_entry ON org_annotations(entry_id);
+CREATE INDEX IF NOT EXISTS idx_entries_slug ON entries(slug);
+
+-- Slug aliases (for vanity slug redirects)
+CREATE TABLE IF NOT EXISTS slug_aliases (
+    old_slug TEXT PRIMARY KEY,
+    entry_id TEXT NOT NULL REFERENCES entries(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_slug_aliases_entry_id ON slug_aliases(entry_id);

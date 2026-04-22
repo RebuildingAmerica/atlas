@@ -246,6 +246,7 @@ CREATE TABLE IF NOT EXISTS entries (
     last_seen DATE NOT NULL,
     created_at DATETIME NOT NULL,
     updated_at DATETIME NOT NULL,
+    slug TEXT UNIQUE,
     FOREIGN KEY (affiliated_org_id) REFERENCES entries(id)
 );
 
@@ -404,6 +405,16 @@ CREATE INDEX IF NOT EXISTS idx_resource_ownership_org ON resource_ownership(org_
 CREATE INDEX IF NOT EXISTS idx_resource_ownership_org_visibility ON resource_ownership(org_id, visibility);
 CREATE INDEX IF NOT EXISTS idx_org_annotations_org ON org_annotations(org_id);
 CREATE INDEX IF NOT EXISTS idx_org_annotations_entry ON org_annotations(entry_id);
+CREATE INDEX IF NOT EXISTS idx_entries_slug ON entries(slug);
+
+-- Slug aliases (for vanity slug redirects)
+CREATE TABLE IF NOT EXISTS slug_aliases (
+    old_slug TEXT PRIMARY KEY,
+    entry_id TEXT NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (entry_id) REFERENCES entries(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_slug_aliases_entry_id ON slug_aliases(entry_id);
 
 -- Keep FTS content synchronized with entries.
 CREATE TRIGGER IF NOT EXISTS entries_ai AFTER INSERT ON entries BEGIN
@@ -460,3 +471,7 @@ async def _ensure_entry_columns(conn: Any) -> None:
 
     if "full_address" not in existing_columns:
         await conn.execute("ALTER TABLE entries ADD COLUMN full_address TEXT")
+
+    if "slug" not in existing_columns:
+        await conn.execute("ALTER TABLE entries ADD COLUMN slug TEXT")
+        await conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_entries_slug ON entries(slug)")
