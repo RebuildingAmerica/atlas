@@ -3,6 +3,7 @@
 from fastapi import APIRouter
 
 from atlas.domains.access.api.verification import router as verification_router
+from atlas.domains.access.api.verification_admin import router as verification_admin_router
 from atlas.domains.catalog.api.entries import router as entries_router
 from atlas.domains.catalog.api.org_annotations import router as org_annotations_router
 from atlas.domains.catalog.api.org_resources import router as org_resources_router
@@ -28,6 +29,7 @@ def create_router() -> APIRouter:
 
     # Include sub-routers
     router.include_router(verification_router, prefix="")
+    router.include_router(verification_admin_router, prefix="")
     router.include_router(entries_router, prefix="/api/entities")
     router.include_router(discovery_router, prefix="/api/discovery-runs")
     router.include_router(flags_router, prefix="/api")
