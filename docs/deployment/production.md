@@ -61,7 +61,7 @@ Then fill in the real values.
 | `ATLAS_DEPLOY_MODE` | No | Omit in production. Set to `local` only for single-user local operation (disables auth, hides sign-in/account UI). This is the single setting that controls whether Atlas runs as a hosted multi-user service or a local standalone tool. |
 | `ATLAS_PUBLIC_URL` | Yes | The public origin of the Atlas app (e.g., `https://atlas.example.com`). Compiled into the app bundle and used as the base for auth endpoints, API calls, enterprise SSO callback URLs, and OAuth issuer derivation. |
 | `ATLAS_DOCS_URL` | Yes when `/docs` should proxy to Mintlify on Vercel | Absolute origin of the deployed Mintlify site (for example `https://your-subdomain.mintlify.dev`). Vercel uses this to rewrite `https://atlas.example.com/docs` to the hosted Mintlify docs while keeping the Atlas URL in the browser. |
-| `ATLAS_SERVER_API_PROXY_TARGET` | Yes when the app service must forward `/api/*` traffic to a separate Atlas API deployment | Absolute Atlas API origin used by the app server and hosted rewrites. In Cloud Run, this can be the internal `atlas-api` service URL. In Vercel, set it to the public Atlas API origin that should serve `/api/*`. |
+| `ATLAS_SERVER_API_PROXY_TARGET` | Yes when the app service must forward `/api/*` traffic to a separate Atlas API deployment | Absolute Atlas API origin used by the app server proxy routes. In Cloud Run, this can be the internal `atlas-api` service URL. In Vercel, set it to the public Atlas API origin that should serve proxied `/api/*` requests. |
 | `PORT` | Platform | The container listen port. On managed platforms like Google Cloud Run, bind to the platform-provided port. Do not expose custom HTTP/HTTPS port config. |
 
 ### Auth
@@ -143,7 +143,7 @@ Mintlify’s Vercel subpath flow requires both repo config and dashboard setup:
 3. Add your Atlas domain
 4. Set `ATLAS_DOCS_URL` in Vercel to the Mintlify deployment origin (`https://<subdomain>.mintlify.dev`)
 
-With `ATLAS_DOCS_URL` configured, `app/vercel.ts` rewrites `/docs` and `/docs/*` to Mintlify while keeping the public Atlas URL in place. With `ATLAS_SERVER_API_PROXY_TARGET` configured, it also rewrites public `/api/*` traffic (except app-owned auth, health, and Stripe webhook routes) and `/openapi.json` to the Atlas API deployment.
+With `ATLAS_DOCS_URL` configured, `app/vercel.ts` rewrites `/docs` and `/docs/*` to Mintlify while keeping the public Atlas URL in place. With `ATLAS_SERVER_API_PROXY_TARGET` configured, the app's server routes proxy public `/api/*` traffic and `/openapi.json` to the Atlas API deployment.
 
 Set these auth values in Vercel as well:
 

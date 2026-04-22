@@ -17,9 +17,11 @@ import { Route as PublicRouteImport } from './routes/_public'
 import { Route as AuthRouteImport } from './routes/_auth'
 import { Route as PublicIndexRouteImport } from './routes/_public/index'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
+import { Route as ApiSplatRouteImport } from './routes/api/$'
 import { Route as WorkspaceOrganizationRouteImport } from './routes/_workspace/organization'
 import { Route as WorkspaceDiscoveryRouteImport } from './routes/_workspace/discovery'
 import { Route as WorkspaceAccountRouteImport } from './routes/_workspace/account'
+import { Route as PublicRequestDiscountRouteImport } from './routes/_public/request-discount'
 import { Route as PublicPricingRouteImport } from './routes/_public/pricing'
 import { Route as PublicBrowseRouteImport } from './routes/_public/browse'
 import { Route as AuthSignInRouteImport } from './routes/_auth/sign-in'
@@ -28,6 +30,7 @@ import { Route as WorkspaceOrganizationIndexRouteImport } from './routes/_worksp
 import { Route as ApiStripeWebhookRouteImport } from './routes/api/stripe/webhook'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as WorkspaceOrganizationSsoRouteImport } from './routes/_workspace/organization.sso'
+import { Route as WorkspaceAdminDiscountsRouteImport } from './routes/_workspace/admin.discounts'
 import { Route as PublicEntriesEntryIdRouteImport } from './routes/_public/entries.$entryId'
 import { Route as AuthOauthConsentRouteImport } from './routes/_auth/oauth/consent'
 import { Route as ApiAuthInternalApiKeyRouteImport } from './routes/api/auth/internal/api-key'
@@ -70,6 +73,11 @@ const ApiHealthRoute = ApiHealthRouteImport.update({
   path: '/api/health',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiSplatRoute = ApiSplatRouteImport.update({
+  id: '/api/$',
+  path: '/api/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const WorkspaceOrganizationRoute = WorkspaceOrganizationRouteImport.update({
   id: '/organization',
   path: '/organization',
@@ -84,6 +92,11 @@ const WorkspaceAccountRoute = WorkspaceAccountRouteImport.update({
   id: '/account',
   path: '/account',
   getParentRoute: () => WorkspaceRoute,
+} as any)
+const PublicRequestDiscountRoute = PublicRequestDiscountRouteImport.update({
+  id: '/request-discount',
+  path: '/request-discount',
+  getParentRoute: () => PublicRoute,
 } as any)
 const PublicPricingRoute = PublicPricingRouteImport.update({
   id: '/pricing',
@@ -127,6 +140,11 @@ const WorkspaceOrganizationSsoRoute =
     path: '/sso',
     getParentRoute: () => WorkspaceOrganizationRoute,
   } as any)
+const WorkspaceAdminDiscountsRoute = WorkspaceAdminDiscountsRouteImport.update({
+  id: '/admin/discounts',
+  path: '/admin/discounts',
+  getParentRoute: () => WorkspaceRoute,
+} as any)
 const PublicEntriesEntryIdRoute = PublicEntriesEntryIdRouteImport.update({
   id: '/entries/$entryId',
   path: '/entries/$entryId',
@@ -158,12 +176,15 @@ export interface FileRoutesByFullPath {
   '/sign-in': typeof AuthSignInRoute
   '/browse': typeof PublicBrowseRoute
   '/pricing': typeof PublicPricingRoute
+  '/request-discount': typeof PublicRequestDiscountRoute
   '/account': typeof WorkspaceAccountRoute
   '/discovery': typeof WorkspaceDiscoveryRoute
   '/organization': typeof WorkspaceOrganizationRouteWithChildren
+  '/api/$': typeof ApiSplatRoute
   '/api/health': typeof ApiHealthRoute
   '/oauth/consent': typeof AuthOauthConsentRoute
   '/entries/$entryId': typeof PublicEntriesEntryIdRoute
+  '/admin/discounts': typeof WorkspaceAdminDiscountsRoute
   '/organization/sso': typeof WorkspaceOrganizationSsoRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/stripe/webhook': typeof ApiStripeWebhookRoute
@@ -180,11 +201,14 @@ export interface FileRoutesByTo {
   '/sign-in': typeof AuthSignInRoute
   '/browse': typeof PublicBrowseRoute
   '/pricing': typeof PublicPricingRoute
+  '/request-discount': typeof PublicRequestDiscountRoute
   '/account': typeof WorkspaceAccountRoute
   '/discovery': typeof WorkspaceDiscoveryRoute
+  '/api/$': typeof ApiSplatRoute
   '/api/health': typeof ApiHealthRoute
   '/oauth/consent': typeof AuthOauthConsentRoute
   '/entries/$entryId': typeof PublicEntriesEntryIdRoute
+  '/admin/discounts': typeof WorkspaceAdminDiscountsRoute
   '/organization/sso': typeof WorkspaceOrganizationSsoRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/stripe/webhook': typeof ApiStripeWebhookRoute
@@ -204,13 +228,16 @@ export interface FileRoutesById {
   '/_auth/sign-in': typeof AuthSignInRoute
   '/_public/browse': typeof PublicBrowseRoute
   '/_public/pricing': typeof PublicPricingRoute
+  '/_public/request-discount': typeof PublicRequestDiscountRoute
   '/_workspace/account': typeof WorkspaceAccountRoute
   '/_workspace/discovery': typeof WorkspaceDiscoveryRoute
   '/_workspace/organization': typeof WorkspaceOrganizationRouteWithChildren
+  '/api/$': typeof ApiSplatRoute
   '/api/health': typeof ApiHealthRoute
   '/_public/': typeof PublicIndexRoute
   '/_auth/oauth/consent': typeof AuthOauthConsentRoute
   '/_public/entries/$entryId': typeof PublicEntriesEntryIdRoute
+  '/_workspace/admin/discounts': typeof WorkspaceAdminDiscountsRoute
   '/_workspace/organization/sso': typeof WorkspaceOrganizationSsoRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/stripe/webhook': typeof ApiStripeWebhookRoute
@@ -229,12 +256,15 @@ export interface FileRouteTypes {
     | '/sign-in'
     | '/browse'
     | '/pricing'
+    | '/request-discount'
     | '/account'
     | '/discovery'
     | '/organization'
+    | '/api/$'
     | '/api/health'
     | '/oauth/consent'
     | '/entries/$entryId'
+    | '/admin/discounts'
     | '/organization/sso'
     | '/api/auth/$'
     | '/api/stripe/webhook'
@@ -251,11 +281,14 @@ export interface FileRouteTypes {
     | '/sign-in'
     | '/browse'
     | '/pricing'
+    | '/request-discount'
     | '/account'
     | '/discovery'
+    | '/api/$'
     | '/api/health'
     | '/oauth/consent'
     | '/entries/$entryId'
+    | '/admin/discounts'
     | '/organization/sso'
     | '/api/auth/$'
     | '/api/stripe/webhook'
@@ -274,13 +307,16 @@ export interface FileRouteTypes {
     | '/_auth/sign-in'
     | '/_public/browse'
     | '/_public/pricing'
+    | '/_public/request-discount'
     | '/_workspace/account'
     | '/_workspace/discovery'
     | '/_workspace/organization'
+    | '/api/$'
     | '/api/health'
     | '/_public/'
     | '/_auth/oauth/consent'
     | '/_public/entries/$entryId'
+    | '/_workspace/admin/discounts'
     | '/_workspace/organization/sso'
     | '/api/auth/$'
     | '/api/stripe/webhook'
@@ -296,6 +332,7 @@ export interface RootRouteChildren {
   DashboardRoute: typeof DashboardRoute
   DocsRoute: typeof DocsRoute
   OpenapiDotjsonRoute: typeof OpenapiDotjsonRoute
+  ApiSplatRoute: typeof ApiSplatRoute
   ApiHealthRoute: typeof ApiHealthRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiStripeWebhookRoute: typeof ApiStripeWebhookRoute
@@ -361,6 +398,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiHealthRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/$': {
+      id: '/api/$'
+      path: '/api/$'
+      fullPath: '/api/$'
+      preLoaderRoute: typeof ApiSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_workspace/organization': {
       id: '/_workspace/organization'
       path: '/organization'
@@ -381,6 +425,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/account'
       preLoaderRoute: typeof WorkspaceAccountRouteImport
       parentRoute: typeof WorkspaceRoute
+    }
+    '/_public/request-discount': {
+      id: '/_public/request-discount'
+      path: '/request-discount'
+      fullPath: '/request-discount'
+      preLoaderRoute: typeof PublicRequestDiscountRouteImport
+      parentRoute: typeof PublicRoute
     }
     '/_public/pricing': {
       id: '/_public/pricing'
@@ -438,6 +489,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WorkspaceOrganizationSsoRouteImport
       parentRoute: typeof WorkspaceOrganizationRoute
     }
+    '/_workspace/admin/discounts': {
+      id: '/_workspace/admin/discounts'
+      path: '/admin/discounts'
+      fullPath: '/admin/discounts'
+      preLoaderRoute: typeof WorkspaceAdminDiscountsRouteImport
+      parentRoute: typeof WorkspaceRoute
+    }
     '/_public/entries/$entryId': {
       id: '/_public/entries/$entryId'
       path: '/entries/$entryId'
@@ -486,6 +544,7 @@ const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
 interface PublicRouteChildren {
   PublicBrowseRoute: typeof PublicBrowseRoute
   PublicPricingRoute: typeof PublicPricingRoute
+  PublicRequestDiscountRoute: typeof PublicRequestDiscountRoute
   PublicIndexRoute: typeof PublicIndexRoute
   PublicEntriesEntryIdRoute: typeof PublicEntriesEntryIdRoute
 }
@@ -493,6 +552,7 @@ interface PublicRouteChildren {
 const PublicRouteChildren: PublicRouteChildren = {
   PublicBrowseRoute: PublicBrowseRoute,
   PublicPricingRoute: PublicPricingRoute,
+  PublicRequestDiscountRoute: PublicRequestDiscountRoute,
   PublicIndexRoute: PublicIndexRoute,
   PublicEntriesEntryIdRoute: PublicEntriesEntryIdRoute,
 }
@@ -519,12 +579,14 @@ interface WorkspaceRouteChildren {
   WorkspaceAccountRoute: typeof WorkspaceAccountRoute
   WorkspaceDiscoveryRoute: typeof WorkspaceDiscoveryRoute
   WorkspaceOrganizationRoute: typeof WorkspaceOrganizationRouteWithChildren
+  WorkspaceAdminDiscountsRoute: typeof WorkspaceAdminDiscountsRoute
 }
 
 const WorkspaceRouteChildren: WorkspaceRouteChildren = {
   WorkspaceAccountRoute: WorkspaceAccountRoute,
   WorkspaceDiscoveryRoute: WorkspaceDiscoveryRoute,
   WorkspaceOrganizationRoute: WorkspaceOrganizationRouteWithChildren,
+  WorkspaceAdminDiscountsRoute: WorkspaceAdminDiscountsRoute,
 }
 
 const WorkspaceRouteWithChildren = WorkspaceRoute._addFileChildren(
@@ -538,6 +600,7 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardRoute: DashboardRoute,
   DocsRoute: DocsRoute,
   OpenapiDotjsonRoute: OpenapiDotjsonRoute,
+  ApiSplatRoute: ApiSplatRoute,
   ApiHealthRoute: ApiHealthRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiStripeWebhookRoute: ApiStripeWebhookRoute,

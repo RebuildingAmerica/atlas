@@ -1,4 +1,25 @@
-function normalizeDocsOrigin(value: string | undefined): string | undefined {
+/**
+ * Vercel deployment configuration for the Atlas app.
+ *
+ * Exported as `config` and picked up automatically by the Vercel build. Controls:
+ *   - Security response headers applied to every route
+ *   - Proxy rewrites that forward specific paths to external origins
+ *
+ * Environment variables:
+ *   ATLAS_DOCS_URL — Origin of the hosted Mintlify docs site (e.g. https://atlas.mintlify.app).
+ *                    When set, /docs and /docs/* are transparently proxied to that origin so the
+ *                    docs appear under the primary Atlas domain at /docs.
+ *                    When unset, no rewrite is registered and the /docs route falls through to the
+ *                    app's own handler.
+ */
+
+/**
+ * Normalizes an arbitrary string into a bare origin (scheme + host + optional port).
+ * Accepts values with or without a scheme — bare hostnames are assumed to be HTTPS.
+ * Returns undefined for empty, missing, or malformed values so callers can safely
+ * use optional-chaining to gate on the result.
+ */
+function normalizeOrigin(value: string | undefined): string | undefined {
   const candidate = value?.trim();
   if (!candidate) {
     return undefined;
@@ -15,37 +36,70 @@ function normalizeDocsOrigin(value: string | undefined): string | undefined {
   }
 }
 
-const docsOrigin = normalizeDocsOrigin(process.env.ATLAS_DOCS_URL);
+const docsOrigin = normalizeOrigin(process.env.ATLAS_DOCS_URL);
+
+/**
+ * Proxy rewrites — only included when the corresponding env var is configured.
+ * Both the bare path (/docs) and the wildcard (/docs/*) are rewritten so that
+ * redirects within the docs site continue to resolve under the Atlas domain.
+ */
+const rewrites = [
+  ...(docsOrigin
+    ? [
+        {
+          source: "/docs",
+          destination: `${docsOrigin}/docs`,
+        },
+        {
+          source: "/docs/:match*",
+          destination: `${docsOrigin}/docs/:match*`,
+        },
+      ]
+    : []),
+];
 
 export const config = {
+  /**
+   * Security headers applied globally to every response.
+   * Values are intentionally strict — relax only with a documented reason.
+   */
   headers: [
     {
       source: "/(.*)",
       headers: [
+        // Prevent MIME-type sniffing
         {
           key: "X-Content-Type-Options",
           value: "nosniff",
         },
+        // Disallow framing entirely (clickjacking protection)
         {
           key: "X-Frame-Options",
           value: "DENY",
         },
+        // Legacy XSS filter for older browsers
         {
           key: "X-XSS-Protection",
           value: "1; mode=block",
         },
+        // Limit referrer to origin only on cross-origin requests
         {
           key: "Referrer-Policy",
           value: "strict-origin-when-cross-origin",
         },
+        // Deny access to sensitive browser APIs not needed by this app
         {
           key: "Permissions-Policy",
           value: "camera=(), microphone=(), geolocation=()",
         },
+        // Enforce HTTPS for 2 years, including subdomains; eligible for preload list
         {
           key: "Strict-Transport-Security",
           value: "max-age=63072000; includeSubDomains; preload",
         },
+        // Content Security Policy — restricts resource origins to self plus known
+        // Vercel analytics/vitals endpoints. 'unsafe-inline' is required for the
+        // TanStack Start hydration scripts injected at runtime.
         {
           key: "Content-Security-Policy",
           value:
@@ -54,18 +108,5 @@ export const config = {
       ],
     },
   ],
-  ...(docsOrigin
-    ? {
-        rewrites: [
-          {
-            source: "/docs",
-            destination: `${docsOrigin}/docs`,
-          },
-          {
-            source: "/docs/:match*",
-            destination: `${docsOrigin}/docs/:match*`,
-          },
-        ],
-      }
-    : {}),
+  ...(rewrites.length > 0 ? { rewrites } : {}),
 };
