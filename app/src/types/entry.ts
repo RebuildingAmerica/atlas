@@ -30,26 +30,31 @@ export interface Entry {
   source_count: number;
   latest_source_date?: string;
   sources?: Source[];
+  /** Human-readable URL slug for canonical profile URLs. */
   slug: string;
   created_at: string;
   updated_at: string;
 }
 
+/** Relationship categories used to group connected actors on profile pages. */
 export type ConnectionType =
   | "same_organization"
   | "same_issue_area"
   | "same_geography"
   | "co_mentioned";
 
+/** An actor related to the current profile, with evidence explaining the link. */
 export interface ConnectedActor {
   id: string;
   name: string;
   type: EntryType;
   slug: string | null;
   description_snippet: string | null;
+  /** Human-readable explanation of why this actor is connected (e.g., "Both mentioned in: KC Star"). */
   evidence: string;
 }
 
+/** A group of related actors sharing a common relationship type. */
 export interface ConnectionGroup {
   type: ConnectionType;
   actors: ConnectedActor[];

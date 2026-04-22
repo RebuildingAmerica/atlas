@@ -25,9 +25,23 @@ MAX_ACTORS_PER_GROUP = 10
 async def compute_connections(conn: aiosqlite.Connection, entry_id: str) -> list[dict[str, Any]]:
     """Compute related actors for an entry, grouped by relationship type.
 
-    Returns a list of connection groups, each with a type label and a list
-    of actor dicts containing id, name, type, slug, description_snippet,
-    and evidence explaining the link.
+    Checks four relationship dimensions: organizational affiliation,
+    source co-mentions, issue-area overlap within the same state, and
+    geographic co-location. Empty groups are omitted from the result.
+
+    Parameters
+    ----------
+    conn : aiosqlite.Connection
+        Database connection.
+    entry_id : str
+        The entry whose connections to compute.
+
+    Returns
+    -------
+    list[dict[str, Any]]
+        A list of connection groups. Each group has ``type`` (str) and
+        ``actors`` (list of dicts with id, name, type, slug,
+        description_snippet, and evidence).
     """
     entry = await EntryCRUD.get_by_id(conn, entry_id)
     if entry is None:

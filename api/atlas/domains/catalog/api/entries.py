@@ -163,7 +163,13 @@ async def resolve_by_slug(
     response: Response,
     db: aiosqlite.Connection = Depends(get_db),
 ) -> EntityDetailResponse | JSONResponse:
-    """Resolve a type + slug pair to an entity."""
+    """Resolve a type + slug pair to a full entity detail response.
+
+    Returns the entity if the slug matches directly. If the slug is an
+    alias (old slug replaced by a vanity slug), returns a 301 redirect
+    to the canonical slug. Returns 404 if the slug is unknown or the
+    entry type doesn't match.
+    """
     type_map = {"people": "person", "organizations": "organization"}
     entry_type = type_map.get(entity_type)
     if entry_type is None:
@@ -213,7 +219,12 @@ async def get_entity_connections(
     response: Response,
     db: aiosqlite.Connection = Depends(get_db),
 ) -> dict[str, list[dict[str, Any]]]:
-    """Compute and return related actors for a given entry."""
+    """Compute and return actors related to the given entry.
+
+    Groups connections by relationship type (same_organization, co_mentioned,
+    same_issue_area, same_geography) with evidence strings explaining each
+    link. Empty groups are omitted.
+    """
     connections = await compute_connections(db, entry_id)
     apply_short_public_cache(response)
     return {"connections": connections}

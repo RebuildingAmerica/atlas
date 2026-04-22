@@ -3,10 +3,13 @@ import { Badge } from "@/platform/ui/badge";
 import type { Entry } from "@/types";
 
 interface EntryCardProps {
+  /** The catalog entry to render as a browse card. */
   entry: Entry;
+  /** Optional slug-to-label mapping for issue area display names. */
   issueAreaLabels?: Record<string, string>;
 }
 
+/** Format an entry's location for display (city, state > region > state). */
 function formatLocation(entry: Entry): string {
   if (entry.city && entry.state) {
     return `${entry.city}, ${entry.state}`;
@@ -17,6 +20,7 @@ function formatLocation(entry: Entry): string {
   return entry.state ?? "Location not specified";
 }
 
+/** Convert a snake_case identifier into a Title Case label. */
 function humanize(value: string): string {
   return value
     .split("_")
@@ -24,6 +28,13 @@ function humanize(value: string): string {
     .join(" ");
 }
 
+/**
+ * Browse card for a catalog entry.
+ *
+ * Links to the canonical profile URL for person/org entries (with
+ * view transition support), falling back to the legacy `/entries/:id`
+ * route for other entry types.
+ */
 export function EntryCard({ entry, issueAreaLabels = {} }: EntryCardProps) {
   return (
     <article className="bg-surface-container-lowest rounded-[1.3rem] px-4 py-4">

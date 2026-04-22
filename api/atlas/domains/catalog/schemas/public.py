@@ -153,7 +153,7 @@ class EntityResponse(BaseModel):
     source_count: int = 0
     freshness: FreshnessInfo
     flag_summary: FlagSummary = Field(default_factory=FlagSummary)
-    slug: str | None = None
+    slug: str | None = Field(None, description="Human-readable URL slug (e.g., jane-doe-a3f2).")
     created_at: str
     updated_at: str
     resource_uri: str

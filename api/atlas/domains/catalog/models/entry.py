@@ -115,8 +115,21 @@ class EntryCRUD:
     def generate_slug(name: str, entry_id: str) -> str:
         """Generate a URL slug from name + short hash of entry ID.
 
-        Format: {name-slug}-{4-char-hash}
-        Example: jane-doe-a3f2
+        Unicode characters are transliterated to ASCII, special characters
+        stripped, and a 4-character SHA-256 hash of the entry ID appended
+        for collision safety.
+
+        Parameters
+        ----------
+        name : str
+            The entry's display name (e.g., "Jane Doe").
+        entry_id : str
+            The entry UUID used to derive the short hash suffix.
+
+        Returns
+        -------
+        str
+            A slug like ``jane-doe-a3f2``.
         """
         normalized = unicodedata.normalize("NFKD", name)
         ascii_name = normalized.encode("ascii", "ignore").decode("ascii")
@@ -269,7 +282,20 @@ class EntryCRUD:
 
     @staticmethod
     async def get_by_slug(conn: aiosqlite.Connection, slug: str) -> EntryModel | None:
-        """Resolve a slug to an EntryModel. Returns None if not found."""
+        """Look up an active entry by its URL slug.
+
+        Parameters
+        ----------
+        conn : aiosqlite.Connection
+            Database connection.
+        slug : str
+            The slug to look up (e.g., ``jane-doe-a3f2``).
+
+        Returns
+        -------
+        EntryModel | None
+            The matching entry, or None if no active entry has this slug.
+        """
         cursor = await conn.execute(
             "SELECT * FROM entries WHERE slug = ? AND active = 1",
             (slug,),
@@ -282,10 +308,24 @@ class EntryCRUD:
 
     @staticmethod
     async def resolve_slug(conn: aiosqlite.Connection, slug: str) -> dict[str, Any] | None:
-        """Resolve a slug, checking aliases if primary lookup fails.
+        """Resolve a slug to an entry, falling back to slug_aliases.
 
-        Returns dict with keys: entry, canonical_slug, is_alias.
-        Returns None if slug not found anywhere.
+        Tries the primary ``slug`` column first. If no match, checks
+        ``slug_aliases`` for a renamed vanity slug and returns the
+        canonical slug so callers can issue a redirect.
+
+        Parameters
+        ----------
+        conn : aiosqlite.Connection
+            Database connection.
+        slug : str
+            The slug to resolve (may be current or an old alias).
+
+        Returns
+        -------
+        dict[str, Any] | None
+            Dict with keys ``entry`` (EntryModel), ``canonical_slug`` (str),
+            and ``is_alias`` (bool). None if the slug is not found anywhere.
         """
         entry = await EntryCRUD.get_by_slug(conn, slug)
         if entry is not None:
@@ -307,7 +347,25 @@ class EntryCRUD:
 
     @staticmethod
     async def set_vanity_slug(conn: aiosqlite.Connection, entry_id: str, new_slug: str) -> bool:
-        """Set a vanity slug for an entry, preserving the old slug as an alias."""
+        """Replace an entry's slug with a vanity slug.
+
+        The previous slug is saved to ``slug_aliases`` so old URLs
+        continue to resolve (via 301 redirect).
+
+        Parameters
+        ----------
+        conn : aiosqlite.Connection
+            Database connection.
+        entry_id : str
+            The entry to update.
+        new_slug : str
+            The vanity slug to set.
+
+        Returns
+        -------
+        bool
+            True if the slug was updated, False if the entry was not found.
+        """
         entry = await EntryCRUD.get_by_id(conn, entry_id)
         if entry is None:
             return False
