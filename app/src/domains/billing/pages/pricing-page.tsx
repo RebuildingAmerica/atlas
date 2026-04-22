@@ -309,7 +309,7 @@ export function PricingPage() {
         </div>
 
         {/* Research Pass section */}
-        <div>
+        <div className="mb-10">
           <p className="type-label-medium text-ink-muted mb-4 tracking-wider uppercase">
             Project access
           </p>
@@ -341,6 +341,25 @@ export function PricingPage() {
                 Get a pass
               </Button>
             </div>
+          </div>
+        </div>
+
+        {/* Discounts section */}
+        <div className="border-border border-t pt-8">
+          <p className="type-label-medium text-ink-muted mb-4 tracking-wider uppercase">
+            Discounted access
+          </p>
+          <div className="border-border rounded-[1rem] border bg-white p-5">
+            <p className="type-title-small text-ink-strong mb-2 font-medium">
+              Are you an independent journalist, grassroots nonprofit, or civic tech worker?
+            </p>
+            <p className="type-body-small text-ink-soft mb-4 leading-relaxed">
+              Atlas offers 40–50% discounts for public-interest researchers and organizations.
+              Submit your information and we'll verify your eligibility within 24 hours.
+            </p>
+            <Link to="/request-discount">
+              <Button variant="secondary">Request a discount</Button>
+            </Link>
           </div>
         </div>
       </section>
