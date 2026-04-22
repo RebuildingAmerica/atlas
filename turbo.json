@@ -19,6 +19,7 @@
         "ATLAS_PUBLIC_URL",
         "ATLAS_AUTH_BASE_PATH",
         "ATLAS_API_AUDIENCE",
+        "ATLAS_DOCS_URL",
         "ATLAS_EMAIL_PROVIDER",
         "ATLAS_SERVER_API_PROXY_TARGET",
         "NITRO_PRESET"
@@ -30,6 +31,7 @@
       "env": [
         "ATLAS_PUBLIC_URL",
         "ATLAS_API_AUDIENCE",
+        "ATLAS_DOCS_URL",
         "ATLAS_EMAIL_PROVIDER",
         "ATLAS_AUTH_BASE_PATH",
         "ATLAS_SERVER_API_PROXY_TARGET"
@@ -71,6 +73,7 @@
         "NITRO_PRESET",
         "ATLAS_PUBLIC_URL",
         "ATLAS_API_AUDIENCE",
+        "ATLAS_DOCS_URL",
         "ATLAS_EMAIL_PROVIDER",
         "ATLAS_AUTH_BASE_PATH",
         "ATLAS_SERVER_API_PROXY_TARGET"
