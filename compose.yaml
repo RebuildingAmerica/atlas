@@ -48,6 +48,7 @@ services:
       ATLAS_EMAIL_RESEND_API_KEY: ${ATLAS_EMAIL_RESEND_API_KEY}
       ATLAS_EMAIL_CAPTURE_URL: ${ATLAS_EMAIL_CAPTURE_URL}
       ATLAS_PUBLIC_URL: ${ATLAS_PUBLIC_URL}
+      ATLAS_DOCS_URL: ${ATLAS_DOCS_URL}
     restart: unless-stopped
     volumes:
       - atlas-data:/app/data

@@ -25,8 +25,8 @@ function DocsUnavailablePage() {
         <p className="type-label-medium text-ink-muted">Atlas Docs</p>
         <h1 className="type-headline-medium text-ink-strong mt-4">Docs URL is not configured</h1>
         <p className="type-body-large text-ink-soft mt-4">
-          Set <code>ATLAS_DOCS_URL</code> on the app deployment to send <code>/docs</code> to the
-          Mintlify site.
+          Set <code>ATLAS_DOCS_URL</code> to the Mintlify origin so Vercel can proxy{" "}
+          <code>/docs</code> to the hosted docs site.
         </p>
       </div>
     </PageLayout>

@@ -3,6 +3,7 @@ import {
   getAbsoluteApiBaseUrl,
   getApiBaseUrl,
   getAppConfig,
+  getDocsUrl,
   getServerApiBaseUrl,
 } from "@/platform/config/app-config";
 
@@ -101,9 +102,27 @@ describe("getAppConfig", () => {
     expect(getAppConfig({ ATLAS_AUTH_BASE_PATH: "/custom" }).authBaseUrl).toBeUndefined();
   });
 
+  it("normalizes a bare Mintlify hostname to an https origin", () => {
+    expect(
+      getAppConfig({
+        ATLAS_DOCS_URL: "rebuildingamericaproject.mintlify.dev/",
+      }),
+    ).toEqual({
+      authBasePath: "/api/auth",
+      docsUrl: "https://rebuildingamericaproject.mintlify.dev",
+      localMode: false,
+    });
+  });
+
   it("rejects non-absolute public urls", () => {
     expect(() => getAppConfig({ ATLAS_PUBLIC_URL: "relative/path" })).toThrow(
       "ATLAS_PUBLIC_URL must be an absolute URL.",
+    );
+  });
+
+  it("rejects invalid docs urls", () => {
+    expect(() => getAppConfig({ ATLAS_DOCS_URL: "not a url??" })).toThrow(
+      "ATLAS_DOCS_URL must be a valid URL or hostname.",
     );
   });
 
@@ -186,6 +205,12 @@ describe("default exports and parameters", () => {
   it("getAbsoluteApiBaseUrl falls back to origin", () => {
     expect(getAbsoluteApiBaseUrl({ env: {}, origin: "http://localhost" })).toBe(
       "http://localhost/api",
+    );
+  });
+
+  it("getDocsUrl normalizes a bare hostname", () => {
+    expect(getDocsUrl({ ATLAS_DOCS_URL: "rebuildingamericaproject.mintlify.dev" })).toBe(
+      "https://rebuildingamericaproject.mintlify.dev",
     );
   });
 });

@@ -10,14 +10,14 @@ class TestProductionConfig:
     """Tests for production-oriented configuration defaults."""
 
     def test_openapi_defaults_on_in_production(self) -> None:
-        """Production settings should publish the OpenAPI spec and docs by default."""
+        """Production settings should keep OpenAPI public but disable Swagger/ReDoc by default."""
         settings = Settings(
             database_url="sqlite:///tmp/test.db",
             environment="production",
         )
 
         assert settings.enable_openapi_spec is True
-        assert settings.enable_api_docs_ui is True
+        assert settings.enable_api_docs_ui is False
 
     def test_openapi_defaults_on_outside_production(self) -> None:
         """Development-like environments should continue to expose docs by default."""
@@ -41,7 +41,7 @@ class TestProductionConfig:
         assert settings.enable_api_docs_ui is False
 
     def test_health_endpoint_includes_environment(self, monkeypatch: MonkeyPatch) -> None:
-        """The health endpoint should expose the active environment for operators."""
+        """Production app factories should keep health/openapi public without public Swagger/ReDoc."""
         settings = Settings(
             database_url="sqlite:///tmp/test.db",
             environment="production",
@@ -53,21 +53,18 @@ class TestProductionConfig:
         health_route = next(
             route for route in app.routes if getattr(route, "path", None) == "/health"
         )
-        docs_route = next(route for route in app.routes if getattr(route, "path", None) == "/docs")
-        redoc_route = next(
-            route for route in app.routes if getattr(route, "path", None) == "/redoc"
-        )
         openapi_route = next(
             route for route in app.routes if getattr(route, "path", None) == "/openapi.json"
         )
+        route_paths = {getattr(route, "path", None) for route in app.routes}
 
         assert app.docs_url is None
         assert app.redoc_url is None
         assert app.openapi_url is None
         assert health_route.endpoint.__name__ == "health_check"
-        assert docs_route.endpoint.__name__ == "swagger_ui"
-        assert redoc_route.endpoint.__name__ == "redoc_ui"
         assert openapi_route.endpoint.__name__ == "openapi_schema"
+        assert "/docs" not in route_paths
+        assert "/redoc" not in route_paths
 
     def test_auth_settings_use_atlas_prefixed_environment_variables(
         self, monkeypatch: MonkeyPatch

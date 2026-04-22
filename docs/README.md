@@ -2,6 +2,9 @@
 
 Welcome to The Atlas documentation hub. This is your guide to understanding, developing, and contributing to the project.
 
+> [!NOTE]
+> Atlas is in the middle of a Mintlify docs cutover for the public API docs. The new Mintlify project lives in [`../mintlify/`](../mintlify/docs.json), while this `docs/` tree remains the source of truth for contributor, architecture, and deployment documentation.
+
 ## Quick Navigation
 
 Start here based on what you need:

@@ -47,7 +47,7 @@
         "api/pyproject.toml",
         "api/uv.lock"
       ],
-      "outputs": ["openapi/atlas.openapi.json"]
+      "outputs": ["openapi/atlas.openapi.json", "mintlify/openapi/atlas.openapi.json"]
     },
     "//#api:test": {
       "dependsOn": ["//#openapi"],

@@ -54,13 +54,15 @@ flow should look like this:
 After deployment, verify in this order:
 
 1. `GET /health` returns `200`
-2. The app loads successfully
-3. Core browse or entry-detail pages render
-4. Magic-link sign-in works if auth is enabled
-5. Passkey sign-in works if auth is enabled
-6. API key creation and direct `X-API-Key` access work if auth is enabled
-7. Discovery-run creation works if that path is part of the release
-8. Restarting the API does not lose persistent data
+2. `GET /openapi.json` returns the public API contract
+3. `GET /docs` lands on the Mintlify docs site when docs are part of the release
+4. The app loads successfully
+5. Core browse or entry-detail pages render
+6. Magic-link sign-in works if auth is enabled
+7. Passkey sign-in works if auth is enabled
+8. API key creation and direct `X-API-Key` access work if auth is enabled
+9. Discovery-run creation works if that path is part of the release
+10. Restarting the API does not lose persistent data
 
 Do not treat “deployment command succeeded” as the same thing as “Atlas
 is healthy.”

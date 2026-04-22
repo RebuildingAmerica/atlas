@@ -83,7 +83,13 @@ export async function runInstallPhase(
 
     let installOk = true;
     for (const cmd of cap.installCommands[os]) {
-      const cmdResult = runCommand(cmd);
+      let cmdResult = runCommand(cmd);
+      if (!cmdResult.ok) {
+        const fallbackResult = retryGlobalNodeInstall(cmd, cmdResult.stderr);
+        if (fallbackResult) {
+          cmdResult = fallbackResult;
+        }
+      }
       if (!cmdResult.ok) {
         s.stop(`${cap.label} — install failed`);
         log.error(summarizeOutputLine(cmdResult));
@@ -122,6 +128,32 @@ export async function runInstallPhase(
   }
 
   return { success: allReady, followUpItems };
+}
+
+function retryGlobalNodeInstall(
+  command: string,
+  stderr: string,
+): ReturnType<typeof runCommand> | undefined {
+  if (!stderr.includes("ERR_PNPM_UNEXPECTED_STORE")) {
+    return undefined;
+  }
+
+  const match = /^pnpm add -g (.+)$/.exec(command);
+  if (!match) {
+    return undefined;
+  }
+
+  const packageSpec = match[1]?.trim();
+  if (!packageSpec) {
+    return undefined;
+  }
+
+  logSubline(
+    pc.dim(
+      `pnpm global store mismatch detected; retrying with npm install -g ${packageSpec}`,
+    ),
+  );
+  return runCommand(`npm install -g ${packageSpec}`);
 }
 
 interface CapabilityCheck {

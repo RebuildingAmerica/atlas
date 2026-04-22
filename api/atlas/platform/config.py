@@ -102,7 +102,7 @@ class Settings(BaseSettings):
         if self.enable_openapi_spec is None:
             self.enable_openapi_spec = True
         if self.enable_api_docs_ui is None:
-            self.enable_api_docs_ui = True
+            self.enable_api_docs_ui = self.environment != "production"
         self.enable_api_docs = self.enable_openapi_spec and self.enable_api_docs_ui
         if self.auth_jwt_issuer:
             base = self.auth_jwt_issuer.rstrip("/")

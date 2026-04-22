@@ -41,7 +41,7 @@ pnpm dev
 
 ### Documentation
 
-All technical documentation lives in [`docs/`](./docs/README.md):
+Contributor documentation still lives in [`docs/`](./docs/README.md), and the new Mintlify docs project lives in [`mintlify/`](./mintlify/docs.json):
 
 | Section | Description |
 |---------|-------------|
@@ -51,6 +51,12 @@ All technical documentation lives in [`docs/`](./docs/README.md):
 | [Standards](./docs/standards/README.md) | Code style, commit conventions, and API design |
 | [Deployment](./docs/deployment/README.md) | Production deployment and release process |
 | [Design](./docs/design/README.md) | Product vision and system design documents |
+
+For the Mintlify API docs:
+
+- Config: [`mintlify/docs.json`](./mintlify/docs.json)
+- API pages: [`mintlify/api-reference/`](./mintlify/api-reference/)
+- Local validation: `pnpm docs:validate`
 
 ### Tech Stack
 

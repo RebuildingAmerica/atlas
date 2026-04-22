@@ -62,12 +62,35 @@ interface EnvFileSpec {
   label: string;
 }
 
+function normalizeDocsOrigin(value: string): string {
+  const candidate = value.trim();
+  const normalizedCandidate = /^https?:\/\//.test(candidate)
+    ? candidate
+    : `https://${candidate}`;
+
+  let url: URL;
+  try {
+    url = new URL(normalizedCandidate);
+  } catch {
+    throw new Error("Enter a valid Mintlify hostname or URL.");
+  }
+
+  if (!/^https?:$/.test(url.protocol) || !url.hostname) {
+    throw new Error("Enter a valid Mintlify hostname or URL.");
+  }
+
+  return url.origin;
+}
+
 export async function runEnvPhase(
   projectRoot: string,
   doctorMode: boolean,
   state: ReadinessState,
+  configureHostedDeployment: boolean,
 ): Promise<PhaseResult> {
   const followUpItems: string[] = [];
+  const rootEnvPath = path.join(projectRoot, ".env");
+  const prodEnvPath = path.join(projectRoot, ".env.production");
 
   const envFiles: EnvFileSpec[] = [
     { target: ".env", example: ".env.example", label: "Root .env" },
@@ -112,7 +135,6 @@ export async function runEnvPhase(
   }
 
   // Step 2: Auto-generate secrets
-  const rootEnvPath = path.join(projectRoot, ".env");
   const rootEnv = parseEnvFile(rootEnvPath);
   const updates = new Map<string, string>();
 
@@ -159,6 +181,10 @@ export async function runEnvPhase(
     }
   }
 
+  if (configureHostedDeployment) {
+    await ensureProductionRoutingConfig(prodEnvPath, followUpItems);
+  }
+
   // Step 5: Write updates
   if (updates.size > 0) {
     mergeEnvFile(rootEnvPath, updates);
@@ -182,13 +208,16 @@ export async function runEnvPhase(
   }
 
   // Step 6: Sync to Vercel if deploy-vercel capability is ready
-  if (state.capabilities["deploy-vercel"]?.status === "ready") {
+  if (
+    configureHostedDeployment &&
+    state.capabilities["deploy-vercel"]?.status === "ready"
+  ) {
     const appDir = path.join(projectRoot, "app");
     await detectAndLink(appDir);
 
     const scope = getVercelScope(appDir);
     if (scope) {
-      const mergedEnv = parseEnvFile(rootEnvPath);
+      const mergedEnv = getMergedEnv(rootEnvPath, prodEnvPath);
       const varsToSync = buildVercelEnvVars(mergedEnv);
       await syncEnvVars(varsToSync, scope);
     } else {
@@ -199,6 +228,85 @@ export async function runEnvPhase(
   }
 
   return { success: true, followUpItems };
+}
+
+function getMergedEnv(
+  rootEnvPath: string,
+  prodEnvPath: string,
+): Map<string, string> {
+  const merged = parseEnvFile(rootEnvPath);
+  for (const [key, value] of parseEnvFile(prodEnvPath)) {
+    merged.set(key, value);
+  }
+  return merged;
+}
+
+async function ensureProductionRoutingConfig(
+  prodEnvPath: string,
+  followUpItems: string[],
+): Promise<void> {
+  const prodEnv = parseEnvFile(prodEnvPath);
+  const updates = new Map<string, string>();
+
+  const publicUrl = prodEnv.get("ATLAS_PUBLIC_URL")?.trim();
+  if (!publicUrl) {
+    note(
+      "Atlas needs its public production origin so Vercel, Cloud Run, auth, and Mintlify all agree on the same site URL.",
+      "Production app URL",
+    );
+    const value = (await promptOrExit(
+      text({
+        message: "Production Atlas URL",
+        placeholder: "https://atlas.rebuildingus.org",
+        validate: (input) => {
+          if (!input.trim()) return "The production Atlas URL is required.";
+          if (!/^https?:\/\//.test(input.trim())) {
+            return "Use an absolute URL starting with https://";
+          }
+        },
+      }),
+    )) as string;
+    updates.set("ATLAS_PUBLIC_URL", value.trim().replace(/\/+$/, ""));
+  }
+
+  const docsUrl = prodEnv.get("ATLAS_DOCS_URL")?.trim();
+  const normalizedDocsUrl = docsUrl ? normalizeDocsOrigin(docsUrl) : undefined;
+  if (normalizedDocsUrl && normalizedDocsUrl !== docsUrl) {
+    updates.set("ATLAS_DOCS_URL", normalizedDocsUrl);
+  }
+
+  if (!normalizedDocsUrl) {
+    note(
+      "Mintlify's Vercel subpath setup needs the Mintlify deployment origin, usually https://<subdomain>.mintlify.dev. Bootstrap will sync this to Vercel, but you still need to enable Mintlify's 'Host at /docs' setting in the dashboard.",
+      "Mintlify docs origin",
+    );
+    const value = (await promptOrExit(
+      text({
+        message: "Mintlify docs origin",
+        placeholder: "https://your-subdomain.mintlify.dev",
+        validate: (input) => {
+          if (!input.trim()) return "The Mintlify docs origin is required.";
+          try {
+            normalizeDocsOrigin(input);
+          } catch (error) {
+            return error instanceof Error
+              ? error.message
+              : "Enter a valid Mintlify hostname or URL.";
+          }
+        },
+      }),
+    )) as string;
+    updates.set("ATLAS_DOCS_URL", normalizeDocsOrigin(value));
+  }
+
+  if (updates.size > 0) {
+    mergeEnvFile(prodEnvPath, updates);
+    log.success(`Updated ${prodEnvPath} with production routing values`);
+  }
+
+  followUpItems.push(
+    "In Mintlify, enable 'Host at /docs' for the Atlas domain so Vercel rewrites can proxy /docs correctly.",
+  );
 }
 
 function buildVercelEnvVars(env: Map<string, string>): VercelVar[] {
@@ -223,6 +331,7 @@ function buildVercelEnvVars(env: Map<string, string>): VercelVar[] {
   add("ATLAS_AUTH_BASE_PATH", get("ATLAS_AUTH_BASE_PATH", "/api/auth"), all);
   add("ATLAS_DEPLOY_MODE", "local", ["preview"]);
   add("ATLAS_PUBLIC_URL", get("ATLAS_PUBLIC_URL"), prod);
+  add("ATLAS_DOCS_URL", get("ATLAS_DOCS_URL"), prod);
   add("ATLAS_API_AUDIENCE", get("ATLAS_API_AUDIENCE"), prod);
   add("ATLAS_EMAIL_PROVIDER", get("ATLAS_EMAIL_PROVIDER", "resend"), prod);
   add("ATLAS_AUTH_INTERNAL_SECRET", get("ATLAS_AUTH_INTERNAL_SECRET"), prod);

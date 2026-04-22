@@ -41,6 +41,7 @@ export async function runInfraPhase(
   doctorMode: boolean,
 ): Promise<InfraResult> {
   const followUpItems: string[] = [];
+  const persistedConfig = readPersistedInfraConfig(projectRoot);
 
   // ── Gate: require gcloud + gh auth ────────────────────────────────────────
   const gcloudAuth = runCommand(
@@ -51,6 +52,16 @@ export async function runInfraPhase(
       "gcloud is not authenticated. Run 'gcloud auth login' first, then re-run bootstrap.",
     );
     return emptyResult(["Authenticate gcloud: gcloud auth login"], false);
+  }
+
+  const gcloudToken = runCommand(
+    "gcloud auth print-access-token --quiet >/dev/null 2>&1",
+  );
+  if (!gcloudToken.ok) {
+    log.error(
+      "gcloud needs to reauthenticate before Atlas can manage your GCP project. Run 'gcloud auth login' and then re-run bootstrap.",
+    );
+    return emptyResult(["Reauthenticate gcloud: gcloud auth login"], false);
   }
 
   const ghAuth = runCommand("gh auth status 2>/dev/null");
@@ -78,6 +89,7 @@ export async function runInfraPhase(
   const { projectId, projectNumber } = await setupProject(
     doctorMode,
     followUpItems,
+    persistedConfig.projectId,
   );
   if (!projectId) {
     return emptyResult(followUpItems, false);
@@ -89,12 +101,7 @@ export async function runInfraPhase(
       "Pick the GCP region closest to your users. us-central1 (Iowa) is the cheapest for Cloud Run and has the widest free tier. See https://cloud.google.com/run/docs/locations",
     ),
   );
-  const region = (await promptOrExit(
-    text({
-      message: "GCP region",
-      initialValue: "us-central1",
-    }),
-  )) as string;
+  const region = await chooseRegion(doctorMode, persistedConfig.region);
   logSubline(`Region: ${pc.cyan(region)}`);
 
   // ── Enable APIs ───────────────────────────────────────────────────────────
@@ -161,19 +168,34 @@ interface ProjectInfo {
   projectNumber: string;
 }
 
+interface ProjectChoice {
+  mode: "existing" | "manual" | "new";
+  projectId?: string;
+}
+
 async function setupProject(
   doctorMode: boolean,
   followUpItems: string[],
+  persistedProjectId?: string,
 ): Promise<ProjectInfo> {
-  const listResult = runCommand(
-    'gcloud projects list --format="value(projectId)" --limit=20',
-  );
-
-  if (listResult.ok && listResult.stdout) {
-    const projects = listResult.stdout.split("\n").filter(Boolean);
-    if (projects.length > 0) {
-      logSubline(`Found ${projects.length} existing project(s)`);
+  if (persistedProjectId) {
+    const persistedProject = await reusePersistedProject(
+      doctorMode,
+      followUpItems,
+      persistedProjectId,
+    );
+    if (persistedProject) {
+      return persistedProject;
     }
+  }
+
+  const activeProjectId = getActiveProjectId();
+  const projects = listAccessibleProjects();
+  if (projects.length > 0) {
+    logSubline(`Found ${projects.length} existing project(s)`);
+  }
+  if (activeProjectId) {
+    logSubline(`Active gcloud project: ${pc.cyan(activeProjectId)}`);
   }
 
   logSubline(
@@ -182,33 +204,30 @@ async function setupProject(
     ),
   );
 
-  const projectAction = (await promptOrExit(
+  const projectChoice = (await promptOrExit(
     select({
       message: "GCP project",
-      options: [
-        { value: "existing", label: "Use an existing project" },
-        { value: "new", label: "Create a new project" },
-      ],
+      options: buildProjectOptions(activeProjectId, projects),
     }),
-  )) as string;
+  )) as ProjectChoice;
 
-  const projectId = (await promptOrExit(
-    text({
-      message:
-        projectAction === "new"
-          ? "New GCP project ID (globally unique, lowercase, hyphens allowed)"
-          : "Existing GCP project ID",
-      placeholder: "atlas-prod",
-    }),
-  )) as string;
+  const creatingNew = projectChoice.mode === "new";
+  const projectId =
+    projectChoice.mode === "existing" && projectChoice.projectId
+      ? projectChoice.projectId
+      : ((await promptOrExit(
+          text({
+            message: creatingNew
+              ? "New GCP project ID (globally unique, lowercase, hyphens allowed)"
+              : "Existing GCP project ID",
+            placeholder: "atlas-prod",
+          }),
+        )) as string);
 
   if (doctorMode) {
-    const describeResult = runCommand(
-      `gcloud projects describe "${projectId}" 2>/dev/null`,
-    );
+    const describeResult = describeProject(projectId);
     if (!describeResult.ok) {
-      log.warn(`Project '${projectId}' does not exist or is inaccessible`);
-      followUpItems.push(`Create or verify GCP project: ${projectId}`);
+      handleProjectLookupFailure(projectId, describeResult, followUpItems);
       return { projectId: "", projectNumber: "" };
     }
     const numResult = runCommand(
@@ -219,14 +238,17 @@ async function setupProject(
   }
 
   // Check if project exists
-  const describeResult = runCommand(
-    `gcloud projects describe "${projectId}" 2>/dev/null`,
-  );
+  const describeResult = describeProject(projectId);
 
   if (describeResult.ok) {
     log.success(`Project '${projectId}' exists`);
   } else {
-    if (projectAction !== "new") {
+    if (isGcloudAuthFailure(describeResult)) {
+      handleProjectLookupFailure(projectId, describeResult, followUpItems);
+      return { projectId: "", projectNumber: "" };
+    }
+
+    if (!creatingNew) {
       const shouldCreate = await promptConfirm(
         `Project '${projectId}' does not exist. Create it?`,
         true,
@@ -287,6 +309,204 @@ async function setupProject(
   }
 
   return { projectId, projectNumber };
+}
+
+async function reusePersistedProject(
+  doctorMode: boolean,
+  followUpItems: string[],
+  projectId: string,
+): Promise<ProjectInfo | undefined> {
+  const describeResult = describeProject(projectId);
+  if (!describeResult.ok) {
+    handleProjectLookupFailure(projectId, describeResult, followUpItems, true);
+    return undefined;
+  }
+
+  log.success(`GCP_PROJECT_ID already configured (${projectId})`);
+
+  if (!doctorMode) {
+    const action = (await promptOrExit(
+      select({
+        message: "GCP project",
+        options: [
+          { value: "keep", label: `Keep ${projectId}` },
+          { value: "change", label: "Choose a different project" },
+        ],
+      }),
+    )) as string;
+
+    if (action === "change") {
+      return undefined;
+    }
+  }
+
+  const numResult = runCommand(
+    `gcloud projects describe "${projectId}" --format="value(projectNumber)"`,
+  );
+  if (!numResult.ok) {
+    log.error("Failed to get project number.");
+    followUpItems.push("Retrieve GCP project number");
+    return { projectId: "", projectNumber: "" };
+  }
+
+  runCommand(`gcloud config set project "${projectId}" --quiet`);
+  return { projectId, projectNumber: numResult.stdout };
+}
+
+async function chooseRegion(
+  doctorMode: boolean,
+  persistedRegion?: string,
+): Promise<string> {
+  if (persistedRegion) {
+    log.success(`GCP_REGION already configured (${persistedRegion})`);
+
+    if (!doctorMode) {
+      const action = (await promptOrExit(
+        select({
+          message: "GCP region",
+          options: [
+            { value: "keep", label: `Keep ${persistedRegion}` },
+            { value: "change", label: "Choose a different region" },
+          ],
+        }),
+      )) as string;
+
+      if (action === "keep") {
+        return persistedRegion;
+      }
+    } else {
+      return persistedRegion;
+    }
+  }
+
+  return (await promptOrExit(
+    text({
+      message: "GCP region",
+      initialValue: persistedRegion || "us-central1",
+    }),
+  )) as string;
+}
+
+function readPersistedInfraConfig(projectRoot: string): {
+  projectId?: string;
+  region?: string;
+} {
+  const prodEnv = parseEnvFile(path.join(projectRoot, ".env.production"));
+
+  const projectId = prodEnv.get("GCP_PROJECT_ID")?.trim();
+  const region = prodEnv.get("GCP_REGION")?.trim();
+
+  return {
+    projectId: projectId || undefined,
+    region: region || undefined,
+  };
+}
+
+function describeProject(projectId: string) {
+  return runCommand(
+    `gcloud projects describe "${projectId}" --format="value(projectId)" 2>&1`,
+  );
+}
+
+function isGcloudAuthFailure(result: ReturnType<typeof runCommand>): boolean {
+  const output = commandOutput(result).toLowerCase();
+  return (
+    output.includes("reauthentication required") ||
+    output.includes("please enter your password") ||
+    output.includes("you do not currently have an active account") ||
+    (output.includes("please run") && output.includes("gcloud auth login")) ||
+    output.includes("permission denied") ||
+    output.includes("forbidden")
+  );
+}
+
+function handleProjectLookupFailure(
+  projectId: string,
+  result: ReturnType<typeof runCommand>,
+  followUpItems: string[],
+  persisted = false,
+): void {
+  if (isGcloudAuthFailure(result)) {
+    log.error(
+      `gcloud needs to reauthenticate before Atlas can verify project '${projectId}'. Run 'gcloud auth login' and then re-run bootstrap.`,
+    );
+    followUpItems.push("Reauthenticate gcloud: gcloud auth login");
+    return;
+  }
+
+  if (persisted) {
+    log.warn(`Saved GCP project '${projectId}' is no longer accessible`);
+    followUpItems.push(`Verify saved GCP project: ${projectId}`);
+    return;
+  }
+
+  log.warn(`Project '${projectId}' does not exist or is inaccessible`);
+  followUpItems.push(`Create or verify GCP project: ${projectId}`);
+}
+
+function getActiveProjectId(): string | undefined {
+  const result = runCommand("gcloud config get-value project 2>/dev/null");
+  const projectId = result.ok ? result.stdout.trim() : "";
+  if (!projectId || projectId === "(unset)") {
+    return undefined;
+  }
+
+  return projectId;
+}
+
+function listAccessibleProjects(): string[] {
+  const listResult = runCommand(
+    'gcloud projects list --format="value(projectId)" --limit=20',
+  );
+  if (!listResult.ok || !listResult.stdout) {
+    return [];
+  }
+
+  return listResult.stdout
+    .split("\n")
+    .map((projectId) => projectId.trim())
+    .filter(Boolean);
+}
+
+function buildProjectOptions(
+  activeProjectId: string | undefined,
+  projects: string[],
+): { value: ProjectChoice; label: string; hint?: string }[] {
+  const options: { value: ProjectChoice; label: string; hint?: string }[] = [];
+  const seen = new Set<string>();
+
+  if (activeProjectId) {
+    options.push({
+      value: { mode: "existing", projectId: activeProjectId },
+      label: `Use active gcloud project (${activeProjectId})`,
+      hint: "Recommended when this is the project you already deploy into.",
+    });
+    seen.add(activeProjectId);
+  }
+
+  for (const projectId of projects) {
+    if (seen.has(projectId)) {
+      continue;
+    }
+
+    options.push({
+      value: { mode: "existing", projectId },
+      label: projectId,
+      hint: "Existing accessible GCP project",
+    });
+    seen.add(projectId);
+  }
+
+  options.push({
+    value: { mode: "manual" },
+    label: "Enter an existing project ID manually",
+  });
+  options.push({
+    value: { mode: "new" },
+    label: "Create a new project",
+  });
+
+  return options;
 }
 
 // ── Enable APIs ───────────────────────────────────────────────────────────────

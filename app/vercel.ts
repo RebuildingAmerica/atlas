@@ -1,0 +1,71 @@
+function normalizeDocsOrigin(value: string | undefined): string | undefined {
+  const candidate = value?.trim();
+  if (!candidate) {
+    return undefined;
+  }
+
+  const normalizedCandidate = /^https?:\/\//.test(candidate)
+    ? candidate
+    : `https://${candidate}`;
+
+  try {
+    return new URL(normalizedCandidate).origin;
+  } catch {
+    return undefined;
+  }
+}
+
+const docsOrigin = normalizeDocsOrigin(process.env.ATLAS_DOCS_URL);
+
+export const config = {
+  headers: [
+    {
+      source: "/(.*)",
+      headers: [
+        {
+          key: "X-Content-Type-Options",
+          value: "nosniff",
+        },
+        {
+          key: "X-Frame-Options",
+          value: "DENY",
+        },
+        {
+          key: "X-XSS-Protection",
+          value: "1; mode=block",
+        },
+        {
+          key: "Referrer-Policy",
+          value: "strict-origin-when-cross-origin",
+        },
+        {
+          key: "Permissions-Policy",
+          value: "camera=(), microphone=(), geolocation=()",
+        },
+        {
+          key: "Strict-Transport-Security",
+          value: "max-age=63072000; includeSubDomains; preload",
+        },
+        {
+          key: "Content-Security-Policy",
+          value:
+            "default-src 'self'; script-src 'self' 'unsafe-inline' https://va.vercel-scripts.com; connect-src 'self' https://vitals.vercel-insights.com https://va.vercel-scripts.com; img-src 'self' data: https:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
+        },
+      ],
+    },
+  ],
+  ...(docsOrigin
+    ? {
+        rewrites: [
+          {
+            source: "/docs",
+            destination: `${docsOrigin}/docs`,
+          },
+          {
+            source: "/docs/:match*",
+            destination: `${docsOrigin}/docs/:match*`,
+          },
+        ],
+      }
+    : {}),
+};

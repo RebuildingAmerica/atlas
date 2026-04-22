@@ -3,6 +3,7 @@ const DEFAULT_AUTH_BASE_PATH = "/api/auth";
 
 interface AppConfigEnv {
   ATLAS_AUTH_BASE_PATH?: string;
+  ATLAS_DOCS_URL?: string;
   ATLAS_DEPLOY_MODE?: string;
   ATLAS_PUBLIC_URL?: string;
 }
@@ -13,6 +14,24 @@ function trimTrailingSlash(value: string): string {
 
 function isAbsoluteUrl(value: string): boolean {
   return /^https?:\/\//.test(value);
+}
+
+function normalizeDocsOrigin(value: string): string {
+  const candidate = value.trim();
+  const normalizedCandidate = isAbsoluteUrl(candidate) ? candidate : `https://${candidate}`;
+
+  let url: URL;
+  try {
+    url = new URL(normalizedCandidate);
+  } catch {
+    throw new Error("ATLAS_DOCS_URL must be a valid URL or hostname.");
+  }
+
+  if (!/^https?:$/.test(url.protocol) || !url.hostname) {
+    throw new Error("ATLAS_DOCS_URL must be a valid URL or hostname.");
+  }
+
+  return url.origin;
 }
 
 function ensureApiSuffix(value: string): string {
@@ -41,6 +60,15 @@ function getConfiguredPublicUrl(env: AppConfigEnv): string | undefined {
   return trimTrailingSlash(publicUrl);
 }
 
+function getConfiguredDocsUrl(env: AppConfigEnv): string | undefined {
+  const docsUrl = env.ATLAS_DOCS_URL?.trim();
+  if (!docsUrl) {
+    return undefined;
+  }
+
+  return normalizeDocsOrigin(docsUrl);
+}
+
 export function getApiBaseUrl(env: AppConfigEnv = import.meta.env): string {
   const publicUrl = getConfiguredPublicUrl(env);
   if (!publicUrl) {
@@ -52,6 +80,7 @@ export function getApiBaseUrl(env: AppConfigEnv = import.meta.env): string {
 
 export function getAppConfig(env: AppConfigEnv = import.meta.env) {
   const authBasePath = env.ATLAS_AUTH_BASE_PATH?.trim() || DEFAULT_AUTH_BASE_PATH;
+  const docsUrl = getConfiguredDocsUrl(env);
   const publicUrl = getConfiguredPublicUrl(env);
 
   let authBaseUrl: string | undefined;
@@ -67,8 +96,13 @@ export function getAppConfig(env: AppConfigEnv = import.meta.env) {
     ...(publicUrl ? { apiBaseUrl: ensureApiSuffix(publicUrl) } : {}),
     authBasePath,
     ...(authBaseUrl ? { authBaseUrl } : {}),
+    ...(docsUrl ? { docsUrl } : {}),
     localMode: env.ATLAS_DEPLOY_MODE === "local",
   };
+}
+
+export function getDocsUrl(env: AppConfigEnv = import.meta.env): string | undefined {
+  return getConfiguredDocsUrl(env);
 }
 
 export function getAbsoluteApiBaseUrl({

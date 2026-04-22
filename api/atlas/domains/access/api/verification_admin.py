@@ -48,9 +48,9 @@ class VerificationUpdateResponse(BaseModel):
 
 @router.get("/api/admin/verifications", response_model=VerificationListResponse)
 async def list_verifications(
+    _response_obj: Response,
     _status: str | None = None,
     _segment: str | None = None,
-    _response_obj: Response | None = None,
 ) -> VerificationListResponse:
     """
     List discount verification records (admin only).
@@ -77,9 +77,9 @@ async def list_verifications(
 
 @router.patch("/api/admin/verifications/{user_id}", response_model=VerificationUpdateResponse)
 async def update_verification(
+    _response_obj: Response,
     _user_id: str,
     _request: VerificationUpdateRequest,
-    _response_obj: Response | None = None,
 ) -> VerificationUpdateResponse:
     """
     Update a verification record status (admin only).

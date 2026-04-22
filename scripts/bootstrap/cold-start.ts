@@ -190,7 +190,12 @@ async function main(): Promise<void> {
     !(await confirmResumeSkip("Environment"))
   ) {
     log.step("Phase 3: Environment Configuration");
-    const result = await runEnvPhase(projectRoot, args.doctorMode, state);
+    const result = await runEnvPhase(
+      projectRoot,
+      args.doctorMode,
+      state,
+      !args.localOnly,
+    );
     markPhase(state, "env", result.success ? "complete" : "partial");
     saveReadiness(projectRoot, state);
     allFollowUp.push(...result.followUpItems);
