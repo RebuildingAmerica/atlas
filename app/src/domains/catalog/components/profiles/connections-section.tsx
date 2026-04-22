@@ -61,6 +61,7 @@ export function ConnectionsSection({ connections, isLoading }: ConnectionsSectio
                     key={actor.id}
                     to={`/profiles/${typePrefix}/$slug`}
                     params={{ slug: actor.slug ?? "" }}
+                    viewTransition
                     className="border-border bg-surface-container-low hover:border-border-strong block rounded-lg border p-3 transition-colors"
                   >
                     <div className="flex items-center gap-3">

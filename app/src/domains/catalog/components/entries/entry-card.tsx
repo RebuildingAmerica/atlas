@@ -32,11 +32,20 @@ export function EntryCard({ entry, issueAreaLabels = {} }: EntryCardProps) {
           <div className="space-y-2">
             <div>
               <Link
-                to="/entries/$entryId"
-                params={{ entryId: entry.id }}
+                to={
+                  entry.slug && (entry.type === "person" || entry.type === "organization")
+                    ? `/profiles/${entry.type === "person" ? "people" : "organizations"}/$slug`
+                    : "/entries/$entryId"
+                }
+                params={
+                  entry.slug && (entry.type === "person" || entry.type === "organization")
+                    ? { slug: entry.slug }
+                    : { entryId: entry.id }
+                }
+                viewTransition
                 className="type-title-large text-ink-strong hover:text-accent transition-colors"
               >
-                {entry.name}
+                <span style={{ viewTransitionName: `entry-name-${entry.id}` }}>{entry.name}</span>
               </Link>
               <p className="type-body-medium text-ink-muted mt-1 font-medium">
                 {formatLocation(entry)}

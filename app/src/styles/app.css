@@ -264,3 +264,49 @@ body {
   opacity: 1;
   transform: translateX(-50%) translateY(0);
 }
+
+/* ─── Profile view transitions ─────────────────────────────────────────── */
+
+/* Profile-to-profile lateral slide. Old content exits left, new enters right. */
+::view-transition-old(profile-content) {
+  animation: profile-slide-out-left 200ms ease-in;
+}
+
+::view-transition-new(profile-content) {
+  animation: profile-slide-in-right 200ms ease-out;
+}
+
+@keyframes profile-slide-out-left {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(-100px);
+  }
+}
+
+@keyframes profile-slide-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(100px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/*
+ * Shared element morphs (avatar, name) are handled automatically by the
+ * View Transitions API via matching view-transition-name values. The
+ * browser interpolates actual position and dimensions.
+ */
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(profile-content),
+  ::view-transition-new(profile-content) {
+    animation: none;
+  }
+}

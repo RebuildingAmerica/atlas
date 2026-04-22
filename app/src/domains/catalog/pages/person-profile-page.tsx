@@ -46,7 +46,10 @@ export function PersonProfilePage({ entry }: PersonProfilePageProps) {
         Back to the Atlas
       </Link>
 
-      <div className="flex flex-col gap-8 lg:flex-row">
+      <div
+        className="flex flex-col gap-8 lg:flex-row"
+        style={{ viewTransitionName: "profile-content" }}
+      >
         <div className="min-w-0 flex-[3]">
           <PersonProfile
             entry={entry}

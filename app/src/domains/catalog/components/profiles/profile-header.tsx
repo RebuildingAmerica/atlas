@@ -5,6 +5,8 @@ import { ActorAvatar } from "./actor-avatar";
 type ProfileType = "person" | "organization";
 
 interface ProfileHeaderProps {
+  /** Entry ID used for view-transition-name matching with browse cards. */
+  entryId?: string;
   type: ProfileType;
   name: string;
   avatarName: string;
@@ -22,6 +24,7 @@ function humanizeGeoSpecificity(value: string): string {
 }
 
 export function ProfileHeader({
+  entryId,
   type,
   name,
   avatarName,
@@ -47,9 +50,17 @@ export function ProfileHeader({
       </div>
 
       <div className="mt-4 flex items-center gap-4">
-        <ActorAvatar name={avatarName} type={type} size="lg" photoUrl={photoUrl} />
+        <div style={entryId ? { viewTransitionName: `entry-avatar-${entryId}` } : undefined}>
+          <ActorAvatar name={avatarName} type={type} size="lg" photoUrl={photoUrl} />
+        </div>
         <div className="min-w-0">
-          <h1 className="text-[22px] leading-7 font-bold" style={{ letterSpacing: "-0.01em" }}>
+          <h1
+            className="text-[22px] leading-7 font-bold"
+            style={{
+              letterSpacing: "-0.01em",
+              ...(entryId ? { viewTransitionName: `entry-name-${entryId}` } : {}),
+            }}
+          >
             {name}
           </h1>
           {subtitle ? <div className="mt-1 text-white/60">{subtitle}</div> : null}

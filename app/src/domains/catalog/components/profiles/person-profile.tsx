@@ -49,6 +49,7 @@ export function PersonProfile({ entry, issueAreaLabels = {}, affiliatedOrg }: Pe
   return (
     <div className="border-border shadow-soft overflow-hidden rounded-3xl border">
       <ProfileHeader
+        entryId={entry.id}
         type="person"
         name={entry.name}
         avatarName={entry.name}
