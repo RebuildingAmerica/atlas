@@ -8,3 +8,6 @@ nodeLinker: isolated
 onlyBuiltDependencies:
   - better-sqlite3
   - esbuild
+  - keytar
+  - puppeteer
+  - sharp
