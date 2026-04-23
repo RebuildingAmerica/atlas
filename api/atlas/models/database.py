@@ -201,11 +201,16 @@ def _load_postgres_schema() -> str:
 
 
 async def _init_sqlite(database_url: str) -> None:
-    """Initialize SQLite schema."""
+    """Initialize SQLite schema.
+
+    Runs column migrations before the full schema script so that indexes
+    and triggers referencing new columns don't fail on existing databases.
+    """
     conn = await get_db_connection(database_url)
     try:
-        await conn.executescript(DB_SCHEMA)
         await _ensure_entry_columns(conn)
+        await conn.commit()
+        await conn.executescript(DB_SCHEMA)
         await conn.commit()
         logger.info("SQLite schema initialized successfully")
     except Exception:
@@ -464,9 +469,15 @@ db = DatabaseManager()
 
 
 async def _ensure_entry_columns(conn: Any) -> None:
-    """Apply additive entry-table migrations for local SQLite databases."""
+    """Apply additive entry-table migrations for local SQLite databases.
+
+    Safe to call before the full schema script — returns early if the
+    entries table doesn't exist yet (fresh database).
+    """
     cursor = await conn.execute("PRAGMA table_info(entries)")
     rows = await cursor.fetchall()
+    if not rows:
+        return  # Table doesn't exist yet; full schema will create it with all columns.
     existing_columns = {row[1] for row in rows}
 
     if "full_address" not in existing_columns:
