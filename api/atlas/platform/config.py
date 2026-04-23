@@ -18,8 +18,13 @@ class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
 
     # Database
+    database_backend: Literal["sqlite", "postgres"] = Field(
+        default="sqlite", validation_alias="DATABASE_BACKEND"
+    )
+    """Explicit database backend selection. Must match DATABASE_URL scheme."""
+
     database_url: str = Field(default="sqlite:///atlas.db", validation_alias="DATABASE_URL")
-    """Database URL. Supports sqlite:/// for local dev or postgresql:// for production."""
+    """Database connection URL."""
 
     # API Keys
     anthropic_api_key: str = ""
@@ -96,6 +101,20 @@ class Settings(BaseSettings):
     @model_validator(mode="after")
     def set_environment_defaults(self) -> "Settings":
         """Apply environment-sensitive defaults after parsing."""
+        # Validate that DATABASE_BACKEND matches DATABASE_URL scheme.
+        url_is_postgres = self.database_url.startswith(("postgresql://", "postgres://"))
+        if self.database_backend == "postgres" and not url_is_postgres:
+            msg = (
+                f"DATABASE_BACKEND is 'postgres' but DATABASE_URL does not start with "
+                f"postgresql:// or postgres:// (got {self.database_url[:30]}...)"
+            )
+            raise ValueError(msg)
+        if self.database_backend == "sqlite" and url_is_postgres:
+            msg = (
+                "DATABASE_BACKEND is 'sqlite' but DATABASE_URL is a PostgreSQL URL. "
+                "Set DATABASE_BACKEND=postgres explicitly to use PostgreSQL."
+            )
+            raise ValueError(msg)
         if self.enable_api_docs is not None:
             self.enable_openapi_spec = self.enable_api_docs
             self.enable_api_docs_ui = self.enable_api_docs

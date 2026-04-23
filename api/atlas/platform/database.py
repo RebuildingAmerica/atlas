@@ -33,15 +33,15 @@ class DatabaseManager:
 db = DatabaseManager()
 
 
-async def get_db_connection(database_url: str) -> Any:
+async def get_db_connection(database_url: str, *, backend: str | None = None) -> Any:
     """Get an async database connection (delegates to atlas.models.database)."""
     from atlas.models.database import get_db_connection as _get_db_connection
 
-    return await _get_db_connection(database_url)
+    return await _get_db_connection(database_url, backend=backend)
 
 
-async def init_db(database_url: str) -> None:
+async def init_db(database_url: str, *, backend: str | None = None) -> None:
     """Initialize database schema (delegates to atlas.models.database)."""
     from atlas.models.database import init_db as _init_db
 
-    await _init_db(database_url)
+    await _init_db(database_url, backend=backend)

@@ -23,13 +23,15 @@ async def test_public_place_db_dependency_closes_connections(
         async def close(self) -> None:
             events.append("closed")
 
-    async def fake_get_db_connection(database_url: str) -> FakeConnection:
+    async def fake_get_db_connection(database_url: str, **_kwargs: object) -> FakeConnection:
         assert database_url == "sqlite:///catalog.db"
         return FakeConnection()
 
     monkeypatch.setattr(public_api, "get_db_connection", fake_get_db_connection)
 
-    dependency = public_api.get_db(SimpleNamespace(database_url="sqlite:///catalog.db"))
+    dependency = public_api.get_db(
+        SimpleNamespace(database_url="sqlite:///catalog.db", database_backend="sqlite")
+    )
     connection = await anext(dependency)
     assert isinstance(connection, FakeConnection)
     await dependency.aclose()

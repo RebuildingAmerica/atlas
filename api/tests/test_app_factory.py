@@ -41,7 +41,7 @@ class TestLifespan:
             deploy_mode="local",
         )
 
-        async def failing_init_db(_url: str) -> None:
+        async def failing_init_db(_url: str, **_kwargs: object) -> None:
             raise RuntimeError("init")
 
         mock_app = MagicMock()

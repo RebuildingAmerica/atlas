@@ -90,7 +90,7 @@ async def get_db(
     settings: Settings = Depends(get_settings),
 ) -> AsyncGenerator[aiosqlite.Connection, None]:
     """Dependency to get database connection."""
-    conn = await get_db_connection(settings.database_url)
+    conn = await get_db_connection(settings.database_url, backend=settings.database_backend)
     try:
         yield conn
     finally:

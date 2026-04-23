@@ -128,24 +128,25 @@ class PostgresConnection:
         await self._conn.close()
 
 
-async def get_db_connection(database_url: str) -> Any:
+async def get_db_connection(database_url: str, *, backend: str | None = None) -> Any:
     """
     Get an async database connection.
-
-    Automatically selects the appropriate backend based on the URL scheme:
-    - postgresql:// or postgres:// → psycopg AsyncConnection
-    - sqlite:/// → aiosqlite Connection
 
     Parameters
     ----------
     database_url : str
         Database URL.
+    backend : str | None
+        Explicit backend selection ("sqlite" or "postgres"). When None,
+        falls back to URL-scheme detection for backwards compatibility
+        with tests that don't pass a backend.
 
     Returns
     -------
     Connection adapter (PostgresConnection or aiosqlite.Connection)
     """
-    if _is_postgres_url(database_url):
+    use_postgres = backend == "postgres" if backend else _is_postgres_url(database_url)
+    if use_postgres:
         import psycopg
 
         conn = await psycopg.AsyncConnection.connect(database_url, autocommit=False)
@@ -158,7 +159,7 @@ async def get_db_connection(database_url: str) -> Any:
     return sqlite_conn
 
 
-async def init_db(database_url: str) -> None:
+async def init_db(database_url: str, *, backend: str | None = None) -> None:
     """
     Initialize the database schema.
 
@@ -169,8 +170,12 @@ async def init_db(database_url: str) -> None:
     ----------
     database_url : str
         Database URL.
+    backend : str | None
+        Explicit backend selection ("sqlite" or "postgres"). Falls back
+        to URL-scheme detection when None.
     """
-    if _is_postgres_url(database_url):
+    use_postgres = backend == "postgres" if backend else _is_postgres_url(database_url)
+    if use_postgres:
         await _init_postgres(database_url)
     else:
         await _init_sqlite(database_url)

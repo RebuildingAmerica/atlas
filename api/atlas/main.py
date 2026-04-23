@@ -58,7 +58,7 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
     # Startup
     settings = get_settings()
     try:
-        await init_db(settings.database_url)
+        await init_db(settings.database_url, backend=settings.database_backend)
         logger.info("Database initialized successfully")
     except Exception:
         logger.exception("Failed to initialize database")
