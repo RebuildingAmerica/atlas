@@ -173,6 +173,8 @@ CREATE INDEX IF NOT EXISTS idx_resource_ownership_org ON resource_ownership(org_
 CREATE INDEX IF NOT EXISTS idx_resource_ownership_org_visibility ON resource_ownership(org_id, visibility);
 CREATE INDEX IF NOT EXISTS idx_org_annotations_org ON org_annotations(org_id);
 CREATE INDEX IF NOT EXISTS idx_org_annotations_entry ON org_annotations(entry_id);
+-- Additive migration: slug column (safe to re-run on existing databases).
+ALTER TABLE entries ADD COLUMN IF NOT EXISTS slug TEXT UNIQUE;
 CREATE INDEX IF NOT EXISTS idx_entries_slug ON entries(slug);
 
 -- Slug aliases (for vanity slug redirects)
