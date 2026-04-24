@@ -60,9 +60,13 @@
     "build": {
       "dependsOn": ["api-client"],
       "env": [
+        "ATLAS_API_AUDIENCE",
         "ATLAS_AUTH_BASE_PATH",
         "ATLAS_DEPLOY_MODE",
-        "ATLAS_PUBLIC_URL"
+        "ATLAS_DOCS_URL",
+        "ATLAS_EMAIL_PROVIDER",
+        "ATLAS_PUBLIC_URL",
+        "ATLAS_SERVER_API_PROXY_TARGET"
       ],
       "outputs": [".output/**", ".vercel/output/**"]
     },
@@ -71,6 +75,13 @@
       "inputs": [
         "$TURBO_DEFAULT$",
         "$TURBO_ROOT$/openapi/atlas.openapi.json"
+      ],
+      "env": [
+        "ATLAS_API_AUDIENCE",
+        "ATLAS_DOCS_URL",
+        "ATLAS_EMAIL_PROVIDER",
+        "ATLAS_PUBLIC_URL",
+        "ATLAS_SERVER_API_PROXY_TARGET"
       ],
       "outputs": ["src/lib/generated/atlas.ts"]
     },
