@@ -7,11 +7,23 @@ directly from `atlas_shared`.
 
 from atlas_shared.schemas import (
     CoverageGap,
+    DiscoveryContributionRequest,
+    DiscoveryContributionResponse,
+    DiscoveryRunArtifacts,
+    DiscoveryRunInput,
+    DiscoveryRunManifest,
+    DiscoveryRunSyncRequest,
+    DiscoveryRunSyncResponse,
+    DiscoveryRunStats,
+    DiscoverySyncInfo,
+    compute_artifact_hash,
     DeduplicatedEntry,
     GapReport,
     PageContent,
+    PageTaskOutcome,
     RankedEntry,
     RawEntry,
+    RunCheckpoint,
 )
 from atlas_shared.taxonomy import (
     ALL_ISSUE_SLUGS,
@@ -22,16 +34,28 @@ from atlas_shared.taxonomy import (
     get_issue_area_by_slug,
     get_issues_by_domain,
 )
-from atlas_shared.types import EntityType, GeoSpecificity, SourceType
+from atlas_shared.types import DiscoveryRunStatus, EntityType, GeoSpecificity, SourceType
 
 __all__ = [
     # schemas
     "CoverageGap",
+    "DiscoveryContributionRequest",
+    "DiscoveryContributionResponse",
+    "DiscoveryRunArtifacts",
+    "DiscoveryRunInput",
+    "DiscoveryRunManifest",
+    "DiscoveryRunSyncRequest",
+    "DiscoveryRunSyncResponse",
+    "DiscoveryRunStats",
+    "DiscoverySyncInfo",
+    "compute_artifact_hash",
     "DeduplicatedEntry",
     "GapReport",
     "PageContent",
+    "PageTaskOutcome",
     "RankedEntry",
     "RawEntry",
+    "RunCheckpoint",
     # taxonomy
     "ALL_ISSUE_SLUGS",
     "DOMAINS",
@@ -41,6 +65,7 @@ __all__ = [
     "get_issue_area_by_slug",
     "get_issues_by_domain",
     # types
+    "DiscoveryRunStatus",
     "EntityType",
     "GeoSpecificity",
     "SourceType",
