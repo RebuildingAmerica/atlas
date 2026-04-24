@@ -3,6 +3,10 @@
  *
  * Browser sessions still carry full operator access; these scopes are only
  * used when the API authorizes requests authenticated by API key.
+ *
+ * OAuth clients may also request `org:{org_id}` to bind an access token to a
+ * specific organization.  The `org:` prefix is not listed here because it is
+ * a dynamic scope parsed at token-issuance time, not a static resource scope.
  */
 export const API_KEY_SCOPES = ["discovery:read", "discovery:write", "entities:write"] as const;
 

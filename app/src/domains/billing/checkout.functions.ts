@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { createCheckoutSession } from "./server/checkout";
 import { getDiscountCouponId } from "./server/discount-coupons";
+import { ensureStripeCustomerForWorkspace } from "./server/stripe-customer";
 import { ATLAS_PRODUCTS } from "./products";
 import { ensureAuthReady } from "../access/server/auth";
 import { getBrowserSessionHeaders } from "../access/server/request-headers";
@@ -68,11 +69,25 @@ export const startCheckout = createServerFn({ method: "POST" })
 
     const orgMetadata = normalizeAtlasOrganizationMetadata(fullOrganization?.metadata);
 
-    // TODO: Fetch verified discount from database to apply coupon
-    // For now, check if org metadata has a discount segment
     let discountCouponId: string | null = null;
     if (orgMetadata.verificationStatus === "verified" && orgMetadata.discountSegment) {
       discountCouponId = getDiscountCouponId(orgMetadata.discountSegment);
+    }
+
+    // Ensure a Stripe customer exists before creating the checkout session.
+    // This covers workspaces created before the pre-creation logic was added,
+    // or cases where the initial creation attempt failed.
+    let stripeCustomerId = orgMetadata.stripeCustomerId;
+    if (!stripeCustomerId) {
+      try {
+        stripeCustomerId = await ensureStripeCustomerForWorkspace(
+          activeWorkspace.id,
+          session.user.email,
+          activeWorkspace.name,
+        );
+      } catch {
+        // Fall through to customer_email-based checkout.
+      }
     }
 
     const successUrl = `${runtime.publicBaseUrl}/account?checkout=success`;
@@ -85,7 +100,7 @@ export const startCheckout = createServerFn({ method: "POST" })
       successUrl,
       cancelUrl,
       customerEmail: session.user.email,
-      stripeCustomerId: orgMetadata.stripeCustomerId,
+      stripeCustomerId,
       discountCouponId,
     });
 

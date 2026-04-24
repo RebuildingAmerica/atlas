@@ -273,7 +273,9 @@ describe("AccountSetupPage", () => {
       expect(mocks.invalidateQueries).toHaveBeenCalledWith({
         queryKey: ["auth", "session"],
       });
-      expect(mocks.refetch).toHaveBeenCalledTimes(1);
+      // The button click triggers one refetch; the auto-refresh on mount
+      // adds another, so expect at least 2.
+      expect(mocks.refetch.mock.calls.length).toBeGreaterThanOrEqual(2);
     });
     expect(assignMock).not.toHaveBeenCalled();
     expect(screen.getByText("You have 2 passkeys on this account.")).not.toBeNull();

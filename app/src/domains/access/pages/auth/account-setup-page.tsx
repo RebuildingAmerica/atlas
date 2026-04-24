@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, KeyRound, LogOut, Mail, RefreshCw } from "lucide-react";
+import { useCallback, useEffect, useRef } from "react";
 import { Button } from "@/platform/ui/button";
 import { getAuthClient } from "@/domains/access/client/auth-client";
 import { waitForAtlasPasskeyRegistration } from "@/domains/access/client/session-confirmation";
@@ -22,11 +23,7 @@ export function AccountSetupPage({ redirectTo }: AccountSetupPageProps) {
   const queryClient = useQueryClient();
   const atlasSession = useAtlasSession();
   const session = atlasSession.data;
-
-  const refreshReadiness = async () => {
-    await queryClient.invalidateQueries({ queryKey: atlasSessionQueryKey });
-    return await atlasSession.refetch();
-  };
+  const hasAutoRefreshed = useRef(false);
 
   const sendVerificationMutation = useMutation({
     mutationFn: () => sendVerificationEmail(),
@@ -54,9 +51,10 @@ export function AccountSetupPage({ redirectTo }: AccountSetupPageProps) {
     },
   });
 
-  const handleRefresh = async () => {
-    const refreshedSession = await refreshReadiness();
-    if (!refreshedSession.data?.accountReady) {
+  const handleRefresh = useCallback(async () => {
+    await queryClient.invalidateQueries({ queryKey: atlasSessionQueryKey });
+    const refreshedSession = await atlasSession.refetch();
+    if (!refreshedSession?.data?.accountReady) {
       return;
     }
 
@@ -86,7 +84,31 @@ export function AccountSetupPage({ redirectTo }: AccountSetupPageProps) {
       : redirectTo || "/discovery";
 
     window.location.assign(resolvedDestination);
-  };
+  }, [redirectTo, queryClient, atlasSession]);
+
+  // Auto-refresh on mount to pick up verification completed in another tab.
+  useEffect(() => {
+    if (hasAutoRefreshed.current) {
+      return;
+    }
+    hasAutoRefreshed.current = true;
+    void handleRefresh();
+  }, [handleRefresh]);
+
+  // Auto-refresh when the user returns to this tab after clicking a
+  // verification email link.
+  useEffect(() => {
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        void handleRefresh();
+      }
+    };
+
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
+  }, [handleRefresh]);
 
   const handleAddPasskey = async () => {
     await addPasskeyMutation.mutateAsync();
@@ -193,15 +215,24 @@ export function AccountSetupPage({ redirectTo }: AccountSetupPageProps) {
         ) : null}
 
         {!session?.hasPasskey ? (
-          <div className="border-border bg-surface-container-lowest rounded-[1.4rem] border p-5">
-            <p className="type-title-small text-ink-strong">Add a passkey</p>
+          <div
+            className={
+              session?.user.emailVerified
+                ? "rounded-[1.4rem] border-2 border-blue-300 bg-blue-50/50 p-5"
+                : "border-border bg-surface-container-lowest rounded-[1.4rem] border p-5"
+            }
+          >
+            <p className="type-title-small text-ink-strong">
+              {session?.user.emailVerified ? "Almost there — add a passkey" : "Add a passkey"}
+            </p>
             <p className="type-body-medium text-ink-soft mt-2">
-              Register a passkey on this device or with a hardware key. Passkeys are faster and more
-              secure than passwords or email links.
+              {session?.user.emailVerified
+                ? "Your email is verified. Register a passkey to finish securing your account and sign in instantly next time."
+                : "Register a passkey on this device or with a hardware key. Passkeys are faster and more secure than passwords or email links."}
             </p>
             <div className="mt-4 flex flex-wrap items-center gap-3">
               <Button
-                variant="secondary"
+                variant={session?.user.emailVerified ? "primary" : "secondary"}
                 disabled={addPasskeyMutation.isPending}
                 onClick={() => {
                   void handleAddPasskey();

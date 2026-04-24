@@ -215,16 +215,18 @@ def test_jwt_helpers_cache_keys_and_decode_bearer_tokens(
     constructors: list[str] = []
 
     class FakeJwksClient:
-        def __init__(self, jwks_url: str, *, cache_keys: bool) -> None:
+        def __init__(self, jwks_url: str, *, cache_jwk_set: bool, lifespan: int) -> None:
             constructors.append(jwks_url)
             self.jwks_url = jwks_url
-            self.cache_keys = cache_keys
+            self.cache_jwk_set = cache_jwk_set
+            self.lifespan = lifespan
 
         def get_signing_key_from_jwt(self, token: str) -> SimpleNamespace:
             assert token == "token-123"
             return SimpleNamespace(key="public-key")
 
     monkeypatch.setattr(auth_jwt_module, "_jwks_client", None)
+    monkeypatch.setattr(auth_jwt_module, "_jwks_client_url", None)
     monkeypatch.setattr(auth_jwt_module, "PyJWKClient", FakeJwksClient)
 
     def fake_decode(

@@ -163,6 +163,39 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promis
 }
 
 /**
+ * Handles a newly created Stripe subscription by ensuring a workspace product
+ * row exists.
+ *
+ * Subscription metadata carries workspace_id and product when the checkout
+ * session was created with subscription_data.metadata.  If the metadata is
+ * missing (e.g. legacy sessions), the handler is a no-op — the
+ * checkout.session.completed handler will create the row instead.
+ *
+ * @param subscription - The Stripe Subscription object from the webhook event.
+ */
+async function handleSubscriptionCreated(subscription: Stripe.Subscription): Promise<void> {
+  const workspaceId = subscription.metadata?.workspace_id;
+  const product = subscription.metadata?.product;
+
+  if (!workspaceId || !product) {
+    return;
+  }
+
+  const stripeCustomerId =
+    typeof subscription.customer === "string"
+      ? subscription.customer
+      : (subscription.customer?.id ?? null);
+
+  await upsertWorkspaceProduct({
+    workspaceId,
+    product,
+    status: mapSubscriptionStatus(subscription.status),
+    stripeSubscriptionId: subscription.id,
+    stripeCustomerId,
+  });
+}
+
+/**
  * Handles a Stripe subscription update by synchronizing the workspace product
  * status.
  *
@@ -208,6 +241,9 @@ export async function handleStripeWebhook(request: Request): Promise<Response> {
   switch (event.type) {
     case "checkout.session.completed":
       await handleCheckoutCompleted(event.data.object);
+      break;
+    case "customer.subscription.created":
+      await handleSubscriptionCreated(event.data.object);
       break;
     case "customer.subscription.updated":
       await handleSubscriptionUpdated(event.data.object);

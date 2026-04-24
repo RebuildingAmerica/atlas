@@ -1,7 +1,8 @@
 import { getAtlasSession, type AtlasSessionPayload } from "../session.functions";
 
-const SESSION_POLL_DELAY_MS = 200;
-const SESSION_POLL_MAX_ATTEMPTS = 25;
+const SESSION_POLL_INITIAL_DELAY_MS = 200;
+const SESSION_POLL_MAX_DELAY_MS = 2000;
+const SESSION_POLL_CEILING_MS = 15_000;
 
 type AtlasSessionFetcher = () => Promise<AtlasSessionPayload | null>;
 type AtlasSessionPredicate = (session: AtlasSessionPayload | null) => boolean;
@@ -10,15 +11,19 @@ async function waitForAtlasSessionState(
   predicate: AtlasSessionPredicate,
   errorMessage: string,
   fetchSession: AtlasSessionFetcher = getAtlasSession,
-  maxAttempts = SESSION_POLL_MAX_ATTEMPTS,
 ): Promise<AtlasSessionPayload> {
-  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+  let delay = SESSION_POLL_INITIAL_DELAY_MS;
+  let elapsed = 0;
+
+  while (elapsed < SESSION_POLL_CEILING_MS) {
     const session = await fetchSession();
     if (session && predicate(session)) {
       return session;
     }
 
-    await new Promise((resolve) => setTimeout(resolve, SESSION_POLL_DELAY_MS));
+    await new Promise((resolve) => setTimeout(resolve, delay));
+    elapsed += delay;
+    delay = Math.min(delay * 2, SESSION_POLL_MAX_DELAY_MS);
   }
 
   throw new Error(errorMessage);
@@ -30,13 +35,11 @@ async function waitForAtlasSessionState(
  */
 export async function waitForAtlasAuthenticatedSession(
   fetchSession?: AtlasSessionFetcher,
-  maxAttempts?: number,
 ): Promise<AtlasSessionPayload> {
   return await waitForAtlasSessionState(
     (session) => Boolean(session?.session.id && session.user.id),
     "Atlas could not confirm your session after passkey sign-in.",
     fetchSession,
-    maxAttempts,
   );
 }
 
@@ -45,12 +48,10 @@ export async function waitForAtlasAuthenticatedSession(
  */
 export async function waitForAtlasPasskeyRegistration(
   fetchSession?: AtlasSessionFetcher,
-  maxAttempts?: number,
 ): Promise<AtlasSessionPayload> {
   return await waitForAtlasSessionState(
     (session) => Boolean(session?.hasPasskey),
     "Atlas could not confirm your passkey registration.",
     fetchSession,
-    maxAttempts,
   );
 }

@@ -29,6 +29,7 @@ function buildRuntime(overrides: Partial<AuthRuntimeConfig> = {}): AuthRuntimeCo
     emailFrom: "Atlas <auth@atlas.example.com>",
     emailProvider: "capture",
     internalSecret: "internal-test-secret",
+    passkeyRpId: null,
     publicBaseUrl: "https://atlas.example.com",
     publicDomain: "atlas.example.com",
     resendApiKey: null,

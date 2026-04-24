@@ -16,6 +16,7 @@ import {
   loadOrganizationRequestContext,
   requireManagedTeamWorkspace,
 } from "./organization-server-helpers";
+import { ensureStripeCustomerForWorkspace } from "@/domains/billing/server/stripe-customer";
 import { ensureAuthReady } from "./server/auth";
 import { getBrowserSessionHeaders } from "./server/request-headers";
 import { getAuthRuntimeConfig } from "./server/runtime";
@@ -91,6 +92,15 @@ export const createWorkspace = createServerFn({ method: "POST" })
       },
       headers,
     });
+
+    // Pre-create a Stripe customer so billing operations always have a
+    // customer ID.  Failures here are non-fatal — the checkout flow will
+    // fall back to customer_email if the Stripe customer is missing.
+    try {
+      await ensureStripeCustomerForWorkspace(createdOrganization.id, session.user.email, data.name);
+    } catch {
+      // Stripe may be unreachable in local dev or during outages.
+    }
 
     return {
       id: createdOrganization.id,

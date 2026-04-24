@@ -49,6 +49,13 @@ function normalizeEmail(email: string): string {
 }
 
 /**
+ * Prefix used by OAuth clients to request organization context in access
+ * tokens.  A client requests scope `org:{org_id}` during authorization; the
+ * claims builder validates membership and includes the org_id in the token.
+ */
+const ORG_SCOPE_PREFIX = "org:";
+
+/**
  * Narrows OAuth scopes down to the Atlas resource scopes we expose through API
  * keys and OAuth access tokens.
  *
@@ -68,6 +75,20 @@ function collectAtlasResourceScopes(scopes: string[]): ApiKeyScope[] {
 }
 
 /**
+ * Extracts the organization ID from an `org:{id}` scope, if present.
+ *
+ * @param scopes - The full list of granted OAuth scopes.
+ */
+function extractOrgIdFromScopes(scopes: string[]): string | null {
+  for (const scope of scopes) {
+    if (scope.startsWith(ORG_SCOPE_PREFIX) && scope.length > ORG_SCOPE_PREFIX.length) {
+      return scope.slice(ORG_SCOPE_PREFIX.length);
+    }
+  }
+  return null;
+}
+
+/**
  * Parameters provided by Better Auth's oauthProvider plugin to the
  * customAccessTokenClaims callback.
  */
@@ -83,6 +104,10 @@ interface OAuthAccessTokenClaimsParams {
  * Builds Atlas-specific OAuth access-token claims from Better Auth's scope
  * payload.
  *
+ * When an OAuth client requests the `org:{org_id}` scope during authorization,
+ * the resolved org_id is included in the access token so the API backend can
+ * enforce organization context without a separate lookup.
+ *
  * @param params - Better Auth's custom-claim payload.
  * @param params.scopes - The OAuth scopes granted to the current client.
  * @param params.user - The user associated with the token, if any.
@@ -91,17 +116,17 @@ interface OAuthAccessTokenClaimsParams {
 function buildAtlasAccessTokenClaims(params: OAuthAccessTokenClaimsParams) {
   const { scopes } = params;
   const resourceScopes = collectAtlasResourceScopes(scopes);
+  const orgId = extractOrgIdFromScopes(scopes);
 
-  // TODO: Include org_id in access token claims. The oauthProvider plugin's
-  // customAccessTokenClaims callback receives { user, scopes, resource,
-  // referenceId, metadata } but does NOT include session or active organization
-  // context. The active org_id will need to come from a different mechanism,
-  // such as:
-  //   - Encoding the org in the OAuth authorization request (e.g. via a custom
-  //     parameter or scope prefix)
-  //   - Looking up the user's active org from the session store using user.id
-  //   - Passing org context through client metadata during the consent flow
-  return { permissions: scopesToPermissions(resourceScopes) };
+  const claims: Record<string, unknown> = {
+    permissions: scopesToPermissions(resourceScopes),
+  };
+
+  if (orgId) {
+    claims.org_id = orgId;
+  }
+
+  return claims;
 }
 
 /**
@@ -155,7 +180,7 @@ function createAtlasAuth(runtime: AuthRuntimeConfig) {
         sendMagicLink: createMagicLinkSender(),
       }),
       passkey({
-        rpID: runtime.publicDomain,
+        rpID: runtime.passkeyRpId ?? runtime.publicDomain,
         rpName: "Atlas",
       }),
       organization({

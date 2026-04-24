@@ -33,18 +33,24 @@ export async function createCheckoutSession(
   const mode: Stripe.Checkout.SessionCreateParams["mode"] =
     options.product === "atlas_research_pass" ? "payment" : "subscription";
 
+  const workspaceMetadata = {
+    workspace_id: options.workspaceId,
+    product: options.product,
+  };
+
   const sharedParams: Pick<
     Stripe.Checkout.SessionCreateParams,
-    "mode" | "line_items" | "success_url" | "cancel_url" | "metadata"
+    "mode" | "line_items" | "success_url" | "cancel_url" | "metadata" | "subscription_data"
   > = {
     mode,
     line_items: [{ price: options.priceId, quantity: 1 }],
     success_url: options.successUrl,
     cancel_url: options.cancelUrl,
-    metadata: {
-      workspace_id: options.workspaceId,
-      product: options.product,
-    },
+    metadata: workspaceMetadata,
+    // Propagate workspace context to subscription objects so webhook handlers
+    // for customer.subscription.created can resolve the workspace without
+    // relying solely on the checkout session.
+    ...(mode === "subscription" && { subscription_data: { metadata: workspaceMetadata } }),
   };
 
   let sessionParams: Stripe.Checkout.SessionCreateParams;

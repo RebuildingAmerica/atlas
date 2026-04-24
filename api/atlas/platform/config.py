@@ -5,11 +5,14 @@ Uses pydantic-settings to load configuration from environment variables
 with sensible defaults. Supports dev, staging, and production environments.
 """
 
+import logging
 from pathlib import Path
 from typing import Literal
 
 from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+logger = logging.getLogger(__name__)
 
 API_ENV_FILE = Path(__file__).resolve().parents[1] / ".env"
 
@@ -129,6 +132,16 @@ class Settings(BaseSettings):
             self.auth_jwt_issuer = f"{base}/api/auth"
             if not self.auth_jwt_jwks_url:
                 self.auth_jwt_jwks_url = f"{base}/api/auth/jwks"
+        if self.deploy_mode != "local":
+            logger.info(
+                "Resolved auth configuration",
+                extra={
+                    "auth_jwt_issuer": self.auth_jwt_issuer or "(not set)",
+                    "auth_jwt_jwks_url": self.auth_jwt_jwks_url or "(not set)",
+                    "auth_jwt_audience": self.auth_jwt_audience or "(not set)",
+                    "auth_membership_url": self.auth_membership_verification_url or "(not set)",
+                },
+            )
         return self
 
     def get_database_url(self) -> str:

@@ -19,6 +19,7 @@ export interface AuthRuntimeConfig {
   emailFrom: string;
   emailProvider: "capture" | "resend";
   internalSecret: string;
+  passkeyRpId: string | null;
   publicBaseUrl: string;
   publicDomain: string;
   resendApiKey: string | null;
@@ -136,6 +137,7 @@ export function resolveAuthRuntimeConfig(env: NodeJS.ProcessEnv, cwd: string): A
     emailFrom: env.ATLAS_EMAIL_FROM?.trim() || `Atlas <noreply@${publicDomain}>`,
     emailProvider,
     internalSecret: env.ATLAS_AUTH_INTERNAL_SECRET?.trim() || "",
+    passkeyRpId: env.ATLAS_PASSKEY_RP_ID?.trim() || null,
     publicBaseUrl,
     publicDomain,
     resendApiKey: env.ATLAS_EMAIL_RESEND_API_KEY?.trim() || null,

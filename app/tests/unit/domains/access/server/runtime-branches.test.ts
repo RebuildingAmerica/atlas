@@ -48,6 +48,7 @@ describe("runtime additional branches", () => {
         emailFrom: "Atlas <auth@atlas.test>",
         emailProvider: "capture",
         internalSecret: "internal-test-secret",
+        passkeyRpId: null,
         publicBaseUrl: "https://atlas.test",
         publicDomain: "atlas.test",
         resendApiKey: null,
