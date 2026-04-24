@@ -335,6 +335,19 @@ CREATE TABLE IF NOT EXISTS discovery_runs (
     created_at DATETIME NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS discovery_run_syncs (
+    id TEXT PRIMARY KEY,
+    local_run_id TEXT NOT NULL,
+    artifact_hash TEXT NOT NULL,
+    remote_run_id TEXT NOT NULL REFERENCES discovery_runs(id) ON DELETE CASCADE,
+    actor_user_id TEXT NOT NULL,
+    actor_email TEXT,
+    sync_status TEXT NOT NULL,
+    created_at DATETIME NOT NULL,
+    synced_at DATETIME,
+    UNIQUE(local_run_id, artifact_hash)
+);
+
 -- Entity flags (anonymous public flagging)
 CREATE TABLE IF NOT EXISTS entity_flags (
     id TEXT PRIMARY KEY,
@@ -405,6 +418,8 @@ CREATE INDEX IF NOT EXISTS idx_outreach_logs_date ON outreach_logs(date);
 CREATE INDEX IF NOT EXISTS idx_episode_assoc_entry_id ON episode_associations(entry_id);
 CREATE INDEX IF NOT EXISTS idx_discovery_runs_state ON discovery_runs(state);
 CREATE INDEX IF NOT EXISTS idx_discovery_runs_status ON discovery_runs(status);
+CREATE INDEX IF NOT EXISTS idx_discovery_run_syncs_local_run_id ON discovery_run_syncs(local_run_id);
+CREATE INDEX IF NOT EXISTS idx_discovery_run_syncs_remote_run_id ON discovery_run_syncs(remote_run_id);
 CREATE INDEX IF NOT EXISTS idx_sources_url ON sources(url);
 CREATE INDEX IF NOT EXISTS idx_sources_ingested ON sources(ingested_at);
 CREATE INDEX IF NOT EXISTS idx_entity_flags_entity_id ON entity_flags(entity_id);

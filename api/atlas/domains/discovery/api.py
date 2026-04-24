@@ -6,14 +6,25 @@ import logging
 from collections.abc import AsyncGenerator  # noqa: TC003
 from typing import TYPE_CHECKING
 
+from atlas_shared import (
+    DiscoveryContributionRequest,
+    DiscoveryContributionResponse,
+    DiscoveryRunStatus,
+    DiscoveryRunSyncRequest,
+    DiscoveryRunSyncResponse,
+    compute_artifact_hash,
+)
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Response
 
 from atlas.domains.access import AuthenticatedActor, require_actor_permission
 from atlas.domains.access.capabilities import enforce_limit, require_capability
 from atlas.domains.catalog.taxonomy import ALL_ISSUE_SLUGS
+from atlas.domains.discovery.models import DiscoveryRunSyncCRUD
 from atlas.domains.discovery.pipeline.runner import (
     DiscoveryPipelineCredentials,
     DiscoveryPipelineJob,
+    persist_discovery_artifacts,
+    persist_discovery_results,
     run_discovery_pipeline_for_run,
 )
 from atlas.models import DiscoveryRunCRUD, get_db_connection
@@ -35,6 +46,18 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 __all__ = ["router"]
+
+
+def _validate_issue_areas(issue_areas: list[str]) -> None:
+    """Raise when any requested issue area falls outside the Atlas taxonomy."""
+    invalid_issue_areas = [
+        issue_area for issue_area in issue_areas if issue_area not in ALL_ISSUE_SLUGS
+    ]
+    if invalid_issue_areas:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid issue area(s): {', '.join(invalid_issue_areas)}",
+        )
 
 
 async def get_db(
@@ -74,10 +97,7 @@ async def start_discovery_run(  # noqa: PLR0913
     Returns immediately with run ID. The pipeline runs asynchronously.
     """
     _ = actor
-    # Validate issue areas
-    for issue_area in req.issue_areas:
-        if issue_area not in ALL_ISSUE_SLUGS:
-            raise HTTPException(status_code=400, detail=f"Invalid issue area: {issue_area}")
+    _validate_issue_areas(req.issue_areas)
 
     run_id = await DiscoveryRunCRUD.create(
         db,
@@ -119,6 +139,158 @@ async def start_discovery_run(  # noqa: PLR0913
 
     apply_no_store_headers(response)
     return _run_to_response(run)
+
+
+@router.post(
+    "/contributions",
+    response_model=DiscoveryContributionResponse,
+    status_code=201,
+    summary="Ingest contributed discovery results",
+    description=(
+        "Persist a discovery payload produced by an external runner such as Scout, using the "
+        "same shared discovery models Atlas service uses internally."
+    ),
+    operation_id="createDiscoveryContribution",
+    response_description="The persisted Atlas run summary.",
+    tags=["discovery-runs"],
+)
+async def contribute_discovery_results(
+    req: DiscoveryContributionRequest,
+    response: Response,
+    actor: AuthenticatedActor = Depends(require_actor_permission("discovery", "write")),
+    db: aiosqlite.Connection = Depends(get_db),
+    _cap: None = Depends(require_capability("research.run")),
+    _run_limit: int | None = Depends(enforce_limit("research_runs_per_month")),
+) -> DiscoveryContributionResponse:
+    """Persist a full discovery payload contributed by a local runner."""
+    _ = actor
+    _validate_issue_areas(req.run.issue_areas)
+    for ranked_entry in req.ranked_entries:
+        _validate_issue_areas(ranked_entry.entry.issue_areas)
+
+    run_id = await DiscoveryRunCRUD.create(
+        db,
+        location_query=req.run.location_query,
+        state=req.run.state,
+        issue_areas=req.run.issue_areas,
+    )
+
+    try:
+        confirmed_entry_ids, sources_persisted = await persist_discovery_results(
+            db,
+            run_id=run_id,
+            ranked_entries=req.ranked_entries,
+            sources=req.sources,
+            stats=req.stats,
+        )
+    except Exception as exc:
+        await DiscoveryRunCRUD.fail(db, run_id, str(exc))
+        raise
+
+    apply_no_store_headers(response)
+    return DiscoveryContributionResponse(
+        run_id=run_id,
+        status=req.stats.status,
+        entries_persisted=len(confirmed_entry_ids),
+        sources_persisted=sources_persisted,
+    )
+
+
+@router.post(
+    "/syncs",
+    response_model=DiscoveryRunSyncResponse,
+    status_code=201,
+    summary="Sync a local discovery run bundle",
+    description=(
+        "Replay a canonical local discovery bundle into Atlas using an authenticated, idempotent "
+        "run-sync workflow."
+    ),
+    operation_id="createDiscoveryRunSync",
+    response_description="The result of syncing the local run bundle.",
+    tags=["discovery-runs"],
+)
+async def sync_discovery_run(
+    req: DiscoveryRunSyncRequest,
+    response: Response,
+    actor: AuthenticatedActor = Depends(require_actor_permission("discovery", "write")),
+    db: aiosqlite.Connection = Depends(get_db),
+    _cap: None = Depends(require_capability("research.run")),
+    _run_limit: int | None = Depends(enforce_limit("research_runs_per_month")),
+) -> DiscoveryRunSyncResponse:
+    """Persist a full discovery artifact bundle from an offline-capable runner."""
+    _validate_issue_areas(req.artifacts.manifest.run.issue_areas)
+    for ranked_entry in req.artifacts.ranked_entries:
+        _validate_issue_areas(ranked_entry.entry.issue_areas)
+
+    sync_info = req.artifacts.manifest.sync
+    if sync_info is None or not sync_info.local_run_id:
+        raise HTTPException(
+            status_code=400, detail="artifacts.manifest.sync.local_run_id is required"
+        )
+
+    artifact_hash = sync_info.artifact_hash or compute_artifact_hash(req.artifacts)
+    existing_sync = await DiscoveryRunSyncCRUD.get_by_identity(
+        db,
+        local_run_id=sync_info.local_run_id,
+        artifact_hash=artifact_hash,
+    )
+    if existing_sync is not None:
+        existing_run = await DiscoveryRunCRUD.get_by_id(db, existing_sync.remote_run_id)
+        if existing_run is None:
+            raise HTTPException(
+                status_code=500, detail="Synced discovery run could not be reloaded"
+            )
+        apply_no_store_headers(response)
+        return DiscoveryRunSyncResponse(
+            run_id=existing_sync.remote_run_id,
+            status=DiscoveryRunStatus(existing_run.status),
+            sync_status="already_synced",
+            entries_persisted=existing_run.entries_confirmed,
+            sources_persisted=existing_run.sources_processed,
+            duplicate=True,
+        )
+
+    remote_run_id = sync_info.remote_run_id
+    if remote_run_id:
+        existing_run = await DiscoveryRunCRUD.get_by_id(db, remote_run_id)
+        if existing_run is None:
+            raise HTTPException(status_code=400, detail="Referenced remote_run_id does not exist")
+    else:
+        remote_run_id = await DiscoveryRunCRUD.create(
+            db,
+            location_query=req.artifacts.manifest.run.location_query,
+            state=req.artifacts.manifest.run.state,
+            issue_areas=req.artifacts.manifest.run.issue_areas,
+        )
+
+    try:
+        confirmed_entry_ids, sources_persisted = await persist_discovery_artifacts(
+            db,
+            run_id=remote_run_id,
+            artifacts=req.artifacts,
+        )
+        await DiscoveryRunSyncCRUD.create(
+            db,
+            local_run_id=sync_info.local_run_id,
+            artifact_hash=artifact_hash,
+            remote_run_id=remote_run_id,
+            actor_user_id=actor.user_id,
+            actor_email=actor.email,
+            sync_status="synced",
+        )
+    except Exception as exc:
+        await DiscoveryRunCRUD.fail(db, remote_run_id, str(exc))
+        raise
+
+    apply_no_store_headers(response)
+    return DiscoveryRunSyncResponse(
+        run_id=remote_run_id,
+        status=req.artifacts.stats.status,
+        sync_status="synced",
+        entries_persisted=len(confirmed_entry_ids),
+        sources_persisted=sources_persisted,
+        duplicate=False,
+    )
 
 
 @router.get(

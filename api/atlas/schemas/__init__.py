@@ -1,5 +1,12 @@
 """Pydantic schemas for API request/response types."""
 
+from atlas_shared import (
+    DiscoveryContributionRequest,
+    DiscoveryContributionResponse,
+    DiscoveryRunSyncRequest,
+    DiscoveryRunSyncResponse,
+)
+
 from atlas.domains.catalog.schemas.entry import EntityCreateRequest, EntityUpdateRequest
 from atlas.domains.catalog.schemas.public import (
     DiscoveryRunCollectionResponse,
@@ -51,9 +58,13 @@ EntityResponse = PublicEntityResponse
 SourceResponse = PublicSourceResponse
 
 __all__ = [
+    "DiscoveryContributionRequest",
+    "DiscoveryContributionResponse",
     "DiscoveryRunCollectionResponse",
     "DiscoveryRunResponse",
     "DiscoveryRunStartRequest",
+    "DiscoveryRunSyncRequest",
+    "DiscoveryRunSyncResponse",
     "DomainDetailResponse",
     "DomainListResponse",
     "DomainResponse",

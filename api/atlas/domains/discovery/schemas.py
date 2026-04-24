@@ -1,32 +1,16 @@
 """Discovery run schemas for API requests and responses."""
 
-from pydantic import BaseModel, Field
+from atlas_shared import DiscoveryRunInput
+from pydantic import BaseModel, ConfigDict, Field
 
 __all__ = ["DiscoveryRunResponse", "DiscoveryRunStartRequest"]
 
 
-class DiscoveryRunStartRequest(BaseModel):
+class DiscoveryRunStartRequest(DiscoveryRunInput):
     """Request to start a discovery run."""
 
-    location_query: str = Field(
-        ...,
-        description="Location query (e.g., 'Kansas City, MO')",
-        examples=["Kansas City, MO", "New York, NY"],
-    )
-    state: str = Field(
-        ...,
-        description="2-letter state code",
-        min_length=2,
-        max_length=2,
-    )
-    issue_areas: list[str] = Field(
-        ...,
-        description="List of issue area slugs to query",
-        min_length=1,
-    )
-
-    model_config = {
-        "json_schema_extra": {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "location_query": "Kansas City, MO",
                 "state": "MO",
@@ -35,9 +19,10 @@ class DiscoveryRunStartRequest(BaseModel):
                     "housing_affordability",
                     "local_government_and_civic_engagement",
                 ],
+                "search_depth": "standard",
             }
         }
-    }
+    )
 
 
 class DiscoveryRunResponse(BaseModel):
@@ -59,8 +44,8 @@ class DiscoveryRunResponse(BaseModel):
     error_message: str | None = Field(None, description="Error message if failed")
     created_at: str = Field(..., description="Creation timestamp")
 
-    model_config = {
-        "json_schema_extra": {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "id": "550e8400-e29b-41d4-a716-446655440002",
                 "location_query": "Kansas City, MO",
@@ -78,4 +63,4 @@ class DiscoveryRunResponse(BaseModel):
                 "created_at": "2026-01-15T10:00:00+00:00",
             }
         }
-    }
+    )

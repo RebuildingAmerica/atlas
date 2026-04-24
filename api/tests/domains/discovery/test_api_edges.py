@@ -6,11 +6,24 @@ from http import HTTPStatus
 from types import SimpleNamespace
 
 import pytest
+from atlas_shared import (
+    DeduplicatedEntry,
+    DiscoveryContributionRequest,
+    DiscoveryRunArtifacts,
+    DiscoveryRunInput,
+    DiscoveryRunManifest,
+    DiscoveryRunStats,
+    DiscoveryRunSyncRequest,
+    DiscoverySyncInfo,
+    PageContent,
+    RankedEntry,
+)
 from fastapi import BackgroundTasks
 
 from atlas.domains.access.principals import AuthenticatedActor
 from atlas.domains.discovery import api as discovery_api
 from atlas.domains.discovery.models import DiscoveryRunCRUD
+from atlas.models import EntryCRUD, SourceCRUD
 from atlas.schemas import DiscoveryRunStartRequest
 
 DB_BOOM_ERROR = "db boom"
@@ -189,3 +202,145 @@ async def test_discovery_run_count_supports_state_and_status_filters(test_db: ob
     assert await DiscoveryRunCRUD.count(test_db, status="completed") == 1
     assert await DiscoveryRunCRUD.count(test_db, state="KS", status="running") == 1
     assert ks_run
+
+
+@pytest.mark.asyncio
+async def test_contribute_discovery_results_persists_shared_payload(test_db: object) -> None:
+    """External runner payloads should create Atlas runs, entries, and sources."""
+    actor = AuthenticatedActor(
+        user_id="local-operator",
+        email="local@atlas.test",
+        auth_type="local",
+        is_local=True,
+    )
+
+    result = await discovery_api.contribute_discovery_results(
+        DiscoveryContributionRequest(
+            run=DiscoveryRunInput(
+                location_query="Garden City, KS",
+                state="KS",
+                issue_areas=["worker_cooperatives"],
+            ),
+            stats=DiscoveryRunStats(
+                queries_generated=5,
+                sources_fetched=1,
+                sources_processed=1,
+                entries_extracted=1,
+                entries_after_dedup=1,
+                entries_confirmed=1,
+            ),
+            sources=[],
+            ranked_entries=[
+                RankedEntry(
+                    entry=DeduplicatedEntry(
+                        name="Prairie Workers Cooperative",
+                        entry_type="organization",
+                        description="Worker-owned cooperative in southwest Kansas.",
+                        city="Garden City",
+                        state="KS",
+                        issue_areas=["worker_cooperatives"],
+                        source_urls=["https://example.com/story"],
+                        source_contexts={
+                            "https://example.com/story": (
+                                "Prairie Workers Cooperative opened a new facility."
+                            )
+                        },
+                    ),
+                    score=0.88,
+                )
+            ],
+        ),
+        response=None,
+        actor=actor,
+        db=test_db,
+    )
+
+    assert result.entries_persisted == 1
+    assert result.sources_persisted == 1
+
+    runs = await DiscoveryRunCRUD.list(test_db, state="KS")
+    assert any(run.location_query == "Garden City, KS" for run in runs)
+
+    entries = await EntryCRUD.list(test_db, state="KS", city="Garden City", active_only=False)
+    assert any(entry.name == "Prairie Workers Cooperative" for entry in entries)
+
+    source = await SourceCRUD.get_by_url(test_db, "https://example.com/story")
+    assert source is not None
+
+
+@pytest.mark.asyncio
+async def test_sync_discovery_run_is_idempotent_for_same_local_bundle(test_db: object) -> None:
+    """Replay of the same local run bundle should attach to the original Atlas run."""
+    actor = AuthenticatedActor(
+        user_id="local-operator",
+        email="local@atlas.test",
+        auth_type="local",
+        is_local=True,
+    )
+    request = DiscoveryRunSyncRequest(
+        artifacts=DiscoveryRunArtifacts(
+            manifest=DiscoveryRunManifest(
+                runner="atlas-scout",
+                run=DiscoveryRunInput(
+                    location_query="Garden City, KS",
+                    state="KS",
+                    issue_areas=["worker_cooperatives"],
+                ),
+                status="completed",
+                sync=DiscoverySyncInfo(local_run_id="local_123", sync_status="ready"),
+            ),
+            stats=DiscoveryRunStats(
+                queries_generated=5,
+                sources_fetched=1,
+                sources_processed=1,
+                entries_extracted=1,
+                entries_after_dedup=1,
+                entries_confirmed=1,
+            ),
+            sources=[
+                PageContent(
+                    url="https://example.com/story",
+                    title="Prairie workers launch co-op",
+                )
+            ],
+            ranked_entries=[
+                RankedEntry(
+                    entry=DeduplicatedEntry(
+                        name="Prairie Workers Cooperative",
+                        entry_type="organization",
+                        description="Worker-owned cooperative in southwest Kansas.",
+                        city="Garden City",
+                        state="KS",
+                        issue_areas=["worker_cooperatives"],
+                        source_urls=["https://example.com/story"],
+                        source_contexts={
+                            "https://example.com/story": (
+                                "Prairie Workers Cooperative opened a new facility."
+                            )
+                        },
+                    ),
+                    score=0.88,
+                )
+            ],
+        )
+    )
+
+    first = await discovery_api.sync_discovery_run(
+        request,
+        response=None,
+        actor=actor,
+        db=test_db,
+    )
+    second = await discovery_api.sync_discovery_run(
+        request,
+        response=None,
+        actor=actor,
+        db=test_db,
+    )
+
+    assert first.duplicate is False
+    assert second.duplicate is True
+    assert second.run_id == first.run_id
+
+    runs = await DiscoveryRunCRUD.list(test_db, state="KS")
+    assert len([run for run in runs if run.location_query == "Garden City, KS"]) == 1

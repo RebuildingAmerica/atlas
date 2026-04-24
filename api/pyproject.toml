@@ -25,6 +25,8 @@ classifiers = [
 ]
 
 dependencies = [
+    "atlas-discovery-engine",
+    "atlas-shared",
     "fastapi>=0.104.0",
     "uvicorn[standard]>=0.24.0",
     "httpx>=0.25.0",
@@ -47,6 +49,10 @@ dev = [
     "mypy>=1.7.0",
     "pre-commit>=3.5.0",
 ]
+
+[tool.uv.sources]
+atlas-discovery-engine = { path = "../engine", editable = true }
+atlas-shared = { path = "../shared", editable = true }
 
 [tool.hatch.build.targets.wheel]
 packages = ["atlas"]
@@ -140,6 +146,7 @@ omit = [
     "*/tests/*",
     "*/site-packages/*",
     "*/atlas/platform/mcp/*",
+    "*/atlas/seed_profiles.py",
 ]
 
 [tool.coverage.report]
