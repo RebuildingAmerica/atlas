@@ -47,16 +47,18 @@ describe("atlasFetch additional branches", () => {
     );
   });
 
-  it("throws the response body when the Atlas API returns an explicit error message", async () => {
+  it("maps 5xx Atlas API responses to a friendly fallback message", async () => {
     const fetchMock = vi.mocked(global.fetch);
     fetchMock.mockResolvedValue({
       json: vi.fn(),
       ok: false,
       status: 500,
-      text: vi.fn().mockResolvedValue("boom"),
+      text: vi.fn().mockResolvedValue("Internal Server Error"),
     } as unknown as Response);
 
-    await expect(atlasFetch("/api/entities")).rejects.toThrow("boom");
+    await expect(atlasFetch("/api/entities")).rejects.toThrow(
+      "Atlas is temporarily unavailable. Please try again.",
+    );
   });
 
   it("falls back to a status-based error message and handles 204 responses", async () => {

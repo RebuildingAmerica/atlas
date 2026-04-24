@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import type { ErrorComponentProps } from "@tanstack/react-router";
-import { PublicFloatingNav } from "@/platform/layout/public-nav";
+import { PublicTopNavSafe } from "@/platform/layout/public-nav";
 import { PublicFooter } from "@/platform/layout/public-footer";
 import { Button } from "@/platform/ui/button";
 
@@ -45,8 +45,8 @@ function SignalDecoPanel() {
 export function ErrorPage({ reset }: ErrorComponentProps) {
   return (
     <div className="flex min-h-screen flex-col">
-      <header className="sticky top-0 z-30 md:p-4">
-        <PublicFloatingNav />
+      <header className="sticky top-0 z-30">
+        <PublicTopNavSafe />
       </header>
 
       <main className="flex flex-1">
@@ -62,11 +62,15 @@ export function ErrorPage({ reset }: ErrorComponentProps) {
               on it
             </h1>
             <p className="type-body-large text-outline mb-8 max-w-sm">
-              Something broke on our end. Our team has been notified — try again in a moment, or
-              check our status page for updates.
+              Something broke on our end. Try again in a moment, or check the status page for
+              updates.
             </p>
             <div className="flex flex-col gap-3 sm:flex-row">
-              <Button variant="primary" onClick={reset}>
+              <Button
+                variant="primary"
+                onClick={reset}
+                className="bg-ink-strong hover:bg-ink-muted focus:ring-ink-strong text-white"
+              >
                 Try again
               </Button>
               <a href="https://atlasapp.openstatus.dev" target="_blank" rel="noopener noreferrer">

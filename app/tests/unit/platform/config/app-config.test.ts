@@ -190,7 +190,7 @@ describe("getServerApiBaseUrl", () => {
 
   it("rejects missing server-call origins", () => {
     expect(() => getServerApiBaseUrl({})).toThrow(
-      "ATLAS_PUBLIC_URL is required for server-side Atlas API calls.",
+      "ATLAS_PUBLIC_URL or ATLAS_SERVER_API_PROXY_TARGET is required for server-side Atlas API calls.",
     );
   });
 });

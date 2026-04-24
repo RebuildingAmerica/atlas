@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
-import { ArrowUpRight, Leaf } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
 import type { Status } from "@openstatus/react";
+import { useAtlasSession } from "@/domains/access";
 
 interface FooterInternalLinkProps {
   to: string;
@@ -117,6 +118,8 @@ interface PublicFooterProps {
  */
 export function PublicFooter({ status }: PublicFooterProps) {
   const { label, color, pulse } = STATUS_CONFIG[status];
+  const { data: session } = useAtlasSession();
+  const shouldShowWorkspaceLink = !session?.isLocal;
   return (
     <footer
       aria-label="Site footer"
@@ -171,7 +174,9 @@ export function PublicFooter({ status }: PublicFooterProps) {
               <FooterInternalLink to="/browse" label="Browse" animationDelay="120ms" />
               <FooterInternalLink to="/pricing" label="Pricing" animationDelay="140ms" />
               <FooterPlaceholderLink label="API" animationDelay="160ms" />
-              <FooterInternalLink to="/sign-in" label="Sign in" animationDelay="180ms" />
+              {shouldShowWorkspaceLink ? (
+                <FooterInternalLink to="/discovery" label="Workspace" animationDelay="180ms" />
+              ) : null}
             </FooterNavColumn>
 
             <FooterNavColumn heading="Community" baseDelay={140}>
@@ -180,7 +185,11 @@ export function PublicFooter({ status }: PublicFooterProps) {
                 label="GitHub"
                 animationDelay="180ms"
               />
-              <FooterPlaceholderLink label="Contributing" animationDelay="200ms" />
+              <FooterExternalLink
+                href="https://climate.stripe.com/IbySpr"
+                label="Carbon removal"
+                animationDelay="200ms"
+              />
               <FooterExternalLink
                 href="https://github.com/RebuildingAmerica/atlas/issues"
                 label="Issues"
@@ -189,37 +198,26 @@ export function PublicFooter({ status }: PublicFooterProps) {
             </FooterNavColumn>
 
             <FooterNavColumn heading="Legal" baseDelay={200}>
-              <FooterPlaceholderLink label="Privacy" animationDelay="240ms" />
-              <FooterPlaceholderLink label="Terms" animationDelay="260ms" />
-              <FooterPlaceholderLink label="Security" animationDelay="280ms" />
+              <FooterInternalLink to="/privacy" label="Privacy" animationDelay="240ms" />
+              <FooterInternalLink to="/terms" label="Terms" animationDelay="260ms" />
+              <FooterInternalLink to="/security" label="Security" animationDelay="280ms" />
             </FooterNavColumn>
           </nav>
         </div>
 
         {/* Bottom bar */}
         <div className="border-border mt-12 flex flex-wrap items-center justify-between gap-4 border-t pt-6">
-          <div className="flex flex-wrap items-center gap-3">
-            <p className="type-body-small text-ink-muted">
-              &copy; 2026{" "}
-              <a
-                href="https://rebuildingus.org"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-ink-muted hover:text-ink decoration-ink-muted/40 hover:decoration-ink/40 underline decoration-dotted underline-offset-2 transition-colors duration-150 hover:decoration-solid"
-              >
-                Rebuilding America Project
-              </a>
-            </p>
+          <p className="type-body-small text-ink-muted">
+            &copy; 2026{" "}
             <a
-              href="https://climate.stripe.com/IbySpr"
+              href="https://rebuildingus.org"
               target="_blank"
               rel="noopener noreferrer"
-              className="border-border-strong text-ink-muted hover:text-ink inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 no-underline transition-colors duration-150"
+              className="text-ink-muted hover:text-ink decoration-ink-muted/40 hover:decoration-ink/40 underline decoration-dotted underline-offset-2 transition-colors duration-150 hover:decoration-solid"
             >
-              <Leaf className="h-2.5 w-2.5 text-green-600" />
-              <span className="type-label-small">Carbon neutral</span>
+              Rebuilding America Project
             </a>
-          </div>
+          </p>
           <p className="type-body-small text-ink-muted">Civic infrastructure, openly built.</p>
         </div>
       </div>

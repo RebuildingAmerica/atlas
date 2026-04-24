@@ -22,19 +22,27 @@ import { Route as ApiSplatRouteImport } from './routes/api/$'
 import { Route as WorkspaceOrganizationRouteImport } from './routes/_workspace/organization'
 import { Route as WorkspaceDiscoveryRouteImport } from './routes/_workspace/discovery'
 import { Route as WorkspaceAccountRouteImport } from './routes/_workspace/account'
+import { Route as PublicTermsRouteImport } from './routes/_public/terms'
+import { Route as PublicSecurityRouteImport } from './routes/_public/security'
 import { Route as PublicRequestDiscountRouteImport } from './routes/_public/request-discount'
+import { Route as PublicPrivacyRouteImport } from './routes/_public/privacy'
 import { Route as PublicPricingRouteImport } from './routes/_public/pricing'
 import { Route as PublicBrowseRouteImport } from './routes/_public/browse'
 import { Route as AuthSignUpRouteImport } from './routes/_auth/sign-up'
 import { Route as AuthSignInRouteImport } from './routes/_auth/sign-in'
 import { Route as AuthAccountSetupRouteImport } from './routes/_auth/account-setup'
 import { Route as WorkspaceOrganizationIndexRouteImport } from './routes/_workspace/organization.index'
+import { Route as PublicProfilesIndexRouteImport } from './routes/_public/profiles/index'
 import { Route as ApiStripeWebhookRouteImport } from './routes/api/stripe/webhook'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as WorkspaceOrganizationSsoRouteImport } from './routes/_workspace/organization.sso'
 import { Route as WorkspaceAdminDiscountsRouteImport } from './routes/_workspace/admin.discounts'
+import { Route as PublicProfilesPeopleRouteImport } from './routes/_public/profiles/people'
+import { Route as PublicProfilesOrganizationsRouteImport } from './routes/_public/profiles/organizations'
 import { Route as PublicEntriesEntryIdRouteImport } from './routes/_public/entries.$entryId'
 import { Route as AuthOauthConsentRouteImport } from './routes/_auth/oauth/consent'
+import { Route as PublicProfilesPeopleIndexRouteImport } from './routes/_public/profiles/people.index'
+import { Route as PublicProfilesOrganizationsIndexRouteImport } from './routes/_public/profiles/organizations.index'
 import { Route as ApiAuthInternalApiKeyRouteImport } from './routes/api/auth/internal/api-key'
 import { Route as PublicProfilesPeopleSlugRouteImport } from './routes/_public/profiles/people.$slug'
 import { Route as PublicProfilesOrganizationsSlugRouteImport } from './routes/_public/profiles/organizations.$slug'
@@ -102,9 +110,24 @@ const WorkspaceAccountRoute = WorkspaceAccountRouteImport.update({
   path: '/account',
   getParentRoute: () => WorkspaceRoute,
 } as any)
+const PublicTermsRoute = PublicTermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
+  getParentRoute: () => PublicRoute,
+} as any)
+const PublicSecurityRoute = PublicSecurityRouteImport.update({
+  id: '/security',
+  path: '/security',
+  getParentRoute: () => PublicRoute,
+} as any)
 const PublicRequestDiscountRoute = PublicRequestDiscountRouteImport.update({
   id: '/request-discount',
   path: '/request-discount',
+  getParentRoute: () => PublicRoute,
+} as any)
+const PublicPrivacyRoute = PublicPrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
   getParentRoute: () => PublicRoute,
 } as any)
 const PublicPricingRoute = PublicPricingRouteImport.update({
@@ -138,6 +161,11 @@ const WorkspaceOrganizationIndexRoute =
     path: '/',
     getParentRoute: () => WorkspaceOrganizationRoute,
   } as any)
+const PublicProfilesIndexRoute = PublicProfilesIndexRouteImport.update({
+  id: '/profiles/',
+  path: '/profiles/',
+  getParentRoute: () => PublicRoute,
+} as any)
 const ApiStripeWebhookRoute = ApiStripeWebhookRouteImport.update({
   id: '/api/stripe/webhook',
   path: '/api/stripe/webhook',
@@ -159,6 +187,17 @@ const WorkspaceAdminDiscountsRoute = WorkspaceAdminDiscountsRouteImport.update({
   path: '/admin/discounts',
   getParentRoute: () => WorkspaceRoute,
 } as any)
+const PublicProfilesPeopleRoute = PublicProfilesPeopleRouteImport.update({
+  id: '/profiles/people',
+  path: '/profiles/people',
+  getParentRoute: () => PublicRoute,
+} as any)
+const PublicProfilesOrganizationsRoute =
+  PublicProfilesOrganizationsRouteImport.update({
+    id: '/profiles/organizations',
+    path: '/profiles/organizations',
+    getParentRoute: () => PublicRoute,
+  } as any)
 const PublicEntriesEntryIdRoute = PublicEntriesEntryIdRouteImport.update({
   id: '/entries/$entryId',
   path: '/entries/$entryId',
@@ -169,6 +208,18 @@ const AuthOauthConsentRoute = AuthOauthConsentRouteImport.update({
   path: '/oauth/consent',
   getParentRoute: () => AuthRoute,
 } as any)
+const PublicProfilesPeopleIndexRoute =
+  PublicProfilesPeopleIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => PublicProfilesPeopleRoute,
+  } as any)
+const PublicProfilesOrganizationsIndexRoute =
+  PublicProfilesOrganizationsIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => PublicProfilesOrganizationsRoute,
+  } as any)
 const ApiAuthInternalApiKeyRoute = ApiAuthInternalApiKeyRouteImport.update({
   id: '/api/auth/internal/api-key',
   path: '/api/auth/internal/api-key',
@@ -176,15 +227,15 @@ const ApiAuthInternalApiKeyRoute = ApiAuthInternalApiKeyRouteImport.update({
 } as any)
 const PublicProfilesPeopleSlugRoute =
   PublicProfilesPeopleSlugRouteImport.update({
-    id: '/profiles/people/$slug',
-    path: '/profiles/people/$slug',
-    getParentRoute: () => PublicRoute,
+    id: '/$slug',
+    path: '/$slug',
+    getParentRoute: () => PublicProfilesPeopleRoute,
   } as any)
 const PublicProfilesOrganizationsSlugRoute =
   PublicProfilesOrganizationsSlugRouteImport.update({
-    id: '/profiles/organizations/$slug',
-    path: '/profiles/organizations/$slug',
-    getParentRoute: () => PublicRoute,
+    id: '/$slug',
+    path: '/$slug',
+    getParentRoute: () => PublicProfilesOrganizationsRoute,
   } as any)
 const ApiAuthInternalMembershipsOrganizationIdMembersUserIdRoute =
   ApiAuthInternalMembershipsOrganizationIdMembersUserIdRouteImport.update({
@@ -204,7 +255,10 @@ export interface FileRoutesByFullPath {
   '/sign-up': typeof AuthSignUpRoute
   '/browse': typeof PublicBrowseRoute
   '/pricing': typeof PublicPricingRoute
+  '/privacy': typeof PublicPrivacyRoute
   '/request-discount': typeof PublicRequestDiscountRoute
+  '/security': typeof PublicSecurityRoute
+  '/terms': typeof PublicTermsRoute
   '/account': typeof WorkspaceAccountRoute
   '/discovery': typeof WorkspaceDiscoveryRoute
   '/organization': typeof WorkspaceOrganizationRouteWithChildren
@@ -212,14 +266,19 @@ export interface FileRoutesByFullPath {
   '/api/health': typeof ApiHealthRoute
   '/oauth/consent': typeof AuthOauthConsentRoute
   '/entries/$entryId': typeof PublicEntriesEntryIdRoute
+  '/profiles/organizations': typeof PublicProfilesOrganizationsRouteWithChildren
+  '/profiles/people': typeof PublicProfilesPeopleRouteWithChildren
   '/admin/discounts': typeof WorkspaceAdminDiscountsRoute
   '/organization/sso': typeof WorkspaceOrganizationSsoRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/stripe/webhook': typeof ApiStripeWebhookRoute
+  '/profiles/': typeof PublicProfilesIndexRoute
   '/organization/': typeof WorkspaceOrganizationIndexRoute
   '/profiles/organizations/$slug': typeof PublicProfilesOrganizationsSlugRoute
   '/profiles/people/$slug': typeof PublicProfilesPeopleSlugRoute
   '/api/auth/internal/api-key': typeof ApiAuthInternalApiKeyRoute
+  '/profiles/organizations/': typeof PublicProfilesOrganizationsIndexRoute
+  '/profiles/people/': typeof PublicProfilesPeopleIndexRoute
   '/api/auth/internal/memberships/$organizationId/members/$userId': typeof ApiAuthInternalMembershipsOrganizationIdMembersUserIdRoute
 }
 export interface FileRoutesByTo {
@@ -233,7 +292,10 @@ export interface FileRoutesByTo {
   '/sign-up': typeof AuthSignUpRoute
   '/browse': typeof PublicBrowseRoute
   '/pricing': typeof PublicPricingRoute
+  '/privacy': typeof PublicPrivacyRoute
   '/request-discount': typeof PublicRequestDiscountRoute
+  '/security': typeof PublicSecurityRoute
+  '/terms': typeof PublicTermsRoute
   '/account': typeof WorkspaceAccountRoute
   '/discovery': typeof WorkspaceDiscoveryRoute
   '/api/$': typeof ApiSplatRoute
@@ -244,10 +306,13 @@ export interface FileRoutesByTo {
   '/organization/sso': typeof WorkspaceOrganizationSsoRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/stripe/webhook': typeof ApiStripeWebhookRoute
+  '/profiles': typeof PublicProfilesIndexRoute
   '/organization': typeof WorkspaceOrganizationIndexRoute
   '/profiles/organizations/$slug': typeof PublicProfilesOrganizationsSlugRoute
   '/profiles/people/$slug': typeof PublicProfilesPeopleSlugRoute
   '/api/auth/internal/api-key': typeof ApiAuthInternalApiKeyRoute
+  '/profiles/organizations': typeof PublicProfilesOrganizationsIndexRoute
+  '/profiles/people': typeof PublicProfilesPeopleIndexRoute
   '/api/auth/internal/memberships/$organizationId/members/$userId': typeof ApiAuthInternalMembershipsOrganizationIdMembersUserIdRoute
 }
 export interface FileRoutesById {
@@ -264,7 +329,10 @@ export interface FileRoutesById {
   '/_auth/sign-up': typeof AuthSignUpRoute
   '/_public/browse': typeof PublicBrowseRoute
   '/_public/pricing': typeof PublicPricingRoute
+  '/_public/privacy': typeof PublicPrivacyRoute
   '/_public/request-discount': typeof PublicRequestDiscountRoute
+  '/_public/security': typeof PublicSecurityRoute
+  '/_public/terms': typeof PublicTermsRoute
   '/_workspace/account': typeof WorkspaceAccountRoute
   '/_workspace/discovery': typeof WorkspaceDiscoveryRoute
   '/_workspace/organization': typeof WorkspaceOrganizationRouteWithChildren
@@ -273,14 +341,19 @@ export interface FileRoutesById {
   '/_public/': typeof PublicIndexRoute
   '/_auth/oauth/consent': typeof AuthOauthConsentRoute
   '/_public/entries/$entryId': typeof PublicEntriesEntryIdRoute
+  '/_public/profiles/organizations': typeof PublicProfilesOrganizationsRouteWithChildren
+  '/_public/profiles/people': typeof PublicProfilesPeopleRouteWithChildren
   '/_workspace/admin/discounts': typeof WorkspaceAdminDiscountsRoute
   '/_workspace/organization/sso': typeof WorkspaceOrganizationSsoRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/stripe/webhook': typeof ApiStripeWebhookRoute
+  '/_public/profiles/': typeof PublicProfilesIndexRoute
   '/_workspace/organization/': typeof WorkspaceOrganizationIndexRoute
   '/_public/profiles/organizations/$slug': typeof PublicProfilesOrganizationsSlugRoute
   '/_public/profiles/people/$slug': typeof PublicProfilesPeopleSlugRoute
   '/api/auth/internal/api-key': typeof ApiAuthInternalApiKeyRoute
+  '/_public/profiles/organizations/': typeof PublicProfilesOrganizationsIndexRoute
+  '/_public/profiles/people/': typeof PublicProfilesPeopleIndexRoute
   '/api/auth/internal/memberships/$organizationId/members/$userId': typeof ApiAuthInternalMembershipsOrganizationIdMembersUserIdRoute
 }
 export interface FileRouteTypes {
@@ -296,7 +369,10 @@ export interface FileRouteTypes {
     | '/sign-up'
     | '/browse'
     | '/pricing'
+    | '/privacy'
     | '/request-discount'
+    | '/security'
+    | '/terms'
     | '/account'
     | '/discovery'
     | '/organization'
@@ -304,14 +380,19 @@ export interface FileRouteTypes {
     | '/api/health'
     | '/oauth/consent'
     | '/entries/$entryId'
+    | '/profiles/organizations'
+    | '/profiles/people'
     | '/admin/discounts'
     | '/organization/sso'
     | '/api/auth/$'
     | '/api/stripe/webhook'
+    | '/profiles/'
     | '/organization/'
     | '/profiles/organizations/$slug'
     | '/profiles/people/$slug'
     | '/api/auth/internal/api-key'
+    | '/profiles/organizations/'
+    | '/profiles/people/'
     | '/api/auth/internal/memberships/$organizationId/members/$userId'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -325,7 +406,10 @@ export interface FileRouteTypes {
     | '/sign-up'
     | '/browse'
     | '/pricing'
+    | '/privacy'
     | '/request-discount'
+    | '/security'
+    | '/terms'
     | '/account'
     | '/discovery'
     | '/api/$'
@@ -336,10 +420,13 @@ export interface FileRouteTypes {
     | '/organization/sso'
     | '/api/auth/$'
     | '/api/stripe/webhook'
+    | '/profiles'
     | '/organization'
     | '/profiles/organizations/$slug'
     | '/profiles/people/$slug'
     | '/api/auth/internal/api-key'
+    | '/profiles/organizations'
+    | '/profiles/people'
     | '/api/auth/internal/memberships/$organizationId/members/$userId'
   id:
     | '__root__'
@@ -355,7 +442,10 @@ export interface FileRouteTypes {
     | '/_auth/sign-up'
     | '/_public/browse'
     | '/_public/pricing'
+    | '/_public/privacy'
     | '/_public/request-discount'
+    | '/_public/security'
+    | '/_public/terms'
     | '/_workspace/account'
     | '/_workspace/discovery'
     | '/_workspace/organization'
@@ -364,14 +454,19 @@ export interface FileRouteTypes {
     | '/_public/'
     | '/_auth/oauth/consent'
     | '/_public/entries/$entryId'
+    | '/_public/profiles/organizations'
+    | '/_public/profiles/people'
     | '/_workspace/admin/discounts'
     | '/_workspace/organization/sso'
     | '/api/auth/$'
     | '/api/stripe/webhook'
+    | '/_public/profiles/'
     | '/_workspace/organization/'
     | '/_public/profiles/organizations/$slug'
     | '/_public/profiles/people/$slug'
     | '/api/auth/internal/api-key'
+    | '/_public/profiles/organizations/'
+    | '/_public/profiles/people/'
     | '/api/auth/internal/memberships/$organizationId/members/$userId'
   fileRoutesById: FileRoutesById
 }
@@ -484,11 +579,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WorkspaceAccountRouteImport
       parentRoute: typeof WorkspaceRoute
     }
+    '/_public/terms': {
+      id: '/_public/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof PublicTermsRouteImport
+      parentRoute: typeof PublicRoute
+    }
+    '/_public/security': {
+      id: '/_public/security'
+      path: '/security'
+      fullPath: '/security'
+      preLoaderRoute: typeof PublicSecurityRouteImport
+      parentRoute: typeof PublicRoute
+    }
     '/_public/request-discount': {
       id: '/_public/request-discount'
       path: '/request-discount'
       fullPath: '/request-discount'
       preLoaderRoute: typeof PublicRequestDiscountRouteImport
+      parentRoute: typeof PublicRoute
+    }
+    '/_public/privacy': {
+      id: '/_public/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PublicPrivacyRouteImport
       parentRoute: typeof PublicRoute
     }
     '/_public/pricing': {
@@ -533,6 +649,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WorkspaceOrganizationIndexRouteImport
       parentRoute: typeof WorkspaceOrganizationRoute
     }
+    '/_public/profiles/': {
+      id: '/_public/profiles/'
+      path: '/profiles'
+      fullPath: '/profiles/'
+      preLoaderRoute: typeof PublicProfilesIndexRouteImport
+      parentRoute: typeof PublicRoute
+    }
     '/api/stripe/webhook': {
       id: '/api/stripe/webhook'
       path: '/api/stripe/webhook'
@@ -561,6 +684,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WorkspaceAdminDiscountsRouteImport
       parentRoute: typeof WorkspaceRoute
     }
+    '/_public/profiles/people': {
+      id: '/_public/profiles/people'
+      path: '/profiles/people'
+      fullPath: '/profiles/people'
+      preLoaderRoute: typeof PublicProfilesPeopleRouteImport
+      parentRoute: typeof PublicRoute
+    }
+    '/_public/profiles/organizations': {
+      id: '/_public/profiles/organizations'
+      path: '/profiles/organizations'
+      fullPath: '/profiles/organizations'
+      preLoaderRoute: typeof PublicProfilesOrganizationsRouteImport
+      parentRoute: typeof PublicRoute
+    }
     '/_public/entries/$entryId': {
       id: '/_public/entries/$entryId'
       path: '/entries/$entryId'
@@ -575,6 +712,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthOauthConsentRouteImport
       parentRoute: typeof AuthRoute
     }
+    '/_public/profiles/people/': {
+      id: '/_public/profiles/people/'
+      path: '/'
+      fullPath: '/profiles/people/'
+      preLoaderRoute: typeof PublicProfilesPeopleIndexRouteImport
+      parentRoute: typeof PublicProfilesPeopleRoute
+    }
+    '/_public/profiles/organizations/': {
+      id: '/_public/profiles/organizations/'
+      path: '/'
+      fullPath: '/profiles/organizations/'
+      preLoaderRoute: typeof PublicProfilesOrganizationsIndexRouteImport
+      parentRoute: typeof PublicProfilesOrganizationsRoute
+    }
     '/api/auth/internal/api-key': {
       id: '/api/auth/internal/api-key'
       path: '/api/auth/internal/api-key'
@@ -584,17 +735,17 @@ declare module '@tanstack/react-router' {
     }
     '/_public/profiles/people/$slug': {
       id: '/_public/profiles/people/$slug'
-      path: '/profiles/people/$slug'
+      path: '/$slug'
       fullPath: '/profiles/people/$slug'
       preLoaderRoute: typeof PublicProfilesPeopleSlugRouteImport
-      parentRoute: typeof PublicRoute
+      parentRoute: typeof PublicProfilesPeopleRoute
     }
     '/_public/profiles/organizations/$slug': {
       id: '/_public/profiles/organizations/$slug'
-      path: '/profiles/organizations/$slug'
+      path: '/$slug'
       fullPath: '/profiles/organizations/$slug'
       preLoaderRoute: typeof PublicProfilesOrganizationsSlugRouteImport
-      parentRoute: typeof PublicRoute
+      parentRoute: typeof PublicProfilesOrganizationsRoute
     }
     '/api/auth/internal/memberships/$organizationId/members/$userId': {
       id: '/api/auth/internal/memberships/$organizationId/members/$userId'
@@ -622,24 +773,63 @@ const AuthRouteChildren: AuthRouteChildren = {
 
 const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
 
+interface PublicProfilesOrganizationsRouteChildren {
+  PublicProfilesOrganizationsSlugRoute: typeof PublicProfilesOrganizationsSlugRoute
+  PublicProfilesOrganizationsIndexRoute: typeof PublicProfilesOrganizationsIndexRoute
+}
+
+const PublicProfilesOrganizationsRouteChildren: PublicProfilesOrganizationsRouteChildren =
+  {
+    PublicProfilesOrganizationsSlugRoute: PublicProfilesOrganizationsSlugRoute,
+    PublicProfilesOrganizationsIndexRoute:
+      PublicProfilesOrganizationsIndexRoute,
+  }
+
+const PublicProfilesOrganizationsRouteWithChildren =
+  PublicProfilesOrganizationsRoute._addFileChildren(
+    PublicProfilesOrganizationsRouteChildren,
+  )
+
+interface PublicProfilesPeopleRouteChildren {
+  PublicProfilesPeopleSlugRoute: typeof PublicProfilesPeopleSlugRoute
+  PublicProfilesPeopleIndexRoute: typeof PublicProfilesPeopleIndexRoute
+}
+
+const PublicProfilesPeopleRouteChildren: PublicProfilesPeopleRouteChildren = {
+  PublicProfilesPeopleSlugRoute: PublicProfilesPeopleSlugRoute,
+  PublicProfilesPeopleIndexRoute: PublicProfilesPeopleIndexRoute,
+}
+
+const PublicProfilesPeopleRouteWithChildren =
+  PublicProfilesPeopleRoute._addFileChildren(PublicProfilesPeopleRouteChildren)
+
 interface PublicRouteChildren {
   PublicBrowseRoute: typeof PublicBrowseRoute
   PublicPricingRoute: typeof PublicPricingRoute
+  PublicPrivacyRoute: typeof PublicPrivacyRoute
   PublicRequestDiscountRoute: typeof PublicRequestDiscountRoute
+  PublicSecurityRoute: typeof PublicSecurityRoute
+  PublicTermsRoute: typeof PublicTermsRoute
   PublicIndexRoute: typeof PublicIndexRoute
   PublicEntriesEntryIdRoute: typeof PublicEntriesEntryIdRoute
-  PublicProfilesOrganizationsSlugRoute: typeof PublicProfilesOrganizationsSlugRoute
-  PublicProfilesPeopleSlugRoute: typeof PublicProfilesPeopleSlugRoute
+  PublicProfilesOrganizationsRoute: typeof PublicProfilesOrganizationsRouteWithChildren
+  PublicProfilesPeopleRoute: typeof PublicProfilesPeopleRouteWithChildren
+  PublicProfilesIndexRoute: typeof PublicProfilesIndexRoute
 }
 
 const PublicRouteChildren: PublicRouteChildren = {
   PublicBrowseRoute: PublicBrowseRoute,
   PublicPricingRoute: PublicPricingRoute,
+  PublicPrivacyRoute: PublicPrivacyRoute,
   PublicRequestDiscountRoute: PublicRequestDiscountRoute,
+  PublicSecurityRoute: PublicSecurityRoute,
+  PublicTermsRoute: PublicTermsRoute,
   PublicIndexRoute: PublicIndexRoute,
   PublicEntriesEntryIdRoute: PublicEntriesEntryIdRoute,
-  PublicProfilesOrganizationsSlugRoute: PublicProfilesOrganizationsSlugRoute,
-  PublicProfilesPeopleSlugRoute: PublicProfilesPeopleSlugRoute,
+  PublicProfilesOrganizationsRoute:
+    PublicProfilesOrganizationsRouteWithChildren,
+  PublicProfilesPeopleRoute: PublicProfilesPeopleRouteWithChildren,
+  PublicProfilesIndexRoute: PublicProfilesIndexRoute,
 }
 
 const PublicRouteWithChildren =

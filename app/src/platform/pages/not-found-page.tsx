@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { PublicFloatingNav } from "@/platform/layout/public-nav";
+import { PublicTopNavSafe } from "@/platform/layout/public-nav";
 import { PublicFooter } from "@/platform/layout/public-footer";
 import { Button } from "@/platform/ui/button";
 
@@ -44,8 +44,8 @@ function MapDecoPanel() {
 export function NotFoundPage() {
   return (
     <div className="flex min-h-screen flex-col">
-      <header className="sticky top-0 z-30 md:p-4">
-        <PublicFloatingNav />
+      <header className="sticky top-0 z-30">
+        <PublicTopNavSafe />
       </header>
 
       <main className="flex flex-1">
@@ -66,7 +66,12 @@ export function NotFoundPage() {
             </p>
             <div className="flex flex-col gap-3 sm:flex-row">
               <Link to="/">
-                <Button variant="primary">← Back to home</Button>
+                <Button
+                  variant="primary"
+                  className="bg-ink-strong hover:bg-ink-muted focus:ring-ink-strong text-white"
+                >
+                  ← Back to home
+                </Button>
               </Link>
               <Link to="/browse">
                 <Button variant="secondary">Browse entries</Button>

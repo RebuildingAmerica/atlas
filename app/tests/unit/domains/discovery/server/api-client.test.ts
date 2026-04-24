@@ -55,30 +55,17 @@ describe("api-client", () => {
     );
   });
 
-  it("sends an unauthenticated request when internal secret is missing", async () => {
+  it("throws when internal secret is missing outside local mode", async () => {
     delete process.env.ATLAS_AUTH_INTERNAL_SECRET;
     mocks.requireReadyAtlasSessionState.mockResolvedValue({
       isLocal: false,
       user: { email: "operator@atlas.test", id: "user_123" },
       workspace: { activeOrganization: { id: "org_123" } },
     });
-    mocks.getServerApiBaseUrl.mockReturnValue("https://api.atlas.test");
-    mocks.fetch.mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve({ data: "test" }),
-    });
-
-    await requestAtlasApi("/test-endpoint");
-
-    expect(mocks.fetch).toHaveBeenCalledWith(
-      expect.any(String),
-      expect.objectContaining({
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-        },
-      }),
+    await expect(requestAtlasApi("/test-endpoint")).rejects.toThrow(
+      "ATLAS_AUTH_INTERNAL_SECRET is required for authenticated discovery requests.",
     );
+    expect(mocks.fetch).not.toHaveBeenCalled();
   });
 
   it("sends an unauthenticated request in local mode", async () => {

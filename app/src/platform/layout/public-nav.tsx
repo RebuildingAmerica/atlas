@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from "react";
 import { Link } from "@tanstack/react-router";
 import { useAtlasSession } from "@/domains/access";
+import { cn } from "@/lib/utils";
 
 /**
  * Subscribe to nothing -- the store never changes. This is a no-op used only
@@ -22,6 +23,25 @@ function useHydrated(): boolean {
   return useSyncExternalStore(
     subscribeNoop,
     () => true,
+    () => false,
+  );
+}
+
+function subscribeScroll(callback: () => void) {
+  if (typeof window === "undefined") {
+    return () => undefined;
+  }
+
+  window.addEventListener("scroll", callback, { passive: true });
+  return () => {
+    window.removeEventListener("scroll", callback);
+  };
+}
+
+function useScrolledPastHero(): boolean {
+  return useSyncExternalStore(
+    subscribeScroll,
+    () => window.scrollY > 24,
     () => false,
   );
 }
@@ -81,32 +101,64 @@ function AuthNavLink() {
 }
 
 /**
- * Minimal floating navigation bar for public pages.
+ * Public navigation bar for public pages.
  *
- * Renders a fixed pill at the top of the viewport that floats over page
- * content with a translucent backdrop-blurred background. Contains the Atlas
- * brand mark, a "Browse" link, and a session-aware auth link.
+ * Renders an anchored top bar that stays attached to the viewport edge while
+ * scrolling. Contains the Atlas brand mark, profile and browse entry points,
+ * and a session-aware auth link.
  */
-export function PublicFloatingNav() {
-  return (
-    <nav
-      className="border-border mx-auto flex max-w-3xl items-center justify-between rounded-2xl border px-4 py-2.5 shadow-sm backdrop-blur-md md:px-5 md:py-3"
-      style={{ backgroundColor: "rgba(248, 241, 230, 0.8)" }}
-    >
-      {/* Brand */}
-      <Link to="/" className="flex items-center gap-2.5 no-underline">
-        <div className="bg-accent flex h-7 w-7 items-center justify-center rounded-xl text-white">
-          <span className="type-label-medium leading-none">A</span>
-        </div>
-        <span className="type-title-medium text-ink-strong">Atlas</span>
-      </Link>
+export function PublicTopNav() {
+  const scrolled = useScrolledPastHero();
 
-      {/* Links */}
-      <div className="flex items-center gap-1">
-        <NavLink to="/browse" label="Browse" />
-        <PricingNavLink />
-        <AuthNavLink />
-      </div>
-    </nav>
+  return <PublicTopNavShell scrolled={scrolled} />;
+}
+
+export function PublicTopNavSafe() {
+  const scrolled = useScrolledPastHero();
+
+  return <PublicTopNavShell hideSessionLinks scrolled={scrolled} />;
+}
+
+function PublicTopNavShell({
+  hideSessionLinks = false,
+  scrolled,
+}: {
+  hideSessionLinks?: boolean;
+  scrolled: boolean;
+}) {
+  return (
+    <div
+      className={cn(
+        "mx-auto w-full max-w-[88rem] px-3 transition-all duration-250",
+        scrolled ? "px-0 pt-0" : "pt-3",
+      )}
+    >
+      <nav
+        className={cn(
+          "flex items-center justify-between px-6 backdrop-blur-md transition-all duration-250",
+          scrolled
+            ? "bg-surface-container-high/92 py-3"
+            : "bg-surface-container-low/88 rounded-[1.25rem] py-4",
+        )}
+      >
+        <Link to="/" className="flex items-center gap-2.5 no-underline">
+          <div className="bg-accent flex h-7 w-7 items-center justify-center rounded-[0.85rem] text-white">
+            <span className="type-label-medium leading-none">A</span>
+          </div>
+          <span className="type-title-medium text-ink-strong">Atlas</span>
+        </Link>
+
+        <div className="flex items-center gap-1">
+          <NavLink to="/profiles" label="Profiles" />
+          <NavLink to="/browse" label="Browse" />
+          {hideSessionLinks ? null : (
+            <>
+              <PricingNavLink />
+              <AuthNavLink />
+            </>
+          )}
+        </div>
+      </nav>
+    </div>
   );
 }

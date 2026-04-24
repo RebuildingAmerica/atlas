@@ -59,7 +59,7 @@ export default defineConfig({
   },
   webServer: [
     {
-      command: "pnpm exec turbo run frontend#e2e:mail --output-logs=errors-only",
+      command: "pnpm --filter @rebuildingamerica/atlas-app e2e:mail",
       cwd: repoRoot,
       env: {
         ...baseWebServerEnv,
@@ -90,13 +90,13 @@ export default defineConfig({
       url: `${apiUrl}/health`,
     },
     {
-      command: "pnpm exec turbo run frontend#start:e2e --output-logs=errors-only",
+      command: "pnpm --filter @rebuildingamerica/atlas-app dev:e2e",
       cwd: repoRoot,
       env: {
         ...baseWebServerEnv,
         ...commonAuthEnv,
         ATLAS_SERVER_API_PROXY_TARGET: apiUrl,
-        NODE_ENV: "production",
+        NODE_ENV: "development",
         PORT: new URL(appUrl).port || "3100",
         ATLAS_AUTH_DB_PATH: authDbPath,
       },

@@ -6,6 +6,7 @@ interface AppConfigEnv {
   ATLAS_DOCS_URL?: string;
   ATLAS_DEPLOY_MODE?: string;
   ATLAS_PUBLIC_URL?: string;
+  ATLAS_SERVER_API_PROXY_TARGET?: string;
 }
 
 function trimTrailingSlash(value: string): string {
@@ -128,10 +129,21 @@ export function getAbsoluteApiBaseUrl({
 }
 
 export function getServerApiBaseUrl(env: AppConfigEnv = process.env): string {
+  const serverProxyTarget = env.ATLAS_SERVER_API_PROXY_TARGET?.trim();
+  if (serverProxyTarget) {
+    if (!isAbsoluteUrl(serverProxyTarget)) {
+      throw new Error("ATLAS_SERVER_API_PROXY_TARGET must be an absolute URL.");
+    }
+
+    return ensureApiSuffix(serverProxyTarget);
+  }
+
   const publicUrl = getConfiguredPublicUrl(env);
   if (publicUrl) {
     return ensureApiSuffix(publicUrl);
   }
 
-  throw new Error("ATLAS_PUBLIC_URL is required for server-side Atlas API calls.");
+  throw new Error(
+    "ATLAS_PUBLIC_URL or ATLAS_SERVER_API_PROXY_TARGET is required for server-side Atlas API calls.",
+  );
 }

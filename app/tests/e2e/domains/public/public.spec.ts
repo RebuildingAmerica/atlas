@@ -39,4 +39,17 @@ test.describe("public visitor journey", () => {
     await expect(page).toHaveURL(/\/pricing/);
     await expect(page.getByRole("heading", { name: "Pricing" })).toBeVisible();
   });
+
+  test("should render the not-found page with a visible primary action", async ({ page }) => {
+    await page.goto("/this-route-does-not-exist");
+
+    await expect(page.getByText("404 · Page not found")).toBeVisible();
+    await expect(page.getByRole("heading", { name: /We lost the map/i })).toBeVisible();
+    await expect(page.getByText("Hide Error")).toHaveCount(0);
+
+    const primaryCta = page.getByRole("button", { name: /Back to home/i });
+    await expect(primaryCta).toBeVisible();
+    await expect(primaryCta).toHaveCSS("background-color", "rgb(28, 25, 23)");
+    await expect(primaryCta).toHaveCSS("color", "rgb(255, 255, 255)");
+  });
 });

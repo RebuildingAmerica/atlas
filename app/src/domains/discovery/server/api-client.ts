@@ -7,6 +7,7 @@ import { getServerApiBaseUrl as getConfiguredServerApiBaseUrl } from "@/platform
 function getServerApiBaseUrl(): string {
   return getConfiguredServerApiBaseUrl({
     ATLAS_PUBLIC_URL: process.env.ATLAS_PUBLIC_URL,
+    ATLAS_SERVER_API_PROXY_TARGET: process.env.ATLAS_SERVER_API_PROXY_TARGET,
   });
 }
 
@@ -16,12 +17,16 @@ function getInternalSecret(): string {
 
 export async function requestAtlasApi<T>(path: string, init?: RequestInit): Promise<T> {
   const session = await requireReadyAtlasSessionState();
-  const headers =
-    session.isLocal || !getInternalSecret()
-      ? {}
-      : createInternalAuthHeaders(session.user, getInternalSecret(), {
-          organizationId: session.workspace.activeOrganization?.id,
-        });
+  const internalSecret = getInternalSecret();
+  if (!session.isLocal && !internalSecret) {
+    throw new Error("ATLAS_AUTH_INTERNAL_SECRET is required for authenticated discovery requests.");
+  }
+
+  const headers = session.isLocal
+    ? {}
+    : createInternalAuthHeaders(session.user, internalSecret, {
+        organizationId: session.workspace.activeOrganization?.id,
+      });
   const response = await fetch(`${getServerApiBaseUrl()}${path}`, {
     ...init,
     headers: {
