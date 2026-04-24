@@ -39,6 +39,11 @@ def test_cli_runs_inspect_help():
     assert result.exit_code == 0
 
 
+def test_cli_runs_sync_help():
+    result = CliRunner().invoke(main, ["runs", "sync", "--help"])
+    assert result.exit_code == 0
+
+
 # ---------------------------------------------------------------------------
 # Required arguments
 # ---------------------------------------------------------------------------
@@ -103,6 +108,11 @@ def test_cli_runs_group_help():
 
 def test_cli_runs_inspect_requires_run_id():
     result = CliRunner().invoke(main, ["runs", "inspect"])
+    assert result.exit_code != 0
+
+
+def test_cli_runs_sync_requires_run_id():
+    result = CliRunner().invoke(main, ["runs", "sync"])
     assert result.exit_code != 0
 
 

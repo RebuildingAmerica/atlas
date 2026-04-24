@@ -12,6 +12,16 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import httpx
+from atlas_shared import (
+    DiscoveryContributionRequest,
+    DiscoveryContributionResponse,
+    DiscoveryRunArtifacts,
+    DiscoveryRunInput,
+    DiscoveryRunStats,
+    DiscoveryRunSyncRequest,
+    DiscoveryRunSyncResponse,
+    PageContent,
+)
 
 if TYPE_CHECKING:
     from atlas_shared import RankedEntry
@@ -29,6 +39,9 @@ class ContributionResult:
     created: int
     failed: int
     errors: list[str]
+    run_id: str | None = None
+    sync_status: str | None = None
+    duplicate: bool = False
 
 
 async def contribute_entries(
@@ -36,6 +49,12 @@ async def contribute_entries(
     *,
     atlas_url: str,
     api_key: str,
+    location_query: str,
+    state: str,
+    issue_areas: list[str],
+    sources: list[PageContent],
+    stats: DiscoveryRunStats,
+    search_depth: str = "standard",
     min_score: float = 0.7,
 ) -> ContributionResult:
     """
@@ -49,6 +68,18 @@ async def contribute_entries(
         Base URL of the Atlas API (e.g., ``https://atlas.rebuildingus.org``).
     api_key : str
         API key for authentication.
+    location_query : str
+        Location query that defined the run.
+    state : str
+        2-letter state code for the run.
+    issue_areas : list[str]
+        Issue areas targeted by the run.
+    sources : list[PageContent]
+        Source pages fetched during the run.
+    stats : DiscoveryRunStats
+        Run statistics to persist alongside the contribution.
+    search_depth : str
+        Discovery depth hint used by the runner.
     min_score : float
         Minimum score threshold for contribution (default 0.7).
 
@@ -61,60 +92,86 @@ async def contribute_entries(
     if not eligible:
         return ContributionResult(attempted=0, created=0, failed=0, errors=[])
 
-    url = f"{atlas_url.rstrip('/')}/api/v1/entries"
-    headers = {
-        "Authorization": f"Bearer {api_key}",
-        "Content-Type": "application/json",
-    }
+    url = f"{atlas_url.rstrip('/')}/api/discovery-runs/contributions"
+    headers = {"Content-Type": "application/json"}
+    if api_key:
+        headers["X-API-Key"] = api_key
 
-    import asyncio
+    payload = DiscoveryContributionRequest(
+        run=DiscoveryRunInput(
+            location_query=location_query,
+            state=state,
+            issue_areas=issue_areas,
+            search_depth=search_depth,
+        ),
+        stats=stats,
+        sources=sources,
+        ranked_entries=eligible,
+    )
 
-    created = 0
-    failed = 0
-    errors: list[str] = []
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(
+                url,
+                json=payload.model_dump(mode="json"),
+                headers=headers,
+            )
+            response.raise_for_status()
+            created_payload = DiscoveryContributionResponse.model_validate(response.json())
+    except httpx.HTTPStatusError as exc:
+        reason = f"contribution batch failed: HTTP {exc.response.status_code}"
+        logger.warning("Contribution failed: %s", reason)
+        return ContributionResult(attempted=len(eligible), created=0, failed=len(eligible), errors=[reason])
+    except httpx.RequestError as exc:
+        reason = f"contribution batch failed: {exc}"
+        logger.warning("Contribution failed: %s", reason)
+        return ContributionResult(attempted=len(eligible), created=0, failed=len(eligible), errors=[reason])
 
-    async with httpx.AsyncClient(timeout=30.0) as client:
+    created = created_payload.entries_persisted
+    failed = max(len(eligible) - created, 0)
+    return ContributionResult(attempted=len(eligible), created=created, failed=failed, errors=[])
 
-        async def _post_one(ranked: RankedEntry) -> tuple[bool, str]:
-            entry = ranked.entry
-            payload = {
-                "type": str(entry.entry_type),
-                "name": entry.name,
-                "description": entry.description or "",
-                "city": entry.city,
-                "state": entry.state,
-                "geo_specificity": str(entry.geo_specificity),
-                "region": entry.region,
-                "website": entry.website,
-                "email": entry.email,
-                "social_media": entry.social_media or {},
-                "issue_areas": entry.issue_areas,
-                "last_seen": entry.last_seen.isoformat() if entry.last_seen else None,
-            }
-            try:
-                response = await client.post(url, json=payload, headers=headers)
-                response.raise_for_status()
-                return True, ""
-            except httpx.HTTPStatusError as exc:
-                reason = f"{entry.name}: HTTP {exc.response.status_code}"
-                logger.warning("Contribution failed for %s: %s", entry.name, reason)
-                return False, reason
-            except httpx.RequestError as exc:
-                reason = f"{entry.name}: {exc}"
-                logger.warning("Contribution failed for %s: %s", entry.name, reason)
-                return False, reason
 
-        results = await asyncio.gather(*[_post_one(r) for r in eligible])
-        for success, reason in results:
-            if success:
-                created += 1
-            else:
-                failed += 1
-                errors.append(reason)
+async def sync_run_artifacts(
+    artifacts: DiscoveryRunArtifacts,
+    *,
+    atlas_url: str,
+    api_key: str,
+) -> ContributionResult:
+    """Sync a canonical local run bundle to the Atlas run-sync API."""
+    url = f"{atlas_url.rstrip('/')}/api/discovery-runs/syncs"
+    headers = {"Content-Type": "application/json"}
+    if api_key:
+        headers["X-API-Key"] = api_key
 
+    payload = DiscoveryRunSyncRequest(artifacts=artifacts)
+    attempted = len(artifacts.ranked_entries)
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(
+                url,
+                json=payload.model_dump(mode="json"),
+                headers=headers,
+            )
+            response.raise_for_status()
+            created_payload = DiscoveryRunSyncResponse.model_validate(response.json())
+    except httpx.HTTPStatusError as exc:
+        reason = f"run sync failed: HTTP {exc.response.status_code}"
+        logger.warning("Run sync failed: %s", reason)
+        return ContributionResult(attempted=attempted, created=0, failed=attempted, errors=[reason])
+    except httpx.RequestError as exc:
+        reason = f"run sync failed: {exc}"
+        logger.warning("Run sync failed: %s", reason)
+        return ContributionResult(attempted=attempted, created=0, failed=attempted, errors=[reason])
+
+    created = created_payload.entries_persisted
+    failed = 0 if created_payload.duplicate else max(attempted - created, 0)
     return ContributionResult(
-        attempted=len(eligible),
+        attempted=attempted,
         created=created,
         failed=failed,
-        errors=errors,
+        errors=[],
+        run_id=created_payload.run_id,
+        sync_status=created_payload.sync_status,
+        duplicate=created_payload.duplicate,
     )

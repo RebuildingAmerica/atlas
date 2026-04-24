@@ -543,6 +543,7 @@ async def _runs_inspect(config: ScoutConfig, run_id: str) -> None:
         except KeyError:
             err_console.print(f"[red]Run not found:[/] {run_id}")
             sys.exit(1)
+        artifacts = await store.get_run_artifacts(run_id)
         entries = await store.list_entries(run_id=run_id)
         page_tasks = await store.list_page_tasks(run_id) if hasattr(store, "list_page_tasks") else []
     finally:
@@ -557,6 +558,13 @@ async def _runs_inspect(config: ScoutConfig, run_id: str) -> None:
         console.print(f"  Completed: [dim]{rec['completed_at'][:19]}[/]")
     if rec.get("error"):
         console.print(f"  Error: [red]{rec['error']}[/]")
+    if artifacts and artifacts.manifest.sync:
+        sync = artifacts.manifest.sync
+        console.print(f"  Sync: {sync.sync_status or 'pending'}")
+        if sync.remote_run_id:
+            console.print(f"  Remote run: [dim]{sync.remote_run_id}[/]")
+        if sync.last_error:
+            console.print(f"  Sync error: [red]{sync.last_error}[/]")
 
     if page_tasks:
         console.print()
@@ -579,6 +587,78 @@ async def _runs_inspect(config: ScoutConfig, run_id: str) -> None:
             console.print(f"  [{e['score']:.2f}] {e['name']} ({e['entry_type']}) — {e.get('city')}, {e.get('state')}")
     else:
         console.print("\n[dim]No entries.[/]")
+
+
+@runs.command("sync")
+@click.argument("run_id")
+@click.option("--atlas-url", default=None, help="Override the Atlas base URL for sync.")
+@click.option("--api-key", default=None, envvar="ATLAS_API_KEY", help="Override the Atlas API key.")
+@click.pass_context
+def runs_sync(ctx: click.Context, run_id: str, atlas_url: str | None, api_key: str | None) -> None:
+    """Sync a completed local run to Atlas."""
+    config: ScoutConfig = ctx.obj["config"]
+    asyncio.run(_runs_sync(config, run_id, atlas_url=atlas_url, api_key=api_key))
+
+
+async def _runs_sync(
+    config: ScoutConfig,
+    run_id: str,
+    *,
+    atlas_url: str | None,
+    api_key: str | None,
+) -> None:
+    """Load a local run bundle and sync it to Atlas."""
+    from atlas_scout.steps.contribute import sync_run_artifacts
+    from atlas_scout.store import ScoutStore
+
+    resolved_atlas_url = atlas_url or config.contribution.atlas_url
+    resolved_api_key = api_key or config.contribution.api_key
+    if not resolved_atlas_url:
+        err_console.print("[red]Atlas URL required:[/] set contribution.atlas_url or pass --atlas-url.")
+        sys.exit(1)
+    if not resolved_api_key:
+        err_console.print("[red]API key required:[/] set contribution.api_key or pass --api-key.")
+        sys.exit(1)
+
+    store = ScoutStore(str(Path(config.store.path).expanduser()))
+    await store.initialize()
+    try:
+        try:
+            await store.get_run(run_id)
+        except KeyError:
+            err_console.print(f"[red]Run not found:[/] {run_id}")
+            sys.exit(1)
+
+        artifacts = await store.get_run_artifacts(run_id)
+        if artifacts is None:
+            err_console.print(f"[red]Run artifacts missing:[/] {run_id}")
+            sys.exit(1)
+
+        await store.update_run_sync(run_id, sync_status="syncing")
+        result = await sync_run_artifacts(
+            artifacts,
+            atlas_url=resolved_atlas_url,
+            api_key=resolved_api_key,
+        )
+        if result.errors:
+            await store.update_run_sync(
+                run_id,
+                sync_status="failed",
+                last_error="; ".join(result.errors),
+            )
+            err_console.print(f"[red]Sync failed:[/] {'; '.join(result.errors)}")
+            sys.exit(1)
+
+        await store.update_run_sync(
+            run_id,
+            sync_status=result.sync_status or "synced",
+            remote_run_id=result.run_id,
+        )
+    finally:
+        await store.close()
+
+    message = "Already synced" if result.duplicate else "Synced"
+    console.print(f"[green]{message}[/] run {run_id} -> [bold]{result.run_id}[/]")
 
 
 # ---------------------------------------------------------------------------

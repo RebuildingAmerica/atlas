@@ -9,6 +9,7 @@ from hashlib import sha256
 from typing import Any
 
 import aiosqlite
+from atlas_shared import DiscoveryRunArtifacts, DiscoverySyncInfo, compute_artifact_hash
 
 _CREATE_RUNS = """
 CREATE TABLE IF NOT EXISTS runs (
@@ -77,6 +78,19 @@ CREATE TABLE IF NOT EXISTS extractions (
 )
 """
 
+_CREATE_RUN_ARTIFACTS = """
+CREATE TABLE IF NOT EXISTS run_artifacts (
+    run_id TEXT PRIMARY KEY REFERENCES runs(id) ON DELETE CASCADE,
+    artifact_hash TEXT NOT NULL,
+    artifacts_json TEXT NOT NULL,
+    sync_status TEXT,
+    remote_run_id TEXT,
+    synced_at TEXT,
+    last_error TEXT,
+    updated_at TEXT NOT NULL
+)
+"""
+
 _CREATE_WORK_CLAIMS = """
 CREATE TABLE IF NOT EXISTS work_claims (
     key TEXT PRIMARY KEY,
@@ -129,6 +143,7 @@ class ScoutStore:
         await self._conn.execute(_CREATE_PAGE_TASKS)
         await self._conn.execute(_CREATE_ENTRIES)
         await self._conn.execute(_CREATE_EXTRACTIONS)
+        await self._conn.execute(_CREATE_RUN_ARTIFACTS)
         await self._conn.execute(_CREATE_WORK_CLAIMS)
         await self._conn.execute(_CREATE_PAGE_TASKS_RUN_URL_INDEX)
         await self._conn.execute(_CREATE_PAGE_TASKS_RUN_STATUS_INDEX)
@@ -257,6 +272,107 @@ class ScoutStore:
         ) as cursor:
             rows = await cursor.fetchall()
         return [dict(row) for row in rows]
+
+    async def save_run_artifacts(self, run_id: str, artifacts: DiscoveryRunArtifacts) -> str:
+        """Persist a canonical artifact bundle for a run and return its stable hash."""
+        sync_info = artifacts.manifest.sync or DiscoverySyncInfo(local_run_id=run_id)
+        artifact_hash = sync_info.artifact_hash or compute_artifact_hash(artifacts)
+        updated_sync = sync_info.model_copy(
+            update={
+                "local_run_id": sync_info.local_run_id or run_id,
+                "artifact_hash": artifact_hash,
+            }
+        )
+        updated_artifacts = artifacts.model_copy(
+            update={
+                "manifest": artifacts.manifest.model_copy(
+                    update={
+                        "sync": updated_sync,
+                    }
+                )
+            }
+        )
+        await self._execute(
+            """
+            INSERT INTO run_artifacts (
+                run_id,
+                artifact_hash,
+                artifacts_json,
+                sync_status,
+                remote_run_id,
+                synced_at,
+                last_error,
+                updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(run_id) DO UPDATE SET
+                artifact_hash = excluded.artifact_hash,
+                artifacts_json = excluded.artifacts_json,
+                sync_status = excluded.sync_status,
+                remote_run_id = excluded.remote_run_id,
+                synced_at = excluded.synced_at,
+                last_error = excluded.last_error,
+                updated_at = excluded.updated_at
+            """,
+            (
+                run_id,
+                artifact_hash,
+                updated_artifacts.model_dump_json(),
+                updated_sync.sync_status,
+                updated_sync.remote_run_id,
+                updated_sync.synced_at.isoformat() if updated_sync.synced_at else None,
+                updated_sync.last_error,
+                _now(),
+            ),
+        )
+        return artifact_hash
+
+    async def get_run_artifacts(self, run_id: str) -> DiscoveryRunArtifacts | None:
+        """Return the stored artifact bundle for a run, if present."""
+        assert self._conn is not None
+        async with self._conn.execute(
+            "SELECT artifacts_json FROM run_artifacts WHERE run_id = ?",
+            (run_id,),
+        ) as cursor:
+            row = await cursor.fetchone()
+        if row is None:
+            return None
+        return DiscoveryRunArtifacts.model_validate_json(str(row["artifacts_json"]))
+
+    async def update_run_sync(
+        self,
+        run_id: str,
+        *,
+        sync_status: str,
+        remote_run_id: str | None = None,
+        last_error: str | None = None,
+        synced_at: datetime | None = None,
+    ) -> DiscoveryRunArtifacts:
+        """Update sync metadata inside the stored artifact bundle and return the updated bundle."""
+        artifacts = await self.get_run_artifacts(run_id)
+        if artifacts is None:
+            raise KeyError(f"Run artifacts not found: {run_id}")
+
+        sync_info = artifacts.manifest.sync or DiscoverySyncInfo(local_run_id=run_id)
+        updated_sync = sync_info.model_copy(
+            update={
+                "local_run_id": sync_info.local_run_id or run_id,
+                "sync_status": sync_status,
+                "remote_run_id": remote_run_id or sync_info.remote_run_id,
+                "synced_at": synced_at or sync_info.synced_at,
+                "last_error": last_error,
+            }
+        )
+        updated_artifacts = artifacts.model_copy(
+            update={
+                "manifest": artifacts.manifest.model_copy(
+                    update={
+                        "sync": updated_sync,
+                    }
+                )
+            }
+        )
+        await self.save_run_artifacts(run_id, updated_artifacts)
+        return updated_artifacts
 
     async def find_running_direct_run(self, urls: list[str]) -> str | None:
         """Return a matching active direct-URL run ID when one is already in progress."""

@@ -5,9 +5,22 @@ from __future__ import annotations
 import asyncio
 import logging
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
-from atlas_shared import GapReport, PageContent, RankedEntry, RawEntry
+from atlas_shared import (
+    DiscoveryRunArtifacts,
+    DiscoveryRunInput,
+    DiscoveryRunManifest,
+    DiscoveryRunStats,
+    DiscoverySyncInfo,
+    GapReport,
+    PageContent,
+    PageTaskOutcome,
+    RankedEntry,
+    RawEntry,
+    RunCheckpoint,
+)
 
 from atlas_scout.pipeline_support import (
     decide_extraction_admission,
@@ -53,6 +66,7 @@ class PipelineResult:
     ranked_entries: list[RankedEntry]
     gap_report: GapReport
     page_outcomes: list[dict[str, object]] = field(default_factory=list)
+    artifacts: DiscoveryRunArtifacts | None = None
 
 
 @dataclass(slots=True)
@@ -91,6 +105,7 @@ async def run_pipeline(
     city, state = parse_location(location)
     run_id = await store.create_run(location=location, issues=issues, search_depth=search_depth)
     await store.update_run_status(run_id, "running")
+    started_at = datetime.now(UTC)
 
     own_fetcher = fetcher is None
     fetcher = fetcher or DefaultFetcher(store=store, run_id=run_id)
@@ -108,6 +123,7 @@ async def run_pipeline(
     raw_entries: list[RawEntry] = []
     ranked_entries: list[RankedEntry] = []
     deduped_entries_count = 0
+    fetched_pages_by_url: dict[str, PageContent] = {}
     seen_urls: set[str] = set()
     seed_counts: dict[str, int] = {}
     page_outcomes_by_task: dict[str, dict[str, object]] = {}
@@ -269,6 +285,10 @@ async def run_pipeline(
         await extract_queue.put((admission.priority or 0, extract_order, page))
         return True
 
+    def remember_page(page: PageContent) -> None:
+        """Record fetched page metadata for later Atlas contribution."""
+        fetched_pages_by_url[page.url] = page
+
     async def fetch_worker() -> None:
         while True:
             item = await frontier_queue.get()
@@ -298,6 +318,7 @@ async def run_pipeline(
                 fetch_status = str(outcome.get("status") or ("fetched" if page else "filtered"))
 
                 if isinstance(page, PageContent):
+                    remember_page(page)
                     page = page.model_copy(
                         update={
                             "task_id": item.task_id,
@@ -627,6 +648,7 @@ async def run_pipeline(
                     page = await fetcher.fetch(url)
                     if page is None:
                         continue
+                    remember_page(page)
                     stats["pages_fetched"] += 1
                     entries = await extract_page_entries(
                         page, provider, city, state,
@@ -668,6 +690,7 @@ async def run_pipeline(
                                 page = await fetcher.fetch(normalized)
                                 if page is None:
                                     continue
+                                remember_page(page)
                                 stats["pages_fetched"] += 1
                                 entries = await extract_page_entries(
                                     page, provider, city, state,
@@ -701,6 +724,7 @@ async def run_pipeline(
                         seen_urls.add(normalized)
                         page = await fetcher.fetch(normalized)
                         if page is not None:
+                            remember_page(page)
                             stats["pages_fetched"] += 1
                             entries = await extract_page_entries(
                                 page, provider, city, state,
@@ -725,6 +749,7 @@ async def run_pipeline(
                                 seen_urls.add(normalized)
                                 page = await fetcher.fetch(normalized)
                                 if page is not None:
+                                    remember_page(page)
                                     stats["pages_fetched"] += 1
                                     entries = await extract_page_entries(
                                         page, provider, city, state,
@@ -782,25 +807,74 @@ async def run_pipeline(
             )
 
         gap_report = analyze_gaps(location, ranked_entries)
+        run_stats = DiscoveryRunStats(
+            queries_generated=queries_count,
+            sources_fetched=stats["pages_fetched"],
+            sources_processed=stats["pages_fetched"],
+            entries_extracted=len(raw_entries),
+            entries_after_dedup=deduped_entries_count,
+            entries_confirmed=len(ranked_entries),
+        )
+        artifacts: DiscoveryRunArtifacts | None = None
+        if _can_build_run_artifacts(location=location, state=state, issues=issues):
+            artifacts = _build_run_artifacts(
+                run_id=run_id,
+                location=location,
+                state=state,
+                issues=issues,
+                search_depth=search_depth,
+                started_at=started_at,
+                completed_at=datetime.now(UTC),
+                stats=run_stats,
+                page_outcomes=page_outcomes_by_task,
+                sources=list(fetched_pages_by_url.values()),
+                raw_entries=raw_entries,
+                ranked_entries=ranked_entries,
+                gap_report=gap_report,
+            )
+            await store.save_run_artifacts(run_id, artifacts)
+        else:
+            logger.info(
+                "Skipping artifact persistence for run %s because direct URL mode lacks canonical run metadata",
+                run_id,
+            )
 
         # --- Contribute entries to Atlas API ---
         contribution_result = None
-        if contribution_config and contribution_config.enabled:
-            from atlas_scout.steps.contribute import contribute_entries
+        if contribution_config and contribution_config.enabled and artifacts is not None:
+            from atlas_scout.steps.contribute import sync_run_artifacts
 
             phase["value"] = "contributing"
             emit("status", {"phase": "contributing", "entries": len(ranked_entries)})
-            contribution_result = await contribute_entries(
-                ranked_entries,
+            await store.update_run_sync(run_id, sync_status="syncing")
+            contribution_result = await sync_run_artifacts(
+                artifacts,
                 atlas_url=contribution_config.atlas_url,
                 api_key=contribution_config.api_key,
-                min_score=contribution_config.min_score,
             )
+            if contribution_result.errors:
+                artifacts = await store.update_run_sync(
+                    run_id,
+                    sync_status="failed",
+                    last_error="; ".join(contribution_result.errors),
+                )
+            else:
+                artifacts = await store.update_run_sync(
+                    run_id,
+                    sync_status=contribution_result.sync_status or "synced",
+                    remote_run_id=contribution_result.run_id,
+                    synced_at=datetime.now(UTC),
+                )
             emit("status", {
                 "phase": "contributed",
                 "created": contribution_result.created,
                 "failed": contribution_result.failed,
             })
+        elif contribution_config and contribution_config.enabled:
+            logger.warning(
+                "Skipping Atlas sync for run %s because canonical run metadata was not provided",
+                run_id,
+            )
 
         await store.complete_run(
             run_id,
@@ -819,6 +893,7 @@ async def run_pipeline(
             ranked_entries=ranked_entries,
             gap_report=gap_report,
             page_outcomes=list(page_outcomes_by_task.values()),
+            artifacts=artifacts,
         )
     except asyncio.CancelledError as exc:
         await store.cancel_run(run_id, str(exc) or "cancelled")
@@ -924,3 +999,71 @@ async def _iter_items(items: list[Any]):
     """Yield items from a plain list as an async iterator."""
     for item in items:
         yield item
+
+
+def _build_run_artifacts(
+    *,
+    run_id: str,
+    location: str,
+    state: str,
+    issues: list[str],
+    search_depth: str,
+    started_at: datetime,
+    completed_at: datetime,
+    stats: DiscoveryRunStats,
+    page_outcomes: dict[str, dict[str, object]],
+    sources: list[PageContent],
+    raw_entries: list[RawEntry],
+    ranked_entries: list[RankedEntry],
+    gap_report: GapReport,
+    ) -> DiscoveryRunArtifacts:
+    """Build the canonical run bundle emitted by the Scout runner."""
+    return DiscoveryRunArtifacts(
+        manifest=DiscoveryRunManifest(
+            runner="atlas-scout",
+            run=DiscoveryRunInput(
+                location_query=location,
+                state=state,
+                issue_areas=issues,
+                search_depth=search_depth,
+            ),
+            status=stats.status,
+            started_at=started_at,
+            completed_at=completed_at,
+            sync=DiscoverySyncInfo(local_run_id=run_id, sync_status="ready"),
+        ),
+        stats=stats,
+        checkpoints=[
+            RunCheckpoint(
+                phase="completed",
+                status=stats.status,
+                metrics={
+                    "queries_generated": stats.queries_generated,
+                    "sources_fetched": stats.sources_fetched,
+                    "entries_confirmed": stats.entries_confirmed,
+                },
+                created_at=completed_at,
+            )
+        ],
+        page_tasks=[
+            PageTaskOutcome(
+                task_id=str(outcome.get("task_id") or ""),
+                url=str(outcome.get("url") or ""),
+                status=str(outcome.get("status") or "unknown"),
+                depth=int(outcome.get("depth") or 0),
+                entries_extracted=int(outcome.get("entries") or 0),
+                error=str(outcome["error"]) if outcome.get("error") is not None else None,
+                user_visible=bool(outcome.get("user_visible", False)),
+            )
+            for outcome in page_outcomes.values()
+        ],
+        sources=sources,
+        raw_entries=raw_entries,
+        ranked_entries=ranked_entries,
+        gap_report=gap_report,
+    )
+
+
+def _can_build_run_artifacts(*, location: str, state: str, issues: list[str]) -> bool:
+    """Return whether the run has enough metadata to build a canonical sync bundle."""
+    return bool(location.strip() and len(state.strip()) >= 2 and issues)

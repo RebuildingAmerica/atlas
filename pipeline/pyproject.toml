@@ -9,6 +9,7 @@ description = "Atlas Scout — autonomous web discovery pipeline with pluggable 
 requires-python = ">=3.12"
 license = "MIT"
 dependencies = [
+    "atlas-discovery-engine",
     "atlas-shared",
     "httpx>=0.25.0",
     "trafilatura>=1.6.0",
@@ -57,6 +58,7 @@ strict = true
 plugins = ["pydantic.mypy"]
 
 [tool.uv.sources]
+atlas-discovery-engine = { path = "../engine", editable = true }
 atlas-shared = { path = "../shared", editable = true }
 
 [dependency-groups]

@@ -1,5 +1,6 @@
 """Tests for atlas_scout.store.ScoutStore."""
 
+from atlas_shared import DiscoveryRunArtifacts, DiscoveryRunInput, DiscoveryRunManifest, DiscoverySyncInfo
 import pytest
 
 from atlas_scout.store import ScoutStore
@@ -161,3 +162,38 @@ async def test_list_runs(store):
     )
     runs = await store.list_runs()
     assert len(runs) == 2
+
+
+async def test_save_and_update_run_artifacts(store):
+    run_id = await store.create_run(
+        location="Austin, TX",
+        issues=["housing_affordability"],
+        search_depth="standard",
+    )
+    artifacts = DiscoveryRunArtifacts(
+        manifest=DiscoveryRunManifest(
+            runner="atlas-scout",
+            run=DiscoveryRunInput(
+                location_query="Austin, TX",
+                state="TX",
+                issue_areas=["housing_affordability"],
+            ),
+            status="completed",
+            sync=DiscoverySyncInfo(local_run_id=run_id, sync_status="ready"),
+        )
+    )
+
+    artifact_hash = await store.save_run_artifacts(run_id, artifacts)
+    stored = await store.get_run_artifacts(run_id)
+    assert stored is not None
+    assert stored.manifest.sync is not None
+    assert stored.manifest.sync.artifact_hash == artifact_hash
+
+    updated = await store.update_run_sync(
+        run_id,
+        sync_status="synced",
+        remote_run_id="remote_123",
+    )
+    assert updated.manifest.sync is not None
+    assert updated.manifest.sync.remote_run_id == "remote_123"
+    assert updated.manifest.sync.sync_status == "synced"
