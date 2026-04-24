@@ -56,11 +56,12 @@ Simplicity. No separate database server to manage. No external dependencies. FTS
 
 **What it does:**
 
-- **REST API** — HTTP endpoints for CRUD operations and triggering discovery.
-  - `/api/v1/entries` — List/search entries
-  - `/api/v1/entries/{id}` — Get single entry
-  - `/api/v1/discovery` — Start autodiscovery pipeline
-  - `/api/v1/taxonomy` — Get issue areas and search terms
+- **REST API** — HTTP endpoints for CRUD operations and Atlas-managed discovery.
+  - `/api/entities` — List/search entries
+  - `/api/entities/{id}` — Get single entry
+  - `/api/discovery-runs` — Start and inspect Atlas discovery runs
+  - `/api/discovery-runs/contributions` — Ingest shared discovery payloads from local runners like Scout
+  - `/api/issue-areas` — Get issue areas and search terms
 
 - **Autodiscovery Pipeline** — 6-step process to find entries.
   1. Query Generation — Create search queries from location + issues
@@ -107,10 +108,10 @@ Meta-framework built on Vite and React Router. Provides file-based routing, sele
 ### Reading (User browsing)
 
 ```
-1. User opens homepage → App requests /api/v1/entries
+1. User opens homepage → App requests /api/entities
 2. API queries SQLite → returns latest entries (with sources)
 3. App renders entry cards in a list
-4. User clicks search → App calls /api/v1/entries?q=query
+4. User clicks search → App calls /api/entities?query=query
 5. API does FTS search in SQLite → returns results
 6. App renders in real-time as user types
 ```
@@ -119,7 +120,7 @@ Meta-framework built on Vite and React Router. Provides file-based routing, sele
 
 ```
 1. Admin triggers discovery run on app
-2. App POSTs to /api/v1/discovery with location + issue areas
+2. App POSTs to /api/discovery-runs with location + issue areas
 3. API starts pipeline:
    a. Generate ~40 search queries
    b. Fetch ~200 sources from web
@@ -128,9 +129,9 @@ Meta-framework built on Vite and React Router. Provides file-based routing, sele
    e. Rank by relevance
    f. Analyze gaps (what's missing?)
 4. API stores all new/updated entries in SQLite
-5. App polls /api/v1/discovery/{run_id} to see progress
-6. When complete, app shows admin the results
-7. Admin can publish entries to public directory
+5. Local runners like Scout can submit the same shared discovery types to `/api/discovery-runs/contributions`
+6. App polls `/api/discovery-runs/{run_id}` to see progress
+7. When complete, Atlas already has the persisted entries, sources, and provenance links
 ```
 
 ## Key Design Decisions

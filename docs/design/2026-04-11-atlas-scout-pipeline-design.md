@@ -13,18 +13,20 @@ Atlas is a searchable directory for finding people, organizations, and initiativ
 - Scrapes, indexes, and extracts structured entity data from the web
 - Automatically contributes quality discoveries to the central Atlas directory
 
-The Atlas app and Scout are **separate but connected systems**. Scout feeds data into Atlas; it does not depend on Atlas to function.
+> **Implementation note:** the current codebase is moving toward an API-first model where Atlas service is the system of record, Scout acts as a local runner/client, and both sides share canonical discovery types instead of maintaining separate payload shapes.
+
+The Atlas app and Scout are **separate but connected systems**. Scout feeds data into Atlas through a service boundary; Atlas owns durable persistence.
 
 ## System Overview
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│  Scout (standalone Python CLI / daemon)                  │
+│  Scout (standalone Python CLI / local runner)            │
 │                                                          │
 │  ┌──────────┐  ┌──────────┐  ┌──────────┐              │
-│  │ Scheduler │  │ Pipeline │  │ Contrib  │──── HTTPS ───│──► Atlas API
-│  │(APSched4) │─►│ (async   │─►│ (auto-   │              │   (review queue)
-│  └──────────┘  │ streaming)│  │ submit)  │              │
+│  │ Scheduler │  │ Pipeline │  │ Shared   │──── HTTPS ───│──► Atlas API
+│  │(APSched4) │─►│ (async   │─►│ types +  │              │   (system of record)
+│  └──────────┘  │ streaming)│  │ ingest)  │              │
 │                └──────────┘  └──────────┘              │
 │                     │                                    │
 │                ┌────┴────┐                               │
