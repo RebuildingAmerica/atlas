@@ -98,6 +98,18 @@ body {
   color: var(--ink-strong);
 }
 
+a[href],
+button:not(:disabled),
+[role="button"]:not([aria-disabled="true"]),
+[role="link"] {
+  cursor: pointer;
+}
+
+button:disabled,
+[aria-disabled="true"] {
+  cursor: not-allowed;
+}
+
 /* MD3 Type Scale — exact spec values */
 /* https://m3.material.io/styles/typography/type-scale-tokens */
 

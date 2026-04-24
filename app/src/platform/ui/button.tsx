@@ -21,7 +21,7 @@ export function Button({
   type = "button",
 }: ButtonProps) {
   const baseStyles =
-    "type-label-large rounded-full font-medium transition-[color,background-color,border-color,transform] duration-150 ease-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-transparent active:translate-y-[1px]";
+    "type-label-large cursor-pointer rounded-full font-medium transition-[color,background-color,border-color,transform] duration-150 ease-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-transparent active:translate-y-[1px]";
 
   const variants = {
     primary: "bg-primary text-white hover:bg-on-primary-container focus:ring-primary",

@@ -20,7 +20,8 @@ export function Button({
   size = "md",
   type = "button",
 }: ButtonProps) {
-  const baseStyles = "font-medium rounded transition-colors focus:outline-none focus:ring-2";
+  const baseStyles =
+    "cursor-pointer rounded font-medium transition-colors focus:outline-none focus:ring-2";
 
   const variants = {
     primary: "bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500",

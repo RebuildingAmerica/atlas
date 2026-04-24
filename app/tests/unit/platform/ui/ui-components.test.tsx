@@ -47,6 +47,7 @@ describe("ui components", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     expect(onClick).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("button", { name: "Save" }).className).toContain("cursor-pointer");
 
     rerender(
       <Button variant="ghost" disabled>
