@@ -47,7 +47,7 @@ const PRIVACY_SECTIONS = [
     title: "Your choices and contact",
     paragraphs: [
       "You can contact us to request account help, raise privacy concerns, or report issues with a public listing. We may need to keep certain records where required for legal, security, billing, or operational reasons.",
-      "For privacy questions, contact hello@rebuildingamerica.us.",
+      "For privacy questions, contact hello@rebuildingus.org.",
     ],
   },
 ] satisfies Parameters<typeof PolicyPage>[0]["sections"];

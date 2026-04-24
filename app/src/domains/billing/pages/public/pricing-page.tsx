@@ -133,7 +133,7 @@ function PlanCard({
         <p className="type-body-small text-ink-soft mt-3 text-center">
           Setting up a large org?{" "}
           <a
-            href="mailto:hello@rebuildingamerica.us"
+            href="mailto:hello@rebuildingus.org"
             className="text-ink-muted hover:text-ink-strong underline"
           >
             Talk to us

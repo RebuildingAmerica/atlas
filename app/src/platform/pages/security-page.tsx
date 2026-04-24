@@ -30,7 +30,7 @@ const SECURITY_SECTIONS = [
   {
     title: "How to report a security issue",
     paragraphs: [
-      'Please send security reports to hello@rebuildingamerica.us with the subject line "Atlas security report." We will review the report, investigate, and follow up as appropriate.',
+      'Please send security reports to hello@rebuildingus.org with the subject line "Atlas security report." We will review the report, investigate, and follow up as appropriate.',
       "If the issue affects a live incident or service outage, we may also post status updates through our public status page.",
     ],
   },

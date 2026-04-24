@@ -43,7 +43,7 @@ const TERMS_SECTIONS = [
   },
   {
     title: "Contact",
-    paragraphs: ["Questions about these terms can be sent to hello@rebuildingamerica.us."],
+    paragraphs: ["Questions about these terms can be sent to hello@rebuildingus.org."],
   },
 ] satisfies Parameters<typeof PolicyPage>[0]["sections"];
 
