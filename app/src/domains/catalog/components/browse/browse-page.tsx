@@ -1,4 +1,4 @@
-import { useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { Grid3X3, List, Map, RotateCcw } from "lucide-react";
 import { useMemo } from "react";
 import {
@@ -31,8 +31,30 @@ import { buildStateDensity } from "@/domains/catalog/surface-model";
 import { STATE_NAME_BY_CODE } from "@/domains/catalog/us-state-grid";
 import type { EntryType, SourceType } from "@/types";
 
+export interface BrowsePageContent {
+  description: string;
+  eyebrow: string;
+  title: string;
+  emptyAction?: {
+    label: string;
+    to: "/browse" | "/discovery" | "/profiles";
+  };
+  lockedEntryTypes?: EntryType[];
+  resultLabelPlural?: string;
+  resultsHeading?: string;
+  searchPlaceholder?: string;
+  showEntryTypeFilter?: boolean;
+  scopeTabs?: {
+    isActive?: boolean;
+    label: string;
+    search?: BrowseRouteSearch;
+    to: "/profiles" | "/profiles/people" | "/profiles/organizations";
+  }[];
+}
+
 interface BrowsePageProps {
   search: BrowseRouteSearch;
+  page?: BrowsePageContent;
 }
 
 const VIEW_OPTIONS = [
@@ -41,10 +63,41 @@ const VIEW_OPTIONS = [
   { value: "list", label: "List", icon: List },
 ] as const;
 
-export function BrowsePage({ search }: BrowsePageProps) {
+const DEFAULT_PAGE_CONTENT: BrowsePageContent = {
+  eyebrow: "Atlas",
+  title: "Browse Atlas",
+  description:
+    "Search the public civic graph by place, issue area, source type, and actor type. Open any result to inspect the source-backed record behind it.",
+  emptyAction: { label: "Discovery", to: "/discovery" },
+  resultLabelPlural: "entries",
+  resultsHeading: "Entries",
+  searchPlaceholder: "Search place, issue, or name",
+  showEntryTypeFilter: true,
+};
+
+export function BrowsePage({ search, page }: BrowsePageProps) {
   const navigate = useNavigate();
   const { data: taxonomy } = useTaxonomy();
-  const selectedFilters = useMemo(() => buildBrowseSearch(search), [search]);
+  const rawFilters = useMemo(() => buildBrowseSearch(search), [search]);
+  const pageContent = useMemo<BrowsePageContent>(
+    () => ({
+      ...DEFAULT_PAGE_CONTENT,
+      ...page,
+      lockedEntryTypes: page?.lockedEntryTypes ?? [],
+    }),
+    [page],
+  );
+
+  const selectedFilters = useMemo(
+    () => ({
+      ...rawFilters,
+      entry_types:
+        pageContent.lockedEntryTypes && pageContent.lockedEntryTypes.length > 0
+          ? pageContent.lockedEntryTypes
+          : rawFilters.entry_types,
+    }),
+    [pageContent.lockedEntryTypes, rawFilters],
+  );
 
   const issueAreaLabels = useMemo(() => {
     const labels: Record<string, string> = {};
@@ -87,7 +140,17 @@ export function BrowsePage({ search }: BrowsePageProps) {
   const results = entriesQuery.data;
   const resultEntries = results?.data ?? [];
   const total = results?.pagination.total ?? 0;
-  const hasActiveSearch = hasActiveBrowseSearch(selectedFilters);
+  const searchForActivity = useMemo(
+    () => ({
+      ...selectedFilters,
+      entry_types:
+        pageContent.lockedEntryTypes && pageContent.lockedEntryTypes.length > 0
+          ? []
+          : selectedFilters.entry_types,
+    }),
+    [pageContent.lockedEntryTypes, selectedFilters],
+  );
+  const hasActiveSearch = hasActiveBrowseSearch(searchForActivity);
   const stateDensity = useMemo(
     () => buildStateDensity(results?.facets.states ?? []),
     [results?.facets.states],
@@ -124,10 +187,20 @@ export function BrowsePage({ search }: BrowsePageProps) {
       label: SOURCE_TYPE_LABELS[value as SourceType] ?? humanize(value),
     })),
   ];
+  const removableBadges = selectedBadges.filter((badge) => {
+    if (badge.key === "states") {
+      return false;
+    }
+
+    return !(
+      badge.key === "entry_types" &&
+      pageContent.lockedEntryTypes?.includes(badge.value as EntryType)
+    );
+  });
 
   const updateSearch = (next: Partial<BrowseRouteSearch>) => {
     void navigate({
-      to: "/browse",
+      to: ".",
       resetScroll: false,
       search: (previous) => ({
         ...previous,
@@ -156,7 +229,7 @@ export function BrowsePage({ search }: BrowsePageProps) {
 
   const resetBrowse = () => {
     void navigate({
-      to: "/browse",
+      to: ".",
       resetScroll: false,
       search: {
         view: "map",
@@ -179,12 +252,37 @@ export function BrowsePage({ search }: BrowsePageProps) {
 
   const activeCounts = {
     issues: selectedFilters.issue_areas.length,
-    types: selectedFilters.entry_types.length,
+    types: pageContent.showEntryTypeFilter ? searchForActivity.entry_types.length : 0,
     sources: selectedFilters.source_types.length,
   };
 
   return (
     <div className="mx-auto w-full max-w-[88rem] space-y-3 px-3 py-2 md:px-4 lg:space-y-4 lg:py-3">
+      <section className="bg-surface-container-lowest rounded-[1.8rem] px-5 py-6 lg:px-7 lg:py-7">
+        <p className="type-label-medium text-ink-muted">{pageContent.eyebrow}</p>
+        <h1 className="type-display-small text-ink-strong mt-3">{pageContent.title}</h1>
+        <p className="type-body-large text-ink-soft mt-3 max-w-3xl">{pageContent.description}</p>
+        {pageContent.scopeTabs && pageContent.scopeTabs.length > 0 ? (
+          <div className="mt-5 flex flex-wrap gap-2">
+            {pageContent.scopeTabs.map((tab) => (
+              <Link
+                key={tab.label}
+                to={tab.to}
+                search={tab.search}
+                className={[
+                  "type-label-large rounded-full px-4 py-2 transition-colors",
+                  tab.isActive
+                    ? "bg-ink-strong text-surface"
+                    : "bg-surface-container text-ink-strong hover:bg-surface-container-high",
+                ].join(" ")}
+              >
+                {tab.label}
+              </Link>
+            ))}
+          </div>
+        ) : null}
+      </section>
+
       <header className="bg-page-bg sticky top-0 z-20 space-y-2 px-1 py-2 lg:px-2">
         <div className="flex items-center gap-2">
           <BrowseSearchBox
@@ -193,6 +291,7 @@ export function BrowsePage({ search }: BrowsePageProps) {
             onSearch={(query) => {
               runSearch(query);
             }}
+            placeholder={pageContent.searchPlaceholder}
           />
 
           <div className="flex shrink-0 items-center gap-0.5">
@@ -243,18 +342,20 @@ export function BrowsePage({ search }: BrowsePageProps) {
               },
             }))}
           />
-          <FilterDisclosure
-            label="Types"
-            count={activeCounts.types}
-            items={FEATURED_ENTRY_TYPES.map((entryType) => ({
-              key: entryType,
-              label: ENTITY_TYPE_LABELS[entryType],
-              active: selectedFilters.entry_types.includes(entryType),
-              onClick: () => {
-                handleToggleFilter("entry_types", entryType);
-              },
-            }))}
-          />
+          {pageContent.showEntryTypeFilter ? (
+            <FilterDisclosure
+              label="Types"
+              count={activeCounts.types}
+              items={FEATURED_ENTRY_TYPES.map((entryType) => ({
+                key: entryType,
+                label: ENTITY_TYPE_LABELS[entryType],
+                active: selectedFilters.entry_types.includes(entryType),
+                onClick: () => {
+                  handleToggleFilter("entry_types", entryType);
+                },
+              }))}
+            />
+          ) : null}
           <FilterDisclosure
             label="Sources"
             count={activeCounts.sources}
@@ -274,7 +375,9 @@ export function BrowsePage({ search }: BrowsePageProps) {
         <div className="bg-surface-container min-w-0 overflow-hidden rounded-[1.45rem]">
           <div className="flex items-center justify-between px-3 py-2 lg:px-4">
             <p className="type-title-medium text-ink-strong">{currentContext}</p>
-            <span className="type-body-small text-ink-muted">{total} results</span>
+            <span className="type-body-small text-ink-muted">
+              {total} {pageContent.resultLabelPlural}
+            </span>
           </div>
 
           {selectedFilters.view === "map" ? (
@@ -302,26 +405,26 @@ export function BrowsePage({ search }: BrowsePageProps) {
           <div className="bg-surface-container-high overflow-hidden rounded-[1.45rem] lg:sticky lg:top-20">
             <div className="px-3 pt-3 lg:px-4 lg:pt-4">
               <p className="type-label-small text-ink-muted uppercase">Results</p>
-              <h2 className="type-headline-small text-ink-strong mt-2">Entries</h2>
+              <h2 className="type-headline-small text-ink-strong mt-2">
+                {pageContent.resultsHeading}
+              </h2>
             </div>
 
             <div className="px-3 pb-3 lg:px-4 lg:pb-4">
-              {selectedBadges.filter((badge) => badge.key !== "states").length > 0 ? (
+              {removableBadges.length > 0 ? (
                 <div className="flex flex-wrap gap-x-2.5 gap-y-1.5">
-                  {selectedBadges
-                    .filter((badge) => badge.key !== "states")
-                    .map((badge) => (
-                      <button
-                        key={`${badge.key}:${badge.value}`}
-                        type="button"
-                        onClick={() => {
-                          handleToggleFilter(badge.key, badge.value);
-                        }}
-                        className="type-label-large bg-surface-container-lowest text-ink-soft hover:text-ink-strong rounded-full px-2.5 py-1 transition-colors"
-                      >
-                        {badge.label}
-                      </button>
-                    ))}
+                  {removableBadges.map((badge) => (
+                    <button
+                      key={`${badge.key}:${badge.value}`}
+                      type="button"
+                      onClick={() => {
+                        handleToggleFilter(badge.key, badge.value);
+                      }}
+                      className="type-label-large bg-surface-container-lowest text-ink-soft hover:text-ink-strong rounded-full px-2.5 py-1 transition-colors"
+                    >
+                      {badge.label}
+                    </button>
+                  ))}
                 </div>
               ) : null}
             </div>
@@ -333,6 +436,8 @@ export function BrowsePage({ search }: BrowsePageProps) {
               error={entriesQuery.error}
               issueAreaLabels={issueAreaLabels}
               hasActiveSearch={hasActiveSearch}
+              resultLabelPlural={pageContent.resultLabelPlural}
+              emptyAction={pageContent.emptyAction}
             />
 
             {results?.pagination.total ? (

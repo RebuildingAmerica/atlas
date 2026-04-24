@@ -28,7 +28,7 @@ export function ConnectionsSection({ connections, isLoading }: ConnectionsSectio
   if (isLoading) {
     return (
       <div className="space-y-3">
-        <h3 className="type-label-large text-ink-muted tracking-wider uppercase">Connections</h3>
+        <h3 className="type-label-large text-ink-muted">Connections</h3>
         <p className="type-body-small text-ink-soft">Loading connections...</p>
       </div>
     );
@@ -39,7 +39,7 @@ export function ConnectionsSection({ connections, isLoading }: ConnectionsSectio
   if (!hasConnections) {
     return (
       <div className="space-y-3">
-        <h3 className="type-label-large text-ink-muted tracking-wider uppercase">Connections</h3>
+        <h3 className="type-label-large text-ink-muted">Connections</h3>
         <p className="type-body-small text-ink-soft">No connections found yet</p>
       </div>
     );
@@ -47,7 +47,7 @@ export function ConnectionsSection({ connections, isLoading }: ConnectionsSectio
 
   return (
     <div className="space-y-6">
-      <h3 className="type-label-large text-ink-muted tracking-wider uppercase">Connections</h3>
+      <h3 className="type-label-large text-ink-muted">Connections</h3>
       {connections
         .filter((group) => group.actors.length > 0)
         .map((group) => (
@@ -62,7 +62,7 @@ export function ConnectionsSection({ connections, isLoading }: ConnectionsSectio
                     to={`/profiles/${typePrefix}/$slug`}
                     params={{ slug: actor.slug ?? "" }}
                     viewTransition
-                    className="border-border bg-surface-container-low hover:border-border-strong block rounded-lg border p-3 transition-colors"
+                    className="bg-surface-container-lowest hover:bg-surface-container-low block rounded-[0.875rem] p-3 transition-colors"
                   >
                     <div className="flex items-center gap-3">
                       <ActorAvatar

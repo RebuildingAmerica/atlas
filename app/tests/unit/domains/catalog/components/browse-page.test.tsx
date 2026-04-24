@@ -296,7 +296,7 @@ describe("BrowsePage", () => {
     );
 
     expect(screen.getByText("United States")).not.toBeNull();
-    expect(screen.getByText("0 results")).not.toBeNull();
+    expect(screen.getByText("0 entries")).not.toBeNull();
     expect(screen.getByText("Entry list total: 0")).not.toBeNull();
     expect(screen.queryByRole("button", { name: "Next" })).toBeNull();
 
@@ -312,6 +312,44 @@ describe("BrowsePage", () => {
       offset: 0,
       query: undefined,
     });
+  });
+
+  it("reuses the same browse engine for people directories without exposing type switching", async () => {
+    const { BrowsePage } = await import("@/domains/catalog/components/browse/browse-page");
+
+    render(
+      <BrowsePage
+        search={{
+          entry_types: "organization",
+          issue_areas: undefined,
+          offset: undefined,
+          query: "organizer",
+          source_types: undefined,
+          states: undefined,
+          view: "map",
+        }}
+        page={{
+          eyebrow: "Profiles",
+          title: "People profiles",
+          description: "Directory copy",
+          lockedEntryTypes: ["person"],
+          resultLabelPlural: "profiles",
+          resultsHeading: "People",
+          searchPlaceholder: "Search people, place, or issue",
+          showEntryTypeFilter: false,
+        }}
+      />,
+    );
+
+    expect(screen.getByText("People profiles")).not.toBeNull();
+    expect(screen.getByPlaceholderText("Search people, place, or issue")).not.toBeNull();
+    expect(screen.queryByText("Types")).toBeNull();
+    expect(mocks.useEntries).toHaveBeenCalledWith(
+      expect.objectContaining({
+        entry_types: ["person"],
+        query: "organizer",
+      }),
+    );
   });
 
   it("humanizes unknown filters and unknown state codes in grid and list browse surfaces", async () => {

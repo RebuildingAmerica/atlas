@@ -288,13 +288,13 @@ describe("catalog entry components", () => {
     expect(screen.getAllByText("Search unavailable")).toHaveLength(2);
 
     rerender(<EntryList entries={[]} hasActiveSearch />);
-    expect(screen.getByText("No results found.")).not.toBeNull();
+    expect(screen.getByText("No entries found.")).not.toBeNull();
 
     rerender(<EntryList entries={[]} />);
     expect(screen.getByText("Discovery")).not.toBeNull();
 
     rerender(<EntryList entries={[sampleEntry]} total={1} />);
-    expect(screen.getByText("1 results")).not.toBeNull();
+    expect(screen.getByText("1 entries")).not.toBeNull();
     expect(screen.getByText("Housing Justice KC")).not.toBeNull();
 
     rerender(<EntryList entries={[sampleEntry]} />);

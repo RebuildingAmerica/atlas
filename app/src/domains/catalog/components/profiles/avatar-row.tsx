@@ -7,6 +7,7 @@ import { ActorAvatar } from "./actor-avatar";
 
 interface AvatarRowProps {
   people: Entry[];
+  showHeader?: boolean;
 }
 
 function humanize(slug: string): string {
@@ -31,7 +32,7 @@ interface PersonDetailPanelProps {
 
 function PersonDetailPanel({ person }: PersonDetailPanelProps) {
   return (
-    <div className="border-border bg-surface-container-lowest mt-3 rounded-2xl border p-4">
+    <div className="bg-surface-container-lowest mt-3 rounded-2xl p-4">
       <div className="flex items-start gap-4">
         <ActorAvatar name={person.name} type="person" size="lg" />
         <div className="min-w-0 flex-1">
@@ -74,7 +75,7 @@ function PersonDetailPanel({ person }: PersonDetailPanelProps) {
   );
 }
 
-export function AvatarRow({ people }: AvatarRowProps) {
+export function AvatarRow({ people, showHeader = true }: AvatarRowProps) {
   const [selectedIndex, setSelectedIndex] = useState(0);
 
   if (people.length === 0) return null;
@@ -84,10 +85,12 @@ export function AvatarRow({ people }: AvatarRowProps) {
 
   return (
     <div className="space-y-2">
-      <div className="flex items-center gap-2">
-        <p className="type-label-small text-ink-muted tracking-widest uppercase">People</p>
-        <Badge>{people.length}</Badge>
-      </div>
+      {showHeader ? (
+        <div className="flex items-center gap-2">
+          <p className="type-label-medium text-ink-muted">People</p>
+          <Badge>{people.length}</Badge>
+        </div>
+      ) : null}
 
       <div className="flex gap-3 overflow-x-auto pb-1">
         {people.map((person, index) => (
@@ -100,8 +103,8 @@ export function AvatarRow({ people }: AvatarRowProps) {
             className="flex flex-col items-center gap-1.5"
           >
             <div
-              className={`rounded-full border-2 p-0.5 shadow-sm transition-all ${
-                index === selectedIndex ? "border-accent shadow-md" : "border-white"
+              className={`rounded-full p-0.5 transition-all ${
+                index === selectedIndex ? "bg-accent/18 shadow-sm" : "bg-surface-container-low"
               }`}
             >
               <ActorAvatar name={person.name} type="person" size="md" />

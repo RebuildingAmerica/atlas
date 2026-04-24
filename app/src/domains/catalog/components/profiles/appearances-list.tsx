@@ -160,7 +160,7 @@ export function AppearancesList({ sources, mode }: AppearancesListProps) {
 
       <button
         type="button"
-        className="type-label-medium border-border-strong text-ink-muted hover:bg-surface-container w-full rounded-xl border border-dashed py-2.5 text-center transition-colors"
+        className="type-label-medium bg-surface-container-low text-ink-muted hover:bg-surface-container-high w-full rounded-xl py-2.5 text-center transition-colors"
       >
         View all {sources.length} appearances
       </button>

@@ -15,13 +15,13 @@ interface ContactCardProps {
 
 function ContactCard({ icon, label, value }: ContactCardProps) {
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex items-start gap-3">
       <div className="bg-surface-container flex h-7 w-7 shrink-0 items-center justify-center rounded-lg">
         {icon}
       </div>
-      <div className="min-w-0">
-        <p className="type-label-small text-ink-muted uppercase">{label}</p>
-        <p className="type-body-medium text-ink-strong">{value}</p>
+      <div className="min-w-0 flex-1">
+        <p className="type-label-medium text-ink-muted">{label}</p>
+        <div className="type-body-medium text-ink-strong leading-snug break-words">{value}</div>
       </div>
     </div>
   );
@@ -33,14 +33,14 @@ export function ReachSection({ email, website, phone }: ReachSectionProps) {
 
   return (
     <div className="space-y-3">
-      <p className="type-label-small text-ink-muted tracking-widest uppercase">Reach</p>
+      <p className="type-label-medium text-ink-muted">Reach</p>
       <div className="space-y-3">
         {email ? (
           <ContactCard
             icon={<Mail className="text-ink-muted h-4 w-4" />}
             label="Email"
             value={
-              <a href={`mailto:${email}`} className="text-accent hover:underline">
+              <a href={`mailto:${email}`} className="text-accent break-words hover:underline">
                 {email}
               </a>
             }
@@ -66,7 +66,11 @@ export function ReachSection({ email, website, phone }: ReachSectionProps) {
           <ContactCard
             icon={<Phone className="text-ink-muted h-4 w-4" />}
             label="Phone"
-            value={phone}
+            value={
+              <a href={`tel:${phone}`} className="text-accent hover:underline">
+                {phone}
+              </a>
+            }
           />
         ) : null}
       </div>

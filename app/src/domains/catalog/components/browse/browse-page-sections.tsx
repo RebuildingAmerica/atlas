@@ -28,13 +28,18 @@ export interface FilterDisclosureItem {
 interface BrowseSearchBoxProps {
   initialQuery: string;
   onSearch: (query: string) => void;
+  placeholder?: string;
 }
 
 /**
  * Keeps the browse search input locally editable while resetting cleanly when
  * the route search param changes. Submits on Enter — no separate button.
  */
-export function BrowseSearchBox({ initialQuery, onSearch }: BrowseSearchBoxProps) {
+export function BrowseSearchBox({
+  initialQuery,
+  onSearch,
+  placeholder = "Search place, issue, or name",
+}: BrowseSearchBoxProps) {
   const [queryDraft, setQueryDraft] = useState(initialQuery);
 
   return (
@@ -51,7 +56,7 @@ export function BrowseSearchBox({ initialQuery, onSearch }: BrowseSearchBoxProps
         onChange={(event) => {
           setQueryDraft(event.target.value);
         }}
-        placeholder="Search place, issue, or name"
+        placeholder={placeholder}
         className="type-body-large text-ink-strong placeholder:text-ink-muted w-full bg-transparent outline-none"
       />
       <button

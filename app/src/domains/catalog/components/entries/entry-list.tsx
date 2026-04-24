@@ -12,6 +12,11 @@ interface EntryListProps {
   error?: Error | null;
   issueAreaLabels?: Record<string, string>;
   hasActiveSearch?: boolean;
+  resultLabelPlural?: string;
+  emptyAction?: {
+    label: string;
+    to: "/browse" | "/discovery" | "/profiles";
+  };
 }
 
 export function EntryList({
@@ -21,12 +26,16 @@ export function EntryList({
   error = null,
   issueAreaLabels = {},
   hasActiveSearch = false,
+  resultLabelPlural = "entries",
+  emptyAction = { label: "Discovery", to: "/discovery" },
 }: EntryListProps) {
   if (isLoading) {
     return (
       <div className="bg-surface-container-lowest rounded-[1.4rem] px-4 py-12">
         <Spinner />
-        <p className="type-body-medium text-ink-muted mt-4 text-center">Loading entries...</p>
+        <p className="type-body-medium text-ink-muted mt-4 text-center">
+          Loading {resultLabelPlural}...
+        </p>
       </div>
     );
   }
@@ -47,7 +56,7 @@ export function EntryList({
     return (
       <div className="bg-surface-container-lowest rounded-[1.6rem] px-4 py-12 text-center">
         <p className="type-title-large text-ink-strong">
-          {hasActiveSearch ? "No results found." : "No results yet."}
+          {hasActiveSearch ? `No ${resultLabelPlural} found.` : `No ${resultLabelPlural} yet.`}
         </p>
         <p className="type-body-medium text-ink-muted mt-2">
           {hasActiveSearch
@@ -56,8 +65,8 @@ export function EntryList({
         </p>
         {!hasActiveSearch ? (
           <div className="mt-5 flex justify-center">
-            <Link to="/discovery">
-              <Button>Discovery</Button>
+            <Link to={emptyAction.to}>
+              <Button>{emptyAction.label}</Button>
             </Link>
           </div>
         ) : null}
@@ -69,7 +78,7 @@ export function EntryList({
     <div className="space-y-3">
       {typeof total === "number" ? (
         <p className="type-body-medium bg-surface-container-lowest text-ink-muted rounded-[1rem] px-3 py-2 font-medium">
-          {total} results
+          {total} {resultLabelPlural}
         </p>
       ) : null}
       {entries.map((entry) => (

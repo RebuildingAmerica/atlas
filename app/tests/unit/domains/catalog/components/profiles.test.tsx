@@ -5,7 +5,7 @@ import { cleanup, render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { ActorAvatar } from "@/domains/catalog/components/profiles/actor-avatar";
 import { IssueFootprint } from "@/domains/catalog/components/profiles/issue-footprint";
-import { ProfileHeader } from "@/domains/catalog/components/profiles/profile-header";
+import { PresenceSection } from "@/domains/catalog/components/profiles/presence-section";
 import { ReachSection } from "@/domains/catalog/components/profiles/reach-section";
 
 afterEach(() => {
@@ -55,6 +55,18 @@ describe("IssueFootprint", () => {
     expect(screen.getByText("Housing & Built Environment")).toBeInTheDocument();
   });
 
+  it("can suppress the repeated section label when the parent section already provides it", () => {
+    render(
+      <IssueFootprint
+        issueAreas={["housing_affordability"]}
+        issueAreaLabels={{ housing_affordability: "Housing Affordability" }}
+        showLabel={false}
+      />,
+    );
+    expect(screen.queryByText("Issue footprint")).not.toBeInTheDocument();
+    expect(screen.getByText("Housing Affordability")).toBeInTheDocument();
+  });
+
   it("falls back to humanized slug when label is missing", () => {
     render(<IssueFootprint issueAreas={["housing_affordability"]} />);
     expect(screen.getByText("Housing Affordability")).toBeInTheDocument();
@@ -63,49 +75,6 @@ describe("IssueFootprint", () => {
   it("ignores unknown slugs", () => {
     const { container } = render(<IssueFootprint issueAreas={["unknown_slug"]} />);
     expect(container.innerHTML).toBe("");
-  });
-});
-
-describe("ProfileHeader", () => {
-  const baseProps = {
-    type: "person" as const,
-    name: "Jane Doe",
-    avatarName: "Jane Doe",
-    verified: false,
-    sourceCount: 3,
-    location: "Texas",
-    geoSpecificity: "state",
-  };
-
-  it("renders name and source count", () => {
-    render(<ProfileHeader {...baseProps} />);
-    expect(screen.getByText("Jane Doe")).toBeInTheDocument();
-    expect(screen.getByText("3 sources")).toBeInTheDocument();
-  });
-
-  it("shows singular source label", () => {
-    render(<ProfileHeader {...baseProps} sourceCount={1} />);
-    expect(screen.getByText("1 source")).toBeInTheDocument();
-  });
-
-  it("shows verified badge when verified", () => {
-    render(<ProfileHeader {...baseProps} verified={true} />);
-    expect(screen.getByText("Verified")).toBeInTheDocument();
-  });
-
-  it("does not show verified badge when unverified", () => {
-    render(<ProfileHeader {...baseProps} />);
-    expect(screen.queryByText("Verified")).not.toBeInTheDocument();
-  });
-
-  it("renders subtitle when provided", () => {
-    render(<ProfileHeader {...baseProps} subtitle={<span>Subtitle text</span>} />);
-    expect(screen.getByText("Subtitle text")).toBeInTheDocument();
-  });
-
-  it("omits subtitle when not provided", () => {
-    const { container } = render(<ProfileHeader {...baseProps} />);
-    expect(container.querySelector(".mt-1.text-white\\/60")).not.toBeInTheDocument();
   });
 });
 
@@ -128,6 +97,7 @@ describe("ReachSection", () => {
   it("renders phone when provided", () => {
     render(<ReachSection phone="555-1234" />);
     expect(screen.getByText("555-1234")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "555-1234" })).toHaveAttribute("href", "tel:555-1234");
   });
 
   it("renders all contact fields together", () => {
@@ -135,5 +105,30 @@ describe("ReachSection", () => {
     expect(screen.getByText("a@b.com")).toBeInTheDocument();
     expect(screen.getByText("https://x.com")).toBeInTheDocument();
     expect(screen.getByText("555")).toBeInTheDocument();
+  });
+});
+
+describe("PresenceSection", () => {
+  it("returns null when no presence data is provided", () => {
+    const { container } = render(<PresenceSection />);
+    expect(container.innerHTML).toBe("");
+  });
+
+  it("formats first seen values as readable dates", () => {
+    render(<PresenceSection firstSeen="2026-04-23T15:13:26.037731+00:00" />);
+    expect(screen.getByText("Apr 23, 2026")).toBeInTheDocument();
+  });
+
+  it("renders long contact values as links", () => {
+    render(
+      <PresenceSection email="contact@sunvalley-workercenter.example.org" phone="602-555-0144" />,
+    );
+    expect(
+      screen.getByRole("link", { name: "contact@sunvalley-workercenter.example.org" }),
+    ).toHaveAttribute("href", "mailto:contact@sunvalley-workercenter.example.org");
+    expect(screen.getByRole("link", { name: "602-555-0144" })).toHaveAttribute(
+      "href",
+      "tel:602-555-0144",
+    );
   });
 });

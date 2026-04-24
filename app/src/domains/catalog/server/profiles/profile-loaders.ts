@@ -1,13 +1,14 @@
 /**
- * Server functions for loading profile data during SSR.
+ * Server functions for profile overview/detail route data.
  *
- * These run on the server during the route loader phase, fetching entry
- * data by slug so the profile page can be fully rendered before reaching
- * the client.
+ * These live under a dedicated `server/profiles` namespace so the route
+ * hierarchy and loader hierarchy stay aligned.
  */
 import { createServerFn } from "@tanstack/react-start";
+import { notFound } from "@tanstack/react-router";
 import { z } from "zod";
 import { api } from "@/lib/api";
+import { AtlasApiError } from "@/lib/orval/fetcher";
 
 const profileSlugSchema = z.object({
   type: z.enum(["people", "organizations"]),
@@ -18,7 +19,16 @@ const profileSlugSchema = z.object({
 export const loadProfileBySlug = createServerFn({ method: "GET" })
   .inputValidator(profileSlugSchema)
   .handler(async ({ data }) => {
-    return await api.entries.getBySlug(data.type, data.slug);
+    try {
+      return await api.entries.getBySlug(data.type, data.slug);
+    } catch (error) {
+      if (error instanceof AtlasApiError && error.status === 404) {
+        notFound({ throw: true });
+        return undefined as never;
+      }
+
+      throw error;
+    }
   });
 
 const connectionsSchema = z.object({

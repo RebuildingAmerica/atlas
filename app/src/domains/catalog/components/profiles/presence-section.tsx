@@ -14,6 +14,19 @@ interface ContactCellProps {
   value: ReactNode;
 }
 
+function formatPresenceDate(value: string): string {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return value;
+  }
+
+  return parsed.toLocaleDateString("en-US", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
 function extractDomain(url: string): string {
   try {
     return new URL(url).hostname.replace("www.", "");
@@ -24,13 +37,13 @@ function extractDomain(url: string): string {
 
 function ContactCell({ icon, label, value }: ContactCellProps) {
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex items-start gap-3">
       <div className="bg-surface-container flex h-7 w-7 shrink-0 items-center justify-center rounded-lg">
         {icon}
       </div>
-      <div className="min-w-0">
-        <p className="type-label-small text-ink-muted uppercase">{label}</p>
-        <p className="type-body-medium text-ink-strong">{value}</p>
+      <div className="min-w-0 flex-1">
+        <p className="type-label-medium text-ink-muted">{label}</p>
+        <div className="type-body-medium text-ink-strong leading-snug break-words">{value}</div>
       </div>
     </div>
   );
@@ -42,14 +55,14 @@ export function PresenceSection({ website, email, phone, firstSeen }: PresenceSe
 
   return (
     <div className="space-y-3">
-      <p className="type-label-small text-ink-muted tracking-widest uppercase">Presence</p>
+      <p className="type-label-medium text-ink-muted">Presence</p>
 
       {website ? (
         <a
           href={website}
           target="_blank"
           rel="noreferrer"
-          className="border-border bg-surface-container-lowest hover:bg-surface-container-low flex items-center gap-3 rounded-2xl border p-4 transition-colors"
+          className="bg-surface-container-lowest hover:bg-surface-container-low flex items-center gap-3 rounded-2xl p-4 transition-colors"
         >
           <div className="bg-ink-strong flex h-8 w-8 shrink-0 items-center justify-center rounded-lg">
             <Globe className="h-4 w-4 text-white" />
@@ -65,13 +78,13 @@ export function PresenceSection({ website, email, phone, firstSeen }: PresenceSe
       ) : null}
 
       {email || phone || firstSeen ? (
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4">
           {email ? (
             <ContactCell
               icon={<Mail className="text-ink-muted h-4 w-4" />}
               label="Email"
               value={
-                <a href={`mailto:${email}`} className="text-accent hover:underline">
+                <a href={`mailto:${email}`} className="text-accent break-words hover:underline">
                   {email}
                 </a>
               }
@@ -81,14 +94,18 @@ export function PresenceSection({ website, email, phone, firstSeen }: PresenceSe
             <ContactCell
               icon={<Phone className="text-ink-muted h-4 w-4" />}
               label="Phone"
-              value={phone}
+              value={
+                <a href={`tel:${phone}`} className="text-accent hover:underline">
+                  {phone}
+                </a>
+              }
             />
           ) : null}
           {firstSeen ? (
             <ContactCell
               icon={<Calendar className="text-ink-muted h-4 w-4" />}
               label="First seen"
-              value={firstSeen}
+              value={formatPresenceDate(firstSeen)}
             />
           ) : null}
         </div>

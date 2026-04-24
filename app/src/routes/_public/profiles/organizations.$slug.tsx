@@ -5,8 +5,8 @@
  * Rendering: Server-side with full meta tags and JSON-LD structured data.
  */
 import { createFileRoute } from "@tanstack/react-router";
-import { loadProfileBySlug } from "@/domains/catalog/server/profile-loaders";
-import { OrgProfilePage } from "@/domains/catalog/pages/org-profile-page";
+import { OrgProfilePage } from "@/domains/catalog/pages/profiles/detail/org-profile-page";
+import { loadProfileBySlug } from "@/domains/catalog/server/profiles/profile-loaders";
 
 export const Route = createFileRoute("/_public/profiles/organizations/$slug")({
   loader: async ({ params }) => {
