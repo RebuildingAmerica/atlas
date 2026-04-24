@@ -128,7 +128,7 @@ function setOrganizationDetails(details: AtlasOrganizationDetails | null, isLoad
 async function renderOrganizationPage(
   props: { initialOrganization?: AtlasOrganizationDetails | null } = {},
 ) {
-  const organizationPageModule = await import("@/domains/access/pages/organization-page");
+  const organizationPageModule = await import("@/domains/access/pages/workspace/organization-page");
   const { OrganizationPage } = organizationPageModule;
 
   return render(<OrganizationPage {...props} />);
@@ -142,7 +142,8 @@ async function renderOrganizationPage(
 async function renderOrganizationSSOPage(
   props: { initialOrganization?: AtlasOrganizationDetails | null } = {},
 ) {
-  const organizationSSOPageModule = await import("@/domains/access/pages/organization-sso-page");
+  const organizationSSOPageModule =
+    await import("@/domains/access/pages/workspace/organization-sso-page");
   const { OrganizationSSOPage } = organizationSSOPageModule;
 
   return render(<OrganizationSSOPage {...props} />);

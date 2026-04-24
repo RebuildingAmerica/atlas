@@ -1,13 +1,13 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, KeyRound, LogOut, Mail, RefreshCw } from "lucide-react";
 import { Button } from "@/platform/ui/button";
-import { getAuthClient } from "../client/auth-client";
-import { atlasSessionQueryKey, useAtlasSession } from "../client/use-atlas-session";
-import { waitForAtlasPasskeyRegistration } from "../client/session-confirmation";
-import { createWorkspace } from "../organizations.functions";
-import { resolvePasskeyName } from "../passkey-names";
-import { updatePasskey } from "../passkeys.functions";
-import { sendVerificationEmail } from "../session.functions";
+import { getAuthClient } from "@/domains/access/client/auth-client";
+import { waitForAtlasPasskeyRegistration } from "@/domains/access/client/session-confirmation";
+import { atlasSessionQueryKey, useAtlasSession } from "@/domains/access/client/use-atlas-session";
+import { createWorkspace } from "@/domains/access/organizations.functions";
+import { resolvePasskeyName } from "@/domains/access/passkey-names";
+import { updatePasskey } from "@/domains/access/passkeys.functions";
+import { sendVerificationEmail } from "@/domains/access/session.functions";
 
 interface AccountSetupPageProps {
   redirectTo?: string;

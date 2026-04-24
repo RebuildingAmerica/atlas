@@ -303,7 +303,7 @@ describe("AccountPage", () => {
   });
 
   it("renders account resources and supports passkey, API-key, and sign-out actions", async () => {
-    const { AccountPage } = await import("@/domains/access/pages/account-page");
+    const { AccountPage } = await import("@/domains/access/pages/workspace/account-page");
 
     render(<AccountPage />);
     await (mocks.useQuery.mock.calls[0]?.[0] as { queryFn: () => Promise<unknown> }).queryFn();
@@ -410,7 +410,7 @@ describe("AccountPage", () => {
         },
       ],
     });
-    const { AccountPage } = await import("@/domains/access/pages/account-page");
+    const { AccountPage } = await import("@/domains/access/pages/workspace/account-page");
 
     render(<AccountPage />);
 
@@ -448,7 +448,7 @@ describe("AccountPage", () => {
       passkeys: [],
       passkeysError: true,
     });
-    const { AccountPage } = await import("@/domains/access/pages/account-page");
+    const { AccountPage } = await import("@/domains/access/pages/workspace/account-page");
 
     render(<AccountPage />);
 
@@ -468,7 +468,7 @@ describe("AccountPage", () => {
     mocks.deleteApiKey.mockRejectedValue(new Error("delete failed"));
     mocks.deletePasskey.mockRejectedValue(new Error("delete failed"));
     mocks.updatePasskey.mockRejectedValue(new Error("rename failed"));
-    const { AccountPage } = await import("@/domains/access/pages/account-page");
+    const { AccountPage } = await import("@/domains/access/pages/workspace/account-page");
 
     render(<AccountPage />);
 
@@ -519,7 +519,7 @@ describe("AccountPage", () => {
   it("handles passkey and API-key creation responses that omit generated data", async () => {
     mocks.addPasskey.mockResolvedValue({});
     mocks.createApiKey.mockResolvedValue({});
-    const { AccountPage } = await import("@/domains/access/pages/account-page");
+    const { AccountPage } = await import("@/domains/access/pages/workspace/account-page");
 
     render(<AccountPage />);
 

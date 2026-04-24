@@ -1,9 +1,9 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import type { ReactNode } from "react";
-import type { AtlasProduct } from "../../access/capabilities";
-import { useAtlasSession } from "../../access/client/use-atlas-session";
-import { startCheckout } from "../checkout.functions";
+import { useAtlasSession } from "@/domains/access/client/use-atlas-session";
+import type { AtlasProduct } from "@/domains/access/capabilities";
+import { startCheckout } from "@/domains/billing/checkout.functions";
 import { PageLayout } from "@/platform/layout/page-layout";
 import { Button } from "@/platform/ui/button";
 

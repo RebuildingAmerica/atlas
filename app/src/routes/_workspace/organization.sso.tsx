@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { OrganizationSSOPage } from "@/domains/access/pages/organization-sso-page";
+import { OrganizationSSOPage } from "@/domains/access/pages/workspace/organization-sso-page";
 import { getOrganizationDetails } from "@/domains/access/organizations.functions";
 
 export const Route = createFileRoute("/_workspace/organization/sso")({

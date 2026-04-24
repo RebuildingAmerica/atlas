@@ -141,7 +141,7 @@ describe("AccountSetupPage", () => {
       isRefetching: false,
       refetch: mocks.refetch,
     });
-    const { AccountSetupPage } = await import("@/domains/access/pages/account-setup-page");
+    const { AccountSetupPage } = await import("@/domains/access/pages/auth/account-setup-page");
 
     render(<AccountSetupPage />);
 
@@ -185,7 +185,7 @@ describe("AccountSetupPage", () => {
     });
     mocks.updatePasskey.mockResolvedValue(undefined);
     mocks.waitForAtlasPasskeyRegistration.mockResolvedValue(undefined);
-    const { AccountSetupPage } = await import("@/domains/access/pages/account-setup-page");
+    const { AccountSetupPage } = await import("@/domains/access/pages/auth/account-setup-page");
 
     render(<AccountSetupPage redirectTo="/account" />);
 
@@ -232,7 +232,7 @@ describe("AccountSetupPage", () => {
       refetch: mocks.refetch,
     });
     mocks.signOut.mockResolvedValue(undefined);
-    const { AccountSetupPage } = await import("@/domains/access/pages/account-setup-page");
+    const { AccountSetupPage } = await import("@/domains/access/pages/auth/account-setup-page");
 
     render(<AccountSetupPage />);
     fireEvent.click(screen.getByRole("button", { name: "Sign out" }));
@@ -264,7 +264,7 @@ describe("AccountSetupPage", () => {
         },
       }),
     });
-    const { AccountSetupPage } = await import("@/domains/access/pages/account-setup-page");
+    const { AccountSetupPage } = await import("@/domains/access/pages/auth/account-setup-page");
 
     render(<AccountSetupPage />);
     fireEvent.click(screen.getByRole("button", { name: "Refresh status" }));
@@ -300,7 +300,7 @@ describe("AccountSetupPage", () => {
       isRefetching: false,
       refetch: mocks.refetch,
     });
-    const { AccountSetupPage } = await import("@/domains/access/pages/account-setup-page");
+    const { AccountSetupPage } = await import("@/domains/access/pages/auth/account-setup-page");
 
     render(<AccountSetupPage />);
 
@@ -330,7 +330,7 @@ describe("AccountSetupPage", () => {
     mocks.addPasskey.mockResolvedValue({
       error: {},
     });
-    const { AccountSetupPage } = await import("@/domains/access/pages/account-setup-page");
+    const { AccountSetupPage } = await import("@/domains/access/pages/auth/account-setup-page");
 
     render(<AccountSetupPage />);
 
@@ -360,7 +360,7 @@ describe("AccountSetupPage", () => {
       isRefetching: true,
       refetch: mocks.refetch,
     });
-    const { AccountSetupPage } = await import("@/domains/access/pages/account-setup-page");
+    const { AccountSetupPage } = await import("@/domains/access/pages/auth/account-setup-page");
 
     render(<AccountSetupPage />);
 
@@ -387,7 +387,7 @@ describe("AccountSetupPage", () => {
       isRefetching: false,
       refetch: mocks.refetch,
     });
-    const { AccountSetupPage } = await import("@/domains/access/pages/account-setup-page");
+    const { AccountSetupPage } = await import("@/domains/access/pages/auth/account-setup-page");
 
     render(<AccountSetupPage />);
 
@@ -412,7 +412,7 @@ describe("AccountSetupPage", () => {
       refetch: mocks.refetch,
     });
     mocks.addPasskey.mockResolvedValue({});
-    const { AccountSetupPage } = await import("@/domains/access/pages/account-setup-page");
+    const { AccountSetupPage } = await import("@/domains/access/pages/auth/account-setup-page");
 
     render(<AccountSetupPage />);
 
@@ -443,7 +443,7 @@ describe("AccountSetupPage", () => {
       isRefetching: false,
       refetch: mocks.refetch,
     });
-    const { AccountSetupPage } = await import("@/domains/access/pages/account-setup-page");
+    const { AccountSetupPage } = await import("@/domains/access/pages/auth/account-setup-page");
 
     render(<AccountSetupPage />);
 

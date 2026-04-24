@@ -1,5 +1,5 @@
 import { useAtlasSession } from "@/domains/access/client/use-atlas-session";
-import { DiscountVerificationSection } from "../verification/discount-verification-section";
+import { DiscountVerificationSection } from "@/domains/billing/verification/discount-verification-section";
 
 /**
  * Page for users to request discount access.

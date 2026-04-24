@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, fireEvent, cleanup, act } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
-import { SignInPage } from "@/domains/access/pages/sign-in-page";
+import { SignInPage } from "@/domains/access/pages/auth/sign-in-page";
 
 const mocks = vi.hoisted(() => ({
   requestMagicLink: vi.fn(),

@@ -1,11 +1,11 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Mail } from "lucide-react";
 import { useState } from "react";
-import { checkAccountExists, requestMagicLink } from "../session.functions";
+import { checkAccountExists, requestMagicLink } from "@/domains/access/session.functions";
 import { buildSignInCallbackURL } from "./sign-in-page-helpers";
 import { Button } from "@/platform/ui/button";
 import { Input } from "@/platform/ui/input";
-import { getAuthConfig } from "../config";
+import { getAuthConfig } from "@/domains/access/config";
 
 /**
  * Sign-up page for new Atlas accounts.

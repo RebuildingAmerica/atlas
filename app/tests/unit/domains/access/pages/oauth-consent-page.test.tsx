@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, fireEvent, cleanup, act } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
-import { OAuthConsentPage } from "@/domains/access/pages/oauth-consent-page";
+import { OAuthConsentPage } from "@/domains/access/pages/auth/oauth-consent-page";
 
 const mocks = vi.hoisted(() => ({
   getAuthClient: vi.fn(),

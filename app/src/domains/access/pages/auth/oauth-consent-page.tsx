@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { z } from "zod";
 import { Button } from "@/platform/ui/button";
-import { getAuthClient } from "../client/auth-client";
+import { getAuthClient } from "@/domains/access/client/auth-client";
 
 /**
  * Search params accepted by the OAuth consent route.

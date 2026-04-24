@@ -2,12 +2,12 @@ import { Link } from "@tanstack/react-router";
 import { Info, KeyRound, Mail } from "lucide-react";
 import { useEffect, useState } from "react";
 import { z } from "zod";
-import { getAuthClient } from "../client/auth-client";
-import { setLastUsedAtlasLoginMethod } from "../client/last-login-method";
-import { waitForAtlasAuthenticatedSession } from "../client/session-confirmation";
-import { getAuthConfig } from "../config";
-import { requestMagicLink } from "../session.functions";
-import { resolveWorkspaceSSOSignIn } from "../sso.functions";
+import { getAuthClient } from "@/domains/access/client/auth-client";
+import { setLastUsedAtlasLoginMethod } from "@/domains/access/client/last-login-method";
+import { waitForAtlasAuthenticatedSession } from "@/domains/access/client/session-confirmation";
+import { getAuthConfig } from "@/domains/access/config";
+import { requestMagicLink } from "@/domains/access/session.functions";
+import { resolveWorkspaceSSOSignIn } from "@/domains/access/sso.functions";
 import {
   buildMagicLinkStatusMessage,
   buildSignInCallbackURL,
