@@ -105,7 +105,7 @@ CREATE TABLE IF NOT EXISTS work_claims (
 _CREATE_DAEMON_STATE = """
 CREATE TABLE IF NOT EXISTS daemon_state (
     key TEXT PRIMARY KEY CHECK(key = 'scout'),
-    status TEXT NOT NULL DEFAULT 'stopped' CHECK(status IN ('running', 'stopped')),
+    status TEXT NOT NULL DEFAULT 'stopped' CHECK(status IN ('starting', 'running', 'stopped')),
     started_at TEXT,
     last_heartbeat_at TEXT,
     config_path TEXT,
@@ -242,7 +242,7 @@ class ScoutStore:
             row = await cursor.fetchone()
 
         schema_sql = str(row["sql"]) if row is not None else ""
-        if "target_count >= 0" not in schema_sql:
+        if "target_count >= 0" not in schema_sql or "'starting'" not in schema_sql:
             await self._conn.execute("ALTER TABLE daemon_state RENAME TO daemon_state_legacy")
             await self._conn.execute(_CREATE_DAEMON_STATE)
             await self._conn.execute(
@@ -316,6 +316,78 @@ class ScoutStore:
         if raw_last_tick_summary is not None:
             daemon_state["last_tick_summary"] = json.loads(raw_last_tick_summary)
         return daemon_state
+
+    async def claim_daemon_start(
+        self,
+        *,
+        config_path: str,
+        profile_name: str | None,
+        target_count: int,
+        interval_seconds: int | None = None,
+        interval_basis: str | None = None,
+        expected_status: str = "stopped",
+        expected_process_id: int | None = None,
+        expected_updated_at: str | None = None,
+    ) -> bool:
+        """Atomically claim the daemon state for a new start attempt."""
+        assert self._conn is not None
+        validated_target_count = _validate_target_count(target_count)
+        validated_interval_seconds = _validate_interval_seconds(interval_seconds)
+        claimed_at = _now()
+        await self._conn.execute("BEGIN IMMEDIATE")
+        try:
+            async with self._conn.execute(
+                """
+                SELECT status, process_id
+                     , updated_at
+                FROM daemon_state
+                WHERE key = ?
+                """,
+                (_DAEMON_STATE_KEY,),
+            ) as cursor:
+                row = await cursor.fetchone()
+
+            if row is None:
+                raise KeyError("Daemon state not initialized")
+
+            if (
+                row["status"] != expected_status
+                or row["process_id"] != expected_process_id
+                or (expected_updated_at is not None and row["updated_at"] != expected_updated_at)
+            ):
+                await self._conn.rollback()
+                return False
+
+            await self._conn.execute(
+                """
+                UPDATE daemon_state
+                SET status = 'starting',
+                    started_at = NULL,
+                    last_heartbeat_at = NULL,
+                    config_path = ?,
+                    profile_name = ?,
+                    process_id = NULL,
+                    target_count = ?,
+                    interval_seconds = ?,
+                    interval_basis = ?,
+                    updated_at = ?
+                WHERE key = ?
+                """,
+                (
+                    config_path,
+                    profile_name,
+                    validated_target_count,
+                    validated_interval_seconds,
+                    interval_basis,
+                    claimed_at,
+                    _DAEMON_STATE_KEY,
+                ),
+            )
+            await self._conn.commit()
+        except Exception:
+            await self._conn.rollback()
+            raise
+        return True
 
     async def start_daemon(
         self,

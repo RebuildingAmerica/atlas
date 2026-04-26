@@ -12,6 +12,7 @@ import signal
 import subprocess
 import sys
 from contextlib import suppress
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, cast
 
@@ -1081,42 +1082,134 @@ def _render_recent_tick_summary(daemon_state: dict[str, object]) -> str:
     return summary
 
 
+def _daemon_interval_metadata(config: ScoutConfig, *, interval: int) -> tuple[int, str]:
+    """Resolve the daemon interval metadata persisted during startup."""
+    if interval > 0:
+        return interval, f"fixed {interval}s override"
+    from atlas_scout.scheduler import _cron_to_interval
+
+    return _cron_to_interval(config.schedule.cron), f"cron {config.schedule.cron}"
+
+
+def _daemon_start_conflict_message(daemon_state: dict[str, object]) -> str:
+    """Render a user-friendly daemon start conflict message."""
+    tracked_pid = daemon_state.get("process_id")
+    status = daemon_state.get("status")
+    if status == "running" and isinstance(tracked_pid, int):
+        return f"Scout daemon is already running (PID {tracked_pid})."
+    if status == "starting":
+        return "Scout daemon is already being started by another process."
+    return "Scout daemon state changed during start. Check `scout daemon status` and retry."
+
+
+def _daemon_start_claim_is_stale(
+    daemon_state: dict[str, object], *, stale_after_seconds: float = 10.0
+) -> bool:
+    """Return True when a start-in-progress claim has aged past the expected startup window."""
+    if daemon_state.get("status") != "starting":
+        return False
+    updated_at = daemon_state.get("updated_at")
+    if not isinstance(updated_at, str):
+        return False
+    try:
+        updated_at_value = datetime.fromisoformat(updated_at)
+    except ValueError:
+        return False
+    if updated_at_value.tzinfo is None or updated_at_value.utcoffset() is None:
+        updated_at_value = updated_at_value.replace(tzinfo=UTC)
+    age_seconds = (datetime.now(UTC) - updated_at_value.astimezone(UTC)).total_seconds()
+    return age_seconds >= stale_after_seconds
+
+
+async def _clear_failed_daemon_start(config: ScoutConfig, *, expected_pid: int | None) -> None:
+    """Release a failed daemon start claim when the spawned process never became ready."""
+    store = await _open_store(config)
+    try:
+        daemon_state = await store.get_daemon_state()
+        tracked_pid = daemon_state.get("process_id")
+        allowed_pids: set[int | None] = {None}
+        if expected_pid is not None:
+            allowed_pids.add(expected_pid)
+        if daemon_state["status"] == "starting" and tracked_pid in allowed_pids:
+            await store.stop_daemon()
+        if (
+            daemon_state["status"] == "running"
+            and tracked_pid in allowed_pids
+            and not (isinstance(tracked_pid, int) and _daemon_process_is_running(tracked_pid))
+        ):
+            await store.stop_daemon()
+    finally:
+        await store.close()
+
+
 async def _daemon_start(
     config: ScoutConfig,
     *,
     config_path: Path,
+    profile_name: str | None,
     debug: bool,
     search_api_key: str,
     interval: int,
 ) -> None:
     """Start the local Scout daemon if one is not already active."""
     target_count = _require_schedule_targets(config)
+    interval_seconds, interval_basis = _daemon_interval_metadata(config, interval=interval)
     store = await _open_store(config)
     try:
         daemon_state = await store.get_daemon_state()
         tracked_pid = daemon_state.get("process_id")
-        if daemon_state["status"] == "running" and isinstance(tracked_pid, int):
-            if _daemon_process_is_running(tracked_pid):
-                raise click.ClickException(f"Scout daemon is already running (PID {tracked_pid}).")
-            await store.stop_daemon()
-            console.print(
-                f"[yellow]Cleared stale daemon state for PID {tracked_pid} before restart.[/]"
-            )
+        if daemon_state["status"] == "starting":
+            if not _daemon_start_claim_is_stale(daemon_state):
+                raise click.ClickException(
+                    "Scout daemon is already being started by another process."
+                )
+            console.print("[yellow]Cleared stale daemon start state before restart.[/]")
+        if (
+            daemon_state["status"] == "running"
+            and isinstance(tracked_pid, int)
+            and _daemon_process_is_running(tracked_pid)
+        ):
+            raise click.ClickException(f"Scout daemon is already running (PID {tracked_pid}).")
+        claimed = await store.claim_daemon_start(
+            config_path=str(config_path),
+            profile_name=profile_name,
+            target_count=target_count,
+            interval_seconds=interval_seconds,
+            interval_basis=interval_basis,
+            expected_status=str(daemon_state["status"]),
+            expected_process_id=tracked_pid if isinstance(tracked_pid, int) else None,
+            expected_updated_at=str(daemon_state["updated_at"]),
+        )
+        if not claimed:
+            latest_daemon_state = await store.get_daemon_state()
+            raise click.ClickException(_daemon_start_conflict_message(latest_daemon_state))
+        if daemon_state["status"] == "running":
+            if isinstance(tracked_pid, int):
+                console.print(
+                    f"[yellow]Cleared stale daemon state for PID {tracked_pid} before restart.[/]"
+                )
+            else:
+                console.print("[yellow]Cleared stale daemon state before restart.[/]")
     finally:
         await store.close()
 
-    process = _spawn_daemon_process(
-        config_path=config_path,
-        debug=debug,
-        search_api_key=search_api_key,
-        interval=interval,
-    )
+    process: subprocess.Popen[bytes] | None = None
     try:
+        process = _spawn_daemon_process(
+            config_path=config_path,
+            debug=debug,
+            search_api_key=search_api_key,
+            interval=interval,
+        )
         await _wait_for_daemon_start(config, expected_pid=process.pid, process=process)
     except Exception:
-        if process.poll() is None:
+        if process is not None and process.poll() is None:
             with suppress(ProcessLookupError):
                 _signal_daemon_process(process.pid)
+        await _clear_failed_daemon_start(
+            config,
+            expected_pid=process.pid if process is not None else None,
+        )
         raise
 
     console.print(
@@ -1153,6 +1246,10 @@ async def _daemon_stop(config: ScoutConfig) -> None:
                 "State reconciled.[/]"
             )
             return
+        except PermissionError as exc:
+            raise click.ClickException(
+                f"Permission denied while stopping tracked daemon process {tracked_pid}."
+            ) from exc
         await _wait_for_daemon_stop(store, process_id=tracked_pid)
     finally:
         await store.close()
@@ -1215,11 +1312,14 @@ def _install_daemon_signal_handlers(stop_event: asyncio.Event) -> None:
     def _request_stop() -> None:
         stop_event.set()
 
+    def _request_stop_threadsafe(_sig: int, _frame: object | None) -> None:
+        loop.call_soon_threadsafe(stop_event.set)
+
     for current_signal in (signal.SIGTERM, signal.SIGINT):
         try:
             loop.add_signal_handler(current_signal, _request_stop)
         except (NotImplementedError, RuntimeError):
-            signal.signal(current_signal, lambda _sig, _frame: stop_event.set())
+            signal.signal(current_signal, _request_stop_threadsafe)
 
 
 async def _daemon_run_internal(
@@ -1269,6 +1369,7 @@ def daemon_start(ctx: click.Context, search_api_key: str, interval: int) -> None
             _daemon_start(
                 config,
                 config_path=ctx.obj["config_path"],
+                profile_name=ctx.obj.get("profile_name"),
                 debug=bool(ctx.obj.get("debug")),
                 search_api_key=search_api_key,
                 interval=interval,

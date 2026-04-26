@@ -1,5 +1,6 @@
 """Tests for atlas_scout.store.ScoutStore."""
 
+import asyncio
 from collections.abc import AsyncIterator
 from datetime import UTC, datetime
 
@@ -74,6 +75,107 @@ async def test_start_daemon_persists_runtime_metadata(store: ScoutStore) -> None
     assert daemon_state["process_id"] == 4321
     assert daemon_state["interval_seconds"] == 86400
     assert daemon_state["interval_basis"] == "cron 0 2 * * *"
+
+
+async def test_claim_daemon_start_marks_state_as_starting(store: ScoutStore) -> None:
+    claimed = await store.claim_daemon_start(
+        config_path="/Users/example/.config/atlas-scout/configs/laptop.toml",
+        profile_name="laptop",
+        target_count=3,
+        interval_seconds=86400,
+        interval_basis="cron 0 2 * * *",
+    )
+
+    daemon_state = await store.get_daemon_state()
+
+    assert claimed is True
+    assert daemon_state["status"] == "starting"
+    assert daemon_state["config_path"] == "/Users/example/.config/atlas-scout/configs/laptop.toml"
+    assert daemon_state["profile_name"] == "laptop"
+    assert daemon_state["target_count"] == 3
+    assert daemon_state["interval_seconds"] == 86400
+    assert daemon_state["interval_basis"] == "cron 0 2 * * *"
+    assert daemon_state["process_id"] is None
+
+
+async def test_claim_daemon_start_allows_only_one_winner(tmp_path) -> None:
+    db_path = tmp_path / "scout.db"
+    first_store = ScoutStore(str(db_path))
+    second_store = ScoutStore(str(db_path))
+    await first_store.initialize()
+    await second_store.initialize()
+
+    try:
+        first_result, second_result = await asyncio.gather(
+            first_store.claim_daemon_start(
+                config_path="/Users/example/.config/atlas-scout/configs/laptop.toml",
+                profile_name="laptop",
+                target_count=3,
+                interval_seconds=86400,
+                interval_basis="cron 0 2 * * *",
+            ),
+            second_store.claim_daemon_start(
+                config_path="/Users/example/.config/atlas-scout/configs/laptop.toml",
+                profile_name="laptop",
+                target_count=3,
+                interval_seconds=86400,
+                interval_basis="cron 0 2 * * *",
+            ),
+        )
+    finally:
+        await first_store.close()
+        await second_store.close()
+
+    assert sorted([first_result, second_result]) == [False, True]
+
+
+async def test_claim_daemon_start_allows_only_one_stale_reclaim_winner(tmp_path) -> None:
+    db_path = tmp_path / "scout.db"
+    seed_store = ScoutStore(str(db_path))
+    await seed_store.initialize()
+    await seed_store.claim_daemon_start(
+        config_path="/Users/example/.config/atlas-scout/configs/laptop.toml",
+        profile_name="laptop",
+        target_count=3,
+        interval_seconds=86400,
+        interval_basis="cron 0 2 * * *",
+    )
+    daemon_state = await seed_store.get_daemon_state()
+    await seed_store.close()
+
+    first_store = ScoutStore(str(db_path))
+    second_store = ScoutStore(str(db_path))
+    await first_store.initialize()
+    await second_store.initialize()
+
+    try:
+        first_result, second_result = await asyncio.gather(
+            first_store.claim_daemon_start(
+                config_path="/Users/example/.config/atlas-scout/configs/laptop.toml",
+                profile_name="laptop",
+                target_count=3,
+                interval_seconds=86400,
+                interval_basis="cron 0 2 * * *",
+                expected_status="starting",
+                expected_process_id=None,
+                expected_updated_at=str(daemon_state["updated_at"]),
+            ),
+            second_store.claim_daemon_start(
+                config_path="/Users/example/.config/atlas-scout/configs/laptop.toml",
+                profile_name="laptop",
+                target_count=3,
+                interval_seconds=86400,
+                interval_basis="cron 0 2 * * *",
+                expected_status="starting",
+                expected_process_id=None,
+                expected_updated_at=str(daemon_state["updated_at"]),
+            ),
+        )
+    finally:
+        await first_store.close()
+        await second_store.close()
+
+    assert sorted([first_result, second_result]) == [False, True]
 
 
 async def test_start_daemon_rejects_negative_target_count(store: ScoutStore) -> None:
