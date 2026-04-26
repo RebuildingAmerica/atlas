@@ -7,8 +7,13 @@ import csv
 import io
 import json
 import logging
+import os
+import signal
+import subprocess
 import sys
+from contextlib import suppress
 from pathlib import Path
+from typing import TYPE_CHECKING, cast
 
 import click
 from rich.console import Console
@@ -29,7 +34,13 @@ from atlas_scout.config import (
     load_config,
     set_active_profile_name,
 )
+from atlas_scout.pipeline_support import close_if_supported as _close_if_supported
 from atlas_scout.runtime import build_runtime_profile
+
+if TYPE_CHECKING:
+    from atlas_scout.providers.base import LLMProvider
+    from atlas_scout.runtime import RuntimeProfile
+    from atlas_scout.store import ScoutStore
 
 __all__ = ["main"]
 
@@ -37,12 +48,28 @@ console = Console()
 err_console = Console(stderr=True)
 
 
-def _runtime_profile_for_run(config: ScoutConfig, *, direct_mode: bool):
+def _runtime_profile_for_run(config: ScoutConfig, *, direct_mode: bool) -> RuntimeProfile:
     """Build a runtime profile for the current run mode."""
     try:
         return build_runtime_profile(config, direct_mode=direct_mode)
     except TypeError:
         return build_runtime_profile(config)
+
+
+def _resolved_profile_name(
+    *,
+    explicit_config_path: str | None,
+    requested_profile_name: str | None,
+    loaded_path: Path,
+) -> str | None:
+    """Determine which profile name should be recorded for daemon metadata."""
+    if requested_profile_name:
+        return requested_profile_name
+    if explicit_config_path is None:
+        return get_active_profile_name()
+    if loaded_path.parent == SCOUT_CONFIGS_DIR:
+        return loaded_path.stem
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -51,13 +78,24 @@ def _runtime_profile_for_run(config: ScoutConfig, *, direct_mode: bool):
 
 
 @click.group()
-@click.option("--config", "config_path", type=click.Path(exists=False), default=None,
-              help="Full path to a config file. Overrides --profile.")
-@click.option("--profile", "profile_name", default=None,
-              help="Config profile name to load from the configs directory (e.g. 'studio', 'laptop').")
+@click.option(
+    "--config",
+    "config_path",
+    type=click.Path(exists=False),
+    default=None,
+    help="Full path to a config file. Overrides --profile.",
+)
+@click.option(
+    "--profile",
+    "profile_name",
+    default=None,
+    help="Config profile name to load from the configs directory (e.g. 'studio', 'laptop').",
+)
 @click.option("--debug", is_flag=True, help="Verbose debug logging to stderr.")
 @click.pass_context
-def main(ctx: click.Context, config_path: str | None, profile_name: str | None, debug: bool) -> None:
+def main(
+    ctx: click.Context, config_path: str | None, profile_name: str | None, debug: bool
+) -> None:
     """Atlas Scout — discover people, orgs, and initiatives from the web."""
     ctx.ensure_object(dict)
     if config_path:
@@ -74,12 +112,19 @@ def main(ctx: click.Context, config_path: str | None, profile_name: str | None, 
         path = get_active_config_path()
     ctx.obj["config"] = load_config(path)
     ctx.obj["config_path"] = path
+    ctx.obj["profile_name"] = _resolved_profile_name(
+        explicit_config_path=config_path,
+        requested_profile_name=profile_name,
+        loaded_path=path,
+    )
     ctx.obj["debug"] = debug
 
     if debug:
-        logging.basicConfig(level=logging.DEBUG,
-                            format="%(asctime)s %(name)s %(levelname)s: %(message)s",
-                            stream=sys.stderr)
+        logging.basicConfig(
+            level=logging.DEBUG,
+            format="%(asctime)s %(name)s %(levelname)s: %(message)s",
+            stream=sys.stderr,
+        )
         logging.getLogger("httpcore").setLevel(logging.WARNING)
         logging.getLogger("httpx").setLevel(logging.WARNING)
     else:
@@ -93,30 +138,65 @@ def main(ctx: click.Context, config_path: str | None, profile_name: str | None, 
 
 @main.command()
 @click.argument("urls", nargs=-1)
-@click.option("--file", "-f", "url_file", type=click.File("r"), default=None,
-              help="File with URLs (one per line). Use '-' for stdin.")
-@click.option("--prompt", "prompt_text", default=None,
-              help="Natural language directive to focus extraction.")
-@click.option("--prompt-file", type=click.File("r"), default=None,
-              help="File containing extraction directive.")
+@click.option(
+    "--file",
+    "-f",
+    "url_file",
+    type=click.File("r"),
+    default=None,
+    help="File with URLs (one per line). Use '-' for stdin.",
+)
+@click.option(
+    "--prompt", "prompt_text", default=None, help="Natural language directive to focus extraction."
+)
+@click.option(
+    "--prompt-file",
+    type=click.File("r"),
+    default=None,
+    help="File containing extraction directive.",
+)
 @click.option("--provider", default=None, help="LLM provider override (ollama, anthropic).")
 @click.option("--model", "model_name", default=None, help="Model name override.")
 @click.option("--location", default=None, help="Location hint (e.g. 'Austin, TX').")
 @click.option("--issues", default=None, help="Comma-separated issue area slugs.")
-@click.option("--depth", type=click.Choice(["standard", "deep"]), default="standard",
-              show_default=True, help="Discovery depth (search mode).")
-@click.option("--search-api-key", envvar="SEARCH_API_KEY", default=None,
-              help="Brave Search API key. Enables search mode.")
-@click.option("--follow-links/--no-follow-links", default=None,
-              help="Follow same-domain links discovered during fetches.")
-@click.option("--max-link-depth", type=int, default=None,
-              help="Maximum crawl depth when following discovered links.")
-@click.option("--max-pages-per-seed", type=int, default=None,
-              help="Maximum total pages to queue from each seed URL.")
-@click.option("--refresh", is_flag=True,
-              help="Bypass cached fetch and extraction results for this run.")
-@click.option("--verbose-progress", is_flag=True,
-              help="Show internal worker and queue events instead of the default user-facing firehose.")
+@click.option(
+    "--depth",
+    type=click.Choice(["standard", "deep"]),
+    default="standard",
+    show_default=True,
+    help="Discovery depth (search mode).",
+)
+@click.option(
+    "--search-api-key",
+    envvar="SEARCH_API_KEY",
+    default=None,
+    help="Brave Search API key. Enables search mode.",
+)
+@click.option(
+    "--follow-links/--no-follow-links",
+    default=None,
+    help="Follow same-domain links discovered during fetches.",
+)
+@click.option(
+    "--max-link-depth",
+    type=int,
+    default=None,
+    help="Maximum crawl depth when following discovered links.",
+)
+@click.option(
+    "--max-pages-per-seed",
+    type=int,
+    default=None,
+    help="Maximum total pages to queue from each seed URL.",
+)
+@click.option(
+    "--refresh", is_flag=True, help="Bypass cached fetch and extraction results for this run."
+)
+@click.option(
+    "--verbose-progress",
+    is_flag=True,
+    help="Show internal worker and queue events instead of the default user-facing firehose.",
+)
 @click.option("--quiet", "-q", is_flag=True, help="Headless mode — suppress progress.")
 @click.pass_context
 def run(
@@ -259,16 +339,15 @@ async def _run_pipeline(
     profile = _runtime_profile_for_run(config, direct_mode=bool(direct_urls))
     provider = _build_provider(config, max_concurrent=profile.extract_concurrency)
 
-    fetcher_kwargs: dict = {
-        "max_concurrent": profile.fetch_concurrency,
-        "request_delay_ms": config.scraper.request_delay_ms,
-        "page_cache_ttl_days": config.scraper.page_cache_ttl_days,
-        "revisit_cached_urls": config.scraper.revisit_cached_urls,
-        "store": store,
-        "run_id": "pending",
-        "force_refresh": refresh,
-    }
-    fetcher = AsyncFetcher(**fetcher_kwargs)
+    fetcher = AsyncFetcher(
+        max_concurrent=profile.fetch_concurrency,
+        request_delay_ms=config.scraper.request_delay_ms,
+        page_cache_ttl_days=config.scraper.page_cache_ttl_days,
+        revisit_cached_urls=config.scraper.revisit_cached_urls,
+        store=store,
+        run_id="pending",
+        force_refresh=refresh,
+    )
     progress = ProgressRenderer(console=console, quiet=quiet, verbose=verbose_progress)
 
     try:
@@ -300,14 +379,11 @@ async def _run_pipeline(
     print_run_results(console, result)
 
 
-def _build_provider(config: ScoutConfig, *, max_concurrent: int | None = None) -> object:
+def _build_provider(config: ScoutConfig, *, max_concurrent: int | None = None) -> LLMProvider:
     """Instantiate the configured LLM provider."""
     from atlas_scout.providers import create_provider
 
     return create_provider(config.llm, max_concurrent=max_concurrent)
-
-
-from atlas_scout.pipeline_support import close_if_supported as _close_if_supported  # noqa: E402
 
 
 # ---------------------------------------------------------------------------
@@ -413,12 +489,13 @@ def config_show(ctx: click.Context) -> None:
 def config_set(key: str, value: str) -> None:
     """Set a configuration value persistently (e.g. scout config set llm.model gemma3n:latest)."""
     import tomllib
+
     config_path = get_active_config_path()
     config_path.parent.mkdir(parents=True, exist_ok=True)
-    data: dict = {}
+    data: dict[str, dict[str, str | int | float | bool]] = {}
     if config_path.exists():
         with config_path.open("rb") as f:
-            data = tomllib.load(f)
+            data = cast("dict[str, dict[str, str | int | float | bool]]", tomllib.load(f))
     parts = key.split(".")
     if len(parts) != 2:
         err_console.print("[red]Error:[/] key must be section.field (e.g. llm.provider)")
@@ -462,7 +539,7 @@ def config_get(ctx: click.Context, key: str) -> None:
         console.print(str(val) if val is not None else "[dim]not set[/]")
 
 
-def _write_toml(path: Path, data: dict) -> None:
+def _write_toml(path: Path, data: dict[str, dict[str, str | int | float | bool]]) -> None:
     """Write a flat dict-of-dicts as TOML."""
     lines: list[str] = []
     for section, values in data.items():
@@ -502,6 +579,7 @@ def runs_list(ctx: click.Context, limit: int) -> None:
 async def _runs_list(config: ScoutConfig, limit: int) -> None:
     """Fetch and print recent runs."""
     from atlas_scout.store import ScoutStore
+
     store = ScoutStore(str(Path(config.store.path).expanduser()))
     await store.initialize()
     try:
@@ -518,8 +596,13 @@ async def _runs_list(config: ScoutConfig, limit: int) -> None:
     table.add_column("Entries", justify="right")
     table.add_column("Created", style="dim")
     for r in records:
-        table.add_row(r["id"], styled_status(r["status"]), r["location"] or "—",
-                       str(r.get("entries_found") or 0), r["created_at"][:19])
+        table.add_row(
+            r["id"],
+            styled_status(r["status"]),
+            r["location"] or "—",
+            str(r.get("entries_found") or 0),
+            r["created_at"][:19],
+        )
     console.print(table)
 
 
@@ -535,6 +618,7 @@ def runs_inspect(ctx: click.Context, run_id: str) -> None:
 async def _runs_inspect(config: ScoutConfig, run_id: str) -> None:
     """Print detailed run information."""
     from atlas_scout.store import ScoutStore
+
     store = ScoutStore(str(Path(config.store.path).expanduser()))
     await store.initialize()
     try:
@@ -545,7 +629,9 @@ async def _runs_inspect(config: ScoutConfig, run_id: str) -> None:
             sys.exit(1)
         artifacts = await store.get_run_artifacts(run_id)
         entries = await store.list_entries(run_id=run_id)
-        page_tasks = await store.list_page_tasks(run_id) if hasattr(store, "list_page_tasks") else []
+        page_tasks = (
+            await store.list_page_tasks(run_id) if hasattr(store, "list_page_tasks") else []
+        )
     finally:
         await store.close()
 
@@ -584,7 +670,9 @@ async def _runs_inspect(config: ScoutConfig, run_id: str) -> None:
     if entries:
         console.print()
         for e in entries:
-            console.print(f"  [{e['score']:.2f}] {e['name']} ({e['entry_type']}) — {e.get('city')}, {e.get('state')}")
+            console.print(
+                f"  [{e['score']:.2f}] {e['name']} ({e['entry_type']}) — {e.get('city')}, {e.get('state')}"
+            )
     else:
         console.print("\n[dim]No entries.[/]")
 
@@ -614,7 +702,9 @@ async def _runs_sync(
     resolved_atlas_url = atlas_url or config.contribution.atlas_url
     resolved_api_key = api_key or config.contribution.api_key
     if not resolved_atlas_url:
-        err_console.print("[red]Atlas URL required:[/] set contribution.atlas_url or pass --atlas-url.")
+        err_console.print(
+            "[red]Atlas URL required:[/] set contribution.atlas_url or pass --atlas-url."
+        )
         sys.exit(1)
     if not resolved_api_key:
         err_console.print("[red]API key required:[/] set contribution.api_key or pass --api-key.")
@@ -675,20 +765,24 @@ def entries() -> None:
 @click.option("--min-score", default=0.0, type=float)
 @click.option("--type", "entry_type", default=None)
 @click.option("--limit", default=50, show_default=True)
-@click.option("--format", "-o", "output_format",
-              type=click.Choice(["table", "json", "csv"]), default="table")
+@click.option(
+    "--format", "-o", "output_format", type=click.Choice(["table", "json", "csv"]), default="table"
+)
 @click.pass_context
-def entries_list(ctx: click.Context, min_score: float, entry_type: str | None,
-                 limit: int, output_format: str) -> None:
+def entries_list(
+    ctx: click.Context, min_score: float, entry_type: str | None, limit: int, output_format: str
+) -> None:
     """List all discovered entries."""
     config: ScoutConfig = ctx.obj["config"]
     asyncio.run(_entries_list(config, min_score, entry_type, limit, output_format))
 
 
-async def _entries_list(config: ScoutConfig, min_score: float, entry_type: str | None,
-                        limit: int, output_format: str) -> None:
+async def _entries_list(
+    config: ScoutConfig, min_score: float, entry_type: str | None, limit: int, output_format: str
+) -> None:
     """Fetch and display entries in the requested format."""
     from atlas_scout.store import ScoutStore
+
     db_path = Path(config.store.path).expanduser()
     if not db_path.exists():
         console.print("[dim]No entries yet. Run 'scout run' first.[/]")
@@ -710,36 +804,54 @@ async def _entries_list(config: ScoutConfig, min_score: float, entry_type: str |
         return
 
     if output_format == "json":
-        rows = [{
-            "name": e["name"], "entry_type": e["entry_type"],
-            "description": e.get("description", ""),
-            "city": e.get("city"), "state": e.get("state"),
-            "score": e["score"],
-            "website": e.get("data", {}).get("website"),
-            "email": e.get("data", {}).get("email"),
-            "issue_areas": e.get("data", {}).get("issue_areas", []),
-            "source_urls": e.get("data", {}).get("source_urls", []),
-        } for e in shown]
+        rows = [
+            {
+                "name": e["name"],
+                "entry_type": e["entry_type"],
+                "description": e.get("description", ""),
+                "city": e.get("city"),
+                "state": e.get("state"),
+                "score": e["score"],
+                "website": e.get("data", {}).get("website"),
+                "email": e.get("data", {}).get("email"),
+                "issue_areas": e.get("data", {}).get("issue_areas", []),
+                "source_urls": e.get("data", {}).get("source_urls", []),
+            }
+            for e in shown
+        ]
         click.echo(json.dumps(rows, indent=2))
         return
 
     if output_format == "csv":
-        fields = ["name", "entry_type", "description", "city", "state",
-                   "score", "website", "email", "issue_areas"]
+        fields = [
+            "name",
+            "entry_type",
+            "description",
+            "city",
+            "state",
+            "score",
+            "website",
+            "email",
+            "issue_areas",
+        ]
         buf = io.StringIO()
         writer = csv.DictWriter(buf, fieldnames=fields)
         writer.writeheader()
         for e in shown:
             data = e.get("data", {})
-            writer.writerow({
-                "name": e["name"], "entry_type": e["entry_type"],
-                "description": e.get("description", ""),
-                "city": e.get("city") or "", "state": e.get("state") or "",
-                "score": f"{e['score']:.2f}",
-                "website": data.get("website") or "",
-                "email": data.get("email") or "",
-                "issue_areas": ";".join(data.get("issue_areas", [])),
-            })
+            writer.writerow(
+                {
+                    "name": e["name"],
+                    "entry_type": e["entry_type"],
+                    "description": e.get("description", ""),
+                    "city": e.get("city") or "",
+                    "state": e.get("state") or "",
+                    "score": f"{e['score']:.2f}",
+                    "website": data.get("website") or "",
+                    "email": data.get("email") or "",
+                    "issue_areas": ";".join(data.get("issue_areas", [])),
+                }
+            )
         click.echo(buf.getvalue(), nl=False)
         return
 
@@ -749,8 +861,12 @@ async def _entries_list(config: ScoutConfig, min_score: float, entry_type: str |
     table.add_column("Name")
     table.add_column("Location")
     for e in shown:
-        table.add_row(f"{e['score']:.2f}", e["entry_type"], e["name"],
-                       f"{e.get('city') or '?'}, {e.get('state') or '?'}")
+        table.add_row(
+            f"{e['score']:.2f}",
+            e["entry_type"],
+            e["name"],
+            f"{e.get('city') or '?'}, {e.get('state') or '?'}",
+        )
     console.print(table)
     if len(all_entries) > limit:
         console.print(f"\n[dim]... and {len(all_entries) - limit} more (--limit to show more)[/]")
@@ -778,6 +894,7 @@ def pages_list(ctx: click.Context, limit: int) -> None:
 async def _pages_list(config: ScoutConfig, limit: int) -> None:
     """Fetch and print page tracking data."""
     from atlas_scout.store import ScoutStore
+
     db_path = Path(config.store.path).expanduser()
     if not db_path.exists():
         console.print("[dim]No pages yet.[/]")
@@ -821,6 +938,390 @@ async def _pages_list(config: ScoutConfig, limit: int) -> None:
 
 
 # ---------------------------------------------------------------------------
+# daemon — Operator-facing local scheduler controls
+# ---------------------------------------------------------------------------
+
+
+def _require_schedule_targets(config: ScoutConfig) -> int:
+    """Return the configured target count or fail if none are defined."""
+    target_count = len(config.schedule.targets)
+    if target_count <= 0:
+        raise click.ClickException(
+            "No schedule targets configured. Add targets to your config under [schedule.targets]."
+        )
+    return target_count
+
+
+async def _open_store(config: ScoutConfig) -> ScoutStore:
+    """Open the local Scout store for daemon lifecycle commands."""
+    from atlas_scout.store import ScoutStore
+
+    store = ScoutStore(str(Path(config.store.path).expanduser()))
+    await store.initialize()
+    return store
+
+
+def _daemon_process_is_running(process_id: int) -> bool:
+    """Return True when the tracked daemon process is still alive."""
+    if process_id <= 0:
+        return False
+    try:
+        os.kill(process_id, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    return True
+
+
+def _signal_daemon_process(process_id: int) -> None:
+    """Send SIGTERM to the tracked daemon process or process group."""
+    if hasattr(os, "killpg"):
+        os.killpg(process_id, signal.SIGTERM)
+        return
+    os.kill(process_id, signal.SIGTERM)
+
+
+def _spawn_daemon_process(
+    *,
+    config_path: Path,
+    debug: bool,
+    search_api_key: str,
+    interval: int,
+) -> subprocess.Popen[bytes]:
+    """Launch the hidden daemon runner as a detached local background process."""
+    command = [sys.executable, "-m", "atlas_scout.cli", "--config", str(config_path)]
+    if debug:
+        command.append("--debug")
+    command.extend(["daemon", "run-internal"])
+    if interval > 0:
+        command.extend(["--interval", str(interval)])
+
+    env = os.environ.copy()
+    env["SEARCH_API_KEY"] = search_api_key
+    return subprocess.Popen(
+        command,
+        env=env,
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        start_new_session=True,
+    )
+
+
+async def _wait_for_daemon_start(
+    config: ScoutConfig,
+    *,
+    expected_pid: int,
+    process: subprocess.Popen[bytes],
+    timeout_seconds: float = 5.0,
+    poll_interval_seconds: float = 0.1,
+) -> dict[str, object]:
+    """Wait for the background daemon to report a running state."""
+    store = await _open_store(config)
+    try:
+        deadline = asyncio.get_running_loop().time() + timeout_seconds
+        while asyncio.get_running_loop().time() < deadline:
+            daemon_state = await store.get_daemon_state()
+            if (
+                daemon_state["status"] == "running"
+                and daemon_state.get("process_id") == expected_pid
+            ):
+                return daemon_state
+            if process.poll() is not None:
+                raise click.ClickException("Scout daemon exited before reporting ready.")
+            await asyncio.sleep(poll_interval_seconds)
+    finally:
+        await store.close()
+
+    raise click.ClickException("Scout daemon did not report ready before timeout.")
+
+
+async def _wait_for_daemon_stop(
+    store: ScoutStore,
+    *,
+    process_id: int,
+    timeout_seconds: float = 10.0,
+    poll_interval_seconds: float = 0.1,
+) -> dict[str, object]:
+    """Wait for a daemon process to stop and reconcile stale local state if needed."""
+    deadline = asyncio.get_running_loop().time() + timeout_seconds
+    while asyncio.get_running_loop().time() < deadline:
+        daemon_state = await store.get_daemon_state()
+        if daemon_state["status"] == "stopped":
+            return daemon_state
+        if not _daemon_process_is_running(process_id):
+            await store.stop_daemon()
+            return await store.get_daemon_state()
+        await asyncio.sleep(poll_interval_seconds)
+
+    raise click.ClickException(f"Timed out waiting for daemon process {process_id} to stop.")
+
+
+def _render_recent_run_summary(run_record: dict[str, object] | None) -> str:
+    """Format the most recent local run for daemon status output."""
+    if run_record is None:
+        return "none recorded"
+    location = str(run_record.get("location") or "—")
+    status = str(run_record.get("status") or "unknown")
+    entries_value = run_record.get("entries_found")
+    entries = entries_value if isinstance(entries_value, int) else 0
+    return f"{run_record['id']} · {status} · {location} · {entries} entries"
+
+
+def _render_recent_tick_summary(daemon_state: dict[str, object]) -> str:
+    """Format the last scheduler tick summary from daemon state."""
+    last_tick_summary = daemon_state.get("last_tick_summary")
+    if not isinstance(last_tick_summary, dict):
+        return "none recorded"
+    summary = str(last_tick_summary.get("summary") or "no summary")
+    completed_at = last_tick_summary.get("completed_at")
+    if completed_at:
+        return f"{summary} ({str(completed_at)[:19]})"
+    return summary
+
+
+async def _daemon_start(
+    config: ScoutConfig,
+    *,
+    config_path: Path,
+    debug: bool,
+    search_api_key: str,
+    interval: int,
+) -> None:
+    """Start the local Scout daemon if one is not already active."""
+    target_count = _require_schedule_targets(config)
+    store = await _open_store(config)
+    try:
+        daemon_state = await store.get_daemon_state()
+        tracked_pid = daemon_state.get("process_id")
+        if daemon_state["status"] == "running" and isinstance(tracked_pid, int):
+            if _daemon_process_is_running(tracked_pid):
+                raise click.ClickException(f"Scout daemon is already running (PID {tracked_pid}).")
+            await store.stop_daemon()
+            console.print(
+                f"[yellow]Cleared stale daemon state for PID {tracked_pid} before restart.[/]"
+            )
+    finally:
+        await store.close()
+
+    process = _spawn_daemon_process(
+        config_path=config_path,
+        debug=debug,
+        search_api_key=search_api_key,
+        interval=interval,
+    )
+    try:
+        await _wait_for_daemon_start(config, expected_pid=process.pid, process=process)
+    except Exception:
+        if process.poll() is None:
+            with suppress(ProcessLookupError):
+                _signal_daemon_process(process.pid)
+        raise
+
+    console.print(
+        f"[bold green]Daemon started.[/] PID {process.pid} tracking {target_count} schedule targets."
+    )
+
+
+async def _daemon_stop(config: ScoutConfig) -> None:
+    """Stop the tracked local Scout daemon process."""
+    store = await _open_store(config)
+    try:
+        daemon_state = await store.get_daemon_state()
+        tracked_pid = daemon_state.get("process_id")
+        if daemon_state["status"] != "running":
+            console.print("[yellow]Daemon is not running.[/]")
+            return
+        if not isinstance(tracked_pid, int):
+            await store.stop_daemon()
+            console.print("[yellow]Daemon metadata had no PID. State reconciled to stopped.[/]")
+            return
+        if not _daemon_process_is_running(tracked_pid):
+            await store.stop_daemon()
+            console.print(
+                f"[yellow]Tracked daemon process {tracked_pid} was already gone. State reconciled.[/]"
+            )
+            return
+
+        try:
+            _signal_daemon_process(tracked_pid)
+        except ProcessLookupError:
+            await store.stop_daemon()
+            console.print(
+                f"[yellow]Tracked daemon process {tracked_pid} exited before stop signal. "
+                "State reconciled.[/]"
+            )
+            return
+        await _wait_for_daemon_stop(store, process_id=tracked_pid)
+    finally:
+        await store.close()
+
+    console.print(f"[bold green]Daemon stopped.[/] PID {tracked_pid}")
+
+
+async def _daemon_status(config: ScoutConfig) -> None:
+    """Print the current local daemon lifecycle state."""
+    store = await _open_store(config)
+    try:
+        daemon_state = await store.get_daemon_state()
+        recent_runs = await store.list_runs(limit=1)
+    finally:
+        await store.close()
+
+    tracked_pid = daemon_state.get("process_id")
+    rendered_state = str(daemon_state["status"])
+    if (
+        rendered_state == "running"
+        and isinstance(tracked_pid, int)
+        and not _daemon_process_is_running(tracked_pid)
+    ):
+        rendered_state = "stale"
+
+    target_count_value = daemon_state.get("target_count")
+    target_count = (
+        target_count_value
+        if isinstance(target_count_value, int) and target_count_value > 0
+        else len(config.schedule.targets)
+    )
+    interval_basis = str(daemon_state.get("interval_basis") or f"cron {config.schedule.cron}")
+    interval_seconds = daemon_state.get("interval_seconds")
+
+    console.print("[bold]Scout daemon[/]")
+    console.print(f"  State: {rendered_state}")
+    console.print(f"  Targets: {target_count}")
+    if isinstance(tracked_pid, int):
+        console.print(f"  PID: {tracked_pid}")
+    interval_suffix = f" (~{interval_seconds}s)" if isinstance(interval_seconds, int) else ""
+    console.print(f"  Interval: {interval_basis}{interval_suffix}")
+    if daemon_state.get("config_path"):
+        console.print(f"  Config: {daemon_state['config_path']}")
+    if daemon_state.get("profile_name"):
+        console.print(f"  Profile: {daemon_state['profile_name']}")
+    if daemon_state.get("started_at"):
+        console.print(f"  Started: {str(daemon_state['started_at'])[:19]}")
+    if daemon_state.get("last_heartbeat_at"):
+        console.print(f"  Last heartbeat: {str(daemon_state['last_heartbeat_at'])[:19]}")
+    console.print(f"  Recent tick: {_render_recent_tick_summary(daemon_state)}")
+    console.print(
+        f"  Recent run: {_render_recent_run_summary(recent_runs[0] if recent_runs else None)}"
+    )
+
+
+def _install_daemon_signal_handlers(stop_event: asyncio.Event) -> None:
+    """Register signal handlers that ask the daemon loop to shut down cleanly."""
+    loop = asyncio.get_running_loop()
+
+    def _request_stop() -> None:
+        stop_event.set()
+
+    for current_signal in (signal.SIGTERM, signal.SIGINT):
+        try:
+            loop.add_signal_handler(current_signal, _request_stop)
+        except (NotImplementedError, RuntimeError):
+            signal.signal(current_signal, lambda _sig, _frame: stop_event.set())
+
+
+async def _daemon_run_internal(
+    config: ScoutConfig,
+    *,
+    config_path: Path,
+    profile_name: str | None,
+    search_api_key: str,
+    interval: int,
+) -> None:
+    """Run the hidden scheduler loop used by the local daemon process."""
+    _require_schedule_targets(config)
+
+    from atlas_scout.scheduler import SchedulerDaemonLifecycle, run_schedule_loop
+
+    stop_event = asyncio.Event()
+    _install_daemon_signal_handlers(stop_event)
+    lifecycle = SchedulerDaemonLifecycle(
+        config_path=str(config_path),
+        profile_name=profile_name,
+    )
+    await run_schedule_loop(
+        config,
+        search_api_key,
+        interval_seconds=interval,
+        lifecycle=lifecycle,
+        stop_event=stop_event,
+    )
+
+
+@main.group()
+def daemon() -> None:
+    """Manage the local Scout daemon."""
+
+
+@daemon.command("start")
+@click.option("--search-api-key", envvar="SEARCH_API_KEY", required=True)
+@click.option(
+    "--interval", default=0, help="Override interval in seconds (0 = use cron from config)"
+)
+@click.pass_context
+def daemon_start(ctx: click.Context, search_api_key: str, interval: int) -> None:
+    """Start the scheduler as a local background daemon."""
+    config: ScoutConfig = ctx.obj["config"]
+    try:
+        asyncio.run(
+            _daemon_start(
+                config,
+                config_path=ctx.obj["config_path"],
+                debug=bool(ctx.obj.get("debug")),
+                search_api_key=search_api_key,
+                interval=interval,
+            )
+        )
+    except click.ClickException as exc:
+        err_console.print(f"[red]Error:[/] {exc.message}")
+        sys.exit(1)
+
+
+@daemon.command("stop")
+@click.pass_context
+def daemon_stop(ctx: click.Context) -> None:
+    """Stop the tracked local background daemon process."""
+    config: ScoutConfig = ctx.obj["config"]
+    try:
+        asyncio.run(_daemon_stop(config))
+    except click.ClickException as exc:
+        err_console.print(f"[red]Error:[/] {exc.message}")
+        sys.exit(1)
+
+
+@daemon.command("status")
+@click.pass_context
+def daemon_status(ctx: click.Context) -> None:
+    """Show the tracked local daemon lifecycle state."""
+    asyncio.run(_daemon_status(ctx.obj["config"]))
+
+
+@daemon.command("run-internal", hidden=True)
+@click.option("--search-api-key", envvar="SEARCH_API_KEY", required=True)
+@click.option(
+    "--interval", default=0, help="Override interval in seconds (0 = use cron from config)"
+)
+@click.pass_context
+def daemon_run_internal(ctx: click.Context, search_api_key: str, interval: int) -> None:
+    """Run the hidden daemon scheduler loop."""
+    try:
+        asyncio.run(
+            _daemon_run_internal(
+                ctx.obj["config"],
+                config_path=ctx.obj["config_path"],
+                profile_name=ctx.obj.get("profile_name"),
+                search_api_key=search_api_key,
+                interval=interval,
+            )
+        )
+    except click.ClickException as exc:
+        err_console.print(f"[red]Error:[/] {exc.message}")
+        sys.exit(1)
+
+
+# ---------------------------------------------------------------------------
 # schedule — Run discovery on configured schedule targets
 # ---------------------------------------------------------------------------
 
@@ -841,9 +1342,7 @@ def schedule_run_once(ctx: click.Context, search_api_key: str) -> None:
         console.print("Add targets to your config under [schedule.targets].")
         return
     console.print(f"[bold]Running {len(config.schedule.targets)} targets...[/]")
-    run_ids = asyncio.run(
-        _schedule_run_once(config, search_api_key)
-    )
+    run_ids = asyncio.run(_schedule_run_once(config, search_api_key))
     console.print(f"\n[bold green]Completed {len(run_ids)} runs.[/]")
     for rid in run_ids:
         console.print(f"  {rid}")
@@ -857,7 +1356,9 @@ async def _schedule_run_once(config: ScoutConfig, search_api_key: str) -> list[s
 
 @schedule.command("start")
 @click.option("--search-api-key", envvar="SEARCH_API_KEY", required=True)
-@click.option("--interval", default=0, help="Override interval in seconds (0 = use cron from config)")
+@click.option(
+    "--interval", default=0, help="Override interval in seconds (0 = use cron from config)"
+)
 @click.pass_context
 def schedule_start(ctx: click.Context, search_api_key: str, interval: int) -> None:
     """Start the scheduler loop (runs until interrupted)."""
@@ -868,9 +1369,7 @@ def schedule_start(ctx: click.Context, search_api_key: str, interval: int) -> No
     console.print(f"[bold]Starting scheduler with {len(config.schedule.targets)} targets...[/]")
     console.print("Press Ctrl+C to stop.\n")
     try:
-        asyncio.run(
-            _schedule_start(config, search_api_key, interval)
-        )
+        asyncio.run(_schedule_start(config, search_api_key, interval))
     except KeyboardInterrupt:
         console.print("\n[bold]Scheduler stopped.[/]")
 

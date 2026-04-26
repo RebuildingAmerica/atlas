@@ -110,7 +110,10 @@ CREATE TABLE IF NOT EXISTS daemon_state (
     last_heartbeat_at TEXT,
     config_path TEXT,
     profile_name TEXT,
+    process_id INTEGER,
     target_count INTEGER NOT NULL DEFAULT 0 CHECK(target_count >= 0),
+    interval_seconds INTEGER,
+    interval_basis TEXT,
     last_tick_summary TEXT,
     updated_at TEXT NOT NULL
 )
@@ -153,6 +156,20 @@ def _validate_target_count(target_count: int) -> int:
     if target_count < 0:
         raise ValueError("target_count must be non-negative")
     return target_count
+
+
+def _validate_process_id(process_id: int | None) -> int | None:
+    """Validate an optional daemon process identifier."""
+    if process_id is not None and process_id <= 0:
+        raise ValueError("process_id must be positive")
+    return process_id
+
+
+def _validate_interval_seconds(interval_seconds: int | None) -> int | None:
+    """Validate an optional daemon interval in seconds."""
+    if interval_seconds is not None and interval_seconds < 0:
+        raise ValueError("interval_seconds must be non-negative")
+    return interval_seconds
 
 
 class ScoutStore:
@@ -225,41 +242,60 @@ class ScoutStore:
             row = await cursor.fetchone()
 
         schema_sql = str(row["sql"]) if row is not None else ""
-        if "target_count >= 0" in schema_sql:
-            return
-
-        await self._conn.execute("ALTER TABLE daemon_state RENAME TO daemon_state_legacy")
-        await self._conn.execute(_CREATE_DAEMON_STATE)
-        await self._conn.execute(
-            """
-            INSERT INTO daemon_state (
-                key,
-                status,
-                started_at,
-                last_heartbeat_at,
-                config_path,
-                profile_name,
-                target_count,
-                last_tick_summary,
-                updated_at
+        if "target_count >= 0" not in schema_sql:
+            await self._conn.execute("ALTER TABLE daemon_state RENAME TO daemon_state_legacy")
+            await self._conn.execute(_CREATE_DAEMON_STATE)
+            await self._conn.execute(
+                """
+                INSERT INTO daemon_state (
+                    key,
+                    status,
+                    started_at,
+                    last_heartbeat_at,
+                    config_path,
+                    profile_name,
+                    process_id,
+                    target_count,
+                    interval_seconds,
+                    interval_basis,
+                    last_tick_summary,
+                    updated_at
+                )
+                SELECT
+                    key,
+                    status,
+                    started_at,
+                    last_heartbeat_at,
+                    config_path,
+                    profile_name,
+                    NULL,
+                    CASE
+                        WHEN target_count < 0 THEN 0
+                        ELSE target_count
+                    END,
+                    NULL,
+                    NULL,
+                    last_tick_summary,
+                    updated_at
+                FROM daemon_state_legacy
+                """
             )
-            SELECT
-                key,
-                status,
-                started_at,
-                last_heartbeat_at,
-                config_path,
-                profile_name,
-                CASE
-                    WHEN target_count < 0 THEN 0
-                    ELSE target_count
-                END,
-                last_tick_summary,
-                updated_at
-            FROM daemon_state_legacy
-            """
-        )
-        await self._conn.execute("DROP TABLE daemon_state_legacy")
+            await self._conn.execute("DROP TABLE daemon_state_legacy")
+
+        async with self._conn.execute("PRAGMA table_info(daemon_state)") as cursor:
+            rows = await cursor.fetchall()
+        existing_columns = {str(row["name"]) for row in rows}
+
+        migration_sql: list[str] = []
+        if "process_id" not in existing_columns:
+            migration_sql.append("ALTER TABLE daemon_state ADD COLUMN process_id INTEGER")
+        if "interval_seconds" not in existing_columns:
+            migration_sql.append("ALTER TABLE daemon_state ADD COLUMN interval_seconds INTEGER")
+        if "interval_basis" not in existing_columns:
+            migration_sql.append("ALTER TABLE daemon_state ADD COLUMN interval_basis TEXT")
+
+        for statement in migration_sql:
+            await self._conn.execute(statement)
 
     # ------------------------------------------------------------------
     # Daemon state
@@ -287,10 +323,15 @@ class ScoutStore:
         config_path: str,
         profile_name: str | None,
         target_count: int,
+        process_id: int | None = None,
+        interval_seconds: int | None = None,
+        interval_basis: str | None = None,
         started_at: datetime | None = None,
     ) -> None:
         """Mark the daemon as running and persist its active configuration metadata."""
         validated_target_count = _validate_target_count(target_count)
+        validated_process_id = _validate_process_id(process_id)
+        validated_interval_seconds = _validate_interval_seconds(interval_seconds)
         started_at_iso = _serialize_timestamp(started_at) or _now()
         await self._execute(
             """
@@ -300,7 +341,10 @@ class ScoutStore:
                 last_heartbeat_at = ?,
                 config_path = ?,
                 profile_name = ?,
+                process_id = ?,
                 target_count = ?,
+                interval_seconds = ?,
+                interval_basis = ?,
                 updated_at = ?
             WHERE key = ?
             """,
@@ -309,7 +353,10 @@ class ScoutStore:
                 started_at_iso,
                 config_path,
                 profile_name,
+                validated_process_id,
                 validated_target_count,
+                validated_interval_seconds,
+                interval_basis,
                 started_at_iso,
                 _DAEMON_STATE_KEY,
             ),
@@ -335,6 +382,7 @@ class ScoutStore:
             """
             UPDATE daemon_state
             SET status = 'stopped',
+                process_id = NULL,
                 updated_at = ?
             WHERE key = ?
             """,

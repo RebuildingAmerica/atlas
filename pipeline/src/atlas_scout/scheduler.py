@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -36,6 +37,9 @@ class SchedulerDaemonLifecycle:
         store: ScoutStore,
         *,
         target_count: int,
+        process_id: int | None = None,
+        interval_seconds: int | None = None,
+        interval_basis: str | None = None,
         started_at: datetime | None = None,
     ) -> None:
         """Persist the daemon started state."""
@@ -43,6 +47,9 @@ class SchedulerDaemonLifecycle:
             config_path=self.config_path,
             profile_name=self.profile_name,
             target_count=target_count,
+            process_id=process_id,
+            interval_seconds=interval_seconds,
+            interval_basis=interval_basis,
             started_at=started_at,
         )
 
@@ -146,6 +153,12 @@ async def run_schedule_loop(
     If ``interval_seconds`` is 0, parses the cron expression from config
     and sleeps until the next matching time. Otherwise, uses a fixed interval.
     """
+    requested_interval_seconds = interval_seconds
+    interval_basis = (
+        f"fixed {requested_interval_seconds}s override"
+        if requested_interval_seconds > 0
+        else f"cron {config.schedule.cron}"
+    )
     if interval_seconds <= 0:
         interval_seconds = _cron_to_interval(config.schedule.cron)
 
@@ -162,6 +175,9 @@ async def run_schedule_loop(
             await lifecycle.mark_started(
                 resources.store,
                 target_count=len(config.schedule.targets),
+                process_id=os.getpid(),
+                interval_seconds=interval_seconds,
+                interval_basis=interval_basis,
                 started_at=datetime.now(UTC),
             )
 
@@ -327,9 +343,7 @@ async def _run_schedule_targets(resources: _SchedulerResources) -> list[str]:
                 await _close_if_supported(fetcher)
 
     tasks = [
-        asyncio.create_task(
-            _run_target(target.location, target.issues, target.search_depth)
-        )
+        asyncio.create_task(_run_target(target.location, target.issues, target.search_depth))
         for target in resources.config.schedule.targets
     ]
     results = await asyncio.gather(*tasks, return_exceptions=True)

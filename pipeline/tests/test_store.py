@@ -43,7 +43,10 @@ async def test_get_daemon_state_defaults_to_stopped(store: ScoutStore) -> None:
     assert daemon_state["last_heartbeat_at"] is None
     assert daemon_state["config_path"] is None
     assert daemon_state["profile_name"] is None
+    assert daemon_state["process_id"] is None
     assert daemon_state["target_count"] == 0
+    assert daemon_state["interval_seconds"] is None
+    assert daemon_state["interval_basis"] is None
     assert daemon_state["last_tick_summary"] is None
 
 
@@ -54,6 +57,9 @@ async def test_start_daemon_persists_runtime_metadata(store: ScoutStore) -> None
         config_path="/Users/example/.config/atlas-scout/configs/laptop.toml",
         profile_name="laptop",
         target_count=3,
+        process_id=4321,
+        interval_seconds=86400,
+        interval_basis="cron 0 2 * * *",
         started_at=started_at,
     )
 
@@ -65,6 +71,9 @@ async def test_start_daemon_persists_runtime_metadata(store: ScoutStore) -> None
     assert daemon_state["config_path"] == "/Users/example/.config/atlas-scout/configs/laptop.toml"
     assert daemon_state["profile_name"] == "laptop"
     assert daemon_state["target_count"] == 3
+    assert daemon_state["process_id"] == 4321
+    assert daemon_state["interval_seconds"] == 86400
+    assert daemon_state["interval_basis"] == "cron 0 2 * * *"
 
 
 async def test_start_daemon_rejects_negative_target_count(store: ScoutStore) -> None:
@@ -137,6 +146,9 @@ async def test_stop_daemon_preserves_last_recorded_heartbeat(store: ScoutStore) 
         config_path="/Users/example/.config/atlas-scout/configs/laptop.toml",
         profile_name="laptop",
         target_count=3,
+        process_id=4321,
+        interval_seconds=86400,
+        interval_basis="cron 0 2 * * *",
         started_at=started_at,
     )
     await store.record_daemon_heartbeat(heartbeat_at=heartbeat_at)
@@ -147,6 +159,7 @@ async def test_stop_daemon_preserves_last_recorded_heartbeat(store: ScoutStore) 
     assert daemon_state["status"] == "stopped"
     assert daemon_state["started_at"] == started_at.isoformat()
     assert daemon_state["last_heartbeat_at"] == heartbeat_at.isoformat()
+    assert daemon_state["process_id"] is None
 
 
 async def test_stop_daemon_preserves_start_time_when_no_new_heartbeat_recorded(
@@ -159,6 +172,9 @@ async def test_stop_daemon_preserves_start_time_when_no_new_heartbeat_recorded(
         config_path="/Users/example/.config/atlas-scout/configs/laptop.toml",
         profile_name="laptop",
         target_count=3,
+        process_id=4321,
+        interval_seconds=86400,
+        interval_basis="cron 0 2 * * *",
         started_at=started_at,
     )
     await store.stop_daemon(stopped_at=stopped_at)
@@ -168,6 +184,7 @@ async def test_stop_daemon_preserves_start_time_when_no_new_heartbeat_recorded(
     assert daemon_state["status"] == "stopped"
     assert daemon_state["started_at"] == started_at.isoformat()
     assert daemon_state["last_heartbeat_at"] == started_at.isoformat()
+    assert daemon_state["process_id"] is None
 
 
 async def test_record_daemon_tick_result(store: ScoutStore) -> None:
