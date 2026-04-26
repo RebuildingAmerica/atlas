@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { Compass, Search, Users } from "lucide-react";
 import { useState } from "react";
-import type { AtlasSessionPayload } from "@/domains/access/organization-contracts";
+import { getAuthConfig } from "@/domains/access/config";
 import { PageLayout } from "@/platform/layout/page-layout";
 import { Button } from "@/platform/ui/button";
 
@@ -89,12 +89,8 @@ function HomeHighlights({ isLocal }: { isLocal: boolean }) {
   );
 }
 
-interface HomePageProps {
-  session?: AtlasSessionPayload | null;
-}
-
-export function HomePage({ session }: HomePageProps) {
-  const isLocal = session?.isLocal ?? false;
+export function HomePage() {
+  const { localMode } = getAuthConfig();
   const [query, setQuery] = useState("");
 
   return (
@@ -115,9 +111,9 @@ export function HomePage({ session }: HomePageProps) {
           <HomeHeroActions onQueryChange={setQuery} query={query} />
         </div>
 
-        <HomeHighlights isLocal={isLocal} />
+        <HomeHighlights isLocal={localMode} />
 
-        {!isLocal ? (
+        {!localMode ? (
           <p className="type-body-medium text-ink-soft mt-6 text-center">
             Want to save your work?{" "}
             <Link to="/sign-up" className="text-accent type-label-medium hover:underline">
