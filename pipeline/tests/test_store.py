@@ -61,7 +61,7 @@ async def test_start_daemon_persists_runtime_metadata(store):
     assert daemon_state["target_count"] == 3
 
 
-async def test_record_daemon_heartbeat_and_stop(store):
+async def test_stop_daemon_preserves_last_recorded_heartbeat(store):
     started_at = datetime(2025, 1, 2, 3, 4, 5, tzinfo=UTC)
     heartbeat_at = datetime(2025, 1, 2, 3, 9, 5, tzinfo=UTC)
     stopped_at = datetime(2025, 1, 2, 3, 10, 5, tzinfo=UTC)
@@ -79,7 +79,26 @@ async def test_record_daemon_heartbeat_and_stop(store):
 
     assert daemon_state["status"] == "stopped"
     assert daemon_state["started_at"] == started_at.isoformat()
-    assert daemon_state["last_heartbeat_at"] == stopped_at.isoformat()
+    assert daemon_state["last_heartbeat_at"] == heartbeat_at.isoformat()
+
+
+async def test_stop_daemon_preserves_start_time_when_no_new_heartbeat_recorded(store):
+    started_at = datetime(2025, 1, 2, 3, 4, 5, tzinfo=UTC)
+    stopped_at = datetime(2025, 1, 2, 3, 10, 5, tzinfo=UTC)
+
+    await store.start_daemon(
+        config_path="/Users/example/.config/atlas-scout/configs/laptop.toml",
+        profile_name="laptop",
+        target_count=3,
+        started_at=started_at,
+    )
+    await store.stop_daemon(stopped_at=stopped_at)
+
+    daemon_state = await store.get_daemon_state()
+
+    assert daemon_state["status"] == "stopped"
+    assert daemon_state["started_at"] == started_at.isoformat()
+    assert daemon_state["last_heartbeat_at"] == started_at.isoformat()
 
 
 async def test_record_daemon_tick_result(store):

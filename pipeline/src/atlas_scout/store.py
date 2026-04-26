@@ -279,11 +279,10 @@ class ScoutStore:
             """
             UPDATE daemon_state
             SET status = 'stopped',
-                last_heartbeat_at = ?,
                 updated_at = ?
             WHERE key = ?
             """,
-            (stopped_at_iso, stopped_at_iso, _DAEMON_STATE_KEY),
+            (stopped_at_iso, _DAEMON_STATE_KEY),
         )
 
     async def record_daemon_tick_result(
