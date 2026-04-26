@@ -13,12 +13,14 @@ from atlas.domains.catalog.models.ownership import OwnershipCRUD
 from atlas.models import EntryCRUD, get_db_connection
 from atlas.platform.config import Settings, get_settings
 from atlas.platform.http.cache import apply_no_store_headers
+from atlas.platform.mcp.data import EntityRecordContext, _entity_record
 from atlas.schemas import EntityCreateRequest, EntityDetailResponse, EntityUpdateRequest
 
 if TYPE_CHECKING:
     import aiosqlite
 
     from atlas.domains.access import AuthenticatedActor
+    from atlas.domains.catalog.models.entry import EntryModel
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +38,23 @@ async def get_db(
         yield conn
     finally:
         await conn.close()
+
+
+async def _entry_to_detail_response(
+    entry: EntryModel, issue_areas: list[str]
+) -> EntityDetailResponse:
+    """Convert an EntryModel to an EntityDetailResponse using the canonical record builder."""
+    record = _entity_record(
+        entry,
+        EntityRecordContext(
+            issue_area_ids=issue_areas,
+            source_types=[],
+            source_count=0,
+            latest_source_date=None,
+            flag_summary=None,
+        ),
+    )
+    return EntityDetailResponse.model_validate(record)
 
 
 def _verify_org_access(actor: AuthenticatedActor, org_id: str) -> None:
@@ -71,19 +90,7 @@ async def list_org_entries(
         entry = await EntryCRUD.get_by_id(db, record.resource_id)
         if entry is not None:
             issue_areas = await EntryCRUD.get_issue_areas(db, entry.id)
-            entries.append(
-                EntityDetailResponse.model_validate(
-                    {
-                        **entry.to_dict(),
-                        "issue_areas": issue_areas,
-                        "source_types": [],
-                        "source_count": 0,
-                        "latest_source_date": None,
-                        "flag_summary": None,
-                        "sources": [],
-                    }
-                )
-            )
+            entries.append(await _entry_to_detail_response(entry, issue_areas))
 
     apply_no_store_headers(response)
     return entries
@@ -155,17 +162,7 @@ async def create_org_entry(
         raise HTTPException(status_code=500, detail="Failed to create entry")
 
     apply_no_store_headers(response)
-    return EntityDetailResponse.model_validate(
-        {
-            **entry.to_dict(),
-            "issue_areas": req.issue_areas,
-            "source_types": [],
-            "source_count": 0,
-            "latest_source_date": None,
-            "flag_summary": None,
-            "sources": [],
-        }
-    )
+    return await _entry_to_detail_response(entry, req.issue_areas)
 
 
 @router.get(
@@ -195,17 +192,7 @@ async def get_org_entry(
 
     issue_areas = await EntryCRUD.get_issue_areas(db, entry_id)
     apply_no_store_headers(response)
-    return EntityDetailResponse.model_validate(
-        {
-            **entry.to_dict(),
-            "issue_areas": issue_areas,
-            "source_types": [],
-            "source_count": 0,
-            "latest_source_date": None,
-            "flag_summary": None,
-            "sources": [],
-        }
-    )
+    return await _entry_to_detail_response(entry, issue_areas)
 
 
 @router.put(
@@ -249,17 +236,7 @@ async def update_org_entry(  # noqa: PLR0913
 
     issue_areas = await EntryCRUD.get_issue_areas(db, entry_id)
     apply_no_store_headers(response)
-    return EntityDetailResponse.model_validate(
-        {
-            **updated_entry.to_dict(),
-            "issue_areas": issue_areas,
-            "source_types": [],
-            "source_count": 0,
-            "latest_source_date": None,
-            "flag_summary": None,
-            "sources": [],
-        }
-    )
+    return await _entry_to_detail_response(updated_entry, issue_areas)
 
 
 @router.delete(
