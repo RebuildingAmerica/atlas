@@ -1,7 +1,9 @@
 """Tests for atlas_scout.store.ScoutStore."""
 
+from collections.abc import AsyncIterator
 from datetime import UTC, datetime
 
+import aiosqlite
 import pytest
 from atlas_shared import (
     DiscoveryRunArtifacts,
@@ -13,15 +15,19 @@ from atlas_shared import (
 from atlas_scout.store import ScoutStore
 
 
+def _naive_datetime() -> datetime:
+    return datetime(2025, 1, 2, 3, 4, 5, tzinfo=UTC).replace(tzinfo=None)
+
+
 @pytest.fixture
-async def store(tmp_db_path):
+async def store(tmp_db_path: object) -> AsyncIterator[ScoutStore]:
     s = ScoutStore(str(tmp_db_path))
     await s.initialize()
     yield s
     await s.close()
 
 
-async def test_initialize_creates_tables(store):
+async def test_initialize_creates_tables(store: ScoutStore) -> None:
     tables = await store.list_tables()
     assert "daemon_state" in tables
     assert "runs" in tables
@@ -29,7 +35,7 @@ async def test_initialize_creates_tables(store):
     assert "entries" in tables
 
 
-async def test_get_daemon_state_defaults_to_stopped(store):
+async def test_get_daemon_state_defaults_to_stopped(store: ScoutStore) -> None:
     daemon_state = await store.get_daemon_state()
 
     assert daemon_state["status"] == "stopped"
@@ -41,7 +47,7 @@ async def test_get_daemon_state_defaults_to_stopped(store):
     assert daemon_state["last_tick_summary"] is None
 
 
-async def test_start_daemon_persists_runtime_metadata(store):
+async def test_start_daemon_persists_runtime_metadata(store: ScoutStore) -> None:
     started_at = datetime(2025, 1, 2, 3, 4, 5, tzinfo=UTC)
 
     await store.start_daemon(
@@ -61,7 +67,68 @@ async def test_start_daemon_persists_runtime_metadata(store):
     assert daemon_state["target_count"] == 3
 
 
-async def test_stop_daemon_preserves_last_recorded_heartbeat(store):
+async def test_start_daemon_rejects_negative_target_count(store: ScoutStore) -> None:
+    with pytest.raises(ValueError, match="target_count must be non-negative"):
+        await store.start_daemon(
+            config_path="/Users/example/.config/atlas-scout/configs/laptop.toml",
+            profile_name="laptop",
+            target_count=-1,
+        )
+
+
+async def test_daemon_state_table_rejects_negative_target_count(store: ScoutStore) -> None:
+    with pytest.raises(aiosqlite.IntegrityError, match="CHECK constraint failed"):
+        await store._execute(
+            "UPDATE daemon_state SET target_count = -1 WHERE key = ?",
+            ("scout",),
+        )
+
+
+@pytest.mark.parametrize(
+    ("method_name", "kwargs"),
+    [
+        (
+            "start_daemon",
+            {
+                "config_path": "/Users/example/.config/atlas-scout/configs/laptop.toml",
+                "profile_name": "laptop",
+                "target_count": 3,
+                "started_at": _naive_datetime(),
+            },
+        ),
+        (
+            "record_daemon_heartbeat",
+            {
+                "heartbeat_at": _naive_datetime(),
+            },
+        ),
+        (
+            "stop_daemon",
+            {
+                "stopped_at": _naive_datetime(),
+            },
+        ),
+        (
+            "record_daemon_tick_result",
+            {
+                "status": "completed",
+                "run_count": 1,
+                "summary": "completed",
+                "started_at": _naive_datetime(),
+            },
+        ),
+    ],
+)
+async def test_daemon_state_methods_reject_naive_datetimes(
+    store: ScoutStore, method_name: str, kwargs: dict[str, object]
+) -> None:
+    method = getattr(store, method_name)
+
+    with pytest.raises(ValueError, match="timezone-aware"):
+        await method(**kwargs)
+
+
+async def test_stop_daemon_preserves_last_recorded_heartbeat(store: ScoutStore) -> None:
     started_at = datetime(2025, 1, 2, 3, 4, 5, tzinfo=UTC)
     heartbeat_at = datetime(2025, 1, 2, 3, 9, 5, tzinfo=UTC)
     stopped_at = datetime(2025, 1, 2, 3, 10, 5, tzinfo=UTC)
@@ -82,7 +149,9 @@ async def test_stop_daemon_preserves_last_recorded_heartbeat(store):
     assert daemon_state["last_heartbeat_at"] == heartbeat_at.isoformat()
 
 
-async def test_stop_daemon_preserves_start_time_when_no_new_heartbeat_recorded(store):
+async def test_stop_daemon_preserves_start_time_when_no_new_heartbeat_recorded(
+    store: ScoutStore,
+) -> None:
     started_at = datetime(2025, 1, 2, 3, 4, 5, tzinfo=UTC)
     stopped_at = datetime(2025, 1, 2, 3, 10, 5, tzinfo=UTC)
 
@@ -101,7 +170,7 @@ async def test_stop_daemon_preserves_start_time_when_no_new_heartbeat_recorded(s
     assert daemon_state["last_heartbeat_at"] == started_at.isoformat()
 
 
-async def test_record_daemon_tick_result(store):
+async def test_record_daemon_tick_result(store: ScoutStore) -> None:
     tick_started_at = datetime(2025, 1, 2, 3, 4, 5, tzinfo=UTC)
     tick_completed_at = datetime(2025, 1, 2, 3, 6, 5, tzinfo=UTC)
 
@@ -125,7 +194,7 @@ async def test_record_daemon_tick_result(store):
     }
 
 
-async def test_create_and_get_run(store):
+async def test_create_and_get_run(store: ScoutStore) -> None:
     run_id = await store.create_run(
         location="Austin, TX",
         issues=["housing_affordability"],
@@ -137,19 +206,15 @@ async def test_create_and_get_run(store):
     assert run["status"] == "pending"
 
 
-async def test_update_run_status(store):
-    run_id = await store.create_run(
-        location="Austin, TX", issues=[], search_depth="standard"
-    )
+async def test_update_run_status(store: ScoutStore) -> None:
+    run_id = await store.create_run(location="Austin, TX", issues=[], search_depth="standard")
     await store.update_run_status(run_id, "running")
     run = await store.get_run(run_id)
     assert run["status"] == "running"
 
 
-async def test_complete_run_with_stats(store):
-    run_id = await store.create_run(
-        location="Austin, TX", issues=[], search_depth="standard"
-    )
+async def test_complete_run_with_stats(store: ScoutStore) -> None:
+    run_id = await store.create_run(location="Austin, TX", issues=[], search_depth="standard")
     await store.complete_run(
         run_id,
         queries=40,
@@ -162,7 +227,7 @@ async def test_complete_run_with_stats(store):
     assert run["entries_found"] == 35
 
 
-async def test_page_cache_miss_then_hit(store):
+async def test_page_cache_miss_then_hit(store: ScoutStore) -> None:
     cached = await store.get_cached_page("https://example.com")
     assert cached is None
     await store.cache_page("https://example.com", "Hello world", {"title": "Example"})
@@ -171,7 +236,7 @@ async def test_page_cache_miss_then_hit(store):
     assert cached["text"] == "Hello world"
 
 
-async def test_page_cache_respects_ttl(store):
+async def test_page_cache_respects_ttl(store: ScoutStore) -> None:
     await store.cache_page("https://example.com", "Hello", {})
     await store._execute(
         "UPDATE pages SET fetched_at = datetime('now', '-30 days') WHERE url = ?",
@@ -181,7 +246,7 @@ async def test_page_cache_respects_ttl(store):
     assert cached is None
 
 
-async def test_page_cache_can_ignore_ttl(store):
+async def test_page_cache_can_ignore_ttl(store: ScoutStore) -> None:
     await store.cache_page("https://example.com", "Hello", {})
     await store._execute(
         "UPDATE pages SET fetched_at = datetime('now', '-30 days') WHERE url = ?",
@@ -192,7 +257,7 @@ async def test_page_cache_can_ignore_ttl(store):
     assert cached["text"] == "Hello"
 
 
-async def test_work_claims_block_until_completed(store):
+async def test_work_claims_block_until_completed(store: ScoutStore) -> None:
     assert await store.claim_work("fetch:https://example.com", owner_run_id="run-1")
     assert not await store.claim_work("fetch:https://example.com", owner_run_id="run-2")
 
@@ -201,19 +266,23 @@ async def test_work_claims_block_until_completed(store):
     assert await store.claim_work("fetch:https://example.com", owner_run_id="run-2")
 
 
-async def test_work_claims_reclaim_from_cancelled_run(store):
+async def test_work_claims_reclaim_from_cancelled_run(store: ScoutStore) -> None:
     run_1 = await store.create_run(location="", issues=[], search_depth="standard")
     run_2 = await store.create_run(location="", issues=[], search_depth="standard")
     await store.update_run_status(run_1, "running")
     await store.update_run_status(run_2, "running")
 
-    assert await store.claim_work("extract:https://example.com", owner_run_id=run_1, lease_seconds=300)
+    assert await store.claim_work(
+        "extract:https://example.com", owner_run_id=run_1, lease_seconds=300
+    )
     await store.cancel_run(run_1, "cancelled")
 
-    assert await store.claim_work("extract:https://example.com", owner_run_id=run_2, lease_seconds=300)
+    assert await store.claim_work(
+        "extract:https://example.com", owner_run_id=run_2, lease_seconds=300
+    )
 
 
-async def test_extraction_cache_round_trip(store):
+async def test_extraction_cache_round_trip(store: ScoutStore) -> None:
     entries = [
         {
             "name": "Test Org",
@@ -237,10 +306,8 @@ async def test_extraction_cache_round_trip(store):
     assert cached["entries"] == entries
 
 
-async def test_save_and_list_entries(store):
-    run_id = await store.create_run(
-        location="Austin, TX", issues=[], search_depth="standard"
-    )
+async def test_save_and_list_entries(store: ScoutStore) -> None:
+    run_id = await store.create_run(location="Austin, TX", issues=[], search_depth="standard")
     await store.save_entry(
         run_id=run_id,
         name="Housing Alliance",
@@ -257,18 +324,14 @@ async def test_save_and_list_entries(store):
     assert entries[0]["score"] == 0.85
 
 
-async def test_list_runs(store):
-    await store.create_run(
-        location="Austin, TX", issues=[], search_depth="standard"
-    )
-    await store.create_run(
-        location="Houston, TX", issues=[], search_depth="deep"
-    )
+async def test_list_runs(store: ScoutStore) -> None:
+    await store.create_run(location="Austin, TX", issues=[], search_depth="standard")
+    await store.create_run(location="Houston, TX", issues=[], search_depth="deep")
     runs = await store.list_runs()
     assert len(runs) == 2
 
 
-async def test_save_and_update_run_artifacts(store):
+async def test_save_and_update_run_artifacts(store: ScoutStore) -> None:
     run_id = await store.create_run(
         location="Austin, TX",
         issues=["housing_affordability"],

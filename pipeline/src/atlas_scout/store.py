@@ -110,7 +110,7 @@ CREATE TABLE IF NOT EXISTS daemon_state (
     last_heartbeat_at TEXT,
     config_path TEXT,
     profile_name TEXT,
-    target_count INTEGER NOT NULL DEFAULT 0,
+    target_count INTEGER NOT NULL DEFAULT 0 CHECK(target_count >= 0),
     last_tick_summary TEXT,
     updated_at TEXT NOT NULL
 )
@@ -140,10 +140,19 @@ def _new_id() -> str:
 
 
 def _serialize_timestamp(value: datetime | None) -> str | None:
-    """Normalize an optional timestamp to UTC ISO 8601."""
+    """Normalize an optional timezone-aware timestamp to UTC ISO 8601."""
     if value is None:
         return None
+    if value.tzinfo is None or value.utcoffset() is None:
+        raise ValueError("timestamps must be timezone-aware")
     return value.astimezone(UTC).isoformat()
+
+
+def _validate_target_count(target_count: int) -> int:
+    """Validate the daemon target count before persisting it."""
+    if target_count < 0:
+        raise ValueError("target_count must be non-negative")
+    return target_count
 
 
 class ScoutStore:
@@ -168,7 +177,7 @@ class ScoutStore:
         await self._conn.execute(_CREATE_EXTRACTIONS)
         await self._conn.execute(_CREATE_RUN_ARTIFACTS)
         await self._conn.execute(_CREATE_WORK_CLAIMS)
-        await self._conn.execute(_CREATE_DAEMON_STATE)
+        await self._ensure_daemon_state_table()
         await self._conn.execute(_CREATE_PAGE_TASKS_RUN_URL_INDEX)
         await self._conn.execute(_CREATE_PAGE_TASKS_RUN_STATUS_INDEX)
         await self._conn.execute(
@@ -206,6 +215,52 @@ class ScoutStore:
         await self._conn.execute(sql, params)
         await self._conn.commit()
 
+    async def _ensure_daemon_state_table(self) -> None:
+        """Create or migrate the daemon_state table to enforce current constraints."""
+        assert self._conn is not None
+        await self._conn.execute(_CREATE_DAEMON_STATE)
+        async with self._conn.execute(
+            "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'daemon_state'"
+        ) as cursor:
+            row = await cursor.fetchone()
+
+        schema_sql = str(row["sql"]) if row is not None else ""
+        if "target_count >= 0" in schema_sql:
+            return
+
+        await self._conn.execute("ALTER TABLE daemon_state RENAME TO daemon_state_legacy")
+        await self._conn.execute(_CREATE_DAEMON_STATE)
+        await self._conn.execute(
+            """
+            INSERT INTO daemon_state (
+                key,
+                status,
+                started_at,
+                last_heartbeat_at,
+                config_path,
+                profile_name,
+                target_count,
+                last_tick_summary,
+                updated_at
+            )
+            SELECT
+                key,
+                status,
+                started_at,
+                last_heartbeat_at,
+                config_path,
+                profile_name,
+                CASE
+                    WHEN target_count < 0 THEN 0
+                    ELSE target_count
+                END,
+                last_tick_summary,
+                updated_at
+            FROM daemon_state_legacy
+            """
+        )
+        await self._conn.execute("DROP TABLE daemon_state_legacy")
+
     # ------------------------------------------------------------------
     # Daemon state
     # ------------------------------------------------------------------
@@ -235,6 +290,7 @@ class ScoutStore:
         started_at: datetime | None = None,
     ) -> None:
         """Mark the daemon as running and persist its active configuration metadata."""
+        validated_target_count = _validate_target_count(target_count)
         started_at_iso = _serialize_timestamp(started_at) or _now()
         await self._execute(
             """
@@ -253,7 +309,7 @@ class ScoutStore:
                 started_at_iso,
                 config_path,
                 profile_name,
-                target_count,
+                validated_target_count,
                 started_at_iso,
                 _DAEMON_STATE_KEY,
             ),
@@ -342,9 +398,7 @@ class ScoutStore:
     async def get_run(self, run_id: str) -> dict[str, Any]:
         """Fetch a run by ID. Raises KeyError if not found."""
         assert self._conn is not None
-        async with self._conn.execute(
-            "SELECT * FROM runs WHERE id = ?", (run_id,)
-        ) as cursor:
+        async with self._conn.execute("SELECT * FROM runs WHERE id = ?", (run_id,)) as cursor:
             row = await cursor.fetchone()
         if row is None:
             raise KeyError(f"Run not found: {run_id}")
@@ -549,9 +603,7 @@ class ScoutStore:
     # Page cache
     # ------------------------------------------------------------------
 
-    async def get_cached_page(
-        self, url: str, ttl_days: int | None = 7
-    ) -> dict[str, Any] | None:
+    async def get_cached_page(self, url: str, ttl_days: int | None = 7) -> dict[str, Any] | None:
         """Return a cached page if it exists and is within TTL, else None."""
         assert self._conn is not None
         sql = "SELECT * FROM pages WHERE url = ?"
@@ -731,7 +783,10 @@ class ScoutStore:
         ):
             current_owner = existing_claim.get("owner_run_id")
             current_owner_status = await self._run_status(str(current_owner or ""))
-            if current_owner_status is not None and current_owner_status not in {"pending", "running"}:
+            if current_owner_status is not None and current_owner_status not in {
+                "pending",
+                "running",
+            }:
                 await self.fail_work(key, "reclaimed_from_inactive_run")
 
         lease_expires_at = (now + timedelta(seconds=lease_seconds)).isoformat()
