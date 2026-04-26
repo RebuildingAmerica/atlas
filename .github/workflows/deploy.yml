@@ -38,7 +38,7 @@ jobs:
       - name: Build and push atlas-api
         run: |
           IMAGE=${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/atlas-images/atlas-api
-          docker build -t $IMAGE:${{ github.sha }} -t $IMAGE:latest ./api
+          docker build -t $IMAGE:${{ github.sha }} -t $IMAGE:latest -f api/Dockerfile .
           docker push $IMAGE --all-tags
 
       - name: Build and push atlas-web

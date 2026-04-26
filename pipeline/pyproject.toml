@@ -58,8 +58,8 @@ strict = true
 plugins = ["pydantic.mypy"]
 
 [tool.uv.sources]
-atlas-discovery-engine = { path = "../engine", editable = true }
-atlas-shared = { path = "../shared", editable = true }
+atlas-discovery-engine = { path = "../libs/discovery-engine", editable = true }
+atlas-shared = { path = "../libs/shared", editable = true }
 
 [dependency-groups]
 dev = [

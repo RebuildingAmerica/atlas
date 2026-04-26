@@ -51,8 +51,8 @@ dev = [
 ]
 
 [tool.uv.sources]
-atlas-discovery-engine = { path = "../engine", editable = true }
-atlas-shared = { path = "../shared", editable = true }
+atlas-discovery-engine = { path = "../libs/discovery-engine", editable = true }
+atlas-shared = { path = "../libs/shared", editable = true }
 
 [tool.hatch.build.targets.wheel]
 packages = ["atlas"]

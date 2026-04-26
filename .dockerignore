@@ -5,7 +5,12 @@
 node_modules
 docs
 openapi
-api
+mintlify
+screenshots
+scripts
+pipeline
+packages
+
 app/node_modules
 app/dist
 app/coverage
@@ -15,5 +20,11 @@ app/.env
 app/.env.*
 !app/.env.example
 !app/.env.e2e.example
+
 api/.env
 api/.env.*
+api/htmlcov
+api/.venv
+
+libs/shared/.venv
+libs/discovery-engine/.venv

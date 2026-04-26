@@ -95,8 +95,8 @@ dev = [
 requires-dist = [
     { name = "aiosqlite", specifier = ">=0.19.0" },
     { name = "anthropic", specifier = ">=0.7.0" },
-    { name = "atlas-discovery-engine", editable = "../engine" },
-    { name = "atlas-shared", editable = "../shared" },
+    { name = "atlas-discovery-engine", editable = "../libs/discovery-engine" },
+    { name = "atlas-shared", editable = "../libs/shared" },
     { name = "email-validator", specifier = ">=2.0.0" },
     { name = "fastapi", specifier = ">=0.104.0" },
     { name = "httpx", specifier = ">=0.25.0" },
@@ -118,13 +118,13 @@ provides-extras = ["dev"]
 [[package]]
 name = "atlas-discovery-engine"
 version = "0.1.0"
-source = { editable = "../engine" }
+source = { editable = "../libs/discovery-engine" }
 dependencies = [
     { name = "atlas-shared" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "atlas-shared", editable = "../shared" }]
+requires-dist = [{ name = "atlas-shared", editable = "../libs/shared" }]
 
 [package.metadata.requires-dev]
 dev = [
@@ -136,7 +136,7 @@ dev = [
 [[package]]
 name = "atlas-shared"
 version = "0.1.0"
-source = { editable = "../shared" }
+source = { editable = "../libs/shared" }
 dependencies = [
     { name = "pydantic" },
 ]

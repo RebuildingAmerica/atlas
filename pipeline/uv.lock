@@ -55,13 +55,13 @@ wheels = [
 [[package]]
 name = "atlas-discovery-engine"
 version = "0.1.0"
-source = { editable = "../engine" }
+source = { editable = "../libs/discovery-engine" }
 dependencies = [
     { name = "atlas-shared" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "atlas-shared", editable = "../shared" }]
+requires-dist = [{ name = "atlas-shared", editable = "../libs/shared" }]
 
 [package.metadata.requires-dev]
 dev = [
@@ -127,9 +127,9 @@ dev = [
 requires-dist = [
     { name = "aiosqlite", specifier = ">=0.19.0" },
     { name = "anthropic", marker = "extra == 'anthropic'", specifier = ">=0.7.0" },
-    { name = "atlas-discovery-engine", editable = "../engine" },
+    { name = "atlas-discovery-engine", editable = "../libs/discovery-engine" },
     { name = "atlas-scout", extras = ["ollama", "anthropic", "openai", "google"], marker = "extra == 'all'" },
-    { name = "atlas-shared", editable = "../shared" },
+    { name = "atlas-shared", editable = "../libs/shared" },
     { name = "click", specifier = ">=8.1.0" },
     { name = "google-genai", marker = "extra == 'google'", specifier = ">=1.0.0" },
     { name = "httpx", specifier = ">=0.25.0" },
@@ -160,7 +160,7 @@ dev = [
 [[package]]
 name = "atlas-shared"
 version = "0.1.0"
-source = { editable = "../shared" }
+source = { editable = "../libs/shared" }
 dependencies = [
     { name = "pydantic" },
 ]
