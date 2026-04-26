@@ -6,7 +6,7 @@ import { canEmailAccessAtlas, ensureAuthReady, hasExistingAccount, type getAuth 
 import { loadAtlasWorkspaceState } from "./organization-session";
 import { getBrowserSessionHeaders } from "./request-headers";
 import { getAuthRuntimeConfig, validateAuthRuntimeConfig } from "./runtime";
-import type { AtlasSessionPayload } from "../session.types";
+import type { AtlasSessionPayload } from "../organization-contracts";
 
 /**
  * Better Auth instance shape used by Atlas's session-state helpers.

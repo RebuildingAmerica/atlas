@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { atlasSessionQueryKey, useAtlasSession } from "@/domains/access/client/use-atlas-session";
-import type { AtlasSessionPayload } from "@/domains/access/session.types";
+import type { AtlasSessionPayload } from "@/domains/access/organization-contracts";
 import { getOrganizationDetails } from "@/domains/access/organizations.functions";
 
 export const organizationQueryKey = ["auth", "organization"] as const;

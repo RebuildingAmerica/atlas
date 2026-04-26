@@ -3,7 +3,7 @@ import type {
   AtlasSessionPayload,
   AtlasWorkspaceMembership,
   AtlasWorkspaceState,
-} from "@/domains/access/session.types";
+} from "@/domains/access/organization-contracts";
 
 /**
  * Default resolved capabilities for a free-tier workspace with no active

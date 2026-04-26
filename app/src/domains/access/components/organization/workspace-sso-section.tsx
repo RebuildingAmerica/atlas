@@ -2,7 +2,7 @@ import type { AtlasOrganizationDetails } from "../../organization-contracts";
 import type {
   WorkspaceOIDCSetupFormState,
   WorkspaceSAMLSetupFormState,
-} from "./organization-page-types";
+} from "./organization-page-controller";
 import { WorkspaceSSODomainHint } from "./workspace-sso-domain-hint";
 import { WorkspaceSSOCopyField } from "./workspace-sso-copy-field";
 import { WorkspaceSSOProviderList } from "./workspace-sso-provider-list";

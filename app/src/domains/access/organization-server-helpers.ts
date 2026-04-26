@@ -1,4 +1,4 @@
-import type { AtlasSessionPayload, AtlasWorkspaceMembership } from "./session.types";
+import type { AtlasSessionPayload, AtlasWorkspaceMembership } from "./organization-contracts";
 import { canManageAtlasOrganizationRole } from "./organization-metadata";
 import { ensureAuthReady } from "./server/auth";
 import { getBrowserSessionHeaders } from "./server/request-headers";

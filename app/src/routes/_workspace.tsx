@@ -7,7 +7,7 @@ import { getAuthClient } from "@/domains/access/client/auth-client";
 import { atlasSessionQueryKey } from "@/domains/access/client/use-atlas-session";
 import { setActiveWorkspace } from "@/domains/access/organizations.functions";
 import { requireReadyAtlasSession } from "@/domains/access/server";
-import type { AtlasSessionPayload } from "@/domains/access/session.types";
+import type { AtlasSessionPayload } from "@/domains/access/organization-contracts";
 
 import { WorkspaceLayout } from "@/platform/layout/workspace-layout";
 import { Select } from "@/platform/ui/select";

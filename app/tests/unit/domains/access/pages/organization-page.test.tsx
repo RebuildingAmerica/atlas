@@ -3,7 +3,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { AtlasOrganizationDetails } from "@/domains/access/organization-contracts";
-import type { AtlasSessionPayload } from "@/domains/access/session.types";
+import type { AtlasSessionPayload } from "@/domains/access/organization-contracts";
 import {
   createOrganizationDetailsFixture,
   createWorkspaceSSOProviderFixture,

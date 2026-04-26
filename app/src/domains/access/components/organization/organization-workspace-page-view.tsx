@@ -1,5 +1,5 @@
 import { hasSerializedCapability } from "@/domains/access/capabilities";
-import type { OrganizationPageController } from "./organization-page-types";
+import type { OrganizationPageController } from "./organization-page-controller";
 import { OrganizationEmptyState } from "./organization-empty-state";
 import { OrganizationLoadingState } from "./organization-loading-state";
 import { OrganizationPageFeedback } from "./organization-page-feedback";

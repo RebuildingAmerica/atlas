@@ -7,7 +7,7 @@ import {
   normalizeAtlasOrganizationMetadata,
 } from "../organization-metadata";
 import { queryActiveProducts } from "./workspace-products";
-import type { AtlasSessionPayload } from "../session.types";
+import type { AtlasSessionPayload } from "../organization-contracts";
 import type { getAuth } from "./auth";
 import type { atlasSessionSchema } from "./session-schema";
 

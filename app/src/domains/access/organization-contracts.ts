@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { AtlasProduct, SerializedResolvedCapabilities } from "./capabilities";
 import {
   buildAtlasWorkspaceCapabilities,
   normalizeAtlasOrganizationMetadata,
@@ -6,7 +7,76 @@ import {
   type AtlasWorkspaceType,
 } from "./organization-metadata";
 import type { AtlasWorkspaceSSOState } from "./organization-sso";
-import type { AtlasSessionPayload } from "./session.types";
+
+// ---------------------------------------------------------------------------
+// Session types
+// ---------------------------------------------------------------------------
+
+/**
+ * Lightweight organization summary attached to a session.
+ */
+export interface AtlasWorkspaceMembership {
+  id: string;
+  name: string;
+  role: string;
+  slug: string;
+  workspaceType: AtlasWorkspaceType;
+}
+
+/**
+ * Pending invitation details that let Atlas explain available workspaces
+ * before the user has accepted them.
+ */
+export interface AtlasWorkspaceInvitation {
+  email: string;
+  expiresAt: string | null;
+  id: string;
+  organizationId: string;
+  organizationName: string;
+  organizationSlug: string;
+  role: string;
+  workspaceType: AtlasWorkspaceType;
+}
+
+/**
+ * Workspace context bundled into every normalized Atlas session payload.
+ */
+export interface AtlasWorkspaceState {
+  activeOrganization: AtlasWorkspaceMembership | null;
+  activeProducts: AtlasProduct[];
+  capabilities: AtlasWorkspaceCapabilities;
+  resolvedCapabilities: SerializedResolvedCapabilities;
+  memberships: AtlasWorkspaceMembership[];
+  onboarding: {
+    hasPendingInvitations: boolean;
+    needsWorkspace: boolean;
+  };
+  pendingInvitations: AtlasWorkspaceInvitation[];
+}
+
+/**
+ * Normalized operator session payload returned by Atlas server functions.
+ */
+export interface AtlasSessionPayload {
+  accountReady: boolean;
+  hasPasskey: boolean;
+  isLocal: boolean;
+  passkeyCount: number;
+  session: {
+    id: string;
+  };
+  user: {
+    email: string;
+    emailVerified: boolean;
+    id: string;
+    name: string;
+  };
+  workspace: AtlasWorkspaceState;
+}
+
+// ---------------------------------------------------------------------------
+// Workspace slug
+// ---------------------------------------------------------------------------
 
 /**
  * Workspace slug rules Atlas enforces for new and renamed workspaces.

@@ -2,7 +2,7 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { HomePage } from "@/routes/_public/index";
+import { HomePage } from "@/platform/pages/home-page";
 
 const mocks = vi.hoisted(() => ({
   navigate: vi.fn(),

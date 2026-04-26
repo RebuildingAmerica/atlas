@@ -3,7 +3,6 @@ import { useState } from "react";
 import type { ReactNode } from "react";
 import { useAtlasSession } from "@/domains/access/client/use-atlas-session";
 import type { AtlasProduct } from "@/domains/access/capabilities";
-import { startCheckout } from "@/domains/billing/checkout.functions";
 import { PageLayout } from "@/platform/layout/page-layout";
 import { Button } from "@/platform/ui/button";
 
@@ -171,6 +170,7 @@ export function PricingPage() {
       return;
     }
 
+    const { startCheckout } = await import("@/domains/billing/checkout.functions");
     const result = await startCheckout({ data: { product, interval } });
     window.location.assign(result.url);
   }

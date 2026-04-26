@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { AtlasSessionPayload } from "@/domains/access/session.types";
+import type { AtlasSessionPayload } from "@/domains/access/organization-contracts";
 import {
   assertOrganizationManagementEnabled,
   requireActiveWorkspace,

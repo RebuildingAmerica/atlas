@@ -4,7 +4,7 @@ import { buildWorkspaceSlugCandidate } from "./organization-page-helpers";
 import type {
   WorkspaceOIDCSetupFormState,
   WorkspaceSAMLSetupFormState,
-} from "./organization-page-types";
+} from "./organization-page-controller";
 
 /**
  * Form state and setters used by the organization-management page.

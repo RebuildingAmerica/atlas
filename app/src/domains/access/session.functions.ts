@@ -9,7 +9,7 @@ import {
   sendVerificationEmailForCurrentSession,
 } from "./server/session-state";
 
-export type { AtlasSessionPayload } from "./session.types";
+export type { AtlasSessionPayload } from "./organization-contracts";
 
 /**
  * Returns the current operator session, or `null` when auth is enabled and no

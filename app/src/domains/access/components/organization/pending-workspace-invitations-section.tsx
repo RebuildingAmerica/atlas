@@ -1,4 +1,4 @@
-import type { AtlasWorkspaceInvitation } from "@/domains/access/session.types";
+import type { AtlasWorkspaceInvitation } from "@/domains/access/organization-contracts";
 import { Button } from "@/platform/ui/button";
 
 /**
