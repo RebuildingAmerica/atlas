@@ -47,6 +47,11 @@ def test_cli_runs_sync_help():
     assert result.exit_code == 0
 
 
+def test_cli_runs_cancel_help():
+    result = CliRunner().invoke(main, ["runs", "cancel", "--help"])
+    assert result.exit_code == 0
+
+
 def test_cli_daemon_help():
     result = CliRunner().invoke(main, ["daemon", "--help"])
     assert result.exit_code == 0
@@ -125,6 +130,152 @@ def test_cli_runs_inspect_requires_run_id():
 def test_cli_runs_sync_requires_run_id():
     result = CliRunner().invoke(main, ["runs", "sync"])
     assert result.exit_code != 0
+
+
+def test_cli_runs_cancel_requires_run_id():
+    result = CliRunner().invoke(main, ["runs", "cancel"])
+    assert result.exit_code != 0
+
+
+def test_cli_runs_cancel_updates_local_non_terminal_run_only(tmp_path, monkeypatch):
+    import atlas_scout.cli as cli_module
+    from atlas_scout.config import ScoutConfig, StoreConfig
+    from atlas_scout.store import ScoutStore
+
+    output = io.StringIO()
+    monkeypatch.setattr(
+        cli_module,
+        "console",
+        Console(file=output, force_terminal=False, color_system=None),
+    )
+    monkeypatch.setattr(
+        cli_module,
+        "err_console",
+        Console(file=output, force_terminal=False, color_system=None),
+    )
+
+    config = ScoutConfig(store=StoreConfig(path=str(tmp_path / "scout.db")))
+    store = ScoutStore(config.store.path)
+    asyncio.run(store.initialize())
+    run_id = asyncio.run(store.create_run(location="Austin, TX", issues=["housing"], search_depth="standard"))
+    asyncio.run(store.update_run_status(run_id, "running"))
+    asyncio.run(store.close())
+
+    with patch("atlas_scout.cli.load_config", return_value=config):
+        result = CliRunner().invoke(
+            main,
+            ["--config", str(tmp_path / "scout.toml"), "runs", "cancel", run_id],
+        )
+
+    assert result.exit_code == 0
+    rendered = output.getvalue()
+    assert "Cancelled local run" in rendered
+    assert "does not interrupt active work" in rendered
+
+    async def fetch_run() -> dict[str, object]:
+        persisted_store = ScoutStore(config.store.path)
+        await persisted_store.initialize()
+        try:
+            return await persisted_store.get_run(run_id)
+        finally:
+            await persisted_store.close()
+
+    persisted = asyncio.run(fetch_run())
+    assert persisted["status"] == "cancelled"
+    assert persisted["completed_at"] is not None
+
+
+@pytest.mark.parametrize("status", ["completed", "failed", "cancelled"])
+def test_cli_runs_cancel_refuses_terminal_runs(tmp_path, monkeypatch, status):
+    import atlas_scout.cli as cli_module
+    from atlas_scout.config import ScoutConfig, StoreConfig
+    from atlas_scout.store import ScoutStore
+
+    output = io.StringIO()
+    monkeypatch.setattr(
+        cli_module,
+        "console",
+        Console(file=output, force_terminal=False, color_system=None),
+    )
+    monkeypatch.setattr(
+        cli_module,
+        "err_console",
+        Console(file=output, force_terminal=False, color_system=None),
+    )
+
+    config = ScoutConfig(store=StoreConfig(path=str(tmp_path / "scout.db")))
+
+    async def seed_run() -> tuple[str, dict[str, object]]:
+        store = ScoutStore(config.store.path)
+        await store.initialize()
+        run_id = await store.create_run(location="Austin, TX", issues=["housing"], search_depth="standard")
+        if status == "completed":
+            await store.complete_run(
+                run_id,
+                queries=1,
+                pages_fetched=1,
+                entries_found=1,
+                entries_after_dedup=1,
+            )
+        elif status == "failed":
+            await store.fail_run(run_id, "boom")
+        else:
+            await store.cancel_run(run_id, "already cancelled")
+        record = await store.get_run(run_id)
+        await store.close()
+        return run_id, record
+
+    run_id, before = asyncio.run(seed_run())
+
+    with patch("atlas_scout.cli.load_config", return_value=config):
+        result = CliRunner().invoke(
+            main,
+            ["--config", str(tmp_path / "scout.toml"), "runs", "cancel", run_id],
+        )
+
+    assert result.exit_code != 0
+    assert f"already {status}" in output.getvalue().lower()
+
+    async def fetch_run() -> dict[str, object]:
+        store = ScoutStore(config.store.path)
+        await store.initialize()
+        try:
+            return await store.get_run(run_id)
+        finally:
+            await store.close()
+
+    after = asyncio.run(fetch_run())
+    assert after["status"] == before["status"]
+    assert after["completed_at"] == before["completed_at"]
+    assert after["error"] == before["error"]
+
+
+def test_cli_runs_cancel_reports_missing_run(tmp_path, monkeypatch):
+    import atlas_scout.cli as cli_module
+    from atlas_scout.config import ScoutConfig, StoreConfig
+
+    output = io.StringIO()
+    monkeypatch.setattr(
+        cli_module,
+        "console",
+        Console(file=output, force_terminal=False, color_system=None),
+    )
+    monkeypatch.setattr(
+        cli_module,
+        "err_console",
+        Console(file=output, force_terminal=False, color_system=None),
+    )
+
+    config = ScoutConfig(store=StoreConfig(path=str(tmp_path / "scout.db")))
+
+    with patch("atlas_scout.cli.load_config", return_value=config):
+        result = CliRunner().invoke(
+            main,
+            ["--config", str(tmp_path / "scout.toml"), "runs", "cancel", "missing-run"],
+        )
+
+    assert result.exit_code != 0
+    assert "Run not found" in output.getvalue()
 
 
 # ---------------------------------------------------------------------------

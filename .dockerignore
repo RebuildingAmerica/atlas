@@ -8,7 +8,7 @@ openapi
 mintlify
 screenshots
 scripts
-pipeline
+scout
 packages
 
 app/node_modules

@@ -1,6 +1,6 @@
-# CLAUDE.md
+# AGENTS.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to AI coding agents when working with code in this repository.
 
 ## Project
 
@@ -10,16 +10,29 @@ Atlas is an open-source civic actor discovery platform. It finds people, organiz
 
 **Monorepo** managed by Turborepo with pnpm workspaces.
 
-| Package | Stack | Port |
-|---------|-------|------|
+### Applications
+
+| Directory | Stack | Port |
+|-----------|-------|------|
 | `app/` | React 19 + TanStack Start + Vite + Nitro | 3000 |
 | `api/` | FastAPI + Python 3.12 + SQLite (dev) / PostgreSQL (prod) | 8000 |
-| `pipeline/` | Standalone discovery pipeline (Anthropic Claude API) | — |
+| `scout/` | Atlas Scout CLI — autonomous discovery pipeline | — |
 | `mintlify/` | API documentation (Mintlify) | — |
+
+### Shared Libraries (Python)
+
+| Directory | Package | Purpose |
+|-----------|---------|---------|
+| `libs/shared/` | `atlas-shared` | Pydantic models, types, and taxonomy shared by all Python packages |
+| `libs/discovery-engine/` | `atlas-discovery-engine` | Extraction primitives, query generation, dedup, scoring, coverage analysis |
+
+Both `api/` and `scout/` depend on these via editable path references in their `pyproject.toml` files.
 
 **Frontend** uses TanStack Router (file-based routing in `app/src/routes/`), TanStack Query for data fetching, and Tailwind CSS 4. API types are generated from the OpenAPI spec via Orval (`app/src/lib/generated/`). SSR is handled by TanStack Start + Nitro.
 
-**Backend** follows domain-driven design: `domains/catalog/` (entries, profiles, connections), `domains/access/` (auth), `domains/discovery/` (pipeline), `domains/moderation/` (flags). Each domain has `models/` (CRUD + data), `api/` (HTTP endpoints), and `schemas/` (Pydantic). Database access is async via `aiosqlite`/`psycopg` with raw SQL (no ORM). All SQL uses `?` placeholders; the PostgreSQL adapter translates to `%s` automatically.
+**Backend** follows domain-driven design: `domains/catalog/` (entries, profiles, connections), `domains/access/` (auth), `domains/discovery/` (pipeline, scheduling, jobs), `domains/moderation/` (flags). Each domain has `models/` (CRUD + data), `api/` (HTTP endpoints), and `schemas/` (Pydantic). Database access is async via `aiosqlite`/`psycopg` with raw SQL (no ORM). All SQL uses `?` placeholders; the PostgreSQL adapter translates to `%s` automatically.
+
+**Discovery pipeline** runs in two modes: the API hosts a durable job worker that polls for queued discovery jobs and executes them with lease-based claiming and retry, while Scout runs the same extraction logic locally with additional features (caching, iterative deepening, browser research). Both share extraction prompts, parsing, normalization, and validation through `atlas-discovery-engine`. Scheduled runs are triggered by Cloud Scheduler via `POST /api/discovery-runs/scheduled`.
 
 **Route structure** uses pathless layout groups: `_public/` (open pages), `_workspace/` (authenticated), `_auth/` (sign-in flows). Profile pages are SSR at `/profiles/people/:slug` and `/profiles/organizations/:slug`.
 
@@ -62,7 +75,7 @@ Enforced by `.githooks/commit-msg`. Format: `type(scope)?: Description`
 
 **Types:** `feat` (consumer-facing only), `fix` (consumer-facing), `docs`, `chore` (internal, tests, tooling), `refactor`
 
-**Scopes:** `api`, `app`, `pipeline`, `scout`, `docs`, `dx` — or omit for cross-cutting changes. Never use `shared` as a scope.
+**Scopes:** `api`, `app`, `scout`, `docs`, `dx` — or omit for cross-cutting changes. Never use `shared` as a scope.
 
 **Rules:**
 - Description starts with capital letter

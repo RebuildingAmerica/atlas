@@ -562,6 +562,8 @@ def _write_toml(path: Path, data: dict[str, dict[str, str | int | float | bool]]
 # runs commands
 # ---------------------------------------------------------------------------
 
+_TERMINAL_RUN_STATUSES = {"completed", "failed", "cancelled"}
+
 
 @main.group()
 def runs() -> None:
@@ -676,6 +678,50 @@ async def _runs_inspect(config: ScoutConfig, run_id: str) -> None:
             )
     else:
         console.print("\n[dim]No entries.[/]")
+
+
+@runs.command("cancel")
+@click.argument("run_id")
+@click.pass_context
+def runs_cancel(ctx: click.Context, run_id: str) -> None:
+    """Mark a local run record as cancelled."""
+    config: ScoutConfig = ctx.obj["config"]
+    asyncio.run(_runs_cancel(config, run_id))
+
+
+async def _runs_cancel(config: ScoutConfig, run_id: str) -> None:
+    """Cancel a non-terminal local run record without interrupting active work."""
+    from atlas_scout.store import ScoutStore
+
+    store = ScoutStore(str(Path(config.store.path).expanduser()))
+    await store.initialize()
+    try:
+        try:
+            record = await store.get_run(run_id)
+        except KeyError:
+            err_console.print(f"[red]Run not found:[/] {run_id}")
+            sys.exit(1)
+
+        status = str(record["status"])
+        if status in _TERMINAL_RUN_STATUSES:
+            err_console.print(
+                f"[yellow]Run already {status}:[/] {run_id}. "
+                "scout runs cancel only updates local Scout run records and does not "
+                "interrupt active work."
+            )
+            sys.exit(1)
+
+        await store.cancel_run(
+            run_id,
+            error="Cancelled locally via CLI; active work is not interrupted.",
+        )
+    finally:
+        await store.close()
+
+    console.print(
+        f"[green]Cancelled local run[/] {run_id}. "
+        "This updates Scout's local run record only and does not interrupt active work."
+    )
 
 
 @runs.command("sync")

@@ -23,7 +23,7 @@ COMMIT_HEADER=$(head -n 1 "$COMMIT_MSG_FILE")
 # Format: type(scope)?: message
 # Scopes are optional, but when present they must use an approved repo term.
 # Descriptions must start with sentence case.
-PATTERN='^(feat|fix|docs|chore|refactor)(\((api|app|pipeline|scout|docs|dx)\))?!?: [A-Z0-9].+'
+PATTERN='^(feat|fix|docs|chore|refactor)(\((api|app|scout|docs|dx)\))?!?: [A-Z0-9].+'
 
 if ! echo "$COMMIT_HEADER" | grep -qE "$PATTERN"; then
     echo -e "\n${RED}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
@@ -44,8 +44,7 @@ if ! echo "$COMMIT_HEADER" | grep -qE "$PATTERN"; then
     echo "Valid scopes (optional):"
     echo "  - ${BLUE}api${NC}:         Python/FastAPI application code"
     echo "  - ${BLUE}app${NC}:         React/TanStack Start application code"
-    echo "  - ${BLUE}pipeline${NC}:    Discovery pipeline"
-    echo "  - ${BLUE}scout${NC}:       Atlas Scout autonomous discovery package"
+    echo "  - ${BLUE}scout${NC}:       Atlas Scout autonomous discovery CLI"
     echo "  - ${BLUE}docs${NC}:        Documentation files"
     echo "  - ${BLUE}dx${NC}:          Developer experience, tooling, deployment, CI/CD"
     echo "  Use no scope for broad or cross-cutting changes."
@@ -55,7 +54,7 @@ if ! echo "$COMMIT_HEADER" | grep -qE "$PATTERN"; then
     echo "  ${BLUE}fix(api): Return correct pagination metadata${NC}"
     echo "  ${BLUE}docs: Clarify local development workflow${NC}"
     echo "  ${BLUE}chore(dx): Improve setup guidance for junior developers${NC}"
-    echo "  ${BLUE}refactor(pipeline): Simplify deduplication helpers${NC}"
+    echo "  ${BLUE}refactor(scout): Simplify deduplication helpers${NC}"
     echo ""
 
     exit 1
