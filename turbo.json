@@ -36,6 +36,7 @@
       "inputs": ["$TURBO_DEFAULT$", "orval.config.ts"],
       "outputs": ["src/lib/generated/**"],
       "env": [
+        "ATLAS_DEPLOY_MODE",
         "ATLAS_PUBLIC_URL",
         "ATLAS_API_AUDIENCE",
         "ATLAS_DOCS_URL",
@@ -77,6 +78,7 @@
       ],
       "outputs": ["openapi/atlas.openapi.json", "mintlify/openapi/atlas.openapi.json"],
       "env": [
+        "ATLAS_DEPLOY_MODE",
         "NITRO_PRESET",
         "ATLAS_PUBLIC_URL",
         "ATLAS_API_AUDIENCE",
