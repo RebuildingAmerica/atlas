@@ -3,6 +3,10 @@ import { Link } from "@tanstack/react-router";
 import { useAtlasSession } from "@/domains/access";
 import { cn } from "@/lib/utils";
 
+interface PublicTopNavProps {
+  localMode: boolean;
+}
+
 /**
  * Subscribe to nothing -- the store never changes. This is a no-op used only
  * to distinguish server-side from client-side rendering via
@@ -67,30 +71,19 @@ function NavLink({ to, label }: NavLinkProps) {
 }
 
 /**
- * Renders the session-aware auth link.
+ * Session-aware auth link shown when Atlas is running in auth-enabled mode.
  *
  * Before hydration we always show "Sign in" so the server-rendered HTML
  * matches the first client render. After hydration we switch to "Workspace"
  * when a session is present.
  */
 function PricingNavLink() {
-  const { data: session } = useAtlasSession();
-
-  if (session?.isLocal) {
-    return null;
-  }
-
   return <NavLink to="/pricing" label="Pricing" />;
 }
 
 function AuthNavLink() {
   const hydrated = useHydrated();
   const { data: session } = useAtlasSession();
-
-  if (session?.isLocal) {
-    return null;
-  }
-
   const isAuthenticated = hydrated && session != null;
 
   if (isAuthenticated) {
@@ -107,23 +100,25 @@ function AuthNavLink() {
  * scrolling. Contains the Atlas brand mark, profile and browse entry points,
  * and a session-aware auth link.
  */
-export function PublicTopNav() {
+export function PublicTopNav({ localMode }: PublicTopNavProps) {
   const scrolled = useScrolledPastHero();
 
-  return <PublicTopNavShell scrolled={scrolled} />;
+  return <PublicTopNavShell localMode={localMode} scrolled={scrolled} />;
 }
 
 export function PublicTopNavSafe() {
   const scrolled = useScrolledPastHero();
 
-  return <PublicTopNavShell hideSessionLinks scrolled={scrolled} />;
+  return <PublicTopNavShell hideSessionLinks localMode scrolled={scrolled} />;
 }
 
 function PublicTopNavShell({
   hideSessionLinks = false,
+  localMode,
   scrolled,
 }: {
   hideSessionLinks?: boolean;
+  localMode: boolean;
   scrolled: boolean;
 }) {
   return (
@@ -151,7 +146,7 @@ function PublicTopNavShell({
         <div className="flex items-center gap-1">
           <NavLink to="/profiles" label="Profiles" />
           <NavLink to="/browse" label="Browse" />
-          {hideSessionLinks ? null : (
+          {hideSessionLinks || localMode ? null : (
             <>
               <PricingNavLink />
               <AuthNavLink />

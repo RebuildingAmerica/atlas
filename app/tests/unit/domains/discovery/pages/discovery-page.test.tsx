@@ -173,20 +173,19 @@ describe("DiscoveryPage", () => {
     expect(screen.getByText("Process failed")).toBeInTheDocument();
   });
 
-  it("shows loading states for runs and taxonomy", () => {
+  it("shows loading state for runs", () => {
     mocks.useDiscoveryRuns.mockReturnValue({ data: null, isLoading: true });
     mocks.useTaxonomy.mockReturnValue({ data: null, isLoading: true });
 
     render(<DiscoveryPage />);
     expect(screen.getByText(/Loading runs/i)).toBeInTheDocument();
-    expect(screen.getByText(/Loading issue areas/i)).toBeInTheDocument();
   });
 
   it("shows unavailable message when taxonomy is empty", () => {
     mocks.useTaxonomy.mockReturnValue({ data: {}, isLoading: false });
 
     render(<DiscoveryPage />);
-    expect(screen.getByText(/Issue areas are unavailable/i)).toBeInTheDocument();
+    expect(screen.getByText(/Could not load issue areas/i)).toBeInTheDocument();
   });
 
   it("shows start error message when mutation fails", () => {

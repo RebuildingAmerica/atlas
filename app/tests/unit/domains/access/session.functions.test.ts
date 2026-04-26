@@ -95,7 +95,6 @@ describe("session.functions", () => {
     const session = {
       accountReady: true,
       hasPasskey: true,
-      isLocal: false,
       passkeyCount: 1,
       session: { id: "session_123" },
       user: {
@@ -120,7 +119,6 @@ describe("session.functions", () => {
     const session = {
       accountReady: false,
       hasPasskey: false,
-      isLocal: false,
       passkeyCount: 0,
       session: { id: "session_123" },
       user: {
@@ -145,7 +143,6 @@ describe("session.functions", () => {
     const session = {
       accountReady: true,
       hasPasskey: true,
-      isLocal: false,
       passkeyCount: 1,
       session: { id: "session_123" },
       user: {

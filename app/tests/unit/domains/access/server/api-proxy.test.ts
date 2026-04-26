@@ -30,6 +30,7 @@ describe("proxyAtlasApiRequest", () => {
     mocks.getAuthRuntimeConfig.mockReturnValue({
       apiBaseUrl: "https://api.atlas.test",
       internalSecret: "internal-test-secret",
+      localMode: false,
     });
     mocks.loadAtlasSession.mockResolvedValue(null);
   });
@@ -69,7 +70,6 @@ describe("proxyAtlasApiRequest", () => {
       }),
     );
     mocks.loadAtlasSession.mockResolvedValue({
-      isLocal: false,
       user: {
         email: "operator@atlas.test",
         id: "user-123",

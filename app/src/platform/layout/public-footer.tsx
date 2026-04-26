@@ -1,7 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { ArrowUpRight } from "lucide-react";
 import type { Status } from "@openstatus/react";
-import { useAtlasSession } from "@/domains/access";
 
 interface FooterInternalLinkProps {
   to: string;
@@ -106,6 +105,7 @@ const STATUS_CONFIG: Record<Status, { label: string; color: string; pulse: boole
 };
 
 interface PublicFooterProps {
+  localMode: boolean;
   status: Status;
 }
 
@@ -116,10 +116,9 @@ interface PublicFooterProps {
  * SVG pattern for texture. Staggered fade-in via CSS scroll-driven animations.
  * Sits flush at page bottom — no border-radius, not floating.
  */
-export function PublicFooter({ status }: PublicFooterProps) {
+export function PublicFooter({ localMode, status }: PublicFooterProps) {
   const { label, color, pulse } = STATUS_CONFIG[status];
-  const { data: session } = useAtlasSession();
-  const shouldShowWorkspaceLink = !session?.isLocal;
+  const shouldShowWorkspaceLink = !localMode;
   return (
     <footer
       aria-label="Site footer"

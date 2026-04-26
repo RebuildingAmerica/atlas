@@ -1,5 +1,6 @@
 import { Outlet, createFileRoute } from "@tanstack/react-router";
 import { getStatus, type Status } from "@openstatus/react";
+import { getAuthConfig } from "@/domains/access/config";
 import { PublicTopNav } from "@/platform/layout/public-nav";
 import { PublicFooter } from "@/platform/layout/public-footer";
 
@@ -18,15 +19,16 @@ export const Route = createFileRoute("/_public")({
 
 function PublicLayout() {
   const { status } = Route.useLoaderData();
+  const { localMode } = getAuthConfig();
   return (
     <div className="flex min-h-screen flex-col">
       <header className="sticky top-0 z-30">
-        <PublicTopNav />
+        <PublicTopNav localMode={localMode} />
       </header>
       <main className="flex flex-1 flex-col">
         <Outlet />
       </main>
-      <PublicFooter status={status} />
+      <PublicFooter localMode={localMode} status={status} />
     </div>
   );
 }

@@ -15,14 +15,19 @@ function getInternalSecret(): string {
   return process.env.ATLAS_AUTH_INTERNAL_SECRET?.trim() || "";
 }
 
+function isLocalMode(): boolean {
+  return process.env.ATLAS_DEPLOY_MODE === "local";
+}
+
 export async function requestAtlasApi<T>(path: string, init?: RequestInit): Promise<T> {
-  const session = await requireReadyAtlasSessionState();
+  const localMode = isLocalMode();
   const internalSecret = getInternalSecret();
-  if (!session.isLocal && !internalSecret) {
+  if (!localMode && !internalSecret) {
     throw new Error("ATLAS_AUTH_INTERNAL_SECRET is required for authenticated discovery requests.");
   }
 
-  const headers = session.isLocal
+  const session = await requireReadyAtlasSessionState();
+  const headers = localMode
     ? {}
     : createInternalAuthHeaders(session.user, internalSecret, {
         organizationId: session.workspace.activeOrganization?.id,

@@ -24,12 +24,12 @@ describe("api-client", () => {
     mocks.getServerApiBaseUrl.mockReset();
     mocks.fetch.mockReset();
 
+    delete process.env.ATLAS_DEPLOY_MODE;
     process.env.ATLAS_AUTH_INTERNAL_SECRET = "test-secret";
   });
 
   it("sends an authenticated request to the Atlas API", async () => {
     mocks.requireReadyAtlasSessionState.mockResolvedValue({
-      isLocal: false,
       user: { email: "operator@atlas.test", id: "user_123" },
       workspace: { activeOrganization: { id: "org_123" } },
     });
@@ -58,7 +58,6 @@ describe("api-client", () => {
   it("throws when internal secret is missing outside local mode", async () => {
     delete process.env.ATLAS_AUTH_INTERNAL_SECRET;
     mocks.requireReadyAtlasSessionState.mockResolvedValue({
-      isLocal: false,
       user: { email: "operator@atlas.test", id: "user_123" },
       workspace: { activeOrganization: { id: "org_123" } },
     });
@@ -69,8 +68,8 @@ describe("api-client", () => {
   });
 
   it("sends an unauthenticated request in local mode", async () => {
+    process.env.ATLAS_DEPLOY_MODE = "local";
     mocks.requireReadyAtlasSessionState.mockResolvedValue({
-      isLocal: true,
       user: { email: "local@atlas.local", id: "local-user" },
     });
     mocks.getServerApiBaseUrl.mockReturnValue("https://api.atlas.test");
@@ -93,7 +92,8 @@ describe("api-client", () => {
   });
 
   it("throws when the API response is not ok", async () => {
-    mocks.requireReadyAtlasSessionState.mockResolvedValue({ isLocal: true });
+    process.env.ATLAS_DEPLOY_MODE = "local";
+    mocks.requireReadyAtlasSessionState.mockResolvedValue({});
     mocks.getServerApiBaseUrl.mockReturnValue("https://api.atlas.test");
     mocks.fetch.mockResolvedValue({
       ok: false,

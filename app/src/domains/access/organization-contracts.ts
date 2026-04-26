@@ -60,7 +60,6 @@ export interface AtlasWorkspaceState {
 export interface AtlasSessionPayload {
   accountReady: boolean;
   hasPasskey: boolean;
-  isLocal: boolean;
   passkeyCount: number;
   session: {
     id: string;

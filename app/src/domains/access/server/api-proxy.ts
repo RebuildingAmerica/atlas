@@ -38,16 +38,16 @@ function copyProxyHeaders(headers: Headers, blockedHeaders: Set<string>): Header
 }
 
 async function buildInternalAuthHeaders(request: Request): Promise<Record<string, string>> {
-  const { internalSecret } = getAuthRuntimeConfig();
+  const { internalSecret, localMode } = getAuthRuntimeConfig();
   const cookie = request.headers.get("cookie");
 
-  if (!cookie || !internalSecret) {
+  if (localMode || !cookie || !internalSecret) {
     return {};
   }
 
   const session = await loadAtlasSession();
 
-  if (!session || session.isLocal) {
+  if (!session) {
     return {};
   }
 

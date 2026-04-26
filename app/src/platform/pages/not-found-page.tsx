@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { getAuthConfig } from "@/domains/access/config";
 import { PublicTopNavSafe } from "@/platform/layout/public-nav";
 import { PublicFooter } from "@/platform/layout/public-footer";
 import { Button } from "@/platform/ui/button";
@@ -83,7 +84,7 @@ export function NotFoundPage() {
         </div>
       </main>
 
-      <PublicFooter status="unknown" />
+      <PublicFooter localMode={getAuthConfig().localMode} status="unknown" />
     </div>
   );
 }

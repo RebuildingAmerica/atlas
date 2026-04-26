@@ -179,7 +179,6 @@ export function createAtlasSessionFixture(
   options: {
     accountReady?: boolean;
     hasPasskey?: boolean;
-    isLocal?: boolean;
     passkeyCount?: number;
     sessionId?: string;
     user?: Partial<AtlasSessionPayload["user"]>;
@@ -190,7 +189,6 @@ export function createAtlasSessionFixture(
   return {
     accountReady: options.accountReady ?? true,
     hasPasskey: options.hasPasskey ?? true,
-    isLocal: options.isLocal ?? false,
     passkeyCount: options.passkeyCount ?? 1,
     session: {
       id: options.sessionId ?? "session_123",

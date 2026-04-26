@@ -34,7 +34,6 @@ describe("route-guard additional branches", () => {
     getAtlasSessionMock.mockResolvedValue({
       accountReady: true,
       hasPasskey: true,
-      isLocal: false,
       passkeyCount: 1,
       session: { id: "session_123" },
       user: {
@@ -74,7 +73,6 @@ describe("route-guard additional branches", () => {
     getAtlasSessionMock.mockResolvedValue({
       accountReady: true,
       hasPasskey: true,
-      isLocal: false,
       passkeyCount: 1,
       session: { id: "session_123" },
       user: {
@@ -111,7 +109,6 @@ describe("route-guard additional branches", () => {
     getAtlasSessionMock.mockResolvedValue({
       accountReady: true,
       hasPasskey: true,
-      isLocal: false,
       passkeyCount: 1,
       session: { id: "session_123" },
       user: {

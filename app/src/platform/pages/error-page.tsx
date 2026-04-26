@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import type { ErrorComponentProps } from "@tanstack/react-router";
+import { getAuthConfig } from "@/domains/access/config";
 import { PublicTopNavSafe } from "@/platform/layout/public-nav";
 import { PublicFooter } from "@/platform/layout/public-footer";
 import { Button } from "@/platform/ui/button";
@@ -86,7 +87,7 @@ export function ErrorPage({ reset }: ErrorComponentProps) {
         </div>
       </main>
 
-      <PublicFooter status="unknown" />
+      <PublicFooter localMode={getAuthConfig().localMode} status="unknown" />
     </div>
   );
 }

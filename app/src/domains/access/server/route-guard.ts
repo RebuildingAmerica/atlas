@@ -1,4 +1,5 @@
 import { redirect } from "@tanstack/react-router";
+import { getAuthConfig } from "../config";
 import { getAtlasSession } from "../session.functions";
 
 /**
@@ -95,9 +96,9 @@ function resolveReadySessionDestination(
  *
  * @param to - The route to redirect to in local mode.
  */
-export async function redirectIfLocalSession(to: string) {
-  const session = await getAtlasSession();
-  if (session?.isLocal) {
+export function redirectIfLocalSession(to: string) {
+  const { localMode } = getAuthConfig();
+  if (localMode) {
     throw redirect({ to });
   }
 }

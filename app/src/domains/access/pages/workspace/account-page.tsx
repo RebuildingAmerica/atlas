@@ -8,6 +8,7 @@ import { createApiKey, deleteApiKey, listApiKeys } from "@/domains/access/api-ke
 import { API_KEY_SCOPES, type ApiKeyScope } from "@/domains/access/api-key-scopes";
 import { hasSerializedCapability } from "@/domains/access/capabilities";
 import { getAuthClient } from "@/domains/access/client/auth-client";
+import { getAuthConfig } from "@/domains/access/config";
 import { atlasSessionQueryKey, useAtlasSession } from "@/domains/access/client/use-atlas-session";
 import { resolvePasskeyName } from "@/domains/access/passkey-names";
 import { deletePasskey, listPasskeys, updatePasskey } from "@/domains/access/passkeys.functions";
@@ -75,7 +76,7 @@ function readCreatedApiKeySecret(result: unknown): string | null {
 export function AccountPage() {
   const queryClient = useQueryClient();
   const atlasSession = useAtlasSession();
-  const isLocal = atlasSession.data?.isLocal ?? false;
+  const { localMode: isLocal } = getAuthConfig();
   const activeWorkspace = atlasSession.data?.workspace.activeOrganization ?? null;
   const needsWorkspace = atlasSession.data?.workspace.onboarding.needsWorkspace ?? false;
   const hasPendingInvitations =

@@ -20,7 +20,6 @@ function getLocalSession(): AtlasSessionPayload {
   return {
     accountReady: true,
     hasPasskey: true,
-    isLocal: true,
     passkeyCount: 1,
     session: {
       id: "local-session",
@@ -109,7 +108,6 @@ export async function loadAtlasSession(): Promise<AtlasSessionPayload | null> {
   return {
     accountReady: session.user.emailVerified && hasPasskey,
     hasPasskey,
-    isLocal: false,
     passkeyCount,
     session: {
       id: session.session.id,
