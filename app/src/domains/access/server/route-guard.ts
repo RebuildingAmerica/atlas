@@ -26,6 +26,14 @@ import { getAtlasSession } from "../session.functions";
  */
 
 /**
+ * Returns the current session for public routes that do not require
+ * authentication but may adapt their UI based on the session state.
+ */
+export async function loadPublicSession() {
+  return await getAtlasSession();
+}
+
+/**
  * Redirects unauthenticated operators into the sign-in flow.
  */
 function redirectToSignIn(locationHref: string): never {

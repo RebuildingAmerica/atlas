@@ -1,4 +1,5 @@
 export {
+  loadPublicSession,
   redirectIfLocalSession,
   requireIncompleteAtlasSession,
   requireReadyAtlasSession,

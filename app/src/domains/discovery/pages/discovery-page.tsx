@@ -154,9 +154,7 @@ function DiscoveryRunForm({
         </div>
 
         <div className="border-border max-h-72 overflow-y-auto rounded-xl border bg-white p-3">
-          {isTaxonomyLoading ? (
-            <p className="type-body-medium text-ink-muted">Loading issue areas...</p>
-          ) : issueAreas.length > 0 ? (
+          {isTaxonomyLoading ? null : issueAreas.length > 0 ? (
             <div className="grid gap-2 sm:grid-cols-2">
               {issueAreas.map((issue) => (
                 <label
@@ -181,9 +179,7 @@ function DiscoveryRunForm({
               ))}
             </div>
           ) : (
-            <p className="type-body-medium text-ink-muted">
-              Issue areas are unavailable right now.
-            </p>
+            <p className="type-body-medium text-ink-muted">Could not load issue areas.</p>
           )}
         </div>
       </div>
@@ -207,7 +203,6 @@ function DiscoveryRunForm({
         >
           {isPending ? "Starting..." : "Start run"}
         </Button>
-        <p className="type-body-medium text-ink-muted">Runs are added to the list below.</p>
       </div>
     </form>
   );

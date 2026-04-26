@@ -598,23 +598,16 @@ export function ProfilesFreshList({
 export function ProfilesEmptyState({ scope }: { scope: ProfileBrowseScope }) {
   const title =
     scope === "people"
-      ? "Atlas is still gathering people for this directory."
+      ? "No people listed yet."
       : scope === "organizations"
-        ? "Atlas is still gathering organizations for this directory."
-        : "Atlas is still gathering profiles for this directory.";
+        ? "No organizations listed yet."
+        : "No profiles listed yet.";
 
   return (
     <section className="bg-surface-container rounded-[1.25rem] px-6 py-8 lg:px-8 lg:py-10">
       <div className="space-y-6">
         <div className="space-y-3">
-          <p className="type-label-medium text-ink-muted tracking-[0.22em] uppercase">
-            Catalog warming up
-          </p>
           <h2 className="type-display-small text-ink-strong leading-tight">{title}</h2>
-          <p className="type-body-large text-ink-soft max-w-2xl">
-            The directory will fill in as Atlas finds more source-backed profiles. Until then, the
-            layout stays intact without pretending there is already a catalog to browse.
-          </p>
         </div>
 
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,0.9fr)_minmax(0,0.9fr)]">

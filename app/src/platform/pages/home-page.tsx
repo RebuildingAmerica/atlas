@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { Compass, Search, Users } from "lucide-react";
 import { useState } from "react";
-import { useAtlasSession } from "@/domains/access";
+import type { AtlasSessionPayload } from "@/domains/access/organization-contracts";
 import { PageLayout } from "@/platform/layout/page-layout";
 import { Button } from "@/platform/ui/button";
 
@@ -89,8 +89,11 @@ function HomeHighlights({ isLocal }: { isLocal: boolean }) {
   );
 }
 
-export function HomePage() {
-  const { data: session } = useAtlasSession();
+interface HomePageProps {
+  session?: AtlasSessionPayload | null;
+}
+
+export function HomePage({ session }: HomePageProps) {
   const isLocal = session?.isLocal ?? false;
   const [query, setQuery] = useState("");
 

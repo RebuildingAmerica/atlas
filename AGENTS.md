@@ -77,6 +77,17 @@ The `.githooks/pre-commit` hook runs on staged files only:
 
 When staging files for commit, always `git restore --staged .` first, then `git add` specific files, then commit. This prevents stale staging state.
 
+## Copy and User-Facing Language
+
+**No self-referential copy.** User-facing text must never describe what the software is doing, explain its own behavior, or hedge about its own state. Specifically banned:
+
+- Describing data collection or pipeline state ("Atlas is still gathering...", "warming up", "will fill in as we find more")
+- Referencing internal processes ("seeding the directory", "discovery pass", "catalog warming up")
+- Explaining UI behavior to users ("runs are added to the list below", "the layout stays intact")
+- Hedging empty states with implementation detail ("until then", "as Atlas finds more source-backed profiles")
+
+Empty states should state the plain fact ("No people listed yet.") and nothing else. Loading states should be silent (null/spinner) or a single neutral word. Error states should tell the user what failed in plain language, not what the system was trying to do.
+
 ## Conventions
 
 - **pnpm only.** Never use npm or yarn.

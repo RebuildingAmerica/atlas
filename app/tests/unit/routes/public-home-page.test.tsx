@@ -6,11 +6,6 @@ import { HomePage } from "@/platform/pages/home-page";
 
 const mocks = vi.hoisted(() => ({
   navigate: vi.fn(),
-  useAtlasSession: vi.fn(),
-}));
-
-vi.mock("@/domains/access", () => ({
-  useAtlasSession: mocks.useAtlasSession,
 }));
 
 vi.mock("@tanstack/react-router", () => ({
@@ -33,7 +28,6 @@ vi.mock("@tanstack/react-router", () => ({
 describe("HomePage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.useAtlasSession.mockReturnValue({ data: null });
     mocks.navigate.mockResolvedValue(undefined);
   });
 
