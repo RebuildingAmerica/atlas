@@ -1,7 +1,14 @@
 """Tests for atlas_scout.store.ScoutStore."""
 
-from atlas_shared import DiscoveryRunArtifacts, DiscoveryRunInput, DiscoveryRunManifest, DiscoverySyncInfo
+from datetime import UTC, datetime
+
 import pytest
+from atlas_shared import (
+    DiscoveryRunArtifacts,
+    DiscoveryRunInput,
+    DiscoveryRunManifest,
+    DiscoverySyncInfo,
+)
 
 from atlas_scout.store import ScoutStore
 
@@ -16,9 +23,87 @@ async def store(tmp_db_path):
 
 async def test_initialize_creates_tables(store):
     tables = await store.list_tables()
+    assert "daemon_state" in tables
     assert "runs" in tables
     assert "pages" in tables
     assert "entries" in tables
+
+
+async def test_get_daemon_state_defaults_to_stopped(store):
+    daemon_state = await store.get_daemon_state()
+
+    assert daemon_state["status"] == "stopped"
+    assert daemon_state["started_at"] is None
+    assert daemon_state["last_heartbeat_at"] is None
+    assert daemon_state["config_path"] is None
+    assert daemon_state["profile_name"] is None
+    assert daemon_state["target_count"] == 0
+    assert daemon_state["last_tick_summary"] is None
+
+
+async def test_start_daemon_persists_runtime_metadata(store):
+    started_at = datetime(2025, 1, 2, 3, 4, 5, tzinfo=UTC)
+
+    await store.start_daemon(
+        config_path="/Users/example/.config/atlas-scout/configs/laptop.toml",
+        profile_name="laptop",
+        target_count=3,
+        started_at=started_at,
+    )
+
+    daemon_state = await store.get_daemon_state()
+
+    assert daemon_state["status"] == "running"
+    assert daemon_state["started_at"] == started_at.isoformat()
+    assert daemon_state["last_heartbeat_at"] == started_at.isoformat()
+    assert daemon_state["config_path"] == "/Users/example/.config/atlas-scout/configs/laptop.toml"
+    assert daemon_state["profile_name"] == "laptop"
+    assert daemon_state["target_count"] == 3
+
+
+async def test_record_daemon_heartbeat_and_stop(store):
+    started_at = datetime(2025, 1, 2, 3, 4, 5, tzinfo=UTC)
+    heartbeat_at = datetime(2025, 1, 2, 3, 9, 5, tzinfo=UTC)
+    stopped_at = datetime(2025, 1, 2, 3, 10, 5, tzinfo=UTC)
+
+    await store.start_daemon(
+        config_path="/Users/example/.config/atlas-scout/configs/laptop.toml",
+        profile_name="laptop",
+        target_count=3,
+        started_at=started_at,
+    )
+    await store.record_daemon_heartbeat(heartbeat_at=heartbeat_at)
+    await store.stop_daemon(stopped_at=stopped_at)
+
+    daemon_state = await store.get_daemon_state()
+
+    assert daemon_state["status"] == "stopped"
+    assert daemon_state["started_at"] == started_at.isoformat()
+    assert daemon_state["last_heartbeat_at"] == stopped_at.isoformat()
+
+
+async def test_record_daemon_tick_result(store):
+    tick_started_at = datetime(2025, 1, 2, 3, 4, 5, tzinfo=UTC)
+    tick_completed_at = datetime(2025, 1, 2, 3, 6, 5, tzinfo=UTC)
+
+    await store.record_daemon_tick_result(
+        status="completed",
+        run_count=2,
+        summary="2 scheduled runs completed",
+        started_at=tick_started_at,
+        completed_at=tick_completed_at,
+    )
+
+    daemon_state = await store.get_daemon_state()
+
+    assert daemon_state["last_tick_summary"] == {
+        "status": "completed",
+        "run_count": 2,
+        "summary": "2 scheduled runs completed",
+        "started_at": tick_started_at.isoformat(),
+        "completed_at": tick_completed_at.isoformat(),
+        "error": None,
+    }
 
 
 async def test_create_and_get_run(store):

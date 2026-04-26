@@ -1,4 +1,4 @@
-"""Local SQLite store for Atlas Scout: runs, page cache, and entries."""
+"""Local SQLite store for Atlas Scout runs, cache, entries, and daemon state."""
 
 from __future__ import annotations
 
@@ -102,6 +102,20 @@ CREATE TABLE IF NOT EXISTS work_claims (
 )
 """
 
+_CREATE_DAEMON_STATE = """
+CREATE TABLE IF NOT EXISTS daemon_state (
+    key TEXT PRIMARY KEY CHECK(key = 'scout'),
+    status TEXT NOT NULL DEFAULT 'stopped' CHECK(status IN ('running', 'stopped')),
+    started_at TEXT,
+    last_heartbeat_at TEXT,
+    config_path TEXT,
+    profile_name TEXT,
+    target_count INTEGER NOT NULL DEFAULT 0,
+    last_tick_summary TEXT,
+    updated_at TEXT NOT NULL
+)
+"""
+
 _CREATE_PAGE_TASKS_RUN_URL_INDEX = """
 CREATE INDEX IF NOT EXISTS idx_page_tasks_run_url
 ON page_tasks(run_id, url)
@@ -112,6 +126,8 @@ CREATE INDEX IF NOT EXISTS idx_page_tasks_run_status
 ON page_tasks(run_id, status)
 """
 
+_DAEMON_STATE_KEY = "scout"
+
 
 def _now() -> str:
     """Return the current UTC time as an ISO 8601 string."""
@@ -121,6 +137,13 @@ def _now() -> str:
 def _new_id() -> str:
     """Generate a short random hex ID (12 characters)."""
     return uuid.uuid4().hex[:12]
+
+
+def _serialize_timestamp(value: datetime | None) -> str | None:
+    """Normalize an optional timestamp to UTC ISO 8601."""
+    if value is None:
+        return None
+    return value.astimezone(UTC).isoformat()
 
 
 class ScoutStore:
@@ -145,8 +168,17 @@ class ScoutStore:
         await self._conn.execute(_CREATE_EXTRACTIONS)
         await self._conn.execute(_CREATE_RUN_ARTIFACTS)
         await self._conn.execute(_CREATE_WORK_CLAIMS)
+        await self._conn.execute(_CREATE_DAEMON_STATE)
         await self._conn.execute(_CREATE_PAGE_TASKS_RUN_URL_INDEX)
         await self._conn.execute(_CREATE_PAGE_TASKS_RUN_STATUS_INDEX)
+        await self._conn.execute(
+            """
+            INSERT INTO daemon_state (key, status, target_count, updated_at)
+            VALUES (?, 'stopped', 0, ?)
+            ON CONFLICT(key) DO NOTHING
+            """,
+            (_DAEMON_STATE_KEY, _now()),
+        )
         await self._conn.commit()
 
     async def close(self) -> None:
@@ -173,6 +205,118 @@ class ScoutStore:
         assert self._conn is not None
         await self._conn.execute(sql, params)
         await self._conn.commit()
+
+    # ------------------------------------------------------------------
+    # Daemon state
+    # ------------------------------------------------------------------
+
+    async def get_daemon_state(self) -> dict[str, Any]:
+        """Return the persisted daemon lifecycle state."""
+        assert self._conn is not None
+        async with self._conn.execute(
+            "SELECT * FROM daemon_state WHERE key = ?",
+            (_DAEMON_STATE_KEY,),
+        ) as cursor:
+            row = await cursor.fetchone()
+        if row is None:
+            raise KeyError("Daemon state not initialized")
+        daemon_state = dict(row)
+        raw_last_tick_summary = daemon_state["last_tick_summary"]
+        if raw_last_tick_summary is not None:
+            daemon_state["last_tick_summary"] = json.loads(raw_last_tick_summary)
+        return daemon_state
+
+    async def start_daemon(
+        self,
+        *,
+        config_path: str,
+        profile_name: str | None,
+        target_count: int,
+        started_at: datetime | None = None,
+    ) -> None:
+        """Mark the daemon as running and persist its active configuration metadata."""
+        started_at_iso = _serialize_timestamp(started_at) or _now()
+        await self._execute(
+            """
+            UPDATE daemon_state
+            SET status = 'running',
+                started_at = ?,
+                last_heartbeat_at = ?,
+                config_path = ?,
+                profile_name = ?,
+                target_count = ?,
+                updated_at = ?
+            WHERE key = ?
+            """,
+            (
+                started_at_iso,
+                started_at_iso,
+                config_path,
+                profile_name,
+                target_count,
+                started_at_iso,
+                _DAEMON_STATE_KEY,
+            ),
+        )
+
+    async def record_daemon_heartbeat(self, *, heartbeat_at: datetime | None = None) -> None:
+        """Update the daemon heartbeat timestamp."""
+        heartbeat_at_iso = _serialize_timestamp(heartbeat_at) or _now()
+        await self._execute(
+            """
+            UPDATE daemon_state
+            SET last_heartbeat_at = ?,
+                updated_at = ?
+            WHERE key = ?
+            """,
+            (heartbeat_at_iso, heartbeat_at_iso, _DAEMON_STATE_KEY),
+        )
+
+    async def stop_daemon(self, *, stopped_at: datetime | None = None) -> None:
+        """Mark the daemon as stopped while preserving the last active configuration."""
+        stopped_at_iso = _serialize_timestamp(stopped_at) or _now()
+        await self._execute(
+            """
+            UPDATE daemon_state
+            SET status = 'stopped',
+                last_heartbeat_at = ?,
+                updated_at = ?
+            WHERE key = ?
+            """,
+            (stopped_at_iso, stopped_at_iso, _DAEMON_STATE_KEY),
+        )
+
+    async def record_daemon_tick_result(
+        self,
+        *,
+        status: str,
+        run_count: int,
+        summary: str,
+        started_at: datetime | None = None,
+        completed_at: datetime | None = None,
+        error: str | None = None,
+    ) -> None:
+        """Persist a structured summary for the most recent scheduler tick."""
+        completed_at_iso = _serialize_timestamp(completed_at) or _now()
+        tick_summary = json.dumps(
+            {
+                "status": status,
+                "run_count": run_count,
+                "summary": summary,
+                "started_at": _serialize_timestamp(started_at),
+                "completed_at": completed_at_iso,
+                "error": error,
+            }
+        )
+        await self._execute(
+            """
+            UPDATE daemon_state
+            SET last_tick_summary = ?,
+                updated_at = ?
+            WHERE key = ?
+            """,
+            (tick_summary, completed_at_iso, _DAEMON_STATE_KEY),
+        )
 
     # ------------------------------------------------------------------
     # Runs
