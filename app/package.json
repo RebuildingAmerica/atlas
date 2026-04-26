@@ -25,7 +25,8 @@
     "lint:fix": "eslint src tests --fix",
     "format": "prettier --write \"src/**/*.{ts,tsx,css}\" \"tests/**/*.{ts,tsx}\"",
     "format:check": "prettier --check \"src/**/*.{ts,tsx,css}\" \"tests/**/*.{ts,tsx}\"",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "screenshots": "node scripts/screenshots.mjs"
   },
   "keywords": [],
   "author": "",
