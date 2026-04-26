@@ -1,9 +1,21 @@
 """Discovery run schemas for API requests and responses."""
 
+from __future__ import annotations
+
+from typing import Literal
+
 from atlas_shared import DiscoveryRunInput
 from pydantic import BaseModel, ConfigDict, Field
 
-__all__ = ["DiscoveryRunResponse", "DiscoveryRunStartRequest"]
+__all__ = [
+    "DiscoveryRunResponse",
+    "DiscoveryRunStartRequest",
+    "DiscoveryScheduleCollectionResponse",
+    "DiscoveryScheduleCreateRequest",
+    "DiscoveryScheduleResponse",
+    "DiscoveryScheduleUpdateRequest",
+    "ScheduledRunResponse",
+]
 
 
 class DiscoveryRunStartRequest(DiscoveryRunInput):
@@ -64,3 +76,89 @@ class DiscoveryRunResponse(BaseModel):
             }
         }
     )
+
+
+class DiscoveryScheduleCreateRequest(BaseModel):
+    """Request to create a discovery schedule target."""
+
+    location_query: str = Field(..., description="Location query (e.g. 'Austin, TX')")
+    state: str = Field(..., min_length=2, max_length=2, description="2-letter state code")
+    issue_areas: list[str] = Field(..., min_length=1, description="Issue area slugs to discover")
+    search_depth: Literal["standard", "deep"] = Field(
+        "standard", description="Search depth for query generation"
+    )
+
+
+class DiscoveryScheduleUpdateRequest(BaseModel):
+    """Partial update for a discovery schedule target."""
+
+    location_query: str | None = None
+    state: str | None = Field(None, min_length=2, max_length=2)
+    issue_areas: list[str] | None = None
+    search_depth: Literal["standard", "deep"] | None = None
+    enabled: bool | None = None
+
+
+class DiscoveryScheduleResponse(BaseModel):
+    """A discovery schedule target."""
+
+    id: str
+    location_query: str
+    state: str
+    issue_areas: list[str]
+    search_depth: str
+    enabled: bool
+    last_run_id: str | None = None
+    last_run_at: str | None = None
+    created_at: str
+    updated_at: str
+
+
+class DiscoveryScheduleCollectionResponse(BaseModel):
+    """Collection of discovery schedule targets."""
+
+    items: list[DiscoveryScheduleResponse]
+    total: int
+
+
+class DiscoveryJobResponse(BaseModel):
+    """A discovery pipeline job."""
+
+    id: str
+    run_id: str
+    status: str
+    progress: dict[str, object] | None = None
+    error_message: str | None = None
+    retry_count: int = 0
+    max_retries: int = 2
+    created_at: str
+    started_at: str | None = None
+    completed_at: str | None = None
+
+
+class DiscoveryPipelineSummaryResponse(BaseModel):
+    """Aggregate pipeline health summary."""
+
+    queued_jobs: int = 0
+    running_jobs: int = 0
+    failed_jobs: int = 0
+    completed_runs_total: int = 0
+    total_entries_confirmed: int = 0
+    last_completed_run_at: str | None = None
+    enabled_schedules: int = 0
+
+
+class ScheduledRunResult(BaseModel):
+    """Result of one scheduled pipeline execution."""
+
+    schedule_id: str
+    run_id: str
+    status: str
+    entries_confirmed: int = 0
+
+
+class ScheduledRunResponse(BaseModel):
+    """Response from the scheduled trigger endpoint."""
+
+    runs_started: int
+    results: list[ScheduledRunResult]

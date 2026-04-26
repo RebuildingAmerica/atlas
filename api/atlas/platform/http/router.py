@@ -26,6 +26,9 @@ def create_router() -> APIRouter:
     APIRouter
         The main router with all endpoints.
     """
+    # Deferred import to avoid circular dependency through atlas.platform.http.__init__
+    from atlas.domains.discovery.api_schedule import router as schedule_router
+
     router = APIRouter()
 
     # Include sub-routers
@@ -34,6 +37,7 @@ def create_router() -> APIRouter:
     router.include_router(verification_admin_router, prefix="")
     router.include_router(entries_router, prefix="/api/entities")
     router.include_router(discovery_router, prefix="/api/discovery-runs")
+    router.include_router(schedule_router, prefix="/api/discovery-schedules")
     router.include_router(flags_router, prefix="/api")
     router.include_router(taxonomy_router, prefix="/api")
     router.include_router(public_router, prefix="/api")

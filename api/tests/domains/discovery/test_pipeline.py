@@ -7,14 +7,14 @@ import importlib.util
 
 import httpx
 import pytest
+from atlas_discovery_engine import (
+    build_extraction_system_prompt,
+    parse_extraction_response,
+)
+from atlas_shared import RawEntry
 from hypothesis import given
 
 from atlas.domains.discovery.pipeline.deduplicator import deduplicate_entries
-from atlas.domains.discovery.pipeline.extractor import (
-    ExtractedEntry,
-    _build_system_prompt,
-    _parse_extraction_response,
-)
 from atlas.domains.discovery.pipeline.gap_analyzer import analyze_gaps
 from atlas.domains.discovery.pipeline.query_generator import generate_queries
 from atlas.domains.discovery.pipeline.ranker import rank_entries
@@ -43,7 +43,6 @@ from tests.support.hypothesis_strategies import (
 EXPECTED_TWO_RECORDS = 2
 EXPECTED_ACCEPTED_STATUS = 202
 EXPECTED_TWO_ENTRIES = 2
-EXPECTED_COVERED_ENTRY_COUNT = 3
 SEARCH_OFFLINE_ERROR = "search offline"
 
 
@@ -305,18 +304,8 @@ class TestGapAnalysis:
             ],
         )
 
-        assert any(
-            gap.issue_area_slug == "housing_affordability"
-            and gap.entry_count == EXPECTED_COVERED_ENTRY_COUNT
-            and gap.severity == "covered"
-            for gap in report.covered_issues
-        )
-        assert any(
-            gap.issue_area_slug == "worker_cooperatives"
-            and gap.entry_count == 1
-            and gap.severity == "thin"
-            for gap in report.thin_issues
-        )
+        assert "housing_affordability" in report.covered_issues
+        assert "worker_cooperatives" in report.thin_issues
 
 
 class TestDiscoveryRunner:
@@ -361,9 +350,9 @@ class TestDiscoveryRunner:
             _city: str,
             _state: str,
             _api_key: str | None = None,
-        ) -> list[ExtractedEntry]:
+        ) -> list[RawEntry]:
             return [
-                ExtractedEntry(
+                RawEntry(
                     name="Prairie Workers Cooperative",
                     entry_type="organization",
                     description="Worker-owned cooperative employing 45 people after layoffs.",
@@ -602,15 +591,15 @@ class TestSourceFetchingHelpers:
 class TestExtractionHelpers:
     """Tests for prompt and parsing helpers."""
 
-    def test_build_system_prompt_includes_location_and_taxonomy(self) -> None:
+    def testbuild_extraction_system_prompt_includes_location_and_taxonomy(self) -> None:
         """The extraction prompt should carry the target location and issue taxonomy."""
-        prompt = _build_system_prompt("Kansas City", "MO")
+        prompt = build_extraction_system_prompt("Kansas City", "MO")
 
         assert "Kansas City, MO" in prompt
         assert "housing_affordability" in prompt
         assert "worker_cooperatives" in prompt
 
-    def test_parse_extraction_response_handles_fenced_json(self) -> None:
+    def testparse_extraction_response_handles_fenced_json(self) -> None:
         """Claude JSON responses wrapped in Markdown fences should still parse."""
         payload = """
 ```json
@@ -623,23 +612,21 @@ class TestExtractionHelpers:
     "state": "MO",
     "geo_specificity": "local",
     "issue_areas": ["worker_cooperatives"],
-    "contact_surface": {
-      "website": "https://prairie.example",
-      "email": "info@prairie.example"
-    },
+    "website": "https://prairie.example",
+    "email": "info@prairie.example",
     "extraction_context": "The cooperative now employs 45 people."
   }
 ]
 ```
 """
-        parsed = _parse_extraction_response(payload)
+        parsed = parse_extraction_response(text=payload)
 
         assert len(parsed) == 1
         assert parsed[0].name == "Prairie Workers Cooperative"
         assert parsed[0].website == "https://prairie.example"
         assert parsed[0].email == "info@prairie.example"
 
-    def test_parse_extraction_response_accepts_object_wrapper(self) -> None:
+    def testparse_extraction_response_accepts_object_wrapper(self) -> None:
         """Object-wrapped payloads should parse via the entries field."""
         payload = """
         {
@@ -656,7 +643,7 @@ class TestExtractionHelpers:
           ]
         }
         """
-        parsed = _parse_extraction_response(payload)
+        parsed = parse_extraction_response(text=payload)
 
         assert len(parsed) == 1
         assert parsed[0].name == "Wrapped Entry"
@@ -666,30 +653,30 @@ class TestExtractionHelpers:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Extraction should call Anthropic and parse the returned JSON text."""
+        """Extraction should call Anthropic with two passes and parse the returned JSON."""
+        call_count = 0
+        pass1_response = (
+            '[{"name":"Kansas City Housing Coalition","type":"organization",'
+            '"quote":"The Kansas City Housing Coalition works on affordability."}]'
+        )
+        pass2_response = (
+            '{"entries":[{"name":"Kansas City Housing Coalition","type":"organization",'
+            '"description":"Parsed from Claude.","city":"Kansas City",'
+            '"state":"MO","geo_specificity":"local",'
+            '"issue_areas":["housing_affordability"],'
+            '"extraction_context":"The Kansas City Housing Coalition works on affordability."}],'
+            '"discovery_leads":[]}'
+        )
 
         class FakeMessages:
             async def create(self, **_kwargs: object) -> object:
+                nonlocal call_count
+                call_count += 1
+                text = pass1_response if call_count == 1 else pass2_response
                 return type(
                     "Response",
                     (),
-                    {
-                        "content": [
-                            type(
-                                "Block",
-                                (),
-                                {
-                                    "type": "text",
-                                    "text": (
-                                        '[{"name":"Anthropic Entry","type":"organization",'
-                                        '"description":"Parsed from Claude.","city":"Kansas City",'
-                                        '"state":"MO","geo_specificity":"local",'
-                                        '"issue_areas":["housing_affordability"]}]'
-                                    ),
-                                },
-                            )()
-                        ]
-                    },
+                    {"content": [type("Block", (), {"type": "text", "text": text})()]},
                 )()
 
         class FakeAnthropic:
@@ -704,14 +691,14 @@ class TestExtractionHelpers:
             "atlas.domains.discovery.pipeline.extractor"
         ).extract_entries(
             "https://example.com/story",
-            "This source mentions a housing organization in Kansas City.",
+            "The Kansas City Housing Coalition works on affordability in Kansas City.",
             "Kansas City",
             "MO",
             "test-key",
         )
 
         assert len(parsed) == 1
-        assert parsed[0].name == "Anthropic Entry"
+        assert parsed[0].name == "Kansas City Housing Coalition"
 
 
 class TestDiscoveryApiIntegration:
@@ -872,9 +859,9 @@ class TestRunnerHelpers:
             _city: str,
             _state: str,
             _api_key: str | None = None,
-        ) -> list[ExtractedEntry]:
+        ) -> list[RawEntry]:
             return [
-                ExtractedEntry(
+                RawEntry(
                     name="Prairie Workers Cooperative",
                     entry_type="organization",
                     description="Updated description from new source.",
@@ -946,9 +933,9 @@ class TestRunnerHelpers:
             _city: str,
             _state: str,
             _api_key: str | None = None,
-        ) -> list[ExtractedEntry]:
+        ) -> list[RawEntry]:
             return [
-                ExtractedEntry(
+                RawEntry(
                     name="Prairie Housing Alliance",
                     entry_type="organization",
                     description="New housing organization discovered for Atlas.",

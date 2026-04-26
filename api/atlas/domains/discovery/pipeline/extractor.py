@@ -3,183 +3,160 @@ Step 3: Extraction.
 
 Uses Claude API to extract structured entries from web source content.
 
-This is a stub. In production, this would make API calls to Claude with
-the extraction prompt described in the system design.
+Delegates prompt building, response parsing, normalization, and validation
+to the shared atlas_discovery_engine extraction primitives.
 """
 
-import json
 import logging
-from dataclasses import dataclass
 
 from anthropic import AsyncAnthropic
-
-from atlas.domains.catalog.taxonomy import ISSUE_AREAS_BY_DOMAIN
+from atlas_discovery_engine import (
+    build_extraction_system_prompt,
+    build_identify_system_prompt,
+    parse_extraction_response,
+    parse_identify_response,
+    validate_entries,
+)
+from atlas_shared import PageContent, RawEntry
 
 logger = logging.getLogger(__name__)
 
-__all__ = ["ExtractedEntry", "extract_entries"]
+__all__ = ["extract_entries"]
 
-
-@dataclass
-class ExtractedEntry:
-    """A structured entry extracted from a source."""
-
-    name: str
-    """Entry name."""
-
-    entry_type: str
-    """Type (person, organization, initiative, campaign, event)."""
-
-    description: str
-    """1-3 sentence description."""
-
-    city: str | None
-    """City."""
-
-    state: str | None
-    """2-letter state code."""
-
-    geo_specificity: str
-    """Geographic scope (local, regional, statewide, national)."""
-
-    issue_areas: list[str]
-    """List of issue area slugs."""
-
-    region: str | None = None
-    """Regional name (e.g., 'Kansas City metro')."""
-
-    website: str | None = None
-    """Website URL."""
-
-    email: str | None = None
-    """Email address."""
-
-    social_media: dict[str, str] | None = None
-    """Social media handles."""
-
-    affiliated_org: str | None = None
-    """Name of affiliated organization (if a person)."""
-
-    extraction_context: str | None = None
-    """The passage(s) supporting this extraction."""
+_MAX_ATTEMPTS = 3
+_EXTRACTION_MODEL = "claude-sonnet-4-20250514"
 
 
 async def extract_entries(
-    _url: str,
-    _content: str,
-    _city: str,
-    _state: str,
-    _api_key: str | None = None,
-) -> list[ExtractedEntry]:
+    url: str,
+    content: str,
+    city: str,
+    state: str,
+    api_key: str | None = None,
+) -> list[RawEntry]:
     """
-    Extract structured entries from source content using Claude.
+    Extract structured entries from source content using a two-pass strategy.
+
+    Pass 1 identifies named entities in the text.
+    Pass 2 extracts full structured details for each identified entity.
+    Results are validated against the source text to drop hallucinations.
 
     Parameters
     ----------
-    _url : str
+    url : str
         Source URL.
-    _content : str
+    content : str
         Extracted text content from the source.
-    _city : str
+    city : str
         Target city.
-    _state : str
+    state : str
         Target state (2-letter code).
-    _api_key : str | None, optional
-        Anthropic API key. Default is None.
+    api_key : str | None, optional
+        Anthropic API key.
 
     Returns
     -------
-    list[ExtractedEntry]
-        Extracted entries.
-
-    Notes
-    -----
-    This is a stub. In production, this would:
-    - Call Claude API with extraction system prompt
-    - Include full issue taxonomy
-    - Return structured JSON with extracted entries
-    - Handle parsing and validation
-    - Implement retries and error handling
+    list[RawEntry]
+        Validated extracted entries.
     """
-    if not _api_key or not _content.strip():
+    if not api_key or not content.strip():
         logger.warning("Anthropic API key missing or content empty; extraction skipped")
         return []
 
-    client = AsyncAnthropic(api_key=_api_key)
-    response = await client.messages.create(
-        model="claude-sonnet-4-20250514",
-        max_tokens=4000,
-        system=_build_system_prompt(_city, _state),
-        messages=[
-            {
-                "role": "user",
-                "content": (
-                    f"Source URL: {_url}\n"
-                    "Extract Atlas entries from the following source text and return JSON only.\n\n"
-                    f"{_content}"
-                ),
-            }
-        ],
+    client = AsyncAnthropic(api_key=api_key)
+    page = PageContent(url=url, text=content)
+
+    # --- Pass 1: Identify named entities ---
+    identified = await _pass_identify(client, page)
+    if not identified:
+        return []
+
+    # --- Pass 2: Enrich with structured details ---
+    system_prompt = build_extraction_system_prompt(city, state)
+    entries = await _pass_enrich(client, identified, page, system_prompt)
+
+    # --- Validate against source text ---
+    entries = validate_entries(entries, page)
+
+    for entry in entries:
+        entry.source_url = url
+
+    return entries
+
+
+async def _pass_identify(
+    client: AsyncAnthropic,
+    page: PageContent,
+) -> list[dict[str, str]]:
+    """Pass 1: Identify all named civic entities in the text."""
+    system_prompt = build_identify_system_prompt()
+
+    for attempt in range(1, _MAX_ATTEMPTS + 1):
+        try:
+            response = await client.messages.create(
+                model=_EXTRACTION_MODEL,
+                max_tokens=4000,
+                system=system_prompt,
+                messages=[{"role": "user", "content": page.text}],
+            )
+            text = _extract_text(response)
+            return parse_identify_response(text)
+        except Exception:
+            if attempt >= _MAX_ATTEMPTS:
+                logger.warning(
+                    "Pass 1 (identify) failed for %s after %d attempts",
+                    page.url,
+                    _MAX_ATTEMPTS,
+                )
+                return []
+
+    return []
+
+
+async def _pass_enrich(
+    client: AsyncAnthropic,
+    identified: list[dict[str, str]],
+    page: PageContent,
+    system_prompt: str,
+) -> list[RawEntry]:
+    """Pass 2: Enrich identified entities with structured details."""
+    entity_summary = "\n".join(
+        f'- {e["name"]} ({e.get("type", "unknown")}): "{e.get("quote", "")}"' for e in identified
     )
-    text_blocks = [
-        block.text  # type: ignore[union-attr]
-        for block in response.content
-        if getattr(block, "type", None) == "text"
-    ]
-    return _parse_extraction_response("\n".join(text_blocks))
 
-
-def _build_system_prompt(city: str, state: str) -> str:
-    """Build the extraction prompt with taxonomy context."""
-    taxonomy_lines = [
-        f"- {issue.slug}: {issue.name}"
-        for issues in ISSUE_AREAS_BY_DOMAIN.values()
-        for issue in issues
-    ]
-    taxonomy_text = "\n".join(taxonomy_lines)
-    return (
-        "You are extracting structured data from a source document for Atlas.\n\n"
-        f"Target location: {city}, {state}\n\n"
-        "Issue taxonomy:\n"
-        f"{taxonomy_text}\n\n"
-        "Return JSON as an array of entries. Each entry must contain: "
-        "name, type, description, city, state, geo_specificity, issue_areas, "
-        "affiliated_org, website, email, social_media, extraction_context. "
-        "Only include people, organizations, initiatives, campaigns, or events "
-        "connected to the target location and one or more issue areas."
+    user_content = (
+        f"Source URL: {page.url}\n\n"
+        "These entities were identified in the text below. "
+        "For each one, extract the full structured entry.\n\n"
+        f"IDENTIFIED ENTITIES:\n{entity_summary}\n\n"
+        f"SOURCE TEXT:\n{page.text}"
     )
 
+    for attempt in range(1, _MAX_ATTEMPTS + 1):
+        try:
+            response = await client.messages.create(
+                model=_EXTRACTION_MODEL,
+                max_tokens=8000,
+                system=system_prompt,
+                messages=[{"role": "user", "content": user_content}],
+            )
+            text = _extract_text(response)
+            return parse_extraction_response(text=text)
+        except Exception:
+            if attempt >= _MAX_ATTEMPTS:
+                logger.warning(
+                    "Pass 2 (enrich) failed for %s after %d attempts",
+                    page.url,
+                    _MAX_ATTEMPTS,
+                )
+                return []
 
-def _parse_extraction_response(response_text: str) -> list[ExtractedEntry]:
-    """Parse Claude JSON output into typed entries."""
-    payload = json.loads(_strip_code_fence(response_text))
-    if isinstance(payload, dict):
-        payload = payload.get("entries", [])
-    return [
-        ExtractedEntry(
-            name=item["name"],
-            entry_type=item["type"],
-            description=item["description"],
-            city=item.get("city"),
-            state=item.get("state"),
-            geo_specificity=item["geo_specificity"],
-            issue_areas=item.get("issue_areas", []),
-            region=item.get("region"),
-            website=item.get("website") or item.get("contact_surface", {}).get("website"),
-            email=item.get("email") or item.get("contact_surface", {}).get("email"),
-            social_media=item.get("social_media")
-            or item.get("contact_surface", {}).get("social_media"),
-            affiliated_org=item.get("affiliated_org"),
-            extraction_context=item.get("extraction_context"),
-        )
-        for item in payload
-    ]
+    return []
 
 
-def _strip_code_fence(value: str) -> str:
-    """Remove optional Markdown fences around a JSON response."""
-    stripped = value.strip()
-    if stripped.startswith("```"):
-        stripped = stripped.split("\n", 1)[1]
-        stripped = stripped.rsplit("\n```", 1)[0]
-    return stripped
+def _extract_text(response: object) -> str:
+    """Pull text blocks from an Anthropic Messages response."""
+    blocks = getattr(response, "content", [])
+    return "\n".join(
+        getattr(block, "text", "") for block in blocks if getattr(block, "type", None) == "text"
+    )

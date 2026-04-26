@@ -432,6 +432,41 @@ CREATE INDEX IF NOT EXISTS idx_org_annotations_org ON org_annotations(org_id);
 CREATE INDEX IF NOT EXISTS idx_org_annotations_entry ON org_annotations(entry_id);
 CREATE INDEX IF NOT EXISTS idx_entries_slug ON entries(slug);
 
+-- Discovery jobs (durable pipeline execution tracking)
+CREATE TABLE IF NOT EXISTS discovery_jobs (
+    id TEXT PRIMARY KEY,
+    run_id TEXT NOT NULL REFERENCES discovery_runs(id) ON DELETE CASCADE,
+    status TEXT NOT NULL DEFAULT 'queued' CHECK(status IN ('queued', 'claimed', 'running', 'completed', 'failed', 'cancelled')),
+    progress TEXT,
+    error_message TEXT,
+    retry_count INTEGER NOT NULL DEFAULT 0,
+    max_retries INTEGER NOT NULL DEFAULT 2,
+    claimed_by TEXT,
+    claimed_until DATETIME,
+    created_at DATETIME NOT NULL,
+    started_at DATETIME,
+    completed_at DATETIME
+);
+CREATE INDEX IF NOT EXISTS idx_discovery_jobs_status ON discovery_jobs(status);
+CREATE INDEX IF NOT EXISTS idx_discovery_jobs_run_id ON discovery_jobs(run_id);
+CREATE INDEX IF NOT EXISTS idx_discovery_jobs_claimed_until ON discovery_jobs(claimed_until);
+
+-- Discovery schedules (autonomous pipeline targets)
+CREATE TABLE IF NOT EXISTS discovery_schedules (
+    id TEXT PRIMARY KEY,
+    location_query TEXT NOT NULL,
+    state TEXT NOT NULL,
+    issue_areas TEXT NOT NULL,
+    search_depth TEXT NOT NULL DEFAULT 'standard' CHECK(search_depth IN ('standard', 'deep')),
+    enabled INTEGER NOT NULL DEFAULT 1,
+    last_run_id TEXT REFERENCES discovery_runs(id),
+    last_run_at DATETIME,
+    created_at DATETIME NOT NULL,
+    updated_at DATETIME NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_discovery_schedules_enabled ON discovery_schedules(enabled);
+CREATE INDEX IF NOT EXISTS idx_discovery_schedules_state ON discovery_schedules(state);
+
 -- Slug aliases (for vanity slug redirects)
 CREATE TABLE IF NOT EXISTS slug_aliases (
     old_slug TEXT PRIMARY KEY,

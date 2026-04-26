@@ -84,6 +84,28 @@ class Settings(BaseSettings):
     discovery_inline: bool = False
     """Run discovery synchronously in-process. Useful for tests."""
 
+    # Pipeline tuning
+    discovery_search_depth: str = Field(
+        default="standard", validation_alias="DISCOVERY_SEARCH_DEPTH"
+    )
+    """Search depth for query generation ('standard' or 'deep')."""
+
+    discovery_min_entry_score: float = Field(
+        default=0.3, validation_alias="DISCOVERY_MIN_ENTRY_SCORE"
+    )
+    """Minimum entry score for ranking (0.0-1.0)."""
+
+    discovery_max_extraction_concurrency: int = Field(
+        default=4, validation_alias="DISCOVERY_MAX_EXTRACTION_CONCURRENCY"
+    )
+    """Maximum concurrent extraction calls."""
+
+    discovery_follow_links: bool = Field(default=False, validation_alias="DISCOVERY_FOLLOW_LINKS")
+    """Follow links from fetched pages to discover additional sources."""
+
+    discovery_max_link_depth: int = Field(default=1, validation_alias="DISCOVERY_MAX_LINK_DEPTH")
+    """Maximum link-following depth."""
+
     # Feature flags
     enable_api_docs: bool | None = None
     """Legacy toggle for OpenAPI spec + docs UI publishing."""

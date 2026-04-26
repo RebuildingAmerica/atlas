@@ -14,12 +14,16 @@ from atlas_shared import (
     DiscoveryRunSyncResponse,
     compute_artifact_hash,
 )
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 
 from atlas.domains.access import AuthenticatedActor, require_actor_permission
 from atlas.domains.access.capabilities import enforce_limit, require_capability
 from atlas.domains.catalog.taxonomy import ALL_ISSUE_SLUGS
-from atlas.domains.discovery.models import DiscoveryRunSyncCRUD
+from atlas.domains.discovery.models import (
+    DiscoveryJobCRUD,
+    DiscoveryRunSyncCRUD,
+    DiscoveryScheduleCRUD,
+)
 from atlas.domains.discovery.pipeline.runner import (
     DiscoveryPipelineCredentials,
     DiscoveryPipelineJob,
@@ -27,8 +31,15 @@ from atlas.domains.discovery.pipeline.runner import (
     persist_discovery_results,
     run_discovery_pipeline_for_run,
 )
+from atlas.domains.discovery.schemas import (
+    DiscoveryJobResponse,
+    DiscoveryPipelineSummaryResponse,
+    ScheduledRunResponse,
+    ScheduledRunResult,
+)
 from atlas.models import DiscoveryRunCRUD, get_db_connection
 from atlas.platform.config import Settings, get_settings
+from atlas.platform.database import db as db_manager
 from atlas.platform.http.cache import apply_no_store_headers
 from atlas.schemas import (
     DiscoveryRunCollectionResponse,
@@ -81,9 +92,8 @@ async def get_db(
     response_description="The accepted discovery run.",
     tags=["discovery-runs"],
 )
-async def start_discovery_run(  # noqa: PLR0913
+async def start_discovery_run(
     req: DiscoveryRunStartRequest,
-    background_tasks: BackgroundTasks,
     actor: AuthenticatedActor = Depends(require_actor_permission("discovery", "write")),
     settings: Settings = Depends(get_settings),
     db: aiosqlite.Connection = Depends(get_db),
@@ -94,7 +104,8 @@ async def start_discovery_run(  # noqa: PLR0913
     """
     Start a discovery run for a location and issue areas.
 
-    Returns immediately with run ID. The pipeline runs asynchronously.
+    Returns immediately with run ID. The pipeline runs asynchronously
+    via the durable job worker, or inline if discovery_inline is set.
     """
     _ = actor
     _validate_issue_areas(req.issue_areas)
@@ -110,17 +121,17 @@ async def start_discovery_run(  # noqa: PLR0913
     if not run:
         raise HTTPException(status_code=500, detail="Failed to create discovery run")
 
-    pipeline_job = DiscoveryPipelineJob(
-        run_id=run_id,
-        location_query=req.location_query,
-        state=req.state,
-        issue_areas=req.issue_areas,
-    )
-    pipeline_credentials = DiscoveryPipelineCredentials(
-        search_api_key=settings.search_api_key,
-        anthropic_api_key=settings.anthropic_api_key,
-    )
     if settings.discovery_inline:
+        pipeline_job = DiscoveryPipelineJob(
+            run_id=run_id,
+            location_query=req.location_query,
+            state=req.state,
+            issue_areas=req.issue_areas,
+        )
+        pipeline_credentials = DiscoveryPipelineCredentials(
+            search_api_key=settings.search_api_key,
+            anthropic_api_key=settings.anthropic_api_key,
+        )
         await run_discovery_pipeline_for_run(
             database_url=settings.database_url,
             job=pipeline_job,
@@ -130,12 +141,7 @@ async def start_discovery_run(  # noqa: PLR0913
         if not run:
             raise HTTPException(status_code=500, detail="Failed to refresh discovery run")
     else:
-        background_tasks.add_task(
-            run_discovery_pipeline_for_run,
-            database_url=settings.database_url,
-            job=pipeline_job,
-            credentials=pipeline_credentials,
-        )
+        await DiscoveryJobCRUD.create(db, run_id=run_id)
 
     apply_no_store_headers(response)
     return _run_to_response(run)
@@ -290,6 +296,160 @@ async def sync_discovery_run(
         entries_persisted=len(confirmed_entry_ids),
         sources_persisted=sources_persisted,
         duplicate=False,
+    )
+
+
+@router.post(
+    "/scheduled",
+    response_model=ScheduledRunResponse,
+    summary="Execute scheduled discovery targets",
+    description=(
+        "Run the discovery pipeline for all enabled schedule targets. "
+        "Designed for invocation by Cloud Scheduler or other cron triggers. "
+        "Runs synchronously and returns results."
+    ),
+    operation_id="executeScheduledDiscoveryRuns",
+    tags=["discovery-runs"],
+)
+async def execute_scheduled_runs(
+    response: Response,
+    actor: AuthenticatedActor = Depends(require_actor_permission("discovery", "write")),
+    settings: Settings = Depends(get_settings),
+    db: aiosqlite.Connection = Depends(get_db),
+) -> ScheduledRunResponse:
+    """Execute all enabled schedule targets inline."""
+    _ = actor
+    schedules = await DiscoveryScheduleCRUD.list(db, enabled_only=True)
+    if not schedules:
+        apply_no_store_headers(response)
+        return ScheduledRunResponse(runs_started=0, results=[])
+
+    credentials = DiscoveryPipelineCredentials(
+        search_api_key=settings.search_api_key,
+        anthropic_api_key=settings.anthropic_api_key,
+    )
+    results: list[ScheduledRunResult] = []
+    for schedule in schedules:
+        run_id = await DiscoveryRunCRUD.create(
+            db,
+            location_query=schedule.location_query,
+            state=schedule.state,
+            issue_areas=schedule.issue_areas,
+        )
+        job = DiscoveryPipelineJob(
+            run_id=run_id,
+            location_query=schedule.location_query,
+            state=schedule.state,
+            issue_areas=schedule.issue_areas,
+        )
+        try:
+            await run_discovery_pipeline_for_run(
+                database_url=settings.database_url,
+                job=job,
+                credentials=credentials,
+            )
+            run = await DiscoveryRunCRUD.get_by_id(db, run_id)
+            entries_confirmed = run.entries_confirmed if run else 0
+            run_status = run.status if run else "completed"
+            results.append(
+                ScheduledRunResult(
+                    schedule_id=schedule.id,
+                    run_id=run_id,
+                    status=run_status,
+                    entries_confirmed=entries_confirmed,
+                )
+            )
+            await DiscoveryScheduleCRUD.update(
+                db,
+                schedule.id,
+                last_run_id=run_id,
+                last_run_at=db_manager.now_iso(),
+            )
+        except Exception:
+            logger.exception("Scheduled run failed for schedule %s", schedule.id)
+            results.append(
+                ScheduledRunResult(
+                    schedule_id=schedule.id,
+                    run_id=run_id,
+                    status="failed",
+                )
+            )
+
+    apply_no_store_headers(response)
+    return ScheduledRunResponse(runs_started=len(results), results=results)
+
+
+@router.get(
+    "/jobs/{job_id}",
+    response_model=DiscoveryJobResponse,
+    summary="Get a discovery job",
+    description="Return the current status and progress of a discovery pipeline job.",
+    operation_id="getDiscoveryJob",
+    tags=["discovery-runs"],
+)
+async def get_discovery_job(
+    job_id: str,
+    response: Response,
+    actor: AuthenticatedActor = Depends(require_actor_permission("discovery", "read")),
+    db: aiosqlite.Connection = Depends(get_db),
+) -> DiscoveryJobResponse:
+    """Get a job by ID."""
+    _ = actor
+    job = await DiscoveryJobCRUD.get_by_id(db, job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    apply_no_store_headers(response)
+    return DiscoveryJobResponse(
+        id=job.id,
+        run_id=job.run_id,
+        status=job.status,
+        progress=job.progress,
+        error_message=job.error_message,
+        retry_count=job.retry_count,
+        max_retries=job.max_retries,
+        created_at=job.created_at,
+        started_at=job.started_at,
+        completed_at=job.completed_at,
+    )
+
+
+@router.get(
+    "/summary",
+    response_model=DiscoveryPipelineSummaryResponse,
+    summary="Pipeline health summary",
+    description="Aggregate counts of jobs, runs, and entries for pipeline observability.",
+    operation_id="getDiscoveryPipelineSummary",
+    tags=["discovery-runs"],
+)
+async def get_pipeline_summary(
+    response: Response,
+    actor: AuthenticatedActor = Depends(require_actor_permission("discovery", "read")),
+    db: aiosqlite.Connection = Depends(get_db),
+) -> DiscoveryPipelineSummaryResponse:
+    """Return aggregate pipeline health metrics."""
+    _ = actor
+
+    queued = len(await DiscoveryJobCRUD.list_by_status(db, "queued"))
+    running = len(await DiscoveryJobCRUD.list_by_status(db, "running")) + len(
+        await DiscoveryJobCRUD.list_by_status(db, "claimed")
+    )
+    failed = len(await DiscoveryJobCRUD.list_by_status(db, "failed"))
+
+    completed_runs = await DiscoveryRunCRUD.list(db, status="completed", limit=500)
+    total_confirmed = sum(r.entries_confirmed for r in completed_runs)
+    last_completed_at = completed_runs[0].completed_at if completed_runs else None
+
+    enabled_schedules = len(await DiscoveryScheduleCRUD.list(db, enabled_only=True))
+
+    apply_no_store_headers(response)
+    return DiscoveryPipelineSummaryResponse(
+        queued_jobs=queued,
+        running_jobs=running,
+        failed_jobs=failed,
+        completed_runs_total=len(completed_runs),
+        total_entries_confirmed=total_confirmed,
+        last_completed_run_at=last_completed_at,
+        enabled_schedules=enabled_schedules,
     )
 
 

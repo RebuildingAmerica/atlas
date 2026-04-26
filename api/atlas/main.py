@@ -53,8 +53,10 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
     """
     Lifespan context manager for startup and shutdown.
 
-    Initializes the database on startup.
+    Initializes the database on startup and starts the job worker.
     """
+    from atlas.domains.discovery.worker import start_job_worker, stop_job_worker
+
     # Startup
     settings = get_settings()
     try:
@@ -64,9 +66,17 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
         logger.exception("Failed to initialize database")
         raise
 
+    await start_job_worker(
+        settings.database_url,
+        database_backend=settings.database_backend,
+        anthropic_api_key=settings.anthropic_api_key,
+        search_api_key=settings.search_api_key,
+    )
+
     yield
 
     # Shutdown
+    await stop_job_worker()
     logger.info("Application shutting down")
 
 

@@ -18,7 +18,6 @@ from atlas_shared import (
     PageContent,
     RankedEntry,
 )
-from fastapi import BackgroundTasks
 
 from atlas.domains.access.principals import AuthenticatedActor
 from atlas.domains.discovery import api as discovery_api
@@ -151,7 +150,6 @@ async def test_discovery_route_functions_cover_direct_success_and_error_paths(
             state="MO",
             issue_areas=["housing_affordability"],
         ),
-        BackgroundTasks(),
         actor=actor,
         settings=SimpleNamespace(
             database_url="sqlite:///atlas.db",

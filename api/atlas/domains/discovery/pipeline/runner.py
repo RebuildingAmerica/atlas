@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import time
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from typing import TYPE_CHECKING, Any
@@ -21,9 +22,6 @@ from atlas_shared import (
     PageTaskOutcome,
     RunCheckpoint,
     SourceType,
-)
-from atlas_shared import (
-    GapReport as SharedGapReport,
 )
 from atlas_shared import (
     RankedEntry as SharedRankedEntry,
@@ -74,13 +72,36 @@ async def run_discovery_pipeline(
     """Execute the full discovery pipeline for an existing run."""
     active_credentials = credentials or DiscoveryPipelineCredentials()
     started_at = datetime.now(UTC)
+    run_id = job.run_id
     try:
         city = job.location_query.split(",", maxsplit=1)[0].strip()
+
+        t0 = time.monotonic()
         queries = generate_queries(city=city, state=job.state, issue_areas=job.issue_areas)
+        logger.info(
+            "Pipeline step completed",
+            extra={
+                "run_id": run_id,
+                "step": "query_gen",
+                "count": len(queries),
+                "duration_ms": int((time.monotonic() - t0) * 1000),
+            },
+        )
+
+        t0 = time.monotonic()
         fetched_sources = await fetch_sources(queries, active_credentials.search_api_key)
+        logger.info(
+            "Pipeline step completed",
+            extra={
+                "run_id": run_id,
+                "step": "source_fetch",
+                "count": len(fetched_sources),
+                "duration_ms": int((time.monotonic() - t0) * 1000),
+            },
+        )
 
+        t0 = time.monotonic()
         extracted_entries: list[dict[str, Any]] = []
-
         for source in fetched_sources:
             source_entries = await extract_entries(
                 source.url,
@@ -90,28 +111,24 @@ async def run_discovery_pipeline(
                 active_credentials.anthropic_api_key,
             )
             today_iso = _today_iso_date()
-            extracted_entries.extend(
-                {
-                    "name": item.name,
-                    "entry_type": item.entry_type,
-                    "description": item.description,
-                    "city": item.city,
-                    "state": item.state,
-                    "region": item.region,
-                    "geo_specificity": item.geo_specificity,
-                    "issue_areas": sorted(set(item.issue_areas)),
-                    "website": item.website,
-                    "email": item.email,
-                    "social_media": item.social_media,
-                    "affiliated_org": item.affiliated_org,
-                    "source_urls": [source.url],
-                    "source_dates": [source.published_date or today_iso],
-                    "source_contexts": {source.url: item.extraction_context},
-                    "last_seen": source.published_date or today_iso,
-                }
-                for item in source_entries
-            )
+            for item in source_entries:
+                entry_dict = item.model_dump(mode="json")
+                entry_dict["source_urls"] = [source.url]
+                entry_dict["source_dates"] = [source.published_date or today_iso]
+                entry_dict["source_contexts"] = {source.url: item.extraction_context}
+                entry_dict["last_seen"] = source.published_date or today_iso
+                extracted_entries.append(entry_dict)
+        logger.info(
+            "Pipeline step completed",
+            extra={
+                "run_id": run_id,
+                "step": "extraction",
+                "count": len(extracted_entries),
+                "duration_ms": int((time.monotonic() - t0) * 1000),
+            },
+        )
 
+        t0 = time.monotonic()
         existing_entries = [
             {
                 **entry.to_dict(),
@@ -127,7 +144,17 @@ async def run_discovery_pipeline(
             )
         ]
         deduped = deduplicate_entries(extracted_entries, existing_entries)
+        logger.info(
+            "Pipeline step completed",
+            extra={
+                "run_id": run_id,
+                "step": "dedup",
+                "count": len(deduped.entries),
+                "duration_ms": int((time.monotonic() - t0) * 1000),
+            },
+        )
 
+        t0 = time.monotonic()
         source_counts = {
             entry.get("id") or entry["name"]: len(entry.get("source_urls", []))
             for entry in deduped.entries
@@ -135,6 +162,15 @@ async def run_discovery_pipeline(
         ranked = rank_entries(deduped.entries, source_counts=source_counts)
         shared_ranked = [_ranked_entry_to_shared(entry) for entry in ranked]
         shared_sources = [_fetched_source_to_page_content(source) for source in fetched_sources]
+        logger.info(
+            "Pipeline step completed",
+            extra={
+                "run_id": run_id,
+                "step": "ranking",
+                "count": len(shared_ranked),
+                "duration_ms": int((time.monotonic() - t0) * 1000),
+            },
+        )
 
         stats = DiscoveryRunStats(
             queries_generated=len(queries),
@@ -462,14 +498,7 @@ def _build_discovery_run_artifacts(  # noqa: PLR0913
         sources=sources,
         raw_entries=[_raw_entry_to_shared(item) for item in raw_entries],
         ranked_entries=ranked_entries,
-        gap_report=SharedGapReport(
-            location=gap_report.location,
-            total_entries=gap_report.total_entries,
-            covered_issues=[gap.issue_area_slug for gap in gap_report.covered_issues],
-            missing_issues=[gap.issue_area_slug for gap in gap_report.missing_issues],
-            thin_issues=[gap.issue_area_slug for gap in gap_report.thin_issues],
-            uncovered_domains=gap_report.uncovered_domains,
-        ),
+        gap_report=gap_report,
     )
 
 
