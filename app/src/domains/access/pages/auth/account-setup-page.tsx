@@ -8,7 +8,7 @@ import { atlasSessionQueryKey, useAtlasSession } from "@/domains/access/client/u
 import { createWorkspace } from "@/domains/access/organizations.functions";
 import { resolvePasskeyName } from "@/domains/access/passkey-names";
 import { updatePasskey } from "@/domains/access/passkeys.functions";
-import { sendVerificationEmail } from "@/domains/access/session.functions";
+import { getRpLogoutRedirect, sendVerificationEmail } from "@/domains/access/session.functions";
 
 interface AccountSetupPageProps {
   redirectTo?: string;
@@ -46,8 +46,11 @@ export function AccountSetupPage({ redirectTo }: AccountSetupPageProps) {
 
   const signOutMutation = useMutation({
     mutationFn: async () => {
+      // Capture the federated logout URL while the local session is still
+      // valid so the id_token_hint survives the local sign-out.
+      const rpLogout = await getRpLogoutRedirect();
       await getAuthClient().signOut();
-      window.location.assign("/");
+      window.location.assign(rpLogout.url ?? "/");
     },
   });
 

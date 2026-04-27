@@ -8,6 +8,7 @@ import { getAuthClient } from "@/domains/access/client/auth-client";
 import { atlasSessionQueryKey } from "@/domains/access/client/use-atlas-session";
 import { setActiveWorkspace } from "@/domains/access/organizations.functions";
 import { requireReadyAtlasSession } from "@/domains/access/server";
+import { getRpLogoutRedirect } from "@/domains/access/session.functions";
 import type { AtlasSessionPayload } from "@/domains/access/organization-contracts";
 
 import { WorkspaceLayout } from "@/platform/layout/workspace-layout";
@@ -105,8 +106,9 @@ function OperatorIdentity({ session }: OperatorIdentityProps) {
     setErrorMessage(null);
 
     try {
+      const rpLogout = await getRpLogoutRedirect();
       await getAuthClient().signOut();
-      window.location.assign("/");
+      window.location.assign(rpLogout.url ?? "/");
     } catch {
       setErrorMessage("Atlas could not sign you out right now.");
     }

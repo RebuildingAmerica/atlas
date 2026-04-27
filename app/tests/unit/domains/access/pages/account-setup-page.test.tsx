@@ -7,6 +7,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 const mocks = vi.hoisted(() => ({
   addPasskey: vi.fn(),
   createWorkspace: vi.fn(),
+  getRpLogoutRedirect: vi.fn(),
   invalidateQueries: vi.fn(),
   mutateStates: [] as Record<string, unknown>[],
   refetch: vi.fn(),
@@ -79,6 +80,7 @@ vi.mock("@/domains/access/organizations.functions", () => ({
 }));
 
 vi.mock("@/domains/access/session.functions", () => ({
+  getRpLogoutRedirect: mocks.getRpLogoutRedirect,
   sendVerificationEmail: mocks.sendVerificationEmail,
 }));
 
@@ -95,6 +97,8 @@ describe("AccountSetupPage", () => {
     mocks.addPasskey.mockReset();
     mocks.createWorkspace.mockReset();
     mocks.createWorkspace.mockResolvedValue(undefined);
+    mocks.getRpLogoutRedirect.mockReset();
+    mocks.getRpLogoutRedirect.mockResolvedValue({ url: null });
     mocks.invalidateQueries.mockReset();
     mocks.mutateStates.length = 0;
     mocks.refetch.mockReset();

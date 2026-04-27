@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { loadOidcRpLogoutRedirect } from "./server/rp-logout";
 import {
   checkEmailAccountExists,
   loadAtlasSession,
@@ -70,3 +71,15 @@ export const checkAccountExists = createServerFn({ method: "POST" })
     const exists = await checkEmailAccountExists(data.email);
     return { exists };
   });
+
+/**
+ * Returns the OIDC RP-Initiated Logout 1.0 redirect URL for the active
+ * session, or `null` when no linked OIDC account exists or the IdP does not
+ * advertise an `end_session_endpoint`.  Sign-out call sites invoke this
+ * before clearing the local session and navigate to the returned URL after
+ * `signOut()` so the federated session is terminated at the IdP.
+ */
+export const getRpLogoutRedirect = createServerFn({ method: "GET" }).handler(async () => {
+  const url = await loadOidcRpLogoutRedirect();
+  return { url };
+});

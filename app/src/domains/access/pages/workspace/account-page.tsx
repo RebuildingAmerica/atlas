@@ -12,6 +12,7 @@ import { getAuthConfig } from "@/domains/access/config";
 import { atlasSessionQueryKey, useAtlasSession } from "@/domains/access/client/use-atlas-session";
 import { resolvePasskeyName } from "@/domains/access/passkey-names";
 import { deletePasskey, listPasskeys, updatePasskey } from "@/domains/access/passkeys.functions";
+import { getRpLogoutRedirect } from "@/domains/access/session.functions";
 import { WorkspaceBillingSection } from "@/domains/billing/components/workspace-billing-section";
 
 const PASSKEYS_QUERY_KEY = ["auth", "passkeys"] as const;
@@ -185,8 +186,9 @@ export function AccountPage() {
   };
 
   const handleSignOut = async () => {
+    const rpLogout = await getRpLogoutRedirect();
     await getAuthClient().signOut();
-    window.location.assign("/");
+    window.location.assign(rpLogout.url ?? "/");
   };
 
   const toggleScope = (scope: ApiKeyScope) => {

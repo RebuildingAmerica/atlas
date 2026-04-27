@@ -63,6 +63,7 @@ const mocks = vi.hoisted(() => ({
     };
   })(),
   loadAtlasSession: vi.fn(),
+  loadOidcRpLogoutRedirect: vi.fn(),
   requestMagicLinkForEmail: vi.fn(),
   requireAtlasSessionState: vi.fn(),
   requireReadyAtlasSessionState: vi.fn(),
@@ -71,6 +72,10 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@tanstack/react-start", () => ({
   createServerFn: mocks.createServerFn,
+}));
+
+vi.mock("@/domains/access/server/rp-logout", () => ({
+  loadOidcRpLogoutRedirect: mocks.loadOidcRpLogoutRedirect,
 }));
 
 vi.mock("@/domains/access/server/session-state", () => ({
@@ -85,6 +90,7 @@ describe("session.functions", () => {
   beforeEach(() => {
     vi.resetModules();
     mocks.loadAtlasSession.mockReset();
+    mocks.loadOidcRpLogoutRedirect.mockReset();
     mocks.requestMagicLinkForEmail.mockReset();
     mocks.requireAtlasSessionState.mockReset();
     mocks.requireReadyAtlasSessionState.mockReset();
@@ -202,6 +208,30 @@ describe("session.functions", () => {
     expect(response).toMatchObject({
       error: undefined,
       result: { ok: true },
+    });
+  });
+
+  it("returns the RP-Initiated Logout URL when the IdP advertises one", async () => {
+    mocks.loadOidcRpLogoutRedirect.mockResolvedValue("https://idp.example/logout?id_token_hint=t");
+
+    const { getRpLogoutRedirect } = await import("@/domains/access/session.functions");
+    const response = await getRpLogoutRedirect.__executeServer({ method: "GET", data: undefined });
+
+    expect(response).toMatchObject({
+      error: undefined,
+      result: { url: "https://idp.example/logout?id_token_hint=t" },
+    });
+  });
+
+  it("returns null URL when no RP-Initiated Logout target is available", async () => {
+    mocks.loadOidcRpLogoutRedirect.mockResolvedValue(null);
+
+    const { getRpLogoutRedirect } = await import("@/domains/access/session.functions");
+    const response = await getRpLogoutRedirect.__executeServer({ method: "GET", data: undefined });
+
+    expect(response).toMatchObject({
+      error: undefined,
+      result: { url: null },
     });
   });
 });

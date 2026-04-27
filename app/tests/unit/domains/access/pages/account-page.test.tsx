@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   createApiKey: vi.fn(),
   deleteApiKey: vi.fn(),
   deletePasskey: vi.fn(),
+  getRpLogoutRedirect: vi.fn(),
   invalidateQueries: vi.fn(),
   signOut: vi.fn(),
   updatePasskey: vi.fn(),
@@ -122,6 +123,10 @@ vi.mock("@/domains/access/passkeys.functions", () => ({
   updatePasskey: mocks.updatePasskey,
 }));
 
+vi.mock("@/domains/access/session.functions", () => ({
+  getRpLogoutRedirect: mocks.getRpLogoutRedirect,
+}));
+
 vi.mock("@/domains/billing/components/workspace-billing-section", () => ({
   WorkspaceBillingSection: () => <div data-testid="billing-section">Billing</div>,
 }));
@@ -212,6 +217,8 @@ describe("AccountPage", () => {
     mocks.createApiKey.mockReset();
     mocks.deleteApiKey.mockReset();
     mocks.deletePasskey.mockReset();
+    mocks.getRpLogoutRedirect.mockReset();
+    mocks.getRpLogoutRedirect.mockResolvedValue({ url: null });
     mocks.invalidateQueries.mockReset();
     mocks.signOut.mockReset();
     mocks.updatePasskey.mockReset();
