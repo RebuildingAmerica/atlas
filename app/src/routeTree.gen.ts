@@ -23,6 +23,7 @@ import { Route as WorkspaceOrganizationRouteImport } from './routes/_workspace/o
 import { Route as WorkspaceListsRouteImport } from './routes/_workspace/lists'
 import { Route as WorkspaceFeedRouteImport } from './routes/_workspace/feed'
 import { Route as WorkspaceDiscoveryRouteImport } from './routes/_workspace/discovery'
+import { Route as WorkspaceCheckoutCompleteRouteImport } from './routes/_workspace/checkout-complete'
 import { Route as WorkspaceAccountRouteImport } from './routes/_workspace/account'
 import { Route as PublicTermsRouteImport } from './routes/_public/terms'
 import { Route as PublicSecurityRouteImport } from './routes/_public/security'
@@ -120,6 +121,12 @@ const WorkspaceDiscoveryRoute = WorkspaceDiscoveryRouteImport.update({
   path: '/discovery',
   getParentRoute: () => WorkspaceRoute,
 } as any)
+const WorkspaceCheckoutCompleteRoute =
+  WorkspaceCheckoutCompleteRouteImport.update({
+    id: '/checkout-complete',
+    path: '/checkout-complete',
+    getParentRoute: () => WorkspaceRoute,
+  } as any)
 const WorkspaceAccountRoute = WorkspaceAccountRouteImport.update({
   id: '/account',
   path: '/account',
@@ -290,6 +297,7 @@ export interface FileRoutesByFullPath {
   '/security': typeof PublicSecurityRoute
   '/terms': typeof PublicTermsRoute
   '/account': typeof WorkspaceAccountRoute
+  '/checkout-complete': typeof WorkspaceCheckoutCompleteRoute
   '/discovery': typeof WorkspaceDiscoveryRoute
   '/feed': typeof WorkspaceFeedRoute
   '/lists': typeof WorkspaceListsRouteWithChildren
@@ -332,6 +340,7 @@ export interface FileRoutesByTo {
   '/security': typeof PublicSecurityRoute
   '/terms': typeof PublicTermsRoute
   '/account': typeof WorkspaceAccountRoute
+  '/checkout-complete': typeof WorkspaceCheckoutCompleteRoute
   '/discovery': typeof WorkspaceDiscoveryRoute
   '/feed': typeof WorkspaceFeedRoute
   '/lists': typeof WorkspaceListsRouteWithChildren
@@ -374,6 +383,7 @@ export interface FileRoutesById {
   '/_public/security': typeof PublicSecurityRoute
   '/_public/terms': typeof PublicTermsRoute
   '/_workspace/account': typeof WorkspaceAccountRoute
+  '/_workspace/checkout-complete': typeof WorkspaceCheckoutCompleteRoute
   '/_workspace/discovery': typeof WorkspaceDiscoveryRoute
   '/_workspace/feed': typeof WorkspaceFeedRoute
   '/_workspace/lists': typeof WorkspaceListsRouteWithChildren
@@ -419,6 +429,7 @@ export interface FileRouteTypes {
     | '/security'
     | '/terms'
     | '/account'
+    | '/checkout-complete'
     | '/discovery'
     | '/feed'
     | '/lists'
@@ -461,6 +472,7 @@ export interface FileRouteTypes {
     | '/security'
     | '/terms'
     | '/account'
+    | '/checkout-complete'
     | '/discovery'
     | '/feed'
     | '/lists'
@@ -502,6 +514,7 @@ export interface FileRouteTypes {
     | '/_public/security'
     | '/_public/terms'
     | '/_workspace/account'
+    | '/_workspace/checkout-complete'
     | '/_workspace/discovery'
     | '/_workspace/feed'
     | '/_workspace/lists'
@@ -644,6 +657,13 @@ declare module '@tanstack/react-router' {
       path: '/discovery'
       fullPath: '/discovery'
       preLoaderRoute: typeof WorkspaceDiscoveryRouteImport
+      parentRoute: typeof WorkspaceRoute
+    }
+    '/_workspace/checkout-complete': {
+      id: '/_workspace/checkout-complete'
+      path: '/checkout-complete'
+      fullPath: '/checkout-complete'
+      preLoaderRoute: typeof WorkspaceCheckoutCompleteRouteImport
       parentRoute: typeof WorkspaceRoute
     }
     '/_workspace/account': {
@@ -961,6 +981,7 @@ const WorkspaceOrganizationRouteWithChildren =
 
 interface WorkspaceRouteChildren {
   WorkspaceAccountRoute: typeof WorkspaceAccountRoute
+  WorkspaceCheckoutCompleteRoute: typeof WorkspaceCheckoutCompleteRoute
   WorkspaceDiscoveryRoute: typeof WorkspaceDiscoveryRoute
   WorkspaceFeedRoute: typeof WorkspaceFeedRoute
   WorkspaceListsRoute: typeof WorkspaceListsRouteWithChildren
@@ -971,6 +992,7 @@ interface WorkspaceRouteChildren {
 
 const WorkspaceRouteChildren: WorkspaceRouteChildren = {
   WorkspaceAccountRoute: WorkspaceAccountRoute,
+  WorkspaceCheckoutCompleteRoute: WorkspaceCheckoutCompleteRoute,
   WorkspaceDiscoveryRoute: WorkspaceDiscoveryRoute,
   WorkspaceFeedRoute: WorkspaceFeedRoute,
   WorkspaceListsRoute: WorkspaceListsRouteWithChildren,

@@ -1,10 +1,29 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
+import { z } from "zod";
 import { useAtlasSession } from "@/domains/access/client/use-atlas-session";
 import type { AtlasProduct } from "@/domains/access/capabilities";
 import { PageLayout } from "@/platform/layout/page-layout";
 import { Button } from "@/platform/ui/button";
+
+// ---------------------------------------------------------------------------
+// Search schema
+// ---------------------------------------------------------------------------
+
+/**
+ * Search params accepted by the /pricing route.
+ *
+ * `intent` and `interval` are set when an anonymous user clicked a paid CTA
+ * before signing in. After sign-in completes and the magic-link redirect
+ * lands them back here, the page auto-resumes the checkout.
+ */
+export const pricingSearchSchema = z.object({
+  intent: z.enum(["atlas_pro", "atlas_team", "atlas_research_pass"]).optional(),
+  interval: z.enum(["monthly", "yearly", "once", "weekly"]).optional(),
+});
+
+export type PricingSearch = z.infer<typeof pricingSearchSchema>;
 
 // ---------------------------------------------------------------------------
 // Checkout handler
@@ -147,6 +166,11 @@ function PlanCard({
 // Page
 // ---------------------------------------------------------------------------
 
+interface PricingPageProps {
+  intent?: AtlasProduct;
+  interval?: "monthly" | "yearly" | "once" | "weekly";
+}
+
 /**
  * Public-facing pricing page.
  *
@@ -155,18 +179,21 @@ function PlanCard({
  * through Stripe Checkout. Users must be signed in to purchase; unauthenticated
  * users are redirected to /sign-in first.
  *
- * Designed with mission-first framing: editorial lede explains why Atlas costs
- * money, Free is a first-class plan card (not a disclaimer), and monthly/annual
- * toggle switches pricing dynamically.
+ * When the page is rendered with `intent`+`interval` search params and the
+ * viewer is signed in, checkout is auto-resumed once. This preserves the
+ * original CTA when an anonymous user is bounced through sign-in.
  */
-export function PricingPage() {
+export function PricingPage({ intent, interval: intentInterval }: PricingPageProps) {
   const navigate = useNavigate();
   const session = useAtlasSession();
   const [billing, setBilling] = useState<BillingPeriod>("monthly");
+  const hasResumedRef = useRef(false);
 
   async function handleCheckout({ product, interval }: CheckoutParams) {
     if (!session.data) {
-      void navigate({ to: "/sign-in", search: { redirect: "/pricing" } });
+      const params = new URLSearchParams({ intent: product, interval });
+      const redirectTarget = `/pricing?${params.toString()}`;
+      void navigate({ to: "/sign-in", search: { redirect: redirectTarget } });
       return;
     }
 
@@ -174,6 +201,31 @@ export function PricingPage() {
     const result = await startCheckout({ data: { product, interval } });
     window.location.assign(result.url);
   }
+
+  useEffect(() => {
+    if (hasResumedRef.current) {
+      return;
+    }
+    if (!intent || !intentInterval) {
+      return;
+    }
+    if (!session.data) {
+      return;
+    }
+
+    hasResumedRef.current = true;
+
+    const resume = async () => {
+      await navigate({ to: "/pricing", search: {}, replace: true });
+      const { startCheckout } = await import("@/domains/billing/checkout.functions");
+      const result = await startCheckout({
+        data: { product: intent, interval: intentInterval },
+      });
+      window.location.assign(result.url);
+    };
+
+    void resume();
+  }, [intent, intentInterval, session.data, navigate]);
 
   return (
     <PageLayout className="py-10 lg:py-16">
@@ -232,12 +284,12 @@ export function PricingPage() {
             <PlanCard
               label="Free"
               name="For anyone curious"
-              tagline="Browse and search the Atlas. No account needed."
+              tagline="Browse without an account. Sign up to run research and save shortlists."
               features={[
-                "Browse & search",
-                "Read any profile",
-                "2 research runs/month",
-                "1 shortlist (25 entries)",
+                "Browse & search (no account)",
+                "Read any profile (no account)",
+                "Sign up to run 2 research/month",
+                "Sign up for 1 shortlist (25 entries)",
                 "Public API 100 req/hr",
               ]}
               monthlyPrice="Free"

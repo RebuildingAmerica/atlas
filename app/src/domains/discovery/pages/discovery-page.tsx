@@ -95,6 +95,31 @@ function DiscoverySetupNotice({ body, cta, title }: DiscoverySetupNoticeProps) {
   );
 }
 
+interface DiscoveryUpgradePromptProps {
+  reason: "free-tier" | "capability-missing";
+}
+
+function DiscoveryUpgradePrompt({ reason }: DiscoveryUpgradePromptProps) {
+  const title =
+    reason === "capability-missing" ? "Discovery runs are paused on your plan" : "On the free plan";
+  const body =
+    reason === "capability-missing"
+      ? "Your workspace doesn't have access to discovery runs right now. Upgrade to Atlas Pro for unlimited research, or buy a Research Pass for short-term project access."
+      : "The free plan caps discovery runs at 2 per month. Upgrade to Atlas Pro for unlimited runs, exports, and API access.";
+
+  return (
+    <section className="border-border-strong bg-surface rounded-[1.5rem] border p-5">
+      <p className="type-title-medium text-ink-strong">{title}</p>
+      <p className="type-body-medium text-ink-soft mt-2">{body}</p>
+      <div className="mt-4">
+        <Link className="type-label-large text-ink-strong underline" to="/pricing">
+          See plans
+        </Link>
+      </div>
+    </section>
+  );
+}
+
 function DiscoveryRunForm({
   canRunResearch,
   issueAreas,
@@ -295,6 +320,8 @@ export function DiscoveryPage() {
     : false;
   const hasPendingInvitations =
     atlasSession.data?.workspace.onboarding.hasPendingInvitations ?? false;
+  const activeProducts = atlasSession.data?.workspace.activeProducts ?? [];
+  const isFreeTier = activeProducts.length === 0;
   const latestRuns = runsQuery.data?.items ?? [];
 
   const handleToggleIssue = (slug: string) => {
@@ -363,6 +390,12 @@ export function DiscoveryPage() {
           body="Review your pending workspace invitations."
           cta="Review invitations"
         />
+      ) : null}
+
+      {!needsWorkspace && atlasSession.data && !canRunResearch ? (
+        <DiscoveryUpgradePrompt reason="capability-missing" />
+      ) : !needsWorkspace && atlasSession.data && isFreeTier ? (
+        <DiscoveryUpgradePrompt reason="free-tier" />
       ) : null}
 
       <section className="grid gap-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">

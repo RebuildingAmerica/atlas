@@ -90,15 +90,16 @@ export const startCheckout = createServerFn({ method: "POST" })
       }
     }
 
-    const successUrl = `${runtime.publicBaseUrl}/account?checkout=success`;
-    const cancelUrl = `${runtime.publicBaseUrl}/pricing`;
+    const successUrl = new URL("/checkout-complete", runtime.publicBaseUrl);
+    successUrl.searchParams.set("product", data.product);
+    const cancelUrl = new URL("/pricing", runtime.publicBaseUrl);
 
     const result = await createCheckoutSession({
       workspaceId: activeWorkspace.id,
       product: data.product,
       priceId,
-      successUrl,
-      cancelUrl,
+      successUrl: successUrl.toString(),
+      cancelUrl: cancelUrl.toString(),
       customerEmail: session.user.email,
       stripeCustomerId,
       discountCouponId,
