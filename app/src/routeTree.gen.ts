@@ -36,9 +36,9 @@ import { Route as PublicBrowseRouteImport } from './routes/_public/browse'
 import { Route as AuthSignUpRouteImport } from './routes/_auth/sign-up'
 import { Route as AuthSignInRouteImport } from './routes/_auth/sign-in'
 import { Route as AuthAccountSetupRouteImport } from './routes/_auth/account-setup'
-import { Route as DotwellKnownOauthAuthorizationServerRouteImport } from './routes/[.]well-known.oauth-authorization-server'
 import { Route as WorkspaceOrganizationIndexRouteImport } from './routes/_workspace/organization.index'
 import { Route as PublicProfilesIndexRouteImport } from './routes/_public/profiles/index'
+import { Route as DotwellKnownOauthAuthorizationServerIndexRouteImport } from './routes/[.]well-known/oauth-authorization-server/index'
 import { Route as ApiStripeWebhookRouteImport } from './routes/api/stripe/webhook'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as WorkspaceOrganizationSsoRouteImport } from './routes/_workspace/organization.sso'
@@ -55,7 +55,7 @@ import { Route as PublicProfilesOrganizationsIndexRouteImport } from './routes/_
 import { Route as ApiAuthInternalApiKeyRouteImport } from './routes/api/auth/internal/api-key'
 import { Route as PublicProfilesPeopleSlugRouteImport } from './routes/_public/profiles/people.$slug'
 import { Route as PublicProfilesOrganizationsSlugRouteImport } from './routes/_public/profiles/organizations.$slug'
-import { Route as DotwellKnownOauthAuthorizationServerApiAuthRouteImport } from './routes/[.]well-known.oauth-authorization-server.api.auth'
+import { Route as DotwellKnownOauthAuthorizationServerApiAuthRouteImport } from './routes/[.]well-known/oauth-authorization-server/api/auth'
 import { Route as ApiAuthInternalMembershipsOrganizationIdMembersUserIdRouteImport } from './routes/api/auth/internal/memberships.$organizationId.members.$userId'
 
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
@@ -191,12 +191,6 @@ const AuthAccountSetupRoute = AuthAccountSetupRouteImport.update({
   path: '/account-setup',
   getParentRoute: () => AuthRoute,
 } as any)
-const DotwellKnownOauthAuthorizationServerRoute =
-  DotwellKnownOauthAuthorizationServerRouteImport.update({
-    id: '/.well-known/oauth-authorization-server',
-    path: '/.well-known/oauth-authorization-server',
-    getParentRoute: () => rootRouteImport,
-  } as any)
 const WorkspaceOrganizationIndexRoute =
   WorkspaceOrganizationIndexRouteImport.update({
     id: '/',
@@ -208,6 +202,12 @@ const PublicProfilesIndexRoute = PublicProfilesIndexRouteImport.update({
   path: '/profiles/',
   getParentRoute: () => PublicRoute,
 } as any)
+const DotwellKnownOauthAuthorizationServerIndexRoute =
+  DotwellKnownOauthAuthorizationServerIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => DotwellKnownOauthAuthorizationServerRoute,
+  } as any)
 const ApiStripeWebhookRoute = ApiStripeWebhookRouteImport.update({
   id: '/api/stripe/webhook',
   path: '/api/stripe/webhook',
@@ -296,9 +296,9 @@ const PublicProfilesOrganizationsSlugRoute =
   } as any)
 const DotwellKnownOauthAuthorizationServerApiAuthRoute =
   DotwellKnownOauthAuthorizationServerApiAuthRouteImport.update({
-    id: '/api/auth',
-    path: '/api/auth',
-    getParentRoute: () => DotwellKnownOauthAuthorizationServerRoute,
+    id: '/.well-known/oauth-authorization-server/api/auth',
+    path: '/.well-known/oauth-authorization-server/api/auth',
+    getParentRoute: () => rootRouteImport,
   } as any)
 const ApiAuthInternalMembershipsOrganizationIdMembersUserIdRoute =
   ApiAuthInternalMembershipsOrganizationIdMembersUserIdRouteImport.update({
@@ -314,7 +314,6 @@ export interface FileRoutesByFullPath {
   '/mcp': typeof McpRoute
   '/openapi.json': typeof OpenapiDotjsonRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
-  '/.well-known/oauth-authorization-server': typeof DotwellKnownOauthAuthorizationServerRouteWithChildren
   '/account-setup': typeof AuthAccountSetupRoute
   '/sign-in': typeof AuthSignInRoute
   '/sign-up': typeof AuthSignUpRoute
@@ -344,6 +343,7 @@ export interface FileRoutesByFullPath {
   '/organization/sso': typeof WorkspaceOrganizationSsoRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/stripe/webhook': typeof ApiStripeWebhookRoute
+  '/.well-known/oauth-authorization-server/': typeof DotwellKnownOauthAuthorizationServerIndexRoute
   '/profiles/': typeof PublicProfilesIndexRoute
   '/organization/': typeof WorkspaceOrganizationIndexRoute
   '/.well-known/oauth-authorization-server/api/auth': typeof DotwellKnownOauthAuthorizationServerApiAuthRoute
@@ -361,7 +361,6 @@ export interface FileRoutesByTo {
   '/mcp': typeof McpRoute
   '/openapi.json': typeof OpenapiDotjsonRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
-  '/.well-known/oauth-authorization-server': typeof DotwellKnownOauthAuthorizationServerRouteWithChildren
   '/account-setup': typeof AuthAccountSetupRoute
   '/sign-in': typeof AuthSignInRoute
   '/sign-up': typeof AuthSignUpRoute
@@ -388,6 +387,7 @@ export interface FileRoutesByTo {
   '/organization/sso': typeof WorkspaceOrganizationSsoRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/stripe/webhook': typeof ApiStripeWebhookRoute
+  '/.well-known/oauth-authorization-server': typeof DotwellKnownOauthAuthorizationServerIndexRoute
   '/profiles': typeof PublicProfilesIndexRoute
   '/organization': typeof WorkspaceOrganizationIndexRoute
   '/.well-known/oauth-authorization-server/api/auth': typeof DotwellKnownOauthAuthorizationServerApiAuthRoute
@@ -408,7 +408,6 @@ export interface FileRoutesById {
   '/mcp': typeof McpRoute
   '/openapi.json': typeof OpenapiDotjsonRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
-  '/.well-known/oauth-authorization-server': typeof DotwellKnownOauthAuthorizationServerRouteWithChildren
   '/_auth/account-setup': typeof AuthAccountSetupRoute
   '/_auth/sign-in': typeof AuthSignInRoute
   '/_auth/sign-up': typeof AuthSignUpRoute
@@ -439,6 +438,7 @@ export interface FileRoutesById {
   '/_workspace/organization/sso': typeof WorkspaceOrganizationSsoRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/stripe/webhook': typeof ApiStripeWebhookRoute
+  '/.well-known/oauth-authorization-server/': typeof DotwellKnownOauthAuthorizationServerIndexRoute
   '/_public/profiles/': typeof PublicProfilesIndexRoute
   '/_workspace/organization/': typeof WorkspaceOrganizationIndexRoute
   '/.well-known/oauth-authorization-server/api/auth': typeof DotwellKnownOauthAuthorizationServerApiAuthRoute
@@ -458,7 +458,6 @@ export interface FileRouteTypes {
     | '/mcp'
     | '/openapi.json'
     | '/sitemap.xml'
-    | '/.well-known/oauth-authorization-server'
     | '/account-setup'
     | '/sign-in'
     | '/sign-up'
@@ -488,6 +487,7 @@ export interface FileRouteTypes {
     | '/organization/sso'
     | '/api/auth/$'
     | '/api/stripe/webhook'
+    | '/.well-known/oauth-authorization-server/'
     | '/profiles/'
     | '/organization/'
     | '/.well-known/oauth-authorization-server/api/auth'
@@ -505,7 +505,6 @@ export interface FileRouteTypes {
     | '/mcp'
     | '/openapi.json'
     | '/sitemap.xml'
-    | '/.well-known/oauth-authorization-server'
     | '/account-setup'
     | '/sign-in'
     | '/sign-up'
@@ -532,6 +531,7 @@ export interface FileRouteTypes {
     | '/organization/sso'
     | '/api/auth/$'
     | '/api/stripe/webhook'
+    | '/.well-known/oauth-authorization-server'
     | '/profiles'
     | '/organization'
     | '/.well-known/oauth-authorization-server/api/auth'
@@ -551,7 +551,6 @@ export interface FileRouteTypes {
     | '/mcp'
     | '/openapi.json'
     | '/sitemap.xml'
-    | '/.well-known/oauth-authorization-server'
     | '/_auth/account-setup'
     | '/_auth/sign-in'
     | '/_auth/sign-up'
@@ -582,6 +581,7 @@ export interface FileRouteTypes {
     | '/_workspace/organization/sso'
     | '/api/auth/$'
     | '/api/stripe/webhook'
+    | '/.well-known/oauth-authorization-server/'
     | '/_public/profiles/'
     | '/_workspace/organization/'
     | '/.well-known/oauth-authorization-server/api/auth'
@@ -602,11 +602,11 @@ export interface RootRouteChildren {
   McpRoute: typeof McpRoute
   OpenapiDotjsonRoute: typeof OpenapiDotjsonRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
-  DotwellKnownOauthAuthorizationServerRoute: typeof DotwellKnownOauthAuthorizationServerRouteWithChildren
   ApiSplatRoute: typeof ApiSplatRoute
   ApiHealthRoute: typeof ApiHealthRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiStripeWebhookRoute: typeof ApiStripeWebhookRoute
+  DotwellKnownOauthAuthorizationServerApiAuthRoute: typeof DotwellKnownOauthAuthorizationServerApiAuthRoute
   ApiAuthInternalApiKeyRoute: typeof ApiAuthInternalApiKeyRoute
   ApiAuthInternalMembershipsOrganizationIdMembersUserIdRoute: typeof ApiAuthInternalMembershipsOrganizationIdMembersUserIdRoute
 }
@@ -802,13 +802,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthAccountSetupRouteImport
       parentRoute: typeof AuthRoute
     }
-    '/.well-known/oauth-authorization-server': {
-      id: '/.well-known/oauth-authorization-server'
-      path: '/.well-known/oauth-authorization-server'
-      fullPath: '/.well-known/oauth-authorization-server'
-      preLoaderRoute: typeof DotwellKnownOauthAuthorizationServerRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/_workspace/organization/': {
       id: '/_workspace/organization/'
       path: '/'
@@ -822,6 +815,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/profiles/'
       preLoaderRoute: typeof PublicProfilesIndexRouteImport
       parentRoute: typeof PublicRoute
+    }
+    '/.well-known/oauth-authorization-server/': {
+      id: '/.well-known/oauth-authorization-server/'
+      path: '/'
+      fullPath: '/.well-known/oauth-authorization-server/'
+      preLoaderRoute: typeof DotwellKnownOauthAuthorizationServerIndexRouteImport
+      parentRoute: typeof DotwellKnownOauthAuthorizationServerRoute
     }
     '/api/stripe/webhook': {
       id: '/api/stripe/webhook'
@@ -937,10 +937,10 @@ declare module '@tanstack/react-router' {
     }
     '/.well-known/oauth-authorization-server/api/auth': {
       id: '/.well-known/oauth-authorization-server/api/auth'
-      path: '/api/auth'
+      path: '/.well-known/oauth-authorization-server/api/auth'
       fullPath: '/.well-known/oauth-authorization-server/api/auth'
       preLoaderRoute: typeof DotwellKnownOauthAuthorizationServerApiAuthRouteImport
-      parentRoute: typeof DotwellKnownOauthAuthorizationServerRoute
+      parentRoute: typeof rootRouteImport
     }
     '/api/auth/internal/memberships/$organizationId/members/$userId': {
       id: '/api/auth/internal/memberships/$organizationId/members/$userId'
@@ -1087,21 +1087,6 @@ const WorkspaceRouteWithChildren = WorkspaceRoute._addFileChildren(
   WorkspaceRouteChildren,
 )
 
-interface DotwellKnownOauthAuthorizationServerRouteChildren {
-  DotwellKnownOauthAuthorizationServerApiAuthRoute: typeof DotwellKnownOauthAuthorizationServerApiAuthRoute
-}
-
-const DotwellKnownOauthAuthorizationServerRouteChildren: DotwellKnownOauthAuthorizationServerRouteChildren =
-  {
-    DotwellKnownOauthAuthorizationServerApiAuthRoute:
-      DotwellKnownOauthAuthorizationServerApiAuthRoute,
-  }
-
-const DotwellKnownOauthAuthorizationServerRouteWithChildren =
-  DotwellKnownOauthAuthorizationServerRoute._addFileChildren(
-    DotwellKnownOauthAuthorizationServerRouteChildren,
-  )
-
 const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRouteWithChildren,
   PublicRoute: PublicRouteWithChildren,
@@ -1111,12 +1096,12 @@ const rootRouteChildren: RootRouteChildren = {
   McpRoute: McpRoute,
   OpenapiDotjsonRoute: OpenapiDotjsonRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
-  DotwellKnownOauthAuthorizationServerRoute:
-    DotwellKnownOauthAuthorizationServerRouteWithChildren,
   ApiSplatRoute: ApiSplatRoute,
   ApiHealthRoute: ApiHealthRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiStripeWebhookRoute: ApiStripeWebhookRoute,
+  DotwellKnownOauthAuthorizationServerApiAuthRoute:
+    DotwellKnownOauthAuthorizationServerApiAuthRoute,
   ApiAuthInternalApiKeyRoute: ApiAuthInternalApiKeyRoute,
   ApiAuthInternalMembershipsOrganizationIdMembersUserIdRoute:
     ApiAuthInternalMembershipsOrganizationIdMembersUserIdRoute,

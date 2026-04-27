@@ -8,7 +8,7 @@ import { getAuthRuntimeConfig } from "@/domains/access/server/runtime";
  * first; Atlas mirrors the document at the strict RFC 8414 §3 path under
  * `/api/auth` for clients that follow the issuer-suffix construction.
  */
-export const Route = createFileRoute("/.well-known/oauth-authorization-server")({
+export const Route = createFileRoute("/.well-known/oauth-authorization-server/")({
   server: {
     handlers: {
       GET: () => {
