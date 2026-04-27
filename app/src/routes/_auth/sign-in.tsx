@@ -5,7 +5,9 @@ import { redirectIfLocalSession } from "@/domains/access/server";
 export const Route = createFileRoute("/_auth/sign-in")({
   ssr: false,
   validateSearch: signInSearchSchema,
-  beforeLoad: () => redirectIfLocalSession("/discovery"),
+  beforeLoad: () => {
+    redirectIfLocalSession("/discovery");
+  },
   component: SignInRoute,
 });
 

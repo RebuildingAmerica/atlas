@@ -3,6 +3,8 @@ import { PricingPage } from "@/domains/billing/pages/public/pricing-page";
 import { redirectIfLocalSession } from "@/domains/access/server";
 
 export const Route = createFileRoute("/_public/pricing")({
-  beforeLoad: () => redirectIfLocalSession("/"),
+  beforeLoad: () => {
+    redirectIfLocalSession("/");
+  },
   component: PricingPage,
 });
