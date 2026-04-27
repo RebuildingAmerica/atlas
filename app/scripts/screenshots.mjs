@@ -27,6 +27,8 @@ const PAGES = [
   { url: '/profiles', name: 'profiles' },
   { url: '/profiles/people', name: 'profiles-people' },
   { url: '/profiles/organizations', name: 'profiles-organizations' },
+  { url: '/profiles/people/maya-thompson', name: 'profiles-person-detail' },
+  { url: '/profiles/organizations/eastside-housing-network', name: 'profiles-organization-detail' },
   { url: '/terms', name: 'terms' },
   { url: '/privacy', name: 'privacy' },
   { url: '/security', name: 'security' },

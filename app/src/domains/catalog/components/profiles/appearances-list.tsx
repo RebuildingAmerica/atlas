@@ -1,3 +1,11 @@
+/**
+ * AppearancesList — sources panel for the profile Evidence section.
+ *
+ * Shows a stacked source-type distribution bar, the lead source rendered
+ * expanded (title, publication, freshness, extraction context), and the
+ * remaining sources as compact rows with type badge + freshness chip.
+ */
+import { FreshnessChip } from "@/domains/catalog/components/profiles/detail/profile-detail-primitives";
 import { Badge } from "@/platform/ui/badge";
 import type { Source, SourceType } from "@/types";
 
@@ -37,9 +45,13 @@ function SourceTypeBadge({ type }: { type: SourceType }) {
   );
 }
 
+function sourceFreshnessIso(source: Source): string {
+  return source.published_date ?? source.ingested_at;
+}
+
 function CompactSourceRow({ source }: { source: Source }) {
   return (
-    <div className="flex items-center gap-3 py-2">
+    <div className="flex flex-wrap items-center gap-3 py-2">
       <SourceTypeBadge type={source.type} />
       {source.publication ? (
         <span className="type-body-medium text-ink-soft">{source.publication}</span>
@@ -47,6 +59,7 @@ function CompactSourceRow({ source }: { source: Source }) {
       {source.published_date ? (
         <span className="type-body-small text-ink-muted">{source.published_date}</span>
       ) : null}
+      <FreshnessChip isoDate={sourceFreshnessIso(source)} prefix="" className="ml-auto" />
     </div>
   );
 }
@@ -62,6 +75,7 @@ function ExpandedSource({ source }: { source: Source }) {
         {source.published_date ? (
           <span className="type-body-small text-ink-muted">{source.published_date}</span>
         ) : null}
+        <FreshnessChip isoDate={sourceFreshnessIso(source)} prefix="" className="ml-auto" />
       </div>
       <a
         href={source.url}
@@ -126,44 +140,53 @@ function CoverageBar({ sources }: CoverageBarProps) {
   );
 }
 
+function pickLeadSource(sources: Source[]): { lead: Source; rest: Source[] } | null {
+  const [lead, ...rest] = [...sources].sort((a, b) => {
+    const aDate = a.published_date ?? a.ingested_at;
+    const bDate = b.published_date ?? b.ingested_at;
+    return new Date(bDate).getTime() - new Date(aDate).getTime();
+  });
+  if (!lead) {
+    return null;
+  }
+  return { lead, rest };
+}
+
 export function AppearancesList({ sources, mode }: AppearancesListProps) {
+  const sectionTitle = mode === "person" ? "Appearances & mentions" : "Appearances & coverage";
+
   if (sources.length === 0) {
     return (
       <div className="space-y-3">
-        <p className="type-label-small text-ink-muted tracking-widest uppercase">
-          {mode === "person" ? "Appearances & mentions" : "Appearances & coverage"}
-        </p>
+        <p className="type-label-small text-ink-muted tracking-widest uppercase">{sectionTitle}</p>
         <p className="type-body-medium text-ink-muted">No linked sources yet.</p>
       </div>
     );
   }
 
-  const sectionTitle = mode === "person" ? "Appearances & mentions" : "Appearances & coverage";
+  const picked = pickLeadSource(sources);
+
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       <div className="flex items-center gap-2">
         <p className="type-label-small text-ink-muted tracking-widest uppercase">{sectionTitle}</p>
         <Badge>{sources.length}</Badge>
       </div>
 
-      {mode === "organization" ? <CoverageBar sources={sources} /> : null}
+      <CoverageBar sources={sources} />
 
-      {mode === "person"
-        ? sources.map((source, index) =>
-            index === 0 ? (
-              <ExpandedSource key={source.id} source={source} />
-            ) : (
-              <CompactSourceRow key={source.id} source={source} />
-            ),
-          )
-        : sources.map((source) => <CompactSourceRow key={source.id} source={source} />)}
-
-      <button
-        type="button"
-        className="type-label-medium bg-surface-container-low text-ink-muted hover:bg-surface-container-high w-full rounded-xl py-2.5 text-center transition-colors"
-      >
-        View all {sources.length} appearances
-      </button>
+      {picked ? (
+        <div className="space-y-3 pt-1">
+          <ExpandedSource source={picked.lead} />
+          {picked.rest.length > 0 ? (
+            <div className="border-outline-variant divide-outline-variant divide-y border-t pt-2">
+              {picked.rest.map((source) => (
+                <CompactSourceRow key={source.id} source={source} />
+              ))}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }
