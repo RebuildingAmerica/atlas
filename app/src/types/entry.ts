@@ -5,11 +5,23 @@ export type GeoSpecificity = "local" | "regional" | "statewide" | "national";
 export type ContactStatus = "not_contacted" | "contacted" | "responded" | "confirmed" | "declined";
 export type Priority = "high" | "medium" | "low";
 
+export type ClaimStatus = "unclaimed" | "pending" | "verified" | "revoked";
+export type VerificationLevel = "source-derived" | "atlas-verified" | "subject-verified";
+
+export interface ClaimStatusInfo {
+  status: ClaimStatus;
+  claimed_by_user_id?: string;
+  claim_verified_at?: string;
+  verification_level: VerificationLevel;
+}
+
 export interface Entry {
   id: string;
   type: EntryType;
   name: string;
   description: string;
+  custom_bio?: string;
+  photo_url?: string;
   city?: string;
   state?: string;
   region?: string;
@@ -21,10 +33,12 @@ export interface Entry {
   email?: string;
   phone?: string;
   social_media?: Record<string, string>;
+  preferred_contact_channel?: string;
   affiliated_org_id?: string;
   active: boolean;
   verified: boolean;
   last_verified?: string;
+  claim: ClaimStatusInfo;
   issue_areas: string[];
   source_types: SourceType[];
   source_count: number;
@@ -34,6 +48,63 @@ export interface Entry {
   slug: string;
   created_at: string;
   updated_at: string;
+}
+
+export interface ProfileClaim {
+  id: string;
+  entry_id: string;
+  entry_slug?: string;
+  entry_name: string;
+  user_id: string;
+  user_email: string;
+  status: "pending" | "verified" | "rejected" | "revoked";
+  tier: 1 | 2;
+  evidence?: unknown;
+  verified_at?: string;
+  rejected_reason?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SavedListSummary {
+  id: string;
+  user_id: string;
+  name: string;
+  description?: string;
+  item_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SavedListItem {
+  list_id: string;
+  entry_id: string;
+  note?: string;
+  added_at: string;
+  entry?: Entry;
+}
+
+export interface SavedList extends SavedListSummary {
+  items: SavedListItem[];
+}
+
+export interface ProfileFollow {
+  user_id: string;
+  entry_id: string;
+  subscribed_to: "sources" | "all";
+  created_at: string;
+}
+
+export interface FollowingFeedItem {
+  entry_id: string;
+  entry_name: string;
+  entry_slug?: string;
+  entry_type: EntryType;
+  source_id: string;
+  source_url: string;
+  source_title?: string;
+  source_publication?: string;
+  ingested_at: string;
 }
 
 /** Relationship categories used to group connected actors on profile pages. */

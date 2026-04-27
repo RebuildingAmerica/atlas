@@ -2,18 +2,24 @@
  * ActionCluster — primary CTAs in the profile hero.
  *
  * Renders Share (real, with Web Share + clipboard fallback), Contact (mailto
- * when an email is on file), Save, and Follow. Save and Follow are
- * auth-state-aware: anonymous visitors are routed to sign-in with a redirect
- * back to the profile; signed-in visitors get an inline disclosure noting the
- * underlying feature is still being built.
+ * when an email is on file), Save (sign-in link for anonymous, list picker for
+ * signed-in), and Follow (sign-in link for anonymous, real follow toggle for
+ * signed-in).
  */
 import { Link } from "@tanstack/react-router";
-import { Bell, Bookmark, Mail, Share2 } from "lucide-react";
+import { Bell, BellRing, Bookmark, Mail, Share2 } from "lucide-react";
 import { useState } from "react";
+import {
+  useFollowProfile,
+  useProfileFollow,
+  useUnfollowProfile,
+} from "@/domains/catalog/hooks/use-claims";
+import { SaveListPicker } from "@/domains/catalog/components/profiles/save-list-picker";
 import { Button } from "@/platform/ui/button";
-import { cn } from "@/lib/utils";
 
 interface ActionClusterProps {
+  entryId: string;
+  entrySlug: string;
   shareUrl: string;
   shareTitle: string;
   email?: string;
@@ -55,10 +61,9 @@ async function copyToClipboard(text: string): Promise<boolean> {
 const SECONDARY_LINK_STYLE =
   "type-label-large inline-flex items-center gap-2 rounded-full border border-outline-variant bg-surface-container-lowest px-4 py-1.5 font-medium text-on-surface transition-colors duration-150 hover:border-outline hover:bg-surface-container-high focus:outline-none focus:ring-2 focus:ring-border-strong focus:ring-offset-2";
 
-const DISCLOSURE_PILL_STYLE =
-  "type-label-small text-ink-soft inline-flex items-center gap-1 rounded-full bg-surface-container-low px-2.5 py-0.5";
-
 export function ActionCluster({
+  entryId,
+  entrySlug,
   shareUrl,
   shareTitle,
   email,
@@ -66,8 +71,11 @@ export function ActionCluster({
   profilePath,
 }: ActionClusterProps) {
   const [shareState, setShareState] = useState<ShareState>("idle");
-  const [saveDisclosed, setSaveDisclosed] = useState(false);
-  const [followDisclosed, setFollowDisclosed] = useState(false);
+  const [savePickerOpen, setSavePickerOpen] = useState(false);
+  const followQuery = useProfileFollow(entrySlug, isSignedIn);
+  const followMutation = useFollowProfile();
+  const unfollowMutation = useUnfollowProfile();
+  const isFollowing = Boolean(followQuery.data);
 
   async function handleShare() {
     const shared = await shareViaWebApi(shareUrl, shareTitle);
@@ -91,18 +99,20 @@ export function ActionCluster({
     void handleShare();
   }
 
-  function discloseSave() {
-    setSaveDisclosed(true);
-    window.setTimeout(() => {
-      setSaveDisclosed(false);
-    }, 3_000);
+  function onSaveClick() {
+    setSavePickerOpen((current) => !current);
   }
 
-  function discloseFollow() {
-    setFollowDisclosed(true);
-    window.setTimeout(() => {
-      setFollowDisclosed(false);
-    }, 3_000);
+  async function onFollowClick() {
+    if (isFollowing) {
+      await unfollowMutation.mutateAsync(entrySlug);
+    } else {
+      await followMutation.mutateAsync(entrySlug);
+    }
+  }
+
+  function onFollowClickWrapper() {
+    void onFollowClick();
   }
 
   const shareLabel =
@@ -126,12 +136,21 @@ export function ActionCluster({
         ) : null}
 
         {isSignedIn ? (
-          <Button type="button" variant="secondary" size="sm" onClick={discloseSave}>
-            <span className="inline-flex items-center gap-2">
-              <Bookmark className="h-4 w-4" aria-hidden />
-              Save
-            </span>
-          </Button>
+          <div className="relative">
+            <Button type="button" variant="secondary" size="sm" onClick={onSaveClick}>
+              <span className="inline-flex items-center gap-2">
+                <Bookmark className="h-4 w-4" aria-hidden />
+                Save
+              </span>
+            </Button>
+            <SaveListPicker
+              entryId={entryId}
+              open={savePickerOpen}
+              onClose={() => {
+                setSavePickerOpen(false);
+              }}
+            />
+          </div>
         ) : (
           <Link to="/sign-in" search={{ redirect: profilePath }} className={SECONDARY_LINK_STYLE}>
             <Bookmark className="h-4 w-4" aria-hidden />
@@ -140,10 +159,20 @@ export function ActionCluster({
         )}
 
         {isSignedIn ? (
-          <Button type="button" variant="secondary" size="sm" onClick={discloseFollow}>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={onFollowClickWrapper}
+            disabled={followMutation.isPending || unfollowMutation.isPending}
+          >
             <span className="inline-flex items-center gap-2">
-              <Bell className="h-4 w-4" aria-hidden />
-              Follow
+              {isFollowing ? (
+                <BellRing className="text-accent h-4 w-4" aria-hidden />
+              ) : (
+                <Bell className="h-4 w-4" aria-hidden />
+              )}
+              {isFollowing ? "Following" : "Follow"}
             </span>
           </Button>
         ) : (
@@ -153,21 +182,6 @@ export function ActionCluster({
           </Link>
         )}
       </div>
-
-      {saveDisclosed || followDisclosed ? (
-        <div className="flex flex-wrap justify-end gap-2">
-          {saveDisclosed ? (
-            <span className={cn(DISCLOSURE_PILL_STYLE)} role="status">
-              Lists are still being built — we’ll email you when Save is live.
-            </span>
-          ) : null}
-          {followDisclosed ? (
-            <span className={cn(DISCLOSURE_PILL_STYLE)} role="status">
-              Update notifications are still being built.
-            </span>
-          ) : null}
-        </div>
-      ) : null}
     </div>
   );
 }

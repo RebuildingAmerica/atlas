@@ -20,6 +20,7 @@ const mockPerson: Entry = {
   source_types: [],
   active: true,
   verified: true,
+  claim: { status: "unclaimed", verification_level: "atlas-verified" },
   created_at: "2026-01-01",
   updated_at: "2026-04-01",
 };

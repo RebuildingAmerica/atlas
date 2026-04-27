@@ -11,6 +11,17 @@ vi.mock("@tanstack/react-router", () => ({
   useRouter: () => ({}),
 }));
 
+vi.mock("@/domains/catalog/hooks/use-claims", () => ({
+  useProfileFollow: () => ({ data: null, isLoading: false }),
+  useFollowProfile: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useUnfollowProfile: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useSavedLists: () => ({ data: [], isLoading: false }),
+  useSavedListMembership: () => ({ data: [], isLoading: false }),
+  useCreateSavedList: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useAddSavedListItem: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useRemoveSavedListItem: () => ({ mutateAsync: vi.fn(), isPending: false }),
+}));
+
 import { ActionCluster } from "@/domains/catalog/components/profiles/action-cluster";
 import { ClaimBanner } from "@/domains/catalog/components/profiles/claim-banner";
 import { DataQualityBlock } from "@/domains/catalog/components/profiles/data-quality-block";
@@ -39,6 +50,7 @@ function buildEntry(overrides: Partial<Entry> = {}): Entry {
     last_seen: "2026-04-01T00:00:00Z",
     active: true,
     verified: false,
+    claim: { status: "unclaimed", verification_level: "source-derived" },
     issue_areas: ["housing_affordability"],
     source_types: [],
     source_count: 3,
@@ -104,9 +116,26 @@ describe("ClaimBanner", () => {
     expect(cta).toHaveAttribute("href", expect.stringContaining("/claim"));
   });
 
-  it("returns null for verified profiles", () => {
-    const { container } = render(<ClaimBanner entry={buildEntry({ verified: true })} />);
+  it("returns null for verified-claim profiles", () => {
+    const { container } = render(
+      <ClaimBanner
+        entry={buildEntry({
+          claim: { status: "verified", verification_level: "subject-verified" },
+        })}
+      />,
+    );
     expect(container.innerHTML).toBe("");
+  });
+
+  it("renders pending review state for in-flight claims", () => {
+    render(
+      <ClaimBanner
+        entry={buildEntry({
+          claim: { status: "pending", verification_level: "source-derived" },
+        })}
+      />,
+    );
+    expect(screen.getByText(/Claim under review/i)).toBeInTheDocument();
   });
 });
 
@@ -251,6 +280,8 @@ describe("NetworkRails", () => {
 
 describe("ActionCluster", () => {
   const baseProps = {
+    entryId: "entry-1",
+    entrySlug: "jane-doe-a3f2",
     shareUrl: "https://example.com/jane",
     shareTitle: "Jane Doe",
     profilePath: "/profiles/people/jane-doe",
@@ -286,10 +317,10 @@ describe("ActionCluster", () => {
     expect(screen.getByRole("button", { name: /follow/i })).toBeInTheDocument();
   });
 
-  it("discloses 'still being built' on Save click when signed in", () => {
+  it("opens the save-list picker on Save click when signed in", () => {
     render(<ActionCluster {...baseProps} isSignedIn />);
     fireEvent.click(screen.getByRole("button", { name: /save/i }));
-    expect(screen.getByText(/Lists are still being built/i)).toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: /save to list/i })).toBeInTheDocument();
   });
 
   it("copies the URL to clipboard when Web Share is unavailable", async () => {

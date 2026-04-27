@@ -37,11 +37,14 @@ function mapSource(source: SourceResponse): Source {
 }
 
 function mapEntity(entity: EntityResponse): Entry {
+  const claim = entity.claim;
   return {
     id: entity.id,
     type: entity.type as Entry["type"],
     name: entity.name,
     description: entity.description,
+    custom_bio: entity.custom_bio ?? undefined,
+    photo_url: entity.photo_url ?? undefined,
     city: entity.address.city ?? undefined,
     state: entity.address.state ?? undefined,
     region: entity.address.region ?? undefined,
@@ -53,10 +56,18 @@ function mapEntity(entity: EntityResponse): Entry {
     email: entity.contact.email ?? undefined,
     phone: entity.contact.phone ?? undefined,
     social_media: entity.contact.social_media ?? undefined,
+    preferred_contact_channel: entity.preferred_contact_channel ?? undefined,
     affiliated_org_id: entity.affiliated_org_id ?? undefined,
     active: entity.active,
     verified: entity.verified,
     last_verified: entity.freshness.last_verified ?? undefined,
+    claim: {
+      status: (claim?.status ?? "unclaimed") as Entry["claim"]["status"],
+      claimed_by_user_id: claim?.claimed_by_user_id ?? undefined,
+      claim_verified_at: claim?.claim_verified_at ?? undefined,
+      verification_level: (claim?.verification_level ??
+        "source-derived") as Entry["claim"]["verification_level"],
+    },
     issue_areas: entity.issue_area_ids ?? [],
     source_types: entity.source_types as Entry["source_types"],
     source_count: entity.source_count ?? 0,

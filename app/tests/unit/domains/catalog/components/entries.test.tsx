@@ -44,6 +44,7 @@ const sampleEntry: Entry = {
   type: "organization",
   updated_at: "2026-04-12T00:00:00.000Z",
   verified: true,
+  claim: { status: "unclaimed", verification_level: "atlas-verified" },
   city: "Kansas City",
   state: "MO",
   geo_specificity: "local",

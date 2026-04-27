@@ -20,6 +20,8 @@ import { Route as PublicIndexRouteImport } from './routes/_public/index'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as ApiSplatRouteImport } from './routes/api/$'
 import { Route as WorkspaceOrganizationRouteImport } from './routes/_workspace/organization'
+import { Route as WorkspaceListsRouteImport } from './routes/_workspace/lists'
+import { Route as WorkspaceFeedRouteImport } from './routes/_workspace/feed'
 import { Route as WorkspaceDiscoveryRouteImport } from './routes/_workspace/discovery'
 import { Route as WorkspaceAccountRouteImport } from './routes/_workspace/account'
 import { Route as PublicTermsRouteImport } from './routes/_public/terms'
@@ -27,7 +29,6 @@ import { Route as PublicSecurityRouteImport } from './routes/_public/security'
 import { Route as PublicRequestDiscountRouteImport } from './routes/_public/request-discount'
 import { Route as PublicPrivacyRouteImport } from './routes/_public/privacy'
 import { Route as PublicPricingRouteImport } from './routes/_public/pricing'
-import { Route as PublicClaimRouteImport } from './routes/_public/claim'
 import { Route as PublicBrowseRouteImport } from './routes/_public/browse'
 import { Route as AuthSignUpRouteImport } from './routes/_auth/sign-up'
 import { Route as AuthSignInRouteImport } from './routes/_auth/sign-in'
@@ -37,10 +38,13 @@ import { Route as PublicProfilesIndexRouteImport } from './routes/_public/profil
 import { Route as ApiStripeWebhookRouteImport } from './routes/api/stripe/webhook'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as WorkspaceOrganizationSsoRouteImport } from './routes/_workspace/organization.sso'
+import { Route as WorkspaceManageSlugRouteImport } from './routes/_workspace/manage.$slug'
+import { Route as WorkspaceListsIdRouteImport } from './routes/_workspace/lists.$id'
 import { Route as WorkspaceAdminDiscountsRouteImport } from './routes/_workspace/admin.discounts'
 import { Route as PublicProfilesPeopleRouteImport } from './routes/_public/profiles/people'
 import { Route as PublicProfilesOrganizationsRouteImport } from './routes/_public/profiles/organizations'
 import { Route as PublicEntriesEntryIdRouteImport } from './routes/_public/entries.$entryId'
+import { Route as PublicClaimSlugRouteImport } from './routes/_public/claim.$slug'
 import { Route as AuthOauthConsentRouteImport } from './routes/_auth/oauth/consent'
 import { Route as PublicProfilesPeopleIndexRouteImport } from './routes/_public/profiles/people.index'
 import { Route as PublicProfilesOrganizationsIndexRouteImport } from './routes/_public/profiles/organizations.index'
@@ -101,6 +105,16 @@ const WorkspaceOrganizationRoute = WorkspaceOrganizationRouteImport.update({
   path: '/organization',
   getParentRoute: () => WorkspaceRoute,
 } as any)
+const WorkspaceListsRoute = WorkspaceListsRouteImport.update({
+  id: '/lists',
+  path: '/lists',
+  getParentRoute: () => WorkspaceRoute,
+} as any)
+const WorkspaceFeedRoute = WorkspaceFeedRouteImport.update({
+  id: '/feed',
+  path: '/feed',
+  getParentRoute: () => WorkspaceRoute,
+} as any)
 const WorkspaceDiscoveryRoute = WorkspaceDiscoveryRouteImport.update({
   id: '/discovery',
   path: '/discovery',
@@ -134,11 +148,6 @@ const PublicPrivacyRoute = PublicPrivacyRouteImport.update({
 const PublicPricingRoute = PublicPricingRouteImport.update({
   id: '/pricing',
   path: '/pricing',
-  getParentRoute: () => PublicRoute,
-} as any)
-const PublicClaimRoute = PublicClaimRouteImport.update({
-  id: '/claim',
-  path: '/claim',
   getParentRoute: () => PublicRoute,
 } as any)
 const PublicBrowseRoute = PublicBrowseRouteImport.update({
@@ -188,6 +197,16 @@ const WorkspaceOrganizationSsoRoute =
     path: '/sso',
     getParentRoute: () => WorkspaceOrganizationRoute,
   } as any)
+const WorkspaceManageSlugRoute = WorkspaceManageSlugRouteImport.update({
+  id: '/manage/$slug',
+  path: '/manage/$slug',
+  getParentRoute: () => WorkspaceRoute,
+} as any)
+const WorkspaceListsIdRoute = WorkspaceListsIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => WorkspaceListsRoute,
+} as any)
 const WorkspaceAdminDiscountsRoute = WorkspaceAdminDiscountsRouteImport.update({
   id: '/admin/discounts',
   path: '/admin/discounts',
@@ -207,6 +226,11 @@ const PublicProfilesOrganizationsRoute =
 const PublicEntriesEntryIdRoute = PublicEntriesEntryIdRouteImport.update({
   id: '/entries/$entryId',
   path: '/entries/$entryId',
+  getParentRoute: () => PublicRoute,
+} as any)
+const PublicClaimSlugRoute = PublicClaimSlugRouteImport.update({
+  id: '/claim/$slug',
+  path: '/claim/$slug',
   getParentRoute: () => PublicRoute,
 } as any)
 const AuthOauthConsentRoute = AuthOauthConsentRouteImport.update({
@@ -260,7 +284,6 @@ export interface FileRoutesByFullPath {
   '/sign-in': typeof AuthSignInRoute
   '/sign-up': typeof AuthSignUpRoute
   '/browse': typeof PublicBrowseRoute
-  '/claim': typeof PublicClaimRoute
   '/pricing': typeof PublicPricingRoute
   '/privacy': typeof PublicPrivacyRoute
   '/request-discount': typeof PublicRequestDiscountRoute
@@ -268,14 +291,19 @@ export interface FileRoutesByFullPath {
   '/terms': typeof PublicTermsRoute
   '/account': typeof WorkspaceAccountRoute
   '/discovery': typeof WorkspaceDiscoveryRoute
+  '/feed': typeof WorkspaceFeedRoute
+  '/lists': typeof WorkspaceListsRouteWithChildren
   '/organization': typeof WorkspaceOrganizationRouteWithChildren
   '/api/$': typeof ApiSplatRoute
   '/api/health': typeof ApiHealthRoute
   '/oauth/consent': typeof AuthOauthConsentRoute
+  '/claim/$slug': typeof PublicClaimSlugRoute
   '/entries/$entryId': typeof PublicEntriesEntryIdRoute
   '/profiles/organizations': typeof PublicProfilesOrganizationsRouteWithChildren
   '/profiles/people': typeof PublicProfilesPeopleRouteWithChildren
   '/admin/discounts': typeof WorkspaceAdminDiscountsRoute
+  '/lists/$id': typeof WorkspaceListsIdRoute
+  '/manage/$slug': typeof WorkspaceManageSlugRoute
   '/organization/sso': typeof WorkspaceOrganizationSsoRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/stripe/webhook': typeof ApiStripeWebhookRoute
@@ -298,7 +326,6 @@ export interface FileRoutesByTo {
   '/sign-in': typeof AuthSignInRoute
   '/sign-up': typeof AuthSignUpRoute
   '/browse': typeof PublicBrowseRoute
-  '/claim': typeof PublicClaimRoute
   '/pricing': typeof PublicPricingRoute
   '/privacy': typeof PublicPrivacyRoute
   '/request-discount': typeof PublicRequestDiscountRoute
@@ -306,11 +333,16 @@ export interface FileRoutesByTo {
   '/terms': typeof PublicTermsRoute
   '/account': typeof WorkspaceAccountRoute
   '/discovery': typeof WorkspaceDiscoveryRoute
+  '/feed': typeof WorkspaceFeedRoute
+  '/lists': typeof WorkspaceListsRouteWithChildren
   '/api/$': typeof ApiSplatRoute
   '/api/health': typeof ApiHealthRoute
   '/oauth/consent': typeof AuthOauthConsentRoute
+  '/claim/$slug': typeof PublicClaimSlugRoute
   '/entries/$entryId': typeof PublicEntriesEntryIdRoute
   '/admin/discounts': typeof WorkspaceAdminDiscountsRoute
+  '/lists/$id': typeof WorkspaceListsIdRoute
+  '/manage/$slug': typeof WorkspaceManageSlugRoute
   '/organization/sso': typeof WorkspaceOrganizationSsoRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/stripe/webhook': typeof ApiStripeWebhookRoute
@@ -336,7 +368,6 @@ export interface FileRoutesById {
   '/_auth/sign-in': typeof AuthSignInRoute
   '/_auth/sign-up': typeof AuthSignUpRoute
   '/_public/browse': typeof PublicBrowseRoute
-  '/_public/claim': typeof PublicClaimRoute
   '/_public/pricing': typeof PublicPricingRoute
   '/_public/privacy': typeof PublicPrivacyRoute
   '/_public/request-discount': typeof PublicRequestDiscountRoute
@@ -344,15 +375,20 @@ export interface FileRoutesById {
   '/_public/terms': typeof PublicTermsRoute
   '/_workspace/account': typeof WorkspaceAccountRoute
   '/_workspace/discovery': typeof WorkspaceDiscoveryRoute
+  '/_workspace/feed': typeof WorkspaceFeedRoute
+  '/_workspace/lists': typeof WorkspaceListsRouteWithChildren
   '/_workspace/organization': typeof WorkspaceOrganizationRouteWithChildren
   '/api/$': typeof ApiSplatRoute
   '/api/health': typeof ApiHealthRoute
   '/_public/': typeof PublicIndexRoute
   '/_auth/oauth/consent': typeof AuthOauthConsentRoute
+  '/_public/claim/$slug': typeof PublicClaimSlugRoute
   '/_public/entries/$entryId': typeof PublicEntriesEntryIdRoute
   '/_public/profiles/organizations': typeof PublicProfilesOrganizationsRouteWithChildren
   '/_public/profiles/people': typeof PublicProfilesPeopleRouteWithChildren
   '/_workspace/admin/discounts': typeof WorkspaceAdminDiscountsRoute
+  '/_workspace/lists/$id': typeof WorkspaceListsIdRoute
+  '/_workspace/manage/$slug': typeof WorkspaceManageSlugRoute
   '/_workspace/organization/sso': typeof WorkspaceOrganizationSsoRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/stripe/webhook': typeof ApiStripeWebhookRoute
@@ -377,7 +413,6 @@ export interface FileRouteTypes {
     | '/sign-in'
     | '/sign-up'
     | '/browse'
-    | '/claim'
     | '/pricing'
     | '/privacy'
     | '/request-discount'
@@ -385,14 +420,19 @@ export interface FileRouteTypes {
     | '/terms'
     | '/account'
     | '/discovery'
+    | '/feed'
+    | '/lists'
     | '/organization'
     | '/api/$'
     | '/api/health'
     | '/oauth/consent'
+    | '/claim/$slug'
     | '/entries/$entryId'
     | '/profiles/organizations'
     | '/profiles/people'
     | '/admin/discounts'
+    | '/lists/$id'
+    | '/manage/$slug'
     | '/organization/sso'
     | '/api/auth/$'
     | '/api/stripe/webhook'
@@ -415,7 +455,6 @@ export interface FileRouteTypes {
     | '/sign-in'
     | '/sign-up'
     | '/browse'
-    | '/claim'
     | '/pricing'
     | '/privacy'
     | '/request-discount'
@@ -423,11 +462,16 @@ export interface FileRouteTypes {
     | '/terms'
     | '/account'
     | '/discovery'
+    | '/feed'
+    | '/lists'
     | '/api/$'
     | '/api/health'
     | '/oauth/consent'
+    | '/claim/$slug'
     | '/entries/$entryId'
     | '/admin/discounts'
+    | '/lists/$id'
+    | '/manage/$slug'
     | '/organization/sso'
     | '/api/auth/$'
     | '/api/stripe/webhook'
@@ -452,7 +496,6 @@ export interface FileRouteTypes {
     | '/_auth/sign-in'
     | '/_auth/sign-up'
     | '/_public/browse'
-    | '/_public/claim'
     | '/_public/pricing'
     | '/_public/privacy'
     | '/_public/request-discount'
@@ -460,15 +503,20 @@ export interface FileRouteTypes {
     | '/_public/terms'
     | '/_workspace/account'
     | '/_workspace/discovery'
+    | '/_workspace/feed'
+    | '/_workspace/lists'
     | '/_workspace/organization'
     | '/api/$'
     | '/api/health'
     | '/_public/'
     | '/_auth/oauth/consent'
+    | '/_public/claim/$slug'
     | '/_public/entries/$entryId'
     | '/_public/profiles/organizations'
     | '/_public/profiles/people'
     | '/_workspace/admin/discounts'
+    | '/_workspace/lists/$id'
+    | '/_workspace/manage/$slug'
     | '/_workspace/organization/sso'
     | '/api/auth/$'
     | '/api/stripe/webhook'
@@ -577,6 +625,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WorkspaceOrganizationRouteImport
       parentRoute: typeof WorkspaceRoute
     }
+    '/_workspace/lists': {
+      id: '/_workspace/lists'
+      path: '/lists'
+      fullPath: '/lists'
+      preLoaderRoute: typeof WorkspaceListsRouteImport
+      parentRoute: typeof WorkspaceRoute
+    }
+    '/_workspace/feed': {
+      id: '/_workspace/feed'
+      path: '/feed'
+      fullPath: '/feed'
+      preLoaderRoute: typeof WorkspaceFeedRouteImport
+      parentRoute: typeof WorkspaceRoute
+    }
     '/_workspace/discovery': {
       id: '/_workspace/discovery'
       path: '/discovery'
@@ -624,13 +686,6 @@ declare module '@tanstack/react-router' {
       path: '/pricing'
       fullPath: '/pricing'
       preLoaderRoute: typeof PublicPricingRouteImport
-      parentRoute: typeof PublicRoute
-    }
-    '/_public/claim': {
-      id: '/_public/claim'
-      path: '/claim'
-      fullPath: '/claim'
-      preLoaderRoute: typeof PublicClaimRouteImport
       parentRoute: typeof PublicRoute
     }
     '/_public/browse': {
@@ -696,6 +751,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WorkspaceOrganizationSsoRouteImport
       parentRoute: typeof WorkspaceOrganizationRoute
     }
+    '/_workspace/manage/$slug': {
+      id: '/_workspace/manage/$slug'
+      path: '/manage/$slug'
+      fullPath: '/manage/$slug'
+      preLoaderRoute: typeof WorkspaceManageSlugRouteImport
+      parentRoute: typeof WorkspaceRoute
+    }
+    '/_workspace/lists/$id': {
+      id: '/_workspace/lists/$id'
+      path: '/$id'
+      fullPath: '/lists/$id'
+      preLoaderRoute: typeof WorkspaceListsIdRouteImport
+      parentRoute: typeof WorkspaceListsRoute
+    }
     '/_workspace/admin/discounts': {
       id: '/_workspace/admin/discounts'
       path: '/admin/discounts'
@@ -722,6 +791,13 @@ declare module '@tanstack/react-router' {
       path: '/entries/$entryId'
       fullPath: '/entries/$entryId'
       preLoaderRoute: typeof PublicEntriesEntryIdRouteImport
+      parentRoute: typeof PublicRoute
+    }
+    '/_public/claim/$slug': {
+      id: '/_public/claim/$slug'
+      path: '/claim/$slug'
+      fullPath: '/claim/$slug'
+      preLoaderRoute: typeof PublicClaimSlugRouteImport
       parentRoute: typeof PublicRoute
     }
     '/_auth/oauth/consent': {
@@ -824,13 +900,13 @@ const PublicProfilesPeopleRouteWithChildren =
 
 interface PublicRouteChildren {
   PublicBrowseRoute: typeof PublicBrowseRoute
-  PublicClaimRoute: typeof PublicClaimRoute
   PublicPricingRoute: typeof PublicPricingRoute
   PublicPrivacyRoute: typeof PublicPrivacyRoute
   PublicRequestDiscountRoute: typeof PublicRequestDiscountRoute
   PublicSecurityRoute: typeof PublicSecurityRoute
   PublicTermsRoute: typeof PublicTermsRoute
   PublicIndexRoute: typeof PublicIndexRoute
+  PublicClaimSlugRoute: typeof PublicClaimSlugRoute
   PublicEntriesEntryIdRoute: typeof PublicEntriesEntryIdRoute
   PublicProfilesOrganizationsRoute: typeof PublicProfilesOrganizationsRouteWithChildren
   PublicProfilesPeopleRoute: typeof PublicProfilesPeopleRouteWithChildren
@@ -839,13 +915,13 @@ interface PublicRouteChildren {
 
 const PublicRouteChildren: PublicRouteChildren = {
   PublicBrowseRoute: PublicBrowseRoute,
-  PublicClaimRoute: PublicClaimRoute,
   PublicPricingRoute: PublicPricingRoute,
   PublicPrivacyRoute: PublicPrivacyRoute,
   PublicRequestDiscountRoute: PublicRequestDiscountRoute,
   PublicSecurityRoute: PublicSecurityRoute,
   PublicTermsRoute: PublicTermsRoute,
   PublicIndexRoute: PublicIndexRoute,
+  PublicClaimSlugRoute: PublicClaimSlugRoute,
   PublicEntriesEntryIdRoute: PublicEntriesEntryIdRoute,
   PublicProfilesOrganizationsRoute:
     PublicProfilesOrganizationsRouteWithChildren,
@@ -855,6 +931,18 @@ const PublicRouteChildren: PublicRouteChildren = {
 
 const PublicRouteWithChildren =
   PublicRoute._addFileChildren(PublicRouteChildren)
+
+interface WorkspaceListsRouteChildren {
+  WorkspaceListsIdRoute: typeof WorkspaceListsIdRoute
+}
+
+const WorkspaceListsRouteChildren: WorkspaceListsRouteChildren = {
+  WorkspaceListsIdRoute: WorkspaceListsIdRoute,
+}
+
+const WorkspaceListsRouteWithChildren = WorkspaceListsRoute._addFileChildren(
+  WorkspaceListsRouteChildren,
+)
 
 interface WorkspaceOrganizationRouteChildren {
   WorkspaceOrganizationSsoRoute: typeof WorkspaceOrganizationSsoRoute
@@ -874,15 +962,21 @@ const WorkspaceOrganizationRouteWithChildren =
 interface WorkspaceRouteChildren {
   WorkspaceAccountRoute: typeof WorkspaceAccountRoute
   WorkspaceDiscoveryRoute: typeof WorkspaceDiscoveryRoute
+  WorkspaceFeedRoute: typeof WorkspaceFeedRoute
+  WorkspaceListsRoute: typeof WorkspaceListsRouteWithChildren
   WorkspaceOrganizationRoute: typeof WorkspaceOrganizationRouteWithChildren
   WorkspaceAdminDiscountsRoute: typeof WorkspaceAdminDiscountsRoute
+  WorkspaceManageSlugRoute: typeof WorkspaceManageSlugRoute
 }
 
 const WorkspaceRouteChildren: WorkspaceRouteChildren = {
   WorkspaceAccountRoute: WorkspaceAccountRoute,
   WorkspaceDiscoveryRoute: WorkspaceDiscoveryRoute,
+  WorkspaceFeedRoute: WorkspaceFeedRoute,
+  WorkspaceListsRoute: WorkspaceListsRouteWithChildren,
   WorkspaceOrganizationRoute: WorkspaceOrganizationRouteWithChildren,
   WorkspaceAdminDiscountsRoute: WorkspaceAdminDiscountsRoute,
+  WorkspaceManageSlugRoute: WorkspaceManageSlugRoute,
 }
 
 const WorkspaceRouteWithChildren = WorkspaceRoute._addFileChildren(

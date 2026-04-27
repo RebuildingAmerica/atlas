@@ -96,6 +96,8 @@ export function ProfileHero({ entry, eyebrow, backLink, factRail, isSignedIn }: 
 
             <div className="lg:flex lg:flex-col lg:items-end lg:gap-2">
               <ActionCluster
+                entryId={entry.id}
+                entrySlug={entry.slug}
                 shareUrl={shareUrl}
                 shareTitle={entry.name}
                 email={entry.email}

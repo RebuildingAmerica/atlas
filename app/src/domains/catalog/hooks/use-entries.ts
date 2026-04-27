@@ -23,3 +23,17 @@ export function useEntry(id: string, options?: UseEntryOptions) {
     enabled: options?.enabled ?? true,
   });
 }
+
+export function useEntryBySlug(
+  type: "people" | "organizations",
+  slug: string,
+  options?: UseEntryOptions,
+) {
+  return useQuery<Entry>({
+    queryKey: ["entries", "by-slug", type, slug],
+    queryFn: () => api.entries.getBySlug(type, slug),
+    staleTime: 1000 * 60 * 10,
+    enabled: (options?.enabled ?? true) && Boolean(slug),
+    retry: false,
+  });
+}
