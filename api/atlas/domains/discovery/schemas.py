@@ -92,73 +92,77 @@ class DiscoveryScheduleCreateRequest(BaseModel):
 class DiscoveryScheduleUpdateRequest(BaseModel):
     """Partial update for a discovery schedule target."""
 
-    location_query: str | None = None
-    state: str | None = Field(None, min_length=2, max_length=2)
-    issue_areas: list[str] | None = None
-    search_depth: Literal["standard", "deep"] | None = None
-    enabled: bool | None = None
+    location_query: str | None = Field(None, description="Location query (e.g. 'Austin, TX')")
+    state: str | None = Field(None, min_length=2, max_length=2, description="2-letter state code")
+    issue_areas: list[str] | None = Field(None, description="Issue area slugs to discover")
+    search_depth: Literal["standard", "deep"] | None = Field(
+        None, description="Search depth for query generation"
+    )
+    enabled: bool | None = Field(None, description="Whether this schedule is active")
 
 
 class DiscoveryScheduleResponse(BaseModel):
     """A discovery schedule target."""
 
-    id: str
-    location_query: str
-    state: str
-    issue_areas: list[str]
-    search_depth: str
-    enabled: bool
-    last_run_id: str | None = None
-    last_run_at: str | None = None
-    created_at: str
-    updated_at: str
+    id: str = Field(..., description="Schedule ID")
+    location_query: str = Field(..., description="Location query")
+    state: str = Field(..., description="2-letter state code")
+    issue_areas: list[str] = Field(..., description="Issue area slugs")
+    search_depth: str = Field(..., description="Search depth (standard or deep)")
+    enabled: bool = Field(..., description="Whether this schedule is active")
+    last_run_id: str | None = Field(None, description="ID of the most recent run")
+    last_run_at: str | None = Field(None, description="Timestamp of the most recent run")
+    created_at: str = Field(..., description="Creation timestamp")
+    updated_at: str = Field(..., description="Last update timestamp")
 
 
 class DiscoveryScheduleCollectionResponse(BaseModel):
     """Collection of discovery schedule targets."""
 
-    items: list[DiscoveryScheduleResponse]
-    total: int
+    items: list[DiscoveryScheduleResponse] = Field(..., description="Schedule targets")
+    total: int = Field(..., description="Total number of schedules")
 
 
 class DiscoveryJobResponse(BaseModel):
     """A discovery pipeline job."""
 
-    id: str
-    run_id: str
-    status: str
-    progress: dict[str, object] | None = None
-    error_message: str | None = None
-    retry_count: int = 0
-    max_retries: int = 2
-    created_at: str
-    started_at: str | None = None
-    completed_at: str | None = None
+    id: str = Field(..., description="Job ID")
+    run_id: str = Field(..., description="Associated discovery run ID")
+    status: str = Field(..., description="Job status (queued, claimed, running, completed, failed)")
+    progress: dict[str, object] | None = Field(None, description="Current step and metrics")
+    error_message: str | None = Field(None, description="Error message if failed")
+    retry_count: int = Field(0, description="Number of retry attempts so far")
+    max_retries: int = Field(2, description="Maximum retry attempts before permanent failure")
+    created_at: str = Field(..., description="Creation timestamp")
+    started_at: str | None = Field(None, description="Execution start timestamp")
+    completed_at: str | None = Field(None, description="Completion timestamp")
 
 
 class DiscoveryPipelineSummaryResponse(BaseModel):
     """Aggregate pipeline health summary."""
 
-    queued_jobs: int = 0
-    running_jobs: int = 0
-    failed_jobs: int = 0
-    completed_runs_total: int = 0
-    total_entries_confirmed: int = 0
-    last_completed_run_at: str | None = None
-    enabled_schedules: int = 0
+    queued_jobs: int = Field(0, description="Jobs waiting to be claimed")
+    running_jobs: int = Field(0, description="Jobs currently executing")
+    failed_jobs: int = Field(0, description="Jobs that failed permanently")
+    completed_runs_total: int = Field(0, description="Total completed discovery runs")
+    total_entries_confirmed: int = Field(0, description="Sum of confirmed entries across all runs")
+    last_completed_run_at: str | None = Field(
+        None, description="Timestamp of the most recently completed run"
+    )
+    enabled_schedules: int = Field(0, description="Number of enabled schedule targets")
 
 
 class ScheduledRunResult(BaseModel):
     """Result of one scheduled pipeline execution."""
 
-    schedule_id: str
-    run_id: str
-    status: str
-    entries_confirmed: int = 0
+    schedule_id: str = Field(..., description="Schedule target that triggered this run")
+    run_id: str = Field(..., description="Discovery run ID created for this execution")
+    status: str = Field(..., description="Run outcome (completed or failed)")
+    entries_confirmed: int = Field(0, description="Entries persisted from this run")
 
 
 class ScheduledRunResponse(BaseModel):
     """Response from the scheduled trigger endpoint."""
 
-    runs_started: int
-    results: list[ScheduledRunResult]
+    runs_started: int = Field(..., description="Number of schedule targets executed")
+    results: list[ScheduledRunResult] = Field(..., description="Per-target execution results")
