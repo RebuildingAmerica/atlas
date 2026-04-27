@@ -54,6 +54,7 @@ import { Route as PublicProfilesOrganizationsIndexRouteImport } from './routes/_
 import { Route as ApiAuthInternalApiKeyRouteImport } from './routes/api/auth/internal/api-key'
 import { Route as PublicProfilesPeopleSlugRouteImport } from './routes/_public/profiles/people.$slug'
 import { Route as PublicProfilesOrganizationsSlugRouteImport } from './routes/_public/profiles/organizations.$slug'
+import { Route as DotwellKnownOauthAuthorizationServerApiAuthRouteImport } from './routes/[.]well-known.oauth-authorization-server.api.auth'
 import { Route as ApiAuthInternalMembershipsOrganizationIdMembersUserIdRouteImport } from './routes/api/auth/internal/memberships.$organizationId.members.$userId'
 
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
@@ -287,6 +288,12 @@ const PublicProfilesOrganizationsSlugRoute =
     path: '/$slug',
     getParentRoute: () => PublicProfilesOrganizationsRoute,
   } as any)
+const DotwellKnownOauthAuthorizationServerApiAuthRoute =
+  DotwellKnownOauthAuthorizationServerApiAuthRouteImport.update({
+    id: '/api/auth',
+    path: '/api/auth',
+    getParentRoute: () => DotwellKnownOauthAuthorizationServerRoute,
+  } as any)
 const ApiAuthInternalMembershipsOrganizationIdMembersUserIdRoute =
   ApiAuthInternalMembershipsOrganizationIdMembersUserIdRouteImport.update({
     id: '/api/auth/internal/memberships/$organizationId/members/$userId',
@@ -301,7 +308,7 @@ export interface FileRoutesByFullPath {
   '/mcp': typeof McpRoute
   '/openapi.json': typeof OpenapiDotjsonRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
-  '/.well-known/oauth-authorization-server': typeof DotwellKnownOauthAuthorizationServerRoute
+  '/.well-known/oauth-authorization-server': typeof DotwellKnownOauthAuthorizationServerRouteWithChildren
   '/account-setup': typeof AuthAccountSetupRoute
   '/sign-in': typeof AuthSignInRoute
   '/sign-up': typeof AuthSignUpRoute
@@ -332,6 +339,7 @@ export interface FileRoutesByFullPath {
   '/api/stripe/webhook': typeof ApiStripeWebhookRoute
   '/profiles/': typeof PublicProfilesIndexRoute
   '/organization/': typeof WorkspaceOrganizationIndexRoute
+  '/.well-known/oauth-authorization-server/api/auth': typeof DotwellKnownOauthAuthorizationServerApiAuthRoute
   '/profiles/organizations/$slug': typeof PublicProfilesOrganizationsSlugRoute
   '/profiles/people/$slug': typeof PublicProfilesPeopleSlugRoute
   '/api/auth/internal/api-key': typeof ApiAuthInternalApiKeyRoute
@@ -346,7 +354,7 @@ export interface FileRoutesByTo {
   '/mcp': typeof McpRoute
   '/openapi.json': typeof OpenapiDotjsonRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
-  '/.well-known/oauth-authorization-server': typeof DotwellKnownOauthAuthorizationServerRoute
+  '/.well-known/oauth-authorization-server': typeof DotwellKnownOauthAuthorizationServerRouteWithChildren
   '/account-setup': typeof AuthAccountSetupRoute
   '/sign-in': typeof AuthSignInRoute
   '/sign-up': typeof AuthSignUpRoute
@@ -374,6 +382,7 @@ export interface FileRoutesByTo {
   '/api/stripe/webhook': typeof ApiStripeWebhookRoute
   '/profiles': typeof PublicProfilesIndexRoute
   '/organization': typeof WorkspaceOrganizationIndexRoute
+  '/.well-known/oauth-authorization-server/api/auth': typeof DotwellKnownOauthAuthorizationServerApiAuthRoute
   '/profiles/organizations/$slug': typeof PublicProfilesOrganizationsSlugRoute
   '/profiles/people/$slug': typeof PublicProfilesPeopleSlugRoute
   '/api/auth/internal/api-key': typeof ApiAuthInternalApiKeyRoute
@@ -391,7 +400,7 @@ export interface FileRoutesById {
   '/mcp': typeof McpRoute
   '/openapi.json': typeof OpenapiDotjsonRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
-  '/.well-known/oauth-authorization-server': typeof DotwellKnownOauthAuthorizationServerRoute
+  '/.well-known/oauth-authorization-server': typeof DotwellKnownOauthAuthorizationServerRouteWithChildren
   '/_auth/account-setup': typeof AuthAccountSetupRoute
   '/_auth/sign-in': typeof AuthSignInRoute
   '/_auth/sign-up': typeof AuthSignUpRoute
@@ -423,6 +432,7 @@ export interface FileRoutesById {
   '/api/stripe/webhook': typeof ApiStripeWebhookRoute
   '/_public/profiles/': typeof PublicProfilesIndexRoute
   '/_workspace/organization/': typeof WorkspaceOrganizationIndexRoute
+  '/.well-known/oauth-authorization-server/api/auth': typeof DotwellKnownOauthAuthorizationServerApiAuthRoute
   '/_public/profiles/organizations/$slug': typeof PublicProfilesOrganizationsSlugRoute
   '/_public/profiles/people/$slug': typeof PublicProfilesPeopleSlugRoute
   '/api/auth/internal/api-key': typeof ApiAuthInternalApiKeyRoute
@@ -470,6 +480,7 @@ export interface FileRouteTypes {
     | '/api/stripe/webhook'
     | '/profiles/'
     | '/organization/'
+    | '/.well-known/oauth-authorization-server/api/auth'
     | '/profiles/organizations/$slug'
     | '/profiles/people/$slug'
     | '/api/auth/internal/api-key'
@@ -512,6 +523,7 @@ export interface FileRouteTypes {
     | '/api/stripe/webhook'
     | '/profiles'
     | '/organization'
+    | '/.well-known/oauth-authorization-server/api/auth'
     | '/profiles/organizations/$slug'
     | '/profiles/people/$slug'
     | '/api/auth/internal/api-key'
@@ -560,6 +572,7 @@ export interface FileRouteTypes {
     | '/api/stripe/webhook'
     | '/_public/profiles/'
     | '/_workspace/organization/'
+    | '/.well-known/oauth-authorization-server/api/auth'
     | '/_public/profiles/organizations/$slug'
     | '/_public/profiles/people/$slug'
     | '/api/auth/internal/api-key'
@@ -577,7 +590,7 @@ export interface RootRouteChildren {
   McpRoute: typeof McpRoute
   OpenapiDotjsonRoute: typeof OpenapiDotjsonRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
-  DotwellKnownOauthAuthorizationServerRoute: typeof DotwellKnownOauthAuthorizationServerRoute
+  DotwellKnownOauthAuthorizationServerRoute: typeof DotwellKnownOauthAuthorizationServerRouteWithChildren
   ApiSplatRoute: typeof ApiSplatRoute
   ApiHealthRoute: typeof ApiHealthRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
@@ -903,6 +916,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PublicProfilesOrganizationsSlugRouteImport
       parentRoute: typeof PublicProfilesOrganizationsRoute
     }
+    '/.well-known/oauth-authorization-server/api/auth': {
+      id: '/.well-known/oauth-authorization-server/api/auth'
+      path: '/api/auth'
+      fullPath: '/.well-known/oauth-authorization-server/api/auth'
+      preLoaderRoute: typeof DotwellKnownOauthAuthorizationServerApiAuthRouteImport
+      parentRoute: typeof DotwellKnownOauthAuthorizationServerRoute
+    }
     '/api/auth/internal/memberships/$organizationId/members/$userId': {
       id: '/api/auth/internal/memberships/$organizationId/members/$userId'
       path: '/api/auth/internal/memberships/$organizationId/members/$userId'
@@ -1046,6 +1066,21 @@ const WorkspaceRouteWithChildren = WorkspaceRoute._addFileChildren(
   WorkspaceRouteChildren,
 )
 
+interface DotwellKnownOauthAuthorizationServerRouteChildren {
+  DotwellKnownOauthAuthorizationServerApiAuthRoute: typeof DotwellKnownOauthAuthorizationServerApiAuthRoute
+}
+
+const DotwellKnownOauthAuthorizationServerRouteChildren: DotwellKnownOauthAuthorizationServerRouteChildren =
+  {
+    DotwellKnownOauthAuthorizationServerApiAuthRoute:
+      DotwellKnownOauthAuthorizationServerApiAuthRoute,
+  }
+
+const DotwellKnownOauthAuthorizationServerRouteWithChildren =
+  DotwellKnownOauthAuthorizationServerRoute._addFileChildren(
+    DotwellKnownOauthAuthorizationServerRouteChildren,
+  )
+
 const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRouteWithChildren,
   PublicRoute: PublicRouteWithChildren,
@@ -1056,7 +1091,7 @@ const rootRouteChildren: RootRouteChildren = {
   OpenapiDotjsonRoute: OpenapiDotjsonRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   DotwellKnownOauthAuthorizationServerRoute:
-    DotwellKnownOauthAuthorizationServerRoute,
+    DotwellKnownOauthAuthorizationServerRouteWithChildren,
   ApiSplatRoute: ApiSplatRoute,
   ApiHealthRoute: ApiHealthRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,

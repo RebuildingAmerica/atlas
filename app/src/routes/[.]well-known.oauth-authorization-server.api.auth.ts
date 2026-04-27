@@ -3,12 +3,15 @@ import { buildAuthorizationServerMetadata } from "@/domains/access/oauth-as-meta
 import { getAuthRuntimeConfig } from "@/domains/access/server/runtime";
 
 /**
- * RFC 8414 OAuth 2.0 Authorization Server Metadata at the conventional root
- * `.well-known` URL.  Most MCP clients and OAuth 2.1 tutorials look here
- * first; Atlas mirrors the document at the strict RFC 8414 §3 path under
- * `/api/auth` for clients that follow the issuer-suffix construction.
+ * RFC 8414 §3 issuer-suffix path for the AS metadata document.  When the
+ * issuer URI has a non-empty path component (Atlas's issuer is
+ * `${publicBaseUrl}/api/auth`), strict OAuth 2.1 clients construct the
+ * metadata URL by inserting `/.well-known/oauth-authorization-server`
+ * between the host and the path of the issuer — i.e.
+ * `${origin}/.well-known/oauth-authorization-server/api/auth`.  The body is
+ * identical to the root variant; only the URL differs.
  */
-export const Route = createFileRoute("/.well-known/oauth-authorization-server")({
+export const Route = createFileRoute("/.well-known/oauth-authorization-server/api/auth")({
   server: {
     handlers: {
       GET: () => {
