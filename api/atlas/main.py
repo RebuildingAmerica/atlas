@@ -140,6 +140,37 @@ def create_app() -> FastAPI:
         apply_no_store_headers(response)
         return {"status": "ok"}
 
+    # RFC 9728 OAuth 2.0 Protected Resource Metadata.
+    # MCP and OAuth 2.1 clients fetch this document to discover the
+    # authorization server, supported scopes, and JWT signing parameters
+    # before they ask a user to authorize a token.  The URL is the one
+    # advertised in the WWW-Authenticate challenge, so it has to live under
+    # the same canonical resource origin that gets recorded in audience
+    # claims.
+    @app.get("/api/.well-known/oauth-protected-resource", include_in_schema=False)
+    async def oauth_protected_resource_metadata(response: Response) -> dict[str, Any]:
+        """Return RFC 9728 protected-resource metadata for this API."""
+        apply_static_public_cache(response)
+        resource_url = settings.auth_jwt_resource_url
+        issuer = settings.auth_jwt_issuer
+        metadata: dict[str, Any] = {
+            "resource": resource_url,
+            "authorization_servers": [issuer] if issuer else [],
+            "bearer_methods_supported": ["header"],
+            "scopes_supported": [
+                "openid",
+                "profile",
+                "email",
+                "offline_access",
+                "discovery:read",
+                "discovery:write",
+                "entities:write",
+            ],
+        }
+        if settings.auth_jwt_jwks_url:
+            metadata["jwks_uri"] = settings.auth_jwt_jwks_url
+        return metadata
+
     if settings.enable_openapi_spec:
 
         @app.get("/openapi.json", include_in_schema=False)
