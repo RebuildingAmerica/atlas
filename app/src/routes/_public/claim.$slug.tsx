@@ -8,7 +8,7 @@ import {
   useMyClaims,
   useVerifyClaimEmail,
 } from "@/domains/catalog/hooks/use-claims";
-import { useEntryBySlug } from "@/domains/catalog/hooks/use-entries";
+import { loadEntryBySlugAny } from "@/domains/catalog/server/profiles/profile-loaders";
 import { PageLayout } from "@/platform/layout/page-layout";
 import { Badge } from "@/platform/ui/badge";
 import { Button } from "@/platform/ui/button";
@@ -20,22 +20,32 @@ const claimSearchSchema = z.object({
 
 export const Route = createFileRoute("/_public/claim/$slug")({
   validateSearch: claimSearchSchema,
+  loader: async ({ params }) => {
+    const entry = await loadEntryBySlugAny({ data: { slug: params.slug } });
+    return { entry };
+  },
+  head: ({ loaderData }) => {
+    const entry = loaderData?.entry;
+    if (!entry) return {};
+    return {
+      meta: [
+        { title: `Claim ${entry.name} | Atlas` },
+        {
+          name: "description",
+          content: `Verify and manage the Atlas profile for ${entry.name}.`,
+        },
+      ],
+    };
+  },
   component: ClaimRoute,
 });
 
 function ClaimRoute() {
   const { slug } = Route.useParams();
   const search = Route.useSearch();
+  const { entry } = Route.useLoaderData();
   const sessionQuery = useAtlasSession();
   const isSignedIn = Boolean(sessionQuery.data);
-
-  // Try to load as person first, fall back to org. Slug uniqueness is enforced
-  // at the entry level so only one will match.
-  const personQuery = useEntryBySlug("people", slug, { enabled: true });
-  const orgQuery = useEntryBySlug("organizations", slug, {
-    enabled: !personQuery.data && !personQuery.isLoading,
-  });
-  const entry = personQuery.data ?? orgQuery.data;
 
   const initiate = useInitiateClaim();
   const verify = useVerifyClaimEmail();
@@ -43,38 +53,11 @@ function ClaimRoute() {
   const [evidence, setEvidence] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  if (!entry) {
-    if (personQuery.isLoading || orgQuery.isLoading) {
-      return (
-        <PageLayout className="pt-0 pb-12">
-          <div className="mx-auto max-w-2xl space-y-4 py-12">
-            <p className="type-body-medium text-ink-soft">Loading profile…</p>
-          </div>
-        </PageLayout>
-      );
-    }
-    return (
-      <PageLayout className="pt-0 pb-12">
-        <div className="mx-auto max-w-2xl space-y-4 py-12">
-          <h1 className="type-display-small text-ink-strong">Profile not found</h1>
-          <p className="type-body-medium text-ink-soft">
-            We couldn&apos;t locate the profile you&apos;re trying to claim. Try{" "}
-            <Link to="/profiles" className="underline">
-              browsing profiles
-            </Link>{" "}
-            from the directory.
-          </p>
-        </div>
-      </PageLayout>
-    );
-  }
-
   const myClaim = claims.data?.find((claim) => claim.entry_id === entry.id);
   const profilePath = `/profiles/${entry.type === "organization" ? "organizations" : "people"}/${entry.slug}`;
   const verificationToken = search.token;
 
   async function handleInitiate() {
-    if (!entry) return;
     setErrorMessage(null);
     try {
       await initiate.mutateAsync({

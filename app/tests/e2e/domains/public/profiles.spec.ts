@@ -88,4 +88,38 @@ test.describe("public profile routes", () => {
     await expect(page.getByText("Hide Error")).toHaveCount(0);
     await expect(page.getByText(/Entity not found/i)).toHaveCount(0);
   });
+
+  test("ships SSR content on first paint for every public profile route", async ({ request }) => {
+    // Direct fetches of the rendered HTML — no client JS is executed, so any
+    // content here came from the server loader.
+    const expectations: { path: string; needles: RegExp[] }[] = [
+      { path: "/profiles", needles: [/Maya Thompson|Eastside Housing Network/i] },
+      { path: "/profiles/people", needles: [/Maya Thompson/i] },
+      {
+        path: "/profiles/organizations",
+        needles: [/Eastside Housing Network/i],
+      },
+      {
+        path: "/profiles/people/maya-thompson",
+        needles: [/Maya Thompson/, /Person profile/],
+      },
+      {
+        path: "/profiles/organizations/eastside-housing-network",
+        needles: [/Eastside Housing Network/, /Organization profile/],
+      },
+      {
+        path: "/claim/maya-thompson",
+        needles: [/Maya Thompson/, /Claim a profile/i],
+      },
+    ];
+
+    for (const { path, needles } of expectations) {
+      const response = await request.get(path);
+      expect(response.status(), `expected 200 for ${path}`).toBeLessThan(400);
+      const html = await response.text();
+      for (const needle of needles) {
+        expect(html, `expected ${needle} in SSR HTML for ${path}`).toMatch(needle);
+      }
+    }
+  });
 });

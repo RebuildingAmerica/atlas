@@ -1,8 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { ProfilesOverviewPage } from "@/domains/catalog/pages/profiles/overview/profiles-overview-page";
+import { loadProfilesCatalog } from "@/domains/catalog/server/profiles/profile-loaders";
 
 export const Route = createFileRoute("/_public/profiles/people/")({
-  ssr: false,
+  loader: async () => {
+    const catalog = await loadProfilesCatalog({ data: { scope: "people" } });
+    return { catalog };
+  },
   head: () => ({
     meta: [
       { title: "People Profiles | Atlas" },
@@ -17,5 +21,6 @@ export const Route = createFileRoute("/_public/profiles/people/")({
 });
 
 function PeopleProfilesIndexRoute() {
-  return <ProfilesOverviewPage scope="people" />;
+  const { catalog } = Route.useLoaderData();
+  return <ProfilesOverviewPage scope="people" initialCatalog={catalog} />;
 }

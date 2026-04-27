@@ -16,10 +16,16 @@ import {
   type ProfileBrowseScope,
 } from "@/domains/catalog/profile-browse";
 import { PageLayout } from "@/platform/layout/page-layout";
-import type { Entry } from "@/types";
+import type { Entry, EntryListResponse } from "@/types";
 
 interface ProfilesOverviewPageProps {
   scope?: ProfileBrowseScope;
+  /**
+   * Server-rendered catalog slice — present when the route loader supplied
+   * one. Threaded into `useEntries` as `initialData` so the marquee renders
+   * immediately on first paint.
+   */
+  initialCatalog?: EntryListResponse;
 }
 
 function buildIssueAreaLabels(
@@ -86,17 +92,20 @@ function buildIssueLandscapeGroups(
     }));
 }
 
-export function ProfilesOverviewPage({ scope = "all" }: ProfilesOverviewPageProps) {
+export function ProfilesOverviewPage({ scope = "all", initialCatalog }: ProfilesOverviewPageProps) {
   const taxonomyQuery = useTaxonomy();
   const issueAreaLabels = useMemo(
     () => buildIssueAreaLabels(taxonomyQuery.data),
     [taxonomyQuery.data],
   );
 
-  const catalogQuery = useEntries({
-    entry_types: lockedEntryTypesForScope(scope),
-    limit: 18,
-  });
+  const catalogQuery = useEntries(
+    {
+      entry_types: lockedEntryTypesForScope(scope),
+      limit: 18,
+    },
+    { initialData: initialCatalog },
+  );
   const peopleQuery = useEntries({
     entry_types: ["person"],
     limit: 10,

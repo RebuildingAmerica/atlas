@@ -1,8 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { ProfilesOverviewPage } from "@/domains/catalog/pages/profiles/overview/profiles-overview-page";
+import { loadProfilesCatalog } from "@/domains/catalog/server/profiles/profile-loaders";
 
 export const Route = createFileRoute("/_public/profiles/")({
-  ssr: false,
+  loader: async () => {
+    const catalog = await loadProfilesCatalog({ data: { scope: "all" } });
+    return { catalog };
+  },
   head: () => ({
     meta: [
       { title: "Profiles | Atlas" },
@@ -17,5 +21,6 @@ export const Route = createFileRoute("/_public/profiles/")({
 });
 
 function ProfilesRoute() {
-  return <ProfilesOverviewPage />;
+  const { catalog } = Route.useLoaderData();
+  return <ProfilesOverviewPage initialCatalog={catalog} />;
 }
