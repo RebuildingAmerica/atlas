@@ -50,7 +50,7 @@ export function WorkspaceBillingSection({ activeProducts }: WorkspaceBillingSect
         <p className="type-body-medium text-ink-soft">
           {hasActiveProducts
             ? "Manage your Atlas subscription and billing details."
-            : "You are on the free Default plan."}
+            : "You're on the free Atlas plan. Upgrade for unlimited research, exports, and API access."}
         </p>
       </div>
 

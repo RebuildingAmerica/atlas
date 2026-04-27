@@ -11,7 +11,25 @@ const TIMEOUT_MS = 30_000;
 const PRODUCT_LABELS: Record<AtlasProduct, string> = {
   atlas_pro: "Atlas Pro",
   atlas_team: "Atlas Team",
-  atlas_research_pass: "Research Pass",
+  atlas_research_pass: "Atlas Research Pass",
+};
+
+const PRODUCT_FEATURES: Record<AtlasProduct, string[]> = {
+  atlas_pro: [
+    "Unlimited discovery runs",
+    "Exports to CSV and JSON",
+    "API key with 1,000 requests a day",
+  ],
+  atlas_team: [
+    "Everything in Atlas Pro for your workspace",
+    "Shared notes, watchlists, and Slack digests",
+    "SSO and up to 50 members",
+  ],
+  atlas_research_pass: [
+    "Unlimited discovery runs while your pass is active",
+    "Exports and API access",
+    "Shortlists and notes you keep after the pass ends",
+  ],
 };
 
 interface CheckoutCompletePageProps {
@@ -21,13 +39,14 @@ interface CheckoutCompletePageProps {
 type Phase = "waiting" | "ready" | "timeout";
 
 /**
- * Post-Stripe-checkout landing surface.
+ * Post-checkout landing surface.
  *
- * Stripe redirects here on a successful checkout. The webhook that grants
- * the purchased product is delivered out-of-band, so the row in
- * `workspace_products` may not exist yet when the user lands. This page
+ * The user lands here from the payment screen on success. The webhook that
+ * grants the purchased product is delivered out-of-band, so the row in
+ * `workspace_products` may not exist yet when the page mounts. The page
  * polls the session until the purchased product appears in
- * `activeProducts`, then redirects to /account.
+ * `activeProducts`, then renders a welcome card that names what the
+ * operator just unlocked and lets them choose to continue.
  */
 export function CheckoutCompletePage({ product }: CheckoutCompletePageProps) {
   const queryClient = useQueryClient();
@@ -36,6 +55,7 @@ export function CheckoutCompletePage({ product }: CheckoutCompletePageProps) {
   const startedAtRef = useRef<number>(Date.now());
 
   const productLabel = product ? PRODUCT_LABELS[product] : "your purchase";
+  const features = product ? PRODUCT_FEATURES[product] : [];
   const sessionData = session.data;
 
   useEffect(() => {
@@ -64,29 +84,22 @@ export function CheckoutCompletePage({ product }: CheckoutCompletePageProps) {
     };
   }, [product, queryClient, sessionData]);
 
-  useEffect(() => {
-    if (phase !== "ready") {
-      return;
-    }
-    const redirectHandle = window.setTimeout(() => {
-      window.location.assign("/account");
-    }, 800);
-    return () => {
-      window.clearTimeout(redirectHandle);
-    };
-  }, [phase]);
-
   if (phase === "timeout") {
     return (
       <div className="space-y-6 py-2">
         <div className="space-y-2">
-          <p className="type-label-medium text-outline">Checkout</p>
-          <h1 className="type-display-small text-on-surface">Almost there</h1>
-          <p className="type-body-large text-outline">
-            Stripe accepted your payment for {productLabel}, but Atlas hasn&apos;t finished
-            provisioning the product yet. This usually clears in under a minute. You can refresh
-            this page or visit your account; the product will appear as soon as the webhook is
-            processed.
+          <p className="type-label-medium text-ink-muted tracking-wider uppercase">Checkout</p>
+          <h1 className="type-display-small text-ink-strong leading-tight">Almost there</h1>
+          <p className="type-body-large text-ink-soft leading-relaxed">
+            We have your payment for {productLabel}, but Atlas hasn&apos;t finished setting it up
+            yet — usually under a minute. Refresh in a moment, or email{" "}
+            <a
+              href="mailto:hello@rebuildingus.org"
+              className="text-ink-strong hover:text-accent underline"
+            >
+              hello@rebuildingus.org
+            </a>{" "}
+            and we&apos;ll sort it out.
           </p>
         </div>
         <div className="flex gap-3">
@@ -98,7 +111,7 @@ export function CheckoutCompletePage({ product }: CheckoutCompletePageProps) {
             Refresh
           </Button>
           <Link to="/account">
-            <Button variant="secondary">Go to account</Button>
+            <Button variant="secondary">Go to your account</Button>
           </Link>
         </div>
       </div>
@@ -106,12 +119,39 @@ export function CheckoutCompletePage({ product }: CheckoutCompletePageProps) {
   }
 
   if (phase === "ready") {
+    const isPass = product === "atlas_research_pass";
+    const eyebrow = isPass ? "Your Research Pass is active" : `Welcome to ${productLabel}`;
+
     return (
-      <div className="space-y-6 py-2">
-        <div className="space-y-2">
-          <p className="type-label-medium text-outline">Checkout</p>
-          <h1 className="type-display-small text-on-surface">{productLabel} is active</h1>
-          <p className="type-body-large text-outline">Taking you to your account&hellip;</p>
+      <div className="space-y-8 py-2">
+        <div className="space-y-3">
+          <p className="type-label-medium text-ink-muted tracking-wider uppercase">{eyebrow}</p>
+          <h1 className="type-display-small text-ink-strong leading-tight">
+            Thanks for backing Atlas.
+          </h1>
+          <p className="type-body-large text-ink-soft leading-relaxed">
+            Your support helps us keep Atlas open and source-linked for everyone. Here&apos;s
+            what&apos;s now available to you.
+          </p>
+        </div>
+
+        {features.length > 0 ? (
+          <ul className="type-body-medium text-ink-strong space-y-2">
+            {features.map((feature) => (
+              <li key={feature}>→ {feature}</li>
+            ))}
+          </ul>
+        ) : null}
+
+        <div className="flex flex-wrap gap-3">
+          <Link to="/discovery" className="no-underline">
+            <Button variant="primary">Open your workspace</Button>
+          </Link>
+          <Link to="/account" className="no-underline">
+            <Button variant="secondary">
+              {isPass ? "View your account" : "Manage subscription"}
+            </Button>
+          </Link>
         </div>
       </div>
     );
@@ -120,11 +160,10 @@ export function CheckoutCompletePage({ product }: CheckoutCompletePageProps) {
   return (
     <div className="space-y-6 py-2">
       <div className="space-y-2">
-        <p className="type-label-medium text-outline">Checkout</p>
-        <h1 className="type-display-small text-on-surface">Finalizing your purchase</h1>
-        <p className="type-body-large text-outline">
-          Stripe confirmed your payment for {productLabel}. Atlas is enabling your new
-          capabilities&hellip;
+        <p className="type-label-medium text-ink-muted tracking-wider uppercase">Checkout</p>
+        <h1 className="type-display-small text-ink-strong leading-tight">Finishing up</h1>
+        <p className="type-body-large text-ink-soft leading-relaxed">
+          Atlas is enabling your {productLabel} access. This usually takes a moment.
         </p>
       </div>
     </div>

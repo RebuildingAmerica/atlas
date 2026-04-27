@@ -7,13 +7,17 @@ import { Button } from "@/platform/ui/button";
 import { Input } from "@/platform/ui/input";
 import { getAuthConfig } from "@/domains/access/config";
 
+interface SignUpPageProps {
+  redirectTo?: string;
+}
+
 /**
  * Sign-up page for new Atlas accounts.
  *
  * Collects an email address and sends a magic link. If the email already has
  * an account, redirects to /sign-in with a notice.
  */
-export function SignUpPage() {
+export function SignUpPage({ redirectTo }: SignUpPageProps = {}) {
   const authConfig = getAuthConfig();
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
@@ -21,7 +25,7 @@ export function SignUpPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isPending, setIsPending] = useState(false);
 
-  const callbackURL = buildSignInCallbackURL();
+  const callbackURL = buildSignInCallbackURL(undefined, redirectTo);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -36,7 +40,9 @@ export function SignUpPage() {
       if (accountCheck.exists) {
         const navigationPromise = navigate({
           to: "/sign-in",
-          search: { email, existing: true },
+          search: redirectTo
+            ? { email, existing: true, redirect: redirectTo }
+            : { email, existing: true },
         });
         await navigationPromise;
         return;
@@ -109,7 +115,11 @@ export function SignUpPage() {
 
       <p className="type-body-medium text-outline">
         Already have an account?{" "}
-        <Link to="/sign-in" className="text-accent type-label-medium hover:underline">
+        <Link
+          to="/sign-in"
+          search={redirectTo ? { redirect: redirectTo } : undefined}
+          className="text-accent type-label-medium hover:underline"
+        >
           Sign in &rarr;
         </Link>
       </p>

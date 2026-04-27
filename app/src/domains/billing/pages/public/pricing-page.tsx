@@ -43,6 +43,11 @@ interface CheckoutParams {
 
 type BillingPeriod = "monthly" | "annual";
 
+interface PlanCardLinkCta {
+  label: string;
+  to: string;
+}
+
 interface PlanCardProps {
   label: string;
   name: string;
@@ -56,6 +61,8 @@ interface PlanCardProps {
   ctaProduct?: AtlasProduct;
   ctaInterval?: "monthly" | "yearly" | "once" | "weekly";
   onCheckout?: (params: CheckoutParams) => Promise<void>;
+  isPending?: boolean;
+  linkCta?: PlanCardLinkCta;
   isTeam?: boolean;
   discountNote?: ReactNode;
 }
@@ -77,6 +84,8 @@ function PlanCard({
   ctaProduct,
   ctaInterval,
   onCheckout,
+  isPending,
+  linkCta,
   isTeam,
   discountNote,
 }: PlanCardProps) {
@@ -123,10 +132,10 @@ function PlanCard({
         )}
       </div>
 
-      {ctaText === "Browse the Atlas" ? (
-        <Link to="/browse" className="no-underline">
+      {linkCta ? (
+        <Link to={linkCta.to} className="no-underline">
           <Button variant="secondary" className="w-full justify-center">
-            {ctaText}
+            {linkCta.label}
           </Button>
         </Link>
       ) : (
@@ -134,8 +143,9 @@ function PlanCard({
           variant={isTeam ? "ghost" : "primary"}
           className={`w-full justify-center ${isTeam ? "border-ink-strong border" : ""}`}
           onClick={() => void handleCta()}
+          disabled={isPending}
         >
-          {ctaText}
+          {isPending ? "Opening checkout…" : ctaText}
         </Button>
       )}
 
@@ -190,11 +200,22 @@ function readCheckoutErrorMessage(error: unknown): string {
   return "Atlas could not start checkout. Try again.";
 }
 
+const PRODUCT_LABELS: Record<AtlasProduct, string> = {
+  atlas_pro: "Atlas Pro",
+  atlas_team: "Atlas Team",
+  atlas_research_pass: "Atlas Research Pass",
+};
+
+function checkoutKey(product: AtlasProduct, interval: CheckoutParams["interval"]): string {
+  return `${product}:${interval}`;
+}
+
 export function PricingPage({ intent, interval: intentInterval }: PricingPageProps) {
   const navigate = useNavigate();
   const session = useAtlasSession();
   const [billing, setBilling] = useState<BillingPeriod>("monthly");
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const [pendingCheckoutKey, setPendingCheckoutKey] = useState<string | null>(null);
   const hasResumedRef = useRef(false);
 
   async function handleCheckout({ product, interval }: CheckoutParams) {
@@ -214,6 +235,7 @@ export function PricingPage({ intent, interval: intentInterval }: PricingPagePro
     }
 
     setCheckoutError(null);
+    setPendingCheckoutKey(checkoutKey(product, interval));
 
     try {
       const { startCheckout } = await import("@/domains/billing/checkout.functions");
@@ -221,6 +243,7 @@ export function PricingPage({ intent, interval: intentInterval }: PricingPagePro
       window.location.assign(result.url);
     } catch (error) {
       setCheckoutError(readCheckoutErrorMessage(error));
+      setPendingCheckoutKey(null);
     }
   }
 
@@ -238,6 +261,7 @@ export function PricingPage({ intent, interval: intentInterval }: PricingPagePro
     hasResumedRef.current = true;
 
     const resume = async () => {
+      setPendingCheckoutKey(checkoutKey(intent, intentInterval));
       await navigate({ to: "/pricing", search: {}, replace: true });
 
       try {
@@ -248,6 +272,7 @@ export function PricingPage({ intent, interval: intentInterval }: PricingPagePro
         window.location.assign(result.url);
       } catch (error) {
         setCheckoutError(readCheckoutErrorMessage(error));
+        setPendingCheckoutKey(null);
         // Allow the operator to retry by clicking a CTA again.
         hasResumedRef.current = false;
       }
@@ -255,6 +280,47 @@ export function PricingPage({ intent, interval: intentInterval }: PricingPagePro
 
     void resume();
   }, [intent, intentInterval, session.data, navigate]);
+
+  const activeWorkspace = session.data?.workspace.activeOrganization ?? null;
+  const isAuthed = Boolean(session.data);
+  const proInterval: CheckoutParams["interval"] = billing === "annual" ? "yearly" : "monthly";
+  const teamInterval: CheckoutParams["interval"] = billing === "annual" ? "yearly" : "monthly";
+  const researchPassInterval: CheckoutParams["interval"] = "once";
+  const freeCta: PlanCardLinkCta = isAuthed
+    ? { label: "Open your workspace", to: "/discovery" }
+    : { label: "Browse the Atlas", to: "/browse" };
+
+  // Auto-resume handoff: when the page is rendered with intent params and a
+  // live session, render a deliberate "taking you to checkout" view instead
+  // of the plan grid. Eliminates the brief flash of pricing cards before
+  // the redirect to Stripe fires. If the resume errors (and clears the ref),
+  // we drop back to the full page so the operator can retry.
+  const showHandoff =
+    intent !== undefined &&
+    intentInterval !== undefined &&
+    Boolean(session.data) &&
+    checkoutError === null;
+
+  if (showHandoff && intent && intentInterval) {
+    const productLabel = PRODUCT_LABELS[intent];
+    return (
+      <PageLayout className="py-10 lg:py-16">
+        <section className="mx-auto w-full max-w-3xl">
+          <div className="mb-2">
+            <p className="type-label-medium text-ink-muted mb-3 tracking-wider uppercase">
+              {productLabel}
+            </p>
+            <h1 className="type-display-small text-ink-strong mb-4 leading-tight">
+              Taking you to checkout
+            </h1>
+            <p className="type-body-large text-ink-soft leading-relaxed">
+              We're getting your purchase ready. You'll be on the payment screen in a moment.
+            </p>
+          </div>
+        </section>
+      </PageLayout>
+    );
+  }
 
   return (
     <PageLayout className="py-10 lg:py-16">
@@ -283,6 +349,16 @@ export function PricingPage({ intent, interval: intentInterval }: PricingPagePro
 
         {/* Plans section */}
         <div className="border-border mb-10 border-t pt-8">
+          {activeWorkspace ? (
+            <p className="type-body-small text-ink-muted mb-4">
+              Buying for {activeWorkspace.name}.{" "}
+              <Link to="/account" className="text-ink-soft hover:text-ink-strong underline">
+                Switch in your account
+              </Link>
+              .
+            </p>
+          ) : null}
+
           {/* Section label + toggle */}
           <div className="mb-6 flex flex-wrap items-center justify-between gap-2 sm:gap-4">
             <p className="type-label-medium text-ink-muted tracking-wider uppercase">Plans</p>
@@ -329,7 +405,8 @@ export function PricingPage({ intent, interval: intentInterval }: PricingPagePro
               ]}
               monthlyPrice="Free"
               billing={billing}
-              ctaText="Browse the Atlas"
+              ctaText={freeCta.label}
+              linkCta={freeCta}
             />
 
             <PlanCard
@@ -356,8 +433,9 @@ export function PricingPage({ intent, interval: intentInterval }: PricingPagePro
               billing={billing}
               ctaText="Get Atlas Pro"
               ctaProduct="atlas_pro"
-              ctaInterval={billing === "annual" ? "yearly" : "monthly"}
+              ctaInterval={proInterval}
               onCheckout={handleCheckout}
+              isPending={pendingCheckoutKey === checkoutKey("atlas_pro", proInterval)}
               discountNote="Qualified journalists, nonprofits, and civic tech workers get 40–50% off"
             />
 
@@ -394,8 +472,9 @@ export function PricingPage({ intent, interval: intentInterval }: PricingPagePro
               billing={billing}
               ctaText="Get Atlas Team"
               ctaProduct="atlas_team"
-              ctaInterval={billing === "annual" ? "yearly" : "monthly"}
+              ctaInterval={teamInterval}
               onCheckout={handleCheckout}
+              isPending={pendingCheckoutKey === checkoutKey("atlas_team", teamInterval)}
               discountNote="Qualified nonprofits and newsrooms get 40% off"
               isTeam
             />
@@ -433,11 +512,16 @@ export function PricingPage({ intent, interval: intentInterval }: PricingPagePro
                 onClick={() => {
                   void handleCheckout({
                     product: "atlas_research_pass",
-                    interval: "once",
+                    interval: researchPassInterval,
                   });
                 }}
+                disabled={
+                  pendingCheckoutKey === checkoutKey("atlas_research_pass", researchPassInterval)
+                }
               >
-                Get a pass
+                {pendingCheckoutKey === checkoutKey("atlas_research_pass", researchPassInterval)
+                  ? "Opening checkout…"
+                  : "Get a pass"}
               </Button>
             </div>
           </div>

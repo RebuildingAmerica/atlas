@@ -6,6 +6,7 @@ import { getAuthClient } from "@/domains/access/client/auth-client";
 import { setLastUsedAtlasLoginMethod } from "@/domains/access/client/last-login-method";
 import { waitForAtlasAuthenticatedSession } from "@/domains/access/client/session-confirmation";
 import { getAuthConfig } from "@/domains/access/config";
+import type { AtlasProduct } from "@/domains/access/capabilities";
 import { requestMagicLink } from "@/domains/access/session.functions";
 import { resolveWorkspaceSSOSignIn } from "@/domains/access/sso.functions";
 import {
@@ -16,6 +17,52 @@ import {
 } from "./sign-in-page-helpers";
 import { Button } from "@/platform/ui/button";
 import { Input } from "@/platform/ui/input";
+
+const ATLAS_PRODUCTS: readonly AtlasProduct[] = [
+  "atlas_pro",
+  "atlas_team",
+  "atlas_research_pass",
+] as const;
+
+const PRODUCT_INTENT_LABELS: Record<AtlasProduct, string> = {
+  atlas_pro: "Atlas Pro",
+  atlas_team: "Atlas Team",
+  atlas_research_pass: "Atlas Research Pass",
+};
+
+/**
+ * Parses a redirect path to detect a /pricing checkout intent.
+ *
+ * Returns the intended product when the redirect points back at /pricing
+ * with a recognised intent param, otherwise null. Used to swap heading copy
+ * so a viewer who clicked a paid CTA isn't shown a generic "Sign in to Atlas"
+ * page that ignores their context.
+ *
+ * @param redirectTo - The redirect path passed via search params.
+ */
+function parsePricingIntent(redirectTo: string | undefined): AtlasProduct | null {
+  if (!redirectTo) {
+    return null;
+  }
+
+  let url: URL;
+  try {
+    url = new URL(redirectTo, "http://atlas.local");
+  } catch {
+    return null;
+  }
+
+  if (url.pathname !== "/pricing") {
+    return null;
+  }
+
+  const intent = url.searchParams.get("intent");
+  if (!intent) {
+    return null;
+  }
+
+  return ATLAS_PRODUCTS.find((product) => product === intent) ?? null;
+}
 
 /**
  * Search params accepted by the sign-in route.
@@ -61,6 +108,8 @@ export function SignInPage({
   const isInvitationFlow = Boolean(invitationId);
   const callbackURL = buildSignInCallbackURL(invitationId, redirectTo);
   const errorCallbackURL = buildSignInErrorCallbackURL(invitationId, redirectTo);
+  const pricingIntent = parsePricingIntent(redirectTo);
+  const intentLabel = pricingIntent ? PRODUCT_INTENT_LABELS[pricingIntent] : null;
 
   useEffect(() => {
     if (
@@ -193,20 +242,34 @@ export function SignInPage({
     }
   };
 
+  let eyebrow: string;
+  let heading: string;
+  let subhead: string;
+
+  if (isInvitationFlow) {
+    eyebrow = "Workspace invitation";
+    heading = "Accept your workspace invitation";
+    subhead = "Enter the email address where you received the invitation.";
+  } else if (intentLabel && pricingIntent === "atlas_research_pass") {
+    eyebrow = intentLabel;
+    heading = "Sign in to start your pass";
+    subhead = "Continue with the email you use for Atlas, or create a free account below.";
+  } else if (intentLabel) {
+    eyebrow = intentLabel;
+    heading = "Sign in to subscribe";
+    subhead = "Continue with the email you use for Atlas, or create a free account below.";
+  } else {
+    eyebrow = "Account access";
+    heading = "Sign in to Atlas";
+    subhead = "Use your passkey, or enter your email for a sign-in link.";
+  }
+
   return (
     <div className="space-y-8">
       <div className="space-y-2">
-        <p className="type-label-medium text-outline">
-          {isInvitationFlow ? "Workspace invitation" : "Account access"}
-        </p>
-        <h1 className="type-display-small text-on-surface">
-          {isInvitationFlow ? "Accept your workspace invitation" : "Sign in to Atlas"}
-        </h1>
-        <p className="type-body-large text-outline">
-          {isInvitationFlow
-            ? "Enter the email address where you received the invitation."
-            : "Use your passkey, or enter your email for a sign-in link."}
-        </p>
+        <p className="type-label-medium text-outline">{eyebrow}</p>
+        <h1 className="type-display-small text-on-surface">{heading}</h1>
+        <p className="type-body-large text-outline">{subhead}</p>
       </div>
 
       {existingAccount ? (
@@ -299,7 +362,11 @@ export function SignInPage({
       {!isInvitationFlow ? (
         <p className="type-body-medium text-outline">
           New to Atlas?{" "}
-          <Link to="/sign-up" className="text-accent type-label-medium hover:underline">
+          <Link
+            to="/sign-up"
+            search={redirectTo ? { redirect: redirectTo } : undefined}
+            className="text-accent type-label-medium hover:underline"
+          >
             Create a free account &rarr;
           </Link>
         </p>
