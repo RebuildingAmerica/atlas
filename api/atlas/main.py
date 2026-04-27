@@ -91,6 +91,16 @@ def create_app() -> FastAPI:
     """
     settings = get_settings()
 
+    # RFC 9700 §4.16: never reflect "*" origins while sending credentials in
+    # production.  Catching the misconfiguration at app construction is far
+    # safer than discovering it through a successful cross-origin token theft.
+    if settings.environment == "production" and "*" in settings.cors_origins:
+        msg = (
+            "CORS_ORIGINS must not contain '*' when ENVIRONMENT is 'production'. "
+            "List the trusted origins explicitly."
+        )
+        raise RuntimeError(msg)
+
     app = FastAPI(
         title=OPENAPI_TITLE,
         summary=OPENAPI_SUMMARY,
@@ -106,12 +116,13 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
-    # CORS middleware
+    # CORS middleware — narrow methods so that the OAuth token endpoint and
+    # other credentialed routes only see the verbs Atlas actually serves.
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,
         allow_credentials=True,
-        allow_methods=["*"],
+        allow_methods=["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
         allow_headers=["*"],
     )
 
