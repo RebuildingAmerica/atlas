@@ -206,6 +206,17 @@ function createAtlasAuth(runtime: AuthRuntimeConfig) {
     emailVerification: {
       sendVerificationEmail: sendAtlasVerificationEmail,
     },
+    // OIDC Core 1.0 §5.7: only trust `email_verified` from providers Atlas
+    // has explicitly vetted.  Without `disableImplicitLinking`, Better Auth
+    // would link any IdP whose token claims `email_verified: true`, allowing
+    // a hostile OIDC provider to claim someone else's email and take over
+    // their Atlas account.
+    account: {
+      accountLinking: {
+        disableImplicitLinking: true,
+        trustedProviders: ["google"],
+      },
+    },
     plugins: [
       magicLink({
         disableSignUp: false,
@@ -259,6 +270,10 @@ function createAtlasAuth(runtime: AuthRuntimeConfig) {
         // redirect_uris and phish authenticated Atlas users via /authorize.
         allowDynamicClientRegistration: true,
         allowUnauthenticatedClientRegistration: false,
+        // RFC 9700 §4.13 favors short-lived access tokens.  15 minutes keeps
+        // the token-leak blast radius small while still amortising one
+        // refresh roundtrip per quarter-hour for active clients.
+        accessTokenExpiresIn: 15 * 60,
         ...(runtime.apiAudience ? { validAudiences: [runtime.apiAudience] } : {}),
         // OAuth AS metadata at /.well-known/oauth-authorization-server/api/auth
         // requires a root-level handler that doesn't exist (TanStack Router can't
