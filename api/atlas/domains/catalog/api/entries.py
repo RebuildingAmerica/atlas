@@ -498,15 +498,24 @@ def _entity_to_response(  # noqa: PLR0913
     )
 
 
-def _entity_to_detail_response(
+def _entity_to_detail_response(  # noqa: PLR0913
     entry: Any,
     *,
     issue_areas: list[str],
     sources: list[dict[str, Any]],
     flag_summary: dict[str, Any] | None,
     source_flag_summaries: dict[str, dict[str, Any]],
+    include_suppressed: bool = False,
 ) -> EntityDetailResponse:
-    """Convert EntryModel and linked sources into a detail response."""
+    """Convert EntryModel and linked sources into a detail response.
+
+    Suppressed sources (hidden by the verified subject via the manage flow)
+    are excluded from the public response. Pass ``include_suppressed=True``
+    for admin or subject-self views.
+    """
+    suppressed_ids = set(getattr(entry, "suppressed_source_ids", []) or [])
+    if suppressed_ids and not include_suppressed:
+        sources = [source for source in sources if source["id"] not in suppressed_ids]
     source_types = sorted({source["type"] for source in sources})
     latest_source_date = next(
         (

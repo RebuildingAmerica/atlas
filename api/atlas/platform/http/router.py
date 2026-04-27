@@ -3,11 +3,14 @@
 from fastapi import APIRouter
 
 from atlas.domains.access.api.health import router as auth_health_router
+from atlas.domains.access.api.lists import router as lists_router
 from atlas.domains.access.api.verification import router as verification_router
 from atlas.domains.access.api.verification_admin import router as verification_admin_router
 from atlas.domains.catalog.api.entries import router as entries_router
+from atlas.domains.catalog.api.feed import router as feed_router
 from atlas.domains.catalog.api.org_annotations import router as org_annotations_router
 from atlas.domains.catalog.api.org_resources import router as org_resources_router
+from atlas.domains.catalog.api.profiles import router as profiles_router
 from atlas.domains.catalog.api.public import router as public_router
 from atlas.domains.catalog.api.taxonomy import router as taxonomy_router
 from atlas.domains.discovery.api import router as discovery_router
@@ -41,6 +44,11 @@ def create_router() -> APIRouter:
     router.include_router(flags_router, prefix="/api")
     router.include_router(taxonomy_router, prefix="/api")
     router.include_router(public_router, prefix="/api")
+
+    # Subject-claim, manage, follow, and feed surfaces
+    router.include_router(profiles_router, prefix="/api/profiles")
+    router.include_router(feed_router, prefix="/api/feed")
+    router.include_router(lists_router, prefix="/api/lists")
 
     # Org-scoped private resource routers
     router.include_router(org_resources_router, prefix="/api/orgs/{org_id}/entries")

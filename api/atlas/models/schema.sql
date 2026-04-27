@@ -219,3 +219,77 @@ CREATE TABLE IF NOT EXISTS slug_aliases (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_slug_aliases_entry_id ON slug_aliases(entry_id);
+
+-- Subject-managed columns on entries (additive, idempotent).
+ALTER TABLE entries ADD COLUMN IF NOT EXISTS photo_url TEXT;
+ALTER TABLE entries ADD COLUMN IF NOT EXISTS custom_bio TEXT;
+ALTER TABLE entries ADD COLUMN IF NOT EXISTS claim_status TEXT NOT NULL DEFAULT 'unclaimed';
+ALTER TABLE entries ADD COLUMN IF NOT EXISTS claimed_by_user_id TEXT;
+ALTER TABLE entries ADD COLUMN IF NOT EXISTS claim_verified_at TIMESTAMPTZ;
+ALTER TABLE entries ADD COLUMN IF NOT EXISTS last_confirmed_at TIMESTAMPTZ;
+ALTER TABLE entries ADD COLUMN IF NOT EXISTS suppressed_source_ids TEXT;
+ALTER TABLE entries ADD COLUMN IF NOT EXISTS preferred_contact_channel TEXT;
+DO $$ BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.constraint_column_usage
+        WHERE table_name = 'entries' AND constraint_name = 'entries_claim_status_check'
+    ) THEN
+        ALTER TABLE entries ADD CONSTRAINT entries_claim_status_check
+            CHECK (claim_status IN ('unclaimed', 'pending', 'verified', 'revoked'));
+    END IF;
+END $$;
+CREATE INDEX IF NOT EXISTS idx_entries_claim_status ON entries(claim_status);
+CREATE INDEX IF NOT EXISTS idx_entries_claimed_by ON entries(claimed_by_user_id);
+
+-- Profile claims (subject ownership of profiles)
+CREATE TABLE IF NOT EXISTS profile_claims (
+    id TEXT PRIMARY KEY,
+    entry_id TEXT NOT NULL REFERENCES entries(id) ON DELETE CASCADE,
+    user_id TEXT NOT NULL,
+    user_email TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending', 'verified', 'rejected', 'revoked')),
+    tier INTEGER NOT NULL DEFAULT 1 CHECK(tier IN (1, 2)),
+    evidence_json TEXT,
+    verification_token TEXT,
+    verification_token_expires_at TIMESTAMPTZ,
+    verified_at TIMESTAMPTZ,
+    rejected_reason TEXT,
+    created_at TIMESTAMPTZ NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_profile_claims_entry ON profile_claims(entry_id);
+CREATE INDEX IF NOT EXISTS idx_profile_claims_user ON profile_claims(user_id);
+CREATE INDEX IF NOT EXISTS idx_profile_claims_status ON profile_claims(status);
+CREATE INDEX IF NOT EXISTS idx_profile_claims_token ON profile_claims(verification_token);
+
+-- Saved profile lists (signed-in user collections)
+CREATE TABLE IF NOT EXISTS saved_lists (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    description TEXT,
+    created_at TIMESTAMPTZ NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_saved_lists_user ON saved_lists(user_id);
+
+-- List membership (entries pinned to a list)
+CREATE TABLE IF NOT EXISTS saved_list_items (
+    list_id TEXT NOT NULL REFERENCES saved_lists(id) ON DELETE CASCADE,
+    entry_id TEXT NOT NULL REFERENCES entries(id) ON DELETE CASCADE,
+    note TEXT,
+    added_at TIMESTAMPTZ NOT NULL,
+    PRIMARY KEY (list_id, entry_id)
+);
+CREATE INDEX IF NOT EXISTS idx_saved_list_items_entry ON saved_list_items(entry_id);
+
+-- Profile follow subscriptions (notify on new sources)
+CREATE TABLE IF NOT EXISTS profile_follows (
+    user_id TEXT NOT NULL,
+    entry_id TEXT NOT NULL REFERENCES entries(id) ON DELETE CASCADE,
+    subscribed_to TEXT NOT NULL DEFAULT 'sources' CHECK(subscribed_to IN ('sources', 'all')),
+    created_at TIMESTAMPTZ NOT NULL,
+    PRIMARY KEY (user_id, entry_id)
+);
+CREATE INDEX IF NOT EXISTS idx_profile_follows_entry ON profile_follows(entry_id);
+CREATE INDEX IF NOT EXISTS idx_profile_follows_user ON profile_follows(user_id);

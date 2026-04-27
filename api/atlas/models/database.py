@@ -257,7 +257,64 @@ CREATE TABLE IF NOT EXISTS entries (
     created_at DATETIME NOT NULL,
     updated_at DATETIME NOT NULL,
     slug TEXT UNIQUE,
+    photo_url TEXT,
+    custom_bio TEXT,
+    claim_status TEXT NOT NULL DEFAULT 'unclaimed' CHECK(claim_status IN ('unclaimed', 'pending', 'verified', 'revoked')),
+    claimed_by_user_id TEXT,
+    claim_verified_at DATETIME,
+    last_confirmed_at DATETIME,
+    suppressed_source_ids TEXT,
+    preferred_contact_channel TEXT,
     FOREIGN KEY (affiliated_org_id) REFERENCES entries(id)
+);
+
+-- Profile claims (subject ownership of profiles)
+CREATE TABLE IF NOT EXISTS profile_claims (
+    id TEXT PRIMARY KEY,
+    entry_id TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    user_email TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending', 'verified', 'rejected', 'revoked')),
+    tier INTEGER NOT NULL DEFAULT 1 CHECK(tier IN (1, 2)),
+    evidence_json TEXT,
+    verification_token TEXT,
+    verification_token_expires_at DATETIME,
+    verified_at DATETIME,
+    rejected_reason TEXT,
+    created_at DATETIME NOT NULL,
+    updated_at DATETIME NOT NULL,
+    FOREIGN KEY (entry_id) REFERENCES entries(id) ON DELETE CASCADE
+);
+
+-- Saved profile lists (signed-in user collections)
+CREATE TABLE IF NOT EXISTS saved_lists (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    description TEXT,
+    created_at DATETIME NOT NULL,
+    updated_at DATETIME NOT NULL
+);
+
+-- List membership (entries pinned to a list)
+CREATE TABLE IF NOT EXISTS saved_list_items (
+    list_id TEXT NOT NULL,
+    entry_id TEXT NOT NULL,
+    note TEXT,
+    added_at DATETIME NOT NULL,
+    PRIMARY KEY (list_id, entry_id),
+    FOREIGN KEY (list_id) REFERENCES saved_lists(id) ON DELETE CASCADE,
+    FOREIGN KEY (entry_id) REFERENCES entries(id) ON DELETE CASCADE
+);
+
+-- Profile follow subscriptions (notify on new sources)
+CREATE TABLE IF NOT EXISTS profile_follows (
+    user_id TEXT NOT NULL,
+    entry_id TEXT NOT NULL,
+    subscribed_to TEXT NOT NULL DEFAULT 'sources' CHECK(subscribed_to IN ('sources', 'all')),
+    created_at DATETIME NOT NULL,
+    PRIMARY KEY (user_id, entry_id),
+    FOREIGN KEY (entry_id) REFERENCES entries(id) ON DELETE CASCADE
 );
 
 -- Sources table (web sources, articles, etc.)
@@ -431,6 +488,16 @@ CREATE INDEX IF NOT EXISTS idx_resource_ownership_org_visibility ON resource_own
 CREATE INDEX IF NOT EXISTS idx_org_annotations_org ON org_annotations(org_id);
 CREATE INDEX IF NOT EXISTS idx_org_annotations_entry ON org_annotations(entry_id);
 CREATE INDEX IF NOT EXISTS idx_entries_slug ON entries(slug);
+CREATE INDEX IF NOT EXISTS idx_entries_claim_status ON entries(claim_status);
+CREATE INDEX IF NOT EXISTS idx_entries_claimed_by ON entries(claimed_by_user_id);
+CREATE INDEX IF NOT EXISTS idx_profile_claims_entry ON profile_claims(entry_id);
+CREATE INDEX IF NOT EXISTS idx_profile_claims_user ON profile_claims(user_id);
+CREATE INDEX IF NOT EXISTS idx_profile_claims_status ON profile_claims(status);
+CREATE INDEX IF NOT EXISTS idx_profile_claims_token ON profile_claims(verification_token);
+CREATE INDEX IF NOT EXISTS idx_saved_lists_user ON saved_lists(user_id);
+CREATE INDEX IF NOT EXISTS idx_saved_list_items_entry ON saved_list_items(entry_id);
+CREATE INDEX IF NOT EXISTS idx_profile_follows_entry ON profile_follows(entry_id);
+CREATE INDEX IF NOT EXISTS idx_profile_follows_user ON profile_follows(user_id);
 
 -- Discovery jobs (durable pipeline execution tracking)
 CREATE TABLE IF NOT EXISTS discovery_jobs (
@@ -541,3 +608,29 @@ async def _ensure_entry_columns(conn: Any) -> None:
     if "slug" not in existing_columns:
         await conn.execute("ALTER TABLE entries ADD COLUMN slug TEXT")
         await conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_entries_slug ON entries(slug)")
+
+    if "photo_url" not in existing_columns:
+        await conn.execute("ALTER TABLE entries ADD COLUMN photo_url TEXT")
+
+    if "custom_bio" not in existing_columns:
+        await conn.execute("ALTER TABLE entries ADD COLUMN custom_bio TEXT")
+
+    if "claim_status" not in existing_columns:
+        await conn.execute(
+            "ALTER TABLE entries ADD COLUMN claim_status TEXT NOT NULL DEFAULT 'unclaimed'"
+        )
+
+    if "claimed_by_user_id" not in existing_columns:
+        await conn.execute("ALTER TABLE entries ADD COLUMN claimed_by_user_id TEXT")
+
+    if "claim_verified_at" not in existing_columns:
+        await conn.execute("ALTER TABLE entries ADD COLUMN claim_verified_at DATETIME")
+
+    if "last_confirmed_at" not in existing_columns:
+        await conn.execute("ALTER TABLE entries ADD COLUMN last_confirmed_at DATETIME")
+
+    if "suppressed_source_ids" not in existing_columns:
+        await conn.execute("ALTER TABLE entries ADD COLUMN suppressed_source_ids TEXT")
+
+    if "preferred_contact_channel" not in existing_columns:
+        await conn.execute("ALTER TABLE entries ADD COLUMN preferred_contact_channel TEXT")

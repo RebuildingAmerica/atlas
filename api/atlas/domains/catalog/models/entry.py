@@ -11,7 +11,7 @@ import hashlib
 import logging
 import re
 import unicodedata
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, date, datetime
 from typing import TYPE_CHECKING, Any
 
@@ -57,6 +57,14 @@ class EntryModel:
     created_at: str
     updated_at: str
     slug: str | None = None
+    photo_url: str | None = None
+    custom_bio: str | None = None
+    claim_status: str = "unclaimed"
+    claimed_by_user_id: str | None = None
+    claim_verified_at: str | None = None
+    last_confirmed_at: str | None = None
+    suppressed_source_ids: list[str] = field(default_factory=list)
+    preferred_contact_channel: str | None = None
 
     def to_dict(self, include_internal: bool = True) -> dict[str, Any]:
         """
@@ -588,6 +596,14 @@ class EntryCRUD:
             "editorial_notes",
             "priority",
             "last_seen",
+            "photo_url",
+            "custom_bio",
+            "claim_status",
+            "claimed_by_user_id",
+            "claim_verified_at",
+            "last_confirmed_at",
+            "suppressed_source_ids",
+            "preferred_contact_channel",
         }
 
         fields_to_update = {k: v for k, v in kwargs.items() if k in allowed_fields}
@@ -599,6 +615,15 @@ class EntryCRUD:
         # Handle JSON encoding for social_media
         if fields_to_update.get("social_media"):
             fields_to_update["social_media"] = db.encode_json(fields_to_update["social_media"])
+        if "suppressed_source_ids" in fields_to_update:
+            value = fields_to_update["suppressed_source_ids"]
+            if value:
+                if not isinstance(value, list | tuple | set):
+                    msg = "suppressed_source_ids must be an iterable of source IDs"
+                    raise TypeError(msg)
+                fields_to_update["suppressed_source_ids"] = db.encode_json(list(value))
+            else:
+                fields_to_update["suppressed_source_ids"] = None
         last_verified_val = fields_to_update.get("last_verified")
         if isinstance(last_verified_val, date):
             fields_to_update["last_verified"] = last_verified_val.isoformat()
@@ -1100,6 +1125,12 @@ class EntryCRUD:
 
 def _row_to_entry(row: dict[str, Any]) -> EntryModel:
     """Convert database row to EntryModel."""
+    suppressed_raw = row.get("suppressed_source_ids")
+    suppressed: list[str] = []
+    if isinstance(suppressed_raw, str) and suppressed_raw.strip():
+        decoded = db.decode_json(suppressed_raw)
+        if isinstance(decoded, list):
+            suppressed = [str(item) for item in decoded]
     return EntryModel(
         id=row["id"],
         type=row["type"],
@@ -1126,6 +1157,14 @@ def _row_to_entry(row: dict[str, Any]) -> EntryModel:
         created_at=row["created_at"],
         updated_at=row["updated_at"],
         slug=row.get("slug"),
+        photo_url=row.get("photo_url"),
+        custom_bio=row.get("custom_bio"),
+        claim_status=row.get("claim_status") or "unclaimed",
+        claimed_by_user_id=row.get("claimed_by_user_id"),
+        claim_verified_at=row.get("claim_verified_at"),
+        last_confirmed_at=row.get("last_confirmed_at"),
+        suppressed_source_ids=suppressed,
+        preferred_contact_channel=row.get("preferred_contact_channel"),
     )
 
 

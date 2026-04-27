@@ -215,12 +215,22 @@ class AtlasDataService:
         """Convenience place-first alias for entity search."""
         return await self.search_entities(place=place, **kwargs)
 
-    async def get_entity(self, entity_id: str) -> dict[str, Any]:
-        """Get one Atlas entity."""
+    async def get_entity(
+        self, entity_id: str, *, include_suppressed: bool = False
+    ) -> dict[str, Any]:
+        """Get one Atlas entity.
+
+        Suppressed sources (hidden by the verified subject) are excluded from the
+        public response. Set ``include_suppressed=True`` for admin or
+        subject-self views to see them.
+        """
         async with DatabaseSession(self._database_url) as conn:
             entry, sources = await EntryCRUD.get_with_sources(conn, entity_id)
             if entry is None:
                 raise _entity_not_found(entity_id)
+            suppressed_ids = set(entry.suppressed_source_ids or [])
+            if suppressed_ids and not include_suppressed:
+                sources = [source for source in sources if source["id"] not in suppressed_ids]
             issue_area_ids = await EntryCRUD.get_issue_areas(conn, entity_id)
             entity_flag_summaries = await FlagCRUD.entity_flag_summaries(conn, [entity_id])
             source_flag_summaries = await FlagCRUD.source_flag_summaries(
@@ -251,12 +261,21 @@ class AtlasDataService:
         entity["sources"] = source_records
         return EntityDetailResponse.model_validate(entity).model_dump(mode="json")
 
-    async def get_entity_sources(self, entity_id: str) -> dict[str, Any]:
-        """Return supporting sources for one entity."""
+    async def get_entity_sources(
+        self, entity_id: str, *, include_suppressed: bool = False
+    ) -> dict[str, Any]:
+        """Return supporting sources for one entity.
+
+        Suppressed sources (hidden by the verified subject) are excluded by
+        default. Pass ``include_suppressed=True`` for admin views.
+        """
         async with DatabaseSession(self._database_url) as conn:
             entry, sources = await EntryCRUD.get_with_sources(conn, entity_id)
             if entry is None:
                 raise _entity_not_found(entity_id)
+            suppressed_ids = set(entry.suppressed_source_ids or [])
+            if suppressed_ids and not include_suppressed:
+                sources = [source for source in sources if source["id"] not in suppressed_ids]
             source_flag_summaries = await FlagCRUD.source_flag_summaries(
                 conn, [source["id"] for source in sources]
             )
@@ -774,11 +793,19 @@ def normalize_place_key(place_key: str) -> dict[str, str | None]:
 
 
 def _entity_record(entry: EntryModel, context: EntityRecordContext) -> dict[str, Any]:
+    if entry.claim_status == "verified":
+        verification_level = "subject-verified"
+    elif entry.verified:
+        verification_level = "atlas-verified"
+    else:
+        verification_level = "source-derived"
     return EntityResponse(
         id=entry.id,
         name=entry.name,
         type=entry.type,
         description=entry.description,
+        custom_bio=entry.custom_bio,
+        photo_url=entry.photo_url,
         address={
             "city": entry.city,
             "state": entry.state,
@@ -793,9 +820,16 @@ def _entity_record(entry: EntryModel, context: EntityRecordContext) -> dict[str,
             "phone": entry.phone,
             "social_media": entry.social_media,
         },
+        preferred_contact_channel=entry.preferred_contact_channel,
         affiliated_org_id=entry.affiliated_org_id,
         active=bool(entry.active),
         verified=bool(entry.verified),
+        claim={
+            "status": entry.claim_status,
+            "claimed_by_user_id": entry.claimed_by_user_id,
+            "claim_verified_at": entry.claim_verified_at,
+            "verification_level": verification_level,
+        },
         issue_area_ids=context.issue_area_ids,
         source_types=context.source_types,
         source_count=context.source_count,
@@ -843,7 +877,8 @@ def _latest_source_date(sources: Sequence[Mapping[str, Any]], fallback: str) -> 
 
 def _entity_freshness(*, entry: EntryModel, latest_source_date: str | None) -> FreshnessInfo:
     reference = (
-        (entry.last_verified.isoformat() if entry.last_verified else None)
+        (entry.last_confirmed_at[:10] if entry.last_confirmed_at else None)
+        or (entry.last_verified.isoformat() if entry.last_verified else None)
         or latest_source_date
         or entry.last_seen.isoformat()
         or entry.updated_at
