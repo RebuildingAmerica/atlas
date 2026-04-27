@@ -251,6 +251,10 @@ function createAtlasAuth(runtime: AuthRuntimeConfig) {
           },
           clockSkew: 60 * 1000,
           requireTimestamps: true,
+          // OIDC Session Management 1.0: terminate the IdP session when the
+          // user signs out of Atlas so the federated session does not linger
+          // after a workspace member quits or rotates devices.
+          enableSingleLogout: true,
         },
       }),
       jwt({
