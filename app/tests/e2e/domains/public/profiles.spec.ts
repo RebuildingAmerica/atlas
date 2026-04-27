@@ -93,11 +93,11 @@ test.describe("public profile routes", () => {
     // Direct fetches of the rendered HTML — no client JS is executed, so any
     // content here came from the server loader.
     const expectations: { path: string; needles: RegExp[] }[] = [
-      { path: "/profiles", needles: [/Maya Thompson|Eastside Housing Network/i] },
-      { path: "/profiles/people", needles: [/Maya Thompson/i] },
+      { path: "/profiles", needles: [/Maya Thompson/, /Eastside Housing Network/] },
+      { path: "/profiles/people", needles: [/Maya Thompson/] },
       {
         path: "/profiles/organizations",
-        needles: [/Eastside Housing Network/i],
+        needles: [/Eastside Housing Network/],
       },
       {
         path: "/profiles/people/maya-thompson",
