@@ -77,7 +77,10 @@ Then fill in the real values.
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `ATLAS_API_AUDIENCE` | Yes | The OAuth audience claim (`aud`) that the API uses to verify JWT access tokens were issued for it. This identifies the *resource server*, not the authorization server. Set it to the API's public URL (e.g., `https://api.atlas.example.com`). Even when the app and API share a domain, keep this separate from `ATLAS_PUBLIC_URL` because they answer different questions and may diverge later. |
+| `ATLAS_API_AUDIENCE` | Yes when `ATLAS_DEPLOY_MODE` is not `local` | OAuth audience claim(s) (`aud`) that the API accepts. Set to the canonical resource URL of the API (e.g. `https://api.atlas.example.com`). Comma-separated when more than one resource shares the JWKS (RFC 8707) — the first entry is published as the resource URL in `WWW-Authenticate` challenges. Atlas refuses to start in non-local mode without this set. |
+| `ATLAS_SAML_ALLOWED_ISSUERS` | Yes when SAML SSO will be used | Comma-separated allowlist of SAML IdP issuer URLs (matched by URL origin). DNS TXT domain verification only proves an admin owns the email domain, not the issuer URL, so the issuer host must be opted in by Atlas operators. Empty allowlist denies every SAML registration. Example: `https://accounts.google.com,https://login.microsoftonline.com`. |
+| `ATLAS_SAML_SP_PRIVATE_KEY` | No | PEM-encoded RSA private key used to sign outbound SAML AuthnRequests. When set, new workspace SAML registrations flip `authnRequestsSigned: true`. Existing registrations continue with their stored configuration. |
+| `ATLAS_SAML_SP_PRIVATE_KEY_PASS` | No | Passphrase for `ATLAS_SAML_SP_PRIVATE_KEY` if the key is encrypted. |
 
 ### Email
 
