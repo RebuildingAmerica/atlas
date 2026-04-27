@@ -1,0 +1,25 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "org.rebuildingus/atlas",
+  "title": "Atlas",
+  "description": "Civic actor discovery — find people, organizations, and initiatives working on social issues across America, traced to public sources.",
+  "repository": {
+    "url": "https://github.com/RebuildingAmerica/atlas",
+    "source": "github"
+  },
+  "version": "1.0.0",
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://atlas.rebuildingus.org/mcp",
+      "headers": [
+        {
+          "name": "Authorization",
+          "description": "Bearer token issued by Atlas OAuth 2.1 (PKCE). Most clients obtain this automatically via the protected-resource discovery endpoint at /.well-known/oauth-protected-resource.",
+          "isRequired": true,
+          "isSecret": true
+        }
+      ]
+    }
+  ]
+}

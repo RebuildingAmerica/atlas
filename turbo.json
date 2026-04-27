@@ -7,7 +7,8 @@
     "ATLAS_API_AUDIENCE",
     "ATLAS_EMAIL_PROVIDER",
     "ATLAS_SERVER_API_PROXY_TARGET",
-    "ATLAS_DOCS_URL"
+    "ATLAS_DOCS_URL",
+    "MCP_REGISTRY_AUTH_PUBKEY"
   ],
   "globalDependencies": [
     "pnpm-workspace.yaml",
