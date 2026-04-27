@@ -56,12 +56,26 @@ CREATE TABLE workspace_products (
 CREATE INDEX idx_workspace_products_workspace ON workspace_products(workspace_id);
 `;
 
+const ADD_EVENT_AT_SQLITE = `
+ALTER TABLE workspace_products ADD COLUMN stripe_event_at TEXT;
+`;
+
+const ADD_EVENT_AT_PG = `
+ALTER TABLE workspace_products ADD COLUMN stripe_event_at TIMESTAMPTZ;
+`;
+
 export const ATLAS_MIGRATIONS: AtlasMigration[] = [
   {
     version: 1,
     name: "create_workspace_products",
     sqlite: WORKSPACE_PRODUCTS_SQLITE,
     pg: WORKSPACE_PRODUCTS_PG,
+  },
+  {
+    version: 2,
+    name: "add_workspace_products_stripe_event_at",
+    sqlite: ADD_EVENT_AT_SQLITE,
+    pg: ADD_EVENT_AT_PG,
   },
 ];
 
