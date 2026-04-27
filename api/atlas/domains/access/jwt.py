@@ -25,15 +25,27 @@ def get_jwks_client(jwks_url: str) -> PyJWKClient:
     return _jwks_client
 
 
+# Token verification leeway in seconds.  RFC 9700 §4.1 recommends a small but
+# non-zero window so legitimate tokens are not rejected by minor NTP drift on
+# either the AS or RS while still bounding any clock-skew abuse.
+_JWT_LEEWAY_SECONDS = 30
+
+
 def verify_bearer_jwt(
     authorization: str | None,
     *,
     issuer: str,
-    audience: str,
+    audience: list[str],
     jwks_url: str,
 ) -> dict[str, object] | None:
-    """Return decoded JWT payload or None if not a valid Bearer JWT."""
+    """Return decoded JWT payload or None if not a valid Bearer JWT.
+
+    A token is accepted when its `aud` claim matches any value in `audience`.
+    PyJWT itself accepts a list and treats matches as inclusive.
+    """
     if not authorization or not authorization.startswith("Bearer "):
+        return None
+    if not audience:
         return None
     token = authorization.removeprefix("Bearer ")
     try:
@@ -45,6 +57,7 @@ def verify_bearer_jwt(
             algorithms=["RS256", "ES256"],
             issuer=issuer,
             audience=audience,
+            leeway=_JWT_LEEWAY_SECONDS,
         )
     except jwt.PyJWTError:
         logger.warning(

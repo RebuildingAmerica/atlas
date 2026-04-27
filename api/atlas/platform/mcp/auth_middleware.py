@@ -36,9 +36,8 @@ class McpBearerAuthMiddleware(BaseHTTPMiddleware):
             jwks_url=settings.auth_jwt_jwks_url,
         )
         if payload is None:
-            resource_metadata_url = (
-                f"{settings.auth_jwt_audience.rstrip('/')}/.well-known/oauth-protected-resource"
-            )
+            resource_url = settings.auth_jwt_resource_url.rstrip("/")
+            resource_metadata_url = f"{resource_url}/.well-known/oauth-protected-resource"
             return Response(
                 status_code=401,
                 headers={

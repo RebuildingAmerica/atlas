@@ -83,19 +83,16 @@ async def require_actor(  # noqa: PLR0913
         )
 
     # MCP clients use the WWW-Authenticate header to discover the auth server.
-    resource_metadata_url = (
-        f"{settings.auth_jwt_audience.rstrip('/')}/.well-known/oauth-protected-resource"
-        if settings.auth_jwt_audience
-        else ""
-    )
+    # When auth is enabled (settings validated at startup), the resource URL is
+    # always set, so RFC 6750 §3 challenges always carry a discovery pointer.
+    resource_url = settings.auth_jwt_resource_url.rstrip("/")
+    resource_metadata_url = f"{resource_url}/.well-known/oauth-protected-resource"
     raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Authentication required",
         headers={
             "WWW-Authenticate": f'Bearer resource_metadata="{resource_metadata_url}"',
-        }
-        if resource_metadata_url
-        else None,
+        },
     )
 
 

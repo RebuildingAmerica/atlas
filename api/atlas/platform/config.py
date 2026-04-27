@@ -9,7 +9,7 @@ import logging
 from pathlib import Path
 from typing import Literal
 
-from pydantic import Field, model_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 logger = logging.getLogger(__name__)
@@ -68,11 +68,29 @@ class Settings(BaseSettings):
     auth_jwt_issuer: str = Field(default="", validation_alias="ATLAS_PUBLIC_URL")
     """JWT issuer (typically the public URL of the auth server)."""
 
-    auth_jwt_audience: str = Field(default="", validation_alias="ATLAS_API_AUDIENCE")
-    """Expected JWT audience claim."""
+    auth_jwt_audience: list[str] = Field(
+        default_factory=list, validation_alias="ATLAS_API_AUDIENCE"
+    )
+    """Accepted JWT audience claims. Comma-separated when supplied via env var.
+
+    A token is accepted when its `aud` claim matches any audience in the list.
+    Distinct audiences should be configured for each Resource Server (REST API
+    vs. MCP) per RFC 8707 so a token leaked from one cannot be replayed against
+    the other.
+    """
 
     auth_jwt_jwks_url: str = ""
     """JWKS endpoint URL. Auto-derived from auth_jwt_issuer when not set."""
+
+    @field_validator("auth_jwt_audience", mode="before")
+    @classmethod
+    def _parse_audience_list(cls, value: object) -> list[str]:
+        """Accept either a comma-separated env-var string or a Python list."""
+        if value is None:
+            return []
+        if isinstance(value, list):
+            return [str(item).strip() for item in value if str(item).strip()]
+        return [item.strip() for item in str(value).split(",") if item.strip()]
 
     # Server
     host: str = "0.0.0.0"
@@ -177,6 +195,16 @@ class Settings(BaseSettings):
         """
         return self.database_url
 
+    @property
+    def auth_jwt_resource_url(self) -> str:
+        """Return the canonical resource URL for protected-resource metadata.
+
+        Picks the first configured audience as the resource URL the API
+        publishes via ``WWW-Authenticate: Bearer resource_metadata=...``.
+        Empty when auth is disabled.
+        """
+        return self.auth_jwt_audience[0] if self.auth_jwt_audience else ""
+
 
 def get_settings() -> Settings:
     """
@@ -188,3 +216,32 @@ def get_settings() -> Settings:
         The loaded application settings.
     """
     return Settings()
+
+
+def validate_runtime_auth_config(settings: Settings) -> None:
+    """Fail fast when an auth-enabled deployment is missing required config.
+
+    Called from app startup (not from Settings construction) so unit tests can
+    instantiate ``Settings`` without supplying production env vars.
+
+    Parameters
+    ----------
+    settings:
+        The resolved application settings.
+
+    Raises
+    ------
+    RuntimeError
+        When ``ATLAS_DEPLOY_MODE`` is not ``"local"`` and ``ATLAS_API_AUDIENCE``
+        is empty, since the API would otherwise emit RFC 6750 challenges
+        without a discovery URL.
+    """
+    if settings.deploy_mode == "local":
+        return
+    if not settings.auth_jwt_audience:
+        msg = (
+            "ATLAS_API_AUDIENCE is required when ATLAS_DEPLOY_MODE is not 'local'. "
+            "Set it to the canonical resource URL(s) the API accepts in JWT 'aud' "
+            "claims, e.g. https://atlas.example.com/api."
+        )
+        raise RuntimeError(msg)

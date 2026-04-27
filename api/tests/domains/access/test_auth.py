@@ -17,6 +17,7 @@ async def test_protected_discovery_requires_auth_when_enabled(
     test_settings.deploy_mode = ""
     test_settings.auth_internal_secret = "internal-test-secret"
     test_settings.auth_api_key_introspection_url = "http://auth.test/internal/api-keys/introspect"
+    test_settings.auth_jwt_audience = ["https://atlas.example/api"]
 
     response = await test_client.post(
         "/api/discovery-runs",
@@ -28,6 +29,13 @@ async def test_protected_discovery_requires_auth_when_enabled(
     )
 
     assert response.status_code == HTTPStatus.UNAUTHORIZED
+    challenge = response.headers.get("WWW-Authenticate", "")
+    assert challenge.startswith("Bearer "), (
+        "RFC 6750 §3 requires a Bearer challenge on 401, including resource_metadata."
+    )
+    assert "https://atlas.example/api/.well-known/oauth-protected-resource" in challenge, (
+        "MCP authorization spec requires the resource-metadata pointer in the challenge."
+    )
 
 
 @pytest.mark.asyncio

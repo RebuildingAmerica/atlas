@@ -130,6 +130,34 @@ function buildAtlasAccessTokenClaims(params: OAuthAccessTokenClaimsParams) {
 }
 
 /**
+ * Pins `requirePKCE = true` on every OAuth client row that the dynamic
+ * client-registration endpoint may have inserted with `require_pkce = false`.
+ * OAuth 2.1 §4.1 requires PKCE for every authorization-code client.
+ *
+ * Better Auth defaults `requirePKCE` to true per client and enforces PKCE
+ * unconditionally for public clients and for any client requesting
+ * `offline_access`.  The remaining gap is a confidential client that
+ * explicitly opts out at registration; this audit runs after migrations to
+ * sweep any such rows back to the OAuth-2.1-compliant default.
+ *
+ * @param database - The Better Auth SQLite database, when running locally.
+ * @param pgPool - The Better Auth Postgres pool, when running against pg.
+ */
+async function enforceRequirePkceOnAllClients(
+  database: Database.Database | null,
+  pgPool: Pool | null,
+): Promise<void> {
+  if (pgPool) {
+    await pgPool.query('update "oauthClient" set "requirePKCE" = true where "requirePKCE" = false');
+    return;
+  }
+
+  if (database) {
+    database.prepare(`update oauthClient set requirePKCE = 1 where requirePKCE = 0`).run();
+  }
+}
+
+/**
  * Builds the trusted-origin allowlist Better Auth uses for enterprise SSO
  * discovery and callback validation.
  *
@@ -165,6 +193,10 @@ function createAtlasAuth(runtime: AuthRuntimeConfig) {
     basePath: "/api/auth",
     baseURL: runtime.publicBaseUrl,
     database: getAuthDatabaseConfig(),
+    // Disables Better Auth's built-in `/token` route used by some
+    // magic-link verification flows.  This does NOT touch the OAuth 2.1
+    // token endpoint exposed by the oauthProvider plugin at
+    // /api/auth/oauth2/token — that endpoint stays live.
     disabledPaths: ["/token"],
     secret: runtime.internalSecret,
     trustedOrigins: buildAtlasTrustedOrigins(runtime.publicBaseUrl),
@@ -648,6 +680,8 @@ async function runAtlasAuthMigrations(context: AtlasAuthContext): Promise<AtlasA
       runAtlasCustomMigrations(db, ATLAS_MIGRATIONS);
     }
   }
+
+  await enforceRequirePkceOnAllClients(getAuthDatabase(), getAuthPgPool());
 
   const auth = getAuth();
   return auth;

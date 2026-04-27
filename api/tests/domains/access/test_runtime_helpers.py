@@ -229,14 +229,7 @@ def test_jwt_helpers_cache_keys_and_decode_bearer_tokens(
     monkeypatch.setattr(auth_jwt_module, "_jwks_client_url", None)
     monkeypatch.setattr(auth_jwt_module, "PyJWKClient", FakeJwksClient)
 
-    def fake_decode(
-        token: str,
-        key: str,
-        algorithms: list[str],
-        issuer: str,
-        audience: str,
-    ) -> dict[str, object]:
-        del token, key, algorithms, issuer, audience
+    def fake_decode(*_args: object, **_kwargs: object) -> dict[str, object]:
         return {
             "sub": "user_123",
             "email": "operator@example.com",
@@ -253,7 +246,7 @@ def test_jwt_helpers_cache_keys_and_decode_bearer_tokens(
     assert auth_jwt_module.verify_bearer_jwt(
         "Bearer token-123",
         issuer="https://atlas.example",
-        audience="atlas-api",
+        audience=["atlas-api"],
         jwks_url="https://atlas.example/jwks",
     ) == {
         "sub": "user_123",
@@ -264,7 +257,17 @@ def test_jwt_helpers_cache_keys_and_decode_bearer_tokens(
         auth_jwt_module.verify_bearer_jwt(
             "Basic abc",
             issuer="https://atlas.example",
-            audience="atlas-api",
+            audience=["atlas-api"],
+            jwks_url="https://atlas.example/jwks",
+        )
+        is None
+    )
+
+    assert (
+        auth_jwt_module.verify_bearer_jwt(
+            "Bearer token-123",
+            issuer="https://atlas.example",
+            audience=[],
             jwks_url="https://atlas.example/jwks",
         )
         is None
@@ -278,7 +281,7 @@ def test_jwt_helpers_cache_keys_and_decode_bearer_tokens(
         auth_jwt_module.verify_bearer_jwt(
             "Bearer token-123",
             issuer="https://atlas.example",
-            audience="atlas-api",
+            audience=["atlas-api"],
             jwks_url="https://atlas.example/jwks",
         )
         is None
@@ -294,7 +297,7 @@ async def test_require_actor_accepts_oauth_jwts_and_rejects_anonymous_requests(
     test_settings.deploy_mode = ""
     test_settings.auth_internal_secret = "internal-test-secret"
     test_settings.auth_jwt_issuer = "https://atlas.example"
-    test_settings.auth_jwt_audience = "atlas-api"
+    test_settings.auth_jwt_audience = ["atlas-api"]
     test_settings.auth_jwt_jwks_url = "https://atlas.example/jwks"
 
     async def missing_principal(api_key: str, _settings: Settings) -> None:
@@ -306,7 +309,7 @@ async def test_require_actor_accepts_oauth_jwts_and_rejects_anonymous_requests(
         authorization: str | None,
         *,
         issuer: str,
-        audience: str,
+        audience: list[str],
         jwks_url: str,
     ) -> dict[str, object]:
         del authorization, issuer, audience, jwks_url
@@ -335,7 +338,7 @@ async def test_require_actor_accepts_oauth_jwts_and_rejects_anonymous_requests(
         authorization: str | None,
         *,
         issuer: str,
-        audience: str,
+        audience: list[str],
         jwks_url: str,
     ) -> None:
         del authorization, issuer, audience, jwks_url
