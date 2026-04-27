@@ -34,6 +34,7 @@ import { Route as PublicBrowseRouteImport } from './routes/_public/browse'
 import { Route as AuthSignUpRouteImport } from './routes/_auth/sign-up'
 import { Route as AuthSignInRouteImport } from './routes/_auth/sign-in'
 import { Route as AuthAccountSetupRouteImport } from './routes/_auth/account-setup'
+import { Route as DotwellKnownOauthAuthorizationServerRouteImport } from './routes/[.]well-known.oauth-authorization-server'
 import { Route as WorkspaceOrganizationIndexRouteImport } from './routes/_workspace/organization.index'
 import { Route as PublicProfilesIndexRouteImport } from './routes/_public/profiles/index'
 import { Route as ApiStripeWebhookRouteImport } from './routes/api/stripe/webhook'
@@ -177,6 +178,12 @@ const AuthAccountSetupRoute = AuthAccountSetupRouteImport.update({
   path: '/account-setup',
   getParentRoute: () => AuthRoute,
 } as any)
+const DotwellKnownOauthAuthorizationServerRoute =
+  DotwellKnownOauthAuthorizationServerRouteImport.update({
+    id: '/.well-known/oauth-authorization-server',
+    path: '/.well-known/oauth-authorization-server',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const WorkspaceOrganizationIndexRoute =
   WorkspaceOrganizationIndexRouteImport.update({
     id: '/',
@@ -287,6 +294,7 @@ export interface FileRoutesByFullPath {
   '/docs': typeof DocsRoute
   '/openapi.json': typeof OpenapiDotjsonRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/.well-known/oauth-authorization-server': typeof DotwellKnownOauthAuthorizationServerRoute
   '/account-setup': typeof AuthAccountSetupRoute
   '/sign-in': typeof AuthSignInRoute
   '/sign-up': typeof AuthSignUpRoute
@@ -330,6 +338,7 @@ export interface FileRoutesByTo {
   '/docs': typeof DocsRoute
   '/openapi.json': typeof OpenapiDotjsonRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/.well-known/oauth-authorization-server': typeof DotwellKnownOauthAuthorizationServerRoute
   '/account-setup': typeof AuthAccountSetupRoute
   '/sign-in': typeof AuthSignInRoute
   '/sign-up': typeof AuthSignUpRoute
@@ -373,6 +382,7 @@ export interface FileRoutesById {
   '/docs': typeof DocsRoute
   '/openapi.json': typeof OpenapiDotjsonRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/.well-known/oauth-authorization-server': typeof DotwellKnownOauthAuthorizationServerRoute
   '/_auth/account-setup': typeof AuthAccountSetupRoute
   '/_auth/sign-in': typeof AuthSignInRoute
   '/_auth/sign-up': typeof AuthSignUpRoute
@@ -419,6 +429,7 @@ export interface FileRouteTypes {
     | '/docs'
     | '/openapi.json'
     | '/sitemap.xml'
+    | '/.well-known/oauth-authorization-server'
     | '/account-setup'
     | '/sign-in'
     | '/sign-up'
@@ -462,6 +473,7 @@ export interface FileRouteTypes {
     | '/docs'
     | '/openapi.json'
     | '/sitemap.xml'
+    | '/.well-known/oauth-authorization-server'
     | '/account-setup'
     | '/sign-in'
     | '/sign-up'
@@ -504,6 +516,7 @@ export interface FileRouteTypes {
     | '/docs'
     | '/openapi.json'
     | '/sitemap.xml'
+    | '/.well-known/oauth-authorization-server'
     | '/_auth/account-setup'
     | '/_auth/sign-in'
     | '/_auth/sign-up'
@@ -551,6 +564,7 @@ export interface RootRouteChildren {
   DocsRoute: typeof DocsRoute
   OpenapiDotjsonRoute: typeof OpenapiDotjsonRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  DotwellKnownOauthAuthorizationServerRoute: typeof DotwellKnownOauthAuthorizationServerRoute
   ApiSplatRoute: typeof ApiSplatRoute
   ApiHealthRoute: typeof ApiHealthRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
@@ -735,6 +749,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/account-setup'
       preLoaderRoute: typeof AuthAccountSetupRouteImport
       parentRoute: typeof AuthRoute
+    }
+    '/.well-known/oauth-authorization-server': {
+      id: '/.well-known/oauth-authorization-server'
+      path: '/.well-known/oauth-authorization-server'
+      fullPath: '/.well-known/oauth-authorization-server'
+      preLoaderRoute: typeof DotwellKnownOauthAuthorizationServerRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_workspace/organization/': {
       id: '/_workspace/organization/'
@@ -1013,6 +1034,8 @@ const rootRouteChildren: RootRouteChildren = {
   DocsRoute: DocsRoute,
   OpenapiDotjsonRoute: OpenapiDotjsonRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
+  DotwellKnownOauthAuthorizationServerRoute:
+    DotwellKnownOauthAuthorizationServerRoute,
   ApiSplatRoute: ApiSplatRoute,
   ApiHealthRoute: ApiHealthRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
