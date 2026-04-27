@@ -81,6 +81,8 @@ Enforced by `.githooks/commit-msg`. Format: `type(scope)?: Description`
 - Description starts with capital letter
 - `feat` is only for changes visible to end users — internal plumbing is `chore`
 - Commit bodies are prose, not bullet lists or step enumerations
+- Keep `feat` and `fix` commit bodies high-level: explain the user-visible change and why it matters. Don't enumerate file-by-file diffs, internal helpers, refactor steps, or rename trails — that detail belongs in the PR description, not the commit history. Two or three short paragraphs is the ceiling.
+- No phasing or roadmap meta in commit bodies ("Phase 1", "follow-on", "shipping in subsequent phases"). Each commit describes only what it does.
 
 ## Pre-commit Hook
 
