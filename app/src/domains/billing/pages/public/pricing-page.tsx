@@ -183,23 +183,45 @@ interface PricingPageProps {
  * viewer is signed in, checkout is auto-resumed once. This preserves the
  * original CTA when an anonymous user is bounced through sign-in.
  */
+function readCheckoutErrorMessage(error: unknown): string {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+  return "Atlas could not start checkout. Try again.";
+}
+
 export function PricingPage({ intent, interval: intentInterval }: PricingPageProps) {
   const navigate = useNavigate();
   const session = useAtlasSession();
   const [billing, setBilling] = useState<BillingPeriod>("monthly");
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const hasResumedRef = useRef(false);
 
   async function handleCheckout({ product, interval }: CheckoutParams) {
-    if (!session.data) {
+    // session.data === undefined while the query is still loading; null
+    // when resolved to "no session." Only treat the latter as anonymous
+    // — otherwise a fast-clicking authed user can be wrongly bounced
+    // through sign-in.
+    if (session.data === undefined) {
+      return;
+    }
+
+    if (session.data === null) {
       const params = new URLSearchParams({ intent: product, interval });
       const redirectTarget = `/pricing?${params.toString()}`;
       void navigate({ to: "/sign-in", search: { redirect: redirectTarget } });
       return;
     }
 
-    const { startCheckout } = await import("@/domains/billing/checkout.functions");
-    const result = await startCheckout({ data: { product, interval } });
-    window.location.assign(result.url);
+    setCheckoutError(null);
+
+    try {
+      const { startCheckout } = await import("@/domains/billing/checkout.functions");
+      const result = await startCheckout({ data: { product, interval } });
+      window.location.assign(result.url);
+    } catch (error) {
+      setCheckoutError(readCheckoutErrorMessage(error));
+    }
   }
 
   useEffect(() => {
@@ -217,11 +239,18 @@ export function PricingPage({ intent, interval: intentInterval }: PricingPagePro
 
     const resume = async () => {
       await navigate({ to: "/pricing", search: {}, replace: true });
-      const { startCheckout } = await import("@/domains/billing/checkout.functions");
-      const result = await startCheckout({
-        data: { product: intent, interval: intentInterval },
-      });
-      window.location.assign(result.url);
+
+      try {
+        const { startCheckout } = await import("@/domains/billing/checkout.functions");
+        const result = await startCheckout({
+          data: { product: intent, interval: intentInterval },
+        });
+        window.location.assign(result.url);
+      } catch (error) {
+        setCheckoutError(readCheckoutErrorMessage(error));
+        // Allow the operator to retry by clicking a CTA again.
+        hasResumedRef.current = false;
+      }
     };
 
     void resume();
@@ -245,6 +274,12 @@ export function PricingPage({ intent, interval: intentInterval }: PricingPagePro
             that's you, consider supporting the work.
           </p>
         </div>
+
+        {checkoutError ? (
+          <div role="alert" className="mb-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3">
+            <p className="type-body-medium text-red-700">{checkoutError}</p>
+          </div>
+        ) : null}
 
         {/* Plans section */}
         <div className="border-border mb-10 border-t pt-8">
