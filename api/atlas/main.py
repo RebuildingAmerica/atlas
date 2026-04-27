@@ -22,6 +22,8 @@ from atlas.config import get_settings
 from atlas.models import init_db
 from atlas.platform.http import create_router
 from atlas.platform.http.cache import apply_no_store_headers, apply_static_public_cache
+from atlas.platform.mcp import get_mcp, get_mcp_asgi_app
+from atlas.platform.mcp.auth_middleware import McpBearerAuthMiddleware
 from atlas.platform.openapi import (
     OPENAPI_CONTACT,
     OPENAPI_DESCRIPTION,
@@ -73,7 +75,10 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
         search_api_key=settings.search_api_key,
     )
 
-    yield
+    # The FastMCP session manager owns the Streamable HTTP request lifecycle
+    # and must be running before any /mcp request lands.
+    async with get_mcp().session_manager.run():
+        yield
 
     # Shutdown
     await stop_job_worker()
@@ -203,6 +208,13 @@ def create_app() -> FastAPI:
 
     # Include API router
     app.include_router(create_router())
+
+    # Mount the MCP Streamable HTTP transport at /mcp behind bearer-token auth.
+    # The middleware advertises /.well-known/oauth-protected-resource on 401s
+    # so MCP clients can discover the OAuth issuer automatically.
+    mcp_app = get_mcp_asgi_app()
+    mcp_app.add_middleware(McpBearerAuthMiddleware)
+    app.mount("/mcp", mcp_app)
 
     return app
 
