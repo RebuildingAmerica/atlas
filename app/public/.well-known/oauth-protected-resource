@@ -1,0 +1,15 @@
+{
+  "resource": "https://atlas.rebuildingus.org",
+  "authorization_servers": ["https://atlas.rebuildingus.org/api/auth"],
+  "bearer_methods_supported": ["header"],
+  "scopes_supported": [
+    "openid",
+    "profile",
+    "email",
+    "offline_access",
+    "discovery:read",
+    "discovery:write",
+    "entities:write"
+  ],
+  "resource_documentation": "https://atlas.rebuildingus.org/docs/mcp"
+}
