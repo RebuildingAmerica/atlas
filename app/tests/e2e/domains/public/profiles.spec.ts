@@ -14,10 +14,22 @@ test.describe("public profile routes", () => {
 
     await page.goto("/profiles/people/maya-thompson");
 
+    // Claim banner — visible for unverified profiles
+    if ((await page.getByText(/Are you Maya Thompson/i).count()) > 0) {
+      const cta = page.getByRole("link", { name: /claim profile/i });
+      await expect(cta.first()).toBeVisible();
+      await expect(cta.first()).toHaveAttribute("href", /\/claim/);
+    }
+
     // Hero
     await expect(page.getByRole("heading", { name: "Maya Thompson", level: 1 })).toBeVisible();
     await expect(page.getByText("Person profile")).toBeVisible();
     await expect(page.getByRole("button", { name: /share/i })).toBeVisible();
+    // Save and Follow render either as sign-in links (anonymous) or buttons (signed-in)
+    expect(
+      (await page.getByRole("link", { name: /save/i }).count()) +
+        (await page.getByRole("button", { name: /save/i }).count()),
+    ).toBeGreaterThan(0);
 
     // Main column sections — Work no longer reads "What Atlas has surfaced"
     await expect(page.getByText("What Atlas has surfaced")).toHaveCount(0);

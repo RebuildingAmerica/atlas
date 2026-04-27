@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 
 vi.mock("@tanstack/react-router", () => ({
@@ -12,6 +12,7 @@ vi.mock("@tanstack/react-router", () => ({
 }));
 
 import { ActionCluster } from "@/domains/catalog/components/profiles/action-cluster";
+import { ClaimBanner } from "@/domains/catalog/components/profiles/claim-banner";
 import { DataQualityBlock } from "@/domains/catalog/components/profiles/data-quality-block";
 import {
   FreshnessChip,
@@ -92,6 +93,20 @@ describe("FreshnessChip", () => {
   it("renders the formatted label", () => {
     render(<FreshnessChip isoDate={new Date().toISOString()} prefix="Last seen" />);
     expect(screen.getByText(/Last seen/)).toBeInTheDocument();
+  });
+});
+
+describe("ClaimBanner", () => {
+  it("renders for unverified profiles with the claim CTA", () => {
+    render(<ClaimBanner entry={buildEntry({ verified: false })} />);
+    expect(screen.getByText(/Are you Jane Doe\?/i)).toBeInTheDocument();
+    const cta = screen.getByRole("link", { name: /claim profile/i });
+    expect(cta).toHaveAttribute("href", expect.stringContaining("/claim"));
+  });
+
+  it("returns null for verified profiles", () => {
+    const { container } = render(<ClaimBanner entry={buildEntry({ verified: true })} />);
+    expect(container.innerHTML).toBe("");
   });
 });
 
@@ -235,33 +250,53 @@ describe("NetworkRails", () => {
 });
 
 describe("ActionCluster", () => {
+  const baseProps = {
+    shareUrl: "https://example.com/jane",
+    shareTitle: "Jane Doe",
+    profilePath: "/profiles/people/jane-doe",
+  };
+
   it("renders the Share button always", () => {
-    render(<ActionCluster shareUrl="https://example.com" shareTitle="Profile" />);
+    render(<ActionCluster {...baseProps} isSignedIn={false} />);
     expect(screen.getByRole("button", { name: /share/i })).toBeInTheDocument();
   });
 
   it("renders a mailto link when email is supplied", () => {
-    render(
-      <ActionCluster
-        shareUrl="https://example.com"
-        shareTitle="Profile"
-        email="jane@example.org"
-      />,
-    );
+    render(<ActionCluster {...baseProps} email="jane@example.org" isSignedIn={false} />);
     const link = screen.getByRole("link", { name: /contact/i });
     expect(link).toHaveAttribute("href", "mailto:jane@example.org");
   });
 
   it("hides the Contact link when no email is supplied", () => {
-    render(<ActionCluster shareUrl="https://example.com" shareTitle="Profile" />);
+    render(<ActionCluster {...baseProps} isSignedIn={false} />);
     expect(screen.queryByRole("link", { name: /contact/i })).not.toBeInTheDocument();
+  });
+
+  it("renders Save and Follow as sign-in links when anonymous", () => {
+    render(<ActionCluster {...baseProps} isSignedIn={false} />);
+    const save = screen.getByRole("link", { name: /save/i });
+    const follow = screen.getByRole("link", { name: /follow/i });
+    expect(save).toHaveAttribute("href", expect.stringContaining("/sign-in"));
+    expect(follow).toHaveAttribute("href", expect.stringContaining("/sign-in"));
+  });
+
+  it("renders Save and Follow as buttons when signed in", () => {
+    render(<ActionCluster {...baseProps} isSignedIn />);
+    expect(screen.getByRole("button", { name: /save/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /follow/i })).toBeInTheDocument();
+  });
+
+  it("discloses 'still being built' on Save click when signed in", () => {
+    render(<ActionCluster {...baseProps} isSignedIn />);
+    fireEvent.click(screen.getByRole("button", { name: /save/i }));
+    expect(screen.getByText(/Lists are still being built/i)).toBeInTheDocument();
   });
 
   it("copies the URL to clipboard when Web Share is unavailable", async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.assign(navigator, { clipboard: { writeText } });
 
-    render(<ActionCluster shareUrl="https://example.com/jane" shareTitle="Jane Doe" />);
+    render(<ActionCluster {...baseProps} isSignedIn={false} />);
     const button = screen.getByRole("button", { name: /share/i });
     button.click();
 

@@ -1,7 +1,9 @@
 import { Link } from "@tanstack/react-router";
 import { ArrowUpRight, Newspaper } from "lucide-react";
+import { useAtlasSession } from "@/domains/access";
 import { ActorAvatar } from "@/domains/catalog/components/profiles/actor-avatar";
 import { AppearancesList } from "@/domains/catalog/components/profiles/appearances-list";
+import { ClaimBanner } from "@/domains/catalog/components/profiles/claim-banner";
 import { DataQualityBlock } from "@/domains/catalog/components/profiles/data-quality-block";
 import {
   DetailSection,
@@ -89,6 +91,8 @@ function AffiliatedOrgCard({ org }: { org: Entry }) {
 export function PersonProfilePage({ entry }: PersonProfilePageProps) {
   const taxonomyQuery = useTaxonomy();
   const connectionsQuery = useConnections(entry.id);
+  const sessionQuery = useAtlasSession();
+  const isSignedIn = Boolean(sessionQuery.data);
   const affiliatedOrgQuery = useEntry(entry.affiliated_org_id ?? "", {
     enabled: Boolean(entry.affiliated_org_id),
   });
@@ -141,11 +145,13 @@ export function PersonProfilePage({ entry }: PersonProfilePageProps) {
       <ProfileJsonLd entry={entry} affiliatedOrg={affiliatedOrgQuery.data} />
 
       <div className="space-y-10">
+        <ClaimBanner entry={entry} />
         <ProfileHero
           entry={entry}
           eyebrow="Person profile"
           backLink={{ to: "/profiles/people", label: "Back to people" }}
           factRail={factRail}
+          isSignedIn={isSignedIn}
         />
 
         <div className="mx-auto grid max-w-[76rem] gap-8 lg:grid-cols-[minmax(0,1fr)_20rem]">

@@ -26,6 +26,7 @@ interface ProfileHeroProps {
   eyebrow: string;
   backLink: { to: BackLinkTo; label: string };
   factRail: ReactNode;
+  isSignedIn: boolean;
 }
 
 function ProfileTypeBadgeLabel({ type }: { type: Entry["type"] }) {
@@ -39,13 +40,13 @@ function ProfileTypeBadgeLabel({ type }: { type: Entry["type"] }) {
   }
 }
 
-export function ProfileHero({ entry, eyebrow, backLink, factRail }: ProfileHeroProps) {
+export function ProfileHero({ entry, eyebrow, backLink, factRail, isSignedIn }: ProfileHeroProps) {
   const avatarType = entry.type === "organization" ? "organization" : "person";
   const freshnessSource = entry.latest_source_date ?? entry.last_seen;
+  const profileSegment = avatarType === "organization" ? "organizations" : "people";
+  const profilePath = `/profiles/${profileSegment}/${entry.slug}`;
   const shareUrl =
-    typeof window !== "undefined"
-      ? window.location.href
-      : `https://rebuildingus.org/profiles/${avatarType === "organization" ? "organizations" : "people"}/${entry.slug}`;
+    typeof window !== "undefined" ? window.location.href : `https://rebuildingus.org${profilePath}`;
 
   return (
     <section className="bg-surface-container -mx-6 border-b border-black/5 px-6 py-6 lg:py-8">
@@ -94,7 +95,13 @@ export function ProfileHero({ entry, eyebrow, backLink, factRail }: ProfileHeroP
             </div>
 
             <div className="lg:flex lg:flex-col lg:items-end lg:gap-2">
-              <ActionCluster shareUrl={shareUrl} shareTitle={entry.name} email={entry.email} />
+              <ActionCluster
+                shareUrl={shareUrl}
+                shareTitle={entry.name}
+                email={entry.email}
+                isSignedIn={isSignedIn}
+                profilePath={profilePath}
+              />
             </div>
           </div>
 

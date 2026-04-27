@@ -27,6 +27,7 @@ import { Route as PublicSecurityRouteImport } from './routes/_public/security'
 import { Route as PublicRequestDiscountRouteImport } from './routes/_public/request-discount'
 import { Route as PublicPrivacyRouteImport } from './routes/_public/privacy'
 import { Route as PublicPricingRouteImport } from './routes/_public/pricing'
+import { Route as PublicClaimRouteImport } from './routes/_public/claim'
 import { Route as PublicBrowseRouteImport } from './routes/_public/browse'
 import { Route as AuthSignUpRouteImport } from './routes/_auth/sign-up'
 import { Route as AuthSignInRouteImport } from './routes/_auth/sign-in'
@@ -133,6 +134,11 @@ const PublicPrivacyRoute = PublicPrivacyRouteImport.update({
 const PublicPricingRoute = PublicPricingRouteImport.update({
   id: '/pricing',
   path: '/pricing',
+  getParentRoute: () => PublicRoute,
+} as any)
+const PublicClaimRoute = PublicClaimRouteImport.update({
+  id: '/claim',
+  path: '/claim',
   getParentRoute: () => PublicRoute,
 } as any)
 const PublicBrowseRoute = PublicBrowseRouteImport.update({
@@ -254,6 +260,7 @@ export interface FileRoutesByFullPath {
   '/sign-in': typeof AuthSignInRoute
   '/sign-up': typeof AuthSignUpRoute
   '/browse': typeof PublicBrowseRoute
+  '/claim': typeof PublicClaimRoute
   '/pricing': typeof PublicPricingRoute
   '/privacy': typeof PublicPrivacyRoute
   '/request-discount': typeof PublicRequestDiscountRoute
@@ -291,6 +298,7 @@ export interface FileRoutesByTo {
   '/sign-in': typeof AuthSignInRoute
   '/sign-up': typeof AuthSignUpRoute
   '/browse': typeof PublicBrowseRoute
+  '/claim': typeof PublicClaimRoute
   '/pricing': typeof PublicPricingRoute
   '/privacy': typeof PublicPrivacyRoute
   '/request-discount': typeof PublicRequestDiscountRoute
@@ -328,6 +336,7 @@ export interface FileRoutesById {
   '/_auth/sign-in': typeof AuthSignInRoute
   '/_auth/sign-up': typeof AuthSignUpRoute
   '/_public/browse': typeof PublicBrowseRoute
+  '/_public/claim': typeof PublicClaimRoute
   '/_public/pricing': typeof PublicPricingRoute
   '/_public/privacy': typeof PublicPrivacyRoute
   '/_public/request-discount': typeof PublicRequestDiscountRoute
@@ -368,6 +377,7 @@ export interface FileRouteTypes {
     | '/sign-in'
     | '/sign-up'
     | '/browse'
+    | '/claim'
     | '/pricing'
     | '/privacy'
     | '/request-discount'
@@ -405,6 +415,7 @@ export interface FileRouteTypes {
     | '/sign-in'
     | '/sign-up'
     | '/browse'
+    | '/claim'
     | '/pricing'
     | '/privacy'
     | '/request-discount'
@@ -441,6 +452,7 @@ export interface FileRouteTypes {
     | '/_auth/sign-in'
     | '/_auth/sign-up'
     | '/_public/browse'
+    | '/_public/claim'
     | '/_public/pricing'
     | '/_public/privacy'
     | '/_public/request-discount'
@@ -612,6 +624,13 @@ declare module '@tanstack/react-router' {
       path: '/pricing'
       fullPath: '/pricing'
       preLoaderRoute: typeof PublicPricingRouteImport
+      parentRoute: typeof PublicRoute
+    }
+    '/_public/claim': {
+      id: '/_public/claim'
+      path: '/claim'
+      fullPath: '/claim'
+      preLoaderRoute: typeof PublicClaimRouteImport
       parentRoute: typeof PublicRoute
     }
     '/_public/browse': {
@@ -805,6 +824,7 @@ const PublicProfilesPeopleRouteWithChildren =
 
 interface PublicRouteChildren {
   PublicBrowseRoute: typeof PublicBrowseRoute
+  PublicClaimRoute: typeof PublicClaimRoute
   PublicPricingRoute: typeof PublicPricingRoute
   PublicPrivacyRoute: typeof PublicPrivacyRoute
   PublicRequestDiscountRoute: typeof PublicRequestDiscountRoute
@@ -819,6 +839,7 @@ interface PublicRouteChildren {
 
 const PublicRouteChildren: PublicRouteChildren = {
   PublicBrowseRoute: PublicBrowseRoute,
+  PublicClaimRoute: PublicClaimRoute,
   PublicPricingRoute: PublicPricingRoute,
   PublicPrivacyRoute: PublicPrivacyRoute,
   PublicRequestDiscountRoute: PublicRequestDiscountRoute,
