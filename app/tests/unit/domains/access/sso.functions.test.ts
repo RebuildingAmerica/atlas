@@ -11,6 +11,7 @@ import { createServerFnStub, type ServerFnExecutionResponse } from "../../../uti
 const mocks = vi.hoisted(() => ({
   ensureAuthReady: vi.fn(),
   getAuthRuntimeConfig: vi.fn(),
+  isAllowedSamlIssuer: vi.fn(),
   getBrowserSessionHeaders: vi.fn(),
   loadOrganizationRequestContext: vi.fn(),
   loadStoredWorkspaceIdentity: vi.fn(),
@@ -32,6 +33,7 @@ vi.mock("@/domains/access/server/request-headers", () => ({
 
 vi.mock("@/domains/access/server/runtime", () => ({
   getAuthRuntimeConfig: mocks.getAuthRuntimeConfig,
+  isAllowedSamlIssuer: mocks.isAllowedSamlIssuer,
 }));
 
 vi.mock("@/domains/access/organization-server-helpers", () => ({
@@ -81,7 +83,9 @@ describe("sso.functions", () => {
     });
     mocks.getAuthRuntimeConfig.mockReturnValue({
       publicBaseUrl: "https://atlas.test",
+      samlAllowedIssuerOrigins: new Set(["https://accounts.google.com"]),
     });
+    mocks.isAllowedSamlIssuer.mockReturnValue(true);
     mocks.getBrowserSessionHeaders.mockReturnValue(browserSessionHeaders);
     mocks.loadOrganizationRequestContext.mockResolvedValue({
       auth: {
@@ -214,6 +218,27 @@ describe("sso.functions", () => {
       samlMetadataUrl:
         "https://atlas.test/api/auth/sso/saml2/sp/metadata?providerId=atlas-team-google-workspace-saml&format=xml",
     });
+  });
+
+  it("rejects SAML registration when the issuer is not on the operator allowlist", async () => {
+    mocks.isAllowedSamlIssuer.mockReturnValue(false);
+
+    const { registerWorkspaceSAMLProvider } = await import("@/domains/access/sso.functions");
+
+    const response = (await registerWorkspaceSAMLProvider.__executeServer({
+      method: "POST",
+      data: {
+        certificate: "-----BEGIN CERTIFICATE-----test",
+        domain: "policy.example",
+        entryPoint: "https://idp.attacker.example/sso",
+        issuer: "https://idp.attacker.example",
+        setAsPrimary: false,
+      },
+    })) as ServerFnExecutionResponse;
+
+    expect(response.error).toBeDefined();
+    expect(authApi.registerSSOProvider).not.toHaveBeenCalled();
+    expect(mocks.isAllowedSamlIssuer).toHaveBeenCalledWith("https://idp.attacker.example");
   });
 
   it("sets a workspace primary SSO provider", async () => {

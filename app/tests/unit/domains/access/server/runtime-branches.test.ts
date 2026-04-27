@@ -52,6 +52,7 @@ describe("runtime additional branches", () => {
         publicBaseUrl: "https://atlas.test",
         publicDomain: "atlas.test",
         resendApiKey: null,
+        samlAllowedIssuerOrigins: new Set(),
       });
     }).not.toThrow();
   });

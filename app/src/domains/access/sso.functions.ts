@@ -23,7 +23,7 @@ import {
   listStoredWorkspaceSSOProviders,
   loadStoredWorkspaceIdentity,
 } from "./server/sso-provider-store";
-import { getAuthRuntimeConfig } from "./server/runtime";
+import { getAuthRuntimeConfig, isAllowedSamlIssuer } from "./server/runtime";
 
 const googleWorkspaceOIDCProviderSchema = z.object({
   clientId: z.string().trim().min(1),
@@ -171,10 +171,20 @@ export const registerWorkspaceGoogleOIDCProvider = createServerFn({ method: "POS
 
 /**
  * Registers a Google Workspace SAML provider for the active team workspace.
+ *
+ * The admin-supplied `issuer` is gated against the operator-managed allowlist
+ * (`ATLAS_SAML_ALLOWED_ISSUERS`).  DNS TXT domain verification only proves that
+ * the workspace controls the email domain — it does not prove ownership of the
+ * IdP issuer URL, so the issuer host must be opted in by Atlas operators.
  */
 export const registerWorkspaceSAMLProvider = createServerFn({ method: "POST" })
   .inputValidator(googleWorkspaceSAMLProviderSchema)
   .handler(async ({ data }) => {
+    if (!isAllowedSamlIssuer(data.issuer)) {
+      throw new Error(
+        "This SAML issuer is not enabled on Atlas. Contact support to add it to the allowlist.",
+      );
+    }
     const organizationRequestContext = await loadOrganizationRequestContext();
     const { auth, headers, session } = organizationRequestContext;
     const activeWorkspace = requireManagedTeamWorkspace(session);

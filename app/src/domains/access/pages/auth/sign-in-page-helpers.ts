@@ -1,12 +1,44 @@
 /**
+ * Returns the candidate path when it is safe to use as a post-sign-in redirect,
+ * otherwise null.  A safe path is a same-origin absolute path that cannot be
+ * coerced into a cross-origin navigation by `window.location.assign`.
+ *
+ * @param candidate - The redirect target supplied via the `redirect` query
+ *   parameter or related untrusted input.
+ */
+export function sanitizeSignInRedirectPath(candidate: string | undefined): string | null {
+  if (!candidate || typeof candidate !== "string") {
+    return null;
+  }
+
+  if (candidate.length === 0 || candidate.length > 2048) {
+    return null;
+  }
+
+  if (!candidate.startsWith("/")) {
+    return null;
+  }
+
+  // `//evil.example` and `/\evil.example` parse as protocol-relative or
+  // backslash-prefixed authority components in some browsers, leaking the
+  // user off-origin.
+  if (candidate.startsWith("//") || candidate.startsWith("/\\")) {
+    return null;
+  }
+
+  return candidate;
+}
+
+/**
  * Builds the app-local callback path used after sign-in completes.
  *
  * @param invitationId - The optional workspace invitation id.
  * @param redirectTo - The optional explicit redirect path.
  */
 export function buildSignInCallbackURL(invitationId?: string, redirectTo?: string): string {
-  if (redirectTo) {
-    return redirectTo;
+  const sanitizedRedirect = sanitizeSignInRedirectPath(redirectTo);
+  if (sanitizedRedirect !== null) {
+    return sanitizedRedirect;
   }
 
   return invitationId ? "/organization" : "/account";
@@ -26,8 +58,9 @@ export function buildSignInErrorCallbackURL(invitationId?: string, redirectTo?: 
     searchParams.set("invitation", invitationId);
   }
 
-  if (redirectTo) {
-    searchParams.set("redirect", redirectTo);
+  const sanitizedRedirect = sanitizeSignInRedirectPath(redirectTo);
+  if (sanitizedRedirect !== null) {
+    searchParams.set("redirect", sanitizedRedirect);
   }
 
   const queryString = searchParams.toString();

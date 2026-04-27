@@ -23,6 +23,7 @@ export interface AuthRuntimeConfig {
   publicBaseUrl: string;
   publicDomain: string;
   resendApiKey: string | null;
+  samlAllowedIssuerOrigins: Set<string>;
 }
 
 /**
@@ -57,6 +58,29 @@ function normalizeEmailList(value: string | undefined): Set<string> {
       .map((item) => item.trim().toLowerCase())
       .filter(Boolean),
   );
+}
+
+/**
+ * Parses the SAML issuer-origin allowlist into a normalized set.  Each entry is
+ * coerced to a URL and stored as `url.origin` (scheme + host + port) so issuer
+ * URLs that include tenant query parameters can still match.
+ *
+ * @param value - The raw `ATLAS_SAML_ALLOWED_ISSUERS` env var value.
+ */
+function normalizeSamlIssuerOriginList(value: string | undefined): Set<string> {
+  const origins = new Set<string>();
+  for (const candidate of (value ?? "").split(",")) {
+    const trimmed = candidate.trim();
+    if (!trimmed) continue;
+    try {
+      origins.add(new URL(trimmed).origin);
+    } catch {
+      throw new Error(
+        `ATLAS_SAML_ALLOWED_ISSUERS contains an invalid URL: ${JSON.stringify(trimmed)}`,
+      );
+    }
+  }
+  return origins;
 }
 
 function resolveEmailProvider(env: NodeJS.ProcessEnv): "capture" | "resend" {
@@ -141,6 +165,7 @@ export function resolveAuthRuntimeConfig(env: NodeJS.ProcessEnv, cwd: string): A
     publicBaseUrl,
     publicDomain,
     resendApiKey: env.ATLAS_EMAIL_RESEND_API_KEY?.trim() || null,
+    samlAllowedIssuerOrigins: normalizeSamlIssuerOriginList(env.ATLAS_SAML_ALLOWED_ISSUERS),
   };
 }
 
@@ -197,4 +222,28 @@ export function isAllowedEmail(email: string): boolean {
   }
 
   return allowedEmails.has(email.trim().toLowerCase());
+}
+
+/**
+ * Checks whether a SAML IdP `issuer` URL belongs to the operator-managed
+ * allowlist.  The check is by URL origin so per-tenant query parameters (e.g.
+ * `?idpid=...`) do not need to be enumerated.  An empty allowlist denies every
+ * registration — operators must opt SAML providers in explicitly.
+ *
+ * @param issuer - The candidate SAML issuer URL provided by a workspace owner.
+ */
+export function isAllowedSamlIssuer(issuer: string): boolean {
+  const { samlAllowedIssuerOrigins } = getAuthRuntimeConfig();
+  if (samlAllowedIssuerOrigins.size === 0) {
+    return false;
+  }
+
+  let candidateOrigin: string;
+  try {
+    candidateOrigin = new URL(issuer).origin;
+  } catch {
+    return false;
+  }
+
+  return samlAllowedIssuerOrigins.has(candidateOrigin);
 }

@@ -222,8 +222,11 @@ function createAtlasAuth(runtime: AuthRuntimeConfig) {
       oauthProvider({
         loginPage: "/sign-in",
         consentPage: "/oauth/consent",
+        // RFC 7591 §3: dynamic client registration is gated to authenticated
+        // sessions so anonymous attackers cannot register clients with hostile
+        // redirect_uris and phish authenticated Atlas users via /authorize.
         allowDynamicClientRegistration: true,
-        allowUnauthenticatedClientRegistration: true,
+        allowUnauthenticatedClientRegistration: false,
         ...(runtime.apiAudience ? { validAudiences: [runtime.apiAudience] } : {}),
         // OAuth AS metadata at /.well-known/oauth-authorization-server/api/auth
         // requires a root-level handler that doesn't exist (TanStack Router can't

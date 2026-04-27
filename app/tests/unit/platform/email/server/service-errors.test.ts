@@ -33,6 +33,7 @@ function buildRuntime(overrides: Partial<AuthRuntimeConfig> = {}): AuthRuntimeCo
     publicBaseUrl: "https://atlas.example.com",
     publicDomain: "atlas.example.com",
     resendApiKey: null,
+    samlAllowedIssuerOrigins: new Set(),
     ...overrides,
   };
 }
@@ -95,6 +96,7 @@ describe("email service error branches", () => {
           captureUrl: null,
           emailProvider: "resend",
           resendApiKey: null,
+          samlAllowedIssuerOrigins: new Set(),
         }),
       ),
     ).toThrow("ATLAS_EMAIL_RESEND_API_KEY is required when ATLAS_EMAIL_PROVIDER=resend.");
