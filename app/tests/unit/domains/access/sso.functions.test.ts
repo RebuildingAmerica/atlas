@@ -84,6 +84,8 @@ describe("sso.functions", () => {
     mocks.getAuthRuntimeConfig.mockReturnValue({
       publicBaseUrl: "https://atlas.test",
       samlAllowedIssuerOrigins: new Set(["https://accounts.google.com"]),
+      samlSpPrivateKey: null,
+      samlSpPrivateKeyPass: null,
     });
     mocks.isAllowedSamlIssuer.mockReturnValue(true);
     mocks.getBrowserSessionHeaders.mockReturnValue(browserSessionHeaders);

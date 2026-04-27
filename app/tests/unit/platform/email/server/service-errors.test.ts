@@ -34,6 +34,8 @@ function buildRuntime(overrides: Partial<AuthRuntimeConfig> = {}): AuthRuntimeCo
     publicDomain: "atlas.example.com",
     resendApiKey: null,
     samlAllowedIssuerOrigins: new Set(),
+    samlSpPrivateKey: null,
+    samlSpPrivateKeyPass: null,
     ...overrides,
   };
 }

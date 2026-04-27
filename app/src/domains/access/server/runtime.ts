@@ -24,6 +24,8 @@ export interface AuthRuntimeConfig {
   publicDomain: string;
   resendApiKey: string | null;
   samlAllowedIssuerOrigins: Set<string>;
+  samlSpPrivateKey: string | null;
+  samlSpPrivateKeyPass: string | null;
 }
 
 /**
@@ -166,6 +168,8 @@ export function resolveAuthRuntimeConfig(env: NodeJS.ProcessEnv, cwd: string): A
     publicDomain,
     resendApiKey: env.ATLAS_EMAIL_RESEND_API_KEY?.trim() || null,
     samlAllowedIssuerOrigins: normalizeSamlIssuerOriginList(env.ATLAS_SAML_ALLOWED_ISSUERS),
+    samlSpPrivateKey: env.ATLAS_SAML_SP_PRIVATE_KEY?.trim() || null,
+    samlSpPrivateKeyPass: env.ATLAS_SAML_SP_PRIVATE_KEY_PASS?.trim() || null,
   };
 }
 

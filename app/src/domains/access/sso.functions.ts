@@ -192,6 +192,9 @@ export const registerWorkspaceSAMLProvider = createServerFn({ method: "POST" })
       providerId: data.providerId,
       workspaceSlug: activeWorkspace.slug,
     });
+    const runtime = getAuthRuntimeConfig();
+    const samlSpPrivateKey = runtime.samlSpPrivateKey;
+    const samlSpPrivateKeyPass = runtime.samlSpPrivateKeyPass ?? undefined;
     const registrationResult = await auth.api.registerSSOProvider({
       body: {
         domain: data.domain,
@@ -200,15 +203,22 @@ export const registerWorkspaceSAMLProvider = createServerFn({ method: "POST" })
         providerId: registrationDefaults.samlProviderId,
         samlConfig: {
           audience: registrationDefaults.samlEntityId,
-          authnRequestsSigned: false,
+          // SAML 2.0 §3.4 recommends signed AuthnRequests when the SP holds
+          // signing keys.  When ATLAS_SAML_SP_PRIVATE_KEY is provisioned the
+          // SP can sign requests; otherwise leave them unsigned so existing
+          // IdP integrations that did not record an SP cert keep working.
+          authnRequestsSigned: samlSpPrivateKey !== null,
           callbackUrl: registrationDefaults.samlAcsUrl,
           cert: data.certificate,
           entryPoint: data.entryPoint,
           identifierFormat: "urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress",
           spMetadata: {
             entityID: registrationDefaults.samlEntityId,
+            ...(samlSpPrivateKey ? { privateKey: samlSpPrivateKey } : {}),
+            ...(samlSpPrivateKeyPass ? { privateKeyPass: samlSpPrivateKeyPass } : {}),
           },
           wantAssertionsSigned: true,
+          ...(samlSpPrivateKey ? { privateKey: samlSpPrivateKey } : {}),
         },
       },
       headers,
