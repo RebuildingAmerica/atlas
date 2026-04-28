@@ -1,5 +1,9 @@
 import { useState } from "react";
 import type { AtlasOrganizationDetails } from "../../organization-contracts";
+import {
+  type AtlasSAMLProviderHealth,
+  checkWorkspaceSAMLProviderHealth,
+} from "../../sso.functions";
 import { Button } from "@/platform/ui/button";
 import { Textarea } from "@/platform/ui/textarea";
 import { WorkspaceSSOCopyField } from "./workspace-sso-copy-field";
@@ -39,6 +43,83 @@ interface WorkspaceSSOProviderListProps {
   onRotateSAMLCertificate: (providerId: string, certificate: string) => Promise<void>;
   onSavePrimaryProvider: (providerId: string | null) => Promise<void>;
   onVerifyDomain: (providerId: string) => Promise<void>;
+}
+
+/**
+ * Renders the most recent SAML provider health-check result.  The check
+ * does not run a full AuthnRequest — that requires a browser flow — but
+ * it confirms the IdP entry point is reachable and the stored signing
+ * certificate has not expired.  Useful as a smoke test before telling
+ * users to sign in.
+ *
+ * @param props - The component props.
+ * @param props.providerId - The provider being checked.
+ */
+function SamlProviderHealthCheck(props: { providerId: string }) {
+  const [result, setResult] = useState<AtlasSAMLProviderHealth | null>(null);
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function runCheck() {
+    setPending(true);
+    setError(null);
+    try {
+      const checkResult = await checkWorkspaceSAMLProviderHealth({
+        data: { providerId: props.providerId },
+      });
+      setResult(checkResult);
+    } catch (caughtError) {
+      setError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : "Atlas could not run the SAML health check.",
+      );
+    } finally {
+      setPending(false);
+    }
+  }
+
+  return (
+    <details className="text-outline space-y-2">
+      <summary className="type-label-medium cursor-pointer">Run SAML health check</summary>
+      <p className="type-body-small text-outline">
+        Pings the IdP entry point and inspects the stored signing certificate. Does not start a full
+        sign-in flow.
+      </p>
+      <Button
+        type="button"
+        variant="secondary"
+        disabled={pending}
+        onClick={() => {
+          void runCheck();
+        }}
+      >
+        {pending ? "Checking..." : "Run health check"}
+      </Button>
+      {error ? <p className="type-body-small text-error">{error}</p> : null}
+      {result ? (
+        <ul className="type-body-small text-outline list-disc space-y-1 pl-5">
+          <li>
+            IdP entry point:{" "}
+            {result.entryPointReachable
+              ? `reachable (HTTP ${result.entryPointStatus ?? "?"})`
+              : `unreachable${result.entryPointStatus ? ` (HTTP ${result.entryPointStatus})` : ""}`}
+          </li>
+          <li>
+            Signing certificate:{" "}
+            {result.certificateValid === false
+              ? "could not parse"
+              : result.certificateExpired === true
+                ? `expired ${result.certificateNotAfter ?? ""}`
+                : result.certificateExpired === false
+                  ? `valid (expires ${result.certificateNotAfter ?? "unknown"})`
+                  : "unknown"}
+          </li>
+          {result.reason ? <li>Notes: {result.reason}</li> : null}
+        </ul>
+      ) : null}
+    </details>
+  );
 }
 
 /**
@@ -231,11 +312,14 @@ export function WorkspaceSSOProviderList({
                 ) : null}
 
                 {provider.providerType === "saml" && canManageOrganization ? (
-                  <SamlCertificateRotationForm
-                    providerId={provider.providerId}
-                    isPending={isPending}
-                    onSubmit={onRotateSAMLCertificate}
-                  />
+                  <>
+                    <SamlProviderHealthCheck providerId={provider.providerId} />
+                    <SamlCertificateRotationForm
+                      providerId={provider.providerId}
+                      isPending={isPending}
+                      onSubmit={onRotateSAMLCertificate}
+                    />
+                  </>
                 ) : null}
 
                 {!provider.domainVerified ? (

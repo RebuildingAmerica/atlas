@@ -312,6 +312,103 @@ export const verifyWorkspaceSSODomain = createServerFn({ method: "POST" })
   });
 
 /**
+ * Outcome of a SAML provider health check.  Atlas does not run a full SAML
+ * roundtrip from the server (that requires a browser-driven AuthnRequest),
+ * but a quick reachability + metadata check catches the most common
+ * "configured wrong" cases — DNS broken, IdP down, certificate expired —
+ * before an admin tells a user to sign in.
+ */
+export interface AtlasSAMLProviderHealth {
+  certificateExpired: boolean | null;
+  certificateNotAfter: string | null;
+  certificateValid: boolean | null;
+  entryPointReachable: boolean;
+  entryPointStatus: number | null;
+  reason: string | null;
+}
+
+/**
+ * Runs a quick health probe against a configured SAML provider.  Verifies
+ * the IdP entry point answers an HTTP request and that the stored signing
+ * certificate has not expired.  No AuthnRequest is sent — this is a
+ * pre-flight check for admins to catch obvious misconfigurations.
+ */
+export const checkWorkspaceSAMLProviderHealth = createServerFn({ method: "POST" })
+  .inputValidator(workspaceProviderIdSchema)
+  .handler(async ({ data }): Promise<AtlasSAMLProviderHealth> => {
+    const organizationRequestContext = await loadOrganizationRequestContext();
+    const { auth, headers, session } = organizationRequestContext;
+
+    const activeWorkspace = requireManagedTeamWorkspace(session);
+
+    const provider = await auth.api.getSSOProvider({
+      query: { providerId: data.providerId },
+      headers,
+    });
+
+    if (provider?.organizationId !== activeWorkspace.id) {
+      return {
+        certificateExpired: null,
+        certificateNotAfter: null,
+        certificateValid: null,
+        entryPointReachable: false,
+        entryPointStatus: null,
+        reason: "Provider is not registered to this workspace.",
+      };
+    }
+
+    if (!provider.samlConfig) {
+      return {
+        certificateExpired: null,
+        certificateNotAfter: null,
+        certificateValid: null,
+        entryPointReachable: false,
+        entryPointStatus: null,
+        reason: "Provider does not have a SAML configuration; this check is SAML-only.",
+      };
+    }
+
+    const certificate = provider.samlConfig.certificate;
+    const certificateValid = "fingerprintSha256" in certificate;
+    const certificateNotAfter = certificateValid ? certificate.notAfter : null;
+    const certificateExpired = certificateNotAfter
+      ? new Date(certificateNotAfter).getTime() < Date.now()
+      : null;
+
+    let entryPointReachable = false;
+    let entryPointStatus: number | null = null;
+    let reason: string | null = null;
+
+    try {
+      const response = await fetch(provider.samlConfig.entryPoint, {
+        method: "GET",
+        redirect: "manual",
+        signal: AbortSignal.timeout(5000),
+      });
+      entryPointStatus = response.status;
+      entryPointReachable = response.status < 500;
+    } catch (error) {
+      reason = error instanceof Error ? error.message : "Atlas could not reach the IdP.";
+    }
+
+    if (!certificateValid) {
+      reason =
+        reason ?? "Atlas could not parse the stored signing certificate; rotate it to recover.";
+    } else if (certificateExpired) {
+      reason = reason ?? `The stored signing certificate expired on ${certificateNotAfter}.`;
+    }
+
+    return {
+      certificateExpired,
+      certificateNotAfter,
+      certificateValid,
+      entryPointReachable,
+      entryPointStatus,
+      reason,
+    };
+  });
+
+/**
  * Rotates the X.509 signing certificate on one configured SAML provider.
  *
  * The rotation goes through Better Auth's `updateSSOProvider` endpoint with
