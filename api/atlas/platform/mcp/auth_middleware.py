@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
 
+from atlas.domains.access.challenges import build_bearer_challenge
 from atlas.domains.access.jwt import verify_bearer_jwt
 from atlas.platform.config import get_settings
 
@@ -36,12 +37,10 @@ class McpBearerAuthMiddleware(BaseHTTPMiddleware):
             jwks_url=settings.auth_jwt_jwks_url,
         )
         if payload is None:
-            resource_url = settings.auth_jwt_resource_url.rstrip("/")
-            resource_metadata_url = f"{resource_url}/.well-known/oauth-protected-resource"
             return Response(
                 status_code=401,
                 headers={
-                    "WWW-Authenticate": f'Bearer resource_metadata="{resource_metadata_url}"',
+                    "WWW-Authenticate": build_bearer_challenge(settings),
                 },
             )
 

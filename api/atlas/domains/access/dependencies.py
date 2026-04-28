@@ -14,6 +14,7 @@ from atlas.platform.config import Settings, get_settings
 
 from .api_keys import verify_api_key
 from .capabilities import resolve_capabilities
+from .challenges import build_bearer_challenge
 from .internal import build_local_actor, verify_internal_actor
 from .jwt import verify_bearer_jwt
 from .membership import verify_org_membership
@@ -85,13 +86,11 @@ async def require_actor(  # noqa: PLR0913
     # MCP clients use the WWW-Authenticate header to discover the auth server.
     # When auth is enabled (settings validated at startup), the resource URL is
     # always set, so RFC 6750 §3 challenges always carry a discovery pointer.
-    resource_url = settings.auth_jwt_resource_url.rstrip("/")
-    resource_metadata_url = f"{resource_url}/.well-known/oauth-protected-resource"
     raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Authentication required",
         headers={
-            "WWW-Authenticate": f'Bearer resource_metadata="{resource_metadata_url}"',
+            "WWW-Authenticate": build_bearer_challenge(settings),
         },
     )
 
@@ -104,8 +103,9 @@ def require_actor_permission(
 
     async def dependency(
         actor: AuthenticatedActor = Depends(require_actor),
+        settings: Settings = Depends(get_settings),
     ) -> AuthenticatedActor:
-        return require_permission(actor, resource, action)
+        return require_permission(actor, resource, action, settings=settings)
 
     return dependency
 
@@ -118,8 +118,9 @@ def require_org_actor_permission(
 
     async def dependency(
         actor: AuthenticatedActor = Depends(require_org_actor),
+        settings: Settings = Depends(get_settings),
     ) -> AuthenticatedActor:
-        return require_permission(actor, resource, action)
+        return require_permission(actor, resource, action, settings=settings)
 
     return dependency
 

@@ -82,9 +82,21 @@ class Settings(BaseSettings):
     auth_jwt_jwks_url: str = ""
     """JWKS endpoint URL. Auto-derived from auth_jwt_issuer when not set."""
 
-    @field_validator("auth_jwt_audience", mode="before")
+    auth_jwt_default_scope: list[str] = Field(
+        default_factory=lambda: ["discovery:read"],
+        validation_alias="ATLAS_AUTH_DEFAULT_SCOPE",
+    )
+    """Scopes published in the ``WWW-Authenticate`` 401 challenge.
+
+    Per MCP authorization spec §"Protected Resource Metadata Discovery
+    Requirements", the challenge SHOULD carry a default scope hint so MCP
+    clients can request the smallest token that satisfies a baseline
+    ``tools/list`` call before negotiating up via step-up authorization.
+    """
+
+    @field_validator("auth_jwt_audience", "auth_jwt_default_scope", mode="before")
     @classmethod
-    def _parse_audience_list(cls, value: object) -> list[str]:
+    def _parse_string_list(cls, value: object) -> list[str]:
         """Accept either a comma-separated env-var string or a Python list."""
         if value is None:
             return []
@@ -204,6 +216,16 @@ class Settings(BaseSettings):
         Empty when auth is disabled.
         """
         return self.auth_jwt_audience[0] if self.auth_jwt_audience else ""
+
+    @property
+    def auth_resource_metadata_url(self) -> str:
+        """Return the absolute URL of the protected-resource metadata document.
+
+        Empty string when auth is disabled (no audience configured).
+        """
+        if not self.auth_jwt_resource_url:
+            return ""
+        return f"{self.auth_jwt_resource_url.rstrip('/')}/.well-known/oauth-protected-resource"
 
 
 def get_settings() -> Settings:

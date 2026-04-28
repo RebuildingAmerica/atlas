@@ -36,6 +36,10 @@ async def test_protected_discovery_requires_auth_when_enabled(
     assert "https://atlas.example/api/.well-known/oauth-protected-resource" in challenge, (
         "MCP authorization spec requires the resource-metadata pointer in the challenge."
     )
+    assert 'scope="discovery:read"' in challenge, (
+        "MCP authorization spec §'Scope Selection Strategy' requires a default scope hint "
+        "in the challenge so clients can request the smallest viable token."
+    )
 
 
 @pytest.mark.asyncio
@@ -160,6 +164,65 @@ async def test_discovery_read_requires_matching_api_key_scope(
     )
 
     assert response.status_code == HTTPStatus.FORBIDDEN
+
+
+@pytest.mark.asyncio
+async def test_oauth_jwt_insufficient_scope_emits_step_up_challenge(
+    monkeypatch: pytest.MonkeyPatch,
+    test_client: object,
+    test_settings: Settings,
+) -> None:
+    """OAuth tokens missing a required scope must trigger the spec's step-up flow."""
+    test_settings.deploy_mode = ""
+    test_settings.auth_internal_secret = "internal-test-secret"
+    test_settings.auth_jwt_audience = ["https://atlas.example/api"]
+    test_settings.auth_jwt_issuer = "https://atlas.example/api/auth"
+
+    def fake_verify_bearer_jwt(
+        authorization: str | None,
+        *,
+        issuer: str,
+        audience: list[str],
+        jwks_url: str,
+    ) -> dict[str, object]:
+        del issuer, audience, jwks_url
+        assert authorization == "Bearer scoped-token"
+        return {
+            "sub": "user_123",
+            "email": "operator@example.com",
+            "permissions": {"discovery": ["read"]},
+        }
+
+    monkeypatch.setattr(
+        "atlas.domains.access.dependencies.verify_bearer_jwt",
+        fake_verify_bearer_jwt,
+    )
+
+    response = await test_client.post(
+        "/api/discovery-runs",
+        headers={"Authorization": "Bearer scoped-token"},
+        json={
+            "location_query": "Gary, IN",
+            "state": "IN",
+            "issue_areas": ["housing_affordability"],
+        },
+    )
+
+    assert response.status_code == HTTPStatus.FORBIDDEN
+    challenge = response.headers.get("WWW-Authenticate", "")
+    assert challenge.startswith("Bearer "), (
+        "MCP authorization spec §'Scope Challenge Handling' requires a Bearer "
+        "challenge on insufficient_scope responses."
+    )
+    assert 'error="insufficient_scope"' in challenge, (
+        "The 403 must surface error=insufficient_scope so MCP clients can run step-up."
+    )
+    assert 'scope="discovery:write"' in challenge, (
+        "The challenge must advertise the scope required to satisfy the request."
+    )
+    assert "https://atlas.example/api/.well-known/oauth-protected-resource" in challenge, (
+        "The challenge must point at the protected-resource metadata document."
+    )
 
 
 @pytest.mark.asyncio

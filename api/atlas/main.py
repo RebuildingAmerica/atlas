@@ -152,6 +152,13 @@ def create_app() -> FastAPI:
     # advertised in the WWW-Authenticate challenge, so it has to live under
     # the same canonical resource origin that gets recorded in audience
     # claims.
+    #
+    # The MCP discovery flow normally lands on the app-served document at the
+    # canonical `/.well-known/oauth-protected-resource` (see
+    # `app/src/routes/[.]well-known/oauth-protected-resource/index.ts`); this
+    # copy exists so clients that interact with the API origin directly (e.g.
+    # via the OpenAPI spec) can still resolve the authorization server.  The
+    # payload mirrors the app document so both surfaces stay consistent.
     @app.get("/api/.well-known/oauth-protected-resource", include_in_schema=False)
     async def oauth_protected_resource_metadata(response: Response) -> dict[str, Any]:
         """Return RFC 9728 protected-resource metadata for this API."""
