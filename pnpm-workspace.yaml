@@ -1,6 +1,7 @@
 packages:
   - app
   - api
+  - mintlify
   - packages/*
 
 nodeLinker: isolated

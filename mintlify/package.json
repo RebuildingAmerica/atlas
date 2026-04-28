@@ -1,0 +1,7 @@
+{
+  "name": "docs",
+  "private": true,
+  "scripts": {
+    "dev": "mint dev"
+  }
+}
