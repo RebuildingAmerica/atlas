@@ -312,6 +312,48 @@ export const verifyWorkspaceSSODomain = createServerFn({ method: "POST" })
   });
 
 /**
+ * Hostnames Atlas refuses to fetch SAML IdP entry points from.  The list
+ * mirrors the CIMD resolver's private-host blocklist so an admin who
+ * registers a SAML provider with a localhost or RFC-1918 entry point
+ * cannot use the health-check probe to pivot Atlas's egress through
+ * cloud-metadata services or internal infrastructure.
+ */
+const SAML_DENIED_HOST_PATTERNS: readonly RegExp[] = [
+  /^localhost$/i,
+  /^127\./,
+  /^10\./,
+  /^192\.168\./,
+  /^169\.254\./,
+  /^172\.(1[6-9]|2\d|3[0-1])\./,
+  /^::1$/,
+  /^\[::1\]$/,
+];
+
+/**
+ * Returns the parsed URL when `value` is a public HTTPS URL Atlas is
+ * willing to send a server-side health probe to, or null otherwise.
+ *
+ * @param value - The raw SAML IdP entry-point URL stored on the provider.
+ */
+function asPublicHttpsUrl(value: string): URL | null {
+  let parsed: URL;
+  try {
+    parsed = new URL(value);
+  } catch {
+    return null;
+  }
+  if (parsed.protocol !== "https:") {
+    return null;
+  }
+  for (const pattern of SAML_DENIED_HOST_PATTERNS) {
+    if (pattern.test(parsed.hostname)) {
+      return null;
+    }
+  }
+  return parsed;
+}
+
+/**
  * Outcome of a SAML provider health check.  Atlas does not run a full SAML
  * roundtrip from the server (that requires a browser-driven AuthnRequest),
  * but a quick reachability + metadata check catches the most common
@@ -379,16 +421,21 @@ export const checkWorkspaceSAMLProviderHealth = createServerFn({ method: "POST" 
     let entryPointStatus: number | null = null;
     let reason: string | null = null;
 
-    try {
-      const response = await fetch(provider.samlConfig.entryPoint, {
-        method: "GET",
-        redirect: "manual",
-        signal: AbortSignal.timeout(5000),
-      });
-      entryPointStatus = response.status;
-      entryPointReachable = response.status < 500;
-    } catch (error) {
-      reason = error instanceof Error ? error.message : "Atlas could not reach the IdP.";
+    const safeEntryPoint = asPublicHttpsUrl(provider.samlConfig.entryPoint);
+    if (!safeEntryPoint) {
+      reason = `Atlas refuses to probe a non-public or non-HTTPS IdP entry point (${provider.samlConfig.entryPoint}).`;
+    } else {
+      try {
+        const response = await fetch(safeEntryPoint.toString(), {
+          method: "GET",
+          redirect: "manual",
+          signal: AbortSignal.timeout(5000),
+        });
+        entryPointStatus = response.status;
+        entryPointReachable = response.status < 500;
+      } catch (error) {
+        reason = error instanceof Error ? error.message : "Atlas could not reach the IdP.";
+      }
     }
 
     if (!certificateValid) {
