@@ -73,6 +73,51 @@ function SamlMetadataPasteField(props: {
 }
 
 /**
+ * Lightweight check that the pasted X.509 certificate at least has PEM
+ * framing.  Atlas does not parse ASN.1 client-side — Better Auth does that
+ * post-registration and surfaces the parsed details (subject, expiry, key
+ * algorithm) in the provider list — but a quick frame check catches the
+ * most common paste mistakes before submit.
+ *
+ * @param certificate - The candidate certificate text from the SAML form.
+ */
+function classifyPemCertificate(
+  certificate: string,
+): { kind: "empty" } | { kind: "ok"; bodyLines: number } | { kind: "invalid"; reason: string } {
+  const trimmed = certificate.trim();
+  if (!trimmed) {
+    return { kind: "empty" };
+  }
+  const lines = trimmed.split(/\r?\n/);
+  const header = lines[0]?.trim() ?? "";
+  const footer = lines[lines.length - 1]?.trim() ?? "";
+  if (!header.startsWith("-----BEGIN") || !header.endsWith("-----")) {
+    return {
+      kind: "invalid",
+      reason: "Certificate is missing the -----BEGIN CERTIFICATE----- header.",
+    };
+  }
+  if (!footer.startsWith("-----END") || !footer.endsWith("-----")) {
+    return {
+      kind: "invalid",
+      reason: "Certificate is missing the -----END CERTIFICATE----- footer.",
+    };
+  }
+  const bodyLines = lines.slice(1, -1).filter((line) => line.trim().length > 0);
+  if (bodyLines.length === 0) {
+    return { kind: "invalid", reason: "Certificate body is empty." };
+  }
+  const body = bodyLines.join("");
+  if (!/^[A-Za-z0-9+/=]+$/.test(body)) {
+    return {
+      kind: "invalid",
+      reason: "Certificate body has non-base64 characters.",
+    };
+  }
+  return { kind: "ok", bodyLines: bodyLines.length };
+}
+
+/**
  * Returns the candidate SAML issuer's origin when the value parses as a URL,
  * otherwise null.  The allowlist is matched by URL origin so per-tenant query
  * parameters do not need to be enumerated.
@@ -142,6 +187,8 @@ export function WorkspaceSSOSection({
   const samlIssuerOrigin = extractIssuerOrigin(samlSetupForm.issuer);
   const samlIssuerAllowed =
     samlIssuerOrigin !== null && samlAllowedIssuerOrigins.includes(samlIssuerOrigin);
+  const samlCertificateClassification = classifyPemCertificate(samlSetupForm.certificate);
+  const samlCertificateLooksValid = samlCertificateClassification.kind === "ok";
   const samlIssuerHelperText = samlAllowlistEmpty
     ? "SAML registration is disabled for this deployment. Contact Atlas operators to add an issuer host to ATLAS_SAML_ALLOWED_ISSUERS before configuring a provider."
     : samlSetupForm.issuer.trim() === ""
@@ -377,18 +424,32 @@ export function WorkspaceSSOSection({
                 }}
                 placeholder="https://accounts.google.com/o/saml2/idp?idpid=..."
               />
-              <Textarea
-                label="X.509 certificate"
-                rows={8}
-                value={samlSetupForm.certificate}
-                onChange={(value) => {
-                  setSamlSetupForm((current) => ({
-                    ...current,
-                    certificate: value,
-                  }));
-                }}
-                placeholder="-----BEGIN CERTIFICATE-----"
-              />
+              <div className="space-y-1">
+                <Textarea
+                  label="X.509 certificate"
+                  rows={8}
+                  value={samlSetupForm.certificate}
+                  onChange={(value) => {
+                    setSamlSetupForm((current) => ({
+                      ...current,
+                      certificate: value,
+                    }));
+                  }}
+                  placeholder="-----BEGIN CERTIFICATE-----"
+                />
+                {samlCertificateClassification.kind === "invalid" ? (
+                  <p className="type-body-small text-error">
+                    {samlCertificateClassification.reason} Atlas parses the certificate server-side
+                    after save and shows the parsed expiry and fingerprint here.
+                  </p>
+                ) : samlCertificateClassification.kind === "ok" ? (
+                  <p className="type-body-small text-outline">
+                    Looks like a PEM certificate ({samlCertificateClassification.bodyLines} body
+                    line{samlCertificateClassification.bodyLines === 1 ? "" : "s"}). Atlas will
+                    parse and display the expiry and fingerprint after save.
+                  </p>
+                ) : null}
+              </div>
               <details className="text-outline space-y-2">
                 <summary className="type-label-medium cursor-pointer">
                   Advanced: override the suggested provider ID
@@ -413,7 +474,7 @@ export function WorkspaceSSOSection({
                 type="submit"
                 disabled={
                   isPending ||
-                  !samlSetupForm.certificate.trim() ||
+                  !samlCertificateLooksValid ||
                   !samlSetupForm.domain.trim() ||
                   !samlSetupForm.entryPoint.trim() ||
                   !samlSetupForm.issuer.trim() ||

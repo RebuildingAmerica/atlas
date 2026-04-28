@@ -129,7 +129,7 @@ describe("WorkspaceSSOSection", () => {
         providerId: "saml",
         issuer: "https://accounts.google.com/o/saml2?idpid=abc",
         entryPoint: "https://accounts.google.com/o/saml2/idp",
-        certificate: "-----BEGIN CERTIFICATE-----\nMIIB",
+        certificate: "-----BEGIN CERTIFICATE-----\nMIIBExampleBytes\n-----END CERTIFICATE-----",
         setAsPrimary: false,
       },
     };
@@ -146,7 +146,7 @@ describe("WorkspaceSSOSection", () => {
         providerId: "saml",
         issuer: "https://idp.attacker.example",
         entryPoint: "https://idp.attacker.example/sso",
-        certificate: "-----BEGIN CERTIFICATE-----\nMIIB",
+        certificate: "-----BEGIN CERTIFICATE-----\nMIIBExampleBytes\n-----END CERTIFICATE-----",
         setAsPrimary: false,
       },
     };
