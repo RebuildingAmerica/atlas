@@ -2,13 +2,22 @@
 
 from __future__ import annotations
 
+from http import HTTPStatus
+from typing import cast
+
+import pytest
+from fastapi import HTTPException
+
 from atlas.domains.access.capabilities import (
     DEFAULT_CAPABILITIES,
     DEFAULT_LIMITS,
     get_limit,
     has_capability,
+    require_capability,
     resolve_capabilities,
 )
+from atlas.domains.access.principals import AuthenticatedActor
+from atlas.platform.config import Settings
 
 
 class TestResolveCapabilities:
@@ -78,3 +87,77 @@ class TestGetLimit:
     def test_constrained(self) -> None:
         resolved = resolve_capabilities([])
         assert get_limit(resolved, "research_runs_per_month") == 2  # noqa: PLR2004
+
+
+def _build_actor(*, auth_type: str, products: list[str]) -> AuthenticatedActor:
+    """Construct a minimal authenticated actor for require_capability tests."""
+    actor = AuthenticatedActor(
+        user_id="user_123",
+        email="operator@atlas.example",
+        auth_type=auth_type,
+        org_id="org_123",
+    )
+    actor.active_products = products
+    actor.resolved_capabilities = resolve_capabilities(products)
+    return actor
+
+
+def _build_settings() -> Settings:
+    settings = Settings()
+    settings.auth_jwt_audience = ["https://atlas.example/api"]
+    return settings
+
+
+class TestRequireCapabilityDependency:
+    @pytest.mark.asyncio
+    async def test_passes_when_capability_present(self) -> None:
+        actor = _build_actor(auth_type="oauth_jwt", products=["atlas_pro"])
+        dependency = require_capability("api.mcp")
+
+        # The inner dependency closure exposes the same signature as the
+        # FastAPI runtime; calling it directly bypasses the DI machinery.
+        await dependency(actor=actor, settings=_build_settings())  # type: ignore[call-arg]
+
+    @pytest.mark.asyncio
+    async def test_oauth_jwt_missing_capability_emits_step_up_challenge(self) -> None:
+        actor = _build_actor(auth_type="oauth_jwt", products=[])
+        dependency = require_capability("api.mcp")
+
+        with pytest.raises(HTTPException) as excinfo:
+            await dependency(actor=actor, settings=_build_settings())  # type: ignore[call-arg]
+
+        assert excinfo.value.status_code == HTTPStatus.FORBIDDEN
+        challenge = (excinfo.value.headers or {}).get("WWW-Authenticate", "")
+        assert challenge.startswith("Bearer "), (
+            "OAuth-authenticated actors must receive a Bearer challenge per RFC 6750."
+        )
+        assert 'error="insufficient_scope"' in challenge
+        assert 'scope="api.mcp"' in challenge
+        assert 'error_uri="https://atlas.example/api/pricing"' in challenge, (
+            "Spec §'Scope Challenge Handling' permits error_uri (RFC 6749 §5.2); "
+            "Atlas points it at the pricing page so MCP clients can render an upgrade CTA."
+        )
+
+        detail = cast("dict[str, object]", excinfo.value.detail)
+        assert detail["error"] == "plan_required"
+        assert detail["plan_required"] == "pro"
+        assert detail["upgrade_url"] == "https://atlas.example/api/pricing"
+
+    @pytest.mark.asyncio
+    async def test_api_key_missing_capability_omits_oauth_challenge(self) -> None:
+        actor = _build_actor(auth_type="api_key", products=[])
+        dependency = require_capability("api.mcp")
+
+        with pytest.raises(HTTPException) as excinfo:
+            await dependency(actor=actor, settings=_build_settings())  # type: ignore[call-arg]
+
+        assert excinfo.value.status_code == HTTPStatus.FORBIDDEN
+        # API-key principals don't run the OAuth step-up flow, so no Bearer
+        # challenge is emitted; the structured body still tells the caller
+        # which plan to upgrade to.
+        assert excinfo.value.headers is None or "WWW-Authenticate" not in (
+            excinfo.value.headers or {}
+        )
+        detail = cast("dict[str, object]", excinfo.value.detail)
+        assert detail["error"] == "plan_required"
+        assert detail["plan_required"] == "pro"

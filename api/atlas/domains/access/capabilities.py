@@ -12,6 +12,10 @@ from typing import TYPE_CHECKING
 
 from fastapi import Depends, HTTPException, status
 
+from atlas.platform.config import Settings, get_settings
+
+from .challenges import build_bearer_challenge
+
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
 
@@ -165,21 +169,87 @@ def get_limit(resolved: ResolvedCapabilities, limit: str) -> int | None:
     return resolved.limits[limit]
 
 
+_REQUIRED_PLAN_FOR_CAPABILITY: dict[str, str] = {
+    "api.mcp": "pro",
+    "api.keys": "pro",
+    "research.unlimited": "pro",
+    "workspace.notes": "pro",
+    "workspace.export": "pro",
+    "workspace.shared": "team",
+    "monitoring.watchlists": "team",
+    "integrations.slack": "team",
+    "auth.sso": "team",
+}
+
+
+def _resolve_pricing_url(settings: Settings) -> str | None:
+    """Return the canonical pricing-page URL for upgrade-aware 403s.
+
+    Derived from the configured resource URL so previews and staging point
+    at their own domain instead of the production hostname.  Returns
+    ``None`` when auth is disabled (no audience configured) so the helper
+    callers can fall back gracefully.
+    """
+    base = settings.auth_jwt_resource_url.rstrip("/")
+    if not base:
+        return None
+    return f"{base}/pricing"
+
+
 def require_capability(cap: str) -> Callable[..., Awaitable[None]]:
-    """Return a FastAPI dependency that raises 403 if the actor lacks the capability."""
+    """Return a FastAPI dependency that raises 403 if the actor lacks the capability.
+
+    OAuth-authenticated actors get a standards-compliant ``insufficient_scope``
+    challenge with ``error_uri`` pointing at the pricing page so MCP clients
+    can render an upgrade CTA without parsing Atlas-specific fields.  The
+    response body keeps a parallel structured representation for clients that
+    don't introspect ``WWW-Authenticate``.
+    """
     from .dependencies import require_org_actor
 
     async def dependency(
         actor: AuthenticatedActor = Depends(require_org_actor),
+        settings: Settings = Depends(get_settings),
     ) -> None:
         if (
-            actor.resolved_capabilities is None
-            or cap not in actor.resolved_capabilities.capabilities
+            actor.resolved_capabilities is not None
+            and cap in actor.resolved_capabilities.capabilities
         ):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail={"message": "Capability required", "capability": cap},
-            )
+            return
+
+        required_plan = _REQUIRED_PLAN_FOR_CAPABILITY.get(cap, "pro")
+        pricing_url = _resolve_pricing_url(settings)
+        description = (
+            f"This request requires the Atlas {required_plan.title()} plan "
+            f"(missing capability: {cap})."
+        )
+
+        headers: dict[str, str] | None = None
+        if actor.auth_type == "oauth_jwt":
+            headers = {
+                "WWW-Authenticate": build_bearer_challenge(
+                    settings,
+                    scope=[cap],
+                    error="insufficient_scope",
+                    error_description=description,
+                    error_uri=pricing_url,
+                ),
+            }
+
+        detail: dict[str, object] = {
+            "error": "plan_required",
+            "message": description,
+            "capability": cap,
+            "plan_required": required_plan,
+        }
+        if pricing_url:
+            detail["upgrade_url"] = pricing_url
+
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=detail,
+            headers=headers,
+        )
 
     return dependency
 

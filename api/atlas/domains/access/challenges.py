@@ -32,6 +32,7 @@ def build_bearer_challenge(
     scope: Iterable[str] | None = None,
     error: str | None = None,
     error_description: str | None = None,
+    error_uri: str | None = None,
 ) -> str:
     """Build a ``WWW-Authenticate: Bearer …`` value for an auth challenge.
 
@@ -57,6 +58,11 @@ def build_bearer_challenge(
     error_description:
         Optional human-readable description.  Only included when ``error`` is
         set, matching RFC 6750 §3 grammar.
+    error_uri:
+        Optional URI a client can follow for more information about the
+        error.  Defined by RFC 6749 §5.2 and reused in RFC 6750 challenges.
+        Atlas uses this to point billing-driven 403s at the pricing page so
+        MCP clients can render an upgrade CTA without parsing custom fields.
     """
     parts: list[str] = []
 
@@ -72,5 +78,7 @@ def build_bearer_challenge(
         parts.append(_format_param("error", error))
         if error_description:
             parts.append(_format_param("error_description", error_description))
+        if error_uri:
+            parts.append(_format_param("error_uri", error_uri))
 
     return "Bearer " + ", ".join(parts) if parts else "Bearer"
