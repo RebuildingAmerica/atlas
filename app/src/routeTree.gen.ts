@@ -32,6 +32,7 @@ import { Route as PublicRequestDiscountRouteImport } from './routes/_public/requ
 import { Route as PublicPrivacyRouteImport } from './routes/_public/privacy'
 import { Route as PublicPricingRouteImport } from './routes/_public/pricing'
 import { Route as PublicPostLogoutRouteImport } from './routes/_public/post-logout'
+import { Route as PublicEnterpriseRouteImport } from './routes/_public/enterprise'
 import { Route as PublicBrowseRouteImport } from './routes/_public/browse'
 import { Route as AuthSignUpRouteImport } from './routes/_auth/sign-up'
 import { Route as AuthSignInRouteImport } from './routes/_auth/sign-in'
@@ -170,6 +171,11 @@ const PublicPricingRoute = PublicPricingRouteImport.update({
 const PublicPostLogoutRoute = PublicPostLogoutRouteImport.update({
   id: '/post-logout',
   path: '/post-logout',
+  getParentRoute: () => PublicRoute,
+} as any)
+const PublicEnterpriseRoute = PublicEnterpriseRouteImport.update({
+  id: '/enterprise',
+  path: '/enterprise',
   getParentRoute: () => PublicRoute,
 } as any)
 const PublicBrowseRoute = PublicBrowseRouteImport.update({
@@ -324,6 +330,7 @@ export interface FileRoutesByFullPath {
   '/sign-in': typeof AuthSignInRoute
   '/sign-up': typeof AuthSignUpRoute
   '/browse': typeof PublicBrowseRoute
+  '/enterprise': typeof PublicEnterpriseRoute
   '/post-logout': typeof PublicPostLogoutRoute
   '/pricing': typeof PublicPricingRoute
   '/privacy': typeof PublicPrivacyRoute
@@ -372,6 +379,7 @@ export interface FileRoutesByTo {
   '/sign-in': typeof AuthSignInRoute
   '/sign-up': typeof AuthSignUpRoute
   '/browse': typeof PublicBrowseRoute
+  '/enterprise': typeof PublicEnterpriseRoute
   '/post-logout': typeof PublicPostLogoutRoute
   '/pricing': typeof PublicPricingRoute
   '/privacy': typeof PublicPrivacyRoute
@@ -420,6 +428,7 @@ export interface FileRoutesById {
   '/_auth/sign-in': typeof AuthSignInRoute
   '/_auth/sign-up': typeof AuthSignUpRoute
   '/_public/browse': typeof PublicBrowseRoute
+  '/_public/enterprise': typeof PublicEnterpriseRoute
   '/_public/post-logout': typeof PublicPostLogoutRoute
   '/_public/pricing': typeof PublicPricingRoute
   '/_public/privacy': typeof PublicPrivacyRoute
@@ -471,6 +480,7 @@ export interface FileRouteTypes {
     | '/sign-in'
     | '/sign-up'
     | '/browse'
+    | '/enterprise'
     | '/post-logout'
     | '/pricing'
     | '/privacy'
@@ -519,6 +529,7 @@ export interface FileRouteTypes {
     | '/sign-in'
     | '/sign-up'
     | '/browse'
+    | '/enterprise'
     | '/post-logout'
     | '/pricing'
     | '/privacy'
@@ -566,6 +577,7 @@ export interface FileRouteTypes {
     | '/_auth/sign-in'
     | '/_auth/sign-up'
     | '/_public/browse'
+    | '/_public/enterprise'
     | '/_public/post-logout'
     | '/_public/pricing'
     | '/_public/privacy'
@@ -786,6 +798,13 @@ declare module '@tanstack/react-router' {
       path: '/post-logout'
       fullPath: '/post-logout'
       preLoaderRoute: typeof PublicPostLogoutRouteImport
+      parentRoute: typeof PublicRoute
+    }
+    '/_public/enterprise': {
+      id: '/_public/enterprise'
+      path: '/enterprise'
+      fullPath: '/enterprise'
+      preLoaderRoute: typeof PublicEnterpriseRouteImport
       parentRoute: typeof PublicRoute
     }
     '/_public/browse': {
@@ -1021,6 +1040,7 @@ const PublicProfilesPeopleRouteWithChildren =
 
 interface PublicRouteChildren {
   PublicBrowseRoute: typeof PublicBrowseRoute
+  PublicEnterpriseRoute: typeof PublicEnterpriseRoute
   PublicPostLogoutRoute: typeof PublicPostLogoutRoute
   PublicPricingRoute: typeof PublicPricingRoute
   PublicPrivacyRoute: typeof PublicPrivacyRoute
@@ -1037,6 +1057,7 @@ interface PublicRouteChildren {
 
 const PublicRouteChildren: PublicRouteChildren = {
   PublicBrowseRoute: PublicBrowseRoute,
+  PublicEnterpriseRoute: PublicEnterpriseRoute,
   PublicPostLogoutRoute: PublicPostLogoutRoute,
   PublicPricingRoute: PublicPricingRoute,
   PublicPrivacyRoute: PublicPrivacyRoute,

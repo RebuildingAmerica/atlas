@@ -124,16 +124,16 @@ function PublicTopNavShell({
   return (
     <div
       className={cn(
-        "mx-auto w-full max-w-[88rem] px-3 transition-all duration-250",
-        scrolled ? "px-0 pt-0" : "pt-3",
+        "mx-auto w-full max-w-[88rem] transition-all duration-250",
+        scrolled ? "px-0 pt-0" : "px-6 pt-3",
       )}
     >
       <nav
         className={cn(
-          "flex items-center justify-between px-6 backdrop-blur-md transition-all duration-250",
+          "shadow-soft border-border-strong flex items-center justify-between px-6 backdrop-blur-md transition-all duration-250",
           scrolled
-            ? "bg-surface-container-high/92 py-3"
-            : "bg-surface-container-low/88 rounded-[1.25rem] py-4",
+            ? "bg-surface-container-high/92 border-b py-3"
+            : "bg-surface-container-low/88 rounded-[1.25rem] border py-4",
         )}
       >
         <Link to="/" className="flex items-center gap-2.5 no-underline">
@@ -148,6 +148,7 @@ function PublicTopNavShell({
           <NavLink to="/browse" label="Browse" />
           {hideSessionLinks || localMode ? null : (
             <>
+              <NavLink to="/enterprise" label="Enterprise" />
               <PricingNavLink />
               <AuthNavLink />
             </>

@@ -115,6 +115,7 @@ export function CheckoutCompletePage({ product }: CheckoutCompletePageProps) {
 
   if (phase === "ready") {
     const isPass = product === "atlas_research_pass";
+    const isTeam = product === "atlas_team";
     const eyebrow = isPass ? "Your Research Pass is active" : `Welcome to ${productLabel}`;
 
     return (
@@ -122,11 +123,12 @@ export function CheckoutCompletePage({ product }: CheckoutCompletePageProps) {
         <div className="space-y-3">
           <p className="type-label-medium text-ink-muted tracking-wider uppercase">{eyebrow}</p>
           <h1 className="type-display-small text-ink-strong leading-tight">
-            Thanks for backing Atlas.
+            {isTeam ? "Your team workspace is ready." : "Thanks for backing Atlas."}
           </h1>
           <p className="type-body-large text-ink-soft leading-relaxed">
-            Your support helps us keep Atlas open and source-linked for everyone. Here&apos;s
-            what&apos;s now available to you.
+            {isTeam
+              ? "Atlas Team is active for this workspace. Connect your identity provider next so the rest of your team can sign in."
+              : "Your support helps us keep Atlas open and source-linked for everyone. Here's what's now available to you."}
           </p>
         </div>
 
@@ -139,14 +141,27 @@ export function CheckoutCompletePage({ product }: CheckoutCompletePageProps) {
         ) : null}
 
         <div className="flex flex-wrap gap-3">
-          <Link to="/discovery" className="no-underline">
-            <Button variant="primary">Open your workspace</Button>
-          </Link>
-          <Link to="/account" className="no-underline">
-            <Button variant="secondary">
-              {isPass ? "View your account" : "Manage subscription"}
-            </Button>
-          </Link>
+          {isTeam ? (
+            <>
+              <Link to="/organization/sso" className="no-underline">
+                <Button variant="primary">Configure SSO</Button>
+              </Link>
+              <Link to="/discovery" className="no-underline">
+                <Button variant="secondary">Open your workspace</Button>
+              </Link>
+            </>
+          ) : (
+            <>
+              <Link to="/discovery" className="no-underline">
+                <Button variant="primary">Open your workspace</Button>
+              </Link>
+              <Link to="/account" className="no-underline">
+                <Button variant="secondary">
+                  {isPass ? "View your account" : "Manage subscription"}
+                </Button>
+              </Link>
+            </>
+          )}
         </div>
       </div>
     );

@@ -140,6 +140,12 @@ function createAtlasAuth(runtime: AuthRuntimeConfig) {
     plugins: [
       magicLink({
         disableSignUp: false,
+        // Five-minute TTL is short enough to bound replay risk on a leaked
+        // link and long enough that an operator can paste the URL into a
+        // different browser if their mail client opens external links in a
+        // surface they don't want.  The sign-up page surfaces the same
+        // value via `MAGIC_LINK_EXPIRY_SECONDS`; keep them in sync.
+        expiresIn: 300,
         sendMagicLink: createMagicLinkSender(),
       }),
       passkey({
