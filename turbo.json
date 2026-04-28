@@ -11,6 +11,13 @@
     "ATLAS_DOCS_URL",
     "MCP_REGISTRY_AUTH_PUBKEY"
   ],
+  "globalPassThroughEnv": [
+    "ATLAS_AUTH_API_KEY_INTROSPECTION_URL",
+    "ATLAS_AUTH_INTERNAL_SECRET",
+    "ATLAS_EMAIL_FROM",
+    "ATLAS_EMAIL_RESEND_API_KEY",
+    "DATABASE_URL"
+  ],
   "globalDependencies": [
     "pnpm-workspace.yaml",
     "package.json",

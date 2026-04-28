@@ -4,9 +4,7 @@ import { redirectIfLocalSession } from "@/domains/access/server";
 
 export const Route = createFileRoute("/_public/pricing")({
   validateSearch: pricingSearchSchema,
-  beforeLoad: () => {
-    redirectIfLocalSession("/");
-  },
+  beforeLoad: () => redirectIfLocalSession("/"),
   component: PricingRoute,
 });
 

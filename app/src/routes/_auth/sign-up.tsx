@@ -10,9 +10,7 @@ const signUpSearchSchema = z.object({
 export const Route = createFileRoute("/_auth/sign-up")({
   ssr: false,
   validateSearch: signUpSearchSchema,
-  beforeLoad: () => {
-    redirectIfLocalSession("/discovery");
-  },
+  beforeLoad: () => redirectIfLocalSession("/discovery"),
   component: SignUpRoute,
 });
 

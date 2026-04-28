@@ -9,9 +9,7 @@ const checkoutCompleteSearchSchema = z.object({
 
 export const Route = createFileRoute("/_workspace/checkout-complete")({
   validateSearch: checkoutCompleteSearchSchema,
-  beforeLoad: () => {
-    redirectIfLocalSession("/discovery");
-  },
+  beforeLoad: () => redirectIfLocalSession("/discovery"),
   component: CheckoutCompleteRoute,
 });
 
