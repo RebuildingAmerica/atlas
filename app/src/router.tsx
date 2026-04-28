@@ -1,6 +1,8 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createRouter as createTanStackRouter } from "@tanstack/react-router";
 import type { ReactNode } from "react";
+import { ConfirmDialogProvider } from "./platform/ui/confirm-dialog";
+import { ToastProvider } from "./platform/ui/toast";
 import { routeTree } from "./routeTree.gen";
 
 /**
@@ -33,7 +35,13 @@ export function getRouter() {
    * `useQuery` they (or anything they render, like the public nav) call.
    */
   function Wrap({ children }: { children: ReactNode }) {
-    return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
+    return (
+      <QueryClientProvider client={queryClient}>
+        <ToastProvider>
+          <ConfirmDialogProvider>{children}</ConfirmDialogProvider>
+        </ToastProvider>
+      </QueryClientProvider>
+    );
   }
 
   const router = createTanStackRouter({
