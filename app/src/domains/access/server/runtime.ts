@@ -2,6 +2,11 @@ import "@tanstack/react-start/server-only";
 
 import path from "node:path";
 
+import {
+  DEFAULT_CIMD_RESOLVER_OPTIONS,
+  type ClientIdMetadataResolverOptions,
+} from "./client-id-metadata";
+
 /**
  * Runtime configuration needed to enforce Atlas auth behavior on the app
  * server.
@@ -26,6 +31,7 @@ export interface AuthRuntimeConfig {
   samlAllowedIssuerOrigins: Set<string>;
   samlSpPrivateKey: string | null;
   samlSpPrivateKeyPass: string | null;
+  cimdAllowedHostSuffixes: readonly string[];
 }
 
 /**
@@ -69,6 +75,20 @@ function normalizeEmailList(value: string | undefined): Set<string> {
  *
  * @param value - The raw `ATLAS_SAML_ALLOWED_ISSUERS` env var value.
  */
+/**
+ * Parses the optional CIMD host allowlist into a normalized list of host
+ * suffixes.  An empty list means "any HTTPS URL is acceptable", matching the
+ * MCP authorization spec's "open server" trust policy.
+ *
+ * @param value - The raw `ATLAS_OAUTH_CIMD_DOMAIN_ALLOWLIST` env-var value.
+ */
+function normalizeCimdHostSuffixes(value: string | undefined): readonly string[] {
+  return (value ?? "")
+    .split(",")
+    .map((item) => item.trim().toLowerCase())
+    .filter(Boolean);
+}
+
 function normalizeSamlIssuerOriginList(value: string | undefined): Set<string> {
   const origins = new Set<string>();
   for (const candidate of (value ?? "").split(",")) {
@@ -170,6 +190,23 @@ export function resolveAuthRuntimeConfig(env: NodeJS.ProcessEnv, cwd: string): A
     samlAllowedIssuerOrigins: normalizeSamlIssuerOriginList(env.ATLAS_SAML_ALLOWED_ISSUERS),
     samlSpPrivateKey: env.ATLAS_SAML_SP_PRIVATE_KEY?.trim() || null,
     samlSpPrivateKeyPass: env.ATLAS_SAML_SP_PRIVATE_KEY_PASS?.trim() || null,
+    cimdAllowedHostSuffixes: normalizeCimdHostSuffixes(env.ATLAS_OAUTH_CIMD_DOMAIN_ALLOWLIST),
+  };
+}
+
+/**
+ * Returns CIMD resolver options derived from the current runtime config.
+ *
+ * The allowlist is sourced from `ATLAS_OAUTH_CIMD_DOMAIN_ALLOWLIST`; size and
+ * timeout caps stay at the resolver defaults so a single tighter knob
+ * (`ATLAS_OAUTH_CIMD_DOMAIN_ALLOWLIST="example.com"`) is enough to lock down
+ * the trust surface.
+ */
+export function getCimdResolverOptions(): ClientIdMetadataResolverOptions {
+  const runtime = getAuthRuntimeConfig();
+  return {
+    ...DEFAULT_CIMD_RESOLVER_OPTIONS,
+    allowedHostSuffixes: runtime.cimdAllowedHostSuffixes,
   };
 }
 

@@ -36,6 +36,7 @@ function buildRuntime(overrides: Partial<AuthRuntimeConfig> = {}): AuthRuntimeCo
     samlAllowedIssuerOrigins: new Set(),
     samlSpPrivateKey: null,
     samlSpPrivateKeyPass: null,
+    cimdAllowedHostSuffixes: [],
     ...overrides,
   };
 }

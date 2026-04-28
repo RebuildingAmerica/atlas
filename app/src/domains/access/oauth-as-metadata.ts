@@ -61,6 +61,11 @@ export function buildAuthorizationServerMetadata(input: MetadataInput) {
     id_token_signing_alg_values_supported: ["RS256", "ES256"],
     subject_types_supported: ["public"],
     scopes_supported: [...SUPPORTED_OAUTH_SCOPES],
+    // Atlas implements `draft-ietf-oauth-client-id-metadata-document-00`
+    // through the CIMD shim in `app/src/domains/access/server/cimd-handler.ts`
+    // — URL-shaped client_ids resolve to a JSON metadata document that
+    // materializes a synthetic Better Auth `oauthClient` row.
+    client_id_metadata_document_supported: true,
   };
 }
 

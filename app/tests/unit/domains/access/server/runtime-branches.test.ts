@@ -55,6 +55,7 @@ describe("runtime additional branches", () => {
         samlAllowedIssuerOrigins: new Set(),
         samlSpPrivateKey: null,
         samlSpPrivateKeyPass: null,
+        cimdAllowedHostSuffixes: [],
       });
     }).not.toThrow();
   });

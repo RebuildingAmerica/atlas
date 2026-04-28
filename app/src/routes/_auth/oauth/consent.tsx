@@ -9,5 +9,11 @@ export const Route = createFileRoute("/_auth/oauth/consent")({
 
 function OAuthConsentRoute() {
   const search = Route.useSearch();
-  return <OAuthConsentPage clientId={search.client_id} scope={search.scope} />;
+  return (
+    <OAuthConsentPage
+      clientId={search.client_id}
+      scope={search.scope}
+      redirectUri={search.redirect_uri}
+    />
+  );
 }

@@ -9,7 +9,32 @@ import { getAuthClient } from "@/domains/access/client/auth-client";
 export const oauthConsentSearchSchema = z.object({
   client_id: z.string(),
   scope: z.string().optional(),
+  redirect_uri: z.string().optional(),
 });
+
+/**
+ * Returns the hostname Atlas should display next to the consent prompt when
+ * the redirect URI is meaningful (CIMD clients, dynamically registered
+ * clients).  Returns null for invalid URIs so callers can hide the line.
+ */
+function safeRedirectHostname(redirectUri: string | undefined): string | null {
+  if (!redirectUri) return null;
+  try {
+    return new URL(redirectUri).host;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * True when `clientId` looks like a Client ID Metadata Document URL.  A
+ * URL-shaped `client_id` triggers extra UI affordances (showing the
+ * client_id origin, calling out the document model) so the operator can
+ * tell whether the request comes from a CIMD client.
+ */
+function isUrlShapedClientId(clientId: string): boolean {
+  return clientId.startsWith("https://");
+}
 
 const SCOPE_LABELS: Record<string, { title: string; description: string }> = {
   openid: { title: "Basic identity", description: "Your account identifier" },
@@ -37,7 +62,15 @@ interface ClientInfo {
  * OAuth 2.1 consent page shown when a third-party app requests access
  * to user resources.
  */
-export function OAuthConsentPage({ clientId, scope }: { clientId: string; scope?: string }) {
+export function OAuthConsentPage({
+  clientId,
+  scope,
+  redirectUri,
+}: {
+  clientId: string;
+  scope?: string;
+  redirectUri?: string;
+}) {
   const [clientInfo, setClientInfo] = useState<ClientInfo | null>(null);
   const [isLoadingClient, setIsLoadingClient] = useState(true);
   const [clientError, setClientError] = useState<string | null>(null);
@@ -128,6 +161,8 @@ export function OAuthConsentPage({ clientId, scope }: { clientId: string; scope?
 
   const clientName = clientInfo?.name ?? "Unknown app";
   const isBusy = isAllowing || isDenying;
+  const redirectHostname = safeRedirectHostname(redirectUri);
+  const isCimdClient = isUrlShapedClientId(clientId);
 
   return (
     <div className="space-y-6">
@@ -162,12 +197,24 @@ export function OAuthConsentPage({ clientId, scope }: { clientId: string; scope?
                 {clientInfo?.uri ? (
                   <p className="type-body-small text-ink-muted">{clientInfo.uri}</p>
                 ) : null}
+                {isCimdClient ? (
+                  <p className="type-body-small text-ink-muted break-all">
+                    Client ID document: {clientId}
+                  </p>
+                ) : null}
               </div>
             </div>
 
             <p className="type-body-medium text-ink-soft">
               <span className="text-ink-strong font-medium">{clientName}</span> is requesting access
               to your Atlas account.
+              {redirectHostname ? (
+                <>
+                  {" "}
+                  After approval, Atlas will send you back to{" "}
+                  <span className="text-ink-strong font-medium">{redirectHostname}</span>.
+                </>
+              ) : null}
             </p>
 
             {scopes.length > 0 ? (
