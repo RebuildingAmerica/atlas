@@ -140,6 +140,6 @@ describe("SignInPage", () => {
       await Promise.resolve();
     });
 
-    expect(screen.getByText("Network error")).toBeInTheDocument();
+    expect(screen.getByText("Sign-in is temporarily unavailable.")).toBeInTheDocument();
   });
 });

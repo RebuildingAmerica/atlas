@@ -355,7 +355,7 @@ describe("AccountSetupPage", () => {
     };
 
     await expect(addPasskeyConfig.mutationFn()).rejects.toThrow(
-      "Atlas could not add that passkey.",
+      "Passkey authentication failed. Please try again.",
     );
   });
 

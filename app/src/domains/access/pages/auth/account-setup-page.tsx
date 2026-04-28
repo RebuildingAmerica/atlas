@@ -9,6 +9,7 @@ import { createWorkspace } from "@/domains/access/organizations.functions";
 import { resolvePasskeyName } from "@/domains/access/passkey-names";
 import { updatePasskey } from "@/domains/access/passkeys.functions";
 import { getRpLogoutRedirect, sendVerificationEmail } from "@/domains/access/session.functions";
+import { describePasskeyError } from "@/domains/access/auth-errors";
 import type { AtlasSessionPayload } from "@/domains/access/organization-contracts";
 
 interface AccountSetupPageProps {
@@ -109,7 +110,7 @@ export function AccountSetupPage({ redirectTo }: AccountSetupPageProps) {
       const result = await getAuthClient().passkey.addPasskey({});
 
       if (result.error) {
-        throw new Error(result.error.message || "Atlas could not add that passkey.");
+        throw new Error(describePasskeyError(result.error.message));
       }
 
       if (result.data) {

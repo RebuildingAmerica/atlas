@@ -4,6 +4,12 @@ import { Mail } from "lucide-react";
 import { useEffect, useState } from "react";
 import { atlasSessionQueryKey, useAtlasSession } from "@/domains/access/client/use-atlas-session";
 import { checkAccountExists, requestMagicLink } from "@/domains/access/session.functions";
+import {
+  AUTH_ERROR_CODE,
+  buildAuthErrorLabels,
+  extractAuthErrorCode,
+} from "@/domains/access/auth-errors";
+import { DevMailCaptureBanner } from "./dev-mail-capture-banner";
 import { buildSignInCallbackURL } from "./sign-in-page-helpers";
 import { Button } from "@/platform/ui/button";
 import { Input } from "@/platform/ui/input";
@@ -31,6 +37,8 @@ interface SignUpPageProps {
 const MAGIC_LINK_EXPIRY_SECONDS = 300;
 const RESEND_COOLDOWN_SECONDS = 30;
 const CROSS_DEVICE_POLL_INTERVAL_MS = 3000;
+
+const SIGN_UP_ERROR_LABELS = buildAuthErrorLabels("sign-up");
 
 const TEAM_SSO_REDIRECT = "/pricing?intent=atlas_team&interval=monthly";
 
@@ -73,6 +81,7 @@ export function SignUpPage({ intent, redirectTo }: SignUpPageProps = {}) {
   const [phase, setPhase] = useState<"form" | "sent">("form");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isPending, setIsPending] = useState(false);
+  const [captureMailboxUrl, setCaptureMailboxUrl] = useState<string | null>(null);
 
   const [secondsUntilExpiry, setSecondsUntilExpiry] = useState(MAGIC_LINK_EXPIRY_SECONDS);
   const [secondsUntilResend, setSecondsUntilResend] = useState(0);
@@ -141,7 +150,8 @@ export function SignUpPage({ intent, redirectTo }: SignUpPageProps = {}) {
       });
       return false;
     }
-    await requestMagicLink({ data: { callbackURL, email } });
+    const result = await requestMagicLink({ data: { callbackURL, email } });
+    setCaptureMailboxUrl(result.captureMailboxUrl ?? null);
     return true;
   };
 
@@ -159,9 +169,8 @@ export function SignUpPage({ intent, redirectTo }: SignUpPageProps = {}) {
         setPhase("sent");
       }
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Sign-up is temporarily unavailable.";
-      setErrorMessage(message);
+      const code = extractAuthErrorCode(error);
+      setErrorMessage(code ? SIGN_UP_ERROR_LABELS[code] : "Sign-up is temporarily unavailable.");
     } finally {
       setIsPending(false);
     }
@@ -174,13 +183,18 @@ export function SignUpPage({ intent, redirectTo }: SignUpPageProps = {}) {
     setIsResending(true);
     setResendStatus(null);
     try {
-      await requestMagicLink({ data: { callbackURL, email } });
+      const result = await requestMagicLink({ data: { callbackURL, email } });
+      setCaptureMailboxUrl(result.captureMailboxUrl ?? null);
       setSecondsUntilExpiry(MAGIC_LINK_EXPIRY_SECONDS);
       setSecondsUntilResend(RESEND_COOLDOWN_SECONDS);
       setResendStatus("Sent. Check your inbox.");
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Could not resend the link.";
-      setResendStatus(message);
+      const code = extractAuthErrorCode(error);
+      setResendStatus(
+        code === AUTH_ERROR_CODE.EMAIL_DELIVERY_FAILED
+          ? "Your sign-up link couldn't be delivered. Please try again."
+          : "Could not resend the link. Please try again.",
+      );
     } finally {
       setIsResending(false);
     }
@@ -214,6 +228,8 @@ export function SignUpPage({ intent, redirectTo }: SignUpPageProps = {}) {
             {expiryLabel}
           </p>
         </div>
+
+        {captureMailboxUrl ? <DevMailCaptureBanner url={captureMailboxUrl} /> : null}
 
         <div className="space-y-2">
           <Button

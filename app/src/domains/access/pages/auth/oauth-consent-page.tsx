@@ -195,13 +195,14 @@ export function OAuthConsentPage({
         scope: finalScope,
       });
       if (result.error) {
-        throw new Error(result.error.message || "Could not grant access.");
+        setErrorMessage("Access could not be granted. Please try again.");
+        return;
       }
       if (result.data?.redirect && result.data.url) {
         window.location.assign(result.data.url);
       }
-    } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Could not grant access.");
+    } catch {
+      setErrorMessage("Access could not be granted. Please try again.");
     } finally {
       setIsAllowing(false);
     }
@@ -216,13 +217,14 @@ export function OAuthConsentPage({
         accept: false,
       });
       if (result.error) {
-        throw new Error(result.error.message || "Could not deny access.");
+        setErrorMessage("Access could not be denied. Please try again.");
+        return;
       }
       if (result.data?.redirect && result.data.url) {
         window.location.assign(result.data.url);
       }
-    } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Could not deny access.");
+    } catch {
+      setErrorMessage("Access could not be denied. Please try again.");
     } finally {
       setIsDenying(false);
     }

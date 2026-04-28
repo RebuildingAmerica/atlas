@@ -4,7 +4,7 @@ import path from "node:path";
 import process from "node:process";
 
 const host = process.env.MAIL_CAPTURE_HOST || "127.0.0.1";
-const httpPort = Number(process.env.MAIL_CAPTURE_PORT || "8025");
+const httpPort = Number(process.env.PORT || process.env.MAIL_CAPTURE_PORT || "8025");
 const mailboxFile =
   process.env.MAIL_CAPTURE_FILE || path.join(process.cwd(), "node_modules", ".cache", "e2e", "mailbox.json");
 
@@ -107,6 +107,14 @@ const httpServer = http.createServer((request, response) => {
           to: payload.to,
         });
         writeMailbox(messages);
+
+        const link = /https?:\/\/\S+/.exec(payload.text || "")?.[0];
+        console.log(`\n[mail-capture] ✉  ${payload.to}`);
+        if (link) {
+          console.log(`[mail-capture] →  ${link}`);
+        }
+        console.log("");
+
         sendJson(response, 200, { ok: true });
       } catch {
         sendJson(response, 400, { error: "Invalid message payload" });

@@ -6,6 +6,7 @@ import { canEmailAccessAtlas, ensureAuthReady, hasExistingAccount, type getAuth 
 import { loadAtlasWorkspaceState } from "./organization-session";
 import { getBrowserSessionHeaders } from "./request-headers";
 import { getAuthRuntimeConfig, validateAuthRuntimeConfig } from "./runtime";
+import { AtlasAuthError, AUTH_ERROR_CODE } from "../auth-errors";
 import type { AtlasSessionPayload } from "../organization-contracts";
 
 /**
@@ -169,38 +170,42 @@ export async function requestMagicLinkForEmail(data: {
   callbackURL?: string;
   email: string;
   name?: string;
-}): Promise<{ ok: true }> {
+}): Promise<{ ok: true; captureMailboxUrl: string | null }> {
   const runtime = getAuthRuntimeConfig();
   if (runtime.localMode) {
-    throw new Error("Auth is disabled in local mode.");
+    throw new AtlasAuthError(AUTH_ERROR_CODE.LOCAL_MODE);
   }
 
   try {
     validateAuthRuntimeConfig(runtime);
   } catch {
-    throw new Error("Sign-in is temporarily unavailable.");
+    throw new AtlasAuthError(AUTH_ERROR_CODE.AUTH_UNAVAILABLE);
   }
+
+  const captureMailboxUrl = runtime.captureUrl
+    ? new URL("/messages", runtime.captureUrl).toString()
+    : null;
 
   const emailCanAccessAtlas = await canEmailAccessAtlas(data.email);
   if (!emailCanAccessAtlas) {
-    return {
-      ok: true,
-    };
+    return { ok: true, captureMailboxUrl };
   }
 
   const auth = await ensureAuthReady();
-  await auth.api.signInMagicLink({
-    body: {
-      callbackURL: data.callbackURL,
-      email: data.email,
-      name: data.name,
-    },
-    headers: getBrowserSessionHeaders(),
-  });
+  try {
+    await auth.api.signInMagicLink({
+      body: {
+        callbackURL: data.callbackURL,
+        email: data.email,
+        name: data.name,
+      },
+      headers: getBrowserSessionHeaders(),
+    });
+  } catch {
+    throw new AtlasAuthError(AUTH_ERROR_CODE.EMAIL_DELIVERY_FAILED);
+  }
 
-  return {
-    ok: true,
-  };
+  return { ok: true, captureMailboxUrl };
 }
 
 /**
@@ -223,13 +228,17 @@ export async function sendVerificationEmailForCurrentSession(): Promise<{ ok: tr
   }
 
   const auth = await ensureAuthReady();
-  await auth.api.sendVerificationEmail({
-    body: {
-      callbackURL: "/account-setup",
-      email: session.user.email,
-    },
-    headers: getBrowserSessionHeaders(),
-  });
+  try {
+    await auth.api.sendVerificationEmail({
+      body: {
+        callbackURL: "/account-setup",
+        email: session.user.email,
+      },
+      headers: getBrowserSessionHeaders(),
+    });
+  } catch {
+    throw new AtlasAuthError(AUTH_ERROR_CODE.EMAIL_DELIVERY_FAILED);
+  }
 
   return {
     ok: true,

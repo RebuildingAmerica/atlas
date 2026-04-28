@@ -8,6 +8,12 @@ import { waitForAtlasAuthenticatedSession } from "@/domains/access/client/sessio
 import type { AtlasProduct } from "@/domains/access/capabilities";
 import { PRODUCT_LABELS } from "@/domains/billing/product-labels";
 import { requestMagicLink } from "@/domains/access/session.functions";
+import {
+  buildAuthErrorLabels,
+  describePasskeyError,
+  extractAuthErrorCode,
+} from "@/domains/access/auth-errors";
+import { DevMailCaptureBanner } from "./dev-mail-capture-banner";
 import { resolveWorkspaceSSOSignIn } from "@/domains/access/sso.functions";
 import {
   buildMagicLinkStatusMessage,
@@ -18,6 +24,8 @@ import {
 } from "./sign-in-page-helpers";
 import { Button } from "@/platform/ui/button";
 import { Input } from "@/platform/ui/input";
+
+const MAGIC_LINK_ERROR_LABELS = buildAuthErrorLabels("sign-in");
 
 const ATLAS_PRODUCTS: readonly AtlasProduct[] = [
   "atlas_pro",
@@ -92,9 +100,10 @@ export function SignInPage({
   redirectTo,
 }: SignInPageProps) {
   const authClient = getAuthClient();
-  const lastMethod = authClient.getLastUsedLoginMethod();
+  const [lastMethod] = useState<string | null>(() => authClient.getLastUsedLoginMethod() ?? null);
   const [email, setEmail] = useState(initialEmail ?? "");
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [captureMailboxUrl, setCaptureMailboxUrl] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isEmailFlowPending, setIsEmailFlowPending] = useState(false);
   const [isPasskeyPending, setIsPasskeyPending] = useState(false);
@@ -200,13 +209,13 @@ export function SignInPage({
         },
       });
 
-      await magicLinkRequestPromise;
+      const magicLinkResult = await magicLinkRequestPromise;
+      setCaptureMailboxUrl(magicLinkResult.captureMailboxUrl ?? null);
       setLastUsedAtlasLoginMethod("magic-link");
       setStatusMessage(buildMagicLinkStatusMessage(invitationId));
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Sign-in is temporarily unavailable.";
-      setErrorMessage(message);
+      const code = extractAuthErrorCode(error);
+      setErrorMessage(code ? MAGIC_LINK_ERROR_LABELS[code] : "Sign-in is temporarily unavailable.");
     } finally {
       setIsEmailFlowPending(false);
     }
@@ -218,20 +227,18 @@ export function SignInPage({
     setIsPasskeyPending(true);
 
     try {
-      const passkeySignInPromise = authClient.signIn.passkey();
-      const result = await passkeySignInPromise;
+      const result = await authClient.signIn.passkey();
 
       if (result.error) {
-        throw new Error(result.error.message || "Could not sign in with a passkey.");
+        setErrorMessage(describePasskeyError(result.error.message));
+        return;
       }
 
-      const sessionConfirmationPromise = waitForAtlasAuthenticatedSession();
-      await sessionConfirmationPromise;
+      await waitForAtlasAuthenticatedSession();
       setLastUsedAtlasLoginMethod("passkey");
       window.location.assign(callbackURL);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Could not sign in with a passkey.";
-      setErrorMessage(message);
+    } catch {
+      setErrorMessage("Passkey sign-in failed. Please try again.");
     } finally {
       setIsPasskeyPending(false);
     }
@@ -339,6 +346,10 @@ export function SignInPage({
           <p className="type-body-medium bg-surface-container-lowest text-on-surface rounded-2xl px-4 py-3">
             {statusMessage}
           </p>
+        ) : null}
+
+        {captureMailboxUrl && statusMessage ? (
+          <DevMailCaptureBanner url={captureMailboxUrl} />
         ) : null}
 
         {oauthOriginSignIn && statusMessage ? (

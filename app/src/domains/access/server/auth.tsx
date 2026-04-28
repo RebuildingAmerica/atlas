@@ -22,6 +22,10 @@ import {
   isAllowedEmail,
   validateAuthRuntimeConfig,
 } from "./runtime";
+import { render } from "@react-email/render";
+import { MagicLinkEmail } from "@/platform/email/templates/magic-link-email";
+import { VerificationEmail } from "@/platform/email/templates/verification-email";
+import { InvitationEmail } from "@/platform/email/templates/invitation-email";
 import { createEmailService } from "@/platform/email/server/service";
 
 /**
@@ -333,7 +337,9 @@ export function getAuthDatabase(): Database.Database | null {
 async function sendMagicLinkEmail(email: string, url: string): Promise<void> {
   const runtime = getAuthRuntimeConfig();
   const emailService = createEmailService(runtime);
+  const html = await render(<MagicLinkEmail url={url} />);
   await emailService.send({
+    html,
     subject: "Sign in to Atlas",
     text: `Use this link to sign in to Atlas: ${url}`,
     to: email,
@@ -349,7 +355,9 @@ async function sendMagicLinkEmail(email: string, url: string): Promise<void> {
 async function sendVerificationEmailMessage(email: string, url: string): Promise<void> {
   const runtime = getAuthRuntimeConfig();
   const emailService = createEmailService(runtime);
+  const html = await render(<VerificationEmail url={url} />);
   await emailService.send({
+    html,
     subject: "Verify your Atlas email",
     text: `Verify your email for Atlas: ${url}`,
     to: email,
@@ -375,7 +383,11 @@ async function sendOrganizationInvitationEmailMessage(
   signInUrl.searchParams.set("invitation", invitationId);
 
   const emailService = createEmailService(runtime);
+  const html = await render(
+    <InvitationEmail organizationName={organizationName} signInUrl={signInUrl.toString()} />,
+  );
   await emailService.send({
+    html,
     subject: `Join ${organizationName} on Atlas`,
     text: `You've been invited to join ${organizationName} on Atlas. Sign in to review the invitation: ${signInUrl.toString()}`,
     to: email,

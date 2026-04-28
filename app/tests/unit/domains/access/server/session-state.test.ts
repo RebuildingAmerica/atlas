@@ -282,7 +282,7 @@ describe("session-state", () => {
       requestMagicLinkForEmail({
         email: "operator@atlas.test",
       }),
-    ).rejects.toThrow("Auth is disabled in local mode.");
+    ).rejects.toThrow("LOCAL_MODE");
   });
 
   it("hides auth misconfiguration behind a temporary sign-in error", async () => {
@@ -295,7 +295,7 @@ describe("session-state", () => {
       requestMagicLinkForEmail({
         email: "operator@atlas.test",
       }),
-    ).rejects.toThrow("Sign-in is temporarily unavailable.");
+    ).rejects.toThrow("AUTH_UNAVAILABLE");
   });
 
   it("returns success without touching auth for emails without workspace access", async () => {

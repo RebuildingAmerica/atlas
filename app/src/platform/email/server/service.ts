@@ -3,6 +3,7 @@ import "@tanstack/react-start/server-only";
 import { Resend } from "resend";
 
 export interface EmailMessage {
+  html?: string;
   subject: string;
   text: string;
   to: string;
@@ -33,9 +34,16 @@ class CaptureEmailService implements EmailService {
     });
 
     if (!response.ok) {
-      throw new Error(
-        `Capture email delivery failed with ${response.status}: ${await response.text()}`,
+      const body = await response.text();
+      console.error(
+        `[atlas/email] capture delivery failed — status=${response.status} body=${body}`,
       );
+      throw new Error("Email delivery failed.");
+    }
+
+    const link = /https?:\/\/\S+/.exec(message.text)?.[0];
+    if (link) {
+      console.warn(`\n[atlas/email] ✉  ${message.to}\n[atlas/email] →  ${link}\n`);
     }
   }
 }
@@ -53,13 +61,15 @@ class ResendEmailService implements EmailService {
   async send(message: EmailMessage): Promise<void> {
     const response = await this.client.emails.send({
       from: this.from,
+      html: message.html,
       subject: message.subject,
       text: message.text,
       to: message.to,
     });
 
     if (response.error) {
-      throw new Error(response.error.message);
+      console.error(`[atlas/email] resend delivery failed — ${response.error.message}`);
+      throw new Error("Email delivery failed.");
     }
   }
 }
