@@ -423,7 +423,20 @@ export const rotateWorkspaceSAMLCertificate = createServerFn({ method: "POST" })
     const organizationRequestContext = await loadOrganizationRequestContext();
     const { auth, headers, session } = organizationRequestContext;
 
-    requireManagedTeamWorkspace(session);
+    const activeWorkspace = requireManagedTeamWorkspace(session);
+
+    // Defense in depth: Better Auth's updateSSOProvider already enforces
+    // organization-membership access via checkProviderAccess, but Atlas
+    // cross-checks the provider's organizationId here so a future Better
+    // Auth regression cannot silently let an admin of one workspace rotate
+    // another workspace's signing certificate.
+    const provider = await auth.api.getSSOProvider({
+      query: { providerId: data.providerId },
+      headers,
+    });
+    if (provider?.organizationId !== activeWorkspace.id) {
+      throw new Error("This SAML provider is not registered to the active workspace.");
+    }
 
     await auth.api.updateSSOProvider({
       body: {
