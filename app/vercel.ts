@@ -11,6 +11,13 @@
  *                    docs appear under the primary Atlas domain at /docs.
  *                    When unset, no rewrite is registered and the /docs route falls through to the
  *                    app's own handler.
+ *
+ *   ATLAS_SERVER_API_PROXY_TARGET — Origin of the Atlas API service (Cloud Run).  When set,
+ *                    /mcp and /mcp/* are rewritten directly to the API origin so the remote
+ *                    MCP Streamable HTTP transport bypasses the Nitro app entirely.  This is
+ *                    intentional: MCP traffic authenticates with OAuth bearer tokens, not
+ *                    browser sessions, so there is no value in routing it through the
+ *                    session-aware Nitro proxy.
  */
 
 /**
@@ -25,9 +32,7 @@ function normalizeOrigin(value: string | undefined): string | undefined {
     return undefined;
   }
 
-  const normalizedCandidate = /^https?:\/\//.test(candidate)
-    ? candidate
-    : `https://${candidate}`;
+  const normalizedCandidate = /^https?:\/\//.test(candidate) ? candidate : `https://${candidate}`;
 
   try {
     return new URL(normalizedCandidate).origin;
@@ -37,11 +42,12 @@ function normalizeOrigin(value: string | undefined): string | undefined {
 }
 
 const docsOrigin = normalizeOrigin(process.env.ATLAS_DOCS_URL);
+const apiOrigin = normalizeOrigin(process.env.ATLAS_SERVER_API_PROXY_TARGET);
 
 /**
  * Proxy rewrites — only included when the corresponding env var is configured.
- * Both the bare path (/docs) and the wildcard (/docs/*) are rewritten so that
- * redirects within the docs site continue to resolve under the Atlas domain.
+ * Both the bare path and the wildcard are rewritten so redirects and nested
+ * paths within the upstream origin continue to resolve under the Atlas domain.
  */
 const rewrites = [
   ...(docsOrigin
@@ -53,6 +59,18 @@ const rewrites = [
         {
           source: "/docs/:match*",
           destination: `${docsOrigin}/docs/:match*`,
+        },
+      ]
+    : []),
+  ...(apiOrigin
+    ? [
+        {
+          source: "/mcp",
+          destination: `${apiOrigin}/mcp`,
+        },
+        {
+          source: "/mcp/:match*",
+          destination: `${apiOrigin}/mcp/:match*`,
         },
       ]
     : []),
