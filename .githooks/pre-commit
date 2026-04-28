@@ -131,13 +131,20 @@ if [ -n "$APP_FILES" ]; then
     APP_RELATIVE_FILES=$(echo "$APP_FILES" | sed 's|^app/||')
     print_info "Found $(echo "$APP_FILES" | wc -l | tr -d ' ') app file(s) to check"
 
-    print_info "Running prettier + eslint on app..."
-    (cd "$APP_DIR" && pnpm run format > /dev/null 2>&1)
-    (cd "$ROOT_DIR" && echo "$APP_FILES" | xargs git add)
+    print_info "Running prettier on staged app files..."
+    if ! (cd "$APP_DIR" && echo "$APP_RELATIVE_FILES" | xargs pnpm exec prettier --write --log-level error > /dev/null 2>&1); then
+        print_error "Prettier failed on staged app files"
+        FAILED=1
+    else
+        # Re-stage any files prettier reformatted.
+        (cd "$ROOT_DIR" && echo "$APP_FILES" | xargs git add)
+        print_success "Prettier passed"
+    fi
 
-    if ! (cd "$APP_DIR" && pnpm run lint > /dev/null 2>&1); then
-        print_error "App ESLint found issues"
-        echo -e "  ${YELLOW}Run: cd app && pnpm run lint:fix${NC}"
+    print_info "Running eslint on staged app files..."
+    if ! (cd "$APP_DIR" && echo "$APP_RELATIVE_FILES" | xargs pnpm exec eslint --max-warnings 0 > /dev/null 2>&1); then
+        print_error "App ESLint found issues in staged files"
+        echo -e "  ${YELLOW}Run: cd app && pnpm exec eslint <staged file(s)>${NC}"
         FAILED=1
     else
         print_success "App lint passed"
