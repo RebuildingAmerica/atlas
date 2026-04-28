@@ -90,19 +90,30 @@ configuring.
 
 Back in Atlas, fill these fields in the OIDC form:
 
-- `Workspace domain`: Atlas prefills a suggested value from the signed-in operator email; overwrite it if the customer wants a different verified domain
-- `Provider ID`: keep the suggested value unless you have a strong reason to change it
-- `Client ID`: paste from Google Cloud
-- `Client secret`: paste from Google Cloud
-- `Set this as the workspace primary provider`: enable this if OIDC should be the default enterprise entrypoint for this workspace
+- `Workspace domain`: Atlas prefills a suggested value from the signed-in
+  operator email; overwrite it if the customer wants a different verified
+  domain.
+- `Client ID`: paste from Google Cloud.
+- `Client secret`: paste from Google Cloud.
 
-Then click `Save Google Workspace OIDC`.
+`Provider ID` lives under an `Advanced` disclosure. Keep the suggested
+value unless you have a reason to override it; collisions across providers
+cause registration to fail.
 
-Atlas will save the provider and create a domain-verification token.
+Then click `Save Google Workspace OIDC`. Atlas will save the provider and
+create a domain-verification token.
+
+To make this provider the default enterprise entrypoint for the workspace,
+use the per-provider `Make primary` button on the provider list after
+saving. There is no longer a "Set as primary" checkbox on the registration
+form.
 
 ## Step 3: Publish The DNS Verification Record
 
-After the provider is saved, Atlas shows the provider under `Configured providers`.
+After the provider is saved, Atlas shows the provider under `Configured
+providers` with `Verification pending`. Atlas resolves the TXT record
+itself — `verifyDomain` performs a real `dns.resolveTxt` lookup and only
+flips `domainVerified=true` when the record matches the issued token.
 
 If the domain is not yet verified:
 
@@ -114,10 +125,13 @@ If the domain is not yet verified:
 The verification host pattern is:
 
 ```text
-_better-auth-token-<provider-id>
+_better-auth-token-<provider-id>.<workspace-domain>
 ```
 
-Wait for DNS propagation, then click `Verify domain` in Atlas.
+Atlas auto-polls DNS silently every 30 seconds for up to ten minutes
+after registration; the card flips to `Domain verified` as soon as the
+resolver sees the record. Click `Verify domain` to force an immediate
+lookup.
 
 ## Step 4: Test Sign-In
 

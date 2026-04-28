@@ -78,7 +78,7 @@ Then fill in the real values.
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `ATLAS_API_AUDIENCE` | Yes when `ATLAS_DEPLOY_MODE` is not `local` | OAuth audience claim(s) (`aud`) that the API accepts. Set to the canonical resource URL of the API (e.g. `https://api.atlas.example.com`). Comma-separated when more than one resource shares the JWKS (RFC 8707) — the first entry is published as the resource URL in `WWW-Authenticate` challenges. Atlas refuses to start in non-local mode without this set. |
-| `ATLAS_SAML_ALLOWED_ISSUERS` | Yes when SAML SSO will be used | Comma-separated allowlist of SAML IdP issuer URLs (matched by URL origin). DNS TXT domain verification only proves an admin owns the email domain, not the issuer URL, so the issuer host must be opted in by Atlas operators. Empty allowlist denies every SAML registration. Example: `https://accounts.google.com,https://login.microsoftonline.com`. |
+| `ATLAS_SAML_ALLOWED_ISSUERS` | Yes when SAML SSO will be used | Comma-separated allowlist of SAML IdP issuer URLs (matched by URL origin). DNS TXT domain verification only proves an admin owns the email domain, not the issuer URL, so the issuer host must be opted in by Atlas operators. Empty allowlist denies every SAML registration. Example: `https://accounts.google.com,https://login.microsoftonline.com`. The workspace SSO form surfaces this allowlist inline; admins see whether their pasted issuer is accepted before submit. |
 | `ATLAS_SAML_SP_PRIVATE_KEY` | No | PEM-encoded RSA private key used to sign outbound SAML AuthnRequests. When set, new workspace SAML registrations flip `authnRequestsSigned: true`. Existing registrations continue with their stored configuration. |
 | `ATLAS_SAML_SP_PRIVATE_KEY_PASS` | No | Passphrase for `ATLAS_SAML_SP_PRIVATE_KEY` if the key is encrypted. |
 
@@ -172,6 +172,28 @@ provider:
 
 - [Google Workspace OIDC SSO](./google-workspace-oidc-sso.md)
 - [Google Workspace SAML SSO](./google-workspace-saml-sso.md)
+
+### SAML maintenance
+
+These tasks live on the per-provider card under `Organization` →
+`Enterprise SSO`; operators do not need to delete and re-register a
+provider for any of them.
+
+- **Certificate rotation.** When the IdP rotates its signing key, the
+  workspace admin pastes the new PEM into the per-provider
+  `Rotate signing certificate` disclosure. Atlas pushes it through
+  Better Auth's `updateSSOProvider` endpoint as a partial `samlConfig`
+  patch, so the verified domain, primary marker, and SP signing key are
+  preserved.
+- **Health check.** The `Run SAML health check` disclosure pings the
+  IdP entry point and inspects the stored certificate's expiry without
+  starting a real AuthnRequest. Useful as a smoke test before telling
+  end users to sign in.
+- **DNS verification.** Atlas auto-polls DNS silently every 30 seconds
+  for up to ten minutes after registration. `verifyDomain` performs a
+  real `dns.resolveTxt` lookup; the card flips to `Domain verified` as
+  soon as the resolver sees the TXT record. Admins can click
+  `Verify domain` to force an immediate lookup.
 
 For local or end-to-end runs, use:
 
