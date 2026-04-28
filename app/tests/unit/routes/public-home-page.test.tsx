@@ -6,6 +6,7 @@ import { HomePage } from "@/platform/pages/home-page";
 
 const mocks = vi.hoisted(() => ({
   navigate: vi.fn(),
+  useAtlasSession: vi.fn(),
 }));
 
 vi.mock("@tanstack/react-router", () => ({
@@ -25,10 +26,16 @@ vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => mocks.navigate,
 }));
 
+vi.mock("@/domains/access/client/use-atlas-session", () => ({
+  atlasSessionQueryKey: ["auth", "session"],
+  useAtlasSession: mocks.useAtlasSession,
+}));
+
 describe("HomePage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.navigate.mockResolvedValue(undefined);
+    mocks.useAtlasSession.mockReturnValue({ data: null, isLoading: false });
   });
 
   it("submits browse searches with a normal GET form", async () => {
