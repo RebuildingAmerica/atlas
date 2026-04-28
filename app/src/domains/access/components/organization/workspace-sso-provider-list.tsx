@@ -6,7 +6,73 @@ import {
 } from "../../sso.functions";
 import { Button } from "@/platform/ui/button";
 import { Textarea } from "@/platform/ui/textarea";
+import { useConfirmDialog } from "@/platform/ui/confirm-dialog";
 import { WorkspaceSSOCopyField } from "./workspace-sso-copy-field";
+
+/**
+ * Returns the relative TXT host (the leading subdomain Atlas asks the admin
+ * to publish) and the full FQDN, given the host string Better Auth returns
+ * and the workspace's email domain.  Both are surfaced in the verification
+ * card so admins running their DNS at the apex can paste the relative form
+ * and admins managing zones from a parent provider can copy the full FQDN.
+ *
+ * @param verificationHost - Either a relative `_better-auth-token-…` host or
+ *   the fully-qualified equivalent already including the workspace domain.
+ * @param workspaceDomain - The verified-domain value stored on the provider.
+ */
+function splitVerificationHost(
+  verificationHost: string,
+  workspaceDomain: string,
+): { fqdn: string; relative: string } {
+  const trimmedHost = verificationHost.trim();
+  const trimmedDomain = workspaceDomain.trim().toLowerCase();
+  if (!trimmedHost) {
+    return { fqdn: "", relative: "" };
+  }
+  const lowered = trimmedHost.toLowerCase();
+  if (trimmedDomain && lowered.endsWith(`.${trimmedDomain}`)) {
+    return {
+      fqdn: trimmedHost,
+      relative: trimmedHost.slice(0, trimmedHost.length - trimmedDomain.length - 1),
+    };
+  }
+  if (trimmedDomain && lowered === trimmedDomain) {
+    return { fqdn: trimmedHost, relative: "@" };
+  }
+  return {
+    fqdn: trimmedDomain ? `${trimmedHost}.${trimmedDomain}` : trimmedHost,
+    relative: trimmedHost,
+  };
+}
+
+/**
+ * Per-DNS-provider snippets so admins running Cloudflare/Route 53/GoDaddy
+ * see the dialog-specific instructions next to the generic "publish a TXT
+ * record" copy.  Stored statically — the hostnames each console expects are
+ * stable enough to bake in.
+ */
+const DNS_PROVIDER_GUIDES: readonly { id: string; name: string; body: string }[] = [
+  {
+    id: "cloudflare",
+    name: "Cloudflare",
+    body: "Open the DNS tab for the domain, click Add record, set Type to TXT, paste the relative host into Name, and the token into Content. Leave TTL on Auto.",
+  },
+  {
+    id: "route53",
+    name: "AWS Route 53",
+    body: "Open the hosted zone for the domain, click Create record, set Record type to TXT, paste the FQDN into Record name (Route 53 expects fully-qualified names), and the token into Value (with quotes around it).",
+  },
+  {
+    id: "google-domains",
+    name: "Google Cloud DNS",
+    body: "Open the zone for the domain, click Add record set, set Resource record type to TXT, paste the FQDN into DNS name, and the token into TXT data.",
+  },
+  {
+    id: "godaddy",
+    name: "GoDaddy / Namecheap",
+    body: "Open Domain Manager → DNS Records, add a new record with Type=TXT, paste the relative host into Host, and the token into TXT Value.",
+  },
+] as const;
 
 /**
  * Formats an ISO timestamp returned by Better Auth's certificate parser into a
@@ -38,6 +104,7 @@ interface WorkspaceSSOProviderListProps {
   domainVerificationTokens: Record<string, string>;
   isPending: boolean;
   organization: AtlasOrganizationDetails;
+  verificationTimedOutProviderIds?: readonly string[];
   onDeleteProvider: (providerId: string) => Promise<void>;
   onRequestDomainVerification: (providerId: string) => Promise<void>;
   onRotateSAMLCertificate: (providerId: string, certificate: string) => Promise<void>;
@@ -186,8 +253,53 @@ export function WorkspaceSSOProviderList({
   onSavePrimaryProvider,
   onVerifyDomain,
   organization,
+  verificationTimedOutProviderIds = [],
 }: WorkspaceSSOProviderListProps) {
   const providers = organization.sso.providers;
+  const { confirm } = useConfirmDialog();
+  const [verifyError, setVerifyError] = useState<Record<string, string>>({});
+
+  async function handleMakePrimary(providerId: string) {
+    const accepted = await confirm({
+      title: "Make this provider primary?",
+      body: "Atlas will route every workspace member whose email matches the verified domain through this provider on next sign-in. Existing browser sessions stay valid until they expire.",
+      confirmLabel: "Make primary",
+    });
+    if (!accepted) return;
+    await onSavePrimaryProvider(providerId);
+  }
+
+  async function handleGenerateToken(providerId: string, hasExisting: boolean) {
+    if (hasExisting) {
+      const accepted = await confirm({
+        title: "Replace the existing verification token?",
+        body: "Generating a new token invalidates the previous TXT value Atlas issued for this provider. Use this when the prior token expired or was lost — your DNS record will need to be updated to the new value.",
+        confirmLabel: "Generate new token",
+        destructive: true,
+      });
+      if (!accepted) return;
+    }
+    await onRequestDomainVerification(providerId);
+  }
+
+  async function handleVerify(providerId: string) {
+    setVerifyError((current) => {
+      const { [providerId]: _, ...rest } = current;
+      void _;
+      return rest;
+    });
+    try {
+      await onVerifyDomain(providerId);
+    } catch (caught) {
+      setVerifyError((current) => ({
+        ...current,
+        [providerId]:
+          caught instanceof Error
+            ? caught.message
+            : "Atlas could not verify the TXT record.  Confirm the record exists and try again.",
+      }));
+    }
+  }
 
   return (
     <article className="border-outline bg-surface space-y-4 rounded-[1.5rem] border p-6">
@@ -326,22 +438,66 @@ export function WorkspaceSSOProviderList({
                   <div className="border-outline-variant bg-surface-container-lowest space-y-3 rounded-[1rem] border p-4">
                     <p className="type-title-small text-on-surface">DNS verification record</p>
                     <p className="type-body-medium text-outline">
-                      Create a TXT record for the host below. If you need a fresh token, generate
-                      one here and Atlas will show the exact value to paste.
+                      Create a TXT record using the host and value below. If you need a fresh token,
+                      generate one here and Atlas will show the exact value to paste.
                     </p>
-                    <div className="grid gap-3 md:grid-cols-2">
-                      <WorkspaceSSOCopyField
-                        label="TXT host"
-                        value={provider.domainVerificationHost}
-                      />
-                      <WorkspaceSSOCopyField
-                        label="TXT value"
-                        value={
-                          verificationToken ||
-                          "Generate a verification token here to reveal the exact TXT value."
-                        }
-                      />
-                    </div>
+                    {(() => {
+                      const split = splitVerificationHost(
+                        provider.domainVerificationHost,
+                        provider.domain,
+                      );
+                      return (
+                        <div className="grid gap-3 md:grid-cols-2">
+                          <WorkspaceSSOCopyField
+                            label="TXT host (relative)"
+                            value={split.relative}
+                          />
+                          <WorkspaceSSOCopyField label="TXT host (FQDN)" value={split.fqdn} />
+                          <WorkspaceSSOCopyField
+                            label="TXT value"
+                            value={
+                              verificationToken ||
+                              "Generate a verification token to reveal the exact TXT value."
+                            }
+                          />
+                        </div>
+                      );
+                    })()}
+                    <details className="text-outline space-y-2">
+                      <summary className="type-label-medium cursor-pointer">
+                        DNS provider quick references
+                      </summary>
+                      <ul className="type-body-small text-outline space-y-2 pt-2">
+                        {DNS_PROVIDER_GUIDES.map((guide) => (
+                          <li key={guide.id} className="space-y-0.5">
+                            <p className="type-label-medium text-on-surface">{guide.name}</p>
+                            <p className="leading-relaxed">{guide.body}</p>
+                          </li>
+                        ))}
+                      </ul>
+                    </details>
+                    {verificationTimedOutProviderIds.includes(provider.providerId) ? (
+                      <div className="rounded-2xl bg-amber-50 px-3 py-2">
+                        <p className="type-body-small text-amber-800">
+                          Atlas stopped polling DNS after 10 minutes without seeing the TXT record.
+                          If you've published it, click <em>Check now</em> below; if you still need
+                          to publish it, do that first.
+                        </p>
+                      </div>
+                    ) : null}
+                    {verifyError[provider.providerId] ? (
+                      <p className="type-body-small text-error">
+                        {verifyError[provider.providerId]} Atlas resolves{" "}
+                        <code>
+                          {
+                            splitVerificationHost(provider.domainVerificationHost, provider.domain)
+                              .fqdn
+                          }
+                        </code>{" "}
+                        — confirm that exact host returns the issued token via <code>dig TXT</code>{" "}
+                        or your DNS provider's diagnostics.
+                      </p>
+                    ) : null}
                   </div>
                 ) : null}
 
@@ -352,7 +508,7 @@ export function WorkspaceSSOProviderList({
                         variant="secondary"
                         disabled={isPending}
                         onClick={() => {
-                          void onSavePrimaryProvider(provider.providerId);
+                          void handleMakePrimary(provider.providerId);
                         }}
                       >
                         Make primary
@@ -364,19 +520,24 @@ export function WorkspaceSSOProviderList({
                           variant="secondary"
                           disabled={isPending}
                           onClick={() => {
-                            void onRequestDomainVerification(provider.providerId);
+                            void handleGenerateToken(
+                              provider.providerId,
+                              Boolean(verificationToken),
+                            );
                           }}
                         >
-                          Generate verification token
+                          {verificationToken
+                            ? "Generate new verification token"
+                            : "Generate verification token"}
                         </Button>
                         <Button
                           variant="secondary"
                           disabled={isPending}
                           onClick={() => {
-                            void onVerifyDomain(provider.providerId);
+                            void handleVerify(provider.providerId);
                           }}
                         >
-                          Verify domain
+                          Check now
                         </Button>
                       </>
                     ) : null}

@@ -74,6 +74,7 @@ export interface OrganizationPageController {
   removeMemberPending: boolean;
   samlAllowedIssuerOrigins: readonly string[];
   samlSetupForm: WorkspaceSAMLSetupFormState;
+  samlVerificationTimedOutProviderIds: readonly string[];
   selectWorkspacePending: boolean;
   selectedOrganizationId: string;
   session: AtlasSessionPayload | null | undefined;
@@ -168,7 +169,7 @@ export function useOrganizationPageController(
     forms,
     refreshWorkspaceData: data.refreshWorkspaceData,
   });
-  useSamlDomainVerificationPoll({
+  const samlPollState = useSamlDomainVerificationPoll({
     organization: data.organization,
     refreshWorkspaceData: data.refreshWorkspaceData,
   });
@@ -202,6 +203,7 @@ export function useOrganizationPageController(
     removeMemberPending: workspaceActions.removeMemberPending,
     samlAllowedIssuerOrigins: data.samlAllowedIssuerOrigins,
     samlSetupForm: forms.samlSetupForm,
+    samlVerificationTimedOutProviderIds: samlPollState.timedOutProviderIds,
     selectWorkspacePending: workspaceActions.selectWorkspacePending,
     selectedOrganizationId: forms.selectedOrganizationId,
     session: data.session,

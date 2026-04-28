@@ -224,6 +224,7 @@ interface WorkspaceSSOSectionProps {
   organization: AtlasOrganizationDetails;
   samlAllowedIssuerOrigins: readonly string[];
   samlSetupForm: WorkspaceSAMLSetupFormState;
+  samlVerificationTimedOutProviderIds?: readonly string[];
   setOidcSetupForm: (
     updater: (current: WorkspaceOIDCSetupFormState) => WorkspaceOIDCSetupFormState,
   ) => void;
@@ -250,6 +251,7 @@ export function WorkspaceSSOSection({
   organization,
   samlAllowedIssuerOrigins,
   samlSetupForm,
+  samlVerificationTimedOutProviderIds,
   setOidcSetupForm,
   setSamlSetupForm,
   onDeleteProvider,
@@ -299,6 +301,7 @@ export function WorkspaceSSOSection({
         domainVerificationTokens={domainVerificationTokens}
         isPending={isPending}
         organization={organization}
+        verificationTimedOutProviderIds={samlVerificationTimedOutProviderIds ?? []}
         onDeleteProvider={onDeleteProvider}
         onRequestDomainVerification={onRequestDomainVerification}
         onRotateSAMLCertificate={onRotateSAMLCertificate}

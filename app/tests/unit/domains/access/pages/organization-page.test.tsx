@@ -50,6 +50,12 @@ vi.mock("@tanstack/react-router", () => ({
   Link: TestLink,
 }));
 
+vi.mock("@/platform/ui/confirm-dialog", () => ({
+  useConfirmDialog: () => ({
+    confirm: () => Promise.resolve(true),
+  }),
+}));
+
 vi.mock("@/domains/access/client/use-atlas-session", () => ({
   atlasSessionQueryKey: ["auth", "session"],
   useAtlasSession: organizationPageDependencyMocks.useAtlasSession,

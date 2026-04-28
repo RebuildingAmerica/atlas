@@ -1,9 +1,18 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { AtlasOrganizationDetails } from "@/domains/access/organization-contracts";
 import { verifyWorkspaceSSODomain } from "@/domains/access/sso.functions";
 
 const POLL_INTERVAL_MS = 30 * 1000;
 const POLL_TIMEOUT_MS = 10 * 60 * 1000;
+
+/**
+ * Result returned to the SSO page so it can render a "we stopped polling"
+ * banner once the auto-poll runs past its budget without all providers
+ * verifying.  Re-arms once the set of pending providers changes.
+ */
+export interface SamlDomainVerificationPollState {
+  timedOutProviderIds: readonly string[];
+}
 
 /**
  * Returns the provider IDs that still need DNS-TXT verification but already
@@ -43,14 +52,16 @@ function listPendingProviderIds(
 export function useSamlDomainVerificationPoll(params: {
   organization: AtlasOrganizationDetails | null | undefined;
   refreshWorkspaceData: () => Promise<void>;
-}): void {
+}): SamlDomainVerificationPollState {
   const { organization, refreshWorkspaceData } = params;
   const pendingProviderIds = listPendingProviderIds(organization);
   const fingerprint = pendingProviderIds.join(",");
   const refreshRef = useRef(refreshWorkspaceData);
   refreshRef.current = refreshWorkspaceData;
+  const [timedOutProviderIds, setTimedOutProviderIds] = useState<readonly string[]>([]);
 
   useEffect(() => {
+    setTimedOutProviderIds([]);
     if (fingerprint === "") {
       return;
     }
@@ -79,6 +90,7 @@ export function useSamlDomainVerificationPoll(params: {
       if (cancelled) return;
       if (Date.now() - startedAt > POLL_TIMEOUT_MS) {
         clearInterval(intervalId);
+        setTimedOutProviderIds(targetProviderIds);
         return;
       }
       void attemptOnce();
@@ -89,4 +101,6 @@ export function useSamlDomainVerificationPoll(params: {
       clearInterval(intervalId);
     };
   }, [fingerprint]);
+
+  return { timedOutProviderIds };
 }

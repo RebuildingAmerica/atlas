@@ -2,6 +2,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { render, screen, fireEvent, cleanup } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
+
+vi.mock("@/platform/ui/confirm-dialog", () => ({
+  useConfirmDialog: () => ({
+    confirm: () => Promise.resolve(true),
+  }),
+}));
+
 import { WorkspaceSSOSection } from "@/domains/access/components/organization/workspace-sso-section";
 import type { AtlasOrganizationDetails } from "@/domains/access/organization-contracts";
 

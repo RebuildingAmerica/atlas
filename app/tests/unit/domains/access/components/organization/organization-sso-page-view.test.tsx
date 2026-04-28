@@ -11,6 +11,12 @@ vi.mock("@tanstack/react-router", () => ({
   ),
 }));
 
+vi.mock("@/platform/ui/confirm-dialog", () => ({
+  useConfirmDialog: () => ({
+    confirm: () => Promise.resolve(true),
+  }),
+}));
+
 describe("OrganizationSSOPageView", () => {
   const buildController = (overrides = {}) => ({
     needsWorkspace: false,

@@ -156,6 +156,7 @@ export function OrganizationSSOPageView({ controller }: OrganizationSSOPageViewP
           organization={controller.organization}
           samlAllowedIssuerOrigins={controller.samlAllowedIssuerOrigins}
           samlSetupForm={controller.samlSetupForm}
+          samlVerificationTimedOutProviderIds={controller.samlVerificationTimedOutProviderIds}
           setOidcSetupForm={controller.setOidcSetupForm}
           setSamlSetupForm={controller.setSamlSetupForm}
           onDeleteProvider={controller.onDeleteSSOProvider}

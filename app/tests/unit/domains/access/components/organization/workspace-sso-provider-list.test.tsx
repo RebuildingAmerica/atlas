@@ -2,6 +2,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { render, screen, fireEvent, cleanup } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
+
+vi.mock("@/platform/ui/confirm-dialog", () => ({
+  useConfirmDialog: () => ({
+    confirm: () => Promise.resolve(true),
+  }),
+}));
+
 import { WorkspaceSSOProviderList } from "@/domains/access/components/organization/workspace-sso-provider-list";
 import type { AtlasOrganizationDetails } from "@/domains/access/organization-contracts";
 
@@ -116,17 +123,22 @@ describe("WorkspaceSSOProviderList", () => {
     expect(screen.queryByText("Remove provider")).not.toBeInTheDocument();
   });
 
-  it("triggers action handlers", () => {
+  it("triggers action handlers", async () => {
     render(<WorkspaceSSOProviderList {...defaultProps} />);
 
-    fireEvent.click(screen.getByText("Make primary"));
-    expect(defaultProps.onSavePrimaryProvider).toHaveBeenCalledWith("saml-1");
-
-    fireEvent.click(screen.getByText("Generate verification token"));
+    fireEvent.click(screen.getByText("Generate new verification token"));
+    await Promise.resolve();
+    await Promise.resolve();
     expect(defaultProps.onRequestDomainVerification).toHaveBeenCalledWith("saml-1");
 
-    fireEvent.click(screen.getByText("Verify domain"));
+    fireEvent.click(screen.getByText("Check now"));
+    await Promise.resolve();
     expect(defaultProps.onVerifyDomain).toHaveBeenCalledWith("saml-1");
+
+    fireEvent.click(screen.getByText("Make primary"));
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(defaultProps.onSavePrimaryProvider).toHaveBeenCalledWith("saml-1");
 
     const removeButtons = screen.getAllByText("Remove provider");
     const firstRemoveButton = removeButtons[0];
