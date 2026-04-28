@@ -1,20 +1,39 @@
+import { API_KEY_SCOPES } from "./api-key-scopes";
+
 /**
- * RFC 8414 OAuth 2.0 Authorization Server Metadata payload.
+ * RFC 8414 OAuth 2.0 Authorization Server Metadata payload, plus the matching
+ * RFC 9728 Protected Resource Metadata payload.  Atlas exposes both at
+ * `.well-known` URLs to satisfy MCP authorization-spec discovery.
  *
- * Atlas exposes the same document at two `.well-known` URLs to satisfy
- * different client expectations:
+ * AS metadata is mirrored at two paths so different MCP clients find it:
  *
  * - `/.well-known/oauth-authorization-server` — the common convention used by
  *   most MCP clients and tutorials.
  * - `/.well-known/oauth-authorization-server/api/auth` — the strict RFC 8414
  *   §3 location for Atlas's actual issuer (`${publicBaseUrl}/api/auth`).
  *
- * Both routes import this helper so the body stays in sync.
+ * PRM is served at `/.well-known/oauth-protected-resource`, computed from the
+ * runtime origin so previews and staging publish the right canonical URI.
  */
 
-interface AuthorizationServerMetadataInput {
+interface MetadataInput {
   publicBaseUrl: string;
 }
+
+/**
+ * The OIDC + Atlas scopes Atlas advertises in both AS and PRM metadata.
+ *
+ * Spec §"Scope Selection Strategy" expects this set to be the *minimal* base
+ * surface; richer scopes are negotiated per-request via the WWW-Authenticate
+ * scope challenge instead of being enumerated here.
+ */
+export const SUPPORTED_OAUTH_SCOPES = [
+  "openid",
+  "profile",
+  "email",
+  "offline_access",
+  ...API_KEY_SCOPES,
+] as const;
 
 /**
  * Builds the RFC 8414 authorization-server metadata document for Atlas.
@@ -22,7 +41,7 @@ interface AuthorizationServerMetadataInput {
  * @param input - The runtime configuration that determines the public origin
  *   used for issuer and endpoint URLs.
  */
-export function buildAuthorizationServerMetadata(input: AuthorizationServerMetadataInput) {
+export function buildAuthorizationServerMetadata(input: MetadataInput) {
   const issuer = `${input.publicBaseUrl}/api/auth`;
 
   return {
@@ -41,14 +60,25 @@ export function buildAuthorizationServerMetadata(input: AuthorizationServerMetad
     code_challenge_methods_supported: ["S256"],
     id_token_signing_alg_values_supported: ["RS256", "ES256"],
     subject_types_supported: ["public"],
-    scopes_supported: [
-      "openid",
-      "profile",
-      "email",
-      "offline_access",
-      "discovery:read",
-      "discovery:write",
-      "entities:write",
-    ],
+    scopes_supported: [...SUPPORTED_OAUTH_SCOPES],
+  };
+}
+
+/**
+ * Builds the RFC 9728 protected-resource metadata document for the Atlas MCP
+ * surface.  The MCP server at `/mcp` and the REST API both share the same
+ * canonical resource origin (`publicBaseUrl`) so a single PRM document
+ * advertises the right authorization server for both.
+ *
+ * @param input - The runtime configuration that determines the canonical
+ *   resource URI advertised to MCP clients.
+ */
+export function buildProtectedResourceMetadata(input: MetadataInput) {
+  return {
+    resource: input.publicBaseUrl,
+    authorization_servers: [`${input.publicBaseUrl}/api/auth`],
+    bearer_methods_supported: ["header"],
+    scopes_supported: [...SUPPORTED_OAUTH_SCOPES],
+    resource_documentation: `${input.publicBaseUrl}/docs/mcp`,
   };
 }

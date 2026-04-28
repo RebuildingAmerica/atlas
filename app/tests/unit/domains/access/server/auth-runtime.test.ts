@@ -10,9 +10,7 @@ interface MagicLinkPluginOptions {
 }
 
 interface OAuthProviderOptions {
-  customAccessTokenClaims?(input: { scopes: string[] }): {
-    permissions: Record<string, string[]>;
-  };
+  customAccessTokenClaims?(input: { scopes: string[]; resource?: string }): Record<string, unknown>;
   validAudiences?: string[];
 }
 
@@ -318,10 +316,48 @@ describe("auth runtime wiring", () => {
         scopes: ["openid", "discovery:write", "entities:write", "admin:all"],
       }),
     ).toEqual({
+      // RFC 8707 audience binding falls back to apiAudience when the OAuth
+      // client does not pass an explicit `resource` parameter.
+      aud: "atlas-api",
       permissions: {
         discovery: ["write"],
         entities: ["write"],
       },
     });
+  });
+
+  it("binds the access token aud to the resource parameter when supplied (RFC 8707)", async () => {
+    mocks.getAuthRuntimeConfig.mockReturnValue({
+      allowedEmails: new Set(["operator@atlas.test"]),
+      apiAudience: "atlas-api",
+      apiKeyIntrospectionUrl: "http://127.0.0.1:3100/api/auth/internal/api-key",
+      localMode: false,
+      captureUrl: "http://127.0.0.1:8025/messages",
+      dbPath: "/tmp/atlas/auth/atlas-auth.sqlite",
+      emailFrom: "Atlas <auth@atlas.test>",
+      emailProvider: "capture",
+      internalSecret: "internal-test-secret",
+      publicBaseUrl: "https://atlas.test",
+      publicDomain: "atlas.test",
+      resendApiKey: null,
+    });
+
+    const mod = await import("@/domains/access/server/auth");
+    mod.getAuth();
+
+    const oauthProviderCall = mocks.oauthProvider.mock.calls.at(0) as
+      | [OAuthProviderOptions]
+      | undefined;
+    const typedOauthProviderOptions = oauthProviderCall?.[0];
+    if (!typedOauthProviderOptions?.customAccessTokenClaims) {
+      throw new TypeError("Expected OAuth provider access-token claim mapping.");
+    }
+
+    const claims = typedOauthProviderOptions.customAccessTokenClaims({
+      scopes: ["openid", "discovery:read"],
+      resource: "https://atlas.test/mcp",
+    });
+
+    expect(claims.aud).toBe("https://atlas.test/mcp");
   });
 });
