@@ -19,7 +19,7 @@ Atlas is published to the [MCP Registry](https://registry.modelcontextprotocol.i
 | Version | `1.0.0` |
 | Authorization | OAuth 2.1 with PKCE, optional CIMD |
 
-The namespace follows the [MCP Registry naming rules](https://modelcontextprotocol.io/registry/namespaces): reverse-DNS, scoped to a domain Atlas controls. Atlas chose `org.rebuildingus.atlas` over the apex `rebuildingus.org` so publisher key rotation can be done with a single Vercel env-var change instead of waiting for DNS-record propagation.
+The namespace follows the [MCP Registry naming rules](https://modelcontextprotocol.io/registry/namespaces): reverse-DNS, scoped to a domain Atlas controls. Atlas chose `org.rebuildingus.atlas` over the apex `rebuildingus.org` because the apex hard-redirects (HTTP 307) to `www.rebuildingus.org` on the marketing-site project, and the registry verifier does not follow redirects when fetching the publisher-auth file. Anchoring the proof on the subdomain keeps the entire publisher surface inside the Atlas Vercel project.
 
 ## How clients discover Atlas
 
