@@ -15,6 +15,7 @@ export type CapabilityId =
   | "core-docker"
   | "deploy-gcloud"
   | "deploy-gh"
+  | "deploy-actionlint"
   | "deploy-wrangler"
   | "deploy-vercel"
   | "product-stripe"

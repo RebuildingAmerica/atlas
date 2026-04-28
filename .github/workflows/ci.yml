@@ -9,21 +9,30 @@ on:
     - cron: "0 12 * * 1"
   workflow_call:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   verify:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "24"
           cache: "pnpm"
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - uses: astral-sh/setup-uv@v6
-      - name: Enable Corepack
-        run: corepack enable
+      - uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          cache-dependency-glob: "api/uv.lock"
       - name: Install workspace dependencies
         run: pnpm install --frozen-lockfile
       - name: Sync API dependencies
@@ -35,10 +44,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
-      - name: Enable Corepack
-        run: corepack enable
+          node-version: "24"
+          cache: "pnpm"
+      - name: Install workspace dependencies
+        run: pnpm install --frozen-lockfile
       - name: Validate Compose configurations
         run: pnpm run compose:validate

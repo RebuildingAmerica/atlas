@@ -84,10 +84,13 @@ export async function runInstallPhase(
     let installOk = true;
     for (const cmd of cap.installCommands[os]) {
       let cmdResult = runCommand(cmd);
-      if (!cmdResult.ok) {
-        const fallbackResult = retryGlobalNodeInstall(cmd, cmdResult.stderr);
-        if (fallbackResult) {
-          cmdResult = fallbackResult;
+      if (
+        !cmdResult.ok &&
+        cmdResult.stderr.includes("ERR_PNPM_UNEXPECTED_STORE")
+      ) {
+        const repaired = repairPnpmGlobalStore();
+        if (repaired) {
+          cmdResult = runCommand(cmd);
         }
       }
       if (!cmdResult.ok) {
@@ -130,30 +133,19 @@ export async function runInstallPhase(
   return { success: allReady, followUpItems };
 }
 
-function retryGlobalNodeInstall(
-  command: string,
-  stderr: string,
-): ReturnType<typeof runCommand> | undefined {
-  if (!stderr.includes("ERR_PNPM_UNEXPECTED_STORE")) {
-    return undefined;
-  }
-
-  const match = /^pnpm add -g (.+)$/.exec(command);
-  if (!match) {
-    return undefined;
-  }
-
-  const packageSpec = match[1]?.trim();
-  if (!packageSpec) {
-    return undefined;
+function repairPnpmGlobalStore(): boolean {
+  const globalStoreDir = runCommand("pnpm config get store-dir --global");
+  const stale = globalStoreDir.stdout.trim();
+  if (!stale || stale === "undefined") {
+    return false;
   }
 
   logSubline(
     pc.dim(
-      `pnpm global store mismatch detected; retrying with npm install -g ${packageSpec}`,
+      `pnpm global store-dir is pinned to ${stale}; clearing so pnpm can use the default for its current store version.`,
     ),
   );
-  return runCommand(`npm install -g ${packageSpec}`);
+  return runCommand("pnpm config delete store-dir --global").ok;
 }
 
 interface CapabilityCheck {

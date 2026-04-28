@@ -5,6 +5,9 @@ on:
     branches:
       - main
 
+permissions:
+  contents: read
+
 concurrency:
   group: deploy-production
   cancel-in-progress: false
@@ -19,6 +22,8 @@ jobs:
     permissions:
       contents: read
       id-token: write
+      attestations: write
+      packages: read
 
     steps:
       - uses: actions/checkout@v4
@@ -35,17 +40,51 @@ jobs:
       - name: Configure Docker for Artifact Registry
         run: gcloud auth configure-docker ${{ secrets.GCP_REGION }}-docker.pkg.dev --quiet
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Build and push atlas-api
-        run: |
-          IMAGE=${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/atlas-images/atlas-api
-          docker build -t $IMAGE:${{ github.sha }} -t $IMAGE:latest -f api/Dockerfile .
-          docker push $IMAGE --all-tags
+        id: build-api
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: api/Dockerfile
+          push: true
+          tags: |
+            ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/atlas-images/atlas-api:${{ github.sha }}
+            ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/atlas-images/atlas-api:latest
+          cache-from: type=gha,scope=atlas-api
+          cache-to: type=gha,mode=max,scope=atlas-api
+          provenance: mode=max
+          sbom: true
+
+      - name: Attest atlas-api build provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-name: ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/atlas-images/atlas-api
+          subject-digest: ${{ steps.build-api.outputs.digest }}
+          push-to-registry: true
 
       - name: Build and push atlas-web
-        run: |
-          IMAGE=${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/atlas-images/atlas-web
-          docker build -t $IMAGE:${{ github.sha }} -t $IMAGE:latest ./app
-          docker push $IMAGE --all-tags
+        id: build-web
+        uses: docker/build-push-action@v6
+        with:
+          context: ./app
+          push: true
+          tags: |
+            ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/atlas-images/atlas-web:${{ github.sha }}
+            ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/atlas-images/atlas-web:latest
+          cache-from: type=gha,scope=atlas-web
+          cache-to: type=gha,mode=max,scope=atlas-web
+          provenance: mode=max
+          sbom: true
+
+      - name: Attest atlas-web build provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-name: ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/atlas-images/atlas-web
+          subject-digest: ${{ steps.build-web.outputs.digest }}
+          push-to-registry: true
 
       - name: Deploy atlas-api
         uses: google-github-actions/deploy-cloudrun@v2
@@ -54,7 +93,7 @@ jobs:
           region: ${{ secrets.GCP_REGION }}
           image: ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/atlas-images/atlas-api:${{ github.sha }}
           flags: |
-            --ingress=internal
+            --ingress=all
             --allow-unauthenticated
             --min-instances=0
             --max-instances=4
@@ -104,15 +143,15 @@ jobs:
             ATLAS_EMAIL_RESEND_API_KEY=${{ secrets.ATLAS_EMAIL_RESEND_API_KEY }}
 
       - name: Ensure Cloud Scheduler job for autonomous discovery
+        env:
+          API_URL: ${{ steps.api-url.outputs.url }}
+          REGION: ${{ secrets.GCP_REGION }}
+          SECRET: ${{ secrets.ATLAS_AUTH_INTERNAL_SECRET }}
         run: |
           JOB_NAME=atlas-discovery-scheduled
-          API_URL=${{ steps.api-url.outputs.url }}
-          REGION=${{ secrets.GCP_REGION }}
-          SECRET=${{ secrets.ATLAS_AUTH_INTERNAL_SECRET }}
-
-          if gcloud scheduler jobs describe $JOB_NAME --location=$REGION > /dev/null 2>&1; then
-            gcloud scheduler jobs update http $JOB_NAME \
-              --location=$REGION \
+          if gcloud scheduler jobs describe "$JOB_NAME" --location="$REGION" > /dev/null 2>&1; then
+            gcloud scheduler jobs update http "$JOB_NAME" \
+              --location="$REGION" \
               --uri="${API_URL}/api/discovery-runs/scheduled" \
               --http-method=POST \
               --headers="Content-Type=application/json,X-Atlas-Internal-Secret=${SECRET}" \
@@ -121,8 +160,8 @@ jobs:
               --attempt-deadline=900s \
               --quiet
           else
-            gcloud scheduler jobs create http $JOB_NAME \
-              --location=$REGION \
+            gcloud scheduler jobs create http "$JOB_NAME" \
+              --location="$REGION" \
               --uri="${API_URL}/api/discovery-runs/scheduled" \
               --http-method=POST \
               --headers="Content-Type=application/json,X-Atlas-Internal-Secret=${SECRET}" \
@@ -133,8 +172,19 @@ jobs:
           fi
         continue-on-error: true
 
+      - name: Check synthetics enablement
+        id: synthetics-check
+        env:
+          OPENSTATUS_API_KEY: ${{ secrets.OPENSTATUS_API_KEY }}
+        run: |
+          if [ -n "$OPENSTATUS_API_KEY" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Run OpenStatus synthetics
-        if: ${{ secrets.OPENSTATUS_API_KEY != '' }}
+        if: steps.synthetics-check.outputs.enabled == 'true'
         uses: openstatushq/openstatus-github-action@v1
         with:
           api_key: ${{ secrets.OPENSTATUS_API_KEY }}

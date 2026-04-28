@@ -132,6 +132,21 @@ export const CAPABILITY_SPECS: CapabilityConfig[] = [
     },
   },
   {
+    id: "deploy-actionlint",
+    label: "actionlint",
+    category: "deploy",
+    requiredFor: ["deploy"],
+    requiredByDefault: true,
+    binaryCommand: "command -v actionlint",
+    versionCommand: "actionlint -version",
+    installCommands: {
+      macos: ["brew install actionlint"],
+      linux: [
+        "bash <(curl -fsSL https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash) latest /usr/local/bin",
+      ],
+    },
+  },
+  {
     id: "deploy-wrangler",
     label: "Cloudflare Wrangler",
     category: "deploy",
@@ -179,7 +194,8 @@ export const CAPABILITY_SPECS: CapabilityConfig[] = [
       linux: ["pnpm add -g neonctl"],
     },
     auth: {
-      checkCommand: "neonctl me 2>/dev/null | grep -q 'email'",
+      checkCommand:
+        "neonctl me --output json 2>/dev/null | grep -q '\"email\"'",
       loginCommand: "neonctl auth",
       interactive: true,
     },
@@ -230,6 +246,7 @@ export const COMMAND_CAPABILITY_MAP: Record<CommandGroup, CapabilityId[]> = {
     "core-docker",
     "deploy-gcloud",
     "deploy-gh",
+    "deploy-actionlint",
   ],
   product: ["product-stripe"],
 };

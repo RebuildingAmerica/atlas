@@ -161,15 +161,16 @@ async function main(): Promise<void> {
   // Workspace install (pnpm install)
   if (!args.doctorMode) {
     log.step("Installing workspace dependencies...");
-    const pnpmResult = runCommand("pnpm install --frozen-lockfile");
-    if (!pnpmResult.ok) {
-      // Try without frozen lockfile
-      const retryResult = runCommand("pnpm install");
-      if (!retryResult.ok) {
-        log.error("pnpm install failed. Fix dependency issues and re-run.");
-      }
+    let installOk = runCommand("pnpm install --frozen-lockfile").ok;
+    if (!installOk) {
+      installOk = runCommand("pnpm install").ok;
     }
-    log.success("Workspace dependencies installed.");
+    if (installOk) {
+      log.success("Workspace dependencies installed.");
+    } else {
+      log.error("pnpm install failed. Fix dependency issues and re-run.");
+      allFollowUp.push("Resolve pnpm install errors and re-run bootstrap.");
+    }
   }
 
   // Phase 2: Auth
