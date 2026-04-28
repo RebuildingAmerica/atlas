@@ -17,6 +17,7 @@ import { Route as WorkspaceRouteImport } from './routes/_workspace'
 import { Route as PublicRouteImport } from './routes/_public'
 import { Route as AuthRouteImport } from './routes/_auth'
 import { Route as PublicIndexRouteImport } from './routes/_public/index'
+import { Route as DocsSplatRouteImport } from './routes/docs.$'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as ApiSplatRouteImport } from './routes/api/$'
 import { Route as WorkspaceOrganizationRouteImport } from './routes/_workspace/organization'
@@ -94,6 +95,11 @@ const PublicIndexRoute = PublicIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => PublicRoute,
+} as any)
+const DocsSplatRoute = DocsSplatRouteImport.update({
+  id: '/$',
+  path: '/$',
+  getParentRoute: () => DocsRoute,
 } as any)
 const ApiHealthRoute = ApiHealthRouteImport.update({
   id: '/api/health',
@@ -205,9 +211,9 @@ const DotwellKnownOauthProtectedResourceIndexRoute =
   } as any)
 const DotwellKnownOauthAuthorizationServerIndexRoute =
   DotwellKnownOauthAuthorizationServerIndexRouteImport.update({
-    id: '/',
-    path: '/',
-    getParentRoute: () => DotwellKnownOauthAuthorizationServerRoute,
+    id: '/.well-known/oauth-authorization-server/',
+    path: '/.well-known/oauth-authorization-server/',
+    getParentRoute: () => rootRouteImport,
   } as any)
 const ApiStripeWebhookRoute = ApiStripeWebhookRouteImport.update({
   id: '/api/stripe/webhook',
@@ -311,7 +317,7 @@ const ApiAuthInternalMembershipsOrganizationIdMembersUserIdRoute =
 export interface FileRoutesByFullPath {
   '/': typeof PublicIndexRoute
   '/dashboard': typeof DashboardRoute
-  '/docs': typeof DocsRoute
+  '/docs': typeof DocsRouteWithChildren
   '/openapi.json': typeof OpenapiDotjsonRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/account-setup': typeof AuthAccountSetupRoute
@@ -332,6 +338,7 @@ export interface FileRoutesByFullPath {
   '/organization': typeof WorkspaceOrganizationRouteWithChildren
   '/api/$': typeof ApiSplatRoute
   '/api/health': typeof ApiHealthRoute
+  '/docs/$': typeof DocsSplatRoute
   '/oauth/consent': typeof AuthOauthConsentRoute
   '/claim/$slug': typeof PublicClaimSlugRoute
   '/entries/$entryId': typeof PublicEntriesEntryIdRoute
@@ -358,7 +365,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof PublicIndexRoute
   '/dashboard': typeof DashboardRoute
-  '/docs': typeof DocsRoute
+  '/docs': typeof DocsRouteWithChildren
   '/openapi.json': typeof OpenapiDotjsonRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/account-setup': typeof AuthAccountSetupRoute
@@ -378,6 +385,7 @@ export interface FileRoutesByTo {
   '/lists': typeof WorkspaceListsRouteWithChildren
   '/api/$': typeof ApiSplatRoute
   '/api/health': typeof ApiHealthRoute
+  '/docs/$': typeof DocsSplatRoute
   '/oauth/consent': typeof AuthOauthConsentRoute
   '/claim/$slug': typeof PublicClaimSlugRoute
   '/entries/$entryId': typeof PublicEntriesEntryIdRoute
@@ -405,7 +413,7 @@ export interface FileRoutesById {
   '/_public': typeof PublicRouteWithChildren
   '/_workspace': typeof WorkspaceRouteWithChildren
   '/dashboard': typeof DashboardRoute
-  '/docs': typeof DocsRoute
+  '/docs': typeof DocsRouteWithChildren
   '/openapi.json': typeof OpenapiDotjsonRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/_auth/account-setup': typeof AuthAccountSetupRoute
@@ -426,6 +434,7 @@ export interface FileRoutesById {
   '/_workspace/organization': typeof WorkspaceOrganizationRouteWithChildren
   '/api/$': typeof ApiSplatRoute
   '/api/health': typeof ApiHealthRoute
+  '/docs/$': typeof DocsSplatRoute
   '/_public/': typeof PublicIndexRoute
   '/_auth/oauth/consent': typeof AuthOauthConsentRoute
   '/_public/claim/$slug': typeof PublicClaimSlugRoute
@@ -476,6 +485,7 @@ export interface FileRouteTypes {
     | '/organization'
     | '/api/$'
     | '/api/health'
+    | '/docs/$'
     | '/oauth/consent'
     | '/claim/$slug'
     | '/entries/$entryId'
@@ -522,6 +532,7 @@ export interface FileRouteTypes {
     | '/lists'
     | '/api/$'
     | '/api/health'
+    | '/docs/$'
     | '/oauth/consent'
     | '/claim/$slug'
     | '/entries/$entryId'
@@ -569,6 +580,7 @@ export interface FileRouteTypes {
     | '/_workspace/organization'
     | '/api/$'
     | '/api/health'
+    | '/docs/$'
     | '/_public/'
     | '/_auth/oauth/consent'
     | '/_public/claim/$slug'
@@ -599,13 +611,14 @@ export interface RootRouteChildren {
   PublicRoute: typeof PublicRouteWithChildren
   WorkspaceRoute: typeof WorkspaceRouteWithChildren
   DashboardRoute: typeof DashboardRoute
-  DocsRoute: typeof DocsRoute
+  DocsRoute: typeof DocsRouteWithChildren
   OpenapiDotjsonRoute: typeof OpenapiDotjsonRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   ApiSplatRoute: typeof ApiSplatRoute
   ApiHealthRoute: typeof ApiHealthRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiStripeWebhookRoute: typeof ApiStripeWebhookRoute
+  DotwellKnownOauthAuthorizationServerIndexRoute: typeof DotwellKnownOauthAuthorizationServerIndexRoute
   DotwellKnownOauthProtectedResourceIndexRoute: typeof DotwellKnownOauthProtectedResourceIndexRoute
   DotwellKnownOauthAuthorizationServerApiAuthRoute: typeof DotwellKnownOauthAuthorizationServerApiAuthRoute
   ApiAuthInternalApiKeyRoute: typeof ApiAuthInternalApiKeyRoute
@@ -669,6 +682,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof PublicIndexRouteImport
       parentRoute: typeof PublicRoute
+    }
+    '/docs/$': {
+      id: '/docs/$'
+      path: '/$'
+      fullPath: '/docs/$'
+      preLoaderRoute: typeof DocsSplatRouteImport
+      parentRoute: typeof DocsRoute
     }
     '/api/health': {
       id: '/api/health'
@@ -819,10 +839,10 @@ declare module '@tanstack/react-router' {
     }
     '/.well-known/oauth-authorization-server/': {
       id: '/.well-known/oauth-authorization-server/'
-      path: '/'
+      path: '/.well-known/oauth-authorization-server'
       fullPath: '/.well-known/oauth-authorization-server/'
       preLoaderRoute: typeof DotwellKnownOauthAuthorizationServerIndexRouteImport
-      parentRoute: typeof DotwellKnownOauthAuthorizationServerRoute
+      parentRoute: typeof rootRouteImport
     }
     '/api/stripe/webhook': {
       id: '/api/stripe/webhook'
@@ -1088,18 +1108,30 @@ const WorkspaceRouteWithChildren = WorkspaceRoute._addFileChildren(
   WorkspaceRouteChildren,
 )
 
+interface DocsRouteChildren {
+  DocsSplatRoute: typeof DocsSplatRoute
+}
+
+const DocsRouteChildren: DocsRouteChildren = {
+  DocsSplatRoute: DocsSplatRoute,
+}
+
+const DocsRouteWithChildren = DocsRoute._addFileChildren(DocsRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRouteWithChildren,
   PublicRoute: PublicRouteWithChildren,
   WorkspaceRoute: WorkspaceRouteWithChildren,
   DashboardRoute: DashboardRoute,
-  DocsRoute: DocsRoute,
+  DocsRoute: DocsRouteWithChildren,
   OpenapiDotjsonRoute: OpenapiDotjsonRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   ApiSplatRoute: ApiSplatRoute,
   ApiHealthRoute: ApiHealthRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiStripeWebhookRoute: ApiStripeWebhookRoute,
+  DotwellKnownOauthAuthorizationServerIndexRoute:
+    DotwellKnownOauthAuthorizationServerIndexRoute,
   DotwellKnownOauthProtectedResourceIndexRoute:
     DotwellKnownOauthProtectedResourceIndexRoute,
   DotwellKnownOauthAuthorizationServerApiAuthRoute:
