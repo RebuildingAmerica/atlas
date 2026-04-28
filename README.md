@@ -65,6 +65,17 @@ For the Mintlify API docs:
 - **AI:** Anthropic Claude API for structured data extraction
 - **DevOps:** Docker Compose, Makefile, Turborepo
 
+### Connecting an MCP client
+
+Atlas exposes a [Model Context Protocol](https://modelcontextprotocol.io/specification/2025-11-25) server at `https://atlas.rebuildingus.org/mcp` so AI assistants can search the catalog and pull place-level civic data through natural language. The server implements the 2025-11-25 MCP authorization spec end-to-end (RFC 8414 AS metadata, RFC 9728 protected-resource metadata, RFC 8707 resource indicators, PKCE S256, Client ID Metadata Documents) and is published to the [MCP Registry](https://registry.modelcontextprotocol.io) as `org.rebuildingus.atlas/atlas`.
+
+Setup walkthroughs, troubleshooting, and the full tool reference live in the Mintlify docs:
+
+- [MCP overview](./mintlify/mcp/overview.mdx) — what's available, what you need, which client guide to use.
+- [Client ID Metadata Documents](./mintlify/mcp/client-id-metadata.mdx) — how a new client onboards without prior registration.
+- [Troubleshooting](./mintlify/mcp/troubleshooting.mdx) — decoding 401s, 403s, and silent failures.
+- [Authentication reference](./mintlify/api-reference/authentication.mdx) — token lifecycle, discovery URLs, scope catalog.
+
 ### Contributing
 
 Start with the [Getting Started](./docs/getting-started/README.md) guide, then follow the [Development Workflow](./docs/development/workflow.md) for day-to-day practices. All commits must follow the [Conventional Commits](./docs/standards/commit-messages.md) format, enforced automatically by git hooks.
