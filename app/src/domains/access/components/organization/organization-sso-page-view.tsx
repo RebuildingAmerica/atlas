@@ -104,6 +104,7 @@ export function OrganizationSSOPageView({ controller }: OrganizationSSOPageViewP
           onDeleteProvider={controller.onDeleteSSOProvider}
           onOidcSubmit={controller.onOidcFormSubmit}
           onRequestDomainVerification={controller.onRequestDomainVerification}
+          onRotateSAMLCertificate={controller.onRotateSAMLCertificate}
           onSamlSubmit={controller.onSamlFormSubmit}
           onSavePrimaryProvider={controller.onSavePrimaryProvider}
           onVerifyDomain={controller.onVerifyDomain}

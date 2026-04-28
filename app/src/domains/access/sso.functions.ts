@@ -54,6 +54,11 @@ const workspacePrimaryProviderSchema = z.object({
   providerId: z.string().trim().min(1).nullable(),
 });
 
+const workspaceSamlCertificateRotationSchema = z.object({
+  certificate: z.string().trim().min(1),
+  providerId: z.string().trim().min(1),
+});
+
 const publicSSOResolutionSchema = z.object({
   email: z.string().trim().email(),
   invitationId: z.string().trim().min(1).optional(),
@@ -299,6 +304,34 @@ export const verifyWorkspaceSSODomain = createServerFn({ method: "POST" })
     await auth.api.verifyDomain({
       body: {
         providerId: data.providerId,
+      },
+      headers,
+    });
+
+    return { ok: true };
+  });
+
+/**
+ * Rotates the X.509 signing certificate on one configured SAML provider.
+ *
+ * The rotation goes through Better Auth's `updateSSOProvider` endpoint with
+ * a partial `samlConfig` payload, so the workspace keeps its existing
+ * domain verification, primary-provider marker, and IdP entry point.  The
+ * SP-side signing key (when configured via `ATLAS_SAML_SP_PRIVATE_KEY`)
+ * also stays put.
+ */
+export const rotateWorkspaceSAMLCertificate = createServerFn({ method: "POST" })
+  .inputValidator(workspaceSamlCertificateRotationSchema)
+  .handler(async ({ data }) => {
+    const organizationRequestContext = await loadOrganizationRequestContext();
+    const { auth, headers, session } = organizationRequestContext;
+
+    requireManagedTeamWorkspace(session);
+
+    await auth.api.updateSSOProvider({
+      body: {
+        providerId: data.providerId,
+        samlConfig: { cert: data.certificate },
       },
       headers,
     });

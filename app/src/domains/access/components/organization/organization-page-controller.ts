@@ -94,6 +94,7 @@ export interface OrganizationPageController {
   workspaceType: "individual" | "team";
   onCreateWorkspace: (event: React.FormEvent<HTMLFormElement>) => Promise<void>;
   onDeleteSSOProvider: (providerId: string) => Promise<void>;
+  onRotateSAMLCertificate: (providerId: string, certificate: string) => Promise<void>;
   onInviteMember: (event: React.FormEvent<HTMLFormElement>) => Promise<void>;
   onInvitationDecision: (
     invitationId: string,
@@ -213,6 +214,7 @@ export function useOrganizationPageController(
     workspaceType: forms.workspaceType,
     onCreateWorkspace: workspaceActions.onCreateWorkspace,
     onDeleteSSOProvider: ssoActions.onDeleteSSOProvider,
+    onRotateSAMLCertificate: ssoActions.onRotateSAMLCertificate,
     onInviteMember: workspaceActions.onInviteMember,
     onInvitationDecision: workspaceActions.onInvitationDecision,
     onLeaveWorkspace: workspaceActions.onLeaveWorkspace,

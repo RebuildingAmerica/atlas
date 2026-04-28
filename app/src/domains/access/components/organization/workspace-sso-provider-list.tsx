@@ -1,5 +1,7 @@
+import { useState } from "react";
 import type { AtlasOrganizationDetails } from "../../organization-contracts";
 import { Button } from "@/platform/ui/button";
+import { Textarea } from "@/platform/ui/textarea";
 import { WorkspaceSSOCopyField } from "./workspace-sso-copy-field";
 
 /**
@@ -34,8 +36,60 @@ interface WorkspaceSSOProviderListProps {
   organization: AtlasOrganizationDetails;
   onDeleteProvider: (providerId: string) => Promise<void>;
   onRequestDomainVerification: (providerId: string) => Promise<void>;
+  onRotateSAMLCertificate: (providerId: string, certificate: string) => Promise<void>;
   onSavePrimaryProvider: (providerId: string | null) => Promise<void>;
   onVerifyDomain: (providerId: string) => Promise<void>;
+}
+
+/**
+ * Inline rotation form rendered inside the SAML provider card.  Keeping it
+ * collapsed by default avoids cluttering the list while still letting an
+ * admin update the certificate without losing the verified domain or
+ * primary-provider state.
+ *
+ * @param props - The component props.
+ * @param props.providerId - The provider whose cert is being rotated.
+ * @param props.isPending - Whether any SSO mutation is currently running.
+ * @param props.onSubmit - Async rotation handler from the SSO actions hook.
+ */
+function SamlCertificateRotationForm(props: {
+  providerId: string;
+  isPending: boolean;
+  onSubmit: (providerId: string, certificate: string) => Promise<void>;
+}) {
+  const [certificate, setCertificate] = useState("");
+
+  async function handleSubmit() {
+    await props.onSubmit(props.providerId, certificate);
+    setCertificate("");
+  }
+
+  return (
+    <details className="text-outline space-y-2">
+      <summary className="type-label-medium cursor-pointer">Rotate signing certificate</summary>
+      <p className="type-body-small text-outline">
+        Paste the new PEM-encoded X.509 certificate the IdP just issued. Atlas keeps the existing
+        domain verification, primary-provider marker, and SP signing key.
+      </p>
+      <Textarea
+        label="New X.509 certificate"
+        rows={6}
+        value={certificate}
+        onChange={setCertificate}
+        placeholder="-----BEGIN CERTIFICATE-----"
+      />
+      <Button
+        type="button"
+        variant="secondary"
+        disabled={props.isPending || !certificate.trim()}
+        onClick={() => {
+          void handleSubmit();
+        }}
+      >
+        Replace certificate
+      </Button>
+    </details>
+  );
 }
 
 /**
@@ -47,6 +101,7 @@ export function WorkspaceSSOProviderList({
   isPending,
   onDeleteProvider,
   onRequestDomainVerification,
+  onRotateSAMLCertificate,
   onSavePrimaryProvider,
   onVerifyDomain,
   organization,
@@ -173,6 +228,14 @@ export function WorkspaceSSOProviderList({
                       />
                     ) : null}
                   </div>
+                ) : null}
+
+                {provider.providerType === "saml" && canManageOrganization ? (
+                  <SamlCertificateRotationForm
+                    providerId={provider.providerId}
+                    isPending={isPending}
+                    onSubmit={onRotateSAMLCertificate}
+                  />
                 ) : null}
 
                 {!provider.domainVerified ? (

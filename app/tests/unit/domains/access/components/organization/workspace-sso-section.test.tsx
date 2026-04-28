@@ -52,6 +52,7 @@ describe("WorkspaceSSOSection", () => {
       return Promise.resolve();
     }),
     onRequestDomainVerification: vi.fn(),
+    onRotateSAMLCertificate: vi.fn(),
     onSamlSubmit: vi.fn((e: React.FormEvent<HTMLFormElement>) => {
       e.preventDefault();
       return Promise.resolve();

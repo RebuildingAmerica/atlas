@@ -42,6 +42,7 @@ describe("WorkspaceSSOProviderList", () => {
     isPending: false,
     onDeleteProvider: vi.fn(),
     onRequestDomainVerification: vi.fn(),
+    onRotateSAMLCertificate: vi.fn(),
     onSavePrimaryProvider: vi.fn(),
     onVerifyDomain: vi.fn(),
     organization: { sso: { providers } } as unknown as AtlasOrganizationDetails,

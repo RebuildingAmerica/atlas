@@ -70,11 +70,16 @@ vi.mock("@/domains/access/organizations.functions", () => ({
 
 vi.mock("@/domains/access/sso.functions", () => ({
   deleteWorkspaceSSOProvider: organizationPageDependencyMocks.deleteWorkspaceSSOProvider,
+  getWorkspaceSAMLAllowedIssuers:
+    organizationPageDependencyMocks.getWorkspaceSAMLAllowedIssuers ??
+    (() => Promise.resolve({ issuerOrigins: ["https://accounts.google.com"] })),
   registerWorkspaceGoogleOIDCProvider:
     organizationPageDependencyMocks.registerWorkspaceGoogleOIDCProvider,
   registerWorkspaceSAMLProvider: organizationPageDependencyMocks.registerWorkspaceSAMLProvider,
   requestWorkspaceSSODomainVerification:
     organizationPageDependencyMocks.requestWorkspaceSSODomainVerification,
+  rotateWorkspaceSAMLCertificate:
+    organizationPageDependencyMocks.rotateWorkspaceSAMLCertificate ?? vi.fn(),
   setWorkspacePrimarySSOProvider: organizationPageDependencyMocks.setWorkspacePrimarySSOProvider,
   verifyWorkspaceSSODomain: organizationPageDependencyMocks.verifyWorkspaceSSODomain,
 }));

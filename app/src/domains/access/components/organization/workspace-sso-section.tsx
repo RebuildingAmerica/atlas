@@ -156,6 +156,7 @@ interface WorkspaceSSOSectionProps {
   onDeleteProvider: (providerId: string) => Promise<void>;
   onOidcSubmit: (event: React.FormEvent<HTMLFormElement>) => Promise<void>;
   onRequestDomainVerification: (providerId: string) => Promise<void>;
+  onRotateSAMLCertificate: (providerId: string, certificate: string) => Promise<void>;
   onSamlSubmit: (event: React.FormEvent<HTMLFormElement>) => Promise<void>;
   onSavePrimaryProvider: (providerId: string | null) => Promise<void>;
   onVerifyDomain: (providerId: string) => Promise<void>;
@@ -177,6 +178,7 @@ export function WorkspaceSSOSection({
   onDeleteProvider,
   onOidcSubmit,
   onRequestDomainVerification,
+  onRotateSAMLCertificate,
   onSamlSubmit,
   onSavePrimaryProvider,
   onVerifyDomain,
@@ -216,6 +218,7 @@ export function WorkspaceSSOSection({
         organization={organization}
         onDeleteProvider={onDeleteProvider}
         onRequestDomainVerification={onRequestDomainVerification}
+        onRotateSAMLCertificate={onRotateSAMLCertificate}
         onSavePrimaryProvider={onSavePrimaryProvider}
         onVerifyDomain={onVerifyDomain}
       />

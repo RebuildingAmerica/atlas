@@ -5,6 +5,7 @@ import {
   registerWorkspaceGoogleOIDCProvider,
   registerWorkspaceSAMLProvider,
   requestWorkspaceSSODomainVerification,
+  rotateWorkspaceSAMLCertificate,
   setWorkspacePrimarySSOProvider,
   verifyWorkspaceSSODomain,
 } from "@/domains/access/sso.functions";
@@ -23,6 +24,7 @@ export interface OrganizationPageSSOActions {
   onDeleteSSOProvider: (providerId: string) => Promise<void>;
   onOidcFormSubmit: (event: React.FormEvent<HTMLFormElement>) => Promise<void>;
   onRequestDomainVerification: (providerId: string) => Promise<void>;
+  onRotateSAMLCertificate: (providerId: string, certificate: string) => Promise<void>;
   onSamlFormSubmit: (event: React.FormEvent<HTMLFormElement>) => Promise<void>;
   onSavePrimaryProvider: (providerId: string | null) => Promise<void>;
   onVerifyDomain: (providerId: string) => Promise<void>;
@@ -65,6 +67,9 @@ export function useOrganizationPageSSOActions(
   });
   const deleteWorkspaceSSOProviderMutation = useMutation({
     mutationFn: deleteWorkspaceSSOProvider,
+  });
+  const rotateWorkspaceSAMLCertificateMutation = useMutation({
+    mutationFn: rotateWorkspaceSAMLCertificate,
   });
 
   /**
@@ -220,6 +225,26 @@ export function useOrganizationPageSSOActions(
   }
 
   /**
+   * Rotates the X.509 signing certificate on one configured SAML provider.
+   *
+   * @param providerId - The provider id whose certificate is being rotated.
+   * @param certificate - The new PEM-encoded certificate to install.
+   */
+  async function handleRotateSAMLCertificate(providerId: string, certificate: string) {
+    await runOrganizationPageMutation({
+      action: async () => {
+        return await rotateWorkspaceSAMLCertificateMutation.mutateAsync({
+          data: { certificate, providerId },
+        });
+      },
+      fallbackMessage: "Atlas could not rotate that SAML certificate.",
+      feedback: params.feedback,
+      refreshWorkspaceData: params.refreshWorkspaceData,
+      successMessage: "SAML certificate rotated. Domain verification was preserved.",
+    });
+  }
+
+  /**
    * Deletes one configured enterprise provider from the active workspace.
    *
    * @param providerId - The provider id to delete.
@@ -254,6 +279,7 @@ export function useOrganizationPageSSOActions(
     setWorkspacePrimarySSOProviderMutation.isPending ||
     requestWorkspaceSSODomainVerificationMutation.isPending ||
     verifyWorkspaceSSODomainMutation.isPending ||
+    rotateWorkspaceSAMLCertificateMutation.isPending ||
     deleteWorkspaceSSOProviderMutation.isPending;
 
   return {
@@ -262,6 +288,7 @@ export function useOrganizationPageSSOActions(
     onDeleteSSOProvider: handleDeleteSSOProvider,
     onOidcFormSubmit: handleOidcSubmit,
     onRequestDomainVerification: handleRequestDomainVerification,
+    onRotateSAMLCertificate: handleRotateSAMLCertificate,
     onSamlFormSubmit: handleSamlSubmit,
     onSavePrimaryProvider: handleSavePrimaryProvider,
     onVerifyDomain: handleVerifyDomain,
