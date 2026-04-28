@@ -50,7 +50,6 @@ const TERMS_SECTIONS = [
 export function TermsPage() {
   return (
     <PolicyPage
-      eyebrow="Terms"
       title="Terms of Service"
       summary="These terms explain the basic rules for using Atlas, including acceptable use, public-directory limitations, account responsibilities, and how paid access works."
       lastUpdated="April 23, 2026"

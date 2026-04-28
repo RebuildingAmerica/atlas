@@ -55,7 +55,6 @@ const PRIVACY_SECTIONS = [
 export function PrivacyPage() {
   return (
     <PolicyPage
-      eyebrow="Privacy"
       title="Privacy Policy"
       summary="Atlas collects only the information needed to operate the service, secure accounts, process subscriptions, and maintain a source-linked public directory."
       lastUpdated="April 23, 2026"

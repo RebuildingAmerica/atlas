@@ -45,7 +45,6 @@ const SECURITY_SECTIONS = [
 export function SecurityPage() {
   return (
     <PolicyPage
-      eyebrow="Security"
       title="Security"
       summary="Atlas is operated with a practical security posture focused on account protection, limited data collection, responsible disclosure, and transparent incident communication."
       lastUpdated="April 23, 2026"
