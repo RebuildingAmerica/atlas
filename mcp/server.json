@@ -1,8 +1,8 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
-  "name": "org.rebuildingus/atlas",
+  "name": "org.rebuildingus.atlas/atlas",
   "title": "Atlas",
-  "description": "Civic actor discovery — find people, organizations, and initiatives working on social issues across America, traced to public sources.",
+  "description": "Civic actor discovery: people, orgs, initiatives on social issues across America.",
   "repository": {
     "url": "https://github.com/RebuildingAmerica/atlas",
     "source": "github"

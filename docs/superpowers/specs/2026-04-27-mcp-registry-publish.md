@@ -1,11 +1,11 @@
 # MCP Registry Publish — Atlas
 
-Runbook for publishing and re-publishing Atlas to the official MCP Registry under the `org.rebuildingus/atlas` namespace.
+Runbook for publishing and re-publishing Atlas to the official MCP Registry under the `org.rebuildingus.atlas/atlas` namespace.
 
 ## Identity
 
-- **Server name:** `org.rebuildingus/atlas` (reverse-DNS of the canonical product domain).
-- **Publisher auth method:** HTTP-based DNS proof per the MCP Registry authentication spec. The public key is declared at `https://atlas.rebuildingus.org/.well-known/mcp-registry-auth`, served by Vite from `app/public/.well-known/`. The matching Ed25519 private key lives in 1Password under entry **"Atlas — MCP registry publisher key"**.
+- **Server name:** `org.rebuildingus.atlas/atlas`. Reverse-DNS is taken from `atlas.rebuildingus.org` rather than the apex `rebuildingus.org` because the apex is hard-redirected (HTTP 307) to `www.rebuildingus.org` on the rap-website Vercel project, and the registry verifier doesn't follow redirects when fetching the publisher-auth file. Switching to the subdomain keeps the entire publisher-auth surface under the Atlas Vercel project we already control.
+- **Publisher auth method:** HTTP-based domain proof per the MCP Registry authentication spec. The public key is declared at `https://atlas.rebuildingus.org/.well-known/mcp-registry-auth`, served by Vite from `app/public/.well-known/`. The matching Ed25519 private key lives in 1Password under entry **"Atlas — MCP registry publisher key"**.
 - **Why HTTP not DNS or GitHub:**
   - GitHub auth would force the namespace `io.github.rebuildingamerica/atlas`, which reads as a GitHub identity rather than the product brand.
   - DNS auth requires waiting for record propagation on every key rotation; HTTP auth lets us roll keys instantly by editing one env var and redeploying.
@@ -49,7 +49,7 @@ The Turbo task `@rebuildingamerica/atlas-app#gen:well-known` (defined in `app/tu
 6. **Authenticate** with the registry from a machine that has the private key:
    ```bash
    brew install mcp-publisher
-   mcp-publisher login http --domain rebuildingus.org \
+   mcp-publisher login http --domain atlas.rebuildingus.org \
      --private-key "$(op read 'op://Atlas/Atlas — MCP registry publisher key/private-key-hex')"
    ```
    (Substitute whatever 1Password CLI path you use for the private key.)
@@ -58,12 +58,12 @@ The Turbo task `@rebuildingamerica/atlas-app#gen:well-known` (defined in `app/tu
    cd mcp
    mcp-publisher publish
    ```
-   Expect: `✓ Successfully published — Server org.rebuildingus/atlas version 1.0.0`.
+   Expect: `✓ Successfully published — Server org.rebuildingus.atlas/atlas version 1.0.0`.
 8. **Verify the listing:**
    ```bash
-   curl "https://registry.modelcontextprotocol.io/v0.1/servers?search=org.rebuildingus/atlas"
+   curl "https://registry.modelcontextprotocol.io/v0.1/servers?search=org.rebuildingus.atlas/atlas"
    ```
-   The response should include a `servers[]` entry with `name=org.rebuildingus/atlas`, `version=1.0.0`, and `remotes[0].url=https://atlas.rebuildingus.org/mcp`.
+   The response should include a `servers[]` entry with `name=org.rebuildingus.atlas/atlas`, `version=1.0.0`, and `remotes[0].url=https://atlas.rebuildingus.org/mcp`.
 
 ## Version bump (re-publish)
 
@@ -71,7 +71,7 @@ The Turbo task `@rebuildingamerica/atlas-app#gen:well-known` (defined in `app/tu
 2. Edit `description`/`title`/`headers[]` if the user-facing copy or auth surface changed.
 3. Re-authenticate if more than ~24 hours have passed since the last login (registry JWTs are short-lived):
    ```bash
-   mcp-publisher login http --domain rebuildingus.org --private-key <hex>
+   mcp-publisher login http --domain atlas.rebuildingus.org --private-key <hex>
    ```
 4. `cd mcp && mcp-publisher publish`.
 5. Verify the new version is listed.
