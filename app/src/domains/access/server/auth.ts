@@ -350,13 +350,19 @@ function ensureAuthDatabase() {
 /**
  * Returns the database configuration for Better Auth.
  *
- * When DATABASE_URL is set to a PostgreSQL URL, Better Auth uses pg directly.
- * Otherwise falls back to the local SQLite database.
+ * When DATABASE_URL is set to a PostgreSQL URL, Better Auth uses a `pg.Pool`
+ * directly (the only adapter shape its kysely-adapter recognizes for postgres
+ * — `{ type, url }` falls through every branch and triggers
+ * "Failed to initialize database adapter").  Otherwise falls back to the local
+ * SQLite database.
  */
-function getAuthDatabaseConfig(): Database.Database | { type: "postgres"; url: string } {
-  const runtime = getAuthRuntimeConfig();
-  if (runtime.databaseUrl?.startsWith("postgres")) {
-    return { type: "postgres", url: runtime.databaseUrl };
+function getAuthDatabaseConfig(): Database.Database | Pool {
+  if (isPostgresMode()) {
+    const pool = getAuthPgPool();
+    if (!pool) {
+      throw new Error("Postgres mode is on but the auth Pool is unavailable.");
+    }
+    return pool;
   }
   return ensureAuthDatabase();
 }
