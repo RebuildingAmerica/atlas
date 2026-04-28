@@ -312,6 +312,7 @@ export function DiscoveryPage() {
       .sort((left, right) => left.name.localeCompare(right.name));
   }, [taxonomyQuery.data]);
 
+  const isLocal = atlasSession.data?.isLocal ?? false;
   const activeWorkspace = atlasSession.data?.workspace.activeOrganization ?? null;
   const canUseTeamFeatures = atlasSession.data?.workspace.capabilities.canUseTeamFeatures ?? false;
   const needsWorkspace = atlasSession.data?.workspace.onboarding.needsWorkspace ?? false;
@@ -365,7 +366,7 @@ export function DiscoveryPage() {
     : canUseTeamFeatures && activeWorkspace
       ? `Start runs for ${activeWorkspace.name} and keep the team aligned on what Atlas is actively researching.`
       : "Start discovery runs and check recent run status in one place.";
-  const workspaceBadge = activeWorkspace ? activeWorkspace.name : null;
+  const workspaceBadge = activeWorkspace && !isLocal ? activeWorkspace.name : null;
 
   return (
     <div className="space-y-10">
@@ -392,9 +393,9 @@ export function DiscoveryPage() {
         />
       ) : null}
 
-      {!needsWorkspace && atlasSession.data && !canRunResearch ? (
+      {!isLocal && !needsWorkspace && atlasSession.data && !canRunResearch ? (
         <DiscoveryUpgradePrompt reason="capability-missing" />
-      ) : !needsWorkspace && atlasSession.data && isFreeTier ? (
+      ) : !isLocal && !needsWorkspace && atlasSession.data && isFreeTier ? (
         <DiscoveryUpgradePrompt reason="free-tier" />
       ) : null}
 

@@ -9,7 +9,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "ATLAS_DEPLOY_MODE= portless app vite dev",
+    "dev": "portless app vite dev",
     "dev:local": "ATLAS_DEPLOY_MODE=local portless app vite dev",
     "dev:e2e": "vite dev --host 127.0.0.1 --port 3100 --strictPort",
     "api-client": "orval",
