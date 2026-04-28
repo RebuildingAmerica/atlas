@@ -64,7 +64,7 @@ describe("WorkspaceSSOProviderList", () => {
 
     expect(screen.getByText("oidc-1")).toBeInTheDocument();
     expect(screen.getByText("OIDC · oidc.com")).toBeInTheDocument();
-    expect(screen.getByText("Primary")).toBeInTheDocument();
+    expect(screen.getByText(/Primary.*routes new sign-ins/i)).toBeInTheDocument();
     expect(screen.getByText("Domain verified")).toBeInTheDocument();
 
     expect(screen.getByText("saml-1")).toBeInTheDocument();
@@ -121,6 +121,38 @@ describe("WorkspaceSSOProviderList", () => {
     render(<WorkspaceSSOProviderList {...defaultProps} canManageOrganization={false} />);
     expect(screen.queryByText("Make primary")).not.toBeInTheDocument();
     expect(screen.queryByText("Remove provider")).not.toBeInTheDocument();
+  });
+
+  it("renders the secondary-but-ready badge for verified non-primary providers", () => {
+    const verifiedSecondary = {
+      ...providers[0],
+      providerId: "secondary",
+      isPrimary: false,
+      domainVerified: true,
+    };
+    const ssoOrg = {
+      sso: { providers: [verifiedSecondary], primaryHistory: [] },
+    } as unknown as AtlasOrganizationDetails;
+    render(<WorkspaceSSOProviderList {...defaultProps} organization={ssoOrg} />);
+    expect(screen.getByText(/Secondary.*ready to promote/i)).toBeInTheDocument();
+  });
+
+  it("renders the primary-history disclosure when entries exist", () => {
+    const ssoOrg = {
+      sso: {
+        providers,
+        primaryHistory: [
+          {
+            changedAt: "2026-04-01T00:00:00.000Z",
+            changedByEmail: "owner@atlas.test",
+            providerId: "saml-1",
+          },
+        ],
+      },
+    } as unknown as AtlasOrganizationDetails;
+    render(<WorkspaceSSOProviderList {...defaultProps} organization={ssoOrg} />);
+    expect(screen.getByText("Primary-provider change history")).toBeInTheDocument();
+    expect(screen.getByText(/owner@atlas\.test/i)).toBeInTheDocument();
   });
 
   it("triggers action handlers", async () => {

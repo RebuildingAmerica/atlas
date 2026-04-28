@@ -8,7 +8,10 @@ import {
   buildWorkspaceSamlEntityId,
   buildWorkspaceSamlMetadataUrl,
 } from "./organization-sso";
-import { mergeAtlasOrganizationMetadata } from "./organization-metadata";
+import {
+  mergeAtlasOrganizationMetadata,
+  normalizeAtlasOrganizationMetadata,
+} from "./organization-metadata";
 import {
   loadOrganizationRequestContext,
   requireManagedTeamWorkspace,
@@ -93,6 +96,8 @@ export const getWorkspaceSAMLAllowedIssuers = createServerFn({ method: "GET" }).
  *
  * @param providerId - The provider id Atlas should mark as primary.
  */
+const SSO_PRIMARY_HISTORY_LIMIT = 20;
+
 async function saveWorkspacePrimarySSOProvider(providerId: string | null): Promise<void> {
   const organizationRequestContext = await loadOrganizationRequestContext();
   const { auth, headers, session } = organizationRequestContext;
@@ -103,8 +108,21 @@ async function saveWorkspacePrimarySSOProvider(providerId: string | null): Promi
       organizationId: activeWorkspace.id,
     },
   });
+  const previous = normalizeAtlasOrganizationMetadata(fullOrganization?.metadata);
+  const isNoOp = (previous.ssoPrimaryProviderId ?? null) === providerId;
+  const updatedHistory = isNoOp
+    ? previous.ssoPrimaryHistory
+    : [
+        {
+          changedAt: new Date().toISOString(),
+          changedByEmail: session.user.email,
+          providerId,
+        },
+        ...(previous.ssoPrimaryHistory ?? []),
+      ].slice(0, SSO_PRIMARY_HISTORY_LIMIT);
   const mergedMetadata = mergeAtlasOrganizationMetadata(fullOrganization?.metadata, {
     ssoPrimaryProviderId: providerId,
+    ssoPrimaryHistory: updatedHistory,
   });
 
   await auth.api.updateOrganization({

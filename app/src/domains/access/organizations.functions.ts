@@ -55,6 +55,7 @@ export const getOrganizationDetails = createServerFn({ method: "GET" }).handler(
     organizationId: details.id,
     organizationSlug: details.slug,
     operatorEmail: session.user.email,
+    primaryHistory: metadata.ssoPrimaryHistory,
     primaryProviderId: metadata.ssoPrimaryProviderId,
     providers: providerList.providers,
     publicBaseUrl: runtime.publicBaseUrl,

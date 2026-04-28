@@ -6,7 +6,10 @@ import {
 } from "../../../fixtures/access/sso";
 import { createAtlasSessionFixture, createAtlasWorkspace } from "../../../fixtures/access/sessions";
 import { createSSOFunctionsAuthApi } from "../../../mocks/access/sso-functions-auth";
-import { createServerFnStub, type ServerFnExecutionResponse } from "../../../utils/server-fn-stub";
+import {
+  createServerFnStub,
+  type ServerFnExecutionResponse,
+} from "../../../helpers/server-fn-stub";
 
 const mocks = vi.hoisted(() => ({
   ensureAuthReady: vi.fn(),
@@ -46,20 +49,12 @@ vi.mock("@/domains/access/server/sso-provider-store", () => ({
   loadStoredWorkspaceIdentity: mocks.loadStoredWorkspaceIdentity,
 }));
 
-/**
- * Builds the managed team-workspace membership used by SSO server-function
- * tests.
- */
-function createManagedTeamWorkspace() {
-  return createAtlasWorkspace().activeOrganization;
-}
-
 describe("sso.functions", () => {
   const browserSessionHeaders = new Headers({
     cookie: "better-auth.session_token=test-token",
   });
 
-  const managedTeamWorkspace = createManagedTeamWorkspace();
+  const managedTeamWorkspace = createAtlasWorkspace().activeOrganization;
   if (!managedTeamWorkspace) {
     throw new TypeError("Expected the access session fixture to expose an active workspace.");
   }
@@ -137,19 +132,31 @@ describe("sso.functions", () => {
       },
       headers: browserSessionHeaders,
     });
-    expect(authApi.updateOrganization).toHaveBeenCalledWith({
+    interface UpdateOrgCall {
       body: {
         data: {
           metadata: {
-            ssoPrimaryProviderId: "atlas-team-google-workspace-oidc",
-            stripeCustomerId: null,
-            workspaceType: "team",
-          },
-        },
-        organizationId: "org_team",
-      },
-      headers: browserSessionHeaders,
-    });
+            ssoPrimaryProviderId: string;
+            ssoPrimaryHistory?: { providerId: string }[];
+            stripeCustomerId: string | null;
+            workspaceType: string;
+          };
+        };
+        organizationId: string;
+      };
+      headers: Headers;
+    }
+    const updateCallArgs = authApi.updateOrganization.mock.calls[0]?.[0] as
+      | UpdateOrgCall
+      | undefined;
+    expect(updateCallArgs?.body.organizationId).toBe("org_team");
+    expect(updateCallArgs?.body.data.metadata.ssoPrimaryProviderId).toBe(
+      "atlas-team-google-workspace-oidc",
+    );
+    expect(updateCallArgs?.body.data.metadata.workspaceType).toBe("team");
+    expect(updateCallArgs?.body.data.metadata.ssoPrimaryHistory?.[0]?.providerId).toBe(
+      "atlas-team-google-workspace-oidc",
+    );
     expect(response.result).toEqual({
       domainVerificationToken: "token_123",
       providerId: "atlas-team-google-workspace-oidc",

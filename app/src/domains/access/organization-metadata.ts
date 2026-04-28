@@ -27,7 +27,19 @@ export interface AtlasWorkspaceCapabilities {
  * Normalized organization metadata Atlas stores inside Better Auth's
  * organization `metadata` field.
  */
+/**
+ * One entry in the primary-SSO-provider audit trail Atlas keeps in workspace
+ * metadata.  Bounded to the most recent twenty events so the metadata column
+ * stays small even on workspaces that toggle providers regularly.
+ */
+export interface AtlasSsoPrimaryHistoryEntry {
+  changedAt: string;
+  changedByEmail: string | null;
+  providerId: string | null;
+}
+
 export interface AtlasOrganizationMetadata {
+  ssoPrimaryHistory?: AtlasSsoPrimaryHistoryEntry[];
   ssoPrimaryProviderId: string | null;
   stripeCustomerId: string | null;
   workspaceType: AtlasWorkspaceType;
@@ -50,6 +62,15 @@ const atlasOrganizationMetadataSchema = z
     stripeCustomerId: z.string().trim().min(1).nullish(),
     workspaceType: atlasWorkspaceTypeSchema.optional(),
     workspaceDomain: z.string().trim().min(1).nullish(),
+    ssoPrimaryHistory: z
+      .array(
+        z.object({
+          changedAt: z.string(),
+          changedByEmail: z.string().nullable(),
+          providerId: z.string().nullable(),
+        }),
+      )
+      .optional(),
     discountSegment: z
       .enum(["independent_journalist", "grassroots_nonprofit", "civic_tech_worker"])
       .optional(),
@@ -96,6 +117,8 @@ export function normalizeAtlasOrganizationMetadata(metadata: unknown): AtlasOrga
       parsed.success && parsed.data.workspaceType ? parsed.data.workspaceType : "individual",
     workspaceDomain:
       parsed.success && parsed.data.workspaceDomain ? parsed.data.workspaceDomain : undefined,
+    ssoPrimaryHistory:
+      parsed.success && parsed.data.ssoPrimaryHistory ? parsed.data.ssoPrimaryHistory : undefined,
     discountSegment: parsed.success ? parsed.data.discountSegment : undefined,
     verificationStatus: parsed.success ? parsed.data.verificationStatus : undefined,
     verifiedAt: parsed.success ? parsed.data.verifiedAt : undefined,
@@ -127,6 +150,7 @@ export function mergeAtlasOrganizationMetadata(
         : updates.stripeCustomerId,
     workspaceType: updates.workspaceType ?? normalizedMetadata.workspaceType,
     workspaceDomain: updates.workspaceDomain ?? normalizedMetadata.workspaceDomain,
+    ssoPrimaryHistory: updates.ssoPrimaryHistory ?? normalizedMetadata.ssoPrimaryHistory,
     discountSegment: updates.discountSegment ?? normalizedMetadata.discountSegment,
     verificationStatus: updates.verificationStatus ?? normalizedMetadata.verificationStatus,
     verifiedAt: updates.verifiedAt ?? normalizedMetadata.verifiedAt,

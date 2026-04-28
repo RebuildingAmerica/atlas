@@ -8,9 +8,9 @@ import {
 import type { AtlasWorkspaceSSOState } from "@/domains/access/organization-sso";
 import { createAtlasSessionFixture, createAtlasWorkspace } from "../../../fixtures/access/sessions";
 
-type OrganizationDetails = z.infer<typeof organizationDetailsSchema>;
-
 describe("organization-contracts", () => {
+  type OrganizationDetails = z.infer<typeof organizationDetailsSchema>;
+
   describe("toIsoString", () => {
     it("returns string as is", () => {
       expect(toIsoString("2026-01-01")).toBe("2026-01-01");
@@ -47,6 +47,7 @@ describe("organization-contracts", () => {
     });
 
     const ssoState: AtlasWorkspaceSSOState = {
+      primaryHistory: [],
       primaryProviderId: null,
       providers: [],
       setup: {

@@ -256,6 +256,7 @@ export function WorkspaceSSOProviderList({
   verificationTimedOutProviderIds = [],
 }: WorkspaceSSOProviderListProps) {
   const providers = organization.sso.providers;
+  const primaryHistory = organization.sso.primaryHistory ?? [];
   const { confirm } = useConfirmDialog();
   const [verifyError, setVerifyError] = useState<Record<string, string>>({});
 
@@ -318,7 +319,28 @@ export function WorkspaceSSOProviderList({
             Save either Google Workspace OIDC or SAML below to enable organization-managed sign-in.
           </p>
         </div>
-      ) : (
+      ) : null}
+
+      {providers.length > 0 && primaryHistory.length > 0 ? (
+        <details className="text-outline space-y-2">
+          <summary className="type-label-medium cursor-pointer">
+            Primary-provider change history
+          </summary>
+          <ul className="type-body-small text-outline space-y-1 pt-2">
+            {primaryHistory.map((entry) => (
+              <li key={`${entry.changedAt}-${entry.providerId ?? "none"}`}>
+                <span className="text-on-surface font-medium">
+                  {entry.providerId ?? "(no primary)"}
+                </span>{" "}
+                set on {new Date(entry.changedAt).toISOString().slice(0, 19).replace("T", " ")}
+                {entry.changedByEmail ? ` by ${entry.changedByEmail}` : ""}
+              </li>
+            ))}
+          </ul>
+        </details>
+      ) : null}
+
+      {providers.length > 0 ? (
         <div className="space-y-4">
           {providers.map((provider) => {
             const verificationToken = domainVerificationTokens[provider.providerId] ?? "";
@@ -337,8 +359,12 @@ export function WorkspaceSSOProviderList({
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
                     {provider.isPrimary ? (
+                      <span className="type-label-large rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-emerald-700">
+                        Primary · routes new sign-ins
+                      </span>
+                    ) : provider.domainVerified ? (
                       <span className="type-label-large border-outline-variant text-outline rounded-full border px-3 py-1">
-                        Primary
+                        Secondary · ready to promote
                       </span>
                     ) : null}
                     <span className="type-label-large border-outline-variant text-outline rounded-full border px-3 py-1">
@@ -556,7 +582,7 @@ export function WorkspaceSSOProviderList({
             );
           })}
         </div>
-      )}
+      ) : null}
     </article>
   );
 }

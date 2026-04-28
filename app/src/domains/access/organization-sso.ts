@@ -151,7 +151,18 @@ export interface AtlasWorkspaceSSOProvider {
 /**
  * Full SSO state Atlas renders inside organization management.
  */
+/**
+ * One row of the workspace's primary-SSO-provider audit trail, as exposed
+ * to the UI.  Mirrors the shape persisted in workspace metadata.
+ */
+export interface AtlasSsoPrimaryHistoryEntry {
+  changedAt: string;
+  changedByEmail: string | null;
+  providerId: string | null;
+}
+
 export interface AtlasWorkspaceSSOState {
+  primaryHistory: AtlasSsoPrimaryHistoryEntry[];
   primaryProviderId: string | null;
   providers: AtlasWorkspaceSSOProvider[];
   setup: AtlasWorkspaceSSOSetupValues;
@@ -409,6 +420,7 @@ export function buildWorkspaceSSOState(params: {
   organizationId: string;
   organizationSlug: string;
   operatorEmail: string;
+  primaryHistory?: AtlasSsoPrimaryHistoryEntry[];
   primaryProviderId: string | null;
   providers: z.infer<typeof rawWorkspaceSSOProviderListSchema>["providers"];
   publicBaseUrl: string;
@@ -429,6 +441,7 @@ export function buildWorkspaceSSOState(params: {
         providers: organizationProviders,
       }),
     }),
+    primaryHistory: params.primaryHistory ?? [],
     primaryProviderId: params.primaryProviderId,
     providers,
   };

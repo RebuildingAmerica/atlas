@@ -94,6 +94,7 @@ export function createWorkspaceSSOStateFixture(
   overrides: Partial<AtlasWorkspaceSSOState> = {},
 ): AtlasWorkspaceSSOState {
   return {
+    primaryHistory: overrides.primaryHistory ?? [],
     primaryProviderId: overrides.primaryProviderId ?? "atlas-team-google-workspace-oidc",
     providers: overrides.providers ?? [createWorkspaceSSOProviderFixture()],
     setup: overrides.setup ?? {
