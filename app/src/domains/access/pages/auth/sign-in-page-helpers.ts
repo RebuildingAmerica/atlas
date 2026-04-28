@@ -30,7 +30,10 @@ export function sanitizeSignInRedirectPath(candidate: string | undefined): strin
 }
 
 /**
- * Builds the app-local callback path used after sign-in completes.
+ * Builds the app-local callback path used after sign-in completes.  The
+ * default lands on /discovery rather than /account so an operator who just
+ * signed in via SAML or magic link sees the workspace surface they came
+ * for instead of the account-settings page.
  *
  * @param invitationId - The optional workspace invitation id.
  * @param redirectTo - The optional explicit redirect path.
@@ -41,7 +44,7 @@ export function buildSignInCallbackURL(invitationId?: string, redirectTo?: strin
     return sanitizedRedirect;
   }
 
-  return invitationId ? "/organization" : "/account";
+  return invitationId ? "/organization" : "/discovery";
 }
 
 /**

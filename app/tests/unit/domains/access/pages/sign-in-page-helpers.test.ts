@@ -52,10 +52,10 @@ describe("buildSignInCallbackURL", () => {
     expect(buildSignInCallbackURL(undefined, "/discovery")).toBe("/discovery");
   });
 
-  it("falls back to /account when no invitation and no safe redirect", () => {
-    expect(buildSignInCallbackURL()).toBe("/account");
-    expect(buildSignInCallbackURL(undefined, "https://attacker.example")).toBe("/account");
-    expect(buildSignInCallbackURL(undefined, "//attacker.example")).toBe("/account");
+  it("falls back to /discovery when no invitation and no safe redirect", () => {
+    expect(buildSignInCallbackURL()).toBe("/discovery");
+    expect(buildSignInCallbackURL(undefined, "https://attacker.example")).toBe("/discovery");
+    expect(buildSignInCallbackURL(undefined, "//attacker.example")).toBe("/discovery");
   });
 
   it("falls back to /organization for invitations with no safe redirect", () => {

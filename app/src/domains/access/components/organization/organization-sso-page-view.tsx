@@ -6,6 +6,7 @@ import { OrganizationPageFeedback } from "./organization-page-feedback";
 import { OrganizationPageHeader } from "./organization-page-header";
 import { OrganizationTeamWorkspaceRequiredState } from "./organization-team-workspace-required-state";
 import { PendingWorkspaceInvitationsSection } from "./pending-workspace-invitations-section";
+import { SsoDiagnosticsDisclosure } from "./sso-diagnostics-disclosure";
 import { WorkspaceCreationSection } from "./workspace-creation-section";
 import { WorkspaceSSOSection } from "./workspace-sso-section";
 import { WorkspaceSwitcherSection } from "./workspace-switcher-section";
@@ -99,6 +100,10 @@ export function OrganizationSSOPageView({ controller }: OrganizationSSOPageViewP
       />
 
       {controller.organization && controller.canUseTeamFeatures ? <SsoSetupOverview /> : null}
+
+      {controller.organization && controller.canUseTeamFeatures ? (
+        <SsoDiagnosticsDisclosure />
+      ) : null}
 
       <OrganizationPageFeedback
         errorMessage={controller.errorMessage}

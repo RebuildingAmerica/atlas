@@ -4,6 +4,13 @@ import { useEffect, useMemo, useState } from "react";
 import { z } from "zod";
 import { getAuthClient } from "@/domains/access/client/auth-client";
 import { setLastUsedAtlasLoginMethod } from "@/domains/access/client/last-login-method";
+import {
+  rememberLastUsedAtlasEmail,
+  readLastUsedAtlasEmail,
+} from "@/domains/access/client/last-used-email";
+import { suggestEmailDomainCorrection } from "@/domains/access/email-domain-suggestions";
+import { describeSsoError } from "@/domains/access/sso-error-messages";
+import { recordSsoDiagnostics } from "@/domains/access/client/sso-diagnostics-log";
 import { waitForAtlasAuthenticatedSession } from "@/domains/access/client/session-confirmation";
 import type { AtlasProduct } from "@/domains/access/capabilities";
 import { PRODUCT_LABELS } from "@/domains/billing/product-labels";
@@ -72,6 +79,7 @@ function parsePricingIntent(redirectTo: string | undefined): AtlasProduct | null
  */
 export const signInSearchSchema = z.object({
   email: z.string().optional(),
+  error: z.string().optional(),
   existing: z.coerce.boolean().optional(),
   invitation: z.string().optional(),
   redirect: z.string().optional(),
@@ -81,6 +89,7 @@ export const signInSearchSchema = z.object({
  * Props accepted by the sign-in page.
  */
 interface SignInPageProps {
+  errorCode?: string;
   existingAccount?: boolean;
   initialEmail?: string;
   invitationId?: string;
@@ -94,6 +103,7 @@ interface SignInPageProps {
  * address before falling back to the privacy-preserving magic-link path.
  */
 export function SignInPage({
+  errorCode,
   existingAccount,
   initialEmail,
   invitationId,
@@ -101,7 +111,8 @@ export function SignInPage({
 }: SignInPageProps) {
   const authClient = getAuthClient();
   const [lastMethod] = useState<string | null>(() => authClient.getLastUsedLoginMethod() ?? null);
-  const [email, setEmail] = useState(initialEmail ?? "");
+  const [email, setEmail] = useState(() => initialEmail ?? readLastUsedAtlasEmail() ?? "");
+  const domainSuggestion = useMemo(() => suggestEmailDomainCorrection(email), [email]);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [captureMailboxUrl, setCaptureMailboxUrl] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -114,6 +125,17 @@ export function SignInPage({
   const pricingIntent = useMemo(() => parsePricingIntent(redirectTo), [redirectTo]);
   const intentLabel = pricingIntent ? PRODUCT_LABELS[pricingIntent] : null;
   const oauthOriginSignIn = useMemo(() => isOAuthOriginSignIn(redirectTo), [redirectTo]);
+  const ssoErrorMessage = useMemo(() => describeSsoError(errorCode), [errorCode]);
+
+  useEffect(() => {
+    if (!errorCode) return;
+    recordSsoDiagnostics({
+      code: errorCode,
+      email: initialEmail ?? null,
+      message: ssoErrorMessage,
+      workspaceSlug: null,
+    });
+  }, [errorCode, initialEmail, ssoErrorMessage]);
 
   useEffect(() => {
     if (
@@ -196,6 +218,7 @@ export function SignInPage({
         const redirectUrl = extractSSORedirectUrl(ssoResult);
 
         if (redirectUrl) {
+          rememberLastUsedAtlasEmail(email);
           window.location.assign(redirectUrl);
         }
 
@@ -212,6 +235,7 @@ export function SignInPage({
       const magicLinkResult = await magicLinkRequestPromise;
       setCaptureMailboxUrl(magicLinkResult.captureMailboxUrl ?? null);
       setLastUsedAtlasLoginMethod("magic-link");
+      rememberLastUsedAtlasEmail(email);
       setStatusMessage(buildMagicLinkStatusMessage(invitationId));
     } catch (error) {
       const code = extractAuthErrorCode(error);
@@ -326,6 +350,22 @@ export function SignInPage({
             icon={<Mail className="h-4 w-4" />}
           />
 
+          {domainSuggestion ? (
+            <p className="type-body-small text-outline" aria-live="polite">
+              Did you mean{" "}
+              <button
+                type="button"
+                className="text-accent underline"
+                onClick={() => {
+                  setEmail(domainSuggestion);
+                }}
+              >
+                {domainSuggestion}
+              </button>
+              ?
+            </p>
+          ) : null}
+
           <div className="relative inline-block">
             <Button
               type="submit"
@@ -366,6 +406,21 @@ export function SignInPage({
           <p className="type-body-medium rounded-2xl bg-red-50 px-4 py-3 text-red-700">
             {errorMessage}
           </p>
+        ) : null}
+
+        {errorCode ? (
+          <div
+            className="type-body-medium rounded-2xl bg-red-50 px-4 py-3 text-red-800"
+            role="alert"
+          >
+            <p>
+              {ssoErrorMessage ??
+                "Atlas couldn't complete the SSO sign-in.  Try again, or contact your workspace admin if it keeps failing."}
+            </p>
+            <p className="type-body-small mt-1 text-red-700">
+              Reference code: <code>{errorCode}</code>
+            </p>
+          </div>
         ) : null}
       </div>
 
