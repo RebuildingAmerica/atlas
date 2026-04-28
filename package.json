@@ -7,7 +7,8 @@
     "node": ">=24.3.0 <25"
   },
   "scripts": {
-    "dev": "turbo run dev",
+    "dev": "ATLAS_DEPLOY_MODE= turbo run dev",
+    "dev:local": "ATLAS_DEPLOY_MODE=local turbo run dev",
     "secrets:update-baseline": "sh ./scripts/secrets-update-baseline.sh",
     "secrets:scan": "sh ./scripts/secrets-scan.sh",
     "openapi": "sh ./scripts/openapi-export.sh",
