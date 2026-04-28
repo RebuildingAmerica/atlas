@@ -27,6 +27,14 @@
     {
       "source": "/migration",
       "destination": "/what-is-atlas"
+    },
+    {
+      "source": "/mcp",
+      "destination": "/mcp/overview"
+    },
+    {
+      "source": "/api-reference",
+      "destination": "/api-reference/overview"
     }
   ],
   "navigation": {
@@ -64,18 +72,24 @@
             "group": "Get connected",
             "pages": [
               "mcp/overview",
+              "mcp/registry",
               "mcp/claude-desktop",
               "mcp/claude-code",
               "mcp/vscode-copilot",
               "mcp/gemini",
               "mcp/codex",
               "mcp/copilot-cli",
-              "mcp/other-clients"
+              "mcp/other-clients",
+              "mcp/client-id-metadata"
             ]
           },
           {
             "group": "Tools & permissions",
             "pages": ["mcp/tools", "mcp/scopes"]
+          },
+          {
+            "group": "Troubleshoot",
+            "pages": ["mcp/troubleshooting"]
           },
           {
             "group": "Tutorials",

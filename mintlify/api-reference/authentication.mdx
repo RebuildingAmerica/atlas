@@ -112,12 +112,25 @@ curl -H "Authorization: Bearer eyJhbG..." \
 | Setting | Value |
 |---------|-------|
 | OIDC discovery | `https://atlas.rebuildingus.org/api/auth/.well-known/openid-configuration` |
+| OAuth 2.0 authorization server metadata | `https://atlas.rebuildingus.org/.well-known/oauth-authorization-server` |
 | Dynamic client registration | `https://atlas.rebuildingus.org/api/auth/oauth2/register` |
+| Client ID Metadata Documents | Supported (`client_id_metadata_document_supported: true`) — see [CIMD guide](/mcp/client-id-metadata) |
 | Protected resource metadata | `https://atlas.rebuildingus.org/.well-known/oauth-protected-resource` |
 | JWKS endpoint | `https://atlas.rebuildingus.org/api/auth/jwks` |
-| PKCE | Required |
+| PKCE | Required (S256 only) |
 | Algorithms | RS256, ES256 |
 | Transport | Streamable HTTP (SSE is not supported) |
+
+### Token lifecycle
+
+| Token | Lifetime | Behavior |
+|-------|----------|----------|
+| Access token (JWT) | 15 minutes | Short-lived per OAuth 2.1 §7.1; clients refresh on each call when needed. |
+| Refresh token | 30 days | Rotated on every exchange — the old token is revoked and a new one is issued. Reuse of a revoked refresh token deletes the entire user/client refresh-token chain (OAuth 2.1 §4.3.1 reuse detection). |
+| `aud` claim | Per request | Bound to the `resource` parameter the client supplies (RFC 8707), or to `ATLAS_API_AUDIENCE` when the client omits it. |
+| `org_id` claim | Per token | Bound to the user's primary workspace when one workspace exists, or to the workspace the user picks on the consent screen for multi-workspace accounts. Clients explicitly requesting `org:{workspace_id}` always win over the default. |
+
+If your MCP client maintains long-lived sessions, it should treat refresh tokens as one-time-use and store the rotated value returned by every token-endpoint call.
 
 <Tip>
 Most MCP clients handle the OAuth flow automatically. You typically just provide the server URL (`https://atlas.rebuildingus.org/mcp`) and the client takes care of discovery, registration, and token management. See the [MCP setup guides](/mcp/overview) for step-by-step instructions.

@@ -8,7 +8,7 @@ import McpServerUrl from '/snippets/mcp-server-url.mdx';
 
 # Use Atlas with AI assistants
 
-Atlas supports the [Model Context Protocol](https://modelcontextprotocol.io/) (MCP), which lets you use Atlas through AI assistants like Claude, GitHub Copilot, Google Gemini, and others. Instead of clicking through a website or writing API calls, you ask questions in natural language and get structured answers backed by Atlas data.
+Atlas supports the [Model Context Protocol](https://modelcontextprotocol.io/) (MCP), an open standard from Anthropic for connecting AI assistants to external data and tools. Atlas implements the [2025-11-25 MCP specification](https://modelcontextprotocol.io/specification/2025-11-25), which means any compliant MCP client — Claude, GitHub Copilot, Google Gemini, Codex, Inspector, and others — can talk to Atlas without custom integration. Instead of clicking through a website or writing API calls, you ask questions in natural language and get structured answers backed by Atlas data.
 
 **Example conversation with Claude:**
 
@@ -24,9 +24,17 @@ Atlas supports the [Model Context Protocol](https://modelcontextprotocol.io/) (M
 
 <RequiresPaidPlan />
 
-1. **An Atlas account** — [Sign up](https://atlas.rebuildingus.org) if you haven't already
-2. **Atlas Pro or Team plan** — MCP access requires a paid plan ([see pricing](/account/pricing))
-3. **An MCP-compatible client** — Claude Desktop, Claude Code, VS Code with Copilot, Gemini CLI, Codex CLI, or Copilot CLI
+1. **An Atlas account** — [Sign up](https://atlas.rebuildingus.org) if you haven't already.
+2. **Atlas Pro or Team plan** — MCP access requires a paid plan ([see pricing](/account/pricing)). Free-tier sign-ins succeed but the MCP endpoint returns a `403 Forbidden` with `WWW-Authenticate: Bearer error="insufficient_scope"` and an `error_uri` pointing at the pricing page until a plan is active.
+3. **An MCP-compatible client** — Claude Desktop, Claude Code, VS Code with Copilot, Gemini CLI, Codex CLI, or Copilot CLI.
+
+<Note>
+**Before you connect**
+
+- **Bootstrap allowlist.** Atlas runs an operator allowlist while we're inviting users from the bootstrap list. If your email isn't on it and you don't have a workspace invitation, the OAuth sign-in won't deliver a magic link. Request access at [atlas.rebuildingus.org](https://atlas.rebuildingus.org) before connecting an MCP client.
+- **Workspace binding.** After signing in, your primary workspace is bound to OAuth tokens automatically. Multi-workspace users see a workspace picker on the consent screen — MCP clients don't need to compute or pass an `org:{workspace_id}` scope.
+- **Token lifecycle.** Access tokens expire after 15 minutes; refresh tokens rotate on every exchange and are revoked on reuse. Most MCP clients handle this transparently.
+</Note>
 
 ## How it works
 
@@ -105,4 +113,16 @@ Your OAuth token may have expired. Disconnect and reconnect the server in your c
 **Tools don't appear**
 Restart your MCP client after connecting. Some clients require a reload to discover newly available tools.
 
-For more help, see [Troubleshooting](/resources/troubleshooting).
+For more help, see [MCP troubleshooting](/mcp/troubleshooting) or the general [Troubleshooting](/resources/troubleshooting) guide.
+
+## References
+
+Atlas builds on the published MCP specification and the OAuth 2.1 family of standards. If you're integrating a custom client or auditing Atlas's auth posture, these are the authoritative references:
+
+- [MCP base protocol — 2025-11-25](https://modelcontextprotocol.io/specification/2025-11-25/basic) — Lifecycle, transports, and session semantics.
+- [MCP authorization — 2025-11-25](https://modelcontextprotocol.io/specification/2025-11-25/basic/authorization) — OAuth 2.1 flow, PKCE, RFC 9728 protected-resource metadata, RFC 8707 resource indicators, Client ID Metadata Documents, and step-up authorization.
+- [MCP Streamable HTTP transport — 2025-11-25](https://modelcontextprotocol.io/specification/2025-11-25/basic/transports#streamable-http) — Atlas mounts the FastMCP Streamable HTTP transport at `/mcp`.
+- [MCP security best practices](https://modelcontextprotocol.io/specification/2025-11-25/basic/security_best_practices) — Token audience validation, token passthrough prohibitions, confused-deputy mitigations.
+- [MCP Registry](/mcp/registry) — How Atlas lists itself and how clients discover it.
+- [Client ID Metadata Documents](/mcp/client-id-metadata) — Atlas's CIMD shim for clients with no prior relationship.
+- [Authentication reference](/api-reference/authentication) — Token lifecycle, refresh rotation, and the discovery URL catalog.

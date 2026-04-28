@@ -1,0 +1,109 @@
+---
+title: "Client ID Metadata Documents"
+description: "Onboard a new MCP client to Atlas without prior registration using OAuth Client ID Metadata Documents."
+---
+
+import McpServerUrl from '/snippets/mcp-server-url.mdx';
+
+# Connect a new client without prior registration
+
+Atlas implements [OAuth Client ID Metadata Documents](https://datatracker.ietf.org/doc/html/draft-ietf-oauth-client-id-metadata-document-00) (CIMD) so an MCP client developer can identify their client to Atlas with nothing more than an HTTPS URL — no admin step, no shared client secret, no dynamic-registration roundtrip.
+
+CIMD is the recommended onboarding path for **public, browser-driven MCP clients** that have no prior relationship with Atlas. If your client is operator-installed and you control both ends, [pre-registration](https://www.ietf.org/archive/id/draft-ietf-oauth-v2-1-13.html#name-client-types) is still the right answer.
+
+## Prerequisites
+
+- A public HTTPS URL you control. The URL serves as both your `client_id` *and* the location of the metadata document.
+- A redirect URI. HTTPS or `http://localhost` (loopback) only.
+- PKCE support in your client (S256). Atlas rejects clients that can't do PKCE.
+
+## Atlas's CIMD support
+
+Atlas advertises CIMD support in its OAuth 2.0 authorization-server metadata:
+
+```
+GET https://atlas.rebuildingus.org/.well-known/oauth-authorization-server
+```
+
+```json
+{
+  "issuer": "https://atlas.rebuildingus.org/api/auth",
+  "client_id_metadata_document_supported": true,
+  "code_challenge_methods_supported": ["S256"],
+  ...
+}
+```
+
+When Atlas sees a URL-shaped `client_id` at `/api/auth/oauth2/authorize`, `/api/auth/oauth2/par`, or `/api/auth/oauth2/token`, it fetches the document, validates it, and materializes a synthetic OAuth client row keyed off the URL. Subsequent requests reuse that row until the document changes.
+
+## The metadata document
+
+Host a JSON file at the URL you'll use as your `client_id`. The minimum required fields:
+
+```json
+{
+  "client_id": "https://app.example.com/oauth/client.json",
+  "client_name": "Example MCP Client",
+  "redirect_uris": [
+    "http://127.0.0.1:8765/callback",
+    "https://app.example.com/callback"
+  ],
+  "grant_types": ["authorization_code"],
+  "response_types": ["code"],
+  "token_endpoint_auth_method": "none"
+}
+```
+
+Optional fields surface on Atlas's consent page so users can verify the client before approving:
+
+```json
+{
+  "client_uri": "https://app.example.com",
+  "logo_uri": "https://app.example.com/logo.png",
+  "policy_uri": "https://app.example.com/privacy",
+  "tos_uri": "https://app.example.com/terms"
+}
+```
+
+### Validation rules
+
+Atlas rejects documents that violate any of these constraints:
+
+- The `client_id` field **must** equal the document URL exactly. A mismatch means the server is impersonating a client that lives elsewhere.
+- The URL **must** use the `https` scheme and have a non-empty path. `https://example.com` and `http://example.com/x` are both rejected.
+- `redirect_uris` **must** contain at least one entry. Each entry is HTTPS or `http://localhost` / `http://127.0.0.1` (loopback). Other `http://` schemes are rejected to prevent silent token exfiltration.
+- `token_endpoint_auth_method`, when present, **must** be `"none"`. CIMD identifies public clients; PKCE provides authentication.
+- The document **must** be valid JSON, with all required fields populated as strings.
+- The document body **must not** exceed 10 KiB.
+
+The fetch itself runs over HTTPS only, with redirect following disabled, a 5-second timeout, and a baseline guard that blocks private/loopback hostnames in the document URL itself (operators can tighten this further with `ATLAS_OAUTH_CIMD_DOMAIN_ALLOWLIST`).
+
+## Trust policy
+
+By default Atlas accepts any HTTPS `client_id` that satisfies the validation rules. This matches the [open-server posture](https://datatracker.ietf.org/doc/html/draft-ietf-oauth-client-id-metadata-document-00#section-6.3) the draft describes for public registries.
+
+Operators who want a stricter policy can set the `ATLAS_OAUTH_CIMD_DOMAIN_ALLOWLIST` env var to a comma-separated list of host suffixes. With an allowlist set, only clients whose document URL host (or subdomain thereof) matches one of the suffixes will be accepted; everything else gets `invalid_client`.
+
+## End-to-end flow
+
+```
+1. Client → /oauth2/authorize?client_id=https://app.example.com/oauth/client.json&redirect_uri=…
+2. Atlas detects URL-shaped client_id → fetches https://app.example.com/oauth/client.json
+3. Atlas validates the document → upserts synthetic oauthClient row
+4. Atlas continues the standard OAuth flow → user signs in and consents
+5. Token endpoint exchange → access token issued
+6. Subsequent /oauth2/authorize calls re-fetch the document so changes propagate
+```
+
+## When CIMD is not the right fit
+
+- **You can pre-register.** Hard-coded credentials are simpler when you and Atlas have an existing relationship.
+- **Your client must be confidential.** CIMD is public-only; if you need a client secret for some reason, use [Dynamic Client Registration](https://atlas.rebuildingus.org/api/auth/oauth2/register) instead.
+- **You need short-lived clients.** CIMD documents are stable URLs; if you want per-session clients, DCR is a better fit.
+
+## See also
+
+- [draft-ietf-oauth-client-id-metadata-document-00](https://datatracker.ietf.org/doc/html/draft-ietf-oauth-client-id-metadata-document-00) — The CIMD draft Atlas implements.
+- [MCP authorization spec — Client ID Metadata Documents](https://modelcontextprotocol.io/specification/2025-11-25/basic/authorization#client-id-metadata-documents) — How MCP defines the flow.
+- [Authentication reference](/api-reference/authentication) — Atlas's full OAuth surface.
+- [Other MCP clients](/mcp/other-clients) — Generic Streamable HTTP + OAuth setup.

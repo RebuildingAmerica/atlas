@@ -1,0 +1,112 @@
+---
+title: "Troubleshooting"
+description: "Decode the 401s, 403s, and silent failures that come up while connecting an MCP client to Atlas."
+---
+
+# Troubleshooting Atlas MCP connections
+
+Most MCP clients hide the underlying HTTP transactions, so when something fails the surface is usually a vague "tool not available" or "authentication required". This page maps the most common failure signals to their root cause and the next step.
+
+## Use the MCP Inspector first
+
+When you can't tell what your client is doing, run the [MCP Inspector](https://github.com/modelcontextprotocol/inspector) against Atlas:
+
+```bash
+npx @modelcontextprotocol/inspector https://atlas.rebuildingus.org/mcp
+```
+
+The Inspector walks the OAuth discovery and consent steps in the open. You'll see the exact `WWW-Authenticate` headers, the protected-resource metadata, and the consent screen — including any workspace picker or upgrade prompt.
+
+## 401 Unauthorized
+
+You haven't authenticated yet, or your access token isn't valid for the Atlas MCP server.
+
+```http
+HTTP/1.1 401 Unauthorized
+WWW-Authenticate: Bearer
+  resource_metadata="https://atlas.rebuildingus.org/.well-known/oauth-protected-resource",
+  scope="discovery:read"
+```
+
+**What it means.** Atlas tells you exactly where to discover the OAuth setup (`resource_metadata`) and which baseline scope to request (`scope`). MCP clients that follow [RFC 9728](https://datatracker.ietf.org/doc/html/rfc9728) handle this automatically.
+
+**What to do.** Let the client run the OAuth flow. If your client doesn't trigger a browser, check that:
+
+- Your default browser launches when the client opens an HTTPS URL.
+- The client has a registered redirect URI it can listen on (most use `http://127.0.0.1:<port>/callback`).
+- A corporate proxy isn't stripping `WWW-Authenticate` headers.
+
+If you authenticated and still see 401, your token expired or was issued for a different audience. Disconnect and reconnect to trigger a fresh authorization.
+
+## 403 with `error="insufficient_scope"`
+
+Authentication succeeded; authorization didn't.
+
+```http
+HTTP/1.1 403 Forbidden
+WWW-Authenticate: Bearer error="insufficient_scope",
+  scope="entities:write",
+  resource_metadata="…",
+  error_description="…"
+```
+
+**What it means.** Your token doesn't carry the OAuth scope the operation requires. Per the MCP authorization spec's [Scope Challenge Handling](https://modelcontextprotocol.io/specification/2025-11-25/basic/authorization#scope-challenge-handling) section, Atlas tells you exactly which scope to request next.
+
+**What to do.** Most MCP clients handle this transparently — they re-run the authorization flow with the requested scope and retry. If your client doesn't, manually disconnect and reconnect; on the consent screen, approve the missing scope.
+
+## 403 with `error="insufficient_scope"` *and* `error_uri` pointing at /pricing
+
+Same `WWW-Authenticate` header shape, but `error_uri` points at `https://atlas.rebuildingus.org/pricing` and the JSON body contains:
+
+```json
+{
+  "detail": {
+    "error": "plan_required",
+    "plan_required": "pro",
+    "upgrade_url": "https://atlas.rebuildingus.org/pricing"
+  }
+}
+```
+
+**What it means.** OAuth scope was granted, but your account doesn't carry the *capability* the operation needs. MCP access requires Atlas Pro or Atlas Team. Atlas reuses `insufficient_scope` because the spec doesn't define a billing-specific error code; the `error_uri` parameter (defined by [RFC 6749 §5.2](https://datatracker.ietf.org/doc/html/rfc6749#section-5.2)) carries the upgrade target.
+
+**What to do.** Open the URL in `error_uri` (`/pricing`) and pick Pro or Team. After the plan is active, reconnect the MCP server in your client. No need to re-register the client itself; the existing OAuth grant continues to work once the capability is provisioned.
+
+## 403 "Organization context required"
+
+You see this when an MCP tool that needs a workspace can't find one in your token.
+
+**What it means.** The token's `org_id` claim is missing. With Atlas's default-binding behavior, this should only happen if:
+
+- You belong to two or more workspaces *and* skipped the workspace picker on the consent screen.
+- Your single-workspace fallback failed (e.g., the auto-created workspace was later deleted).
+
+**What to do.** Disconnect and reconnect the MCP server. On the consent screen, pick the workspace you want the client to operate in. If you see no picker and the failure persists, you probably have zero active memberships — go to [atlas.rebuildingus.org/organization](https://atlas.rebuildingus.org/organization) and create or accept one.
+
+## "I never received a sign-in link"
+
+You typed your email into Atlas's sign-in page during the OAuth flow, no error appeared, but no magic link arrived.
+
+**What it means.** Atlas runs an operator allowlist while we're inviting users from the bootstrap list. Unapproved emails get a silent no-op (we don't reveal who's on the allowlist over the open web). When the sign-in page is reached from an OAuth flow it surfaces a hint pointing here so you can act on it.
+
+**What to do.** Request access at [atlas.rebuildingus.org](https://atlas.rebuildingus.org) — once your email is approved, retry the OAuth flow.
+
+## "I authenticated but tools don't appear"
+
+Authentication succeeded and tool calls don't return errors, but the client UI shows no Atlas tools.
+
+**What it means.** Most MCP clients cache the tool list and only refetch on a restart. After a successful authorization the client may not have picked up the newly available tools yet.
+
+**What to do.** Restart the client. If tools still don't appear, run the Inspector against Atlas to confirm `tools/list` returns the expected 10 tools.
+
+## OAuth client rotation
+
+If you're using [Client ID Metadata Documents](/mcp/client-id-metadata), updating your client metadata is as simple as editing the JSON document at the URL Atlas fetched. The next `/oauth2/authorize` call refetches the document and updates Atlas's synthetic `oauthClient` row in place.
+
+If you registered via Dynamic Client Registration, re-running registration with the same client_id shape returns a new client_secret. Update the secret in your client and discard the old one.
+
+## Still stuck?
+
+- See the [authentication reference](/api-reference/authentication) for the full discovery-URL catalog and token semantics.
+- Check the [MCP Registry](/mcp/registry) listing — connect via the registry-aware path if your client supports it.
+- The [MCP authorization spec, 2025-11-25](https://modelcontextprotocol.io/specification/2025-11-25/basic/authorization) is authoritative on every error code and challenge format Atlas emits.
