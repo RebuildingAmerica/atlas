@@ -2,15 +2,7 @@ import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import type { AtlasProduct } from "../../access/capabilities";
 import { createPortalSession } from "../billing.functions";
-
-/**
- * Human-readable labels for Atlas product identifiers.
- */
-const PRODUCT_LABELS: Record<AtlasProduct, string> = {
-  atlas_pro: "Atlas Pro",
-  atlas_team: "Atlas Team",
-  atlas_research_pass: "Research Pass",
-};
+import { PRODUCT_LABELS } from "../product-labels";
 
 interface WorkspaceBillingSectionProps {
   activeProducts: AtlasProduct[];

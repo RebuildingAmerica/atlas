@@ -3,16 +3,11 @@ import { Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { atlasSessionQueryKey, useAtlasSession } from "@/domains/access/client/use-atlas-session";
 import type { AtlasProduct } from "@/domains/access/capabilities";
+import { PRODUCT_LABELS } from "@/domains/billing/product-labels";
 import { Button } from "@/platform/ui/button";
 
 const POLL_INTERVAL_MS = 1500;
 const TIMEOUT_MS = 30_000;
-
-const PRODUCT_LABELS: Record<AtlasProduct, string> = {
-  atlas_pro: "Atlas Pro",
-  atlas_team: "Atlas Team",
-  atlas_research_pass: "Atlas Research Pass",
-};
 
 const PRODUCT_FEATURES: Record<AtlasProduct, string[]> = {
   atlas_pro: [

@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { z } from "zod";
 import { useAtlasSession } from "@/domains/access/client/use-atlas-session";
 import type { AtlasProduct } from "@/domains/access/capabilities";
+import { PRODUCT_LABELS } from "@/domains/billing/product-labels";
 import { PageLayout } from "@/platform/layout/page-layout";
 import { Button } from "@/platform/ui/button";
 
@@ -200,14 +201,13 @@ function readCheckoutErrorMessage(error: unknown): string {
   return "Atlas could not start checkout. Try again.";
 }
 
-const PRODUCT_LABELS: Record<AtlasProduct, string> = {
-  atlas_pro: "Atlas Pro",
-  atlas_team: "Atlas Team",
-  atlas_research_pass: "Atlas Research Pass",
-};
-
 function checkoutKey(product: AtlasProduct, interval: CheckoutParams["interval"]): string {
   return `${product}:${interval}`;
+}
+
+async function loadStartCheckout() {
+  const mod = await import("@/domains/billing/checkout.functions");
+  return mod.startCheckout;
 }
 
 export function PricingPage({ intent, interval: intentInterval }: PricingPageProps) {
@@ -238,7 +238,7 @@ export function PricingPage({ intent, interval: intentInterval }: PricingPagePro
     setPendingCheckoutKey(checkoutKey(product, interval));
 
     try {
-      const { startCheckout } = await import("@/domains/billing/checkout.functions");
+      const startCheckout = await loadStartCheckout();
       const result = await startCheckout({ data: { product, interval } });
       window.location.assign(result.url);
     } catch (error) {
@@ -265,7 +265,7 @@ export function PricingPage({ intent, interval: intentInterval }: PricingPagePro
       await navigate({ to: "/pricing", search: {}, replace: true });
 
       try {
-        const { startCheckout } = await import("@/domains/billing/checkout.functions");
+        const startCheckout = await loadStartCheckout();
         const result = await startCheckout({
           data: { product: intent, interval: intentInterval },
         });
@@ -283,8 +283,8 @@ export function PricingPage({ intent, interval: intentInterval }: PricingPagePro
 
   const activeWorkspace = session.data?.workspace.activeOrganization ?? null;
   const isAuthed = Boolean(session.data);
-  const proInterval: CheckoutParams["interval"] = billing === "annual" ? "yearly" : "monthly";
-  const teamInterval: CheckoutParams["interval"] = billing === "annual" ? "yearly" : "monthly";
+  const subscriptionInterval: CheckoutParams["interval"] =
+    billing === "annual" ? "yearly" : "monthly";
   const researchPassInterval: CheckoutParams["interval"] = "once";
   const freeCta: PlanCardLinkCta = isAuthed
     ? { label: "Open your workspace", to: "/discovery" }
@@ -293,15 +293,14 @@ export function PricingPage({ intent, interval: intentInterval }: PricingPagePro
   // Auto-resume handoff: when the page is rendered with intent params and a
   // live session, render a deliberate "taking you to checkout" view instead
   // of the plan grid. Eliminates the brief flash of pricing cards before
-  // the redirect to Stripe fires. If the resume errors (and clears the ref),
-  // we drop back to the full page so the operator can retry.
-  const showHandoff =
+  // the redirect fires. If the resume errors (and clears the ref), we drop
+  // back to the full page so the operator can retry.
+  if (
     intent !== undefined &&
     intentInterval !== undefined &&
-    Boolean(session.data) &&
-    checkoutError === null;
-
-  if (showHandoff && intent && intentInterval) {
+    session.data &&
+    checkoutError === null
+  ) {
     const productLabel = PRODUCT_LABELS[intent];
     return (
       <PageLayout className="py-10 lg:py-16">
@@ -433,9 +432,9 @@ export function PricingPage({ intent, interval: intentInterval }: PricingPagePro
               billing={billing}
               ctaText="Get Atlas Pro"
               ctaProduct="atlas_pro"
-              ctaInterval={proInterval}
+              ctaInterval={subscriptionInterval}
               onCheckout={handleCheckout}
-              isPending={pendingCheckoutKey === checkoutKey("atlas_pro", proInterval)}
+              isPending={pendingCheckoutKey === checkoutKey("atlas_pro", subscriptionInterval)}
               discountNote="Qualified journalists, nonprofits, and civic tech workers get 40–50% off"
             />
 
@@ -472,9 +471,9 @@ export function PricingPage({ intent, interval: intentInterval }: PricingPagePro
               billing={billing}
               ctaText="Get Atlas Team"
               ctaProduct="atlas_team"
-              ctaInterval={teamInterval}
+              ctaInterval={subscriptionInterval}
               onCheckout={handleCheckout}
-              isPending={pendingCheckoutKey === checkoutKey("atlas_team", teamInterval)}
+              isPending={pendingCheckoutKey === checkoutKey("atlas_team", subscriptionInterval)}
               discountNote="Qualified nonprofits and newsrooms get 40% off"
               isTeam
             />

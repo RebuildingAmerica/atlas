@@ -1,12 +1,13 @@
 import { Link } from "@tanstack/react-router";
 import { Info, KeyRound, Mail } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { z } from "zod";
 import { getAuthClient } from "@/domains/access/client/auth-client";
 import { setLastUsedAtlasLoginMethod } from "@/domains/access/client/last-login-method";
 import { waitForAtlasAuthenticatedSession } from "@/domains/access/client/session-confirmation";
 import { getAuthConfig } from "@/domains/access/config";
 import type { AtlasProduct } from "@/domains/access/capabilities";
+import { PRODUCT_LABELS } from "@/domains/billing/product-labels";
 import { requestMagicLink } from "@/domains/access/session.functions";
 import { resolveWorkspaceSSOSignIn } from "@/domains/access/sso.functions";
 import {
@@ -23,12 +24,6 @@ const ATLAS_PRODUCTS: readonly AtlasProduct[] = [
   "atlas_team",
   "atlas_research_pass",
 ] as const;
-
-const PRODUCT_INTENT_LABELS: Record<AtlasProduct, string> = {
-  atlas_pro: "Atlas Pro",
-  atlas_team: "Atlas Team",
-  atlas_research_pass: "Atlas Research Pass",
-};
 
 /**
  * Parses a redirect path to detect a /pricing checkout intent.
@@ -108,8 +103,8 @@ export function SignInPage({
   const isInvitationFlow = Boolean(invitationId);
   const callbackURL = buildSignInCallbackURL(invitationId, redirectTo);
   const errorCallbackURL = buildSignInErrorCallbackURL(invitationId, redirectTo);
-  const pricingIntent = parsePricingIntent(redirectTo);
-  const intentLabel = pricingIntent ? PRODUCT_INTENT_LABELS[pricingIntent] : null;
+  const pricingIntent = useMemo(() => parsePricingIntent(redirectTo), [redirectTo]);
+  const intentLabel = pricingIntent ? PRODUCT_LABELS[pricingIntent] : null;
 
   useEffect(() => {
     if (
