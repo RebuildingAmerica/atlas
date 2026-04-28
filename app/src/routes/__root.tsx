@@ -1,4 +1,3 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createRootRoute, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/react";
@@ -6,30 +5,11 @@ import { NotFoundPage } from "@/platform/pages/not-found-page";
 import { ErrorPage } from "@/platform/pages/error-page";
 import "@/styles/app.css";
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      gcTime: 1000 * 60 * 30,
-      refetchOnWindowFocus: false,
-      retry: 1,
-      staleTime: 1000 * 60 * 5,
-    },
-  },
-});
-
 export const Route = createRootRoute({
-  component: RootLayout,
+  component: RootDocument,
   notFoundComponent: NotFoundPage,
   errorComponent: ErrorPage,
 });
-
-function RootLayout() {
-  return (
-    <QueryClientProvider client={queryClient}>
-      <RootDocument />
-    </QueryClientProvider>
-  );
-}
 
 function RootDocument() {
   return (
