@@ -34,6 +34,11 @@ const e2eInternalSecret = randomBytes(32).toString("hex");
 const baseWebServerEnv = { ...process.env };
 delete baseWebServerEnv.NO_COLOR;
 delete baseWebServerEnv.FORCE_COLOR;
+// In CI, skip the portless DNS shim — the mail capture server only needs to
+// listen on localhost, and portless requires a writable /etc/hosts.
+const mailServerCommand = process.env.CI
+  ? "pnpm --filter @rebuildingamerica/atlas-app e2e:mail:ci"
+  : "pnpm --filter @rebuildingamerica/atlas-app e2e:mail";
 const commonAuthEnv = {
   ATLAS_AUTH_ALLOWED_EMAILS: "operator@atlas.test",
   ATLAS_AUTH_API_KEY_INTROSPECTION_URL: authIntrospectionUrl,
@@ -47,8 +52,8 @@ const commonAuthEnv = {
 };
 
 export default defineConfig({
-  testDir: "./tests/e2e",
-  globalSetup: "./tests/e2e/helpers/global-setup.ts",
+  testDir: "./tests/acceptance",
+  globalSetup: "./tests/acceptance/helpers/global-setup.ts",
   timeout: 60_000,
   fullyParallel: false,
   retries: 0,
@@ -59,7 +64,7 @@ export default defineConfig({
   },
   webServer: [
     {
-      command: "pnpm --filter @rebuildingamerica/atlas-app e2e:mail",
+      command: mailServerCommand,
       cwd: repoRoot,
       env: {
         ...baseWebServerEnv,

@@ -3,13 +3,15 @@
 FROM node:24-alpine AS builder
 
 ENV PNPM_HOME=/pnpm \
-    PATH=/pnpm:$PATH
+    PATH=/pnpm:$PATH \
+    NITRO_PRESET=node-server
 
 RUN corepack enable
 
 WORKDIR /repo
 
-COPY pnpm-lock.yaml pnpm-workspace.yaml package.json .npmrc* ./
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
+COPY .npmrc ./
 COPY app/package.json app/package.json
 COPY packages packages
 
@@ -24,11 +26,11 @@ FROM node:24-alpine AS runner
 
 WORKDIR /app
 
-COPY --from=builder /repo/app/dist ./dist
-COPY --from=builder /repo/app/server.mjs ./server.mjs
-COPY --from=builder /repo/app/node_modules ./node_modules
-COPY --from=builder /repo/app/package.json ./package.json
+ENV NODE_ENV=production \
+    PORT=3000
+
+COPY --from=builder /repo/app/.output ./.output
 
 EXPOSE 3000
 
-CMD ["node", "server.mjs"]
+CMD ["node", ".output/server/index.mjs"]
