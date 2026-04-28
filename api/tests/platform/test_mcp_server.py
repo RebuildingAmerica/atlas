@@ -103,6 +103,10 @@ async def test_auth_middleware_returns_401_with_resource_metadata_challenge() ->
         settings.auth_jwt_issuer = "https://atlas.example.com/api/auth"
         settings.auth_jwt_jwks_url = "https://atlas.example.com/api/auth/jwks"
         settings.auth_jwt_resource_url = "https://atlas.example.com"
+        settings.auth_resource_metadata_url = (
+            "https://atlas.example.com/.well-known/oauth-protected-resource"
+        )
+        settings.auth_jwt_default_scope = []
         get_settings_mock.return_value = settings
         verify_mock.return_value = None
 
