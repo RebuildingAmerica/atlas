@@ -11,6 +11,7 @@ import { magicLink } from "better-auth/plugins/magic-link";
 import { organization } from "better-auth/plugins";
 import { oauthProvider } from "@better-auth/oauth-provider";
 import { buildAtlasAccessTokenClaims } from "./oauth-claims";
+import { resolvePrimaryWorkspaceId } from "./workspace-lookup";
 import { tanstackStartCookies } from "better-auth/tanstack-start";
 import { apiKey } from "@better-auth/api-key";
 import { passkey } from "@better-auth/passkey";
@@ -215,6 +216,7 @@ function createAtlasAuth(runtime: AuthRuntimeConfig) {
         customAccessTokenClaims: (params) =>
           buildAtlasAccessTokenClaims(params, {
             defaultAudience: runtime.apiAudience,
+            resolvePrimaryWorkspaceId,
           }),
       }),
       apiKey({

@@ -10,7 +10,11 @@ interface MagicLinkPluginOptions {
 }
 
 interface OAuthProviderOptions {
-  customAccessTokenClaims?(input: { scopes: string[]; resource?: string }): Record<string, unknown>;
+  customAccessTokenClaims?(input: {
+    scopes: string[];
+    resource?: string;
+    user?: { id: string } | null;
+  }): Record<string, unknown> | Promise<Record<string, unknown>>;
   validAudiences?: string[];
 }
 
@@ -311,11 +315,11 @@ describe("auth runtime wiring", () => {
     }
 
     expect(typedOauthProviderOptions.validAudiences).toEqual(["atlas-api"]);
-    expect(
+    await expect(
       typedOauthProviderOptions.customAccessTokenClaims({
         scopes: ["openid", "discovery:write", "entities:write", "admin:all"],
       }),
-    ).toEqual({
+    ).resolves.toEqual({
       // RFC 8707 audience binding falls back to apiAudience when the OAuth
       // client does not pass an explicit `resource` parameter.
       aud: "atlas-api",
@@ -353,7 +357,7 @@ describe("auth runtime wiring", () => {
       throw new TypeError("Expected OAuth provider access-token claim mapping.");
     }
 
-    const claims = typedOauthProviderOptions.customAccessTokenClaims({
+    const claims = await typedOauthProviderOptions.customAccessTokenClaims({
       scopes: ["openid", "discovery:read"],
       resource: "https://atlas.test/mcp",
     });

@@ -33,6 +33,12 @@ export interface BuildAtlasClaimsOptions {
    * server's audience-validation logic.
    */
   defaultAudience: string | null;
+  /**
+   * Resolves the user's primary workspace id when the OAuth client did not
+   * request an `org:{id}` scope.  Tests inject a deterministic stub here so
+   * we don't need a Better Auth database to exercise the claim shape.
+   */
+  resolvePrimaryWorkspaceId?: (userId: string) => Promise<string | null>;
 }
 
 /**
@@ -75,17 +81,25 @@ function extractOrgIdFromScopes(scopes: readonly string[]): string | null {
  * When the OAuth client requests the `org:{org_id}` scope during
  * authorization, the resolved org_id is included in the access token so the
  * API backend can enforce organization context without a separate lookup.
+ * When no `org:` scope is present and the user belongs to exactly one
+ * workspace, Atlas falls back to that workspace id so MCP clients (which
+ * have no way to discover the right workspace at registration time) don't
+ * dead-end at `require_org_actor`'s 403.
  *
  * @param params - Better Auth's custom-claim payload.
- * @param options - Atlas runtime hooks (e.g., default audience fallback).
+ * @param options - Atlas runtime hooks (default audience, workspace lookup).
  */
-export function buildAtlasAccessTokenClaims(
+export async function buildAtlasAccessTokenClaims(
   params: OAuthAccessTokenClaimsParams,
   options: BuildAtlasClaimsOptions,
-): Record<string, unknown> {
-  const { scopes, resource } = params;
+): Promise<Record<string, unknown>> {
+  const { scopes, resource, user } = params;
   const resourceScopes = collectAtlasResourceScopes(scopes);
-  const orgId = extractOrgIdFromScopes(scopes);
+  let orgId = extractOrgIdFromScopes(scopes);
+
+  if (!orgId && user?.id && options.resolvePrimaryWorkspaceId) {
+    orgId = await options.resolvePrimaryWorkspaceId(user.id);
+  }
 
   const claims: Record<string, unknown> = {
     permissions: scopesToPermissions(resourceScopes),

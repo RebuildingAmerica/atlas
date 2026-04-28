@@ -2,6 +2,11 @@ import { useEffect, useState } from "react";
 import { z } from "zod";
 import { Button } from "@/platform/ui/button";
 import { getAuthClient } from "@/domains/access/client/auth-client";
+import { getAtlasSession } from "@/domains/access/session.functions";
+import type {
+  AtlasSessionPayload,
+  AtlasWorkspaceMembership,
+} from "@/domains/access/organization-contracts";
 
 /**
  * Search params accepted by the OAuth consent route.
@@ -34,6 +39,33 @@ function safeRedirectHostname(redirectUri: string | undefined): string | null {
  */
 function isUrlShapedClientId(clientId: string): boolean {
   return clientId.startsWith("https://");
+}
+
+const ORG_SCOPE_PREFIX = "org:";
+
+/**
+ * Returns true when the requested scope already pins an organization with
+ * `org:{id}`.  When this is the case the consent UI hides the picker and
+ * defers to the explicit scope so the chosen workspace is what the
+ * customAccessTokenClaims callback ultimately binds.
+ */
+function scopeAlreadyPinsOrg(scope: string | undefined): boolean {
+  if (!scope) return false;
+  return scope.split(/\s+/).some((token) => token.startsWith(ORG_SCOPE_PREFIX));
+}
+
+/**
+ * Composes the final scope string Atlas sends to Better Auth's consent
+ * endpoint.  When the requesting client did not bind a workspace
+ * explicitly and the operator picked one in the picker, append
+ * `org:{id}` so the JWT's `org_id` claim flows from the chosen workspace.
+ */
+function withWorkspaceScope(scope: string | undefined, workspaceId: string | null): string {
+  const base = scope?.trim() ?? "";
+  if (!workspaceId || scopeAlreadyPinsOrg(base)) {
+    return base;
+  }
+  return base ? `${base} ${ORG_SCOPE_PREFIX}${workspaceId}` : `${ORG_SCOPE_PREFIX}${workspaceId}`;
 }
 
 const SCOPE_LABELS: Record<string, { title: string; description: string }> = {
@@ -79,7 +111,11 @@ export function OAuthConsentPage({
   const [isDenying, setIsDenying] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  const [memberships, setMemberships] = useState<AtlasWorkspaceMembership[]>([]);
+  const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string | null>(null);
+
   const scopes = scope ? scope.split(" ").filter(Boolean) : [];
+  const workspaceScopePinned = scopeAlreadyPinsOrg(scope);
 
   useEffect(() => {
     let active = true;
@@ -116,14 +152,47 @@ export function OAuthConsentPage({
     };
   }, [clientId]);
 
+  useEffect(() => {
+    let active = true;
+
+    async function loadWorkspaceMemberships() {
+      try {
+        const session: AtlasSessionPayload | null = await getAtlasSession();
+        if (!active) return;
+
+        const list = session?.workspace.memberships ?? [];
+        setMemberships(list);
+        if (list.length === 1) {
+          setSelectedWorkspaceId(list[0]?.id ?? null);
+        } else if (list.length > 1) {
+          const activeId = session?.workspace.activeOrganization?.id;
+          setSelectedWorkspaceId(activeId ?? list[0]?.id ?? null);
+        }
+      } catch {
+        // Workspace lookup is best-effort; fall back to the API-side
+        // resolvePrimaryWorkspaceId default if the session call fails.
+      }
+    }
+
+    void loadWorkspaceMemberships();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
   const handleAllow = async () => {
     setErrorMessage(null);
     setIsAllowing(true);
 
     try {
+      const finalScope = workspaceScopePinned
+        ? scope
+        : withWorkspaceScope(scope, selectedWorkspaceId);
+
       const result = await getAuthClient().oauth2.consent({
         accept: true,
-        scope,
+        scope: finalScope,
       });
       if (result.error) {
         throw new Error(result.error.message || "Could not grant access.");
@@ -216,6 +285,48 @@ export function OAuthConsentPage({
                 </>
               ) : null}
             </p>
+
+            {!workspaceScopePinned && memberships.length >= 2 ? (
+              <div className="space-y-2">
+                <p className="type-label-medium text-ink-muted">Workspace this app will see:</p>
+                <ul className="space-y-2">
+                  {memberships.map((membership) => (
+                    <li
+                      key={membership.id}
+                      className="border-border bg-surface-container-lowest flex items-start gap-3 rounded-[1.4rem] border px-4 py-3"
+                    >
+                      <input
+                        type="radio"
+                        name="workspace"
+                        id={`workspace-${membership.id}`}
+                        value={membership.id}
+                        checked={selectedWorkspaceId === membership.id}
+                        onChange={() => {
+                          setSelectedWorkspaceId(membership.id);
+                        }}
+                        className="mt-1"
+                      />
+                      <label
+                        htmlFor={`workspace-${membership.id}`}
+                        className="flex-1 cursor-pointer"
+                      >
+                        <p className="type-title-small text-ink-strong">{membership.name}</p>
+                        <p className="type-body-small text-ink-soft mt-0.5">
+                          Role: {membership.role}
+                        </p>
+                      </label>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+
+            {!workspaceScopePinned && memberships.length === 1 && memberships[0] ? (
+              <p className="type-body-small text-ink-soft">
+                Tokens will be scoped to your workspace,{" "}
+                <span className="text-ink-strong font-medium">{memberships[0].name}</span>.
+              </p>
+            ) : null}
 
             {scopes.length > 0 ? (
               <div className="space-y-2">
