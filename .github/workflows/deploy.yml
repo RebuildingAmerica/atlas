@@ -19,6 +19,7 @@ jobs:
   deploy:
     needs: ci
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       contents: read
       id-token: write
@@ -43,48 +44,22 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build and push atlas-api
-        id: build-api
-        uses: docker/build-push-action@v6
+      - name: Build, push, and attest atlas-api
+        uses: ./.github/actions/build-attest-push
         with:
+          image: ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/atlas-images/atlas-api
+          tag: ${{ github.sha }}
           context: .
-          file: api/Dockerfile
-          push: true
-          tags: |
-            ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/atlas-images/atlas-api:${{ github.sha }}
-            ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/atlas-images/atlas-api:latest
-          cache-from: type=gha,scope=atlas-api
-          cache-to: type=gha,mode=max,scope=atlas-api
-          provenance: mode=max
-          sbom: true
+          dockerfile: api/Dockerfile
+          cache-scope: atlas-api
 
-      - name: Attest atlas-api build provenance
-        uses: actions/attest-build-provenance@v2
+      - name: Build, push, and attest atlas-web
+        uses: ./.github/actions/build-attest-push
         with:
-          subject-name: ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/atlas-images/atlas-api
-          subject-digest: ${{ steps.build-api.outputs.digest }}
-          push-to-registry: true
-
-      - name: Build and push atlas-web
-        id: build-web
-        uses: docker/build-push-action@v6
-        with:
+          image: ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/atlas-images/atlas-web
+          tag: ${{ github.sha }}
           context: ./app
-          push: true
-          tags: |
-            ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/atlas-images/atlas-web:${{ github.sha }}
-            ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/atlas-images/atlas-web:latest
-          cache-from: type=gha,scope=atlas-web
-          cache-to: type=gha,mode=max,scope=atlas-web
-          provenance: mode=max
-          sbom: true
-
-      - name: Attest atlas-web build provenance
-        uses: actions/attest-build-provenance@v2
-        with:
-          subject-name: ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/atlas-images/atlas-web
-          subject-digest: ${{ steps.build-web.outputs.digest }}
-          push-to-registry: true
+          cache-scope: atlas-web
 
       - name: Deploy atlas-api
         uses: google-github-actions/deploy-cloudrun@v2
@@ -170,7 +145,6 @@ jobs:
               --attempt-deadline=900s \
               --quiet
           fi
-        continue-on-error: true
 
       - name: Check synthetics enablement
         id: synthetics-check

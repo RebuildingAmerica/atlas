@@ -17,39 +17,22 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  verify:
+  quality:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "24"
-          cache: "pnpm"
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - uses: astral-sh/setup-uv@v7
-        with:
-          enable-cache: true
-          cache-dependency-glob: "api/uv.lock"
-      - name: Install workspace dependencies
-        run: pnpm install --frozen-lockfile
-      - name: Sync API dependencies
-        run: cd api && uv sync --frozen --extra dev
-      - name: Verify production graph
-        run: pnpm run verify
+      - uses: ./.github/actions/setup-toolchain
+      - name: Typecheck, lint, and test
+        run: pnpm run quality
 
   compose-validate:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: ./.github/actions/setup-toolchain
         with:
-          node-version: "24"
-          cache: "pnpm"
-      - name: Install workspace dependencies
-        run: pnpm install --frozen-lockfile
+          python: "false"
       - name: Validate Compose configurations
         run: pnpm run compose:validate

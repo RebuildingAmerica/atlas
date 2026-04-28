@@ -1,0 +1,57 @@
+name: Build, push, and attest container image
+description: Build a Docker image with buildx, push to a registry, and produce a signed SLSA build provenance attestation against the resulting digest.
+
+inputs:
+  image:
+    description: Fully qualified registry image name (without tag).
+    required: true
+  tag:
+    description: Tag to apply (typically the commit SHA).
+    required: true
+  context:
+    description: Docker build context.
+    required: false
+    default: "."
+  dockerfile:
+    description: Path to the Dockerfile, relative to the build context root of the repo.
+    required: false
+    default: ""
+  cache-scope:
+    description: GHA cache scope; defaults to the image basename.
+    required: false
+    default: ""
+
+outputs:
+  digest:
+    description: The pushed image digest.
+    value: ${{ steps.build.outputs.digest }}
+
+runs:
+  using: composite
+  steps:
+    - id: scope
+      shell: bash
+      run: |
+        if [ -n "${{ inputs.cache-scope }}" ]; then
+          echo "name=${{ inputs.cache-scope }}" >> "$GITHUB_OUTPUT"
+        else
+          echo "name=$(basename '${{ inputs.image }}')" >> "$GITHUB_OUTPUT"
+        fi
+
+    - id: build
+      uses: docker/build-push-action@v6
+      with:
+        context: ${{ inputs.context }}
+        file: ${{ inputs.dockerfile }}
+        push: true
+        tags: ${{ inputs.image }}:${{ inputs.tag }}
+        cache-from: type=gha,scope=${{ steps.scope.outputs.name }}
+        cache-to: type=gha,mode=max,scope=${{ steps.scope.outputs.name }}
+        provenance: mode=max
+        sbom: true
+
+    - uses: actions/attest-build-provenance@v2
+      with:
+        subject-name: ${{ inputs.image }}
+        subject-digest: ${{ steps.build.outputs.digest }}
+        push-to-registry: true

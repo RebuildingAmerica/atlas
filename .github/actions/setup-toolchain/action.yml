@@ -1,0 +1,41 @@
+name: Setup Atlas toolchain
+description: Install pnpm, Node, optional Python+uv, and workspace dependencies for Atlas CI jobs.
+
+inputs:
+  python:
+    description: Whether to install Python and uv.
+    required: false
+    default: "true"
+  install-deps:
+    description: Whether to run `pnpm install --frozen-lockfile` after toolchain setup.
+    required: false
+    default: "true"
+
+runs:
+  using: composite
+  steps:
+    - uses: pnpm/action-setup@v4
+
+    - uses: actions/setup-node@v4
+      with:
+        node-version: "24"
+        cache: "pnpm"
+
+    - if: inputs.python == 'true'
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.12"
+
+    - if: inputs.python == 'true'
+      uses: astral-sh/setup-uv@v7
+      with:
+        enable-cache: true
+        cache-dependency-glob: "api/uv.lock"
+
+    - if: inputs.install-deps == 'true'
+      shell: bash
+      run: pnpm install --frozen-lockfile
+
+    - if: inputs.install-deps == 'true' && inputs.python == 'true'
+      shell: bash
+      run: cd api && uv sync --frozen --extra dev
