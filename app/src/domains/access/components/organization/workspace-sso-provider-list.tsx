@@ -3,6 +3,28 @@ import { Button } from "@/platform/ui/button";
 import { WorkspaceSSOCopyField } from "./workspace-sso-copy-field";
 
 /**
+ * Formats an ISO timestamp returned by Better Auth's certificate parser into a
+ * stable, human-friendly expiry label that does not depend on the user's
+ * locale.
+ *
+ * @param isoTimestamp - The certificate `notAfter` value from Better Auth.
+ */
+function formatCertificateExpiry(isoTimestamp: string): string {
+  const expiry = new Date(isoTimestamp);
+  if (Number.isNaN(expiry.getTime())) {
+    return isoTimestamp;
+  }
+  const now = Date.now();
+  const millisecondsPerDay = 1000 * 60 * 60 * 24;
+  const daysUntilExpiry = Math.round((expiry.getTime() - now) / millisecondsPerDay);
+  const datePart = expiry.toISOString().slice(0, 10);
+  if (daysUntilExpiry < 0) {
+    return `${datePart} (expired ${Math.abs(daysUntilExpiry)}d ago)`;
+  }
+  return `${datePart} (in ${daysUntilExpiry}d)`;
+}
+
+/**
  * Props for the configured SSO provider list.
  */
 interface WorkspaceSSOProviderListProps {
@@ -74,6 +96,20 @@ export function WorkspaceSSOProviderList({
                     <span className="type-label-large border-outline-variant text-outline rounded-full border px-3 py-1">
                       {provider.domainVerified ? "Domain verified" : "Verification pending"}
                     </span>
+                    {provider.providerType === "saml" ? (
+                      <span
+                        className="type-label-large border-outline-variant text-outline rounded-full border px-3 py-1"
+                        title={
+                          provider.saml?.authnRequestsSigned
+                            ? "Atlas signs outgoing AuthnRequests with the configured SP private key."
+                            : "Atlas does not sign outgoing AuthnRequests because no SP private key is configured."
+                        }
+                      >
+                        {provider.saml?.authnRequestsSigned
+                          ? "Signed AuthnRequests"
+                          : "Unsigned AuthnRequests"}
+                      </span>
+                    ) : null}
                   </div>
                 </div>
 
@@ -85,7 +121,16 @@ export function WorkspaceSSOProviderList({
                     label="Verification host"
                     value={provider.domainVerificationHost}
                   />
-                  <WorkspaceSSOCopyField label="SP metadata URL" value={provider.spMetadataUrl} />
+                  <div className="space-y-2">
+                    <WorkspaceSSOCopyField label="SP metadata URL" value={provider.spMetadataUrl} />
+                    <a
+                      className="type-label-medium text-accent hover:underline"
+                      href={provider.spMetadataUrl}
+                      download={`${provider.providerId}-sp-metadata.xml`}
+                    >
+                      Download SP metadata XML &rarr;
+                    </a>
+                  </div>
                   {provider.providerType === "saml" ? (
                     <WorkspaceSSOCopyField
                       label="ACS URL"
@@ -113,6 +158,12 @@ export function WorkspaceSSOProviderList({
                       <WorkspaceSSOCopyField
                         label="Certificate fingerprint"
                         value={provider.saml.certificate.fingerprintSha256}
+                      />
+                    ) : null}
+                    {provider.saml?.certificate.notAfter ? (
+                      <WorkspaceSSOCopyField
+                        label="Certificate expires"
+                        value={formatCertificateExpiry(provider.saml.certificate.notAfter)}
                       />
                     ) : null}
                     {provider.saml?.certificate.errorMessage ? (
