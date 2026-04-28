@@ -142,7 +142,12 @@ if [ -n "$APP_FILES" ]; then
     fi
 
     print_info "Running eslint on staged app files..."
-    if ! (cd "$APP_DIR" && echo "$APP_RELATIVE_FILES" | xargs pnpm exec eslint --max-warnings 0 > /dev/null 2>&1); then
+    # `--no-warn-ignored` keeps the hook quiet about staged files that match
+    # the eslint ignore list (e.g. `src/routeTree.gen.ts` and other generated
+    # output).  Without it, eslint emits a "File ignored" warning that hits
+    # `--max-warnings 0` and blocks commits that include legitimate
+    # auto-generated changes.
+    if ! (cd "$APP_DIR" && echo "$APP_RELATIVE_FILES" | xargs pnpm exec eslint --max-warnings 0 --no-warn-ignored > /dev/null 2>&1); then
         print_error "App ESLint found issues in staged files"
         echo -e "  ${YELLOW}Run: cd app && pnpm exec eslint <staged file(s)>${NC}"
         FAILED=1
