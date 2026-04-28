@@ -145,4 +145,34 @@ describe("loadOidcRpLogoutRedirect", () => {
 
     expect(await loadOidcRpLogoutRedirect()).toBeNull();
   });
+
+  it("refuses to fetch discovery from a non-HTTPS issuer", async () => {
+    mocks.getAuthDatabase.mockReturnValue(
+      buildSqliteDatabaseReturning({
+        idToken: "id-token-abc",
+        providerId: "atlas-team-bad-oidc",
+        issuer: "http://idp.atlas-test.example",
+      }),
+    );
+
+    const { loadOidcRpLogoutRedirect } = await import("@/domains/access/server/rp-logout");
+
+    expect(await loadOidcRpLogoutRedirect()).toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("refuses to fetch discovery from a private-host issuer", async () => {
+    mocks.getAuthDatabase.mockReturnValue(
+      buildSqliteDatabaseReturning({
+        idToken: "id-token-abc",
+        providerId: "atlas-team-bad-oidc",
+        issuer: "https://169.254.169.254",
+      }),
+    );
+
+    const { loadOidcRpLogoutRedirect } = await import("@/domains/access/server/rp-logout");
+
+    expect(await loadOidcRpLogoutRedirect()).toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
 });

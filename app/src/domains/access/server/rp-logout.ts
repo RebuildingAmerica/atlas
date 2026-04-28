@@ -73,6 +73,41 @@ async function loadMostRecentLinkedOidcAccount(
 }
 
 /**
+ * Returns the canonical issuer URL when the candidate is a public HTTPS URL
+ * Atlas is willing to fetch a discovery document from, or null otherwise.
+ * Defense-in-depth against any future allowlist misconfiguration that lets
+ * a non-HTTPS or private-host issuer reach this code path.
+ *
+ * @param issuer - The raw issuer URL stored on the linked SSO provider.
+ */
+function asPublicHttpsIssuer(issuer: string): URL | null {
+  let parsed: URL;
+  try {
+    parsed = new URL(issuer);
+  } catch {
+    return null;
+  }
+  if (parsed.protocol !== "https:") {
+    return null;
+  }
+  const hostname = parsed.hostname;
+  const lowered = hostname.toLowerCase();
+  if (
+    lowered === "localhost" ||
+    lowered === "::1" ||
+    lowered === "[::1]" ||
+    hostname.startsWith("127.") ||
+    hostname.startsWith("10.") ||
+    hostname.startsWith("192.168.") ||
+    hostname.startsWith("169.254.") ||
+    /^172\.(1[6-9]|2\d|3[0-1])\./.test(hostname)
+  ) {
+    return null;
+  }
+  return parsed;
+}
+
+/**
  * Looks up the OIDC `end_session_endpoint` for an issuer, caching the result
  * for ten minutes so a single sign-out does not re-fetch discovery on every
  * navigation.  Network failures and missing endpoints are remembered as
@@ -87,8 +122,18 @@ async function fetchEndSessionEndpoint(issuer: string): Promise<string | null> {
   }
 
   let endSessionEndpoint: string | null = null;
+  const safeIssuer = asPublicHttpsIssuer(issuer);
+  if (!safeIssuer) {
+    _discoveryCache.set(issuer, {
+      endSessionEndpoint: null,
+      expiresAt: Date.now() + DISCOVERY_CACHE_TTL_MS,
+    });
+    return null;
+  }
+
+  const discoveryUrl = `${safeIssuer.toString().replace(/\/+$/, "")}/.well-known/openid-configuration`;
   try {
-    const response = await fetch(`${issuer.replace(/\/+$/, "")}/.well-known/openid-configuration`, {
+    const response = await fetch(discoveryUrl, {
       signal: AbortSignal.timeout(DISCOVERY_FETCH_TIMEOUT_MS),
     });
     if (response.ok) {
