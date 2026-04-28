@@ -7,6 +7,7 @@ import { useOrganizationPageData } from "./use-organization-page-data";
 import { useOrganizationPageForms } from "./use-organization-page-forms";
 import { useOrganizationPageSSOActions } from "./use-organization-page-sso-actions";
 import { useOrganizationPageWorkspaceActions } from "./use-organization-page-workspace-actions";
+import { useSamlDomainVerificationPoll } from "./use-saml-domain-verification-poll";
 
 // ---------------------------------------------------------------------------
 // Organization page types
@@ -160,6 +161,10 @@ export function useOrganizationPageController(
   const ssoActions = useOrganizationPageSSOActions({
     feedback,
     forms,
+    refreshWorkspaceData: data.refreshWorkspaceData,
+  });
+  useSamlDomainVerificationPoll({
+    organization: data.organization,
     refreshWorkspaceData: data.refreshWorkspaceData,
   });
   const canManageOrganization = data.organization?.capabilities.canManageOrganization ?? false;
