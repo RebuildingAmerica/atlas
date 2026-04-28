@@ -162,4 +162,42 @@ describe("WorkspaceSSOSection", () => {
       screen.getByText(/SAML registration is disabled for this deployment/i),
     ).toBeInTheDocument();
   });
+
+  it("links to Atlas operators when the SAML allowlist is empty", () => {
+    render(<WorkspaceSSOSection {...defaultProps} samlAllowedIssuerOrigins={[]} />);
+    const links = screen.getAllByRole("link", { name: /Email Atlas operators/i });
+    const allowlistLink = links.find((link) =>
+      link.getAttribute("href")?.includes("issuer%20allowlist"),
+    );
+    expect(allowlistLink?.getAttribute("href")).toMatch(/^mailto:hello@rebuildingus\.org/);
+  });
+
+  it("warns when the workspace domain looks like a consumer mailbox host", () => {
+    const samlProps = {
+      ...defaultProps,
+      samlSetupForm: {
+        ...defaultProps.samlSetupForm,
+        domain: "gmail.com",
+      },
+    };
+    render(<WorkspaceSSOSection {...samlProps} />);
+    expect(screen.getByText(/consumer mailbox host/i)).toBeInTheDocument();
+  });
+
+  it("renders the pre-save preview when every required SAML field is valid", () => {
+    const samlProps = {
+      ...defaultProps,
+      samlSetupForm: {
+        domain: "atlas.test",
+        providerId: "saml",
+        issuer: "https://accounts.google.com/o/saml2?idpid=abc",
+        entryPoint: "https://accounts.google.com/o/saml2/idp",
+        certificate: "-----BEGIN CERTIFICATE-----\nMIIBExampleBytes\n-----END CERTIFICATE-----",
+        setAsPrimary: false,
+      },
+    };
+    render(<WorkspaceSSOSection {...samlProps} />);
+    expect(screen.getByText("Atlas will save:")).toBeInTheDocument();
+    expect(screen.getByText(/Domain: atlas\.test/i)).toBeInTheDocument();
+  });
 });

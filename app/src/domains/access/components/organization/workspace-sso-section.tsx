@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { AtlasOrganizationDetails } from "../../organization-contracts";
 import { parseSamlIdpMetadata } from "../../saml-metadata-parser";
 import type {
@@ -11,6 +11,77 @@ import { WorkspaceSSOProviderList } from "./workspace-sso-provider-list";
 import { Button } from "@/platform/ui/button";
 import { Input } from "@/platform/ui/input";
 import { Textarea } from "@/platform/ui/textarea";
+
+/**
+ * Common consumer-mailbox domains.  Atlas can route through SSO with these
+ * registered, but a verified-domain check on `gmail.com` (or similar) is
+ * almost certainly a workspace-domain misconfiguration; flag it so the admin
+ * gets a chance to swap in their company's own DNS-controlled domain.
+ */
+const FREE_EMAIL_DOMAINS: ReadonlySet<string> = new Set([
+  "aol.com",
+  "fastmail.com",
+  "gmail.com",
+  "googlemail.com",
+  "hey.com",
+  "hotmail.com",
+  "icloud.com",
+  "live.com",
+  "me.com",
+  "msn.com",
+  "outlook.com",
+  "pm.me",
+  "proton.me",
+  "protonmail.com",
+  "yahoo.com",
+  "ymail.com",
+]);
+
+const PREFILL_FLASH_DURATION_MS = 1800;
+
+/**
+ * Returns true when `domain` is a consumer-mailbox host Atlas should warn
+ * the admin about before they wire SSO to it.
+ */
+function isLikelyFreeEmailDomain(domain: string): boolean {
+  const lowered = domain.trim().toLowerCase();
+  return lowered.length > 0 && FREE_EMAIL_DOMAINS.has(lowered);
+}
+
+/**
+ * Ring-flash on prefilled inputs so the operator can spot which fields the
+ * metadata-paste shortcut just changed.
+ */
+function usePrefillFlash(): {
+  flashed: ReadonlySet<string>;
+  flash: (fields: readonly string[]) => void;
+} {
+  const [flashed, setFlashed] = useState<ReadonlySet<string>>(() => new Set());
+
+  useEffect(() => {
+    if (flashed.size === 0) {
+      return;
+    }
+    const handle = window.setTimeout(() => {
+      setFlashed(new Set());
+    }, PREFILL_FLASH_DURATION_MS);
+    return () => {
+      window.clearTimeout(handle);
+    };
+  }, [flashed]);
+
+  function flash(fields: readonly string[]) {
+    setFlashed(new Set(fields));
+  }
+
+  return { flashed, flash };
+}
+
+function flashClassName(flashed: ReadonlySet<string>, field: string): string {
+  return flashed.has(field)
+    ? "transition-shadow ring-2 ring-emerald-300 ring-offset-2 ring-offset-surface rounded-2xl"
+    : "transition-shadow rounded-2xl";
+}
 
 /**
  * Optional XML-paste shortcut that lifts issuer, sign-in URL, and signing
@@ -47,13 +118,19 @@ function SamlMetadataPasteField(props: {
   }
 
   return (
-    <details className="text-outline space-y-2">
-      <summary className="type-label-medium cursor-pointer">
-        Paste IdP metadata XML to prefill issuer, sign-in URL, and certificate
-      </summary>
+    <div className="border-outline-variant bg-surface-container-lowest space-y-2 rounded-2xl border p-4">
+      <div className="space-y-1">
+        <p className="type-label-medium text-on-surface">Paste IdP metadata XML (recommended)</p>
+        <p className="type-body-small text-outline">
+          Atlas pulls the issuer, sign-in URL, and signing certificate out of the metadata so you
+          don't have to copy three fields by hand.
+        </p>
+      </div>
       <Textarea
         label="IdP metadata XML"
-        rows={6}
+        rows={10}
+        autoExpand
+        maxRows={32}
         value={xml}
         onChange={setXml}
         placeholder='<EntityDescriptor entityID="..."> ... </EntityDescriptor>'
@@ -68,7 +145,7 @@ function SamlMetadataPasteField(props: {
           </p>
         ) : null}
       </div>
-    </details>
+    </div>
   );
 }
 
@@ -191,13 +268,19 @@ export function WorkspaceSSOSection({
     samlIssuerOrigin !== null && samlAllowedIssuerOrigins.includes(samlIssuerOrigin);
   const samlCertificateClassification = classifyPemCertificate(samlSetupForm.certificate);
   const samlCertificateLooksValid = samlCertificateClassification.kind === "ok";
+  const visibleAllowlist = canManageOrganization ? samlAllowedIssuerOrigins : [];
   const samlIssuerHelperText = samlAllowlistEmpty
-    ? "SAML registration is disabled for this deployment. Contact Atlas operators to add an issuer host to ATLAS_SAML_ALLOWED_ISSUERS before configuring a provider."
+    ? "SAML registration is disabled for this deployment. Email hello@rebuildingus.org to add an issuer host to the allowlist before configuring a provider."
     : samlSetupForm.issuer.trim() === ""
-      ? `Allowed issuer hosts: ${samlAllowedIssuerOrigins.join(", ")}.`
+      ? `Allowed issuer hosts: ${visibleAllowlist.join(", ")}.`
       : samlIssuerAllowed
-        ? `Issuer host (${samlIssuerOrigin}) is on the allowlist.`
-        : `Issuer host ${samlIssuerOrigin ?? "(unparseable)"} is not on the allowlist. Allowed: ${samlAllowedIssuerOrigins.join(", ")}.`;
+        ? `Issuer host (${samlIssuerOrigin ?? ""}) is on the allowlist.`
+        : `Issuer host ${samlIssuerOrigin ?? "(unparseable)"} is not on the allowlist. Allowed: ${visibleAllowlist.join(", ")}.`;
+  const samlDomainTrimmed = samlSetupForm.domain.trim().toLowerCase();
+  const samlDomainIsFreeEmail = isLikelyFreeEmailDomain(samlDomainTrimmed);
+  const oidcDomainTrimmed = oidcSetupForm.domain.trim().toLowerCase();
+  const oidcDomainIsFreeEmail = isLikelyFreeEmailDomain(oidcDomainTrimmed);
+  const samlPrefill = usePrefillFlash();
 
   return (
     <section className="space-y-6">
@@ -261,17 +344,25 @@ export function WorkspaceSSOSection({
                 void onOidcSubmit(e);
               }}
             >
-              <Input
-                label="Workspace domain"
-                value={oidcSetupForm.domain}
-                onChange={(value) => {
-                  setOidcSetupForm((current) => ({
-                    ...current,
-                    domain: value,
-                  }));
-                }}
-                placeholder={setup.workspaceDomainSuggestion || "your-org.example"}
-              />
+              <div className="space-y-1">
+                <Input
+                  label="Workspace domain"
+                  value={oidcSetupForm.domain}
+                  onChange={(value) => {
+                    setOidcSetupForm((current) => ({
+                      ...current,
+                      domain: value,
+                    }));
+                  }}
+                  placeholder={setup.workspaceDomainSuggestion || "your-org.example"}
+                />
+                {oidcDomainIsFreeEmail ? (
+                  <p className="type-body-small rounded-2xl bg-amber-50 px-3 py-2 text-amber-800">
+                    {oidcDomainTrimmed} is a consumer mailbox host. Use the domain your team
+                    actually receives email at.
+                  </p>
+                ) : null}
+              </div>
               {hasWorkspaceDomainSuggestion ? (
                 <WorkspaceSSODomainHint suggestion={setup.workspaceDomainSuggestion} />
               ) : null}
@@ -313,7 +404,16 @@ export function WorkspaceSSOSection({
                 />
                 <p className="type-body-small text-outline">
                   Keep the suggested value unless you have a reason to change it. Provider IDs must
-                  be unique across Atlas; collisions cause registration to fail.
+                  be unique across Atlas; collisions cause registration to fail.{" "}
+                  <a
+                    href="https://atlas.rebuildingus.org/docs/deployment/google-workspace-oidc-sso"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-accent underline"
+                  >
+                    Learn more
+                  </a>
+                  .
                 </p>
               </details>
               <Button
@@ -372,40 +472,63 @@ export function WorkspaceSSOSection({
             >
               <SamlMetadataPasteField
                 onPrefill={(metadata) => {
-                  setSamlSetupForm((current) => ({
-                    ...current,
-                    issuer: metadata.issuer || current.issuer,
-                    entryPoint: metadata.entryPoint || current.entryPoint,
-                    certificate: metadata.certificate || current.certificate,
-                  }));
+                  const filledKeys: string[] = [];
+                  setSamlSetupForm((current) => {
+                    const next = { ...current };
+                    if (metadata.issuer) {
+                      next.issuer = metadata.issuer;
+                      filledKeys.push("issuer");
+                    }
+                    if (metadata.entryPoint) {
+                      next.entryPoint = metadata.entryPoint;
+                      filledKeys.push("entryPoint");
+                    }
+                    if (metadata.certificate) {
+                      next.certificate = metadata.certificate;
+                      filledKeys.push("certificate");
+                    }
+                    return next;
+                  });
+                  samlPrefill.flash(filledKeys);
                 }}
               />
-              <Input
-                label="Workspace domain"
-                value={samlSetupForm.domain}
-                onChange={(value) => {
-                  setSamlSetupForm((current) => ({
-                    ...current,
-                    domain: value,
-                  }));
-                }}
-                placeholder={setup.workspaceDomainSuggestion || "your-org.example"}
-              />
+              <div className="space-y-1">
+                <Input
+                  label="Workspace domain"
+                  value={samlSetupForm.domain}
+                  onChange={(value) => {
+                    setSamlSetupForm((current) => ({
+                      ...current,
+                      domain: value,
+                    }));
+                  }}
+                  placeholder={setup.workspaceDomainSuggestion || "your-org.example"}
+                />
+                {samlDomainIsFreeEmail ? (
+                  <p className="type-body-small rounded-2xl bg-amber-50 px-3 py-2 text-amber-800">
+                    {samlDomainTrimmed} is a consumer mailbox host. Use the domain your team
+                    actually receives email at — for example <code>acme.com</code>, not{" "}
+                    <code>{samlDomainTrimmed}</code>.
+                  </p>
+                ) : null}
+              </div>
               {hasWorkspaceDomainSuggestion ? (
                 <WorkspaceSSODomainHint suggestion={setup.workspaceDomainSuggestion} />
               ) : null}
               <div className="space-y-1">
-                <Input
-                  label="Identity provider issuer"
-                  value={samlSetupForm.issuer}
-                  onChange={(value) => {
-                    setSamlSetupForm((current) => ({
-                      ...current,
-                      issuer: value,
-                    }));
-                  }}
-                  placeholder="https://accounts.google.com/o/saml2?idpid=..."
-                />
+                <div className={flashClassName(samlPrefill.flashed, "issuer")}>
+                  <Input
+                    label="Identity provider issuer"
+                    value={samlSetupForm.issuer}
+                    onChange={(value) => {
+                      setSamlSetupForm((current) => ({
+                        ...current,
+                        issuer: value,
+                      }));
+                    }}
+                    placeholder="https://accounts.google.com/o/saml2?idpid=..."
+                  />
+                </div>
                 <p
                   className={
                     samlAllowlistEmpty || (samlSetupForm.issuer.trim() !== "" && !samlIssuerAllowed)
@@ -414,32 +537,50 @@ export function WorkspaceSSOSection({
                   }
                 >
                   {samlIssuerHelperText}
+                  {samlAllowlistEmpty ? (
+                    <>
+                      {" "}
+                      <a
+                        href="mailto:hello@rebuildingus.org?subject=Atlas%20SAML%20issuer%20allowlist"
+                        className="underline"
+                      >
+                        Email Atlas operators
+                      </a>
+                      .
+                    </>
+                  ) : null}
                 </p>
               </div>
-              <Input
-                label="Identity provider sign-in URL"
-                value={samlSetupForm.entryPoint}
-                onChange={(value) => {
-                  setSamlSetupForm((current) => ({
-                    ...current,
-                    entryPoint: value,
-                  }));
-                }}
-                placeholder="https://accounts.google.com/o/saml2/idp?idpid=..."
-              />
-              <div className="space-y-1">
-                <Textarea
-                  label="X.509 certificate"
-                  rows={8}
-                  value={samlSetupForm.certificate}
+              <div className={flashClassName(samlPrefill.flashed, "entryPoint")}>
+                <Input
+                  label="Identity provider sign-in URL"
+                  value={samlSetupForm.entryPoint}
                   onChange={(value) => {
                     setSamlSetupForm((current) => ({
                       ...current,
-                      certificate: value,
+                      entryPoint: value,
                     }));
                   }}
-                  placeholder="-----BEGIN CERTIFICATE-----"
+                  placeholder="https://accounts.google.com/o/saml2/idp?idpid=..."
                 />
+              </div>
+              <div className="space-y-1">
+                <div className={flashClassName(samlPrefill.flashed, "certificate")}>
+                  <Textarea
+                    label="X.509 certificate"
+                    rows={12}
+                    autoExpand
+                    maxRows={36}
+                    value={samlSetupForm.certificate}
+                    onChange={(value) => {
+                      setSamlSetupForm((current) => ({
+                        ...current,
+                        certificate: value,
+                      }));
+                    }}
+                    placeholder="-----BEGIN CERTIFICATE-----"
+                  />
+                </div>
                 {samlCertificateClassification.kind === "invalid" ? (
                   <p className="type-body-small text-error">
                     {samlCertificateClassification.reason} Atlas parses the certificate server-side
@@ -470,9 +611,47 @@ export function WorkspaceSSOSection({
                 />
                 <p className="type-body-small text-outline">
                   Keep the suggested value unless you have a reason to change it. Provider IDs must
-                  be unique across Atlas; collisions cause registration to fail.
+                  be unique across Atlas; collisions cause registration to fail.{" "}
+                  <a
+                    href="https://atlas.rebuildingus.org/docs/deployment/google-workspace-saml-sso"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-accent underline"
+                  >
+                    Learn more
+                  </a>
+                  .
                 </p>
               </details>
+              {samlSetupForm.domain.trim() &&
+              samlSetupForm.issuer.trim() &&
+              samlSetupForm.entryPoint.trim() &&
+              samlCertificateLooksValid &&
+              samlIssuerAllowed ? (
+                <div className="border-outline-variant bg-surface-container-lowest rounded-2xl border px-4 py-3">
+                  <p className="type-label-medium text-on-surface mb-1">Atlas will save:</p>
+                  <ul className="type-body-small text-outline space-y-0.5">
+                    <li>Domain: {samlSetupForm.domain.trim()}</li>
+                    <li>Issuer: {samlSetupForm.issuer.trim()}</li>
+                    <li>Sign-in URL: {samlSetupForm.entryPoint.trim()}</li>
+                    <li>
+                      Provider ID:{" "}
+                      {samlSetupForm.providerId.trim() || setup.samlProviderIdSuggestion}
+                    </li>
+                  </ul>
+                </div>
+              ) : null}
+              <p className="type-body-small text-outline">
+                Need to verify multiple domains for the same SAML IdP? Configure one provider per
+                domain or{" "}
+                <a
+                  href="mailto:hello@rebuildingus.org?subject=Atlas%20SAML%20multi-domain"
+                  className="underline"
+                >
+                  email Atlas operators
+                </a>{" "}
+                to enable multi-domain on this provider.
+              </p>
               <Button
                 type="submit"
                 disabled={
