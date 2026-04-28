@@ -11,7 +11,6 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as OpenapiDotjsonRouteImport } from './routes/openapi[.]json'
-import { Route as McpRouteImport } from './routes/mcp'
 import { Route as DocsRouteImport } from './routes/docs'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as WorkspaceRouteImport } from './routes/_workspace'
@@ -67,11 +66,6 @@ const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
 const OpenapiDotjsonRoute = OpenapiDotjsonRouteImport.update({
   id: '/openapi.json',
   path: '/openapi.json',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const McpRoute = McpRouteImport.update({
-  id: '/mcp',
-  path: '/mcp',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DocsRoute = DocsRouteImport.update({
@@ -318,7 +312,6 @@ export interface FileRoutesByFullPath {
   '/': typeof PublicIndexRoute
   '/dashboard': typeof DashboardRoute
   '/docs': typeof DocsRoute
-  '/mcp': typeof McpRoute
   '/openapi.json': typeof OpenapiDotjsonRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/account-setup': typeof AuthAccountSetupRoute
@@ -366,7 +359,6 @@ export interface FileRoutesByTo {
   '/': typeof PublicIndexRoute
   '/dashboard': typeof DashboardRoute
   '/docs': typeof DocsRoute
-  '/mcp': typeof McpRoute
   '/openapi.json': typeof OpenapiDotjsonRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/account-setup': typeof AuthAccountSetupRoute
@@ -414,7 +406,6 @@ export interface FileRoutesById {
   '/_workspace': typeof WorkspaceRouteWithChildren
   '/dashboard': typeof DashboardRoute
   '/docs': typeof DocsRoute
-  '/mcp': typeof McpRoute
   '/openapi.json': typeof OpenapiDotjsonRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/_auth/account-setup': typeof AuthAccountSetupRoute
@@ -465,7 +456,6 @@ export interface FileRouteTypes {
     | '/'
     | '/dashboard'
     | '/docs'
-    | '/mcp'
     | '/openapi.json'
     | '/sitemap.xml'
     | '/account-setup'
@@ -513,7 +503,6 @@ export interface FileRouteTypes {
     | '/'
     | '/dashboard'
     | '/docs'
-    | '/mcp'
     | '/openapi.json'
     | '/sitemap.xml'
     | '/account-setup'
@@ -560,7 +549,6 @@ export interface FileRouteTypes {
     | '/_workspace'
     | '/dashboard'
     | '/docs'
-    | '/mcp'
     | '/openapi.json'
     | '/sitemap.xml'
     | '/_auth/account-setup'
@@ -612,7 +600,6 @@ export interface RootRouteChildren {
   WorkspaceRoute: typeof WorkspaceRouteWithChildren
   DashboardRoute: typeof DashboardRoute
   DocsRoute: typeof DocsRoute
-  McpRoute: typeof McpRoute
   OpenapiDotjsonRoute: typeof OpenapiDotjsonRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   ApiSplatRoute: typeof ApiSplatRoute
@@ -639,13 +626,6 @@ declare module '@tanstack/react-router' {
       path: '/openapi.json'
       fullPath: '/openapi.json'
       preLoaderRoute: typeof OpenapiDotjsonRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/mcp': {
-      id: '/mcp'
-      path: '/mcp'
-      fullPath: '/mcp'
-      preLoaderRoute: typeof McpRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/docs': {
@@ -1114,7 +1094,6 @@ const rootRouteChildren: RootRouteChildren = {
   WorkspaceRoute: WorkspaceRouteWithChildren,
   DashboardRoute: DashboardRoute,
   DocsRoute: DocsRoute,
-  McpRoute: McpRoute,
   OpenapiDotjsonRoute: OpenapiDotjsonRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   ApiSplatRoute: ApiSplatRoute,
