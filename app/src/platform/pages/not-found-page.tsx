@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { getAuthConfig } from "@/domains/access/config";
+import { useAtlasSession } from "@/domains/access/client/use-atlas-session";
 import { PublicTopNavSafe } from "@/platform/layout/public-nav";
 import { PublicFooter } from "@/platform/layout/public-footer";
 import { Button } from "@/platform/ui/button";
@@ -43,6 +43,8 @@ function MapDecoPanel() {
  * making network requests when we're already in a not-found state.
  */
 export function NotFoundPage() {
+  const session = useAtlasSession();
+  const localMode = session.data?.isLocal ?? false;
   return (
     <div className="flex min-h-screen flex-col">
       <header className="sticky top-0 z-30">
@@ -84,7 +86,7 @@ export function NotFoundPage() {
         </div>
       </main>
 
-      <PublicFooter localMode={getAuthConfig().localMode} status="unknown" />
+      <PublicFooter localMode={localMode} status="unknown" />
     </div>
   );
 }

@@ -3,7 +3,6 @@ import { Outlet, createFileRoute } from "@tanstack/react-router";
 import { LogOut } from "lucide-react";
 import { useState } from "react";
 import { useAtlasSession } from "@/domains/access";
-import { getAuthConfig } from "@/domains/access/config";
 import { getAuthClient } from "@/domains/access/client/auth-client";
 import { atlasSessionQueryKey } from "@/domains/access/client/use-atlas-session";
 import { setActiveWorkspace } from "@/domains/access/organizations.functions";
@@ -55,16 +54,12 @@ function shouldShowOrganizationTab(session: AtlasSessionPayload): boolean {
 /**
  * Builds the workspace tab list for the current session.
  *
- * @param localMode - Whether Atlas is running with auth disabled.
  * @param session - The current Atlas session payload.
  */
-function buildWorkspaceTabs(
-  localMode: boolean,
-  session: AtlasSessionPayload | null | undefined,
-): WorkspaceTabConfig[] {
+function buildWorkspaceTabs(session: AtlasSessionPayload | null | undefined): WorkspaceTabConfig[] {
   const tabs: WorkspaceTabConfig[] = [{ label: "Discovery", to: "/discovery" }];
 
-  if (!session || localMode) {
+  if (!session || session.isLocal) {
     return tabs;
   }
 
@@ -79,13 +74,14 @@ function buildWorkspaceTabs(
 
 function WorkspaceRoute() {
   const session = useAtlasSession();
-  const { localMode } = getAuthConfig();
-  const tabs = buildWorkspaceTabs(localMode, session.data);
+  const tabs = buildWorkspaceTabs(session.data);
+  const sessionData = session.data;
+  const showIdentity = sessionData != null && !sessionData.isLocal;
 
   return (
     <WorkspaceLayout
       tabs={tabs}
-      identitySlot={localMode || !session.data ? null : <OperatorIdentity session={session.data} />}
+      identitySlot={showIdentity ? <OperatorIdentity session={sessionData} /> : null}
     >
       <Outlet />
     </WorkspaceLayout>

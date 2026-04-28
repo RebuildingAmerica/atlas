@@ -5,7 +5,6 @@ import { z } from "zod";
 import { getAuthClient } from "@/domains/access/client/auth-client";
 import { setLastUsedAtlasLoginMethod } from "@/domains/access/client/last-login-method";
 import { waitForAtlasAuthenticatedSession } from "@/domains/access/client/session-confirmation";
-import { getAuthConfig } from "@/domains/access/config";
 import type { AtlasProduct } from "@/domains/access/capabilities";
 import { PRODUCT_LABELS } from "@/domains/billing/product-labels";
 import { requestMagicLink } from "@/domains/access/session.functions";
@@ -91,7 +90,6 @@ export function SignInPage({
   invitationId,
   redirectTo,
 }: SignInPageProps) {
-  const authConfig = getAuthConfig();
   const authClient = getAuthClient();
   const lastMethod = authClient.getLastUsedLoginMethod();
   const [email, setEmail] = useState(initialEmail ?? "");
@@ -282,7 +280,7 @@ export function SignInPage({
             onClick={() => {
               void handlePasskey();
             }}
-            disabled={isPasskeyPending || authConfig.localMode}
+            disabled={isPasskeyPending}
           >
             <span className="inline-flex items-center gap-2">
               <KeyRound className="h-4 w-4" />
@@ -323,7 +321,7 @@ export function SignInPage({
             <Button
               type="submit"
               variant="secondary"
-              disabled={isEmailFlowPending || authConfig.localMode || !email.trim()}
+              disabled={isEmailFlowPending || !email.trim()}
             >
               {isEmailFlowPending ? "Continuing..." : "Continue with email"}
             </Button>
@@ -347,12 +345,6 @@ export function SignInPage({
           </p>
         ) : null}
       </div>
-
-      {authConfig.localMode ? (
-        <div className="border-outline-variant bg-surface-container-lowest rounded-[1.4rem] border p-5">
-          <p className="type-body-medium text-outline">Sign-in is disabled in this environment.</p>
-        </div>
-      ) : null}
 
       {!isInvitationFlow ? (
         <p className="type-body-medium text-outline">

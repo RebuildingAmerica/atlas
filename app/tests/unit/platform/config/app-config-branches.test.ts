@@ -20,7 +20,6 @@ describe("app-config additional branches", () => {
       apiBaseUrl: "https://atlas.example.com/api",
       authBasePath: "https://auth.atlas.test",
       authBaseUrl: "https://auth.atlas.test",
-      localMode: false,
     });
   });
 

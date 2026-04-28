@@ -2,7 +2,6 @@ import { getAppConfig } from "@/platform/config/app-config";
 
 interface AuthEnv {
   ATLAS_AUTH_BASE_PATH?: string;
-  ATLAS_DEPLOY_MODE?: string;
   ATLAS_PUBLIC_URL?: string;
 }
 

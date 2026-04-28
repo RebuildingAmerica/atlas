@@ -1,5 +1,4 @@
 import { useQuery } from "@tanstack/react-query";
-import { getAuthConfig } from "../config";
 import { getAtlasSession, type AtlasSessionPayload } from "../session.functions";
 
 /**
@@ -22,16 +21,17 @@ interface UseAtlasSessionOptions {
 /**
  * Returns the current Atlas operator session for React components.
  *
- * In local mode we synthesize a stable single-user session so the rest of the
- * UI can behave as if an operator is signed in. In auth-enabled mode we defer
- * to Better Auth's browser session hook.
+ * The server function returns a synthetic local-mode session when the
+ * deployment runs with auth disabled, and the real Better Auth session
+ * otherwise. Either way the resolved payload carries `isLocal` so UI gates
+ * can hide multi-user affordances without re-reading the deploy mode from
+ * the env (which Vite does not expose to the browser bundle).
  */
 export function useAtlasSession(options?: UseAtlasSessionOptions) {
-  const authConfig = getAuthConfig();
   return useQuery<AtlasSessionPayload | null>({
     queryFn: getAtlasSession,
-    queryKey: options?.queryKey || [...atlasSessionQueryKey, authConfig.localMode],
-    staleTime: options?.staleTime ?? (authConfig.localMode ? Infinity : 30_000),
+    queryKey: options?.queryKey || [...atlasSessionQueryKey],
+    staleTime: options?.staleTime ?? 30_000,
     ...(options?.enabled !== undefined && { enabled: options.enabled }),
     ...(options?.gcTime !== undefined && { gcTime: options.gcTime }),
     ...(options?.retry !== undefined && { retry: options.retry }),

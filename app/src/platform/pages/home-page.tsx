@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { Compass, Search, Users } from "lucide-react";
 import { useState } from "react";
-import { getAuthConfig } from "@/domains/access/config";
+import { useAtlasSession } from "@/domains/access/client/use-atlas-session";
 import { PageLayout } from "@/platform/layout/page-layout";
 import { Button } from "@/platform/ui/button";
 
@@ -90,7 +90,8 @@ function HomeHighlights({ isLocal }: { isLocal: boolean }) {
 }
 
 export function HomePage() {
-  const { localMode } = getAuthConfig();
+  const session = useAtlasSession();
+  const localMode = session.data?.isLocal ?? false;
   const [query, setQuery] = useState("");
 
   return (

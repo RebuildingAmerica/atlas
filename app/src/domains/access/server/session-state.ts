@@ -18,6 +18,7 @@ type AtlasAuthInstance = ReturnType<typeof getAuth>;
  */
 function getLocalSession(): AtlasSessionPayload {
   return {
+    isLocal: true,
     accountReady: true,
     hasPasskey: true,
     passkeyCount: 1,
@@ -106,6 +107,7 @@ export async function loadAtlasSession(): Promise<AtlasSessionPayload | null> {
   const hasPasskey = passkeyCount > 0;
 
   return {
+    isLocal: false,
     accountReady: session.user.emailVerified && hasPasskey,
     hasPasskey,
     passkeyCount,

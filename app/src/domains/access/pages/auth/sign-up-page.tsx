@@ -5,7 +5,6 @@ import { checkAccountExists, requestMagicLink } from "@/domains/access/session.f
 import { buildSignInCallbackURL } from "./sign-in-page-helpers";
 import { Button } from "@/platform/ui/button";
 import { Input } from "@/platform/ui/input";
-import { getAuthConfig } from "@/domains/access/config";
 
 interface SignUpPageProps {
   redirectTo?: string;
@@ -18,7 +17,6 @@ interface SignUpPageProps {
  * an account, redirects to /sign-in with a notice.
  */
 export function SignUpPage({ redirectTo }: SignUpPageProps = {}) {
-  const authConfig = getAuthConfig();
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
@@ -90,7 +88,7 @@ export function SignUpPage({ redirectTo }: SignUpPageProps = {}) {
           icon={<Mail className="h-4 w-4" />}
         />
 
-        <Button type="submit" disabled={isPending || authConfig.localMode || !email.trim()}>
+        <Button type="submit" disabled={isPending || !email.trim()}>
           {isPending ? "Creating account..." : "Create account"}
         </Button>
       </form>
@@ -105,12 +103,6 @@ export function SignUpPage({ redirectTo }: SignUpPageProps = {}) {
         <p className="type-body-medium rounded-2xl bg-red-50 px-4 py-3 text-red-700">
           {errorMessage}
         </p>
-      ) : null}
-
-      {authConfig.localMode ? (
-        <div className="border-outline-variant bg-surface-container-lowest rounded-[1.4rem] border p-5">
-          <p className="type-body-medium text-outline">Sign-up is disabled in this environment.</p>
-        </div>
       ) : null}
 
       <p className="type-body-medium text-outline">

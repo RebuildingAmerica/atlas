@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { loadOidcRpLogoutRedirect } from "./server/rp-logout";
+import { getAuthRuntimeConfig } from "./server/runtime";
 import {
   checkEmailAccountExists,
   loadAtlasSession,
@@ -11,6 +12,19 @@ import {
 } from "./server/session-state";
 
 export type { AtlasSessionPayload } from "./organization-contracts";
+
+/**
+ * Returns whether Atlas is running in single-user (local) deployment mode.
+ *
+ * Vite does not expose ATLAS_DEPLOY_MODE to the browser bundle, so any
+ * client-side env read returns false even when the server is running in
+ * local mode. This server function is the only reliable way for client UI
+ * to know the deployment mode without a session in scope (route loaders,
+ * public layouts, etc.).
+ */
+export const getAtlasDeployMode = createServerFn({ method: "GET" }).handler(() => {
+  return { localMode: getAuthRuntimeConfig().localMode };
+});
 
 /**
  * Returns the current operator session, or `null` when auth is enabled and no

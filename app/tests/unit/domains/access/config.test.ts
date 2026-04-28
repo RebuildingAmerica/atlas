@@ -2,13 +2,12 @@ import { describe, expect, it } from "vitest";
 import { createInternalAuthHeaders, getAuthConfig } from "@/domains/access/config";
 
 describe("getAuthConfig", () => {
-  it("defaults to auth enabled without local mode", () => {
+  it("defaults to the standard auth base path", () => {
     const config = getAuthConfig({});
     expect(config.authBasePath).toBe("/api/auth");
-    expect(config.localMode).toBe(false);
   });
 
-  it("returns localMode false when ATLAS_DEPLOY_MODE is not local", () => {
+  it("returns the api base url for an absolute public url", () => {
     expect(
       getAuthConfig({
         ATLAS_PUBLIC_URL: "https://atlas.example.com",
@@ -16,7 +15,6 @@ describe("getAuthConfig", () => {
     ).toEqual({
       apiBaseUrl: "https://atlas.example.com/api",
       authBasePath: "/api/auth",
-      localMode: false,
     });
   });
 
@@ -30,7 +28,6 @@ describe("getAuthConfig", () => {
       apiBaseUrl: "https://atlas.example.com/api",
       authBasePath: "/custom-auth",
       authBaseUrl: "https://atlas.example.com/custom-auth",
-      localMode: false,
     });
   });
 });

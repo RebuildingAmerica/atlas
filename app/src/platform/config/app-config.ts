@@ -4,7 +4,6 @@ const DEFAULT_AUTH_BASE_PATH = "/api/auth";
 interface AppConfigEnv {
   ATLAS_AUTH_BASE_PATH?: string;
   ATLAS_DOCS_URL?: string;
-  ATLAS_DEPLOY_MODE?: string;
   ATLAS_PUBLIC_URL?: string;
   ATLAS_SERVER_API_PROXY_TARGET?: string;
 }
@@ -98,7 +97,6 @@ export function getAppConfig(env: AppConfigEnv = import.meta.env) {
     authBasePath,
     ...(authBaseUrl ? { authBaseUrl } : {}),
     ...(docsUrl ? { docsUrl } : {}),
-    localMode: env.ATLAS_DEPLOY_MODE === "local",
   };
 }
 

@@ -1,6 +1,6 @@
 import { redirect } from "@tanstack/react-router";
-import { getAuthConfig } from "../config";
 import { getAtlasSession } from "../session.functions";
+import { getAuthRuntimeConfig } from "./runtime";
 
 /**
  * Route guards for TanStack Router `beforeLoad` hooks.
@@ -97,7 +97,7 @@ function resolveReadySessionDestination(
  * @param to - The route to redirect to in local mode.
  */
 export function redirectIfLocalSession(to: string) {
-  const { localMode } = getAuthConfig();
+  const { localMode } = getAuthRuntimeConfig();
   if (localMode) {
     throw redirect({ to });
   }

@@ -1,25 +1,25 @@
 import { Outlet, createFileRoute } from "@tanstack/react-router";
 import { getStatus, type Status } from "@openstatus/react";
-import { getAuthConfig } from "@/domains/access/config";
+import { getAtlasDeployMode } from "@/domains/access/session.functions";
 import { PublicTopNav } from "@/platform/layout/public-nav";
 import { PublicFooter } from "@/platform/layout/public-footer";
 
 export const Route = createFileRoute("/_public")({
-  loader: async (): Promise<{ status: Status }> => {
-    try {
-      const { status } = await getStatus("atlasapp");
-      return { status };
-    } catch {
-      return { status: "unknown" };
-    }
+  loader: async (): Promise<{ localMode: boolean; status: Status }> => {
+    const [{ localMode }, status] = await Promise.all([
+      getAtlasDeployMode(),
+      getStatus("atlasapp")
+        .then((result) => result.status)
+        .catch((): Status => "unknown"),
+    ]);
+    return { localMode, status };
   },
   staleTime: 1000 * 60 * 5,
   component: PublicLayout,
 });
 
 function PublicLayout() {
-  const { status } = Route.useLoaderData();
-  const { localMode } = getAuthConfig();
+  const { localMode, status } = Route.useLoaderData();
   return (
     <div className="flex min-h-screen flex-col">
       <header className="sticky top-0 z-30">

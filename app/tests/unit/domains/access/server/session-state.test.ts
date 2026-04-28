@@ -62,6 +62,7 @@ describe("session-state", () => {
     });
 
     const localSession = createAtlasSessionFixture({
+      isLocal: true,
       sessionId: "local-session",
       user: {
         email: "local@atlas.local",

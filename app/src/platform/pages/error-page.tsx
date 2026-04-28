@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import type { ErrorComponentProps } from "@tanstack/react-router";
-import { getAuthConfig } from "@/domains/access/config";
+import { useAtlasSession } from "@/domains/access/client/use-atlas-session";
 import { PublicTopNavSafe } from "@/platform/layout/public-nav";
 import { PublicFooter } from "@/platform/layout/public-footer";
 import { Button } from "@/platform/ui/button";
@@ -44,6 +44,8 @@ function SignalDecoPanel() {
  * error state.
  */
 export function ErrorPage({ reset }: ErrorComponentProps) {
+  const session = useAtlasSession();
+  const localMode = session.data?.isLocal ?? false;
   return (
     <div className="flex min-h-screen flex-col">
       <header className="sticky top-0 z-30">
@@ -87,7 +89,7 @@ export function ErrorPage({ reset }: ErrorComponentProps) {
         </div>
       </main>
 
-      <PublicFooter localMode={getAuthConfig().localMode} status="unknown" />
+      <PublicFooter localMode={localMode} status="unknown" />
     </div>
   );
 }

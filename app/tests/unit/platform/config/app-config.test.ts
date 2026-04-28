@@ -59,14 +59,6 @@ describe("getAppConfig", () => {
   it("defaults to auth enabled when ATLAS_DEPLOY_MODE is not set", () => {
     expect(getAppConfig({})).toEqual({
       authBasePath: "/api/auth",
-      localMode: false,
-    });
-  });
-
-  it("enables local mode when ATLAS_DEPLOY_MODE is local", () => {
-    expect(getAppConfig({ ATLAS_DEPLOY_MODE: "local" })).toEqual({
-      authBasePath: "/api/auth",
-      localMode: true,
     });
   });
 
@@ -74,7 +66,6 @@ describe("getAppConfig", () => {
     expect(getAppConfig({ ATLAS_AUTH_BASE_PATH: "https://auth.example.com" })).toEqual({
       authBasePath: "https://auth.example.com",
       authBaseUrl: "https://auth.example.com",
-      localMode: false,
     });
   });
 
@@ -88,7 +79,6 @@ describe("getAppConfig", () => {
       apiBaseUrl: "https://atlas.example.com/api",
       authBasePath: "/custom-auth",
       authBaseUrl: "https://atlas.example.com/custom-auth",
-      localMode: false,
     });
   });
 
@@ -110,7 +100,6 @@ describe("getAppConfig", () => {
     ).toEqual({
       authBasePath: "/api/auth",
       docsUrl: "https://rebuildingamericaproject.mintlify.dev",
-      localMode: false,
     });
   });
 
@@ -196,9 +185,8 @@ describe("getServerApiBaseUrl", () => {
 });
 
 describe("default exports and parameters", () => {
-  it("getAppConfig returns localMode false for empty env", () => {
+  it("getAppConfig returns the default auth base path for empty env", () => {
     const config = getAppConfig({});
-    expect(config.localMode).toBe(false);
     expect(config.authBasePath).toBe("/api/auth");
   });
 

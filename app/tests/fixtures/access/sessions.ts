@@ -177,6 +177,7 @@ export function createAtlasWorkspace(
  */
 export function createAtlasSessionFixture(
   options: {
+    isLocal?: boolean;
     accountReady?: boolean;
     hasPasskey?: boolean;
     passkeyCount?: number;
@@ -187,6 +188,7 @@ export function createAtlasSessionFixture(
   } = {},
 ): AtlasSessionPayload {
   return {
+    isLocal: options.isLocal ?? false,
     accountReady: options.accountReady ?? true,
     hasPasskey: options.hasPasskey ?? true,
     passkeyCount: options.passkeyCount ?? 1,
