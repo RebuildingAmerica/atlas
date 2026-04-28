@@ -88,7 +88,7 @@ describe("WorkspaceSSOSection", () => {
     expect(screen.queryByText(/Suggested from your signed-in email/i)).not.toBeInTheDocument();
   });
 
-  it("triggers input and checkbox handlers", () => {
+  it("triggers input handlers", () => {
     render(<WorkspaceSSOSection {...defaultProps} />);
 
     // OIDC Domain input
@@ -98,13 +98,9 @@ describe("WorkspaceSSOSection", () => {
     fireEvent.change(oidcDomainInput, { target: { value: "new.com" } });
     expect(defaultProps.setOidcSetupForm).toHaveBeenCalled();
 
-    // SAML set as primary checkbox
-    const primaryCheckboxes = screen.getAllByLabelText(
-      /Set this as the workspace primary provider/i,
-    );
-    const samlPrimaryCheckbox = primaryCheckboxes[1];
-    if (!samlPrimaryCheckbox) throw new Error("Expected SAML primary checkbox");
-    fireEvent.click(samlPrimaryCheckbox);
+    // SAML certificate textarea
+    const samlCertInput = screen.getByLabelText(/X.509 certificate/i);
+    fireEvent.change(samlCertInput, { target: { value: "-----BEGIN CERTIFICATE-----" } });
     expect(defaultProps.setSamlSetupForm).toHaveBeenCalled();
   });
 

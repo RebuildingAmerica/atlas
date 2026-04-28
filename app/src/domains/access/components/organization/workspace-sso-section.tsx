@@ -132,17 +132,6 @@ export function WorkspaceSSOSection({
                 <WorkspaceSSODomainHint suggestion={setup.workspaceDomainSuggestion} />
               ) : null}
               <Input
-                label="Provider ID"
-                value={oidcSetupForm.providerId}
-                onChange={(value) => {
-                  setOidcSetupForm((current) => ({
-                    ...current,
-                    providerId: value,
-                  }));
-                }}
-                placeholder={setup.oidcProviderIdSuggestion}
-              />
-              <Input
                 label="Client ID"
                 value={oidcSetupForm.clientId}
                 onChange={(value) => {
@@ -163,21 +152,26 @@ export function WorkspaceSSOSection({
                   }));
                 }}
               />
-              <label className="text-outline flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={oidcSetupForm.setAsPrimary}
-                  onChange={(event) => {
-                    const isChecked = event.target.checked;
-
+              <details className="text-outline space-y-2">
+                <summary className="type-label-medium cursor-pointer">
+                  Advanced: override the suggested provider ID
+                </summary>
+                <Input
+                  label="Provider ID"
+                  value={oidcSetupForm.providerId}
+                  onChange={(value) => {
                     setOidcSetupForm((current) => ({
                       ...current,
-                      setAsPrimary: isChecked,
+                      providerId: value,
                     }));
                   }}
+                  placeholder={setup.oidcProviderIdSuggestion}
                 />
-                Set this as the workspace primary provider
-              </label>
+                <p className="type-body-small text-outline">
+                  Keep the suggested value unless you have a reason to change it. Provider IDs must
+                  be unique across Atlas; collisions cause registration to fail.
+                </p>
+              </details>
               <Button
                 type="submit"
                 disabled={
@@ -247,17 +241,6 @@ export function WorkspaceSSOSection({
                 <WorkspaceSSODomainHint suggestion={setup.workspaceDomainSuggestion} />
               ) : null}
               <Input
-                label="Provider ID"
-                value={samlSetupForm.providerId}
-                onChange={(value) => {
-                  setSamlSetupForm((current) => ({
-                    ...current,
-                    providerId: value,
-                  }));
-                }}
-                placeholder={setup.samlProviderIdSuggestion}
-              />
-              <Input
                 label="Identity provider issuer"
                 value={samlSetupForm.issuer}
                 onChange={(value) => {
@@ -291,21 +274,26 @@ export function WorkspaceSSOSection({
                 }}
                 placeholder="-----BEGIN CERTIFICATE-----"
               />
-              <label className="text-outline flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={samlSetupForm.setAsPrimary}
-                  onChange={(event) => {
-                    const isChecked = event.target.checked;
-
+              <details className="text-outline space-y-2">
+                <summary className="type-label-medium cursor-pointer">
+                  Advanced: override the suggested provider ID
+                </summary>
+                <Input
+                  label="Provider ID"
+                  value={samlSetupForm.providerId}
+                  onChange={(value) => {
                     setSamlSetupForm((current) => ({
                       ...current,
-                      setAsPrimary: isChecked,
+                      providerId: value,
                     }));
                   }}
+                  placeholder={setup.samlProviderIdSuggestion}
                 />
-                Set this as the workspace primary provider
-              </label>
+                <p className="type-body-small text-outline">
+                  Keep the suggested value unless you have a reason to change it. Provider IDs must
+                  be unique across Atlas; collisions cause registration to fail.
+                </p>
+              </details>
               <Button
                 type="submit"
                 disabled={
