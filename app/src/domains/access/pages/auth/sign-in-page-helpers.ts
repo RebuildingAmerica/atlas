@@ -83,6 +83,29 @@ export function buildMagicLinkStatusMessage(invitationId?: string): string {
 }
 
 /**
+ * Returns true when the sign-in page was reached from an OAuth authorization
+ * redirect — i.e., the `redirect` query parameter points back into the
+ * `/api/auth/oauth2/...` flow that Better Auth bounces unauthenticated users
+ * through on their way to the consent screen.
+ *
+ * The signal is used to surface MCP-aware copy ("if you don't see a magic
+ * link, your email may not be approved yet — request access at <link>")
+ * without leaking allowlist membership: the hint shows for every OAuth-origin
+ * submission, allowlisted or not, so a probe with someone else's email
+ * cannot enumerate access state.
+ *
+ * @param redirectTo - The redirect path supplied via the `redirect` query
+ *   parameter; same value the rest of the sign-in page consumes.
+ */
+export function isOAuthOriginSignIn(redirectTo: string | undefined): boolean {
+  const sanitized = sanitizeSignInRedirectPath(redirectTo);
+  if (!sanitized) {
+    return false;
+  }
+  return sanitized.startsWith("/api/auth/oauth2/");
+}
+
+/**
  * Extracts a redirect URL from a Better Auth client response when the SSO
  * client returns one explicitly instead of navigating the browser itself.
  *

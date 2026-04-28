@@ -4,6 +4,7 @@ import {
   buildSignInCallbackURL,
   buildSignInErrorCallbackURL,
   extractSSORedirectUrl,
+  isOAuthOriginSignIn,
   sanitizeSignInRedirectPath,
 } from "@/domains/access/pages/auth/sign-in-page-helpers";
 
@@ -99,6 +100,26 @@ describe("buildMagicLinkStatusMessage", () => {
 
   it("returns generic copy otherwise", () => {
     expect(buildMagicLinkStatusMessage()).toBe("A sign-in link is on the way. Check your inbox.");
+  });
+});
+
+describe("isOAuthOriginSignIn", () => {
+  it("returns true when the redirect points back into the OAuth flow", () => {
+    expect(isOAuthOriginSignIn("/api/auth/oauth2/authorize?client_id=foo")).toBe(true);
+    expect(isOAuthOriginSignIn("/api/auth/oauth2/par")).toBe(true);
+  });
+
+  it("returns false for unrelated redirect targets", () => {
+    expect(isOAuthOriginSignIn("/discovery")).toBe(false);
+    expect(isOAuthOriginSignIn("/account")).toBe(false);
+    expect(isOAuthOriginSignIn(undefined)).toBe(false);
+  });
+
+  it("returns false for redirects that fail sanitization", () => {
+    // Cross-origin candidates should never trip the OAuth-origin signal even
+    // when they syntactically look like the OAuth path; sanitization rejects
+    // them first.
+    expect(isOAuthOriginSignIn("//attacker.example/api/auth/oauth2/authorize")).toBe(false);
   });
 });
 
