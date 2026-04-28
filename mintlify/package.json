@@ -2,6 +2,11 @@
   "name": "docs",
   "private": true,
   "scripts": {
-    "dev": "mint dev"
+    "favicons": "node scripts/build-favicons.mjs",
+    "predev": "node scripts/build-favicons.mjs",
+    "dev": "portless docs mint dev"
+  },
+  "devDependencies": {
+    "favicons": "7.2.0"
   }
 }

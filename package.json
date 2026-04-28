@@ -7,19 +7,22 @@
     "node": ">=24.3.0 <25"
   },
   "scripts": {
-    "dev": "ATLAS_DEPLOY_MODE= turbo run dev e2e:mail",
-    "dev:local": "ATLAS_DEPLOY_MODE=local turbo run dev",
+    "predev": "sh ./scripts/portless-reset.sh",
+    "dev": "ATLAS_DEPLOY_MODE= concurrently -k -n api,app,docs,mail -c blue,green,magenta,yellow 'pnpm --filter @rebuildingamerica/atlas-api run dev' 'pnpm --filter @rebuildingamerica/atlas-app run dev' 'pnpm --filter docs run dev' 'pnpm --filter @rebuildingamerica/atlas-app run e2e:mail'",
+    "predev:local": "sh ./scripts/portless-reset.sh",
+    "dev:local": "ATLAS_DEPLOY_MODE=local concurrently -k -n api,app,docs -c blue,green,magenta 'pnpm --filter @rebuildingamerica/atlas-api run dev' 'pnpm --filter @rebuildingamerica/atlas-app run dev:local' 'pnpm --filter docs run dev'",
+    "portless:reset": "sh ./scripts/portless-reset.sh",
     "secrets:update-baseline": "sh ./scripts/secrets-update-baseline.sh",
     "secrets:scan": "sh ./scripts/secrets-scan.sh",
     "openapi": "sh ./scripts/openapi-export.sh",
-    "docs:dev": "cd mintlify && mint dev",
+    "docs:dev": "pnpm --filter docs run dev",
     "docs:validate": "cd mintlify && mint validate",
     "docs:broken-links": "cd mintlify && mint broken-links",
     "api:test": "sh ./scripts/api-test.sh",
     "quality": "turbo run typecheck lint test",
     "test:coverage": "turbo run //#api:test app#test:coverage",
-    "test:e2e": "turbo run app#test:e2e",
-    "test:e2e:headed": "turbo run app#test:e2e:headed",
+    "test:e2e": "pnpm --filter @rebuildingamerica/atlas-app run test:e2e",
+    "test:e2e:headed": "pnpm --filter @rebuildingamerica/atlas-app run test:e2e:headed",
     "contract:test": "sh ./scripts/contract-test.sh",
     "compose:validate": "sh ./scripts/compose-validate.sh",
     "e2e:api": "uv --directory ./api run python -m atlas.seed_profiles --database-url ${DATABASE_URL:-sqlite:///atlas.db} && uv --directory ./api run python -m atlas.main",
@@ -36,8 +39,9 @@
   "devDependencies": {
     "@atlas/eslint-config": "workspace:*",
     "@clack/prompts": "0.11.0",
+    "concurrently": "9.1.0",
     "eslint": "9.17.0",
-    "mint": "4.2.523",
+    "mint": "4.2.537",
     "picocolors": "1.1.0",
     "portless": "0.10.3",
     "prettier": "3.4.0",
@@ -49,6 +53,17 @@
     "overrides": {
       "@xmldom/xmldom": "^0.8.13",
       "fast-xml-parser": "^5.7.0"
+    },
+    "peerDependencyRules": {
+      "allowedVersions": {
+        "@mintlify/mdx>react": "19",
+        "@mintlify/mdx>react-dom": "19",
+        "next-mdx-remote-client>react": "19",
+        "next-mdx-remote-client>react-dom": "19",
+        "@openstatus/react>react": "19",
+        "react-simple-maps>react": "19",
+        "react-simple-maps>react-dom": "19"
+      }
     }
   }
 }

@@ -58,6 +58,15 @@
       "cache": false,
       "persistent": true
     },
+    "docs#favicons": {
+      "inputs": ["brand/**", "scripts/build-favicons.mjs", "package.json"],
+      "outputs": ["favicons/**"]
+    },
+    "docs#dev": {
+      "cache": false,
+      "persistent": true,
+      "dependsOn": ["docs#favicons"]
+    },
     "typecheck": {
       "inputs": ["$TURBO_DEFAULT$", "tsconfig.json", "package.json", "pyproject.toml", "uv.lock"],
       "env": ["ATLAS_DEPLOY_MODE"]
@@ -161,7 +170,7 @@
         "app#openapi:lint",
         "app#quality",
         "app#test",
-        "app#test:e2e",
+        "app#test:acceptance",
         "app#build"
       ]
     }

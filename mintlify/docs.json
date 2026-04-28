@@ -3,7 +3,7 @@
   "theme": "mint",
   "name": "Atlas Docs",
   "basePath": "/docs",
-  "favicon": "https://atlas.rebuildingus.org/favicon.ico",
+  "favicon": "/favicons/favicon.ico",
   "appearance": {
     "default": "system"
   },
