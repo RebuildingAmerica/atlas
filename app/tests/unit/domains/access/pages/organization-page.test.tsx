@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+/* eslint-disable atlas-tests/no-test-file-locals */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
@@ -14,14 +15,14 @@ import {
   createAtlasWorkspace,
 } from "../../../../fixtures/access/sessions";
 import { organizationPageDependencyMocks } from "../../../../mocks/access/organization-page-dependencies";
-import { createMutationHookStub, createQueryHookStub } from "../../../../utils/react-query-stubs";
+import { createMutationHookStub, createQueryHookStub } from "../../../../helpers/react-query-stubs";
 import {
   TestButton,
   TestInput,
   TestLink,
   TestSelect,
   TestTextarea,
-} from "../../../../utils/ui-stubs";
+} from "../../../../helpers/ui-stubs";
 
 vi.mock("@/platform/ui/button", () => ({
   Button: TestButton,
@@ -303,7 +304,7 @@ describe("OrganizationPage", () => {
     await renderOrganizationPage();
 
     expect(screen.getByText("Enterprise sign-in")).not.toBeNull();
-    expect(screen.getByText("Open focused SSO setup")).not.toBeNull();
+    expect(screen.getByText("Manage enterprise SSO")).not.toBeNull();
     expect(screen.getByText("Primary provider: atlas-team-google-workspace-saml.")).not.toBeNull();
     expect(screen.queryByText("Configured providers")).toBeNull();
   });
