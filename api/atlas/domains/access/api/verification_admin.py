@@ -2,10 +2,10 @@
 
 from typing import Literal
 
-from fastapi import APIRouter, HTTPException, Response
+from fastapi import APIRouter, HTTPException, Query, Response
 from pydantic import BaseModel, Field
 
-router = APIRouter()
+router = APIRouter(tags=["access"])
 
 __all__ = ["router"]
 
@@ -46,55 +46,47 @@ class VerificationUpdateResponse(BaseModel):
     message: str
 
 
-@router.get("/api/admin/verifications", response_model=VerificationListResponse)
+@router.get(
+    "/api/admin/verifications",
+    response_model=VerificationListResponse,
+    operation_id="listVerifications",
+    summary="List discount verifications",
+    description="List discount verification requests for manual review.",
+)
 async def list_verifications(
-    _response_obj: Response,
-    _status: str | None = None,
-    _segment: str | None = None,
+    response: Response,  # noqa: ARG001 - reserved for cache/header handling
+    status: str | None = Query(default=None),
+    segment: str | None = Query(default=None),
 ) -> VerificationListResponse:
-    """
-    List discount verification records (admin only).
-
-    Args:
-        _status: Filter by status (pending, verified, rejected, expired)
-        _segment: Filter by segment (independent_journalist, grassroots_nonprofit, civic_tech_worker)
-        _response_obj: FastAPI response object for setting headers
-
-    Returns:
-        VerificationListResponse with records and metadata
-
-    Raises:
-        HTTPException: If admin access is denied (401) or processing fails (500)
-    """
+    """List discount verification requests for manual review."""
     # TODO: Check admin authorization
     # TODO: Fetch verification records from database
     # TODO: Filter by status and segment if provided
     # TODO: Return paginated results
 
     # Placeholder: Return empty list
-    return VerificationListResponse(records=[], total=0)
+    return VerificationListResponse(
+        records=[],
+        total=0,
+        status_filter=status,
+        segment_filter=segment,
+    )
 
 
-@router.patch("/api/admin/verifications/{user_id}", response_model=VerificationUpdateResponse)
+@router.patch(
+    "/api/admin/verifications/{user_id}",
+    response_model=VerificationUpdateResponse,
+    operation_id="updateVerification",
+    summary="Update discount verification",
+    description="Update the review status for a discount verification request.",
+)
 async def update_verification(
-    _response_obj: Response,
+    response: Response,  # noqa: ARG001 - reserved for cache/header handling
     user_id: str,  # noqa: ARG001 - must match {user_id} in route path
-    _request: VerificationUpdateRequest,
+    request: VerificationUpdateRequest,
 ) -> VerificationUpdateResponse:
-    """
-    Update a verification record status (admin only).
-
-    Args:
-        _user_id: The user ID of the verification to update
-        _request: New status and optional notes
-        _response_obj: FastAPI response object for setting headers
-
-    Returns:
-        VerificationUpdateResponse with updated status
-
-    Raises:
-        HTTPException: If not found (404), unauthorized (401), or processing fails (500)
-    """
+    """Update the review status for a discount verification request."""
+    _ = request
     # TODO: Check admin authorization
     # TODO: Fetch verification record from database
     # TODO: Update status and notes

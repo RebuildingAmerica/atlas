@@ -132,16 +132,15 @@ def create_app() -> FastAPI:
     )
 
     # Health check endpoint
-    @app.get("/health")
+    @app.get(
+        "/health",
+        tags=["health"],
+        operation_id="getHealth",
+        summary="Health",
+        description="Return the Atlas API health status.",
+    )
     async def health_check(response: Response) -> dict[str, str]:
-        """
-        Health check endpoint.
-
-        Returns
-        -------
-        dict[str, str]
-            Simple status response.
-        """
+        """Return the Atlas API health status."""
         apply_no_store_headers(response)
         return {"status": "ok"}
 

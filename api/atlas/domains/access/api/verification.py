@@ -12,7 +12,7 @@ from atlas.domains.access.verification import (
 )
 from atlas.platform.http.cache import apply_no_store_headers
 
-router = APIRouter()
+router = APIRouter(tags=["access"])
 
 __all__ = ["router"]
 
@@ -90,27 +90,18 @@ def _validate_civic_tech_worker(
     return None, VerificationMethod.MISSION_STATEMENT
 
 
-@router.post("/api/access/verify-discount", response_model=VerificationResponsePayload)
+@router.post(
+    "/api/access/verify-discount",
+    response_model=VerificationResponsePayload,
+    operation_id="submitDiscountVerification",
+    summary="Submit discount verification",
+    description="Validate a discount verification request and record it for manual review.",
+)
 async def submit_discount_verification(
     request: VerificationRequestPayload,
     response: Response,
 ) -> VerificationResponsePayload:
-    """
-    Submit a discount verification request.
-
-    Validates the submission and creates a verification record (initially PENDING).
-    All verifications require manual review.
-
-    Args:
-        request: Verification request with segment, user_id, and segment-specific data
-        response: FastAPI response object for setting headers
-
-    Returns:
-        VerificationResponsePayload with status and message
-
-    Raises:
-        HTTPException: If validation fails (400) or processing fails (500)
-    """
+    """Validate a discount verification request and record it for manual review."""
     apply_no_store_headers(response)
 
     verifier = DiscountVerifier()

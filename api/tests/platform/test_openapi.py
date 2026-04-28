@@ -42,6 +42,65 @@ async def test_openapi_includes_core_contract(test_client: object) -> None:
 
 
 @pytest.mark.asyncio
+async def test_openapi_declares_all_public_route_tags(test_client: object) -> None:
+    """The schema should declare every tag used by public routes."""
+    response = await test_client.get("/openapi.json")
+    payload = response.json()
+
+    declared_tags = {tag["name"] for tag in payload["tags"]}
+
+    assert {
+        "access",
+        "claims",
+        "discovery-schedules",
+        "feed",
+        "follows",
+        "lists",
+        "org-annotations",
+        "org-discovery-runs",
+        "org-entries",
+    }.issubset(declared_tags)
+
+
+@pytest.mark.asyncio
+async def test_openapi_uses_explicit_metadata_for_health_and_access_routes(
+    test_client: object,
+) -> None:
+    """Health and access routes should expose stable, public-facing metadata."""
+    response = await test_client.get("/openapi.json")
+    payload = response.json()
+
+    health_operation = payload["paths"]["/health"]["get"]
+    auth_health_operation = payload["paths"]["/api/auth/health"]["get"]
+    verify_discount_operation = payload["paths"]["/api/access/verify-discount"]["post"]
+    list_verifications_operation = payload["paths"]["/api/admin/verifications"]["get"]
+    update_verification_operation = payload["paths"]["/api/admin/verifications/{user_id}"]["patch"]
+
+    assert health_operation["operationId"] == "getHealth"
+    assert health_operation["tags"] == ["health"]
+    assert "Returns" not in health_operation["description"]
+
+    assert auth_health_operation["operationId"] == "getAuthHealth"
+    assert auth_health_operation["tags"] == ["access"]
+
+    assert verify_discount_operation["operationId"] == "submitDiscountVerification"
+    assert verify_discount_operation["tags"] == ["access"]
+    assert "Args:" not in verify_discount_operation["description"]
+
+    assert list_verifications_operation["operationId"] == "listVerifications"
+    assert list_verifications_operation["tags"] == ["access"]
+    assert [parameter["name"] for parameter in list_verifications_operation["parameters"]] == [
+        "status",
+        "segment",
+    ]
+    assert "Args:" not in list_verifications_operation["description"]
+
+    assert update_verification_operation["operationId"] == "updateVerification"
+    assert update_verification_operation["tags"] == ["access"]
+    assert "Args:" not in update_verification_operation["description"]
+
+
+@pytest.mark.asyncio
 async def test_cache_headers_match_resource_type(test_client: object) -> None:
     """Public reads should be cacheable while health remains uncached."""
     domains = await test_client.get("/api/domains")

@@ -14,16 +14,16 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["access"])
 
 
-@router.get("/auth/health")
+@router.get(
+    "/auth/health",
+    operation_id="getAuthHealth",
+    summary="Auth health",
+    description="Check the health of external authentication dependencies.",
+)
 async def auth_health(
     settings: Settings = Depends(get_settings),
 ) -> dict[str, object]:
-    """Check reachability of the external auth integration endpoints.
-
-    Returns a per-service status map so operators can diagnose
-    misconfigurations during deployment.  This endpoint does not require
-    authentication because it is used for infrastructure monitoring.
-    """
+    """Check the health of external authentication dependencies."""
     checks: dict[str, str] = {}
 
     if settings.deploy_mode == "local":

@@ -31,14 +31,22 @@ OPENAPI_LICENSE = {
     "identifier": "MIT",
 }
 OPENAPI_TAGS = [
-    {"name": "entities", "description": "Create, inspect, update, and source Atlas entities."},
+    {"name": "access", "description": "Authentication, authorization, and access-management APIs."},
+    {"name": "claims", "description": "Profile-claim requests and profile management actions."},
     {
-        "name": "places",
-        "description": "Place-first Atlas resources such as entities, sources, coverage, and profiles.",
+        "name": "discovery-schedules",
+        "description": "Create and manage recurring Atlas discovery schedules.",
+    },
+    {"name": "entities", "description": "Create, inspect, update, and source Atlas entities."},
+    {"name": "feed", "description": "Following feed resources for authenticated Atlas users."},
+    {"name": "follows", "description": "Follow-state APIs for Atlas profiles."},
+    {
+        "name": "health",
+        "description": "Operational health and environment metadata.",
     },
     {
-        "name": "issue-areas",
-        "description": "Atlas issue-area taxonomy resources and natural-language lookup.",
+        "name": "lists",
+        "description": "Saved-list APIs for authenticated Atlas users.",
     },
     {"name": "domains", "description": "Top-level Atlas policy and issue domains."},
     {"name": "discovery-runs", "description": "Manage and inspect Atlas discovery pipeline runs."},
@@ -46,7 +54,17 @@ OPENAPI_TAGS = [
         "name": "flags",
         "description": "Anonymous flags for stale or incorrect Atlas entities and sources.",
     },
-    {"name": "health", "description": "Operational health and environment metadata."},
+    {
+        "name": "issue-areas",
+        "description": "Atlas issue-area taxonomy resources and natural-language lookup.",
+    },
+    {"name": "org-annotations", "description": "Organization-scoped annotation resources."},
+    {"name": "org-discovery-runs", "description": "Organization-scoped discovery run resources."},
+    {"name": "org-entries", "description": "Organization-scoped entry resources."},
+    {
+        "name": "places",
+        "description": "Place-first Atlas resources such as entities, sources, coverage, and profiles.",
+    },
 ]
 OPENAPI_SERVERS = [
     {"url": "https://atlas.rebuildingus.org", "description": "Production environment"},
