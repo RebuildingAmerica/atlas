@@ -74,6 +74,7 @@ describe("route-guard", () => {
   it("redirects a ready operator away from account-setup", async () => {
     const session = {
       accountReady: true,
+      hasPasskey: true,
       workspace: { onboarding: { needsWorkspace: false, hasPendingInvitations: false } },
     };
     mocks.getAtlasSession.mockResolvedValue(session);
@@ -89,6 +90,7 @@ describe("route-guard", () => {
   it("redirects to organization when a workspace is needed", async () => {
     const session = {
       accountReady: true,
+      hasPasskey: true,
       workspace: { onboarding: { needsWorkspace: true, hasPendingInvitations: false } },
     };
     mocks.getAtlasSession.mockResolvedValue(session);
@@ -99,5 +101,17 @@ describe("route-guard", () => {
         to: "/organization",
       }),
     );
+  });
+
+  it("keeps an email-verified-but-passkey-less operator on account-setup", async () => {
+    const session = {
+      accountReady: true,
+      hasPasskey: false,
+      workspace: { onboarding: { needsWorkspace: false, hasPendingInvitations: false } },
+    };
+    mocks.getAtlasSession.mockResolvedValue(session);
+
+    await expect(requireIncompleteAtlasSession("/account-setup")).resolves.toEqual(session);
+    expect(mocks.redirect).not.toHaveBeenCalled();
   });
 });

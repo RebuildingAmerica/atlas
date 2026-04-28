@@ -112,8 +112,16 @@ describe("AccountSetupPage", () => {
     mocks.useQueryClient.mockReturnValue({
       invalidateQueries: mocks.invalidateQueries,
     });
+    // The page renders three mutations per render in a fixed order
+    // (sendVerification, addPasskey, signOut).  Cycle through the seeded
+    // states modulo three so the same scripted state survives the extra
+    // re-renders triggered by `setLastCheckedAt` and the auto-mount
+    // refresh, instead of getting drained on the first render.
+    let mutationCallIndex = 0;
     mocks.useMutation.mockImplementation((config: { mutationFn?: () => Promise<unknown> }) => {
-      const state = mocks.mutateStates.shift() ?? {};
+      const seeded = mocks.mutateStates;
+      const state = seeded.length > 0 ? (seeded[mutationCallIndex % seeded.length] ?? {}) : {};
+      mutationCallIndex += 1;
       return {
         error: state.error,
         isError: Boolean(state.error),
@@ -170,6 +178,8 @@ describe("AccountSetupPage", () => {
       refetch: mocks.refetch.mockResolvedValue({
         data: {
           accountReady: true,
+          hasPasskey: true,
+          passkeyCount: 1,
           user: { name: "Test Operator", email: "operator@atlas.test", emailVerified: true },
           workspace: {
             onboarding: {
@@ -194,7 +204,7 @@ describe("AccountSetupPage", () => {
     render(<AccountSetupPage redirectTo="/account" />);
 
     fireEvent.click(screen.getByRole("button", { name: "Send verification email" }));
-    fireEvent.click(screen.getByRole("button", { name: "Add passkey" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add a passkey" }));
 
     await waitFor(() => {
       expect(mocks.sendVerificationEmail).toHaveBeenCalledTimes(1);

@@ -108,7 +108,12 @@ export async function loadAtlasSession(): Promise<AtlasSessionPayload | null> {
 
   return {
     isLocal: false,
-    accountReady: session.user.emailVerified && hasPasskey,
+    // accountReady gates resource creation and the workspace shell.  Email
+    // verification is the only hard requirement; passkey enrollment is a
+    // recommendation we surface on /account-setup but do not block on, so
+    // operators who only want magic-link sign-in can keep moving without
+    // getting stuck behind a WebAuthn prompt their device can't satisfy.
+    accountReady: session.user.emailVerified,
     hasPasskey,
     passkeyCount,
     session: {

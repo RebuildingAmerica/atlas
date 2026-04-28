@@ -214,7 +214,10 @@ describe("session-state", () => {
     authApi.listUserInvitations.mockResolvedValue([]);
 
     const expectedSession = createAtlasSessionFixture({
-      accountReady: false,
+      // accountReady tracks email verification only; passkey enrollment is
+      // recommended but optional, so a verified email with no passkey is
+      // still considered ready for resource creation.
+      accountReady: true,
       hasPasskey: false,
       passkeyCount: 0,
       workspace: createAtlasWorkspace({

@@ -146,7 +146,13 @@ export async function requireIncompleteAtlasSession(locationHref: string, redire
     redirectToSignIn(locationHref);
   }
 
-  if (session.accountReady) {
+  // Don't bounce email-verified-but-passkey-less operators out of the setup
+  // page: accountReady fires off the email check alone, but /account-setup
+  // is also where the recommended-but-optional passkey enrollment card and
+  // the explicit "Continue without a passkey" escape hatch live.  Letting
+  // them sit here means they get one more chance to register a passkey
+  // without an opaque mid-app interstitial.
+  if (session.accountReady && session.hasPasskey) {
     const destination = resolveReadySessionDestination(session, redirectTo);
 
     throw redirect({
