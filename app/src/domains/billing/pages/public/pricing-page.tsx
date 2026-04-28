@@ -46,7 +46,7 @@ type BillingPeriod = "monthly" | "annual";
 
 interface PlanCardLinkCta {
   label: string;
-  to: string;
+  onSelect: () => void;
 }
 
 interface PlanCardProps {
@@ -108,16 +108,20 @@ function PlanCard({
     }
   };
 
+  const teamCtaClass = isTeam
+    ? "bg-surface-container-lowest text-ink-strong hover:bg-surface-container-high border-transparent"
+    : "";
+
   return (
     <div
       className={`${bgClass} ${borderClass} flex flex-col rounded-[1.125rem] border px-5 py-5 sm:rounded-[1.125rem] sm:px-5 sm:py-5`}
     >
-      <p className={`${labelColorClass} type-label-small mb-1 tracking-wider uppercase`}>{label}</p>
-      <p className={`${nameColorClass} type-title-small mb-2 font-medium`}>{name}</p>
+      <p className={`${labelColorClass} type-label-small mb-2 tracking-wider uppercase`}>{label}</p>
+      <p className={`${nameColorClass} type-title-large mb-2 font-medium`}>{name}</p>
       <p className={`${taglineColorClass} type-body-small mb-4 leading-relaxed`}>{tagline}</p>
 
       <div
-        className={`mb-4 border-t pt-4 ${isDark ? "border-ink-strong" : "border-surface-container"}`}
+        className={`mb-4 flex-1 border-t pt-4 ${isDark ? "border-ink" : "border-surface-container"}`}
       >
         <ul className={`${featureColorClass} type-body-small space-y-2`}>
           {features.map((feature, idx) => (
@@ -126,23 +130,27 @@ function PlanCard({
         </ul>
       </div>
 
-      <div className="mb-4 flex-1">
-        <p className={`${priceColorClass} text-xl font-semibold`}>{showPrice}</p>
+      <div className="mb-4">
+        <p className={`${priceColorClass} type-headline-small font-medium`}>{showPrice}</p>
         {annualNote && billing === "annual" && (
           <p className={`${priceSubColorClass} type-body-small mt-1`}>{annualNote}</p>
         )}
       </div>
 
       {linkCta ? (
-        <Link to={linkCta.to} className="no-underline">
-          <Button variant="secondary" className="w-full justify-center">
-            {linkCta.label}
-          </Button>
-        </Link>
+        <Button
+          variant="secondary"
+          className="w-full justify-center"
+          onClick={() => {
+            linkCta.onSelect();
+          }}
+        >
+          {linkCta.label}
+        </Button>
       ) : (
         <Button
-          variant={isTeam ? "ghost" : "primary"}
-          className={`w-full justify-center ${isTeam ? "border-ink-strong border" : ""}`}
+          variant="primary"
+          className={`w-full justify-center ${teamCtaClass}`}
           onClick={() => void handleCta()}
           disabled={isPending}
         >
@@ -152,18 +160,18 @@ function PlanCard({
 
       {discountNote && (
         <p
-          className={`type-body-small mt-3 text-center ${isDark ? "text-ink-soft" : "text-accent"}`}
+          className={`type-body-small mt-3 text-center ${isDark ? "text-ink-muted" : "text-ink-soft"}`}
         >
           {discountNote}
         </p>
       )}
 
       {isTeam && (
-        <p className="type-body-small text-ink-soft mt-3 text-center">
+        <p className="type-body-small text-ink-muted mt-3 text-center">
           Setting up a large org?{" "}
           <a
             href="mailto:hello@rebuildingus.org"
-            className="text-ink-muted hover:text-ink-strong underline"
+            className="text-ink-soft hover:text-surface-container-lowest underline"
           >
             Talk to us
           </a>
