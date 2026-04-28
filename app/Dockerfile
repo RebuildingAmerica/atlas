@@ -1,25 +1,33 @@
+# Build the Atlas web app from the monorepo root so workspace
+# dependencies resolve via pnpm. Build context: repo root.
 FROM node:24-alpine AS builder
 
-WORKDIR /app
+ENV PNPM_HOME=/pnpm \
+    PATH=/pnpm:$PATH
 
 RUN corepack enable
 
-COPY package.json pnpm-lock.yaml ./
+WORKDIR /repo
 
-RUN pnpm install --frozen-lockfile
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json .npmrc* ./
+COPY app/package.json app/package.json
+COPY packages packages
 
-COPY . .
+RUN pnpm install --frozen-lockfile --filter @rebuildingamerica/atlas-app...
 
+COPY app app
+
+WORKDIR /repo/app
 RUN pnpm run build
 
 FROM node:24-alpine AS runner
 
 WORKDIR /app
 
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/server.mjs ./server.mjs
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/package.json ./package.json
+COPY --from=builder /repo/app/dist ./dist
+COPY --from=builder /repo/app/server.mjs ./server.mjs
+COPY --from=builder /repo/app/node_modules ./node_modules
+COPY --from=builder /repo/app/package.json ./package.json
 
 EXPOSE 3000
 

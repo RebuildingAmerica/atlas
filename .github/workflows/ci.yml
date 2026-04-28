@@ -19,12 +19,71 @@ concurrency:
 jobs:
   quality:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-toolchain
+      - name: Typecheck and lint
+        run: pnpm exec turbo run typecheck lint
+
+  test:
+    runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-toolchain
-      - name: Typecheck, lint, and test
-        run: pnpm run quality
+      - name: Run tests with coverage
+        run: pnpm run test:coverage
+
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-toolchain
+      - name: Install Playwright browsers
+        run: pnpm --filter @rebuildingamerica/atlas-app exec playwright install --with-deps chromium
+      - name: Run E2E tests
+        run: pnpm run test:e2e
+
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-toolchain
+      - name: Run API contract tests
+        run: pnpm run contract:test
+
+  openapi-drift:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-toolchain
+      - name: Regenerate OpenAPI spec and client
+        run: |
+          pnpm run openapi
+          pnpm --filter @rebuildingamerica/atlas-app run api-client
+      - name: Verify generated artifacts are up to date
+        run: |
+          if ! git diff --exit-code; then
+            echo "::error::Generated OpenAPI artifacts are out of date. Run 'pnpm openapi && pnpm --filter @rebuildingamerica/atlas-app run api-client' and commit the result."
+            exit 1
+          fi
+
+  docs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-toolchain
+        with:
+          python: "false"
+      - name: Validate docs
+        run: pnpm run docs:validate
+      - name: Check for broken links
+        run: pnpm run docs:broken-links
 
   compose-validate:
     runs-on: ubuntu-latest
@@ -36,3 +95,16 @@ jobs:
           python: "false"
       - name: Validate Compose configurations
         run: pnpm run compose:validate
+
+  secrets-scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/setup-toolchain
+        with:
+          install-deps: "false"
+      - name: Scan for committed secrets
+        run: pnpm run secrets:scan

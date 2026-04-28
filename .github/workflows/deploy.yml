@@ -58,7 +58,8 @@ jobs:
         with:
           image: ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/atlas-images/atlas-web
           tag: ${{ github.sha }}
-          context: ./app
+          context: .
+          dockerfile: app/Dockerfile
           cache-scope: atlas-web
 
       - name: Deploy atlas-api
@@ -88,11 +89,27 @@ jobs:
             ATLAS_PUBLIC_URL=${{ secrets.ATLAS_PUBLIC_URL }}
             CORS_ORIGINS=["${{ secrets.ATLAS_PUBLIC_URL }}"]
 
-      - name: Get API service URL
+      - name: Get API service URL and revision
         id: api-url
         run: |
           URL=$(gcloud run services describe atlas-api --region=${{ secrets.GCP_REGION }} --format='value(status.url)')
+          REVISION=$(gcloud run services describe atlas-api --region=${{ secrets.GCP_REGION }} --format='value(status.latestReadyRevisionName)')
           echo "url=$URL" >> "$GITHUB_OUTPUT"
+          echo "revision=$REVISION" >> "$GITHUB_OUTPUT"
+
+      - name: Smoke-test atlas-api
+        env:
+          API_URL: ${{ steps.api-url.outputs.url }}
+        run: |
+          for attempt in 1 2 3 4 5; do
+            if curl -fsS --max-time 10 "$API_URL/health"; then
+              exit 0
+            fi
+            echo "atlas-api health check failed (attempt $attempt); retrying in 5s..."
+            sleep 5
+          done
+          echo "::error::atlas-api never returned a healthy response from $API_URL/health"
+          exit 1
 
       - name: Deploy atlas-web
         uses: google-github-actions/deploy-cloudrun@v2
@@ -116,6 +133,28 @@ jobs:
             ATLAS_AUTH_ALLOWED_EMAILS=${{ secrets.ATLAS_AUTH_ALLOWED_EMAILS }}
             ATLAS_EMAIL_PROVIDER=resend
             ATLAS_EMAIL_RESEND_API_KEY=${{ secrets.ATLAS_EMAIL_RESEND_API_KEY }}
+
+      - name: Get web service URL and revision
+        id: web-url
+        run: |
+          URL=$(gcloud run services describe atlas-web --region=${{ secrets.GCP_REGION }} --format='value(status.url)')
+          REVISION=$(gcloud run services describe atlas-web --region=${{ secrets.GCP_REGION }} --format='value(status.latestReadyRevisionName)')
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+          echo "revision=$REVISION" >> "$GITHUB_OUTPUT"
+
+      - name: Smoke-test atlas-web
+        env:
+          WEB_URL: ${{ steps.web-url.outputs.url }}
+        run: |
+          for attempt in 1 2 3 4 5; do
+            if curl -fsS --max-time 10 -o /dev/null "$WEB_URL/"; then
+              exit 0
+            fi
+            echo "atlas-web health check failed (attempt $attempt); retrying in 5s..."
+            sleep 5
+          done
+          echo "::error::atlas-web never returned a healthy response from $WEB_URL/"
+          exit 1
 
       - name: Ensure Cloud Scheduler job for autonomous discovery
         env:
@@ -163,3 +202,39 @@ jobs:
         with:
           api_key: ${{ secrets.OPENSTATUS_API_KEY }}
         continue-on-error: true
+
+      - name: Write deploy summary
+        if: always()
+        env:
+          API_URL: ${{ steps.api-url.outputs.url }}
+          API_REVISION: ${{ steps.api-url.outputs.revision }}
+          WEB_URL: ${{ steps.web-url.outputs.url }}
+          WEB_REVISION: ${{ steps.web-url.outputs.revision }}
+          IMAGE_REGISTRY: ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/atlas-images
+        run: |
+          {
+            echo "## Atlas deploy"
+            echo
+            echo "| Service | URL | Revision | Image |"
+            echo "| --- | --- | --- | --- |"
+            echo "| atlas-api | ${API_URL:-_n/a_} | ${API_REVISION:-_n/a_} | \`${IMAGE_REGISTRY}/atlas-api:${{ github.sha }}\` |"
+            echo "| atlas-web | ${WEB_URL:-_n/a_} | ${WEB_REVISION:-_n/a_} | \`${IMAGE_REGISTRY}/atlas-web:${{ github.sha }}\` |"
+            echo
+            echo "Commit: \`${{ github.sha }}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Notify Slack on failure
+        if: failure()
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_DEPLOY_WEBHOOK_URL }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          COMMIT: ${{ github.sha }}
+        run: |
+          if [ -z "$SLACK_WEBHOOK_URL" ]; then
+            echo "No SLACK_DEPLOY_WEBHOOK_URL configured; skipping notification."
+            exit 0
+          fi
+          PAYLOAD=$(jq -nc \
+            --arg text "Atlas production deploy failed for ${COMMIT}. See ${RUN_URL}" \
+            '{text: $text}')
+          curl -fsS -X POST -H 'Content-type: application/json' --data "$PAYLOAD" "$SLACK_WEBHOOK_URL"
