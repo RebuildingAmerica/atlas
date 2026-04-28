@@ -9,6 +9,7 @@ import { setActiveWorkspace } from "@/domains/access/organizations.functions";
 import { requireReadyAtlasSession } from "@/domains/access/server";
 import { getRpLogoutRedirect } from "@/domains/access/session.functions";
 import type { AtlasSessionPayload } from "@/domains/access/organization-contracts";
+import { ResumeCheckoutBanner } from "@/domains/billing/components/resume-checkout-banner";
 
 import { WorkspaceLayout } from "@/platform/layout/workspace-layout";
 import { Select } from "@/platform/ui/select";
@@ -83,6 +84,7 @@ function WorkspaceRoute() {
       tabs={tabs}
       identitySlot={showIdentity ? <OperatorIdentity session={sessionData} /> : null}
     >
+      <ResumeCheckoutBanner />
       <Outlet />
     </WorkspaceLayout>
   );

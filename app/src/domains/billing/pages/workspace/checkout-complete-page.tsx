@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { atlasSessionQueryKey, useAtlasSession } from "@/domains/access/client/use-atlas-session";
 import type { AtlasProduct } from "@/domains/access/capabilities";
+import { clearPendingCheckout } from "@/domains/billing/pending-checkout";
 import { PRODUCT_LABELS } from "@/domains/billing/product-labels";
 import { Button } from "@/platform/ui/button";
 
@@ -59,8 +60,16 @@ export function CheckoutCompletePage({ product }: CheckoutCompletePageProps) {
       return;
     }
 
+    // Atlas Team is "ready" only when both the product row exists and the
+    // session capability flips, since some capability flags are derived from
+    // workspace metadata that updates separately from the product list.
     const activeProducts = sessionData?.workspace.activeProducts ?? [];
-    if (activeProducts.includes(product)) {
+    const productActive = activeProducts.includes(product);
+    const teamReady =
+      product !== "atlas_team" || (sessionData?.workspace.capabilities.canUseTeamFeatures ?? false);
+
+    if (productActive && teamReady) {
+      clearPendingCheckout();
       setPhase("ready");
       return;
     }

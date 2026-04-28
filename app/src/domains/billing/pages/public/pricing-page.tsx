@@ -4,9 +4,11 @@ import type { ReactNode } from "react";
 import { z } from "zod";
 import { useAtlasSession } from "@/domains/access/client/use-atlas-session";
 import type { AtlasProduct } from "@/domains/access/capabilities";
+import { rememberPendingCheckout } from "@/domains/billing/pending-checkout";
 import { PRODUCT_LABELS } from "@/domains/billing/product-labels";
 import { PageLayout } from "@/platform/layout/page-layout";
 import { Button } from "@/platform/ui/button";
+import { useConfirmDialog } from "@/platform/ui/confirm-dialog";
 
 // ---------------------------------------------------------------------------
 // Search schema
@@ -46,12 +48,12 @@ type BillingPeriod = "monthly" | "annual";
 
 interface PlanCardLinkCta {
   label: string;
-  onSelect: () => void;
+  to: string;
 }
 
 interface PlanCardProps {
-  label: string;
-  name: string;
+  planName: string;
+  descriptor: string;
   tagline: string;
   features: string[];
   monthlyPrice: string | ReactNode;
@@ -68,13 +70,20 @@ interface PlanCardProps {
   discountNote?: ReactNode;
 }
 
+const PLAN_BUTTON_BASE_CLASSES =
+  "type-label-large active:translate-y-px flex w-full cursor-pointer items-center justify-center rounded-full border px-4 py-2.5 font-medium no-underline transition-[color,background-color,border-color,transform] duration-150 ease-out focus:ring-2 focus:ring-offset-2 focus:ring-offset-transparent focus:outline-none";
+
+const SECONDARY_LINK_BUTTON_CLASSES = `${PLAN_BUTTON_BASE_CLASSES} border-outline-variant bg-surface-container-lowest text-on-surface hover:border-outline hover:bg-surface-container-high focus:ring-border-strong`;
+
+const TEAM_CTA_CLASSES = `${PLAN_BUTTON_BASE_CLASSES} border-transparent bg-surface-container-lowest text-ink-strong hover:bg-surface-container-high focus:ring-surface-container-lowest`;
+
 // ---------------------------------------------------------------------------
 // Sub-components
 // ---------------------------------------------------------------------------
 
 function PlanCard({
-  label,
-  name,
+  planName,
+  descriptor,
   tagline,
   features,
   monthlyPrice,
@@ -93,8 +102,8 @@ function PlanCard({
   const isDark = isTeam;
   const bgClass = isDark ? "bg-ink-strong" : "bg-white";
   const borderClass = isDark ? "border-transparent" : "border-border";
-  const labelColorClass = isDark ? "text-ink-muted" : "text-ink-muted";
-  const nameColorClass = isDark ? "text-surface-container-lowest" : "text-ink-strong";
+  const planNameColorClass = isDark ? "text-surface-container-lowest" : "text-ink-strong";
+  const descriptorColorClass = isDark ? "text-ink-muted" : "text-ink-soft";
   const taglineColorClass = isDark ? "text-ink-muted" : "text-ink-soft";
   const featureColorClass = isDark ? "text-ink-muted" : "text-ink-strong";
   const priceColorClass = isDark ? "text-surface-container-lowest" : "text-ink-strong";
@@ -108,16 +117,10 @@ function PlanCard({
     }
   };
 
-  const teamCtaClass = isTeam
-    ? "bg-surface-container-lowest text-ink-strong hover:bg-surface-container-high border-transparent"
-    : "";
-
   return (
-    <div
-      className={`${bgClass} ${borderClass} flex flex-col rounded-[1.125rem] border px-5 py-5 sm:rounded-[1.125rem] sm:px-5 sm:py-5`}
-    >
-      <p className={`${labelColorClass} type-label-small mb-2 tracking-wider uppercase`}>{label}</p>
-      <p className={`${nameColorClass} type-title-large mb-2 font-medium`}>{name}</p>
+    <div className={`${bgClass} ${borderClass} flex flex-col rounded-[1.125rem] border px-5 py-5`}>
+      <p className={`${planNameColorClass} type-title-large mb-1 font-medium`}>{planName}</p>
+      <p className={`${descriptorColorClass} type-body-medium mb-2`}>{descriptor}</p>
       <p className={`${taglineColorClass} type-body-small mb-4 leading-relaxed`}>{tagline}</p>
 
       <div
@@ -131,26 +134,29 @@ function PlanCard({
       </div>
 
       <div className="mb-4">
-        <p className={`${priceColorClass} type-headline-small font-medium`}>{showPrice}</p>
+        <p className={`${priceColorClass} type-title-medium font-medium`}>{showPrice}</p>
         {annualNote && billing === "annual" && (
           <p className={`${priceSubColorClass} type-body-small mt-1`}>{annualNote}</p>
         )}
       </div>
 
       {linkCta ? (
-        <Button
-          variant="secondary"
-          className="w-full justify-center"
-          onClick={() => {
-            linkCta.onSelect();
-          }}
-        >
+        <Link to={linkCta.to} className={SECONDARY_LINK_BUTTON_CLASSES}>
           {linkCta.label}
-        </Button>
+        </Link>
+      ) : isTeam ? (
+        <button
+          type="button"
+          onClick={() => void handleCta()}
+          disabled={isPending}
+          className={`${TEAM_CTA_CLASSES} ${isPending ? "cursor-not-allowed opacity-50" : ""}`}
+        >
+          {isPending ? "Opening checkout…" : ctaText}
+        </button>
       ) : (
         <Button
           variant="primary"
-          className={`w-full justify-center ${teamCtaClass}`}
+          className="w-full justify-center"
           onClick={() => void handleCta()}
           disabled={isPending}
         >
@@ -218,9 +224,94 @@ async function loadStartCheckout() {
   return mod.startCheckout;
 }
 
+interface CheckoutCostPreview {
+  detailLine: string;
+  priceLine: string;
+}
+
+/**
+ * Builds the human-readable preview Atlas shows in the pre-redirect confirm
+ * dialog so the operator can verify the price and cadence before they leave
+ * for Stripe.
+ *
+ * @param product - The product the operator is buying.
+ * @param interval - The billing interval the operator picked.
+ */
+function describeCheckoutCost(
+  product: AtlasProduct,
+  interval: CheckoutParams["interval"],
+): CheckoutCostPreview {
+  if (product === "atlas_pro") {
+    if (interval === "yearly") {
+      return {
+        priceLine: "$48 per year — about $4 per month.",
+        detailLine: "Equivalent to two months free vs monthly billing. Cancel any time.",
+      };
+    }
+    return {
+      priceLine: "$5 per month, billed monthly.",
+      detailLine: "Cancel any time from the billing portal.",
+    };
+  }
+  if (product === "atlas_team") {
+    if (interval === "yearly") {
+      return {
+        priceLine: "$250 per year base, plus $80 per additional seat per year.",
+        detailLine: "Two months free vs monthly billing. Up to 50 members per workspace.",
+      };
+    }
+    return {
+      priceLine: "$25 per month base, plus $8 per additional seat per month.",
+      detailLine: "Cancel any time. Up to 50 members per workspace.",
+    };
+  }
+  if (interval === "weekly") {
+    return {
+      priceLine: "$4 for 7 days of access.",
+      detailLine: "One-time charge — your shortlists and notes stay readable after the pass ends.",
+    };
+  }
+  return {
+    priceLine: "$9 for 30 days of access.",
+    detailLine: "One-time charge — your shortlists and notes stay readable after the pass ends.",
+  };
+}
+
+interface ComparisonFeatureRow {
+  feature: string;
+  free: ReactNode;
+  pro: ReactNode;
+  team: ReactNode;
+}
+
+const COMPARISON_TABLE: readonly ComparisonFeatureRow[] = [
+  { feature: "Browse and search the Atlas", free: "✓", pro: "✓", team: "✓" },
+  { feature: "Read any profile", free: "✓", pro: "✓", team: "✓" },
+  { feature: "Discovery runs", free: "2 / month", pro: "Unlimited", team: "Unlimited" },
+  {
+    feature: "Shortlists",
+    free: "1 list, 25 entries",
+    pro: "Unlimited",
+    team: "Shared, unlimited",
+  },
+  { feature: "CSV / JSON export", free: "—", pro: "✓", team: "✓" },
+  { feature: "Public API", free: "100 / hour", pro: "1,000 / day key", team: "1,000 / day key" },
+  { feature: "OAuth & MCP access", free: "—", pro: "✓", team: "✓" },
+  { feature: "Watchlists & monitoring digests", free: "—", pro: "—", team: "✓" },
+  { feature: "Slack integration", free: "—", pro: "—", team: "✓" },
+  { feature: "Single Sign-On (SAML / OIDC)", free: "—", pro: "—", team: "Up to 50 members" },
+  {
+    feature: "Member management",
+    free: "—",
+    pro: "—",
+    team: "Owner / admin / member roles",
+  },
+] as const;
+
 export function PricingPage({ intent, interval: intentInterval }: PricingPageProps) {
   const navigate = useNavigate();
   const session = useAtlasSession();
+  const { confirm } = useConfirmDialog();
   const [billing, setBilling] = useState<BillingPeriod>("monthly");
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [pendingCheckoutKey, setPendingCheckoutKey] = useState<string | null>(null);
@@ -242,12 +333,32 @@ export function PricingPage({ intent, interval: intentInterval }: PricingPagePro
       return;
     }
 
+    const preview = describeCheckoutCost(product, interval);
+    const acknowledged = await confirm({
+      body: (
+        <div className="space-y-2">
+          <p>
+            Atlas will redirect you to Stripe to complete the {PRODUCT_LABELS[product]} purchase.
+          </p>
+          <p className="text-on-surface font-medium">{preview.priceLine}</p>
+          <p className="type-body-small text-outline">{preview.detailLine}</p>
+        </div>
+      ),
+      cancelLabel: "Not now",
+      confirmLabel: "Continue to checkout",
+      title: `Confirm ${PRODUCT_LABELS[product]} purchase`,
+    });
+    if (!acknowledged) {
+      return;
+    }
+
     setCheckoutError(null);
     setPendingCheckoutKey(checkoutKey(product, interval));
 
     try {
       const startCheckout = await loadStartCheckout();
       const result = await startCheckout({ data: { product, interval } });
+      rememberPendingCheckout({ product, interval });
       window.location.assign(result.url);
     } catch (error) {
       setCheckoutError(readCheckoutErrorMessage(error));
@@ -400,8 +511,8 @@ export function PricingPage({ intent, interval: intentInterval }: PricingPagePro
           {/* Plan grid */}
           <div className="mb-4 grid gap-3 sm:grid-cols-3">
             <PlanCard
-              label="Free"
-              name="For anyone curious"
+              planName="Free"
+              descriptor="For anyone curious"
               tagline="Browse without an account. Sign up to run research and save shortlists."
               features={[
                 "Browse & search (no account)",
@@ -417,8 +528,8 @@ export function PricingPage({ intent, interval: intentInterval }: PricingPagePro
             />
 
             <PlanCard
-              label="Atlas Pro"
-              name="For the individual researcher"
+              planName="Atlas Pro"
+              descriptor="For the individual researcher"
               tagline="Journalists, organizers, and creators who use Atlas as a regular part of their work."
               features={[
                 "Unlimited research runs",
@@ -427,11 +538,15 @@ export function PricingPage({ intent, interval: intentInterval }: PricingPagePro
                 "API key · 1,000 req/day",
                 "MCP and OAuth access",
               ]}
-              monthlyPrice="$5/month"
+              monthlyPrice={
+                <>
+                  $5<span className="type-body-small text-ink-soft">/month</span>
+                </>
+              }
               annualPrice={
                 <>
                   $48<span className="type-body-small text-ink-soft">/year</span>
-                  <span className="bg-surface-container text-accent-deep ml-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium">
+                  <span className="type-label-small bg-surface-container text-accent-deep ml-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-medium">
                     2 months free
                   </span>
                 </>
@@ -447,8 +562,8 @@ export function PricingPage({ intent, interval: intentInterval }: PricingPagePro
             />
 
             <PlanCard
-              label="Atlas Team"
-              name="For newsrooms and nonprofits"
+              planName="Atlas Team"
+              descriptor="For newsrooms and nonprofits"
               tagline="Teams that coordinate research — shared workspace, monitoring, and org-level integrations."
               features={[
                 "Everything in Atlas Pro",
@@ -459,19 +574,19 @@ export function PricingPage({ intent, interval: intentInterval }: PricingPagePro
               ]}
               monthlyPrice={
                 <>
-                  $25<span className="type-body-small text-ink-soft">/month base</span>
-                  <p className="type-body-small text-ink-soft mt-2">
+                  $25<span className="type-body-small text-ink-muted">/month base</span>
+                  <p className="type-body-small text-ink-muted mt-2">
                     + $8/seat/month per additional member
                   </p>
                 </>
               }
               annualPrice={
                 <>
-                  $250<span className="type-body-small text-ink-soft">/year base</span>
-                  <span className="bg-ink-strong text-accent-soft ml-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium">
+                  $250<span className="type-body-small text-ink-muted">/year base</span>
+                  <span className="type-label-small bg-ink text-accent-soft ml-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-medium">
                     2 months free
                   </span>
-                  <p className="type-body-small text-ink-soft mt-2">
+                  <p className="type-body-small text-ink-muted mt-2">
                     + $80/seat/year, billed annually
                   </p>
                 </>
@@ -531,6 +646,69 @@ export function PricingPage({ intent, interval: intentInterval }: PricingPagePro
                   : "Get a pass"}
               </Button>
             </div>
+          </div>
+        </div>
+
+        {/* Comparison table */}
+        <div className="border-border mb-10 border-t pt-8">
+          <p className="type-label-medium text-ink-muted mb-4 tracking-wider uppercase">
+            Compare plans
+          </p>
+          <div className="border-border overflow-x-auto rounded-[1rem] border bg-white">
+            <table className="w-full text-left">
+              <thead>
+                <tr className="border-border border-b">
+                  <th className="type-label-medium text-ink-muted px-4 py-3 font-medium">
+                    Feature
+                  </th>
+                  <th className="type-label-medium text-ink-muted px-4 py-3 font-medium">Free</th>
+                  <th className="type-label-medium text-ink-muted px-4 py-3 font-medium">
+                    Atlas Pro
+                  </th>
+                  <th className="type-label-medium text-ink-muted px-4 py-3 font-medium">
+                    Atlas Team
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {COMPARISON_TABLE.map((row, idx) => (
+                  <tr
+                    key={row.feature}
+                    className={idx === COMPARISON_TABLE.length - 1 ? "" : "border-border border-b"}
+                  >
+                    <td className="type-body-small text-ink-strong px-4 py-3 font-medium">
+                      {row.feature}
+                    </td>
+                    <td className="type-body-small text-ink-soft px-4 py-3">{row.free}</td>
+                    <td className="type-body-small text-ink-soft px-4 py-3">{row.pro}</td>
+                    <td className="type-body-small text-ink-soft px-4 py-3">{row.team}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Enterprise contact */}
+        <div className="border-border mb-10 border-t pt-8">
+          <p className="type-label-medium text-ink-muted mb-4 tracking-wider uppercase">
+            Enterprise
+          </p>
+          <div className="border-border rounded-[1rem] border bg-white p-5">
+            <p className="type-title-small text-ink-strong mb-2 font-medium">
+              Need annual invoicing, a security review, or a custom contract?
+            </p>
+            <p className="type-body-small text-ink-soft mb-4 leading-relaxed">
+              We work with newsrooms, foundations, and government teams that prefer annual invoices,
+              purchase orders, or signed terms. Email us and we'll route you to someone who can
+              help.
+            </p>
+            <a
+              href="mailto:hello@rebuildingus.org?subject=Atlas%20enterprise%20invoicing"
+              className="type-label-large text-ink-strong hover:bg-surface-container-high border-border focus:ring-border-strong inline-flex items-center rounded-full border bg-transparent px-4 py-2 font-medium no-underline transition-[background-color,border-color] duration-150 focus:ring-2 focus:ring-offset-2 focus:outline-none"
+            >
+              Contact sales
+            </a>
           </div>
         </div>
 
