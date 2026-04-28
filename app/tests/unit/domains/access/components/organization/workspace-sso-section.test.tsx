@@ -35,6 +35,7 @@ describe("WorkspaceSSOSection", () => {
       setAsPrimary: false,
     },
     organization: organization as unknown as AtlasOrganizationDetails,
+    samlAllowedIssuerOrigins: ["https://accounts.google.com"] as readonly string[],
     samlSetupForm: {
       domain: "",
       providerId: "",
@@ -120,20 +121,44 @@ describe("WorkspaceSSOSection", () => {
     expect(defaultProps.onOidcSubmit).toHaveBeenCalled();
   });
 
-  it("triggers SAML submission when form is filled", () => {
+  it("triggers SAML submission when form is filled with an allowlisted issuer", () => {
     const samlProps = {
       ...defaultProps,
       samlSetupForm: {
         domain: "atlas.test",
         providerId: "saml",
-        issuer: "i",
-        entryPoint: "e",
-        certificate: "c",
+        issuer: "https://accounts.google.com/o/saml2?idpid=abc",
+        entryPoint: "https://accounts.google.com/o/saml2/idp",
+        certificate: "-----BEGIN CERTIFICATE-----\nMIIB",
         setAsPrimary: false,
       },
     };
     render(<WorkspaceSSOSection {...samlProps} />);
     fireEvent.click(screen.getByText("Save SAML provider"));
     expect(defaultProps.onSamlSubmit).toHaveBeenCalled();
+  });
+
+  it("blocks SAML submission when the issuer is not on the allowlist", () => {
+    const samlProps = {
+      ...defaultProps,
+      samlSetupForm: {
+        domain: "atlas.test",
+        providerId: "saml",
+        issuer: "https://idp.attacker.example",
+        entryPoint: "https://idp.attacker.example/sso",
+        certificate: "-----BEGIN CERTIFICATE-----\nMIIB",
+        setAsPrimary: false,
+      },
+    };
+    render(<WorkspaceSSOSection {...samlProps} />);
+    const saveButton = screen.getByText("Save SAML provider");
+    expect(saveButton).toBeDisabled();
+  });
+
+  it("warns when the SAML issuer allowlist is empty", () => {
+    render(<WorkspaceSSOSection {...defaultProps} samlAllowedIssuerOrigins={[]} />);
+    expect(
+      screen.getByText(/SAML registration is disabled for this deployment/i),
+    ).toBeInTheDocument();
   });
 });

@@ -2,8 +2,10 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { atlasSessionQueryKey, useAtlasSession } from "@/domains/access/client/use-atlas-session";
 import type { AtlasSessionPayload } from "@/domains/access/organization-contracts";
 import { getOrganizationDetails } from "@/domains/access/organizations.functions";
+import { getWorkspaceSAMLAllowedIssuers } from "@/domains/access/sso.functions";
 
 export const organizationQueryKey = ["auth", "organization"] as const;
+export const samlAllowedIssuersQueryKey = ["auth", "saml-allowed-issuers"] as const;
 
 /**
  * Workspace-aware organization-page query state and refresh helpers.
@@ -19,6 +21,7 @@ export interface OrganizationPageData {
   organizationLoading: boolean;
   pendingInvitations: AtlasSessionPayload["workspace"]["pendingInvitations"];
   refreshWorkspaceData: () => Promise<void>;
+  samlAllowedIssuerOrigins: readonly string[];
   session: AtlasSessionPayload | null | undefined;
 }
 
@@ -56,6 +59,13 @@ export function useOrganizationPageData(
     queryKey: [...organizationQueryKey, activeWorkspace?.id ?? "none"],
   });
 
+  const samlAllowedIssuersQuery = useQuery({
+    enabled: Boolean(activeWorkspace),
+    queryFn: () => getWorkspaceSAMLAllowedIssuers(),
+    queryKey: samlAllowedIssuersQueryKey,
+    staleTime: 5 * 60 * 1000,
+  });
+
   /**
    * Refreshes the session and active-organization query after a mutation.
    */
@@ -82,6 +92,7 @@ export function useOrganizationPageData(
     organizationLoading: organizationQuery.isLoading,
     pendingInvitations,
     refreshWorkspaceData,
+    samlAllowedIssuerOrigins: samlAllowedIssuersQuery.data?.issuerOrigins ?? [],
     session,
   };
 }

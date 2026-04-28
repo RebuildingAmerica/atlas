@@ -66,6 +66,7 @@ describe("OrganizationSSOPageView", () => {
       providerId: "",
       setAsPrimary: false,
     },
+    samlAllowedIssuerOrigins: ["https://accounts.google.com"] as readonly string[],
     samlSetupForm: {
       certificate: "",
       domain: "",

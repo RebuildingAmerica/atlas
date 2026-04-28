@@ -23,7 +23,11 @@ import {
   listStoredWorkspaceSSOProviders,
   loadStoredWorkspaceIdentity,
 } from "./server/sso-provider-store";
-import { getAuthRuntimeConfig, isAllowedSamlIssuer } from "./server/runtime";
+import {
+  getAuthRuntimeConfig,
+  getSamlAllowedIssuerOrigins,
+  isAllowedSamlIssuer,
+} from "./server/runtime";
 
 const googleWorkspaceOIDCProviderSchema = z.object({
   clientId: z.string().trim().min(1),
@@ -67,6 +71,16 @@ export interface AtlasWorkspaceSSORegistrationResult {
   samlEntityId: string;
   samlMetadataUrl: string;
 }
+
+/**
+ * Returns the operator-managed SAML issuer allowlist so the workspace SSO
+ * registration form can validate the issuer field client-side and disable
+ * Save before the server-side check ever runs.  An empty array means SAML
+ * registration is disabled for this deployment.
+ */
+export const getWorkspaceSAMLAllowedIssuers = createServerFn({ method: "GET" }).handler(() => {
+  return { issuerOrigins: getSamlAllowedIssuerOrigins() };
+});
 
 /**
  * Persists one workspace-level primary SSO provider choice inside Better

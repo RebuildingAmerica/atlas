@@ -71,6 +71,7 @@ export interface OrganizationPageController {
   profilePending: boolean;
   profileSlug: string;
   removeMemberPending: boolean;
+  samlAllowedIssuerOrigins: readonly string[];
   samlSetupForm: WorkspaceSAMLSetupFormState;
   selectWorkspacePending: boolean;
   selectedOrganizationId: string;
@@ -189,6 +190,7 @@ export function useOrganizationPageController(
     profilePending: workspaceActions.profilePending,
     profileSlug: forms.profileSlug,
     removeMemberPending: workspaceActions.removeMemberPending,
+    samlAllowedIssuerOrigins: data.samlAllowedIssuerOrigins,
     samlSetupForm: forms.samlSetupForm,
     selectWorkspacePending: workspaceActions.selectWorkspacePending,
     selectedOrganizationId: forms.selectedOrganizationId,

@@ -11,6 +11,25 @@ import { Input } from "@/platform/ui/input";
 import { Textarea } from "@/platform/ui/textarea";
 
 /**
+ * Returns the candidate SAML issuer's origin when the value parses as a URL,
+ * otherwise null.  The allowlist is matched by URL origin so per-tenant query
+ * parameters do not need to be enumerated.
+ *
+ * @param issuer - The candidate SAML issuer URL pasted by the workspace admin.
+ */
+function extractIssuerOrigin(issuer: string): string | null {
+  const trimmed = issuer.trim();
+  if (!trimmed) {
+    return null;
+  }
+  try {
+    return new URL(trimmed).origin;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Props for the enterprise SSO management section.
  */
 interface WorkspaceSSOSectionProps {
@@ -19,6 +38,7 @@ interface WorkspaceSSOSectionProps {
   isPending: boolean;
   oidcSetupForm: WorkspaceOIDCSetupFormState;
   organization: AtlasOrganizationDetails;
+  samlAllowedIssuerOrigins: readonly string[];
   samlSetupForm: WorkspaceSAMLSetupFormState;
   setOidcSetupForm: (
     updater: (current: WorkspaceOIDCSetupFormState) => WorkspaceOIDCSetupFormState,
@@ -43,6 +63,7 @@ export function WorkspaceSSOSection({
   isPending,
   oidcSetupForm,
   organization,
+  samlAllowedIssuerOrigins,
   samlSetupForm,
   setOidcSetupForm,
   setSamlSetupForm,
@@ -55,6 +76,17 @@ export function WorkspaceSSOSection({
 }: WorkspaceSSOSectionProps) {
   const { setup } = organization.sso;
   const hasWorkspaceDomainSuggestion = Boolean(setup.workspaceDomainSuggestion);
+  const samlAllowlistEmpty = samlAllowedIssuerOrigins.length === 0;
+  const samlIssuerOrigin = extractIssuerOrigin(samlSetupForm.issuer);
+  const samlIssuerAllowed =
+    samlIssuerOrigin !== null && samlAllowedIssuerOrigins.includes(samlIssuerOrigin);
+  const samlIssuerHelperText = samlAllowlistEmpty
+    ? "SAML registration is disabled for this deployment. Contact Atlas operators to add an issuer host to ATLAS_SAML_ALLOWED_ISSUERS before configuring a provider."
+    : samlSetupForm.issuer.trim() === ""
+      ? `Allowed issuer hosts: ${samlAllowedIssuerOrigins.join(", ")}.`
+      : samlIssuerAllowed
+        ? `Issuer host (${samlIssuerOrigin}) is on the allowlist.`
+        : `Issuer host ${samlIssuerOrigin ?? "(unparseable)"} is not on the allowlist. Allowed: ${samlAllowedIssuerOrigins.join(", ")}.`;
 
   return (
     <section className="space-y-6">
@@ -240,17 +272,28 @@ export function WorkspaceSSOSection({
               {hasWorkspaceDomainSuggestion ? (
                 <WorkspaceSSODomainHint suggestion={setup.workspaceDomainSuggestion} />
               ) : null}
-              <Input
-                label="Identity provider issuer"
-                value={samlSetupForm.issuer}
-                onChange={(value) => {
-                  setSamlSetupForm((current) => ({
-                    ...current,
-                    issuer: value,
-                  }));
-                }}
-                placeholder="https://accounts.google.com/o/saml2?idpid=..."
-              />
+              <div className="space-y-1">
+                <Input
+                  label="Identity provider issuer"
+                  value={samlSetupForm.issuer}
+                  onChange={(value) => {
+                    setSamlSetupForm((current) => ({
+                      ...current,
+                      issuer: value,
+                    }));
+                  }}
+                  placeholder="https://accounts.google.com/o/saml2?idpid=..."
+                />
+                <p
+                  className={
+                    samlAllowlistEmpty || (samlSetupForm.issuer.trim() !== "" && !samlIssuerAllowed)
+                      ? "type-body-small text-error"
+                      : "type-body-small text-outline"
+                  }
+                >
+                  {samlIssuerHelperText}
+                </p>
+              </div>
               <Input
                 label="Identity provider sign-in URL"
                 value={samlSetupForm.entryPoint}
@@ -302,7 +345,8 @@ export function WorkspaceSSOSection({
                   !samlSetupForm.domain.trim() ||
                   !samlSetupForm.entryPoint.trim() ||
                   !samlSetupForm.issuer.trim() ||
-                  !samlSetupForm.providerId.trim()
+                  !samlSetupForm.providerId.trim() ||
+                  !samlIssuerAllowed
                 }
               >
                 {isPending ? "Saving..." : "Save SAML provider"}

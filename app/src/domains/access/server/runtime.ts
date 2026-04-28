@@ -288,3 +288,14 @@ export function isAllowedSamlIssuer(issuer: string): boolean {
 
   return samlAllowedIssuerOrigins.has(candidateOrigin);
 }
+
+/**
+ * Returns the operator-managed SAML issuer allowlist as a plain string array.
+ *
+ * Exposed to the workspace-management UI so admins can see which issuer
+ * hosts are accepted and the registration form can disable Save before a
+ * server-side rejection ever happens.
+ */
+export function getSamlAllowedIssuerOrigins(): readonly string[] {
+  return [...getAuthRuntimeConfig().samlAllowedIssuerOrigins];
+}

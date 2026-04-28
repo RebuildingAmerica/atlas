@@ -97,6 +97,7 @@ export function OrganizationSSOPageView({ controller }: OrganizationSSOPageViewP
           isPending={controller.ssoMutationPending}
           oidcSetupForm={controller.oidcSetupForm}
           organization={controller.organization}
+          samlAllowedIssuerOrigins={controller.samlAllowedIssuerOrigins}
           samlSetupForm={controller.samlSetupForm}
           setOidcSetupForm={controller.setOidcSetupForm}
           setSamlSetupForm={controller.setSamlSetupForm}
