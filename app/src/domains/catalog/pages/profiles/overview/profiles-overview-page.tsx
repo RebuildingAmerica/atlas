@@ -180,7 +180,7 @@ export function ProfilesOverviewPage({ scope = "all", initialCatalog }: Profiles
     freshEntries.length === 0;
 
   return (
-    <PageLayout className="pt-0 pb-8 lg:pt-0 lg:pb-10">
+    <PageLayout className="pt-8 pb-8 lg:pt-12 lg:pb-10">
       <div className="mx-auto max-w-[78rem] space-y-10 lg:space-y-12">
         <ProfilesShowcaseHeader scope={scope} />
 

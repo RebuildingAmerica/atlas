@@ -98,13 +98,11 @@ export function HomePage() {
     <PageLayout className="flex min-h-[calc(100vh-11rem)] items-center py-10 lg:py-16">
       <section className="mx-auto w-full max-w-4xl">
         <div className="text-center">
-          <p className="type-label-medium text-ink-muted">Atlas</p>
-
-          <h1 className="type-display-large text-ink-strong mx-auto mt-4 max-w-3xl">
+          <h1 className="type-display-large text-ink-strong text-balance">
             Find the people and organizations rebuilding America.
           </h1>
 
-          <p className="type-body-large text-ink-soft mx-auto mt-4 max-w-2xl">
+          <p className="type-body-large text-ink-soft mx-auto mt-4 max-w-2xl text-balance">
             Search Atlas directly, browse profile directories by place and issue, or open the
             research browser when you want the broader civic graph.
           </p>

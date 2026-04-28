@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { ArrowUpRight, Building2, Sparkles, UserRound } from "lucide-react";
 import { humanize } from "@/domains/catalog/catalog";
+import { cn } from "@/lib/utils";
 import { Badge } from "@/platform/ui/badge";
 import type { Entry } from "@/types";
 import type { ProfileBrowseScope } from "@/domains/catalog/profile-browse";
@@ -45,6 +46,38 @@ function getInitials(name: string): string {
   return parts.map((part) => part.charAt(0).toUpperCase()).join("");
 }
 
+function EntryHeroMedia({
+  entry,
+  className,
+  initialsClassName,
+}: {
+  entry: Entry;
+  className?: string;
+  initialsClassName?: string;
+}) {
+  if (entry.photo_url) {
+    return (
+      <div className={cn("relative w-full overflow-hidden", className)}>
+        <img src={entry.photo_url} alt="" className="absolute inset-0 h-full w-full object-cover" />
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className={cn(
+        "from-accent-soft/35 to-surface-container-high relative flex w-full items-center justify-center overflow-hidden bg-gradient-to-br",
+        className,
+      )}
+      aria-hidden
+    >
+      <span className={cn("text-ink-strong/30 font-semibold", initialsClassName)}>
+        {getInitials(entry.name)}
+      </span>
+    </div>
+  );
+}
+
 function entryTypeLabel(entry: Entry): string {
   return entry.type === "person"
     ? "Person"
@@ -55,12 +88,10 @@ function entryTypeLabel(entry: Entry): string {
 
 function buildScopeCopy(scope: ProfileBrowseScope): {
   description: string;
-  eyebrow: string;
   title: string;
 } {
   if (scope === "people") {
     return {
-      eyebrow: "Atlas directory",
       title: "People",
       description:
         "A calm directory for the people Atlas has surfaced across public record, place, and issue.",
@@ -69,7 +100,6 @@ function buildScopeCopy(scope: ProfileBrowseScope): {
 
   if (scope === "organizations") {
     return {
-      eyebrow: "Atlas directory",
       title: "Organizations",
       description:
         "A public-facing directory of organizations Atlas has surfaced through local reporting, records, and source-backed research.",
@@ -77,7 +107,6 @@ function buildScopeCopy(scope: ProfileBrowseScope): {
   }
 
   return {
-    eyebrow: "Atlas directory",
     title: "Profiles",
     description:
       "Wander through the people and organizations Atlas has surfaced across issue areas, cities, and public record.",
@@ -203,25 +232,30 @@ function CompanionSpotlight({
   return (
     <ProfileEntryLink
       entry={entry}
-      className="group bg-surface-container-low hover:bg-surface-container block rounded-[1rem] p-5 transition-colors duration-200"
+      className="group border-border bg-surface-container-lowest hover:border-border-strong flex h-full flex-col overflow-hidden rounded-[1rem] border transition-colors duration-200"
     >
-      <article className="space-y-4">
+      <EntryHeroMedia
+        entry={entry}
+        className="aspect-[16/9]"
+        initialsClassName="type-display-small"
+      />
+      <article className="flex flex-1 flex-col gap-3 p-5">
         <div className="flex items-start justify-between gap-3">
-          <div className="bg-surface-container text-ink-strong flex h-11 w-11 items-center justify-center rounded-2xl text-sm font-semibold">
-            {getInitials(entry.name)}
+          <div className="min-w-0 space-y-1">
+            <p className="type-label-small text-ink-muted tracking-[0.2em] uppercase">
+              {entryTypeLabel(entry)}
+            </p>
+            <h3 className="type-title-medium text-ink-strong truncate leading-tight font-medium">
+              {entry.name}
+            </h3>
+            <p className="type-body-small text-ink-muted">{formatLocation(entry)}</p>
           </div>
-          <ArrowUpRight className="text-ink-muted h-4 w-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+          <ArrowUpRight className="text-ink-muted h-4 w-4 shrink-0 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
         </div>
 
-        <div className="space-y-2">
-          <p className="type-label-medium text-ink-muted tracking-[0.2em] uppercase">
-            {entryTypeLabel(entry)}
-          </p>
-          <h3 className="type-title-large text-ink-strong leading-tight">{entry.name}</h3>
-          <p className="type-body-medium text-ink-muted">{formatLocation(entry)}</p>
-        </div>
-
-        <p className="type-body-medium text-ink-soft">{entry.description}</p>
+        <p className="type-body-small text-ink-soft line-clamp-2 leading-relaxed">
+          {entry.description}
+        </p>
         <ProfileMeta entry={entry} issueAreaLabels={issueAreaLabels} />
       </article>
     </ProfileEntryLink>
@@ -240,34 +274,39 @@ function SpotlightCard({
   return (
     <ProfileEntryLink
       entry={entry}
-      className="group bg-surface-container hover:bg-surface-container-high block h-full rounded-[1.25rem] px-6 py-6 transition-colors duration-200 lg:px-8 lg:py-8"
+      className="group bg-surface-container-lowest border-border hover:border-border-strong flex h-full flex-col overflow-hidden rounded-[1.25rem] border transition-colors duration-200"
     >
-      <article className="flex h-full flex-col gap-6">
+      <EntryHeroMedia
+        entry={entry}
+        className="aspect-[16/9]"
+        initialsClassName="type-display-large"
+      />
+      <article className="flex flex-1 flex-col gap-4 p-6">
         <div className="flex flex-wrap items-center gap-3">
           <Badge className="bg-surface-container-high text-ink-strong">Featured</Badge>
+          <p className="type-label-small text-ink-muted tracking-[0.2em] uppercase">
+            {entryTypeLabel(entry)}
+          </p>
         </div>
 
-        <div className="space-y-4">
-          <div className="bg-accent-soft text-accent-ink flex h-14 w-14 items-center justify-center rounded-[1.35rem] text-lg font-semibold">
-            {getInitials(entry.name)}
-          </div>
-
-          <div className="space-y-3">
-            <p className="type-label-medium text-ink-muted tracking-[0.2em] uppercase">
-              {entryTypeLabel(entry)}
-            </p>
-            <h2 className="type-display-small text-ink-strong max-w-2xl leading-tight">
-              {entry.name}
-            </h2>
-            <p className="type-body-large text-ink-soft max-w-2xl">{entry.description}</p>
-          </div>
+        <div className="space-y-2">
+          <h2 className="type-headline-small text-ink-strong max-w-xl leading-tight font-medium">
+            {entry.name}
+          </h2>
+          <p className="type-body-medium text-ink-soft max-w-xl leading-relaxed">
+            {entry.description}
+          </p>
         </div>
 
-        <div className="mt-auto flex flex-wrap items-center gap-3">
-          <span className="type-body-medium text-ink-strong">{formatLocation(entry)}</span>
-          <span className="type-body-medium text-ink-strong">{entry.source_count} sources</span>
+        <div className="type-body-small text-ink-soft mt-auto flex flex-wrap items-center gap-x-3 gap-y-1">
+          <span>{formatLocation(entry)}</span>
+          <span aria-hidden>·</span>
+          <span>{entry.source_count} sources</span>
           {freshness ? (
-            <span className="type-body-medium text-ink-strong">Updated {freshness}</span>
+            <>
+              <span aria-hidden>·</span>
+              <span>Updated {freshness}</span>
+            </>
           ) : null}
         </div>
 
@@ -304,11 +343,8 @@ export function ProfilesShowcaseHeader({ scope }: { scope: ProfileBrowseScope })
     <section className="bg-surface-container-low pt-6 pb-8 lg:pt-8 lg:pb-10">
       <div className="max-w-[56rem] space-y-6">
         <div className="space-y-3">
-          <p className="type-label-medium text-ink-muted tracking-[0.22em] uppercase">
-            {copy.eyebrow}
-          </p>
           <h1 className="type-display-large text-ink-strong leading-[0.95]">{copy.title}</h1>
-          <p className="type-body-large text-ink-soft max-w-3xl">{copy.description}</p>
+          <p className="type-body-large text-ink-soft max-w-3xl text-balance">{copy.description}</p>
         </div>
       </div>
     </section>
