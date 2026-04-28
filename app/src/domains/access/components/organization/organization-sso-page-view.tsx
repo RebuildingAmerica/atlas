@@ -76,9 +76,13 @@ export function OrganizationSSOPageView({ controller }: OrganizationSSOPageViewP
       {controller.needsWorkspace ? (
         <WorkspaceCreationSection
           isPending={controller.createWorkspacePending}
+          workspaceDelegatedEmail={controller.workspaceDelegatedEmail}
+          workspaceDomain={controller.workspaceDomain}
           workspaceName={controller.workspaceName}
           workspaceSlug={controller.workspaceSlug}
           workspaceType={controller.workspaceType}
+          onDelegatedEmailChange={controller.setWorkspaceDelegatedEmail}
+          onDomainChange={controller.setWorkspaceDomain}
           onNameChange={controller.onUpdateWorkspaceName}
           onSlugChange={controller.onUpdateWorkspaceSlug}
           onSubmit={(e) => {

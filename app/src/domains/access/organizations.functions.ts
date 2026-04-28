@@ -63,14 +63,64 @@ export const getOrganizationDetails = createServerFn({ method: "GET" }).handler(
   return toAtlasOrganizationDetails(details, session, sso);
 });
 
+const workspaceDomainSchema = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .min(3)
+  .max(253)
+  .regex(/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/, {
+    message: "Enter a domain like example.com (no scheme, no path).",
+  });
+
+/**
+ * Returns whether the supplied workspace slug is available for a new
+ * workspace.  Wraps Better Auth's `/organization/check-slug` endpoint so the
+ * creation form can disable Save and surface inline validation while the
+ * operator is still typing.
+ */
+export const checkWorkspaceSlugAvailability = createServerFn({ method: "POST" })
+  .inputValidator(
+    z.object({
+      slug: workspaceSlugSchema,
+    }),
+  )
+  .handler(async ({ data }) => {
+    assertOrganizationManagementEnabled();
+    await requireReadyAtlasSessionState();
+    const auth = await ensureAuthReady();
+    const headers = getBrowserSessionHeaders();
+    try {
+      const result = await auth.api.checkOrganizationSlug({
+        body: { slug: data.slug },
+        headers,
+      });
+      const status = result.status as unknown;
+      return { available: status === true };
+    } catch {
+      // Better Auth throws when the slug is taken; treat that as unavailable
+      // rather than surfacing the error to the operator.
+      return { available: false };
+    }
+  });
+
 /**
  * Creates a new Atlas workspace and activates it for the current operator.
+ *
+ * When `delegatedAdminEmail` is supplied, Atlas sends an admin invitation to
+ * that address after the workspace is created so an integrator can stand up
+ * the workspace on behalf of a customer who will manage it day-to-day.  The
+ * creator stays as owner since Better Auth does not support owner transfer
+ * inline; a follow-up role change can hand the workspace over once the
+ * invited admin accepts.
  */
 export const createWorkspace = createServerFn({ method: "POST" })
   .inputValidator(
     z.object({
+      delegatedAdminEmail: z.string().email().optional(),
       name: z.string().trim().min(1).max(80),
       slug: workspaceSlugSchema,
+      workspaceDomain: workspaceDomainSchema.optional(),
       workspaceType: atlasWorkspaceTypeSchema,
     }),
   )
@@ -85,6 +135,7 @@ export const createWorkspace = createServerFn({ method: "POST" })
         keepCurrentActiveOrganization: false,
         metadata: {
           workspaceType: data.workspaceType,
+          ...(data.workspaceDomain ? { workspaceDomain: data.workspaceDomain } : {}),
         },
         name: data.name,
         slug: data.slug,
@@ -100,6 +151,25 @@ export const createWorkspace = createServerFn({ method: "POST" })
       await ensureStripeCustomerForWorkspace(createdOrganization.id, session.user.email, data.name);
     } catch {
       // Stripe may be unreachable in local dev or during outages.
+    }
+
+    // Delegated handoff: send an admin invite so the eventual workspace
+    // operator can finish onboarding without the integrator's session.
+    // Failures are non-fatal — the integrator still owns the workspace and
+    // can resend the invite from the members panel.
+    if (data.delegatedAdminEmail && data.workspaceType === "team") {
+      try {
+        await auth.api.createInvitation({
+          body: {
+            email: data.delegatedAdminEmail,
+            organizationId: createdOrganization.id,
+            role: "admin",
+          },
+          headers,
+        });
+      } catch {
+        // Invite delivery may fail in local dev; surface via the members panel.
+      }
     }
 
     return {

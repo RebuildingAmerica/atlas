@@ -28,9 +28,13 @@ export interface OrganizationPageForms {
     updater: (current: WorkspaceSAMLSetupFormState) => WorkspaceSAMLSetupFormState,
   ) => void;
   setSelectedOrganizationId: (value: string) => void;
+  setWorkspaceDelegatedEmail: (value: string) => void;
+  setWorkspaceDomain: (value: string) => void;
   setWorkspaceName: (value: string) => void;
   setWorkspaceSlug: (value: string) => void;
   setWorkspaceType: (value: "individual" | "team") => void;
+  workspaceDelegatedEmail: string;
+  workspaceDomain: string;
   workspaceName: string;
   workspaceSlug: string;
   workspaceType: "individual" | "team";
@@ -70,6 +74,8 @@ export function useOrganizationPageForms(
   const [workspaceName, setWorkspaceName] = useState("");
   const [workspaceSlug, setWorkspaceSlug] = useState("");
   const [workspaceType, setWorkspaceType] = useState<"individual" | "team">("team");
+  const [workspaceDomain, setWorkspaceDomain] = useState("");
+  const [workspaceDelegatedEmail, setWorkspaceDelegatedEmail] = useState("");
   const [isWorkspaceSlugManual, setIsWorkspaceSlugManual] = useState(false);
   const [profileName, setProfileName] = useState("");
   const [profileSlug, setProfileSlug] = useState("");
@@ -211,9 +217,13 @@ export function useOrganizationPageForms(
     setProfileSlug,
     setSamlSetupForm,
     setSelectedOrganizationId,
+    setWorkspaceDelegatedEmail,
+    setWorkspaceDomain,
     setWorkspaceName,
     setWorkspaceSlug,
     setWorkspaceType,
+    workspaceDelegatedEmail,
+    workspaceDomain,
     workspaceName,
     workspaceSlug,
     workspaceType,

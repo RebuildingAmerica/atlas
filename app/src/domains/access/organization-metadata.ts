@@ -31,6 +31,12 @@ export interface AtlasOrganizationMetadata {
   ssoPrimaryProviderId: string | null;
   stripeCustomerId: string | null;
   workspaceType: AtlasWorkspaceType;
+  /**
+   * Email domain captured at workspace creation so the SSO setup form can
+   * pre-fill the verified-domain field.  Optional — workspaces created before
+   * this field shipped, and individual workspaces, leave it null.
+   */
+  workspaceDomain?: string;
   // Discount verification fields
   discountSegment?: "independent_journalist" | "grassroots_nonprofit" | "civic_tech_worker";
   verificationStatus?: "pending" | "verified" | "rejected" | "expired";
@@ -43,6 +49,7 @@ const atlasOrganizationMetadataSchema = z
     ssoPrimaryProviderId: z.string().trim().min(1).nullish(),
     stripeCustomerId: z.string().trim().min(1).nullish(),
     workspaceType: atlasWorkspaceTypeSchema.optional(),
+    workspaceDomain: z.string().trim().min(1).nullish(),
     discountSegment: z
       .enum(["independent_journalist", "grassroots_nonprofit", "civic_tech_worker"])
       .optional(),
@@ -87,6 +94,8 @@ export function normalizeAtlasOrganizationMetadata(metadata: unknown): AtlasOrga
       parsed.success && parsed.data.stripeCustomerId ? parsed.data.stripeCustomerId : null,
     workspaceType:
       parsed.success && parsed.data.workspaceType ? parsed.data.workspaceType : "individual",
+    workspaceDomain:
+      parsed.success && parsed.data.workspaceDomain ? parsed.data.workspaceDomain : undefined,
     discountSegment: parsed.success ? parsed.data.discountSegment : undefined,
     verificationStatus: parsed.success ? parsed.data.verificationStatus : undefined,
     verifiedAt: parsed.success ? parsed.data.verifiedAt : undefined,
@@ -117,6 +126,7 @@ export function mergeAtlasOrganizationMetadata(
         ? normalizedMetadata.stripeCustomerId
         : updates.stripeCustomerId,
     workspaceType: updates.workspaceType ?? normalizedMetadata.workspaceType,
+    workspaceDomain: updates.workspaceDomain ?? normalizedMetadata.workspaceDomain,
     discountSegment: updates.discountSegment ?? normalizedMetadata.discountSegment,
     verificationStatus: updates.verificationStatus ?? normalizedMetadata.verificationStatus,
     verifiedAt: updates.verifiedAt ?? normalizedMetadata.verifiedAt,

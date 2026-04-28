@@ -100,6 +100,10 @@ export function useOrganizationPageWorkspaceActions(
   async function handleCreateWorkspace(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
+    const trimmedDomain = params.forms.workspaceDomain.trim();
+    const trimmedDelegatedEmail = params.forms.workspaceDelegatedEmail.trim();
+    const isTeam = params.forms.workspaceType === "team";
+
     await runOrganizationPageMutation({
       action: async () => {
         const mutationResult = await createWorkspaceMutation.mutateAsync({
@@ -107,19 +111,28 @@ export function useOrganizationPageWorkspaceActions(
             name: params.forms.workspaceName,
             slug: params.forms.workspaceSlug,
             workspaceType: params.forms.workspaceType,
+            ...(isTeam && trimmedDomain ? { workspaceDomain: trimmedDomain } : {}),
+            ...(isTeam && trimmedDelegatedEmail
+              ? { delegatedAdminEmail: trimmedDelegatedEmail }
+              : {}),
           },
         });
 
         params.forms.setWorkspaceName("");
         params.forms.setWorkspaceSlug("");
         params.forms.setWorkspaceType("team");
+        params.forms.setWorkspaceDomain("");
+        params.forms.setWorkspaceDelegatedEmail("");
 
         return mutationResult;
       },
       fallbackMessage: "Atlas could not create that workspace.",
       feedback: params.feedback,
       refreshWorkspaceData: params.refreshWorkspaceData,
-      successMessage: "Workspace created.",
+      successMessage:
+        isTeam && trimmedDelegatedEmail
+          ? "Workspace created. Admin invite sent to your handoff contact."
+          : "Workspace created.",
     });
   }
 

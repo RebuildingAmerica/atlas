@@ -2,14 +2,23 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { render, screen, fireEvent, cleanup } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
+
+vi.mock("@/domains/access/organizations.functions", () => ({
+  checkWorkspaceSlugAvailability: vi.fn().mockResolvedValue({ available: true }),
+}));
+
 import { WorkspaceCreationSection } from "@/domains/access/components/organization/workspace-creation-section";
 
 describe("WorkspaceCreationSection", () => {
   const defaultProps = {
     isPending: false,
+    workspaceDelegatedEmail: "",
+    workspaceDomain: "",
     workspaceName: "Atlas",
     workspaceSlug: "atlas",
     workspaceType: "team" as const,
+    onDelegatedEmailChange: vi.fn(),
+    onDomainChange: vi.fn(),
     onNameChange: vi.fn(),
     onSlugChange: vi.fn(),
     onSubmit: vi.fn((e: { preventDefault: () => void }) => {
@@ -39,7 +48,7 @@ describe("WorkspaceCreationSection", () => {
     fireEvent.change(screen.getByLabelText(/Workspace slug/i), { target: { value: "new-team" } });
     expect(defaultProps.onSlugChange).toHaveBeenCalledWith("new-team");
 
-    fireEvent.change(screen.getByRole("combobox"), { target: { value: "individual" } });
+    fireEvent.click(screen.getByRole("radio", { name: /Individual workspace/i }));
     expect(defaultProps.onWorkspaceTypeChange).toHaveBeenCalledWith("individual");
   });
 

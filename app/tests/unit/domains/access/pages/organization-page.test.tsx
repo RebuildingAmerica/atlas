@@ -57,6 +57,7 @@ vi.mock("@/domains/access/client/use-atlas-session", () => ({
 vi.mock("@/domains/access/organizations.functions", () => ({
   acceptWorkspaceInvitation: organizationPageDependencyMocks.acceptWorkspaceInvitation,
   cancelWorkspaceInvitation: organizationPageDependencyMocks.cancelWorkspaceInvitation,
+  checkWorkspaceSlugAvailability: () => Promise.resolve({ available: true }),
   createWorkspace: organizationPageDependencyMocks.createWorkspace,
   getOrganizationDetails: organizationPageDependencyMocks.getOrganizationDetails,
   inviteWorkspaceMember: organizationPageDependencyMocks.inviteWorkspaceMember,

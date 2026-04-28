@@ -41,9 +41,13 @@ describe("useOrganizationPageWorkspaceActions", () => {
     setFlashMessage: vi.fn(),
   };
   const forms = {
+    workspaceDelegatedEmail: "",
+    workspaceDomain: "",
     workspaceName: "New",
     workspaceSlug: "new",
     workspaceType: "team",
+    setWorkspaceDelegatedEmail: vi.fn(),
+    setWorkspaceDomain: vi.fn(),
     setWorkspaceName: vi.fn(),
     setWorkspaceSlug: vi.fn(),
     setWorkspaceType: vi.fn(),

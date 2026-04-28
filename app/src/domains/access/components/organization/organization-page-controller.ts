@@ -89,9 +89,13 @@ export interface OrganizationPageController {
   ) => void;
   ssoMutationPending: boolean;
   updateWorkspaceMemberRolePending: boolean;
+  workspaceDelegatedEmail: string;
+  workspaceDomain: string;
   workspaceName: string;
   workspaceSlug: string;
   workspaceType: "individual" | "team";
+  setWorkspaceDelegatedEmail: (value: string) => void;
+  setWorkspaceDomain: (value: string) => void;
   onCreateWorkspace: (event: React.FormEvent<HTMLFormElement>) => Promise<void>;
   onDeleteSSOProvider: (providerId: string) => Promise<void>;
   onRotateSAMLCertificate: (providerId: string, certificate: string) => Promise<void>;
@@ -209,9 +213,13 @@ export function useOrganizationPageController(
     setSamlSetupForm: forms.setSamlSetupForm,
     ssoMutationPending: ssoActions.ssoMutationPending,
     updateWorkspaceMemberRolePending: workspaceActions.updateWorkspaceMemberRolePending,
+    workspaceDelegatedEmail: forms.workspaceDelegatedEmail,
+    workspaceDomain: forms.workspaceDomain,
     workspaceName: forms.workspaceName,
     workspaceSlug: forms.workspaceSlug,
     workspaceType: forms.workspaceType,
+    setWorkspaceDelegatedEmail: forms.setWorkspaceDelegatedEmail,
+    setWorkspaceDomain: forms.setWorkspaceDomain,
     onCreateWorkspace: workspaceActions.onCreateWorkspace,
     onDeleteSSOProvider: ssoActions.onDeleteSSOProvider,
     onRotateSAMLCertificate: ssoActions.onRotateSAMLCertificate,
