@@ -1,18 +1,24 @@
+import { CivicMapPanel } from "./civic-map-panel";
+
 /**
  * Brand panel displayed on the left side of the auth flow layout.
  */
 export function AuthBrandPanel() {
   return (
-    <div className="bg-ink-strong flex h-full flex-col justify-center px-8 py-10 lg:px-12 lg:py-14">
-      <div className="space-y-8">
-        <div className="flex items-center gap-3">
-          <div className="bg-primary flex h-12 w-12 items-center justify-center rounded-2xl text-white">
-            <span className="type-headline-small leading-none">A</span>
-          </div>
-          <span className="type-title-large text-surface">Atlas</span>
+    <div className="bg-ink-strong flex h-full flex-col px-8 py-10 lg:px-12 lg:py-14">
+      <div className="flex flex-shrink-0 items-center gap-3">
+        <div className="bg-primary flex h-12 w-12 items-center justify-center rounded-2xl text-white">
+          <span className="type-headline-small leading-none">A</span>
         </div>
+        <span className="type-title-large text-surface">Atlas</span>
+      </div>
 
-        <p className="type-display-small text-surface">Map the people rebuilding America.</p>
+      <p className="type-display-small text-surface mt-8 flex-shrink-0">
+        Map the people rebuilding America.
+      </p>
+
+      <div className="mt-8 min-h-0 flex-1">
+        <CivicMapPanel />
       </div>
     </div>
   );
