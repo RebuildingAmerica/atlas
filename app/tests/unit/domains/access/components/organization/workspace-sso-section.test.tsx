@@ -9,6 +9,14 @@ vi.mock("@/platform/ui/confirm-dialog", () => ({
   }),
 }));
 
+vi.mock("@/platform/ui/toast", () => ({
+  useToast: () => ({
+    show: vi.fn(),
+    success: vi.fn(),
+    error: vi.fn(),
+  }),
+}));
+
 import { WorkspaceSSOSection } from "@/domains/access/components/organization/workspace-sso-section";
 import type { AtlasOrganizationDetails } from "@/domains/access/organization-contracts";
 

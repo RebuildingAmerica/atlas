@@ -56,6 +56,14 @@ vi.mock("@/platform/ui/confirm-dialog", () => ({
   }),
 }));
 
+vi.mock("@/platform/ui/toast", () => ({
+  useToast: () => ({
+    show: vi.fn(),
+    success: vi.fn(),
+    error: vi.fn(),
+  }),
+}));
+
 vi.mock("@/domains/access/client/use-atlas-session", () => ({
   atlasSessionQueryKey: ["auth", "session"],
   useAtlasSession: organizationPageDependencyMocks.useAtlasSession,

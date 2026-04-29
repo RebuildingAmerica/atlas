@@ -419,18 +419,23 @@ export function WorkspaceSSOSection({
                   .
                 </p>
               </details>
-              <Button
-                type="submit"
-                disabled={
-                  isPending ||
-                  !oidcSetupForm.clientId.trim() ||
-                  !oidcSetupForm.clientSecret.trim() ||
-                  !oidcSetupForm.domain.trim() ||
-                  !oidcSetupForm.providerId.trim()
-                }
-              >
-                {isPending ? "Saving..." : "Save Google Workspace OIDC"}
-              </Button>
+              {(() => {
+                const missing: string[] = [];
+                if (!oidcSetupForm.domain.trim()) missing.push("workspace domain");
+                if (!oidcSetupForm.clientId.trim()) missing.push("client ID");
+                if (!oidcSetupForm.clientSecret.trim()) missing.push("client secret");
+                if (!oidcSetupForm.providerId.trim()) missing.push("provider ID");
+                const disabled = isPending || missing.length > 0;
+                return (
+                  <span
+                    title={disabled && !isPending ? `Missing: ${missing.join(", ")}` : undefined}
+                  >
+                    <Button type="submit" disabled={disabled}>
+                      {isPending ? "Saving..." : "Save Google Workspace OIDC"}
+                    </Button>
+                  </span>
+                );
+              })()}
             </form>
           ) : (
             <p className="type-body-medium text-outline">
@@ -582,6 +587,7 @@ export function WorkspaceSSOSection({
                       }));
                     }}
                     placeholder="-----BEGIN CERTIFICATE-----"
+                    className="font-mono text-sm"
                   />
                 </div>
                 {samlCertificateClassification.kind === "invalid" ? (
@@ -655,20 +661,25 @@ export function WorkspaceSSOSection({
                 </a>{" "}
                 to enable multi-domain on this provider.
               </p>
-              <Button
-                type="submit"
-                disabled={
-                  isPending ||
-                  !samlCertificateLooksValid ||
-                  !samlSetupForm.domain.trim() ||
-                  !samlSetupForm.entryPoint.trim() ||
-                  !samlSetupForm.issuer.trim() ||
-                  !samlSetupForm.providerId.trim() ||
-                  !samlIssuerAllowed
-                }
-              >
-                {isPending ? "Saving..." : "Save SAML provider"}
-              </Button>
+              {(() => {
+                const missing: string[] = [];
+                if (!samlSetupForm.domain.trim()) missing.push("workspace domain");
+                if (!samlSetupForm.issuer.trim()) missing.push("issuer");
+                else if (!samlIssuerAllowed) missing.push("issuer on allowlist");
+                if (!samlSetupForm.entryPoint.trim()) missing.push("sign-in URL");
+                if (!samlCertificateLooksValid) missing.push("valid PEM certificate");
+                if (!samlSetupForm.providerId.trim()) missing.push("provider ID");
+                const disabled = isPending || missing.length > 0;
+                return (
+                  <span
+                    title={disabled && !isPending ? `Missing: ${missing.join(", ")}` : undefined}
+                  >
+                    <Button type="submit" disabled={disabled}>
+                      {isPending ? "Saving..." : "Save SAML provider"}
+                    </Button>
+                  </span>
+                );
+              })()}
             </form>
           ) : (
             <p className="type-body-medium text-outline">

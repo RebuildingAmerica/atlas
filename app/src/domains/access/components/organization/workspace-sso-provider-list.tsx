@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { CheckCircle2, Clock } from "lucide-react";
 import type { AtlasOrganizationDetails } from "../../organization-contracts";
 import { assessCertExpiry } from "../../cert-expiry-helpers";
 import {
@@ -265,10 +266,13 @@ function SamlCertificateRotationForm(props: {
       </p>
       <Textarea
         label="New X.509 certificate"
-        rows={6}
+        rows={8}
+        autoExpand
+        maxRows={32}
         value={certificate}
         onChange={setCertificate}
         placeholder="-----BEGIN CERTIFICATE-----"
+        className="font-mono text-sm"
       />
       <Button
         type="button"
@@ -411,7 +415,18 @@ export function WorkspaceSSOProviderList({
                         Secondary · ready to promote
                       </span>
                     ) : null}
-                    <span className="type-label-large border-outline-variant text-outline rounded-full border px-3 py-1">
+                    <span
+                      className={
+                        provider.domainVerified
+                          ? "type-label-large inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-emerald-700"
+                          : "type-label-large border-outline-variant text-outline inline-flex items-center gap-1 rounded-full border px-3 py-1"
+                      }
+                    >
+                      {provider.domainVerified ? (
+                        <CheckCircle2 aria-hidden="true" className="h-3.5 w-3.5" />
+                      ) : (
+                        <Clock aria-hidden="true" className="h-3.5 w-3.5" />
+                      )}
                       {provider.domainVerified ? "Domain verified" : "Verification pending"}
                     </span>
                     {provider.providerType === "saml" ? (
@@ -471,6 +486,7 @@ export function WorkspaceSSOProviderList({
                     <WorkspaceSSOCopyField
                       label="IdP entry point"
                       value={provider.saml?.entryPoint ?? ""}
+                      truncateAt={64}
                     />
                     {provider.saml?.certificate.fingerprintSha256 ? (
                       <WorkspaceSSOCopyField
