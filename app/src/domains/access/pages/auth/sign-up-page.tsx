@@ -1,6 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { Link, useNavigate } from "@tanstack/react-router";
-import { Mail } from "lucide-react";
+import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { atlasSessionQueryKey, useAtlasSession } from "@/domains/access/client/use-atlas-session";
 import { checkAccountExists, requestMagicLink } from "@/domains/access/session.functions";
@@ -9,10 +8,9 @@ import {
   buildAuthErrorLabels,
   extractAuthErrorCode,
 } from "@/domains/access/auth-errors";
-import { DevMailCaptureBanner } from "./dev-mail-capture-banner";
 import { buildSignInCallbackURL } from "./sign-in-page-helpers";
-import { Button } from "@/platform/ui/button";
-import { Input } from "@/platform/ui/input";
+import { SignUpFormPanel } from "./components/sign-up-form-panel";
+import { SignUpSentPanel } from "./components/sign-up-sent-panel";
 
 /**
  * Recognised intent the sign-up route accepts via the `intent` search param.
@@ -41,12 +39,6 @@ const CROSS_DEVICE_POLL_INTERVAL_MS = 3000;
 const SIGN_UP_ERROR_LABELS = buildAuthErrorLabels("sign-up");
 
 const TEAM_SSO_REDIRECT = "/pricing?intent=atlas_team&interval=monthly";
-
-function formatExpiryCountdown(totalSeconds: number): string {
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-  return `${minutes}:${seconds.toString().padStart(2, "0")}`;
-}
 
 /**
  * Sign-up page for new Atlas accounts.
@@ -201,145 +193,38 @@ export function SignUpPage({ intent, redirectTo }: SignUpPageProps = {}) {
   };
 
   if (phase === "sent") {
-    const expiryLabel =
-      secondsUntilExpiry > 0
-        ? `Link expires in ${formatExpiryCountdown(secondsUntilExpiry)}`
-        : "Link expired — request a new one below.";
-    const resendLabel = isResending
-      ? "Resending..."
-      : secondsUntilResend > 0
-        ? `Resend in ${secondsUntilResend}s`
-        : "Resend link";
-
     return (
-      <div className="space-y-8">
-        <div className="space-y-2">
-          <p className="type-label-medium text-outline">
-            {isTeamSso ? "Atlas Team" : "Create your account"}
-          </p>
-          <h1 className="type-display-small text-on-surface">Check your inbox</h1>
-          <p className="type-body-large text-outline">
-            We sent a sign-up link to <span className="text-on-surface font-medium">{email}</span>.
-          </p>
-        </div>
-
-        <div className="border-outline-variant rounded-2xl border px-4 py-3">
-          <p className="type-body-medium text-on-surface" aria-live="polite">
-            {expiryLabel}
-          </p>
-        </div>
-
-        {captureMailboxUrl ? <DevMailCaptureBanner url={captureMailboxUrl} /> : null}
-
-        <div className="space-y-2">
-          <Button
-            variant="secondary"
-            disabled={secondsUntilResend > 0 || isResending}
-            onClick={() => {
-              void handleResend();
-            }}
-          >
-            {resendLabel}
-          </Button>
-          {resendStatus ? (
-            <p className="type-body-small text-outline" aria-live="polite">
-              {resendStatus}
-            </p>
-          ) : null}
-        </div>
-
-        <p className="type-body-medium text-outline">
-          Opening the link on a different device is fine — once you sign in there, you can close
-          this tab. If you click the link on this device, this page will continue automatically.
-        </p>
-
-        <button
-          type="button"
-          className="type-label-medium text-accent hover:underline"
-          onClick={() => {
-            setPhase("form");
-            setErrorMessage(null);
-            setResendStatus(null);
-          }}
-        >
-          Use a different email
-        </button>
-      </div>
+      <SignUpSentPanel
+        captureMailboxUrl={captureMailboxUrl}
+        email={email}
+        isResending={isResending}
+        isTeamSso={isTeamSso}
+        resendStatus={resendStatus}
+        secondsUntilExpiry={secondsUntilExpiry}
+        secondsUntilResend={secondsUntilResend}
+        onResend={() => {
+          void handleResend();
+        }}
+        onUseDifferentEmail={() => {
+          setPhase("form");
+          setErrorMessage(null);
+          setResendStatus(null);
+        }}
+      />
     );
   }
 
-  const eyebrow = isTeamSso ? "Atlas Team" : "Create your account";
-  const heading = isTeamSso ? "Set up SSO for your team" : "Join Atlas";
-  const subhead = isTeamSso
-    ? "Create your account, then choose Atlas Team and configure your identity provider. Free to start; pay only when you confirm the team plan."
-    : "Enter your email and we'll send you a link to get started. Free to join.";
-  const ctaCopy = isPending
-    ? "Creating account..."
-    : isTeamSso
-      ? "Continue with team setup"
-      : "Create account";
-
   return (
-    <div className="space-y-8">
-      <div className="space-y-2">
-        <p className="type-label-medium text-outline">{eyebrow}</p>
-        <h1 className="type-display-small text-on-surface">{heading}</h1>
-        <p className="type-body-large text-outline">{subhead}</p>
-      </div>
-
-      <form
-        className="space-y-4"
-        onSubmit={(e) => {
-          void handleSubmit(e);
-        }}
-      >
-        <Input
-          label="Email"
-          type="email"
-          value={email}
-          onChange={setEmail}
-          placeholder="you@example.com"
-          autoComplete="email"
-          required
-          icon={<Mail className="h-4 w-4" />}
-        />
-
-        <Button type="submit" disabled={isPending || !email.trim()}>
-          {ctaCopy}
-        </Button>
-      </form>
-
-      {errorMessage ? (
-        <p className="type-body-medium rounded-2xl bg-red-50 px-4 py-3 text-red-700">
-          {errorMessage}
-        </p>
-      ) : null}
-
-      <p className="type-body-medium text-outline">
-        Already have an account?{" "}
-        <Link
-          to="/sign-in"
-          search={effectiveRedirect ? { redirect: effectiveRedirect } : undefined}
-          className="text-accent type-label-medium hover:underline"
-        >
-          Sign in &rarr;
-        </Link>
-      </p>
-
-      {!isTeamSso ? (
-        <div className="border-outline-variant rounded-2xl border px-4 py-3">
-          <p className="type-body-small text-outline">
-            Setting up SSO for your team?{" "}
-            <Link
-              to="/sign-up"
-              search={{ intent: "team-sso" }}
-              className="text-accent type-label-small hover:underline"
-            >
-              Start the team plan &rarr;
-            </Link>
-          </p>
-        </div>
-      ) : null}
-    </div>
+    <SignUpFormPanel
+      effectiveRedirect={effectiveRedirect}
+      email={email}
+      errorMessage={errorMessage}
+      isPending={isPending}
+      isTeamSso={isTeamSso}
+      onEmailChange={setEmail}
+      onSubmit={(e) => {
+        void handleSubmit(e);
+      }}
+    />
   );
 }
