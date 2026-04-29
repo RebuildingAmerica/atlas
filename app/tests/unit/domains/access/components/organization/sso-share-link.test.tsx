@@ -31,7 +31,7 @@ describe("buildIdTeamShareUrl", () => {
 
   it("URL-encodes the workspace slug", () => {
     expect(buildIdTeamShareUrl("https://atlas.example", "team with spaces")).toBe(
-      "https://atlas.example/organization/sso?from=team%20with%20spaces",
+      "https://atlas.example/organization/sso?from=team+with+spaces",
     );
   });
 });
