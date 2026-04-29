@@ -4,6 +4,37 @@ import { verifyWorkspaceSSODomain } from "@/domains/access/sso.functions";
 
 const POLL_INTERVAL_MS = 30 * 1000;
 const POLL_TIMEOUT_MS = 10 * 60 * 1000;
+const POLL_STORAGE_PREFIX = "atlas:saml-poll-started:";
+
+/**
+ * Returns the persisted poll-started timestamp for a provider fingerprint
+ * if the prior poll is still inside its budget, otherwise null.  Lets the
+ * verification poll survive a page refresh without restarting the
+ * 10-minute budget — admins who reload to recheck DNS shouldn't get
+ * another full window.
+ */
+function readStoredPollStart(fingerprint: string): number | null {
+  if (typeof window === "undefined") return null;
+  const raw = window.localStorage.getItem(POLL_STORAGE_PREFIX + fingerprint);
+  if (!raw) return null;
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed)) return null;
+  if (Date.now() - parsed > POLL_TIMEOUT_MS) {
+    window.localStorage.removeItem(POLL_STORAGE_PREFIX + fingerprint);
+    return null;
+  }
+  return parsed;
+}
+
+function writeStoredPollStart(fingerprint: string, startedAt: number): void {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(POLL_STORAGE_PREFIX + fingerprint, String(startedAt));
+}
+
+function clearStoredPollStart(fingerprint: string): void {
+  if (typeof window === "undefined") return;
+  window.localStorage.removeItem(POLL_STORAGE_PREFIX + fingerprint);
+}
 
 /**
  * Result returned to the SSO page so it can render a "we stopped polling"
@@ -67,7 +98,11 @@ export function useSamlDomainVerificationPoll(params: {
     }
 
     const targetProviderIds = fingerprint.split(",");
-    const startedAt = Date.now();
+    const persistedStart = readStoredPollStart(fingerprint);
+    const startedAt = persistedStart ?? Date.now();
+    if (persistedStart === null) {
+      writeStoredPollStart(fingerprint, startedAt);
+    }
     let cancelled = false;
 
     async function attemptOnce() {
@@ -90,6 +125,7 @@ export function useSamlDomainVerificationPoll(params: {
       if (cancelled) return;
       if (Date.now() - startedAt > POLL_TIMEOUT_MS) {
         clearInterval(intervalId);
+        clearStoredPollStart(fingerprint);
         setTimedOutProviderIds(targetProviderIds);
         return;
       }

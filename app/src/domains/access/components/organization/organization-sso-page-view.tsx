@@ -105,6 +105,14 @@ export function OrganizationSSOPageView({ controller }: OrganizationSSOPageViewP
         <SsoDiagnosticsDisclosure />
       ) : null}
 
+      {controller.organization && controller.canUseTeamFeatures ? (
+        <p className="border-outline-variant text-outline rounded-2xl border bg-amber-50/40 px-4 py-3 text-amber-900">
+          If multiple Atlas workspaces verify the same email domain, sign-in routing becomes
+          ambiguous and Atlas falls back to a magic link instead of routing through SSO. Make sure
+          your DNS-verified domain is unique to this workspace.
+        </p>
+      ) : null}
+
       <OrganizationPageFeedback
         errorMessage={controller.errorMessage}
         flashMessage={controller.flashMessage}
