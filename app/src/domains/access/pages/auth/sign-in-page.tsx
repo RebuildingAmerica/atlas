@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Info, KeyRound, Mail } from "lucide-react";
+import { Info } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { z } from "zod";
 import { getAuthClient } from "@/domains/access/client/auth-client";
@@ -12,15 +12,12 @@ import { suggestEmailDomainCorrection } from "@/domains/access/email-domain-sugg
 import { describeSsoError } from "@/domains/access/sso-error-messages";
 import { recordSsoDiagnostics } from "@/domains/access/client/sso-diagnostics-log";
 import { waitForAtlasAuthenticatedSession } from "@/domains/access/client/session-confirmation";
-import type { AtlasProduct } from "@/domains/access/capabilities";
-import { PRODUCT_LABELS } from "@/domains/billing/product-labels";
 import { requestMagicLink } from "@/domains/access/session.functions";
 import {
   buildAuthErrorLabels,
   describePasskeyError,
   extractAuthErrorCode,
 } from "@/domains/access/auth-errors";
-import { DevMailCaptureBanner } from "./dev-mail-capture-banner";
 import { resolveWorkspaceSSOSignIn } from "@/domains/access/sso.functions";
 import {
   buildMagicLinkStatusMessage,
@@ -28,51 +25,14 @@ import {
   buildSignInErrorCallbackURL,
   extractSSORedirectUrl,
   isOAuthOriginSignIn,
+  parsePricingIntent,
+  resolveSignInHeadingCopy,
 } from "./sign-in-page-helpers";
-import { Button } from "@/platform/ui/button";
-import { Input } from "@/platform/ui/input";
+import { SignInEmailForm } from "./components/sign-in-email-form";
+import { SignInPasskeyButton } from "./components/sign-in-passkey-button";
+import { SignInStatusBlocks } from "./components/sign-in-status-blocks";
 
 const MAGIC_LINK_ERROR_LABELS = buildAuthErrorLabels("sign-in");
-
-const ATLAS_PRODUCTS: readonly AtlasProduct[] = [
-  "atlas_pro",
-  "atlas_team",
-  "atlas_research_pass",
-] as const;
-
-/**
- * Parses a redirect path to detect a /pricing checkout intent.
- *
- * Returns the intended product when the redirect points back at /pricing
- * with a recognised intent param, otherwise null. Used to swap heading copy
- * so a viewer who clicked a paid CTA isn't shown a generic "Sign in to Atlas"
- * page that ignores their context.
- *
- * @param redirectTo - The redirect path passed via search params.
- */
-function parsePricingIntent(redirectTo: string | undefined): AtlasProduct | null {
-  if (!redirectTo) {
-    return null;
-  }
-
-  let url: URL;
-  try {
-    url = new URL(redirectTo, "http://atlas.local");
-  } catch {
-    return null;
-  }
-
-  if (url.pathname !== "/pricing") {
-    return null;
-  }
-
-  const intent = url.searchParams.get("intent");
-  if (!intent) {
-    return null;
-  }
-
-  return ATLAS_PRODUCTS.find((product) => product === intent) ?? null;
-}
 
 /**
  * Search params accepted by the sign-in route.
@@ -85,9 +45,6 @@ export const signInSearchSchema = z.object({
   redirect: z.string().optional(),
 });
 
-/**
- * Props accepted by the sign-in page.
- */
 interface SignInPageProps {
   errorCode?: string;
   existingAccount?: boolean;
@@ -123,7 +80,6 @@ export function SignInPage({
   const callbackURL = buildSignInCallbackURL(invitationId, redirectTo);
   const errorCallbackURL = buildSignInErrorCallbackURL(invitationId, redirectTo);
   const pricingIntent = useMemo(() => parsePricingIntent(redirectTo), [redirectTo]);
-  const intentLabel = pricingIntent ? PRODUCT_LABELS[pricingIntent] : null;
   const oauthOriginSignIn = useMemo(() => isOAuthOriginSignIn(redirectTo), [redirectTo]);
   const ssoErrorMessage = useMemo(() => describeSsoError(errorCode), [errorCode]);
 
@@ -149,31 +105,26 @@ export function SignInPage({
 
     const startConditionalPasskeyAutofill = async () => {
       try {
-        const conditionalMediationAvailabilityPromise =
-          PublicKeyCredential.isConditionalMediationAvailable();
-        const conditionalMediationAvailable = await conditionalMediationAvailabilityPromise;
+        const conditionalMediationAvailable =
+          await PublicKeyCredential.isConditionalMediationAvailable();
 
         if (!conditionalMediationAvailable || !active) {
           return;
         }
 
-        const passkeySignInPromise = authClient.signIn.passkey({
+        await authClient.signIn.passkey({
           autoFill: true,
           fetchOptions: {
             onSuccess: async () => {
               if (!active) {
                 return;
               }
-
-              const sessionConfirmationPromise = waitForAtlasAuthenticatedSession();
-              await sessionConfirmationPromise;
+              await waitForAtlasAuthenticatedSession();
               setLastUsedAtlasLoginMethod("passkey");
               window.location.assign(callbackURL);
             },
           },
         });
-
-        await passkeySignInPromise;
       } catch {
         return;
       }
@@ -193,20 +144,15 @@ export function SignInPage({
     setIsEmailFlowPending(true);
 
     try {
-      const ssoResolutionPromise = resolveWorkspaceSSOSignIn({
-        data: {
-          email,
-          invitationId,
-        },
+      const ssoResolution = await resolveWorkspaceSSOSignIn({
+        data: { email, invitationId },
       });
-      const ssoResolution = await ssoResolutionPromise;
 
       if (ssoResolution) {
         const organizationLabel = ssoResolution.organizationName ?? "your organization";
-
         setStatusMessage(`Redirecting to ${organizationLabel}'s sign-in...`);
 
-        const ssoSignInPromise = authClient.signIn.sso({
+        const ssoResult = await authClient.signIn.sso({
           callbackURL,
           email,
           errorCallbackURL,
@@ -214,7 +160,6 @@ export function SignInPage({
           providerId: ssoResolution.providerId,
           providerType: ssoResolution.providerType,
         });
-        const ssoResult = await ssoSignInPromise;
         const redirectUrl = extractSSORedirectUrl(ssoResult);
 
         if (redirectUrl) {
@@ -225,14 +170,9 @@ export function SignInPage({
         return;
       }
 
-      const magicLinkRequestPromise = requestMagicLink({
-        data: {
-          callbackURL,
-          email,
-        },
+      const magicLinkResult = await requestMagicLink({
+        data: { callbackURL, email },
       });
-
-      const magicLinkResult = await magicLinkRequestPromise;
       setCaptureMailboxUrl(magicLinkResult.captureMailboxUrl ?? null);
       setLastUsedAtlasLoginMethod("magic-link");
       rememberLastUsedAtlasEmail(email);
@@ -268,27 +208,10 @@ export function SignInPage({
     }
   };
 
-  let eyebrow: string;
-  let heading: string;
-  let subhead: string;
-
-  if (isInvitationFlow) {
-    eyebrow = "Workspace invitation";
-    heading = "Accept your workspace invitation";
-    subhead = "Enter the email address where you received the invitation.";
-  } else if (intentLabel && pricingIntent === "atlas_research_pass") {
-    eyebrow = intentLabel;
-    heading = "Sign in to start your pass";
-    subhead = "Continue with the email you use for Atlas, or create a free account below.";
-  } else if (intentLabel) {
-    eyebrow = intentLabel;
-    heading = "Sign in to subscribe";
-    subhead = "Continue with the email you use for Atlas, or create a free account below.";
-  } else {
-    eyebrow = "Account access";
-    heading = "Sign in to Atlas";
-    subhead = "Use your passkey, or enter your email for a sign-in link.";
-  }
+  const { eyebrow, heading, subhead } = resolveSignInHeadingCopy({
+    isInvitationFlow,
+    pricingIntent,
+  });
 
   return (
     <div className="space-y-8">
@@ -308,24 +231,13 @@ export function SignInPage({
       ) : null}
 
       <div className="space-y-5">
-        <div className="relative inline-block">
-          <Button
-            onClick={() => {
-              void handlePasskey();
-            }}
-            disabled={isPasskeyPending}
-          >
-            <span className="inline-flex items-center gap-2">
-              <KeyRound className="h-4 w-4" />
-              {isPasskeyPending ? "Waiting for passkey..." : "Sign in with passkey"}
-            </span>
-          </Button>
-          {lastMethod === "passkey" ? (
-            <span className="type-label-small bg-inverse-surface text-inverse-on-surface absolute -top-2 -right-2 rounded-full px-1.5 py-0.5">
-              Last used
-            </span>
-          ) : null}
-        </div>
+        <SignInPasskeyButton
+          isLastUsed={lastMethod === "passkey"}
+          isPending={isPasskeyPending}
+          onClick={() => {
+            void handlePasskey();
+          }}
+        />
 
         <div className="flex items-center gap-3">
           <div className="bg-border h-px flex-1" />
@@ -333,95 +245,25 @@ export function SignInPage({
           <div className="bg-border h-px flex-1" />
         </div>
 
-        <form
-          className="space-y-4"
+        <SignInEmailForm
+          domainSuggestion={domainSuggestion}
+          email={email}
+          isLastUsed={lastMethod === "magic-link"}
+          isPending={isEmailFlowPending}
+          onEmailChange={setEmail}
           onSubmit={(e) => {
             void handleEmailContinue(e);
           }}
-        >
-          <Input
-            label="Email"
-            type="email"
-            value={email}
-            onChange={setEmail}
-            placeholder="you@example.com"
-            autoComplete="username webauthn"
-            required
-            icon={<Mail className="h-4 w-4" />}
-          />
+        />
 
-          {domainSuggestion ? (
-            <p className="type-body-small text-outline" aria-live="polite">
-              Did you mean{" "}
-              <button
-                type="button"
-                className="text-accent underline"
-                onClick={() => {
-                  setEmail(domainSuggestion);
-                }}
-              >
-                {domainSuggestion}
-              </button>
-              ?
-            </p>
-          ) : null}
-
-          <div className="relative inline-block">
-            <Button
-              type="submit"
-              variant="secondary"
-              disabled={isEmailFlowPending || !email.trim()}
-            >
-              {isEmailFlowPending ? "Continuing..." : "Continue with email"}
-            </Button>
-            {lastMethod === "magic-link" ? (
-              <span className="type-label-small bg-inverse-surface text-inverse-on-surface absolute -top-2 -right-2 rounded-full px-1.5 py-0.5">
-                Last used
-              </span>
-            ) : null}
-          </div>
-        </form>
-
-        {statusMessage ? (
-          <p className="type-body-medium bg-surface-container-lowest text-on-surface rounded-2xl px-4 py-3">
-            {statusMessage}
-          </p>
-        ) : null}
-
-        {captureMailboxUrl && statusMessage ? (
-          <DevMailCaptureBanner url={captureMailboxUrl} />
-        ) : null}
-
-        {oauthOriginSignIn && statusMessage ? (
-          <p className="type-body-small text-outline rounded-2xl bg-blue-50 px-4 py-3 text-blue-900">
-            Connecting an MCP client? If a sign-in link doesn&rsquo;t arrive within a minute, your
-            email may not be approved yet.{" "}
-            <a href="/docs/mcp" className="text-accent type-label-small hover:underline">
-              See connection requirements &rarr;
-            </a>
-          </p>
-        ) : null}
-
-        {errorMessage ? (
-          <p className="type-body-medium rounded-2xl bg-red-50 px-4 py-3 text-red-700">
-            {errorMessage}
-          </p>
-        ) : null}
-
-        {errorCode ? (
-          <div
-            className="type-body-medium rounded-2xl bg-red-50 px-4 py-3 text-red-800"
-            role="alert"
-          >
-            <p>
-              {ssoErrorMessage ??
-                "Atlas couldn't complete the SSO sign-in.  Try again, or contact your workspace admin if it keeps failing."}
-            </p>
-            <p className="type-body-small mt-1 text-red-700">
-              Reference code: <code>{errorCode}</code>
-            </p>
-          </div>
-        ) : null}
+        <SignInStatusBlocks
+          captureMailboxUrl={captureMailboxUrl}
+          errorCode={errorCode}
+          errorMessage={errorMessage}
+          oauthOriginSignIn={oauthOriginSignIn}
+          ssoErrorMessage={ssoErrorMessage}
+          statusMessage={statusMessage}
+        />
       </div>
 
       {!isInvitationFlow ? (

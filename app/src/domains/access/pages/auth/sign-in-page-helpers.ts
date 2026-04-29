@@ -1,3 +1,92 @@
+import type { AtlasProduct } from "@/domains/access/capabilities";
+import { PRODUCT_LABELS } from "@/domains/billing/product-labels";
+
+interface SignInHeadingCopy {
+  eyebrow: string;
+  heading: string;
+  subhead: string;
+}
+
+/**
+ * Resolves the eyebrow / heading / subhead copy shown atop the sign-in
+ * page.  Routes the operator into one of four flows: workspace
+ * invitation, research-pass purchase, generic paid-plan purchase, or
+ * the default account-access flow.
+ */
+export function resolveSignInHeadingCopy(args: {
+  isInvitationFlow: boolean;
+  pricingIntent: AtlasProduct | null;
+}): SignInHeadingCopy {
+  const { isInvitationFlow, pricingIntent } = args;
+  if (isInvitationFlow) {
+    return {
+      eyebrow: "Workspace invitation",
+      heading: "Accept your workspace invitation",
+      subhead: "Enter the email address where you received the invitation.",
+    };
+  }
+  const intentLabel = pricingIntent ? PRODUCT_LABELS[pricingIntent] : null;
+  if (intentLabel && pricingIntent === "atlas_research_pass") {
+    return {
+      eyebrow: intentLabel,
+      heading: "Sign in to start your pass",
+      subhead: "Continue with the email you use for Atlas, or create a free account below.",
+    };
+  }
+  if (intentLabel) {
+    return {
+      eyebrow: intentLabel,
+      heading: "Sign in to subscribe",
+      subhead: "Continue with the email you use for Atlas, or create a free account below.",
+    };
+  }
+  return {
+    eyebrow: "Account access",
+    heading: "Sign in to Atlas",
+    subhead: "Use your passkey, or enter your email for a sign-in link.",
+  };
+}
+
+const ATLAS_PRODUCTS: readonly AtlasProduct[] = [
+  "atlas_pro",
+  "atlas_team",
+  "atlas_research_pass",
+] as const;
+
+/**
+ * Parses a redirect path to detect a /pricing checkout intent.
+ *
+ * Returns the intended product when the redirect points back at /pricing
+ * with a recognised intent param, otherwise null.  Used to swap heading
+ * copy so a viewer who clicked a paid CTA isn't shown a generic "Sign in
+ * to Atlas" page that ignores their context.
+ *
+ * @param redirectTo - The redirect path passed via search params.
+ */
+export function parsePricingIntent(redirectTo: string | undefined): AtlasProduct | null {
+  if (!redirectTo) {
+    return null;
+  }
+
+  let url: URL;
+  try {
+    url = new URL(redirectTo, "http://atlas.local");
+  } catch {
+    return null;
+  }
+
+  if (url.pathname !== "/pricing") {
+    return null;
+  }
+
+  const intent = url.searchParams.get("intent");
+  if (!intent) {
+    return null;
+  }
+
+  return ATLAS_PRODUCTS.find((product) => product === intent) ?? null;
+}
+
 /**
  * Returns the candidate path when it is safe to use as a post-sign-in redirect,
  * otherwise null.  A safe path is a same-origin absolute path that cannot be
