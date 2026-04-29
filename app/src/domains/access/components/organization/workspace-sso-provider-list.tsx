@@ -9,6 +9,7 @@ import {
 import { Button } from "@/platform/ui/button";
 import { Textarea } from "@/platform/ui/textarea";
 import { useConfirmDialog } from "@/platform/ui/confirm-dialog";
+import { CertLifecycleBar } from "./cert-lifecycle-bar";
 import { WorkspaceSSOCopyField } from "./workspace-sso-copy-field";
 
 /**
@@ -331,6 +332,28 @@ export function WorkspaceSSOProviderList({
     await onRequestDomainVerification(providerId);
   }
 
+  async function handleBulkDisable() {
+    const samlProviderIds = providers
+      .filter((provider) => provider.providerType === "saml")
+      .map((provider) => provider.providerId);
+    if (samlProviderIds.length === 0) return;
+    const accepted = await confirm({
+      title: "Disable every SAML provider?",
+      body: `Atlas will remove all ${String(samlProviderIds.length)} configured SAML providers from this workspace.  Sign-in will fall back to magic links until you re-register.  Useful for incident response — destructive otherwise.`,
+      confirmLabel: "Disable all SAML",
+      destructive: true,
+    });
+    if (!accepted) return;
+    for (const providerId of samlProviderIds) {
+      try {
+        await onDeleteProvider(providerId);
+      } catch {
+        // Continue iterating; individual failures surface via the existing
+        // error path on the parent SSO actions hook.
+      }
+    }
+  }
+
   async function handleVerify(providerId: string) {
     setVerifyError((current) => {
       const { [providerId]: _, ...rest } = current;
@@ -367,6 +390,27 @@ export function WorkspaceSSOProviderList({
             Save either Google Workspace OIDC or SAML below to enable organization-managed sign-in.
           </p>
         </div>
+      ) : null}
+
+      {canManageOrganization && providers.some((provider) => provider.providerType === "saml") ? (
+        <details className="text-outline space-y-2">
+          <summary className="type-label-medium cursor-pointer">Incident response</summary>
+          <p className="type-body-small text-outline pt-1">
+            Disable every configured SAML provider in one click — useful when an IdP key leak or
+            misconfiguration is causing sign-in failures and you want to fall back to magic links
+            while you triage.
+          </p>
+          <Button
+            type="button"
+            variant="ghost"
+            disabled={isPending}
+            onClick={() => {
+              void handleBulkDisable();
+            }}
+          >
+            Disable all SAML providers
+          </Button>
+        </details>
       ) : null}
 
       {providers.length > 0 && primaryHistory.length > 0 ? (
@@ -495,10 +539,14 @@ export function WorkspaceSSOProviderList({
                       />
                     ) : null}
                     {provider.saml?.certificate.notAfter ? (
-                      <div className="space-y-1">
+                      <div className="space-y-2">
                         <WorkspaceSSOCopyField
                           label="Certificate expires"
                           value={formatCertificateExpiry(provider.saml.certificate.notAfter)}
+                        />
+                        <CertLifecycleBar
+                          notAfter={provider.saml.certificate.notAfter}
+                          notBefore={provider.saml.certificate.notBefore ?? null}
                         />
                         {(() => {
                           const assessment = assessCertExpiry(provider.saml.certificate.notAfter);

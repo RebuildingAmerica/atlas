@@ -7,6 +7,7 @@ import { OrganizationPageHeader } from "./organization-page-header";
 import { OrganizationTeamWorkspaceRequiredState } from "./organization-team-workspace-required-state";
 import { PendingWorkspaceInvitationsSection } from "./pending-workspace-invitations-section";
 import { SsoDiagnosticsDisclosure } from "./sso-diagnostics-disclosure";
+import { SsoShareLinkButton } from "./sso-share-link";
 import { WorkspaceCreationSection } from "./workspace-creation-section";
 import { WorkspaceSSOSection } from "./workspace-sso-section";
 import { WorkspaceSwitcherSection } from "./workspace-switcher-section";
@@ -103,6 +104,49 @@ export function OrganizationSSOPageView({ controller }: OrganizationSSOPageViewP
 
       {controller.organization && controller.canUseTeamFeatures ? (
         <SsoDiagnosticsDisclosure />
+      ) : null}
+
+      {controller.organization && controller.canUseTeamFeatures ? (
+        <div className="flex flex-wrap items-center gap-3">
+          <p className="type-body-small text-outline">Need your IT team to handle SSO setup?</p>
+          <SsoShareLinkButton workspaceSlug={controller.organization.slug} />
+        </div>
+      ) : null}
+
+      {controller.organization && controller.canUseTeamFeatures ? (
+        <details className="text-outline space-y-2">
+          <summary className="type-label-medium cursor-pointer">Per-IdP setup guides</summary>
+          <p className="type-body-small text-outline pt-2">
+            Atlas's deployment docs cover end-to-end setup for the most common identity providers.
+          </p>
+          <ul className="type-body-small text-outline list-disc space-y-1 pl-5">
+            <li>
+              <a
+                href="/docs/deployment/google-workspace-saml-sso"
+                target="_blank"
+                rel="noreferrer"
+                className="text-accent underline"
+              >
+                Google Workspace (SAML)
+              </a>
+            </li>
+            <li>
+              <a
+                href="/docs/deployment/google-workspace-oidc-sso"
+                target="_blank"
+                rel="noreferrer"
+                className="text-accent underline"
+              >
+                Google Workspace (OIDC)
+              </a>
+            </li>
+            <li>
+              Okta, Entra, Auth0, JumpCloud, Keycloak: paste each IdP's metadata XML into the form
+              below — Atlas's metadata parser handles the issuer, sign-in URL, and certificate the
+              same way for every SAML 2.0–compliant provider.
+            </li>
+          </ul>
+        </details>
       ) : null}
 
       {controller.organization && controller.canUseTeamFeatures ? (

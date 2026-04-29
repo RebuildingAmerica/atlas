@@ -157,6 +157,15 @@ function OperatorIdentity({ session }: OperatorIdentityProps) {
           </span>
         ) : null}
 
+        {activeWorkspace?.workspaceType === "team" ? (
+          <span
+            className="type-label-small inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-emerald-800"
+            title="This workspace can configure SAML or OIDC SSO."
+          >
+            Enterprise SSO
+          </span>
+        ) : null}
+
         <span className="type-body-medium text-outline">{displayName}</span>
         <button
           type="button"
