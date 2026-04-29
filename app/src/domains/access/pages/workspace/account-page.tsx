@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, KeyRound, LogOut, Pencil, Plus, Trash2, X } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { Button } from "@/platform/ui/button";
 import { Input } from "@/platform/ui/input";
@@ -184,6 +184,23 @@ export function AccountPage() {
     }
   };
 
+  const [rpLogoutAvailable, setRpLogoutAvailable] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const result = await getRpLogoutRedirect();
+        if (!cancelled) setRpLogoutAvailable(Boolean(result.url));
+      } catch {
+        if (!cancelled) setRpLogoutAvailable(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const handleSignOut = async () => {
     const rpLogout = await getRpLogoutRedirect();
     await getAuthClient().signOut();
@@ -207,17 +224,28 @@ export function AccountPage() {
           <p className="type-body-large text-outline">{atlasSession.data?.user.email}</p>
         </div>
         {!isLocal ? (
-          <Button
-            variant="secondary"
-            onClick={() => {
-              void handleSignOut();
-            }}
-          >
-            <span className="inline-flex items-center gap-2">
-              <LogOut className="h-4 w-4" />
-              Sign out
-            </span>
-          </Button>
+          <div className="flex flex-col items-end gap-1">
+            <Button
+              variant="secondary"
+              onClick={() => {
+                void handleSignOut();
+              }}
+            >
+              <span className="inline-flex items-center gap-2">
+                <LogOut className="h-4 w-4" />
+                Sign out
+              </span>
+            </Button>
+            {rpLogoutAvailable === true ? (
+              <p className="type-body-small text-outline" aria-live="polite">
+                Atlas will also sign you out of your identity provider.
+              </p>
+            ) : rpLogoutAvailable === false ? (
+              <p className="type-body-small text-outline" aria-live="polite">
+                Your identity provider session may stay active until it expires on its own.
+              </p>
+            ) : null}
+          </div>
         ) : null}
       </section>
 

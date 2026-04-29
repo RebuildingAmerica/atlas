@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { AtlasOrganizationDetails } from "../../organization-contracts";
+import { assessCertExpiry } from "../../cert-expiry-helpers";
 import {
   type AtlasSAMLProviderHealth,
   checkWorkspaceSAMLProviderHealth,
@@ -122,10 +123,25 @@ interface WorkspaceSSOProviderListProps {
  * @param props - The component props.
  * @param props.providerId - The provider being checked.
  */
+/**
+ * Returns true when an Atlas health-check result indicates a healthy SAML
+ * provider — entry point reachable, certificate parseable and not yet
+ * expired.  Used to drive the top-line verdict banner.
+ */
+function isHealthyResult(result: AtlasSAMLProviderHealth): boolean {
+  return (
+    result.entryPointReachable &&
+    result.certificateValid !== false &&
+    result.certificateExpired !== true &&
+    !result.reason
+  );
+}
+
 function SamlProviderHealthCheck(props: { providerId: string }) {
   const [result, setResult] = useState<AtlasSAMLProviderHealth | null>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const hasAutoRunRef = useRef(false);
 
   async function runCheck() {
     setPending(true);
@@ -146,9 +162,31 @@ function SamlProviderHealthCheck(props: { providerId: string }) {
     }
   }
 
+  useEffect(() => {
+    if (hasAutoRunRef.current) return;
+    hasAutoRunRef.current = true;
+    void runCheck();
+    // runCheck is stable for the providerId prop and we only auto-run once.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const verdict = result ? (isHealthyResult(result) ? "healthy" : "unhealthy") : null;
+
   return (
-    <details className="text-outline space-y-2">
-      <summary className="type-label-medium cursor-pointer">Run SAML health check</summary>
+    <details className="text-outline space-y-2" open={verdict === "unhealthy"}>
+      <summary className="type-label-medium cursor-pointer">SAML health check</summary>
+      {verdict ? (
+        <p
+          className={`type-label-medium rounded-2xl px-3 py-2 ${
+            verdict === "healthy" ? "bg-emerald-50 text-emerald-800" : "bg-red-50 text-red-800"
+          }`}
+          role="status"
+        >
+          {verdict === "healthy"
+            ? "Provider looks healthy — entry point reachable and certificate valid."
+            : "Provider needs attention — review the details below before telling users to sign in."}
+        </p>
+      ) : null}
       <p className="type-body-small text-outline">
         Pings the IdP entry point and inspects the stored signing certificate. Does not start a full
         sign-in flow.
@@ -161,7 +199,7 @@ function SamlProviderHealthCheck(props: { providerId: string }) {
           void runCheck();
         }}
       >
-        {pending ? "Checking..." : "Run health check"}
+        {pending ? "Checking..." : "Re-run health check"}
       </Button>
       {error ? <p className="type-body-small text-error">{error}</p> : null}
       {result ? (
@@ -218,6 +256,12 @@ function SamlCertificateRotationForm(props: {
       <p className="type-body-small text-outline">
         Paste the new PEM-encoded X.509 certificate the IdP just issued. Atlas keeps the existing
         domain verification, primary-provider marker, and SP signing key.
+      </p>
+      <p className="type-body-small rounded-2xl bg-amber-50 px-3 py-2 text-amber-800">
+        Browser sessions started before the rotation stay valid until they expire — Atlas can't
+        pre-validate the new certificate against the IdP's published metadata yet, so we recommend
+        scheduling rotations during a low-traffic window and re-running the health check immediately
+        after.
       </p>
       <Textarea
         label="New X.509 certificate"
@@ -435,10 +479,36 @@ export function WorkspaceSSOProviderList({
                       />
                     ) : null}
                     {provider.saml?.certificate.notAfter ? (
-                      <WorkspaceSSOCopyField
-                        label="Certificate expires"
-                        value={formatCertificateExpiry(provider.saml.certificate.notAfter)}
-                      />
+                      <div className="space-y-1">
+                        <WorkspaceSSOCopyField
+                          label="Certificate expires"
+                          value={formatCertificateExpiry(provider.saml.certificate.notAfter)}
+                        />
+                        {(() => {
+                          const assessment = assessCertExpiry(provider.saml.certificate.notAfter);
+                          if (!assessment || assessment.severity === "ok") return null;
+                          const palette =
+                            assessment.severity === "expired"
+                              ? "bg-red-50 text-red-800"
+                              : assessment.severity === "critical"
+                                ? "bg-red-50 text-red-800"
+                                : "bg-amber-50 text-amber-800";
+                          const message =
+                            assessment.severity === "expired"
+                              ? "Certificate expired — rotate now to keep sign-ins working."
+                              : assessment.severity === "critical"
+                                ? `Certificate expires in ${assessment.daysUntil} day${assessment.daysUntil === 1 ? "" : "s"} — rotate before users start failing sign-in.`
+                                : `Certificate expires in ${assessment.daysUntil} days — schedule a rotation soon.`;
+                          return (
+                            <p
+                              className={`type-body-small rounded-2xl px-3 py-2 ${palette}`}
+                              role="alert"
+                            >
+                              {message}
+                            </p>
+                          );
+                        })()}
+                      </div>
                     ) : null}
                     {provider.saml?.certificate.errorMessage ? (
                       <WorkspaceSSOCopyField
