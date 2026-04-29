@@ -1,21 +1,21 @@
 /**
- * ActionCluster — primary CTAs in the profile hero.
+ * ActionCluster — bottom-of-page action strip for profile pages.
  *
- * Renders Share (real, with Web Share + clipboard fallback), Contact (mailto
- * when an email is on file), Save (sign-in link for anonymous, list picker for
- * signed-in), and Follow (sign-in link for anonymous, real follow toggle for
- * signed-in).
+ * Square buttons on an inverse ink-black band. Save / Share / Contact / Follow
+ * — labels only, no decorative icons. Save and Follow are auth-aware: anonymous
+ * visitors get sign-in links with a redirect; signed-in visitors get the real
+ * list-picker and follow toggle.
  */
 import { Link } from "@tanstack/react-router";
-import { Bell, BellRing, Bookmark, Mail, Share2 } from "lucide-react";
 import { useState } from "react";
+import { copyToClipboard } from "@/lib/clipboard";
 import {
   useFollowProfile,
   useProfileFollow,
   useUnfollowProfile,
 } from "@/domains/catalog/hooks/use-claims";
 import { SaveListPicker } from "@/domains/catalog/components/profiles/save-list-picker";
-import { Button } from "@/platform/ui/button";
+import { cn } from "@/lib/utils";
 
 interface ActionClusterProps {
   entryId: string;
@@ -23,12 +23,7 @@ interface ActionClusterProps {
   shareUrl: string;
   shareTitle: string;
   email?: string;
-  /** Whether the current viewer has an active Atlas session. */
   isSignedIn: boolean;
-  /**
-   * Path of the profile being viewed, used as the `redirect` target if an
-   * anonymous visitor clicks Save or Follow and is sent through sign-in.
-   */
   profilePath: string;
 }
 
@@ -46,20 +41,11 @@ async function shareViaWebApi(url: string, title: string): Promise<boolean> {
   }
 }
 
-async function copyToClipboard(text: string): Promise<boolean> {
-  if (typeof navigator === "undefined" || !navigator.clipboard) {
-    return false;
-  }
-  try {
-    await navigator.clipboard.writeText(text);
-    return true;
-  } catch {
-    return false;
-  }
-}
+const SOLID_BUTTON =
+  "inline-flex min-h-[44px] items-center justify-center border border-paper bg-paper px-5 py-2.5 font-sans text-sm font-semibold text-ink-strong transition-colors hover:border-civic hover:bg-civic hover:text-paper disabled:cursor-not-allowed disabled:opacity-60";
 
-const SECONDARY_LINK_STYLE =
-  "type-label-large inline-flex items-center gap-2 rounded-full border border-outline-variant bg-surface-container-lowest px-4 py-1.5 font-medium text-on-surface transition-colors duration-150 hover:border-outline hover:bg-surface-container-high focus:outline-none focus:ring-2 focus:ring-border-strong focus:ring-offset-2";
+const GHOST_BUTTON =
+  "inline-flex min-h-[44px] items-center justify-center border border-paper bg-transparent px-5 py-2.5 font-sans text-sm font-semibold text-paper transition-colors hover:border-civic hover:bg-civic disabled:cursor-not-allowed disabled:opacity-60";
 
 export function ActionCluster({
   entryId,
@@ -119,69 +105,53 @@ export function ActionCluster({
     shareState === "copied" ? "Link copied" : shareState === "shared" ? "Shared" : "Share";
 
   return (
-    <div className="flex flex-col items-end gap-2">
-      <div className="flex flex-wrap items-center gap-2">
-        <Button type="button" variant="primary" size="sm" onClick={onShareClick}>
-          <span className="inline-flex items-center gap-2">
-            <Share2 className="h-4 w-4" aria-hidden />
-            {shareLabel}
-          </span>
-        </Button>
-
-        {email ? (
-          <a href={`mailto:${email}`} className={SECONDARY_LINK_STYLE}>
-            <Mail className="h-4 w-4" aria-hidden />
-            Contact
-          </a>
-        ) : null}
-
-        {isSignedIn ? (
-          <div className="relative">
-            <Button type="button" variant="secondary" size="sm" onClick={onSaveClick}>
-              <span className="inline-flex items-center gap-2">
-                <Bookmark className="h-4 w-4" aria-hidden />
-                Save
-              </span>
-            </Button>
-            <SaveListPicker
-              entryId={entryId}
-              open={savePickerOpen}
-              onClose={() => {
-                setSavePickerOpen(false);
-              }}
-            />
-          </div>
-        ) : (
-          <Link to="/sign-in" search={{ redirect: profilePath }} className={SECONDARY_LINK_STYLE}>
-            <Bookmark className="h-4 w-4" aria-hidden />
+    <nav
+      aria-label="Profile actions"
+      className="border-border-taupe bg-ink-strong flex flex-wrap items-center gap-2.5 border px-6 py-4 sm:px-8"
+    >
+      {isSignedIn ? (
+        <div className="relative">
+          <button type="button" className={SOLID_BUTTON} onClick={onSaveClick}>
             Save
-          </Link>
-        )}
+          </button>
+          <SaveListPicker
+            entryId={entryId}
+            open={savePickerOpen}
+            onClose={() => {
+              setSavePickerOpen(false);
+            }}
+          />
+        </div>
+      ) : (
+        <Link to="/sign-in" search={{ redirect: profilePath }} className={SOLID_BUTTON}>
+          Save
+        </Link>
+      )}
 
-        {isSignedIn ? (
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            onClick={onFollowClickWrapper}
-            disabled={followMutation.isPending || unfollowMutation.isPending}
-          >
-            <span className="inline-flex items-center gap-2">
-              {isFollowing ? (
-                <BellRing className="text-accent h-4 w-4" aria-hidden />
-              ) : (
-                <Bell className="h-4 w-4" aria-hidden />
-              )}
-              {isFollowing ? "Following" : "Follow"}
-            </span>
-          </Button>
-        ) : (
-          <Link to="/sign-in" search={{ redirect: profilePath }} className={SECONDARY_LINK_STYLE}>
-            <Bell className="h-4 w-4" aria-hidden />
-            Follow
-          </Link>
-        )}
-      </div>
-    </div>
+      <button type="button" className={GHOST_BUTTON} onClick={onShareClick}>
+        {shareLabel}
+      </button>
+
+      {email ? (
+        <a href={`mailto:${email}`} className={GHOST_BUTTON}>
+          Contact
+        </a>
+      ) : null}
+
+      {isSignedIn ? (
+        <button
+          type="button"
+          className={cn(GHOST_BUTTON, isFollowing && "border-civic bg-civic")}
+          onClick={onFollowClickWrapper}
+          disabled={followMutation.isPending || unfollowMutation.isPending}
+        >
+          {isFollowing ? "Following" : "Follow updates"}
+        </button>
+      ) : (
+        <Link to="/sign-in" search={{ redirect: profilePath }} className={GHOST_BUTTON}>
+          Follow updates
+        </Link>
+      )}
+    </nav>
   );
 }

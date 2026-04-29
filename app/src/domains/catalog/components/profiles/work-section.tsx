@@ -1,17 +1,12 @@
 /**
- * WorkSection — "what they're known for" block in the profile main column.
+ * WorkSection — recent-activity strip + issue-focus links for the editorial stack.
  *
- * Surfaces a signature quote (pulled from the first source carrying an
- * extraction context), issue-area chips that link out to filtered directory
- * views, and a one-line recent-activity strip. Phase 1 derives all content
- * from existing entry + source fields.
+ * The signature quote that used to live here now renders as the SignatureQuote
+ * panel above this section. WorkSection's two remaining jobs are: (1) a one-line
+ * "X sources in last N days · most recent: …" strip and (2) inline anchor links
+ * for the entry's issue areas.
  */
 import { Link } from "@tanstack/react-router";
-import {
-  DetailSection,
-  SurfaceBlock,
-} from "@/domains/catalog/components/profiles/detail/profile-detail-primitives";
-import { Badge } from "@/platform/ui/badge";
 import { humanize } from "@/domains/catalog/catalog";
 import type { Entry, Source } from "@/types";
 
@@ -19,11 +14,6 @@ interface WorkSectionProps {
   entry: Entry;
   issueAreaLabels: Record<string, string>;
   showIssueChips?: boolean;
-}
-
-function findSignatureSource(sources: Source[]): Source | null {
-  const candidate = sources.find((source) => source.extraction_context);
-  return candidate ?? null;
 }
 
 function countRecentSources(sources: Source[], windowDays = 90): number {
@@ -63,7 +53,6 @@ function formatMostRecentSource(sources: Source[]): string | null {
 
 export function WorkSection({ entry, issueAreaLabels, showIssueChips = true }: WorkSectionProps) {
   const sources = entry.sources ?? [];
-  const signature = findSignatureSource(sources);
   const recentCount = countRecentSources(sources);
   const mostRecent = formatMostRecentSource(sources);
   const focusLabels = showIssueChips
@@ -73,65 +62,59 @@ export function WorkSection({ entry, issueAreaLabels, showIssueChips = true }: W
       }))
     : [];
 
-  const hasContent = signature || focusLabels.length > 0 || mostRecent || recentCount > 0;
-  if (!hasContent) {
+  const hasRecent = recentCount > 0 || Boolean(mostRecent);
+  if (!hasRecent && focusLabels.length === 0) {
     return null;
   }
 
-  const sectionTitle =
-    entry.type === "organization"
-      ? "What this organization does"
-      : `What ${entry.name} is known for`;
-
   return (
-    <DetailSection eyebrow="Work" title={sectionTitle}>
-      <SurfaceBlock>
-        <div className="space-y-5">
-          {signature ? (
-            <figure className="space-y-2">
-              <blockquote className="border-accent type-body-large text-ink-strong border-l-[3px] pl-4 italic">
-                {signature.extraction_context}
-              </blockquote>
-              <figcaption className="type-label-small text-ink-muted">
-                {signature.publication ? <span>— {signature.publication}</span> : null}
-                {signature.publication && signature.published_date ? <span>, </span> : null}
-                {signature.published_date ? <span>{signature.published_date}</span> : null}
-              </figcaption>
-            </figure>
-          ) : null}
+    <>
+      {hasRecent ? (
+        <section
+          aria-label="Recent coverage"
+          className="border-border-taupe bg-paper-faded flex flex-wrap items-baseline gap-x-3 gap-y-1 border px-6 py-4 sm:px-8"
+        >
+          <span className="text-ink-soft font-mono text-xs font-semibold tracking-[0.14em] uppercase">
+            Recent
+          </span>
+          <p className="text-ink-strong text-sm">
+            {recentCount > 0 ? (
+              <strong className="text-civic font-bold">
+                {recentCount} {recentCount === 1 ? "source" : "sources"} in last 90 days
+              </strong>
+            ) : (
+              <span className="text-ink-soft">No coverage in last 90 days</span>
+            )}
+            {mostRecent ? <> &mdash; most recent: {mostRecent}</> : null}
+          </p>
+        </section>
+      ) : null}
 
-          {focusLabels.length > 0 ? (
-            <div className="space-y-2">
-              <p className="type-label-small text-ink-muted tracking-[0.18em] uppercase">
-                Issue focus
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {focusLabels.map(({ slug, label }) => (
-                  <Link key={slug} to="/profiles" className="inline-flex">
-                    <Badge className="bg-surface-container-high text-ink-strong hover:bg-surface-container-highest cursor-pointer transition-colors">
-                      {label}
-                    </Badge>
-                  </Link>
-                ))}
-              </div>
-            </div>
-          ) : null}
-
-          {mostRecent || recentCount > 0 ? (
-            <div className="border-outline-variant border-t pt-4">
-              <p className="type-label-small text-ink-muted tracking-[0.18em] uppercase">
-                Recent activity
-              </p>
-              <p className="type-body-medium text-ink-soft mt-1">
-                {recentCount > 0
-                  ? `${recentCount} ${recentCount === 1 ? "source" : "sources"} in last 90 days`
-                  : "No coverage in last 90 days"}
-                {mostRecent ? ` · most recent: ${mostRecent}` : ""}
-              </p>
-            </div>
-          ) : null}
-        </div>
-      </SurfaceBlock>
-    </DetailSection>
+      {focusLabels.length > 0 ? (
+        <section
+          aria-labelledby={`work-issues-${entry.id}`}
+          className="border-border-taupe bg-surface-container-lowest border px-6 py-5 sm:px-8"
+        >
+          <span
+            id={`work-issues-${entry.id}`}
+            className="text-ink-soft block font-mono text-xs font-semibold tracking-[0.14em] uppercase"
+          >
+            Issue focus
+          </span>
+          <ul className="mt-3 flex flex-wrap gap-x-5 gap-y-2">
+            {focusLabels.map(({ slug, label }) => (
+              <li key={slug}>
+                <Link
+                  to="/profiles"
+                  className="text-ink-strong border-ink-strong hover:border-civic hover:text-civic border-b pb-0.5 text-sm font-semibold transition-colors"
+                >
+                  {label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+    </>
   );
 }

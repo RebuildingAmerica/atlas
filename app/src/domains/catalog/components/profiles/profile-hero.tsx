@@ -1,115 +1,74 @@
 /**
- * ProfileHero — full-width identity + action block for profile pages.
+ * ProfileHero — editorial identity panel for profile pages.
  *
- * Composes ActorAvatar, an identity block (name, description, status badges,
- * freshness), the ActionCluster, and a caller-provided fact rail. Person and
- * organization variants share this shell; the differences (eyebrow, fact tiles,
- * badge set) are passed in as props/slots.
+ * Pairs a typographic name (Public Sans 800) with a role + place subtitle and
+ * a real subject photo when one is on file. The ident bar sits on top of the
+ * same bordered container so the two read as one unit, with a single outer
+ * border separating the hero from the rest of the page.
  */
-import { Link } from "@tanstack/react-router";
-import { ArrowLeft } from "lucide-react";
-import type { ReactNode } from "react";
 import { ActorAvatar } from "@/domains/catalog/components/profiles/actor-avatar";
-import { ActionCluster } from "@/domains/catalog/components/profiles/action-cluster";
-import {
-  FreshnessChip,
-  formatGeoSpecificity,
-  formatProfileLocation,
-} from "@/domains/catalog/components/profiles/detail/profile-detail-primitives";
-import { Badge } from "@/platform/ui/badge";
+import { ProfileIdentBar } from "@/domains/catalog/components/profiles/profile-ident-bar";
+import { formatProfileLocation } from "@/domains/catalog/components/profiles/detail/profile-detail-primitives";
 import type { Entry } from "@/types";
-
-type BackLinkTo = "/profiles/people" | "/profiles/organizations";
 
 interface ProfileHeroProps {
   entry: Entry;
-  eyebrow: string;
-  backLink: { to: BackLinkTo; label: string };
-  factRail: ReactNode;
-  isSignedIn: boolean;
+  affiliation?: { name: string; href: string };
 }
 
-function ProfileTypeBadgeLabel({ type }: { type: Entry["type"] }) {
-  switch (type) {
-    case "person":
-      return "Person";
-    case "organization":
-      return "Organization";
-    default:
-      return type.charAt(0).toUpperCase() + type.slice(1);
-  }
+function describeActiveStatus(entry: Entry): string {
+  if (entry.geo_specificity === "national") return "Active nationally";
+  if (entry.geo_specificity === "statewide") return "Active statewide";
+  if (entry.geo_specificity === "regional") return "Active regionally";
+  return "Active locally";
 }
 
-export function ProfileHero({ entry, eyebrow, backLink, factRail, isSignedIn }: ProfileHeroProps) {
+export function ProfileHero({ entry, affiliation }: ProfileHeroProps) {
   const avatarType = entry.type === "organization" ? "organization" : "person";
-  const freshnessSource = entry.latest_source_date ?? entry.last_seen;
-  const profileSegment = avatarType === "organization" ? "organizations" : "people";
-  const profilePath = `/profiles/${profileSegment}/${entry.slug}`;
-  const shareUrl =
-    typeof window !== "undefined" ? window.location.href : `https://rebuildingus.org${profilePath}`;
+  const showAvatar = Boolean(entry.photo_url);
+  const subtitleParts: string[] = [];
+  if (affiliation) subtitleParts.push(affiliation.name);
+  if (entry.type === "organization" && entry.geo_specificity) {
+    subtitleParts.push(describeActiveStatus(entry));
+  }
 
   return (
-    <section className="bg-surface-container -mx-6 border-b border-black/5 px-6 py-6 lg:py-8">
-      <div className="mx-auto max-w-[76rem] space-y-6">
-        <Link
-          to={backLink.to}
-          className="type-label-medium text-ink-soft hover:text-ink-strong inline-flex items-center gap-2 transition-colors"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          {backLink.label}
-        </Link>
+    <div className="border-border-taupe overflow-hidden border">
+      <ProfileIdentBar entry={entry} />
 
-        <div className="space-y-6">
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-            <div className="flex items-start gap-4 lg:gap-5">
-              <ActorAvatar name={entry.name} type={avatarType} size="lg" />
-              <div className="min-w-0 space-y-3">
-                <div className="space-y-2">
-                  <p className="type-label-medium text-ink-muted">{eyebrow}</p>
-                  <h1
-                    className="type-display-small text-ink-strong leading-tight"
-                    style={{ viewTransitionName: `entry-name-${entry.id}` }}
-                  >
-                    {entry.name}
-                  </h1>
-                  {entry.description ? (
-                    <p className="type-body-large text-ink-soft max-w-3xl">{entry.description}</p>
-                  ) : null}
-                </div>
-
-                <div className="flex flex-wrap items-center gap-2">
-                  <Badge variant="info">
-                    <ProfileTypeBadgeLabel type={entry.type} />
-                  </Badge>
-                  {entry.verified ? <Badge variant="success">Verified</Badge> : null}
-                  {avatarType === "organization" && entry.active ? (
-                    <Badge variant="success">Active</Badge>
-                  ) : null}
-                  <Badge>{formatGeoSpecificity(entry.geo_specificity)}</Badge>
-                  <FreshnessChip isoDate={freshnessSource} />
-                  <span className="type-label-small text-ink-muted">
-                    · {formatProfileLocation(entry)}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <div className="lg:flex lg:flex-col lg:items-end lg:gap-2">
-              <ActionCluster
-                entryId={entry.id}
-                entrySlug={entry.slug}
-                shareUrl={shareUrl}
-                shareTitle={entry.name}
-                email={entry.email}
-                isSignedIn={isSignedIn}
-                profilePath={profilePath}
-              />
-            </div>
+      <section
+        className="bg-surface-container-lowest px-6 py-8 sm:px-8 sm:py-10"
+        aria-labelledby={`profile-name-${entry.id}`}
+      >
+        <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:gap-7">
+          {showAvatar ? (
+            <ActorAvatar name={entry.name} type={avatarType} size="lg" photoUrl={entry.photo_url} />
+          ) : null}
+          <div className="min-w-0 flex-1 space-y-2">
+            <h1
+              id={`profile-name-${entry.id}`}
+              className="type-editorial-display text-ink-strong"
+              style={{ viewTransitionName: `entry-name-${entry.id}` }}
+            >
+              {entry.name}
+            </h1>
+            <p className="text-ink-strong text-base font-medium sm:text-lg">
+              {entry.type === "organization" ? "Organization" : "Community organizer"}
+              {entry.description ? (
+                <>
+                  <span className="text-ink-soft"> &middot; </span>
+                  {entry.description}
+                </>
+              ) : null}
+            </p>
+            <p className="text-ink-soft text-sm font-medium">
+              Based in{" "}
+              <strong className="text-ink-strong font-bold">{formatProfileLocation(entry)}</strong>
+              {subtitleParts.length > 0 ? <> &middot; {subtitleParts.join(" · ")}</> : null}
+            </p>
           </div>
-
-          {factRail}
         </div>
-      </div>
-    </section>
+      </section>
+    </div>
   );
 }

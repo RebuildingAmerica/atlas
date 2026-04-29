@@ -1,11 +1,13 @@
 /**
- * DataQualityBlock — sidebar block surfacing how Atlas knows what it knows.
+ * DataQualityBlock — provenance + verification panel for profile pages.
  *
- * Shows trust signals: first surfaced, freshness, Atlas-verified flag, source
- * count. Phase 1 uses only existing entry fields; subject-claim status and
- * verification level land in Phase 2.
+ * Surfaces first-seen, last-activity freshness, source count, and the
+ * verification line. The verification row also carries an inline claim link
+ * for unclaimed profiles, so the claim affordance lives in context (a subject
+ * looking at how they're represented) rather than as a top-of-page banner.
  */
-import { CheckCircle2, ShieldQuestion } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { CheckCircle2, ShieldCheck, ShieldQuestion } from "lucide-react";
 import {
   FreshnessChip,
   formatFreshness,
@@ -19,6 +21,64 @@ interface DataQualityBlockProps {
 function formatAbsoluteDate(iso: string): string {
   const date = new Date(iso);
   return date.toLocaleDateString(undefined, { year: "numeric", month: "short" });
+}
+
+function VerificationLine({ entry }: { entry: Entry }) {
+  const status = entry.claim.status;
+
+  if (status === "verified") {
+    const verifiedAt = entry.claim.claim_verified_at;
+    const dateLabel = verifiedAt ? formatAbsoluteDate(verifiedAt) : null;
+    return (
+      <span className="type-body-medium text-ink-strong inline-flex items-center gap-1.5">
+        <ShieldCheck className="text-civic h-4 w-4" aria-hidden />
+        Verified by subject{dateLabel ? ` — ${dateLabel}` : ""}
+      </span>
+    );
+  }
+
+  if (status === "pending") {
+    return (
+      <span className="type-body-medium text-ink-soft inline-flex items-center gap-1.5">
+        <ShieldQuestion className="text-ink-muted h-4 w-4" aria-hidden />
+        Claim under review
+      </span>
+    );
+  }
+
+  if (entry.verified) {
+    return (
+      <span className="type-body-medium text-ink-strong inline-flex items-center gap-1.5">
+        <CheckCircle2 className="text-civic h-4 w-4" aria-hidden />
+        Atlas-verified
+      </span>
+    );
+  }
+
+  return (
+    <span className="type-body-medium text-ink-soft inline-flex items-center gap-1.5">
+      <ShieldQuestion className="text-ink-muted h-4 w-4" aria-hidden />
+      Source-derived
+    </span>
+  );
+}
+
+function ClaimLink({ entry }: { entry: Entry }) {
+  const status = entry.claim.status;
+  if (status === "verified" || status === "pending") return null;
+
+  const label =
+    status === "revoked" ? "Claim this profile →" : `Are you ${entry.name}? Claim this profile →`;
+
+  return (
+    <Link
+      to="/claim/$slug"
+      params={{ slug: entry.slug }}
+      className="type-body-small text-civic hover:text-civic-deep block font-medium underline-offset-2 hover:underline"
+    >
+      {label}
+    </Link>
+  );
 }
 
 export function DataQualityBlock({ entry }: DataQualityBlockProps) {
@@ -51,22 +111,13 @@ export function DataQualityBlock({ entry }: DataQualityBlockProps) {
             </span>
           }
         />
-        <Row
-          label="Verification"
-          value={
-            entry.verified ? (
-              <span className="type-body-medium text-ink-strong inline-flex items-center gap-1.5">
-                <CheckCircle2 className="h-4 w-4 text-emerald-600" aria-hidden />
-                Atlas verified
-              </span>
-            ) : (
-              <span className="type-body-medium text-ink-soft inline-flex items-center gap-1.5">
-                <ShieldQuestion className="text-ink-muted h-4 w-4" aria-hidden />
-                Source-derived
-              </span>
-            )
-          }
-        />
+        <div className="space-y-1">
+          <dt className="type-label-small text-ink-muted">Verification</dt>
+          <dd className="space-y-1.5">
+            <VerificationLine entry={entry} />
+            <ClaimLink entry={entry} />
+          </dd>
+        </div>
       </dl>
     </div>
   );
