@@ -7,10 +7,20 @@ ENV UV_LINK_MODE=copy \
 
 WORKDIR /build
 
+# Copy only manifests first so third-party dep install is cached
+# independently of application source changes.
+COPY libs/shared/pyproject.toml libs/shared/pyproject.toml
+COPY libs/discovery-engine/pyproject.toml libs/discovery-engine/pyproject.toml
+COPY api/pyproject.toml api/uv.lock api/README.md api/
+
+WORKDIR /build/api
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-dev --no-install-workspace
+
+# Source copied after deps so edits don't bust the wheel-download layer.
+WORKDIR /build
 COPY libs/shared libs/shared
 COPY libs/discovery-engine libs/discovery-engine
-
-COPY api/pyproject.toml api/uv.lock api/README.md api/
 COPY api/atlas api/atlas
 
 WORKDIR /build/api

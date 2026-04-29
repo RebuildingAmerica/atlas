@@ -1,23 +1,25 @@
-# Build the Atlas web app from the monorepo root so workspace
-# dependencies resolve via pnpm. Build context: repo root.
 FROM node:24-alpine AS builder
+
+ARG NITRO_PRESET=node-server
 
 ENV PNPM_HOME=/pnpm \
     PATH=/pnpm:$PATH \
-    NITRO_PRESET=node-server
+    NITRO_PRESET=${NITRO_PRESET}
 
 RUN corepack enable
 
 WORKDIR /repo
 
-COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
-COPY .npmrc ./
+# Copy manifests only so the install layer is cached independently of source.
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json .npmrc ./
 COPY app/package.json app/package.json
-COPY packages packages
+COPY packages/eslint-config/package.json packages/eslint-config/package.json
 
-RUN pnpm install --frozen-lockfile --filter @rebuildingamerica/atlas-app...
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
+    pnpm install --frozen-lockfile --filter @rebuildingamerica/atlas-app...
 
 COPY app app
+COPY packages packages
 
 WORKDIR /repo/app
 RUN pnpm run build
