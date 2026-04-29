@@ -14,7 +14,6 @@
     "dev:e2e": "vite dev --host 127.0.0.1 --port 3100 --strictPort",
     "api-client": "orval",
     "build": "vite build",
-    "gen:well-known": "node scripts/gen-well-known.mjs",
     "start": "vite preview --port 3000",
     "start:e2e": "node .output/server/index.mjs",
     "e2e:cleanup": "node scripts/e2e/cleanup.mjs",

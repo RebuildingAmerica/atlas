@@ -1,50 +1,40 @@
 ---
 title: "Atlas in the MCP Registry"
-description: "Find Atlas in the MCP Registry, understand its namespace, and verify the publisher proof."
+description: "Find Atlas in the MCP Registry, understand its namespace, and connect from a registry-aware client."
 ---
 
 import McpServerUrl from '/snippets/mcp-server-url.mdx';
 
-Atlas is published to the [MCP Registry](https://registry.modelcontextprotocol.io) so registry-aware clients can find and connect to the server without operators wiring up the URL by hand.
+Atlas plans to publish to the [MCP Registry](https://registry.modelcontextprotocol.io) so registry-aware clients can find and connect to the server without operators wiring up the URL by hand.
 
-## Listing details
+<Note>
+  Atlas is **not currently listed** in the MCP Registry. The earlier `1.0.0` listing was unpublished pending stabilization of the read/write tool surface; the next publish will start from `0.1.0`. The connection URL below remains live in the meantime.
+</Note>
+
+## Listing details (planned)
 
 | Field | Value |
 |-------|-------|
 | Namespace | `org.rebuildingus.atlas/atlas` |
 | Server URL | <McpServerUrl /> |
 | Transport | `streamable-http` |
-| Version | `1.0.0` |
+| Version | `0.1.0` |
 | Authorization | OAuth 2.1 with PKCE, optional CIMD |
 
-The namespace follows the [MCP Registry naming rules](https://modelcontextprotocol.io/registry/namespaces): reverse-DNS, scoped to a domain Atlas controls. Atlas chose `org.rebuildingus.atlas` over the apex `rebuildingus.org` because the apex hard-redirects (HTTP 307) to `www.rebuildingus.org` on the marketing-site project, and the registry verifier does not follow redirects when fetching the publisher-auth file. Anchoring the proof on the subdomain keeps the entire publisher surface inside the Atlas Vercel project.
+The namespace follows the [MCP Registry naming rules](https://modelcontextprotocol.io/registry/namespaces): reverse-DNS, scoped to a domain Atlas controls. Ownership of `rebuildingus.org` grants the entire `org.rebuildingus.*` prefix; the trailing `atlas` segment scopes this manifest within that prefix.
 
-## How clients discover Atlas
+## How clients will discover Atlas
 
-Clients that integrate with the MCP Registry can:
+Once relisted, registry-aware clients can:
 
 1. **Search by name or namespace.** A user types "Atlas" or `org.rebuildingus.atlas/atlas` into a registry-aware UI and the registry returns the server URL plus the OAuth discovery hints.
 2. **Pre-flight the server.** Clients hit the listed URL, get back a `401` with a `WWW-Authenticate` header pointing at Atlas's [protected-resource metadata](https://atlas.rebuildingus.org/.well-known/oauth-protected-resource), and walk the OAuth 2.1 discovery chain from there.
 3. **Onboard without a prior relationship.** New clients with no Atlas account use [Client ID Metadata Documents](/mcp/client-id-metadata) to register dynamically without an Atlas-side admin step.
 
-If a registry client gets stuck, the manual fallback is always to add the URL directly:
+The manual fallback works today regardless of registry state — point any MCP client directly at the URL:
 
 ```
 claude mcp add atlas https://atlas.rebuildingus.org/mcp
 ```
 
-## Publisher proof
-
-The MCP Registry verifies that the published server is owned by the namespace operator. Atlas uses the HTTP-based proof Atlas hosts at:
-
-```
-https://atlas.rebuildingus.org/.well-known/mcp-registry-auth
-```
-
-The file is materialized at build time from the `MCP_REGISTRY_AUTH_PUBKEY` Vercel env var via `app/scripts/gen-well-known.mjs`, so rotating the signing key requires only swapping the env var and redeploying — no DNS records, no manifest re-publication.
-
-For the full registry-publish runbook (publishing, updating, key rotation), see the internal spec at `docs/superpowers/specs/2026-04-27-mcp-registry-publish.md`.
-
-## Updating the listing
-
-The publish manifest lives at `mcp/server.json`. To roll a new version (for example after expanding the tool surface), bump the `version` field, rerun the publish flow, and ship a new `MCP_REGISTRY_AUTH_PUBKEY` if the keypair has rotated.
+For client-by-client setup walkthroughs, see the [MCP overview](/mcp/overview).

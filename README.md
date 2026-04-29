@@ -67,7 +67,7 @@ For the Mintlify API docs:
 
 ### Connecting an MCP client
 
-Atlas exposes a [Model Context Protocol](https://modelcontextprotocol.io/specification/2025-11-25) server at `https://atlas.rebuildingus.org/mcp` so AI assistants can search the catalog and pull place-level civic data through natural language. The server implements the 2025-11-25 MCP authorization spec end-to-end (RFC 8414 AS metadata, RFC 9728 protected-resource metadata, RFC 8707 resource indicators, PKCE S256, Client ID Metadata Documents) and is published to the [MCP Registry](https://registry.modelcontextprotocol.io) as `org.rebuildingus.atlas/atlas`.
+Atlas exposes a [Model Context Protocol](https://modelcontextprotocol.io/specification/2025-11-25) server at `https://atlas.rebuildingus.org/mcp` so AI assistants can search the catalog and pull place-level civic data through natural language. The server implements the 2025-11-25 MCP authorization spec end-to-end (RFC 8414 AS metadata, RFC 9728 protected-resource metadata, RFC 8707 resource indicators, PKCE S256, Client ID Metadata Documents). A future release will publish the server to the [MCP Registry](https://registry.modelcontextprotocol.io) under the `org.rebuildingus.atlas/atlas` namespace; until then, point clients at the URL directly.
 
 Setup walkthroughs, troubleshooting, and the full tool reference live in the Mintlify docs:
 

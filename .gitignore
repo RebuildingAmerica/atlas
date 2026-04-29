@@ -100,10 +100,6 @@ docker-compose.override.yml
 # Deployment
 # ============================================
 .vercel
-# MCP Registry publisher-auth file — generated at build time from
-# MCP_REGISTRY_AUTH_PUBKEY. Public-key contents are non-secret but the
-# rendered output is regenerated per deploy, so keep it out of git.
-app/public/.well-known/mcp-registry-auth
 
 # ============================================
 # Misc

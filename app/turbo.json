@@ -58,7 +58,7 @@
       "persistent": true
     },
     "build": {
-      "dependsOn": ["api-client", "gen:well-known"],
+      "dependsOn": ["api-client"],
       "env": [
         "ATLAS_API_AUDIENCE",
         "ATLAS_AUTH_BASE_PATH",
@@ -69,11 +69,6 @@
         "ATLAS_SERVER_API_PROXY_TARGET"
       ],
       "outputs": [".output/**", ".vercel/output/**"]
-    },
-    "gen:well-known": {
-      "inputs": ["scripts/gen-well-known.mjs"],
-      "outputs": ["public/.well-known/mcp-registry-auth"],
-      "env": ["MCP_REGISTRY_AUTH_PUBKEY"]
     },
     "api-client": {
       "dependsOn": ["//#openapi"],

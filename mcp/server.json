@@ -7,7 +7,7 @@
     "url": "https://github.com/RebuildingAmerica/atlas",
     "source": "github"
   },
-  "version": "1.0.0",
+  "version": "0.1.0",
   "remotes": [
     {
       "type": "streamable-http",
