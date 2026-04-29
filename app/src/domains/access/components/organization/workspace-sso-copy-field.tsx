@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Check, Copy } from "lucide-react";
+import { copyToClipboard } from "@/lib/clipboard";
 import { useToast } from "@/platform/ui/toast";
 import { cn } from "@/lib/utils";
 
@@ -21,6 +22,8 @@ interface WorkspaceSSOCopyFieldProps {
   value: string;
 }
 
+const COPIED_FLASH_DURATION_MS = 1500;
+
 /**
  * Readonly field styled for easy copy-paste during enterprise identity
  * provider setup.  Includes a one-click Copy button that drops the value
@@ -37,26 +40,40 @@ export function WorkspaceSSOCopyField({
   value,
 }: WorkspaceSSOCopyFieldProps) {
   const toast = useToast();
-  const [copiedAt, setCopiedAt] = useState<number | null>(null);
+  const [recentlyCopied, setRecentlyCopied] = useState(false);
+  const flashTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (flashTimeoutRef.current) {
+        clearTimeout(flashTimeoutRef.current);
+      }
+    };
+  }, []);
+
   const sharedClassName = cn(
     "type-body-medium w-full rounded-2xl border border-border bg-surface-container-lowest px-4 py-3 text-ink-strong",
     mono && "font-mono",
   );
 
-  const recentlyCopied = copiedAt !== null && Date.now() - copiedAt < 1500;
-
-  async function copyToClipboard() {
-    try {
-      await navigator.clipboard.writeText(value);
-      setCopiedAt(Date.now());
-      toast.success(`${label} copied`);
-    } catch {
+  async function handleCopy() {
+    const ok = await copyToClipboard(value);
+    if (!ok) {
       toast.error(`Atlas couldn't copy ${label}.  Select the value and copy by hand.`);
+      return;
     }
+    setRecentlyCopied(true);
+    toast.success(`${label} copied`);
+    if (flashTimeoutRef.current) {
+      clearTimeout(flashTimeoutRef.current);
+    }
+    flashTimeoutRef.current = setTimeout(() => {
+      setRecentlyCopied(false);
+    }, COPIED_FLASH_DURATION_MS);
   }
 
-  const displayValue =
-    truncateAt && value.length > truncateAt ? `${value.slice(0, truncateAt)}…` : value;
+  const truncated = truncateAt !== undefined && value.length > truncateAt;
+  const displayValue = truncated ? `${value.slice(0, truncateAt)}…` : value;
 
   return (
     <div className="space-y-1">
@@ -76,7 +93,7 @@ export function WorkspaceSSOCopyField({
           <input
             readOnly
             value={displayValue}
-            title={truncateAt && value.length > truncateAt ? value : undefined}
+            title={truncated ? value : undefined}
             onFocus={(event) => {
               event.currentTarget.select();
             }}
@@ -86,7 +103,7 @@ export function WorkspaceSSOCopyField({
         <button
           type="button"
           onClick={() => {
-            void copyToClipboard();
+            void handleCopy();
           }}
           aria-label={`Copy ${label}`}
           className="border-outline-variant text-outline hover:text-on-surface inline-flex shrink-0 items-center justify-center rounded-2xl border bg-white px-3"

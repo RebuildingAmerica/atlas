@@ -184,16 +184,24 @@ export function AccountPage() {
     }
   };
 
-  const [rpLogoutAvailable, setRpLogoutAvailable] = useState<boolean | null>(null);
+  // Resolve the OIDC RP-Initiated Logout URL once on mount.  We need it
+  // both to render the "Atlas will also sign you out…" caption and to
+  // hand off to the IdP at sign-out, so caching it here avoids a second
+  // round trip on the click path.
+  const [rpLogoutUrl, setRpLogoutUrl] = useState<string | null>(null);
+  const [rpLogoutResolved, setRpLogoutResolved] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     void (async () => {
       try {
         const result = await getRpLogoutRedirect();
-        if (!cancelled) setRpLogoutAvailable(Boolean(result.url));
+        if (cancelled) return;
+        setRpLogoutUrl(result.url);
       } catch {
-        if (!cancelled) setRpLogoutAvailable(false);
+        // Treat as unavailable; fall through to setRpLogoutResolved.
+      } finally {
+        if (!cancelled) setRpLogoutResolved(true);
       }
     })();
     return () => {
@@ -201,10 +209,11 @@ export function AccountPage() {
     };
   }, []);
 
+  const rpLogoutAvailable = rpLogoutResolved ? rpLogoutUrl !== null : null;
+
   const handleSignOut = async () => {
-    const rpLogout = await getRpLogoutRedirect();
     await getAuthClient().signOut();
-    window.location.assign(rpLogout.url ?? "/");
+    window.location.assign(rpLogoutUrl ?? "/");
   };
 
   const toggleScope = (scope: ApiKeyScope) => {

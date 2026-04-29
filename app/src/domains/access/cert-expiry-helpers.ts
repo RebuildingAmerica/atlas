@@ -42,3 +42,56 @@ export function assessCertExpiry(
   }
   return { daysUntil, severity: "ok" };
 }
+
+/**
+ * Tailwind background+text classes for a banner rendered alongside a
+ * certificate expiry severity.  Keeps the color taxonomy in one place
+ * — when we adjust the palette later, we only need to change it here.
+ */
+export function severityToBannerPalette(severity: CertExpirySeverity): string {
+  switch (severity) {
+    case "expired":
+    case "critical":
+      return "bg-red-50 text-red-800";
+    case "warning":
+      return "bg-amber-50 text-amber-800";
+    case "ok":
+      return "bg-emerald-50 text-emerald-800";
+  }
+}
+
+/**
+ * Tailwind fill class for a horizontal lifecycle bar reflecting the same
+ * severity bucket, so the bar and the textual banner use a coherent color
+ * scale.
+ */
+export function severityToFillClass(severity: CertExpirySeverity): string {
+  switch (severity) {
+    case "expired":
+      return "bg-red-500";
+    case "critical":
+      return "bg-red-400";
+    case "warning":
+      return "bg-amber-400";
+    case "ok":
+      return "bg-emerald-500";
+  }
+}
+
+/**
+ * Returns a one-line copy describing what the admin should do given the
+ * current expiry severity.  Returns null for the `ok` bucket — callers
+ * skip the banner entirely there.
+ */
+export function describeCertExpiryAction(assessment: CertExpiryAssessment): string | null {
+  switch (assessment.severity) {
+    case "expired":
+      return "Certificate expired — rotate now to keep sign-ins working.";
+    case "critical":
+      return `Certificate expires in ${String(assessment.daysUntil)} day${assessment.daysUntil === 1 ? "" : "s"} — rotate before users start failing sign-in.`;
+    case "warning":
+      return `Certificate expires in ${String(assessment.daysUntil)} days — schedule a rotation soon.`;
+    case "ok":
+      return null;
+  }
+}
