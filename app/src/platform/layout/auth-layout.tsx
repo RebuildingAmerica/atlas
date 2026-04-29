@@ -31,9 +31,13 @@ export function AuthFlowLayout({ children }: AuthFlowLayoutProps) {
           <div className="w-full max-w-xl">{children}</div>
         </div>
 
-        <div className="px-6 pb-8 text-center">
-          <Link to="/" className="type-body-medium text-ink-muted hover:text-ink">
-            Back to Atlas
+        <div className="flex items-center justify-center gap-4 px-6 pb-8">
+          <Link to="/privacy" className="type-body-small text-ink-muted hover:text-ink">
+            Privacy policy
+          </Link>
+          <span className="text-ink-muted text-xs">·</span>
+          <Link to="/terms" className="type-body-small text-ink-muted hover:text-ink">
+            Terms of service
           </Link>
         </div>
       </div>

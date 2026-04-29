@@ -6,6 +6,7 @@ interface ButtonProps {
   className?: string;
   onClick?: () => void;
   disabled?: boolean;
+  title?: string;
   variant?: "primary" | "secondary" | "ghost";
   size?: "sm" | "md" | "lg";
   type?: "button" | "submit" | "reset";
@@ -16,6 +17,7 @@ export function Button({
   className,
   onClick,
   disabled = false,
+  title,
   variant = "primary",
   size = "md",
   type = "button",
@@ -42,6 +44,7 @@ export function Button({
       type={type}
       onClick={onClick}
       disabled={disabled}
+      title={title}
       className={cn(
         baseStyles,
         variants[variant],
