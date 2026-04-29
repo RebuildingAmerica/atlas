@@ -5,10 +5,10 @@ vi.mock("@/domains/access/server/workspace-products", () => ({
   queryActiveProducts: vi.fn().mockResolvedValue([]),
 }));
 
-type AuthParam = Parameters<typeof loadAtlasWorkspaceState>[0];
-type SessionParam = Parameters<typeof loadAtlasWorkspaceState>[2];
-
 describe("organization-session", () => {
+  type AuthParam = Parameters<typeof loadAtlasWorkspaceState>[0];
+  type SessionParam = Parameters<typeof loadAtlasWorkspaceState>[2];
+
   const headers = new Headers();
   const session = {
     session: {

@@ -1,67 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-interface ServerFnResponse {
-  context: unknown;
-  error: unknown;
-  result: unknown;
-}
-
 const mocks = vi.hoisted(() => ({
-  createServerFn: (() => {
-    return () => {
-      let validateInput: ((input: unknown) => unknown) | undefined;
-
-      const builder = {
-        inputValidator(
-          validator: { parse?: (input: unknown) => unknown } | ((input: unknown) => unknown),
-        ) {
-          validateInput =
-            typeof validator === "function"
-              ? validator
-              : (input) => validator.parse?.(input) ?? input;
-          return builder;
-        },
-        middleware() {
-          return builder;
-        },
-        handler(handler: (input: { data: unknown }) => unknown) {
-          const execute = (input?: { data?: unknown }) =>
-            Promise.resolve(
-              handler({
-                data: validateInput ? validateInput(input?.data) : input?.data,
-              }),
-            );
-
-          return Object.assign(async (input?: { data?: unknown }) => execute(input), {
-            __executeServer: async (
-              input: {
-                method?: string;
-                data?: unknown;
-                headers?: HeadersInit;
-                context?: unknown;
-              } = {},
-            ): Promise<ServerFnResponse> => {
-              try {
-                return {
-                  context: input?.context,
-                  error: undefined,
-                  result: await execute(input),
-                };
-              } catch (error) {
-                return {
-                  context: input?.context,
-                  error,
-                  result: undefined,
-                };
-              }
-            },
-          });
-        },
-      };
-
-      return builder;
-    };
-  })(),
   loadAtlasSession: vi.fn(),
   loadOidcRpLogoutRedirect: vi.fn(),
   requestMagicLinkForEmail: vi.fn(),
@@ -70,9 +9,10 @@ const mocks = vi.hoisted(() => ({
   sendVerificationEmailForCurrentSession: vi.fn(),
 }));
 
-vi.mock("@tanstack/react-start", () => ({
-  createServerFn: mocks.createServerFn,
-}));
+vi.mock("@tanstack/react-start", async () => {
+  const { createServerFnStub } = await import("../../../helpers/server-fn-stub");
+  return { createServerFn: createServerFnStub() };
+});
 
 vi.mock("@/domains/access/server/rp-logout", () => ({
   loadOidcRpLogoutRedirect: mocks.loadOidcRpLogoutRedirect,

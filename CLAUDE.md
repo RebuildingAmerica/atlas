@@ -56,7 +56,7 @@ cd app && pnpm tsc --noEmit       # Type check TypeScript
 cd api && uv run pytest                    # All API tests (90% coverage required)
 cd api && uv run pytest tests/path.py -v   # Single test file
 cd api && uv run pytest tests/path.py::TestClass::test_name -v  # Single test
-cd app && pnpm vitest run                  # All frontend tests (80% coverage required)
+cd app && pnpm vitest run                  # All frontend tests (100% coverage required)
 cd app && pnpm vitest run tests/unit/path  # Single test file
 cd app && pnpm run test:e2e               # Playwright E2E
 

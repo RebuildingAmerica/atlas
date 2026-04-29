@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { extractFirstUrlFromEmail } from "../../../../tests/e2e/helpers/email";
+import { extractFirstUrlFromEmail } from "../../../../tests/acceptance/helpers/email";
 
 describe("extractFirstUrlFromEmail", () => {
   it("keeps plain query strings intact when the raw message already contains a URL", () => {

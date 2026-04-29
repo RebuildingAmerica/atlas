@@ -6,19 +6,10 @@ import {
   resolveClientIdMetadataDocument,
   validateClientIdMetadataDocument,
 } from "@/domains/access/server/client-id-metadata";
-
-const VALID_DOCUMENT = {
-  client_id: "https://app.example.com/oauth/client.json",
-  client_name: "Example MCP Client",
-  redirect_uris: ["https://app.example.com/callback", "http://localhost:3000/callback"],
-};
-
-function jsonResponse(body: unknown): Response {
-  return new Response(JSON.stringify(body), {
-    status: 200,
-    headers: { "content-type": "application/json" },
-  });
-}
+import {
+  VALID_CLIENT_ID_METADATA_DOCUMENT as VALID_DOCUMENT,
+  jsonResponse,
+} from "../../../../helpers/access/client-id-metadata-fixtures";
 
 describe("isClientIdMetadataDocumentUrl", () => {
   it("matches HTTPS URLs with a path component", () => {

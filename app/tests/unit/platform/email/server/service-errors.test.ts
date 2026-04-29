@@ -15,33 +15,33 @@ vi.mock("resend", () => ({
   },
 }));
 
-function buildRuntime(overrides: Partial<AuthRuntimeConfig> = {}): AuthRuntimeConfig {
-  return {
-    apiAudience: null,
-    apiBaseUrl: null,
-    apiKeyIntrospectionUrl: "https://atlas.example.com/api/auth/internal/api-key",
-    allowedEmails: new Set(),
-    databaseUrl: null,
-    localMode: false,
-    openRegistration: true,
-    captureUrl: "http://127.0.0.1:8025/messages",
-    dbPath: "/tmp/atlas-auth.sqlite",
-    emailFrom: "Atlas <auth@atlas.example.com>",
-    emailProvider: "capture",
-    internalSecret: "internal-test-secret",
-    passkeyRpId: null,
-    publicBaseUrl: "https://atlas.example.com",
-    publicDomain: "atlas.example.com",
-    resendApiKey: null,
-    samlAllowedIssuerOrigins: new Set(),
-    samlSpPrivateKey: null,
-    samlSpPrivateKeyPass: null,
-    cimdAllowedHostSuffixes: [],
-    ...overrides,
-  };
-}
-
 describe("email service error branches", () => {
+  function buildRuntime(overrides: Partial<AuthRuntimeConfig> = {}): AuthRuntimeConfig {
+    return {
+      apiAudience: null,
+      apiBaseUrl: null,
+      apiKeyIntrospectionUrl: "https://atlas.example.com/api/auth/internal/api-key",
+      allowedEmails: new Set(),
+      databaseUrl: null,
+      localMode: false,
+      openRegistration: true,
+      captureUrl: "http://127.0.0.1:8025/messages",
+      dbPath: "/tmp/atlas-auth.sqlite",
+      emailFrom: "Atlas <auth@atlas.example.com>",
+      emailProvider: "capture",
+      internalSecret: "internal-test-secret",
+      passkeyRpId: null,
+      publicBaseUrl: "https://atlas.example.com",
+      publicDomain: "atlas.example.com",
+      resendApiKey: null,
+      samlAllowedIssuerOrigins: new Set(),
+      samlSpPrivateKey: null,
+      samlSpPrivateKeyPass: null,
+      cimdAllowedHostSuffixes: [],
+      ...overrides,
+    };
+  }
+
   afterEach(() => {
     fetchMock.mockReset();
     resendEmailsSendMock.mockReset();
@@ -64,7 +64,7 @@ describe("email service error branches", () => {
         text: "Use this link",
         to: "operator@atlas.test",
       }),
-    ).rejects.toThrow("Capture email delivery failed with 502: capture offline");
+    ).rejects.toThrow("Email delivery failed.");
   });
 
   it("throws when Resend reports an error", async () => {
@@ -89,7 +89,7 @@ describe("email service error branches", () => {
         text: "Open this link",
         to: "operator@atlas.test",
       }),
-    ).rejects.toThrow("resend offline");
+    ).rejects.toThrow("Email delivery failed.");
   });
 
   it("requires resend and capture configuration before building a sender", () => {

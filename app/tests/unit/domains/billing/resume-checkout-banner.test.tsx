@@ -4,7 +4,6 @@ import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 
-// eslint-disable-next-line atlas-tests/no-test-file-locals
 const mocks = vi.hoisted(() => ({
   useAtlasSession: vi.fn(),
 }));

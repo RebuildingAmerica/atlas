@@ -23,7 +23,6 @@ vi.mock("@/domains/catalog/hooks/use-claims", () => ({
 }));
 
 import { ActionCluster } from "@/domains/catalog/components/profiles/action-cluster";
-import { ClaimBanner } from "@/domains/catalog/components/profiles/claim-banner";
 import { DataQualityBlock } from "@/domains/catalog/components/profiles/data-quality-block";
 import {
   FreshnessChip,
@@ -31,51 +30,15 @@ import {
 } from "@/domains/catalog/components/profiles/detail/profile-detail-primitives";
 import { NetworkRails } from "@/domains/catalog/components/profiles/network-rails";
 import { WorkSection } from "@/domains/catalog/components/profiles/work-section";
-import type { ConnectionGroup, Entry, Source } from "@/types";
+import type { ConnectionGroup } from "@/types";
+import {
+  createEntryFixture as buildEntry,
+  createSourceFixture as buildSource,
+} from "../../../../fixtures/catalog/entries";
 
 afterEach(() => {
   cleanup();
 });
-
-function buildEntry(overrides: Partial<Entry> = {}): Entry {
-  return {
-    id: "entry-1",
-    type: "person",
-    name: "Jane Doe",
-    description: "Community organizer focused on housing.",
-    city: "Jackson",
-    state: "MS",
-    geo_specificity: "local",
-    first_seen: "2024-01-01T00:00:00Z",
-    last_seen: "2026-04-01T00:00:00Z",
-    active: true,
-    verified: false,
-    claim: { status: "unclaimed", verification_level: "source-derived" },
-    issue_areas: ["housing_affordability"],
-    source_types: [],
-    source_count: 3,
-    slug: "jane-doe-a3f2",
-    created_at: "2024-01-01T00:00:00Z",
-    updated_at: "2026-04-01T00:00:00Z",
-    ...overrides,
-  };
-}
-
-function buildSource(overrides: Partial<Source> = {}): Source {
-  return {
-    id: "source-1",
-    url: "https://example.com/article",
-    title: "Article title",
-    publication: "Mississippi Today",
-    published_date: "2026-02-01",
-    type: "news_article",
-    ingested_at: "2026-02-01T00:00:00Z",
-    extraction_method: "ai_assisted",
-    extraction_context: "Jane Doe leads the housing fight.",
-    created_at: "2026-02-01T00:00:00Z",
-    ...overrides,
-  };
-}
 
 describe("formatFreshness", () => {
   it("returns 'today' for same-day timestamps", () => {
@@ -108,41 +71,10 @@ describe("FreshnessChip", () => {
   });
 });
 
-describe("ClaimBanner", () => {
-  it("renders for unverified profiles with the claim CTA", () => {
-    render(<ClaimBanner entry={buildEntry({ verified: false })} />);
-    expect(screen.getByText(/Are you Jane Doe\?/i)).toBeInTheDocument();
-    const cta = screen.getByRole("link", { name: /claim profile/i });
-    expect(cta).toHaveAttribute("href", expect.stringContaining("/claim"));
-  });
-
-  it("returns null for verified-claim profiles", () => {
-    const { container } = render(
-      <ClaimBanner
-        entry={buildEntry({
-          claim: { status: "verified", verification_level: "subject-verified" },
-        })}
-      />,
-    );
-    expect(container.innerHTML).toBe("");
-  });
-
-  it("renders pending review state for in-flight claims", () => {
-    render(
-      <ClaimBanner
-        entry={buildEntry({
-          claim: { status: "pending", verification_level: "source-derived" },
-        })}
-      />,
-    );
-    expect(screen.getByText(/Claim under review/i)).toBeInTheDocument();
-  });
-});
-
 describe("DataQualityBlock", () => {
   it("renders Atlas-verified state when verified flag is true", () => {
     render(<DataQualityBlock entry={buildEntry({ verified: true })} />);
-    expect(screen.getByText("Atlas verified")).toBeInTheDocument();
+    expect(screen.getByText("Atlas-verified")).toBeInTheDocument();
   });
 
   it("renders source-derived state when not verified", () => {
@@ -154,15 +86,51 @@ describe("DataQualityBlock", () => {
     render(<DataQualityBlock entry={buildEntry({ source_count: 12 })} />);
     expect(screen.getByText("12 sources")).toBeInTheDocument();
   });
+
+  it("renders the inline claim CTA for unclaimed profiles", () => {
+    render(<DataQualityBlock entry={buildEntry()} />);
+    const cta = screen.getByRole("link", { name: /Are you Jane Doe\? Claim this profile/i });
+    expect(cta).toHaveAttribute("href", expect.stringContaining("/claim"));
+  });
+
+  it("hides the claim CTA once the profile is verified by subject", () => {
+    render(
+      <DataQualityBlock
+        entry={buildEntry({
+          claim: { status: "verified", verification_level: "subject-verified" },
+        })}
+      />,
+    );
+    expect(screen.queryByRole("link", { name: /claim this profile/i })).not.toBeInTheDocument();
+    expect(screen.getByText(/Verified by subject/i)).toBeInTheDocument();
+  });
+
+  it("shows the pending status without a claim CTA while the claim is under review", () => {
+    render(
+      <DataQualityBlock
+        entry={buildEntry({
+          claim: { status: "pending", verification_level: "source-derived" },
+        })}
+      />,
+    );
+    expect(screen.getByText(/Claim under review/i)).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /claim this profile/i })).not.toBeInTheDocument();
+  });
 });
 
 describe("WorkSection", () => {
-  it("renders the signature quote pulled from a source", () => {
+  it("renders a recent-activity strip when there are recent sources", () => {
     const entry = buildEntry({
-      sources: [buildSource({ extraction_context: "She fights for tenants." })],
+      sources: [
+        buildSource({
+          extraction_context: "She fights for tenants.",
+          published_date: new Date().toISOString().slice(0, 10),
+          publication: "MS Today",
+        }),
+      ],
     });
     render(<WorkSection entry={entry} issueAreaLabels={{}} />);
-    expect(screen.getByText("She fights for tenants.")).toBeInTheDocument();
+    expect(screen.getByText(/source in last 90 days/i)).toBeInTheDocument();
   });
 
   it("hides issue chips when showIssueChips is false", () => {

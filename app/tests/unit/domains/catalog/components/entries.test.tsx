@@ -14,50 +14,50 @@ vi.mock("@tanstack/react-router", () => ({
   Link: ({ children }: { children: ReactNode }) => <a href="#">{children}</a>,
 }));
 
-afterEach(() => {
-  cleanup();
-});
-
-const sampleSource: Source = {
-  created_at: "2026-04-10T00:00:00.000Z",
-  extraction_context: "Mentioned in campaign coverage",
-  extraction_method: "manual",
-  id: "source_123",
-  ingested_at: "2026-04-10T00:00:00.000Z",
-  publication: "Atlas Weekly",
-  published_date: "2026-04-11",
-  title: "Coverage story",
-  type: "report",
-  url: "https://atlas.test/source",
-};
-
-const sampleEntry: Entry = {
-  active: true,
-  created_at: "2026-04-10T00:00:00.000Z",
-  description: "Community housing coalition",
-  id: "entry_123",
-  issue_areas: ["housing_affordability"],
-  latest_source_date: "2026-04-11",
-  name: "Housing Justice KC",
-  source_count: 2,
-  source_types: ["news_article"],
-  type: "organization",
-  updated_at: "2026-04-12T00:00:00.000Z",
-  verified: true,
-  claim: { status: "unclaimed", verification_level: "atlas-verified" },
-  city: "Kansas City",
-  state: "MO",
-  geo_specificity: "local",
-  first_seen: "2026-04-10T00:00:00.000Z",
-  last_seen: "2026-04-12T00:00:00.000Z",
-  website: "https://atlas.test",
-  email: "operator@atlas.test",
-  phone: "555-1111",
-  slug: "housing-justice-kc-a1b2",
-  sources: [sampleSource],
-};
-
 describe("catalog entry components", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
+  const sampleSource: Source = {
+    created_at: "2026-04-10T00:00:00.000Z",
+    extraction_context: "Mentioned in campaign coverage",
+    extraction_method: "manual",
+    id: "source_123",
+    ingested_at: "2026-04-10T00:00:00.000Z",
+    publication: "Atlas Weekly",
+    published_date: "2026-04-11",
+    title: "Coverage story",
+    type: "report",
+    url: "https://atlas.test/source",
+  };
+
+  const sampleEntry: Entry = {
+    active: true,
+    created_at: "2026-04-10T00:00:00.000Z",
+    description: "Community housing coalition",
+    id: "entry_123",
+    issue_areas: ["housing_affordability"],
+    latest_source_date: "2026-04-11",
+    name: "Housing Justice KC",
+    source_count: 2,
+    source_types: ["news_article"],
+    type: "organization",
+    updated_at: "2026-04-12T00:00:00.000Z",
+    verified: true,
+    claim: { status: "unclaimed", verification_level: "atlas-verified" },
+    city: "Kansas City",
+    state: "MO",
+    geo_specificity: "local",
+    first_seen: "2026-04-10T00:00:00.000Z",
+    last_seen: "2026-04-12T00:00:00.000Z",
+    website: "https://atlas.test",
+    email: "operator@atlas.test",
+    phone: "555-1111",
+    slug: "housing-justice-kc-a1b2",
+    sources: [sampleSource],
+  };
+
   it("renders entry cards with issue and source badges", () => {
     render(
       <EntryCard entry={sampleEntry} issueAreaLabels={{ housing_affordability: "Housing" }} />,

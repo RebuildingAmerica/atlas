@@ -2,7 +2,8 @@
 import { describe, expect, it } from "vitest";
 import { parseSamlIdpMetadata } from "@/domains/access/saml-metadata-parser";
 
-const COMPLETE_METADATA = `<?xml version="1.0" encoding="UTF-8"?>
+describe("parseSamlIdpMetadata", () => {
+  const COMPLETE_METADATA = `<?xml version="1.0" encoding="UTF-8"?>
 <md:EntityDescriptor xmlns:md="urn:oasis:names:tc:SAML:2.0:metadata"
     entityID="https://idp.example/saml2">
   <md:IDPSSODescriptor protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol">
@@ -20,7 +21,6 @@ const COMPLETE_METADATA = `<?xml version="1.0" encoding="UTF-8"?>
   </md:IDPSSODescriptor>
 </md:EntityDescriptor>`;
 
-describe("parseSamlIdpMetadata", () => {
   it("extracts issuer, redirect-binding entry point, and signing certificate", () => {
     const result = parseSamlIdpMetadata(COMPLETE_METADATA);
 

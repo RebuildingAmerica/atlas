@@ -1,11 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 import { buildAtlasAccessTokenClaims } from "@/domains/access/server/oauth-claims";
 
-const DEFAULT_OPTIONS = {
-  defaultAudience: "https://atlas.example/api",
-} as const;
-
 describe("buildAtlasAccessTokenClaims", () => {
+  const DEFAULT_OPTIONS = {
+    defaultAudience: "https://atlas.example/api",
+  } as const;
+
   it("binds the access token's `aud` claim to the resource parameter (RFC 8707)", async () => {
     const claims = await buildAtlasAccessTokenClaims(
       {

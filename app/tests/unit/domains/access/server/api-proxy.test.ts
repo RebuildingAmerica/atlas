@@ -19,14 +19,12 @@ vi.mock("@/domains/access/server/session-state", () => ({
 }));
 
 describe("proxyAtlasApiRequest", () => {
-  const originalFetch = global.fetch;
-
   beforeEach(() => {
     vi.resetModules();
     mocks.createInternalAuthHeaders.mockReset();
     mocks.getAuthRuntimeConfig.mockReset();
     mocks.loadAtlasSession.mockReset();
-    global.fetch = vi.fn();
+    vi.spyOn(globalThis, "fetch").mockImplementation(vi.fn());
     mocks.getAuthRuntimeConfig.mockReturnValue({
       apiBaseUrl: "https://api.atlas.test",
       internalSecret: "internal-test-secret",
@@ -36,7 +34,7 @@ describe("proxyAtlasApiRequest", () => {
   });
 
   afterEach(() => {
-    global.fetch = originalFetch;
+    vi.restoreAllMocks();
   });
 
   it("returns 502 when the API proxy target is not configured", async () => {

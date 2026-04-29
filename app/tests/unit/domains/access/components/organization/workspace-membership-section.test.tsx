@@ -4,9 +4,9 @@ import { render, screen, fireEvent, cleanup } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { WorkspaceMembershipSection } from "@/domains/access/components/organization/workspace-membership-section";
 
-type MembershipOrganization = Parameters<typeof WorkspaceMembershipSection>[0]["organization"];
-
 describe("WorkspaceMembershipSection", () => {
+  type MembershipOrganization = Parameters<typeof WorkspaceMembershipSection>[0]["organization"];
+
   const organization = {
     id: "org_1",
     name: "Atlas",

@@ -4,14 +4,14 @@ import {
   loadStoredWorkspaceIdentity,
 } from "@/domains/access/server/sso-provider-store";
 
-const poolMock = {
-  query: vi.fn(),
-};
-
-const mocks = vi.hoisted(() => ({
-  getAuthPgPool: vi.fn(() => poolMock),
-  getAuthRuntimeConfig: vi.fn(),
-}));
+const mocks = vi.hoisted(() => {
+  const pool = { query: vi.fn() };
+  return {
+    pool,
+    getAuthPgPool: vi.fn(() => pool),
+    getAuthRuntimeConfig: vi.fn(),
+  };
+});
 
 vi.mock("@/domains/access/server/auth", () => ({
   getAuthPgPool: mocks.getAuthPgPool,
@@ -24,7 +24,7 @@ vi.mock("@/domains/access/server/runtime", () => ({
 describe("sso-provider-store", () => {
   beforeEach(() => {
     vi.resetModules();
-    poolMock.query.mockReset();
+    mocks.pool.query.mockReset();
     mocks.getAuthRuntimeConfig.mockReset();
     mocks.getAuthRuntimeConfig.mockReturnValue({
       publicBaseUrl: "https://atlas.test",
@@ -32,7 +32,7 @@ describe("sso-provider-store", () => {
   });
 
   it("loads a workspace identity from the database", async () => {
-    poolMock.query.mockResolvedValue({
+    mocks.pool.query.mockResolvedValue({
       rows: [
         {
           id: "org_123",
@@ -51,20 +51,20 @@ describe("sso-provider-store", () => {
       primaryProviderId: "google",
       slug: "atlas",
     });
-    expect(poolMock.query).toHaveBeenCalledWith(expect.stringContaining("from organization"), [
+    expect(mocks.pool.query).toHaveBeenCalledWith(expect.stringContaining("from organization"), [
       "org_123",
     ]);
   });
 
   it("returns null when a workspace is not found", async () => {
-    poolMock.query.mockResolvedValue({ rows: [] });
+    mocks.pool.query.mockResolvedValue({ rows: [] });
 
     const identity = await loadStoredWorkspaceIdentity("missing");
     expect(identity).toBeNull();
   });
 
   it("lists all stored SSO providers", async () => {
-    poolMock.query.mockResolvedValue({
+    mocks.pool.query.mockResolvedValue({
       rows: [
         {
           providerId: "google",

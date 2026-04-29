@@ -1,83 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-
-interface ServerFnResponse {
-  context: unknown;
-  error: unknown;
-  result: unknown;
-}
-interface ParsedValidator {
-  parse(input: unknown): unknown;
-}
-type ServerFnResult =
-  | Promise<ServerFnResponse["result"]>
-  | object
-  | string
-  | number
-  | boolean
-  | null
-  | undefined;
+import type { ServerFnExecutionResponse } from "../../../helpers/server-fn-stub";
 
 const mocks = vi.hoisted(() => ({
-  createServerFn: (() => {
-    return () => {
-      let validateInput: ((input: unknown) => unknown) | undefined;
-
-      const builder = {
-        inputValidator(validator: ParsedValidator | ((input: unknown) => unknown)) {
-          validateInput =
-            typeof validator === "function" ? validator : (input) => validator.parse(input);
-          return builder;
-        },
-        middleware() {
-          return builder;
-        },
-        handler(handler: (input: { data: unknown }) => ServerFnResult) {
-          const execute = (input?: { data?: unknown }) =>
-            Promise.resolve(
-              handler({
-                data: validateInput ? validateInput(input?.data) : input?.data,
-              }),
-            );
-
-          return Object.assign(async (input?: { data?: unknown }) => execute(input), {
-            __executeServer: async (
-              input: {
-                method?: string;
-                data?: unknown;
-                headers?: HeadersInit;
-                context?: unknown;
-              } = {},
-            ): Promise<ServerFnResponse> => {
-              try {
-                return {
-                  context: input?.context,
-                  error: undefined,
-                  result: await execute(input),
-                };
-              } catch (error) {
-                return {
-                  context: input?.context,
-                  error,
-                  result: undefined,
-                };
-              }
-            },
-          });
-        },
-      };
-
-      return builder;
-    };
-  })(),
   ensureAuthReady: vi.fn(),
   ensureAtlasSession: vi.fn(),
   getAuthRuntimeConfig: vi.fn(),
   getBrowserSessionHeaders: vi.fn(),
 }));
 
-vi.mock("@tanstack/react-start", () => ({
-  createServerFn: mocks.createServerFn,
-}));
+vi.mock("@tanstack/react-start", async () => {
+  const { createServerFnStub } = await import("../../../helpers/server-fn-stub");
+  return { createServerFn: createServerFnStub() };
+});
 
 vi.mock("@/domains/access/server/auth", () => ({
   ensureAuthReady: mocks.ensureAuthReady,
@@ -123,7 +57,7 @@ describe("passkeys.functions", () => {
     const response = (await listPasskeys.__executeServer({
       method: "GET",
       data: undefined,
-    })) as ServerFnResponse;
+    })) as ServerFnExecutionResponse;
 
     expect(response.error).toBeUndefined();
     expect(response.result).toEqual([]);
@@ -157,7 +91,7 @@ describe("passkeys.functions", () => {
     const response = (await listPasskeys.__executeServer({
       method: "GET",
       data: undefined,
-    })) as ServerFnResponse;
+    })) as ServerFnExecutionResponse;
 
     expect(response.error).toBeUndefined();
     expect(response.result).toEqual([
@@ -190,7 +124,7 @@ describe("passkeys.functions", () => {
     const response = (await listPasskeys.__executeServer({
       method: "GET",
       data: undefined,
-    })) as ServerFnResponse;
+    })) as ServerFnExecutionResponse;
 
     expect(response.error).toBeUndefined();
     expect(response.result).toEqual([]);
@@ -214,7 +148,7 @@ describe("passkeys.functions", () => {
       data: {
         id: "pk_123",
       },
-    })) as ServerFnResponse;
+    })) as ServerFnExecutionResponse;
 
     expect(response.error).toBeUndefined();
     expect(deletePasskeyMock).toHaveBeenCalledWith({
@@ -244,7 +178,7 @@ describe("passkeys.functions", () => {
         id: "pk_123",
         name: "Desk Key",
       },
-    })) as ServerFnResponse;
+    })) as ServerFnExecutionResponse;
 
     expect(response.error).toBeUndefined();
     expect(updatePasskeyMock).toHaveBeenCalledWith({

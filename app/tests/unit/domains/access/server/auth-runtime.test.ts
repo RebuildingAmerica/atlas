@@ -1,40 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-
-interface ApiKeyPluginOptions {
-  defaultKeyLength: number;
-  enableSessionForAPIKeys: boolean;
-}
-
-interface MagicLinkPluginOptions {
-  sendMagicLink(input: { email: string; url: string }): Promise<void>;
-}
-
-interface OAuthProviderOptions {
-  customAccessTokenClaims?(input: {
-    scopes: string[];
-    resource?: string;
-    user?: { id: string } | null;
-  }): Record<string, unknown> | Promise<Record<string, unknown>>;
-  validAudiences?: string[];
-}
-
-interface PasskeyPluginOptions {
-  rpID: string;
-  rpName: string;
-}
-
-interface BetterAuthOptions {
-  appName: string;
-  basePath: string;
-  baseURL: string;
-  database: unknown;
-  emailVerification: {
-    sendVerificationEmail(input: { url: string; user: { email: string } }): Promise<void>;
-  };
-  plugins: unknown[];
-  secret: string;
-  trustedOrigins: string[];
-}
+import type { BetterAuthOptions } from "better-auth/types";
+import type { ApiKeyOptions as ApiKeyPluginOptions } from "@better-auth/api-key";
+import type { OAuthOptions as OAuthProviderOptions } from "@better-auth/oauth-provider";
+import type { PasskeyOptions as PasskeyPluginOptions } from "@better-auth/passkey";
+import type { MagicLinkOptions as MagicLinkPluginOptions } from "better-auth/plugins/magic-link";
 
 const mocks = vi.hoisted(() => ({
   apiKey: vi.fn((options: ApiKeyPluginOptions) => ({ kind: "api-key", options })),
@@ -209,7 +178,7 @@ describe("auth runtime wiring", () => {
       "https://openidconnect.googleapis.com",
       "https://www.googleapis.com",
     ]);
-    expect(typedOptions.plugins.length).toBeGreaterThanOrEqual(6);
+    expect((typedOptions.plugins ?? []).length).toBeGreaterThanOrEqual(6);
     expect(mocks.jwt).toHaveBeenCalledTimes(1);
     expect(mocks.passkey).toHaveBeenCalledWith({
       rpID: "atlas.test",
@@ -223,15 +192,23 @@ describe("auth runtime wiring", () => {
       },
     });
 
+    if (!typedOptions.emailVerification?.sendVerificationEmail) {
+      throw new TypeError("Expected the Better Auth wiring to register sendVerificationEmail.");
+    }
     await typedOptions.emailVerification.sendVerificationEmail({
       url: "https://atlas.test/account-setup",
-      user: { email: "operator@atlas.test" },
+      user: { email: "operator@atlas.test" } as Parameters<
+        NonNullable<typeof typedOptions.emailVerification.sendVerificationEmail>
+      >[0]["user"],
+      token: "verification-token",
     });
-    expect(mocks.emailSend).toHaveBeenCalledWith({
-      subject: "Verify your Atlas email",
-      text: "Verify your email for Atlas: https://atlas.test/account-setup",
-      to: "operator@atlas.test",
-    });
+    expect(mocks.emailSend).toHaveBeenCalledWith(
+      expect.objectContaining({
+        subject: "Verify your Atlas email",
+        text: "Verify your email for Atlas: https://atlas.test/account-setup",
+        to: "operator@atlas.test",
+      }),
+    );
 
     mocks.isAllowedEmail.mockReturnValue(true);
     const magicLinkCall = mocks.magicLink.mock.calls.at(0) as [MagicLinkPluginOptions] | undefined;
@@ -243,12 +220,15 @@ describe("auth runtime wiring", () => {
     await typedMagicLinkOptions.sendMagicLink({
       email: "operator@atlas.test",
       url: "https://atlas.test/sign-in",
+      token: "magic-link-token",
     });
-    expect(mocks.emailSend).toHaveBeenCalledWith({
-      subject: "Sign in to Atlas",
-      text: "Use this link to sign in to Atlas: https://atlas.test/sign-in",
-      to: "operator@atlas.test",
-    });
+    expect(mocks.emailSend).toHaveBeenCalledWith(
+      expect.objectContaining({
+        subject: "Sign in to Atlas",
+        text: "Use this link to sign in to Atlas: https://atlas.test/sign-in",
+        to: "operator@atlas.test",
+      }),
+    );
 
     const oauthProviderCall = mocks.oauthProvider.mock.calls.at(0) as
       | [OAuthProviderOptions]
@@ -317,7 +297,9 @@ describe("auth runtime wiring", () => {
     expect(typedOauthProviderOptions.validAudiences).toEqual(["atlas-api"]);
     await expect(
       typedOauthProviderOptions.customAccessTokenClaims({
-        scopes: ["openid", "discovery:write", "entities:write", "admin:all"],
+        scopes: ["openid", "discovery:write", "entities:write", "admin:all"] as Parameters<
+          NonNullable<typeof typedOauthProviderOptions.customAccessTokenClaims>
+        >[0]["scopes"],
       }),
     ).resolves.toEqual({
       // RFC 8707 audience binding falls back to apiAudience when the OAuth
@@ -358,7 +340,9 @@ describe("auth runtime wiring", () => {
     }
 
     const claims = await typedOauthProviderOptions.customAccessTokenClaims({
-      scopes: ["openid", "discovery:read"],
+      scopes: ["openid", "discovery:read"] as Parameters<
+        NonNullable<typeof typedOauthProviderOptions.customAccessTokenClaims>
+      >[0]["scopes"],
       resource: "https://atlas.test/mcp",
     });
 

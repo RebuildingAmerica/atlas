@@ -26,7 +26,7 @@ describe("OAuthConsentPage", () => {
     vi.clearAllMocks();
     mocks.getAuthClient.mockReturnValue(authClient);
 
-    globalThis.fetch = vi.fn();
+    vi.spyOn(globalThis, "fetch").mockImplementation(vi.fn());
 
     Object.defineProperty(window, "location", {
       value: { ...originalLocation, assign: mockLocationAssign },
@@ -37,6 +37,7 @@ describe("OAuthConsentPage", () => {
 
   afterEach(() => {
     cleanup();
+    vi.restoreAllMocks();
     Object.defineProperty(window, "location", {
       value: originalLocation,
       writable: true,

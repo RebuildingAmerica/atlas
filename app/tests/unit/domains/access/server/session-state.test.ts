@@ -306,7 +306,7 @@ describe("session-state", () => {
       requestMagicLinkForEmail({
         email: "outside@atlas.test",
       }),
-    ).resolves.toEqual({ ok: true });
+    ).resolves.toEqual({ ok: true, captureMailboxUrl: null });
 
     expect(mocks.ensureAuthReady).not.toHaveBeenCalled();
   });
@@ -319,7 +319,7 @@ describe("session-state", () => {
         email: "operator@atlas.test",
         name: "Operator",
       }),
-    ).resolves.toEqual({ ok: true });
+    ).resolves.toEqual({ ok: true, captureMailboxUrl: null });
 
     expect(authApi.signInMagicLink).toHaveBeenCalledWith({
       body: {

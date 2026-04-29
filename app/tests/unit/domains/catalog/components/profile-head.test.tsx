@@ -4,36 +4,35 @@ import { render } from "@testing-library/react";
 import { ProfileJsonLd } from "@/domains/catalog/components/profiles/profile-head";
 import type { Entry } from "@/types";
 
-const mockPerson: Entry = {
-  id: "test-id",
-  type: "person",
-  name: "Jane Doe",
-  description: "Community organizer focused on housing",
-  city: "Kansas City",
-  state: "MO",
-  slug: "jane-doe-a3f2",
-  geo_specificity: "local",
-  first_seen: "2026-01-01",
-  last_seen: "2026-04-01",
-  issue_areas: ["housing", "labor"],
-  source_count: 5,
-  source_types: [],
-  active: true,
-  verified: true,
-  claim: { status: "unclaimed", verification_level: "atlas-verified" },
-  created_at: "2026-01-01",
-  updated_at: "2026-04-01",
-};
-
-/** Extract and parse the JSON-LD script content from a rendered container. */
-function parseJsonLd(container: HTMLElement): Record<string, unknown> {
-  const script = container.querySelector('script[type="application/ld+json"]');
-  expect(script).not.toBeNull();
-  const text = script?.textContent ?? "";
-  return JSON.parse(text) as Record<string, unknown>;
-}
-
 describe("ProfileJsonLd", () => {
+  const mockPerson: Entry = {
+    id: "test-id",
+    type: "person",
+    name: "Jane Doe",
+    description: "Community organizer focused on housing",
+    city: "Kansas City",
+    state: "MO",
+    slug: "jane-doe-a3f2",
+    geo_specificity: "local",
+    first_seen: "2026-01-01",
+    last_seen: "2026-04-01",
+    issue_areas: ["housing", "labor"],
+    source_count: 5,
+    source_types: [],
+    active: true,
+    verified: true,
+    claim: { status: "unclaimed", verification_level: "atlas-verified" },
+    created_at: "2026-01-01",
+    updated_at: "2026-04-01",
+  };
+
+  function parseJsonLd(container: HTMLElement): Record<string, unknown> {
+    const script = container.querySelector('script[type="application/ld+json"]');
+    expect(script).not.toBeNull();
+    const text = script?.textContent ?? "";
+    return JSON.parse(text) as Record<string, unknown>;
+  }
+
   it("renders Person schema for person entries", () => {
     const { container } = render(<ProfileJsonLd entry={mockPerson} />);
     const data = parseJsonLd(container);

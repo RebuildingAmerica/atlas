@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { ServerFnExecutionResponse } from "../../../utils/server-fn-stub";
+import type { ServerFnExecutionResponse } from "../../../helpers/server-fn-stub";
 import { createAtlasSessionFixture } from "../../../fixtures/access/sessions";
 
 const mocks = vi.hoisted(() => ({
@@ -10,33 +10,9 @@ const mocks = vi.hoisted(() => ({
   getBrowserSessionHeaders: vi.fn(),
 }));
 
-type MockHandler = (args: Record<string, unknown>) => Promise<unknown>;
-
-vi.mock("@tanstack/react-start", () => {
-  return {
-    createServerFn: () => {
-      const builder = {
-        inputValidator: () => builder,
-        middleware: () => builder,
-        handler: (h: MockHandler) => {
-          const fn = async (args: Record<string, unknown> = {}) => {
-            return h(args);
-          };
-          return Object.assign(fn, {
-            __executeServer: async (args: Record<string, unknown> = {}) => {
-              try {
-                const res = await h(args);
-                return { result: res };
-              } catch (error) {
-                return { error };
-              }
-            },
-          });
-        },
-      };
-      return builder;
-    },
-  };
+vi.mock("@tanstack/react-start", async () => {
+  const { createServerFnStub } = await import("../../../helpers/server-fn-stub");
+  return { createServerFn: createServerFnStub() };
 });
 
 vi.mock("@/domains/access/server/auth", () => ({

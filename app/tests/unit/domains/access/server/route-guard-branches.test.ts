@@ -1,19 +1,21 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const getAtlasSessionMock = vi.fn();
+const mocks = vi.hoisted(() => ({
+  getAtlasSession: vi.fn(),
+}));
 
 vi.mock("@/domains/access/session.functions", () => ({
-  getAtlasSession: getAtlasSessionMock,
+  getAtlasSession: mocks.getAtlasSession,
 }));
 
 describe("route-guard additional branches", () => {
   beforeEach(() => {
     vi.resetModules();
-    getAtlasSessionMock.mockReset();
+    mocks.getAtlasSession.mockReset();
   });
 
   it("redirects unauthenticated operators away from ready-only routes", async () => {
-    getAtlasSessionMock.mockResolvedValue(null);
+    mocks.getAtlasSession.mockResolvedValue(null);
     const { requireReadyAtlasSession } = await import("@/domains/access/server/route-guard");
 
     await expect(requireReadyAtlasSession("/discovery")).rejects.toMatchObject({
@@ -22,7 +24,7 @@ describe("route-guard additional branches", () => {
   });
 
   it("redirects unauthenticated operators away from incomplete-only routes", async () => {
-    getAtlasSessionMock.mockResolvedValue(null);
+    mocks.getAtlasSession.mockResolvedValue(null);
     const { requireIncompleteAtlasSession } = await import("@/domains/access/server/route-guard");
 
     await expect(requireIncompleteAtlasSession("/account-setup")).rejects.toMatchObject({
@@ -31,7 +33,7 @@ describe("route-guard additional branches", () => {
   });
 
   it("normalizes absolute redirect targets back to app-local paths", async () => {
-    getAtlasSessionMock.mockResolvedValue({
+    mocks.getAtlasSession.mockResolvedValue({
       accountReady: true,
       hasPasskey: true,
       passkeyCount: 1,
@@ -70,7 +72,7 @@ describe("route-guard additional branches", () => {
   });
 
   it("falls back to the account page for malformed redirect targets", async () => {
-    getAtlasSessionMock.mockResolvedValue({
+    mocks.getAtlasSession.mockResolvedValue({
       accountReady: true,
       hasPasskey: true,
       passkeyCount: 1,
@@ -106,7 +108,7 @@ describe("route-guard additional branches", () => {
   });
 
   it("falls back to the account page when no redirect target is provided", async () => {
-    getAtlasSessionMock.mockResolvedValue({
+    mocks.getAtlasSession.mockResolvedValue({
       accountReady: true,
       hasPasskey: true,
       passkeyCount: 1,

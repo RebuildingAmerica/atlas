@@ -3,31 +3,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderHook } from "@testing-library/react";
 
-interface DiscoveryListQueryConfig {
-  queryFn(): Promise<unknown>;
-  queryKey: string[];
-  refetchInterval(query: {
-    state: { data?: { items?: { status: string }[] }; dataUpdatedAt: number };
-  }): false | number;
-}
-
-interface DiscoveryRunQueryConfig {
-  queryFn(): Promise<unknown>;
-  queryKey: string[];
-  refetchInterval(query: {
-    state: { data?: { status?: string }; dataUpdatedAt: number };
-  }): false | number;
-}
-
-interface StartDiscoveryMutationConfig {
-  mutationFn(data: {
-    issue_areas: string[];
-    location_query: string;
-    state: string;
-  }): Promise<unknown>;
-  onSuccess?(): Promise<void> | void;
-}
-
 const mocks = vi.hoisted(() => ({
   getDiscoveryRun: vi.fn(),
   invalidateQueries: vi.fn(),
@@ -51,6 +26,31 @@ vi.mock("@/domains/discovery/functions", () => ({
 }));
 
 describe("discovery hooks", () => {
+  interface DiscoveryListQueryConfig {
+    queryFn(): Promise<unknown>;
+    queryKey: string[];
+    refetchInterval(query: {
+      state: { data?: { items?: { status: string }[] }; dataUpdatedAt: number };
+    }): false | number;
+  }
+
+  interface DiscoveryRunQueryConfig {
+    queryFn(): Promise<unknown>;
+    queryKey: string[];
+    refetchInterval(query: {
+      state: { data?: { status?: string }; dataUpdatedAt: number };
+    }): false | number;
+  }
+
+  interface StartDiscoveryMutationConfig {
+    mutationFn(data: {
+      issue_areas: string[];
+      location_query: string;
+      state: string;
+    }): Promise<unknown>;
+    onSuccess?(): Promise<void> | void;
+  }
+
   beforeEach(() => {
     vi.resetModules();
     mocks.getDiscoveryRun.mockReset();

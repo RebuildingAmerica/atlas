@@ -1,11 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { introspectApiKeyRequest } from "@/domains/access/server/internal-api-key";
-
-interface ApiKeyIntrospectionResult {
-  name: string;
-  organizationId?: string;
-  userEmail: string;
-}
+import type { ApiKeyIntrospectionResult } from "../../../../helpers/access/api-key-introspection";
 
 const mocks = vi.hoisted(() => ({
   ensureAuthReady: vi.fn(),

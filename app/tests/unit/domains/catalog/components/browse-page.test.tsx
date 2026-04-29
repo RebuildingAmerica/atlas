@@ -4,16 +4,6 @@ import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 
-interface BrowseSearchUpdate {
-  offset?: number;
-  query?: string;
-  view?: string;
-}
-
-interface NavigateOptions {
-  search?: BrowseSearchUpdate | ((current: BrowseSearchUpdate) => BrowseSearchUpdate);
-}
-
 const mocks = vi.hoisted(() => ({
   navigate: vi.fn(),
   useEntries: vi.fn(),
@@ -83,15 +73,25 @@ vi.mock("@/domains/catalog/hooks/use-taxonomy", () => ({
   useTaxonomy: mocks.useTaxonomy,
 }));
 
-afterEach(() => {
-  cleanup();
-});
-
-function getNavigateCalls(): NavigateOptions[] {
-  return mocks.navigate.mock.calls.map(([options]) => options as NavigateOptions);
-}
-
 describe("BrowsePage", () => {
+  interface BrowseSearchUpdate {
+    offset?: number;
+    query?: string;
+    view?: string;
+  }
+
+  interface NavigateOptions {
+    search?: BrowseSearchUpdate | ((current: BrowseSearchUpdate) => BrowseSearchUpdate);
+  }
+
+  function getNavigateCalls(): NavigateOptions[] {
+    return mocks.navigate.mock.calls.map(([options]) => options as NavigateOptions);
+  }
+
+  afterEach(() => {
+    cleanup();
+  });
+
   beforeEach(() => {
     mocks.navigate.mockReset();
     mocks.useEntries.mockReset();

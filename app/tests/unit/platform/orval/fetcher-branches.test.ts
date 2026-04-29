@@ -2,22 +2,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { atlasFetch } from "@/lib/orval/fetcher";
 
 describe("atlasFetch additional branches", () => {
-  const originalFetch = global.fetch;
-  const originalPublicUrl = process.env.ATLAS_PUBLIC_URL;
-
   beforeEach(() => {
     vi.stubGlobal("fetch", vi.fn());
-    process.env.ATLAS_PUBLIC_URL = "https://atlas.test";
+    vi.stubEnv("ATLAS_PUBLIC_URL", "https://atlas.test");
   });
 
   afterEach(() => {
-    global.fetch = originalFetch;
-    if (originalPublicUrl === undefined) {
-      delete process.env.ATLAS_PUBLIC_URL;
-    } else {
-      process.env.ATLAS_PUBLIC_URL = originalPublicUrl;
-    }
     vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
   });
 
   it("preserves absolute request urls and adds json content headers for request bodies", async () => {

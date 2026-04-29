@@ -1,9 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-interface ServerFnStub {
-  __executeServer: (args?: { data: Record<string, unknown> }) => Promise<{ result: unknown }>;
-}
-
 const mocks = vi.hoisted(() => ({
   requestAtlasApi: vi.fn(),
 }));
@@ -43,6 +39,10 @@ vi.mock("@/domains/discovery/functions", () => {
 });
 
 describe("discovery.functions", () => {
+  interface ServerFnStub {
+    __executeServer: (args?: { data: Record<string, unknown> }) => Promise<{ result: unknown }>;
+  }
+
   beforeEach(() => {
     vi.resetModules();
     mocks.requestAtlasApi.mockReset();

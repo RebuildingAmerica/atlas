@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   isAllowedEmail,
   resolveAuthRuntimeConfig,
@@ -60,27 +60,16 @@ describe("runtime additional branches", () => {
     }).not.toThrow();
   });
 
-  it("blocks bootstrap access when the operator allowlist is empty", () => {
-    const originalPublicUrl = process.env.ATLAS_PUBLIC_URL;
-    const originalAllowedEmails = process.env.ATLAS_AUTH_ALLOWED_EMAILS;
+  describe("when the operator allowlist is empty", () => {
+    afterEach(() => {
+      vi.unstubAllEnvs();
+    });
 
-    process.env.ATLAS_PUBLIC_URL = "https://atlas.test";
-    delete process.env.ATLAS_AUTH_ALLOWED_EMAILS;
+    it("blocks bootstrap access", () => {
+      vi.stubEnv("ATLAS_PUBLIC_URL", "https://atlas.test");
+      vi.stubEnv("ATLAS_AUTH_ALLOWED_EMAILS", "");
 
-    try {
       expect(isAllowedEmail("anyone@atlas.test")).toBe(false);
-    } finally {
-      if (originalPublicUrl === undefined) {
-        delete process.env.ATLAS_PUBLIC_URL;
-      } else {
-        process.env.ATLAS_PUBLIC_URL = originalPublicUrl;
-      }
-
-      if (originalAllowedEmails === undefined) {
-        delete process.env.ATLAS_AUTH_ALLOWED_EMAILS;
-      } else {
-        process.env.ATLAS_AUTH_ALLOWED_EMAILS = originalAllowedEmails;
-      }
-    }
+    });
   });
 });

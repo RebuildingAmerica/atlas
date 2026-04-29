@@ -121,7 +121,19 @@
       "dependsOn": ["api-client"],
       "outputs": ["coverage/**"]
     },
+    "test:unit": {
+      "dependsOn": ["api-client"],
+      "outputs": []
+    },
+    "test:integration": {
+      "dependsOn": ["api-client"],
+      "outputs": []
+    },
     "test:e2e": {
+      "dependsOn": ["api-client"],
+      "outputs": []
+    },
+    "test:acceptance": {
       "dependsOn": ["api-client", "e2e:cleanup"],
       "env": [
         "ATLAS_E2E_API_URL",
@@ -132,7 +144,7 @@
       "outputs": ["playwright-report/**", "test-results/**"],
       "cache": false
     },
-    "test:e2e:headed": {
+    "test:acceptance:headed": {
       "dependsOn": ["api-client", "e2e:cleanup"],
       "env": [
         "ATLAS_E2E_API_URL",

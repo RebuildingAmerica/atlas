@@ -4,39 +4,39 @@ import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ToastProvider, useToast } from "@/platform/ui/toast";
 
-function ToastButtons() {
-  const { show, success, error } = useToast();
-  return (
-    <div>
-      <button
-        type="button"
-        onClick={() => {
-          show("Plain notice");
-        }}
-      >
-        Show
-      </button>
-      <button
-        type="button"
-        onClick={() => {
-          success("Saved");
-        }}
-      >
-        Success
-      </button>
-      <button
-        type="button"
-        onClick={() => {
-          error("Failed");
-        }}
-      >
-        Error
-      </button>
-    </div>
-  );
-}
-
 describe("ToastProvider", () => {
+  function ToastButtons() {
+    const { show, success, error } = useToast();
+    return (
+      <div>
+        <button
+          type="button"
+          onClick={() => {
+            show("Plain notice");
+          }}
+        >
+          Show
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            success("Saved");
+          }}
+        >
+          Success
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            error("Failed");
+          }}
+        >
+          Error
+        </button>
+      </div>
+    );
+  }
+
   beforeEach(() => {
     vi.useFakeTimers();
   });

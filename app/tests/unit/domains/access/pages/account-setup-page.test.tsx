@@ -24,14 +24,6 @@ vi.mock("@/platform/layout/page-layout", () => ({
   PageLayout: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }));
 
-/** Default workspace payload tests can spread into session mocks. */
-const defaultWorkspace = {
-  onboarding: {
-    hasPendingInvitations: false,
-    needsWorkspace: false,
-  },
-};
-
 vi.mock("@/platform/ui/button", () => ({
   Button: ({
     children,
@@ -89,6 +81,13 @@ afterEach(() => {
 });
 
 describe("AccountSetupPage", () => {
+  const defaultWorkspace = {
+    onboarding: {
+      hasPendingInvitations: false,
+      needsWorkspace: false,
+    },
+  };
+
   const originalWindow = globalThis.window;
   let assignMock: ReturnType<typeof vi.fn>;
 

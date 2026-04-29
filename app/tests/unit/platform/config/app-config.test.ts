@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   getAbsoluteApiBaseUrl,
   getApiBaseUrl,
@@ -168,12 +168,11 @@ describe("getServerApiBaseUrl", () => {
   });
 
   it("handles default env in getServerApiBaseUrl", () => {
-    const originalUrl = process.env.ATLAS_PUBLIC_URL;
-    process.env.ATLAS_PUBLIC_URL = "https://default.test";
+    vi.stubEnv("ATLAS_PUBLIC_URL", "https://default.test");
     try {
       expect(getServerApiBaseUrl()).toBe("https://default.test/api");
     } finally {
-      process.env.ATLAS_PUBLIC_URL = originalUrl;
+      vi.unstubAllEnvs();
     }
   });
 

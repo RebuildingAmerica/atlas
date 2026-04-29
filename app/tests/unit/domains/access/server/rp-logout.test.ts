@@ -1,12 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-
-interface MockSqliteStatement {
-  get: ReturnType<typeof vi.fn>;
-}
-
-interface MockSqliteDatabase {
-  prepare: ReturnType<typeof vi.fn>;
-}
+import { buildSqliteDatabaseReturning } from "../../../../helpers/access/sqlite-mock";
 
 const mocks = vi.hoisted(() => ({
   getAuthDatabase: vi.fn(),
@@ -27,13 +20,6 @@ vi.mock("@/domains/access/server/runtime", () => ({
 vi.mock("@/domains/access/server/session-state", () => ({
   loadAtlasSession: mocks.loadAtlasSession,
 }));
-
-function buildSqliteDatabaseReturning(row: unknown): MockSqliteDatabase {
-  const statement: MockSqliteStatement = {
-    get: vi.fn().mockReturnValue(row),
-  };
-  return { prepare: vi.fn().mockReturnValue(statement) };
-}
 
 describe("loadOidcRpLogoutRedirect", () => {
   const fetchMock = vi.fn();

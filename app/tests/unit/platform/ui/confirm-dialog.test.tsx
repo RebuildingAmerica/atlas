@@ -4,26 +4,26 @@ import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { ConfirmDialogProvider, useConfirmDialog } from "@/platform/ui/confirm-dialog";
 
-function ConfirmTrigger(props: { onResult: (confirmed: boolean) => void }) {
-  const { confirm } = useConfirmDialog();
-  return (
-    <button
-      type="button"
-      onClick={() => {
-        void confirm({
-          title: "Remove provider?",
-          body: "This deletes the SAML provider configuration.",
-          confirmLabel: "Remove",
-          destructive: true,
-        }).then(props.onResult);
-      }}
-    >
-      Open dialog
-    </button>
-  );
-}
-
 describe("ConfirmDialogProvider", () => {
+  function ConfirmTrigger(props: { onResult: (confirmed: boolean) => void }) {
+    const { confirm } = useConfirmDialog();
+    return (
+      <button
+        type="button"
+        onClick={() => {
+          void confirm({
+            title: "Remove provider?",
+            body: "This deletes the SAML provider configuration.",
+            confirmLabel: "Remove",
+            destructive: true,
+          }).then(props.onResult);
+        }}
+      >
+        Open dialog
+      </button>
+    );
+  }
+
   afterEach(() => {
     document.body.innerHTML = "";
   });
