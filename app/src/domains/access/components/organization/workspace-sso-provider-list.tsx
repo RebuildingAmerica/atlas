@@ -1,7 +1,11 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { CheckCircle2, Clock } from "lucide-react";
 import type { AtlasOrganizationDetails } from "../../organization-contracts";
-import { assessCertExpiry } from "../../cert-expiry-helpers";
+import {
+  assessCertExpiry,
+  describeCertExpiryAction,
+  severityToBannerPalette,
+} from "../../cert-expiry-helpers";
 import {
   type AtlasSAMLProviderHealth,
   checkWorkspaceSAMLProviderHealth,
@@ -84,19 +88,14 @@ const DNS_PROVIDER_GUIDES: readonly { id: string; name: string; body: string }[]
  *
  * @param isoTimestamp - The certificate `notAfter` value from Better Auth.
  */
-function formatCertificateExpiry(isoTimestamp: string): string {
-  const expiry = new Date(isoTimestamp);
-  if (Number.isNaN(expiry.getTime())) {
-    return isoTimestamp;
+function formatCertificateExpiry(isoTimestamp: string, now?: number): string {
+  const assessment = assessCertExpiry(isoTimestamp, now);
+  if (!assessment) return isoTimestamp;
+  const datePart = isoTimestamp.slice(0, 10);
+  if (assessment.daysUntil < 0) {
+    return `${datePart} (expired ${String(Math.abs(assessment.daysUntil))}d ago)`;
   }
-  const now = Date.now();
-  const millisecondsPerDay = 1000 * 60 * 60 * 24;
-  const daysUntilExpiry = Math.round((expiry.getTime() - now) / millisecondsPerDay);
-  const datePart = expiry.toISOString().slice(0, 10);
-  if (daysUntilExpiry < 0) {
-    return `${datePart} (expired ${Math.abs(daysUntilExpiry)}d ago)`;
-  }
-  return `${datePart} (in ${daysUntilExpiry}d)`;
+  return `${datePart} (in ${String(assessment.daysUntil)}d)`;
 }
 
 /**
@@ -116,19 +115,35 @@ interface WorkspaceSSOProviderListProps {
 }
 
 /**
- * Renders the most recent SAML provider health-check result.  The check
- * does not run a full AuthnRequest — that requires a browser flow — but
- * it confirms the IdP entry point is reachable and the stored signing
- * certificate has not expired.  Useful as a smoke test before telling
- * users to sign in.
- *
- * @param props - The component props.
- * @param props.providerId - The provider being checked.
+ * Action banner for an expiring or expired signing certificate.  Returns
+ * null when the assessment is missing or the severity is `ok`, so callers
+ * can render unconditionally without a wrapping check.
  */
+function CertExpiryBanner({
+  notAfter,
+  now,
+}: {
+  notAfter: string | null | undefined;
+  now?: number;
+}) {
+  const assessment = assessCertExpiry(notAfter, now);
+  if (!assessment || assessment.severity === "ok") return null;
+  const message = describeCertExpiryAction(assessment);
+  if (!message) return null;
+  return (
+    <p
+      className={`type-body-small rounded-2xl px-3 py-2 ${severityToBannerPalette(assessment.severity)}`}
+      role={assessment.severity === "expired" ? "alert" : "status"}
+    >
+      {message}
+    </p>
+  );
+}
+
 /**
- * Returns true when an Atlas health-check result indicates a healthy SAML
- * provider — entry point reachable, certificate parseable and not yet
- * expired.  Used to drive the top-line verdict banner.
+ * Returns true when a health-check result indicates a healthy SAML
+ * provider — entry point reachable, certificate parseable, not expired.
+ * Drives the top-line verdict banner.
  */
 function isHealthyResult(result: AtlasSAMLProviderHealth): boolean {
   return (
@@ -139,6 +154,11 @@ function isHealthyResult(result: AtlasSAMLProviderHealth): boolean {
   );
 }
 
+/**
+ * Renders the most recent SAML provider health-check result.  Pings the
+ * IdP entry point and inspects the stored signing certificate; does not
+ * run a full AuthnRequest.
+ */
 function SamlProviderHealthCheck(props: { providerId: string }) {
   const [result, setResult] = useState<AtlasSAMLProviderHealth | null>(null);
   const [pending, setPending] = useState(false);
@@ -164,18 +184,20 @@ function SamlProviderHealthCheck(props: { providerId: string }) {
     }
   }
 
-  useEffect(() => {
-    if (hasAutoRunRef.current) return;
-    hasAutoRunRef.current = true;
-    void runCheck();
-    // runCheck is stable for the providerId prop and we only auto-run once.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // Auto-run lazily on first disclosure open instead of on mount, so a
+  // workspace with several SAML providers does not fan out N parallel
+  // probes against the IdP just because the list was rendered.
+  function handleToggle(event: React.SyntheticEvent<HTMLDetailsElement>) {
+    if (event.currentTarget.open && !hasAutoRunRef.current) {
+      hasAutoRunRef.current = true;
+      void runCheck();
+    }
+  }
 
   const verdict = result ? (isHealthyResult(result) ? "healthy" : "unhealthy") : null;
 
   return (
-    <details className="text-outline space-y-2" open={verdict === "unhealthy"}>
+    <details className="text-outline space-y-2" onToggle={handleToggle}>
       <summary className="type-label-medium cursor-pointer">SAML health check</summary>
       {verdict ? (
         <p
@@ -344,14 +366,13 @@ export function WorkspaceSSOProviderList({
       destructive: true,
     });
     if (!accepted) return;
-    for (const providerId of samlProviderIds) {
-      try {
-        await onDeleteProvider(providerId);
-      } catch {
-        // Continue iterating; individual failures surface via the existing
-        // error path on the parent SSO actions hook.
-      }
-    }
+    await Promise.all(
+      samlProviderIds.map((providerId) =>
+        onDeleteProvider(providerId).catch(() => {
+          // Individual failures surface via the parent SSO actions hook.
+        }),
+      ),
+    );
   }
 
   async function handleVerify(providerId: string) {
@@ -436,6 +457,7 @@ export function WorkspaceSSOProviderList({
         <div className="space-y-4">
           {providers.map((provider) => {
             const verificationToken = domainVerificationTokens[provider.providerId] ?? "";
+            const renderNow = Date.now();
 
             return (
               <article
@@ -460,11 +482,11 @@ export function WorkspaceSSOProviderList({
                       </span>
                     ) : null}
                     <span
-                      className={
+                      className={`type-label-large inline-flex items-center gap-1 rounded-full border px-3 py-1 ${
                         provider.domainVerified
-                          ? "type-label-large inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-emerald-700"
-                          : "type-label-large border-outline-variant text-outline inline-flex items-center gap-1 rounded-full border px-3 py-1"
-                      }
+                          ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                          : "border-outline-variant text-outline"
+                      }`}
                     >
                       {provider.domainVerified ? (
                         <CheckCircle2 aria-hidden="true" className="h-3.5 w-3.5" />
@@ -542,36 +564,20 @@ export function WorkspaceSSOProviderList({
                       <div className="space-y-2">
                         <WorkspaceSSOCopyField
                           label="Certificate expires"
-                          value={formatCertificateExpiry(provider.saml.certificate.notAfter)}
+                          value={formatCertificateExpiry(
+                            provider.saml.certificate.notAfter,
+                            renderNow,
+                          )}
                         />
                         <CertLifecycleBar
                           notAfter={provider.saml.certificate.notAfter}
                           notBefore={provider.saml.certificate.notBefore ?? null}
+                          now={renderNow}
                         />
-                        {(() => {
-                          const assessment = assessCertExpiry(provider.saml.certificate.notAfter);
-                          if (!assessment || assessment.severity === "ok") return null;
-                          const palette =
-                            assessment.severity === "expired"
-                              ? "bg-red-50 text-red-800"
-                              : assessment.severity === "critical"
-                                ? "bg-red-50 text-red-800"
-                                : "bg-amber-50 text-amber-800";
-                          const message =
-                            assessment.severity === "expired"
-                              ? "Certificate expired — rotate now to keep sign-ins working."
-                              : assessment.severity === "critical"
-                                ? `Certificate expires in ${assessment.daysUntil} day${assessment.daysUntil === 1 ? "" : "s"} — rotate before users start failing sign-in.`
-                                : `Certificate expires in ${assessment.daysUntil} days — schedule a rotation soon.`;
-                          return (
-                            <p
-                              className={`type-body-small rounded-2xl px-3 py-2 ${palette}`}
-                              role="alert"
-                            >
-                              {message}
-                            </p>
-                          );
-                        })()}
+                        <CertExpiryBanner
+                          notAfter={provider.saml.certificate.notAfter}
+                          now={renderNow}
+                        />
                       </div>
                     ) : null}
                     {provider.saml?.certificate.errorMessage ? (

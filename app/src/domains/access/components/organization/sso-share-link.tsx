@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { copyToClipboard } from "@/lib/clipboard";
 import { useToast } from "@/platform/ui/toast";
 import { Button } from "@/platform/ui/button";
 
@@ -13,36 +14,41 @@ import { Button } from "@/platform/ui/button";
  * a provider once they reach the page.
  */
 export function buildIdTeamShareUrl(publicBaseUrl: string, workspaceSlug: string): string {
-  const trimmedBase = publicBaseUrl.replace(/\/+$/, "");
-  return `${trimmedBase}/organization/sso?from=${encodeURIComponent(workspaceSlug)}`;
+  const url = new URL("/organization/sso", publicBaseUrl);
+  url.searchParams.set("from", workspaceSlug);
+  return url.toString();
 }
 
 interface SsoShareLinkButtonProps {
   workspaceSlug: string;
 }
 
-/**
- * One-click "Send to my IT team" button that copies a sharable deep link
- * to the SSO setup surface.  Makes it easy for a workspace owner to hand
- * off the SSO configuration without copying the URL by hand.  The button
- * derives the public origin from `window.location` since it only runs in
- * the browser.
- */
 export function SsoShareLinkButton({ workspaceSlug }: SsoShareLinkButtonProps) {
   const toast = useToast();
   const [copying, setCopying] = useState(false);
-  const origin = typeof window === "undefined" ? "" : window.location.origin;
-  const url = buildIdTeamShareUrl(origin, workspaceSlug);
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+  const shareUrl = useMemo(() => {
+    const origin = typeof window === "undefined" ? "" : window.location.origin;
+    return buildIdTeamShareUrl(origin, workspaceSlug);
+  }, [workspaceSlug]);
 
-  async function copy() {
+  async function handleCopy() {
     setCopying(true);
     try {
-      await navigator.clipboard.writeText(url);
-      toast.success("SSO setup link copied — paste it for your IT team.");
-    } catch {
-      toast.error("Atlas couldn't copy the link.  Select and copy by hand.");
+      const ok = await copyToClipboard(shareUrl);
+      if (!mountedRef.current) return;
+      if (ok) {
+        toast.success("SSO setup link copied — paste it for your IT team.");
+      } else {
+        toast.error("Atlas couldn't copy the link.  Select and copy by hand.");
+      }
     } finally {
-      setCopying(false);
+      if (mountedRef.current) setCopying(false);
     }
   }
 
@@ -52,7 +58,7 @@ export function SsoShareLinkButton({ workspaceSlug }: SsoShareLinkButtonProps) {
       variant="secondary"
       disabled={copying}
       onClick={() => {
-        void copy();
+        void handleCopy();
       }}
     >
       {copying ? "Copying..." : "Send to my IT team"}

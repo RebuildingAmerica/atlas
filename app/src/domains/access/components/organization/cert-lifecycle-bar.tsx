@@ -1,35 +1,33 @@
-import { assessCertExpiry } from "../../cert-expiry-helpers";
+import { assessCertExpiry, severityToFillClass } from "../../cert-expiry-helpers";
 
-/**
- * Renders a horizontal lifecycle bar showing where the current time sits
- * between a certificate's `notBefore` and `notAfter` boundaries.  Provides
- * a visual analogue to the textual "expires in N days" copy and makes
- * Atlas's cert calendar legible without a separate calendar surface.
- */
 interface CertLifecycleBarProps {
   notAfter: string | null | undefined;
   notBefore: string | null | undefined;
+  /**
+   * Reference timestamp; defaults to `Date.now()`.  Pass a single shared
+   * `now` from the parent map iteration to keep all per-provider Date.now
+   * reads in sync within the same render.
+   */
+  now?: number;
 }
 
-export function CertLifecycleBar({ notAfter, notBefore }: CertLifecycleBarProps) {
+/**
+ * Horizontal lifecycle bar showing where the current time sits between a
+ * certificate's `notBefore` and `notAfter` boundaries.  Provides a visual
+ * analogue to the textual "expires in N days" copy and makes Atlas's cert
+ * calendar legible without a separate calendar surface.
+ */
+export function CertLifecycleBar({ notAfter, notBefore, now: nowProp }: CertLifecycleBarProps) {
   const start = notBefore ? new Date(notBefore).getTime() : NaN;
   const end = notAfter ? new Date(notAfter).getTime() : NaN;
   if (Number.isNaN(start) || Number.isNaN(end) || end <= start) {
     return null;
   }
-  const now = Date.now();
-  const total = end - start;
-  const elapsed = Math.min(Math.max(0, now - start), total);
-  const pct = Math.round((elapsed / total) * 100);
+  const now = nowProp ?? Date.now();
+  const elapsed = Math.min(Math.max(0, now - start), end - start);
+  const pct = Math.round((elapsed / (end - start)) * 100);
   const assessment = assessCertExpiry(notAfter ?? null, now);
-  const fillClass =
-    assessment?.severity === "expired"
-      ? "bg-red-500"
-      : assessment?.severity === "critical"
-        ? "bg-red-400"
-        : assessment?.severity === "warning"
-          ? "bg-amber-400"
-          : "bg-emerald-500";
+  const fillClass = assessment ? severityToFillClass(assessment.severity) : "bg-emerald-500";
 
   return (
     <div className="space-y-1" aria-label="Certificate lifecycle">

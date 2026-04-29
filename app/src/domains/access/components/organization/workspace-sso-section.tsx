@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useDirtyFormGuard } from "@/platform/hooks/use-dirty-form-guard";
 import type { AtlasOrganizationDetails } from "../../organization-contracts";
 import { parseSamlIdpMetadata } from "../../saml-metadata-parser";
 import type {
@@ -241,6 +242,35 @@ interface WorkspaceSSOSectionProps {
 }
 
 /**
+ * Submit button that lists every still-missing field as a tooltip on
+ * hover, so an admin staring at a disabled Save button knows exactly
+ * which input is blocking the submit.  When `missing` is empty, the
+ * button enables and the tooltip clears.
+ */
+function SaveButtonWithMissingFields({
+  isPending,
+  label,
+  missing,
+  pendingLabel,
+}: {
+  isPending: boolean;
+  label: string;
+  missing: readonly string[];
+  pendingLabel: string;
+}) {
+  const disabled = isPending || missing.length > 0;
+  return (
+    <Button
+      type="submit"
+      disabled={disabled}
+      title={disabled && !isPending ? `Missing: ${missing.join(", ")}` : undefined}
+    >
+      {isPending ? pendingLabel : label}
+    </Button>
+  );
+}
+
+/**
  * Enterprise SSO management surface for team workspaces.
  */
 export function WorkspaceSSOSection({
@@ -283,6 +313,28 @@ export function WorkspaceSSOSection({
   const oidcDomainTrimmed = oidcSetupForm.domain.trim().toLowerCase();
   const oidcDomainIsFreeEmail = isLikelyFreeEmailDomain(oidcDomainTrimmed);
   const samlPrefill = usePrefillFlash();
+
+  // Forms count as dirty when any user-entered field has content.  The
+  // guard stops a navigation away from the SSO surface — workspace switch
+  // or browser back — when those edits would be lost on next render.
+  const oidcFormDirty =
+    !isPending &&
+    Boolean(
+      oidcSetupForm.domain.trim() ||
+      oidcSetupForm.clientId.trim() ||
+      oidcSetupForm.clientSecret.trim() ||
+      oidcSetupForm.providerId.trim(),
+    );
+  const samlFormDirty =
+    !isPending &&
+    Boolean(
+      samlSetupForm.domain.trim() ||
+      samlSetupForm.issuer.trim() ||
+      samlSetupForm.entryPoint.trim() ||
+      samlSetupForm.certificate.trim() ||
+      samlSetupForm.providerId.trim(),
+    );
+  useDirtyFormGuard(canManageOrganization && (oidcFormDirty || samlFormDirty));
 
   return (
     <section className="space-y-6">
@@ -425,15 +477,13 @@ export function WorkspaceSSOSection({
                 if (!oidcSetupForm.clientId.trim()) missing.push("client ID");
                 if (!oidcSetupForm.clientSecret.trim()) missing.push("client secret");
                 if (!oidcSetupForm.providerId.trim()) missing.push("provider ID");
-                const disabled = isPending || missing.length > 0;
                 return (
-                  <span
-                    title={disabled && !isPending ? `Missing: ${missing.join(", ")}` : undefined}
-                  >
-                    <Button type="submit" disabled={disabled}>
-                      {isPending ? "Saving..." : "Save Google Workspace OIDC"}
-                    </Button>
-                  </span>
+                  <SaveButtonWithMissingFields
+                    isPending={isPending}
+                    label="Save Google Workspace OIDC"
+                    missing={missing}
+                    pendingLabel="Saving..."
+                  />
                 );
               })()}
             </form>
@@ -669,15 +719,13 @@ export function WorkspaceSSOSection({
                 if (!samlSetupForm.entryPoint.trim()) missing.push("sign-in URL");
                 if (!samlCertificateLooksValid) missing.push("valid PEM certificate");
                 if (!samlSetupForm.providerId.trim()) missing.push("provider ID");
-                const disabled = isPending || missing.length > 0;
                 return (
-                  <span
-                    title={disabled && !isPending ? `Missing: ${missing.join(", ")}` : undefined}
-                  >
-                    <Button type="submit" disabled={disabled}>
-                      {isPending ? "Saving..." : "Save SAML provider"}
-                    </Button>
-                  </span>
+                  <SaveButtonWithMissingFields
+                    isPending={isPending}
+                    label="Save SAML provider"
+                    missing={missing}
+                    pendingLabel="Saving..."
+                  />
                 );
               })()}
             </form>
