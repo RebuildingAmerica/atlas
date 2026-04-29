@@ -8,9 +8,9 @@
   },
   "scripts": {
     "predev": "sh ./scripts/portless-reset.sh",
-    "dev": "ATLAS_DEPLOY_MODE= concurrently -k -n api,app,docs,mail -c blue,green,magenta,yellow 'pnpm --filter @rebuildingamerica/atlas-api run dev' 'pnpm --filter @rebuildingamerica/atlas-app run dev' 'pnpm --filter docs run dev' 'pnpm --filter @rebuildingamerica/atlas-app run e2e:mail'",
+    "dev": "ATLAS_DEPLOY_MODE= turbo run dev e2e:mail",
     "predev:local": "sh ./scripts/portless-reset.sh",
-    "dev:local": "ATLAS_DEPLOY_MODE=local concurrently -k -n api,app,docs -c blue,green,magenta 'pnpm --filter @rebuildingamerica/atlas-api run dev' 'pnpm --filter @rebuildingamerica/atlas-app run dev:local' 'pnpm --filter docs run dev'",
+    "dev:local": "ATLAS_DEPLOY_MODE=local turbo run dev",
     "portless:reset": "sh ./scripts/portless-reset.sh",
     "secrets:update-baseline": "sh ./scripts/secrets-update-baseline.sh",
     "secrets:scan": "sh ./scripts/secrets-scan.sh",
@@ -39,7 +39,6 @@
   "devDependencies": {
     "@atlas/eslint-config": "workspace:*",
     "@clack/prompts": "0.11.0",
-    "concurrently": "9.1.0",
     "eslint": "9.17.0",
     "mint": "4.2.537",
     "picocolors": "1.1.0",
@@ -52,7 +51,9 @@
   "pnpm": {
     "overrides": {
       "@xmldom/xmldom": "^0.8.13",
-      "fast-xml-parser": "^5.7.0"
+      "fast-xml-parser": "^5.7.0",
+      "react": "19.2.5",
+      "react-dom": "19.2.5"
     },
     "peerDependencyRules": {
       "allowedVersions": {

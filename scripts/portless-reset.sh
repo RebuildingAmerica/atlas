@@ -44,6 +44,10 @@ pnpm exec portless proxy start --port "${PORTLESS_PORT}" --https >/dev/null 2>&1
 # subsequent parallel `portless <name> <cmd>` invocations all see it ready.
 for _ in 1 2 3 4 5 6 7 8 9 10; do
   if [ -f "${PORTLESS_DIR}/proxy.pid" ] && [ -f "${PORTLESS_DIR}/proxy.port" ]; then
+    # Register a static alias for mint dev — it always binds to port 3000
+    # and ignores PORT env, so it cannot use the standard `portless <name>
+    # <cmd>` wrapper that allocates a port and injects PORT.
+    pnpm exec portless alias docs 3000 >/dev/null 2>&1 || true
     exit 0
   fi
   sleep 0.3

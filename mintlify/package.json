@@ -4,7 +4,7 @@
   "scripts": {
     "favicons": "node scripts/build-favicons.mjs",
     "predev": "node scripts/build-favicons.mjs",
-    "dev": "portless docs mint dev"
+    "dev": "mint dev"
   },
   "devDependencies": {
     "favicons": "7.2.0"
