@@ -18,6 +18,9 @@ export type CapabilityId =
   | "deploy-actionlint"
   | "deploy-wrangler"
   | "deploy-vercel"
+  | "deploy-mcp-publisher"
+  | "deploy-dig"
+  | "deploy-jq"
   | "product-stripe"
   | "product-neonctl"
   | "product-psql";
@@ -30,7 +33,8 @@ export type PhaseId =
   | "infra"
   | "database"
   | "product"
-  | "deploy";
+  | "deploy"
+  | "mcp-registry";
 
 export type CapabilityStatus = "ready" | "failed" | "deferred" | "skipped";
 

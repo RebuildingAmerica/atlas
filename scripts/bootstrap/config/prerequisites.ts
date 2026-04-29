@@ -217,6 +217,45 @@ export const CAPABILITY_SPECS: CapabilityConfig[] = [
     ],
   },
   {
+    id: "deploy-mcp-publisher",
+    label: "MCP Registry publisher CLI",
+    category: "deploy",
+    requiredFor: [],
+    requiredByDefault: false,
+    binaryCommand: "command -v mcp-publisher",
+    versionCommand: "mcp-publisher --version 2>/dev/null || echo unknown",
+    installCommands: {
+      macos: ["brew install mcp-publisher"],
+      linux: [
+        "curl -L https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_$(uname -s)_$(uname -m).tar.gz | tar -xz mcp-publisher && sudo mv mcp-publisher /usr/local/bin/",
+      ],
+    },
+  },
+  {
+    id: "deploy-dig",
+    label: "dig (BIND DNS utilities)",
+    category: "deploy",
+    requiredFor: [],
+    requiredByDefault: false,
+    binaryCommand: "command -v dig",
+    installCommands: {
+      macos: ["brew install bind"],
+      linux: ["sudo apt-get install -y dnsutils"],
+    },
+  },
+  {
+    id: "deploy-jq",
+    label: "jq",
+    category: "deploy",
+    requiredFor: [],
+    requiredByDefault: false,
+    binaryCommand: "command -v jq",
+    installCommands: {
+      macos: ["brew install jq"],
+      linux: ["sudo apt-get install -y jq"],
+    },
+  },
+  {
     id: "deploy-vercel",
     label: "Vercel CLI",
     category: "deploy",

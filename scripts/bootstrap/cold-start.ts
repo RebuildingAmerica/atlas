@@ -8,6 +8,7 @@
  *   pnpm bootstrap --doctor            Check readiness without changes
  *   pnpm bootstrap --resume            Skip completed phases
  *   pnpm bootstrap --product atlas     Run Stripe product sync only
+ *   pnpm bootstrap --mcp-registry      Run MCP Registry publisher setup only
  *   pnpm bootstrap --live              Use Stripe live mode (default: test)
  */
 
@@ -28,12 +29,14 @@ import { runInfraPhase } from "./phases/infra.js";
 import { runDatabasePhase } from "./phases/database.js";
 import { runProductPhase } from "./products/atlas/bootstrap.js";
 import { runDeployPhase } from "./phases/deploy.js";
+import { runMcpRegistryPhase } from "./phases/mcp-registry.js";
 
 interface CliArgs {
   localOnly: boolean;
   doctorMode: boolean;
   resume: boolean;
   productOnly: string | null;
+  mcpRegistryOnly: boolean;
   live: boolean;
 }
 
@@ -45,6 +48,7 @@ function parseArgs(argv: string[]): CliArgs {
     productOnly: argv.includes("--product")
       ? (argv[argv.indexOf("--product") + 1] ?? null)
       : null,
+    mcpRegistryOnly: argv.includes("--mcp-registry"),
     live: argv.includes("--live"),
   };
 }
@@ -120,6 +124,23 @@ async function main(): Promise<void> {
 
   const state = loadReadiness(projectRoot);
   const allFollowUp: string[] = [];
+
+  // MCP Registry-only mode
+  if (args.mcpRegistryOnly) {
+    log.info("Running MCP Registry publisher setup only.");
+    const result = await runMcpRegistryPhase(projectRoot, args.doctorMode);
+    markPhase(state, "mcp-registry", result.success ? "complete" : "partial");
+    saveReadiness(projectRoot, state);
+    if (result.followUpItems.length > 0) {
+      note(result.followUpItems.join("\n"), "Follow-up");
+    }
+    outro(
+      result.success
+        ? "MCP Registry publisher setup complete."
+        : "MCP Registry publisher setup had issues.",
+    );
+    return;
+  }
 
   // Product-only mode
   if (args.productOnly === "atlas") {
@@ -248,12 +269,24 @@ async function main(): Promise<void> {
       allFollowUp.push(...result.followUpItems);
     }
 
-    // Phase 7: Deploy
+    // Phase 7: MCP Registry publisher (opt-in inside the phase)
+    if (
+      !shouldSkipPhase("mcp-registry", state, args.resume) ||
+      !(await confirmResumeSkip("MCP Registry"))
+    ) {
+      log.step("Phase 7: MCP Registry Publisher");
+      const result = await runMcpRegistryPhase(projectRoot, args.doctorMode);
+      markPhase(state, "mcp-registry", result.success ? "complete" : "partial");
+      saveReadiness(projectRoot, state);
+      allFollowUp.push(...result.followUpItems);
+    }
+
+    // Phase 8: Deploy
     if (
       !shouldSkipPhase("deploy", state, args.resume) ||
       !(await confirmResumeSkip("Deploy"))
     ) {
-      log.step("Phase 7: Initial Deployment");
+      log.step("Phase 8: Initial Deployment");
       const result = await runDeployPhase(projectRoot, state, args.doctorMode);
       markPhase(state, "deploy", result.success ? "complete" : "skipped");
       saveReadiness(projectRoot, state);
