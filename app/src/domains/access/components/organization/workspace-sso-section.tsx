@@ -1,218 +1,22 @@
-import { useEffect, useState } from "react";
 import { useDirtyFormGuard } from "@/platform/hooks/use-dirty-form-guard";
 import type { AtlasOrganizationDetails } from "../../organization-contracts";
-import { parseSamlIdpMetadata } from "../../saml-metadata-parser";
+import {
+  classifyPemCertificate,
+  extractIssuerOrigin,
+  isLikelyFreeEmailDomain,
+} from "../../sso-form-helpers";
 import type {
   WorkspaceOIDCSetupFormState,
   WorkspaceSAMLSetupFormState,
 } from "./organization-page-controller";
+import { SamlMetadataPasteField } from "./saml-metadata-paste-field";
+import { flashClassName, usePrefillFlash } from "./use-prefill-flash";
 import { WorkspaceSSODomainHint } from "./workspace-sso-domain-hint";
 import { WorkspaceSSOCopyField } from "./workspace-sso-copy-field";
 import { WorkspaceSSOProviderList } from "./workspace-sso-provider-list";
 import { Button } from "@/platform/ui/button";
 import { Input } from "@/platform/ui/input";
 import { Textarea } from "@/platform/ui/textarea";
-
-/**
- * Common consumer-mailbox domains.  Atlas can route through SSO with these
- * registered, but a verified-domain check on `gmail.com` (or similar) is
- * almost certainly a workspace-domain misconfiguration; flag it so the admin
- * gets a chance to swap in their company's own DNS-controlled domain.
- */
-const FREE_EMAIL_DOMAINS: ReadonlySet<string> = new Set([
-  "aol.com",
-  "fastmail.com",
-  "gmail.com",
-  "googlemail.com",
-  "hey.com",
-  "hotmail.com",
-  "icloud.com",
-  "live.com",
-  "me.com",
-  "msn.com",
-  "outlook.com",
-  "pm.me",
-  "proton.me",
-  "protonmail.com",
-  "yahoo.com",
-  "ymail.com",
-]);
-
-const PREFILL_FLASH_DURATION_MS = 1800;
-
-/**
- * Returns true when `domain` is a consumer-mailbox host Atlas should warn
- * the admin about before they wire SSO to it.
- */
-function isLikelyFreeEmailDomain(domain: string): boolean {
-  const lowered = domain.trim().toLowerCase();
-  return lowered.length > 0 && FREE_EMAIL_DOMAINS.has(lowered);
-}
-
-/**
- * Ring-flash on prefilled inputs so the operator can spot which fields the
- * metadata-paste shortcut just changed.
- */
-function usePrefillFlash(): {
-  flashed: ReadonlySet<string>;
-  flash: (fields: readonly string[]) => void;
-} {
-  const [flashed, setFlashed] = useState<ReadonlySet<string>>(() => new Set());
-
-  useEffect(() => {
-    if (flashed.size === 0) {
-      return;
-    }
-    const handle = window.setTimeout(() => {
-      setFlashed(new Set());
-    }, PREFILL_FLASH_DURATION_MS);
-    return () => {
-      window.clearTimeout(handle);
-    };
-  }, [flashed]);
-
-  function flash(fields: readonly string[]) {
-    setFlashed(new Set(fields));
-  }
-
-  return { flashed, flash };
-}
-
-function flashClassName(flashed: ReadonlySet<string>, field: string): string {
-  return flashed.has(field)
-    ? "transition-shadow ring-2 ring-emerald-300 ring-offset-2 ring-offset-surface rounded-2xl"
-    : "transition-shadow rounded-2xl";
-}
-
-/**
- * Optional XML-paste shortcut that lifts issuer, sign-in URL, and signing
- * certificate out of an IdP metadata document so admins do not have to
- * extract those three fields by hand.  The textarea is collapsed by default
- * inside an Advanced disclosure to keep the form clean for IdPs that only
- * surface those values via copy/paste.
- *
- * @param props - The component props.
- * @param props.onPrefill - Called with the parsed values so the parent form
- *   can apply them to its own state.
- */
-function SamlMetadataPasteField(props: {
-  onPrefill: (metadata: { certificate: string; entryPoint: string; issuer: string }) => void;
-}) {
-  const [xml, setXml] = useState("");
-  const [status, setStatus] = useState<{ ok: boolean; message: string } | null>(null);
-
-  function applyPaste() {
-    const result = parseSamlIdpMetadata(xml);
-    if (!result.ok) {
-      setStatus({ ok: false, message: result.error });
-      return;
-    }
-    props.onPrefill(result.metadata);
-    const filled: string[] = [];
-    if (result.metadata.issuer) filled.push("issuer");
-    if (result.metadata.entryPoint) filled.push("sign-in URL");
-    if (result.metadata.certificate) filled.push("certificate");
-    setStatus({
-      ok: true,
-      message: `Filled ${filled.join(", ") || "no fields"} from the pasted metadata. Review the values before saving.`,
-    });
-  }
-
-  return (
-    <div className="border-outline-variant bg-surface-container-lowest space-y-2 rounded-2xl border p-4">
-      <div className="space-y-1">
-        <p className="type-label-medium text-on-surface">Paste IdP metadata XML (recommended)</p>
-        <p className="type-body-small text-outline">
-          Atlas pulls the issuer, sign-in URL, and signing certificate out of the metadata so you
-          don't have to copy three fields by hand.
-        </p>
-      </div>
-      <Textarea
-        label="IdP metadata XML"
-        rows={10}
-        autoExpand
-        maxRows={32}
-        value={xml}
-        onChange={setXml}
-        placeholder='<EntityDescriptor entityID="..."> ... </EntityDescriptor>'
-      />
-      <div className="flex flex-wrap items-center gap-3">
-        <Button type="button" variant="secondary" onClick={applyPaste} disabled={!xml.trim()}>
-          Prefill from metadata
-        </Button>
-        {status ? (
-          <p className={status.ok ? "type-body-small text-outline" : "type-body-small text-error"}>
-            {status.message}
-          </p>
-        ) : null}
-      </div>
-    </div>
-  );
-}
-
-/**
- * Lightweight check that the pasted X.509 certificate at least has PEM
- * framing.  Atlas does not parse ASN.1 client-side — Better Auth does that
- * post-registration and surfaces the parsed details (subject, expiry, key
- * algorithm) in the provider list — but a quick frame check catches the
- * most common paste mistakes before submit.
- *
- * @param certificate - The candidate certificate text from the SAML form.
- */
-function classifyPemCertificate(
-  certificate: string,
-): { kind: "empty" } | { kind: "ok"; bodyLines: number } | { kind: "invalid"; reason: string } {
-  const trimmed = certificate.trim();
-  if (!trimmed) {
-    return { kind: "empty" };
-  }
-  const lines = trimmed.split(/\r?\n/);
-  const header = lines[0]?.trim() ?? "";
-  const footer = lines[lines.length - 1]?.trim() ?? "";
-  if (!header.startsWith("-----BEGIN") || !header.endsWith("-----")) {
-    return {
-      kind: "invalid",
-      reason: "Certificate is missing the -----BEGIN CERTIFICATE----- header.",
-    };
-  }
-  if (!footer.startsWith("-----END") || !footer.endsWith("-----")) {
-    return {
-      kind: "invalid",
-      reason: "Certificate is missing the -----END CERTIFICATE----- footer.",
-    };
-  }
-  const bodyLines = lines.slice(1, -1).filter((line) => line.trim().length > 0);
-  if (bodyLines.length === 0) {
-    return { kind: "invalid", reason: "Certificate body is empty." };
-  }
-  const body = bodyLines.join("");
-  if (!/^[A-Za-z0-9+/=]+$/.test(body)) {
-    return {
-      kind: "invalid",
-      reason: "Certificate body has non-base64 characters.",
-    };
-  }
-  return { kind: "ok", bodyLines: bodyLines.length };
-}
-
-/**
- * Returns the candidate SAML issuer's origin when the value parses as a URL,
- * otherwise null.  The allowlist is matched by URL origin so per-tenant query
- * parameters do not need to be enumerated.
- *
- * @param issuer - The candidate SAML issuer URL pasted by the workspace admin.
- */
-function extractIssuerOrigin(issuer: string): string | null {
-  const trimmed = issuer.trim();
-  if (!trimmed) {
-    return null;
-  }
-  try {
-    return new URL(trimmed).origin;
-  } catch {
-    return null;
-  }
-}
 
 /**
  * Props for the enterprise SSO management section.

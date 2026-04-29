@@ -79,6 +79,22 @@ export function severityToFillClass(severity: CertExpirySeverity): string {
 }
 
 /**
+ * Locale-stable expiry label like `2026-04-29 (in 12d)` or
+ * `2026-04-15 (expired 14d ago)`.  Drops the rest of the ISO timestamp
+ * so the rendered field stays narrow without depending on the operator's
+ * locale.
+ */
+export function formatCertificateExpiry(isoTimestamp: string, now?: number): string {
+  const assessment = assessCertExpiry(isoTimestamp, now);
+  if (!assessment) return isoTimestamp;
+  const datePart = isoTimestamp.slice(0, 10);
+  if (assessment.daysUntil < 0) {
+    return `${datePart} (expired ${String(Math.abs(assessment.daysUntil))}d ago)`;
+  }
+  return `${datePart} (in ${String(assessment.daysUntil)}d)`;
+}
+
+/**
  * Returns a one-line copy describing what the admin should do given the
  * current expiry severity.  Returns null for the `ok` bucket — callers
  * skip the banner entirely there.
