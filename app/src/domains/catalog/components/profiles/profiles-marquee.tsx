@@ -1,6 +1,7 @@
 import { Sparkles } from "lucide-react";
 import type { Entry } from "@/types";
-import { CompanionSpotlight, SectionHeading, SpotlightCard } from "./profile-showcase-primitives";
+import { CompanionSpotlight, SectionHeading } from "./profile-showcase-primitives";
+import { SpotlightCard } from "./spotlight-card";
 
 interface ProfilesMarqueeProps {
   entries: Entry[];
