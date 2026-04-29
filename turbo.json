@@ -40,19 +40,6 @@
         "NITRO_PRESET"
       ]
     },
-    "app#api-client": {
-      "inputs": ["$TURBO_DEFAULT$", "orval.config.ts"],
-      "outputs": ["src/lib/generated/**"],
-      "env": [
-        "ATLAS_DEPLOY_MODE",
-        "ATLAS_PUBLIC_URL",
-        "ATLAS_API_AUDIENCE",
-        "ATLAS_DOCS_URL",
-        "ATLAS_EMAIL_PROVIDER",
-        "ATLAS_AUTH_BASE_PATH",
-        "ATLAS_SERVER_API_PROXY_TARGET"
-      ]
-    },
     "dev": {
       "cache": false,
       "persistent": true
@@ -165,12 +152,12 @@
         "//#contract:test",
         "//#compose:validate",
         "//#secrets:scan",
-        "app#api-client",
-        "app#openapi:lint",
-        "app#quality",
-        "app#test",
-        "app#test:acceptance",
-        "app#build"
+        "@rebuildingamerica/atlas-app#api-client",
+        "@rebuildingamerica/atlas-app#openapi:lint",
+        "@rebuildingamerica/atlas-app#quality",
+        "@rebuildingamerica/atlas-app#test",
+        "@rebuildingamerica/atlas-app#test:acceptance",
+        "@rebuildingamerica/atlas-app#build"
       ]
     }
   }

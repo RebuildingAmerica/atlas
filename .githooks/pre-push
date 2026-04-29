@@ -62,7 +62,25 @@ else
     print_success "Working directory is clean"
 fi
 
-# 2. Run full quality suite via turbo (typecheck + lint + test for all packages)
+# 2. Validate every Turbo task selector resolves to a real package and task
+if [ $FAILED -eq 0 ]; then
+    print_info "Validating turbo task selectors..."
+    if ! (cd "$ROOT_DIR" && pnpm run turbo:validate 2>&1); then
+        print_error "Turbo selector validation failed"
+        echo ""
+        echo -e "${YELLOW}HOW TO FIX:${NC}"
+        echo "  A package.json script, turbo.json dependsOn, workflow, or hook"
+        echo "  references a Turbo selector that no longer resolves (likely after"
+        echo "  a package rename). Update the selector to match the current package"
+        echo "  name and task, then commit."
+        echo ""
+        FAILED=1
+    else
+        print_success "Turbo selectors resolve"
+    fi
+fi
+
+# 3. Run full quality suite via turbo (typecheck + lint + test for all packages)
 if [ $FAILED -eq 0 ]; then
     print_info "Running full quality suite (turbo run typecheck lint test)..."
     if ! (cd "$ROOT_DIR" && TURBO_UI=0 pnpm run quality 2>&1); then

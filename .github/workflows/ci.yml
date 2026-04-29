@@ -23,6 +23,8 @@ jobs:
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
       - uses: ./.github/actions/setup-toolchain
+      - name: Validate Turbo task selectors
+        run: pnpm run turbo:validate
       - name: Typecheck and lint
         run: pnpm exec turbo run typecheck lint
 
@@ -46,7 +48,7 @@ jobs:
       - name: Run Playwright acceptance suite
         env:
           CI: "true"
-        run: pnpm --filter @rebuildingamerica/atlas-app test:acceptance
+        run: pnpm exec turbo run '@rebuildingamerica/atlas-app#test:acceptance'
       - name: Upload Playwright report on failure
         if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
