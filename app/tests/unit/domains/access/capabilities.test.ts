@@ -2,8 +2,11 @@ import { describe, expect, it } from "vitest";
 import {
   DEFAULT_CAPABILITIES,
   DEFAULT_LIMITS,
+  deserializeResolvedCapabilities,
   getLimit,
+  getSerializedLimit,
   hasCapability,
+  hasSerializedCapability,
   resolveCapabilities,
 } from "@/domains/access/capabilities";
 
@@ -89,6 +92,38 @@ describe("capabilities", () => {
     it("returns numeric value for constrained limits", () => {
       const resolved = resolveCapabilities([]);
       expect(getLimit(resolved, "research_runs_per_month")).toBe(2);
+    });
+  });
+
+  describe("serialized helpers", () => {
+    it("round-trips through deserializeResolvedCapabilities", () => {
+      const resolved = resolveCapabilities(["atlas_pro"]);
+      const serialized = {
+        capabilities: [...resolved.capabilities],
+        limits: { ...resolved.limits },
+      };
+      const restored = deserializeResolvedCapabilities(serialized);
+      expect(restored.capabilities).toEqual(resolved.capabilities);
+      expect(restored.limits).toEqual(resolved.limits);
+    });
+
+    it("hasSerializedCapability matches the live resolveCapabilities check", () => {
+      const resolved = resolveCapabilities(["atlas_pro"]);
+      const serialized = {
+        capabilities: [...resolved.capabilities],
+        limits: { ...resolved.limits },
+      };
+      expect(hasSerializedCapability(serialized, "api.keys")).toBe(true);
+      expect(hasSerializedCapability(serialized, "auth.sso")).toBe(false);
+    });
+
+    it("getSerializedLimit returns the configured limit value", () => {
+      const resolved = resolveCapabilities([]);
+      const serialized = {
+        capabilities: [...resolved.capabilities],
+        limits: { ...resolved.limits },
+      };
+      expect(getSerializedLimit(serialized, "research_runs_per_month")).toBe(2);
     });
   });
 });
