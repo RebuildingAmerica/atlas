@@ -132,4 +132,108 @@ describe("OrganizationSSOPageView", () => {
       ),
     ).toBeInTheDocument();
   });
+
+  it("renders the auth-disabled headline only when canConfigureSSO is false", () => {
+    const controller = buildController({
+      session: {
+        user: { id: "user_1" },
+        workspace: {
+          resolvedCapabilities: {
+            capabilities: ["research.run"],
+            limits: {
+              research_runs_per_month: 2,
+              max_shortlists: 1,
+              max_shortlist_entries: 25,
+              max_api_keys: 0,
+              api_requests_per_day: 0,
+              public_api_requests_per_hour: 100,
+              max_members: 1,
+            },
+          },
+        },
+      },
+    }) as unknown as OrganizationPageController;
+    render(<OrganizationSSOPageView controller={controller} />);
+    expect(
+      screen.getByText(
+        /Enterprise SSO configuration is not available for your current workspace plan/i,
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("renders the workspace switcher when the operator can switch", () => {
+    const controller = buildController({
+      canSwitchOrganizations: true,
+      memberships: [
+        { id: "org_1", name: "Atlas", slug: "atlas", workspaceType: "team", role: "owner" },
+        { id: "org_2", name: "Other", slug: "other", workspaceType: "team", role: "member" },
+      ],
+      selectedOrganizationId: "org_1",
+      selectWorkspacePending: false,
+      onSelectWorkspace: vi.fn(),
+    }) as unknown as OrganizationPageController;
+    render(<OrganizationSSOPageView controller={controller} />);
+    expect(screen.getByText(/Other/)).toBeInTheDocument();
+  });
+
+  it("renders the pending invitations section when invitations exist", () => {
+    const controller = buildController({
+      hasPendingInvitations: true,
+      pendingInvitations: [
+        {
+          id: "inv_1",
+          email: "operator@atlas.test",
+          organizationName: "Atlas Future",
+          organizationSlug: "atlas-future",
+          role: "admin",
+          expiresAt: new Date("2099-01-01T00:00:00Z"),
+        },
+      ],
+      pendingInvitationMutationPending: false,
+      onInvitationDecision: vi.fn(),
+    }) as unknown as OrganizationPageController;
+    render(<OrganizationSSOPageView controller={controller} />);
+    expect(screen.getAllByText(/Atlas Future/).length).toBeGreaterThan(0);
+  });
+
+  it("renders the workspace creation form when needsWorkspace is true", () => {
+    const controller = buildController({
+      needsWorkspace: true,
+      organization: null,
+      createWorkspacePending: false,
+      workspaceDelegatedEmail: "",
+      workspaceDomain: "",
+      workspaceName: "",
+      workspaceSlug: "",
+      workspaceType: "individual",
+      setWorkspaceDelegatedEmail: vi.fn(),
+      setWorkspaceDomain: vi.fn(),
+      onUpdateWorkspaceName: vi.fn(),
+      onUpdateWorkspaceSlug: vi.fn(),
+      onCreateWorkspace: vi.fn(),
+      onUpdateWorkspaceType: vi.fn(),
+    }) as unknown as OrganizationPageController;
+    render(<OrganizationSSOPageView controller={controller} />);
+    expect(screen.getAllByText(/Workspace/i).length).toBeGreaterThan(0);
+  });
+
+  it("renders the loading state when organizationLoading is true", () => {
+    const controller = buildController({
+      organization: null,
+      organizationLoading: true,
+    }) as unknown as OrganizationPageController;
+    render(<OrganizationSSOPageView controller={controller} />);
+    expect(screen.getByText(/Loading workspace/i)).toBeInTheDocument();
+  });
+
+  it("renders the empty-state when there is no workspace, no invitations, and no loading", () => {
+    const controller = buildController({
+      organization: null,
+      organizationLoading: false,
+      needsWorkspace: false,
+      hasPendingInvitations: false,
+    }) as unknown as OrganizationPageController;
+    render(<OrganizationSSOPageView controller={controller} />);
+    expect(screen.getAllByText(/workspace/i).length).toBeGreaterThan(0);
+  });
 });
