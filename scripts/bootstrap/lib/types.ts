@@ -34,7 +34,8 @@ export type PhaseId =
   | "database"
   | "product"
   | "deploy"
-  | "mcp-registry";
+  | "mcp-registry"
+  | "ci-cache";
 
 export type CapabilityStatus = "ready" | "failed" | "deferred" | "skipped";
 

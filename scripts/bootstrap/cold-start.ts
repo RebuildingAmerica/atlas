@@ -9,6 +9,7 @@
  *   pnpm bootstrap --resume            Skip completed phases
  *   pnpm bootstrap --product atlas     Run Stripe product sync only
  *   pnpm bootstrap --mcp-registry      Run MCP Registry publisher setup only
+ *   pnpm bootstrap --ci-cache          Wire Vercel Remote Cache into Actions
  *   pnpm bootstrap --live              Use Stripe live mode (default: test)
  */
 
@@ -30,6 +31,7 @@ import { runDatabasePhase } from "./phases/database.js";
 import { runProductPhase } from "./products/atlas/bootstrap.js";
 import { runDeployPhase } from "./phases/deploy.js";
 import { runMcpRegistryPhase } from "./phases/mcp-registry.js";
+import { runCiCachePhase } from "./phases/ci-cache.js";
 
 interface CliArgs {
   localOnly: boolean;
@@ -37,6 +39,7 @@ interface CliArgs {
   resume: boolean;
   productOnly: string | null;
   mcpRegistryOnly: boolean;
+  ciCacheOnly: boolean;
   live: boolean;
 }
 
@@ -49,6 +52,7 @@ function parseArgs(argv: string[]): CliArgs {
       ? (argv[argv.indexOf("--product") + 1] ?? null)
       : null,
     mcpRegistryOnly: argv.includes("--mcp-registry"),
+    ciCacheOnly: argv.includes("--ci-cache"),
     live: argv.includes("--live"),
   };
 }
@@ -138,6 +142,23 @@ async function main(): Promise<void> {
       result.success
         ? "MCP Registry publisher setup complete."
         : "MCP Registry publisher setup had issues.",
+    );
+    return;
+  }
+
+  // CI cache-only mode
+  if (args.ciCacheOnly) {
+    log.info("Running Vercel Remote Cache wiring only.");
+    const result = await runCiCachePhase(projectRoot, args.doctorMode);
+    markPhase(state, "ci-cache", result.success ? "complete" : "partial");
+    saveReadiness(projectRoot, state);
+    if (result.followUpItems.length > 0) {
+      note(result.followUpItems.join("\n"), "Follow-up");
+    }
+    outro(
+      result.success
+        ? "Vercel Remote Cache wired into GitHub Actions."
+        : "CI cache wiring had issues.",
     );
     return;
   }
@@ -289,6 +310,18 @@ async function main(): Promise<void> {
       log.step("Phase 8: Initial Deployment");
       const result = await runDeployPhase(projectRoot, state, args.doctorMode);
       markPhase(state, "deploy", result.success ? "complete" : "skipped");
+      saveReadiness(projectRoot, state);
+      allFollowUp.push(...result.followUpItems);
+    }
+
+    // Phase 9: CI Remote Cache (Vercel Remote Cache for GitHub Actions)
+    if (
+      !shouldSkipPhase("ci-cache", state, args.resume) ||
+      !(await confirmResumeSkip("CI Cache"))
+    ) {
+      log.step("Phase 9: CI Remote Cache");
+      const result = await runCiCachePhase(projectRoot, args.doctorMode);
+      markPhase(state, "ci-cache", result.success ? "complete" : "partial");
       saveReadiness(projectRoot, state);
       allFollowUp.push(...result.followUpItems);
     }

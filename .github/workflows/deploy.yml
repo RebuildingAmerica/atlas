@@ -15,6 +15,7 @@ concurrency:
 jobs:
   ci:
     uses: ./.github/workflows/ci.yml
+    secrets: inherit
 
   deploy:
     needs: ci
