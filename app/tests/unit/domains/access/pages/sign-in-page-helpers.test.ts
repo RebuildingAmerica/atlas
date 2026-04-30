@@ -5,6 +5,8 @@ import {
   buildSignInErrorCallbackURL,
   extractSSORedirectUrl,
   isOAuthOriginSignIn,
+  parsePricingIntent,
+  resolveSignInHeadingCopy,
   sanitizeSignInRedirectPath,
 } from "@/domains/access/pages/auth/sign-in-page-helpers";
 
@@ -120,6 +122,70 @@ describe("isOAuthOriginSignIn", () => {
     // when they syntactically look like the OAuth path; sanitization rejects
     // them first.
     expect(isOAuthOriginSignIn("//attacker.example/api/auth/oauth2/authorize")).toBe(false);
+  });
+});
+
+describe("resolveSignInHeadingCopy", () => {
+  it("uses workspace-invitation copy when isInvitationFlow is true", () => {
+    const copy = resolveSignInHeadingCopy({ isInvitationFlow: true, pricingIntent: null });
+    expect(copy).toEqual({
+      eyebrow: "Workspace invitation",
+      heading: "Accept your workspace invitation",
+      subhead: "Enter the email address where you received the invitation.",
+    });
+  });
+
+  it("uses research-pass copy when the pricing intent is atlas_research_pass", () => {
+    const copy = resolveSignInHeadingCopy({
+      isInvitationFlow: false,
+      pricingIntent: "atlas_research_pass",
+    });
+    expect(copy.heading).toBe("Sign in to start your pass");
+  });
+
+  it("uses generic-paid copy for any other priced intent", () => {
+    const copy = resolveSignInHeadingCopy({
+      isInvitationFlow: false,
+      pricingIntent: "atlas_team",
+    });
+    expect(copy.heading).toBe("Sign in to subscribe");
+  });
+
+  it("uses default account-access copy when no flow is selected", () => {
+    expect(resolveSignInHeadingCopy({ isInvitationFlow: false, pricingIntent: null })).toEqual({
+      eyebrow: "Account access",
+      heading: "Sign in to Atlas",
+      subhead: "Use your passkey, or enter your email for a sign-in link.",
+    });
+  });
+});
+
+describe("parsePricingIntent", () => {
+  it("returns null when redirectTo is missing", () => {
+    expect(parsePricingIntent(undefined)).toBeNull();
+    expect(parsePricingIntent("")).toBeNull();
+  });
+
+  it("returns null when redirectTo is unparseable", () => {
+    expect(parsePricingIntent("http://[::bad-host")).toBeNull();
+  });
+
+  it("returns null when the path is not /pricing", () => {
+    expect(parsePricingIntent("/discovery?intent=atlas_pro")).toBeNull();
+  });
+
+  it("returns null when intent param is missing", () => {
+    expect(parsePricingIntent("/pricing")).toBeNull();
+  });
+
+  it("returns null for unrecognised intents", () => {
+    expect(parsePricingIntent("/pricing?intent=mystery")).toBeNull();
+  });
+
+  it("returns the matching product for recognised intents", () => {
+    expect(parsePricingIntent("/pricing?intent=atlas_pro")).toBe("atlas_pro");
+    expect(parsePricingIntent("/pricing?intent=atlas_team")).toBe("atlas_team");
+    expect(parsePricingIntent("/pricing?intent=atlas_research_pass")).toBe("atlas_research_pass");
   });
 });
 

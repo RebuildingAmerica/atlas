@@ -67,4 +67,49 @@ describe("parseSamlIdpMetadata", () => {
       expect(result.error).toMatch(/EntityDescriptor/);
     }
   });
+
+  it("returns an empty certificate when no KeyDescriptor is present", () => {
+    const noKey = COMPLETE_METADATA.replace(/<md:KeyDescriptor[\s\S]*<\/md:KeyDescriptor>/, "");
+    const result = parseSamlIdpMetadata(noKey);
+    if (!result.ok) {
+      throw new Error(`Expected parse to succeed, got error: ${result.error}`);
+    }
+    expect(result.metadata.certificate).toBe("");
+    expect(result.metadata.issuer).toBe("https://idp.example/saml2");
+  });
+
+  it("returns an empty certificate when the KeyDescriptor has no X509Certificate text", () => {
+    const emptyCertContent = `<?xml version="1.0" encoding="UTF-8"?>
+<md:EntityDescriptor xmlns:md="urn:oasis:names:tc:SAML:2.0:metadata"
+    entityID="https://idp.example/saml2">
+  <md:IDPSSODescriptor>
+    <md:KeyDescriptor use="signing">
+      <ds:KeyInfo xmlns:ds="http://www.w3.org/2000/09/xmldsig#">
+        <ds:X509Data>
+          <ds:X509Certificate></ds:X509Certificate>
+        </ds:X509Data>
+      </ds:KeyInfo>
+    </md:KeyDescriptor>
+    <md:SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect"
+        Location="https://idp.example/saml2/redirect" />
+  </md:IDPSSODescriptor>
+</md:EntityDescriptor>`;
+    const result = parseSamlIdpMetadata(emptyCertContent);
+    if (!result.ok) {
+      throw new Error(`Expected parse to succeed, got error: ${result.error}`);
+    }
+    expect(result.metadata.certificate).toBe("");
+  });
+
+  it("rejects an EntityDescriptor with no issuer, no SSO endpoint, and no certificate", () => {
+    const minimalEntity = `<?xml version="1.0" encoding="UTF-8"?>
+<md:EntityDescriptor xmlns:md="urn:oasis:names:tc:SAML:2.0:metadata">
+  <md:IDPSSODescriptor protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol" />
+</md:EntityDescriptor>`;
+    const result = parseSamlIdpMetadata(minimalEntity);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error).toMatch(/SAML IdP fields/);
+    }
+  });
 });
