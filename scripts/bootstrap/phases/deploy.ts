@@ -36,7 +36,7 @@ export async function runDeployPhase(
   }
 
   const shouldDeploy = await promptConfirm(
-    "Deploy services to Cloud Run now?",
+    "Deploy atlas-api to Cloud Run now? (atlas-web ships via Vercel auto-deploy.)",
     false,
   );
 
@@ -77,10 +77,8 @@ export async function runDeployPhase(
 
   s.stop("Docker configured for Artifact Registry");
 
-  // ── Build & Push Images ───────────────────────────────────────────────────
+  // ── Build & Push API image ────────────────────────────────────────────────
   const apiImage = `${config.imageBase}/atlas-api:initial`;
-  const webImage = `${config.imageBase}/atlas-web:initial`;
-
   const apiBuilt = buildAndPushImage(
     projectRoot,
     "atlas-api",
@@ -93,25 +91,16 @@ export async function runDeployPhase(
     return { success: false, followUpItems };
   }
 
-  const webBuilt = buildAndPushImage(
-    projectRoot,
-    "atlas-web",
-    path.join(projectRoot, "app"),
-    webImage,
-    followUpItems,
-  );
-
-  if (!webBuilt) {
-    return { success: false, followUpItems };
-  }
-
-  // ── Deploy atlas-api (internal) ───────────────────────────────────────────
+  // ── Deploy atlas-api ──────────────────────────────────────────────────────
+  // Ingress is `all` because Vercel proxies inbound `/api/*` traffic to this
+  // service via ATLAS_SERVER_API_PROXY_TARGET; the canonical domain mapping
+  // (atlas-api.<domain>) is configured separately by the api-domain phase.
   const apiUrl = deployService(
     "atlas-api",
     apiImage,
     config,
     {
-      ingress: "internal",
+      ingress: "all",
       port: 8000,
       envVars: {
         ENVIRONMENT: "production",
@@ -129,39 +118,14 @@ export async function runDeployPhase(
     return { success: false, followUpItems };
   }
 
-  // ── Deploy atlas-web (public) ─────────────────────────────────────────────
-  const webEnvVars: Record<string, string> = {
-    ATLAS_PUBLIC_URL: config.publicUrl,
-    ATLAS_AUTH_BASE_PATH: "/api/auth",
-    ATLAS_SERVER_API_PROXY_TARGET: apiUrl,
-    DATABASE_URL: config.databaseUrl,
-    ATLAS_AUTH_INTERNAL_SECRET: config.authInternalSecret,
-    ATLAS_AUTH_ALLOWED_EMAILS: config.allowedEmails,
-  };
-
-  const webUrl = deployService(
-    "atlas-web",
-    webImage,
-    config,
-    {
-      ingress: "all",
-      port: 3000,
-      envVars: webEnvVars,
-    },
-    followUpItems,
-  );
-
-  if (!webUrl) {
-    return { success: false, followUpItems };
-  }
-
-  // ── Custom domain mapping ─────────────────────────────────────────────────
-  await mapCustomDomain(config, followUpItems);
-
   // ── Summary ───────────────────────────────────────────────────────────────
   log.success("Cloud Run deployment complete");
   logSubline(`atlas-api: ${pc.cyan(apiUrl)}`);
-  logSubline(`atlas-web: ${pc.cyan(webUrl)}`);
+  logSubline(
+    pc.dim(
+      "atlas-web is auto-deployed by Vercel on push to main; no Cloud Run web service.",
+    ),
+  );
 
   return { success: followUpItems.length === 0, followUpItems };
 }
@@ -283,149 +247,6 @@ function deployService(
     } catch {
       // Ignore cleanup errors
     }
-  }
-}
-
-// ── Custom Domain ─────────────────────────────────────────────────────────────
-
-async function mapCustomDomain(
-  config: DeployConfig,
-  followUpItems: string[],
-): Promise<void> {
-  const domain = config.publicUrl.replace(/^https?:\/\//, "");
-  if (!domain) return;
-
-  const shouldMap = await promptConfirm(
-    `Map custom domain (${domain}) to atlas-web?`,
-    false,
-  );
-
-  if (!shouldMap) return;
-
-  const s = spinner();
-  s.start(`Mapping domain ${domain}...`);
-
-  const mapResult = runCommand(
-    `gcloud run domain-mappings create ` +
-      `--service=atlas-web ` +
-      `--domain="${domain}" ` +
-      `--region="${config.region}" ` +
-      `--quiet 2>/dev/null`,
-  );
-
-  if (!mapResult.ok) {
-    s.stop("Domain mapping may already exist or require DNS verification");
-  } else {
-    s.stop(`Domain mapping created for ${domain}`);
-  }
-
-  // Cloudflare DNS auto-configuration
-  const hasWrangler = runCommand("command -v wrangler").ok;
-
-  if (hasWrangler) {
-    await configureCloudflare(domain, followUpItems);
-  } else {
-    logSubline("Add this DNS record to your domain:");
-    logSubline(`  Type:  CNAME`);
-    logSubline(`  Name:  ${domain}`);
-    logSubline(`  Value: ghs.googlehosted.com.`);
-    logSubline("");
-    logSubline(
-      pc.dim(
-        "Tip: Install wrangler (pnpm add -g wrangler) to auto-configure Cloudflare DNS.",
-      ),
-    );
-    followUpItems.push(
-      `Add CNAME record for ${domain} pointing to ghs.googlehosted.com`,
-    );
-  }
-}
-
-async function configureCloudflare(
-  domain: string,
-  followUpItems: string[],
-): Promise<void> {
-  const shouldConfigure = await promptConfirm(
-    "Configure DNS via Cloudflare (wrangler)?",
-    true,
-  );
-
-  if (!shouldConfigure) {
-    followUpItems.push(
-      `Add CNAME record for ${domain} pointing to ghs.googlehosted.com`,
-    );
-    return;
-  }
-
-  // Extract root domain and subdomain
-  const parts = domain.split(".");
-  const rootDomain = parts.slice(-2).join(".");
-  const subdomain = parts.slice(0, -2).join(".");
-
-  const s = spinner();
-  s.start(`Detecting Cloudflare zone for ${rootDomain}...`);
-
-  const zoneResult = runCommand(`wrangler dns list-zones 2>/dev/null`);
-
-  if (!zoneResult.ok) {
-    s.stop("Failed to query Cloudflare zones");
-    followUpItems.push(
-      `Add CNAME record for ${domain} pointing to ghs.googlehosted.com`,
-    );
-    return;
-  }
-
-  // Parse zone ID from output
-  const zoneLine = zoneResult.stdout
-    .split("\n")
-    .find((line) => line.includes(rootDomain));
-
-  if (!zoneLine) {
-    s.stop(`Could not find Cloudflare zone for ${rootDomain}`);
-    logSubline("Add this DNS record manually:");
-    logSubline(`  Type:  CNAME`);
-    logSubline(`  Name:  ${subdomain || "@"}`);
-    logSubline(`  Value: ghs.googlehosted.com.`);
-    followUpItems.push(
-      `Add CNAME record for ${domain} pointing to ghs.googlehosted.com`,
-    );
-    return;
-  }
-
-  const zoneId = zoneLine.split(/\s+/)[0];
-  s.stop(`Found Cloudflare zone: ${rootDomain} (${zoneId})`);
-
-  // Check for existing record
-  const existingResult = runCommand(
-    `wrangler dns list "${zoneId}" --name="${domain}" 2>/dev/null`,
-  );
-
-  if (existingResult.ok && existingResult.stdout.includes("CNAME")) {
-    log.warn(`DNS record already exists for ${domain} — skipping`);
-    return;
-  }
-
-  // Create CNAME record
-  const createSpinner = spinner();
-  createSpinner.start(
-    `Creating CNAME record: ${domain} -> ghs.googlehosted.com`,
-  );
-
-  const createResult = runCommand(
-    `wrangler dns create "${zoneId}" ` +
-      `--type=CNAME ` +
-      `--name="${subdomain}" ` +
-      `--content="ghs.googlehosted.com" ` +
-      `--proxied=false 2>/dev/null`,
-  );
-
-  if (createResult.ok) {
-    createSpinner.stop("Cloudflare DNS record created");
-  } else {
-    createSpinner.stop("Failed to create DNS record");
-    followUpItems.push(
-      `Add CNAME record for ${domain} pointing to ghs.googlehosted.com`,
-    );
   }
 }
 
