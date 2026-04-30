@@ -1,14 +1,14 @@
 import { spawnSync } from "node:child_process";
-import { log, password, spinner } from "@clack/prompts";
+import { log, spinner } from "@clack/prompts";
 import pc from "picocolors";
 import type { PhaseResult } from "../lib/types.js";
 import { commandOutput, runCommand } from "../lib/shell.js";
 import { logSubline, promptConfirm, promptOrExit } from "../lib/ui.js";
 import { getVercelScope, isVercelLinked } from "../lib/vercel.js";
 
-const SECRET_NAME = "TURBO_TOKEN";
+const SECRET_NAME = "TURBO_TOKEN"; // pragma: allowlist secret
 const VAR_NAME = "TURBO_TEAM";
-const TOKEN_URL = "https://vercel.com/account/tokens";
+const TOKEN_NAME = "atlas-ci-remote-cache";
 
 interface RepoIdentity {
   nameWithOwner: string;
@@ -33,6 +33,22 @@ export async function runCiCachePhase(
   if (!runCommand("gh auth status 2>&1 | grep -q 'Logged in'").ok) {
     log.warn("GitHub CLI is not authenticated. Run `gh auth login` and retry.");
     followUpItems.push("Run `gh auth login`, then re-run bootstrap --ci-cache");
+    return { success: false, followUpItems };
+  }
+
+  if (!runCommand("command -v vercel").ok) {
+    log.warn(
+      "Vercel CLI not installed. Run `pnpm add -g vercel` or `brew install vercel-cli`, then retry.",
+    );
+    followUpItems.push(
+      "Install Vercel CLI so the bootstrap can mint TURBO_TOKEN automatically",
+    );
+    return { success: false, followUpItems };
+  }
+
+  if (!runCommand("vercel whoami 2>/dev/null").ok) {
+    log.warn("Vercel CLI is not authenticated. Run `vercel login` and retry.");
+    followUpItems.push("Run `vercel login`, then re-run bootstrap --ci-cache");
     return { success: false, followUpItems };
   }
 
@@ -161,38 +177,40 @@ async function ensureSecret(
 ): Promise<boolean> {
   if (repoHasSecret(nameWithOwner, SECRET_NAME)) {
     const replace = await promptConfirm(
-      `${SECRET_NAME} is already set on ${nameWithOwner}. Replace it?`,
+      `${SECRET_NAME} is already set on ${nameWithOwner}. Mint a new Vercel token and replace it?`,
       false,
     );
     if (!replace) {
       logSubline(`Kept existing ${SECRET_NAME}`);
       return true;
     }
-  } else {
-    log.info(
-      `Create a Vercel access token at ${pc.cyan(TOKEN_URL)} (scoped to your team).`,
-    );
   }
 
-  const token = (await promptOrExit(
-    password({
-      message: `Paste Vercel access token (stored as ${SECRET_NAME})`,
-      validate: (value) =>
-        value && value.trim().length > 0 ? undefined : "Token is required",
-    }),
-  )) as string;
+  const mintSpinner = spinner();
+  mintSpinner.start(`Minting Vercel access token "${TOKEN_NAME}"...`);
 
-  const s = spinner();
-  s.start(`Setting ${SECRET_NAME} on ${nameWithOwner}...`);
+  const token = mintVercelToken();
+  if (!token) {
+    mintSpinner.stop("Failed to mint Vercel token");
+    followUpItems.push(
+      `Run: vercel tokens add ${TOKEN_NAME} --format json (then re-run bootstrap --ci-cache)`,
+    );
+    return false;
+  }
+
+  mintSpinner.stop(`Minted Vercel token "${TOKEN_NAME}"`);
+
+  const setSpinner = spinner();
+  setSpinner.start(`Setting ${SECRET_NAME} on ${nameWithOwner}...`);
 
   const result = spawnSync(
     "gh",
     ["secret", "set", SECRET_NAME, "--repo", nameWithOwner, "--body", "-"],
-    { input: token.trim(), stdio: ["pipe", "pipe", "pipe"], encoding: "utf8" },
+    { input: token, stdio: ["pipe", "pipe", "pipe"], encoding: "utf8" },
   );
 
   if (result.status !== 0) {
-    s.stop(`Failed to set ${SECRET_NAME}`);
+    setSpinner.stop(`Failed to set ${SECRET_NAME}`);
     log.error(result.stderr.trim() || "gh secret set failed");
     followUpItems.push(
       `Run: gh secret set ${SECRET_NAME} --repo ${nameWithOwner}`,
@@ -200,8 +218,46 @@ async function ensureSecret(
     return false;
   }
 
-  s.stop(`${SECRET_NAME} set on ${nameWithOwner}`);
+  setSpinner.stop(`${SECRET_NAME} set on ${nameWithOwner}`);
+  logSubline(
+    pc.dim(
+      `Revoke later via: vercel tokens remove <id> (list with: vercel tokens list)`,
+    ),
+  );
   return true;
+}
+
+function mintVercelToken(): string | undefined {
+  // `vercel tokens add NAME --format json` writes a clean JSON payload of the
+  // POST /v3/user/tokens response. The bearer token only appears in this
+  // response — list/show endpoints redact it.
+  const result = runCommand(`vercel tokens add "${TOKEN_NAME}" --format json`);
+  if (!result.ok) {
+    const stderr = result.stderr || "";
+    if (/classic|user account scope|OAuth/i.test(stderr)) {
+      log.error(
+        "Vercel CLI is OAuth-authenticated, which cannot create new tokens.",
+      );
+      logSubline(
+        pc.dim(
+          "Re-auth with a classic PAT (`vercel logout && vercel login`, choose email) and retry.",
+        ),
+      );
+    } else {
+      log.error(stderr || "vercel tokens add failed");
+    }
+    return undefined;
+  }
+
+  const parsed = JSON.parse(result.stdout) as { bearerToken?: unknown };
+  if (
+    typeof parsed.bearerToken !== "string" ||
+    parsed.bearerToken.length === 0
+  ) {
+    log.error("Vercel CLI did not return a bearerToken in JSON output.");
+    return undefined;
+  }
+  return parsed.bearerToken;
 }
 
 function repoHasSecret(nameWithOwner: string, name: string): boolean {
