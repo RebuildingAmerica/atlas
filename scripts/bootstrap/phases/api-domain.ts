@@ -15,12 +15,24 @@ import {
   verifyCname,
 } from "../lib/cloudflare.js";
 
+export type ApiDomainTarget = "prod" | "staging";
+
 const CLOUD_RUN_CNAME_TARGET = "ghs.googlehosted.com";
 const DEFAULT_REGION = "us-central1";
-const DEFAULT_DOMAIN = "atlas-api.rebuildingus.org";
-const DEFAULT_SERVICE = "atlas-api";
+
+const TARGETS: Record<ApiDomainTarget, { domain: string; service: string }> = {
+  prod: {
+    domain: "atlas-api.rebuildingus.org",
+    service: "atlas-api",
+  },
+  staging: {
+    domain: "atlas-api-staging.rebuildingus.org",
+    service: "atlas-api-staging",
+  },
+};
 
 interface ApiDomainConfig {
+  target: ApiDomainTarget;
   domain: string;
   service: string;
   region: string;
@@ -30,6 +42,7 @@ interface ApiDomainConfig {
 export async function runApiDomainPhase(
   projectRoot: string,
   doctorMode: boolean,
+  target: ApiDomainTarget = "prod",
 ): Promise<PhaseResult> {
   const followUpItems: string[] = [];
 
@@ -41,7 +54,7 @@ export async function runApiDomainPhase(
     return { success: false, followUpItems };
   }
 
-  const config = readConfig(projectRoot);
+  const config = readConfig(projectRoot, target);
   if (!config) {
     log.error("Could not determine GCP project (set GCP_PROJECT_ID in .env).");
     followUpItems.push(
@@ -50,11 +63,22 @@ export async function runApiDomainPhase(
     return { success: false, followUpItems };
   }
 
-  const mappingResult = ensureCloudRunMapping(config, doctorMode);
-  if (!mappingResult.ok) {
-    followUpItems.push(...mappingResult.followUpItems);
-    if (doctorMode) {
-      return { success: false, followUpItems };
+  log.step(
+    `Configuring canonical domain for ${pc.cyan(config.service)} (${target})`,
+  );
+
+  if (!cloudRunServiceExists(config)) {
+    log.error(
+      `Cloud Run service ${config.service} not found in ${config.region} (${config.project}).`,
+    );
+    if (target === "staging") {
+      followUpItems.push(
+        `Provision the staging service first: gcloud run deploy ${config.service} --image=<atlas-api image tag> --region=${config.region} --allow-unauthenticated --port=8000`,
+      );
+    } else {
+      followUpItems.push(
+        `Provision the production service first: pnpm bootstrap (deploy phase)`,
+      );
     }
     return { success: false, followUpItems };
   }
@@ -64,16 +88,59 @@ export async function runApiDomainPhase(
   }
 
   const proceed = await promptConfirm(
-    `Ensure Cloudflare CNAME ${pc.cyan(config.domain)} → ${pc.dim(CLOUD_RUN_CNAME_TARGET)}?`,
+    `Ensure canonical domain ${pc.cyan(config.domain)} → ${pc.dim(config.service)}?`,
     true,
   );
   if (!proceed) {
     followUpItems.push(
-      `Add CNAME ${config.domain} → ${CLOUD_RUN_CNAME_TARGET} in Cloudflare (DNS-only).`,
+      `Add CNAME ${config.domain} → ${CLOUD_RUN_CNAME_TARGET} in Cloudflare and Cloud Run mapping for ${config.service}.`,
     );
     return { success: true, followUpItems };
   }
 
+  // 1. Cloudflare CNAME first — Cloud Run cert challenge succeeds only when
+  //    DNS already resolves. Mapping-then-DNS triggers a 1-hour retry hold.
+  const dnsResult = await ensureCloudflareCname(config, followUpItems);
+  if (!dnsResult.ok) {
+    return { success: false, followUpItems };
+  }
+
+  await waitForDns(config.domain);
+
+  // 2. Cloud Run mapping. Cert challenge runs as soon as the mapping is
+  //    created; with DNS already in place it should succeed immediately.
+  const mappingResult = ensureCloudRunMapping(config);
+  if (!mappingResult.ok) {
+    followUpItems.push(...mappingResult.followUpItems);
+    return { success: false, followUpItems };
+  }
+
+  await waitForCertReadiness(config, followUpItems);
+
+  log.success(
+    `Canonical ${target} API domain ready: ${pc.cyan(`https://${config.domain}`)}`,
+  );
+  if (target === "prod") {
+    logSubline(
+      pc.dim(
+        `Set Vercel ATLAS_SERVER_API_PROXY_TARGET=https://${config.domain} to retire the *.run.app URL.`,
+      ),
+    );
+  }
+
+  return { success: true, followUpItems };
+}
+
+// ── Cloudflare CNAME ─────────────────────────────────────────────────────────
+
+interface DnsResult {
+  ok: boolean;
+}
+
+async function ensureCloudflareCname(
+  config: ApiDomainConfig,
+  followUpItems: string[],
+): Promise<DnsResult> {
   const acquired = await acquireCloudflareToken({
     zoneHint: parentZone(config.domain),
   });
@@ -86,7 +153,7 @@ export async function runApiDomainPhase(
     followUpItems.push(
       `Verify the Cloudflare API token has DNS edit access to ${parentZone(config.domain)}`,
     );
-    return { success: false, followUpItems };
+    return { ok: false };
   }
 
   const dnsSpinner = spinner();
@@ -109,7 +176,7 @@ export async function runApiDomainPhase(
     followUpItems.push(
       `Add CNAME ${config.domain} → ${CLOUD_RUN_CNAME_TARGET} via Cloudflare dashboard`,
     );
-    return { success: false, followUpItems };
+    return { ok: false };
   }
   dnsSpinner.stop(
     upsert.created
@@ -132,31 +199,38 @@ export async function runApiDomainPhase(
     }
   }
 
-  await waitForCertReadiness(config, followUpItems);
-
-  log.success(
-    `Canonical API domain ready: ${pc.cyan(`https://${config.domain}`)}`,
-  );
-  logSubline(
-    pc.dim(
-      `Vercel still proxies via ATLAS_SERVER_API_PROXY_TARGET — point it at this domain to retire the *.run.app URL.`,
-    ),
-  );
-
-  return { success: true, followUpItems };
+  return { ok: true };
 }
 
-// ── Cloud Run mapping ────────────────────────────────────────────────────────
+async function waitForDns(name: string, attempts = 10): Promise<void> {
+  const s = spinner();
+  s.start(`Waiting for DNS propagation of ${name}...`);
+  for (let i = 0; i < attempts; i++) {
+    const verify = verifyCname(name, CLOUD_RUN_CNAME_TARGET);
+    if (verify.resolved) {
+      s.stop(`DNS resolved: ${name} → ${verify.observed}`);
+      return;
+    }
+    await sleep(5000);
+  }
+  s.stop("DNS not resolving on 1.1.1.1 yet — will continue, may slow cert");
+}
+
+// ── Cloud Run service / mapping ──────────────────────────────────────────────
+
+function cloudRunServiceExists(config: ApiDomainConfig): boolean {
+  const result = runCommand(
+    `gcloud run services describe "${config.service}" --region="${config.region}" --project="${config.project}" --format="value(metadata.name)" 2>/dev/null`,
+  );
+  return result.ok && result.stdout.trim() === config.service;
+}
 
 interface MappingResult {
   ok: boolean;
   followUpItems: string[];
 }
 
-function ensureCloudRunMapping(
-  config: ApiDomainConfig,
-  doctorMode: boolean,
-): MappingResult {
+function ensureCloudRunMapping(config: ApiDomainConfig): MappingResult {
   const describe = runCommand(
     `gcloud beta run domain-mappings describe --domain="${config.domain}" --region="${config.region}" --project="${config.project}" --format=json 2>/dev/null`,
   );
@@ -165,15 +239,6 @@ function ensureCloudRunMapping(
       `Cloud Run mapping ${pc.cyan(config.domain)} → ${pc.dim(config.service)} already exists`,
     );
     return { ok: true, followUpItems: [] };
-  }
-
-  if (doctorMode) {
-    return {
-      ok: false,
-      followUpItems: [
-        `Create Cloud Run domain mapping: gcloud beta run domain-mappings create --service=${config.service} --domain=${config.domain} --region=${config.region}`,
-      ],
-    };
   }
 
   const s = spinner();
@@ -200,35 +265,26 @@ function ensureCloudRunMapping(
   return { ok: true, followUpItems: [] };
 }
 
-// ── Cert + DNS readiness ─────────────────────────────────────────────────────
-
 async function waitForCertReadiness(
   config: ApiDomainConfig,
   followUpItems: string[],
 ): Promise<void> {
   const s = spinner();
-  s.start("Waiting for Cloud Run cert + DNS to be ready...");
+  s.start("Waiting for Cloud Run cert + HTTPS to be live...");
   for (let attempt = 0; attempt < 18; attempt++) {
-    const verify = verifyCname(config.domain, CLOUD_RUN_CNAME_TARGET);
-    if (verify.resolved) {
-      const probe = runCommand(
-        `curl -sI --max-time 5 https://${config.domain}/health`,
-      );
-      if (probe.ok && /^HTTP\/[12](\.[01])? 2\d\d/m.test(probe.stdout)) {
-        s.stop(`https://${config.domain}/health responding`);
-        return;
-      }
+    const probe = runCommand(
+      `curl -sI --max-time 5 https://${config.domain}/health`,
+    );
+    if (probe.ok && /^HTTP\/[12](\.[01])? 2\d\d/m.test(probe.stdout)) {
+      s.stop(`https://${config.domain}/health responding`);
+      return;
     }
     await sleep(10000);
   }
-  s.stop("Cert + DNS not yet healthy (continuing)");
+  s.stop("Cert + HTTPS not yet live (continuing)");
   followUpItems.push(
     `Cert provisioning still in progress for ${config.domain}; re-run --api-domain in a few minutes to verify.`,
   );
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 // ── Doctor / status ──────────────────────────────────────────────────────────
@@ -245,7 +301,9 @@ function reportStatus(config: ApiDomainConfig): PhaseResult {
   );
   if (!verify.resolved) {
     followUpItems.push(
-      "Run `pnpm bootstrap --api-domain` to provision the Cloudflare CNAME",
+      `Run \`pnpm bootstrap --api-domain${
+        config.target === "staging" ? " --target staging" : ""
+      }\` to provision the Cloudflare CNAME`,
     );
   }
   return {
@@ -254,9 +312,16 @@ function reportStatus(config: ApiDomainConfig): PhaseResult {
   };
 }
 
-// ── Config reader ────────────────────────────────────────────────────────────
+// ── Helpers ──────────────────────────────────────────────────────────────────
 
-function readConfig(projectRoot: string): ApiDomainConfig | null {
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function readConfig(
+  projectRoot: string,
+  target: ApiDomainTarget,
+): ApiDomainConfig | null {
   const env = mergeEnvFiles([
     path.join(projectRoot, ".env.production"),
     path.join(projectRoot, ".env"),
@@ -264,9 +329,11 @@ function readConfig(projectRoot: string): ApiDomainConfig | null {
   ]);
   const project = env.get("GCP_PROJECT_ID");
   if (!project) return null;
+  const targetConfig = TARGETS[target];
   return {
-    domain: env.get("ATLAS_API_DOMAIN") ?? DEFAULT_DOMAIN,
-    service: env.get("ATLAS_API_SERVICE_NAME") ?? DEFAULT_SERVICE,
+    target,
+    domain: targetConfig.domain,
+    service: targetConfig.service,
     region: env.get("GCP_REGION") ?? DEFAULT_REGION,
     project,
   };

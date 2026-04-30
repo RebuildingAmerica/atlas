@@ -11,6 +11,7 @@
  *   pnpm bootstrap --mcp-registry      Run MCP Registry publisher setup only
  *   pnpm bootstrap --ci-cache          Wire Vercel Remote Cache into Actions
  *   pnpm bootstrap --api-domain        Ensure atlas-api Cloud Run + Cloudflare CNAME
+ *   pnpm bootstrap --api-domain --target staging  Same, for atlas-api-staging
  *   pnpm bootstrap --live              Use Stripe live mode (default: test)
  */
 
@@ -33,7 +34,10 @@ import { runProductPhase } from "./products/atlas/bootstrap.js";
 import { runDeployPhase } from "./phases/deploy.js";
 import { runMcpRegistryPhase } from "./phases/mcp-registry.js";
 import { runCiCachePhase } from "./phases/ci-cache.js";
-import { runApiDomainPhase } from "./phases/api-domain.js";
+import {
+  runApiDomainPhase,
+  type ApiDomainTarget,
+} from "./phases/api-domain.js";
 
 interface CliArgs {
   localOnly: boolean;
@@ -43,10 +47,15 @@ interface CliArgs {
   mcpRegistryOnly: boolean;
   ciCacheOnly: boolean;
   apiDomainOnly: boolean;
+  apiDomainTarget: ApiDomainTarget;
   live: boolean;
 }
 
 function parseArgs(argv: string[]): CliArgs {
+  const targetIdx = argv.indexOf("--target");
+  const targetArg = targetIdx >= 0 ? (argv[targetIdx + 1] ?? "prod") : "prod";
+  const apiDomainTarget: ApiDomainTarget =
+    targetArg === "staging" ? "staging" : "prod";
   return {
     localOnly: argv.includes("--local-only"),
     doctorMode: argv.includes("--doctor"),
@@ -57,6 +66,7 @@ function parseArgs(argv: string[]): CliArgs {
     mcpRegistryOnly: argv.includes("--mcp-registry"),
     ciCacheOnly: argv.includes("--ci-cache"),
     apiDomainOnly: argv.includes("--api-domain"),
+    apiDomainTarget,
     live: argv.includes("--live"),
   };
 }
@@ -169,8 +179,14 @@ async function main(): Promise<void> {
 
   // API domain-only mode
   if (args.apiDomainOnly) {
-    log.info("Running atlas-api domain mapping only.");
-    const result = await runApiDomainPhase(projectRoot, args.doctorMode);
+    log.info(
+      `Running atlas-api domain mapping only (target=${args.apiDomainTarget}).`,
+    );
+    const result = await runApiDomainPhase(
+      projectRoot,
+      args.doctorMode,
+      args.apiDomainTarget,
+    );
     markPhase(state, "api-domain", result.success ? "complete" : "partial");
     saveReadiness(projectRoot, state);
     if (result.followUpItems.length > 0) {
@@ -178,7 +194,7 @@ async function main(): Promise<void> {
     }
     outro(
       result.success
-        ? "atlas-api canonical domain ready."
+        ? `atlas-api ${args.apiDomainTarget} canonical domain ready.`
         : "API domain wiring had issues.",
     );
     return;
