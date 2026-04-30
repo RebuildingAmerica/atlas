@@ -19,22 +19,12 @@ export default defineConfig({
         "src/routes/**",
         "src/routeTree.gen.ts",
         "tests/**",
-        // Server-only modules that depend on the Better Auth runtime,
-        // Postgres/SQLite handles, or external service SDKs.  These are
-        // covered by acceptance + contract suites instead of unit tests.
-        "src/domains/access/server/auth.tsx",
-        "src/domains/access/server/atlas-migrations.ts",
-        "src/domains/access/server/runtime.ts",
-        "src/domains/access/server/sso-provider-store.ts",
-        "src/domains/access/server/workspace-lookup.ts",
-        "src/domains/access/server/workspace-products.ts",
-        "src/domains/billing/server/stripe-client.ts",
-        "src/domains/billing/server/stripe-customer.ts",
         // TanStack Start server functions wrap createServerFn().handler(),
         // which can only execute inside the TanStack Start runtime.  They
         // are exercised end-to-end by the acceptance suite.
         "src/**/*.functions.ts",
-        // Vite-only entry; cannot import in vitest without spinning up Vite.
+        // Vite-only entry that pulls in `@vercel/config`; importing it in
+        // vitest crashes outside the Vite runtime.
         "vercel.ts",
       ],
       thresholds: {
