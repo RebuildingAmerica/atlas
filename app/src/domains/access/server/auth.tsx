@@ -150,6 +150,13 @@ function createAtlasAuth(runtime: AuthRuntimeConfig) {
         // surface they don't want.  The sign-up page surfaces the same
         // value via `MAGIC_LINK_EXPIRY_SECONDS`; keep them in sync.
         expiresIn: 300,
+        // Browsers often pre-fetch the verify URL when the email client
+        // opens it (Outlook safe-link scanners, antivirus link previews,
+        // some Vite dev-server prefetch behavior in tests).  Allow a
+        // small replay window so the legitimate user request is not
+        // mistaken for a replay attack.  The token still expires in 5
+        // minutes via expiresIn above.
+        allowedAttempts: 5,
         sendMagicLink: createMagicLinkSender(),
       }),
       passkey({
