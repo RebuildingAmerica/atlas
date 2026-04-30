@@ -268,6 +268,8 @@ If you deploy Atlas containers to Google Cloud Run, prefer the platform-native m
 
 The Caddy-based Docker stack is for VM-style deployments and production-like local smoke testing, not a requirement for Cloud Run.
 
+If the app is on Vercel and only the API is on Cloud Run, point Vercel's `ATLAS_SERVER_API_PROXY_TARGET` at a stable subdomain (e.g. `https://atlas-api.<your-domain>`) backed by a Cloud Run domain mapping rather than the raw `*.run.app` URL. The mapping survives service recreations; the raw URL does not, and any Vercel env that hardcodes it becomes a quiet trap waiting for the next redeploy.
+
 ## Verification checklist
 
 After every deployment, check these in order:
