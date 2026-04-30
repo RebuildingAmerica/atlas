@@ -6,6 +6,14 @@ import {
 } from "@/domains/access/server/runtime";
 
 describe("runtime additional branches", () => {
+  const loadFreshRuntime = async (env: Record<string, string>) => {
+    vi.resetModules();
+    for (const [key, value] of Object.entries(env)) {
+      vi.stubEnv(key, value);
+    }
+    return await import("@/domains/access/server/runtime");
+  };
+
   it("infers resend delivery when only the resend api key is configured", () => {
     const runtime = resolveAuthRuntimeConfig(
       {
@@ -70,6 +78,87 @@ describe("runtime additional branches", () => {
       vi.stubEnv("ATLAS_AUTH_ALLOWED_EMAILS", "");
 
       expect(isAllowedEmail("anyone@atlas.test")).toBe(false);
+    });
+  });
+
+  describe("operator allowlist with entries", () => {
+    afterEach(() => {
+      vi.unstubAllEnvs();
+    });
+
+    it("admits the listed emails and rejects others", async () => {
+      const runtime = await loadFreshRuntime({
+        ATLAS_PUBLIC_URL: "https://atlas.test",
+        ATLAS_AUTH_INTERNAL_SECRET: "internal",
+        ATLAS_AUTH_ALLOWED_EMAILS: "ops@atlas.test, ROOT@atlas.test",
+      });
+
+      expect(runtime.isAllowedEmail("ops@atlas.test")).toBe(true);
+      expect(runtime.isAllowedEmail(" Root@Atlas.Test ")).toBe(true);
+      expect(runtime.isAllowedEmail("intruder@atlas.test")).toBe(false);
+    });
+  });
+
+  describe("SAML issuer allowlist", () => {
+    afterEach(() => {
+      vi.unstubAllEnvs();
+    });
+
+    it("rejects every issuer when the allowlist is empty", async () => {
+      const runtime = await loadFreshRuntime({
+        ATLAS_PUBLIC_URL: "https://atlas.test",
+        ATLAS_AUTH_INTERNAL_SECRET: "internal",
+        ATLAS_SAML_ALLOWED_ISSUERS: "",
+      });
+
+      expect(runtime.isAllowedSamlIssuer("https://idp.example.com/saml2")).toBe(false);
+      expect(runtime.getSamlAllowedIssuerOrigins()).toEqual([]);
+    });
+
+    it("matches by URL origin and ignores query parameters", async () => {
+      const runtime = await loadFreshRuntime({
+        ATLAS_PUBLIC_URL: "https://atlas.test",
+        ATLAS_AUTH_INTERNAL_SECRET: "internal",
+        ATLAS_SAML_ALLOWED_ISSUERS: "https://accounts.google.com, https://login.microsoft.com",
+      });
+
+      expect(runtime.isAllowedSamlIssuer("https://accounts.google.com/o/saml2?idpid=abc")).toBe(
+        true,
+      );
+      expect(runtime.isAllowedSamlIssuer("https://login.microsoft.com/saml2/path")).toBe(true);
+      expect(runtime.isAllowedSamlIssuer("https://malicious.example/saml2")).toBe(false);
+      expect([...runtime.getSamlAllowedIssuerOrigins()].sort()).toEqual([
+        "https://accounts.google.com",
+        "https://login.microsoft.com",
+      ]);
+    });
+
+    it("rejects unparseable issuer URLs", async () => {
+      const runtime = await loadFreshRuntime({
+        ATLAS_PUBLIC_URL: "https://atlas.test",
+        ATLAS_AUTH_INTERNAL_SECRET: "internal",
+        ATLAS_SAML_ALLOWED_ISSUERS: "https://accounts.google.com",
+      });
+
+      expect(runtime.isAllowedSamlIssuer("not-a-url")).toBe(false);
+    });
+  });
+
+  describe("getCimdResolverOptions", () => {
+    afterEach(() => {
+      vi.unstubAllEnvs();
+    });
+
+    it("merges the configured allowlist into the default resolver options", async () => {
+      const runtime = await loadFreshRuntime({
+        ATLAS_PUBLIC_URL: "https://atlas.test",
+        ATLAS_AUTH_INTERNAL_SECRET: "internal",
+        ATLAS_OAUTH_CIMD_DOMAIN_ALLOWLIST: "atlas-clients.example, partner.example.com",
+      });
+
+      const options = runtime.getCimdResolverOptions();
+
+      expect(options.allowedHostSuffixes).toEqual(["atlas-clients.example", "partner.example.com"]);
     });
   });
 });
