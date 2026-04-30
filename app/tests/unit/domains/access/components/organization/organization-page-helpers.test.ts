@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { buildWorkspaceSlugCandidate } from "@/domains/access/components/organization/organization-page-helpers";
+import {
+  buildWorkspaceSlugCandidate,
+  invitationRoleOptions,
+  memberRoleOptions,
+  workspaceTypeOptions,
+} from "@/domains/access/components/organization/organization-page-helpers";
 
 describe("organization-page-helpers", () => {
   describe("buildWorkspaceSlugCandidate", () => {
@@ -22,6 +27,23 @@ describe("organization-page-helpers", () => {
     it("limits slug length to 64 characters", () => {
       const longName = "a".repeat(100);
       expect(buildWorkspaceSlugCandidate(longName)).toHaveLength(64);
+    });
+  });
+
+  describe("role and type option lists", () => {
+    it("exposes workspace types in expected order", () => {
+      expect(workspaceTypeOptions.map((option) => option.value)).toEqual(["individual", "team"]);
+      expect(workspaceTypeOptions.map((option) => option.label)).toEqual(["Individual", "Team"]);
+    });
+
+    it("exposes invitation roles in expected order", () => {
+      expect(invitationRoleOptions.map((option) => option.value)).toEqual(["member", "admin"]);
+      expect(invitationRoleOptions.map((option) => option.label)).toEqual(["Member", "Admin"]);
+    });
+
+    it("exposes member roles in expected order", () => {
+      expect(memberRoleOptions.map((option) => option.value)).toEqual(["member", "admin"]);
+      expect(memberRoleOptions.map((option) => option.label)).toEqual(["Member", "Admin"]);
     });
   });
 });
