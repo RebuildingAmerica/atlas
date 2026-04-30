@@ -10,6 +10,7 @@
  *   pnpm bootstrap --product atlas     Run Stripe product sync only
  *   pnpm bootstrap --mcp-registry      Run MCP Registry publisher setup only
  *   pnpm bootstrap --ci-cache          Wire Vercel Remote Cache into Actions
+ *   pnpm bootstrap --api-domain        Ensure atlas-api Cloud Run + Cloudflare CNAME
  *   pnpm bootstrap --live              Use Stripe live mode (default: test)
  */
 
@@ -32,6 +33,7 @@ import { runProductPhase } from "./products/atlas/bootstrap.js";
 import { runDeployPhase } from "./phases/deploy.js";
 import { runMcpRegistryPhase } from "./phases/mcp-registry.js";
 import { runCiCachePhase } from "./phases/ci-cache.js";
+import { runApiDomainPhase } from "./phases/api-domain.js";
 
 interface CliArgs {
   localOnly: boolean;
@@ -40,6 +42,7 @@ interface CliArgs {
   productOnly: string | null;
   mcpRegistryOnly: boolean;
   ciCacheOnly: boolean;
+  apiDomainOnly: boolean;
   live: boolean;
 }
 
@@ -53,6 +56,7 @@ function parseArgs(argv: string[]): CliArgs {
       : null,
     mcpRegistryOnly: argv.includes("--mcp-registry"),
     ciCacheOnly: argv.includes("--ci-cache"),
+    apiDomainOnly: argv.includes("--api-domain"),
     live: argv.includes("--live"),
   };
 }
@@ -159,6 +163,23 @@ async function main(): Promise<void> {
       result.success
         ? "Vercel Remote Cache wired into GitHub Actions."
         : "CI cache wiring had issues.",
+    );
+    return;
+  }
+
+  // API domain-only mode
+  if (args.apiDomainOnly) {
+    log.info("Running atlas-api domain mapping only.");
+    const result = await runApiDomainPhase(projectRoot, args.doctorMode);
+    markPhase(state, "api-domain", result.success ? "complete" : "partial");
+    saveReadiness(projectRoot, state);
+    if (result.followUpItems.length > 0) {
+      note(result.followUpItems.join("\n"), "Follow-up");
+    }
+    outro(
+      result.success
+        ? "atlas-api canonical domain ready."
+        : "API domain wiring had issues.",
     );
     return;
   }
@@ -322,6 +343,18 @@ async function main(): Promise<void> {
       log.step("Phase 9: CI Remote Cache");
       const result = await runCiCachePhase(projectRoot, args.doctorMode);
       markPhase(state, "ci-cache", result.success ? "complete" : "partial");
+      saveReadiness(projectRoot, state);
+      allFollowUp.push(...result.followUpItems);
+    }
+
+    // Phase 10: API canonical domain (Cloud Run mapping + Cloudflare CNAME)
+    if (
+      !shouldSkipPhase("api-domain", state, args.resume) ||
+      !(await confirmResumeSkip("API Domain"))
+    ) {
+      log.step("Phase 10: API Canonical Domain");
+      const result = await runApiDomainPhase(projectRoot, args.doctorMode);
+      markPhase(state, "api-domain", result.success ? "complete" : "partial");
       saveReadiness(projectRoot, state);
       allFollowUp.push(...result.followUpItems);
     }
