@@ -14,6 +14,18 @@ interface RepoIdentity {
   nameWithOwner: string;
 }
 
+interface VercelTeam {
+  id: string;
+  slug: string;
+  name: string;
+  current?: boolean;
+}
+
+interface TeamLookup {
+  teams: VercelTeam[];
+  linked?: VercelTeam;
+}
+
 export async function runCiCachePhase(
   projectRoot: string,
   doctorMode: boolean,
@@ -62,10 +74,10 @@ export async function runCiCachePhase(
   }
 
   const appDir = `${projectRoot}/app`;
-  const teamSlug = detectVercelTeamSlug(appDir);
+  const lookup = fetchTeamLookup(appDir);
 
   if (doctorMode) {
-    return reportStatus(repo.nameWithOwner, teamSlug);
+    return reportStatus(repo.nameWithOwner, lookup.linked?.slug);
   }
 
   const proceed = await promptConfirm(
@@ -77,6 +89,14 @@ export async function runCiCachePhase(
       pc.dim("Skipped — re-run anytime with `pnpm bootstrap --ci-cache`."),
     );
     return { success: true, followUpItems: [] };
+  }
+
+  const teamSlug = await resolveTeamSlug(lookup);
+  if (!teamSlug) {
+    followUpItems.push(
+      "Could not determine Vercel team. Re-run after `vercel link` in app/.",
+    );
+    return { success: false, followUpItems };
   }
 
   const tokenOk = await ensureSecret(repo.nameWithOwner, followUpItems);
@@ -118,30 +138,24 @@ function detectRepo(): RepoIdentity | undefined {
   }
 }
 
-function detectVercelTeamSlug(appDir: string): string | undefined {
-  if (!isVercelLinked(appDir)) return undefined;
-  const orgId = getVercelScope(appDir);
-  if (!orgId) return undefined;
+function fetchTeamLookup(appDir: string): TeamLookup {
+  const teams = listVercelTeams();
+  const linkedId = isVercelLinked(appDir) ? getVercelScope(appDir) : undefined;
+  const linked = linkedId
+    ? teams.find((t) => t.id === linkedId)
+    : teams.find((t) => t.current);
+  return { teams, linked };
+}
 
-  // Match the orgId (team_xxx) against `vercel teams ls --json` output to
-  // recover the slug. Fall back to text parsing if --json is unsupported.
-  const jsonResult = runCommand("vercel teams ls --json 2>/dev/null");
-  if (jsonResult.ok) {
-    try {
-      const parsed = JSON.parse(jsonResult.stdout) as {
-        id?: string;
-        slug?: string;
-        name?: string;
-      }[];
-      const match = parsed.find((t) => t.id === orgId);
-      if (match?.slug) return match.slug;
-    } catch {
-      // fall through
-    }
+function listVercelTeams(): VercelTeam[] {
+  const result = runCommand("vercel teams ls --format json 2>/dev/null");
+  if (!result.ok) return [];
+  try {
+    const parsed = JSON.parse(result.stdout) as { teams?: VercelTeam[] };
+    return Array.isArray(parsed.teams) ? parsed.teams : [];
+  } catch {
+    return [];
   }
-
-  // Best-effort: return undefined and let the caller prompt.
-  return undefined;
 }
 
 function reportStatus(
@@ -272,14 +286,55 @@ function repoHasSecret(nameWithOwner: string, name: string): boolean {
 
 // ── Variable ─────────────────────────────────────────────────────────────────
 
+async function resolveTeamSlug(
+  lookup: TeamLookup,
+): Promise<string | undefined> {
+  if (lookup.linked) {
+    logSubline(
+      `Using linked Vercel team: ${pc.cyan(lookup.linked.slug)} ${pc.dim(`(${lookup.linked.name})`)}`,
+    );
+    return lookup.linked.slug;
+  }
+
+  if (lookup.teams.length === 0) {
+    log.error(
+      "Vercel CLI returned no teams. Are you logged in (`vercel whoami`)?",
+    );
+    return undefined;
+  }
+
+  const [only, ...rest] = lookup.teams;
+  if (only && rest.length === 0) {
+    logSubline(
+      `Using only available Vercel team: ${pc.cyan(only.slug)} ${pc.dim(`(${only.name})`)}`,
+    );
+    return only.slug;
+  }
+
+  const { select } = await import("@clack/prompts");
+  const initial = lookup.teams.find((t) => t.current)?.slug;
+  const slug = (await promptOrExit(
+    select({
+      message: "Pick the Vercel team to use for TURBO_TEAM",
+      options: lookup.teams.map((t) => ({
+        value: t.slug,
+        label: t.slug,
+        hint: t.name,
+      })),
+      initialValue: initial,
+    }),
+  )) as string;
+  return slug;
+}
+
 async function ensureVariable(
   nameWithOwner: string,
-  detectedSlug: string | undefined,
+  slug: string,
   followUpItems: string[],
 ): Promise<boolean> {
   if (repoHasVariable(nameWithOwner, VAR_NAME)) {
     const replace = await promptConfirm(
-      `${VAR_NAME} is already set on ${nameWithOwner}. Replace it?`,
+      `${VAR_NAME} is already set on ${nameWithOwner}. Overwrite with "${slug}"?`,
       false,
     );
     if (!replace) {
@@ -287,19 +342,6 @@ async function ensureVariable(
       return true;
     }
   }
-
-  const { text } = await import("@clack/prompts");
-  const slug = (await promptOrExit(
-    text({
-      message: "Vercel team slug (used as TURBO_TEAM)",
-      placeholder: detectedSlug ?? "your-team-slug",
-      initialValue: detectedSlug,
-      validate: (value) =>
-        value && /^[a-zA-Z0-9_-]+$/.test(value)
-          ? undefined
-          : "Slug must match [a-zA-Z0-9_-]+",
-    }),
-  )) as string;
 
   const s = spinner();
   s.start(`Setting ${VAR_NAME}=${slug} on ${nameWithOwner}...`);
@@ -312,7 +354,7 @@ async function ensureVariable(
     s.stop(`Failed to set ${VAR_NAME}`);
     log.error(commandOutput(result));
     followUpItems.push(
-      `Run: gh variable set ${VAR_NAME} --repo ${nameWithOwner} --body <slug>`,
+      `Run: gh variable set ${VAR_NAME} --repo ${nameWithOwner} --body ${slug}`,
     );
     return false;
   }
