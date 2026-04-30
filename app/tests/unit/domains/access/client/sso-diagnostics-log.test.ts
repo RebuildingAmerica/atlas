@@ -53,4 +53,47 @@ describe("sso-diagnostics-log", () => {
     window.localStorage.setItem("atlas:sso-diagnostics-log", "not-json");
     expect(readSsoDiagnostics()).toEqual([]);
   });
+
+  it("returns an empty list when the stored value is not an array", () => {
+    window.localStorage.setItem("atlas:sso-diagnostics-log", JSON.stringify({ code: "anything" }));
+    expect(readSsoDiagnostics()).toEqual([]);
+  });
+
+  it("skips entries that are missing recordedAt or are non-objects", () => {
+    window.localStorage.setItem(
+      "atlas:sso-diagnostics-log",
+      JSON.stringify([
+        null,
+        "string",
+        { code: "no-timestamp" },
+        { recordedAt: "2026-04-29T00:00:00.000Z", code: "ok" },
+      ]),
+    );
+    const entries = readSsoDiagnostics();
+    expect(entries).toHaveLength(1);
+    expect(entries[0]?.code).toBe("ok");
+  });
+
+  it("drops empty-string fields back to null on read", () => {
+    window.localStorage.setItem(
+      "atlas:sso-diagnostics-log",
+      JSON.stringify([
+        {
+          recordedAt: "2026-04-29T00:00:00.000Z",
+          code: "",
+          email: "",
+          message: "",
+          workspaceSlug: "",
+        },
+      ]),
+    );
+    const entries = readSsoDiagnostics();
+    expect(entries[0]).toEqual({
+      code: null,
+      email: null,
+      message: null,
+      recordedAt: "2026-04-29T00:00:00.000Z",
+      workspaceSlug: null,
+    });
+  });
 });

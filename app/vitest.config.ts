@@ -30,9 +30,9 @@ export default defineConfig({
         "src/domains/access/server/workspace-products.ts",
         "src/domains/billing/server/stripe-client.ts",
         "src/domains/billing/server/stripe-customer.ts",
-        // TanStack Start server functions are exercised end-to-end by the
-        // acceptance suite; unit-testing them requires reproducing the
-        // server-fn runtime.
+        // TanStack Start server functions wrap createServerFn().handler(),
+        // which can only execute inside the TanStack Start runtime.  They
+        // are exercised end-to-end by the acceptance suite.
         "src/**/*.functions.ts",
         // Vite-only entry; cannot import in vitest without spinning up Vite.
         "vercel.ts",
