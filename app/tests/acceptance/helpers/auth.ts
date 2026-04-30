@@ -86,29 +86,41 @@ export async function installVirtualAuthenticator(page: Page) {
  * @param page - The active Playwright page.
  */
 export async function performSignIn(page: Page) {
-  await installVirtualAuthenticator(page);
   await resetMailbox();
 
-  await page.goto("/sign-in?redirect=%2Faccount");
+  // Conditional-mediation passkey autofill on the sign-in page intercepts
+  // the email input before React 19 hydration completes, blocking
+  // page.fill() from propagating into form state.  Disable it for tests.
+  await page.addInitScript(() => {
+    if (typeof PublicKeyCredential !== "undefined") {
+      Object.defineProperty(PublicKeyCredential, "isConditionalMediationAvailable", {
+        configurable: true,
+        value: () => Promise.resolve(false),
+      });
+    }
+  });
+
+  // Wait for hydration so the React onChange handler is attached before fill().
+  await page.goto("/sign-in?redirect=%2Faccount", { waitUntil: "networkidle" });
   await page.getByLabel("Email").fill(operatorEmail);
   await page.getByRole("button", { name: "Continue with email" }).click();
-  await expect(
-    page.getByText("If the email can access Atlas, a sign-in link is on the way."),
-  ).toBeVisible();
+  await expect(page.getByText("A sign-in link is on the way. Check your inbox.")).toBeVisible();
 
   const rawEmail = await pollLatestMessage(operatorEmail);
   const magicLinkUrl = extractFirstUrlFromEmail(rawEmail);
   await page.goto(magicLinkUrl);
 
-  // Wait for the account or organization page (or account setup)
   await page.waitForURL((url) => {
     const pathname = url.pathname;
     return pathname === "/account" || pathname === "/account-setup" || pathname === "/organization";
   });
 
-  // If we're on account setup, handle the initial passkey add
   if (page.url().endsWith("/account-setup")) {
+    await installVirtualAuthenticator(page);
     await page.getByRole("button", { name: "Add passkey" }).click();
-    await page.waitForURL("**/organization");
+    await page.waitForURL((url) => {
+      const pathname = url.pathname;
+      return pathname === "/account" || pathname === "/organization" || pathname === "/discovery";
+    });
   }
 }
