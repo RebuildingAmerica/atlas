@@ -186,6 +186,74 @@ class TestConnectionComputation:
         total_actors = sum(len(g["actors"]) for g in connections)
         assert total_actors == 0
 
+    @pytest.mark.asyncio
+    async def test_returns_empty_for_unknown_entry(self, test_db: object) -> None:
+        connections = await compute_connections(test_db, "no-such-entry-id")
+        assert connections == []
+
+    @pytest.mark.asyncio
+    async def test_organization_with_no_affiliates_yields_no_same_org_group(
+        self, test_db: object
+    ) -> None:
+        org_id = await EntryCRUD.create(
+            test_db,
+            entry_type="organization",
+            name="Solo Org",
+            description="Org with no people",
+            city=None,
+            state=None,
+            geo_specificity="regional",
+        )
+        connections = await compute_connections(test_db, org_id)
+        assert all(g["type"] != "same_organization" for g in connections)
+
+    @pytest.mark.asyncio
+    async def test_organization_lists_affiliated_persons(self, test_db: object) -> None:
+        org_id = await EntryCRUD.create(
+            test_db,
+            entry_type="organization",
+            name="Affiliating Org",
+            description="Has members",
+            city=None,
+            state=None,
+            geo_specificity="regional",
+        )
+        person_id = await EntryCRUD.create(
+            test_db,
+            entry_type="person",
+            name="Member",
+            description="Member of org",
+            city=None,
+            state=None,
+            geo_specificity="local",
+            affiliated_org_id=org_id,
+        )
+        connections = await compute_connections(test_db, org_id)
+        same_org = next((g for g in connections if g["type"] == "same_organization"), None)
+        assert same_org is not None
+        actor_ids = [a["id"] for a in same_org["actors"]]
+        assert person_id in actor_ids
+
+    @pytest.mark.asyncio
+    async def test_same_issue_area_returns_empty_when_no_match(self, test_db: object) -> None:
+        person_id = await EntryCRUD.create(
+            test_db,
+            entry_type="person",
+            name="Lonely Advocate",
+            description="No issue siblings",
+            city=None,
+            state="MO",
+            geo_specificity="local",
+        )
+        await test_db.execute(
+            "INSERT INTO entry_issue_areas (entry_id, issue_area, created_at) "
+            "VALUES (?, ?, datetime('now'))",
+            (person_id, "rare_unique_issue"),
+        )
+        await test_db.commit()
+        connections = await compute_connections(test_db, person_id)
+        assert all(g["type"] != "same_issue_area" for g in connections)
+
 
 class TestConnectionsEndpoint:
     """Verify the HTTP endpoint returns connection data."""

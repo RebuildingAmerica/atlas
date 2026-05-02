@@ -587,6 +587,16 @@ class TestSourceFetchingHelpers:
         """Missing search credentials should safely skip source fetching."""
         assert await fetch_sources(["housing"], None) == []
 
+    @pytest.mark.asyncio
+    async def test_fetch_sources_returns_empty_for_empty_queries(self) -> None:
+        """An empty query list short-circuits without invoking search."""
+        assert await fetch_sources([], "any-key") == []
+
+    def test_infer_source_type_returns_report_for_pdf_or_report(self) -> None:
+        """Reports and PDFs should be classified as report sources."""
+        assert _infer_source_type("https://example.com/file.pdf", "Annual Report") == "report"
+        assert _infer_source_type("https://example.com/x", "Quarterly Report") == "report"
+
 
 class TestExtractionHelpers:
     """Tests for prompt and parsing helpers."""

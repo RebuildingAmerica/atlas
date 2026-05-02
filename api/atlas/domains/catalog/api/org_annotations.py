@@ -191,8 +191,7 @@ async def update_org_annotation(  # noqa: PLR0913
         )
 
     updated = await OwnershipCRUD.update_annotation(db, annotation_id, req.content)
-    if updated is None:
-        raise HTTPException(status_code=500, detail="Failed to update annotation")
+    assert updated is not None, "Annotation existence verified above"
 
     apply_no_store_headers(response)
     return AnnotationResponse(

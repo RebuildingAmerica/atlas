@@ -88,8 +88,8 @@ async def _find_same_organization(
 
     if entry.type == "person" and entry.affiliated_org_id:
         org = await EntryCRUD.get_by_id(conn, entry.affiliated_org_id)
-        if org:
-            actors.append(_actor_dict(org, "Affiliated organization"))
+        assert org is not None, "FK constraint guarantees affiliated_org_id resolves"
+        actors.append(_actor_dict(org, "Affiliated organization"))
 
         cursor = await conn.execute(
             "SELECT * FROM entries WHERE affiliated_org_id = ? AND id != ? AND active = 1 LIMIT ?",
@@ -99,8 +99,7 @@ async def _find_same_organization(
         columns = [desc[0] for desc in cursor.description]
         for row in rows:
             other = _row_to_entry(dict(zip(columns, row, strict=False)))
-            evidence = f"Also affiliated with {org.name}" if org else "Same organization"
-            actors.append(_actor_dict(other, evidence))
+            actors.append(_actor_dict(other, f"Also affiliated with {org.name}"))
 
     elif entry.type == "organization":
         cursor = await conn.execute(

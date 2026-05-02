@@ -136,6 +136,7 @@ requires-dist = [{ name = "atlas-shared", editable = "../libs/shared" }]
 dev = [
     { name = "pytest", specifier = ">=9.0.3" },
     { name = "pytest-asyncio", specifier = ">=1.3.0" },
+    { name = "pytest-cov", specifier = ">=7.0.0" },
     { name = "ruff", specifier = ">=0.15.10" },
 ]
 

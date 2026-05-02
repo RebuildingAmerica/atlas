@@ -18,6 +18,7 @@ from atlas.domains.discovery.api_org import (
     OrgDiscoveryRunStartRequest,
     _run_to_org_response,
     _verify_org_access,
+    get_db,
     get_org_discovery_run,
     list_org_discovery_runs,
     start_org_discovery_run,
@@ -153,6 +154,39 @@ class TestListOrgDiscoveryRuns:
 
         assert result.total == 1
         assert result.items[0].id == run_id
+
+    @pytest.mark.asyncio
+    async def test_skips_ownership_pointing_to_missing_run(self, db: aiosqlite.Connection) -> None:
+        """An ownership row whose run was deleted should be filtered silently."""
+        actor = _make_actor()
+        run_id = await DiscoveryRunCRUD.create(
+            db,
+            location_query="Kansas City, MO",
+            state="MO",
+            issue_areas=["housing_affordability"],
+        )
+        await OwnershipCRUD.create_ownership(
+            db,
+            resource_id=run_id,
+            resource_type="discovery_run",
+            org_id=ORG_ID,
+            visibility="private",
+            created_by=USER_ID,
+        )
+        await db.execute("DELETE FROM discovery_runs WHERE id = ?", (run_id,))
+        await db.commit()
+
+        result = await list_org_discovery_runs(
+            org_id=ORG_ID,
+            response=None,
+            status=None,
+            limit=50,
+            cursor=None,
+            actor=actor,
+            db=db,
+        )
+
+        assert result.total == 0
 
     @pytest.mark.asyncio
     async def test_filters_by_status(self, db: aiosqlite.Connection) -> None:
@@ -473,3 +507,23 @@ class TestGetOrgDiscoveryRun:
             )
 
         assert exc_info.value.status_code == HTTPStatus.NOT_FOUND
+
+
+@pytest.mark.asyncio
+async def test_get_db_dependency_yields_and_closes_connection(tmp_db_path: str) -> None:
+    """The get_db FastAPI dependency yields an open connection and closes it after."""
+    from atlas.platform.config import Settings
+
+    settings = Settings(database_url=f"sqlite:///{tmp_db_path}", deploy_mode="local")
+    # Initialize schema so subsequent open succeeds.
+    from atlas.models import init_db
+
+    await init_db(settings.database_url)
+
+    agen = get_db(settings=settings)
+    conn = await agen.__anext__()
+    cursor = await conn.execute("SELECT 1")
+    row = await cursor.fetchone()
+    assert row[0] == 1
+    with pytest.raises(StopAsyncIteration):
+        await agen.__anext__()

@@ -227,8 +227,7 @@ async def start_org_discovery_run(
     )
 
     run = await DiscoveryRunCRUD.get_by_id(db, run_id)
-    if not run:
-        raise HTTPException(status_code=500, detail="Failed to create discovery run")
+    assert run is not None, "Run must exist immediately after creation"
 
     apply_no_store_headers(response)
     return _run_to_org_response(run, org_id)
