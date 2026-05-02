@@ -110,7 +110,8 @@ async def _pass_identify(
                 )
                 return []
 
-    return []
+    # Unreachable: the loop always returns on success or after exhausting retries.
+    return []  # pragma: no cover
 
 
 async def _pass_enrich(
@@ -151,7 +152,8 @@ async def _pass_enrich(
                 )
                 return []
 
-    return []
+    # Unreachable: the loop always returns on success or after exhausting retries.
+    return []  # pragma: no cover
 
 
 def _extract_text(response: object) -> str:

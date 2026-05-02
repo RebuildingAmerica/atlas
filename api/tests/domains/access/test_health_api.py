@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 import httpx
 import pytest
 
+from atlas.domains.access.api import health as health_module
 from atlas.domains.access.api.health import _check_url
 
 if TYPE_CHECKING:
@@ -77,3 +78,92 @@ class TestCheckUrlHelper:
         async with httpx.AsyncClient(transport=transport) as client:
             result = await _check_url(client, "http://auth.example.com/jwks", "jwks")
         assert result == "unreachable"
+
+
+_REAL_ASYNC_CLIENT = httpx.AsyncClient
+
+
+class _MockAsyncClient:
+    """Stand-in for httpx.AsyncClient that uses a MockTransport for HEAD requests."""
+
+    def __init__(self, transport: httpx.MockTransport) -> None:
+        self._client = _REAL_ASYNC_CLIENT(transport=transport)
+
+    async def __aenter__(self) -> _MockAsyncClient:
+        await self._client.__aenter__()
+        return self
+
+    async def __aexit__(self, exc_type: object, exc: object, tb: object) -> None:
+        await self._client.__aexit__(exc_type, exc, tb)  # type: ignore[arg-type]
+
+    async def head(self, url: str) -> httpx.Response:
+        return await self._client.head(url)
+
+
+def _make_async_client_factory(
+    transport: httpx.MockTransport,
+) -> object:
+    def factory(*, timeout: float) -> _MockAsyncClient:
+        del timeout
+        return _MockAsyncClient(transport)
+
+    return factory
+
+
+class TestAuthHealthRemoteMode:
+    """Auth health endpoint when not in local mode."""
+
+    @pytest.mark.asyncio
+    async def test_reports_ok_when_all_endpoints_reachable(
+        self,
+        test_client: object,
+        test_settings: Settings,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """All reachable + configured introspection should yield status=ok."""
+        test_settings.deploy_mode = "production"
+        test_settings.auth_jwt_jwks_url = "https://auth.example.com/jwks"
+        test_settings.auth_membership_verification_url = "https://auth.example.com/memberships"
+        test_settings.auth_api_key_introspection_url = "https://auth.example.com/introspect"
+
+        transport = httpx.MockTransport(handler=lambda _: httpx.Response(200))
+        monkeypatch.setattr(
+            health_module.httpx, "AsyncClient", _make_async_client_factory(transport)
+        )
+
+        response = await test_client.get("/api/auth/health")
+        assert response.status_code == STATUS_OK
+        data = response.json()
+        assert data["status"] == "ok"
+        assert data["checks"]["jwks"] == "reachable"
+        assert data["checks"]["membership"] == "reachable"
+        assert data["checks"]["api_key_introspection"] == "configured"
+
+    @pytest.mark.asyncio
+    async def test_reports_degraded_when_dependencies_missing(
+        self,
+        test_client: object,
+        test_settings: Settings,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Missing membership/introspection URLs and an unreachable JWKS yield degraded."""
+        test_settings.deploy_mode = "production"
+        test_settings.auth_jwt_jwks_url = "https://auth.example.com/jwks"
+        test_settings.auth_membership_verification_url = None
+        test_settings.auth_api_key_introspection_url = None
+
+        def raise_error(_: httpx.Request) -> httpx.Response:
+            raise httpx.ConnectError("offline")
+
+        transport = httpx.MockTransport(handler=raise_error)
+        monkeypatch.setattr(
+            health_module.httpx, "AsyncClient", _make_async_client_factory(transport)
+        )
+
+        response = await test_client.get("/api/auth/health")
+        assert response.status_code == STATUS_OK
+        data = response.json()
+        assert data["status"] == "degraded"
+        assert data["checks"]["jwks"] == "unreachable"
+        assert data["checks"]["membership"] == "not_configured"
+        assert data["checks"]["api_key_introspection"] == "not_configured"

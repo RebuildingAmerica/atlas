@@ -44,6 +44,8 @@ EXPECTED_TWO_RECORDS = 2
 EXPECTED_ACCEPTED_STATUS = 202
 EXPECTED_TWO_ENTRIES = 2
 SEARCH_OFFLINE_ERROR = "search offline"
+ANTHROPIC_OUTAGE_ERROR = "anthropic outage"
+PASS_TWO_OUTAGE_ERROR = "pass2 outage"
 
 
 def _load_runner_module() -> object:
@@ -710,6 +712,158 @@ class TestExtractionHelpers:
         assert len(parsed) == 1
         assert parsed[0].name == "Kansas City Housing Coalition"
 
+    @pytest.mark.asyncio
+    async def test_extract_entries_returns_empty_without_api_key(self) -> None:
+        """Missing Anthropic credentials should short-circuit before calling the API."""
+        extractor = importlib.import_module("atlas.domains.discovery.pipeline.extractor")
+        result = await extractor.extract_entries(
+            "https://example.com/story",
+            "Substantive content about civic actors.",
+            "Kansas City",
+            "MO",
+            api_key=None,
+        )
+        assert result == []
+
+    @pytest.mark.asyncio
+    async def test_extract_entries_returns_empty_for_blank_content(self) -> None:
+        """Empty source text should short-circuit before calling the API."""
+        extractor = importlib.import_module("atlas.domains.discovery.pipeline.extractor")
+        result = await extractor.extract_entries(
+            "https://example.com/story",
+            "   ",
+            "Kansas City",
+            "MO",
+            api_key="test-key",
+        )
+        assert result == []
+
+    @pytest.mark.asyncio
+    async def test_extract_entries_returns_empty_when_pass_one_identifies_nothing(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """If pass 1 returns no entities, pass 2 should not run and the result is empty."""
+        extractor = importlib.import_module("atlas.domains.discovery.pipeline.extractor")
+
+        class FakeMessages:
+            def __init__(self) -> None:
+                self.calls = 0
+
+            async def create(self, **_kwargs: object) -> object:
+                self.calls += 1
+                return type(
+                    "Response",
+                    (),
+                    {"content": [type("Block", (), {"type": "text", "text": "[]"})()]},
+                )()
+
+        fake_messages = FakeMessages()
+
+        class FakeAnthropic:
+            def __init__(self, **_kwargs: object) -> None:
+                self.messages = fake_messages
+
+        monkeypatch.setattr(
+            "atlas.domains.discovery.pipeline.extractor.AsyncAnthropic", FakeAnthropic
+        )
+
+        result = await extractor.extract_entries(
+            "https://example.com/story",
+            "Substantive content about civic actors.",
+            "Kansas City",
+            "MO",
+            "test-key",
+        )
+        assert result == []
+        # Only pass 1 should have been called.
+        assert fake_messages.calls == 1
+
+    @pytest.mark.asyncio
+    async def test_extract_entries_returns_empty_when_pass_one_keeps_failing(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Repeated pass-1 errors should exhaust retries and yield an empty result."""
+        extractor = importlib.import_module("atlas.domains.discovery.pipeline.extractor")
+
+        class FakeMessages:
+            def __init__(self) -> None:
+                self.calls = 0
+
+            async def create(self, **_kwargs: object) -> object:
+                self.calls += 1
+                raise RuntimeError(ANTHROPIC_OUTAGE_ERROR)
+
+        fake_messages = FakeMessages()
+
+        class FakeAnthropic:
+            def __init__(self, **_kwargs: object) -> None:
+                self.messages = fake_messages
+
+        monkeypatch.setattr(
+            "atlas.domains.discovery.pipeline.extractor.AsyncAnthropic", FakeAnthropic
+        )
+
+        result = await extractor.extract_entries(
+            "https://example.com/story",
+            "Substantive content about civic actors.",
+            "Kansas City",
+            "MO",
+            "test-key",
+        )
+        assert result == []
+        # Pass 1 should retry up to _MAX_ATTEMPTS (3) before giving up.
+        assert fake_messages.calls == 3  # noqa: PLR2004
+
+    @pytest.mark.asyncio
+    async def test_extract_entries_returns_empty_when_pass_two_keeps_failing(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """If pass 2 raises every attempt, extraction should return an empty list."""
+        extractor = importlib.import_module("atlas.domains.discovery.pipeline.extractor")
+        pass1_response = (
+            '[{"name":"Kansas City Housing Coalition","type":"organization",'
+            '"quote":"The Kansas City Housing Coalition works on affordability."}]'
+        )
+
+        class FakeMessages:
+            def __init__(self) -> None:
+                self.calls = 0
+
+            async def create(self, **_kwargs: object) -> object:
+                self.calls += 1
+                if self.calls == 1:
+                    return type(
+                        "Response",
+                        (),
+                        {
+                            "content": [
+                                type("Block", (), {"type": "text", "text": pass1_response})()
+                            ]
+                        },
+                    )()
+                raise RuntimeError(PASS_TWO_OUTAGE_ERROR)
+
+        fake_messages = FakeMessages()
+
+        class FakeAnthropic:
+            def __init__(self, **_kwargs: object) -> None:
+                self.messages = fake_messages
+
+        monkeypatch.setattr(
+            "atlas.domains.discovery.pipeline.extractor.AsyncAnthropic", FakeAnthropic
+        )
+
+        result = await extractor.extract_entries(
+            "https://example.com/story",
+            "Substantive content about civic actors.",
+            "Kansas City",
+            "MO",
+            "test-key",
+        )
+        assert result == []
+        # Pass 1 succeeded once; pass 2 retried up to _MAX_ATTEMPTS (3).
+        assert fake_messages.calls == 4  # noqa: PLR2004
+
 
 class TestDiscoveryApiIntegration:
     """Tests for API-triggered discovery execution."""
@@ -989,6 +1143,214 @@ class TestRunnerHelpers:
         assert run is not None
         assert run.status == "completed"
         assert run.entries_confirmed == 0
+
+    @pytest.mark.asyncio
+    async def test_run_discovery_pipeline_updates_existing_source_record(
+        self,
+        test_db: object,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """When a fetched URL already has a source row, the runner should update it in place."""
+        runner_module = _load_runner_module()
+        from atlas.models import SourceCRUD
+
+        # Pre-create a source row that the pipeline will rediscover.
+        existing_source_id = await SourceCRUD.create(
+            test_db,
+            url="https://example.com/story-existing",
+            source_type="news_article",
+            extraction_method="manual",
+            title="Old Title",
+        )
+
+        async def fake_fetch_sources(
+            queries: list[object],
+            _api_key: str | None = None,
+        ) -> list[FetchedSource]:
+            assert queries
+            return [
+                FetchedSource(
+                    url="https://example.com/story-existing",
+                    title="Refreshed Title",
+                    publication="KCUR",
+                    published_date="2026-02-01",
+                    content="Story content for an existing source",
+                    source_type="news_article",
+                )
+            ]
+
+        async def fake_extract_entries(
+            _url: str,
+            _content: str,
+            _city: str,
+            _state: str,
+            _api_key: str | None = None,
+        ) -> list[RawEntry]:
+            return [
+                RawEntry(
+                    name="Story Existing Org",
+                    entry_type="organization",
+                    description="Discovered through an already-known source.",
+                    city="Kansas City",
+                    state="MO",
+                    geo_specificity="local",
+                    issue_areas=["worker_cooperatives"],
+                    extraction_context="Story Existing Org appeared in this article.",
+                )
+            ]
+
+        monkeypatch.setattr(runner_module, "fetch_sources", fake_fetch_sources)
+        monkeypatch.setattr(runner_module, "extract_entries", fake_extract_entries)
+
+        run_id = await DiscoveryRunCRUD.create(
+            test_db,
+            location_query="Kansas City, MO",
+            state="MO",
+            issue_areas=["worker_cooperatives"],
+        )
+
+        await runner_module.run_discovery_pipeline(
+            test_db,
+            job=DiscoveryPipelineJob(
+                run_id=run_id,
+                location_query="Kansas City, MO",
+                state="MO",
+                issue_areas=["worker_cooperatives"],
+            ),
+            credentials=DiscoveryPipelineCredentials(
+                search_api_key="test-search-key",
+                anthropic_api_key="test-anthropic-key",
+            ),
+        )
+
+        refreshed = await SourceCRUD.get_by_id(test_db, existing_source_id)
+        assert refreshed is not None
+        assert refreshed.title == "Refreshed Title"
+        assert refreshed.publication == "KCUR"
+
+    @pytest.mark.asyncio
+    async def test_persist_discovery_results_with_failed_status_uses_update_path(
+        self,
+        test_db: object,
+    ) -> None:
+        """When the supplied stats status is not COMPLETED, persist should record via update."""
+        from atlas_shared import (
+            DeduplicatedEntry as SharedDeduplicatedEntry,
+        )
+        from atlas_shared import (
+            DiscoveryRunStats,
+            DiscoveryRunStatus,
+        )
+        from atlas_shared import (
+            RankedEntry as SharedRankedEntry,
+        )
+
+        runner_module = _load_runner_module()
+
+        run_id = await DiscoveryRunCRUD.create(
+            test_db,
+            location_query="Kansas City, MO",
+            state="MO",
+            issue_areas=["housing_affordability"],
+        )
+
+        ranked_entry = SharedRankedEntry(
+            entry=SharedDeduplicatedEntry(
+                name="Failed Run Org",
+                entry_type="organization",
+                description="Persisted despite a failed run status.",
+                city="Kansas City",
+                state="MO",
+                geo_specificity="local",
+                issue_areas=["housing_affordability"],
+                source_urls=[],
+            ),
+            score=0.5,
+        )
+        stats = DiscoveryRunStats(
+            queries_generated=1,
+            sources_fetched=0,
+            sources_processed=0,
+            entries_extracted=1,
+            entries_after_dedup=1,
+            entries_confirmed=1,
+            status=DiscoveryRunStatus.FAILED,
+            error_message="search offline",
+        )
+
+        confirmed_ids, _sources = await runner_module.persist_discovery_results(
+            test_db,
+            run_id=run_id,
+            ranked_entries=[ranked_entry],
+            sources=[],
+            stats=stats,
+        )
+
+        assert len(confirmed_ids) == 1
+        run = await DiscoveryRunCRUD.get_by_id(test_db, run_id)
+        assert run is not None
+        assert run.status == "failed"
+        assert run.error_message == "search offline"
+
+    def test_build_page_task_outcomes_skips_entries_without_source_urls(self) -> None:
+        """Raw entries lacking a list-shaped source_urls field should be skipped cleanly."""
+        from atlas_shared import PageContent, SourceType
+
+        runner_module = _load_runner_module()
+        sources = [
+            PageContent(
+                url="https://example.com/page-a",
+                source_type=SourceType.NEWS_ARTICLE,
+            )
+        ]
+        outcomes = runner_module._build_page_task_outcomes(  # noqa: SLF001
+            sources,
+            raw_entries=[
+                {"name": "no source urls"},
+                {"name": "wrong shape", "source_urls": "not-a-list"},
+                {"name": "good", "source_urls": ["https://example.com/page-a"]},
+            ],
+        )
+        assert len(outcomes) == 1
+        assert outcomes[0].entries_extracted == 1
+
+    def test_raw_entry_to_shared_handles_missing_source_metadata(self) -> None:
+        """Raw entries with no source dates / contexts should still convert cleanly."""
+        runner_module = _load_runner_module()
+        shared = runner_module._raw_entry_to_shared(  # noqa: SLF001
+            {
+                "name": "Bare Entry",
+                "entry_type": "organization",
+                "description": "No source metadata at all.",
+                "city": "Kansas City",
+                "state": "MO",
+                "geo_specificity": "local",
+                "issue_areas": ["housing_affordability"],
+            }
+        )
+        assert shared.name == "Bare Entry"
+        assert shared.source_url == ""
+        assert shared.source_date is None
+        assert shared.extraction_context == ""
+
+    def test_raw_entry_to_shared_skips_extraction_context_for_non_dict_payload(self) -> None:
+        """A non-dict source_contexts value should not contribute an extraction_context."""
+        runner_module = _load_runner_module()
+        shared = runner_module._raw_entry_to_shared(  # noqa: SLF001
+            {
+                "name": "Quirky Entry",
+                "entry_type": "organization",
+                "description": "Has a URL but malformed contexts.",
+                "city": "Kansas City",
+                "state": "MO",
+                "geo_specificity": "local",
+                "issue_areas": ["housing_affordability"],
+                "source_urls": ["https://example.com/story"],
+                "source_contexts": "should-have-been-a-dict",
+            }
+        )
+        assert shared.source_url == "https://example.com/story"
+        assert shared.extraction_context == ""
 
 
 async def _get_db_connection(database_url: str) -> object:

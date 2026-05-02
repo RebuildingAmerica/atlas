@@ -1,9 +1,10 @@
 """Production configuration tests."""
 
+import pytest
 from _pytest.monkeypatch import MonkeyPatch
 
 from atlas.main import create_app
-from atlas.platform.config import Settings
+from atlas.platform.config import Settings, validate_runtime_auth_config
 
 
 class TestProductionConfig:
@@ -114,3 +115,101 @@ class TestProductionConfig:
 
         assert settings.auth_jwt_issuer == "https://atlas.test/api/auth"
         assert settings.auth_jwt_jwks_url == "https://custom.test/jwks"
+
+
+class TestSettingsValidatorEdgeCases:
+    """Branches in the env-var parser, backend validator, and helper accessors."""
+
+    def test_string_list_validator_accepts_none_as_empty(self) -> None:
+        """A None env-var should normalise to an empty list."""
+        # Constructing Settings with audience=None exercises the field validator.
+        settings = Settings(
+            database_url="sqlite:///tmp/test.db",
+            auth_jwt_audience=None,  # type: ignore[arg-type]
+        )
+        assert settings.auth_jwt_audience == []
+
+    def test_string_list_validator_accepts_python_list(self) -> None:
+        """A Python list should pass through with surrounding whitespace stripped."""
+        settings = Settings(
+            database_url="sqlite:///tmp/test.db",
+            auth_jwt_audience=["  https://a.test  ", "", "https://b.test"],
+        )
+        assert settings.auth_jwt_audience == ["https://a.test", "https://b.test"]
+
+    def test_string_list_validator_parses_comma_separated_string(self) -> None:
+        """A bare comma-separated string should split into a trimmed list."""
+        settings = Settings(
+            database_url="sqlite:///tmp/test.db",
+            auth_jwt_audience="  https://a.test , ,https://b.test ",  # type: ignore[arg-type]
+        )
+        assert settings.auth_jwt_audience == ["https://a.test", "https://b.test"]
+
+    def test_postgres_backend_with_sqlite_url_rejected(self) -> None:
+        """Selecting postgres backend with a sqlite URL should fail loudly."""
+        with pytest.raises(ValueError, match="DATABASE_BACKEND is 'postgres'"):
+            Settings(
+                database_url="sqlite:///atlas.db",
+                database_backend="postgres",
+            )
+
+    def test_sqlite_backend_with_postgres_url_rejected(self) -> None:
+        """Selecting sqlite backend with a postgres URL should fail loudly."""
+        with pytest.raises(ValueError, match="DATABASE_BACKEND is 'sqlite'"):
+            Settings(
+                database_url="postgresql://user:pass@host/db",
+                database_backend="sqlite",
+            )
+
+    def test_get_database_url_returns_configured_url(self) -> None:
+        """The accessor should mirror ``database_url``."""
+        settings = Settings(database_url="sqlite:///tmp/test.db")
+        assert settings.get_database_url() == "sqlite:///tmp/test.db"
+
+    def test_auth_resource_metadata_url_empty_when_no_audience(self) -> None:
+        """Without an audience the metadata URL should be empty."""
+        settings = Settings(database_url="sqlite:///tmp/test.db")
+        assert settings.auth_resource_metadata_url == ""
+
+    def test_auth_resource_metadata_url_uses_first_audience(self) -> None:
+        """When audiences are present, the metadata URL appends the well-known path."""
+        settings = Settings(
+            database_url="sqlite:///tmp/test.db",
+            auth_jwt_audience=["https://atlas.test/api/"],
+        )
+        assert (
+            settings.auth_resource_metadata_url
+            == "https://atlas.test/api/.well-known/oauth-protected-resource"
+        )
+
+
+class TestValidateRuntimeAuthConfig:
+    """Runtime guard for non-local deploys without a configured audience."""
+
+    def test_local_mode_skips_audience_check(self) -> None:
+        """Local deploy mode shouldn't require ATLAS_API_AUDIENCE."""
+        settings = Settings(
+            database_url="sqlite:///tmp/test.db",
+            deploy_mode="local",
+        )
+        # No exception expected.
+        validate_runtime_auth_config(settings)
+
+    def test_non_local_mode_requires_audience(self, monkeypatch: MonkeyPatch) -> None:
+        """A non-local deploy without ATLAS_API_AUDIENCE should fail fast."""
+        monkeypatch.setenv("ATLAS_DEPLOY_MODE", "production")
+        settings = Settings(database_url="sqlite:///tmp/test.db")
+        assert settings.deploy_mode == "production"
+        assert settings.auth_jwt_audience == []
+        with pytest.raises(RuntimeError, match="ATLAS_API_AUDIENCE is required"):
+            validate_runtime_auth_config(settings)
+
+    def test_non_local_mode_passes_when_audience_configured(self, monkeypatch: MonkeyPatch) -> None:
+        """A non-local deploy with ATLAS_API_AUDIENCE should not raise."""
+        monkeypatch.setenv("ATLAS_DEPLOY_MODE", "production")
+        settings = Settings(
+            database_url="sqlite:///tmp/test.db",
+            auth_jwt_audience=["https://atlas.test/api"],
+        )
+        # No exception expected.
+        validate_runtime_auth_config(settings)

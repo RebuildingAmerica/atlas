@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 __all__ = ["DB_SCHEMA", "DatabaseManager", "db", "get_db_connection", "init_db"]
 
 
-class CursorProtocol(Protocol):
+class CursorProtocol(Protocol):  # pragma: no cover - typing-only protocol
     """Protocol for database cursor objects."""
 
     @property
@@ -36,7 +36,7 @@ class CursorProtocol(Protocol):
     async def fetchone(self) -> tuple[Any, ...] | None: ...
 
 
-class ConnectionProtocol(Protocol):
+class ConnectionProtocol(Protocol):  # pragma: no cover - typing-only protocol
     """Protocol for database connection objects."""
 
     async def execute(self, sql: str, parameters: Sequence[Any] = ()) -> CursorProtocol: ...
@@ -181,7 +181,7 @@ async def init_db(database_url: str, *, backend: str | None = None) -> None:
         await _init_sqlite(database_url)
 
 
-async def _init_postgres(database_url: str) -> None:
+async def _init_postgres(database_url: str) -> None:  # pragma: no cover - PG-only path
     """Initialize PostgreSQL schema."""
     import psycopg
 

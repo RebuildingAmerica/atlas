@@ -6,7 +6,10 @@ from atlas.models import (
     DiscoveryRunCRUD,
     EntryCRUD,
     SourceCRUD,
+    get_db_connection,
+    init_db,
 )
+from atlas.models.database import _ensure_entry_columns
 
 # Test data constants
 QUERIES_GENERATED = 100
@@ -281,3 +284,83 @@ class TestDiscoveryRunModel:
         assert run is not None
         assert run.status == "failed"
         assert "rate limit" in run.error_message
+
+
+class TestEnsureEntryColumns:
+    """Tests for the additive entries-table migration helper."""
+
+    @pytest.mark.asyncio
+    async def test_no_op_on_fresh_database_with_all_columns_present(self, db_url: str) -> None:
+        """A fully-initialised entries table should require no ALTER TABLE work."""
+        conn = await get_db_connection(db_url)
+        try:
+            # init_db was already called in the db_url fixture; running the
+            # migration helper again should be a no-op since every column
+            # already exists.
+            await _ensure_entry_columns(conn)
+            await conn.commit()
+        finally:
+            await conn.close()
+
+    @pytest.mark.asyncio
+    async def test_returns_early_when_entries_table_missing(self, tmp_db_path: str) -> None:
+        """The helper should bail out cleanly on a database with no entries table."""
+        db_url = f"sqlite:///{tmp_db_path}"
+        # Don't call init_db — the entries table won't exist yet.
+        conn = await get_db_connection(db_url)
+        try:
+            await _ensure_entry_columns(conn)
+        finally:
+            await conn.close()
+
+    @pytest.mark.asyncio
+    async def test_adds_missing_columns_on_legacy_database(self, tmp_db_path: str) -> None:
+        """A legacy entries table should gain every additive column."""
+        db_url = f"sqlite:///{tmp_db_path}"
+        conn = await get_db_connection(db_url)
+        try:
+            # Construct a minimal legacy entries table that's missing every
+            # additive column the migration helper installs.
+            await conn.execute(
+                """
+                CREATE TABLE entries (
+                    id TEXT PRIMARY KEY,
+                    name TEXT NOT NULL
+                )
+                """
+            )
+            await conn.commit()
+            await _ensure_entry_columns(conn)
+            await conn.commit()
+        finally:
+            await conn.close()
+
+        # Re-open and verify all the additive columns are now present.
+        conn = await get_db_connection(db_url)
+        try:
+            cursor = await conn.execute("PRAGMA table_info(entries)")
+            rows = await cursor.fetchall()
+            columns = {row[1] for row in rows}
+        finally:
+            await conn.close()
+
+        for column in (
+            "full_address",
+            "slug",
+            "photo_url",
+            "custom_bio",
+            "claim_status",
+            "claimed_by_user_id",
+            "claim_verified_at",
+            "last_confirmed_at",
+            "suppressed_source_ids",
+            "preferred_contact_channel",
+        ):
+            assert column in columns
+
+    @pytest.mark.asyncio
+    async def test_init_db_is_idempotent(self, tmp_db_path: str) -> None:
+        """init_db should be safe to call repeatedly without raising."""
+        db_url = f"sqlite:///{tmp_db_path}"
+        await init_db(db_url)
+        await init_db(db_url)

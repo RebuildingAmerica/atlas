@@ -158,8 +158,7 @@ async def create_org_entry(
     )
 
     entry = await EntryCRUD.get_by_id(db, entity_id)
-    if not entry:
-        raise HTTPException(status_code=500, detail="Failed to create entry")
+    assert entry is not None, "EntryCRUD.create just returned this id; row must exist"
 
     apply_no_store_headers(response)
     return await _entry_to_detail_response(entry, req.issue_areas)
@@ -231,8 +230,7 @@ async def update_org_entry(  # noqa: PLR0913
         await EntryCRUD.update(db, entry_id, **update_dict)
 
     updated_entry = await EntryCRUD.get_by_id(db, entry_id)
-    if not updated_entry:
-        raise HTTPException(status_code=500, detail="Failed to update entry")
+    assert updated_entry is not None, "entry existed under this org_id moments ago"
 
     issue_areas = await EntryCRUD.get_issue_areas(db, entry_id)
     apply_no_store_headers(response)

@@ -10,6 +10,7 @@ import pytest_asyncio
 
 from atlas.domains.access.models.follows import FollowCRUD
 from atlas.domains.access.models.saved_lists import SavedListCRUD
+from atlas.domains.catalog.api import profiles as profile_api
 from atlas.domains.catalog.models.profile_claims import ProfileClaimCRUD
 from atlas.models import EntryCRUD, SourceCRUD
 
@@ -112,6 +113,102 @@ class TestProfileClaimCRUD:
         assert rejected is not None
         assert rejected.status == "rejected"
         assert rejected.rejected_reason == "cannot verify"
+
+    @pytest.mark.asyncio
+    async def test_evidence_returns_none_when_no_payload(
+        self, test_db: object, claimable_org: str
+    ) -> None:
+        """ProfileClaimModel.evidence should be None when no evidence_json was stored."""
+        claim = await ProfileClaimCRUD.create(
+            test_db,
+            entry_id=claimable_org,
+            user_id="user-1",
+            user_email="alice@mississippirising.org",
+            tier=1,
+        )
+        assert claim.evidence is None
+
+    @pytest.mark.asyncio
+    async def test_get_by_id_returns_none_when_missing(self, test_db: object) -> None:
+        """get_by_id should return None when the claim id is unknown."""
+        assert await ProfileClaimCRUD.get_by_id(test_db, "no-such-id") is None
+
+    @pytest.mark.asyncio
+    async def test_list_by_user_returns_empty_when_user_has_no_claims(
+        self, test_db: object
+    ) -> None:
+        """list_by_user should return an empty list when the user has no claims."""
+        assert await ProfileClaimCRUD.list_by_user(test_db, "phantom-user") == []
+
+    @pytest.mark.asyncio
+    async def test_list_by_entry_returns_all_claims_newest_first(
+        self, test_db: object, claimable_org: str
+    ) -> None:
+        """list_by_entry should return every claim made against an entry, newest first."""
+        first = await ProfileClaimCRUD.create(
+            test_db,
+            entry_id=claimable_org,
+            user_id="user-a",
+            user_email="a@mississippirising.org",
+            tier=1,
+        )
+        second = await ProfileClaimCRUD.create(
+            test_db,
+            entry_id=claimable_org,
+            user_id="user-b",
+            user_email="b@mississippirising.org",
+            tier=1,
+        )
+        claims = await ProfileClaimCRUD.list_by_entry(test_db, claimable_org)
+        assert {claim.id for claim in claims} == {first.id, second.id}
+
+    @pytest.mark.asyncio
+    async def test_list_by_entry_returns_empty_when_no_claims(
+        self, test_db: object, claimable_person: str
+    ) -> None:
+        """list_by_entry should return an empty list when no claims exist."""
+        assert await ProfileClaimCRUD.list_by_entry(test_db, claimable_person) == []
+
+    @pytest.mark.asyncio
+    async def test_get_active_for_entry_returns_none_when_no_active_claim(
+        self, test_db: object, claimable_org: str
+    ) -> None:
+        """get_active_for_entry should return None when no pending or verified claim exists."""
+        assert await ProfileClaimCRUD.get_active_for_entry(test_db, claimable_org) is None
+
+    @pytest.mark.asyncio
+    async def test_mark_verified_returns_none_for_missing_claim(self, test_db: object) -> None:
+        """mark_verified should return None when no claim row matches the id."""
+        assert await ProfileClaimCRUD.mark_verified(test_db, "no-such-claim") is None
+
+    @pytest.mark.asyncio
+    async def test_mark_rejected_returns_none_for_missing_claim(self, test_db: object) -> None:
+        """mark_rejected should return None when no claim row matches the id."""
+        assert await ProfileClaimCRUD.mark_rejected(test_db, "no-such-claim", reason="x") is None
+
+    @pytest.mark.asyncio
+    async def test_revoke_transitions_verified_claim_to_revoked(
+        self, test_db: object, claimable_org: str
+    ) -> None:
+        """revoke should flip a verified claim to revoked and record the reason."""
+        claim = await ProfileClaimCRUD.create(
+            test_db,
+            entry_id=claimable_org,
+            user_id="user-1",
+            user_email="alice@mississippirising.org",
+            tier=1,
+        )
+        verified = await ProfileClaimCRUD.mark_verified(test_db, claim.id)
+        assert verified is not None
+        revoked = await ProfileClaimCRUD.revoke(test_db, claim.id, reason="user request")
+        assert revoked is not None
+        assert revoked.status == "revoked"
+        assert revoked.rejected_reason == "user request"
+
+    @pytest.mark.asyncio
+    async def test_revoke_returns_none_for_missing_claim(self, test_db: object) -> None:
+        """revoke should return None when the claim id doesn't exist."""
+        assert await ProfileClaimCRUD.revoke(test_db, "no-such-claim", reason="x") is None
 
 
 class TestProfileClaimAPI:
@@ -416,6 +513,131 @@ class TestSavedListCRUDDirect:
         assert removed is True
         assert await SavedListCRUD.count_items(test_db, record.id) == 0
 
+    @pytest.mark.asyncio
+    async def test_get_by_id_returns_none_for_missing_list(self, test_db: object) -> None:
+        """get_by_id returns None when no row matches."""
+        assert await SavedListCRUD.get_by_id(test_db, "list-does-not-exist") is None
+
+    @pytest.mark.asyncio
+    async def test_remove_item_returns_false_when_missing(
+        self, test_db: object, claimable_org: str
+    ) -> None:
+        """Removing a non-existent item returns False without bumping updated_at."""
+        record = await SavedListCRUD.create(test_db, user_id="user-1", name="L")
+        removed = await SavedListCRUD.remove_item(
+            test_db, list_id=record.id, entry_id=claimable_org
+        )
+        assert removed is False
+
+    @pytest.mark.asyncio
+    async def test_update_no_fields_returns_existing_record(self, test_db: object) -> None:
+        """When no name/description is supplied, update returns the row unchanged."""
+        record = await SavedListCRUD.create(
+            test_db, user_id="user-1", name="Original", description="orig desc"
+        )
+        unchanged = await SavedListCRUD.update(test_db, record.id)
+        assert unchanged is not None
+        assert unchanged.name == "Original"
+        assert unchanged.description == "orig desc"
+
+    @pytest.mark.asyncio
+    async def test_update_renames_and_updates_description(self, test_db: object) -> None:
+        """update sets the supplied fields and persists them."""
+        record = await SavedListCRUD.create(test_db, user_id="user-1", name="Original")
+        updated = await SavedListCRUD.update(
+            test_db, record.id, name="Renamed", description="new desc"
+        )
+        assert updated is not None
+        assert updated.name == "Renamed"
+        assert updated.description == "new desc"
+
+    @pytest.mark.asyncio
+    async def test_update_returns_none_for_missing_list(self, test_db: object) -> None:
+        """update returns None when the row id does not exist."""
+        result = await SavedListCRUD.update(test_db, "no-such-list", name="x")
+        assert result is None
+
+
+class TestSavedListsAPIErrors:
+    """API-level error paths for the saved-list endpoints."""
+
+    @pytest.mark.asyncio
+    async def test_create_rejects_blank_name(self, test_client: object) -> None:
+        """A whitespace-only name is rejected with 400."""
+        resp = await test_client.post("/api/lists", json={"name": "   "})
+        assert resp.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_get_unknown_list_returns_404(self, test_client: object) -> None:
+        """Reading a list that does not exist returns 404."""
+        resp = await test_client.get("/api/lists/no-such-list")
+        assert resp.status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_delete_unknown_list_returns_404(self, test_client: object) -> None:
+        """Deleting a list that does not exist returns 404."""
+        resp = await test_client.delete("/api/lists/no-such-list")
+        assert resp.status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_add_item_rejects_unknown_list(
+        self, test_client: object, claimable_org: str
+    ) -> None:
+        """Adding to a missing list returns 404."""
+        resp = await test_client.post(
+            "/api/lists/no-such-list/items",
+            json={"entry_id": claimable_org},
+        )
+        assert resp.status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_add_item_rejects_unknown_entry(self, test_client: object) -> None:
+        """Adding a non-existent entry to a list returns 404."""
+        create_resp = await test_client.post("/api/lists", json={"name": "L"})
+        list_id = create_resp.json()["id"]
+        resp = await test_client.post(
+            f"/api/lists/{list_id}/items",
+            json={"entry_id": "no-such-entry"},
+        )
+        assert resp.status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_remove_item_rejects_unknown_list(
+        self, test_client: object, claimable_org: str
+    ) -> None:
+        """Removing from a missing list returns 404."""
+        resp = await test_client.delete(f"/api/lists/no-such-list/items/{claimable_org}")
+        assert resp.status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_remove_item_returns_404_when_item_not_in_list(
+        self, test_client: object, claimable_org: str
+    ) -> None:
+        """Removing an entry that's not in the list returns 404."""
+        create_resp = await test_client.post("/api/lists", json={"name": "L"})
+        list_id = create_resp.json()["id"]
+        resp = await test_client.delete(f"/api/lists/{list_id}/items/{claimable_org}")
+        assert resp.status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_remove_item_succeeds_for_existing_entry(
+        self, test_client: object, claimable_org: str
+    ) -> None:
+        """Removing an entry that exists returns 204."""
+        create_resp = await test_client.post("/api/lists", json={"name": "L"})
+        list_id = create_resp.json()["id"]
+        await test_client.post(f"/api/lists/{list_id}/items", json={"entry_id": claimable_org})
+        remove_resp = await test_client.delete(f"/api/lists/{list_id}/items/{claimable_org}")
+        assert remove_resp.status_code == 204
+
+    @pytest.mark.asyncio
+    async def test_hydrate_entry_returns_none_for_missing_entry(self, test_db: object) -> None:
+        """The _hydrate_entry helper returns None when the entry id has no row."""
+        from atlas.domains.access.api.lists import _hydrate_entry
+
+        result = await _hydrate_entry(test_db, "no-such-entry-id")
+        assert result is None
+
 
 class TestFollowCRUDDirect:
     """Direct model-level coverage for FollowCRUD."""
@@ -502,3 +724,352 @@ class TestEntityResponseFreshFields:
         assert body["photo_url"] is None
         # Ensure the JSON is well-formed by re-encoding.
         assert json.dumps(body)
+
+
+class TestDomainOfHelper:
+    """Direct edge cases for the email/website domain extractor."""
+
+    def test_returns_none_for_whitespace_only_value(self) -> None:
+        assert profile_api._domain_of("   ") is None  # noqa: SLF001
+
+    def test_strips_www_prefix(self) -> None:
+        assert profile_api._domain_of("https://www.example.com") == "example.com"  # noqa: SLF001
+
+
+class TestProfileClaimAPIEdgeCases:
+    """HTTP-level edge cases for the profile claim/manage/follow endpoints."""
+
+    @pytest.mark.asyncio
+    async def test_initiate_claim_returns_404_for_unknown_slug(self, test_client: object) -> None:
+        resp = await test_client.post("/api/profiles/nonexistent-slug-xyz/claim", json={})
+        assert resp.status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_initiate_claim_returns_existing_for_same_user_when_already_verified(
+        self, test_client: object, test_db: object, claimable_org: str
+    ) -> None:
+        """A re-claim by the same verified user should return their existing claim."""
+        await EntryCRUD.update(test_db, claimable_org, email="info@atlas.rebuildingus.org")
+        slug = (await EntryCRUD.get_by_id(test_db, claimable_org)).slug
+        # Initiate + verify once.
+        await test_client.post(f"/api/profiles/{slug}/claim", json={})
+        claim = await ProfileClaimCRUD.get_active_for_entry(test_db, claimable_org)
+        assert claim is not None
+        assert claim.verification_token is not None
+        await test_client.post(
+            "/api/profiles/claims/verify-email",
+            json={"token": claim.verification_token},
+        )
+
+        # A second initiation by the same actor should not 409 — it should
+        # return the existing verified claim.
+        resp = await test_client.post(f"/api/profiles/{slug}/claim", json={})
+        assert resp.status_code == 201, resp.text
+        assert resp.json()["status"] == "verified"
+
+    @pytest.mark.asyncio
+    async def test_initiate_claim_409_when_verified_by_another_user(
+        self, test_client: object, test_db: object, claimable_org: str
+    ) -> None:
+        """A claim attempt on a profile verified by someone else should 409."""
+        # Pre-seed a verified claim attached to a different user_id.
+        await EntryCRUD.update(
+            test_db,
+            claimable_org,
+            claim_status="verified",
+            claimed_by_user_id="some-other-user",
+        )
+        await ProfileClaimCRUD.create(
+            test_db,
+            entry_id=claimable_org,
+            user_id="some-other-user",
+            user_email="other@example.com",
+            tier=1,
+        )
+        await ProfileClaimCRUD.mark_verified(
+            test_db,
+            (await ProfileClaimCRUD.get_active_for_entry(test_db, claimable_org)).id,
+        )
+
+        slug = (await EntryCRUD.get_by_id(test_db, claimable_org)).slug
+        resp = await test_client.post(f"/api/profiles/{slug}/claim", json={})
+        assert resp.status_code == 409
+
+    @pytest.mark.asyncio
+    async def test_verify_email_409_when_claim_not_pending(
+        self, test_client: object, test_db: object, claimable_org: str
+    ) -> None:
+        """Verifying with a token whose claim is no longer pending should 409."""
+        await EntryCRUD.update(test_db, claimable_org, email="info@atlas.rebuildingus.org")
+        slug = (await EntryCRUD.get_by_id(test_db, claimable_org)).slug
+        await test_client.post(f"/api/profiles/{slug}/claim", json={})
+        claim = await ProfileClaimCRUD.get_active_for_entry(test_db, claimable_org)
+        assert claim is not None
+        token = claim.verification_token
+        assert token is not None
+
+        # Manually transition the claim past pending without clearing the
+        # token, so the API has something to look up but rejects the state.
+        await test_db.execute(
+            "UPDATE profile_claims SET status = 'rejected' WHERE id = ?",
+            (claim.id,),
+        )
+        await test_db.commit()
+
+        resp = await test_client.post(
+            "/api/profiles/claims/verify-email",
+            json={"token": token},
+        )
+        assert resp.status_code == 409
+
+    @pytest.mark.asyncio
+    async def test_verify_email_410_when_token_expired(
+        self, test_client: object, test_db: object, claimable_org: str
+    ) -> None:
+        """An expired verification token should 410 and reject the claim."""
+        await EntryCRUD.update(test_db, claimable_org, email="info@atlas.rebuildingus.org")
+        slug = (await EntryCRUD.get_by_id(test_db, claimable_org)).slug
+        await test_client.post(f"/api/profiles/{slug}/claim", json={})
+        claim = await ProfileClaimCRUD.get_active_for_entry(test_db, claimable_org)
+        assert claim is not None
+        token = claim.verification_token
+        assert token is not None
+
+        # Stomp the expiry into the past.
+        await test_db.execute(
+            "UPDATE profile_claims SET verification_token_expires_at = ? WHERE id = ?",
+            ("2000-01-01T00:00:00+00:00", claim.id),
+        )
+        await test_db.commit()
+
+        resp = await test_client.post(
+            "/api/profiles/claims/verify-email",
+            json={"token": token},
+        )
+        assert resp.status_code == 410
+
+    @pytest.mark.asyncio
+    async def test_verify_email_410_when_token_has_no_expiry_recorded(
+        self, test_client: object, test_db: object, claimable_org: str
+    ) -> None:
+        """A claim missing an expiry timestamp should be treated as expired."""
+        await EntryCRUD.update(test_db, claimable_org, email="info@atlas.rebuildingus.org")
+        slug = (await EntryCRUD.get_by_id(test_db, claimable_org)).slug
+        await test_client.post(f"/api/profiles/{slug}/claim", json={})
+        claim = await ProfileClaimCRUD.get_active_for_entry(test_db, claimable_org)
+        assert claim is not None
+        token = claim.verification_token
+        assert token is not None
+
+        await test_db.execute(
+            "UPDATE profile_claims SET verification_token_expires_at = NULL WHERE id = ?",
+            (claim.id,),
+        )
+        await test_db.commit()
+
+        resp = await test_client.post(
+            "/api/profiles/claims/verify-email",
+            json={"token": token},
+        )
+        assert resp.status_code == 410
+
+    @pytest.mark.asyncio
+    async def test_list_my_claims_skips_orphaned_entries(
+        self,
+        test_client: object,
+        test_db: object,
+        claimable_org: str,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """list_my_claims should silently drop claims whose entry has been deleted."""
+        await EntryCRUD.update(test_db, claimable_org, email="info@atlas.rebuildingus.org")
+        slug = (await EntryCRUD.get_by_id(test_db, claimable_org)).slug
+        await test_client.post(f"/api/profiles/{slug}/claim", json={})
+
+        async def fake_get_by_id(_db: object, _entry_id: str) -> None:
+            return None
+
+        monkeypatch.setattr(
+            "atlas.domains.catalog.api.profiles.EntryCRUD.get_by_id",
+            fake_get_by_id,
+        )
+        resp = await test_client.get("/api/profiles/claims/me")
+        assert resp.status_code == 200
+        assert resp.json() == []
+
+    @pytest.mark.asyncio
+    async def test_manage_returns_404_for_unknown_slug(self, test_client: object) -> None:
+        resp = await test_client.patch(
+            "/api/profiles/no-such-slug/manage",
+            json={"custom_bio": "x"},
+        )
+        assert resp.status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_manage_clear_photo_drops_existing_photo(
+        self, test_client: object, test_db: object, claimable_org: str
+    ) -> None:
+        """clear_photo=True should null out the photo column."""
+        await EntryCRUD.update(test_db, claimable_org, email="info@atlas.rebuildingus.org")
+        slug = (await EntryCRUD.get_by_id(test_db, claimable_org)).slug
+        await test_client.post(f"/api/profiles/{slug}/claim", json={})
+        claim = await ProfileClaimCRUD.get_active_for_entry(test_db, claimable_org)
+        assert claim is not None
+        assert claim.verification_token is not None
+        await test_client.post(
+            "/api/profiles/claims/verify-email",
+            json={"token": claim.verification_token},
+        )
+
+        # Seed a photo, then clear it.
+        await EntryCRUD.update(test_db, claimable_org, photo_url="https://example.com/old.jpg")
+        resp = await test_client.patch(
+            f"/api/profiles/{slug}/manage",
+            json={"clear_photo": True},
+        )
+        assert resp.status_code == 200, resp.text
+        entry = await EntryCRUD.get_by_id(test_db, claimable_org)
+        assert entry is not None
+        assert entry.photo_url is None
+
+    @pytest.mark.asyncio
+    async def test_manage_clear_custom_bio_drops_existing_bio(
+        self, test_client: object, test_db: object, claimable_org: str
+    ) -> None:
+        """clear_custom_bio=True should null out the bio column."""
+        await EntryCRUD.update(test_db, claimable_org, email="info@atlas.rebuildingus.org")
+        slug = (await EntryCRUD.get_by_id(test_db, claimable_org)).slug
+        await test_client.post(f"/api/profiles/{slug}/claim", json={})
+        claim = await ProfileClaimCRUD.get_active_for_entry(test_db, claimable_org)
+        assert claim is not None
+        assert claim.verification_token is not None
+        await test_client.post(
+            "/api/profiles/claims/verify-email",
+            json={"token": claim.verification_token},
+        )
+        await EntryCRUD.update(test_db, claimable_org, custom_bio="hand-written")
+
+        resp = await test_client.patch(
+            f"/api/profiles/{slug}/manage",
+            json={"clear_custom_bio": True},
+        )
+        assert resp.status_code == 200, resp.text
+        entry = await EntryCRUD.get_by_id(test_db, claimable_org)
+        assert entry is not None
+        assert entry.custom_bio is None
+
+    @pytest.mark.asyncio
+    async def test_manage_no_fields_returns_updated_false(
+        self, test_client: object, test_db: object, claimable_org: str
+    ) -> None:
+        """An empty manage payload should report no updates."""
+        await EntryCRUD.update(test_db, claimable_org, email="info@atlas.rebuildingus.org")
+        slug = (await EntryCRUD.get_by_id(test_db, claimable_org)).slug
+        await test_client.post(f"/api/profiles/{slug}/claim", json={})
+        claim = await ProfileClaimCRUD.get_active_for_entry(test_db, claimable_org)
+        assert claim is not None
+        assert claim.verification_token is not None
+        await test_client.post(
+            "/api/profiles/claims/verify-email",
+            json={"token": claim.verification_token},
+        )
+
+        resp = await test_client.patch(f"/api/profiles/{slug}/manage", json={})
+        assert resp.status_code == 200, resp.text
+        assert resp.json() == {"updated": False, "fields": []}
+
+    @pytest.mark.asyncio
+    async def test_follow_returns_404_for_unknown_slug(self, test_client: object) -> None:
+        resp = await test_client.post("/api/profiles/no-slug/follow")
+        assert resp.status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_unfollow_returns_404_for_unknown_slug(self, test_client: object) -> None:
+        resp = await test_client.delete("/api/profiles/no-slug/follow")
+        assert resp.status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_get_follow_returns_404_for_unknown_slug(self, test_client: object) -> None:
+        resp = await test_client.get("/api/profiles/no-slug/follow")
+        assert resp.status_code == 404
+
+
+class TestVerifyClaimRefetchInvariants:
+    """Direct unit tests for unreachable defensive checks in verify_claim."""
+
+    @pytest.mark.asyncio
+    async def test_verify_claim_500_when_mark_verified_returns_none(
+        self,
+        test_db: object,
+        claimable_org: str,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """If mark_verified can't return the row, verify_claim must 500."""
+        from atlas.domains.catalog.schemas.public import ProfileClaimVerifyRequest
+
+        await EntryCRUD.update(test_db, claimable_org, email="info@atlas.rebuildingus.org")
+        # Seed a tier-1 claim so we have a valid verification token to pass in.
+        claim = await ProfileClaimCRUD.create(
+            test_db,
+            entry_id=claimable_org,
+            user_id="user-x",
+            user_email="user@atlas.rebuildingus.org",
+            tier=1,
+        )
+        assert claim.verification_token is not None
+
+        async def fake_mark_verified(_db: object, _claim_id: str) -> None:
+            return None
+
+        monkeypatch.setattr(
+            "atlas.domains.catalog.api.profiles.ProfileClaimCRUD.mark_verified",
+            fake_mark_verified,
+        )
+
+        from fastapi import HTTPException
+
+        with pytest.raises(HTTPException) as exc_info:
+            await profile_api.verify_claim(
+                ProfileClaimVerifyRequest(token=claim.verification_token),
+                response=None,
+                db=test_db,
+            )
+        assert exc_info.value.status_code == 500
+
+    @pytest.mark.asyncio
+    async def test_verify_claim_404_when_entry_lookup_returns_none(
+        self,
+        test_db: object,
+        claimable_org: str,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """If the post-verification entry lookup fails, verify_claim must 404."""
+        from atlas.domains.catalog.schemas.public import ProfileClaimVerifyRequest
+
+        await EntryCRUD.update(test_db, claimable_org, email="info@atlas.rebuildingus.org")
+        claim = await ProfileClaimCRUD.create(
+            test_db,
+            entry_id=claimable_org,
+            user_id="user-x",
+            user_email="user@atlas.rebuildingus.org",
+            tier=1,
+        )
+        assert claim.verification_token is not None
+
+        async def fake_get_by_id(_db: object, _entry_id: str) -> None:
+            return None
+
+        monkeypatch.setattr(
+            "atlas.domains.catalog.api.profiles.EntryCRUD.get_by_id",
+            fake_get_by_id,
+        )
+
+        from fastapi import HTTPException
+
+        with pytest.raises(HTTPException) as exc_info:
+            await profile_api.verify_claim(
+                ProfileClaimVerifyRequest(token=claim.verification_token),
+                response=None,
+                db=test_db,
+            )
+        assert exc_info.value.status_code == 404

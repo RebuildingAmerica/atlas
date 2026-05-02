@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, patch
 import httpx
 import pytest
 
-from atlas.main import create_app
+from atlas.main import create_app, lifespan
 from atlas.platform.config import Settings, get_settings
 
 
@@ -143,3 +143,113 @@ class TestDocsEndpoints:
         assert "openapi" in payload
         assert "info" in payload
         assert payload["info"]["title"] == "Atlas REST API"
+
+
+class TestProductionCorsGuard:
+    """Atlas refuses to boot when production deployments expose '*' CORS."""
+
+    def test_create_app_raises_when_production_cors_contains_wildcard(self) -> None:
+        """A '*' origin in production must raise at app construction."""
+        settings = Settings(
+            database_url="sqlite:///tmp/test.db",
+            environment="production",
+            cors_origins=["*"],
+            deploy_mode="local",
+        )
+
+        with (
+            patch("atlas.main.get_settings", return_value=settings),
+            pytest.raises(RuntimeError, match="CORS_ORIGINS"),
+        ):
+            create_app()
+
+
+class TestOAuthProtectedResourceMetadata:
+    """The API mirrors RFC 9728 metadata for direct API-origin clients."""
+
+    @pytest.mark.asyncio
+    async def test_metadata_endpoint_advertises_authorization_server(
+        self,
+        db_url: str,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Metadata payload should reflect the configured issuer and audience."""
+        monkeypatch.setenv("ATLAS_PUBLIC_URL", "https://issuer.test")
+        settings = Settings(
+            database_url=db_url,
+            deploy_mode="local",
+            auth_jwt_audience=["https://atlas.test/api"],
+        )
+        # The endpoint closure captures `settings` at create_app() time, so
+        # we have to seed get_settings before constructing the app.
+        with patch("atlas.main.get_settings", return_value=settings):
+            app = create_app()
+
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            response = await client.get("/api/.well-known/oauth-protected-resource")
+
+        assert response.status_code == HTTPStatus.OK
+        body = response.json()
+        assert body["resource"] == "https://atlas.test/api"
+        assert body["authorization_servers"] == [settings.auth_jwt_issuer]
+        assert body["jwks_uri"] == settings.auth_jwt_jwks_url
+        assert "discovery:read" in body["scopes_supported"]
+
+    @pytest.mark.asyncio
+    async def test_metadata_endpoint_omits_jwks_when_unset(self, db_url: str) -> None:
+        """When no JWKS URL is configured, the metadata payload omits jwks_uri."""
+        settings = Settings(
+            database_url=db_url,
+            deploy_mode="local",
+        )
+        # The validator only runs at construction; assign empty strings after
+        # the model is built to drop the JWKS URL/issuer for this test.
+        settings.auth_jwt_issuer = ""
+        settings.auth_jwt_jwks_url = ""
+        settings.auth_jwt_audience = []
+
+        with patch("atlas.main.get_settings", return_value=settings):
+            app = create_app()
+
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            response = await client.get("/api/.well-known/oauth-protected-resource")
+
+        assert response.status_code == HTTPStatus.OK
+        body = response.json()
+        assert "jwks_uri" not in body
+        assert body["authorization_servers"] == []
+
+
+class TestLifespanWorker:
+    """The full lifespan should boot the durable job worker."""
+
+    @pytest.mark.asyncio
+    async def test_lifespan_starts_and_stops_job_worker(
+        self, db_url: str, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A clean lifespan should call start_job_worker and stop_job_worker."""
+        settings = Settings(
+            database_url=db_url,
+            deploy_mode="local",
+        )
+
+        started: list[dict[str, object]] = []
+        stopped: list[bool] = []
+
+        async def fake_start(database_url: str, **kwargs: object) -> None:
+            started.append({"database_url": database_url, **kwargs})
+
+        async def fake_stop() -> None:
+            stopped.append(True)
+
+        monkeypatch.setattr("atlas.domains.discovery.worker.start_job_worker", fake_start)
+        monkeypatch.setattr("atlas.domains.discovery.worker.stop_job_worker", fake_stop)
+
+        mock_app = MagicMock()
+        with patch("atlas.main.get_settings", return_value=settings):
+            async with lifespan(mock_app):
+                # The lifespan should have already started the worker.
+                assert started, "expected start_job_worker to have been invoked"
+        assert stopped == [True]

@@ -4,6 +4,9 @@ from __future__ import annotations
 
 import pytest
 
+from atlas.domains.catalog.models.ownership import OwnershipCRUD
+from atlas.models import EntryCRUD
+
 STATUS_OK = 200
 STATUS_CREATED = 201
 STATUS_NO_CONTENT = 204
@@ -119,4 +122,97 @@ class TestOrgEntriesCRUD:
     async def test_delete_nonexistent_entry_returns_404(self, test_client: object) -> None:
         """Deleting an entry that does not exist should return 404."""
         response = await test_client.delete(f"/api/orgs/{ORG_ID}/entries/nonexistent-id")
+        assert response.status_code == STATUS_NOT_FOUND
+
+    @pytest.mark.asyncio
+    async def test_update_with_empty_payload_returns_current_state(
+        self, test_client: object
+    ) -> None:
+        """An update with no fields should succeed and return the unchanged entry."""
+        create_resp = await test_client.post(f"/api/orgs/{ORG_ID}/entries", json=ENTRY_PAYLOAD)
+        entry_id = create_resp.json()["id"]
+
+        update_resp = await test_client.put(
+            f"/api/orgs/{ORG_ID}/entries/{entry_id}",
+            json={},
+        )
+        assert update_resp.status_code == STATUS_OK
+        assert update_resp.json()["id"] == entry_id
+        assert update_resp.json()["name"] == ENTRY_PAYLOAD["name"]
+
+
+class TestOrgEntriesOrphanOwnership:
+    """Stale ownership rows pointing at deleted entries should still 404 cleanly."""
+
+    @pytest.mark.asyncio
+    async def test_list_skips_ownership_rows_with_missing_entry(
+        self, test_client: object, test_db: object
+    ) -> None:
+        """List endpoint should skip ownership rows whose entry has been deleted."""
+        entry_id = await EntryCRUD.create(
+            test_db,
+            entry_type="organization",
+            name="Live Org",
+            description="Will remain.",
+            city="Detroit",
+            state="MI",
+            geo_specificity="local",
+        )
+        await OwnershipCRUD.create_ownership(
+            test_db,
+            resource_id=entry_id,
+            resource_type="entry",
+            org_id=ORG_ID,
+            visibility="private",
+            created_by="local-user",
+        )
+        # Add a stale ownership pointing at a non-existent entry id.
+        await OwnershipCRUD.create_ownership(
+            test_db,
+            resource_id="ghost-entry-id",
+            resource_type="entry",
+            org_id=ORG_ID,
+            visibility="private",
+            created_by="local-user",
+        )
+
+        response = await test_client.get(f"/api/orgs/{ORG_ID}/entries")
+        assert response.status_code == STATUS_OK
+        ids = {e["id"] for e in response.json()}
+        assert entry_id in ids
+        assert "ghost-entry-id" not in ids
+
+    @pytest.mark.asyncio
+    async def test_get_returns_404_when_entry_was_deleted(
+        self, test_client: object, test_db: object
+    ) -> None:
+        """If ownership remains but the entry row is gone, get should 404."""
+        await OwnershipCRUD.create_ownership(
+            test_db,
+            resource_id="ghost-entry-id",
+            resource_type="entry",
+            org_id=ORG_ID,
+            visibility="private",
+            created_by="local-user",
+        )
+        response = await test_client.get(f"/api/orgs/{ORG_ID}/entries/ghost-entry-id")
+        assert response.status_code == STATUS_NOT_FOUND
+
+    @pytest.mark.asyncio
+    async def test_update_returns_404_when_entry_was_deleted(
+        self, test_client: object, test_db: object
+    ) -> None:
+        """If ownership remains but the entry row is gone, update should 404."""
+        await OwnershipCRUD.create_ownership(
+            test_db,
+            resource_id="ghost-entry-id",
+            resource_type="entry",
+            org_id=ORG_ID,
+            visibility="private",
+            created_by="local-user",
+        )
+        response = await test_client.put(
+            f"/api/orgs/{ORG_ID}/entries/ghost-entry-id",
+            json={"name": "x"},
+        )
         assert response.status_code == STATUS_NOT_FOUND
