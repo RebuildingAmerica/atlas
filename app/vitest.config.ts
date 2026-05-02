@@ -28,12 +28,10 @@ export default defineConfig({
         "vercel.ts",
       ],
       thresholds: {
-        // Set to the highest values that current unit tests already pass.
-        // Ratchet upward as more coverage lands.
-        branches: 82,
-        functions: 85,
-        lines: 87,
-        statements: 86,
+        branches: 100,
+        functions: 100,
+        lines: 100,
+        statements: 100,
       },
     },
     environment: "node",

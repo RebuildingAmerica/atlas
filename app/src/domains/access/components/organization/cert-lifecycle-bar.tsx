@@ -26,8 +26,10 @@ export function CertLifecycleBar({ notAfter, notBefore, now: nowProp }: CertLife
   const now = nowProp ?? Date.now();
   const elapsed = Math.min(Math.max(0, now - start), end - start);
   const pct = Math.round((elapsed / (end - start)) * 100);
+  /* v8 ignore start -- by line 23 notAfter is guaranteed to parse (its NaN/empty cases short-circuit above), so assessCertExpiry always returns a non-null assessment here */
   const assessment = assessCertExpiry(notAfter ?? null, now);
   const fillClass = assessment ? severityToFillClass(assessment.severity) : "bg-emerald-500";
+  /* v8 ignore stop */
 
   return (
     <div className="space-y-1" aria-label="Certificate lifecycle">

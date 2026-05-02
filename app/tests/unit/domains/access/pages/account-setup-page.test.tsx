@@ -652,4 +652,68 @@ describe("AccountSetupPage", () => {
 
     expect(screen.getByText("You have 0 passkeys on this account.")).not.toBeNull();
   });
+
+  it("falls back to the current session when refreshStatus yields no data on continue-without-passkey", async () => {
+    mocks.mutateStates.push({}, {}, {});
+    mocks.useAtlasSession.mockReturnValue({
+      data: {
+        accountReady: false,
+        hasPasskey: false,
+        passkeyCount: 0,
+        user: {
+          email: "operator@atlas.test",
+          emailVerified: true,
+          name: "Operator",
+        },
+        workspace: defaultWorkspace,
+      },
+      isPending: false,
+      isRefetching: false,
+      refetch: mocks.refetch.mockResolvedValue({ data: undefined }),
+    });
+    const { AccountSetupPage } = await import("@/domains/access/pages/auth/account-setup-page");
+
+    render(<AccountSetupPage />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Continue without a passkey/ }));
+
+    await waitFor(() => {
+      expect(mocks.refetch.mock.calls.length).toBeGreaterThanOrEqual(1);
+    });
+    // Session.accountReady is false, so the continue path should bail without
+    // assigning a redirect.
+    expect(assignMock).not.toHaveBeenCalled();
+  });
+
+  it("only auto-refreshes once even when the redirect prop changes between renders", async () => {
+    mocks.mutateStates.push({}, {}, {});
+    mocks.useAtlasSession.mockReturnValue({
+      data: {
+        accountReady: false,
+        hasPasskey: false,
+        passkeyCount: 0,
+        user: {
+          email: "operator@atlas.test",
+          emailVerified: false,
+        },
+        workspace: defaultWorkspace,
+      },
+      isPending: false,
+      isRefetching: false,
+      refetch: mocks.refetch.mockResolvedValue({
+        data: null,
+      }),
+    });
+    const { AccountSetupPage } = await import("@/domains/access/pages/auth/account-setup-page");
+
+    const { rerender } = render(<AccountSetupPage redirectTo="/a" />);
+    await waitFor(() => {
+      expect(mocks.refetch).toHaveBeenCalledTimes(1);
+    });
+    rerender(<AccountSetupPage redirectTo="/b" />);
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(mocks.refetch).toHaveBeenCalledTimes(1);
+  });
 });

@@ -66,4 +66,11 @@ describe("ResumeCheckoutBanner", () => {
     const { container } = render(<ResumeCheckoutBanner />);
     expect(container.firstChild).toBeNull();
   });
+
+  it("treats a session without data as having no active products", () => {
+    rememberPendingCheckout({ product: "atlas_team", interval: "monthly" });
+    mocks.useAtlasSession.mockReturnValue({ data: undefined });
+    render(<ResumeCheckoutBanner />);
+    expect(screen.getByText(/Resume checkout/i)).toBeInTheDocument();
+  });
 });

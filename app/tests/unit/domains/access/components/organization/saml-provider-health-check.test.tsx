@@ -175,6 +175,49 @@ describe("SamlProviderHealthCheck", () => {
     });
   });
 
+  it("falls back to '?' when the IdP is reachable but no status code is reported", async () => {
+    ssoMocks.checkWorkspaceSAMLProviderHealth.mockResolvedValue({
+      entryPointReachable: true,
+      entryPointStatus: null,
+      certificateValid: true,
+      certificateExpired: false,
+      certificateNotAfter: null,
+      reason: null,
+    });
+
+    const { container } = render(<SamlProviderHealthCheck providerId="saml-1" />);
+    const details = container.querySelector("details");
+    if (!details) throw new Error("Expected details element");
+    details.open = true;
+    fireEvent(details, new Event("toggle"));
+
+    await waitFor(() => {
+      expect(screen.getByText(/reachable \(HTTP \?\)/)).toBeInTheDocument();
+    });
+    expect(screen.getByText(/valid \(expires unknown\)/)).toBeInTheDocument();
+  });
+
+  it("renders an expired certificate without a notAfter value", async () => {
+    ssoMocks.checkWorkspaceSAMLProviderHealth.mockResolvedValue({
+      entryPointReachable: true,
+      entryPointStatus: 200,
+      certificateValid: true,
+      certificateExpired: true,
+      certificateNotAfter: null,
+      reason: null,
+    });
+
+    const { container } = render(<SamlProviderHealthCheck providerId="saml-1" />);
+    const details = container.querySelector("details");
+    if (!details) throw new Error("Expected details element");
+    details.open = true;
+    fireEvent(details, new Event("toggle"));
+
+    await waitFor(() => {
+      expect(screen.getByText(/expired\s*$/)).toBeInTheDocument();
+    });
+  });
+
   it("does not auto-run a second time when the disclosure is reopened", async () => {
     ssoMocks.checkWorkspaceSAMLProviderHealth.mockResolvedValue({
       entryPointReachable: true,

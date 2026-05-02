@@ -160,6 +160,21 @@ describe("WorkspaceSSOSamlForm", () => {
     expect(updaters[4]?.(empty).providerId).toBe("manual-id");
   });
 
+  it("confirms when the issuer host is on the allowlist", () => {
+    render(
+      <WorkspaceSSOSamlForm
+        canManageOrganization
+        isPending={false}
+        samlAllowedIssuerOrigins={["https://accounts.google.com"]}
+        samlSetupForm={buildForm({ issuer: "https://accounts.google.com/saml" })}
+        setSamlSetupForm={vi.fn()}
+        setup={buildSetup()}
+        onSamlSubmit={vi.fn().mockResolvedValue(undefined)}
+      />,
+    );
+    expect(screen.getByText(/is on the allowlist/i)).toBeInTheDocument();
+  });
+
   it("warns when the issuer host is not on the allowlist", () => {
     render(
       <WorkspaceSSOSamlForm
@@ -208,6 +223,24 @@ describe("WorkspaceSSOSamlForm", () => {
     expect(screen.getByText(/SAML registration is disabled/i)).toBeInTheDocument();
     const links = screen.getAllByRole("link", { name: /Email Atlas operators/i });
     expect(links.length).toBeGreaterThan(0);
+  });
+
+  it("uses plural wording when the certificate has multiple body lines", () => {
+    render(
+      <WorkspaceSSOSamlForm
+        canManageOrganization
+        isPending={false}
+        samlAllowedIssuerOrigins={["https://accounts.google.com"]}
+        samlSetupForm={buildForm({
+          certificate:
+            "-----BEGIN CERTIFICATE-----\nMIIBExample\nMIIBExample2\n-----END CERTIFICATE-----",
+        })}
+        setSamlSetupForm={vi.fn()}
+        setup={buildSetup()}
+        onSamlSubmit={vi.fn().mockResolvedValue(undefined)}
+      />,
+    );
+    expect(screen.getByText(/2 body lines\)/i)).toBeInTheDocument();
   });
 
   it("uses singular wording when the certificate has exactly one body line", () => {

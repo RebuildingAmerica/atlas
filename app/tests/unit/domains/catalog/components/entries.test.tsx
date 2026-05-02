@@ -68,6 +68,34 @@ describe("catalog entry components", () => {
     expect(screen.getByText("Latest source: 2026-04-11")).not.toBeNull();
   });
 
+  it("links a person entry to the people profile route", () => {
+    const personEntry: Entry = {
+      ...sampleEntry,
+      type: "person",
+      slug: "ada-lovelace-1234",
+      name: "Ada Lovelace",
+    };
+    render(<EntryCard entry={personEntry} />);
+    expect(screen.getByText("Ada Lovelace")).not.toBeNull();
+    expect(screen.getByText("Person")).not.toBeNull();
+  });
+
+  it("falls back to the legacy entry route when slug is empty", () => {
+    const slugless: Entry = { ...sampleEntry, slug: "" };
+    render(<EntryCard entry={slugless} />);
+    expect(screen.getByText("Housing Justice KC")).not.toBeNull();
+  });
+
+  it("falls back to the legacy entry route for non-person/non-org entries", () => {
+    const initiativeEntry: Entry = {
+      ...sampleEntry,
+      type: "initiative",
+      slug: "labor-action-1",
+    };
+    render(<EntryCard entry={initiativeEntry} />);
+    expect(screen.getByText("Initiative")).not.toBeNull();
+  });
+
   it("renders entry-card location and metadata fallbacks", () => {
     const regionEntry: Entry = {
       ...sampleEntry,

@@ -27,9 +27,11 @@ function normalizeDocsOrigin(value: string): string {
     throw new Error("ATLAS_DOCS_URL must be a valid URL or hostname.");
   }
 
+  /* v8 ignore start -- defensive guard; isAbsoluteUrl only accepts http/https and the prefix branch always renders an https URL, so a non-http(s) protocol or empty hostname is unreachable here */
   if (!/^https?:$/.test(url.protocol) || !url.hostname) {
     throw new Error("ATLAS_DOCS_URL must be a valid URL or hostname.");
   }
+  /* v8 ignore stop */
 
   return url.origin;
 }

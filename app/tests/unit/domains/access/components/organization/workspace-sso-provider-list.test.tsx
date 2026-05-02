@@ -207,6 +207,21 @@ describe("WorkspaceSSOProviderList", () => {
     expect(defaultProps.onDeleteProvider).toHaveBeenCalledWith("saml-1");
   });
 
+  it("swallows individual onDeleteProvider rejections during a bulk disable", async () => {
+    const onDeleteProvider = vi.fn().mockRejectedValue(new Error("partial fail"));
+    render(<WorkspaceSSOProviderList {...defaultProps} onDeleteProvider={onDeleteProvider} />);
+    fireEvent.click(screen.getByText("Incident response"));
+
+    await act(async () => {
+      fireEvent.click(screen.getByText("Disable all SAML providers"));
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    // Failure is swallowed by the inner .catch() so no test-runner unhandled
+    // rejections fire; the call still happened.
+    expect(onDeleteProvider).toHaveBeenCalledWith("saml-1");
+  });
+
   it("skips bulk disable when confirmation is rejected", async () => {
     confirmMock.mockResolvedValueOnce(false);
     render(<WorkspaceSSOProviderList {...defaultProps} />);
@@ -284,6 +299,59 @@ describe("WorkspaceSSOProviderList", () => {
 
     expect(defaultProps.onRequestDomainVerification).toHaveBeenCalledWith("saml-1");
     expect(confirmMock).not.toHaveBeenCalled();
+  });
+
+  it("labels SAML providers with signed AuthnRequests when configured", () => {
+    const samlSigned = {
+      ...providers[1],
+      saml: {
+        callbackUrl: "acs",
+        audience: "aud",
+        entryPoint: "ep",
+        authnRequestsSigned: true,
+        certificate: { fingerprintSha256: "fp", errorMessage: null },
+      },
+    };
+    render(
+      <WorkspaceSSOProviderList
+        {...defaultProps}
+        organization={{ sso: { providers: [samlSigned] } } as unknown as AtlasOrganizationDetails}
+      />,
+    );
+    expect(screen.getByText("Signed AuthnRequests")).toBeInTheDocument();
+  });
+
+  it("renders the certificate-expiry block when notAfter is present", () => {
+    const samlWithExpiry = {
+      ...providers[1],
+      saml: {
+        callbackUrl: "acs",
+        audience: "aud",
+        entryPoint: "ep",
+        certificate: {
+          fingerprintSha256: "fp",
+          errorMessage: null,
+          notAfter: "2030-01-01T00:00:00Z",
+          notBefore: "2026-01-01T00:00:00Z",
+        },
+      },
+    };
+    render(
+      <WorkspaceSSOProviderList
+        {...defaultProps}
+        organization={
+          { sso: { providers: [samlWithExpiry] } } as unknown as AtlasOrganizationDetails
+        }
+      />,
+    );
+    expect(screen.getByDisplayValue(/2030-01-01/)).toBeInTheDocument();
+  });
+
+  it("surfaces the timed-out banner once the verification poll exits", () => {
+    render(
+      <WorkspaceSSOProviderList {...defaultProps} verificationTimedOutProviderIds={["saml-1"]} />,
+    );
+    expect(screen.getByText(/Atlas stopped polling DNS after 10 minutes/i)).toBeInTheDocument();
   });
 
   it("renders history entries that lack a provider id or operator email", () => {

@@ -27,11 +27,8 @@ const SUGGESTION_DISTANCE_THRESHOLD = 2;
  * suggest a correction (e.g. `gmial.com` → `gmail.com`).  Callers must
  * filter out empty strings and exact matches before invoking.
  */
+/* v8 ignore start -- the DP row is fully populated for indices we read; the `?? 0` clauses are unreachable narrowing fallbacks under noUncheckedIndexedAccess */
 function levenshteinDistance(left: string, right: string): number {
-  // The DP row is always populated for indices 0..right.length before we
-  // read it.  The `?? 0` clauses below preserve TypeScript's strict
-  // index-access typing without changing runtime behavior — the
-  // right-hand side is unreachable for the only indices we ever touch.
   const previous: number[] = [];
   for (let i = 0; i <= right.length; i++) {
     previous.push(i);
@@ -51,6 +48,7 @@ function levenshteinDistance(left: string, right: string): number {
   }
   return previous[right.length] ?? 0;
 }
+/* v8 ignore stop */
 
 /**
  * Returns a "did you mean…" suggestion for the email's domain when the

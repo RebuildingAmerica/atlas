@@ -87,7 +87,8 @@ export function OrganizationSSOSetupCard({ organization }: OrganizationSSOSetupC
       icon: <CheckCircle2 aria-hidden="true" className="h-4 w-4 text-emerald-700" />,
       primaryProviderSummary: primaryProvider
         ? `Primary provider: ${primaryProvider.providerId}.`
-        : "No primary provider selected yet.",
+        : /* v8 ignore next -- the "primary-set" branch only fires when primaryProvider is defined, so this fallback is unreachable */
+          "No primary provider selected yet.",
       providerSummary: `${configuredProviderCount} provider${configuredProviderCount === 1 ? "" : "s"} configured, ${verifiedProviderCount} verified.`,
     };
   })();

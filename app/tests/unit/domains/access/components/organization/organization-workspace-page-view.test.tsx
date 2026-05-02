@@ -326,6 +326,39 @@ describe("OrganizationWorkspacePageView", () => {
     expect(onCreateWorkspace).toHaveBeenCalled();
   });
 
+  it("falls back to a generic title when the organization and active workspace lack a name", () => {
+    const controller = buildController({
+      organization: {
+        id: "org_1",
+        name: null,
+        slug: "atlas",
+        members: [],
+        invitations: [],
+        metadata: { workspaceType: "team" },
+        capabilities: { canUseTeamFeatures: true },
+        role: "owner",
+        workspaceType: "team",
+        sso: { providers: [] },
+      },
+      activeWorkspace: null,
+    }) as unknown as OrganizationPageController;
+
+    render(<OrganizationWorkspacePageView controller={controller} />);
+    expect(
+      screen.getByRole("heading", { level: 1, name: "Workspace management" }),
+    ).toBeInTheDocument();
+  });
+
+  it("treats invite permissions as unavailable when the controller session is null", () => {
+    const controller = buildController({
+      session: null,
+    }) as unknown as OrganizationPageController;
+
+    render(<OrganizationWorkspacePageView controller={controller} />);
+    // No invite form should render when the session is missing.
+    expect(screen.queryByText(/Invite people to your workspace/i)).not.toBeInTheDocument();
+  });
+
   it("renders the personal-workspace heading without team sections when team features are unavailable", () => {
     const controller = buildController({
       canUseTeamFeatures: false,

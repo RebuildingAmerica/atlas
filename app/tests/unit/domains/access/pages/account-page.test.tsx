@@ -523,6 +523,144 @@ describe("AccountPage", () => {
     });
   });
 
+  it("renders gracefully when the session data is unavailable", async () => {
+    mocks.useAtlasSession.mockReturnValue({ data: undefined });
+    setQueryResults({ apiKeys: [], passkeys: [] });
+    const { AccountPage } = await import("@/domains/access/pages/workspace/account-page");
+
+    render(<AccountPage />);
+    // The account-header label is always rendered even when session data is missing.
+    expect(screen.getByText("Account")).not.toBeNull();
+  });
+
+  it("hides the API-key panel when capabilities omit api.keys", async () => {
+    mocks.useAtlasSession.mockReturnValue({
+      data: createAtlasSessionFixture({
+        workspace: createAtlasWorkspace({
+          resolvedCapabilities: {
+            capabilities: ["research.run"],
+            limits: {
+              research_runs_per_month: 2,
+              max_shortlists: 1,
+              max_shortlist_entries: 25,
+              max_api_keys: 0,
+              api_requests_per_day: 0,
+              public_api_requests_per_hour: 100,
+              max_members: 1,
+            },
+          },
+        }),
+      }),
+    });
+    setQueryResults({ apiKeys: [], passkeys: [] });
+    const { AccountPage } = await import("@/domains/access/pages/workspace/account-page");
+
+    render(<AccountPage />);
+    expect(screen.queryByLabelText("Key name")).toBeNull();
+    expect(screen.queryByText("Create an API key")).toBeNull();
+  });
+
+  it("hides the passkey panel and billing section when running in local mode", async () => {
+    mocks.useAtlasSession.mockReturnValue({
+      data: createAtlasSessionFixture({
+        isLocal: true,
+        workspace: createAtlasWorkspace({
+          resolvedCapabilities: {
+            capabilities: ["research.run"],
+            limits: {
+              research_runs_per_month: 2,
+              max_shortlists: 1,
+              max_shortlist_entries: 25,
+              max_api_keys: 0,
+              api_requests_per_day: 0,
+              public_api_requests_per_hour: 100,
+              max_members: 1,
+            },
+          },
+        }),
+      }),
+    });
+    setQueryResults({ apiKeys: [], passkeys: [] });
+    const { AccountPage } = await import("@/domains/access/pages/workspace/account-page");
+
+    render(<AccountPage />);
+    expect(screen.queryByText("Billing")).toBeNull();
+    expect(screen.queryByRole("button", { name: /Add passkey/i })).toBeNull();
+  });
+
+  it("ignores the rp-logout response if the component unmounts first", async () => {
+    let resolveLogout: ((value: { url: string | null }) => void) | null = null;
+    mocks.getRpLogoutRedirect.mockImplementation(
+      () =>
+        new Promise<{ url: string | null }>((resolve) => {
+          resolveLogout = resolve;
+        }),
+    );
+    setQueryResults({ apiKeys: [], passkeys: [] });
+    const { AccountPage } = await import("@/domains/access/pages/workspace/account-page");
+
+    const view = render(<AccountPage />);
+    view.unmount();
+
+    if (resolveLogout) {
+      (resolveLogout as (value: { url: string | null }) => void)({ url: null });
+    }
+  });
+
+  it("ignores the rp-logout failure if the component unmounts first", async () => {
+    let rejectLogout: ((reason: Error) => void) | null = null;
+    mocks.getRpLogoutRedirect.mockImplementation(
+      () =>
+        new Promise<{ url: string | null }>((_, reject) => {
+          rejectLogout = reject;
+        }),
+    );
+    setQueryResults({ apiKeys: [], passkeys: [] });
+    const { AccountPage } = await import("@/domains/access/pages/workspace/account-page");
+
+    const view = render(<AccountPage />);
+    view.unmount();
+
+    if (rejectLogout) {
+      (rejectLogout as (reason: Error) => void)(new Error("late"));
+    }
+  });
+
+  it("treats a non-string key field on the createApiKey response as a missing secret", async () => {
+    mocks.createApiKey.mockResolvedValue({ key: 12345 });
+    const { AccountPage } = await import("@/domains/access/pages/workspace/account-page");
+
+    render(<AccountPage />);
+
+    fireEvent.change(screen.getByLabelText("Key name"), {
+      target: { value: "Desktop script" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /Create/i }));
+
+    await waitFor(() => {
+      expect(mocks.createApiKey).toHaveBeenCalled();
+    });
+    expect(screen.queryByText(/atlas_secret_key/)).toBeNull();
+  });
+
+  it("treats a non-object createApiKey response as a missing secret", async () => {
+    mocks.createApiKey.mockResolvedValue(null);
+    const { AccountPage } = await import("@/domains/access/pages/workspace/account-page");
+
+    render(<AccountPage />);
+
+    fireEvent.change(screen.getByLabelText("Key name"), {
+      target: { value: "Desktop script" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /Create/i }));
+
+    await waitFor(() => {
+      expect(mocks.createApiKey).toHaveBeenCalled();
+    });
+    // No secret rendered because the response could not be parsed.
+    expect(screen.queryByText("atlas_secret_key")).toBeNull();
+  });
+
   it("handles passkey and API-key creation responses that omit generated data", async () => {
     mocks.addPasskey.mockResolvedValue({});
     mocks.createApiKey.mockResolvedValue({});

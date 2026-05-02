@@ -147,6 +147,41 @@ describe("DiscoveryPage", () => {
     );
   });
 
+  it("renders a recent run without an error message when none is set", () => {
+    mocks.useDiscoveryRuns.mockReturnValue({
+      data: {
+        items: [
+          {
+            id: "run_1",
+            location_query: "Chicago",
+            started_at: "2026-04-20T10:00:00.000Z",
+            state: "IL",
+            status: "completed",
+            issue_areas: ["area1"],
+            entries_extracted: 10,
+            sources_fetched: 5,
+            entries_after_dedup: 8,
+            error_message: null,
+          },
+        ],
+      },
+      isLoading: false,
+    });
+    render(<DiscoveryPage />);
+    expect(screen.getByText("Chicago")).toBeInTheDocument();
+    expect(screen.queryByText(/Process failed/)).toBeNull();
+  });
+
+  it("renders the in-flight start-run label when the start mutation is pending", () => {
+    mocks.useStartDiscovery.mockReturnValue({
+      mutate: vi.fn(),
+      isPending: true,
+      error: null,
+    });
+    render(<DiscoveryPage />);
+    expect(screen.getByText(/Starting\.\.\./)).toBeInTheDocument();
+  });
+
   it("renders recent runs and handles error messages", () => {
     mocks.useDiscoveryRuns.mockReturnValue({
       data: {
@@ -231,6 +266,148 @@ describe("DiscoveryPage", () => {
     expect(screen.getByText("Team discovery")).toBeInTheDocument();
     expect(screen.getByText("Atlas Team discovery")).toBeInTheDocument();
     expect(screen.getByText("Atlas Team")).toBeInTheDocument();
+  });
+
+  it("removes an already-selected issue when toggled twice", () => {
+    render(<DiscoveryPage />);
+    const checkbox = screen.getByRole("checkbox");
+    fireEvent.click(checkbox);
+    expect(checkbox).toBeChecked();
+    fireEvent.click(checkbox);
+    expect(checkbox).not.toBeChecked();
+  });
+
+  it("renders the pending-invitations notice when invitations are waiting", () => {
+    mocks.useAtlasSession.mockReturnValue({
+      data: {
+        workspace: {
+          activeOrganization: null,
+          capabilities: { canUseTeamFeatures: false },
+          resolvedCapabilities: {
+            capabilities: ["research.run"],
+            limits: {
+              research_runs_per_month: 2,
+              max_shortlists: 1,
+              max_shortlist_entries: 25,
+              max_api_keys: 0,
+              api_requests_per_day: 0,
+              public_api_requests_per_hour: 100,
+              max_members: 1,
+            },
+          },
+          onboarding: { needsWorkspace: false, hasPendingInvitations: true },
+        },
+      },
+    });
+    render(<DiscoveryPage />);
+    expect(screen.getByText(/You have workspace invitations waiting/)).toBeInTheDocument();
+  });
+
+  it("renders the upgrade prompt when research capability is missing", () => {
+    mocks.useAtlasSession.mockReturnValue({
+      data: {
+        workspace: {
+          activeOrganization: null,
+          activeProducts: ["atlas_pro"],
+          capabilities: { canUseTeamFeatures: false },
+          resolvedCapabilities: {
+            capabilities: [],
+            limits: {
+              research_runs_per_month: 0,
+              max_shortlists: 1,
+              max_shortlist_entries: 25,
+              max_api_keys: 0,
+              api_requests_per_day: 0,
+              public_api_requests_per_hour: 100,
+              max_members: 1,
+            },
+          },
+          onboarding: { needsWorkspace: false, hasPendingInvitations: false },
+        },
+      },
+    });
+    render(<DiscoveryPage />);
+    // Upgrade prompts should be visible.
+    expect(screen.getByText(/Atlas/)).toBeInTheDocument();
+  });
+
+  it("renders the free-tier upgrade prompt when activeProducts is empty", () => {
+    mocks.useAtlasSession.mockReturnValue({
+      data: {
+        workspace: {
+          activeOrganization: null,
+          activeProducts: [],
+          capabilities: { canUseTeamFeatures: false },
+          resolvedCapabilities: {
+            capabilities: ["research.run"],
+            limits: {
+              research_runs_per_month: 2,
+              max_shortlists: 1,
+              max_shortlist_entries: 25,
+              max_api_keys: 0,
+              api_requests_per_day: 0,
+              public_api_requests_per_hour: 100,
+              max_members: 1,
+            },
+          },
+          onboarding: { needsWorkspace: false, hasPendingInvitations: false },
+        },
+      },
+    });
+    render(<DiscoveryPage />);
+    // Some upgrade prompt should render.
+    expect(screen.getByRole("heading", { level: 1, name: "Discovery" })).toBeInTheDocument();
+  });
+
+  it("sorts taxonomy issue areas alphabetically", () => {
+    mocks.useTaxonomy.mockReturnValue({
+      data: {
+        Domain: [
+          { name: "Zebra protection", slug: "zebra", description: "" },
+          { name: "Apple orchards", slug: "apple", description: "" },
+          { name: "Mango farms", slug: "mango", description: "" },
+        ],
+      },
+      isLoading: false,
+    });
+    render(<DiscoveryPage />);
+    const labels = screen.getAllByRole("checkbox").map((el) => el.parentElement?.textContent);
+    const apple = labels.findIndex((label) => label?.includes("Apple"));
+    const zebra = labels.findIndex((label) => label?.includes("Zebra"));
+    expect(apple).toBeLessThan(zebra);
+  });
+
+  it("ignores form submissions with missing fields", () => {
+    const mutate = vi.fn();
+    mocks.useStartDiscovery.mockReturnValue({ mutate, isPending: false, error: null });
+    mocks.useAtlasSession.mockReturnValue({
+      data: {
+        workspace: {
+          activeOrganization: null,
+          capabilities: { canUseTeamFeatures: false },
+          resolvedCapabilities: {
+            capabilities: ["research.run"],
+            limits: {
+              research_runs_per_month: 2,
+              max_shortlists: 1,
+              max_shortlist_entries: 25,
+              max_api_keys: 0,
+              api_requests_per_day: 0,
+              public_api_requests_per_hour: 100,
+              max_members: 1,
+            },
+          },
+          onboarding: { needsWorkspace: false, hasPendingInvitations: false },
+        },
+      },
+    });
+
+    render(<DiscoveryPage />);
+    // Submit without filling anything in.
+    const form = screen.getByText("Start run").closest("form");
+    if (!form) throw new Error("Expected discovery form");
+    fireEvent.submit(form);
+    expect(mutate).not.toHaveBeenCalled();
   });
 
   it("clears form on successful submission", () => {

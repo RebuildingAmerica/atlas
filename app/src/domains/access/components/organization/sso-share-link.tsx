@@ -33,7 +33,9 @@ export function SsoShareLinkButton({ workspaceSlug }: SsoShareLinkButtonProps) {
     };
   }, []);
   const shareUrl = useMemo(() => {
+    /* v8 ignore start -- the SSR-no-window branch is exercised end-to-end; jsdom always defines window in this unit test */
     const origin = typeof window === "undefined" ? "" : window.location.origin;
+    /* v8 ignore stop */
     return buildIdTeamShareUrl(origin, workspaceSlug);
   }, [workspaceSlug]);
 

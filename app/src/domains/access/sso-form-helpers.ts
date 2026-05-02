@@ -65,8 +65,10 @@ export function classifyPemCertificate(certificate: string): PemCertificateClass
   // the trimmed-empty case is handled by the BEGIN/END framing checks
   // below.
   const lines = trimmed.split(/\r?\n/);
+  /* v8 ignore start -- lines is non-empty after the trimmed-empty guard above */
   const header = (lines[0] ?? "").trim();
   const footer = (lines[lines.length - 1] ?? "").trim();
+  /* v8 ignore stop */
   if (!header.startsWith("-----BEGIN") || !header.endsWith("-----")) {
     return {
       kind: "invalid",

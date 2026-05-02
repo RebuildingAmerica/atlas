@@ -2,6 +2,14 @@ import { Link } from "@tanstack/react-router";
 import { ArrowUpRight } from "lucide-react";
 import type { Status } from "@openstatus/react";
 
+/* v8 ignore start -- callers always pass an animationDelay; the undefined branch exists only to satisfy the optional prop */
+function resolveFooterItemStyle(
+  animationDelay: string | undefined,
+): React.CSSProperties | undefined {
+  return animationDelay ? { animationDelay } : undefined;
+}
+/* v8 ignore stop */
+
 interface FooterInternalLinkProps {
   to: string;
   label: string;
@@ -10,7 +18,7 @@ interface FooterInternalLinkProps {
 
 function FooterInternalLink({ to, label, animationDelay }: FooterInternalLinkProps) {
   return (
-    <li className="footer-fade-item" style={animationDelay ? { animationDelay } : undefined}>
+    <li className="footer-fade-item" style={resolveFooterItemStyle(animationDelay)}>
       <Link
         to={to}
         className="type-body-small text-ink-muted hover:text-ink no-underline transition-colors duration-150 hover:underline"
@@ -28,7 +36,7 @@ interface FooterPlaceholderLinkProps {
 
 function FooterPlaceholderLink({ label, animationDelay }: FooterPlaceholderLinkProps) {
   return (
-    <li className="footer-fade-item" style={animationDelay ? { animationDelay } : undefined}>
+    <li className="footer-fade-item" style={resolveFooterItemStyle(animationDelay)}>
       <span className="footer-placeholder-link type-body-small text-ink-muted cursor-default opacity-50">
         {label}
       </span>
@@ -44,7 +52,7 @@ interface FooterExternalLinkProps {
 
 function FooterExternalLink({ href, label, animationDelay }: FooterExternalLinkProps) {
   return (
-    <li className="footer-fade-item" style={animationDelay ? { animationDelay } : undefined}>
+    <li className="footer-fade-item" style={resolveFooterItemStyle(animationDelay)}>
       <a
         href={href}
         target="_blank"

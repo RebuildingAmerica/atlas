@@ -74,4 +74,25 @@ describe("SsoShareLinkButton", () => {
       expect(toastMocks.error).toHaveBeenCalled();
     });
   });
+
+  it("does not toast or update state when the component unmounts before the copy resolves", async () => {
+    let resolveCopy: ((ok: boolean) => void) | null = null;
+    clipboardMocks.copyToClipboard.mockImplementation(
+      () =>
+        new Promise<boolean>((resolve) => {
+          resolveCopy = resolve;
+        }),
+    );
+
+    const view = render(<SsoShareLinkButton workspaceSlug="civic-team" />);
+    fireEvent.click(screen.getByRole("button", { name: /Send to my IT team/i }));
+    view.unmount();
+
+    if (resolveCopy) {
+      (resolveCopy as (ok: boolean) => void)(true);
+      await Promise.resolve();
+    }
+    expect(toastMocks.success).not.toHaveBeenCalled();
+    expect(toastMocks.error).not.toHaveBeenCalled();
+  });
 });

@@ -176,6 +176,52 @@ describe("SignInPage", () => {
     });
   });
 
+  it("uses a generic organization label when SSO resolution omits the name", async () => {
+    mocks.resolveWorkspaceSSOSignIn.mockResolvedValue({
+      organizationName: null,
+      providerId: "provider_acme",
+      providerType: "oidc",
+    });
+    authClient.signIn.sso.mockResolvedValue({ data: { url: null } });
+
+    render(<SignInPage initialEmail="ops@acme.test" />);
+    const form = screen.getByRole("button", { name: /Continue with email/i }).closest("form");
+    if (!form) throw new Error("Expected form element");
+    await act(async () => {
+      fireEvent.submit(form);
+      await Promise.resolve();
+    });
+
+    await vi.waitFor(() => {
+      expect(screen.getByText(/Redirecting to your organization's sign-in/)).toBeInTheDocument();
+    });
+    expect(mockLocationAssign).not.toHaveBeenCalled();
+  });
+
+  it("maps a recognised auth error code to its localised label", async () => {
+    mocks.resolveWorkspaceSSOSignIn.mockResolvedValue(null);
+    mocks.requestMagicLink.mockRejectedValue(new Error("EMAIL_DELIVERY_FAILED"));
+
+    render(<SignInPage />);
+    fireEvent.change(screen.getByLabelText(/Email/i), { target: { value: "ops@acme.test" } });
+    const form = screen.getByRole("button", { name: /Continue with email/i }).closest("form");
+    if (!form) throw new Error("Expected form element");
+    await act(async () => {
+      fireEvent.submit(form);
+      await Promise.resolve();
+    });
+
+    expect(
+      screen.getByText("Your sign-in link couldn't be delivered. Please try again."),
+    ).toBeInTheDocument();
+  });
+
+  it("forwards the redirect param on the create-account link when present", () => {
+    render(<SignInPage redirectTo="/workspace/billing" />);
+    const link = screen.getByRole("link", { name: /Create a free account/ });
+    expect(link).toBeInTheDocument();
+  });
+
   it("shows the existing-account banner when existingAccount is true", () => {
     render(<SignInPage existingAccount={true} />);
     expect(
@@ -281,6 +327,44 @@ describe("SignInPage", () => {
     await vi.waitFor(() => {
       expect(isConditionalMediationAvailable).toHaveBeenCalled();
     });
+
+    Reflect.deleteProperty(globalThis, "PublicKeyCredential");
+  });
+
+  it("ignores the passkey onSuccess after the component unmounts", async () => {
+    const isConditionalMediationAvailable = vi.fn().mockResolvedValue(true);
+    Object.defineProperty(globalThis, "PublicKeyCredential", {
+      configurable: true,
+      writable: true,
+      value: { isConditionalMediationAvailable } as unknown as typeof PublicKeyCredential,
+    });
+
+    let capturedOnSuccess: (() => Promise<void>) | null = null;
+    authClient.signIn.passkey.mockImplementation(
+      (options: { autoFill?: boolean; fetchOptions?: { onSuccess?: () => Promise<void> } }) => {
+        if (options?.autoFill) {
+          capturedOnSuccess = options?.fetchOptions?.onSuccess ?? null;
+        }
+        return Promise.resolve({ data: null });
+      },
+    );
+
+    const view = render(<SignInPage />);
+
+    await vi.waitFor(() => {
+      expect(authClient.signIn.passkey).toHaveBeenCalledWith(
+        expect.objectContaining({ autoFill: true }),
+      );
+    });
+
+    view.unmount();
+    mockLocationAssign.mockClear();
+    if (capturedOnSuccess) {
+      await act(async () => {
+        await capturedOnSuccess?.();
+      });
+    }
+    expect(mockLocationAssign).not.toHaveBeenCalled();
 
     Reflect.deleteProperty(globalThis, "PublicKeyCredential");
   });

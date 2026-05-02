@@ -20,9 +20,6 @@ function countRecentSources(sources: Source[], windowDays = 90): number {
   const cutoff = Date.now() - windowDays * 86_400_000;
   return sources.filter((source) => {
     const reference = source.published_date ?? source.ingested_at;
-    if (!reference) {
-      return false;
-    }
     const ts = new Date(reference).getTime();
     return Number.isFinite(ts) && ts >= cutoff;
   }).length;
@@ -39,9 +36,10 @@ function formatMostRecentSource(sources: Source[]): string | null {
     return null;
   }
   const date = latest.published_date ?? latest.ingested_at;
-  const dateLabel = date
-    ? new Date(date).toLocaleDateString(undefined, { month: "short", year: "numeric" })
-    : "recently";
+  const dateLabel = new Date(date).toLocaleDateString(undefined, {
+    month: "short",
+    year: "numeric",
+  });
   if (latest.publication) {
     return `${latest.publication}, ${dateLabel}`;
   }
@@ -62,14 +60,14 @@ export function WorkSection({ entry, issueAreaLabels, showIssueChips = true }: W
       }))
     : [];
 
-  const hasRecent = recentCount > 0 || Boolean(mostRecent);
+  const hasRecent = mostRecent !== null;
   if (!hasRecent && focusLabels.length === 0) {
     return null;
   }
 
   return (
     <>
-      {hasRecent ? (
+      {mostRecent !== null ? (
         <section
           aria-label="Recent coverage"
           className="border-border-taupe bg-paper-faded flex flex-wrap items-baseline gap-x-3 gap-y-1 border px-6 py-4 sm:px-8"
@@ -85,7 +83,7 @@ export function WorkSection({ entry, issueAreaLabels, showIssueChips = true }: W
             ) : (
               <span className="text-ink-soft">No coverage in last 90 days</span>
             )}
-            {mostRecent ? <> &mdash; most recent: {mostRecent}</> : null}
+            <> &mdash; most recent: {mostRecent}</>
           </p>
         </section>
       ) : null}

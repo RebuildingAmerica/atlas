@@ -54,6 +54,32 @@ describe("EmailService", () => {
         }),
       );
     });
+
+    it("logs the captured magic-link when the email body contains a URL", async () => {
+      fetchMock.mockResolvedValue({ ok: true });
+      vi.stubGlobal("fetch", fetchMock);
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {
+        // Suppress capture-mode magic-link debug logs.
+      });
+
+      const service = createEmailService({
+        emailFrom: "Atlas <auth@atlas.test>",
+        emailProvider: "capture",
+        captureUrl: "http://localhost:8025/messages",
+        resendApiKey: null,
+      });
+
+      await service.send({
+        subject: "Sign in",
+        text: "Click https://atlas.example/auth/magic-link?token=abc to continue.",
+        to: "user@atlas.test",
+      });
+
+      expect(warnSpy).toHaveBeenCalled();
+      const logged = warnSpy.mock.calls.flat().join("\n");
+      expect(logged).toContain("https://atlas.example/auth/magic-link");
+      warnSpy.mockRestore();
+    });
   });
 
   describe("ResendEmailService", () => {

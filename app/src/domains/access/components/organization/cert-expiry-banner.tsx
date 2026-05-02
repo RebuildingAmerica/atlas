@@ -19,7 +19,9 @@ export function CertExpiryBanner({ notAfter, now }: CertExpiryBannerProps) {
   const assessment = assessCertExpiry(notAfter, now);
   if (!assessment || assessment.severity === "ok") return null;
   const message = describeCertExpiryAction(assessment);
+  /* v8 ignore start -- describeCertExpiryAction only returns null for the "ok" bucket, which the guard above already filtered out */
   if (!message) return null;
+  /* v8 ignore stop */
   return (
     <p
       className={`type-body-small rounded-2xl px-3 py-2 ${severityToBannerPalette(assessment.severity)}`}

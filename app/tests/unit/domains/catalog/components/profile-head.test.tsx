@@ -86,4 +86,67 @@ describe("ProfileJsonLd", () => {
     const data = parseJsonLd(container);
     expect(data.areaServed).toBeUndefined();
   });
+
+  it("includes member entries when affiliated people are provided to an organization", () => {
+    const orgEntry: Entry = {
+      ...mockPerson,
+      type: "organization",
+      slug: "prairie-coop-b1c2",
+      issue_areas: [],
+    };
+    const member: Entry = { ...mockPerson, name: "Member Person", slug: "member-1" };
+    const { container } = render(<ProfileJsonLd entry={orgEntry} affiliatedPeople={[member]} />);
+    const data = parseJsonLd(container);
+    const memberArr = data.member as { name: string; url: string }[];
+    expect(memberArr).toHaveLength(1);
+    expect(memberArr[0]?.name).toBe("Member Person");
+  });
+
+  it("omits the member field when affiliated people are absent or empty", () => {
+    const orgEntry: Entry = {
+      ...mockPerson,
+      type: "organization",
+      slug: "prairie-coop-b1c2",
+      city: undefined,
+      state: undefined,
+      issue_areas: [],
+    };
+    const { container } = render(<ProfileJsonLd entry={orgEntry} affiliatedPeople={[]} />);
+    const data = parseJsonLd(container);
+    expect(data.member).toBeUndefined();
+    expect(data.areaServed).toBeUndefined();
+    expect(data.knowsAbout).toBeUndefined();
+  });
+
+  it("includes social URLs in sameAs for organizations", () => {
+    const orgEntry: Entry = {
+      ...mockPerson,
+      type: "organization",
+      slug: "prairie-coop-b1c2",
+      social_media: { homepage: "https://example.org" },
+    };
+    const { container } = render(<ProfileJsonLd entry={orgEntry} />);
+    const data = parseJsonLd(container);
+    expect(data.sameAs).toEqual(["https://example.org"]);
+  });
+
+  it("filters out non-string and non-http values from social_media", () => {
+    const entryWithMixed: Entry = {
+      ...mockPerson,
+      social_media: {
+        twitter: "https://twitter.com/x",
+        spam: "ftp://example.org",
+      },
+    };
+    const { container } = render(<ProfileJsonLd entry={entryWithMixed} />);
+    const data = parseJsonLd(container);
+    expect(data.sameAs).toEqual(["https://twitter.com/x"]);
+  });
+
+  it("omits the affiliated organization block when not supplied", () => {
+    const { container } = render(<ProfileJsonLd entry={{ ...mockPerson, issue_areas: [] }} />);
+    const data = parseJsonLd(container);
+    expect(data.memberOf).toBeUndefined();
+    expect(data.knowsAbout).toBeUndefined();
+  });
 });

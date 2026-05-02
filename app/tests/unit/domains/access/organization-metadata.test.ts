@@ -166,5 +166,53 @@ describe("organization-metadata", () => {
         stripeCustomerId: null,
       });
     });
+
+    it("preserves workspaceDomain and ssoPrimaryHistory when present", () => {
+      const result = normalizeAtlasOrganizationMetadata({
+        workspaceType: "team",
+        workspaceDomain: "acme.example",
+        ssoPrimaryHistory: [
+          {
+            changedAt: "2024-01-01T00:00:00.000Z",
+            changedByEmail: "owner@acme.example",
+            providerId: "okta",
+          },
+        ],
+      });
+      expect(result.workspaceDomain).toBe("acme.example");
+      expect(result.ssoPrimaryHistory).toEqual([
+        {
+          changedAt: "2024-01-01T00:00:00.000Z",
+          changedByEmail: "owner@acme.example",
+          providerId: "okta",
+        },
+      ]);
+    });
+
+    it("merges an explicit stripeCustomerId update", () => {
+      const original = {
+        workspaceType: "team" as const,
+        stripeCustomerId: "cus_old",
+      };
+      expect(
+        mergeAtlasOrganizationMetadata(original, { stripeCustomerId: "cus_new" }),
+      ).toMatchObject({ stripeCustomerId: "cus_new" });
+    });
+
+    it("clears stripeCustomerId when an update sets it to null", () => {
+      const original = {
+        workspaceType: "team" as const,
+        stripeCustomerId: "cus_abc",
+      };
+      expect(mergeAtlasOrganizationMetadata(original, { stripeCustomerId: null })).toMatchObject({
+        stripeCustomerId: null,
+      });
+    });
+
+    it("treats undefined membership role as a non-manager", () => {
+      const capabilities = buildAtlasWorkspaceCapabilities("team", undefined, 1);
+      expect(capabilities.canManageOrganization).toBe(false);
+      expect(capabilities.canInviteMembers).toBe(false);
+    });
   });
 });

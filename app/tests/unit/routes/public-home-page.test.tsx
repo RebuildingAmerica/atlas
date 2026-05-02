@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { HomePage } from "@/platform/pages/home-page";
 
 const mocks = vi.hoisted(() => ({
@@ -36,6 +36,32 @@ describe("HomePage", () => {
     vi.clearAllMocks();
     mocks.navigate.mockResolvedValue(undefined);
     mocks.useAtlasSession.mockReturnValue({ data: null, isLoading: false });
+  });
+
+  afterEach(() => {
+    cleanup();
+  });
+
+  it("renders the verify-instead-of-save copy when running in local mode", () => {
+    mocks.useAtlasSession.mockReturnValue({
+      data: { isLocal: true },
+      isLoading: false,
+    });
+    render(<HomePage />);
+    expect(screen.getByText("Verify")).toBeInTheDocument();
+    expect(screen.getByText("Every entry links back to public sources.")).toBeInTheDocument();
+    expect(screen.queryByText(/Want to save your work\?/)).not.toBeInTheDocument();
+  });
+
+  it("renders the save-and-create-account prompt outside of local mode", () => {
+    mocks.useAtlasSession.mockReturnValue({
+      data: { isLocal: false },
+      isLoading: false,
+    });
+    render(<HomePage />);
+    expect(screen.getByText("Save")).toBeInTheDocument();
+    expect(screen.getByText("Create a free account to save research.")).toBeInTheDocument();
+    expect(screen.getByText(/Want to save your work\?/)).toBeInTheDocument();
   });
 
   it("submits browse searches with a normal GET form", async () => {

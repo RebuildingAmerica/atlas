@@ -33,4 +33,38 @@ describe("Textarea", () => {
     rerender(<Textarea label="Cert" autoExpand value={"a\n".repeat(20)} />);
     expect(node.style.height).not.toBe("");
   });
+
+  it("flips overflowY to auto when scrollHeight exceeds the maxRows budget", () => {
+    const { rerender } = render(<Textarea label="Body" autoExpand maxRows={4} value="" />);
+    const node = screen.getByLabelText("Body");
+    if (!(node instanceof HTMLTextAreaElement)) throw new Error("expected textarea");
+    Object.defineProperty(node, "scrollHeight", { configurable: true, value: 5000 });
+    rerender(<Textarea label="Body" autoExpand maxRows={4} value="long" />);
+    expect(node.style.overflowY).toBe("auto");
+  });
+
+  it("renders the error message and applies the danger border", () => {
+    render(<Textarea label="Cert" error="Bad cert" value="" />);
+    expect(screen.getByText("Bad cert")).toBeInTheDocument();
+    const node = screen.getByLabelText("Cert");
+    expect(node.className).toMatch(/border-red-500/);
+  });
+
+  it("renders the required asterisk next to the label", () => {
+    const { container } = render(<Textarea label="Cert" required value="" />);
+    expect(container.querySelector(".text-red-500")?.textContent).toBe("*");
+  });
+
+  it("renders without a label or error message", () => {
+    const { container } = render(<Textarea value="" />);
+    expect(container.querySelector("label")).toBeNull();
+    expect(container.querySelector(".text-red-500")).toBeNull();
+  });
+
+  it("skips the auto-expand resize when autoExpand is disabled", () => {
+    render(<Textarea label="Cert" value="" />);
+    const node = screen.getByLabelText("Cert");
+    if (!(node instanceof HTMLTextAreaElement)) throw new Error("expected textarea");
+    expect(node.style.height).toBe("");
+  });
 });

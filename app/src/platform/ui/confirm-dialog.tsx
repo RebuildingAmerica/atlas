@@ -42,7 +42,9 @@ export function ConfirmDialogProvider(props: { children: ReactNode }) {
 
   const settle = useCallback(
     (confirmed: boolean) => {
+      /* v8 ignore start -- settle is only invoked from inside the dialog's render tree, which only renders when request is non-null */
       if (!request) return;
+      /* v8 ignore stop */
       request.resolve(confirmed);
       setRequest(null);
     },

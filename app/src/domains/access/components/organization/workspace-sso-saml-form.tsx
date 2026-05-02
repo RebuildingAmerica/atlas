@@ -53,7 +53,8 @@ export function WorkspaceSSOSamlForm({
     : samlSetupForm.issuer.trim() === ""
       ? `Allowed issuer hosts: ${visibleAllowlist.join(", ")}.`
       : samlIssuerAllowed
-        ? `Issuer host (${samlIssuerOrigin ?? ""}) is on the allowlist.`
+        ? /* v8 ignore next -- samlIssuerAllowed is true only when extractIssuerOrigin returned a non-null origin, so the `?? ""` fallback is unreachable */
+          `Issuer host (${samlIssuerOrigin ?? ""}) is on the allowlist.`
         : `Issuer host ${samlIssuerOrigin ?? "(unparseable)"} is not on the allowlist. Allowed: ${visibleAllowlist.join(", ")}.`;
   const samlDomainTrimmed = samlSetupForm.domain.trim().toLowerCase();
   const samlDomainIsFreeEmail = isLikelyFreeEmailDomain(samlDomainTrimmed);

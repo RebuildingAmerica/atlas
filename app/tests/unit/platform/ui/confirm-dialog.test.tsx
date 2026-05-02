@@ -73,6 +73,70 @@ describe("ConfirmDialogProvider", () => {
     expect(result).toBe(false);
   });
 
+  it("renders the default confirm and cancel labels for non-destructive prompts", () => {
+    function DefaultsTrigger(props: { onResult: (confirmed: boolean) => void }) {
+      const { confirm } = useConfirmDialog();
+      return (
+        <button
+          type="button"
+          onClick={() => {
+            void confirm({ title: "Save changes?", body: "Continue?" }).then(props.onResult);
+          }}
+        >
+          Open
+        </button>
+      );
+    }
+
+    render(
+      <ConfirmDialogProvider>
+        <DefaultsTrigger
+          onResult={() => {
+            // no-op
+          }}
+        />
+      </ConfirmDialogProvider>,
+    );
+
+    fireEvent.click(screen.getByText("Open"));
+    expect(screen.getByText("Cancel")).toBeInTheDocument();
+    expect(screen.getByText("Confirm")).toBeInTheDocument();
+  });
+
+  it("resolves false when the operator dismisses the dialog via the backdrop", async () => {
+    let result: boolean | null = null;
+    function DefaultsTrigger(props: { onResult: (confirmed: boolean) => void }) {
+      const { confirm } = useConfirmDialog();
+      return (
+        <button
+          type="button"
+          onClick={() => {
+            void confirm({ title: "Continue?", body: "ok?" }).then(props.onResult);
+          }}
+        >
+          Open
+        </button>
+      );
+    }
+
+    render(
+      <ConfirmDialogProvider>
+        <DefaultsTrigger
+          onResult={(confirmed) => {
+            result = confirmed;
+          }}
+        />
+      </ConfirmDialogProvider>,
+    );
+
+    fireEvent.click(screen.getByText("Open"));
+    await act(async () => {
+      fireEvent.keyDown(document, { key: "Escape" });
+      await Promise.resolve();
+    });
+    expect(result).toBe(false);
+  });
+
   it("throws a clear error when used without a provider", () => {
     function BareTrigger() {
       useConfirmDialog();

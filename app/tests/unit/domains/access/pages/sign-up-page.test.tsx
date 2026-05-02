@@ -244,6 +244,62 @@ describe("SignUpPage", () => {
     });
   });
 
+  it("redirects to the effective redirect path when the session lands on the sent screen", async () => {
+    mocks.checkAccountExists.mockResolvedValue({ exists: false });
+    mocks.requestMagicLink.mockResolvedValue({ ok: true, captureMailboxUrl: null });
+    const assignSpy = vi.fn();
+    Object.defineProperty(window, "location", {
+      configurable: true,
+      writable: true,
+      value: { ...window.location, assign: assignSpy },
+    });
+    mocks.useAtlasSession.mockReturnValue({ data: null });
+
+    const { rerender } = render(<SignUpPage redirectTo="/workspace" />);
+    fireEvent.change(screen.getByLabelText(/Email/i), {
+      target: { value: "new@example.com" },
+    });
+    const form = screen.getByRole("button", { name: "Create account" }).closest("form");
+    if (!form) throw new Error("expected sign-up form");
+    await act(async () => {
+      fireEvent.submit(form);
+      await Promise.resolve();
+    });
+
+    mocks.useAtlasSession.mockReturnValue({ data: { user: { id: "u1" } } });
+    rerender(<SignUpPage redirectTo="/workspace" />);
+
+    expect(assignSpy).toHaveBeenCalledWith("/workspace");
+  });
+
+  it("falls back to /account when no redirect is configured and the session arrives", async () => {
+    mocks.checkAccountExists.mockResolvedValue({ exists: false });
+    mocks.requestMagicLink.mockResolvedValue({ ok: true, captureMailboxUrl: null });
+    const assignSpy = vi.fn();
+    Object.defineProperty(window, "location", {
+      configurable: true,
+      writable: true,
+      value: { ...window.location, assign: assignSpy },
+    });
+    mocks.useAtlasSession.mockReturnValue({ data: null });
+
+    const { rerender } = render(<SignUpPage />);
+    fireEvent.change(screen.getByLabelText(/Email/i), {
+      target: { value: "new@example.com" },
+    });
+    const form = screen.getByRole("button", { name: "Create account" }).closest("form");
+    if (!form) throw new Error("expected sign-up form");
+    await act(async () => {
+      fireEvent.submit(form);
+      await Promise.resolve();
+    });
+
+    mocks.useAtlasSession.mockReturnValue({ data: { user: { id: "u1" } } });
+    rerender(<SignUpPage />);
+
+    expect(assignSpy).toHaveBeenCalledWith("/account");
+  });
+
   it("renders the generic submit-error when the magic-link send rejects on the form", async () => {
     mocks.checkAccountExists.mockResolvedValue({ exists: false });
     mocks.requestMagicLink.mockRejectedValue(new Error("network"));
@@ -261,6 +317,48 @@ describe("SignUpPage", () => {
 
     await vi.waitFor(() => {
       expect(screen.getByText("Sign-up is temporarily unavailable.")).toBeInTheDocument();
+    });
+  });
+
+  it("preserves the redirect param when bouncing an existing account to /sign-in", async () => {
+    mocks.checkAccountExists.mockResolvedValue({ exists: true });
+    render(<SignUpPage redirectTo="/workspace/billing" />);
+
+    fireEvent.change(screen.getByLabelText(/Email/i), {
+      target: { value: "operator@atlas.test" },
+    });
+    const form = screen.getByRole("button", { name: "Create account" }).closest("form");
+    if (!form) throw new Error("expected sign-up form");
+    await act(async () => {
+      fireEvent.submit(form);
+      await Promise.resolve();
+    });
+
+    const navArgs = mocks.navigate.mock.calls[0]?.[0] as
+      | { to: string; search: { existing: boolean; email: string; redirect?: string } }
+      | undefined;
+    expect(navArgs?.search.redirect).toBe("/workspace/billing");
+  });
+
+  it("maps a recognised auth-error code to its localised submit label", async () => {
+    mocks.checkAccountExists.mockResolvedValue({ exists: false });
+    mocks.requestMagicLink.mockRejectedValue(new Error("EMAIL_DELIVERY_FAILED"));
+    render(<SignUpPage />);
+
+    fireEvent.change(screen.getByLabelText(/Email/i), {
+      target: { value: "new@example.com" },
+    });
+    const form = screen.getByRole("button", { name: "Create account" }).closest("form");
+    if (!form) throw new Error("expected sign-up form");
+    await act(async () => {
+      fireEvent.submit(form);
+      await Promise.resolve();
+    });
+
+    await vi.waitFor(() => {
+      expect(
+        screen.getByText("Your sign-up link couldn't be delivered. Please try again."),
+      ).toBeInTheDocument();
     });
   });
 });

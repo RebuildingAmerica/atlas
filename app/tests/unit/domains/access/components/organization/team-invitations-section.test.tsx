@@ -72,4 +72,14 @@ describe("TeamInvitationsSection", () => {
     expect(screen.queryByLabelText(/Email/i)).not.toBeInTheDocument();
     expect(screen.getByText(/Only owners and admins can invite/i)).toBeInTheDocument();
   });
+
+  it("renders the in-flight label when an invite is pending", () => {
+    render(<TeamInvitationsSection {...defaultProps} isInvitePending={true} />);
+    expect(screen.getByText(/Sending\.\.\./)).toBeInTheDocument();
+  });
+
+  it("hides the per-invitation cancel button when the user cannot manage organization", () => {
+    render(<TeamInvitationsSection {...defaultProps} canManageOrganization={false} />);
+    expect(screen.queryByRole("button", { name: /Cancel/i })).not.toBeInTheDocument();
+  });
 });

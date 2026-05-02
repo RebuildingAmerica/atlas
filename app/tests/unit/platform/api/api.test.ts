@@ -1,5 +1,11 @@
-import { describe, expect, it } from "vitest";
-import { buildEntityListParams } from "@/lib/api";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("@/lib/orval/fetcher", () => ({
+  atlasFetch: vi.fn(),
+}));
+
+import { api, buildEntityListParams } from "@/lib/api";
+import { atlasFetch } from "@/lib/orval/fetcher";
 
 describe("buildEntityListParams", () => {
   it("maps the legacy browse filter shape onto the generated entity list params", () => {
@@ -40,5 +46,62 @@ describe("buildEntityListParams", () => {
       limit: undefined,
       cursor: undefined,
     });
+  });
+});
+
+describe("api.entries.getBySlug and getConnections", () => {
+  const fetchMock = atlasFetch as unknown as ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    fetchMock.mockReset();
+  });
+
+  afterEach(() => {
+    fetchMock.mockReset();
+  });
+
+  it("fetches a person entry by slug and maps the detail response", async () => {
+    const detailResponse = {
+      id: "ent_1",
+      type: "person",
+      name: "Ada Lovelace",
+      description: "Mathematician",
+      address: {},
+      contact: {},
+      claim: null,
+      issue_area_ids: [],
+      source_types: [],
+      source_count: 0,
+      slug: "ada-lovelace-1234",
+      created_at: "2026-04-10T00:00:00.000Z",
+      updated_at: "2026-04-10T00:00:00.000Z",
+      active: true,
+      verified: false,
+      freshness: {},
+      sources: [],
+    };
+    fetchMock.mockResolvedValueOnce(detailResponse);
+
+    const result = await api.entries.getBySlug("people", "ada-lovelace-1234");
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/entities/by-slug/people/ada-lovelace-1234");
+    expect(result.id).toBe("ent_1");
+    expect(result.slug).toBe("ada-lovelace-1234");
+  });
+
+  it("fetches related actor connections and returns the grouped list", async () => {
+    fetchMock.mockResolvedValueOnce({
+      connections: [
+        {
+          relationship: "co-organizer",
+          entries: [],
+        },
+      ],
+    });
+
+    const result = await api.entries.getConnections("ent_1");
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/entities/ent_1/connections");
+    expect(result).toEqual([{ relationship: "co-organizer", entries: [] }]);
   });
 });

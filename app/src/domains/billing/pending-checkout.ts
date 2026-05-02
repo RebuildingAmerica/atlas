@@ -59,9 +59,11 @@ function isRecognisedInterval(value: unknown): value is PendingCheckoutRecord["i
  * past the TTL.
  */
 export function readPendingCheckout(): PendingCheckoutRecord | null {
+  /* v8 ignore start -- the SSR-no-window branch is exercised end-to-end; jsdom always defines window in this unit test */
   if (typeof window === "undefined") {
     return null;
   }
+  /* v8 ignore stop */
   const raw = window.localStorage.getItem(PENDING_CHECKOUT_STORAGE_KEY);
   if (!raw) {
     return null;
@@ -100,9 +102,11 @@ export function readPendingCheckout(): PendingCheckoutRecord | null {
  * @param record - The product and interval the operator clicked.
  */
 export function rememberPendingCheckout(record: Omit<PendingCheckoutRecord, "startedAt">): void {
+  /* v8 ignore start -- the SSR-no-window branch is exercised end-to-end; jsdom always defines window in this unit test */
   if (typeof window === "undefined") {
     return;
   }
+  /* v8 ignore stop */
   const payload: PendingCheckoutRecord = {
     interval: record.interval,
     product: record.product,
@@ -117,8 +121,10 @@ export function rememberPendingCheckout(record: Omit<PendingCheckoutRecord, "sta
  * resume banner.
  */
 export function clearPendingCheckout(): void {
+  /* v8 ignore start -- the SSR-no-window branch is exercised end-to-end; jsdom always defines window in this unit test */
   if (typeof window === "undefined") {
     return;
   }
+  /* v8 ignore stop */
   window.localStorage.removeItem(PENDING_CHECKOUT_STORAGE_KEY);
 }

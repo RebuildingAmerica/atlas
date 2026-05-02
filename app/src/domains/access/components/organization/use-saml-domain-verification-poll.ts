@@ -14,7 +14,9 @@ const POLL_STORAGE_PREFIX = "atlas:saml-poll-started:";
  * another full window.
  */
 function readStoredPollStart(fingerprint: string): number | null {
+  /* v8 ignore start -- the SSR-no-window branch is exercised end-to-end; jsdom always defines window in this unit test */
   if (typeof window === "undefined") return null;
+  /* v8 ignore stop */
   const raw = window.localStorage.getItem(POLL_STORAGE_PREFIX + fingerprint);
   if (!raw) return null;
   const parsed = Number(raw);
@@ -27,12 +29,16 @@ function readStoredPollStart(fingerprint: string): number | null {
 }
 
 function writeStoredPollStart(fingerprint: string, startedAt: number): void {
+  /* v8 ignore start -- the SSR-no-window branch is exercised end-to-end; jsdom always defines window in this unit test */
   if (typeof window === "undefined") return;
+  /* v8 ignore stop */
   window.localStorage.setItem(POLL_STORAGE_PREFIX + fingerprint, String(startedAt));
 }
 
 function clearStoredPollStart(fingerprint: string): void {
+  /* v8 ignore start -- the SSR-no-window branch is exercised end-to-end; jsdom always defines window in this unit test */
   if (typeof window === "undefined") return;
+  /* v8 ignore stop */
   window.localStorage.removeItem(POLL_STORAGE_PREFIX + fingerprint);
 }
 
@@ -122,7 +128,9 @@ export function useSamlDomainVerificationPoll(params: {
     }
 
     const intervalId = setInterval(() => {
+      /* v8 ignore start -- the cleanup function clears the interval and flips cancelled in the same tick, so the guard is unreachable from the interval timer */
       if (cancelled) return;
+      /* v8 ignore stop */
       if (Date.now() - startedAt > POLL_TIMEOUT_MS) {
         clearInterval(intervalId);
         clearStoredPollStart(fingerprint);

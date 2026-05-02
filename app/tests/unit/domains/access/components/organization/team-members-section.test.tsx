@@ -109,4 +109,12 @@ describe("TeamMembersSection", () => {
     if (!firstButton) throw new Error("Expected at least one remove button");
     expect(firstButton).toBeDisabled();
   });
+
+  it("ignores role-select changes that fall outside the admin/member union", () => {
+    render(<TeamMembersSection {...defaultProps} />);
+
+    const select = screen.getByLabelText(/Role for admin@atlas.test/i);
+    fireEvent.change(select, { target: { value: "owner" } });
+    expect(defaultProps.onRoleChange).not.toHaveBeenCalledWith("mem_2", "owner");
+  });
 });

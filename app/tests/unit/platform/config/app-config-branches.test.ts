@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { getAbsoluteApiBaseUrl, getApiBaseUrl, getAppConfig } from "@/platform/config/app-config";
+import {
+  getAbsoluteApiBaseUrl,
+  getApiBaseUrl,
+  getAppConfig,
+  getServerApiBaseUrl,
+} from "@/platform/config/app-config";
 
 describe("app-config additional branches", () => {
   it("keeps an already-suffixed api public url unchanged", () => {
@@ -27,5 +32,30 @@ describe("app-config additional branches", () => {
     expect(() => getAbsoluteApiBaseUrl({ env: {} })).toThrow(
       "ATLAS_PUBLIC_URL is required when the current browser origin is unavailable for browser-visible API calls.",
     );
+  });
+
+  it("rejects ATLAS_DOCS_URL values that don't parse as a URL", () => {
+    expect(() =>
+      getAppConfig({
+        ATLAS_DOCS_URL: "https://[invalid",
+        ATLAS_PUBLIC_URL: "https://atlas.example.com",
+      }),
+    ).toThrow("ATLAS_DOCS_URL must be a valid URL or hostname.");
+  });
+
+  it("uses an absolute proxy target verbatim for server-side api calls", () => {
+    expect(
+      getServerApiBaseUrl({
+        ATLAS_SERVER_API_PROXY_TARGET: "https://api.internal.atlas.test",
+      }),
+    ).toBe("https://api.internal.atlas.test/api");
+  });
+
+  it("rejects a non-absolute server proxy target", () => {
+    expect(() =>
+      getServerApiBaseUrl({
+        ATLAS_SERVER_API_PROXY_TARGET: "/relative-path",
+      }),
+    ).toThrow("ATLAS_SERVER_API_PROXY_TARGET must be an absolute URL.");
   });
 });

@@ -69,7 +69,9 @@ export function WorkspaceSSOProviderList({
     const samlProviderIds = providers
       .filter((provider) => provider.providerType === "saml")
       .map((provider) => provider.providerId);
+    /* v8 ignore start -- the Incident response disclosure only renders when at least one SAML provider exists, so this guard is unreachable from the UI */
     if (samlProviderIds.length === 0) return;
+    /* v8 ignore stop */
     const accepted = await confirm({
       title: "Disable every SAML provider?",
       body: `Atlas will remove all ${String(samlProviderIds.length)} configured SAML providers from this workspace.  Sign-in will fall back to magic links until you re-register.  Useful for incident response — destructive otherwise.`,

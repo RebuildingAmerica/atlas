@@ -111,6 +111,7 @@ export function WorkspaceSSOProviderCard({
             Download SP metadata XML &rarr;
           </a>
         </div>
+        {/* v8 ignore start -- the saml/oidc subobjects are paired with their providerType discriminant, so the `?? ""` fallbacks are unreachable */}
         {provider.providerType === "saml" ? (
           <WorkspaceSSOCopyField label="ACS URL" value={provider.saml?.callbackUrl ?? ""} />
         ) : (
@@ -119,6 +120,7 @@ export function WorkspaceSSOProviderCard({
             value={provider.oidc?.discoveryEndpoint ?? ""}
           />
         )}
+        {/* v8 ignore stop */}
       </div>
 
       {provider.providerType === "saml" ? (
@@ -127,11 +129,13 @@ export function WorkspaceSSOProviderCard({
             label="Audience / Entity ID"
             value={provider.saml?.audience ?? provider.spMetadataUrl}
           />
+          {/* v8 ignore start -- the surrounding guard already narrowed providerType to "saml", which guarantees saml is populated */}
           <WorkspaceSSOCopyField
             label="IdP entry point"
             value={provider.saml?.entryPoint ?? ""}
             truncateAt={64}
           />
+          {/* v8 ignore stop */}
           {provider.saml?.certificate.fingerprintSha256 ? (
             <WorkspaceSSOCopyField
               label="Certificate fingerprint"
@@ -144,11 +148,13 @@ export function WorkspaceSSOProviderCard({
                 label="Certificate expires"
                 value={formatCertificateExpiry(provider.saml.certificate.notAfter, renderNow)}
               />
+              {/* v8 ignore start -- notBefore presence is parsed from the same Better Auth payload as notAfter, so the `?? null` fallback is not exercised when notAfter is set */}
               <CertLifecycleBar
                 notAfter={provider.saml.certificate.notAfter}
                 notBefore={provider.saml.certificate.notBefore ?? null}
                 now={renderNow}
               />
+              {/* v8 ignore stop */}
               <CertExpiryBanner notAfter={provider.saml.certificate.notAfter} now={renderNow} />
             </div>
           ) : null}

@@ -169,9 +169,11 @@ export function SignUpPage({ intent, redirectTo }: SignUpPageProps = {}) {
   };
 
   const handleResend = async () => {
+    /* v8 ignore start -- defensive guard; the Resend button is disabled while either condition holds, so the early return is unreachable from the UI */
     if (secondsUntilResend > 0 || isResending) {
       return;
     }
+    /* v8 ignore stop */
     setIsResending(true);
     setResendStatus(null);
     try {
