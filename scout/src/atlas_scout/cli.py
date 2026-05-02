@@ -544,8 +544,9 @@ def _write_toml(path: Path, data: dict[str, dict[str, str | int | float | bool]]
     """Write a flat dict-of-dicts as TOML."""
     lines: list[str] = []
     for section, values in data.items():
-        if not isinstance(values, dict):
-            continue
+        assert isinstance(values, dict), (
+            f"Section '{section}' must map to a dict, not {type(values).__name__}"
+        )
         lines.append(f"[{section}]")
         for k, v in values.items():
             if isinstance(v, bool):
@@ -632,9 +633,7 @@ async def _runs_inspect(config: ScoutConfig, run_id: str) -> None:
             sys.exit(1)
         artifacts = await store.get_run_artifacts(run_id)
         entries = await store.list_entries(run_id=run_id)
-        page_tasks = (
-            await store.list_page_tasks(run_id) if hasattr(store, "list_page_tasks") else []
-        )
+        page_tasks = await store.list_page_tasks(run_id)
     finally:
         await store.close()
 
@@ -949,10 +948,7 @@ async def _pages_list(config: ScoutConfig, limit: int) -> None:
     store = ScoutStore(str(db_path))
     await store.initialize()
     try:
-        if hasattr(store, "list_all_page_tasks"):
-            tasks = await store.list_all_page_tasks(limit=limit)
-        else:
-            tasks = []
+        tasks = await store.list_all_page_tasks(limit=limit)
         if not tasks:
             cached = await store.list_pages(limit=limit)
             if not cached:

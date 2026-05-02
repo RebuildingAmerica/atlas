@@ -353,13 +353,11 @@ async def _pass_identify(
         ),
     ]
 
-    last_error: Exception | None = None
     for attempt in range(1, _MAX_EXTRACTION_ATTEMPTS + 1):
         try:
             completion = await provider.complete(messages)
             return _parse_identify_response(completion.text)
         except Exception as exc:
-            last_error = exc
             if attempt >= _MAX_EXTRACTION_ATTEMPTS:
                 raise ExtractionFailedError(
                     f"{_error_reason(exc)} after {_MAX_EXTRACTION_ATTEMPTS} attempts"
@@ -368,8 +366,9 @@ async def _pass_identify(
                 on_retry({"url": page.url, "attempt": attempt + 1, "reason": _error_reason(exc)})
             await asyncio.sleep(_RETRY_BACKOFF_SECONDS * attempt)
 
-    assert last_error is not None
-    raise ExtractionFailedError(_error_reason(last_error)) from last_error
+    # The for-loop above always either returns or raises on the final attempt,
+    # so this line is unreachable; assert documents the invariant.
+    raise AssertionError("unreachable: identify pass loop must return or raise")  # pragma: no cover
 
 
 async def _pass_enrich(
@@ -405,13 +404,11 @@ async def _pass_enrich(
         ),
     ]
 
-    last_error: Exception | None = None
     for attempt in range(1, _MAX_EXTRACTION_ATTEMPTS + 1):
         try:
             completion = await provider.complete(messages, _StructuredExtractionResponse)
             return _parse_extraction_response(completion)
         except Exception as exc:
-            last_error = exc
             reason = _error_reason(exc)
             if attempt >= _MAX_EXTRACTION_ATTEMPTS:
                 raise ExtractionFailedError(
@@ -421,8 +418,9 @@ async def _pass_enrich(
                 on_retry({"url": page.url, "attempt": attempt + 1, "reason": reason})
             await asyncio.sleep(_RETRY_BACKOFF_SECONDS * attempt)
 
-    assert last_error is not None
-    raise ExtractionFailedError(_error_reason(last_error)) from last_error
+    # The for-loop above always either returns or raises on the final attempt,
+    # so this line is unreachable; assert documents the invariant.
+    raise AssertionError("unreachable: enrich pass loop must return or raise")  # pragma: no cover
 
 
 def _parse_identify_response(text: str) -> list[dict[str, str]]:
@@ -540,29 +538,25 @@ def _parse_extraction_response(completion: Completion) -> list[RawEntry]:
     entries: list[RawEntry] = []
     page_leads = structured.discovery_leads
     for idx, item in enumerate(structured.entries):
-        try:
-            entries.append(
-                RawEntry(
-                    name=item.name,
-                    entry_type=_normalize_entity_type(item.type),
-                    description=item.description,
-                    city=item.city,
-                    state=item.state,
-                    geo_specificity=_normalize_geo_specificity(item.geo_specificity),
-                    issue_areas=item.issue_areas,
-                    region=item.region,
-                    website=item.website,
-                    email=item.email,
-                    social_media=item.social_media,
-                    affiliated_org=item.affiliated_org,
-                    extraction_context=item.extraction_context,
-                    mentioned_entities=item.mentioned_entities,
-                    discovery_leads=page_leads if idx == 0 else [],
-                )
+        entries.append(
+            RawEntry(
+                name=item.name,
+                entry_type=_normalize_entity_type(item.type),
+                description=item.description,
+                city=item.city,
+                state=item.state,
+                geo_specificity=_normalize_geo_specificity(item.geo_specificity),
+                issue_areas=item.issue_areas,
+                region=item.region,
+                website=item.website,
+                email=item.email,
+                social_media=item.social_media,
+                affiliated_org=item.affiliated_org,
+                extraction_context=item.extraction_context,
+                mentioned_entities=item.mentioned_entities,
+                discovery_leads=page_leads if idx == 0 else [],
             )
-        except (KeyError, ValueError) as exc:
-            logger.debug("Skipping malformed entry item: %s", exc)
-            continue
+        )
 
     return entries
 

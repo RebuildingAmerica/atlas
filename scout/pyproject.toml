@@ -17,6 +17,7 @@ dependencies = [
     "click>=8.1.0",
     "pydantic>=2.5.0",
     "pydantic-settings>=2.1.0",
+    "rich>=13.7.0",
 ]
 
 [project.optional-dependencies]
@@ -43,6 +44,20 @@ packages = ["src/atlas_scout"]
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+addopts = "--cov=atlas_scout --cov-branch --cov-report=term-missing --cov-fail-under=100"
+
+[tool.coverage.run]
+source = ["src/atlas_scout"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+fail_under = 100
+exclude_lines = [
+    "pragma: no cover",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+]
 
 [tool.ruff]
 line-length = 100

@@ -29,7 +29,7 @@ class LLMProvider(Protocol):
     @property
     def max_concurrent(self) -> int:
         """Maximum number of concurrent requests the provider supports."""
-        ...
+        ...  # pragma: no cover
 
     async def complete(
         self,
@@ -37,4 +37,4 @@ class LLMProvider(Protocol):
         response_schema: type[BaseModel] | None = None,
     ) -> Completion:
         """Send a list of messages to the LLM and return a Completion."""
-        ...
+        ...  # pragma: no cover

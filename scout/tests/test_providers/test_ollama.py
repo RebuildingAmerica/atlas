@@ -22,6 +22,11 @@ def test_ollama_max_concurrent_default() -> None:
     assert provider.max_concurrent == 10
 
 
+def test_ollama_cache_identity_includes_model() -> None:
+    provider = OllamaProvider(model="llama3.1:8b")
+    assert provider.cache_identity == "ollama:llama3.1:8b"
+
+
 @respx.mock
 async def test_ollama_complete_plain_text() -> None:
     respx.post("http://localhost:11434/api/chat").mock(

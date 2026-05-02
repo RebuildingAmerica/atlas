@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from typing import TYPE_CHECKING
 
 import httpx
 import respx
@@ -11,10 +12,37 @@ from pydantic import BaseModel
 from atlas_scout.providers.anthropic import AnthropicProvider
 from atlas_scout.providers.base import LLMProvider, Message
 
+if TYPE_CHECKING:
+    import pytest
+
 
 def test_anthropic_is_llm_provider() -> None:
     provider = AnthropicProvider(model="claude-sonnet-4-20250514", api_key="test-key")
     assert isinstance(provider, LLMProvider)
+
+
+def test_anthropic_max_concurrent_default() -> None:
+    provider = AnthropicProvider(model="claude-sonnet-4-20250514", api_key="test-key")
+    assert provider.max_concurrent == 10
+
+
+def test_anthropic_cache_identity_includes_model() -> None:
+    provider = AnthropicProvider(model="claude-sonnet-4-20250514", api_key="test-key")
+    assert provider.cache_identity == "anthropic:claude-sonnet-4-20250514"
+
+
+async def test_anthropic_aclose_closes_underlying_client() -> None:
+    provider = AnthropicProvider(model="claude-sonnet-4-20250514", api_key="test-key")
+    await provider.aclose()
+    # A second close should not raise (httpx is idempotent on close).
+    await provider.aclose()
+
+
+def test_anthropic_falls_back_to_environment_api_key(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "env-key")
+    provider = AnthropicProvider(model="claude-sonnet-4-20250514")
+    # Internal attribute access for verification only.
+    assert provider._api_key == "env-key"
 
 
 @respx.mock

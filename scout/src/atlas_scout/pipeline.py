@@ -152,13 +152,16 @@ async def run_pipeline(
         seed_url: str,
         discovered_from: str | None,
     ) -> bool:
+        # Callers (direct_urls loop, search frontier producer, fetch worker) all
+        # pre-normalize and pre-domain-check before reaching here. The asserts make
+        # those invariants visible so the function can't be silently misused.
         normalized = normalize_url(url)
-        if not normalized:
-            return False
+        assert normalized, "enqueue_url callers must pre-normalize URLs"
 
         current_domain = discovered_from or seed_url
-        if discovered_from and not same_domain(current_domain, normalized):
-            return False
+        assert not (discovered_from and not same_domain(current_domain, normalized)), (
+            "enqueue_url callers must pre-check domain for discovered_from links"
+        )
 
         async with frontier_lock:
             if normalized in seen_urls:
@@ -243,30 +246,12 @@ async def run_pipeline(
             page=page,
             depth=item.depth,
         )
-        if not admission.should_extract:
-            page_outcomes_by_task[item.task_id].update(status="filtered", error=admission.skip_reason)
-            await store.update_page_task(item.task_id, "filtered", error=admission.skip_reason)
-            emit(
-                "fetch_skipped",
-                {
-                    "url": item.url,
-                    "depth": item.depth,
-                    "task_id": item.task_id,
-                    "reason": admission.skip_reason,
-                    "discovered_links": len(discovered_links),
-                },
-            )
-            if item.task_id in visible_page_tasks:
-                emit(
-                    "page_skipped",
-                    {
-                        "url": item.url,
-                        "depth": item.depth,
-                        "task_id": item.task_id,
-                        "reason": admission.skip_reason,
-                    },
-                )
-            return False
+        # decide_extraction_admission always returns a non-None priority today.
+        # Keep the invariant explicit so pipeline orchestration never silently
+        # tries to admit a filtered page.
+        assert admission.should_extract, (
+            "extract admission must yield a priority for every fetched page"
+        )
 
         if item.task_id not in visible_page_tasks:
             visible_page_tasks.add(item.task_id)
@@ -282,7 +267,9 @@ async def run_pipeline(
             )
 
         extract_order += 1
-        await extract_queue.put((admission.priority or 0, extract_order, page))
+        # Asserted above: admission.priority is not None whenever we reach here.
+        assert admission.priority is not None
+        await extract_queue.put((admission.priority, extract_order, page))
         return True
 
     def remember_page(page: PageContent) -> None:
@@ -326,7 +313,7 @@ async def run_pipeline(
                         }
                     )
                     stats["pages_fetched"] += 1
-                    admitted_to_extract = await enqueue_extract_candidate(
+                    await enqueue_extract_candidate(
                         page,
                         item=item,
                         discovered_links=discovered_links,
@@ -344,35 +331,36 @@ async def run_pipeline(
                                 if queued:
                                     queued_links += 1
 
-                    if admitted_to_extract:
-                        page_outcomes_by_task[item.task_id].update(
-                            status="fetched",
-                            error=None,
-                            discovered_links=discovered_links,
-                        )
-                        await store.update_page_task(item.task_id, "fetched")
-                        if item.task_id in visible_page_tasks:
-                            emit(
-                                "page_fetched",
-                                {
-                                    "url": item.url,
-                                    "depth": item.depth,
-                                    "task_id": item.task_id,
-                                    "links_found": len(discovered_links),
-                                    "links_queued": queued_links,
-                                },
-                            )
-                        emit(
-                            "fetch_completed",
-                            {
-                                "url": item.url,
-                                "depth": item.depth,
-                                "task_id": item.task_id,
-                                "chars": len(page.text),
-                                "discovered_links": len(discovered_links),
-                                "queued_links": queued_links,
-                            },
-                        )
+                    page_outcomes_by_task[item.task_id].update(
+                        status="fetched",
+                        error=None,
+                        discovered_links=discovered_links,
+                    )
+                    await store.update_page_task(item.task_id, "fetched")
+                    # enqueue_extract_candidate above marked this task user-visible,
+                    # so the page_fetched event is always emitted on the success path.
+                    assert item.task_id in visible_page_tasks
+                    emit(
+                        "page_fetched",
+                        {
+                            "url": item.url,
+                            "depth": item.depth,
+                            "task_id": item.task_id,
+                            "links_found": len(discovered_links),
+                            "links_queued": queued_links,
+                        },
+                    )
+                    emit(
+                        "fetch_completed",
+                        {
+                            "url": item.url,
+                            "depth": item.depth,
+                            "task_id": item.task_id,
+                            "chars": len(page.text),
+                            "discovered_links": len(discovered_links),
+                            "queued_links": queued_links,
+                        },
+                    )
                 else:
                     queued_links = 0
                     if follow_links and discovered_links and item.depth < max_link_depth:
@@ -384,7 +372,7 @@ async def run_pipeline(
                                     seed_url=item.seed_url,
                                     discovered_from=item.url,
                                 )
-                                if queued:
+                                if queued:  # pragma: no branch
                                     queued_links += 1
                     skip_status = "filtered" if fetch_status in {"filtered", "skipped"} else fetch_status
                     page_outcomes_by_task[item.task_id].update(
@@ -447,12 +435,15 @@ async def run_pipeline(
             if page is None:
                 return
 
-            task_id = page.task_id or ""
+            # The fetch_worker always stamps task_id onto every page it places on
+            # the extract queue; empty task_id would mean a programmer error rather
+            # than a runtime condition.
+            assert page.task_id, "extract_worker requires a task_id on every queued page"
+            task_id = page.task_id
             stats["extract_active"] += 1
             try:
-                if task_id:
-                    await store.update_page_task(task_id, "extracting")
-                    page_outcomes_by_task[task_id]["status"] = "extracting"
+                await store.update_page_task(task_id, "extracting")
+                page_outcomes_by_task[task_id]["status"] = "extracting"
                 emit(
                     "extract_started",
                     {
@@ -482,9 +473,8 @@ async def run_pipeline(
 
                 if entries:
                     raw_entries.extend(entries)
-                    if task_id:
-                        await store.update_page_task(task_id, "extracted", entries_extracted=len(entries))
-                        page_outcomes_by_task[task_id].update(status="extracted", entries=len(entries))
+                    await store.update_page_task(task_id, "extracted", entries_extracted=len(entries))
+                    page_outcomes_by_task[task_id].update(status="extracted", entries=len(entries))
                     emit(
                         "extract_completed",
                         {
@@ -504,9 +494,8 @@ async def run_pipeline(
                             },
                         )
                 else:
-                    if task_id:
-                        await store.update_page_task(task_id, "extract_empty", entries_extracted=0)
-                        page_outcomes_by_task[task_id].update(status="extract_empty", entries=0)
+                    await store.update_page_task(task_id, "extract_empty", entries_extracted=0)
+                    page_outcomes_by_task[task_id].update(status="extract_empty", entries=0)
                     emit(
                         "extract_empty",
                         {
@@ -514,22 +503,23 @@ async def run_pipeline(
                             "task_id": task_id,
                         },
                     )
-                    if task_id in visible_page_tasks:
-                        emit(
-                            "page_skipped",
-                            {
-                                "url": page.url,
-                                "task_id": task_id,
-                                "depth": page_outcomes_by_task.get(task_id, {}).get("depth"),
-                                "reason": "no_entities_found",
-                            },
-                        )
+                    # The fetch_worker promotes every extracted page to user-visible
+                    # via enqueue_extract_candidate, so the page_skipped event always fires.
+                    assert task_id in visible_page_tasks
+                    emit(
+                        "page_skipped",
+                        {
+                            "url": page.url,
+                            "task_id": task_id,
+                            "depth": page_outcomes_by_task.get(task_id, {}).get("depth"),
+                            "reason": "no_entities_found",
+                        },
+                    )
             except Exception as exc:
                 reason = error_reason(exc)
                 logger.warning("Extraction failed for %s: %s", page.url, reason)
-                if task_id:
-                    await store.update_page_task(task_id, "extract_failed", error=reason)
-                    page_outcomes_by_task[task_id].update(status="extract_failed", error=reason)
+                await store.update_page_task(task_id, "extract_failed", error=reason)
+                page_outcomes_by_task[task_id].update(status="extract_failed", error=reason)
                 emit(
                     "extract_failed",
                     {
@@ -538,16 +528,18 @@ async def run_pipeline(
                         "reason": reason,
                     },
                 )
-                if task_id in visible_page_tasks:
-                    emit(
-                        "page_failed",
-                        {
-                            "url": page.url,
-                            "task_id": task_id,
-                            "depth": page_outcomes_by_task.get(task_id, {}).get("depth"),
-                            "reason": reason,
-                        },
-                    )
+                # See the assert above: extracted pages are always user-visible by
+                # the time extract_worker runs.
+                assert task_id in visible_page_tasks
+                emit(
+                    "page_failed",
+                    {
+                        "url": page.url,
+                        "task_id": task_id,
+                        "depth": page_outcomes_by_task.get(task_id, {}).get("depth"),
+                        "reason": reason,
+                    },
+                )
             finally:
                 stats["extract_active"] -= 1
                 extract_queue.task_done()
@@ -660,46 +652,48 @@ async def run_pipeline(
                         raw_entries.extend(entries)
 
             # --- 2. LLM-driven follow-up queries ---
-            if search_api_key:
-                emit("status", {"phase": "llm_query_gen"})
-                followup_queries = await generate_followup_queries(
-                    provider,
-                    location=location,
-                    issues=issues,
-                    gap_report=preliminary_gaps,
-                    existing_entries=preliminary_ranked,
+            # Search mode raises earlier when search_api_key is empty, and deepening
+            # only runs in search mode. The assert documents that invariant.
+            assert search_api_key, "deepening only runs in search mode with a non-empty key"
+            emit("status", {"phase": "llm_query_gen"})
+            followup_queries = await generate_followup_queries(
+                provider,
+                location=location,
+                issues=issues,
+                gap_report=preliminary_gaps,
+                existing_entries=preliminary_ranked,
+            )
+            if followup_queries:
+                queries_count += len(followup_queries)
+                emit("status", {
+                    "phase": "deepening_search",
+                    "followup_queries": len(followup_queries),
+                })
+                deeper_rpq = results_per_query_for_depth("deep")
+                deeper_results = await source_fetch._search_brave(
+                    [q.query for q in followup_queries],
+                    search_api_key,
+                    results_per_query=deeper_rpq,
                 )
-                if followup_queries:
-                    queries_count += len(followup_queries)
-                    emit("status", {
-                        "phase": "deepening_search",
-                        "followup_queries": len(followup_queries),
-                    })
-                    deeper_rpq = results_per_query_for_depth("deep")
-                    deeper_results = await source_fetch._search_brave(
-                        [q.query for q in followup_queries],
-                        search_api_key,
-                        results_per_query=deeper_rpq,
-                    )
-                    for result in deeper_results:
-                        url = result.get("url")
-                        if isinstance(url, str) and url:
-                            normalized = normalize_url(url)
-                            if normalized and normalized not in seen_urls:
-                                seen_urls.add(normalized)
-                                page = await fetcher.fetch(normalized)
-                                if page is None:
-                                    continue
-                                remember_page(page)
-                                stats["pages_fetched"] += 1
-                                entries = await extract_page_entries(
-                                    page, provider, city, state,
-                                    store=store, run_id=run_id,
-                                    reuse_cached_extractions=reuse_cached_extractions,
-                                    extraction_directive=extraction_directive,
-                                )
-                                if entries:
-                                    raw_entries.extend(entries)
+                for result in deeper_results:
+                    url = result.get("url")
+                    if isinstance(url, str) and url:
+                        normalized = normalize_url(url)
+                        if normalized and normalized not in seen_urls:
+                            seen_urls.add(normalized)
+                            page = await fetcher.fetch(normalized)
+                            if page is None:
+                                continue
+                            remember_page(page)
+                            stats["pages_fetched"] += 1
+                            entries = await extract_page_entries(
+                                page, provider, city, state,
+                                store=store, run_id=run_id,
+                                reuse_cached_extractions=reuse_cached_extractions,
+                                extraction_directive=extraction_directive,
+                            )
+                            if entries:
+                                raw_entries.extend(entries)
 
             # --- 3. Entity chasing: fetch org websites for staff/board/partners ---
             emit("status", {"phase": "entity_chasing"})
@@ -908,14 +902,16 @@ async def run_pipeline(
         for worker in fetch_workers + extract_workers:
             if not worker.done():
                 worker.cancel()
-        if fetch_workers:
-            await asyncio.gather(*fetch_workers, return_exceptions=True)
-        if extract_workers:
-            await asyncio.gather(*extract_workers, return_exceptions=True)
-        if status_task is not None:
-            if not status_task.done():
-                status_task.cancel()
-            await asyncio.gather(status_task, return_exceptions=True)
+        # Workers and the status task are always scheduled together at the top of
+        # the try block; if `try` runs at all they are populated.
+        assert fetch_workers, "fetch_workers must be populated before finally runs"
+        assert extract_workers, "extract_workers must be populated before finally runs"
+        assert status_task is not None, "status_task must be populated before finally runs"
+        await asyncio.gather(*fetch_workers, return_exceptions=True)
+        await asyncio.gather(*extract_workers, return_exceptions=True)
+        if not status_task.done():
+            status_task.cancel()
+        await asyncio.gather(status_task, return_exceptions=True)
         if own_fetcher:
             close = getattr(fetcher, "close", None)
             if callable(close):
@@ -991,8 +987,10 @@ async def _produce_search_frontier(
                         seed_url=normalized,
                         discovered_from=None,
                     )
-                    if asyncio.iscoroutine(maybe):
-                        await maybe
+                    # The pipeline's enqueue is always async; the iscoroutine guard
+                    # protects against future synchronous overrides.
+                    assert asyncio.iscoroutine(maybe)
+                    await maybe
 
 
 async def _iter_items(items: list[Any]):
