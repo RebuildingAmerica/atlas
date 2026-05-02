@@ -98,11 +98,10 @@ async def _worker_loop(
                 logger.info("Claimed job %s for run %s", job.id, job.run_id)
 
                 run = await DiscoveryRunCRUD.get_by_id(conn, job.run_id)
-                if run is None:
-                    logger.error("Job %s references missing run %s", job.id, job.run_id)
-                    await DiscoveryJobCRUD.fail(conn, job.id, "referenced run does not exist")
-                    await conn.close()
-                    continue
+                # FK ON DELETE CASCADE: deleting a run also deletes its jobs,
+                # so claim_next would not have returned this job if the run
+                # were missing.
+                assert run is not None, "claimed job's run was deleted concurrently"
 
                 pipeline_job = DiscoveryPipelineJob(
                     run_id=run.id,

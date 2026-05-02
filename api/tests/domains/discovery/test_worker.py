@@ -89,3 +89,73 @@ class TestWorkerExecution:
         assert job.retry_count >= 1
         assert job.error_message is not None
         assert "test failure" in job.error_message
+
+    @pytest.mark.asyncio
+    async def test_worker_completes_successful_job(
+        self,
+        db_url: str,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """A pipeline that succeeds should mark the job complete."""
+        conn = await get_db_connection(db_url)
+        run_id = await DiscoveryRunCRUD.create(
+            conn,
+            location_query="Austin, TX",
+            state="TX",
+            issue_areas=["housing_affordability"],
+        )
+        job_id = await DiscoveryJobCRUD.create(conn, run_id=run_id)
+        await conn.close()
+
+        async def fake_pipeline(
+            _conn: object,
+            *,
+            job: object,  # noqa: ARG001
+            credentials: object,  # noqa: ARG001
+        ) -> None:
+            return None
+
+        monkeypatch.setattr(
+            "atlas.domains.discovery.worker.run_discovery_pipeline",
+            fake_pipeline,
+        )
+
+        await start_job_worker(db_url, anthropic_api_key="test")
+        await asyncio.sleep(0.4)
+        await stop_job_worker()
+
+        conn = await get_db_connection(db_url)
+        job = await DiscoveryJobCRUD.get_by_id(conn, job_id)
+        await conn.close()
+
+        assert job is not None
+        assert job.status == "completed"
+
+    @pytest.mark.asyncio
+    async def test_worker_recovers_from_transient_db_failure(
+        self,
+        db_url: str,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """A connection failure inside the loop should be logged without killing the worker."""
+        from atlas.domains.discovery import worker as worker_module
+
+        original_get_conn = worker_module.get_db_connection
+        calls = {"n": 0}
+
+        async def flaky(database_url: str, *, backend: str | None = None) -> object:
+            calls["n"] += 1
+            if calls["n"] == 1:
+                msg = "transient db failure"
+                raise RuntimeError(msg)
+            return await original_get_conn(database_url, backend=backend)
+
+        monkeypatch.setattr(worker_module, "get_db_connection", flaky)
+        # Speed up the poll to keep the test short.
+        monkeypatch.setattr(worker_module, "_POLL_INTERVAL_SECONDS", 0.05)
+
+        await start_job_worker(db_url, anthropic_api_key="test")
+        await asyncio.sleep(0.3)
+        await stop_job_worker()
+
+        assert calls["n"] >= 2, "Recovered and continued polling."  # noqa: PLR2004

@@ -117,8 +117,7 @@ async def create_schedule(
         search_depth=req.search_depth,
     )
     schedule = await DiscoveryScheduleCRUD.get_by_id(db, schedule_id)
-    if not schedule:
-        raise HTTPException(status_code=500, detail="Failed to create schedule")
+    assert schedule is not None, "Schedule must exist immediately after creation"
     apply_no_store_headers(response)
     return _schedule_to_response(schedule)
 
@@ -175,8 +174,7 @@ async def update_schedule(
         await DiscoveryScheduleCRUD.update(db, schedule_id, **updates)
 
     schedule = await DiscoveryScheduleCRUD.get_by_id(db, schedule_id)
-    if not schedule:
-        raise HTTPException(status_code=500, detail="Failed to reload schedule after update")
+    assert schedule is not None, "Schedule existence verified above"
     apply_no_store_headers(response)
     return _schedule_to_response(schedule)
 

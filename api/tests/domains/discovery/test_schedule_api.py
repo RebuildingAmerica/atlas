@@ -172,6 +172,80 @@ class TestScheduleEndpoints:
             )
         assert exc_info.value.status_code == EXPECTED_BAD_REQUEST
 
+    @pytest.mark.asyncio
+    async def test_update_schedule_not_found(
+        self, test_db: object, actor: AuthenticatedActor
+    ) -> None:
+        from fastapi import HTTPException
+
+        with pytest.raises(HTTPException) as exc_info:
+            await api_schedule.update_schedule(
+                "nonexistent",
+                DiscoveryScheduleUpdateRequest(enabled=False),
+                response=None,
+                actor=actor,
+                db=test_db,
+            )
+        assert exc_info.value.status_code == EXPECTED_NOT_FOUND
+
+    @pytest.mark.asyncio
+    async def test_update_schedule_invalid_issue_area(
+        self, test_db: object, actor: AuthenticatedActor
+    ) -> None:
+        from fastapi import HTTPException
+
+        sid = await DiscoveryScheduleCRUD.create(
+            test_db,
+            location_query="Austin, TX",
+            state="TX",
+            issue_areas=["housing_affordability"],
+        )
+        with pytest.raises(HTTPException) as exc_info:
+            await api_schedule.update_schedule(
+                sid,
+                DiscoveryScheduleUpdateRequest(issue_areas=["totally_fake_issue"]),
+                response=None,
+                actor=actor,
+                db=test_db,
+            )
+        assert exc_info.value.status_code == EXPECTED_BAD_REQUEST
+
+    @pytest.mark.asyncio
+    async def test_update_schedule_with_empty_payload_returns_unchanged(
+        self, test_db: object, actor: AuthenticatedActor
+    ) -> None:
+        sid = await DiscoveryScheduleCRUD.create(
+            test_db,
+            location_query="Austin, TX",
+            state="TX",
+            issue_areas=["housing_affordability"],
+        )
+        resp = await api_schedule.update_schedule(
+            sid,
+            DiscoveryScheduleUpdateRequest(),
+            response=None,
+            actor=actor,
+            db=test_db,
+        )
+        assert resp.id == sid
+
+
+@pytest.mark.asyncio
+async def test_get_db_dependency_yields_and_closes_connection(tmp_db_path: str) -> None:
+    """The get_db FastAPI dependency yields a connection and tears it down on exit."""
+    from atlas.platform.config import Settings
+
+    settings = Settings(database_url=f"sqlite:///{tmp_db_path}", deploy_mode="local")
+    await init_db(settings.database_url)
+
+    agen = api_schedule.get_db(settings=settings)
+    conn = await agen.__anext__()
+    cursor = await conn.execute("SELECT 1")
+    row = await cursor.fetchone()
+    assert row[0] == 1
+    with pytest.raises(StopAsyncIteration):
+        await agen.__anext__()
+
 
 class TestScheduledRunEndpoint:
     @pytest.mark.asyncio
