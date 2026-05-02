@@ -41,6 +41,7 @@ class ExtractionFailedError(RuntimeError):
 # Coercers for tolerant Pydantic models (LLMs send null for optional fields)
 # ---------------------------------------------------------------------------
 
+
 def _coerce_dict(v: dict[str, str] | None) -> dict[str, str]:
     return v if v is not None else {}
 
@@ -56,6 +57,7 @@ def _coerce_mention_list(v: list[dict[str, str]] | None) -> list[dict[str, str]]
 # ---------------------------------------------------------------------------
 # Structured output schemas
 # ---------------------------------------------------------------------------
+
 
 class StructuredExtractionItem(BaseModel):
     """Schema for one extracted Atlas entry — tolerant of null fields from LLMs."""
@@ -77,9 +79,9 @@ class StructuredExtractionItem(BaseModel):
     )
     affiliated_org: str | None = None
     extraction_context: str = ""
-    mentioned_entities: Annotated[
-        list[dict[str, str]], BeforeValidator(_coerce_mention_list)
-    ] = Field(default_factory=list)
+    mentioned_entities: Annotated[list[dict[str, str]], BeforeValidator(_coerce_mention_list)] = (
+        Field(default_factory=list)
+    )
 
 
 class StructuredExtractionResponse(BaseModel):
@@ -92,6 +94,7 @@ class StructuredExtractionResponse(BaseModel):
 # ---------------------------------------------------------------------------
 # Prompt builders
 # ---------------------------------------------------------------------------
+
 
 def build_identify_system_prompt() -> str:
     """Build the Pass 1 system prompt: identify named entities in text."""
@@ -175,6 +178,7 @@ def build_extraction_system_prompt(
 # Response parsing
 # ---------------------------------------------------------------------------
 
+
 def parse_identify_response(text: str) -> list[dict[str, str]]:
     """Parse Pass 1 response: a JSON array of {name, type, quote} dicts."""
     text = strip_code_fence(text)
@@ -201,11 +205,13 @@ def parse_identify_response(text: str) -> list[dict[str, str]]:
     results: list[dict[str, str]] = []
     for item in items:
         if isinstance(item, dict) and "name" in item:
-            results.append({
-                "name": str(item.get("name", "")),
-                "type": str(item.get("type", "organization")),
-                "quote": str(item.get("quote", "")),
-            })
+            results.append(
+                {
+                    "name": str(item.get("name", "")),
+                    "type": str(item.get("type", "organization")),
+                    "quote": str(item.get("quote", "")),
+                }
+            )
     return results
 
 
@@ -242,29 +248,25 @@ def parse_extraction_response(
     entries: list[RawEntry] = []
     page_leads = structured.discovery_leads
     for idx, item in enumerate(structured.entries):
-        try:
-            entries.append(
-                RawEntry(
-                    name=item.name,
-                    entry_type=normalize_entity_type(item.type),
-                    description=item.description,
-                    city=item.city,
-                    state=item.state,
-                    geo_specificity=normalize_geo_specificity(item.geo_specificity),
-                    issue_areas=item.issue_areas,
-                    region=item.region,
-                    website=item.website,
-                    email=item.email,
-                    social_media=item.social_media,
-                    affiliated_org=item.affiliated_org,
-                    extraction_context=item.extraction_context,
-                    mentioned_entities=item.mentioned_entities,
-                    discovery_leads=page_leads if idx == 0 else [],
-                )
+        entries.append(
+            RawEntry(
+                name=item.name,
+                entry_type=normalize_entity_type(item.type),
+                description=item.description,
+                city=item.city,
+                state=item.state,
+                geo_specificity=normalize_geo_specificity(item.geo_specificity),
+                issue_areas=item.issue_areas,
+                region=item.region,
+                website=item.website,
+                email=item.email,
+                social_media=item.social_media,
+                affiliated_org=item.affiliated_org,
+                extraction_context=item.extraction_context,
+                mentioned_entities=item.mentioned_entities,
+                discovery_leads=page_leads if idx == 0 else [],
             )
-        except (KeyError, ValueError) as exc:
-            logger.debug("Skipping malformed entry item: %s", exc)
-            continue
+        )
 
     return entries
 
@@ -427,7 +429,9 @@ def _name_is_grounded(name: str, source_lower: str) -> bool:
 
     if len(name_lower) >= 5:
         best_ratio = _best_substring_similarity(
-            name_lower, source_lower, early_exit=_NAME_SIMILARITY_THRESHOLD,
+            name_lower,
+            source_lower,
+            early_exit=_NAME_SIMILARITY_THRESHOLD,
         )
         if best_ratio >= _NAME_SIMILARITY_THRESHOLD:
             return True
@@ -446,14 +450,14 @@ def _context_is_grounded(context: str, source_lower: str) -> bool:
         return True
 
     best_ratio = _best_substring_similarity(
-        context_lower, source_lower, early_exit=_CONTEXT_SIMILARITY_THRESHOLD,
+        context_lower,
+        source_lower,
+        early_exit=_CONTEXT_SIMILARITY_THRESHOLD,
     )
     return best_ratio >= _CONTEXT_SIMILARITY_THRESHOLD
 
 
-def _best_substring_similarity(
-    needle: str, haystack: str, *, early_exit: float = 1.0
-) -> float:
+def _best_substring_similarity(needle: str, haystack: str, *, early_exit: float = 1.0) -> float:
     """Find the best fuzzy match ratio for needle anywhere in haystack."""
     if not needle or not haystack:
         return 0.0
@@ -478,6 +482,7 @@ def _best_substring_similarity(
 # ---------------------------------------------------------------------------
 # Utilities
 # ---------------------------------------------------------------------------
+
 
 def strip_code_fence(value: str) -> str:
     """Remove optional Markdown fences around a JSON response."""

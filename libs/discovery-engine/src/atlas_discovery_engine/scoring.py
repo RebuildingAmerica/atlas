@@ -110,7 +110,9 @@ def _score_values(
 ) -> tuple[float, dict[str, float]]:
     recency = _score_recency(most_recent)
     geo_score = _GEO_SCORES.get(geo_specificity, 0.0)
-    contact_surface = _score_contact_surface(website=website, email=email, social_media=social_media)
+    contact_surface = _score_contact_surface(
+        website=website, email=email, social_media=social_media
+    )
     description_quality = min(len(description.split()) / 25.0, 1.0)
     issue_coverage = min(issue_areas_count / 3.0, 1.0)
 

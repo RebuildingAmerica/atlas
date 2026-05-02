@@ -26,9 +26,7 @@ class CoverageSummary:
 def summarize_issue_counts(issue_counts: dict[str, int]) -> CoverageSummary:
     """Turn raw issue counts into covered/missing/thin coverage buckets."""
     issue_names = {
-        issue.slug: issue.name
-        for domain in DOMAINS
-        for issue in ISSUE_AREAS_BY_DOMAIN[domain]
+        issue.slug: issue.name for domain in DOMAINS for issue in ISSUE_AREAS_BY_DOMAIN[domain]
     }
 
     covered_slugs: list[str] = []

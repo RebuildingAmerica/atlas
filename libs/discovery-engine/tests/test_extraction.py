@@ -9,6 +9,10 @@ from atlas_shared import PageContent, RawEntry
 
 from atlas_discovery_engine.extraction import (
     ExtractionFailedError,
+    StructuredExtractionItem,
+    _best_substring_similarity,
+    _has_proper_noun_signal,
+    _name_is_grounded,
     build_extraction_system_prompt,
     build_identify_system_prompt,
     normalize_entity_type,
@@ -75,10 +79,12 @@ class TestNormalization:
 
 class TestParseIdentifyResponse:
     def test_parses_valid_array(self) -> None:
-        text = json.dumps([
-            {"name": "Jane Doe", "type": "person", "quote": "Jane said..."},
-            {"name": "Acme Corp", "type": "organization", "quote": "Acme builds..."},
-        ])
+        text = json.dumps(
+            [
+                {"name": "Jane Doe", "type": "person", "quote": "Jane said..."},
+                {"name": "Acme Corp", "type": "organization", "quote": "Acme builds..."},
+            ]
+        )
         result = parse_identify_response(text)
         assert len(result) == 2
         assert result[0]["name"] == "Jane Doe"
@@ -111,22 +117,34 @@ class TestParseIdentifyResponse:
         result = parse_identify_response(text)
         assert len(result) == 1
 
+    def test_returns_empty_when_inner_brackets_invalid(self) -> None:
+        # Outer JSON parse fails; bracket fallback finds [..] but inner content is invalid.
+        text = "intro [not, real, json] outro"
+        assert parse_identify_response(text) == []
+
+    def test_returns_empty_when_no_brackets(self) -> None:
+        assert parse_identify_response("garbled response with no brackets") == []
+
 
 class TestParseExtractionResponse:
     def test_parses_entries_envelope(self) -> None:
-        payload = json.dumps({
-            "entries": [{
-                "name": "Test Org",
-                "type": "organization",
-                "description": "A test org.",
-                "city": "Austin",
-                "state": "TX",
-                "geo_specificity": "local",
-                "issue_areas": ["housing_affordability"],
-                "extraction_context": "Test Org works on housing.",
-            }],
-            "discovery_leads": ["https://example.com"],
-        })
+        payload = json.dumps(
+            {
+                "entries": [
+                    {
+                        "name": "Test Org",
+                        "type": "organization",
+                        "description": "A test org.",
+                        "city": "Austin",
+                        "state": "TX",
+                        "geo_specificity": "local",
+                        "issue_areas": ["housing_affordability"],
+                        "extraction_context": "Test Org works on housing.",
+                    }
+                ],
+                "discovery_leads": ["https://example.com"],
+            }
+        )
         result = parse_extraction_response(text=payload)
         assert len(result) == 1
         assert result[0].name == "Test Org"
@@ -134,36 +152,46 @@ class TestParseExtractionResponse:
         assert result[0].discovery_leads == ["https://example.com"]
 
     def test_parses_bare_array(self) -> None:
-        payload = json.dumps([{
-            "name": "Bare Entry",
-            "type": "initiative",
-            "description": "Desc.",
-            "geo_specificity": "regional",
-        }])
+        payload = json.dumps(
+            [
+                {
+                    "name": "Bare Entry",
+                    "type": "initiative",
+                    "description": "Desc.",
+                    "geo_specificity": "regional",
+                }
+            ]
+        )
         result = parse_extraction_response(text=payload)
         assert len(result) == 1
         assert result[0].name == "Bare Entry"
 
     def test_accepts_parsed_dict(self) -> None:
         parsed = {
-            "entries": [{
-                "name": "Parsed Entry",
-                "type": "person",
-                "description": "From parsed.",
-                "geo_specificity": "national",
-            }],
+            "entries": [
+                {
+                    "name": "Parsed Entry",
+                    "type": "person",
+                    "description": "From parsed.",
+                    "geo_specificity": "national",
+                }
+            ],
         }
         result = parse_extraction_response(parsed=parsed)
         assert len(result) == 1
         assert result[0].entry_type == "person"
 
     def test_normalizes_geo_and_type_aliases(self) -> None:
-        payload = json.dumps([{
-            "name": "Alias Test",
-            "type": "nonprofit",
-            "description": "Testing aliases.",
-            "geo_specificity": "city-level",
-        }])
+        payload = json.dumps(
+            [
+                {
+                    "name": "Alias Test",
+                    "type": "nonprofit",
+                    "description": "Testing aliases.",
+                    "geo_specificity": "city-level",
+                }
+            ]
+        )
         result = parse_extraction_response(text=payload)
         assert result[0].entry_type == "organization"
         assert result[0].geo_specificity == "local"
@@ -181,10 +209,14 @@ class TestParseExtractionResponse:
         assert parse_extraction_response() == []
 
     def test_raises_on_malformed_entries_list(self) -> None:
-        payload = json.dumps({"entries": [
-            {"name": "Good", "type": "org", "geo_specificity": "local"},
-            "not a dict at all",
-        ]})
+        payload = json.dumps(
+            {
+                "entries": [
+                    {"name": "Good", "type": "org", "geo_specificity": "local"},
+                    "not a dict at all",
+                ]
+            }
+        )
         with pytest.raises(ExtractionFailedError, match="structured_output_validation_failed"):
             parse_extraction_response(text=payload)
 
@@ -200,7 +232,9 @@ class TestBuildPrompts:
         assert "worker_cooperatives" in prompt
 
     def test_extraction_prompt_includes_directive(self) -> None:
-        prompt = build_extraction_system_prompt("Austin", "TX", extraction_directive="Focus on housing.")
+        prompt = build_extraction_system_prompt(
+            "Austin", "TX", extraction_directive="Focus on housing."
+        )
         assert "Focus on housing." in prompt
 
     def test_extraction_prompt_without_location(self) -> None:
@@ -266,3 +300,93 @@ class TestValidateEntries:
         )
         result = validate_entries([entry], page)
         assert len(result) == 1
+
+    def test_keeps_via_word_match_threshold(self) -> None:
+        # Name has 2+ long words; >=70% appear in source. Triggers word-match branch
+        # without exact substring or fuzzy similarity.
+        page = self._make_page(
+            "Kansas Coalition fights for democracy across many counties statewide."
+        )
+        entry = self._make_entry(
+            "Kansas Coalition Statewide",
+            context="Kansas Coalition fights for democracy across many counties statewide.",
+        )
+        result = validate_entries([entry], page)
+        assert len(result) == 1
+
+
+class TestCoercerFallbacks:
+    def test_coerces_null_dict_to_empty(self) -> None:
+        item = StructuredExtractionItem.model_validate(
+            {"name": "X", "type": "organization", "social_media": None}
+        )
+        assert item.social_media == {}
+
+    def test_coerces_null_list_to_empty(self) -> None:
+        item = StructuredExtractionItem.model_validate(
+            {"name": "X", "type": "organization", "issue_areas": None}
+        )
+        assert item.issue_areas == []
+
+    def test_coerces_null_mention_list_to_empty(self) -> None:
+        item = StructuredExtractionItem.model_validate(
+            {"name": "X", "type": "organization", "mentioned_entities": None}
+        )
+        assert item.mentioned_entities == []
+
+
+class TestProperNounSignal:
+    def test_empty_name_returns_false(self) -> None:
+        assert _has_proper_noun_signal("") is False
+        assert _has_proper_noun_signal("   ") is False
+
+    def test_single_word_capitalized(self) -> None:
+        assert _has_proper_noun_signal("Acme") is True
+
+    def test_single_word_lowercase(self) -> None:
+        assert _has_proper_noun_signal("acme") is False
+
+    def test_mid_word_uppercase_acronym_with_leading_digit(self) -> None:
+        # "1ABC" — starts non-uppercase, but the whole word is "uppercase" per str.isupper().
+        assert _has_proper_noun_signal("John 1ABC Smith") is True
+
+    def test_acronym_only_long_enough(self) -> None:
+        assert _has_proper_noun_signal("AB") is True
+
+    def test_single_letter_acronym_falls_through(self) -> None:
+        # "A" is uppercase but len < 2; falls through to single-word check.
+        assert _has_proper_noun_signal("A") is True
+
+
+class TestNameIsGrounded:
+    def test_empty_name_returns_false(self) -> None:
+        assert _name_is_grounded("", "any source text") is False
+
+    def test_only_short_words_returns_false(self) -> None:
+        # All words < 3 chars → words list is empty after filtering.
+        assert _name_is_grounded("Hi Or", "completely unrelated source text") is False
+
+    def test_short_name_below_fuzzy_threshold(self) -> None:
+        # Name long enough to survive proper-noun checks but < 5 chars,
+        # so the fuzzy fallback is skipped and the function returns False.
+        assert _name_is_grounded("Acm", "completely unrelated text") is False
+
+    def test_grounds_via_fuzzy_similarity(self) -> None:
+        # Name not present verbatim, single word so the word-match heuristic
+        # is bypassed, but the fuzzy substring fallback finds a near-match.
+        source = "the greenpeac group hosts a rally downtown"
+        assert _name_is_grounded("Greenpeace", source) is True
+
+
+class TestBestSubstringSimilarity:
+    def test_empty_inputs_return_zero(self) -> None:
+        assert _best_substring_similarity("", "haystack") == 0.0
+        assert _best_substring_similarity("needle", "") == 0.0
+
+    def test_needle_longer_than_haystack(self) -> None:
+        ratio = _best_substring_similarity("needle longer than", "small")
+        assert 0.0 <= ratio <= 1.0
+
+    def test_finds_match_in_middle(self) -> None:
+        ratio = _best_substring_similarity("matching", "preamble matching keywords trailing")
+        assert ratio >= 0.7

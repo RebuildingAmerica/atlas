@@ -87,7 +87,9 @@ def generate_queries(
 
         for source_category, patterns in patterns_by_source.items():
             for pattern in patterns:
-                expansions = local_outlets if "{local_outlet}" in pattern and local_outlets else [None]
+                expansions = (
+                    local_outlets if "{local_outlet}" in pattern and local_outlets else [None]
+                )
                 for keywords in keywords_list:
                     for local_outlet in expansions:
                         query_text = pattern.format(

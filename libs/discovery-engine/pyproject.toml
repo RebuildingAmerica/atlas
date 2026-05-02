@@ -19,6 +19,20 @@ packages = ["src/atlas_discovery_engine"]
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+addopts = "--cov=atlas_discovery_engine --cov-branch --cov-report=term-missing --cov-fail-under=100"
+
+[tool.coverage.run]
+source = ["src/atlas_discovery_engine"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+fail_under = 100
+exclude_lines = [
+    "pragma: no cover",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+]
 
 [tool.ruff]
 line-length = 100
@@ -48,5 +62,6 @@ ignore = [
 dev = [
     "pytest>=9.0.3",
     "pytest-asyncio>=1.3.0",
+    "pytest-cov>=7.0.0",
     "ruff>=0.15.10",
 ]

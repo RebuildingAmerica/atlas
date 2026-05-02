@@ -152,16 +152,19 @@ def _raw_to_dedup(raw: RawEntry) -> DeduplicatedEntry:
 
 def _find_shared_match(entry: DeduplicatedEntry, canonical: list[DeduplicatedEntry]) -> int | None:
     for idx, existing in enumerate(canonical):
-        if _match_type(
-            name_left=existing.name,
-            name_right=entry.name,
-            city_left=existing.city,
-            city_right=entry.city,
-            entry_type_left=str(existing.entry_type),
-            entry_type_right=str(entry.entry_type),
-            affiliated_org_left=existing.affiliated_org,
-            affiliated_org_right=entry.affiliated_org,
-        ) == "merge":
+        if (
+            _match_type(
+                name_left=existing.name,
+                name_right=entry.name,
+                city_left=existing.city,
+                city_right=entry.city,
+                entry_type_left=str(existing.entry_type),
+                entry_type_right=str(entry.entry_type),
+                affiliated_org_left=existing.affiliated_org,
+                affiliated_org_right=entry.affiliated_org,
+            )
+            == "merge"
+        ):
             return idx
     return None
 
@@ -201,7 +204,9 @@ def _merge_entry_dicts(left: dict[str, Any], right: dict[str, Any]) -> dict[str,
         set(_list_of_str(left.get("source_urls"))) | set(_list_of_str(right.get("source_urls")))
     )
     merged_dates = list(
-        dict.fromkeys([*(_list_any(left.get("source_dates"))), *(_list_any(right.get("source_dates")))])
+        dict.fromkeys(
+            [*(_list_any(left.get("source_dates"))), *(_list_any(right.get("source_dates")))]
+        )
     )
     merged["source_dates"] = merged_dates
     merged["last_seen"] = _max_date_like(
@@ -239,7 +244,9 @@ def _match_type(
     same_city = city_left == city_right
     same_type = entry_type_left == entry_type_right
     same_person_type = entry_type_left == "person" and entry_type_right == "person"
-    same_organization_type = entry_type_left == "organization" and entry_type_right == "organization"
+    same_organization_type = (
+        entry_type_left == "organization" and entry_type_right == "organization"
+    )
     exact_name = name_left.strip().lower() == name_right.strip().lower()
     affiliated_match = (
         affiliated_org_left
