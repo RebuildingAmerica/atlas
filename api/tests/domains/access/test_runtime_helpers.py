@@ -208,6 +208,19 @@ def test_permission_helpers_enforce_api_key_and_jwt_scopes() -> None:
         require_permission(jwt_actor_without_permissions, "discovery", "read")
 
 
+def test_invalidate_jwks_cache_clears_module_state(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """invalidate_jwks_cache should clear the cached client and URL."""
+    monkeypatch.setattr(auth_jwt_module, "_jwks_client", object())
+    monkeypatch.setattr(auth_jwt_module, "_jwks_client_url", "https://atlas.example/jwks")
+
+    auth_jwt_module.invalidate_jwks_cache()
+
+    assert auth_jwt_module._jwks_client is None  # noqa: SLF001
+    assert auth_jwt_module._jwks_client_url is None  # noqa: SLF001
+
+
 def test_jwt_helpers_cache_keys_and_decode_bearer_tokens(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

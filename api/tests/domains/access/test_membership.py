@@ -218,6 +218,75 @@ async def test_200_response_returns_membership_result(
     assert result.active_products == ["atlas_team"]
 
 
+async def test_expired_cache_entry_is_refetched(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A cache entry past its TTL should be evicted and refreshed."""
+    settings = _make_settings()
+    response = httpx.Response(
+        200,
+        json={
+            "role": "member",
+            "slug": "org",
+            "name": "Org",
+            "workspaceType": "team",
+            "activeProducts": [],
+        },
+        request=httpx.Request(
+            "GET",
+            "http://localhost:3000/api/auth/internal/memberships/org_e/members/user_e",
+        ),
+    )
+
+    fetches = 0
+
+    def factory(*, timeout: float) -> _FakeAsyncClient:
+        nonlocal fetches
+        fetches += 1
+        del timeout
+        return _FakeAsyncClient(response)
+
+    monkeypatch.setattr(
+        "atlas.domains.access.membership.httpx.AsyncClient",
+        factory,
+    )
+
+    monotonic_calls = {"n": 0}
+
+    def fake_monotonic() -> float:
+        monotonic_calls["n"] += 1
+        # First call seeds the cache with expires_at = 100 + TTL. Subsequent
+        # calls return a far-future time so the cache lookup sees expiry.
+        return 100.0 if monotonic_calls["n"] == 1 else 10_000_000.0
+
+    monkeypatch.setattr(
+        "atlas.domains.access.membership.time.monotonic",
+        fake_monotonic,
+    )
+
+    first = await verify_org_membership("user_e", "org_e", settings)
+    second = await verify_org_membership("user_e", "org_e", settings)
+
+    assert first is not None
+    assert second is not None
+    assert fetches == 2, "Cache miss on second call due to expiry."  # noqa: PLR2004
+
+
+async def test_network_failure_propagates_after_logging(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A transport-level failure logs and re-raises."""
+    settings = _make_settings()
+
+    monkeypatch.setattr(
+        "atlas.domains.access.membership.httpx.AsyncClient",
+        _client_factory(RuntimeError("network down")),
+    )
+
+    with pytest.raises(RuntimeError, match="network down"):
+        await verify_org_membership("user_n", "org_n", settings)
+
+
 async def test_non_200_non_404_raises_error(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

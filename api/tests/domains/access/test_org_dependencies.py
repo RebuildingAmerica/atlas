@@ -138,3 +138,22 @@ async def test_require_org_role_admin_passes_for_admin_and_owner() -> None:
     owner_actor = _make_actor(org_id="org_1", org_role="owner")
     result = await dependency(actor=owner_actor)
     assert result is owner_actor
+
+
+def test_require_org_role_rejects_unknown_role() -> None:
+    """Unknown role name must raise at dependency-construction time."""
+    with pytest.raises(ValueError, match="Unknown org role"):
+        require_org_role("not-a-real-role")
+
+
+async def test_require_org_actor_treats_unset_membership_url_as_dev_mode() -> None:
+    """Membership-verification URL of None (unset) takes the dev bypass path."""
+    actor = _make_actor(org_id="org_dev")
+    settings = _make_settings(membership_url="")
+    settings.auth_membership_verification_url = None  # type: ignore[assignment]
+
+    result = await require_org_actor(actor=actor, settings=settings)
+
+    assert result is actor
+    assert result.active_products == []
+    assert result.resolved_capabilities is not None

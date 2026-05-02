@@ -91,3 +91,45 @@ def test_build_bearer_challenge_strips_trailing_slash_from_resource_url(
         'resource_metadata="https://atlas.example/api/.well-known/oauth-protected-resource"'
         in challenge
     )
+
+
+def test_build_bearer_challenge_with_error_uri_appends_param(
+    auth_settings: Settings,
+) -> None:
+    """When error_uri is set alongside error_description, both appear in the challenge."""
+    challenge = build_bearer_challenge(
+        auth_settings,
+        scope=["entities:write"],
+        error="insufficient_scope",
+        error_description="Plan upgrade required",
+        error_uri="https://atlas.example/pricing",
+    )
+
+    assert 'error_uri="https://atlas.example/pricing"' in challenge
+
+
+def test_build_bearer_challenge_skips_error_description_when_unset(
+    auth_settings: Settings,
+) -> None:
+    """error without an error_description should leave the description out entirely."""
+    challenge = build_bearer_challenge(
+        auth_settings,
+        error="invalid_token",
+    )
+
+    assert 'error="invalid_token"' in challenge
+    assert "error_description=" not in challenge
+
+
+def test_build_bearer_challenge_skips_error_uri_when_unset(
+    auth_settings: Settings,
+) -> None:
+    """error_description set without error_uri should not append an error_uri parameter."""
+    challenge = build_bearer_challenge(
+        auth_settings,
+        error="invalid_token",
+        error_description="Token has expired",
+    )
+
+    assert 'error_description="Token has expired"' in challenge
+    assert "error_uri=" not in challenge

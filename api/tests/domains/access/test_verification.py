@@ -187,3 +187,33 @@ class TestVerificationRecord:
 
         assert verifier.is_verification_expired(old_date, days=365)
         assert not verifier.is_verification_expired(recent_date, days=365)
+
+    def test_mark_verified_without_notes_keeps_default_notes(
+        self, verifier: DiscountVerifier
+    ) -> None:
+        record = verifier.create_verification_record(
+            "user123",
+            "civic_tech_worker",
+            VerificationMethod.MISSION_STATEMENT,
+        )
+        original_notes = record.notes
+        verifier.mark_verified(record)
+        assert record.status == VerificationStatus.VERIFIED
+        assert record.notes == original_notes
+
+    def test_mark_expired_updates_status(self, verifier: DiscountVerifier) -> None:
+        record = verifier.create_verification_record(
+            "user123",
+            "civic_tech_worker",
+            VerificationMethod.MISSION_STATEMENT,
+            status=VerificationStatus.VERIFIED,
+        )
+        verifier.mark_expired(record)
+        assert record.status == VerificationStatus.EXPIRED
+
+
+def test_grassroots_nonprofit_invalid_budget_string(verifier: DiscountVerifier) -> None:
+    """Non-numeric budget input should be rejected with a clear error."""
+    is_valid, error = verifier.verify_grassroots_nonprofit("04-1798922", "lots of money")
+    assert is_valid is False
+    assert error == "Budget must be a valid number"

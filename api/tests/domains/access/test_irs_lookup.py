@@ -1,6 +1,11 @@
 """Tests for IRS nonprofit lookup functionality."""
 
-from atlas.domains.access.irs_lookup import is_valid_ein, lookup_nonprofit_by_ein
+from atlas.domains.access.irs_lookup import (
+    is_valid_ein,
+    lookup_nonprofit_budget,
+    lookup_nonprofit_by_ein,
+    normalize_ein,
+)
 
 
 class TestIRSLookup:
@@ -44,3 +49,20 @@ class TestIRSLookup:
         with_dash = lookup_nonprofit_by_ein("04-1798922")
         without_dash = lookup_nonprofit_by_ein("041798922")
         assert with_dash == without_dash
+
+    def test_lookup_invalid_format_returns_none(self) -> None:
+        """Invalid-format EINs short-circuit to None before consulting the database."""
+        assert lookup_nonprofit_by_ein("not-an-ein") is None
+        assert lookup_nonprofit_by_ein("12345") is None
+
+    def test_normalize_ein_passes_through_invalid_input(self) -> None:
+        """normalize_ein returns the input unchanged when length is not 9 digits."""
+        assert normalize_ein("12345") == "12345"
+        assert normalize_ein("garbage") == "garbage"
+
+    def test_normalize_ein_formats_unhyphenated(self) -> None:
+        assert normalize_ein("041798922") == "04-1798922"
+
+    def test_lookup_nonprofit_budget_returns_none(self) -> None:
+        """Budget lookup is not yet wired up; documented to return None."""
+        assert lookup_nonprofit_budget("04-1798922") is None

@@ -161,3 +161,34 @@ class TestRequireCapabilityDependency:
         detail = cast("dict[str, object]", excinfo.value.detail)
         assert detail["error"] == "plan_required"
         assert detail["plan_required"] == "pro"
+
+
+class TestEnforceLimitDependency:
+    @pytest.mark.asyncio
+    async def test_returns_resolved_limit_when_capabilities_present(self) -> None:
+        from atlas.domains.access.capabilities import enforce_limit
+
+        actor = _build_actor(auth_type="oauth_jwt", products=["atlas_pro"])
+        dependency = enforce_limit("max_api_keys")
+
+        result = await dependency(actor=actor)  # type: ignore[call-arg]
+
+        assert result == 1
+
+    @pytest.mark.asyncio
+    async def test_falls_back_to_default_limit_when_capabilities_unresolved(self) -> None:
+        from atlas.domains.access.capabilities import enforce_limit
+
+        actor = AuthenticatedActor(
+            user_id="user_x",
+            email="x@x.org",
+            auth_type="oauth_jwt",
+            org_id="org_x",
+        )
+        # Intentionally leave resolved_capabilities as None.
+        dependency = enforce_limit("max_api_keys")
+
+        result = await dependency(actor=actor)  # type: ignore[call-arg]
+
+        # Default tier returns the documented default limit.
+        assert result == 0
