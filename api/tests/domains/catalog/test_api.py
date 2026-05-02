@@ -227,6 +227,62 @@ class TestEntityEndpoints:
         response = await test_client.delete(f"/api/entities/{entity_id}")
         assert response.status_code == STATUS_NO_CONTENT
 
+    @pytest.mark.asyncio
+    async def test_update_entity_rejects_non_owner_org(
+        self, test_client: object, test_db: object
+    ) -> None:
+        """An entity owned by another org should reject updates."""
+        from atlas.domains.catalog.models.ownership import OwnershipCRUD
+
+        entity_id = await EntryCRUD.create(
+            test_db,
+            entry_type="organization",
+            name="Owned Elsewhere",
+            description="Test.",
+            city="Test",
+            state="TS",
+            geo_specificity="local",
+        )
+        await OwnershipCRUD.create_ownership(
+            test_db,
+            resource_id=entity_id,
+            resource_type="entry",
+            org_id="some-other-org",
+            visibility="private",
+            created_by="someone-else",
+        )
+
+        response = await test_client.patch(f"/api/entities/{entity_id}", json={"name": "Hijack"})
+        assert response.status_code == 403  # noqa: PLR2004
+
+    @pytest.mark.asyncio
+    async def test_delete_entity_rejects_non_owner_org(
+        self, test_client: object, test_db: object
+    ) -> None:
+        """An entity owned by another org should reject deletes."""
+        from atlas.domains.catalog.models.ownership import OwnershipCRUD
+
+        entity_id = await EntryCRUD.create(
+            test_db,
+            entry_type="organization",
+            name="Owned Elsewhere",
+            description="Test.",
+            city="Test",
+            state="TS",
+            geo_specificity="local",
+        )
+        await OwnershipCRUD.create_ownership(
+            test_db,
+            resource_id=entity_id,
+            resource_type="entry",
+            org_id="some-other-org",
+            visibility="private",
+            created_by="someone-else",
+        )
+
+        response = await test_client.delete(f"/api/entities/{entity_id}")
+        assert response.status_code == 403  # noqa: PLR2004
+
 
 class TestDiscoveryRunEndpoints:
     """Tests for discovery-run resource endpoints."""

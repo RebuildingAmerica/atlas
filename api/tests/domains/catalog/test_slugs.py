@@ -148,3 +148,35 @@ class TestSlugResolutionEndpoint:
 
         response = await test_client.get(f"/api/entities/by-slug/organizations/{entry.slug}")
         assert response.status_code == STATUS_NOT_FOUND
+
+    @pytest.mark.asyncio
+    async def test_resolve_invalid_entity_type_returns_400(self, test_client: object) -> None:
+        response = await test_client.get("/api/entities/by-slug/widgets/anything")
+        assert response.status_code == 400  # noqa: PLR2004
+
+    @pytest.mark.asyncio
+    async def test_resolve_alias_returns_redirect(
+        self, test_client: object, test_db: object
+    ) -> None:
+        conn = test_db
+        entry_id = await EntryCRUD.create(
+            conn,
+            entry_type="person",
+            name="Original Name",
+            description="Test",
+            city=None,
+            state=None,
+            geo_specificity="local",
+        )
+        entry = await EntryCRUD.get_by_id(conn, entry_id)
+        assert entry is not None
+        old_slug = entry.slug
+        # Vanity-slug update records the old slug in slug_aliases.
+        await EntryCRUD.set_vanity_slug(conn, entry_id, "new-canonical-slug")
+
+        response = await test_client.get(
+            f"/api/entities/by-slug/people/{old_slug}", follow_redirects=False
+        )
+        assert response.status_code == 301  # noqa: PLR2004
+        body = response.json()
+        assert body["redirect_to"] == "/api/entities/by-slug/people/new-canonical-slug"
