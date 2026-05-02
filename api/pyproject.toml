@@ -63,7 +63,7 @@ packages = ["atlas"]
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
-addopts = "--cov=atlas --cov-report=term-missing --cov-report=html --cov-fail-under=90"
+addopts = "--cov=atlas --cov-branch --cov-report=term-missing --cov-report=html --cov-fail-under=100"
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
@@ -148,7 +148,6 @@ source = ["atlas"]
 omit = [
     "*/tests/*",
     "*/site-packages/*",
-    "*/atlas/platform/mcp/*",
     "*/atlas/seed_profiles.py",
 ]
 

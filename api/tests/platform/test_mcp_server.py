@@ -2,12 +2,19 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from atlas.platform.mcp import server as server_module
 from atlas.platform.mcp.auth_middleware import McpBearerAuthMiddleware
-from atlas.platform.mcp.server import build_mcp, get_mcp
+from atlas.platform.mcp.server import build_mcp, get_mcp, get_mcp_asgi_app, mcp_session_lifespan
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
+
+    from atlas.config import Settings
 
 HTTP_UNAUTHORIZED = 401
 
@@ -146,3 +153,126 @@ async def test_auth_middleware_lets_through_valid_token() -> None:
 
     assert result == "ok"
     next_handler.assert_awaited_once_with(request)
+
+
+# ---------------------------------------------------------------------------
+# Tool callback execution coverage
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def patched_settings(test_settings: Settings) -> Iterator[Settings]:
+    """Patch `get_settings` inside the MCP server module to use the test DB."""
+    with patch.object(server_module, "get_settings", return_value=test_settings):
+        yield test_settings
+
+
+@pytest.mark.asyncio
+async def test_get_mcp_asgi_app_returns_mountable_app(patched_settings: Settings) -> None:  # noqa: ARG001
+    """`get_mcp_asgi_app` should return the Starlette streamable_http_app."""
+    app = get_mcp_asgi_app()
+    assert callable(app)
+
+
+@pytest.mark.asyncio
+async def test_mcp_session_lifespan_yields_within_running_session_manager(
+    patched_settings: Settings,  # noqa: ARG001
+) -> None:
+    """The lifespan context manager must enter and exit cleanly.
+
+    Resets the FastMCP singleton so this test owns its own session manager
+    instance. The MCP `StreamableHTTPSessionManager` permits exactly one
+    `.run()` per instance; sharing the singleton with other lifespan tests
+    triggers a "can only be called once" error.
+    """
+    original = server_module._mcp  # noqa: SLF001
+    server_module._mcp = None  # noqa: SLF001
+    try:
+        # The streamable_http_app must be materialized first so that the
+        # session manager is created lazily before lifespan tries to run it.
+        get_mcp_asgi_app()
+        async with mcp_session_lifespan():
+            pass
+    finally:
+        server_module._mcp = original  # noqa: SLF001
+
+
+@pytest.mark.asyncio
+async def test_search_entities_tool_returns_collection(patched_settings: Settings) -> None:  # noqa: ARG001
+    """The search_entities tool routes through AtlasDataService."""
+    mcp = build_mcp()
+    _content, payload = await mcp.call_tool("search_entities", {"limit": 5})
+    assert "items" in payload
+    assert "total" in payload
+
+
+@pytest.mark.asyncio
+async def test_get_entity_tool_raises_for_missing(patched_settings: Settings) -> None:  # noqa: ARG001
+    """Missing entities surface as ValueError from the tool."""
+    mcp = build_mcp()
+    with pytest.raises(Exception, match="Entity not found"):
+        await mcp.call_tool("get_entity", {"entity_id": "missing"})
+
+
+@pytest.mark.asyncio
+async def test_get_entity_sources_tool_raises_for_missing(patched_settings: Settings) -> None:  # noqa: ARG001
+    mcp = build_mcp()
+    with pytest.raises(Exception, match="Entity not found"):
+        await mcp.call_tool("get_entity_sources", {"entity_id": "missing"})
+
+
+@pytest.mark.asyncio
+async def test_search_sources_tool_returns_collection(patched_settings: Settings) -> None:  # noqa: ARG001
+    mcp = build_mcp()
+    _content, payload = await mcp.call_tool("search_sources", {"limit": 5})
+    assert "items" in payload
+
+
+@pytest.mark.asyncio
+async def test_get_place_entities_tool_returns_collection(patched_settings: Settings) -> None:  # noqa: ARG001
+    mcp = build_mcp()
+    _content, payload = await mcp.call_tool("get_place_entities", {"place": "Gary, IN", "limit": 5})
+    assert "items" in payload
+
+
+@pytest.mark.asyncio
+async def test_get_place_profile_tool_returns_seed(patched_settings: Settings) -> None:  # noqa: ARG001
+    mcp = build_mcp()
+    _content, payload = await mcp.call_tool("get_place_profile", {"place": "Gary, IN"})
+    assert payload["place"]["display"] == "Gary, IN"
+
+
+@pytest.mark.asyncio
+async def test_get_place_coverage_tool_returns_summary(patched_settings: Settings) -> None:  # noqa: ARG001
+    mcp = build_mcp()
+    _content, payload = await mcp.call_tool("get_place_coverage", {"place": "Gary, IN"})
+    assert "issue_counts" in payload
+
+
+@pytest.mark.asyncio
+async def test_get_place_issue_signals_tool_returns_payload(
+    patched_settings: Settings,  # noqa: ARG001
+) -> None:
+    mcp = build_mcp()
+    _content, payload = await mcp.call_tool(
+        "get_place_issue_signals", {"place": "Gary, IN", "top_entities_per_issue": 1}
+    )
+    assert "issues" in payload
+
+
+@pytest.mark.asyncio
+async def test_get_related_entities_tool_raises_for_missing(
+    patched_settings: Settings,  # noqa: ARG001
+) -> None:
+    mcp = build_mcp()
+    with pytest.raises(Exception, match="Entity not found"):
+        await mcp.call_tool("get_related_entities", {"entity_id": "missing"})
+
+
+@pytest.mark.asyncio
+async def test_resolve_issue_areas_tool_returns_matches(patched_settings: Settings) -> None:  # noqa: ARG001
+    mcp = build_mcp()
+    _content, payload = await mcp.call_tool(
+        "resolve_issue_areas", {"text": "affordable housing", "limit": 3}
+    )
+    assert "items" in payload
