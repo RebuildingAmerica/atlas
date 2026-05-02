@@ -103,11 +103,12 @@ export function OAuthConsentPage({
 
         const list = session?.workspace.memberships ?? [];
         setMemberships(list);
-        if (list.length === 1) {
-          setSelectedWorkspaceId(list[0]?.id ?? null);
-        } else if (list.length > 1) {
+        const first = list[0];
+        if (list.length === 1 && first) {
+          setSelectedWorkspaceId(first.id);
+        } else if (list.length > 1 && first) {
           const activeId = session?.workspace.activeOrganization?.id;
-          setSelectedWorkspaceId(activeId ?? list[0]?.id ?? null);
+          setSelectedWorkspaceId(activeId ?? first.id);
         }
       } catch {
         // Workspace lookup is best-effort; fall back to the API-side

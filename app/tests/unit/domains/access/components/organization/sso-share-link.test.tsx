@@ -3,12 +3,22 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 
+const toastMocks = vi.hoisted(() => ({
+  success: vi.fn(),
+  error: vi.fn(),
+  show: vi.fn(),
+}));
+
 vi.mock("@/platform/ui/toast", () => ({
-  useToast: () => ({
-    show: vi.fn(),
-    success: vi.fn(),
-    error: vi.fn(),
-  }),
+  useToast: () => toastMocks,
+}));
+
+const clipboardMocks = vi.hoisted(() => ({
+  copyToClipboard: vi.fn(),
+}));
+
+vi.mock("@/lib/clipboard", () => ({
+  copyToClipboard: clipboardMocks.copyToClipboard,
 }));
 
 import {
@@ -39,17 +49,29 @@ describe("buildIdTeamShareUrl", () => {
 describe("SsoShareLinkButton", () => {
   afterEach(() => {
     cleanup();
+    toastMocks.success.mockClear();
+    toastMocks.error.mockClear();
+    clipboardMocks.copyToClipboard.mockReset();
   });
 
-  it("copies the share URL to the clipboard on click", async () => {
-    const writeText = vi.fn().mockResolvedValue(undefined);
-    Object.assign(navigator, { clipboard: { writeText } });
+  it("toasts a success message when the clipboard accepts the link", async () => {
+    clipboardMocks.copyToClipboard.mockResolvedValue(true);
     render(<SsoShareLinkButton workspaceSlug="civic-team" />);
     fireEvent.click(screen.getByRole("button", { name: /Send to my IT team/i }));
     await waitFor(() => {
-      expect(writeText).toHaveBeenCalledWith(
+      expect(clipboardMocks.copyToClipboard).toHaveBeenCalledWith(
         expect.stringContaining("/organization/sso?from=civic-team"),
       );
+    });
+    expect(toastMocks.success).toHaveBeenCalled();
+  });
+
+  it("surfaces a user-facing error when the clipboard refuses the copy", async () => {
+    clipboardMocks.copyToClipboard.mockResolvedValue(false);
+    render(<SsoShareLinkButton workspaceSlug="civic-team" />);
+    fireEvent.click(screen.getByRole("button", { name: /Send to my IT team/i }));
+    await waitFor(() => {
+      expect(toastMocks.error).toHaveBeenCalled();
     });
   });
 });

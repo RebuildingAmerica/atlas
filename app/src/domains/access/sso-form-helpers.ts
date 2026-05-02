@@ -59,9 +59,14 @@ export function classifyPemCertificate(certificate: string): PemCertificateClass
   if (!trimmed) {
     return { kind: "empty" };
   }
+  // String#split always yields at least one entry, so lines[0] and the
+  // last element are always strings; the `?? ""` fallbacks satisfy
+  // strict index-access typing without changing runtime behavior, since
+  // the trimmed-empty case is handled by the BEGIN/END framing checks
+  // below.
   const lines = trimmed.split(/\r?\n/);
-  const header = lines[0]?.trim() ?? "";
-  const footer = lines[lines.length - 1]?.trim() ?? "";
+  const header = (lines[0] ?? "").trim();
+  const footer = (lines[lines.length - 1] ?? "").trim();
   if (!header.startsWith("-----BEGIN") || !header.endsWith("-----")) {
     return {
       kind: "invalid",

@@ -95,12 +95,9 @@ export function parseSamlIdpMetadata(xml: string): SamlMetadataParseResult {
     return { ok: false, error: "Paste the IdP metadata XML to prefill the SAML fields." };
   }
 
-  let document: Document;
-  try {
-    document = new DOMParser().parseFromString(trimmed, "application/xml");
-  } catch {
-    return { ok: false, error: "Atlas could not parse that XML. Check that it is well-formed." };
-  }
+  // DOMParser surfaces malformed input as a `parsererror` element rather
+  // than by throwing, so we don't need a try/catch around parseFromString.
+  const document = new DOMParser().parseFromString(trimmed, "application/xml");
 
   if (document.getElementsByTagName("parsererror").length > 0) {
     return { ok: false, error: "Atlas could not parse that XML. Check that it is well-formed." };

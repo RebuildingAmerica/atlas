@@ -127,4 +127,140 @@ describe("SignUpPage", () => {
 
     expect(screen.getByRole("button", { name: "Resend link" })).not.toBeDisabled();
   });
+
+  it("resends the magic link and surfaces the success status", async () => {
+    vi.useFakeTimers();
+    mocks.checkAccountExists.mockResolvedValue({ exists: false });
+    mocks.requestMagicLink.mockResolvedValue({ ok: true, captureMailboxUrl: null });
+    render(<SignUpPage />);
+
+    fireEvent.change(screen.getByLabelText(/Email/i), {
+      target: { value: "new@example.com" },
+    });
+    const form = screen.getByRole("button", { name: "Create account" }).closest("form");
+    if (!form) throw new Error("expected sign-up form");
+    await act(async () => {
+      fireEvent.submit(form);
+      await Promise.resolve();
+    });
+
+    act(() => {
+      vi.advanceTimersByTime(31_000);
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Resend link" }));
+      await Promise.resolve();
+    });
+
+    expect(mocks.requestMagicLink).toHaveBeenCalledTimes(2);
+    await vi.waitFor(() => {
+      expect(screen.getByText("Sent. Check your inbox.")).toBeInTheDocument();
+    });
+  });
+
+  it("returns to the form when the operator chooses to use a different email", async () => {
+    mocks.checkAccountExists.mockResolvedValue({ exists: false });
+    mocks.requestMagicLink.mockResolvedValue({ ok: true, captureMailboxUrl: null });
+    render(<SignUpPage />);
+
+    fireEvent.change(screen.getByLabelText(/Email/i), {
+      target: { value: "new@example.com" },
+    });
+    const form = screen.getByRole("button", { name: "Create account" }).closest("form");
+    if (!form) throw new Error("expected sign-up form");
+    await act(async () => {
+      fireEvent.submit(form);
+      await Promise.resolve();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /Use a different email/ }));
+    expect(screen.getByText("Join Atlas")).toBeInTheDocument();
+  });
+
+  it("renders the resend-error message when requestMagicLink rejects with the email-delivery code", async () => {
+    vi.useFakeTimers();
+    mocks.checkAccountExists.mockResolvedValue({ exists: false });
+    mocks.requestMagicLink
+      .mockResolvedValueOnce({ ok: true, captureMailboxUrl: null })
+      .mockRejectedValueOnce(new Error("EMAIL_DELIVERY_FAILED"));
+    render(<SignUpPage />);
+
+    fireEvent.change(screen.getByLabelText(/Email/i), {
+      target: { value: "new@example.com" },
+    });
+    const form = screen.getByRole("button", { name: "Create account" }).closest("form");
+    if (!form) throw new Error("expected sign-up form");
+    await act(async () => {
+      fireEvent.submit(form);
+      await Promise.resolve();
+    });
+
+    act(() => {
+      vi.advanceTimersByTime(31_000);
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Resend link" }));
+      await Promise.resolve();
+    });
+
+    await vi.waitFor(() => {
+      expect(
+        screen.getByText("Your sign-up link couldn't be delivered. Please try again."),
+      ).toBeInTheDocument();
+    });
+  });
+
+  it("renders the generic resend-error message for unrelated rejections", async () => {
+    vi.useFakeTimers();
+    mocks.checkAccountExists.mockResolvedValue({ exists: false });
+    mocks.requestMagicLink
+      .mockResolvedValueOnce({ ok: true, captureMailboxUrl: null })
+      .mockRejectedValueOnce(new Error("unknown"));
+    render(<SignUpPage />);
+
+    fireEvent.change(screen.getByLabelText(/Email/i), {
+      target: { value: "new@example.com" },
+    });
+    const form = screen.getByRole("button", { name: "Create account" }).closest("form");
+    if (!form) throw new Error("expected sign-up form");
+    await act(async () => {
+      fireEvent.submit(form);
+      await Promise.resolve();
+    });
+
+    act(() => {
+      vi.advanceTimersByTime(31_000);
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Resend link" }));
+      await Promise.resolve();
+    });
+
+    await vi.waitFor(() => {
+      expect(screen.getByText("Could not resend the link. Please try again.")).toBeInTheDocument();
+    });
+  });
+
+  it("renders the generic submit-error when the magic-link send rejects on the form", async () => {
+    mocks.checkAccountExists.mockResolvedValue({ exists: false });
+    mocks.requestMagicLink.mockRejectedValue(new Error("network"));
+    render(<SignUpPage />);
+
+    fireEvent.change(screen.getByLabelText(/Email/i), {
+      target: { value: "new@example.com" },
+    });
+    const form = screen.getByRole("button", { name: "Create account" }).closest("form");
+    if (!form) throw new Error("expected sign-up form");
+    await act(async () => {
+      fireEvent.submit(form);
+      await Promise.resolve();
+    });
+
+    await vi.waitFor(() => {
+      expect(screen.getByText("Sign-up is temporarily unavailable.")).toBeInTheDocument();
+    });
+  });
 });

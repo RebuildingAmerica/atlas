@@ -161,4 +161,111 @@ describe("loadOidcRpLogoutRedirect", () => {
     expect(await loadOidcRpLogoutRedirect()).toBeNull();
     expect(fetchMock).not.toHaveBeenCalled();
   });
+
+  it("returns null when discovery fetch returns a non-2xx response", async () => {
+    mocks.getAuthDatabase.mockReturnValue(
+      buildSqliteDatabaseReturning({
+        idToken: "id-token-abc",
+        providerId: "atlas-team-okta-oidc",
+        issuer: "https://idp-fail.atlas-test.example",
+      }),
+    );
+    fetchMock.mockResolvedValue({
+      ok: false,
+      json: () => Promise.resolve({}),
+    });
+
+    const { loadOidcRpLogoutRedirect } = await import("@/domains/access/server/rp-logout");
+
+    expect(await loadOidcRpLogoutRedirect()).toBeNull();
+  });
+
+  it("returns null when an unparseable issuer URL is stored", async () => {
+    mocks.getAuthDatabase.mockReturnValue(
+      buildSqliteDatabaseReturning({
+        idToken: "id-token-abc",
+        providerId: "atlas-team-bad-oidc",
+        issuer: "not-a-valid-url",
+      }),
+    );
+
+    const { loadOidcRpLogoutRedirect } = await import("@/domains/access/server/rp-logout");
+
+    expect(await loadOidcRpLogoutRedirect()).toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("loads the linked account from Postgres when a pool is configured", async () => {
+    const query = vi.fn().mockResolvedValue({
+      rows: [
+        {
+          idToken: "id-token-pg",
+          providerId: "pg-okta",
+          issuer: "https://idp.atlas-test.example",
+        },
+      ],
+    });
+    mocks.getAuthPgPool.mockReturnValue({ query });
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          end_session_endpoint: "https://idp.atlas-test.example/oauth2/v2/logout",
+        }),
+    });
+
+    const { loadOidcRpLogoutRedirect } = await import("@/domains/access/server/rp-logout");
+
+    const url = await loadOidcRpLogoutRedirect();
+    expect(url).not.toBeNull();
+    expect(query).toHaveBeenCalledTimes(1);
+    expect(query.mock.calls[0]?.[1]).toEqual(["user_123"]);
+  });
+
+  it("returns null from Postgres when there is no linked account row", async () => {
+    mocks.getAuthPgPool.mockReturnValue({
+      query: vi.fn().mockResolvedValue({ rows: [] }),
+    });
+
+    const { loadOidcRpLogoutRedirect } = await import("@/domains/access/server/rp-logout");
+
+    expect(await loadOidcRpLogoutRedirect()).toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("returns null when neither Postgres nor SQLite is configured", async () => {
+    mocks.getAuthPgPool.mockReturnValue(null);
+    mocks.getAuthDatabase.mockReturnValue(null);
+
+    const { loadOidcRpLogoutRedirect } = await import("@/domains/access/server/rp-logout");
+
+    expect(await loadOidcRpLogoutRedirect()).toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("reuses cached discovery results on subsequent invocations", async () => {
+    mocks.getAuthDatabase.mockReturnValue(
+      buildSqliteDatabaseReturning({
+        idToken: "id-token-abc",
+        providerId: "atlas-team-okta-oidc",
+        issuer: "https://cached-idp.atlas-test.example",
+      }),
+    );
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          end_session_endpoint: "https://cached-idp.atlas-test.example/oauth2/v2/logout",
+        }),
+    });
+
+    const { loadOidcRpLogoutRedirect } = await import("@/domains/access/server/rp-logout");
+
+    const first = await loadOidcRpLogoutRedirect();
+    expect(first).not.toBeNull();
+    const second = await loadOidcRpLogoutRedirect();
+    expect(second).not.toBeNull();
+    // Cache hit means fetch was only called once even though the function ran twice.
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
 });

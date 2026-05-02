@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { render, screen, cleanup } from "@testing-library/react";
+import { render, screen, cleanup, fireEvent } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import type { OrganizationPageController } from "@/domains/access/components/organization/organization-page-controller";
 import { OrganizationSSOPageView } from "@/domains/access/components/organization/organization-sso-page-view";
@@ -235,5 +235,95 @@ describe("OrganizationSSOPageView", () => {
     }) as unknown as OrganizationPageController;
     render(<OrganizationSSOPageView controller={controller} />);
     expect(screen.getAllByText(/workspace/i).length).toBeGreaterThan(0);
+  });
+
+  it("forwards workspace switching, invitation decisions, and creation submits through the controller", () => {
+    const onSelectWorkspace = vi.fn();
+    const onInvitationDecision = vi.fn();
+    const onCreateWorkspace = vi.fn();
+    const onUpdateWorkspaceName = vi.fn();
+
+    // 1) Workspace switcher: rendered via canSwitchOrganizations.
+    const switcherController = buildController({
+      canSwitchOrganizations: true,
+      memberships: [
+        { id: "org_1", name: "Atlas", slug: "atlas", workspaceType: "team", role: "owner" },
+        { id: "org_2", name: "Other", slug: "other", workspaceType: "team", role: "member" },
+      ],
+      selectedOrganizationId: "org_1",
+      selectWorkspacePending: false,
+      onSelectWorkspace,
+    }) as unknown as OrganizationPageController;
+    const switcherView = render(<OrganizationSSOPageView controller={switcherController} />);
+    const switcherSelect = switcherView.container.querySelector("select");
+    if (!switcherSelect) throw new Error("Expected the workspace switcher select");
+    fireEvent.change(switcherSelect, { target: { value: "org_2" } });
+    expect(onSelectWorkspace).toHaveBeenCalledWith("org_2");
+    cleanup();
+
+    // 2) Pending invitations: clicking Accept dispatches the controller.
+    const pendingController = buildController({
+      hasPendingInvitations: true,
+      pendingInvitations: [
+        {
+          id: "inv_1",
+          email: "operator@atlas.test",
+          organizationName: "Atlas Future",
+          organizationSlug: "atlas-future",
+          role: "admin",
+          expiresAt: new Date("2099-01-01T00:00:00Z"),
+        },
+      ],
+      pendingInvitationMutationPending: false,
+      onInvitationDecision,
+    }) as unknown as OrganizationPageController;
+    render(<OrganizationSSOPageView controller={pendingController} />);
+    fireEvent.click(screen.getByText("Accept"));
+    expect(onInvitationDecision).toHaveBeenCalledWith("inv_1", "accept");
+    cleanup();
+
+    // 3) Workspace creation form submit dispatches through the controller.
+    const creationController = buildController({
+      needsWorkspace: true,
+      organization: null,
+      createWorkspacePending: false,
+      workspaceDelegatedEmail: "",
+      workspaceDomain: "",
+      workspaceName: "Atlas",
+      workspaceSlug: "atlas",
+      workspaceType: "team",
+      setWorkspaceDelegatedEmail: vi.fn(),
+      setWorkspaceDomain: vi.fn(),
+      onUpdateWorkspaceName,
+      onUpdateWorkspaceSlug: vi.fn(),
+      onCreateWorkspace,
+      onUpdateWorkspaceType: vi.fn(),
+    }) as unknown as OrganizationPageController;
+    const creationView = render(<OrganizationSSOPageView controller={creationController} />);
+    const form = creationView.container.querySelector("form");
+    if (!form) throw new Error("Expected workspace creation form");
+    fireEvent.submit(form);
+    expect(onCreateWorkspace).toHaveBeenCalled();
+  });
+
+  it("falls back to the auth-disabled headline when the session is missing", () => {
+    const controller = buildController({ session: null }) as unknown as OrganizationPageController;
+    render(<OrganizationSSOPageView controller={controller} />);
+    expect(
+      screen.getByText(
+        /Enterprise SSO configuration is not available for your current workspace plan/i,
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("renders the team-required panel for non-team workspaces with auth.sso capability", () => {
+    const controller = buildController({
+      canUseTeamFeatures: false,
+      // canConfigureSSO is true via auth.sso, so the early return is skipped.
+    }) as unknown as OrganizationPageController;
+    render(<OrganizationSSOPageView controller={controller} />);
+    expect(
+      screen.getByText(/Enterprise SSO is available only for team workspaces/i),
+    ).toBeInTheDocument();
   });
 });

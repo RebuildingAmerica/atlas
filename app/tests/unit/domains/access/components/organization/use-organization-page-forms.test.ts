@@ -103,5 +103,85 @@ describe("useOrganizationPageForms", () => {
       result.current.setOidcSetupForm((curr) => ({ ...curr, clientId: "test-client" }));
     });
     expect(result.current.oidcSetupForm.clientId).toBe("test-client");
+
+    act(() => {
+      result.current.setSamlSetupForm((curr) => ({ ...curr, certificate: "PEM" }));
+    });
+    expect(result.current.samlSetupForm.certificate).toBe("PEM");
+  });
+
+  it("ignores unsupported workspace type and invite role values", () => {
+    const { result } = renderHook(() =>
+      useOrganizationPageForms({
+        activeOrganizationId: null,
+        needsWorkspace: false,
+        organization: null,
+      }),
+    );
+
+    act(() => {
+      result.current.onUpdateWorkspaceType("nonsense");
+    });
+    expect(result.current.workspaceType).toBe("team");
+
+    act(() => {
+      result.current.onUpdateInviteRole("nonsense");
+    });
+    expect(result.current.inviteRole).toBe("member");
+  });
+
+  it("seeds the workspace type to team when needsWorkspace flips on", () => {
+    const { result, rerender } = renderHook(
+      ({ needsWorkspace }) =>
+        useOrganizationPageForms({
+          activeOrganizationId: null,
+          needsWorkspace,
+          organization: null,
+        }),
+      { initialProps: { needsWorkspace: false } },
+    );
+
+    act(() => {
+      result.current.setWorkspaceType("individual");
+    });
+    expect(result.current.workspaceType).toBe("individual");
+
+    rerender({ needsWorkspace: true });
+    expect(result.current.workspaceType).toBe("team");
+  });
+
+  it("preserves operator-edited form values when organization details refresh", () => {
+    const { result, rerender } = renderHook(
+      ({ organization }) =>
+        useOrganizationPageForms({
+          activeOrganizationId: "org_1",
+          needsWorkspace: false,
+          organization,
+        }),
+      {
+        initialProps: {
+          organization: organization as unknown as AtlasOrganizationDetails,
+        },
+      },
+    );
+
+    act(() => {
+      result.current.setOidcSetupForm((curr) => ({ ...curr, domain: "operator-typed.com" }));
+    });
+
+    rerender({
+      organization: {
+        ...organization,
+        sso: {
+          setup: {
+            workspaceDomainSuggestion: "another.test",
+            oidcProviderIdSuggestion: "another-google",
+            samlProviderIdSuggestion: "another-saml",
+          },
+        },
+      } as unknown as AtlasOrganizationDetails,
+    });
+
+    expect(result.current.oidcSetupForm.domain).toBe("operator-typed.com");
   });
 });

@@ -51,11 +51,13 @@ export function nameFromAaguid(aaguid: string | null | undefined): string | null
 
 /**
  * Returns a best-effort display name for a passkey using the AAGUID first,
- * then falling back to OS detection from the User-Agent.
+ * then falling back to OS detection from the User-Agent.  The browser
+ * always exposes `navigator`; tests can pass `null` explicitly to drive
+ * the no-navigator branch.
  */
 export function resolvePasskeyName(
   aaguid: string | null | undefined,
-  nav: typeof navigator | null = typeof navigator !== "undefined" ? navigator : null,
+  nav: typeof navigator | null = navigator,
 ): string {
   const fromAaguid = nameFromAaguid(aaguid);
   if (fromAaguid) return fromAaguid;

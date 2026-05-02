@@ -7,6 +7,9 @@ const mocks = vi.hoisted(() => ({
   getAuthRuntimeConfig: vi.fn(),
   isAllowedEmail: vi.fn(),
   listUserInvitations: vi.fn(),
+  emailSend: vi.fn(),
+  createEmailService: vi.fn(),
+  render: vi.fn().mockResolvedValue("<html></html>"),
 }));
 
 vi.mock("pg", () => ({
@@ -48,11 +51,20 @@ vi.mock("@/domains/access/server/auth", async (importOriginal) => {
   };
 });
 
+vi.mock("@react-email/render", () => ({
+  render: mocks.render,
+}));
+
+vi.mock("@/platform/email/server/service", () => ({
+  createEmailService: mocks.createEmailService,
+}));
+
 import {
   canEmailAccessAtlas,
   createMagicLinkSender,
   createVerificationEmailSender,
   ensureAuthReady,
+  hasExistingAccount,
 } from "@/domains/access/server/auth";
 
 describe("canEmailAccessAtlas", () => {
@@ -116,6 +128,70 @@ describe("canEmailAccessAtlas", () => {
     mocks.listUserInvitations.mockRejectedValue(new Error("API down"));
 
     expect(await canEmailAccessAtlas("invited@atlas.test")).toBe(false);
+  });
+
+  it("grants access immediately when open registration is enabled", async () => {
+    mocks.getAuthRuntimeConfig.mockReturnValue({
+      localMode: false,
+      databaseUrl: "postgres://...",
+      openRegistration: true,
+    });
+
+    expect(await canEmailAccessAtlas("anyone@atlas.test")).toBe(true);
+    expect(mocks.pgPoolQuery).not.toHaveBeenCalled();
+  });
+});
+
+describe("hasExistingAccount", () => {
+  beforeEach(() => {
+    mocks.pgPoolQuery.mockReset();
+    mocks.sqliteGet.mockReset();
+    mocks.sqlitePrepare.mockReset();
+    mocks.getAuthRuntimeConfig.mockReset();
+    mocks.sqlitePrepare.mockReturnValue({ get: mocks.sqliteGet });
+  });
+
+  it("returns true when an account row exists in Postgres", async () => {
+    mocks.getAuthRuntimeConfig.mockReturnValue({
+      localMode: false,
+      databaseUrl: "postgres://...",
+    });
+    mocks.pgPoolQuery.mockResolvedValue({ rows: [{ userCount: 1 }] });
+
+    expect(await hasExistingAccount("OPERATOR@atlas.test")).toBe(true);
+    expect(mocks.pgPoolQuery).toHaveBeenCalledWith(expect.any(String), ["operator@atlas.test"]);
+  });
+
+  it("returns false when Postgres reports a count of zero", async () => {
+    mocks.getAuthRuntimeConfig.mockReturnValue({
+      localMode: false,
+      databaseUrl: "postgres://...",
+    });
+    mocks.pgPoolQuery.mockResolvedValue({ rows: [{ userCount: 0 }] });
+
+    expect(await hasExistingAccount("missing@atlas.test")).toBe(false);
+  });
+
+  it("returns true when an account row exists in SQLite", async () => {
+    mocks.getAuthRuntimeConfig.mockReturnValue({
+      localMode: false,
+      databaseUrl: undefined,
+      dbPath: "test.db",
+    });
+    mocks.sqliteGet.mockReturnValue({ userCount: 1 });
+
+    expect(await hasExistingAccount("operator@atlas.test")).toBe(true);
+  });
+
+  it("returns false when SQLite reports a count of zero", async () => {
+    mocks.getAuthRuntimeConfig.mockReturnValue({
+      localMode: false,
+      databaseUrl: undefined,
+      dbPath: "test.db",
+    });
+    mocks.sqliteGet.mockReturnValue({ userCount: 0 });
+
+    expect(await hasExistingAccount("missing@atlas.test")).toBe(false);
   });
 });
 

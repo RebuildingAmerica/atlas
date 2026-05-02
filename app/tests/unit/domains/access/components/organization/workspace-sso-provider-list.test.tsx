@@ -1,11 +1,13 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { render, screen, fireEvent, cleanup } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { render, screen, fireEvent, cleanup, act, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
+
+const confirmMock = vi.hoisted(() => vi.fn().mockResolvedValue(true));
 
 vi.mock("@/platform/ui/confirm-dialog", () => ({
   useConfirmDialog: () => ({
-    confirm: () => Promise.resolve(true),
+    confirm: confirmMock,
   }),
 }));
 
@@ -55,16 +57,21 @@ describe("WorkspaceSSOProviderList", () => {
     canManageOrganization: true,
     domainVerificationTokens: { "saml-1": "token-xyz" },
     isPending: false,
-    onDeleteProvider: vi.fn(),
-    onRequestDomainVerification: vi.fn(),
-    onRotateSAMLCertificate: vi.fn(),
-    onSavePrimaryProvider: vi.fn(),
-    onVerifyDomain: vi.fn(),
+    onDeleteProvider: vi.fn().mockResolvedValue(undefined),
+    onRequestDomainVerification: vi.fn().mockResolvedValue(undefined),
+    onRotateSAMLCertificate: vi.fn().mockResolvedValue(undefined),
+    onSavePrimaryProvider: vi.fn().mockResolvedValue(undefined),
+    onVerifyDomain: vi.fn().mockResolvedValue(undefined),
     organization: { sso: { providers } } as unknown as AtlasOrganizationDetails,
   };
 
+  beforeEach(() => {
+    confirmMock.mockResolvedValue(true);
+  });
+
   afterEach(() => {
     cleanup();
+    vi.clearAllMocks();
   });
 
   it("renders the list of providers with their details", () => {
@@ -185,5 +192,114 @@ describe("WorkspaceSSOProviderList", () => {
     if (!firstRemoveButton) throw new Error("Expected at least one remove button");
     fireEvent.click(firstRemoveButton);
     expect(defaultProps.onDeleteProvider).toHaveBeenCalledWith("oidc-1");
+  });
+
+  it("disables every SAML provider when the bulk action is confirmed", async () => {
+    render(<WorkspaceSSOProviderList {...defaultProps} />);
+    const summary = screen.getByText("Incident response");
+    fireEvent.click(summary);
+
+    fireEvent.click(screen.getByText("Disable all SAML providers"));
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(defaultProps.onDeleteProvider).toHaveBeenCalledWith("saml-1");
+  });
+
+  it("skips bulk disable when confirmation is rejected", async () => {
+    confirmMock.mockResolvedValueOnce(false);
+    render(<WorkspaceSSOProviderList {...defaultProps} />);
+    fireEvent.click(screen.getByText("Incident response"));
+    fireEvent.click(screen.getByText("Disable all SAML providers"));
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(defaultProps.onDeleteProvider).not.toHaveBeenCalled();
+  });
+
+  it("aborts make-primary when the operator declines", async () => {
+    confirmMock.mockResolvedValueOnce(false);
+    render(<WorkspaceSSOProviderList {...defaultProps} />);
+    fireEvent.click(screen.getByText("Make primary"));
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(defaultProps.onSavePrimaryProvider).not.toHaveBeenCalled();
+  });
+
+  it("aborts a token replacement when the operator declines", async () => {
+    confirmMock.mockResolvedValueOnce(false);
+    render(<WorkspaceSSOProviderList {...defaultProps} />);
+    fireEvent.click(screen.getByText("Generate new verification token"));
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(defaultProps.onRequestDomainVerification).not.toHaveBeenCalled();
+  });
+
+  it("renders a verification error when verifyDomain rejects", async () => {
+    const onVerifyDomain = vi.fn().mockRejectedValue(new Error("DNS not propagated"));
+    render(<WorkspaceSSOProviderList {...defaultProps} onVerifyDomain={onVerifyDomain} />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByText("Check now"));
+      await Promise.resolve();
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText(/DNS not propagated/i)).toBeInTheDocument();
+    });
+  });
+
+  it("falls back to a generic error when verifyDomain rejects with a non-Error", async () => {
+    const onVerifyDomain = vi.fn().mockRejectedValue("not-an-error");
+    render(<WorkspaceSSOProviderList {...defaultProps} onVerifyDomain={onVerifyDomain} />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByText("Check now"));
+      await Promise.resolve();
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText(/Atlas could not verify the TXT record/i)).toBeInTheDocument();
+    });
+  });
+
+  it("does not render incident response disclosure when there are no SAML providers", () => {
+    const oidcOnly = providers.filter((provider) => provider.providerType === "oidc");
+    render(
+      <WorkspaceSSOProviderList
+        {...defaultProps}
+        organization={{ sso: { providers: oidcOnly } } as unknown as AtlasOrganizationDetails}
+      />,
+    );
+    expect(screen.queryByText("Incident response")).not.toBeInTheDocument();
+  });
+
+  it("issues a fresh token without confirmation when none is currently stored", async () => {
+    render(<WorkspaceSSOProviderList {...defaultProps} domainVerificationTokens={{}} />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByText("Generate verification token"));
+      await Promise.resolve();
+    });
+
+    expect(defaultProps.onRequestDomainVerification).toHaveBeenCalledWith("saml-1");
+    expect(confirmMock).not.toHaveBeenCalled();
+  });
+
+  it("renders history entries that lack a provider id or operator email", () => {
+    const ssoOrg = {
+      sso: {
+        providers,
+        primaryHistory: [
+          {
+            changedAt: "2026-04-01T00:00:00.000Z",
+            changedByEmail: null,
+            providerId: null,
+          },
+        ],
+      },
+    } as unknown as AtlasOrganizationDetails;
+    render(<WorkspaceSSOProviderList {...defaultProps} organization={ssoOrg} />);
+    expect(screen.getByText(/\(no primary\)/i)).toBeInTheDocument();
   });
 });

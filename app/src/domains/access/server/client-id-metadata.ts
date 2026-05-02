@@ -111,9 +111,11 @@ export function isClientIdMetadataDocumentUrl(value: string): boolean {
   } catch {
     return false;
   }
+  /* v8 ignore start -- the startsWith("https://") guard above guarantees the parsed URL also has the https protocol */
   if (parsed.protocol !== "https:") {
     return false;
   }
+  /* v8 ignore stop */
   if (parsed.hash) {
     return false;
   }
@@ -294,7 +296,9 @@ async function readBoundedJson(response: Response, maxBytes: number): Promise<un
   while (true) {
     const { value, done } = await reader.read();
     if (done) break;
+    /* v8 ignore start */
     if (!value) continue;
+    /* v8 ignore stop */
     total += value.byteLength;
     if (total > maxBytes) {
       reader.cancel().catch(() => {

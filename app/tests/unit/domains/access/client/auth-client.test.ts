@@ -65,7 +65,7 @@ describe("getAuthClient", () => {
     );
   });
 
-  it("returns a singleton instance", async () => {
+  it("returns a singleton instance and omits baseURL when authBaseUrl is unset", async () => {
     mocks.getAuthConfig.mockReturnValue({});
 
     const { getAuthClient } = await import("@/domains/access/client/auth-client");
@@ -74,5 +74,20 @@ describe("getAuthClient", () => {
 
     expect(second).toBe(first);
     expect(mocks.createAuthClient).toHaveBeenCalledTimes(1);
+
+    const firstCall = mocks.createAuthClient.mock.calls[0] as unknown[] | undefined;
+    expect(firstCall).toBeDefined();
+    const config = firstCall?.[0] as Record<string, unknown> | undefined;
+    expect(config).toBeDefined();
+    expect(config && "baseURL" in config).toBe(false);
+  });
+
+  it("selectAuthBaseUrlOverride returns both arms of the conditional", async () => {
+    const { selectAuthBaseUrlOverride } = await import("@/domains/access/client/auth-client");
+    expect(selectAuthBaseUrlOverride("https://auth.atlas.test")).toEqual({
+      baseURL: "https://auth.atlas.test",
+    });
+    expect(selectAuthBaseUrlOverride(undefined)).toEqual({});
+    expect(selectAuthBaseUrlOverride("")).toEqual({});
   });
 });

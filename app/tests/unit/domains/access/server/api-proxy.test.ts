@@ -148,6 +148,33 @@ describe("proxyAtlasApiRequest", () => {
     expect(mocks.loadAtlasSession).not.toHaveBeenCalled();
   });
 
+  it("forwards without internal auth headers when the cookie has no session", async () => {
+    const fetchMock = vi.mocked(global.fetch);
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify({ ok: true }), {
+        headers: { "content-type": "application/json" },
+        status: 200,
+      }),
+    );
+    mocks.loadAtlasSession.mockResolvedValue(null);
+
+    const { proxyAtlasApiRequest } = await import("@/domains/access/server/api-proxy");
+    const response = await proxyAtlasApiRequest(
+      new Request("https://atlas.test/api/entities", {
+        headers: {
+          Cookie: "session=ghost",
+        },
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(mocks.loadAtlasSession).toHaveBeenCalledTimes(1);
+    expect(mocks.createInternalAuthHeaders).not.toHaveBeenCalled();
+    const [, init] = fetchMock.mock.calls[0] ?? [];
+    const forwardedHeaders = new Headers(init?.headers);
+    expect(forwardedHeaders.get("x-atlas-actor-id")).toBeNull();
+  });
+
   it("skips session loading for anonymous requests without cookies", async () => {
     const fetchMock = vi.mocked(global.fetch);
     fetchMock.mockResolvedValue(

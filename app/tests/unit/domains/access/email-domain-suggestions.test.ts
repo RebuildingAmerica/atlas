@@ -21,4 +21,21 @@ describe("suggestEmailDomainCorrection", () => {
   it("returns null when the typed domain is far from any known one", () => {
     expect(suggestEmailDomainCorrection("user@acme.example")).toBeNull();
   });
+
+  it("trims whitespace and lowercases the input before comparing", () => {
+    expect(suggestEmailDomainCorrection("  USER@GMIAL.COM  ")).toBe("user@gmail.com");
+  });
+
+  it("hits each levenshtein edit branch with characteristic typos", () => {
+    // Equal-length substitution branch.
+    expect(suggestEmailDomainCorrection("user@gmail.con")).toBe("user@gmail.com");
+    // Extra-character (deletion) branch.
+    expect(suggestEmailDomainCorrection("user@gmaill.com")).toBe("user@gmail.com");
+    // Missing-character (insertion) branch.
+    expect(suggestEmailDomainCorrection("user@gmal.com")).toBe("user@gmail.com");
+  });
+
+  it("returns null when the input has no domain after the @", () => {
+    expect(suggestEmailDomainCorrection("user@")).toBeNull();
+  });
 });

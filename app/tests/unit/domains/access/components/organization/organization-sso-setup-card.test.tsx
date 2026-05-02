@@ -79,6 +79,44 @@ describe("OrganizationSSOSetupCard", () => {
     expect(screen.getByRole("link", { name: "Choose primary provider" })).toBeInTheDocument();
   });
 
+  it("uses singular wording when only one needs-verification provider is configured", () => {
+    const orgUnverified = {
+      sso: {
+        providers: [{ providerId: "p1", domainVerified: false, isPrimary: false }],
+      },
+    };
+    render(<OrganizationSSOSetupCard organization={orgUnverified as unknown as SSOOrganization} />);
+    expect(screen.getByText(/1 provider configured/i)).toBeInTheDocument();
+  });
+
+  it("uses plural wording when multiple needs-verification providers are configured", () => {
+    const orgUnverified = {
+      sso: {
+        providers: [
+          { providerId: "p1", domainVerified: false, isPrimary: false },
+          { providerId: "p2", domainVerified: false, isPrimary: false },
+        ],
+      },
+    };
+    render(<OrganizationSSOSetupCard organization={orgUnverified as unknown as SSOOrganization} />);
+    expect(screen.getByText(/2 providers configured, awaiting verification/i)).toBeInTheDocument();
+  });
+
+  it("uses plural wording for the verified-no-primary state with multiple providers", () => {
+    const orgVerifiedTwo = {
+      sso: {
+        providers: [
+          { providerId: "p1", domainVerified: true, isPrimary: false },
+          { providerId: "p2", domainVerified: true, isPrimary: false },
+        ],
+      },
+    };
+    render(
+      <OrganizationSSOSetupCard organization={orgVerifiedTwo as unknown as SSOOrganization} />,
+    );
+    expect(screen.getByText(/2 providers configured, 2 verified/i)).toBeInTheDocument();
+  });
+
   it("shows the active badge once a primary verified provider exists", () => {
     const orgPrimary = {
       sso: {

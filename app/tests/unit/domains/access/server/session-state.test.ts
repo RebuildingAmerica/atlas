@@ -11,6 +11,7 @@ import { createSessionStateAuthApi } from "../../../../mocks/access/session-stat
 const mocks = vi.hoisted(() => ({
   canEmailAccessAtlas: vi.fn(),
   ensureAuthReady: vi.fn(),
+  hasExistingAccount: vi.fn(),
   getBrowserSessionHeaders: vi.fn(),
   getAuthRuntimeConfig: vi.fn(),
   validateAuthRuntimeConfig: vi.fn(),
@@ -19,6 +20,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/domains/access/server/auth", () => ({
   canEmailAccessAtlas: mocks.canEmailAccessAtlas,
   ensureAuthReady: mocks.ensureAuthReady,
+  hasExistingAccount: mocks.hasExistingAccount,
 }));
 
 vi.mock("@/domains/access/server/request-headers", () => ({
@@ -369,5 +371,57 @@ describe("session-state", () => {
       },
       headers: browserSessionHeaders,
     });
+  });
+
+  it("wraps verification-delivery failures as EMAIL_DELIVERY_FAILED", async () => {
+    authApi.getSession.mockResolvedValue(
+      createBetterAuthSession({
+        emailVerified: false,
+      }),
+    );
+    authApi.sendVerificationEmail.mockRejectedValue(new Error("smtp down"));
+
+    const { sendVerificationEmailForCurrentSession } =
+      await import("@/domains/access/server/session-state");
+    await expect(sendVerificationEmailForCurrentSession()).rejects.toThrow("EMAIL_DELIVERY_FAILED");
+  });
+
+  it("wraps magic-link delivery failures as EMAIL_DELIVERY_FAILED", async () => {
+    authApi.signInMagicLink.mockRejectedValue(new Error("smtp down"));
+
+    const { requestMagicLinkForEmail } = await import("@/domains/access/server/session-state");
+    await expect(
+      requestMagicLinkForEmail({
+        email: "operator@atlas.test",
+      }),
+    ).rejects.toThrow("EMAIL_DELIVERY_FAILED");
+  });
+
+  it("returns the capture mailbox url when ATLAS_EMAIL_CAPTURE_URL is set", async () => {
+    mocks.getAuthRuntimeConfig.mockReturnValue({
+      captureUrl: "http://127.0.0.1:8025",
+      localMode: false,
+    });
+
+    const { requestMagicLinkForEmail } = await import("@/domains/access/server/session-state");
+    await expect(
+      requestMagicLinkForEmail({
+        email: "operator@atlas.test",
+      }),
+    ).resolves.toEqual({
+      ok: true,
+      captureMailboxUrl: "http://127.0.0.1:8025/messages",
+    });
+  });
+
+  it("checkEmailAccountExists delegates to hasExistingAccount", async () => {
+    mocks.hasExistingAccount.mockResolvedValue(true);
+
+    const { checkEmailAccountExists } = await import("@/domains/access/server/session-state");
+    await expect(checkEmailAccountExists("operator@atlas.test")).resolves.toBe(true);
+    expect(mocks.hasExistingAccount).toHaveBeenCalledWith("operator@atlas.test");
+
+    mocks.hasExistingAccount.mockResolvedValue(false);
+    await expect(checkEmailAccountExists("missing@atlas.test")).resolves.toBe(false);
   });
 });

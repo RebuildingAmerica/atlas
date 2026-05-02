@@ -10,11 +10,22 @@ import { oauthProviderClient } from "@better-auth/oauth-provider/client";
 import { passkeyClient } from "@better-auth/passkey/client";
 import { getAuthConfig } from "../config";
 
-const authConfig = getAuthConfig();
+/**
+ * Builds the spread fragment that injects an explicit baseURL only when
+ * the runtime configuration sets one.  Exported so tests can drive both
+ * arms of the conditional within a single module instance.
+ */
+export function selectAuthBaseUrlOverride(authBaseUrl: string | undefined): { baseURL?: string } {
+  if (authBaseUrl) {
+    return { baseURL: authBaseUrl };
+  }
+  return {};
+}
 
 function createAtlasAuthClient() {
+  const authConfig = getAuthConfig();
   return createAuthClient({
-    ...(authConfig.authBaseUrl ? { baseURL: authConfig.authBaseUrl } : {}),
+    ...selectAuthBaseUrlOverride(authConfig.authBaseUrl),
     plugins: [
       magicLinkClient(),
       passkeyClient(),

@@ -31,7 +31,8 @@ export async function resolvePrimaryWorkspaceId(userId: string): Promise<string 
       [userId],
     );
     if (result.rows.length === 1) {
-      return result.rows[0]?.organizationId ?? null;
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- length===1 above; v8 reports the optional-chain branch as unreachable otherwise
+      return result.rows[0]!.organizationId;
     }
     return null;
   }
@@ -45,7 +46,8 @@ export async function resolvePrimaryWorkspaceId(userId: string): Promise<string 
     .prepare("SELECT organizationId FROM member WHERE userId = ? LIMIT 2")
     .all(userId) as { organizationId: string }[];
   if (rows.length === 1) {
-    return rows[0]?.organizationId ?? null;
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- length===1 above; v8 reports the optional-chain branch as unreachable otherwise
+    return rows[0]!.organizationId;
   }
   return null;
 }

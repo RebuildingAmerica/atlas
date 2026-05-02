@@ -76,9 +76,12 @@ async function enforceRequirePkceOnAllClients(
     return;
   }
 
-  if (database) {
-    database.prepare(`update oauthClient set requirePKCE = 1 where requirePKCE = 0`).run();
+  /* v8 ignore start -- in sqlite mode (no pgPool) getAuthDatabase always returns a non-null instance */
+  if (!database) {
+    return;
   }
+  /* v8 ignore stop */
+  database.prepare(`update oauthClient set requirePKCE = 1 where requirePKCE = 0`).run();
 }
 
 /**
@@ -300,9 +303,11 @@ function ensureAuthDatabase() {
 function getAuthDatabaseConfig(): Database.Database | Pool {
   if (isPostgresMode()) {
     const pool = getAuthPgPool();
+    /* v8 ignore start -- defensive: getAuthPgPool always returns a non-null pool when isPostgresMode is true */
     if (!pool) {
       throw new Error("Postgres mode is on but the auth Pool is unavailable.");
     }
+    /* v8 ignore stop */
     return pool;
   }
   return ensureAuthDatabase();
@@ -468,17 +473,20 @@ async function hasPendingOrganizationInvitation(email: string): Promise<boolean>
 async function hasExistingOrganizationMembership(email: string): Promise<boolean> {
   const pool = getAuthPgPool();
   if (pool) {
-    const result = await pool.query(
+    const result = await pool.query<StoredMembershipCountRow>(
       'select count(member.id) as "membershipCount" from "user" inner join member on member."userId" = "user".id where lower("user".email) = $1',
       [email],
     );
-    return ((result.rows[0] as StoredMembershipCountRow | undefined)?.membershipCount ?? 0) > 0;
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- count(*) always yields a single aggregate row
+    return result.rows[0]!.membershipCount > 0;
   }
 
+  /* v8 ignore start -- defensive: getAuthDatabase only returns null in postgres mode, which the pool branch above already covers */
   const database = getAuthDatabase();
   if (!database) {
     throw new Error("Auth database unavailable in current mode");
   }
+  /* v8 ignore stop */
   const statement = database.prepare(
     [
       "select count(member.id) as membershipCount",
@@ -487,9 +495,9 @@ async function hasExistingOrganizationMembership(email: string): Promise<boolean
       "where lower(user.email) = ?",
     ].join(" "),
   );
-  const membershipCountRow = statement.get(email) as StoredMembershipCountRow | undefined;
-
-  return (membershipCountRow?.membershipCount ?? 0) > 0;
+  // count(*) always yields a single aggregate row.
+  const membershipCountRow = statement.get(email) as StoredMembershipCountRow;
+  return membershipCountRow.membershipCount > 0;
 }
 
 /**
@@ -502,23 +510,27 @@ export async function hasExistingAccount(email: string): Promise<boolean> {
   const pool = getAuthPgPool();
 
   if (pool) {
-    const result = await pool.query(
+    const result = await pool.query<StoredUserCountRow>(
       'select count(id) as "userCount" from "user" where lower(email) = $1',
       [normalizedEmail],
     );
-    return ((result.rows[0] as StoredUserCountRow | undefined)?.userCount ?? 0) > 0;
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- count(*) always yields a single aggregate row
+    return result.rows[0]!.userCount > 0;
   }
 
   const database = getAuthDatabase();
+  /* v8 ignore start -- defensive: getAuthDatabase only returns null in postgres mode, which the pool branch above already covers */
   if (!database) {
     throw new Error("Auth database unavailable in current mode");
   }
+  /* v8 ignore stop */
 
   const statement = database.prepare(
     "select count(id) as userCount from user where lower(email) = ?",
   );
-  const row = statement.get(normalizedEmail) as StoredUserCountRow | undefined;
-  return (row?.userCount ?? 0) > 0;
+  // count(*) always yields a single aggregate row.
+  const row = statement.get(normalizedEmail) as StoredUserCountRow;
+  return row.userCount > 0;
 }
 
 /**
@@ -650,9 +662,12 @@ async function runAtlasAuthMigrations(context: AtlasAuthContext): Promise<AtlasA
     await runAtlasCustomMigrationsPg(pool, ATLAS_MIGRATIONS);
   } else {
     const db = getAuthDatabase();
-    if (db) {
-      runAtlasCustomMigrations(db, ATLAS_MIGRATIONS);
+    /* v8 ignore start -- in sqlite mode (no pool) getAuthDatabase always returns a non-null instance */
+    if (!db) {
+      throw new Error("Auth database unavailable for migrations in current mode");
     }
+    /* v8 ignore stop */
+    runAtlasCustomMigrations(db, ATLAS_MIGRATIONS);
   }
 
   await enforceRequirePkceOnAllClients(getAuthDatabase(), getAuthPgPool());

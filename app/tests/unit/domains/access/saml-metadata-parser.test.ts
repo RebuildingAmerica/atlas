@@ -101,6 +101,60 @@ describe("parseSamlIdpMetadata", () => {
     expect(result.metadata.certificate).toBe("");
   });
 
+  it("returns an empty certificate when the X509Certificate body is whitespace-only", () => {
+    const whitespaceCert = `<?xml version="1.0" encoding="UTF-8"?>
+<md:EntityDescriptor xmlns:md="urn:oasis:names:tc:SAML:2.0:metadata"
+    entityID="https://idp.example/saml2">
+  <md:IDPSSODescriptor>
+    <md:KeyDescriptor use="signing">
+      <ds:KeyInfo xmlns:ds="http://www.w3.org/2000/09/xmldsig#">
+        <ds:X509Data>
+          <ds:X509Certificate>
+          </ds:X509Certificate>
+        </ds:X509Data>
+      </ds:KeyInfo>
+    </md:KeyDescriptor>
+    <md:SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect"
+        Location="https://idp.example/saml2/redirect" />
+  </md:IDPSSODescriptor>
+</md:EntityDescriptor>`;
+    const result = parseSamlIdpMetadata(whitespaceCert);
+    if (!result.ok) {
+      throw new Error(`Expected parse to succeed, got error: ${result.error}`);
+    }
+    expect(result.metadata.certificate).toBe("");
+  });
+
+  it("returns an empty entry point when the SingleSignOnService omits a Location attribute", () => {
+    const noLocation = `<?xml version="1.0" encoding="UTF-8"?>
+<md:EntityDescriptor xmlns:md="urn:oasis:names:tc:SAML:2.0:metadata"
+    entityID="https://idp.example/saml2">
+  <md:IDPSSODescriptor>
+    <md:SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect" />
+  </md:IDPSSODescriptor>
+</md:EntityDescriptor>`;
+    const result = parseSamlIdpMetadata(noLocation);
+    if (!result.ok) {
+      throw new Error(`Expected parse to succeed, got error: ${result.error}`);
+    }
+    expect(result.metadata.entryPoint).toBe("");
+  });
+
+  it("returns an empty entry point when only an HTTP-POST binding without Location is present", () => {
+    const postNoLoc = `<?xml version="1.0" encoding="UTF-8"?>
+<md:EntityDescriptor xmlns:md="urn:oasis:names:tc:SAML:2.0:metadata"
+    entityID="https://idp.example/saml2">
+  <md:IDPSSODescriptor>
+    <md:SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST" />
+  </md:IDPSSODescriptor>
+</md:EntityDescriptor>`;
+    const result = parseSamlIdpMetadata(postNoLoc);
+    if (!result.ok) {
+      throw new Error(`Expected parse to succeed, got error: ${result.error}`);
+    }
+    expect(result.metadata.entryPoint).toBe("");
+  });
+
   it("rejects an EntityDescriptor with no issuer, no SSO endpoint, and no certificate", () => {
     const minimalEntity = `<?xml version="1.0" encoding="UTF-8"?>
 <md:EntityDescriptor xmlns:md="urn:oasis:names:tc:SAML:2.0:metadata">

@@ -22,17 +22,19 @@ const COMMON_EMAIL_DOMAINS: readonly string[] = [
 const SUGGESTION_DISTANCE_THRESHOLD = 2;
 
 /**
- * Returns the Levenshtein edit distance between two strings, used to
- * decide when a typed domain is close enough to a known one to suggest
- * a correction (e.g. `gmial.com` → `gmail.com`).
+ * Returns the Levenshtein edit distance between two non-empty strings,
+ * used to decide when a typed domain is close enough to a known one to
+ * suggest a correction (e.g. `gmial.com` → `gmail.com`).  Callers must
+ * filter out empty strings and exact matches before invoking.
  */
 function levenshteinDistance(left: string, right: string): number {
-  if (left === right) return 0;
-  if (left.length === 0) return right.length;
-  if (right.length === 0) return left.length;
-  const previous = new Array<number>(right.length + 1);
+  // The DP row is always populated for indices 0..right.length before we
+  // read it.  The `?? 0` clauses below preserve TypeScript's strict
+  // index-access typing without changing runtime behavior — the
+  // right-hand side is unreachable for the only indices we ever touch.
+  const previous: number[] = [];
   for (let i = 0; i <= right.length; i++) {
-    previous[i] = i;
+    previous.push(i);
   }
   for (let i = 1; i <= left.length; i++) {
     let deleteCost = previous[0] ?? 0;

@@ -150,14 +150,11 @@ export function AccountSetupPage({ redirectTo }: AccountSetupPageProps) {
     await handleRefreshAndContinue();
   };
 
-  const handleContinueWithoutPasskey = async () => {
-    if (!session) {
-      return;
-    }
+  const handleContinueWithoutPasskey = async (currentSession: AtlasSessionPayload) => {
     setIsContinuingWithoutPasskey(true);
     try {
       const refreshed = await refreshStatus();
-      const target = refreshed ?? session;
+      const target = refreshed ?? currentSession;
       if (!target.accountReady) {
         return;
       }
@@ -243,7 +240,7 @@ export function AccountSetupPage({ redirectTo }: AccountSetupPageProps) {
               void handleAddPasskey();
             }}
             onContinueWithoutPasskey={() => {
-              void handleContinueWithoutPasskey();
+              void handleContinueWithoutPasskey(session);
             }}
           />
         ) : null}

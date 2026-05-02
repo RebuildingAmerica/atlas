@@ -67,4 +67,12 @@ describe("passkey names", () => {
 
     expect(resolvePasskeyName(undefined, null)).toBe("My passkey");
   });
+
+  it("falls through to the default navigator argument when none is provided", () => {
+    // jsdom provides a navigator with a desktop UA; the function should
+    // still return a non-null label.
+    const result = resolvePasskeyName(undefined);
+    expect(typeof result).toBe("string");
+    expect(result.length).toBeGreaterThan(0);
+  });
 });

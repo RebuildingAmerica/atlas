@@ -142,6 +142,18 @@ describe("runtime additional branches", () => {
 
       expect(runtime.isAllowedSamlIssuer("not-a-url")).toBe(false);
     });
+
+    it("rejects allowlist entries that are not parseable URLs at resolve time", () => {
+      expect(() =>
+        resolveAuthRuntimeConfig(
+          {
+            ATLAS_PUBLIC_URL: "https://atlas.test",
+            ATLAS_SAML_ALLOWED_ISSUERS: "not-a-url",
+          },
+          "/workspace/atlas/app",
+        ),
+      ).toThrow(/ATLAS_SAML_ALLOWED_ISSUERS contains an invalid URL/);
+    });
   });
 
   describe("getCimdResolverOptions", () => {

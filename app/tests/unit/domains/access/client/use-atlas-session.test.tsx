@@ -35,4 +35,26 @@ describe("useAtlasSession", () => {
       staleTime: 30_000,
     });
   });
+
+  it("forwards every overridable option when supplied", async () => {
+    const mod = await import("@/domains/access/client/use-atlas-session");
+    renderHook(() =>
+      mod.useAtlasSession({
+        enabled: false,
+        staleTime: 5_000,
+        gcTime: 10_000,
+        queryKey: ["custom"],
+        retry: 2,
+      }),
+    );
+
+    expect(mocks.useQuery).toHaveBeenCalledWith({
+      queryFn: mocks.getAtlasSession,
+      queryKey: ["custom"],
+      staleTime: 5_000,
+      enabled: false,
+      gcTime: 10_000,
+      retry: 2,
+    });
+  });
 });

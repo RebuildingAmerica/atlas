@@ -174,4 +174,94 @@ describe("organization-session", () => {
     expect(workspace.onboarding.needsWorkspace).toBe(true);
     expect(workspace.activeOrganization).toBeNull();
   });
+
+  it("preserves ISO-string expiration values from Better Auth payloads", async () => {
+    const auth = {
+      api: {
+        listOrganizations: vi.fn().mockResolvedValue([]),
+        getActiveMemberRole: vi.fn().mockResolvedValue({ role: "member" }),
+        listUserInvitations: vi.fn().mockResolvedValue([
+          {
+            id: "inv_str",
+            email: "operator@atlas.test",
+            organizationId: "org_str",
+            role: "member",
+            status: "pending",
+            expiresAt: "2026-06-01T00:00:00.000Z",
+          },
+        ]),
+      },
+    } as unknown as AuthParam;
+
+    const workspace = await loadAtlasWorkspaceState(
+      auth,
+      headers,
+      session as unknown as SessionParam,
+    );
+
+    expect(workspace.pendingInvitations[0]?.expiresAt).toBe("2026-06-01T00:00:00.000Z");
+  });
+
+  it("treats null expiration values as null and falls back to the default workspace name", async () => {
+    const auth = {
+      api: {
+        listOrganizations: vi.fn().mockResolvedValue([]),
+        getActiveMemberRole: vi.fn().mockResolvedValue({ role: "member" }),
+        listUserInvitations: vi.fn().mockResolvedValue([
+          {
+            id: "inv_null",
+            email: "operator@atlas.test",
+            organizationId: "org_null",
+            role: "member",
+            status: "pending",
+            expiresAt: null,
+          },
+        ]),
+      },
+    } as unknown as AuthParam;
+
+    const workspace = await loadAtlasWorkspaceState(
+      auth,
+      headers,
+      session as unknown as SessionParam,
+    );
+
+    expect(workspace.pendingInvitations[0]?.expiresAt).toBeNull();
+    expect(workspace.pendingInvitations[0]?.organizationName).toBe("Atlas Workspace");
+    expect(workspace.pendingInvitations[0]?.organizationSlug).toBe("org_null");
+  });
+
+  it("ignores non-pending invitations when assembling the workspace state", async () => {
+    const auth = {
+      api: {
+        listOrganizations: vi.fn().mockResolvedValue([]),
+        getActiveMemberRole: vi.fn().mockResolvedValue({ role: "member" }),
+        listUserInvitations: vi.fn().mockResolvedValue([
+          {
+            id: "inv_accepted",
+            email: "operator@atlas.test",
+            organizationId: "org_a",
+            role: "member",
+            status: "accepted",
+          },
+          {
+            id: "inv_pending",
+            email: "operator@atlas.test",
+            organizationId: "org_p",
+            role: "member",
+            status: "pending",
+          },
+        ]),
+      },
+    } as unknown as AuthParam;
+
+    const workspace = await loadAtlasWorkspaceState(
+      auth,
+      headers,
+      session as unknown as SessionParam,
+    );
+
+    expect(workspace.pendingInvitations).toHaveLength(1);
+    expect(workspace.pendingInvitations[0]?.id).toBe("inv_pending");
+  });
 });

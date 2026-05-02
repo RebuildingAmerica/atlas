@@ -204,3 +204,21 @@ export function createAtlasSessionFixture(
     workspace: options.workspace ?? createAtlasWorkspace({ role: options.role }),
   };
 }
+
+/**
+ * Builds an `AtlasWorkspaceMembership` with sensible defaults for tests
+ * that exercise multi-workspace UI.
+ *
+ * @param overrides - Membership fields the test wants to override.
+ */
+export function createAtlasWorkspaceMembership(
+  overrides: Partial<AtlasWorkspaceMembership> = {},
+): AtlasWorkspaceMembership {
+  return {
+    id: overrides.id ?? "org_a",
+    name: overrides.name ?? "Atlas Team",
+    role: overrides.role ?? "owner",
+    slug: overrides.slug ?? "atlas-team",
+    workspaceType: overrides.workspaceType ?? "team",
+  };
+}

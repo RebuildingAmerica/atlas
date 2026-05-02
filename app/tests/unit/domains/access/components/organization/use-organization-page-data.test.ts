@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   useQueryClient: vi.fn(),
   useAtlasSession: vi.fn(),
   getOrganizationDetails: vi.fn(),
+  getWorkspaceSAMLAllowedIssuers: vi.fn(),
 }));
 
 vi.mock("@tanstack/react-query", () => ({
@@ -22,6 +23,10 @@ vi.mock("@/domains/access/client/use-atlas-session", () => ({
 
 vi.mock("@/domains/access/organizations.functions", () => ({
   getOrganizationDetails: mocks.getOrganizationDetails,
+}));
+
+vi.mock("@/domains/access/sso.functions", () => ({
+  getWorkspaceSAMLAllowedIssuers: mocks.getWorkspaceSAMLAllowedIssuers,
 }));
 
 describe("useOrganizationPageData", () => {
@@ -75,5 +80,57 @@ describe("useOrganizationPageData", () => {
 
     expect(invalidateQueries).toHaveBeenCalledTimes(2);
     expect(refetch).toHaveBeenCalled();
+  });
+
+  it("invokes the organization queryFn against the API client", () => {
+    const organizationQueryFn = vi.fn();
+    const samlIssuersQueryFn = vi.fn();
+    mocks.useQuery.mockImplementationOnce(({ queryFn }: { queryFn: () => unknown }) => {
+      organizationQueryFn.mockImplementation(queryFn);
+      return { data: { id: "org_1" }, isLoading: false };
+    });
+    mocks.useQuery.mockImplementationOnce(({ queryFn }: { queryFn: () => unknown }) => {
+      samlIssuersQueryFn.mockImplementation(queryFn);
+      return { data: { issuerOrigins: ["https://idp.example"] }, isLoading: false };
+    });
+    mocks.getOrganizationDetails.mockResolvedValue({ id: "org_1" });
+    mocks.getWorkspaceSAMLAllowedIssuers.mockResolvedValue({ issuerOrigins: [] });
+
+    renderHook(() => useOrganizationPageData());
+
+    organizationQueryFn();
+    samlIssuersQueryFn();
+
+    expect(mocks.getOrganizationDetails).toHaveBeenCalled();
+    expect(mocks.getWorkspaceSAMLAllowedIssuers).toHaveBeenCalled();
+  });
+
+  it("exposes loaded SAML allowed issuer origins to callers", () => {
+    mocks.useQuery.mockImplementationOnce(() => ({ data: { id: "org_1" }, isLoading: false }));
+    mocks.useQuery.mockImplementationOnce(() => ({
+      data: { issuerOrigins: ["https://idp.example"] },
+      isLoading: false,
+    }));
+
+    const { result } = renderHook(() => useOrganizationPageData());
+    expect(result.current.samlAllowedIssuerOrigins).toEqual(["https://idp.example"]);
+  });
+
+  it("returns an empty issuer list when the SAML query returns nothing", () => {
+    mocks.useQuery.mockImplementationOnce(() => ({ data: { id: "org_1" }, isLoading: false }));
+    mocks.useQuery.mockImplementationOnce(() => ({ data: undefined, isLoading: false }));
+
+    const { result } = renderHook(() => useOrganizationPageData());
+    expect(result.current.samlAllowedIssuerOrigins).toEqual([]);
+  });
+
+  it("forwards initial organization data to useQuery", () => {
+    mocks.useQuery.mockClear();
+    renderHook(() =>
+      useOrganizationPageData({ initialOrganization: { id: "org_initial" } as never }),
+    );
+    expect(mocks.useQuery).toHaveBeenCalledWith(
+      expect.objectContaining({ initialData: { id: "org_initial" } }),
+    );
   });
 });

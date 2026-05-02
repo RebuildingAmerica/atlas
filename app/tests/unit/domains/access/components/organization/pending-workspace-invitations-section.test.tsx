@@ -51,4 +51,12 @@ describe("PendingWorkspaceInvitationsSection", () => {
     expect(screen.getByText("Accept")).toBeDisabled();
     expect(screen.getByText("Decline")).toBeDisabled();
   });
+
+  it("renders gracefully when an invitation does not carry an expiresAt timestamp", () => {
+    const noExpiry = [{ ...invitations[0], expiresAt: null }];
+    render(
+      <PendingWorkspaceInvitationsSection {...defaultProps} invitations={noExpiry as never} />,
+    );
+    expect(screen.getByText(/Atlas Team/i)).toBeInTheDocument();
+  });
 });

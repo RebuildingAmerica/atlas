@@ -395,10 +395,9 @@ function resolveWorkspaceDomainSuggestion(params: {
     }
   }
 
-  if (uniqueDomains.size === 1) {
-    const [workspaceDomainSuggestion] = uniqueDomains;
-
-    return workspaceDomainSuggestion ?? "";
+  const [firstDomain] = uniqueDomains;
+  if (uniqueDomains.size === 1 && firstDomain !== undefined) {
+    return firstDomain;
   }
 
   return extractEmailDomain(params.operatorEmail);
@@ -465,9 +464,10 @@ export function selectPreferredWorkspaceSSOProvider(params: {
   primaryProviderId: string | null;
   providers: AtlasWorkspaceSSOProvider[];
 }): AtlasWorkspaceSSOProvider | null {
-  const matchingProviders = params.domain
+  const filterDomain = params.domain;
+  const matchingProviders = filterDomain
     ? params.providers.filter((provider) =>
-        workspaceSSOProviderMatchesDomain(provider.domain, params.domain ?? ""),
+        workspaceSSOProviderMatchesDomain(provider.domain, filterDomain),
       )
     : params.providers;
   const verifiedProviders = matchingProviders.filter((provider) => provider.domainVerified);

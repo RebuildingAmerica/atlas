@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 
 const mocks = vi.hoisted(() => ({
   addPasskey: vi.fn(),
@@ -439,6 +439,194 @@ describe("AccountSetupPage", () => {
     await addPasskeyConfig.mutationFn();
 
     expect(mocks.updatePasskey).not.toHaveBeenCalled();
+  });
+
+  it("continues without a passkey when the email is verified and the account is ready", async () => {
+    mocks.mutateStates.push({}, {}, {});
+    mocks.useAtlasSession.mockReturnValue({
+      data: {
+        accountReady: true,
+        hasPasskey: false,
+        passkeyCount: 0,
+        user: {
+          email: "operator@atlas.test",
+          emailVerified: true,
+          name: "Operator",
+        },
+        workspace: defaultWorkspace,
+      },
+      isPending: false,
+      isRefetching: false,
+      refetch: mocks.refetch.mockResolvedValue({
+        data: {
+          accountReady: true,
+          hasPasskey: false,
+          passkeyCount: 0,
+          user: {
+            email: "operator@atlas.test",
+            emailVerified: true,
+            name: "Operator",
+          },
+          workspace: {
+            onboarding: {
+              hasPendingInvitations: false,
+              needsWorkspace: false,
+            },
+          },
+        },
+      }),
+    });
+    const { AccountSetupPage } = await import("@/domains/access/pages/auth/account-setup-page");
+
+    render(<AccountSetupPage redirectTo="/account" />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Continue without a passkey/ }));
+
+    await waitFor(() => {
+      expect(assignMock).toHaveBeenCalledWith("/account");
+    });
+  });
+
+  it("triggers the periodic auto-poll when the interval elapses", async () => {
+    vi.useFakeTimers();
+    try {
+      mocks.mutateStates.push({}, {}, {});
+      mocks.useAtlasSession.mockReturnValue({
+        data: {
+          accountReady: false,
+          hasPasskey: false,
+          passkeyCount: 0,
+          user: {
+            email: "operator@atlas.test",
+            emailVerified: false,
+          },
+          workspace: defaultWorkspace,
+        },
+        isPending: false,
+        isRefetching: false,
+        refetch: mocks.refetch.mockResolvedValue({ data: { accountReady: false } }),
+      });
+      const { AccountSetupPage } = await import("@/domains/access/pages/auth/account-setup-page");
+
+      render(<AccountSetupPage />);
+      const initialCalls = mocks.refetch.mock.calls.length;
+
+      await act(async () => {
+        vi.advanceTimersByTime(15_000);
+        await Promise.resolve();
+      });
+
+      expect(mocks.refetch.mock.calls.length).toBeGreaterThan(initialCalls);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("re-checks readiness when the tab returns to visible state", async () => {
+    mocks.mutateStates.push({}, {}, {});
+    mocks.useAtlasSession.mockReturnValue({
+      data: {
+        accountReady: false,
+        hasPasskey: false,
+        passkeyCount: 0,
+        user: {
+          email: "operator@atlas.test",
+          emailVerified: false,
+        },
+        workspace: defaultWorkspace,
+      },
+      isPending: false,
+      isRefetching: false,
+      refetch: mocks.refetch.mockResolvedValue({
+        data: {
+          accountReady: false,
+        },
+      }),
+    });
+    const { AccountSetupPage } = await import("@/domains/access/pages/auth/account-setup-page");
+
+    render(<AccountSetupPage />);
+    const initialCalls = mocks.refetch.mock.calls.length;
+
+    Object.defineProperty(document, "visibilityState", {
+      configurable: true,
+      get: () => "visible",
+    });
+    document.dispatchEvent(new Event("visibilitychange"));
+
+    await waitFor(() => {
+      expect(mocks.refetch.mock.calls.length).toBeGreaterThan(initialCalls);
+    });
+  });
+
+  it("ignores visibility events when the tab is hidden", async () => {
+    mocks.mutateStates.push({}, {}, {});
+    mocks.useAtlasSession.mockReturnValue({
+      data: {
+        accountReady: false,
+        hasPasskey: false,
+        passkeyCount: 0,
+        user: {
+          email: "operator@atlas.test",
+          emailVerified: false,
+        },
+        workspace: defaultWorkspace,
+      },
+      isPending: false,
+      isRefetching: false,
+      refetch: mocks.refetch.mockResolvedValue({ data: { accountReady: false } }),
+    });
+    const { AccountSetupPage } = await import("@/domains/access/pages/auth/account-setup-page");
+
+    render(<AccountSetupPage />);
+    await waitFor(() => {
+      expect(mocks.refetch.mock.calls.length).toBeGreaterThanOrEqual(1);
+    });
+    const callsBeforeHidden = mocks.refetch.mock.calls.length;
+
+    Object.defineProperty(document, "visibilityState", {
+      configurable: true,
+      get: () => "hidden",
+    });
+    document.dispatchEvent(new Event("visibilitychange"));
+
+    // Allow microtasks to flush; the hidden visibility state should not
+    // trigger another refetch beyond the auto-mount one.
+    await Promise.resolve();
+    expect(mocks.refetch.mock.calls.length).toBe(callsBeforeHidden);
+  });
+
+  it("aborts the continue-without-passkey path when the refreshed session is still not ready", async () => {
+    mocks.mutateStates.push({}, {}, {});
+    mocks.useAtlasSession.mockReturnValue({
+      data: {
+        accountReady: true,
+        hasPasskey: false,
+        passkeyCount: 0,
+        user: {
+          email: "operator@atlas.test",
+          emailVerified: true,
+          name: "Operator",
+        },
+        workspace: defaultWorkspace,
+      },
+      isPending: false,
+      isRefetching: false,
+      refetch: mocks.refetch.mockResolvedValue({
+        data: {
+          accountReady: false,
+        },
+      }),
+    });
+    const { AccountSetupPage } = await import("@/domains/access/pages/auth/account-setup-page");
+
+    render(<AccountSetupPage />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Continue without a passkey/ }));
+
+    await waitFor(() => {
+      expect(mocks.refetch.mock.calls.length).toBeGreaterThanOrEqual(2);
+    });
   });
 
   it("falls back to a zero-count passkey label when readiness omits the passkey count", async () => {

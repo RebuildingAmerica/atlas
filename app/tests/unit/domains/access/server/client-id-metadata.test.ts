@@ -34,6 +34,10 @@ describe("isClientIdMetadataDocumentUrl", () => {
     expect(isClientIdMetadataDocumentUrl("client_abc123")).toBe(false);
     expect(isClientIdMetadataDocumentUrl("not a url")).toBe(false);
   });
+
+  it("rejects an https-prefixed string that is not a valid URL", () => {
+    expect(isClientIdMetadataDocumentUrl("https://")).toBe(false);
+  });
 });
 
 describe("validateClientIdMetadataDocument", () => {
@@ -92,6 +96,32 @@ describe("validateClientIdMetadataDocument", () => {
     expect(() => validateClientIdMetadataDocument([], VALID_DOCUMENT.client_id)).toThrow(
       /JSON object/,
     );
+  });
+
+  it("rejects when client_name is missing", () => {
+    const { client_name: _ignored, ...rest } = VALID_DOCUMENT;
+    void _ignored;
+    expect(() => validateClientIdMetadataDocument(rest, VALID_DOCUMENT.client_id)).toThrow(
+      /client_name/,
+    );
+  });
+
+  it("rejects when redirect_uris contains a non-string entry", () => {
+    expect(() =>
+      validateClientIdMetadataDocument(
+        { ...VALID_DOCUMENT, redirect_uris: [42] },
+        VALID_DOCUMENT.client_id,
+      ),
+    ).toThrow(/redirect_uris/);
+  });
+
+  it("rejects when a redirect_uri is not a parseable URL", () => {
+    expect(() =>
+      validateClientIdMetadataDocument(
+        { ...VALID_DOCUMENT, redirect_uris: ["::not a url::"] },
+        VALID_DOCUMENT.client_id,
+      ),
+    ).toThrow(/is not a valid URL/);
   });
 });
 
@@ -185,5 +215,214 @@ describe("resolveClientIdMetadataDocument", () => {
         fakeFetch,
       ),
     ).rejects.toThrow(/HTTP 404/);
+  });
+
+  it("rejects unparseable client_id URLs without a network call", async () => {
+    let called = false;
+    const fakeFetch: typeof fetch = () => {
+      called = true;
+      return Promise.resolve(new Response(""));
+    };
+
+    await expect(
+      resolveClientIdMetadataDocument("::not a url::", DEFAULT_CIMD_RESOLVER_OPTIONS, fakeFetch),
+    ).rejects.toThrow(/CIMD client_id is not a valid URL/);
+    expect(called).toBe(false);
+  });
+
+  it("rejects client_id URLs that contain a fragment", async () => {
+    const fakeFetch: typeof fetch = () => Promise.resolve(jsonResponse(VALID_DOCUMENT));
+
+    await expect(
+      resolveClientIdMetadataDocument(
+        "https://app.example.com/oauth/client.json#frag",
+        DEFAULT_CIMD_RESOLVER_OPTIONS,
+        fakeFetch,
+      ),
+    ).rejects.toThrow(/must not contain a fragment/);
+  });
+
+  it("wraps fetch errors as fetch_failed", async () => {
+    const fakeFetch: typeof fetch = () => Promise.reject(new Error("network down"));
+
+    await expect(
+      resolveClientIdMetadataDocument(
+        VALID_DOCUMENT.client_id,
+        DEFAULT_CIMD_RESOLVER_OPTIONS,
+        fakeFetch,
+      ),
+    ).rejects.toThrow(/network down/);
+  });
+
+  it("wraps non-Error fetch rejections as fetch_failed", async () => {
+    const fakeFetch: typeof fetch = () =>
+      // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors -- intentionally rejecting with a non-Error value
+      Promise.reject("nope");
+
+    await expect(
+      resolveClientIdMetadataDocument(
+        VALID_DOCUMENT.client_id,
+        DEFAULT_CIMD_RESOLVER_OPTIONS,
+        fakeFetch,
+      ),
+    ).rejects.toThrow(/nope/);
+  });
+
+  it("rejects responses with no body stream", async () => {
+    const fakeFetch: typeof fetch = () =>
+      Promise.resolve(
+        new Response(null, {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+      );
+
+    await expect(
+      resolveClientIdMetadataDocument(
+        VALID_DOCUMENT.client_id,
+        DEFAULT_CIMD_RESOLVER_OPTIONS,
+        fakeFetch,
+      ),
+    ).rejects.toThrow(/no body/);
+  });
+
+  it("rejects bodies that are not valid JSON", async () => {
+    const fakeFetch: typeof fetch = () =>
+      Promise.resolve(
+        new Response("not-json", {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+      );
+
+    await expect(
+      resolveClientIdMetadataDocument(
+        VALID_DOCUMENT.client_id,
+        DEFAULT_CIMD_RESOLVER_OPTIONS,
+        fakeFetch,
+      ),
+    ).rejects.toThrow(/not valid JSON/);
+  });
+
+  it("matches an explicit allowlist suffix on the document host", async () => {
+    const fakeFetch: typeof fetch = () => Promise.resolve(jsonResponse(VALID_DOCUMENT));
+
+    const result = await resolveClientIdMetadataDocument(
+      VALID_DOCUMENT.client_id,
+      {
+        ...DEFAULT_CIMD_RESOLVER_OPTIONS,
+        allowedHostSuffixes: ["", "example.com"],
+      },
+      fakeFetch,
+    );
+
+    expect(result.client_id).toBe(VALID_DOCUMENT.client_id);
+  });
+
+  it("skips empty chunks while streaming the response body", async () => {
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(encoder.encode(JSON.stringify(VALID_DOCUMENT).slice(0, 10)));
+        // An empty chunk forces the `if (!value) continue;` branch.
+        controller.enqueue(new Uint8Array());
+        controller.enqueue(encoder.encode(JSON.stringify(VALID_DOCUMENT).slice(10)));
+        controller.close();
+      },
+    });
+
+    const fakeFetch: typeof fetch = () =>
+      Promise.resolve(
+        new Response(stream, {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+      );
+
+    const result = await resolveClientIdMetadataDocument(
+      VALID_DOCUMENT.client_id,
+      DEFAULT_CIMD_RESOLVER_OPTIONS,
+      fakeFetch,
+    );
+
+    expect(result.client_id).toBe(VALID_DOCUMENT.client_id);
+  });
+
+  it("aborts the request when the configured timeout elapses", async () => {
+    const fakeFetch: typeof fetch = (_url, init) =>
+      new Promise((_, reject) => {
+        const signal = (init as { signal?: AbortSignal }).signal;
+        signal?.addEventListener("abort", () => {
+          reject(new DOMException("aborted", "AbortError"));
+        });
+      });
+
+    await expect(
+      resolveClientIdMetadataDocument(
+        VALID_DOCUMENT.client_id,
+        { ...DEFAULT_CIMD_RESOLVER_OPTIONS, timeoutMs: 5 },
+        fakeFetch,
+      ),
+    ).rejects.toThrow(/aborted/);
+  });
+
+  it("aborts the body stream when its size exceeds the cap", async () => {
+    let cancelCalled = false;
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(new Uint8Array(2048));
+        controller.enqueue(new Uint8Array(2048));
+        controller.close();
+      },
+      cancel() {
+        cancelCalled = true;
+      },
+    });
+
+    const fakeFetch: typeof fetch = () =>
+      Promise.resolve(
+        new Response(stream, {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+      );
+
+    await expect(
+      resolveClientIdMetadataDocument(
+        VALID_DOCUMENT.client_id,
+        { ...DEFAULT_CIMD_RESOLVER_OPTIONS, maxBytes: 1024 },
+        fakeFetch,
+      ),
+    ).rejects.toThrow(/byte size cap/);
+    expect(cancelCalled).toBe(true);
+  });
+
+  it("swallows cancel rejections when the body exceeds the size cap", async () => {
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(new Uint8Array(2048));
+        controller.enqueue(new Uint8Array(2048));
+        controller.close();
+      },
+      cancel() {
+        throw new Error("cancel failed");
+      },
+    });
+
+    const fakeFetch: typeof fetch = () =>
+      Promise.resolve(
+        new Response(stream, {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+      );
+
+    await expect(
+      resolveClientIdMetadataDocument(
+        VALID_DOCUMENT.client_id,
+        { ...DEFAULT_CIMD_RESOLVER_OPTIONS, maxBytes: 1024 },
+        fakeFetch,
+      ),
+    ).rejects.toThrow(/byte size cap/);
   });
 });

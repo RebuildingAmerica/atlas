@@ -1,11 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  redirectIfLocalSession,
   requireAtlasSession,
   requireIncompleteAtlasSession,
   requireReadyAtlasSession,
 } from "@/domains/access/server/route-guard";
 
 const mocks = vi.hoisted(() => ({
+  getAtlasDeployMode: vi.fn(),
   getAtlasSession: Object.assign(vi.fn(), { __executeServer: vi.fn() }),
   getAuthRuntimeConfig: vi.fn(() => ({ localMode: true })),
   getBrowserSessionHeaders: vi.fn(() => new Headers()),
@@ -29,12 +31,14 @@ vi.mock("@/domains/access/server/runtime", () => ({
 }));
 
 vi.mock("@/domains/access/session.functions", () => ({
+  getAtlasDeployMode: mocks.getAtlasDeployMode,
   getAtlasSession: mocks.getAtlasSession,
 }));
 
 describe("route-guard", () => {
   beforeEach(() => {
     vi.resetModules();
+    mocks.getAtlasDeployMode.mockReset();
     mocks.getAtlasSession.mockReset();
     mocks.redirect.mockClear();
   });
@@ -113,5 +117,44 @@ describe("route-guard", () => {
 
     await expect(requireIncompleteAtlasSession("/account-setup")).resolves.toEqual(session);
     expect(mocks.redirect).not.toHaveBeenCalled();
+  });
+
+  it("returns the session when ready and accountReady is true", async () => {
+    const session = { accountReady: true };
+    mocks.getAtlasSession.mockResolvedValue(session);
+
+    const result = await requireReadyAtlasSession("/dashboard");
+    expect(result).toBe(session);
+    expect(mocks.redirect).not.toHaveBeenCalled();
+  });
+
+  it("preserves an already-app-local redirect target as-is", async () => {
+    const session = {
+      accountReady: true,
+      hasPasskey: true,
+      workspace: { onboarding: { needsWorkspace: false, hasPendingInvitations: false } },
+    };
+    mocks.getAtlasSession.mockResolvedValue(session);
+
+    await expect(requireIncompleteAtlasSession("/account-setup", "/saved/path")).rejects.toThrow(
+      "Redirect",
+    );
+    expect(mocks.redirect).toHaveBeenCalledWith(expect.objectContaining({ to: "/saved/path" }));
+  });
+
+  describe("redirectIfLocalSession", () => {
+    it("redirects when the deploy mode is local", async () => {
+      mocks.getAtlasDeployMode.mockResolvedValue({ localMode: true });
+
+      await expect(redirectIfLocalSession("/discovery")).rejects.toThrow("Redirect");
+      expect(mocks.redirect).toHaveBeenCalledWith({ to: "/discovery" });
+    });
+
+    it("resolves without redirecting when not in local mode", async () => {
+      mocks.getAtlasDeployMode.mockResolvedValue({ localMode: false });
+
+      await expect(redirectIfLocalSession("/discovery")).resolves.toBeUndefined();
+      expect(mocks.redirect).not.toHaveBeenCalled();
+    });
   });
 });

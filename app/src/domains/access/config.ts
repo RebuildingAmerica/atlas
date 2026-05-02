@@ -13,7 +13,7 @@ interface AuthEnv {
  */
 export function getAuthConfig(env: AuthEnv = {}) {
   const mergedEnv = {
-    ...(import.meta?.env ?? {}),
+    ...import.meta.env,
     ...env,
   };
   return getAppConfig(mergedEnv);
