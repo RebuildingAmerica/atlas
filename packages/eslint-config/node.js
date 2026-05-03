@@ -8,7 +8,7 @@ import { baseConfig, baseRules, typescriptEslint } from "./base.js";
  * app — no permissive overrides.
  *
  * Usage in eslint.config.js:
- *   import { nodeConfig } from "@atlas/eslint-config/node";
+ *   import { nodeConfig } from "@rebuildingamerica/eslint-config/node";
  *   export default nodeConfig(import.meta.dirname);
  */
 export function nodeConfig(tsconfigRootDir) {

@@ -1,5 +1,5 @@
-import { reactConfig } from "@atlas/eslint-config/react";
-import { testsConfig } from "@atlas/eslint-config/tests";
+import { reactConfig } from "@rebuildingamerica/eslint-config/react";
+import { testsConfig } from "@rebuildingamerica/eslint-config/tests";
 
 export default [
   {

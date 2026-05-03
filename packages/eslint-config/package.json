@@ -1,5 +1,5 @@
 {
-  "name": "@atlas/eslint-config",
+  "name": "@rebuildingamerica/eslint-config",
   "version": "0.0.0",
   "private": true,
   "type": "module",

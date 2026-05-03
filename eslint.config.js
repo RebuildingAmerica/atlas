@@ -1,4 +1,4 @@
-import { nodeConfig } from "@atlas/eslint-config/node";
+import { nodeConfig } from "@rebuildingamerica/eslint-config/node";
 
 export default [
   {

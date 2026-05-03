@@ -67,7 +67,7 @@
     "zod": "^4.1.12"
   },
   "devDependencies": {
-    "@atlas/eslint-config": "workspace:*",
+    "@rebuildingamerica/eslint-config": "workspace:*",
     "@playwright/test": "^1.59.1",
     "@tailwindcss/vite": "^4.0.0",
     "@testing-library/jest-dom": "^6.9.1",

@@ -14,12 +14,12 @@ importers:
 
   .:
     devDependencies:
-      '@atlas/eslint-config':
-        specifier: workspace:*
-        version: link:packages/eslint-config
       '@clack/prompts':
         specifier: 0.11.0
         version: 0.11.0
+      '@rebuildingamerica/eslint-config':
+        specifier: workspace:*
+        version: link:packages/eslint-config
       eslint:
         specifier: 9.17.0
         version: 9.17.0(jiti@1.21.7)
@@ -131,12 +131,12 @@ importers:
         specifier: ^4.1.12
         version: 4.3.6
     devDependencies:
-      '@atlas/eslint-config':
-        specifier: workspace:*
-        version: link:../packages/eslint-config
       '@playwright/test':
         specifier: ^1.59.1
         version: 1.59.1
+      '@rebuildingamerica/eslint-config':
+        specifier: workspace:*
+        version: link:../packages/eslint-config
       '@tailwindcss/vite':
         specifier: ^4.0.0
         version: 4.2.2(vite@7.3.2(@types/node@24.12.2)(jiti@2.6.1)(lightningcss@1.32.0)(tsx@4.21.0)(yaml@2.8.3))

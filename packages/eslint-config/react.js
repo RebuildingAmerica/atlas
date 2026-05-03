@@ -8,7 +8,7 @@ import { baseConfig, baseRules, typescriptEslint } from "./base.js";
  * Extends the shared base with browser globals and React hooks rules.
  *
  * Usage in app/eslint.config.js:
- *   import { reactConfig } from "@atlas/eslint-config/react";
+ *   import { reactConfig } from "@rebuildingamerica/eslint-config/react";
  *   export default reactConfig(import.meta.dirname);
  */
 export function reactConfig(tsconfigRootDir) {

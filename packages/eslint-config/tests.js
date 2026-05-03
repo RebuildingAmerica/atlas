@@ -9,7 +9,7 @@ import { atlasTestsPlugin } from "./test-rules/index.js";
  * overrides apply last.
  *
  * Usage:
- *   import { testsConfig } from "@atlas/eslint-config/tests";
+ *   import { testsConfig } from "@rebuildingamerica/eslint-config/tests";
  *   export default [...reactConfig(import.meta.dirname), ...testsConfig()];
  */
 export function testsConfig() {
