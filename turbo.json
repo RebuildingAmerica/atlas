@@ -99,6 +99,15 @@
         "openapi/atlas.openapi.json"
       ]
     },
+    "//#python:test": {
+      "dependsOn": ["//#openapi"],
+      "inputs": [
+        "api/**",
+        "scout/**",
+        "libs/**",
+        "openapi/atlas.openapi.json"
+      ]
+    },
     "//#contract:test": {
       "dependsOn": ["//#openapi"],
       "inputs": [
@@ -148,7 +157,7 @@
     },
     "//#prod:verify": {
       "dependsOn": [
-        "//#api:test",
+        "//#python:test",
         "//#contract:test",
         "//#compose:validate",
         "//#secrets:scan",

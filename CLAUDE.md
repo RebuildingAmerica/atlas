@@ -53,7 +53,7 @@ cd app && pnpm run lint           # Lint TypeScript
 cd app && pnpm tsc --noEmit       # Type check TypeScript
 
 # Tests
-cd api && uv run pytest                    # All API tests (90% coverage required)
+cd api && uv run pytest                    # All API tests (100% coverage required)
 cd api && uv run pytest tests/path.py -v   # Single test file
 cd api && uv run pytest tests/path.py::TestClass::test_name -v  # Single test
 cd app && pnpm vitest run                  # All frontend tests (100% coverage required)
@@ -96,7 +96,7 @@ When staging files for commit, always `git restore --staged .` first, then `git 
 - **No inline type definitions.** Always extract types into named interfaces or use existing ones.
 - **No fallbacks or silent defaults.** Fail explicitly. Work against defined specs, not guessed defaults.
 - **No CSS `transform: scale()`.** Resize actual dimensions. No overlapping surfaces during transitions.
-- **Python:** Line length 100. Async everywhere for I/O. Docstrings with Parameters/Returns (NumPy style). Test coverage minimum 90%.
-- **TypeScript:** No `any` or `as any`. ESLint enforces this. Extract types rather than inline them.
+- **Python:** Line length 100. Async everywhere for I/O. Docstrings with Parameters/Returns (NumPy style). Test coverage gate is 100% (statements + branches) for `api/`, `scout/`, `libs/discovery-engine/`, and `libs/shared/`.
+- **TypeScript:** No `any` or `as any`. ESLint enforces this. Extract types rather than inline them. Test coverage gate is 100% (statements + branches + functions + lines) for `app/`.
 - **API responses** use Pydantic models validated through `_entity_record()` in `platform/mcp/data.py`. New fields must be added to both the Pydantic schema (`schemas/public.py`) and the record builder.
 - **Frontend API mapping** lives in `app/src/lib/api.ts`. The `mapEntity()` function converts generated OpenAPI types to the internal `Entry` type. New API fields must be mapped here.
