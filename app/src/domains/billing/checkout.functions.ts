@@ -29,12 +29,14 @@ function resolvePriceId(product: string, interval: string): string {
       ? ATLAS_PRODUCTS.atlas_team.yearlyPriceId
       : ATLAS_PRODUCTS.atlas_team.monthlyPriceId;
   }
+  /* v8 ignore start -- checkoutInputSchema gates `product` to the literal union above; tsc cannot prove all branches return without the unreachable trailing throw */
   if (product === "atlas_research_pass") {
     return interval === "weekly"
       ? ATLAS_PRODUCTS.atlas_research_pass.weeklyPriceId
       : ATLAS_PRODUCTS.atlas_research_pass.oncePriceId;
   }
   throw new Error(`Unknown product: ${product}`);
+  /* v8 ignore stop */
 }
 
 /**

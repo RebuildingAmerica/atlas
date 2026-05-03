@@ -12,17 +12,9 @@ export default defineConfig({
       exclude: [
         "coverage/**",
         "dist/**",
-        "src/entry.client.tsx",
-        "src/entry.server.tsx",
         "src/lib/generated/**",
-        "src/router.tsx",
-        "src/routes/**",
         "src/routeTree.gen.ts",
         "tests/**",
-        // TanStack Start server functions wrap createServerFn().handler(),
-        // which can only execute inside the TanStack Start runtime.  They
-        // are exercised end-to-end by the acceptance suite.
-        "src/**/*.functions.ts",
         // Vite-only entry that pulls in `@vercel/config`; importing it in
         // vitest crashes outside the Vite runtime.
         "vercel.ts",

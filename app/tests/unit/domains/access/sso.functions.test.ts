@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { AtlasSAMLProviderHealth } from "@/domains/access/sso.functions";
 import {
   createSSOSignInResolutionFixture,
   createStoredWorkspaceIdentityFixture,
@@ -14,6 +15,7 @@ import {
 const mocks = vi.hoisted(() => ({
   ensureAuthReady: vi.fn(),
   getAuthRuntimeConfig: vi.fn(),
+  getSamlAllowedIssuerOrigins: vi.fn(),
   isAllowedSamlIssuer: vi.fn(),
   getBrowserSessionHeaders: vi.fn(),
   loadOrganizationRequestContext: vi.fn(),
@@ -36,6 +38,7 @@ vi.mock("@/domains/access/server/request-headers", () => ({
 
 vi.mock("@/domains/access/server/runtime", () => ({
   getAuthRuntimeConfig: mocks.getAuthRuntimeConfig,
+  getSamlAllowedIssuerOrigins: mocks.getSamlAllowedIssuerOrigins,
   isAllowedSamlIssuer: mocks.isAllowedSamlIssuer,
 }));
 
@@ -83,6 +86,7 @@ describe("sso.functions", () => {
       samlSpPrivateKeyPass: null,
     });
     mocks.isAllowedSamlIssuer.mockReturnValue(true);
+    mocks.getSamlAllowedIssuerOrigins.mockReturnValue(["https://accounts.google.com"]);
     mocks.getBrowserSessionHeaders.mockReturnValue(browserSessionHeaders);
     mocks.loadOrganizationRequestContext.mockResolvedValue({
       auth: {
@@ -560,5 +564,411 @@ describe("sso.functions", () => {
     });
 
     expect(authApi.updateOrganization).not.toHaveBeenCalled();
+  });
+
+  it("returns the operator-managed SAML issuer allowlist", async () => {
+    mocks.getSamlAllowedIssuerOrigins.mockReturnValue([
+      "https://accounts.google.com",
+      "https://login.microsoftonline.com",
+    ]);
+
+    const { getWorkspaceSAMLAllowedIssuers } = await import("@/domains/access/sso.functions");
+    const response = (await getWorkspaceSAMLAllowedIssuers.__executeServer({
+      method: "GET",
+      data: undefined,
+    })) as ServerFnExecutionResponse;
+
+    expect(response.error).toBeUndefined();
+    expect(response.result).toEqual({
+      issuerOrigins: ["https://accounts.google.com", "https://login.microsoftonline.com"],
+    });
+  });
+
+  it("registers a SAML provider with SP signing material when configured", async () => {
+    mocks.getAuthRuntimeConfig.mockReturnValue({
+      publicBaseUrl: "https://atlas.test",
+      samlAllowedIssuerOrigins: new Set(["https://accounts.google.com"]),
+      samlSpPrivateKey: "-----BEGIN PRIVATE KEY-----\nABC\n-----END PRIVATE KEY-----",
+      samlSpPrivateKeyPass: "passphrase",
+    });
+    authApi.registerSSOProvider.mockResolvedValue({
+      domainVerificationToken: "token_signed",
+      providerId: "atlas-team-google-workspace-saml",
+      redirectURI: "https://atlas.test/api/auth/sso/callback",
+    });
+
+    const { registerWorkspaceSAMLProvider } = await import("@/domains/access/sso.functions");
+    const response = (await registerWorkspaceSAMLProvider.__executeServer({
+      method: "POST",
+      data: {
+        certificate: "-----BEGIN CERTIFICATE-----test",
+        domain: "policy.example",
+        entryPoint: "https://accounts.google.com/o/saml2/idp?idpid=abc123",
+        issuer: "https://accounts.google.com/o/saml2?idpid=abc123",
+        setAsPrimary: false,
+      },
+    })) as ServerFnExecutionResponse;
+
+    expect(response.error).toBeUndefined();
+    interface RegisterCall {
+      body: {
+        samlConfig: {
+          authnRequestsSigned: boolean;
+          spMetadata: { entityID: string; privateKey?: string; privateKeyPass?: string };
+          privateKey?: string;
+        };
+      };
+    }
+    const call = authApi.registerSSOProvider.mock.calls[0]?.[0] as RegisterCall | undefined;
+    expect(call?.body.samlConfig.authnRequestsSigned).toBe(true);
+    expect(call?.body.samlConfig.spMetadata.privateKey).toBe(
+      "-----BEGIN PRIVATE KEY-----\nABC\n-----END PRIVATE KEY-----",
+    );
+    expect(call?.body.samlConfig.spMetadata.privateKeyPass).toBe("passphrase");
+    expect(call?.body.samlConfig.privateKey).toBe(
+      "-----BEGIN PRIVATE KEY-----\nABC\n-----END PRIVATE KEY-----",
+    );
+  });
+
+  it("reports SAML provider health when the IdP entry point and certificate are valid", async () => {
+    const futureDate = new Date(Date.now() + 1000 * 60 * 60 * 24 * 365).toISOString();
+    authApi.getSSOProvider.mockResolvedValue({
+      organizationId: "org_team",
+      samlConfig: {
+        certificate: {
+          fingerprintSha256: "AB:CD",
+          notAfter: futureDate,
+        },
+        entryPoint: "https://accounts.google.com/o/saml2/idp?idpid=abc",
+      },
+    });
+    const fetchMock = vi.fn().mockResolvedValue({ status: 200 });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { checkWorkspaceSAMLProviderHealth } = await import("@/domains/access/sso.functions");
+    const response = (await checkWorkspaceSAMLProviderHealth.__executeServer({
+      method: "POST",
+      data: { providerId: "saml_123" },
+    })) as ServerFnExecutionResponse;
+
+    expect(response.error).toBeUndefined();
+    expect(response.result).toMatchObject({
+      certificateValid: true,
+      certificateExpired: false,
+      entryPointReachable: true,
+      entryPointStatus: 200,
+      reason: null,
+    });
+    vi.unstubAllGlobals();
+  });
+
+  it("flags SAML provider health when the certificate has expired", async () => {
+    const pastDate = new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString();
+    authApi.getSSOProvider.mockResolvedValue({
+      organizationId: "org_team",
+      samlConfig: {
+        certificate: {
+          fingerprintSha256: "AB:CD",
+          notAfter: pastDate,
+        },
+        entryPoint: "https://accounts.google.com/o/saml2/idp",
+      },
+    });
+    const fetchMock = vi.fn().mockResolvedValue({ status: 200 });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { checkWorkspaceSAMLProviderHealth } = await import("@/domains/access/sso.functions");
+    const response = (await checkWorkspaceSAMLProviderHealth.__executeServer({
+      method: "POST",
+      data: { providerId: "saml_123" },
+    })) as ServerFnExecutionResponse;
+
+    expect(response.error).toBeUndefined();
+    const samlHealth = response.result as AtlasSAMLProviderHealth;
+    expect(samlHealth.certificateExpired).toBe(true);
+    expect(samlHealth.reason).toContain("expired");
+    vi.unstubAllGlobals();
+  });
+
+  it("flags SAML provider health when the certificate could not be parsed", async () => {
+    authApi.getSSOProvider.mockResolvedValue({
+      organizationId: "org_team",
+      samlConfig: {
+        certificate: { rawValue: "garbage" },
+        entryPoint: "https://accounts.google.com/o/saml2/idp",
+      },
+    });
+    const fetchMock = vi.fn().mockResolvedValue({ status: 200 });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { checkWorkspaceSAMLProviderHealth } = await import("@/domains/access/sso.functions");
+    const response = (await checkWorkspaceSAMLProviderHealth.__executeServer({
+      method: "POST",
+      data: { providerId: "saml_123" },
+    })) as ServerFnExecutionResponse;
+
+    expect(response.error).toBeUndefined();
+    const samlHealth = response.result as AtlasSAMLProviderHealth;
+    expect(samlHealth.certificateValid).toBe(false);
+    expect(samlHealth.reason).toContain("could not parse");
+    vi.unstubAllGlobals();
+  });
+
+  it("refuses to probe a non-public SAML IdP entry point", async () => {
+    authApi.getSSOProvider.mockResolvedValue({
+      organizationId: "org_team",
+      samlConfig: {
+        certificate: {
+          fingerprintSha256: "AB:CD",
+          notAfter: new Date(Date.now() + 86400000).toISOString(),
+        },
+        entryPoint: "http://127.0.0.1/idp",
+      },
+    });
+
+    const { checkWorkspaceSAMLProviderHealth } = await import("@/domains/access/sso.functions");
+    const response = (await checkWorkspaceSAMLProviderHealth.__executeServer({
+      method: "POST",
+      data: { providerId: "saml_123" },
+    })) as ServerFnExecutionResponse;
+
+    expect(response.error).toBeUndefined();
+    const samlHealth = response.result as AtlasSAMLProviderHealth;
+    expect(samlHealth.entryPointReachable).toBe(false);
+    expect(samlHealth.reason).toContain("non-public");
+  });
+
+  it("refuses to probe an HTTPS SAML IdP entry point on a deny-listed host", async () => {
+    authApi.getSSOProvider.mockResolvedValue({
+      organizationId: "org_team",
+      samlConfig: {
+        certificate: {
+          fingerprintSha256: "AB:CD",
+          notAfter: new Date(Date.now() + 86400000).toISOString(),
+        },
+        entryPoint: "https://10.0.0.5/idp",
+      },
+    });
+
+    const { checkWorkspaceSAMLProviderHealth } = await import("@/domains/access/sso.functions");
+    const response = (await checkWorkspaceSAMLProviderHealth.__executeServer({
+      method: "POST",
+      data: { providerId: "saml_123" },
+    })) as ServerFnExecutionResponse;
+
+    expect(response.error).toBeUndefined();
+    const samlHealth = response.result as AtlasSAMLProviderHealth;
+    expect(samlHealth.entryPointReachable).toBe(false);
+    expect(samlHealth.reason).toContain("non-public");
+  });
+
+  it("refuses to probe a malformed SAML IdP entry point", async () => {
+    authApi.getSSOProvider.mockResolvedValue({
+      organizationId: "org_team",
+      samlConfig: {
+        certificate: {
+          fingerprintSha256: "AB:CD",
+          notAfter: new Date(Date.now() + 86400000).toISOString(),
+        },
+        entryPoint: "not-a-url",
+      },
+    });
+
+    const { checkWorkspaceSAMLProviderHealth } = await import("@/domains/access/sso.functions");
+    const response = (await checkWorkspaceSAMLProviderHealth.__executeServer({
+      method: "POST",
+      data: { providerId: "saml_123" },
+    })) as ServerFnExecutionResponse;
+
+    expect(response.error).toBeUndefined();
+    const samlHealth = response.result as AtlasSAMLProviderHealth;
+    expect(samlHealth.entryPointReachable).toBe(false);
+    expect(samlHealth.reason).toContain("non-public");
+  });
+
+  it("reports SAML provider health when the IdP entry point fetch fails", async () => {
+    authApi.getSSOProvider.mockResolvedValue({
+      organizationId: "org_team",
+      samlConfig: {
+        certificate: {
+          fingerprintSha256: "AB:CD",
+          notAfter: new Date(Date.now() + 86400000).toISOString(),
+        },
+        entryPoint: "https://accounts.google.com/o/saml2/idp",
+      },
+    });
+    const fetchMock = vi.fn().mockRejectedValue(new Error("ECONNREFUSED"));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { checkWorkspaceSAMLProviderHealth } = await import("@/domains/access/sso.functions");
+    const response = (await checkWorkspaceSAMLProviderHealth.__executeServer({
+      method: "POST",
+      data: { providerId: "saml_123" },
+    })) as ServerFnExecutionResponse;
+
+    expect(response.error).toBeUndefined();
+    expect(response.result).toMatchObject({
+      entryPointReachable: false,
+      reason: "ECONNREFUSED",
+    });
+    vi.unstubAllGlobals();
+  });
+
+  it("returns a generic IdP-unreachable reason when fetch throws a non-Error value", async () => {
+    authApi.getSSOProvider.mockResolvedValue({
+      organizationId: "org_team",
+      samlConfig: {
+        certificate: {
+          fingerprintSha256: "AB:CD",
+          notAfter: new Date(Date.now() + 86400000).toISOString(),
+        },
+        entryPoint: "https://accounts.google.com/o/saml2/idp",
+      },
+    });
+    const fetchMock = vi.fn().mockRejectedValue("network blip");
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { checkWorkspaceSAMLProviderHealth } = await import("@/domains/access/sso.functions");
+    const response = (await checkWorkspaceSAMLProviderHealth.__executeServer({
+      method: "POST",
+      data: { providerId: "saml_123" },
+    })) as ServerFnExecutionResponse;
+
+    expect(response.result).toMatchObject({
+      reason: "Atlas could not reach the IdP.",
+    });
+    vi.unstubAllGlobals();
+  });
+
+  it("rejects SAML health checks for a provider in another workspace", async () => {
+    authApi.getSSOProvider.mockResolvedValue({ organizationId: "other_org" });
+
+    const { checkWorkspaceSAMLProviderHealth } = await import("@/domains/access/sso.functions");
+    const response = (await checkWorkspaceSAMLProviderHealth.__executeServer({
+      method: "POST",
+      data: { providerId: "saml_123" },
+    })) as ServerFnExecutionResponse;
+
+    expect(response.error).toBeUndefined();
+    expect(response.result).toMatchObject({
+      reason: "Provider is not registered to this workspace.",
+    });
+  });
+
+  it("rejects SAML health checks for a non-SAML provider", async () => {
+    authApi.getSSOProvider.mockResolvedValue({
+      organizationId: "org_team",
+    });
+
+    const { checkWorkspaceSAMLProviderHealth } = await import("@/domains/access/sso.functions");
+    const response = (await checkWorkspaceSAMLProviderHealth.__executeServer({
+      method: "POST",
+      data: { providerId: "oidc_123" },
+    })) as ServerFnExecutionResponse;
+
+    expect(response.error).toBeUndefined();
+    const samlHealth = response.result as AtlasSAMLProviderHealth;
+    expect(samlHealth.reason).toContain("SAML-only");
+  });
+
+  it("rotates the SAML signing certificate for the active workspace provider", async () => {
+    authApi.getSSOProvider.mockResolvedValue({ organizationId: "org_team" });
+
+    const { rotateWorkspaceSAMLCertificate } = await import("@/domains/access/sso.functions");
+    const response = (await rotateWorkspaceSAMLCertificate.__executeServer({
+      method: "POST",
+      data: {
+        certificate: "-----BEGIN CERTIFICATE-----rotated",
+        providerId: "saml_123",
+      },
+    })) as ServerFnExecutionResponse;
+
+    expect(response.error).toBeUndefined();
+    expect(response.result).toEqual({ ok: true });
+    expect(authApi.updateSSOProvider).toHaveBeenCalledWith({
+      body: {
+        providerId: "saml_123",
+        samlConfig: { cert: "-----BEGIN CERTIFICATE-----rotated" },
+      },
+      headers: browserSessionHeaders,
+    });
+  });
+
+  it("rejects rotating a SAML certificate for a provider in another workspace", async () => {
+    authApi.getSSOProvider.mockResolvedValue({ organizationId: "other_org" });
+
+    const { rotateWorkspaceSAMLCertificate } = await import("@/domains/access/sso.functions");
+    const response = (await rotateWorkspaceSAMLCertificate.__executeServer({
+      method: "POST",
+      data: {
+        certificate: "-----BEGIN CERTIFICATE-----rotated",
+        providerId: "saml_123",
+      },
+    })) as ServerFnExecutionResponse;
+
+    expect(response.error).toBeInstanceOf(Error);
+    expect((response.error as Error).message).toContain("not registered to the active workspace");
+    expect(authApi.updateSSOProvider).not.toHaveBeenCalled();
+  });
+
+  it("returns null for invitation sign-in when no invitation is found", async () => {
+    authApi.getInvitation.mockResolvedValue(null);
+
+    const { resolveWorkspaceSSOSignIn } = await import("@/domains/access/sso.functions");
+    const response = (await resolveWorkspaceSSOSignIn.__executeServer({
+      method: "POST",
+      data: { email: "user@atlas.test", invitationId: "missing" },
+    })) as ServerFnExecutionResponse;
+
+    expect(response.error).toBeUndefined();
+    expect(response.result).toBeNull();
+  });
+
+  it("falls back to generic resolution when invitation provider does not match email domain", async () => {
+    authApi.getInvitation.mockResolvedValue({ organizationId: "org_team" });
+    mocks.loadStoredWorkspaceIdentity.mockReturnValue(
+      createStoredWorkspaceIdentityFixture({
+        primaryProviderId: "atlas-team-google-workspace-saml",
+      }),
+    );
+    mocks.listStoredWorkspaceSSOProviders.mockReturnValue([
+      createStoredWorkspaceSSOProviderFixture({
+        domain: "different.example",
+        domainVerified: true,
+        organizationId: "org_team",
+        providerId: "atlas-team-google-workspace-saml",
+      }),
+    ]);
+
+    const { resolveWorkspaceSSOSignIn } = await import("@/domains/access/sso.functions");
+    const response = (await resolveWorkspaceSSOSignIn.__executeServer({
+      method: "POST",
+      data: { email: "owner@atlas.test", invitationId: "inv_123" },
+    })) as ServerFnExecutionResponse;
+
+    expect(response.error).toBeUndefined();
+    expect(response.result).toBeNull();
+  });
+
+  it("falls back to generic resolution when invitation has no matching identity", async () => {
+    authApi.getInvitation.mockResolvedValue({ organizationId: "org_team" });
+    mocks.loadStoredWorkspaceIdentity.mockReturnValue(null);
+    mocks.listStoredWorkspaceSSOProviders.mockReturnValue([
+      createStoredWorkspaceSSOProviderFixture({
+        hasOIDC: true,
+        hasSAML: false,
+        organizationId: "org_team",
+        providerId: "atlas-team-google-workspace-oidc",
+      }),
+    ]);
+
+    const { resolveWorkspaceSSOSignIn } = await import("@/domains/access/sso.functions");
+    const response = (await resolveWorkspaceSSOSignIn.__executeServer({
+      method: "POST",
+      data: { email: "owner@atlas.test", invitationId: "inv_123" },
+    })) as ServerFnExecutionResponse;
+
+    expect(response.error).toBeUndefined();
+    expect(response.result).toBeNull();
   });
 });

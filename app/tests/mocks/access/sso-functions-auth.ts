@@ -15,6 +15,7 @@ export function createSSOFunctionsAuthApi() {
       },
     }),
     getInvitation: vi.fn().mockResolvedValue(null),
+    getSSOProvider: vi.fn().mockResolvedValue(null),
     registerSSOProvider: vi.fn().mockResolvedValue({
       domainVerificationToken: "token_123",
       providerId: "atlas-team-google-workspace-oidc",
@@ -24,6 +25,7 @@ export function createSSOFunctionsAuthApi() {
       domainVerificationToken: "token_456",
     }),
     updateOrganization: vi.fn().mockResolvedValue(undefined),
+    updateSSOProvider: vi.fn().mockResolvedValue(undefined),
     verifyDomain: vi.fn().mockResolvedValue(undefined),
   };
 }

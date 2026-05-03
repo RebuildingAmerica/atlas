@@ -76,7 +76,9 @@ function ManageProfileRoute() {
 
   function toggleSuppressed(sourceId: string) {
     setForm((current) => {
+      /* v8 ignore start -- the suppression checkbox only renders once the form is initialised */
       if (!current) return current;
+      /* v8 ignore stop */
       const next = new Set(current.suppressedSourceIds);
       if (next.has(sourceId)) {
         next.delete(sourceId);
@@ -88,7 +90,9 @@ function ManageProfileRoute() {
   }
 
   async function handleSave() {
+    /* v8 ignore start -- the Save button only renders when the form and entry are both initialised */
     if (!form || !entry) return;
+    /* v8 ignore stop */
     setErrorMessage(null);
     setSavedMessage(null);
     try {

@@ -70,7 +70,9 @@ function ClaimRoute() {
   }
 
   async function handleVerify() {
+    /* v8 ignore start -- the verify CTA only renders when verificationToken is set */
     if (!verificationToken) return;
+    /* v8 ignore stop */
     setErrorMessage(null);
     try {
       await verify.mutateAsync({ token: verificationToken });
@@ -109,6 +111,7 @@ function ClaimRoute() {
               to="/sign-in"
               search={{
                 redirect:
+                  /* v8 ignore next 3 -- the SSR-side fallback runs only when window is undefined; the route component is client-only */
                   typeof window !== "undefined"
                     ? window.location.pathname + window.location.search
                     : `/claim/${slug}`,

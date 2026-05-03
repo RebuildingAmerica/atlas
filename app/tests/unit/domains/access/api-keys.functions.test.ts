@@ -395,6 +395,45 @@ describe("api-keys.functions", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it("surfaces the missing-introspection-URL error when no public probe is available", async () => {
+    mocks.getAuthRuntimeConfig.mockReturnValue({
+      apiBaseUrl: "http://atlas-api.test",
+      apiKeyIntrospectionUrl: null,
+      localMode: false,
+      internalSecret: "internal-test-secret",
+      publicBaseUrl: "http://atlas.test",
+    });
+    mocks.ensureReadyAtlasSession.mockResolvedValue(
+      createAtlasSessionFixture({
+        user: {
+          email: "operator@atlas.test",
+          id: "user_123",
+        },
+      }),
+    );
+    mocks.ensureAuthReady.mockResolvedValue({
+      api: {
+        createApiKey: vi.fn().mockResolvedValue({
+          key: "atlas_secret_key_1234567890",
+        }),
+      },
+    });
+
+    const { createApiKey } = await import("@/domains/access/api-keys.functions");
+    const response = (await createApiKey.__executeServer({
+      method: "POST",
+      data: {
+        name: "CLI key",
+        scopes: ["entities:write"],
+      },
+    })) as ServerFnExecutionResponse;
+
+    expect(response.error).toBeInstanceOf(Error);
+    expect((response.error as Error).message).toContain(
+      "ATLAS_AUTH_API_KEY_INTROSPECTION_URL is required",
+    );
+  });
+
   it("deletes API keys with the current browser-session headers", async () => {
     const deleteApiKeyMock = vi.fn().mockResolvedValue(undefined);
 

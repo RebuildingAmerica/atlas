@@ -1,0 +1,66 @@
+// @vitest-environment jsdom
+import "@testing-library/jest-dom/vitest";
+import { render, screen, cleanup } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("@tanstack/react-router", async () => {
+  const harness = await import("@/../tests/helpers/router-harness");
+  return harness.installRouterMocks();
+});
+
+vi.mock("@vercel/analytics/react", () => ({
+  Analytics: () => <div data-testid="vercel-analytics" />,
+}));
+
+vi.mock("@vercel/speed-insights/react", () => ({
+  SpeedInsights: () => <div data-testid="vercel-speed-insights" />,
+}));
+
+vi.mock("@/platform/pages/not-found-page", () => ({
+  NotFoundPage: () => <div data-testid="not-found-page" />,
+}));
+
+vi.mock("@/platform/pages/error-page", () => ({
+  ErrorPage: () => <div data-testid="error-page" />,
+}));
+
+vi.mock("@/styles/app.css", () => ({}));
+
+describe("routes/__root", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
+  it("exposes the not-found and error components used by the root route", async () => {
+    const routeModule = await import("@/routes/__root");
+    const { NotFoundPage } = await import("@/platform/pages/not-found-page");
+    const { ErrorPage } = await import("@/platform/pages/error-page");
+    const { asRouteStub } = await import("@/../tests/helpers/router-harness");
+    const Route = asRouteStub(routeModule.Route);
+
+    expect(Route.options.notFoundComponent).toBe(NotFoundPage);
+    expect(Route.options.errorComponent).toBe(ErrorPage);
+  });
+
+  it("renders the root document with the Outlet, analytics, and speed insights", async () => {
+    const routeModule = await import("@/routes/__root");
+    const { asRouteStub } = await import("@/../tests/helpers/router-harness");
+    const Route = asRouteStub(routeModule.Route);
+
+    const Component = Route.options.component;
+    if (!Component) throw new Error("Expected Route.options.component");
+
+    // Avoid the "<html> cannot appear inside <body>" warning by rendering
+    // into an HTMLDocument fragment via a custom container.
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    try {
+      render(<Component />, { container });
+      expect(screen.getByTestId("router-outlet")).toBeInTheDocument();
+      expect(screen.getByTestId("vercel-analytics")).toBeInTheDocument();
+      expect(screen.getByTestId("vercel-speed-insights")).toBeInTheDocument();
+    } finally {
+      document.body.removeChild(container);
+    }
+  });
+});

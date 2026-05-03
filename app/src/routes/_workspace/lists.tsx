@@ -114,7 +114,7 @@ function ListsRoute() {
 
       {lists.isLoading ? (
         <p className="type-body-medium text-ink-soft">Loading lists…</p>
-      ) : (lists.data?.length ?? 0) === 0 ? (
+      ) : !lists.data || lists.data.length === 0 ? (
         <div className="bg-surface-container space-y-2 rounded-[1rem] p-5">
           <p className="type-body-medium text-ink-strong">You haven&apos;t built any lists yet.</p>
           <p className="type-body-small text-ink-soft">
@@ -123,7 +123,7 @@ function ListsRoute() {
         </div>
       ) : (
         <ul className="space-y-3">
-          {(lists.data ?? []).map((list) => (
+          {lists.data.map((list) => (
             <li
               key={list.id}
               className="border-outline-variant bg-surface-container-lowest flex items-start justify-between gap-3 rounded-[1rem] border p-4"

@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   ensureAtlasSession: vi.fn(),
   ensureReadyAtlasSession: vi.fn(),
   ensureAuthReady: vi.fn(),
+  ensureStripeCustomerForWorkspace: vi.fn(),
   getAuthRuntimeConfig: vi.fn(),
   getBrowserSessionHeaders: vi.fn(),
 }));
@@ -32,11 +33,16 @@ vi.mock("@/domains/access/server/request-headers", () => ({
   getBrowserSessionHeaders: mocks.getBrowserSessionHeaders,
 }));
 
+vi.mock("@/domains/billing/server/stripe-customer", () => ({
+  ensureStripeCustomerForWorkspace: mocks.ensureStripeCustomerForWorkspace,
+}));
+
 describe("organizations.functions", () => {
   const browserSessionHeaders = new Headers({ cookie: "test" });
   const authApi = {
     acceptInvitation: vi.fn(),
     cancelInvitation: vi.fn(),
+    checkOrganizationSlug: vi.fn(),
     createInvitation: vi.fn(),
     createOrganization: vi.fn(),
     getFullOrganization: vi.fn(),
@@ -54,6 +60,7 @@ describe("organizations.functions", () => {
     mocks.ensureAtlasSession.mockReset();
     mocks.ensureReadyAtlasSession.mockReset();
     mocks.ensureAuthReady.mockReset();
+    mocks.ensureStripeCustomerForWorkspace.mockReset();
     mocks.getAuthRuntimeConfig.mockReset();
     mocks.getBrowserSessionHeaders.mockReset();
 
@@ -63,6 +70,7 @@ describe("organizations.functions", () => {
     });
     mocks.getBrowserSessionHeaders.mockReturnValue(browserSessionHeaders);
     mocks.ensureAuthReady.mockResolvedValue({ api: authApi });
+    mocks.ensureStripeCustomerForWorkspace.mockResolvedValue("cus_123");
 
     Object.values(authApi).forEach((mock) => mock.mockReset());
   });
@@ -279,5 +287,173 @@ describe("organizations.functions", () => {
 
     expect(response.error).toBeDefined();
     expect((response.error as Error).message).toContain("Organization management is unavailable");
+  });
+
+  it("returns organization details as null when no active workspace exists", async () => {
+    const session = createAtlasSessionFixture({
+      workspace: {
+        activeOrganization: null,
+        activeProducts: [],
+        capabilities: {
+          canInviteMembers: false,
+          canManageOrganization: false,
+          canSwitchOrganizations: false,
+          canUseTeamFeatures: false,
+        },
+        memberships: [],
+        onboarding: { hasPendingInvitations: false, needsWorkspace: true },
+        pendingInvitations: [],
+        resolvedCapabilities: {
+          capabilities: [],
+          limits: {
+            api_requests_per_day: 0,
+            max_api_keys: 0,
+            max_members: 1,
+            max_shortlist_entries: 25,
+            max_shortlists: 1,
+            public_api_requests_per_hour: 100,
+            research_runs_per_month: 0,
+          },
+        },
+      },
+    });
+    mocks.ensureAtlasSession.mockResolvedValue(session);
+
+    const { getOrganizationDetails } = await import("@/domains/access/organizations.functions");
+    const response = (await getOrganizationDetails.__executeServer({
+      method: "GET",
+      data: undefined,
+    })) as ServerFnExecutionResponse;
+
+    expect(response.error).toBeUndefined();
+    expect(response.result).toBeNull();
+    expect(authApi.getFullOrganization).not.toHaveBeenCalled();
+  });
+
+  it("returns organization details as null when Better Auth has no record", async () => {
+    mocks.ensureAtlasSession.mockResolvedValue(createAtlasSessionFixture());
+    authApi.getFullOrganization.mockResolvedValue(null);
+    authApi.listSSOProviders.mockResolvedValue({ providers: [] });
+
+    const { getOrganizationDetails } = await import("@/domains/access/organizations.functions");
+    const response = (await getOrganizationDetails.__executeServer({
+      method: "GET",
+      data: undefined,
+    })) as ServerFnExecutionResponse;
+
+    expect(response.error).toBeUndefined();
+    expect(response.result).toBeNull();
+  });
+
+  it("reports an available workspace slug when Better Auth approves it", async () => {
+    mocks.ensureReadyAtlasSession.mockResolvedValue(createAtlasSessionFixture());
+    authApi.checkOrganizationSlug.mockResolvedValue({ status: true });
+
+    const { checkWorkspaceSlugAvailability } =
+      await import("@/domains/access/organizations.functions");
+    const response = (await checkWorkspaceSlugAvailability.__executeServer({
+      method: "POST",
+      data: { slug: "fresh-team" },
+    })) as ServerFnExecutionResponse;
+
+    expect(response.error).toBeUndefined();
+    expect(response.result).toEqual({ available: true });
+  });
+
+  it("reports an unavailable workspace slug when Better Auth rejects it", async () => {
+    mocks.ensureReadyAtlasSession.mockResolvedValue(createAtlasSessionFixture());
+    authApi.checkOrganizationSlug.mockRejectedValue(new Error("ORGANIZATION_SLUG_IS_TAKEN"));
+
+    const { checkWorkspaceSlugAvailability } =
+      await import("@/domains/access/organizations.functions");
+    const response = (await checkWorkspaceSlugAvailability.__executeServer({
+      method: "POST",
+      data: { slug: "fresh-team" },
+    })) as ServerFnExecutionResponse;
+
+    expect(response.error).toBeUndefined();
+    expect(response.result).toEqual({ available: false });
+  });
+
+  it("reports an unavailable workspace slug when Better Auth returns a non-true status", async () => {
+    mocks.ensureReadyAtlasSession.mockResolvedValue(createAtlasSessionFixture());
+    authApi.checkOrganizationSlug.mockResolvedValue({ status: false });
+
+    const { checkWorkspaceSlugAvailability } =
+      await import("@/domains/access/organizations.functions");
+    const response = (await checkWorkspaceSlugAvailability.__executeServer({
+      method: "POST",
+      data: { slug: "fresh-team" },
+    })) as ServerFnExecutionResponse;
+
+    expect(response.result).toEqual({ available: false });
+  });
+
+  it("creates a workspace with a delegated admin invitation and Stripe customer", async () => {
+    mocks.ensureReadyAtlasSession.mockResolvedValue(createAtlasSessionFixture());
+    authApi.createOrganization.mockResolvedValue({ id: "new_org", slug: "new-workspace" });
+    authApi.createInvitation.mockResolvedValue(undefined);
+
+    const { createWorkspace } = await import("@/domains/access/organizations.functions");
+    const response = (await createWorkspace.__executeServer({
+      method: "POST",
+      data: {
+        delegatedAdminEmail: "delegate@atlas.test",
+        name: "New Workspace",
+        slug: "new-workspace",
+        workspaceDomain: "example.com",
+        workspaceType: "team",
+      },
+    })) as ServerFnExecutionResponse;
+
+    expect(response.error).toBeUndefined();
+    expect(response.result).toEqual({ id: "new_org", slug: "new-workspace" });
+    expect(mocks.ensureStripeCustomerForWorkspace).toHaveBeenCalledWith(
+      "new_org",
+      "operator@atlas.test",
+      "New Workspace",
+    );
+    expect(authApi.createInvitation).toHaveBeenCalledWith({
+      body: {
+        email: "delegate@atlas.test",
+        organizationId: "new_org",
+        role: "admin",
+      },
+      headers: browserSessionHeaders,
+    });
+  });
+
+  it("creates a workspace even when Stripe customer pre-creation throws", async () => {
+    mocks.ensureReadyAtlasSession.mockResolvedValue(createAtlasSessionFixture());
+    authApi.createOrganization.mockResolvedValue({ id: "new_org", slug: "new-workspace" });
+    mocks.ensureStripeCustomerForWorkspace.mockRejectedValue(new Error("Stripe down"));
+
+    const { createWorkspace } = await import("@/domains/access/organizations.functions");
+    const response = (await createWorkspace.__executeServer({
+      method: "POST",
+      data: { name: "New Workspace", slug: "new-workspace", workspaceType: "team" },
+    })) as ServerFnExecutionResponse;
+
+    expect(response.error).toBeUndefined();
+    expect(response.result).toEqual({ id: "new_org", slug: "new-workspace" });
+  });
+
+  it("creates a workspace even when delegated invitation delivery fails", async () => {
+    mocks.ensureReadyAtlasSession.mockResolvedValue(createAtlasSessionFixture());
+    authApi.createOrganization.mockResolvedValue({ id: "new_org", slug: "new-workspace" });
+    authApi.createInvitation.mockRejectedValue(new Error("SMTP down"));
+
+    const { createWorkspace } = await import("@/domains/access/organizations.functions");
+    const response = (await createWorkspace.__executeServer({
+      method: "POST",
+      data: {
+        delegatedAdminEmail: "delegate@atlas.test",
+        name: "New Workspace",
+        slug: "new-workspace",
+        workspaceType: "team",
+      },
+    })) as ServerFnExecutionResponse;
+
+    expect(response.error).toBeUndefined();
   });
 });

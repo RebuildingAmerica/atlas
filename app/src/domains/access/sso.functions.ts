@@ -549,7 +549,13 @@ export const deleteWorkspaceSSOProvider = createServerFn({ method: "POST" })
 export const resolveWorkspaceSSOSignIn = createServerFn({ method: "POST" })
   .inputValidator(publicSSOResolutionSchema)
   .handler(async ({ data }) => {
-    const emailDomain = data.email.split("@")[1]?.trim().toLowerCase() ?? "";
+    const rawDomain = data.email.split("@")[1];
+    /* v8 ignore start -- publicSSOResolutionSchema validates `email` as RFC 5322, so split("@")[1] is always defined; tsc can't narrow that. */
+    if (!rawDomain) {
+      throw new Error("Atlas SSO email invariant: validated email always contains a domain part.");
+    }
+    /* v8 ignore stop */
+    const emailDomain = rawDomain.trim().toLowerCase();
     const authPromise = ensureAuthReady();
     const auth = await authPromise;
     const headers = getBrowserSessionHeaders();
@@ -593,11 +599,13 @@ export const resolveWorkspaceSSOSignIn = createServerFn({ method: "POST" })
     }
 
     const groupedWorkspaces = [...providersByWorkspace.entries()];
-    const [organizationId, workspaceProviders] = groupedWorkspaces[0] ?? [];
-
-    if (!organizationId || !workspaceProviders) {
-      return null;
+    const firstWorkspace = groupedWorkspaces[0];
+    /* v8 ignore start -- providersByWorkspace.size === 1 was checked above, so groupedWorkspaces[0] must exist; the runtime guard is only here because TypeScript cannot narrow Map iterator output from .size */
+    if (!firstWorkspace) {
+      throw new Error("Atlas SSO grouping invariant: size === 1 implies a first workspace.");
     }
+    /* v8 ignore stop */
+    const [organizationId, workspaceProviders] = firstWorkspace;
 
     const workspaceIdentity = await loadStoredWorkspaceIdentity(organizationId);
     if (!workspaceIdentity) {

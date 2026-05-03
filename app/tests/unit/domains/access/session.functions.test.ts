@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
+  checkEmailAccountExists: vi.fn(),
+  getAuthRuntimeConfig: vi.fn(),
   loadAtlasSession: vi.fn(),
   loadOidcRpLogoutRedirect: vi.fn(),
   requestMagicLinkForEmail: vi.fn(),
@@ -18,7 +20,12 @@ vi.mock("@/domains/access/server/rp-logout", () => ({
   loadOidcRpLogoutRedirect: mocks.loadOidcRpLogoutRedirect,
 }));
 
+vi.mock("@/domains/access/server/runtime", () => ({
+  getAuthRuntimeConfig: mocks.getAuthRuntimeConfig,
+}));
+
 vi.mock("@/domains/access/server/session-state", () => ({
+  checkEmailAccountExists: mocks.checkEmailAccountExists,
   loadAtlasSession: mocks.loadAtlasSession,
   requestMagicLinkForEmail: mocks.requestMagicLinkForEmail,
   requireAtlasSessionState: mocks.requireAtlasSessionState,
@@ -29,6 +36,8 @@ vi.mock("@/domains/access/server/session-state", () => ({
 describe("session.functions", () => {
   beforeEach(() => {
     vi.resetModules();
+    mocks.checkEmailAccountExists.mockReset();
+    mocks.getAuthRuntimeConfig.mockReset();
     mocks.loadAtlasSession.mockReset();
     mocks.loadOidcRpLogoutRedirect.mockReset();
     mocks.requestMagicLinkForEmail.mockReset();
@@ -173,5 +182,33 @@ describe("session.functions", () => {
       error: undefined,
       result: { url: null },
     });
+  });
+
+  it("reports the Atlas deploy mode from the auth runtime", async () => {
+    mocks.getAuthRuntimeConfig.mockReturnValue({ localMode: true });
+
+    const { getAtlasDeployMode } = await import("@/domains/access/session.functions");
+    const response = await getAtlasDeployMode.__executeServer({ method: "GET", data: undefined });
+
+    expect(response).toMatchObject({
+      error: undefined,
+      result: { localMode: true },
+    });
+  });
+
+  it("reports whether an Atlas account already exists for an email", async () => {
+    mocks.checkEmailAccountExists.mockResolvedValue(true);
+
+    const { checkAccountExists } = await import("@/domains/access/session.functions");
+    const response = await checkAccountExists.__executeServer({
+      method: "POST",
+      data: { email: "operator@atlas.test" },
+    });
+
+    expect(response).toMatchObject({
+      error: undefined,
+      result: { exists: true },
+    });
+    expect(mocks.checkEmailAccountExists).toHaveBeenCalledWith("operator@atlas.test");
   });
 });
