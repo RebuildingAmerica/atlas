@@ -81,8 +81,27 @@ For the individual researcher who needs a professional workspace.
 For newsrooms, nonprofits, and research teams who need to coordinate.
 
 **Billing:** $25/month base + $8/month per seat. Annual: $250/year
-base + $80/year per seat. The base covers the workspace itself. Each
-member beyond the first is one seat.
+base + $80/year per seat. The base covers the workspace itself. Seats
+are metered to membership: each member *beyond the first* is one billed
+seat (seat quantity = members − 1). The first member is covered by the
+base, so a solo team owner pays the base alone.
+
+**Seat metering:** Stripe is the source of truth for the billed seat
+count — there is intentionally no seat-count column in Atlas. The
+subscription always carries the base price line item, and a per-seat
+line item whose quantity is kept equal to members − 1. (A solo team
+owner has no seat line item; it is created on demand once a second
+member joins.) Atlas re-syncs that quantity to Stripe on every
+membership change (invite accepted, member removed, member leaves),
+applying proration so the account is credited or charged for the partial
+period.
+
+**Invite gating:** A team *workspace* (a Better Auth organization with
+`workspaceType='team'`) can exist for free, but it cannot invite
+teammates until it has an active Atlas Team subscription. Inviting is
+gated behind the `atlas_team` product. Once subscribed, invites are
+capped at `max_members` (50), counting current members plus
+outstanding pending invitations.
 
 **What it unlocks (over Pro):**
 
@@ -91,7 +110,8 @@ member beyond the first is one seat.
 - Watchlists and monitoring digests
 - Slack integration
 - SSO (SAML / OIDC)
-- Up to 50 members
+- Up to 50 members (seat-metered, base + 1 seat per member after the
+  first)
 - Priority support
 
 ### Atlas Research Pass
@@ -339,7 +359,8 @@ The framework supports future additions without structural changes:
 - Stripe Customer Portal customization
 - Usage analytics dashboard for team admins
 - Enterprise tier (custom pricing, dedicated support)
-- Metered billing beyond rate limits
+- Metered billing beyond Team seats and rate limits (Team seats are
+  metered to membership; see Atlas Team above)
 - Free trial periods
 
 These are follow-up work items, not launch blockers.

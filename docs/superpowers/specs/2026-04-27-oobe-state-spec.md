@@ -235,6 +235,10 @@ sign-up is **open** (no waitlist gate found).
 - User has unaccepted invitations. They are routed to `/organization` to
   choose. After accept, capabilities reflect the inviting workspace's
   `workspace_products`.
+- A teammate who follows an emailed invite link instead lands on
+  `/accept-invitation/{invitationId}`, which auto-accepts after auth (see
+  the Team workspace flow below). Accepting reconciles the inviting
+  workspace's Stripe seat count (`syncTeamSeats`).
 
 ## Phase 3 — Authenticated free use
 
@@ -375,6 +379,118 @@ free-tier capabilities. Workspace and account remain.
 - **Returns:** to the configured Customer Portal return URL inside the
   workspace.
 
+## Phase 6 — Team workspace (multi-member)
+
+Atlas Team layers shared, multi-member workspaces on top of the
+subscription machinery in Phases 4–5. The seat *economics* (base + one
+seat per member after the first, 50-member cap) are defined once in the
+[pricing model spec](2026-04-21-pricing-model-design.md#atlas-team); this
+section only traces the OOBE states.
+
+There are two ways into a team workspace: provision one directly at
+workspace creation, or upgrade an existing individual workspace in place.
+Both converge on `TeamUnsubscribed` (a free team that cannot yet invite),
+then subscribe to unlock invitations.
+
+```
+            ┌─────────────────────┐        ┌──────────────────────────┐
+            │  FreeWorkspace      │        │ workspace-creation form  │
+            │ (individual, Ph. 3) │        │  workspaceType='team'    │
+            └──────────┬──────────┘        └────────────┬─────────────┘
+                       │ "Upgrade to a team"            │ create
+       flip metadata   │ workspaceType                  │
+       individual→team │ (updateOrganization)           │
+                       ▼                                ▼
+                     ╔══════════════════════════════════════╗
+                     ║          TeamUnsubscribed            ║  free team
+                     ║  workspaceType='team', no atlas_team ║  workspace;
+                     ║  invites BLOCKED (gate throws)       ║  /organization
+                     ╚════════════════════╤═════════════════╝
+                                          │ subscribe to Atlas Team
+                                          │ (Phase 4 checkout; base price,
+                                          │  + seat item if members−1 ≥ 1)
+                                          ▼
+                     ╔══════════════════════════════════════╗
+                     ║           TeamSubscribed             ║  atlas_team
+                     ║  invites ENABLED, capped at          ║  active
+                     ║  max_members (members + pending)     ║
+                     ╚════════════════════╤═════════════════╝
+                                          │ invite teammate (email)
+                                          ▼
+                     ┌──────────────────────────────────────┐
+                     │           InvitePending              │  seat NOT
+                     │  pending invitation counts toward cap│  yet billed
+                     └────────────────────┬─────────────────┘
+                            invitee opens │ /accept-invitation/{id}
+                            emailed link  │ (auto-accept after auth)
+                                          ▼
+                     ┌──────────────────────────────────────┐
+                     │            SeatReconciled            │  syncTeamSeats
+                     │  member joins → seat qty = members−1 │  (proration)
+                     └──────────────────────────────────────┘
+```
+
+### State: `TeamUnsubscribed`
+
+- **Reached by:**
+  - **Direct creation** — `createWorkspace()` with
+    `workspaceType='team'` (workspace-creation section). An optional
+    delegated-admin email sends a handoff invite, but the invite itself
+    still needs an active subscription before it can be (re)sent from the
+    members panel.
+  - **Upgrade in place** — an existing individual `FreeWorkspace` flips
+    its metadata `workspaceType` to `team` via `updateOrganization`. No
+    new tenant is created: the workspace *is* the Better Auth
+    organization / API `org_id`; `workspaceType` is a mode flag, so the
+    same workspace, members, and Stripe customer carry over.
+- **Surface:** `/organization`
+- **Active products:** none. Capabilities are still free-tier.
+- **Invite gate:** `inviteWorkspaceMember` throws
+  ("Subscribe to Atlas Team to invite members…") because
+  `activeProducts` does not include `atlas_team`. A free team workspace
+  can exist but cannot add members.
+- **Exit:** subscribe to Atlas Team via the Phase 4 checkout flow.
+
+### State: `TeamSubscribed`
+
+- **Reached by:** completing Atlas Team checkout. The Checkout Session
+  carries the base price line item, plus a per-seat line item whenever
+  the initial seat quantity (members − 1) is ≥ 1 — built in
+  `server/checkout.ts`. A solo owner subscribes with the base alone; the
+  seat item is added later by `syncTeamSeats` once a teammate joins. The
+  `atlas_team` product lands in `workspace_products` exactly as in
+  `ActiveSubscriber` (Phase 5).
+- **Invites:** now enabled. `inviteWorkspaceMember` enforces the
+  `max_members` cap (50) by counting current members **plus** pending
+  invitations; at the cap it throws and asks the admin to remove a
+  member or cancel a pending invitation first.
+
+### State: `InvitePending`
+
+- An admin invited a teammate (Better Auth `createInvitation`). The
+  invitation is outstanding and counts toward the cap, but **no seat is
+  billed yet** — seat quantity tracks accepted membership, not pending
+  invites.
+- Admins can cancel a pending invitation (`cancelWorkspaceInvitation`),
+  which frees a cap slot.
+
+### State: `SeatReconciled`
+
+- **Trigger:** the invitee accepts. Following the emailed link lands them
+  on `/accept-invitation/{invitationId}`, which auto-accepts the
+  invitation once the viewer is authenticated (signing them up / in
+  first if needed) — a one-click join. Operators who are already signed
+  in can also accept from `/organization` (the `PendingInvitations`
+  surface).
+- **Effect:** membership grows by one and `syncTeamSeats` reconciles the
+  Stripe subscription so the seat line item's quantity equals
+  members − 1, prorated for the partial period. The same reconciliation
+  runs when a member is removed (`removeWorkspaceMember`) or leaves
+  (`leaveWorkspace`), so billed seats always follow membership.
+- **Source of truth:** Stripe holds the billed seat count; there is no
+  seat-count column in Atlas. `syncTeamSeats` is idempotent and a no-op
+  when the workspace has no active Team subscription.
+
 ## Resolved gaps
 
 The follow-up gaps identified during the initial OOBE pass have been
@@ -417,6 +533,7 @@ addressed:
 | Capability resolver (Py) | `api/atlas/domains/access/capabilities.py` |
 | Checkout server function | `app/src/domains/billing/checkout.functions.ts` |
 | Stripe Checkout Session creator | `app/src/domains/billing/server/checkout.ts` |
+| Team seat sync (Stripe) | `app/src/domains/billing/server/team-seats.ts` |
 | Webhook dispatcher | `app/src/domains/billing/server/webhook-handler.ts` |
 | Webhook route | `app/src/routes/api/stripe/webhook.ts` |
 | `workspace_products` schema | `app/src/domains/access/server/atlas-migrations.ts` |
@@ -424,7 +541,8 @@ addressed:
 | Session/state load | `app/src/domains/access/server/organization-session.ts` |
 | Sign-up | `app/src/routes/_auth/sign-up.tsx` |
 | Account setup | `app/src/domains/access/pages/auth/account-setup-page.tsx` |
-| Workspace creation | `app/src/domains/access/organizations.functions.ts` |
+| Workspace creation, invites, seat reconciliation | `app/src/domains/access/organizations.functions.ts` |
+| One-click invite acceptance (`/accept-invitation/{invitationId}`) | `app/src/domains/access/pages/auth/accept-invitation-page-helpers.ts` |
 | Stripe customer pre-creation | `app/src/domains/billing/server/stripe-customer.ts` |
 | Discount coupons | `app/src/domains/billing/server/discount-coupons.ts` |
 | Pricing model spec | `docs/superpowers/specs/2026-04-21-pricing-model-design.md` |
