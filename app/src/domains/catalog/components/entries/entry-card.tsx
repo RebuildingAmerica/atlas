@@ -28,6 +28,22 @@ function humanize(value: string): string {
     .join(" ");
 }
 
+/** Map a trust tier to its browse-card badge; unverified renders no badge (silence is honest). */
+function trustBadge(
+  level: Entry["trust"]["level"],
+): { variant: "success" | "info"; label: string } | null {
+  switch (level) {
+    case "subject_verified":
+      return { variant: "success", label: "Verified by subject" };
+    case "atlas_verified":
+      return { variant: "success", label: "Atlas-verified" };
+    case "corroborated":
+      return { variant: "info", label: "Corroborated" };
+    default:
+      return null;
+  }
+}
+
 /**
  * Browse card for a catalog entry.
  *
@@ -36,6 +52,7 @@ function humanize(value: string): string {
  * route for other entry types.
  */
 export function EntryCard({ entry, issueAreaLabels = {} }: EntryCardProps) {
+  const tier = trustBadge(entry.trust.level);
   return (
     <article className="bg-surface-container-lowest rounded-[1.3rem] px-4 py-4">
       <div className="flex flex-col gap-4">
@@ -65,7 +82,7 @@ export function EntryCard({ entry, issueAreaLabels = {} }: EntryCardProps) {
 
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant="info">{humanize(entry.type)}</Badge>
-              {entry.verified ? <Badge variant="success">Verified</Badge> : null}
+              {tier ? <Badge variant={tier.variant}>{tier.label}</Badge> : null}
               <Badge>{entry.source_count} sources</Badge>
             </div>
           </div>

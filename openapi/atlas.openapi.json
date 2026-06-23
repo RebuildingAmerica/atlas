@@ -2016,6 +2016,9 @@
             "title": "Sources",
             "type": "array"
           },
+          "trust": {
+            "$ref": "#/components/schemas/TrustInfo"
+          },
           "type": {
             "title": "Type",
             "type": "string"
@@ -2227,6 +2230,9 @@
             },
             "title": "Source Types",
             "type": "array"
+          },
+          "trust": {
+            "$ref": "#/components/schemas/TrustInfo"
           },
           "type": {
             "title": "Type",
@@ -4342,6 +4348,55 @@
         "title": "SourceType",
         "type": "string"
       },
+      "TrustInfo": {
+        "description": "Honest trust signals derived from corroborating evidence.\n\n``level`` never overclaims: an auto-discovered entity backed by a single\nsource domain is ``unverified``, not authoritative-sounding. Grounding flags\nare ``None`` when corroboration could not be evaluated (for example, in list\nresponses that do not load full source text).",
+        "properties": {
+          "email_grounded": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Whether the listed email is supported by a linked source.",
+            "title": "Email Grounded"
+          },
+          "independent_source_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Distinct registrable source domains backing the entity, when known.",
+            "title": "Independent Source Count"
+          },
+          "level": {
+            "default": "unverified",
+            "description": "subject_verified | atlas_verified | corroborated | unverified.",
+            "title": "Level",
+            "type": "string"
+          },
+          "website_grounded": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Whether the listed website is supported by a linked source.",
+            "title": "Website Grounded"
+          }
+        },
+        "title": "TrustInfo",
+        "type": "object"
+      },
       "ValidationError": {
         "properties": {
           "ctx": {
@@ -4642,8 +4697,8 @@
   "paths": {
     "/api/access/verify-discount": {
       "post": {
-        "description": "Submit a discount verification request.\n\nValidates the submission and creates a verification record (initially PENDING).\nAll verifications require manual review.\n\nArgs:\n    request: Verification request with segment, user_id, and segment-specific data\n    response: FastAPI response object for setting headers\n\nReturns:\n    VerificationResponsePayload with status and message\n\nRaises:\n    HTTPException: If validation fails (400) or processing fails (500)",
-        "operationId": "submit_discount_verification_api_access_verify_discount_post",
+        "description": "Validate a discount verification request and record it for manual review.",
+        "operationId": "submitDiscountVerification",
         "requestBody": {
           "content": {
             "application/json": {
@@ -4676,17 +4731,20 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Submit Discount Verification"
+        "summary": "Submit discount verification",
+        "tags": [
+          "access"
+        ]
       }
     },
     "/api/admin/verifications": {
       "get": {
-        "description": "List discount verification records (admin only).\n\nArgs:\n    _status: Filter by status (pending, verified, rejected, expired)\n    _segment: Filter by segment (independent_journalist, grassroots_nonprofit, civic_tech_worker)\n    _response_obj: FastAPI response object for setting headers\n\nReturns:\n    VerificationListResponse with records and metadata\n\nRaises:\n    HTTPException: If admin access is denied (401) or processing fails (500)",
-        "operationId": "list_verifications_api_admin_verifications_get",
+        "description": "List discount verification requests for manual review.",
+        "operationId": "listVerifications",
         "parameters": [
           {
             "in": "query",
-            "name": "_status",
+            "name": "status",
             "required": false,
             "schema": {
               "anyOf": [
@@ -4697,12 +4755,12 @@
                   "type": "null"
                 }
               ],
-              "title": " Status"
+              "title": "Status"
             }
           },
           {
             "in": "query",
-            "name": "_segment",
+            "name": "segment",
             "required": false,
             "schema": {
               "anyOf": [
@@ -4713,7 +4771,7 @@
                   "type": "null"
                 }
               ],
-              "title": " Segment"
+              "title": "Segment"
             }
           }
         ],
@@ -4739,13 +4797,16 @@
             "description": "Validation Error"
           }
         },
-        "summary": "List Verifications"
+        "summary": "List discount verifications",
+        "tags": [
+          "access"
+        ]
       }
     },
     "/api/admin/verifications/{user_id}": {
       "patch": {
-        "description": "Update a verification record status (admin only).\n\nArgs:\n    _user_id: The user ID of the verification to update\n    _request: New status and optional notes\n    _response_obj: FastAPI response object for setting headers\n\nReturns:\n    VerificationUpdateResponse with updated status\n\nRaises:\n    HTTPException: If not found (404), unauthorized (401), or processing fails (500)",
-        "operationId": "update_verification_api_admin_verifications__user_id__patch",
+        "description": "Update the review status for a discount verification request.",
+        "operationId": "updateVerification",
         "parameters": [
           {
             "in": "path",
@@ -4789,20 +4850,23 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Update Verification"
+        "summary": "Update discount verification",
+        "tags": [
+          "access"
+        ]
       }
     },
     "/api/auth/health": {
       "get": {
-        "description": "Check reachability of the external auth integration endpoints.\n\nReturns a per-service status map so operators can diagnose\nmisconfigurations during deployment.  This endpoint does not require\nauthentication because it is used for infrastructure monitoring.",
-        "operationId": "auth_health_api_auth_health_get",
+        "description": "Check the health of external authentication dependencies.",
+        "operationId": "getAuthHealth",
         "responses": {
           "200": {
             "content": {
               "application/json": {
                 "schema": {
                   "additionalProperties": true,
-                  "title": "Response Auth Health Api Auth Health Get",
+                  "title": "Response Getauthhealth",
                   "type": "object"
                 }
               }
@@ -4810,7 +4874,7 @@
             "description": "Successful Response"
           }
         },
-        "summary": "Auth Health",
+        "summary": "Auth health",
         "tags": [
           "access"
         ]
@@ -11574,8 +11638,8 @@
     },
     "/health": {
       "get": {
-        "description": "Health check endpoint.\n\nReturns\n-------\ndict[str, str]\n    Simple status response.",
-        "operationId": "health_check_health_get",
+        "description": "Return the Atlas API health status.",
+        "operationId": "getHealth",
         "responses": {
           "200": {
             "content": {
@@ -11584,7 +11648,7 @@
                   "additionalProperties": {
                     "type": "string"
                   },
-                  "title": "Response Health Check Health Get",
+                  "title": "Response Gethealth",
                   "type": "object"
                 }
               }
@@ -11592,7 +11656,10 @@
             "description": "Successful Response"
           }
         },
-        "summary": "Health Check"
+        "summary": "Health",
+        "tags": [
+          "health"
+        ]
       }
     }
   },
@@ -11612,16 +11679,36 @@
   ],
   "tags": [
     {
+      "description": "Authentication, authorization, and access-management APIs.",
+      "name": "access"
+    },
+    {
+      "description": "Profile-claim requests and profile management actions.",
+      "name": "claims"
+    },
+    {
+      "description": "Create and manage recurring Atlas discovery schedules.",
+      "name": "discovery-schedules"
+    },
+    {
       "description": "Create, inspect, update, and source Atlas entities.",
       "name": "entities"
     },
     {
-      "description": "Place-first Atlas resources such as entities, sources, coverage, and profiles.",
-      "name": "places"
+      "description": "Following feed resources for authenticated Atlas users.",
+      "name": "feed"
     },
     {
-      "description": "Atlas issue-area taxonomy resources and natural-language lookup.",
-      "name": "issue-areas"
+      "description": "Follow-state APIs for Atlas profiles.",
+      "name": "follows"
+    },
+    {
+      "description": "Operational health and environment metadata.",
+      "name": "health"
+    },
+    {
+      "description": "Saved-list APIs for authenticated Atlas users.",
+      "name": "lists"
     },
     {
       "description": "Top-level Atlas policy and issue domains.",
@@ -11636,8 +11723,24 @@
       "name": "flags"
     },
     {
-      "description": "Operational health and environment metadata.",
-      "name": "health"
+      "description": "Atlas issue-area taxonomy resources and natural-language lookup.",
+      "name": "issue-areas"
+    },
+    {
+      "description": "Organization-scoped annotation resources.",
+      "name": "org-annotations"
+    },
+    {
+      "description": "Organization-scoped discovery run resources.",
+      "name": "org-discovery-runs"
+    },
+    {
+      "description": "Organization-scoped entry resources.",
+      "name": "org-entries"
+    },
+    {
+      "description": "Place-first Atlas resources such as entities, sources, coverage, and profiles.",
+      "name": "places"
     }
   ]
 }

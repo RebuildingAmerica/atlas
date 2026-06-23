@@ -54,4 +54,18 @@ describe("PresenceSection", () => {
     expect(screen.queryByText("Phone")).not.toBeInTheDocument();
     expect(screen.queryByText("First seen")).not.toBeInTheDocument();
   });
+
+  it("renders an ungrounded website as a non-link card with an unconfirmed caption", () => {
+    render(<PresenceSection website="https://example.org" websiteGrounded={false} />);
+    expect(screen.queryByRole("link", { name: /example\.org/ })).toBeNull();
+    expect(screen.getByText("example.org")).toBeInTheDocument();
+    expect(screen.getByText("Not confirmed by a source")).toBeInTheDocument();
+  });
+
+  it("renders an ungrounded email as plain text with an unconfirmed caption", () => {
+    render(<PresenceSection email="hello@example.org" emailGrounded={false} />);
+    expect(screen.queryByRole("link", { name: /hello@example\.org/ })).toBeNull();
+    expect(screen.getByText("hello@example.org")).toBeInTheDocument();
+    expect(screen.getByText("Not confirmed by a source")).toBeInTheDocument();
+  });
 });

@@ -92,7 +92,11 @@ def export_openapi_schema(app: FastAPI, output_path: Path) -> Path:
 def main() -> None:
     """CLI entrypoint for exporting the Atlas OpenAPI schema."""
     create_app = importlib.import_module("atlas.main").create_app
-    project_root = Path(__file__).resolve().parents[2]
+    project_root = Path(__file__).resolve().parents[3]
     output_path = project_root / "openapi" / "atlas.openapi.json"
     export_openapi_schema(create_app(), output_path)
     print(output_path)
+
+
+if __name__ == "__main__":  # pragma: no cover
+    main()

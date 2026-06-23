@@ -6,6 +6,8 @@ interface PresenceSectionProps {
   email?: string;
   phone?: string;
   firstSeen?: string;
+  websiteGrounded?: boolean | null;
+  emailGrounded?: boolean | null;
 }
 
 interface ContactCellProps {
@@ -49,7 +51,14 @@ function ContactCell({ icon, label, value }: ContactCellProps) {
   );
 }
 
-export function PresenceSection({ website, email, phone, firstSeen }: PresenceSectionProps) {
+export function PresenceSection({
+  website,
+  email,
+  phone,
+  firstSeen,
+  websiteGrounded,
+  emailGrounded,
+}: PresenceSectionProps) {
   const hasAny = website || email || phone || firstSeen;
   if (!hasAny) return null;
 
@@ -58,23 +67,36 @@ export function PresenceSection({ website, email, phone, firstSeen }: PresenceSe
       <p className="type-label-medium text-ink-muted">Presence</p>
 
       {website ? (
-        <a
-          href={website}
-          target="_blank"
-          rel="noreferrer"
-          className="bg-surface-container-lowest hover:bg-surface-container-low flex items-center gap-3 rounded-2xl p-4 transition-colors"
-        >
-          <div className="bg-ink-strong flex h-8 w-8 shrink-0 items-center justify-center rounded-lg">
-            <Globe className="h-4 w-4 text-white" />
+        websiteGrounded === false ? (
+          <div className="bg-surface-container-lowest flex items-center gap-3 rounded-2xl p-4">
+            <div className="bg-ink-strong flex h-8 w-8 shrink-0 items-center justify-center rounded-lg">
+              <Globe className="h-4 w-4 text-white" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="type-title-small text-ink-strong">{extractDomain(website)}</p>
+              <p className="type-body-small text-ink-muted">Official website</p>
+              <p className="type-label-small text-ink-muted">Not confirmed by a source</p>
+            </div>
           </div>
-          <div className="min-w-0 flex-1">
-            <p className="type-title-small text-ink-strong">{extractDomain(website)}</p>
-            <p className="type-body-small text-ink-muted">Official website</p>
-          </div>
-          <span className="type-label-medium bg-surface-container text-ink-soft shrink-0 rounded-full px-3 py-1">
-            Visit <ArrowRight className="ml-0.5 inline h-3 w-3" />
-          </span>
-        </a>
+        ) : (
+          <a
+            href={website}
+            target="_blank"
+            rel="noreferrer"
+            className="bg-surface-container-lowest hover:bg-surface-container-low flex items-center gap-3 rounded-2xl p-4 transition-colors"
+          >
+            <div className="bg-ink-strong flex h-8 w-8 shrink-0 items-center justify-center rounded-lg">
+              <Globe className="h-4 w-4 text-white" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="type-title-small text-ink-strong">{extractDomain(website)}</p>
+              <p className="type-body-small text-ink-muted">Official website</p>
+            </div>
+            <span className="type-label-medium bg-surface-container text-ink-soft shrink-0 rounded-full px-3 py-1">
+              Visit <ArrowRight className="ml-0.5 inline h-3 w-3" />
+            </span>
+          </a>
+        )
       ) : null}
 
       {email || phone || firstSeen ? (
@@ -84,9 +106,16 @@ export function PresenceSection({ website, email, phone, firstSeen }: PresenceSe
               icon={<Mail className="text-ink-muted h-4 w-4" />}
               label="Email"
               value={
-                <a href={`mailto:${email}`} className="text-accent break-words hover:underline">
-                  {email}
-                </a>
+                emailGrounded === false ? (
+                  <>
+                    <span className="text-ink-strong break-words">{email}</span>
+                    <p className="type-label-small text-ink-muted">Not confirmed by a source</p>
+                  </>
+                ) : (
+                  <a href={`mailto:${email}`} className="text-accent break-words hover:underline">
+                    {email}
+                  </a>
+                )
               }
             />
           ) : null}

@@ -46,7 +46,8 @@ function VerificationLine({ entry }: { entry: Entry }) {
     );
   }
 
-  if (entry.verified) {
+  const level = entry.trust.level;
+  if (level === "atlas_verified") {
     return (
       <span className="type-body-medium text-ink-strong inline-flex items-center gap-1.5">
         <CheckCircle2 className="text-civic h-4 w-4" aria-hidden />
@@ -55,10 +56,24 @@ function VerificationLine({ entry }: { entry: Entry }) {
     );
   }
 
+  if (level === "corroborated") {
+    const count = entry.trust.independent_source_count;
+    const label =
+      count !== null
+        ? `Corroborated · ${count} independent ${count === 1 ? "source" : "sources"}`
+        : "Corroborated";
+    return (
+      <span className="type-body-medium text-ink-strong inline-flex items-center gap-1.5">
+        <CheckCircle2 className="text-civic h-4 w-4" aria-hidden />
+        {label}
+      </span>
+    );
+  }
+
   return (
     <span className="type-body-medium text-ink-soft inline-flex items-center gap-1.5">
       <ShieldQuestion className="text-ink-muted h-4 w-4" aria-hidden />
-      Source-derived
+      Single source
     </span>
   );
 }

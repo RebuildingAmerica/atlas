@@ -79,7 +79,7 @@ class TestMain:
         mock_module.create_app.return_value = mock_app
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            fake_file = str(Path(tmpdir) / "atlas" / "platform" / "openapi.py")
+            fake_file = str(Path(tmpdir) / "api" / "atlas" / "platform" / "openapi.py")
             expected = Path(tmpdir) / "openapi" / "atlas.openapi.json"
 
             with (

@@ -87,6 +87,50 @@ describe("api.entries.getBySlug and getConnections", () => {
     expect(fetchMock).toHaveBeenCalledWith("/api/entities/by-slug/people/ada-lovelace-1234");
     expect(result.id).toBe("ent_1");
     expect(result.slug).toBe("ada-lovelace-1234");
+    // Trust defaults to an honest "unverified" with unknown grounding when the API omits it.
+    expect(result.trust).toEqual({
+      level: "unverified",
+      independent_source_count: null,
+      website_grounded: null,
+      email_grounded: null,
+    });
+  });
+
+  it("maps an honest trust block when the API provides one", async () => {
+    fetchMock.mockResolvedValueOnce({
+      id: "ent_2",
+      type: "organization",
+      name: "Prairie Workers Cooperative",
+      description: "Worker-owned co-op",
+      address: {},
+      contact: {},
+      claim: null,
+      trust: {
+        level: "corroborated",
+        independent_source_count: 3,
+        website_grounded: true,
+        email_grounded: false,
+      },
+      issue_area_ids: [],
+      source_types: [],
+      source_count: 3,
+      slug: "prairie-workers-cooperative-1",
+      created_at: "2026-04-10T00:00:00.000Z",
+      updated_at: "2026-04-10T00:00:00.000Z",
+      active: true,
+      verified: false,
+      freshness: {},
+      sources: [],
+    });
+
+    const result = await api.entries.getBySlug("organizations", "prairie-workers-cooperative-1");
+
+    expect(result.trust).toEqual({
+      level: "corroborated",
+      independent_source_count: 3,
+      website_grounded: true,
+      email_grounded: false,
+    });
   });
 
   it("fetches related actor connections and returns the grouped list", async () => {

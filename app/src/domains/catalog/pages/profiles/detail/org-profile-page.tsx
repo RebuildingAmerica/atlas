@@ -120,6 +120,8 @@ export function OrgProfilePage({ entry }: OrgProfilePageProps) {
                 email={entry.email}
                 phone={entry.phone}
                 firstSeen={entry.first_seen}
+                websiteGrounded={entry.trust.website_grounded}
+                emailGrounded={entry.trust.email_grounded}
               />
             </div>
           </section>

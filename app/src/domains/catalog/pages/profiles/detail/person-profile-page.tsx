@@ -140,7 +140,13 @@ export function PersonProfilePage({ entry }: PersonProfilePageProps) {
           <section aria-label="Contact details" className={PANEL}>
             <span className={PANEL_HEADER}>Reach</span>
             <div className="mt-3">
-              <ReachSection email={entry.email} website={entry.website} phone={entry.phone} />
+              <ReachSection
+                email={entry.email}
+                website={entry.website}
+                phone={entry.phone}
+                emailGrounded={entry.trust.email_grounded}
+                websiteGrounded={entry.trust.website_grounded}
+              />
             </div>
           </section>
         ) : null}

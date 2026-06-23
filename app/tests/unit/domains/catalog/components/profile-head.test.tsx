@@ -22,6 +22,12 @@ describe("ProfileJsonLd", () => {
     active: true,
     verified: true,
     claim: { status: "unclaimed", verification_level: "atlas-verified" },
+    trust: {
+      level: "atlas_verified",
+      independent_source_count: null,
+      website_grounded: null,
+      email_grounded: null,
+    },
     created_at: "2026-01-01",
     updated_at: "2026-04-01",
   };

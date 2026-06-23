@@ -106,6 +106,20 @@ describe("ReachSection", () => {
     expect(screen.getByText("https://x.com")).toBeInTheDocument();
     expect(screen.getByText("555")).toBeInTheDocument();
   });
+
+  it("renders ungrounded email as plain text with an unconfirmed caption, not a link", () => {
+    render(<ReachSection email="a@b.com" emailGrounded={false} />);
+    expect(screen.queryByRole("link", { name: /a@b.com/ })).toBeNull();
+    expect(screen.getByText("a@b.com")).toBeInTheDocument();
+    expect(screen.getByText("Not confirmed by a source")).toBeInTheDocument();
+  });
+
+  it("renders ungrounded website as plain text with an unconfirmed caption, not a link", () => {
+    render(<ReachSection website="https://x.com" websiteGrounded={false} />);
+    expect(screen.queryByRole("link", { name: /x\.com/ })).toBeNull();
+    expect(screen.getByText("https://x.com")).toBeInTheDocument();
+    expect(screen.getByText("Not confirmed by a source")).toBeInTheDocument();
+  });
 });
 
 describe("PresenceSection", () => {

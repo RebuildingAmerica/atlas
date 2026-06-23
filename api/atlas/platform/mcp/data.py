@@ -7,6 +7,7 @@ from collections import Counter, defaultdict
 from collections.abc import Mapping, Sequence
 from datetime import UTC, date, datetime
 from typing import TYPE_CHECKING, Any, TypedDict, Unpack
+from urllib.parse import urlparse
 
 from atlas.domains.catalog.place_profiles import PLACE_PROFILES
 from atlas.domains.catalog.schemas.public import (
@@ -29,6 +30,7 @@ from atlas.domains.catalog.schemas.public import (
     PlaceTypeCount,
     SourceCollectionResponse,
     SourceResponse,
+    TrustInfo,
 )
 from atlas.domains.catalog.taxonomy import (
     DOMAINS,
@@ -129,7 +131,7 @@ class SourceSearchOptions(TypedDict, total=False):
 class EntityRecordContext:
     """Structured metadata needed to serialize an entity record."""
 
-    def __init__(
+    def __init__(  # noqa: PLR0913
         self,
         *,
         issue_area_ids: list[str],
@@ -137,12 +139,18 @@ class EntityRecordContext:
         source_count: int,
         latest_source_date: str | None,
         flag_summary: Mapping[str, Any] | None = None,
+        independent_source_count: int | None = None,
+        website_grounded: bool | None = None,
+        email_grounded: bool | None = None,
     ) -> None:
         self.issue_area_ids = issue_area_ids
         self.source_types = source_types
         self.source_count = source_count
         self.latest_source_date = latest_source_date
         self.flag_summary = flag_summary
+        self.independent_source_count = independent_source_count
+        self.website_grounded = website_grounded
+        self.email_grounded = email_grounded
 
 
 class AtlasDataService:
@@ -246,6 +254,9 @@ class AtlasDataService:
             )
             for source in sources
         ]
+        independent_source_count, website_grounded, email_grounded = _trust_inputs_from_sources(
+            entry, sources
+        )
         entity = _entity_record(
             entry,
             EntityRecordContext(
@@ -254,6 +265,9 @@ class AtlasDataService:
                 source_count=len(sources),
                 latest_source_date=_latest_source_date(sources, entry.last_seen.isoformat()),
                 flag_summary=entity_flag_summaries.get(entity_id),
+                independent_source_count=independent_source_count,
+                website_grounded=website_grounded,
+                email_grounded=email_grounded,
             ),
         )
         entity["source_ids"] = [source["id"] for source in sources]
@@ -792,6 +806,61 @@ def normalize_place_key(place_key: str) -> dict[str, str | None]:
     }
 
 
+def _registrable_domain(url: str | None) -> str | None:
+    """Return the lowercased registrable host for a URL, or None if unparseable."""
+    if not url or "://" not in url:
+        return None
+    host = urlparse(url).netloc.lower()
+    if host.startswith("www."):
+        host = host.removeprefix("www.")
+    return host or None
+
+
+def _host_grounded(host: str, sources: Sequence[Mapping[str, Any]]) -> bool:
+    """Whether a host is supported by any source's own domain or quoted context."""
+    for source in sources:
+        if host in (source.get("extraction_context") or "").lower():
+            return True
+        if _registrable_domain(source.get("url")) == host:
+            return True
+    return False
+
+
+def _trust_inputs_from_sources(
+    entry: EntryModel, sources: Sequence[Mapping[str, Any]]
+) -> tuple[int, bool, bool]:
+    """Derive corroboration breadth and contact grounding from linked sources."""
+    domains = {
+        domain
+        for source in sources
+        if (domain := _registrable_domain(source.get("url"))) is not None
+    }
+    website_host = _registrable_domain(entry.website)
+    website_grounded = website_host is not None and _host_grounded(website_host, sources)
+    email = (entry.email or "").lower()
+    email_grounded = bool(email) and any(
+        email in (source.get("extraction_context") or "").lower() for source in sources
+    )
+    return len(domains), website_grounded, email_grounded
+
+
+_MIN_CORROBORATING_SOURCES = 2
+
+
+def _trust_level(*, entry: EntryModel, independent_source_count: int | None) -> str:
+    """Honest trust tier; never overclaims for thinly-sourced auto entries."""
+    if entry.claim_status == "verified":
+        return "subject_verified"
+    if entry.verified:
+        return "atlas_verified"
+    if (
+        independent_source_count is not None
+        and independent_source_count >= _MIN_CORROBORATING_SOURCES
+    ):
+        return "corroborated"
+    return "unverified"
+
+
 def _entity_record(entry: EntryModel, context: EntityRecordContext) -> dict[str, Any]:
     if entry.claim_status == "verified":
         verification_level = "subject-verified"
@@ -830,6 +899,14 @@ def _entity_record(entry: EntryModel, context: EntityRecordContext) -> dict[str,
             "claim_verified_at": entry.claim_verified_at,
             "verification_level": verification_level,
         },
+        trust=TrustInfo(
+            level=_trust_level(
+                entry=entry, independent_source_count=context.independent_source_count
+            ),
+            independent_source_count=context.independent_source_count,
+            website_grounded=context.website_grounded,
+            email_grounded=context.email_grounded,
+        ),
         issue_area_ids=context.issue_area_ids,
         source_types=context.source_types,
         source_count=context.source_count,

@@ -161,6 +161,33 @@ class ClaimStatusInfo(BaseModel):
     )
 
 
+class TrustInfo(BaseModel):
+    """Honest trust signals derived from corroborating evidence.
+
+    ``level`` never overclaims: an auto-discovered entity backed by a single
+    source domain is ``unverified``, not authoritative-sounding. Grounding flags
+    are ``None`` when corroboration could not be evaluated (for example, in list
+    responses that do not load full source text).
+    """
+
+    level: str = Field(
+        "unverified",
+        description="subject_verified | atlas_verified | corroborated | unverified.",
+    )
+    independent_source_count: int | None = Field(
+        None,
+        description="Distinct registrable source domains backing the entity, when known.",
+    )
+    website_grounded: bool | None = Field(
+        None,
+        description="Whether the listed website is supported by a linked source.",
+    )
+    email_grounded: bool | None = Field(
+        None,
+        description="Whether the listed email is supported by a linked source.",
+    )
+
+
 class EntityResponse(BaseModel):
     """Canonical public entity shape."""
 
@@ -186,6 +213,7 @@ class EntityResponse(BaseModel):
     active: bool
     verified: bool
     claim: ClaimStatusInfo = Field(default_factory=ClaimStatusInfo)
+    trust: TrustInfo = Field(default_factory=TrustInfo)
     issue_area_ids: list[str] = Field(default_factory=list)
     source_types: list[str] = Field(default_factory=list)
     source_count: int = 0

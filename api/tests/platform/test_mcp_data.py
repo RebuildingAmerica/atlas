@@ -34,6 +34,7 @@ if TYPE_CHECKING:
 
 
 EXPECTED_DECODED_CURSOR = 12
+EXPECTED_DISTINCT_DOMAINS = 2
 
 
 @pytest_asyncio.fixture
@@ -991,3 +992,129 @@ async def test_search_sources_under_limit_no_cursor(
     """When fewer rows come back than `limit`, next_cursor stays None."""
     payload = await populated_service.search_sources(limit=100)
     assert payload["next_cursor"] is None
+
+
+# ---------------------------------------------------------------------------
+# Honest trust signals (corroboration tier + attribute grounding)
+# ---------------------------------------------------------------------------
+
+
+class TestTrustLevel:
+    """`_trust_level` reflects honest corroboration tiers and never overclaims."""
+
+    def test_subject_verified_outranks_everything(self) -> None:
+        entry = _build_entry(claim_status="verified", verified=True)
+        level = data_module._trust_level(entry=entry, independent_source_count=5)  # noqa: SLF001
+        assert level == "subject_verified"
+
+    def test_atlas_verified_when_verified_flag_set(self) -> None:
+        entry = _build_entry(verified=True)
+        assert data_module._trust_level(entry=entry, independent_source_count=1) == "atlas_verified"  # noqa: SLF001
+
+    def test_corroborated_with_two_independent_sources(self) -> None:
+        entry = _build_entry()
+        assert data_module._trust_level(entry=entry, independent_source_count=2) == "corroborated"  # noqa: SLF001
+
+    def test_unverified_with_single_source(self) -> None:
+        entry = _build_entry()
+        assert data_module._trust_level(entry=entry, independent_source_count=1) == "unverified"  # noqa: SLF001
+
+    def test_unverified_when_independent_count_unknown(self) -> None:
+        entry = _build_entry()
+        assert data_module._trust_level(entry=entry, independent_source_count=None) == "unverified"  # noqa: SLF001
+
+
+class TestTrustInputsFromSources:
+    """`_trust_inputs_from_sources` counts distinct domains and grounds contact."""
+
+    def test_counts_distinct_registrable_domains(self) -> None:
+        entry = _build_entry()
+        sources = [
+            {"url": "https://www.kcur.org/a", "extraction_context": ""},
+            {"url": "https://kcur.org/b", "extraction_context": ""},
+            {"url": "https://kansascity.com/c", "extraction_context": ""},
+        ]
+        result = data_module._trust_inputs_from_sources(entry, sources)  # noqa: SLF001
+        count, website_grounded, email_grounded = result
+        assert count == EXPECTED_DISTINCT_DOMAINS
+        assert website_grounded is False
+        assert email_grounded is False
+
+    def test_website_grounded_when_source_shares_domain(self) -> None:
+        entry = replace(_build_entry(), website="https://prairie.org")
+        sources = [{"url": "https://prairie.org/about", "extraction_context": "About us"}]
+        _, website_grounded, _ = data_module._trust_inputs_from_sources(entry, sources)  # noqa: SLF001
+        assert website_grounded is True
+
+    def test_website_grounded_when_host_quoted_in_context(self) -> None:
+        entry = replace(_build_entry(), website="https://prairie.org")
+        sources = [{"url": "https://kcur.org/x", "extraction_context": "see prairie.org for more"}]
+        _, website_grounded, _ = data_module._trust_inputs_from_sources(entry, sources)  # noqa: SLF001
+        assert website_grounded is True
+
+    def test_email_grounded_when_present_in_context_case_insensitive(self) -> None:
+        entry = replace(_build_entry(), email="Hi@Prairie.org")
+        sources = [
+            {"url": "https://kcur.org/x", "extraction_context": "Reach hi@prairie.org today"}
+        ]
+        _, _, email_grounded = data_module._trust_inputs_from_sources(entry, sources)  # noqa: SLF001
+        assert email_grounded is True
+
+    def test_ungrounded_when_no_source_supports_contact(self) -> None:
+        entry = replace(_build_entry(), website="https://prairie.org", email="hi@prairie.org")
+        sources = [{"url": "https://kcur.org/x", "extraction_context": "no contact here"}]
+        result = data_module._trust_inputs_from_sources(entry, sources)  # noqa: SLF001
+        count, website_grounded, email_grounded = result
+        assert count == 1
+        assert website_grounded is False
+        assert email_grounded is False
+
+    def test_handles_missing_and_malformed_urls(self) -> None:
+        entry = _build_entry()
+        sources = [
+            {"url": "", "extraction_context": ""},
+            {"url": "not a url", "extraction_context": ""},
+            {"url": "https:///no-host", "extraction_context": ""},
+            {"extraction_context": "no url key"},
+        ]
+        count, _, _ = data_module._trust_inputs_from_sources(entry, sources)  # noqa: SLF001
+        assert count == 0
+
+
+class TestEntityRecordTrustBlock:
+    """`_entity_record` surfaces the trust block built from context inputs."""
+
+    def test_includes_trust_block(self) -> None:
+        entry = _build_entry()
+        record = data_module._entity_record(  # noqa: SLF001
+            entry,
+            EntityRecordContext(
+                issue_area_ids=[],
+                source_types=[],
+                source_count=1,
+                latest_source_date=None,
+                independent_source_count=1,
+                website_grounded=False,
+                email_grounded=True,
+            ),
+        )
+        assert record["trust"] == {
+            "level": "unverified",
+            "independent_source_count": 1,
+            "website_grounded": False,
+            "email_grounded": True,
+        }
+
+    def test_trust_defaults_when_inputs_absent(self) -> None:
+        entry = _build_entry()
+        record = data_module._entity_record(  # noqa: SLF001
+            entry,
+            EntityRecordContext(
+                issue_area_ids=[],
+                source_types=[],
+                source_count=0,
+                latest_source_date=None,
+            ),
+        )
+        assert record["trust"]["level"] == "unverified"
+        assert record["trust"]["independent_source_count"] is None

@@ -123,6 +123,12 @@ describe("api runtime adapters", () => {
           slug: "",
           source_types: ["news_article"],
           state: "MO",
+          trust: {
+            level: "unverified",
+            independent_source_count: null,
+            website_grounded: null,
+            email_grounded: null,
+          },
           type: "organization",
           updated_at: "2026-04-10T00:00:00.000Z",
           verified: true,

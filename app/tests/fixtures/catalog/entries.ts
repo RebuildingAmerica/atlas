@@ -19,6 +19,12 @@ export function createEntryFixture(overrides: Partial<Entry> = {}): Entry {
     active: true,
     verified: false,
     claim: { status: "unclaimed", verification_level: "source-derived" },
+    trust: {
+      level: "unverified",
+      independent_source_count: null,
+      website_grounded: null,
+      email_grounded: null,
+    },
     issue_areas: ["housing_affordability"],
     source_types: [],
     source_count: 3,

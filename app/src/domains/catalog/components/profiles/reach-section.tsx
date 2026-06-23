@@ -5,6 +5,36 @@ interface ReachSectionProps {
   email?: string;
   website?: string;
   phone?: string;
+  emailGrounded?: boolean | null;
+  websiteGrounded?: boolean | null;
+}
+
+interface ContactValueProps {
+  value: string;
+  href: string;
+  grounded?: boolean | null;
+  external?: boolean;
+}
+
+/** Render a contact value as an actionable link, or — when no source supports it — plain text. */
+function ContactValue({ value, href, grounded, external = false }: ContactValueProps) {
+  if (grounded === false) {
+    return (
+      <>
+        <span className="text-ink-strong break-words">{value}</span>
+        <p className="type-label-small text-ink-muted">Not confirmed by a source</p>
+      </>
+    );
+  }
+  return (
+    <a
+      href={href}
+      {...(external ? { target: "_blank", rel: "noreferrer" } : {})}
+      className="text-accent break-words hover:underline"
+    >
+      {value}
+    </a>
+  );
 }
 
 interface ContactCardProps {
@@ -27,7 +57,13 @@ function ContactCard({ icon, label, value }: ContactCardProps) {
   );
 }
 
-export function ReachSection({ email, website, phone }: ReachSectionProps) {
+export function ReachSection({
+  email,
+  website,
+  phone,
+  emailGrounded,
+  websiteGrounded,
+}: ReachSectionProps) {
   const hasAny = email || website || phone;
   if (!hasAny) return null;
 
@@ -39,11 +75,7 @@ export function ReachSection({ email, website, phone }: ReachSectionProps) {
           <ContactCard
             icon={<Mail className="text-ink-muted h-4 w-4" />}
             label="Email"
-            value={
-              <a href={`mailto:${email}`} className="text-accent break-words hover:underline">
-                {email}
-              </a>
-            }
+            value={<ContactValue value={email} href={`mailto:${email}`} grounded={emailGrounded} />}
           />
         ) : null}
         {website ? (
@@ -51,14 +83,7 @@ export function ReachSection({ email, website, phone }: ReachSectionProps) {
             icon={<Globe className="text-ink-muted h-4 w-4" />}
             label="Website"
             value={
-              <a
-                href={website}
-                target="_blank"
-                rel="noreferrer"
-                className="text-accent hover:underline"
-              >
-                {website}
-              </a>
+              <ContactValue value={website} href={website} grounded={websiteGrounded} external />
             }
           />
         ) : null}

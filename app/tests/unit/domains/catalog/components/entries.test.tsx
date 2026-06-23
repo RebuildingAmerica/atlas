@@ -46,6 +46,12 @@ describe("catalog entry components", () => {
     updated_at: "2026-04-12T00:00:00.000Z",
     verified: true,
     claim: { status: "unclaimed", verification_level: "atlas-verified" },
+    trust: {
+      level: "atlas_verified",
+      independent_source_count: null,
+      website_grounded: null,
+      email_grounded: null,
+    },
     city: "Kansas City",
     state: "MO",
     geo_specificity: "local",
@@ -106,12 +112,14 @@ describe("catalog entry components", () => {
       issue_areas: [],
       source_types: [],
       verified: false,
+      trust: { ...sampleEntry.trust, level: "unverified" },
     };
     const { rerender } = render(<EntryCard entry={regionEntry} />);
 
     expect(screen.getByText("Midwest")).not.toBeNull();
     expect(screen.queryByText(/Latest source:/)).toBeNull();
-    expect(screen.queryByText("Verified")).toBeNull();
+    // Unverified entries carry no trust badge — silence is the honest signal.
+    expect(screen.queryByText("Atlas-verified")).toBeNull();
 
     rerender(
       <EntryCard
@@ -140,6 +148,48 @@ describe("catalog entry components", () => {
     );
 
     expect(screen.getByText("Location not specified")).not.toBeNull();
+  });
+
+  it("shows a 'Verified by subject' badge for the subject_verified tier", () => {
+    render(
+      <EntryCard
+        entry={{ ...sampleEntry, trust: { ...sampleEntry.trust, level: "subject_verified" } }}
+      />,
+    );
+    expect(screen.getByText("Verified by subject")).not.toBeNull();
+  });
+
+  it("shows an 'Atlas-verified' badge for the atlas_verified tier", () => {
+    render(
+      <EntryCard
+        entry={{ ...sampleEntry, trust: { ...sampleEntry.trust, level: "atlas_verified" } }}
+      />,
+    );
+    expect(screen.getByText("Atlas-verified")).not.toBeNull();
+  });
+
+  it("shows a 'Corroborated' badge with no count for the corroborated tier", () => {
+    render(
+      <EntryCard
+        entry={{
+          ...sampleEntry,
+          trust: { ...sampleEntry.trust, level: "corroborated", independent_source_count: 4 },
+        }}
+      />,
+    );
+    expect(screen.getByText("Corroborated")).not.toBeNull();
+  });
+
+  it("renders no trust badge for the unverified tier, never the legacy 'Verified'", () => {
+    render(
+      <EntryCard
+        entry={{ ...sampleEntry, trust: { ...sampleEntry.trust, level: "unverified" } }}
+      />,
+    );
+    expect(screen.queryByText("Verified")).toBeNull();
+    expect(screen.queryByText("Verified by subject")).toBeNull();
+    expect(screen.queryByText("Atlas-verified")).toBeNull();
+    expect(screen.queryByText("Corroborated")).toBeNull();
   });
 
   it("renders entry detail loading, error, empty, and success states", () => {

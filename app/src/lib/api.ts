@@ -68,6 +68,12 @@ function mapEntity(entity: EntityResponse): Entry {
       verification_level: (claim?.verification_level ??
         "source-derived") as Entry["claim"]["verification_level"],
     },
+    trust: {
+      level: (entity.trust?.level ?? "unverified") as Entry["trust"]["level"],
+      independent_source_count: entity.trust?.independent_source_count ?? null,
+      website_grounded: entity.trust?.website_grounded ?? null,
+      email_grounded: entity.trust?.email_grounded ?? null,
+    },
     issue_areas: entity.issue_area_ids ?? [],
     source_types: entity.source_types as Entry["source_types"],
     source_count: entity.source_count ?? 0,

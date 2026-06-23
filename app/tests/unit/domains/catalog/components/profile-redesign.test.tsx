@@ -32,7 +32,7 @@ import {
 } from "@/domains/catalog/components/profiles/detail/profile-detail-primitives";
 import { NetworkRails } from "@/domains/catalog/components/profiles/network-rails";
 import { WorkSection } from "@/domains/catalog/components/profiles/work-section";
-import type { ConnectionGroup } from "@/types";
+import type { ConnectionGroup, Entry } from "@/types";
 import {
   createEntryFixture as buildEntry,
   createSourceFixture as buildSource,
@@ -115,14 +115,52 @@ describe("FreshnessChip", () => {
 });
 
 describe("DataQualityBlock", () => {
-  it("renders Atlas-verified state when verified flag is true", () => {
-    render(<DataQualityBlock entry={buildEntry({ verified: true })} />);
+  const trust = (overrides: Partial<Entry["trust"]>): Entry["trust"] => ({
+    level: "unverified",
+    independent_source_count: null,
+    website_grounded: null,
+    email_grounded: null,
+    ...overrides,
+  });
+
+  it("renders Atlas-verified for the atlas_verified trust tier", () => {
+    render(<DataQualityBlock entry={buildEntry({ trust: trust({ level: "atlas_verified" }) })} />);
     expect(screen.getByText("Atlas-verified")).toBeInTheDocument();
   });
 
-  it("renders source-derived state when not verified", () => {
-    render(<DataQualityBlock entry={buildEntry({ verified: false })} />);
-    expect(screen.getByText("Source-derived")).toBeInTheDocument();
+  it("renders an honest 'Single source' for the unverified tier, never 'Source-derived'", () => {
+    render(<DataQualityBlock entry={buildEntry({ trust: trust({ level: "unverified" }) })} />);
+    expect(screen.getByText("Single source")).toBeInTheDocument();
+    expect(screen.queryByText("Source-derived")).toBeNull();
+  });
+
+  it("shows corroboration breadth for the corroborated tier", () => {
+    render(
+      <DataQualityBlock
+        entry={buildEntry({ trust: trust({ level: "corroborated", independent_source_count: 3 }) })}
+      />,
+    );
+    expect(screen.getByText("Corroborated · 3 independent sources")).toBeInTheDocument();
+  });
+
+  it("uses the singular for a single corroborating source", () => {
+    render(
+      <DataQualityBlock
+        entry={buildEntry({ trust: trust({ level: "corroborated", independent_source_count: 1 }) })}
+      />,
+    );
+    expect(screen.getByText("Corroborated · 1 independent source")).toBeInTheDocument();
+  });
+
+  it("renders a bare 'Corroborated' when the independent source count is unknown", () => {
+    render(
+      <DataQualityBlock
+        entry={buildEntry({
+          trust: trust({ level: "corroborated", independent_source_count: null }),
+        })}
+      />,
+    );
+    expect(screen.getByText("Corroborated")).toBeInTheDocument();
   });
 
   it("shows the source count", () => {

@@ -15,6 +15,19 @@ export interface ClaimStatusInfo {
   verification_level: VerificationLevel;
 }
 
+/** Honest trust tier; never overclaims for thinly-sourced auto-discovered entries. */
+export type TrustLevel = "subject_verified" | "atlas_verified" | "corroborated" | "unverified";
+
+export interface TrustInfo {
+  level: TrustLevel;
+  /** Distinct registrable source domains backing the entity; null when not evaluated (e.g. list views). */
+  independent_source_count: number | null;
+  /** Whether the listed website is supported by a linked source; null when not evaluated. */
+  website_grounded: boolean | null;
+  /** Whether the listed email is supported by a linked source; null when not evaluated. */
+  email_grounded: boolean | null;
+}
+
 export interface Entry {
   id: string;
   type: EntryType;
@@ -39,6 +52,7 @@ export interface Entry {
   verified: boolean;
   last_verified?: string;
   claim: ClaimStatusInfo;
+  trust: TrustInfo;
   issue_areas: string[];
   source_types: SourceType[];
   source_count: number;
