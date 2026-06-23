@@ -390,18 +390,22 @@ async function sendOrganizationInvitationEmailMessage(
   organizationName: string,
 ): Promise<void> {
   const runtime = getAuthRuntimeConfig();
-  const signInUrl = new URL("/sign-in", runtime.publicBaseUrl);
-  signInUrl.searchParams.set("redirect", "/organization");
-  signInUrl.searchParams.set("invitation", invitationId);
+  // Point at the one-click acceptance route: an unauthenticated invitee is
+  // carried through sign-in and back, then has the invitation accepted and the
+  // workspace activated automatically — no manual "Accept" hunt required.
+  const acceptUrl = new URL(
+    `/accept-invitation/${encodeURIComponent(invitationId)}`,
+    runtime.publicBaseUrl,
+  );
 
   const emailService = createEmailService(runtime);
   const html = await render(
-    <InvitationEmail organizationName={organizationName} signInUrl={signInUrl.toString()} />,
+    <InvitationEmail organizationName={organizationName} signInUrl={acceptUrl.toString()} />,
   );
   await emailService.send({
     html,
     subject: `Join ${organizationName} on Atlas`,
-    text: `You've been invited to join ${organizationName} on Atlas. Sign in to review the invitation: ${signInUrl.toString()}`,
+    text: `You've been invited to join ${organizationName} on Atlas. Open this link to accept: ${acceptUrl.toString()}`,
     to: email,
   });
 }

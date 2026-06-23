@@ -48,6 +48,7 @@ vi.mock("@tanstack/react-query", () => ({
 
 vi.mock("@tanstack/react-router", () => ({
   Link: TestLink,
+  useNavigate: () => () => undefined,
 }));
 
 vi.mock("@/platform/ui/confirm-dialog", () => ({
@@ -78,6 +79,7 @@ vi.mock("@/domains/access/organizations.functions", () => ({
   inviteWorkspaceMember: organizationPageDependencyMocks.inviteWorkspaceMember,
   leaveWorkspace: organizationPageDependencyMocks.leaveWorkspace,
   rejectWorkspaceInvitation: organizationPageDependencyMocks.rejectWorkspaceInvitation,
+  resendWorkspaceInvitation: organizationPageDependencyMocks.resendWorkspaceInvitation,
   removeWorkspaceMember: organizationPageDependencyMocks.removeWorkspaceMember,
   setActiveWorkspace: organizationPageDependencyMocks.setActiveWorkspace,
   updateWorkspaceMemberRole: organizationPageDependencyMocks.updateWorkspaceMemberRole,

@@ -6,13 +6,17 @@ import type { OrganizationPageForms } from "@/domains/access/components/organiza
 
 const mocks = vi.hoisted(() => ({
   useMutation: vi.fn(),
+  useNavigate: vi.fn(),
+  navigate: vi.fn(),
   createWorkspace: vi.fn(),
+  convertWorkspaceToTeam: vi.fn(),
   setActiveWorkspace: vi.fn(),
   updateWorkspaceProfile: vi.fn(),
   inviteWorkspaceMember: vi.fn(),
   cancelWorkspaceInvitation: vi.fn(),
   acceptWorkspaceInvitation: vi.fn(),
   rejectWorkspaceInvitation: vi.fn(),
+  resendWorkspaceInvitation: vi.fn(),
   updateWorkspaceMemberRole: vi.fn(),
   removeWorkspaceMember: vi.fn(),
   leaveWorkspace: vi.fn(),
@@ -22,14 +26,20 @@ vi.mock("@tanstack/react-query", () => ({
   useMutation: mocks.useMutation,
 }));
 
+vi.mock("@tanstack/react-router", () => ({
+  useNavigate: mocks.useNavigate,
+}));
+
 vi.mock("@/domains/access/organizations.functions", () => ({
   createWorkspace: mocks.createWorkspace,
+  convertWorkspaceToTeam: mocks.convertWorkspaceToTeam,
   setActiveWorkspace: mocks.setActiveWorkspace,
   updateWorkspaceProfile: mocks.updateWorkspaceProfile,
   inviteWorkspaceMember: mocks.inviteWorkspaceMember,
   cancelWorkspaceInvitation: mocks.cancelWorkspaceInvitation,
   acceptWorkspaceInvitation: mocks.acceptWorkspaceInvitation,
   rejectWorkspaceInvitation: mocks.rejectWorkspaceInvitation,
+  resendWorkspaceInvitation: mocks.resendWorkspaceInvitation,
   updateWorkspaceMemberRole: mocks.updateWorkspaceMemberRole,
   removeWorkspaceMember: mocks.removeWorkspaceMember,
   leaveWorkspace: mocks.leaveWorkspace,
@@ -63,6 +73,8 @@ describe("useOrganizationPageWorkspaceActions", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.navigate.mockResolvedValue(undefined);
+    mocks.useNavigate.mockReturnValue(mocks.navigate);
     mocks.useMutation.mockImplementation(
       ({ mutationFn }: { mutationFn: (args: unknown) => unknown }) => ({
         mutateAsync: vi.fn().mockImplementation((args: unknown) => mutationFn(args)),
@@ -400,5 +412,71 @@ describe("useOrganizationPageWorkspaceActions", () => {
 
     expect(mocks.leaveWorkspace).toHaveBeenCalled();
     expect(feedback.setFlashMessage).toHaveBeenCalledWith("You left the workspace.");
+  });
+
+  it("resends an invitation atomically without cancelling the existing one", async () => {
+    mocks.resendWorkspaceInvitation.mockResolvedValue({ ok: true });
+
+    const { result } = renderHook(() =>
+      useOrganizationPageWorkspaceActions({
+        activeWorkspaceId: "org_1",
+        feedback,
+        forms: forms as unknown as OrganizationPageForms,
+        refreshWorkspaceData,
+      }),
+    );
+
+    await act(async () => {
+      await result.current.onResendInvitation("pending@atlas.test", "admin");
+    });
+
+    expect(mocks.resendWorkspaceInvitation).toHaveBeenCalledWith({
+      data: { email: "pending@atlas.test", role: "admin" },
+    });
+    expect(mocks.cancelWorkspaceInvitation).not.toHaveBeenCalled();
+    expect(feedback.setFlashMessage).toHaveBeenCalledWith("Invitation resent.");
+  });
+
+  it("upgrades an individual workspace to a team and routes to pricing", async () => {
+    mocks.convertWorkspaceToTeam.mockResolvedValue({ ok: true });
+
+    const { result } = renderHook(() =>
+      useOrganizationPageWorkspaceActions({
+        activeWorkspaceId: "org_1",
+        feedback,
+        forms: forms as unknown as OrganizationPageForms,
+        refreshWorkspaceData,
+      }),
+    );
+
+    await act(async () => {
+      await result.current.onUpgradeToTeam();
+    });
+
+    expect(mocks.convertWorkspaceToTeam).toHaveBeenCalled();
+    expect(feedback.setFlashMessage).toHaveBeenCalledWith(
+      "Workspace upgraded to a team. Subscribe to Atlas Team to invite members.",
+    );
+    expect(mocks.navigate).toHaveBeenCalledWith({ to: "/pricing" });
+  });
+
+  it("does not route to pricing when the upgrade fails", async () => {
+    mocks.convertWorkspaceToTeam.mockRejectedValue(new Error("nope"));
+
+    const { result } = renderHook(() =>
+      useOrganizationPageWorkspaceActions({
+        activeWorkspaceId: "org_1",
+        feedback,
+        forms: forms as unknown as OrganizationPageForms,
+        refreshWorkspaceData,
+      }),
+    );
+
+    await act(async () => {
+      await result.current.onUpgradeToTeam();
+    });
+
+    expect(feedback.setErrorMessage).toHaveBeenCalledWith("nope");
+    expect(mocks.navigate).not.toHaveBeenCalled();
   });
 });

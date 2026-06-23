@@ -1,11 +1,16 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { atlasSessionQueryKey, useAtlasSession } from "@/domains/access/client/use-atlas-session";
 import type { AtlasSessionPayload } from "@/domains/access/organization-contracts";
-import { getOrganizationDetails } from "@/domains/access/organizations.functions";
+import {
+  getOrganizationDetails,
+  getTeamSeatCostSummary,
+} from "@/domains/access/organizations.functions";
 import { getWorkspaceSAMLAllowedIssuers } from "@/domains/access/sso.functions";
+import type { TeamSeatCostSummary } from "@/domains/billing/team-cost";
 
 export const organizationQueryKey = ["auth", "organization"] as const;
 export const samlAllowedIssuersQueryKey = ["auth", "saml-allowed-issuers"] as const;
+export const teamSeatCostSummaryQueryKey = ["auth", "team-seat-cost-summary"] as const;
 
 /**
  * Workspace-aware organization-page query state and refresh helpers.
@@ -23,6 +28,7 @@ export interface OrganizationPageData {
   refreshWorkspaceData: () => Promise<void>;
   samlAllowedIssuerOrigins: readonly string[];
   session: AtlasSessionPayload | null | undefined;
+  teamSeatCostSummary: TeamSeatCostSummary | null;
 }
 
 /**
@@ -66,6 +72,12 @@ export function useOrganizationPageData(
     staleTime: 5 * 60 * 1000,
   });
 
+  const teamSeatCostSummaryQuery = useQuery({
+    enabled: activeWorkspace?.workspaceType === "team",
+    queryFn: () => getTeamSeatCostSummary(),
+    queryKey: [...teamSeatCostSummaryQueryKey, activeWorkspace?.id ?? "none"],
+  });
+
   /**
    * Refreshes the session and active-organization query after a mutation.
    */
@@ -76,8 +88,15 @@ export function useOrganizationPageData(
     const invalidateOrganizationPromise = queryClient.invalidateQueries({
       queryKey: organizationQueryKey,
     });
+    const invalidateTeamSeatCostPromise = queryClient.invalidateQueries({
+      queryKey: teamSeatCostSummaryQueryKey,
+    });
 
-    await Promise.all([invalidateSessionPromise, invalidateOrganizationPromise]);
+    await Promise.all([
+      invalidateSessionPromise,
+      invalidateOrganizationPromise,
+      invalidateTeamSeatCostPromise,
+    ]);
     await atlasSession.refetch();
   }
 
@@ -94,5 +113,6 @@ export function useOrganizationPageData(
     refreshWorkspaceData,
     samlAllowedIssuerOrigins: samlAllowedIssuersQuery.data?.issuerOrigins ?? [],
     session,
+    teamSeatCostSummary: teamSeatCostSummaryQuery.data ?? null,
   };
 }

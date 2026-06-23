@@ -52,6 +52,7 @@ import { Route as PublicProfilesOrganizationsRouteImport } from './routes/_publi
 import { Route as PublicEntriesEntryIdRouteImport } from './routes/_public/entries.$entryId'
 import { Route as PublicClaimSlugRouteImport } from './routes/_public/claim.$slug'
 import { Route as AuthOauthConsentRouteImport } from './routes/_auth/oauth/consent'
+import { Route as AuthAcceptInvitationInvitationIdRouteImport } from './routes/_auth/accept-invitation.$invitationId'
 import { Route as PublicProfilesPeopleIndexRouteImport } from './routes/_public/profiles/people.index'
 import { Route as PublicProfilesOrganizationsIndexRouteImport } from './routes/_public/profiles/organizations.index'
 import { Route as ApiAuthInternalApiKeyRouteImport } from './routes/api/auth/internal/api-key'
@@ -278,6 +279,12 @@ const AuthOauthConsentRoute = AuthOauthConsentRouteImport.update({
   path: '/oauth/consent',
   getParentRoute: () => AuthRoute,
 } as any)
+const AuthAcceptInvitationInvitationIdRoute =
+  AuthAcceptInvitationInvitationIdRouteImport.update({
+    id: '/accept-invitation/$invitationId',
+    path: '/accept-invitation/$invitationId',
+    getParentRoute: () => AuthRoute,
+  } as any)
 const PublicProfilesPeopleIndexRoute =
   PublicProfilesPeopleIndexRouteImport.update({
     id: '/',
@@ -346,6 +353,7 @@ export interface FileRoutesByFullPath {
   '/api/$': typeof ApiSplatRoute
   '/api/health': typeof ApiHealthRoute
   '/docs/$': typeof DocsSplatRoute
+  '/accept-invitation/$invitationId': typeof AuthAcceptInvitationInvitationIdRoute
   '/oauth/consent': typeof AuthOauthConsentRoute
   '/claim/$slug': typeof PublicClaimSlugRoute
   '/entries/$entryId': typeof PublicEntriesEntryIdRoute
@@ -394,6 +402,7 @@ export interface FileRoutesByTo {
   '/api/$': typeof ApiSplatRoute
   '/api/health': typeof ApiHealthRoute
   '/docs/$': typeof DocsSplatRoute
+  '/accept-invitation/$invitationId': typeof AuthAcceptInvitationInvitationIdRoute
   '/oauth/consent': typeof AuthOauthConsentRoute
   '/claim/$slug': typeof PublicClaimSlugRoute
   '/entries/$entryId': typeof PublicEntriesEntryIdRoute
@@ -445,6 +454,7 @@ export interface FileRoutesById {
   '/api/health': typeof ApiHealthRoute
   '/docs/$': typeof DocsSplatRoute
   '/_public/': typeof PublicIndexRoute
+  '/_auth/accept-invitation/$invitationId': typeof AuthAcceptInvitationInvitationIdRoute
   '/_auth/oauth/consent': typeof AuthOauthConsentRoute
   '/_public/claim/$slug': typeof PublicClaimSlugRoute
   '/_public/entries/$entryId': typeof PublicEntriesEntryIdRoute
@@ -496,6 +506,7 @@ export interface FileRouteTypes {
     | '/api/$'
     | '/api/health'
     | '/docs/$'
+    | '/accept-invitation/$invitationId'
     | '/oauth/consent'
     | '/claim/$slug'
     | '/entries/$entryId'
@@ -544,6 +555,7 @@ export interface FileRouteTypes {
     | '/api/$'
     | '/api/health'
     | '/docs/$'
+    | '/accept-invitation/$invitationId'
     | '/oauth/consent'
     | '/claim/$slug'
     | '/entries/$entryId'
@@ -594,6 +606,7 @@ export interface FileRouteTypes {
     | '/api/health'
     | '/docs/$'
     | '/_public/'
+    | '/_auth/accept-invitation/$invitationId'
     | '/_auth/oauth/consent'
     | '/_public/claim/$slug'
     | '/_public/entries/$entryId'
@@ -940,6 +953,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthOauthConsentRouteImport
       parentRoute: typeof AuthRoute
     }
+    '/_auth/accept-invitation/$invitationId': {
+      id: '/_auth/accept-invitation/$invitationId'
+      path: '/accept-invitation/$invitationId'
+      fullPath: '/accept-invitation/$invitationId'
+      preLoaderRoute: typeof AuthAcceptInvitationInvitationIdRouteImport
+      parentRoute: typeof AuthRoute
+    }
     '/_public/profiles/people/': {
       id: '/_public/profiles/people/'
       path: '/'
@@ -996,6 +1016,7 @@ interface AuthRouteChildren {
   AuthAccountSetupRoute: typeof AuthAccountSetupRoute
   AuthSignInRoute: typeof AuthSignInRoute
   AuthSignUpRoute: typeof AuthSignUpRoute
+  AuthAcceptInvitationInvitationIdRoute: typeof AuthAcceptInvitationInvitationIdRoute
   AuthOauthConsentRoute: typeof AuthOauthConsentRoute
 }
 
@@ -1003,6 +1024,7 @@ const AuthRouteChildren: AuthRouteChildren = {
   AuthAccountSetupRoute: AuthAccountSetupRoute,
   AuthSignInRoute: AuthSignInRoute,
   AuthSignUpRoute: AuthSignUpRoute,
+  AuthAcceptInvitationInvitationIdRoute: AuthAcceptInvitationInvitationIdRoute,
   AuthOauthConsentRoute: AuthOauthConsentRoute,
 }
 

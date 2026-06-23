@@ -1,4 +1,6 @@
 import { hasSerializedCapability } from "@/domains/access/capabilities";
+import { canManageAtlasOrganizationRole } from "@/domains/access/organization-metadata";
+import { TeamSeatCostSection } from "@/domains/billing/components/team-seat-cost-section";
 import type { OrganizationPageController } from "./organization-page-controller";
 import { OrganizationEmptyState } from "./organization-empty-state";
 import { OrganizationLoadingState } from "./organization-loading-state";
@@ -7,11 +9,13 @@ import { OrganizationPageHeader } from "./organization-page-header";
 import { OrganizationSSOSetupCard } from "./organization-sso-setup-card";
 import { PendingWorkspaceInvitationsSection } from "./pending-workspace-invitations-section";
 import { TeamInvitationsSection } from "./team-invitations-section";
+import { TeamInviteUpsellSection } from "./team-invite-upsell-section";
 import { TeamMembersSection } from "./team-members-section";
 import { WorkspaceCreationSection } from "./workspace-creation-section";
 import { WorkspaceMembershipSection } from "./workspace-membership-section";
 import { WorkspaceProfileSection } from "./workspace-profile-section";
 import { WorkspaceSwitcherSection } from "./workspace-switcher-section";
+import { WorkspaceUpgradeSection } from "./workspace-upgrade-section";
 
 /**
  * Props for the main workspace-management view.
@@ -28,6 +32,10 @@ export function OrganizationWorkspacePageView({ controller }: OrganizationWorksp
   const canInviteMembers = controller.session
     ? hasSerializedCapability(controller.session.workspace.resolvedCapabilities, "workspace.shared")
     : false;
+  // The upgrade-to-team affordance is a solo owner's action, not a team
+  // "manage organization" capability (which is team-only). Gate it on the
+  // operator actually owning/administering the active individual workspace.
+  const canManageActiveWorkspace = canManageAtlasOrganizationRole(controller.activeWorkspace?.role);
   const pageLabel = controller.needsWorkspace
     ? "Workspace setup"
     : controller.canUseTeamFeatures
@@ -50,6 +58,16 @@ export function OrganizationWorkspacePageView({ controller }: OrganizationWorksp
   async function handleCancelInvitation(invitationId: string) {
     const cancelInvitationPromise = controller.onInvitationDecision(invitationId, "cancel");
     await cancelInvitationPromise;
+  }
+
+  async function handleResendInvitation(email: string, role: "admin" | "member") {
+    const resendInvitationPromise = controller.onResendInvitation(email, role);
+    await resendInvitationPromise;
+  }
+
+  async function handleUpgradeToTeam() {
+    const upgradeToTeamPromise = controller.onUpgradeToTeam();
+    await upgradeToTeamPromise;
   }
 
   return (
@@ -131,6 +149,20 @@ export function OrganizationWorkspacePageView({ controller }: OrganizationWorksp
               ) : null}
 
               {controller.canUseTeamFeatures ? (
+                <TeamSeatCostSection summary={controller.teamSeatCostSummary} />
+              ) : null}
+
+              {!controller.canUseTeamFeatures && canManageActiveWorkspace ? (
+                <WorkspaceUpgradeSection
+                  isPending={controller.upgradeToTeamPending}
+                  memberCount={controller.organization.members.length}
+                  onUpgrade={() => {
+                    void handleUpgradeToTeam();
+                  }}
+                />
+              ) : null}
+
+              {controller.canUseTeamFeatures ? (
                 <OrganizationSSOSetupCard organization={controller.organization} />
               ) : null}
             </div>
@@ -158,17 +190,23 @@ export function OrganizationWorkspacePageView({ controller }: OrganizationWorksp
               inviteRole={controller.inviteRole}
               isCancelPending={controller.pendingInvitationMutationPending}
               isInvitePending={controller.invitePending}
+              isResendPending={controller.resendInvitationPending}
               invitations={controller.organization.invitations}
               onCancel={(id) => {
                 void handleCancelInvitation(id);
               }}
               onEmailChange={controller.setInviteEmail}
               onInviteRoleChange={controller.onUpdateInviteRole}
+              onResend={(email, role) => {
+                void handleResendInvitation(email, role);
+              }}
               onSubmit={(e) => {
                 void controller.onInviteMember(e);
               }}
             />
           ) : null}
+
+          {controller.canUseTeamFeatures && !canInviteMembers ? <TeamInviteUpsellSection /> : null}
         </div>
       ) : null}
 

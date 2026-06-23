@@ -2,6 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import {
   atlasWorkspaceTypeSchema,
+  canManageAtlasOrganizationRole,
+  mergeAtlasOrganizationMetadata,
   normalizeAtlasOrganizationMetadata,
 } from "./organization-metadata";
 import {
@@ -14,13 +16,37 @@ import { buildWorkspaceSSOState, rawWorkspaceSSOProviderListSchema } from "./org
 import {
   assertOrganizationManagementEnabled,
   loadOrganizationRequestContext,
+  requireActiveWorkspace,
   requireManagedTeamWorkspace,
 } from "./organization-server-helpers";
 import { ensureStripeCustomerForWorkspace } from "@/domains/billing/server/stripe-customer";
+import {
+  resolveActiveTeamBillingInterval,
+  syncTeamSeats,
+} from "@/domains/billing/server/team-seats";
+import { computeTeamSeatCostSummary, teamSeatCostSummarySchema } from "@/domains/billing/team-cost";
 import { ensureAuthReady } from "./server/auth";
 import { getBrowserSessionHeaders } from "./server/request-headers";
 import { getAuthRuntimeConfig } from "./server/runtime";
 import { requireReadyAtlasSessionState } from "./server/session-state";
+
+/**
+ * Reconciles a workspace's Atlas Team seat billing without letting a billing
+ * failure surface to the operator.
+ *
+ * Membership has already changed by the time this runs, so a transient Stripe
+ * error must not fail the user-facing action; the billing surface reconciles
+ * seats again on load.
+ *
+ * @param workspaceId - The workspace whose seats should be synchronized.
+ */
+async function syncTeamSeatsBestEffort(workspaceId: string): Promise<void> {
+  try {
+    await syncTeamSeats(workspaceId);
+  } catch {
+    // Best-effort: seat drift is reconciled the next time seats are synced.
+  }
+}
 
 /**
  * Loads the active workspace details for the organization-management page.
@@ -62,6 +88,81 @@ export const getOrganizationDetails = createServerFn({ method: "GET" }).handler(
   });
 
   return toAtlasOrganizationDetails(details, session, sso);
+});
+
+/**
+ * Returns the Atlas Team seat usage and recurring-cost summary for the active
+ * workspace, or null when the workspace is not a Team (so the billing surface
+ * can omit the panel rather than guess a price).
+ */
+export const getTeamSeatCostSummary = createServerFn({ method: "GET" }).handler(async () => {
+  const { auth, headers, session } = await loadOrganizationRequestContext();
+  const activeWorkspace = session.workspace.activeOrganization;
+
+  // Only a subscribed team has a recurring cost to show. A free or canceled
+  // team workspace must not display a fabricated charge.
+  if (activeWorkspace?.workspaceType !== "team") {
+    return null;
+  }
+  if (!session.workspace.activeProducts.includes("atlas_team")) {
+    return null;
+  }
+
+  // Loading the billing panel is also the reconciliation point: nudge Stripe's
+  // seat quantity back in line with membership in case an earlier sync failed.
+  await syncTeamSeatsBestEffort(activeWorkspace.id);
+
+  const details = organizationDetailsSchema.parse(
+    await auth.api.getFullOrganization({
+      headers,
+      query: { organizationId: activeWorkspace.id },
+    }),
+  );
+  if (!details) {
+    return null;
+  }
+
+  const interval = await resolveActiveTeamBillingInterval(activeWorkspace.id);
+  return teamSeatCostSummarySchema.parse(
+    computeTeamSeatCostSummary(details.members.length, interval),
+  );
+});
+
+/**
+ * Upgrades the active individual workspace into a team in place.
+ *
+ * The workspace is the tenant; "team" is a mode flag, so upgrading only flips
+ * the metadata — members, billing, and identity carry over. Inviting still
+ * requires an Atlas Team subscription, which the caller can start afterward.
+ */
+export const convertWorkspaceToTeam = createServerFn({ method: "POST" }).handler(async () => {
+  const { auth, headers, session } = await loadOrganizationRequestContext();
+  const activeWorkspace = requireActiveWorkspace(session);
+
+  if (!canManageAtlasOrganizationRole(activeWorkspace.role)) {
+    throw new Error("You do not have permission to upgrade this workspace.");
+  }
+  if (activeWorkspace.workspaceType === "team") {
+    throw new Error("This workspace is already a team.");
+  }
+
+  const fullOrganization = await auth.api.getFullOrganization({
+    headers,
+    query: { organizationId: activeWorkspace.id },
+  });
+  const metadata = mergeAtlasOrganizationMetadata(fullOrganization?.metadata, {
+    workspaceType: "team",
+  });
+
+  await auth.api.updateOrganization({
+    body: {
+      data: { metadata },
+      organizationId: activeWorkspace.id,
+    },
+    headers,
+  });
+
+  return { ok: true };
 });
 
 const workspaceDomainSchema = z
@@ -242,6 +343,35 @@ export const inviteWorkspaceMember = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const { auth, headers, session } = await loadOrganizationRequestContext();
     const activeWorkspace = requireManagedTeamWorkspace(session);
+
+    // Inviting members is a paid Team capability: a free team workspace can
+    // exist, but the first invite requires an active Atlas Team subscription.
+    if (!session.workspace.activeProducts.includes("atlas_team")) {
+      throw new Error("Subscribe to Atlas Team to invite members to this workspace.");
+    }
+
+    // Hold the workspace within its seat limit: current members plus the
+    // invitations still awaiting acceptance must stay under the cap.
+    const maxMembers = session.workspace.resolvedCapabilities.limits.max_members;
+    if (maxMembers !== null) {
+      const details = organizationDetailsSchema.parse(
+        await auth.api.getFullOrganization({
+          headers,
+          query: { organizationId: activeWorkspace.id },
+        }),
+      );
+      if (details) {
+        const pendingInvites = details.invitations.filter(
+          (invitation) => invitation.status === "pending",
+        ).length;
+        if (details.members.length + pendingInvites >= maxMembers) {
+          throw new Error(
+            `This workspace has reached its limit of ${maxMembers} members. Remove a member or cancel a pending invitation before inviting someone new.`,
+          );
+        }
+      }
+    }
+
     const invitationValue = await auth.api.createInvitation({
       body: {
         email: data.email,
@@ -256,6 +386,41 @@ export const inviteWorkspaceMember = createServerFn({ method: "POST" })
       id: invitation.id,
       status: invitation.status,
     };
+  });
+
+/**
+ * Re-sends the email for a pending invitation to the active team workspace.
+ *
+ * Resending is atomic (Better Auth re-issues the existing invitation when
+ * `resend` is set), so a transient failure can never destroy a teammate's
+ * outstanding invitation the way a cancel-then-reinvite would.
+ */
+export const resendWorkspaceInvitation = createServerFn({ method: "POST" })
+  .inputValidator(
+    z.object({
+      email: z.string().email(),
+      role: z.enum(["admin", "member"]),
+    }),
+  )
+  .handler(async ({ data }) => {
+    const { auth, headers, session } = await loadOrganizationRequestContext();
+    const activeWorkspace = requireManagedTeamWorkspace(session);
+
+    if (!session.workspace.activeProducts.includes("atlas_team")) {
+      throw new Error("Subscribe to Atlas Team to invite members to this workspace.");
+    }
+
+    await auth.api.createInvitation({
+      body: {
+        email: data.email,
+        organizationId: activeWorkspace.id,
+        role: data.role,
+        resend: true,
+      },
+      headers,
+    });
+
+    return { ok: true };
   });
 
 /**
@@ -292,7 +457,7 @@ export const acceptWorkspaceInvitation = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ data }) => {
-    const { auth, headers } = await loadOrganizationRequestContext();
+    const { auth, headers, session } = await loadOrganizationRequestContext();
 
     await auth.api.acceptInvitation({
       body: {
@@ -300,6 +465,15 @@ export const acceptWorkspaceInvitation = createServerFn({ method: "POST" })
       },
       headers,
     });
+
+    // Joining a team adds a billable seat. Resolve the workspace from the
+    // pending invitation captured before acceptance and reconcile its seats.
+    const organizationId = session.workspace.pendingInvitations.find(
+      (invitation) => invitation.id === data.invitationId,
+    )?.organizationId;
+    if (organizationId) {
+      await syncTeamSeatsBestEffort(organizationId);
+    }
 
     return { ok: true };
   });
@@ -373,6 +547,8 @@ export const removeWorkspaceMember = createServerFn({ method: "POST" })
       headers,
     });
 
+    await syncTeamSeatsBestEffort(activeWorkspace.id);
+
     return { ok: true };
   });
 
@@ -393,6 +569,8 @@ export const leaveWorkspace = createServerFn({ method: "POST" }).handler(async (
     },
     headers,
   });
+
+  await syncTeamSeatsBestEffort(activeWorkspace.id);
 
   return { ok: true };
 });

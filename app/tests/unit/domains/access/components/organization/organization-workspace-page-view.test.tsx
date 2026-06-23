@@ -69,6 +69,8 @@ describe("OrganizationWorkspacePageView", () => {
     profileSlug: "atlas",
     inviteEmail: "",
     inviteRole: "member",
+    teamSeatCostSummary: null,
+    upgradeToTeamPending: false,
     onUpdateWorkspaceName: vi.fn(),
     onUpdateWorkspaceSlug: vi.fn(),
     onUpdateWorkspaceType: vi.fn(),
@@ -84,6 +86,8 @@ describe("OrganizationWorkspacePageView", () => {
     onInviteMember: vi.fn(),
     onRemoveMember: vi.fn(),
     onUpdateMemberRole: vi.fn(),
+    onResendInvitation: vi.fn(),
+    onUpgradeToTeam: vi.fn(),
     ...overrides,
   });
 
@@ -380,6 +384,136 @@ describe("OrganizationWorkspacePageView", () => {
     expect(screen.getByRole("heading", { level: 1, name: "Solo" })).toBeInTheDocument();
     expect(
       screen.queryByText(/Manage your shared workspace, team members, and invitations/i),
+    ).not.toBeInTheDocument();
+  });
+
+  it("renders the seats & cost section when a team seat-cost summary is loaded", () => {
+    const controller = buildController({
+      teamSeatCostSummary: {
+        interval: "monthly",
+        seatsUsed: 1,
+        maxSeats: 50,
+        additionalSeats: 0,
+        baseCents: 2500,
+        perSeatCents: 800,
+        additionalSeatsCents: 0,
+        totalCents: 2500,
+      },
+    }) as unknown as OrganizationPageController;
+
+    render(<OrganizationWorkspacePageView controller={controller} />);
+    expect(screen.getByText(/Seats & cost/i)).toBeInTheDocument();
+    expect(screen.getByText(/1 of 50 seats used/i)).toBeInTheDocument();
+  });
+
+  it("forwards resend requests from the invitations section to the controller", () => {
+    const onResendInvitation = vi.fn();
+    const controller = buildController({
+      onResendInvitation,
+      organization: {
+        id: "org_1",
+        name: "Atlas",
+        slug: "atlas",
+        members: [],
+        invitations: [
+          {
+            id: "inv_1",
+            email: "pending@atlas.test",
+            role: "member",
+            status: "pending",
+            createdAt: "2026-04-01T00:00:00.000Z",
+            expiresAt: "2026-05-01T00:00:00.000Z",
+          },
+        ],
+        metadata: { workspaceType: "team" },
+        capabilities: { canUseTeamFeatures: true },
+        role: "owner",
+        workspaceType: "team",
+        sso: { providers: [] },
+      },
+      pendingInvitationMutationPending: false,
+    }) as unknown as OrganizationPageController;
+
+    render(<OrganizationWorkspacePageView controller={controller} />);
+    fireEvent.click(screen.getByRole("button", { name: "Resend" }));
+    expect(onResendInvitation).toHaveBeenCalledWith("pending@atlas.test", "member");
+  });
+
+  it("shows the invite upsell instead of the form when a team lacks the shared capability", () => {
+    const controller = buildController({
+      session: {
+        user: { id: "user_1" },
+        workspace: {
+          resolvedCapabilities: {
+            capabilities: ["research.run"],
+            limits: {
+              research_runs_per_month: 2,
+              max_shortlists: 1,
+              max_shortlist_entries: 25,
+              max_api_keys: 0,
+              api_requests_per_day: 0,
+              public_api_requests_per_hour: 100,
+              max_members: 1,
+            },
+          },
+        },
+      },
+    }) as unknown as OrganizationPageController;
+
+    render(<OrganizationWorkspacePageView controller={controller} />);
+    expect(
+      screen.getByText(/Subscribe to Atlas Team to invite members to this workspace/i),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Send invitation/i)).not.toBeInTheDocument();
+  });
+
+  it("offers an upgrade prompt on an individual workspace the operator manages", () => {
+    const onUpgradeToTeam = vi.fn();
+    const controller = buildController({
+      canUseTeamFeatures: false,
+      canManageOrganization: false,
+      activeWorkspace: { id: "org_1", name: "Solo", role: "owner" },
+      organization: {
+        id: "org_1",
+        name: "Solo",
+        slug: "solo",
+        members: [{ id: "mem_1", userId: "user_1", role: "owner" }],
+        invitations: [],
+        metadata: { workspaceType: "individual" },
+        capabilities: { canUseTeamFeatures: false },
+        role: "owner",
+        workspaceType: "individual",
+        sso: { providers: [] },
+      },
+      onUpgradeToTeam,
+    }) as unknown as OrganizationPageController;
+
+    render(<OrganizationWorkspacePageView controller={controller} />);
+    fireEvent.click(screen.getByRole("button", { name: /Upgrade to a team workspace/i }));
+    expect(onUpgradeToTeam).toHaveBeenCalled();
+  });
+
+  it("hides the upgrade prompt on an individual workspace the operator cannot manage", () => {
+    const controller = buildController({
+      canUseTeamFeatures: false,
+      canManageOrganization: false,
+      organization: {
+        id: "org_1",
+        name: "Solo",
+        slug: "solo",
+        members: [{ id: "mem_1", userId: "user_1", role: "member" }],
+        invitations: [],
+        metadata: { workspaceType: "individual" },
+        capabilities: { canUseTeamFeatures: false },
+        role: "member",
+        workspaceType: "individual",
+        sso: { providers: [] },
+      },
+    }) as unknown as OrganizationPageController;
+
+    render(<OrganizationWorkspacePageView controller={controller} />);
+    expect(
+      screen.queryByRole("button", { name: /Upgrade to a team workspace/i }),
     ).not.toBeInTheDocument();
   });
 });

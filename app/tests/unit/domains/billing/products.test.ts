@@ -26,4 +26,12 @@ describe("billing/products env helper", () => {
     expect(ATLAS_PRODUCTS.atlas_pro.monthlyPriceId).toBe("");
     expect(ATLAS_PRODUCTS.atlas_research_pass.oncePriceId).toBe("");
   });
+
+  it("exposes Atlas Team seat price IDs from the seat environment variables", async () => {
+    vi.stubEnv("STRIPE_PRICE_ATLAS_TEAM_SEAT_MONTHLY", "price_team_seat_month");
+    vi.stubEnv("STRIPE_PRICE_ATLAS_TEAM_SEAT_YEARLY", "price_team_seat_year");
+    const { ATLAS_PRODUCTS } = await import("@/domains/billing/products");
+    expect(ATLAS_PRODUCTS.atlas_team.monthlySeatPriceId).toBe("price_team_seat_month");
+    expect(ATLAS_PRODUCTS.atlas_team.yearlySeatPriceId).toBe("price_team_seat_year");
+  });
 });

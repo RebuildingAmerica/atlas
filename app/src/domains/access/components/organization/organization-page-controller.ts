@@ -3,6 +3,7 @@ import type {
   AtlasOrganizationDetails,
   AtlasSessionPayload,
 } from "@/domains/access/organization-contracts";
+import type { TeamSeatCostSummary } from "@/domains/billing/team-cost";
 import { useOrganizationPageData } from "./use-organization-page-data";
 import { useOrganizationPageForms } from "./use-organization-page-forms";
 import { useOrganizationPageSSOActions } from "./use-organization-page-sso-actions";
@@ -72,6 +73,7 @@ export interface OrganizationPageController {
   profilePending: boolean;
   profileSlug: string;
   removeMemberPending: boolean;
+  resendInvitationPending: boolean;
   samlAllowedIssuerOrigins: readonly string[];
   samlSetupForm: WorkspaceSAMLSetupFormState;
   samlVerificationTimedOutProviderIds: readonly string[];
@@ -89,7 +91,9 @@ export interface OrganizationPageController {
     updater: (current: WorkspaceSAMLSetupFormState) => WorkspaceSAMLSetupFormState,
   ) => void;
   ssoMutationPending: boolean;
+  teamSeatCostSummary: TeamSeatCostSummary | null;
   updateWorkspaceMemberRolePending: boolean;
+  upgradeToTeamPending: boolean;
   workspaceDelegatedEmail: string;
   workspaceDomain: string;
   workspaceName: string;
@@ -119,6 +123,8 @@ export interface OrganizationPageController {
   onUpdateWorkspaceType: (value: string) => void;
   onVerifyDomain: (providerId: string) => Promise<void>;
   onRemoveMember: (memberIdOrEmail: string) => Promise<void>;
+  onResendInvitation: (email: string, role: "admin" | "member") => Promise<void>;
+  onUpgradeToTeam: () => Promise<void>;
 }
 
 /**
@@ -201,6 +207,7 @@ export function useOrganizationPageController(
     profilePending: workspaceActions.profilePending,
     profileSlug: forms.profileSlug,
     removeMemberPending: workspaceActions.removeMemberPending,
+    resendInvitationPending: workspaceActions.resendInvitationPending,
     samlAllowedIssuerOrigins: data.samlAllowedIssuerOrigins,
     samlSetupForm: forms.samlSetupForm,
     samlVerificationTimedOutProviderIds: samlPollState.timedOutProviderIds,
@@ -214,7 +221,9 @@ export function useOrganizationPageController(
     setProfileSlug: forms.setProfileSlug,
     setSamlSetupForm: forms.setSamlSetupForm,
     ssoMutationPending: ssoActions.ssoMutationPending,
+    teamSeatCostSummary: data.teamSeatCostSummary,
     updateWorkspaceMemberRolePending: workspaceActions.updateWorkspaceMemberRolePending,
+    upgradeToTeamPending: workspaceActions.upgradeToTeamPending,
     workspaceDelegatedEmail: forms.workspaceDelegatedEmail,
     workspaceDomain: forms.workspaceDomain,
     workspaceName: forms.workspaceName,
@@ -241,5 +250,7 @@ export function useOrganizationPageController(
     onUpdateWorkspaceType: forms.onUpdateWorkspaceType,
     onVerifyDomain: ssoActions.onVerifyDomain,
     onRemoveMember: workspaceActions.onRemoveMember,
+    onResendInvitation: workspaceActions.onResendInvitation,
+    onUpgradeToTeam: workspaceActions.onUpgradeToTeam,
   };
 }

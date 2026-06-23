@@ -16,6 +16,7 @@ import {
 import {
   queryActiveProducts,
   queryActiveProductsSqlite,
+  queryActiveTeamSubscriptionId,
 } from "@/domains/access/server/workspace-products";
 
 describe("workspace-products", () => {
@@ -129,5 +130,64 @@ describe("queryActiveProducts", () => {
     authMocks.getAuthDatabase.mockReturnValue(null);
 
     expect(await queryActiveProducts("org_1")).toEqual([]);
+  });
+});
+
+describe("queryActiveTeamSubscriptionId", () => {
+  beforeEach(() => {
+    authMocks.getAuthDatabase.mockReset();
+    authMocks.getAuthPgPool.mockReset();
+  });
+
+  it("reads the active Team subscription id from the Postgres pool", async () => {
+    const query = vi.fn().mockResolvedValue({ rows: [{ stripe_subscription_id: "sub_123" }] });
+    authMocks.getAuthPgPool.mockReturnValue({ query });
+
+    expect(await queryActiveTeamSubscriptionId("org_1")).toBe("sub_123");
+    expect(query.mock.calls[0]?.[1]).toEqual(["org_1"]);
+  });
+
+  it("returns null from Postgres when no active Team subscription exists", async () => {
+    const query = vi.fn().mockResolvedValue({ rows: [] });
+    authMocks.getAuthPgPool.mockReturnValue({ query });
+
+    expect(await queryActiveTeamSubscriptionId("org_1")).toBeNull();
+  });
+
+  it("reads the active Team subscription id from SQLite", async () => {
+    authMocks.getAuthPgPool.mockReturnValue(null);
+    const sqliteDb = new Database(":memory:");
+    runAtlasCustomMigrations(sqliteDb, ATLAS_MIGRATIONS);
+    sqliteDb
+      .prepare(
+        "INSERT INTO workspace_products (id, workspace_id, product, status, stripe_subscription_id) VALUES (?, ?, ?, ?, ?)",
+      )
+      .run("wp_1", "org_1", "atlas_team", "active", "sub_sqlite");
+    authMocks.getAuthDatabase.mockReturnValue(sqliteDb);
+
+    expect(await queryActiveTeamSubscriptionId("org_1")).toBe("sub_sqlite");
+    sqliteDb.close();
+  });
+
+  it("returns null from SQLite when the workspace has no active Team subscription", async () => {
+    authMocks.getAuthPgPool.mockReturnValue(null);
+    const sqliteDb = new Database(":memory:");
+    runAtlasCustomMigrations(sqliteDb, ATLAS_MIGRATIONS);
+    sqliteDb
+      .prepare(
+        "INSERT INTO workspace_products (id, workspace_id, product, status, stripe_subscription_id) VALUES (?, ?, ?, ?, ?)",
+      )
+      .run("wp_1", "org_1", "atlas_pro", "active", "sub_pro");
+    authMocks.getAuthDatabase.mockReturnValue(sqliteDb);
+
+    expect(await queryActiveTeamSubscriptionId("org_1")).toBeNull();
+    sqliteDb.close();
+  });
+
+  it("returns null when neither database is available", async () => {
+    authMocks.getAuthPgPool.mockReturnValue(null);
+    authMocks.getAuthDatabase.mockReturnValue(null);
+
+    expect(await queryActiveTeamSubscriptionId("org_1")).toBeNull();
   });
 });

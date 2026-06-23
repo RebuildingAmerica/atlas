@@ -31,10 +31,15 @@ describe("useOrganizationPageController", () => {
     mocks.useOrganizationPageData.mockReturnValue({
       activeWorkspace: { id: "org_1" },
       organization: { capabilities: { canManageOrganization: true, canUseTeamFeatures: true } },
+      teamSeatCostSummary: { totalCents: 2500 },
     });
     mocks.useOrganizationPageForms.mockReturnValue({});
     mocks.useOrganizationPageSSOActions.mockReturnValue({});
-    mocks.useOrganizationPageWorkspaceActions.mockReturnValue({});
+    mocks.useOrganizationPageWorkspaceActions.mockReturnValue({
+      upgradeToTeamPending: true,
+      onResendInvitation: vi.fn(),
+      onUpgradeToTeam: vi.fn(),
+    });
   });
 
   it("composes the organization page view model", () => {
@@ -42,6 +47,14 @@ describe("useOrganizationPageController", () => {
     expect(result.current.canManageOrganization).toBe(true);
     expect(result.current.canUseTeamFeatures).toBe(true);
     expect(mocks.useOrganizationPageData).toHaveBeenCalled();
+  });
+
+  it("exposes the team seat-cost summary and upgrade/resend wiring", () => {
+    const { result } = renderHook(() => useOrganizationPageController());
+    expect(result.current.teamSeatCostSummary).toEqual({ totalCents: 2500 });
+    expect(result.current.upgradeToTeamPending).toBe(true);
+    expect(typeof result.current.onUpgradeToTeam).toBe("function");
+    expect(typeof result.current.onResendInvitation).toBe("function");
   });
 
   it("handles missing organization data", () => {

@@ -23,6 +23,23 @@ const DEFAULT_RESOLVED_CAPABILITIES: SerializedResolvedCapabilities = {
 };
 
 /**
+ * Builds a serialized resolved-capabilities object for tests, overriding
+ * individual limits on top of the free-tier defaults.
+ *
+ * @param limitOverrides - Limit values to override (e.g. a higher max_members).
+ * @param capabilities - The capability set to expose.
+ */
+export function createAtlasResolvedCapabilities(
+  limitOverrides: Partial<SerializedResolvedCapabilities["limits"]> = {},
+  capabilities: SerializedResolvedCapabilities["capabilities"] = DEFAULT_RESOLVED_CAPABILITIES.capabilities,
+): SerializedResolvedCapabilities {
+  return {
+    capabilities,
+    limits: { ...DEFAULT_RESOLVED_CAPABILITIES.limits, ...limitOverrides },
+  };
+}
+
+/**
  * Builds the Better Auth session payload Atlas reads through
  * `auth.api.getSession()`.
  *

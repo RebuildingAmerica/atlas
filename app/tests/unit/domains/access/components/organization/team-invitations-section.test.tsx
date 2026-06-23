@@ -25,9 +25,11 @@ describe("TeamInvitationsSection", () => {
     inviteRole: "member" as const,
     isCancelPending: false,
     isInvitePending: false,
+    isResendPending: false,
     onCancel: vi.fn(),
     onEmailChange: vi.fn(),
     onInviteRoleChange: vi.fn(),
+    onResend: vi.fn(),
     onSubmit: vi.fn((e: FormEvent<HTMLFormElement>) => {
       e.preventDefault();
     }),
@@ -81,5 +83,37 @@ describe("TeamInvitationsSection", () => {
   it("hides the per-invitation cancel button when the user cannot manage organization", () => {
     render(<TeamInvitationsSection {...defaultProps} canManageOrganization={false} />);
     expect(screen.queryByRole("button", { name: /Cancel/i })).not.toBeInTheDocument();
+  });
+
+  it("resends an invitation with its email and normalized admin role", () => {
+    render(<TeamInvitationsSection {...defaultProps} />);
+    fireEvent.click(screen.getByRole("button", { name: "Resend" }));
+    expect(defaultProps.onResend).toHaveBeenCalledWith("pending@atlas.test", "admin");
+  });
+
+  it("normalizes a non-admin invitation role to member when resending", () => {
+    const memberInvitations: AtlasOrganizationInvitationRecord[] = [
+      {
+        id: "inv_1",
+        email: "pending@atlas.test",
+        role: "member",
+        status: "pending",
+        createdAt: "2026-04-01T00:00:00.000Z",
+        expiresAt: "2026-05-01T00:00:00.000Z",
+      },
+    ];
+    render(<TeamInvitationsSection {...defaultProps} invitations={memberInvitations} />);
+    fireEvent.click(screen.getByRole("button", { name: "Resend" }));
+    expect(defaultProps.onResend).toHaveBeenCalledWith("pending@atlas.test", "member");
+  });
+
+  it("disables the resend button while a resend is pending", () => {
+    render(<TeamInvitationsSection {...defaultProps} isResendPending={true} />);
+    expect(screen.getByRole("button", { name: "Resend" })).toBeDisabled();
+  });
+
+  it("hides the resend button when the user cannot manage organization", () => {
+    render(<TeamInvitationsSection {...defaultProps} canManageOrganization={false} />);
+    expect(screen.queryByRole("button", { name: "Resend" })).not.toBeInTheDocument();
   });
 });

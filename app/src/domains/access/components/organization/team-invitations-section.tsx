@@ -14,11 +14,22 @@ interface TeamInvitationsSectionProps {
   inviteRole: "admin" | "member";
   isCancelPending: boolean;
   isInvitePending: boolean;
+  isResendPending: boolean;
   invitations: AtlasOrganizationDetails["invitations"];
   onCancel: (invitationId: string) => void;
   onEmailChange: (value: string) => void;
   onInviteRoleChange: (value: string) => void;
+  onResend: (email: string, role: "admin" | "member") => void;
   onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
+}
+
+/**
+ * Narrows a free-form invitation role to the two roles Atlas re-invites with.
+ *
+ * @param role - The stored invitation role string.
+ */
+function toInvitationRole(role: string): "admin" | "member" {
+  return role === "admin" ? "admin" : "member";
 }
 
 /**
@@ -31,9 +42,11 @@ export function TeamInvitationsSection({
   inviteRole,
   isCancelPending,
   isInvitePending,
+  isResendPending,
   onCancel,
   onEmailChange,
   onInviteRoleChange,
+  onResend,
   onSubmit,
 }: TeamInvitationsSectionProps) {
   return (
@@ -94,15 +107,26 @@ export function TeamInvitationsSection({
                 </p>
               </div>
               {canManageOrganization ? (
-                <Button
-                  variant="ghost"
-                  disabled={isCancelPending}
-                  onClick={() => {
-                    onCancel(invitation.id);
-                  }}
-                >
-                  Cancel
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="secondary"
+                    disabled={isResendPending}
+                    onClick={() => {
+                      onResend(invitation.email, toInvitationRole(invitation.role));
+                    }}
+                  >
+                    Resend
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    disabled={isCancelPending}
+                    onClick={() => {
+                      onCancel(invitation.id);
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                </div>
               ) : null}
             </article>
           ))

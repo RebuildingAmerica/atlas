@@ -18,6 +18,8 @@ export const ATLAS_PRODUCTS = {
   atlas_team: {
     monthlyPriceId: env("STRIPE_PRICE_ATLAS_TEAM_BASE_MONTHLY"),
     yearlyPriceId: env("STRIPE_PRICE_ATLAS_TEAM_BASE_YEARLY"),
+    monthlySeatPriceId: env("STRIPE_PRICE_ATLAS_TEAM_SEAT_MONTHLY"),
+    yearlySeatPriceId: env("STRIPE_PRICE_ATLAS_TEAM_SEAT_YEARLY"),
   },
   atlas_research_pass: {
     oncePriceId: env("STRIPE_PRICE_ATLAS_RESEARCH_PASS_ONCE"),

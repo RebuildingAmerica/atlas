@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   useQueryClient: vi.fn(),
   useAtlasSession: vi.fn(),
   getOrganizationDetails: vi.fn(),
+  getTeamSeatCostSummary: vi.fn(),
   getWorkspaceSAMLAllowedIssuers: vi.fn(),
 }));
 
@@ -23,6 +24,7 @@ vi.mock("@/domains/access/client/use-atlas-session", () => ({
 
 vi.mock("@/domains/access/organizations.functions", () => ({
   getOrganizationDetails: mocks.getOrganizationDetails,
+  getTeamSeatCostSummary: mocks.getTeamSeatCostSummary,
 }));
 
 vi.mock("@/domains/access/sso.functions", () => ({
@@ -78,7 +80,10 @@ describe("useOrganizationPageData", () => {
     const { result } = renderHook(() => useOrganizationPageData());
     await result.current.refreshWorkspaceData();
 
-    expect(invalidateQueries).toHaveBeenCalledTimes(2);
+    expect(invalidateQueries).toHaveBeenCalledTimes(3);
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: ["auth", "team-seat-cost-summary"],
+    });
     expect(refetch).toHaveBeenCalled();
   });
 
@@ -132,5 +137,85 @@ describe("useOrganizationPageData", () => {
     expect(mocks.useQuery).toHaveBeenCalledWith(
       expect.objectContaining({ initialData: { id: "org_initial" } }),
     );
+  });
+
+  it("enables the team seat-cost query only for team workspaces", () => {
+    mocks.useAtlasSession.mockReturnValue({
+      data: {
+        workspace: {
+          activeOrganization: { id: "org_team", workspaceType: "team" },
+          memberships: [],
+          pendingInvitations: [],
+          capabilities: { canSwitchOrganizations: true },
+          onboarding: { hasPendingInvitations: false, needsWorkspace: false },
+        },
+      },
+      refetch: vi.fn(),
+    });
+
+    renderHook(() => useOrganizationPageData());
+
+    expect(mocks.useQuery).toHaveBeenCalledWith(
+      expect.objectContaining({
+        enabled: true,
+        queryKey: ["auth", "team-seat-cost-summary", "org_team"],
+      }),
+    );
+  });
+
+  it("disables the team seat-cost query for individual workspaces", () => {
+    mocks.useAtlasSession.mockReturnValue({
+      data: {
+        workspace: {
+          activeOrganization: { id: "org_solo", workspaceType: "individual" },
+          memberships: [],
+          pendingInvitations: [],
+          capabilities: { canSwitchOrganizations: true },
+          onboarding: { hasPendingInvitations: false, needsWorkspace: false },
+        },
+      },
+      refetch: vi.fn(),
+    });
+
+    renderHook(() => useOrganizationPageData());
+
+    expect(mocks.useQuery).toHaveBeenCalledWith(
+      expect.objectContaining({
+        enabled: false,
+        queryKey: ["auth", "team-seat-cost-summary", "org_solo"],
+      }),
+    );
+  });
+
+  it("exposes the loaded team seat-cost summary and the queryFn calls the server", () => {
+    const teamSeatCostQueryFn = vi.fn();
+    mocks.useQuery.mockImplementationOnce(() => ({ data: { id: "org_1" }, isLoading: false }));
+    mocks.useQuery.mockImplementationOnce(() => ({
+      data: { issuerOrigins: [] },
+      isLoading: false,
+    }));
+    mocks.useQuery.mockImplementationOnce(({ queryFn }: { queryFn: () => unknown }) => {
+      teamSeatCostQueryFn.mockImplementation(queryFn);
+      return { data: { totalCents: 2500 }, isLoading: false };
+    });
+    mocks.getTeamSeatCostSummary.mockResolvedValue({ totalCents: 2500 });
+
+    const { result } = renderHook(() => useOrganizationPageData());
+    teamSeatCostQueryFn();
+
+    expect(mocks.getTeamSeatCostSummary).toHaveBeenCalled();
+    expect(result.current.teamSeatCostSummary).toEqual({ totalCents: 2500 });
+  });
+
+  it("defaults the team seat-cost summary to null when the query has no data", () => {
+    mocks.useQuery.mockImplementationOnce(() => ({ data: { id: "org_1" }, isLoading: false }));
+    mocks.useQuery.mockImplementationOnce(() => ({
+      data: { issuerOrigins: [] },
+      isLoading: false,
+    }));
+    mocks.useQuery.mockImplementationOnce(() => ({ data: undefined, isLoading: false }));
+
+    const { result } = renderHook(() => useOrganizationPageData());
+    expect(result.current.teamSeatCostSummary).toBeNull();
   });
 });

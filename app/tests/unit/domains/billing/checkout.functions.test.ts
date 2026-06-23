@@ -97,6 +97,8 @@ describe("checkout.functions", () => {
       discountCouponId: "coupon_segment",
       priceId: "price_pro_yearly",
       product: "atlas_pro",
+      seatPriceId: null,
+      seatQuantity: 0,
       stripeCustomerId: "cus_123",
       successUrl: "https://atlas.test/checkout-complete?product=atlas_pro",
       workspaceId: "org_team",
@@ -327,5 +329,108 @@ describe("checkout.functions", () => {
 
     expect(response.error).toBeInstanceOf(Error);
     expect((response.error as Error).message).toContain("did not return a checkout URL");
+  });
+
+  interface SeatCheckoutCall {
+    seatPriceId: string | null;
+    seatQuantity: number;
+  }
+
+  it("bills additional Team seats by member count for a monthly subscription", async () => {
+    mocks.requireAtlasSessionState.mockResolvedValue(createAtlasSessionFixture());
+    authApi.getFullOrganization.mockResolvedValue({
+      metadata: { stripeCustomerId: "cus_123", workspaceType: "team" },
+      members: [{ id: "m1" }, { id: "m2" }, { id: "m3" }],
+    });
+    mocks.createCheckoutSession.mockResolvedValue({ url: "https://checkout.stripe.test/c/seats" });
+
+    const { startCheckout } = await import("@/domains/billing/checkout.functions");
+    const response = (await startCheckout.__executeServer({
+      method: "POST",
+      data: { product: "atlas_team", interval: "monthly" },
+    })) as ServerFnExecutionResponse;
+
+    expect(response.error).toBeUndefined();
+    const call = mocks.createCheckoutSession.mock.calls[0]?.[0] as SeatCheckoutCall | undefined;
+    expect(call?.seatPriceId).toBe("price_team_seat_monthly");
+    expect(call?.seatQuantity).toBe(2);
+  });
+
+  it("uses the yearly seat price for a yearly Team subscription", async () => {
+    mocks.requireAtlasSessionState.mockResolvedValue(createAtlasSessionFixture());
+    authApi.getFullOrganization.mockResolvedValue({
+      metadata: { stripeCustomerId: "cus_123", workspaceType: "team" },
+      members: [{ id: "m1" }, { id: "m2" }, { id: "m3" }],
+    });
+    mocks.createCheckoutSession.mockResolvedValue({ url: "https://checkout.stripe.test/c/seatsy" });
+
+    const { startCheckout } = await import("@/domains/billing/checkout.functions");
+    const response = (await startCheckout.__executeServer({
+      method: "POST",
+      data: { product: "atlas_team", interval: "yearly" },
+    })) as ServerFnExecutionResponse;
+
+    expect(response.error).toBeUndefined();
+    const call = mocks.createCheckoutSession.mock.calls[0]?.[0] as SeatCheckoutCall | undefined;
+    expect(call?.seatPriceId).toBe("price_team_seat_yearly");
+    expect(call?.seatQuantity).toBe(2);
+  });
+
+  it("omits Team seats when the workspace has only the owner", async () => {
+    mocks.requireAtlasSessionState.mockResolvedValue(createAtlasSessionFixture());
+    authApi.getFullOrganization.mockResolvedValue({
+      metadata: { stripeCustomerId: "cus_123", workspaceType: "team" },
+      members: [{ id: "owner" }],
+    });
+    mocks.createCheckoutSession.mockResolvedValue({ url: "https://checkout.stripe.test/c/base" });
+
+    const { startCheckout } = await import("@/domains/billing/checkout.functions");
+    const response = (await startCheckout.__executeServer({
+      method: "POST",
+      data: { product: "atlas_team", interval: "monthly" },
+    })) as ServerFnExecutionResponse;
+
+    expect(response.error).toBeUndefined();
+    const call = mocks.createCheckoutSession.mock.calls[0]?.[0] as SeatCheckoutCall | undefined;
+    expect(call?.seatPriceId).toBeNull();
+    expect(call?.seatQuantity).toBe(0);
+  });
+
+  it("does not attach seats to non-Team products", async () => {
+    mocks.requireAtlasSessionState.mockResolvedValue(createAtlasSessionFixture());
+    authApi.getFullOrganization.mockResolvedValue({
+      metadata: { stripeCustomerId: "cus_123", workspaceType: "team" },
+      members: [{ id: "m1" }, { id: "m2" }],
+    });
+    mocks.createCheckoutSession.mockResolvedValue({ url: "https://checkout.stripe.test/c/pro" });
+
+    const { startCheckout } = await import("@/domains/billing/checkout.functions");
+    const response = (await startCheckout.__executeServer({
+      method: "POST",
+      data: { product: "atlas_pro", interval: "monthly" },
+    })) as ServerFnExecutionResponse;
+
+    expect(response.error).toBeUndefined();
+    const call = mocks.createCheckoutSession.mock.calls[0]?.[0] as SeatCheckoutCall | undefined;
+    expect(call?.seatPriceId).toBeNull();
+    expect(call?.seatQuantity).toBe(0);
+  });
+
+  it("rejects checkout when the Team seat price is unconfigured", async () => {
+    vi.stubEnv("STRIPE_PRICE_ATLAS_TEAM_SEAT_MONTHLY", "");
+    mocks.requireAtlasSessionState.mockResolvedValue(createAtlasSessionFixture());
+    authApi.getFullOrganization.mockResolvedValue({
+      metadata: { stripeCustomerId: "cus_123", workspaceType: "team" },
+      members: [{ id: "m1" }, { id: "m2" }, { id: "m3" }],
+    });
+
+    const { startCheckout } = await import("@/domains/billing/checkout.functions");
+    const response = (await startCheckout.__executeServer({
+      method: "POST",
+      data: { product: "atlas_team", interval: "monthly" },
+    })) as ServerFnExecutionResponse;
+
+    expect(response.error).toBeInstanceOf(Error);
+    expect((response.error as Error).message).toContain("seat price not configured");
   });
 });

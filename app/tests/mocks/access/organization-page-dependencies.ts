@@ -15,6 +15,7 @@ export const organizationPageDependencyMocks = {
   registerWorkspaceGoogleOIDCProvider: vi.fn(),
   registerWorkspaceSAMLProvider: vi.fn(),
   rejectWorkspaceInvitation: vi.fn(),
+  resendWorkspaceInvitation: vi.fn(),
   removeWorkspaceMember: vi.fn(),
   requestWorkspaceSSODomainVerification: vi.fn(),
   rotateWorkspaceSAMLCertificate: vi.fn(),

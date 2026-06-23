@@ -194,6 +194,8 @@ describe("auth — invitation success path and organization invitation email", (
         to: "newmember@atlas.test",
       }),
     );
+    const sentMessage = mocks.emailSend.mock.calls[0]?.[0] as { text: string };
+    expect(sentMessage.text).toContain("https://atlas.test/accept-invitation/inv_123");
   });
 
   it("enforces requirePKCE = true on every existing oauthClient row in SQLite", async () => {

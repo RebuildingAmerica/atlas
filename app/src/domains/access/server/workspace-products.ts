@@ -12,6 +12,13 @@ interface WorkspaceProductRow {
 }
 
 /**
+ * Row shape returned when reading a workspace's Team subscription id.
+ */
+interface TeamSubscriptionRow {
+  stripe_subscription_id: string | null;
+}
+
+/**
  * Queries active products for a workspace from a SQLite database.
  *
  * A product is considered active when its status is 'active' and either its
@@ -63,4 +70,41 @@ export async function queryActiveProducts(workspaceId: string): Promise<AtlasPro
   }
 
   return [];
+}
+
+/**
+ * Returns the Stripe subscription ID backing a workspace's active Atlas Team
+ * product, or null when the workspace has no active Team subscription.
+ *
+ * This is the handle seat synchronization uses to adjust the per-seat line
+ * item as membership changes.
+ *
+ * @param workspaceId - The workspace (organization) ID to query.
+ */
+export async function queryActiveTeamSubscriptionId(workspaceId: string): Promise<string | null> {
+  const pool = getAuthPgPool();
+  if (pool) {
+    const result = await pool.query(
+      `SELECT stripe_subscription_id FROM workspace_products
+       WHERE workspace_id = $1 AND product = 'atlas_team' AND status = 'active'
+       LIMIT 1`,
+      [workspaceId],
+    );
+    const row = (result.rows as TeamSubscriptionRow[])[0];
+    return row?.stripe_subscription_id ?? null;
+  }
+
+  const db = getAuthDatabase();
+  if (db) {
+    const row = db
+      .prepare(
+        `SELECT stripe_subscription_id FROM workspace_products
+         WHERE workspace_id = ? AND product = 'atlas_team' AND status = 'active'
+         LIMIT 1`,
+      )
+      .get(workspaceId) as TeamSubscriptionRow | undefined;
+    return row?.stripe_subscription_id ?? null;
+  }
+
+  return null;
 }

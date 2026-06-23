@@ -16,6 +16,14 @@ interface CreateCheckoutOptions {
   customerEmail: string;
   stripeCustomerId?: string | null;
   discountCouponId?: string | null;
+  /**
+   * Stripe price for the per-seat add-on (Atlas Team). When present alongside a
+   * positive `seatQuantity`, a second line item bills each member beyond the
+   * one covered by the base price.
+   */
+  seatPriceId?: string | null;
+  /** Number of additional seats to bill (members beyond the base-covered one). */
+  seatQuantity?: number;
 }
 
 /**
@@ -38,12 +46,23 @@ export async function createCheckoutSession(
     product: options.product,
   };
 
+  // Base price covers the workspace (and the owner's seat). For Atlas Team,
+  // each additional member is billed through a separate seat line item whose
+  // quantity tracks membership (see syncTeamSeats).
+  const lineItems: Stripe.Checkout.SessionCreateParams["line_items"] = [
+    { price: options.priceId, quantity: 1 },
+  ];
+  const seatQuantity = options.seatQuantity ?? 0;
+  if (options.seatPriceId && seatQuantity >= 1) {
+    lineItems.push({ price: options.seatPriceId, quantity: seatQuantity });
+  }
+
   const sharedParams: Pick<
     Stripe.Checkout.SessionCreateParams,
     "mode" | "line_items" | "success_url" | "cancel_url" | "metadata" | "subscription_data"
   > = {
     mode,
-    line_items: [{ price: options.priceId, quantity: 1 }],
+    line_items: lineItems,
     success_url: options.successUrl,
     cancel_url: options.cancelUrl,
     metadata: workspaceMetadata,

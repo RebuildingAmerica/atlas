@@ -1,12 +1,15 @@
 import { useMutation } from "@tanstack/react-query";
+import { useNavigate } from "@tanstack/react-router";
 import {
   acceptWorkspaceInvitation,
   cancelWorkspaceInvitation,
+  convertWorkspaceToTeam,
   createWorkspace,
   inviteWorkspaceMember,
   leaveWorkspace,
   rejectWorkspaceInvitation,
   removeWorkspaceMember,
+  resendWorkspaceInvitation,
   setActiveWorkspace,
   updateWorkspaceMemberRole,
   updateWorkspaceProfile,
@@ -27,8 +30,10 @@ export interface OrganizationPageWorkspaceActions {
   pendingInvitationMutationPending: boolean;
   profilePending: boolean;
   removeMemberPending: boolean;
+  resendInvitationPending: boolean;
   selectWorkspacePending: boolean;
   updateWorkspaceMemberRolePending: boolean;
+  upgradeToTeamPending: boolean;
   onCreateWorkspace: (event: React.FormEvent<HTMLFormElement>) => Promise<void>;
   onInviteMember: (event: React.FormEvent<HTMLFormElement>) => Promise<void>;
   onInvitationDecision: (
@@ -40,6 +45,8 @@ export interface OrganizationPageWorkspaceActions {
   onSelectWorkspace: (organizationId: string) => Promise<void>;
   onUpdateMemberRole: (memberId: string, role: "admin" | "member") => Promise<void>;
   onRemoveMember: (memberIdOrEmail: string) => Promise<void>;
+  onResendInvitation: (email: string, role: "admin" | "member") => Promise<void>;
+  onUpgradeToTeam: () => Promise<void>;
 }
 
 interface UseOrganizationPageWorkspaceActionsParams {
@@ -61,8 +68,12 @@ interface UseOrganizationPageWorkspaceActionsParams {
 export function useOrganizationPageWorkspaceActions(
   params: UseOrganizationPageWorkspaceActionsParams,
 ): OrganizationPageWorkspaceActions {
+  const navigate = useNavigate();
   const createWorkspaceMutation = useMutation({
     mutationFn: createWorkspace,
+  });
+  const convertWorkspaceToTeamMutation = useMutation({
+    mutationFn: () => convertWorkspaceToTeam(),
   });
   const setActiveWorkspaceMutation = useMutation({
     mutationFn: setActiveWorkspace,
@@ -75,6 +86,9 @@ export function useOrganizationPageWorkspaceActions(
   });
   const cancelWorkspaceInvitationMutation = useMutation({
     mutationFn: cancelWorkspaceInvitation,
+  });
+  const resendWorkspaceInvitationMutation = useMutation({
+    mutationFn: resendWorkspaceInvitation,
   });
   const acceptWorkspaceInvitationMutation = useMutation({
     mutationFn: acceptWorkspaceInvitation,
@@ -332,6 +346,52 @@ export function useOrganizationPageWorkspaceActions(
     });
   }
 
+  /**
+   * Resends the email for a pending invitation. Better Auth re-issues the
+   * existing invitation atomically, so the recipient never loses their
+   * outstanding invite if the call fails.
+   *
+   * @param email - The pending invitation's email address.
+   * @param role - The role the recipient was invited with.
+   */
+  async function handleResendInvitation(email: string, role: "admin" | "member") {
+    await runOrganizationPageMutation({
+      action: async () => {
+        const mutationResult = await resendWorkspaceInvitationMutation.mutateAsync({
+          data: { email, role },
+        });
+
+        return mutationResult;
+      },
+      fallbackMessage: "Atlas could not resend that invitation.",
+      feedback: params.feedback,
+      refreshWorkspaceData: params.refreshWorkspaceData,
+      successMessage: "Invitation resent.",
+    });
+  }
+
+  /**
+   * Upgrades the active individual workspace into a team in place, then routes
+   * the operator to pricing so they can subscribe and start inviting members.
+   */
+  async function handleUpgradeToTeam() {
+    const upgradeResult = await runOrganizationPageMutation({
+      action: async () => {
+        const mutationResult = await convertWorkspaceToTeamMutation.mutateAsync();
+
+        return mutationResult;
+      },
+      fallbackMessage: "Atlas could not upgrade that workspace.",
+      feedback: params.feedback,
+      refreshWorkspaceData: params.refreshWorkspaceData,
+      successMessage: "Workspace upgraded to a team. Subscribe to Atlas Team to invite members.",
+    });
+
+    if (upgradeResult) {
+      await navigate({ to: "/pricing" });
+    }
+  }
+
   const pendingInvitationMutationPending =
     acceptWorkspaceInvitationMutation.isPending ||
     cancelWorkspaceInvitationMutation.isPending ||
@@ -344,8 +404,10 @@ export function useOrganizationPageWorkspaceActions(
     pendingInvitationMutationPending,
     profilePending: updateWorkspaceProfileMutation.isPending,
     removeMemberPending: removeWorkspaceMemberMutation.isPending,
+    resendInvitationPending: resendWorkspaceInvitationMutation.isPending,
     selectWorkspacePending: setActiveWorkspaceMutation.isPending,
     updateWorkspaceMemberRolePending: updateWorkspaceMemberRoleMutation.isPending,
+    upgradeToTeamPending: convertWorkspaceToTeamMutation.isPending,
     onCreateWorkspace: handleCreateWorkspace,
     onInviteMember: handleInviteMember,
     onInvitationDecision: handleInvitationDecision,
@@ -354,5 +416,7 @@ export function useOrganizationPageWorkspaceActions(
     onSelectWorkspace: handleWorkspaceSwitch,
     onUpdateMemberRole: handleMemberRoleChange,
     onRemoveMember: handleRemoveMember,
+    onResendInvitation: handleResendInvitation,
+    onUpgradeToTeam: handleUpgradeToTeam,
   };
 }

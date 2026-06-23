@@ -40,6 +40,15 @@ function resolvePriceId(product: string, interval: string): string {
 }
 
 /**
+ * Resolves the Stripe per-seat price ID for an Atlas Team billing interval.
+ */
+function resolveSeatPriceId(interval: string): string {
+  return interval === "yearly"
+    ? ATLAS_PRODUCTS.atlas_team.yearlySeatPriceId
+    : ATLAS_PRODUCTS.atlas_team.monthlySeatPriceId;
+}
+
+/**
  * Creates a Stripe Checkout Session and returns the redirect URL.
  *
  * Requires an authenticated session with an active workspace. The workspace
@@ -92,6 +101,24 @@ export const startCheckout = createServerFn({ method: "POST" })
       }
     }
 
+    // Atlas Team bills the base price (covering the owner) plus one seat per
+    // additional member. The seat quantity reflects current membership;
+    // syncTeamSeats keeps it accurate as members join or leave afterward.
+    let seatPriceId: string | null = null;
+    let seatQuantity = 0;
+    if (data.product === "atlas_team") {
+      const members = fullOrganization?.members;
+      seatQuantity = Array.isArray(members) ? Math.max(0, members.length - 1) : 0;
+      if (seatQuantity >= 1) {
+        seatPriceId = resolveSeatPriceId(data.interval);
+        if (!seatPriceId) {
+          throw new Error(
+            "Stripe seat price not configured for Atlas Team. Check environment variables.",
+          );
+        }
+      }
+    }
+
     const successUrl = new URL("/checkout-complete", runtime.publicBaseUrl);
     successUrl.searchParams.set("product", data.product);
     const cancelUrl = new URL("/pricing", runtime.publicBaseUrl);
@@ -105,6 +132,8 @@ export const startCheckout = createServerFn({ method: "POST" })
       customerEmail: session.user.email,
       stripeCustomerId,
       discountCouponId,
+      seatPriceId,
+      seatQuantity,
     });
 
     if (!result.url) {
