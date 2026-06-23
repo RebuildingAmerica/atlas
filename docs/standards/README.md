@@ -21,6 +21,11 @@ REST API design standards. Base path, pagination, errors, versioning.
 
 → [Read: API Conventions](./api-conventions.md)
 
+### Documentation (Diátaxis)
+How we organize and write docs. Every page is one of four modes — tutorial, how-to, reference, or explanation — and content lives in exactly one canonical home (no duplication).
+
+→ [Read: Documentation Standard](./documentation.md)
+
 ## Quick Reference
 
 ### Commit Message Format
@@ -93,6 +98,7 @@ Queries target different source types (news, nonprofits, etc).
 | Understand commit message format | [Commit Messages](./commit-messages.md) |
 | Format code consistently | [Code Style](./code-style.md) |
 | Design a REST endpoint | [API Conventions](./api-conventions.md) |
+| Write or organize documentation | [Documentation (Diátaxis)](./documentation.md) |
 
 ---
 
