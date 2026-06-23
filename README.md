@@ -2,6 +2,9 @@
 
 **A free, open-source directory helping people discover who's working on the issues that matter most — in every community across America.**
 
+> [!IMPORTANT]
+> **Atlas's first principle is [Experience First](./docs/experience-first.md):** the end-user experience is the product and the reason this nonprofit exists. Anyone can hold this data; the experience of finding people and trusting what you see is the whole point.
+
 ## What is Atlas?
 
 Across the country, thousands of organizations and individuals are working on housing, labor, climate, democracy, justice, and more. But finding them isn't easy. Information is scattered, outdated, or buried in search results.

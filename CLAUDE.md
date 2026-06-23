@@ -6,6 +6,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Atlas is an open-source civic actor discovery platform. It finds people, organizations, and initiatives working on social issues across America, traces each to public sources, and presents them as a searchable, source-linked directory.
 
+## The First Principle: End-User Experience (read this first)
+
+**This outranks every other instruction in this file.** Atlas's only real moat is the *experience* of using it — how it feels to find a person, trust what you see, understand how they connect, and act. **The end-user experience is the product, and it is the reason this nonprofit exists.** Everything else — schema, discovery pipeline, knowledge graph, API — is plumbing in service of it. It does not matter how efficient or complete our systems are if end users cannot feel the benefit.
+
+Non-negotiable:
+
+1. **Every technical and architectural decision must tie back to the end-user experience it enables or protects.** "Cleaner / more scalable / more correct / more complete" is never sufficient on its own — it must ladder up to something the user can see, trust, feel, or do. Say so in the PR, commit body, or design doc.
+2. **We build complexity solely for the experience.** Complexity is a cost, never an achievement. A simpler system that delivers the same experience is always better. Never substitute depth or complexity for an emphasis on experience.
+3. **There is no such thing as "back-end-only work."** A migration, a pipeline change, a job queue are product work, judged by the experience they produce.
+4. **Trust is the core experience.** Wrong, stale, or unsourced data shown confidently is the worst outcome — an experience failure, not just a data bug.
+
+Full statement: [docs/experience-first.md](docs/experience-first.md). When in doubt, optimize for what the user sees, trusts, and can do.
+
 ## Architecture
 
 **Monorepo** managed by Turborepo with pnpm workspaces.

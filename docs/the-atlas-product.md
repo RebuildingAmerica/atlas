@@ -3,6 +3,9 @@
 
 *Created for the Rebuilding America initiative — open-source and independently useful*
 
+> [!IMPORTANT]
+> **First principle: [Experience First](./experience-first.md).** The end-user experience is the product and the reason this nonprofit exists — read it before contributing.
+
 ---
 
 ### The Problem
@@ -41,9 +44,12 @@ websites, academic research, and civic records. It extracts structured data
 from what it finds, deduplicates, ranks by relevance, and presents the
 results for review.
 
-The autodiscovery pipeline is the product. Everything else — the database,
-the interface, the public directory — exists to support and present what
-the pipeline finds.
+The end-user experience is the product. The autodiscovery pipeline, the
+database, and the public directory all exist to produce and present an
+experience people can trust and use: the pipeline is how we find what's
+true; the experience of finding, trusting, and acting on it is what we
+actually ship. (See [Experience First](./experience-first.md) — the
+principle that outranks everything else in this project.)
 
 ### Who It's For
 

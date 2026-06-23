@@ -6,6 +6,25 @@ This file provides guidance to AI coding agents when working with code in this r
 
 Atlas is an open-source civic actor discovery platform. It finds people, organizations, and initiatives working on social issues across America, traces each to public sources, and presents them as a searchable, source-linked directory.
 
+## What Matters Most: The End-User Experience
+
+**Read this before anything else in this file. It outranks every other instruction here.** Atlas's reason to exist — and its only real moat — is the *experience* of using it. Anyone can assemble a database of civic actors; the rows are a commodity, and dozens of datasets and "DB tools" already have them. What sets Atlas apart is how it *feels* to find a person, trust what you see, understand how they connect to others, and act on it. **The end-user experience is the product experience, and it is the reason this nonprofit exists. Everything else — the schema, the discovery pipeline, the knowledge graph, the API — is plumbing in service of it.** It does not matter how efficient, elegant, or complete our systems are if end users cannot feel the benefit: an internal improvement no user ever experiences is not an improvement. (Full statement: [docs/experience-first.md](docs/experience-first.md) — the principle that outranks all others in this repo.)
+
+**Three rules that are not negotiable:**
+
+1. **Every technical and architectural decision MUST be tied back to the end-user experience it enables or protects.** No exceptions. If you cannot name the concrete experience a change delivers, do not make it. "It's cleaner," "it's more scalable," "it's more correct," "it's more complete" are *not* sufficient justifications on their own — each must ladder up to something the user can see, trust, feel, or do. State that tie explicitly wherever the decision is recorded: the PR, the commit body, the design doc, the code comment.
+2. **Never substitute depth or complexity for experience.** Complexity is a cost we pay, never an achievement we celebrate. We build complex systems *solely* because — and only to the extent that — they produce a better experience for the end user. A simpler system that delivers the same experience is always the better system. Sophistication the user never feels is waste, and usually a liability. Never reach for the grander architecture when a smaller one gives the user the same thing sooner.
+3. **There is no such thing as "back-end-only work."** A schema migration, a pipeline change, an index, a job queue are *product* work, accountable to the experience they serve. "It's just backend" is never a reason to skip that accountability or to lower the bar on the polish, trust, and clarity the user ultimately feels. Every change, at every layer, is judged by the end-user experience it produces.
+
+Apply it like this:
+
+- **Judge work by its effect on the person using Atlas, not by how clean or impressive the backend is.** When you finish infrastructure work, answer: *what can the end user now see, trust, or do that they couldn't before?* If you can't answer, the work isn't finished — or wasn't worth starting.
+- **Trust is the core experience.** Atlas publishes claims about real, named people. Every surface must make it obvious where information came from and how confident we are. Data that is wrong, stale, or unsourced but shown confidently is the worst possible outcome — an experience failure, not merely a data bug.
+- **Polish is not optional and not "later."** Loading, empty, and error states; copy; spacing; motion; perceived speed; the feel of search and navigation *are* the product, not finishing touches. Hold them to the same bar as core features. (See *Copy and User-Facing Language* and the design conventions below.)
+- **When you must trade off, favor the user-facing outcome.** Ship the smaller backend that makes the experience better now over the grander one that delivers nothing the user can feel yet.
+
+If a task ever feels purely "technical," stop and name the end-user outcome it serves. If there isn't one, question whether it should be done at all. Distinctive, trustworthy, delightful experience is the differentiator we protect in every commit.
+
 ## Architecture
 
 **Monorepo** managed by Turborepo with pnpm workspaces.
