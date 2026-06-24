@@ -27,6 +27,11 @@ export default defineConfig({
       },
     },
     environment: "node",
+    // The pre-push gate runs every workspace's suite concurrently via Turbo;
+    // under that CPU contention the heaviest auth-flow tests drift just past
+    // vitest's 5s default and time out. A generous ceiling keeps a green suite
+    // from flaking — a genuinely broken test still fails fast, not via timeout.
+    testTimeout: 30_000,
     include: [
       "tests/unit/**/*.test.ts",
       "tests/unit/**/*.test.tsx",
