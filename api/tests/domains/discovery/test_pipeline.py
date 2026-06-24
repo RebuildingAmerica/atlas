@@ -401,13 +401,22 @@ class TestDiscoveryRunner:
         assert run.entries_extracted == EXPECTED_TWO_RECORDS
         assert run.entries_after_dedup == 1
 
-        results = await EntryCRUD.search_public(test_db, states=["MO"])
-        assert results["total"] == 1
-        record = results["entries"][0]
-        assert record["entry"].name == "Prairie Workers Cooperative"
-        assert record["source_count"] == EXPECTED_TWO_RECORDS
-        assert record["latest_source_date"] == "2026-01-15"
-        assert record["issue_areas"] == ["housing_affordability", "worker_cooperatives"]
+        # The trust gate holds an uncorroborated web-only org: it is persisted with
+        # its sources but stays out of public search until a curator approves it.
+        from atlas.domains.moderation.review_queue import ReviewQueueCRUD
+
+        public_results = await EntryCRUD.search_public(test_db, states=["MO"])
+        assert public_results["total"] == 0
+
+        pending = await ReviewQueueCRUD.list_pending(test_db)
+        assert len(pending) == 1
+        assert pending[0].hold_reason == "uncorroborated_web_only"
+
+        held_entry, sources = await EntryCRUD.get_with_sources(test_db, pending[0].entity_id)
+        assert held_entry is not None
+        assert held_entry.name == "Prairie Workers Cooperative"
+        assert held_entry.active is False
+        assert len(sources) == EXPECTED_TWO_RECORDS
 
 
 class TestSourceFetchingHelpers:
@@ -1351,6 +1360,123 @@ class TestRunnerHelpers:
         )
         assert shared.source_url == "https://example.com/story"
         assert shared.extraction_context == ""
+
+
+def _make_deduped_entry(
+    *,
+    entry_type: str,
+    name: str,
+    city: str,
+    state: str,
+) -> object:
+    """Build a minimal shared deduplicated entry for trust-gate tests."""
+    from atlas_shared import DeduplicatedEntry as SharedDeduplicatedEntry
+
+    return SharedDeduplicatedEntry(
+        name=name,
+        entry_type=entry_type,
+        description=f"{name} works on local issues.",
+        city=city,
+        state=state,
+        geo_specificity="local",
+        issue_areas=["housing_affordability"],
+        source_urls=[],
+    )
+
+
+class TestTrustGateUpsert:
+    """The upsert path must hold risky discoveries instead of publishing them."""
+
+    @pytest.mark.asyncio
+    async def test_discovered_person_is_held_not_published(self, test_db: object) -> None:
+        from atlas.domains.moderation.review_queue import ReviewQueueCRUD
+
+        runner_module = _load_runner_module()
+        entry = _make_deduped_entry(
+            entry_type="person", name="Sam Organizer", city="KC", state="MO"
+        )
+
+        entity_id = await runner_module._upsert_entry(test_db, entry)  # noqa: SLF001
+
+        stored = await EntryCRUD.get_by_id(test_db, entity_id)
+        pending = await ReviewQueueCRUD.list_pending(test_db)
+        assert stored is not None
+        assert stored.active is False
+        assert [item.entity_id for item in pending] == [entity_id]
+        assert pending[0].hold_reason == "person_requires_review"
+
+    @pytest.mark.asyncio
+    async def test_uncorroborated_org_is_held_not_published(self, test_db: object) -> None:
+        from atlas.domains.moderation.review_queue import ReviewQueueCRUD
+
+        runner_module = _load_runner_module()
+        entry = _make_deduped_entry(
+            entry_type="organization", name="Held Collective", city="KC", state="MO"
+        )
+
+        entity_id = await runner_module._upsert_entry(test_db, entry)  # noqa: SLF001
+
+        stored = await EntryCRUD.get_by_id(test_db, entity_id)
+        pending = await ReviewQueueCRUD.list_pending(test_db)
+        assert stored is not None
+        assert stored.active is False
+        assert [item.entity_id for item in pending] == [entity_id]
+        assert pending[0].hold_reason == "uncorroborated_web_only"
+
+    @pytest.mark.asyncio
+    async def test_publish_decision_creates_active_entry_without_queueing(
+        self,
+        test_db: object,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """When the gate clears a new record, it is published and never enqueued."""
+        from atlas.domains.discovery import trust_gate
+        from atlas.domains.moderation.review_queue import ReviewQueueCRUD
+
+        runner_module = _load_runner_module()
+
+        def fake_evaluate(**_kwargs: object) -> trust_gate.GateDecision:
+            return trust_gate.GateDecision(publish=True, hold_reason=None)
+
+        monkeypatch.setattr(runner_module, "evaluate_publication", fake_evaluate)
+        entry = _make_deduped_entry(
+            entry_type="organization", name="Cleared Org", city="KC", state="MO"
+        )
+
+        entity_id = await runner_module._upsert_entry(test_db, entry)  # noqa: SLF001
+
+        stored = await EntryCRUD.get_by_id(test_db, entity_id)
+        pending = await ReviewQueueCRUD.list_pending(test_db)
+        assert stored is not None
+        assert stored.active is True
+        assert pending == []
+
+    @pytest.mark.asyncio
+    async def test_already_active_match_is_not_unpublished(self, test_db: object) -> None:
+        from atlas.domains.moderation.review_queue import ReviewQueueCRUD
+
+        runner_module = _load_runner_module()
+        existing_id = await EntryCRUD.create(
+            test_db,
+            entry_type="organization",
+            name="Live Org",
+            description="Already published.",
+            city="KC",
+            state="MO",
+            geo_specificity="local",
+        )
+        entry = _make_deduped_entry(
+            entry_type="organization", name="Live Org", city="KC", state="MO"
+        )
+
+        entity_id = await runner_module._upsert_entry(test_db, entry)  # noqa: SLF001
+
+        stored = await EntryCRUD.get_by_id(test_db, entity_id)
+        pending = await ReviewQueueCRUD.list_pending(test_db)
+        assert entity_id == existing_id
+        assert stored is not None
+        assert stored.active is True
+        assert pending == []
 
 
 async def _get_db_connection(database_url: str) -> object:

@@ -36,6 +36,8 @@ from atlas.domains.discovery.pipeline.gap_analyzer import analyze_gaps
 from atlas.domains.discovery.pipeline.query_generator import generate_queries
 from atlas.domains.discovery.pipeline.ranker import rank_entries
 from atlas.domains.discovery.pipeline.source_fetcher import fetch_sources
+from atlas.domains.discovery.trust_gate import evaluate_publication
+from atlas.domains.moderation.review_queue import ReviewQueueCRUD
 from atlas.models import DiscoveryRunCRUD, EntryCRUD, SourceCRUD
 from atlas.platform.database import db, get_db_connection
 
@@ -253,7 +255,7 @@ async def persist_discovery_results(
     linked_source_urls: set[str] = set()
 
     for ranked_entry in ranked_entries:
-        entry_id = await _upsert_entry(conn, ranked_entry.entry)
+        entry_id = await _upsert_entry(conn, ranked_entry.entry, score=ranked_entry.score)
         confirmed_entry_ids.append(entry_id)
         await _persist_issue_areas(conn, entry_id, ranked_entry.entry.issue_areas)
         linked_source_urls.update(
@@ -315,8 +317,40 @@ async def persist_discovery_artifacts(
     )
 
 
-async def _upsert_entry(conn: Connection, entry: SharedDeduplicatedEntry) -> str:
-    """Create or update an entry based on exact location/type/name matching."""
+async def _upsert_entry(
+    conn: Connection,
+    entry: SharedDeduplicatedEntry,
+    *,
+    score: float = 0.0,
+    dedup_suspect: bool = False,
+    dedup_note: str | None = None,
+) -> str:
+    """Create or update an entry based on exact location/type/name matching.
+
+    Newly created records pass through the publication gate: a person, an
+    uncorroborated organization, or a dedup-suspect record is written inactive
+    and enqueued for human review rather than published. Re-discovery of an
+    already-published record only refreshes its fields and never unpublishes it.
+
+    Parameters
+    ----------
+    conn : Connection
+        Database connection.
+    entry : SharedDeduplicatedEntry
+        The deduplicated record to persist.
+    score : float, optional
+        The record's confidence score from ranking. Default is 0.0.
+    dedup_suspect : bool, optional
+        True when deduplication flagged the record as a possible duplicate.
+        Default is False.
+    dedup_note : str | None, optional
+        Human-readable reason the record looks like a duplicate. Default is None.
+
+    Returns
+    -------
+    str
+        The persisted entry id.
+    """
     city = entry.city
     state = entry.state
     candidates = await EntryCRUD.list(conn, state=state, city=city, active_only=False, limit=500)
@@ -332,7 +366,13 @@ async def _upsert_entry(conn: Connection, entry: SharedDeduplicatedEntry) -> str
 
     if match is None:
         today_iso = _today_iso_date()
-        return await EntryCRUD.create(
+        decision = evaluate_publication(
+            kind=str(entry.entry_type),
+            registry_corroborated=False,
+            dedup_suspect=dedup_suspect,
+            score=score,
+        )
+        entity_id = await EntryCRUD.create(
             conn,
             entry_type=str(entry.entry_type),
             name=entry.name,
@@ -346,7 +386,20 @@ async def _upsert_entry(conn: Connection, entry: SharedDeduplicatedEntry) -> str
             social_media=entry.social_media,
             first_seen=_first_seen_for_entry(entry, today_iso),
             last_seen=entry.last_seen or _parse_date(today_iso),
+            active=decision.publish,
         )
+        if not decision.publish:
+            assert decision.hold_reason is not None, "a held record always carries a hold reason"
+            await ReviewQueueCRUD.enqueue(
+                conn,
+                entity_id=entity_id,
+                kind=str(entry.entry_type),
+                hold_reason=decision.hold_reason,
+                score=score,
+                dedup_suspect=dedup_suspect,
+                dedup_note=dedup_note,
+            )
+        return entity_id
 
     today_iso = _today_iso_date()
     await EntryCRUD.update(
