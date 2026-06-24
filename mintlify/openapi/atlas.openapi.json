@@ -720,6 +720,27 @@
         "title": "DiscoveryRunArtifacts",
         "type": "object"
       },
+      "DiscoveryRunCancelResponse": {
+        "description": "Result of cancelling a discovery run's jobs.",
+        "properties": {
+          "jobs_cancelled": {
+            "description": "Number of non-terminal jobs moved to cancelled",
+            "title": "Jobs Cancelled",
+            "type": "integer"
+          },
+          "run_id": {
+            "description": "The discovery run whose jobs were cancelled",
+            "title": "Run Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "run_id",
+          "jobs_cancelled"
+        ],
+        "title": "DiscoveryRunCancelResponse",
+        "type": "object"
+      },
       "DiscoveryRunCollectionResponse": {
         "description": "Collection response for discovery runs.",
         "properties": {
@@ -6010,6 +6031,129 @@
           }
         },
         "summary": "Get a discovery run",
+        "tags": [
+          "discovery-runs"
+        ]
+      }
+    },
+    "/api/discovery-runs/{run_id}/cancel": {
+      "post": {
+        "description": "Cancel every queued, claimed, or running job belonging to a discovery run.",
+        "operationId": "cancelDiscoveryRun",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-internal-secret",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Internal-Secret"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-email",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Email"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-organization-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Organization-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DiscoveryRunCancelResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Cancel a discovery run",
         "tags": [
           "discovery-runs"
         ]

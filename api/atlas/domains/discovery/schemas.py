@@ -8,6 +8,7 @@ from atlas_shared import DiscoveryRunInput
 from pydantic import BaseModel, ConfigDict, Field
 
 __all__ = [
+    "DiscoveryRunCancelResponse",
     "DiscoveryRunResponse",
     "DiscoveryRunStartRequest",
     "DiscoveryScheduleCollectionResponse",
@@ -136,6 +137,13 @@ class DiscoveryJobResponse(BaseModel):
     created_at: str = Field(..., description="Creation timestamp")
     started_at: str | None = Field(None, description="Execution start timestamp")
     completed_at: str | None = Field(None, description="Completion timestamp")
+
+
+class DiscoveryRunCancelResponse(BaseModel):
+    """Result of cancelling a discovery run's jobs."""
+
+    run_id: str = Field(..., description="The discovery run whose jobs were cancelled")
+    jobs_cancelled: int = Field(..., description="Number of non-terminal jobs moved to cancelled")
 
 
 class DiscoveryPipelineSummaryResponse(BaseModel):

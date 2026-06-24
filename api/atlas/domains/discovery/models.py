@@ -975,6 +975,68 @@ class DiscoveryJobCRUD:
         return len(rows)
 
     @staticmethod
+    async def cancel(conn: aiosqlite.Connection, job_id: str) -> bool:
+        """Cancel a single job. Returns True if it was cancelled.
+
+        Only a job in a non-terminal state (``queued``, ``claimed``, or
+        ``running``) can be cancelled; a job that already ``completed``,
+        ``failed``, or was ``cancelled`` is left untouched. ``claim_next`` never
+        considers ``cancelled`` jobs, so cancellation removes the job from the
+        queue.
+
+        Parameters
+        ----------
+        conn : aiosqlite.Connection
+            Database connection.
+        job_id : str
+            Job id to cancel.
+
+        Returns
+        -------
+        bool
+            True if the job moved to ``cancelled``, False otherwise.
+        """
+        now = db.now_iso()
+        cursor = await conn.execute(
+            """
+            UPDATE discovery_jobs
+            SET status = 'cancelled', completed_at = ?, claimed_by = NULL, claimed_until = NULL
+            WHERE id = ? AND status IN ('queued', 'claimed', 'running')
+            """,
+            (now, job_id),
+        )
+        await conn.commit()
+        return getattr(cursor, "rowcount", 0) > 0
+
+    @staticmethod
+    async def cancel_run_jobs(conn: aiosqlite.Connection, run_id: str) -> int:
+        """Cancel every non-terminal job belonging to a run. Returns the count.
+
+        Parameters
+        ----------
+        conn : aiosqlite.Connection
+            Database connection.
+        run_id : str
+            Owning discovery run id.
+
+        Returns
+        -------
+        int
+            The number of jobs moved to ``cancelled``.
+        """
+        now = db.now_iso()
+        cursor = await conn.execute(
+            """
+            UPDATE discovery_jobs
+            SET status = 'cancelled', completed_at = ?, claimed_by = NULL, claimed_until = NULL
+            WHERE run_id = ? AND status IN ('queued', 'claimed', 'running')
+            """,
+            (now, run_id),
+        )
+        await conn.commit()
+        return int(getattr(cursor, "rowcount", 0))
+
+    @staticmethod
     async def list_by_status(
         conn: aiosqlite.Connection,
         status: str,

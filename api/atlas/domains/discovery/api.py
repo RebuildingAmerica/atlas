@@ -34,6 +34,7 @@ from atlas.domains.discovery.pipeline.runner import (
 from atlas.domains.discovery.schemas import (
     DiscoveryJobResponse,
     DiscoveryPipelineSummaryResponse,
+    DiscoveryRunCancelResponse,
     ScheduledRunResponse,
     ScheduledRunResult,
 )
@@ -534,6 +535,34 @@ async def get_discovery_run(
         raise HTTPException(status_code=404, detail="Discovery run not found")
     apply_no_store_headers(response)
     return _run_to_response(run)
+
+
+@router.post(
+    "/{run_id}/cancel",
+    response_model=DiscoveryRunCancelResponse,
+    summary="Cancel a discovery run",
+    description="Cancel every queued, claimed, or running job belonging to a discovery run.",
+    operation_id="cancelDiscoveryRun",
+    tags=["discovery-runs"],
+)
+async def cancel_discovery_run(
+    run_id: str,
+    response: Response = Response(),
+    actor: AuthenticatedActor = Depends(require_actor_permission("discovery", "write")),
+    db: aiosqlite.Connection = Depends(get_db),
+) -> DiscoveryRunCancelResponse:
+    """Cancel a discovery run's outstanding jobs.
+
+    Returns the number of non-terminal jobs that were moved to ``cancelled``;
+    already-finished jobs are left untouched. Returns 404 if the run is unknown.
+    """
+    _ = actor
+    run = await DiscoveryRunCRUD.get_by_id(db, run_id)
+    if not run:
+        raise HTTPException(status_code=404, detail="Discovery run not found")
+    cancelled = await DiscoveryJobCRUD.cancel_run_jobs(db, run_id)
+    apply_no_store_headers(response)
+    return DiscoveryRunCancelResponse(run_id=run_id, jobs_cancelled=cancelled)
 
 
 def _run_to_response(run: DiscoveryRunModel) -> DiscoveryRunResponse:
