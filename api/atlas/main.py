@@ -73,6 +73,7 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
         database_backend=settings.database_backend,
         anthropic_api_key=settings.anthropic_api_key,
         search_api_key=settings.search_api_key,
+        settings=settings,
     )
 
     # The FastMCP session manager owns the Streamable HTTP request lifecycle

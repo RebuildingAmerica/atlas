@@ -137,6 +137,7 @@ async def start_discovery_run(
             database_url=settings.database_url,
             job=pipeline_job,
             credentials=pipeline_credentials,
+            settings=settings,
         )
         run = await DiscoveryRunCRUD.get_by_id(db, run_id)
         if not run:

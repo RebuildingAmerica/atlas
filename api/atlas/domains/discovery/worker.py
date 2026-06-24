@@ -19,6 +19,7 @@ from atlas.domains.discovery.pipeline.runner import (
     run_discovery_pipeline,
 )
 from atlas.models import DiscoveryRunCRUD, get_db_connection
+from atlas.platform.config import Settings, get_settings
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +37,7 @@ async def start_job_worker(
     database_backend: str | None = None,
     anthropic_api_key: str = "",
     search_api_key: str | None = None,
+    settings: Settings | None = None,
 ) -> None:
     """Start the background job worker loop."""
     global _worker_task  # noqa: PLW0603
@@ -49,6 +51,7 @@ async def start_job_worker(
             database_backend=database_backend,
             anthropic_api_key=anthropic_api_key,
             search_api_key=search_api_key,
+            settings=settings,
         ),
         name="discovery-job-worker",
     )
@@ -73,9 +76,11 @@ async def _worker_loop(
     database_backend: str | None = None,
     anthropic_api_key: str = "",
     search_api_key: str | None = None,
+    settings: Settings | None = None,
 ) -> None:
     """Poll for queued jobs and execute them."""
     instance_id = f"worker-{uuid.uuid4().hex[:8]}"
+    active_settings = settings or get_settings()
     credentials = DiscoveryPipelineCredentials(
         search_api_key=search_api_key,
         anthropic_api_key=anthropic_api_key,
@@ -125,7 +130,12 @@ async def _worker_loop(
                 )
 
                 try:
-                    await run_discovery_pipeline(conn, job=pipeline_job, credentials=credentials)
+                    await run_discovery_pipeline(
+                        conn,
+                        job=pipeline_job,
+                        credentials=credentials,
+                        settings=active_settings,
+                    )
                     await DiscoveryJobCRUD.complete(conn, job.id)
                     logger.info("Job %s completed successfully", job.id)
                 except Exception as exc:

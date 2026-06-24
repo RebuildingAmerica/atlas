@@ -30,6 +30,13 @@ from atlas_shared import (
     RawEntry as SharedRawEntry,
 )
 
+from atlas.domains.discovery.cost import (
+    CostCeilingExceeded,
+    assert_within_budget,
+    estimate_llm_cost,
+    estimate_search_cost,
+    record_cost,
+)
 from atlas.domains.discovery.pipeline.deduplicator import DedupResult, deduplicate_entries
 from atlas.domains.discovery.pipeline.extractor import extract_entries
 from atlas.domains.discovery.pipeline.gap_analyzer import analyze_gaps
@@ -39,7 +46,11 @@ from atlas.domains.discovery.pipeline.source_fetcher import build_search_provide
 from atlas.domains.discovery.trust_gate import evaluate_publication
 from atlas.domains.moderation.review_queue import ReviewQueueCRUD
 from atlas.models import DiscoveryRunCRUD, EntryCRUD, SourceCRUD
+from atlas.platform.config import Settings, get_settings
 from atlas.platform.database import db, get_db_connection
+
+_SEARCH_PROVIDER_NAME = "brave"
+_LLM_PROVIDER_NAME = "anthropic"
 
 if TYPE_CHECKING:
     from aiosqlite import Connection
@@ -65,14 +76,35 @@ class DiscoveryPipelineCredentials:
     anthropic_api_key: str | None = None
 
 
-async def run_discovery_pipeline(
+async def run_discovery_pipeline(  # noqa: PLR0915
     conn: Connection,
     *,
     job: DiscoveryPipelineJob,
     credentials: DiscoveryPipelineCredentials | None = None,
+    settings: Settings | None = None,
 ) -> None:
-    """Execute the full discovery pipeline for an existing run."""
+    """Execute the full discovery pipeline for an existing run.
+
+    Search and model calls are metered against the cost ledger and gated by the
+    configured ceilings and kill switch. Crossing a ceiling ends the run as a
+    controlled stop — the run is marked failed with a ``cost_ceiling`` reason
+    rather than raising, so a budget breach never strands the worker or storms
+    the logs.
+
+    Parameters
+    ----------
+    conn : Connection
+        Database connection.
+    job : DiscoveryPipelineJob
+        The run inputs to execute.
+    credentials : DiscoveryPipelineCredentials | None, optional
+        Service credentials for search and extraction. Default is empty.
+    settings : Settings | None, optional
+        Resolved application settings carrying the cost ceilings and kill
+        switch. Defaults to the canonical application settings when omitted.
+    """
     active_credentials = credentials or DiscoveryPipelineCredentials()
+    active_settings = settings or get_settings()
     started_at = datetime.now(UTC)
     run_id = job.run_id
     try:
@@ -91,8 +123,17 @@ async def run_discovery_pipeline(
         )
 
         t0 = time.monotonic()
+        await assert_within_budget(conn, run_id=run_id, settings=active_settings)
         search_provider = build_search_provider(active_credentials.search_api_key)
         fetched_sources = await fetch_sources(queries, search_provider)
+        await record_cost(
+            conn,
+            run_id=run_id,
+            kind="search",
+            provider=_SEARCH_PROVIDER_NAME,
+            units=len(fetched_sources),
+            estimated_cost=estimate_search_cost(len(fetched_sources)),
+        )
         logger.info(
             "Pipeline step completed",
             extra={
@@ -106,12 +147,21 @@ async def run_discovery_pipeline(
         t0 = time.monotonic()
         extracted_entries: list[dict[str, Any]] = []
         for source in fetched_sources:
+            await assert_within_budget(conn, run_id=run_id, settings=active_settings)
             source_entries = await extract_entries(
                 source.url,
                 source.content,
                 city,
                 job.state,
                 active_credentials.anthropic_api_key,
+            )
+            await record_cost(
+                conn,
+                run_id=run_id,
+                kind="llm",
+                provider=_LLM_PROVIDER_NAME,
+                units=_token_units(source.content),
+                estimated_cost=estimate_llm_cost(_token_units(source.content)),
             )
             today_iso = _today_iso_date()
             for item in source_entries:
@@ -220,10 +270,33 @@ async def run_discovery_pipeline(
                 entries_confirmed=confirmed_entries_visible,
             )
 
+    except CostCeilingExceeded as ceiling:
+        reason = f"cost_ceiling:{ceiling.scope}"
+        logger.warning("Discovery run %s halted by %s", job.run_id, reason)
+        await DiscoveryRunCRUD.fail(conn, job.run_id, reason)
     except Exception as exc:
         logger.exception("Discovery run %s failed", job.run_id)
         await DiscoveryRunCRUD.fail(conn, job.run_id, str(exc))
         raise
+
+
+def _token_units(content: str) -> float:
+    """Estimate model token usage from source content for metering.
+
+    Uses a coarse whitespace word count as a deterministic proxy for tokens so
+    spend can be metered without round-tripping the model's usage figures.
+
+    Parameters
+    ----------
+    content : str
+        The source text passed to extraction.
+
+    Returns
+    -------
+    float
+        Estimated token units consumed by the extraction call.
+    """
+    return float(len(content.split()))
 
 
 async def run_discovery_pipeline_for_run(
@@ -231,6 +304,7 @@ async def run_discovery_pipeline_for_run(
     database_url: str,
     job: DiscoveryPipelineJob,
     credentials: DiscoveryPipelineCredentials | None = None,
+    settings: Settings | None = None,
 ) -> None:
     """Open a connection and execute a discovery run."""
     conn = await get_db_connection(database_url)
@@ -239,6 +313,7 @@ async def run_discovery_pipeline_for_run(
             conn,
             job=job,
             credentials=credentials,
+            settings=settings,
         )
     finally:
         await conn.close()

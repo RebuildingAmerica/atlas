@@ -65,6 +65,7 @@ class TestWorkerExecution:
             *,
             job: object,  # noqa: ARG001
             credentials: object,  # noqa: ARG001
+            settings: object,  # noqa: ARG001
         ) -> None:
             msg = "test failure"
             raise RuntimeError(msg)
@@ -112,6 +113,7 @@ class TestWorkerExecution:
             *,
             job: object,  # noqa: ARG001
             credentials: object,  # noqa: ARG001
+            settings: object,  # noqa: ARG001
         ) -> None:
             msg = "permanent failure"
             raise RuntimeError(msg)
@@ -156,6 +158,7 @@ class TestWorkerExecution:
             *,
             job: object,  # noqa: ARG001
             credentials: object,  # noqa: ARG001
+            settings: object,  # noqa: ARG001
         ) -> None:
             return None
 
@@ -206,6 +209,7 @@ class TestWorkerExecution:
             *,
             job: object,  # noqa: ARG001
             credentials: object,  # noqa: ARG001
+            settings: object,  # noqa: ARG001
         ) -> None:
             return None
 
@@ -226,6 +230,41 @@ class TestWorkerExecution:
         # The stranded job was reaped, reclaimed, and run to completion.
         assert job.status == "completed"
         assert job.retry_count == 1
+
+    @pytest.mark.asyncio
+    async def test_worker_applies_cost_kill_switch_from_settings(
+        self,
+        db_url: str,
+    ) -> None:
+        """A worker booted with the kill switch on halts the run as a controlled stop."""
+        from atlas.platform.config import Settings
+
+        conn = await get_db_connection(db_url)
+        run_id = await DiscoveryRunCRUD.create(
+            conn,
+            location_query="Austin, TX",
+            state="TX",
+            issue_areas=["housing_affordability"],
+        )
+        job_id = await DiscoveryJobCRUD.create(conn, run_id=run_id)
+        await conn.close()
+
+        settings = Settings(database_url=db_url, discovery_cost_kill_switch=True)
+
+        await start_job_worker(db_url, anthropic_api_key="test", settings=settings)
+        await asyncio.sleep(0.4)
+        await stop_job_worker()
+
+        conn = await get_db_connection(db_url)
+        job = await DiscoveryJobCRUD.get_by_id(conn, job_id)
+        run = await DiscoveryRunCRUD.get_by_id(conn, run_id)
+        await conn.close()
+
+        assert job is not None
+        assert job.status == "completed"
+        assert run is not None
+        assert run.status == "failed"
+        assert run.error_message == "cost_ceiling:kill_switch"
 
     @pytest.mark.asyncio
     async def test_worker_recovers_from_transient_db_failure(

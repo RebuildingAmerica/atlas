@@ -420,6 +420,193 @@ class TestDiscoveryRunner:
         assert held_entry.active is False
         assert len(sources) == EXPECTED_TWO_RECORDS
 
+    @pytest.mark.asyncio
+    async def test_run_discovery_pipeline_meters_search_and_model_spend(
+        self,
+        test_db: object,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """A completed run records search and model spend against the cost ledger."""
+        from atlas.domains.discovery.cost import run_cost
+
+        runner_module = _load_runner_module()
+
+        async def fake_fetch_sources(
+            queries: list[object],
+            _provider: object = None,
+        ) -> list[FetchedSource]:
+            assert queries
+            return [
+                FetchedSource(
+                    url="https://example.com/metered",
+                    title="Metered Story",
+                    publication="KCUR",
+                    published_date="2026-01-15",
+                    content="Metered story content",
+                    source_type="news_article",
+                )
+            ]
+
+        async def fake_extract_entries(
+            _url: str,
+            _content: str,
+            _city: str,
+            _state: str,
+            _api_key: str | None = None,
+        ) -> list[RawEntry]:
+            return []
+
+        monkeypatch.setattr(runner_module, "fetch_sources", fake_fetch_sources)
+        monkeypatch.setattr(runner_module, "extract_entries", fake_extract_entries)
+
+        run_id = await DiscoveryRunCRUD.create(
+            test_db,
+            location_query="Kansas City, MO",
+            state="MO",
+            issue_areas=["housing_affordability"],
+        )
+
+        await runner_module.run_discovery_pipeline(
+            test_db,
+            job=DiscoveryPipelineJob(
+                run_id=run_id,
+                location_query="Kansas City, MO",
+                state="MO",
+                issue_areas=["housing_affordability"],
+            ),
+            credentials=DiscoveryPipelineCredentials(
+                search_api_key="test-search-key",
+                anthropic_api_key="test-anthropic-key",
+            ),
+            settings=Settings(database_url="sqlite:///tmp/test.db"),
+        )
+
+        run = await DiscoveryRunCRUD.get_by_id(test_db, run_id)
+        assert run is not None
+        assert run.status == "completed"
+        assert await run_cost(test_db, run_id) > 0.0
+
+    @pytest.mark.asyncio
+    async def test_run_discovery_pipeline_stops_cleanly_at_a_cost_ceiling(
+        self,
+        test_db: object,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Crossing a ceiling ends the run as a controlled stop, not an exception storm."""
+        runner_module = _load_runner_module()
+
+        async def fake_fetch_sources(
+            queries: list[object],
+            _provider: object = None,
+        ) -> list[FetchedSource]:
+            assert queries
+            return [
+                FetchedSource(
+                    url="https://example.com/expensive",
+                    title="Expensive Story",
+                    publication="KCUR",
+                    published_date="2026-01-15",
+                    content="Expensive story content",
+                    source_type="news_article",
+                )
+            ]
+
+        extraction_calls = {"count": 0}
+
+        async def fake_extract_entries(
+            _url: str,
+            _content: str,
+            _city: str,
+            _state: str,
+            _api_key: str | None = None,
+        ) -> list[RawEntry]:
+            extraction_calls["count"] += 1
+            return []
+
+        monkeypatch.setattr(runner_module, "fetch_sources", fake_fetch_sources)
+        monkeypatch.setattr(runner_module, "extract_entries", fake_extract_entries)
+
+        run_id = await DiscoveryRunCRUD.create(
+            test_db,
+            location_query="Kansas City, MO",
+            state="MO",
+            issue_areas=["housing_affordability"],
+        )
+
+        # A near-zero ceiling trips after the first metered call.
+        await runner_module.run_discovery_pipeline(
+            test_db,
+            job=DiscoveryPipelineJob(
+                run_id=run_id,
+                location_query="Kansas City, MO",
+                state="MO",
+                issue_areas=["housing_affordability"],
+            ),
+            credentials=DiscoveryPipelineCredentials(
+                search_api_key="test-search-key",
+                anthropic_api_key="test-anthropic-key",
+            ),
+            settings=Settings(
+                database_url="sqlite:///tmp/test.db",
+                discovery_max_run_cost=0.001,
+            ),
+        )
+
+        run = await DiscoveryRunCRUD.get_by_id(test_db, run_id)
+        assert run is not None
+        assert run.status == "failed"
+        assert run.error_message is not None
+        assert run.error_message.startswith("cost_ceiling")
+        # The controlled stop halts before any model spend on this source.
+        assert extraction_calls["count"] == 0
+
+    @pytest.mark.asyncio
+    async def test_run_discovery_pipeline_stops_immediately_on_kill_switch(
+        self,
+        test_db: object,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """The kill switch halts a run before any search spend is incurred."""
+        runner_module = _load_runner_module()
+        fetch_calls = {"count": 0}
+
+        async def fake_fetch_sources(
+            _queries: list[object],
+            _provider: object = None,
+        ) -> list[FetchedSource]:
+            fetch_calls["count"] += 1
+            return []
+
+        monkeypatch.setattr(runner_module, "fetch_sources", fake_fetch_sources)
+
+        run_id = await DiscoveryRunCRUD.create(
+            test_db,
+            location_query="Kansas City, MO",
+            state="MO",
+            issue_areas=["housing_affordability"],
+        )
+
+        await runner_module.run_discovery_pipeline(
+            test_db,
+            job=DiscoveryPipelineJob(
+                run_id=run_id,
+                location_query="Kansas City, MO",
+                state="MO",
+                issue_areas=["housing_affordability"],
+            ),
+            credentials=DiscoveryPipelineCredentials(search_api_key="test-search-key"),
+            settings=Settings(
+                database_url="sqlite:///tmp/test.db",
+                discovery_cost_kill_switch=True,
+            ),
+        )
+
+        run = await DiscoveryRunCRUD.get_by_id(test_db, run_id)
+        assert run is not None
+        assert run.status == "failed"
+        assert run.error_message == "cost_ceiling:kill_switch"
+        assert fetch_calls["count"] == 0
+
 
 class TestSourceFetchingHelpers:
     """Tests for non-network source-fetching helpers."""
