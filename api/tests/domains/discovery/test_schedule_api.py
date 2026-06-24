@@ -247,6 +247,11 @@ async def test_get_db_dependency_yields_and_closes_connection(tmp_db_path: str) 
         await agen.__anext__()
 
 
+EXPECTED_ACCEPTED = 202
+EXPECTED_TWO = 2
+_INLINE_FORBIDDEN = "pipeline must not run inline for scheduled triggers"
+
+
 class TestScheduledRunEndpoint:
     @pytest.mark.asyncio
     async def test_execute_scheduled_runs_with_no_schedules(
@@ -257,14 +262,133 @@ class TestScheduledRunEndpoint:
             search_api_key=None,
             anthropic_api_key="test-key",
         )
+        response = SimpleNamespace(status_code=None, headers={})
         resp = await discovery_api.execute_scheduled_runs(
-            response=None,
+            response=response,
             actor=actor,
             settings=settings,
             db=test_db,
         )
-        assert resp.runs_started == 0
+        assert response.status_code == EXPECTED_ACCEPTED
+        assert resp.enqueued == 0
         assert resp.results == []
+
+    @pytest.mark.asyncio
+    async def test_scheduled_enqueues_jobs_and_returns_202(
+        self, test_db: object, actor: AuthenticatedActor
+    ) -> None:
+        await DiscoveryScheduleCRUD.create(
+            test_db,
+            location_query="Austin, TX",
+            state="TX",
+            issue_areas=["housing_affordability"],
+        )
+        await DiscoveryScheduleCRUD.create(
+            test_db,
+            location_query="Kansas City, MO",
+            state="MO",
+            issue_areas=["worker_cooperatives"],
+        )
+
+        settings = SimpleNamespace(
+            database_url="sqlite:///test.db",
+            search_api_key=None,
+            anthropic_api_key="test-key",
+        )
+        response = SimpleNamespace(status_code=None, headers={})
+        resp = await discovery_api.execute_scheduled_runs(
+            response=response,
+            actor=actor,
+            settings=settings,
+            db=test_db,
+        )
+
+        assert response.status_code == EXPECTED_ACCEPTED
+        assert resp.enqueued == EXPECTED_TWO
+        assert len(resp.results) == EXPECTED_TWO
+
+        queued = await DiscoveryJobCRUD.list_by_status(test_db, "queued")
+        assert len(queued) == EXPECTED_TWO
+
+        run_ids = {result.run_id for result in resp.results}
+        assert len(run_ids) == EXPECTED_TWO
+        for result in resp.results:
+            run = await DiscoveryRunCRUD.get_by_id(test_db, result.run_id)
+            assert run is not None
+            schedule = await DiscoveryScheduleCRUD.get_by_id(test_db, result.schedule_id)
+            assert schedule is not None
+            assert schedule.last_run_id == result.run_id
+            assert schedule.last_run_at is not None
+
+    @pytest.mark.asyncio
+    async def test_scheduled_does_not_run_pipeline_inline(
+        self,
+        test_db: object,
+        actor: AuthenticatedActor,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        await DiscoveryScheduleCRUD.create(
+            test_db,
+            location_query="Austin, TX",
+            state="TX",
+            issue_areas=["housing_affordability"],
+        )
+
+        async def _explode(*, database_url: object, job: object, credentials: object) -> None:
+            _ = database_url, job, credentials
+            raise AssertionError(_INLINE_FORBIDDEN)
+
+        monkeypatch.setattr(discovery_api, "run_discovery_pipeline_for_run", _explode)
+
+        settings = SimpleNamespace(
+            database_url="sqlite:///test.db",
+            search_api_key=None,
+            anthropic_api_key="test-key",
+        )
+        response = SimpleNamespace(status_code=None, headers={})
+        resp = await discovery_api.execute_scheduled_runs(
+            response=response,
+            actor=actor,
+            settings=settings,
+            db=test_db,
+        )
+
+        assert resp.enqueued == 1
+        queued = await DiscoveryJobCRUD.list_by_status(test_db, "queued")
+        assert len(queued) == 1
+
+    @pytest.mark.asyncio
+    async def test_scheduled_is_idempotent_within_a_day(
+        self, test_db: object, actor: AuthenticatedActor
+    ) -> None:
+        await DiscoveryScheduleCRUD.create(
+            test_db,
+            location_query="Austin, TX",
+            state="TX",
+            issue_areas=["housing_affordability"],
+        )
+
+        settings = SimpleNamespace(
+            database_url="sqlite:///test.db",
+            search_api_key=None,
+            anthropic_api_key="test-key",
+        )
+        first = await discovery_api.execute_scheduled_runs(
+            response=SimpleNamespace(status_code=None, headers={}),
+            actor=actor,
+            settings=settings,
+            db=test_db,
+        )
+        second = await discovery_api.execute_scheduled_runs(
+            response=SimpleNamespace(status_code=None, headers={}),
+            actor=actor,
+            settings=settings,
+            db=test_db,
+        )
+
+        queued = await DiscoveryJobCRUD.list_by_status(test_db, "queued")
+        assert len(queued) == 1
+        assert first.results[0].run_id == second.results[0].run_id
 
 
 class TestJobStatusEndpoint:

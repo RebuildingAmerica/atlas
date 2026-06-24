@@ -303,11 +303,13 @@ async def sync_discovery_run(
 @router.post(
     "/scheduled",
     response_model=ScheduledRunResponse,
-    summary="Execute scheduled discovery targets",
+    status_code=202,
+    summary="Enqueue scheduled discovery targets",
     description=(
-        "Run the discovery pipeline for all enabled schedule targets. "
-        "Designed for invocation by Cloud Scheduler or other cron triggers. "
-        "Runs synchronously and returns results."
+        "Enqueue a durable discovery job for each enabled schedule target and return "
+        "immediately. Designed for invocation by Cloud Scheduler or other cron triggers; "
+        "the durable worker performs the discovery work. Re-triggering the same target on "
+        "the same day reuses the already-enqueued job, so a duplicate cron fire is a no-op."
     ),
     operation_id="executeScheduledDiscoveryRuns",
     tags=["discovery-runs"],
@@ -318,66 +320,57 @@ async def execute_scheduled_runs(
     settings: Settings = Depends(get_settings),
     db: aiosqlite.Connection = Depends(get_db),
 ) -> ScheduledRunResponse:
-    """Execute all enabled schedule targets inline."""
+    """Enqueue durable discovery jobs for every enabled schedule target."""
     _ = actor
+    _ = settings
+    response.status_code = 202
     schedules = await DiscoveryScheduleCRUD.list(db, enabled_only=True)
     if not schedules:
         apply_no_store_headers(response)
-        return ScheduledRunResponse(runs_started=0, results=[])
+        return ScheduledRunResponse(enqueued=0, results=[])
 
-    credentials = DiscoveryPipelineCredentials(
-        search_api_key=settings.search_api_key,
-        anthropic_api_key=settings.anthropic_api_key,
-    )
+    day = db_manager.now_iso()[:10]
     results: list[ScheduledRunResult] = []
     for schedule in schedules:
+        idempotency_key = f"sched:{schedule.id}:{day}"
+        existing = await DiscoveryJobCRUD.get_by_idempotency_key(db, idempotency_key)
+        if existing is not None:
+            results.append(
+                ScheduledRunResult(
+                    schedule_id=schedule.id,
+                    run_id=existing.run_id,
+                    job_id=existing.id,
+                )
+            )
+            continue
+
         run_id = await DiscoveryRunCRUD.create(
             db,
             location_query=schedule.location_query,
             state=schedule.state,
             issue_areas=schedule.issue_areas,
         )
-        job = DiscoveryPipelineJob(
+        job_id = await DiscoveryJobCRUD.create(
+            db,
             run_id=run_id,
-            location_query=schedule.location_query,
-            state=schedule.state,
-            issue_areas=schedule.issue_areas,
+            idempotency_key=idempotency_key,
         )
-        try:
-            await run_discovery_pipeline_for_run(
-                database_url=settings.database_url,
-                job=job,
-                credentials=credentials,
+        await DiscoveryScheduleCRUD.update(
+            db,
+            schedule.id,
+            last_run_id=run_id,
+            last_run_at=db_manager.now_iso(),
+        )
+        results.append(
+            ScheduledRunResult(
+                schedule_id=schedule.id,
+                run_id=run_id,
+                job_id=job_id,
             )
-            run = await DiscoveryRunCRUD.get_by_id(db, run_id)
-            entries_confirmed = run.entries_confirmed if run else 0
-            run_status = run.status if run else "completed"
-            results.append(
-                ScheduledRunResult(
-                    schedule_id=schedule.id,
-                    run_id=run_id,
-                    status=run_status,
-                    entries_confirmed=entries_confirmed,
-                )
-            )
-            await DiscoveryScheduleCRUD.update(
-                db,
-                schedule.id,
-                last_run_id=run_id,
-                last_run_at=db_manager.now_iso(),
-            )
-        except Exception:
-            logger.exception("Scheduled run failed for schedule %s", schedule.id)
-            results.append(
-                ScheduledRunResult(
-                    schedule_id=schedule.id,
-                    run_id=run_id,
-                    status="failed",
-                )
-            )
+        )
 
     apply_no_store_headers(response)
-    return ScheduledRunResponse(runs_started=len(results), results=results)
+    return ScheduledRunResponse(enqueued=len(results), results=results)
 
 
 @router.get(

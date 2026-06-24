@@ -23,6 +23,7 @@ from fastapi import HTTPException
 from atlas.domains.access.principals import AuthenticatedActor
 from atlas.domains.discovery import api as discovery_api
 from atlas.domains.discovery.models import (
+    DiscoveryJobCRUD,
     DiscoveryRunCRUD,
     DiscoveryScheduleCRUD,
 )
@@ -555,10 +556,11 @@ async def test_sync_discovery_run_marks_run_failed_when_persist_blows_up(
 
 @pytest.mark.asyncio
 async def test_execute_scheduled_runs_no_schedules_returns_empty(test_db: object) -> None:
-    """No enabled schedules should short-circuit with runs_started=0."""
+    """No enabled schedules should short-circuit with enqueued=0."""
     actor = _local_actor()
+    http_response = SimpleNamespace(status_code=None, headers={})
     response = await discovery_api.execute_scheduled_runs(
-        response=None,
+        response=http_response,
         actor=actor,
         settings=SimpleNamespace(
             database_url="sqlite:///atlas.db",
@@ -567,56 +569,34 @@ async def test_execute_scheduled_runs_no_schedules_returns_empty(test_db: object
         ),
         db=test_db,
     )
-    assert response.runs_started == 0
+    assert http_response.status_code == HTTPStatus.ACCEPTED
+    assert response.enqueued == 0
     assert response.results == []
 
 
 @pytest.mark.asyncio
-async def test_execute_scheduled_runs_records_results_for_each_schedule(
-    monkeypatch: pytest.MonkeyPatch,
+async def test_execute_scheduled_runs_enqueues_a_job_per_schedule(
     test_db: object,
 ) -> None:
-    """Schedule execution should report success and failure outcomes per target."""
+    """Each enabled schedule should enqueue exactly one durable queued job."""
     actor = _local_actor()
 
-    success_id = await DiscoveryScheduleCRUD.create(
+    first_id = await DiscoveryScheduleCRUD.create(
         test_db,
         location_query="Topeka, KS",
         state="KS",
         issue_areas=["worker_cooperatives"],
     )
-    failure_id = await DiscoveryScheduleCRUD.create(
+    second_id = await DiscoveryScheduleCRUD.create(
         test_db,
         location_query="Lawrence, KS",
         state="KS",
         issue_areas=["worker_cooperatives"],
     )
 
-    call_count = {"n": 0}
-    scheduled_failure_message = "scheduled boom"
-
-    async def fake_run(*, database_url: str, job: object, credentials: object) -> None:
-        _ = database_url, credentials
-        call_count["n"] += 1
-        if call_count["n"] == 1:
-            # First schedule succeeds — mark its run completed so the response
-            # reflects entries_confirmed.
-            run_id: str = job.run_id  # type: ignore[attr-defined]
-            await DiscoveryRunCRUD.complete(
-                test_db,
-                run_id,
-                queries_generated=1,
-                sources_fetched=1,
-                entries_extracted=1,
-                entries_confirmed=2,
-            )
-            return
-        raise RuntimeError(scheduled_failure_message)
-
-    monkeypatch.setattr(discovery_api, "run_discovery_pipeline_for_run", fake_run)
-
+    http_response = SimpleNamespace(status_code=None, headers={})
     response = await discovery_api.execute_scheduled_runs(
-        response=None,
+        response=http_response,
         actor=actor,
         settings=SimpleNamespace(
             database_url="sqlite:///atlas.db",
@@ -626,10 +606,13 @@ async def test_execute_scheduled_runs_records_results_for_each_schedule(
         db=test_db,
     )
 
-    assert response.runs_started == EXPECTED_TWO_RUNS
-    statuses = {result.schedule_id: result.status for result in response.results}
-    assert statuses[success_id] == "completed"
-    assert statuses[failure_id] == "failed"
+    assert response.enqueued == EXPECTED_TWO_RUNS
+    queued = await DiscoveryJobCRUD.list_by_status(test_db, "queued")
+    assert len(queued) == EXPECTED_TWO_RUNS
+    schedule_ids = {result.schedule_id for result in response.results}
+    assert schedule_ids == {first_id, second_id}
+    for result in response.results:
+        assert result.job_id
 
 
 EXPECTED_TWO_RUNS = 2

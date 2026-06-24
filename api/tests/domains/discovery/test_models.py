@@ -139,6 +139,27 @@ class TestDiscoveryJobCRUDCreateIdempotency:
         queued = await DiscoveryJobCRUD.list_by_status(test_db, "queued")
         assert len([job for job in queued if job.run_id == run_id]) == 1
 
+    @pytest.mark.asyncio
+    async def test_get_by_idempotency_key_returns_job(self, test_db: object) -> None:
+        run_id = await DiscoveryRunCRUD.create(
+            test_db,
+            location_query="Austin, TX",
+            state="TX",
+            issue_areas=["housing_affordability"],
+        )
+        job_id = await DiscoveryJobCRUD.create(
+            test_db, run_id=run_id, idempotency_key="sched:s1:2026-06-23"
+        )
+        job = await DiscoveryJobCRUD.get_by_idempotency_key(test_db, "sched:s1:2026-06-23")
+        assert job is not None
+        assert job.id == job_id
+        assert job.run_id == run_id
+
+    @pytest.mark.asyncio
+    async def test_get_by_idempotency_key_missing_returns_none(self, test_db: object) -> None:
+        job = await DiscoveryJobCRUD.get_by_idempotency_key(test_db, "sched:none:2026-06-23")
+        assert job is None
+
 
 class TestDiscoveryJobCRUDFailBackoff:
     @pytest.mark.asyncio

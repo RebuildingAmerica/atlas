@@ -694,12 +694,39 @@ class DiscoveryJobCRUD:
         conn: aiosqlite.Connection, idempotency_key: str
     ) -> str | None:
         """Return the id of an existing job sharing this idempotency key."""
+        job = await DiscoveryJobCRUD.get_by_idempotency_key(conn, idempotency_key)
+        return job.id if job is not None else None
+
+    @staticmethod
+    async def get_by_idempotency_key(
+        conn: aiosqlite.Connection, idempotency_key: str
+    ) -> DiscoveryJobModel | None:
+        """Return the job sharing this idempotency key, or None.
+
+        Lets a scheduled trigger reuse the job (and its run) already enqueued for
+        the same target on the same day instead of stranding a fresh run.
+
+        Parameters
+        ----------
+        conn : aiosqlite.Connection
+            Database connection.
+        idempotency_key : str
+            The unique key carried by the enqueued job.
+
+        Returns
+        -------
+        DiscoveryJobModel | None
+            The matching job, or None when no job carries the key.
+        """
         cursor = await conn.execute(
-            "SELECT id FROM discovery_jobs WHERE idempotency_key = ?",
+            "SELECT * FROM discovery_jobs WHERE idempotency_key = ?",
             (idempotency_key,),
         )
         row = await cursor.fetchone()
-        return str(row[0]) if row else None
+        if not row:
+            return None
+        columns = [col[0] for col in cursor.description]
+        return _row_to_discovery_job(dict(zip(columns, row, strict=False)))
 
     @staticmethod
     async def get_by_id(conn: aiosqlite.Connection, job_id: str) -> DiscoveryJobModel | None:

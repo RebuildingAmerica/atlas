@@ -4212,37 +4212,36 @@
         "type": "object"
       },
       "ScheduledRunResponse": {
-        "description": "Response from the scheduled trigger endpoint.",
+        "description": "Response from the scheduled trigger endpoint.\n\nThe trigger enqueues durable jobs and returns immediately; the durable\nworker performs the discovery work. ``enqueued`` counts the jobs queued by\nthis invocation, including same-day re-triggers that reused an existing job.",
         "properties": {
+          "enqueued": {
+            "description": "Number of durable jobs enqueued for schedule targets",
+            "title": "Enqueued",
+            "type": "integer"
+          },
           "results": {
-            "description": "Per-target execution results",
+            "description": "Per-target enqueued jobs",
             "items": {
               "$ref": "#/components/schemas/ScheduledRunResult"
             },
             "title": "Results",
             "type": "array"
-          },
-          "runs_started": {
-            "description": "Number of schedule targets executed",
-            "title": "Runs Started",
-            "type": "integer"
           }
         },
         "required": [
-          "runs_started",
+          "enqueued",
           "results"
         ],
         "title": "ScheduledRunResponse",
         "type": "object"
       },
       "ScheduledRunResult": {
-        "description": "Result of one scheduled pipeline execution.",
+        "description": "The durable job enqueued for one scheduled target.",
         "properties": {
-          "entries_confirmed": {
-            "default": 0,
-            "description": "Entries persisted from this run",
-            "title": "Entries Confirmed",
-            "type": "integer"
+          "job_id": {
+            "description": "Queued discovery job ID the worker will execute",
+            "title": "Job Id",
+            "type": "string"
           },
           "run_id": {
             "description": "Discovery run ID created for this execution",
@@ -4253,17 +4252,12 @@
             "description": "Schedule target that triggered this run",
             "title": "Schedule Id",
             "type": "string"
-          },
-          "status": {
-            "description": "Run outcome (completed or failed)",
-            "title": "Status",
-            "type": "string"
           }
         },
         "required": [
           "schedule_id",
           "run_id",
-          "status"
+          "job_id"
         ],
         "title": "ScheduledRunResult",
         "type": "object"
@@ -5563,7 +5557,7 @@
     },
     "/api/discovery-runs/scheduled": {
       "post": {
-        "description": "Run the discovery pipeline for all enabled schedule targets. Designed for invocation by Cloud Scheduler or other cron triggers. Runs synchronously and returns results.",
+        "description": "Enqueue a durable discovery job for each enabled schedule target and return immediately. Designed for invocation by Cloud Scheduler or other cron triggers; the durable worker performs the discovery work. Re-triggering the same target on the same day reuses the already-enqueued job, so a duplicate cron fire is a no-op.",
         "operationId": "executeScheduledDiscoveryRuns",
         "parameters": [
           {
@@ -5648,7 +5642,7 @@
           }
         ],
         "responses": {
-          "200": {
+          "202": {
             "content": {
               "application/json": {
                 "schema": {
@@ -5669,7 +5663,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Execute scheduled discovery targets",
+        "summary": "Enqueue scheduled discovery targets",
         "tags": [
           "discovery-runs"
         ]

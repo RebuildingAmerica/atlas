@@ -161,16 +161,20 @@ class DiscoveryPipelineSummaryResponse(BaseModel):
 
 
 class ScheduledRunResult(BaseModel):
-    """Result of one scheduled pipeline execution."""
+    """The durable job enqueued for one scheduled target."""
 
     schedule_id: str = Field(..., description="Schedule target that triggered this run")
     run_id: str = Field(..., description="Discovery run ID created for this execution")
-    status: str = Field(..., description="Run outcome (completed or failed)")
-    entries_confirmed: int = Field(0, description="Entries persisted from this run")
+    job_id: str = Field(..., description="Queued discovery job ID the worker will execute")
 
 
 class ScheduledRunResponse(BaseModel):
-    """Response from the scheduled trigger endpoint."""
+    """Response from the scheduled trigger endpoint.
 
-    runs_started: int = Field(..., description="Number of schedule targets executed")
-    results: list[ScheduledRunResult] = Field(..., description="Per-target execution results")
+    The trigger enqueues durable jobs and returns immediately; the durable
+    worker performs the discovery work. ``enqueued`` counts the jobs queued by
+    this invocation, including same-day re-triggers that reused an existing job.
+    """
+
+    enqueued: int = Field(..., description="Number of durable jobs enqueued for schedule targets")
+    results: list[ScheduledRunResult] = Field(..., description="Per-target enqueued jobs")
