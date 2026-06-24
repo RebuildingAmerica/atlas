@@ -167,6 +167,7 @@ class EntryCRUD:
         contact_status: str = "not_contacted",
         editorial_notes: str | None = None,
         priority: str | None = None,
+        active: bool = True,
     ) -> str:
         """
         Create a new entry.
@@ -211,6 +212,9 @@ class EntryCRUD:
             Internal notes. Default is None.
         priority : str | None, optional
             Priority level (high, medium, low). Default is None.
+        active : bool, optional
+            Whether the entry is publicly visible on creation. Default is True.
+            The trust gate passes False to hold a discovered record for review.
 
         Returns
         -------
@@ -229,9 +233,9 @@ class EntryCRUD:
             INSERT INTO entries (
                 id, type, name, description, city, state, region,
                 geo_specificity, full_address, website, email, phone, social_media,
-                affiliated_org_id, contact_status, editorial_notes, priority,
+                affiliated_org_id, active, contact_status, editorial_notes, priority,
                 first_seen, last_seen, created_at, updated_at, slug
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 entry_id,
@@ -248,6 +252,7 @@ class EntryCRUD:
                 phone,
                 db.encode_json(social_media) if social_media else None,
                 affiliated_org_id,
+                1 if active else 0,
                 contact_status,
                 editorial_notes,
                 priority,

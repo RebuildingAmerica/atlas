@@ -473,6 +473,43 @@ def test_entry_crud_export_alias_matches_definition() -> None:
     assert EntryCRUDExport is EntryCRUD
 
 
+@pytest.mark.asyncio
+async def test_create_persists_inactive_entry_and_hides_it_from_public_search(
+    test_db: object,
+) -> None:
+    """An entry created with active=False is inactive and absent from public results."""
+    active_id = await EntryCRUD.create(
+        test_db,
+        entry_type="organization",
+        name="Visible Org",
+        description="A published organization.",
+        city="Kansas City",
+        state="MO",
+        geo_specificity="local",
+    )
+    held_id = await EntryCRUD.create(
+        test_db,
+        entry_type="organization",
+        name="Held Org",
+        description="An organization held for review.",
+        city="Kansas City",
+        state="MO",
+        geo_specificity="local",
+        active=False,
+    )
+
+    held_entry = await EntryCRUD.get_by_id(test_db, held_id)
+    active_entry = await EntryCRUD.get_by_id(test_db, active_id)
+    public_ids = await EntryCRUD._search_public_ids(test_db, states=["MO"])  # noqa: SLF001
+
+    assert held_entry is not None
+    assert held_entry.active is False
+    assert active_entry is not None
+    assert active_entry.active is True
+    assert held_id not in public_ids
+    assert active_id in public_ids
+
+
 class _StubCursor:
     """Minimal cursor stub that records the SQL executed and returns no rows."""
 
