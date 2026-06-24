@@ -630,6 +630,8 @@ class DiscoveryJobModel:
     max_retries: int
     claimed_by: str | None
     claimed_until: str | None
+    idempotency_key: str | None
+    next_attempt_at: str | None
     created_at: str
     started_at: str | None
     completed_at: str | None
@@ -644,20 +646,60 @@ class DiscoveryJobCRUD:
         *,
         run_id: str,
         max_retries: int = 2,
+        idempotency_key: str | None = None,
     ) -> str:
-        """Create a new job in queued status. Returns the job ID."""
+        """Create a new job in queued status. Returns the job ID.
+
+        When ``idempotency_key`` is supplied and a job with that key already
+        exists, the insert is a no-op and the existing job's id is returned, so
+        re-enqueueing the same target is safe.
+
+        Parameters
+        ----------
+        conn : aiosqlite.Connection
+            Database connection.
+        run_id : str
+            Owning discovery run id.
+        max_retries : int, optional
+            Maximum retry attempts. Default is 2.
+        idempotency_key : str | None, optional
+            Unique key making re-enqueue a no-op. Default is None.
+
+        Returns
+        -------
+        str
+            The new job's id, or the existing job's id on a duplicate key.
+        """
+        if idempotency_key is not None:
+            existing = await DiscoveryJobCRUD._get_by_idempotency_key(conn, idempotency_key)
+            if existing is not None:
+                return existing
+
         job_id = db.generate_uuid()
         now = db.now_iso()
         await conn.execute(
             """
             INSERT INTO discovery_jobs (
-                id, run_id, status, retry_count, max_retries, created_at
-            ) VALUES (?, ?, 'queued', 0, ?, ?)
+                id, run_id, status, retry_count, max_retries,
+                idempotency_key, created_at
+            ) VALUES (?, ?, 'queued', 0, ?, ?, ?)
             """,
-            (job_id, run_id, max_retries, now),
+            (job_id, run_id, max_retries, idempotency_key, now),
         )
         await conn.commit()
         return job_id
+
+    @staticmethod
+    async def _get_by_idempotency_key(
+        conn: aiosqlite.Connection, idempotency_key: str
+    ) -> str | None:
+        """Return the id of an existing job sharing this idempotency key."""
+        cursor = await conn.execute(
+            "SELECT id FROM discovery_jobs WHERE idempotency_key = ?",
+            (idempotency_key,),
+        )
+        row = await cursor.fetchone()
+        return str(row[0]) if row else None
 
     @staticmethod
     async def get_by_id(conn: aiosqlite.Connection, job_id: str) -> DiscoveryJobModel | None:
@@ -819,6 +861,8 @@ def _row_to_discovery_job(row: dict[str, Any]) -> DiscoveryJobModel:
         max_retries=row["max_retries"],
         claimed_by=row.get("claimed_by"),
         claimed_until=row.get("claimed_until"),
+        idempotency_key=row.get("idempotency_key"),
+        next_attempt_at=row.get("next_attempt_at"),
         created_at=row["created_at"],
         started_at=row.get("started_at"),
         completed_at=row.get("completed_at"),

@@ -10,6 +10,24 @@ from atlas.domains.discovery.models import (
     DiscoveryRunModel,
     DiscoveryScheduleCRUD,
 )
+from atlas.models.database import get_db_connection
+
+
+class TestDiscoveryJobsSchema:
+    @pytest.mark.asyncio
+    async def test_discovery_jobs_has_idempotency_and_next_attempt_columns(
+        self, db_url: str
+    ) -> None:
+        """init_db must add idempotency_key and next_attempt_at to discovery_jobs."""
+        conn = await get_db_connection(db_url)
+        try:
+            cursor = await conn.execute("PRAGMA table_info(discovery_jobs)")
+            rows = await cursor.fetchall()
+        finally:
+            await conn.close()
+
+        columns = {row[1] for row in rows}
+        assert columns >= {"idempotency_key", "next_attempt_at"}
 
 
 class TestDiscoveryRunToDict:
@@ -69,3 +87,51 @@ class TestDiscoveryJobCRUDGetByRunId:
     async def test_returns_none_when_no_jobs_for_run(self, test_db: object) -> None:
         result = await DiscoveryJobCRUD.get_by_run_id(test_db, "no-such-run-id")
         assert result is None
+
+
+class TestDiscoveryJobCRUDCreateIdempotency:
+    @pytest.mark.asyncio
+    async def test_create_persists_idempotency_key(self, test_db: object) -> None:
+        run_id = await DiscoveryRunCRUD.create(
+            test_db,
+            location_query="Austin, TX",
+            state="TX",
+            issue_areas=["housing_affordability"],
+        )
+        job_id = await DiscoveryJobCRUD.create(
+            test_db, run_id=run_id, idempotency_key="sched:s1:2026-06-23"
+        )
+        job = await DiscoveryJobCRUD.get_by_id(test_db, job_id)
+        assert job is not None
+        assert job.idempotency_key == "sched:s1:2026-06-23"
+
+    @pytest.mark.asyncio
+    async def test_create_without_idempotency_key_leaves_it_null(self, test_db: object) -> None:
+        run_id = await DiscoveryRunCRUD.create(
+            test_db,
+            location_query="Austin, TX",
+            state="TX",
+            issue_areas=["housing_affordability"],
+        )
+        job_id = await DiscoveryJobCRUD.create(test_db, run_id=run_id)
+        job = await DiscoveryJobCRUD.get_by_id(test_db, job_id)
+        assert job is not None
+        assert job.idempotency_key is None
+
+    @pytest.mark.asyncio
+    async def test_duplicate_idempotency_key_returns_existing_job(self, test_db: object) -> None:
+        run_id = await DiscoveryRunCRUD.create(
+            test_db,
+            location_query="Austin, TX",
+            state="TX",
+            issue_areas=["housing_affordability"],
+        )
+        first = await DiscoveryJobCRUD.create(
+            test_db, run_id=run_id, idempotency_key="sched:s1:2026-06-23"
+        )
+        second = await DiscoveryJobCRUD.create(
+            test_db, run_id=run_id, idempotency_key="sched:s1:2026-06-23"
+        )
+        assert second == first
+        queued = await DiscoveryJobCRUD.list_by_status(test_db, "queued")
+        assert len([job for job in queued if job.run_id == run_id]) == 1

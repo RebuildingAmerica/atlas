@@ -205,6 +205,8 @@ CREATE TABLE IF NOT EXISTS discovery_jobs (
     max_retries INTEGER NOT NULL DEFAULT 2,
     claimed_by TEXT,
     claimed_until TIMESTAMPTZ,
+    idempotency_key TEXT,
+    next_attempt_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ NOT NULL,
     started_at TIMESTAMPTZ,
     completed_at TIMESTAMPTZ
@@ -212,6 +214,7 @@ CREATE TABLE IF NOT EXISTS discovery_jobs (
 CREATE INDEX IF NOT EXISTS idx_discovery_jobs_status ON discovery_jobs(status);
 CREATE INDEX IF NOT EXISTS idx_discovery_jobs_run_id ON discovery_jobs(run_id);
 CREATE INDEX IF NOT EXISTS idx_discovery_jobs_claimed_until ON discovery_jobs(claimed_until);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_discovery_jobs_idempotency ON discovery_jobs(idempotency_key);
 
 -- Discovery schedules (autonomous pipeline targets)
 CREATE TABLE IF NOT EXISTS discovery_schedules (
