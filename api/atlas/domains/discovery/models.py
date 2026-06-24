@@ -731,37 +731,88 @@ class DiscoveryJobCRUD:
         claimed_by: str,
         lease_seconds: int = 900,
     ) -> DiscoveryJobModel | None:
-        """Claim the oldest queued job or a stale claimed job. Returns None if none available."""
+        """Atomically claim the oldest claimable job. Returns None if none available.
+
+        A job is claimable when it is ``queued`` or a ``claimed`` job whose lease
+        has expired, and its ``next_attempt_at`` (the retry-backoff gate) is unset
+        or in the past. On Postgres the claim is a single ``FOR UPDATE SKIP
+        LOCKED ... RETURNING`` statement so concurrent workers never double-claim;
+        on SQLite the writer is serialized and the UPDATE is guarded by the row's
+        observed status so a lost race yields None rather than a stolen job.
+
+        Parameters
+        ----------
+        conn : aiosqlite.Connection
+            Database connection.
+        claimed_by : str
+            Identifier of the claiming worker.
+        lease_seconds : int, optional
+            Lease duration in seconds. Default is 900.
+
+        Returns
+        -------
+        DiscoveryJobModel | None
+            The claimed job, or None when nothing is claimable.
+        """
+        from datetime import UTC, datetime, timedelta
+
+        is_postgres = getattr(conn, "backend", "sqlite") == "postgres"
         now = db.now_iso()
+        lease_until = (datetime.now(UTC) + timedelta(seconds=lease_seconds)).isoformat()
+
+        if is_postgres:  # pragma: no cover - exercised only against PostgreSQL
+            cursor = await conn.execute(
+                """
+                UPDATE discovery_jobs SET status = 'claimed', claimed_by = ?,
+                    claimed_until = ?, started_at = COALESCE(started_at, ?)
+                WHERE id = (
+                    SELECT id FROM discovery_jobs
+                    WHERE (status = 'queued' OR (status = 'claimed' AND claimed_until < ?))
+                      AND (next_attempt_at IS NULL OR next_attempt_at <= ?)
+                    ORDER BY created_at ASC
+                    LIMIT 1
+                    FOR UPDATE SKIP LOCKED
+                )
+                RETURNING *
+                """,
+                (claimed_by, lease_until, now, now, now),
+            )
+            row = await cursor.fetchone()
+            if row is None:
+                return None
+            columns = [col[0] for col in cursor.description]
+            job = _row_to_discovery_job(dict(zip(columns, row, strict=False)))
+            await conn.commit()
+            return job
+
         cursor = await conn.execute(
             """
             SELECT * FROM discovery_jobs
-            WHERE status = 'queued'
-               OR (status = 'claimed' AND claimed_until < ?)
+            WHERE (status = 'queued' OR (status = 'claimed' AND claimed_until < ?))
+              AND (next_attempt_at IS NULL OR next_attempt_at <= ?)
             ORDER BY created_at ASC
             LIMIT 1
             """,
-            (now,),
+            (now, now),
         )
         row = await cursor.fetchone()
-        if not row:
+        if row is None:
             return None
 
         columns = [col[0] for col in cursor.description]
         job = _row_to_discovery_job(dict(zip(columns, row, strict=False)))
-
-        from datetime import UTC, datetime, timedelta
-
-        lease_until = (datetime.now(UTC) + timedelta(seconds=lease_seconds)).isoformat()
-        await conn.execute(
+        update = await conn.execute(
             """
             UPDATE discovery_jobs
-            SET status = 'claimed', claimed_by = ?, claimed_until = ?, started_at = COALESCE(started_at, ?)
-            WHERE id = ?
+            SET status = 'claimed', claimed_by = ?, claimed_until = ?,
+                started_at = COALESCE(started_at, ?)
+            WHERE id = ? AND status = ?
             """,
-            (claimed_by, lease_until, now, job.id),
+            (claimed_by, lease_until, now, job.id, job.status),
         )
         await conn.commit()
+        if getattr(update, "rowcount", 0) != 1:
+            return None
 
         job.status = "claimed"
         job.claimed_by = claimed_by
