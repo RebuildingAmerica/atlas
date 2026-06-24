@@ -870,21 +870,28 @@ class DiscoveryJobCRUD:
         job_id: str,
         error_message: str,
     ) -> bool:
-        """Mark a job as failed, or re-queue if retries remain. Returns True if re-queued."""
+        """Mark a job as failed, or re-queue if retries remain. Returns True if re-queued.
+
+        A re-queued job is gated behind a capped exponential backoff
+        (``next_attempt_at``) so a permanently-erroring job backs off rather
+        than hot-looping through the worker and burning the queue. ``claim_next``
+        only considers jobs whose ``next_attempt_at`` has passed.
+        """
         job = await DiscoveryJobCRUD.get_by_id(conn, job_id)
         if job is None:
             return False
 
         new_retry = job.retry_count + 1
         if new_retry <= job.max_retries:
+            next_attempt_at = _retry_backoff_at(job_id, new_retry)
             await conn.execute(
                 """
                 UPDATE discovery_jobs
                 SET status = 'queued', retry_count = ?, error_message = ?,
-                    claimed_by = NULL, claimed_until = NULL
+                    claimed_by = NULL, claimed_until = NULL, next_attempt_at = ?
                 WHERE id = ?
                 """,
-                (new_retry, error_message, job_id),
+                (new_retry, error_message, next_attempt_at, job_id),
             )
             await conn.commit()
             return True
@@ -984,6 +991,38 @@ class DiscoveryJobCRUD:
             return []
         columns = [col[0] for col in cursor.description]
         return [_row_to_discovery_job(dict(zip(columns, row, strict=False))) for row in rows]
+
+
+_MAX_BACKOFF_SECONDS = 300
+_JITTER_BUCKETS = 5
+
+
+def _retry_backoff_at(job_id: str, retry_count: int) -> str:
+    """Return the ISO timestamp a retry may next be claimed.
+
+    The base delay is a capped exponential (``2 ** retry_count`` seconds, capped
+    at five minutes). A small deterministic jitter derived from the job id
+    spreads simultaneous retries out without the non-determinism of ``random``,
+    keeping the value reproducible for tests.
+
+    Parameters
+    ----------
+    job_id : str
+        The job's id; seeds the deterministic jitter.
+    retry_count : int
+        The attempt number the backoff is being computed for.
+
+    Returns
+    -------
+    str
+        ISO-8601 UTC timestamp of the earliest next attempt.
+    """
+    from datetime import UTC, datetime, timedelta
+
+    base = min(_MAX_BACKOFF_SECONDS, 2**retry_count)
+    jitter = abs(hash(job_id)) % _JITTER_BUCKETS
+    delay = base + jitter
+    return (datetime.now(UTC) + timedelta(seconds=delay)).isoformat()
 
 
 def _row_to_discovery_job(row: dict[str, Any]) -> DiscoveryJobModel:

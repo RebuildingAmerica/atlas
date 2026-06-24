@@ -139,6 +139,89 @@ class TestDiscoveryJobCRUDCreateIdempotency:
         assert len([job for job in queued if job.run_id == run_id]) == 1
 
 
+class TestDiscoveryJobCRUDFailBackoff:
+    @pytest.mark.asyncio
+    async def test_requeued_job_gets_future_next_attempt_at(self, db_url: str) -> None:
+        from datetime import UTC, datetime
+
+        conn = await get_db_connection(db_url)
+        try:
+            run_id = await DiscoveryRunCRUD.create(
+                conn, location_query="KC", state="MO", issue_areas=["x"]
+            )
+            job_id = await DiscoveryJobCRUD.create(conn, run_id=run_id)
+            requeued = await DiscoveryJobCRUD.fail(conn, job_id, "boom")
+            job = await DiscoveryJobCRUD.get_by_id(conn, job_id)
+        finally:
+            await conn.close()
+
+        assert requeued is True
+        assert job is not None
+        assert job.status == "queued"
+        assert job.next_attempt_at is not None
+        assert datetime.fromisoformat(job.next_attempt_at) > datetime.now(UTC)
+
+    @pytest.mark.asyncio
+    async def test_requeued_job_is_not_claimed_before_backoff(self, db_url: str) -> None:
+        conn = await get_db_connection(db_url)
+        try:
+            run_id = await DiscoveryRunCRUD.create(
+                conn, location_query="KC", state="MO", issue_areas=["x"]
+            )
+            job_id = await DiscoveryJobCRUD.create(conn, run_id=run_id)
+            await DiscoveryJobCRUD.fail(conn, job_id, "boom")
+            claimed = await DiscoveryJobCRUD.claim_next(conn, claimed_by="w1")
+        finally:
+            await conn.close()
+
+        assert claimed is None
+
+    @pytest.mark.asyncio
+    async def test_dead_lettered_job_has_no_next_attempt_at(self, db_url: str) -> None:
+        conn = await get_db_connection(db_url)
+        try:
+            run_id = await DiscoveryRunCRUD.create(
+                conn, location_query="KC", state="MO", issue_areas=["x"]
+            )
+            job_id = await DiscoveryJobCRUD.create(conn, run_id=run_id, max_retries=0)
+            requeued = await DiscoveryJobCRUD.fail(conn, job_id, "boom")
+            job = await DiscoveryJobCRUD.get_by_id(conn, job_id)
+        finally:
+            await conn.close()
+
+        assert requeued is False
+        assert job is not None
+        assert job.status == "failed"
+        assert job.next_attempt_at is None
+
+    @pytest.mark.asyncio
+    async def test_backoff_caps_at_five_minutes(self, db_url: str) -> None:
+        from datetime import UTC, datetime, timedelta
+
+        conn = await get_db_connection(db_url)
+        try:
+            run_id = await DiscoveryRunCRUD.create(
+                conn, location_query="KC", state="MO", issue_areas=["x"]
+            )
+            job_id = await DiscoveryJobCRUD.create(conn, run_id=run_id, max_retries=20)
+            await conn.execute(
+                "UPDATE discovery_jobs SET retry_count = 15 WHERE id = ?",
+                (job_id,),
+            )
+            await conn.commit()
+            before = datetime.now(UTC)
+            await DiscoveryJobCRUD.fail(conn, job_id, "boom")
+            job = await DiscoveryJobCRUD.get_by_id(conn, job_id)
+        finally:
+            await conn.close()
+
+        assert job is not None
+        assert job.next_attempt_at is not None
+        delay = datetime.fromisoformat(job.next_attempt_at) - before
+        # Cap is 300s of exponential backoff plus up to 4s of deterministic jitter.
+        assert delay <= timedelta(seconds=305)
+
+
 class TestDiscoveryJobCRUDClaimNext:
     @pytest.mark.asyncio
     async def test_claim_next_does_not_double_claim(self, db_url: str) -> None:

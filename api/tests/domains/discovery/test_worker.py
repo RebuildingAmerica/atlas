@@ -91,6 +91,50 @@ class TestWorkerExecution:
         assert "test failure" in job.error_message
 
     @pytest.mark.asyncio
+    async def test_worker_dead_letters_job_with_no_retries(
+        self,
+        db_url: str,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """A job with no retries that fails should be dead-lettered, not re-queued."""
+        conn = await get_db_connection(db_url)
+        run_id = await DiscoveryRunCRUD.create(
+            conn,
+            location_query="Austin, TX",
+            state="TX",
+            issue_areas=["housing_affordability"],
+        )
+        job_id = await DiscoveryJobCRUD.create(conn, run_id=run_id, max_retries=0)
+        await conn.close()
+
+        async def fake_pipeline(
+            _conn: object,
+            *,
+            job: object,  # noqa: ARG001
+            credentials: object,  # noqa: ARG001
+        ) -> None:
+            msg = "permanent failure"
+            raise RuntimeError(msg)
+
+        monkeypatch.setattr(
+            "atlas.domains.discovery.worker.run_discovery_pipeline",
+            fake_pipeline,
+        )
+
+        await start_job_worker(db_url, anthropic_api_key="test")
+        await asyncio.sleep(0.4)
+        await stop_job_worker()
+
+        conn = await get_db_connection(db_url)
+        job = await DiscoveryJobCRUD.get_by_id(conn, job_id)
+        await conn.close()
+
+        assert job is not None
+        assert job.status == "failed"
+        assert job.error_message is not None
+        assert "permanent failure" in job.error_message
+
+    @pytest.mark.asyncio
     async def test_worker_completes_successful_job(
         self,
         db_url: str,
