@@ -8,6 +8,9 @@ import importlib.util
 import httpx
 import pytest
 from atlas_discovery_engine import (
+    BraveSearchProvider,
+    SearchProvider,
+    SearchResult,
     build_extraction_system_prompt,
     parse_extraction_response,
 )
@@ -27,9 +30,8 @@ from atlas.domains.discovery.pipeline.source_fetcher import (
     _extract_page_text,
     _infer_source_type,
     _normalize_queries,
-    _parse_result_age,
-    _search_brave,
     _should_keep_source,
+    build_search_provider,
     fetch_sources,
 )
 from atlas.models import DiscoveryRunCRUD, EntryCRUD
@@ -454,61 +456,15 @@ class TestSourceFetchingHelpers:
         assert _infer_source_type("https://example.com/podcast/1", "Podcast Episode") == "podcast"
         assert _infer_source_type("https://instagram.com/example", "Profile") == "social_media"
 
-    def test_parse_result_age_only_accepts_iso_dates(self) -> None:
-        """Search ages should normalize only when already ISO-like."""
-        assert _parse_result_age("2026-01-15") == "2026-01-15"
-        assert _parse_result_age("3 days ago") is None
-        assert _parse_result_age(None) is None
+    def test_build_search_provider_returns_brave_for_a_key(self) -> None:
+        """A configured key yields a Brave-backed provider."""
+        provider = build_search_provider("test-key")
 
-    @pytest.mark.asyncio
-    async def test_search_brave_transforms_results(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        """Brave search results should map into the fetcher's metadata shape."""
+        assert isinstance(provider, BraveSearchProvider)
 
-        class FakeResponse:
-            def raise_for_status(self) -> None:
-                return None
-
-            def json(self) -> dict[str, object]:
-                return {
-                    "web": {
-                        "results": [
-                            {
-                                "url": "https://example.com/story",
-                                "title": "Story",
-                                "profile": {"name": "Example News"},
-                                "age": "2026-01-15",
-                            }
-                        ]
-                    }
-                }
-
-        class FakeClient:
-            def __init__(self, **_kwargs: object) -> None:
-                pass
-
-            async def __aenter__(self) -> FakeClient:
-                return self
-
-            async def __aexit__(self, exc_type: object, exc: object, tb: object) -> None:
-                return None
-
-            async def get(self, _url: str, **_kwargs: object) -> FakeResponse:
-                return FakeResponse()
-
-        monkeypatch.setattr(
-            "atlas.domains.discovery.pipeline.source_fetcher.httpx.AsyncClient", FakeClient
-        )
-
-        results = await _search_brave(["housing"], "test-key")
-
-        assert results == [
-            {
-                "url": "https://example.com/story",
-                "title": "Story",
-                "publication": "Example News",
-                "age": "2026-01-15",
-            }
-        ]
+    def test_build_search_provider_returns_none_without_a_key(self) -> None:
+        """Missing search credentials yield no provider, skipping search."""
+        assert build_search_provider(None) is None
 
     @pytest.mark.asyncio
     async def test_extract_page_text_uses_trafilatura(
@@ -541,27 +497,28 @@ class TestSourceFetchingHelpers:
     ) -> None:
         """Fetching should deduplicate URLs and keep only useful extracted pages."""
 
-        async def fake_search(_queries: list[str], _api_key: str) -> list[dict[str, str | None]]:
-            return [
-                {
-                    "url": "https://example.com/story",
-                    "title": "Story",
-                    "publication": "Example News",
-                    "age": "2026-01-15",
-                },
-                {
-                    "url": "https://example.com/story",
-                    "title": "Story Duplicate",
-                    "publication": "Example News",
-                    "age": "2026-01-15",
-                },
-                {
-                    "url": "https://example.com/short",
-                    "title": "Short",
-                    "publication": "Example News",
-                    "age": "2026-01-15",
-                },
-            ]
+        class FakeProvider(SearchProvider):
+            async def search(self, _queries: object) -> list[SearchResult]:
+                return [
+                    SearchResult(
+                        url="https://example.com/story",
+                        title="Story",
+                        publication="Example News",
+                        published="2026-01-15",
+                    ),
+                    SearchResult(
+                        url="https://example.com/story",
+                        title="Story Duplicate",
+                        publication="Example News",
+                        published="2026-01-15",
+                    ),
+                    SearchResult(
+                        url="https://example.com/short",
+                        title="Short",
+                        publication="Example News",
+                        published="2026-01-15",
+                    ),
+                ]
 
         class FakeClient:
             def __init__(self, **_kwargs: object) -> None:
@@ -579,29 +536,42 @@ class TestSourceFetchingHelpers:
             return "word " * 250
 
         monkeypatch.setattr(
-            "atlas.domains.discovery.pipeline.source_fetcher._search_brave", fake_search
-        )
-        monkeypatch.setattr(
             "atlas.domains.discovery.pipeline.source_fetcher._extract_page_text", fake_extract
         )
         monkeypatch.setattr(
             "atlas.domains.discovery.pipeline.source_fetcher.httpx.AsyncClient", FakeClient
         )
 
-        results = await fetch_sources(["housing"], "test-key")
+        results = await fetch_sources(["housing"], FakeProvider())
 
         assert len(results) == 1
         assert results[0].url == "https://example.com/story"
+        assert results[0].published_date == "2026-01-15"
 
     @pytest.mark.asyncio
-    async def test_fetch_sources_returns_empty_without_api_key(self) -> None:
-        """Missing search credentials should safely skip source fetching."""
+    async def test_fetch_sources_survives_a_provider_with_no_results(self) -> None:
+        """A search outage that empties results must not fail the whole run."""
+
+        class EmptyProvider(SearchProvider):
+            async def search(self, _queries: object) -> list[SearchResult]:
+                return []
+
+        assert await fetch_sources(["housing"], EmptyProvider()) == []
+
+    @pytest.mark.asyncio
+    async def test_fetch_sources_returns_empty_without_provider(self) -> None:
+        """A missing provider should safely skip source fetching."""
         assert await fetch_sources(["housing"], None) == []
 
     @pytest.mark.asyncio
     async def test_fetch_sources_returns_empty_for_empty_queries(self) -> None:
         """An empty query list short-circuits without invoking search."""
-        assert await fetch_sources([], "any-key") == []
+
+        class UnusedProvider(SearchProvider):
+            async def search(self, _queries: object) -> list[SearchResult]:
+                pytest.fail("provider should not be called for empty queries")
+
+        assert await fetch_sources([], UnusedProvider()) == []
 
     def test_infer_source_type_returns_report_for_pdf_or_report(self) -> None:
         """Reports and PDFs should be classified as report sources."""
@@ -949,6 +919,46 @@ class TestDiscoveryApiIntegration:
 
 class TestRunnerHelpers:
     """Tests for runner helper paths not covered by the main e2e case."""
+
+    @pytest.mark.asyncio
+    async def test_run_discovery_pipeline_routes_search_through_a_provider(
+        self,
+        test_db: object,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """The runner should build a SearchProvider from its key and hand it to fetch_sources."""
+        runner_module = _load_runner_module()
+        captured: dict[str, object] = {}
+
+        async def capturing_fetch_sources(
+            queries: list[object],
+            provider: object = None,
+        ) -> list[FetchedSource]:
+            assert queries
+            captured["provider"] = provider
+            return []
+
+        monkeypatch.setattr(runner_module, "fetch_sources", capturing_fetch_sources)
+
+        run_id = await DiscoveryRunCRUD.create(
+            test_db,
+            location_query="Kansas City, MO",
+            state="MO",
+            issue_areas=["housing_affordability"],
+        )
+
+        await runner_module.run_discovery_pipeline(
+            test_db,
+            job=DiscoveryPipelineJob(
+                run_id=run_id,
+                location_query="Kansas City, MO",
+                state="MO",
+                issue_areas=["housing_affordability"],
+            ),
+            credentials=DiscoveryPipelineCredentials(search_api_key="test-search-key"),
+        )
+
+        assert isinstance(captured["provider"], BraveSearchProvider)
 
     @pytest.mark.asyncio
     async def test_run_discovery_pipeline_marks_runs_failed_when_fetching_raises(

@@ -35,7 +35,7 @@ from atlas.domains.discovery.pipeline.extractor import extract_entries
 from atlas.domains.discovery.pipeline.gap_analyzer import analyze_gaps
 from atlas.domains.discovery.pipeline.query_generator import generate_queries
 from atlas.domains.discovery.pipeline.ranker import rank_entries
-from atlas.domains.discovery.pipeline.source_fetcher import fetch_sources
+from atlas.domains.discovery.pipeline.source_fetcher import build_search_provider, fetch_sources
 from atlas.domains.discovery.trust_gate import evaluate_publication
 from atlas.domains.moderation.review_queue import ReviewQueueCRUD
 from atlas.models import DiscoveryRunCRUD, EntryCRUD, SourceCRUD
@@ -91,7 +91,8 @@ async def run_discovery_pipeline(
         )
 
         t0 = time.monotonic()
-        fetched_sources = await fetch_sources(queries, active_credentials.search_api_key)
+        search_provider = build_search_provider(active_credentials.search_api_key)
+        fetched_sources = await fetch_sources(queries, search_provider)
         logger.info(
             "Pipeline step completed",
             extra={
