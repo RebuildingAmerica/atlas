@@ -121,28 +121,45 @@ export interface FollowingFeedItem {
   ingested_at: string;
 }
 
-/** Relationship categories used to group connected actors on profile pages. */
-export type ConnectionType =
+/** The kind of link behind a connection reason. */
+export type ConnectionReasonKind =
   | "same_organization"
+  | "co_mentioned"
   | "same_issue_area"
-  | "same_geography"
-  | "co_mentioned";
+  | "same_geography";
 
-/** An actor related to the current profile, with evidence explaining the link. */
+/** Connection strength tier, derived from the normalized 0-100 strength. */
+export type ConnectionTier = "strong" | "moderate" | "weak";
+
+/** One explainable reason two actors are connected. */
+export interface ConnectionReason {
+  kind: ConnectionReasonKind;
+  label: string;
+  count: number | null;
+}
+
+/** A ranked actor connected to the current profile. */
 export interface ConnectedActor {
   id: string;
   name: string;
   type: EntryType;
   slug: string | null;
   description_snippet: string | null;
-  /** Human-readable explanation of why this actor is connected (e.g., "Both mentioned in: KC Star"). */
+  /** Raw weighted connection score. */
+  score: number;
+  /** Strength 0-100, relative to this profile's strongest connection. */
+  strength: number;
+  tier: ConnectionTier;
+  /** Ordered strongest-first — the reasons behind the link. */
+  reasons: ConnectionReason[];
+  /** The single strongest reason, for compact display. */
   evidence: string;
 }
 
-/** A group of related actors sharing a common relationship type. */
-export interface ConnectionGroup {
-  type: ConnectionType;
+/** An entry's ranked connection network, with the true total before paging. */
+export interface ConnectionNetwork {
   actors: ConnectedActor[];
+  total: number;
 }
 
 export interface FacetOption {

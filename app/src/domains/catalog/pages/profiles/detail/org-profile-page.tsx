@@ -5,7 +5,7 @@ import { AppearancesList } from "@/domains/catalog/components/profiles/appearanc
 import { AvatarRow } from "@/domains/catalog/components/profiles/avatar-row";
 import { DataQualityBlock } from "@/domains/catalog/components/profiles/data-quality-block";
 import { IssueFootprint } from "@/domains/catalog/components/profiles/issue-footprint";
-import { NetworkRails } from "@/domains/catalog/components/profiles/network-rails";
+import { ConnectionList } from "@/domains/catalog/components/profiles/connection-list";
 import { PresenceSection } from "@/domains/catalog/components/profiles/presence-section";
 import { ProfileHero } from "@/domains/catalog/components/profiles/profile-hero";
 import { ProfileJsonLd } from "@/domains/catalog/components/profiles/profile-head";
@@ -15,10 +15,11 @@ import { WorkSection } from "@/domains/catalog/components/profiles/work-section"
 import { useConnections } from "@/domains/catalog/hooks/use-connections";
 import { useEntries } from "@/domains/catalog/hooks/use-entries";
 import { useTaxonomy } from "@/domains/catalog/hooks/use-taxonomy";
-import type { Entry } from "@/types";
+import type { ConnectionNetwork, Entry } from "@/types";
 
 interface OrgProfilePageProps {
   entry: Entry;
+  initialConnections?: ConnectionNetwork;
 }
 
 const PANEL = "border border-border-taupe border-t-0 bg-surface-container-lowest px-6 py-6 sm:px-8";
@@ -41,9 +42,9 @@ function buildShareUrl(slug: string): string {
   return `https://rebuildingus.org/profiles/organizations/${slug}`;
 }
 
-export function OrgProfilePage({ entry }: OrgProfilePageProps) {
+export function OrgProfilePage({ entry, initialConnections }: OrgProfilePageProps) {
   const taxonomyQuery = useTaxonomy();
-  const connectionsQuery = useConnections(entry.id);
+  const connectionsQuery = useConnections(entry.id, { initialData: initialConnections });
   const sessionQuery = useAtlasSession();
   const isSignedIn = Boolean(sessionQuery.data);
   const affiliatedPeopleQuery = useEntries({ entry_types: ["person"], limit: 50 });
@@ -140,9 +141,9 @@ export function OrgProfilePage({ entry }: OrgProfilePageProps) {
             <span className={PANEL_HEADER}>Network</span>
             <h2 className="text-ink-strong text-base font-semibold">Who else is doing this work</h2>
           </div>
-          <NetworkRails
+          <ConnectionList
             entry={entry}
-            connections={connectionsQuery.data ?? []}
+            network={connectionsQuery.data}
             isLoading={connectionsQuery.isLoading}
           />
         </section>

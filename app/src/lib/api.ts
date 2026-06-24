@@ -9,7 +9,9 @@ import {
 } from "@/lib/generated/atlas";
 import { atlasFetch } from "@/lib/orval/fetcher";
 import type {
-  ConnectionGroup,
+  ConnectionNetwork,
+  ConnectionReasonKind,
+  ConnectionTier,
   DiscoveryRun,
   DiscoveryRunListResponse,
   Entry,
@@ -155,9 +157,31 @@ async function listTaxonomy(): Promise<TaxonomyResponse> {
   }, {});
 }
 
-/** Shape returned by the connections endpoint. */
+/** Raw connection-reason payload from the API. */
+interface ConnectionReasonResponse {
+  kind: string;
+  label: string;
+  count: number | null;
+}
+
+/** Raw connected-actor payload from the API. */
+interface ConnectedActorResponse {
+  id: string;
+  name: string;
+  type: string;
+  slug: string | null;
+  description_snippet: string | null;
+  score: number;
+  strength: number;
+  tier: string;
+  reasons: ConnectionReasonResponse[];
+  evidence: string;
+}
+
+/** Raw connections payload from the API. */
 interface ConnectionsResponse {
-  connections: ConnectionGroup[];
+  actors: ConnectedActorResponse[];
+  total: number;
 }
 
 /** Resolve an entry by its type-prefixed slug (e.g., people/jane-doe-a3f2). */
@@ -166,10 +190,33 @@ async function getEntryBySlug(type: "people" | "organizations", slug: string): P
   return mapEntityDetail(response);
 }
 
-/** Fetch related actors for an entry, grouped by relationship type. */
-async function getConnections(entryId: string): Promise<ConnectionGroup[]> {
+/** Map the raw connections payload into the internal ranked network. */
+function mapConnectionNetwork(response: ConnectionsResponse): ConnectionNetwork {
+  return {
+    actors: response.actors.map((actor) => ({
+      id: actor.id,
+      name: actor.name,
+      type: actor.type as Entry["type"],
+      slug: actor.slug,
+      description_snippet: actor.description_snippet,
+      score: actor.score,
+      strength: actor.strength,
+      tier: actor.tier as ConnectionTier,
+      reasons: actor.reasons.map((reason) => ({
+        kind: reason.kind as ConnectionReasonKind,
+        label: reason.label,
+        count: reason.count,
+      })),
+      evidence: actor.evidence,
+    })),
+    total: response.total,
+  };
+}
+
+/** Fetch the ranked connection network for an entry. */
+async function getConnections(entryId: string): Promise<ConnectionNetwork> {
   const response = await atlasFetch<ConnectionsResponse>(`/api/entities/${entryId}/connections`);
-  return response.connections;
+  return mapConnectionNetwork(response);
 }
 
 export const api = {

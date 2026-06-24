@@ -133,19 +133,40 @@ describe("api.entries.getBySlug and getConnections", () => {
     });
   });
 
-  it("fetches related actor connections and returns the grouped list", async () => {
+  it("maps the ranked connection network from the API", async () => {
     fetchMock.mockResolvedValueOnce({
-      connections: [
+      actors: [
         {
-          relationship: "co-organizer",
-          entries: [],
+          id: "a1",
+          name: "Marcus Lee",
+          type: "person",
+          slug: "marcus-lee",
+          description_snippet: "Advocate",
+          score: 4,
+          strength: 80,
+          tier: "moderate",
+          reasons: [{ kind: "co_mentioned", label: "Co-mentioned in 2 sources", count: 2 }],
+          evidence: "Co-mentioned in 2 sources",
         },
       ],
+      total: 12,
     });
 
     const result = await api.entries.getConnections("ent_1");
 
     expect(fetchMock).toHaveBeenCalledWith("/api/entities/ent_1/connections");
-    expect(result).toEqual([{ relationship: "co-organizer", entries: [] }]);
+    expect(result.total).toBe(12);
+    expect(result.actors[0]).toEqual({
+      id: "a1",
+      name: "Marcus Lee",
+      type: "person",
+      slug: "marcus-lee",
+      description_snippet: "Advocate",
+      score: 4,
+      strength: 80,
+      tier: "moderate",
+      reasons: [{ kind: "co_mentioned", label: "Co-mentioned in 2 sources", count: 2 }],
+      evidence: "Co-mentioned in 2 sources",
+    });
   });
 });

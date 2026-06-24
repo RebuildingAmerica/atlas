@@ -6,14 +6,18 @@
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { PersonProfilePage } from "@/domains/catalog/pages/profiles/detail/person-profile-page";
-import { loadProfileBySlug } from "@/domains/catalog/server/profiles/profile-loaders";
+import {
+  loadProfileBySlug,
+  loadProfileConnections,
+} from "@/domains/catalog/server/profiles/profile-loaders";
 
 export const Route = createFileRoute("/_public/profiles/people/$slug")({
   loader: async ({ params }) => {
     const entry = await loadProfileBySlug({
       data: { type: "people", slug: params.slug },
     });
-    return { entry };
+    const connections = await loadProfileConnections({ data: { entryId: entry.id } });
+    return { entry, connections };
   },
   head: ({ loaderData }) => {
     const entry = loaderData?.entry;
@@ -39,6 +43,6 @@ export const Route = createFileRoute("/_public/profiles/people/$slug")({
 });
 
 function PersonProfileRoute() {
-  const { entry } = Route.useLoaderData();
-  return <PersonProfilePage entry={entry} />;
+  const { entry, connections } = Route.useLoaderData();
+  return <PersonProfilePage entry={entry} initialConnections={connections} />;
 }

@@ -30,9 +30,9 @@ import {
   FreshnessChip,
   formatFreshness,
 } from "@/domains/catalog/components/profiles/detail/profile-detail-primitives";
-import { NetworkRails } from "@/domains/catalog/components/profiles/network-rails";
+import { ConnectionList } from "@/domains/catalog/components/profiles/connection-list";
 import { WorkSection } from "@/domains/catalog/components/profiles/work-section";
-import type { ConnectionGroup, Entry } from "@/types";
+import type { ConnectedActor, ConnectionNetwork, Entry } from "@/types";
 import {
   createEntryFixture as buildEntry,
   createSourceFixture as buildSource,
@@ -433,207 +433,144 @@ describe("WorkSection", () => {
   });
 });
 
-describe("NetworkRails", () => {
-  function buildGroups(): ConnectionGroup[] {
-    return [
-      {
-        type: "same_issue_area",
-        actors: [
-          {
-            id: "a1",
-            name: "Marcus Lee",
-            type: "person",
-            slug: "marcus-lee",
-            description_snippet: "Tenant advocate",
-            evidence: "Both work on housing",
-          },
-        ],
-      },
-      {
-        type: "co_mentioned",
-        actors: [
-          {
-            id: "a2",
-            name: "Aaliyah Reid",
-            type: "person",
-            slug: "aaliyah-reid",
-            description_snippet: null,
-            evidence: "Quoted alongside in MS Today",
-          },
-        ],
-      },
-    ];
+describe("ConnectionList", () => {
+  function buildActor(overrides: Partial<ConnectedActor> = {}): ConnectedActor {
+    return {
+      id: "a1",
+      name: "Marcus Lee",
+      type: "person",
+      slug: "marcus-lee",
+      description_snippet: "Tenant advocate",
+      score: 5,
+      strength: 100,
+      tier: "strong",
+      reasons: [{ kind: "same_organization", label: "Their organization", count: null }],
+      evidence: "Their organization",
+      ...overrides,
+    };
   }
 
-  it("shows skeleton when loading", () => {
-    render(<NetworkRails entry={buildEntry()} connections={[]} isLoading />);
+  function buildNetwork(actors: ConnectedActor[], total?: number): ConnectionNetwork {
+    return { actors, total: total ?? actors.length };
+  }
+
+  it("shows a skeleton while loading with no server data", () => {
+    render(<ConnectionList entry={buildEntry()} network={undefined} isLoading />);
     expect(screen.getByLabelText("Loading network")).toBeInTheDocument();
   });
 
-  it("renders distinctive co-mentioned label", () => {
-    render(<NetworkRails entry={buildEntry()} connections={buildGroups()} isLoading={false} />);
-    expect(screen.getByText("Co-mentioned in coverage")).toBeInTheDocument();
-    expect(screen.getByText("↳ only on Atlas")).toBeInTheDocument();
-  });
-
-  it("renders the same-region rail with state suffix", () => {
-    const groups: ConnectionGroup[] = [
-      {
-        type: "same_geography",
-        actors: [
-          {
-            id: "a3",
-            name: "Delta Voices",
-            type: "organization",
-            slug: "delta-voices",
-            description_snippet: null,
-            evidence: "Both in Greenville",
-          },
-        ],
-      },
-    ];
-    render(<NetworkRails entry={buildEntry()} connections={groups} isLoading={false} />);
-    expect(screen.getByText("Same region · MS")).toBeInTheDocument();
-  });
-
-  it("hides empty groups but still renders Browse more", () => {
+  it("keeps server-provided data visible without a skeleton while revalidating", () => {
     render(
-      <NetworkRails
+      <ConnectionList entry={buildEntry()} network={buildNetwork([buildActor()])} isLoading />,
+    );
+    expect(screen.queryByLabelText("Loading network")).not.toBeInTheDocument();
+    expect(screen.getByText("Marcus Lee")).toBeInTheDocument();
+  });
+
+  it("renders ranked rows with the strength tier and reason chips", () => {
+    render(
+      <ConnectionList
         entry={buildEntry()}
-        connections={[{ type: "same_organization", actors: [] }]}
+        network={buildNetwork([buildActor()])}
         isLoading={false}
       />,
     );
-    expect(screen.queryByText("Same organization")).not.toBeInTheDocument();
-    expect(screen.getByText(/Keep browsing/i)).toBeInTheDocument();
+    expect(screen.getByText("Marcus Lee")).toBeInTheDocument();
+    expect(screen.getByText("Their organization")).toBeInTheDocument();
+    expect(screen.getByText("Strong")).toBeInTheDocument();
   });
 
-  it("renders the same-organization rail title", () => {
-    const groups: ConnectionGroup[] = [
-      {
-        type: "same_organization",
-        actors: [
-          {
-            id: "a4",
-            name: "Org Member",
-            type: "person",
-            slug: "org-member",
-            description_snippet: null,
-            evidence: "Both at Acme",
-          },
-        ],
-      },
-    ];
-    render(<NetworkRails entry={buildEntry()} connections={groups} isLoading={false} />);
-    expect(screen.getByText("Same organization")).toBeInTheDocument();
-    expect(screen.getByText("1 actor")).toBeInTheDocument();
-  });
-
-  it("renders 'Same region' without state suffix when entry has no state", () => {
-    const groups: ConnectionGroup[] = [
-      {
-        type: "same_geography",
-        actors: [
-          {
-            id: "a5",
-            name: "Region Org",
-            type: "organization",
-            slug: "region-org",
-            description_snippet: null,
-            evidence: "Same area",
-          },
-        ],
-      },
-    ];
+  it("labels the moderate and light tiers", () => {
     render(
-      <NetworkRails
-        entry={buildEntry({ state: undefined })}
-        connections={groups}
+      <ConnectionList
+        entry={buildEntry()}
+        network={buildNetwork([
+          buildActor({ id: "m", name: "Mod Tie", slug: "mod", tier: "moderate", strength: 50 }),
+          buildActor({ id: "w", name: "Weak Tie", slug: "weak", tier: "weak", strength: 20 }),
+        ])}
         isLoading={false}
       />,
     );
-    expect(screen.getByText("Same region")).toBeInTheDocument();
+    expect(screen.getByText("Moderate")).toBeInTheDocument();
+    expect(screen.getByText("Light")).toBeInTheDocument();
   });
 
-  it("renders an unlinked card when the actor has no slug", () => {
-    const groups: ConnectionGroup[] = [
-      {
-        type: "same_issue_area",
-        actors: [
-          {
-            id: "a6",
-            name: "Anon Actor",
-            type: "person",
-            slug: null,
-            description_snippet: null,
-            evidence: "Same issue",
-          },
-        ],
-      },
-    ];
-    render(<NetworkRails entry={buildEntry()} connections={groups} isLoading={false} />);
+  it("links person actors to the people route and org actors to the org route", () => {
+    render(
+      <ConnectionList
+        entry={buildEntry()}
+        network={buildNetwork([
+          buildActor({ id: "p", name: "Person A", type: "person", slug: "person-a" }),
+          buildActor({ id: "o", name: "Acme Org", type: "organization", slug: "acme-org" }),
+        ])}
+        isLoading={false}
+      />,
+    );
+    expect(screen.getByRole("link", { name: /Person A/ })).toHaveAttribute(
+      "href",
+      "/profiles/people/$slug",
+    );
+    expect(screen.getByRole("link", { name: /Acme Org/ })).toHaveAttribute(
+      "href",
+      "/profiles/organizations/$slug",
+    );
+  });
+
+  it("renders an unlinked row when the actor has no slug", () => {
+    render(
+      <ConnectionList
+        entry={buildEntry()}
+        network={buildNetwork([buildActor({ id: "anon", name: "Anon Actor", slug: null })])}
+        isLoading={false}
+      />,
+    );
     expect(screen.getByText("Anon Actor")).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /Anon Actor/ })).not.toBeInTheDocument();
   });
 
-  it("links organization actors to the organization profile route", () => {
-    const groups: ConnectionGroup[] = [
-      {
-        type: "same_issue_area",
-        actors: [
-          {
-            id: "a7",
-            name: "Acme Org",
-            type: "organization",
-            slug: "acme-org",
-            description_snippet: null,
-            evidence: "Linked",
-          },
-        ],
-      },
-    ];
-    render(<NetworkRails entry={buildEntry()} connections={groups} isLoading={false} />);
-    const link = screen.getByRole("link", { name: /Acme Org/ });
-    expect(link).toHaveAttribute("href", "/profiles/organizations/$slug");
+  it("shows an honest 'strongest of N' note when the total exceeds the page", () => {
+    render(
+      <ConnectionList
+        entry={buildEntry()}
+        network={buildNetwork([buildActor()], 25)}
+        isLoading={false}
+      />,
+    );
+    expect(screen.getByText(/strongest of 25 connections/i)).toBeInTheDocument();
   });
 
-  it("uses the plural 'actors' label when the rail has multiple actors", () => {
-    const groups: ConnectionGroup[] = [
-      {
-        type: "same_issue_area",
-        actors: [
-          {
-            id: "p1",
-            name: "Person A",
-            type: "person",
-            slug: "person-a",
-            description_snippet: null,
-            evidence: "x",
-          },
-          {
-            id: "p2",
-            name: "Person B",
-            type: "person",
-            slug: "person-b",
-            description_snippet: null,
-            evidence: "y",
-          },
-        ],
-      },
-    ];
-    render(<NetworkRails entry={buildEntry()} connections={groups} isLoading={false} />);
-    expect(screen.getByText("2 actors")).toBeInTheDocument();
+  it("omits the total note when everything is shown", () => {
+    render(
+      <ConnectionList
+        entry={buildEntry()}
+        network={buildNetwork([buildActor()])}
+        isLoading={false}
+      />,
+    );
+    expect(screen.queryByText(/strongest of/i)).not.toBeInTheDocument();
+  });
+
+  it("shows an empty state with full browse links when there are no connections", () => {
+    render(<ConnectionList entry={buildEntry()} network={buildNetwork([])} isLoading={false} />);
+    expect(screen.getByText(/No connections surfaced yet/i)).toBeInTheDocument();
+    expect(screen.getByText(/Keep exploring/i)).toBeInTheDocument();
+    expect(screen.getByText("All profiles in MS")).toBeInTheDocument();
+    expect(screen.getByText("Browse by issue area")).toBeInTheDocument();
+  });
+
+  it("treats undefined network (not loading) as empty", () => {
+    render(<ConnectionList entry={buildEntry()} network={undefined} isLoading={false} />);
+    expect(screen.getByText(/No connections surfaced yet/i)).toBeInTheDocument();
   });
 
   it("renders a minimal browse-more list when entry lacks state and issue areas", () => {
     render(
-      <NetworkRails
+      <ConnectionList
         entry={buildEntry({ state: undefined, issue_areas: [] })}
-        connections={[]}
+        network={buildNetwork([])}
         isLoading={false}
       />,
     );
-    expect(screen.getByText(/No connections surfaced yet/i)).toBeInTheDocument();
     expect(screen.getByText("All profiles")).toBeInTheDocument();
     expect(screen.queryByText(/All profiles in/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Browse by issue area/)).not.toBeInTheDocument();

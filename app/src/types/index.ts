@@ -1,7 +1,9 @@
 export type {
   ConnectedActor,
-  ConnectionGroup,
-  ConnectionType,
+  ConnectionNetwork,
+  ConnectionReason,
+  ConnectionReasonKind,
+  ConnectionTier,
   Entry,
   EntryType,
   GeoSpecificity,

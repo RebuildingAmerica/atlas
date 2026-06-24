@@ -1,21 +1,21 @@
 /**
- * React Query hook for fetching an entry's connections.
+ * React Query hook for an entry's ranked connection network.
  *
- * Returns related actors grouped by relationship type (same org,
- * co-mentioned, same issue area, same geography).
+ * Server routes seed this via `initialData` so the network renders in the SSR
+ * HTML; the client only revalidates.
  */
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import type { ConnectionGroup } from "@/types";
+import type { ConnectionNetwork } from "@/types";
 
 interface UseConnectionsOptions {
   /** Hydrate the cache with a server-side payload to skip the first fetch. */
-  initialData?: ConnectionGroup[];
+  initialData?: ConnectionNetwork;
 }
 
-/** Fetch and cache connections for a profile sidebar. */
+/** Fetch and cache the ranked connection network for a profile. */
 export function useConnections(entryId: string, options?: UseConnectionsOptions) {
-  return useQuery<ConnectionGroup[]>({
+  return useQuery<ConnectionNetwork>({
     queryKey: ["connections", entryId],
     queryFn: () => api.entries.getConnections(entryId),
     staleTime: 10 * 60 * 1000,

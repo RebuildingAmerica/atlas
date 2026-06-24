@@ -16,6 +16,7 @@ vi.mock("@/domains/catalog/pages/profiles/detail/person-profile-page", () => ({
 
 vi.mock("@/domains/catalog/server/profiles/profile-loaders", () => ({
   loadProfileBySlug: vi.fn(),
+  loadProfileConnections: vi.fn(),
 }));
 
 describe("routes/_public/profiles/people/$slug", () => {
@@ -29,10 +30,20 @@ describe("routes/_public/profiles/people/$slug", () => {
   });
 
   it("loads the person by slug and exposes canonical SEO meta", async () => {
-    const { loadProfileBySlug } = await import("@/domains/catalog/server/profiles/profile-loaders");
-    const entry = { name: "Jane", slug: "jane", description: "Bio of Jane.".repeat(20) };
+    const { loadProfileBySlug, loadProfileConnections } =
+      await import("@/domains/catalog/server/profiles/profile-loaders");
+    const entry = {
+      id: "jane-1",
+      name: "Jane",
+      slug: "jane",
+      description: "Bio of Jane.".repeat(20),
+    };
+    const connections = { actors: [], total: 0 };
     vi.mocked(loadProfileBySlug).mockResolvedValue(
       entry as Awaited<ReturnType<typeof loadProfileBySlug>>,
+    );
+    vi.mocked(loadProfileConnections).mockResolvedValue(
+      connections as Awaited<ReturnType<typeof loadProfileConnections>>,
     );
 
     const routeModule = await import("@/routes/_public/profiles/people.$slug");
@@ -44,7 +55,8 @@ describe("routes/_public/profiles/people/$slug", () => {
     expect(loadProfileBySlug).toHaveBeenCalledWith({
       data: { type: "people", slug: "jane" },
     });
-    expect(loaded).toEqual({ entry });
+    expect(loadProfileConnections).toHaveBeenCalledWith({ data: { entryId: "jane-1" } });
+    expect(loaded).toEqual({ entry, connections });
 
     if (!Route.options.head) throw new Error("Expected head");
     const headPayload = Route.options.head({ loaderData: { entry } } as never) as {

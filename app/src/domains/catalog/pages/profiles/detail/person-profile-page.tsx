@@ -6,7 +6,7 @@ import { ActionCluster } from "@/domains/catalog/components/profiles/action-clus
 import { AppearancesList } from "@/domains/catalog/components/profiles/appearances-list";
 import { DataQualityBlock } from "@/domains/catalog/components/profiles/data-quality-block";
 import { formatProfileLocation } from "@/domains/catalog/components/profiles/detail/profile-detail-primitives";
-import { NetworkRails } from "@/domains/catalog/components/profiles/network-rails";
+import { ConnectionList } from "@/domains/catalog/components/profiles/connection-list";
 import { ProfileHero } from "@/domains/catalog/components/profiles/profile-hero";
 import { ProfileJsonLd } from "@/domains/catalog/components/profiles/profile-head";
 import { ProfileStats } from "@/domains/catalog/components/profiles/profile-stats";
@@ -17,10 +17,11 @@ import { useConnections } from "@/domains/catalog/hooks/use-connections";
 import { useEntry } from "@/domains/catalog/hooks/use-entries";
 import { useTaxonomy } from "@/domains/catalog/hooks/use-taxonomy";
 import { humanize } from "@/domains/catalog/catalog";
-import type { Entry } from "@/types";
+import type { ConnectionNetwork, Entry } from "@/types";
 
 interface PersonProfilePageProps {
   entry: Entry;
+  initialConnections?: ConnectionNetwork;
 }
 
 const PANEL = "border border-border-taupe border-t-0 bg-surface-container-lowest px-6 py-6 sm:px-8";
@@ -51,9 +52,9 @@ function buildShareUrl(slug: string): string {
   return `https://rebuildingus.org/profiles/people/${slug}`;
 }
 
-export function PersonProfilePage({ entry }: PersonProfilePageProps) {
+export function PersonProfilePage({ entry, initialConnections }: PersonProfilePageProps) {
   const taxonomyQuery = useTaxonomy();
-  const connectionsQuery = useConnections(entry.id);
+  const connectionsQuery = useConnections(entry.id, { initialData: initialConnections });
   const sessionQuery = useAtlasSession();
   const isSignedIn = Boolean(sessionQuery.data);
   const affiliatedOrgQuery = useEntry(entry.affiliated_org_id ?? "", {
@@ -164,9 +165,9 @@ export function PersonProfilePage({ entry }: PersonProfilePageProps) {
             <span className={PANEL_HEADER}>Network</span>
             <h2 className="text-ink-strong text-base font-semibold">Who else is doing this work</h2>
           </div>
-          <NetworkRails
+          <ConnectionList
             entry={entry}
-            connections={connectionsQuery.data ?? []}
+            network={connectionsQuery.data}
             isLoading={connectionsQuery.isLoading}
           />
         </section>
