@@ -9,6 +9,8 @@ from pydantic import BaseModel, Field
 __all__ = [
     "Address",
     "ClaimStatusInfo",
+    "ConnectedActorResponse",
+    "ConnectionReasonResponse",
     "ContactInfo",
     "CoverageCount",
     "DiscoveryRunCollectionResponse",
@@ -16,6 +18,7 @@ __all__ = [
     "DomainListResponse",
     "DomainResponse",
     "EntityCollectionResponse",
+    "EntityConnectionsResponse",
     "EntityDetailResponse",
     "EntityFlagCreateRequest",
     "EntityFlagListResponse",
@@ -167,6 +170,40 @@ class FacetOption(BaseModel):
 
     value: str
     count: int
+
+
+class ConnectionReasonResponse(BaseModel):
+    """One explainable reason two actors are connected."""
+
+    kind: str = Field(
+        description="same_organization | co_mentioned | same_issue_area | same_geography.",
+    )
+    label: str
+    count: int | None = None
+
+
+class ConnectedActorResponse(BaseModel):
+    """A ranked connected actor on an entity's civic map."""
+
+    id: str
+    name: str
+    type: str
+    slug: str | None = None
+    description_snippet: str | None = None
+    score: float = Field(description="Raw weighted connection score.")
+    strength: int = Field(
+        description="Connection strength 0-100, relative to the strongest link.",
+    )
+    tier: str = Field(description="strong | moderate | weak.")
+    reasons: list[ConnectionReasonResponse] = Field(default_factory=list)
+    evidence: str = Field(description="The single strongest reason, for compact display.")
+
+
+class EntityConnectionsResponse(BaseModel):
+    """An entity's ranked connection network with the true total."""
+
+    actors: list[ConnectedActorResponse] = Field(default_factory=list)
+    total: int = Field(description="Total connected actors before pagination.")
 
 
 class ClaimStatusInfo(BaseModel):

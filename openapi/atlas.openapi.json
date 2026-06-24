@@ -204,6 +204,114 @@
         "title": "ClaimStatusInfo",
         "type": "object"
       },
+      "ConnectedActorResponse": {
+        "description": "A ranked connected actor on an entity's civic map.",
+        "properties": {
+          "description_snippet": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description Snippet"
+          },
+          "evidence": {
+            "description": "The single strongest reason, for compact display.",
+            "title": "Evidence",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "reasons": {
+            "items": {
+              "$ref": "#/components/schemas/ConnectionReasonResponse"
+            },
+            "title": "Reasons",
+            "type": "array"
+          },
+          "score": {
+            "description": "Raw weighted connection score.",
+            "title": "Score",
+            "type": "number"
+          },
+          "slug": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slug"
+          },
+          "strength": {
+            "description": "Connection strength 0-100, relative to the strongest link.",
+            "title": "Strength",
+            "type": "integer"
+          },
+          "tier": {
+            "description": "strong | moderate | weak.",
+            "title": "Tier",
+            "type": "string"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "type",
+          "score",
+          "strength",
+          "tier",
+          "evidence"
+        ],
+        "title": "ConnectedActorResponse",
+        "type": "object"
+      },
+      "ConnectionReasonResponse": {
+        "description": "One explainable reason two actors are connected.",
+        "properties": {
+          "count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Count"
+          },
+          "kind": {
+            "description": "same_organization | co_mentioned | same_issue_area | same_geography.",
+            "title": "Kind",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "label"
+        ],
+        "title": "ConnectionReasonResponse",
+        "type": "object"
+      },
       "ContactInfo": {
         "description": "Canonical public contact surface.",
         "properties": {
@@ -1637,6 +1745,28 @@
           "total"
         ],
         "title": "EntityCollectionResponse",
+        "type": "object"
+      },
+      "EntityConnectionsResponse": {
+        "description": "An entity's ranked connection network with the true total.",
+        "properties": {
+          "actors": {
+            "items": {
+              "$ref": "#/components/schemas/ConnectedActorResponse"
+            },
+            "title": "Actors",
+            "type": "array"
+          },
+          "total": {
+            "description": "Total connected actors before pagination.",
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total"
+        ],
+        "title": "EntityConnectionsResponse",
         "type": "object"
       },
       "EntityCreateRequest": {
@@ -7599,7 +7729,7 @@
     },
     "/api/entities/{entry_id}/connections": {
       "get": {
-        "description": "Return related actors grouped by relationship type with evidence.",
+        "description": "Return related actors ranked by connection strength, with the reasons behind each link.",
         "operationId": "getEntityConnections",
         "parameters": [
           {
@@ -7610,6 +7740,29 @@
               "title": "Entry Id",
               "type": "string"
             }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
           }
         ],
         "responses": {
@@ -7617,15 +7770,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": {
-                    "items": {
-                      "additionalProperties": true,
-                      "type": "object"
-                    },
-                    "type": "array"
-                  },
-                  "title": "Response Getentityconnections",
-                  "type": "object"
+                  "$ref": "#/components/schemas/EntityConnectionsResponse"
                 }
               }
             },

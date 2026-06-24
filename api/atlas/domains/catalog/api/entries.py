@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import AsyncGenerator  # noqa: TC003
+from dataclasses import asdict
 from typing import TYPE_CHECKING, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
@@ -12,7 +13,7 @@ from fastapi.responses import JSONResponse
 from atlas.domains.access.dependencies import require_org_actor_permission
 from atlas.domains.catalog.models.connections import compute_connections
 from atlas.domains.catalog.models.ownership import OwnershipCRUD
-from atlas.domains.catalog.schemas.public import FacetOption
+from atlas.domains.catalog.schemas.public import EntityConnectionsResponse, FacetOption
 from atlas.domains.catalog.taxonomy import ALL_ISSUE_SLUGS
 from atlas.models import EntryCRUD, FlagCRUD, get_db_connection
 from atlas.platform.config import Settings, get_settings
@@ -209,8 +210,9 @@ async def resolve_by_slug(
 
 @router.get(
     "/{entry_id}/connections",
+    response_model=EntityConnectionsResponse,
     summary="Get entity connections",
-    description="Return related actors grouped by relationship type with evidence.",
+    description="Return related actors ranked by connection strength, with the reasons behind each link.",
     operation_id="getEntityConnections",
     tags=["entities"],
 )
@@ -218,16 +220,19 @@ async def get_entity_connections(
     entry_id: str,
     response: Response,
     db: aiosqlite.Connection = Depends(get_db),
-) -> dict[str, list[dict[str, Any]]]:
-    """Compute and return actors related to the given entry.
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+) -> EntityConnectionsResponse:
+    """Compute the ranked connection network for an entry.
 
-    Groups connections by relationship type (same_organization, co_mentioned,
-    same_issue_area, same_geography) with evidence strings explaining each
-    link. Empty groups are omitted.
+    Merges organizational affiliation, source co-mentions, and shared issue
+    areas within the same state into one strength-ranked, deduped list, nudged
+    by shared geography. Reports the true total before pagination so the count
+    is never a fake cap.
     """
-    connections = await compute_connections(db, entry_id)
+    result = await compute_connections(db, entry_id, limit=limit, offset=offset)
     apply_short_public_cache(response)
-    return {"connections": connections}
+    return EntityConnectionsResponse.model_validate(asdict(result))
 
 
 @router.get(
