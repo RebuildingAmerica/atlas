@@ -136,6 +136,20 @@ class Settings(BaseSettings):
     discovery_max_link_depth: int = Field(default=1, validation_alias="DISCOVERY_MAX_LINK_DEPTH")
     """Maximum link-following depth."""
 
+    # Cost controls
+    discovery_max_run_cost: float = Field(default=5.0, validation_alias="DISCOVERY_MAX_RUN_COST")
+    """Maximum estimated spend (USD) a single discovery run may incur."""
+
+    discovery_max_daily_cost: float = Field(
+        default=50.0, validation_alias="DISCOVERY_MAX_DAILY_COST"
+    )
+    """Maximum estimated spend (USD) across all discovery runs in a rolling day."""
+
+    discovery_cost_kill_switch: bool = Field(
+        default=False, validation_alias="DISCOVERY_COST_KILL_SWITCH"
+    )
+    """Operator kill switch. When True, discovery spend is halted immediately."""
+
     # Feature flags
     enable_api_docs: bool | None = None
     """Legacy toggle for OpenAPI spec + docs UI publishing."""

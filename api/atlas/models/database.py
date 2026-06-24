@@ -538,6 +538,19 @@ CREATE INDEX IF NOT EXISTS idx_discovery_jobs_run_id ON discovery_jobs(run_id);
 CREATE INDEX IF NOT EXISTS idx_discovery_jobs_claimed_until ON discovery_jobs(claimed_until);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_discovery_jobs_idempotency ON discovery_jobs(idempotency_key);
 
+-- Cost ledger (per-call metering for discovery spend ceilings + kill switch)
+CREATE TABLE IF NOT EXISTS cost_ledger (
+    id TEXT PRIMARY KEY,
+    run_id TEXT REFERENCES discovery_runs(id) ON DELETE CASCADE,
+    kind TEXT NOT NULL,
+    provider TEXT NOT NULL,
+    units REAL NOT NULL,
+    estimated_cost REAL NOT NULL,
+    created_at DATETIME NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_cost_ledger_run_id ON cost_ledger(run_id);
+CREATE INDEX IF NOT EXISTS idx_cost_ledger_created_at ON cost_ledger(created_at);
+
 -- Discovery schedules (autonomous pipeline targets)
 CREATE TABLE IF NOT EXISTS discovery_schedules (
     id TEXT PRIMARY KEY,
