@@ -123,6 +123,23 @@ CREATE TABLE IF NOT EXISTS source_flags (
     created_at TIMESTAMPTZ NOT NULL
 );
 
+-- Review queue (pre-publication staging for discovered records)
+CREATE TABLE IF NOT EXISTS review_queue (
+    id TEXT PRIMARY KEY,
+    entity_id TEXT REFERENCES entries(id) ON DELETE CASCADE,
+    kind TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending', 'approved', 'rejected')),
+    hold_reason TEXT NOT NULL,
+    score REAL,
+    dedup_suspect BOOLEAN NOT NULL DEFAULT FALSE,
+    dedup_note TEXT,
+    created_at TIMESTAMPTZ NOT NULL,
+    reviewed_at TIMESTAMPTZ,
+    reviewed_by TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_review_queue_status ON review_queue(status);
+CREATE INDEX IF NOT EXISTS idx_review_queue_entity_id ON review_queue(entity_id);
+
 -- Resource ownership (organization attribution and visibility)
 CREATE TABLE IF NOT EXISTS resource_ownership (
     resource_id TEXT NOT NULL,

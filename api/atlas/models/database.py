@@ -427,6 +427,21 @@ CREATE TABLE IF NOT EXISTS source_flags (
     FOREIGN KEY (source_id) REFERENCES sources(id) ON DELETE CASCADE
 );
 
+-- Review queue (pre-publication staging for discovered records)
+CREATE TABLE IF NOT EXISTS review_queue (
+    id TEXT PRIMARY KEY,
+    entity_id TEXT REFERENCES entries(id) ON DELETE CASCADE,
+    kind TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending', 'approved', 'rejected')),
+    hold_reason TEXT NOT NULL,
+    score REAL,
+    dedup_suspect BOOLEAN NOT NULL DEFAULT 0,
+    dedup_note TEXT,
+    created_at DATETIME NOT NULL,
+    reviewed_at DATETIME,
+    reviewed_by TEXT
+);
+
 -- Resource ownership (organization attribution and visibility)
 CREATE TABLE IF NOT EXISTS resource_ownership (
     resource_id TEXT NOT NULL,
@@ -483,6 +498,8 @@ CREATE INDEX IF NOT EXISTS idx_entity_flags_entity_id ON entity_flags(entity_id)
 CREATE INDEX IF NOT EXISTS idx_entity_flags_status ON entity_flags(status);
 CREATE INDEX IF NOT EXISTS idx_source_flags_source_id ON source_flags(source_id);
 CREATE INDEX IF NOT EXISTS idx_source_flags_status ON source_flags(status);
+CREATE INDEX IF NOT EXISTS idx_review_queue_status ON review_queue(status);
+CREATE INDEX IF NOT EXISTS idx_review_queue_entity_id ON review_queue(entity_id);
 CREATE INDEX IF NOT EXISTS idx_resource_ownership_org ON resource_ownership(org_id);
 CREATE INDEX IF NOT EXISTS idx_resource_ownership_org_visibility ON resource_ownership(org_id, visibility);
 CREATE INDEX IF NOT EXISTS idx_org_annotations_org ON org_annotations(org_id);
