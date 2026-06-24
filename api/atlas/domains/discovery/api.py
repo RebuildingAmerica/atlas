@@ -423,11 +423,10 @@ async def get_pipeline_summary(
     """Return aggregate pipeline health metrics."""
     _ = actor
 
-    queued = len(await DiscoveryJobCRUD.list_by_status(db, "queued"))
-    running = len(await DiscoveryJobCRUD.list_by_status(db, "running")) + len(
-        await DiscoveryJobCRUD.list_by_status(db, "claimed")
-    )
-    failed = len(await DiscoveryJobCRUD.list_by_status(db, "failed"))
+    status_counts = await DiscoveryJobCRUD.count_by_status(db)
+    queued = status_counts.get("queued", 0)
+    running = status_counts.get("running", 0) + status_counts.get("claimed", 0)
+    failed = status_counts.get("failed", 0)
 
     completed_runs = await DiscoveryRunCRUD.list(db, status="completed", limit=500)
     total_confirmed = sum(r.entries_confirmed for r in completed_runs)

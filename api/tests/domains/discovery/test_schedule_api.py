@@ -524,3 +524,24 @@ class TestPipelineSummaryEndpoint:
         )
         assert resp.queued_jobs == 1
         assert resp.enabled_schedules == 1
+
+    @pytest.mark.asyncio
+    async def test_summary_counts_past_the_list_cap(
+        self, test_db: object, actor: AuthenticatedActor
+    ) -> None:
+        run_id = await DiscoveryRunCRUD.create(
+            test_db,
+            location_query="Austin, TX",
+            state="TX",
+            issue_areas=["housing_affordability"],
+        )
+        queued_total = 55
+        for _ in range(queued_total):
+            await DiscoveryJobCRUD.create(test_db, run_id=run_id)
+
+        resp = await discovery_api.get_pipeline_summary(
+            response=None,
+            actor=actor,
+            db=test_db,
+        )
+        assert resp.queued_jobs == queued_total

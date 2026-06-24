@@ -597,3 +597,32 @@ class TestDiscoveryJobCRUDReapOrphans:
         assert reaped == 1
         assert job is not None
         assert job.status == "queued"
+
+
+class TestDiscoveryJobCRUDCountByStatus:
+    @pytest.mark.asyncio
+    async def test_count_by_status_aggregates_all_statuses(self, test_db: object) -> None:
+        run_id = await DiscoveryRunCRUD.create(
+            test_db,
+            location_query="Austin, TX",
+            state="TX",
+            issue_areas=["housing_affordability"],
+        )
+        queued_total = 55
+        for _ in range(queued_total):
+            await DiscoveryJobCRUD.create(test_db, run_id=run_id)
+        failed_id = await DiscoveryJobCRUD.create(test_db, run_id=run_id)
+        await test_db.execute(  # type: ignore[attr-defined]
+            "UPDATE discovery_jobs SET status = 'failed' WHERE id = ?", (failed_id,)
+        )
+        await test_db.commit()  # type: ignore[attr-defined]
+
+        counts = await DiscoveryJobCRUD.count_by_status(test_db)
+
+        assert counts["queued"] == queued_total
+        assert counts["failed"] == 1
+
+    @pytest.mark.asyncio
+    async def test_count_by_status_is_empty_with_no_jobs(self, test_db: object) -> None:
+        counts = await DiscoveryJobCRUD.count_by_status(test_db)
+        assert counts == {}

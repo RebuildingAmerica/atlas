@@ -1081,6 +1081,28 @@ class DiscoveryJobCRUD:
         columns = [col[0] for col in cursor.description]
         return [_row_to_discovery_job(dict(zip(columns, row, strict=False))) for row in rows]
 
+    @staticmethod
+    async def count_by_status(conn: aiosqlite.Connection) -> dict[str, int]:
+        """Count jobs grouped by status.
+
+        Aggregates with SQL so the totals are exact regardless of how many jobs
+        share a status, unlike listing rows under a page cap.
+
+        Parameters
+        ----------
+        conn : aiosqlite.Connection
+            Database connection.
+
+        Returns
+        -------
+        dict[str, int]
+            A mapping of each present status to its job count; statuses with no
+            jobs are absent.
+        """
+        cursor = await conn.execute("SELECT status, COUNT(*) FROM discovery_jobs GROUP BY status")
+        rows = await cursor.fetchall()
+        return {str(row[0]): int(row[1]) for row in rows}
+
 
 _MAX_BACKOFF_SECONDS = 300
 _JITTER_BUCKETS = 5
