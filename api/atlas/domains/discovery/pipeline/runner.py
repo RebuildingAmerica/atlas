@@ -30,7 +30,7 @@ from atlas_shared import (
     RawEntry as SharedRawEntry,
 )
 
-from atlas.domains.discovery.pipeline.deduplicator import deduplicate_entries
+from atlas.domains.discovery.pipeline.deduplicator import DedupResult, deduplicate_entries
 from atlas.domains.discovery.pipeline.extractor import extract_entries
 from atlas.domains.discovery.pipeline.gap_analyzer import analyze_gaps
 from atlas.domains.discovery.pipeline.query_generator import generate_queries
@@ -146,6 +146,7 @@ async def run_discovery_pipeline(
             )
         ]
         deduped = deduplicate_entries(extracted_entries, existing_entries)
+        dedup_suspects = _dedup_suspect_lookup(deduped, extracted_entries, existing_entries)
         logger.info(
             "Pipeline step completed",
             extra={
@@ -196,6 +197,7 @@ async def run_discovery_pipeline(
             conn,
             run_id=job.run_id,
             artifacts=artifacts,
+            dedup_suspects=dedup_suspects,
         )
         confirmed_entries_visible = 0
         for entry_id in confirmed_entry_ids:
@@ -241,21 +243,30 @@ async def run_discovery_pipeline_for_run(
         await conn.close()
 
 
-async def persist_discovery_results(
+async def persist_discovery_results(  # noqa: PLR0913
     conn: Connection,
     *,
     run_id: str,
     ranked_entries: list[SharedRankedEntry],
     sources: list[PageContent],
     stats: DiscoveryRunStats,
+    dedup_suspects: dict[tuple[str, str | None], str] | None = None,
 ) -> tuple[list[str], int]:
     """Persist shared discovery results into Atlas tables for an existing run."""
     source_by_url = {source.url: source for source in sources}
+    suspects = dedup_suspects or {}
     confirmed_entry_ids: list[str] = []
     linked_source_urls: set[str] = set()
 
     for ranked_entry in ranked_entries:
-        entry_id = await _upsert_entry(conn, ranked_entry.entry, score=ranked_entry.score)
+        dedup_note = suspects.get(_dedup_suspect_key(ranked_entry.entry))
+        entry_id = await _upsert_entry(
+            conn,
+            ranked_entry.entry,
+            score=ranked_entry.score,
+            dedup_suspect=dedup_note is not None,
+            dedup_note=dedup_note,
+        )
         confirmed_entry_ids.append(entry_id)
         await _persist_issue_areas(conn, entry_id, ranked_entry.entry.issue_areas)
         linked_source_urls.update(
@@ -306,6 +317,7 @@ async def persist_discovery_artifacts(
     *,
     run_id: str,
     artifacts: DiscoveryRunArtifacts,
+    dedup_suspects: dict[tuple[str, str | None], str] | None = None,
 ) -> tuple[list[str], int]:
     """Persist a canonical discovery artifact bundle into Atlas tables."""
     return await persist_discovery_results(
@@ -314,6 +326,7 @@ async def persist_discovery_artifacts(
         ranked_entries=artifacts.ranked_entries,
         sources=artifacts.sources,
         stats=artifacts.stats,
+        dedup_suspects=dedup_suspects,
     )
 
 
@@ -413,6 +426,47 @@ async def _upsert_entry(
         last_seen=entry.last_seen or _parse_date(today_iso),
     )
     return match.id
+
+
+def _dedup_suspect_key(entry: SharedDeduplicatedEntry) -> tuple[str, str | None]:
+    """Build the (name, city) key used to look up dedup-suspect status."""
+    return (entry.name.strip().lower(), entry.city)
+
+
+def _dedup_suspect_lookup(
+    deduped: DedupResult,
+    extracted: list[dict[str, Any]],
+    existing: list[dict[str, Any]],
+) -> dict[tuple[str, str | None], str]:
+    """Map dedup-flagged records to the flag reason that held them.
+
+    A deduplication flag references positions in the combined extracted+existing
+    list. This resolves each flagged position back to its name/city so the gate
+    can hold the matching discovered record as a possible duplicate.
+
+    Parameters
+    ----------
+    deduped : DedupResult
+        The deduplication output carrying any review flags.
+    extracted : list[dict[str, Any]]
+        The freshly extracted records, in their original order.
+    existing : list[dict[str, Any]]
+        The already-stored records compared against, appended after extracted.
+
+    Returns
+    -------
+    dict[tuple[str, str | None], str]
+        A (name, city) key to flag-reason mapping for every flagged record.
+    """
+    combined = [*extracted, *existing]
+    suspects: dict[tuple[str, str | None], str] = {}
+    for flag in deduped.flags:
+        for index in flag.entry_indices:
+            record = combined[index]
+            name = str(record.get("name", "")).strip().lower()
+            city = record.get("city")
+            suspects[(name, city)] = flag.reason
+    return suspects
 
 
 async def _persist_issue_areas(conn: Connection, entry_id: str, issue_areas: list[str]) -> None:

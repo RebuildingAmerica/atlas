@@ -1452,6 +1452,92 @@ class TestTrustGateUpsert:
         assert pending == []
 
     @pytest.mark.asyncio
+    async def test_dedup_flagged_discovery_is_held_as_suspect(
+        self,
+        test_db: object,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """A dedup-flagged record is held with the dedup reason and the flag note."""
+        from atlas.domains.moderation.review_queue import ReviewQueueCRUD
+
+        runner_module = _load_runner_module()
+
+        async def fake_fetch_sources(
+            queries: list[object],
+            _api_key: str | None = None,
+        ) -> list[FetchedSource]:
+            assert queries
+            return [
+                FetchedSource(
+                    url="https://example.com/collective",
+                    title="Collective",
+                    publication="KCUR",
+                    published_date="2026-02-01",
+                    content="Collective content",
+                    source_type="news_article",
+                )
+            ]
+
+        async def fake_extract_entries(
+            _url: str,
+            _content: str,
+            _city: str,
+            _state: str,
+            _api_key: str | None = None,
+        ) -> list[RawEntry]:
+            return [
+                RawEntry(
+                    name="Prairie Collective",
+                    entry_type="organization",
+                    description="A collective in Kansas City.",
+                    city="Kansas City",
+                    state="MO",
+                    geo_specificity="local",
+                    issue_areas=["housing_affordability"],
+                    extraction_context="A collective in Kansas City.",
+                ),
+                RawEntry(
+                    name="Prairie Collective",
+                    entry_type="organization",
+                    description="A collective in Springfield.",
+                    city="Springfield",
+                    state="MO",
+                    geo_specificity="local",
+                    issue_areas=["housing_affordability"],
+                    extraction_context="A collective in Springfield.",
+                ),
+            ]
+
+        monkeypatch.setattr(runner_module, "fetch_sources", fake_fetch_sources)
+        monkeypatch.setattr(runner_module, "extract_entries", fake_extract_entries)
+
+        run_id = await DiscoveryRunCRUD.create(
+            test_db,
+            location_query="Kansas City, MO",
+            state="MO",
+            issue_areas=["housing_affordability"],
+        )
+
+        await runner_module.run_discovery_pipeline(
+            test_db,
+            job=DiscoveryPipelineJob(
+                run_id=run_id,
+                location_query="Kansas City, MO",
+                state="MO",
+                issue_areas=["housing_affordability"],
+            ),
+            credentials=DiscoveryPipelineCredentials(
+                search_api_key="test-search-key",
+                anthropic_api_key="test-anthropic-key",
+            ),
+        )
+
+        pending = await ReviewQueueCRUD.list_pending(test_db)
+        suspect = next(item for item in pending if item.dedup_suspect)
+        assert suspect.hold_reason == "dedup_suspect"
+        assert suspect.dedup_note == "similar_name_same_city"
+
+    @pytest.mark.asyncio
     async def test_already_active_match_is_not_unpublished(self, test_db: object) -> None:
         from atlas.domains.moderation.review_queue import ReviewQueueCRUD
 
