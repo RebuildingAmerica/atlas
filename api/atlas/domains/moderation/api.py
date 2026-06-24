@@ -7,6 +7,8 @@ from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 
+from atlas.domains.access import AuthenticatedActor, require_actor_permission
+from atlas.domains.moderation.review_queue import ReviewQueueCRUD
 from atlas.models import EntryCRUD, FlagCRUD, SourceCRUD, get_db_connection
 from atlas.platform.config import Settings, get_settings
 from atlas.platform.http.cache import apply_no_store_headers
@@ -14,6 +16,8 @@ from atlas.schemas import (
     EntityFlagCreateRequest,
     EntityFlagListResponse,
     FlagResponse,
+    ReviewQueueItemResponse,
+    ReviewQueueListResponse,
     SourceFlagCreateRequest,
     SourceFlagListResponse,
 )
@@ -145,3 +149,80 @@ async def list_source_flags(
     next_cursor = str(offset + limit) if offset + limit < total else None
     apply_no_store_headers(response)
     return SourceFlagListResponse(items=items, total=total, next_cursor=next_cursor)
+
+
+@router.get(
+    "/review-queue",
+    response_model=ReviewQueueListResponse,
+    summary="List held discovery records",
+    description="List discovered records held back from the public directory for review.",
+    operation_id="listReviewQueue",
+    response_description="A collection of pending review-queue items.",
+    tags=["moderation"],
+)
+async def list_review_queue(
+    response: Response,
+    limit: int = Query(50, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    actor: AuthenticatedActor = Depends(require_actor_permission("discovery", "read")),
+    db: aiosqlite.Connection = Depends(get_db),
+) -> ReviewQueueListResponse:
+    """List pending review-queue items oldest-first."""
+    _ = actor
+    items = [
+        ReviewQueueItemResponse.model_validate(item.__dict__)
+        for item in await ReviewQueueCRUD.list_pending(db, limit=limit, offset=offset)
+    ]
+    total = await ReviewQueueCRUD.count_pending(db)
+    apply_no_store_headers(response)
+    return ReviewQueueListResponse(items=items, total=total)
+
+
+@router.post(
+    "/review-queue/{item_id}/approve",
+    response_model=ReviewQueueItemResponse,
+    summary="Approve a held discovery record",
+    description="Publish a held record to the public directory and close its review item.",
+    operation_id="approveReviewQueueItem",
+    response_description="The approved review-queue item.",
+    tags=["moderation"],
+)
+async def approve_review_queue_item(
+    item_id: str,
+    response: Response,
+    actor: AuthenticatedActor = Depends(require_actor_permission("discovery", "write")),
+    db: aiosqlite.Connection = Depends(get_db),
+) -> ReviewQueueItemResponse:
+    """Approve a held record and publish its entry."""
+    if await ReviewQueueCRUD.get_by_id(db, item_id) is None:
+        raise HTTPException(status_code=404, detail="Review item not found")
+    await ReviewQueueCRUD.approve(db, item_id, reviewed_by=actor.email)
+    item = await ReviewQueueCRUD.get_by_id(db, item_id)
+    assert item is not None, "review item existed moments ago"
+    apply_no_store_headers(response)
+    return ReviewQueueItemResponse.model_validate(item.__dict__)
+
+
+@router.post(
+    "/review-queue/{item_id}/reject",
+    response_model=ReviewQueueItemResponse,
+    summary="Reject a held discovery record",
+    description="Leave a held record out of the public directory and close its review item.",
+    operation_id="rejectReviewQueueItem",
+    response_description="The rejected review-queue item.",
+    tags=["moderation"],
+)
+async def reject_review_queue_item(
+    item_id: str,
+    response: Response,
+    actor: AuthenticatedActor = Depends(require_actor_permission("discovery", "write")),
+    db: aiosqlite.Connection = Depends(get_db),
+) -> ReviewQueueItemResponse:
+    """Reject a held record and keep its entry inactive."""
+    if await ReviewQueueCRUD.get_by_id(db, item_id) is None:
+        raise HTTPException(status_code=404, detail="Review item not found")
+    await ReviewQueueCRUD.reject(db, item_id, reviewed_by=actor.email)
+    item = await ReviewQueueCRUD.get_by_id(db, item_id)
+    assert item is not None, "review item existed moments ago"
+    apply_no_store_headers(response)
+    return ReviewQueueItemResponse.model_validate(item.__dict__)
