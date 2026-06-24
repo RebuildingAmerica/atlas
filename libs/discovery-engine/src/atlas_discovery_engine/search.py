@@ -10,11 +10,23 @@ rather than an inline coupling to one vendor.
 
 from __future__ import annotations
 
+import asyncio
+import logging
+import re
 from abc import ABC, abstractmethod
-from collections.abc import Sequence
+from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass
+from typing import Any
 
-__all__ = ["SearchProvider", "SearchResult"]
+import httpx
+
+__all__ = ["BraveSearchProvider", "SearchProvider", "SearchResult"]
+
+logger = logging.getLogger(__name__)
+
+_ISO_DATE = re.compile(r"\d{4}-\d{2}-\d{2}")
+
+SleepFn = Callable[[float], Awaitable[None]]
 
 
 @dataclass(frozen=True)
@@ -59,3 +71,133 @@ class SearchProvider(ABC):
         list[SearchResult]
             Normalized results aggregated across the queries.
         """
+
+
+def _parse_result_age(age_value: str | None) -> str | None:
+    """Normalize a Brave result age into an ISO date when one is present.
+
+    Parameters
+    ----------
+    age_value : str | None
+        The raw ``age`` field Brave returns (sometimes an ISO date, sometimes a
+        relative phrase like ``"3 days ago"``).
+
+    Returns
+    -------
+    str | None
+        The ISO date string when the value already looks like one, else None.
+    """
+    if not age_value:
+        return None
+    if _ISO_DATE.fullmatch(age_value):
+        return age_value
+    return None
+
+
+class BraveSearchProvider(SearchProvider):
+    """A Brave Search adapter hardened against rate limits and outages.
+
+    Each query is executed independently; a single query's rate limit or
+    transport failure skips that query and degrades to partial results rather
+    than raising and zeroing out the whole run.
+    """
+
+    ENDPOINT = "https://api.search.brave.com/res/v1/web/search"
+    DEFAULT_RETRY_SECONDS = 1.0
+    MAX_RETRY_SECONDS = 30.0
+
+    def __init__(
+        self,
+        *,
+        api_key: str,
+        count: int = 5,
+        timeout: float = 20.0,
+        max_retries: int = 2,
+        sleep: SleepFn | None = None,
+    ) -> None:
+        """Configure the Brave adapter.
+
+        Parameters
+        ----------
+        api_key : str
+            The Brave subscription token.
+        count : int, optional
+            Results requested per query. Default is 5.
+        timeout : float, optional
+            Per-request timeout in seconds. Default is 20.0.
+        max_retries : int, optional
+            Retries after the initial attempt when rate-limited. Default is 2.
+        sleep : SleepFn | None, optional
+            Awaitable sleep used between retries; defaults to ``asyncio.sleep``.
+            Injectable so tests can run without real delays.
+        """
+        self._api_key = api_key
+        self._count = count
+        self._timeout = timeout
+        self._max_retries = max_retries
+        self._sleep = sleep or asyncio.sleep
+
+    async def search(self, queries: Sequence[str]) -> list[SearchResult]:
+        """Run each query against Brave, skipping any that fail transiently."""
+        headers = {"Accept": "application/json", "X-Subscription-Token": self._api_key}
+        results: list[SearchResult] = []
+        async with httpx.AsyncClient(timeout=self._timeout) as client:
+            for query in queries:
+                results.extend(await self._search_one(client, query, headers))
+        return results
+
+    async def _search_one(
+        self,
+        client: httpx.AsyncClient,
+        query: str,
+        headers: dict[str, str],
+    ) -> list[SearchResult]:
+        """Execute a single query with bounded rate-limit retries."""
+        for attempt in range(self._max_retries + 1):
+            try:
+                response = await client.get(
+                    self.ENDPOINT,
+                    params={"q": query, "count": self._count},
+                    headers=headers,
+                )
+                response.raise_for_status()
+                return self._map_payload(response.json())
+            except httpx.HTTPStatusError as exc:
+                if exc.response.status_code != httpx.codes.TOO_MANY_REQUESTS:
+                    logger.warning("Brave search failed for query %r: %s", query, exc)
+                    return []
+                if attempt == self._max_retries:
+                    logger.warning("Brave search rate-limited for query %r; skipping", query)
+                    return []
+                await self._sleep(self._retry_delay(exc.response))
+            except httpx.RequestError as exc:
+                logger.warning("Brave search request error for query %r: %s", query, exc)
+                return []
+        return []  # pragma: no cover - loop always returns inside the body
+
+    def _retry_delay(self, response: httpx.Response) -> float:
+        """Derive a bounded retry delay from a 429's Retry-After header."""
+        raw = response.headers.get("Retry-After")
+        try:
+            seconds = float(raw) if raw is not None else self.DEFAULT_RETRY_SECONDS
+        except ValueError:
+            seconds = self.DEFAULT_RETRY_SECONDS
+        return min(seconds, self.MAX_RETRY_SECONDS)
+
+    @staticmethod
+    def _map_payload(payload: dict[str, Any]) -> list[SearchResult]:
+        """Map a Brave web-search payload into normalized SearchResults."""
+        mapped: list[SearchResult] = []
+        for item in payload.get("web", {}).get("results", []):
+            url = item.get("url")
+            if not url:
+                continue
+            mapped.append(
+                SearchResult(
+                    url=url,
+                    title=item.get("title"),
+                    publication=item.get("profile", {}).get("name"),
+                    published=_parse_result_age(item.get("age")),
+                )
+            )
+        return mapped

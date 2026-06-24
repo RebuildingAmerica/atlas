@@ -26,9 +26,14 @@ from atlas_discovery_engine.scoring import (
     score_ranked_records,
     score_ranked_stream,
 )
-from atlas_discovery_engine.search import SearchProvider, SearchResult
+from atlas_discovery_engine.search import (
+    BraveSearchProvider,
+    SearchProvider,
+    SearchResult,
+)
 
 __all__ = [
+    "BraveSearchProvider",
     "CoverageSummary",
     "DedupResult",
     "DeduplicationFlag",
