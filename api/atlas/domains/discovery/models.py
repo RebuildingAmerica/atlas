@@ -824,11 +824,33 @@ class DiscoveryJobCRUD:
         conn: aiosqlite.Connection,
         job_id: str,
         progress: dict[str, Any],
+        *,
+        lease_seconds: int = 900,
     ) -> None:
-        """Update the job progress JSON."""
+        """Update the job progress JSON and renew the lease.
+
+        Reporting progress moves the job into ``running`` and pushes
+        ``claimed_until`` forward by ``lease_seconds`` so a job that is healthily
+        making progress is never mistaken for a stranded zombie by the reaper.
+
+        Parameters
+        ----------
+        conn : aiosqlite.Connection
+            Database connection.
+        job_id : str
+            Job id to update.
+        progress : dict[str, Any]
+            Progress payload to persist as JSON.
+        lease_seconds : int, optional
+            Lease duration in seconds. Default is 900.
+        """
+        from datetime import UTC, datetime, timedelta
+
+        lease_until = (datetime.now(UTC) + timedelta(seconds=lease_seconds)).isoformat()
         await conn.execute(
-            "UPDATE discovery_jobs SET status = 'running', progress = ? WHERE id = ?",
-            (db.encode_json(progress), job_id),
+            "UPDATE discovery_jobs SET status = 'running', progress = ?, claimed_until = ? "
+            "WHERE id = ?",
+            (db.encode_json(progress), lease_until, job_id),
         )
         await conn.commit()
 
@@ -878,6 +900,72 @@ class DiscoveryJobCRUD:
         )
         await conn.commit()
         return False
+
+    @staticmethod
+    async def reap_orphans(
+        conn: aiosqlite.Connection,
+        *,
+        now: str | None = None,
+    ) -> int:
+        """Requeue or dead-letter jobs whose lease has expired.
+
+        A ``claimed`` or ``running`` job whose ``claimed_until`` is in the past
+        was stranded by a crashed or hung worker. Each such job is requeued with
+        an incremented ``retry_count`` so a healthy worker picks it up again,
+        unless that would exceed ``max_retries`` — in which case it is moved to
+        ``failed`` (the dead-letter terminal state) so it stops being retried.
+
+        Parameters
+        ----------
+        conn : aiosqlite.Connection
+            Database connection.
+        now : str | None, optional
+            ISO timestamp treated as the current time; defaults to the wall
+            clock. Injectable so callers can reap deterministically in tests.
+
+        Returns
+        -------
+        int
+            The number of jobs reaped (requeued or dead-lettered).
+        """
+        cutoff = now if now is not None else db.now_iso()
+        cursor = await conn.execute(
+            """
+            SELECT id, retry_count, max_retries FROM discovery_jobs
+            WHERE status IN ('claimed', 'running')
+              AND claimed_until IS NOT NULL AND claimed_until < ?
+            """,
+            (cutoff,),
+        )
+        rows = list(await cursor.fetchall())
+        if not rows:
+            return 0
+
+        for row in rows:
+            job_id, retry_count, max_retries = row[0], row[1], row[2]
+            new_retry = retry_count + 1
+            if new_retry <= max_retries:
+                await conn.execute(
+                    """
+                    UPDATE discovery_jobs
+                    SET status = 'queued', retry_count = ?,
+                        claimed_by = NULL, claimed_until = NULL
+                    WHERE id = ?
+                    """,
+                    (new_retry, job_id),
+                )
+            else:
+                await conn.execute(
+                    """
+                    UPDATE discovery_jobs
+                    SET status = 'failed', retry_count = ?,
+                        error_message = ?, completed_at = ?
+                    WHERE id = ?
+                    """,
+                    (new_retry, "lease expired: worker stranded the job", db.now_iso(), job_id),
+                )
+        await conn.commit()
+        return len(rows)
 
     @staticmethod
     async def list_by_status(

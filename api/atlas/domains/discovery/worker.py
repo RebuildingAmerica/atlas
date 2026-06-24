@@ -85,6 +85,10 @@ async def _worker_loop(
         try:
             conn = await get_db_connection(database_url, backend=database_backend)
             try:
+                reaped = await DiscoveryJobCRUD.reap_orphans(conn)
+                if reaped:
+                    logger.info("Reaped %d stranded discovery job(s)", reaped)
+
                 job = await DiscoveryJobCRUD.claim_next(
                     conn,
                     claimed_by=instance_id,
@@ -117,6 +121,7 @@ async def _worker_loop(
                         "step": "running",
                         "run_id": run.id,
                     },
+                    lease_seconds=_LEASE_SECONDS,
                 )
 
                 try:

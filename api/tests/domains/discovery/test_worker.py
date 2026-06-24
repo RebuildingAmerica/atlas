@@ -132,6 +132,58 @@ class TestWorkerExecution:
         assert job.status == "completed"
 
     @pytest.mark.asyncio
+    async def test_worker_reaps_stranded_running_job(
+        self,
+        db_url: str,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """A running job with an expired lease is reaped and reclaimed by the worker."""
+        from datetime import UTC, datetime, timedelta
+
+        conn = await get_db_connection(db_url)
+        run_id = await DiscoveryRunCRUD.create(
+            conn,
+            location_query="Austin, TX",
+            state="TX",
+            issue_areas=["housing_affordability"],
+        )
+        job_id = await DiscoveryJobCRUD.create(conn, run_id=run_id)
+        past = (datetime.now(UTC) - timedelta(seconds=10)).isoformat()
+        await conn.execute(
+            "UPDATE discovery_jobs SET status = 'running', claimed_by = 'dead-worker', "
+            "claimed_until = ? WHERE id = ?",
+            (past, job_id),
+        )
+        await conn.commit()
+        await conn.close()
+
+        async def fake_pipeline(
+            _conn: object,
+            *,
+            job: object,  # noqa: ARG001
+            credentials: object,  # noqa: ARG001
+        ) -> None:
+            return None
+
+        monkeypatch.setattr(
+            "atlas.domains.discovery.worker.run_discovery_pipeline",
+            fake_pipeline,
+        )
+
+        await start_job_worker(db_url, anthropic_api_key="test")
+        await asyncio.sleep(0.4)
+        await stop_job_worker()
+
+        conn = await get_db_connection(db_url)
+        job = await DiscoveryJobCRUD.get_by_id(conn, job_id)
+        await conn.close()
+
+        assert job is not None
+        # The stranded job was reaped, reclaimed, and run to completion.
+        assert job.status == "completed"
+        assert job.retry_count == 1
+
+    @pytest.mark.asyncio
     async def test_worker_recovers_from_transient_db_failure(
         self,
         db_url: str,
