@@ -9,8 +9,10 @@ import httpx
 
 from atlas_discovery_engine.search import (
     BraveSearchProvider,
+    FallbackSearchProvider,
     SearchProvider,
     SearchResult,
+    StaticSearchProvider,
 )
 
 
@@ -315,3 +317,81 @@ class TestBraveSearchProvider:
         results = await provider.search(["a", "b"])
 
         assert len(results) == 4
+
+
+def _result(url: str) -> SearchResult:
+    return SearchResult(url=url, title=None, publication=None, published=None)
+
+
+class _RecordingProvider(SearchProvider):
+    """A provider that records its calls and returns canned (or raised) output."""
+
+    def __init__(
+        self, *, results: list[SearchResult] | None = None, error: Exception | None = None
+    ) -> None:
+        self._results = results or []
+        self._error = error
+        self.calls: list[list[str]] = []
+
+    async def search(self, queries: Sequence[str]) -> list[SearchResult]:
+        self.calls.append(list(queries))
+        if self._error is not None:
+            raise self._error
+        return list(self._results)
+
+
+class TestStaticSearchProvider:
+    """The static provider yields a fixed result set as a no-network fallback."""
+
+    async def test_returns_its_canned_results(self) -> None:
+        canned = [_result("https://example.com/a")]
+        provider = StaticSearchProvider(canned)
+
+        assert await provider.search(["anything"]) == canned
+
+    async def test_returns_empty_for_no_queries(self) -> None:
+        provider = StaticSearchProvider([_result("https://example.com/a")])
+
+        assert await provider.search([]) == []
+
+
+class TestFallbackSearchProvider:
+    """Fallback engages only when the primary yields nothing or fails."""
+
+    async def test_uses_primary_results_when_present(self) -> None:
+        primary = _RecordingProvider(results=[_result("https://primary/a")])
+        fallback = _RecordingProvider(results=[_result("https://fallback/a")])
+        provider = FallbackSearchProvider(primary=primary, fallback=fallback)
+
+        results = await provider.search(["housing"])
+
+        assert [r.url for r in results] == ["https://primary/a"]
+        assert fallback.calls == []
+
+    async def test_falls_back_when_primary_is_empty(self) -> None:
+        primary = _RecordingProvider(results=[])
+        fallback = _RecordingProvider(results=[_result("https://fallback/a")])
+        provider = FallbackSearchProvider(primary=primary, fallback=fallback)
+
+        results = await provider.search(["housing"])
+
+        assert [r.url for r in results] == ["https://fallback/a"]
+        assert primary.calls == [["housing"]]
+        assert fallback.calls == [["housing"]]
+
+    async def test_falls_back_when_primary_raises(self) -> None:
+        primary = _RecordingProvider(error=RuntimeError("primary down"))
+        fallback = _RecordingProvider(results=[_result("https://fallback/a")])
+        provider = FallbackSearchProvider(primary=primary, fallback=fallback)
+
+        results = await provider.search(["housing"])
+
+        assert [r.url for r in results] == ["https://fallback/a"]
+        assert fallback.calls == [["housing"]]
+
+    async def test_returns_empty_when_both_are_empty(self) -> None:
+        primary = _RecordingProvider(results=[])
+        fallback = _RecordingProvider(results=[])
+        provider = FallbackSearchProvider(primary=primary, fallback=fallback)
+
+        assert await provider.search(["housing"]) == []

@@ -28,8 +28,10 @@ from atlas_discovery_engine.scoring import (
 )
 from atlas_discovery_engine.search import (
     BraveSearchProvider,
+    FallbackSearchProvider,
     SearchProvider,
     SearchResult,
+    StaticSearchProvider,
 )
 
 __all__ = [
@@ -38,10 +40,12 @@ __all__ = [
     "DedupResult",
     "DeduplicationFlag",
     "ExtractionFailedError",
+    "FallbackSearchProvider",
     "ScoredRecord",
     "SearchProvider",
     "SearchQuery",
     "SearchResult",
+    "StaticSearchProvider",
     "StructuredExtractionItem",
     "StructuredExtractionResponse",
     "build_extraction_system_prompt",

@@ -20,7 +20,13 @@ from typing import Any
 
 import httpx
 
-__all__ = ["BraveSearchProvider", "SearchProvider", "SearchResult"]
+__all__ = [
+    "BraveSearchProvider",
+    "FallbackSearchProvider",
+    "SearchProvider",
+    "SearchResult",
+    "StaticSearchProvider",
+]
 
 logger = logging.getLogger(__name__)
 
@@ -201,3 +207,59 @@ class BraveSearchProvider(SearchProvider):
                 )
             )
         return mapped
+
+
+class StaticSearchProvider(SearchProvider):
+    """A no-network provider that returns a fixed result set.
+
+    Useful as a concrete fallback in environments without a second vendor key,
+    and as a seam that keeps the fallback composition real and testable.
+    """
+
+    def __init__(self, results: Sequence[SearchResult]) -> None:
+        """Capture the canned results this provider always returns.
+
+        Parameters
+        ----------
+        results : Sequence[SearchResult]
+            The fixed results to emit for any non-empty query batch.
+        """
+        self._results = list(results)
+
+    async def search(self, queries: Sequence[str]) -> list[SearchResult]:
+        """Return the canned results, or nothing when there are no queries."""
+        return list(self._results) if queries else []
+
+
+class FallbackSearchProvider(SearchProvider):
+    """Compose two providers so an outage at one degrades to the other.
+
+    The primary is tried first; if it raises or returns no results, the
+    fallback is tried. This gives the run a second chance to find sources for a
+    city instead of zeroing it out when the primary vendor is down or empty.
+    """
+
+    def __init__(self, *, primary: SearchProvider, fallback: SearchProvider) -> None:
+        """Wire the primary and fallback providers.
+
+        Parameters
+        ----------
+        primary : SearchProvider
+            The preferred provider, tried first.
+        fallback : SearchProvider
+            The provider used when the primary fails or comes back empty.
+        """
+        self._primary = primary
+        self._fallback = fallback
+
+    async def search(self, queries: Sequence[str]) -> list[SearchResult]:
+        """Try the primary, then the fallback when it fails or finds nothing."""
+        try:
+            results = await self._primary.search(queries)
+        except Exception as exc:
+            logger.warning("Primary search provider failed; using fallback: %s", exc)
+            return await self._fallback.search(queries)
+        if results:
+            return results
+        logger.info("Primary search provider returned no results; using fallback")
+        return await self._fallback.search(queries)
