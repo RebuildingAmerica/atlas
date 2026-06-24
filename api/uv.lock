@@ -127,10 +127,14 @@ version = "0.1.0"
 source = { editable = "../libs/discovery-engine" }
 dependencies = [
     { name = "atlas-shared" },
+    { name = "httpx" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "atlas-shared", editable = "../libs/shared" }]
+requires-dist = [
+    { name = "atlas-shared", editable = "../libs/shared" },
+    { name = "httpx", specifier = ">=0.25.0" },
+]
 
 [package.metadata.requires-dev]
 dev = [

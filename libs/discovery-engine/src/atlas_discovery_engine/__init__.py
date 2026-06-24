@@ -26,6 +26,7 @@ from atlas_discovery_engine.scoring import (
     score_ranked_records,
     score_ranked_stream,
 )
+from atlas_discovery_engine.search import SearchProvider, SearchResult
 
 __all__ = [
     "CoverageSummary",
@@ -33,7 +34,9 @@ __all__ = [
     "DeduplicationFlag",
     "ExtractionFailedError",
     "ScoredRecord",
+    "SearchProvider",
     "SearchQuery",
+    "SearchResult",
     "StructuredExtractionItem",
     "StructuredExtractionResponse",
     "build_extraction_system_prompt",
