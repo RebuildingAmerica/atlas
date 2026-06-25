@@ -211,7 +211,7 @@ def test_progress_renderer_verbose_status_skipped_within_quiet_window(
     monkeypatch.setattr(cli_progress.time, "perf_counter", fake_perf_counter)
 
     console, buffer = _captured_console()
-    renderer = ProgressRenderer(console=console, verbose=True)
+    renderer = ProgressRenderer(console=console, verbose=True, started_at=100.0)
 
     # Same instant as initialization → within the quiet window → skipped.
     renderer.emit(
