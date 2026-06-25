@@ -253,6 +253,17 @@ CREATE TABLE IF NOT EXISTS slug_aliases (
 );
 CREATE INDEX IF NOT EXISTS idx_slug_aliases_entry_id ON slug_aliases(entry_id);
 
+-- Geocoding columns on entries (additive, idempotent).
+-- latitude/longitude place each actor on the map; geocode_precision records how
+-- confidently we know where they are (rooftop > city > state); geocode_source
+-- records who told us. NULL coordinates mean "no location" — such actors are
+-- honestly excluded from the map rather than guessed onto it.
+ALTER TABLE entries ADD COLUMN IF NOT EXISTS latitude DOUBLE PRECISION;
+ALTER TABLE entries ADD COLUMN IF NOT EXISTS longitude DOUBLE PRECISION;
+ALTER TABLE entries ADD COLUMN IF NOT EXISTS geocode_precision TEXT;
+ALTER TABLE entries ADD COLUMN IF NOT EXISTS geocode_source TEXT;
+CREATE INDEX IF NOT EXISTS idx_entries_lat_lng ON entries(latitude, longitude);
+
 -- Subject-managed columns on entries (additive, idempotent).
 ALTER TABLE entries ADD COLUMN IF NOT EXISTS photo_url TEXT;
 ALTER TABLE entries ADD COLUMN IF NOT EXISTS custom_bio TEXT;

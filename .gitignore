@@ -85,6 +85,9 @@ Thumbs.db
 *.sqlite3
 atlas.db
 data/
+# Bundled package data (gazetteer centroids) must ship with the API package.
+!api/atlas/domains/catalog/geo/data/
+!api/atlas/domains/catalog/geo/data/**
 
 # ============================================
 # Testing & Coverage

@@ -324,6 +324,65 @@ class TestEnsureEntryColumns:
         finally:
             await conn.close()
 
+    @pytest.mark.asyncio
+    async def test_adds_geocode_columns_and_index_when_missing(self) -> None:
+        """The migration should add the geocode columns and the lat/lng index."""
+        conn = await aiosqlite.connect(":memory:")
+        try:
+            await conn.execute(
+                """CREATE TABLE entries (
+                    id TEXT PRIMARY KEY,
+                    name TEXT NOT NULL
+                )"""
+            )
+            await conn.commit()
+
+            await _ensure_entry_columns(conn)
+
+            cursor = await conn.execute("PRAGMA table_info(entries)")
+            rows = await cursor.fetchall()
+            columns = {row[1] for row in rows}
+            assert {
+                "latitude",
+                "longitude",
+                "geocode_precision",
+                "geocode_source",
+            } <= columns
+
+            index_cursor = await conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='index' AND name=?",
+                ("idx_entries_lat_lng",),
+            )
+            assert await index_cursor.fetchone() is not None
+        finally:
+            await conn.close()
+
+    @pytest.mark.asyncio
+    async def test_skips_geocode_columns_when_already_present(self) -> None:
+        """The migration should be idempotent when geocode columns already exist."""
+        conn = await aiosqlite.connect(":memory:")
+        try:
+            await conn.execute(
+                """CREATE TABLE entries (
+                    id TEXT PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    latitude REAL,
+                    longitude REAL,
+                    geocode_precision TEXT,
+                    geocode_source TEXT
+                )"""
+            )
+            await conn.commit()
+
+            await _ensure_entry_columns(conn)
+
+            cursor = await conn.execute("PRAGMA table_info(entries)")
+            rows = await cursor.fetchall()
+            columns = {row[1] for row in rows}
+            assert "geocode_source" in columns
+        finally:
+            await conn.close()
+
 
 class TestDatabaseManager:
     """Tests for the DatabaseManager utility class."""

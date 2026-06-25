@@ -240,6 +240,10 @@ CREATE TABLE IF NOT EXISTS entries (
     state TEXT,
     region TEXT,
     geo_specificity TEXT NOT NULL CHECK(geo_specificity IN ('local', 'regional', 'statewide', 'national')),
+    latitude REAL,
+    longitude REAL,
+    geocode_precision TEXT,
+    geocode_source TEXT,
     full_address TEXT,
     website TEXT,
     email TEXT,
@@ -481,6 +485,7 @@ CREATE INDEX IF NOT EXISTS idx_entries_type ON entries(type);
 CREATE INDEX IF NOT EXISTS idx_entries_active ON entries(active);
 CREATE INDEX IF NOT EXISTS idx_entries_verified ON entries(verified);
 CREATE INDEX IF NOT EXISTS idx_entries_state_city ON entries(state, city);
+CREATE INDEX IF NOT EXISTS idx_entries_lat_lng ON entries(latitude, longitude);
 CREATE INDEX IF NOT EXISTS idx_entry_sources_entry_id ON entry_sources(entry_id);
 CREATE INDEX IF NOT EXISTS idx_entry_sources_source_id ON entry_sources(source_id);
 CREATE INDEX IF NOT EXISTS idx_entry_issue_areas_entry_id ON entry_issue_areas(entry_id);
@@ -635,35 +640,39 @@ async def _ensure_entry_columns(conn: Any) -> None:
         return  # Table doesn't exist yet; full schema will create it with all columns.
     existing_columns = {row[1] for row in rows}
 
-    if "full_address" not in existing_columns:
-        await conn.execute("ALTER TABLE entries ADD COLUMN full_address TEXT")
+    additive_columns = (
+        ("full_address", "ALTER TABLE entries ADD COLUMN full_address TEXT"),
+        ("slug", "ALTER TABLE entries ADD COLUMN slug TEXT"),
+        ("photo_url", "ALTER TABLE entries ADD COLUMN photo_url TEXT"),
+        ("custom_bio", "ALTER TABLE entries ADD COLUMN custom_bio TEXT"),
+        (
+            "claim_status",
+            "ALTER TABLE entries ADD COLUMN claim_status TEXT NOT NULL DEFAULT 'unclaimed'",
+        ),
+        ("claimed_by_user_id", "ALTER TABLE entries ADD COLUMN claimed_by_user_id TEXT"),
+        ("claim_verified_at", "ALTER TABLE entries ADD COLUMN claim_verified_at DATETIME"),
+        ("last_confirmed_at", "ALTER TABLE entries ADD COLUMN last_confirmed_at DATETIME"),
+        ("suppressed_source_ids", "ALTER TABLE entries ADD COLUMN suppressed_source_ids TEXT"),
+        (
+            "preferred_contact_channel",
+            "ALTER TABLE entries ADD COLUMN preferred_contact_channel TEXT",
+        ),
+        ("latitude", "ALTER TABLE entries ADD COLUMN latitude REAL"),
+        ("longitude", "ALTER TABLE entries ADD COLUMN longitude REAL"),
+        ("geocode_precision", "ALTER TABLE entries ADD COLUMN geocode_precision TEXT"),
+        ("geocode_source", "ALTER TABLE entries ADD COLUMN geocode_source TEXT"),
+    )
+    # Indexes that must follow their backing column when it is freshly added.
+    follow_up_indexes = {
+        "slug": "CREATE UNIQUE INDEX IF NOT EXISTS idx_entries_slug ON entries(slug)",
+        "geocode_source": (
+            "CREATE INDEX IF NOT EXISTS idx_entries_lat_lng ON entries(latitude, longitude)"
+        ),
+    }
 
-    if "slug" not in existing_columns:
-        await conn.execute("ALTER TABLE entries ADD COLUMN slug TEXT")
-        await conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_entries_slug ON entries(slug)")
-
-    if "photo_url" not in existing_columns:
-        await conn.execute("ALTER TABLE entries ADD COLUMN photo_url TEXT")
-
-    if "custom_bio" not in existing_columns:
-        await conn.execute("ALTER TABLE entries ADD COLUMN custom_bio TEXT")
-
-    if "claim_status" not in existing_columns:
-        await conn.execute(
-            "ALTER TABLE entries ADD COLUMN claim_status TEXT NOT NULL DEFAULT 'unclaimed'"
-        )
-
-    if "claimed_by_user_id" not in existing_columns:
-        await conn.execute("ALTER TABLE entries ADD COLUMN claimed_by_user_id TEXT")
-
-    if "claim_verified_at" not in existing_columns:
-        await conn.execute("ALTER TABLE entries ADD COLUMN claim_verified_at DATETIME")
-
-    if "last_confirmed_at" not in existing_columns:
-        await conn.execute("ALTER TABLE entries ADD COLUMN last_confirmed_at DATETIME")
-
-    if "suppressed_source_ids" not in existing_columns:
-        await conn.execute("ALTER TABLE entries ADD COLUMN suppressed_source_ids TEXT")
-
-    if "preferred_contact_channel" not in existing_columns:
-        await conn.execute("ALTER TABLE entries ADD COLUMN preferred_contact_channel TEXT")
+    for column, ddl in additive_columns:
+        if column not in existing_columns:
+            await conn.execute(ddl)
+            index_ddl = follow_up_indexes.get(column)
+            if index_ddl is not None:
+                await conn.execute(index_ddl)

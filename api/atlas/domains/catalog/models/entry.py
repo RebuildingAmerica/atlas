@@ -40,6 +40,10 @@ class EntryModel:
     state: str | None
     region: str | None
     geo_specificity: str
+    latitude: float | None
+    longitude: float | None
+    geocode_precision: str | None
+    geocode_source: str | None
     full_address: str | None
     website: str | None
     email: str | None
@@ -90,6 +94,10 @@ class EntryModel:
             "state": self.state,
             "region": self.region,
             "geo_specificity": self.geo_specificity,
+            "latitude": self.latitude,
+            "longitude": self.longitude,
+            "geocode_precision": self.geocode_precision,
+            "geocode_source": self.geocode_source,
             "full_address": self.full_address,
             "website": self.website,
             "email": self.email,
@@ -156,6 +164,10 @@ class EntryCRUD:
         state: str | None,
         geo_specificity: str,
         region: str | None = None,
+        latitude: float | None = None,
+        longitude: float | None = None,
+        geocode_precision: str | None = None,
+        geocode_source: str | None = None,
         full_address: str | None = None,
         website: str | None = None,
         email: str | None = None,
@@ -190,6 +202,15 @@ class EntryCRUD:
             Geographic scope (local, regional, statewide, national).
         region : str | None, optional
             Regional identifier (e.g., "Kansas City metro"). Default is None.
+        latitude : float | None, optional
+            Geocoded latitude placing the actor on the map. Default is None.
+        longitude : float | None, optional
+            Geocoded longitude placing the actor on the map. Default is None.
+        geocode_precision : str | None, optional
+            How confidently the location is known (rooftop, city, state, none).
+            Default is None.
+        geocode_source : str | None, optional
+            Who resolved the location (gazetteer, census, manual). Default is None.
         full_address : str | None, optional
             Public-facing full mailing or street address. Default is None.
         website : str | None, optional
@@ -232,10 +253,11 @@ class EntryCRUD:
             """
             INSERT INTO entries (
                 id, type, name, description, city, state, region,
-                geo_specificity, full_address, website, email, phone, social_media,
+                geo_specificity, latitude, longitude, geocode_precision, geocode_source,
+                full_address, website, email, phone, social_media,
                 affiliated_org_id, active, contact_status, editorial_notes, priority,
                 first_seen, last_seen, created_at, updated_at, slug
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 entry_id,
@@ -246,6 +268,10 @@ class EntryCRUD:
                 state,
                 region,
                 geo_specificity,
+                latitude,
+                longitude,
+                geocode_precision,
+                geocode_source,
                 full_address,
                 website,
                 email,
@@ -589,6 +615,10 @@ class EntryCRUD:
             "state",
             "region",
             "geo_specificity",
+            "latitude",
+            "longitude",
+            "geocode_precision",
+            "geocode_source",
             "full_address",
             "website",
             "email",
@@ -1136,6 +1166,8 @@ def _row_to_entry(row: dict[str, Any]) -> EntryModel:
         decoded = db.decode_json(suppressed_raw)
         if isinstance(decoded, list):
             suppressed = [str(item) for item in decoded]
+    latitude_raw = row.get("latitude")
+    longitude_raw = row.get("longitude")
     return EntryModel(
         id=row["id"],
         type=row["type"],
@@ -1145,6 +1177,10 @@ def _row_to_entry(row: dict[str, Any]) -> EntryModel:
         state=row["state"],
         region=row["region"],
         geo_specificity=row["geo_specificity"],
+        latitude=float(latitude_raw) if latitude_raw is not None else None,
+        longitude=float(longitude_raw) if longitude_raw is not None else None,
+        geocode_precision=row.get("geocode_precision"),
+        geocode_source=row.get("geocode_source"),
         full_address=row.get("full_address"),
         website=row["website"],
         email=row["email"],

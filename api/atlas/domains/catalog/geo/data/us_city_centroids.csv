@@ -1,0 +1,307 @@
+city,state,latitude,longitude
+New York,NY,40.71,-74.01
+Los Angeles,CA,34.05,-118.24
+Chicago,IL,41.88,-87.63
+Houston,TX,29.76,-95.37
+Phoenix,AZ,33.45,-112.07
+Philadelphia,PA,39.95,-75.17
+San Antonio,TX,29.42,-98.49
+San Diego,CA,32.72,-117.16
+Dallas,TX,32.78,-96.8
+San Jose,CA,37.34,-121.89
+Austin,TX,30.27,-97.74
+Jacksonville,FL,30.33,-81.66
+Fort Worth,TX,32.75,-97.33
+Columbus,OH,39.96,-82.99
+Charlotte,NC,35.23,-80.84
+Indianapolis,IN,39.77,-86.16
+San Francisco,CA,37.77,-122.42
+Seattle,WA,47.61,-122.33
+Denver,CO,39.74,-104.98
+Nashville,TN,36.17,-86.78
+Oklahoma City,OK,35.47,-97.52
+El Paso,TX,31.76,-106.49
+Washington,DC,38.91,-77.04
+Las Vegas,NV,36.17,-115.14
+Louisville,KY,38.25,-85.76
+Memphis,TN,35.15,-90.05
+Portland,OR,45.52,-122.68
+Baltimore,MD,39.29,-76.61
+Milwaukee,WI,43.04,-87.91
+Albuquerque,NM,35.08,-106.65
+Tucson,AZ,32.22,-110.93
+Fresno,CA,36.74,-119.79
+Sacramento,CA,38.58,-121.49
+Mesa,AZ,33.42,-111.83
+Kansas City,MO,39.1,-94.58
+Atlanta,GA,33.75,-84.39
+Omaha,NE,41.26,-95.94
+Colorado Springs,CO,38.83,-104.82
+Raleigh,NC,35.78,-78.64
+Long Beach,CA,33.77,-118.19
+Virginia Beach,VA,36.85,-76.29
+Minneapolis,MN,44.98,-93.27
+Tampa,FL,27.95,-82.46
+New Orleans,LA,29.95,-90.07
+Arlington,TX,32.74,-97.11
+Bakersfield,CA,35.37,-119.02
+Honolulu,HI,21.31,-157.86
+Anaheim,CA,33.84,-117.91
+Aurora,CO,39.73,-104.83
+Santa Ana,CA,33.75,-117.87
+Corpus Christi,TX,27.8,-97.4
+Riverside,CA,33.95,-117.4
+Lexington,KY,38.04,-84.5
+St. Louis,MO,38.63,-90.2
+Pittsburgh,PA,40.44,-79.99
+Anchorage,AK,61.22,-149.9
+Stockton,CA,37.96,-121.29
+Cincinnati,OH,39.1,-84.51
+St. Paul,MN,44.95,-93.09
+Greensboro,NC,36.07,-79.79
+Toledo,OH,41.66,-83.56
+Newark,NJ,40.74,-74.17
+Plano,TX,33.02,-96.7
+Henderson,NV,36.04,-114.98
+Orlando,FL,28.54,-81.38
+Chandler,AZ,33.31,-111.84
+Laredo,TX,27.51,-99.51
+Madison,WI,43.07,-89.4
+Durham,NC,35.99,-78.9
+Lubbock,TX,33.58,-101.86
+Winston-Salem,NC,36.1,-80.24
+Garland,TX,32.91,-96.64
+Glendale,AZ,33.54,-112.19
+Hialeah,FL,25.86,-80.28
+Reno,NV,39.53,-119.81
+Baton Rouge,LA,30.45,-91.15
+Irvine,CA,33.68,-117.78
+Chesapeake,VA,36.82,-76.29
+Irving,TX,32.81,-96.95
+Scottsdale,AZ,33.49,-111.93
+North Las Vegas,NV,36.2,-115.12
+Fremont,CA,37.55,-121.99
+Gilbert,AZ,33.35,-111.79
+San Bernardino,CA,34.11,-117.29
+Birmingham,AL,33.52,-86.8
+Rochester,NY,43.16,-77.61
+Spokane,WA,47.66,-117.43
+Des Moines,IA,41.59,-93.62
+Montgomery,AL,32.36,-86.28
+Modesto,CA,37.64,-120.99
+Fayetteville,NC,35.05,-78.88
+Tacoma,WA,47.25,-122.44
+Shreveport,LA,32.52,-93.75
+Fontana,CA,34.09,-117.44
+Moreno Valley,CA,33.94,-117.23
+Glendale,CA,34.14,-118.25
+Akron,OH,41.08,-81.52
+Huntington Beach,CA,33.66,-118.0
+Little Rock,AR,34.75,-92.29
+Oxnard,CA,34.2,-119.18
+Knoxville,TN,35.96,-83.92
+Worcester,MA,42.26,-71.8
+Salt Lake City,UT,40.76,-111.89
+Huntsville,AL,34.73,-86.59
+Providence,RI,41.82,-71.42
+Grand Rapids,MI,42.96,-85.67
+Brownsville,TX,25.9,-97.5
+Tempe,AZ,33.43,-111.94
+Santa Clarita,CA,34.39,-118.54
+Garden Grove,CA,33.77,-117.94
+Oceanside,CA,33.19,-117.38
+Fort Lauderdale,FL,26.12,-80.14
+Rancho Cucamonga,CA,34.11,-117.59
+Santa Rosa,CA,38.44,-122.71
+Pembroke Pines,FL,26.01,-80.3
+Eugene,OR,44.05,-123.09
+Cary,NC,35.79,-78.78
+Fort Wayne,IN,41.08,-85.14
+Springfield,MO,37.22,-93.29
+Peoria,AZ,33.58,-112.24
+Cape Coral,FL,26.56,-81.95
+Sioux Falls,SD,43.55,-96.73
+Jackson,MS,32.3,-90.18
+Tallahassee,FL,30.44,-84.28
+Detroit,MI,42.33,-83.05
+Boston,MA,42.36,-71.06
+Miami,FL,25.77,-80.19
+Cleveland,OH,41.5,-81.69
+Buffalo,NY,42.89,-78.86
+Hartford,CT,41.76,-72.68
+Richmond,VA,37.54,-77.44
+Boise,ID,43.62,-116.2
+Spokane Valley,WA,47.67,-117.24
+Columbia,SC,34.0,-81.03
+Chattanooga,TN,35.05,-85.31
+Fargo,ND,46.88,-96.79
+Overland Park,KS,38.89,-94.69
+Wichita,KS,37.69,-97.34
+Yonkers,NY,40.93,-73.9
+Jersey City,NJ,40.72,-74.04
+Bridgeport,CT,41.18,-73.19
+New Haven,CT,41.31,-72.92
+Springfield,MA,42.1,-72.59
+Chula Vista,CA,32.64,-117.08
+Chesterfield,MO,38.66,-90.58
+Norfolk,VA,36.85,-76.29
+Frisco,TX,33.15,-96.82
+McKinney,TX,33.2,-96.62
+Grand Prairie,TX,32.75,-97.0
+Amarillo,TX,35.22,-101.83
+Salinas,CA,36.68,-121.66
+Springfield,IL,39.78,-89.65
+Pasadena,TX,29.69,-95.21
+Hayward,CA,37.67,-122.08
+Pomona,CA,34.06,-117.75
+Escondido,CA,33.12,-117.09
+Sunnyvale,CA,37.37,-122.04
+Lancaster,CA,34.69,-118.15
+Hollywood,FL,26.01,-80.15
+Salem,OR,44.94,-123.04
+Macon,GA,32.84,-83.63
+Corona,CA,33.88,-117.57
+Palmdale,CA,34.58,-118.12
+Springfield,OH,39.92,-83.81
+Pasadena,CA,34.15,-118.14
+Fort Collins,CO,40.59,-105.08
+Hampton,VA,37.03,-76.34
+Warren,MI,42.49,-83.01
+Naperville,IL,41.79,-88.15
+Bellevue,WA,47.61,-122.2
+West Valley City,UT,40.69,-112.0
+Columbus,GA,32.46,-84.99
+Murfreesboro,TN,35.85,-86.39
+Killeen,TX,31.12,-97.73
+Denton,TX,33.21,-97.13
+Roseville,CA,38.75,-121.29
+Carrollton,TX,32.99,-96.9
+Surprise,AZ,33.63,-112.37
+Thornton,CO,39.87,-104.97
+Waco,TX,31.55,-97.15
+Midland,TX,31.99,-102.08
+Charleston,SC,32.78,-79.93
+Roanoke,VA,37.27,-79.94
+Wilmington,DE,39.74,-75.55
+Wilmington,NC,34.23,-77.94
+Savannah,GA,32.08,-81.09
+Asheville,NC,35.6,-82.55
+Flint,MI,43.01,-83.69
+Trenton,NJ,40.22,-74.74
+Paterson,NJ,40.92,-74.17
+Elizabeth,NJ,40.66,-74.21
+Dayton,OH,39.76,-84.19
+Syracuse,NY,43.05,-76.15
+Albany,NY,42.65,-73.76
+Allentown,PA,40.6,-75.47
+Erie,PA,42.13,-80.09
+Scranton,PA,41.41,-75.66
+Gainesville,FL,29.65,-82.32
+Clearwater,FL,27.97,-82.8
+Palm Bay,FL,28.03,-80.59
+Lakeland,FL,28.04,-81.95
+Pensacola,FL,30.42,-87.22
+Mobile,AL,30.69,-88.04
+Tuscaloosa,AL,33.21,-87.57
+Topeka,KS,39.05,-95.69
+Kansas City,KS,39.11,-94.63
+Lincoln,NE,40.81,-96.7
+Cedar Rapids,IA,41.98,-91.67
+Davenport,IA,41.52,-90.58
+Green Bay,WI,44.51,-88.02
+Kenosha,WI,42.58,-87.82
+Rockford,IL,42.27,-89.09
+Peoria,IL,40.69,-89.59
+Evansville,IN,37.97,-87.56
+South Bend,IN,41.68,-86.25
+Gary,IN,41.59,-87.35
+Ann Arbor,MI,42.28,-83.74
+Lansing,MI,42.73,-84.56
+Sterling Heights,MI,42.58,-83.03
+Duluth,MN,46.79,-92.1
+Rochester,MN,44.02,-92.46
+Billings,MT,45.79,-108.5
+Missoula,MT,46.87,-113.99
+Cheyenne,WY,41.14,-104.82
+Casper,WY,42.85,-106.32
+Provo,UT,40.23,-111.66
+Ogden,UT,41.22,-111.97
+Pueblo,CO,38.25,-104.61
+Boulder,CO,40.01,-105.27
+Santa Fe,NM,35.69,-105.94
+Las Cruces,NM,32.31,-106.78
+Flagstaff,AZ,35.2,-111.65
+Yuma,AZ,32.69,-114.63
+Bend,OR,44.06,-121.31
+Vancouver,WA,45.64,-122.66
+Olympia,WA,47.04,-122.9
+Bellingham,WA,48.75,-122.48
+Eureka,CA,40.8,-124.16
+Redding,CA,40.59,-122.39
+Visalia,CA,36.33,-119.29
+Merced,CA,37.3,-120.48
+Chico,CA,39.73,-121.84
+Vallejo,CA,38.1,-122.26
+Concord,CA,37.98,-122.03
+Berkeley,CA,37.87,-122.27
+Oakland,CA,37.8,-122.27
+Daly City,CA,37.69,-122.47
+Santa Barbara,CA,34.42,-119.7
+Ventura,CA,34.27,-119.23
+Thousand Oaks,CA,34.17,-118.84
+Simi Valley,CA,34.27,-118.78
+El Monte,CA,34.07,-118.03
+Inglewood,CA,33.96,-118.35
+Torrance,CA,33.84,-118.34
+Burbank,CA,34.18,-118.31
+Costa Mesa,CA,33.64,-117.92
+Fullerton,CA,33.87,-117.92
+Orange,CA,33.79,-117.85
+Temecula,CA,33.49,-117.15
+Murrieta,CA,33.55,-117.21
+Victorville,CA,34.54,-117.29
+Hesperia,CA,34.43,-117.31
+Carlsbad,CA,33.16,-117.35
+Vista,CA,33.2,-117.24
+El Cajon,CA,32.79,-116.96
+Norman,OK,35.22,-97.44
+Tulsa,OK,36.15,-95.99
+Fayetteville,AR,36.06,-94.16
+Fort Smith,AR,35.39,-94.4
+Springdale,AR,36.19,-94.13
+Sioux City,IA,42.5,-96.4
+Bismarck,ND,46.81,-100.78
+Grand Forks,ND,47.93,-97.03
+Rapid City,SD,44.08,-103.23
+Burlington,VT,44.48,-73.21
+Manchester,NH,42.99,-71.46
+Nashua,NH,42.77,-71.46
+Portland,ME,43.66,-70.26
+Bangor,ME,44.8,-68.77
+Cambridge,MA,42.37,-71.11
+Lowell,MA,42.63,-71.32
+Stamford,CT,41.05,-73.54
+Waterbury,CT,41.56,-73.04
+Warwick,RI,41.7,-71.42
+Wheeling,WV,40.06,-80.72
+Charleston,WV,38.35,-81.63
+Huntington,WV,38.42,-82.45
+Morgantown,WV,39.63,-79.96
+Frankfort,KY,38.2,-84.87
+Bowling Green,KY,36.99,-86.44
+Clarksville,TN,36.53,-87.36
+Johnson City,TN,36.31,-82.35
+Augusta,GA,33.47,-81.97
+Athens,GA,33.96,-83.38
+Greenville,SC,34.85,-82.39
+Spartanburg,SC,34.95,-81.93
+Myrtle Beach,SC,33.69,-78.89
+Greenville,NC,35.61,-77.37
+Concord,NC,35.41,-80.58
+High Point,NC,35.96,-80.0
+Biloxi,MS,30.4,-88.89
+Gulfport,MS,30.37,-89.09
+Hattiesburg,MS,31.33,-89.29
+Lafayette,LA,30.22,-92.02
+Lake Charles,LA,30.23,-93.22
+Monroe,LA,32.51,-92.12
