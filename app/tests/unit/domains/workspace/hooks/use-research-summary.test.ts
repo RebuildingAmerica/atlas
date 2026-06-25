@@ -22,7 +22,7 @@ describe("useResearchSummary", () => {
     lists: [{ id: "list_1", name: "Climate", description: null, itemCount: 2 }],
     activity: { newSourcesThisWeek: 3, recentItems: [], followedActorCount: 1 },
     recentRuns: [],
-    totals: { savedActors: 2, listCount: 1 },
+    totals: { savedActors: 2, listCount: 1, runsThisMonth: 0 },
   };
 
   beforeEach(() => {

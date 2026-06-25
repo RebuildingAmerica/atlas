@@ -61,6 +61,7 @@ export interface RecentRunSummary {
 export interface ResearchTotals {
   savedActors: number;
   listCount: number;
+  runsThisMonth: number;
 }
 
 /** The full serializable payload the home route renders from. */
@@ -103,7 +104,7 @@ function emptyResearchSummary(): ResearchSummary {
     lists: [],
     activity: { newSourcesThisWeek: 0, recentItems: [], followedActorCount: 0 },
     recentRuns: [],
-    totals: { savedActors: 0, listCount: 0 },
+    totals: { savedActors: 0, listCount: 0, runsThisMonth: 0 },
   };
 }
 
@@ -173,6 +174,33 @@ function countFollowedActors(items: RawFeedItem[]): number {
 }
 
 /**
+ * Count discovery runs started within the calendar month of the reference time.
+ *
+ * Backs the honest free-run counter on the home recent-searches strip. The
+ * window is the UTC calendar month so it resets exactly when the monthly run
+ * allowance does.
+ *
+ * @param runs - Discovery runs, each carrying a `started_at` timestamp.
+ * @param now - The reference "now" whose calendar month defines the window.
+ * @returns The number of runs started in the same UTC month and year as `now`.
+ */
+function countRunsThisMonth(runs: DiscoveryRunListResponse["items"], now: number): number {
+  const reference = new Date(now);
+  const referenceMonth = reference.getUTCMonth();
+  const referenceYear = reference.getUTCFullYear();
+  return runs.filter((run) => {
+    const started = Date.parse(run.started_at);
+    if (Number.isNaN(started)) {
+      return false;
+    }
+    const startedDate = new Date(started);
+    return (
+      startedDate.getUTCMonth() === referenceMonth && startedDate.getUTCFullYear() === referenceYear
+    );
+  }).length;
+}
+
+/**
  * Fold the three upstream payloads into the serializable research summary.
  *
  * @param lists - Raw saved lists from `GET /api/lists`.
@@ -200,6 +228,7 @@ export function buildResearchSummary(
     totals: {
       savedActors: listSummaries.reduce((sum, list) => sum + list.itemCount, 0),
       listCount: listSummaries.length,
+      runsThisMonth: countRunsThisMonth(runs.items, now),
     },
   };
 }

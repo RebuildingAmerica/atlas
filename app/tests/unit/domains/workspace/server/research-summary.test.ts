@@ -141,7 +141,7 @@ describe("research-summary loader", () => {
       { id: "list_1", name: "Climate", description: "Greens", itemCount: 4 },
       { id: "list_2", name: "Housing", description: null, itemCount: 0 },
     ]);
-    expect(summary.totals).toEqual({ savedActors: 4, listCount: 2 });
+    expect(summary.totals).toEqual({ savedActors: 4, listCount: 2, runsThisMonth: 0 });
   });
 
   it("counts only sources ingested within the trailing week and limits inline items to five", async () => {
@@ -253,7 +253,7 @@ describe("research-summary loader", () => {
       lists: [],
       activity: { newSourcesThisWeek: 0, recentItems: [], followedActorCount: 0 },
       recentRuns: [],
-      totals: { savedActors: 0, listCount: 0 },
+      totals: { savedActors: 0, listCount: 0, runsThisMonth: 0 },
     });
   });
 
@@ -273,5 +273,26 @@ describe("research-summary loader", () => {
     );
 
     expect(summary.activity.newSourcesThisWeek).toBe(1);
+  });
+
+  it("counts only the discovery runs started in the reference calendar month", async () => {
+    mocks.requestAtlasApi.mockImplementation((path: string) => {
+      if (path === "/lists") return Promise.resolve([]);
+      if (path === "/feed/following?limit=50") return Promise.resolve({ items: [] });
+      return Promise.resolve({
+        items: [
+          makeRun({ id: "this-month", started_at: "2026-06-02T00:00:00.000Z" }),
+          makeRun({ id: "also-this-month", started_at: "2026-06-23T00:00:00.000Z" }),
+          makeRun({ id: "last-month", started_at: "2026-05-30T00:00:00.000Z" }),
+          makeRun({ id: "last-year", started_at: "2025-06-15T00:00:00.000Z" }),
+          makeRun({ id: "unparseable", started_at: "not-a-date" }),
+        ],
+        total: 5,
+      });
+    });
+
+    const summary = expectSummary(await executeLoader());
+
+    expect(summary.totals.runsThisMonth).toBe(2);
   });
 });
