@@ -284,12 +284,12 @@ describe("WorkSection", () => {
     expect(screen.getByText("Housing affordability")).toBeInTheDocument();
   });
 
-  it("renders nothing when entry has no sources, issues, or recent activity", () => {
+  it("renders a composed empty state when entry has no sources, issues, or recent activity", () => {
     const entry = buildEntry({ issue_areas: [], sources: [] });
-    const { container } = render(
-      <WorkSection entry={entry} issueAreaLabels={{}} showIssueChips={false} />,
-    );
-    expect(container.querySelector("section")).toBeNull();
+    render(<WorkSection entry={entry} issueAreaLabels={{}} showIssueChips={false} />);
+    expect(screen.getByLabelText("Recent activity")).toBeInTheDocument();
+    expect(screen.getByText(/No recent coverage on file yet/i)).toBeInTheDocument();
+    expect(screen.getByText(/Atlas keeps watching/i)).toBeInTheDocument();
   });
 
   it("uses the title when most-recent source has no publication", () => {
@@ -454,9 +454,12 @@ describe("ConnectionList", () => {
     return { actors, total: total ?? actors.length };
   }
 
-  it("shows a skeleton while loading with no server data", () => {
+  it("shows a labeled skeleton while loading with no server data", () => {
     render(<ConnectionList entry={buildEntry()} network={undefined} isLoading />);
-    expect(screen.getByLabelText("Loading network")).toBeInTheDocument();
+    const skeleton = screen.getByLabelText("Loading network");
+    expect(skeleton).toBeInTheDocument();
+    expect(skeleton).toHaveAttribute("aria-busy", "true");
+    expect(screen.getByText(/Loading connections/i)).toBeInTheDocument();
   });
 
   it("keeps server-provided data visible without a skeleton while revalidating", () => {

@@ -62,7 +62,19 @@ export function WorkSection({ entry, issueAreaLabels, showIssueChips = true }: W
 
   const hasRecent = mostRecent !== null;
   if (!hasRecent && focusLabels.length === 0) {
-    return null;
+    return (
+      <section
+        aria-label="Recent activity"
+        className="border-border-taupe bg-paper-faded flex flex-wrap items-baseline gap-x-3 gap-y-1 border px-6 py-4 sm:px-8"
+      >
+        <span className="text-ink-soft font-mono text-xs font-semibold tracking-[0.14em] uppercase">
+          Recent
+        </span>
+        <p className="text-ink-soft text-sm">
+          No recent coverage on file yet. Atlas keeps watching for new mentions.
+        </p>
+      </section>
+    );
   }
 
   return (
@@ -104,7 +116,7 @@ export function WorkSection({ entry, issueAreaLabels, showIssueChips = true }: W
               <li key={slug}>
                 <Link
                   to="/profiles"
-                  className="text-ink-strong border-ink-strong hover:border-civic hover:text-civic border-b pb-0.5 text-sm font-semibold transition-colors"
+                  className="text-ink-strong border-ink-strong hover:border-civic hover:text-civic focus-visible:ring-civic border-b pb-0.5 text-sm font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
                 >
                   {label}
                 </Link>

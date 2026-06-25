@@ -104,7 +104,10 @@ function ConnectionRow({ actor }: ConnectionRowProps) {
       }
       params={{ slug: actor.slug }}
       viewTransition
-      className={cn(ROW_CLASS, "hover:bg-surface-container-low transition-colors")}
+      className={cn(
+        ROW_CLASS,
+        "hover:bg-surface-container-low focus-visible:ring-civic transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none",
+      )}
     >
       <ConnectionRowBody actor={actor} />
     </Link>
@@ -113,7 +116,11 @@ function ConnectionRow({ actor }: ConnectionRowProps) {
 
 function ConnectionListSkeleton() {
   return (
-    <div className="space-y-2" aria-label="Loading network">
+    <div className="min-h-[12rem] space-y-2" aria-label="Loading network" aria-busy="true">
+      <p className="type-label-small text-ink-muted flex items-center gap-2">
+        <span className="bg-civic h-1.5 w-1.5 animate-pulse rounded-full" aria-hidden />
+        Loading connections…
+      </p>
       {[0, 1, 2].map((index) => (
         <div
           key={index}
@@ -145,7 +152,7 @@ function BrowseMore({ entry }: { entry: Entry }) {
         <Link
           key={label}
           to="/profiles"
-          className="type-label-small text-ink-soft hover:text-ink-strong inline-flex items-center gap-1 transition-colors"
+          className="type-label-small text-ink-soft hover:text-ink-strong focus-visible:ring-civic inline-flex items-center gap-1 rounded-sm transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
         >
           {label}
           <ArrowUpRight className="h-3 w-3" aria-hidden />
