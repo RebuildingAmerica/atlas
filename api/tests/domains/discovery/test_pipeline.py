@@ -49,6 +49,13 @@ SEARCH_OFFLINE_ERROR = "search offline"
 ANTHROPIC_OUTAGE_ERROR = "anthropic outage"
 PASS_TWO_OUTAGE_ERROR = "pass2 outage"
 
+# Kansas City, MO city centroid from the bundled gazetteer.
+_KC_LAT = 39.1
+_KC_LNG = -94.58
+# A pre-existing rooftop point the backfill/rediscovery must never clobber.
+_ROOFTOP_LAT = 39.05
+_ROOFTOP_LNG = -94.6
+
 
 def _load_runner_module() -> object:
     """Load the pipeline runner module or fail with a clear assertion."""
@@ -1760,6 +1767,137 @@ class TestTrustGateUpsert:
         assert stored is not None
         assert stored.active is True
         assert pending == []
+
+
+class TestDiscoveryGeocoding:
+    """Discovered actors are placed on the map the moment they are created."""
+
+    @staticmethod
+    def _publish(runner_module: object, monkeypatch: pytest.MonkeyPatch) -> None:
+        from atlas.domains.discovery import trust_gate
+
+        def fake_evaluate(**_kwargs: object) -> trust_gate.GateDecision:
+            return trust_gate.GateDecision(publish=True, hold_reason=None)
+
+        monkeypatch.setattr(runner_module, "evaluate_publication", fake_evaluate)
+
+    @pytest.mark.asyncio
+    async def test_new_entry_is_geocoded_offline_on_create(
+        self, test_db: object, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        runner_module = _load_runner_module()
+        self._publish(runner_module, monkeypatch)
+        entry = _make_deduped_entry(
+            entry_type="organization", name="Placed Org", city="Kansas City", state="MO"
+        )
+
+        entity_id = await runner_module._upsert_entry(test_db, entry)  # noqa: SLF001
+
+        stored = await EntryCRUD.get_by_id(test_db, entity_id)
+        assert stored is not None
+        assert stored.latitude == _KC_LAT
+        assert stored.longitude == _KC_LNG
+        assert stored.geocode_precision == "city"
+        assert stored.geocode_source == "gazetteer"
+
+    @pytest.mark.asyncio
+    async def test_unplaceable_new_entry_has_no_coordinates(
+        self, test_db: object, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        runner_module = _load_runner_module()
+        self._publish(runner_module, monkeypatch)
+        entry = _make_deduped_entry(
+            entry_type="organization", name="Nowhere Org", city="Nowhere", state="ZZ"
+        )
+
+        entity_id = await runner_module._upsert_entry(test_db, entry)  # noqa: SLF001
+
+        stored = await EntryCRUD.get_by_id(test_db, entity_id)
+        assert stored is not None
+        assert stored.latitude is None
+        assert stored.longitude is None
+        assert stored.geocode_precision is None
+        assert stored.geocode_source is None
+
+    @pytest.mark.asyncio
+    async def test_rediscovery_does_not_clobber_existing_coordinates(self, test_db: object) -> None:
+        runner_module = _load_runner_module()
+        existing_id = await EntryCRUD.create(
+            test_db,
+            entry_type="organization",
+            name="Rooftop Org",
+            description="Already precisely placed.",
+            city="Kansas City",
+            state="MO",
+            geo_specificity="local",
+            latitude=_ROOFTOP_LAT,
+            longitude=_ROOFTOP_LNG,
+            geocode_precision="rooftop",
+            geocode_source="census",
+        )
+        entry = _make_deduped_entry(
+            entry_type="organization", name="Rooftop Org", city="Kansas City", state="MO"
+        )
+
+        entity_id = await runner_module._upsert_entry(test_db, entry)  # noqa: SLF001
+
+        assert entity_id == existing_id
+        stored = await EntryCRUD.get_by_id(test_db, entity_id)
+        assert stored is not None
+        assert stored.latitude == _ROOFTOP_LAT
+        assert stored.longitude == _ROOFTOP_LNG
+        assert stored.geocode_precision == "rooftop"
+        assert stored.geocode_source == "census"
+
+    @pytest.mark.asyncio
+    async def test_rediscovery_fills_missing_coordinates(self, test_db: object) -> None:
+        runner_module = _load_runner_module()
+        existing_id = await EntryCRUD.create(
+            test_db,
+            entry_type="organization",
+            name="Unplaced Org",
+            description="Never geocoded.",
+            city="Kansas City",
+            state="MO",
+            geo_specificity="local",
+        )
+        entry = _make_deduped_entry(
+            entry_type="organization", name="Unplaced Org", city="Kansas City", state="MO"
+        )
+
+        entity_id = await runner_module._upsert_entry(test_db, entry)  # noqa: SLF001
+
+        assert entity_id == existing_id
+        stored = await EntryCRUD.get_by_id(test_db, entity_id)
+        assert stored is not None
+        assert stored.latitude == _KC_LAT
+        assert stored.longitude == _KC_LNG
+        assert stored.geocode_precision == "city"
+        assert stored.geocode_source == "gazetteer"
+
+    @pytest.mark.asyncio
+    async def test_rediscovery_of_unplaceable_entry_stays_unplaced(self, test_db: object) -> None:
+        runner_module = _load_runner_module()
+        existing_id = await EntryCRUD.create(
+            test_db,
+            entry_type="organization",
+            name="Stateless Org",
+            description="No resolvable place.",
+            city="Nowhere",
+            state="ZZ",
+            geo_specificity="local",
+        )
+        entry = _make_deduped_entry(
+            entry_type="organization", name="Stateless Org", city="Nowhere", state="ZZ"
+        )
+
+        entity_id = await runner_module._upsert_entry(test_db, entry)  # noqa: SLF001
+
+        assert entity_id == existing_id
+        stored = await EntryCRUD.get_by_id(test_db, entity_id)
+        assert stored is not None
+        assert stored.latitude is None
+        assert stored.longitude is None
 
 
 async def _get_db_connection(database_url: str) -> object:

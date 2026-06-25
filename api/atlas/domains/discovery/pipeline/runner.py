@@ -30,6 +30,7 @@ from atlas_shared import (
     RawEntry as SharedRawEntry,
 )
 
+from atlas.domains.catalog.geo import geocode_entry
 from atlas.domains.discovery.cost import (
     CostCeilingExceeded,
     assert_within_budget,
@@ -461,6 +462,7 @@ async def _upsert_entry(
             dedup_suspect=dedup_suspect,
             score=score,
         )
+        located = await geocode_entry(city, state, None, allow_remote=False)
         entity_id = await EntryCRUD.create(
             conn,
             entry_type=str(entry.entry_type),
@@ -470,6 +472,10 @@ async def _upsert_entry(
             state=state,
             geo_specificity=str(entry.geo_specificity),
             region=entry.region,
+            latitude=located.latitude if located else None,
+            longitude=located.longitude if located else None,
+            geocode_precision=located.precision if located else None,
+            geocode_source=located.source if located else None,
             website=entry.website,
             email=entry.email,
             social_media=entry.social_media,
@@ -491,6 +497,16 @@ async def _upsert_entry(
         return entity_id
 
     today_iso = _today_iso_date()
+    coordinate_fields: dict[str, Any] = {}
+    if match.latitude is None or match.longitude is None:
+        located = await geocode_entry(city, state, None, allow_remote=False)
+        if located is not None:
+            coordinate_fields = {
+                "latitude": located.latitude,
+                "longitude": located.longitude,
+                "geocode_precision": located.precision,
+                "geocode_source": located.source,
+            }
     await EntryCRUD.update(
         conn,
         match.id,
@@ -500,6 +516,7 @@ async def _upsert_entry(
         email=entry.email or match.email,
         social_media=entry.social_media or match.social_media,
         last_seen=entry.last_seen or _parse_date(today_iso),
+        **coordinate_fields,
     )
     return match.id
 

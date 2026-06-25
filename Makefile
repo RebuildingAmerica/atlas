@@ -1,4 +1,4 @@
-.PHONY: help setup dev dev-api dev-app build test lint format typecheck quality clean docker-up docker-down docker-build
+.PHONY: help setup dev dev-api dev-app build test lint format typecheck quality clean docker-up docker-down docker-build backfill-geocodes
 
 # Default target
 help: ## Show this help
@@ -99,6 +99,9 @@ db-init: ## Initialize database schema
 
 db-reset: ## Reset database (WARNING: deletes all data)
 	cd api && rm -f atlas.db && python3 -m atlas.db_init
+
+backfill-geocodes: ## Place unplaced entries on the map (gazetteer; USE_CENSUS=1 for rooftop)
+	cd api && uv run python -m atlas.backfill_geocodes $(if $(filter 1,$(USE_CENSUS)),--use-census,)
 
 # ============================================
 # Cleanup
