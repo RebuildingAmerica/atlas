@@ -58,29 +58,61 @@ export function DiscoverySetupNotice({ body, cta, title }: DiscoverySetupNoticeP
   );
 }
 
+/**
+ * Which moment drives the discovery upgrade nudge.  `at-limit` is the
+ * in-the-moment case: the operator just tried to start a run and was
+ * blocked because they have used their monthly research allowance.
+ */
+type DiscoveryUpgradeReason = "free-tier" | "capability-missing" | "at-limit";
+
 interface DiscoveryUpgradePromptProps {
-  reason: "free-tier" | "capability-missing";
+  reason: DiscoveryUpgradeReason;
 }
+
+/** Resolved copy and call-to-action for a discovery upgrade nudge. */
+interface DiscoveryUpgradeContent {
+  title: string;
+  body: string;
+  cta: string;
+}
+
+const DISCOVERY_UPGRADE_CONTENT: Record<DiscoveryUpgradeReason, DiscoveryUpgradeContent> = {
+  "capability-missing": {
+    title: "Discovery runs are paused on your plan",
+    body: "Your workspace doesn't have access to discovery runs right now. Upgrade to Atlas Pro for unlimited research, or buy a Research Pass for short-term project access.",
+    cta: "See plans",
+  },
+  "free-tier": {
+    title: "On the free plan",
+    body: "The free plan caps discovery runs at 2 per month. Upgrade to Atlas Pro for unlimited runs, exports, and API access.",
+    cta: "See plans",
+  },
+  "at-limit": {
+    title: "You've used your free runs this month",
+    body: "The free plan includes 2 discovery runs per month, and you've used them all. Upgrade to Atlas Pro for unlimited runs, exports, and API access.",
+    cta: "Upgrade",
+  },
+};
 
 /**
  * Upgrade-nudge card shown when the active workspace's plan does not
- * include unrestricted discovery runs.  Routes the operator to /pricing.
+ * include unrestricted discovery runs.  Routes the operator to /pricing,
+ * carrying the Atlas Pro intent so the plan is pre-selected on arrival.
  */
 export function DiscoveryUpgradePrompt({ reason }: DiscoveryUpgradePromptProps) {
-  const title =
-    reason === "capability-missing" ? "Discovery runs are paused on your plan" : "On the free plan";
-  const body =
-    reason === "capability-missing"
-      ? "Your workspace doesn't have access to discovery runs right now. Upgrade to Atlas Pro for unlimited research, or buy a Research Pass for short-term project access."
-      : "The free plan caps discovery runs at 2 per month. Upgrade to Atlas Pro for unlimited runs, exports, and API access.";
+  const content = DISCOVERY_UPGRADE_CONTENT[reason];
 
   return (
     <section className="border-border-strong bg-surface rounded-[1.5rem] border p-5">
-      <p className="type-title-medium text-ink-strong">{title}</p>
-      <p className="type-body-medium text-ink-soft mt-2">{body}</p>
+      <p className="type-title-medium text-ink-strong">{content.title}</p>
+      <p className="type-body-medium text-ink-soft mt-2">{content.body}</p>
       <div className="mt-4">
-        <Link className="type-label-large text-ink-strong underline" to="/pricing">
-          See plans
+        <Link
+          className="type-label-large text-ink-strong underline"
+          to="/pricing"
+          search={{ intent: "atlas_pro" }}
+        >
+          {content.cta}
         </Link>
       </div>
     </section>

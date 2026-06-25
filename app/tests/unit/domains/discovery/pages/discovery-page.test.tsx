@@ -25,12 +25,41 @@ vi.mock("@/domains/catalog/hooks/use-taxonomy", () => ({
 }));
 
 vi.mock("@tanstack/react-router", () => ({
-  Link: ({ children, to }: { children: React.ReactNode; to: string }) => (
-    <a href={to}>{children}</a>
-  ),
+  Link: ({
+    children,
+    to,
+    search,
+  }: {
+    children: React.ReactNode;
+    to: string;
+    search?: { intent?: string };
+  }) => <a href={search?.intent ? `${to}?intent=${search.intent}` : to}>{children}</a>,
 }));
 
 describe("DiscoveryPage", () => {
+  const FREE_TIER_SESSION = {
+    data: {
+      workspace: {
+        activeOrganization: null,
+        activeProducts: [],
+        capabilities: { canUseTeamFeatures: false },
+        resolvedCapabilities: {
+          capabilities: ["research.run"],
+          limits: {
+            research_runs_per_month: 2,
+            max_shortlists: 1,
+            max_shortlist_entries: 25,
+            max_api_keys: 0,
+            api_requests_per_day: 0,
+            public_api_requests_per_hour: 100,
+            max_members: 1,
+          },
+        },
+        onboarding: { needsWorkspace: false, hasPendingInvitations: false },
+      },
+    },
+  };
+
   beforeEach(() => {
     mocks.useAtlasSession.mockReturnValue({ data: null });
     mocks.useDiscoveryRuns.mockReturnValue({ data: { items: [] }, isLoading: false });
@@ -456,5 +485,39 @@ describe("DiscoveryPage", () => {
     });
 
     expect(locationInput).toHaveValue("");
+  });
+
+  it("surfaces an in-the-moment upgrade prompt when a run is blocked at the limit", async () => {
+    const { AtlasApiError, ATLAS_API_ERROR_CODE } = await import("@/domains/discovery/api-errors");
+    mocks.useStartDiscovery.mockReturnValue({
+      mutate: vi.fn(),
+      isPending: false,
+      error: new AtlasApiError(ATLAS_API_ERROR_CODE.AT_LIMIT),
+    });
+    mocks.useAtlasSession.mockReturnValue(FREE_TIER_SESSION);
+
+    render(<DiscoveryPage />);
+
+    expect(screen.getByText(/You've used your free runs this month/)).toBeInTheDocument();
+    // The generic inline error must be suppressed for the at-limit case.
+    expect(screen.queryByText(/Could not start the run/)).toBeNull();
+    // The CTA routes to pricing carrying the Atlas Pro intent.
+    const upgrade = screen.getByText("Upgrade").closest("a");
+    expect(upgrade).toHaveAttribute("href", "/pricing?intent=atlas_pro");
+  });
+
+  it("shows safe retry copy when Atlas is temporarily unavailable", async () => {
+    const { AtlasApiError, ATLAS_API_ERROR_CODE } = await import("@/domains/discovery/api-errors");
+    mocks.useStartDiscovery.mockReturnValue({
+      mutate: vi.fn(),
+      isPending: false,
+      error: new AtlasApiError(ATLAS_API_ERROR_CODE.TEMPORARILY_UNAVAILABLE),
+    });
+    mocks.useAtlasSession.mockReturnValue(FREE_TIER_SESSION);
+
+    render(<DiscoveryPage />);
+
+    expect(screen.getByText(/Atlas is temporarily unavailable/)).toBeInTheDocument();
+    expect(screen.queryByText(/You've used your free runs this month/)).toBeNull();
   });
 });

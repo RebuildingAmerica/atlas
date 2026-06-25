@@ -11,7 +11,7 @@ interface DiscoveryRunFormProps {
   isTaxonomyLoading: boolean;
   locationQuery: string;
   selectedIssues: string[];
-  startError: boolean;
+  startErrorMessage: string | null;
   state: string;
   onLocationChange: (value: string) => void;
   onStateChange: (value: string) => void;
@@ -36,7 +36,7 @@ export function DiscoveryRunForm({
   onSubmit,
   onToggleIssue,
   selectedIssues,
-  startError,
+  startErrorMessage,
   state,
 }: DiscoveryRunFormProps) {
   return (
@@ -114,10 +114,8 @@ export function DiscoveryRunForm({
         </div>
       </div>
 
-      {startError ? (
-        <p className="type-body-medium text-red-700">
-          Could not start the run. Check the fields and try again.
-        </p>
+      {startErrorMessage ? (
+        <p className="type-body-medium text-red-700">{startErrorMessage}</p>
       ) : null}
 
       <div className="flex items-center gap-3">

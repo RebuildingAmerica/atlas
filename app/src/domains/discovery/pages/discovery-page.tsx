@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useAtlasSession } from "@/domains/access";
 import { hasSerializedCapability } from "@/domains/access/capabilities";
+import { isAtLimitError, resolveStartRunErrorMessage } from "@/domains/discovery/api-errors";
 import { useTaxonomy } from "@/domains/catalog/hooks/use-taxonomy";
 import { useDiscoveryRuns, useStartDiscovery } from "@/domains/discovery/hooks/use-discovery";
 import {
@@ -44,6 +45,10 @@ export function DiscoveryPage() {
   const activeProducts = atlasSession.data?.workspace.activeProducts ?? [];
   const isFreeTier = activeProducts.length === 0;
   const latestRuns = runsQuery.data?.items ?? [];
+
+  const startError = startDiscovery.error ?? null;
+  const isAtLimit = isAtLimitError(startError);
+  const startErrorMessage = startError ? resolveStartRunErrorMessage(startError) : null;
 
   const handleToggleIssue = (slug: string) => {
     setSelectedIssues((current) =>
@@ -119,6 +124,8 @@ export function DiscoveryPage() {
         <DiscoveryUpgradePrompt reason="free-tier" />
       ) : null}
 
+      {isAtLimit ? <DiscoveryUpgradePrompt reason="at-limit" /> : null}
+
       <section className="grid gap-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
         <DiscoveryRunForm
           canRunResearch={canRunResearch}
@@ -127,7 +134,7 @@ export function DiscoveryPage() {
           isTaxonomyLoading={taxonomyQuery.isLoading}
           locationQuery={locationQuery}
           selectedIssues={selectedIssues}
-          startError={Boolean(startDiscovery.error)}
+          startErrorMessage={isAtLimit ? null : startErrorMessage}
           state={state}
           onLocationChange={setLocationQuery}
           onStateChange={handleStateChange}
