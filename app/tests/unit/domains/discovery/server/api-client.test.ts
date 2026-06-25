@@ -95,7 +95,7 @@ describe("api-client", () => {
     );
   });
 
-  it("throws when the API response is not ok", async () => {
+  it("throws a classifiable generic error for an unexpected non-ok status", async () => {
     vi.stubEnv("ATLAS_DEPLOY_MODE", "local");
     mocks.requireReadyAtlasSessionState.mockResolvedValue({});
     mocks.getServerApiBaseUrl.mockReturnValue("https://api.atlas.test");
@@ -104,6 +104,38 @@ describe("api-client", () => {
       status: 404,
     } as Response);
 
-    await expect(requestAtlasApi("/not-found")).rejects.toThrow("Atlas API request failed (404)");
+    await expect(requestAtlasApi("/not-found")).rejects.toMatchObject({
+      name: "AtlasApiError",
+      code: "ATLAS_API_REQUEST_FAILED",
+      message: "ATLAS_API_REQUEST_FAILED",
+    });
+  });
+
+  it("throws an at-limit error when the API responds 429", async () => {
+    vi.stubEnv("ATLAS_DEPLOY_MODE", "local");
+    mocks.requireReadyAtlasSessionState.mockResolvedValue({});
+    mocks.getServerApiBaseUrl.mockReturnValue("https://api.atlas.test");
+    fetchSpy.mockResolvedValue({
+      ok: false,
+      status: 429,
+    } as Response);
+
+    await expect(requestAtlasApi("/discovery-runs")).rejects.toMatchObject({
+      code: "ATLAS_API_AT_LIMIT",
+    });
+  });
+
+  it("throws a temporarily-unavailable error when the API responds 5xx", async () => {
+    vi.stubEnv("ATLAS_DEPLOY_MODE", "local");
+    mocks.requireReadyAtlasSessionState.mockResolvedValue({});
+    mocks.getServerApiBaseUrl.mockReturnValue("https://api.atlas.test");
+    fetchSpy.mockResolvedValue({
+      ok: false,
+      status: 503,
+    } as Response);
+
+    await expect(requestAtlasApi("/discovery-runs")).rejects.toMatchObject({
+      code: "ATLAS_API_TEMPORARILY_UNAVAILABLE",
+    });
   });
 });

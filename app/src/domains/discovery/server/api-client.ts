@@ -1,6 +1,7 @@
 import "@tanstack/react-start/server-only";
 
 import { createInternalAuthHeaders } from "@/domains/access/config";
+import { AtlasApiError, classifyAtlasApiStatus } from "@/domains/discovery/api-errors";
 import { requireReadyAtlasSessionState } from "@/domains/access/server/session-state";
 import { getServerApiBaseUrl as getConfiguredServerApiBaseUrl } from "@/platform/config/app-config";
 
@@ -43,7 +44,7 @@ export async function requestAtlasApi<T>(path: string, init?: RequestInit): Prom
   });
 
   if (!response.ok) {
-    throw new Error(`Atlas API request failed (${response.status})`);
+    throw new AtlasApiError(classifyAtlasApiStatus(response.status));
   }
 
   return (await response.json()) as T;
