@@ -8,27 +8,27 @@ afterEach(cleanup);
 
 describe("ClusterBubble", () => {
   it("labels the bubble with its actor count and an accessible name", () => {
-    render(<ClusterBubble pointCount={14} onExpand={vi.fn()} />);
-    const button = screen.getByRole("button", { name: "14 civic actors here — zoom in" });
+    render(<ClusterBubble pointCount={14} onOpen={vi.fn()} />);
+    const button = screen.getByRole("button", { name: "14 civic actors here — see who" });
     expect(button.textContent).toContain("14");
   });
 
   it("names the smallest possible cluster of two actors", () => {
-    render(<ClusterBubble pointCount={2} onExpand={vi.fn()} />);
-    expect(screen.getByRole("button", { name: "2 civic actors here — zoom in" })).toBeTruthy();
+    render(<ClusterBubble pointCount={2} onOpen={vi.fn()} />);
+    expect(screen.getByRole("button", { name: "2 civic actors here — see who" })).toBeTruthy();
   });
 
-  it("calls onExpand when clicked", () => {
-    const onExpand = vi.fn();
-    render(<ClusterBubble pointCount={9} onExpand={onExpand} />);
+  it("calls onOpen when clicked", () => {
+    const onOpen = vi.fn();
+    render(<ClusterBubble pointCount={9} onOpen={onOpen} />);
     fireEvent.click(screen.getByRole("button"));
-    expect(onExpand).toHaveBeenCalledOnce();
+    expect(onOpen).toHaveBeenCalledOnce();
   });
 
   it("reveals by growing real dimensions from a smaller size into its resting diameter", () => {
     vi.useFakeTimers();
     try {
-      render(<ClusterBubble pointCount={20} onExpand={vi.fn()} />);
+      render(<ClusterBubble pointCount={20} onOpen={vi.fn()} />);
       const button = screen.getByRole("button");
       const startWidth = parseFloat(button.style.width);
       act(() => {
@@ -44,7 +44,7 @@ describe("ClusterBubble", () => {
   });
 
   it("skips the grow-in when the visitor prefers reduced motion", () => {
-    render(<ClusterBubble pointCount={20} onExpand={vi.fn()} reducedMotion />);
+    render(<ClusterBubble pointCount={20} onOpen={vi.fn()} reducedMotion />);
     const button = screen.getByRole("button");
     // Already at rest: no pending grow, full diameter from the first frame.
     expect(parseFloat(button.style.width)).toBeGreaterThan(0);

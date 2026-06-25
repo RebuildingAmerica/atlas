@@ -160,7 +160,11 @@ export function PersonProfilePage({ entry, initialConnections }: PersonProfilePa
           <AppearancesList sources={entry.sources ?? []} mode="person" />
         </section>
 
-        <section aria-label="Network — actors related to this profile" className={PANEL}>
+        <section
+          id="connections"
+          aria-label="Network — actors related to this profile"
+          className={PANEL}
+        >
           <div className="mb-4 flex flex-wrap items-baseline gap-x-3">
             <span className={PANEL_HEADER}>Network</span>
             <h2 className="text-ink-strong text-base font-semibold">Who else is doing this work</h2>

@@ -3,77 +3,91 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { MapMarkerLayer } from "@/domains/catalog/components/map/map-marker-layer";
+import type { SelectionAnchor } from "@/domains/catalog/map/map-selection";
 import type { MapPoint } from "@/types";
-import {
-  createMarkerLayerCapture,
-  installMockMap,
-  type MarkerLayerCapture,
-  type MockMarkerProps,
-} from "../../../../../helpers/catalog/map-marker-layer-harness";
 import { CONUS_BOUNDS, makePoint } from "../../../../../helpers/catalog/map-clustering-harness";
+import {
+  type MockMarkerProps,
+  createMarkerCapture,
+} from "../../../../../helpers/catalog/marker-mock-harness";
 
-const capture = vi.hoisted((): { value: MarkerLayerCapture } => ({
-  value: { markers: [], map: null, easeToCalls: [] },
+const capture = vi.hoisted(() => ({
+  value: { markers: [] } as ReturnType<typeof createMarkerCapture>,
 }));
 
 vi.mock("react-map-gl/maplibre", () => ({
   Marker: (props: MockMarkerProps) => {
-    capture.value.markers.push({
-      longitude: props.longitude,
-      latitude: props.latitude,
-      children: props.children,
-    });
+    capture.value.markers.push({ longitude: props.longitude, latitude: props.latitude });
     return <div data-testid="marker">{props.children}</div>;
   },
-  useMap: () => ({ current: capture.value.map }),
 }));
 
 afterEach(() => {
   cleanup();
-  capture.value = createMarkerLayerCapture();
+  capture.value = createMarkerCapture();
 });
 
 describe("MapMarkerLayer", () => {
   it("places one marker per far-apart actor", () => {
-    installMockMap(capture.value);
     const points: MapPoint[] = [
       makePoint({ id: "a", lng: -122, lat: 37 }),
       makePoint({ id: "b", lng: -74, lat: 40 }),
     ];
     render(
-      <MapMarkerLayer points={points} bounds={CONUS_BOUNDS} zoom={4} onSelectPoint={vi.fn()} />,
+      <MapMarkerLayer
+        points={points}
+        bounds={CONUS_BOUNDS}
+        zoom={4}
+        onSelectPoint={vi.fn()}
+        onSelectCluster={vi.fn()}
+      />,
     );
     expect(capture.value.markers).toHaveLength(2);
     expect(screen.getAllByRole("button")).toHaveLength(2);
   });
 
   it("renders a single cluster bubble for a crowd of co-located actors", () => {
-    installMockMap(capture.value);
     const points: MapPoint[] = Array.from({ length: 12 }, (_, i) =>
       makePoint({ id: `c${i}`, lng: -96.8, lat: 32.78 }),
     );
     render(
-      <MapMarkerLayer points={points} bounds={CONUS_BOUNDS} zoom={4} onSelectPoint={vi.fn()} />,
+      <MapMarkerLayer
+        points={points}
+        bounds={CONUS_BOUNDS}
+        zoom={4}
+        onSelectPoint={vi.fn()}
+        onSelectCluster={vi.fn()}
+      />,
     );
     expect(screen.getByRole("button", { name: /12 civic actors here/ })).toBeTruthy();
   });
 
-  it("eases toward a cluster's expansion zoom when its bubble is clicked", () => {
-    installMockMap(capture.value);
+  it("opens a cluster's crowd with every actor it holds when its bubble is clicked", () => {
+    const onSelectCluster =
+      vi.fn<(members: MapPoint[], anchor: SelectionAnchor, id: number) => void>();
     const points: MapPoint[] = Array.from({ length: 12 }, (_, i) =>
       makePoint({ id: `c${i}`, lng: -96.8, lat: 32.78 }),
     );
     render(
-      <MapMarkerLayer points={points} bounds={CONUS_BOUNDS} zoom={4} onSelectPoint={vi.fn()} />,
+      <MapMarkerLayer
+        points={points}
+        bounds={CONUS_BOUNDS}
+        zoom={4}
+        onSelectPoint={vi.fn()}
+        onSelectCluster={onSelectCluster}
+      />,
     );
     fireEvent.click(screen.getByRole("button", { name: /12 civic actors here/ }));
-    expect(capture.value.easeToCalls).toHaveLength(1);
-    expect(capture.value.easeToCalls[0]?.zoom).toBeGreaterThan(4);
+    expect(onSelectCluster).toHaveBeenCalledOnce();
+    const call = onSelectCluster.mock.calls[0];
+    expect(call?.[0]).toHaveLength(12);
+    expect(typeof call?.[1].lng).toBe("number");
+    expect(typeof call?.[1].lat).toBe("number");
+    expect(typeof call?.[2]).toBe("number");
   });
 
-  it("opens an actor's panel when its dot is clicked", () => {
-    installMockMap(capture.value);
-    const onSelectPoint = vi.fn();
+  it("opens an actor's panel anchored at its rendered coordinate when its dot is clicked", () => {
+    const onSelectPoint = vi.fn<(point: MapPoint, anchor: SelectionAnchor) => void>();
     const point = makePoint({ id: "solo", lng: -100, lat: 40 });
     render(
       <MapMarkerLayer
@@ -81,14 +95,18 @@ describe("MapMarkerLayer", () => {
         bounds={CONUS_BOUNDS}
         zoom={6}
         onSelectPoint={onSelectPoint}
+        onSelectCluster={vi.fn()}
       />,
     );
     fireEvent.click(screen.getByRole("button"));
-    expect(onSelectPoint).toHaveBeenCalledWith(point);
+    expect(onSelectPoint).toHaveBeenCalledOnce();
+    const call = onSelectPoint.mock.calls[0];
+    expect(call?.[0]).toBe(point);
+    expect(typeof call?.[1].lng).toBe("number");
+    expect(typeof call?.[1].lat).toBe("number");
   });
 
   it("marks the selected actor's dot as pressed", () => {
-    installMockMap(capture.value);
     const point = makePoint({ id: "solo", lng: -100, lat: 40 });
     render(
       <MapMarkerLayer
@@ -97,20 +115,9 @@ describe("MapMarkerLayer", () => {
         zoom={6}
         selectedId="solo"
         onSelectPoint={vi.fn()}
+        onSelectCluster={vi.fn()}
       />,
     );
     expect(screen.getByRole("button").getAttribute("aria-pressed")).toBe("true");
-  });
-
-  it("never crashes when the map ref is not ready and a cluster is clicked", () => {
-    capture.value.map = null;
-    const points: MapPoint[] = Array.from({ length: 12 }, (_, i) =>
-      makePoint({ id: `c${i}`, lng: -96.8, lat: 32.78 }),
-    );
-    render(
-      <MapMarkerLayer points={points} bounds={CONUS_BOUNDS} zoom={4} onSelectPoint={vi.fn()} />,
-    );
-    fireEvent.click(screen.getByRole("button", { name: /12 civic actors here/ }));
-    expect(capture.value.easeToCalls).toHaveLength(0);
   });
 });

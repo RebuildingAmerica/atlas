@@ -10,8 +10,8 @@ const REVEAL_DURATION_MS = 360;
 interface ClusterBubbleProps {
   /** How many actors this bubble stands for. */
   pointCount: number;
-  /** Zoom the map in to break this cluster apart. */
-  onExpand: () => void;
+  /** Open the panel's "who's working here" list of the actors gathered here. */
+  onOpen: () => void;
   /** Skip the grow-in reveal for visitors who prefer reduced motion. */
   reducedMotion?: boolean;
 }
@@ -26,7 +26,7 @@ interface ClusterBubbleProps {
  * pan or zoom feels like the map breathing rather than popping. Reduced-motion
  * visitors get the resting size immediately.
  */
-export function ClusterBubble({ pointCount, onExpand, reducedMotion = false }: ClusterBubbleProps) {
+export function ClusterBubble({ pointCount, onOpen, reducedMotion = false }: ClusterBubbleProps) {
   const { diameter, background, label } = clusterBubbleStyle(pointCount);
   const [revealed, setRevealed] = useState(reducedMotion);
 
@@ -43,12 +43,12 @@ export function ClusterBubble({ pointCount, onExpand, reducedMotion = false }: C
   }, [reducedMotion]);
 
   const size = revealed ? diameter : diameter * REVEAL_START_FRACTION;
-  const accessibleName = `${pointCount} civic actors here — zoom in`;
+  const accessibleName = `${pointCount} civic actors here — see who`;
 
   return (
     <button
       type="button"
-      onClick={onExpand}
+      onClick={onOpen}
       aria-label={accessibleName}
       className="text-ink-strong flex cursor-pointer items-center justify-center rounded-full border-0 font-semibold"
       style={{

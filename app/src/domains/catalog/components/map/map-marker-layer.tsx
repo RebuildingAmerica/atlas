@@ -1,12 +1,10 @@
 import { useCallback, useMemo } from "react";
-import { Marker, useMap } from "react-map-gl/maplibre";
+import { Marker } from "react-map-gl/maplibre";
 import type { MapBounds, MapPoint } from "@/types";
 import { buildClusterIndex, deriveMapFeatures } from "@/domains/catalog/map/map-clustering";
+import type { SelectionAnchor } from "@/domains/catalog/map/map-selection";
 import { CivicDotMarker } from "./civic-dot-marker";
 import { ClusterBubble } from "./cluster-bubble";
-
-/** How long the cluster-bloom ease runs when a bubble is clicked, in ms. */
-const CLUSTER_BLOOM_MS = 500;
 
 interface MapMarkerLayerProps {
   /** The placed actors currently fetched for the viewport. */
@@ -17,8 +15,10 @@ interface MapMarkerLayerProps {
   zoom: number;
   /** The id of the actor whose panel is open, so its dot can read as selected. */
   selectedId?: string;
-  /** Open an actor's detail panel. */
-  onSelectPoint: (point: MapPoint) => void;
+  /** Open an actor's detail panel, anchored at where its dot is rendered. */
+  onSelectPoint: (point: MapPoint, anchor: SelectionAnchor) => void;
+  /** Open a cluster's "who's working here" list with the actors it holds. */
+  onSelectCluster: (members: MapPoint[], anchor: SelectionAnchor, clusterId: number) => void;
   /** Skip marker/cluster reveal motion for reduced-motion visitors. */
   reducedMotion?: boolean;
 }
@@ -27,9 +27,11 @@ interface MapMarkerLayerProps {
  * The live layer of civic dots and count bubbles drawn over the basemap.
  *
  * It clusters the viewport's actors client-side (so a pan re-clusters with no
- * round trip), renders each derived feature as a focusable marker, and — when a
- * count bubble is clicked — gently blooms the camera to the zoom at which that
- * cluster breaks apart, turning "there are twelve here" into "here they are."
+ * round trip) and renders each derived feature as a focusable marker. Clicking a
+ * dot opens that actor's detail panel; clicking a count bubble opens the
+ * panel's "who's working here" list of the actors gathered there — turning
+ * "twelve here" into twelve names a visitor can step into — without forcing a
+ * zoom they didn't ask for.
  */
 export function MapMarkerLayer({
   points,
@@ -37,21 +39,18 @@ export function MapMarkerLayer({
   zoom,
   selectedId,
   onSelectPoint,
+  onSelectCluster,
   reducedMotion = false,
 }: MapMarkerLayerProps) {
-  const map = useMap().current;
   const index = useMemo(() => buildClusterIndex(points), [points]);
   const features = useMemo(() => deriveMapFeatures(index, bounds, zoom), [index, bounds, zoom]);
 
-  const expandCluster = useCallback(
+  const openCluster = useCallback(
     (clusterId: number, lng: number, lat: number) => {
-      if (!map) {
-        return;
-      }
-      const expansionZoom = index.getClusterExpansionZoom(clusterId);
-      map.easeTo({ center: [lng, lat], zoom: expansionZoom, duration: CLUSTER_BLOOM_MS });
+      const members = index.getLeaves(clusterId, Infinity).map((leaf) => leaf.properties.point);
+      onSelectCluster(members, { lng, lat }, clusterId);
     },
-    [map, index],
+    [index, onSelectCluster],
   );
 
   return (
@@ -67,8 +66,8 @@ export function MapMarkerLayer({
               <ClusterBubble
                 pointCount={feature.pointCount}
                 reducedMotion={reducedMotion}
-                onExpand={() => {
-                  expandCluster(feature.clusterId, feature.lng, feature.lat);
+                onOpen={() => {
+                  openCluster(feature.clusterId, feature.lng, feature.lat);
                 }}
               />
             </Marker>
@@ -79,7 +78,9 @@ export function MapMarkerLayer({
             <CivicDotMarker
               point={feature.point}
               selected={feature.point.id === selectedId}
-              onSelect={onSelectPoint}
+              onSelect={(point) => {
+                onSelectPoint(point, { lng: feature.lng, lat: feature.lat });
+              }}
             />
           </Marker>
         );
