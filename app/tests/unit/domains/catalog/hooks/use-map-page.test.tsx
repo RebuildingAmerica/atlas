@@ -253,4 +253,28 @@ describe("useMapPage", () => {
     );
     expect(readMapPageMocks().lastOptions()?.initialData).toBe(seeded);
   });
+
+  it("still sets a place's filter and opens an actor before the map mounts", () => {
+    // No map is set: the camera moves are safe no-ops, but the URL and panel
+    // still update so the experience never stalls waiting on the canvas.
+    const { result } = renderHook(() =>
+      useMapPage({ search: {}, navigate: requireMapPageMocks().navigate }),
+    );
+    const place: PlaceMatch = {
+      kind: "city",
+      label: "Dallas, TX",
+      anchor: { lng: -96.8, lat: 32.78 },
+      stateCode: "TX",
+      cityKey: "Dallas, TX",
+    };
+    act(() => {
+      result.current.onSelectPlace(place);
+      result.current.onSelectActor(makePoint({ id: "1", lng: -96.8, lat: 32.78 }));
+      result.current.onZoomOut();
+    });
+    expect(result.current.selection?.kind).toBe("actor");
+    expect(lastNavigateSearch(requireMapPageMocks().navigate)).toMatchObject({
+      cities: "Dallas, TX",
+    });
+  });
 });

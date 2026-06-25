@@ -144,6 +144,7 @@ function PublicTopNavShell({
         </Link>
 
         <div className="flex items-center gap-1">
+          <NavLink to="/map" label="Map" />
           <NavLink to="/profiles" label="Profiles" />
           <NavLink to="/browse" label="Browse" />
           {hideSessionLinks || localMode ? null : (

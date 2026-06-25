@@ -52,4 +52,16 @@ describe("loadMapPoints", () => {
       source_types: [],
     });
   });
+
+  it("carries a non-empty query through but drops a blank one", async () => {
+    mocks.mapPoints.mockResolvedValue({ points: [], total: 0, capped: false });
+    await loadMapPoints({ data: { query: "tenant union" } });
+    expect(mocks.mapPoints).toHaveBeenCalledWith(
+      expect.objectContaining({ query: "tenant union" }),
+    );
+
+    mocks.mapPoints.mockClear();
+    await loadMapPoints({ data: { query: "" } });
+    expect(mocks.mapPoints).toHaveBeenCalledWith(expect.objectContaining({ query: undefined }));
+  });
 });

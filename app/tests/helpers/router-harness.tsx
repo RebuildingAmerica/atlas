@@ -10,6 +10,7 @@ export interface RouteOptionsLike<TProps = Record<string, never>> {
   errorComponent?: ComponentType<TProps>;
   notFoundComponent?: ComponentType<TProps>;
   loader?: (...args: unknown[]) => unknown;
+  loaderDeps?: (...args: unknown[]) => unknown;
   beforeLoad?: (...args: unknown[]) => unknown;
   validateSearch?: ((input: unknown) => unknown) | { parse: (input: unknown) => unknown };
   parseParams?: (input: Record<string, string>) => unknown;

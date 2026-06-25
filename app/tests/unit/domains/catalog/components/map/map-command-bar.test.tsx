@@ -78,6 +78,28 @@ describe("MapCommandBar", () => {
     expect(onToggleFilter).toHaveBeenCalledWith("issue_areas", "housing-affordability");
   });
 
+  it("toggles a type filter through the disclosure", () => {
+    const onToggleFilter = vi.fn();
+    renderCommandBar({ onToggleFilter });
+    fireEvent.click(screen.getByRole("button", { name: "People" }));
+    expect(onToggleFilter).toHaveBeenCalledWith("entry_types", "person");
+  });
+
+  it("toggles a source filter through the disclosure", () => {
+    const onToggleFilter = vi.fn();
+    renderCommandBar({ onToggleFilter });
+    fireEvent.click(screen.getByRole("button", { name: "Local news" }));
+    expect(onToggleFilter).toHaveBeenCalledWith("source_types", "news_article");
+  });
+
+  it("hides the Types disclosure when entry-type filtering is turned off", () => {
+    renderCommandBar(undefined, undefined, { showEntryTypeFilter: false });
+    expect(screen.queryByText("Types")).toBeNull();
+    // Issues and Sources still anchor the filter row.
+    expect(screen.getByText("Issues")).toBeTruthy();
+    expect(screen.getByText("Sources")).toBeTruthy();
+  });
+
   it("closes an open menu when Escape is pressed", () => {
     renderCommandBar(undefined, [makePoint({ id: "1", name: "Dallas Housing Trust" })]);
     const input = screen.getByRole("combobox");
@@ -85,5 +107,27 @@ describe("MapCommandBar", () => {
     expect(screen.getByRole("listbox")).toBeTruthy();
     fireEvent.keyDown(input, { key: "Escape" });
     expect(screen.queryByRole("listbox")).toBeNull();
+  });
+
+  it("keeps the menu open on a non-Escape keypress", () => {
+    renderCommandBar(undefined, [makePoint({ id: "1", name: "Dallas Housing Trust" })]);
+    const input = screen.getByRole("combobox");
+    fireEvent.change(input, { target: { value: "Dallas" } });
+    fireEvent.keyDown(input, { key: "ArrowDown" });
+    expect(screen.getByRole("listbox")).toBeTruthy();
+  });
+
+  it("shows only the Actors group when nothing matches a place", () => {
+    renderCommandBar(undefined, [makePoint({ id: "1", name: "Zephyr Collective" })]);
+    fireEvent.change(screen.getByRole("combobox"), { target: { value: "Zephyr" } });
+    expect(screen.getByRole("group", { name: "Actors" })).toBeTruthy();
+    expect(screen.queryByRole("group", { name: "Places" })).toBeNull();
+  });
+
+  it("shows only the Places group when no actor matches", () => {
+    renderCommandBar(undefined, []);
+    fireEvent.change(screen.getByRole("combobox"), { target: { value: "Dallas" } });
+    expect(screen.getByRole("group", { name: "Places" })).toBeTruthy();
+    expect(screen.queryByRole("group", { name: "Actors" })).toBeNull();
   });
 });

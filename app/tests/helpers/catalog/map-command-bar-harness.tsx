@@ -43,13 +43,15 @@ export function makeCommandBarProps(
  *
  * @param handlers Overrides for the default spy callbacks.
  * @param points The actors the bar searches.
+ * @param overrides Further prop overrides (e.g. hiding the Types disclosure).
  * @returns The props the bar was rendered with, for assertion.
  */
 export function renderCommandBar(
   handlers?: Partial<MapCommandBarHandlers>,
   points?: MapPoint[],
+  overrides?: Partial<MapCommandBarProps>,
 ): MapCommandBarProps {
-  const props = makeCommandBarProps(handlers, points);
+  const props = { ...makeCommandBarProps(handlers, points), ...overrides };
   render(<MapCommandBar {...props} />);
   return props;
 }
