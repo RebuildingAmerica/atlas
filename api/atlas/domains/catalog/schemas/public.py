@@ -35,6 +35,8 @@ __all__ = [
     "IssueAreaResponse",
     "IssueSignalSummary",
     "IssueSignalsResponse",
+    "MapPoint",
+    "MapPointCollectionResponse",
     "PlaceCoverageResponse",
     "PlaceIdentityResponse",
     "PlaceProfileResponse",
@@ -170,6 +172,36 @@ class FacetOption(BaseModel):
 
     value: str
     count: int
+
+
+class MapPoint(BaseModel):
+    """One placed civic actor, reduced to what the map dot renders.
+
+    Deliberately tiny so thousands can be sent for a viewport and re-clustered
+    client-side without a round trip. ``trust_level`` mirrors the canonical,
+    never-overclaiming tiers so a dot's ring matches the profile it links to.
+    """
+
+    id: str
+    name: str
+    type: str
+    slug: str | None = None
+    lat: float
+    lng: float
+    issue_areas: list[str] = Field(default_factory=list)
+    trust_level: str = Field(
+        description="subject_verified | atlas_verified | corroborated | unverified.",
+    )
+
+
+class MapPointCollectionResponse(BaseModel):
+    """The placed actors inside a viewport, with an honest overflow signal."""
+
+    points: list[MapPoint] = Field(default_factory=list)
+    total: int = Field(description="Placed actors inside the viewport before the cap.")
+    capped: bool = Field(
+        description="True when the viewport held more actors than the limit returned.",
+    )
 
 
 class ConnectionReasonResponse(BaseModel):

@@ -3101,6 +3101,92 @@
         "title": "IssueSignalsResponse",
         "type": "object"
       },
+      "MapPoint": {
+        "description": "One placed civic actor, reduced to what the map dot renders.\n\nDeliberately tiny so thousands can be sent for a viewport and re-clustered\nclient-side without a round trip. ``trust_level`` mirrors the canonical,\nnever-overclaiming tiers so a dot's ring matches the profile it links to.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "issue_areas": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Issue Areas",
+            "type": "array"
+          },
+          "lat": {
+            "title": "Lat",
+            "type": "number"
+          },
+          "lng": {
+            "title": "Lng",
+            "type": "number"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "slug": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slug"
+          },
+          "trust_level": {
+            "description": "subject_verified | atlas_verified | corroborated | unverified.",
+            "title": "Trust Level",
+            "type": "string"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "type",
+          "lat",
+          "lng",
+          "trust_level"
+        ],
+        "title": "MapPoint",
+        "type": "object"
+      },
+      "MapPointCollectionResponse": {
+        "description": "The placed actors inside a viewport, with an honest overflow signal.",
+        "properties": {
+          "capped": {
+            "description": "True when the viewport held more actors than the limit returned.",
+            "title": "Capped",
+            "type": "boolean"
+          },
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/MapPoint"
+            },
+            "title": "Points",
+            "type": "array"
+          },
+          "total": {
+            "description": "Placed actors inside the viewport before the cap.",
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total",
+          "capped"
+        ],
+        "title": "MapPointCollectionResponse",
+        "type": "object"
+      },
       "OrgDiscoveryRunCollectionResponse": {
         "description": "Collection response for org discovery runs.",
         "properties": {
@@ -7391,6 +7477,226 @@
           }
         },
         "summary": "Resolve entity by slug",
+        "tags": [
+          "entities"
+        ]
+      }
+    },
+    "/api/entities/map": {
+      "get": {
+        "description": "Return placed civic actors inside a bounding box, filtered by the browse facets, as a tiny projection for the map.",
+        "operationId": "getEntitiesMap",
+        "parameters": [
+          {
+            "description": "Western edge of the viewport.",
+            "in": "query",
+            "name": "min_lng",
+            "required": true,
+            "schema": {
+              "description": "Western edge of the viewport.",
+              "title": "Min Lng",
+              "type": "number"
+            }
+          },
+          {
+            "description": "Southern edge of the viewport.",
+            "in": "query",
+            "name": "min_lat",
+            "required": true,
+            "schema": {
+              "description": "Southern edge of the viewport.",
+              "title": "Min Lat",
+              "type": "number"
+            }
+          },
+          {
+            "description": "Eastern edge of the viewport.",
+            "in": "query",
+            "name": "max_lng",
+            "required": true,
+            "schema": {
+              "description": "Eastern edge of the viewport.",
+              "title": "Max Lng",
+              "type": "number"
+            }
+          },
+          {
+            "description": "Northern edge of the viewport.",
+            "in": "query",
+            "name": "max_lat",
+            "required": true,
+            "schema": {
+              "description": "Northern edge of the viewport.",
+              "title": "Max Lat",
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Query"
+            }
+          },
+          {
+            "in": "query",
+            "name": "state",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "State"
+            }
+          },
+          {
+            "in": "query",
+            "name": "city",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "City"
+            }
+          },
+          {
+            "in": "query",
+            "name": "region",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Region"
+            }
+          },
+          {
+            "in": "query",
+            "name": "entity_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Entity Type"
+            }
+          },
+          {
+            "in": "query",
+            "name": "issue_area",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Issue Area"
+            }
+          },
+          {
+            "in": "query",
+            "name": "source_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Source Type"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 2000,
+              "maximum": 5000,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MapPointCollectionResponse"
+                }
+              }
+            },
+            "description": "A capped collection of placed actors for the requested viewport."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Map points in a viewport",
         "tags": [
           "entities"
         ]

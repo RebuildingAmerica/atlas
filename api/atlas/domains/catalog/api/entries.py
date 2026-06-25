@@ -13,7 +13,12 @@ from fastapi.responses import JSONResponse
 from atlas.domains.access.dependencies import require_org_actor_permission
 from atlas.domains.catalog.models.connections import compute_connections
 from atlas.domains.catalog.models.ownership import OwnershipCRUD
-from atlas.domains.catalog.schemas.public import EntityConnectionsResponse, FacetOption
+from atlas.domains.catalog.schemas.public import (
+    EntityConnectionsResponse,
+    FacetOption,
+    MapPoint,
+    MapPointCollectionResponse,
+)
 from atlas.domains.catalog.taxonomy import ALL_ISSUE_SLUGS
 from atlas.models import EntryCRUD, FlagCRUD, get_db_connection
 from atlas.platform.config import Settings, get_settings
@@ -147,6 +152,75 @@ async def list_entities(  # noqa: PLR0913
         total=total,
         next_cursor=next_cursor,
         facets=_facets_to_response(search_results["facets"]),
+    )
+
+
+@router.get(
+    "/map",
+    response_model=MapPointCollectionResponse,
+    summary="Map points in a viewport",
+    description="Return placed civic actors inside a bounding box, filtered by the browse facets, as a tiny projection for the map.",
+    operation_id="getEntitiesMap",
+    response_description="A capped collection of placed actors for the requested viewport.",
+    tags=["entities"],
+)
+async def get_entities_map(  # noqa: PLR0913
+    response: Response,
+    min_lng: float = Query(..., description="Western edge of the viewport."),
+    min_lat: float = Query(..., description="Southern edge of the viewport."),
+    max_lng: float = Query(..., description="Eastern edge of the viewport."),
+    max_lat: float = Query(..., description="Northern edge of the viewport."),
+    query: str | None = Query(None),
+    state: list[str] | None = Query(None),
+    city: list[str] | None = Query(None),
+    region: list[str] | None = Query(None),
+    entity_type: list[str] | None = Query(None),
+    issue_area: list[str] | None = Query(None),
+    source_type: list[str] | None = Query(None),
+    limit: int = Query(2000, ge=1, le=5000),
+    db: aiosqlite.Connection = Depends(get_db),
+) -> MapPointCollectionResponse:
+    """Resolve a viewport into placed actors using the browse facet filters.
+
+    Reuses the exact list-entities facet vocabulary so the map and the browse
+    list stay in lockstep, then keeps only the rows that carry coordinates inside
+    the bounding box. The payload is capped at ``limit``; when a viewport holds
+    more, ``capped`` is true so the experience can honestly say "zoom in to see
+    all" rather than silently dropping actors.
+    """
+    state = _normalize_multi_value_query(state)
+    city = _normalize_multi_value_query(city)
+    region = _normalize_multi_value_query(region)
+    entity_type = _normalize_multi_value_query(entity_type)
+    issue_area = _normalize_multi_value_query(issue_area)
+    source_type = _normalize_multi_value_query(source_type)
+    invalid_issue_areas = [value for value in issue_area or [] if value not in ALL_ISSUE_SLUGS]
+    if invalid_issue_areas:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid issue area(s): {', '.join(invalid_issue_areas)}",
+        )
+
+    result = await EntryCRUD.search_map_points(
+        db,
+        min_lng=min_lng,
+        min_lat=min_lat,
+        max_lng=max_lng,
+        max_lat=max_lat,
+        query=query,
+        states=state,
+        cities=city,
+        regions=region,
+        issue_areas=issue_area,
+        entry_types=entity_type,
+        source_types=source_type,
+        limit=limit,
+    )
+    apply_short_public_cache(response)
+    return MapPointCollectionResponse(
+        points=[MapPoint(**point) for point in result["points"]],
+        total=result["total"],
+        capped=result["capped"],
     )
 
 

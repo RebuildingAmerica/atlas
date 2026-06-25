@@ -966,6 +966,112 @@ class EntryCRUD:
         }
 
     @staticmethod
+    async def search_map_points(  # noqa: PLR0913
+        conn: aiosqlite.Connection,
+        *,
+        min_lng: float,
+        min_lat: float,
+        max_lng: float,
+        max_lat: float,
+        query: str | None = None,
+        states: builtins.list[str] | None = None,
+        cities: builtins.list[str] | None = None,
+        regions: builtins.list[str] | None = None,
+        issue_areas: builtins.list[str] | None = None,
+        entry_types: builtins.list[str] | None = None,
+        source_types: builtins.list[str] | None = None,
+        limit: int = 2000,
+    ) -> dict[str, Any]:
+        """Resolve a viewport's placed actors into a tiny map projection.
+
+        Reuses the exact browse facet filters via :meth:`_search_public_ids` so
+        the map and the browse list can never diverge, then keeps only the rows
+        that carry coordinates inside the requested bounding box. Each surviving
+        actor is reduced to the handful of fields the map renders — id, name,
+        type, slug, lat, lng, issue areas, and an honest trust level — so the
+        payload stays small enough to re-cluster client-side without a round
+        trip.
+
+        Parameters
+        ----------
+        conn : aiosqlite.Connection
+            Database connection.
+        min_lng, min_lat, max_lng, max_lat : float
+            The viewport bounding box. Only actors inside it are returned.
+        query : str | None, optional
+            Full-text query against name and description. Default is None.
+        states, cities, regions : builtins.list[str] | None, optional
+            Geographic filters. Default is None.
+        issue_areas, entry_types, source_types : builtins.list[str] | None, optional
+            Facet filters mirroring the browse vocabulary. Default is None.
+        limit : int, optional
+            Hard cap on returned points. Default is 2000.
+
+        Returns
+        -------
+        dict[str, Any]
+            ``points`` (the projection, capped at ``limit``), ``total`` (the true
+            count inside the viewport before capping), and ``capped`` (whether the
+            viewport overflowed the cap).
+        """
+        matched_ids = await EntryCRUD._search_public_ids(
+            conn,
+            query=query,
+            states=states,
+            cities=cities,
+            regions=regions,
+            issue_areas=issue_areas,
+            entry_types=entry_types,
+            source_types=source_types,
+        )
+        if not matched_ids:
+            return {"points": [], "total": 0, "capped": False}
+
+        placeholders = _make_placeholders(matched_ids)
+        cursor = await conn.execute(
+            f"""
+            SELECT id, name, type, slug, latitude, longitude, verified, claim_status
+            FROM entries
+            WHERE id IN ({placeholders})
+              AND latitude IS NOT NULL
+              AND longitude IS NOT NULL
+              AND latitude BETWEEN ? AND ?
+              AND longitude BETWEEN ? AND ?
+            ORDER BY verified DESC, name ASC
+            """,
+            [*matched_ids, min_lat, max_lat, min_lng, max_lng],
+        )
+        rows = await cursor.fetchall()
+        columns = [col[0] for col in cursor.description]
+        placed = [dict(zip(columns, row, strict=False)) for row in rows]
+
+        total = len(placed)
+        capped = total > limit
+        visible = placed[:limit]
+        visible_ids = [row["id"] for row in visible]
+        issue_map = await EntryCRUD.get_issue_areas_for_entries(conn, visible_ids)
+        source_map = await EntryCRUD.get_sources_for_entries(conn, visible_ids)
+
+        points = [
+            {
+                "id": row["id"],
+                "name": row["name"],
+                "type": row["type"],
+                "slug": row["slug"],
+                "lat": float(row["latitude"]),
+                "lng": float(row["longitude"]),
+                "issue_areas": issue_map.get(row["id"], []),
+                "trust_level": _map_trust_level(
+                    verified=bool(row["verified"]),
+                    claim_status=row.get("claim_status"),
+                    sources=source_map.get(row["id"], []),
+                ),
+            }
+            for row in visible
+        ]
+        return {"points": points, "total": total, "capped": capped}
+
+    @staticmethod
     async def _search_public_ids(  # noqa: PLR0913
         conn: aiosqlite.Connection,
         query: str | None = None,
@@ -1206,6 +1312,64 @@ def _row_to_entry(row: dict[str, Any]) -> EntryModel:
         last_confirmed_at=row.get("last_confirmed_at"),
         suppressed_source_ids=suppressed,
         preferred_contact_channel=row.get("preferred_contact_channel"),
+    )
+
+
+_MIN_CORROBORATING_SOURCES = 2
+
+
+def trust_tier(*, verified: bool, claim_status: str | None, independent_source_count: int) -> str:
+    """Resolve the honest, never-overclaiming trust tier for an actor.
+
+    The single source of truth for Atlas trust tiers, shared by the public record
+    builder and the map projection so a dot's ring can never claim more than the
+    profile it links to.
+
+    Parameters
+    ----------
+    verified : bool
+        Whether Atlas has verified the actor.
+    claim_status : str | None
+        The subject-claim lifecycle state; ``"verified"`` means the subject owns
+        and confirmed the profile.
+    independent_source_count : int
+        Distinct registrable source domains backing the actor.
+
+    Returns
+    -------
+    str
+        ``subject_verified``, ``atlas_verified``, ``corroborated``, or
+        ``unverified``.
+    """
+    if claim_status == "verified":
+        return "subject_verified"
+    if verified:
+        return "atlas_verified"
+    if independent_source_count >= _MIN_CORROBORATING_SOURCES:
+        return "corroborated"
+    return "unverified"
+
+
+def _map_trust_level(
+    *, verified: bool, claim_status: str | None, sources: list[dict[str, Any]]
+) -> str:
+    """Compute a map point's trust level from its linked sources.
+
+    Reuses the canonical registrable-domain parser so the corroboration count
+    matches the rest of the app exactly. Imported lazily to avoid a circular
+    import with the MCP data layer.
+    """
+    from atlas.platform.mcp.data import _registrable_domain
+
+    domains = {
+        domain
+        for source in sources
+        if (domain := _registrable_domain(source.get("url"))) is not None
+    }
+    return trust_tier(
+        verified=verified,
+        claim_status=claim_status,
+        independent_source_count=len(domains),
     )
 
 

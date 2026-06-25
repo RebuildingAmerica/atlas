@@ -9,6 +9,7 @@ from datetime import UTC, date, datetime
 from typing import TYPE_CHECKING, Any, TypedDict, Unpack
 from urllib.parse import urlparse
 
+from atlas.domains.catalog.models.entry import trust_tier
 from atlas.domains.catalog.place_profiles import PLACE_PROFILES
 from atlas.domains.catalog.schemas.public import (
     Address,
@@ -844,21 +845,13 @@ def _trust_inputs_from_sources(
     return len(domains), website_grounded, email_grounded
 
 
-_MIN_CORROBORATING_SOURCES = 2
-
-
 def _trust_level(*, entry: EntryModel, independent_source_count: int | None) -> str:
     """Honest trust tier; never overclaims for thinly-sourced auto entries."""
-    if entry.claim_status == "verified":
-        return "subject_verified"
-    if entry.verified:
-        return "atlas_verified"
-    if (
-        independent_source_count is not None
-        and independent_source_count >= _MIN_CORROBORATING_SOURCES
-    ):
-        return "corroborated"
-    return "unverified"
+    return trust_tier(
+        verified=entry.verified,
+        claim_status=entry.claim_status,
+        independent_source_count=independent_source_count or 0,
+    )
 
 
 def _entity_record(entry: EntryModel, context: EntityRecordContext) -> dict[str, Any]:
