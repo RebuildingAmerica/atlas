@@ -9,6 +9,7 @@
 import { ActorAvatar } from "@/domains/catalog/components/profiles/actor-avatar";
 import { ProfileIdentBar } from "@/domains/catalog/components/profiles/profile-ident-bar";
 import { formatProfileLocation } from "@/domains/catalog/components/profiles/detail/profile-detail-primitives";
+import { cn } from "@/lib/utils";
 import type { Entry } from "@/types";
 
 interface ProfileHeroProps {
@@ -44,7 +45,12 @@ export function ProfileHero({ entry, affiliation }: ProfileHeroProps) {
           {showAvatar ? (
             <ActorAvatar name={entry.name} type={avatarType} size="lg" photoUrl={entry.photo_url} />
           ) : null}
-          <div className="min-w-0 flex-1 space-y-2">
+          <div
+            className={cn(
+              "min-w-0 flex-1 space-y-2",
+              showAvatar ? null : "border-l-civic border-l-[3px] pl-5 sm:pl-6",
+            )}
+          >
             <h1
               id={`profile-name-${entry.id}`}
               className="type-editorial-display text-ink-strong"
