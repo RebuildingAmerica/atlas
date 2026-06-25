@@ -51,17 +51,35 @@ describe("HomePage", () => {
     expect(screen.getByText("Verify")).toBeInTheDocument();
     expect(screen.getByText("Every entry links back to public sources.")).toBeInTheDocument();
     expect(screen.queryByText(/Want to save your work\?/)).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /Go to your research/ })).not.toBeInTheDocument();
   });
 
-  it("renders the save-and-create-account prompt outside of local mode", () => {
+  it("renders the create-account prompt for anonymous visitors", () => {
     mocks.useAtlasSession.mockReturnValue({
-      data: { isLocal: false },
+      data: null,
       isLoading: false,
     });
     render(<HomePage />);
     expect(screen.getByText("Save")).toBeInTheDocument();
     expect(screen.getByText("Create a free account to save research.")).toBeInTheDocument();
     expect(screen.getByText(/Want to save your work\?/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Create a free account/ })).toHaveAttribute(
+      "href",
+      "/sign-up",
+    );
+    expect(screen.queryByRole("link", { name: /Go to your research/ })).not.toBeInTheDocument();
+  });
+
+  it("invites signed-in visitors to their research base", () => {
+    mocks.useAtlasSession.mockReturnValue({
+      data: { isLocal: false },
+      isLoading: false,
+    });
+    render(<HomePage />);
+    expect(screen.queryByText(/Want to save your work\?/)).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /Create a free account/ })).not.toBeInTheDocument();
+    const cta = screen.getByRole("link", { name: /Go to your research/ });
+    expect(cta).toHaveAttribute("href", "/home");
   });
 
   it("submits browse searches with a normal GET form", async () => {

@@ -92,6 +92,7 @@ function HomeHighlights({ isLocal }: { isLocal: boolean }) {
 export function HomePage() {
   const session = useAtlasSession();
   const localMode = session.data?.isLocal ?? false;
+  const isSignedIn = session.data !== null && session.data !== undefined && !localMode;
   const [query, setQuery] = useState("");
 
   return (
@@ -112,7 +113,16 @@ export function HomePage() {
 
         <HomeHighlights isLocal={localMode} />
 
-        {!localMode ? (
+        {isSignedIn ? (
+          <div className="mt-8 flex justify-center">
+            <Link
+              to="/home"
+              className="type-label-large bg-ink-strong text-surface hover:bg-ink inline-flex items-center justify-center rounded-full px-8 py-2.5 transition-colors"
+            >
+              Go to your research &rarr;
+            </Link>
+          </div>
+        ) : !localMode ? (
           <p className="type-body-medium text-ink-soft mt-6 text-center">
             Want to save your work?{" "}
             <Link to="/sign-up" className="text-accent type-label-medium hover:underline">
