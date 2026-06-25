@@ -5,6 +5,8 @@ import { render, screen, cleanup } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ListsSummarySection } from "@/domains/workspace/components/lists-summary-section";
 import type { SavedListSummary } from "@/domains/workspace/server/research-summary";
+import type { ResearchValueGate } from "@/domains/workspace/components/research-value-nudge";
+import type { SerializedResolvedCapabilities } from "@/domains/access/capabilities";
 
 vi.mock("@tanstack/react-router", () => ({
   Link: ({
@@ -22,6 +24,12 @@ vi.mock("@tanstack/react-router", () => ({
   ),
 }));
 
+vi.mock("@/domains/workspace/components/research-value-nudge", () => ({
+  ResearchValueNudge: ({ gate }: { gate: ResearchValueGate }) => (
+    <div data-testid="value-nudge" data-gate={JSON.stringify(gate)} />
+  ),
+}));
+
 describe("ListsSummarySection", () => {
   afterEach(() => {
     cleanup();
@@ -34,8 +42,21 @@ describe("ListsSummarySection", () => {
     ];
   }
 
+  const freeCapabilities: SerializedResolvedCapabilities = {
+    capabilities: [],
+    limits: {
+      research_runs_per_month: 2,
+      max_shortlists: 1,
+      max_shortlist_entries: 25,
+      max_api_keys: 0,
+      api_requests_per_day: 0,
+      public_api_requests_per_hour: 100,
+      max_members: 1,
+    },
+  };
+
   it("renders a card per list, the New list affordance, and the all-lists link", () => {
-    render(<ListsSummarySection lists={lists()} />);
+    render(<ListsSummarySection lists={lists()} capabilities={freeCapabilities} isLocal={false} />);
 
     const climate = screen.getByRole("link", { name: /Climate/ });
     expect(climate).toHaveAttribute("data-link-to", "/lists/$id");
@@ -53,8 +74,17 @@ describe("ListsSummarySection", () => {
     );
   });
 
+  it("passes an export gate keyed off the largest list to the value nudge", () => {
+    render(<ListsSummarySection lists={lists()} capabilities={freeCapabilities} isLocal={false} />);
+
+    expect(screen.getByTestId("value-nudge")).toHaveAttribute(
+      "data-gate",
+      JSON.stringify({ kind: "export", itemCount: 4 }),
+    );
+  });
+
   it("shows the empty state when the user has no lists", () => {
-    render(<ListsSummarySection lists={[]} />);
+    render(<ListsSummarySection lists={[]} capabilities={freeCapabilities} isLocal={false} />);
 
     expect(screen.getByText("You haven't built any lists yet.")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Start a list" })).toHaveAttribute(
@@ -62,5 +92,9 @@ describe("ListsSummarySection", () => {
       "/lists",
     );
     expect(screen.queryByRole("link", { name: /New list/ })).not.toBeInTheDocument();
+    expect(screen.getByTestId("value-nudge")).toHaveAttribute(
+      "data-gate",
+      JSON.stringify({ kind: "export", itemCount: 0 }),
+    );
   });
 });

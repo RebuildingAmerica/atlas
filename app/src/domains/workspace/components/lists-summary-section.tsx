@@ -7,11 +7,17 @@
  */
 import { Link } from "@tanstack/react-router";
 import { ArrowUpRight, Plus } from "lucide-react";
+import type { SerializedResolvedCapabilities } from "@/domains/access/capabilities";
 import type { SavedListSummary } from "../server/research-summary";
+import { ResearchValueNudge } from "./research-value-nudge";
 
 interface ListsSummarySectionProps {
   /** The user's saved lists from the research loader. */
   lists: SavedListSummary[];
+  /** The serialized capability/limit set from the session, or null when none. */
+  capabilities: SerializedResolvedCapabilities | null;
+  /** Whether the deployment is running in local (single-user) mode. */
+  isLocal: boolean;
 }
 
 interface ListCardProps {
@@ -48,7 +54,9 @@ function ListCard({ list }: ListCardProps) {
 /**
  * The home lists grid, server-default from the loader summary.
  */
-export function ListsSummarySection({ lists }: ListsSummarySectionProps) {
+export function ListsSummarySection({ lists, capabilities, isLocal }: ListsSummarySectionProps) {
+  const largestList = lists.reduce((max, list) => Math.max(max, list.itemCount), 0);
+
   return (
     <section className="space-y-4">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -83,6 +91,12 @@ export function ListsSummarySection({ lists }: ListsSummarySectionProps) {
           </Link>
         </div>
       )}
+
+      <ResearchValueNudge
+        capabilities={capabilities}
+        isLocal={isLocal}
+        gate={{ kind: "export", itemCount: largestList }}
+      />
     </section>
   );
 }

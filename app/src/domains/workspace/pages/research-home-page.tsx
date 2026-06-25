@@ -49,20 +49,28 @@ export function ResearchHomePage({ initialSummary }: ResearchHomePageProps) {
   const isLocal = session.data?.isLocal ?? false;
   const activeProducts = session.data?.workspace.activeProducts ?? [];
   const isFreeTier = activeProducts.length === 0;
-  const runsPerMonthLimit = session.data
-    ? session.data.workspace.resolvedCapabilities.limits.research_runs_per_month
-    : null;
+  const capabilities = session.data?.workspace.resolvedCapabilities ?? null;
+  const runsPerMonthLimit = capabilities ? capabilities.limits.research_runs_per_month : null;
 
   return (
     <div className="mx-auto max-w-4xl space-y-12 py-12">
       <ResearchHomeHero firstName={firstName} summary={summary} />
       <ActivitySummarySection activity={summary.activity} />
-      <ListsSummarySection lists={summary.lists} />
-      <FollowsSummarySection activity={summary.activity} />
+      <ListsSummarySection lists={summary.lists} capabilities={capabilities} isLocal={isLocal} />
+      <FollowsSummarySection
+        activity={summary.activity}
+        capabilities={capabilities}
+        isLocal={isLocal}
+      />
       <RecentSearchesSection
         runs={summary.recentRuns}
         runsThisMonth={summary.totals.runsThisMonth}
         runsPerMonthLimit={!isLocal && isFreeTier ? runsPerMonthLimit : null}
+        capabilities={capabilities}
+        isLocal={isLocal}
+        isFreeTier={isFreeTier}
+        savedActors={summary.totals.savedActors}
+        listCount={summary.totals.listCount}
       />
       <NextActionsSection summary={summary} />
     </div>

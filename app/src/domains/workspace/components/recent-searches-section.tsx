@@ -9,7 +9,9 @@
  */
 import { Link } from "@tanstack/react-router";
 import { ArrowUpRight } from "lucide-react";
+import type { SerializedResolvedCapabilities } from "@/domains/access/capabilities";
 import type { RecentRunSummary } from "../server/research-summary";
+import { ResearchValueNudge } from "./research-value-nudge";
 
 interface RecentSearchesSectionProps {
   /** The user's most recent discovery runs from the research loader. */
@@ -21,6 +23,16 @@ interface RecentSearchesSectionProps {
    * when no honest counter should be shown (paid plans, local mode).
    */
   runsPerMonthLimit: number | null;
+  /** The serialized capability/limit set from the session, or null when none. */
+  capabilities: SerializedResolvedCapabilities | null;
+  /** Whether the deployment is running in local (single-user) mode. */
+  isLocal: boolean;
+  /** Whether the user is on the free tier (no active paid products). */
+  isFreeTier: boolean;
+  /** Total actors saved across the user's lists. */
+  savedActors: number;
+  /** How many lists the user has created. */
+  listCount: number;
 }
 
 interface RecentRunCardProps {
@@ -55,6 +67,11 @@ export function RecentSearchesSection({
   runs,
   runsThisMonth,
   runsPerMonthLimit,
+  capabilities,
+  isLocal,
+  isFreeTier,
+  savedActors,
+  listCount,
 }: RecentSearchesSectionProps) {
   return (
     <section className="space-y-4">
@@ -90,6 +107,12 @@ export function RecentSearchesSection({
           ))}
         </div>
       )}
+
+      <ResearchValueNudge
+        capabilities={capabilities}
+        isLocal={isLocal}
+        gate={{ kind: "unlimited", isFreeTier, savedActors, listCount, runsThisMonth }}
+      />
     </section>
   );
 }

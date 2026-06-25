@@ -9,7 +9,9 @@
  */
 import { Link } from "@tanstack/react-router";
 import { ActorAvatar } from "@/domains/catalog/components/profiles/actor-avatar";
+import type { SerializedResolvedCapabilities } from "@/domains/access/capabilities";
 import type { ActivitySummary, FeedActivityItem } from "../server/research-summary";
+import { ResearchValueNudge } from "./research-value-nudge";
 
 /** A distinct followed actor surfaced in the home follows strip. */
 interface FollowedActor {
@@ -22,6 +24,10 @@ interface FollowedActor {
 interface FollowsSummarySectionProps {
   /** The derived activity summary from the research loader. */
   activity: ActivitySummary;
+  /** The serialized capability/limit set from the session, or null when none. */
+  capabilities: SerializedResolvedCapabilities | null;
+  /** Whether the deployment is running in local (single-user) mode. */
+  isLocal: boolean;
 }
 
 interface FollowedActorChipProps {
@@ -89,7 +95,11 @@ function FollowedActorChip({ actor }: FollowedActorChipProps) {
 /**
  * The home follows strip, server-default from the loader summary.
  */
-export function FollowsSummarySection({ activity }: FollowsSummarySectionProps) {
+export function FollowsSummarySection({
+  activity,
+  capabilities,
+  isLocal,
+}: FollowsSummarySectionProps) {
   const actors = distinctActors(activity.recentItems);
   const countLabel = activity.followedActorCount === 1 ? "actor" : "actors";
 
@@ -124,6 +134,12 @@ export function FollowsSummarySection({ activity }: FollowsSummarySectionProps) 
           </div>
         </div>
       )}
+
+      <ResearchValueNudge
+        capabilities={capabilities}
+        isLocal={isLocal}
+        gate={{ kind: "alerts", followedActorCount: activity.followedActorCount }}
+      />
     </section>
   );
 }

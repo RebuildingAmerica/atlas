@@ -8,6 +8,8 @@ import type {
   ActivitySummary,
   FeedActivityItem,
 } from "@/domains/workspace/server/research-summary";
+import type { ResearchValueGate } from "@/domains/workspace/components/research-value-nudge";
+import type { SerializedResolvedCapabilities } from "@/domains/access/capabilities";
 
 vi.mock("@tanstack/react-router", () => ({
   Link: ({
@@ -28,6 +30,12 @@ vi.mock("@tanstack/react-router", () => ({
 vi.mock("@/domains/catalog/components/profiles/actor-avatar", () => ({
   ActorAvatar: ({ name, type }: { name: string; type: string }) => (
     <span data-testid="actor-avatar" data-avatar-type={type} aria-label={name} />
+  ),
+}));
+
+vi.mock("@/domains/workspace/components/research-value-nudge", () => ({
+  ResearchValueNudge: ({ gate }: { gate: ResearchValueGate }) => (
+    <div data-testid="value-nudge" data-gate={JSON.stringify(gate)} />
   ),
 }));
 
@@ -63,8 +71,27 @@ describe("FollowsSummarySection", () => {
     };
   }
 
+  const freeCapabilities: SerializedResolvedCapabilities = {
+    capabilities: [],
+    limits: {
+      research_runs_per_month: 2,
+      max_shortlists: 1,
+      max_shortlist_entries: 25,
+      max_api_keys: 0,
+      api_requests_per_day: 0,
+      public_api_requests_per_hour: 100,
+      max_members: 1,
+    },
+  };
+
   it("renders distinct followed actors with avatars, linking only those with a slug", () => {
-    render(<FollowsSummarySection activity={populatedActivity()} />);
+    render(
+      <FollowsSummarySection
+        activity={populatedActivity()}
+        capabilities={freeCapabilities}
+        isLocal={false}
+      />,
+    );
 
     expect(screen.getByText("2 actors")).toBeInTheDocument();
     const avatars = screen.getAllByTestId("actor-avatar");
@@ -77,6 +104,10 @@ describe("FollowsSummarySection", () => {
     expect(acme).toHaveAttribute("data-link-params", JSON.stringify({ slug: "acme" }));
     expect(screen.queryByRole("link", { name: /Jane/ })).not.toBeInTheDocument();
     expect(screen.getByText("Jane")).toBeInTheDocument();
+    expect(screen.getByTestId("value-nudge")).toHaveAttribute(
+      "data-gate",
+      JSON.stringify({ kind: "alerts", followedActorCount: 2 }),
+    );
   });
 
   it("links a followed person with a slug to the people profile and uses singular copy", () => {
@@ -89,6 +120,8 @@ describe("FollowsSummarySection", () => {
             item({ entryId: "p1", entryName: "Ada", entrySlug: "ada", entryType: "person" }),
           ],
         }}
+        capabilities={freeCapabilities}
+        isLocal={false}
       />,
     );
 
@@ -102,6 +135,8 @@ describe("FollowsSummarySection", () => {
     render(
       <FollowsSummarySection
         activity={{ newSourcesThisWeek: 0, followedActorCount: 0, recentItems: [] }}
+        capabilities={freeCapabilities}
+        isLocal={false}
       />,
     );
 
@@ -109,6 +144,10 @@ describe("FollowsSummarySection", () => {
     expect(screen.getByRole("link", { name: "Browse profiles" })).toHaveAttribute(
       "data-link-to",
       "/profiles",
+    );
+    expect(screen.getByTestId("value-nudge")).toHaveAttribute(
+      "data-gate",
+      JSON.stringify({ kind: "alerts", followedActorCount: 0 }),
     );
   });
 });
