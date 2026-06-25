@@ -47,7 +47,7 @@ export function ProfileIdentBar({ entry }: ProfileIdentBarProps) {
       <nav aria-label="Catalog breadcrumb" className="font-mono text-[0.75rem] tracking-[0.06em]">
         <Link
           to="/profiles"
-          className="text-paper/70 hover:text-paper hover:border-paper border-b border-transparent pb-px transition-colors"
+          className="text-paper/70 hover:text-paper hover:border-paper focus-visible:ring-paper focus-visible:ring-offset-ink-strong rounded-sm border-b border-transparent pb-px transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
         >
           PROFILES
         </Link>
@@ -56,7 +56,7 @@ export function ProfileIdentBar({ entry }: ProfileIdentBarProps) {
         </span>
         <Link
           to={isOrg ? "/profiles/organizations" : "/profiles/people"}
-          className="text-paper/70 hover:text-paper hover:border-paper border-b border-transparent pb-px transition-colors"
+          className="text-paper/70 hover:text-paper hover:border-paper focus-visible:ring-paper focus-visible:ring-offset-ink-strong rounded-sm border-b border-transparent pb-px transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
         >
           {isOrg ? "ORGANIZATIONS" : "PEOPLE"}
         </Link>

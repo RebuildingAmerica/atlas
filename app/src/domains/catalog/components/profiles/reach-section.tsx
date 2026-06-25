@@ -30,7 +30,7 @@ function ContactValue({ value, href, grounded, external = false }: ContactValueP
     <a
       href={href}
       {...(external ? { target: "_blank", rel: "noreferrer" } : {})}
-      className="text-accent break-words hover:underline"
+      className="text-accent focus-visible:ring-civic rounded-sm break-words hover:underline focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
     >
       {value}
     </a>
@@ -92,7 +92,10 @@ export function ReachSection({
             icon={<Phone className="text-ink-muted h-4 w-4" />}
             label="Phone"
             value={
-              <a href={`tel:${phone}`} className="text-accent hover:underline">
+              <a
+                href={`tel:${phone}`}
+                className="text-accent focus-visible:ring-civic rounded-sm hover:underline focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+              >
                 {phone}
               </a>
             }

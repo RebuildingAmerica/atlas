@@ -83,7 +83,7 @@ export function PresenceSection({
             href={website}
             target="_blank"
             rel="noreferrer"
-            className="bg-surface-container-lowest hover:bg-surface-container-low flex items-center gap-3 rounded-2xl p-4 transition-colors"
+            className="bg-surface-container-lowest hover:bg-surface-container-low focus-visible:ring-civic flex items-center gap-3 rounded-2xl p-4 transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
           >
             <div className="bg-ink-strong flex h-8 w-8 shrink-0 items-center justify-center rounded-lg">
               <Globe className="h-4 w-4 text-white" />
@@ -112,7 +112,10 @@ export function PresenceSection({
                     <p className="type-label-small text-ink-muted">Not confirmed by a source</p>
                   </>
                 ) : (
-                  <a href={`mailto:${email}`} className="text-accent break-words hover:underline">
+                  <a
+                    href={`mailto:${email}`}
+                    className="text-accent focus-visible:ring-civic rounded-sm break-words hover:underline focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+                  >
                     {email}
                   </a>
                 )
@@ -124,7 +127,10 @@ export function PresenceSection({
               icon={<Phone className="text-ink-muted h-4 w-4" />}
               label="Phone"
               value={
-                <a href={`tel:${phone}`} className="text-accent hover:underline">
+                <a
+                  href={`tel:${phone}`}
+                  className="text-accent focus-visible:ring-civic rounded-sm hover:underline focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+                >
                   {phone}
                 </a>
               }
