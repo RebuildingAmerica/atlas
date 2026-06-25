@@ -37,6 +37,13 @@ briefs, shortlists, watchlists, trust metadata, and workflow bridges.
 Atlas will remain usable from other interfaces through MCP, agent
 skills, exports, and structured APIs.
 
+Atlas is both a product and a platform. Beyond the first-party app,
+other civic organizations should be able to stand up their own branded,
+source-linked directories and coalition maps on Atlas infrastructure,
+contributing verified records back into a shared commons. The platform
+layer must reinforce the core product and its trust standard, not outrun
+it.
+
 ## Product Pillars
 
 ### 1. System Of Record
@@ -149,6 +156,9 @@ Atlas should help them:
 - `Now` Strengthen source attribution and extraction-context quality across entry pages and downstream outputs
 - `Now` Define a stronger canonical actor-profile shape for people, organizations, and initiatives
 - `Now` Expand support for hard-to-find but public local signals, including social and community-source patterns where feasible
+- `Now` Persist relationships as a sourced edges table and resolve entity identity on stable keys such as EIN, FEC ID, and domain, so repeated mentions consolidate instead of duplicating
+- `Now` Move provenance to the claim level so each individual fact carries its own sources, confidence, and as-of date
+- `Now` Ship dedicated detail pages for initiative, campaign, and event entities instead of redirecting them to browse
 - `Next` Make profile data richer, including stronger summaries, issue focus, place context, contact surface, and last-seen signals
 - `Next` Model richer relationships between people, organizations, initiatives, and places
 - `Next` Track stronger freshness and staleness data at both entry and source levels
@@ -308,6 +318,31 @@ Atlas should help them:
 - `Next` Improve trust and qualification signals for partner and ecosystem research
 - `Later` Add more workflow bridges where those organizations already rely on adjacent systems
 
+### Track 10: Platform And White-Label
+
+Atlas should let other civic organizations build on its substrate without
+forcing Atlas to become their entire stack, and without diluting the
+shared trust commons.
+
+#### Branded directories
+
+- `Now` Let a workspace publish a branded, source-linked public directory or coalition map on Atlas infrastructure
+- `Now` Offer directory templates that seed a new tenant with the right issue, place, and taxonomy scope
+- `Next` Give tenants a bring-your-own-graph model: private, org-owned entities layered over the shared commons, with a clean public/private boundary
+- `Next` Support custom domains with verified ownership for tenant directories
+- `Next` Run tenant-scoped, trust-gated discovery against a tenant's own metered budget
+- `Later` Add cross-tenant federation so branded directories share verified records back into the commons
+
+#### Platform trust and governance
+
+- `Now` Keep every tenant page carrying per-claim provenance and a clear powered-by-Atlas trust footer
+- `Next` Give tenants confidence-gated publishing and their own moderation boundaries
+- `Later` Open federation only once confidence gating and provenance-stamped ingestion protect the commons from low-quality or agenda-driven data
+
+The platform layer is deliberately subordinate to the product layer. It
+must not outrun the product's trust maturity, and it must not become a
+generic enterprise CRM.
+
 ## How To Update This File
 
 When Atlas direction changes, update this file before or alongside other
@@ -326,3 +361,4 @@ When milestones move:
 - [Atlas Product Vision](./the-atlas-product.md)
 - [Atlas Motivation](./design/motivation.md)
 - [Atlas One-Page Strategy And Roadmap](./plans/2026-04-10-atlas-one-page-strategy-and-roadmap.md)
+- [Atlas Feature Inventory](./plans/2026-06-25-atlas-feature-inventory.md)

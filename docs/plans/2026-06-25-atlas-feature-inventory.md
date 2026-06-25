@@ -1,36 +1,28 @@
-# Atlas — Comprehensive Product Catalog & Development Plan
+# Atlas — Feature Inventory
 
-> **188 grounded feature / subproduct / workflow ideas across 16 lenses**, plus the sequencing layer that turns them into a product development lifecycle. Every idea is tied to Atlas's actual substrate (data model, discovery pipeline, multi-tenancy, MCP/API) and gated by the experience-first and trust-first principles. Drafted 2026-06-25.
+> An exhaustive, tagged inventory of **188 feature / subproduct / workflow ideas** across 16 lenses, grounded in Atlas's actual substrate (data model, discovery pipeline, multi-tenancy, MCP/API) and gated by the experience-first and trust-first principles. Drafted 2026-06-25.
 
----
+> **This is a tactical inventory, subordinate to [`docs/roadmap.md`](../roadmap.md).** The roadmap is the single source of truth for *direction and sequencing* — what we build next and why (its tracks and Now/Next/Later milestones, including the product-and-platform bet in Track 10). This document is the *menu* the roadmap draws from. If the two ever conflict, the roadmap wins.
 
-## Context — why this plan exists
+## What this is (and isn't)
 
-Rebuilding America (The Rebuilding America Project, rebuildingus.org) uses media and civic technology to strengthen American democracy by surfacing the people, organizations, and ideas rebuilding public life. **Atlas is the operational tip of that mission**: it finds civic actors across the country, traces every claim to public sources, and presents them as a searchable, trustable, explorable directory — "the source-linked Crunchbase layer for civic and political actors."
+The ask was an exhaustive set of features, subproducts, and workflows — useful for the people Atlas serves, including other nonprofits — to seed the product development lifecycle. This is that menu. Two framing decisions shaped it, and both now live in the roadmap as the canonical record:
 
-The ask was an **exhaustive product plan — 100+ features, subproducts, and workflows — useful for our potential customers, including other nonprofits**, to seed the product development lifecycle. Two framing decisions were locked before generation:
+1. **Product *and* platform.** Atlas is a trust-first research product (subscribers) *and* white-label infrastructure other orgs build their own branded civic directories on. "Other nonprofits as customers" = both users and tenants. → roadmap "What Atlas Is Becoming" + Track 10.
+2. **Lead segments**: local journalists & newsrooms, independent creators & researchers, national nonprofits & advocacy orgs; funders & foundations secondary. → roadmap "Primary Users".
 
-1. **Build both a product layer and a platform layer.** Atlas stays a trust-first research product that journalists, creators, and nonprofits subscribe to — *and* becomes infrastructure other orgs build their own branded civic directories, coalition maps, and issue datasets on (multi-tenant, white-label, API-first). This is what makes "other nonprofits as customers" real: they are both users *and* tenants.
-2. **Lead and weight toward three segments**: local journalists & newsrooms, independent creators & researchers, and national nonprofits & advocacy orgs. Funders & foundations are a deliberately *secondary* segment (included where natural, never the lead).
+Every item is gated by the same question: *what can the end user now SEE, TRUST, FEEL, or DO that they couldn't before?* Complexity is a cost, never an achievement; trust is the thesis.
 
-This document is the **master catalog plus a triage layer**. The catalog is intentionally over-complete (188 > 100) so nothing is lost; the *Sequencing* and *Flagship* sections are how you avoid trying to build all of it at once. Every entry was generated against the real codebase, so feasibility tags and "what it builds on" are grounded, not aspirational.
+## How to read the inventory
 
-**The gate every item must pass (non-negotiable):** *What can the end user now SEE, TRUST, FEEL, or DO that they couldn't before?* Complexity is a cost, never an achievement. Trust is the entire thesis — wrong, stale, or unsourced data shown confidently is the worst outcome, so provenance and confidence are first-class, user-facing concerns throughout.
+Each item is tagged **`layer · horizon · feasibility`** and *segments*.
 
----
-
-## How to read the catalog
-
-Each item is tagged: **`layer · horizon · feasibility`** and *segments*.
-
-- **layer** — `product` (end-user app surface) · `platform` (white-label / API / tenant infrastructure) · `infra` (data/pipeline plumbing, justified only by the experience it unlocks) · `gtm` (go-to-market / sustainability).
-- **horizon** — `now` (buildable on today's stack soon) · `next` (needs moderate new infra) · `later` (ambitious; depends on earlier waves).
+- **layer** — `product` (end-user app) · `platform` (white-label / API / tenant infra) · `infra` (data/pipeline plumbing, justified only by the experience it unlocks) · `gtm` (go-to-market / sustainability).
+- **horizon** — `now` · `next` · `later`. These map directly onto the roadmap's `Now` / `Next` / `Later` status legend; the roadmap, not this file, decides actual sequencing.
 - **feasibility** — `low` (days) · `medium` (weeks) · `high` (a quarter+).
 - **segments** — `journalists` · `creators` · `nonprofits` · `funders` · `all`.
 
-The 16 lenses (A–P) are organizing buckets, not build order. **Build order lives in *Sequencing* below.** Full per-feature "experience" and "builds-on-this-code" annotations for all 188 exist in the generation artifact and should seed the individual feature specs during the PDLC.
-
----
+The 16 lenses (A–P) are organizing buckets, not build order. Full per-feature "experience" and "builds-on-this-code" annotations are preserved in the generation artifact and should seed individual feature specs.
 
 ## Flagship subproducts — the 8 big bets worth branding & resourcing
 
@@ -47,65 +39,9 @@ These are the named products the catalog rolls up into. Resource these; treat in
 
 ---
 
-## Sequencing — four PDLC waves
+## Sequencing, themes, risks & metrics → the roadmap
 
-### Wave 0 — Foundations & Stop-the-Bleeding · *now (0–3 months)*
-**Theme:** Make the data structurally trustworthy and structurally complete — per-claim provenance, persisted sourced relationships, stable identity, the missing entity pages, and the one export service every other feature presumes.
-**Why now:** Confirmed against the codebase — connections are computed live (no edges table), provenance lives per-source-row not per-claim (no claims table), there's no identity resolution on stable keys, initiative/campaign/event entities have no profile routes, and there's no export endpoint despite a `workspace.export` capability. Until these exist, every trust claim Atlas makes is unverifiable at the sentence level, silently duplicated, or leads to a dead-end page — exactly the trust-first failure mode the project most fears. None of this is "back-end work": each item is the precondition for something the user can SEE (a real initiative page, a citation, a non-duplicated org) and TRUST (the exact passage proving a sentence).
-**Representative features:** Claim Ledger (#148), Receipts (#25), Typed Relationship Edges + Provenance Graph (#15, #152), Identity Resolver (#146), Registry Spine (#145), Initiative & Campaign Detail Pages (#13), Provenance Export Engine (#183), Coverage Grid (#141), Corroboration Score (#147), Triage Desk + Provenance Ledger (#153, #154), Honest States Kit (#187), Relevance Rank (#178).
-
-### Wave 1 — Now: The Trust-First Research Product · *now (3–6 months)*
-**Theme:** Turn the substrate into a research product a journalist, creator, or nonprofit subscribes to — a run that produces a source-linked brief, trust made visible on every claim, a dossier you can call someone with, and a first run that delivers value in 60 seconds.
-**Why now:** Wave 0 makes data trustworthy; Wave 1 makes the trust legible and the research fast — the moment a user *feels* the product. The lead segments share one job-to-be-done: "find me a defensible, reachable, source-backed civic actor, fast." First-Run and Honest-States work are non-negotiable guardrails: the differentiated surfaces only matter if a brand-new user reaches one before a blank screen intimidates them.
-**Representative features:** The Brief (#2), Research Goal Runs + Live Research Console (#1, #11), Interview-Prep Dossier + Five-by-Five Local Voice Finder (#51, #49), Corroboration Meter + Freshness Watermark (#26, #27), Cite This + Footnote Engine (#28, #84), Verified vs. Found + Fact-Check Mode (#29, #33), Connection Receipts (#14), First Run in 60 Seconds (#177), Landscape Brief + Field Gap Radar (#61, #62), Verified Discount Programs + Research Pass Variants (#167, #168), Place + Issue Atlas Pages (#165), Map for Everyone + Field Mode (#179, #180).
-
-### Wave 2 — Next: Monitoring, Collaboration & the Platform MVP · *next (6–12 months)*
-**Theme:** Make Atlas a standing relationship, not a one-shot lookup — monitor what changes, work it as a team, traverse the graph, and let other orgs build their own branded directories on the substrate. This is where the product layer and the platform layer split and both mature.
-**Why now:** Once research is trustworthy (W0) and fast (W1), the next leap is durability and leverage. Monitoring turns a brief into a beat and surfaces decay, not just growth. Collaboration turns a bag of names into a team workflow — the nonprofit and newsroom buying unit is a team. The white-label MVP makes the platform thesis real, so the network compounds. The graph explorer and typed-edge views finally pay off the persisted edges from Wave 0.
-**Representative features:** Watch + Since Last Time (#37, #38), Weekly Field Briefing + Significance Gate (#39, #40), Confidence-Drift & Source-Decay alerts (#46, #162), Graph Explorer + Org Charts + Entity Timeline (#18, #16, #17), Place Pages + Issue-Ecosystem Pages (#19, #20), Research Projects + Threaded Comments + Assignments (#95, #97, #98), Stakeholder Share Links + Citation Bundle (#103, #100), Atlas Sites + Tenant Admin + Bring-Your-Own-Graph + Per-Tenant Discovery (#106, #112, #110, #111), Custom Domains + Tenant Analytics (#113, #114), Contradiction Flags + This Is Wrong + Dispute Threads (#30, #31, #158), Slack/Teams App + Feeds + Provenance-Carrying Tool Results (#125, #120, #119), Sensitivity Tiers + Right-to-Be-Forgotten + Editorial Roles (#155, #156, #157).
-
-### Wave 3 — Later / Moonshots: The Self-Updating Civic Commons · *later (12+ months)*
-**Theme:** Atlas becomes a continuously-fresh, federated, portable trust layer for civic data — state-of-the-field reports that stay current on their own, a money-flow map sourced from registries, a network of branded directories sharing back into one commons, and provenance you can verify off-platform.
-**Why now:** These bets only become *safe* once provenance is per-claim (W0), trust is legible (W1), monitoring exists (W2), and the platform has tenants (W2). The most autonomous loops (agentic gap-deepening, the auto-updating Field State of Play) are the highest trust risk, which is precisely why they come last — gated behind the Sourced-Only Generation Guard and the contradiction/decay machinery so they can never fluently bluff. Money-flow and influence views ship only on a fully sourced registry spine with honest confidence, never as a black-box power score.
-**Representative features:** Field State of Play (#48), Gap-Driven Deepening + Sourced-Only Generation Guard (#9, #184), Provenance Drift Watch (#12), Funder–Grantee Money-Flow Map + Influence/Centrality (#23, #24), Cross-Tenant Federation + Open Civic Data Commons (#116, #137), Provenance Passport + Citable DOI Snapshots (#36, #94), Branded Civic Directory Platform + Funder Atlas + Editor's Standing Brief (#176, #81, #60), Coverage Bounties + Contributor Reputation (#134, #133), Minor Guardrails + Civic Ethics Board (#163, #164), Atlas Agent Protocol Pack (#129), Live Signal Intake + Priority Frontier + Saturation Sense (#150, #142, #143).
-
----
-
-## Cross-cutting themes (the through-lines)
-
-- **Source-linking everywhere.** No claim, row, export, API payload, or generated sentence leaves Atlas without its source URL, publication, date, and the verbatim passage that proves it. Provenance is a property of the data, not a feature of one screen.
-- **Trust legibility over a single confidence number.** Always separate registry-verified from web-discovered from self-asserted; count distinct publishers, not raw rows; show staleness and contradictions openly instead of silently picking one value.
-- **Honesty about gaps.** Every surface states what it doesn't know — coverage banners, "we couldn't find" notes, honest empty/loading/degraded states — so a blank never implies nothing exists.
-- **Experience-first restraint.** Every infra item (edges table, identity resolver, registry spine) is justified only by the user-visible thing it unlocks. A simpler path to the same experience always wins.
-- **Sourced-only generation.** Every word of generated text is constrained to spans backed by sources, carries inline citations, and visibly refuses or hedges where no source supports it.
-- **Change as a first-class object.** The graph is temporal, not a snapshot — new actors, sources, edges, gained/lost corroboration, and decaying freshness are all logged, diffable, and pushable to followers.
-- **Safety for real, named people.** Sensitivity tiers, anti-harvest gating, right-to-be-forgotten, and non-overridable guardrails for minors and private individuals are baked into discovery and display.
-- **Two-layer commons.** A clean public/private split (shared trust-compounding graph + private org-owned entities) underpins both product and platform, so contribution flows one way and sovereignty is never violated.
-- **Meet users where they work.** The app is one surface, not the only one — MCP, agent skills, feeds, embeds, Slack/Teams, CRMs, and exports carry the same source-linked trust standard out to existing tools.
-
-## Top risks
-
-- **Trust failure (existential).** A confidently-shown claim about a named person is wrong/stale/unsourced and gets republished. The moat *is* trust; one viral error erases it. Mitigated by per-claim provenance, corroboration/freshness meters, contradiction flags, source-decay watch.
-- **Ethical/safety harm to real people.** Discovery or the API exposes contact details/locations of at-risk organizers, or surfaces a minor/private individual. Requires sensitivity tiers, anti-harvest shield, right-to-be-forgotten, and hard guardrails — easy to under-prioritize against shiny features.
-- **Scope creep across 188 items and 8 subproducts.** Serving four segments *and* a platform simultaneously fragments the team. The wave sequencing and experience-first restraint are the only defense; the platform layer must not outrun the product layer's trust maturity.
-- **Data quality / duplication & identity collisions.** Without the Identity Resolver and Registry Spine, one org appears as three near-duplicate cards and corroboration is gamed by press-release reposts — quietly destroying the decision-grade promise.
-- **Cold-start / coverage problem.** Thin or stale coverage in a user's exact place+issue produces a blank that feels broken. Coverage banners, the priority frontier, bounties, and contribution loops must outrun expectations.
-- **Financial sustainability for a nonprofit running paid LLM/search pipelines.** Autonomous re-discovery can blow the API budget; without the Spend Governor, cost ledger, and a real mix of subscriptions/passes/underwriting/licensing, unit economics don't close.
-- **Platform trust dilution & federation poisoning.** White-label tenants and federation can push low-quality or agenda-driven data into the commons. Confidence-gated publishing, tenant moderation boundaries, and provenance-stamped ingestion are required before federation opens.
-- **Generative bluffing / over-automation.** Briefs, Q&A, and agentic deepening can produce fluent, plausible, unsourced prose at scale. The Sourced-Only Generation Guard must gate every generated surface; the most autonomous loops are sequenced last.
-
-## North-star metrics (proof the experience works)
-
-- **Sourced-claim coverage** — share of displayed claims carrying ≥1 resolvable source with a verbatim passage (target ~100%), and the share backed by 2+ independent publishers.
-- **Time-to-first-defensible-brief** — median minutes from sign-up to opening a finished, source-linked brief about a place+issue the user cares about.
-- **Cited-in-the-wild rate** — external citations, embeds, OG-card shares, and Cite-This exports that backlink to Atlas (the truest moat signal — trusted enough to put your name behind in print).
-- **Freshness health** — median/p90 age of the newest backing source across displayed claims, and % of profiles past their freshness SLA.
-- **Active research relationships** — weekly active Watches and recurring digests actually opened, plus Projects with 2+ collaborators active in 30 days.
-- **Coverage-gap closure velocity** — previously-empty place×issue×source-type cells that crossed from gap to populated per period, weighted by salience.
-- **Correction-loop health** — median time from a "This Is Wrong" / RTBF / contradiction flag to disposition, and accepted-vs-rejected contribution ratio.
-- **Platform graph contribution** — active white-label tenants and verified entities/sources federated back into the shared commons per period.
-
----
+Direction and sequencing live in **[`docs/roadmap.md`](../roadmap.md)** — its tracks, the Now/Next/Later milestones, the platform Track 10, and the roadmap rules. To avoid a second source of truth, this inventory deliberately does **not** restate a sequencing plan, risk register, or metric set; use the horizon tags above to place items within the roadmap's status legend.
 
 ## The catalog — 188 ideas across 16 lenses
 
@@ -363,27 +299,15 @@ The completeness critic flagged these under-covered angles (most are now address
 - **Election & legislative-calendar timing** — no calendar-aware surfacing tied to upcoming races, sessions, or filing deadlines, despite the civic mission. → #186
 - **Graceful degradation & honest empty/loading/error states** — empty-state components are auth-specific and scattered; sparse profiles, failed runs, and degraded providers have no designed honest fallback. → #187
 - **Trust-building social proof & shareability** — only a bare `twitter:card`; no generated OG image, source-count-rich share card, or "who relies on Atlas" surface. → #188, #166
-- **Saved-state portability & continuity** — no resume/restore of an interrupted research run or browse session, and no cross-device continuity for the core research loop. *(Still unowned — candidate for a Wave 1/2 spec.)*
+- **Saved-state portability & continuity** — no resume/restore of an interrupted research run or browse session, and no cross-device continuity for the core research loop. *(Still unowned — candidate for a near-term spec.)*
 
 ---
 
-## Verification & moving into the PDLC
+## How to use this inventory
 
-This is a planning artifact, so "verification" means validating the plan and operationalizing it — not running tests.
+1. **Direction first.** Decide *what's next* from [`docs/roadmap.md`](../roadmap.md), then pull the concrete items that serve that milestone from the inventory above.
+2. **Validate foundations against the code before building.** The blocking foundations this inventory surfaced — connections computed live with no edges table (`api/atlas/domains/catalog/models/connections.py`), provenance stored per-source-row rather than per-claim (`api/atlas/models/database.py`), no identity resolution on stable keys, initiative/campaign/event entities with no detail routes, and a `workspace.export` capability with no endpoint — align with the civic-knowledge-graph redesign (`docs/design/2026-06-23-discovery-platform-redesign.md`). Confirm them before writing specs.
+3. **Write specs experience-first.** Each spec opens with "a user doing X can now SEE/TRUST/FEEL/DO Y" and names the substrate it builds on. Apply the trust-first check: does anything show a claim about a named person without provenance?
+4. **Suggested first slice (tactical):** The Brief (#2) + Receipts (#25) + Corroboration Meter (#26) + Initiative/Campaign pages (#13) + the Provenance Export Engine (#183), riding on the Claim Ledger (#148) and Identity Resolver (#146). It makes a defensible, source-linked deliverable real end-to-end before any platform investment.
 
-**1. The document lives here.** This catalog is a maintainer-facing planning doc (kept in the maintainer/internal docs section per our consumer-vs-maintainer separation). Cross-link it from `docs/roadmap.md` rather than duplicating — it complements the existing 9-track roadmap by giving it a concrete, sequenced backlog.
-
-**2. Validate against the source code before building (Wave 0 first).** The Wave 0 claims about missing infrastructure were generated against the codebase but should be confirmed before specs are written. Quick checks:
-- Connections computed live, no edges table → `api/atlas/domains/catalog/models/connections.py` (confirm no persisted edges).
-- No per-claim provenance → `api/atlas/models/database.py` (confirm `entry_sources` is the finest grain; no `claims` table).
-- Initiative/campaign/event have no detail routes → `app/src/routes/` + the `/entries/{id}` redirect logic.
-- `workspace.export` capability exists but no export endpoint → `api/atlas/domains/access/capabilities.py` vs. the HTTP router.
-- These align with the already-scoped civic-knowledge-graph redesign (`docs/design/2026-06-23-discovery-platform-redesign.md`) — Wave 0 *is* that redesign's "stop-the-bleeding + spine," reframed by user experience.
-
-**3. Turn the top of each wave into specs.** For each chosen feature, write a one-page spec that opens with the experience-first gate ("a user doing X can now SEE/TRUST/FEEL/DO Y") and names the substrate it builds on (the per-feature "experience" + "builds-on" annotations for all 188 are preserved in the generation artifact and should be pasted in as the spec seed). Apply the trust-first check: does anything here show a claim about a named person without provenance?
-
-**4. Recommended first build slice (highest leverage, lowest regret):** The Brief (#2) + Receipts (#25) + Corroboration Meter (#26) + Initiative/Campaign pages (#13) + the Provenance Export Engine (#183), riding on Wave 0's Claim Ledger (#148) and Identity Resolver (#146). This single slice makes a defensible, source-linked deliverable real end-to-end and proves the moat to the three lead segments before any platform/white-label investment.
-
-**5. Validate the experience itself.** For each shipped feature, confirm the north-star metric it moves (e.g., sourced-claim coverage for Receipts, time-to-first-defensible-brief for The Brief) and dogfood it on a real place+issue a journalist or nonprofit actually cares about — the experience is the verification.
-
-> **Note on scope:** 188 ideas is the *menu*, not the commitment. The single biggest risk in this plan is trying to serve four segments and a platform at once. Hold the line on the waves: the platform layer (Atlas for X) must not outrun the product layer's trust maturity.
+> **Scope discipline:** 188 ideas is the menu, not the commitment. The biggest risk is trying to serve four segments and a platform at once — the roadmap holds that line, and the platform layer must not outrun the product layer's trust maturity.
