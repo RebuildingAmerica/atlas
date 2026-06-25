@@ -58,11 +58,16 @@ function shouldShowOrganizationTab(session: AtlasSessionPayload): boolean {
  * @param session - The current Atlas session payload.
  */
 function buildWorkspaceTabs(session: AtlasSessionPayload | null | undefined): WorkspaceTabConfig[] {
-  const tabs: WorkspaceTabConfig[] = [{ label: "Discovery", to: "/discovery" }];
-
   if (!session || session.isLocal) {
-    return tabs;
+    return [{ label: "Discovery", to: "/discovery" }];
   }
+
+  const tabs: WorkspaceTabConfig[] = [
+    { label: "Home", to: "/home" },
+    { label: "Discovery", to: "/discovery" },
+    { label: "Lists", to: "/lists" },
+    { label: "Activity", to: "/feed" },
+  ];
 
   if (shouldShowOrganizationTab(session)) {
     tabs.push({ label: "Organization", to: "/organization" });

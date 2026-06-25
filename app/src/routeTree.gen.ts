@@ -22,6 +22,7 @@ import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as ApiSplatRouteImport } from './routes/api/$'
 import { Route as WorkspaceOrganizationRouteImport } from './routes/_workspace/organization'
 import { Route as WorkspaceListsRouteImport } from './routes/_workspace/lists'
+import { Route as WorkspaceHomeRouteImport } from './routes/_workspace/home'
 import { Route as WorkspaceFeedRouteImport } from './routes/_workspace/feed'
 import { Route as WorkspaceDiscoveryRouteImport } from './routes/_workspace/discovery'
 import { Route as WorkspaceCheckoutCompleteRouteImport } from './routes/_workspace/checkout-complete'
@@ -121,6 +122,11 @@ const WorkspaceOrganizationRoute = WorkspaceOrganizationRouteImport.update({
 const WorkspaceListsRoute = WorkspaceListsRouteImport.update({
   id: '/lists',
   path: '/lists',
+  getParentRoute: () => WorkspaceRoute,
+} as any)
+const WorkspaceHomeRoute = WorkspaceHomeRouteImport.update({
+  id: '/home',
+  path: '/home',
   getParentRoute: () => WorkspaceRoute,
 } as any)
 const WorkspaceFeedRoute = WorkspaceFeedRouteImport.update({
@@ -348,6 +354,7 @@ export interface FileRoutesByFullPath {
   '/checkout-complete': typeof WorkspaceCheckoutCompleteRoute
   '/discovery': typeof WorkspaceDiscoveryRoute
   '/feed': typeof WorkspaceFeedRoute
+  '/home': typeof WorkspaceHomeRoute
   '/lists': typeof WorkspaceListsRouteWithChildren
   '/organization': typeof WorkspaceOrganizationRouteWithChildren
   '/api/$': typeof ApiSplatRoute
@@ -398,6 +405,7 @@ export interface FileRoutesByTo {
   '/checkout-complete': typeof WorkspaceCheckoutCompleteRoute
   '/discovery': typeof WorkspaceDiscoveryRoute
   '/feed': typeof WorkspaceFeedRoute
+  '/home': typeof WorkspaceHomeRoute
   '/lists': typeof WorkspaceListsRouteWithChildren
   '/api/$': typeof ApiSplatRoute
   '/api/health': typeof ApiHealthRoute
@@ -448,6 +456,7 @@ export interface FileRoutesById {
   '/_workspace/checkout-complete': typeof WorkspaceCheckoutCompleteRoute
   '/_workspace/discovery': typeof WorkspaceDiscoveryRoute
   '/_workspace/feed': typeof WorkspaceFeedRoute
+  '/_workspace/home': typeof WorkspaceHomeRoute
   '/_workspace/lists': typeof WorkspaceListsRouteWithChildren
   '/_workspace/organization': typeof WorkspaceOrganizationRouteWithChildren
   '/api/$': typeof ApiSplatRoute
@@ -501,6 +510,7 @@ export interface FileRouteTypes {
     | '/checkout-complete'
     | '/discovery'
     | '/feed'
+    | '/home'
     | '/lists'
     | '/organization'
     | '/api/$'
@@ -551,6 +561,7 @@ export interface FileRouteTypes {
     | '/checkout-complete'
     | '/discovery'
     | '/feed'
+    | '/home'
     | '/lists'
     | '/api/$'
     | '/api/health'
@@ -600,6 +611,7 @@ export interface FileRouteTypes {
     | '/_workspace/checkout-complete'
     | '/_workspace/discovery'
     | '/_workspace/feed'
+    | '/_workspace/home'
     | '/_workspace/lists'
     | '/_workspace/organization'
     | '/api/$'
@@ -741,6 +753,13 @@ declare module '@tanstack/react-router' {
       path: '/lists'
       fullPath: '/lists'
       preLoaderRoute: typeof WorkspaceListsRouteImport
+      parentRoute: typeof WorkspaceRoute
+    }
+    '/_workspace/home': {
+      id: '/_workspace/home'
+      path: '/home'
+      fullPath: '/home'
+      preLoaderRoute: typeof WorkspaceHomeRouteImport
       parentRoute: typeof WorkspaceRoute
     }
     '/_workspace/feed': {
@@ -1130,6 +1149,7 @@ interface WorkspaceRouteChildren {
   WorkspaceCheckoutCompleteRoute: typeof WorkspaceCheckoutCompleteRoute
   WorkspaceDiscoveryRoute: typeof WorkspaceDiscoveryRoute
   WorkspaceFeedRoute: typeof WorkspaceFeedRoute
+  WorkspaceHomeRoute: typeof WorkspaceHomeRoute
   WorkspaceListsRoute: typeof WorkspaceListsRouteWithChildren
   WorkspaceOrganizationRoute: typeof WorkspaceOrganizationRouteWithChildren
   WorkspaceAdminDiscountsRoute: typeof WorkspaceAdminDiscountsRoute
@@ -1141,6 +1161,7 @@ const WorkspaceRouteChildren: WorkspaceRouteChildren = {
   WorkspaceCheckoutCompleteRoute: WorkspaceCheckoutCompleteRoute,
   WorkspaceDiscoveryRoute: WorkspaceDiscoveryRoute,
   WorkspaceFeedRoute: WorkspaceFeedRoute,
+  WorkspaceHomeRoute: WorkspaceHomeRoute,
   WorkspaceListsRoute: WorkspaceListsRouteWithChildren,
   WorkspaceOrganizationRoute: WorkspaceOrganizationRouteWithChildren,
   WorkspaceAdminDiscountsRoute: WorkspaceAdminDiscountsRoute,

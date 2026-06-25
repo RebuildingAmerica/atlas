@@ -1,7 +1,6 @@
 // @vitest-environment jsdom
-import "@testing-library/jest-dom/vitest";
-import { render, screen, cleanup } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import { captureRouterRedirect } from "@/../tests/fixtures/routes/redirect-capture";
 
 vi.mock("@tanstack/react-router", async () => {
   const harness = await import("@/../tests/helpers/router-harness");
@@ -9,20 +8,26 @@ vi.mock("@tanstack/react-router", async () => {
 });
 
 describe("routes/dashboard", () => {
-  afterEach(() => {
-    cleanup();
-  });
-
-  it("disables SSR and renders the placeholder dashboard copy", async () => {
+  it("redirects the legacy dashboard path to /home", async () => {
     const routeModule = await import("@/routes/dashboard");
     const { asRouteStub } = await import("@/../tests/helpers/router-harness");
     const Route = asRouteStub(routeModule.Route);
 
-    expect(Route.options.ssr).toBe(false);
+    if (!Route.options.beforeLoad) throw new Error("Expected beforeLoad");
+    const beforeLoad = Route.options.beforeLoad;
+    const captured = await captureRouterRedirect(() => beforeLoad());
+    expect(captured.isRedirect).toBe(true);
+    expect(captured.options.to).toBe("/home");
+  });
+
+  it("renders nothing for the route component (it is a redirect-only route)", async () => {
+    const routeModule = await import("@/routes/dashboard");
+    const { asRouteStub } = await import("@/../tests/helpers/router-harness");
+    const Route = asRouteStub(routeModule.Route);
+
     const Component = Route.options.component;
     if (!Component) throw new Error("Expected Route.options.component");
-    render(<Component />);
-    expect(screen.getByRole("heading", { name: /Dashboard/ })).toBeInTheDocument();
-    expect(screen.getByText(/Dashboard implementation pending/)).toBeInTheDocument();
+    const callable = Component as unknown as () => unknown;
+    expect(callable()).toBe(null);
   });
 });

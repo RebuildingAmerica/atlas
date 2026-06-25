@@ -17,7 +17,10 @@ interface WorkspaceNavProps {
   tabs?: WorkspaceTabConfig[];
 }
 
-const defaultTabs: WorkspaceTabConfig[] = [{ label: "Discovery", to: "/discovery" }];
+const defaultTabs: WorkspaceTabConfig[] = [
+  { label: "Home", to: "/home" },
+  { label: "Discovery", to: "/discovery" },
+];
 
 function WorkspaceNavTab({ label, to }: WorkspaceTabConfig) {
   return (

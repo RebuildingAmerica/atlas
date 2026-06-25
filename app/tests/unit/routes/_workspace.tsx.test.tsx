@@ -140,6 +140,33 @@ describe("routes/_workspace layout", () => {
     expect(screen.getByTestId("identity-slot")).toBeEmptyDOMElement();
   });
 
+  it("surfaces saved-work tabs without Organization for a signed-in session that does not need it", async () => {
+    const { useAtlasSession } = await import("@/domains/access");
+    vi.mocked(useAtlasSession).mockReturnValue({
+      data: {
+        isLocal: false,
+        user: { id: "u1", name: "Op", email: "ops@acme.test" },
+        workspace: {
+          activeOrganization: { id: "org_1", name: "Acme", workspaceType: "individual" },
+          memberships: [{ id: "org_1", name: "Acme" }],
+          onboarding: { needsWorkspace: false, hasPendingInvitations: false },
+          capabilities: { canSwitchOrganizations: false },
+        },
+      },
+    } as unknown as ReturnType<typeof useAtlasSession>);
+
+    const routeModule = await import("@/routes/_workspace");
+    const { asRouteStub } = await import("@/../tests/helpers/router-harness");
+    const Route = asRouteStub(routeModule.Route);
+    const Component = Route.options.component;
+    if (!Component) throw new Error("Expected Route.options.component");
+    render(<Component />);
+    const tabs = JSON.parse(screen.getByTestId("workspace-layout").dataset.tabs ?? "[]") as {
+      label: string;
+    }[];
+    expect(tabs.map((t) => t.label)).toEqual(["Home", "Discovery", "Lists", "Activity", "Account"]);
+  });
+
   it("falls back to the discovery-only tab list when the session is null", async () => {
     const { useAtlasSession } = await import("@/domains/access");
     vi.mocked(useAtlasSession).mockReturnValue({
@@ -240,7 +267,14 @@ describe("routes/_workspace layout", () => {
     const tabs = JSON.parse(screen.getByTestId("workspace-layout").dataset.tabs ?? "[]") as {
       label: string;
     }[];
-    expect(tabs.map((t) => t.label)).toEqual(["Discovery", "Organization", "Account"]);
+    expect(tabs.map((t) => t.label)).toEqual([
+      "Home",
+      "Discovery",
+      "Lists",
+      "Activity",
+      "Organization",
+      "Account",
+    ]);
     expect(screen.getByText("Operator")).toBeInTheDocument();
     expect(screen.getByText("Enterprise SSO")).toBeInTheDocument();
 
