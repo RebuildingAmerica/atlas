@@ -22,7 +22,7 @@ interface OrgProfilePageProps {
   initialConnections?: ConnectionNetwork;
 }
 
-const PANEL = "border border-border-taupe border-t-0 bg-surface-container-lowest px-6 py-6 sm:px-8";
+const PANEL = "border border-border-taupe bg-surface-container-lowest px-6 py-6 sm:px-8";
 
 const PANEL_HEADER = "font-mono text-xs font-semibold uppercase tracking-[0.14em] text-ink-soft";
 
@@ -78,7 +78,7 @@ export function OrgProfilePage({ entry, initialConnections }: OrgProfilePageProp
     <div className="bg-page-bg pb-12">
       <ProfileJsonLd entry={entry} affiliatedPeople={affiliatedPeople} />
 
-      <div className="mx-auto max-w-[60rem] px-4 py-6 sm:px-6">
+      <div className="mx-auto max-w-[60rem] space-y-3 px-4 py-6 sm:px-6">
         <ProfileHero entry={entry} />
 
         <SignatureQuote sources={entry.sources ?? []} />
