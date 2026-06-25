@@ -1,3 +1,4 @@
+import type { BrowseSearchState } from "@/domains/catalog/search-state";
 import type { MapBounds, MapPointParams } from "@/types";
 
 /** The continental-US bounding box used across the map tests. */
@@ -7,6 +8,28 @@ export const CONUS_BOUNDS: MapBounds = {
   maxLng: -66.5,
   maxLat: 49.5,
 };
+
+/**
+ * Build a resolved browse filter state, overriding only the facets a test cares
+ * about. Mirrors the shape `buildBrowseSearch` returns so map filter wiring can
+ * be exercised without round-tripping through the URL schema.
+ */
+export function makeBrowseSearchState(
+  overrides: Partial<BrowseSearchState> = {},
+): BrowseSearchState {
+  return {
+    query: undefined,
+    view: "map",
+    states: [],
+    cities: [],
+    regions: [],
+    issue_areas: [],
+    entry_types: [],
+    source_types: [],
+    offset: 0,
+    ...overrides,
+  };
+}
 
 /**
  * A bounding box with sub-grid noise on every edge, used to prove the query key
