@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { FALLBACK_ISSUE_COLOR, issueColor } from "@/domains/catalog/map/issue-colors";
 import { api } from "@/lib/api";
 import type { Entry } from "@/types";
 import { CITY_COORDS } from "./city-coords";
@@ -20,17 +21,6 @@ interface Stats {
   issueAreas: number;
 }
 
-const ISSUE_COLORS: Record<string, string> = {
-  housing: "#c2956a",
-  labor: "#82aa8c",
-  climate: "#64a0be",
-  democracy: "#be786e",
-  education: "#dcb464",
-  health: "#8cb4a0",
-};
-
-const FALLBACK_COLOR = "#a89880";
-
 const VIEWBOX_W = 360;
 const VIEWBOX_H = 220;
 
@@ -38,12 +28,6 @@ function project(lat: number, lon: number): { x: number; y: number } {
   const x = 18 + ((lon - -124.7) / (-66.9 - -124.7)) * (VIEWBOX_W - 36);
   const y = 10 + ((49.4 - lat) / (49.4 - 24.5)) * (VIEWBOX_H - 20);
   return { x, y };
-}
-
-function issueColor(issueAreaId: string): string {
-  const [prefix] = issueAreaId.split("-");
-  if (!prefix) return FALLBACK_COLOR;
-  return ISSUE_COLORS[prefix.toLowerCase()] ?? FALLBACK_COLOR;
 }
 
 function buildDots(entries: Entry[]): DotActor[] {
@@ -57,7 +41,10 @@ function buildDots(entries: Entry[]): DotActor[] {
       name: entry.name,
       issues: entry.issue_areas,
       city: key,
-      color: entry.issue_areas[0] !== undefined ? issueColor(entry.issue_areas[0]) : FALLBACK_COLOR,
+      color:
+        entry.issue_areas[0] !== undefined
+          ? issueColor(entry.issue_areas[0])
+          : FALLBACK_ISSUE_COLOR,
       ...project(coords.lat, coords.lon),
     });
   }
