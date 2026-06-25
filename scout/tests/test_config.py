@@ -127,6 +127,17 @@ def test_standard_config_dir_on_linux_without_xdg_falls_back_to_dot_config(
     assert result == tmp_path / ".config" / APP_DIR_NAME
 
 
+def test_standard_config_dir_on_darwin_uses_application_support(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setattr("atlas_scout.config.sys.platform", "darwin")
+    monkeypatch.setattr(Path, "home", classmethod(lambda _cls: tmp_path))
+
+    result = _standard_config_dir()
+
+    assert result == tmp_path / "Library" / "Application Support" / APP_DIR_NAME
+
+
 def test_standard_data_dir_on_darwin_uses_application_support(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
