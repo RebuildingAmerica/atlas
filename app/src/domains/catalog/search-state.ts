@@ -14,6 +14,18 @@ export const browseSearchSchema = z.object({
 
 export type BrowseRouteSearch = z.infer<typeof browseSearchSchema>;
 
+/**
+ * The map route's search: every browse filter, plus the viewport (`z/lat/lng`)
+ * so a shared `/map` link restores both the filters and the camera position.
+ */
+export const mapSearchSchema = browseSearchSchema.extend({
+  z: z.coerce.number().optional(),
+  lat: z.coerce.number().optional(),
+  lng: z.coerce.number().optional(),
+});
+
+export type MapRouteSearch = z.infer<typeof mapSearchSchema>;
+
 export interface BrowseSearchState {
   query?: string;
   view: "map" | "grid" | "list";

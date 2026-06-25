@@ -2,8 +2,10 @@ import "maplibre-gl/dist/maplibre-gl.css";
 
 import { useMemo } from "react";
 import Map from "react-map-gl/maplibre";
+import type { MapEvent, ViewStateChangeEvent } from "react-map-gl/maplibre";
 import type { LngLatBoundsLike } from "maplibre-gl";
 import { getMapStyleUrl } from "@/domains/catalog/map/map-config";
+import type { MapView } from "@/domains/catalog/map/map-viewport";
 
 /**
  * The continental US framing the map opens on.
@@ -27,6 +29,15 @@ const MAX_MAP_ZOOM = 16;
 interface ActorMapSurfaceProps {
   /** Environment override for the basemap style URL; defaults to Vite's env. */
   styleUrlEnv?: Parameters<typeof getMapStyleUrl>[0];
+  /**
+   * A restored camera to open at — a center and zoom from a shared URL. When
+   * omitted the map fits the continental-US bounds instead.
+   */
+  initialView?: MapView;
+  /** Called once the basemap has finished loading, with the map event. */
+  onLoad?: (event: MapEvent) => void;
+  /** Called after a pan or zoom settles, with the view-state change event. */
+  onMoveEnd?: (event: ViewStateChangeEvent) => void;
   /** Optional dot markers, clusters, and chrome rendered over the basemap. */
   children?: React.ReactNode;
 }
@@ -41,17 +52,27 @@ interface ActorMapSurfaceProps {
  * continuous and inviting in the instant before tiles arrive, rather than
  * flashing the browser's default white.
  */
-export function ActorMapSurface({ styleUrlEnv, children }: ActorMapSurfaceProps) {
+export function ActorMapSurface({
+  styleUrlEnv,
+  initialView,
+  onLoad,
+  onMoveEnd,
+  children,
+}: ActorMapSurfaceProps) {
   const mapStyle = useMemo(() => getMapStyleUrl(styleUrlEnv), [styleUrlEnv]);
+  const initialViewState = initialView
+    ? {
+        longitude: initialView.center.lng,
+        latitude: initialView.center.lat,
+        zoom: initialView.zoom,
+      }
+    : { bounds: CONUS_BOUNDS, fitBoundsOptions: { padding: CONUS_FIT_PADDING } };
 
   return (
     <div className="bg-page-bg absolute inset-0">
       <Map
         mapStyle={mapStyle}
-        initialViewState={{
-          bounds: CONUS_BOUNDS,
-          fitBoundsOptions: { padding: CONUS_FIT_PADDING },
-        }}
+        initialViewState={initialViewState}
         minZoom={MIN_MAP_ZOOM}
         maxZoom={MAX_MAP_ZOOM}
         dragRotate={false}
@@ -59,6 +80,8 @@ export function ActorMapSurface({ styleUrlEnv, children }: ActorMapSurfaceProps)
         touchPitch={false}
         maxPitch={0}
         attributionControl={false}
+        onLoad={onLoad}
+        onMoveEnd={onMoveEnd}
         style={{ position: "absolute", inset: 0 }}
         aria-label="Map of civic actors across the United States"
       >

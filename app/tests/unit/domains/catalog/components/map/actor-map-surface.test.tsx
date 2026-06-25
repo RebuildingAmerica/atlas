@@ -39,7 +39,7 @@ describe("ActorMapSurface", () => {
       [-125, 24],
       [-66.5, 49.5],
     ]);
-    expect(props?.initialViewState.fitBoundsOptions.padding).toBe(24);
+    expect(props?.initialViewState.fitBoundsOptions?.padding).toBe(24);
     // Rotation and pitch are off so the nation always reads like a printed atlas.
     expect(props?.dragRotate).toBe(false);
     expect(props?.pitchWithRotate).toBe(false);
@@ -65,5 +65,26 @@ describe("ActorMapSurface", () => {
       </ActorMapSurface>,
     );
     expect(screen.getByTestId("overlay-chrome")).toBeTruthy();
+  });
+
+  it("opens at a restored center and zoom when one is supplied", () => {
+    render(
+      <ActorMapSurface
+        styleUrlEnv={{}}
+        initialView={{ center: { lng: -96.8, lat: 32.78 }, zoom: 9 }}
+      />,
+    );
+    expect(mapCapture.props?.initialViewState.longitude).toBe(-96.8);
+    expect(mapCapture.props?.initialViewState.latitude).toBe(32.78);
+    expect(mapCapture.props?.initialViewState.zoom).toBe(9);
+    expect(mapCapture.props?.initialViewState.bounds).toBeUndefined();
+  });
+
+  it("forwards the load and move-end handlers to the map", () => {
+    const onLoad = vi.fn();
+    const onMoveEnd = vi.fn();
+    render(<ActorMapSurface styleUrlEnv={{}} onLoad={onLoad} onMoveEnd={onMoveEnd} />);
+    expect(mapCapture.props?.onLoad).toBe(onLoad);
+    expect(mapCapture.props?.onMoveEnd).toBe(onMoveEnd);
   });
 });
