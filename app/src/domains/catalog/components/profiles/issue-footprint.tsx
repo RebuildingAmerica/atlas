@@ -20,7 +20,26 @@ export function IssueFootprint({
 }: IssueFootprintProps) {
   const grouped = groupIssueAreasByDomain(issueAreas);
 
-  if (grouped.size === 0) return null;
+  if (issueAreas.length === 0) return null;
+
+  if (grouped.size === 0) {
+    return (
+      <div className="space-y-3">
+        {showLabel ? <p className="type-label-medium text-ink-muted">Issue footprint</p> : null}
+
+        <div className="flex flex-wrap gap-2">
+          {issueAreas.map((slug) => (
+            <span
+              key={slug}
+              className="type-label-medium bg-accent-soft text-accent-ink inline-block rounded-full px-3 py-1 font-semibold"
+            >
+              {issueAreaLabels[slug] ?? humanize(slug)}
+            </span>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-3">

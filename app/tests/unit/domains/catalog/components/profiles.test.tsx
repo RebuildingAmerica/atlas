@@ -72,9 +72,21 @@ describe("IssueFootprint", () => {
     expect(screen.getByText("Housing Affordability")).toBeInTheDocument();
   });
 
-  it("ignores unknown slugs", () => {
-    const { container } = render(<IssueFootprint issueAreas={["unknown_slug"]} />);
-    expect(container.innerHTML).toBe("");
+  it("renders a flat fallback list when slugs map to no taxonomy domain", () => {
+    render(
+      <IssueFootprint
+        issueAreas={["unknown_slug"]}
+        issueAreaLabels={{ unknown_slug: "Unknown Slug" }}
+      />,
+    );
+    expect(screen.getByText("Issue footprint")).toBeInTheDocument();
+    expect(screen.getByText("Unknown Slug")).toBeInTheDocument();
+  });
+
+  it("humanizes unmapped slugs in the fallback list and can suppress the label", () => {
+    render(<IssueFootprint issueAreas={["another_unknown_slug"]} showLabel={false} />);
+    expect(screen.queryByText("Issue footprint")).not.toBeInTheDocument();
+    expect(screen.getByText("Another Unknown Slug")).toBeInTheDocument();
   });
 });
 
