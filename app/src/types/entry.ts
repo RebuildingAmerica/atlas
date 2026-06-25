@@ -204,3 +204,56 @@ export interface EntryFilterParams {
   limit?: number;
   offset?: number;
 }
+
+/**
+ * A single placed civic actor, reduced to exactly what a map dot renders.
+ *
+ * Deliberately tiny so thousands can be sent for a viewport and re-clustered
+ * client-side without a round trip. The `trust_level` mirrors the canonical,
+ * never-overclaiming tiers so a dot's ring matches the profile it links to.
+ */
+export interface MapPoint {
+  id: string;
+  name: string;
+  type: EntryType;
+  /** Canonical profile slug, or null when the actor has none yet. */
+  slug: string | null;
+  lat: number;
+  lng: number;
+  issue_areas: string[];
+  trust_level: TrustLevel;
+}
+
+/** The placed actors inside a viewport, with an honest overflow signal. */
+export interface MapPointCollection {
+  points: MapPoint[];
+  /** Placed actors inside the viewport before the cap. */
+  total: number;
+  /** True when the viewport held more actors than the returned limit. */
+  capped: boolean;
+}
+
+/** A geographic bounding box for a map viewport query. */
+export interface MapBounds {
+  minLng: number;
+  minLat: number;
+  maxLng: number;
+  maxLat: number;
+}
+
+/**
+ * Viewport map query: the browse facet filters plus the bounding box and an
+ * optional hard cap, mirroring the `/api/entities/map` contract exactly so the
+ * map and the browse list never diverge.
+ */
+export interface MapPointParams {
+  bounds: MapBounds;
+  query?: string;
+  states?: string[];
+  cities?: string[];
+  regions?: string[];
+  issue_areas?: string[];
+  entry_types?: EntryType[];
+  source_types?: SourceType[];
+  limit?: number;
+}

@@ -13,7 +13,12 @@ export type {
   FacetOption,
   EntryListResponse,
   EntryFilterParams,
+  MapPoint,
+  MapPointCollection,
+  MapBounds,
+  MapPointParams,
   PaginationMeta,
+  TrustLevel,
 } from "./entry";
 export type { Source, SourceType, ExtractionMethod, SourceListResponse } from "./source";
 export type {

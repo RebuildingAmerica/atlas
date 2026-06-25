@@ -5,6 +5,7 @@ interface ImportMetaEnv {
   readonly ATLAS_DOCS_URL?: string;
   readonly ATLAS_DEPLOY_MODE?: string;
   readonly ATLAS_PUBLIC_URL?: string;
+  readonly ATLAS_MAP_STYLE_URL?: string;
 }
 
 declare module "*.css" {

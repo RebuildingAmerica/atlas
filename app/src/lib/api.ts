@@ -1,10 +1,13 @@
 import {
+  getEntitiesMap,
   getEntity as getEntityRecord,
   listEntities,
   listIssueAreas,
   type EntityDetailResponse,
   type EntityResponse,
+  type GetEntitiesMapParams,
   type ListEntitiesParams,
+  type MapPoint as MapPointResponse,
   type SourceResponse,
 } from "@/lib/generated/atlas";
 import { atlasFetch } from "@/lib/orval/fetcher";
@@ -17,6 +20,9 @@ import type {
   Entry,
   EntryFilterParams,
   EntryListResponse,
+  MapPoint,
+  MapPointCollection,
+  MapPointParams,
   Source,
   TaxonomyResponse,
 } from "@/types";
@@ -135,6 +141,48 @@ async function getEntry(entryId: string): Promise<Entry> {
   return mapEntityDetail(await getEntityRecord(entryId));
 }
 
+/** Translate the internal viewport query into the generated map-endpoint params. */
+export function buildMapPointParams(params: MapPointParams): GetEntitiesMapParams {
+  return {
+    min_lng: params.bounds.minLng,
+    min_lat: params.bounds.minLat,
+    max_lng: params.bounds.maxLng,
+    max_lat: params.bounds.maxLat,
+    query: params.query,
+    state: params.states,
+    city: params.cities,
+    region: params.regions,
+    issue_area: params.issue_areas,
+    entity_type: params.entry_types,
+    source_type: params.source_types,
+    limit: params.limit,
+  };
+}
+
+/** Map one wire map point onto the internal, strongly-typed shape. */
+function mapMapPoint(point: MapPointResponse): MapPoint {
+  return {
+    id: point.id,
+    name: point.name,
+    type: point.type as MapPoint["type"],
+    slug: point.slug ?? null,
+    lat: point.lat,
+    lng: point.lng,
+    issue_areas: point.issue_areas ?? [],
+    trust_level: point.trust_level as MapPoint["trust_level"],
+  };
+}
+
+/** Fetch the placed civic actors inside a viewport, filtered by the browse facets. */
+async function mapPoints(params: MapPointParams): Promise<MapPointCollection> {
+  const response = await getEntitiesMap(buildMapPointParams(params));
+  return {
+    points: response.points?.map(mapMapPoint) ?? [],
+    total: response.total,
+    capped: response.capped,
+  };
+}
+
 async function listTaxonomy(): Promise<TaxonomyResponse> {
   const issues: NonNullable<Awaited<ReturnType<typeof listIssueAreas>>["items"]> = [];
   let cursor: string | undefined;
@@ -225,6 +273,7 @@ export const api = {
     get: getEntry,
     getBySlug: getEntryBySlug,
     getConnections,
+    mapPoints,
   },
   discovery: {
     list(): Promise<DiscoveryRunListResponse> {

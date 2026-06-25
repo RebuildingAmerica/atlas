@@ -1,11 +1,25 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type * as GeneratedAtlas from "@/lib/generated/atlas";
 
 vi.mock("@/lib/orval/fetcher", () => ({
   atlasFetch: vi.fn(),
 }));
 
-import { api, buildEntityListParams } from "@/lib/api";
+const mapMocks = vi.hoisted(() => ({
+  getEntitiesMap: vi.fn(),
+}));
+
+vi.mock("@/lib/generated/atlas", async () => {
+  const actual = await vi.importActual<typeof GeneratedAtlas>("@/lib/generated/atlas");
+  return {
+    ...actual,
+    getEntitiesMap: mapMocks.getEntitiesMap,
+  };
+});
+
+import { api, buildEntityListParams, buildMapPointParams } from "@/lib/api";
 import { atlasFetch } from "@/lib/orval/fetcher";
+import { CONUS_BOUNDS } from "../../../fixtures/catalog/map";
 
 describe("buildEntityListParams", () => {
   it("maps the legacy browse filter shape onto the generated entity list params", () => {
@@ -46,6 +60,147 @@ describe("buildEntityListParams", () => {
       limit: undefined,
       cursor: undefined,
     });
+  });
+});
+
+describe("buildMapPointParams", () => {
+  it("maps the viewport query onto the generated map-endpoint params", () => {
+    expect(
+      buildMapPointParams({
+        bounds: CONUS_BOUNDS,
+        query: "housing",
+        states: ["MO", "KS"],
+        cities: ["Kansas City"],
+        regions: ["Midwest"],
+        issue_areas: ["housing_affordability"],
+        entry_types: ["organization"],
+        source_types: ["news_article"],
+        limit: 1500,
+      }),
+    ).toEqual({
+      min_lng: -125,
+      min_lat: 24,
+      max_lng: -66.5,
+      max_lat: 49.5,
+      query: "housing",
+      state: ["MO", "KS"],
+      city: ["Kansas City"],
+      region: ["Midwest"],
+      issue_area: ["housing_affordability"],
+      entity_type: ["organization"],
+      source_type: ["news_article"],
+      limit: 1500,
+    });
+  });
+
+  it("leaves the facet filters undefined when only a bounding box is given", () => {
+    expect(buildMapPointParams({ bounds: CONUS_BOUNDS })).toEqual({
+      min_lng: -125,
+      min_lat: 24,
+      max_lng: -66.5,
+      max_lat: 49.5,
+      query: undefined,
+      state: undefined,
+      city: undefined,
+      region: undefined,
+      issue_area: undefined,
+      entity_type: undefined,
+      source_type: undefined,
+      limit: undefined,
+    });
+  });
+});
+
+describe("api.entries.mapPoints", () => {
+  beforeEach(() => {
+    mapMocks.getEntitiesMap.mockReset();
+  });
+
+  it("requests the viewport and maps every placed actor onto the internal shape", async () => {
+    mapMocks.getEntitiesMap.mockResolvedValueOnce({
+      points: [
+        {
+          id: "ent_1",
+          name: "Prairie Housing Trust",
+          type: "organization",
+          slug: "prairie-housing-trust-1",
+          lat: 39.1,
+          lng: -94.6,
+          issue_areas: ["housing_affordability"],
+          trust_level: "corroborated",
+        },
+      ],
+      total: 1,
+      capped: false,
+    });
+
+    const result = await api.entries.mapPoints({
+      bounds: CONUS_BOUNDS,
+      issue_areas: ["housing_affordability"],
+    });
+
+    expect(mapMocks.getEntitiesMap).toHaveBeenCalledWith(
+      expect.objectContaining({
+        min_lng: -125,
+        max_lat: 49.5,
+        issue_area: ["housing_affordability"],
+      }),
+    );
+    expect(result).toEqual({
+      points: [
+        {
+          id: "ent_1",
+          name: "Prairie Housing Trust",
+          type: "organization",
+          slug: "prairie-housing-trust-1",
+          lat: 39.1,
+          lng: -94.6,
+          issue_areas: ["housing_affordability"],
+          trust_level: "corroborated",
+        },
+      ],
+      total: 1,
+      capped: false,
+    });
+  });
+
+  it("defaults the slug to null and issue areas to an empty list when the API omits them", async () => {
+    mapMocks.getEntitiesMap.mockResolvedValueOnce({
+      points: [
+        {
+          id: "ent_2",
+          name: "Jane Organizer",
+          type: "person",
+          slug: null,
+          lat: 30.3,
+          lng: -97.7,
+          trust_level: "unverified",
+        },
+      ],
+      total: 1,
+      capped: false,
+    });
+
+    const result = await api.entries.mapPoints({ bounds: CONUS_BOUNDS });
+
+    expect(result.points[0]).toEqual({
+      id: "ent_2",
+      name: "Jane Organizer",
+      type: "person",
+      slug: null,
+      lat: 30.3,
+      lng: -97.7,
+      issue_areas: [],
+      trust_level: "unverified",
+    });
+  });
+
+  it("returns an empty collection when the viewport carries no points field", async () => {
+    mapMocks.getEntitiesMap.mockResolvedValueOnce({ total: 0, capped: false });
+
+    const result = await api.entries.mapPoints({ bounds: CONUS_BOUNDS });
+
+    expect(result).toEqual({ points: [], total: 0, capped: false });
   });
 });
 
