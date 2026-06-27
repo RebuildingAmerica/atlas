@@ -8,6 +8,7 @@ with sensible defaults. Supports dev, staging, and production environments.
 import logging
 from pathlib import Path
 from typing import Annotated, Literal
+from urllib.parse import urlsplit, urlunsplit
 
 from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
@@ -15,6 +16,27 @@ from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 logger = logging.getLogger(__name__)
 
 API_ENV_FILE = Path(__file__).resolve().parents[1] / ".env"
+
+
+def protected_resource_metadata_url(resource_url: str) -> str:
+    """Return the RFC 9728 metadata URL for a protected resource.
+
+    Parameters
+    ----------
+    resource_url:
+        Absolute resource URL configured as a JWT audience.
+
+    Returns
+    -------
+    str
+        Absolute protected-resource metadata URL.
+    """
+    parsed = urlsplit(resource_url.rstrip("/"))
+    metadata_path = "/.well-known/oauth-protected-resource"
+    resource_path = parsed.path.rstrip("/")
+    if resource_path:
+        metadata_path = f"{metadata_path}{resource_path}"
+    return urlunsplit((parsed.scheme, parsed.netloc, metadata_path, "", ""))
 
 
 class Settings(BaseSettings):
@@ -37,7 +59,7 @@ class Settings(BaseSettings):
     """Optional search API key (e.g., SerpAPI, Brave Search)."""
 
     # CORS
-    cors_origins: list[str] = ["http://localhost:5173"]
+    cors_origins: list[str] = ["https://atlas.localhost:1355"]
     """Allowed CORS origins for app access."""
 
     # Logging
@@ -239,7 +261,7 @@ class Settings(BaseSettings):
         """
         if not self.auth_jwt_resource_url:
             return ""
-        return f"{self.auth_jwt_resource_url.rstrip('/')}/.well-known/oauth-protected-resource"
+        return protected_resource_metadata_url(self.auth_jwt_resource_url)
 
 
 def get_settings() -> Settings:

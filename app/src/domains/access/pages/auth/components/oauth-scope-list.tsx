@@ -3,8 +3,8 @@ const SCOPE_LABELS: Record<string, { title: string; description: string }> = {
   profile: { title: "Profile", description: "Your name and avatar" },
   email: { title: "Email address", description: "Your verified email" },
   offline_access: { title: "Persistent access", description: "Maintain access between sessions" },
-  "discovery:read": { title: "View discoveries", description: "Read discovery runs and results" },
-  "discovery:write": { title: "Manage discoveries", description: "Create and run discoveries" },
+  "discovery:read": { title: "View research", description: "Read research requests and results" },
+  "discovery:write": { title: "Manage research", description: "Start research requests" },
   "entities:write": { title: "Edit entities", description: "Create and update catalog entries" },
 };
 

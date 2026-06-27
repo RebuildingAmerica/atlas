@@ -14,6 +14,6 @@ describe("OrganizationEmptyState", () => {
   it("renders the empty state message", () => {
     render(<OrganizationEmptyState />);
     expect(screen.getByText(/No active workspace/i)).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Discovery/i })).toHaveAttribute("href", "/discovery");
+    expect(screen.getByRole("link", { name: /Research/i })).toHaveAttribute("href", "/discovery");
   });
 });

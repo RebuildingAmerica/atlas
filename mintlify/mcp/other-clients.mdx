@@ -18,14 +18,17 @@ Atlas implements standard OAuth 2.1. Most clients that support remote MCP server
 | Endpoint | URL |
 |----------|-----|
 | OIDC discovery | `https://atlas.rebuildingus.org/api/auth/.well-known/openid-configuration` |
+| Authorization server metadata | `https://atlas.rebuildingus.org/.well-known/oauth-authorization-server` |
+| Protected resource metadata | `https://atlas.rebuildingus.org/.well-known/oauth-protected-resource/mcp` |
 | Dynamic client registration | `https://atlas.rebuildingus.org/api/auth/oauth2/register` |
-| Protected resource metadata | `https://atlas.rebuildingus.org/.well-known/oauth-protected-resource` |
 | JWKS | `https://atlas.rebuildingus.org/api/auth/jwks` |
 
 **Requirements:**
 - **PKCE** is required for all authorization flows
 - **Streamable HTTP** transport (SSE is not supported)
-- **Dynamic client registration** — no pre-registration needed
+- **Client ID Metadata Documents** are preferred for clients with no prior Atlas relationship
+- **Resource indicator**: request `https://atlas.rebuildingus.org/mcp` during authorization and token exchange
+- **Authorization response issuer**: validate `iss` in callbacks; Atlas advertises RFC 9207 support
 - **Algorithms**: RS256, ES256
 
 ## Manual configuration
@@ -38,11 +41,14 @@ curl https://atlas.rebuildingus.org/api/auth/.well-known/openid-configuration
 
 ## Available scopes
 
+Atlas's protected-resource metadata advertises `discovery:read` as the baseline MCP scope. The authorization server can issue additional scopes when a client explicitly requests them or follows a step-up challenge.
+
 | Scope | What it allows |
 |-------|----------------|
 | `openid` | Basic identity information |
 | `profile` | User profile details |
 | `email` | Email address |
+| `offline_access` | Refresh-token access from the authorization server |
 | `discovery:read` | Read discovery runs and results |
 | `discovery:write` | Create and manage discovery runs |
 | `entities:write` | Create and update catalog entries |

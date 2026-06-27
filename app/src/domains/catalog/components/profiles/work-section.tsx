@@ -70,9 +70,7 @@ export function WorkSection({ entry, issueAreaLabels, showIssueChips = true }: W
         <span className="text-ink-soft font-mono text-xs font-semibold tracking-[0.14em] uppercase">
           Recent
         </span>
-        <p className="text-ink-soft text-sm">
-          No recent coverage on file yet. Atlas keeps watching for new mentions.
-        </p>
+        <p className="text-ink-soft text-sm">No recent coverage on file.</p>
       </section>
     );
   }

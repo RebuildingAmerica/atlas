@@ -21,12 +21,11 @@ interface BrowseHeroProps {
  * profile-typed routes (`/profiles`, `/profiles/people`,
  * `/profiles/organizations`) to switch between actor scopes.
  */
-export function BrowseHero({ description, eyebrow, scopeTabs, title }: BrowseHeroProps) {
+export function BrowseHero({ description, scopeTabs, title }: BrowseHeroProps) {
   return (
-    <section className="bg-surface-container-lowest rounded-[1.8rem] px-5 py-6 lg:px-7 lg:py-7">
-      <p className="type-label-medium text-ink-muted">{eyebrow}</p>
-      <h1 className="type-display-small text-ink-strong mt-3">{title}</h1>
-      <p className="type-body-large text-ink-soft mt-3 max-w-3xl">{description}</p>
+    <section className="px-1 py-4 lg:px-2 lg:py-5">
+      <h1 className="type-display-small text-ink-strong">{title}</h1>
+      <p className="type-body-large text-ink-soft mt-2 max-w-3xl">{description}</p>
       {scopeTabs && scopeTabs.length > 0 ? (
         <div className="mt-5 flex flex-wrap gap-2">
           {scopeTabs.map((tab) => (

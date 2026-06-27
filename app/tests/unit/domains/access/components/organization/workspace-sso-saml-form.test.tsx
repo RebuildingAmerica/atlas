@@ -386,7 +386,9 @@ describe("WorkspaceSSOSamlForm", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /Save SAML provider/i }));
+    const form = screen.getByRole("button", { name: /Save SAML provider/i }).closest("form");
+    if (!form) throw new Error("Expected SAML setup form");
+    fireEvent.submit(form);
     expect(onSamlSubmit).toHaveBeenCalled();
   });
 

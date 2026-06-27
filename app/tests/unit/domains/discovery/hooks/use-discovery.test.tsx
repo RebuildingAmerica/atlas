@@ -46,6 +46,7 @@ describe("discovery hooks", () => {
     mutationFn(data: {
       issue_areas: string[];
       location_query: string;
+      research_goal: string;
       state: string;
     }): Promise<unknown>;
     onSuccess?(): Promise<void> | void;
@@ -154,12 +155,14 @@ describe("discovery hooks", () => {
     await typedConfig.mutationFn({
       issue_areas: ["housing_affordability"],
       location_query: "Kansas City",
+      research_goal: "landscape_scan",
       state: "MO",
     });
     expect(mocks.startDiscoveryRun).toHaveBeenCalledWith({
       data: {
         issue_areas: ["housing_affordability"],
         location_query: "Kansas City",
+        research_goal: "landscape_scan",
         state: "MO",
       },
     });

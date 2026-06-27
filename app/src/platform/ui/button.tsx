@@ -3,6 +3,8 @@ import { cn } from "@/lib/utils";
 
 interface ButtonProps {
   children: ReactNode;
+  ariaLabel?: string;
+  autoFocus?: boolean;
   className?: string;
   onClick?: () => void;
   disabled?: boolean;
@@ -13,6 +15,8 @@ interface ButtonProps {
 }
 
 export function Button({
+  ariaLabel,
+  autoFocus,
   children,
   className,
   onClick,
@@ -42,6 +46,8 @@ export function Button({
   return (
     <button
       type={type}
+      aria-label={ariaLabel}
+      autoFocus={autoFocus}
       onClick={onClick}
       disabled={disabled}
       title={title}

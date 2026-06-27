@@ -37,6 +37,7 @@ class DiscoveryRunModel:
     id: str
     location_query: str
     state: str
+    research_goal: str
     issue_areas: list[str]
     queries_generated: int
     sources_fetched: int
@@ -49,6 +50,7 @@ class DiscoveryRunModel:
     status: str
     error_message: str | None
     created_at: str
+    research_summary: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """
@@ -63,6 +65,7 @@ class DiscoveryRunModel:
             "id": self.id,
             "location_query": self.location_query,
             "state": self.state,
+            "research_goal": self.research_goal,
             "issue_areas": self.issue_areas,
             "queries_generated": self.queries_generated,
             "sources_fetched": self.sources_fetched,
@@ -75,6 +78,7 @@ class DiscoveryRunModel:
             "status": self.status,
             "error_message": self.error_message,
             "created_at": self.created_at,
+            "research_summary": self.research_summary,
         }
 
 
@@ -102,6 +106,7 @@ class DiscoveryRunCRUD:
         location_query: str,
         state: str,
         issue_areas: list[str],
+        research_goal: str = "landscape_scan",
     ) -> str:
         """
         Create a new discovery run.
@@ -116,6 +121,8 @@ class DiscoveryRunCRUD:
             2-letter state code.
         issue_areas : list[str]
             List of issue area slugs being queried.
+        research_goal : str, optional
+            Research job this run is meant to support. Default is "landscape_scan".
 
         Returns
         -------
@@ -128,10 +135,19 @@ class DiscoveryRunCRUD:
         await conn.execute(
             """
             INSERT INTO discovery_runs (
-                id, location_query, state, issue_areas, started_at, status, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                id, location_query, state, issue_areas, research_goal, started_at, status, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """,
-            (run_id, location_query, state, db.encode_json(issue_areas), now, "running", now),
+            (
+                run_id,
+                location_query,
+                state,
+                db.encode_json(issue_areas),
+                research_goal,
+                now,
+                "running",
+                now,
+            ),
         )
         await conn.commit()
         return run_id
@@ -265,11 +281,17 @@ class DiscoveryRunCRUD:
             "completed_at",
             "status",
             "error_message",
+            "research_summary",
         }
 
         fields_to_update = {k: v for k, v in kwargs.items() if k in allowed_fields}
         if not fields_to_update:
             return False
+
+        if "research_summary" in fields_to_update:
+            fields_to_update["research_summary"] = db.encode_json(
+                fields_to_update["research_summary"]
+            )
 
         set_clause = ", ".join([f"{k} = ?" for k in fields_to_update])
         values = [*list(fields_to_update.values()), run_id]
@@ -280,6 +302,35 @@ class DiscoveryRunCRUD:
         )
         await conn.commit()
         return cursor.rowcount > 0
+
+    @staticmethod
+    async def update_research_summary(
+        conn: aiosqlite.Connection,
+        run_id: str,
+        research_summary: dict[str, Any],
+    ) -> bool:
+        """
+        Persist the structured research output for a discovery run.
+
+        Parameters
+        ----------
+        conn : aiosqlite.Connection
+            Database connection.
+        run_id : str
+            Discovery run ID.
+        research_summary : dict[str, Any]
+            Source-linked brief, ranked leads, gaps, and reasoning signals.
+
+        Returns
+        -------
+        bool
+            True if updated, False if not found.
+        """
+        return await DiscoveryRunCRUD.update(
+            conn,
+            run_id,
+            research_summary=research_summary,
+        )
 
     @staticmethod
     async def complete(  # noqa: PLR0913
@@ -436,10 +487,12 @@ class DiscoveryRunSyncCRUD:
 
 def _row_to_discovery_run(row: dict[str, Any]) -> DiscoveryRunModel:
     """Convert database row to DiscoveryRunModel."""
+    research_summary = row.get("research_summary")
     return DiscoveryRunModel(
         id=row["id"],
         location_query=row["location_query"],
         state=row["state"],
+        research_goal=row.get("research_goal", "landscape_scan"),
         issue_areas=db.decode_json(row["issue_areas"]),  # type: ignore[arg-type]
         queries_generated=row["queries_generated"],
         sources_fetched=row["sources_fetched"],
@@ -452,6 +505,11 @@ def _row_to_discovery_run(row: dict[str, Any]) -> DiscoveryRunModel:
         status=row["status"],
         error_message=row["error_message"],
         created_at=row["created_at"],
+        research_summary=(
+            db.decode_json(research_summary)  # type: ignore[arg-type]
+            if research_summary
+            else None
+        ),
     )
 
 

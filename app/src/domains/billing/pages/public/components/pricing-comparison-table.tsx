@@ -10,7 +10,7 @@ interface ComparisonFeatureRow {
 const COMPARISON_TABLE: readonly ComparisonFeatureRow[] = [
   { feature: "Browse and search the Atlas", free: "✓", pro: "✓", team: "✓" },
   { feature: "Read any profile", free: "✓", pro: "✓", team: "✓" },
-  { feature: "Discovery runs", free: "2 / month", pro: "Unlimited", team: "Unlimited" },
+  { feature: "Research requests", free: "2 / month", pro: "Unlimited", team: "Unlimited" },
   {
     feature: "Shortlists",
     free: "1 list, 25 entries",

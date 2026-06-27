@@ -82,6 +82,7 @@ describe("discovery.functions", () => {
     const data = {
       issue_areas: ["test"],
       location_query: "New York",
+      research_goal: "landscape_scan",
       state: "NY",
     };
     const stub = startDiscoveryRun as unknown as ServerFnStub;

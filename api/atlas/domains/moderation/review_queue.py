@@ -17,6 +17,7 @@ class ReviewQueueItemModel:
     """A discovered record held for human review before publication."""
 
     id: str
+    org_id: str | None
     entity_id: str | None
     kind: str
     status: str
@@ -32,21 +33,22 @@ class ReviewQueueItemModel:
 def _row_to_item(row: tuple[Any, ...]) -> ReviewQueueItemModel:
     return ReviewQueueItemModel(
         id=row[0],
-        entity_id=row[1],
-        kind=row[2],
-        status=row[3],
-        hold_reason=row[4],
-        score=row[5],
-        dedup_suspect=bool(row[6]),
-        dedup_note=row[7],
-        created_at=row[8],
-        reviewed_at=row[9],
-        reviewed_by=row[10],
+        org_id=row[1],
+        entity_id=row[2],
+        kind=row[3],
+        status=row[4],
+        hold_reason=row[5],
+        score=row[6],
+        dedup_suspect=bool(row[7]),
+        dedup_note=row[8],
+        created_at=row[9],
+        reviewed_at=row[10],
+        reviewed_by=row[11],
     )
 
 
 _SELECT_COLUMNS = (
-    "id, entity_id, kind, status, hold_reason, score, dedup_suspect, "
+    "id, org_id, entity_id, kind, status, hold_reason, score, dedup_suspect, "
     "dedup_note, created_at, reviewed_at, reviewed_by"
 )
 
@@ -58,6 +60,7 @@ class ReviewQueueCRUD:
     async def enqueue(  # noqa: PLR0913
         conn: Any,
         *,
+        org_id: str | None = None,
         entity_id: str | None,
         kind: str,
         hold_reason: str,
@@ -71,12 +74,13 @@ class ReviewQueueCRUD:
         await conn.execute(
             """
             INSERT INTO review_queue (
-                id, entity_id, kind, status, hold_reason, score,
+                id, org_id, entity_id, kind, status, hold_reason, score,
                 dedup_suspect, dedup_note, created_at
-            ) VALUES (?, ?, ?, 'pending', ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?)
             """,
             (
                 item_id,
+                org_id,
                 entity_id,
                 kind,
                 hold_reason,
@@ -91,9 +95,22 @@ class ReviewQueueCRUD:
 
     @staticmethod
     async def list_pending(
-        conn: Any, *, limit: int = 50, offset: int = 0
+        conn: Any, *, limit: int = 50, offset: int = 0, org_id: str | None = None
     ) -> list[ReviewQueueItemModel]:
         """List pending held records oldest-first."""
+        if org_id is not None:
+            cursor = await conn.execute(
+                f"""
+                SELECT {_SELECT_COLUMNS} FROM review_queue
+                WHERE status = 'pending' AND org_id = ?
+                ORDER BY created_at ASC
+                LIMIT ? OFFSET ?
+                """,
+                (org_id, limit, offset),
+            )
+            rows = await cursor.fetchall()
+            return [_row_to_item(row) for row in rows]
+
         cursor = await conn.execute(
             f"""
             SELECT {_SELECT_COLUMNS} FROM review_queue

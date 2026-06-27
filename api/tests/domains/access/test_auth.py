@@ -33,7 +33,7 @@ async def test_protected_discovery_requires_auth_when_enabled(
     assert challenge.startswith("Bearer "), (
         "RFC 6750 §3 requires a Bearer challenge on 401, including resource_metadata."
     )
-    assert "https://atlas.example/api/.well-known/oauth-protected-resource" in challenge, (
+    assert "https://atlas.example/.well-known/oauth-protected-resource/api" in challenge, (
         "MCP authorization spec requires the resource-metadata pointer in the challenge."
     )
     assert 'scope="discovery:read"' in challenge, (
@@ -220,7 +220,7 @@ async def test_oauth_jwt_insufficient_scope_emits_step_up_challenge(
     assert 'scope="discovery:write"' in challenge, (
         "The challenge must advertise the scope required to satisfy the request."
     )
-    assert "https://atlas.example/api/.well-known/oauth-protected-resource" in challenge, (
+    assert "https://atlas.example/.well-known/oauth-protected-resource/api" in challenge, (
         "The challenge must point at the protected-resource metadata document."
     )
 

@@ -7,6 +7,7 @@ Get The Atlas running on your machine in 4 steps.
 ## Prerequisites
 
 First, make sure you have installed:
+
 - Python 3.12+
 - Node.js 24+
 - Make
@@ -38,6 +39,7 @@ make setup
 ```
 
 This command:
+
 - Installs Python api dependencies
 - Installs Node.js app dependencies
 - Initializes the SQLite database with schema
@@ -51,43 +53,47 @@ make dev
 ```
 
 This starts both the api and app servers:
-- **API:** http://localhost:8000
-- **App:** http://localhost:3000
-- **API Docs (Swagger):** http://localhost:8000/docs
+
+- **API:** https://api.atlas.localhost:1355
+- **App:** https://atlas.localhost:1355
+- **API Docs (Swagger):** https://api.atlas.localhost:1355/docs
 
 You should see output like:
+
 ```
 Starting The Atlas...
-INFO:     Uvicorn running on http://0.0.0.0:8000
+INFO:     Uvicorn running
 VITE v5.0.0  ready in 245 ms
 ```
 
 ## What Just Happened?
 
 ### make setup
+
 1. Copies `.env.example` to `.env` (local configuration)
 2. Installs Python dependencies in `api/` (FastAPI, SQLite tools, testing frameworks)
 3. Installs Node.js dependencies in `app/` (React, TanStack Start, build tools)
 4. Initializes SQLite database with schema (creates `atlas.db`)
 
 ### make dev
-1. Starts the FastAPI api server on port 8000 with hot-reload enabled
-2. Starts the Vite app development server on port 3000 with hot-reload enabled
+
+1. Starts the FastAPI api server under `https://api.atlas.localhost:1355`
+2. Starts the Vite app development server under `https://atlas.localhost:1355`
 3. Any code changes you make will automatically reload the browser and api
 
 ## Verify It Works
 
 Open your browser and check:
 
-1. **App:** http://localhost:3000
+1. **App:** https://atlas.localhost:1355
    - Should show the Atlas homepage
    - Try navigating around
 
-2. **API:** http://localhost:8000/docs
+2. **API:** https://api.atlas.localhost:1355/docs
    - Should show interactive Swagger documentation
    - All endpoints are listed here with test buttons
 
-3. **API (raw):** http://localhost:8000/api/v1/entries
+3. **API (raw):** https://api.atlas.localhost:1355/api/v1/entries
    - Should return JSON (likely empty array if database is new)
 
 ## Stop the Servers
@@ -103,30 +109,39 @@ To stop development servers, press `Ctrl+C` in your terminal.
 ## Troubleshooting
 
 ### "ModuleNotFoundError" on make setup
+
 Make sure Python 3.12+ is installed and activated. Try:
+
 ```bash
 cd api && pip install -e ".[dev]" --break-system-packages
 cd ..
 ```
 
 ### "command not found: pnpm" on make setup
+
 Make sure Node.js 24+ is installed and run `corepack enable`. Verify with `node --version` and `pnpm --version`.
 
 ### Port 8000 or 3000 already in use
+
 Kill the process using the port, or change the port in the start commands:
+
 ```bash
 cd api && uvicorn atlas.main:app --reload --host 0.0.0.0 --port 8001
 cd app && pnpm run dev -- --port 3001
 ```
 
 ### Database errors
+
 Try resetting the database:
+
 ```bash
 make db-reset
 ```
 
 ### Changes not reflecting
+
 Make sure you're running `make dev` (which enables hot-reload). If hot-reload isn't working:
+
 1. Stop the servers (Ctrl+C)
 2. Run `make dev` again
 

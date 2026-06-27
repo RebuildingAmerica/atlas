@@ -17,6 +17,7 @@ How the app is organized, why we chose TanStack Start, and how to add new featur
 **What it is:** Meta-framework built on Vite and React Router. Provides file-based routing, selective SSR, and automatic code splitting.
 
 **Why we chose it:**
+
 1. **File-based routing** — No router configuration file needed. Each `.tsx` file in `src/routes/` is a route. `src/routes/entry/$id.tsx` automatically becomes `/entry/:id`.
 
 2. **Selective SSR** — Most routes are SPAs (rendered in browser). Some routes use SSR (rendered on server, sent to browser). Choose per-route:
@@ -91,31 +92,34 @@ app/src/
 
 Each file in `src/routes/` becomes a route:
 
-| File | Route | Type | Behavior |
-|---|---|---|---|
-| `index.tsx` | `/` | SSR | Home page |
-| `search.tsx` | `/search` | SPA | Search interface |
-| `entry/$id.tsx` | `/entry/:id` | SSR | Entry detail |
-| `admin/index.tsx` | `/admin` | SPA | Admin dashboard |
-| `admin/discovery.tsx` | `/admin/discovery` | SPA | Run pipeline |
+| File                  | Route              | Type | Behavior         |
+| --------------------- | ------------------ | ---- | ---------------- |
+| `index.tsx`           | `/`                | SSR  | Home page        |
+| `search.tsx`          | `/search`          | SPA  | Search interface |
+| `entry/$id.tsx`       | `/entry/:id`       | SSR  | Entry detail     |
+| `admin/index.tsx`     | `/admin`           | SPA  | Admin dashboard  |
+| `admin/discovery.tsx` | `/admin/discovery` | SPA  | Run pipeline     |
 
 ### SSR vs. SPA Decision
 
 **Use SSR for:**
+
 - Static/mostly-static pages (home, entry detail)
 - Pages that benefit from SEO (public directory pages)
 - Pages with slow API calls (can fetch on server before sending HTML)
 
 **Use SPA for:**
+
 - Real-time, interactive pages (search, admin)
 - Pages with frequent user input
 - Pages with complex client-side state
 
 **How to specify:**
+
 ```tsx
 export const shouldLoad = async () => ({
-  ssr: true  // or false
-})
+  ssr: true, // or false
+});
 ```
 
 ## Component Organization
@@ -125,6 +129,7 @@ export const shouldLoad = async () => ({
 Unstyled or minimally-styled building blocks. No business logic. Reusable across pages.
 
 **Examples:**
+
 - `Button.tsx` — Styled button with size/variant options
 - `Card.tsx` — Container with padding and border
 - `Input.tsx` — Text input with label and validation feedback
@@ -133,6 +138,7 @@ Unstyled or minimally-styled building blocks. No business logic. Reusable across
 **Location:** `src/components/ui/`
 
 **Usage example:**
+
 ```tsx
 <Button onClick={() => setOpen(true)}>Click me</Button>
 ```
@@ -142,6 +148,7 @@ Unstyled or minimally-styled building blocks. No business logic. Reusable across
 Composed from UI components. Contain business logic or API calls. Specific to a feature.
 
 **Examples:**
+
 - `EntryCard.tsx` — Display single entry with actions (favorite, share)
 - `EntryList.tsx` — Display list of entries with sorting/filtering
 - `SearchForm.tsx` — Search input with issue area filters
@@ -150,6 +157,7 @@ Composed from UI components. Contain business logic or API calls. Specific to a 
 **Location:** `src/components/features/`
 
 **Usage example:**
+
 ```tsx
 <SearchForm onSubmit={(query) => performSearch(query)} />
 ```
@@ -159,44 +167,46 @@ Composed from UI components. Contain business logic or API calls. Specific to a 
 Custom hooks encapsulate data fetching. Return data, loading state, and errors.
 
 **Pattern:**
+
 ```tsx
 // src/hooks/useEntries.ts
 export function useEntries(state: string, location: string) {
-  const [data, setData] = useState(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState(null)
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     async function fetchData() {
-      setLoading(true)
+      setLoading(true);
       try {
-        const response = await api.get('/api/v1/entries', {
+        const response = await api.get("/api/v1/entries", {
           state,
-          location
-        })
-        setData(response)
+          location,
+        });
+        setData(response);
       } catch (e) {
-        setError(e)
+        setError(e);
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
     }
 
-    fetchData()
-  }, [state, location])
+    fetchData();
+  }, [state, location]);
 
-  return { data, loading, error }
+  return { data, loading, error };
 }
 ```
 
 **Usage in a component:**
+
 ```tsx
 function SearchResults({ state, location }) {
-  const { data, loading, error } = useEntries(state, location)
+  const { data, loading, error } = useEntries(state, location);
 
-  if (loading) return <Spinner />
-  if (error) return <ErrorBanner error={error} />
-  return <EntryList entries={data} />
+  if (loading) return <Spinner />;
+  if (error) return <ErrorBanner error={error} />;
+  return <EntryList entries={data} />;
 }
 ```
 
@@ -205,6 +215,7 @@ function SearchResults({ state, location }) {
 TypeScript types on app **mirror** Pydantic schemas on API.
 
 **Backend (Python):**
+
 ```python
 class EntryResponse(BaseModel):
     id: UUID
@@ -217,15 +228,16 @@ class EntryResponse(BaseModel):
 ```
 
 **App (TypeScript):**
+
 ```tsx
 interface EntryResponse {
-  id: string
-  name: string
-  description: string
-  city?: string
-  state?: string
-  issue_areas: string[]
-  sources: SourceResponse[]
+  id: string;
+  name: string;
+  description: string;
+  city?: string;
+  state?: string;
+  issue_areas: string[];
+  sources: SourceResponse[];
 }
 ```
 
@@ -236,28 +248,30 @@ interface EntryResponse {
 Centralized fetch wrapper in `src/lib/api.ts`.
 
 **Features:**
-- Base URL configuration (`http://localhost:8000/api/v1`)
+
+- Base URL configuration (`https://api.atlas.localhost:1355/api/v1`)
 - Error handling (parse error responses, throw typed errors)
 - Type safety (response is `T`, errors are `APIError`)
 - Automatic serialization/deserialization
 
 **Example:**
+
 ```tsx
 // GET
-const entries = await api.get('/entries', { state: 'KS' })
+const entries = await api.get("/entries", { state: "KS" });
 
 // POST
-const run = await api.post('/discovery', {
-  location: 'Kansas City, MO',
-  issue_areas: ['labor', 'housing']
-})
+const run = await api.post("/discovery", {
+  location: "Kansas City, MO",
+  issue_areas: ["labor", "housing"],
+});
 
 // Error handling
 try {
-  const entries = await api.get('/entries')
+  const entries = await api.get("/entries");
 } catch (error) {
   if (error instanceof APIError) {
-    console.error(error.message)
+    console.error(error.message);
   }
 }
 ```
@@ -265,29 +279,33 @@ try {
 ## Adding a New Page
 
 1. **Create a route file** in `src/routes/`
+
    ```tsx
    // src/routes/about.tsx
    export default function AboutPage() {
-     return <div>About page</div>
+     return <div>About page</div>;
    }
    ```
 
 2. **Create components** in `src/components/`
+
    ```tsx
    // src/components/features/AboutHero.tsx
    export function AboutHero() { ... }
    ```
 
 3. **Use hooks for data** in `src/hooks/` if needed
+
    ```tsx
    // src/hooks/useStats.ts
    export function useStats() {
-     const { data, loading } = useAsync(() => api.get('/stats'))
-     return { data, loading }
+     const { data, loading } = useAsync(() => api.get("/stats"));
+     return { data, loading };
    }
    ```
 
 4. **Add types** in `src/types/`
+
    ```tsx
    // src/types/stats.ts
    export interface Stats { ... }
@@ -300,6 +318,7 @@ try {
 All styling uses Tailwind utility classes. No CSS files for component styling.
 
 **Example:**
+
 ```tsx
 function Card({ title, children }) {
   return (
@@ -307,11 +326,12 @@ function Card({ title, children }) {
       <h2 className="text-xl font-bold">{title}</h2>
       {children}
     </div>
-  )
+  );
 }
 ```
 
 **Global styles** in `src/styles/index.css`:
+
 ```css
 @tailwind base;
 @tailwind components;
@@ -322,17 +342,18 @@ function Card({ title, children }) {
 
 ## Current Implementation Status
 
-| Feature | Status | Notes |
-|---|---|---|
-| Home page | Basic scaffold | Shows static content |
-| Search page | Basic scaffold | Form works, API integration pending |
-| Entry detail | Basic scaffold | Layout done, data loading pending |
-| Admin dashboard | Basic scaffold | Layout done, discovery trigger pending |
-| Component library | In progress | Button, Card, Input exist. More needed. |
-| Type definitions | Partial | Entry, Source types defined. Need more. |
-| Hooks | Partial | useEntries, useSearch stubbed. Need implementation. |
+| Feature           | Status         | Notes                                               |
+| ----------------- | -------------- | --------------------------------------------------- |
+| Home page         | Basic scaffold | Shows static content                                |
+| Search page       | Basic scaffold | Form works, API integration pending                 |
+| Entry detail      | Basic scaffold | Layout done, data loading pending                   |
+| Admin dashboard   | Basic scaffold | Layout done, discovery trigger pending              |
+| Component library | In progress    | Button, Card, Input exist. More needed.             |
+| Type definitions  | Partial        | Entry, Source types defined. Need more.             |
+| Hooks             | Partial        | useEntries, useSearch stubbed. Need implementation. |
 
 **Next priorities:**
+
 1. Implement useEntries and useSearch hooks (connect to API)
 2. Test API integration
 3. Add more UI components (forms, modals, etc.)
@@ -342,27 +363,35 @@ function Card({ title, children }) {
 ## Development Workflow
 
 ### Running App Only
+
 ```bash
 make dev-app
 ```
-Starts Vite dev server on http://localhost:3000 with HMR.
+
+Starts Vite dev server on https://atlas.localhost:1355 with HMR.
 
 ### Type Checking
+
 ```bash
 cd app && pnpm run typecheck
 ```
+
 Runs TypeScript type checker.
 
 ### Linting
+
 ```bash
 cd app && pnpm run lint
 ```
+
 Runs ESLint.
 
 ### Building for Production
+
 ```bash
 cd app && pnpm run build
 ```
+
 Outputs optimized bundle to `app/dist/`.
 
 ---

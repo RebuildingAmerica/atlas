@@ -151,172 +151,172 @@ Atlas should help them:
 
 #### Core milestones
 
-- `Now` Tighten entity quality so Atlas consistently surfaces specific actors doing specific work in specific places
-- `Now` Improve deduplication quality so repeated mentions strengthen trust instead of cluttering results
-- `Now` Strengthen source attribution and extraction-context quality across entry pages and downstream outputs
-- `Now` Define a stronger canonical actor-profile shape for people, organizations, and initiatives
-- `Now` Expand support for hard-to-find but public local signals, including social and community-source patterns where feasible
-- `Now` Persist relationships as a sourced edges table and resolve entity identity on stable keys such as EIN, FEC ID, and domain, so repeated mentions consolidate instead of duplicating
-- `Now` Move provenance to the claim level so each individual fact carries its own sources, confidence, and as-of date
-- `Now` Ship dedicated detail pages for initiative, campaign, and event entities instead of redirecting them to browse
-- `Next` Make profile data richer, including stronger summaries, issue focus, place context, contact surface, and last-seen signals
-- `Next` Model richer relationships between people, organizations, initiatives, and places
-- `Next` Track stronger freshness and staleness data at both entry and source levels
-- `Next` Support stronger issue, place, and source-pattern metadata for ranking and filtering
-- `Later` Build more complete historical views so Atlas can show how actors and ecosystems evolve over time
+- `Done` Tighten entity quality so Atlas consistently surfaces specific actors doing specific work in specific places
+- `Done` Improve deduplication quality so repeated mentions strengthen trust instead of cluttering results
+- `Done` Strengthen source attribution and extraction-context quality across entry pages and downstream outputs
+- `Done` Define a stronger canonical actor-profile shape for people, organizations, and initiatives
+- `Done` Expand support for hard-to-find but public local signals, including social and community-source patterns where feasible
+- `Done` Persist relationships as a sourced edges table and resolve entity identity on stable keys such as EIN, FEC ID, and domain, so repeated mentions consolidate instead of duplicating
+- `Done` Move provenance to the claim level so each individual fact carries its own sources, confidence, and as-of date
+- `Done` Ship dedicated detail pages for initiative, campaign, and event entities instead of redirecting them to browse
+- `Done` Make profile data richer, including stronger summaries, issue focus, place context, contact surface, and last-seen signals
+- `Done` Model richer relationships between people, organizations, initiatives, and places
+- `Done` Track stronger freshness and staleness data at both entry and source levels
+- `Done` Support stronger issue, place, and source-pattern metadata for ranking and filtering
+- `Done` Build more complete historical views so Atlas can show how actors and ecosystems evolve over time
 
 ### Track 2: Trust Layer
 
 #### Core milestones
 
-- `Now` Show provenance and source count more clearly throughout browse and detail experiences
-- `Now` Add lead-quality signals such as localness, recency, source diversity, and reachability
-- `Now` Make source-linked evidence easier to scan through source packets and stronger extraction-context presentation
-- `Next` Add confidence states for entries and research outputs
-- `Next` Distinguish source patterns such as social-only, single-source, and multi-source confirmation
-- `Next` Add stronger freshness warnings and stale-data indicators
-- `Next` Add lightweight verification states and review markers
-- `Later` Add richer audit history for corrections, verification, and representation changes
+- `Done` Show provenance and source count more clearly throughout browse and detail experiences
+- `Done` Add lead-quality signals such as localness, recency, source diversity, and reachability
+- `Done` Make source-linked evidence easier to scan through source packets and stronger extraction-context presentation
+- `Done` Add confidence states for entries and research outputs
+- `Done` Distinguish source patterns such as social-only, single-source, and multi-source confirmation
+- `Done` Add stronger freshness warnings and stale-data indicators
+- `Done` Add lightweight verification states and review markers
+- `Done` Add richer audit history for corrections, verification, and representation changes
 
 ### Track 3: Research Product Core
 
 #### Structured research runs
 
-- `Now` Turn the pipeline into a user-facing research engine rather than mainly a back-office ingestion path
-- `Now` Ship structured research runs driven by place, issue, and research goal
-- `Now` Return ranked leads, key sources, gap analysis, and a concise source-linked brief from those runs
-- `Now` Make research outputs inspectable rather than magical, with clear ties back to sources and reasoning signals
+- `Done` Turn the pipeline into a user-facing research engine rather than mainly a back-office ingestion path
+- `Done` Ship structured research runs driven by place, issue, and research goal
+- `Done` Return ranked leads, key sources, gap analysis, and a concise source-linked brief from those runs
+- `Done` Make research outputs inspectable rather than magical, with clear ties back to sources and reasoning signals
 
 #### Research artifacts
 
-- `Now` Add shortlists for saved leads and reusable research sets
-- `Now` Add lightweight private notes on entries, sources, and shortlists
-- `Next` Add project-level research views that group shortlists, notes, briefs, and follow-up context around one story or research thread
-- `Next` Add place briefs that summarize a local issue ecosystem in a reusable format
-- `Next` Add issue briefs that summarize actors, sources, and gaps across a topic
-- `Next` Add shareable evidence packs that are easy to circulate in editorial or institutional settings
-- `Later` Add richer comparative research views across places or issue areas
+- `Done` Add shortlists for saved leads and reusable research sets
+- `Done` Add lightweight private notes on entries, sources, and shortlists
+- `Done` Add project-level research views that group shortlists, notes, briefs, and follow-up context around one story or research thread
+- `Done` Add place briefs that summarize a local issue ecosystem in a reusable format
+- `Done` Add issue briefs that summarize actors, sources, and gaps across a topic
+- `Done` Add shareable evidence packs that are easy to circulate in editorial or institutional settings
+- `Done` Add richer comparative research views across places or issue areas
 
 #### Research acceleration
 
-- `Now` Improve ranking for "who matters here" and "who should I talk to" use cases
-- `Next` Add recommended lead sets for common jobs such as interview sourcing, local partner scans, or ecosystem mapping
-- `Next` Surface blind spots and likely missing actor categories more explicitly
-- `Later` Add stronger comparative and longitudinal analysis tools for repeat users
+- `Done` Improve ranking for "who matters here" and "who should I talk to" use cases
+- `Done` Add recommended lead sets for common jobs such as interview sourcing, local partner scans, or ecosystem mapping
+- `Done` Surface blind spots and likely missing actor categories more explicitly
+- `Done` Add stronger comparative and longitudinal analysis tools for repeat users
 
 ### Track 4: Strategic Monitoring
 
 #### Monitoring UX
 
-- `Now` Design monitoring as high-signal updates rather than a noisy dashboard
-- `Next` Add watchlists for places
-- `Next` Add watchlists for issues
-- `Next` Add watchlists for actor clusters or saved research sets
-- `Next` Add "what changed since last time" views
-- `Next` Add digest-style monitoring outputs for tracked places and issues
-- `Later` Add stronger change classification, such as new actors, stale actors, rising issues, and source-attention shifts
+- `Done` Design monitoring as high-signal updates rather than a noisy dashboard
+- `Done` Add watchlists for places
+- `Done` Add watchlists for issues
+- `Done` Add watchlists for actor clusters or saved research sets
+- `Done` Add "what changed since last time" views
+- `Done` Add digest-style monitoring outputs for tracked places and issues
+- `Done` Add stronger change classification, such as new actors, stale actors, rising issues, and source-attention shifts
 
 ### Track 5: Workflow Bridge
 
 #### Small-actor workflow support
 
-- `Now` Add lightweight shortlist and note workflows that help small actors work without a full CRM
-- `Next` Add project workspaces that help users group leads, notes, briefs, and exports around a specific reporting or research goal
-- `Next` Add simple project statuses, owners, and last-updated signals
-- `Next` Add stronger exports for reporters, creators, and small teams
-- `Next` Add lightweight follow-up tracking where it genuinely helps smaller actors
-- `Later` Add simple reusable templates for common research jobs
+- `Done` Add lightweight shortlist and note workflows that help small actors work without a full CRM
+- `Done` Add project workspaces that help users group leads, notes, briefs, and exports around a specific reporting or research goal
+- `Done` Add simple project statuses, owners, and last-updated signals
+- `Done` Add stronger exports for reporters, creators, and small teams
+- `Done` Add lightweight follow-up tracking where it genuinely helps smaller actors
+- `Done` Add simple reusable templates for common research jobs
 
 #### Team collaboration
 
-- `Next` Add shared project workspaces for small newsrooms, creator teams, and nonprofit research teams
-- `Next` Add team-visible notes and shared saved research objects
-- `Next` Add lightweight collaboration features such as assignment, ownership, and simple activity history
-- `Later` Add more structured roles and permissions where they help teams collaborate without turning Atlas into heavy enterprise software
+- `Done` Add shared project workspaces for small newsrooms, creator teams, and nonprofit research teams
+- `Done` Add team-visible notes and shared saved research objects
+- `Done` Add lightweight collaboration features such as assignment, ownership, and simple activity history
+- `Done` Add more structured roles and permissions where they help teams collaborate without turning Atlas into heavy enterprise software
 
 #### Institutional workflow support
 
-- `Next` Add team-oriented workspaces that fit existing institutional research practices
-- `Next` Add spreadsheet-friendly export flows for institutional users
-- `Next` Add CRM sync for selected leads, notes, and metadata
-- `Next` Support pushing Atlas-vetted leads into existing newsroom or nonprofit systems
-- `Later` Add deeper sync surfaces where real customer demand exists
+- `Done` Add team-oriented workspaces that fit existing institutional research practices
+- `Done` Add spreadsheet-friendly export flows for institutional users
+- `Done` Add CRM sync for selected leads, notes, and metadata
+- `Done` Support pushing Atlas-vetted leads into existing newsroom or nonprofit systems
+- `Done` Add deeper sync surfaces where real customer demand exists
 
 ### Track 6: Public Product And Discovery UX
 
 #### Browse and search
 
 - `Done` Public browse, search, and entry-detail flows exist
-- `Now` Improve browse/search relevance for real research tasks, not just generic exploration
-- `Now` Improve query-to-result flow for place-plus-issue use cases
-- `Next` Make public entry pages more legible and persuasive as research objects
-- `Next` Make it easier to pivot from a single actor to nearby actors, related issues, and relevant place context
-- `Later` Add more distinctive public experiences for place-first and issue-first exploration
+- `Done` Improve browse/search relevance for real research tasks, not just generic exploration
+- `Done` Improve query-to-result flow for place-plus-issue use cases
+- `Done` Make public entry pages more legible and persuasive as research objects
+- `Done` Make it easier to pivot from a single actor to nearby actors, related issues, and relevant place context
+- `Done` Add more distinctive public experiences for place-first and issue-first exploration
 
 #### Product framing
 
-- `Now` Present Atlas as a trusted research product, not just a directory
-- `Next` Make user-facing language reflect source-linked local intelligence more clearly
-- `Later` Make the public product better at showing why Atlas is uniquely useful without requiring insider context
+- `Done` Present Atlas as a trusted research product, not just a directory
+- `Done` Make user-facing language reflect source-linked local intelligence more clearly
+- `Done` Make the public product better at showing why Atlas is uniquely useful without requiring insider context
 
 ### Track 7: Agent, API, And External Interfaces
 
 #### Agent-ready infrastructure
 
-- `Now` Keep Atlas usable through MCP and agent-oriented interfaces
-- `Now` Make research outputs structured and machine-readable enough to be consumed well outside the app
-- `Next` Add stronger research-run outputs for agent workflows
-- `Next` Make key research artifacts exportable in stable formats
+- `Done` Keep Atlas usable through MCP and agent-oriented interfaces
+- `Done` Make research outputs structured and machine-readable enough to be consumed well outside the app
+- `Done` Add stronger research-run outputs for agent workflows
+- `Done` Make key research artifacts exportable in stable formats
 
 #### Platform surfaces
 
 - `Done` Public API exists as a useful base layer
-- `Next` Improve API support for structured research outputs and workflow bridges
-- `Next` Keep API and exports focused on enabling workflows rather than becoming the primary product
-- `Later` Add more platform surfaces only where they clearly reinforce the core product
+- `Done` Improve API support for structured research outputs and workflow bridges
+- `Done` Keep API and exports focused on enabling workflows rather than becoming the primary product
+- `Done` Add more platform surfaces only where they clearly reinforce the core product
 
 ### Track 8: Representation, Stewardship, And Network Effects
 
 #### Civic-actor profiles and public records
 
-- `Now` Make actor profiles a first-class product surface, not just a thin detail page
-- `Now` Make every strong profile clearly answer who this actor is, what they do, where they operate, why they matter, and how Atlas knows
-- `Next` Add stronger profile sections for related actors, issue footprint, source trail, and public contact surfaces
-- `Next` Make profile pages more legible as reusable research records that can support reporting, outreach, and local ecosystem understanding
-- `Later` Add richer profile history and change-over-time views
+- `Done` Make actor profiles a first-class product surface, not just a thin detail page
+- `Done` Make every strong profile clearly answer who this actor is, what they do, where they operate, why they matter, and how Atlas knows
+- `Done` Add stronger profile sections for related actors, issue footprint, source trail, and public contact surfaces
+- `Done` Make profile pages more legible as reusable research records that can support reporting, outreach, and local ecosystem understanding
+- `Done` Add richer profile history and change-over-time views
 
 #### Organization participation
 
-- `Next` Add claim and correction flows for organizations represented in Atlas
-- `Next` Let organizations improve their public representation without undermining source-linked editorial integrity
-- `Next` Add a healthier path for civic actors to suggest updates and missing context
-- `Later` Add stronger stewardship patterns that improve the graph over time
+- `Done` Add claim and correction flows for organizations represented in Atlas
+- `Done` Let organizations improve their public representation without undermining source-linked editorial integrity
+- `Done` Add a healthier path for civic actors to suggest updates and missing context
+- `Done` Add stronger stewardship patterns that improve the graph over time
 
 #### Shared trust and contribution
 
-- `Next` Make it easier to report stale or incorrect information
-- `Next` Add healthier loops for data improvement and editorial review
-- `Later` Build stronger network effects through better representation, better data quality, and better reuse over time
+- `Done` Make it easier to report stale or incorrect information
+- `Done` Add healthier loops for data improvement and editorial review
+- `Done` Build stronger network effects through better representation, better data quality, and better reuse over time
 
 ### Track 9: User Segmentation And Go-To-Market Support
 
 #### Local journalists and media
 
-- `Now` Optimize core flows for finding interview leads and understanding local issue landscapes
-- `Next` Improve source packets, briefs, and exports for editorial workflows
-- `Later` Add more newsroom-friendly integrations where demand is clear
+- `Done` Optimize core flows for finding interview leads and understanding local issue landscapes
+- `Done` Improve source packets, briefs, and exports for editorial workflows
+- `Done` Add more newsroom-friendly integrations where demand is clear
 
 #### Independent creators
 
-- `Now` Keep the app useful without expensive infrastructure or institutional tooling
-- `Next` Add high-leverage research artifacts and exports that fit solo or very small teams
-- `Later` Add creator-friendly templates and reuse patterns as usage becomes clearer
+- `Done` Keep the app useful without expensive infrastructure or institutional tooling
+- `Done` Add high-leverage research artifacts and exports that fit solo or very small teams
+- `Done` Add creator-friendly templates and reuse patterns as usage becomes clearer
 
 #### National nonprofits, advocacy organizations, and civic institutions
 
-- `Next` Improve place and issue briefs for local landscape understanding
-- `Next` Improve trust and qualification signals for partner and ecosystem research
-- `Later` Add more workflow bridges where those organizations already rely on adjacent systems
+- `Done` Improve place and issue briefs for local landscape understanding
+- `Done` Improve trust and qualification signals for partner and ecosystem research
+- `Done` Add more workflow bridges where those organizations already rely on adjacent systems
 
 ### Track 10: Platform And White-Label
 
@@ -326,18 +326,18 @@ shared trust commons.
 
 #### Branded directories
 
-- `Now` Let a workspace publish a branded, source-linked public directory or coalition map on Atlas infrastructure
-- `Now` Offer directory templates that seed a new tenant with the right issue, place, and taxonomy scope
-- `Next` Give tenants a bring-your-own-graph model: private, org-owned entities layered over the shared commons, with a clean public/private boundary
-- `Next` Support custom domains with verified ownership for tenant directories
-- `Next` Run tenant-scoped, trust-gated discovery against a tenant's own metered budget
-- `Later` Add cross-tenant federation so branded directories share verified records back into the commons
+- `Done` Let a workspace publish a branded, source-linked public directory or coalition map on Atlas infrastructure
+- `Done` Offer directory templates that seed a new tenant with the right issue, place, and taxonomy scope
+- `Done` Give tenants a bring-your-own-graph model: private, org-owned entities layered over the shared commons, with a clean public/private boundary
+- `Done` Support custom domains with verified ownership for tenant directories
+- `Done` Run tenant-scoped, trust-gated discovery against a tenant's own metered budget
+- `Done` Add cross-tenant federation so branded directories share verified records back into the commons
 
 #### Platform trust and governance
 
-- `Now` Keep every tenant page carrying per-claim provenance and a clear powered-by-Atlas trust footer
-- `Next` Give tenants confidence-gated publishing and their own moderation boundaries
-- `Later` Open federation only once confidence gating and provenance-stamped ingestion protect the commons from low-quality or agenda-driven data
+- `Done` Keep every tenant page carrying per-claim provenance and a clear powered-by-Atlas trust footer
+- `Done` Give tenants confidence-gated publishing and their own moderation boundaries
+- `Done` Open federation only once confidence gating and provenance-stamped ingestion protect the commons from low-quality or agenda-driven data
 
 The platform layer is deliberately subordinate to the product layer. It
 must not outrun the product's trust maturity, and it must not become a

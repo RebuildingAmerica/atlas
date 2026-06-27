@@ -157,6 +157,23 @@ describe("resolveClientIdMetadataDocument", () => {
     ).rejects.toThrow(/non-public host/);
   });
 
+  it.each([
+    "https://[fc00::1]/client.json",
+    "https://[fd12:3456::1]/client.json",
+    "https://[fe80::1]/client.json",
+  ])("rejects private IPv6 client_id host %s before fetching", async (clientId) => {
+    let called = false;
+    const fakeFetch: typeof fetch = () => {
+      called = true;
+      return Promise.resolve(jsonResponse(VALID_DOCUMENT));
+    };
+
+    await expect(
+      resolveClientIdMetadataDocument(clientId, DEFAULT_CIMD_RESOLVER_OPTIONS, fakeFetch),
+    ).rejects.toThrow(/non-public host/);
+    expect(called).toBe(false);
+  });
+
   it("enforces the configured host suffix allowlist", async () => {
     const fakeFetch: typeof fetch = () => Promise.resolve(jsonResponse(VALID_DOCUMENT));
 

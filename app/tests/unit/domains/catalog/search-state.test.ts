@@ -3,6 +3,7 @@ import {
   buildBrowseSearch,
   hasActiveBrowseSearch,
   parseList,
+  resolveBrowseSearchIntent,
   serializeList,
   toggleValue,
 } from "@/domains/catalog/search-state";
@@ -49,6 +50,7 @@ describe("buildBrowseSearch", () => {
         issue_areas: "housing,labor",
         entry_types: "organization,initiative",
         source_types: "news_article,podcast",
+        source_patterns: "multi_source,social_only",
         offset: 20,
       }),
     ).toEqual({
@@ -60,6 +62,7 @@ describe("buildBrowseSearch", () => {
       issue_areas: ["housing", "labor"],
       entry_types: ["organization", "initiative"],
       source_types: ["news_article", "podcast"],
+      source_patterns: ["multi_source", "social_only"],
       offset: 20,
     });
   });
@@ -88,6 +91,7 @@ describe("hasActiveBrowseSearch", () => {
         issue_areas: [],
         entry_types: [],
         source_types: [],
+        source_patterns: [],
         offset: 0,
       }),
     ).toBe(false);
@@ -104,8 +108,46 @@ describe("hasActiveBrowseSearch", () => {
         issue_areas: ["housing"],
         entry_types: [],
         source_types: [],
+        source_patterns: [],
         offset: 0,
       }),
     ).toBe(true);
+  });
+});
+
+describe("resolveBrowseSearchIntent", () => {
+  const issueAreaLabels = {
+    housing_affordability: "Housing Affordability",
+    worker_cooperatives: "Worker Cooperatives",
+  };
+  const stateNameByCode = {
+    MO: "Missouri",
+    KS: "Kansas",
+  };
+
+  it("turns a place-plus-issue phrase into filters instead of a brittle text query", () => {
+    expect(
+      resolveBrowseSearchIntent("housing in Missouri", {
+        issueAreaLabels,
+        stateNameByCode,
+      }),
+    ).toEqual({
+      issue_areas: ["housing_affordability"],
+      query: undefined,
+      states: ["MO"],
+    });
+  });
+
+  it("keeps unmatched lead terms as the query while extracting the place filter", () => {
+    expect(
+      resolveBrowseSearchIntent("tenant union in Missouri", {
+        issueAreaLabels,
+        stateNameByCode,
+      }),
+    ).toEqual({
+      issue_areas: [],
+      query: "tenant union",
+      states: ["MO"],
+    });
   });
 });

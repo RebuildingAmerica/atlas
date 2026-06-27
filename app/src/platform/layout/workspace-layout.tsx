@@ -1,13 +1,6 @@
 import type { ReactNode } from "react";
+import type { AppNavItem } from "./app-navigation";
 import { WorkspaceNav } from "./workspace-nav";
-
-/**
- * Navigation tab configuration for the shared workspace shell.
- */
-interface WorkspaceTabConfig {
-  label: string;
-  to: string;
-}
 
 /**
  * Props accepted by the shared workspace shell.
@@ -15,7 +8,7 @@ interface WorkspaceTabConfig {
 interface WorkspaceLayoutProps {
   children: ReactNode;
   identitySlot?: ReactNode;
-  tabs?: WorkspaceTabConfig[];
+  tabs?: AppNavItem[];
 }
 
 /**

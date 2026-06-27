@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { render, screen, fireEvent, cleanup } from "@testing-library/react";
+import { render, screen, fireEvent, cleanup, within } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { TeamMembersSection } from "@/domains/access/components/organization/team-members-section";
 import type { AtlasOrganizationMemberRecord } from "@/domains/access/organization-contracts";
@@ -53,9 +53,20 @@ describe("TeamMembersSection", () => {
     render(<TeamMembersSection {...defaultProps} />);
 
     expect(screen.getByText(/3 members/i)).toBeInTheDocument();
-    expect(screen.getByText("Owner User")).toBeInTheDocument();
-    expect(screen.getByText("Admin User")).toBeInTheDocument();
-    expect(screen.getByText("Member User")).toBeInTheDocument();
+    const roster = screen.getByRole("table", { name: "Workspace members" });
+    expect(within(roster).getByText("Owner User")).toBeInTheDocument();
+    expect(within(roster).getByText("Admin User")).toBeInTheDocument();
+    expect(within(roster).getByText("Member User")).toBeInTheDocument();
+  });
+
+  it("keeps the role guide out of the roster table", () => {
+    render(<TeamMembersSection {...defaultProps} />);
+
+    const roster = screen.getByRole("table", { name: "Workspace members" });
+    expect(screen.queryByRole("region", { name: "Role guide" })).not.toBeInTheDocument();
+    expect(
+      within(roster).queryByText("Workspace settings, billing, members, and shared research."),
+    ).not.toBeInTheDocument();
   });
 
   it("marks the current user", () => {
@@ -104,7 +115,7 @@ describe("TeamMembersSection", () => {
   it("disables remove buttons when a removal is pending", () => {
     render(<TeamMembersSection {...defaultProps} isRemovePending={true} />);
 
-    const removeButtons = screen.getAllByText(/Remove/i);
+    const removeButtons = screen.getAllByRole("button", { name: /Remove/i });
     const firstButton = removeButtons[0];
     if (!firstButton) throw new Error("Expected at least one remove button");
     expect(firstButton).toBeDisabled();

@@ -1,5 +1,5 @@
 import { Popover, PopoverButton, PopoverPanel } from "@headlessui/react";
-import { ChevronDown, Search } from "lucide-react";
+import { ChevronDown, MapPin, Search, Tags } from "lucide-react";
 import { useState } from "react";
 import { STATE_NAME_BY_CODE } from "@/domains/catalog/us-state-grid";
 
@@ -12,6 +12,11 @@ export interface BrowseSurfaceState {
   state: string;
 }
 
+export interface BrowseIssueStarter {
+  label: string;
+  slug: string;
+}
+
 /**
  * Interactive filter option rendered inside a disclosure menu.
  */
@@ -20,6 +25,13 @@ export interface FilterDisclosureItem {
   key: string;
   label: string;
   onClick: () => void;
+}
+
+interface BrowseExplorationGuidesProps {
+  issues: BrowseIssueStarter[];
+  onSelectIssue: (slug: string) => void;
+  onSelectState: (state: string) => void;
+  states: BrowseSurfaceState[];
 }
 
 /**
@@ -66,6 +78,85 @@ export function BrowseSearchBox({
         Search
       </button>
     </form>
+  );
+}
+
+/**
+ * Public browse shortcuts that make the directory legible as place-first and
+ * issue-first exploration, while still using the canonical browse filters.
+ */
+export function BrowseExplorationGuides({
+  issues,
+  onSelectIssue,
+  onSelectState,
+  states,
+}: BrowseExplorationGuidesProps) {
+  if (states.length === 0 && issues.length === 0) {
+    return null;
+  }
+
+  const placeStarters = states.slice(0, 3);
+  const issueStarters = issues.slice(0, 4);
+
+  return (
+    <section
+      aria-label="Browse starting points"
+      className="bg-surface-container-lowest rounded-[1.45rem] px-4 py-4 lg:px-5"
+    >
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.15fr)] lg:items-start">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <MapPin className="text-accent h-4 w-4" aria-hidden />
+            <h2 className="type-title-small text-ink-strong">Places</h2>
+          </div>
+          <p className="type-body-small text-ink-muted mt-1">Start with a geography.</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {placeStarters.map((state) => {
+              const stateName = STATE_NAME_BY_CODE[state.state] ?? state.state;
+              return (
+                <button
+                  key={state.state}
+                  type="button"
+                  aria-label={`${stateName} civic actors ${state.count} records`}
+                  onClick={() => {
+                    onSelectState(state.state);
+                  }}
+                  className="bg-surface hover:bg-surface-container text-ink-strong inline-flex max-w-full items-center gap-2 rounded-full px-3 py-2 text-left transition-colors"
+                >
+                  <span className="type-label-large truncate">{stateName}</span>
+                  <span className="type-body-small text-ink-muted shrink-0">
+                    {state.count} records
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="border-border min-w-0 border-t pt-4 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-5">
+          <div className="flex items-center gap-2">
+            <Tags className="text-accent h-4 w-4" aria-hidden />
+            <h2 className="type-title-small text-ink-strong">Issues</h2>
+          </div>
+          <p className="type-body-small text-ink-muted mt-1">Pick a topic.</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {issueStarters.map((issue) => (
+              <button
+                key={issue.slug}
+                type="button"
+                aria-label={`${issue.label} landscape`}
+                onClick={() => {
+                  onSelectIssue(issue.slug);
+                }}
+                className="type-label-large bg-surface text-ink-soft hover:bg-surface-container hover:text-ink-strong rounded-full px-3 py-2 transition-colors"
+              >
+                {issue.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
   );
 }
 

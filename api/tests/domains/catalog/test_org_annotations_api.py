@@ -14,13 +14,14 @@ from atlas.domains.access.dependencies import require_org_actor
 from atlas.domains.access.principals import AuthenticatedActor
 from atlas.domains.catalog.models.ownership import OwnershipCRUD
 from atlas.main import create_app
-from atlas.models import EntryCRUD
+from atlas.models import EntryCRUD, SourceCRUD
 
 if TYPE_CHECKING:
     from atlas.config import Settings
 
 STATUS_OK = 200
 STATUS_CREATED = 201
+STATUS_BAD_REQUEST = 400
 STATUS_NO_CONTENT = 204
 STATUS_FORBIDDEN = 403
 STATUS_NOT_FOUND = 404
@@ -110,6 +111,21 @@ async def sample_entry_for_annotation(test_db: object) -> str:
     return entry_id
 
 
+@pytest_asyncio.fixture
+async def sample_source_for_annotation(test_db: object) -> str:
+    """Seed a source that can be annotated via HTTP."""
+    source_id = await SourceCRUD.create(
+        test_db,
+        url="https://example.org/source-note",
+        source_type="news_article",
+        extraction_method="manual",
+        title="Source note target",
+        publication="Local Paper",
+    )
+    await test_db.commit()
+    return source_id
+
+
 # ---------------------------------------------------------------------------
 # Access guard tests
 # ---------------------------------------------------------------------------
@@ -182,6 +198,49 @@ class TestOrgAnnotationsList:
         assert all(a["entry_id"] == target_entry_id for a in items)
         assert any(a["id"] == sample_annotation_id for a in items)
 
+    @pytest.mark.asyncio
+    async def test_list_filtered_by_source_id(
+        self,
+        capable_test_client: object,
+        sample_source_for_annotation: str,
+    ) -> None:
+        """source_id query param should filter private notes to that source packet."""
+        create_response = await capable_test_client.post(
+            f"/api/orgs/{ORG_ID}/annotations",
+            json={"source_id": sample_source_for_annotation, "content": "Quote this source."},
+        )
+        assert create_response.status_code == STATUS_CREATED
+
+        filtered = await capable_test_client.get(
+            f"/api/orgs/{ORG_ID}/annotations",
+            params={"source_id": sample_source_for_annotation},
+        )
+
+        assert filtered.status_code == STATUS_OK
+        items = filtered.json()
+        assert len(items) == 1
+        assert items[0]["target_type"] == "source"
+        assert items[0]["target_id"] == sample_source_for_annotation
+        assert items[0]["source_id"] == sample_source_for_annotation
+
+    @pytest.mark.asyncio
+    async def test_list_rejects_ambiguous_filters(
+        self,
+        test_client: object,
+        sample_entry_for_annotation: str,
+        sample_source_for_annotation: str,
+    ) -> None:
+        """The API should keep note filtering targeted to one evidence surface."""
+        response = await test_client.get(
+            f"/api/orgs/{ORG_ID}/annotations",
+            params={
+                "entry_id": sample_entry_for_annotation,
+                "source_id": sample_source_for_annotation,
+            },
+        )
+
+        assert response.status_code == STATUS_BAD_REQUEST
+
 
 class TestOrgAnnotationsCreate:
     """POST /api/orgs/{org_id}/annotations"""
@@ -214,6 +273,56 @@ class TestOrgAnnotationsCreate:
             json={"entry_id": "nonexistent-entry-id", "content": "Note"},
         )
         assert response.status_code == STATUS_NOT_FOUND
+
+    @pytest.mark.asyncio
+    async def test_create_source_annotation(
+        self,
+        capable_test_client: object,
+        sample_source_for_annotation: str,
+    ) -> None:
+        """Creating an annotation for a source packet should return a source-targeted note."""
+        response = await capable_test_client.post(
+            f"/api/orgs/{ORG_ID}/annotations",
+            json={"source_id": sample_source_for_annotation, "content": "Key quote for follow-up."},
+        )
+
+        assert response.status_code == STATUS_CREATED
+        data = response.json()
+        assert data["content"] == "Key quote for follow-up."
+        assert data["target_type"] == "source"
+        assert data["target_id"] == sample_source_for_annotation
+        assert data["source_id"] == sample_source_for_annotation
+
+    @pytest.mark.asyncio
+    async def test_create_annotation_with_missing_source_returns_404(
+        self,
+        capable_test_client: object,
+    ) -> None:
+        """Creating an annotation for a nonexistent source should return 404."""
+        response = await capable_test_client.post(
+            f"/api/orgs/{ORG_ID}/annotations",
+            json={"source_id": "nonexistent-source-id", "content": "Note"},
+        )
+        assert response.status_code == STATUS_NOT_FOUND
+
+    @pytest.mark.asyncio
+    async def test_create_annotation_requires_exactly_one_target(
+        self,
+        capable_test_client: object,
+        sample_entry_for_annotation: str,
+        sample_source_for_annotation: str,
+    ) -> None:
+        """A private note must target one entry or one source, never both."""
+        response = await capable_test_client.post(
+            f"/api/orgs/{ORG_ID}/annotations",
+            json={
+                "entry_id": sample_entry_for_annotation,
+                "source_id": sample_source_for_annotation,
+                "content": "Ambiguous note.",
+            },
+        )
+
+        assert response.status_code == STATUS_BAD_REQUEST
 
 
 class TestOrgAnnotationsUpdate:

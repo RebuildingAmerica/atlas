@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { ComponentType, ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import type { Entry } from "@/types";
 
@@ -117,6 +117,50 @@ export function DetailSection({
 export function SurfaceBlock({ children, className }: { children: ReactNode; className?: string }) {
   return (
     <section className={cn("bg-surface-container rounded-[1rem] px-5 py-5 lg:px-6", className)}>
+      {children}
+    </section>
+  );
+}
+
+interface ProfileSectionProps {
+  children: ReactNode;
+  className?: string;
+  htmlId?: string;
+  Icon?: ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
+  label: string;
+  sectionId: string;
+  title?: string;
+}
+
+export function ProfileSection({
+  children,
+  className,
+  htmlId,
+  Icon,
+  label,
+  sectionId,
+  title,
+}: ProfileSectionProps) {
+  return (
+    <section
+      aria-label={label}
+      className={cn(
+        "border-border-taupe bg-surface-container-lowest border-t px-6 py-6 sm:px-8",
+        className,
+      )}
+      data-profile-section={sectionId}
+      id={htmlId}
+    >
+      <div
+        className="bg-surface-container-lowest/95 border-border/70 sticky top-16 z-10 -mx-6 -mt-6 mb-5 flex items-center gap-2 border-b px-6 py-3 backdrop-blur sm:-mx-8 sm:px-8"
+        data-profile-section-header="true"
+      >
+        {Icon ? <Icon className="text-civic h-4 w-4 shrink-0" aria-hidden /> : null}
+        <div className="min-w-0">
+          <p className="type-label-small text-ink-muted tracking-widest uppercase">{label}</p>
+          {title ? <h2 className="type-title-medium text-ink-strong">{title}</h2> : null}
+        </div>
+      </div>
       {children}
     </section>
   );

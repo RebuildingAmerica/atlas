@@ -25,6 +25,7 @@ describe("NextActionsSection", () => {
       activity: { newSourcesThisWeek: 0, recentItems: [], followedActorCount: 0 },
       recentRuns: [],
       totals: { savedActors: 0, listCount: 0, runsThisMonth: 0 },
+      watchlists: [],
     };
   }
 
@@ -39,9 +40,11 @@ describe("NextActionsSection", () => {
           state: "MO",
           status: "completed",
           startedAt: "2026-06-20T00:00:00.000Z",
+          issueAreas: ["housing_affordability"],
         },
       ],
       totals: { savedActors: 2, listCount: 1, runsThisMonth: 1 },
+      watchlists: [],
     };
   }
 
@@ -56,7 +59,7 @@ describe("NextActionsSection", () => {
       "data-link-to",
       "/lists",
     );
-    expect(screen.getByRole("link", { name: "Start a search" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Start research" })).toHaveAttribute(
       "data-link-to",
       "/discovery",
     );
@@ -69,7 +72,7 @@ describe("NextActionsSection", () => {
 
     expect(screen.queryByRole("link", { name: "Browse profiles" })).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Start a list" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Start a search" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Start research" })).toBeInTheDocument();
   });
 
   it("renders nothing when every suggestion is already satisfied", () => {

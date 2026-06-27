@@ -31,6 +31,7 @@ from atlas_shared import (
 )
 
 from atlas.domains.catalog.geo import geocode_entry
+from atlas.domains.catalog.models.relationships import RelationshipCRUD
 from atlas.domains.discovery.cost import (
     CostCeilingExceeded,
     assert_within_budget,
@@ -67,6 +68,7 @@ class DiscoveryPipelineJob:
     location_query: str
     state: str
     issue_areas: list[str]
+    research_goal: str = "landscape_scan"
 
 
 @dataclass(frozen=True)
@@ -397,7 +399,7 @@ async def persist_discovery_artifacts(
     dedup_suspects: dict[tuple[str, str | None], str] | None = None,
 ) -> tuple[list[str], int]:
     """Persist a canonical discovery artifact bundle into Atlas tables."""
-    return await persist_discovery_results(
+    confirmed_entry_ids, source_count = await persist_discovery_results(
         conn,
         run_id=run_id,
         ranked_entries=artifacts.ranked_entries,
@@ -405,6 +407,167 @@ async def persist_discovery_artifacts(
         stats=artifacts.stats,
         dedup_suspects=dedup_suspects,
     )
+    if artifacts.stats.status == DiscoveryRunStatus.COMPLETED:
+        research_summary = await _build_research_summary(
+            conn,
+            artifacts=artifacts,
+            confirmed_entry_ids=confirmed_entry_ids,
+        )
+        await DiscoveryRunCRUD.update_research_summary(conn, run_id, research_summary)
+    return confirmed_entry_ids, source_count
+
+
+async def _build_research_summary(
+    conn: Connection,
+    *,
+    artifacts: DiscoveryRunArtifacts,
+    confirmed_entry_ids: list[str],
+) -> dict[str, Any]:
+    """Build source-linked research output from persisted discovery artifacts."""
+    ranked_leads = [
+        _research_lead_payload(ranked_entry, entry_id)
+        for ranked_entry, entry_id in zip(
+            artifacts.ranked_entries, confirmed_entry_ids, strict=False
+        )
+    ][:5]
+    key_sources = await _research_source_payloads(conn, artifacts)
+    gaps = _research_gap_payloads(artifacts)
+    location = artifacts.manifest.run.location_query
+    lead_count = len(ranked_leads)
+    source_count = len(key_sources)
+    return {
+        "brief": (
+            f"{location} returned {lead_count} ranked {_plural('lead', lead_count)} backed by "
+            f"{source_count} {_plural('source', source_count)}."
+        ),
+        "ranked_leads": ranked_leads,
+        "key_sources": key_sources,
+        "gaps": gaps,
+        "reasoning_signals": _research_reasoning_signals(
+            ranked_leads=ranked_leads,
+            key_sources=key_sources,
+            gaps=gaps,
+        ),
+    }
+
+
+def _research_lead_payload(
+    ranked_entry: SharedRankedEntry,
+    entry_id: str,
+) -> dict[str, Any]:
+    """Build the summary payload for one ranked lead."""
+    entry = ranked_entry.entry
+    source_count = len(set(entry.source_urls))
+    latest_source_date = max(entry.source_dates).isoformat() if entry.source_dates else None
+    return {
+        "entry_id": entry_id,
+        "name": entry.name,
+        "type": str(entry.entry_type),
+        "why_it_matters": _lead_reason(entry),
+        "source_count": source_count,
+        "confidence": _research_lead_confidence(source_count),
+        "latest_source_date": latest_source_date,
+    }
+
+
+def _research_lead_confidence(source_count: int) -> str:
+    """Return a conservative confidence state for a research lead."""
+    if source_count >= 2:  # noqa: PLR2004
+        return "corroborated"
+    if source_count == 1:
+        return "partial"
+    return "unverified"
+
+
+def _lead_reason(entry: SharedDeduplicatedEntry) -> str:
+    """Return the most useful source-backed reason for a ranked lead."""
+    for source_url in entry.source_urls:
+        context = entry.source_contexts.get(source_url)
+        if context:
+            return context
+    source_count = len(set(entry.source_urls))
+    return f"Ranked from {source_count} supporting {_plural('source', source_count)}."
+
+
+async def _research_source_payloads(
+    conn: Connection,
+    artifacts: DiscoveryRunArtifacts,
+) -> list[dict[str, Any]]:
+    """Build summary source payloads using persisted source IDs."""
+    source_urls = {
+        url for ranked_entry in artifacts.ranked_entries for url in ranked_entry.entry.source_urls
+    }
+    source_by_url = {source.url: source for source in artifacts.sources}
+    payloads: list[dict[str, Any]] = []
+    for source_url in sorted(source_urls):
+        page = source_by_url.get(source_url)
+        persisted = await SourceCRUD.get_by_url(conn, source_url)
+        if page is None or persisted is None or not (page.title or "").strip():
+            continue
+        published_date = _page_published_date(page)
+        payloads.append(
+            {
+                "source_id": persisted.id,
+                "title": page.title,
+                "url": page.url,
+                "publication": page.publication,
+                "published_date": published_date.isoformat() if published_date else None,
+                "why_it_matters": "Supports one or more ranked leads.",
+            }
+        )
+    return payloads[:5]
+
+
+def _research_gap_payloads(artifacts: DiscoveryRunArtifacts) -> list[dict[str, str]]:
+    """Build plain-language gap payloads from the coverage report."""
+    gap_report = artifacts.gap_report
+    if gap_report is None:
+        return []
+
+    gaps: list[dict[str, str]] = []
+    if gap_report.missing_issues:
+        gaps.append(
+            {
+                "label": "Missing issue coverage",
+                "detail": f"No ranked leads for: {', '.join(gap_report.missing_issues)}.",
+            }
+        )
+    if gap_report.thin_issues:
+        gaps.append(
+            {
+                "label": "Thin issue coverage",
+                "detail": f"Limited lead coverage for: {', '.join(gap_report.thin_issues)}.",
+            }
+        )
+    if gap_report.uncovered_domains:
+        gaps.append(
+            {
+                "label": "Uncovered domains",
+                "detail": f"No source-backed leads in: {', '.join(gap_report.uncovered_domains)}.",
+            }
+        )
+    return gaps
+
+
+def _research_reasoning_signals(
+    *,
+    ranked_leads: list[dict[str, Any]],
+    key_sources: list[dict[str, Any]],
+    gaps: list[dict[str, str]],
+) -> list[str]:
+    """Build concise signals explaining why the research output is inspectable."""
+    signals = [
+        f"Ranked {len(ranked_leads)} {_plural('lead', len(ranked_leads))}.",
+        f"Linked {len(key_sources)} key {_plural('source', len(key_sources))}.",
+    ]
+    if gaps:
+        signals.append(f"Flagged {len(gaps)} {_plural('gap', len(gaps))}.")
+    return signals
+
+
+def _plural(word: str, count: int) -> str:
+    """Return a simple English plural for count-aware labels."""
+    return word if count == 1 else f"{word}s"
 
 
 async def _upsert_entry(
@@ -443,16 +606,7 @@ async def _upsert_entry(
     """
     city = entry.city
     state = entry.state
-    candidates = await EntryCRUD.list(conn, state=state, city=city, active_only=False, limit=500)
-    match = next(
-        (
-            candidate
-            for candidate in candidates
-            if candidate.type == str(entry.entry_type)
-            and candidate.name.strip().lower() == entry.name.strip().lower()
-        ),
-        None,
-    )
+    match = await _find_existing_entry(conn, entry)
 
     if match is None:
         today_iso = _today_iso_date()
@@ -463,25 +617,27 @@ async def _upsert_entry(
             score=score,
         )
         located = await geocode_entry(city, state, None, allow_remote=False)
-        entity_id = await EntryCRUD.create(
-            conn,
-            entry_type=str(entry.entry_type),
-            name=entry.name,
-            description=entry.description,
-            city=city,
-            state=state,
-            geo_specificity=str(entry.geo_specificity),
-            region=entry.region,
-            latitude=located.latitude if located else None,
-            longitude=located.longitude if located else None,
-            geocode_precision=located.precision if located else None,
-            geocode_source=located.source if located else None,
-            website=entry.website,
-            email=entry.email,
-            social_media=entry.social_media,
-            first_seen=_first_seen_for_entry(entry, today_iso),
-            last_seen=entry.last_seen or _parse_date(today_iso),
-            active=decision.publish,
+        entity_id = str(
+            await EntryCRUD.create(
+                conn,
+                entry_type=str(entry.entry_type),
+                name=entry.name,
+                description=entry.description,
+                city=city,
+                state=state,
+                geo_specificity=str(entry.geo_specificity),
+                region=entry.region,
+                latitude=located.latitude if located else None,
+                longitude=located.longitude if located else None,
+                geocode_precision=located.precision if located else None,
+                geocode_source=located.source if located else None,
+                website=entry.website,
+                email=entry.email,
+                social_media=entry.social_media,
+                first_seen=_first_seen_for_entry(entry, today_iso),
+                last_seen=entry.last_seen or _parse_date(today_iso),
+                active=decision.publish,
+            )
         )
         if not decision.publish:
             assert decision.hold_reason is not None, "a held record always carries a hold reason"
@@ -518,7 +674,61 @@ async def _upsert_entry(
         last_seen=entry.last_seen or _parse_date(today_iso),
         **coordinate_fields,
     )
-    return match.id
+    return str(match.id)
+
+
+async def _find_existing_entry(
+    conn: Connection,
+    entry: SharedDeduplicatedEntry,
+) -> Any | None:
+    """Find a stored actor that should absorb a repeated public mention.
+
+    Parameters
+    ----------
+    conn : Connection
+        Database connection.
+    entry : SharedDeduplicatedEntry
+        Newly discovered entry candidate.
+
+    Returns
+    -------
+    Any | None
+        Existing entry model when a name/location or stable identity key matches.
+    """
+    candidates = await EntryCRUD.list(
+        conn,
+        state=entry.state,
+        city=entry.city,
+        active_only=False,
+        limit=500,
+    )
+    exact_match = next(
+        (
+            candidate
+            for candidate in candidates
+            if candidate.type == str(entry.entry_type)
+            and candidate.name.strip().lower() == entry.name.strip().lower()
+        ),
+        None,
+    )
+    if exact_match is not None:
+        return exact_match
+
+    if not entry.website:
+        return None
+
+    resolved_id = await RelationshipCRUD.resolve_identity_key(
+        conn,
+        key_type="domain",
+        key_value=entry.website,
+    )
+    if resolved_id is None:
+        return None
+
+    resolved = await EntryCRUD.get_by_id(conn, resolved_id)
+    if resolved is None or resolved.type != str(entry.entry_type):
+        return None
+    return resolved
 
 
 def _dedup_suspect_key(entry: SharedDeduplicatedEntry) -> tuple[str, str | None]:
@@ -617,6 +827,15 @@ async def _persist_sources(
             source_id,
             extraction_context=entry.source_contexts.get(source_url),
         )
+        if entry.website:
+            await RelationshipCRUD.upsert_identity_key(
+                conn,
+                entry_id=entry_id,
+                key_type="domain",
+                key_value=entry.website,
+                source_id=source_id,
+                confidence=0.9,
+            )
         linked_source_urls.add(source_url)
     return linked_source_urls
 
@@ -672,6 +891,7 @@ def _build_discovery_run_artifacts(  # noqa: PLR0913
                 location_query=job.location_query,
                 state=job.state,
                 issue_areas=job.issue_areas,
+                research_goal=job.research_goal,
             ),
             status=stats.status,
             started_at=started_at,

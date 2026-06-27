@@ -10,11 +10,18 @@ from __future__ import annotations
 import json
 from hashlib import sha256
 from datetime import date, datetime
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
 from atlas_shared.types import DiscoveryRunStatus, EntityType, GeoSpecificity, SourceType
+
+DiscoveryResearchGoal = Literal[
+    "landscape_scan",
+    "interview_leads",
+    "partner_scan",
+    "ecosystem_map",
+]
 
 __all__ = [
     "CoverageGap",
@@ -23,6 +30,7 @@ __all__ = [
     "DiscoveryRunArtifacts",
     "DiscoveryRunInput",
     "DiscoveryRunManifest",
+    "DiscoveryResearchGoal",
     "DiscoveryRunSyncRequest",
     "DiscoveryRunSyncResponse",
     "DiscoveryRunStats",
@@ -141,6 +149,10 @@ class DiscoveryRunInput(BaseModel):
         ...,
         description="Issue area slugs that define the run.",
         min_length=1,
+    )
+    research_goal: DiscoveryResearchGoal = Field(
+        default="landscape_scan",
+        description="The research job this run is meant to support.",
     )
     search_depth: str = Field(
         default="standard",

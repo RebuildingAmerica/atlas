@@ -122,7 +122,7 @@ describe("routes/_workspace layout", () => {
     expect(ctx).toEqual({ session });
   });
 
-  it("returns the discovery-only tab list when the session is local", async () => {
+  it("returns the core app tab list when the session is local", async () => {
     const { useAtlasSession } = await import("@/domains/access");
     vi.mocked(useAtlasSession).mockReturnValue({
       data: { isLocal: true, workspace: {} },
@@ -136,7 +136,7 @@ describe("routes/_workspace layout", () => {
     render(<Component />);
     const layout = screen.getByTestId("workspace-layout");
     const tabs = JSON.parse(layout.dataset.tabs ?? "[]") as { label: string }[];
-    expect(tabs.map((t) => t.label)).toEqual(["Discovery"]);
+    expect(tabs.map((t) => t.label)).toEqual(["Home", "Research", "Browse", "Lists", "Activity"]);
     expect(screen.getByTestId("identity-slot")).toBeEmptyDOMElement();
   });
 
@@ -164,10 +164,17 @@ describe("routes/_workspace layout", () => {
     const tabs = JSON.parse(screen.getByTestId("workspace-layout").dataset.tabs ?? "[]") as {
       label: string;
     }[];
-    expect(tabs.map((t) => t.label)).toEqual(["Home", "Discovery", "Lists", "Activity", "Account"]);
+    expect(tabs.map((t) => t.label)).toEqual([
+      "Home",
+      "Research",
+      "Browse",
+      "Lists",
+      "Activity",
+      "Account",
+    ]);
   });
 
-  it("falls back to the discovery-only tab list when the session is null", async () => {
+  it("falls back to the core app tab list when the session is null", async () => {
     const { useAtlasSession } = await import("@/domains/access");
     vi.mocked(useAtlasSession).mockReturnValue({
       data: null,
@@ -182,7 +189,7 @@ describe("routes/_workspace layout", () => {
     const tabs = JSON.parse(screen.getByTestId("workspace-layout").dataset.tabs ?? "[]") as {
       label: string;
     }[];
-    expect(tabs.map((t) => t.label)).toEqual(["Discovery"]);
+    expect(tabs.map((t) => t.label)).toEqual(["Home", "Research", "Browse", "Lists", "Activity"]);
   });
 
   it("delegates the workspace-switch mutationFn to setActiveWorkspace", async () => {
@@ -269,7 +276,8 @@ describe("routes/_workspace layout", () => {
     }[];
     expect(tabs.map((t) => t.label)).toEqual([
       "Home",
-      "Discovery",
+      "Research",
+      "Browse",
       "Lists",
       "Activity",
       "Organization",

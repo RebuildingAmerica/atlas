@@ -26,75 +26,56 @@ vi.mock("@/lib/api", () => ({
 
 beforeEach(() => {
   mocks.useQuery.mockReset();
-  mocks.useQuery.mockReturnValue({ data: null, isLoading: false });
   mocks.apiList.mockReset();
   mocks.apiGet.mockReset();
   mocks.apiGetBySlug.mockReset();
+  mocks.useQuery.mockImplementation((options: { enabled?: boolean; queryFn: () => unknown }) => {
+    if (options.enabled !== false) {
+      void options.queryFn();
+    }
+    return { data: null, isLoading: false };
+  });
 });
 
 describe("useEntries", () => {
-  it("configures the entries query with params", () => {
+  it("fetches entries with params", async () => {
     const params = { states: ["NY"] };
     useEntries(params);
-    expect(mocks.useQuery).toHaveBeenCalledWith(
-      expect.objectContaining({
-        queryKey: ["entries", params],
-      }),
-    );
+    await Promise.resolve();
+    expect(mocks.apiList).toHaveBeenCalledWith(params);
   });
 });
 
 describe("useEntry", () => {
-  it("configures the entry query by ID", () => {
+  it("fetches an entry by ID", async () => {
     useEntry("entry_1");
-    expect(mocks.useQuery).toHaveBeenCalledWith(
-      expect.objectContaining({
-        queryKey: ["entries", "entry_1"],
-      }),
-    );
+    await Promise.resolve();
+    expect(mocks.apiGet).toHaveBeenCalledWith("entry_1");
   });
 
-  it("respects the enabled option", () => {
+  it("does not fetch when disabled", async () => {
     useEntry("entry_1", { enabled: false });
-    expect(mocks.useQuery).toHaveBeenCalledWith(
-      expect.objectContaining({
-        enabled: false,
-      }),
-    );
+    await Promise.resolve();
+    expect(mocks.apiGet).not.toHaveBeenCalled();
   });
 });
 
 describe("useEntryBySlug", () => {
-  it("configures the slug query and uses default enabled when slug is provided", async () => {
+  it("fetches a slug when one is provided", async () => {
     useEntryBySlug("people", "jane-doe-a3f2");
-    expect(mocks.useQuery).toHaveBeenCalledWith(
-      expect.objectContaining({
-        queryKey: ["entries", "by-slug", "people", "jane-doe-a3f2"],
-        enabled: true,
-        retry: false,
-      }),
-    );
-    const queryFn = (mocks.useQuery.mock.calls[0]?.[0] as { queryFn: () => Promise<unknown> })
-      .queryFn;
-    await queryFn();
+    await Promise.resolve();
     expect(mocks.apiGetBySlug).toHaveBeenCalledWith("people", "jane-doe-a3f2");
   });
 
-  it("disables the query when the slug is empty", () => {
+  it("does not fetch when the slug is empty", async () => {
     useEntryBySlug("organizations", "");
-    expect(mocks.useQuery).toHaveBeenCalledWith(
-      expect.objectContaining({
-        enabled: false,
-      }),
-    );
+    await Promise.resolve();
+    expect(mocks.apiGetBySlug).not.toHaveBeenCalled();
   });
 
-  it("respects an explicit enabled override and combines with slug truthiness", () => {
+  it("does not fetch when explicitly disabled", async () => {
     useEntryBySlug("people", "jane-doe-a3f2", { enabled: false });
-    expect(mocks.useQuery).toHaveBeenCalledWith(
-      expect.objectContaining({
-        enabled: false,
-      }),
-    );
+    await Promise.resolve();
+    expect(mocks.apiGetBySlug).not.toHaveBeenCalled();
   });
 });

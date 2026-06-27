@@ -66,9 +66,9 @@ function buildActions(summary: ResearchSummary): NextAction[] {
   if (summary.recentRuns.length === 0) {
     actions.push({
       id: "search",
-      title: "Run your first search",
+      title: "Start your first research request",
       body: "Discover people and organizations working on an issue near you.",
-      cta: "Start a search",
+      cta: "Start research",
       to: "/discovery",
     });
   }

@@ -3,9 +3,14 @@
 from __future__ import annotations
 
 import aiosqlite
+import pytest
 import pytest_asyncio
 
-from atlas.domains.catalog.models.ownership import AnnotationModel, OwnershipCRUD
+from atlas.domains.catalog.models.ownership import (
+    AnnotationModel,
+    AnnotationTargetError,
+    OwnershipCRUD,
+)
 from atlas.models.database import DB_SCHEMA
 
 ORG_ID = "org_test_1"
@@ -39,6 +44,21 @@ async def sample_entry_id(db: aiosqlite.Connection) -> str:
     )
 
 
+@pytest_asyncio.fixture
+async def sample_source_id(db: aiosqlite.Connection) -> str:
+    """Create a sample source for annotation tests."""
+    from atlas.models import SourceCRUD
+
+    return await SourceCRUD.create(
+        db,
+        url="https://example.org/private-source-note",
+        source_type="news_article",
+        extraction_method="manual",
+        title="Private source note",
+        publication="Local Paper",
+    )
+
+
 async def test_create_annotation(db: aiosqlite.Connection, sample_entry_id: str) -> None:
     """Creating an annotation should return a model with all fields populated."""
     result = await OwnershipCRUD.create_annotation(
@@ -57,6 +77,47 @@ async def test_create_annotation(db: aiosqlite.Connection, sample_entry_id: str)
     assert result.created_at != ""
     assert result.updated_at != ""
     assert result.id != ""
+
+
+async def test_create_source_annotation(db: aiosqlite.Connection, sample_source_id: str) -> None:
+    """Creating an annotation should also support private notes on source packets."""
+    result = await OwnershipCRUD.create_annotation(
+        db,
+        org_id=ORG_ID,
+        source_id=sample_source_id,
+        content="Source has the quote to reuse.",
+        author_id=AUTHOR_ID,
+    )
+
+    assert result.entry_id is None
+    assert result.source_id == sample_source_id
+    assert result.target_type == "source"
+    assert result.target_id == sample_source_id
+
+
+async def test_create_annotation_requires_one_target(
+    db: aiosqlite.Connection,
+    sample_entry_id: str,
+    sample_source_id: str,
+) -> None:
+    """Creating a private note should reject missing or ambiguous targets."""
+    with pytest.raises(AnnotationTargetError):
+        await OwnershipCRUD.create_annotation(
+            db,
+            org_id=ORG_ID,
+            content="No target.",
+            author_id=AUTHOR_ID,
+        )
+
+    with pytest.raises(AnnotationTargetError):
+        await OwnershipCRUD.create_annotation(
+            db,
+            org_id=ORG_ID,
+            entry_id=sample_entry_id,
+            source_id=sample_source_id,
+            content="Two targets.",
+            author_id=AUTHOR_ID,
+        )
 
 
 async def test_list_annotations_for_org(db: aiosqlite.Connection, sample_entry_id: str) -> None:
@@ -125,6 +186,46 @@ async def test_list_annotations_filtered_by_entry(
 
     assert len(results) == 1
     assert results[0].entry_id == sample_entry_id
+
+
+async def test_list_annotations_filtered_by_source(
+    db: aiosqlite.Connection, sample_entry_id: str, sample_source_id: str
+) -> None:
+    """Listing with source_id should filter private notes to that source."""
+    await OwnershipCRUD.create_annotation(
+        db,
+        org_id=ORG_ID,
+        entry_id=sample_entry_id,
+        content="Entry note",
+        author_id=AUTHOR_ID,
+    )
+    await OwnershipCRUD.create_annotation(
+        db,
+        org_id=ORG_ID,
+        source_id=sample_source_id,
+        content="Source note",
+        author_id=AUTHOR_ID,
+    )
+
+    results = await OwnershipCRUD.list_annotations(db, ORG_ID, source_id=sample_source_id)
+
+    assert len(results) == 1
+    assert results[0].source_id == sample_source_id
+
+
+async def test_list_annotations_rejects_ambiguous_filters(
+    db: aiosqlite.Connection,
+    sample_entry_id: str,
+    sample_source_id: str,
+) -> None:
+    """Listing private notes should filter by one target type at a time."""
+    with pytest.raises(AnnotationTargetError):
+        await OwnershipCRUD.list_annotations(
+            db,
+            ORG_ID,
+            entry_id=sample_entry_id,
+            source_id=sample_source_id,
+        )
 
 
 async def test_list_annotations_without_entry_filter(

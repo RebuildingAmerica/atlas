@@ -4,25 +4,28 @@ import { hasSerializedCapability } from "@/domains/access/capabilities";
 import { isAtLimitError, resolveStartRunErrorMessage } from "@/domains/discovery/api-errors";
 import { useTaxonomy } from "@/domains/catalog/hooks/use-taxonomy";
 import { useDiscoveryRuns, useStartDiscovery } from "@/domains/discovery/hooks/use-discovery";
-import {
-  DiscoveryHero,
-  DiscoverySetupNotice,
-  DiscoveryUpgradePrompt,
-} from "./components/discovery-hero";
+import { DiscoverySetupNotice, DiscoveryUpgradePrompt } from "./components/discovery-hero";
 import { DiscoveryRunForm } from "./components/discovery-run-form";
 import { DiscoveryRunsPanel } from "./components/discovery-runs-panel";
+import type { DiscoveryResearchGoal, DiscoveryRunListResponse, TaxonomyResponse } from "@/types";
+
+interface DiscoveryPageProps {
+  initialRuns?: DiscoveryRunListResponse;
+  initialTaxonomy?: TaxonomyResponse;
+}
 
 /**
- * Renders the workspace discovery surface — a hero band, optional setup
- * and upgrade notices, the run-creation form, and the recent-runs panel.
+ * Renders the workspace research surface around recent requests first, with
+ * creation controls available below the request history.
  */
-export function DiscoveryPage() {
+export function DiscoveryPage({ initialRuns, initialTaxonomy }: DiscoveryPageProps = {}) {
   const atlasSession = useAtlasSession();
-  const runsQuery = useDiscoveryRuns();
+  const runsQuery = useDiscoveryRuns({ initialData: initialRuns });
   const startDiscovery = useStartDiscovery();
-  const taxonomyQuery = useTaxonomy();
+  const taxonomyQuery = useTaxonomy({ initialData: initialTaxonomy });
 
   const [locationQuery, setLocationQuery] = useState("");
+  const [researchGoal, setResearchGoal] = useState<DiscoveryResearchGoal>("landscape_scan");
   const [state, setState] = useState("");
   const [selectedIssues, setSelectedIssues] = useState<string[]>([]);
 
@@ -34,8 +37,6 @@ export function DiscoveryPage() {
   }, [taxonomyQuery.data]);
 
   const isLocal = atlasSession.data?.isLocal ?? false;
-  const activeWorkspace = atlasSession.data?.workspace.activeOrganization ?? null;
-  const canUseTeamFeatures = atlasSession.data?.workspace.capabilities.canUseTeamFeatures ?? false;
   const needsWorkspace = atlasSession.data?.workspace.onboarding.needsWorkspace ?? false;
   const canRunResearch = atlasSession.data
     ? hasSerializedCapability(atlasSession.data.workspace.resolvedCapabilities, "research.run")
@@ -71,11 +72,13 @@ export function DiscoveryPage() {
       {
         issue_areas: selectedIssues,
         location_query: locationQuery.trim(),
+        research_goal: researchGoal,
         state: state.trim().toUpperCase(),
       },
       {
         onSuccess: () => {
           setLocationQuery("");
+          setResearchGoal("landscape_scan");
           setState("");
           setSelectedIssues([]);
         },
@@ -83,29 +86,14 @@ export function DiscoveryPage() {
     );
   };
 
-  const heroEyebrow = canUseTeamFeatures ? "Team discovery" : "Discovery";
-  const heroTitle =
-    canUseTeamFeatures && activeWorkspace ? `${activeWorkspace.name} discovery` : "Discovery";
-  const heroDescription = needsWorkspace
-    ? "Create a workspace to keep your discovery runs organized."
-    : canUseTeamFeatures && activeWorkspace
-      ? `Start runs for ${activeWorkspace.name} and keep the team aligned on what Atlas is actively researching.`
-      : "Start discovery runs and check recent run status in one place.";
-  const workspaceBadge = activeWorkspace && !isLocal ? activeWorkspace.name : null;
-
   return (
-    <div className="space-y-10">
-      <DiscoveryHero
-        description={heroDescription}
-        eyebrow={heroEyebrow}
-        title={heroTitle}
-        workspaceBadge={workspaceBadge}
-      />
+    <div className="space-y-8">
+      <DiscoveryRunsPanel isLoading={runsQuery.isLoading} runs={latestRuns} />
 
       {needsWorkspace ? (
         <DiscoverySetupNotice
           title="Create your workspace"
-          body="Set up a workspace to organize your discovery runs and research."
+          body="Set up a workspace to organize research and briefs."
           cta="Create a workspace"
         />
       ) : null}
@@ -126,23 +114,22 @@ export function DiscoveryPage() {
 
       {isAtLimit ? <DiscoveryUpgradePrompt reason="at-limit" /> : null}
 
-      <section className="grid gap-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
-        <DiscoveryRunForm
-          canRunResearch={canRunResearch}
-          issueAreas={issueAreas}
-          isPending={startDiscovery.isPending}
-          isTaxonomyLoading={taxonomyQuery.isLoading}
-          locationQuery={locationQuery}
-          selectedIssues={selectedIssues}
-          startErrorMessage={isAtLimit ? null : startErrorMessage}
-          state={state}
-          onLocationChange={setLocationQuery}
-          onStateChange={handleStateChange}
-          onSubmit={handleSubmit}
-          onToggleIssue={handleToggleIssue}
-        />
-        <DiscoveryRunsPanel isLoading={runsQuery.isLoading} runs={latestRuns} />
-      </section>
+      <DiscoveryRunForm
+        canRunResearch={canRunResearch}
+        issueAreas={issueAreas}
+        isPending={startDiscovery.isPending}
+        isTaxonomyLoading={taxonomyQuery.isLoading}
+        locationQuery={locationQuery}
+        researchGoal={researchGoal}
+        selectedIssues={selectedIssues}
+        startErrorMessage={isAtLimit ? null : startErrorMessage}
+        state={state}
+        onLocationChange={setLocationQuery}
+        onResearchGoalChange={setResearchGoal}
+        onStateChange={handleStateChange}
+        onSubmit={handleSubmit}
+        onToggleIssue={handleToggleIssue}
+      />
     </div>
   );
 }

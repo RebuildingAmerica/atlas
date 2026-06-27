@@ -105,7 +105,8 @@ describe("MapDetailPanel — actor view", () => {
     );
     expect(screen.queryByRole("link", { name: /View full profile/ })).toBeNull();
     expect(screen.queryByRole("link", { name: /See their connections/ })).toBeNull();
-    expect(screen.getByText(/profile is still being assembled/i)).toBeTruthy();
+    expect(screen.getByText("No profile page is available for this actor.")).toBeTruthy();
+    expect(screen.queryByText(/profile is still being assembled/i)).toBeNull();
   });
 
   it("closes when the close button is pressed", () => {

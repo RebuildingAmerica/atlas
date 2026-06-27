@@ -7,10 +7,10 @@ import { z } from "zod";
 import { lockedEntryTypesForScope } from "@/domains/catalog/profile-browse";
 import { api } from "@/lib/api";
 import { AtlasApiError } from "@/lib/orval/fetcher";
-import type { Entry, EntryListResponse } from "@/types";
+import type { Entry, EntryListResponse, EntrySlugScope } from "@/types";
 
 const profileSlugSchema = z.object({
-  type: z.enum(["people", "organizations"]),
+  type: z.enum(["people", "organizations", "initiatives", "campaigns", "events"]),
   slug: z.string().min(1),
 });
 
@@ -18,7 +18,7 @@ export const loadProfileBySlug = createServerFn({ method: "GET" })
   .inputValidator(profileSlugSchema)
   .handler(async ({ data }) => {
     try {
-      return await api.entries.getBySlug(data.type, data.slug);
+      return await api.entries.getBySlug(data.type as EntrySlugScope, data.slug);
     } catch (error) {
       if (error instanceof AtlasApiError && error.status === 404) {
         notFound({ throw: true });

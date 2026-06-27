@@ -16,11 +16,14 @@ if TYPE_CHECKING:
     from collections.abc import Iterator
 
 HTTP_UNAUTHORIZED = 401
+HTTP_FORBIDDEN = 403
 
 EXPECTED_TOOL_NAMES = {
+    "get_discovery_run",
     "search_entities",
     "get_entity",
     "get_entity_sources",
+    "list_discovery_runs",
     "search_sources",
     "get_place_entities",
     "get_place_profile",
@@ -66,6 +69,17 @@ async def test_search_entities_tool_has_expected_schema() -> None:
     tool = next(tool for tool in tools if tool.name == "search_entities")
     properties = tool.inputSchema.get("properties", {})
     expected = {"place", "issue_areas", "text", "entity_types", "source_types", "limit", "cursor"}
+    assert expected <= set(properties)
+
+
+@pytest.mark.asyncio
+async def test_list_discovery_runs_tool_has_expected_schema() -> None:
+    """The list_discovery_runs tool exposes filters agents need for research artifacts."""
+    mcp = build_mcp()
+    tools = await mcp.list_tools()
+    tool = next(tool for tool in tools if tool.name == "list_discovery_runs")
+    properties = tool.inputSchema.get("properties", {})
+    expected = {"state", "status", "limit", "cursor"}
     assert expected <= set(properties)
 
 
@@ -146,11 +160,95 @@ async def test_auth_middleware_lets_through_valid_token() -> None:
         settings.auth_jwt_jwks_url = "https://atlas.example.com/api/auth/jwks"
         settings.auth_jwt_resource_url = "https://atlas.example.com"
         get_settings_mock.return_value = settings
-        verify_mock.return_value = {"sub": "user-123", "aud": "https://atlas.example.com"}
+        verify_mock.return_value = {
+            "sub": "user-123",
+            "aud": "https://atlas.example.com",
+            "permissions": {"discovery": ["read"]},
+        }
 
         result = await middleware.dispatch(request, next_handler)
 
     assert result == "ok"
+    next_handler.assert_awaited_once_with(request)
+
+
+@pytest.mark.asyncio
+async def test_auth_middleware_rejects_tokens_without_discovery_read_scope() -> None:
+    """Valid MCP tokens still need discovery:read to list and call read tools."""
+    middleware = McpBearerAuthMiddleware(app=AsyncMock())
+    request = MagicMock()
+    request.headers = {"authorization": "Bearer valid-token"}
+    next_handler = AsyncMock(return_value="ok")
+
+    with (
+        patch("atlas.platform.mcp.auth_middleware.get_settings") as get_settings_mock,
+        patch("atlas.platform.mcp.auth_middleware.verify_bearer_jwt") as verify_mock,
+    ):
+        settings = MagicMock()
+        settings.auth_jwt_audience = ["https://atlas.example.com/mcp"]
+        settings.auth_jwt_issuer = "https://atlas.example.com/api/auth"
+        settings.auth_jwt_jwks_url = "https://atlas.example.com/api/auth/jwks"
+        settings.auth_jwt_resource_url = "https://atlas.example.com/mcp"
+        settings.auth_resource_metadata_url = (
+            "https://atlas.example.com/.well-known/oauth-protected-resource/mcp"
+        )
+        settings.auth_jwt_default_scope = ["discovery:read"]
+        get_settings_mock.return_value = settings
+        verify_mock.return_value = {
+            "sub": "user-123",
+            "aud": "https://atlas.example.com/mcp",
+            "permissions": {"entities": ["write"]},
+        }
+
+        response = await middleware.dispatch(request, next_handler)
+
+    assert response.status_code == HTTP_FORBIDDEN
+    challenge = response.headers["WWW-Authenticate"]
+    assert 'error="insufficient_scope"' in challenge
+    assert 'scope="discovery:read"' in challenge
+    assert (
+        'resource_metadata="https://atlas.example.com/.well-known/oauth-protected-resource/mcp"'
+        in challenge
+    )
+    next_handler.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_auth_middleware_verifies_only_the_mcp_resource_audience() -> None:
+    """MCP requests must not accept tokens minted for a sibling REST API resource."""
+    middleware = McpBearerAuthMiddleware(app=AsyncMock())
+    request = MagicMock()
+    request.headers = {"authorization": "Bearer valid-token"}
+    next_handler = AsyncMock(return_value="ok")
+
+    with (
+        patch("atlas.platform.mcp.auth_middleware.get_settings") as get_settings_mock,
+        patch("atlas.platform.mcp.auth_middleware.verify_bearer_jwt") as verify_mock,
+    ):
+        settings = MagicMock()
+        settings.auth_jwt_audience = [
+            "https://atlas.example.com/mcp",
+            "https://api.atlas.example.com",
+        ]
+        settings.auth_jwt_issuer = "https://atlas.example.com/api/auth"
+        settings.auth_jwt_jwks_url = "https://atlas.example.com/api/auth/jwks"
+        settings.auth_jwt_resource_url = "https://atlas.example.com/mcp"
+        get_settings_mock.return_value = settings
+        verify_mock.return_value = {
+            "sub": "user-123",
+            "aud": "https://atlas.example.com/mcp",
+            "permissions": {"discovery": ["read"]},
+        }
+
+        result = await middleware.dispatch(request, next_handler)
+
+    assert result == "ok"
+    verify_mock.assert_called_once_with(
+        "Bearer valid-token",
+        issuer="https://atlas.example.com/api/auth",
+        audience=["https://atlas.example.com/mcp"],
+        jwks_url="https://atlas.example.com/api/auth/jwks",
+    )
     next_handler.assert_awaited_once_with(request)
 
 

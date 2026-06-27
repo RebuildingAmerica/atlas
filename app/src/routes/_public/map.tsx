@@ -7,6 +7,16 @@ import type { MapRouteSearch } from "@/domains/catalog/search-state";
 export const Route = createFileRoute("/_public/map")({
   ssr: false,
   validateSearch: mapSearchSchema,
+  head: () => ({
+    meta: [
+      { title: "Civic Map | Atlas" },
+      {
+        name: "description",
+        content:
+          "Map source-linked civic actors by place, issue area, public evidence, and relationship.",
+      },
+    ],
+  }),
   loaderDeps: ({ search }: { search: MapRouteSearch }) => ({ search }),
   loader: async ({ deps }: { deps: { search: MapRouteSearch } }) => {
     const filters = buildBrowseSearch(deps.search);

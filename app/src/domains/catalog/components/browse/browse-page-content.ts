@@ -23,11 +23,11 @@ export interface BrowsePageContent {
 }
 
 export const DEFAULT_BROWSE_PAGE_CONTENT: BrowsePageContent = {
-  eyebrow: "Atlas",
-  title: "Browse Atlas",
+  eyebrow: "Research browser",
+  title: "Source-linked civic research",
   description:
-    "Search the public civic graph by place, issue area, source type, and actor type. Open any result to inspect the source-backed record behind it.",
-  emptyAction: { label: "Discovery", to: "/discovery" },
+    "Find source-backed actors by place, issue, source type, and role. Open any result to inspect where the record came from and why it belongs in the local landscape.",
+  emptyAction: { label: "Research", to: "/discovery" },
   resultLabelPlural: "entries",
   resultsHeading: "Entries",
   searchPlaceholder: "Search place, issue, or name",

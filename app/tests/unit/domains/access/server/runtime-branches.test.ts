@@ -45,6 +45,7 @@ describe("runtime additional branches", () => {
     expect(() => {
       validateAuthRuntimeConfig({
         apiAudience: null,
+        apiAudiences: [],
         apiBaseUrl: null,
         allowedEmails: new Set(),
         apiKeyIntrospectionUrl: null,

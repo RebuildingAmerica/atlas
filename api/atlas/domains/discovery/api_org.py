@@ -4,8 +4,11 @@ from __future__ import annotations
 
 import logging
 from collections.abc import AsyncGenerator  # noqa: TC003
+from dataclasses import dataclass
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
+from atlas_shared import DiscoveryResearchGoal  # noqa: TC002
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel, Field
 
@@ -13,8 +16,10 @@ from atlas.domains.access.capabilities import enforce_limit, require_capability
 from atlas.domains.access.dependencies import require_org_actor
 from atlas.domains.catalog.models.ownership import OwnershipCRUD
 from atlas.domains.catalog.taxonomy import ALL_ISSUE_SLUGS
+from atlas.domains.discovery.schemas import DiscoveryResearchSummary  # noqa: TC001
 from atlas.models import DiscoveryRunCRUD, get_db_connection
 from atlas.platform.config import Settings, get_settings
+from atlas.platform.database import db as db_util
 from atlas.platform.http.cache import apply_no_store_headers
 
 if TYPE_CHECKING:
@@ -28,6 +33,9 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 __all__ = ["router"]
+
+DEFAULT_ORG_DISCOVERY_MONTHLY_LIMIT = 3
+"""Default monthly private discovery runs per workspace."""
 
 
 # --- Request/Response schemas ---
@@ -52,6 +60,10 @@ class OrgDiscoveryRunStartRequest(BaseModel):
         description="List of issue area slugs to query",
         min_length=1,
     )
+    research_goal: DiscoveryResearchGoal = Field(
+        default="landscape_scan",
+        description="Research job this run supports",
+    )
 
 
 class OrgDiscoveryRunResponse(BaseModel):
@@ -61,6 +73,7 @@ class OrgDiscoveryRunResponse(BaseModel):
     org_id: str = Field(..., description="Owning organization ID")
     location_query: str = Field(..., description="Location query")
     state: str = Field(..., description="State code")
+    research_goal: DiscoveryResearchGoal = Field(..., description="Research job this run supports")
     issue_areas: list[str] = Field(..., description="Issue areas queried")
     queries_generated: int = Field(..., description="Search queries generated")
     sources_fetched: int = Field(..., description="Sources fetched")
@@ -73,6 +86,10 @@ class OrgDiscoveryRunResponse(BaseModel):
     status: str = Field(..., description="Status (running, completed, failed)")
     error_message: str | None = Field(None, description="Error message if failed")
     created_at: str = Field(..., description="Creation timestamp")
+    research_summary: DiscoveryResearchSummary | None = Field(
+        None,
+        description="Structured research output with leads, sources, gaps, and reasoning signals",
+    )
 
 
 class OrgDiscoveryRunCollectionResponse(BaseModel):
@@ -81,6 +98,134 @@ class OrgDiscoveryRunCollectionResponse(BaseModel):
     items: list[OrgDiscoveryRunResponse] = Field(..., description="Discovery runs")
     total: int = Field(..., description="Total count")
     next_cursor: str | None = Field(None, description="Next pagination cursor")
+
+
+class OrgDiscoveryBudgetExceededResponse(BaseModel):
+    """Response detail returned when a tenant monthly discovery budget is spent."""
+
+    org_id: str
+    month: str
+    monthly_run_limit: int
+    used_runs: int
+    remaining_runs: int
+
+
+@dataclass
+class OrgDiscoveryBudgetModel:
+    """Monthly discovery-run budget for a workspace."""
+
+    org_id: str
+    month: str
+    monthly_run_limit: int
+    used_runs: int
+    updated_at: str
+
+    @property
+    def remaining_runs(self) -> int:
+        """Return how many private discovery runs remain in this budget window."""
+        return max(self.monthly_run_limit - self.used_runs, 0)
+
+
+class OrgDiscoveryBudgetCRUD:
+    """CRUD for tenant-scoped monthly discovery run budgets."""
+
+    @staticmethod
+    async def get_budget(
+        conn: aiosqlite.Connection,
+        *,
+        org_id: str,
+        month: str,
+    ) -> OrgDiscoveryBudgetModel | None:
+        """Return an org discovery budget row, if one exists."""
+        cursor = await conn.execute(
+            """
+            SELECT org_id, month, monthly_run_limit, used_runs, updated_at
+            FROM org_discovery_budgets
+            WHERE org_id = ? AND month = ?
+            """,
+            (org_id, month),
+        )
+        row = await cursor.fetchone()
+        if row is None:
+            return None
+        return OrgDiscoveryBudgetModel(
+            org_id=row[0],
+            month=row[1],
+            monthly_run_limit=row[2],
+            used_runs=row[3],
+            updated_at=row[4],
+        )
+
+    @staticmethod
+    async def set_budget(
+        conn: aiosqlite.Connection,
+        *,
+        org_id: str,
+        month: str,
+        monthly_run_limit: int,
+        used_runs: int = 0,
+    ) -> OrgDiscoveryBudgetModel:
+        """Create or replace an org discovery budget row."""
+        updated_at = db_util.now_iso()
+        await conn.execute(
+            """
+            INSERT INTO org_discovery_budgets (
+                org_id, month, monthly_run_limit, used_runs, updated_at
+            )
+            VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT(org_id, month) DO UPDATE SET
+                monthly_run_limit = excluded.monthly_run_limit,
+                used_runs = excluded.used_runs,
+                updated_at = excluded.updated_at
+            """,
+            (org_id, month, monthly_run_limit, used_runs, updated_at),
+        )
+        await conn.commit()
+        budget = await OrgDiscoveryBudgetCRUD.get_budget(conn, org_id=org_id, month=month)
+        assert budget is not None, "budget was just upserted"
+        return budget
+
+    @staticmethod
+    async def reserve_run(
+        conn: aiosqlite.Connection,
+        *,
+        org_id: str,
+        month: str,
+        default_monthly_limit: int = DEFAULT_ORG_DISCOVERY_MONTHLY_LIMIT,
+    ) -> OrgDiscoveryBudgetModel:
+        """Reserve one discovery run or raise HTTP 409 with the current budget state."""
+        budget = await OrgDiscoveryBudgetCRUD.get_budget(conn, org_id=org_id, month=month)
+        if budget is None:
+            budget = await OrgDiscoveryBudgetCRUD.set_budget(
+                conn,
+                org_id=org_id,
+                month=month,
+                monthly_run_limit=default_monthly_limit,
+                used_runs=0,
+            )
+
+        if budget.used_runs >= budget.monthly_run_limit:
+            detail = OrgDiscoveryBudgetExceededResponse(
+                org_id=budget.org_id,
+                month=budget.month,
+                monthly_run_limit=budget.monthly_run_limit,
+                used_runs=budget.used_runs,
+                remaining_runs=budget.remaining_runs,
+            )
+            raise HTTPException(status_code=409, detail=detail.model_dump())
+
+        await conn.execute(
+            """
+            UPDATE org_discovery_budgets
+            SET used_runs = used_runs + 1, updated_at = ?
+            WHERE org_id = ? AND month = ?
+            """,
+            (db_util.now_iso(), org_id, month),
+        )
+        await conn.commit()
+        reserved = await OrgDiscoveryBudgetCRUD.get_budget(conn, org_id=org_id, month=month)
+        assert reserved is not None, "budget existed before reservation"
+        return reserved
 
 
 # --- Dependencies ---
@@ -113,6 +258,7 @@ def _run_to_org_response(run: DiscoveryRunModel, org_id: str) -> OrgDiscoveryRun
         org_id=org_id,
         location_query=run.location_query,
         state=run.state,
+        research_goal=run.research_goal,
         issue_areas=run.issue_areas,
         queries_generated=run.queries_generated,
         sources_fetched=run.sources_fetched,
@@ -125,7 +271,13 @@ def _run_to_org_response(run: DiscoveryRunModel, org_id: str) -> OrgDiscoveryRun
         status=run.status,
         error_message=run.error_message,
         created_at=run.created_at,
+        research_summary=run.research_summary,
     )
+
+
+def _current_budget_month() -> str:
+    """Return the current UTC budget month in YYYY-MM format."""
+    return datetime.now(UTC).strftime("%Y-%m")
 
 
 # --- Endpoints ---
@@ -210,11 +362,18 @@ async def start_org_discovery_run(
         if issue_area not in ALL_ISSUE_SLUGS:
             raise HTTPException(status_code=400, detail=f"Invalid issue area: {issue_area}")
 
+    await OrgDiscoveryBudgetCRUD.reserve_run(
+        db,
+        org_id=org_id,
+        month=_current_budget_month(),
+    )
+
     run_id = await DiscoveryRunCRUD.create(
         db,
         location_query=req.location_query,
         state=req.state,
         issue_areas=req.issue_areas,
+        research_goal=req.research_goal,
     )
 
     await OwnershipCRUD.create_ownership(

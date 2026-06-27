@@ -401,6 +401,21 @@ class TestSourceModelCoverage:
         assert all(s.type == "news_article" for s in results)
 
     @pytest.mark.asyncio
+    async def test_create_accepts_community_archive_source_type(self, test_db: object) -> None:
+        """Community-source evidence should persist as a first-class source type."""
+        source_id = await SourceCRUD.create(
+            test_db,
+            url="https://example.org/community-calendar",
+            source_type="community_archive",
+            extraction_method="autodiscovery",
+        )
+
+        source = await SourceCRUD.get_by_id(test_db, source_id)
+
+        assert source is not None
+        assert source.type == "community_archive"
+
+    @pytest.mark.asyncio
     async def test_list_filters_by_extraction_method(self, test_db: object) -> None:
         """list should filter by extraction_method when provided."""
         await SourceCRUD.create(

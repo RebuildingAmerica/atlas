@@ -17,6 +17,24 @@ interface PaginationState {
   total: number;
 }
 
+export interface BrowseResearchContext {
+  chips: string[];
+  query?: string;
+}
+
+export interface BrowsePlaceBrief {
+  body: string;
+  signal?: string;
+  title: string;
+}
+
+export interface BrowseIssueBrief {
+  body: string;
+  gap?: string;
+  signal?: string;
+  title: string;
+}
+
 interface BrowseResultsAsideProps {
   emptyAction: BrowsePageContent["emptyAction"];
   entries: Entry[];
@@ -24,8 +42,11 @@ interface BrowseResultsAsideProps {
   hasActiveSearch: boolean;
   isLoading: boolean;
   issueAreaLabels: Record<string, string>;
+  issueBrief: BrowseIssueBrief | undefined;
   pagination: PaginationState | undefined;
   removableBadges: RemovableBadge[];
+  placeBrief: BrowsePlaceBrief | undefined;
+  researchContext: BrowseResearchContext | undefined;
   resultLabelPlural: string | undefined;
   resultsHeading: string | undefined;
   onPageChange: (offset: number) => void;
@@ -44,8 +65,11 @@ export function BrowseResultsAside({
   hasActiveSearch,
   isLoading,
   issueAreaLabels,
+  issueBrief,
   pagination,
+  placeBrief,
   removableBadges,
+  researchContext,
   resultLabelPlural,
   resultsHeading,
   onPageChange,
@@ -60,6 +84,55 @@ export function BrowseResultsAside({
         </div>
 
         <div className="px-3 pb-3 lg:px-4 lg:pb-4">
+          {researchContext ? (
+            <div className="border-border bg-surface-container-lowest mb-3 space-y-2 rounded-[1rem] border px-3 py-2.5">
+              <div>
+                <p className="type-label-small text-ink-muted uppercase">Research focus</p>
+                {researchContext.query ? (
+                  <p className="type-title-medium text-ink-strong mt-1">{researchContext.query}</p>
+                ) : null}
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {researchContext.chips.map((chip) => (
+                  <span
+                    key={chip}
+                    className="type-label-large bg-surface-container-high text-ink-soft rounded-full px-2.5 py-1"
+                  >
+                    {chip}
+                  </span>
+                ))}
+              </div>
+              <p className="type-body-small text-ink-muted">
+                Prioritize records with deeper source trails and recent coverage.
+              </p>
+            </div>
+          ) : null}
+
+          {placeBrief ? (
+            <div className="border-border bg-surface-container-lowest mb-3 space-y-2 rounded-[1rem] border px-3 py-2.5">
+              <p className="type-label-small text-ink-muted uppercase">Place brief</p>
+              <p className="type-title-medium text-ink-strong">{placeBrief.title}</p>
+              <p className="type-body-small text-ink-soft">{placeBrief.body}</p>
+              {placeBrief.signal ? (
+                <p className="type-body-small text-ink-muted">{placeBrief.signal}</p>
+              ) : null}
+            </div>
+          ) : null}
+
+          {issueBrief ? (
+            <div className="border-border bg-surface-container-lowest mb-3 space-y-2 rounded-[1rem] border px-3 py-2.5">
+              <p className="type-label-small text-ink-muted uppercase">Issue brief</p>
+              <p className="type-title-medium text-ink-strong">{issueBrief.title}</p>
+              <p className="type-body-small text-ink-soft">{issueBrief.body}</p>
+              {issueBrief.signal ? (
+                <p className="type-body-small text-ink-muted">{issueBrief.signal}</p>
+              ) : null}
+              {issueBrief.gap ? (
+                <p className="type-body-small text-ink-muted">{issueBrief.gap}</p>
+              ) : null}
+            </div>
+          ) : null}
+
           {removableBadges.length > 0 ? (
             <div className="flex flex-wrap gap-x-2.5 gap-y-1.5">
               {removableBadges.map((badge) => (

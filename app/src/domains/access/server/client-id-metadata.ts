@@ -134,6 +134,8 @@ const PRIVATE_HOST_PATTERNS: readonly RegExp[] = [
   /^172\.(1[6-9]|2\d|3[0-1])\./,
   /^::1$/,
   /^\[::1\]$/,
+  /^\[f[cd][0-9a-f:]*\]$/i,
+  /^\[fe80:[0-9a-f:]*\]$/i,
 ];
 
 function isPrivateHost(hostname: string): boolean {

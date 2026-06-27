@@ -44,6 +44,23 @@ describe("routes/_public/map", () => {
     expect(Route.options.validateSearch).toBe(mapSearchSchema);
   });
 
+  it("publishes metadata even though the WebGL map surface is client-rendered", async () => {
+    const routeModule = await import("@/routes/_public/map");
+    const { asRouteStub } = await import("@/../tests/helpers/router-harness");
+    const Route = asRouteStub(routeModule.Route);
+
+    expect(Route.options.head?.({})).toEqual({
+      meta: [
+        { title: "Civic Map | Atlas" },
+        {
+          name: "description",
+          content:
+            "Map source-linked civic actors by place, issue area, public evidence, and relationship.",
+        },
+      ],
+    });
+  });
+
   it("keys the loader on the search so a filter change reseeds the dots", async () => {
     const routeModule = await import("@/routes/_public/map");
     const { asRouteStub } = await import("@/../tests/helpers/router-harness");

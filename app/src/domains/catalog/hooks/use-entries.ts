@@ -1,6 +1,6 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import type { Entry, EntryFilterParams, EntryListResponse } from "@/types";
+import type { Entry, EntryFilterParams, EntryListResponse, EntrySlugScope } from "@/types";
 
 interface UseEntriesOptions {
   /** Hydrate the React Query cache with this server-side payload on first render. */
@@ -32,11 +32,7 @@ export function useEntry(id: string, options?: UseEntryOptions) {
   });
 }
 
-export function useEntryBySlug(
-  type: "people" | "organizations",
-  slug: string,
-  options?: UseEntryOptions,
-) {
+export function useEntryBySlug(type: EntrySlugScope, slug: string, options?: UseEntryOptions) {
   return useQuery<Entry>({
     queryKey: ["entries", "by-slug", type, slug],
     queryFn: () => api.entries.getBySlug(type, slug),

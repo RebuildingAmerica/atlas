@@ -6,6 +6,7 @@ import type { DiscoveryRun, DiscoveryRunListResponse } from "@/types";
 const discoveryPayloadSchema = z.object({
   issue_areas: z.array(z.string()).min(1),
   location_query: z.string().min(1),
+  research_goal: z.enum(["landscape_scan", "interview_leads", "partner_scan", "ecosystem_map"]),
   state: z.string().length(2),
 });
 

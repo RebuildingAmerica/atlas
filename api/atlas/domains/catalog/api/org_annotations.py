@@ -11,8 +11,8 @@ from pydantic import BaseModel, Field
 
 from atlas.domains.access.capabilities import require_capability
 from atlas.domains.access.dependencies import require_org_actor
-from atlas.domains.catalog.models.ownership import OwnershipCRUD
-from atlas.models import EntryCRUD, get_db_connection
+from atlas.domains.catalog.models.ownership import AnnotationModel, OwnershipCRUD
+from atlas.models import EntryCRUD, SourceCRUD, get_db_connection
 from atlas.platform.config import Settings, get_settings
 from atlas.platform.http.cache import apply_no_store_headers
 
@@ -34,7 +34,8 @@ __all__ = ["router"]
 class AnnotationCreateRequest(BaseModel):
     """Request to create an annotation."""
 
-    entry_id: str = Field(..., description="ID of the shared entry to annotate")
+    entry_id: str | None = Field(None, description="ID of the shared entry to annotate")
+    source_id: str | None = Field(None, description="ID of the source packet to annotate")
     content: str = Field(..., description="Annotation content", min_length=1)
 
 
@@ -49,7 +50,10 @@ class AnnotationResponse(BaseModel):
 
     id: str = Field(..., description="Annotation ID")
     org_id: str = Field(..., description="Owning organization ID")
-    entry_id: str = Field(..., description="Annotated entry ID")
+    entry_id: str | None = Field(None, description="Annotated entry ID")
+    source_id: str | None = Field(None, description="Annotated source ID")
+    target_type: str = Field(..., description="entry | source")
+    target_id: str = Field(..., description="Annotated entry or source ID")
     content: str = Field(..., description="Annotation content")
     author_id: str = Field(..., description="Author user ID")
     created_at: str = Field(..., description="Creation timestamp")
@@ -79,6 +83,22 @@ def _verify_org_access(actor: AuthenticatedActor, org_id: str) -> None:
         )
 
 
+def _annotation_response(annotation: AnnotationModel) -> AnnotationResponse:
+    """Project an annotation model into the API response shape."""
+    return AnnotationResponse(
+        id=annotation.id,
+        org_id=annotation.org_id,
+        entry_id=annotation.entry_id,
+        source_id=annotation.source_id,
+        target_type=annotation.target_type,
+        target_id=annotation.target_id,
+        content=annotation.content,
+        author_id=annotation.author_id,
+        created_at=annotation.created_at,
+        updated_at=annotation.updated_at,
+    )
+
+
 # --- Endpoints ---
 
 
@@ -89,30 +109,24 @@ def _verify_org_access(actor: AuthenticatedActor, org_id: str) -> None:
     operation_id="listOrgAnnotations",
     tags=["org-annotations"],
 )
-async def list_org_annotations(
+async def list_org_annotations(  # noqa: PLR0913
     org_id: str,
     response: Response,
     entry_id: str | None = Query(None, description="Filter by entry ID"),
+    source_id: str | None = Query(None, description="Filter by source ID"),
     actor: AuthenticatedActor = Depends(require_org_actor),
     db: aiosqlite.Connection = Depends(get_db),
 ) -> list[AnnotationResponse]:
-    """List annotations for the org, optionally filtered by entry_id."""
+    """List annotations for the org, optionally filtered by entry_id or source_id."""
     _verify_org_access(actor, org_id)
+    if entry_id and source_id:
+        raise HTTPException(status_code=400, detail="Filter by entry_id or source_id, not both.")
 
-    annotations = await OwnershipCRUD.list_annotations(db, org_id, entry_id=entry_id)
+    annotations = await OwnershipCRUD.list_annotations(
+        db, org_id, entry_id=entry_id, source_id=source_id
+    )
     apply_no_store_headers(response)
-    return [
-        AnnotationResponse(
-            id=a.id,
-            org_id=a.org_id,
-            entry_id=a.entry_id,
-            content=a.content,
-            author_id=a.author_id,
-            created_at=a.created_at,
-            updated_at=a.updated_at,
-        )
-        for a in annotations
-    ]
+    return [_annotation_response(annotation) for annotation in annotations]
 
 
 @router.post(
@@ -131,32 +145,28 @@ async def create_org_annotation(
     db: aiosqlite.Connection = Depends(get_db),
     _cap: None = Depends(require_capability("workspace.notes")),
 ) -> AnnotationResponse:
-    """Create an annotation on a shared entry."""
+    """Create an annotation on a shared entry or source."""
     _verify_org_access(actor, org_id)
 
-    # Validate that entry_id references a real entry
-    entry = await EntryCRUD.get_by_id(db, req.entry_id)
-    if not entry:
+    if (req.entry_id is None) == (req.source_id is None):
+        raise HTTPException(status_code=400, detail="Exactly one note target is required.")
+
+    if req.entry_id is not None and not await EntryCRUD.get_by_id(db, req.entry_id):
         raise HTTPException(status_code=404, detail="Entry not found")
+    if req.source_id is not None and not await SourceCRUD.get_by_id(db, req.source_id):
+        raise HTTPException(status_code=404, detail="Source not found")
 
     annotation = await OwnershipCRUD.create_annotation(
         db,
         org_id=org_id,
         entry_id=req.entry_id,
+        source_id=req.source_id,
         content=req.content,
         author_id=actor.user_id,
     )
 
     apply_no_store_headers(response)
-    return AnnotationResponse(
-        id=annotation.id,
-        org_id=annotation.org_id,
-        entry_id=annotation.entry_id,
-        content=annotation.content,
-        author_id=annotation.author_id,
-        created_at=annotation.created_at,
-        updated_at=annotation.updated_at,
-    )
+    return _annotation_response(annotation)
 
 
 @router.put(
@@ -194,15 +204,7 @@ async def update_org_annotation(  # noqa: PLR0913
     assert updated is not None, "Annotation existence verified above"
 
     apply_no_store_headers(response)
-    return AnnotationResponse(
-        id=updated.id,
-        org_id=updated.org_id,
-        entry_id=updated.entry_id,
-        content=updated.content,
-        author_id=updated.author_id,
-        created_at=updated.created_at,
-        updated_at=updated.updated_at,
-    )
+    return _annotation_response(updated)
 
 
 @router.delete(

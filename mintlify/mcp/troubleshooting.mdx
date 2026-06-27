@@ -24,11 +24,11 @@ You haven't authenticated yet, or your access token isn't valid for the Atlas MC
 ```http
 HTTP/1.1 401 Unauthorized
 WWW-Authenticate: Bearer
-  resource_metadata="https://atlas.rebuildingus.org/.well-known/oauth-protected-resource",
+  resource_metadata="https://atlas.rebuildingus.org/.well-known/oauth-protected-resource/mcp",
   scope="discovery:read"
 ```
 
-**What it means.** Atlas tells you exactly where to discover the OAuth setup (`resource_metadata`) and which baseline scope to request (`scope`). MCP clients that follow [RFC 9728](https://datatracker.ietf.org/doc/html/rfc9728) handle this automatically.
+**What it means.** Atlas tells you exactly where to discover the OAuth setup (`resource_metadata`) and which baseline scope to request (`scope`). MCP clients that follow [RFC 9728](https://datatracker.ietf.org/doc/html/rfc9728) and the current MCP authorization draft handle this automatically. The protected-resource metadata identifies `https://atlas.rebuildingus.org/mcp` as the resource clients should request.
 
 **What to do.** Let the client run the OAuth flow. If your client doesn't trigger a browser, check that:
 
@@ -50,7 +50,7 @@ WWW-Authenticate: Bearer error="insufficient_scope",
   error_description="…"
 ```
 
-**What it means.** Your token doesn't carry the OAuth scope the operation requires. Per the MCP authorization spec's [Scope Challenge Handling](https://modelcontextprotocol.io/specification/2025-11-25/basic/authorization#scope-challenge-handling) section, Atlas tells you exactly which scope to request next.
+**What it means.** Your token doesn't carry the OAuth scope the operation requires. Per the MCP authorization spec's [Scope Challenge Handling](https://modelcontextprotocol.io/specification/draft/basic/authorization#scope-challenge-handling) section, Atlas tells you exactly which scope to request next.
 
 **What to do.** Most MCP clients handle this transparently — they re-run the authorization flow with the requested scope and retry. If your client doesn't, manually disconnect and reconnect; on the consent screen, approve the missing scope.
 
@@ -97,7 +97,7 @@ Authentication succeeded and tool calls don't return errors, but the client UI s
 
 **What it means.** Most MCP clients cache the tool list and only refetch on a restart. After a successful authorization the client may not have picked up the newly available tools yet.
 
-**What to do.** Restart the client. If tools still don't appear, run the Inspector against Atlas to confirm `tools/list` returns the expected 10 tools.
+**What to do.** Restart the client. If tools still don't appear, run the Inspector against Atlas to confirm `tools/list` returns the expected 12 tools.
 
 ## OAuth client rotation
 
@@ -109,4 +109,4 @@ If you registered via Dynamic Client Registration, re-running registration with 
 
 - See the [authentication reference](/api-reference/authentication) for the full discovery-URL catalog and token semantics.
 - Check the [MCP Registry](/mcp/registry) listing — connect via the registry-aware path if your client supports it.
-- The [MCP authorization spec, 2025-11-25](https://modelcontextprotocol.io/specification/2025-11-25/basic/authorization) is authoritative on every error code and challenge format Atlas emits.
+- The [MCP authorization draft](https://modelcontextprotocol.io/specification/draft/basic/authorization) is authoritative on every error code and challenge format Atlas emits.

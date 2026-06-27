@@ -1,6 +1,7 @@
-import type { Source, SourceType } from "./source";
+import type { Source, SourcePattern, SourceType } from "./source";
 
 export type EntryType = "person" | "organization" | "initiative" | "campaign" | "event";
+export type EntrySlugScope = "people" | "organizations" | "initiatives" | "campaigns" | "events";
 export type GeoSpecificity = "local" | "regional" | "statewide" | "national";
 export type ContactStatus = "not_contacted" | "contacted" | "responded" | "confirmed" | "declined";
 export type Priority = "high" | "medium" | "low";
@@ -15,6 +16,36 @@ export interface ClaimStatusInfo {
   verification_level: VerificationLevel;
 }
 
+export type ClaimEvidenceConfidence =
+  | "subject_verified"
+  | "atlas_verified"
+  | "corroborated"
+  | "partial"
+  | "unverified";
+
+export interface ClaimEvidenceInfo {
+  source_count: number;
+  source_ids: string[];
+  confidence: ClaimEvidenceConfidence;
+  as_of?: string | null;
+  verification_level: VerificationLevel;
+}
+
+export interface ClaimEvidenceSet {
+  summary: ClaimEvidenceInfo;
+  place: ClaimEvidenceInfo;
+  issues: ClaimEvidenceInfo;
+  contact: ClaimEvidenceInfo;
+}
+
+export interface ProfileAnswers {
+  who: string;
+  what_they_do: string;
+  where: string;
+  why_they_matter: string;
+  how_atlas_knows: string;
+}
+
 /** Honest trust tier; never overclaims for thinly-sourced auto-discovered entries. */
 export type TrustLevel = "subject_verified" | "atlas_verified" | "corroborated" | "unverified";
 
@@ -26,6 +57,16 @@ export interface TrustInfo {
   website_grounded: boolean | null;
   /** Whether the listed email is supported by a linked source; null when not evaluated. */
   email_grounded: boolean | null;
+}
+
+export type ActorQualityLevel = "specific_actor" | "partial_actor" | "thin_record";
+
+export interface ActorQualityInfo {
+  level: ActorQualityLevel;
+  score: number;
+  total: number;
+  present: string[];
+  missing: string[];
 }
 
 export interface Entry {
@@ -52,7 +93,10 @@ export interface Entry {
   verified: boolean;
   last_verified?: string;
   claim: ClaimStatusInfo;
+  claim_evidence?: ClaimEvidenceSet;
+  profile_answers?: ProfileAnswers;
   trust: TrustInfo;
+  actor_quality?: ActorQualityInfo;
   issue_areas: string[];
   source_types: SourceType[];
   source_count: number;
@@ -124,6 +168,7 @@ export interface FollowingFeedItem {
 /** The kind of link behind a connection reason. */
 export type ConnectionReasonKind =
   | "same_organization"
+  | "sourced_edge"
   | "co_mentioned"
   | "same_issue_area"
   | "same_geography";
@@ -136,6 +181,8 @@ export interface ConnectionReason {
   kind: ConnectionReasonKind;
   label: string;
   count: number | null;
+  source_id?: string | null;
+  relationship_type?: string | null;
 }
 
 /** A ranked actor connected to the current profile. */
@@ -174,6 +221,7 @@ export interface EntrySearchFacets {
   issue_areas: FacetOption[];
   entity_types: FacetOption[];
   source_types: FacetOption[];
+  source_patterns: FacetOption[];
 }
 
 export interface PaginationMeta {
@@ -197,6 +245,7 @@ export interface EntryFilterParams {
   issue_areas?: string[];
   entry_types?: EntryType[];
   source_types?: SourceType[];
+  source_patterns?: SourcePattern[];
   /**
    * Optional affiliated-organization filter used by entry list API calls.
    */

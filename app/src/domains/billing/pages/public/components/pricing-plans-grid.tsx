@@ -78,7 +78,7 @@ export function PricingPlansGrid({
           features={[
             "Browse & search (no account)",
             "Read any profile (no account)",
-            "Sign up to run 2 research/month",
+            "Sign up for 2 research requests/month",
             "Sign up for 1 shortlist (25 entries)",
             "Public API 100 req/hr",
           ]}
@@ -93,7 +93,7 @@ export function PricingPlansGrid({
           descriptor="For the individual researcher"
           tagline="Journalists, organizers, and creators who use Atlas as a regular part of their work."
           features={[
-            "Unlimited research runs",
+            "Unlimited research requests",
             "Notes and shortlists",
             "Export to CSV and JSON",
             "API key · 1,000 req/day",

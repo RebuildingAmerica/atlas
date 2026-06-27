@@ -40,7 +40,7 @@ CREATE TABLE IF NOT EXISTS sources (
     title TEXT,
     publication TEXT,
     published_date DATE,
-    type TEXT NOT NULL CHECK(type IN ('news_article', 'op_ed', 'podcast', 'academic_paper', 'government_record', 'social_media', 'org_website', 'conference', 'video', 'report', 'other')),
+    type TEXT NOT NULL CHECK(type IN ('news_article', 'op_ed', 'podcast', 'academic_paper', 'government_record', 'social_media', 'community_archive', 'org_website', 'conference', 'video', 'report', 'other')),
     ingested_at TIMESTAMPTZ NOT NULL,
     extraction_method TEXT NOT NULL CHECK(extraction_method IN ('manual', 'ai_assisted', 'autodiscovery')),
     raw_content TEXT,
@@ -62,6 +62,36 @@ CREATE TABLE IF NOT EXISTS entry_issue_areas (
     issue_area TEXT NOT NULL,
     created_at TIMESTAMPTZ NOT NULL,
     PRIMARY KEY (entry_id, issue_area)
+);
+
+-- Stable identity keys keep repeated public mentions attached to one actor.
+CREATE TABLE IF NOT EXISTS entity_identity_keys (
+    entry_id TEXT NOT NULL REFERENCES entries(id) ON DELETE CASCADE,
+    key_type TEXT NOT NULL CHECK(key_type IN ('ein', 'fec_id', 'domain')),
+    key_value TEXT NOT NULL,
+    source_id TEXT REFERENCES sources(id) ON DELETE SET NULL,
+    confidence REAL NOT NULL CHECK(confidence >= 0 AND confidence <= 1),
+    created_at TIMESTAMPTZ NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL,
+    PRIMARY KEY (key_type, key_value)
+);
+
+-- Sourced relationship edges make the profile network inspectable and durable.
+CREATE TABLE IF NOT EXISTS entity_relationship_edges (
+    id TEXT PRIMARY KEY,
+    source_entry_id TEXT NOT NULL REFERENCES entries(id) ON DELETE CASCADE,
+    target_entry_id TEXT NOT NULL REFERENCES entries(id) ON DELETE CASCADE,
+    relationship_type TEXT NOT NULL,
+    source_id TEXT NOT NULL REFERENCES sources(id) ON DELETE CASCADE,
+    evidence_label TEXT NOT NULL,
+    confidence REAL NOT NULL CHECK(confidence >= 0 AND confidence <= 1),
+    evidence_count INTEGER NOT NULL DEFAULT 1 CHECK(evidence_count > 0),
+    first_seen TIMESTAMPTZ NOT NULL,
+    last_seen TIMESTAMPTZ NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL,
+    CHECK(source_entry_id <> target_entry_id),
+    UNIQUE(source_entry_id, target_entry_id, relationship_type, source_id)
 );
 
 -- Outreach log (internal)
@@ -90,12 +120,14 @@ CREATE TABLE IF NOT EXISTS discovery_runs (
     location_query TEXT NOT NULL,
     state TEXT NOT NULL,
     issue_areas TEXT NOT NULL,
+    research_goal TEXT NOT NULL DEFAULT 'landscape_scan',
     queries_generated INTEGER NOT NULL DEFAULT 0,
     sources_fetched INTEGER NOT NULL DEFAULT 0,
     sources_processed INTEGER NOT NULL DEFAULT 0,
     entries_extracted INTEGER NOT NULL DEFAULT 0,
     entries_after_dedup INTEGER NOT NULL DEFAULT 0,
     entries_confirmed INTEGER NOT NULL DEFAULT 0,
+    research_summary TEXT,
     started_at TIMESTAMPTZ NOT NULL,
     completed_at TIMESTAMPTZ,
     status TEXT NOT NULL CHECK(status IN ('running', 'completed', 'failed')),
@@ -126,6 +158,7 @@ CREATE TABLE IF NOT EXISTS source_flags (
 -- Review queue (pre-publication staging for discovered records)
 CREATE TABLE IF NOT EXISTS review_queue (
     id TEXT PRIMARY KEY,
+    org_id TEXT,
     entity_id TEXT REFERENCES entries(id) ON DELETE CASCADE,
     kind TEXT NOT NULL,
     status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending', 'approved', 'rejected')),
@@ -139,6 +172,7 @@ CREATE TABLE IF NOT EXISTS review_queue (
 );
 CREATE INDEX IF NOT EXISTS idx_review_queue_status ON review_queue(status);
 CREATE INDEX IF NOT EXISTS idx_review_queue_entity_id ON review_queue(entity_id);
+CREATE INDEX IF NOT EXISTS idx_review_queue_org_status ON review_queue(org_id, status);
 
 -- Resource ownership (organization attribution and visibility)
 CREATE TABLE IF NOT EXISTS resource_ownership (
@@ -155,11 +189,24 @@ CREATE TABLE IF NOT EXISTS resource_ownership (
 CREATE TABLE IF NOT EXISTS org_annotations (
     id TEXT PRIMARY KEY,
     org_id TEXT NOT NULL,
-    entry_id TEXT NOT NULL REFERENCES entries(id),
+    entry_id TEXT REFERENCES entries(id),
+    source_id TEXT REFERENCES sources(id),
+    target_type TEXT NOT NULL DEFAULT 'entry' CHECK(target_type IN ('entry', 'source')),
+    target_id TEXT,
     content TEXT NOT NULL,
     author_id TEXT NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Verified custom domains for public workspace directories.
+CREATE TABLE IF NOT EXISTS org_directory_domains (
+    org_id TEXT PRIMARY KEY,
+    domain TEXT NOT NULL UNIQUE,
+    verification_token TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending', 'verified')),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    verified_at TIMESTAMPTZ
 );
 
 -- Indexes for common queries
@@ -178,6 +225,11 @@ CREATE INDEX IF NOT EXISTS idx_entry_sources_entry_id ON entry_sources(entry_id)
 CREATE INDEX IF NOT EXISTS idx_entry_sources_source_id ON entry_sources(source_id);
 CREATE INDEX IF NOT EXISTS idx_entry_issue_areas_entry_id ON entry_issue_areas(entry_id);
 CREATE INDEX IF NOT EXISTS idx_entry_issue_areas_issue_area ON entry_issue_areas(issue_area);
+CREATE INDEX IF NOT EXISTS idx_entity_identity_keys_entry ON entity_identity_keys(entry_id);
+CREATE INDEX IF NOT EXISTS idx_entity_identity_keys_source ON entity_identity_keys(source_id);
+CREATE INDEX IF NOT EXISTS idx_entity_relationship_edges_source_entry ON entity_relationship_edges(source_entry_id);
+CREATE INDEX IF NOT EXISTS idx_entity_relationship_edges_target_entry ON entity_relationship_edges(target_entry_id);
+CREATE INDEX IF NOT EXISTS idx_entity_relationship_edges_source ON entity_relationship_edges(source_id);
 CREATE INDEX IF NOT EXISTS idx_outreach_logs_entry_id ON outreach_logs(entry_id);
 CREATE INDEX IF NOT EXISTS idx_outreach_logs_date ON outreach_logs(date);
 CREATE INDEX IF NOT EXISTS idx_episode_assoc_entry_id ON episode_associations(entry_id);
@@ -193,9 +245,17 @@ CREATE INDEX IF NOT EXISTS idx_resource_ownership_org ON resource_ownership(org_
 CREATE INDEX IF NOT EXISTS idx_resource_ownership_org_visibility ON resource_ownership(org_id, visibility);
 CREATE INDEX IF NOT EXISTS idx_org_annotations_org ON org_annotations(org_id);
 CREATE INDEX IF NOT EXISTS idx_org_annotations_entry ON org_annotations(entry_id);
+CREATE INDEX IF NOT EXISTS idx_org_annotations_source ON org_annotations(source_id);
+CREATE INDEX IF NOT EXISTS idx_org_annotations_target ON org_annotations(target_type, target_id);
+CREATE INDEX IF NOT EXISTS idx_org_directory_domains_status ON org_directory_domains(status);
 -- Additive migration: slug column (safe to re-run on existing databases).
 ALTER TABLE entries ADD COLUMN IF NOT EXISTS slug TEXT UNIQUE;
 CREATE INDEX IF NOT EXISTS idx_entries_slug ON entries(slug);
+ALTER TABLE org_annotations ALTER COLUMN entry_id DROP NOT NULL;
+ALTER TABLE org_annotations ADD COLUMN IF NOT EXISTS source_id TEXT REFERENCES sources(id);
+ALTER TABLE org_annotations ADD COLUMN IF NOT EXISTS target_type TEXT NOT NULL DEFAULT 'entry';
+ALTER TABLE org_annotations ADD COLUMN IF NOT EXISTS target_id TEXT;
+UPDATE org_annotations SET target_id = entry_id WHERE target_id IS NULL AND entry_id IS NOT NULL;
 
 -- Discovery jobs (durable pipeline execution tracking)
 CREATE TABLE IF NOT EXISTS discovery_jobs (
@@ -233,6 +293,17 @@ CREATE TABLE IF NOT EXISTS cost_ledger (
 );
 CREATE INDEX IF NOT EXISTS idx_cost_ledger_run_id ON cost_ledger(run_id);
 CREATE INDEX IF NOT EXISTS idx_cost_ledger_created_at ON cost_ledger(created_at);
+
+-- Tenant discovery budgets (monthly run starts per workspace)
+CREATE TABLE IF NOT EXISTS org_discovery_budgets (
+    org_id TEXT NOT NULL,
+    month TEXT NOT NULL,
+    monthly_run_limit INTEGER NOT NULL CHECK(monthly_run_limit >= 0),
+    used_runs INTEGER NOT NULL DEFAULT 0 CHECK(used_runs >= 0),
+    updated_at TIMESTAMPTZ NOT NULL,
+    PRIMARY KEY (org_id, month)
+);
+CREATE INDEX IF NOT EXISTS idx_org_discovery_budgets_org ON org_discovery_budgets(org_id);
 
 -- Discovery schedules (autonomous pipeline targets)
 CREATE TABLE IF NOT EXISTS discovery_schedules (

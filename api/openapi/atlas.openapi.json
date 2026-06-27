@@ -89,10 +89,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "entry_id",
-          "content"
-        ],
+        "required": ["entry_id", "content"],
         "title": "AnnotationCreateRequest",
         "type": "object"
       },
@@ -157,9 +154,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "content"
-        ],
+        "required": ["content"],
         "title": "AnnotationUpdateRequest",
         "type": "object"
       },
@@ -270,10 +265,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "issue_area_id",
-          "count"
-        ],
+        "required": ["issue_area_id", "count"],
         "title": "CoverageCount",
         "type": "object"
       },
@@ -427,10 +419,7 @@
             "title": "Website"
           }
         },
-        "required": [
-          "name",
-          "entry_type"
-        ],
+        "required": ["name", "entry_type"],
         "title": "DeduplicatedEntry",
         "type": "object"
       },
@@ -462,9 +451,7 @@
             "description": "Execution summary from the contributing runner."
           }
         },
-        "required": [
-          "run"
-        ],
+        "required": ["run"],
         "title": "DiscoveryContributionRequest",
         "type": "object"
       },
@@ -587,12 +574,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "id",
-          "run_id",
-          "status",
-          "created_at"
-        ],
+        "required": ["id", "run_id", "status", "created_at"],
         "title": "DiscoveryJobResponse",
         "type": "object"
       },
@@ -714,9 +696,7 @@
             "description": "Canonical run statistics."
           }
         },
-        "required": [
-          "manifest"
-        ],
+        "required": ["manifest"],
         "title": "DiscoveryRunArtifacts",
         "type": "object"
       },
@@ -747,9 +727,7 @@
             "type": "integer"
           }
         },
-        "required": [
-          "total"
-        ],
+        "required": ["total"],
         "title": "DiscoveryRunCollectionResponse",
         "type": "object"
       },
@@ -785,11 +763,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "location_query",
-          "state",
-          "issue_areas"
-        ],
+        "required": ["location_query", "state", "issue_areas"],
         "title": "DiscoveryRunInput",
         "type": "object"
       },
@@ -847,11 +821,7 @@
             "description": "Optional remote-sync metadata."
           }
         },
-        "required": [
-          "runner",
-          "run",
-          "status"
-        ],
+        "required": ["runner", "run", "status"],
         "title": "DiscoveryRunManifest",
         "type": "object"
       },
@@ -864,10 +834,7 @@
           "entries_confirmed": 30,
           "entries_extracted": 38,
           "id": "550e8400-e29b-41d4-a716-446655440002",
-          "issue_areas": [
-            "worker_cooperatives",
-            "housing_affordability"
-          ],
+          "issue_areas": ["worker_cooperatives", "housing_affordability"],
           "location_query": "Kansas City, MO",
           "queries_generated": 150,
           "sources_fetched": 45,
@@ -1030,11 +997,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "location_query",
-          "state",
-          "issue_areas"
-        ],
+        "required": ["location_query", "state", "issue_areas"],
         "title": "DiscoveryRunStartRequest",
         "type": "object"
       },
@@ -1100,13 +1063,7 @@
       },
       "DiscoveryRunStatus": {
         "description": "Lifecycle status for a discovery run tracked by Atlas.",
-        "enum": [
-          "pending",
-          "running",
-          "completed",
-          "failed",
-          "cancelled"
-        ],
+        "enum": ["pending", "running", "completed", "failed", "cancelled"],
         "title": "DiscoveryRunStatus",
         "type": "string"
       },
@@ -1118,9 +1075,7 @@
             "description": "Portable run bundle emitted by Atlas Scout or another compatible runner."
           }
         },
-        "required": [
-          "artifacts"
-        ],
+        "required": ["artifacts"],
         "title": "DiscoveryRunSyncRequest",
         "type": "object"
       },
@@ -1187,10 +1142,7 @@
             "type": "integer"
           }
         },
-        "required": [
-          "items",
-          "total"
-        ],
+        "required": ["items", "total"],
         "title": "DiscoveryScheduleCollectionResponse",
         "type": "object"
       },
@@ -1214,10 +1166,7 @@
           "search_depth": {
             "default": "standard",
             "description": "Search depth for query generation",
-            "enum": [
-              "standard",
-              "deep"
-            ],
+            "enum": ["standard", "deep"],
             "title": "Search Depth",
             "type": "string"
           },
@@ -1229,11 +1178,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "location_query",
-          "state",
-          "issue_areas"
-        ],
+        "required": ["location_query", "state", "issue_areas"],
         "title": "DiscoveryScheduleCreateRequest",
         "type": "object"
       },
@@ -1366,10 +1311,7 @@
           "search_depth": {
             "anyOf": [
               {
-                "enum": [
-                  "standard",
-                  "deep"
-                ],
+                "enum": ["standard", "deep"],
                 "type": "string"
               },
               {
@@ -1496,10 +1438,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "slug",
-          "name"
-        ],
+        "required": ["slug", "name"],
         "title": "DomainDetailResponse",
         "type": "object"
       },
@@ -1529,9 +1468,7 @@
             "type": "integer"
           }
         },
-        "required": [
-          "total"
-        ],
+        "required": ["total"],
         "title": "DomainListResponse",
         "type": "object"
       },
@@ -1551,11 +1488,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "slug",
-          "name",
-          "issue_area_count"
-        ],
+        "required": ["slug", "name", "issue_area_count"],
         "title": "DomainResponse",
         "type": "object"
       },
@@ -1612,9 +1545,7 @@
             "type": "integer"
           }
         },
-        "required": [
-          "total"
-        ],
+        "required": ["total"],
         "title": "EntityCollectionResponse",
         "type": "object"
       },
@@ -1867,11 +1798,7 @@
             "title": "Website"
           }
         },
-        "required": [
-          "type",
-          "name",
-          "description"
-        ],
+        "required": ["type", "name", "description"],
         "title": "EntityCreateRequest",
         "type": "object"
       },
@@ -2069,10 +1996,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "entity_id",
-          "reason"
-        ],
+        "required": ["entity_id", "reason"],
         "title": "EntityFlagCreateRequest",
         "type": "object"
       },
@@ -2102,9 +2026,7 @@
             "type": "integer"
           }
         },
-        "required": [
-          "total"
-        ],
+        "required": ["total"],
         "title": "EntityFlagListResponse",
         "type": "object"
       },
@@ -2273,21 +2195,13 @@
             "type": "array"
           }
         },
-        "required": [
-          "entity_id"
-        ],
+        "required": ["entity_id"],
         "title": "EntitySourcesResponse",
         "type": "object"
       },
       "EntityType": {
         "description": "Type of entity being catalogued.",
-        "enum": [
-          "person",
-          "organization",
-          "initiative",
-          "campaign",
-          "event"
-        ],
+        "enum": ["person", "organization", "initiative", "campaign", "event"],
         "title": "EntityType",
         "type": "string"
       },
@@ -2525,10 +2439,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "value",
-          "count"
-        ],
+        "required": ["value", "count"],
         "title": "FacetOption",
         "type": "object"
       },
@@ -2704,10 +2615,7 @@
             "title": "Updated At"
           }
         },
-        "required": [
-          "staleness_status",
-          "staleness_reason"
-        ],
+        "required": ["staleness_status", "staleness_reason"],
         "title": "FreshnessInfo",
         "type": "object"
       },
@@ -2758,20 +2666,13 @@
             "type": "array"
           }
         },
-        "required": [
-          "location"
-        ],
+        "required": ["location"],
         "title": "GapReport",
         "type": "object"
       },
       "GeoSpecificity": {
         "description": "Geographic scope of an entity or entry.",
-        "enum": [
-          "local",
-          "regional",
-          "statewide",
-          "national"
-        ],
+        "enum": ["local", "regional", "statewide", "national"],
         "title": "GeoSpecificity",
         "type": "string"
       },
@@ -2814,9 +2715,7 @@
             "type": "integer"
           }
         },
-        "required": [
-          "total"
-        ],
+        "required": ["total"],
         "title": "IssueAreaListResponse",
         "type": "object"
       },
@@ -2855,13 +2754,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "id",
-          "slug",
-          "name",
-          "description",
-          "domain"
-        ],
+        "required": ["id", "slug", "name", "description", "domain"],
         "title": "IssueAreaResponse",
         "type": "object"
       },
@@ -2910,12 +2803,7 @@
             "type": "array"
           }
         },
-        "required": [
-          "issue_area_id",
-          "name",
-          "entity_count",
-          "source_count"
-        ],
+        "required": ["issue_area_id", "name", "entity_count", "source_count"],
         "title": "IssueSignalSummary",
         "type": "object"
       },
@@ -2937,10 +2825,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "place",
-          "resource_uri"
-        ],
+        "required": ["place", "resource_uri"],
         "title": "IssueSignalsResponse",
         "type": "object"
       },
@@ -2973,10 +2858,7 @@
             "type": "integer"
           }
         },
-        "required": [
-          "items",
-          "total"
-        ],
+        "required": ["items", "total"],
         "title": "OrgDiscoveryRunCollectionResponse",
         "type": "object"
       },
@@ -3126,11 +3008,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "location_query",
-          "state",
-          "issue_areas"
-        ],
+        "required": ["location_query", "state", "issue_areas"],
         "title": "OrgDiscoveryRunStartRequest",
         "type": "object"
       },
@@ -3211,9 +3089,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "url"
-        ],
+        "required": ["url"],
         "title": "PageContent",
         "type": "object"
       },
@@ -3292,11 +3168,7 @@
             "type": "boolean"
           }
         },
-        "required": [
-          "task_id",
-          "url",
-          "status"
-        ],
+        "required": ["task_id", "url", "status"],
         "title": "PageTaskOutcome",
         "type": "object"
       },
@@ -3350,11 +3222,7 @@
             "type": "array"
           }
         },
-        "required": [
-          "place",
-          "entity_count",
-          "resource_uri"
-        ],
+        "required": ["place", "entity_count", "resource_uri"],
         "title": "PlaceCoverageResponse",
         "type": "object"
       },
@@ -3376,9 +3244,7 @@
             "title": "Resource Uri"
           }
         },
-        "required": [
-          "place"
-        ],
+        "required": ["place"],
         "title": "PlaceIdentityResponse",
         "type": "object"
       },
@@ -3426,10 +3292,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "place",
-          "resource_uri"
-        ],
+        "required": ["place", "resource_uri"],
         "title": "PlaceProfileResponse",
         "type": "object"
       },
@@ -3445,10 +3308,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "type",
-          "count"
-        ],
+        "required": ["type", "count"],
         "title": "PlaceTypeCount",
         "type": "object"
       },
@@ -3576,9 +3436,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "token"
-        ],
+        "required": ["token"],
         "title": "ProfileClaimVerifyRequest",
         "type": "object"
       },
@@ -3602,12 +3460,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "user_id",
-          "entry_id",
-          "subscribed_to",
-          "created_at"
-        ],
+        "required": ["user_id", "entry_id", "subscribed_to", "created_at"],
         "title": "ProfileFollowResponse",
         "type": "object"
       },
@@ -3696,10 +3549,7 @@
             "type": "number"
           }
         },
-        "required": [
-          "entry",
-          "score"
-        ],
+        "required": ["entry", "score"],
         "title": "RankedEntry",
         "type": "object"
       },
@@ -3859,10 +3709,7 @@
             "title": "Website"
           }
         },
-        "required": [
-          "name",
-          "entry_type"
-        ],
+        "required": ["name", "entry_type"],
         "title": "RawEntry",
         "type": "object"
       },
@@ -3910,10 +3757,7 @@
             "description": "Run status at this checkpoint."
           }
         },
-        "required": [
-          "phase",
-          "status"
-        ],
+        "required": ["phase", "status"],
         "title": "RunCheckpoint",
         "type": "object"
       },
@@ -3936,9 +3780,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "name"
-        ],
+        "required": ["name"],
         "title": "SavedListCreateRequest",
         "type": "object"
       },
@@ -3961,9 +3803,7 @@
             "title": "Note"
           }
         },
-        "required": [
-          "entry_id"
-        ],
+        "required": ["entry_id"],
         "title": "SavedListItemRequest",
         "type": "object"
       },
@@ -4004,11 +3844,7 @@
             "title": "Note"
           }
         },
-        "required": [
-          "list_id",
-          "entry_id",
-          "added_at"
-        ],
+        "required": ["list_id", "entry_id", "added_at"],
         "title": "SavedListItemResponse",
         "type": "object"
       },
@@ -4059,13 +3895,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "id",
-          "user_id",
-          "name",
-          "created_at",
-          "updated_at"
-        ],
+        "required": ["id", "user_id", "name", "created_at", "updated_at"],
         "title": "SavedListResponse",
         "type": "object"
       },
@@ -4086,10 +3916,7 @@
             "type": "integer"
           }
         },
-        "required": [
-          "runs_started",
-          "results"
-        ],
+        "required": ["runs_started", "results"],
         "title": "ScheduledRunResponse",
         "type": "object"
       },
@@ -4118,11 +3945,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "schedule_id",
-          "run_id",
-          "status"
-        ],
+        "required": ["schedule_id", "run_id", "status"],
         "title": "ScheduledRunResult",
         "type": "object"
       },
@@ -4162,9 +3985,7 @@
             "type": "integer"
           }
         },
-        "required": [
-          "total"
-        ],
+        "required": ["total"],
         "title": "SourceCollectionResponse",
         "type": "object"
       },
@@ -4191,10 +4012,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "source_id",
-          "reason"
-        ],
+        "required": ["source_id", "reason"],
         "title": "SourceFlagCreateRequest",
         "type": "object"
       },
@@ -4224,9 +4042,7 @@
             "type": "integer"
           }
         },
-        "required": [
-          "total"
-        ],
+        "required": ["total"],
         "title": "SourceFlagListResponse",
         "type": "object"
       },
@@ -4314,12 +4130,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "id",
-          "url",
-          "freshness",
-          "resource_uri"
-        ],
+        "required": ["id", "url", "freshness", "resource_uri"],
         "title": "SourceResponse",
         "type": "object"
       },
@@ -4374,11 +4185,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "loc",
-          "msg",
-          "type"
-        ],
+        "required": ["loc", "msg", "type"],
         "title": "ValidationError",
         "type": "object"
       },
@@ -4420,10 +4227,7 @@
             "type": "integer"
           }
         },
-        "required": [
-          "records",
-          "total"
-        ],
+        "required": ["records", "total"],
         "title": "VerificationListResponse",
         "type": "object"
       },
@@ -4497,13 +4301,7 @@
             "title": "Verified At"
           }
         },
-        "required": [
-          "user_id",
-          "segment",
-          "status",
-          "method",
-          "submitted_at"
-        ],
+        "required": ["user_id", "segment", "status", "method", "submitted_at"],
         "title": "VerificationRecordResponse",
         "type": "object"
       },
@@ -4532,11 +4330,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "segment",
-          "user_id",
-          "data"
-        ],
+        "required": ["segment", "user_id", "data"],
         "title": "VerificationRequestPayload",
         "type": "object"
       },
@@ -4566,10 +4360,7 @@
             "title": "Verification Method"
           }
         },
-        "required": [
-          "status",
-          "message"
-        ],
+        "required": ["status", "message"],
         "title": "VerificationResponsePayload",
         "type": "object"
       },
@@ -4588,17 +4379,12 @@
             "title": "Notes"
           },
           "status": {
-            "enum": [
-              "verified",
-              "rejected"
-            ],
+            "enum": ["verified", "rejected"],
             "title": "Status",
             "type": "string"
           }
         },
-        "required": [
-          "status"
-        ],
+        "required": ["status"],
         "title": "VerificationUpdateRequest",
         "type": "object"
       },
@@ -4614,10 +4400,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "status",
-          "message"
-        ],
+        "required": ["status", "message"],
         "title": "VerificationUpdateResponse",
         "type": "object"
       }
@@ -4811,9 +4594,7 @@
           }
         },
         "summary": "Auth Health",
-        "tags": [
-          "access"
-        ]
+        "tags": ["access"]
       }
     },
     "/api/discovery-runs": {
@@ -4987,9 +4768,7 @@
           }
         },
         "summary": "List discovery runs",
-        "tags": [
-          "discovery-runs"
-        ]
+        "tags": ["discovery-runs"]
       },
       "post": {
         "description": "Start an Atlas discovery pipeline run for a place and set of issue areas.",
@@ -5109,9 +4888,7 @@
           }
         },
         "summary": "Start a discovery run",
-        "tags": [
-          "discovery-runs"
-        ]
+        "tags": ["discovery-runs"]
       }
     },
     "/api/discovery-runs/contributions": {
@@ -5233,9 +5010,7 @@
           }
         },
         "summary": "Ingest contributed discovery results",
-        "tags": [
-          "discovery-runs"
-        ]
+        "tags": ["discovery-runs"]
       }
     },
     "/api/discovery-runs/jobs/{job_id}": {
@@ -5356,9 +5131,7 @@
           }
         },
         "summary": "Get a discovery job",
-        "tags": [
-          "discovery-runs"
-        ]
+        "tags": ["discovery-runs"]
       }
     },
     "/api/discovery-runs/scheduled": {
@@ -5470,9 +5243,7 @@
           }
         },
         "summary": "Execute scheduled discovery targets",
-        "tags": [
-          "discovery-runs"
-        ]
+        "tags": ["discovery-runs"]
       }
     },
     "/api/discovery-runs/summary": {
@@ -5584,9 +5355,7 @@
           }
         },
         "summary": "Pipeline health summary",
-        "tags": [
-          "discovery-runs"
-        ]
+        "tags": ["discovery-runs"]
       }
     },
     "/api/discovery-runs/syncs": {
@@ -5708,9 +5477,7 @@
           }
         },
         "summary": "Sync a local discovery run bundle",
-        "tags": [
-          "discovery-runs"
-        ]
+        "tags": ["discovery-runs"]
       }
     },
     "/api/discovery-runs/{run_id}": {
@@ -5831,9 +5598,7 @@
           }
         },
         "summary": "Get a discovery run",
-        "tags": [
-          "discovery-runs"
-        ]
+        "tags": ["discovery-runs"]
       }
     },
     "/api/discovery-schedules": {
@@ -5969,9 +5734,7 @@
           }
         },
         "summary": "List discovery schedules",
-        "tags": [
-          "discovery-schedules"
-        ]
+        "tags": ["discovery-schedules"]
       },
       "post": {
         "description": "Add a new location and issue area target for scheduled discovery.",
@@ -6091,9 +5854,7 @@
           }
         },
         "summary": "Create a discovery schedule",
-        "tags": [
-          "discovery-schedules"
-        ]
+        "tags": ["discovery-schedules"]
       }
     },
     "/api/discovery-schedules/{schedule_id}": {
@@ -6207,9 +5968,7 @@
           }
         },
         "summary": "Delete a discovery schedule",
-        "tags": [
-          "discovery-schedules"
-        ]
+        "tags": ["discovery-schedules"]
       },
       "get": {
         "description": "Return one discovery schedule target by ID.",
@@ -6328,9 +6087,7 @@
           }
         },
         "summary": "Get a discovery schedule",
-        "tags": [
-          "discovery-schedules"
-        ]
+        "tags": ["discovery-schedules"]
       },
       "patch": {
         "description": "Partially update a discovery schedule target.",
@@ -6459,9 +6216,7 @@
           }
         },
         "summary": "Update a discovery schedule",
-        "tags": [
-          "discovery-schedules"
-        ]
+        "tags": ["discovery-schedules"]
       }
     },
     "/api/domains": {
@@ -6521,9 +6276,7 @@
           }
         },
         "summary": "List domains",
-        "tags": [
-          "domains"
-        ]
+        "tags": ["domains"]
       }
     },
     "/api/domains/{domain_slug}": {
@@ -6564,9 +6317,7 @@
           }
         },
         "summary": "Get a domain",
-        "tags": [
-          "domains"
-        ]
+        "tags": ["domains"]
       }
     },
     "/api/entities": {
@@ -6772,9 +6523,7 @@
           }
         },
         "summary": "List entities",
-        "tags": [
-          "entities"
-        ]
+        "tags": ["entities"]
       },
       "post": {
         "description": "Create a new Atlas entity using the canonical nested address and contact request shape.",
@@ -6894,9 +6643,7 @@
           }
         },
         "summary": "Create an entity",
-        "tags": [
-          "entities"
-        ]
+        "tags": ["entities"]
       }
     },
     "/api/entities/by-slug/{entity_type}/{slug}": {
@@ -6944,9 +6691,7 @@
           }
         },
         "summary": "Resolve entity by slug",
-        "tags": [
-          "entities"
-        ]
+        "tags": ["entities"]
       }
     },
     "/api/entities/{entity_id}": {
@@ -7060,9 +6805,7 @@
           }
         },
         "summary": "Delete an entity",
-        "tags": [
-          "entities"
-        ]
+        "tags": ["entities"]
       },
       "get": {
         "description": "Return one Atlas entity with normalized contact, freshness, flag summary, and linked source provenance.",
@@ -7101,9 +6844,7 @@
           }
         },
         "summary": "Get an entity",
-        "tags": [
-          "entities"
-        ]
+        "tags": ["entities"]
       },
       "patch": {
         "description": "Apply a partial update to an Atlas entity.",
@@ -7232,9 +6973,7 @@
           }
         },
         "summary": "Update an entity",
-        "tags": [
-          "entities"
-        ]
+        "tags": ["entities"]
       }
     },
     "/api/entities/{entity_id}/sources": {
@@ -7275,9 +7014,7 @@
           }
         },
         "summary": "List entity sources",
-        "tags": [
-          "entities"
-        ]
+        "tags": ["entities"]
       }
     },
     "/api/entities/{entry_id}/connections": {
@@ -7326,9 +7063,7 @@
           }
         },
         "summary": "Get entity connections",
-        "tags": [
-          "entities"
-        ]
+        "tags": ["entities"]
       }
     },
     "/api/entity-flags": {
@@ -7397,9 +7132,7 @@
           }
         },
         "summary": "List entity flags",
-        "tags": [
-          "flags"
-        ]
+        "tags": ["flags"]
       },
       "post": {
         "description": "Submit an anonymous flag for an Atlas entity that looks stale or incorrect.",
@@ -7437,9 +7170,7 @@
           }
         },
         "summary": "Create an entity flag",
-        "tags": [
-          "flags"
-        ]
+        "tags": ["flags"]
       }
     },
     "/api/feed/following": {
@@ -7571,9 +7302,7 @@
           }
         },
         "summary": "Followed-profile activity feed",
-        "tags": [
-          "feed"
-        ]
+        "tags": ["feed"]
       }
     },
     "/api/issue-areas": {
@@ -7650,9 +7379,7 @@
           }
         },
         "summary": "List issue areas",
-        "tags": [
-          "issue-areas"
-        ]
+        "tags": ["issue-areas"]
       }
     },
     "/api/issue-areas/{issue_area_slug}": {
@@ -7693,9 +7420,7 @@
           }
         },
         "summary": "Get an issue area",
-        "tags": [
-          "issue-areas"
-        ]
+        "tags": ["issue-areas"]
       }
     },
     "/api/lists": {
@@ -7811,9 +7536,7 @@
           }
         },
         "summary": "List my saved lists",
-        "tags": [
-          "lists"
-        ]
+        "tags": ["lists"]
       },
       "post": {
         "description": "Create a saved list owned by the current user.",
@@ -7933,9 +7656,7 @@
           }
         },
         "summary": "Create a saved list",
-        "tags": [
-          "lists"
-        ]
+        "tags": ["lists"]
       }
     },
     "/api/lists/membership/{entry_id}": {
@@ -8060,9 +7781,7 @@
           }
         },
         "summary": "List my list-memberships for an entry",
-        "tags": [
-          "lists"
-        ]
+        "tags": ["lists"]
       }
     },
     "/api/lists/{list_id}": {
@@ -8176,9 +7895,7 @@
           }
         },
         "summary": "Delete a saved list",
-        "tags": [
-          "lists"
-        ]
+        "tags": ["lists"]
       },
       "get": {
         "description": "Return a saved list with hydrated entries.",
@@ -8297,9 +8014,7 @@
           }
         },
         "summary": "Get a saved list",
-        "tags": [
-          "lists"
-        ]
+        "tags": ["lists"]
       }
     },
     "/api/lists/{list_id}/items": {
@@ -8430,9 +8145,7 @@
           }
         },
         "summary": "Add an entry to a saved list",
-        "tags": [
-          "lists"
-        ]
+        "tags": ["lists"]
       }
     },
     "/api/lists/{list_id}/items/{entry_id}": {
@@ -8555,9 +8268,7 @@
           }
         },
         "summary": "Remove an entry from a saved list",
-        "tags": [
-          "lists"
-        ]
+        "tags": ["lists"]
       }
     },
     "/api/orgs/{org_id}/annotations": {
@@ -8700,9 +8411,7 @@
           }
         },
         "summary": "List annotations for org",
-        "tags": [
-          "org-annotations"
-        ]
+        "tags": ["org-annotations"]
       },
       "post": {
         "description": "Create an annotation on a shared entry.",
@@ -8831,9 +8540,7 @@
           }
         },
         "summary": "Create an annotation",
-        "tags": [
-          "org-annotations"
-        ]
+        "tags": ["org-annotations"]
       }
     },
     "/api/orgs/{org_id}/annotations/{annotation_id}": {
@@ -8956,9 +8663,7 @@
           }
         },
         "summary": "Delete an annotation",
-        "tags": [
-          "org-annotations"
-        ]
+        "tags": ["org-annotations"]
       },
       "put": {
         "description": "Update an annotation (author or org admin/owner only).",
@@ -9096,9 +8801,7 @@
           }
         },
         "summary": "Update an annotation",
-        "tags": [
-          "org-annotations"
-        ]
+        "tags": ["org-annotations"]
       }
     },
     "/api/orgs/{org_id}/discovery-runs": {
@@ -9267,9 +8970,7 @@
           }
         },
         "summary": "List org's private discovery runs",
-        "tags": [
-          "org-discovery-runs"
-        ]
+        "tags": ["org-discovery-runs"]
       },
       "post": {
         "description": "Start a private discovery run for the org (record only, no pipeline execution).",
@@ -9398,9 +9099,7 @@
           }
         },
         "summary": "Start a private discovery run",
-        "tags": [
-          "org-discovery-runs"
-        ]
+        "tags": ["org-discovery-runs"]
       }
     },
     "/api/orgs/{org_id}/discovery-runs/{run_id}": {
@@ -9530,9 +9229,7 @@
           }
         },
         "summary": "Get a private discovery run",
-        "tags": [
-          "org-discovery-runs"
-        ]
+        "tags": ["org-discovery-runs"]
       }
     },
     "/api/orgs/{org_id}/entries": {
@@ -9657,9 +9354,7 @@
           }
         },
         "summary": "List private entries for org",
-        "tags": [
-          "org-entries"
-        ]
+        "tags": ["org-entries"]
       },
       "post": {
         "description": "Create a private entry owned by the org.",
@@ -9788,9 +9483,7 @@
           }
         },
         "summary": "Create a private entry for org",
-        "tags": [
-          "org-entries"
-        ]
+        "tags": ["org-entries"]
       }
     },
     "/api/orgs/{org_id}/entries/{entry_id}": {
@@ -9913,9 +9606,7 @@
           }
         },
         "summary": "Delete a private entry",
-        "tags": [
-          "org-entries"
-        ]
+        "tags": ["org-entries"]
       },
       "get": {
         "description": "Get a single private entry owned by the org.",
@@ -10043,9 +9734,7 @@
           }
         },
         "summary": "Get a private entry",
-        "tags": [
-          "org-entries"
-        ]
+        "tags": ["org-entries"]
       },
       "put": {
         "description": "Update a private entry owned by the org.",
@@ -10183,9 +9872,7 @@
           }
         },
         "summary": "Update a private entry",
-        "tags": [
-          "org-entries"
-        ]
+        "tags": ["org-entries"]
       }
     },
     "/api/places/{place_key}": {
@@ -10226,9 +9913,7 @@
           }
         },
         "summary": "Get a place",
-        "tags": [
-          "places"
-        ]
+        "tags": ["places"]
       }
     },
     "/api/places/{place_key}/coverage": {
@@ -10288,9 +9973,7 @@
           }
         },
         "summary": "Get place coverage",
-        "tags": [
-          "places"
-        ]
+        "tags": ["places"]
       }
     },
     "/api/places/{place_key}/entities": {
@@ -10432,9 +10115,7 @@
           }
         },
         "summary": "List place entities",
-        "tags": [
-          "places"
-        ]
+        "tags": ["places"]
       }
     },
     "/api/places/{place_key}/issue-signals": {
@@ -10494,9 +10175,7 @@
           }
         },
         "summary": "Get place issue signals",
-        "tags": [
-          "places"
-        ]
+        "tags": ["places"]
       }
     },
     "/api/places/{place_key}/profile": {
@@ -10537,9 +10216,7 @@
           }
         },
         "summary": "Get a place profile",
-        "tags": [
-          "places"
-        ]
+        "tags": ["places"]
       }
     },
     "/api/places/{place_key}/sources": {
@@ -10662,9 +10339,7 @@
           }
         },
         "summary": "List place sources",
-        "tags": [
-          "places"
-        ]
+        "tags": ["places"]
       }
     },
     "/api/profiles/claims/me": {
@@ -10780,9 +10455,7 @@
           }
         },
         "summary": "List my claims",
-        "tags": [
-          "claims"
-        ]
+        "tags": ["claims"]
       }
     },
     "/api/profiles/claims/verify-email": {
@@ -10822,9 +10495,7 @@
           }
         },
         "summary": "Verify a tier-1 claim",
-        "tags": [
-          "claims"
-        ]
+        "tags": ["claims"]
       }
     },
     "/api/profiles/{slug}/claim": {
@@ -10955,9 +10626,7 @@
           }
         },
         "summary": "Initiate a profile claim",
-        "tags": [
-          "claims"
-        ]
+        "tags": ["claims"]
       }
     },
     "/api/profiles/{slug}/follow": {
@@ -11071,9 +10740,7 @@
           }
         },
         "summary": "Unfollow a profile",
-        "tags": [
-          "follows"
-        ]
+        "tags": ["follows"]
       },
       "get": {
         "description": "Return the current user's follow record for a profile (or null).",
@@ -11200,9 +10867,7 @@
           }
         },
         "summary": "Get follow status",
-        "tags": [
-          "follows"
-        ]
+        "tags": ["follows"]
       },
       "post": {
         "description": "Subscribe the authenticated user to updates on a profile.",
@@ -11321,9 +10986,7 @@
           }
         },
         "summary": "Follow a profile",
-        "tags": [
-          "follows"
-        ]
+        "tags": ["follows"]
       }
     },
     "/api/profiles/{slug}/manage": {
@@ -11456,9 +11119,7 @@
           }
         },
         "summary": "Manage subject-controlled fields",
-        "tags": [
-          "claims"
-        ]
+        "tags": ["claims"]
       }
     },
     "/api/source-flags": {
@@ -11527,9 +11188,7 @@
           }
         },
         "summary": "List source flags",
-        "tags": [
-          "flags"
-        ]
+        "tags": ["flags"]
       },
       "post": {
         "description": "Submit an anonymous flag for an Atlas source record that looks stale or incorrect.",
@@ -11567,9 +11226,7 @@
           }
         },
         "summary": "Create a source flag",
-        "tags": [
-          "flags"
-        ]
+        "tags": ["flags"]
       }
     },
     "/health": {
@@ -11603,7 +11260,7 @@
     },
     {
       "description": "Local development",
-      "url": "http://api.localhost:1355"
+      "url": "https://api.atlas.localhost:1355"
     },
     {
       "description": "Relative to current host",

@@ -18,15 +18,15 @@ Routes use file-based convention in `app/src/routes/`:
 
 ```tsx
 // app/src/routes/my-page.tsx
-import { useEffect, useState } from 'react'
+import { useEffect, useState } from "react";
 
 export default function MyPageComponent() {
-  const [data, setData] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     // Fetch data, set state, etc.
-  }, [])
+  }, []);
 
   return (
     <div>
@@ -34,7 +34,7 @@ export default function MyPageComponent() {
       {loading && <p>Loading...</p>}
       {data && <p>{data}</p>}
     </div>
-  )
+  );
 }
 ```
 
@@ -48,12 +48,12 @@ Use folder structure to create nested routes:
 // app/src/routes/entries/$id.tsx
 // This becomes /entries/:id
 
-import { useParams } from '@tanstack/react-router'
+import { useParams } from "@tanstack/react-router";
 
 export default function EntryDetailPage() {
-  const { id } = useParams({ from: '/entries/$id' })
+  const { id } = useParams({ from: "/entries/$id" });
 
-  return <div>Entry {id}</div>
+  return <div>Entry {id}</div>;
 }
 ```
 
@@ -86,7 +86,7 @@ export default function MyPage() {
         <p className="text-gray-700">Content here</p>
       </main>
     </div>
-  )
+  );
 }
 ```
 
@@ -95,7 +95,7 @@ export default function MyPage() {
 In `app/src/components/features/Nav.tsx` or root layout:
 
 ```tsx
-import { Link } from '@tanstack/react-router'
+import { Link } from "@tanstack/react-router";
 
 export function Navigation() {
   return (
@@ -104,7 +104,7 @@ export function Navigation() {
       <Link to="/my-page">My Page</Link>
       <Link to="/entries">Entries</Link>
     </nav>
-  )
+  );
 }
 ```
 
@@ -114,7 +114,7 @@ export function Navigation() {
 cd app && pnpm run dev
 ```
 
-Navigate to `http://localhost:3000/my-page`
+Navigate to `https://atlas.localhost:1355/my-page`
 
 ---
 
@@ -129,23 +129,25 @@ Components go in `app/src/components/`:
 ```tsx
 // app/src/components/ui/Badge.tsx
 interface BadgeProps {
-  label: string
-  color?: 'blue' | 'green' | 'red' | 'gray'
+  label: string;
+  color?: "blue" | "green" | "red" | "gray";
 }
 
-export function Badge({ label, color = 'gray' }: BadgeProps) {
+export function Badge({ label, color = "gray" }: BadgeProps) {
   const colorClass = {
-    blue: 'bg-blue-100 text-blue-800',
-    green: 'bg-green-100 text-green-800',
-    red: 'bg-red-100 text-red-800',
-    gray: 'bg-gray-100 text-gray-800'
-  }[color]
+    blue: "bg-blue-100 text-blue-800",
+    green: "bg-green-100 text-green-800",
+    red: "bg-red-100 text-red-800",
+    gray: "bg-gray-100 text-gray-800",
+  }[color];
 
   return (
-    <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${colorClass}`}>
+    <span
+      className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${colorClass}`}
+    >
       {label}
     </span>
-  )
+  );
 }
 ```
 
@@ -153,12 +155,12 @@ export function Badge({ label, color = 'gray' }: BadgeProps) {
 
 ```tsx
 // app/src/components/features/EntryCard.tsx
-import { Badge } from '../ui/Badge'
-import { Entry } from '../../types/entry'
+import { Badge } from "../ui/Badge";
+import { Entry } from "../../types/entry";
 
 interface EntryCardProps {
-  entry: Entry
-  onClick?: (entry: Entry) => void
+  entry: Entry;
+  onClick?: (entry: Entry) => void;
 }
 
 export function EntryCard({ entry, onClick }: EntryCardProps) {
@@ -172,7 +174,7 @@ export function EntryCard({ entry, onClick }: EntryCardProps) {
       <p className="text-gray-600 text-sm mb-4">{entry.description}</p>
 
       <div className="flex flex-wrap gap-2 mb-3">
-        {entry.issue_areas.map(area => (
+        {entry.issue_areas.map((area) => (
           <Badge key={area} label={area} color="blue" />
         ))}
       </div>
@@ -181,7 +183,7 @@ export function EntryCard({ entry, onClick }: EntryCardProps) {
         {entry.city}, {entry.state}
       </p>
     </div>
-  )
+  );
 }
 ```
 
@@ -213,14 +215,15 @@ Optionally create `app/src/components/index.ts` for easy importing:
 
 ```tsx
 // app/src/components/index.ts
-export { Badge } from './ui/Badge'
-export { Button } from './ui/Button'
-export { EntryCard } from './features/EntryCard'
+export { Badge } from "./ui/Badge";
+export { Button } from "./ui/Button";
+export { EntryCard } from "./features/EntryCard";
 ```
 
 Then use:
+
 ```tsx
-import { EntryCard, Badge } from '../components'
+import { EntryCard, Badge } from "../components";
 ```
 
 ---
@@ -233,69 +236,69 @@ Hooks encapsulate data fetching and state logic.
 
 ```tsx
 // app/src/hooks/useEntries.ts
-import { useEffect, useState } from 'react'
-import { api } from '../lib/api'
-import { Entry } from '../types/entry'
+import { useEffect, useState } from "react";
+import { api } from "../lib/api";
+import { Entry } from "../types/entry";
 
 interface UseEntriesOptions {
-  state?: string
-  issue_area?: string
+  state?: string;
+  issue_area?: string;
 }
 
 interface UseEntriesResult {
-  entries: Entry[] | null
-  loading: boolean
-  error: Error | null
+  entries: Entry[] | null;
+  loading: boolean;
+  error: Error | null;
 }
 
 export function useEntries(options?: UseEntriesOptions): UseEntriesResult {
-  const [entries, setEntries] = useState<Entry[] | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<Error | null>(null)
+  const [entries, setEntries] = useState<Entry[] | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
     const fetchEntries = async () => {
-      setLoading(true)
-      setError(null)
+      setLoading(true);
+      setError(null);
 
       try {
-        const response = await api.get('/entries', options)
-        setEntries(response.data)
+        const response = await api.get("/entries", options);
+        setEntries(response.data);
       } catch (err) {
-        setError(err instanceof Error ? err : new Error('Unknown error'))
+        setError(err instanceof Error ? err : new Error("Unknown error"));
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    }
+    };
 
-    fetchEntries()
-  }, [options?.state, options?.issue_area])
+    fetchEntries();
+  }, [options?.state, options?.issue_area]);
 
-  return { entries, loading, error }
+  return { entries, loading, error };
 }
 ```
 
 ### 2. Use the Hook
 
 ```tsx
-import { useEntries } from '../hooks/useEntries'
-import { EntryCard } from '../components/features/EntryCard'
+import { useEntries } from "../hooks/useEntries";
+import { EntryCard } from "../components/features/EntryCard";
 
 export default function SearchPage() {
   const { entries, loading, error } = useEntries({
-    state: 'KS'
-  })
+    state: "KS",
+  });
 
-  if (loading) return <div>Loading...</div>
-  if (error) return <div>Error: {error.message}</div>
+  if (loading) return <div>Loading...</div>;
+  if (error) return <div>Error: {error.message}</div>;
 
   return (
     <div className="grid gap-4">
-      {entries?.map(entry => (
+      {entries?.map((entry) => (
         <EntryCard key={entry.id} entry={entry} />
       ))}
     </div>
-  )
+  );
 }
 ```
 
@@ -310,40 +313,40 @@ TypeScript types mirror Pydantic schemas from the API.
 ```tsx
 // app/src/types/entry.ts
 export interface Entry {
-  id: string
-  type: 'person' | 'organization' | 'initiative' | 'campaign' | 'event'
-  name: string
-  description: string
-  city?: string
-  state?: string
-  website?: string
-  issue_areas: string[]
-  sources: Source[]
-  active: boolean
-  created_at: string
-  updated_at: string
+  id: string;
+  type: "person" | "organization" | "initiative" | "campaign" | "event";
+  name: string;
+  description: string;
+  city?: string;
+  state?: string;
+  website?: string;
+  issue_areas: string[];
+  sources: Source[];
+  active: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface Source {
-  id: string
-  url: string
-  title?: string
-  publication?: string
-  published_date?: string
+  id: string;
+  url: string;
+  title?: string;
+  publication?: string;
+  published_date?: string;
 }
 
 export interface EntryResponse {
-  data: Entry
+  data: Entry;
 }
 
 export interface EntriesResponse {
-  data: Entry[]
+  data: Entry[];
   pagination?: {
-    page: number
-    page_size: number
-    total: number
-    has_more: boolean
-  }
+    page: number;
+    page_size: number;
+    total: number;
+    has_more: boolean;
+  };
 }
 ```
 
@@ -368,18 +371,18 @@ interface EntryCardProps {
 ### Basic Form
 
 ```tsx
-import { useState } from 'react'
-import { Button } from '../components/ui/Button'
-import { Input } from '../components/ui/Input'
+import { useState } from "react";
+import { Button } from "../components/ui/Button";
+import { Input } from "../components/ui/Input";
 
 export function SearchForm() {
-  const [query, setQuery] = useState('')
-  const [state, setState] = useState('')
+  const [query, setQuery] = useState("");
+  const [state, setState] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
     // Call API or parent handler
-  }
+  };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -399,7 +402,7 @@ export function SearchForm() {
 
       <Button type="submit">Search</Button>
     </form>
-  )
+  );
 }
 ```
 
@@ -407,41 +410,41 @@ export function SearchForm() {
 
 ```tsx
 interface FormData {
-  name: string
-  email: string
+  name: string;
+  email: string;
 }
 
 interface FormErrors {
-  name?: string
-  email?: string
+  name?: string;
+  email?: string;
 }
 
 export function SignupForm() {
-  const [data, setData] = useState<FormData>({ name: '', email: '' })
-  const [errors, setErrors] = useState<FormErrors>({})
+  const [data, setData] = useState<FormData>({ name: "", email: "" });
+  const [errors, setErrors] = useState<FormErrors>({});
 
   const validate = (): boolean => {
-    const newErrors: FormErrors = {}
+    const newErrors: FormErrors = {};
 
     if (!data.name) {
-      newErrors.name = 'Name is required'
+      newErrors.name = "Name is required";
     }
 
-    if (!data.email.includes('@')) {
-      newErrors.email = 'Invalid email'
+    if (!data.email.includes("@")) {
+      newErrors.email = "Invalid email";
     }
 
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
-  }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
 
-    if (!validate()) return
+    if (!validate()) return;
 
     // Submit form
-  }
+  };
 
   return (
     <form onSubmit={handleSubmit}>
@@ -461,7 +464,7 @@ export function SignupForm() {
 
       <Button type="submit">Sign Up</Button>
     </form>
-  )
+  );
 }
 ```
 
@@ -478,13 +481,13 @@ TanStack Start supports selective SSR. By default, routes are SPAs (rendered in 
 
 // Option 1: Export metadata
 export const route = {
-  ssr: true  // Render on server
-}
+  ssr: true, // Render on server
+};
 
 export default function HomePage() {
   // This runs on server, HTML is sent to browser
   // Good for: static pages, SEO
-  return <div>Home Page</div>
+  return <div>Home Page</div>;
 }
 ```
 
@@ -494,13 +497,13 @@ export default function HomePage() {
 // app/src/routes/admin/discovery.tsx (admin page)
 
 export const route = {
-  ssr: false  // Render in browser only
-}
+  ssr: false, // Render in browser only
+};
 
 export default function AdminDiscoveryPage() {
   // This runs in browser only
   // Good for: interactive forms, real-time data
-  return <div>Admin Discovery</div>
+  return <div>Admin Discovery</div>;
 }
 ```
 
@@ -554,31 +557,51 @@ pnpm run test:coverage
 
 ```tsx
 export function MyComponent() {
-  const { data, loading, error } = useMyData()
+  const { data, loading, error } = useMyData();
 
-  if (loading) return <LoadingSpinner />
-  if (error) return <ErrorBanner error={error} />
-  if (!data) return <EmptyState />
+  if (loading) return <LoadingSpinner />;
+  if (error) return <ErrorBanner error={error} />;
+  if (!data) return <EmptyState />;
 
-  return <Content data={data} />
+  return <Content data={data} />;
 }
 ```
 
 ### Conditional Rendering
 
 ```tsx
-{/* Don't use ternary if either branch is null */}
-{isLoading && <Spinner />}
-{isLoaded && <Content />}
-{isError && <Error />}
+{
+  /* Don't use ternary if either branch is null */
+}
+{
+  isLoading && <Spinner />;
+}
+{
+  isLoaded && <Content />;
+}
+{
+  isError && <Error />;
+}
 
-{/* Use logical AND for simple cases */}
-{hasData && <Content />}
+{
+  /* Use logical AND for simple cases */
+}
+{
+  hasData && <Content />;
+}
 
-{/* Use switch for complex logic */}
-{status === 'loading' && <Spinner />}
-{status === 'loaded' && <Content />}
-{status === 'error' && <Error />}
+{
+  /* Use switch for complex logic */
+}
+{
+  status === "loading" && <Spinner />;
+}
+{
+  status === "loaded" && <Content />;
+}
+{
+  status === "error" && <Error />;
+}
 ```
 
 ### Event Handlers
@@ -586,23 +609,23 @@ export function MyComponent() {
 ```tsx
 const handleClick = () => {
   // Do something
-}
+};
 
 const handleSubmit = (e: React.FormEvent) => {
-  e.preventDefault()
+  e.preventDefault();
   // Do something
-}
+};
 
 const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-  setQuery(e.target.value)
-}
+  setQuery(e.target.value);
+};
 
 return (
   <form onSubmit={handleSubmit}>
     <input onChange={handleChange} />
     <button onClick={handleClick}>Submit</button>
   </form>
-)
+);
 ```
 
 ---

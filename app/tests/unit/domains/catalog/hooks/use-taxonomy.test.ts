@@ -20,12 +20,14 @@ vi.mock("@/lib/api", () => ({
 }));
 
 describe("useTaxonomy", () => {
-  it("configures the taxonomy query", () => {
+  it("fetches taxonomy data when invoked", async () => {
+    mocks.useQuery.mockImplementation((options: { queryFn: () => unknown }) => {
+      void options.queryFn();
+      return { data: null, isLoading: false };
+    });
+
     useTaxonomy();
-    expect(mocks.useQuery).toHaveBeenCalledWith(
-      expect.objectContaining({
-        queryKey: ["taxonomy"],
-      }),
-    );
+    await Promise.resolve();
+    expect(mocks.apiTaxonomyList).toHaveBeenCalledTimes(1);
   });
 });

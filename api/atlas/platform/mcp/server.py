@@ -162,6 +162,28 @@ def build_mcp() -> FastMCP:
         )
 
     @mcp.tool()
+    async def list_discovery_runs(
+        state: str | None = None,
+        status: str | None = None,
+        limit: int = 20,
+        cursor: str | None = None,
+    ) -> dict[str, Any]:
+        """List source-linked Atlas research runs and their structured outputs."""
+        service = AtlasDataService(get_settings().database_url)
+        return await service.list_discovery_runs(
+            state=state,
+            status=status,
+            limit=limit,
+            cursor=cursor,
+        )
+
+    @mcp.tool()
+    async def get_discovery_run(run_id: str) -> dict[str, Any]:
+        """Get one source-linked Atlas research run and its structured output."""
+        service = AtlasDataService(get_settings().database_url)
+        return await service.get_discovery_run(run_id)
+
+    @mcp.tool()
     async def get_place_profile(place: str) -> dict[str, Any]:
         """Return demographic and socioeconomic context for a place."""
         service = AtlasDataService(get_settings().database_url)

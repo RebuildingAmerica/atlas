@@ -41,6 +41,7 @@ describe("research-summary loader", () => {
     state: string;
     status: string;
     started_at: string;
+    issue_areas: string[];
   }
 
   const REFERENCE_NOW = Date.parse("2026-06-24T00:00:00.000Z");
@@ -75,6 +76,7 @@ describe("research-summary loader", () => {
       state: "MO",
       status: "completed",
       started_at: isoDaysAgo(2),
+      issue_areas: ["housing_affordability"],
       ...overrides,
     };
   }
@@ -237,6 +239,7 @@ describe("research-summary loader", () => {
         state: "MO",
         status: "completed",
         startedAt: isoDaysAgo(2),
+        issueAreas: ["housing_affordability"],
       },
       expect.objectContaining({ id: "r2" }),
       expect.objectContaining({ id: "r3" }),
@@ -253,7 +256,9 @@ describe("research-summary loader", () => {
       lists: [],
       activity: { newSourcesThisWeek: 0, recentItems: [], followedActorCount: 0 },
       recentRuns: [],
+      researchTrends: [],
       totals: { savedActors: 0, listCount: 0, runsThisMonth: 0 },
+      watchlists: [],
     });
   });
 
@@ -294,5 +299,151 @@ describe("research-summary loader", () => {
     const summary = expectSummary(await executeLoader());
 
     expect(summary.totals.runsThisMonth).toBe(2);
+  });
+
+  it("derives place and issue watchlists from discovery runs", async () => {
+    mocks.requestAtlasApi.mockImplementation((path: string) => {
+      if (path === "/lists") return Promise.resolve([]);
+      if (path === "/feed/following?limit=50") return Promise.resolve({ items: [] });
+      return Promise.resolve({
+        items: [
+          makeRun({ id: "kc-housing", location_query: "Kansas City, MO" }),
+          makeRun({
+            id: "kc-transit",
+            location_query: "Kansas City, MO",
+            issue_areas: ["public_transit"],
+          }),
+          makeRun({
+            id: "detroit-housing",
+            location_query: "Detroit, MI",
+            state: "MI",
+            issue_areas: ["housing_affordability"],
+          }),
+        ],
+        total: 3,
+      });
+    });
+
+    const summary = expectSummary(await executeLoader());
+
+    expect(summary.watchlists).toEqual([
+      {
+        id: "place:kansas city, mo:mo",
+        kind: "place",
+        label: "Kansas City, MO",
+        detail: "2 recent requests",
+        changedSinceLastTime: "2 new research requests",
+      },
+      {
+        id: "place:detroit, mi:mi",
+        kind: "place",
+        label: "Detroit, MI",
+        detail: "1 recent request",
+        changedSinceLastTime: "1 new research request",
+      },
+      {
+        id: "issue:housing_affordability",
+        kind: "issue",
+        label: "Housing affordability",
+        detail: "2 recent requests",
+        changedSinceLastTime: "2 new research requests",
+      },
+      {
+        id: "issue:public_transit",
+        kind: "issue",
+        label: "Public transit",
+        detail: "1 recent request",
+        changedSinceLastTime: "1 new research request",
+      },
+    ]);
+  });
+
+  it("derives saved research-set watchlists from saved lists", async () => {
+    mocks.requestAtlasApi.mockImplementation((path: string) => {
+      if (path === "/lists") {
+        return Promise.resolve([
+          makeList({ id: "list_housing", name: "Housing outreach", item_count: 6 }),
+        ]);
+      }
+      if (path === "/feed/following?limit=50") return Promise.resolve({ items: [] });
+      return Promise.resolve({ items: [], total: 0 });
+    });
+
+    const summary = expectSummary(await executeLoader());
+
+    expect(summary.watchlists).toEqual([
+      {
+        id: "research_set:list_housing",
+        kind: "research_set",
+        label: "Housing outreach",
+        detail: "6 saved actors",
+        changedSinceLastTime: "6 saved actors",
+      },
+    ]);
+  });
+
+  it("derives longitudinal research trends from repeated places and issues", async () => {
+    mocks.requestAtlasApi.mockImplementation((path: string) => {
+      if (path === "/lists") return Promise.resolve([]);
+      if (path === "/feed/following?limit=50") return Promise.resolve({ items: [] });
+      return Promise.resolve({
+        items: [
+          makeRun({
+            id: "kc-housing-new",
+            location_query: "Kansas City, MO",
+            started_at: isoDaysAgo(1),
+          }),
+          makeRun({
+            id: "kc-housing-old",
+            location_query: "Kansas City, MO",
+            started_at: isoDaysAgo(15),
+          }),
+          makeRun({
+            id: "detroit-housing",
+            location_query: "Detroit, MI",
+            state: "MI",
+            issue_areas: ["housing_affordability", "public_transit"],
+            started_at: isoDaysAgo(3),
+          }),
+          makeRun({
+            id: "atlanta-transit",
+            location_query: "Atlanta, GA",
+            state: "GA",
+            issue_areas: ["public_transit"],
+            started_at: isoDaysAgo(30),
+          }),
+        ],
+        total: 4,
+      });
+    });
+
+    const summary = expectSummary(await executeLoader());
+
+    expect(summary.researchTrends).toEqual([
+      {
+        id: "place:kansas city, mo:mo",
+        kind: "place",
+        label: "Kansas City, MO",
+        runCount: 2,
+        latestRunAt: isoDaysAgo(1),
+        signal: "2 requests over time",
+      },
+      {
+        id: "issue:housing_affordability",
+        kind: "issue",
+        label: "Housing affordability",
+        runCount: 3,
+        latestRunAt: isoDaysAgo(1),
+        signal: "3 requests over time",
+      },
+      {
+        id: "issue:public_transit",
+        kind: "issue",
+        label: "Public transit",
+        runCount: 2,
+        latestRunAt: isoDaysAgo(3),
+        signal: "2 requests over time",
+      },
+    ]);
   });
 });

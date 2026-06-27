@@ -214,6 +214,10 @@ async def _init_sqlite(database_url: str) -> None:
     conn = await get_db_connection(database_url)
     try:
         await _ensure_entry_columns(conn)
+        await _ensure_discovery_run_columns(conn)
+        await _ensure_discovery_job_columns(conn)
+        await _ensure_review_queue_columns(conn)
+        await _ensure_org_annotation_columns(conn)
         await conn.commit()
         await conn.executescript(DB_SCHEMA)
         await conn.commit()
@@ -328,7 +332,7 @@ CREATE TABLE IF NOT EXISTS sources (
     title TEXT,
     publication TEXT,
     published_date DATE,
-    type TEXT NOT NULL CHECK(type IN ('news_article', 'op_ed', 'podcast', 'academic_paper', 'government_record', 'social_media', 'org_website', 'conference', 'video', 'report', 'other')),
+    type TEXT NOT NULL CHECK(type IN ('news_article', 'op_ed', 'podcast', 'academic_paper', 'government_record', 'social_media', 'community_archive', 'org_website', 'conference', 'video', 'report', 'other')),
     ingested_at DATETIME NOT NULL,
     extraction_method TEXT NOT NULL CHECK(extraction_method IN ('manual', 'ai_assisted', 'autodiscovery')),
     raw_content TEXT,
@@ -353,6 +357,41 @@ CREATE TABLE IF NOT EXISTS entry_issue_areas (
     created_at DATETIME NOT NULL,
     PRIMARY KEY (entry_id, issue_area),
     FOREIGN KEY (entry_id) REFERENCES entries(id) ON DELETE CASCADE
+);
+
+-- Stable identity keys keep repeated public mentions attached to one actor.
+CREATE TABLE IF NOT EXISTS entity_identity_keys (
+    entry_id TEXT NOT NULL,
+    key_type TEXT NOT NULL CHECK(key_type IN ('ein', 'fec_id', 'domain')),
+    key_value TEXT NOT NULL,
+    source_id TEXT,
+    confidence REAL NOT NULL CHECK(confidence >= 0 AND confidence <= 1),
+    created_at DATETIME NOT NULL,
+    updated_at DATETIME NOT NULL,
+    PRIMARY KEY (key_type, key_value),
+    FOREIGN KEY (entry_id) REFERENCES entries(id) ON DELETE CASCADE,
+    FOREIGN KEY (source_id) REFERENCES sources(id) ON DELETE SET NULL
+);
+
+-- Sourced relationship edges make the profile network inspectable and durable.
+CREATE TABLE IF NOT EXISTS entity_relationship_edges (
+    id TEXT PRIMARY KEY,
+    source_entry_id TEXT NOT NULL,
+    target_entry_id TEXT NOT NULL,
+    relationship_type TEXT NOT NULL,
+    source_id TEXT NOT NULL,
+    evidence_label TEXT NOT NULL,
+    confidence REAL NOT NULL CHECK(confidence >= 0 AND confidence <= 1),
+    evidence_count INTEGER NOT NULL DEFAULT 1 CHECK(evidence_count > 0),
+    first_seen DATETIME NOT NULL,
+    last_seen DATETIME NOT NULL,
+    created_at DATETIME NOT NULL,
+    updated_at DATETIME NOT NULL,
+    CHECK(source_entry_id != target_entry_id),
+    UNIQUE(source_entry_id, target_entry_id, relationship_type, source_id),
+    FOREIGN KEY (source_entry_id) REFERENCES entries(id) ON DELETE CASCADE,
+    FOREIGN KEY (target_entry_id) REFERENCES entries(id) ON DELETE CASCADE,
+    FOREIGN KEY (source_id) REFERENCES sources(id) ON DELETE CASCADE
 );
 
 -- Outreach log (internal)
@@ -383,12 +422,14 @@ CREATE TABLE IF NOT EXISTS discovery_runs (
     location_query TEXT NOT NULL,
     state TEXT NOT NULL,
     issue_areas TEXT NOT NULL,
+    research_goal TEXT NOT NULL DEFAULT 'landscape_scan',
     queries_generated INTEGER NOT NULL DEFAULT 0,
     sources_fetched INTEGER NOT NULL DEFAULT 0,
     sources_processed INTEGER NOT NULL DEFAULT 0,
     entries_extracted INTEGER NOT NULL DEFAULT 0,
     entries_after_dedup INTEGER NOT NULL DEFAULT 0,
     entries_confirmed INTEGER NOT NULL DEFAULT 0,
+    research_summary TEXT,
     started_at DATETIME NOT NULL,
     completed_at DATETIME,
     status TEXT NOT NULL CHECK(status IN ('running', 'completed', 'failed')),
@@ -434,6 +475,7 @@ CREATE TABLE IF NOT EXISTS source_flags (
 -- Review queue (pre-publication staging for discovered records)
 CREATE TABLE IF NOT EXISTS review_queue (
     id TEXT PRIMARY KEY,
+    org_id TEXT,
     entity_id TEXT REFERENCES entries(id) ON DELETE CASCADE,
     kind TEXT NOT NULL,
     status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending', 'approved', 'rejected')),
@@ -461,12 +503,26 @@ CREATE TABLE IF NOT EXISTS resource_ownership (
 CREATE TABLE IF NOT EXISTS org_annotations (
     id TEXT PRIMARY KEY,
     org_id TEXT NOT NULL,
-    entry_id TEXT NOT NULL,
+    entry_id TEXT,
+    source_id TEXT,
+    target_type TEXT NOT NULL DEFAULT 'entry' CHECK(target_type IN ('entry', 'source')),
+    target_id TEXT,
     content TEXT NOT NULL,
     author_id TEXT NOT NULL,
     created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
     updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
-    FOREIGN KEY (entry_id) REFERENCES entries(id)
+    FOREIGN KEY (entry_id) REFERENCES entries(id),
+    FOREIGN KEY (source_id) REFERENCES sources(id)
+);
+
+-- Verified custom domains for public workspace directories.
+CREATE TABLE IF NOT EXISTS org_directory_domains (
+    org_id TEXT PRIMARY KEY,
+    domain TEXT NOT NULL UNIQUE,
+    verification_token TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending', 'verified')),
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    verified_at TEXT
 );
 
 -- Full-text search virtual table
@@ -490,6 +546,14 @@ CREATE INDEX IF NOT EXISTS idx_entry_sources_entry_id ON entry_sources(entry_id)
 CREATE INDEX IF NOT EXISTS idx_entry_sources_source_id ON entry_sources(source_id);
 CREATE INDEX IF NOT EXISTS idx_entry_issue_areas_entry_id ON entry_issue_areas(entry_id);
 CREATE INDEX IF NOT EXISTS idx_entry_issue_areas_issue_area ON entry_issue_areas(issue_area);
+CREATE INDEX IF NOT EXISTS idx_entity_identity_keys_entry ON entity_identity_keys(entry_id);
+CREATE INDEX IF NOT EXISTS idx_entity_identity_keys_source ON entity_identity_keys(source_id);
+CREATE INDEX IF NOT EXISTS idx_entity_relationship_edges_source_entry
+    ON entity_relationship_edges(source_entry_id);
+CREATE INDEX IF NOT EXISTS idx_entity_relationship_edges_target_entry
+    ON entity_relationship_edges(target_entry_id);
+CREATE INDEX IF NOT EXISTS idx_entity_relationship_edges_source
+    ON entity_relationship_edges(source_id);
 CREATE INDEX IF NOT EXISTS idx_outreach_logs_entry_id ON outreach_logs(entry_id);
 CREATE INDEX IF NOT EXISTS idx_outreach_logs_date ON outreach_logs(date);
 CREATE INDEX IF NOT EXISTS idx_episode_assoc_entry_id ON episode_associations(entry_id);
@@ -505,10 +569,14 @@ CREATE INDEX IF NOT EXISTS idx_source_flags_source_id ON source_flags(source_id)
 CREATE INDEX IF NOT EXISTS idx_source_flags_status ON source_flags(status);
 CREATE INDEX IF NOT EXISTS idx_review_queue_status ON review_queue(status);
 CREATE INDEX IF NOT EXISTS idx_review_queue_entity_id ON review_queue(entity_id);
+CREATE INDEX IF NOT EXISTS idx_review_queue_org_status ON review_queue(org_id, status);
 CREATE INDEX IF NOT EXISTS idx_resource_ownership_org ON resource_ownership(org_id);
 CREATE INDEX IF NOT EXISTS idx_resource_ownership_org_visibility ON resource_ownership(org_id, visibility);
 CREATE INDEX IF NOT EXISTS idx_org_annotations_org ON org_annotations(org_id);
 CREATE INDEX IF NOT EXISTS idx_org_annotations_entry ON org_annotations(entry_id);
+CREATE INDEX IF NOT EXISTS idx_org_annotations_source ON org_annotations(source_id);
+CREATE INDEX IF NOT EXISTS idx_org_annotations_target ON org_annotations(target_type, target_id);
+CREATE INDEX IF NOT EXISTS idx_org_directory_domains_status ON org_directory_domains(status);
 CREATE INDEX IF NOT EXISTS idx_entries_slug ON entries(slug);
 CREATE INDEX IF NOT EXISTS idx_entries_claim_status ON entries(claim_status);
 CREATE INDEX IF NOT EXISTS idx_entries_claimed_by ON entries(claimed_by_user_id);
@@ -555,6 +623,17 @@ CREATE TABLE IF NOT EXISTS cost_ledger (
 );
 CREATE INDEX IF NOT EXISTS idx_cost_ledger_run_id ON cost_ledger(run_id);
 CREATE INDEX IF NOT EXISTS idx_cost_ledger_created_at ON cost_ledger(created_at);
+
+-- Tenant discovery budgets (monthly run starts per workspace)
+CREATE TABLE IF NOT EXISTS org_discovery_budgets (
+    org_id TEXT NOT NULL,
+    month TEXT NOT NULL,
+    monthly_run_limit INTEGER NOT NULL CHECK(monthly_run_limit >= 0),
+    used_runs INTEGER NOT NULL DEFAULT 0 CHECK(used_runs >= 0),
+    updated_at TEXT NOT NULL,
+    PRIMARY KEY (org_id, month)
+);
+CREATE INDEX IF NOT EXISTS idx_org_discovery_budgets_org ON org_discovery_budgets(org_id);
 
 -- Discovery schedules (autonomous pipeline targets)
 CREATE TABLE IF NOT EXISTS discovery_schedules (
@@ -676,3 +755,139 @@ async def _ensure_entry_columns(conn: Any) -> None:
             index_ddl = follow_up_indexes.get(column)
             if index_ddl is not None:
                 await conn.execute(index_ddl)
+
+
+async def _ensure_discovery_run_columns(conn: Any) -> None:
+    """Apply additive discovery-run migrations for stored research outputs."""
+    cursor = await conn.execute("PRAGMA table_info(discovery_runs)")
+    rows = await cursor.fetchall()
+    if not rows:
+        return
+
+    existing_columns = {row[1] for row in rows}
+    if "research_goal" not in existing_columns:
+        await conn.execute(
+            """
+            ALTER TABLE discovery_runs
+            ADD COLUMN research_goal TEXT NOT NULL DEFAULT 'landscape_scan'
+            """
+        )
+    if "research_summary" not in existing_columns:
+        await conn.execute("ALTER TABLE discovery_runs ADD COLUMN research_summary TEXT")
+
+
+async def _ensure_discovery_job_columns(conn: Any) -> None:
+    """Apply additive discovery-job migrations before index creation."""
+    cursor = await conn.execute("PRAGMA table_info(discovery_jobs)")
+    rows = await cursor.fetchall()
+    if not rows:
+        return
+
+    existing_columns = {row[1] for row in rows}
+    additive_columns = (
+        ("idempotency_key", "ALTER TABLE discovery_jobs ADD COLUMN idempotency_key TEXT"),
+        ("next_attempt_at", "ALTER TABLE discovery_jobs ADD COLUMN next_attempt_at DATETIME"),
+    )
+    for column, ddl in additive_columns:
+        if column not in existing_columns:
+            await conn.execute(ddl)
+
+
+async def _ensure_review_queue_columns(conn: Any) -> None:
+    """Apply additive review-queue migrations for tenant moderation boundaries."""
+    cursor = await conn.execute("PRAGMA table_info(review_queue)")
+    rows = await cursor.fetchall()
+    if not rows:
+        return
+
+    existing_columns = {row[1] for row in rows}
+    if "org_id" not in existing_columns:
+        await conn.execute("ALTER TABLE review_queue ADD COLUMN org_id TEXT")
+
+    await conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_review_queue_org_status ON review_queue(org_id, status)"
+    )
+
+
+async def _ensure_org_annotation_columns(conn: Any) -> None:
+    """Apply SQLite migrations for typed private notes on entries and sources."""
+    cursor = await conn.execute("PRAGMA table_info(org_annotations)")
+    rows = await cursor.fetchall()
+    if not rows:
+        return
+
+    existing_columns = {row[1] for row in rows}
+    entry_column = next((row for row in rows if row[1] == "entry_id"), None)
+    entry_is_not_null = bool(entry_column and entry_column[3])
+
+    if entry_is_not_null:
+        await conn.execute("ALTER TABLE org_annotations RENAME TO org_annotations_legacy")
+        await conn.execute(
+            """
+            CREATE TABLE org_annotations (
+                id TEXT PRIMARY KEY,
+                org_id TEXT NOT NULL,
+                entry_id TEXT,
+                source_id TEXT,
+                target_type TEXT NOT NULL DEFAULT 'entry'
+                    CHECK(target_type IN ('entry', 'source')),
+                target_id TEXT,
+                content TEXT NOT NULL,
+                author_id TEXT NOT NULL,
+                created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+                updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+                FOREIGN KEY (entry_id) REFERENCES entries(id),
+                FOREIGN KEY (source_id) REFERENCES sources(id)
+            )
+            """
+        )
+        await conn.execute(
+            """
+            INSERT INTO org_annotations (
+                id, org_id, entry_id, source_id, target_type, target_id,
+                content, author_id, created_at, updated_at
+            )
+            SELECT
+                id, org_id, entry_id, NULL, 'entry', entry_id,
+                content, author_id, created_at, updated_at
+            FROM org_annotations_legacy
+            """
+        )
+        await conn.execute("DROP TABLE org_annotations_legacy")
+        existing_columns = {
+            "id",
+            "org_id",
+            "entry_id",
+            "source_id",
+            "target_type",
+            "target_id",
+            "content",
+            "author_id",
+            "created_at",
+            "updated_at",
+        }
+
+    additive_columns = (
+        ("source_id", "ALTER TABLE org_annotations ADD COLUMN source_id TEXT"),
+        (
+            "target_type",
+            "ALTER TABLE org_annotations ADD COLUMN target_type TEXT NOT NULL DEFAULT 'entry'",
+        ),
+        ("target_id", "ALTER TABLE org_annotations ADD COLUMN target_id TEXT"),
+    )
+    for column, ddl in additive_columns:
+        if column not in existing_columns:
+            await conn.execute(ddl)
+
+    await conn.execute("UPDATE org_annotations SET target_type = 'entry' WHERE target_type IS NULL")
+    await conn.execute(
+        "UPDATE org_annotations SET target_id = entry_id "
+        "WHERE target_id IS NULL AND entry_id IS NOT NULL"
+    )
+    await conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_org_annotations_source ON org_annotations(source_id)"
+    )
+    await conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_org_annotations_target "
+        "ON org_annotations(target_type, target_id)"
+    )

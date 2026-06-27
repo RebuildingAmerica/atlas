@@ -13,7 +13,7 @@ export const Route = createFileRoute("/_public/profiles/")({
       {
         name: "description",
         content:
-          "Browse Atlas profiles for people and organizations rebuilding America by issue, place, and public record.",
+          "Explore source-linked Atlas profiles for people and organizations by issue, place, and public record.",
       },
     ],
   }),

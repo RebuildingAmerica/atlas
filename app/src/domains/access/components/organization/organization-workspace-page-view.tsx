@@ -8,6 +8,7 @@ import { OrganizationPageFeedback } from "./organization-page-feedback";
 import { OrganizationPageHeader } from "./organization-page-header";
 import { OrganizationSSOSetupCard } from "./organization-sso-setup-card";
 import { PendingWorkspaceInvitationsSection } from "./pending-workspace-invitations-section";
+import { RolePermissionsGuide } from "./role-permissions-guide";
 import { TeamInvitationsSection } from "./team-invitations-section";
 import { TeamInviteUpsellSection } from "./team-invite-upsell-section";
 import { TeamMembersSection } from "./team-members-section";
@@ -168,18 +169,21 @@ export function OrganizationWorkspacePageView({ controller }: OrganizationWorksp
             </div>
 
             {controller.canUseTeamFeatures ? (
-              <TeamMembersSection
-                canManageOrganization={controller.canManageOrganization}
-                currentUserId={controller.session?.user.id}
-                isRemovePending={controller.removeMemberPending}
-                members={controller.organization.members}
-                onRemove={(id) => {
-                  void controller.onRemoveMember(id);
-                }}
-                onRoleChange={(id, role) => {
-                  void controller.onUpdateMemberRole(id, role);
-                }}
-              />
+              <div className="space-y-4">
+                <TeamMembersSection
+                  canManageOrganization={controller.canManageOrganization}
+                  currentUserId={controller.session?.user.id}
+                  isRemovePending={controller.removeMemberPending}
+                  members={controller.organization.members}
+                  onRemove={(id) => {
+                    void controller.onRemoveMember(id);
+                  }}
+                  onRoleChange={(id, role) => {
+                    void controller.onUpdateMemberRole(id, role);
+                  }}
+                />
+                <RolePermissionsGuide />
+              </div>
             ) : null}
           </section>
 

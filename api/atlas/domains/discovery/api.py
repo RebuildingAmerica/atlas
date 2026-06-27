@@ -116,6 +116,7 @@ async def start_discovery_run(
         location_query=req.location_query,
         state=req.state,
         issue_areas=req.issue_areas,
+        research_goal=req.research_goal,
     )
 
     run = await DiscoveryRunCRUD.get_by_id(db, run_id)
@@ -128,6 +129,7 @@ async def start_discovery_run(
             location_query=req.location_query,
             state=req.state,
             issue_areas=req.issue_areas,
+            research_goal=req.research_goal,
         )
         pipeline_credentials = DiscoveryPipelineCredentials(
             search_api_key=settings.search_api_key,
@@ -181,6 +183,7 @@ async def contribute_discovery_results(
         location_query=req.run.location_query,
         state=req.run.state,
         issue_areas=req.run.issue_areas,
+        research_goal=req.run.research_goal,
     )
 
     try:
@@ -269,6 +272,7 @@ async def sync_discovery_run(
             location_query=req.artifacts.manifest.run.location_query,
             state=req.artifacts.manifest.run.state,
             issue_areas=req.artifacts.manifest.run.issue_areas,
+            research_goal=req.artifacts.manifest.run.research_goal,
         )
 
     try:
@@ -350,6 +354,7 @@ async def execute_scheduled_runs(
             location_query=schedule.location_query,
             state=schedule.state,
             issue_areas=schedule.issue_areas,
+            research_goal="landscape_scan",
         )
         job_id = await DiscoveryJobCRUD.create(
             db,
@@ -564,6 +569,7 @@ def _run_to_response(run: DiscoveryRunModel) -> DiscoveryRunResponse:
         id=run.id,
         location_query=run.location_query,
         state=run.state,
+        research_goal=run.research_goal,
         issue_areas=run.issue_areas,
         queries_generated=run.queries_generated,
         sources_fetched=run.sources_fetched,
@@ -576,4 +582,5 @@ def _run_to_response(run: DiscoveryRunModel) -> DiscoveryRunResponse:
         status=run.status,
         error_message=run.error_message,
         created_at=run.created_at,
+        research_summary=run.research_summary,
     )

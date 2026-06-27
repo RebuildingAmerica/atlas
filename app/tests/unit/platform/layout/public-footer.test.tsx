@@ -35,4 +35,12 @@ describe("PublicFooter", () => {
 
     expect(screen.getByRole("link", { name: "Workspace" })).toHaveAttribute("href", "/discovery");
   });
+
+  it("describes Atlas as source-linked local civic intelligence", () => {
+    render(<PublicFooter localMode={false} status="operational" />);
+
+    expect(
+      screen.getByText("Source-linked local civic intelligence for the issues that matter most."),
+    ).toBeInTheDocument();
+  });
 });

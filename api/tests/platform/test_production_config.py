@@ -201,14 +201,25 @@ class TestSettingsValidatorEdgeCases:
         assert settings.auth_resource_metadata_url == ""
 
     def test_auth_resource_metadata_url_uses_first_audience(self) -> None:
-        """When audiences are present, the metadata URL appends the well-known path."""
+        """When audiences are present, the metadata URL uses the first resource."""
         settings = Settings(
             database_url="sqlite:///tmp/test.db",
             auth_jwt_audience=["https://atlas.test/api/"],
         )
         assert (
             settings.auth_resource_metadata_url
-            == "https://atlas.test/api/.well-known/oauth-protected-resource"
+            == "https://atlas.test/.well-known/oauth-protected-resource/api"
+        )
+
+    def test_auth_resource_metadata_url_preserves_mcp_resource_path(self) -> None:
+        """MCP resource metadata should be discoverable at the RFC 9728 path."""
+        settings = Settings(
+            database_url="sqlite:///tmp/test.db",
+            auth_jwt_audience=["https://atlas.test/mcp"],
+        )
+        assert (
+            settings.auth_resource_metadata_url
+            == "https://atlas.test/.well-known/oauth-protected-resource/mcp"
         )
 
 

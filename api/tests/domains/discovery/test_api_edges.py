@@ -38,6 +38,7 @@ def _fake_run(run_id: str, *, state: str = "MO") -> SimpleNamespace:
         id=run_id,
         location_query="Kansas City, MO",
         state=state,
+        research_goal="landscape_scan",
         issue_areas=["housing_affordability"],
         queries_generated=0,
         sources_fetched=0,

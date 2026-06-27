@@ -15,6 +15,7 @@ export const SOURCE_TYPE_LABELS: Record<SourceType, string> = {
   academic_paper: "Research",
   government_record: "Government records",
   social_media: "Social media",
+  community_archive: "Community archive",
   org_website: "Organization sites",
   conference: "Conferences",
   video: "Video",
@@ -26,6 +27,7 @@ export const FEATURED_SOURCE_TYPES: SourceType[] = [
   "news_article",
   "podcast",
   "government_record",
+  "community_archive",
   "org_website",
 ];
 
@@ -35,6 +37,13 @@ export const FEATURED_ENTRY_TYPES: EntryType[] = [
   "initiative",
   "campaign",
 ];
+
+export const FEATURED_ISSUE_STARTERS = [
+  { slug: "housing_affordability", label: "Housing Affordability" },
+  { slug: "worker_power", label: "Worker Power" },
+  { slug: "civic_participation", label: "Civic Participation" },
+  { slug: "healthcare_access", label: "Healthcare Access" },
+] as const;
 
 export function humanize(value: string): string {
   return value

@@ -84,7 +84,8 @@ export const ATLAS_API_ERROR_MESSAGES: Record<
 > = {
   [ATLAS_API_ERROR_CODE.TEMPORARILY_UNAVAILABLE]:
     "Atlas is temporarily unavailable. Try again in a moment.",
-  [ATLAS_API_ERROR_CODE.REQUEST_FAILED]: "Could not start the run. Check the fields and try again.",
+  [ATLAS_API_ERROR_CODE.REQUEST_FAILED]:
+    "Could not start research. Check the fields and try again.",
 };
 
 /**

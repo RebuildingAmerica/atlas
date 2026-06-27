@@ -1,9 +1,48 @@
 export type DiscoveryStatus = "running" | "completed" | "failed";
+export type DiscoveryResearchGoal =
+  | "landscape_scan"
+  | "interview_leads"
+  | "partner_scan"
+  | "ecosystem_map";
+export type DiscoveryConfidenceState = "corroborated" | "partial" | "unverified";
+
+export interface DiscoveryResearchLead {
+  entry_id: string;
+  name: string;
+  type: string;
+  why_it_matters: string;
+  source_count: number;
+  confidence?: DiscoveryConfidenceState;
+  latest_source_date?: string | null;
+}
+
+export interface DiscoveryResearchSource {
+  source_id: string;
+  title: string;
+  url: string;
+  publication?: string | null;
+  published_date?: string | null;
+  why_it_matters: string;
+}
+
+export interface DiscoveryResearchGap {
+  label: string;
+  detail: string;
+}
+
+export interface DiscoveryResearchSummary {
+  brief: string;
+  ranked_leads: DiscoveryResearchLead[];
+  key_sources: DiscoveryResearchSource[];
+  gaps: DiscoveryResearchGap[];
+  reasoning_signals: string[];
+}
 
 export interface DiscoveryRun {
   id: string;
   location_query: string; // e.g. "Kansas City, MO"
   state: string; // 2-letter code
+  research_goal: DiscoveryResearchGoal;
   issue_areas: string[]; // list of issue area slugs
   queries_generated: number;
   sources_fetched: number;
@@ -14,6 +53,7 @@ export interface DiscoveryRun {
   started_at: string; // datetime
   completed_at?: string; // datetime
   status: DiscoveryStatus;
+  research_summary?: DiscoveryResearchSummary | null;
 }
 
 export interface DiscoveryRunListResponse {
@@ -27,4 +67,5 @@ export interface StartDiscoveryRequest {
   location_query: string;
   state: string;
   issue_areas: string[];
+  research_goal: DiscoveryResearchGoal;
 }

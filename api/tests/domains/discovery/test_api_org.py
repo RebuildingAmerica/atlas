@@ -13,6 +13,7 @@ from fastapi import HTTPException
 from atlas.domains.access.principals import AuthenticatedActor
 from atlas.domains.catalog.models.ownership import OwnershipCRUD
 from atlas.domains.discovery.api_org import (
+    OrgDiscoveryBudgetCRUD,
     OrgDiscoveryRunCollectionResponse,
     OrgDiscoveryRunResponse,
     OrgDiscoveryRunStartRequest,
@@ -74,10 +75,36 @@ class TestRunToOrgResponse:
 
     def test_converts_discovery_run_model(self) -> None:
         """A DiscoveryRunModel should convert to an OrgDiscoveryRunResponse."""
+        research_summary = {
+            "brief": "Three source-backed housing leads in Kansas City.",
+            "ranked_leads": [
+                {
+                    "entry_id": "entry-1",
+                    "name": "KC Tenants",
+                    "type": "organization",
+                    "why_it_matters": "Named by city and community sources.",
+                    "source_count": 2,
+                    "latest_source_date": "2026-01-01",
+                }
+            ],
+            "key_sources": [
+                {
+                    "source_id": "source-1",
+                    "title": "Tenant meeting agenda",
+                    "url": "https://example.test/agenda",
+                    "publication": "City Council",
+                    "published_date": "2026-01-01",
+                    "why_it_matters": "Names the lead and issue.",
+                }
+            ],
+            "gaps": [{"label": "Rural groups", "detail": "No county-level source yet."}],
+            "reasoning_signals": ["Two independent sources point to the same actor."],
+        }
         run = SimpleNamespace(
             id="run_1",
             location_query="Kansas City, MO",
             state="MO",
+            research_goal="interview_leads",
             issue_areas=["housing_affordability"],
             queries_generated=10,
             sources_fetched=5,
@@ -90,6 +117,7 @@ class TestRunToOrgResponse:
             status="completed",
             error_message=None,
             created_at="2026-01-01T00:00:00Z",
+            research_summary=research_summary,
         )
         response = _run_to_org_response(run, ORG_ID)
 
@@ -97,8 +125,12 @@ class TestRunToOrgResponse:
         assert response.id == "run_1"
         assert response.org_id == ORG_ID
         assert response.location_query == "Kansas City, MO"
+        assert response.research_goal == "interview_leads"
         assert response.status == "completed"
         assert response.issue_areas == ["housing_affordability"]
+        assert response.research_summary is not None
+        assert response.research_summary.brief == research_summary["brief"]
+        assert response.research_summary.ranked_leads[0].name == "KC Tenants"
 
 
 class TestListOrgDiscoveryRuns:
@@ -334,6 +366,44 @@ class TestStartOrgDiscoveryRun:
         assert ownership is not None
         assert ownership.org_id == ORG_ID
         assert ownership.visibility == "private"
+        budget = await OrgDiscoveryBudgetCRUD.get_budget(db, org_id=ORG_ID, month="2026-06")
+        assert budget is not None
+        assert budget.used_runs == 1
+
+    @pytest.mark.asyncio
+    async def test_monthly_budget_limit_blocks_new_run(self, db: aiosqlite.Connection) -> None:
+        """Tenant discovery runs should stop at the org's monthly metered budget."""
+        actor = _make_actor()
+        await OrgDiscoveryBudgetCRUD.set_budget(
+            db,
+            org_id=ORG_ID,
+            month="2026-06",
+            monthly_run_limit=1,
+            used_runs=1,
+        )
+        req = OrgDiscoveryRunStartRequest(
+            location_query="Kansas City, MO",
+            state="MO",
+            issue_areas=["housing_affordability"],
+        )
+
+        with pytest.raises(HTTPException) as exc_info:
+            await start_org_discovery_run(
+                org_id=ORG_ID,
+                req=req,
+                response=None,
+                actor=actor,
+                db=db,
+            )
+
+        assert exc_info.value.status_code == HTTPStatus.CONFLICT
+        assert exc_info.value.detail == {
+            "org_id": ORG_ID,
+            "month": "2026-06",
+            "monthly_run_limit": 1,
+            "used_runs": 1,
+            "remaining_runs": 0,
+        }
 
     @pytest.mark.asyncio
     async def test_invalid_issue_area_raises_400(self, db: aiosqlite.Connection) -> None:

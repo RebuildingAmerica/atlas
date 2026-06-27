@@ -6,6 +6,7 @@
  * remaining sources as compact rows with type badge + freshness chip.
  */
 import { FreshnessChip } from "@/domains/catalog/components/profiles/detail/profile-detail-primitives";
+import { PrivateNotesPanel } from "@/domains/catalog/components/profiles/private-notes-panel";
 import { Badge } from "@/platform/ui/badge";
 import type { Source, SourceType } from "@/types";
 
@@ -49,24 +50,65 @@ function sourceFreshnessIso(source: Source): string {
   return source.published_date ?? source.ingested_at;
 }
 
+function pluralize(count: number, singular: string, plural = `${singular}s`): string {
+  return `${count} ${count === 1 ? singular : plural}`;
+}
+
+function sourceNoteLabel(source: Source): string {
+  return source.title ?? source.publication ?? source.url;
+}
+
+function sourceStalenessLabel(source: Source): string | null {
+  const status = source.freshness?.staleness_status;
+  if (status === "stale") {
+    return "Stale source";
+  }
+  if (status === "aging") {
+    return "Aging source";
+  }
+  if (status === "unknown") {
+    return "Undated source";
+  }
+  return null;
+}
+
+function SourceFreshnessWarning({ source }: { source: Source }) {
+  const label = sourceStalenessLabel(source);
+  const reason = source.freshness?.staleness_reason;
+  if (!label || !reason) {
+    return null;
+  }
+
+  return (
+    <div className="border-border bg-surface-container-lowest rounded-lg border px-3 py-2">
+      <p className="type-label-small text-ink-strong">{label}</p>
+      <p className="type-body-small text-ink-muted mt-0.5">{reason}</p>
+    </div>
+  );
+}
+
 function CompactSourceRow({ source }: { source: Source }) {
   return (
-    <div className="flex flex-wrap items-center gap-3 py-2">
-      <SourceTypeBadge type={source.type} />
-      {source.publication ? (
-        <span className="type-body-medium text-ink-soft">{source.publication}</span>
-      ) : null}
-      {source.published_date ? (
-        <span className="type-body-small text-ink-muted">{source.published_date}</span>
-      ) : null}
-      <FreshnessChip isoDate={sourceFreshnessIso(source)} prefix="" className="ml-auto" />
+    <div id={`source-${source.id}`} className="scroll-mt-24 space-y-2 py-2">
+      <div className="flex flex-wrap items-center gap-3">
+        <SourceTypeBadge type={source.type} />
+        {source.publication ? (
+          <span className="type-body-medium text-ink-soft">{source.publication}</span>
+        ) : null}
+        {source.published_date ? (
+          <span className="type-body-small text-ink-muted">{source.published_date}</span>
+        ) : null}
+        <FreshnessChip isoDate={sourceFreshnessIso(source)} prefix="" className="ml-auto" />
+      </div>
+      <SourceFreshnessWarning source={source} />
+      <PrivateNotesPanel targetId={source.id} targetLabel={sourceNoteLabel(source)} type="source" />
     </div>
   );
 }
 
 function ExpandedSource({ source }: { source: Source }) {
   return (
-    <div className="space-y-2">
+    <div id={`source-${source.id}`} className="scroll-mt-24 space-y-2">
       <div className="flex flex-wrap items-center gap-2">
         <SourceTypeBadge type={source.type} />
         {source.publication ? (
@@ -77,6 +119,7 @@ function ExpandedSource({ source }: { source: Source }) {
         ) : null}
         <FreshnessChip isoDate={sourceFreshnessIso(source)} prefix="" className="ml-auto" />
       </div>
+      <SourceFreshnessWarning source={source} />
       <a
         href={source.url}
         target="_blank"
@@ -90,9 +133,13 @@ function ExpandedSource({ source }: { source: Source }) {
           className="border-l-accent rounded-r-lg border-l-[3px] py-2 pr-3 pl-3"
           style={{ backgroundColor: "var(--color-surface-container-lowest)" }}
         >
+          <p className="type-label-small text-ink-muted mb-1 tracking-widest uppercase">
+            Quoted evidence
+          </p>
           <p className="type-body-medium text-ink-soft">{source.extraction_context}</p>
         </div>
       ) : null}
+      <PrivateNotesPanel targetId={source.id} targetLabel={sourceNoteLabel(source)} type="source" />
     </div>
   );
 }
@@ -165,12 +212,22 @@ export function AppearancesList({ sources, mode }: AppearancesListProps) {
   }
 
   const picked = pickLeadSource(sources);
+  const sourceTypeCount = new Set(sources.map((source) => source.type)).size;
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2">
-        <p className="type-label-small text-ink-muted tracking-widest uppercase">{sectionTitle}</p>
-        <Badge>{sources.length}</Badge>
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <p className="type-label-small text-ink-muted tracking-widest uppercase">
+            {sectionTitle}
+          </p>
+          <Badge>{sources.length}</Badge>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="type-body-medium text-ink-soft">Evidence packets</span>
+          <Badge>{pluralize(sources.length, "source packet")}</Badge>
+          <Badge>{pluralize(sourceTypeCount, "source type")}</Badge>
+        </div>
       </div>
 
       <CoverageBar sources={sources} />

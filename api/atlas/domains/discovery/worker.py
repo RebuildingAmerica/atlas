@@ -117,6 +117,7 @@ async def _worker_loop(
                     location_query=run.location_query,
                     state=run.state,
                     issue_areas=run.issue_areas,
+                    research_goal=run.research_goal,
                 )
 
                 await DiscoveryJobCRUD.update_progress(

@@ -15,6 +15,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
 from atlas.domains.catalog.models.entry import EntryCRUD, _row_to_entry
+from atlas.domains.catalog.models.relationships import RelationshipCRUD
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -28,6 +29,7 @@ AFFILIATION_POINTS = 5.0  # holding or sharing an organizational affiliation
 SHARED_SOURCE_POINTS = 2.0  # per source two actors are co-mentioned in
 SHARED_ISSUE_POINTS = 1.0  # per issue area shared within the same state
 SAME_CITY_BOOST = 0.5  # nudge for an already-linked actor in the same city
+SOURCED_EDGE_POINTS = 6.0  # explicit source-backed relationship edge
 
 # Strength tiers on the 0-100 normalized scale.
 STRONG_TIER_MIN = 67
@@ -44,6 +46,8 @@ class ConnectionReason:
     kind: str
     label: str
     count: int | None = None
+    source_id: str | None = None
+    relationship_type: str | None = None
 
 
 @dataclass
@@ -233,6 +237,32 @@ async def _add_same_issue_area(
         )
 
 
+async def _add_sourced_edges(
+    conn: aiosqlite.Connection, entry_id: str, candidates: dict[str, _Candidate]
+) -> None:
+    """Add durable source-backed relationship edges touching the entry."""
+    edges = await RelationshipCRUD.list_edges_for_entry(conn, entry_id)
+    for edge in edges:
+        connected_entry_id = (
+            edge.target_entry_id if edge.source_entry_id == entry_id else edge.source_entry_id
+        )
+        connected_entry = await EntryCRUD.get_by_id(conn, connected_entry_id)
+        if connected_entry is None or not connected_entry.active:
+            continue
+        _bump(
+            candidates,
+            connected_entry,
+            SOURCED_EDGE_POINTS * edge.confidence,
+            ConnectionReason(
+                kind="sourced_edge",
+                label=edge.evidence_label,
+                count=edge.evidence_count,
+                source_id=edge.source_id,
+                relationship_type=edge.relationship_type,
+            ),
+        )
+
+
 def _apply_city_boost(entry: EntryModel, candidates: dict[str, _Candidate]) -> None:
     """Nudge already-linked candidates that share the entry's city upward."""
     if not entry.city:
@@ -305,6 +335,7 @@ async def compute_connections(
 
     candidates: dict[str, _Candidate] = {}
     await _add_same_organization(conn, entry, candidates)
+    await _add_sourced_edges(conn, entry_id, candidates)
     await _add_co_mentioned(conn, entry_id, candidates)
     await _add_same_issue_area(conn, entry, candidates)
     _apply_city_boost(entry, candidates)

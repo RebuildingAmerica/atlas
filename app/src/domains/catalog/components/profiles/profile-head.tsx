@@ -6,6 +6,7 @@
  * page body so search engines can extract rich results.
  */
 import type { Entry } from "@/types";
+import { buildCanonicalUrl } from "@/platform/seo";
 
 interface ProfileJsonLdProps {
   /** The actor entry to generate structured data for. */
@@ -42,7 +43,7 @@ function buildPersonSchema(entry: Entry, affiliatedOrg?: Entry | null): Record<s
     "@type": "Person",
     name: entry.name,
     description: entry.description,
-    url: `https://atlas.rebuildingamerica.com/profiles/people/${entry.slug}`,
+    url: buildCanonicalUrl(`/profiles/people/${entry.slug}`),
   };
 
   if (entry.city && entry.state) {
@@ -57,7 +58,7 @@ function buildPersonSchema(entry: Entry, affiliatedOrg?: Entry | null): Record<s
     schema.memberOf = {
       "@type": "Organization",
       name: affiliatedOrg.name,
-      url: `https://atlas.rebuildingamerica.com/profiles/organizations/${affiliatedOrg.slug}`,
+      url: buildCanonicalUrl(`/profiles/organizations/${affiliatedOrg.slug}`),
     };
   }
 
@@ -78,7 +79,7 @@ function buildOrganizationSchema(
     "@type": "Organization",
     name: entry.name,
     description: entry.description,
-    url: `https://atlas.rebuildingamerica.com/profiles/organizations/${entry.slug}`,
+    url: buildCanonicalUrl(`/profiles/organizations/${entry.slug}`),
   };
 
   if (entry.city && entry.state) {
@@ -93,7 +94,7 @@ function buildOrganizationSchema(
     schema.member = affiliatedPeople.map((person) => ({
       "@type": "Person",
       name: person.name,
-      url: `https://atlas.rebuildingamerica.com/profiles/people/${person.slug}`,
+      url: buildCanonicalUrl(`/profiles/people/${person.slug}`),
     }));
   }
 

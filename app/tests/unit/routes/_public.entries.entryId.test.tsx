@@ -59,7 +59,32 @@ describe("routes/_public/entries/$entryId", () => {
     expect(captured.options.statusCode).toBe(301);
   });
 
-  it("falls back to /browse for non-actor entries with no canonical profile URL", async () => {
+  it.each([
+    ["initiative", "/profiles/initiatives/$slug"],
+    ["campaign", "/profiles/campaigns/$slug"],
+    ["event", "/profiles/events/$slug"],
+  ])("redirects %s entries to their dedicated detail URL", async (type, expectedRoute) => {
+    const { api } = await import("@/lib/api");
+    vi.mocked(api.entries.get).mockResolvedValueOnce({
+      type,
+      slug: `${type}-slug`,
+    } as Awaited<ReturnType<typeof api.entries.get>>);
+
+    const routeModule = await import("@/routes/_public/entries.$entryId");
+    const { asRouteStub } = await import("@/../tests/helpers/router-harness");
+    const Route = asRouteStub(routeModule.Route);
+
+    if (!Route.options.loader) throw new Error("Expected loader");
+    const loader = Route.options.loader;
+    const captured = await captureRouterRedirect(() =>
+      loader({ params: { entryId: "ent_3" } } as never),
+    );
+    expect(captured.options.to).toBe(expectedRoute);
+    expect(captured.options.params).toEqual({ slug: `${type}-slug` });
+    expect(captured.options.statusCode).toBe(301);
+  });
+
+  it("falls back to /browse for non-actor entries with no canonical detail URL", async () => {
     const { api } = await import("@/lib/api");
     vi.mocked(api.entries.get).mockResolvedValueOnce({
       type: "initiative",

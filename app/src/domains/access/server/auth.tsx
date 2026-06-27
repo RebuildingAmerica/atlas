@@ -115,6 +115,14 @@ function buildAtlasTrustedOrigins(publicBaseUrl: string): string[] {
  * @param runtime - The resolved auth runtime configuration for this process.
  */
 function createAtlasAuth(runtime: AuthRuntimeConfig) {
+  const configuredAudiences = runtime.apiAudiences ?? [];
+  const validAudiences =
+    configuredAudiences.length > 0
+      ? [...configuredAudiences]
+      : runtime.apiAudience
+        ? [runtime.apiAudience]
+        : [];
+
   return betterAuth({
     appName: "Atlas",
     basePath: "/api/auth",
@@ -218,12 +226,15 @@ function createAtlasAuth(runtime: AuthRuntimeConfig) {
         // the token-leak blast radius small while still amortising one
         // refresh roundtrip per quarter-hour for active clients.
         accessTokenExpiresIn: 15 * 60,
-        ...(runtime.apiAudience ? { validAudiences: [runtime.apiAudience] } : {}),
+        ...(validAudiences.length > 0 ? { validAudiences } : {}),
         // OAuth AS metadata is served by the TanStack routes under
         // `app/src/routes/[.]well-known/oauth-authorization-server/`, which
         // satisfies both the conventional root path and the strict RFC 8414
         // §3 issuer-suffix path.  MCP clients also have OIDC discovery
         // available via the api/auth catch-all as a fallback.
+        silenceWarnings: {
+          oauthAuthServerConfig: true,
+        },
         scopes: [
           "openid",
           "profile",

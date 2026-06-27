@@ -19,6 +19,30 @@ interface EntryListProps {
   };
 }
 
+function emptyHeading(resultLabelPlural: string, hasActiveSearch: boolean): string {
+  if (resultLabelPlural === "entries") {
+    return hasActiveSearch ? "No matching civic actors." : "No civic actors listed.";
+  }
+
+  return hasActiveSearch ? `No matching ${resultLabelPlural}.` : `No ${resultLabelPlural} listed.`;
+}
+
+function emptyDescription(hasActiveSearch: boolean): string {
+  if (hasActiveSearch) {
+    return "Try fewer filters, a broader place, or a different issue.";
+  }
+
+  return "Start research to find source-backed people, organizations, initiatives, and public mentions.";
+}
+
+function resultSummary(total: number, resultLabelPlural: string): string {
+  if (total === 1 && resultLabelPlural === "entries") {
+    return "1 matched entry";
+  }
+
+  return `${total} matched ${resultLabelPlural}`;
+}
+
 export function EntryList({
   entries,
   total,
@@ -27,15 +51,13 @@ export function EntryList({
   issueAreaLabels = {},
   hasActiveSearch = false,
   resultLabelPlural = "entries",
-  emptyAction = { label: "Discovery", to: "/discovery" },
+  emptyAction = { label: "Research", to: "/discovery" },
 }: EntryListProps) {
   if (isLoading) {
     return (
       <div className="bg-surface-container-lowest rounded-[1.4rem] px-4 py-12">
         <Spinner />
-        <p className="type-body-medium text-ink-muted mt-4 text-center">
-          Loading {resultLabelPlural}...
-        </p>
+        <p className="type-body-medium text-ink-muted mt-4 text-center">Loading</p>
       </div>
     );
   }
@@ -56,13 +78,9 @@ export function EntryList({
     return (
       <div className="bg-surface-container-lowest rounded-[1.6rem] px-4 py-12 text-center">
         <p className="type-title-large text-ink-strong">
-          {hasActiveSearch ? `No ${resultLabelPlural} found.` : `No ${resultLabelPlural} yet.`}
+          {emptyHeading(resultLabelPlural, hasActiveSearch)}
         </p>
-        <p className="type-body-medium text-ink-muted mt-2">
-          {hasActiveSearch
-            ? "Try fewer filters or a different search."
-            : "Try a search or change the view."}
-        </p>
+        <p className="type-body-medium text-ink-muted mt-2">{emptyDescription(hasActiveSearch)}</p>
         {!hasActiveSearch ? (
           <div className="mt-5 flex justify-center">
             <Link to={emptyAction.to}>
@@ -78,7 +96,7 @@ export function EntryList({
     <div className="space-y-3">
       {typeof total === "number" ? (
         <p className="type-body-medium bg-surface-container-lowest text-ink-muted rounded-[1rem] px-3 py-2 font-medium">
-          {total} {resultLabelPlural}
+          {resultSummary(total, resultLabelPlural)}
         </p>
       ) : null}
       {entries.map((entry) => (

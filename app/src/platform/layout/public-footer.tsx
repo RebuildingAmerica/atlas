@@ -147,10 +147,10 @@ export function PublicFooter({ localMode, status }: PublicFooterProps) {
 
             <div className="space-y-2">
               <p className="type-body-medium text-ink-strong">
-                Find people, organizations, and initiatives working on the issues that matter most.
+                Source-linked local civic intelligence for the issues that matter most.
               </p>
               <p className="type-body-small text-ink-soft">
-                A free, open-source directory built for communities across America.
+                Free, open-source civic research built for communities across America.
               </p>
             </div>
 

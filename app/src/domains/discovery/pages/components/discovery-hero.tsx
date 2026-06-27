@@ -78,25 +78,25 @@ interface DiscoveryUpgradeContent {
 
 const DISCOVERY_UPGRADE_CONTENT: Record<DiscoveryUpgradeReason, DiscoveryUpgradeContent> = {
   "capability-missing": {
-    title: "Discovery runs are paused on your plan",
-    body: "Your workspace doesn't have access to discovery runs right now. Upgrade to Atlas Pro for unlimited research, or buy a Research Pass for short-term project access.",
+    title: "Research is paused on your plan",
+    body: "Your workspace doesn't have access to research tools right now. Upgrade to Atlas Pro for unlimited research, or buy a Research Pass for short-term project access.",
     cta: "See plans",
   },
   "free-tier": {
     title: "On the free plan",
-    body: "The free plan caps discovery runs at 2 per month. Upgrade to Atlas Pro for unlimited runs, exports, and API access.",
+    body: "The free plan includes 2 research requests per month. Upgrade to Atlas Pro for unlimited research, exports, and API access.",
     cta: "See plans",
   },
   "at-limit": {
-    title: "You've used your free runs this month",
-    body: "The free plan includes 2 discovery runs per month, and you've used them all. Upgrade to Atlas Pro for unlimited runs, exports, and API access.",
+    title: "You've used your free research this month",
+    body: "The free plan includes 2 research requests per month, and you've used them all. Upgrade to Atlas Pro for unlimited research, exports, and API access.",
     cta: "Upgrade",
   },
 };
 
 /**
  * Upgrade-nudge card shown when the active workspace's plan does not
- * include unrestricted discovery runs.  Routes the operator to /pricing,
+ * include unrestricted research. Routes the operator to /pricing,
  * carrying the Atlas Pro intent so the plan is pre-selected on arrival.
  */
 export function DiscoveryUpgradePrompt({ reason }: DiscoveryUpgradePromptProps) {

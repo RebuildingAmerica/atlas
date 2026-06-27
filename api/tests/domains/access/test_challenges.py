@@ -25,7 +25,7 @@ def test_build_bearer_challenge_includes_resource_metadata_and_scope(
 
     assert challenge.startswith("Bearer ")
     assert (
-        'resource_metadata="https://atlas.example/api/.well-known/oauth-protected-resource"'
+        'resource_metadata="https://atlas.example/.well-known/oauth-protected-resource/api"'
         in challenge
     )
     assert 'scope="discovery:read"' in challenge
@@ -88,7 +88,7 @@ def test_build_bearer_challenge_strips_trailing_slash_from_resource_url(
     challenge = build_bearer_challenge(auth_settings)
 
     assert (
-        'resource_metadata="https://atlas.example/api/.well-known/oauth-protected-resource"'
+        'resource_metadata="https://atlas.example/.well-known/oauth-protected-resource/api"'
         in challenge
     )
 

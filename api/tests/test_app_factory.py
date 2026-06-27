@@ -258,7 +258,9 @@ class TestOAuthProtectedResourceMetadata:
         assert body["resource"] == "https://atlas.test/api"
         assert body["authorization_servers"] == [settings.auth_jwt_issuer]
         assert body["jwks_uri"] == settings.auth_jwt_jwks_url
-        assert "discovery:read" in body["scopes_supported"]
+        assert body["resource_documentation"] == "https://issuer.test/docs/mcp"
+        assert body["scopes_supported"] == ["discovery:read"]
+        assert "offline_access" not in body["scopes_supported"]
 
     @pytest.mark.asyncio
     async def test_metadata_endpoint_omits_jwks_when_unset(self, db_url: str) -> None:

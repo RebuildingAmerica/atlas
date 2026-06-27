@@ -32,6 +32,7 @@ describe("buildEntityListParams", () => {
         issue_areas: ["housing_affordability", "worker_cooperatives"],
         entry_types: ["organization", "person"],
         source_types: ["news_article", "report"],
+        source_patterns: ["multi_source"],
         limit: 20,
         offset: 40,
       }),
@@ -43,6 +44,7 @@ describe("buildEntityListParams", () => {
       issue_area: ["housing_affordability", "worker_cooperatives"],
       entity_type: ["organization", "person"],
       source_type: ["news_article", "report"],
+      source_pattern: ["multi_source"],
       limit: 20,
       cursor: "40",
     });
@@ -57,6 +59,7 @@ describe("buildEntityListParams", () => {
       issue_area: undefined,
       entity_type: undefined,
       source_type: undefined,
+      source_pattern: undefined,
       limit: undefined,
       cursor: undefined,
     });
@@ -224,6 +227,13 @@ describe("api.entries.getBySlug and getConnections", () => {
       address: {},
       contact: {},
       claim: null,
+      actor_quality: {
+        level: "specific_actor",
+        score: 5,
+        total: 5,
+        present: ["actor", "work", "place", "issues", "sources"],
+        missing: [],
+      },
       issue_area_ids: [],
       source_types: [],
       source_count: 0,
@@ -233,7 +243,26 @@ describe("api.entries.getBySlug and getConnections", () => {
       active: true,
       verified: false,
       freshness: {},
-      sources: [],
+      sources: [
+        {
+          id: "src_1",
+          url: "https://example.org/source",
+          title: "Profile source",
+          publication: "Example",
+          type: "news_article",
+          extraction_method: "manual",
+          extraction_context: "Ada Lovelace is profiled as a civic actor.",
+          linked_entity_ids: ["ent_1"],
+          freshness: {
+            created_at: "2024-01-01T00:00:00.000Z",
+            published_date: "2024-01-01",
+            ingested_at: "2024-01-02T00:00:00.000Z",
+            staleness_status: "stale",
+            staleness_reason: "Most recent source record date is more than a year old.",
+          },
+          resource_uri: "atlas://sources/src_1",
+        },
+      ],
     };
     fetchMock.mockResolvedValueOnce(detailResponse);
 
@@ -242,12 +271,26 @@ describe("api.entries.getBySlug and getConnections", () => {
     expect(fetchMock).toHaveBeenCalledWith("/api/entities/by-slug/people/ada-lovelace-1234");
     expect(result.id).toBe("ent_1");
     expect(result.slug).toBe("ada-lovelace-1234");
+    expect(result.actor_quality).toEqual({
+      level: "specific_actor",
+      score: 5,
+      total: 5,
+      present: ["actor", "work", "place", "issues", "sources"],
+      missing: [],
+    });
     // Trust defaults to an honest "unverified" with unknown grounding when the API omits it.
     expect(result.trust).toEqual({
       level: "unverified",
       independent_source_count: null,
       website_grounded: null,
       email_grounded: null,
+    });
+    expect(result.sources?.[0]?.freshness).toEqual({
+      created_at: "2024-01-01T00:00:00.000Z",
+      published_date: "2024-01-01",
+      ingested_at: "2024-01-02T00:00:00.000Z",
+      staleness_status: "stale",
+      staleness_reason: "Most recent source record date is more than a year old.",
     });
   });
 
@@ -300,8 +343,8 @@ describe("api.entries.getBySlug and getConnections", () => {
           score: 4,
           strength: 80,
           tier: "moderate",
-          reasons: [{ kind: "co_mentioned", label: "Co-mentioned in 2 sources", count: 2 }],
-          evidence: "Co-mentioned in 2 sources",
+          reasons: [{ kind: "sourced_edge", label: "Staff profile", count: 1, source_id: "src_1" }],
+          evidence: "Staff profile",
         },
       ],
       total: 12,
@@ -320,8 +363,8 @@ describe("api.entries.getBySlug and getConnections", () => {
       score: 4,
       strength: 80,
       tier: "moderate",
-      reasons: [{ kind: "co_mentioned", label: "Co-mentioned in 2 sources", count: 2 }],
-      evidence: "Co-mentioned in 2 sources",
+      reasons: [{ kind: "sourced_edge", label: "Staff profile", count: 1, source_id: "src_1" }],
+      evidence: "Staff profile",
     });
   });
 });

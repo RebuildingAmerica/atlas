@@ -57,6 +57,22 @@ describe("resolveAuthRuntimeConfig", () => {
     expect(runtime.internalSecret).toBe("internal-test-secret");
   });
 
+  it("normalizes comma-separated OAuth resource audiences for MCP and API tokens", () => {
+    const runtime = resolveAuthRuntimeConfig(
+      {
+        ATLAS_API_AUDIENCE: " https://atlas.example.com/mcp, https://api.atlas.example.com ",
+        ATLAS_PUBLIC_URL: "https://atlas.example.com",
+      },
+      "/workspace/atlas/app",
+    );
+
+    expect(runtime.apiAudience).toBe("https://atlas.example.com/mcp");
+    expect(runtime.apiAudiences).toEqual([
+      "https://atlas.example.com/mcp",
+      "https://api.atlas.example.com",
+    ]);
+  });
+
   it("supports resend config for auth-enabled deployments", () => {
     const runtime = resolveAuthRuntimeConfig(
       {

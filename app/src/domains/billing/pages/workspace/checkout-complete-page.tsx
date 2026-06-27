@@ -12,7 +12,7 @@ const TIMEOUT_MS = 30_000;
 
 const PRODUCT_FEATURES: Record<AtlasProduct, string[]> = {
   atlas_pro: [
-    "Unlimited discovery runs",
+    "Unlimited research requests",
     "Exports to CSV and JSON",
     "API key with 1,000 requests a day",
   ],
@@ -22,7 +22,7 @@ const PRODUCT_FEATURES: Record<AtlasProduct, string[]> = {
     "SSO and up to 50 members",
   ],
   atlas_research_pass: [
-    "Unlimited discovery runs while your pass is active",
+    "Unlimited research while your pass is active",
     "Exports and API access",
     "Shortlists and notes you keep after the pass ends",
   ],

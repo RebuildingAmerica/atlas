@@ -23,6 +23,7 @@ describe("useResearchSummary", () => {
     activity: { newSourcesThisWeek: 3, recentItems: [], followedActorCount: 1 },
     recentRuns: [],
     totals: { savedActors: 2, listCount: 1, runsThisMonth: 0 },
+    watchlists: [],
   };
 
   beforeEach(() => {

@@ -6,7 +6,11 @@ import {
 } from "@/domains/discovery/functions";
 import type { DiscoveryRun, DiscoveryRunListResponse, StartDiscoveryRequest } from "@/types";
 
-export function useDiscoveryRuns() {
+interface UseDiscoveryRunsOptions {
+  initialData?: DiscoveryRunListResponse;
+}
+
+export function useDiscoveryRuns(options?: UseDiscoveryRunsOptions) {
   return useQuery<DiscoveryRunListResponse>({
     queryKey: ["discovery", "runs"],
     queryFn: () => listDiscoveryRuns(),
@@ -19,6 +23,7 @@ export function useDiscoveryRuns() {
       return Date.now() - updatedAt > 60_000 ? 10_000 : 3_000;
     },
     staleTime: 0,
+    initialData: options?.initialData,
   });
 }
 

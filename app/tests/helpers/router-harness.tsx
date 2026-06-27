@@ -75,7 +75,7 @@ export interface RouterMockRedirectError extends Error {
 /**
  * Props accepted by the mocked `<Link>` stub.
  */
-interface MockLinkProps {
+export interface MockLinkProps {
   children: ReactNode;
   to?: string;
   params?: Record<string, string>;

@@ -35,6 +35,7 @@ describe("RecentSearchesSection", () => {
         state: "MO",
         status: "completed",
         startedAt: "2026-06-20T00:00:00.000Z",
+        issueAreas: ["housing_affordability"],
       },
     ];
   }
@@ -79,32 +80,32 @@ describe("RecentSearchesSection", () => {
     );
   }
 
-  it("renders recent run cards linking to discovery and the honest free-run counter", () => {
+  it("renders recent research cards linking to discovery and the honest free-request counter", () => {
     renderSection({ runsThisMonth: 1, runsPerMonthLimit: 2 });
 
     const card = screen.getByRole("link", { name: /Kansas City, MO/ });
     expect(card).toHaveAttribute("data-link-to", "/discovery");
     expect(screen.getByText(/MO · completed/)).toBeInTheDocument();
-    expect(screen.getByText(/1 of 2 free runs used this month\./)).toBeInTheDocument();
+    expect(screen.getByText(/1 of 2 free research requests used this month\./)).toBeInTheDocument();
   });
 
-  it("uses the singular run noun when the monthly allowance is one", () => {
+  it("uses the singular request noun when the monthly allowance is one", () => {
     renderSection({ runsThisMonth: 0, runsPerMonthLimit: 1 });
 
-    expect(screen.getByText(/0 of 1 free run used this month\./)).toBeInTheDocument();
+    expect(screen.getByText(/0 of 1 free research request used this month\./)).toBeInTheDocument();
   });
 
   it("hides the counter when no finite limit applies", () => {
     renderSection({ runsThisMonth: 5, runsPerMonthLimit: null });
 
-    expect(screen.queryByText(/free run/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/free research request/)).not.toBeInTheDocument();
   });
 
-  it("shows the empty state when no searches have run", () => {
+  it("shows the empty state when no research has started", () => {
     renderSection({ runs: [], runsThisMonth: 0, runsPerMonthLimit: null });
 
-    expect(screen.getByText("No searches yet.")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Start a search" })).toHaveAttribute(
+    expect(screen.getByText("No research yet.")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Start research" })).toHaveAttribute(
       "data-link-to",
       "/discovery",
     );

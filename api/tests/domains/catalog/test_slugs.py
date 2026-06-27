@@ -125,6 +125,44 @@ class TestSlugResolutionEndpoint:
         assert resolve_response.json()["id"] == entry_id
 
     @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("entry_type", "slug_scope"),
+        [
+            ("initiative", "initiatives"),
+            ("campaign", "campaigns"),
+            ("event", "events"),
+        ],
+    )
+    async def test_resolve_slug_returns_non_actor_detail_entities(
+        self,
+        test_client: object,
+        test_db: object,
+        entry_type: str,
+        slug_scope: str,
+    ) -> None:
+        conn = test_db
+        entry_id = await EntryCRUD.create(
+            conn,
+            entry_type=entry_type,
+            name=f"Local {entry_type.title()}",
+            description=f"Source-linked {entry_type} for a public detail page.",
+            city="Las Vegas",
+            state="NV",
+            geo_specificity="local",
+        )
+        entry = await EntryCRUD.get_by_id(conn, entry_id)
+        assert entry is not None
+        assert entry.slug is not None
+
+        response = await test_client.get(f"/api/entities/by-slug/{slug_scope}/{entry.slug}")
+
+        assert response.status_code == STATUS_OK
+        body = response.json()
+        assert body["id"] == entry_id
+        assert body["type"] == entry_type
+        assert "sources" in body
+
+    @pytest.mark.asyncio
     async def test_resolve_unknown_slug_returns_404(self, test_client: object) -> None:
         response = await test_client.get("/api/entities/by-slug/people/nonexistent-xxxx")
         assert response.status_code == STATUS_NOT_FOUND

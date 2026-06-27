@@ -7,6 +7,7 @@ A FastAPI + SQLite API for The Atlas — a discovery platform for people, organi
 ### Installation
 
 1. Create a virtual environment:
+
    ```bash
    python3.12 -m venv venv
    source venv/bin/activate  # On Windows: venv\Scripts\activate
@@ -25,7 +26,7 @@ Create a `.env` file in the api directory:
 DATABASE_URL=sqlite:///atlas.db
 ANTHROPIC_API_KEY=your-api-key-here
 SEARCH_API_KEY=optional-search-api-key
-CORS_ORIGINS=["http://localhost:5173","http://localhost:3000"]
+CORS_ORIGINS=["https://atlas.localhost:1355"]
 LOG_LEVEL=info
 ENVIRONMENT=dev
 ```
@@ -35,14 +36,14 @@ ENVIRONMENT=dev
 ### Development Server
 
 ```bash
-uvicorn atlas.main:app --reload
+pnpm dev
 ```
 
-The API will be available at `http://localhost:8000`
+The API will be available at `https://api.atlas.localhost:1355`
 
-- OpenAPI docs: `http://localhost:8000/docs`
-- ReDoc: `http://localhost:8000/redoc`
-- Health check: `http://localhost:8000/health`
+- OpenAPI docs: `https://api.atlas.localhost:1355/docs`
+- ReDoc: `https://api.atlas.localhost:1355/redoc`
+- Health check: `https://api.atlas.localhost:1355/health`
 
 ### Production Server
 
@@ -149,6 +150,7 @@ api/
 ### Data Model
 
 **Entry**: Core entity (person, organization, initiative, campaign, event)
+
 - Tied to location (city, state, region, geo_specificity)
 - Tagged with issue areas (many-to-many)
 - Linked to sources (many-to-many)
@@ -156,11 +158,13 @@ api/
 - Internal fields (contact status, editorial notes, priority)
 
 **Source**: Web articles, documents, and other content
+
 - Extracted from via pipeline
 - Linked to entries via junction table
 - Stores raw content for re-extraction
 
 **DiscoveryRun**: Pipeline execution tracking
+
 - Location + issue areas queried
 - Metrics: queries generated, sources fetched, entries extracted
 - Status: running, completed, failed
@@ -168,6 +172,7 @@ api/
 ### 11 Domains, 47 Issue Areas
 
 Taxonomy from Rebuilding America series:
+
 - Economic Security (5 areas)
 - Housing and the Built Environment (4)
 - Climate and Environment (5)
@@ -185,9 +190,11 @@ Each issue area has multiple search term variations for query generation.
 ## API Endpoints
 
 ### Health
+
 - `GET /health` — Health check
 
 ### Entries
+
 - `GET /api/v1/entries` — List entries (with filtering, search, pagination)
 - `GET /api/v1/entries/{id}` — Get entry details
 - `POST /api/v1/entries` — Create entry
@@ -195,6 +202,7 @@ Each issue area has multiple search term variations for query generation.
 - `DELETE /api/v1/entries/{id}` — Delete entry
 
 Query parameters for listing:
+
 - `state` — Filter by state (2-letter code)
 - `city` — Filter by city
 - `entry_type` — Filter by type (person, organization, etc.)
@@ -205,17 +213,20 @@ Query parameters for listing:
 - `offset` — Pagination offset (default: 0)
 
 ### Discovery Runs
+
 - `POST /api/v1/discovery/run` — Start discovery run (202 Accepted)
 - `GET /api/v1/discovery/runs` — List runs
 - `GET /api/v1/discovery/runs/{id}` — Get run details
 
 ### Taxonomy
+
 - `GET /api/v1/taxonomy` — Full taxonomy (all domains and issues)
 - `GET /api/v1/taxonomy/{domain}` — Issues for a domain
 
 ## Dependencies
 
 **Core**:
+
 - `fastapi` — Web framework
 - `uvicorn[standard]` — ASGI server
 - `httpx` — HTTP client
@@ -226,6 +237,7 @@ Query parameters for listing:
 - `aiosqlite` — Async SQLite
 
 **Dev**:
+
 - `pytest` — Testing
 - `pytest-asyncio` — Async test support
 - `pytest-cov` — Coverage reporting
@@ -236,18 +248,23 @@ Query parameters for listing:
 ## Design Decisions
 
 ### Async-First
+
 All database operations are async via `aiosqlite`. API endpoints use async/await for scalability.
 
 ### Type Annotations
+
 Every function has complete type annotations. Mypy runs in strict mode.
 
 ### SQLite + FTS5
+
 Suitable for Phase 1-2. Full-text search via SQLite's built-in FTS5 virtual table. Upgrade to Postgres when concurrent public access is needed.
 
 ### 47 Issue Areas
+
 Not 48 or 50 — exactly matching Rebuilding America series taxonomy. Cross-tagging is encouraged (entries can be tagged with multiple areas across domains).
 
 ### Stub Pipeline Steps
+
 Steps 2-6 of the pipeline are implemented as stubs with proper signatures. Ready to fill in when APIs are available (web search, Claude, etc.).
 
 ## Next Steps

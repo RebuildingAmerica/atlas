@@ -2,6 +2,7 @@
 
 import pytest
 
+from atlas.domains.catalog.models.ownership import OwnershipCRUD
 from atlas.models import EntryCRUD
 
 # HTTP status codes
@@ -136,6 +137,60 @@ class TestEntityEndpoints:
         assert "total" in data
         assert "next_cursor" in data
         assert "pagination" not in data
+
+    @pytest.mark.asyncio
+    async def test_private_org_entries_do_not_leak_through_public_entity_reads(
+        self, test_client: object, test_db: object
+    ) -> None:
+        """Private tenant entries should stay out of the shared public commons."""
+        private_id = await EntryCRUD.create(
+            test_db,
+            entry_type="organization",
+            name="Private Tenant Lead",
+            description="Private partner prospect.",
+            city="Detroit",
+            state="MI",
+            geo_specificity="local",
+        )
+        await OwnershipCRUD.create_ownership(
+            test_db,
+            resource_id=private_id,
+            resource_type="entry",
+            org_id="local",
+            visibility="private",
+            created_by="local-user",
+        )
+        public_id = await EntryCRUD.create(
+            test_db,
+            entry_type="organization",
+            name="Shared Commons Org",
+            description="Public source-linked organization.",
+            city="Detroit",
+            state="MI",
+            geo_specificity="local",
+        )
+
+        list_response = await test_client.get("/api/entities?state=MI")
+        assert list_response.status_code == STATUS_OK
+        names = {item["name"] for item in list_response.json()["items"]}
+        assert "Shared Commons Org" in names
+        assert "Private Tenant Lead" not in names
+
+        detail_response = await test_client.get(f"/api/entities/{private_id}")
+        assert detail_response.status_code == STATUS_NOT_FOUND
+
+        private_entry = await EntryCRUD.get_by_id(test_db, private_id)
+        assert private_entry is not None
+        slug_response = await test_client.get(
+            f"/api/entities/by-slug/organizations/{private_entry.slug}"
+        )
+        assert slug_response.status_code == STATUS_NOT_FOUND
+
+        sources_response = await test_client.get(f"/api/entities/{private_id}/sources")
+        assert sources_response.status_code == STATUS_NOT_FOUND
+
+        public_response = await test_client.get(f"/api/entities/{public_id}")
+        assert public_response.status_code == STATUS_OK
 
     @pytest.mark.asyncio
     async def test_list_entities_by_state(self, test_client: object, test_db: object) -> None:

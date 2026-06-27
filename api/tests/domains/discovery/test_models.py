@@ -35,10 +35,27 @@ class TestDiscoveryJobsSchema:
 
 class TestDiscoveryRunToDict:
     def test_serializes_all_fields(self) -> None:
+        research_summary = {
+            "brief": "Three source-backed housing leads in Austin.",
+            "ranked_leads": [
+                {
+                    "entry_id": "entry-1",
+                    "name": "Austin Housing Coalition",
+                    "type": "organization",
+                    "why_it_matters": "Named by two tenant sources.",
+                    "source_count": 2,
+                    "latest_source_date": "2026-04-29",
+                }
+            ],
+            "key_sources": [],
+            "gaps": [],
+            "reasoning_signals": ["Two independent sources mention tenant organizing."],
+        }
         model = DiscoveryRunModel(
             id="r1",
             location_query="Austin, TX",
             state="TX",
+            research_goal="interview_leads",
             issue_areas=["housing_affordability"],
             queries_generated=10,
             sources_fetched=5,
@@ -51,15 +68,33 @@ class TestDiscoveryRunToDict:
             status="running",
             error_message=None,
             created_at="2026-04-30T00:00:00Z",
+            research_summary=research_summary,
         )
         payload = model.to_dict()
         assert payload["id"] == "r1"
         assert payload["state"] == "TX"
+        assert payload["research_goal"] == "interview_leads"
         assert payload["issue_areas"] == ["housing_affordability"]
         assert payload["status"] == "running"
+        assert payload["research_summary"] == research_summary
 
 
 class TestDiscoveryRunCRUDUpdate:
+    @pytest.mark.asyncio
+    async def test_create_persists_research_goal(self, test_db: object) -> None:
+        run_id = await DiscoveryRunCRUD.create(
+            test_db,
+            location_query="Austin, TX",
+            state="TX",
+            issue_areas=["housing_affordability"],
+            research_goal="partner_scan",
+        )
+
+        run = await DiscoveryRunCRUD.get_by_id(test_db, run_id)
+
+        assert run is not None
+        assert run.research_goal == "partner_scan"
+
     @pytest.mark.asyncio
     async def test_update_with_only_unknown_fields_returns_false(self, test_db: object) -> None:
         run_id = await DiscoveryRunCRUD.create(
@@ -70,6 +105,47 @@ class TestDiscoveryRunCRUDUpdate:
         )
         result = await DiscoveryRunCRUD.update(test_db, run_id, totally_unknown_field="x")
         assert result is False
+
+    @pytest.mark.asyncio
+    async def test_update_research_summary_round_trips_json(self, test_db: object) -> None:
+        run_id = await DiscoveryRunCRUD.create(
+            test_db,
+            location_query="Austin, TX",
+            state="TX",
+            issue_areas=["housing_affordability"],
+        )
+        research_summary = {
+            "brief": "Two source-backed tenant leads in Austin.",
+            "ranked_leads": [
+                {
+                    "entry_id": "entry-1",
+                    "name": "Austin Tenants Council",
+                    "type": "organization",
+                    "why_it_matters": "Appears in a city memo and a neighborhood article.",
+                    "source_count": 2,
+                    "latest_source_date": "2026-04-29",
+                }
+            ],
+            "key_sources": [
+                {
+                    "source_id": "source-1",
+                    "title": "Council housing agenda",
+                    "url": "https://example.test/agenda",
+                    "publication": "City Council",
+                    "published_date": "2026-04-29",
+                    "why_it_matters": "Names the coalition and meeting date.",
+                }
+            ],
+            "gaps": [{"label": "Neighborhood groups", "detail": "No east-side group source yet."}],
+            "reasoning_signals": ["City source and local coverage point to the same lead."],
+        }
+
+        updated = await DiscoveryRunCRUD.update_research_summary(test_db, run_id, research_summary)
+        run = await DiscoveryRunCRUD.get_by_id(test_db, run_id)
+
+        assert updated is True
+        assert run is not None
+        assert run.research_summary == research_summary
 
 
 class TestDiscoveryScheduleCRUDUpdate:

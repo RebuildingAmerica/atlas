@@ -12,6 +12,7 @@ import {
 } from "@/lib/generated/atlas";
 import { atlasFetch } from "@/lib/orval/fetcher";
 import type {
+  ActorQualityInfo,
   ConnectionNetwork,
   ConnectionReasonKind,
   ConnectionTier,
@@ -19,6 +20,7 @@ import type {
   DiscoveryRunListResponse,
   Entry,
   EntryFilterParams,
+  EntrySlugScope,
   EntryListResponse,
   MapPoint,
   MapPointCollection,
@@ -40,7 +42,25 @@ function mapSource(source: SourceResponse): Source {
     ingested_at: source.freshness.ingested_at ?? source.freshness.created_at ?? "",
     extraction_method: (source.extraction_method ?? "manual") as Source["extraction_method"],
     extraction_context: source.extraction_context ?? undefined,
+    freshness: source.freshness as Source["freshness"],
     created_at: source.freshness.created_at ?? "",
+  };
+}
+
+function mapActorQuality(entity: EntityResponse): ActorQualityInfo | undefined {
+  const quality = entity.actor_quality;
+  if (!quality) {
+    return undefined;
+  }
+  if (typeof quality.score !== "number" || typeof quality.total !== "number") {
+    throw new TypeError("Entity actor_quality is missing score or total");
+  }
+  return {
+    level: quality.level as ActorQualityInfo["level"],
+    score: quality.score,
+    total: quality.total,
+    present: quality.present ?? [],
+    missing: quality.missing ?? [],
   };
 }
 
@@ -76,6 +96,9 @@ function mapEntity(entity: EntityResponse): Entry {
       verification_level: (claim?.verification_level ??
         "source-derived") as Entry["claim"]["verification_level"],
     },
+    claim_evidence: entity.claim_evidence as Entry["claim_evidence"],
+    profile_answers: entity.profile_answers as Entry["profile_answers"],
+    actor_quality: mapActorQuality(entity),
     trust: {
       level: (entity.trust?.level ?? "unverified") as Entry["trust"]["level"],
       independent_source_count: entity.trust?.independent_source_count ?? null,
@@ -108,6 +131,7 @@ export function buildEntityListParams(filters: EntryFilterParams = {}): ListEnti
     issue_area: filters.issue_areas,
     entity_type: filters.entry_types,
     source_type: filters.source_types,
+    source_pattern: filters.source_patterns,
     limit: filters.limit,
     cursor: typeof filters.offset === "number" ? String(filters.offset) : undefined,
   };
@@ -133,6 +157,7 @@ async function listEntries(filters?: EntryFilterParams): Promise<EntryListRespon
       issue_areas: response.facets?.issue_areas ?? [],
       entity_types: response.facets?.entity_types ?? [],
       source_types: response.facets?.source_types ?? [],
+      source_patterns: response.facets?.source_patterns ?? [],
     },
   };
 }
@@ -210,6 +235,7 @@ interface ConnectionReasonResponse {
   kind: string;
   label: string;
   count: number | null;
+  source_id?: string | null;
 }
 
 /** Raw connected-actor payload from the API. */
@@ -233,7 +259,7 @@ interface ConnectionsResponse {
 }
 
 /** Resolve an entry by its type-prefixed slug (e.g., people/jane-doe-a3f2). */
-async function getEntryBySlug(type: "people" | "organizations", slug: string): Promise<Entry> {
+async function getEntryBySlug(type: EntrySlugScope, slug: string): Promise<Entry> {
   const response = await atlasFetch<EntityDetailResponse>(`/api/entities/by-slug/${type}/${slug}`);
   return mapEntityDetail(response);
 }
@@ -254,6 +280,7 @@ function mapConnectionNetwork(response: ConnectionsResponse): ConnectionNetwork 
         kind: reason.kind as ConnectionReasonKind,
         label: reason.label,
         count: reason.count,
+        source_id: reason.source_id,
       })),
       evidence: actor.evidence,
     })),

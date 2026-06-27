@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
 import { act, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { ConfirmDialogProvider, useConfirmDialog } from "@/platform/ui/confirm-dialog";
 
 describe("ConfirmDialogProvider", () => {
@@ -26,6 +26,7 @@ describe("ConfirmDialogProvider", () => {
 
   afterEach(() => {
     document.body.innerHTML = "";
+    vi.restoreAllMocks();
   });
 
   it("resolves true when the confirm button is clicked", async () => {
@@ -130,8 +131,22 @@ describe("ConfirmDialogProvider", () => {
     );
 
     fireEvent.click(screen.getByText("Open"));
+    expect(screen.getByText("Cancel")).toBeInTheDocument();
+    const backdrop = document.querySelector(".fixed.inset-0.bg-black\\/40");
+    if (!backdrop) throw new Error("Expected confirm dialog backdrop");
+    vi.spyOn(console, "error").mockImplementation((message?: unknown) => {
+      if (message === "There are no focusable elements inside the <FocusTrap />") return;
+      throw new Error(String(message));
+    });
+    vi.spyOn(console, "warn").mockImplementation((message?: unknown) => {
+      if (message === "There are no focusable elements inside the <FocusTrap />") return;
+      throw new Error(String(message));
+    });
+
     await act(async () => {
-      fireEvent.keyDown(document, { key: "Escape" });
+      fireEvent.mouseDown(backdrop);
+      fireEvent.mouseUp(backdrop);
+      fireEvent.click(backdrop);
       await Promise.resolve();
     });
     expect(result).toBe(false);

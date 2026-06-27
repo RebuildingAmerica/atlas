@@ -51,6 +51,7 @@ class SourceType(StrEnum):
     PODCAST = "podcast"
     VIDEO = "video"
     SOCIAL_MEDIA = "social_media"
+    COMMUNITY_ARCHIVE = "community_archive"
     ORG_WEBSITE = "org_website"
     WEBSITE = "org_website"
     OTHER = "other"

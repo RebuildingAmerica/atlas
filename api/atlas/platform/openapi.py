@@ -68,7 +68,7 @@ OPENAPI_TAGS = [
 ]
 OPENAPI_SERVERS = [
     {"url": "https://atlas.rebuildingus.org", "description": "Production environment"},
-    {"url": "http://api.localhost:1355", "description": "Local development"},
+    {"url": "https://api.atlas.localhost:1355", "description": "Local development"},
     {"url": "/", "description": "Relative to current host"},
 ]
 

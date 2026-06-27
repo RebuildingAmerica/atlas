@@ -44,6 +44,23 @@ describe("routes/_public/pricing", () => {
     expect(access.redirectIfLocalSession).toHaveBeenCalledWith("/");
   });
 
+  it("publishes SEO metadata for the public pricing page", async () => {
+    const routeModule = await import("@/routes/_public/pricing");
+    const { asRouteStub } = await import("@/../tests/helpers/router-harness");
+    const Route = asRouteStub(routeModule.Route);
+
+    expect(Route.options.head?.({})).toEqual({
+      meta: [
+        { title: "Pricing | Atlas" },
+        {
+          name: "description",
+          content:
+            "Choose Atlas access for individual research, team workflows, and civic data reuse.",
+        },
+      ],
+    });
+  });
+
   it("forwards search intent and interval into PricingPage", async () => {
     const routeModule = await import("@/routes/_public/pricing");
     const { readRouterMocks, asRouteStub } = await import("@/../tests/helpers/router-harness");

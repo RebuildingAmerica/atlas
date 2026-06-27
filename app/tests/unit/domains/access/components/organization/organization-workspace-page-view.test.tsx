@@ -211,7 +211,7 @@ describe("OrganizationWorkspacePageView", () => {
     expect(onUpdateMemberRole).toHaveBeenCalledWith("mem_2", "admin");
 
     // Member removal.
-    fireEvent.click(screen.getByRole("button", { name: "Remove" }));
+    fireEvent.click(screen.getByRole("button", { name: "Remove Teammate" }));
     expect(onRemoveMember).toHaveBeenCalledWith("mem_2");
   });
 

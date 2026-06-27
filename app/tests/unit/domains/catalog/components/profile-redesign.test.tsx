@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 
 const claimsMocks = vi.hoisted(() => ({
@@ -16,21 +16,51 @@ const claimsMocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@tanstack/react-router", () => ({
-  Link: ({ children, to }: { children: React.ReactNode; to: string }) => (
-    <a href={to}>{children}</a>
+  Link: ({
+    children,
+    params,
+    search,
+    to,
+  }: {
+    children: React.ReactNode;
+    params?: Record<string, string>;
+    search?: Record<string, unknown>;
+    to: string;
+  }) => (
+    <a
+      href={to}
+      data-link-params={params ? JSON.stringify(params) : undefined}
+      data-link-search={search ? JSON.stringify(search) : undefined}
+    >
+      {children}
+    </a>
   ),
   useRouter: () => ({}),
 }));
 
 vi.mock("@/domains/catalog/hooks/use-claims", () => claimsMocks);
+vi.mock("@/domains/catalog/components/profiles/private-notes-panel", () => ({
+  PrivateNotesPanel: ({
+    targetId,
+    targetLabel,
+    type,
+  }: {
+    targetId: string;
+    targetLabel: string;
+    type: "entry" | "source";
+  }) => <div data-testid={`private-notes-${type}-${targetId}`}>{targetLabel}</div>,
+}));
 
 import { ActionCluster } from "@/domains/catalog/components/profiles/action-cluster";
+import { AppearancesList } from "@/domains/catalog/components/profiles/appearances-list";
 import { DataQualityBlock } from "@/domains/catalog/components/profiles/data-quality-block";
 import {
   FreshnessChip,
   formatFreshness,
 } from "@/domains/catalog/components/profiles/detail/profile-detail-primitives";
 import { ConnectionList } from "@/domains/catalog/components/profiles/connection-list";
+import { ProfileResearchContext } from "@/domains/catalog/components/profiles/profile-research-context";
+import { ProfileHistory } from "@/domains/catalog/components/profiles/profile-history";
 import { WorkSection } from "@/domains/catalog/components/profiles/work-section";
 import type { ConnectedActor, ConnectionNetwork, Entry } from "@/types";
 import {
@@ -168,10 +198,182 @@ describe("DataQualityBlock", () => {
     expect(screen.getByText("12 sources")).toBeInTheDocument();
   });
 
+  it("shows canonical profile coverage for complete actor records", () => {
+    render(
+      <DataQualityBlock
+        entry={buildEntry({
+          description: "Runs tenant organizing campaigns.",
+          city: "Jackson",
+          state: "MS",
+          issue_areas: ["housing_affordability"],
+          source_count: 3,
+          website: "https://janedoe.example",
+        })}
+      />,
+    );
+
+    expect(screen.getByText("Profile shape")).toBeInTheDocument();
+    expect(screen.getByText("6 of 6 core fields")).toBeInTheDocument();
+    const shapeFields = within(screen.getByLabelText("Canonical profile fields"));
+    for (const label of ["Identity", "Work", "Place", "Issues", "Sources", "Contact"]) {
+      expect(shapeFields.getByText(label)).toBeInTheDocument();
+    }
+  });
+
+  it("shows missing canonical profile fields without implementation copy", () => {
+    render(
+      <DataQualityBlock
+        entry={buildEntry({
+          description: "",
+          city: undefined,
+          state: undefined,
+          issue_areas: [],
+          source_count: 0,
+          website: undefined,
+          email: undefined,
+          phone: undefined,
+          social_media: undefined,
+        })}
+      />,
+    );
+
+    expect(screen.getByText("1 of 6 core fields")).toBeInTheDocument();
+    expect(screen.getByText("Missing Work, Place, Issues, Sources, Contact")).toBeInTheDocument();
+    expect(screen.queryByText(/still gathering/i)).not.toBeInTheDocument();
+  });
+
+  it("renders claim-level evidence for visible profile facts", () => {
+    render(
+      <DataQualityBlock
+        entry={buildEntry({
+          claim_evidence: {
+            summary: {
+              source_count: 3,
+              source_ids: ["source-1", "source-2", "source-3"],
+              confidence: "corroborated",
+              as_of: "2026-04-15",
+              verification_level: "source-derived",
+            },
+            place: {
+              source_count: 3,
+              source_ids: ["source-1", "source-2", "source-3"],
+              confidence: "corroborated",
+              as_of: "2026-04-15",
+              verification_level: "source-derived",
+            },
+            issues: {
+              source_count: 3,
+              source_ids: ["source-1", "source-2", "source-3"],
+              confidence: "corroborated",
+              as_of: "2026-04-15",
+              verification_level: "source-derived",
+            },
+            contact: {
+              source_count: 1,
+              source_ids: ["source-1"],
+              confidence: "partial",
+              as_of: "2026-04-15",
+              verification_level: "source-derived",
+            },
+          },
+        })}
+      />,
+    );
+
+    expect(screen.getByText("Claim evidence")).toBeInTheDocument();
+    expect(screen.getByText("Summary")).toBeInTheDocument();
+    expect(screen.getAllByText("Place").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Issues").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Contact").length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/3 sources · corroborated · Apr 2026/)).toHaveLength(3);
+    expect(screen.getByText(/1 source · partial · Apr 2026/)).toBeInTheDocument();
+  });
+
+  it("shows lead-quality signals from geography, freshness, source mix, and contact data", () => {
+    render(
+      <DataQualityBlock
+        entry={buildEntry({
+          latest_source_date: new Date().toISOString(),
+          source_types: ["news_article", "report"],
+          website: "https://example.org",
+        })}
+      />,
+    );
+
+    expect(screen.getByText("Lead signals")).toBeInTheDocument();
+    expect(screen.getByText("Local lead")).toBeInTheDocument();
+    expect(screen.getByText("Recent source")).toBeInTheDocument();
+    expect(screen.getByText("Diverse sources")).toBeInTheDocument();
+    expect(screen.getByText("Reachable")).toBeInTheDocument();
+  });
+
+  it("shows actor-specificity quality for records with a concrete actor, work, place, issues, and sources", () => {
+    render(
+      <DataQualityBlock
+        entry={buildEntry({
+          actor_quality: {
+            level: "specific_actor",
+            score: 5,
+            total: 5,
+            present: ["actor", "work", "place", "issues", "sources"],
+            missing: [],
+          },
+        })}
+      />,
+    );
+
+    expect(screen.getByText("Actor specificity")).toBeInTheDocument();
+    expect(screen.getByText("5 of 5 specificity signals")).toBeInTheDocument();
+    expect(screen.getByText("Specific actor")).toBeInTheDocument();
+  });
+
+  it("names missing actor-specificity fields without implementation copy", () => {
+    render(
+      <DataQualityBlock
+        entry={buildEntry({
+          actor_quality: {
+            level: "thin_record",
+            score: 2,
+            total: 5,
+            present: ["actor", "sources"],
+            missing: ["work", "place", "issues"],
+          },
+        })}
+      />,
+    );
+
+    expect(screen.getByText("2 of 5 specificity signals")).toBeInTheDocument();
+    expect(screen.getByText("Missing Work, Place, Issues")).toBeInTheDocument();
+    expect(screen.queryByText(/still gathering/i)).not.toBeInTheDocument();
+  });
+
   it("renders the inline claim CTA for unclaimed profiles", () => {
     render(<DataQualityBlock entry={buildEntry()} />);
     const cta = screen.getByRole("link", { name: /Are you Jane Doe\? Claim this profile/i });
     expect(cta).toHaveAttribute("href", expect.stringContaining("/claim"));
+  });
+
+  it("surfaces representation, stale-data, and missing-context stewardship paths", () => {
+    render(<DataQualityBlock entry={buildEntry({ id: "entry-1", slug: "jane-doe-a3f2" })} />);
+
+    expect(screen.getByText("Corrections")).toBeInTheDocument();
+    expect(screen.queryByText("Improve this record")).not.toBeInTheDocument();
+
+    const claim = screen.getByRole("link", { name: "Claim or correct representation" });
+    expect(claim).toHaveAttribute("href", "/claim/$slug");
+    expect(claim).toHaveAttribute("data-link-params", JSON.stringify({ slug: "jane-doe-a3f2" }));
+
+    const report = screen.getByRole("link", { name: "Report stale or incorrect information" });
+    expect(report).toHaveAttribute("href", "/feedback/$slug");
+    expect(report).toHaveAttribute("data-link-params", JSON.stringify({ slug: "jane-doe-a3f2" }));
+    expect(report).toHaveAttribute("data-link-search", JSON.stringify({ kind: "incorrect" }));
+
+    const missing = screen.getByRole("link", { name: "Suggest missing context" });
+    expect(missing).toHaveAttribute("href", "/feedback/$slug");
+    expect(missing).toHaveAttribute(
+      "data-link-search",
+      JSON.stringify({ kind: "missing_context" }),
+    );
   });
 
   it("hides the claim CTA once the profile is verified by subject", () => {
@@ -288,8 +490,8 @@ describe("WorkSection", () => {
     const entry = buildEntry({ issue_areas: [], sources: [] });
     render(<WorkSection entry={entry} issueAreaLabels={{}} showIssueChips={false} />);
     expect(screen.getByLabelText("Recent activity")).toBeInTheDocument();
-    expect(screen.getByText(/No recent coverage on file yet/i)).toBeInTheDocument();
-    expect(screen.getByText(/Atlas keeps watching/i)).toBeInTheDocument();
+    expect(screen.getByText("No recent coverage on file.")).toBeInTheDocument();
+    expect(screen.queryByText(/Atlas keeps watching/i)).not.toBeInTheDocument();
   });
 
   it("uses the title when most-recent source has no publication", () => {
@@ -433,6 +635,181 @@ describe("WorkSection", () => {
   });
 });
 
+describe("ProfileResearchContext", () => {
+  it("frames profiles as evidence snapshots with profile-section pivots", () => {
+    render(
+      <ProfileResearchContext
+        entry={buildEntry({
+          email: "jane@example.org",
+          issue_areas: ["housing_affordability"],
+          source_count: 3,
+          sources: [buildSource()],
+        })}
+        issueAreaLabels={{ housing_affordability: "Housing" }}
+      />,
+    );
+
+    expect(screen.getByText("Evidence snapshot")).toBeInTheDocument();
+    expect(screen.queryByText("Reusable research record")).not.toBeInTheDocument();
+    expect(screen.queryByText("Record reuse loop")).not.toBeInTheDocument();
+    expect(screen.getByText("Related actors")).toBeInTheDocument();
+    expect(screen.getByText("Issue footprint")).toBeInTheDocument();
+    expect(screen.getByText("Source trail")).toBeInTheDocument();
+    expect(screen.getByText("Public contact")).toBeInTheDocument();
+    expect(screen.getByText("3 source-linked packets")).toBeInTheDocument();
+
+    const placeLink = screen.getByRole("link", { name: "Jackson civic actors" });
+    expect(placeLink).toHaveAttribute(
+      "data-link-search",
+      JSON.stringify({ cities: "Jackson", states: "MS" }),
+    );
+
+    const issueLink = screen.getByRole("link", { name: "Housing actors" });
+    expect(issueLink).toHaveAttribute(
+      "data-link-search",
+      JSON.stringify({ issue_areas: "housing_affordability" }),
+    );
+  });
+});
+
+describe("ProfileHistory", () => {
+  it("shows the public record timeline from existing profile evidence", () => {
+    render(
+      <ProfileHistory
+        entry={buildEntry({
+          first_seen: "2024-01-15T00:00:00Z",
+          latest_source_date: "2026-04-12",
+          updated_at: "2026-04-20T00:00:00Z",
+          claim: {
+            status: "verified",
+            verification_level: "subject-verified",
+            claim_verified_at: "2026-03-10T00:00:00Z",
+          },
+          sources: [
+            buildSource({
+              title: "Tenant hotline expands",
+              publication: "Mississippi Today",
+              published_date: "2026-04-12",
+            }),
+            buildSource({
+              title: "Earlier profile",
+              publication: "Jackson Free Press",
+              published_date: "2025-11-02",
+            }),
+          ],
+        })}
+      />,
+    );
+
+    expect(screen.getByText("Record history")).toBeInTheDocument();
+    expect(screen.getByText("First listed")).toBeInTheDocument();
+    expect(screen.getByText(/Jan 2024/)).toBeInTheDocument();
+    expect(screen.getByText("Latest source")).toBeInTheDocument();
+    expect(screen.getByText(/Mississippi Today/)).toBeInTheDocument();
+    expect(screen.getByText("Subject verified")).toBeInTheDocument();
+    expect(screen.getByText("Representation updated")).toBeInTheDocument();
+  });
+
+  it("shows an audit trail for corrections, verification, and representation changes", () => {
+    render(
+      <ProfileHistory
+        entry={buildEntry({
+          slug: "jane-doe-a3f2",
+          first_seen: "2024-01-15T00:00:00Z",
+          created_at: "2024-01-15T00:00:00Z",
+          updated_at: "2026-04-20T00:00:00Z",
+          claim: {
+            status: "pending",
+            verification_level: "source-derived",
+          },
+        })}
+      />,
+    );
+
+    expect(screen.getByText("Audit trail")).toBeInTheDocument();
+    expect(screen.getByText("Correction review")).toBeInTheDocument();
+    const correctionLink = screen.getByRole("link", { name: "Send a correction" });
+    expect(correctionLink).toHaveAttribute("href", "/feedback/$slug");
+    expect(correctionLink).toHaveAttribute(
+      "data-link-params",
+      JSON.stringify({ slug: "jane-doe-a3f2" }),
+    );
+    expect(screen.getByText("Verification review")).toBeInTheDocument();
+    expect(screen.getByText("Representation claim awaiting review.")).toBeInTheDocument();
+    expect(screen.getByText("Representation changes")).toBeInTheDocument();
+    expect(screen.getByText("Public profile fields changed Apr 2026.")).toBeInTheDocument();
+  });
+
+  it("uses an honest history state when dated source and verification evidence is absent", () => {
+    render(
+      <ProfileHistory
+        entry={buildEntry({
+          first_seen: "2024-01-15T00:00:00Z",
+          latest_source_date: undefined,
+          last_seen: "2024-01-15T00:00:00Z",
+          updated_at: "2024-01-15T00:00:00Z",
+          sources: [],
+          claim: { status: "unclaimed", verification_level: "source-derived" },
+        })}
+      />,
+    );
+
+    expect(screen.getByText("No dated source updates.")).toBeInTheDocument();
+    expect(screen.queryByText(/still gathering/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/pipeline/i)).not.toBeInTheDocument();
+  });
+});
+
+describe("AppearancesList", () => {
+  it("summarizes sources as evidence packets with quoted extraction context", () => {
+    render(
+      <AppearancesList
+        mode="organization"
+        sources={[
+          buildSource({
+            extraction_context: "The coalition hosts a tenant hotline.",
+            publication: "MS Today",
+            type: "news_article",
+          }),
+        ]}
+      />,
+    );
+
+    expect(screen.getByText("Evidence packets")).toBeInTheDocument();
+    expect(screen.getByText("1 source packet")).toBeInTheDocument();
+    expect(screen.getByText("1 source type")).toBeInTheDocument();
+    expect(screen.getByText("Quoted evidence")).toBeInTheDocument();
+    expect(screen.getByTestId("private-notes-source-source-1")).toBeInTheDocument();
+  });
+
+  it("anchors source packets for relationship evidence links", () => {
+    render(<AppearancesList mode="organization" sources={[buildSource({ id: "source-1" })]} />);
+
+    expect(document.getElementById("source-source-1")).not.toBeNull();
+  });
+
+  it("surfaces API-provided stale source warnings on evidence packets", () => {
+    render(
+      <AppearancesList
+        mode="organization"
+        sources={[
+          buildSource({
+            freshness: {
+              staleness_status: "stale",
+              staleness_reason: "Most recent source record date is more than a year old.",
+            },
+          }),
+        ]}
+      />,
+    );
+
+    expect(screen.getByText("Stale source")).toBeInTheDocument();
+    expect(
+      screen.getByText("Most recent source record date is more than a year old."),
+    ).toBeInTheDocument();
+  });
+});
+
 describe("ConnectionList", () => {
   function buildActor(overrides: Partial<ConnectedActor> = {}): ConnectedActor {
     return {
@@ -481,6 +858,62 @@ describe("ConnectionList", () => {
     expect(screen.getByText("Marcus Lee")).toBeInTheDocument();
     expect(screen.getByText("Their organization")).toBeInTheDocument();
     expect(screen.getByText("Strong")).toBeInTheDocument();
+  });
+
+  it("links source-backed relationship reasons to the matching evidence packet", () => {
+    render(
+      <ConnectionList
+        entry={buildEntry()}
+        network={buildNetwork([
+          buildActor({
+            reasons: [
+              {
+                kind: "sourced_edge",
+                label: "Staff profile",
+                count: 1,
+                source_id: "source-1",
+              },
+            ],
+            evidence: "Staff profile",
+          }),
+        ])}
+        isLoading={false}
+      />,
+    );
+
+    expect(screen.getByRole("link", { name: "Staff profile" })).toHaveAttribute(
+      "href",
+      "#source-source-1",
+    );
+  });
+
+  it("shows the semantic relationship type for source-backed connections", () => {
+    render(
+      <ConnectionList
+        entry={buildEntry()}
+        network={buildNetwork([
+          buildActor({
+            reasons: [
+              {
+                kind: "sourced_edge",
+                label: "Staff profile",
+                count: 1,
+                source_id: "source-1",
+                relationship_type: "staff",
+              },
+            ],
+            evidence: "Staff profile",
+          }),
+        ])}
+        isLoading={false}
+      />,
+    );
+
+    expect(screen.getByText("Staff")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Staff profile" })).toHaveAttribute(
+      "href",
+      "#source-source-1",
+    );
   });
 
   it("labels the moderate and light tiers", () => {

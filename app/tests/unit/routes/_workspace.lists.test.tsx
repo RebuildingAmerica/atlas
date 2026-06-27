@@ -14,6 +14,10 @@ vi.mock("@/domains/catalog/hooks/use-claims", () => ({
   useSavedLists: vi.fn(),
 }));
 
+vi.mock("@/domains/access", () => ({
+  useAtlasSession: vi.fn(),
+}));
+
 vi.mock("@/platform/ui/badge", () => ({
   Badge: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
 }));
@@ -39,6 +43,10 @@ describe("routes/_workspace/lists", () => {
     const { resetRouterMocks } = await import("@/../tests/helpers/router-harness");
     resetRouterMocks();
     const claims = await import("@/domains/catalog/hooks/use-claims");
+    const access = await import("@/domains/access");
+    vi.mocked(access.useAtlasSession).mockReturnValue({ data: null } as unknown as ReturnType<
+      typeof access.useAtlasSession
+    >);
     vi.mocked(claims.useCreateSavedList).mockReturnValue({
       mutateAsync: vi.fn().mockResolvedValue(undefined),
       isPending: false,
@@ -259,6 +267,8 @@ describe("routes/_workspace/lists", () => {
     const Component = Route.options.component;
     if (!Component) throw new Error("Expected Route.options.component");
     render(<Component />);
+    expect(screen.getByText("Project workspaces")).toBeInTheDocument();
+    expect(screen.getAllByText("Leads, notes, briefs, and exports")).toHaveLength(2);
     expect(screen.getByText("Outreach")).toBeInTheDocument();
     expect(screen.getByText("Coalition")).toBeInTheDocument();
     expect(screen.getByText("1 actor")).toBeInTheDocument();
@@ -266,5 +276,38 @@ describe("routes/_workspace/lists", () => {
 
     fireEvent.click(screen.getByLabelText("Delete Outreach"));
     expect(deleteMock).toHaveBeenCalledWith("list-1");
+  });
+
+  it("surfaces team collaboration context for shared project workspaces", async () => {
+    const claims = await import("@/domains/catalog/hooks/use-claims");
+    const access = await import("@/domains/access");
+    vi.mocked(access.useAtlasSession).mockReturnValue({
+      data: {
+        workspace: {
+          activeOrganization: {
+            id: "org_1",
+            name: "Atlas Team",
+            workspaceType: "team",
+          },
+        },
+      },
+    } as unknown as ReturnType<typeof access.useAtlasSession>);
+    vi.mocked(claims.useSavedLists).mockReturnValue({
+      data: [{ id: "list-1", name: "Outreach", description: "stuff", item_count: 1 }],
+      isLoading: false,
+    } as unknown as ReturnType<typeof claims.useSavedLists>);
+
+    const routeModule = await import("@/routes/_workspace/lists");
+    const { asRouteStub } = await import("@/../tests/helpers/router-harness");
+    const Route = asRouteStub(routeModule.Route);
+    const Component = Route.options.component;
+    if (!Component) throw new Error("Expected Route.options.component");
+    render(<Component />);
+
+    expect(screen.getByText("Shared project workspaces")).toBeInTheDocument();
+    expect(screen.getByText("Shared project workspace")).toBeInTheDocument();
+    expect(screen.getByText("Team-visible notes")).toBeInTheDocument();
+    expect(screen.getByText("Owner: Atlas Team")).toBeInTheDocument();
+    expect(screen.getByText("Activity: leads, notes, and exports")).toBeInTheDocument();
   });
 });

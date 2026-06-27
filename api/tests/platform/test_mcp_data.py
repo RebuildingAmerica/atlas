@@ -17,6 +17,7 @@ import pytest_asyncio
 from atlas.domains.catalog.models.entry import EntryCRUD, EntryModel
 from atlas.domains.catalog.models.source import SourceCRUD
 from atlas.domains.moderation.models import FlagCRUD
+from atlas.models import DiscoveryRunCRUD
 from atlas.platform.mcp import data as data_module
 from atlas.platform.mcp.data import (
     AGING_DAYS,
@@ -35,6 +36,64 @@ if TYPE_CHECKING:
 
 EXPECTED_DECODED_CURSOR = 12
 EXPECTED_DISTINCT_DOMAINS = 2
+EXPECTED_THREE_SOURCES = 3
+EXPECTED_TWO_CONTACT_SOURCES = 2
+
+
+@pytest.mark.asyncio
+async def test_data_service_exposes_discovery_runs_for_agent_clients(
+    db_url: str, test_db: object
+) -> None:
+    """MCP data service should expose structured research artifacts from discovery runs."""
+    conn: aiosqlite.Connection = test_db  # type: ignore[assignment]
+    run_id = await DiscoveryRunCRUD.create(
+        conn,
+        location_query="Kansas City, MO",
+        state="MO",
+        issue_areas=["housing_affordability"],
+        research_goal="interview_leads",
+    )
+    await DiscoveryRunCRUD.complete(
+        conn,
+        run_id,
+        queries_generated=4,
+        sources_fetched=3,
+        sources_processed=3,
+        entries_extracted=2,
+        entries_after_dedup=2,
+        entries_confirmed=1,
+    )
+    await DiscoveryRunCRUD.update_research_summary(
+        conn,
+        run_id,
+        {
+            "brief": "One source-backed housing lead in Kansas City.",
+            "ranked_leads": [
+                {
+                    "entry_id": "entry-1",
+                    "name": "KC Tenants",
+                    "type": "organization",
+                    "why_it_matters": "Named in local coverage.",
+                    "source_count": 2,
+                    "latest_source_date": "2026-04-15",
+                }
+            ],
+            "key_sources": [],
+            "gaps": [{"label": "Rural coverage", "detail": "No county lead yet."}],
+            "reasoning_signals": ["Ranked 1 lead.", "Flagged 1 gap."],
+        },
+    )
+
+    service = AtlasDataService(db_url)
+    collection = await service.list_discovery_runs(state="MO", status="completed")
+    detail = await service.get_discovery_run(run_id)
+
+    assert collection["items"][0]["id"] == run_id
+    assert collection["items"][0]["research_summary"]["brief"] == (
+        "One source-backed housing lead in Kansas City."
+    )
+    assert detail["research_summary"]["ranked_leads"][0]["name"] == "KC Tenants"
+    assert detail["resource_uri"] == f"atlas://discovery-runs/{run_id}"
 
 
 @pytest_asyncio.fixture
@@ -1122,3 +1181,217 @@ class TestEntityRecordTrustBlock:
         )
         assert record["trust"]["level"] == "unverified"
         assert record["trust"]["independent_source_count"] is None
+
+
+class TestEntityRecordActorQuality:
+    """`_entity_record` exposes whether the record is a specific local actor."""
+
+    def test_specific_actor_quality_is_complete_for_source_backed_local_org(self) -> None:
+        entry = replace(
+            _build_entry(),
+            description="Runs weekly tenant legal clinics.",
+            city="Kansas City",
+            state="MO",
+        )
+        record = data_module._entity_record(  # noqa: SLF001
+            entry,
+            EntityRecordContext(
+                issue_area_ids=["housing_affordability"],
+                source_types=["news_article"],
+                source_count=2,
+                latest_source_date="2026-04-15",
+            ),
+        )
+
+        assert record["actor_quality"] == {
+            "level": "specific_actor",
+            "score": 5,
+            "total": 5,
+            "present": ["actor", "work", "place", "issues", "sources"],
+            "missing": [],
+        }
+
+    def test_actor_quality_names_missing_specificity_fields(self) -> None:
+        entry = replace(
+            _build_entry(entry_id="entry-thin"),
+            type="campaign",
+            description="",
+            city=None,
+            state=None,
+            region=None,
+            full_address=None,
+            geo_specificity="national",
+        )
+        record = data_module._entity_record(  # noqa: SLF001
+            entry,
+            EntityRecordContext(
+                issue_area_ids=[],
+                source_types=[],
+                source_count=0,
+                latest_source_date=None,
+            ),
+        )
+
+        assert record["actor_quality"]["level"] == "thin_record"
+        assert record["actor_quality"]["present"] == []
+        assert record["actor_quality"]["missing"] == ["actor", "work", "place", "issues", "sources"]
+
+
+class TestEntityRecordClaimEvidence:
+    """`_entity_record` explains visible profile claims with evidence metadata."""
+
+    def test_includes_claim_evidence_for_visible_profile_facts(self) -> None:
+        entry = replace(
+            _build_entry(),
+            website="https://helper.example",
+            email="info@helper.example",
+        )
+        record = data_module._entity_record(  # noqa: SLF001
+            entry,
+            EntityRecordContext(
+                issue_area_ids=["housing_affordability"],
+                source_types=["news_article", "report"],
+                source_count=3,
+                source_ids=["source-1", "source-2", "source-3"],
+                contact_source_ids=["source-1"],
+                latest_source_date="2026-04-15",
+                independent_source_count=2,
+                website_grounded=True,
+                email_grounded=False,
+            ),
+        )
+
+        assert record["claim_evidence"]["summary"] == {
+            "source_count": 3,
+            "source_ids": ["source-1", "source-2", "source-3"],
+            "confidence": "corroborated",
+            "as_of": "2026-04-15",
+            "verification_level": "source-derived",
+        }
+        assert record["claim_evidence"]["place"]["source_count"] == EXPECTED_THREE_SOURCES
+        assert record["claim_evidence"]["issues"]["source_count"] == EXPECTED_THREE_SOURCES
+        assert record["claim_evidence"]["contact"] == {
+            "source_count": 1,
+            "source_ids": ["source-1"],
+            "confidence": "partial",
+            "as_of": "2026-04-15",
+            "verification_level": "source-derived",
+        }
+
+    def test_claim_evidence_marks_subject_verified_claims(self) -> None:
+        entry = _build_entry(claim_status="verified", claimed_by_user_id="user-1")
+        record = data_module._entity_record(  # noqa: SLF001
+            entry,
+            EntityRecordContext(
+                issue_area_ids=["housing_affordability"],
+                source_types=["news_article"],
+                source_count=1,
+                latest_source_date="2026-04-15",
+                independent_source_count=1,
+            ),
+        )
+
+        assert record["claim_evidence"]["summary"]["confidence"] == "subject_verified"
+        assert record["claim_evidence"]["summary"]["verification_level"] == "subject-verified"
+
+    def test_claim_evidence_marks_single_source_claims_unverified(self) -> None:
+        entry = _build_entry()
+        record = data_module._entity_record(  # noqa: SLF001
+            entry,
+            EntityRecordContext(
+                issue_area_ids=["housing_affordability"],
+                source_types=["news_article"],
+                source_count=1,
+                latest_source_date="2026-04-15",
+                independent_source_count=1,
+            ),
+        )
+
+        assert record["claim_evidence"]["summary"]["confidence"] == "unverified"
+
+    def test_claim_evidence_marks_fully_grounded_contact(self) -> None:
+        entry = replace(
+            _build_entry(verified=True),
+            website="https://helper.example",
+            email="info@helper.example",
+        )
+        record = data_module._entity_record(  # noqa: SLF001
+            entry,
+            EntityRecordContext(
+                issue_area_ids=[],
+                source_types=["news_article"],
+                source_count=2,
+                contact_source_ids=["source-1", "source-2"],
+                latest_source_date="2026-04-15",
+                independent_source_count=1,
+                website_grounded=True,
+                email_grounded=True,
+            ),
+        )
+
+        assert record["claim_evidence"]["contact"]["source_count"] == EXPECTED_TWO_CONTACT_SOURCES
+        assert record["claim_evidence"]["contact"]["source_ids"] == ["source-1", "source-2"]
+        assert record["claim_evidence"]["contact"]["confidence"] == "atlas_verified"
+
+    def test_claim_evidence_marks_ungrounded_contact_unverified(self) -> None:
+        entry = replace(_build_entry(), website="https://helper.example")
+        record = data_module._entity_record(  # noqa: SLF001
+            entry,
+            EntityRecordContext(
+                issue_area_ids=[],
+                source_types=["news_article"],
+                source_count=2,
+                latest_source_date="2026-04-15",
+                independent_source_count=2,
+                website_grounded=False,
+                email_grounded=False,
+            ),
+        )
+
+        assert record["claim_evidence"]["contact"]["source_count"] == 0
+        assert record["claim_evidence"]["contact"]["confidence"] == "unverified"
+
+    def test_claim_evidence_marks_missing_contact_unverified(self) -> None:
+        entry = _build_entry()
+        record = data_module._entity_record(  # noqa: SLF001
+            entry,
+            EntityRecordContext(
+                issue_area_ids=[],
+                source_types=[],
+                source_count=0,
+                latest_source_date=None,
+            ),
+        )
+
+        assert record["claim_evidence"]["contact"]["confidence"] == "unverified"
+
+
+class TestEntityRecordProfileAnswers:
+    """`_entity_record` exposes scan-friendly profile answers for agent clients."""
+
+    def test_includes_profile_answers_for_actor_records(self) -> None:
+        entry = replace(
+            _build_entry(),
+            description="Organizes tenant legal clinics.",
+            city="Kansas City",
+            state="MO",
+        )
+        record = data_module._entity_record(  # noqa: SLF001
+            entry,
+            EntityRecordContext(
+                issue_area_ids=["housing_affordability"],
+                source_types=["news_article", "report"],
+                source_count=4,
+                source_ids=["source-1", "source-2", "source-3", "source-4"],
+                latest_source_date="2026-04-15",
+                independent_source_count=3,
+            ),
+        )
+
+        assert record["profile_answers"] == {
+            "who": "Organization",
+            "what_they_do": "Organizes tenant legal clinics.",
+            "where": "Kansas City, MO",
+            "why_they_matter": "4 sources · Housing Affordability",
+            "how_atlas_knows": "4 sources · corroborated · Apr 2026",
+        }

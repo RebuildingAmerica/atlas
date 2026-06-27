@@ -15,6 +15,8 @@ import { ResearchHomeHero } from "../components/research-home-hero";
 import { ActivitySummarySection } from "../components/activity-summary-section";
 import { ListsSummarySection } from "../components/lists-summary-section";
 import { FollowsSummarySection } from "../components/follows-summary-section";
+import { WatchlistsSummarySection } from "../components/watchlists-summary-section";
+import { ResearchTrendsSection } from "../components/research-trends-section";
 import { RecentSearchesSection } from "../components/recent-searches-section";
 import { NextActionsSection } from "../components/next-actions-section";
 
@@ -62,6 +64,8 @@ export function ResearchHomePage({ initialSummary }: ResearchHomePageProps) {
         capabilities={capabilities}
         isLocal={isLocal}
       />
+      <WatchlistsSummarySection watchlists={summary.watchlists} />
+      <ResearchTrendsSection trends={summary.researchTrends ?? []} />
       <RecentSearchesSection
         runs={summary.recentRuns}
         runsThisMonth={summary.totals.runsThisMonth}

@@ -10,6 +10,7 @@ import {
   loadProfileBySlug,
   loadProfileConnections,
 } from "@/domains/catalog/server/profiles/profile-loaders";
+import { buildCanonicalUrl } from "@/platform/seo";
 
 export const Route = createFileRoute("/_public/profiles/organizations/$slug")({
   loader: async ({ params }) => {
@@ -22,7 +23,7 @@ export const Route = createFileRoute("/_public/profiles/organizations/$slug")({
   head: ({ loaderData }) => {
     const entry = loaderData?.entry;
     if (!entry) return {};
-    const canonicalUrl = `https://atlas.rebuildingamerica.com/profiles/organizations/${entry.slug}`;
+    const canonicalUrl = buildCanonicalUrl(`/profiles/organizations/${entry.slug}`);
     return {
       meta: [
         { title: `${entry.name} — Organization | Atlas` },

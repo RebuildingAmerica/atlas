@@ -3,7 +3,14 @@ import { Card } from "@/platform/ui/card";
 import { Input } from "@/platform/ui/input";
 import type { EntrySearchFacets, FacetOption } from "@/types";
 
-type FilterKey = "states" | "cities" | "regions" | "issue_areas" | "entry_types" | "source_types";
+type FilterKey =
+  | "states"
+  | "cities"
+  | "regions"
+  | "issue_areas"
+  | "entry_types"
+  | "source_types"
+  | "source_patterns";
 
 interface EntryFiltersProps {
   query: string;
@@ -151,6 +158,13 @@ export function EntryFilters({
           facetKey="source_types"
           options={facets.source_types}
           selected={selectedFilters.source_types}
+          onToggle={onToggleFilter}
+        />
+        <FacetGroup
+          title="Source patterns"
+          facetKey="source_patterns"
+          options={facets.source_patterns}
+          selected={selectedFilters.source_patterns}
           onToggle={onToggleFilter}
         />
       </form>

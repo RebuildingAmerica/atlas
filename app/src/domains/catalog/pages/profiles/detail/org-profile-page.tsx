@@ -1,4 +1,4 @@
-import { Newspaper } from "lucide-react";
+import { Contact, History, Network, Newspaper, ShieldCheck, Tags, Users } from "lucide-react";
 import { useAtlasSession } from "@/domains/access";
 import { ActionCluster } from "@/domains/catalog/components/profiles/action-cluster";
 import { AppearancesList } from "@/domains/catalog/components/profiles/appearances-list";
@@ -7,11 +7,15 @@ import { DataQualityBlock } from "@/domains/catalog/components/profiles/data-qua
 import { IssueFootprint } from "@/domains/catalog/components/profiles/issue-footprint";
 import { ConnectionList } from "@/domains/catalog/components/profiles/connection-list";
 import { PresenceSection } from "@/domains/catalog/components/profiles/presence-section";
+import { ProfileAnswerCard } from "@/domains/catalog/components/profiles/profile-answer-card";
 import { ProfileHero } from "@/domains/catalog/components/profiles/profile-hero";
+import { ProfileHistory } from "@/domains/catalog/components/profiles/profile-history";
 import { ProfileJsonLd } from "@/domains/catalog/components/profiles/profile-head";
+import { ProfileResearchContext } from "@/domains/catalog/components/profiles/profile-research-context";
 import { ProfileStats } from "@/domains/catalog/components/profiles/profile-stats";
 import { SignatureQuote } from "@/domains/catalog/components/profiles/signature-quote";
 import { WorkSection } from "@/domains/catalog/components/profiles/work-section";
+import { ProfileSection } from "@/domains/catalog/components/profiles/detail/profile-detail-primitives";
 import { useConnections } from "@/domains/catalog/hooks/use-connections";
 import { useEntries } from "@/domains/catalog/hooks/use-entries";
 import { useTaxonomy } from "@/domains/catalog/hooks/use-taxonomy";
@@ -21,10 +25,6 @@ interface OrgProfilePageProps {
   entry: Entry;
   initialConnections?: ConnectionNetwork;
 }
-
-const PANEL = "border border-border-taupe bg-surface-container-lowest px-6 py-6 sm:px-8";
-
-const PANEL_HEADER = "font-mono text-xs font-semibold uppercase tracking-[0.14em] text-ink-soft";
 
 function shortRelative(iso: string, now: Date = new Date()): string {
   const then = new Date(iso);
@@ -81,80 +81,81 @@ export function OrgProfilePage({ entry, initialConnections }: OrgProfilePageProp
       <div className="mx-auto max-w-[60rem] space-y-3 px-4 py-6 sm:px-6">
         <ProfileHero entry={entry} />
 
+        <ProfileAnswerCard entry={entry} issueAreaLabels={issueAreaLabels} />
+
+        <ProfileResearchContext entry={entry} issueAreaLabels={issueAreaLabels} />
+
         <SignatureQuote sources={entry.sources ?? []} />
 
         <ProfileStats items={stats} />
 
+        <ProfileSection label="Record history" sectionId="record-history" Icon={History}>
+          <ProfileHistory entry={entry} />
+        </ProfileSection>
+
         <WorkSection entry={entry} issueAreaLabels={issueAreaLabels} showIssueChips={false} />
 
         {entry.issue_areas.length > 0 ? (
-          <section aria-label="Issue footprint" className={PANEL}>
-            <span className={PANEL_HEADER}>Issue footprint</span>
-            <div className="mt-3">
-              <IssueFootprint
-                issueAreas={entry.issue_areas}
-                issueAreaLabels={issueAreaLabels}
-                showLabel={false}
-              />
-            </div>
-          </section>
+          <ProfileSection label="Issue footprint" sectionId="issue-footprint" Icon={Tags}>
+            <IssueFootprint
+              issueAreas={entry.issue_areas}
+              issueAreaLabels={issueAreaLabels}
+              showLabel={false}
+            />
+          </ProfileSection>
         ) : null}
 
         {affiliatedPeople.length > 0 ? (
-          <section aria-label="People tied to this organization" className={PANEL}>
-            <div className="mb-3 flex items-baseline gap-3">
-              <span className={PANEL_HEADER}>People</span>
-              <h2 className="text-ink-strong text-base font-semibold">
-                People tied to this organization
-              </h2>
-            </div>
+          <ProfileSection
+            label="People tied to this organization"
+            sectionId="people"
+            title="People tied to this organization"
+            Icon={Users}
+          >
             <AvatarRow people={affiliatedPeople} showHeader={false} />
-          </section>
+          </ProfileSection>
         ) : null}
 
         {hasPresence ? (
-          <section aria-label="Presence and contact" className={PANEL}>
-            <span className={PANEL_HEADER}>Presence</span>
-            <div className="mt-3">
-              <PresenceSection
-                website={entry.website}
-                email={entry.email}
-                phone={entry.phone}
-                firstSeen={entry.first_seen}
-                websiteGrounded={entry.trust.website_grounded}
-                emailGrounded={entry.trust.email_grounded}
-              />
-            </div>
-          </section>
+          <ProfileSection
+            label="Presence and contact"
+            sectionId="presence-contact"
+            title="Presence"
+            Icon={Contact}
+          >
+            <PresenceSection
+              website={entry.website}
+              email={entry.email}
+              phone={entry.phone}
+              firstSeen={entry.first_seen}
+              websiteGrounded={entry.trust.website_grounded}
+              emailGrounded={entry.trust.email_grounded}
+            />
+          </ProfileSection>
         ) : null}
 
-        <section aria-label="Appearances and coverage" className={PANEL}>
-          <div className="mb-4 flex items-center gap-2">
-            <Newspaper className="text-ink-soft h-4 w-4" aria-hidden />
-            <span className={PANEL_HEADER}>Appearances and coverage</span>
-          </div>
+        <ProfileSection label="Appearances and coverage" sectionId="appearances" Icon={Newspaper}>
           <AppearancesList sources={entry.sources ?? []} mode="organization" />
-        </section>
+        </ProfileSection>
 
-        <section
-          id="connections"
-          aria-label="Network — actors related to this profile"
-          className={PANEL}
+        <ProfileSection
+          label="Network — actors related to this profile"
+          sectionId="network"
+          title="Who else is doing this work"
+          Icon={Network}
+          htmlId="connections"
+          className="scroll-mt-20"
         >
-          <div className="mb-4 flex flex-wrap items-baseline gap-x-3">
-            <span className={PANEL_HEADER}>Network</span>
-            <h2 className="text-ink-strong text-base font-semibold">Who else is doing this work</h2>
-          </div>
           <ConnectionList
             entry={entry}
             network={connectionsQuery.data}
             isLoading={connectionsQuery.isLoading}
           />
-        </section>
+        </ProfileSection>
 
-        <section aria-label="Data quality" className={PANEL}>
+        <ProfileSection label="Data quality" sectionId="data-quality" Icon={ShieldCheck}>
           <DataQualityBlock entry={entry} />
-        </section>
+        </ProfileSection>
 
         <ActionCluster
           entryId={entry.id}

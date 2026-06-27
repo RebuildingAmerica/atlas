@@ -7,7 +7,10 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 __all__ = [
+    "ActorQualityInfo",
     "Address",
+    "ClaimEvidence",
+    "ClaimEvidenceSet",
     "ClaimStatusInfo",
     "ConnectedActorResponse",
     "ConnectionReasonResponse",
@@ -41,6 +44,7 @@ __all__ = [
     "PlaceIdentityResponse",
     "PlaceProfileResponse",
     "PlaceTypeCount",
+    "ProfileAnswers",
     "ProfileClaimRequest",
     "ProfileClaimResponse",
     "ProfileClaimVerifyRequest",
@@ -148,6 +152,7 @@ class ReviewQueueItemResponse(BaseModel):
     """A discovered record held for human review before publication."""
 
     id: str
+    org_id: str | None = None
     entity_id: str | None = None
     kind: str
     status: str
@@ -208,10 +213,18 @@ class ConnectionReasonResponse(BaseModel):
     """One explainable reason two actors are connected."""
 
     kind: str = Field(
-        description="same_organization | co_mentioned | same_issue_area | same_geography.",
+        description="same_organization | sourced_edge | co_mentioned | same_issue_area | same_geography.",
     )
     label: str
     count: int | None = None
+    source_id: str | None = Field(
+        default=None,
+        description="Source supporting this reason when the connection is persisted as evidence.",
+    )
+    relationship_type: str | None = Field(
+        default=None,
+        description="Semantic relationship type for sourced edges, such as staff or coalition_partner.",
+    )
 
 
 class ConnectedActorResponse(BaseModel):
@@ -253,6 +266,41 @@ class ClaimStatusInfo(BaseModel):
     )
 
 
+class ClaimEvidence(BaseModel):
+    """Evidence metadata for one visible profile claim."""
+
+    source_count: int = Field(0, ge=0)
+    source_ids: list[str] = Field(default_factory=list)
+    confidence: str = Field(
+        "unverified",
+        description="subject_verified | atlas_verified | corroborated | partial | unverified.",
+    )
+    as_of: str | None = Field(None, description="Most recent date supporting this claim.")
+    verification_level: str = Field(
+        "source-derived",
+        description="Trust tier: source-derived, atlas-verified, subject-verified.",
+    )
+
+
+class ClaimEvidenceSet(BaseModel):
+    """Evidence metadata grouped by the visible facts on a profile."""
+
+    summary: ClaimEvidence
+    place: ClaimEvidence
+    issues: ClaimEvidence
+    contact: ClaimEvidence
+
+
+class ProfileAnswers(BaseModel):
+    """Scan-friendly answers that make actor profiles usable outside the app."""
+
+    who: str
+    what_they_do: str
+    where: str
+    why_they_matter: str
+    how_atlas_knows: str
+
+
 class TrustInfo(BaseModel):
     """Honest trust signals derived from corroborating evidence.
 
@@ -280,6 +328,19 @@ class TrustInfo(BaseModel):
     )
 
 
+class ActorQualityInfo(BaseModel):
+    """Specificity signals showing whether a record is a concrete actor lead."""
+
+    level: str = Field(
+        "thin_record",
+        description="specific_actor | partial_actor | thin_record.",
+    )
+    score: int = Field(0, ge=0)
+    total: int = Field(5, ge=1)
+    present: list[str] = Field(default_factory=list)
+    missing: list[str] = Field(default_factory=list)
+
+
 class EntityResponse(BaseModel):
     """Canonical public entity shape."""
 
@@ -305,7 +366,10 @@ class EntityResponse(BaseModel):
     active: bool
     verified: bool
     claim: ClaimStatusInfo = Field(default_factory=ClaimStatusInfo)
+    claim_evidence: ClaimEvidenceSet
+    profile_answers: ProfileAnswers
     trust: TrustInfo = Field(default_factory=TrustInfo)
+    actor_quality: ActorQualityInfo = Field(default_factory=ActorQualityInfo)
     issue_area_ids: list[str] = Field(default_factory=list)
     source_types: list[str] = Field(default_factory=list)
     source_count: int = 0

@@ -1,7 +1,7 @@
 /**
  * SSR aggregate loader for the authenticated "Your Research" home.
  *
- * Calls the existing lists, feed, and discovery-run endpoints in parallel with
+ * Calls the existing lists, feed, and research-request endpoints in parallel with
  * the signed-in user's identity, then folds them into a single serializable
  * {@link ResearchSummary} the home route seeds into React Query as
  * `initialData`. Upstream failures degrade to an empty-but-valid summary so the
@@ -15,7 +15,7 @@ import type { DiscoveryRunListResponse } from "@/types";
 const WEEK_WINDOW_DAYS = 7;
 /** Newest feed rows surfaced inline on the home activity band. */
 const RECENT_ITEMS_LIMIT = 5;
-/** Recent discovery runs surfaced on the home "pick up where you left off" strip. */
+/** Recent research requests surfaced on the home "pick up where you left off" strip. */
 const RECENT_RUNS_LIMIT = 3;
 /** Feed page size requested upstream so the week window and follow count are accurate. */
 const FEED_LIMIT = 50;
@@ -48,13 +48,14 @@ export interface ActivitySummary {
   followedActorCount: number;
 }
 
-/** A recent discovery run reduced to the fields the home strip renders. */
+/** A recent research request reduced to the fields the home strip renders. */
 export interface RecentRunSummary {
   id: string;
   locationQuery: string;
   state: string;
   status: string;
   startedAt: string;
+  issueAreas: string[];
 }
 
 /** At-a-glance counts for the home greeting band. */
@@ -64,12 +65,37 @@ export interface ResearchTotals {
   runsThisMonth: number;
 }
 
+export type WatchlistKind = "place" | "issue" | "research_set";
+
+/** A place or issue beat inferred from recent research activity. */
+export interface WatchlistSummary {
+  id: string;
+  kind: WatchlistKind;
+  label: string;
+  detail: string;
+  changedSinceLastTime: string;
+}
+
+export type ResearchTrendKind = "place" | "issue";
+
+/** A repeated place or issue that appears across research requests over time. */
+export interface ResearchTrend {
+  id: string;
+  kind: ResearchTrendKind;
+  label: string;
+  runCount: number;
+  latestRunAt: string;
+  signal: string;
+}
+
 /** The full serializable payload the home route renders from. */
 export interface ResearchSummary {
   lists: SavedListSummary[];
   activity: ActivitySummary;
   recentRuns: RecentRunSummary[];
+  researchTrends?: ResearchTrend[];
   totals: ResearchTotals;
+  watchlists: WatchlistSummary[];
 }
 
 /** Raw saved-list row as returned by `GET /api/lists`. */
@@ -104,7 +130,9 @@ function emptyResearchSummary(): ResearchSummary {
     lists: [],
     activity: { newSourcesThisWeek: 0, recentItems: [], followedActorCount: 0 },
     recentRuns: [],
+    researchTrends: [],
     totals: { savedActors: 0, listCount: 0, runsThisMonth: 0 },
+    watchlists: [],
   };
 }
 
@@ -133,7 +161,7 @@ function toFeedActivityItem(item: RawFeedItem): FeedActivityItem {
   };
 }
 
-/** Project a raw discovery run onto the home recent-run shape. */
+/** Project a raw research request onto the home recent-request shape. */
 function toRecentRunSummary(run: DiscoveryRunListResponse["items"][number]): RecentRunSummary {
   return {
     id: run.id,
@@ -141,7 +169,156 @@ function toRecentRunSummary(run: DiscoveryRunListResponse["items"][number]): Rec
     state: run.state,
     status: run.status,
     startedAt: run.started_at,
+    issueAreas: run.issue_areas,
   };
+}
+
+function runCountLabel(count: number) {
+  return count === 1 ? "1 recent request" : `${count} recent requests`;
+}
+
+function newRunCountLabel(count: number) {
+  return count === 1 ? "1 new research request" : `${count} new research requests`;
+}
+
+function issueLabel(issueArea: string) {
+  const label = issueArea.split("_").filter(Boolean).join(" ");
+
+  return label ? `${label.charAt(0).toUpperCase()}${label.slice(1)}` : issueArea;
+}
+
+function placeWatchlistId(locationQuery: string, state: string) {
+  return `place:${locationQuery.toLowerCase()}:${state.toLowerCase()}`;
+}
+
+function issueWatchlistId(issueArea: string) {
+  return `issue:${issueArea}`;
+}
+
+function researchSetWatchlistId(listId: string) {
+  return `research_set:${listId}`;
+}
+
+function buildPlaceWatchlists(runs: DiscoveryRunListResponse["items"]): WatchlistSummary[] {
+  const counts = new Map<string, { label: string; count: number }>();
+
+  runs.forEach((run) => {
+    const id = placeWatchlistId(run.location_query, run.state);
+    const current = counts.get(id);
+    counts.set(id, {
+      label: current?.label ?? run.location_query,
+      count: (current?.count ?? 0) + 1,
+    });
+  });
+
+  return Array.from(counts.entries()).map(([id, item]) => ({
+    id,
+    kind: "place",
+    label: item.label,
+    detail: runCountLabel(item.count),
+    changedSinceLastTime: newRunCountLabel(item.count),
+  }));
+}
+
+function buildIssueWatchlists(runs: DiscoveryRunListResponse["items"]): WatchlistSummary[] {
+  const counts = new Map<string, number>();
+
+  runs.forEach((run) => {
+    run.issue_areas.forEach((issueArea) => {
+      counts.set(issueArea, (counts.get(issueArea) ?? 0) + 1);
+    });
+  });
+
+  return Array.from(counts.entries()).map(([issueArea, count]) => ({
+    id: issueWatchlistId(issueArea),
+    kind: "issue",
+    label: issueLabel(issueArea),
+    detail: runCountLabel(count),
+    changedSinceLastTime: newRunCountLabel(count),
+  }));
+}
+
+function savedActorLabel(count: number) {
+  return count === 1 ? "1 saved actor" : `${count} saved actors`;
+}
+
+function buildResearchSetWatchlists(lists: SavedListSummary[]): WatchlistSummary[] {
+  return lists.map((list) => ({
+    id: researchSetWatchlistId(list.id),
+    kind: "research_set",
+    label: list.name,
+    detail: savedActorLabel(list.itemCount),
+    changedSinceLastTime: savedActorLabel(list.itemCount),
+  }));
+}
+
+function buildWatchlists(
+  lists: SavedListSummary[],
+  runs: DiscoveryRunListResponse["items"],
+): WatchlistSummary[] {
+  return [
+    ...buildResearchSetWatchlists(lists),
+    ...buildPlaceWatchlists(runs),
+    ...buildIssueWatchlists(runs),
+  ];
+}
+
+function trendSignal(count: number): string {
+  return `${count} ${count === 1 ? "request" : "requests"} over time`;
+}
+
+function buildResearchTrends(runs: DiscoveryRunListResponse["items"]): ResearchTrend[] {
+  const placeTrends = new Map<string, Omit<ResearchTrend, "signal">>();
+  const issueTrends = new Map<string, Omit<ResearchTrend, "signal">>();
+
+  runs.forEach((run) => {
+    const startedAt = Date.parse(run.started_at);
+    if (Number.isNaN(startedAt)) {
+      return;
+    }
+
+    const placeId = placeWatchlistId(run.location_query, run.state);
+    const currentPlace = placeTrends.get(placeId);
+    placeTrends.set(placeId, {
+      id: placeId,
+      kind: "place",
+      label: currentPlace?.label ?? run.location_query,
+      latestRunAt:
+        currentPlace && Date.parse(currentPlace.latestRunAt) > startedAt
+          ? currentPlace.latestRunAt
+          : run.started_at,
+      runCount: (currentPlace?.runCount ?? 0) + 1,
+    });
+
+    run.issue_areas.forEach((issueArea) => {
+      const issueId = issueWatchlistId(issueArea);
+      const currentIssue = issueTrends.get(issueId);
+      issueTrends.set(issueId, {
+        id: issueId,
+        kind: "issue",
+        label: currentIssue?.label ?? issueLabel(issueArea),
+        latestRunAt:
+          currentIssue && Date.parse(currentIssue.latestRunAt) > startedAt
+            ? currentIssue.latestRunAt
+            : run.started_at,
+        runCount: (currentIssue?.runCount ?? 0) + 1,
+      });
+    });
+  });
+
+  return [...placeTrends.values(), ...issueTrends.values()]
+    .filter((trend) => trend.runCount > 1)
+    .map((trend) => ({ ...trend, signal: trendSignal(trend.runCount) }))
+    .sort((left, right) => {
+      if (left.kind !== right.kind) {
+        return left.kind === "place" ? -1 : 1;
+      }
+      return (
+        right.runCount - left.runCount ||
+        Date.parse(right.latestRunAt) - Date.parse(left.latestRunAt)
+      );
+    })
+    .slice(0, 6);
 }
 
 /**
@@ -174,15 +351,15 @@ function countFollowedActors(items: RawFeedItem[]): number {
 }
 
 /**
- * Count discovery runs started within the calendar month of the reference time.
+ * Count research requests started within the calendar month of the reference time.
  *
- * Backs the honest free-run counter on the home recent-searches strip. The
+ * Backs the honest free-request counter on the home recent-research strip. The
  * window is the UTC calendar month so it resets exactly when the monthly run
  * allowance does.
  *
- * @param runs - Discovery runs, each carrying a `started_at` timestamp.
+ * @param runs - Research requests, each carrying a `started_at` timestamp.
  * @param now - The reference "now" whose calendar month defines the window.
- * @returns The number of runs started in the same UTC month and year as `now`.
+ * @returns The number of requests started in the same UTC month and year as `now`.
  */
 function countRunsThisMonth(runs: DiscoveryRunListResponse["items"], now: number): number {
   const reference = new Date(now);
@@ -205,7 +382,7 @@ function countRunsThisMonth(runs: DiscoveryRunListResponse["items"], now: number
  *
  * @param lists - Raw saved lists from `GET /api/lists`.
  * @param feed - Raw following-feed envelope from `GET /api/feed/following`.
- * @param runs - Discovery-run list from `GET /api/discovery-runs`.
+ * @param runs - Research-request list from `GET /api/discovery-runs`.
  * @param now - Reference "now" used for the trailing-week activity window.
  * @returns The computed {@link ResearchSummary}.
  */
@@ -225,11 +402,13 @@ export function buildResearchSummary(
       followedActorCount: countFollowedActors(feedItems),
     },
     recentRuns: runs.items.slice(0, RECENT_RUNS_LIMIT).map(toRecentRunSummary),
+    researchTrends: buildResearchTrends(runs.items),
     totals: {
       savedActors: listSummaries.reduce((sum, list) => sum + list.itemCount, 0),
       listCount: listSummaries.length,
       runsThisMonth: countRunsThisMonth(runs.items, now),
     },
+    watchlists: buildWatchlists(listSummaries, runs.items),
   };
 }
 

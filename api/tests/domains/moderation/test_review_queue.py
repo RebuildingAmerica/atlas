@@ -20,6 +20,7 @@ async def test_review_queue_table_exists(db_url: str) -> None:
     columns = {row[1] for row in rows}
     assert columns >= {
         "id",
+        "org_id",
         "entity_id",
         "kind",
         "status",
@@ -47,6 +48,7 @@ async def test_enqueue_and_list_pending(db_url: str) -> None:
         )
         item_id = await ReviewQueueCRUD.enqueue(
             conn,
+            org_id="org-a",
             entity_id=entity_id,
             kind="person",
             hold_reason="person_requires_review",
@@ -60,7 +62,40 @@ async def test_enqueue_and_list_pending(db_url: str) -> None:
 
     assert item_id is not None
     assert [item.entity_id for item in pending] == [entity_id]
+    assert pending[0].org_id == "org-a"
     assert pending[0].status == "pending"
+
+
+@pytest.mark.asyncio
+async def test_list_pending_can_filter_by_org_boundary(db_url: str) -> None:
+    """Org-scoped moderation queues should not mix tenant-held records."""
+    conn = await get_db_connection(db_url)
+    try:
+        await ReviewQueueCRUD.enqueue(
+            conn,
+            org_id="org-a",
+            entity_id=None,
+            kind="tenant_publish",
+            hold_reason="source_required_for_public_directory",
+            score=None,
+            dedup_suspect=False,
+            dedup_note=None,
+        )
+        await ReviewQueueCRUD.enqueue(
+            conn,
+            org_id="org-b",
+            entity_id=None,
+            kind="tenant_publish",
+            hold_reason="source_required_for_public_directory",
+            score=None,
+            dedup_suspect=False,
+            dedup_note=None,
+        )
+        pending = await ReviewQueueCRUD.list_pending(conn, org_id="org-a")
+    finally:
+        await conn.close()
+
+    assert [item.org_id for item in pending] == ["org-a"]
 
 
 @pytest.mark.asyncio

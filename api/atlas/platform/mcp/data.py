@@ -9,11 +9,14 @@ from datetime import UTC, date, datetime
 from typing import TYPE_CHECKING, Any, TypedDict, Unpack
 from urllib.parse import urlparse
 
-from atlas.domains.catalog.models.entry import trust_tier
+from atlas.domains.catalog.models.entry import actor_quality, trust_tier
 from atlas.domains.catalog.place_profiles import PLACE_PROFILES
 from atlas.domains.catalog.schemas.public import (
     Address,
+    ClaimEvidence,
+    ClaimEvidenceSet,
     CoverageCount,
+    DiscoveryRunCollectionResponse,
     EntityCollectionResponse,
     EntityDetailResponse,
     EntityRelationshipItem,
@@ -29,6 +32,7 @@ from atlas.domains.catalog.schemas.public import (
     PlaceCoverageResponse,
     PlaceProfileResponse,
     PlaceTypeCount,
+    ProfileAnswers,
     SourceCollectionResponse,
     SourceResponse,
     TrustInfo,
@@ -39,7 +43,8 @@ from atlas.domains.catalog.taxonomy import (
     ISSUE_SEARCH_TERMS,
     get_issue_area_by_slug,
 )
-from atlas.models import EntryCRUD, FlagCRUD, get_db_connection
+from atlas.models import DiscoveryRunCRUD, EntryCRUD, FlagCRUD, get_db_connection
+from atlas.schemas import DiscoveryRunResponse
 
 __all__ = ["AtlasDataService"]
 
@@ -47,6 +52,7 @@ if TYPE_CHECKING:
     from aiosqlite import Connection
 
     from atlas.domains.catalog.models.entry import EntryModel
+    from atlas.domains.discovery.models import DiscoveryRunModel
 
 _WORD_RE = re.compile(r"[a-z0-9]+")
 MIN_PLACE_KEY_PARTS = 2
@@ -139,6 +145,8 @@ class EntityRecordContext:
         source_types: list[str],
         source_count: int,
         latest_source_date: str | None,
+        source_ids: list[str] | None = None,
+        contact_source_ids: list[str] | None = None,
         flag_summary: Mapping[str, Any] | None = None,
         independent_source_count: int | None = None,
         website_grounded: bool | None = None,
@@ -148,6 +156,8 @@ class EntityRecordContext:
         self.source_types = source_types
         self.source_count = source_count
         self.latest_source_date = latest_source_date
+        self.source_ids = source_ids or []
+        self.contact_source_ids = contact_source_ids or []
         self.flag_summary = flag_summary
         self.independent_source_count = independent_source_count
         self.website_grounded = website_grounded
@@ -224,6 +234,44 @@ class AtlasDataService:
         """Convenience place-first alias for entity search."""
         return await self.search_entities(place=place, **kwargs)
 
+    async def list_discovery_runs(
+        self,
+        *,
+        state: str | None = None,
+        status: str | None = None,
+        limit: int = 20,
+        cursor: str | None = None,
+    ) -> dict[str, Any]:
+        """List structured discovery-run artifacts for agent research workflows."""
+        offset = _decode_cursor(cursor)
+        async with DatabaseSession(self._database_url) as conn:
+            runs = await DiscoveryRunCRUD.list(
+                conn,
+                state=state,
+                status=status,
+                limit=limit,
+                offset=offset,
+            )
+            total = await DiscoveryRunCRUD.count(conn, state=state, status=status)
+
+        next_cursor = None
+        if offset + limit < total:
+            next_cursor = str(offset + limit)
+
+        return DiscoveryRunCollectionResponse(
+            items=[_discovery_run_record(run) for run in runs],
+            total=total,
+            next_cursor=next_cursor,
+        ).model_dump(mode="json")
+
+    async def get_discovery_run(self, run_id: str) -> dict[str, Any]:
+        """Get one structured discovery-run artifact by ID."""
+        async with DatabaseSession(self._database_url) as conn:
+            run = await DiscoveryRunCRUD.get_by_id(conn, run_id)
+            if run is None:
+                raise _discovery_run_not_found(run_id)
+        return _discovery_run_record(run)
+
     async def get_entity(
         self, entity_id: str, *, include_suppressed: bool = False
     ) -> dict[str, Any]:
@@ -264,6 +312,8 @@ class AtlasDataService:
                 issue_area_ids=issue_area_ids,
                 source_types=sorted({source["type"] for source in sources}),
                 source_count=len(sources),
+                source_ids=[str(source["id"]) for source in sources],
+                contact_source_ids=_contact_source_ids(entry, sources),
                 latest_source_date=_latest_source_date(sources, entry.last_seen.isoformat()),
                 flag_summary=entity_flag_summaries.get(entity_id),
                 independent_source_count=independent_source_count,
@@ -679,6 +729,9 @@ class AtlasDataService:
                                 {source["type"] for source in source_map.get(related_entry.id, [])}
                             ),
                             source_count=record["source_count"],
+                            source_ids=[
+                                str(source["id"]) for source in source_map.get(related_entry.id, [])
+                            ],
                             latest_source_date=record["latest_source_date"],
                         ),
                     ),
@@ -845,12 +898,159 @@ def _trust_inputs_from_sources(
     return len(domains), website_grounded, email_grounded
 
 
+def _contact_source_ids(entry: EntryModel, sources: Sequence[Mapping[str, Any]]) -> list[str]:
+    """Return source IDs whose URL or context supports visible contact fields."""
+    website_host = _registrable_domain(entry.website)
+    email = (entry.email or "").lower()
+    source_ids: list[str] = []
+    for source in sources:
+        context = (source.get("extraction_context") or "").lower()
+        supports_website = website_host is not None and (
+            website_host in context or _registrable_domain(source.get("url")) == website_host
+        )
+        supports_email = bool(email) and email in context
+        if supports_website or supports_email:
+            source_id = source.get("id")
+            if source_id is not None:
+                source_ids.append(str(source_id))
+    return source_ids
+
+
 def _trust_level(*, entry: EntryModel, independent_source_count: int | None) -> str:
     """Honest trust tier; never overclaims for thinly-sourced auto entries."""
     return trust_tier(
         verified=entry.verified,
         claim_status=entry.claim_status,
         independent_source_count=independent_source_count or 0,
+    )
+
+
+def _claim_confidence(
+    *,
+    entry: EntryModel,
+    independent_source_count: int | None,
+    source_count: int,
+) -> str:
+    """Return a confidence label for source-backed visible profile claims."""
+    level = _trust_level(entry=entry, independent_source_count=independent_source_count)
+    if level in {"subject_verified", "atlas_verified", "corroborated"}:
+        return level
+    return "unverified" if source_count <= 1 else "corroborated"
+
+
+def _contact_claim_source_count(entry: EntryModel, context: EntityRecordContext) -> int:
+    """Count visible contact channels backed by linked-source evidence."""
+    count = 0
+    if entry.website and context.website_grounded:
+        count += 1
+    if entry.email and context.email_grounded:
+        count += 1
+    return count
+
+
+def _contact_claim_confidence(entry: EntryModel, context: EntityRecordContext) -> str:
+    """Return a conservative confidence label for visible contact fields."""
+    visible_channels = int(bool(entry.website)) + int(bool(entry.email)) + int(bool(entry.phone))
+    if visible_channels == 0:
+        return "unverified"
+
+    grounded_channels = _contact_claim_source_count(entry, context)
+    if grounded_channels == visible_channels:
+        return _claim_confidence(
+            entry=entry,
+            independent_source_count=context.independent_source_count,
+            source_count=max(grounded_channels, context.source_count),
+        )
+    if grounded_channels > 0:
+        return "partial"
+    return "unverified"
+
+
+def _claim_evidence_set(
+    *,
+    entry: EntryModel,
+    context: EntityRecordContext,
+    verification_level: str,
+) -> ClaimEvidenceSet:
+    """Build evidence metadata for the visible facts on a profile."""
+    base = ClaimEvidence(
+        source_count=context.source_count,
+        source_ids=context.source_ids,
+        confidence=_claim_confidence(
+            entry=entry,
+            independent_source_count=context.independent_source_count,
+            source_count=context.source_count,
+        ),
+        as_of=context.latest_source_date,
+        verification_level=verification_level,
+    )
+    return ClaimEvidenceSet(
+        summary=base,
+        place=base,
+        issues=base,
+        contact=ClaimEvidence(
+            source_count=(
+                len(context.contact_source_ids)
+                if context.contact_source_ids
+                else _contact_claim_source_count(entry, context)
+            ),
+            source_ids=context.contact_source_ids,
+            confidence=_contact_claim_confidence(entry, context),
+            as_of=context.latest_source_date,
+            verification_level=verification_level,
+        ),
+    )
+
+
+def _humanize_identifier(value: str) -> str:
+    """Convert API identifiers into compact labels for profile answers."""
+    return value.replace("_", " ").replace("-", " ").title()
+
+
+def _entity_type_label(entry: EntryModel) -> str:
+    if entry.type == "person":
+        return "Person"
+    if entry.type == "organization":
+        return "Organization"
+    return _humanize_identifier(entry.type)
+
+
+def _format_answer_date(iso: str | None) -> str | None:
+    if not iso:
+        return None
+    parsed = datetime.fromisoformat(iso)
+    return parsed.strftime("%b %Y")
+
+
+def _format_answer_evidence(evidence: ClaimEvidence) -> str:
+    source_label = (
+        f"{evidence.source_count} {'source' if evidence.source_count == 1 else 'sources'}"
+    )
+    return " · ".join(
+        part
+        for part in [source_label, evidence.confidence, _format_answer_date(evidence.as_of)]
+        if part
+    )
+
+
+def _profile_answers(
+    *,
+    entry: EntryModel,
+    context: EntityRecordContext,
+    claim_evidence: ClaimEvidenceSet,
+) -> ProfileAnswers:
+    """Build the scan-friendly actor summary used by app and agent clients."""
+    issue_labels = [_humanize_identifier(slug) for slug in context.issue_area_ids]
+    why_parts = [
+        f"{context.source_count} {'source' if context.source_count == 1 else 'sources'}",
+        *issue_labels[:2],
+    ]
+    return ProfileAnswers(
+        who=_entity_type_label(entry),
+        what_they_do=entry.description or ", ".join(issue_labels) or "Public civic actor",
+        where=_format_place(entry.city, entry.state, entry.region) or "Location not specified",
+        why_they_matter=" · ".join(why_parts),
+        how_atlas_knows=_format_answer_evidence(claim_evidence.summary),
     )
 
 
@@ -861,6 +1061,11 @@ def _entity_record(entry: EntryModel, context: EntityRecordContext) -> dict[str,
         verification_level = "atlas-verified"
     else:
         verification_level = "source-derived"
+    claim_evidence = _claim_evidence_set(
+        entry=entry,
+        context=context,
+        verification_level=verification_level,
+    )
     return EntityResponse(
         id=entry.id,
         name=entry.name,
@@ -892,6 +1097,17 @@ def _entity_record(entry: EntryModel, context: EntityRecordContext) -> dict[str,
             "claim_verified_at": entry.claim_verified_at,
             "verification_level": verification_level,
         },
+        claim_evidence=claim_evidence,
+        profile_answers=_profile_answers(
+            entry=entry,
+            context=context,
+            claim_evidence=claim_evidence,
+        ),
+        actor_quality=actor_quality(
+            entry,
+            issue_area_ids=context.issue_area_ids,
+            source_count=context.source_count,
+        ),
         trust=TrustInfo(
             level=_trust_level(
                 entry=entry, independent_source_count=context.independent_source_count
@@ -910,6 +1126,31 @@ def _entity_record(entry: EntryModel, context: EntityRecordContext) -> dict[str,
         updated_at=entry.updated_at,
         resource_uri=f"atlas://entities/{entry.id}",
     ).model_dump(mode="json")
+
+
+def _discovery_run_record(run: DiscoveryRunModel) -> dict[str, Any]:
+    """Serialize a discovery run with a stable Atlas resource URI for agents."""
+    record = DiscoveryRunResponse(
+        id=run.id,
+        location_query=run.location_query,
+        state=run.state,
+        research_goal=run.research_goal,
+        issue_areas=run.issue_areas,
+        queries_generated=run.queries_generated,
+        sources_fetched=run.sources_fetched,
+        sources_processed=run.sources_processed,
+        entries_extracted=run.entries_extracted,
+        entries_after_dedup=run.entries_after_dedup,
+        entries_confirmed=run.entries_confirmed,
+        started_at=run.started_at,
+        completed_at=run.completed_at,
+        status=run.status,
+        error_message=run.error_message,
+        created_at=run.created_at,
+        research_summary=run.research_summary,
+    ).model_dump(mode="json")
+    record["resource_uri"] = f"atlas://discovery-runs/{run.id}"
+    return record
 
 
 def _source_record(
@@ -1049,6 +1290,10 @@ def _normalize_state(state: str | None) -> str | None:
 
 def _entity_not_found(entity_id: str) -> ValueError:
     return ValueError(f"Entity not found: {entity_id}")
+
+
+def _discovery_run_not_found(run_id: str) -> ValueError:
+    return ValueError(f"Discovery run not found: {run_id}")
 
 
 def _invalid_issue_areas(invalid: list[str]) -> ValueError:

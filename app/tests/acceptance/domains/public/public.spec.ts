@@ -9,7 +9,7 @@ test.describe("public visitor journey", () => {
 
     // 2. Browse Page
     await page.goto("/browse");
-    await expect(page.getByRole("heading", { name: "Browse Atlas" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Source-linked civic research" })).toBeVisible();
 
     // Check if at least one entry is visible (assuming seed data exists or it shows a message)
     // For now, just check the heading and the search input

@@ -1,10 +1,10 @@
 /**
- * "Pick up where you left off" recent-searches strip for the research home.
+ * "Pick up where you left off" recent-research strip for the research home.
  *
- * Lists the user's most recent discovery runs as cards that re-enter the
- * discovery surface, and shows an honest free-run counter ("1 of 2 free runs
- * used this month") as context rather than a wall. The counter is only shown
- * when a finite monthly run limit applies; paid and local-mode users see no
+ * Lists the user's most recent research requests as cards that re-enter the
+ * research surface, and shows an honest free-request counter ("1 of 2 free
+ * research requests used this month") as context rather than a wall. The
+ * counter is only shown when a finite monthly request limit applies; paid and local-mode users see no
  * counter. When the user has run nothing yet, it invites a first search.
  */
 import { Link } from "@tanstack/react-router";
@@ -14,9 +14,9 @@ import type { RecentRunSummary } from "../server/research-summary";
 import { ResearchValueNudge } from "./research-value-nudge";
 
 interface RecentSearchesSectionProps {
-  /** The user's most recent discovery runs from the research loader. */
+  /** The user's most recent research requests from the research loader. */
   runs: RecentRunSummary[];
-  /** Discovery runs the user has started in the current month. */
+  /** Research requests the user has started in the current month. */
   runsThisMonth: number;
   /**
    * The finite monthly run allowance to surface, or null when unlimited or
@@ -36,12 +36,12 @@ interface RecentSearchesSectionProps {
 }
 
 interface RecentRunCardProps {
-  /** The discovery run this card represents. */
+  /** The research request this card represents. */
   run: RecentRunSummary;
 }
 
 /**
- * A single recent-run card linking back into the discovery surface.
+ * A single recent-research card linking back into the research surface.
  */
 function RecentRunCard({ run }: RecentRunCardProps) {
   return (
@@ -61,7 +61,7 @@ function RecentRunCard({ run }: RecentRunCardProps) {
 }
 
 /**
- * The home recent-searches strip, server-default from the loader summary.
+ * The home recent-research strip, server-default from the loader summary.
  */
 export function RecentSearchesSection({
   runs,
@@ -76,28 +76,24 @@ export function RecentSearchesSection({
   return (
     <section className="space-y-4">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="type-headline-small text-ink-strong">Recent searches</h2>
+        <h2 className="type-headline-small text-ink-strong">Recent research</h2>
         <Link to="/discovery" className="type-label-large text-ink-strong underline">
-          New search
+          Start research
         </Link>
       </div>
 
       {runsPerMonthLimit !== null ? (
         <p className="type-body-small text-ink-soft">
-          {runsThisMonth} of {runsPerMonthLimit} free {runsPerMonthLimit === 1 ? "run" : "runs"}{" "}
-          used this month.
+          {runsThisMonth} of {runsPerMonthLimit} free research{" "}
+          {runsPerMonthLimit === 1 ? "request" : "requests"} used this month.
         </p>
       ) : null}
 
       {runs.length === 0 ? (
         <div className="border-outline-variant bg-surface-container space-y-2 rounded-[1rem] border p-5">
-          <p className="type-body-medium text-ink-strong">No searches yet.</p>
+          <p className="type-body-medium text-ink-strong">No research yet.</p>
           <p className="type-body-small text-ink-soft">
-            Run a discovery search to find people and organizations working on an issue.{" "}
-            <Link to="/discovery" className="text-accent underline">
-              Start a search
-            </Link>
-            .
+            Start research to find people and organizations working on an issue.
           </p>
         </div>
       ) : (

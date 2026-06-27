@@ -1,14 +1,28 @@
 import { Link } from "@tanstack/react-router";
-import { ArrowUpRight, Newspaper } from "lucide-react";
+import {
+  ArrowUpRight,
+  Building2,
+  History,
+  Mail,
+  Network,
+  Newspaper,
+  ShieldCheck,
+} from "lucide-react";
 import { useAtlasSession } from "@/domains/access";
 import { ActorAvatar } from "@/domains/catalog/components/profiles/actor-avatar";
 import { ActionCluster } from "@/domains/catalog/components/profiles/action-cluster";
 import { AppearancesList } from "@/domains/catalog/components/profiles/appearances-list";
 import { DataQualityBlock } from "@/domains/catalog/components/profiles/data-quality-block";
-import { formatProfileLocation } from "@/domains/catalog/components/profiles/detail/profile-detail-primitives";
+import {
+  formatProfileLocation,
+  ProfileSection,
+} from "@/domains/catalog/components/profiles/detail/profile-detail-primitives";
 import { ConnectionList } from "@/domains/catalog/components/profiles/connection-list";
+import { ProfileAnswerCard } from "@/domains/catalog/components/profiles/profile-answer-card";
 import { ProfileHero } from "@/domains/catalog/components/profiles/profile-hero";
+import { ProfileHistory } from "@/domains/catalog/components/profiles/profile-history";
 import { ProfileJsonLd } from "@/domains/catalog/components/profiles/profile-head";
+import { ProfileResearchContext } from "@/domains/catalog/components/profiles/profile-research-context";
 import { ProfileStats } from "@/domains/catalog/components/profiles/profile-stats";
 import { ReachSection } from "@/domains/catalog/components/profiles/reach-section";
 import { SignatureQuote } from "@/domains/catalog/components/profiles/signature-quote";
@@ -23,10 +37,6 @@ interface PersonProfilePageProps {
   entry: Entry;
   initialConnections?: ConnectionNetwork;
 }
-
-const PANEL = "border border-border-taupe bg-surface-container-lowest px-6 py-6 sm:px-8";
-
-const PANEL_HEADER = "font-mono text-xs font-semibold uppercase tracking-[0.14em] text-ink-soft";
 
 function monthsBetween(fromIso: string, toIso: string): number {
   const from = new Date(fromIso);
@@ -104,19 +114,31 @@ export function PersonProfilePage({ entry, initialConnections }: PersonProfilePa
           }
         />
 
+        <ProfileAnswerCard entry={entry} issueAreaLabels={issueAreaLabels} />
+
+        <ProfileResearchContext entry={entry} issueAreaLabels={issueAreaLabels} />
+
         <SignatureQuote sources={entry.sources ?? []} />
 
         <ProfileStats items={stats} />
 
+        <ProfileSection label="Record history" sectionId="record-history" Icon={History}>
+          <ProfileHistory entry={entry} />
+        </ProfileSection>
+
         <WorkSection entry={entry} issueAreaLabels={issueAreaLabels} />
 
         {affiliatedOrgQuery.data ? (
-          <section aria-label="Affiliated organization" className={PANEL}>
-            <span className={PANEL_HEADER}>Affiliated with</span>
+          <ProfileSection
+            label="Affiliated organization"
+            sectionId="affiliated-organization"
+            title="Affiliated with"
+            Icon={Building2}
+          >
             <Link
               to="/profiles/organizations/$slug"
               params={{ slug: affiliatedOrgQuery.data.slug }}
-              className="border-border-taupe hover:border-civic bg-paper mt-3 flex items-center gap-4 border p-4 transition-colors"
+              className="border-border-taupe hover:border-civic bg-paper flex items-center gap-4 border p-4 transition-colors"
             >
               <ActorAvatar
                 name={affiliatedOrgQuery.data.name}
@@ -134,51 +156,48 @@ export function PersonProfilePage({ entry, initialConnections }: PersonProfilePa
               </div>
               <ArrowUpRight className="text-ink-soft h-4 w-4 shrink-0" />
             </Link>
-          </section>
+          </ProfileSection>
         ) : null}
 
         {hasReach ? (
-          <section aria-label="Contact details" className={PANEL}>
-            <span className={PANEL_HEADER}>Reach</span>
-            <div className="mt-3">
-              <ReachSection
-                email={entry.email}
-                website={entry.website}
-                phone={entry.phone}
-                emailGrounded={entry.trust.email_grounded}
-                websiteGrounded={entry.trust.website_grounded}
-              />
-            </div>
-          </section>
+          <ProfileSection
+            label="Contact details"
+            sectionId="contact-details"
+            title="Reach"
+            Icon={Mail}
+          >
+            <ReachSection
+              email={entry.email}
+              website={entry.website}
+              phone={entry.phone}
+              emailGrounded={entry.trust.email_grounded}
+              websiteGrounded={entry.trust.website_grounded}
+            />
+          </ProfileSection>
         ) : null}
 
-        <section aria-label="Reporting trail" className={PANEL}>
-          <div className="mb-4 flex items-center gap-2">
-            <Newspaper className="text-ink-soft h-4 w-4" aria-hidden />
-            <span className={PANEL_HEADER}>Reporting trail</span>
-          </div>
+        <ProfileSection label="Reporting trail" sectionId="reporting-trail" Icon={Newspaper}>
           <AppearancesList sources={entry.sources ?? []} mode="person" />
-        </section>
+        </ProfileSection>
 
-        <section
-          id="connections"
-          aria-label="Network — actors related to this profile"
-          className={PANEL}
+        <ProfileSection
+          label="Network — actors related to this profile"
+          sectionId="network"
+          title="Who else is doing this work"
+          Icon={Network}
+          htmlId="connections"
+          className="scroll-mt-20"
         >
-          <div className="mb-4 flex flex-wrap items-baseline gap-x-3">
-            <span className={PANEL_HEADER}>Network</span>
-            <h2 className="text-ink-strong text-base font-semibold">Who else is doing this work</h2>
-          </div>
           <ConnectionList
             entry={entry}
             network={connectionsQuery.data}
             isLoading={connectionsQuery.isLoading}
           />
-        </section>
+        </ProfileSection>
 
-        <section aria-label="Data quality" className={PANEL}>
+        <ProfileSection label="Data quality" sectionId="data-quality" Icon={ShieldCheck}>
           <DataQualityBlock entry={entry} />
-        </section>
+        </ProfileSection>
 
         <ActionCluster
           entryId={entry.id}

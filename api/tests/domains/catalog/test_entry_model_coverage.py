@@ -7,6 +7,9 @@ functions directly.
 
 from __future__ import annotations
 
+import inspect
+from pathlib import Path
+
 import pytest
 
 from atlas.domains.catalog.models.entry import (
@@ -15,6 +18,17 @@ from atlas.domains.catalog.models.entry import (
 )
 from atlas.models import EntryCRUD as EntryCRUDExport
 from atlas.models import SourceCRUD
+
+_MAX_REVIEWABLE_ENTRY_MODULE_LINES = 1000
+
+
+def test_entry_model_module_stays_reviewable() -> None:
+    """The public entry model module should stay small enough to audit trust-critical behavior."""
+    source_file = inspect.getsourcefile(EntryCRUD)
+    assert source_file is not None
+    module_path = Path(source_file)
+
+    assert len(module_path.read_text().splitlines()) < _MAX_REVIEWABLE_ENTRY_MODULE_LINES
 
 
 @pytest.mark.asyncio
@@ -394,6 +408,71 @@ async def test_search_public_id_filter_branches_with_full_query_payload(
 
 
 @pytest.mark.asyncio
+async def test_search_public_filters_and_facets_source_patterns(test_db: object) -> None:
+    """Search should expose trust-relevant source patterns for filtering."""
+    from datetime import date
+
+    conn = test_db
+    single_id = await EntryCRUD.create(
+        conn,
+        entry_type="organization",
+        name="Single Source Org",
+        description="One source only.",
+        city="Kansas City",
+        state="MO",
+        geo_specificity="local",
+    )
+    multi_id = await EntryCRUD.create(
+        conn,
+        entry_type="organization",
+        name="Multi Source Org",
+        description="Two independent source types.",
+        city="Kansas City",
+        state="MO",
+        geo_specificity="local",
+    )
+    social_id = await EntryCRUD.create(
+        conn,
+        entry_type="organization",
+        name="Social Only Org",
+        description="Only social evidence.",
+        city="Kansas City",
+        state="MO",
+        geo_specificity="local",
+    )
+
+    async def link_source(entry_id: str, slug: str, source_type: str) -> None:
+        source_id = await SourceCRUD.create(
+            conn,
+            url=f"https://example.com/{slug}",
+            source_type=source_type,
+            extraction_method="manual",
+            title=f"{slug} source",
+            publication="Test Publication",
+            published_date=date(2026, 2, 1),
+        )
+        await SourceCRUD.link_to_entry(conn, entry_id, source_id)
+
+    await link_source(single_id, "single", "news_article")
+    await link_source(multi_id, "multi-news", "news_article")
+    await link_source(multi_id, "multi-report", "report")
+    await link_source(social_id, "social", "social_media")
+
+    unfiltered = await EntryCRUD.search_public(conn)
+    assert {"value": "multi_source", "count": 1} in unfiltered["facets"]["source_patterns"]
+    assert {"value": "single_source", "count": 2} in unfiltered["facets"]["source_patterns"]
+    assert {"value": "social_only", "count": 1} in unfiltered["facets"]["source_patterns"]
+
+    result = await EntryCRUD.search_public(conn, source_patterns=["multi_source"])
+
+    result_ids = {item["entry"].id for item in result["entries"]}
+    assert multi_id in result_ids
+    assert single_id not in result_ids
+    assert social_id not in result_ids
+    assert {"value": "multi_source", "count": 1} in result["facets"]["source_patterns"]
+
+
+@pytest.mark.asyncio
 async def test_load_entries_with_metrics_returns_empty_for_empty_ids(test_db: object) -> None:
     """_load_entries_with_metrics should short-circuit on empty input (line 1001)."""
     rows = await EntryCRUD._load_entries_with_metrics(test_db, [], limit=10, offset=0)  # noqa: SLF001
@@ -412,6 +491,130 @@ async def test_load_entries_with_metrics_returns_empty_when_offset_overshoots(
 
 
 @pytest.mark.asyncio
+async def test_search_public_prioritizes_actor_leads_before_artifacts(test_db: object) -> None:
+    """Mixed browse results should put contactable actors ahead of high-mention artifacts."""
+    from datetime import date
+
+    conn = test_db
+    person_id = await EntryCRUD.create(
+        conn,
+        entry_type="person",
+        name="Tenant Union Organizer",
+        description="A tenant union organizer available for local housing interviews.",
+        city="Kansas City",
+        state="MO",
+        geo_specificity="local",
+        email="organizer@example.org",
+    )
+    campaign_id = await EntryCRUD.create(
+        conn,
+        entry_type="campaign",
+        name="Tenant Union Campaign",
+        description="A campaign with more coverage but no direct public contact.",
+        city="Kansas City",
+        state="MO",
+        geo_specificity="local",
+    )
+    for entry_id in [person_id, campaign_id]:
+        await conn.execute(
+            "INSERT INTO entry_issue_areas (entry_id, issue_area, created_at) "
+            "VALUES (?, ?, datetime('now'))",
+            (entry_id, "housing_affordability"),
+        )
+
+    person_source_id = await SourceCRUD.create(
+        conn,
+        url="https://example.org/person-source",
+        source_type="news_article",
+        extraction_method="manual",
+        title="Organizer interview",
+        publication="Local Press",
+        published_date=date(2026, 2, 1),
+    )
+    await SourceCRUD.link_to_entry(
+        conn,
+        person_id,
+        person_source_id,
+        extraction_context="Names the organizer as a housing contact.",
+    )
+
+    for index in range(2):
+        source_id = await SourceCRUD.create(
+            conn,
+            url=f"https://example.org/campaign-source-{index}",
+            source_type="news_article",
+            extraction_method="manual",
+            title=f"Campaign coverage {index}",
+            publication="Local Press",
+            published_date=date(2026, 3, index + 1),
+        )
+        await SourceCRUD.link_to_entry(
+            conn,
+            campaign_id,
+            source_id,
+            extraction_context="Mentions the campaign.",
+        )
+
+    result = await EntryCRUD.search_public(
+        conn,
+        query="Tenant Union",
+        states=["MO"],
+        issue_areas=["housing_affordability"],
+    )
+
+    assert result["entries"][0]["entry"].id == person_id
+
+
+@pytest.mark.asyncio
+async def test_search_public_prioritizes_specific_actors_over_vague_records(
+    test_db: object,
+) -> None:
+    """Browse should favor records that clearly name who does what in which place."""
+    from datetime import date
+
+    conn = test_db
+    specific_id = await EntryCRUD.create(
+        conn,
+        entry_type="organization",
+        name="Eastside Tenant Clinic",
+        description="Runs tenant legal clinics for renters facing eviction.",
+        city="Kansas City",
+        state="MO",
+        geo_specificity="local",
+    )
+    vague_id = await EntryCRUD.create(
+        conn,
+        entry_type="initiative",
+        name="Tenant Clinic Resource Roundup",
+        description="",
+        city=None,
+        state=None,
+        geo_specificity="national",
+    )
+    await conn.execute(
+        "INSERT INTO entry_issue_areas (entry_id, issue_area, created_at) "
+        "VALUES (?, ?, datetime('now'))",
+        (specific_id, "housing_affordability"),
+    )
+    for index, entry_id in enumerate([specific_id, vague_id]):
+        source_id = await SourceCRUD.create(
+            conn,
+            url=f"https://example.org/specificity-{index}",
+            source_type="news_article",
+            extraction_method="manual",
+            title="Tenant clinic coverage",
+            published_date=date(2026, 4, index + 1),
+        )
+        await SourceCRUD.link_to_entry(conn, entry_id, source_id)
+
+    result = await EntryCRUD.search_public(conn, query="Tenant Clinic")
+
+    assert result["entries"][0]["entry"].id == specific_id
+    assert result["entries"][0]["actor_quality"]["level"] == "specific_actor"
+    assert result["entries"][1]["actor_quality"]["level"] == "thin_record"
+
+
+@pytest.mark.asyncio
 async def test_build_facets_returns_empty_payload_for_empty_ids(test_db: object) -> None:
     """_build_facets should return the empty facet payload on empty input (line 1043)."""
     result = await EntryCRUD._build_facets(test_db, [])  # noqa: SLF001
@@ -422,6 +625,7 @@ async def test_build_facets_returns_empty_payload_for_empty_ids(test_db: object)
         "issue_areas": [],
         "entity_types": [],
         "source_types": [],
+        "source_patterns": [],
     }
 
 

@@ -1,6 +1,7 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { ArrowUpRight, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
+import { useAtlasSession } from "@/domains/access";
 import {
   useCreateSavedList,
   useDeleteSavedList,
@@ -14,6 +15,7 @@ export const Route = createFileRoute("/_workspace/lists")({
 });
 
 function ListsRoute() {
+  const session = useAtlasSession();
   const lists = useSavedLists();
   const createList = useCreateSavedList();
   const deleteList = useDeleteSavedList();
@@ -39,15 +41,20 @@ function ListsRoute() {
     }
   }
 
+  const activeOrganization = session.data?.workspace.activeOrganization;
+  const isTeamWorkspace = activeOrganization?.workspaceType === "team";
+  const workspaceOwner = isTeamWorkspace ? activeOrganization.name : "You";
+  const heading = isTeamWorkspace ? "Shared project workspaces" : "Project workspaces";
+  const workspaceKindLabel = isTeamWorkspace ? "Shared project workspace" : "Project workspace";
+
   return (
     <div className="mx-auto max-w-4xl space-y-8 py-12">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <Badge variant="info">My collections</Badge>
-          <h1 className="type-display-small text-ink-strong mt-2">Saved lists</h1>
+          <Badge variant="info">Research workspace</Badge>
+          <h1 className="type-display-small text-ink-strong mt-2">{heading}</h1>
           <p className="type-body-large text-ink-soft max-w-2xl">
-            Pin profiles into named collections so you can come back to them — for an outreach push,
-            a research thread, or a coalition you&apos;re building.
+            Group leads, notes, briefs, and exports around a reporting or research goal.
           </p>
         </div>
         <Button
@@ -136,6 +143,13 @@ function ListsRoute() {
                 {list.description ? (
                   <p className="type-body-small text-ink-soft line-clamp-2">{list.description}</p>
                 ) : null}
+                <p className="type-label-small text-ink-soft">Leads, notes, briefs, and exports</p>
+                <div className="type-label-small text-ink-muted flex flex-wrap gap-x-3 gap-y-1">
+                  <span>{workspaceKindLabel}</span>
+                  {isTeamWorkspace ? <span>Team-visible notes</span> : null}
+                  <span>Owner: {workspaceOwner}</span>
+                  <span>Activity: leads, notes, and exports</span>
+                </div>
                 <p className="type-label-small text-ink-muted">
                   {list.item_count} {list.item_count === 1 ? "actor" : "actors"}
                 </p>

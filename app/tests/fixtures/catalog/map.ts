@@ -26,6 +26,7 @@ export function makeBrowseSearchState(
     issue_areas: [],
     entry_types: [],
     source_types: [],
+    source_patterns: [],
     offset: 0,
     ...overrides,
   };

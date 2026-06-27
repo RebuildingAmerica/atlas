@@ -7,11 +7,12 @@ REST API endpoints, request/response schemas, and conventions.
 ## Base URL
 
 All requests go to:
+
 ```
-http://localhost:8000/api/v1
+https://api.atlas.localhost:1355/api/v1
 ```
 
-**In production:** Replace `localhost:8000` with the deployed API domain.
+**In production:** Replace `api.atlas.localhost:1355` with the deployed API domain.
 
 ## Authentication
 
@@ -24,13 +25,17 @@ Currently no authentication. All endpoints are public.
 All responses are JSON. Successful responses return the requested data. Errors return a structured error object.
 
 **Success (2xx):**
+
 ```json
 {
-  "data": { /* requested data */ }
+  "data": {
+    /* requested data */
+  }
 }
 ```
 
 **Error (4xx/5xx):**
+
 ```json
 {
   "error": {
@@ -46,15 +51,21 @@ All responses are JSON. Successful responses return the requested data. Errors r
 List endpoints support pagination via query parameters.
 
 **Query Parameters:**
+
 - `page` — Page number (1-indexed, default: 1)
 - `page_size` — Items per page (default: 20, max: 100)
 
 **Response:**
+
 ```json
 {
   "data": [
-    { /* item */ },
-    { /* item */ }
+    {
+      /* item */
+    },
+    {
+      /* item */
+    }
   ],
   "pagination": {
     "page": 1,
@@ -74,6 +85,7 @@ GET /entries
 ```
 
 **Query Parameters:**
+
 - `page` — Page number (default: 1)
 - `page_size` — Items per page (default: 20)
 - `state` — Filter by state (2-letter code, e.g., "KS")
@@ -81,6 +93,7 @@ GET /entries
 - `q` — Full-text search query
 
 **Response:**
+
 ```json
 {
   "data": [
@@ -111,6 +124,7 @@ GET /entries
 ```
 
 **Status Codes:**
+
 - `200` — Success
 - `400` — Invalid query parameters
 - `500` — Server error
@@ -124,9 +138,11 @@ GET /entries/{id}
 ```
 
 **Path Parameters:**
+
 - `id` — Entry UUID
 
 **Response:**
+
 ```json
 {
   "data": {
@@ -140,7 +156,9 @@ GET /entries/{id}
     "geo_specificity": "local",
     "website": "https://...",
     "issue_areas": ["labor", "worker_cooperatives"],
-    "sources": [ /* array of sources */ ],
+    "sources": [
+      /* array of sources */
+    ],
     "affiliated_org_id": "uuid-of-org",
     "active": true,
     "created_at": "2026-03-20T10:00:00Z",
@@ -150,6 +168,7 @@ GET /entries/{id}
 ```
 
 **Status Codes:**
+
 - `200` — Success
 - `404` — Entry not found
 - `500` — Server error
@@ -163,6 +182,7 @@ POST /entries
 ```
 
 **Request Body:**
+
 ```json
 {
   "type": "person",
@@ -184,6 +204,7 @@ POST /entries
 **Response:** Created entry object (same as GET)
 
 **Status Codes:**
+
 - `201` — Created
 - `400` — Invalid request
 - `500` — Server error
@@ -197,9 +218,11 @@ PUT /entries/{id}
 ```
 
 **Path Parameters:**
+
 - `id` — Entry UUID
 
 **Request Body:** Fields to update (all optional)
+
 ```json
 {
   "name": "Updated name",
@@ -212,6 +235,7 @@ PUT /entries/{id}
 **Response:** Updated entry object
 
 **Status Codes:**
+
 - `200` — Updated
 - `404` — Entry not found
 - `400` — Invalid request
@@ -228,6 +252,7 @@ POST /discovery
 ```
 
 **Request Body:**
+
 ```json
 {
   "location": "Kansas City, MO",
@@ -236,6 +261,7 @@ POST /discovery
 ```
 
 **Response:**
+
 ```json
 {
   "data": {
@@ -254,6 +280,7 @@ POST /discovery
 ```
 
 **Status Codes:**
+
 - `202` — Accepted (processing started)
 - `400` — Invalid request
 - `500` — Server error
@@ -267,11 +294,13 @@ GET /discovery/{run_id}
 ```
 
 **Path Parameters:**
+
 - `run_id` — DiscoveryRun UUID
 
 **Response:** DiscoveryRun object (same structure as above)
 
 **Status Codes:**
+
 - `200` — Success
 - `404` — Run not found
 - `500` — Server error
@@ -285,11 +314,13 @@ GET /discovery
 ```
 
 **Query Parameters:**
+
 - `state` — Filter by state (e.g., "KS")
 - `page` — Page number
 - `page_size` — Items per page
 
 **Response:**
+
 ```json
 {
   "data": [ /* array of DiscoveryRun objects */ ],
@@ -298,6 +329,7 @@ GET /discovery
 ```
 
 **Status Codes:**
+
 - `200` — Success
 - `400` — Invalid query
 - `500` — Server error
@@ -313,6 +345,7 @@ GET /taxonomy/issue-areas
 ```
 
 **Response:**
+
 ```json
 {
   "data": [
@@ -331,6 +364,7 @@ GET /taxonomy/issue-areas
 ```
 
 **Status Codes:**
+
 - `200` — Success
 - `500` — Server error
 
@@ -343,9 +377,11 @@ GET /taxonomy/issue-areas/{slug}
 ```
 
 **Path Parameters:**
+
 - `slug` — Issue area slug (e.g., "housing")
 
 **Response:**
+
 ```json
 {
   "data": {
@@ -363,6 +399,7 @@ GET /taxonomy/issue-areas/{slug}
 ```
 
 **Status Codes:**
+
 - `200` — Success
 - `404` — Issue area not found
 - `500` — Server error
@@ -373,16 +410,17 @@ GET /taxonomy/issue-areas/{slug}
 
 Common error types returned in error responses:
 
-| Type | HTTP | Meaning |
-|---|---|---|
-| `NOT_FOUND` | 404 | Resource not found |
-| `VALIDATION_ERROR` | 400 | Request validation failed |
-| `INVALID_QUERY` | 400 | Query parameters invalid |
-| `CONFLICT` | 409 | Resource already exists |
-| `INTERNAL_ERROR` | 500 | Server error |
-| `UNAVAILABLE` | 503 | Service temporarily unavailable |
+| Type               | HTTP | Meaning                         |
+| ------------------ | ---- | ------------------------------- |
+| `NOT_FOUND`        | 404  | Resource not found              |
+| `VALIDATION_ERROR` | 400  | Request validation failed       |
+| `INVALID_QUERY`    | 400  | Query parameters invalid        |
+| `CONFLICT`         | 409  | Resource already exists         |
+| `INTERNAL_ERROR`   | 500  | Server error                    |
+| `UNAVAILABLE`      | 503  | Service temporarily unavailable |
 
 **Example error response:**
+
 ```json
 {
   "error": {
@@ -400,7 +438,7 @@ Common error types returned in error responses:
 When the API is running, visit:
 
 ```
-http://localhost:8000/docs
+https://api.atlas.localhost:1355/docs
 ```
 
 This opens Swagger UI with all endpoints, request/response schemas, and a "Try It" button for each endpoint.
@@ -409,16 +447,16 @@ This opens Swagger UI with all endpoints, request/response schemas, and a "Try I
 
 ## Current Implementation Status
 
-| Endpoint | Status | Notes |
-|---|---|---|
-| `GET /entries` | Partial | Returns empty. API structure correct. |
-| `GET /entries/{id}` | Partial | Returns entry if exists. |
-| `POST /entries` | Partial | Creates entry. Not all fields validated. |
-| `PUT /entries/{id}` | Partial | Updates entry. Limited field support. |
-| `POST /discovery` | Stubbed | Accepts request. Returns pending status. Pipeline doesn't actually run. |
-| `GET /discovery/{run_id}` | Partial | Returns run status. Status stays "pending". |
-| `GET /taxonomy/issue-areas` | Working | Returns all issue areas. |
-| `GET /taxonomy/issue-areas/{slug}` | Working | Returns issue area details. |
+| Endpoint                           | Status  | Notes                                                                   |
+| ---------------------------------- | ------- | ----------------------------------------------------------------------- |
+| `GET /entries`                     | Partial | Returns empty. API structure correct.                                   |
+| `GET /entries/{id}`                | Partial | Returns entry if exists.                                                |
+| `POST /entries`                    | Partial | Creates entry. Not all fields validated.                                |
+| `PUT /entries/{id}`                | Partial | Updates entry. Limited field support.                                   |
+| `POST /discovery`                  | Stubbed | Accepts request. Returns pending status. Pipeline doesn't actually run. |
+| `GET /discovery/{run_id}`          | Partial | Returns run status. Status stays "pending".                             |
+| `GET /taxonomy/issue-areas`        | Working | Returns all issue areas.                                                |
+| `GET /taxonomy/issue-areas/{slug}` | Working | Returns issue area details.                                             |
 
 **Key limitation:** `POST /discovery` doesn't actually run the pipeline. It creates a DiscoveryRun record but doesn't execute Steps 1-6. Status stays "pending" forever.
 
@@ -427,6 +465,7 @@ This opens Swagger UI with all endpoints, request/response schemas, and a "Try I
 ## Field Naming Conventions
 
 All JSON field names use `snake_case`:
+
 ```json
 {
   "issue_areas": [...],

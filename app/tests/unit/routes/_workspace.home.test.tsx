@@ -30,6 +30,7 @@ describe("routes/_workspace/home", () => {
       activity: { newSourcesThisWeek: 0, recentItems: [], followedActorCount: 0 },
       recentRuns: [],
       totals: { savedActors: 0, listCount: 3, runsThisMonth: 0 },
+      watchlists: [],
     };
   }
 

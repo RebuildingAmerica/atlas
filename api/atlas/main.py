@@ -173,8 +173,8 @@ def create_app() -> FastAPI:
     # claims.
     #
     # The MCP discovery flow normally lands on the app-served document at the
-    # canonical `/.well-known/oauth-protected-resource` (see
-    # `app/src/routes/[.]well-known/oauth-protected-resource/index.ts`); this
+    # canonical `/.well-known/oauth-protected-resource/mcp` (see
+    # `app/src/routes/[.]well-known/oauth-protected-resource/mcp.ts`); this
     # copy exists so clients that interact with the API origin directly (e.g.
     # via the OpenAPI spec) can still resolve the authorization server.  The
     # payload mirrors the app document so both surfaces stay consistent.
@@ -184,20 +184,15 @@ def create_app() -> FastAPI:
         apply_static_public_cache(response)
         resource_url = settings.auth_jwt_resource_url
         issuer = settings.auth_jwt_issuer
+        issuer_origin = issuer.removesuffix("/api/auth") if issuer.endswith("/api/auth") else issuer
         metadata: dict[str, Any] = {
             "resource": resource_url,
             "authorization_servers": [issuer] if issuer else [],
             "bearer_methods_supported": ["header"],
-            "scopes_supported": [
-                "openid",
-                "profile",
-                "email",
-                "offline_access",
-                "discovery:read",
-                "discovery:write",
-                "entities:write",
-            ],
+            "scopes_supported": ["discovery:read"],
         }
+        if issuer_origin:
+            metadata["resource_documentation"] = f"{issuer_origin}/docs/mcp"
         if settings.auth_jwt_jwks_url:
             metadata["jwks_uri"] = settings.auth_jwt_jwks_url
         return metadata
@@ -236,8 +231,8 @@ def create_app() -> FastAPI:
     app.include_router(create_router())
 
     # Mount the MCP Streamable HTTP transport at /mcp behind bearer-token auth.
-    # The middleware advertises /.well-known/oauth-protected-resource on 401s
-    # so MCP clients can discover the OAuth issuer automatically.
+    # The middleware advertises the resource-specific PRM URL on 401s so MCP
+    # clients can discover the OAuth issuer automatically.
     mcp_app = get_mcp_asgi_app()
     mcp_app.add_middleware(McpBearerAuthMiddleware)
     app.mount("/mcp", mcp_app)

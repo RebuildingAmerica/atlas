@@ -32,15 +32,31 @@ describe("buildAuthorizationServerMetadata", () => {
 
     expect(metadata.scopes_supported).toEqual([...SUPPORTED_OAUTH_SCOPES]);
   });
+
+  it("advertises the canonical MCP protected resource for authorization-server discovery", () => {
+    const metadata = buildAuthorizationServerMetadata({
+      publicBaseUrl: "https://atlas.example",
+    });
+
+    expect(metadata.protected_resources).toEqual(["https://atlas.example/mcp"]);
+  });
+
+  it("advertises RFC 9207 authorization response issuer support", () => {
+    const metadata = buildAuthorizationServerMetadata({
+      publicBaseUrl: "https://atlas.example",
+    });
+
+    expect(metadata.authorization_response_iss_parameter_supported).toBe(true);
+  });
 });
 
 describe("buildProtectedResourceMetadata", () => {
-  it("publishes the canonical resource URI without a trailing slash", () => {
+  it("publishes the canonical MCP resource URI without a trailing slash", () => {
     const metadata = buildProtectedResourceMetadata({
       publicBaseUrl: "https://preview-pr-42.atlas.example",
     });
 
-    expect(metadata.resource).toBe("https://preview-pr-42.atlas.example");
+    expect(metadata.resource).toBe("https://preview-pr-42.atlas.example/mcp");
     expect(metadata.resource.endsWith("/")).toBe(false);
   });
 
@@ -60,7 +76,7 @@ describe("buildProtectedResourceMetadata", () => {
     expect(metadata.bearer_methods_supported).toEqual(["header"]);
   });
 
-  it("publishes the same scope set as the AS metadata", () => {
+  it("publishes only the minimal MCP baseline scope", () => {
     const asMetadata = buildAuthorizationServerMetadata({
       publicBaseUrl: "https://atlas.example",
     });
@@ -68,6 +84,10 @@ describe("buildProtectedResourceMetadata", () => {
       publicBaseUrl: "https://atlas.example",
     });
 
-    expect(prmMetadata.scopes_supported).toEqual(asMetadata.scopes_supported);
+    expect(asMetadata.scopes_supported).toContain("offline_access");
+    expect(asMetadata.scopes_supported).toContain("discovery:write");
+    expect(prmMetadata.scopes_supported).toEqual(["discovery:read"]);
+    expect(prmMetadata.scopes_supported).not.toContain("offline_access");
+    expect(prmMetadata.scopes_supported).not.toContain("discovery:write");
   });
 });

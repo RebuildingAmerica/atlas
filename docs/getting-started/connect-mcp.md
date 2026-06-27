@@ -206,8 +206,9 @@ https://atlas.example.com/mcp
 The server implements standard OAuth 2.1 with:
 
 - **OIDC discovery** at `https://atlas.example.com/api/auth/.well-known/openid-configuration`
-- **Dynamic client registration** at `https://atlas.example.com/api/auth/oauth2/register` (no pre-registration needed)
-- **Protected resource metadata** at `https://atlas.example.com/.well-known/oauth-protected-resource`
+- **Client ID Metadata Documents** for clients with no prior Atlas registration
+- **Dynamic client registration** at `https://atlas.example.com/api/auth/oauth2/register` for legacy clients
+- **Protected resource metadata** at `https://atlas.example.com/.well-known/oauth-protected-resource/mcp`
 - **PKCE** required for all authorization flows
 - **Streamable HTTP** transport (SSE is not supported)
 

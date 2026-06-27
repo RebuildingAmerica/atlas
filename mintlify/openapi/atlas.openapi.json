@@ -1,6 +1,45 @@
 {
   "components": {
     "schemas": {
+      "ActorQualityInfo": {
+        "description": "Specificity signals showing whether a record is a concrete actor lead.",
+        "properties": {
+          "level": {
+            "default": "thin_record",
+            "description": "specific_actor | partial_actor | thin_record.",
+            "title": "Level",
+            "type": "string"
+          },
+          "missing": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Missing",
+            "type": "array"
+          },
+          "present": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Present",
+            "type": "array"
+          },
+          "score": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Score",
+            "type": "integer"
+          },
+          "total": {
+            "default": 5,
+            "minimum": 1.0,
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "title": "ActorQualityInfo",
+        "type": "object"
+      },
       "Address": {
         "description": "Canonical address and place metadata.",
         "properties": {
@@ -84,15 +123,31 @@
             "type": "string"
           },
           "entry_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "description": "ID of the shared entry to annotate",
-            "title": "Entry Id",
-            "type": "string"
+            "title": "Entry Id"
+          },
+          "source_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "ID of the source packet to annotate",
+            "title": "Source Id"
           }
         },
-        "required": [
-          "entry_id",
-          "content"
-        ],
+        "required": ["content"],
         "title": "AnnotationCreateRequest",
         "type": "object"
       },
@@ -115,9 +170,16 @@
             "type": "string"
           },
           "entry_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "description": "Annotated entry ID",
-            "title": "Entry Id",
-            "type": "string"
+            "title": "Entry Id"
           },
           "id": {
             "description": "Annotation ID",
@@ -129,6 +191,28 @@
             "title": "Org Id",
             "type": "string"
           },
+          "source_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Annotated source ID",
+            "title": "Source Id"
+          },
+          "target_id": {
+            "description": "Annotated entry or source ID",
+            "title": "Target Id",
+            "type": "string"
+          },
+          "target_type": {
+            "description": "entry | source",
+            "title": "Target Type",
+            "type": "string"
+          },
           "updated_at": {
             "description": "Last update timestamp",
             "title": "Updated At",
@@ -138,7 +222,8 @@
         "required": [
           "id",
           "org_id",
-          "entry_id",
+          "target_type",
+          "target_id",
           "content",
           "author_id",
           "created_at",
@@ -157,10 +242,72 @@
             "type": "string"
           }
         },
-        "required": [
-          "content"
-        ],
+        "required": ["content"],
         "title": "AnnotationUpdateRequest",
+        "type": "object"
+      },
+      "ClaimEvidence": {
+        "description": "Evidence metadata for one visible profile claim.",
+        "properties": {
+          "as_of": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Most recent date supporting this claim.",
+            "title": "As Of"
+          },
+          "confidence": {
+            "default": "unverified",
+            "description": "subject_verified | atlas_verified | corroborated | partial | unverified.",
+            "title": "Confidence",
+            "type": "string"
+          },
+          "source_count": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Source Count",
+            "type": "integer"
+          },
+          "source_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Source Ids",
+            "type": "array"
+          },
+          "verification_level": {
+            "default": "source-derived",
+            "description": "Trust tier: source-derived, atlas-verified, subject-verified.",
+            "title": "Verification Level",
+            "type": "string"
+          }
+        },
+        "title": "ClaimEvidence",
+        "type": "object"
+      },
+      "ClaimEvidenceSet": {
+        "description": "Evidence metadata grouped by the visible facts on a profile.",
+        "properties": {
+          "contact": {
+            "$ref": "#/components/schemas/ClaimEvidence"
+          },
+          "issues": {
+            "$ref": "#/components/schemas/ClaimEvidence"
+          },
+          "place": {
+            "$ref": "#/components/schemas/ClaimEvidence"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/ClaimEvidence"
+          }
+        },
+        "required": ["summary", "place", "issues", "contact"],
+        "title": "ClaimEvidenceSet",
         "type": "object"
       },
       "ClaimStatusInfo": {
@@ -296,19 +443,40 @@
             "title": "Count"
           },
           "kind": {
-            "description": "same_organization | co_mentioned | same_issue_area | same_geography.",
+            "description": "same_organization | sourced_edge | co_mentioned | same_issue_area | same_geography.",
             "title": "Kind",
             "type": "string"
           },
           "label": {
             "title": "Label",
             "type": "string"
+          },
+          "relationship_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Semantic relationship type for sourced edges, such as staff or coalition_partner.",
+            "title": "Relationship Type"
+          },
+          "source_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Source supporting this reason when the connection is persisted as evidence.",
+            "title": "Source Id"
           }
         },
-        "required": [
-          "kind",
-          "label"
-        ],
+        "required": ["kind", "label"],
         "title": "ConnectionReasonResponse",
         "type": "object"
       },
@@ -378,10 +546,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "issue_area_id",
-          "count"
-        ],
+        "required": ["issue_area_id", "count"],
         "title": "CoverageCount",
         "type": "object"
       },
@@ -535,11 +700,159 @@
             "title": "Website"
           }
         },
-        "required": [
-          "name",
-          "entry_type"
-        ],
+        "required": ["name", "entry_type"],
         "title": "DeduplicatedEntry",
+        "type": "object"
+      },
+      "DirectoryDomainRequest": {
+        "description": "Custom domain a workspace wants to bind to its public directory.",
+        "properties": {
+          "domain": {
+            "maxLength": 253,
+            "minLength": 3,
+            "title": "Domain",
+            "type": "string"
+          }
+        },
+        "required": ["domain"],
+        "title": "DirectoryDomainRequest",
+        "type": "object"
+      },
+      "DirectoryDomainResponse": {
+        "description": "Custom domain verification state returned to workspace admins.",
+        "properties": {
+          "domain": {
+            "title": "Domain",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "verification_token": {
+            "title": "Verification Token",
+            "type": "string"
+          }
+        },
+        "required": ["domain", "status", "verification_token"],
+        "title": "DirectoryDomainResponse",
+        "type": "object"
+      },
+      "DirectoryDomainVerifyRequest": {
+        "description": "TXT record proof for a workspace directory domain.",
+        "properties": {
+          "txt_record": {
+            "minLength": 1,
+            "title": "Txt Record",
+            "type": "string"
+          }
+        },
+        "required": ["txt_record"],
+        "title": "DirectoryDomainVerifyRequest",
+        "type": "object"
+      },
+      "DirectoryTemplatePlaceScope": {
+        "description": "Place defaults seeded by a directory template.",
+        "properties": {
+          "city": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "City"
+          },
+          "geo_specificity": {
+            "title": "Geo Specificity",
+            "type": "string"
+          },
+          "region": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Region"
+          },
+          "state": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "State"
+          }
+        },
+        "required": ["geo_specificity"],
+        "title": "DirectoryTemplatePlaceScope",
+        "type": "object"
+      },
+      "DirectoryTemplateResponse": {
+        "description": "Template for starting a focused tenant directory.",
+        "properties": {
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "entry_types": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Entry Types",
+            "type": "array"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "issue_area_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Issue Area Ids",
+            "type": "array"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "place_scope": {
+            "$ref": "#/components/schemas/DirectoryTemplatePlaceScope"
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "description",
+          "issue_area_ids",
+          "entry_types",
+          "place_scope"
+        ],
+        "title": "DirectoryTemplateResponse",
+        "type": "object"
+      },
+      "DirectoryTemplatesResponse": {
+        "description": "Collection of workspace directory templates.",
+        "properties": {
+          "templates": {
+            "items": {
+              "$ref": "#/components/schemas/DirectoryTemplateResponse"
+            },
+            "title": "Templates",
+            "type": "array"
+          }
+        },
+        "required": ["templates"],
+        "title": "DirectoryTemplatesResponse",
         "type": "object"
       },
       "DiscoveryContributionRequest": {
@@ -570,9 +883,7 @@
             "description": "Execution summary from the contributing runner."
           }
         },
-        "required": [
-          "run"
-        ],
+        "required": ["run"],
         "title": "DiscoveryContributionRequest",
         "type": "object"
       },
@@ -695,12 +1006,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "id",
-          "run_id",
-          "status",
-          "created_at"
-        ],
+        "required": ["id", "run_id", "status", "created_at"],
         "title": "DiscoveryJobResponse",
         "type": "object"
       },
@@ -757,6 +1063,176 @@
           }
         },
         "title": "DiscoveryPipelineSummaryResponse",
+        "type": "object"
+      },
+      "DiscoveryResearchGap": {
+        "description": "A research gap found during a discovery run.",
+        "properties": {
+          "detail": {
+            "description": "Plain-language gap detail",
+            "title": "Detail",
+            "type": "string"
+          },
+          "label": {
+            "description": "Gap label",
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": ["label", "detail"],
+        "title": "DiscoveryResearchGap",
+        "type": "object"
+      },
+      "DiscoveryResearchLead": {
+        "description": "A ranked actor lead from a discovery run.",
+        "properties": {
+          "confidence": {
+            "default": "unverified",
+            "description": "Conservative confidence state derived from visible supporting evidence.",
+            "enum": ["corroborated", "partial", "unverified"],
+            "title": "Confidence",
+            "type": "string"
+          },
+          "entry_id": {
+            "description": "Entry ID for the lead",
+            "title": "Entry Id",
+            "type": "string"
+          },
+          "latest_source_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Most recent source date",
+            "title": "Latest Source Date"
+          },
+          "name": {
+            "description": "Lead name",
+            "title": "Name",
+            "type": "string"
+          },
+          "source_count": {
+            "description": "Number of supporting sources",
+            "minimum": 0.0,
+            "title": "Source Count",
+            "type": "integer"
+          },
+          "type": {
+            "description": "Lead entry type",
+            "title": "Type",
+            "type": "string"
+          },
+          "why_it_matters": {
+            "description": "Source-backed reason this lead is relevant",
+            "title": "Why It Matters",
+            "type": "string"
+          }
+        },
+        "required": [
+          "entry_id",
+          "name",
+          "type",
+          "why_it_matters",
+          "source_count"
+        ],
+        "title": "DiscoveryResearchLead",
+        "type": "object"
+      },
+      "DiscoveryResearchSource": {
+        "description": "A source that strongly shaped a discovery run's output.",
+        "properties": {
+          "publication": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Publication or source publisher",
+            "title": "Publication"
+          },
+          "published_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Published date",
+            "title": "Published Date"
+          },
+          "source_id": {
+            "description": "Source ID",
+            "title": "Source Id",
+            "type": "string"
+          },
+          "title": {
+            "description": "Source title",
+            "title": "Title",
+            "type": "string"
+          },
+          "url": {
+            "description": "Source URL",
+            "title": "Url",
+            "type": "string"
+          },
+          "why_it_matters": {
+            "description": "Why this source matters to the brief",
+            "title": "Why It Matters",
+            "type": "string"
+          }
+        },
+        "required": ["source_id", "title", "url", "why_it_matters"],
+        "title": "DiscoveryResearchSource",
+        "type": "object"
+      },
+      "DiscoveryResearchSummary": {
+        "description": "Structured, source-linked research output from a discovery run.",
+        "properties": {
+          "brief": {
+            "description": "Concise source-linked research brief",
+            "title": "Brief",
+            "type": "string"
+          },
+          "gaps": {
+            "items": {
+              "$ref": "#/components/schemas/DiscoveryResearchGap"
+            },
+            "title": "Gaps",
+            "type": "array"
+          },
+          "key_sources": {
+            "items": {
+              "$ref": "#/components/schemas/DiscoveryResearchSource"
+            },
+            "title": "Key Sources",
+            "type": "array"
+          },
+          "ranked_leads": {
+            "items": {
+              "$ref": "#/components/schemas/DiscoveryResearchLead"
+            },
+            "title": "Ranked Leads",
+            "type": "array"
+          },
+          "reasoning_signals": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Reasoning Signals",
+            "type": "array"
+          }
+        },
+        "required": ["brief"],
+        "title": "DiscoveryResearchSummary",
         "type": "object"
       },
       "DiscoveryRunArtifacts": {
@@ -822,9 +1298,7 @@
             "description": "Canonical run statistics."
           }
         },
-        "required": [
-          "manifest"
-        ],
+        "required": ["manifest"],
         "title": "DiscoveryRunArtifacts",
         "type": "object"
       },
@@ -842,10 +1316,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "run_id",
-          "jobs_cancelled"
-        ],
+        "required": ["run_id", "jobs_cancelled"],
         "title": "DiscoveryRunCancelResponse",
         "type": "object"
       },
@@ -876,9 +1347,7 @@
             "type": "integer"
           }
         },
-        "required": [
-          "total"
-        ],
+        "required": ["total"],
         "title": "DiscoveryRunCollectionResponse",
         "type": "object"
       },
@@ -900,6 +1369,18 @@
             "title": "Location Query",
             "type": "string"
           },
+          "research_goal": {
+            "default": "landscape_scan",
+            "description": "The research job this run is meant to support.",
+            "enum": [
+              "landscape_scan",
+              "interview_leads",
+              "partner_scan",
+              "ecosystem_map"
+            ],
+            "title": "Research Goal",
+            "type": "string"
+          },
           "search_depth": {
             "default": "standard",
             "description": "Discovery depth hint used by the runner.",
@@ -914,11 +1395,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "location_query",
-          "state",
-          "issue_areas"
-        ],
+        "required": ["location_query", "state", "issue_areas"],
         "title": "DiscoveryRunInput",
         "type": "object"
       },
@@ -976,11 +1453,7 @@
             "description": "Optional remote-sync metadata."
           }
         },
-        "required": [
-          "runner",
-          "run",
-          "status"
-        ],
+        "required": ["runner", "run", "status"],
         "title": "DiscoveryRunManifest",
         "type": "object"
       },
@@ -993,12 +1466,17 @@
           "entries_confirmed": 30,
           "entries_extracted": 38,
           "id": "550e8400-e29b-41d4-a716-446655440002",
-          "issue_areas": [
-            "worker_cooperatives",
-            "housing_affordability"
-          ],
+          "issue_areas": ["worker_cooperatives", "housing_affordability"],
           "location_query": "Kansas City, MO",
           "queries_generated": 150,
+          "research_goal": "landscape_scan",
+          "research_summary": {
+            "brief": "Three source-backed housing leads in Kansas City.",
+            "gaps": [],
+            "key_sources": [],
+            "ranked_leads": [],
+            "reasoning_signals": []
+          },
           "sources_fetched": 45,
           "sources_processed": 42,
           "started_at": "2026-01-15T10:00:00+00:00",
@@ -1073,6 +1551,28 @@
             "title": "Queries Generated",
             "type": "integer"
           },
+          "research_goal": {
+            "description": "Research job this run supports",
+            "enum": [
+              "landscape_scan",
+              "interview_leads",
+              "partner_scan",
+              "ecosystem_map"
+            ],
+            "title": "Research Goal",
+            "type": "string"
+          },
+          "research_summary": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DiscoveryResearchSummary"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Structured research output with leads, sources, gaps, and reasoning signals"
+          },
           "sources_fetched": {
             "description": "Sources fetched",
             "title": "Sources Fetched",
@@ -1103,6 +1603,7 @@
           "id",
           "location_query",
           "state",
+          "research_goal",
           "issue_areas",
           "queries_generated",
           "sources_fetched",
@@ -1126,6 +1627,7 @@
             "local_government_and_civic_engagement"
           ],
           "location_query": "Kansas City, MO",
+          "research_goal": "landscape_scan",
           "search_depth": "standard",
           "state": "MO"
         },
@@ -1145,6 +1647,18 @@
             "title": "Location Query",
             "type": "string"
           },
+          "research_goal": {
+            "default": "landscape_scan",
+            "description": "The research job this run is meant to support.",
+            "enum": [
+              "landscape_scan",
+              "interview_leads",
+              "partner_scan",
+              "ecosystem_map"
+            ],
+            "title": "Research Goal",
+            "type": "string"
+          },
           "search_depth": {
             "default": "standard",
             "description": "Discovery depth hint used by the runner.",
@@ -1159,11 +1673,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "location_query",
-          "state",
-          "issue_areas"
-        ],
+        "required": ["location_query", "state", "issue_areas"],
         "title": "DiscoveryRunStartRequest",
         "type": "object"
       },
@@ -1229,13 +1739,7 @@
       },
       "DiscoveryRunStatus": {
         "description": "Lifecycle status for a discovery run tracked by Atlas.",
-        "enum": [
-          "pending",
-          "running",
-          "completed",
-          "failed",
-          "cancelled"
-        ],
+        "enum": ["pending", "running", "completed", "failed", "cancelled"],
         "title": "DiscoveryRunStatus",
         "type": "string"
       },
@@ -1247,9 +1751,7 @@
             "description": "Portable run bundle emitted by Atlas Scout or another compatible runner."
           }
         },
-        "required": [
-          "artifacts"
-        ],
+        "required": ["artifacts"],
         "title": "DiscoveryRunSyncRequest",
         "type": "object"
       },
@@ -1316,10 +1818,7 @@
             "type": "integer"
           }
         },
-        "required": [
-          "items",
-          "total"
-        ],
+        "required": ["items", "total"],
         "title": "DiscoveryScheduleCollectionResponse",
         "type": "object"
       },
@@ -1343,10 +1842,7 @@
           "search_depth": {
             "default": "standard",
             "description": "Search depth for query generation",
-            "enum": [
-              "standard",
-              "deep"
-            ],
+            "enum": ["standard", "deep"],
             "title": "Search Depth",
             "type": "string"
           },
@@ -1358,11 +1854,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "location_query",
-          "state",
-          "issue_areas"
-        ],
+        "required": ["location_query", "state", "issue_areas"],
         "title": "DiscoveryScheduleCreateRequest",
         "type": "object"
       },
@@ -1495,10 +1987,7 @@
           "search_depth": {
             "anyOf": [
               {
-                "enum": [
-                  "standard",
-                  "deep"
-                ],
+                "enum": ["standard", "deep"],
                 "type": "string"
               },
               {
@@ -1625,10 +2114,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "slug",
-          "name"
-        ],
+        "required": ["slug", "name"],
         "title": "DomainDetailResponse",
         "type": "object"
       },
@@ -1658,9 +2144,7 @@
             "type": "integer"
           }
         },
-        "required": [
-          "total"
-        ],
+        "required": ["total"],
         "title": "DomainListResponse",
         "type": "object"
       },
@@ -1680,11 +2164,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "slug",
-          "name",
-          "issue_area_count"
-        ],
+        "required": ["slug", "name", "issue_area_count"],
         "title": "DomainResponse",
         "type": "object"
       },
@@ -1741,9 +2221,7 @@
             "type": "integer"
           }
         },
-        "required": [
-          "total"
-        ],
+        "required": ["total"],
         "title": "EntityCollectionResponse",
         "type": "object"
       },
@@ -1763,9 +2241,7 @@
             "type": "integer"
           }
         },
-        "required": [
-          "total"
-        ],
+        "required": ["total"],
         "title": "EntityConnectionsResponse",
         "type": "object"
       },
@@ -2018,11 +2494,7 @@
             "title": "Website"
           }
         },
-        "required": [
-          "type",
-          "name",
-          "description"
-        ],
+        "required": ["type", "name", "description"],
         "title": "EntityCreateRequest",
         "type": "object"
       },
@@ -2032,6 +2504,9 @@
           "active": {
             "title": "Active",
             "type": "boolean"
+          },
+          "actor_quality": {
+            "$ref": "#/components/schemas/ActorQualityInfo"
           },
           "address": {
             "$ref": "#/components/schemas/Address"
@@ -2049,6 +2524,9 @@
           },
           "claim": {
             "$ref": "#/components/schemas/ClaimStatusInfo"
+          },
+          "claim_evidence": {
+            "$ref": "#/components/schemas/ClaimEvidenceSet"
           },
           "contact": {
             "$ref": "#/components/schemas/ContactInfo"
@@ -2117,6 +2595,9 @@
             ],
             "description": "Subject preference for which channel readers should use to make contact.",
             "title": "Preferred Contact Channel"
+          },
+          "profile_answers": {
+            "$ref": "#/components/schemas/ProfileAnswers"
           },
           "relationship_ids": {
             "items": {
@@ -2192,6 +2673,8 @@
           "contact",
           "active",
           "verified",
+          "claim_evidence",
+          "profile_answers",
           "freshness",
           "created_at",
           "updated_at",
@@ -2223,10 +2706,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "entity_id",
-          "reason"
-        ],
+        "required": ["entity_id", "reason"],
         "title": "EntityFlagCreateRequest",
         "type": "object"
       },
@@ -2256,9 +2736,7 @@
             "type": "integer"
           }
         },
-        "required": [
-          "total"
-        ],
+        "required": ["total"],
         "title": "EntityFlagListResponse",
         "type": "object"
       },
@@ -2268,6 +2746,9 @@
           "active": {
             "title": "Active",
             "type": "boolean"
+          },
+          "actor_quality": {
+            "$ref": "#/components/schemas/ActorQualityInfo"
           },
           "address": {
             "$ref": "#/components/schemas/Address"
@@ -2285,6 +2766,9 @@
           },
           "claim": {
             "$ref": "#/components/schemas/ClaimStatusInfo"
+          },
+          "claim_evidence": {
+            "$ref": "#/components/schemas/ClaimEvidenceSet"
           },
           "contact": {
             "$ref": "#/components/schemas/ContactInfo"
@@ -2354,6 +2838,9 @@
             "description": "Subject preference for which channel readers should use to make contact.",
             "title": "Preferred Contact Channel"
           },
+          "profile_answers": {
+            "$ref": "#/components/schemas/ProfileAnswers"
+          },
           "resource_uri": {
             "title": "Resource Uri",
             "type": "string"
@@ -2407,6 +2894,8 @@
           "contact",
           "active",
           "verified",
+          "claim_evidence",
+          "profile_answers",
           "freshness",
           "created_at",
           "updated_at",
@@ -2430,21 +2919,13 @@
             "type": "array"
           }
         },
-        "required": [
-          "entity_id"
-        ],
+        "required": ["entity_id"],
         "title": "EntitySourcesResponse",
         "type": "object"
       },
       "EntityType": {
         "description": "Type of entity being catalogued.",
-        "enum": [
-          "person",
-          "organization",
-          "initiative",
-          "campaign",
-          "event"
-        ],
+        "enum": ["person", "organization", "initiative", "campaign", "event"],
         "title": "EntityType",
         "type": "string"
       },
@@ -2682,10 +3163,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "value",
-          "count"
-        ],
+        "required": ["value", "count"],
         "title": "FacetOption",
         "type": "object"
       },
@@ -2861,10 +3339,7 @@
             "title": "Updated At"
           }
         },
-        "required": [
-          "staleness_status",
-          "staleness_reason"
-        ],
+        "required": ["staleness_status", "staleness_reason"],
         "title": "FreshnessInfo",
         "type": "object"
       },
@@ -2915,20 +3390,13 @@
             "type": "array"
           }
         },
-        "required": [
-          "location"
-        ],
+        "required": ["location"],
         "title": "GapReport",
         "type": "object"
       },
       "GeoSpecificity": {
         "description": "Geographic scope of an entity or entry.",
-        "enum": [
-          "local",
-          "regional",
-          "statewide",
-          "national"
-        ],
+        "enum": ["local", "regional", "statewide", "national"],
         "title": "GeoSpecificity",
         "type": "string"
       },
@@ -2971,9 +3439,7 @@
             "type": "integer"
           }
         },
-        "required": [
-          "total"
-        ],
+        "required": ["total"],
         "title": "IssueAreaListResponse",
         "type": "object"
       },
@@ -3012,13 +3478,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "id",
-          "slug",
-          "name",
-          "description",
-          "domain"
-        ],
+        "required": ["id", "slug", "name", "description", "domain"],
         "title": "IssueAreaResponse",
         "type": "object"
       },
@@ -3067,12 +3527,7 @@
             "type": "array"
           }
         },
-        "required": [
-          "issue_area_id",
-          "name",
-          "entity_count",
-          "source_count"
-        ],
+        "required": ["issue_area_id", "name", "entity_count", "source_count"],
         "title": "IssueSignalSummary",
         "type": "object"
       },
@@ -3094,10 +3549,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "place",
-          "resource_uri"
-        ],
+        "required": ["place", "resource_uri"],
         "title": "IssueSignalsResponse",
         "type": "object"
       },
@@ -3148,14 +3600,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "id",
-          "name",
-          "type",
-          "lat",
-          "lng",
-          "trust_level"
-        ],
+        "required": ["id", "name", "type", "lat", "lng", "trust_level"],
         "title": "MapPoint",
         "type": "object"
       },
@@ -3180,10 +3625,7 @@
             "type": "integer"
           }
         },
-        "required": [
-          "total",
-          "capped"
-        ],
+        "required": ["total", "capped"],
         "title": "MapPointCollectionResponse",
         "type": "object"
       },
@@ -3216,10 +3658,7 @@
             "type": "integer"
           }
         },
-        "required": [
-          "items",
-          "total"
-        ],
+        "required": ["items", "total"],
         "title": "OrgDiscoveryRunCollectionResponse",
         "type": "object"
       },
@@ -3298,6 +3737,28 @@
             "title": "Queries Generated",
             "type": "integer"
           },
+          "research_goal": {
+            "description": "Research job this run supports",
+            "enum": [
+              "landscape_scan",
+              "interview_leads",
+              "partner_scan",
+              "ecosystem_map"
+            ],
+            "title": "Research Goal",
+            "type": "string"
+          },
+          "research_summary": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DiscoveryResearchSummary"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Structured research output with leads, sources, gaps, and reasoning signals"
+          },
           "sources_fetched": {
             "description": "Sources fetched",
             "title": "Sources Fetched",
@@ -3329,6 +3790,7 @@
           "org_id",
           "location_query",
           "state",
+          "research_goal",
           "issue_areas",
           "queries_generated",
           "sources_fetched",
@@ -3361,6 +3823,18 @@
             "title": "Location Query",
             "type": "string"
           },
+          "research_goal": {
+            "default": "landscape_scan",
+            "description": "Research job this run supports",
+            "enum": [
+              "landscape_scan",
+              "interview_leads",
+              "partner_scan",
+              "ecosystem_map"
+            ],
+            "title": "Research Goal",
+            "type": "string"
+          },
           "state": {
             "description": "2-letter state code",
             "maxLength": 2,
@@ -3369,11 +3843,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "location_query",
-          "state",
-          "issue_areas"
-        ],
+        "required": ["location_query", "state", "issue_areas"],
         "title": "OrgDiscoveryRunStartRequest",
         "type": "object"
       },
@@ -3454,9 +3924,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "url"
-        ],
+        "required": ["url"],
         "title": "PageContent",
         "type": "object"
       },
@@ -3535,11 +4003,7 @@
             "type": "boolean"
           }
         },
-        "required": [
-          "task_id",
-          "url",
-          "status"
-        ],
+        "required": ["task_id", "url", "status"],
         "title": "PageTaskOutcome",
         "type": "object"
       },
@@ -3593,11 +4057,7 @@
             "type": "array"
           }
         },
-        "required": [
-          "place",
-          "entity_count",
-          "resource_uri"
-        ],
+        "required": ["place", "entity_count", "resource_uri"],
         "title": "PlaceCoverageResponse",
         "type": "object"
       },
@@ -3619,9 +4079,7 @@
             "title": "Resource Uri"
           }
         },
-        "required": [
-          "place"
-        ],
+        "required": ["place"],
         "title": "PlaceIdentityResponse",
         "type": "object"
       },
@@ -3669,10 +4127,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "place",
-          "resource_uri"
-        ],
+        "required": ["place", "resource_uri"],
         "title": "PlaceProfileResponse",
         "type": "object"
       },
@@ -3688,11 +4143,42 @@
             "type": "string"
           }
         },
-        "required": [
-          "type",
-          "count"
-        ],
+        "required": ["type", "count"],
         "title": "PlaceTypeCount",
+        "type": "object"
+      },
+      "ProfileAnswers": {
+        "description": "Scan-friendly answers that make actor profiles usable outside the app.",
+        "properties": {
+          "how_atlas_knows": {
+            "title": "How Atlas Knows",
+            "type": "string"
+          },
+          "what_they_do": {
+            "title": "What They Do",
+            "type": "string"
+          },
+          "where": {
+            "title": "Where",
+            "type": "string"
+          },
+          "who": {
+            "title": "Who",
+            "type": "string"
+          },
+          "why_they_matter": {
+            "title": "Why They Matter",
+            "type": "string"
+          }
+        },
+        "required": [
+          "who",
+          "what_they_do",
+          "where",
+          "why_they_matter",
+          "how_atlas_knows"
+        ],
+        "title": "ProfileAnswers",
         "type": "object"
       },
       "ProfileClaimRequest": {
@@ -3819,9 +4305,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "token"
-        ],
+        "required": ["token"],
         "title": "ProfileClaimVerifyRequest",
         "type": "object"
       },
@@ -3845,12 +4329,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "user_id",
-          "entry_id",
-          "subscribed_to",
-          "created_at"
-        ],
+        "required": ["user_id", "entry_id", "subscribed_to", "created_at"],
         "title": "ProfileFollowResponse",
         "type": "object"
       },
@@ -3920,6 +4399,107 @@
         "title": "ProfileManageRequest",
         "type": "object"
       },
+      "PublicDirectoryDomain": {
+        "description": "Verified custom domain exposed on a public directory.",
+        "properties": {
+          "domain": {
+            "title": "Domain",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": ["domain", "status"],
+        "title": "PublicDirectoryDomain",
+        "type": "object"
+      },
+      "PublicDirectoryResponse": {
+        "description": "Public, source-linked directory published by a workspace.",
+        "properties": {
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/EntityDetailResponse"
+            },
+            "title": "Entries",
+            "type": "array"
+          },
+          "trust_footer": {
+            "$ref": "#/components/schemas/PublicDirectoryTrustFooter"
+          },
+          "workspace": {
+            "$ref": "#/components/schemas/PublicDirectoryWorkspace"
+          }
+        },
+        "required": ["workspace"],
+        "title": "PublicDirectoryResponse",
+        "type": "object"
+      },
+      "PublicDirectoryTrustFooter": {
+        "description": "Trust footer metadata every tenant directory carries.",
+        "properties": {
+          "body": {
+            "default": "Every listed profile keeps source packets and claim-level evidence.",
+            "title": "Body",
+            "type": "string"
+          },
+          "label": {
+            "default": "Powered by Atlas",
+            "title": "Label",
+            "type": "string"
+          },
+          "provenance_required": {
+            "default": true,
+            "title": "Provenance Required",
+            "type": "boolean"
+          }
+        },
+        "title": "PublicDirectoryTrustFooter",
+        "type": "object"
+      },
+      "PublicDirectoryWorkspace": {
+        "description": "Workspace identity exposed on a public directory.",
+        "properties": {
+          "custom_domain": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PublicDirectoryDomain"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": ["id", "name"],
+        "title": "PublicDirectoryWorkspace",
+        "type": "object"
+      },
+      "PublishEntryResponse": {
+        "description": "Response returned when a workspace entry's visibility changes.",
+        "properties": {
+          "entry_id": {
+            "title": "Entry Id",
+            "type": "string"
+          },
+          "visibility": {
+            "title": "Visibility",
+            "type": "string"
+          }
+        },
+        "required": ["entry_id", "visibility"],
+        "title": "PublishEntryResponse",
+        "type": "object"
+      },
       "RankedEntry": {
         "description": "A deduplicated entry with a relevance score and score components.",
         "properties": {
@@ -3939,10 +4519,7 @@
             "type": "number"
           }
         },
-        "required": [
-          "entry",
-          "score"
-        ],
+        "required": ["entry", "score"],
         "title": "RankedEntry",
         "type": "object"
       },
@@ -4102,10 +4679,7 @@
             "title": "Website"
           }
         },
-        "required": [
-          "name",
-          "entry_type"
-        ],
+        "required": ["name", "entry_type"],
         "title": "RawEntry",
         "type": "object"
       },
@@ -4153,6 +4727,17 @@
           "kind": {
             "title": "Kind",
             "type": "string"
+          },
+          "org_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Org Id"
           },
           "reviewed_at": {
             "anyOf": [
@@ -4218,9 +4803,7 @@
             "type": "integer"
           }
         },
-        "required": [
-          "total"
-        ],
+        "required": ["total"],
         "title": "ReviewQueueListResponse",
         "type": "object"
       },
@@ -4268,10 +4851,7 @@
             "description": "Run status at this checkpoint."
           }
         },
-        "required": [
-          "phase",
-          "status"
-        ],
+        "required": ["phase", "status"],
         "title": "RunCheckpoint",
         "type": "object"
       },
@@ -4294,9 +4874,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "name"
-        ],
+        "required": ["name"],
         "title": "SavedListCreateRequest",
         "type": "object"
       },
@@ -4319,9 +4897,7 @@
             "title": "Note"
           }
         },
-        "required": [
-          "entry_id"
-        ],
+        "required": ["entry_id"],
         "title": "SavedListItemRequest",
         "type": "object"
       },
@@ -4362,11 +4938,7 @@
             "title": "Note"
           }
         },
-        "required": [
-          "list_id",
-          "entry_id",
-          "added_at"
-        ],
+        "required": ["list_id", "entry_id", "added_at"],
         "title": "SavedListItemResponse",
         "type": "object"
       },
@@ -4417,13 +4989,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "id",
-          "user_id",
-          "name",
-          "created_at",
-          "updated_at"
-        ],
+        "required": ["id", "user_id", "name", "created_at", "updated_at"],
         "title": "SavedListResponse",
         "type": "object"
       },
@@ -4444,10 +5010,7 @@
             "type": "array"
           }
         },
-        "required": [
-          "enqueued",
-          "results"
-        ],
+        "required": ["enqueued", "results"],
         "title": "ScheduledRunResponse",
         "type": "object"
       },
@@ -4470,11 +5033,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "schedule_id",
-          "run_id",
-          "job_id"
-        ],
+        "required": ["schedule_id", "run_id", "job_id"],
         "title": "ScheduledRunResult",
         "type": "object"
       },
@@ -4514,9 +5073,7 @@
             "type": "integer"
           }
         },
-        "required": [
-          "total"
-        ],
+        "required": ["total"],
         "title": "SourceCollectionResponse",
         "type": "object"
       },
@@ -4543,10 +5100,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "source_id",
-          "reason"
-        ],
+        "required": ["source_id", "reason"],
         "title": "SourceFlagCreateRequest",
         "type": "object"
       },
@@ -4576,9 +5130,7 @@
             "type": "integer"
           }
         },
-        "required": [
-          "total"
-        ],
+        "required": ["total"],
         "title": "SourceFlagListResponse",
         "type": "object"
       },
@@ -4666,12 +5218,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "id",
-          "url",
-          "freshness",
-          "resource_uri"
-        ],
+        "required": ["id", "url", "freshness", "resource_uri"],
         "title": "SourceResponse",
         "type": "object"
       },
@@ -4687,6 +5234,7 @@
           "podcast",
           "video",
           "social_media",
+          "community_archive",
           "org_website",
           "org_website",
           "other"
@@ -4775,11 +5323,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "loc",
-          "msg",
-          "type"
-        ],
+        "required": ["loc", "msg", "type"],
         "title": "ValidationError",
         "type": "object"
       },
@@ -4821,10 +5365,7 @@
             "type": "integer"
           }
         },
-        "required": [
-          "records",
-          "total"
-        ],
+        "required": ["records", "total"],
         "title": "VerificationListResponse",
         "type": "object"
       },
@@ -4898,13 +5439,7 @@
             "title": "Verified At"
           }
         },
-        "required": [
-          "user_id",
-          "segment",
-          "status",
-          "method",
-          "submitted_at"
-        ],
+        "required": ["user_id", "segment", "status", "method", "submitted_at"],
         "title": "VerificationRecordResponse",
         "type": "object"
       },
@@ -4933,11 +5468,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "segment",
-          "user_id",
-          "data"
-        ],
+        "required": ["segment", "user_id", "data"],
         "title": "VerificationRequestPayload",
         "type": "object"
       },
@@ -4967,10 +5498,7 @@
             "title": "Verification Method"
           }
         },
-        "required": [
-          "status",
-          "message"
-        ],
+        "required": ["status", "message"],
         "title": "VerificationResponsePayload",
         "type": "object"
       },
@@ -4989,17 +5517,12 @@
             "title": "Notes"
           },
           "status": {
-            "enum": [
-              "verified",
-              "rejected"
-            ],
+            "enum": ["verified", "rejected"],
             "title": "Status",
             "type": "string"
           }
         },
-        "required": [
-          "status"
-        ],
+        "required": ["status"],
         "title": "VerificationUpdateRequest",
         "type": "object"
       },
@@ -5015,10 +5538,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "status",
-          "message"
-        ],
+        "required": ["status", "message"],
         "title": "VerificationUpdateResponse",
         "type": "object"
       }
@@ -5078,9 +5598,7 @@
           }
         },
         "summary": "Submit discount verification",
-        "tags": [
-          "access"
-        ]
+        "tags": ["access"]
       }
     },
     "/api/admin/verifications": {
@@ -5144,9 +5662,7 @@
           }
         },
         "summary": "List discount verifications",
-        "tags": [
-          "access"
-        ]
+        "tags": ["access"]
       }
     },
     "/api/admin/verifications/{user_id}": {
@@ -5197,9 +5713,7 @@
           }
         },
         "summary": "Update discount verification",
-        "tags": [
-          "access"
-        ]
+        "tags": ["access"]
       }
     },
     "/api/auth/health": {
@@ -5221,9 +5735,7 @@
           }
         },
         "summary": "Auth health",
-        "tags": [
-          "access"
-        ]
+        "tags": ["access"]
       }
     },
     "/api/discovery-runs": {
@@ -5397,9 +5909,7 @@
           }
         },
         "summary": "List discovery runs",
-        "tags": [
-          "discovery-runs"
-        ]
+        "tags": ["discovery-runs"]
       },
       "post": {
         "description": "Start an Atlas discovery pipeline run for a place and set of issue areas.",
@@ -5519,9 +6029,7 @@
           }
         },
         "summary": "Start a discovery run",
-        "tags": [
-          "discovery-runs"
-        ]
+        "tags": ["discovery-runs"]
       }
     },
     "/api/discovery-runs/contributions": {
@@ -5643,9 +6151,7 @@
           }
         },
         "summary": "Ingest contributed discovery results",
-        "tags": [
-          "discovery-runs"
-        ]
+        "tags": ["discovery-runs"]
       }
     },
     "/api/discovery-runs/jobs/{job_id}": {
@@ -5766,9 +6272,7 @@
           }
         },
         "summary": "Get a discovery job",
-        "tags": [
-          "discovery-runs"
-        ]
+        "tags": ["discovery-runs"]
       }
     },
     "/api/discovery-runs/scheduled": {
@@ -5880,9 +6384,7 @@
           }
         },
         "summary": "Enqueue scheduled discovery targets",
-        "tags": [
-          "discovery-runs"
-        ]
+        "tags": ["discovery-runs"]
       }
     },
     "/api/discovery-runs/summary": {
@@ -5994,9 +6496,7 @@
           }
         },
         "summary": "Pipeline health summary",
-        "tags": [
-          "discovery-runs"
-        ]
+        "tags": ["discovery-runs"]
       }
     },
     "/api/discovery-runs/syncs": {
@@ -6118,9 +6618,7 @@
           }
         },
         "summary": "Sync a local discovery run bundle",
-        "tags": [
-          "discovery-runs"
-        ]
+        "tags": ["discovery-runs"]
       }
     },
     "/api/discovery-runs/{run_id}": {
@@ -6241,9 +6739,7 @@
           }
         },
         "summary": "Get a discovery run",
-        "tags": [
-          "discovery-runs"
-        ]
+        "tags": ["discovery-runs"]
       }
     },
     "/api/discovery-runs/{run_id}/cancel": {
@@ -6364,9 +6860,7 @@
           }
         },
         "summary": "Cancel a discovery run",
-        "tags": [
-          "discovery-runs"
-        ]
+        "tags": ["discovery-runs"]
       }
     },
     "/api/discovery-schedules": {
@@ -6502,9 +6996,7 @@
           }
         },
         "summary": "List discovery schedules",
-        "tags": [
-          "discovery-schedules"
-        ]
+        "tags": ["discovery-schedules"]
       },
       "post": {
         "description": "Add a new location and issue area target for scheduled discovery.",
@@ -6624,9 +7116,7 @@
           }
         },
         "summary": "Create a discovery schedule",
-        "tags": [
-          "discovery-schedules"
-        ]
+        "tags": ["discovery-schedules"]
       }
     },
     "/api/discovery-schedules/{schedule_id}": {
@@ -6740,9 +7230,7 @@
           }
         },
         "summary": "Delete a discovery schedule",
-        "tags": [
-          "discovery-schedules"
-        ]
+        "tags": ["discovery-schedules"]
       },
       "get": {
         "description": "Return one discovery schedule target by ID.",
@@ -6861,9 +7349,7 @@
           }
         },
         "summary": "Get a discovery schedule",
-        "tags": [
-          "discovery-schedules"
-        ]
+        "tags": ["discovery-schedules"]
       },
       "patch": {
         "description": "Partially update a discovery schedule target.",
@@ -6992,9 +7478,7 @@
           }
         },
         "summary": "Update a discovery schedule",
-        "tags": [
-          "discovery-schedules"
-        ]
+        "tags": ["discovery-schedules"]
       }
     },
     "/api/domains": {
@@ -7054,9 +7538,7 @@
           }
         },
         "summary": "List domains",
-        "tags": [
-          "domains"
-        ]
+        "tags": ["domains"]
       }
     },
     "/api/domains/{domain_slug}": {
@@ -7097,9 +7579,7 @@
           }
         },
         "summary": "Get a domain",
-        "tags": [
-          "domains"
-        ]
+        "tags": ["domains"]
       }
     },
     "/api/entities": {
@@ -7239,6 +7719,25 @@
           },
           {
             "in": "query",
+            "name": "source_pattern",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Source Pattern"
+            }
+          },
+          {
+            "in": "query",
             "name": "affiliated_org_id",
             "required": false,
             "schema": {
@@ -7305,9 +7804,7 @@
           }
         },
         "summary": "List entities",
-        "tags": [
-          "entities"
-        ]
+        "tags": ["entities"]
       },
       "post": {
         "description": "Create a new Atlas entity using the canonical nested address and contact request shape.",
@@ -7427,9 +7924,7 @@
           }
         },
         "summary": "Create an entity",
-        "tags": [
-          "entities"
-        ]
+        "tags": ["entities"]
       }
     },
     "/api/entities/by-slug/{entity_type}/{slug}": {
@@ -7477,9 +7972,7 @@
           }
         },
         "summary": "Resolve entity by slug",
-        "tags": [
-          "entities"
-        ]
+        "tags": ["entities"]
       }
     },
     "/api/entities/map": {
@@ -7697,9 +8190,7 @@
           }
         },
         "summary": "Map points in a viewport",
-        "tags": [
-          "entities"
-        ]
+        "tags": ["entities"]
       }
     },
     "/api/entities/{entity_id}": {
@@ -7813,9 +8304,7 @@
           }
         },
         "summary": "Delete an entity",
-        "tags": [
-          "entities"
-        ]
+        "tags": ["entities"]
       },
       "get": {
         "description": "Return one Atlas entity with normalized contact, freshness, flag summary, and linked source provenance.",
@@ -7854,9 +8343,7 @@
           }
         },
         "summary": "Get an entity",
-        "tags": [
-          "entities"
-        ]
+        "tags": ["entities"]
       },
       "patch": {
         "description": "Apply a partial update to an Atlas entity.",
@@ -7985,9 +8472,7 @@
           }
         },
         "summary": "Update an entity",
-        "tags": [
-          "entities"
-        ]
+        "tags": ["entities"]
       }
     },
     "/api/entities/{entity_id}/sources": {
@@ -8028,9 +8513,7 @@
           }
         },
         "summary": "List entity sources",
-        "tags": [
-          "entities"
-        ]
+        "tags": ["entities"]
       }
     },
     "/api/entities/{entry_id}/connections": {
@@ -8094,9 +8577,7 @@
           }
         },
         "summary": "Get entity connections",
-        "tags": [
-          "entities"
-        ]
+        "tags": ["entities"]
       }
     },
     "/api/entity-flags": {
@@ -8165,9 +8646,7 @@
           }
         },
         "summary": "List entity flags",
-        "tags": [
-          "flags"
-        ]
+        "tags": ["flags"]
       },
       "post": {
         "description": "Submit an anonymous flag for an Atlas entity that looks stale or incorrect.",
@@ -8205,9 +8684,7 @@
           }
         },
         "summary": "Create an entity flag",
-        "tags": [
-          "flags"
-        ]
+        "tags": ["flags"]
       }
     },
     "/api/feed/following": {
@@ -8339,9 +8816,7 @@
           }
         },
         "summary": "Followed-profile activity feed",
-        "tags": [
-          "feed"
-        ]
+        "tags": ["feed"]
       }
     },
     "/api/issue-areas": {
@@ -8418,9 +8893,7 @@
           }
         },
         "summary": "List issue areas",
-        "tags": [
-          "issue-areas"
-        ]
+        "tags": ["issue-areas"]
       }
     },
     "/api/issue-areas/{issue_area_slug}": {
@@ -8461,9 +8934,7 @@
           }
         },
         "summary": "Get an issue area",
-        "tags": [
-          "issue-areas"
-        ]
+        "tags": ["issue-areas"]
       }
     },
     "/api/lists": {
@@ -8579,9 +9050,7 @@
           }
         },
         "summary": "List my saved lists",
-        "tags": [
-          "lists"
-        ]
+        "tags": ["lists"]
       },
       "post": {
         "description": "Create a saved list owned by the current user.",
@@ -8701,9 +9170,7 @@
           }
         },
         "summary": "Create a saved list",
-        "tags": [
-          "lists"
-        ]
+        "tags": ["lists"]
       }
     },
     "/api/lists/membership/{entry_id}": {
@@ -8828,9 +9295,7 @@
           }
         },
         "summary": "List my list-memberships for an entry",
-        "tags": [
-          "lists"
-        ]
+        "tags": ["lists"]
       }
     },
     "/api/lists/{list_id}": {
@@ -8944,9 +9409,7 @@
           }
         },
         "summary": "Delete a saved list",
-        "tags": [
-          "lists"
-        ]
+        "tags": ["lists"]
       },
       "get": {
         "description": "Return a saved list with hydrated entries.",
@@ -9065,9 +9528,7 @@
           }
         },
         "summary": "Get a saved list",
-        "tags": [
-          "lists"
-        ]
+        "tags": ["lists"]
       }
     },
     "/api/lists/{list_id}/items": {
@@ -9198,9 +9659,7 @@
           }
         },
         "summary": "Add an entry to a saved list",
-        "tags": [
-          "lists"
-        ]
+        "tags": ["lists"]
       }
     },
     "/api/lists/{list_id}/items/{entry_id}": {
@@ -9323,14 +9782,12 @@
           }
         },
         "summary": "Remove an entry from a saved list",
-        "tags": [
-          "lists"
-        ]
+        "tags": ["lists"]
       }
     },
     "/api/orgs/{org_id}/annotations": {
       "get": {
-        "description": "List annotations for the org, optionally filtered by entry_id.",
+        "description": "List annotations for the org, optionally filtered by entry_id or source_id.",
         "operationId": "listOrgAnnotations",
         "parameters": [
           {
@@ -9358,6 +9815,24 @@
               ],
               "description": "Filter by entry ID",
               "title": "Entry Id"
+            }
+          },
+          {
+            "description": "Filter by source ID",
+            "in": "query",
+            "name": "source_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by source ID",
+              "title": "Source Id"
             }
           },
           {
@@ -9468,12 +9943,10 @@
           }
         },
         "summary": "List annotations for org",
-        "tags": [
-          "org-annotations"
-        ]
+        "tags": ["org-annotations"]
       },
       "post": {
-        "description": "Create an annotation on a shared entry.",
+        "description": "Create an annotation on a shared entry or source.",
         "operationId": "createOrgAnnotation",
         "parameters": [
           {
@@ -9599,9 +10072,7 @@
           }
         },
         "summary": "Create an annotation",
-        "tags": [
-          "org-annotations"
-        ]
+        "tags": ["org-annotations"]
       }
     },
     "/api/orgs/{org_id}/annotations/{annotation_id}": {
@@ -9724,9 +10195,7 @@
           }
         },
         "summary": "Delete an annotation",
-        "tags": [
-          "org-annotations"
-        ]
+        "tags": ["org-annotations"]
       },
       "put": {
         "description": "Update an annotation (author or org admin/owner only).",
@@ -9864,9 +10333,7 @@
           }
         },
         "summary": "Update an annotation",
-        "tags": [
-          "org-annotations"
-        ]
+        "tags": ["org-annotations"]
       }
     },
     "/api/orgs/{org_id}/discovery-runs": {
@@ -10035,9 +10502,7 @@
           }
         },
         "summary": "List org's private discovery runs",
-        "tags": [
-          "org-discovery-runs"
-        ]
+        "tags": ["org-discovery-runs"]
       },
       "post": {
         "description": "Start a private discovery run for the org (record only, no pipeline execution).",
@@ -10166,9 +10631,7 @@
           }
         },
         "summary": "Start a private discovery run",
-        "tags": [
-          "org-discovery-runs"
-        ]
+        "tags": ["org-discovery-runs"]
       }
     },
     "/api/orgs/{org_id}/discovery-runs/{run_id}": {
@@ -10298,9 +10761,7 @@
           }
         },
         "summary": "Get a private discovery run",
-        "tags": [
-          "org-discovery-runs"
-        ]
+        "tags": ["org-discovery-runs"]
       }
     },
     "/api/orgs/{org_id}/entries": {
@@ -10425,9 +10886,7 @@
           }
         },
         "summary": "List private entries for org",
-        "tags": [
-          "org-entries"
-        ]
+        "tags": ["org-entries"]
       },
       "post": {
         "description": "Create a private entry owned by the org.",
@@ -10556,9 +11015,431 @@
           }
         },
         "summary": "Create a private entry for org",
-        "tags": [
-          "org-entries"
-        ]
+        "tags": ["org-entries"]
+      }
+    },
+    "/api/orgs/{org_id}/entries/directory-domain": {
+      "post": {
+        "description": "Create a verification challenge for a workspace directory custom domain.",
+        "operationId": "configureOrgDirectoryDomain",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "title": "Org Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-internal-secret",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Internal-Secret"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-email",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Email"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-organization-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Organization-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DirectoryDomainRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DirectoryDomainResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Configure a workspace directory domain",
+        "tags": ["org-entries"]
+      }
+    },
+    "/api/orgs/{org_id}/entries/directory-domain/verify": {
+      "post": {
+        "description": "Mark a workspace directory custom domain verified when TXT proof matches.",
+        "operationId": "verifyOrgDirectoryDomain",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "title": "Org Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-internal-secret",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Internal-Secret"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-email",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Email"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-organization-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Organization-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DirectoryDomainVerifyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DirectoryDomainResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Verify a workspace directory domain",
+        "tags": ["org-entries"]
+      }
+    },
+    "/api/orgs/{org_id}/entries/directory-templates": {
+      "get": {
+        "description": "List templates that seed a workspace directory's issue and place scope.",
+        "operationId": "listOrgDirectoryTemplates",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "title": "Org Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-internal-secret",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Internal-Secret"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-email",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Email"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-organization-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Organization-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DirectoryTemplatesResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List workspace directory templates",
+        "tags": ["org-entries"]
+      }
+    },
+    "/api/orgs/{org_id}/entries/public-directory": {
+      "get": {
+        "description": "Return source-linked entries a workspace has published publicly.",
+        "operationId": "getPublicOrgDirectory",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "title": "Org Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicDirectoryResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get public workspace directory",
+        "tags": ["org-entries"]
       }
     },
     "/api/orgs/{org_id}/entries/{entry_id}": {
@@ -10681,9 +11562,7 @@
           }
         },
         "summary": "Delete a private entry",
-        "tags": [
-          "org-entries"
-        ]
+        "tags": ["org-entries"]
       },
       "get": {
         "description": "Get a single private entry owned by the org.",
@@ -10811,9 +11690,7 @@
           }
         },
         "summary": "Get a private entry",
-        "tags": [
-          "org-entries"
-        ]
+        "tags": ["org-entries"]
       },
       "put": {
         "description": "Update a private entry owned by the org.",
@@ -10951,9 +11828,137 @@
           }
         },
         "summary": "Update a private entry",
-        "tags": [
-          "org-entries"
-        ]
+        "tags": ["org-entries"]
+      }
+    },
+    "/api/orgs/{org_id}/entries/{entry_id}/publish": {
+      "put": {
+        "description": "Publish a workspace-owned entry into that workspace's public directory.",
+        "operationId": "publishOrgEntry",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "title": "Org Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "entry_id",
+            "required": true,
+            "schema": {
+              "title": "Entry Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-internal-secret",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Internal-Secret"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-email",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Email"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-organization-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Organization-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublishEntryResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Publish a workspace entry",
+        "tags": ["org-entries"]
       }
     },
     "/api/places/{place_key}": {
@@ -10994,9 +11999,7 @@
           }
         },
         "summary": "Get a place",
-        "tags": [
-          "places"
-        ]
+        "tags": ["places"]
       }
     },
     "/api/places/{place_key}/coverage": {
@@ -11056,9 +12059,7 @@
           }
         },
         "summary": "Get place coverage",
-        "tags": [
-          "places"
-        ]
+        "tags": ["places"]
       }
     },
     "/api/places/{place_key}/entities": {
@@ -11200,9 +12201,7 @@
           }
         },
         "summary": "List place entities",
-        "tags": [
-          "places"
-        ]
+        "tags": ["places"]
       }
     },
     "/api/places/{place_key}/issue-signals": {
@@ -11262,9 +12261,7 @@
           }
         },
         "summary": "Get place issue signals",
-        "tags": [
-          "places"
-        ]
+        "tags": ["places"]
       }
     },
     "/api/places/{place_key}/profile": {
@@ -11305,9 +12302,7 @@
           }
         },
         "summary": "Get a place profile",
-        "tags": [
-          "places"
-        ]
+        "tags": ["places"]
       }
     },
     "/api/places/{place_key}/sources": {
@@ -11430,9 +12425,7 @@
           }
         },
         "summary": "List place sources",
-        "tags": [
-          "places"
-        ]
+        "tags": ["places"]
       }
     },
     "/api/profiles/claims/me": {
@@ -11548,9 +12541,7 @@
           }
         },
         "summary": "List my claims",
-        "tags": [
-          "claims"
-        ]
+        "tags": ["claims"]
       }
     },
     "/api/profiles/claims/verify-email": {
@@ -11590,9 +12581,7 @@
           }
         },
         "summary": "Verify a tier-1 claim",
-        "tags": [
-          "claims"
-        ]
+        "tags": ["claims"]
       }
     },
     "/api/profiles/{slug}/claim": {
@@ -11723,9 +12712,7 @@
           }
         },
         "summary": "Initiate a profile claim",
-        "tags": [
-          "claims"
-        ]
+        "tags": ["claims"]
       }
     },
     "/api/profiles/{slug}/follow": {
@@ -11839,9 +12826,7 @@
           }
         },
         "summary": "Unfollow a profile",
-        "tags": [
-          "follows"
-        ]
+        "tags": ["follows"]
       },
       "get": {
         "description": "Return the current user's follow record for a profile (or null).",
@@ -11968,9 +12953,7 @@
           }
         },
         "summary": "Get follow status",
-        "tags": [
-          "follows"
-        ]
+        "tags": ["follows"]
       },
       "post": {
         "description": "Subscribe the authenticated user to updates on a profile.",
@@ -12089,9 +13072,7 @@
           }
         },
         "summary": "Follow a profile",
-        "tags": [
-          "follows"
-        ]
+        "tags": ["follows"]
       }
     },
     "/api/profiles/{slug}/manage": {
@@ -12224,9 +13205,7 @@
           }
         },
         "summary": "Manage subject-controlled fields",
-        "tags": [
-          "claims"
-        ]
+        "tags": ["claims"]
       }
     },
     "/api/review-queue": {
@@ -12361,9 +13340,7 @@
           }
         },
         "summary": "List held discovery records",
-        "tags": [
-          "moderation"
-        ]
+        "tags": ["moderation"]
       }
     },
     "/api/review-queue/{item_id}/approve": {
@@ -12484,9 +13461,7 @@
           }
         },
         "summary": "Approve a held discovery record",
-        "tags": [
-          "moderation"
-        ]
+        "tags": ["moderation"]
       }
     },
     "/api/review-queue/{item_id}/reject": {
@@ -12607,9 +13582,7 @@
           }
         },
         "summary": "Reject a held discovery record",
-        "tags": [
-          "moderation"
-        ]
+        "tags": ["moderation"]
       }
     },
     "/api/source-flags": {
@@ -12678,9 +13651,7 @@
           }
         },
         "summary": "List source flags",
-        "tags": [
-          "flags"
-        ]
+        "tags": ["flags"]
       },
       "post": {
         "description": "Submit an anonymous flag for an Atlas source record that looks stale or incorrect.",
@@ -12718,9 +13689,7 @@
           }
         },
         "summary": "Create a source flag",
-        "tags": [
-          "flags"
-        ]
+        "tags": ["flags"]
       }
     },
     "/health": {
@@ -12744,9 +13713,7 @@
           }
         },
         "summary": "Health",
-        "tags": [
-          "health"
-        ]
+        "tags": ["health"]
       }
     }
   },
@@ -12757,7 +13724,7 @@
     },
     {
       "description": "Local development",
-      "url": "http://api.localhost:1355"
+      "url": "https://api.atlas.localhost:1355"
     },
     {
       "description": "Relative to current host",

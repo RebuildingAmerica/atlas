@@ -47,7 +47,7 @@ for _ in 1 2 3 4 5 6 7 8 9 10; do
     # Register a static alias for mint dev — it always binds to port 3000
     # and ignores PORT env, so it cannot use the standard `portless <name>
     # <cmd>` wrapper that allocates a port and injects PORT.
-    pnpm exec portless alias docs 3000 >/dev/null 2>&1 || true
+    pnpm exec portless alias docs.atlas 3000 >/dev/null 2>&1 || true
     exit 0
   fi
   sleep 0.3

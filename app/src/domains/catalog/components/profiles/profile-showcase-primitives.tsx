@@ -56,20 +56,20 @@ export function buildScopeCopy(scope: ProfileBrowseScope): {
     return {
       title: "People",
       description:
-        "A calm directory for the people Atlas has surfaced across public record, place, and issue.",
+        "Source-linked records for people working across public record, place, and issue.",
     };
   }
   if (scope === "organizations") {
     return {
       title: "Organizations",
       description:
-        "A public-facing directory of organizations Atlas has surfaced through local reporting, records, and source-backed research.",
+        "Source-linked records for organizations grounded in local reporting, public records, and research context.",
     };
   }
   return {
     title: "Profiles",
     description:
-      "Wander through the people and organizations Atlas has surfaced across issue areas, cities, and public record.",
+      "Explore source-linked people and organizations by issue, place, and public record.",
   };
 }
 

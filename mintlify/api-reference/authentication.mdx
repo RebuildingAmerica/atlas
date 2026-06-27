@@ -96,11 +96,13 @@ OAuth access is available on **Atlas Pro** and **Atlas Team** plans.
 
 ### How it works
 
-1. Your client discovers Atlas's OAuth configuration via [OIDC discovery](https://atlas.rebuildingus.org/api/auth/.well-known/openid-configuration)
-2. The client registers dynamically (no pre-registration needed) via the [registration endpoint](https://atlas.rebuildingus.org/api/auth/oauth2/register)
-3. You're redirected to Atlas to sign in and approve access
-4. Your client receives a JWT access token
-5. Include the token in the `Authorization` header
+1. Your client discovers Atlas's protected-resource metadata from `https://atlas.rebuildingus.org/.well-known/oauth-protected-resource/mcp`
+2. The client discovers Atlas's OAuth configuration via [authorization server metadata](https://atlas.rebuildingus.org/.well-known/oauth-authorization-server)
+3. The client identifies itself with a Client ID Metadata Document, or registers dynamically via the [registration endpoint](https://atlas.rebuildingus.org/api/auth/oauth2/register)
+4. The client requests the `https://atlas.rebuildingus.org/mcp` resource during authorization and token exchange when connecting to MCP
+5. You're redirected to Atlas to sign in and approve access
+6. Your client receives a JWT access token
+7. Include the token in the `Authorization` header
 
 ```bash
 curl -H "Authorization: Bearer eyJhbG..." \
@@ -113,13 +115,15 @@ curl -H "Authorization: Bearer eyJhbG..." \
 |---------|-------|
 | OIDC discovery | `https://atlas.rebuildingus.org/api/auth/.well-known/openid-configuration` |
 | OAuth 2.0 authorization server metadata | `https://atlas.rebuildingus.org/.well-known/oauth-authorization-server` |
-| Dynamic client registration | `https://atlas.rebuildingus.org/api/auth/oauth2/register` |
-| Client ID Metadata Documents | Supported (`client_id_metadata_document_supported: true`) — see [CIMD guide](/mcp/client-id-metadata) |
-| Protected resource metadata | `https://atlas.rebuildingus.org/.well-known/oauth-protected-resource` |
+| MCP protected resource | `https://atlas.rebuildingus.org/mcp` |
+| Protected resource metadata | `https://atlas.rebuildingus.org/.well-known/oauth-protected-resource/mcp` |
+| Client ID Metadata Documents | Preferred for open MCP clients (`client_id_metadata_document_supported: true`) — see [CIMD guide](/mcp/client-id-metadata) |
+| Dynamic client registration | Supported for clients that still need a registration endpoint: `https://atlas.rebuildingus.org/api/auth/oauth2/register` |
 | JWKS endpoint | `https://atlas.rebuildingus.org/api/auth/jwks` |
 | PKCE | Required (S256 only) |
 | Algorithms | RS256, ES256 |
 | Transport | Streamable HTTP (SSE is not supported) |
+| Authorization response issuer | `iss` parameter supported and advertised via `authorization_response_iss_parameter_supported: true` |
 
 ### Token lifecycle
 
@@ -127,7 +131,7 @@ curl -H "Authorization: Bearer eyJhbG..." \
 |-------|----------|----------|
 | Access token (JWT) | 15 minutes | Short-lived per OAuth 2.1 §7.1; clients refresh on each call when needed. |
 | Refresh token | 30 days | Rotated on every exchange — the old token is revoked and a new one is issued. Reuse of a revoked refresh token deletes the entire user/client refresh-token chain (OAuth 2.1 §4.3.1 reuse detection). |
-| `aud` claim | Per request | Bound to the `resource` parameter the client supplies (RFC 8707), or to `ATLAS_API_AUDIENCE` when the client omits it. |
+| `aud` claim | Per request | Bound to the `resource` parameter the client supplies (RFC 8707). MCP clients should request `https://atlas.rebuildingus.org/mcp`; Atlas falls back to the first configured `ATLAS_API_AUDIENCE` only when a client omits `resource`. |
 | `org_id` claim | Per token | Bound to the user's primary workspace when one workspace exists, or to the workspace the user picks on the consent screen for multi-workspace accounts. Clients explicitly requesting `org:{workspace_id}` always win over the default. |
 
 If your MCP client maintains long-lived sessions, it should treat refresh tokens as one-time-use and store the rotated value returned by every token-endpoint call.
@@ -145,6 +149,7 @@ When authorizing, Atlas will ask you to approve one or more of these permissions
 | `openid` | Basic identity information |
 | `profile` | User profile details |
 | `email` | Email address |
+| `offline_access` | Refresh-token access from the authorization server. This is not advertised as a protected-resource scope. |
 | `discovery:read` | Read discovery runs and results |
 | `discovery:write` | Create and manage discovery runs |
 | `entities:write` | Create and update catalog entries |

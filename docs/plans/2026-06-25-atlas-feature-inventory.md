@@ -62,7 +62,7 @@ Direction and sequencing live in **[`docs/roadmap.md`](../roadmap.md)** — its 
 
 #### B. Profiles, Civic Map & Knowledge Graph (12)
 
-13. **Initiative & Campaign Detail Pages** `product·now·low` _journalists/creators/nonprofits_ — Real SSR profile pages for initiative, campaign, and event entities instead of the current redirect-to-browse dead end.
+13. **Initiative & Campaign Detail Pages** `product·now·low` _journalists/creators/nonprofits_ — Real SSR profile pages for initiative, campaign, and event entities that keep those actors inspectable as source-linked research objects.
 14. **Connection Receipts (Why Are These Two Linked?)** `product·now·low` _journalists/nonprofits_ — An expandable evidence drawer on every civic-map edge that shows the verbatim passage and source proving the link, not just a one-line reason.
 15. **Typed Relationship Edges with Per-Edge Provenance** `platform·next·medium` _journalists/nonprofits/funders_ — Persist the founder/board_member/staff/officer/funds/coalition_member/fiscal_sponsor/parent_org/partner/ally edges the extractor already emits and discards…
 16. **Org Charts & Coalition Rosters** `product·next·medium` _journalists/nonprofits/creators_ — A structured leadership/staff/board view on org profiles and a member roster on coalition profiles, rendered from typed edges.

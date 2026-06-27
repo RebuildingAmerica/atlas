@@ -12,6 +12,7 @@ from atlas.domains.catalog.models.connections import (
     compute_connections,
 )
 from atlas.domains.catalog.models.entry import EntryCRUD
+from atlas.domains.catalog.models.relationships import RelationshipCRUD
 from atlas.models.database import db as database
 
 STATUS_OK = 200
@@ -19,6 +20,7 @@ SHARED_COUNT = 2  # two shared sources or issue areas
 SCORE_CO_MENTION = 2.0  # one shared source
 SCORE_TWO_SOURCES = 4.0  # two shared sources
 SCORE_BOOSTED = 2.5  # one co-mention plus the same-city boost
+SCORE_SOURCED_EDGE = 6.0  # explicit source-backed relationship edge
 STRENGTH_FULL = 100
 STRENGTH_WEAK = 40  # 2.0 / 5.0 normalized to 100
 EXPECTED_TOTAL = 4  # an org plus three coworkers
@@ -197,6 +199,34 @@ class TestCoMentioned:
         actor = _actor(result, person_b)
         assert actor is not None
         assert actor.reasons[0].label == "Co-mentioned in 1 source"
+
+
+class TestSourcedEdges:
+    @pytest.mark.asyncio
+    async def test_sourced_relationship_edge_is_a_profile_connection(self, test_db: object) -> None:
+        person_id = await _make_person(test_db, "Maya Lee")
+        org_id = await _make_org(test_db, "Neighborhood Legal Center")
+        source_id = await _co_mention(test_db, [person_id], publication="State Bar")
+        await RelationshipCRUD.upsert_edge(
+            test_db,
+            source_entry_id=person_id,
+            target_entry_id=org_id,
+            relationship_type="staff",
+            source_id=source_id,
+            evidence_label="Staff profile",
+            confidence=1.0,
+        )
+
+        result = await compute_connections(test_db, org_id)
+
+        actor = _actor(result, person_id)
+        assert actor is not None
+        assert actor.score == SCORE_SOURCED_EDGE
+        assert actor.reasons[0].kind == "sourced_edge"
+        assert actor.reasons[0].relationship_type == "staff"
+        assert actor.reasons[0].label == "Staff profile"
+        assert actor.reasons[0].count == 1
+        assert actor.reasons[0].source_id == source_id
 
 
 class TestSameIssueArea:

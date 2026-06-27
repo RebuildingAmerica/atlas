@@ -9,7 +9,7 @@ import McpServerUrl from '/snippets/mcp-server-url.mdx';
 
 Atlas implements [OAuth Client ID Metadata Documents](https://datatracker.ietf.org/doc/html/draft-ietf-oauth-client-id-metadata-document-00) (CIMD) so an MCP client developer can identify their client to Atlas with nothing more than an HTTPS URL — no admin step, no shared client secret, no dynamic-registration roundtrip.
 
-CIMD is the recommended onboarding path for **public, browser-driven MCP clients** that have no prior relationship with Atlas. If your client is operator-installed and you control both ends, [pre-registration](https://www.ietf.org/archive/id/draft-ietf-oauth-v2-1-13.html#name-client-types) is still the right answer.
+CIMD is the recommended onboarding path for **public, browser-driven MCP clients** that have no prior relationship with Atlas. Dynamic Client Registration remains available for older clients, but new MCP integrations should prefer CIMD. If your client is operator-installed and you control both ends, [pre-registration](https://www.ietf.org/archive/id/draft-ietf-oauth-v2-1-13.html#name-client-types) is still the right answer.
 
 ## Prerequisites
 
@@ -34,7 +34,7 @@ GET https://atlas.rebuildingus.org/.well-known/oauth-authorization-server
 }
 ```
 
-When Atlas sees a URL-shaped `client_id` at `/api/auth/oauth2/authorize`, `/api/auth/oauth2/par`, or `/api/auth/oauth2/token`, it fetches the document, validates it, and materializes a synthetic OAuth client row keyed off the URL. Subsequent requests reuse that row until the document changes.
+When Atlas sees a URL-shaped `client_id` at `/api/auth/oauth2/authorize` or `/api/auth/oauth2/token`, it fetches the document, validates it, and materializes a synthetic OAuth client row keyed off the URL. Subsequent requests reuse that row until the document changes.
 
 ## The metadata document
 
@@ -98,12 +98,12 @@ Operators who want a stricter policy can set the `ATLAS_OAUTH_CIMD_DOMAIN_ALLOWL
 ## When CIMD is not the right fit
 
 - **You can pre-register.** Hard-coded credentials are simpler when you and Atlas have an existing relationship.
-- **Your client must be confidential.** CIMD is public-only; if you need a client secret for some reason, use [Dynamic Client Registration](https://atlas.rebuildingus.org/api/auth/oauth2/register) instead.
-- **You need short-lived clients.** CIMD documents are stable URLs; if you want per-session clients, DCR is a better fit.
+- **Your client must be confidential.** CIMD is public-only. Contact Atlas operators for pre-registration rather than using an open-client flow.
+- **You only support legacy DCR.** Atlas keeps [Dynamic Client Registration](https://atlas.rebuildingus.org/api/auth/oauth2/register) available for compatibility, but it is not the preferred MCP onboarding path.
 
 ## See also
 
 - [draft-ietf-oauth-client-id-metadata-document-00](https://datatracker.ietf.org/doc/html/draft-ietf-oauth-client-id-metadata-document-00) — The CIMD draft Atlas implements.
-- [MCP authorization spec — Client ID Metadata Documents](https://modelcontextprotocol.io/specification/2025-11-25/basic/authorization#client-id-metadata-documents) — How MCP defines the flow.
+- [MCP authorization draft — Client ID Metadata Documents](https://modelcontextprotocol.io/specification/draft/basic/authorization#client-id-metadata-documents) — How MCP defines the flow.
 - [Authentication reference](/api-reference/authentication) — Atlas's full OAuth surface.
 - [Other MCP clients](/mcp/other-clients) — Generic Streamable HTTP + OAuth setup.

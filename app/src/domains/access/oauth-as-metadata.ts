@@ -12,8 +12,8 @@ import { API_KEY_SCOPES } from "./api-key-scopes";
  * - `/.well-known/oauth-authorization-server/api/auth` — the strict RFC 8414
  *   §3 location for Atlas's actual issuer (`${publicBaseUrl}/api/auth`).
  *
- * PRM is served at `/.well-known/oauth-protected-resource`, computed from the
- * runtime origin so previews and staging publish the right canonical URI.
+ * PRM is served at `/.well-known/oauth-protected-resource/mcp`, computed from
+ * the runtime origin so previews and staging publish the right canonical URI.
  */
 
 interface MetadataInput {
@@ -34,6 +34,16 @@ export const SUPPORTED_OAUTH_SCOPES = [
   "offline_access",
   ...API_KEY_SCOPES,
 ] as const;
+
+const PROTECTED_RESOURCE_SCOPES = ["discovery:read"] as const;
+
+function mcpResourceUrl(publicBaseUrl: string): string {
+  return `${publicBaseUrl}/mcp`;
+}
+
+function protectedResourceScopes(): string[] {
+  return [...PROTECTED_RESOURCE_SCOPES];
+}
 
 /**
  * Builds the RFC 8414 authorization-server metadata document for Atlas.
@@ -61,6 +71,8 @@ export function buildAuthorizationServerMetadata(input: MetadataInput) {
     id_token_signing_alg_values_supported: ["RS256", "ES256"],
     subject_types_supported: ["public"],
     scopes_supported: [...SUPPORTED_OAUTH_SCOPES],
+    protected_resources: [mcpResourceUrl(input.publicBaseUrl)],
+    authorization_response_iss_parameter_supported: true,
     // Atlas implements `draft-ietf-oauth-client-id-metadata-document-00`
     // through the CIMD shim in `app/src/domains/access/server/cimd-handler.ts`
     // — URL-shaped client_ids resolve to a JSON metadata document that
@@ -80,10 +92,10 @@ export function buildAuthorizationServerMetadata(input: MetadataInput) {
  */
 export function buildProtectedResourceMetadata(input: MetadataInput) {
   return {
-    resource: input.publicBaseUrl,
+    resource: mcpResourceUrl(input.publicBaseUrl),
     authorization_servers: [`${input.publicBaseUrl}/api/auth`],
     bearer_methods_supported: ["header"],
-    scopes_supported: [...SUPPORTED_OAUTH_SCOPES],
+    scopes_supported: protectedResourceScopes(),
     resource_documentation: `${input.publicBaseUrl}/docs/mcp`,
   };
 }

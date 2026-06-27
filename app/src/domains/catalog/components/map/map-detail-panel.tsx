@@ -112,7 +112,7 @@ function ActorView({ selection }: { selection: ActorSelection }) {
         </div>
       ) : (
         <p className="type-body-small text-ink-soft">
-          This actor&rsquo;s profile is still being assembled — there&rsquo;s no page to open yet.
+          No profile page is available for this actor.
         </p>
       )}
     </div>

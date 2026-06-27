@@ -105,9 +105,11 @@ def test_discovery_run_input() -> None:
         location_query="Kansas City, MO",
         state="MO",
         issue_areas=["housing_affordability"],
+        research_goal="interview_leads",
     )
     assert run.location_query == "Kansas City, MO"
     assert run.state == "MO"
+    assert run.research_goal == "interview_leads"
     assert run.search_depth == "standard"
 
 
@@ -301,3 +303,14 @@ def test_page_content_full() -> None:
     assert page.publication == "Detroit Free Press"
     assert page.source_type == SourceType.NEWS_ARTICLE
     assert page.published_date == pub_date
+
+
+def test_page_content_accepts_community_archive_source_type() -> None:
+    """Community-origin pages should have a first-class source type."""
+    page = PageContent(
+        url="https://example.org/community-calendar",
+        text="Community calendar item",
+        source_type=SourceType.COMMUNITY_ARCHIVE,
+    )
+
+    assert page.source_type == SourceType.COMMUNITY_ARCHIVE

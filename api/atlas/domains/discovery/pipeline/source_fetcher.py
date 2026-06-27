@@ -153,17 +153,29 @@ def _today_date() -> date:
     return datetime.now(UTC).date()
 
 
+_SOURCE_TYPE_PATTERNS: tuple[tuple[str, tuple[str, ...]], ...] = (
+    ("podcast", ("podcast",)),
+    ("report", ("report", "pdf")),
+    ("government_record", ("gov",)),
+    ("video", ("youtube", "video")),
+    ("social_media", ("twitter.com", "x.com", "instagram.com")),
+    (
+        "community_archive",
+        (
+            "community calendar",
+            "community-calendar",
+            "mutual aid calendar",
+            "community archive",
+            "community-archive",
+        ),
+    ),
+)
+
+
 def _infer_source_type(url: str, title: str | None) -> str:
     """Infer Atlas source type from the URL/title."""
     lowered = f"{url} {title or ''}".lower()
-    if "podcast" in lowered:
-        return "podcast"
-    if "report" in lowered or "pdf" in lowered:
-        return "report"
-    if "gov" in lowered:
-        return "government_record"
-    if "youtube" in lowered or "video" in lowered:
-        return "video"
-    if "twitter.com" in lowered or "x.com" in lowered or "instagram.com" in lowered:
-        return "social_media"
+    for source_type, markers in _SOURCE_TYPE_PATTERNS:
+        if any(marker in lowered for marker in markers):
+            return source_type
     return "news_article"

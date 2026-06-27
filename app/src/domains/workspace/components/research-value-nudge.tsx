@@ -40,7 +40,7 @@ interface AlertsGate {
 
 /**
  * The "unlock unlimited" nudge, shown to free-tier users who are nearing any of
- * their free saved-actor, list, or monthly-run allowances.
+ * their free saved-actor, list, or monthly-request allowances.
  */
 interface UnlimitedGate {
   kind: "unlimited";
@@ -50,7 +50,7 @@ interface UnlimitedGate {
   savedActors: number;
   /** How many lists the user has created. */
   listCount: number;
-  /** Discovery runs the user has started in the current month. */
+  /** Research requests the user has started in the current month. */
   runsThisMonth: number;
 }
 
@@ -142,7 +142,7 @@ function alertsContent(
  * Resolve the copy and intent for the unlimited nudge, or null when it hides.
  *
  * Only free-tier users see it, and only once they are nearing one of their
- * saved-actor, list, or monthly-run allowances.
+ * saved-actor, list, or monthly-request allowances.
  */
 function unlimitedContent(
   gate: UnlimitedGate,
@@ -167,7 +167,7 @@ function unlimitedContent(
   const listLabel = gate.listCount === 1 ? "list" : "lists";
   return {
     title: "Unlock unlimited research",
-    body: `You've saved ${gate.savedActors} across ${gate.listCount} free ${listLabel}. Unlock unlimited lists, saved actors, and monthly searches with Atlas Pro.`,
+    body: `You've saved ${gate.savedActors} across ${gate.listCount} free ${listLabel}. Unlock unlimited lists, saved actors, and monthly research with Atlas Pro.`,
     cta: "See what Pro unlocks",
     intent: "atlas_pro",
   };

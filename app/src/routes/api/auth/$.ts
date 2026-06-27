@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { ensureAuthReady } from "@/domains/access/server/auth";
 import { handleCimdRequest } from "@/domains/access/server/cimd-handler";
+import { enforceOAuthTokenResourceConsistency } from "@/domains/access/server/oauth-token-resource-guard";
 import { getCimdResolverOptions } from "@/domains/access/server/runtime";
 
 /**
@@ -17,7 +18,12 @@ async function dispatch(request: Request): Promise<Response> {
   if (outcome.errorResponse) {
     return outcome.errorResponse;
   }
-  return (await ensureAuthReady()).handler(outcome.request);
+  const auth = await ensureAuthReady();
+  const resourceGuardResponse = await enforceOAuthTokenResourceConsistency(outcome.request, auth);
+  if (resourceGuardResponse) {
+    return resourceGuardResponse;
+  }
+  return auth.handler(outcome.request);
 }
 
 export const Route = createFileRoute("/api/auth/$")({

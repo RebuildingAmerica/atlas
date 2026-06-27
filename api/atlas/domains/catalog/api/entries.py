@@ -85,6 +85,7 @@ async def list_entities(  # noqa: PLR0913
     entity_type: list[str] | None = Query(None),
     issue_area: list[str] | None = Query(None),
     source_type: list[str] | None = Query(None),
+    source_pattern: list[str] | None = Query(None),
     affiliated_org_id: str | None = Query(None),
     limit: int = Query(20, ge=1, le=100),
     cursor: str | None = Query(None),
@@ -99,6 +100,7 @@ async def list_entities(  # noqa: PLR0913
     - entity_type: repeatable entity-type filter
     - issue_area: repeatable issue-area filter
     - source_type: repeatable source/mention-type filter
+    - source_pattern: repeatable trust pattern filter (single_source, multi_source, social_only)
     - limit: results per page (default: 20, max: 100)
     - cursor: pagination cursor (default: 0)
     """
@@ -109,6 +111,7 @@ async def list_entities(  # noqa: PLR0913
     entity_type = _normalize_multi_value_query(entity_type)
     issue_area = _normalize_multi_value_query(issue_area)
     source_type = _normalize_multi_value_query(source_type)
+    source_pattern = _normalize_multi_value_query(source_pattern)
     invalid_issue_areas = [value for value in issue_area or [] if value not in ALL_ISSUE_SLUGS]
     if invalid_issue_areas:
         raise HTTPException(
@@ -125,6 +128,7 @@ async def list_entities(  # noqa: PLR0913
         issue_areas=issue_area,
         entry_types=entity_type,
         source_types=source_type,
+        source_patterns=source_pattern,
         affiliated_org_id=affiliated_org_id,
         limit=limit,
         offset=offset,
@@ -245,7 +249,13 @@ async def resolve_by_slug(
     to the canonical slug. Returns 404 if the slug is unknown or the
     entry type doesn't match.
     """
-    type_map = {"people": "person", "organizations": "organization"}
+    type_map = {
+        "people": "person",
+        "organizations": "organization",
+        "initiatives": "initiative",
+        "campaigns": "campaign",
+        "events": "event",
+    }
     entry_type = type_map.get(entity_type)
     if entry_type is None:
         raise HTTPException(status_code=400, detail=f"Invalid entity type: {entity_type}")
@@ -256,6 +266,8 @@ async def resolve_by_slug(
 
     entry = result["entry"]
     if entry.type != entry_type:
+        raise HTTPException(status_code=404, detail="Entity not found")
+    if not await EntryCRUD.is_publicly_visible(db, entry.id):
         raise HTTPException(status_code=404, detail="Entity not found")
 
     if result["is_alias"]:
@@ -304,6 +316,9 @@ async def get_entity_connections(
     by shared geography. Reports the true total before pagination so the count
     is never a fake cap.
     """
+    if not await EntryCRUD.is_publicly_visible(db, entry_id):
+        raise HTTPException(status_code=404, detail="Entity not found")
+
     result = await compute_connections(db, entry_id, limit=limit, offset=offset)
     apply_short_public_cache(response)
     return EntityConnectionsResponse.model_validate(asdict(result))
@@ -324,6 +339,9 @@ async def get_entity(
     db: aiosqlite.Connection = Depends(get_db),
 ) -> EntityDetailResponse:
     """Get a single entity by ID with full source provenance."""
+    if not await EntryCRUD.is_publicly_visible(db, entity_id):
+        raise HTTPException(status_code=404, detail="Entity not found")
+
     entry, sources = await EntryCRUD.get_with_sources(db, entity_id)
     if not entry:
         raise HTTPException(status_code=404, detail="Entity not found")
@@ -358,6 +376,9 @@ async def get_entity_sources(
     db: aiosqlite.Connection = Depends(get_db),
 ) -> EntitySourcesResponse:
     """Get source provenance for one entity."""
+    if not await EntryCRUD.is_publicly_visible(db, entity_id):
+        raise HTTPException(status_code=404, detail="Entity not found")
+
     entry, sources = await EntryCRUD.get_with_sources(db, entity_id)
     if not entry:
         raise HTTPException(status_code=404, detail="Entity not found")
@@ -636,4 +657,5 @@ def _facets_to_response(facets: dict[str, list[dict[str, Any]]]) -> dict[str, li
         "issue_areas": [FacetOption(**option) for option in facets["issue_areas"]],
         "entity_types": [FacetOption(**option) for option in facets["entity_types"]],
         "source_types": [FacetOption(**option) for option in facets["source_types"]],
+        "source_patterns": [FacetOption(**option) for option in facets["source_patterns"]],
     }

@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
+import { LeadQualitySignals } from "@/domains/catalog/components/profiles/lead-quality-signals";
 import { Badge } from "@/platform/ui/badge";
-import type { Entry } from "@/types";
+import type { Entry, EntryType } from "@/types";
 
 interface EntryCardProps {
   /** The catalog entry to render as a browse card. */
@@ -28,10 +29,25 @@ function humanize(value: string): string {
     .join(" ");
 }
 
-/** Map a trust tier to its browse-card badge; unverified renders no badge (silence is honest). */
-function trustBadge(
-  level: Entry["trust"]["level"],
-): { variant: "success" | "info"; label: string } | null {
+function pluralize(count: number, singular: string, plural = `${singular}s`): string {
+  return `${count} ${count === 1 ? singular : plural}`;
+}
+
+interface EntryBadgeInfo {
+  variant: "success" | "info" | "warning";
+  label: string;
+}
+
+/** Map verification and trust state to a browse-card badge. */
+function trustBadge(entry: Entry): EntryBadgeInfo | null {
+  if (entry.claim.status === "pending") {
+    return { variant: "warning", label: "Claim under review" };
+  }
+  if (entry.claim.status === "verified") {
+    return { variant: "success", label: "Verified by subject" };
+  }
+
+  const level = entry.trust.level;
   switch (level) {
     case "subject_verified":
       return { variant: "success", label: "Verified by subject" };
@@ -44,15 +60,23 @@ function trustBadge(
   }
 }
 
+const PROFILE_ROUTE_BY_TYPE = {
+  person: "/profiles/people/$slug",
+  organization: "/profiles/organizations/$slug",
+  initiative: "/profiles/initiatives/$slug",
+  campaign: "/profiles/campaigns/$slug",
+  event: "/profiles/events/$slug",
+} satisfies Record<EntryType, string>;
+
 /**
  * Browse card for a catalog entry.
  *
- * Links to the canonical profile URL for person/org entries (with
- * view transition support), falling back to the legacy `/entries/:id`
- * route for other entry types.
+ * Links to the canonical profile URL when a slug exists, falling back
+ * to the legacy `/entries/:id` route for slugless records.
  */
 export function EntryCard({ entry, issueAreaLabels = {} }: EntryCardProps) {
-  const tier = trustBadge(entry.trust.level);
+  const tier = trustBadge(entry);
+  const profileRoute = PROFILE_ROUTE_BY_TYPE[entry.type];
   return (
     <article className="bg-surface-container-lowest rounded-[1.3rem] px-4 py-4">
       <div className="flex flex-col gap-4">
@@ -60,16 +84,8 @@ export function EntryCard({ entry, issueAreaLabels = {} }: EntryCardProps) {
           <div className="space-y-2">
             <div>
               <Link
-                to={
-                  entry.slug && (entry.type === "person" || entry.type === "organization")
-                    ? `/profiles/${entry.type === "person" ? "people" : "organizations"}/$slug`
-                    : "/entries/$entryId"
-                }
-                params={
-                  entry.slug && (entry.type === "person" || entry.type === "organization")
-                    ? { slug: entry.slug }
-                    : { entryId: entry.id }
-                }
+                to={entry.slug ? profileRoute : "/entries/$entryId"}
+                params={entry.slug ? { slug: entry.slug } : { entryId: entry.id }}
                 viewTransition
                 className="type-title-large text-ink-strong hover:text-accent transition-colors"
               >
@@ -83,8 +99,10 @@ export function EntryCard({ entry, issueAreaLabels = {} }: EntryCardProps) {
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant="info">{humanize(entry.type)}</Badge>
               {tier ? <Badge variant={tier.variant}>{tier.label}</Badge> : null}
-              <Badge>{entry.source_count} sources</Badge>
+              <Badge>Source-backed</Badge>
+              <Badge>{pluralize(entry.source_count, "source packet")}</Badge>
             </div>
+            <LeadQualitySignals entry={entry} />
           </div>
 
           {entry.latest_source_date ? (

@@ -74,7 +74,7 @@ function HomeHighlights({ isLocal }: { isLocal: boolean }) {
       <div className="border-border rounded-[1.4rem] border bg-white/70 p-4">
         <p className="type-title-small text-ink-strong">Profiles</p>
         <p className="type-body-medium text-ink-soft mt-1">
-          Browse people and organizations by place and issue.
+          Inspect source-linked people and organizations by place and issue.
         </p>
       </div>
       <div className="border-border rounded-[1.4rem] border bg-white/70 p-4">
@@ -104,8 +104,8 @@ export function HomePage() {
           </h1>
 
           <p className="type-body-large text-ink-soft mx-auto mt-4 max-w-2xl text-balance">
-            Search Atlas directly, browse profile directories by place and issue, or open the
-            research browser when you want the broader civic graph.
+            Search source-linked local intelligence by person, organization, issue, or place. Open
+            profiles and research views with provenance attached.
           </p>
 
           <HomeHeroActions onQueryChange={setQuery} query={query} />

@@ -8,7 +8,7 @@ import McpServerUrl from '/snippets/mcp-server-url.mdx';
 
 ## Overview
 
-Atlas supports the [Model Context Protocol](https://modelcontextprotocol.io/) (MCP), an open standard from Anthropic for connecting AI assistants to external data and tools. Atlas implements the [2025-11-25 MCP specification](https://modelcontextprotocol.io/specification/2025-11-25), which means any compliant MCP client — Claude, GitHub Copilot, Google Gemini, Codex, Inspector, and others — can talk to Atlas without custom integration. Instead of clicking through a website or writing API calls, you ask questions in natural language and get structured answers backed by Atlas data.
+Atlas supports the [Model Context Protocol](https://modelcontextprotocol.io/) (MCP), an open standard from Anthropic for connecting AI assistants to external data and tools. Atlas implements the Streamable HTTP transport and current MCP authorization draft behavior, which means compliant MCP clients — Claude, GitHub Copilot, Google Gemini, Codex, Inspector, and others — can talk to Atlas without custom integration. Instead of clicking through a website or writing API calls, you ask questions in natural language and get structured answers backed by Atlas data.
 
 **Example conversation with Claude:**
 
@@ -44,6 +44,14 @@ Atlas runs a remote MCP server at:
 
 When you connect your AI assistant to this server, it gains access to Atlas's search, discovery, and place-level civic data tools. Authentication happens automatically through OAuth 2.1 — your client will open a browser window for you to sign in and approve access on first use.
 
+The MCP server URL is also the OAuth resource identifier:
+
+```text
+https://atlas.rebuildingus.org/mcp
+```
+
+Clients that follow the current MCP authorization draft discover protected-resource metadata at `https://atlas.rebuildingus.org/.well-known/oauth-protected-resource/mcp`, then request that `/mcp` resource during both authorization and token exchange. Atlas binds access-token `aud` claims to that resource so tokens issued for a different API surface cannot be replayed against the MCP server.
+
 ## Available tools
 
 Once connected, your AI assistant can use these tools:
@@ -55,6 +63,8 @@ Once connected, your AI assistant can use these tools:
 | `get_entity_sources` | Get the sources backing an entity |
 | `search_sources` | Search across all Atlas sources |
 | `get_place_entities` | Get entities for a specific place |
+| `list_discovery_runs` | List source-linked research runs |
+| `get_discovery_run` | Get one research run and its structured output |
 | `get_place_profile` | Demographic and socioeconomic context for a place |
 | `get_place_coverage` | Coverage gaps and entity counts for a place |
 | `get_place_issue_signals` | Issue area summary for a place |
@@ -119,10 +129,10 @@ For more help, see [MCP troubleshooting](/mcp/troubleshooting) or the general [T
 
 Atlas builds on the published MCP specification and the OAuth 2.1 family of standards. If you're integrating a custom client or auditing Atlas's auth posture, these are the authoritative references:
 
-- [MCP base protocol — 2025-11-25](https://modelcontextprotocol.io/specification/2025-11-25/basic) — Lifecycle, transports, and session semantics.
-- [MCP authorization — 2025-11-25](https://modelcontextprotocol.io/specification/2025-11-25/basic/authorization) — OAuth 2.1 flow, PKCE, RFC 9728 protected-resource metadata, RFC 8707 resource indicators, Client ID Metadata Documents, and step-up authorization.
-- [MCP Streamable HTTP transport — 2025-11-25](https://modelcontextprotocol.io/specification/2025-11-25/basic/transports#streamable-http) — Atlas mounts the FastMCP Streamable HTTP transport at `/mcp`.
-- [MCP security best practices](https://modelcontextprotocol.io/specification/2025-11-25/basic/security_best_practices) — Token audience validation, token passthrough prohibitions, confused-deputy mitigations.
+- [MCP base protocol — current draft](https://modelcontextprotocol.io/specification/draft/basic) — Lifecycle, transports, and session semantics.
+- [MCP authorization — current draft](https://modelcontextprotocol.io/specification/draft/basic/authorization) — OAuth 2.1 flow, PKCE, RFC 9728 protected-resource metadata, RFC 8707 resource indicators, Client ID Metadata Documents, and step-up authorization.
+- [MCP Streamable HTTP transport — current draft](https://modelcontextprotocol.io/specification/draft/basic/transports#streamable-http) — Atlas mounts the FastMCP Streamable HTTP transport at `/mcp`.
+- [MCP security best practices](https://modelcontextprotocol.io/specification/draft/basic/security_best_practices) — Token audience validation, token passthrough prohibitions, confused-deputy mitigations.
 - [MCP Registry](/mcp/registry) — How Atlas lists itself and how clients discover it.
 - [Client ID Metadata Documents](/mcp/client-id-metadata) — Atlas's CIMD shim for clients with no prior relationship.
 - [Authentication reference](/api-reference/authentication) — Token lifecycle, refresh rotation, and the discovery URL catalog.

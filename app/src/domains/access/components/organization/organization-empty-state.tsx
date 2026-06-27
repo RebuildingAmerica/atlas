@@ -10,7 +10,7 @@ export function OrganizationEmptyState() {
       <p className="type-body-medium text-ink-soft mt-2">
         Atlas could not find an active workspace. Refresh your session or head back to{" "}
         <Link className="text-ink-strong underline" to="/discovery">
-          Discovery
+          Research
         </Link>
         .
       </p>

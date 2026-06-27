@@ -34,7 +34,6 @@ import { Route as PublicPrivacyRouteImport } from './routes/_public/privacy'
 import { Route as PublicPricingRouteImport } from './routes/_public/pricing'
 import { Route as PublicPostLogoutRouteImport } from './routes/_public/post-logout'
 import { Route as PublicMapRouteImport } from './routes/_public/map'
-import { Route as PublicEnterpriseRouteImport } from './routes/_public/enterprise'
 import { Route as PublicBrowseRouteImport } from './routes/_public/browse'
 import { Route as AuthSignUpRouteImport } from './routes/_auth/sign-up'
 import { Route as AuthSignInRouteImport } from './routes/_auth/sign-in'
@@ -51,15 +50,21 @@ import { Route as WorkspaceListsIdRouteImport } from './routes/_workspace/lists.
 import { Route as WorkspaceAdminDiscountsRouteImport } from './routes/_workspace/admin.discounts'
 import { Route as PublicProfilesPeopleRouteImport } from './routes/_public/profiles/people'
 import { Route as PublicProfilesOrganizationsRouteImport } from './routes/_public/profiles/organizations'
+import { Route as PublicFeedbackSlugRouteImport } from './routes/_public/feedback.$slug'
 import { Route as PublicEntriesEntryIdRouteImport } from './routes/_public/entries.$entryId'
+import { Route as PublicDirectoriesOrgIdRouteImport } from './routes/_public/directories.$orgId'
 import { Route as PublicClaimSlugRouteImport } from './routes/_public/claim.$slug'
 import { Route as AuthOauthConsentRouteImport } from './routes/_auth/oauth/consent'
 import { Route as AuthAcceptInvitationInvitationIdRouteImport } from './routes/_auth/accept-invitation.$invitationId'
+import { Route as DotwellKnownOauthProtectedResourceMcpRouteImport } from './routes/[.]well-known/oauth-protected-resource/mcp'
 import { Route as PublicProfilesPeopleIndexRouteImport } from './routes/_public/profiles/people.index'
 import { Route as PublicProfilesOrganizationsIndexRouteImport } from './routes/_public/profiles/organizations.index'
 import { Route as ApiAuthInternalApiKeyRouteImport } from './routes/api/auth/internal/api-key'
 import { Route as PublicProfilesPeopleSlugRouteImport } from './routes/_public/profiles/people.$slug'
 import { Route as PublicProfilesOrganizationsSlugRouteImport } from './routes/_public/profiles/organizations.$slug'
+import { Route as PublicProfilesInitiativesSlugRouteImport } from './routes/_public/profiles/initiatives.$slug'
+import { Route as PublicProfilesEventsSlugRouteImport } from './routes/_public/profiles/events.$slug'
+import { Route as PublicProfilesCampaignsSlugRouteImport } from './routes/_public/profiles/campaigns.$slug'
 import { Route as DotwellKnownOauthAuthorizationServerApiAuthRouteImport } from './routes/[.]well-known/oauth-authorization-server/api/auth'
 import { Route as ApiAuthInternalMembershipsOrganizationIdMembersUserIdRouteImport } from './routes/api/auth/internal/memberships.$organizationId.members.$userId'
 
@@ -186,11 +191,6 @@ const PublicMapRoute = PublicMapRouteImport.update({
   path: '/map',
   getParentRoute: () => PublicRoute,
 } as any)
-const PublicEnterpriseRoute = PublicEnterpriseRouteImport.update({
-  id: '/enterprise',
-  path: '/enterprise',
-  getParentRoute: () => PublicRoute,
-} as any)
 const PublicBrowseRoute = PublicBrowseRouteImport.update({
   id: '/browse',
   path: '/browse',
@@ -276,9 +276,19 @@ const PublicProfilesOrganizationsRoute =
     path: '/profiles/organizations',
     getParentRoute: () => PublicRoute,
   } as any)
+const PublicFeedbackSlugRoute = PublicFeedbackSlugRouteImport.update({
+  id: '/feedback/$slug',
+  path: '/feedback/$slug',
+  getParentRoute: () => PublicRoute,
+} as any)
 const PublicEntriesEntryIdRoute = PublicEntriesEntryIdRouteImport.update({
   id: '/entries/$entryId',
   path: '/entries/$entryId',
+  getParentRoute: () => PublicRoute,
+} as any)
+const PublicDirectoriesOrgIdRoute = PublicDirectoriesOrgIdRouteImport.update({
+  id: '/directories/$orgId',
+  path: '/directories/$orgId',
   getParentRoute: () => PublicRoute,
 } as any)
 const PublicClaimSlugRoute = PublicClaimSlugRouteImport.update({
@@ -296,6 +306,12 @@ const AuthAcceptInvitationInvitationIdRoute =
     id: '/accept-invitation/$invitationId',
     path: '/accept-invitation/$invitationId',
     getParentRoute: () => AuthRoute,
+  } as any)
+const DotwellKnownOauthProtectedResourceMcpRoute =
+  DotwellKnownOauthProtectedResourceMcpRouteImport.update({
+    id: '/.well-known/oauth-protected-resource/mcp',
+    path: '/.well-known/oauth-protected-resource/mcp',
+    getParentRoute: () => rootRouteImport,
   } as any)
 const PublicProfilesPeopleIndexRoute =
   PublicProfilesPeopleIndexRouteImport.update({
@@ -326,6 +342,24 @@ const PublicProfilesOrganizationsSlugRoute =
     path: '/$slug',
     getParentRoute: () => PublicProfilesOrganizationsRoute,
   } as any)
+const PublicProfilesInitiativesSlugRoute =
+  PublicProfilesInitiativesSlugRouteImport.update({
+    id: '/profiles/initiatives/$slug',
+    path: '/profiles/initiatives/$slug',
+    getParentRoute: () => PublicRoute,
+  } as any)
+const PublicProfilesEventsSlugRoute =
+  PublicProfilesEventsSlugRouteImport.update({
+    id: '/profiles/events/$slug',
+    path: '/profiles/events/$slug',
+    getParentRoute: () => PublicRoute,
+  } as any)
+const PublicProfilesCampaignsSlugRoute =
+  PublicProfilesCampaignsSlugRouteImport.update({
+    id: '/profiles/campaigns/$slug',
+    path: '/profiles/campaigns/$slug',
+    getParentRoute: () => PublicRoute,
+  } as any)
 const DotwellKnownOauthAuthorizationServerApiAuthRoute =
   DotwellKnownOauthAuthorizationServerApiAuthRouteImport.update({
     id: '/.well-known/oauth-authorization-server/api/auth',
@@ -349,7 +383,6 @@ export interface FileRoutesByFullPath {
   '/sign-in': typeof AuthSignInRoute
   '/sign-up': typeof AuthSignUpRoute
   '/browse': typeof PublicBrowseRoute
-  '/enterprise': typeof PublicEnterpriseRoute
   '/map': typeof PublicMapRoute
   '/post-logout': typeof PublicPostLogoutRoute
   '/pricing': typeof PublicPricingRoute
@@ -367,10 +400,13 @@ export interface FileRoutesByFullPath {
   '/api/$': typeof ApiSplatRoute
   '/api/health': typeof ApiHealthRoute
   '/docs/$': typeof DocsSplatRoute
+  '/.well-known/oauth-protected-resource/mcp': typeof DotwellKnownOauthProtectedResourceMcpRoute
   '/accept-invitation/$invitationId': typeof AuthAcceptInvitationInvitationIdRoute
   '/oauth/consent': typeof AuthOauthConsentRoute
   '/claim/$slug': typeof PublicClaimSlugRoute
+  '/directories/$orgId': typeof PublicDirectoriesOrgIdRoute
   '/entries/$entryId': typeof PublicEntriesEntryIdRoute
+  '/feedback/$slug': typeof PublicFeedbackSlugRoute
   '/profiles/organizations': typeof PublicProfilesOrganizationsRouteWithChildren
   '/profiles/people': typeof PublicProfilesPeopleRouteWithChildren
   '/admin/discounts': typeof WorkspaceAdminDiscountsRoute
@@ -384,6 +420,9 @@ export interface FileRoutesByFullPath {
   '/profiles/': typeof PublicProfilesIndexRoute
   '/organization/': typeof WorkspaceOrganizationIndexRoute
   '/.well-known/oauth-authorization-server/api/auth': typeof DotwellKnownOauthAuthorizationServerApiAuthRoute
+  '/profiles/campaigns/$slug': typeof PublicProfilesCampaignsSlugRoute
+  '/profiles/events/$slug': typeof PublicProfilesEventsSlugRoute
+  '/profiles/initiatives/$slug': typeof PublicProfilesInitiativesSlugRoute
   '/profiles/organizations/$slug': typeof PublicProfilesOrganizationsSlugRoute
   '/profiles/people/$slug': typeof PublicProfilesPeopleSlugRoute
   '/api/auth/internal/api-key': typeof ApiAuthInternalApiKeyRoute
@@ -401,7 +440,6 @@ export interface FileRoutesByTo {
   '/sign-in': typeof AuthSignInRoute
   '/sign-up': typeof AuthSignUpRoute
   '/browse': typeof PublicBrowseRoute
-  '/enterprise': typeof PublicEnterpriseRoute
   '/map': typeof PublicMapRoute
   '/post-logout': typeof PublicPostLogoutRoute
   '/pricing': typeof PublicPricingRoute
@@ -418,10 +456,13 @@ export interface FileRoutesByTo {
   '/api/$': typeof ApiSplatRoute
   '/api/health': typeof ApiHealthRoute
   '/docs/$': typeof DocsSplatRoute
+  '/.well-known/oauth-protected-resource/mcp': typeof DotwellKnownOauthProtectedResourceMcpRoute
   '/accept-invitation/$invitationId': typeof AuthAcceptInvitationInvitationIdRoute
   '/oauth/consent': typeof AuthOauthConsentRoute
   '/claim/$slug': typeof PublicClaimSlugRoute
+  '/directories/$orgId': typeof PublicDirectoriesOrgIdRoute
   '/entries/$entryId': typeof PublicEntriesEntryIdRoute
+  '/feedback/$slug': typeof PublicFeedbackSlugRoute
   '/admin/discounts': typeof WorkspaceAdminDiscountsRoute
   '/lists/$id': typeof WorkspaceListsIdRoute
   '/manage/$slug': typeof WorkspaceManageSlugRoute
@@ -433,6 +474,9 @@ export interface FileRoutesByTo {
   '/profiles': typeof PublicProfilesIndexRoute
   '/organization': typeof WorkspaceOrganizationIndexRoute
   '/.well-known/oauth-authorization-server/api/auth': typeof DotwellKnownOauthAuthorizationServerApiAuthRoute
+  '/profiles/campaigns/$slug': typeof PublicProfilesCampaignsSlugRoute
+  '/profiles/events/$slug': typeof PublicProfilesEventsSlugRoute
+  '/profiles/initiatives/$slug': typeof PublicProfilesInitiativesSlugRoute
   '/profiles/organizations/$slug': typeof PublicProfilesOrganizationsSlugRoute
   '/profiles/people/$slug': typeof PublicProfilesPeopleSlugRoute
   '/api/auth/internal/api-key': typeof ApiAuthInternalApiKeyRoute
@@ -453,7 +497,6 @@ export interface FileRoutesById {
   '/_auth/sign-in': typeof AuthSignInRoute
   '/_auth/sign-up': typeof AuthSignUpRoute
   '/_public/browse': typeof PublicBrowseRoute
-  '/_public/enterprise': typeof PublicEnterpriseRoute
   '/_public/map': typeof PublicMapRoute
   '/_public/post-logout': typeof PublicPostLogoutRoute
   '/_public/pricing': typeof PublicPricingRoute
@@ -472,10 +515,13 @@ export interface FileRoutesById {
   '/api/health': typeof ApiHealthRoute
   '/docs/$': typeof DocsSplatRoute
   '/_public/': typeof PublicIndexRoute
+  '/.well-known/oauth-protected-resource/mcp': typeof DotwellKnownOauthProtectedResourceMcpRoute
   '/_auth/accept-invitation/$invitationId': typeof AuthAcceptInvitationInvitationIdRoute
   '/_auth/oauth/consent': typeof AuthOauthConsentRoute
   '/_public/claim/$slug': typeof PublicClaimSlugRoute
+  '/_public/directories/$orgId': typeof PublicDirectoriesOrgIdRoute
   '/_public/entries/$entryId': typeof PublicEntriesEntryIdRoute
+  '/_public/feedback/$slug': typeof PublicFeedbackSlugRoute
   '/_public/profiles/organizations': typeof PublicProfilesOrganizationsRouteWithChildren
   '/_public/profiles/people': typeof PublicProfilesPeopleRouteWithChildren
   '/_workspace/admin/discounts': typeof WorkspaceAdminDiscountsRoute
@@ -489,6 +535,9 @@ export interface FileRoutesById {
   '/_public/profiles/': typeof PublicProfilesIndexRoute
   '/_workspace/organization/': typeof WorkspaceOrganizationIndexRoute
   '/.well-known/oauth-authorization-server/api/auth': typeof DotwellKnownOauthAuthorizationServerApiAuthRoute
+  '/_public/profiles/campaigns/$slug': typeof PublicProfilesCampaignsSlugRoute
+  '/_public/profiles/events/$slug': typeof PublicProfilesEventsSlugRoute
+  '/_public/profiles/initiatives/$slug': typeof PublicProfilesInitiativesSlugRoute
   '/_public/profiles/organizations/$slug': typeof PublicProfilesOrganizationsSlugRoute
   '/_public/profiles/people/$slug': typeof PublicProfilesPeopleSlugRoute
   '/api/auth/internal/api-key': typeof ApiAuthInternalApiKeyRoute
@@ -508,7 +557,6 @@ export interface FileRouteTypes {
     | '/sign-in'
     | '/sign-up'
     | '/browse'
-    | '/enterprise'
     | '/map'
     | '/post-logout'
     | '/pricing'
@@ -526,10 +574,13 @@ export interface FileRouteTypes {
     | '/api/$'
     | '/api/health'
     | '/docs/$'
+    | '/.well-known/oauth-protected-resource/mcp'
     | '/accept-invitation/$invitationId'
     | '/oauth/consent'
     | '/claim/$slug'
+    | '/directories/$orgId'
     | '/entries/$entryId'
+    | '/feedback/$slug'
     | '/profiles/organizations'
     | '/profiles/people'
     | '/admin/discounts'
@@ -543,6 +594,9 @@ export interface FileRouteTypes {
     | '/profiles/'
     | '/organization/'
     | '/.well-known/oauth-authorization-server/api/auth'
+    | '/profiles/campaigns/$slug'
+    | '/profiles/events/$slug'
+    | '/profiles/initiatives/$slug'
     | '/profiles/organizations/$slug'
     | '/profiles/people/$slug'
     | '/api/auth/internal/api-key'
@@ -560,7 +614,6 @@ export interface FileRouteTypes {
     | '/sign-in'
     | '/sign-up'
     | '/browse'
-    | '/enterprise'
     | '/map'
     | '/post-logout'
     | '/pricing'
@@ -577,10 +630,13 @@ export interface FileRouteTypes {
     | '/api/$'
     | '/api/health'
     | '/docs/$'
+    | '/.well-known/oauth-protected-resource/mcp'
     | '/accept-invitation/$invitationId'
     | '/oauth/consent'
     | '/claim/$slug'
+    | '/directories/$orgId'
     | '/entries/$entryId'
+    | '/feedback/$slug'
     | '/admin/discounts'
     | '/lists/$id'
     | '/manage/$slug'
@@ -592,6 +648,9 @@ export interface FileRouteTypes {
     | '/profiles'
     | '/organization'
     | '/.well-known/oauth-authorization-server/api/auth'
+    | '/profiles/campaigns/$slug'
+    | '/profiles/events/$slug'
+    | '/profiles/initiatives/$slug'
     | '/profiles/organizations/$slug'
     | '/profiles/people/$slug'
     | '/api/auth/internal/api-key'
@@ -611,7 +670,6 @@ export interface FileRouteTypes {
     | '/_auth/sign-in'
     | '/_auth/sign-up'
     | '/_public/browse'
-    | '/_public/enterprise'
     | '/_public/map'
     | '/_public/post-logout'
     | '/_public/pricing'
@@ -630,10 +688,13 @@ export interface FileRouteTypes {
     | '/api/health'
     | '/docs/$'
     | '/_public/'
+    | '/.well-known/oauth-protected-resource/mcp'
     | '/_auth/accept-invitation/$invitationId'
     | '/_auth/oauth/consent'
     | '/_public/claim/$slug'
+    | '/_public/directories/$orgId'
     | '/_public/entries/$entryId'
+    | '/_public/feedback/$slug'
     | '/_public/profiles/organizations'
     | '/_public/profiles/people'
     | '/_workspace/admin/discounts'
@@ -647,6 +708,9 @@ export interface FileRouteTypes {
     | '/_public/profiles/'
     | '/_workspace/organization/'
     | '/.well-known/oauth-authorization-server/api/auth'
+    | '/_public/profiles/campaigns/$slug'
+    | '/_public/profiles/events/$slug'
+    | '/_public/profiles/initiatives/$slug'
     | '/_public/profiles/organizations/$slug'
     | '/_public/profiles/people/$slug'
     | '/api/auth/internal/api-key'
@@ -665,6 +729,7 @@ export interface RootRouteChildren {
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   ApiSplatRoute: typeof ApiSplatRoute
   ApiHealthRoute: typeof ApiHealthRoute
+  DotwellKnownOauthProtectedResourceMcpRoute: typeof DotwellKnownOauthProtectedResourceMcpRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiStripeWebhookRoute: typeof ApiStripeWebhookRoute
   DotwellKnownOauthAuthorizationServerIndexRoute: typeof DotwellKnownOauthAuthorizationServerIndexRoute
@@ -851,13 +916,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PublicMapRouteImport
       parentRoute: typeof PublicRoute
     }
-    '/_public/enterprise': {
-      id: '/_public/enterprise'
-      path: '/enterprise'
-      fullPath: '/enterprise'
-      preLoaderRoute: typeof PublicEnterpriseRouteImport
-      parentRoute: typeof PublicRoute
-    }
     '/_public/browse': {
       id: '/_public/browse'
       path: '/browse'
@@ -970,11 +1028,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PublicProfilesOrganizationsRouteImport
       parentRoute: typeof PublicRoute
     }
+    '/_public/feedback/$slug': {
+      id: '/_public/feedback/$slug'
+      path: '/feedback/$slug'
+      fullPath: '/feedback/$slug'
+      preLoaderRoute: typeof PublicFeedbackSlugRouteImport
+      parentRoute: typeof PublicRoute
+    }
     '/_public/entries/$entryId': {
       id: '/_public/entries/$entryId'
       path: '/entries/$entryId'
       fullPath: '/entries/$entryId'
       preLoaderRoute: typeof PublicEntriesEntryIdRouteImport
+      parentRoute: typeof PublicRoute
+    }
+    '/_public/directories/$orgId': {
+      id: '/_public/directories/$orgId'
+      path: '/directories/$orgId'
+      fullPath: '/directories/$orgId'
+      preLoaderRoute: typeof PublicDirectoriesOrgIdRouteImport
       parentRoute: typeof PublicRoute
     }
     '/_public/claim/$slug': {
@@ -997,6 +1069,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/accept-invitation/$invitationId'
       preLoaderRoute: typeof AuthAcceptInvitationInvitationIdRouteImport
       parentRoute: typeof AuthRoute
+    }
+    '/.well-known/oauth-protected-resource/mcp': {
+      id: '/.well-known/oauth-protected-resource/mcp'
+      path: '/.well-known/oauth-protected-resource/mcp'
+      fullPath: '/.well-known/oauth-protected-resource/mcp'
+      preLoaderRoute: typeof DotwellKnownOauthProtectedResourceMcpRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_public/profiles/people/': {
       id: '/_public/profiles/people/'
@@ -1032,6 +1111,27 @@ declare module '@tanstack/react-router' {
       fullPath: '/profiles/organizations/$slug'
       preLoaderRoute: typeof PublicProfilesOrganizationsSlugRouteImport
       parentRoute: typeof PublicProfilesOrganizationsRoute
+    }
+    '/_public/profiles/initiatives/$slug': {
+      id: '/_public/profiles/initiatives/$slug'
+      path: '/profiles/initiatives/$slug'
+      fullPath: '/profiles/initiatives/$slug'
+      preLoaderRoute: typeof PublicProfilesInitiativesSlugRouteImport
+      parentRoute: typeof PublicRoute
+    }
+    '/_public/profiles/events/$slug': {
+      id: '/_public/profiles/events/$slug'
+      path: '/profiles/events/$slug'
+      fullPath: '/profiles/events/$slug'
+      preLoaderRoute: typeof PublicProfilesEventsSlugRouteImport
+      parentRoute: typeof PublicRoute
+    }
+    '/_public/profiles/campaigns/$slug': {
+      id: '/_public/profiles/campaigns/$slug'
+      path: '/profiles/campaigns/$slug'
+      fullPath: '/profiles/campaigns/$slug'
+      preLoaderRoute: typeof PublicProfilesCampaignsSlugRouteImport
+      parentRoute: typeof PublicRoute
     }
     '/.well-known/oauth-authorization-server/api/auth': {
       id: '/.well-known/oauth-authorization-server/api/auth'
@@ -1100,7 +1200,6 @@ const PublicProfilesPeopleRouteWithChildren =
 
 interface PublicRouteChildren {
   PublicBrowseRoute: typeof PublicBrowseRoute
-  PublicEnterpriseRoute: typeof PublicEnterpriseRoute
   PublicMapRoute: typeof PublicMapRoute
   PublicPostLogoutRoute: typeof PublicPostLogoutRoute
   PublicPricingRoute: typeof PublicPricingRoute
@@ -1110,15 +1209,19 @@ interface PublicRouteChildren {
   PublicTermsRoute: typeof PublicTermsRoute
   PublicIndexRoute: typeof PublicIndexRoute
   PublicClaimSlugRoute: typeof PublicClaimSlugRoute
+  PublicDirectoriesOrgIdRoute: typeof PublicDirectoriesOrgIdRoute
   PublicEntriesEntryIdRoute: typeof PublicEntriesEntryIdRoute
+  PublicFeedbackSlugRoute: typeof PublicFeedbackSlugRoute
   PublicProfilesOrganizationsRoute: typeof PublicProfilesOrganizationsRouteWithChildren
   PublicProfilesPeopleRoute: typeof PublicProfilesPeopleRouteWithChildren
   PublicProfilesIndexRoute: typeof PublicProfilesIndexRoute
+  PublicProfilesCampaignsSlugRoute: typeof PublicProfilesCampaignsSlugRoute
+  PublicProfilesEventsSlugRoute: typeof PublicProfilesEventsSlugRoute
+  PublicProfilesInitiativesSlugRoute: typeof PublicProfilesInitiativesSlugRoute
 }
 
 const PublicRouteChildren: PublicRouteChildren = {
   PublicBrowseRoute: PublicBrowseRoute,
-  PublicEnterpriseRoute: PublicEnterpriseRoute,
   PublicMapRoute: PublicMapRoute,
   PublicPostLogoutRoute: PublicPostLogoutRoute,
   PublicPricingRoute: PublicPricingRoute,
@@ -1128,11 +1231,16 @@ const PublicRouteChildren: PublicRouteChildren = {
   PublicTermsRoute: PublicTermsRoute,
   PublicIndexRoute: PublicIndexRoute,
   PublicClaimSlugRoute: PublicClaimSlugRoute,
+  PublicDirectoriesOrgIdRoute: PublicDirectoriesOrgIdRoute,
   PublicEntriesEntryIdRoute: PublicEntriesEntryIdRoute,
+  PublicFeedbackSlugRoute: PublicFeedbackSlugRoute,
   PublicProfilesOrganizationsRoute:
     PublicProfilesOrganizationsRouteWithChildren,
   PublicProfilesPeopleRoute: PublicProfilesPeopleRouteWithChildren,
   PublicProfilesIndexRoute: PublicProfilesIndexRoute,
+  PublicProfilesCampaignsSlugRoute: PublicProfilesCampaignsSlugRoute,
+  PublicProfilesEventsSlugRoute: PublicProfilesEventsSlugRoute,
+  PublicProfilesInitiativesSlugRoute: PublicProfilesInitiativesSlugRoute,
 }
 
 const PublicRouteWithChildren =
@@ -1213,6 +1321,8 @@ const rootRouteChildren: RootRouteChildren = {
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   ApiSplatRoute: ApiSplatRoute,
   ApiHealthRoute: ApiHealthRoute,
+  DotwellKnownOauthProtectedResourceMcpRoute:
+    DotwellKnownOauthProtectedResourceMcpRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiStripeWebhookRoute: ApiStripeWebhookRoute,
   DotwellKnownOauthAuthorizationServerIndexRoute:

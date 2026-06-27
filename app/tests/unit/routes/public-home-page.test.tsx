@@ -70,6 +70,14 @@ describe("HomePage", () => {
     expect(screen.queryByRole("link", { name: /Go to your research/ })).not.toBeInTheDocument();
   });
 
+  it("frames Atlas as source-linked local intelligence on the public home page", () => {
+    render(<HomePage />);
+
+    expect(screen.getByText(/source-linked local intelligence/i)).toBeInTheDocument();
+    expect(screen.queryByText(/profile directories/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/broader civic graph/i)).not.toBeInTheDocument();
+  });
+
   it("invites signed-in visitors to their research base", () => {
     mocks.useAtlasSession.mockReturnValue({
       data: { isLocal: false },

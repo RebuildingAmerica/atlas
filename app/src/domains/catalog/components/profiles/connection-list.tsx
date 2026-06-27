@@ -8,6 +8,7 @@
  */
 import { Link } from "@tanstack/react-router";
 import { ArrowUpRight } from "lucide-react";
+import { humanize } from "@/domains/catalog/catalog";
 import { ActorAvatar } from "@/domains/catalog/components/profiles/actor-avatar";
 import { cn } from "@/lib/utils";
 import type { ConnectedActor, ConnectionNetwork, ConnectionTier, Entry } from "@/types";
@@ -53,6 +54,41 @@ interface ConnectionRowProps {
   actor: ConnectedActor;
 }
 
+interface ReasonChipProps {
+  reason: ConnectedActor["reasons"][number];
+}
+
+function relationshipTypeLabel(value: string): string {
+  return humanize(value);
+}
+
+function ReasonChip({ reason }: ReasonChipProps) {
+  const className =
+    "type-label-small text-ink-soft bg-surface-container-low rounded-full px-2 py-0.5";
+  const typeLabel = reason.relationship_type ? (
+    <span className="text-ink-strong font-semibold">
+      {relationshipTypeLabel(reason.relationship_type)}
+    </span>
+  ) : null;
+
+  if (reason.source_id) {
+    return (
+      <span className={cn(className, "inline-flex items-center gap-1.5")}>
+        {typeLabel}
+        <a href={`#source-${reason.source_id}`} className="hover:text-ink-strong">
+          {reason.label}
+        </a>
+      </span>
+    );
+  }
+  return (
+    <span className={cn(className, "inline-flex items-center gap-1.5")}>
+      {typeLabel}
+      <span>{reason.label}</span>
+    </span>
+  );
+}
+
 function ConnectionRowBody({ actor }: ConnectionRowProps) {
   return (
     <>
@@ -63,18 +99,30 @@ function ConnectionRowBody({ actor }: ConnectionRowProps) {
       />
       <div className="min-w-0 flex-1 space-y-1.5">
         <div className="flex items-center justify-between gap-3">
-          <span className="type-body-small text-ink-strong truncate font-semibold">
-            {actor.name}
-          </span>
+          {actor.slug ? (
+            <Link
+              to={
+                actor.type === "organization"
+                  ? "/profiles/organizations/$slug"
+                  : "/profiles/people/$slug"
+              }
+              params={{ slug: actor.slug }}
+              viewTransition
+              className="type-body-small text-ink-strong focus-visible:ring-civic truncate rounded-sm font-semibold hover:underline focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+            >
+              {actor.name}
+            </Link>
+          ) : (
+            <span className="type-body-small text-ink-strong truncate font-semibold">
+              {actor.name}
+            </span>
+          )}
           <StrengthMeter strength={actor.strength} tier={actor.tier} />
         </div>
         <ul className="flex flex-wrap gap-1.5">
           {actor.reasons.map((reason) => (
-            <li
-              key={`${reason.kind}-${reason.label}`}
-              className="type-label-small text-ink-soft bg-surface-container-low rounded-full px-2 py-0.5"
-            >
-              {reason.label}
+            <li key={`${reason.kind}-${reason.label}`}>
+              <ReasonChip reason={reason} />
             </li>
           ))}
         </ul>
@@ -89,28 +137,10 @@ function ConnectionRowBody({ actor }: ConnectionRowProps) {
 const ROW_CLASS = "bg-surface-container-lowest flex items-start gap-3 rounded-[0.875rem] p-3";
 
 function ConnectionRow({ actor }: ConnectionRowProps) {
-  if (!actor.slug) {
-    return (
-      <div className={ROW_CLASS}>
-        <ConnectionRowBody actor={actor} />
-      </div>
-    );
-  }
-
   return (
-    <Link
-      to={
-        actor.type === "organization" ? "/profiles/organizations/$slug" : "/profiles/people/$slug"
-      }
-      params={{ slug: actor.slug }}
-      viewTransition
-      className={cn(
-        ROW_CLASS,
-        "hover:bg-surface-container-low focus-visible:ring-civic transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none",
-      )}
-    >
+    <div className={ROW_CLASS}>
       <ConnectionRowBody actor={actor} />
-    </Link>
+    </div>
   );
 }
 

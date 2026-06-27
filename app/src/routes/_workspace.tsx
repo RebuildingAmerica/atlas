@@ -11,13 +11,9 @@ import { getRpLogoutRedirect } from "@/domains/access/session.functions";
 import type { AtlasSessionPayload } from "@/domains/access/organization-contracts";
 import { ResumeCheckoutBanner } from "@/domains/billing/components/resume-checkout-banner";
 
+import { buildAuthenticatedAppNav } from "@/platform/layout/app-navigation";
 import { WorkspaceLayout } from "@/platform/layout/workspace-layout";
 import { Select } from "@/platform/ui/select";
-
-interface WorkspaceTabConfig {
-  label: string;
-  to: string;
-}
 
 /**
  * Props needed to render the workspace identity controls in the shared shell.
@@ -35,52 +31,9 @@ export const Route = createFileRoute("/_workspace")({
   component: WorkspaceRoute,
 });
 
-/**
- * Returns whether the workspace shell should surface the organization tab for
- * the current session.
- *
- * @param session - The current Atlas session payload.
- */
-function shouldShowOrganizationTab(session: AtlasSessionPayload): boolean {
-  const activeWorkspace = session.workspace.activeOrganization;
-
-  return (
-    session.workspace.onboarding.needsWorkspace ||
-    session.workspace.onboarding.hasPendingInvitations ||
-    session.workspace.capabilities.canSwitchOrganizations ||
-    activeWorkspace?.workspaceType === "team"
-  );
-}
-
-/**
- * Builds the workspace tab list for the current session.
- *
- * @param session - The current Atlas session payload.
- */
-function buildWorkspaceTabs(session: AtlasSessionPayload | null | undefined): WorkspaceTabConfig[] {
-  if (!session || session.isLocal) {
-    return [{ label: "Discovery", to: "/discovery" }];
-  }
-
-  const tabs: WorkspaceTabConfig[] = [
-    { label: "Home", to: "/home" },
-    { label: "Discovery", to: "/discovery" },
-    { label: "Lists", to: "/lists" },
-    { label: "Activity", to: "/feed" },
-  ];
-
-  if (shouldShowOrganizationTab(session)) {
-    tabs.push({ label: "Organization", to: "/organization" });
-  }
-
-  tabs.push({ label: "Account", to: "/account" });
-
-  return tabs;
-}
-
 function WorkspaceRoute() {
   const session = useAtlasSession();
-  const tabs = buildWorkspaceTabs(session.data);
+  const tabs = buildAuthenticatedAppNav(session.data);
   const sessionData = session.data;
   const showIdentity = sessionData != null && !sessionData.isLocal;
 

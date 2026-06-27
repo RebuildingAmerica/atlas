@@ -26,9 +26,7 @@ export function EntryList({
     return (
       <div className="rounded-3xl border border-stone-200 bg-white p-12">
         <Spinner />
-        <p className="mt-4 text-center text-sm text-stone-500">
-          Searching the Atlas for people and organizations doing the work.
-        </p>
+        <p className="mt-4 text-center text-sm text-stone-500">Loading</p>
       </div>
     );
   }
@@ -49,17 +47,17 @@ export function EntryList({
     return (
       <div className="rounded-[2rem] border border-dashed border-stone-300 bg-white p-12 text-center">
         <p className="text-lg font-semibold text-stone-900">
-          {hasActiveSearch ? "No matching civic actors yet." : "Atlas has no civic actors yet."}
+          {hasActiveSearch ? "No matching civic actors." : "No civic actors listed."}
         </p>
         <p className="mt-2 text-sm leading-6 text-stone-500">
           {hasActiveSearch
-            ? "Try broadening geography or source filters, or search by a specific person, organization, or issue."
-            : "Run a discovery pass to seed the directory with people, organizations, initiatives, and source-linked mentions."}
+            ? "Try fewer filters, a broader place, or a different issue."
+            : "Start research to find source-backed people, organizations, initiatives, and public mentions."}
         </p>
         {!hasActiveSearch ? (
           <div className="mt-5 flex justify-center">
             <Link to="/discovery">
-              <Button>Open discovery</Button>
+              <Button>Open research</Button>
             </Link>
           </div>
         ) : null}

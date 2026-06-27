@@ -43,12 +43,28 @@ jobs:
 
   acceptance:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - uses: ./.github/actions/setup-toolchain
-      - name: Install Playwright browsers
-        run: pnpm --filter @rebuildingamerica/atlas-app exec playwright install --with-deps chromium
+      - name: Cache Playwright browsers
+        uses: actions/cache@2c8a9bd7457de244a408f35966fab2fb45fda9c8 # v6.0.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('pnpm-lock.yaml') }}
+      - name: Install Playwright system dependencies
+        run: pnpm --filter @rebuildingamerica/atlas-app exec playwright install-deps chromium
+      - name: Install Playwright browser (retried; cached after first success)
+        run: |
+          for attempt in 1 2 3; do
+            if timeout 480 pnpm --filter @rebuildingamerica/atlas-app exec playwright install chromium; then
+              exit 0
+            fi
+            echo "Playwright browser install attempt ${attempt} stalled or failed; retrying with a fresh connection..."
+            sleep 5
+          done
+          echo "::error::Playwright browser install failed after 3 attempts"
+          exit 1
       - name: Run Playwright acceptance suite
         env:
           CI: "true"

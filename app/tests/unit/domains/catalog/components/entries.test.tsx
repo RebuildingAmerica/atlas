@@ -1,6 +1,5 @@
 // @vitest-environment jsdom
 
-import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { EntryCard } from "@/domains/catalog/components/entries/entry-card";
@@ -9,9 +8,31 @@ import { EntryFilters } from "@/domains/catalog/components/entries/entry-filters
 import { EntryList } from "@/domains/catalog/components/entries/entry-list";
 import type { Entry } from "@/types/entry";
 import type { Source } from "@/types/source";
+import type { MockLinkProps } from "../../../../helpers/router-harness";
 
 vi.mock("@tanstack/react-router", () => ({
-  Link: ({ children }: { children: ReactNode }) => <a href="#">{children}</a>,
+  Link: ({ children, to, params, search }: MockLinkProps) => (
+    <a
+      href="#"
+      data-link-to={to}
+      data-link-params={params ? JSON.stringify(params) : undefined}
+      data-link-search={search ? JSON.stringify(search) : undefined}
+    >
+      {children}
+    </a>
+  ),
+}));
+
+vi.mock("@/domains/catalog/components/profiles/private-notes-panel", () => ({
+  PrivateNotesPanel: ({
+    targetId,
+    targetLabel,
+    type,
+  }: {
+    targetId: string;
+    targetLabel: string;
+    type: "entry" | "source";
+  }) => <div data-testid={`private-notes-${type}-${targetId}`}>{targetLabel}</div>,
 }));
 
 describe("catalog entry components", () => {
@@ -71,7 +92,72 @@ describe("catalog entry components", () => {
 
     expect(screen.getByText("Housing Justice KC")).not.toBeNull();
     expect(screen.getByText("Housing")).not.toBeNull();
+    expect(screen.getByText("Source-backed")).not.toBeNull();
+    expect(screen.getByText("2 source packets")).not.toBeNull();
     expect(screen.getByText("Latest source: 2026-04-11")).not.toBeNull();
+  });
+
+  it("surfaces lead-quality signals on browse cards", () => {
+    render(
+      <EntryCard
+        entry={{
+          ...sampleEntry,
+          latest_source_date: new Date().toISOString(),
+          source_types: ["news_article", "report"],
+        }}
+      />,
+    );
+
+    expect(screen.getByText("Local lead")).not.toBeNull();
+    expect(screen.getByText("Recent source")).not.toBeNull();
+    expect(screen.getByText("Diverse sources")).not.toBeNull();
+    expect(screen.getByText("Reachable")).not.toBeNull();
+  });
+
+  it("surfaces partner qualification signals from trust, sources, and contactability", () => {
+    const { rerender } = render(
+      <EntryCard
+        entry={{
+          ...sampleEntry,
+          source_count: 4,
+          trust: { ...sampleEntry.trust, level: "subject_verified" },
+        }}
+      />,
+    );
+
+    expect(screen.getByText("Partner-ready")).not.toBeNull();
+
+    rerender(
+      <EntryCard
+        entry={{
+          ...sampleEntry,
+          source_count: 4,
+          trust: {
+            ...sampleEntry.trust,
+            level: "corroborated",
+            independent_source_count: 3,
+          },
+        }}
+      />,
+    );
+
+    expect(screen.getByText("Strong partner lead")).not.toBeNull();
+
+    rerender(
+      <EntryCard
+        entry={{
+          ...sampleEntry,
+          email: undefined,
+          phone: undefined,
+          social_media: undefined,
+          source_count: 1,
+          trust: { ...sampleEntry.trust, level: "unverified" },
+          website: undefined,
+        }}
+      />,
+    );
+
+    expect(screen.getByText("Qualify before outreach")).not.toBeNull();
   });
 
   it("links a person entry to the people profile route", () => {
@@ -92,14 +178,16 @@ describe("catalog entry components", () => {
     expect(screen.getByText("Housing Justice KC")).not.toBeNull();
   });
 
-  it("falls back to the legacy entry route for non-person/non-org entries", () => {
+  it("links non-actor entries with slugs to their dedicated detail routes", () => {
     const initiativeEntry: Entry = {
       ...sampleEntry,
       type: "initiative",
       slug: "labor-action-1",
     };
     render(<EntryCard entry={initiativeEntry} />);
-    expect(screen.getByText("Initiative")).not.toBeNull();
+    const link = screen.getByRole("link", { name: "Housing Justice KC" });
+    expect(link.getAttribute("data-link-to")).toBe("/profiles/initiatives/$slug");
+    expect(link.getAttribute("data-link-params")).toBe(JSON.stringify({ slug: "labor-action-1" }));
   });
 
   it("renders entry-card location and metadata fallbacks", () => {
@@ -116,7 +204,7 @@ describe("catalog entry components", () => {
     };
     const { rerender } = render(<EntryCard entry={regionEntry} />);
 
-    expect(screen.getByText("Midwest")).not.toBeNull();
+    expect(screen.getAllByText("Midwest").length).toBeGreaterThan(0);
     expect(screen.queryByText(/Latest source:/)).toBeNull();
     // Unverified entries carry no trust badge — silence is the honest signal.
     expect(screen.queryByText("Atlas-verified")).toBeNull();
@@ -147,7 +235,7 @@ describe("catalog entry components", () => {
       />,
     );
 
-    expect(screen.getByText("Location not specified")).not.toBeNull();
+    expect(screen.getAllByText("Location not specified").length).toBeGreaterThan(0);
   });
 
   it("shows a 'Verified by subject' badge for the subject_verified tier", () => {
@@ -192,6 +280,26 @@ describe("catalog entry components", () => {
     expect(screen.queryByText("Corroborated")).toBeNull();
   });
 
+  it("surfaces pending claim review markers on entry cards and detail pages", () => {
+    const pendingEntry: Entry = {
+      ...sampleEntry,
+      claim: {
+        status: "pending",
+        verification_level: "source-derived",
+      },
+      trust: { ...sampleEntry.trust, level: "unverified" },
+      verified: false,
+    };
+    const { rerender } = render(<EntryCard entry={pendingEntry} />);
+
+    expect(screen.getByText("Claim under review")).not.toBeNull();
+
+    rerender(<EntryDetail entry={pendingEntry} />);
+
+    expect(screen.getAllByText("Claim under review").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Source-linked")).toBeNull();
+  });
+
   it("renders entry detail loading, error, empty, and success states", () => {
     const { rerender } = render(<EntryDetail isLoading />);
     expect(screen.getByText("Loading source-linked entry details…")).not.toBeNull();
@@ -205,8 +313,16 @@ describe("catalog entry components", () => {
     rerender(
       <EntryDetail entry={sampleEntry} issueAreaLabels={{ housing_affordability: "Housing" }} />,
     );
+    expect(screen.getByText("Source-backed record")).not.toBeNull();
+    expect(screen.getAllByText("2 source packets").length).toBeGreaterThan(0);
     expect(screen.getByText("Source trail")).not.toBeNull();
-    expect(screen.getByText("Coverage story")).not.toBeNull();
+    expect(screen.getByText("Evidence packets")).not.toBeNull();
+    expect(screen.getByText("1 source packet")).not.toBeNull();
+    expect(screen.getByText("1 source type")).not.toBeNull();
+    expect(screen.getByText("Quoted evidence")).not.toBeNull();
+    expect(screen.getAllByText("Coverage story").length).toBeGreaterThan(0);
+    expect(screen.getByTestId("private-notes-entry-entry_123")).not.toBeNull();
+    expect(screen.getByTestId("private-notes-source-source_123")).not.toBeNull();
 
     rerender(
       <EntryDetail
@@ -219,14 +335,15 @@ describe("catalog entry components", () => {
             full_address: undefined,
             issue_areas: [],
             sources: [],
+            trust: { ...sampleEntry.trust, level: "unverified" },
             verified: false,
           } as Entry
         }
       />,
     );
 
-    expect(screen.getByText("Source-linked")).not.toBeNull();
-    expect(screen.getByText("Midwest")).not.toBeNull();
+    expect(screen.getAllByText("Source-linked").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Midwest").length).toBeGreaterThan(0);
     expect(screen.getByText("No linked sources yet.")).not.toBeNull();
 
     rerender(
@@ -244,7 +361,7 @@ describe("catalog entry components", () => {
       />,
     );
 
-    expect(screen.getByText("Location not specified")).not.toBeNull();
+    expect(screen.getAllByText("Location not specified").length).toBeGreaterThan(0);
 
     rerender(
       <EntryDetail
@@ -272,8 +389,65 @@ describe("catalog entry components", () => {
     );
 
     expect(screen.getByText("123 Main St, Kansas City, MO")).not.toBeNull();
-    expect(screen.getByText("Water Quality")).not.toBeNull();
-    expect(screen.getByText("https://atlas.test/fallback-source")).not.toBeNull();
+    expect(screen.getAllByText("Water Quality").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("https://atlas.test/fallback-source").length).toBeGreaterThan(0);
+  });
+
+  it("frames entry details as reusable research records with nearby pivots", () => {
+    render(
+      <EntryDetail entry={sampleEntry} issueAreaLabels={{ housing_affordability: "Housing" }} />,
+    );
+
+    expect(screen.getByText("Research record")).not.toBeNull();
+    expect(screen.getByText("What you can use this for")).not.toBeNull();
+    expect(screen.getByText("Evaluate Housing Justice KC as a local housing lead.")).not.toBeNull();
+    expect(screen.getByText("Why this record is usable")).not.toBeNull();
+    expect(screen.getAllByText("2 source packets").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Atlas-verified").length).toBeGreaterThan(0);
+    expect(screen.getByText("Pivot from this actor")).not.toBeNull();
+
+    const placeLink = screen.getByRole("link", { name: "Kansas City civic actors" });
+    expect(placeLink.getAttribute("data-link-to")).toBe("/browse");
+    expect(placeLink.getAttribute("data-link-search")).toBe(
+      JSON.stringify({ cities: "Kansas City", states: "MO" }),
+    );
+
+    const issueLink = screen.getByRole("link", { name: "Housing actors" });
+    expect(issueLink.getAttribute("data-link-to")).toBe("/browse");
+    expect(issueLink.getAttribute("data-link-search")).toBe(
+      JSON.stringify({ issue_areas: "housing_affordability" }),
+    );
+  });
+
+  it("surfaces stale record and source warnings on entry detail pages", () => {
+    const staleSource: Source = {
+      ...sampleSource,
+      freshness: {
+        created_at: "2024-01-01T00:00:00.000Z",
+        ingested_at: "2024-01-01T00:00:00.000Z",
+        published_date: "2024-01-01",
+        staleness_status: "stale",
+        staleness_reason: "Most recent source record date is more than a year old.",
+      },
+    };
+
+    render(
+      <EntryDetail
+        entry={{
+          ...sampleEntry,
+          latest_source_date: "2024-01-01",
+          last_seen: "2024-01-01T00:00:00.000Z",
+          sources: [staleSource],
+        }}
+      />,
+    );
+
+    expect(screen.getByText("Stale record")).not.toBeNull();
+    expect(screen.getByText("Newest source is 2y+ ago.")).not.toBeNull();
+    expect(screen.getByText("Stale source")).not.toBeNull();
+    expect(
+      screen.getByText("Most recent source record date is more than a year old."),
+    ).not.toBeNull();
   });
 
   it("renders entry filters and propagates user input", () => {
@@ -294,6 +468,7 @@ describe("catalog entry components", () => {
           entry_types: [],
           issue_areas: [],
           regions: [],
+          source_patterns: [],
           source_types: [],
           states: [],
         }}
@@ -302,6 +477,7 @@ describe("catalog entry components", () => {
           entity_types: [{ count: 2, value: "organization" }],
           issue_areas: [{ count: 3, value: "housing_affordability" }],
           regions: [],
+          source_patterns: [],
           source_types: [],
           states: [{ count: 4, value: "MO" }],
         }}
@@ -337,6 +513,7 @@ describe("catalog entry components", () => {
           entry_types: ["organization"],
           issue_areas: [],
           regions: [],
+          source_patterns: [],
           source_types: ["news_article"],
           states: [],
         }}
@@ -345,6 +522,7 @@ describe("catalog entry components", () => {
           entity_types: [{ count: 2, value: "organization" }],
           issue_areas: [],
           regions: [],
+          source_patterns: [],
           source_types: [{ count: 1, value: "news_article" }],
           states: [],
         }}
@@ -361,19 +539,26 @@ describe("catalog entry components", () => {
 
   it("renders entry list loading, error, empty, and populated states", () => {
     const { rerender } = render(<EntryList entries={[]} isLoading />);
-    expect(screen.getByText("Loading entries...")).not.toBeNull();
+    expect(screen.queryByText(/Searching the Atlas/i)).toBeNull();
 
     rerender(<EntryList entries={[]} error={new Error("Search unavailable")} />);
     expect(screen.getAllByText("Search unavailable")).toHaveLength(2);
 
     rerender(<EntryList entries={[]} hasActiveSearch />);
-    expect(screen.getByText("No entries found.")).not.toBeNull();
+    expect(screen.getByText("No matching civic actors.")).not.toBeNull();
+    expect(screen.queryByText(/yet/i)).toBeNull();
 
     rerender(<EntryList entries={[]} />);
-    expect(screen.getByText("Discovery")).not.toBeNull();
+    expect(screen.getByText("No civic actors listed.")).not.toBeNull();
+    expect(
+      screen.getByText(
+        "Start research to find source-backed people, organizations, initiatives, and public mentions.",
+      ),
+    ).not.toBeNull();
+    expect(screen.queryByText(/seed the directory/i)).toBeNull();
 
     rerender(<EntryList entries={[sampleEntry]} total={1} />);
-    expect(screen.getByText("1 entries")).not.toBeNull();
+    expect(screen.getByText("1 matched entry")).not.toBeNull();
     expect(screen.getByText("Housing Justice KC")).not.toBeNull();
 
     rerender(<EntryList entries={[sampleEntry]} />);

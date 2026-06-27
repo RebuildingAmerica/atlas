@@ -3,6 +3,18 @@ import type * as React from "react";
 export const body: React.CSSProperties = {
   backgroundColor: "#f6f6f6",
   fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+  margin: 0,
+};
+
+export const preview: React.CSSProperties = {
+  color: "transparent",
+  display: "none",
+  fontSize: "1px",
+  lineHeight: "1px",
+  maxHeight: 0,
+  maxWidth: 0,
+  opacity: 0,
+  overflow: "hidden",
 };
 
 export const container: React.CSSProperties = {

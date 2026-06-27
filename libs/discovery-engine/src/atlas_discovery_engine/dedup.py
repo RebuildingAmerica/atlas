@@ -86,7 +86,8 @@ def deduplicate_entry_dicts(
                     )
                 )
 
-        if matched_index is None:
+        is_existing_baseline = bool(entry.get("_existing"))
+        if matched_index is None and not is_existing_baseline:
             kept_indices.append(idx)
 
     deduped_entries = [

@@ -138,7 +138,9 @@ atlas/
 ## Key Directories Explained
 
 ### api/atlas/api/
+
 Where HTTP endpoints are defined. Add new features here:
+
 - **entries.py** — Entry CRUD operations
 - **discovery.py** — Trigger the autodiscovery pipeline
 - **taxonomy.py** — Static data (issue areas, search terms)
@@ -146,6 +148,7 @@ Where HTTP endpoints are defined. Add new features here:
 **When to work here:** Adding new endpoints or changing API responses
 
 ### api/atlas/models/
+
 Database models and how to read/write data. The single source of truth for database schema.
 
 - **database.py** — Database connection and initialization
@@ -155,6 +158,7 @@ Database models and how to read/write data. The single source of truth for datab
 **When to work here:** Adding new database tables, changing schema, or adding CRUD operations
 
 ### api/atlas/pipeline/
+
 The heart of the product. Six steps that autodiscover entries.
 
 1. **query_generator.py** — Generate dozens of search queries from location + issues
@@ -169,6 +173,7 @@ The main orchestrator in `__init__.py` runs all 6 steps in sequence.
 **When to work here:** Improving discovery quality, tweaking extraction logic, or adding new pipeline steps
 
 ### api/atlas/taxonomy/
+
 Issue areas (housing, labor, climate, etc.) and their search terms. Used by query_generator to create targeted searches.
 
 - **issue_areas.py** — All issue area definitions
@@ -177,6 +182,7 @@ Issue areas (housing, labor, climate, etc.) and their search terms. Used by quer
 **When to work here:** Adding new issue areas or tweaking search terms for existing ones
 
 ### app/src/routes/
+
 File-based routing (TanStack Start convention). Each `.tsx` file is a route.
 
 - `index.tsx` → `/` (home page)
@@ -187,6 +193,7 @@ File-based routing (TanStack Start convention). Each `.tsx` file is a route.
 **When to work here:** Adding new pages or changing URL structure
 
 ### app/src/hooks/
+
 Custom React hooks that talk to the API API. Encapsulates data fetching and state management.
 
 **When to work here:** Adding new API calls or complex data logic
@@ -194,24 +201,31 @@ Custom React hooks that talk to the API API. Encapsulates data fetching and stat
 ## Running Specific Parts
 
 ### Backend Only
+
 ```bash
 make dev-api
 ```
+
 Useful for API development without app overhead.
 
 ### App Only
+
 ```bash
 make dev-app
 ```
-Useful for UI development. Will call API on localhost:8000.
+
+Useful for UI development. Will call API through the Atlas local API origin.
 
 ### Tests
+
 ```bash
 make test
 ```
+
 Runs pytest (API) and pnpm test (app, if configured).
 
 ### Linting and Formatting
+
 ```bash
 make lint           # Check for violations
 make lint-fix       # Auto-fix issues
@@ -229,6 +243,7 @@ The project is organized in three logical layers:
 3. **Interface Layer** (app/) — What users see
 
 This separation makes it easy to:
+
 - Test business logic independently of HTTP
 - Reuse business logic across different interfaces
 - Change one layer without affecting others

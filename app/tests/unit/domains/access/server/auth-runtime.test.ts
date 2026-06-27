@@ -239,6 +239,7 @@ describe("auth runtime wiring", () => {
       throw new TypeError("Expected the OAuth provider plugin to be configured.");
     }
     expect(typedOauthProviderOptions.validAudiences).toBeUndefined();
+    expect(typedOauthProviderOptions.silenceWarnings?.oauthAuthServerConfig).toBe(true);
 
     const ssoCall = mocks.sso.mock.calls.at(0) as [Record<string, unknown>] | undefined;
     const ssoOptions = ssoCall?.[0];
@@ -269,7 +270,8 @@ describe("auth runtime wiring", () => {
   it("forwards configured API audiences and maps access-token scope claims", async () => {
     mocks.getAuthRuntimeConfig.mockReturnValue({
       allowedEmails: new Set(["operator@atlas.test"]),
-      apiAudience: "atlas-api",
+      apiAudience: "https://atlas.test/mcp",
+      apiAudiences: ["https://atlas.test/mcp", "https://atlas.test/api"],
       apiKeyIntrospectionUrl: "http://127.0.0.1:3100/api/auth/internal/api-key",
       localMode: false,
       captureUrl: "http://127.0.0.1:8025/messages",
@@ -294,7 +296,10 @@ describe("auth runtime wiring", () => {
       throw new TypeError("Expected OAuth provider access-token claim mapping.");
     }
 
-    expect(typedOauthProviderOptions.validAudiences).toEqual(["atlas-api"]);
+    expect(typedOauthProviderOptions.validAudiences).toEqual([
+      "https://atlas.test/mcp",
+      "https://atlas.test/api",
+    ]);
     await expect(
       typedOauthProviderOptions.customAccessTokenClaims({
         scopes: ["openid", "discovery:write", "entities:write", "admin:all"] as Parameters<
@@ -304,7 +309,7 @@ describe("auth runtime wiring", () => {
     ).resolves.toEqual({
       // RFC 8707 audience binding falls back to apiAudience when the OAuth
       // client does not pass an explicit `resource` parameter.
-      aud: "atlas-api",
+      aud: "https://atlas.test/mcp",
       permissions: {
         discovery: ["write"],
         entities: ["write"],

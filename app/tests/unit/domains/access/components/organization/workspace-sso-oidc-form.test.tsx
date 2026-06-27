@@ -168,7 +168,11 @@ describe("WorkspaceSSOOidcForm", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /Save Google Workspace OIDC/i }));
+    const form = screen
+      .getByRole("button", { name: /Save Google Workspace OIDC/i })
+      .closest("form");
+    if (!form) throw new Error("Expected OIDC setup form");
+    fireEvent.submit(form);
     expect(onOidcSubmit).toHaveBeenCalled();
   });
 });

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
-import { render, screen, cleanup } from "@testing-library/react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@tanstack/react-router", async () => {
@@ -28,7 +28,7 @@ vi.mock("@/styles/app.css", () => ({}));
 
 describe("routes/__root", () => {
   afterEach(() => {
-    cleanup();
+    document.body.innerHTML = "";
   });
 
   it("exposes the not-found and error components used by the root route", async () => {
@@ -50,17 +50,10 @@ describe("routes/__root", () => {
     const Component = Route.options.component;
     if (!Component) throw new Error("Expected Route.options.component");
 
-    // Avoid the "<html> cannot appear inside <body>" warning by rendering
-    // into an HTMLDocument fragment via a custom container.
-    const container = document.createElement("div");
-    document.body.appendChild(container);
-    try {
-      render(<Component />, { container });
-      expect(screen.getByTestId("router-outlet")).toBeInTheDocument();
-      expect(screen.getByTestId("vercel-analytics")).toBeInTheDocument();
-      expect(screen.getByTestId("vercel-speed-insights")).toBeInTheDocument();
-    } finally {
-      document.body.removeChild(container);
-    }
+    const markup = renderToStaticMarkup(<Component />);
+
+    expect(markup).toContain('data-testid="router-outlet"');
+    expect(markup).toContain('data-testid="vercel-analytics"');
+    expect(markup).toContain('data-testid="vercel-speed-insights"');
   });
 });

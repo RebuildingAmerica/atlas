@@ -1,16 +1,3 @@
-import {
-  Body,
-  Button,
-  Container,
-  Head,
-  Heading,
-  Hr,
-  Html,
-  Link,
-  Preview,
-  Section,
-  Text,
-} from "@react-email/components";
 import * as React from "react";
 import * as styles from "./email-styles";
 
@@ -20,33 +7,33 @@ interface VerificationEmailProps {
 
 export function VerificationEmail({ url }: VerificationEmailProps) {
   return (
-    <Html>
-      <Head />
-      <Preview>Verify your email address for Atlas</Preview>
-      <Body style={styles.body}>
-        <Container style={styles.container}>
-          <Heading style={styles.heading}>Verify your email</Heading>
-          <Text style={styles.paragraph}>
+    <html>
+      <head />
+      <body style={styles.body}>
+        <div style={styles.preview}>Verify your email address for Atlas</div>
+        <main style={styles.container}>
+          <h1 style={styles.heading}>Verify your email</h1>
+          <p style={styles.paragraph}>
             Click the button below to verify your email address and complete your Atlas account
             setup.
-          </Text>
-          <Section style={styles.buttonSection}>
-            <Button href={url} style={styles.button}>
+          </p>
+          <div style={styles.buttonSection}>
+            <a href={url} style={styles.button}>
               Verify email address
-            </Button>
-          </Section>
-          <Text style={styles.fallback}>
+            </a>
+          </div>
+          <p style={styles.fallback}>
             Or copy and paste this URL into your browser:{" "}
-            <Link href={url} style={styles.link}>
+            <a href={url} style={styles.link}>
               {url}
-            </Link>
-          </Text>
-          <Hr style={styles.hr} />
-          <Text style={styles.footer}>
+            </a>
+          </p>
+          <hr style={styles.hr} />
+          <p style={styles.footer}>
             If you didn&rsquo;t create an Atlas account, you can safely ignore this email.
-          </Text>
-        </Container>
-      </Body>
-    </Html>
+          </p>
+        </main>
+      </body>
+    </html>
   );
 }

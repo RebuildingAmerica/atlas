@@ -4,10 +4,14 @@ from __future__ import annotations
 
 from typing import Literal
 
-from atlas_shared import DiscoveryRunInput
+from atlas_shared import DiscoveryResearchGoal, DiscoveryRunInput
 from pydantic import BaseModel, ConfigDict, Field
 
 __all__ = [
+    "DiscoveryResearchGap",
+    "DiscoveryResearchLead",
+    "DiscoveryResearchSource",
+    "DiscoveryResearchSummary",
     "DiscoveryRunCancelResponse",
     "DiscoveryRunResponse",
     "DiscoveryRunStartRequest",
@@ -16,6 +20,7 @@ __all__ = [
     "DiscoveryScheduleResponse",
     "DiscoveryScheduleUpdateRequest",
     "ScheduledRunResponse",
+    "ScheduledRunResult",
 ]
 
 
@@ -32,10 +37,54 @@ class DiscoveryRunStartRequest(DiscoveryRunInput):
                     "housing_affordability",
                     "local_government_and_civic_engagement",
                 ],
+                "research_goal": "landscape_scan",
                 "search_depth": "standard",
             }
         }
     )
+
+
+class DiscoveryResearchLead(BaseModel):
+    """A ranked actor lead from a discovery run."""
+
+    entry_id: str = Field(..., description="Entry ID for the lead")
+    name: str = Field(..., description="Lead name")
+    type: str = Field(..., description="Lead entry type")
+    why_it_matters: str = Field(..., description="Source-backed reason this lead is relevant")
+    source_count: int = Field(..., ge=0, description="Number of supporting sources")
+    confidence: Literal["corroborated", "partial", "unverified"] = Field(
+        "unverified",
+        description="Conservative confidence state derived from visible supporting evidence.",
+    )
+    latest_source_date: str | None = Field(None, description="Most recent source date")
+
+
+class DiscoveryResearchSource(BaseModel):
+    """A source that strongly shaped a discovery run's output."""
+
+    source_id: str = Field(..., description="Source ID")
+    title: str = Field(..., description="Source title")
+    url: str = Field(..., description="Source URL")
+    publication: str | None = Field(None, description="Publication or source publisher")
+    published_date: str | None = Field(None, description="Published date")
+    why_it_matters: str = Field(..., description="Why this source matters to the brief")
+
+
+class DiscoveryResearchGap(BaseModel):
+    """A research gap found during a discovery run."""
+
+    label: str = Field(..., description="Gap label")
+    detail: str = Field(..., description="Plain-language gap detail")
+
+
+class DiscoveryResearchSummary(BaseModel):
+    """Structured, source-linked research output from a discovery run."""
+
+    brief: str = Field(..., description="Concise source-linked research brief")
+    ranked_leads: list[DiscoveryResearchLead] = Field(default_factory=list)
+    key_sources: list[DiscoveryResearchSource] = Field(default_factory=list)
+    gaps: list[DiscoveryResearchGap] = Field(default_factory=list)
+    reasoning_signals: list[str] = Field(default_factory=list)
 
 
 class DiscoveryRunResponse(BaseModel):
@@ -44,6 +93,7 @@ class DiscoveryRunResponse(BaseModel):
     id: str = Field(..., description="Discovery run ID")
     location_query: str = Field(..., description="Location query")
     state: str = Field(..., description="State code")
+    research_goal: DiscoveryResearchGoal = Field(..., description="Research job this run supports")
     issue_areas: list[str] = Field(..., description="Issue areas queried")
     queries_generated: int = Field(..., description="Search queries generated")
     sources_fetched: int = Field(..., description="Sources fetched")
@@ -56,6 +106,10 @@ class DiscoveryRunResponse(BaseModel):
     status: str = Field(..., description="Status (running, completed, failed)")
     error_message: str | None = Field(None, description="Error message if failed")
     created_at: str = Field(..., description="Creation timestamp")
+    research_summary: DiscoveryResearchSummary | None = Field(
+        None,
+        description="Structured research output with leads, sources, gaps, and reasoning signals",
+    )
 
     model_config = ConfigDict(
         json_schema_extra={
@@ -63,6 +117,7 @@ class DiscoveryRunResponse(BaseModel):
                 "id": "550e8400-e29b-41d4-a716-446655440002",
                 "location_query": "Kansas City, MO",
                 "state": "MO",
+                "research_goal": "landscape_scan",
                 "issue_areas": ["worker_cooperatives", "housing_affordability"],
                 "queries_generated": 150,
                 "sources_fetched": 45,
@@ -74,6 +129,22 @@ class DiscoveryRunResponse(BaseModel):
                 "completed_at": "2026-01-15T12:30:00+00:00",
                 "status": "completed",
                 "created_at": "2026-01-15T10:00:00+00:00",
+                "research_summary": {
+                    "brief": "Three source-backed housing leads in Kansas City.",
+                    "ranked_leads": [
+                        {
+                            "entry_id": "entry_123",
+                            "name": "KC Tenants",
+                            "type": "organization",
+                            "why_it_matters": "Named by city and community sources.",
+                            "source_count": 2,
+                            "latest_source_date": "2026-01-15",
+                        }
+                    ],
+                    "key_sources": [],
+                    "gaps": [],
+                    "reasoning_signals": ["Two independent sources point to the same actor."],
+                },
             }
         }
     )

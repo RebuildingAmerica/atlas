@@ -19,6 +19,7 @@ describe("email service error branches", () => {
   function buildRuntime(overrides: Partial<AuthRuntimeConfig> = {}): AuthRuntimeConfig {
     return {
       apiAudience: null,
+      apiAudiences: [],
       apiBaseUrl: null,
       apiKeyIntrospectionUrl: "https://atlas.example.com/api/auth/internal/api-key",
       allowedEmails: new Set(),
@@ -45,10 +46,14 @@ describe("email service error branches", () => {
   afterEach(() => {
     fetchMock.mockReset();
     resendEmailsSendMock.mockReset();
+    vi.restoreAllMocks();
     vi.unstubAllGlobals();
   });
 
   it("throws when capture delivery fails", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {
+      // Expected by this error-path test.
+    });
     fetchMock.mockResolvedValue({
       ok: false,
       status: 502,
@@ -65,9 +70,16 @@ describe("email service error branches", () => {
         to: "operator@atlas.test",
       }),
     ).rejects.toThrow("Email delivery failed.");
+
+    expect(consoleError).toHaveBeenCalledWith(
+      "[atlas/email] capture delivery failed — status=502 body=capture offline",
+    );
   });
 
   it("throws when Resend reports an error", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {
+      // Expected by this error-path test.
+    });
     resendEmailsSendMock.mockResolvedValue({
       data: null,
       error: {
@@ -90,6 +102,10 @@ describe("email service error branches", () => {
         to: "operator@atlas.test",
       }),
     ).rejects.toThrow("Email delivery failed.");
+
+    expect(consoleError).toHaveBeenCalledWith(
+      "[atlas/email] resend delivery failed — resend offline",
+    );
   });
 
   it("requires resend and capture configuration before building a sender", () => {

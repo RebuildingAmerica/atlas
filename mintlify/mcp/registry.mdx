@@ -28,7 +28,7 @@ The namespace follows the [MCP Registry naming rules](https://modelcontextprotoc
 Once relisted, registry-aware clients can:
 
 1. **Search by name or namespace.** A user types "Atlas" or `org.rebuildingus.atlas/atlas` into a registry-aware UI and the registry returns the server URL plus the OAuth discovery hints.
-2. **Pre-flight the server.** Clients hit the listed URL, get back a `401` with a `WWW-Authenticate` header pointing at Atlas's [protected-resource metadata](https://atlas.rebuildingus.org/.well-known/oauth-protected-resource), and walk the OAuth 2.1 discovery chain from there.
+2. **Pre-flight the server.** Clients hit the listed URL, get back a `401` with a `WWW-Authenticate` header pointing at Atlas's [protected-resource metadata](https://atlas.rebuildingus.org/.well-known/oauth-protected-resource/mcp), and walk the OAuth 2.1 discovery chain from there.
 3. **Onboard without a prior relationship.** New clients with no Atlas account use [Client ID Metadata Documents](/mcp/client-id-metadata) to register dynamically without an Atlas-side admin step.
 
 The manual fallback works today regardless of registry state — point any MCP client directly at the URL:

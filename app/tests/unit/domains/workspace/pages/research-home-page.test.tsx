@@ -37,6 +37,16 @@ vi.mock("@/domains/workspace/components/follows-summary-section", () => ({
   FollowsSummarySection: () => <div data-testid="follows" />,
 }));
 
+vi.mock("@/domains/workspace/components/watchlists-summary-section", () => ({
+  WatchlistsSummarySection: () => <div data-testid="watchlists" />,
+}));
+
+vi.mock("@/domains/workspace/components/research-trends-section", () => ({
+  ResearchTrendsSection: ({ trends }: { trends: unknown[] }) => (
+    <div data-testid="research-trends" data-trend-count={trends.length} />
+  ),
+}));
+
 vi.mock("@/domains/workspace/components/recent-searches-section", () => ({
   RecentSearchesSection: ({
     runsThisMonth,
@@ -63,7 +73,18 @@ describe("ResearchHomePage", () => {
       lists: [],
       activity: { newSourcesThisWeek: 0, recentItems: [], followedActorCount: 0 },
       recentRuns: [],
+      researchTrends: [
+        {
+          id: "place:kansas city, mo:mo",
+          kind: "place",
+          label: "Kansas City, MO",
+          latestRunAt: "2026-06-23T00:00:00.000Z",
+          runCount: 2,
+          signal: "2 runs over time",
+        },
+      ],
       totals: { savedActors: 0, listCount: 0, runsThisMonth: 1 },
+      watchlists: [],
     };
   }
 
@@ -137,6 +158,8 @@ describe("ResearchHomePage", () => {
     expect(screen.getByTestId("activity")).toBeInTheDocument();
     expect(screen.getByTestId("lists")).toBeInTheDocument();
     expect(screen.getByTestId("follows")).toBeInTheDocument();
+    expect(screen.getByTestId("watchlists")).toBeInTheDocument();
+    expect(screen.getByTestId("research-trends")).toHaveAttribute("data-trend-count", "1");
     expect(screen.getByTestId("recent")).toBeInTheDocument();
     expect(screen.getByTestId("next")).toBeInTheDocument();
   });

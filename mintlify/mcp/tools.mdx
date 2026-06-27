@@ -1,6 +1,6 @@
 ---
 title: "Available tools"
-description: "Reference for all 10 Atlas MCP tools with parameters and example prompts."
+description: "Reference for all 12 Atlas MCP tools with parameters and example prompts."
 ---
 
 import PlaceKeyFormat from '/snippets/place-key-format.mdx';
@@ -20,11 +20,13 @@ Search Atlas entities by place, topic, or free text.
 **Parameters:**
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `place_key` | string | Normalized place key (e.g., `kansas-city,missouri`) |
-| `issue_area` | string[] | Issue area slugs to filter by |
+| `place` | string | Natural-language place or normalized place key |
+| `issue_areas` | string[] | Issue area slugs to filter by |
 | `text` | string | Free-text search query |
-| `entity_type` | string | Filter by type: `person`, `organization`, `initiative`, `campaign`, `event` |
+| `entity_types` | string[] | Filter by type: `person`, `organization`, `initiative`, `campaign`, `event` |
+| `source_types` | string[] | Filter by source type |
 | `limit` | integer | Max results (default: 20) |
+| `cursor` | string | Pagination cursor from a previous response |
 
 **Example prompts:**
 - "Find labor organizers in Detroit"
@@ -39,6 +41,8 @@ Get full details for a specific entity by ID.
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | `entity_id` | string | The entity's unique ID |
+| `relation_types` | string[] | Optional relationship types to include |
+| `limit` | integer | Max results (default: 20) |
 
 **Example prompts:**
 - "Tell me more about that first organization"
@@ -79,9 +83,12 @@ Search across all Atlas sources.
 **Parameters:**
 | Parameter | Type | Description |
 |-----------|------|-------------|
+| `place` | string | Place filter, such as `Kansas City, MO` |
+| `issue_areas` | string[] | Issue area slugs to filter by |
 | `text` | string | Free-text search query |
-| `source_type` | string | Filter by type: `journalism`, `nonprofit_listing`, `organizational_website`, etc. |
+| `source_types` | string[] | Filter by type: `journalism`, `nonprofit_listing`, `organizational_website`, etc. |
 | `limit` | integer | Max results (default: 20) |
+| `cursor` | string | Pagination cursor from a previous response |
 
 **Example prompts:**
 - "Find news articles about tenant organizing in Kansas City"
@@ -96,9 +103,13 @@ Get entities for a specific place. Alias for `search_entities` with a place filt
 **Parameters:**
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `place_key` | string | Normalized place key (e.g., `kansas-city,missouri`) |
-| `issue_area` | string[] | Issue area slugs to filter by |
+| `place` | string | Natural-language place or normalized place key |
+| `issue_areas` | string[] | Issue area slugs to filter by |
+| `text` | string | Free-text search query |
+| `entity_types` | string[] | Entity types to include |
+| `source_types` | string[] | Source types to include |
 | `limit` | integer | Max results |
+| `cursor` | string | Pagination cursor from a previous response |
 
 **Example prompts:**
 - "What civic organizations are active in Boise, Idaho?"
@@ -111,7 +122,7 @@ Get demographic and socioeconomic context for a place.
 **Parameters:**
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `place_key` | string | Normalized place key |
+| `place` | string | Natural-language place or normalized place key |
 
 **Example prompts:**
 - "What's the demographic profile of Garden City, Kansas?"
@@ -124,7 +135,8 @@ Get coverage gaps and entity counts for a place.
 **Parameters:**
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `place_key` | string | Normalized place key |
+| `place` | string | Natural-language place or normalized place key |
+| `issue_areas` | string[] | Optional issue area slugs to focus the coverage summary |
 
 **Example prompts:**
 - "What issue areas are underrepresented in Kansas City?"
@@ -138,7 +150,9 @@ Get an issue area summary for a place.
 **Parameters:**
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `place_key` | string | Normalized place key |
+| `place` | string | Natural-language place or normalized place key |
+| `issue_areas` | string[] | Optional issue area slugs to include |
+| `top_entities_per_issue` | integer | Number of example entities per issue (default: 5) |
 
 **Example prompts:**
 - "What are the main civic issues in Kansas City?"
@@ -153,12 +167,44 @@ Map natural language to Atlas issue area slugs.
 **Parameters:**
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `query` | string | Natural language description of issues |
+| `text` | string | Natural language description of issues |
+| `limit` | integer | Max issue areas to return (default: 10) |
 
 **Example prompts:**
 - "What Atlas issue areas relate to affordable childcare?"
 - "Map 'clean water' to Atlas categories"
 - "What issue areas cover worker rights?"
+
+## Research run tools
+
+### list_discovery_runs
+
+List source-linked Atlas research runs and their structured outputs.
+
+**Parameters:**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `state` | string | Optional state filter, such as `MO` |
+| `status` | string | Optional run status filter |
+| `limit` | integer | Max runs to return (default: 20) |
+| `cursor` | string | Pagination cursor from a previous response |
+
+**Example prompts:**
+- "Show recent completed research runs in Missouri"
+- "What research has Atlas run for this state?"
+
+### get_discovery_run
+
+Get one source-linked Atlas research run and its structured output.
+
+**Parameters:**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `run_id` | string | The research run ID |
+
+**Example prompts:**
+- "Open that research run"
+- "Summarize the entities and sources from this run"
 
 ## Place key format
 

@@ -16,6 +16,7 @@ describe("ResearchHomeHero", () => {
       activity: { newSourcesThisWeek: 3, recentItems: [], followedActorCount: 4 },
       recentRuns: [],
       totals: { savedActors: 12, listCount: 2, runsThisMonth: 0 },
+      watchlists: [],
     };
   }
 
@@ -25,6 +26,7 @@ describe("ResearchHomeHero", () => {
       activity: { newSourcesThisWeek: 1, recentItems: [], followedActorCount: 1 },
       recentRuns: [],
       totals: { savedActors: 1, listCount: 1, runsThisMonth: 0 },
+      watchlists: [],
     };
   }
 

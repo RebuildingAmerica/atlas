@@ -54,45 +54,50 @@ export function ConfirmDialogProvider(props: { children: ReactNode }) {
   return (
     <ConfirmDialogContext.Provider value={{ confirm }}>
       {props.children}
-      <Dialog
-        open={request !== null}
-        onClose={() => {
-          settle(false);
-        }}
-        className="relative z-50"
-      >
-        <div className="fixed inset-0 bg-black/40" aria-hidden="true" />
-        <div className="fixed inset-0 flex items-center justify-center p-4">
-          <DialogPanel className="border-outline-variant bg-surface w-full max-w-md space-y-4 rounded-[1.25rem] border p-6 shadow-xl">
-            {request ? (
-              <>
-                <DialogTitle className="type-title-large text-on-surface">
-                  {request.title}
-                </DialogTitle>
-                <div className="type-body-medium text-outline">{request.body}</div>
-                <div className="flex flex-wrap items-center justify-end gap-3 pt-2">
-                  <Button
-                    variant="ghost"
-                    onClick={() => {
-                      settle(false);
-                    }}
-                  >
-                    {request.cancelLabel ?? "Cancel"}
-                  </Button>
-                  <Button
-                    variant={request.destructive ? "primary" : "secondary"}
-                    onClick={() => {
-                      settle(true);
-                    }}
-                  >
-                    {request.confirmLabel ?? "Confirm"}
-                  </Button>
-                </div>
-              </>
-            ) : null}
-          </DialogPanel>
-        </div>
-      </Dialog>
+      {request ? (
+        <Dialog
+          open
+          onClose={() => {
+            settle(false);
+          }}
+          className="relative z-50"
+        >
+          <div
+            className="fixed inset-0 bg-black/40"
+            aria-hidden="true"
+            onClick={() => {
+              settle(false);
+            }}
+          />
+          <div className="fixed inset-0 flex items-center justify-center p-4">
+            <DialogPanel className="border-outline-variant bg-surface w-full max-w-md space-y-4 rounded-[1.25rem] border p-6 shadow-xl">
+              <DialogTitle className="type-title-large text-on-surface">
+                {request.title}
+              </DialogTitle>
+              <div className="type-body-medium text-outline">{request.body}</div>
+              <div className="flex flex-wrap items-center justify-end gap-3 pt-2">
+                <Button
+                  variant="ghost"
+                  autoFocus
+                  onClick={() => {
+                    settle(false);
+                  }}
+                >
+                  {request.cancelLabel ?? "Cancel"}
+                </Button>
+                <Button
+                  variant={request.destructive ? "primary" : "secondary"}
+                  onClick={() => {
+                    settle(true);
+                  }}
+                >
+                  {request.confirmLabel ?? "Confirm"}
+                </Button>
+              </div>
+            </DialogPanel>
+          </div>
+        </Dialog>
+      ) : null}
     </ConfirmDialogContext.Provider>
   );
 }

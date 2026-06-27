@@ -13,6 +13,7 @@ import {
  */
 export interface AuthRuntimeConfig {
   apiAudience: string | null;
+  apiAudiences: readonly string[];
   apiKeyIntrospectionUrl: string | null;
   allowedEmails: Set<string>;
   apiBaseUrl: string | null;
@@ -66,6 +67,13 @@ function normalizeEmailList(value: string | undefined): Set<string> {
       .map((item) => item.trim().toLowerCase())
       .filter(Boolean),
   );
+}
+
+function normalizeStringList(value: string | undefined): string[] {
+  return (value ?? "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
 }
 
 /**
@@ -169,9 +177,11 @@ export function resolveAuthRuntimeConfig(env: NodeJS.ProcessEnv, cwd: string): A
   const emailProvider = resolveEmailProvider(env);
 
   const databaseUrl = env.DATABASE_URL?.trim() || null;
+  const apiAudiences = normalizeStringList(env.ATLAS_API_AUDIENCE);
 
   return {
-    apiAudience: env.ATLAS_API_AUDIENCE?.trim() || null,
+    apiAudience: apiAudiences[0] ?? null,
+    apiAudiences,
     apiBaseUrl: resolveApiBaseUrl(env),
     apiKeyIntrospectionUrl: resolveApiKeyIntrospectionUrl(env),
     allowedEmails: normalizeEmailList(env.ATLAS_AUTH_ALLOWED_EMAILS),
