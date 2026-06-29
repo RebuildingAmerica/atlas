@@ -1,5 +1,6 @@
 import { ArrowRight, Calendar, Globe, Mail, Phone } from "lucide-react";
 import type { ReactNode } from "react";
+import { ContactValue, UngroundedNote } from "@/domains/catalog/components/profiles/contact-value";
 
 interface PresenceSectionProps {
   website?: string;
@@ -75,7 +76,7 @@ export function PresenceSection({
             <div className="min-w-0 flex-1">
               <p className="type-title-small text-ink-strong">{extractDomain(website)}</p>
               <p className="type-body-small text-ink-muted">Official website</p>
-              <p className="type-label-small text-ink-muted">Not confirmed by a source</p>
+              <UngroundedNote />
             </div>
           </div>
         ) : (
@@ -106,19 +107,7 @@ export function PresenceSection({
               icon={<Mail className="text-ink-muted h-4 w-4" />}
               label="Email"
               value={
-                emailGrounded === false ? (
-                  <>
-                    <span className="text-ink-strong break-words">{email}</span>
-                    <p className="type-label-small text-ink-muted">Not confirmed by a source</p>
-                  </>
-                ) : (
-                  <a
-                    href={`mailto:${email}`}
-                    className="text-accent focus-visible:ring-civic rounded-sm break-words hover:underline focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
-                  >
-                    {email}
-                  </a>
-                )
+                <ContactValue value={email} href={`mailto:${email}`} grounded={emailGrounded} />
               }
             />
           ) : null}
