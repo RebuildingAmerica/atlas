@@ -8,6 +8,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   BrowseSearchBox,
   FilterDisclosure,
+  GridSurface,
+  ListSurface,
 } from "@/domains/catalog/components/browse/browse-page-sections";
 
 vi.mock("@headlessui/react", () => ({
@@ -88,5 +90,38 @@ describe("FilterDisclosure", () => {
 
     fireEvent.click(housingButton);
     expect(onHousingClick).toHaveBeenCalledOnce();
+  });
+
+  it("exposes selected state buttons on grid and list browse surfaces", () => {
+    const states = [
+      { count: 10, intensity: 0.9, state: "MO" },
+      { count: 5, intensity: 0.5, state: "CA" },
+    ];
+
+    const { unmount } = render(
+      <GridSurface states={states} selectedState="MO" onSelectState={vi.fn()} />,
+    );
+
+    expect(screen.getByRole("button", { name: "Missouri 10 matching records" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(screen.getByRole("button", { name: "California 5 matching records" })).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
+
+    unmount();
+
+    render(<ListSurface states={states} selectedState="CA" onSelectState={vi.fn()} />);
+
+    expect(screen.getByRole("button", { name: "01 Missouri MO 10 records" })).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
+    expect(screen.getByRole("button", { name: "02 California CA 5 records" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
   });
 });
