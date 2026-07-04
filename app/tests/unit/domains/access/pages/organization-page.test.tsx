@@ -3,8 +3,16 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import type { QueryKey } from "@tanstack/react-query";
 import type { AtlasOrganizationDetails } from "@/domains/access/organization-contracts";
 import type { AtlasSessionPayload } from "@/domains/access/organization-contracts";
+import type { TeamSeatCostSummary } from "@/domains/billing/team-cost";
+import type { WorkspaceDirectoryConfig } from "@/domains/workspace/server/directory-config";
+import type {
+  WorkspaceIntegrationMonitoring,
+  WorkspaceUsageAuditLog,
+  WorkspaceUsageSummary,
+} from "@/domains/workspace/server/usage-summary";
 import {
   createOrganizationDetailsFixture,
   createWorkspaceSSOProviderFixture,
@@ -15,7 +23,7 @@ import {
   createAtlasWorkspace,
 } from "../../../../fixtures/access/sessions";
 import { organizationPageDependencyMocks } from "../../../../mocks/access/organization-page-dependencies";
-import { createMutationHookStub, createQueryHookStub } from "../../../../helpers/react-query-stubs";
+import { createMutationHookStub } from "../../../../helpers/react-query-stubs";
 import {
   TestButton,
   TestInput,
@@ -111,6 +119,162 @@ let organizationDetails: AtlasOrganizationDetails | null;
 let organizationLoading: boolean;
 let refetchSession: ReturnType<typeof vi.fn>;
 
+const organizationQueryKey = ["auth", "organization"] as const;
+const samlAllowedIssuersQueryKey = ["auth", "saml-allowed-issuers"] as const;
+const teamSeatCostSummaryQueryKey = ["auth", "team-seat-cost-summary"] as const;
+const workspaceDirectoryConfigQueryKey = ["workspace", "directory-config"] as const;
+const workspaceIntegrationMonitoringQueryKey = ["workspace", "integration-monitoring"] as const;
+const workspaceUsageAuditLogQueryKey = ["workspace", "usage-audit-log"] as const;
+const workspaceUsageSummaryQueryKey = ["workspace", "usage-summary"] as const;
+
+interface OrganizationPageQueryOptions {
+  enabled?: boolean;
+  initialData?: unknown;
+  queryKey?: QueryKey;
+}
+
+interface OrganizationPageQueryResult {
+  data: unknown;
+  isLoading: boolean;
+}
+
+interface SamlAllowedIssuersFixture {
+  issuerOrigins: string[];
+}
+
+const samlAllowedIssuersFixture: SamlAllowedIssuersFixture = {
+  issuerOrigins: ["https://accounts.google.com"],
+};
+
+const teamSeatCostSummaryFixture: TeamSeatCostSummary = {
+  additionalSeats: 1,
+  additionalSeatsCents: 800,
+  baseCents: 2500,
+  interval: "monthly",
+  maxSeats: 50,
+  perSeatCents: 800,
+  seatsUsed: 2,
+  totalCents: 3300,
+};
+
+const usageSummaryFixture: WorkspaceUsageSummary = {
+  event_counts: { brief_opened: 2 },
+  org_id: "org_123",
+  renewal_signals: {
+    briefs_used: 2,
+    coverage_gaps_closed: 1,
+    integrations_used: 0,
+    public_records_improved: 3,
+    team_workflow_actions: 1,
+  },
+  total_events: 7,
+};
+
+const usageAuditLogFixture: WorkspaceUsageAuditLog = {
+  data_boundary: {
+    metadata_included: false,
+    session_replay_included: false,
+    statement:
+      "The audit log shows timestamped workspace usage events without private metadata or behavioral session replay.",
+  },
+  items: [],
+  limit: 10,
+  offset: 0,
+  org_id: "org_123",
+  total: 0,
+};
+
+const integrationMonitoringFixture: WorkspaceIntegrationMonitoring = {
+  api_calls: 0,
+  data_boundary: {
+    request_metadata_included: false,
+    session_replay_included: false,
+    statement:
+      "Integration monitoring shows counts, surfaces, routes, and last-seen times without request metadata or behavioral session replay.",
+  },
+  last_seen_at: null,
+  mcp_calls: 0,
+  org_id: "org_123",
+  top_resources: [],
+  total_calls: 0,
+};
+
+const directoryConfigFixture: WorkspaceDirectoryConfig = {
+  org_id: "org_123",
+  title: "Atlas public directory",
+};
+
+/**
+ * Checks whether a React Query key starts with a known workspace query prefix.
+ *
+ * @param queryKey - Query key supplied to the mocked hook.
+ * @param prefix - Stable prefix exported by the organization-page data hook.
+ */
+function queryKeyStartsWith(queryKey: QueryKey | undefined, prefix: QueryKey): boolean {
+  if (!queryKey || queryKey.length < prefix.length) {
+    return false;
+  }
+
+  return prefix.every((segment, index) => queryKey[index] === segment);
+}
+
+/**
+ * Resolves page data by React Query key so independent queries receive the
+ * same shapes they receive in production.
+ *
+ * @param queryKey - Query key supplied to the mocked hook.
+ * @param initialData - Server-provided initial data from the component.
+ */
+function resolveOrganizationPageQueryData(
+  queryKey: QueryKey | undefined,
+  initialData: unknown,
+): unknown {
+  if (queryKeyStartsWith(queryKey, organizationQueryKey)) {
+    return initialData ?? organizationDetails;
+  }
+  if (queryKeyStartsWith(queryKey, samlAllowedIssuersQueryKey)) {
+    return samlAllowedIssuersFixture;
+  }
+  if (queryKeyStartsWith(queryKey, teamSeatCostSummaryQueryKey)) {
+    return teamSeatCostSummaryFixture;
+  }
+  if (queryKeyStartsWith(queryKey, workspaceUsageSummaryQueryKey)) {
+    return usageSummaryFixture;
+  }
+  if (queryKeyStartsWith(queryKey, workspaceUsageAuditLogQueryKey)) {
+    return usageAuditLogFixture;
+  }
+  if (queryKeyStartsWith(queryKey, workspaceIntegrationMonitoringQueryKey)) {
+    return integrationMonitoringFixture;
+  }
+  if (queryKeyStartsWith(queryKey, workspaceDirectoryConfigQueryKey)) {
+    return directoryConfigFixture;
+  }
+
+  return undefined;
+}
+
+/**
+ * Builds the page-level query stub used by organization page tests.
+ */
+function createOrganizationPageQueryStub() {
+  return (options: OrganizationPageQueryOptions): OrganizationPageQueryResult => {
+    if (!options.enabled) {
+      return {
+        data: undefined,
+        isLoading: false,
+      };
+    }
+
+    return {
+      data: resolveOrganizationPageQueryData(options.queryKey, options.initialData),
+      isLoading: queryKeyStartsWith(options.queryKey, organizationQueryKey)
+        ? organizationLoading
+        : false,
+    };
+  };
+}
+
 /**
  * Updates the mocked session hook with the supplied session fixture.
  *
@@ -138,9 +302,7 @@ function setAtlasSession(session: AtlasSessionPayload): void {
 function setOrganizationDetails(details: AtlasOrganizationDetails | null, isLoading = false): void {
   organizationDetails = details;
   organizationLoading = isLoading;
-  organizationPageDependencyMocks.useQuery.mockImplementation(
-    createQueryHookStub(organizationDetails, organizationLoading),
-  );
+  organizationPageDependencyMocks.useQuery.mockImplementation(createOrganizationPageQueryStub());
 }
 
 /**

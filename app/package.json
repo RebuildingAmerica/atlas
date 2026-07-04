@@ -94,6 +94,7 @@
     "orval": "^8.7.0",
     "prettier": "^3.4.0",
     "prettier-plugin-tailwindcss": "^0.6.9",
+    "rollup": "4.60.1",
     "tailwindcss": "^4.3.1",
     "typescript": "^5.7.0",
     "vite": "^7.0.0",
