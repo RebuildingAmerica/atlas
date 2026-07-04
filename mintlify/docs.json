@@ -132,6 +132,72 @@
             ]
           },
           {
+            "group": "Workspace endpoints",
+            "pages": [
+              {
+                "group": "Scout sync",
+                "pages": ["POST /api/discovery-runs/syncs"]
+              },
+              {
+                "group": "Workspace discovery",
+                "pages": [
+                  "GET /api/orgs/{org_id}/discovery-runs",
+                  "POST /api/orgs/{org_id}/discovery-runs",
+                  "GET /api/orgs/{org_id}/discovery-runs/{run_id}"
+                ]
+              },
+              {
+                "group": "Briefing room",
+                "pages": [
+                  "GET /api/orgs/{org_id}/briefs",
+                  "POST /api/orgs/{org_id}/briefs",
+                  "GET /api/orgs/{org_id}/briefs/{brief_id}",
+                  "PATCH /api/orgs/{org_id}/briefs/{brief_id}",
+                  "GET /api/orgs/{org_id}/briefs/{brief_id}/export"
+                ]
+              },
+              {
+                "group": "Coverage",
+                "pages": [
+                  "GET /api/orgs/{org_id}/coverage-targets",
+                  "POST /api/orgs/{org_id}/coverage-targets",
+                  "GET /api/orgs/{org_id}/coverage-targets/{target_id}",
+                  "PATCH /api/orgs/{org_id}/coverage-targets/{target_id}",
+                  "GET /api/orgs/{org_id}/coverage-targets/export",
+                  "POST /api/orgs/{org_id}/coverage-targets/import",
+                  "GET /api/orgs/{org_id}/coverage-reports"
+                ]
+              },
+              {
+                "group": "Monitoring and proof",
+                "pages": [
+                  "GET /api/orgs/{org_id}/watches",
+                  "GET /api/orgs/{org_id}/watches/{resource_type}/{resource_id}",
+                  "PUT /api/orgs/{org_id}/watches/{resource_type}/{resource_id}",
+                  "DELETE /api/orgs/{org_id}/watches/{resource_type}/{resource_id}",
+                  "GET /api/orgs/{org_id}/watch-digest",
+                  "GET /api/orgs/{org_id}/usage-summary",
+                  "GET /api/orgs/{org_id}/usage-summary/renewal-packet",
+                  "POST /api/orgs/{org_id}/usage-summary/evidence-opens"
+                ]
+              },
+              {
+                "group": "Workspace directory",
+                "pages": [
+                  "GET /api/orgs/{org_id}/entries",
+                  "POST /api/orgs/{org_id}/entries",
+                  "GET /api/orgs/{org_id}/entries/{entry_id}",
+                  "PUT /api/orgs/{org_id}/entries/{entry_id}",
+                  "DELETE /api/orgs/{org_id}/entries/{entry_id}",
+                  "GET /api/orgs/{org_id}/entries/directory-config",
+                  "PUT /api/orgs/{org_id}/entries/directory-config",
+                  "GET /api/orgs/{org_id}/entries/public-directory",
+                  "PUT /api/orgs/{org_id}/entries/{entry_id}/publish"
+                ]
+              }
+            ]
+          },
+          {
             "group": "Core endpoints",
             "pages": [
               "GET /health",
