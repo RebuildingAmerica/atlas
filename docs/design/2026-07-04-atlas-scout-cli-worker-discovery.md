@@ -52,16 +52,17 @@ scout logout
 
 `scout login` requests a device code from the Atlas app auth server, opens the
 browser when possible, and prints a fallback URL plus code. After browser
-approval, Scout exchanges the approved device session for a narrow worker
-credential and stores it in the OS credential store.
+approval, Scout exchanges the approved device session for a narrow API token,
+enrolls the current host as a named Scout device, and stores the browser-approved
+session locally with user-only file permissions.
 
-`scout auth status` shows the signed-in account, worker name, Atlas URL,
-workspace destination preference, search capability, local model provider, and
-last successful heartbeat. It must not print raw secrets.
+`scout auth status` shows the signed-in account, worker name, worker id, Atlas
+URL, workspace destination preference, and workspace id. It must not print raw
+secrets.
 
-`scout logout` revokes the worker credential in Atlas and removes local secrets.
-If Atlas is unreachable, Scout removes the local credential and records that
-remote revocation is still needed.
+`scout logout` removes the local browser-approved session. Remote device
+revocation is exposed from the Atlas account page so a user can see and revoke
+specific host computers.
 
 ### Search Key Commands
 
@@ -71,22 +72,25 @@ scout search-key status
 scout search-key delete
 ```
 
-The search key is stored separately from the Atlas worker credential. Scout
-shows whether search-backed discovery is available and warns when no search key
-is configured, but it still permits seeded/direct-URL work.
+The search key is stored separately from the Atlas worker credential with
+user-only file permissions. `SEARCH_API_KEY` still works and takes precedence.
+Scout shows whether search-backed discovery is available and warns when no
+search key is configured, but it still permits seeded/direct-URL work.
 
 ### Worker Commands
 
 ```bash
-scout worker start [--concurrency N]
+scout worker start [--atlas-url URL] [--search-api-key KEY] [--interval 10] [--lease-seconds 900]
 scout worker status
 scout worker stop
 ```
 
 `scout worker start` registers current capabilities, heartbeats while running,
 claims compatible jobs, executes them with the local Scout pipeline, and returns
-canonical discovery artifacts. In public worker mode it refuses non-local model
-providers.
+canonical discovery artifacts. `scout worker status` reads a local state file
+with PID, mode, Atlas URL, search-key readiness, current job id, last completed
+job id, heartbeat, and last error. In public worker mode it should refuse
+non-local model providers before the public launch gate.
 
 ### Upload Commands
 
@@ -162,14 +166,24 @@ Atlas owns durable job state. Scout owns local execution. The API should expose
 worker-specific endpoints rather than making volunteer workers use internal
 database access.
 
-Required worker operations:
+Implemented worker operations:
 
-- Register or refresh worker capabilities.
-- Claim one compatible job with a lease.
-- Send heartbeat and progress updates before the lease expires.
-- Complete a job with canonical artifacts.
+- `POST /api/discovery-runs/jobs/claim` claims the oldest queued job with a
+  lease and returns the run target context.
+- `POST /api/discovery-runs/jobs/{job_id}/heartbeat` renews the current worker's
+  lease and stores progress.
+- `POST /api/discovery-runs/jobs/{job_id}/complete` marks the current worker's
+  leased job complete after Scout syncs canonical artifacts.
+- Account settings list enrolled Scout devices with worker name, last seen,
+  default upload target, search capability, and a revoke action. Token exchange
+  rejects a revoked worker id before minting a fresh API token.
+
+Still required before widening public worker enrollment:
+
 - Fail a job with retryable/non-retryable error metadata.
-- Revoke a worker and release outstanding leases.
+- Revoke outstanding API job leases when a worker is revoked.
+- Capability matching that prevents workers without search keys from claiming
+  exploratory query-generation jobs.
 
 Job compatibility is based on capability metadata:
 
@@ -255,6 +269,10 @@ make it easier to publish unsupported claims about real people.
 
 - A first-time user can install Scout, run `scout login`, approve in the
   browser, and see `scout auth status` without creating an API key.
+- The same user can open account settings and see the enrolled Scout host with
+  last-seen, upload target, search capability, and a revoke action.
+- The same user can run `scout search-key set`, `scout search-key status`, and
+  `scout worker start/status/stop` without creating a general API key.
 - A logged-in user can run local discovery with canonical location/state
   metadata and sync it to either the public contribution queue or their
   workspace.

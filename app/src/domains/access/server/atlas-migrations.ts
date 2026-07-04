@@ -64,6 +64,36 @@ const ADD_EVENT_AT_PG = `
 ALTER TABLE workspace_products ADD COLUMN stripe_event_at TIMESTAMPTZ;
 `;
 
+const SCOUT_DEVICES_SQLITE = `
+CREATE TABLE scout_devices (
+    id                    TEXT PRIMARY KEY,
+    user_id               TEXT NOT NULL,
+    worker_name           TEXT NOT NULL,
+    default_upload_target TEXT NOT NULL,
+    workspace_id          TEXT,
+    search_key_configured INTEGER NOT NULL DEFAULT 0,
+    created_at            TEXT NOT NULL,
+    last_seen_at          TEXT NOT NULL,
+    revoked_at            TEXT
+);
+CREATE INDEX idx_scout_devices_user ON scout_devices(user_id);
+`;
+
+const SCOUT_DEVICES_PG = `
+CREATE TABLE scout_devices (
+    id                    TEXT PRIMARY KEY,
+    user_id               TEXT NOT NULL,
+    worker_name           TEXT NOT NULL,
+    default_upload_target TEXT NOT NULL,
+    workspace_id          TEXT,
+    search_key_configured BOOLEAN NOT NULL DEFAULT false,
+    created_at            TIMESTAMPTZ NOT NULL,
+    last_seen_at          TIMESTAMPTZ NOT NULL,
+    revoked_at            TIMESTAMPTZ
+);
+CREATE INDEX idx_scout_devices_user ON scout_devices(user_id);
+`;
+
 export const ATLAS_MIGRATIONS: AtlasMigration[] = [
   {
     version: 1,
@@ -76,6 +106,12 @@ export const ATLAS_MIGRATIONS: AtlasMigration[] = [
     name: "add_workspace_products_stripe_event_at",
     sqlite: ADD_EVENT_AT_SQLITE,
     pg: ADD_EVENT_AT_PG,
+  },
+  {
+    version: 3,
+    name: "create_scout_devices",
+    sqlite: SCOUT_DEVICES_SQLITE,
+    pg: SCOUT_DEVICES_PG,
   },
 ];
 

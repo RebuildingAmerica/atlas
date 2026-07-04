@@ -149,11 +149,22 @@ async def test_sync_uses_login_session_api_token_and_destination(
             atlas_url: str,
             *,
             session_token: str,
+            worker_name: str,
+            default_upload_target: str,
+            worker_id: str | None = None,
+            workspace_id: str | None = None,
+            search_key_configured: bool = False,
         ) -> ScoutTokenExchange:
             assert atlas_url == "https://atlas.example"
             assert session_token == "device-session-token"
+            assert worker_name
+            assert default_upload_target == "workspace"
+            assert worker_id == "worker-123"
+            assert workspace_id == "org-123"
+            assert search_key_configured is False
             return ScoutTokenExchange(
                 token="api-jwt",
+                worker_id="worker-123",
                 user_id="user-123",
                 user_email="user@example.org",
                 workspace_id="org-123",

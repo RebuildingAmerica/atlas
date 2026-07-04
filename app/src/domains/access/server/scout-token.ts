@@ -2,6 +2,7 @@ import "@tanstack/react-start/server-only";
 
 import { z } from "zod";
 import { ensureAuthReady } from "./auth";
+import { ScoutDeviceRevokedError, registerOrTouchScoutDevice } from "./scout-devices";
 import { resolvePrimaryWorkspaceId } from "./workspace-lookup";
 
 const scoutSessionSchema = z
@@ -19,13 +20,32 @@ const scoutJwtSchema = z
   })
   .nullable();
 
+const scoutTokenRequestSchema = z.object({
+  default_upload_target: z.enum(["public", "workspace"]),
+  search_key_configured: z.boolean().optional(),
+  worker_id: z.string().trim().min(1).optional(),
+  worker_name: z.string().trim().min(1),
+  workspace_id: z.string().trim().min(1).nullable().optional(),
+});
+
 interface ScoutTokenResponseBody {
   token: string;
   user: {
     id: string;
     email: string;
   };
+  worker_id: string;
   workspace_id: string | null;
+}
+
+type ScoutTokenRequestBody = z.infer<typeof scoutTokenRequestSchema>;
+
+async function readScoutTokenRequestBody(request: Request): Promise<ScoutTokenRequestBody> {
+  try {
+    return scoutTokenRequestSchema.parse(await request.json());
+  } catch {
+    throw new Error("Scout device metadata is required.");
+  }
 }
 
 /**
@@ -39,6 +59,10 @@ interface ScoutTokenResponseBody {
  * @param request - Incoming `/api/auth/scout/token` request.
  */
 export async function issueScoutTokenRequest(request: Request): Promise<Response> {
+  if (request.method !== "POST") {
+    return Response.json({ error: "Method not allowed" }, { status: 405 });
+  }
+
   const auth = await ensureAuthReady();
   const session = scoutSessionSchema.parse(await auth.api.getSession({ headers: request.headers }));
   const user = session?.user;
@@ -46,18 +70,47 @@ export async function issueScoutTokenRequest(request: Request): Promise<Response
     return Response.json({ error: "Authentication required" }, { status: 401 });
   }
 
+  let body: ScoutTokenRequestBody;
+  try {
+    body = await readScoutTokenRequestBody(request);
+  } catch (error) {
+    return Response.json(
+      { error: error instanceof Error ? error.message : "Invalid Scout device metadata." },
+      { status: 400 },
+    );
+  }
+
+  const workspaceId = body.workspace_id ?? (await resolvePrimaryWorkspaceId(user.id));
+  let workerId: string;
+  try {
+    const device = await registerOrTouchScoutDevice({
+      defaultUploadTarget: body.default_upload_target,
+      id: body.worker_id,
+      searchKeyConfigured: body.search_key_configured,
+      userId: user.id,
+      workerName: body.worker_name,
+      workspaceId,
+    });
+    workerId = device.id;
+  } catch (error) {
+    if (error instanceof ScoutDeviceRevokedError) {
+      return Response.json({ error: "Scout device revoked" }, { status: 403 });
+    }
+    throw error;
+  }
+
   const jwt = scoutJwtSchema.parse(await auth.api.getToken({ headers: request.headers }));
   if (!jwt?.token) {
     return Response.json({ error: "Scout token could not be issued" }, { status: 500 });
   }
 
-  const workspaceId = await resolvePrimaryWorkspaceId(user.id);
   const responseBody: ScoutTokenResponseBody = {
     token: jwt.token,
     user: {
       id: user.id,
       email: user.email ?? "",
     },
+    worker_id: workerId,
     workspace_id: workspaceId,
   };
 

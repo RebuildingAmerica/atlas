@@ -50,11 +50,22 @@ class BrowserLoginClient:
         atlas_url: str,
         *,
         session_token: str,
+        worker_name: str,
+        default_upload_target: str,
+        worker_id: str | None = None,
+        workspace_id: str | None = None,
+        search_key_configured: bool = False,
     ) -> ScoutTokenExchange:
         assert atlas_url == "https://atlas.example"
         assert session_token == "device-session-token"
+        assert worker_name
+        assert default_upload_target in ("public", "workspace")
+        assert worker_id is None
+        assert workspace_id is None
+        assert search_key_configured is False
         return ScoutTokenExchange(
             token="api-jwt",
+            worker_id="worker-123",
             user_id="user-123",
             user_email="user@example.org",
         )
@@ -120,9 +131,19 @@ def test_login_surfaces_token_exchange_error(monkeypatch) -> None:
             atlas_url: str,
             *,
             session_token: str,
+            worker_name: str,
+            default_upload_target: str,
+            worker_id: str | None = None,
+            workspace_id: str | None = None,
+            search_key_configured: bool = False,
         ) -> ScoutTokenExchange:
             assert atlas_url == "https://atlas.example"
             assert session_token == "device-session-token"
+            assert worker_name
+            assert default_upload_target == "public"
+            assert worker_id is None
+            assert workspace_id is None
+            assert search_key_configured is False
             raise DeviceAuthError(error="server_error", description="Token exchange failed")
 
     monkeypatch.setattr(cli_module, "DeviceAuthClient", FailingTokenExchangeClient)

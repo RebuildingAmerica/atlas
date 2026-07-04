@@ -1,6 +1,7 @@
 import Database from "better-sqlite3";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  ATLAS_MIGRATIONS,
   runAtlasCustomMigrations,
   runAtlasCustomMigrationsPg,
   type AtlasMigration,
@@ -65,6 +66,22 @@ describe("atlas-migrations", () => {
     expect(firstApplied).toBeDefined();
     expect(firstApplied?.version).toBe(1);
     expect(firstApplied?.name).toBe("create_foo");
+  });
+
+  it("creates the Scout device registry in the bundled migration set", () => {
+    runAtlasCustomMigrations(db, ATLAS_MIGRATIONS);
+
+    const table = db
+      .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='scout_devices'")
+      .get();
+    const userIndex = db
+      .prepare(
+        "SELECT name FROM sqlite_master WHERE type='index' AND name='idx_scout_devices_user'",
+      )
+      .get();
+
+    expect(table).toBeTruthy();
+    expect(userIndex).toBeTruthy();
   });
 });
 

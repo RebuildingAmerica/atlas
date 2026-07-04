@@ -4,6 +4,7 @@ const mocks = vi.hoisted(() => ({
   ensureAuthReady: vi.fn(),
   getSession: vi.fn(),
   getToken: vi.fn(),
+  registerOrTouchScoutDevice: vi.fn(),
   resolvePrimaryWorkspaceId: vi.fn(),
 }));
 
@@ -15,12 +16,22 @@ vi.mock("@/domains/access/server/workspace-lookup", () => ({
   resolvePrimaryWorkspaceId: mocks.resolvePrimaryWorkspaceId,
 }));
 
+vi.mock("@/domains/access/server/scout-devices", () => {
+  class ScoutDeviceRevokedError extends Error {}
+
+  return {
+    ScoutDeviceRevokedError,
+    registerOrTouchScoutDevice: mocks.registerOrTouchScoutDevice,
+  };
+});
+
 describe("issueScoutTokenRequest", () => {
   beforeEach(() => {
     vi.resetModules();
     mocks.ensureAuthReady.mockReset();
     mocks.getSession.mockReset();
     mocks.getToken.mockReset();
+    mocks.registerOrTouchScoutDevice.mockReset();
     mocks.resolvePrimaryWorkspaceId.mockReset();
     mocks.ensureAuthReady.mockResolvedValue({
       api: {
@@ -28,6 +39,20 @@ describe("issueScoutTokenRequest", () => {
         getToken: mocks.getToken,
       },
     });
+    mocks.registerOrTouchScoutDevice.mockResolvedValue({
+      id: "worker-123",
+    });
+  });
+
+  it("rejects non-POST token exchange requests", async () => {
+    const { issueScoutTokenRequest } = await import("@/domains/access/server/scout-token");
+
+    const response = await issueScoutTokenRequest(
+      new Request("https://atlas.test/api/auth/scout/token"),
+    );
+
+    expect(response.status).toBe(405);
+    expect(mocks.ensureAuthReady).not.toHaveBeenCalled();
   });
 
   it("rejects missing bearer sessions", async () => {
@@ -35,7 +60,7 @@ describe("issueScoutTokenRequest", () => {
     const { issueScoutTokenRequest } = await import("@/domains/access/server/scout-token");
 
     const response = await issueScoutTokenRequest(
-      new Request("https://atlas.test/api/auth/scout/token"),
+      new Request("https://atlas.test/api/auth/scout/token", { method: "POST" }),
     );
 
     expect(response.status).toBe(401);
@@ -52,15 +77,59 @@ describe("issueScoutTokenRequest", () => {
 
     const response = await issueScoutTokenRequest(
       new Request("https://atlas.test/api/auth/scout/token", {
+        body: JSON.stringify({
+          default_upload_target: "workspace",
+          search_key_configured: true,
+          worker_id: "worker-123",
+          worker_name: "Willie's MacBook Pro",
+          workspace_id: "org-123",
+        }),
         headers: { Authorization: "Bearer device-session-token" },
+        method: "POST",
       }),
     );
 
     await expect(response.json()).resolves.toEqual({
       token: "api-jwt",
       user: { id: "user-123", email: "user@example.org" },
+      worker_id: "worker-123",
       workspace_id: "org-123",
     });
+    expect(mocks.registerOrTouchScoutDevice).toHaveBeenCalledWith({
+      defaultUploadTarget: "workspace",
+      id: "worker-123",
+      searchKeyConfigured: true,
+      userId: "user-123",
+      workerName: "Willie's MacBook Pro",
+      workspaceId: "org-123",
+    });
     expect(response.headers.get("Cache-Control")).toBe("no-store");
+  });
+
+  it("blocks revoked Scout workers before issuing a new API token", async () => {
+    mocks.getSession.mockResolvedValue({
+      user: { id: "user-123", email: "user@example.org" },
+    });
+    mocks.getToken.mockResolvedValue({ token: "api-jwt" });
+    mocks.resolvePrimaryWorkspaceId.mockResolvedValue("org-123");
+    const { ScoutDeviceRevokedError } = await import("@/domains/access/server/scout-devices");
+    mocks.registerOrTouchScoutDevice.mockRejectedValue(new ScoutDeviceRevokedError("worker-123"));
+    const { issueScoutTokenRequest } = await import("@/domains/access/server/scout-token");
+
+    const response = await issueScoutTokenRequest(
+      new Request("https://atlas.test/api/auth/scout/token", {
+        body: JSON.stringify({
+          default_upload_target: "workspace",
+          worker_id: "worker-123",
+          worker_name: "Willie's MacBook Pro",
+          workspace_id: "org-123",
+        }),
+        headers: { Authorization: "Bearer device-session-token" },
+        method: "POST",
+      }),
+    );
+
+    expect(response.status).toBe(403);
+    expect(mocks.getToken).not.toHaveBeenCalled();
   });
 });

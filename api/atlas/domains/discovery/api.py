@@ -40,6 +40,11 @@ from atlas.domains.discovery.schemas import (
     DiscoveryJobResponse,
     DiscoveryPipelineSummaryResponse,
     DiscoveryRunCancelResponse,
+    DiscoveryWorkerClaimRequest,
+    DiscoveryWorkerClaimResponse,
+    DiscoveryWorkerCompleteRequest,
+    DiscoveryWorkerHeartbeatRequest,
+    DiscoveryWorkerJobResponse,
     ScheduledRunResponse,
     ScheduledRunResult,
 )
@@ -56,7 +61,11 @@ from atlas.schemas import (
 if TYPE_CHECKING:
     import aiosqlite
 
-    from atlas.domains.discovery.models import DiscoveryJobQueueItemModel, DiscoveryRunModel
+    from atlas.domains.discovery.models import (
+        DiscoveryJobModel,
+        DiscoveryJobQueueItemModel,
+        DiscoveryRunModel,
+    )
 
 logger = logging.getLogger(__name__)
 
@@ -651,6 +660,33 @@ async def list_discovery_job_queue(
     )
 
 
+@router.post(
+    "/jobs/claim",
+    response_model=DiscoveryWorkerClaimResponse,
+    summary="Claim a discovery job",
+    description="Lease the oldest queued discovery job for a Scout host worker.",
+    operation_id="claimDiscoveryJob",
+    tags=["discovery-runs"],
+)
+async def claim_discovery_job(
+    req: DiscoveryWorkerClaimRequest,
+    response: Response,
+    actor: AuthenticatedActor = Depends(require_actor_permission("discovery", "write")),
+    db: aiosqlite.Connection = Depends(get_db),
+) -> DiscoveryWorkerClaimResponse:
+    """Lease the next queued job for a remote Scout worker."""
+    _ = actor
+    job = await DiscoveryJobCRUD.claim_next(
+        db,
+        claimed_by=req.worker_id,
+        lease_seconds=req.lease_seconds,
+    )
+    apply_no_store_headers(response)
+    if job is None:
+        return DiscoveryWorkerClaimResponse(job=None)
+    return DiscoveryWorkerClaimResponse(job=await _worker_job_to_response(db, job))
+
+
 @router.get(
     "/jobs/{job_id}",
     response_model=DiscoveryJobResponse,
@@ -683,6 +719,63 @@ async def get_discovery_job(
         started_at=job.started_at,
         completed_at=job.completed_at,
     )
+
+
+@router.post(
+    "/jobs/{job_id}/heartbeat",
+    response_model=DiscoveryWorkerJobResponse,
+    summary="Heartbeat a discovery job",
+    description="Renew a Scout worker lease and store progress for a claimed discovery job.",
+    operation_id="heartbeatDiscoveryJob",
+    tags=["discovery-runs"],
+)
+async def heartbeat_discovery_job(
+    job_id: str,
+    req: DiscoveryWorkerHeartbeatRequest,
+    response: Response,
+    actor: AuthenticatedActor = Depends(require_actor_permission("discovery", "write")),
+    db: aiosqlite.Connection = Depends(get_db),
+) -> DiscoveryWorkerJobResponse:
+    """Renew a claimed job lease for its current Scout worker."""
+    _ = actor
+    job = await _require_worker_job(db, job_id=job_id, worker_id=req.worker_id)
+    await DiscoveryJobCRUD.update_progress(
+        db,
+        job.id,
+        req.progress,
+        lease_seconds=req.lease_seconds,
+    )
+    refreshed = await DiscoveryJobCRUD.get_by_id(db, job.id)
+    if refreshed is None:
+        raise HTTPException(status_code=404, detail="Job not found")
+    apply_no_store_headers(response)
+    return await _worker_job_to_response(db, refreshed)
+
+
+@router.post(
+    "/jobs/{job_id}/complete",
+    response_model=DiscoveryWorkerJobResponse,
+    summary="Complete a discovery job",
+    description="Mark a claimed discovery job complete for the Scout worker holding its lease.",
+    operation_id="completeDiscoveryJob",
+    tags=["discovery-runs"],
+)
+async def complete_discovery_job(
+    job_id: str,
+    req: DiscoveryWorkerCompleteRequest,
+    response: Response,
+    actor: AuthenticatedActor = Depends(require_actor_permission("discovery", "write")),
+    db: aiosqlite.Connection = Depends(get_db),
+) -> DiscoveryWorkerJobResponse:
+    """Complete a claimed job lease for its current Scout worker."""
+    _ = actor
+    job = await _require_worker_job(db, job_id=job_id, worker_id=req.worker_id)
+    await DiscoveryJobCRUD.complete(db, job.id)
+    completed = await DiscoveryJobCRUD.get_by_id(db, job.id)
+    if completed is None:
+        raise HTTPException(status_code=404, detail="Job not found")
+    apply_no_store_headers(response)
+    return await _worker_job_to_response(db, completed)
 
 
 @router.get(
@@ -855,6 +948,51 @@ def _job_queue_item_to_response(job: DiscoveryJobQueueItemModel) -> DiscoveryJob
         claimed_until=job.claimed_until,
         next_attempt_at=job.next_attempt_at,
     )
+
+
+async def _worker_job_to_response(
+    db: aiosqlite.Connection,
+    job: DiscoveryJobModel,
+) -> DiscoveryWorkerJobResponse:
+    """Convert a leased discovery job into the Scout worker response shape."""
+    run = await DiscoveryRunCRUD.get_by_id(db, job.run_id)
+    if run is None:
+        raise HTTPException(status_code=500, detail="Discovery job has no run")
+    return DiscoveryWorkerJobResponse(
+        id=job.id,
+        run_id=job.run_id,
+        status=job.status,
+        progress=job.progress,
+        error_message=job.error_message,
+        retry_count=job.retry_count,
+        max_retries=job.max_retries,
+        created_at=job.created_at,
+        started_at=job.started_at,
+        completed_at=job.completed_at,
+        location_query=run.location_query,
+        state=run.state,
+        issue_areas=run.issue_areas,
+        research_goal=run.research_goal,
+        claimed_by=job.claimed_by,
+        claimed_until=job.claimed_until,
+    )
+
+
+async def _require_worker_job(
+    db: aiosqlite.Connection,
+    *,
+    job_id: str,
+    worker_id: str,
+) -> DiscoveryJobModel:
+    """Return a worker-owned job lease or raise a precise API error."""
+    job = await DiscoveryJobCRUD.get_by_id(db, job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Job not found")
+    if job.status not in {"claimed", "running"}:
+        raise HTTPException(status_code=409, detail="Job is not leased")
+    if job.claimed_by != worker_id:
+        raise HTTPException(status_code=409, detail="Job is leased by another worker")
+    return job
 
 
 def _run_to_response(run: DiscoveryRunModel) -> DiscoveryRunResponse:

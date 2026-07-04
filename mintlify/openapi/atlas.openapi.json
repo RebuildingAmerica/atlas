@@ -3566,6 +3566,239 @@
         "title": "DiscoverySyncInfo",
         "type": "object"
       },
+      "DiscoveryWorkerClaimRequest": {
+        "description": "Request for a Scout host to claim the next queued discovery job.",
+        "properties": {
+          "lease_seconds": {
+            "default": 900,
+            "description": "Claim lease duration",
+            "maximum": 3600.0,
+            "minimum": 30.0,
+            "title": "Lease Seconds",
+            "type": "integer"
+          },
+          "worker_id": {
+            "description": "Enrolled Scout device id",
+            "minLength": 1,
+            "title": "Worker Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "worker_id"
+        ],
+        "title": "DiscoveryWorkerClaimRequest",
+        "type": "object"
+      },
+      "DiscoveryWorkerClaimResponse": {
+        "description": "A claimed discovery job, or null when no work is ready.",
+        "properties": {
+          "job": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DiscoveryWorkerJobResponse"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Claimed job and run target context"
+          }
+        },
+        "title": "DiscoveryWorkerClaimResponse",
+        "type": "object"
+      },
+      "DiscoveryWorkerCompleteRequest": {
+        "description": "Completion notice from the Scout host currently holding a job lease.",
+        "properties": {
+          "worker_id": {
+            "description": "Enrolled Scout device id",
+            "minLength": 1,
+            "title": "Worker Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "worker_id"
+        ],
+        "title": "DiscoveryWorkerCompleteRequest",
+        "type": "object"
+      },
+      "DiscoveryWorkerHeartbeatRequest": {
+        "description": "Progress update from the Scout host currently holding a job lease.",
+        "properties": {
+          "lease_seconds": {
+            "default": 900,
+            "description": "Renewed lease duration",
+            "maximum": 3600.0,
+            "minimum": 30.0,
+            "title": "Lease Seconds",
+            "type": "integer"
+          },
+          "progress": {
+            "additionalProperties": true,
+            "description": "Worker progress",
+            "title": "Progress",
+            "type": "object"
+          },
+          "worker_id": {
+            "description": "Enrolled Scout device id",
+            "minLength": 1,
+            "title": "Worker Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "worker_id"
+        ],
+        "title": "DiscoveryWorkerHeartbeatRequest",
+        "type": "object"
+      },
+      "DiscoveryWorkerJobResponse": {
+        "description": "A job lease returned to a Scout host worker.",
+        "properties": {
+          "claimed_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Worker that claimed the job",
+            "title": "Claimed By"
+          },
+          "claimed_until": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Current worker lease expiration",
+            "title": "Claimed Until"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Completion timestamp",
+            "title": "Completed At"
+          },
+          "created_at": {
+            "description": "Creation timestamp",
+            "title": "Created At",
+            "type": "string"
+          },
+          "error_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Error message if failed",
+            "title": "Error Message"
+          },
+          "id": {
+            "description": "Job ID",
+            "title": "Id",
+            "type": "string"
+          },
+          "issue_areas": {
+            "description": "Run issue area slugs",
+            "items": {
+              "type": "string"
+            },
+            "title": "Issue Areas",
+            "type": "array"
+          },
+          "location_query": {
+            "description": "Run location query",
+            "title": "Location Query",
+            "type": "string"
+          },
+          "max_retries": {
+            "default": 2,
+            "description": "Maximum retry attempts before permanent failure",
+            "title": "Max Retries",
+            "type": "integer"
+          },
+          "progress": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Current step and metrics",
+            "title": "Progress"
+          },
+          "research_goal": {
+            "description": "Research job this run supports",
+            "title": "Research Goal",
+            "type": "string"
+          },
+          "retry_count": {
+            "default": 0,
+            "description": "Number of retry attempts so far",
+            "title": "Retry Count",
+            "type": "integer"
+          },
+          "run_id": {
+            "description": "Associated discovery run ID",
+            "title": "Run Id",
+            "type": "string"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Execution start timestamp",
+            "title": "Started At"
+          },
+          "state": {
+            "description": "Run state",
+            "title": "State",
+            "type": "string"
+          },
+          "status": {
+            "description": "Job status (queued, claimed, running, completed, failed)",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "run_id",
+          "status",
+          "created_at",
+          "location_query",
+          "state",
+          "issue_areas",
+          "research_goal"
+        ],
+        "title": "DiscoveryWorkerJobResponse",
+        "type": "object"
+      },
       "DomainDetailResponse": {
         "description": "Domain detail resource.",
         "properties": {
@@ -10010,6 +10243,130 @@
         ]
       }
     },
+    "/api/discovery-runs/jobs/claim": {
+      "post": {
+        "description": "Lease the oldest queued discovery job for a Scout host worker.",
+        "operationId": "claimDiscoveryJob",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-atlas-internal-secret",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Internal-Secret"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-email",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Email"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-organization-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Organization-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DiscoveryWorkerClaimRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DiscoveryWorkerClaimResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Claim a discovery job",
+        "tags": [
+          "discovery-runs"
+        ]
+      }
+    },
     "/api/discovery-runs/jobs/{job_id}": {
       "get": {
         "description": "Return the current status and progress of a discovery pipeline job.",
@@ -10128,6 +10485,272 @@
           }
         },
         "summary": "Get a discovery job",
+        "tags": [
+          "discovery-runs"
+        ]
+      }
+    },
+    "/api/discovery-runs/jobs/{job_id}/complete": {
+      "post": {
+        "description": "Mark a claimed discovery job complete for the Scout worker holding its lease.",
+        "operationId": "completeDiscoveryJob",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-internal-secret",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Internal-Secret"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-email",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Email"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-organization-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Organization-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DiscoveryWorkerCompleteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DiscoveryWorkerJobResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Complete a discovery job",
+        "tags": [
+          "discovery-runs"
+        ]
+      }
+    },
+    "/api/discovery-runs/jobs/{job_id}/heartbeat": {
+      "post": {
+        "description": "Renew a Scout worker lease and store progress for a claimed discovery job.",
+        "operationId": "heartbeatDiscoveryJob",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-internal-secret",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Internal-Secret"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-email",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Email"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-organization-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Organization-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DiscoveryWorkerHeartbeatRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DiscoveryWorkerJobResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Heartbeat a discovery job",
         "tags": [
           "discovery-runs"
         ]

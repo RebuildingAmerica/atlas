@@ -103,6 +103,7 @@ class ScoutTokenExchange:
     """Atlas API token exchanged from a Scout browser-approved session."""
 
     token: str
+    worker_id: str
     user_id: str
     user_email: str
     workspace_id: str | None = None
@@ -117,6 +118,7 @@ class ScoutSession:
     worker_id: str
     user_id: str
     user_email: str
+    worker_name: str | None = None
     default_upload_target: UploadTarget | None = None
     workspace_id: str | None = None
 
@@ -189,6 +191,11 @@ class DeviceAuthClient:
         atlas_url: str,
         *,
         session_token: str,
+        worker_name: str,
+        default_upload_target: UploadTarget,
+        worker_id: str | None = None,
+        workspace_id: str | None = None,
+        search_key_configured: bool = False,
     ) -> ScoutTokenExchange:
         """Exchange a Scout device session for an API JWT accepted by FastAPI.
 
@@ -198,6 +205,16 @@ class DeviceAuthClient:
             Base URL for the Atlas app/auth server.
         session_token:
             Bearer session token returned by the device authorization flow.
+        worker_name:
+            Human-recognizable name for this host device.
+        default_upload_target:
+            Destination Scout should use when syncing runs without an override.
+        worker_id:
+            Existing device enrollment id, when refreshing a saved session.
+        workspace_id:
+            Workspace to remember for workspace-private uploads, if selected.
+        search_key_configured:
+            Whether this Scout host currently has local search credentials.
 
         Returns
         -------
@@ -205,22 +222,31 @@ class DeviceAuthClient:
             Short-lived Atlas API token plus user/workspace metadata.
         """
         async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.get(
+            response = await client.post(
                 self._auth_url(atlas_url, "/scout/token"),
                 headers={"Authorization": f"Bearer {session_token}"},
+                json={
+                    "default_upload_target": default_upload_target,
+                    "search_key_configured": search_key_configured,
+                    "worker_id": worker_id,
+                    "worker_name": worker_name,
+                    "workspace_id": workspace_id,
+                },
             )
         payload = self._json_or_error(response)
         user = payload.get("user")
         if not isinstance(user, dict):
             raise ValueError("Atlas Scout token response is missing user metadata")
-        workspace_id = payload.get("workspace_id")
-        if workspace_id is not None and not isinstance(workspace_id, str):
+        workspace_id_value = payload.get("workspace_id")
+        if workspace_id_value is not None and not isinstance(workspace_id_value, str):
             raise ValueError("Atlas Scout token response field workspace_id must be a string")
+        resolved_workspace_id = workspace_id_value if isinstance(workspace_id_value, str) else None
         return ScoutTokenExchange(
             token=_payload_str(payload, "token"),
+            worker_id=_payload_str(payload, "worker_id"),
             user_id=_payload_str(user, "id"),
             user_email=_payload_str(user, "email"),
-            workspace_id=workspace_id,
+            workspace_id=resolved_workspace_id,
         )
 
     def _auth_url(self, atlas_url: str, path: str) -> str:
@@ -257,12 +283,16 @@ class FileSessionStore:
             return None
         with self.path.open("r", encoding="utf-8") as handle:
             payload = json.load(handle)
+        worker_name = payload.get("worker_name")
+        if worker_name is not None and not isinstance(worker_name, str):
+            raise ValueError("Scout session field worker_name must be a string")
         return ScoutSession(
             atlas_url=str(payload["atlas_url"]),
             access_token=str(payload["access_token"]),
             worker_id=str(payload["worker_id"]),
             user_id=str(payload["user_id"]),
             user_email=str(payload["user_email"]),
+            worker_name=worker_name,
             default_upload_target=payload.get("default_upload_target"),
             workspace_id=payload.get("workspace_id"),
         )

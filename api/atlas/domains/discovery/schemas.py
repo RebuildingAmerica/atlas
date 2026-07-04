@@ -21,6 +21,11 @@ __all__ = [
     "DiscoveryScheduleCreateRequest",
     "DiscoveryScheduleResponse",
     "DiscoveryScheduleUpdateRequest",
+    "DiscoveryWorkerClaimRequest",
+    "DiscoveryWorkerClaimResponse",
+    "DiscoveryWorkerCompleteRequest",
+    "DiscoveryWorkerHeartbeatRequest",
+    "DiscoveryWorkerJobResponse",
     "ScheduledRunResponse",
     "ScheduledRunResult",
 ]
@@ -223,6 +228,17 @@ class DiscoveryJobQueueItemResponse(DiscoveryJobResponse):
     next_attempt_at: str | None = Field(None, description="Earliest retry claim timestamp")
 
 
+class DiscoveryWorkerJobResponse(DiscoveryJobResponse):
+    """A job lease returned to a Scout host worker."""
+
+    location_query: str = Field(..., description="Run location query")
+    state: str = Field(..., description="Run state")
+    issue_areas: list[str] = Field(..., description="Run issue area slugs")
+    research_goal: str = Field(..., description="Research job this run supports")
+    claimed_by: str | None = Field(None, description="Worker that claimed the job")
+    claimed_until: str | None = Field(None, description="Current worker lease expiration")
+
+
 class DiscoveryJobQueueResponse(BaseModel):
     """Research-operations queue view for discovery jobs."""
 
@@ -231,6 +247,35 @@ class DiscoveryJobQueueResponse(BaseModel):
     status_counts: dict[str, int] = Field(
         ..., description="Queued, claimed, running, and failed job counts"
     )
+
+
+class DiscoveryWorkerClaimRequest(BaseModel):
+    """Request for a Scout host to claim the next queued discovery job."""
+
+    worker_id: str = Field(..., min_length=1, description="Enrolled Scout device id")
+    lease_seconds: int = Field(900, ge=30, le=3600, description="Claim lease duration")
+
+
+class DiscoveryWorkerClaimResponse(BaseModel):
+    """A claimed discovery job, or null when no work is ready."""
+
+    job: DiscoveryWorkerJobResponse | None = Field(
+        None, description="Claimed job and run target context"
+    )
+
+
+class DiscoveryWorkerHeartbeatRequest(BaseModel):
+    """Progress update from the Scout host currently holding a job lease."""
+
+    worker_id: str = Field(..., min_length=1, description="Enrolled Scout device id")
+    progress: dict[str, object] = Field(default_factory=dict, description="Worker progress")
+    lease_seconds: int = Field(900, ge=30, le=3600, description="Renewed lease duration")
+
+
+class DiscoveryWorkerCompleteRequest(BaseModel):
+    """Completion notice from the Scout host currently holding a job lease."""
+
+    worker_id: str = Field(..., min_length=1, description="Enrolled Scout device id")
 
 
 class DiscoveryRunCancelResponse(BaseModel):

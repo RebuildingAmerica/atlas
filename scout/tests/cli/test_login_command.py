@@ -41,11 +41,22 @@ class FakeDeviceAuthClient:
         atlas_url: str,
         *,
         session_token: str,
+        worker_name: str,
+        default_upload_target: str,
+        worker_id: str | None = None,
+        workspace_id: str | None = None,
+        search_key_configured: bool = False,
     ) -> ScoutTokenExchange:
         assert atlas_url == "https://atlas.example"
         assert session_token == "device-session-token"
+        assert worker_name == "Scout Laptop"
+        assert default_upload_target == "workspace"
+        assert worker_id is None
+        assert workspace_id is None
+        assert search_key_configured is False
         return ScoutTokenExchange(
             token="api-jwt",
+            worker_id="worker-123",
             user_id="user-123",
             user_email="user@example.org",
             workspace_id="org-123",
@@ -57,6 +68,7 @@ def test_login_saves_browser_approved_session(monkeypatch: pytest.MonkeyPatch) -
     saved: list[ScoutSession] = []
     monkeypatch.setattr(cli_module, "DeviceAuthClient", FakeDeviceAuthClient)
     monkeypatch.setattr(cli_module, "save_session", saved.append)
+    monkeypatch.setattr(cli_module.platform, "node", lambda: "Scout Laptop")
     monkeypatch.setattr(cli_module.webbrowser, "open", lambda _url: True)
 
     result = CliRunner().invoke(
@@ -76,9 +88,10 @@ def test_login_saves_browser_approved_session(monkeypatch: pytest.MonkeyPatch) -
         ScoutSession(
             atlas_url="https://atlas.example",
             access_token="device-session-token",
-            worker_id="user-123",
+            worker_id="worker-123",
             user_id="user-123",
             user_email="user@example.org",
+            worker_name="Scout Laptop",
             default_upload_target="workspace",
             workspace_id="org-123",
         )
@@ -98,11 +111,22 @@ def test_login_rejects_workspace_target_without_workspace_hint(
             atlas_url: str,
             *,
             session_token: str,
+            worker_name: str,
+            default_upload_target: str,
+            worker_id: str | None = None,
+            workspace_id: str | None = None,
+            search_key_configured: bool = False,
         ) -> ScoutTokenExchange:
             assert atlas_url == "https://atlas.example"
             assert session_token == "device-session-token"
+            assert worker_name
+            assert default_upload_target == "workspace"
+            assert worker_id is None
+            assert workspace_id is None
+            assert search_key_configured is False
             return ScoutTokenExchange(
                 token="api-jwt",
+                worker_id="worker-123",
                 user_id="user-123",
                 user_email="user@example.org",
                 workspace_id=None,

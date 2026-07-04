@@ -7,6 +7,7 @@ import { getAuthClient } from "@/domains/access/client/auth-client";
 import { atlasSessionQueryKey, useAtlasSession } from "@/domains/access/client/use-atlas-session";
 import { resolvePasskeyName } from "@/domains/access/passkey-names";
 import { deletePasskey, listPasskeys, updatePasskey } from "@/domains/access/passkeys.functions";
+import { listScoutDevices, revokeScoutDevice } from "@/domains/access/scout-devices.functions";
 import { getRpLogoutRedirect } from "@/domains/access/session.functions";
 import { WorkspaceBillingSection } from "@/domains/billing/components/workspace-billing-section";
 import { AccountHeader } from "./components/account-header";
@@ -18,10 +19,15 @@ import {
   AccountPasskeysSection,
   type AccountPasskeyRecord,
 } from "./components/account-passkeys-section";
+import {
+  AccountScoutDevicesSection,
+  type AccountScoutDeviceRecord,
+} from "./components/account-scout-devices-section";
 import { AccountWorkspaceCards } from "./components/account-workspace-cards";
 
 const PASSKEYS_QUERY_KEY = ["auth", "passkeys"] as const;
 const API_KEYS_QUERY_KEY = ["auth", "api-keys"] as const;
+const SCOUT_DEVICES_QUERY_KEY = ["auth", "scout-devices"] as const;
 
 /**
  * Reads the newly created API-key secret from the server response.
@@ -99,6 +105,10 @@ export function AccountPage() {
     queryKey: API_KEYS_QUERY_KEY,
     queryFn: listApiKeys,
   });
+  const scoutDevicesQuery = useQuery<AccountScoutDeviceRecord[]>({
+    queryKey: SCOUT_DEVICES_QUERY_KEY,
+    queryFn: listScoutDevices,
+  });
   const createApiKeyMutation = useMutation({
     mutationFn: (data: { name: string; scopes: ApiKeyScope[] }) => createApiKey({ data }),
     onSuccess: async (result) => {
@@ -126,6 +136,17 @@ export function AccountPage() {
     },
     onError: () => {
       setErrorMessage("Atlas could not revoke that API key. Please try again.");
+    },
+  });
+  const revokeScoutDeviceMutation = useMutation({
+    mutationFn: (deviceId: string) => revokeScoutDevice({ data: { deviceId } }),
+    onSuccess: async () => {
+      setErrorMessage(null);
+      setFlashMessage("Scout device revoked.");
+      await queryClient.invalidateQueries({ queryKey: SCOUT_DEVICES_QUERY_KEY });
+    },
+    onError: () => {
+      setErrorMessage("Atlas could not revoke that Scout device. Please try again.");
     },
   });
 
@@ -264,6 +285,19 @@ export function AccountPage() {
             }}
             onSubmitRename={(id, name) => {
               renamePasskeyMutation.mutate({ id, name });
+            }}
+          />
+        ) : null}
+
+        {!isLocal ? (
+          <AccountScoutDevicesSection
+            devices={scoutDevicesQuery.data}
+            isError={scoutDevicesQuery.isError}
+            isRevokePending={revokeScoutDeviceMutation.isPending}
+            onRevoke={(id) => {
+              setFlashMessage(null);
+              setErrorMessage(null);
+              revokeScoutDeviceMutation.mutate(id);
             }}
           />
         ) : null}

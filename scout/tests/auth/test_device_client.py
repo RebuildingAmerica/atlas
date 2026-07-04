@@ -103,11 +103,12 @@ async def test_surfaces_pending_device_token_error() -> None:
 @respx.mock
 async def test_exchanges_session_for_api_token() -> None:
     """Scout converts its device session into a JWT the API accepts."""
-    route = respx.get("https://atlas.example/api/auth/scout/token").mock(
+    route = respx.post("https://atlas.example/api/auth/scout/token").mock(
         return_value=httpx.Response(
             200,
             json={
                 "token": "api-jwt",
+                "worker_id": "worker-123",
                 "user": {"id": "user-123", "email": "user@example.org"},
                 "workspace_id": "org-123",
             },
@@ -117,10 +118,20 @@ async def test_exchanges_session_for_api_token() -> None:
     exchange = await DeviceAuthClient().exchange_session_for_api_token(
         "https://atlas.example",
         session_token="device-session-token",
+        worker_id="worker-123",
+        worker_name="Scout Laptop",
+        default_upload_target="workspace",
+        workspace_id="org-123",
+        search_key_configured=True,
     )
 
     assert exchange.token == "api-jwt"
+    assert exchange.worker_id == "worker-123"
     assert exchange.user_id == "user-123"
     assert exchange.user_email == "user@example.org"
     assert exchange.workspace_id == "org-123"
     assert route.calls[0].request.headers["Authorization"] == "Bearer device-session-token"
+    assert route.calls[0].request.content == (
+        b'{"default_upload_target":"workspace","search_key_configured":true,'
+        b'"worker_id":"worker-123","worker_name":"Scout Laptop","workspace_id":"org-123"}'
+    )

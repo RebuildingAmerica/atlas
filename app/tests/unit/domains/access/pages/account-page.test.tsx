@@ -13,8 +13,10 @@ const mocks = vi.hoisted(() => ({
   createApiKey: vi.fn(),
   deleteApiKey: vi.fn(),
   deletePasskey: vi.fn(),
+  listScoutDevices: vi.fn(),
   getRpLogoutRedirect: vi.fn(),
   invalidateQueries: vi.fn(),
+  revokeScoutDevice: vi.fn(),
   signOut: vi.fn(),
   updatePasskey: vi.fn(),
   useAtlasSession: vi.fn(),
@@ -30,6 +32,7 @@ vi.mock("lucide-react", () => {
     Check: makeIcon("Check"),
     KeyRound: makeIcon("KeyRound"),
     LogOut: makeIcon("LogOut"),
+    MonitorUp: makeIcon("MonitorUp"),
     Pencil: makeIcon("Pencil"),
     Plus: makeIcon("Plus"),
     Trash2: makeIcon("Trash2"),
@@ -123,6 +126,11 @@ vi.mock("@/domains/access/passkeys.functions", () => ({
   updatePasskey: mocks.updatePasskey,
 }));
 
+vi.mock("@/domains/access/scout-devices.functions", () => ({
+  listScoutDevices: mocks.listScoutDevices,
+  revokeScoutDevice: mocks.revokeScoutDevice,
+}));
+
 vi.mock("@/domains/access/session.functions", () => ({
   getRpLogoutRedirect: mocks.getRpLogoutRedirect,
 }));
@@ -159,6 +167,19 @@ describe("AccountPage", () => {
       },
     ],
     passkeysError = false,
+    scoutDevices = [
+      {
+        createdAt: "2026-07-04T16:00:00.000Z",
+        defaultUploadTarget: "workspace",
+        id: "worker-123",
+        lastSeenAt: "2026-07-04T17:00:00.000Z",
+        revokedAt: null,
+        searchKeyConfigured: true,
+        workerName: "Willie's MacBook Pro",
+        workspaceId: "org-123",
+      },
+    ],
+    scoutDevicesError = false,
   }: {
     apiKeys?: {
       createdAt: string;
@@ -176,6 +197,17 @@ describe("AccountPage", () => {
       name?: string | null;
     }[];
     passkeysError?: boolean;
+    scoutDevices?: {
+      createdAt: string;
+      defaultUploadTarget: "public" | "workspace";
+      id: string;
+      lastSeenAt: string;
+      revokedAt: string | null;
+      searchKeyConfigured: boolean;
+      workerName: string;
+      workspaceId: string | null;
+    }[];
+    scoutDevicesError?: boolean;
   }) => {
     mocks.useQuery.mockImplementation(({ queryKey }: { queryKey: readonly string[] }) => {
       if (queryKey[1] === "passkeys") {
@@ -189,6 +221,13 @@ describe("AccountPage", () => {
         return {
           data: apiKeys,
           isError: apiKeysError,
+        };
+      }
+
+      if (queryKey[1] === "scout-devices") {
+        return {
+          data: scoutDevices,
+          isError: scoutDevicesError,
         };
       }
 
@@ -217,9 +256,11 @@ describe("AccountPage", () => {
     mocks.createApiKey.mockReset();
     mocks.deleteApiKey.mockReset();
     mocks.deletePasskey.mockReset();
+    mocks.listScoutDevices.mockReset();
     mocks.getRpLogoutRedirect.mockReset();
     mocks.getRpLogoutRedirect.mockResolvedValue({ url: null });
     mocks.invalidateQueries.mockReset();
+    mocks.revokeScoutDevice.mockReset();
     mocks.signOut.mockReset();
     mocks.updatePasskey.mockReset();
     mocks.useAtlasSession.mockReset();
@@ -294,6 +335,7 @@ describe("AccountPage", () => {
     });
     mocks.deleteApiKey.mockResolvedValue(undefined);
     mocks.deletePasskey.mockResolvedValue(undefined);
+    mocks.revokeScoutDevice.mockResolvedValue(undefined);
     mocks.signOut.mockResolvedValue(undefined);
     mocks.updatePasskey.mockResolvedValue(undefined);
     assignMock = vi.fn();
@@ -315,6 +357,7 @@ describe("AccountPage", () => {
     render(<AccountPage />);
     await (mocks.useQuery.mock.calls[0]?.[0] as { queryFn: () => Promise<unknown> }).queryFn();
     await (mocks.useQuery.mock.calls[1]?.[0] as { queryFn: () => Promise<unknown> }).queryFn();
+    await (mocks.useQuery.mock.calls[2]?.[0] as { queryFn: () => Promise<unknown> }).queryFn();
 
     fireEvent.click(screen.getByRole("button", { name: /Add passkey/i }));
     fireEvent.click(screen.getByRole("button", { name: /Pencil/i }));
@@ -327,10 +370,10 @@ describe("AccountPage", () => {
       expect(mocks.updatePasskey).toHaveBeenCalledWith({
         data: { id: "pk_123", name: "Laptop key" },
       });
-      expect(screen.getByRole("button", { name: /Trash2/i })).not.toBeNull();
+      expect(screen.getByRole("button", { name: "Trash2" })).not.toBeNull();
     });
 
-    fireEvent.click(screen.getByRole("button", { name: /Trash2/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Trash2" }));
 
     fireEvent.change(screen.getByLabelText("Key name"), {
       target: { value: "Desktop script" },
@@ -360,6 +403,7 @@ describe("AccountPage", () => {
     expect(mocks.deleteApiKey).toHaveBeenCalledWith({
       data: { keyId: "key_123" },
     });
+    expect(screen.getByText("Willie's MacBook Pro")).not.toBeNull();
 
     await waitFor(() => {
       expect(mocks.signOut).toHaveBeenCalledTimes(1);
@@ -498,7 +542,7 @@ describe("AccountPage", () => {
     });
 
     fireEvent.click(screen.getByRole("button", { name: /X/i }));
-    fireEvent.click(screen.getByRole("button", { name: /Trash2/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Trash2" }));
     await waitFor(() => {
       expect(
         screen.getByText("Atlas could not remove that passkey. Please try again."),
@@ -525,7 +569,7 @@ describe("AccountPage", () => {
 
   it("renders gracefully when the session data is unavailable", async () => {
     mocks.useAtlasSession.mockReturnValue({ data: undefined });
-    setQueryResults({ apiKeys: [], passkeys: [] });
+    setQueryResults({ apiKeys: [], passkeys: [], scoutDevices: [] });
     const { AccountPage } = await import("@/domains/access/pages/workspace/account-page");
 
     render(<AccountPage />);
@@ -552,7 +596,7 @@ describe("AccountPage", () => {
         }),
       }),
     });
-    setQueryResults({ apiKeys: [], passkeys: [] });
+    setQueryResults({ apiKeys: [], passkeys: [], scoutDevices: [] });
     const { AccountPage } = await import("@/domains/access/pages/workspace/account-page");
 
     render(<AccountPage />);
