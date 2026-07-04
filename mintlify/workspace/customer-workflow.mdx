@@ -24,6 +24,25 @@ and related civic organizations.
 | Export proof         | Brief export, coverage report, renewal packet | Evidence for funders, editors, partners, or internal review |
 | Sync Scout results   | `POST /api/discovery-runs/syncs`              | Remote run, visibility receipts, and links back to Atlas    |
 
+## Product screen references
+
+Use these screens when checking the team workflow against the product. They are
+the user-visible anchors for the workflow, so each one should make the next
+action and the evidence boundary clear.
+
+| Screen               | Routes                                       | What the user should see                                                                 |
+| -------------------- | -------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| Briefing room        | `/briefs`, `/briefs/new`, `/briefs/:briefId` | Recent briefs, source-linked actors, confidence state, review state, and export actions. |
+| Coverage workspace   | `/coverage`, `/coverage/:targetId`           | Targets, gaps, source types, linked entries, linked runs, status, import, and export.    |
+| Discovery run review | `/discovery?run=<remote_run_id>`             | Run status, selected entries, source receipts, sync receipts, and workspace links.       |
+| Watching and feed    | `/watching`, `/feed`                         | Watched actors, coverage targets, brief changes, and review prompts.                     |
+
+The screenshots embedded in this documentation show public browse, profile
+review, and discovery run screens. Briefing and coverage screenshots should be
+captured from these routes once those screens are stable enough for public docs;
+until then, these route references are the source of truth for matching the docs
+to the actual product.
+
 ## Task 1: Build a source-linked briefing for Phoenix
 
 <Steps>
