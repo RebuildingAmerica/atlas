@@ -1,0 +1,173 @@
+---
+title: "Workspace customer workflow"
+description: "How an institutional team moves from public discovery to briefs, coverage, monitoring, and renewal proof."
+---
+
+## Overview
+
+Atlas is strongest when public discovery and private workspace work stay
+connected. A user should be able to find a source-backed civic actor in the
+public directory, understand why the record is trustworthy, save the actor into
+a private workspace, and turn that research into a brief, coverage target,
+monitoring workflow, or export without losing source context.
+
+This workflow is designed for teams that need to evaluate real civic ecosystems:
+nonprofits, newsrooms, foundations, unions, public-interest researchers,
+documentary teams, and civic technology groups. The common need is simple: the
+team wants to know who is doing useful work, why Atlas believes that record is
+real, where the gaps are, and what changed after the team acted.
+
+## The Customer Path
+
+<Steps>
+
+<Step title="Begin in the public map">
+Search by place, issue, actor, organization, initiative, or source. The public
+surface remains the starting point because Atlas is a civic discovery product,
+not only a private workspace.
+</Step>
+
+<Step title="Inspect source-backed profiles">
+Open a profile and review the source links, dates, locations, issue areas, and
+related actors. A record is useful only when the user can understand where the
+claim came from.
+</Step>
+
+<Step title="Save the working set">
+Move relevant actors into a private list. The list gives the team a reusable
+working set without changing what is public.
+</Step>
+
+<Step title="Create a brief">
+Turn the working set into a decision artifact. A brief brings together the
+summary, actors, sources, discovery runs, confidence state, gaps, and exports
+that a team can use after a meeting.
+</Step>
+
+<Step title="Define coverage">
+Create coverage targets for the geographies, issue areas, actor types, and
+source types the team needs to understand. Coverage targets make thin, stale,
+unknown, blocked, and ready areas visible.
+</Step>
+
+<Step title="Watch for change">
+Watch actors and coverage targets so recurring work returns to a monitored set
+instead of becoming another one-time search.
+</Step>
+
+<Step title="Review proof">
+Use the workspace operating picture and renewal proof packet to show briefs
+used, coverage gaps closed, public records improved, integration usage, and
+team workflow activity.
+</Step>
+
+</Steps>
+
+## Workspace Surfaces
+
+### Research Home
+
+The research home is the customer's operating picture. It summarizes briefs,
+coverage targets, watched resources, and renewal proof in one place, then points
+the user to the next unfinished step. The page distinguishes real zeroes from
+loading and unavailable states, so an empty workspace does not look like a
+broken workspace.
+
+### Briefing Room
+
+Briefs are the first sellable decision artifact. A brief can be opened in the
+app, edited by review state and confidence state, connected to actors and
+sources, and exported as JSON or CSV. Evidence opens are counted for workspace
+usage proof, which helps a team show that source-backed research was actually
+used.
+
+### Coverage Workspace
+
+Coverage targets make the unknowns explicit. Each target names its geography,
+issue areas, actor types, source types, review state, status, gaps, next actions,
+linked discovery runs, and linked entries. The workspace can export coverage
+targets, import coverage targets, and produce a coverage report that separates
+public-good improvements from private workspace context.
+
+### Monitoring
+
+Watching gives recurring work a home. A team can review watched actors and
+coverage targets, keep notification preference visible, open coverage review,
+and move to renewal proof when team proof is available.
+
+### Organization Proof
+
+The organization page shows package access, usage summary, renewal signals, and
+exportable proof. The useful question is not whether the team clicked many
+buttons. The useful question is whether the team produced source-backed work
+that improved public records, closed coverage gaps, and supported repeated use.
+
+## Public And Private Boundary
+
+Atlas keeps the public map and the private workspace deliberately separate.
+Public records, source links, taxonomy, place coverage, and public-safe directory
+improvements can strengthen the common map. Private notes, planning context,
+workspace lists, brief context, usage events, and renewal packets stay in the
+workspace unless a user chooses a public-safe publication path.
+
+That boundary matters because the product publishes claims about real people and
+organizations. A team should never wonder whether private workspace context has
+leaked into public discovery, and a public user should never have to trust an
+unsupported claim because it appeared in an enterprise workflow.
+
+## API And Scout Handoff
+
+The app workflow is backed by API surfaces for teams that need automation:
+
+- `POST /api/discovery-runs/syncs` syncs Scout discovery artifacts into Atlas.
+- `GET /api/orgs/{org_id}/briefs` lists workspace briefs.
+- `GET /api/orgs/{org_id}/briefs/{brief_id}/export` returns a source-linked
+  evidence export.
+- `GET /api/orgs/{org_id}/coverage-targets` lists coverage targets.
+- `GET /api/orgs/{org_id}/coverage-reports` returns the coverage underwriting
+  report.
+- `GET /api/orgs/{org_id}/watches` lists watched resources.
+- `GET /api/orgs/{org_id}/usage-summary/renewal-packet` returns renewal proof.
+
+Workspace-scoped endpoints require workspace context and package capabilities.
+Public discovery remains public; private workspace imports and proof artifacts
+require the caller to be bound to the workspace they are writing or reading.
+
+## Demo Checklist
+
+A strong customer demo should feel like one continuous path:
+
+1. Search a place and issue in public discovery.
+2. Open a profile and inspect its sources.
+3. Save relevant actors into a workspace list.
+4. Open a brief and export the evidence.
+5. Review a coverage target and name the gaps.
+6. Open watched resources.
+7. Return to the workspace operating picture.
+8. Open renewal proof or a coverage report.
+
+If a demo depends on explaining hidden internals, unsupported data, or private
+state that appears in the wrong workspace, the experience is not ready for that
+customer.
+
+## Related Guides
+
+<CardGroup cols={2}>
+
+<Card title="For civic teams" icon="users" href="/use-cases/civic-teams">
+See common nonprofit, newsroom, funder, and research-team patterns.
+</Card>
+
+<Card title="Plans & pricing" icon="credit-card" href="/account/pricing">
+Review the workspace capabilities attached to each plan.
+</Card>
+
+<Card title="Trust model" icon="shield-check" href="/resources/trust">
+Understand how Atlas treats sources, confidence, and review.
+</Card>
+
+<Card title="API overview" icon="code" href="/api-reference/overview">
+Use Atlas workspace data through the API.
+</Card>
+
+</CardGroup>

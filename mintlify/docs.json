@@ -58,7 +58,12 @@
           },
           {
             "group": "Getting started",
-            "pages": ["quickstart-learn", "quickstart-browse", "account/pricing"]
+            "pages": [
+              "quickstart-learn",
+              "quickstart-browse",
+              "workspace/customer-workflow",
+              "account/pricing"
+            ]
           },
           {
             "group": "Self-hosting",
