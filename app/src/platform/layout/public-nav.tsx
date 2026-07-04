@@ -33,16 +33,13 @@ function useHydrated(): boolean {
 }
 
 const PUBLIC_NAV_ITEMS: AppNavItem[] = [
+  { label: "Search", to: "/browse" },
   { label: "Map", to: "/map" },
-  { label: "Profiles", to: "/profiles" },
-  { label: "Browse", to: "/browse" },
+  { label: "Docs", to: "/docs" },
   { label: "API", to: "/api-reference" },
 ];
 
-const PUBLIC_SESSION_NAV_ITEMS: AppNavItem[] = [
-  { label: "Pricing", to: "/pricing" },
-  { label: "Sign in", to: "/sign-in" },
-];
+const PUBLIC_SESSION_NAV_ITEMS: AppNavItem[] = [{ label: "Sign in", to: "/sign-in" }];
 
 /**
  * Public navigation bar for public pages.

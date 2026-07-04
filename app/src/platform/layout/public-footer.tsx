@@ -151,7 +151,6 @@ interface PublicFooterProps {
 export function PublicFooter({ localMode, status }: PublicFooterProps) {
   const [footerStatus, setFooterStatus] = useState<Status>(status ?? "unknown");
   const { label, color, pulse } = STATUS_CONFIG[footerStatus];
-  const shouldShowWorkspaceLink = !localMode;
 
   useEffect(() => {
     let cancelled = false;
@@ -218,34 +217,44 @@ export function PublicFooter({ localMode, status }: PublicFooterProps) {
             className="grid grid-cols-2 gap-8 sm:grid-cols-3 sm:gap-10"
           >
             <FooterNavColumn heading="Product" baseDelay={80}>
-              <FooterInternalLink to="/browse" label="Browse" animationDelay="120ms" />
-              <FooterInternalLink to="/pricing" label="Pricing" animationDelay="140ms" />
+              <FooterInternalLink to="/browse" label="Search" animationDelay="120ms" />
+              <FooterInternalLink to="/map" label="Map" animationDelay="140ms" />
               <FooterInternalLink to="/docs" label="Docs" animationDelay="160ms" />
               <FooterInternalLink
-                to="/api-reference"
-                label="API reference"
+                to="/docs/how-it-works"
+                label="How it works"
                 animationDelay="180ms"
               />
-              {shouldShowWorkspaceLink ? (
-                <FooterInternalLink to="/discovery" label="Workspace" animationDelay="200ms" />
+              <FooterInternalLink
+                to="/docs/resources/trust"
+                label="Trust & sources"
+                animationDelay="200ms"
+              />
+              {!localMode ? (
+                <FooterInternalLink to="/pricing" label="Pricing" animationDelay="220ms" />
               ) : null}
             </FooterNavColumn>
 
             <FooterNavColumn heading="Community" baseDelay={140}>
+              <FooterInternalLink
+                to="/docs/resources/open-source"
+                label="Open source"
+                animationDelay="240ms"
+              />
               <FooterExternalLink
                 href="https://github.com/RebuildingAmerica/atlas"
                 label="GitHub"
-                animationDelay="220ms"
+                animationDelay="260ms"
               />
               <FooterExternalLink
                 href="https://climate.stripe.com/IbySpr"
                 label="Carbon removal"
-                animationDelay="240ms"
+                animationDelay="280ms"
               />
               <FooterExternalLink
                 href="https://github.com/RebuildingAmerica/atlas/issues"
                 label="Issues"
-                animationDelay="260ms"
+                animationDelay="300ms"
               />
             </FooterNavColumn>
 

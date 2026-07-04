@@ -1,119 +1,147 @@
 ---
 title: "How Atlas works"
-description: "The autodiscovery pipeline that powers the Atlas directory."
+description: "How public sources become searchable, source-linked civic profiles."
 ---
 
-## Overview
+Atlas turns public evidence into a directory people can search, inspect, and
+act on. The workflow is designed around one user outcome: a person should be
+able to understand who is doing civic work in a place and why Atlas believes the
+record is worth showing.
 
-Atlas is more than a static directory. At its core is an **autodiscovery pipeline** — a system that takes a location and a set of issues as input, searches across public sources, extracts structured information, and produces a ranked list of people and organizations doing civic work.
-
-The pipeline is what makes Atlas different from a manually curated directory. It can systematically discover civic actors across entire cities, report what it found, and tell you what's missing.
-
-## The pipeline in action
-
-Here's what happens when you run a discovery on "Kansas City" + "labor, housing":
+## The short version
 
 <Steps>
 
-<Step title="Query generation">
-Atlas creates dozens of targeted search queries across different source types. For example:
-
-- `"worker cooperatives Kansas City Missouri"` (local news)
-- `"housing advocacy Kansas City"` (nonprofit directories)
-- `"tenant organizing Kansas City"` (organizational websites)
-- `"labor economics Kansas City"` (academic research)
-
-A typical discovery run generates around **40 search queries** covering local journalism, nonprofit listings, organizational websites, academic research, and civic records.
+<Step title="Start with a place and issue">
+  Atlas begins with a question such as "Who is working on housing in Detroit?"
+  or "Which organizations are doing transit advocacy in Nevada?"
 </Step>
 
-<Step title="Source fetching">
-Atlas searches the web for each query and collects the results — news articles, organization websites, directory listings, research papers, and public records.
-
-A typical run returns around **200 source documents** (after deduplicating URLs that appear in multiple searches).
+<Step title="Find public sources">
+  Atlas searches local journalism, organization websites, nonprofit directories,
+  public records, campaign pages, reports, and other public material.
 </Step>
 
-<Step title="AI-powered extraction">
-Each source is read by an AI model that extracts structured information: names, organizations, what they do, where they work, which issues they connect to, and any public contact information.
-
-This is the core innovation — Atlas uses AI to turn unstructured public text into structured directory entries, rather than relying on manual data entry.
-
-Structured public sources can count as evidence too. When a civic actor appears
-in a roster, contact block, table, partner list, or directory row, Atlas can keep
-that source fragment as the extraction context instead of requiring a prose
-sentence.
+<Step title="Extract possible civic actors">
+  The discovery engine reads sources and looks for named people, organizations,
+  initiatives, campaigns, and events tied to the place and issue.
 </Step>
 
-<Step title="Deduplication">
-The same person or organization often appears in multiple sources. Atlas detects duplicates using name similarity, location matching, and description analysis, then merges them into a single entry with multiple source links.
-
-Maria Gonzalez mentioned in three different articles becomes **one entry with three sources** — giving you more confidence in the data.
+<Step title="Attach evidence">
+  Each candidate record keeps the source title, publication, URL, date, source
+  type, and the source context that explains why the actor was extracted.
 </Step>
 
-<Step title="Ranking">
-Entries are scored and sorted by:
-
-- **Source density** — More independent sources mentioning an entity means higher confidence
-- **Specificity** — "Maria Gonzalez, founder of Prairie Workers Cooperative" ranks higher than "The Sierra Club has a Kansas chapter"
-- **Recency** — Newer sources score higher
-- **Contact surface** — Can you actually reach this person or organization?
+<Step title="Merge duplicates and rank confidence">
+  The same actor may appear in several sources. Atlas merges likely duplicates
+  and uses source density, recency, specificity, and contact surface to decide
+  how strongly to present the record.
 </Step>
 
-<Step title="Gap analysis">
-Finally, Atlas reports what's *missing*. For example:
-
-> "Strong coverage on transit and housing for Kansas City. Zero leads for harm reduction, environmental justice, and broadband."
-
-This helps researchers know where to dig deeper manually, or where to run additional targeted discovery.
+<Step title="Show gaps and uncertainty">
+  Atlas should make thin, stale, partial, and uncorroborated areas visible. A
+  missing or weak result is a research signal, not something to hide.
 </Step>
 
 </Steps>
 
-## Running discovery
+## What counts as evidence
 
-There are three ways to run the autodiscovery pipeline:
+Atlas can use different kinds of public evidence:
 
-| Method | How | Best for |
-|--------|-----|----------|
-| **Atlas web app** | Go to the Discovery page, enter a location and select issue areas | Researchers who want a visual workflow |
-| **MCP / AI assistant** | Ask Claude or another connected assistant to research a city | Conversational, exploratory research |
-| **REST API** | `POST /api/discovery-runs` with location and issue areas | Programmatic or automated workflows |
+| Source type          | Example                                                 | What it can support                                                           |
+| -------------------- | ------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| Local journalism     | A feature on tenant organizing in Detroit.              | Names, roles, issue areas, places, and current activity.                      |
+| Organization website | A program page from a worker center.                    | Mission, services, geography, public contact surface, and active initiatives. |
+| Public record        | A city agenda, grant list, or public meeting record.    | Participation, official status, dates, and jurisdiction.                      |
+| Directory or roster  | A coalition list, partner page, or nonprofit directory. | Existence, affiliation, geography, and contact surface.                       |
+| Research or report   | A civic landscape report or university paper.           | Context, issue framing, named actors, and broader ecosystem signals.          |
 
-Discovery runs are asynchronous — you start a run and check back for results. The API returns `202 Accepted` with a run ID that you can poll for status.
+A source does not have to be a long article. A roster row, partner list,
+contact block, table, or public record can be useful evidence when the context
+is clear enough to show why the actor belongs in Atlas.
 
-<Note>
-Free accounts get 2 research runs per month. Atlas Pro and Team plans include unlimited runs. See [Plans & pricing](/account/pricing).
-</Note>
+## How a profile becomes useful
 
-## Source attribution
+A useful profile is not just a name. It should answer four questions:
 
-Every entry in Atlas traces back to the public sources where the information was found. This is a fundamental design principle, not an afterthought.
+1. **Who is this?** The profile should identify a person, organization,
+   initiative, campaign, or event.
+2. **Where is the work happening?** The profile should connect the actor to a
+   place at the right level of specificity.
+3. **What issue does it touch?** The profile should connect to one or more
+   issue areas without pretending the source proves more than it says.
+4. **Why should I trust this?** The profile should expose the source evidence,
+   dates, and confidence signals behind the record.
 
-Source attribution serves three purposes:
+<img
+  src="/images/profiles-people.png"
+  alt="Atlas people directory showing profile cards with locations, issue tags, source counts, and updated dates."
+/>
 
-1. **Trust** — You can verify any entry by checking its sources
-2. **Freshness** — Source dates tell you how current the information is
-3. **Depth** — More sources for an entry means more independent corroboration
+## Why discovery runs report gaps
 
-When you view an entry, you see every source that contributed to it — the publication, article title, publication date, and the specific context in which the entity was mentioned.
+Atlas is useful when it shows what it found and what it did not find. A team
+looking at Phoenix may have strong evidence for worker centers and immigrant
+rights groups, but weak evidence for environmental justice or broadband access.
+That gap matters because it tells the team where manual research, a new Scout
+run, or a local partner conversation should happen next.
+
+Gap reporting also protects the user experience. Atlas should not imply that a
+place has no civic work on an issue just because one search pass did not find
+enough public evidence.
+
+## Ways to run discovery
+
+| Method              | Best for                                                             | Where to start                                         |
+| ------------------- | -------------------------------------------------------------------- | ------------------------------------------------------ |
+| Public search       | Looking up known public records and profiles.                        | [Browse Atlas](/quickstart-browse)                     |
+| Workspace discovery | Team research runs, saved actors, briefs, and coverage review.       | [Team workflow](/workspace/customer-workflow)          |
+| Scout               | Local or scripted research before syncing selected results to Atlas. | [Discovery API guide](/api-reference/guides/discovery) |
+| MCP                 | Conversational research through an AI assistant.                     | [MCP overview](/mcp/overview)                          |
+| REST API            | Programmatic search, source review, and workflow automation.         | [API overview](/api-reference/overview)                |
+
+<img
+  src="/images/discovery.png"
+  alt="Atlas discovery screen with a form for location, state, issue areas, and a recent-runs panel."
+/>
+
+## The trust boundary
+
+Atlas organizes public evidence; it does not certify that every source is
+complete, current, or correct. That is why source links, dates, extraction
+context, correction paths, and confidence signals are part of the core product
+experience.
+
+Read [Trust and provenance](/resources/trust) before using Atlas for decisions
+that affect real people, outreach, publication, funding, or public claims.
 
 ## What's next
 
 <CardGroup cols={2}>
 
-<Card title="Issue areas & domains" icon="tags" href="/taxonomy">
-The 11 domains and 47 issue areas Atlas tracks.
+<Card title="Trust and provenance" icon="shield-check" href="/resources/trust">
+  What Atlas knows, how it knows it, and how to interpret uncertainty.
 </Card>
 
-<Card title="Connect an AI assistant" icon="robot" href="/mcp/overview">
-Run discovery conversationally through Claude, Copilot, or Gemini.
+<Card
+  title="Browse walkthrough"
+  icon="magnifying-glass"
+  href="/quickstart-browse"
+>
+  Find housing organizers in Detroit and inspect the source evidence.
 </Card>
 
-<Card title="Discovery API" icon="code" href="/api-reference/overview">
-Run discovery programmatically via the REST API.
+<Card title="Team workflow" icon="users" href="/workspace/customer-workflow">
+  Build a source-linked briefing for a nonprofit entering Phoenix.
 </Card>
 
-<Card title="Browse the directory" icon="magnifying-glass" href="/quickstart-browse">
-See what the pipeline has already found.
+<Card
+  title="API discovery guide"
+  icon="code"
+  href="/api-reference/guides/discovery"
+>
+  Run Scout locally, sync to Atlas, and open the workspace run.
 </Card>
 
 </CardGroup>

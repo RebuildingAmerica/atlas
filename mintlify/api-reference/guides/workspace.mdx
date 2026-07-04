@@ -1,0 +1,138 @@
+---
+title: "Workspace endpoints and visibility"
+description: "How to use Atlas workspace APIs safely, preserve source evidence, and interpret entry visibility."
+---
+
+Workspace endpoints are for team workflows: private lists, briefs, coverage
+targets, watches, usage proof, and Scout sync. They should make source-backed
+work easier without blurring the boundary between public records and private
+workspace context.
+
+## The rule
+
+Public Atlas records should be backed by public evidence. Workspace context is
+private unless a user deliberately publishes a public-safe record.
+
+That means an integration should never assume that a private brief, note, list,
+or coverage target is public evidence. It is team context. Keep it scoped to the
+workspace unless the API response explicitly says a record is public.
+
+## Workspace resources
+
+| Resource         | Typical endpoint                      | What it represents                                                             |
+| ---------------- | ------------------------------------- | ------------------------------------------------------------------------------ |
+| Briefs           | `/api/orgs/{org_id}/briefs`           | Source-linked decision artifacts.                                              |
+| Coverage targets | `/api/orgs/{org_id}/coverage-targets` | Places, issue areas, actor types, source types, gaps, and review state.        |
+| Watches          | `/api/orgs/{org_id}/watches`          | Recurring monitoring for actors, briefs, coverage targets, or other resources. |
+| Usage proof      | `/api/orgs/{org_id}/usage-summary`    | Evidence opens, brief exports, coverage improvements, and workflow activity.   |
+| Scout syncs      | `/api/discovery-runs/syncs`           | Local Scout results synced into Atlas with visibility receipts.                |
+
+## Understanding `entry_links`
+
+Scout and workspace import flows may return `entry_links`. These links connect
+records from one context to another:
+
+- A local Scout entry to an Atlas entry.
+- A workspace-private entry to a public directory entry.
+- A run result to a brief, list, or coverage target.
+
+Treat `entry_links` as a mapping, not as proof. The link tells you how systems
+refer to the same or related record. The source evidence tells you whether the
+record is strong enough to use.
+
+## Visibility states
+
+Visibility tells you who should be able to see a record.
+
+| Visibility     | Meaning                                                     | Safe use                                                                  |
+| -------------- | ----------------------------------------------------------- | ------------------------------------------------------------------------- |
+| `public`       | The entry is intended for the public directory.             | Display in public Atlas surfaces with source evidence.                    |
+| `private`      | The entry belongs to a workspace.                           | Use inside that workspace only.                                           |
+| `skipped`      | The import or sync chose not to create or publish an entry. | Keep the local artifact for review; do not assume it is rejected forever. |
+| `needs_review` | The entry needs human review before publication or reuse.   | Keep it out of public-facing outputs until reviewed.                      |
+
+If an endpoint returns a more specific status, prefer the endpoint response over
+this general model.
+
+## Safe workspace API pattern
+
+Use this pattern for imports, syncs, briefs, and exports:
+
+1. Authenticate as the correct workspace.
+2. Preserve source ids or source URLs with every imported actor.
+3. Store `entry_links` returned by the API.
+4. Store visibility receipts and review state.
+5. Keep private notes and planning context out of public records.
+6. Re-check source freshness before publication, outreach, or funding review.
+7. Export evidence with the artifact, not separately from it.
+
+## Building a briefing integration
+
+For a nonprofit entering Phoenix, a workflow might look like this:
+
+<Steps>
+
+<Step title="Find public actors">
+  Use the public entities and places endpoints to find source-backed housing,
+  wage-theft, and immigrant-worker organizations.
+</Step>
+
+<Step title="Create a workspace brief">
+  Create a brief under `/api/orgs/{org_id}/briefs` and attach the relevant
+  actors, sources, and review state.
+</Step>
+
+<Step title="Track gaps">
+  Create coverage targets for missing source types, thin issue areas, or places
+  where local evidence is weak.
+</Step>
+
+<Step title="Watch for changes">
+  Add watches for actors or coverage targets that need recurring review.
+</Step>
+
+<Step title="Export proof">
+  Export the brief or coverage report with source context preserved.
+</Step>
+
+</Steps>
+
+## What not to do
+
+- Do not publish private workspace notes as source evidence.
+- Do not treat `entry_links` as a confidence score.
+- Do not discard source URLs when exporting a brief.
+- Do not assume a single-source lead is ready for outreach.
+- Do not merge local Scout entries into public records without visibility
+  review.
+- Do not show renewal proof as public impact evidence without context.
+
+## Related guides
+
+<CardGroup cols={2}>
+
+<Card title="Team workflows" icon="users" href="/workspace/customer-workflow">
+  Build briefs, track coverage, watch changes, and export proof.
+</Card>
+
+<Card
+  title="Discovery runs and Scout sync"
+  icon="terminal"
+  href="/api-reference/guides/discovery"
+>
+  Run local discovery and sync reviewed artifacts to Atlas.
+</Card>
+
+<Card title="Trust and provenance" icon="shield-check" href="/resources/trust">
+  Understand how to interpret source evidence and uncertainty.
+</Card>
+
+<Card
+  title="Generated API reference"
+  icon="code"
+  href="https://atlas.rebuildingus.org/api-reference"
+>
+  Open the Scalar endpoint reference for exact request and response schemas.
+</Card>
+
+</CardGroup>

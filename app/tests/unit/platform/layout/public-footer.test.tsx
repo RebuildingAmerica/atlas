@@ -33,7 +33,7 @@ async function mockOpenStatus(status: Status = "operational") {
   const { getStatus } = await import("@openstatus/react");
   vi.mocked(getStatus).mockResolvedValue({
     status,
-  } as Awaited<ReturnType<typeof getStatus>>);
+  });
   return getStatus;
 }
 
@@ -49,24 +49,35 @@ describe("PublicFooter", () => {
   });
 
   it("hides workspace footer links in single-user mode", async () => {
-    await renderPublicFooter({ localMode: true, status: "operational" });
+    await renderPublicFooter({ localMode: true });
 
     expect(screen.queryByRole("link", { name: /workspace/i })).not.toBeInTheDocument();
   });
 
-  it("shows workspace link when not in local mode", async () => {
-    await renderPublicFooter({ localMode: false, status: "operational" });
+  it("keeps public product links focused on discovery when not in local mode", async () => {
+    await renderPublicFooter({ localMode: false });
 
+    expect(screen.getByRole("link", { name: "Search" })).toHaveAttribute("href", "/browse");
+    expect(screen.getByRole("link", { name: "Map" })).toHaveAttribute("href", "/map");
     expect(screen.getByRole("link", { name: "Docs" })).toHaveAttribute("href", "/docs");
-    expect(screen.getByRole("link", { name: "API reference" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "How it works" })).toHaveAttribute(
       "href",
-      "/api-reference",
+      "/docs/how-it-works",
     );
-    expect(screen.getByRole("link", { name: "Workspace" })).toHaveAttribute("href", "/discovery");
+    expect(screen.getByRole("link", { name: "Trust & sources" })).toHaveAttribute(
+      "href",
+      "/docs/resources/trust",
+    );
+    expect(screen.getByRole("link", { name: "Open source" })).toHaveAttribute(
+      "href",
+      "/docs/resources/open-source",
+    );
+    expect(screen.getByRole("link", { name: "Pricing" })).toHaveAttribute("href", "/pricing");
+    expect(screen.queryByRole("link", { name: /workspace/i })).not.toBeInTheDocument();
   });
 
   it("describes Atlas as source-linked local civic intelligence", async () => {
-    await renderPublicFooter({ localMode: false, status: "operational" });
+    await renderPublicFooter({ localMode: false });
 
     expect(
       screen.getByText("Source-linked local civic intelligence for the issues that matter most."),

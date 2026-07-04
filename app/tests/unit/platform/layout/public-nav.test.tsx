@@ -26,24 +26,20 @@ describe("PublicTopNav", () => {
 
     render(<PublicTopNav localMode={false} />);
 
+    expect(screen.getByRole("link", { name: "Search" })).toHaveAttribute("data-link-to", "/browse");
     expect(screen.getByRole("link", { name: "Map" })).toHaveAttribute("data-link-to", "/map");
-    expect(screen.getByRole("link", { name: "Profiles" })).toHaveAttribute(
-      "data-link-to",
-      "/profiles",
-    );
-    expect(screen.getByRole("link", { name: "Browse" })).toHaveAttribute("data-link-to", "/browse");
+    expect(screen.getByRole("link", { name: "Docs" })).toHaveAttribute("data-link-to", "/docs");
     expect(screen.getByRole("link", { name: "API" })).toHaveAttribute(
       "data-link-to",
       "/api-reference",
-    );
-    expect(screen.getByRole("link", { name: "Pricing" })).toHaveAttribute(
-      "data-link-to",
-      "/pricing",
     );
     expect(screen.getByRole("link", { name: "Sign in" })).toHaveAttribute(
       "data-link-to",
       "/sign-in",
     );
+    expect(screen.queryByRole("link", { name: "Profiles" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Browse" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Pricing" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Research" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Lists" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Watching" })).not.toBeInTheDocument();
@@ -108,7 +104,6 @@ describe("PublicTopNav", () => {
       "data-link-to",
       "/account",
     );
-    expect(screen.queryByRole("link", { name: "API" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Pricing" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Sign in" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Workspace" })).not.toBeInTheDocument();
@@ -141,6 +136,8 @@ describe("PublicTopNav", () => {
       "/watching",
     );
     expect(screen.getByRole("link", { name: "Activity" })).toHaveAttribute("data-link-to", "/feed");
+    expect(screen.queryByRole("link", { name: "Docs" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "API" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Account" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Pricing" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Sign in" })).not.toBeInTheDocument();

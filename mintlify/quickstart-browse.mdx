@@ -1,72 +1,143 @@
 ---
-title: "Browse Atlas"
-description: "Walk through the public directory in 5 minutes."
+title: "Find housing organizers in Detroit"
+description: "A public-user walkthrough for searching Atlas, opening a profile, and inspecting source evidence."
 ---
 
-## Overview
+This walkthrough shows the public Atlas experience: search a place and issue,
+open a result, inspect sources, and decide what you can safely do with what you
+found. You do not need an account.
 
-The Atlas directory is free to browse — no account needed. This quickstart walks through searching, filtering, and reading source attributions.
+<img
+  src="/images/browse.png"
+  alt="Atlas browse screen showing search, issue filters, source filters, a map, and source-backed result cards."
+/>
 
-## Open the directory
+## The question
+
+Imagine you want to understand who is working on housing in Detroit. You are
+not trying to download a dataset yet. You need a small set of credible leads
+and enough source context to know whether each lead is worth opening.
+
+## 1. Open Browse
 
 Go to [atlas.rebuildingus.org/browse](https://atlas.rebuildingus.org/browse).
 
-## Search by place
+Start with the search box. Try:
 
-Enter a city or state in the search bar — for example, "Kansas City." Atlas returns entities tied to that location.
+```text
+Detroit housing
+```
 
-## Filter by issue area
+If the result set is too narrow, search for:
 
-Use the issue area filters to narrow results. Select **Housing and the Built Environment** to see only housing-related entities, or combine multiple filters to find cross-cutting work.
+```text
+Detroit
+```
 
-## Read an entry
+Then use issue filters to narrow the list.
 
-Click any entry to see its full record:
+## 2. Filter for the issue
 
-- **Name and type** — Person, organization, initiative, campaign, or event
-- **Description** — What they do, in 1–3 sentences
-- **Location** — City, state, and geographic specificity
-- **Issue areas** — The civic topics they connect to
-- **Sources** — Every article, listing, or record where Atlas found this information
+Open the **Issues** filter and choose housing-related tags such as
+**Housing Affordability** or **Homelessness and Housing Insecurity**.
 
-## Check the sources
+The goal is not to make the list huge. The goal is to create a reviewable set of
+profiles where the issue, place, and source evidence all line up.
 
-This is the key differentiator. Every entry lists its sources with:
-- Publication name
-- Article title
-- Publication date
-- Link to the original
+## 3. Scan the result cards
 
-Click through to verify any entry independently.
+Each result card should help you decide whether to open the profile:
 
-## What you can do without an account
+| Card signal   | What to look for                                                                                             |
+| ------------- | ------------------------------------------------------------------------------------------------------------ |
+| Name and type | Is this a person, organization, initiative, campaign, or event?                                              |
+| Place         | Is the actor actually tied to Detroit or the surrounding region?                                             |
+| Issue tags    | Do the tags match housing, tenant organizing, homelessness, or the related issue you care about?             |
+| Source count  | Is this a single-source lead or a better-corroborated record?                                                |
+| Latest source | Is the evidence recent enough for your use?                                                                  |
+| Mentioned in  | What source types support the profile: news, organization website, public record, report, or another source? |
 
-- Search and browse the full directory
-- Filter by place, issue area, entity type, and source type
-- Read full entry details and source attributions
-- Flag incorrect entries (anonymous)
-- Use the public API (100 requests/hour)
+## 4. Open a profile
 
-## What requires an account
+Open a promising result, such as a housing organizer or tenant group. On the
+profile, look for:
 
-- Save shortlists
-- Run research (discovery runs)
-- Export data
-- Connect AI assistants via MCP
-- Create API keys
+- A short description of the work.
+- Place and issue tags.
+- Source count and freshness.
+- Source titles, publishers, dates, URLs, and excerpts.
+- Related actors or issue areas.
 
-See [Plans & pricing](/account/pricing) for details.
+<img
+  src="/images/profiles-people.png"
+  alt="Atlas people directory showing profile cards with issue tags, source counts, locations, and updated dates."
+/>
 
-## What's next
+## 5. Read the sources before acting
+
+This is the most important step. A profile is useful because you can inspect the
+public evidence behind it.
+
+Ask:
+
+- Does the source actually mention the person or organization?
+- Does the source connect them to Detroit, housing, or the issue I searched?
+- Is the source recent?
+- Is the record supported by more than one independent source?
+- Is the source strong enough for the action I am about to take?
+
+If you are only making a research list, one source may be enough. If you plan to
+publish, fund, contact, or brief a team, open the sources and verify the
+specific claim you plan to rely on.
+
+## 6. Decide what comes next
+
+Public users can:
+
+- Search and browse profiles.
+- Open source-linked records.
+- Filter by place, issue, actor type, and source type.
+- Flag records that appear incorrect or stale.
+- Use the public API within the free request limit.
+
+Signed-in workspace users can also save actors to lists, build briefs, track
+coverage, watch for changes, run discovery, and export proof.
+
+## If the result is thin
+
+Thin results are still information. They may mean:
+
+- The issue is under-covered in public sources.
+- Atlas has not seen enough sources for that place and issue.
+- The relevant actors use different language than your search terms.
+- You need a broader place filter, a different issue tag, or a manual Scout run.
+
+Try broadening to Michigan, searching for "tenant union", or checking related
+issue areas. If you are working as a team, turn the missing evidence into a
+coverage gap.
+
+## Next steps
 
 <CardGroup cols={2}>
 
-<Card title="What is Atlas?" icon="compass" href="/what-is-atlas">
-Learn more about the product and its mission.
+<Card title="Trust and provenance" icon="shield-check" href="/resources/trust">
+  Learn how to interpret source evidence, stale data, and partial records.
 </Card>
 
-<Card title="Connect an AI assistant" icon="robot" href="/mcp/overview">
-Search Atlas conversationally through Claude or Copilot.
+<Card
+  title="Build a team brief"
+  icon="file-text"
+  href="/workspace/customer-workflow"
+>
+  Turn a public search into a source-linked workspace briefing.
+</Card>
+
+<Card title="Use the API" icon="code" href="/api-reference/guides/entities">
+  Find organizations working on transit in Nevada with the API.
+</Card>
+
+<Card title="Run Scout" icon="terminal" href="/api-reference/guides/discovery">
+  Run local discovery and sync selected results to Atlas.
 </Card>
 
 </CardGroup>

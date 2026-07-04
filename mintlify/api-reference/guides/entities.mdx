@@ -5,7 +5,13 @@ description: "Working with Atlas entities: searching, filtering, creating, and u
 
 ## Overview
 
-Entities are the core resource in Atlas. Each entity represents a person, organization, initiative, campaign, or event working on civic issues in a specific place.
+Entities are the core resource in Atlas. Each entity represents a person,
+organization, initiative, campaign, or event working on civic issues in a
+specific place.
+
+This guide focuses on a concrete task: use the API to find organizations
+working on transit in Nevada, then inspect the source evidence before using the
+results.
 
 ## List and search entities
 
@@ -15,21 +21,21 @@ GET /api/entities
 
 **Query parameters:**
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `text` | string | Full-text search |
-| `issue_area` | string | Filter by issue area slug (repeatable) |
-| `entity_type` | string | Filter by type: `person`, `organization`, `initiative`, `campaign`, `event` |
-| `source_type` | string | Filter by source type |
-| `limit` | integer | Results per page (1–100, default 20) |
-| `cursor` | string | Pagination cursor |
+| Parameter     | Type    | Description                                                                 |
+| ------------- | ------- | --------------------------------------------------------------------------- |
+| `text`        | string  | Full-text search                                                            |
+| `issue_area`  | string  | Filter by issue area slug (repeatable)                                      |
+| `entity_type` | string  | Filter by type: `person`, `organization`, `initiative`, `campaign`, `event` |
+| `source_type` | string  | Filter by source type                                                       |
+| `limit`       | integer | Results per page (1–100, default 20)                                        |
+| `cursor`      | string  | Pagination cursor                                                           |
 
-**Example:** Find housing organizations in Missouri:
+**Example:** Find organizations working on transit in Nevada:
 
 <CodeGroup>
 
 ```bash cURL
-curl "https://atlas.rebuildingus.org/api/entities?text=housing&entity_type=organization"
+curl "https://atlas.rebuildingus.org/api/entities?text=transit%20Nevada&entity_type=organization"
 ```
 
 ```python Python
@@ -38,7 +44,7 @@ import httpx
 response = httpx.get(
     "https://atlas.rebuildingus.org/api/entities",
     params={
-        "text": "housing",
+        "text": "transit Nevada",
         "entity_type": "organization",
     },
 )
@@ -58,10 +64,28 @@ GET /api/places/{place_key}/entities
 ```
 
 ```bash
-curl "https://atlas.rebuildingus.org/api/places/kansas-city,missouri/entities?issue_area=housing_affordability"
+curl "https://atlas.rebuildingus.org/api/places/las-vegas,nevada/entities?issue_area=public_transit"
 ```
 
-Place keys use the format `city,state` (lowercase, hyphenated): `kansas-city,missouri`, `boise,idaho`, `garden-city,kansas`.
+Place keys use the format `city,state` (lowercase, hyphenated):
+`las-vegas,nevada`, `kansas-city,missouri`, `boise,idaho`,
+`garden-city,kansas`.
+
+## Read before reusing a result
+
+Do not treat a matching entity as a verified recommendation. Before publishing,
+contacting, funding, or importing a record into another system, inspect the
+evidence.
+
+For each result, check:
+
+- The entity type is what you need. A campaign is different from an
+  organization.
+- The place matches the geography of your use case.
+- The issue tag is supported by sources, not merely inferred from a keyword.
+- The latest source is recent enough.
+- The source count is strong enough for your use.
+- The source excerpt supports the claim you plan to repeat.
 
 ## Get a single entity
 
@@ -77,7 +101,8 @@ Returns the full entity record including address, contact information, issue are
 GET /api/entities/{entity_id}/sources
 ```
 
-Returns all sources backing an entity — the articles, listings, and records where Atlas found information about this entity.
+Returns all sources backing an entity: the articles, listings, records, and
+public pages where Atlas found information about this entity.
 
 **Example response:**
 
@@ -136,24 +161,38 @@ curl -X PATCH https://atlas.rebuildingus.org/api/entities/{entity_id} \
 
 ## Entity types
 
-| Type | Description |
-|------|-------------|
-| `person` | An individual doing civic work |
+| Type           | Description                                            |
+| -------------- | ------------------------------------------------------ |
+| `person`       | An individual doing civic work                         |
 | `organization` | A nonprofit, advocacy group, cooperative, or other org |
-| `initiative` | A program, project, or ongoing effort |
-| `campaign` | A time-bound advocacy or organizing campaign |
-| `event` | A civic event, summit, or gathering |
+| `initiative`   | A program, project, or ongoing effort                  |
+| `campaign`     | A time-bound advocacy or organizing campaign           |
+| `event`        | A civic event, summit, or gathering                    |
+
+## Safe import pattern
+
+When you move entities into another tool, preserve the evidence chain.
+
+1. Store the Atlas entity id.
+2. Store the source ids or source URLs that support the specific claim.
+3. Store the retrieved timestamp.
+4. Store the issue and place filters that produced the result.
+5. Re-check sources before using the record in a high-stakes workflow.
+
+If your integration writes to a workspace, read
+[Workspace endpoints and visibility](/api-reference/guides/workspace) before
+publishing or importing records.
 
 ## What's next
 
 <CardGroup cols={2}>
 
 <Card title="Places" icon="map" href="/api-reference/guides/places">
-Place-first queries, profiles, and coverage data.
+  Place-first queries, profiles, and coverage data.
 </Card>
 
 <Card title="Taxonomy" icon="tags" href="/api-reference/guides/taxonomy">
-Understanding domains and issue areas programmatically.
+  Understanding domains and issue areas programmatically.
 </Card>
 
 </CardGroup>

@@ -5,10 +5,20 @@ description: "Running the Atlas autodiscovery pipeline programmatically."
 
 ## Overview
 
-Discovery runs are how you trigger Atlas's autodiscovery pipeline through the API. You provide a location and issue areas, and Atlas searches public sources, extracts structured data, and produces ranked results.
+Discovery runs are how you trigger Atlas's source discovery workflow through the
+API. You provide a location and issue areas, and Atlas searches public sources,
+extracts candidate civic actors, attaches evidence, and produces reviewable
+results.
+
+This guide covers two common patterns:
+
+- Start and inspect a hosted Atlas discovery run.
+- Run Scout locally, sync selected results to Atlas, and open the resulting
+  workspace run.
 
 <Note>
-Discovery runs require authentication and an Atlas Pro or Team plan. See [authentication](/api-reference/authentication).
+  Discovery runs require authentication and an Atlas Pro or Team plan. See
+  [authentication](/api-reference/authentication).
 </Note>
 
 ## Start a discovery run
@@ -17,7 +27,8 @@ Discovery runs require authentication and an Atlas Pro or Team plan. See [authen
 POST /api/discovery-runs
 ```
 
-Discovery runs are **asynchronous** — the API returns `202 Accepted` immediately with a run ID. The pipeline executes in the background.
+Discovery runs are **asynchronous**. The API returns `202 Accepted` immediately
+with a run ID, then the pipeline executes in the background.
 
 <CodeGroup>
 
@@ -81,14 +92,28 @@ curl -H "X-API-Key: your-api-key" \
 
 **Run statuses:**
 
-| Status | Meaning |
-|--------|---------|
-| `pending` | Run created, waiting to start |
-| `running` | Pipeline is executing |
+| Status      | Meaning                        |
+| ----------- | ------------------------------ |
+| `pending`   | Run created, waiting to start  |
+| `running`   | Pipeline is executing          |
 | `completed` | Pipeline finished successfully |
-| `failed` | Pipeline encountered an error |
+| `failed`    | Pipeline encountered an error  |
 
 When `status` is `completed`, `entries_found` and `sources_processed` show the results.
+
+## Inspect before using results
+
+Completion means the run finished, not that every result is ready for outreach,
+publication, funding review, or import.
+
+After a run completes, review:
+
+- Which entries are people, organizations, initiatives, campaigns, or events.
+- Which sources support each entry.
+- Whether source dates are recent enough.
+- Whether the same actor appears in multiple independent sources.
+- Which issue areas are well-covered and which remain thin.
+- Which records should stay private to a workspace until reviewed.
 
 ## List discovery runs
 
@@ -131,24 +156,80 @@ while run["status"] in ("pending", "running"):
 print(f"Done! Found {run['entries_found']} entries from {run['sources_processed']} sources.")
 ```
 
+## Run Scout locally and sync to Atlas
+
+Scout is useful when you want a local, inspectable research process before
+syncing selected results into Atlas.
+
+The safe workflow is:
+
+<Steps>
+
+<Step title="Run Scout locally">
+  Run the Scout CLI for the place and issue set. Keep the local artifact so the
+  team can review source evidence before syncing.
+</Step>
+
+<Step title="Decide visibility">
+  Separate entries that are ready for the public directory from entries that
+  should stay private to a workspace. A weak, stale, or sensitive record should
+  not become public just because Scout found it.
+</Step>
+
+<Step title="Sync the artifact">
+Use the Scout sync endpoint:
+
+```bash
+POST /api/discovery-runs/syncs
+```
+
+The sync response includes the remote Atlas run id, entry visibility receipts,
+and links that can open the synced run in the workspace.
+
+</Step>
+
+<Step title="Open the workspace run">
+Open `/discovery?run=<remote_run_id>` to inspect the synced run in Atlas. Link
+reviewed results to a brief, coverage target, or workspace list.
+</Step>
+
+</Steps>
+
+## What sync receipts are for
+
+Sync receipts make the boundary between local discovery, workspace data, and
+public directory records explicit.
+
+Look for:
+
+| Receipt field   | Why it matters                                                                |
+| --------------- | ----------------------------------------------------------------------------- |
+| Remote run id   | Lets Scout and Atlas refer to the same synced run.                            |
+| Entry links     | Connects local Scout entries to Atlas entries created or matched during sync. |
+| Visibility      | Shows whether an entry is public, private, skipped, or needs review.          |
+| Workspace links | Gives users a direct path back to the run, brief, list, or coverage target.   |
+
+Read [Workspace endpoints and visibility](/api-reference/guides/workspace) for
+more detail on `entry_links` and safe workspace usage.
+
 ## Rate limits
 
 | Plan | Research runs |
-|------|--------------|
-| Free | 2/month |
-| Pro | Unlimited |
-| Team | Unlimited |
+| ---- | ------------- |
+| Free | 2/month       |
+| Pro  | Unlimited     |
+| Team | Unlimited     |
 
 ## What's next
 
 <CardGroup cols={2}>
 
 <Card title="Entities" icon="users" href="/api-reference/guides/entities">
-Query the entities that discovery found.
+  Query the entities that discovery found.
 </Card>
 
 <Card title="How Atlas works" icon="gears" href="/how-it-works">
-Understand the 6-step pipeline in detail.
+  Understand the 6-step pipeline in detail.
 </Card>
 
 </CardGroup>

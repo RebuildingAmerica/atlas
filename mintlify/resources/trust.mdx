@@ -1,66 +1,176 @@
 ---
-title: "Trust & provenance"
-description: "How Atlas ensures data quality through source attribution, freshness signals, and community corrections."
+title: "Trust and provenance"
+description: "How to understand Atlas evidence, source confidence, stale data, corrections, and limits."
 ---
 
-## Overview
+Trust is the core Atlas experience. The product publishes information about
+real people and organizations, so every useful record must make the evidence
+visible enough for a user to inspect it before acting.
 
-Atlas is designed around a simple principle: **every claim traces back to a public source**. This is not an afterthought — it's the core mechanism that makes Atlas trustworthy.
+Atlas should never ask you to believe a profile because it appears in Atlas.
+It should show what it knows, how it knows it, and where the record may still
+be partial, stale, or uncertain.
 
-## Source attribution
+## What Atlas knows
 
-Every entity in Atlas is backed by at least one source — the news article, nonprofit listing, organizational website, or public record where Atlas found the information. When you look at an entry, you see:
+Atlas records can describe public civic actors:
 
-- **What** was published (title, publication)
-- **When** it was published (date)
-- **Where** to verify it (URL)
-- **What was said** (extraction context — the specific passage that mentioned this entity)
+| Record type  | Examples                                                                                             |
+| ------------ | ---------------------------------------------------------------------------------------------------- |
+| Person       | An organizer, journalist, researcher, founder, public-interest technologist, or community leader.    |
+| Organization | A nonprofit, advocacy group, union local, cooperative, newsroom, public agency, or civic tech group. |
+| Initiative   | A program, coalition, campaign arm, mutual-aid effort, service line, or recurring project.           |
+| Campaign     | A time-bound advocacy, electoral, ballot, fundraising, or public pressure campaign.                  |
+| Event        | A public meeting, summit, training, hearing, march, forum, or recurring civic gathering.             |
 
-This means you never have to take Atlas at its word. You can click through to the original source and verify.
+A record can include a place, issue areas, short description, source links,
+source dates, public contact surface, related actors, and workspace artifacts
+such as briefs or coverage targets.
 
-## Freshness signals
+## How Atlas knows it
 
-Source dates tell you how current the information is:
+Atlas connects each claim to public evidence. A source can be a local news
+article, organization website, public record, nonprofit directory, coalition
+list, report, podcast page, campaign page, or other public material.
 
-- An entity backed by a March 2026 article is more actionable than one last mentioned in 2023
-- `first_seen` tells you when Atlas first discovered an entity
-- `last_seen` tells you when the most recent source was added
+When you inspect a record, look for:
 
-When source dates are old, it may mean the entity is no longer active — or it may mean Atlas hasn't run recent discovery in that area.
+- **Source title:** The document or page that mentioned the actor.
+- **Publication or publisher:** Who published the source.
+- **URL:** Where you can verify the source yourself.
+- **Date:** When the source was published or when Atlas saw it.
+- **Source type:** Journalism, organization website, directory, public record,
+  report, podcast, or another category.
+- **Extraction context:** The sentence, row, paragraph, or page fragment that
+  explains why Atlas connected the source to the actor.
 
-## Multi-source corroboration
+<img
+  src="/images/browse.png"
+  alt="Atlas browse screen with search filters, map context, result cards, issue tags, source counts, and source-type chips."
+/>
 
-Entities that appear in multiple independent sources earn higher confidence:
+## What source evidence means
 
-- 1 source: Atlas found a mention, but it's a single data point
-- 3+ sources: Multiple independent publications confirm this entity's work
-- The [ranking system](/how-it-works) scores entities higher when they have more independent sources
+Source evidence means Atlas found public material that supports showing the
+record. It does not automatically mean the source is complete, independent,
+current, neutral, or correct.
 
-## Community corrections
+Use this reading model:
 
-Atlas provides anonymous flagging to help maintain data quality:
+| Evidence state               | What it means                                                                   | How to use it                                                                         |
+| ---------------------------- | ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| Single source                | Atlas found one public mention or page.                                         | Treat it as a lead. Open the source before outreach or publication.                   |
+| Multiple independent sources | Several sources mention the same actor or work.                                 | Higher confidence, especially when sources come from different publishers.            |
+| Recent source                | The source was published or observed recently.                                  | More actionable, but still verify before high-stakes use.                             |
+| Old source                   | The strongest evidence is months or years old.                                  | Treat activity, contact, and role as uncertain until refreshed.                       |
+| Structured source            | The evidence is a roster, table, directory row, partner list, or contact block. | Good for existence and affiliation; weaker for describing impact or current activity. |
+| Partial source               | The source supports only part of the profile.                                   | Do not infer unsupported details. Read the specific evidence.                         |
 
-- **Entity flags** — report that an entry is stale, incorrect, or inappropriate
-- **Source flags** — report that a source link is broken or misattributed
+## Stale, partial, and uncorroborated data
 
-Flags don't require an account. They're reviewed by Atlas maintainers and used to update or remove entries. See [Sources & flags](/api-reference/guides/sources-flags) for the API.
+Atlas should make uncertainty visible instead of smoothing it over.
 
-## What Atlas doesn't do
+**Stale data** means the best source evidence may no longer describe the
+current state. A profile can still be useful as a research lead, but the user
+should not assume the person has the same role, the organization is active, or
+the contact surface still works.
 
-- Atlas does not independently verify claims made in sources
-- Atlas does not rank entities by "importance" or "impact" — ranking is based on source density, recency, and specificity
-- Atlas does not assert opinions — it documents, links, and organizes what's already in the public record
+**Partial data** means Atlas knows some things but not others. A source may
+prove that an organization exists in Phoenix and works on wage theft, but not
+prove its current staff, funding, coalition partners, or service area.
 
-## What's next
+**Uncorroborated data** means the record has limited independent support. One
+source may be enough to show a lead, but not enough to treat the profile as a
+settled account of an actor's work.
+
+## How corrections work
+
+Atlas supports correction pathways because public data about people can be
+wrong, stale, duplicated, overbroad, or missing context.
+
+Users can flag:
+
+- Incorrect names, descriptions, locations, issue tags, or actor types.
+- Broken, stale, misattributed, or low-quality sources.
+- Duplicate profiles that should be merged.
+- Records that should not be public.
+- Missing context that changes how a record should be understood.
+
+Flags are reviewed by maintainers or workspace operators before they change the
+public record. A correction should improve the user experience by making the
+profile more accurate, more clearly sourced, or more honest about uncertainty.
+
+## What Atlas explicitly does not claim
+
+Atlas does not:
+
+- Endorse a person, organization, campaign, or issue position.
+- Decide that one actor is more important than another.
+- Verify every statement inside every source.
+- Guarantee that a person is currently active, reachable, or in the same role.
+- Publish private workspace notes as public evidence.
+- Treat a team workflow as proof that a public claim is true.
+- Replace local knowledge, direct verification, or editorial judgment.
+
+The safest way to use Atlas is to treat it as a source-linked discovery layer:
+it helps you find leads, understand why they surfaced, and decide what needs
+human review next.
+
+## Public and private evidence
+
+Public Atlas records are built from public evidence. Workspace artifacts such
+as private lists, briefs, coverage targets, notes, usage proof, and renewal
+packets belong to the workspace unless a user deliberately publishes a
+public-safe record.
+
+This boundary matters. A public user should not have to trust a claim that only
+exists inside an enterprise workflow. A workspace user should not have to worry
+that private planning context will leak into the public map.
+
+## Before acting on a record
+
+Use this checklist before outreach, publication, funding review, or public
+claims:
+
+1. Open the profile and read the source panel.
+2. Check whether the strongest evidence is recent.
+3. Look for more than one independent source when the use is high-stakes.
+4. Confirm that the source actually supports the specific claim you plan to
+   repeat.
+5. Treat contact information, roles, and current activity as provisional unless
+   the evidence is recent and direct.
+6. File a correction if the profile is wrong, stale, duplicated, or misleading.
+
+## Related guides
 
 <CardGroup cols={2}>
 
 <Card title="How Atlas works" icon="gears" href="/how-it-works">
-The autodiscovery pipeline and ranking system.
+  How public evidence becomes searchable profiles.
 </Card>
 
-<Card title="Data model" icon="database" href="/resources/data-model">
-How entities, sources, and issue areas relate.
+<Card
+  title="Browse walkthrough"
+  icon="magnifying-glass"
+  href="/quickstart-browse"
+>
+  Practice inspecting source evidence in a public search.
+</Card>
+
+<Card
+  title="Sources and flags API"
+  icon="flag"
+  href="/api-reference/guides/sources-flags"
+>
+  Use the API to inspect evidence and submit corrections.
+</Card>
+
+<Card
+  title="Workspace endpoint safety"
+  icon="lock"
+  href="/api-reference/guides/workspace"
+>
+  Understand visibility, `entry_links`, and workspace-scoped data.
 </Card>
 
 </CardGroup>
