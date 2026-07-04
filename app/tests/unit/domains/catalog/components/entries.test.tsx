@@ -87,7 +87,15 @@ describe("catalog entry components", () => {
 
   it("renders entry cards with issue and source badges", () => {
     render(
-      <EntryCard entry={sampleEntry} issueAreaLabels={{ housing_affordability: "Housing" }} />,
+      <EntryCard
+        entry={sampleEntry}
+        issueAreaLabels={{ housing_affordability: "Housing" }}
+        discoveryContext={{
+          issueAreas: ["housing_affordability"],
+          places: ["Kansas City", "MO"],
+          query: "housing",
+        }}
+      />,
     );
 
     expect(screen.getByText("Housing Justice KC")).not.toBeNull();
@@ -95,6 +103,9 @@ describe("catalog entry components", () => {
     expect(screen.getByText("Source-backed")).not.toBeNull();
     expect(screen.getByText("2 source packets")).not.toBeNull();
     expect(screen.getByText("Latest source: 2026-04-11")).not.toBeNull();
+    expect(screen.getByText("Matched because: works on Housing in Kansas City, MO")).not.toBeNull();
+    expect(screen.getByText("2 sources · latest 2026-04-11 · Atlas-verified")).not.toBeNull();
+    expect(screen.getByRole("link", { name: "Inspect sources" })).not.toBeNull();
   });
 
   it("surfaces lead-quality signals on browse cards", () => {
@@ -236,6 +247,25 @@ describe("catalog entry components", () => {
     );
 
     expect(screen.getAllByText("Location not specified").length).toBeGreaterThan(0);
+  });
+
+  it("renders useful public recovery actions for empty active searches without workspace language", () => {
+    render(
+      <EntryList
+        entries={[]}
+        hasActiveSearch
+        emptyRecoveryActions={[
+          { label: "Remove Housing", onClick: vi.fn() },
+          { label: "Browse Missouri", onClick: vi.fn() },
+        ]}
+      />,
+    );
+
+    expect(screen.getByText("No matching civic actors.")).not.toBeNull();
+    expect(screen.getByRole("button", { name: "Remove Housing" })).not.toBeNull();
+    expect(screen.getByRole("button", { name: "Browse Missouri" })).not.toBeNull();
+    expect(screen.getByText("Submit a source")).not.toBeNull();
+    expect(screen.queryByText(/research/i)).toBeNull();
   });
 
   it("shows a 'Verified by subject' badge for the subject_verified tier", () => {
@@ -552,7 +582,7 @@ describe("catalog entry components", () => {
     expect(screen.getByText("No civic actors listed.")).not.toBeNull();
     expect(
       screen.getByText(
-        "Start research to find source-backed people, organizations, initiatives, and public mentions.",
+        "Browse places, issues, or actor types to find source-backed civic profiles.",
       ),
     ).not.toBeNull();
     expect(screen.queryByText(/seed the directory/i)).toBeNull();

@@ -1,4 +1,6 @@
 import { EntryList } from "@/domains/catalog/components/entries/entry-list";
+import type { EntryDiscoveryContext } from "@/domains/catalog/components/entries/entry-card";
+import type { EmptyRecoveryAction } from "@/domains/catalog/components/entries/entry-list";
 import { Button } from "@/platform/ui/button";
 import type { BrowseFilterKey } from "@/domains/catalog/search-state";
 import type { BrowsePageContent } from "./browse-page-content";
@@ -41,6 +43,8 @@ interface BrowseResultsAsideProps {
   error: Error | null | undefined;
   hasActiveSearch: boolean;
   isLoading: boolean;
+  discoveryContext: EntryDiscoveryContext;
+  emptyRecoveryActions: EmptyRecoveryAction[];
   issueAreaLabels: Record<string, string>;
   issueBrief: BrowseIssueBrief | undefined;
   pagination: PaginationState | undefined;
@@ -64,6 +68,8 @@ export function BrowseResultsAside({
   error,
   hasActiveSearch,
   isLoading,
+  discoveryContext,
+  emptyRecoveryActions,
   issueAreaLabels,
   issueBrief,
   pagination,
@@ -160,6 +166,8 @@ export function BrowseResultsAside({
           hasActiveSearch={hasActiveSearch}
           resultLabelPlural={resultLabelPlural}
           emptyAction={emptyAction}
+          emptyRecoveryActions={emptyRecoveryActions}
+          discoveryContext={discoveryContext}
         />
 
         {pagination?.total ? (

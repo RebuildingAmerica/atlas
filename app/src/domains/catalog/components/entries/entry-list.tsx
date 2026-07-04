@@ -1,9 +1,15 @@
 import { AlertCircle } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { EntryCard } from "@/domains/catalog/components/entries/entry-card";
+import type { EntryDiscoveryContext } from "@/domains/catalog/components/entries/entry-card";
 import { Button } from "@/platform/ui/button";
 import { Spinner } from "@/platform/ui/spinner";
 import type { Entry } from "@/types";
+
+export interface EmptyRecoveryAction {
+  label: string;
+  onClick: () => void;
+}
 
 interface EntryListProps {
   entries: Entry[];
@@ -13,10 +19,12 @@ interface EntryListProps {
   issueAreaLabels?: Record<string, string>;
   hasActiveSearch?: boolean;
   resultLabelPlural?: string;
+  discoveryContext?: EntryDiscoveryContext;
   emptyAction?: {
     label: string;
     to: "/browse" | "/discovery" | "/profiles";
   };
+  emptyRecoveryActions?: EmptyRecoveryAction[];
 }
 
 function emptyHeading(resultLabelPlural: string, hasActiveSearch: boolean): string {
@@ -29,10 +37,10 @@ function emptyHeading(resultLabelPlural: string, hasActiveSearch: boolean): stri
 
 function emptyDescription(hasActiveSearch: boolean): string {
   if (hasActiveSearch) {
-    return "Try fewer filters, a broader place, or a different issue.";
+    return "Try fewer filters, a broader place, another issue, or a source submission.";
   }
 
-  return "Start research to find source-backed people, organizations, initiatives, and public mentions.";
+  return "Browse places, issues, or actor types to find source-backed civic profiles.";
 }
 
 function resultSummary(total: number, resultLabelPlural: string): string {
@@ -51,7 +59,9 @@ export function EntryList({
   issueAreaLabels = {},
   hasActiveSearch = false,
   resultLabelPlural = "entries",
-  emptyAction = { label: "Research", to: "/discovery" },
+  discoveryContext,
+  emptyAction = { label: "Browse profiles", to: "/profiles" },
+  emptyRecoveryActions = [],
 }: EntryListProps) {
   if (isLoading) {
     return (
@@ -81,13 +91,32 @@ export function EntryList({
           {emptyHeading(resultLabelPlural, hasActiveSearch)}
         </p>
         <p className="type-body-medium text-ink-muted mt-2">{emptyDescription(hasActiveSearch)}</p>
-        {!hasActiveSearch ? (
+        {hasActiveSearch ? (
+          <div className="mt-5 flex flex-wrap justify-center gap-2">
+            {emptyRecoveryActions.map((action) => (
+              <button
+                key={action.label}
+                type="button"
+                onClick={action.onClick}
+                className="type-label-large bg-surface-container text-ink-soft hover:text-ink-strong rounded-full px-3 py-1.5 transition-colors"
+              >
+                {action.label}
+              </button>
+            ))}
+            <a
+              href="mailto:hello@rebuildingus.org?subject=Atlas%20source%20submission"
+              className="type-label-large bg-ink-strong text-surface hover:bg-ink rounded-full px-3 py-1.5 transition-colors"
+            >
+              Submit a source
+            </a>
+          </div>
+        ) : (
           <div className="mt-5 flex justify-center">
             <Link to={emptyAction.to}>
               <Button>{emptyAction.label}</Button>
             </Link>
           </div>
-        ) : null}
+        )}
       </div>
     );
   }
@@ -100,7 +129,12 @@ export function EntryList({
         </p>
       ) : null}
       {entries.map((entry) => (
-        <EntryCard key={entry.id} entry={entry} issueAreaLabels={issueAreaLabels} />
+        <EntryCard
+          key={entry.id}
+          entry={entry}
+          issueAreaLabels={issueAreaLabels}
+          discoveryContext={discoveryContext}
+        />
       ))}
     </div>
   );

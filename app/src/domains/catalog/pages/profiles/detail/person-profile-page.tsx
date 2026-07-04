@@ -67,10 +67,13 @@ export function PersonProfilePage({ entry, initialConnections }: PersonProfilePa
   const connectionsQuery = useConnections(entry.id, { initialData: initialConnections });
   const sessionQuery = useAtlasSession();
   const isSignedIn = Boolean(sessionQuery.data);
-  const workspaceWatchingEnabled = Boolean(
-    sessionQuery.data?.workspace.activeOrganization &&
-    sessionQuery.data.workspace.resolvedCapabilities.capabilities.includes("monitoring.watchlists"),
-  );
+  const activeWorkspaceId = sessionQuery.data?.workspace.activeOrganization?.id ?? null;
+  const workspaceWatchingEnabled =
+    activeWorkspaceId !== null &&
+    (sessionQuery.data?.workspace.resolvedCapabilities.capabilities.includes(
+      "monitoring.watchlists",
+    ) ??
+      false);
   const affiliatedOrgQuery = useEntry(entry.affiliated_org_id ?? "", {
     enabled: Boolean(entry.affiliated_org_id),
   });
@@ -211,6 +214,7 @@ export function PersonProfilePage({ entry, initialConnections }: PersonProfilePa
           email={entry.email}
           isSignedIn={isSignedIn}
           profilePath={profilePath}
+          workspaceId={activeWorkspaceId}
           workspaceWatchingEnabled={workspaceWatchingEnabled}
         />
       </div>

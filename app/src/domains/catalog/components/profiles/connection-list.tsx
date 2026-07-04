@@ -161,33 +161,82 @@ function ConnectionListSkeleton() {
   );
 }
 
-function buildBrowseMoreLinks(entry: Entry): string[] {
-  const labels: string[] = [];
+interface BrowseMoreSearch {
+  entry_types?: string;
+  issue_areas?: string;
+  states?: string;
+}
+
+interface BrowseMoreLink {
+  label: string;
+  search?: BrowseMoreSearch;
+  to: "/browse" | "/profiles";
+}
+
+function buildBrowseMoreLinks(entry: Entry): BrowseMoreLink[] {
+  const links: BrowseMoreLink[] = [];
   if (entry.state) {
-    labels.push(`All profiles in ${entry.state}`);
+    links.push({
+      label: `More people in ${entry.state}`,
+      search: {
+        entry_types: "person",
+        states: entry.state,
+      },
+      to: "/browse",
+    });
   }
-  if (entry.issue_areas.length > 0) {
-    labels.push("Browse by issue area");
+  const primaryIssueArea = entry.issue_areas[0];
+  if (primaryIssueArea) {
+    const issueLabel = humanize(primaryIssueArea);
+    links.push(
+      {
+        label: `Organizations working on ${issueLabel}`,
+        search: {
+          entry_types: "organization",
+          issue_areas: primaryIssueArea,
+        },
+        to: "/browse",
+      },
+      {
+        label: `${issueLabel} in another place`,
+        search: {
+          issue_areas: primaryIssueArea,
+        },
+        to: "/browse",
+      },
+    );
   }
-  labels.push("All profiles");
-  return labels;
+  links.push({ label: "All profiles", to: "/profiles" });
+  return links;
 }
 
 function BrowseMore({ entry }: { entry: Entry }) {
-  const labels = buildBrowseMoreLinks(entry);
+  const links = buildBrowseMoreLinks(entry);
   return (
     <div className="flex flex-wrap items-center gap-3 pt-2">
       <span className="type-label-small text-ink-muted">Keep exploring:</span>
-      {labels.map((label) => (
-        <Link
-          key={label}
-          to="/profiles"
-          className="type-label-small text-ink-soft hover:text-ink-strong focus-visible:ring-civic inline-flex items-center gap-1 rounded-sm transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
-        >
-          {label}
-          <ArrowUpRight className="h-3 w-3" aria-hidden />
-        </Link>
-      ))}
+      {links.map((link) =>
+        link.to === "/browse" ? (
+          <Link
+            key={link.label}
+            to="/browse"
+            search={link.search}
+            className="type-label-small text-ink-soft hover:text-ink-strong focus-visible:ring-civic inline-flex items-center gap-1 rounded-sm transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+          >
+            {link.label}
+            <ArrowUpRight className="h-3 w-3" aria-hidden />
+          </Link>
+        ) : (
+          <Link
+            key={link.label}
+            to="/profiles"
+            className="type-label-small text-ink-soft hover:text-ink-strong focus-visible:ring-civic inline-flex items-center gap-1 rounded-sm transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+          >
+            {link.label}
+            <ArrowUpRight className="h-3 w-3" aria-hidden />
+          </Link>
+        ),
+      )}
     </div>
   );
 }

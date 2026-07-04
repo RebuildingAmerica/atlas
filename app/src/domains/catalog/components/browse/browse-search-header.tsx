@@ -1,5 +1,7 @@
 import { Grid3X3, List, Map, RotateCcw } from "lucide-react";
 import {
+  BrowseIntentChips,
+  type BrowseIntentChip,
   BrowseSearchBox,
   FilterDisclosure,
 } from "@/domains/catalog/components/browse/browse-page-sections";
@@ -21,6 +23,7 @@ interface BrowseSearchHeaderProps {
   activeCounts: { issues: number; types: number; sources: number };
   initialQuery: string;
   quickIssueAreas: { slug: string; label: string }[];
+  intentChips: BrowseIntentChip[];
   searchPlaceholder?: string;
   selectedEntryTypes: string[];
   selectedIssueAreas: string[];
@@ -42,6 +45,7 @@ interface BrowseSearchHeaderProps {
 export function BrowseSearchHeader({
   activeCounts,
   initialQuery,
+  intentChips,
   quickIssueAreas,
   searchPlaceholder,
   selectedEntryTypes,
@@ -138,6 +142,8 @@ export function BrowseSearchHeader({
           }))}
         />
       </div>
+
+      <BrowseIntentChips chips={intentChips} />
     </header>
   );
 }

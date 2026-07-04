@@ -1009,8 +1009,14 @@ describe("ConnectionList", () => {
     render(<ConnectionList entry={buildEntry()} network={buildNetwork([])} isLoading={false} />);
     expect(screen.getByText(/No connections surfaced yet/i)).toBeInTheDocument();
     expect(screen.getByText(/Keep exploring/i)).toBeInTheDocument();
-    expect(screen.getByText("All profiles in MS")).toBeInTheDocument();
-    expect(screen.getByText("Browse by issue area")).toBeInTheDocument();
+    expect(screen.getByText("More people in MS")).toBeInTheDocument();
+    expect(screen.getByText("Organizations working on Housing Affordability")).toBeInTheDocument();
+    expect(screen.getByText("Housing Affordability in another place")).toBeInTheDocument();
+    expect(screen.getByText("All profiles")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /More people in MS/ })).toHaveAttribute(
+      "data-link-search",
+      JSON.stringify({ entry_types: "person", states: "MS" }),
+    );
   });
 
   it("treats undefined network (not loading) as empty", () => {
@@ -1209,7 +1215,9 @@ describe("ActionCluster", () => {
       isPending: false,
     });
 
-    render(<ActionCluster {...baseProps} isSignedIn workspaceWatchingEnabled />);
+    render(
+      <ActionCluster {...baseProps} isSignedIn workspaceId="org_123" workspaceWatchingEnabled />,
+    );
     await act(async () => {
       screen.getByRole("button", { name: /^watch$/i }).click();
       await Promise.resolve();
@@ -1221,6 +1229,7 @@ describe("ActionCluster", () => {
         resourceType: "entry",
       },
       true,
+      "org_123",
     );
     expect(watchMutate).toHaveBeenCalledWith({
       notificationPreference: "digest",

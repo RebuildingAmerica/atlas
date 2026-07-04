@@ -67,14 +67,14 @@ describe("buildBrowseSearch", () => {
     });
   });
 
-  it("defaults the browse surface to map view", () => {
+  it("defaults the browse surface to list view", () => {
     expect(
       buildBrowseSearch({
         query: "housing",
       }),
     ).toMatchObject({
       query: "housing",
-      view: "map",
+      view: "list",
     });
   });
 });
@@ -120,34 +120,97 @@ describe("resolveBrowseSearchIntent", () => {
     housing_affordability: "Housing Affordability",
     worker_cooperatives: "Worker Cooperatives",
   };
+  const cityNames = ["Phoenix", "Kansas City"];
+  const regionNames = ["Las Vegas Valley", "Metro Detroit"];
+  const entryTypeLabels = {
+    person: "People",
+    organization: "Organizations",
+    initiative: "Initiatives",
+    campaign: "Campaigns",
+    event: "Events",
+  };
+  const sourceTypeLabels = {
+    news_article: "Local news",
+    podcast: "Podcasts",
+    government_record: "Government records",
+    org_website: "Organization sites",
+  };
   const stateNameByCode = {
+    IN: "Indiana",
     MO: "Missouri",
     KS: "Kansas",
   };
+  const intentOptions = {
+    cityNames,
+    entryTypeLabels,
+    issueAreaLabels,
+    regionNames,
+    sourceTypeLabels,
+    stateNameByCode,
+  };
 
   it("turns a place-plus-issue phrase into filters instead of a brittle text query", () => {
-    expect(
-      resolveBrowseSearchIntent("housing in Missouri", {
-        issueAreaLabels,
-        stateNameByCode,
-      }),
-    ).toEqual({
+    expect(resolveBrowseSearchIntent("housing in Missouri", intentOptions)).toEqual({
+      cities: [],
+      entry_types: [],
       issue_areas: ["housing_affordability"],
       query: undefined,
+      regions: [],
+      source_types: [],
       states: ["MO"],
     });
   });
 
-  it("keeps unmatched lead terms as the query while extracting the place filter", () => {
-    expect(
-      resolveBrowseSearchIntent("tenant union in Missouri", {
-        issueAreaLabels,
-        stateNameByCode,
-      }),
-    ).toEqual({
-      issue_areas: [],
-      query: "tenant union",
+  it("maps tenant-union language to housing while extracting the place filter", () => {
+    expect(resolveBrowseSearchIntent("tenant union in Missouri", intentOptions)).toEqual({
+      cities: [],
+      entry_types: [],
+      issue_areas: ["housing_affordability"],
+      query: undefined,
+      regions: [],
+      source_types: [],
       states: ["MO"],
+    });
+  });
+
+  it("does not treat the word in as the Indiana state code", () => {
+    expect(resolveBrowseSearchIntent("organizations in Missouri", intentOptions)).toEqual({
+      cities: [],
+      entry_types: ["organization"],
+      issue_areas: [],
+      query: undefined,
+      regions: [],
+      source_types: [],
+      states: ["MO"],
+    });
+  });
+
+  it("extracts city, region, actor type, and source type intent into visible filters", () => {
+    expect(
+      resolveBrowseSearchIntent(
+        "organizations in Phoenix around Las Vegas Valley from local news",
+        intentOptions,
+      ),
+    ).toEqual({
+      cities: ["Phoenix"],
+      entry_types: ["organization"],
+      issue_areas: [],
+      query: undefined,
+      regions: ["Las Vegas Valley"],
+      source_types: ["news_article"],
+      states: [],
+    });
+  });
+
+  it("maps common civic language to known issue filters without keeping duplicate query text", () => {
+    expect(resolveBrowseSearchIntent("tenant organizers in Kansas City", intentOptions)).toEqual({
+      cities: ["Kansas City"],
+      entry_types: ["person"],
+      issue_areas: ["housing_affordability"],
+      query: undefined,
+      regions: [],
+      source_types: [],
+      states: [],
     });
   });
 });

@@ -31,6 +31,7 @@ interface ActionClusterProps {
   email?: string;
   isSignedIn: boolean;
   profilePath: string;
+  workspaceId?: string | null;
   workspaceWatchingEnabled?: boolean;
 }
 
@@ -67,6 +68,7 @@ export function ActionCluster({
   email,
   isSignedIn,
   profilePath,
+  workspaceId = null,
   workspaceWatchingEnabled = false,
 }: ActionClusterProps) {
   const [shareState, setShareState] = useState<ShareState>("idle");
@@ -81,6 +83,7 @@ export function ActionCluster({
   const workspaceWatchQuery = useWorkspaceWatchStatus(
     workspaceWatchInput,
     isSignedIn && workspaceWatchingEnabled,
+    workspaceId,
   );
   const watchWorkspaceMutation = useWatchWorkspaceResource();
   const unwatchWorkspaceMutation = useUnwatchWorkspaceResource();

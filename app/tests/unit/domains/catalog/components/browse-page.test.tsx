@@ -187,6 +187,36 @@ describe("BrowsePage", () => {
     expect(mocks.navigate).toHaveBeenCalled();
   });
 
+  it("defaults public actor discovery to list view and resets back to the readable list", async () => {
+    const { BrowsePage } = await import("@/domains/catalog/components/browse/browse-page");
+
+    render(
+      <BrowsePage
+        search={{
+          issue_areas: undefined,
+          offset: undefined,
+          query: undefined,
+          source_types: undefined,
+          states: undefined,
+          view: undefined,
+        }}
+      />,
+    );
+
+    expect(screen.getByText("01")).not.toBeNull();
+    expect(screen.queryByRole("button", { name: "Select Missouri" })).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Reset" }));
+
+    const resetSearch = getNavigateCalls()
+      .map((options) =>
+        typeof options.search === "function" ? options.search({ view: "map" }) : options.search,
+      )
+      .find((search) => search?.view === "list");
+
+    expect(resetSearch).toMatchObject({ view: "list" });
+  });
+
   it("renders grid and list views with state summaries", async () => {
     const { BrowsePage } = await import("@/domains/catalog/components/browse/browse-page");
     const { rerender } = render(
@@ -243,13 +273,25 @@ describe("BrowsePage", () => {
     const startingPoints = screen.getByRole("region", { name: "Browse starting points" });
 
     expect(startingPoints).not.toBeNull();
-    expect(within(startingPoints).getByRole("heading", { name: "Places" })).not.toBeNull();
-    expect(within(startingPoints).getByRole("heading", { name: "Issues" })).not.toBeNull();
+    expect(within(startingPoints).getByRole("heading", { name: "Browse by place" })).not.toBeNull();
+    expect(within(startingPoints).getByRole("heading", { name: "Browse by issue" })).not.toBeNull();
+    expect(
+      within(startingPoints).getByRole("heading", { name: "Browse by actor type" }),
+    ).not.toBeNull();
+    expect(within(startingPoints).getByRole("heading", { name: "Guided paths" })).not.toBeNull();
     expect(screen.getByRole("button", { name: "Missouri civic actors 10 records" })).not.toBeNull();
     expect(screen.getByRole("button", { name: "Housing Affordability landscape" })).not.toBeNull();
+    expect(screen.getByRole("button", { name: "People profiles" })).not.toBeNull();
+    expect(
+      screen.getByRole("button", { name: "Missouri Housing Affordability guided path" }),
+    ).not.toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "Missouri civic actors 10 records" }));
     fireEvent.click(screen.getByRole("button", { name: "Housing Affordability landscape" }));
+    fireEvent.click(screen.getByRole("button", { name: "People profiles" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Missouri Housing Affordability guided path" }),
+    );
 
     const computedSearches = getNavigateCalls()
       .map((options) =>
@@ -261,6 +303,13 @@ describe("BrowsePage", () => {
       expect.arrayContaining([
         expect.objectContaining({ offset: 0, states: "MO" }),
         expect.objectContaining({ offset: 0, issue_areas: "housing_affordability" }),
+        expect.objectContaining({ offset: 0, entry_types: "person" }),
+        expect.objectContaining({
+          issue_areas: "housing_affordability",
+          offset: 0,
+          states: "MO",
+          view: "list",
+        }),
       ]),
     );
   });
@@ -485,7 +534,8 @@ describe("BrowsePage", () => {
     );
 
     expect(screen.getByText("Research focus")).not.toBeNull();
-    expect(screen.getByText("tenant union")).not.toBeNull();
+    expect(screen.getAllByText("tenant union").length).toBeGreaterThan(0);
+    expect(screen.getByText("Atlas understood")).not.toBeNull();
     expect(screen.getAllByText("Missouri").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Housing Affordability").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Organizations").length).toBeGreaterThan(0);
@@ -498,6 +548,42 @@ describe("BrowsePage", () => {
     expect(screen.getByText("25 source-linked records for Housing Affordability.")).not.toBeNull();
     expect(screen.getByText("Strongest signal: Multi-source confirmation")).not.toBeNull();
     expect(screen.getByText("Missouri Housing Affordability history")).not.toBeNull();
+  });
+
+  it("extracts source and actor intent from plain-language search into removable chips", async () => {
+    const { BrowsePage } = await import("@/domains/catalog/components/browse/browse-page");
+
+    render(
+      <BrowsePage
+        search={{
+          issue_areas: undefined,
+          offset: undefined,
+          query: undefined,
+          source_types: undefined,
+          states: undefined,
+          view: "list",
+        }}
+      />,
+    );
+
+    fireEvent.change(screen.getByPlaceholderText("Search place, issue, or name"), {
+      target: { value: "organizations in Missouri from local news" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Search" }));
+
+    const searchUpdate = getNavigateCalls()
+      .map((options) =>
+        typeof options.search === "function" ? options.search({}) : options.search,
+      )
+      .find((nextSearch) => nextSearch?.states === "MO");
+
+    expect(searchUpdate).toMatchObject({
+      entry_types: "organization",
+      offset: 0,
+      query: undefined,
+      source_types: "news_article",
+      states: "MO",
+    });
   });
 
   it("summarizes issue-level actors, sources, and gaps from filtered results", async () => {
@@ -819,7 +905,7 @@ describe("BrowsePage", () => {
 
     expect(screen.getAllByText("XX").length).toBeGreaterThan(0);
     expect(screen.getByRole("button", { name: "XX 3 matching records" })).not.toBeNull();
-    expect(screen.getByRole("button", { name: "Mutual Aid" })).not.toBeNull();
+    expect(screen.getAllByRole("button", { name: "Mutual Aid" }).length).toBeGreaterThan(0);
     expect(screen.getAllByRole("button", { name: /Community archive/i }).length).toBeGreaterThan(0);
     fireEvent.click(screen.getByRole("button", { name: "XX 3 matching records" }));
 
