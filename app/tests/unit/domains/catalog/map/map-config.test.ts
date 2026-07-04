@@ -26,6 +26,15 @@ describe("getMapStyleUrl", () => {
     expect(getMapStyleUrl({ ATLAS_MAP_STYLE_URL: "   " })).toBe(PLACEHOLDER_MAP_STYLE_URL);
   });
 
+  it("requires a configured style URL in production", () => {
+    expect(() => getMapStyleUrl({ ATLAS_DEPLOY_MODE: "production" })).toThrow(
+      "ATLAS_MAP_STYLE_URL is required in production.",
+    );
+    expect(() => getMapStyleUrl({ PROD: true })).toThrow(
+      "ATLAS_MAP_STYLE_URL is required in production.",
+    );
+  });
+
   it("rejects a relative configured style URL rather than feeding MapLibre an opaque error", () => {
     expect(() => getMapStyleUrl({ ATLAS_MAP_STYLE_URL: "/maps/atlas/style.json" })).toThrow(
       "ATLAS_MAP_STYLE_URL must be an absolute http(s) URL.",

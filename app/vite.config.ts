@@ -8,9 +8,10 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-const PUBLIC_ATLAS_ENV_KEYS = [
+export const PUBLIC_ATLAS_ENV_KEYS = [
   "ATLAS_DEPLOY_MODE",
   "ATLAS_PUBLIC_URL",
+  "ATLAS_MAP_STYLE_URL",
   "ATLAS_DOCS_URL",
   "ATLAS_AUTH_BASE_PATH",
   "ATLAS_SERVER_API_PROXY_TARGET",

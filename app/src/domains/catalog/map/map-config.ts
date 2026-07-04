@@ -16,6 +16,9 @@
 
 interface MapConfigEnv {
   ATLAS_MAP_STYLE_URL?: string;
+  ATLAS_DEPLOY_MODE?: string;
+  MODE?: string;
+  PROD?: boolean;
 }
 
 /**
@@ -29,6 +32,10 @@ export const PLACEHOLDER_MAP_STYLE_URL =
 
 function isAbsoluteUrl(value: string): boolean {
   return /^https?:\/\//.test(value);
+}
+
+function isProductionEnv(env: MapConfigEnv): boolean {
+  return env.PROD === true || env.MODE === "production" || env.ATLAS_DEPLOY_MODE === "production";
 }
 
 /**
@@ -46,6 +53,10 @@ function isAbsoluteUrl(value: string): boolean {
 export function getMapStyleUrl(env: MapConfigEnv = import.meta.env): string {
   const configured = env.ATLAS_MAP_STYLE_URL?.trim();
   if (!configured) {
+    if (isProductionEnv(env)) {
+      throw new Error("ATLAS_MAP_STYLE_URL is required in production.");
+    }
+
     return PLACEHOLDER_MAP_STYLE_URL;
   }
 

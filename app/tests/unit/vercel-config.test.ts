@@ -29,4 +29,16 @@ describe("vercel config", () => {
       ]),
     );
   });
+
+  it("allows app fonts, map tiles, and map workers in the deployed CSP", async () => {
+    const { config } = await import("../../vercel");
+    const appHeaders = config.headers.find((entry) => entry.source === "/(.*)");
+    const csp = appHeaders?.headers.find((header) => header.key === "Content-Security-Policy");
+
+    expect(csp?.value).toContain("connect-src 'self'");
+    expect(csp?.value).toContain("https://*.maptiler.com");
+    expect(csp?.value).toContain("style-src 'self' 'unsafe-inline' https://fonts.googleapis.com");
+    expect(csp?.value).toContain("font-src 'self' data: https://fonts.gstatic.com");
+    expect(csp?.value).toContain("worker-src 'self' blob:");
+  });
 });

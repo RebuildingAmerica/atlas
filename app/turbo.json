@@ -19,6 +19,7 @@
         "ATLAS_EMAIL_PROVIDER",
         "ATLAS_EMAIL_RESEND_API_KEY",
         "ATLAS_DEV_API_PROXY_TARGET",
+        "ATLAS_MAP_STYLE_URL",
         "ATLAS_PUBLIC_URL"
       ],
       "persistent": true
@@ -37,6 +38,7 @@
         "ATLAS_EMAIL_FROM",
         "ATLAS_EMAIL_PROVIDER",
         "ATLAS_EMAIL_RESEND_API_KEY",
+        "ATLAS_MAP_STYLE_URL",
         "NODE_ENV",
         "ATLAS_PUBLIC_URL",
         "ATLAS_SERVER_API_PROXY_TARGET",
@@ -65,6 +67,7 @@
         "ATLAS_DEPLOY_MODE",
         "ATLAS_DOCS_URL",
         "ATLAS_EMAIL_PROVIDER",
+        "ATLAS_MAP_STYLE_URL",
         "ATLAS_PUBLIC_URL",
         "ATLAS_SERVER_API_PROXY_TARGET"
       ],
@@ -134,6 +137,7 @@
         "ATLAS_E2E_API_URL",
         "ATLAS_E2E_APP_URL",
         "ATLAS_E2E_AUTH_INTROSPECTION_URL",
+        "ATLAS_MAP_STYLE_URL",
         "ATLAS_E2E_MAILBOX_URL"
       ],
       "outputs": ["playwright-report/**", "test-results/**"],
@@ -145,6 +149,7 @@
         "ATLAS_E2E_API_URL",
         "ATLAS_E2E_APP_URL",
         "ATLAS_E2E_AUTH_INTROSPECTION_URL",
+        "ATLAS_MAP_STYLE_URL",
         "ATLAS_E2E_MAILBOX_URL"
       ],
       "outputs": ["playwright-report/**", "test-results/**"],
