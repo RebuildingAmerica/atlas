@@ -1,5 +1,5 @@
 import type { BrowseSearchState } from "@/domains/catalog/search-state";
-import type { EntryType, MapBounds, MapPointParams, SourceType } from "@/types";
+import type { EntryType, MapBounds, MapPointParams, SourcePattern, SourceType } from "@/types";
 
 /**
  * Build the viewport query from the shared browse filters and the bounding box.
@@ -23,5 +23,6 @@ export function mapPointParamsFor(search: BrowseSearchState, bounds: MapBounds):
     issue_areas: search.issue_areas,
     entry_types: search.entry_types as EntryType[],
     source_types: search.source_types as SourceType[],
+    source_patterns: search.source_patterns as SourcePattern[],
   };
 }

@@ -188,6 +188,21 @@ class TestFilterParity:
 
         assert [point["id"] for point in result["points"]] == [mo]
 
+    async def test_source_pattern_filter_narrows_points(
+        self, test_db: aiosqlite.Connection
+    ) -> None:
+        multi_source = await _place(test_db, name="Multi Source Org")
+        await _link_source(test_db, multi_source, "https://one.example.com/a")
+        await _link_source(test_db, multi_source, "https://two.example.org/b")
+        single_source = await _place(test_db, name="Single Source Org")
+        await _link_source(test_db, single_source, "https://one.example.com/c")
+
+        result = await EntryCRUD.search_map_points(
+            test_db, **_US_BBOX, source_patterns=["multi_source"], limit=2000
+        )
+
+        assert [point["id"] for point in result["points"]] == [multi_source]
+
     async def test_inactive_entries_excluded(self, test_db: aiosqlite.Connection) -> None:
         await _place(test_db, name="Hidden Org", active=False)
 
@@ -268,6 +283,25 @@ class TestMapEndpoint:
         assert response.status_code == _OK
         data = response.json()
         assert [point["id"] for point in data["points"]] == [housing]
+
+    async def test_filters_by_source_pattern(
+        self, test_client: object, test_db: aiosqlite.Connection
+    ) -> None:
+        multi_source = await _place(test_db, name="Multi Source Endpoint Org")
+        await _link_source(test_db, multi_source, "https://one.example.com/a")
+        await _link_source(test_db, multi_source, "https://two.example.org/b")
+        single_source = await _place(test_db, name="Single Source Endpoint Org")
+        await _link_source(test_db, single_source, "https://one.example.com/c")
+
+        response = await test_client.get(
+            "/api/entities/map"
+            "?min_lng=-125&min_lat=24&max_lng=-66&max_lat=50"
+            "&source_pattern=multi_source"
+        )
+
+        assert response.status_code == _OK
+        data = response.json()
+        assert [point["id"] for point in data["points"]] == [multi_source]
 
     async def test_rejects_invalid_issue_area(self, test_client: object) -> None:
         response = await test_client.get(

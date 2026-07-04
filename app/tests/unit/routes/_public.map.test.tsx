@@ -99,7 +99,14 @@ describe("routes/_public/map", () => {
     const loader = Route.options.loader;
     if (!loader) throw new Error("Expected Route.options.loader");
     const result = await loader({
-      deps: { search: { issue_areas: "housing-affordability", states: "TX", query: "q" } },
+      deps: {
+        search: {
+          issue_areas: "housing-affordability",
+          source_patterns: "multi_source",
+          states: "TX",
+          query: "q",
+        },
+      },
     });
 
     expect(result).toEqual({ initialPoints: seeded });
@@ -112,6 +119,7 @@ describe("routes/_public/map", () => {
         issue_areas: ["housing-affordability"],
         entry_types: [],
         source_types: [],
+        source_patterns: ["multi_source"],
       },
     });
   });

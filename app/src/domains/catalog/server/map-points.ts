@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { api } from "@/lib/api";
-import type { EntryType, MapBounds, MapPointCollection, SourceType } from "@/types";
+import type { EntryType, MapBounds, MapPointCollection, SourcePattern, SourceType } from "@/types";
 
 /**
  * The continental-US bounding box the map opens on.
@@ -27,6 +27,7 @@ const mapSeedSchema = z.object({
   issue_areas: optionalList,
   entry_types: optionalList,
   source_types: optionalList,
+  source_patterns: optionalList,
 });
 
 /**
@@ -54,5 +55,6 @@ export const loadMapPoints = createServerFn({ method: "GET" })
       issue_areas: data.issue_areas ?? [],
       entry_types: (data.entry_types ?? []) as EntryType[],
       source_types: (data.source_types ?? []) as SourceType[],
+      source_patterns: (data.source_patterns ?? []) as SourcePattern[],
     });
   });

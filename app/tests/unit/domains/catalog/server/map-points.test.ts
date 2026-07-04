@@ -22,7 +22,11 @@ describe("loadMapPoints", () => {
     mocks.mapPoints.mockResolvedValue(collection);
 
     const result = await loadMapPoints({
-      data: { issue_areas: ["housing-affordability"], states: ["TX"] },
+      data: {
+        issue_areas: ["housing-affordability"],
+        states: ["TX"],
+        source_patterns: ["multi_source"],
+      },
     });
 
     expect(result).toBe(collection);
@@ -35,6 +39,7 @@ describe("loadMapPoints", () => {
       issue_areas: ["housing-affordability"],
       entry_types: [],
       source_types: [],
+      source_patterns: ["multi_source"],
     });
   });
 
@@ -50,6 +55,7 @@ describe("loadMapPoints", () => {
       issue_areas: [],
       entry_types: [],
       source_types: [],
+      source_patterns: [],
     });
   });
 

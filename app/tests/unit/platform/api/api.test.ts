@@ -78,6 +78,7 @@ describe("buildMapPointParams", () => {
         issue_areas: ["housing_affordability"],
         entry_types: ["organization"],
         source_types: ["news_article"],
+        source_patterns: ["multi_source"],
         limit: 1500,
       }),
     ).toEqual({
@@ -92,6 +93,7 @@ describe("buildMapPointParams", () => {
       issue_area: ["housing_affordability"],
       entity_type: ["organization"],
       source_type: ["news_article"],
+      source_pattern: ["multi_source"],
       limit: 1500,
     });
   });
@@ -109,6 +111,7 @@ describe("buildMapPointParams", () => {
       issue_area: undefined,
       entity_type: undefined,
       source_type: undefined,
+      source_pattern: undefined,
       limit: undefined,
     });
   });

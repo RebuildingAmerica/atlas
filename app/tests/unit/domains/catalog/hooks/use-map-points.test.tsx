@@ -54,10 +54,15 @@ describe("roundBounds", () => {
 
 describe("mapPointsQueryKey", () => {
   it("keys on the rounded bounds plus the verbatim facet filters", () => {
-    expect(mapPointsQueryKey(HOUSING_VIEWPORT)).toEqual([
+    const viewport: MapPointParams = {
+      ...HOUSING_VIEWPORT,
+      source_patterns: ["multi_source"],
+    };
+
+    expect(mapPointsQueryKey(viewport)).toEqual([
       "map-points",
       { minLng: -125, minLat: 24.01, maxLng: -66.5, maxLat: 49.5 },
-      { issue_areas: ["housing_affordability"] },
+      { issue_areas: ["housing_affordability"], source_patterns: ["multi_source"] },
     ]);
   });
 });

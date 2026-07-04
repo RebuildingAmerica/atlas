@@ -304,5 +304,6 @@ export interface MapPointParams {
   issue_areas?: string[];
   entry_types?: EntryType[];
   source_types?: SourceType[];
+  source_patterns?: SourcePattern[];
   limit?: number;
 }

@@ -13,6 +13,7 @@ describe("mapPointParamsFor", () => {
         issue_areas: ["housing-affordability"],
         entry_types: ["organization"],
         source_types: ["news_article"],
+        source_patterns: ["multi_source"],
       }),
       CONUS_BOUNDS,
     );
@@ -26,6 +27,7 @@ describe("mapPointParamsFor", () => {
       issue_areas: ["housing-affordability"],
       entry_types: ["organization"],
       source_types: ["news_article"],
+      source_patterns: ["multi_source"],
     });
   });
 

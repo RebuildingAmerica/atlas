@@ -27,6 +27,7 @@ export const Route = createFileRoute("/_public/map")({
         issue_areas: filters.issue_areas,
         entry_types: filters.entry_types,
         source_types: filters.source_types,
+        source_patterns: filters.source_patterns,
       },
     });
     return { initialPoints };

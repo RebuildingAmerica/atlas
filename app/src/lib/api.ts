@@ -182,6 +182,7 @@ export function buildMapPointParams(params: MapPointParams): GetEntitiesMapParam
     issue_area: params.issue_areas,
     entity_type: params.entry_types,
     source_type: params.source_types,
+    source_pattern: params.source_patterns,
     limit: params.limit,
   };
 }

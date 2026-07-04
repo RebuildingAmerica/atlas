@@ -245,6 +245,7 @@ class EntrySearchMixin:
         issue_areas: builtins.list[str] | None = None,
         entry_types: builtins.list[str] | None = None,
         source_types: builtins.list[str] | None = None,
+        source_patterns: builtins.list[str] | None = None,
         limit: int = 2000,
     ) -> dict[str, Any]:
         """Resolve a viewport's placed actors into a tiny map projection.
@@ -269,6 +270,8 @@ class EntrySearchMixin:
             Geographic filters. Default is None.
         issue_areas, entry_types, source_types : builtins.list[str] | None, optional
             Facet filters mirroring the browse vocabulary. Default is None.
+        source_patterns : builtins.list[str] | None, optional
+            Source-pattern filters such as ``single_source`` or ``multi_source``. Default is None.
         limit : int, optional
             Hard cap on returned points. Default is 2000.
 
@@ -288,6 +291,7 @@ class EntrySearchMixin:
             issue_areas=issue_areas,
             entry_types=entry_types,
             source_types=source_types,
+            source_patterns=source_patterns,
         )
         if not matched_ids:
             return {"points": [], "total": 0, "capped": False}

@@ -181,6 +181,7 @@ async def get_entities_map(  # noqa: PLR0913
     entity_type: list[str] | None = Query(None),
     issue_area: list[str] | None = Query(None),
     source_type: list[str] | None = Query(None),
+    source_pattern: list[str] | None = Query(None),
     limit: int = Query(2000, ge=1, le=5000),
     db: aiosqlite.Connection = Depends(get_db),
 ) -> MapPointCollectionResponse:
@@ -198,6 +199,7 @@ async def get_entities_map(  # noqa: PLR0913
     entity_type = _normalize_multi_value_query(entity_type)
     issue_area = _normalize_multi_value_query(issue_area)
     source_type = _normalize_multi_value_query(source_type)
+    source_pattern = _normalize_multi_value_query(source_pattern)
     invalid_issue_areas = [value for value in issue_area or [] if value not in ALL_ISSUE_SLUGS]
     if invalid_issue_areas:
         raise HTTPException(
@@ -218,6 +220,7 @@ async def get_entities_map(  # noqa: PLR0913
         issue_areas=issue_area,
         entry_types=entity_type,
         source_types=source_type,
+        source_patterns=source_pattern,
         limit=limit,
     )
     apply_short_public_cache(response)
