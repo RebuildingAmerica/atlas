@@ -324,6 +324,11 @@ async def _run_provider_extraction(
     state_senate_entries = _extract_state_senate_entries(page, city=city, state=state)
     if state_senate_entries:
         return state_senate_entries
+    line_delimited_entries = _extract_line_delimited_roster_entries(
+        page, city=city, state=state,
+    )
+    if line_delimited_entries:
+        return line_delimited_entries
 
     # --- Pass 1: Identify all named entities ---
     identified = await _pass_identify(page, provider, on_retry=on_retry)
@@ -396,7 +401,7 @@ def _extract_roster_table_entries(page: PageContent, *, city: str, state: str) -
                     "electoral_reform",
                 ],
                 website=page.url,
-                affiliated_org="U.S. House of Representatives",
+                affiliated_org=_affiliated_org_from_url(page.url),
                 extraction_context=row,
                 source_url=page.url,
                 source_date=source_date,
@@ -544,6 +549,61 @@ def _extract_state_senate_entries(page: PageContent, *, city: str, state: str) -
     return entries
 
 
+def _extract_line_delimited_roster_entries(
+    page: PageContent, *, city: str, state: str,
+) -> list[RawEntry]:
+    """Extract rosters scraped as repeated pipe-delimited line blocks."""
+    entries: list[RawEntry] = []
+    source_date = page.published_date.date() if page.published_date else None
+    lines = [line.strip() for line in page.text.splitlines() if line.strip()]
+    index = 0
+
+    while index + 5 < len(lines):
+        if _clean_pipe_cell(lines[index]) != "" or _clean_pipe_cell(lines[index + 2]) != "":
+            index += 1
+            continue
+
+        name = _normalize_roster_name(lines[index + 1])
+        district = _clean_pipe_cell(lines[index + 3])
+        term = _clean_pipe_cell(lines[index + 4])
+        party = _clean_pipe_cell(lines[index + 5])
+        if (
+            not name
+            or re.fullmatch(r"\d+[A-Za-z]?", district) is None
+            or " to " not in term
+            or party.lower() not in {"democrat", "republican", "independent"}
+        ):
+            index += 1
+            continue
+
+        context = "\n".join(lines[index : index + 6])
+        entries.append(
+            RawEntry(
+                name=name,
+                entry_type="person",
+                description=(
+                    f"{name} is listed as a state legislative member for District {district} "
+                    f"with party marker {party} for term {term} in the public roster."
+                ),
+                city=city or None,
+                state=state or None,
+                geo_specificity="statewide",
+                issue_areas=[
+                    "political_polarization_and_democratic_norms",
+                    "electoral_reform",
+                ],
+                website=page.url,
+                affiliated_org=_affiliated_org_from_url(page.url),
+                extraction_context=context,
+                source_url=page.url,
+                source_date=source_date,
+            )
+        )
+        index += 6
+
+    return entries
+
+
 def _split_markdown_table_row(row: str) -> list[str]:
     """Split a markdown table row while keeping only non-empty edge cells."""
     return [cell.strip() for cell in row.strip().strip("|").split("|")]
@@ -579,12 +639,21 @@ def _cell_at(cells: list[str], index: int | None) -> str:
     return cells[index].strip()
 
 
+def _clean_pipe_cell(raw_value: str) -> str:
+    """Remove pipe delimiters left in text-only roster cells."""
+    return raw_value.strip().strip("|").strip()
+
+
 def _affiliated_org_from_url(url: str) -> str:
     """Return a readable source organization for known roster hosts."""
     if "assembly.ca.gov" in url:
         return "California State Assembly"
     if "senate.ca.gov" in url:
         return "California State Senate"
+    if "house.gov" in url:
+        return "U.S. House of Representatives"
+    if "senate.gov" in url:
+        return "United States Senate"
     return "State legislature"
 
 
