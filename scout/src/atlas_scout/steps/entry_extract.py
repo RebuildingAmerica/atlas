@@ -336,11 +336,11 @@ async def _pass_identify(
                 "Return ONLY a JSON array. Each item must have:\n"
                 '- "name": the exact name as it appears in the text\n'
                 '- "type": one of person, organization, initiative, campaign, event\n'
-                '- "quote": a verbatim sentence from the text where this entity is mentioned\n\n'
+                '- "quote": a verbatim sentence or table row from the text where this entity is mentioned\n\n'
                 "Rules:\n"
                 "- Only include names that appear VERBATIM in the text\n"
                 "- Do NOT invent or infer names\n"
-                "- Include everyone: leaders, staff, quoted sources, partner orgs, funders\n"
+                "- Include everyone: leaders, staff, quoted sources, roster rows, partner orgs, funders\n"
                 "- If no entities are found, return []\n\n"
                 "Example output:\n"
                 '[{"name": "Jane Doe", "type": "person", "quote": "Jane Doe, director of Housing First, said..."}, '
@@ -493,7 +493,8 @@ def _build_system_prompt(
         "Do NOT invent, infer, or hallucinate entity names. If a name is not "
         "written in the text, do not create an entry for it.\n"
         "2. The extraction_context field MUST be a VERBATIM quote copied directly "
-        "from the source text that proves this entity exists. This is mandatory. "
+        "from the source text that proves this entity exists. This can be a "
+        "sentence, table row, or source-text fragment. This is mandatory. "
         "If you cannot provide a direct quote, do not include the entry.\n"
         "3. Extract EVERY person, organization, initiative, campaign, or event "
         "that IS named in the text — not just the primary subject. Include:\n"
