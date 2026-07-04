@@ -51,10 +51,12 @@ describe("TeamInvitationsSection", () => {
   });
 
   it("calls handlers on input change", () => {
-    render(<TeamInvitationsSection {...defaultProps} />);
+    const { container } = render(<TeamInvitationsSection {...defaultProps} />);
 
     fireEvent.change(screen.getByLabelText(/Email/i), { target: { value: "another@atlas.test" } });
     expect(defaultProps.onEmailChange).toHaveBeenCalledWith("another@atlas.test");
+    expect(container.querySelector("svg.lucide-shield")).toBeInTheDocument();
+    expect(container.querySelector("svg.lucide-chevron-down")).toBeInTheDocument();
   });
 
   it("triggers onSubmit when send button is clicked", () => {

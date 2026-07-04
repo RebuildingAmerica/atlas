@@ -1,10 +1,11 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
-import { ArrowLeft, Save } from "lucide-react";
+import { ArrowLeft, Contact, Save } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useManageProfile } from "@/domains/catalog/hooks/use-claims";
 import { useEntryBySlug } from "@/domains/catalog/hooks/use-entries";
 import { Badge } from "@/platform/ui/badge";
 import { Button } from "@/platform/ui/button";
+import { Select } from "@/platform/ui/select";
 import type { Entry, Source } from "@/types";
 
 export const Route = createFileRoute("/_workspace/manage/$slug")({
@@ -172,20 +173,21 @@ function ManageProfileRoute() {
       </FormSection>
 
       <FormSection title="Preferred contact channel">
-        <select
+        <Select
+          ariaLabel="Preferred contact channel"
+          icon={Contact}
           value={form.preferredContactChannel}
-          onChange={(event) => {
-            setForm(
-              (current) => current && { ...current, preferredContactChannel: event.target.value },
-            );
+          onChange={(preferredContactChannel) => {
+            setForm((current) => current && { ...current, preferredContactChannel });
           }}
-          className="border-outline-variant focus:ring-accent bg-surface-container-lowest text-on-surface w-full rounded-lg border px-3 py-2 focus:ring-2 focus:outline-none"
-        >
-          <option value="">No preference</option>
-          <option value="email">Email</option>
-          <option value="form">Contact form (no direct email exposed)</option>
-          <option value="external">External link</option>
-        </select>
+          options={[
+            { value: "", label: "No preference" },
+            { value: "email", label: "Email" },
+            { value: "form", label: "Contact form (no direct email exposed)" },
+            { value: "external", label: "External link" },
+          ]}
+          size="compact"
+        />
       </FormSection>
 
       <FormSection title="Sources">

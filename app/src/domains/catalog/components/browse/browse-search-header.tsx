@@ -1,4 +1,5 @@
-import { Grid3X3, List, Map, RotateCcw } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { Map, RotateCcw } from "lucide-react";
 import {
   BrowseIntentChips,
   type BrowseIntentChip,
@@ -11,51 +12,49 @@ import {
   FEATURED_SOURCE_TYPES,
   SOURCE_TYPE_LABELS,
 } from "@/domains/catalog/catalog";
-import type { BrowseFilterKey } from "@/domains/catalog/search-state";
-
-const VIEW_OPTIONS = [
-  { value: "map", label: "Map", icon: Map },
-  { value: "grid", label: "Grid", icon: Grid3X3 },
-  { value: "list", label: "List", icon: List },
-] as const;
+import {
+  ENTRY_TYPE_ICONS,
+  ISSUE_FILTER_ICON,
+  SOURCE_FILTER_ICON,
+  SOURCE_TYPE_ICONS,
+  TYPE_FILTER_ICON,
+} from "@/domains/catalog/components/catalog-menu-icons";
+import type { BrowseFilterKey, BrowseRouteSearch } from "@/domains/catalog/search-state";
 
 interface BrowseSearchHeaderProps {
   activeCounts: { issues: number; types: number; sources: number };
   initialQuery: string;
   quickIssueAreas: { slug: string; label: string }[];
   intentChips: BrowseIntentChip[];
+  mapSearch: BrowseRouteSearch;
   searchPlaceholder?: string;
   selectedEntryTypes: string[];
   selectedIssueAreas: string[];
   selectedSourceTypes: string[];
   showEntryTypeFilter: boolean;
-  view: string | undefined;
   onResetBrowse: () => void;
   onSearch: (query: string) => void;
-  onSelectView: (value: "map" | "grid" | "list") => void;
   onToggleFilter: (key: BrowseFilterKey, value: string) => void;
 }
 
 /**
  * Sticky search/filter header for the browse surface.  Holds the
- * search input, the view-mode toggles (map/grid/list), the reset
- * button, and the issues/types/sources filter disclosures with their
- * active-count badges.
+ * search input, map handoff, reset button, and the issues/types/sources
+ * filter disclosures with their active-count badges.
  */
 export function BrowseSearchHeader({
   activeCounts,
   initialQuery,
   intentChips,
+  mapSearch,
   quickIssueAreas,
   searchPlaceholder,
   selectedEntryTypes,
   selectedIssueAreas,
   selectedSourceTypes,
   showEntryTypeFilter,
-  view,
   onResetBrowse,
   onSearch,
-  onSelectView,
   onToggleFilter,
 }: BrowseSearchHeaderProps) {
   return (
@@ -69,28 +68,14 @@ export function BrowseSearchHeader({
         />
 
         <div className="flex shrink-0 items-center gap-0.5">
-          {VIEW_OPTIONS.map((option) => {
-            const Icon = option.icon;
-            const isActive = view === option.value;
-            return (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() => {
-                  onSelectView(option.value);
-                }}
-                className={[
-                  "inline-flex items-center gap-1 rounded-lg p-2 transition-colors",
-                  isActive
-                    ? "bg-surface-container-high text-ink-strong"
-                    : "text-ink-muted hover:text-ink-strong",
-                ].join(" ")}
-                title={option.label}
-              >
-                <Icon className="h-4 w-4" />
-              </button>
-            );
-          })}
+          <Link
+            to="/map"
+            search={mapSearch}
+            className="type-label-large text-ink-muted hover:text-ink-strong inline-flex items-center gap-1 rounded-lg px-2 py-2 transition-colors"
+          >
+            <Map className="h-4 w-4" />
+            Map
+          </Link>
           <button
             type="button"
             onClick={onResetBrowse}
@@ -106,10 +91,12 @@ export function BrowseSearchHeader({
         <FilterDisclosure
           label="Issues"
           count={activeCounts.issues}
+          icon={ISSUE_FILTER_ICON}
           items={quickIssueAreas.map((issue) => ({
             key: issue.slug,
             label: issue.label,
             active: selectedIssueAreas.includes(issue.slug),
+            icon: ISSUE_FILTER_ICON,
             onClick: () => {
               onToggleFilter("issue_areas", issue.slug);
             },
@@ -119,10 +106,12 @@ export function BrowseSearchHeader({
           <FilterDisclosure
             label="Types"
             count={activeCounts.types}
+            icon={TYPE_FILTER_ICON}
             items={FEATURED_ENTRY_TYPES.map((entryType) => ({
               key: entryType,
               label: ENTITY_TYPE_LABELS[entryType],
               active: selectedEntryTypes.includes(entryType),
+              icon: ENTRY_TYPE_ICONS[entryType],
               onClick: () => {
                 onToggleFilter("entry_types", entryType);
               },
@@ -132,10 +121,12 @@ export function BrowseSearchHeader({
         <FilterDisclosure
           label="Sources"
           count={activeCounts.sources}
+          icon={SOURCE_FILTER_ICON}
           items={FEATURED_SOURCE_TYPES.map((sourceType) => ({
             key: sourceType,
             label: SOURCE_TYPE_LABELS[sourceType],
             active: selectedSourceTypes.includes(sourceType),
+            icon: SOURCE_TYPE_ICONS[sourceType],
             onClick: () => {
               onToggleFilter("source_types", sourceType);
             },

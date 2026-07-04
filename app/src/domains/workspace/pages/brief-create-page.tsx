@@ -9,6 +9,7 @@ import type {
   AtlasBriefGap,
 } from "@/domains/workspace/server/briefs";
 import { Badge } from "@/platform/ui/badge";
+import { Select } from "@/platform/ui/select";
 
 interface BriefCreateFormState {
   actorTypes: string;
@@ -47,6 +48,12 @@ const initialFormState: BriefCreateFormState = {
 };
 
 const KNOWN_GAP_FORMAT = "Label: detail";
+
+const CONFIDENCE_STATE_OPTIONS: { label: string; value: AtlasBriefConfidenceState }[] = [
+  { label: "corroborated", value: "corroborated" },
+  { label: "partial", value: "partial" },
+  { label: "unverified", value: "unverified" },
+];
 
 function splitList(value: string): string[] {
   const items = value
@@ -328,20 +335,16 @@ export function BriefCreatePage() {
         <aside className="space-y-5">
           <section className="border-outline-variant bg-surface-container-lowest space-y-4 rounded-lg border p-5">
             <h2 className="type-title-large text-ink-strong">Review</h2>
-            <label className="block space-y-1">
-              <span className="type-label-small text-ink-muted">Confidence state</span>
-              <select
-                value={formState.confidenceState}
-                onChange={(event) => {
-                  updateField("confidenceState", event.target.value as AtlasBriefConfidenceState);
-                }}
-                className={fieldClassName()}
-              >
-                <option value="corroborated">corroborated</option>
-                <option value="partial">partial</option>
-                <option value="unverified">unverified</option>
-              </select>
-            </label>
+            <Select
+              label="Confidence state"
+              icon={ShieldCheck}
+              size="compact"
+              value={formState.confidenceState}
+              onChange={(value) => {
+                updateField("confidenceState", value as AtlasBriefConfidenceState);
+              }}
+              options={CONFIDENCE_STATE_OPTIONS}
+            />
             <label className="block space-y-1">
               <span className="type-label-small text-ink-muted">Review status</span>
               <input

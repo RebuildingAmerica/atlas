@@ -2,6 +2,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { render, screen, fireEvent, cleanup } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
+import { Building2 } from "lucide-react";
 import { Select } from "@/platform/ui/select";
 
 describe("Select", () => {
@@ -67,5 +68,16 @@ describe("Select", () => {
     render(<Select options={[]} value={undefined} />);
     expect(screen.getByRole("combobox").getAttribute("value")).toBe(null);
     // Alternatively just check it renders
+  });
+
+  it("renders a leading icon, chevron, and aria label for menu-like selects", () => {
+    const { container } = render(
+      <Select ariaLabel="Workspace" icon={Building2} options={options} size="compact" />,
+    );
+
+    expect(screen.getByRole("combobox", { name: "Workspace" })).toBeInTheDocument();
+    expect(container.querySelector("svg.lucide-building2")).toBeInTheDocument();
+    expect(container.querySelector("svg.lucide-chevron-down")).toBeInTheDocument();
+    expect(screen.getByRole("combobox")).toHaveAttribute("data-size", "compact");
   });
 });

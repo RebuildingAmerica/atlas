@@ -32,6 +32,7 @@ import type {
   AtlasBriefUpdateInput,
 } from "@/domains/workspace/server/briefs";
 import { Badge } from "@/platform/ui/badge";
+import { Select } from "@/platform/ui/select";
 
 interface BriefDetailPageProps {
   briefExport: AtlasBriefExport;
@@ -53,6 +54,12 @@ interface SourcesPanelProps {
 
 type SaveActorsStatus = "idle" | "saved" | "error";
 type BriefEditStatus = "idle" | "saved" | "error";
+
+const CONFIDENCE_STATE_OPTIONS: { label: string; value: AtlasBriefConfidenceState }[] = [
+  { label: "corroborated", value: "corroborated" },
+  { label: "partial", value: "partial" },
+  { label: "unverified", value: "unverified" },
+];
 
 interface BriefEditorState {
   confidenceState: AtlasBriefConfidenceState;
@@ -457,7 +464,7 @@ function ActorsPanel({ entries }: { entries: AtlasBriefExportEntry[] }) {
           ))}
         </ul>
       ) : (
-        <p className="type-body-medium text-ink-soft">No actors linked.</p>
+        <p className="type-body-medium text-ink-soft">No people or groups linked.</p>
       )}
     </section>
   );
@@ -508,24 +515,20 @@ function SaveActorsPanel({ briefTitle, entries }: SaveActorsPanelProps) {
 
       {availableLists.length > 0 ? (
         <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
-          <label className="space-y-1">
-            <span className="type-label-small text-ink-muted">Target list</span>
-            <select
-              value={targetListId}
-              onChange={(event) => {
-                setSelectedListId(event.target.value);
-                setStatus("idle");
-              }}
-              className="border-outline-variant bg-surface text-ink-strong type-body-medium min-h-10 w-full rounded-lg border px-3"
-              aria-label="Target list"
-            >
-              {availableLists.map((list) => (
-                <option key={list.id} value={list.id}>
-                  {list.name}
-                </option>
-              ))}
-            </select>
-          </label>
+          <Select
+            label="Target list"
+            icon={ListPlus}
+            size="compact"
+            value={targetListId}
+            onChange={(value) => {
+              setSelectedListId(value);
+              setStatus("idle");
+            }}
+            options={availableLists.map((list) => ({
+              label: list.name,
+              value: list.id,
+            }))}
+          />
           <button
             type="button"
             disabled={!targetListId || addSavedListItem.isPending}
@@ -615,7 +618,7 @@ function DiscoveryRunsPanel({ runs }: { runs: AtlasBriefExportDiscoveryRun[] }) 
 
   return (
     <section className="border-outline-variant bg-surface-container-lowest space-y-4 rounded-lg border p-5">
-      <h2 className="type-title-large text-ink-strong">Research context</h2>
+      <h2 className="type-title-large text-ink-strong">Context</h2>
       <ul className="space-y-3">
         {runs.map((run) => (
           <li key={run.id} className="grid gap-3 sm:grid-cols-[1fr_auto]">
@@ -765,23 +768,19 @@ export function BriefDetailPage({ briefExport }: BriefDetailPageProps) {
                 />
               </label>
               <div className="grid gap-3 sm:grid-cols-2">
-                <label className="block space-y-1">
-                  <span className="type-label-small text-ink-muted">Confidence state</span>
-                  <select
-                    value={editorState.confidenceState}
-                    onChange={(event) => {
-                      setEditorState((current) => ({
-                        ...current,
-                        confidenceState: event.target.value as AtlasBriefConfidenceState,
-                      }));
-                    }}
-                    className="border-outline-variant bg-surface text-ink-strong type-body-medium min-h-10 w-full rounded-lg border px-3"
-                  >
-                    <option value="corroborated">corroborated</option>
-                    <option value="partial">partial</option>
-                    <option value="unverified">unverified</option>
-                  </select>
-                </label>
+                <Select
+                  label="Confidence state"
+                  icon={ShieldCheck}
+                  size="compact"
+                  value={editorState.confidenceState}
+                  onChange={(value) => {
+                    setEditorState((current) => ({
+                      ...current,
+                      confidenceState: value as AtlasBriefConfidenceState,
+                    }));
+                  }}
+                  options={CONFIDENCE_STATE_OPTIONS}
+                />
                 <label className="block space-y-1">
                   <span className="type-label-small text-ink-muted">Review status</span>
                   <input

@@ -4,7 +4,7 @@
  * Displays the user's saved lists, allows toggling membership for the current
  * entry, and supports creating a new list inline.
  */
-import { Check, FolderPlus } from "lucide-react";
+import { Check, FolderPlus, List as ListIcon } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   useAddSavedListItem,
@@ -95,7 +95,10 @@ export function SaveListPicker({ entryId, open, onClose }: SaveListPickerProps) 
                   }}
                   className="hover:bg-surface-container flex w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left transition-colors"
                 >
-                  <span className="type-body-medium text-ink-strong">{list.name}</span>
+                  <span className="flex min-w-0 items-center gap-2">
+                    <ListIcon className="text-ink-muted h-4 w-4 shrink-0" aria-hidden />
+                    <span className="type-body-medium text-ink-strong truncate">{list.name}</span>
+                  </span>
                   {checked ? (
                     <Check className="text-accent h-4 w-4" aria-hidden />
                   ) : (

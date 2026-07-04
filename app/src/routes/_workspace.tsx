@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Outlet, createFileRoute } from "@tanstack/react-router";
-import { LogOut } from "lucide-react";
+import { Building2, LogOut } from "lucide-react";
 import { useState } from "react";
 import { useAtlasSession } from "@/domains/access";
 import { getAuthClient } from "@/domains/access/client/auth-client";
@@ -97,6 +97,9 @@ function OperatorIdentity({ session }: OperatorIdentityProps) {
         {canSwitchOrganizations ? (
           <div className="min-w-56">
             <Select
+              ariaLabel="Workspace"
+              icon={Building2}
+              size="compact"
               value={activeWorkspace?.id ?? ""}
               onChange={(id) => {
                 void handleWorkspaceSwitch(id);

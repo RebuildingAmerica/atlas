@@ -1,6 +1,7 @@
 import type { AtlasOrganizationDetails } from "../../organization-contracts";
 import { Shield, Trash2, Users } from "lucide-react";
 import { Button } from "@/platform/ui/button";
+import { Select } from "@/platform/ui/select";
 import { memberRoleOptions } from "./organization-page-helpers";
 
 /**
@@ -65,23 +66,21 @@ export function TeamMembersSection({
                   </td>
                   <td className="px-4 py-3">
                     {canEditMember ? (
-                      <select
-                        aria-label={`Role for ${member.email}`}
-                        className="type-body-medium border-border bg-surface text-ink-strong rounded-lg border px-3 py-2"
+                      <Select
+                        ariaLabel={`Role for ${member.email}`}
+                        icon={Shield}
+                        size="compact"
                         value={member.role}
-                        onChange={(event) => {
-                          const nextRole = event.target.value;
+                        onChange={(nextRole) => {
                           if (nextRole === "admin" || nextRole === "member") {
                             onRoleChange(member.id, nextRole);
                           }
                         }}
-                      >
-                        {memberRoleOptions.map((option) => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
+                        options={memberRoleOptions.map((option) => ({
+                          label: option.label,
+                          value: option.value,
+                        }))}
+                      />
                     ) : (
                       <span className="text-ink-soft inline-flex items-center gap-2">
                         <Shield className="h-4 w-4" aria-hidden />

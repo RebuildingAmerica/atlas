@@ -75,12 +75,14 @@ describe("TeamMembersSection", () => {
   });
 
   it("allows admins/owners to edit other non-owner members", () => {
-    render(
+    const { container } = render(
       <TeamMembersSection {...defaultProps} canManageOrganization={true} currentUserId="user_1" />,
     );
 
     // Admin user (mem_2) should be editable
     expect(screen.getByLabelText(/Role for admin@atlas.test/i)).toBeInTheDocument();
+    expect(container.querySelector("svg.lucide-shield")).toBeInTheDocument();
+    expect(container.querySelector("svg.lucide-chevron-down")).toBeInTheDocument();
     expect(screen.getAllByText(/Remove/i)).toHaveLength(2); // For mem_2 and mem_3
   });
 

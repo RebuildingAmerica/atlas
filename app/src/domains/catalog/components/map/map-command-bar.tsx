@@ -7,6 +7,13 @@ import {
   FEATURED_SOURCE_TYPES,
   SOURCE_TYPE_LABELS,
 } from "@/domains/catalog/catalog";
+import {
+  ENTRY_TYPE_ICONS,
+  ISSUE_FILTER_ICON,
+  SOURCE_FILTER_ICON,
+  SOURCE_TYPE_ICONS,
+  TYPE_FILTER_ICON,
+} from "@/domains/catalog/components/catalog-menu-icons";
 import { searchActors, searchPlaces } from "@/domains/catalog/map/map-place-search";
 import type { ActorMatch, PlaceMatch } from "@/domains/catalog/map/map-place-search";
 import type { BrowseFilterKey } from "@/domains/catalog/search-state";
@@ -196,10 +203,12 @@ export function MapCommandBar({
         <FilterDisclosure
           label="Issues"
           count={activeCounts.issues}
+          icon={ISSUE_FILTER_ICON}
           items={quickIssueAreas.map((issue) => ({
             key: issue.slug,
             label: issue.label,
             active: selectedIssueAreas.includes(issue.slug),
+            icon: ISSUE_FILTER_ICON,
             onClick: () => {
               onToggleFilter("issue_areas", issue.slug);
             },
@@ -209,10 +218,12 @@ export function MapCommandBar({
           <FilterDisclosure
             label="Types"
             count={activeCounts.types}
+            icon={TYPE_FILTER_ICON}
             items={FEATURED_ENTRY_TYPES.map((entryType) => ({
               key: entryType,
               label: ENTITY_TYPE_LABELS[entryType],
               active: selectedEntryTypes.includes(entryType),
+              icon: ENTRY_TYPE_ICONS[entryType],
               onClick: () => {
                 onToggleFilter("entry_types", entryType);
               },
@@ -222,10 +233,12 @@ export function MapCommandBar({
         <FilterDisclosure
           label="Sources"
           count={activeCounts.sources}
+          icon={SOURCE_FILTER_ICON}
           items={FEATURED_SOURCE_TYPES.map((sourceType) => ({
             key: sourceType,
             label: SOURCE_TYPE_LABELS[sourceType],
             active: selectedSourceTypes.includes(sourceType),
+            icon: SOURCE_TYPE_ICONS[sourceType],
             onClick: () => {
               onToggleFilter("source_types", sourceType);
             },

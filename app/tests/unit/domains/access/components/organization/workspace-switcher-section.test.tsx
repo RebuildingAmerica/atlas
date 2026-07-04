@@ -22,9 +22,11 @@ describe("WorkspaceSwitcherSection", () => {
   });
 
   it("renders the switcher with memberships", () => {
-    render(<WorkspaceSwitcherSection {...defaultProps} />);
+    const { container } = render(<WorkspaceSwitcherSection {...defaultProps} />);
     expect(screen.getByText(/2 workspaces/i)).toBeInTheDocument();
     expect(screen.getByRole("combobox")).toHaveValue("org_1");
+    expect(container.querySelector("svg.lucide-building2")).toBeInTheDocument();
+    expect(container.querySelector("svg.lucide-chevron-down")).toBeInTheDocument();
   });
 
   it("triggers onChange when a new workspace is selected", () => {

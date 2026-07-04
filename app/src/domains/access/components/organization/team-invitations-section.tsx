@@ -1,5 +1,5 @@
 import type { AtlasOrganizationDetails } from "../../organization-contracts";
-import { UserPlus } from "lucide-react";
+import { Shield, UserPlus } from "lucide-react";
 import { Button } from "@/platform/ui/button";
 import { Input } from "@/platform/ui/input";
 import { Select } from "@/platform/ui/select";
@@ -68,6 +68,7 @@ export function TeamInvitationsSection({
           />
           <Select
             label="Role"
+            icon={Shield}
             value={inviteRole}
             onChange={onInviteRoleChange}
             options={invitationRoleOptions.map((option) => ({

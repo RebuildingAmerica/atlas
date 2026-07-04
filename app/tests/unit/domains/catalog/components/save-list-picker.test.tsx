@@ -62,6 +62,19 @@ describe("SaveListPicker", () => {
     expect(screen.getByText("5 actors")).toBeInTheDocument();
   });
 
+  it("renders a leading list icon for each saved-list option", () => {
+    claimsMocks.useSavedLists.mockReturnValue({
+      data: [{ id: "l1", name: "Reading", item_count: 1 }],
+      isLoading: false,
+    });
+
+    render(<SaveListPicker entryId="entry-1" open onClose={vi.fn()} />);
+
+    expect(
+      screen.getByRole("button", { name: /Reading/ }).querySelector("svg.lucide-list"),
+    ).toBeInTheDocument();
+  });
+
   it("shows a check when the entry is already in the list", () => {
     claimsMocks.useSavedLists.mockReturnValue({
       data: [{ id: "l1", name: "Reading", item_count: 0 }],

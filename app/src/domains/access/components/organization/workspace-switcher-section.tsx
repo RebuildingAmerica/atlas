@@ -1,4 +1,4 @@
-import { ArrowRightLeft } from "lucide-react";
+import { ArrowRightLeft, Building2 } from "lucide-react";
 import { Select } from "@/platform/ui/select";
 
 /**
@@ -43,6 +43,7 @@ export function WorkspaceSwitcherSection({
       <div className="mt-5 max-w-md">
         <Select
           label="Workspace"
+          icon={Building2}
           value={selectedOrganizationId}
           onChange={onChange}
           disabled={isPending}
