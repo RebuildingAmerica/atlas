@@ -18,6 +18,7 @@ function HomeHeroActions({ onQueryChange, query }: HomeHeroActionsProps) {
           <div className="grid gap-3">
             <input type="hidden" name="offset" value="0" />
             <label className="border-border bg-surface flex items-center gap-3 rounded-[1.25rem] border px-4 py-4">
+              <span className="sr-only">Search Atlas by issue, place, or name</span>
               <Search className="text-ink-muted h-4 w-4" />
               <input
                 name="query"

@@ -54,7 +54,7 @@ function IssueBadge({ issueAreaId }: { issueAreaId: string }) {
 }
 
 /** The single-actor view: identity, trust, issues, and the deep-link CTAs. */
-function ActorView({ selection }: { selection: ActorSelection }) {
+function ActorView({ headingId, selection }: { headingId: string; selection: ActorSelection }) {
   const { point } = selection;
   const route = profileRouteFor(point.type, point.slug);
 
@@ -64,6 +64,7 @@ function ActorView({ selection }: { selection: ActorSelection }) {
         <ActorAvatar name={point.name} type={avatarType(point.type)} size="md" />
         <div className="min-w-0 flex-1 space-y-1">
           <h2
+            id={headingId}
             className="type-body-large text-ink-strong font-semibold"
             style={{ viewTransitionName: `entry-name-${point.id}` }}
           >
@@ -159,15 +160,17 @@ function ClusterMemberRow({
 
 /** The cluster's "who's working here" list — the panel's crowd view. */
 function ClusterView({
+  headingId,
   selection,
   onSelectMember,
 }: {
+  headingId: string;
   selection: ClusterSelection;
   onSelectMember: (point: MapPoint) => void;
 }) {
   return (
     <div className="space-y-4">
-      <h2 className="type-body-large text-ink-strong font-semibold">
+      <h2 id={headingId} className="type-body-large text-ink-strong font-semibold">
         {selection.members.length} civic actors here
       </h2>
       <ul className="space-y-2" aria-label="Who's working here">
@@ -221,11 +224,15 @@ export function MapDetailPanel({
           <X className="h-5 w-5" aria-hidden />
         </button>
       </div>
-      <div id={headingId} className="px-5 pb-6">
+      <div className="px-5 pb-6">
         {isActorSelection(selection) ? (
-          <ActorView selection={selection} />
+          <ActorView headingId={headingId} selection={selection} />
         ) : (
-          <ClusterView selection={selection} onSelectMember={onSelectMember} />
+          <ClusterView
+            headingId={headingId}
+            selection={selection}
+            onSelectMember={onSelectMember}
+          />
         )}
       </div>
     </div>

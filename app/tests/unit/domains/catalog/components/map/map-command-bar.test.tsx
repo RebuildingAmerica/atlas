@@ -117,6 +117,25 @@ describe("MapCommandBar", () => {
     expect(screen.getByRole("listbox")).toBeTruthy();
   });
 
+  it("tracks and selects the active combobox option from the keyboard", () => {
+    const onSelectPlace = vi.fn<(place: PlaceMatch) => void>();
+    renderCommandBar({ onSelectPlace }, [makePoint({ id: "1", name: "Dallas Housing Trust" })]);
+    const input = screen.getByRole("combobox");
+
+    fireEvent.change(input, { target: { value: "Dallas" } });
+    fireEvent.keyDown(input, { key: "ArrowDown" });
+
+    const option = screen.getByRole("option", { name: /Dallas, TX/ });
+    expect(option.id).not.toBe("");
+    expect(input.getAttribute("aria-activedescendant")).toBe(option.id);
+    expect(option.getAttribute("aria-selected")).toBe("true");
+
+    fireEvent.keyDown(input, { key: "Enter" });
+
+    expect(onSelectPlace).toHaveBeenCalledOnce();
+    expect(screen.queryByRole("listbox")).toBeNull();
+  });
+
   it("shows only the Actors group when nothing matches a place", () => {
     renderCommandBar(undefined, [makePoint({ id: "1", name: "Zephyr Collective" })]);
     fireEvent.change(screen.getByRole("combobox"), { target: { value: "Zephyr" } });

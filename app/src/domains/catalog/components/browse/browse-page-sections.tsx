@@ -1,7 +1,7 @@
 import { Popover, PopoverButton, PopoverPanel } from "@headlessui/react";
 import { Check, ChevronDown, Compass, MapPin, Search, Tags, Users } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { ENTITY_TYPE_LABELS } from "@/domains/catalog/catalog";
 import { STATE_NAME_BY_CODE } from "@/domains/catalog/us-state-grid";
 import type { EntryType } from "@/types";
@@ -73,6 +73,7 @@ export function BrowseSearchBox({
   placeholder = "Try housing in Detroit",
 }: BrowseSearchBoxProps) {
   const [queryDraft, setQueryDraft] = useState(initialQuery);
+  const inputId = useId();
 
   useEffect(() => {
     setQueryDraft(initialQuery);
@@ -87,8 +88,12 @@ export function BrowseSearchBox({
         onSearch(typeof submittedValue === "string" ? submittedValue : queryDraft);
       }}
     >
+      <label htmlFor={inputId} className="sr-only">
+        Search people and groups by issue, place, or name
+      </label>
       <Search className="text-ink-muted h-4 w-4 shrink-0" />
       <input
+        id={inputId}
         name="browse-query"
         value={queryDraft}
         onChange={(event) => {
@@ -282,6 +287,7 @@ export function FilterDisclosure({ count, icon: Icon, items, label }: FilterDisc
               <button
                 key={item.key}
                 type="button"
+                aria-pressed={item.active}
                 onClick={item.onClick}
                 className={[
                   "type-label-large inline-flex items-center gap-1.5 rounded-full py-1.5 pr-2.5 pl-2 transition-colors",

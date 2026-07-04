@@ -80,6 +80,7 @@ export function MapPage({ search, initialPoints }: MapPageProps) {
   const reducedMotion = useReducedMotion();
   const reveal = useMapReveal({ reducedMotion });
   const surfaceRef = useRef<HTMLDivElement>(null);
+  const resultsListRef = useRef<HTMLElement>(null);
 
   const quickIssueAreas = useMemo(() => {
     if (!taxonomy) {
@@ -110,6 +111,9 @@ export function MapPage({ search, initialPoints }: MapPageProps) {
     <div className="relative h-[calc(100vh-4rem)] w-full overflow-hidden">
       <a
         href="#map-results-list"
+        onClick={() => {
+          resultsListRef.current?.focus();
+        }}
         className="bg-surface-container-high text-ink-strong sr-only z-50 rounded-lg px-4 py-2 focus:not-sr-only focus:absolute focus:top-3 focus:left-3"
       >
         Skip to results list
@@ -215,7 +219,13 @@ export function MapPage({ search, initialPoints }: MapPageProps) {
         ) : null}
       </div>
 
-      <section id="map-results-list" aria-label="Civic actors on the map" className="sr-only">
+      <section
+        id="map-results-list"
+        ref={resultsListRef}
+        tabIndex={-1}
+        aria-label="Civic actors on the map"
+        className="bg-surface-container-high/95 shadow-soft border-border-strong focus:ring-accent sr-only z-40 max-h-[min(70vh,36rem)] w-[min(28rem,calc(100vw-1.5rem))] overflow-y-auto rounded-[1.1rem] border p-3 focus:not-sr-only focus:absolute focus:top-16 focus:left-3 focus:ring-2 focus:outline-none sm:top-20 sm:left-4"
+      >
         <h2>Civic actors on the map</h2>
         <MapResultsList points={points} isLoading={!hasFetched} onFocusActor={page.onSelectActor} />
       </section>

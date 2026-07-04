@@ -95,15 +95,16 @@ describe("HomePage", () => {
 
     render(<HomePage />);
 
+    const searchInput = screen.getByRole("textbox", {
+      name: "Search Atlas by issue, place, or name",
+    });
     const form = screen.getByRole("button", { name: /search atlas/i }).closest("form");
     if (!form) {
       throw new Error("Expected search form");
     }
 
     await act(async () => {
-      fireEvent.change(screen.getByPlaceholderText(/search housing in detroit/i), {
-        target: { value: "housing" },
-      });
+      fireEvent.change(searchInput, { target: { value: "housing" } });
       fireEvent.submit(form);
       await Promise.resolve();
     });

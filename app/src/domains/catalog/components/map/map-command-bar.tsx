@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { MapPin, Search, Users } from "lucide-react";
 import { FilterDisclosure } from "@/domains/catalog/components/browse/browse-page-sections";
 import {
@@ -55,37 +55,90 @@ export interface MapCommandBarProps {
   onToggleFilter: (key: BrowseFilterKey, value: string) => void;
 }
 
+interface PlaceCommandOption {
+  id: string;
+  kind: "place";
+  place: PlaceMatch;
+}
+
+interface ActorCommandOption {
+  actor: ActorMatch;
+  id: string;
+  kind: "actor";
+}
+
+type CommandOption = PlaceCommandOption | ActorCommandOption;
+
+interface CommandSelectHandlers {
+  onSelectActor: (point: MapPoint) => void;
+  onSelectPlace: (place: PlaceMatch) => void;
+  reset: () => void;
+}
+
+function selectCommandOption(option: CommandOption, handlers: CommandSelectHandlers): void {
+  if (option.kind === "place") {
+    handlers.onSelectPlace(option.place);
+  } else {
+    handlers.onSelectActor(option.actor.point);
+  }
+  handlers.reset();
+}
+
 /** A single place option in the menu. */
-function PlaceOption({ place, onPick }: { place: PlaceMatch; onPick: () => void }) {
+function PlaceOption({
+  active,
+  option,
+  onPick,
+}: {
+  active: boolean;
+  option: PlaceCommandOption;
+  onPick: () => void;
+}) {
   return (
     <li>
       <button
+        id={option.id}
         type="button"
         role="option"
-        aria-selected={false}
+        aria-selected={active}
         onClick={onPick}
-        className="hover:bg-surface-container-high flex w-full items-center gap-2.5 rounded-[0.7rem] px-2.5 py-2 text-left transition-colors"
+        className={[
+          "hover:bg-surface-container-high flex w-full items-center gap-2.5 rounded-[0.7rem] px-2.5 py-2 text-left transition-colors",
+          active ? "bg-surface-container-high" : "",
+        ].join(" ")}
       >
         <MapPin className="text-ink-soft h-4 w-4 shrink-0" aria-hidden />
-        <span className="type-body-small text-ink-strong truncate">{place.label}</span>
+        <span className="type-body-small text-ink-strong truncate">{option.place.label}</span>
       </button>
     </li>
   );
 }
 
 /** A single actor option in the menu. */
-function ActorOption({ actor, onPick }: { actor: ActorMatch; onPick: () => void }) {
+function ActorOption({
+  active,
+  option,
+  onPick,
+}: {
+  active: boolean;
+  option: ActorCommandOption;
+  onPick: () => void;
+}) {
   return (
     <li>
       <button
+        id={option.id}
         type="button"
         role="option"
-        aria-selected={false}
+        aria-selected={active}
         onClick={onPick}
-        className="hover:bg-surface-container-high flex w-full items-center gap-2.5 rounded-[0.7rem] px-2.5 py-2 text-left transition-colors"
+        className={[
+          "hover:bg-surface-container-high flex w-full items-center gap-2.5 rounded-[0.7rem] px-2.5 py-2 text-left transition-colors",
+          active ? "bg-surface-container-high" : "",
+        ].join(" ")}
       >
         <Users className="text-ink-soft h-4 w-4 shrink-0" aria-hidden />
-        <span className="type-body-small text-ink-strong truncate">{actor.name}</span>
+        <span className="type-body-small text-ink-strong truncate">{option.actor.name}</span>
       </button>
     </li>
   );
@@ -116,14 +169,41 @@ export function MapCommandBar({
   onToggleFilter,
 }: MapCommandBarProps) {
   const [query, setQuery] = useState("");
+  const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const trimmed = query.trim();
   const open = trimmed !== "";
-  const places = open ? searchPlaces(query) : [];
-  const actors = open ? searchActors(query, points) : [];
+  const places = useMemo(() => (open ? searchPlaces(query) : []), [open, query]);
+  const actors = useMemo(() => (open ? searchActors(query, points) : []), [open, points, query]);
   const hasMatches = places.length > 0 || actors.length > 0;
+  const placeOptions = useMemo<PlaceCommandOption[]>(
+    () =>
+      places.map((place, index) => ({
+        id: `map-command-option-place-${index}`,
+        kind: "place",
+        place,
+      })),
+    [places],
+  );
+  const actorOptions = useMemo<ActorCommandOption[]>(
+    () =>
+      actors.map((actor, index) => ({
+        actor,
+        id: `map-command-option-actor-${index}`,
+        kind: "actor",
+      })),
+    [actors],
+  );
+  const options = useMemo<CommandOption[]>(
+    () => [...placeOptions, ...actorOptions],
+    [actorOptions, placeOptions],
+  );
+  const resolvedActiveIndex =
+    activeIndex !== null && activeIndex < options.length ? activeIndex : null;
+  const activeOption = resolvedActiveIndex !== null ? options[resolvedActiveIndex] : undefined;
 
   const reset = () => {
     setQuery("");
+    setActiveIndex(null);
   };
 
   return (
@@ -135,15 +215,50 @@ export function MapCommandBar({
             role="combobox"
             aria-expanded={open}
             aria-controls="map-command-menu"
+            aria-activedescendant={activeOption?.id}
+            aria-autocomplete="list"
             aria-label="Search a place or find an actor"
             placeholder="Search a place or find an actor"
             value={query}
             onChange={(event) => {
               setQuery(event.target.value);
+              setActiveIndex(null);
             }}
             onKeyDown={(event) => {
               if (event.key === "Escape") {
                 reset();
+                return;
+              }
+              if (!hasMatches) {
+                return;
+              }
+              if (event.key === "ArrowDown") {
+                event.preventDefault();
+                setActiveIndex((current) => {
+                  if (current === null || current >= options.length - 1) {
+                    return 0;
+                  }
+                  return current + 1;
+                });
+                return;
+              }
+              if (event.key === "ArrowUp") {
+                event.preventDefault();
+                setActiveIndex((current) => {
+                  if (current === null || current <= 0) {
+                    return options.length - 1;
+                  }
+                  return current - 1;
+                });
+                return;
+              }
+              if (event.key === "Enter" && activeOption) {
+                event.preventDefault();
+                selectCommandOption(activeOption, {
+                  onSelectActor,
+                  onSelectPlace,
+                  reset,
+                });
               }
             }}
             className="type-body-small text-ink-strong placeholder:text-ink-muted w-full bg-transparent outline-none"
@@ -160,13 +275,17 @@ export function MapCommandBar({
                 {places.length > 0 ? (
                   <li>
                     <ul role="group" aria-label="Places" className="space-y-0.5">
-                      {places.map((place) => (
+                      {placeOptions.map((option) => (
                         <PlaceOption
-                          key={`place-${place.kind}-${place.label}`}
-                          place={place}
+                          key={option.id}
+                          active={activeOption?.id === option.id}
+                          option={option}
                           onPick={() => {
-                            onSelectPlace(place);
-                            reset();
+                            selectCommandOption(option, {
+                              onSelectActor,
+                              onSelectPlace,
+                              reset,
+                            });
                           }}
                         />
                       ))}
@@ -176,13 +295,17 @@ export function MapCommandBar({
                 {actors.length > 0 ? (
                   <li>
                     <ul role="group" aria-label="Actors" className="space-y-0.5">
-                      {actors.map((actor) => (
+                      {actorOptions.map((option) => (
                         <ActorOption
-                          key={`actor-${actor.point.id}`}
-                          actor={actor}
+                          key={option.id}
+                          active={activeOption?.id === option.id}
+                          option={option}
                           onPick={() => {
-                            onSelectActor(actor.point);
-                            reset();
+                            selectCommandOption(option, {
+                              onSelectActor,
+                              onSelectPlace,
+                              reset,
+                            });
                           }}
                         />
                       ))}

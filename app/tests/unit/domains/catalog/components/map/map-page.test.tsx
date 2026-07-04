@@ -97,8 +97,11 @@ describe("MapPage", () => {
     requireMapPageHarness().setState({ points: [makePoint({ id: "1", lat: 1, lng: 2 })] });
     render(<MapPage search={{}} />);
     const skip = screen.getByRole("link", { name: /Skip to results list/i });
+    const resultsList = document.querySelector("#map-results-list");
     expect(skip.getAttribute("href")).toBe("#map-results-list");
-    expect(document.querySelector("#map-results-list")).not.toBeNull();
+    expect(resultsList).not.toBeNull();
+    expect(resultsList?.getAttribute("tabindex")).toBe("-1");
+    expect(resultsList?.className).toContain("focus:not-sr-only");
   });
 
   it("shows the friendly sparsity pill when actors are placed", () => {
