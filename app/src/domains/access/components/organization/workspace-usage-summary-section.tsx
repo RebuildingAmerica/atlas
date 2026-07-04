@@ -2,10 +2,9 @@ import { Download } from "lucide-react";
 import type {
   WorkspaceIntegrationMonitoring,
   WorkspaceUsageAuditLog,
-  WorkspaceUsageSummary,
 } from "@/domains/workspace/server/usage-summary";
 import { IntegrationMonitoringSection } from "./integration-monitoring-section";
-import { RenewalSignalsGrid } from "./renewal-signals-grid";
+import { RenewalSignalsGrid, type WorkspaceUsageSummaryDisplay } from "./renewal-signals-grid";
 import { UsageAuditLogSection } from "./usage-audit-log-section";
 import { formatUsageCount } from "./workspace-usage-formatters";
 
@@ -16,7 +15,7 @@ interface WorkspaceUsageSummarySectionProps {
   auditLog?: WorkspaceUsageAuditLog;
   integrationMonitoring?: WorkspaceIntegrationMonitoring;
   renewalPacketUrl: string;
-  usageSummary: WorkspaceUsageSummary;
+  usageSummary: WorkspaceUsageSummaryDisplay;
 }
 
 /**

@@ -1,11 +1,28 @@
 import type { WorkspaceUsageSummary } from "@/domains/workspace/server/usage-summary";
 import { formatUsageCount, formatUsageEventType } from "./workspace-usage-formatters";
 
+type RenewalSignals = WorkspaceUsageSummary["renewal_signals"];
+type RenewalSignalKey = keyof RenewalSignals;
+
+/**
+ * Runtime-safe usage summary shape for rendering renewal proof.
+ *
+ * The generated API type requires every bucket, but older or partial payloads
+ * can omit `event_counts` or individual signal counts. Rendering treats those
+ * omissions as empty rather than crashing the admin page.
+ */
+export interface WorkspaceUsageSummaryDisplay {
+  event_counts?: WorkspaceUsageSummary["event_counts"] | null;
+  org_id?: string;
+  renewal_signals?: Partial<RenewalSignals> | null;
+  total_events: number;
+}
+
 /**
  * One renewal signal rendered in the workspace admin summary.
  */
 interface RenewalSignalItem {
-  key: keyof WorkspaceUsageSummary["renewal_signals"];
+  key: RenewalSignalKey;
   label: string;
 }
 
@@ -13,7 +30,7 @@ interface RenewalSignalItem {
  * Props for the renewal signal grid.
  */
 interface RenewalSignalsGridProps {
-  usageSummary: WorkspaceUsageSummary;
+  usageSummary: WorkspaceUsageSummaryDisplay;
 }
 
 const RENEWAL_SIGNAL_ITEMS: RenewalSignalItem[] = [
@@ -28,7 +45,7 @@ const RENEWAL_SIGNAL_ITEMS: RenewalSignalItem[] = [
  * Renewal metric cards plus the raw event-count rows.
  */
 export function RenewalSignalsGrid({ usageSummary }: RenewalSignalsGridProps) {
-  const eventRows = Object.entries(usageSummary.event_counts).sort(([left], [right]) =>
+  const eventRows = Object.entries(usageSummary.event_counts ?? {}).sort(([left], [right]) =>
     left.localeCompare(right),
   );
 
@@ -42,7 +59,7 @@ export function RenewalSignalsGrid({ usageSummary }: RenewalSignalsGridProps) {
           >
             <dt className="type-label-small text-ink-muted uppercase">{item.label}</dt>
             <dd className="type-title-small text-ink-strong mt-1">
-              {formatUsageCount(usageSummary.renewal_signals[item.key])}
+              {formatUsageCount(usageSummary.renewal_signals?.[item.key] ?? 0)}
             </dd>
           </div>
         ))}

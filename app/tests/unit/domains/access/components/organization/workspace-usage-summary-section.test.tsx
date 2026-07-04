@@ -1,10 +1,12 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it } from "vitest";
+import { cleanup, render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { WorkspaceUsageSummarySection } from "@/domains/access/components/organization/workspace-usage-summary-section";
 
 describe("WorkspaceUsageSummarySection", () => {
+  afterEach(cleanup);
+
   it("renders renewal signal totals and event counts", () => {
     render(
       <WorkspaceUsageSummarySection
@@ -135,5 +137,25 @@ describe("WorkspaceUsageSummarySection", () => {
     );
 
     expect(screen.getByText("No renewal events yet.")).toBeInTheDocument();
+  });
+
+  it("keeps renewal proof visible when event counts are omitted", () => {
+    render(
+      <WorkspaceUsageSummarySection
+        renewalPacketUrl="/api/orgs/org_123/usage-summary/renewal-packet?format=markdown"
+        usageSummary={{
+          org_id: "org_123",
+          renewal_signals: {
+            briefs_used: 2,
+          },
+          total_events: 2,
+        }}
+      />,
+    );
+
+    expect(screen.getByRole("heading", { name: "Renewal proof" })).toBeInTheDocument();
+    expect(screen.getByText("Briefs used")).toBeInTheDocument();
+    expect(screen.getByText("Workflow actions")).toBeInTheDocument();
+    expect(screen.queryByText("Brief opened")).not.toBeInTheDocument();
   });
 });
