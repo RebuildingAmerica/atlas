@@ -65,4 +65,23 @@ describe("SEO helpers", () => {
       links: [{ rel: "canonical", href: "https://preview.atlas.example/browse" }],
     });
   });
+
+  it("preserves absolute social image URLs", () => {
+    const head = buildPageHead(
+      {
+        title: "Jane Doe | Atlas",
+        description: "Community organizer.",
+        path: "/profiles/people/jane",
+        imagePath: "https://images.example/jane.jpg",
+      },
+      { ATLAS_PUBLIC_URL: "https://preview.atlas.example" },
+    );
+
+    expect(head.meta).toEqual(
+      expect.arrayContaining([
+        { property: "og:image", content: "https://images.example/jane.jpg" },
+        { name: "twitter:image", content: "https://images.example/jane.jpg" },
+      ]),
+    );
+  });
 });

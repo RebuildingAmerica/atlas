@@ -68,9 +68,23 @@ export function buildCanonicalUrl(path: string, env: SeoEnv = import.meta.env): 
   return `${origin}/${normalizedPath}`;
 }
 
+function buildSocialImageUrl(imagePath: string, env: SeoEnv): string {
+  const trimmedPath = imagePath.trim();
+  try {
+    const url = new URL(trimmedPath);
+    if (url.protocol === "https:" || url.protocol === "http:") {
+      return url.href;
+    }
+  } catch {
+    // Relative paths are resolved against the configured canonical origin below.
+  }
+
+  return buildCanonicalUrl(trimmedPath || DEFAULT_SOCIAL_IMAGE_PATH, env);
+}
+
 export function buildPageHead(input: PageHeadInput, env: SeoEnv = import.meta.env): PageHead {
   const canonicalUrl = buildCanonicalUrl(input.path, env);
-  const imageUrl = buildCanonicalUrl(input.imagePath ?? DEFAULT_SOCIAL_IMAGE_PATH, env);
+  const imageUrl = buildSocialImageUrl(input.imagePath ?? DEFAULT_SOCIAL_IMAGE_PATH, env);
   const socialTitle = input.socialTitle ?? input.title;
   const pageType = input.type ?? "website";
   const meta: HeadMeta[] = [

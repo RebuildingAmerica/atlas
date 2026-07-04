@@ -38,6 +38,7 @@ describe("routes/_public/profiles/organizations/$slug", () => {
       name: "Acme",
       slug: "acme",
       description: "An organization that does things.".repeat(10),
+      photo_url: "https://images.example/acme.jpg",
     };
     vi.mocked(loadProfileBySlug).mockResolvedValue(
       entry as Awaited<ReturnType<typeof loadProfileBySlug>>,
@@ -48,7 +49,7 @@ describe("routes/_public/profiles/organizations/$slug", () => {
     const Route = asRouteStub(routeModule.Route);
 
     if (!Route.options.loader) throw new Error("Expected loader");
-    const loaded = await Route.options.loader({ params: { slug: "acme" } } as never);
+    const loaded = await Route.options.loader({ params: { slug: "acme" } });
     expect(loadProfileBySlug).toHaveBeenCalledWith({
       data: { type: "organizations", slug: "acme" },
     });
@@ -56,7 +57,7 @@ describe("routes/_public/profiles/organizations/$slug", () => {
     expect(loaded).toEqual({ entry });
 
     if (!Route.options.head) throw new Error("Expected head");
-    const headPayload = Route.options.head({ loaderData: { entry } } as never) as PageHead;
+    const headPayload = Route.options.head({ loaderData: { entry } }) as PageHead;
     expect(headPayload.meta).toEqual(
       expect.arrayContaining([{ title: "Acme — Organization | Atlas" }]),
     );
@@ -64,11 +65,11 @@ describe("routes/_public/profiles/organizations/$slug", () => {
       expect.arrayContaining([
         {
           property: "og:image",
-          content: "https://atlas.rebuildingamerica.com/social/atlas-card.png",
+          content: "https://images.example/acme.jpg",
         },
         {
           name: "twitter:image",
-          content: "https://atlas.rebuildingamerica.com/social/atlas-card.png",
+          content: "https://images.example/acme.jpg",
         },
       ]),
     );
@@ -84,8 +85,8 @@ describe("routes/_public/profiles/organizations/$slug", () => {
     const Route = asRouteStub(routeModule.Route);
 
     if (!Route.options.head) throw new Error("Expected head");
-    expect(Route.options.head({ loaderData: undefined } as never)).toEqual({});
-    expect(Route.options.head({ loaderData: {} } as never)).toEqual({});
+    expect(Route.options.head({ loaderData: undefined })).toEqual({});
+    expect(Route.options.head({ loaderData: {} })).toEqual({});
   });
 
   it("uses an empty description fallback when the entry omits one", async () => {
@@ -95,7 +96,7 @@ describe("routes/_public/profiles/organizations/$slug", () => {
 
     const entry = { name: "Acme", slug: "acme", description: null };
     if (!Route.options.head) throw new Error("Expected head");
-    const headPayload = Route.options.head({ loaderData: { entry } } as never) as PageHead;
+    const headPayload = Route.options.head({ loaderData: { entry } }) as PageHead;
     expect(headPayload.meta).toEqual(
       expect.arrayContaining([{ name: "description", content: "" }]),
     );

@@ -38,6 +38,7 @@ describe("routes/_public/profiles/people/$slug", () => {
       name: "Jane",
       slug: "jane",
       description: "Bio of Jane.".repeat(20),
+      photo_url: "https://images.example/jane.jpg",
     };
     vi.mocked(loadProfileBySlug).mockResolvedValue(
       entry as Awaited<ReturnType<typeof loadProfileBySlug>>,
@@ -48,7 +49,7 @@ describe("routes/_public/profiles/people/$slug", () => {
     const Route = asRouteStub(routeModule.Route);
 
     if (!Route.options.loader) throw new Error("Expected loader");
-    const loaded = await Route.options.loader({ params: { slug: "jane" } } as never);
+    const loaded = await Route.options.loader({ params: { slug: "jane" } });
     expect(loadProfileBySlug).toHaveBeenCalledWith({
       data: { type: "people", slug: "jane" },
     });
@@ -56,17 +57,17 @@ describe("routes/_public/profiles/people/$slug", () => {
     expect(loaded).toEqual({ entry });
 
     if (!Route.options.head) throw new Error("Expected head");
-    const headPayload = Route.options.head({ loaderData: { entry } } as never) as PageHead;
+    const headPayload = Route.options.head({ loaderData: { entry } }) as PageHead;
     expect(headPayload.meta).toEqual(expect.arrayContaining([{ title: "Jane — Person | Atlas" }]));
     expect(headPayload.meta).toEqual(
       expect.arrayContaining([
         {
           property: "og:image",
-          content: "https://atlas.rebuildingamerica.com/social/atlas-card.png",
+          content: "https://images.example/jane.jpg",
         },
         {
           name: "twitter:image",
-          content: "https://atlas.rebuildingamerica.com/social/atlas-card.png",
+          content: "https://images.example/jane.jpg",
         },
       ]),
     );
@@ -82,8 +83,8 @@ describe("routes/_public/profiles/people/$slug", () => {
     const Route = asRouteStub(routeModule.Route);
 
     if (!Route.options.head) throw new Error("Expected head");
-    expect(Route.options.head({ loaderData: undefined } as never)).toEqual({});
-    expect(Route.options.head({ loaderData: {} } as never)).toEqual({});
+    expect(Route.options.head({ loaderData: undefined })).toEqual({});
+    expect(Route.options.head({ loaderData: {} })).toEqual({});
   });
 
   it("uses an empty description fallback when the entry omits one", async () => {
@@ -93,7 +94,7 @@ describe("routes/_public/profiles/people/$slug", () => {
 
     const entry = { name: "Jane", slug: "jane", description: null };
     if (!Route.options.head) throw new Error("Expected head");
-    const headPayload = Route.options.head({ loaderData: { entry } } as never) as PageHead;
+    const headPayload = Route.options.head({ loaderData: { entry } }) as PageHead;
     expect(headPayload.meta).toEqual(
       expect.arrayContaining([{ name: "description", content: "" }]),
     );

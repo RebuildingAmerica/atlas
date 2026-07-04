@@ -25,6 +25,7 @@ export const Route = createFileRoute("/_public/profiles/people/$slug")({
       description: entry.description?.slice(0, 160) ?? "",
       path: `/profiles/people/${entry.slug}`,
       type: "profile",
+      imagePath: entry.photo_url?.trim() || undefined,
     });
   },
   component: PersonProfileRoute,

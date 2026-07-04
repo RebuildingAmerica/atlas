@@ -25,6 +25,7 @@ export const Route = createFileRoute("/_public/profiles/organizations/$slug")({
       description: entry.description?.slice(0, 160) ?? "",
       path: `/profiles/organizations/${entry.slug}`,
       type: "profile",
+      imagePath: entry.photo_url?.trim() || undefined,
     });
   },
   component: OrgProfileRoute,
