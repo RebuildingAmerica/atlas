@@ -1,24 +1,43 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Button } from "@/platform/ui/button";
 
+interface IndependentJournalistFormData extends Record<string, string> {
+  portfolioUrl: string;
+}
+
+type IndependentJournalistErrorField = keyof IndependentJournalistFormData;
+
 interface IndependentJournalistFormProps {
-  onSubmit: (data: { portfolioUrl: string }) => Promise<void>;
+  onSubmit: (data: IndependentJournalistFormData) => Promise<void>;
   isLoading?: boolean;
+}
+
+function describedBy(...ids: (string | undefined)[]): string | undefined {
+  const description = ids.filter((id) => Boolean(id)).join(" ");
+  return description || undefined;
 }
 
 export function IndependentJournalistForm({
   onSubmit,
   isLoading = false,
 }: IndependentJournalistFormProps) {
+  const formId = useId();
   const [portfolioUrl, setPortfolioUrl] = useState("");
   const [error, setError] = useState("");
+  const [errorField, setErrorField] = useState<IndependentJournalistErrorField | null>(null);
+
+  const portfolioUrlId = `${formId}-portfolio-url`;
+  const portfolioUrlHintId = `${portfolioUrlId}-hint`;
+  const errorId = errorField ? `${formId}-${errorField}-error` : `${formId}-form-error`;
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+    setErrorField(null);
 
     if (!portfolioUrl.trim()) {
       setError("Portfolio URL is required");
+      setErrorField("portfolioUrl");
       return;
     }
 
@@ -26,24 +45,27 @@ export function IndependentJournalistForm({
       new URL(portfolioUrl); // Validate URL
     } catch {
       setError("Please enter a valid URL");
+      setErrorField("portfolioUrl");
       return;
     }
 
     void onSubmit({ portfolioUrl }).catch((err: unknown) => {
       setError(err instanceof Error ? err.message : "Submission failed");
+      setErrorField(null);
     });
   }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
-        <label className="text-ink-strong mb-2 block text-sm font-medium">
+        <label htmlFor={portfolioUrlId} className="text-ink-strong mb-2 block text-sm font-medium">
           Portfolio or Byline URL
         </label>
-        <p className="text-ink-soft mb-3 text-sm">
+        <p id={portfolioUrlHintId} className="text-ink-soft mb-3 text-sm">
           Link to published work, author page, or portfolio showing your journalism
         </p>
         <input
+          id={portfolioUrlId}
           type="url"
           value={portfolioUrl}
           onChange={(e) => {
@@ -52,10 +74,19 @@ export function IndependentJournalistForm({
           placeholder="https://example.com/my-articles"
           className="border-border w-full rounded-lg border px-3 py-2"
           disabled={isLoading}
+          aria-invalid={errorField === "portfolioUrl" ? true : undefined}
+          aria-describedby={describedBy(
+            portfolioUrlHintId,
+            errorField === "portfolioUrl" ? errorId : undefined,
+          )}
         />
       </div>
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && (
+        <p id={errorId} role="alert" className="text-sm text-red-600">
+          {error}
+        </p>
+      )}
 
       <Button type="submit" disabled={isLoading} className="w-full">
         {isLoading ? "Submitting..." : "Request Verification"}
