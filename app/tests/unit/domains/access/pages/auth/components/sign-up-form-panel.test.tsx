@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import type { ReactNode } from "react";
+import "@testing-library/jest-dom/vitest";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { SignUpFormPanel } from "@/domains/access/pages/auth/components/sign-up-form-panel";
@@ -90,7 +91,7 @@ describe("SignUpFormPanel", () => {
     expect(screen.getByText("Set up SSO for your team")).not.toBeNull();
     expect(screen.getByRole("button", { name: "Continue with team setup" })).not.toBeNull();
     expect(screen.queryByText(/Setting up SSO for your team\?/)).toBeNull();
-    expect(screen.getByText("Sign-up failed.")).not.toBeNull();
+    expect(screen.getByRole("alert")).toHaveTextContent("Sign-up failed.");
   });
 
   it("renders the pending CTA label and forwards email changes", () => {

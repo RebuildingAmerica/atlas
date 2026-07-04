@@ -27,7 +27,10 @@ export function SignInStatusBlocks({
   return (
     <>
       {statusMessage ? (
-        <p className="type-body-medium bg-surface-container-lowest text-on-surface rounded-2xl px-4 py-3">
+        <p
+          className="type-body-medium bg-surface-container-lowest text-on-surface rounded-2xl px-4 py-3"
+          role="status"
+        >
           {statusMessage}
         </p>
       ) : null}
@@ -45,7 +48,7 @@ export function SignInStatusBlocks({
       ) : null}
 
       {errorMessage ? (
-        <p className="type-body-medium rounded-2xl bg-red-50 px-4 py-3 text-red-700">
+        <p className="type-body-medium rounded-2xl bg-red-50 px-4 py-3 text-red-700" role="alert">
           {errorMessage}
         </p>
       ) : null}

@@ -16,13 +16,19 @@ export function OrganizationPageFeedback({
   return (
     <>
       {flashMessage ? (
-        <p className="type-body-medium bg-surface-container-lowest text-ink-strong rounded-2xl px-4 py-3">
+        <p
+          className="type-body-medium bg-surface-container-lowest text-ink-strong rounded-2xl px-4 py-3"
+          role="status"
+        >
           {flashMessage}
         </p>
       ) : null}
 
       {errorMessage ? (
-        <p className="type-body-medium border-border-strong bg-surface text-ink-strong rounded-2xl border px-4 py-3">
+        <p
+          className="type-body-medium border-border-strong bg-surface text-ink-strong rounded-2xl border px-4 py-3"
+          role="alert"
+        >
           {errorMessage}
         </p>
       ) : null}

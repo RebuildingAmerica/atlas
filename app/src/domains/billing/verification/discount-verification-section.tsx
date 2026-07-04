@@ -41,7 +41,10 @@ export function DiscountVerificationSection({ userId }: DiscountVerificationSect
     return (
       <div className="space-y-3">
         <p className="type-label-medium text-ink-muted">Discount access</p>
-        <div className="border-border bg-surface-container-lowest rounded-[1.4rem] border p-5">
+        <div
+          className="border-border bg-surface-container-lowest rounded-[1.4rem] border p-5"
+          role="status"
+        >
           <p className="type-title-small text-ink-strong">Verification submitted</p>
           <p className="type-body-medium text-ink-soft mt-2">
             We've received your verification request for discount access. We'll review it and email
@@ -75,7 +78,7 @@ export function DiscountVerificationSection({ userId }: DiscountVerificationSect
           isLoading={submitVerificationMutation.isPending}
         />
         {submitVerificationMutation.isError && (
-          <p className="type-body-medium text-red-700">
+          <p className="type-body-medium text-red-700" role="alert">
             {submitVerificationMutation.error instanceof Error
               ? submitVerificationMutation.error.message
               : "Verification submission failed"}

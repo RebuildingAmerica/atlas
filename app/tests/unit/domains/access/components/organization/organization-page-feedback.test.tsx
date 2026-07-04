@@ -7,12 +7,12 @@ import { OrganizationPageFeedback } from "@/domains/access/components/organizati
 describe("OrganizationPageFeedback", () => {
   it("renders the flash message when provided", () => {
     render(<OrganizationPageFeedback errorMessage={null} flashMessage="Success!" />);
-    expect(screen.getByText("Success!")).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("Success!");
   });
 
   it("renders the error message when provided", () => {
     render(<OrganizationPageFeedback errorMessage="Error!" flashMessage={null} />);
-    expect(screen.getByText("Error!")).toBeInTheDocument();
+    expect(screen.getByRole("alert")).toHaveTextContent("Error!");
   });
 
   it("renders nothing when both are null", () => {

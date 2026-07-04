@@ -905,7 +905,7 @@ describe("DiscoveryPage", () => {
     });
 
     render(<DiscoveryPage />);
-    expect(screen.getByText(/Could not start research/i)).toBeInTheDocument();
+    expect(screen.getByRole("alert")).toHaveTextContent(/Could not start research/i);
   });
 
   it("keeps team workspace context out of a separate hero", () => {

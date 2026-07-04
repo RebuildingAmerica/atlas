@@ -64,7 +64,7 @@ export function SignUpFormPanel({
       </form>
 
       {errorMessage ? (
-        <p className="type-body-medium rounded-2xl bg-red-50 px-4 py-3 text-red-700">
+        <p className="type-body-medium rounded-2xl bg-red-50 px-4 py-3 text-red-700" role="alert">
           {errorMessage}
         </p>
       ) : null}

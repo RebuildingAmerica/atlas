@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import "@testing-library/jest-dom/vitest";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 import { SignInStatusBlocks } from "@/domains/access/pages/auth/components/sign-in-status-blocks";
@@ -26,7 +27,7 @@ describe("SignInStatusBlocks", () => {
         statusMessage="A sign-in link is on the way."
       />,
     );
-    expect(screen.getByText("A sign-in link is on the way.")).not.toBeNull();
+    expect(screen.getByRole("status")).toHaveTextContent("A sign-in link is on the way.");
     expect(screen.queryByTestId("dev-mail-banner")).toBeNull();
   });
 
@@ -56,7 +57,10 @@ describe("SignInStatusBlocks", () => {
         statusMessage={null}
       />,
     );
-    expect(screen.getByText("Atlas could not send the link.")).not.toBeNull();
+    const alerts = screen.getAllByRole("alert");
+
+    expect(alerts).toHaveLength(2);
+    expect(alerts[0]).toHaveTextContent("Atlas could not send the link.");
     expect(screen.getByText(/No identity provider matched your email/)).not.toBeNull();
     expect(screen.getByText("missing_provider")).not.toBeNull();
   });

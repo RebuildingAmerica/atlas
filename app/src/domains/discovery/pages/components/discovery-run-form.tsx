@@ -197,7 +197,9 @@ export function DiscoveryRunForm({
       </div>
 
       {startErrorMessage ? (
-        <p className="type-body-medium text-red-700">{startErrorMessage}</p>
+        <p className="type-body-medium text-red-700" role="alert">
+          {startErrorMessage}
+        </p>
       ) : null}
 
       <div className="flex items-center gap-3">
