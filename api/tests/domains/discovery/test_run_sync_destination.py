@@ -29,6 +29,16 @@ def _local_actor() -> AuthenticatedActor:
     )
 
 
+def _local_workspace_actor() -> AuthenticatedActor:
+    return AuthenticatedActor(
+        user_id="local-operator",
+        email="local@atlas.test",
+        auth_type="local",
+        is_local=True,
+        org_id="local",
+    )
+
+
 def _workspace_actor() -> AuthenticatedActor:
     return AuthenticatedActor(
         user_id="workspace-user",
@@ -156,6 +166,27 @@ async def test_rejects_local_actor_workspace_header_without_org_context(test_db:
         )
 
     assert exc_info.value.status_code == HTTPStatus.FORBIDDEN
+
+
+@pytest.mark.asyncio
+async def test_records_local_workspace_run_when_local_actor_has_org_context(
+    test_db: object,
+) -> None:
+    """Local mode can still store private workspace runs under its actor org."""
+    response = await discovery_api.sync_discovery_run(
+        _bundle("local_actor_workspace"),
+        response=None,
+        actor=_local_workspace_actor(),
+        db=test_db,
+        x_atlas_upload_target="workspace",
+        x_atlas_workspace_id=None,
+    )
+
+    ownership = await OwnershipCRUD.get_ownership(test_db, response.run_id, "discovery_run")
+    assert ownership is not None
+    assert ownership.org_id == "local"
+    assert ownership.visibility == "private"
+    assert ownership.created_by == "local-operator"
 
 
 @pytest.mark.asyncio
