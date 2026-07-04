@@ -52,11 +52,7 @@
     },
     "e2e:mail": {
       "cache": false,
-      "env": [
-        "MAIL_CAPTURE_FILE",
-        "MAIL_CAPTURE_HOST",
-        "MAIL_CAPTURE_PORT"
-      ],
+      "env": ["MAIL_CAPTURE_FILE", "MAIL_CAPTURE_HOST", "MAIL_CAPTURE_PORT"],
       "persistent": true
     },
     "build": {
@@ -75,10 +71,7 @@
     },
     "api-client": {
       "dependsOn": ["//#openapi"],
-      "inputs": [
-        "$TURBO_DEFAULT$",
-        "$TURBO_ROOT$/openapi/atlas.openapi.json"
-      ],
+      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/openapi/atlas.openapi.json"],
       "env": [
         "ATLAS_API_AUDIENCE",
         "ATLAS_DOCS_URL",
@@ -90,10 +83,7 @@
     },
     "openapi:lint": {
       "dependsOn": ["//#openapi"],
-      "inputs": [
-        ".spectral.yaml",
-        "$TURBO_ROOT$/openapi/atlas.openapi.json"
-      ],
+      "inputs": [".spectral.yaml", "$TURBO_ROOT$/openapi/atlas.openapi.json"],
       "outputs": []
     },
     "typecheck": {
@@ -129,7 +119,27 @@
     },
     "test:e2e": {
       "dependsOn": ["api-client"],
-      "outputs": []
+      "env": [
+        "ATLAS_E2E_API_URL",
+        "ATLAS_E2E_APP_URL",
+        "ATLAS_E2E_AUTH_INTROSPECTION_URL",
+        "ATLAS_MAP_STYLE_URL",
+        "ATLAS_E2E_MAILBOX_URL"
+      ],
+      "outputs": ["playwright-report/**", "test-results/**"],
+      "cache": false
+    },
+    "test:e2e:headed": {
+      "dependsOn": ["api-client"],
+      "env": [
+        "ATLAS_E2E_API_URL",
+        "ATLAS_E2E_APP_URL",
+        "ATLAS_E2E_AUTH_INTROSPECTION_URL",
+        "ATLAS_MAP_STYLE_URL",
+        "ATLAS_E2E_MAILBOX_URL"
+      ],
+      "outputs": ["playwright-report/**", "test-results/**"],
+      "cache": false
     },
     "test:acceptance": {
       "dependsOn": ["api-client", "e2e:cleanup"],

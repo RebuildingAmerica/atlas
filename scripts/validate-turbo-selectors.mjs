@@ -30,18 +30,18 @@ const trackedGlobs = [
   "scripts/bootstrap/**/*.ts",
 ];
 
-const lsFiles = execFileSync(
-  "git",
-  ["ls-files", "--", ...trackedGlobs],
-  { cwd: repoRoot, encoding: "utf8" },
-)
+const lsFiles = execFileSync("git", ["ls-files", "--", ...trackedGlobs], {
+  cwd: repoRoot,
+  encoding: "utf8",
+})
   .split("\n")
   .filter(Boolean);
 
 // Match: optional opening quote, then `<scope>#<task>` where scope is `//`
 // or a npm package name (with optional @scope/), and task may use `:` or `-`.
 // Word-ish boundaries on both sides to avoid matching URL fragments.
-const SELECTOR = /(?<![A-Za-z0-9._/-])((?:@[\w.-]+\/)?[\w.-]+|\/\/)#([A-Za-z][\w:.-]*)(?![A-Za-z0-9])/g;
+const SELECTOR =
+  /(?<![A-Za-z0-9._/-])((?:@[\w.-]+\/)?[\w.-]+|\/\/)#([A-Za-z][\w:.-]*)(?![A-Za-z0-9])/g;
 
 // Anything that doesn't make sense as a package: e.g. URL anchors, html ids.
 // Heuristic: skip selectors whose scope contains a `.` AND a path-y suffix.
@@ -81,7 +81,26 @@ if (selectors.size === 0) {
 }
 
 const sorted = [...selectors.keys()].sort();
-console.log(`Validating ${sorted.length} turbo selectors via 'turbo run --dry=json'...`);
+console.log(
+  `Validating ${sorted.length} turbo selectors via 'turbo run --dry=json'...`,
+);
+
+function parseTurboDryRun(stdout) {
+  const lines = stdout.split("\n");
+  const start = lines.findIndex((line) => line.trim().startsWith("{"));
+  if (start === -1) {
+    throw new Error("Turbo did not emit a JSON dry-run payload.");
+  }
+  return JSON.parse(lines.slice(start).join("\n"));
+}
+
+function readTurboDryRunTasks(payload) {
+  if (!Array.isArray(payload.tasks)) {
+    throw new Error("Turbo dry-run JSON did not include a tasks array.");
+  }
+
+  return payload.tasks;
+}
 
 // Validate each selector individually so we can report the exact failing one.
 // Turbo aborts on first bad selector when batched, which makes batched mode
@@ -90,7 +109,7 @@ const failures = [];
 for (const sel of sorted) {
   const result = spawnSync(
     "pnpm",
-    ["exec", "turbo", "run", sel, "--dry"],
+    ["exec", "turbo", "run", sel, "--dry=json"],
     { cwd: repoRoot, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 },
   );
   if (result.status !== 0) {
@@ -98,6 +117,48 @@ for (const sel of sorted) {
       selector: sel,
       sites: [...selectors.get(sel)],
       stderr: (result.stderr || result.stdout || "").trim(),
+    });
+    continue;
+  }
+
+  let payload;
+  try {
+    payload = parseTurboDryRun(result.stdout || "");
+  } catch (error) {
+    failures.push({
+      selector: sel,
+      sites: [...selectors.get(sel)],
+      stderr:
+        error instanceof Error
+          ? error.message
+          : "Unable to parse Turbo dry-run JSON.",
+    });
+    continue;
+  }
+
+  let tasks;
+  try {
+    tasks = readTurboDryRunTasks(payload);
+  } catch (error) {
+    failures.push({
+      selector: sel,
+      sites: [...selectors.get(sel)],
+      stderr:
+        error instanceof Error
+          ? error.message
+          : "Unable to read Turbo dry-run tasks.",
+    });
+    continue;
+  }
+
+  const missingCommands = tasks
+    .filter((task) => task.command === "<NONEXISTENT>")
+    .map((task) => task.taskId);
+  if (missingCommands.length > 0) {
+    failures.push({
+      selector: sel,
+      sites: [...selectors.get(sel)],
+      stderr: `Resolved task(s) have no package script: ${missingCommands.join(", ")}`,
     });
   }
 }
