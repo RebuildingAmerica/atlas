@@ -183,7 +183,12 @@ export function PersonProfilePage({ entry, initialConnections }: PersonProfilePa
           </ProfileSection>
         ) : null}
 
-        <ProfileSection label="Reporting trail" sectionId="reporting-trail" Icon={Newspaper}>
+        <ProfileSection
+          label="Reporting trail"
+          sectionId="reporting-trail"
+          Icon={Newspaper}
+          htmlId="reporting-trail"
+        >
           <AppearancesList sources={entry.sources ?? []} mode="person" />
         </ProfileSection>
 
@@ -202,7 +207,7 @@ export function PersonProfilePage({ entry, initialConnections }: PersonProfilePa
           />
         </ProfileSection>
 
-        <ProfileSection label="Data quality" sectionId="data-quality" Icon={ShieldCheck}>
+        <ProfileSection label="Sources and trust" sectionId="sources-and-trust" Icon={ShieldCheck}>
           <DataQualityBlock entry={entry} />
         </ProfileSection>
 
@@ -214,6 +219,7 @@ export function PersonProfilePage({ entry, initialConnections }: PersonProfilePa
           email={entry.email}
           isSignedIn={isSignedIn}
           profilePath={profilePath}
+          sourcesHref="#reporting-trail"
           workspaceId={activeWorkspaceId}
           workspaceWatchingEnabled={workspaceWatchingEnabled}
         />

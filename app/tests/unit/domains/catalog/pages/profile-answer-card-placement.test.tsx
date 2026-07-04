@@ -117,7 +117,7 @@ describe("actor profile answer-card placement", () => {
 
     expect(screen.getByRole("region", { name: "Profile answers" })).toBeInTheDocument();
     expect(screen.getByText("Profile at a glance")).toBeInTheDocument();
-    expect(screen.getByRole("region", { name: "Research context" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Why this matters" })).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "Record history" })).toBeInTheDocument();
     expect(screen.getByText("Organization")).toBeInTheDocument();
   });
@@ -130,21 +130,21 @@ describe("actor profile answer-card placement", () => {
 
     expect(screen.getByRole("region", { name: "Profile answers" })).toBeInTheDocument();
     expect(screen.getByText("Profile at a glance")).toBeInTheDocument();
-    expect(screen.getByRole("region", { name: "Research context" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Why this matters" })).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "Record history" })).toBeInTheDocument();
     expect(screen.getByText("Person")).toBeInTheDocument();
   });
 
-  it("gives repeated profile sections sticky scan headers", async () => {
+  it("gives repeated profile sections quiet scan headers", async () => {
     const { PersonProfilePage } =
       await import("@/domains/catalog/pages/profiles/detail/person-profile-page");
 
     render(<PersonProfilePage entry={buildEntry({ sources: [buildSource()] })} />);
 
-    const dataQuality = screen.getByRole("region", { name: "Data quality" });
-    const header = dataQuality.querySelector("[data-profile-section-header='true']");
+    const sourcesAndTrust = screen.getByRole("region", { name: "Sources and trust" });
+    const header = sourcesAndTrust.querySelector("[data-profile-section-header='true']");
     expect(header).not.toBeNull();
-    expect(header?.className).toContain("sticky");
-    expect(dataQuality).toHaveAttribute("data-profile-section", "data-quality");
+    expect(header?.className).not.toContain("sticky");
+    expect(sourcesAndTrust).toHaveAttribute("data-profile-section", "sources-and-trust");
   });
 });

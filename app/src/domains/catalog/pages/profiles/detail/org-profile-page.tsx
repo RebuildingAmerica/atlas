@@ -143,7 +143,12 @@ export function OrgProfilePage({ entry, initialConnections }: OrgProfilePageProp
           </ProfileSection>
         ) : null}
 
-        <ProfileSection label="Appearances and coverage" sectionId="appearances" Icon={Newspaper}>
+        <ProfileSection
+          label="Appearances and coverage"
+          sectionId="appearances"
+          Icon={Newspaper}
+          htmlId="appearances"
+        >
           <AppearancesList sources={entry.sources ?? []} mode="organization" />
         </ProfileSection>
 
@@ -162,7 +167,7 @@ export function OrgProfilePage({ entry, initialConnections }: OrgProfilePageProp
           />
         </ProfileSection>
 
-        <ProfileSection label="Data quality" sectionId="data-quality" Icon={ShieldCheck}>
+        <ProfileSection label="Sources and trust" sectionId="sources-and-trust" Icon={ShieldCheck}>
           <DataQualityBlock entry={entry} />
         </ProfileSection>
 
@@ -174,6 +179,7 @@ export function OrgProfilePage({ entry, initialConnections }: OrgProfilePageProp
           email={entry.email}
           isSignedIn={isSignedIn}
           profilePath={profilePath}
+          sourcesHref="#appearances"
           workspaceId={activeWorkspaceId}
           workspaceWatchingEnabled={workspaceWatchingEnabled}
         />
