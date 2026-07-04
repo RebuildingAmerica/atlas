@@ -533,6 +533,74 @@ async def test_save_and_update_run_artifacts(store: ScoutStore) -> None:
     assert updated.manifest.sync.sync_status == "synced"
 
 
+async def test_list_syncable_run_ids_returns_completed_unsynced_artifacts(
+    store: ScoutStore,
+) -> None:
+    """Only completed runs with unsynced artifacts should be queued for turnkey sync."""
+    ready_run = await store.create_run(
+        location="Austin, TX",
+        issues=["housing_affordability"],
+        search_depth="standard",
+    )
+    synced_run = await store.create_run(
+        location="Dallas, TX",
+        issues=["housing_affordability"],
+        search_depth="standard",
+    )
+    pending_run = await store.create_run(
+        location="Houston, TX",
+        issues=["housing_affordability"],
+        search_depth="standard",
+    )
+
+    for run_id, location in (
+        (ready_run, "Austin, TX"),
+        (synced_run, "Dallas, TX"),
+        (pending_run, "Houston, TX"),
+    ):
+        await store.save_run_artifacts(
+            run_id,
+            DiscoveryRunArtifacts(
+                manifest=DiscoveryRunManifest(
+                    runner="atlas-scout",
+                    run=DiscoveryRunInput(
+                        location_query=location,
+                        state="TX",
+                        issue_areas=["housing_affordability"],
+                    ),
+                    status="completed",
+                    sync=DiscoverySyncInfo(local_run_id=run_id, sync_status="ready"),
+                )
+            ),
+        )
+
+    await store.complete_run(
+        ready_run,
+        queries=1,
+        pages_fetched=1,
+        entries_found=1,
+        entries_after_dedup=1,
+    )
+    await store.complete_run(
+        synced_run,
+        queries=1,
+        pages_fetched=1,
+        entries_found=1,
+        entries_after_dedup=1,
+    )
+    await store.update_run_sync(
+        synced_run,
+        sync_status="synced",
+        remote_run_id="remote_123",
+    )
+
+    assert await store.list_syncable_run_ids(limit=10) == [ready_run]
+    assert set(await store.list_syncable_run_ids(limit=10, include_synced=True)) == {
+        ready_run,
+        synced_run,
+    }
+
+
 async def test_fail_run_records_error(store: ScoutStore) -> None:
     """fail_run marks the run as failed and persists the error message."""
     run_id = await store.create_run(location="A", issues=[], search_depth="standard")
@@ -573,9 +641,7 @@ async def test_find_running_direct_run_returns_match(store: ScoutStore) -> None:
     await store.create_page_task(run_id, "https://example.com/a")
     await store.create_page_task(run_id, "https://example.com/b")
 
-    found = await store.find_running_direct_run(
-        ["https://example.com/a", "https://example.com/b"]
-    )
+    found = await store.find_running_direct_run(["https://example.com/a", "https://example.com/b"])
     assert found == run_id
 
 

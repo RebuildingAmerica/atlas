@@ -3220,6 +3220,14 @@
             "title": "Entries Persisted",
             "type": "integer"
           },
+          "entry_links": {
+            "description": "Developer-visible entry receipts with visibility and profile links.",
+            "items": {
+              "$ref": "#/components/schemas/SyncedEntryLink"
+            },
+            "title": "Entry Links",
+            "type": "array"
+          },
           "run_id": {
             "description": "Atlas discovery run identifier.",
             "title": "Run Id",
@@ -8654,6 +8662,69 @@
         "title": "SourceType",
         "type": "string"
       },
+      "SyncedEntryLink": {
+        "description": "Developer-visible receipt for one entry persisted from a run sync.",
+        "properties": {
+          "id": {
+            "description": "Atlas entry identifier.",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "description": "Display name of the persisted entry.",
+            "title": "Name",
+            "type": "string"
+          },
+          "slug": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Public profile slug when one is available.",
+            "title": "Slug"
+          },
+          "type": {
+            "description": "Atlas entry type.",
+            "title": "Type",
+            "type": "string"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Relative Atlas URL for entries with a visible page.",
+            "title": "Url"
+          },
+          "visibility": {
+            "description": "Where the synced entry can be seen after sync.",
+            "enum": [
+              "public",
+              "held_for_review",
+              "workspace_private",
+              "existing_shared"
+            ],
+            "title": "Visibility",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "type",
+          "visibility"
+        ],
+        "title": "SyncedEntryLink",
+        "type": "object"
+      },
       "TrustInfo": {
         "description": "Honest trust signals derived from corroborating evidence.\n\n``level`` never overclaims: an auto-discovered entity backed by a single\nsource domain is ``unverified``, not authoritative-sounding. Grounding flags\nare ``None`` when corroboration could not be evaluated (for example, in list\nresponses that do not load full source text).",
         "properties": {
@@ -10295,6 +10366,38 @@
         "description": "Replay a canonical local discovery bundle into Atlas using an authenticated, idempotent run-sync workflow.",
         "operationId": "createDiscoveryRunSync",
         "parameters": [
+          {
+            "in": "header",
+            "name": "x-atlas-upload-target",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Upload-Target"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-workspace-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Workspace-Id"
+            }
+          },
           {
             "in": "header",
             "name": "x-atlas-internal-secret",

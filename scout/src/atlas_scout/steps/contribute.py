@@ -8,7 +8,7 @@ Atlas REST API so discovery results flow into the public directory.
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Literal
 
 import httpx
@@ -21,6 +21,7 @@ from atlas_shared import (
     DiscoveryRunSyncRequest,
     DiscoveryRunSyncResponse,
     PageContent,
+    SyncedEntryLink,
 )
 
 if TYPE_CHECKING:
@@ -42,6 +43,7 @@ class ContributionResult:
     run_id: str | None = None
     sync_status: str | None = None
     duplicate: bool = False
+    entry_links: list[SyncedEntryLink] = field(default_factory=list)
 
 
 async def contribute_entries(
@@ -187,4 +189,5 @@ async def sync_run_artifacts(
         run_id=created_payload.run_id,
         sync_status=created_payload.sync_status,
         duplicate=created_payload.duplicate,
+        entry_links=created_payload.entry_links,
     )

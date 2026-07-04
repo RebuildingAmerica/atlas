@@ -48,8 +48,11 @@ from atlas_scout.pipeline_support import close_if_supported as _close_if_support
 from atlas_scout.runtime import build_runtime_profile
 
 if TYPE_CHECKING:
+    from atlas_shared import SyncedEntryLink
+
     from atlas_scout.providers.base import LLMProvider
     from atlas_scout.runtime import RuntimeProfile
+    from atlas_scout.steps.contribute import ContributionResult
 
 __all__ = [
     "_clear_failed_daemon_start",
@@ -97,6 +100,10 @@ _DAEMON_ORIGINALS = {
     "_wait_for_daemon_start": _daemon_helpers._wait_for_daemon_start,
     "_wait_for_daemon_stop": _daemon_helpers._wait_for_daemon_stop,
 }
+
+
+class ScoutSyncError(RuntimeError):
+    """Raised when a local run cannot be synced to Atlas."""
 
 
 def _sync_daemon_module() -> None:
@@ -371,6 +378,73 @@ def _resolved_profile_name(
     return None
 
 
+def _atlas_url_for_path(atlas_url: str, path: str) -> str:
+    """Join an Atlas base URL and relative app path."""
+    if path.startswith(("http://", "https://")):
+        return path
+    return f"{atlas_url.rstrip('/')}/{path.lstrip('/')}"
+
+
+def _sync_visibility_label(link: SyncedEntryLink) -> str:
+    """Return a compact human label for a synced entry receipt."""
+    if link.visibility == "public":
+        return "public profile"
+    if link.visibility == "existing_shared":
+        return "existing public profile"
+    if link.visibility == "workspace_private":
+        return "workspace private"
+    return "held for review"
+
+
+def _print_sync_receipt(
+    *,
+    local_run_id: str,
+    atlas_url: str,
+    result: ContributionResult,
+) -> None:
+    """Print a developer-facing receipt for a completed run sync."""
+    message = "Already synced" if result.duplicate else "Synced"
+    console.print(f"[green]{message}[/] run {local_run_id} -> [bold]{result.run_id}[/]")
+    if result.run_id:
+        console.print(
+            f"Open run: {_atlas_url_for_path(atlas_url, f'/discovery?run={result.run_id}')}"
+        )
+
+    if not result.entry_links:
+        return
+
+    console.print("Entries:")
+    for link in result.entry_links[:10]:
+        entry_url = _atlas_url_for_path(atlas_url, link.url) if link.url else None
+        suffix = f" - {entry_url}" if entry_url else ""
+        console.print(f"  {link.name} - {_sync_visibility_label(link)}{suffix}")
+    remaining = len(result.entry_links) - 10
+    if remaining > 0:
+        console.print(f"  +{remaining} more")
+
+
+def _should_sync_after_run(
+    config: ScoutConfig,
+    *,
+    result_artifacts_available: bool,
+    sync_after_run: bool | None,
+) -> bool:
+    """Return whether a completed run should be synced automatically."""
+    if sync_after_run is False:
+        return False
+    if not result_artifacts_available:
+        if sync_after_run is True:
+            err_console.print(
+                "[yellow]Sync skipped:[/] this run did not produce canonical Atlas artifacts."
+            )
+        return False
+    if sync_after_run is True:
+        return True
+    if config.contribution.enabled:
+        return False
+    return load_session() is not None
+
+
 # ---------------------------------------------------------------------------
 # Root group
 # ---------------------------------------------------------------------------
@@ -496,6 +570,12 @@ def main(
     is_flag=True,
     help="Show internal worker and queue events instead of the default user-facing firehose.",
 )
+@click.option(
+    "--sync/--no-sync",
+    "sync_after_run",
+    default=None,
+    help="Sync canonical run artifacts to Atlas after the run finishes.",
+)
 @click.option("--quiet", "-q", is_flag=True, help="Headless mode — suppress progress.")
 @click.pass_context
 def run(
@@ -515,6 +595,7 @@ def run(
     max_pages_per_seed: int | None,
     refresh: bool,
     verbose_progress: bool,
+    sync_after_run: bool | None,
     quiet: bool,
 ) -> None:
     """Run a discovery pipeline.
@@ -600,6 +681,7 @@ def run(
             directive=directive,
             refresh=refresh,
             verbose_progress=verbose_progress,
+            sync_after_run=sync_after_run,
         )
     )
 
@@ -615,6 +697,7 @@ async def _run_pipeline(
     directive: str | None = None,
     refresh: bool = False,
     verbose_progress: bool = False,
+    sync_after_run: bool | None = None,
 ) -> None:
     """Create infrastructure, run the pipeline, print results."""
     from atlas_scout.pipeline import run_pipeline
@@ -676,6 +759,19 @@ async def _run_pipeline(
         await store.close()
 
     print_run_results(console, result)
+    if _should_sync_after_run(
+        config,
+        result_artifacts_available=result.artifacts is not None,
+        sync_after_run=sync_after_run,
+    ):
+        await _runs_sync(
+            config,
+            result.run_id,
+            atlas_url=None,
+            api_key=None,
+            target=None,
+            workspace=None,
+        )
 
 
 def _build_provider(config: ScoutConfig, *, max_concurrent: int | None = None) -> LLMProvider:
@@ -683,6 +779,106 @@ def _build_provider(config: ScoutConfig, *, max_concurrent: int | None = None) -
     from atlas_scout.providers import create_provider
 
     return create_provider(config.llm, max_concurrent=max_concurrent)
+
+
+# ---------------------------------------------------------------------------
+# sync command
+# ---------------------------------------------------------------------------
+
+
+@main.command("sync")
+@click.argument("run_ids", nargs=-1)
+@click.option("--all-ready", is_flag=True, help="Sync every completed run with ready artifacts.")
+@click.option("--atlas-url", default=None, help="Override the Atlas base URL for sync.")
+@click.option("--api-key", default=None, envvar="ATLAS_API_KEY", help="Override the Atlas API key.")
+@click.option(
+    "--target",
+    type=click.Choice(["public", "workspace"]),
+    default=None,
+    help="Upload destination for logged-in Scout syncs.",
+)
+@click.option("--workspace", default=None, help="Workspace id for workspace-private sync.")
+@click.pass_context
+def sync(
+    ctx: click.Context,
+    run_ids: tuple[str, ...],
+    all_ready: bool,
+    atlas_url: str | None,
+    api_key: str | None,
+    target: UploadTarget | None,
+    workspace: str | None,
+) -> None:
+    """Sync the latest, selected, or all ready local runs to Atlas."""
+    config: ScoutConfig = ctx.obj["config"]
+    asyncio.run(
+        _sync_runs(
+            config,
+            run_ids,
+            all_ready=all_ready,
+            atlas_url=atlas_url,
+            api_key=api_key,
+            target=target,
+            workspace=workspace,
+        )
+    )
+
+
+async def _resolve_sync_run_ids(
+    config: ScoutConfig,
+    *,
+    run_ids: tuple[str, ...],
+    all_ready: bool,
+) -> list[str]:
+    """Resolve top-level sync selectors into concrete local run IDs."""
+    if all_ready and run_ids:
+        raise ScoutSyncError("Use either explicit run ids or --all-ready, not both.")
+    if run_ids and run_ids != ("latest",) and not all_ready:
+        return list(run_ids)
+
+    from atlas_scout.store import ScoutStore
+
+    store = ScoutStore(str(Path(config.store.path).expanduser()))
+    await store.initialize()
+    try:
+        limit = None if all_ready else 1
+        resolved = await store.list_syncable_run_ids(limit=limit)
+    finally:
+        await store.close()
+
+    if not resolved:
+        raise ScoutSyncError("No completed runs with ready artifacts.")
+    return resolved
+
+
+async def _sync_runs(
+    config: ScoutConfig,
+    run_ids: tuple[str, ...],
+    *,
+    all_ready: bool,
+    atlas_url: str | None,
+    api_key: str | None,
+    target: UploadTarget | None,
+    workspace: str | None,
+) -> None:
+    """Sync one or more local runs to Atlas."""
+    try:
+        resolved_run_ids = await _resolve_sync_run_ids(
+            config,
+            run_ids=run_ids,
+            all_ready=all_ready,
+        )
+        for run_id in resolved_run_ids:
+            await _runs_sync(
+                config,
+                run_id,
+                atlas_url=atlas_url,
+                api_key=api_key,
+                target=target,
+                workspace=workspace,
+            )
+    except ScoutSyncError as exc:
+        err_console.print(f"[red]Sync failed:[/] {exc}")
+        sys.exit(1)
 
 
 # ---------------------------------------------------------------------------
@@ -1152,8 +1348,11 @@ async def _runs_sync(
     finally:
         await store.close()
 
-    message = "Already synced" if result.duplicate else "Synced"
-    console.print(f"[green]{message}[/] run {run_id} -> [bold]{result.run_id}[/]")
+    _print_sync_receipt(
+        local_run_id=run_id,
+        atlas_url=resolved_atlas_url,
+        result=result,
+    )
 
 
 @main.command("login")

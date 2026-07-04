@@ -24,6 +24,7 @@ interface DiscoveryRunsPanelProps {
   isLoading: boolean;
   onCreateBrief?: (run: DiscoveryRunRecord) => void;
   runs: DiscoveryRunRecord[];
+  selectedRunId?: string;
 }
 
 interface CreatedBriefLink {
@@ -230,6 +231,7 @@ export function DiscoveryRunsPanel({
   isLoading,
   onCreateBrief,
   runs,
+  selectedRunId,
 }: DiscoveryRunsPanelProps) {
   return (
     <section className="border-border-strong bg-surface space-y-5 rounded-[1rem] border p-6">
@@ -248,61 +250,79 @@ export function DiscoveryRunsPanel({
         <p className="type-body-medium text-ink-muted">Loading...</p>
       ) : runs.length > 0 ? (
         <div className="divide-border divide-y">
-          {runs.map((run) => (
-            <article key={run.id} className="space-y-3 py-4 first:pt-0 last:pb-0">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <h2 className="type-title-small text-ink-strong">{run.location_query}</h2>
-                  <p className="type-body-small text-ink-muted mt-1">
-                    {new Date(run.started_at).toLocaleString()} · {run.state}
+          {runs.map((run) => {
+            const isSelected = selectedRunId === run.id;
+            return (
+              <article
+                key={run.id}
+                aria-current={isSelected ? "true" : undefined}
+                className={
+                  isSelected
+                    ? "bg-surface-container-lowest border-outline-variant space-y-3 border-l-4 px-4 py-4 first:pt-4 last:pb-4"
+                    : "space-y-3 py-4 first:pt-0 last:pb-0"
+                }
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <h2 className="type-title-small text-ink-strong">{run.location_query}</h2>
+                    <p className="type-body-small text-ink-muted mt-1">
+                      {new Date(run.started_at).toLocaleString()} · {run.state}
+                    </p>
+                    <p className="type-label-medium text-ink-soft mt-2">
+                      {RESEARCH_GOAL_LABELS[run.research_goal ?? "landscape_scan"]}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap justify-end gap-2">
+                    {isSelected ? (
+                      <span className="type-label-large border-outline-variant text-ink-strong rounded-full border px-3 py-1">
+                        Selected run
+                      </span>
+                    ) : null}
+                    <span className="type-label-large border-border text-ink-soft rounded-full border px-3 py-1">
+                      {run.status}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="grid gap-2 sm:grid-cols-4">
+                  <p className="type-body-medium text-ink-soft">
+                    {run.issue_areas.length} issue areas
                   </p>
-                  <p className="type-label-medium text-ink-soft mt-2">
-                    {RESEARCH_GOAL_LABELS[run.research_goal ?? "landscape_scan"]}
+                  <p className="type-body-medium text-ink-soft">
+                    {run.entries_extracted} entries extracted
+                  </p>
+                  <p className="type-body-medium text-ink-soft">
+                    {run.sources_fetched} sources fetched
+                  </p>
+                  <p className="type-body-medium text-ink-soft">
+                    {run.entries_after_dedup} entries after dedup
                   </p>
                 </div>
-                <span className="type-label-large border-border text-ink-soft rounded-full border px-3 py-1">
-                  {run.status}
-                </span>
-              </div>
 
-              <div className="grid gap-2 sm:grid-cols-4">
-                <p className="type-body-medium text-ink-soft">
-                  {run.issue_areas.length} issue areas
-                </p>
-                <p className="type-body-medium text-ink-soft">
-                  {run.entries_extracted} entries extracted
-                </p>
-                <p className="type-body-medium text-ink-soft">
-                  {run.sources_fetched} sources fetched
-                </p>
-                <p className="type-body-medium text-ink-soft">
-                  {run.entries_after_dedup} entries after dedup
-                </p>
-              </div>
+                {run.error_message ? (
+                  <p className="type-body-small text-red-700">{run.error_message}</p>
+                ) : null}
 
-              {run.error_message ? (
-                <p className="type-body-small text-red-700">{run.error_message}</p>
-              ) : null}
-
-              {run.research_summary ? (
-                <ResearchSummaryBlock
-                  createdBrief={createdBriefs[run.id]}
-                  createBriefError={createBriefErrors[run.id]}
-                  isCreatingBrief={creatingBriefRunId === run.id}
-                  onCreateBrief={
-                    onCreateBrief
-                      ? () => {
-                          onCreateBrief(run);
-                        }
-                      : undefined
-                  }
-                  researchGoal={run.research_goal ?? "landscape_scan"}
-                  run={run}
-                  summary={run.research_summary}
-                />
-              ) : null}
-            </article>
-          ))}
+                {run.research_summary ? (
+                  <ResearchSummaryBlock
+                    createdBrief={createdBriefs[run.id]}
+                    createBriefError={createBriefErrors[run.id]}
+                    isCreatingBrief={creatingBriefRunId === run.id}
+                    onCreateBrief={
+                      onCreateBrief
+                        ? () => {
+                            onCreateBrief(run);
+                          }
+                        : undefined
+                    }
+                    researchGoal={run.research_goal ?? "landscape_scan"}
+                    run={run}
+                    summary={run.research_summary}
+                  />
+                ) : null}
+              </article>
+            );
+          })}
         </div>
       ) : (
         <p className="type-body-medium text-ink-muted">No research yet.</p>

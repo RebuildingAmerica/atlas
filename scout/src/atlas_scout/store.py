@@ -590,6 +590,42 @@ class ScoutStore:
             rows = await cursor.fetchall()
         return [dict(row) for row in rows]
 
+    async def list_syncable_run_ids(
+        self,
+        *,
+        limit: int | None = None,
+        include_synced: bool = False,
+    ) -> list[str]:
+        """Return completed run IDs with stored artifacts ready for sync."""
+        assert self._conn is not None
+        sync_filter = (
+            ""
+            if include_synced
+            else """
+              AND COALESCE(ra.sync_status, 'ready') NOT IN (
+                  'synced',
+                  'already_synced',
+                  'syncing'
+              )
+            """
+        )
+        limit_clause = "" if limit is None else "LIMIT ?"
+        params: tuple[Any, ...] = () if limit is None else (limit,)
+        async with self._conn.execute(
+            f"""
+            SELECT r.id
+            FROM runs r
+            JOIN run_artifacts ra ON ra.run_id = r.id
+            WHERE r.status = 'completed'
+            {sync_filter}
+            ORDER BY r.created_at DESC
+            {limit_clause}
+            """,
+            params,
+        ) as cursor:
+            rows = await cursor.fetchall()
+        return [str(row["id"]) for row in rows]
+
     async def save_run_artifacts(self, run_id: str, artifacts: DiscoveryRunArtifacts) -> str:
         """Persist a canonical artifact bundle for a run and return its stable hash."""
         sync_info = artifacts.manifest.sync or DiscoverySyncInfo(local_run_id=run_id)

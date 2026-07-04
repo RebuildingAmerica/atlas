@@ -123,6 +123,8 @@ unsupported claim because it appeared in an enterprise workflow.
 The app workflow is backed by API surfaces for teams that need automation:
 
 - `POST /api/discovery-runs/syncs` syncs Scout discovery artifacts into Atlas.
+  The response includes the remote run id, entry visibility receipts, and enough
+  link data for Scout to send users back to `/discovery?run=<remote_run_id>`.
 - `GET /api/orgs/{org_id}/briefs` lists workspace briefs.
 - `GET /api/orgs/{org_id}/briefs/{brief_id}/export` returns a source-linked
   evidence export.

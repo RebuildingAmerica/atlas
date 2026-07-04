@@ -43,6 +43,7 @@ __all__ = [
     "RankedEntry",
     "RawEntry",
     "RunCheckpoint",
+    "SyncedEntryLink",
 ]
 
 
@@ -271,6 +272,22 @@ class DiscoveryRunSyncRequest(BaseModel):
     )
 
 
+class SyncedEntryLink(BaseModel):
+    """Developer-visible receipt for one entry persisted from a run sync."""
+
+    id: str = Field(..., description="Atlas entry identifier.")
+    name: str = Field(..., description="Display name of the persisted entry.")
+    type: str = Field(..., description="Atlas entry type.")
+    slug: str | None = Field(None, description="Public profile slug when one is available.")
+    visibility: Literal[
+        "public",
+        "held_for_review",
+        "workspace_private",
+        "existing_shared",
+    ] = Field(..., description="Where the synced entry can be seen after sync.")
+    url: str | None = Field(None, description="Relative Atlas URL for entries with a visible page.")
+
+
 class DiscoveryRunSyncResponse(BaseModel):
     """Atlas response describing the result of syncing a run bundle."""
 
@@ -282,6 +299,10 @@ class DiscoveryRunSyncResponse(BaseModel):
     duplicate: bool = Field(
         default=False,
         description="Whether this sync was treated as an idempotent replay of an existing bundle.",
+    )
+    entry_links: list[SyncedEntryLink] = Field(
+        default_factory=list,
+        description="Developer-visible entry receipts with visibility and profile links.",
     )
 
 

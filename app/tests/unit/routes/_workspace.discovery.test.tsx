@@ -60,12 +60,14 @@ describe("routes/_workspace/discovery", () => {
         issue_areas: "housing_affordability",
         location: "Kansas City, MO",
         research_goal: "partner_scan",
+        run: "run_123",
         state: "mo",
       }),
     ).toEqual({
       issue_areas: "housing_affordability",
       location: "Kansas City, MO",
       research_goal: "partner_scan",
+      run: "run_123",
       state: "mo",
     });
     expect(validator.parse({ research_goal: "not_a_goal" })).toEqual({});
@@ -110,6 +112,7 @@ describe("routes/_workspace/discovery", () => {
       issue_areas: "housing_affordability",
       location: "Kansas City, MO",
       research_goal: "partner_scan",
+      run: "run_123",
       state: "MO",
     });
 
@@ -127,6 +130,7 @@ describe("routes/_workspace/discovery", () => {
         },
         initialRuns: { items: [], total: 0 },
         initialTaxonomy: {},
+        selectedRunId: "run_123",
       },
       undefined,
     );

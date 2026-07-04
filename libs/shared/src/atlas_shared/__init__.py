@@ -25,6 +25,7 @@ from atlas_shared.schemas import (
     RankedEntry,
     RawEntry,
     RunCheckpoint,
+    SyncedEntryLink,
 )
 from atlas_shared.taxonomy import (
     ALL_ISSUE_SLUGS,
@@ -58,6 +59,7 @@ __all__ = [
     "RankedEntry",
     "RawEntry",
     "RunCheckpoint",
+    "SyncedEntryLink",
     # taxonomy
     "ALL_ISSUE_SLUGS",
     "DOMAINS",

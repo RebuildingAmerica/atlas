@@ -244,10 +244,22 @@ def test_discovery_run_sync_payload_and_hash() -> None:
         sync_status="synced",
         entries_persisted=2,
         sources_persisted=3,
+        entry_links=[
+            {
+                "id": "entry_123",
+                "name": "Prairie Workers Cooperative",
+                "type": "organization",
+                "slug": "prairie-workers-cooperative-1234",
+                "visibility": "workspace_private",
+                "url": "/profiles/organizations/prairie-workers-cooperative-1234",
+            }
+        ],
     )
 
     assert payload.artifacts.manifest.runner == "atlas-scout"
     assert response.run_id == "remote_456"
+    assert response.entry_links[0].visibility == "workspace_private"
+    assert response.entry_links[0].url == "/profiles/organizations/prairie-workers-cooperative-1234"
     assert first_hash == second_hash
 
 

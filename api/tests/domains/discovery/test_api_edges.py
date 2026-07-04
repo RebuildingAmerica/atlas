@@ -21,6 +21,7 @@ from atlas_shared import (
 from fastapi import HTTPException
 
 from atlas.domains.access.principals import AuthenticatedActor
+from atlas.domains.catalog.models.ownership import OwnershipCRUD
 from atlas.domains.discovery import api as discovery_api
 from atlas.domains.discovery.models import (
     DiscoveryJobCRUD,
@@ -393,6 +394,116 @@ def _bundle(
             ranked_entries=[],
         )
     )
+
+
+def _bundle_with_ranked_entry(*, local_run_id: str = "local_with_entry") -> DiscoveryRunSyncRequest:
+    """Build a sync bundle with one source-backed ranked lead."""
+    return DiscoveryRunSyncRequest(
+        artifacts=DiscoveryRunArtifacts(
+            manifest=DiscoveryRunManifest(
+                runner="atlas-scout",
+                run=DiscoveryRunInput(
+                    location_query="Wichita, KS",
+                    state="KS",
+                    issue_areas=["worker_cooperatives"],
+                ),
+                status="completed",
+                sync=DiscoverySyncInfo(local_run_id=local_run_id, sync_status="ready"),
+            ),
+            stats=DiscoveryRunStats(
+                queries_generated=1,
+                sources_fetched=1,
+                sources_processed=1,
+                entries_extracted=1,
+                entries_after_dedup=1,
+                entries_confirmed=1,
+            ),
+            sources=[
+                PageContent(
+                    url="https://example.com/co-op",
+                    title="Prairie workers launch co-op",
+                    text="Prairie Workers Cooperative opened in Wichita.",
+                )
+            ],
+            ranked_entries=[
+                RankedEntry(
+                    entry=DeduplicatedEntry(
+                        name="Prairie Workers Cooperative",
+                        entry_type="organization",
+                        description="Worker-owned cooperative in Wichita.",
+                        city="Wichita",
+                        state="KS",
+                        issue_areas=["worker_cooperatives"],
+                        source_urls=["https://example.com/co-op"],
+                        source_contexts={
+                            "https://example.com/co-op": (
+                                "Prairie Workers Cooperative opened in Wichita."
+                            )
+                        },
+                    ),
+                    score=0.91,
+                )
+            ],
+        )
+    )
+
+
+@pytest.mark.asyncio
+async def test_sync_discovery_run_returns_entry_review_links_for_public_uploads(
+    test_db: object,
+) -> None:
+    """Public syncs should tell Scout which entries landed in review instead of public search."""
+    response = await discovery_api.sync_discovery_run(
+        _bundle_with_ranked_entry(),
+        response=None,
+        actor=_local_actor(),
+        db=test_db,
+        x_atlas_upload_target="public",
+    )
+
+    assert response.entries_persisted == 1
+    assert len(response.entry_links) == 1
+    link = response.entry_links[0]
+    assert link.name == "Prairie Workers Cooperative"
+    assert link.type == "organization"
+    assert link.visibility == "held_for_review"
+    assert link.url is None
+
+
+@pytest.mark.asyncio
+async def test_workspace_sync_attaches_run_and_entries_to_private_workspace(
+    test_db: object,
+) -> None:
+    """Workspace syncs should keep local worker output private to the user's workspace."""
+    actor = AuthenticatedActor(
+        user_id="workspace-user",
+        email="workspace@example.org",
+        auth_type="session",
+        org_id="org-123",
+    )
+
+    response = await discovery_api.sync_discovery_run(
+        _bundle_with_ranked_entry(local_run_id="workspace_local"),
+        response=None,
+        actor=actor,
+        db=test_db,
+        x_atlas_upload_target="workspace",
+        x_atlas_workspace_id="org-123",
+    )
+
+    assert len(response.entry_links) == 1
+    link = response.entry_links[0]
+    assert link.visibility == "workspace_private"
+
+    run_ownership = await OwnershipCRUD.get_ownership(test_db, response.run_id, "discovery_run")
+    assert run_ownership is not None
+    assert run_ownership.org_id == "org-123"
+    assert run_ownership.visibility == "private"
+
+    entry_ownership = await OwnershipCRUD.get_ownership(test_db, link.id, "entry")
+    assert entry_ownership is not None
+    assert entry_ownership.org_id == "org-123"
+    assert entry_ownership.visibility == "private"
 
 
 @pytest.mark.asyncio

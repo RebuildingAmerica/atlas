@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import AsyncGenerator  # noqa: TC003
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 from atlas_shared import (
     DiscoveryContributionRequest,
@@ -12,6 +12,8 @@ from atlas_shared import (
     DiscoveryRunStatus,
     DiscoveryRunSyncRequest,
     DiscoveryRunSyncResponse,
+    RankedEntry,
+    SyncedEntryLink,
     compute_artifact_hash,
 )
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response
@@ -41,7 +43,7 @@ from atlas.domains.discovery.schemas import (
     ScheduledRunResponse,
     ScheduledRunResult,
 )
-from atlas.models import DiscoveryRunCRUD, get_db_connection
+from atlas.models import DiscoveryRunCRUD, EntryCRUD, get_db_connection
 from atlas.platform.config import Settings, get_settings
 from atlas.platform.database import db as db_manager
 from atlas.platform.http.cache import apply_no_store_headers
@@ -63,6 +65,12 @@ router = APIRouter()
 __all__ = ["router"]
 
 SYNC_UPLOAD_TARGETS = frozenset({"public", "workspace"})
+SyncEntryVisibility = Literal[
+    "public",
+    "held_for_review",
+    "workspace_private",
+    "existing_shared",
+]
 
 
 def _validate_issue_areas(issue_areas: list[str]) -> None:
@@ -136,6 +144,135 @@ async def _ensure_workspace_run_ownership(
         visibility="private",
         created_by=actor.user_id,
     )
+
+
+def _entry_profile_path(*, entry_type: str, slug: str | None) -> str | None:
+    """Return the public profile path for visible entry types."""
+    if not slug:
+        return None
+    if entry_type == "person":
+        return f"/profiles/people/{slug}"
+    if entry_type == "organization":
+        return f"/profiles/organizations/{slug}"
+    return None
+
+
+def _entry_ids_from_run_summary(run: DiscoveryRunModel) -> list[str]:
+    """Recover persisted entry ids from a completed discovery run summary."""
+    summary = run.research_summary or {}
+    ranked_leads = summary.get("ranked_leads")
+    if not isinstance(ranked_leads, list):
+        return []
+
+    entry_ids: list[str] = []
+    for lead in ranked_leads:
+        if not isinstance(lead, dict):
+            continue
+        entry_id = lead.get("entry_id")
+        if isinstance(entry_id, str) and entry_id:
+            entry_ids.append(entry_id)
+    return entry_ids
+
+
+async def _entry_ids_from_artifacts(
+    db: aiosqlite.Connection,
+    ranked_entries: list[RankedEntry],
+) -> list[str]:
+    """Resolve persisted entry ids represented by an already-synced artifact bundle."""
+    entry_ids: list[str] = []
+    for ranked_entry in ranked_entries:
+        entry = ranked_entry.entry
+        candidates = await EntryCRUD.list(
+            db,
+            state=entry.state,
+            city=entry.city,
+            active_only=False,
+            limit=500,
+        )
+        match = next(
+            (
+                candidate
+                for candidate in candidates
+                if candidate.type == str(entry.entry_type)
+                and candidate.name.strip().lower() == entry.name.strip().lower()
+            ),
+            None,
+        )
+        if match is not None:
+            entry_ids.append(str(match.id))
+    return entry_ids
+
+
+async def _sync_entry_visibility(
+    db: aiosqlite.Connection,
+    *,
+    entry_id: str,
+    workspace_id: str | None,
+    actor: AuthenticatedActor,
+) -> SyncEntryVisibility:
+    """Resolve and, for workspace syncs, enforce the entry visibility receipt."""
+    is_public = await EntryCRUD.is_publicly_visible(db, entry_id)
+    if workspace_id is None:
+        return "public" if is_public else "held_for_review"
+
+    if is_public:
+        return "existing_shared"
+
+    ownership = await OwnershipCRUD.get_ownership(db, entry_id, "entry")
+    if ownership is not None:
+        if ownership.org_id != workspace_id and ownership.visibility == "private":
+            raise HTTPException(status_code=409, detail="Synced entry belongs to another workspace")
+        if ownership.org_id == workspace_id and ownership.visibility == "private":
+            return "workspace_private"
+        return "held_for_review"
+
+    await OwnershipCRUD.create_ownership(
+        db,
+        resource_id=entry_id,
+        resource_type="entry",
+        org_id=workspace_id,
+        visibility="private",
+        created_by=actor.user_id,
+    )
+    return "workspace_private"
+
+
+async def _sync_entry_links(
+    db: aiosqlite.Connection,
+    *,
+    entry_ids: list[str],
+    workspace_id: str | None,
+    actor: AuthenticatedActor,
+) -> list[SyncedEntryLink]:
+    """Build developer-visible links for entries persisted during a sync."""
+    links: list[SyncedEntryLink] = []
+    for entry_id in entry_ids:
+        entry = await EntryCRUD.get_by_id(db, entry_id)
+        if entry is None:
+            continue
+
+        visibility = await _sync_entry_visibility(
+            db,
+            entry_id=entry_id,
+            workspace_id=workspace_id,
+            actor=actor,
+        )
+        url = (
+            _entry_profile_path(entry_type=entry.type, slug=entry.slug)
+            if visibility in {"public", "existing_shared"}
+            else None
+        )
+        links.append(
+            SyncedEntryLink(
+                id=entry.id,
+                name=entry.name,
+                type=entry.type,
+                slug=entry.slug,
+                visibility=visibility,
+                url=url,
+            )
+        )
+    return links
 
 
 async def get_db(
@@ -330,6 +467,15 @@ async def sync_discovery_run(  # noqa: PLR0913
             workspace_id=sync_workspace_id,
             actor=actor,
         )
+        entry_ids = await _entry_ids_from_artifacts(db, req.artifacts.ranked_entries)
+        if not entry_ids:
+            entry_ids = _entry_ids_from_run_summary(existing_run)
+        entry_links = await _sync_entry_links(
+            db,
+            entry_ids=entry_ids,
+            workspace_id=sync_workspace_id,
+            actor=actor,
+        )
         apply_no_store_headers(response)
         return DiscoveryRunSyncResponse(
             run_id=existing_sync.remote_run_id,
@@ -338,6 +484,7 @@ async def sync_discovery_run(  # noqa: PLR0913
             entries_persisted=existing_run.entries_confirmed,
             sources_persisted=existing_run.sources_processed,
             duplicate=True,
+            entry_links=entry_links,
         )
 
     remote_run_id = sync_info.remote_run_id
@@ -366,6 +513,12 @@ async def sync_discovery_run(  # noqa: PLR0913
             workspace_id=sync_workspace_id,
             actor=actor,
         )
+        entry_links = await _sync_entry_links(
+            db,
+            entry_ids=confirmed_entry_ids,
+            workspace_id=sync_workspace_id,
+            actor=actor,
+        )
         await DiscoveryRunSyncCRUD.create(
             db,
             local_run_id=sync_info.local_run_id,
@@ -387,6 +540,7 @@ async def sync_discovery_run(  # noqa: PLR0913
         entries_persisted=len(confirmed_entry_ids),
         sources_persisted=sources_persisted,
         duplicate=False,
+        entry_links=entry_links,
     )
 
 

@@ -49,6 +49,13 @@ def test_cli_runs_sync_help():
     assert "--workspace" in result.output
 
 
+def test_cli_sync_help():
+    result = CliRunner().invoke(main, ["sync", "--help"])
+    assert result.exit_code == 0
+    assert "--all-ready" in result.output
+    assert "--target" in result.output
+
+
 def test_cli_runs_cancel_help():
     result = CliRunner().invoke(main, ["runs", "cancel", "--help"])
     assert result.exit_code == 0

@@ -9,6 +9,7 @@ interface DiscoverySearch {
   issue_areas?: string;
   location?: string;
   research_goal?: DiscoveryResearchGoal;
+  run?: string;
   state?: string;
 }
 
@@ -20,6 +21,7 @@ export const discoverySearchSchema = z
       .enum(["landscape_scan", "interview_leads", "partner_scan", "ecosystem_map"])
       .optional()
       .catch(undefined),
+    run: z.string().optional().catch(undefined),
     state: z.string().optional().catch(undefined),
   })
   .transform((search): DiscoverySearch => {
@@ -32,6 +34,9 @@ export const discoverySearchSchema = z
     }
     if (search.research_goal) {
       cleaned.research_goal = search.research_goal;
+    }
+    if (search.run) {
+      cleaned.run = search.run;
     }
     if (search.state) {
       cleaned.state = search.state;
@@ -62,12 +67,14 @@ export const Route = createFileRoute("/_workspace/discovery")({
 
 function DiscoveryRoute() {
   const { initialRuns, initialTaxonomy } = Route.useLoaderData();
-  const initialRequest = Route.useSearch();
+  const search = Route.useSearch();
+  const { run, ...initialRequest } = search;
   return (
     <DiscoveryPage
       initialRequest={initialRequest}
       initialRuns={initialRuns}
       initialTaxonomy={initialTaxonomy}
+      selectedRunId={run}
     />
   );
 }

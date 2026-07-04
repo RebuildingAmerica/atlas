@@ -108,6 +108,16 @@ async def test_sync_run_artifacts_posts_bundle_payload() -> None:
                 "entries_persisted": 1,
                 "sources_persisted": 1,
                 "duplicate": False,
+                "entry_links": [
+                    {
+                        "id": "entry_123",
+                        "name": "Prairie Workers Cooperative",
+                        "type": "organization",
+                        "slug": None,
+                        "visibility": "held_for_review",
+                        "url": None,
+                    }
+                ],
             },
         )
     )
@@ -131,6 +141,8 @@ async def test_sync_run_artifacts_posts_bundle_payload() -> None:
 
     assert result.run_id == "remote_123"
     assert result.sync_status == "synced"
+    assert result.entry_links[0].name == "Prairie Workers Cooperative"
+    assert result.entry_links[0].visibility == "held_for_review"
     assert route.called
 
 

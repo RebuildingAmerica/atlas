@@ -16,7 +16,7 @@ from rich.console import Console
 
 import atlas_scout.cli as cli_module
 from atlas_scout.auth import ScoutSession, ScoutTokenExchange
-from atlas_scout.cli import _runs_sync
+from atlas_scout.cli import _runs_sync, _should_sync_after_run
 from atlas_scout.config import ContributionConfig, ScoutConfig, StoreConfig
 from atlas_scout.store import ScoutStore
 
@@ -73,6 +73,61 @@ def _workspace_session() -> ScoutSession:
         user_email="user@example.org",
         default_upload_target="workspace",
         workspace_id="org-123",
+    )
+
+
+def test_should_sync_after_run_defaults_to_logged_in_artifact_runs(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Logged-in runs with canonical artifacts should sync without extra flags."""
+    monkeypatch.setattr("atlas_scout.cli.load_session", _workspace_session)
+
+    assert (
+        _should_sync_after_run(
+            _config(tmp_path),
+            result_artifacts_available=True,
+            sync_after_run=None,
+        )
+        is True
+    )
+
+
+def test_should_sync_after_run_skips_duplicates_and_missing_artifacts(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Manual opt-out, API-key contribution mode, and missing artifacts should not auto-sync."""
+    monkeypatch.setattr("atlas_scout.cli.load_session", _workspace_session)
+
+    assert (
+        _should_sync_after_run(
+            _config(tmp_path),
+            result_artifacts_available=True,
+            sync_after_run=False,
+        )
+        is False
+    )
+    assert (
+        _should_sync_after_run(
+            ScoutConfig(
+                contribution=ContributionConfig(
+                    enabled=True,
+                    api_key="key",
+                    atlas_url="https://atlas.example",
+                ),
+                store=StoreConfig(path=str(tmp_path / "scout.db")),
+            ),
+            result_artifacts_available=True,
+            sync_after_run=None,
+        )
+        is False
+    )
+    assert (
+        _should_sync_after_run(
+            _config(tmp_path),
+            result_artifacts_available=False,
+            sync_after_run=None,
+        )
+        is False
     )
 
 

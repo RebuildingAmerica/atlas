@@ -34,6 +34,7 @@ interface DiscoveryPageProps {
   initialRuns?: DiscoveryRunListResponse;
   initialRequest?: DiscoveryPrefillRequest;
   initialTaxonomy?: TaxonomyResponse;
+  selectedRunId?: string;
 }
 
 export interface DiscoveryPrefillRequest {
@@ -255,6 +256,7 @@ export function DiscoveryPage({
   initialRequest,
   initialRuns,
   initialTaxonomy,
+  selectedRunId,
 }: DiscoveryPageProps = {}) {
   const atlasSession = useAtlasSession();
   const runsQuery = useDiscoveryRuns({ initialData: initialRuns });
@@ -382,6 +384,7 @@ export function DiscoveryPage({
         isLoading={runsQuery.isLoading}
         onCreateBrief={handleCreateBrief}
         runs={latestRuns}
+        selectedRunId={selectedRunId}
       />
 
       <ResearchOperationsPanel isLoading={jobQueueQuery.isLoading} queue={jobQueueQuery.data} />

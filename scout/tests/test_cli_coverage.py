@@ -202,6 +202,63 @@ def test_run_overrides_provider_and_model(tmp_path: Path, monkeypatch: pytest.Mo
     assert captured["direct_urls"] == ["https://example.com"]
 
 
+def test_sync_command_invokes_turnkey_helper(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Top-level sync should route through the turnkey multi-run helper."""
+    captured: dict[str, Any] = {}
+
+    async def fake_sync_runs(
+        config: ScoutConfig,
+        run_ids: tuple[str, ...],
+        *,
+        all_ready: bool,
+        atlas_url: str | None,
+        api_key: str | None,
+        target: str | None,
+        workspace: str | None,
+    ) -> None:
+        captured.update(
+            {
+                "config": config,
+                "run_ids": run_ids,
+                "all_ready": all_ready,
+                "atlas_url": atlas_url,
+                "api_key": api_key,
+                "target": target,
+                "workspace": workspace,
+            }
+        )
+
+    monkeypatch.setattr(cli_module, "load_config", lambda _path: _make_config(tmp_path))
+    monkeypatch.setattr(cli_module, "_sync_runs", fake_sync_runs)
+
+    result = CliRunner().invoke(
+        main,
+        [
+            "sync",
+            "run_1",
+            "run_2",
+            "--atlas-url",
+            "https://atlas.example",
+            "--api-key",
+            "key_123",
+            "--target",
+            "workspace",
+            "--workspace",
+            "org_123",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert captured["run_ids"] == ("run_1", "run_2")
+    assert captured["all_ready"] is False
+    assert captured["atlas_url"] == "https://atlas.example"
+    assert captured["api_key"] == "key_123"
+    assert captured["target"] == "workspace"
+    assert captured["workspace"] == "org_123"
+
+
 def test_run_reads_urls_and_prompt_from_files(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

@@ -18,6 +18,8 @@ from rich.console import Console
 
 import atlas_scout.cli as cli_module
 from atlas_scout.cli import (
+    ScoutSyncError,
+    _resolve_sync_run_ids,
     _runs_inspect,
     _runs_list,
     _runs_sync,
@@ -85,6 +87,16 @@ async def test_runs_list_empty(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
     await store.close()
     await _runs_list(config, limit=5)
     assert "No runs found" in output.getvalue()
+
+
+@pytest.mark.asyncio
+async def test_resolve_sync_run_ids_rejects_explicit_all_ready(tmp_path: Path) -> None:
+    with pytest.raises(ScoutSyncError, match="explicit run ids or --all-ready"):
+        await _resolve_sync_run_ids(
+            _make_config(tmp_path),
+            run_ids=("run_1",),
+            all_ready=True,
+        )
 
 
 @pytest.mark.asyncio
@@ -336,6 +348,8 @@ async def test_runs_sync_success_reports_status(
     run_id = await _seed_run_with_artifacts(config)
 
     async def fake_sync(_artifacts: Any, *, atlas_url: str, api_key: str) -> Any:  # noqa: ARG001
+        from atlas_shared import SyncedEntryLink
+
         from atlas_scout.steps.contribute import ContributionResult
 
         return ContributionResult(
@@ -346,6 +360,16 @@ async def test_runs_sync_success_reports_status(
             run_id="remote-123",
             sync_status="synced",
             duplicate=False,
+            entry_links=[
+                SyncedEntryLink(
+                    id="entry_123",
+                    name="Prairie Workers Cooperative",
+                    type="organization",
+                    slug="prairie-workers-cooperative-1234",
+                    visibility="public",
+                    url="/profiles/organizations/prairie-workers-cooperative-1234",
+                )
+            ],
         )
 
     monkeypatch.setattr("atlas_scout.steps.contribute.sync_run_artifacts", fake_sync)
@@ -354,6 +378,8 @@ async def test_runs_sync_success_reports_status(
     rendered = output.getvalue()
     assert "Synced" in rendered
     assert "remote-123" in rendered
+    assert "Prairie Workers Cooperative" in rendered
+    assert "https://x/profiles/organizations/prairie-workers-cooperative-1234" in rendered
 
 
 @pytest.mark.asyncio
