@@ -100,6 +100,28 @@ describe("routes/_public/profiles/people/$slug", () => {
     );
   });
 
+  it("uses the default social card when a person profile has no photo", async () => {
+    const routeModule = await import("@/routes/_public/profiles/people.$slug");
+    const { asRouteStub } = await import("@/../tests/helpers/router-harness");
+    const Route = asRouteStub(routeModule.Route);
+
+    const entry = { name: "Jane", slug: "jane", description: null, photo_url: " " };
+    if (!Route.options.head) throw new Error("Expected head");
+    const headPayload = Route.options.head({ loaderData: { entry } }) as PageHead;
+    expect(headPayload.meta).toEqual(
+      expect.arrayContaining([
+        {
+          property: "og:image",
+          content: "https://atlas.rebuildingamerica.com/social/atlas-card.png",
+        },
+        {
+          name: "twitter:image",
+          content: "https://atlas.rebuildingamerica.com/social/atlas-card.png",
+        },
+      ]),
+    );
+  });
+
   it("renders PersonProfilePage with the loader entry", async () => {
     const { readRouterMocks, asRouteStub } = await import("@/../tests/helpers/router-harness");
     const router = readRouterMocks();

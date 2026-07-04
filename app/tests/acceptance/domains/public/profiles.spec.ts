@@ -1,4 +1,42 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type APIRequestContext } from "@playwright/test";
+
+interface ProfileSsrExpectation {
+  heading: string;
+  path: string;
+  schemaType: "Person" | "Organization";
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function parseJsonLdScripts(html: string): Record<string, unknown>[] {
+  return [...html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)]
+    .map((match) => JSON.parse(match[1] ?? "{}") as Record<string, unknown>)
+    .filter((jsonLd) => Object.keys(jsonLd).length > 0);
+}
+
+async function expectProfileSsrHtml(
+  request: APIRequestContext,
+  { heading, path, schemaType }: ProfileSsrExpectation,
+) {
+  const response = await request.get(path);
+  expect(response.status(), `expected 200 for ${path}`).toBeLessThan(400);
+  const html = await response.text();
+  expect(html, `expected main landmark in SSR HTML for ${path}`).toMatch(/<main\b/);
+  expect(html, `expected h1 ${heading} in SSR HTML for ${path}`).toMatch(
+    new RegExp(`<h1\\b[\\s\\S]*${escapeRegExp(heading)}[\\s\\S]*<\\/h1>`),
+  );
+  expect(parseJsonLdScripts(html)).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        "@type": schemaType,
+        name: heading,
+        url: `https://atlas.rebuildingamerica.com${path}`,
+      }),
+    ]),
+  );
+}
 
 test.describe("public profile routes", () => {
   test("renders the redesigned person profile with hero, work, evidence, and network sections", async ({
@@ -120,5 +158,16 @@ test.describe("public profile routes", () => {
         expect(html, `expected ${needle} in SSR HTML for ${path}`).toMatch(needle);
       }
     }
+
+    await expectProfileSsrHtml(request, {
+      path: "/profiles/people/maya-thompson",
+      heading: "Maya Thompson",
+      schemaType: "Person",
+    });
+    await expectProfileSsrHtml(request, {
+      path: "/profiles/organizations/eastside-housing-network",
+      heading: "Eastside Housing Network",
+      schemaType: "Organization",
+    });
   });
 });
