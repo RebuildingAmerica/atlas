@@ -9,6 +9,7 @@ import type {
   OrgWatchResponseResourceType,
   OrgWatchStatusResponse,
 } from "@/lib/generated/atlas";
+import { requestWorkspaceApi, requireActiveWorkspaceId } from "./workspace-api";
 
 export type WorkspaceWatchResourceType = OrgWatchResponseResourceType;
 export type WorkspaceWatchNotificationPreference = OrgWatchRequestNotificationPreference;
@@ -33,6 +34,7 @@ export interface WorkspaceWatchListItem {
 
 export interface WorkspaceWatchCollection {
   items: WorkspaceWatchListItem[];
+  orgId: string;
   total: number;
 }
 
@@ -42,29 +44,7 @@ const workspaceWatchInputSchema = z.object({
   resourceType: z.enum(["entry", "coverage_target"]),
 });
 
-async function loadWatchServerModules() {
-  if (import.meta.env.SSR) {
-    const [sessionState, apiClient] = await Promise.all([
-      import("@/domains/access/server/session-state"),
-      import("@/domains/discovery/server/api-client"),
-    ]);
-    return { sessionState, apiClient };
-  }
-
-  throw new Error("Workspace watch server modules are only available on the server.");
-}
-
-async function requireActiveWorkspaceId(): Promise<string> {
-  const { sessionState } = await loadWatchServerModules();
-  const { requireReadyAtlasSessionState } = sessionState;
-  const session = await requireReadyAtlasSessionState();
-  const activeWorkspaceId = session.workspace.activeOrganization?.id;
-  if (!activeWorkspaceId) {
-    throw new Error("Open a workspace before loading workspace watches.");
-  }
-
-  return activeWorkspaceId;
-}
+type WorkspaceApiRequester = <T>(path: string, init?: RequestInit) => Promise<T>;
 
 function watchPath(orgId: string, input: WorkspaceWatchInput): string {
   return `/orgs/${encodeURIComponent(orgId)}/watches/${input.resourceType}/${encodeURIComponent(input.resourceId)}`;
@@ -95,7 +75,7 @@ function entryHref(entry: EntityDetailResponse): string | null {
 }
 
 async function enrichEntryWatch(
-  requestAtlasApi: <T>(path: string, init?: RequestInit) => Promise<T>,
+  requestAtlasApi: WorkspaceApiRequester,
   watch: WorkspaceWatch,
 ): Promise<WorkspaceWatchListItem> {
   const entry = await requestAtlasApi<EntityDetailResponse>(
@@ -111,7 +91,7 @@ async function enrichEntryWatch(
 }
 
 async function enrichCoverageTargetWatch(
-  requestAtlasApi: <T>(path: string, init?: RequestInit) => Promise<T>,
+  requestAtlasApi: WorkspaceApiRequester,
   orgId: string,
   watch: WorkspaceWatch,
 ): Promise<WorkspaceWatchListItem> {
@@ -137,10 +117,10 @@ async function enrichCoverageTargetWatch(
 export async function loadWorkspaceWatchStatusData(
   input: WorkspaceWatchInput,
 ): Promise<WorkspaceWatchStatus> {
-  const orgId = await requireActiveWorkspaceId();
-  const { apiClient } = await loadWatchServerModules();
-  const { requestAtlasApi } = apiClient;
-  return await requestAtlasApi<WorkspaceWatchStatus>(watchPath(orgId, input));
+  const orgId = await requireActiveWorkspaceId(
+    "Open a workspace before loading workspace watches.",
+  );
+  return await requestWorkspaceApi<WorkspaceWatchStatus>(watchPath(orgId, input));
 }
 
 /**
@@ -149,23 +129,24 @@ export async function loadWorkspaceWatchStatusData(
  * @returns Watch rows enriched with actor or coverage target labels and links.
  */
 export async function loadWorkspaceWatchesData(): Promise<WorkspaceWatchCollection> {
-  const orgId = await requireActiveWorkspaceId();
-  const { apiClient } = await loadWatchServerModules();
-  const { requestAtlasApi } = apiClient;
-  const collection = await requestAtlasApi<WorkspaceWatchBaseCollection>(
+  const orgId = await requireActiveWorkspaceId(
+    "Open a workspace before loading workspace watches.",
+  );
+  const collection = await requestWorkspaceApi<WorkspaceWatchBaseCollection>(
     `/orgs/${encodeURIComponent(orgId)}/watches`,
   );
   const items = await Promise.all(
     collection.items.map((watch) => {
       if (watch.resource_type === "entry") {
-        return enrichEntryWatch(requestAtlasApi, watch);
+        return enrichEntryWatch(requestWorkspaceApi, watch);
       }
-      return enrichCoverageTargetWatch(requestAtlasApi, orgId, watch);
+      return enrichCoverageTargetWatch(requestWorkspaceApi, orgId, watch);
     }),
   );
 
   return {
     items,
+    orgId,
     total: collection.total,
   };
 }
@@ -179,10 +160,10 @@ export async function loadWorkspaceWatchesData(): Promise<WorkspaceWatchCollecti
 export async function watchWorkspaceResourceData(
   input: WorkspaceWatchInput,
 ): Promise<WorkspaceWatch> {
-  const orgId = await requireActiveWorkspaceId();
-  const { apiClient } = await loadWatchServerModules();
-  const { requestAtlasApi } = apiClient;
-  return await requestAtlasApi<WorkspaceWatch>(watchPath(orgId, input), {
+  const orgId = await requireActiveWorkspaceId(
+    "Open a workspace before loading workspace watches.",
+  );
+  return await requestWorkspaceApi<WorkspaceWatch>(watchPath(orgId, input), {
     body: JSON.stringify(
       input.notificationPreference
         ? { notification_preference: input.notificationPreference }
@@ -198,10 +179,10 @@ export async function watchWorkspaceResourceData(
  * @param input - Resource type and id to stop watching.
  */
 export async function unwatchWorkspaceResourceData(input: WorkspaceWatchInput): Promise<void> {
-  const orgId = await requireActiveWorkspaceId();
-  const { apiClient } = await loadWatchServerModules();
-  const { requestAtlasApi } = apiClient;
-  await requestAtlasApi(watchPath(orgId, input), {
+  const orgId = await requireActiveWorkspaceId(
+    "Open a workspace before loading workspace watches.",
+  );
+  await requestWorkspaceApi(watchPath(orgId, input), {
     method: "DELETE",
   });
 }

@@ -105,6 +105,7 @@ describe("workspace watches server helpers", () => {
     const { loadWorkspaceWatchesData } = await import("@/domains/workspace/server/watches");
     const result = await loadWorkspaceWatchesData();
 
+    expect(result.orgId).toBe("org_123");
     expect(result.total).toBe(2);
     expect(result.items).toEqual([
       expect.objectContaining({

@@ -8,8 +8,8 @@
  * page can render honest empty states instead of leaking a raw error.
  */
 import { createServerFn } from "@tanstack/react-start";
-import { requestAtlasApi } from "@/domains/discovery/server/api-client";
 import type { DiscoveryRunListResponse } from "@/types";
+import { requestWorkspaceApi } from "./workspace-api";
 
 /** Number of days that counts as "this week" for the activity headline. */
 const WEEK_WINDOW_DAYS = 7;
@@ -422,9 +422,9 @@ export const loadResearchSummary = createServerFn({ method: "GET" }).handler(
   async (): Promise<ResearchSummary> => {
     try {
       const [lists, feed, runs] = await Promise.all([
-        requestAtlasApi<RawSavedList[]>("/lists"),
-        requestAtlasApi<RawFeedResponse>(`/feed/following?limit=${FEED_LIMIT}`),
-        requestAtlasApi<DiscoveryRunListResponse>("/discovery-runs"),
+        requestWorkspaceApi<RawSavedList[]>("/lists"),
+        requestWorkspaceApi<RawFeedResponse>(`/feed/following?limit=${FEED_LIMIT}`),
+        requestWorkspaceApi<DiscoveryRunListResponse>("/discovery-runs"),
       ]);
       return buildResearchSummary(lists, feed, runs, Date.now());
     } catch {

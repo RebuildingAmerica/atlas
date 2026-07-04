@@ -10,6 +10,7 @@ import type {
   CoverageTargetResponseStatus,
   CoverageUnderwritingReportResponse,
 } from "@/lib/generated/atlas";
+import { requestWorkspaceApi, requireActiveWorkspaceId } from "./workspace-api";
 
 export type CoverageTarget = CoverageTargetResponse;
 export type CoverageTargetCollection = CoverageTargetCollectionResponse;
@@ -52,40 +53,14 @@ const coverageTargetImportInputSchema = z.object({
   csv_text: z.string().min(1),
 });
 
-async function loadCoverageServerModules() {
-  if (import.meta.env.SSR) {
-    const [sessionState, apiClient] = await Promise.all([
-      import("@/domains/access/server/session-state"),
-      import("@/domains/discovery/server/api-client"),
-    ]);
-    return { sessionState, apiClient };
-  }
-
-  throw new Error("Coverage target server modules are only available on the server.");
-}
-
-async function requireActiveWorkspaceId(): Promise<string> {
-  const { sessionState } = await loadCoverageServerModules();
-  const { requireReadyAtlasSessionState } = sessionState;
-  const session = await requireReadyAtlasSessionState();
-  const activeWorkspaceId = session.workspace.activeOrganization?.id;
-  if (!activeWorkspaceId) {
-    throw new Error("Open a workspace before loading coverage targets.");
-  }
-
-  return activeWorkspaceId;
-}
-
 /**
  * Loads private coverage targets for the signed-in workspace.
  *
  * @returns Workspace coverage targets sorted by recent updates.
  */
 export async function loadWorkspaceCoverageTargetsData(): Promise<CoverageTargetCollection> {
-  const orgId = await requireActiveWorkspaceId();
-  const { apiClient } = await loadCoverageServerModules();
-  const { requestAtlasApi } = apiClient;
-  return await requestAtlasApi<CoverageTargetCollection>(
+  const orgId = await requireActiveWorkspaceId("Open a workspace before loading coverage targets.");
+  return await requestWorkspaceApi<CoverageTargetCollection>(
     `/orgs/${encodeURIComponent(orgId)}/coverage-targets`,
   );
 }
@@ -96,10 +71,8 @@ export async function loadWorkspaceCoverageTargetsData(): Promise<CoverageTarget
  * @returns Workspace id plus coverage targets for route rendering and exports.
  */
 export async function loadWorkspaceCoverageData(): Promise<CoverageWorkspacePayload> {
-  const orgId = await requireActiveWorkspaceId();
-  const { apiClient } = await loadCoverageServerModules();
-  const { requestAtlasApi } = apiClient;
-  const coverageTargets = await requestAtlasApi<CoverageTargetCollection>(
+  const orgId = await requireActiveWorkspaceId("Open a workspace before loading coverage targets.");
+  const coverageTargets = await requestWorkspaceApi<CoverageTargetCollection>(
     `/orgs/${encodeURIComponent(orgId)}/coverage-targets`,
   );
 
@@ -115,10 +88,8 @@ export async function loadWorkspaceCoverageData(): Promise<CoverageWorkspacePayl
 export async function loadWorkspaceCoverageTargetDetailData(
   targetId: string,
 ): Promise<CoverageTargetDetail> {
-  const orgId = await requireActiveWorkspaceId();
-  const { apiClient } = await loadCoverageServerModules();
-  const { requestAtlasApi } = apiClient;
-  return await requestAtlasApi<CoverageTargetDetail>(
+  const orgId = await requireActiveWorkspaceId("Open a workspace before loading coverage targets.");
+  return await requestWorkspaceApi<CoverageTargetDetail>(
     `/orgs/${encodeURIComponent(orgId)}/coverage-targets/${encodeURIComponent(targetId)}`,
   );
 }
@@ -129,10 +100,8 @@ export async function loadWorkspaceCoverageTargetDetailData(
  * @returns Public impact, data boundary, and source-linked coverage target rows.
  */
 export async function loadWorkspaceCoverageUnderwritingReportData(): Promise<CoverageUnderwritingReport> {
-  const orgId = await requireActiveWorkspaceId();
-  const { apiClient } = await loadCoverageServerModules();
-  const { requestAtlasApi } = apiClient;
-  return await requestAtlasApi<CoverageUnderwritingReport>(
+  const orgId = await requireActiveWorkspaceId("Open a workspace before loading coverage targets.");
+  return await requestWorkspaceApi<CoverageUnderwritingReport>(
     `/orgs/${encodeURIComponent(orgId)}/coverage-reports`,
   );
 }
@@ -146,10 +115,8 @@ export async function loadWorkspaceCoverageUnderwritingReportData(): Promise<Cov
 export async function createWorkspaceCoverageTargetData(
   input: CoverageTargetCreateInput,
 ): Promise<CoverageTarget> {
-  const orgId = await requireActiveWorkspaceId();
-  const { apiClient } = await loadCoverageServerModules();
-  const { requestAtlasApi } = apiClient;
-  return await requestAtlasApi<CoverageTarget>(
+  const orgId = await requireActiveWorkspaceId("Open a workspace before loading coverage targets.");
+  return await requestWorkspaceApi<CoverageTarget>(
     `/orgs/${encodeURIComponent(orgId)}/coverage-targets`,
     {
       body: JSON.stringify(input),
@@ -167,10 +134,8 @@ export async function createWorkspaceCoverageTargetData(
 export async function importWorkspaceCoverageTargetsData(
   input: CoverageTargetImportInput,
 ): Promise<CoverageTargetImportResult> {
-  const orgId = await requireActiveWorkspaceId();
-  const { apiClient } = await loadCoverageServerModules();
-  const { requestAtlasApi } = apiClient;
-  return await requestAtlasApi<CoverageTargetImportResult>(
+  const orgId = await requireActiveWorkspaceId("Open a workspace before loading coverage targets.");
+  return await requestWorkspaceApi<CoverageTargetImportResult>(
     `/orgs/${encodeURIComponent(orgId)}/coverage-targets/import`,
     {
       body: JSON.stringify(input),

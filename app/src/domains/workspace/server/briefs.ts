@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { requestWorkspaceApi, requireActiveWorkspaceId } from "./workspace-api";
 
 export type AtlasBriefConfidenceState = "corroborated" | "partial" | "unverified";
 export type AtlasBriefExportFormat = "json";
@@ -153,30 +154,6 @@ const briefUpdateServerInputSchema = briefUpdateInputSchema
     message: "At least one brief field is required.",
   });
 
-async function loadBriefServerModules() {
-  if (import.meta.env.SSR) {
-    const [sessionState, apiClient] = await Promise.all([
-      import("@/domains/access/server/session-state"),
-      import("@/domains/discovery/server/api-client"),
-    ]);
-    return { sessionState, apiClient };
-  }
-
-  throw new Error("Brief server modules are only available on the server.");
-}
-
-async function requireActiveWorkspaceId(): Promise<string> {
-  const { sessionState } = await loadBriefServerModules();
-  const { requireReadyAtlasSessionState } = sessionState;
-  const session = await requireReadyAtlasSessionState();
-  const activeWorkspaceId = session.workspace.activeOrganization?.id;
-  if (!activeWorkspaceId) {
-    throw new Error("Open a workspace before loading Atlas Briefs.");
-  }
-
-  return activeWorkspaceId;
-}
-
 /**
  * Loads a private Atlas Brief export for the signed-in workspace.
  *
@@ -189,10 +166,8 @@ export async function loadWorkspaceBriefExportData(briefId: string): Promise<Atl
     throw new Error("Brief id is required.");
   }
 
-  const orgId = await requireActiveWorkspaceId();
-  const { apiClient } = await loadBriefServerModules();
-  const { requestAtlasApi } = apiClient;
-  return await requestAtlasApi<AtlasBriefExport>(
+  const orgId = await requireActiveWorkspaceId("Open a workspace before loading Atlas Briefs.");
+  return await requestWorkspaceApi<AtlasBriefExport>(
     `/orgs/${encodeURIComponent(orgId)}/briefs/${encodeURIComponent(normalizedBriefId)}/export`,
   );
 }
@@ -203,10 +178,10 @@ export async function loadWorkspaceBriefExportData(briefId: string): Promise<Atl
  * @returns Workspace brief collection sorted by recent updates.
  */
 export async function loadWorkspaceBriefsData(): Promise<AtlasBriefCollection> {
-  const orgId = await requireActiveWorkspaceId();
-  const { apiClient } = await loadBriefServerModules();
-  const { requestAtlasApi } = apiClient;
-  return await requestAtlasApi<AtlasBriefCollection>(`/orgs/${encodeURIComponent(orgId)}/briefs`);
+  const orgId = await requireActiveWorkspaceId("Open a workspace before loading Atlas Briefs.");
+  return await requestWorkspaceApi<AtlasBriefCollection>(
+    `/orgs/${encodeURIComponent(orgId)}/briefs`,
+  );
 }
 
 /**
@@ -216,10 +191,8 @@ export async function loadWorkspaceBriefsData(): Promise<AtlasBriefCollection> {
  * @returns Created workspace brief artifact.
  */
 export async function createWorkspaceBriefData(input: AtlasBriefCreateInput): Promise<AtlasBrief> {
-  const orgId = await requireActiveWorkspaceId();
-  const { apiClient } = await loadBriefServerModules();
-  const { requestAtlasApi } = apiClient;
-  return await requestAtlasApi<AtlasBrief>(`/orgs/${encodeURIComponent(orgId)}/briefs`, {
+  const orgId = await requireActiveWorkspaceId("Open a workspace before loading Atlas Briefs.");
+  return await requestWorkspaceApi<AtlasBrief>(`/orgs/${encodeURIComponent(orgId)}/briefs`, {
     body: JSON.stringify(input),
     method: "POST",
   });
@@ -241,10 +214,8 @@ export async function updateWorkspaceBriefData(
     throw new Error("Brief id is required.");
   }
 
-  const orgId = await requireActiveWorkspaceId();
-  const { apiClient } = await loadBriefServerModules();
-  const { requestAtlasApi } = apiClient;
-  return await requestAtlasApi<AtlasBrief>(
+  const orgId = await requireActiveWorkspaceId("Open a workspace before loading Atlas Briefs.");
+  return await requestWorkspaceApi<AtlasBrief>(
     `/orgs/${encodeURIComponent(orgId)}/briefs/${encodeURIComponent(normalizedBriefId)}`,
     {
       body: JSON.stringify(input),

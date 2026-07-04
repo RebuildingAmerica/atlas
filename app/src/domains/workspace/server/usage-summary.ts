@@ -4,6 +4,7 @@ import type {
   OrgIntegrationMonitoringResponse,
   OrgUsageSummaryResponse,
 } from "@/lib/generated/atlas";
+import { requestWorkspaceApi, requireActiveWorkspaceId } from "./workspace-api";
 
 export type WorkspaceUsageSummary = OrgUsageSummaryResponse;
 export type WorkspaceIntegrationMonitoring = OrgIntegrationMonitoringResponse;
@@ -61,40 +62,14 @@ const usageAuditLogQueryInputSchema = z
   })
   .optional();
 
-async function loadUsageSummaryServerModules() {
-  if (import.meta.env.SSR) {
-    const [sessionState, apiClient] = await Promise.all([
-      import("@/domains/access/server/session-state"),
-      import("@/domains/discovery/server/api-client"),
-    ]);
-    return { sessionState, apiClient };
-  }
-
-  throw new Error("Usage summary server modules are only available on the server.");
-}
-
-async function requireActiveWorkspaceId(): Promise<string> {
-  const { sessionState } = await loadUsageSummaryServerModules();
-  const { requireReadyAtlasSessionState } = sessionState;
-  const session = await requireReadyAtlasSessionState();
-  const activeWorkspaceId = session.workspace.activeOrganization?.id;
-  if (!activeWorkspaceId) {
-    throw new Error("Open a workspace before loading renewal proof.");
-  }
-
-  return activeWorkspaceId;
-}
-
 /**
  * Loads renewal usage proof for the signed-in workspace.
  *
  * @returns Usage event totals and renewal signal rollups for workspace admins.
  */
 export async function loadWorkspaceUsageSummaryData(): Promise<WorkspaceUsageSummary> {
-  const orgId = await requireActiveWorkspaceId();
-  const { apiClient } = await loadUsageSummaryServerModules();
-  const { requestAtlasApi } = apiClient;
-  return await requestAtlasApi<WorkspaceUsageSummary>(
+  const orgId = await requireActiveWorkspaceId("Open a workspace before loading renewal proof.");
+  return await requestWorkspaceApi<WorkspaceUsageSummary>(
     `/orgs/${encodeURIComponent(orgId)}/usage-summary`,
   );
 }
@@ -108,16 +83,14 @@ export async function loadWorkspaceUsageSummaryData(): Promise<WorkspaceUsageSum
 export async function loadWorkspaceUsageAuditLogData(
   input: WorkspaceUsageAuditLogQueryInput = {},
 ): Promise<WorkspaceUsageAuditLog> {
-  const orgId = await requireActiveWorkspaceId();
+  const orgId = await requireActiveWorkspaceId("Open a workspace before loading renewal proof.");
   const limit = input.limit ?? 10;
   const offset = input.offset ?? 0;
   const params = new URLSearchParams({
     limit: String(limit),
     offset: String(offset),
   });
-  const { apiClient } = await loadUsageSummaryServerModules();
-  const { requestAtlasApi } = apiClient;
-  return await requestAtlasApi<WorkspaceUsageAuditLog>(
+  return await requestWorkspaceApi<WorkspaceUsageAuditLog>(
     `/orgs/${encodeURIComponent(orgId)}/usage-summary/audit-log?${params.toString()}`,
   );
 }
@@ -128,10 +101,8 @@ export async function loadWorkspaceUsageAuditLogData(
  * @returns API and MCP usage counts without request metadata or session replay.
  */
 export async function loadWorkspaceIntegrationMonitoringData(): Promise<WorkspaceIntegrationMonitoring> {
-  const orgId = await requireActiveWorkspaceId();
-  const { apiClient } = await loadUsageSummaryServerModules();
-  const { requestAtlasApi } = apiClient;
-  return await requestAtlasApi<WorkspaceIntegrationMonitoring>(
+  const orgId = await requireActiveWorkspaceId("Open a workspace before loading renewal proof.");
+  return await requestWorkspaceApi<WorkspaceIntegrationMonitoring>(
     `/orgs/${encodeURIComponent(orgId)}/usage-summary/integrations`,
   );
 }
@@ -145,10 +116,8 @@ export async function loadWorkspaceIntegrationMonitoringData(): Promise<Workspac
 export async function recordWorkspaceEvidenceOpenData(
   input: RecordWorkspaceEvidenceOpenInput,
 ): Promise<WorkspaceUsageEvent> {
-  const orgId = await requireActiveWorkspaceId();
-  const { apiClient } = await loadUsageSummaryServerModules();
-  const { requestAtlasApi } = apiClient;
-  return await requestAtlasApi<WorkspaceUsageEvent>(
+  const orgId = await requireActiveWorkspaceId("Open a workspace before loading renewal proof.");
+  return await requestWorkspaceApi<WorkspaceUsageEvent>(
     `/orgs/${encodeURIComponent(orgId)}/usage-summary/evidence-opens`,
     {
       body: JSON.stringify({
