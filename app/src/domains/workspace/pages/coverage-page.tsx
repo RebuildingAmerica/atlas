@@ -109,6 +109,16 @@ const REVIEW_STATE_DISPLAY: Record<
   },
 };
 
+const COVERAGE_TARGET_CSV_COLUMNS = [
+  "name",
+  "geography",
+  "issue_areas",
+  "actor_types",
+  "source_types",
+] as const;
+const COVERAGE_TARGET_CSV_EXAMPLE =
+  "Kansas City tenant power,Kansas City MO,housing_affordability,organization,news";
+
 function countLabel(count: number, singular: string, options?: CountLabelOptions): string {
   const plural = options?.plural ?? `${singular}s`;
   return `${count} ${count === 1 ? singular : plural}`;
@@ -431,16 +441,32 @@ export function CoveragePage({ initialCoverageTargets, orgId }: CoveragePageProp
 
         <section className="border-outline-variant bg-surface-container-lowest rounded-lg border p-4">
           <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto]">
-            <Textarea
-              autoComplete="off"
-              autoExpand
-              label="Coverage target CSV"
-              maxRows={10}
-              onChange={setImportCsvText}
-              placeholder="name,geography,issue_areas,actor_types,source_types"
-              rows={3}
-              value={importCsvText}
-            />
+            <div className="space-y-3">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="bg-surface-container-low rounded-lg p-3">
+                  <p className="type-label-small text-ink-muted">Required columns</p>
+                  <p className="type-body-small text-ink-strong mt-1 font-mono break-words">
+                    {COVERAGE_TARGET_CSV_COLUMNS.join(", ")}
+                  </p>
+                </div>
+                <div className="bg-surface-container-low rounded-lg p-3">
+                  <p className="type-label-small text-ink-muted">Example row</p>
+                  <p className="type-body-small text-ink-strong mt-1 font-mono break-all">
+                    {COVERAGE_TARGET_CSV_EXAMPLE}
+                  </p>
+                </div>
+              </div>
+              <Textarea
+                autoComplete="off"
+                autoExpand
+                label="Coverage target CSV"
+                maxRows={10}
+                onChange={setImportCsvText}
+                placeholder="name,geography,issue_areas,actor_types,source_types"
+                rows={3}
+                value={importCsvText}
+              />
+            </div>
             <div className="flex items-end">
               <button
                 type="button"

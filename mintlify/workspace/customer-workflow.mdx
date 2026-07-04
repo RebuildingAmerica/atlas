@@ -86,8 +86,10 @@ used.
 Coverage targets make the unknowns explicit. Each target names its geography,
 issue areas, actor types, source types, review state, status, gaps, next actions,
 linked discovery runs, and linked entries. The workspace can export coverage
-targets, import coverage targets, and produce a coverage report that separates
-public-good improvements from private workspace context.
+targets, import coverage targets from CSV, and produce a coverage report that
+separates public-good improvements from private workspace context. The import
+surface uses the columns `name`, `geography`, `issue_areas`, `actor_types`, and
+`source_types` so coverage setup can be checked before data is pasted.
 
 ### Monitoring
 

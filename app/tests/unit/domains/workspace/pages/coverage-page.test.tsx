@@ -266,4 +266,22 @@ describe("CoveragePage", () => {
     });
     expect(screen.getByText("2 targets imported.")).toBeInTheDocument();
   });
+
+  it("shows the coverage import CSV contract before import", () => {
+    const initialCoverageTargets = collection();
+    mocks.useCoverageTargets.mockReturnValue({ data: initialCoverageTargets });
+
+    render(<CoveragePage initialCoverageTargets={initialCoverageTargets} orgId="org_123" />);
+
+    expect(screen.getByText("Required columns")).toBeInTheDocument();
+    expect(
+      screen.getByText("name, geography, issue_areas, actor_types, source_types"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Example row")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Kansas City tenant power,Kansas City MO,housing_affordability,organization,news",
+      ),
+    ).toBeInTheDocument();
+  });
 });
