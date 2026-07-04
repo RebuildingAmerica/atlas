@@ -10,6 +10,7 @@ import {
 } from "@/domains/catalog/hooks/use-claims";
 import { loadEntryBySlugAny } from "@/domains/catalog/server/profiles/profile-loaders";
 import { PageLayout } from "@/platform/layout/page-layout";
+import { buildPageHead } from "@/platform/seo";
 import { Badge } from "@/platform/ui/badge";
 import { Button } from "@/platform/ui/button";
 
@@ -27,15 +28,12 @@ export const Route = createFileRoute("/_public/claim/$slug")({
   head: ({ loaderData }) => {
     const entry = loaderData?.entry;
     if (!entry) return {};
-    return {
-      meta: [
-        { title: `Claim ${entry.name} | Atlas` },
-        {
-          name: "description",
-          content: `Verify and manage the Atlas profile for ${entry.name}.`,
-        },
-      ],
-    };
+    return buildPageHead({
+      title: `Claim ${entry.name} | Atlas`,
+      description: `Verify and manage the Atlas profile for ${entry.name}.`,
+      path: `/claim/${entry.slug}`,
+      noindex: true,
+    });
   },
   component: ClaimRoute,
 });

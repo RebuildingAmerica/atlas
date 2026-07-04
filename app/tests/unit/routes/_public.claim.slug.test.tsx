@@ -96,8 +96,19 @@ describe("routes/_public/claim/$slug", () => {
     expect(Route.options.head({ loaderData: undefined })).toEqual({});
     const head = Route.options.head({ loaderData: { entry } }) as {
       meta: Record<string, string>[];
+      links: Record<string, string>[];
     };
-    expect(head.meta[0]).toEqual({ title: "Claim Acme | Atlas" });
+    expect(head.meta).toEqual(
+      expect.arrayContaining([
+        { title: "Claim Acme | Atlas" },
+        { property: "og:url", content: "https://atlas.rebuildingamerica.com/claim/acme" },
+        { name: "robots", content: "noindex,nofollow" },
+      ]),
+    );
+    expect(head.links).toContainEqual({
+      rel: "canonical",
+      href: "https://atlas.rebuildingamerica.com/claim/acme",
+    });
   });
 
   it("invites the user to sign in when no session is present", async () => {

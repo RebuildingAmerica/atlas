@@ -49,15 +49,26 @@ describe("routes/_public/pricing", () => {
     const { asRouteStub } = await import("@/../tests/helpers/router-harness");
     const Route = asRouteStub(routeModule.Route);
 
-    expect(Route.options.head?.({})).toEqual({
-      meta: [
+    const head = Route.options.head?.({}) as {
+      meta: Record<string, string>[];
+      links: Record<string, string>[];
+    };
+
+    expect(head.meta).toEqual(
+      expect.arrayContaining([
         { title: "Pricing | Atlas" },
         {
           name: "description",
           content:
             "Choose Atlas access for individual research, team workflows, and civic data reuse.",
         },
-      ],
+        { property: "og:url", content: "https://atlas.rebuildingamerica.com/pricing" },
+        { name: "twitter:card", content: "summary_large_image" },
+      ]),
+    );
+    expect(head.links).toContainEqual({
+      rel: "canonical",
+      href: "https://atlas.rebuildingamerica.com/pricing",
     });
   });
 

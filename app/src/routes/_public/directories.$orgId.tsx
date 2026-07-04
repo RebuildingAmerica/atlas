@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { GitBranch, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import { loadPublicDirectory } from "@/domains/catalog/server/public-directory";
+import { buildPageHead } from "@/platform/seo";
 import type { Entry } from "@/types";
 
 export const Route = createFileRoute("/_public/directories/$orgId")({
@@ -9,17 +10,16 @@ export const Route = createFileRoute("/_public/directories/$orgId")({
     const directory = await loadPublicDirectory({ data: { orgId: params.orgId } });
     return { directory };
   },
-  head: ({ loaderData }) => ({
-    meta: [
-      {
-        title: `${loaderData?.directory.title ?? "Public Directory"} | Atlas`,
-      },
-      {
-        name: "description",
-        content: "A source-linked public civic directory.",
-      },
-    ],
-  }),
+  head: ({ loaderData, params }) => {
+    const directory = loaderData?.directory;
+    if (!directory) return {};
+
+    return buildPageHead({
+      title: `${directory.title} | Atlas`,
+      description: "A source-linked public civic directory.",
+      path: `/directories/${params.orgId}`,
+    });
+  },
   component: PublicDirectoryPage,
 });
 

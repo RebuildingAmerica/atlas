@@ -22,15 +22,27 @@ describe("routes/_public/security", () => {
     const { Route } = await import("@/routes/_public/security");
     const { asRouteStub } = await import("@/../tests/helpers/router-harness");
     const route = asRouteStub(Route);
-    expect(route.options.head?.({})).toEqual({
-      meta: [
+
+    const head = route.options.head?.({}) as {
+      meta: Record<string, string>[];
+      links: Record<string, string>[];
+    };
+
+    expect(head.meta).toEqual(
+      expect.arrayContaining([
         { title: "Security | Atlas" },
         {
           name: "description",
           content:
             "Atlas security practices for account access, infrastructure, and responsible disclosure.",
         },
-      ],
+        { property: "og:url", content: "https://atlas.rebuildingamerica.com/security" },
+        { name: "twitter:card", content: "summary_large_image" },
+      ]),
+    );
+    expect(head.links).toContainEqual({
+      rel: "canonical",
+      href: "https://atlas.rebuildingamerica.com/security",
     });
   });
 });

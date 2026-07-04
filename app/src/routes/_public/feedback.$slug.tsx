@@ -5,6 +5,7 @@ import { z } from "zod";
 import { loadEntryBySlugAny } from "@/domains/catalog/server/profiles/profile-loaders";
 import { createEntityFlag } from "@/lib/generated/atlas";
 import { PageLayout } from "@/platform/layout/page-layout";
+import { buildPageHead } from "@/platform/seo";
 import { Button } from "@/platform/ui/button";
 
 const feedbackKindSchema = z.enum(["incorrect", "missing_context", "representation"]);
@@ -48,15 +49,12 @@ export const Route = createFileRoute("/_public/feedback/$slug")({
   head: ({ loaderData }) => {
     const entry = loaderData?.entry;
     if (!entry) return {};
-    return {
-      meta: [
-        { title: `Improve ${entry.name} | Atlas` },
-        {
-          name: "description",
-          content: `Submit source-linked corrections or missing context for ${entry.name}.`,
-        },
-      ],
-    };
+    return buildPageHead({
+      title: `Improve ${entry.name} | Atlas`,
+      description: `Submit source-linked corrections or missing context for ${entry.name}.`,
+      path: `/feedback/${entry.slug}`,
+      noindex: true,
+    });
   },
   component: FeedbackRoute,
 });

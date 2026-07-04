@@ -1,5 +1,5 @@
 import { EntryDetail } from "@/domains/catalog/components/entries/entry-detail";
-import { buildCanonicalUrl } from "@/platform/seo";
+import { buildPageHead } from "@/platform/seo";
 import type { Entry, EntrySlugScope } from "@/types";
 
 interface NonActorProfilePageProps {
@@ -40,23 +40,14 @@ export function buildNonActorProfileHead(config: NonActorRouteConfig) {
   return ({ loaderData }: NonActorHeadInput) => {
     const entry = loaderData?.entry;
     if (!entry) return {};
-    const canonicalUrl = buildCanonicalUrl(`${config.canonicalPath}/${entry.slug}`);
 
-    return {
-      meta: [
-        { title: `${entry.name} — ${config.singularLabel} | Atlas` },
-        { name: "description", content: entry.description?.slice(0, 160) ?? "" },
-        { property: "og:title", content: entry.name },
-        { property: "og:description", content: entry.description ?? "" },
-        { property: "og:type", content: "article" },
-        { property: "og:url", content: canonicalUrl },
-        { property: "og:site_name", content: "Atlas" },
-        { name: "twitter:card", content: "summary" },
-        { name: "twitter:title", content: entry.name },
-        { name: "twitter:description", content: entry.description?.slice(0, 160) ?? "" },
-      ],
-      links: [{ rel: "canonical", href: canonicalUrl }],
-    };
+    return buildPageHead({
+      title: `${entry.name} — ${config.singularLabel} | Atlas`,
+      socialTitle: entry.name,
+      description: entry.description?.slice(0, 160) ?? "",
+      path: `${config.canonicalPath}/${entry.slug}`,
+      type: "article",
+    });
   };
 }
 

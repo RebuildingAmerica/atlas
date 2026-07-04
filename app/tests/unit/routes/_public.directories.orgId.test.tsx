@@ -65,8 +65,31 @@ describe("routes/_public/directories/$orgId", () => {
     const Route = asRouteStub(routeModule.Route);
 
     if (!Route.options.loader) throw new Error("Expected loader");
-    await Route.options.loader({ params: { orgId: "tenant-kc" } });
+    const loaded = await Route.options.loader({ params: { orgId: "tenant-kc" } });
     expect(loadPublicDirectory).toHaveBeenCalledWith({ data: { orgId: "tenant-kc" } });
+
+    if (!Route.options.head) throw new Error("Expected head");
+    const head = Route.options.head({
+      loaderData: loaded,
+      params: { orgId: "tenant-kc" },
+    }) as {
+      meta: Record<string, string>[];
+      links: Record<string, string>[];
+    };
+    expect(head.meta).toEqual(
+      expect.arrayContaining([
+        { title: "Tenant KC civic directory | Atlas" },
+        {
+          property: "og:url",
+          content: "https://atlas.rebuildingamerica.com/directories/tenant-kc",
+        },
+        { name: "twitter:card", content: "summary_large_image" },
+      ]),
+    );
+    expect(head.links).toContainEqual({
+      rel: "canonical",
+      href: "https://atlas.rebuildingamerica.com/directories/tenant-kc",
+    });
   });
 
   it("renders entries, claim evidence, and the powered-by trust footer", async () => {

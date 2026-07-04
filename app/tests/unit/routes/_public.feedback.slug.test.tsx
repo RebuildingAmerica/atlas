@@ -78,6 +78,23 @@ describe("routes/_public/feedback/$slug", () => {
     if (!Route.options.loader) throw new Error("Expected loader");
     const data = await Route.options.loader({ params: { slug: "acme" } });
     expect(data).toEqual({ entry });
+
+    if (!Route.options.head) throw new Error("Expected head");
+    const head = Route.options.head({ loaderData: data }) as {
+      meta: Record<string, string>[];
+      links: Record<string, string>[];
+    };
+    expect(head.meta).toEqual(
+      expect.arrayContaining([
+        { title: "Improve Acme | Atlas" },
+        { property: "og:url", content: "https://atlas.rebuildingamerica.com/feedback/acme" },
+        { name: "robots", content: "noindex,nofollow" },
+      ]),
+    );
+    expect(head.links).toContainEqual({
+      rel: "canonical",
+      href: "https://atlas.rebuildingamerica.com/feedback/acme",
+    });
   });
 
   it("submits stale or incorrect feedback to the entity flag review loop", async () => {
