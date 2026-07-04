@@ -12,7 +12,7 @@ Welcome to the Atlas documentation hub. These docs follow [Diátaxis](https://di
 | Learn the project from zero | **Tutorial** | [Getting Started](./getting-started/README.md) |
 | Accomplish a specific task | **How-to guide** | [Development](./development/README.md) · [Deployment](./deployment/README.md) · [Runbooks](./runbooks/) |
 | Look a fact up quickly | **Reference** | [Data Model](./architecture/data-model.md) · [API Reference](./architecture/api-reference.md) · [Standards](./standards/README.md) |
-| Understand why it's built this way | **Explanation** | [Experience First](./experience-first.md) · [Product Vision](./the-atlas-product.md) · [System Design](./the-atlas-system-design.md) |
+| Understand why it's built this way | **Explanation** | [Experience First](./experience-first.md) · [Product Vision](./the-atlas-product.md) · [Product PRDs](./product/prds/README.md) · [System Design](./the-atlas-system-design.md) |
 
 ---
 
@@ -50,6 +50,7 @@ The discursive *why* behind Atlas. Read these to deepen understanding, not to co
 
 - **[Experience First](./experience-first.md) — Atlas's first principle, and the reason this nonprofit exists. Read it before contributing.**
 - [Product Vision](./the-atlas-product.md) — The problem, the users, what success looks like
+- [Product PRDs](./product/prds/README.md) — Journey-led product requirements for the public discovery experience and supporting platform
 - [System Design](./the-atlas-system-design.md) — Architecture, data model, and constraints, in narrative
 - [Issue Area Taxonomy](./the-atlas-taxonomy.md) — Why the issue areas are what they are
 - [Architecture explainers](./architecture/README.md) — System overview, pipeline, app, and SSO narratives
@@ -91,4 +92,4 @@ Quality is enforced automatically:
 
 ---
 
-Last updated: June 23, 2026
+Last updated: July 3, 2026

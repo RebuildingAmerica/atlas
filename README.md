@@ -49,6 +49,7 @@ Contributor documentation still lives in [`docs/`](./docs/README.md), and the ne
 | Section | Description |
 |---------|-------------|
 | [Getting Started](./docs/getting-started/README.md) | Installation, setup, and project orientation |
+| [Product PRDs](./docs/product/prds/README.md) | Experience-first product requirements and public discovery journeys |
 | [Architecture](./docs/architecture/README.md) | System design, data model, and pipeline |
 | [Development](./docs/development/README.md) | Workflow, building features, and testing |
 | [Standards](./docs/standards/README.md) | Code style, commit conventions, and API design |
