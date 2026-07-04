@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
 import { render, cleanup } from "@testing-library/react";
+import type { PageHead } from "@/platform/seo";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@tanstack/react-router", async () => {
@@ -49,15 +50,30 @@ describe("routes/_public/map", () => {
     const { asRouteStub } = await import("@/../tests/helpers/router-harness");
     const Route = asRouteStub(routeModule.Route);
 
-    expect(Route.options.head?.({})).toEqual({
-      meta: [
+    const head = Route.options.head?.({} as never) as PageHead;
+
+    expect(head.meta).toEqual(
+      expect.arrayContaining([
         { title: "Civic Map | Atlas" },
         {
           name: "description",
           content:
             "Map source-linked civic actors by place, issue area, public evidence, and relationship.",
         },
-      ],
+        {
+          property: "og:url",
+          content: "https://atlas.rebuildingamerica.com/map",
+        },
+        {
+          property: "og:image",
+          content: "https://atlas.rebuildingamerica.com/social/atlas-card.png",
+        },
+        { name: "twitter:card", content: "summary_large_image" },
+      ]),
+    );
+    expect(head.links).toContainEqual({
+      rel: "canonical",
+      href: "https://atlas.rebuildingamerica.com/map",
     });
   });
 

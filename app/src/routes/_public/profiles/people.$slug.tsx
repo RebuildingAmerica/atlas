@@ -10,7 +10,7 @@ import {
   loadProfileBySlug,
   loadProfileConnections,
 } from "@/domains/catalog/server/profiles/profile-loaders";
-import { buildCanonicalUrl } from "@/platform/seo";
+import { buildPageHead } from "@/platform/seo";
 
 export const Route = createFileRoute("/_public/profiles/people/$slug")({
   loader: async ({ params }) => {
@@ -23,22 +23,13 @@ export const Route = createFileRoute("/_public/profiles/people/$slug")({
   head: ({ loaderData }) => {
     const entry = loaderData?.entry;
     if (!entry) return {};
-    const canonicalUrl = buildCanonicalUrl(`/profiles/people/${entry.slug}`);
-    return {
-      meta: [
-        { title: `${entry.name} — Person | Atlas` },
-        { name: "description", content: entry.description?.slice(0, 160) ?? "" },
-        { property: "og:title", content: entry.name },
-        { property: "og:description", content: entry.description ?? "" },
-        { property: "og:type", content: "profile" },
-        { property: "og:url", content: canonicalUrl },
-        { property: "og:site_name", content: "Atlas" },
-        { name: "twitter:card", content: "summary" },
-        { name: "twitter:title", content: entry.name },
-        { name: "twitter:description", content: entry.description?.slice(0, 160) ?? "" },
-      ],
-      links: [{ rel: "canonical", href: canonicalUrl }],
-    };
+    return buildPageHead({
+      title: `${entry.name} — Person | Atlas`,
+      socialTitle: entry.name,
+      description: entry.description?.slice(0, 160) ?? "",
+      path: `/profiles/people/${entry.slug}`,
+      type: "profile",
+    });
   },
   component: PersonProfileRoute,
 });

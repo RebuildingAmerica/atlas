@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
 import { render, cleanup } from "@testing-library/react";
+import type { PageHead } from "@/platform/seo";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -60,15 +61,30 @@ describe("routes/_public/browse", () => {
 
     expect(Route.options.ssr).not.toBe(false);
     expect(Route.options.validateSearch).toBe(browseSearchSchema);
-    expect(Route.options.head?.({})).toEqual({
-      meta: [
+    const head = Route.options.head?.({} as never) as PageHead;
+
+    expect(head.meta).toEqual(
+      expect.arrayContaining([
         { title: "Browse | Atlas" },
         {
           name: "description",
           content:
             "Browse source-linked civic actors by place, issue, source type, and public evidence.",
         },
-      ],
+        {
+          property: "og:url",
+          content: "https://atlas.rebuildingamerica.com/browse",
+        },
+        {
+          property: "og:image",
+          content: "https://atlas.rebuildingamerica.com/social/atlas-card.png",
+        },
+        { name: "twitter:card", content: "summary_large_image" },
+      ]),
+    );
+    expect(head.links).toContainEqual({
+      rel: "canonical",
+      href: "https://atlas.rebuildingamerica.com/browse",
     });
   });
 

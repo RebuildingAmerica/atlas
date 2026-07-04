@@ -2,21 +2,19 @@ import { createFileRoute } from "@tanstack/react-router";
 import { MapPage, mapSearchSchema } from "@/domains/catalog";
 import { buildBrowseSearch } from "@/domains/catalog/search-state";
 import { loadMapPoints } from "@/domains/catalog/server/map-points";
+import { buildPageHead } from "@/platform/seo";
 import type { MapRouteSearch } from "@/domains/catalog/search-state";
 
 export const Route = createFileRoute("/_public/map")({
   ssr: false,
   validateSearch: mapSearchSchema,
-  head: () => ({
-    meta: [
-      { title: "Civic Map | Atlas" },
-      {
-        name: "description",
-        content:
-          "Map source-linked civic actors by place, issue area, public evidence, and relationship.",
-      },
-    ],
-  }),
+  head: () =>
+    buildPageHead({
+      title: "Civic Map | Atlas",
+      description:
+        "Map source-linked civic actors by place, issue area, public evidence, and relationship.",
+      path: "/map",
+    }),
   loaderDeps: ({ search }: { search: MapRouteSearch }) => ({ search }),
   loader: async ({ deps }: { deps: { search: MapRouteSearch } }) => {
     const filters = buildBrowseSearch(deps.search);

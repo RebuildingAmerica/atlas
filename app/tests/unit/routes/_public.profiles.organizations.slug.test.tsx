@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
 import { render, cleanup } from "@testing-library/react";
+import type { PageHead } from "@/platform/seo";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@tanstack/react-router", async () => {
@@ -59,12 +60,21 @@ describe("routes/_public/profiles/organizations/$slug", () => {
     expect(loaded).toEqual({ entry, connections });
 
     if (!Route.options.head) throw new Error("Expected head");
-    const headPayload = Route.options.head({ loaderData: { entry } } as never) as {
-      meta: Record<string, string>[];
-      links: Record<string, string>[];
-    };
+    const headPayload = Route.options.head({ loaderData: { entry } } as never) as PageHead;
     expect(headPayload.meta).toEqual(
       expect.arrayContaining([{ title: "Acme — Organization | Atlas" }]),
+    );
+    expect(headPayload.meta).toEqual(
+      expect.arrayContaining([
+        {
+          property: "og:image",
+          content: "https://atlas.rebuildingamerica.com/social/atlas-card.png",
+        },
+        {
+          name: "twitter:image",
+          content: "https://atlas.rebuildingamerica.com/social/atlas-card.png",
+        },
+      ]),
     );
     expect(headPayload.links[0]).toEqual({
       rel: "canonical",
@@ -89,9 +99,7 @@ describe("routes/_public/profiles/organizations/$slug", () => {
 
     const entry = { name: "Acme", slug: "acme", description: null };
     if (!Route.options.head) throw new Error("Expected head");
-    const headPayload = Route.options.head({ loaderData: { entry } } as never) as {
-      meta: Record<string, string>[];
-    };
+    const headPayload = Route.options.head({ loaderData: { entry } } as never) as PageHead;
     expect(headPayload.meta).toEqual(
       expect.arrayContaining([{ name: "description", content: "" }]),
     );

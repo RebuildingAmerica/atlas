@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { BrowsePage, browseSearchSchema } from "@/domains/catalog";
 import { buildBrowseSearch, type BrowseRouteSearch } from "@/domains/catalog/search-state";
 import { api } from "@/lib/api";
+import { buildPageHead } from "@/platform/seo";
 import type {
   EntryFilterParams,
   EntryListResponse,
@@ -43,16 +44,13 @@ export const Route = createFileRoute("/_public/browse")({
 
     return { initialEntries };
   },
-  head: () => ({
-    meta: [
-      { title: "Browse | Atlas" },
-      {
-        name: "description",
-        content:
-          "Browse source-linked civic actors by place, issue, source type, and public evidence.",
-      },
-    ],
-  }),
+  head: () =>
+    buildPageHead({
+      title: "Browse | Atlas",
+      description:
+        "Browse source-linked civic actors by place, issue, source type, and public evidence.",
+      path: "/browse",
+    }),
   component: BrowseRoute,
 });
 
