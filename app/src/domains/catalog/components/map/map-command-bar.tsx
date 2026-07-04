@@ -95,21 +95,22 @@ function PlaceOption({
   onPick: () => void;
 }) {
   return (
-    <li>
-      <button
-        id={option.id}
-        type="button"
-        role="option"
-        aria-selected={active}
-        onClick={onPick}
-        className={[
-          "hover:bg-surface-container-high flex w-full items-center gap-2.5 rounded-[0.7rem] px-2.5 py-2 text-left transition-colors",
-          active ? "bg-surface-container-high" : "",
-        ].join(" ")}
-      >
-        <MapPin className="text-ink-soft h-4 w-4 shrink-0" aria-hidden />
-        <span className="type-body-small text-ink-strong truncate">{option.place.label}</span>
-      </button>
+    <li
+      id={option.id}
+      role="option"
+      aria-selected={active}
+      tabIndex={-1}
+      onMouseDown={(event) => {
+        event.preventDefault();
+      }}
+      onClick={onPick}
+      className={[
+        "hover:bg-surface-container-high flex w-full cursor-pointer items-center gap-2.5 rounded-[0.7rem] px-2.5 py-2 text-left transition-colors",
+        active ? "bg-surface-container-high" : "",
+      ].join(" ")}
+    >
+      <MapPin className="text-ink-soft h-4 w-4 shrink-0" aria-hidden />
+      <span className="type-body-small text-ink-strong truncate">{option.place.label}</span>
     </li>
   );
 }
@@ -125,21 +126,22 @@ function ActorOption({
   onPick: () => void;
 }) {
   return (
-    <li>
-      <button
-        id={option.id}
-        type="button"
-        role="option"
-        aria-selected={active}
-        onClick={onPick}
-        className={[
-          "hover:bg-surface-container-high flex w-full items-center gap-2.5 rounded-[0.7rem] px-2.5 py-2 text-left transition-colors",
-          active ? "bg-surface-container-high" : "",
-        ].join(" ")}
-      >
-        <Users className="text-ink-soft h-4 w-4 shrink-0" aria-hidden />
-        <span className="type-body-small text-ink-strong truncate">{option.actor.name}</span>
-      </button>
+    <li
+      id={option.id}
+      role="option"
+      aria-selected={active}
+      tabIndex={-1}
+      onMouseDown={(event) => {
+        event.preventDefault();
+      }}
+      onClick={onPick}
+      className={[
+        "hover:bg-surface-container-high flex w-full cursor-pointer items-center gap-2.5 rounded-[0.7rem] px-2.5 py-2 text-left transition-colors",
+        active ? "bg-surface-container-high" : "",
+      ].join(" ")}
+    >
+      <Users className="text-ink-soft h-4 w-4 shrink-0" aria-hidden />
+      <span className="type-body-small text-ink-strong truncate">{option.actor.name}</span>
     </li>
   );
 }
@@ -214,7 +216,7 @@ export function MapCommandBar({
           <input
             role="combobox"
             aria-expanded={open}
-            aria-controls="map-command-menu"
+            aria-controls={hasMatches ? "map-command-menu" : undefined}
             aria-activedescendant={activeOption?.id}
             aria-autocomplete="list"
             aria-label="Search a place or find an actor"
@@ -266,14 +268,16 @@ export function MapCommandBar({
         </div>
 
         {open ? (
-          <div
-            id="map-command-menu"
-            className="bg-surface-container-high/97 shadow-soft border-border-strong absolute top-full right-0 left-0 z-10 mt-1.5 rounded-[0.9rem] border p-1.5 backdrop-blur-md"
-          >
+          <div className="bg-surface-container-high/97 shadow-soft border-border-strong absolute top-full right-0 left-0 z-10 mt-1.5 rounded-[0.9rem] border p-1.5 backdrop-blur-md">
             {hasMatches ? (
-              <ul role="listbox" aria-label="Places and actors" className="space-y-1">
+              <ul
+                id="map-command-menu"
+                role="listbox"
+                aria-label="Places and actors"
+                className="space-y-1"
+              >
                 {places.length > 0 ? (
-                  <li>
+                  <li role="presentation">
                     <ul role="group" aria-label="Places" className="space-y-0.5">
                       {placeOptions.map((option) => (
                         <PlaceOption
@@ -293,7 +297,7 @@ export function MapCommandBar({
                   </li>
                 ) : null}
                 {actors.length > 0 ? (
-                  <li>
+                  <li role="presentation">
                     <ul role="group" aria-label="Actors" className="space-y-0.5">
                       {actorOptions.map((option) => (
                         <ActorOption

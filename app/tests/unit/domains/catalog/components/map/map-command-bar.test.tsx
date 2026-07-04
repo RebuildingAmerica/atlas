@@ -123,12 +123,16 @@ describe("MapCommandBar", () => {
     const input = screen.getByRole("combobox");
 
     fireEvent.change(input, { target: { value: "Dallas" } });
+    const listbox = screen.getByRole("listbox");
     fireEvent.keyDown(input, { key: "ArrowDown" });
 
     const option = screen.getByRole("option", { name: /Dallas, TX/ });
     expect(option.id).not.toBe("");
+    expect(input.getAttribute("aria-controls")).toBe(listbox.id);
     expect(input.getAttribute("aria-activedescendant")).toBe(option.id);
     expect(option.getAttribute("aria-selected")).toBe("true");
+    expect(option.tagName).toBe("LI");
+    expect(option.getAttribute("tabindex")).toBe("-1");
 
     fireEvent.keyDown(input, { key: "Enter" });
 
