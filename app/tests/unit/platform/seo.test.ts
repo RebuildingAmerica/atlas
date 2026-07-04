@@ -8,6 +8,10 @@ describe("SEO helpers", () => {
     );
   });
 
+  it("builds the canonical origin for the root path", () => {
+    expect(buildCanonicalUrl("")).toBe("https://atlas.rebuildingamerica.com");
+  });
+
   it("uses the configured public origin for canonical URLs", () => {
     expect(
       buildCanonicalUrl("profiles/people/jane", {

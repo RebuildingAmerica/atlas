@@ -21,5 +21,9 @@ function configuredPublicOrigin(env: SeoEnv): string | null {
 export function buildCanonicalUrl(path: string, env: SeoEnv = import.meta.env): string {
   const origin = configuredPublicOrigin(env) ?? DEFAULT_PUBLIC_ORIGIN;
   const normalizedPath = trimSlashes(path);
+  if (!normalizedPath) {
+    return origin;
+  }
+
   return `${origin}/${normalizedPath}`;
 }

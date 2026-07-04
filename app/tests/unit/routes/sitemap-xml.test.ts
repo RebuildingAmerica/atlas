@@ -1,4 +1,9 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  buildSitemapEntry,
+  buildSitemapEntryListResponse,
+  readSitemapXml,
+} from "../../helpers/sitemap-harness";
 
 vi.mock("@tanstack/react-router", async () => {
   const harness = await import("@/../tests/helpers/router-harness");
@@ -17,6 +22,14 @@ vi.mock("@/lib/api", () => ({
 }));
 
 describe("routes/sitemap.xml", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
   it("emits an XML sitemap with profile URLs and skips entries without a slug", async () => {
     const { api } = await import("@/lib/api");
     vi.mocked(api.publicDirectories.list).mockResolvedValue({
@@ -32,41 +45,25 @@ describe("routes/sitemap.xml", () => {
       params: { entry_types?: string[] } | undefined,
     ) => {
       if (params?.entry_types?.includes("person")) {
-        return Promise.resolve({
-          data: [
-            {
-              type: "person",
-              slug: "jane-doe",
-              updated_at: "2024-04-01T12:34:56Z",
-            },
-            {
-              type: "person",
-              slug: null,
-              updated_at: "2024-04-01T12:34:56Z",
-            },
-          ],
-        });
+        return Promise.resolve(
+          buildSitemapEntryListResponse([
+            buildSitemapEntry({ type: "person", slug: "jane-doe" }),
+            buildSitemapEntry({ type: "person", slug: "" }),
+          ]),
+        );
       }
-      return Promise.resolve({
-        data: [
-          {
+      return Promise.resolve(
+        buildSitemapEntryListResponse([
+          buildSitemapEntry({
             type: "organization",
             slug: "acme",
             updated_at: "2024-04-02T00:00:00Z",
-          },
-        ],
-      });
+          }),
+        ]),
+      );
     }) as typeof api.entries.list);
 
-    const routeModule = await import("@/routes/sitemap[.]xml");
-    const { asRouteStub } = await import("@/../tests/helpers/router-harness");
-    const Route = asRouteStub(routeModule.Route);
-    const handlers = Route.options.server?.handlers;
-    if (!handlers?.GET) throw new Error("Expected GET handler");
-    const response = (await handlers.GET({})) as Response;
-
-    expect(response.headers.get("Content-Type")).toBe("application/xml; charset=utf-8");
-    const body = await response.text();
+    const body = await readSitemapXml();
     expect(body).toContain("https://atlas.rebuildingamerica.com/profiles/people/jane-doe");
     expect(body).toContain("https://atlas.rebuildingamerica.com/profiles/organizations/acme");
     expect(body).toContain("https://atlas.rebuildingamerica.com/directories/tenant-kc");
@@ -75,20 +72,80 @@ describe("routes/sitemap.xml", () => {
     expect(body).not.toContain("/profiles/people/null");
   });
 
+  it("paginates entry lists inside the public API limit", async () => {
+    const { api } = await import("@/lib/api");
+    vi.mocked(api.publicDirectories.list).mockResolvedValue({ directories: [] });
+    vi.mocked(api.entries.list).mockImplementation(((params) => {
+      if (params?.entry_types?.includes("person") && params.offset === 100) {
+        return Promise.resolve(
+          buildSitemapEntryListResponse(
+            [buildSitemapEntry({ type: "person", slug: "ada-lovelace" })],
+            {
+              limit: 100,
+              offset: 100,
+              total: 101,
+            },
+          ),
+        );
+      }
+
+      if (params?.entry_types?.includes("person")) {
+        return Promise.resolve(
+          buildSitemapEntryListResponse([buildSitemapEntry({ type: "person", slug: "jane-doe" })], {
+            hasMore: true,
+            limit: 100,
+            offset: 0,
+            total: 101,
+          }),
+        );
+      }
+
+      return Promise.resolve(
+        buildSitemapEntryListResponse(
+          [buildSitemapEntry({ type: "organization", slug: "prairie-network" })],
+          {
+            limit: 100,
+            offset: 0,
+            total: 1,
+          },
+        ),
+      );
+    }) as typeof api.entries.list);
+
+    const body = await readSitemapXml();
+    const entryListCalls = vi.mocked(api.entries.list).mock.calls.map(([params]) => params);
+
+    expect(body).toContain("/profiles/people/jane-doe");
+    expect(body).toContain("/profiles/people/ada-lovelace");
+    expect(entryListCalls).toEqual([
+      { entry_types: ["person"], limit: 100, offset: 0 },
+      { entry_types: ["organization"], limit: 100, offset: 0 },
+      { entry_types: ["person"], limit: 100, offset: 100 },
+    ]);
+    expect(entryListCalls.every((params) => params?.limit === 100)).toBe(true);
+  });
+
+  it("uses the configured public origin for sitemap URLs", async () => {
+    vi.stubEnv("ATLAS_PUBLIC_URL", "https://preview.atlas.example/app");
+    const { api } = await import("@/lib/api");
+    vi.mocked(api.publicDirectories.list).mockResolvedValue({ directories: [] });
+    vi.mocked(api.entries.list).mockResolvedValue(
+      buildSitemapEntryListResponse([buildSitemapEntry({ type: "person", slug: "jane-doe" })]),
+    );
+
+    const body = await readSitemapXml();
+
+    expect(body).toContain("https://preview.atlas.example/profiles/people/jane-doe");
+    expect(body).toContain("https://preview.atlas.example/browse");
+    expect(body).not.toContain("https://atlas.rebuildingamerica.com/profiles/people/jane-doe");
+  });
+
   it("renders the static sitemap header when no entries are returned", async () => {
     const { api } = await import("@/lib/api");
     vi.mocked(api.publicDirectories.list).mockResolvedValue({ directories: [] });
-    vi.mocked(api.entries.list).mockResolvedValue({ data: undefined } as unknown as Awaited<
-      ReturnType<typeof api.entries.list>
-    >);
+    vi.mocked(api.entries.list).mockResolvedValue(buildSitemapEntryListResponse([]));
 
-    const routeModule = await import("@/routes/sitemap[.]xml");
-    const { asRouteStub } = await import("@/../tests/helpers/router-harness");
-    const Route = asRouteStub(routeModule.Route);
-    const handlers = Route.options.server?.handlers;
-    if (!handlers?.GET) throw new Error("Expected GET handler");
-    const response = (await handlers.GET({})) as Response;
-    const body = await response.text();
+    const body = await readSitemapXml();
     expect(body).toContain("https://atlas.rebuildingamerica.com</loc>");
     expect(body).toContain("https://atlas.rebuildingamerica.com/browse</loc>");
   });

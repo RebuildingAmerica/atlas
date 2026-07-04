@@ -6,29 +6,52 @@
  * it directly.
  */
 import { createFileRoute } from "@tanstack/react-router";
+import type { Entry, EntryType } from "@/types";
 import { api } from "@/lib/api";
+import { buildCanonicalUrl } from "@/platform/seo";
 
-const ATLAS_BASE_URL = "https://atlas.rebuildingamerica.com";
 const ONE_HOUR = 3600;
+const SITEMAP_PAGE_SIZE = 100;
+
+type SitemapEntryType = Extract<EntryType, "person" | "organization">;
+
+async function listSitemapEntries(entryType: SitemapEntryType): Promise<Entry[]> {
+  const entries: Entry[] = [];
+  let offset = 0;
+  let hasMore = false;
+
+  do {
+    const response = await api.entries.list({
+      entry_types: [entryType],
+      limit: SITEMAP_PAGE_SIZE,
+      offset,
+    });
+    entries.push(...response.data);
+    hasMore = response.pagination.has_more;
+    offset += SITEMAP_PAGE_SIZE;
+  } while (hasMore);
+
+  return entries;
+}
 
 export const Route = createFileRoute("/sitemap.xml")({
   server: {
     handlers: {
       GET: async () => {
         const [people, orgs, publicDirectories] = await Promise.all([
-          api.entries.list({ entry_types: ["person"], limit: 10000 }),
-          api.entries.list({ entry_types: ["organization"], limit: 10000 }),
+          listSitemapEntries("person"),
+          listSitemapEntries("organization"),
           api.publicDirectories.list(),
         ]);
 
-        const entries = [...(people.data ?? []), ...(orgs.data ?? [])];
+        const entries = [...people, ...orgs];
 
         const profileUrls = entries
           .filter((entry) => entry.slug)
           .map((entry) => {
             const typePrefix = entry.type === "person" ? "people" : "organizations";
             return `  <url>
-    <loc>${ATLAS_BASE_URL}/profiles/${typePrefix}/${entry.slug}</loc>
+    <loc>${buildCanonicalUrl(`/profiles/${typePrefix}/${entry.slug}`)}</loc>
     <lastmod>${entry.updated_at.split("T")[0]}</lastmod>
     <changefreq>weekly</changefreq>
   </url>`;
@@ -39,7 +62,7 @@ export const Route = createFileRoute("/sitemap.xml")({
             ? `\n    <lastmod>${directory.last_published_at.split("T")[0]}</lastmod>`
             : "";
           return `  <url>
-    <loc>${ATLAS_BASE_URL}/directories/${directory.org_id}</loc>${lastmod}
+    <loc>${buildCanonicalUrl(`/directories/${directory.org_id}`)}</loc>${lastmod}
     <changefreq>daily</changefreq>
   </url>`;
         });
@@ -49,11 +72,11 @@ export const Route = createFileRoute("/sitemap.xml")({
         const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>${ATLAS_BASE_URL}</loc>
+    <loc>${buildCanonicalUrl("")}</loc>
     <changefreq>daily</changefreq>
   </url>
   <url>
-    <loc>${ATLAS_BASE_URL}/browse</loc>
+    <loc>${buildCanonicalUrl("/browse")}</loc>
     <changefreq>daily</changefreq>
   </url>
 ${urls.join("\n")}
