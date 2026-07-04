@@ -1,7 +1,7 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, FileText, ShieldCheck } from "lucide-react";
 import type { FormEvent } from "react";
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import { useCreateWorkspaceBrief } from "@/domains/workspace/hooks/use-briefs";
 import type {
   AtlasBriefConfidenceState,
@@ -45,6 +45,8 @@ const initialFormState: BriefCreateFormState = {
   summary: "",
   title: "",
 };
+
+const KNOWN_GAP_FORMAT = "Label: detail";
 
 function splitList(value: string): string[] {
   const items = value
@@ -127,6 +129,7 @@ function textAreaClassName(extraHeight = "min-h-24"): string {
 export function BriefCreatePage() {
   const navigate = useNavigate();
   const createBrief = useCreateWorkspaceBrief();
+  const knownGapsId = useId();
   const [formState, setFormState] = useState<BriefCreateFormState>(initialFormState);
   const [error, setError] = useState("");
   const counts = useMemo(() => evidenceCounts(formState), [formState]);
@@ -350,16 +353,25 @@ export function BriefCreatePage() {
                 className={fieldClassName()}
               />
             </label>
-            <label className="block space-y-1">
-              <span className="type-label-small text-ink-muted">Known gaps</span>
+            <div className="block space-y-1">
+              <label htmlFor={knownGapsId} className="type-label-small text-ink-muted">
+                Known gaps
+              </label>
+              <span className="bg-surface-container-low flex items-center justify-between gap-3 rounded-lg px-3 py-2">
+                <span className="type-label-small text-ink-muted">Gap format</span>
+                <code className="type-body-small text-ink-strong font-mono">
+                  {KNOWN_GAP_FORMAT}
+                </code>
+              </span>
               <textarea
+                id={knownGapsId}
                 value={formState.gapsText}
                 onChange={(event) => {
                   updateField("gapsText", event.target.value);
                 }}
                 className={textAreaClassName("min-h-32")}
               />
-            </label>
+            </div>
           </section>
 
           <section className="border-outline-variant bg-surface-container-lowest space-y-4 rounded-lg border p-5">

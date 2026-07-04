@@ -190,4 +190,11 @@ describe("BriefCreatePage", () => {
     );
     expect(mocks.createBrief).not.toHaveBeenCalled();
   });
+
+  it("shows the known-gap line format before submission", () => {
+    render(<BriefCreatePage />);
+
+    expect(screen.getByText("Gap format")).toBeInTheDocument();
+    expect(screen.getByText("Label: detail")).toBeInTheDocument();
+  });
 });
