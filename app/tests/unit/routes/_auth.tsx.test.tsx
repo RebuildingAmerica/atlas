@@ -31,4 +31,18 @@ describe("routes/_auth layout", () => {
     expect(screen.getByTestId("auth-layout")).toBeInTheDocument();
     expect(screen.getByTestId("router-outlet")).toBeInTheDocument();
   });
+
+  it("keeps auth pages out of search indexes", async () => {
+    const routeModule = await import("@/routes/_auth");
+    const { asRouteStub } = await import("@/../tests/helpers/router-harness");
+    const Route = asRouteStub(routeModule.Route);
+
+    expect(Route.options.head?.({} as never)).toEqual({
+      meta: [
+        { title: "Atlas account" },
+        { name: "description", content: "Access your Atlas account." },
+        { name: "robots", content: "noindex,nofollow" },
+      ],
+    });
+  });
 });

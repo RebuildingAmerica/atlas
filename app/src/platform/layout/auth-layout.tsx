@@ -27,9 +27,9 @@ export function AuthFlowLayout({ children }: AuthFlowLayoutProps) {
 
       {/* Form content */}
       <div className="bg-surface flex flex-1 flex-col lg:w-3/5">
-        <div className="flex flex-1 items-center justify-center px-6 py-12 lg:px-12">
+        <main className="flex flex-1 items-center justify-center px-6 py-12 lg:px-12">
           <div className="w-full max-w-xl">{children}</div>
-        </div>
+        </main>
 
         <div className="flex items-center justify-center gap-4 px-6 pb-8">
           <Link to="/privacy" className="type-body-small text-ink-muted hover:text-ink">
