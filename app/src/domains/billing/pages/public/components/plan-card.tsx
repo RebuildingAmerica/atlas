@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
-import type { AtlasProduct } from "@/domains/access/capabilities";
+import type { AtlasSelfServeProduct } from "@/domains/access/capabilities";
 import { Button } from "@/platform/ui/button";
 import type { PricingCheckoutInterval, PricingCheckoutParams } from "../pricing-page-helpers";
 
@@ -21,7 +21,7 @@ interface PlanCardProps {
   annualNote?: string;
   billing: BillingPeriod;
   ctaText: string;
-  ctaProduct?: AtlasProduct;
+  ctaProduct?: AtlasSelfServeProduct;
   ctaInterval?: PricingCheckoutInterval;
   onCheckout?: (params: PricingCheckoutParams) => Promise<void>;
   isPending?: boolean;

@@ -36,11 +36,11 @@ describe("ResearchTrendsSection", () => {
     expect(screen.getByText("Place")).toBeInTheDocument();
     expect(screen.getByText("Kansas City, MO")).toBeInTheDocument();
     expect(screen.getByText("2 runs over time")).toBeInTheDocument();
-    expect(screen.getByText("Latest Jun 23, 2026")).toBeInTheDocument();
+    expect(screen.getByText("Latest request Jun 23, 2026")).toBeInTheDocument();
     expect(screen.getByText("Issue")).toBeInTheDocument();
     expect(screen.getByText("Housing affordability")).toBeInTheDocument();
     expect(screen.getByText("3 runs over time")).toBeInTheDocument();
-    expect(screen.getByText("Latest Jun 21, 2026")).toBeInTheDocument();
+    expect(screen.getByText("Latest request Jun 21, 2026")).toBeInTheDocument();
   });
 
   it("renders nothing when no repeat trends exist", () => {

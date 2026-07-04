@@ -15,14 +15,15 @@ export const Route = createFileRoute("/sitemap.xml")({
   server: {
     handlers: {
       GET: async () => {
-        const [people, orgs] = await Promise.all([
+        const [people, orgs, publicDirectories] = await Promise.all([
           api.entries.list({ entry_types: ["person"], limit: 10000 }),
           api.entries.list({ entry_types: ["organization"], limit: 10000 }),
+          api.publicDirectories.list(),
         ]);
 
         const entries = [...(people.data ?? []), ...(orgs.data ?? [])];
 
-        const urls = entries
+        const profileUrls = entries
           .filter((entry) => entry.slug)
           .map((entry) => {
             const typePrefix = entry.type === "person" ? "people" : "organizations";
@@ -32,6 +33,18 @@ export const Route = createFileRoute("/sitemap.xml")({
     <changefreq>weekly</changefreq>
   </url>`;
           });
+
+        const directoryUrls = publicDirectories.directories.map((directory) => {
+          const lastmod = directory.last_published_at
+            ? `\n    <lastmod>${directory.last_published_at.split("T")[0]}</lastmod>`
+            : "";
+          return `  <url>
+    <loc>${ATLAS_BASE_URL}/directories/${directory.org_id}</loc>${lastmod}
+    <changefreq>daily</changefreq>
+  </url>`;
+        });
+
+        const urls = [...profileUrls, ...directoryUrls];
 
         const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">

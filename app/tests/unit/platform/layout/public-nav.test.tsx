@@ -42,6 +42,7 @@ describe("PublicTopNav", () => {
     );
     expect(screen.queryByRole("link", { name: "Research" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Lists" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Watching" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Activity" })).not.toBeInTheDocument();
   });
 
@@ -88,8 +89,16 @@ describe("PublicTopNav", () => {
       "data-link-to",
       "/discovery",
     );
+    expect(screen.getByRole("link", { name: "Coverage" })).toHaveAttribute(
+      "data-link-to",
+      "/coverage",
+    );
     expect(screen.getByRole("link", { name: "Browse" })).toHaveAttribute("data-link-to", "/browse");
     expect(screen.getByRole("link", { name: "Lists" })).toHaveAttribute("data-link-to", "/lists");
+    expect(screen.getByRole("link", { name: "Watching" })).toHaveAttribute(
+      "data-link-to",
+      "/watching",
+    );
     expect(screen.getByRole("link", { name: "Activity" })).toHaveAttribute("data-link-to", "/feed");
     expect(screen.getByRole("link", { name: "Account" })).toHaveAttribute(
       "data-link-to",
@@ -116,8 +125,16 @@ describe("PublicTopNav", () => {
       "data-link-to",
       "/discovery",
     );
+    expect(screen.getByRole("link", { name: "Coverage" })).toHaveAttribute(
+      "data-link-to",
+      "/coverage",
+    );
     expect(screen.getByRole("link", { name: "Browse" })).toHaveAttribute("data-link-to", "/browse");
     expect(screen.getByRole("link", { name: "Lists" })).toHaveAttribute("data-link-to", "/lists");
+    expect(screen.getByRole("link", { name: "Watching" })).toHaveAttribute(
+      "data-link-to",
+      "/watching",
+    );
     expect(screen.getByRole("link", { name: "Activity" })).toHaveAttribute("data-link-to", "/feed");
     expect(screen.queryByRole("link", { name: "Account" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Pricing" })).not.toBeInTheDocument();

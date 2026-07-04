@@ -69,12 +69,12 @@ describe("discovery api-errors", () => {
     it("returns generic copy for a classified request failure", () => {
       expect(
         resolveStartRunErrorMessage(new AtlasApiError(ATLAS_API_ERROR_CODE.REQUEST_FAILED)),
-      ).toBe("Could not start the run. Check the fields and try again.");
+      ).toBe("Could not start research. Check the fields and try again.");
     });
 
     it("falls back to generic copy for an unclassified error", () => {
       expect(resolveStartRunErrorMessage(new Error("Fail"))).toBe(
-        "Could not start the run. Check the fields and try again.",
+        "Could not start research. Check the fields and try again.",
       );
     });
   });

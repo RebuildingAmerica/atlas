@@ -12,6 +12,7 @@ import { NewsroomHandoffPanel } from "@/domains/workspace/components/newsroom-ha
 import { NonprofitSystemsBridgePanel } from "@/domains/workspace/components/nonprofit-systems-bridge-panel";
 import { buildNewsroomAssignmentPacket } from "@/domains/workspace/newsroom-handoff";
 import { buildNonprofitSystemsPacket } from "@/domains/workspace/nonprofit-systems-bridge";
+import { exportSavedList, getExportSavedListUrl } from "@/lib/generated/atlas";
 import { Badge } from "@/platform/ui/badge";
 
 export const Route = createFileRoute("/_workspace/lists/$id")({
@@ -159,6 +160,32 @@ function ListDetailRoute() {
     await navigator.clipboard?.writeText(crmPacketText);
   }
 
+  async function downloadSpreadsheetExport() {
+    const response = await fetch(getExportSavedListUrl(data.id, { format: "csv" }), {
+      headers: { Accept: "text/csv" },
+    });
+    if (!response.ok) {
+      return;
+    }
+    downloadCsvFile(savedListCsvFilename(data.name, data.id), await response.text());
+  }
+
+  async function downloadSavedListExport() {
+    const exportPayload = await exportSavedList(data.id);
+    downloadJsonFile(
+      savedListJsonFilename(data.name, data.id),
+      JSON.stringify(exportPayload, null, 2),
+    );
+  }
+
+  function downloadInstitutionalExport() {
+    downloadCsvFile(savedListInstitutionalCsvFilename(data.name, data.id), institutionalExport);
+  }
+
+  function downloadCrmPacket() {
+    downloadJsonFile(savedListCrmFilename(data.name, data.id), crmPacketText);
+  }
+
   return (
     <div className="mx-auto max-w-4xl space-y-8 py-12">
       <Link
@@ -253,15 +280,35 @@ function ListDetailRoute() {
             <p className="type-label-medium text-ink-muted">Spreadsheet export</p>
             <h2 className="type-title-large text-ink-strong">CSV research rows</h2>
           </div>
-          <button
-            type="button"
-            onClick={() => {
-              void copySpreadsheetExport();
-            }}
-            className="type-label-small bg-ink-strong text-surface hover:bg-ink rounded-full px-3 py-1.5 transition-colors"
-          >
-            Copy CSV
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                void copySpreadsheetExport();
+              }}
+              className="type-label-small bg-ink-strong text-surface hover:bg-ink rounded-full px-3 py-1.5 transition-colors"
+            >
+              Copy CSV
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                void downloadSpreadsheetExport();
+              }}
+              className="type-label-small border-outline-variant text-ink-strong hover:bg-surface-container-low rounded-full border px-3 py-1.5 transition-colors"
+            >
+              Download CSV
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                void downloadSavedListExport();
+              }}
+              className="type-label-small border-outline-variant text-ink-strong hover:bg-surface-container-low rounded-full border px-3 py-1.5 transition-colors"
+            >
+              Download JSON
+            </button>
+          </div>
         </div>
         <pre className="type-body-small bg-surface-container-lowest text-ink-soft overflow-x-auto rounded-lg p-3 whitespace-pre-wrap">
           {spreadsheetExport}
@@ -299,15 +346,24 @@ function ListDetailRoute() {
                   <p className="type-label-medium text-ink-muted">Institutional export</p>
                   <h2 className="type-title-large text-ink-strong">Selected lead rows</h2>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    void copyInstitutionalExport();
-                  }}
-                  className="type-label-small bg-ink-strong text-surface hover:bg-ink rounded-full px-3 py-1.5 transition-colors"
-                >
-                  Copy institutional CSV
-                </button>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void copyInstitutionalExport();
+                    }}
+                    className="type-label-small bg-ink-strong text-surface hover:bg-ink rounded-full px-3 py-1.5 transition-colors"
+                  >
+                    Copy institutional CSV
+                  </button>
+                  <button
+                    type="button"
+                    onClick={downloadInstitutionalExport}
+                    className="type-label-small border-outline-variant text-ink-strong hover:bg-surface-container-low rounded-full border px-3 py-1.5 transition-colors"
+                  >
+                    Download institutional CSV
+                  </button>
+                </div>
               </div>
               <pre className="type-body-small bg-surface-container-lowest text-ink-soft max-h-72 overflow-x-auto rounded-lg p-3 whitespace-pre-wrap">
                 {institutionalExport}
@@ -320,15 +376,24 @@ function ListDetailRoute() {
                   <p className="type-label-medium text-ink-muted">CRM handoff</p>
                   <h2 className="type-title-large text-ink-strong">{workspaceName}</h2>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    void copyCrmPacket();
-                  }}
-                  className="type-label-small bg-ink-strong text-surface hover:bg-ink rounded-full px-3 py-1.5 transition-colors"
-                >
-                  Copy CRM packet
-                </button>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void copyCrmPacket();
+                    }}
+                    className="type-label-small bg-ink-strong text-surface hover:bg-ink rounded-full px-3 py-1.5 transition-colors"
+                  >
+                    Copy CRM packet
+                  </button>
+                  <button
+                    type="button"
+                    onClick={downloadCrmPacket}
+                    className="type-label-small border-outline-variant text-ink-strong hover:bg-surface-container-low rounded-full border px-3 py-1.5 transition-colors"
+                  >
+                    Download CRM JSON
+                  </button>
+                </div>
               </div>
               <pre className="type-body-small bg-surface-container-lowest text-ink-soft max-h-72 overflow-x-auto rounded-lg p-3 whitespace-pre-wrap">
                 {crmPacketText}
@@ -446,14 +511,18 @@ interface ProjectMetadata {
 }
 
 interface SavedListThreadItem {
+  list_id?: string | null;
   entry_id: string;
   note?: string | null;
+  added_at?: string | null;
   entry?: {
     address?: {
       city?: string | null;
+      display?: string | null;
       state?: string | null;
     } | null;
     name?: string | null;
+    slug?: string | null;
     source_count?: number | null;
     type?: string | null;
   } | null;
@@ -500,6 +569,61 @@ function formatProjectDate(iso: string): string {
     year: "numeric",
     timeZone: "UTC",
   });
+}
+
+function fileSegment(value: string): string {
+  const segment = value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+  return segment || "atlas-list";
+}
+
+function savedListJsonFilename(listName: string, listId: string): string {
+  return `${fileSegment(listName)}-list-${listId}.json`;
+}
+
+function savedListCsvFilename(listName: string, listId: string): string {
+  return `${fileSegment(listName)}-list-${listId}.csv`;
+}
+
+function savedListInstitutionalCsvFilename(listName: string, listId: string): string {
+  return `${fileSegment(listName)}-institutional-${listId}.csv`;
+}
+
+function savedListCrmFilename(listName: string, listId: string): string {
+  return `${fileSegment(listName)}-crm-${listId}.json`;
+}
+
+function downloadTextFile(filename: string, content: string, mediaType: string) {
+  if (
+    typeof document === "undefined" ||
+    typeof Blob === "undefined" ||
+    typeof URL === "undefined" ||
+    typeof URL.createObjectURL !== "function"
+  ) {
+    return;
+  }
+
+  const blob = new Blob([content], { type: mediaType });
+  const href = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = href;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(href);
+}
+
+function downloadJsonFile(filename: string, content: string) {
+  downloadTextFile(filename, content, "application/json;charset=utf-8");
+}
+
+function downloadCsvFile(filename: string, content: string) {
+  downloadTextFile(filename, content, "text/csv;charset=utf-8");
 }
 
 function buildProjectMetadata(

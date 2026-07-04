@@ -1,8 +1,18 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { ensureAuthReady } from "@/domains/access/server/auth";
-import { handleCimdRequest } from "@/domains/access/server/cimd-handler";
-import { enforceOAuthTokenResourceConsistency } from "@/domains/access/server/oauth-token-resource-guard";
-import { getCimdResolverOptions } from "@/domains/access/server/runtime";
+
+async function loadAuthRouteModules() {
+  if (import.meta.env.SSR) {
+    const [auth, cimdHandler, oauthGuard, runtime] = await Promise.all([
+      import("@/domains/access/server/auth"),
+      import("@/domains/access/server/cimd-handler"),
+      import("@/domains/access/server/oauth-token-resource-guard"),
+      import("@/domains/access/server/runtime"),
+    ]);
+    return { auth, cimdHandler, oauthGuard, runtime };
+  }
+
+  throw new Error("Auth route handling is only available on the server.");
+}
 
 /**
  * First-party Better Auth route surface mounted under `/api/auth/*`.
@@ -14,6 +24,11 @@ import { getCimdResolverOptions } from "@/domains/access/server/runtime";
  * unauthenticated dynamic client registration phishing surface.
  */
 async function dispatch(request: Request): Promise<Response> {
+  const { auth: authModule, cimdHandler, oauthGuard, runtime } = await loadAuthRouteModules();
+  const { ensureAuthReady } = authModule;
+  const { handleCimdRequest } = cimdHandler;
+  const { enforceOAuthTokenResourceConsistency } = oauthGuard;
+  const { getCimdResolverOptions } = runtime;
   const outcome = await handleCimdRequest(request, getCimdResolverOptions());
   if (outcome.errorResponse) {
     return outcome.errorResponse;

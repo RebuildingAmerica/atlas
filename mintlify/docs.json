@@ -85,7 +85,7 @@
           },
           {
             "group": "Tools & permissions",
-            "pages": ["mcp/tools", "mcp/scopes"]
+            "pages": ["mcp/tools", "mcp/scopes", "mcp/integration-monitoring"]
           },
           {
             "group": "Troubleshoot",

@@ -19,16 +19,24 @@ import {
   requireActiveWorkspace,
   requireManagedTeamWorkspace,
 } from "./organization-server-helpers";
-import { ensureStripeCustomerForWorkspace } from "@/domains/billing/server/stripe-customer";
-import {
-  resolveActiveTeamBillingInterval,
-  syncTeamSeats,
-} from "@/domains/billing/server/team-seats";
 import { computeTeamSeatCostSummary, teamSeatCostSummarySchema } from "@/domains/billing/team-cost";
-import { ensureAuthReady } from "./server/auth";
-import { getBrowserSessionHeaders } from "./server/request-headers";
-import { getAuthRuntimeConfig } from "./server/runtime";
-import { requireReadyAtlasSessionState } from "./server/session-state";
+
+async function loadOrganizationsServerModules() {
+  if (import.meta.env.SSR) {
+    const [stripeCustomer, teamSeats, auth, requestHeaders, runtime, sessionState] =
+      await Promise.all([
+        import("@/domains/billing/server/stripe-customer"),
+        import("@/domains/billing/server/team-seats"),
+        import("./server/auth"),
+        import("./server/request-headers"),
+        import("./server/runtime"),
+        import("./server/session-state"),
+      ]);
+    return { stripeCustomer, teamSeats, auth, requestHeaders, runtime, sessionState };
+  }
+
+  throw new Error("Organization server modules are only available on the server.");
+}
 
 /**
  * Reconciles a workspace's Atlas Team seat billing without letting a billing
@@ -42,6 +50,8 @@ import { requireReadyAtlasSessionState } from "./server/session-state";
  */
 async function syncTeamSeatsBestEffort(workspaceId: string): Promise<void> {
   try {
+    const { teamSeats } = await loadOrganizationsServerModules();
+    const { syncTeamSeats } = teamSeats;
     await syncTeamSeats(workspaceId);
   } catch {
     // Best-effort: seat drift is reconciled the next time seats are synced.
@@ -70,6 +80,8 @@ export const getOrganizationDetails = createServerFn({ method: "GET" }).handler(
   ]);
   const details = organizationDetailsSchema.parse(detailsValue);
   const providerList = rawWorkspaceSSOProviderListSchema.parse(providerListValue);
+  const { runtime: runtimeModule } = await loadOrganizationsServerModules();
+  const { getAuthRuntimeConfig } = runtimeModule;
   const runtime = getAuthRuntimeConfig();
 
   if (!details) {
@@ -122,6 +134,8 @@ export const getTeamSeatCostSummary = createServerFn({ method: "GET" }).handler(
     return null;
   }
 
+  const { teamSeats } = await loadOrganizationsServerModules();
+  const { resolveActiveTeamBillingInterval } = teamSeats;
   const interval = await resolveActiveTeamBillingInterval(activeWorkspace.id);
   return teamSeatCostSummarySchema.parse(
     computeTeamSeatCostSummary(details.members.length, interval),
@@ -188,7 +202,15 @@ export const checkWorkspaceSlugAvailability = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ data }) => {
-    assertOrganizationManagementEnabled();
+    await assertOrganizationManagementEnabled();
+    const {
+      auth: authModule,
+      requestHeaders,
+      sessionState,
+    } = await loadOrganizationsServerModules();
+    const { ensureAuthReady } = authModule;
+    const { getBrowserSessionHeaders } = requestHeaders;
+    const { requireReadyAtlasSessionState } = sessionState;
     await requireReadyAtlasSessionState();
     const auth = await ensureAuthReady();
     const headers = getBrowserSessionHeaders();
@@ -227,8 +249,18 @@ export const createWorkspace = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ data }) => {
-    assertOrganizationManagementEnabled();
+    await assertOrganizationManagementEnabled();
 
+    const {
+      stripeCustomer,
+      auth: authModule,
+      requestHeaders,
+      sessionState,
+    } = await loadOrganizationsServerModules();
+    const { ensureStripeCustomerForWorkspace } = stripeCustomer;
+    const { ensureAuthReady } = authModule;
+    const { getBrowserSessionHeaders } = requestHeaders;
+    const { requireReadyAtlasSessionState } = sessionState;
     const session = await requireReadyAtlasSessionState();
     const auth = await ensureAuthReady();
     const headers = getBrowserSessionHeaders();

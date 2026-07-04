@@ -47,6 +47,10 @@ export function OrgProfilePage({ entry, initialConnections }: OrgProfilePageProp
   const connectionsQuery = useConnections(entry.id, { initialData: initialConnections });
   const sessionQuery = useAtlasSession();
   const isSignedIn = Boolean(sessionQuery.data);
+  const workspaceWatchingEnabled = Boolean(
+    sessionQuery.data?.workspace.activeOrganization &&
+    sessionQuery.data.workspace.resolvedCapabilities.capabilities.includes("monitoring.watchlists"),
+  );
   const affiliatedPeopleQuery = useEntries({ entry_types: ["person"], limit: 50 });
   const affiliatedPeople = (affiliatedPeopleQuery.data?.data ?? []).filter(
     (person) => person.affiliated_org_id === entry.id,
@@ -165,6 +169,7 @@ export function OrgProfilePage({ entry, initialConnections }: OrgProfilePageProp
           email={entry.email}
           isSignedIn={isSignedIn}
           profilePath={profilePath}
+          workspaceWatchingEnabled={workspaceWatchingEnabled}
         />
       </div>
     </div>

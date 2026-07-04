@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import type { AtlasOrganizationDetails } from "@/domains/access/organization-contracts";
+import type { WorkspaceDirectoryConfig } from "@/domains/workspace/server/directory-config";
 import { buildWorkspaceSlugCandidate } from "./organization-page-helpers";
 import type {
   WorkspaceOIDCSetupFormState,
@@ -12,11 +13,29 @@ import type {
 export interface OrganizationPageForms {
   inviteEmail: string;
   inviteRole: "admin" | "member";
+  directoryCorrectionPolicy: string;
+  directoryEntryTypes: string;
+  directoryGeographyLabels: string;
+  directoryIssueAreaIds: string;
+  directoryMethodologySummary: string;
+  directoryReviewPolicy: string;
+  directorySourcePolicy: string;
+  directorySponsorLabel: string;
+  directoryTitle: string;
   oidcSetupForm: WorkspaceOIDCSetupFormState;
   profileName: string;
   profileSlug: string;
   samlSetupForm: WorkspaceSAMLSetupFormState;
   selectedOrganizationId: string;
+  setDirectoryCorrectionPolicy: (value: string) => void;
+  setDirectoryEntryTypes: (value: string) => void;
+  setDirectoryGeographyLabels: (value: string) => void;
+  setDirectoryIssueAreaIds: (value: string) => void;
+  setDirectoryMethodologySummary: (value: string) => void;
+  setDirectoryReviewPolicy: (value: string) => void;
+  setDirectorySourcePolicy: (value: string) => void;
+  setDirectorySponsorLabel: (value: string) => void;
+  setDirectoryTitle: (value: string) => void;
   setInviteEmail: (value: string) => void;
   setInviteRole: (value: "admin" | "member") => void;
   setOidcSetupForm: (
@@ -50,8 +69,13 @@ export interface OrganizationPageForms {
  */
 interface UseOrganizationPageFormsParams {
   activeOrganizationId: string | null | undefined;
+  directoryConfig?: WorkspaceDirectoryConfig | undefined;
   needsWorkspace: boolean;
   organization: AtlasOrganizationDetails | null | undefined;
+}
+
+function joinDirectoryValues(values: string[] | undefined, separator = ", "): string {
+  return values?.join(separator) ?? "";
 }
 
 /**
@@ -81,6 +105,15 @@ export function useOrganizationPageForms(
   const [profileSlug, setProfileSlug] = useState("");
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<"admin" | "member">("member");
+  const [directoryTitle, setDirectoryTitle] = useState("");
+  const [directorySponsorLabel, setDirectorySponsorLabel] = useState("");
+  const [directoryIssueAreaIds, setDirectoryIssueAreaIds] = useState("");
+  const [directoryGeographyLabels, setDirectoryGeographyLabels] = useState("");
+  const [directoryEntryTypes, setDirectoryEntryTypes] = useState("");
+  const [directoryMethodologySummary, setDirectoryMethodologySummary] = useState("");
+  const [directorySourcePolicy, setDirectorySourcePolicy] = useState("");
+  const [directoryReviewPolicy, setDirectoryReviewPolicy] = useState("");
+  const [directoryCorrectionPolicy, setDirectoryCorrectionPolicy] = useState("");
   const [oidcSetupForm, setOidcSetupFormState] = useState<WorkspaceOIDCSetupFormState>({
     clientId: "",
     clientSecret: "",
@@ -129,6 +162,24 @@ export function useOrganizationPageForms(
       providerId: current.providerId || setup.samlProviderIdSuggestion,
     }));
   }, [params.organization]);
+
+  useEffect(() => {
+    if (!params.directoryConfig) {
+      return;
+    }
+
+    setDirectoryTitle(params.directoryConfig.title ?? "");
+    setDirectorySponsorLabel(params.directoryConfig.sponsor_label ?? "");
+    setDirectoryIssueAreaIds(joinDirectoryValues(params.directoryConfig.scope?.issue_area_ids));
+    setDirectoryGeographyLabels(
+      joinDirectoryValues(params.directoryConfig.scope?.geography_labels, "; "),
+    );
+    setDirectoryEntryTypes(joinDirectoryValues(params.directoryConfig.scope?.entry_types));
+    setDirectoryMethodologySummary(params.directoryConfig.methodology?.summary ?? "");
+    setDirectorySourcePolicy(params.directoryConfig.methodology?.source_policy ?? "");
+    setDirectoryReviewPolicy(params.directoryConfig.methodology?.review_policy ?? "");
+    setDirectoryCorrectionPolicy(params.directoryConfig.methodology?.correction_policy ?? "");
+  }, [params.directoryConfig]);
 
   /**
    * Updates the workspace-name field and auto-generates a slug until the user
@@ -203,6 +254,15 @@ export function useOrganizationPageForms(
   }
 
   return {
+    directoryCorrectionPolicy,
+    directoryEntryTypes,
+    directoryGeographyLabels,
+    directoryIssueAreaIds,
+    directoryMethodologySummary,
+    directoryReviewPolicy,
+    directorySourcePolicy,
+    directorySponsorLabel,
+    directoryTitle,
     inviteEmail,
     inviteRole,
     oidcSetupForm,
@@ -210,6 +270,15 @@ export function useOrganizationPageForms(
     profileSlug,
     samlSetupForm,
     selectedOrganizationId,
+    setDirectoryCorrectionPolicy,
+    setDirectoryEntryTypes,
+    setDirectoryGeographyLabels,
+    setDirectoryIssueAreaIds,
+    setDirectoryMethodologySummary,
+    setDirectoryReviewPolicy,
+    setDirectorySourcePolicy,
+    setDirectorySponsorLabel,
+    setDirectoryTitle,
     setInviteEmail,
     setInviteRole,
     setOidcSetupForm,

@@ -1,207 +1,97 @@
-# The Atlas - App
+# Atlas App
 
-A TanStack Start-based React app for The Atlas infrastructure discovery and cataloging platform.
+React 19 + TanStack Start app for Atlas. The app is the public and workspace-facing product surface: map, browse, source-linked profiles, public workspace directories, account flows, and paid workspace tools.
 
-## Project Structure
+## Structure
 
-```
+```text
 app/
-├── src/
-│   ├── routes/              # TanStack Router file-based routes
-│   │   ├── __root.tsx       # Root layout with navigation
-│   │   ├── index.tsx        # Dashboard page
-│   │   ├── atlas.tsx        # Entry browser page
-│   │   ├── atlas.$entryId.tsx    # Entry detail page
-│   │   └── discovery.tsx    # Discovery console page
-│   ├── components/
-│   │   ├── ui/              # Reusable UI components (button, input, card, etc.)
-│   │   ├── layout/          # Layout components
-│   │   ├── entries/         # Entry-specific components
-│   │   └── discovery/       # Discovery-specific components
-│   ├── hooks/               # Custom React Query hooks
-│   ├── lib/                 # Utilities (API client, helpers)
-│   ├── types/               # TypeScript type definitions
-│   ├── styles/              # Global CSS (Tailwind)
-│   ├── router.tsx           # Router configuration
-│   ├── entry.client.tsx     # Client entry point
-│   ├── entry.server.tsx     # Server entry point
-│   └── routeTree.gen.ts     # Auto-generated route tree
-├── app.config.ts            # TanStack Start configuration
-├── vite.config.ts           # Vite configuration
-├── tsconfig.json            # TypeScript configuration
-├── eslint.config.js         # ESLint configuration
-├── .prettierrc.json         # Prettier configuration
-└── tailwind.config.js       # Tailwind CSS configuration
+  src/
+    routes/
+      __root.tsx
+      _public.tsx
+      _public/
+      _workspace.tsx
+      _workspace/
+      _auth.tsx
+      _auth/
+      api/
+      [.]well-known/
+      openapi[.]json.ts
+      sitemap[.]xml.ts
+    domains/
+      access/
+      billing/
+      catalog/
+      discovery/
+      workspace/
+    platform/
+    lib/
+      api.ts
+      generated/
+    routeTree.gen.ts
 ```
 
-## Features
+## Route Groups
 
-### Pages
+Atlas uses TanStack Router file-based routing. A leading underscore marks a pathless layout group; it does not appear in the URL.
 
-- **Dashboard** (`/`) - Overview of entries, issue areas, and key metrics
-- **Browse** (`/atlas`) - Searchable, filterable entry catalog with public SEO
-- **Entry Detail** (`/atlas/{entryId}`) - Full entry information with scoring
-- **Discovery Console** (`/discovery`) - Start discovery runs, monitor progress
+- `_public` contains open pages such as `/`, `/browse`, `/map`, `/pricing`, `/directories/:orgId`, profile claim and feedback pages, and legal pages.
+- `_workspace` contains authenticated workspace pages such as `/home`, `/discovery`, `/feed`, `/lists`, `/briefs`, `/coverage`, `/watching`, and organization settings.
+- `_auth` contains sign-in, sign-up, account setup, and invitation acceptance flows.
+- `api/` contains TanStack server routes and proxies.
+- `[.]well-known/` escapes literal dot-prefixed OAuth metadata paths.
 
-### Components
+Route params use TanStack file conventions: `$orgId` becomes `:orgId`, and `[.]` renders a literal dot. `src/routeTree.gen.ts` is generated and should not be hand-edited.
 
-- **Reusable UI** - Button, Input, Select, Badge, Card, Spinner
-- **Entry Views** - Cards, filters, list, and detail components
-- **Discovery Forms** - Run configuration and status monitoring
-- **Navigation** - Header with links to main sections
+## Domain Layout
 
-### State Management
+Most app code lives under `src/domains/`.
 
-- **React Query** - Data fetching, caching, and synchronization
-- **Local State** - React hooks for filters and form data
-- **Optimistic Updates** - Discovery mutation with automatic list refresh
+- `access`: auth, workspace membership, SSO, API keys, organization settings, and admin access surfaces.
+- `billing`: pricing, checkout, package labels, discounts, and Stripe-facing server helpers.
+- `catalog`: browse, map, profiles, public directories, profile actions, and public-directory server functions.
+- `discovery`: discovery runs, request forms, coverage imports, and research workflow entry points.
+- `workspace`: paid workspace pages and server functions for briefs, watches, coverage, quality, and usage summaries.
 
-## Development
+Shared shell, navigation, legal pages, and cross-domain layout helpers live in `src/platform/`. Generated API types live in `src/lib/generated/`; app-facing API mapping lives in `src/lib/api.ts`.
 
-### Installation
+## Route Authoring Checklist
+
+- Public page: use `_public` unless the route is an API, docs, sitemap, OpenAPI, or well-known metadata route.
+- Authenticated workspace page: use `_workspace`.
+- Sign-in or auth setup page: use `_auth`.
+- New server route: place it under `api/` and keep request/response contracts typed.
+- New backend field: update the FastAPI schema, run `pnpm run openapi`, then run `cd app && pnpm run api-client`.
+- Never edit `src/routeTree.gen.ts` by hand.
+
+## Commands
 
 ```bash
 pnpm install
+
+# App only
+cd app && pnpm run dev
+
+# Root full stack
+pnpm dev
+
+# Quality
+cd app && pnpm run typecheck
+cd app && pnpm run lint
+cd app && pnpm run test:unit
+cd app && pnpm run build
+
+# Regenerate TypeScript API client after OpenAPI changes
+cd app && pnpm run api-client
 ```
 
-### Development Server
+The root dev command starts the app, API, and mail capture together. App-only development uses the `portless atlas` alias configured by the repo scripts.
 
-```bash
-pnpm run dev
-```
+## Standards
 
-Starts the dev server at `http://localhost:5173` with hot module replacement.
-
-### Quality Checks
-
-```bash
-pnpm run typecheck  # Type checking
-pnpm run lint       # ESLint
-pnpm run format     # Prettier formatting
-pnpm run quality    # All checks combined
-```
-
-### Build
-
-```bash
-pnpm run build
-```
-
-Builds the production bundle (output in `.output/`).
-
-### Docker Build
-
-```bash
-docker build -t atlas-app .
-docker run -p 3000:3000 atlas-app
-```
-
-## Architecture
-
-### Server-Side Rendering (SSR)
-
-- Default: **SPA mode** (no SSR) for internal pages (`/`, `/discovery`)
-- Public pages enable SSR for SEO and link previewing (`/atlas`, `/atlas/{entryId}`)
-- Configurable per-route with `ssr: true/false` in route definition
-
-### API Integration
-
-The app communicates with the API at `/api/v1`:
-
-- **Entries**: List, filter, and fetch individual entries
-- **Discovery**: Start runs, poll status, list run history
-- **Taxonomy**: Fetch issue areas for filtering
-
-See `src/lib/api.ts` for typed API wrapper.
-
-### Styling
-
-Uses **Tailwind CSS v4** with:
-- Utility-first CSS
-- Custom color palette
-- Responsive design patterns
-- Built with `@tailwindcss/vite` for fast dev builds
-
-### Code Organization
-
-- **Colocated** - Components with related logic stay together
-- **Type-safe** - Full TypeScript with strict mode enabled
-- **Modular** - Reusable hooks and components with clear boundaries
-- **Tested-ready** - Structure supports unit and integration tests
-
-## Development Standards
-
-### TypeScript
-
-- Strict mode enabled
-- No `any` types (auto-fixing in eslint)
-- Type imports for cleaner code
-- Proper error type unions
-
-### Code Style
-
-- ESLint for code quality (max-warnings: 0)
-- Prettier for consistent formatting
-- Consistent naming conventions
-
-### React Practices
-
-- Functional components with hooks
-- React Query for data fetching
-- Suspense-ready architecture
-- Accessible HTML semantics
-
-## Environment Variables
-
-None required for development (proxied to `http://localhost:8000/api`).
-
-For production, configure the API base URL in `src/lib/api.ts` or add env support.
-
-## Troubleshooting
-
-### Build Errors
-
-Ensure all files pass quality checks:
-
-```bash
-pnpm run quality
-```
-
-### Type Errors
-
-Regenerate types if API schema changes:
-
-```bash
-pnpm run typecheck
-```
-
-### Missing Dependencies
-
-Clear node_modules and reinstall:
-
-```bash
-rm -rf node_modules
-pnpm install
-```
-
-## Deployment
-
-The app is designed to be deployed as a Docker container or static build.
-
-### Docker Deployment
-
-```bash
-docker build -t atlas-app .
-docker run -p 3000:3000 -e API_BASE_URL=https://api.example.com atlas-app
-```
-
-### Static Deployment
-
-Build outputs to `.output/` directory, deployable to any Node.js server or edge runtime.
-
-## Contributing
-
-1. Follow the code organization patterns
-2. Add tests for new features
-3. Run `pnpm run quality` before committing
-4. Keep components reusable and well-documented
+- Use pnpm only.
+- Keep TypeScript strict: no `any`, no `as any`, and no double casting.
+- Extract named interfaces instead of inline type shapes.
+- Keep loading, empty, and error states plain and user-facing.
+- Reuse domain components and server functions before adding new cross-cutting abstractions.

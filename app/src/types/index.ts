@@ -38,6 +38,12 @@ export type {
 } from "./source";
 export type {
   DiscoveryRun,
+  DiscoveryJobQueueItem,
+  DiscoveryJobQueueResponse,
+  DiscoveryJobQueueStatusCounts,
+  DiscoveryJobProgress,
+  DiscoveryJobProgressValue,
+  DiscoveryJobStatus,
   DiscoveryConfidenceState,
   DiscoveryResearchGoal,
   DiscoveryResearchGap,

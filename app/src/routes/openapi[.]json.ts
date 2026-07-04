@@ -1,12 +1,20 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { getAuthRuntimeConfig } from "@/domains/access/server/runtime";
 
 const PLAIN_TEXT = { "content-type": "text/plain; charset=utf-8" } as const;
+
+async function loadRuntimeModule() {
+  if (import.meta.env.SSR) {
+    return await import("@/domains/access/server/runtime");
+  }
+
+  throw new Error("Auth runtime is only available on the server.");
+}
 
 export const Route = createFileRoute("/openapi.json")({
   server: {
     handlers: {
       GET: async () => {
+        const { getAuthRuntimeConfig } = await loadRuntimeModule();
         const { apiBaseUrl } = getAuthRuntimeConfig();
 
         if (!apiBaseUrl) {

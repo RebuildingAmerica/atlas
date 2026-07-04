@@ -1,4 +1,4 @@
-import type { AtlasProduct } from "@/domains/access/capabilities";
+import { SELF_SERVE_PRODUCTS, type AtlasSelfServeProduct } from "@/domains/access/capabilities";
 
 /**
  * localStorage key Atlas uses to remember a checkout that the operator
@@ -23,7 +23,7 @@ const PENDING_CHECKOUT_TTL_MS = 24 * 60 * 60 * 1000;
  */
 export interface PendingCheckoutRecord {
   interval: "monthly" | "yearly" | "once" | "weekly";
-  product: AtlasProduct;
+  product: AtlasSelfServeProduct;
   startedAt: number;
 }
 
@@ -33,11 +33,6 @@ interface RawPendingCheckoutRecord {
   startedAt?: unknown;
 }
 
-const RECOGNISED_PRODUCTS: readonly AtlasProduct[] = [
-  "atlas_pro",
-  "atlas_team",
-  "atlas_research_pass",
-];
 const RECOGNISED_INTERVALS: readonly PendingCheckoutRecord["interval"][] = [
   "monthly",
   "yearly",
@@ -45,8 +40,8 @@ const RECOGNISED_INTERVALS: readonly PendingCheckoutRecord["interval"][] = [
   "weekly",
 ];
 
-function isRecognisedProduct(value: unknown): value is AtlasProduct {
-  return typeof value === "string" && (RECOGNISED_PRODUCTS as readonly string[]).includes(value);
+function isRecognisedProduct(value: unknown): value is AtlasSelfServeProduct {
+  return typeof value === "string" && (SELF_SERVE_PRODUCTS as readonly string[]).includes(value);
 }
 
 function isRecognisedInterval(value: unknown): value is PendingCheckoutRecord["interval"] {

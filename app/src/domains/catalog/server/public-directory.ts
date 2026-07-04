@@ -31,8 +31,41 @@ export interface PublicDirectoryFederation {
   body: string;
 }
 
+export interface PublicDirectoryScope {
+  issue_area_ids: string[];
+  geography_labels: string[];
+  entry_types: string[];
+}
+
+export interface PublicDirectoryStats {
+  record_count: number;
+  source_count: number;
+  source_backed_record_count: number;
+  last_reviewed_at: string | null;
+}
+
+export interface PublicDirectoryPublication {
+  visibility: "public";
+  private_notes_exposed: boolean;
+}
+
+export interface PublicDirectoryMethodology {
+  summary: string;
+  source_policy: string;
+  review_policy: string;
+  correction_policy: string;
+  correction_path_template: string;
+  missing_context_path_template: string;
+}
+
 export interface PublicDirectoryResponse {
+  title: string;
+  sponsor_label?: string | null;
   workspace: PublicDirectoryWorkspace;
+  scope: PublicDirectoryScope;
+  stats: PublicDirectoryStats;
+  publication: PublicDirectoryPublication;
+  methodology: PublicDirectoryMethodology;
   entries: Entry[];
   trust_footer: PublicDirectoryTrustFooter;
   federation?: PublicDirectoryFederation;

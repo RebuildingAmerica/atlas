@@ -14,6 +14,7 @@ import {
   runAtlasCustomMigrations,
 } from "@/domains/access/server/atlas-migrations";
 import {
+  grantWorkspaceProduct,
   queryActiveProducts,
   queryActiveProductsSqlite,
   queryActiveTeamSubscriptionId,
@@ -130,6 +131,53 @@ describe("queryActiveProducts", () => {
     authMocks.getAuthDatabase.mockReturnValue(null);
 
     expect(await queryActiveProducts("org_1")).toEqual([]);
+  });
+});
+
+describe("grantWorkspaceProduct", () => {
+  beforeEach(() => {
+    authMocks.getAuthDatabase.mockReset();
+    authMocks.getAuthPgPool.mockReset();
+  });
+
+  it("upserts an active product grant in SQLite", async () => {
+    authMocks.getAuthPgPool.mockReturnValue(null);
+    const sqliteDb = new Database(":memory:");
+    runAtlasCustomMigrations(sqliteDb, ATLAS_MIGRATIONS);
+    authMocks.getAuthDatabase.mockReturnValue(sqliteDb);
+
+    await grantWorkspaceProduct({
+      product: "atlas_team",
+      workspaceId: "briefing-room-demo",
+    });
+    await grantWorkspaceProduct({
+      product: "atlas_team",
+      workspaceId: "briefing-room-demo",
+    });
+
+    expect(queryActiveProductsSqlite(sqliteDb, "briefing-room-demo")).toEqual(["atlas_team"]);
+    const rows = sqliteDb
+      .prepare("SELECT id, status FROM workspace_products WHERE workspace_id = ?")
+      .all("briefing-room-demo");
+    expect(rows).toHaveLength(1);
+    expect(rows).toEqual([{ id: "manual_briefing-room-demo_atlas_team", status: "active" }]);
+    sqliteDb.close();
+  });
+
+  it("upserts an active product grant in PostgreSQL", async () => {
+    const query = vi.fn().mockResolvedValue({ rows: [] });
+    authMocks.getAuthPgPool.mockReturnValue({ query });
+
+    await grantWorkspaceProduct({
+      product: "atlas_team",
+      workspaceId: "briefing-room-demo",
+    });
+
+    expect(query).toHaveBeenCalledWith(expect.stringContaining("ON CONFLICT"), [
+      "manual_briefing-room-demo_atlas_team",
+      "briefing-room-demo",
+      "atlas_team",
+    ]);
   });
 });
 

@@ -14,6 +14,7 @@ import {
   updateWorkspaceMemberRole,
   updateWorkspaceProfile,
 } from "@/domains/access/organizations.functions";
+import { updateWorkspaceDirectoryConfig } from "@/domains/workspace/server/directory-config";
 import {
   runOrganizationPageMutation,
   type OrganizationPageMutationFeedback,
@@ -25,6 +26,7 @@ import type { OrganizationPageForms } from "./use-organization-page-forms";
  */
 export interface OrganizationPageWorkspaceActions {
   createWorkspacePending: boolean;
+  directoryConfigPending: boolean;
   invitePending: boolean;
   leaveWorkspacePending: boolean;
   pendingInvitationMutationPending: boolean;
@@ -34,14 +36,15 @@ export interface OrganizationPageWorkspaceActions {
   selectWorkspacePending: boolean;
   updateWorkspaceMemberRolePending: boolean;
   upgradeToTeamPending: boolean;
-  onCreateWorkspace: (event: React.FormEvent<HTMLFormElement>) => Promise<void>;
-  onInviteMember: (event: React.FormEvent<HTMLFormElement>) => Promise<void>;
+  onCreateWorkspace: (event: OrganizationPageFormSubmitEvent) => Promise<void>;
+  onDirectoryConfigSave: (event: OrganizationPageFormSubmitEvent) => Promise<void>;
+  onInviteMember: (event: OrganizationPageFormSubmitEvent) => Promise<void>;
   onInvitationDecision: (
     invitationId: string,
     action: "accept" | "cancel" | "reject",
   ) => Promise<void>;
   onLeaveWorkspace: () => Promise<void>;
-  onProfileSave: (event: React.FormEvent<HTMLFormElement>) => Promise<void>;
+  onProfileSave: (event: OrganizationPageFormSubmitEvent) => Promise<void>;
   onSelectWorkspace: (organizationId: string) => Promise<void>;
   onUpdateMemberRole: (memberId: string, role: "admin" | "member") => Promise<void>;
   onRemoveMember: (memberIdOrEmail: string) => Promise<void>;
@@ -49,11 +52,27 @@ export interface OrganizationPageWorkspaceActions {
   onUpgradeToTeam: () => Promise<void>;
 }
 
+export interface OrganizationPageFormSubmitEvent {
+  preventDefault: () => void;
+}
+
 interface UseOrganizationPageWorkspaceActionsParams {
   activeWorkspaceId: string | null | undefined;
   feedback: OrganizationPageMutationFeedback;
   forms: OrganizationPageForms;
   refreshWorkspaceData: () => Promise<void>;
+}
+
+function parseDirectoryList(value: string, separator = ","): string[] {
+  return value
+    .split(separator)
+    .map((part) => part.trim())
+    .filter(Boolean);
+}
+
+function nullableDirectoryText(value: string): string | null {
+  const trimmed = value.trim();
+  return trimmed ? trimmed : null;
 }
 
 /**
@@ -80,6 +99,9 @@ export function useOrganizationPageWorkspaceActions(
   });
   const updateWorkspaceProfileMutation = useMutation({
     mutationFn: updateWorkspaceProfile,
+  });
+  const updateDirectoryConfigMutation = useMutation({
+    mutationFn: updateWorkspaceDirectoryConfig,
   });
   const inviteWorkspaceMemberMutation = useMutation({
     mutationFn: inviteWorkspaceMember,
@@ -111,7 +133,7 @@ export function useOrganizationPageWorkspaceActions(
    *
    * @param event - The creation form submit event.
    */
-  async function handleCreateWorkspace(event: React.FormEvent<HTMLFormElement>) {
+  async function handleCreateWorkspace(event: OrganizationPageFormSubmitEvent) {
     event.preventDefault();
 
     const trimmedDomain = params.forms.workspaceDomain.trim();
@@ -184,7 +206,7 @@ export function useOrganizationPageWorkspaceActions(
    *
    * @param event - The profile form submit event.
    */
-  async function handleProfileSave(event: React.FormEvent<HTMLFormElement>) {
+  async function handleProfileSave(event: OrganizationPageFormSubmitEvent) {
     event.preventDefault();
 
     await runOrganizationPageMutation({
@@ -206,11 +228,50 @@ export function useOrganizationPageWorkspaceActions(
   }
 
   /**
+   * Saves public directory framing for the active workspace.
+   *
+   * @param event - The directory configuration form submit event.
+   */
+  async function handleDirectoryConfigSave(event: OrganizationPageFormSubmitEvent) {
+    event.preventDefault();
+
+    await runOrganizationPageMutation({
+      action: async () => {
+        const mutationResult = await updateDirectoryConfigMutation.mutateAsync({
+          data: {
+            methodology: {
+              correction_path_template: "/feedback/{slug}?kind=incorrect",
+              correction_policy: params.forms.directoryCorrectionPolicy.trim() || undefined,
+              missing_context_path_template: "/feedback/{slug}?kind=missing_context",
+              review_policy: params.forms.directoryReviewPolicy.trim() || undefined,
+              source_policy: params.forms.directorySourcePolicy.trim() || undefined,
+              summary: params.forms.directoryMethodologySummary.trim() || undefined,
+            },
+            scope: {
+              entry_types: parseDirectoryList(params.forms.directoryEntryTypes),
+              geography_labels: parseDirectoryList(params.forms.directoryGeographyLabels, ";"),
+              issue_area_ids: parseDirectoryList(params.forms.directoryIssueAreaIds),
+            },
+            sponsor_label: nullableDirectoryText(params.forms.directorySponsorLabel),
+            title: nullableDirectoryText(params.forms.directoryTitle),
+          },
+        });
+
+        return mutationResult;
+      },
+      fallbackMessage: "Atlas could not update those directory settings.",
+      feedback: params.feedback,
+      refreshWorkspaceData: params.refreshWorkspaceData,
+      successMessage: "Directory settings updated.",
+    });
+  }
+
+  /**
    * Sends a new team invitation from the active workspace.
    *
    * @param event - The invite form submit event.
    */
-  async function handleInviteMember(event: React.FormEvent<HTMLFormElement>) {
+  async function handleInviteMember(event: OrganizationPageFormSubmitEvent) {
     event.preventDefault();
 
     await runOrganizationPageMutation({
@@ -399,6 +460,7 @@ export function useOrganizationPageWorkspaceActions(
 
   return {
     createWorkspacePending: createWorkspaceMutation.isPending,
+    directoryConfigPending: updateDirectoryConfigMutation.isPending,
     invitePending: inviteWorkspaceMemberMutation.isPending,
     leaveWorkspacePending: leaveWorkspaceMutation.isPending,
     pendingInvitationMutationPending,
@@ -409,6 +471,7 @@ export function useOrganizationPageWorkspaceActions(
     updateWorkspaceMemberRolePending: updateWorkspaceMemberRoleMutation.isPending,
     upgradeToTeamPending: convertWorkspaceToTeamMutation.isPending,
     onCreateWorkspace: handleCreateWorkspace,
+    onDirectoryConfigSave: handleDirectoryConfigSave,
     onInviteMember: handleInviteMember,
     onInvitationDecision: handleInvitationDecision,
     onLeaveWorkspace: handleLeaveWorkspace,

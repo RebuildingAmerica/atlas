@@ -20,6 +20,7 @@ const mocks = vi.hoisted(() => ({
   updateWorkspaceMemberRole: vi.fn(),
   removeWorkspaceMember: vi.fn(),
   leaveWorkspace: vi.fn(),
+  updateWorkspaceDirectoryConfig: vi.fn(),
 }));
 
 vi.mock("@tanstack/react-query", () => ({
@@ -45,12 +46,61 @@ vi.mock("@/domains/access/organizations.functions", () => ({
   leaveWorkspace: mocks.leaveWorkspace,
 }));
 
+vi.mock("@/domains/workspace/server/directory-config", () => ({
+  updateWorkspaceDirectoryConfig: mocks.updateWorkspaceDirectoryConfig,
+}));
+
 describe("useOrganizationPageWorkspaceActions", () => {
   const feedback = {
     setErrorMessage: vi.fn(),
     setFlashMessage: vi.fn(),
   };
-  const forms = {
+  const forms: OrganizationPageForms = {
+    directoryCorrectionPolicy: "",
+    directoryEntryTypes: "",
+    directoryGeographyLabels: "",
+    directoryIssueAreaIds: "",
+    directoryMethodologySummary: "",
+    directoryReviewPolicy: "",
+    directorySourcePolicy: "",
+    directorySponsorLabel: "",
+    directoryTitle: "",
+    inviteEmail: "user@atlas.test",
+    inviteRole: "member",
+    oidcSetupForm: {
+      clientId: "",
+      clientSecret: "",
+      domain: "",
+      providerId: "",
+      setAsPrimary: false,
+    },
+    profileName: "Atlas",
+    profileSlug: "atlas",
+    samlSetupForm: {
+      certificate: "",
+      domain: "",
+      entryPoint: "",
+      issuer: "",
+      providerId: "",
+      setAsPrimary: true,
+    },
+    selectedOrganizationId: "",
+    setDirectoryCorrectionPolicy: vi.fn(),
+    setDirectoryEntryTypes: vi.fn(),
+    setDirectoryGeographyLabels: vi.fn(),
+    setDirectoryIssueAreaIds: vi.fn(),
+    setDirectoryMethodologySummary: vi.fn(),
+    setDirectoryReviewPolicy: vi.fn(),
+    setDirectorySourcePolicy: vi.fn(),
+    setDirectorySponsorLabel: vi.fn(),
+    setDirectoryTitle: vi.fn(),
+    setInviteEmail: vi.fn(),
+    setInviteRole: vi.fn(),
+    setOidcSetupForm: vi.fn(),
+    setProfileName: vi.fn(),
+    setProfileSlug: vi.fn(),
+    setSamlSetupForm: vi.fn(),
+    setSelectedOrganizationId: vi.fn(),
     workspaceDelegatedEmail: "",
     workspaceDomain: "",
     workspaceName: "New",
@@ -61,13 +111,10 @@ describe("useOrganizationPageWorkspaceActions", () => {
     setWorkspaceName: vi.fn(),
     setWorkspaceSlug: vi.fn(),
     setWorkspaceType: vi.fn(),
-    setSelectedOrganizationId: vi.fn(),
-    profileName: "Atlas",
-    profileSlug: "atlas",
-    inviteEmail: "user@atlas.test",
-    inviteRole: "member",
-    setInviteEmail: vi.fn(),
-    setInviteRole: vi.fn(),
+    onUpdateInviteRole: vi.fn(),
+    onUpdateWorkspaceName: vi.fn(),
+    onUpdateWorkspaceSlug: vi.fn(),
+    onUpdateWorkspaceType: vi.fn(),
   };
   const refreshWorkspaceData = vi.fn().mockResolvedValue(undefined);
 
@@ -90,15 +137,13 @@ describe("useOrganizationPageWorkspaceActions", () => {
       useOrganizationPageWorkspaceActions({
         activeWorkspaceId: null,
         feedback,
-        forms: forms as unknown as OrganizationPageForms,
+        forms,
         refreshWorkspaceData,
       }),
     );
 
     await act(async () => {
-      await result.current.onCreateWorkspace({
-        preventDefault: vi.fn(),
-      } as unknown as React.FormEvent<HTMLFormElement>);
+      await result.current.onCreateWorkspace({ preventDefault: vi.fn() });
     });
 
     expect(mocks.createWorkspace).toHaveBeenCalled();
@@ -113,7 +158,7 @@ describe("useOrganizationPageWorkspaceActions", () => {
       useOrganizationPageWorkspaceActions({
         activeWorkspaceId: "org_1",
         feedback,
-        forms: forms as unknown as OrganizationPageForms,
+        forms,
         refreshWorkspaceData,
       }),
     );
@@ -133,7 +178,7 @@ describe("useOrganizationPageWorkspaceActions", () => {
       useOrganizationPageWorkspaceActions({
         activeWorkspaceId: "org_1",
         feedback,
-        forms: forms as unknown as OrganizationPageForms,
+        forms,
         refreshWorkspaceData,
       }),
     );
@@ -155,7 +200,7 @@ describe("useOrganizationPageWorkspaceActions", () => {
       useOrganizationPageWorkspaceActions({
         activeWorkspaceId: "org_1",
         feedback,
-        forms: forms as unknown as OrganizationPageForms,
+        forms,
         refreshWorkspaceData,
       }),
     );
@@ -177,7 +222,7 @@ describe("useOrganizationPageWorkspaceActions", () => {
       useOrganizationPageWorkspaceActions({
         activeWorkspaceId: "org_1",
         feedback,
-        forms: forms as unknown as OrganizationPageForms,
+        forms,
         refreshWorkspaceData,
       }),
     );
@@ -194,7 +239,7 @@ describe("useOrganizationPageWorkspaceActions", () => {
 
   it("includes domain and delegated email when creating a team workspace", async () => {
     mocks.createWorkspace.mockResolvedValue({ id: "org_team" });
-    const teamForms = {
+    const teamForms: OrganizationPageForms = {
       ...forms,
       workspaceDomain: "atlas.test",
       workspaceDelegatedEmail: "owner@atlas.test",
@@ -205,15 +250,13 @@ describe("useOrganizationPageWorkspaceActions", () => {
       useOrganizationPageWorkspaceActions({
         activeWorkspaceId: null,
         feedback,
-        forms: teamForms as unknown as OrganizationPageForms,
+        forms: teamForms,
         refreshWorkspaceData,
       }),
     );
 
     await act(async () => {
-      await result.current.onCreateWorkspace({
-        preventDefault: vi.fn(),
-      } as unknown as React.FormEvent<HTMLFormElement>);
+      await result.current.onCreateWorkspace({ preventDefault: vi.fn() });
     });
 
     expect(mocks.createWorkspace).toHaveBeenCalledWith({
@@ -232,7 +275,7 @@ describe("useOrganizationPageWorkspaceActions", () => {
 
   it("does not pass domain or delegated email for individual workspaces", async () => {
     mocks.createWorkspace.mockResolvedValue({ id: "org_solo" });
-    const soloForms = {
+    const soloForms: OrganizationPageForms = {
       ...forms,
       workspaceDomain: "atlas.test",
       workspaceDelegatedEmail: "owner@atlas.test",
@@ -243,15 +286,13 @@ describe("useOrganizationPageWorkspaceActions", () => {
       useOrganizationPageWorkspaceActions({
         activeWorkspaceId: null,
         feedback,
-        forms: soloForms as unknown as OrganizationPageForms,
+        forms: soloForms,
         refreshWorkspaceData,
       }),
     );
 
     await act(async () => {
-      await result.current.onCreateWorkspace({
-        preventDefault: vi.fn(),
-      } as unknown as React.FormEvent<HTMLFormElement>);
+      await result.current.onCreateWorkspace({ preventDefault: vi.fn() });
     });
 
     expect(mocks.createWorkspace).toHaveBeenCalledWith({
@@ -267,7 +308,7 @@ describe("useOrganizationPageWorkspaceActions", () => {
       useOrganizationPageWorkspaceActions({
         activeWorkspaceId: "org_1",
         feedback,
-        forms: forms as unknown as OrganizationPageForms,
+        forms,
         refreshWorkspaceData,
       }),
     );
@@ -288,7 +329,7 @@ describe("useOrganizationPageWorkspaceActions", () => {
       useOrganizationPageWorkspaceActions({
         activeWorkspaceId: null,
         feedback,
-        forms: forms as unknown as OrganizationPageForms,
+        forms,
         refreshWorkspaceData,
       }),
     );
@@ -307,21 +348,69 @@ describe("useOrganizationPageWorkspaceActions", () => {
       useOrganizationPageWorkspaceActions({
         activeWorkspaceId: "org_1",
         feedback,
-        forms: forms as unknown as OrganizationPageForms,
+        forms,
         refreshWorkspaceData,
       }),
     );
 
     await act(async () => {
-      await result.current.onProfileSave({
-        preventDefault: vi.fn(),
-      } as unknown as React.FormEvent<HTMLFormElement>);
+      await result.current.onProfileSave({ preventDefault: vi.fn() });
     });
 
     expect(mocks.updateWorkspaceProfile).toHaveBeenCalledWith({
       data: { name: "Atlas", slug: "atlas" },
     });
     expect(feedback.setFlashMessage).toHaveBeenCalledWith("Workspace details updated.");
+  });
+
+  it("saves public directory settings with parsed scope fields", async () => {
+    mocks.updateWorkspaceDirectoryConfig.mockResolvedValue({ org_id: "org_1" });
+    const directoryForms: OrganizationPageForms = {
+      ...forms,
+      directoryCorrectionPolicy: "Readers can send stale facts.",
+      directoryEntryTypes: "organization, person",
+      directoryGeographyLabels: "Detroit, MI",
+      directoryIssueAreaIds: "housing_affordability, tenant_power",
+      directoryMethodologySummary: "Reviewed records with linked public sources.",
+      directoryReviewPolicy: "Records are checked before publication.",
+      directorySourcePolicy: "Each listing includes a public source.",
+      directorySponsorLabel: "",
+      directoryTitle: "Detroit tenant power directory",
+    };
+
+    const { result } = renderHook(() =>
+      useOrganizationPageWorkspaceActions({
+        activeWorkspaceId: "org_1",
+        feedback,
+        forms: directoryForms,
+        refreshWorkspaceData,
+      }),
+    );
+
+    await act(async () => {
+      await result.current.onDirectoryConfigSave({ preventDefault: vi.fn() });
+    });
+
+    expect(mocks.updateWorkspaceDirectoryConfig).toHaveBeenCalledWith({
+      data: {
+        methodology: {
+          correction_path_template: "/feedback/{slug}?kind=incorrect",
+          correction_policy: "Readers can send stale facts.",
+          missing_context_path_template: "/feedback/{slug}?kind=missing_context",
+          review_policy: "Records are checked before publication.",
+          source_policy: "Each listing includes a public source.",
+          summary: "Reviewed records with linked public sources.",
+        },
+        scope: {
+          entry_types: ["organization", "person"],
+          geography_labels: ["Detroit, MI"],
+          issue_area_ids: ["housing_affordability", "tenant_power"],
+        },
+        sponsor_label: null,
+        title: "Detroit tenant power directory",
+      },
+    });
+    expect(feedback.setFlashMessage).toHaveBeenCalledWith("Directory settings updated.");
   });
 
   it("invites a workspace member and clears the form afterwards", async () => {
@@ -331,15 +420,13 @@ describe("useOrganizationPageWorkspaceActions", () => {
       useOrganizationPageWorkspaceActions({
         activeWorkspaceId: "org_1",
         feedback,
-        forms: forms as unknown as OrganizationPageForms,
+        forms,
         refreshWorkspaceData,
       }),
     );
 
     await act(async () => {
-      await result.current.onInviteMember({
-        preventDefault: vi.fn(),
-      } as unknown as React.FormEvent<HTMLFormElement>);
+      await result.current.onInviteMember({ preventDefault: vi.fn() });
     });
 
     expect(mocks.inviteWorkspaceMember).toHaveBeenCalledWith({
@@ -357,7 +444,7 @@ describe("useOrganizationPageWorkspaceActions", () => {
       useOrganizationPageWorkspaceActions({
         activeWorkspaceId: "org_1",
         feedback,
-        forms: forms as unknown as OrganizationPageForms,
+        forms,
         refreshWorkspaceData,
       }),
     );
@@ -379,7 +466,7 @@ describe("useOrganizationPageWorkspaceActions", () => {
       useOrganizationPageWorkspaceActions({
         activeWorkspaceId: "org_1",
         feedback,
-        forms: forms as unknown as OrganizationPageForms,
+        forms,
         refreshWorkspaceData,
       }),
     );
@@ -401,7 +488,7 @@ describe("useOrganizationPageWorkspaceActions", () => {
       useOrganizationPageWorkspaceActions({
         activeWorkspaceId: "org_1",
         feedback,
-        forms: forms as unknown as OrganizationPageForms,
+        forms,
         refreshWorkspaceData,
       }),
     );
@@ -421,7 +508,7 @@ describe("useOrganizationPageWorkspaceActions", () => {
       useOrganizationPageWorkspaceActions({
         activeWorkspaceId: "org_1",
         feedback,
-        forms: forms as unknown as OrganizationPageForms,
+        forms,
         refreshWorkspaceData,
       }),
     );
@@ -444,7 +531,7 @@ describe("useOrganizationPageWorkspaceActions", () => {
       useOrganizationPageWorkspaceActions({
         activeWorkspaceId: "org_1",
         feedback,
-        forms: forms as unknown as OrganizationPageForms,
+        forms,
         refreshWorkspaceData,
       }),
     );
@@ -467,7 +554,7 @@ describe("useOrganizationPageWorkspaceActions", () => {
       useOrganizationPageWorkspaceActions({
         activeWorkspaceId: "org_1",
         feedback,
-        forms: forms as unknown as OrganizationPageForms,
+        forms,
         refreshWorkspaceData,
       }),
     );

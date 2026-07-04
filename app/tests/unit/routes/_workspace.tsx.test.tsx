@@ -136,7 +136,16 @@ describe("routes/_workspace layout", () => {
     render(<Component />);
     const layout = screen.getByTestId("workspace-layout");
     const tabs = JSON.parse(layout.dataset.tabs ?? "[]") as { label: string }[];
-    expect(tabs.map((t) => t.label)).toEqual(["Home", "Research", "Browse", "Lists", "Activity"]);
+    expect(tabs.map((t) => t.label)).toEqual([
+      "Home",
+      "Research",
+      "Coverage",
+      "Briefs",
+      "Browse",
+      "Lists",
+      "Watching",
+      "Activity",
+    ]);
     expect(screen.getByTestId("identity-slot")).toBeEmptyDOMElement();
   });
 
@@ -167,8 +176,11 @@ describe("routes/_workspace layout", () => {
     expect(tabs.map((t) => t.label)).toEqual([
       "Home",
       "Research",
+      "Coverage",
+      "Briefs",
       "Browse",
       "Lists",
+      "Watching",
       "Activity",
       "Account",
     ]);
@@ -189,7 +201,16 @@ describe("routes/_workspace layout", () => {
     const tabs = JSON.parse(screen.getByTestId("workspace-layout").dataset.tabs ?? "[]") as {
       label: string;
     }[];
-    expect(tabs.map((t) => t.label)).toEqual(["Home", "Research", "Browse", "Lists", "Activity"]);
+    expect(tabs.map((t) => t.label)).toEqual([
+      "Home",
+      "Research",
+      "Coverage",
+      "Briefs",
+      "Browse",
+      "Lists",
+      "Watching",
+      "Activity",
+    ]);
   });
 
   it("delegates the workspace-switch mutationFn to setActiveWorkspace", async () => {
@@ -277,8 +298,11 @@ describe("routes/_workspace layout", () => {
     expect(tabs.map((t) => t.label)).toEqual([
       "Home",
       "Research",
+      "Coverage",
+      "Briefs",
       "Browse",
       "Lists",
+      "Watching",
       "Activity",
       "Organization",
       "Account",

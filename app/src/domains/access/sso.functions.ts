@@ -20,17 +20,20 @@ import {
   groupStoredProvidersByWorkspace,
   resolveStoredWorkspaceSSOSignIn,
 } from "./sso-sign-in-resolution";
-import { ensureAuthReady } from "./server/auth";
-import { getBrowserSessionHeaders } from "./server/request-headers";
-import {
-  listStoredWorkspaceSSOProviders,
-  loadStoredWorkspaceIdentity,
-} from "./server/sso-provider-store";
-import {
-  getAuthRuntimeConfig,
-  getSamlAllowedIssuerOrigins,
-  isAllowedSamlIssuer,
-} from "./server/runtime";
+
+async function loadWorkspaceSSOServerModules() {
+  if (import.meta.env.SSR) {
+    const [auth, requestHeaders, ssoProviderStore, runtime] = await Promise.all([
+      import("./server/auth"),
+      import("./server/request-headers"),
+      import("./server/sso-provider-store"),
+      import("./server/runtime"),
+    ]);
+    return { auth, requestHeaders, ssoProviderStore, runtime };
+  }
+
+  throw new Error("Workspace SSO server modules are only available on the server.");
+}
 
 const googleWorkspaceOIDCProviderSchema = z.object({
   clientId: z.string().trim().min(1),
@@ -86,9 +89,13 @@ export interface AtlasWorkspaceSSORegistrationResult {
  * Save before the server-side check ever runs.  An empty array means SAML
  * registration is disabled for this deployment.
  */
-export const getWorkspaceSAMLAllowedIssuers = createServerFn({ method: "GET" }).handler(() => {
-  return { issuerOrigins: getSamlAllowedIssuerOrigins() };
-});
+export const getWorkspaceSAMLAllowedIssuers = createServerFn({ method: "GET" }).handler(
+  async () => {
+    const { runtime } = await loadWorkspaceSSOServerModules();
+    const { getSamlAllowedIssuerOrigins } = runtime;
+    return { issuerOrigins: getSamlAllowedIssuerOrigins() };
+  },
+);
 
 /**
  * Persists one workspace-level primary SSO provider choice inside Better
@@ -144,10 +151,12 @@ async function saveWorkspacePrimarySSOProvider(providerId: string | null): Promi
  * @param params.providerId - The optional provider id supplied by the operator.
  * @param params.workspaceSlug - The active workspace slug.
  */
-function buildWorkspaceSSORegistrationDefaults(params: {
+async function buildWorkspaceSSORegistrationDefaults(params: {
   providerId?: string;
   workspaceSlug: string;
 }) {
+  const { runtime: runtimeModule } = await loadWorkspaceSSOServerModules();
+  const { getAuthRuntimeConfig } = runtimeModule;
   const runtime = getAuthRuntimeConfig();
   const oidcProviderId =
     params.providerId ?? buildGoogleWorkspaceOIDCProviderId(params.workspaceSlug);
@@ -173,7 +182,7 @@ export const registerWorkspaceGoogleOIDCProvider = createServerFn({ method: "POS
     const organizationRequestContext = await loadOrganizationRequestContext();
     const { auth, headers, session } = organizationRequestContext;
     const activeWorkspace = requireManagedTeamWorkspace(session);
-    const registrationDefaults = buildWorkspaceSSORegistrationDefaults({
+    const registrationDefaults = await buildWorkspaceSSORegistrationDefaults({
       providerId: data.providerId,
       workspaceSlug: activeWorkspace.slug,
     });
@@ -217,6 +226,8 @@ export const registerWorkspaceGoogleOIDCProvider = createServerFn({ method: "POS
 export const registerWorkspaceSAMLProvider = createServerFn({ method: "POST" })
   .inputValidator(googleWorkspaceSAMLProviderSchema)
   .handler(async ({ data }) => {
+    const { runtime: runtimeModule } = await loadWorkspaceSSOServerModules();
+    const { getAuthRuntimeConfig, isAllowedSamlIssuer } = runtimeModule;
     if (!isAllowedSamlIssuer(data.issuer)) {
       throw new Error(
         "This SAML issuer is not enabled on Atlas. Contact support to add it to the allowlist.",
@@ -225,7 +236,7 @@ export const registerWorkspaceSAMLProvider = createServerFn({ method: "POST" })
     const organizationRequestContext = await loadOrganizationRequestContext();
     const { auth, headers, session } = organizationRequestContext;
     const activeWorkspace = requireManagedTeamWorkspace(session);
-    const registrationDefaults = buildWorkspaceSSORegistrationDefaults({
+    const registrationDefaults = await buildWorkspaceSSORegistrationDefaults({
       providerId: data.providerId,
       workspaceSlug: activeWorkspace.slug,
     });
@@ -531,6 +542,8 @@ export const deleteWorkspaceSSOProvider = createServerFn({ method: "POST" })
       headers,
     });
 
+    const { ssoProviderStore } = await loadWorkspaceSSOServerModules();
+    const { loadStoredWorkspaceIdentity } = ssoProviderStore;
     const workspaceIdentity = await loadStoredWorkspaceIdentity(activeWorkspace.id);
     if (workspaceIdentity?.primaryProviderId === data.providerId) {
       await saveWorkspacePrimarySSOProvider(null);
@@ -556,6 +569,14 @@ export const resolveWorkspaceSSOSignIn = createServerFn({ method: "POST" })
     }
     /* v8 ignore stop */
     const emailDomain = rawDomain.trim().toLowerCase();
+    const {
+      auth: authModule,
+      requestHeaders,
+      ssoProviderStore,
+    } = await loadWorkspaceSSOServerModules();
+    const { ensureAuthReady } = authModule;
+    const { getBrowserSessionHeaders } = requestHeaders;
+    const { listStoredWorkspaceSSOProviders, loadStoredWorkspaceIdentity } = ssoProviderStore;
     const authPromise = ensureAuthReady();
     const auth = await authPromise;
     const headers = getBrowserSessionHeaders();

@@ -1,16 +1,28 @@
 import type { AtlasSessionPayload, AtlasWorkspaceMembership } from "./organization-contracts";
 import { canManageAtlasOrganizationRole } from "./organization-metadata";
-import { ensureAuthReady } from "./server/auth";
-import { getBrowserSessionHeaders } from "./server/request-headers";
-import { getAuthRuntimeConfig } from "./server/runtime";
-import { requireAtlasSessionState } from "./server/session-state";
+
+async function loadOrganizationServerModules() {
+  if (import.meta.env.SSR) {
+    const [auth, requestHeaders, runtime, sessionState] = await Promise.all([
+      import("./server/auth"),
+      import("./server/request-headers"),
+      import("./server/runtime"),
+      import("./server/session-state"),
+    ]);
+    return { auth, requestHeaders, runtime, sessionState };
+  }
+
+  throw new Error("Organization server modules are only available on the server.");
+}
 
 /**
  * Throws when organization management is requested while auth is disabled.
  */
-export function assertOrganizationManagementEnabled(): void {
-  const runtime = getAuthRuntimeConfig();
-  if (runtime.localMode) {
+export async function assertOrganizationManagementEnabled(): Promise<void> {
+  const { runtime: runtimeModule } = await loadOrganizationServerModules();
+  const { getAuthRuntimeConfig } = runtimeModule;
+  const authRuntime = getAuthRuntimeConfig();
+  if (authRuntime.localMode) {
     throw new Error("Organization management is unavailable while auth is disabled.");
   }
 }
@@ -20,8 +32,12 @@ export function assertOrganizationManagementEnabled(): void {
  * organization operations.
  */
 export async function loadOrganizationRequestContext() {
-  assertOrganizationManagementEnabled();
+  await assertOrganizationManagementEnabled();
 
+  const { auth: authModule, requestHeaders, sessionState } = await loadOrganizationServerModules();
+  const { ensureAuthReady } = authModule;
+  const { getBrowserSessionHeaders } = requestHeaders;
+  const { requireAtlasSessionState } = sessionState;
   const session = await requireAtlasSessionState();
   const auth = await ensureAuthReady();
   const headers = getBrowserSessionHeaders();

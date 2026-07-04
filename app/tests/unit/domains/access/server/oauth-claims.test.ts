@@ -75,6 +75,36 @@ describe("buildAtlasAccessTokenClaims", () => {
     expect(claims.permissions).toEqual({});
   });
 
+  it("adds requested MCP capability only when the workspace product grants it", async () => {
+    const resolveActiveProductsForWorkspace = vi.fn().mockResolvedValue(["atlas_briefing_room"]);
+
+    const claims = await buildAtlasAccessTokenClaims(
+      {
+        scopes: ["openid", "discovery:read", "api.mcp", "org:org_mcp"],
+        resource: "https://atlas.example/mcp",
+      },
+      { ...DEFAULT_OPTIONS, resolveActiveProductsForWorkspace },
+    );
+
+    expect(resolveActiveProductsForWorkspace).toHaveBeenCalledWith("org_mcp");
+    expect(claims.capabilities).toEqual(["api.mcp"]);
+  });
+
+  it("omits requested MCP capability when the workspace product does not grant it", async () => {
+    const resolveActiveProductsForWorkspace = vi.fn().mockResolvedValue([]);
+
+    const claims = await buildAtlasAccessTokenClaims(
+      {
+        scopes: ["openid", "discovery:read", "api.mcp", "org:org_free"],
+        resource: "https://atlas.example/mcp",
+      },
+      { ...DEFAULT_OPTIONS, resolveActiveProductsForWorkspace },
+    );
+
+    expect(resolveActiveProductsForWorkspace).toHaveBeenCalledWith("org_free");
+    expect(claims.capabilities).toBeUndefined();
+  });
+
   it("falls back to the user's primary workspace when no org: scope is requested", async () => {
     const resolvePrimaryWorkspaceId = vi.fn().mockResolvedValue("ws_solo");
 

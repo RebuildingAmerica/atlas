@@ -27,15 +27,18 @@ interface MetadataInput {
  * surface; richer scopes are negotiated per-request via the WWW-Authenticate
  * scope challenge instead of being enumerated here.
  */
+export const MCP_ENTERPRISE_SCOPE = "api.mcp" as const;
+
 export const SUPPORTED_OAUTH_SCOPES = [
   "openid",
   "profile",
   "email",
   "offline_access",
   ...API_KEY_SCOPES,
+  MCP_ENTERPRISE_SCOPE,
 ] as const;
 
-const PROTECTED_RESOURCE_SCOPES = ["discovery:read"] as const;
+const PROTECTED_RESOURCE_SCOPES = ["discovery:read", MCP_ENTERPRISE_SCOPE] as const;
 
 function mcpResourceUrl(publicBaseUrl: string): string {
   return `${publicBaseUrl}/mcp`;

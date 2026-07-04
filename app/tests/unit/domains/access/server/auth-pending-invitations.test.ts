@@ -174,7 +174,7 @@ describe("auth — invitation success path and organization invitation email", (
 
   it("delivers the organization invitation email via the magic-link plugin sender", async () => {
     const mod = await import("@/domains/access/server/auth");
-    mod.getAuth();
+    await mod.getAuth();
 
     const organizationCall = mocks.organization.mock.calls[0]?.[0];
 

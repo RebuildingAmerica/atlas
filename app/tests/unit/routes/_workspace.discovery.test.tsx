@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
-import { describe, expect, it, vi } from "vitest";
+import { cleanup, render } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@tanstack/react-router", async () => {
   const harness = await import("@/../tests/helpers/router-harness");
@@ -24,6 +25,10 @@ vi.mock("@/lib/api", () => ({
 }));
 
 describe("routes/_workspace/discovery", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
   it("registers an SSR-friendly route with metadata", async () => {
     const routeModule = await import("@/routes/_workspace/discovery");
     const { asRouteStub } = await import("@/../tests/helpers/router-harness");
@@ -42,6 +47,28 @@ describe("routes/_workspace/discovery", () => {
         },
       ],
     });
+  });
+
+  it("validates coverage-gap search params for research prefill", async () => {
+    const routeModule = await import("@/routes/_workspace/discovery");
+    const { asRouteStub } = await import("@/../tests/helpers/router-harness");
+    const Route = asRouteStub(routeModule.Route);
+
+    const validator = Route.options.validateSearch as { parse: (input: unknown) => unknown };
+    expect(
+      validator.parse({
+        issue_areas: "housing_affordability",
+        location: "Kansas City, MO",
+        research_goal: "partner_scan",
+        state: "mo",
+      }),
+    ).toEqual({
+      issue_areas: "housing_affordability",
+      location: "Kansas City, MO",
+      research_goal: "partner_scan",
+      state: "mo",
+    });
+    expect(validator.parse({ research_goal: "not_a_goal" })).toEqual({});
   });
 
   it("loads initial runs and taxonomy for SSR", async () => {
@@ -68,5 +95,40 @@ describe("routes/_workspace/discovery", () => {
         ],
       },
     });
+  });
+
+  it("passes validated search params into the discovery page", async () => {
+    const discovery = await import("@/domains/discovery");
+    const routeModule = await import("@/routes/_workspace/discovery");
+    const { asRouteStub, readRouterMocks } = await import("@/../tests/helpers/router-harness");
+    const Route = asRouteStub(routeModule.Route);
+    readRouterMocks().useLoaderData.mockReturnValue({
+      initialRuns: { items: [], total: 0 },
+      initialTaxonomy: {},
+    });
+    readRouterMocks().useSearch.mockReturnValue({
+      issue_areas: "housing_affordability",
+      location: "Kansas City, MO",
+      research_goal: "partner_scan",
+      state: "MO",
+    });
+
+    const Component = Route.options.component;
+    if (!Component) throw new Error("Expected Route.options.component");
+    render(<Component />);
+
+    expect(vi.mocked(discovery.DiscoveryPage)).toHaveBeenCalledWith(
+      {
+        initialRequest: {
+          issue_areas: "housing_affordability",
+          location: "Kansas City, MO",
+          research_goal: "partner_scan",
+          state: "MO",
+        },
+        initialRuns: { items: [], total: 0 },
+        initialTaxonomy: {},
+      },
+      undefined,
+    );
   });
 });

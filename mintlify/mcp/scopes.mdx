@@ -1,26 +1,63 @@
 ---
 title: "Scopes & permissions"
-description: "OAuth scopes that control what Atlas MCP tools can access."
+description: "OAuth scopes and Atlas package capabilities for MCP access."
 ---
 
 ## Overview
 
-When you connect an MCP client to Atlas, the OAuth flow asks you to approve specific permissions. These scopes control what your AI assistant can do.
+Atlas MCP access depends on two checks:
 
-## Available scopes
+1. OAuth permissions in the access token
+2. Atlas package capabilities attached to the workspace
 
-| Scope | What it allows | Required for |
-|-------|----------------|-------------|
-| `openid` | Basic identity verification | All connections |
-| `profile` | Read your name and account details | All connections |
-| `email` | Read your email address | All connections |
-| `discovery:read` | Read discovery runs and their results | Viewing past research runs |
-| `discovery:write` | Create and manage discovery runs | Running new research |
-| `entities:write` | Create and update catalog entries | Adding or editing entities |
+This keeps public browsing open while making agent and integration access explicit.
 
-## Default scopes
+## MCP requirements
 
-Most MCP clients request `openid`, `profile`, and `email` by default. The `discovery:*` and `entities:write` scopes are requested when you use tools that require them.
+Atlas requires both of these for MCP requests:
+
+| Requirement | Where it appears | Why it matters |
+| --- | --- | --- |
+| `discovery:read` | OAuth scope or permission claim | Allows read-only discovery and catalog retrieval tools |
+| `api.mcp` | Atlas capability claim | Confirms the workspace package includes MCP access |
+
+If either check is missing, `/mcp` returns `403 Forbidden` with a `WWW-Authenticate` challenge that names the missing permission.
+
+## OAuth scopes
+
+| Scope | What it allows |
+| --- | --- |
+| `openid` | Basic identity verification |
+| `profile` | User profile details |
+| `email` | User email address |
+| `offline_access` | Refresh-token access from the authorization server |
+| `discovery:read` | Read source-linked discovery and catalog results |
+| `discovery:write` | Create and manage discovery runs where enabled |
+| `entities:write` | Create or update catalog entries where enabled |
+
+Most MCP read tools use `discovery:read`. Write scopes are not enough to access MCP unless the token also carries the Atlas `api.mcp` capability.
+
+## Workspace binding
+
+Atlas binds OAuth tokens to a workspace. Single-workspace users are bound automatically. Multi-workspace users pick the workspace during consent.
+
+The token carries an `org_id` claim for the selected workspace. Organization-scoped API endpoints reject requests whose path org does not match that claim.
+
+## Package capabilities
+
+Package capabilities are derived by Atlas, not requested directly by the client. For MCP, the important capability is:
+
+| Capability | Meaning |
+| --- | --- |
+| `api.mcp` | The workspace package includes MCP access |
+
+See [Plans & pricing](/account/pricing) for which packages include MCP access.
+
+## Integration monitoring
+
+Successful MCP requests and successful external REST API calls can appear in workspace integration monitoring. The monitoring view shows counts, surfaces, routes or resources, and last-seen timestamps only.
+
+See [Integration monitoring](/mcp/integration-monitoring) for the data boundary.
 
 ## Revoking access
 
@@ -28,6 +65,7 @@ To disconnect an MCP client and revoke its access:
 
 1. Sign in to [Atlas](https://atlas.rebuildingus.org)
 2. Go to **Account** settings
-3. Under **Connected apps**, find the client and click **Revoke**
+3. Under **Connected apps**, find the client
+4. Revoke the client
 
-After revoking, the client will need to re-authorize on its next use.
+After revocation, the client must authorize again before it can use Atlas.

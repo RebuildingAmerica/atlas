@@ -1,6 +1,8 @@
 import "@tanstack/react-start/server-only";
 
 import { API_KEY_SCOPES, scopesToPermissions, type ApiKeyScope } from "../api-key-scopes";
+import { resolveCapabilities, type AtlasCapability, type AtlasProduct } from "../capabilities";
+import { MCP_ENTERPRISE_SCOPE } from "../oauth-as-metadata";
 
 /**
  * Prefix used by OAuth clients to request organization context in access
@@ -8,6 +10,7 @@ import { API_KEY_SCOPES, scopesToPermissions, type ApiKeyScope } from "../api-ke
  * claims builder validates membership and includes the org_id in the token.
  */
 const ORG_SCOPE_PREFIX = "org:";
+const OAUTH_CAPABILITY_SCOPES: readonly AtlasCapability[] = [MCP_ENTERPRISE_SCOPE];
 
 /**
  * Parameters provided by Better Auth's oauthProvider plugin to the
@@ -39,6 +42,12 @@ export interface BuildAtlasClaimsOptions {
    * we don't need a Better Auth database to exercise the claim shape.
    */
   resolvePrimaryWorkspaceId?: (userId: string) => Promise<string | null>;
+  /**
+   * Resolves active product grants for the workspace being encoded into the
+   * access token. Capability claims are derived from these products rather
+   * than copied from user-requested OAuth scopes.
+   */
+  resolveActiveProductsForWorkspace?: (workspaceId: string) => Promise<AtlasProduct[]>;
 }
 
 /**
@@ -54,6 +63,22 @@ function collectAtlasResourceScopes(scopes: readonly string[]): ApiKeyScope[] {
     }
   }
   return resourceScopes;
+}
+
+/**
+ * Narrows OAuth scopes down to Atlas capability scopes that must be proven
+ * against the selected workspace's active products before they are emitted in
+ * an access-token claim.
+ */
+function collectAtlasCapabilityScopes(scopes: readonly string[]): AtlasCapability[] {
+  const requestedCapabilities: AtlasCapability[] = [];
+  for (const scope of scopes) {
+    const isAtlasCapability = (OAUTH_CAPABILITY_SCOPES as readonly string[]).includes(scope);
+    if (isAtlasCapability) {
+      requestedCapabilities.push(scope as AtlasCapability);
+    }
+  }
+  return requestedCapabilities;
 }
 
 /**
@@ -95,15 +120,29 @@ export async function buildAtlasAccessTokenClaims(
 ): Promise<Record<string, unknown>> {
   const { scopes, resource, user } = params;
   const resourceScopes = collectAtlasResourceScopes(scopes);
+  const capabilityScopes = collectAtlasCapabilityScopes(scopes);
   let orgId = extractOrgIdFromScopes(scopes);
 
   if (!orgId && user?.id && options.resolvePrimaryWorkspaceId) {
     orgId = await options.resolvePrimaryWorkspaceId(user.id);
   }
 
+  let capabilityClaims: AtlasCapability[] = [];
+  if (orgId && capabilityScopes.length > 0 && options.resolveActiveProductsForWorkspace) {
+    const activeProducts = await options.resolveActiveProductsForWorkspace(orgId);
+    const resolved = resolveCapabilities(activeProducts);
+    capabilityClaims = capabilityScopes.filter((capability) =>
+      resolved.capabilities.has(capability),
+    );
+  }
+
   const claims: Record<string, unknown> = {
     permissions: scopesToPermissions(resourceScopes),
   };
+
+  if (capabilityClaims.length > 0) {
+    claims.capabilities = capabilityClaims;
+  }
 
   if (orgId) {
     claims.org_id = orgId;

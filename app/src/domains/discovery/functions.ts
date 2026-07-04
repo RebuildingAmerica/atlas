@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requestAtlasApi } from "./server/api-client";
-import type { DiscoveryRun, DiscoveryRunListResponse } from "@/types";
+import type { DiscoveryJobQueueResponse, DiscoveryRun, DiscoveryRunListResponse } from "@/types";
 
 const discoveryPayloadSchema = z.object({
   issue_areas: z.array(z.string()).min(1),
@@ -10,9 +10,21 @@ const discoveryPayloadSchema = z.object({
   state: z.string().length(2),
 });
 
+const discoveryJobQueueInputSchema = z.object({
+  limit: z.number().int().min(1).max(100).default(10),
+});
+
 export const listDiscoveryRuns = createServerFn({ method: "GET" }).handler(async () => {
   return await requestAtlasApi<DiscoveryRunListResponse>("/discovery-runs");
 });
+
+export const listDiscoveryJobQueue = createServerFn({ method: "GET" })
+  .inputValidator(discoveryJobQueueInputSchema)
+  .handler(async ({ data }) => {
+    return await requestAtlasApi<DiscoveryJobQueueResponse>(
+      `/discovery-runs/jobs?limit=${data.limit}`,
+    );
+  });
 
 export const getDiscoveryRun = createServerFn({ method: "GET" })
   .inputValidator(z.object({ id: z.string().min(1) }))

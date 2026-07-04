@@ -86,7 +86,8 @@ describe("buildProtectedResourceMetadata", () => {
 
     expect(asMetadata.scopes_supported).toContain("offline_access");
     expect(asMetadata.scopes_supported).toContain("discovery:write");
-    expect(prmMetadata.scopes_supported).toEqual(["discovery:read"]);
+    expect(asMetadata.scopes_supported).toContain("api.mcp");
+    expect(prmMetadata.scopes_supported).toEqual(["discovery:read", "api.mcp"]);
     expect(prmMetadata.scopes_supported).not.toContain("offline_access");
     expect(prmMetadata.scopes_supported).not.toContain("discovery:write");
   });

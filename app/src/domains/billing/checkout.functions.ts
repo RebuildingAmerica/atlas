@@ -1,19 +1,38 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { createCheckoutSession } from "./server/checkout";
-import { getDiscountCouponId } from "./server/discount-coupons";
-import { ensureStripeCustomerForWorkspace } from "./server/stripe-customer";
-import { ATLAS_PRODUCTS } from "./products";
-import { ensureAuthReady } from "../access/server/auth";
-import { getBrowserSessionHeaders } from "../access/server/request-headers";
-import { getAuthRuntimeConfig } from "../access/server/runtime";
-import { requireAtlasSessionState } from "../access/server/session-state";
 import { normalizeAtlasOrganizationMetadata } from "../access/organization-metadata";
+import { ATLAS_PRODUCTS } from "./products";
 
 const checkoutInputSchema = z.object({
   product: z.enum(["atlas_pro", "atlas_team", "atlas_research_pass"]),
   interval: z.enum(["monthly", "yearly", "once", "weekly"]),
 });
+
+async function loadCheckoutServerModules() {
+  if (import.meta.env.SSR) {
+    const [checkout, discountCoupons, stripeCustomer, auth, requestHeaders, runtime, sessionState] =
+      await Promise.all([
+        import("./server/checkout"),
+        import("./server/discount-coupons"),
+        import("./server/stripe-customer"),
+        import("../access/server/auth"),
+        import("../access/server/request-headers"),
+        import("../access/server/runtime"),
+        import("../access/server/session-state"),
+      ]);
+    return {
+      checkout,
+      discountCoupons,
+      stripeCustomer,
+      auth,
+      requestHeaders,
+      runtime,
+      sessionState,
+    };
+  }
+
+  throw new Error("Checkout server modules are only available on the server.");
+}
 
 /**
  * Resolves the Stripe price ID for a product and billing interval.
@@ -57,6 +76,22 @@ function resolveSeatPriceId(interval: string): string {
 export const startCheckout = createServerFn({ method: "POST" })
   .inputValidator(checkoutInputSchema)
   .handler(async ({ data }) => {
+    const {
+      checkout,
+      discountCoupons,
+      stripeCustomer,
+      auth: authModule,
+      requestHeaders,
+      runtime: runtimeModule,
+      sessionState,
+    } = await loadCheckoutServerModules();
+    const { createCheckoutSession } = checkout;
+    const { getDiscountCouponId } = discountCoupons;
+    const { ensureStripeCustomerForWorkspace } = stripeCustomer;
+    const { ensureAuthReady } = authModule;
+    const { getBrowserSessionHeaders } = requestHeaders;
+    const { getAuthRuntimeConfig } = runtimeModule;
+    const { requireAtlasSessionState } = sessionState;
     const priceId = resolvePriceId(data.product, data.interval);
     if (!priceId) {
       throw new Error("Stripe price not configured for this product. Check environment variables.");

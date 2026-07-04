@@ -15,6 +15,11 @@ import {
   useProfileFollow,
   useUnfollowProfile,
 } from "@/domains/catalog/hooks/use-claims";
+import {
+  useUnwatchWorkspaceResource,
+  useWatchWorkspaceResource,
+  useWorkspaceWatchStatus,
+} from "@/domains/workspace/hooks/use-workspace-watches";
 import { SaveListPicker } from "@/domains/catalog/components/profiles/save-list-picker";
 import { cn } from "@/lib/utils";
 
@@ -26,6 +31,7 @@ interface ActionClusterProps {
   email?: string;
   isSignedIn: boolean;
   profilePath: string;
+  workspaceWatchingEnabled?: boolean;
 }
 
 type ShareState = "idle" | "copied" | "shared";
@@ -61,13 +67,25 @@ export function ActionCluster({
   email,
   isSignedIn,
   profilePath,
+  workspaceWatchingEnabled = false,
 }: ActionClusterProps) {
   const [shareState, setShareState] = useState<ShareState>("idle");
   const [savePickerOpen, setSavePickerOpen] = useState(false);
   const followQuery = useProfileFollow(entrySlug, isSignedIn);
   const followMutation = useFollowProfile();
   const unfollowMutation = useUnfollowProfile();
+  const workspaceWatchInput = {
+    resourceId: entryId,
+    resourceType: "entry" as const,
+  };
+  const workspaceWatchQuery = useWorkspaceWatchStatus(
+    workspaceWatchInput,
+    isSignedIn && workspaceWatchingEnabled,
+  );
+  const watchWorkspaceMutation = useWatchWorkspaceResource();
+  const unwatchWorkspaceMutation = useUnwatchWorkspaceResource();
   const isFollowing = Boolean(followQuery.data);
+  const isWorkspaceWatched = Boolean(workspaceWatchQuery.data?.watched);
 
   async function handleShare() {
     const shared = await shareViaWebApi(shareUrl, shareTitle);
@@ -107,8 +125,27 @@ export function ActionCluster({
     void onFollowClick();
   }
 
+  async function onWorkspaceWatchClick() {
+    if (isWorkspaceWatched) {
+      await unwatchWorkspaceMutation.mutateAsync(workspaceWatchInput);
+    } else {
+      await watchWorkspaceMutation.mutateAsync({
+        ...workspaceWatchInput,
+        notificationPreference: "digest",
+      });
+    }
+  }
+
+  function onWorkspaceWatchClickWrapper() {
+    void onWorkspaceWatchClick();
+  }
+
   const shareLabel =
     shareState === "copied" ? "Link copied" : shareState === "shared" ? "Shared" : "Share";
+  const workspaceWatchDisabled =
+    workspaceWatchQuery.isLoading ||
+    watchWorkspaceMutation.isPending ||
+    unwatchWorkspaceMutation.isPending;
 
   return (
     <nav
@@ -142,6 +179,20 @@ export function ActionCluster({
         <a href={`mailto:${email}`} className={GHOST_BUTTON}>
           Contact
         </a>
+      ) : null}
+
+      {isSignedIn && workspaceWatchingEnabled ? (
+        <button
+          type="button"
+          className={cn(
+            GHOST_BUTTON,
+            isWorkspaceWatched && "border-civic bg-civic text-paper hover:text-paper",
+          )}
+          onClick={onWorkspaceWatchClickWrapper}
+          disabled={workspaceWatchDisabled}
+        >
+          {isWorkspaceWatched ? "Watching" : "Watch"}
+        </button>
       ) : null}
 
       {isSignedIn ? (

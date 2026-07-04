@@ -12,11 +12,14 @@ import { RolePermissionsGuide } from "./role-permissions-guide";
 import { TeamInvitationsSection } from "./team-invitations-section";
 import { TeamInviteUpsellSection } from "./team-invite-upsell-section";
 import { TeamMembersSection } from "./team-members-section";
+import { WorkspaceDirectoryConfigSection } from "./workspace-directory-config-section";
 import { WorkspaceCreationSection } from "./workspace-creation-section";
 import { WorkspaceMembershipSection } from "./workspace-membership-section";
+import { WorkspacePackageSummarySection } from "./workspace-package-summary-section";
 import { WorkspaceProfileSection } from "./workspace-profile-section";
 import { WorkspaceSwitcherSection } from "./workspace-switcher-section";
 import { WorkspaceUpgradeSection } from "./workspace-upgrade-section";
+import { WorkspaceUsageSummarySection } from "./workspace-usage-summary-section";
 
 /**
  * Props for the main workspace-management view.
@@ -50,6 +53,11 @@ export function OrganizationWorkspacePageView({ controller }: OrganizationWorksp
     : controller.canUseTeamFeatures
       ? "Manage your shared workspace, team members, and invitations."
       : "Your personal workspace for individual research.";
+  const renewalPacketUrl = controller.activeWorkspace
+    ? `/api/orgs/${encodeURIComponent(
+        controller.activeWorkspace.id,
+      )}/usage-summary/renewal-packet?format=markdown`
+    : null;
 
   async function handleLeaveWorkspace() {
     const leaveWorkspacePromise = controller.onLeaveWorkspace();
@@ -138,6 +146,57 @@ export function OrganizationWorkspacePageView({ controller }: OrganizationWorksp
                   void controller.onProfileSave(e);
                 }}
               />
+
+              {controller.session ? (
+                <WorkspacePackageSummarySection
+                  activeProducts={controller.session.workspace.activeProducts ?? []}
+                  capabilities={controller.session.workspace.resolvedCapabilities}
+                />
+              ) : null}
+
+              {controller.canManageOrganization &&
+              controller.usageSummary &&
+              !controller.usageSummaryLoading &&
+              renewalPacketUrl ? (
+                <WorkspaceUsageSummarySection
+                  auditLog={!controller.usageAuditLogLoading ? controller.usageAuditLog : undefined}
+                  integrationMonitoring={
+                    !controller.integrationMonitoringLoading
+                      ? controller.integrationMonitoring
+                      : undefined
+                  }
+                  renewalPacketUrl={renewalPacketUrl}
+                  usageSummary={controller.usageSummary}
+                />
+              ) : null}
+
+              {controller.canUsePublicDirectories && !controller.directoryConfigLoading ? (
+                <WorkspaceDirectoryConfigSection
+                  canManageOrganization={controller.canManageOrganization}
+                  directoryConfigPending={controller.directoryConfigPending}
+                  directoryCorrectionPolicy={controller.directoryCorrectionPolicy}
+                  directoryEntryTypes={controller.directoryEntryTypes}
+                  directoryGeographyLabels={controller.directoryGeographyLabels}
+                  directoryIssueAreaIds={controller.directoryIssueAreaIds}
+                  directoryMethodologySummary={controller.directoryMethodologySummary}
+                  directoryReviewPolicy={controller.directoryReviewPolicy}
+                  directorySourcePolicy={controller.directorySourcePolicy}
+                  directorySponsorLabel={controller.directorySponsorLabel}
+                  directoryTitle={controller.directoryTitle}
+                  onDirectoryCorrectionPolicyChange={controller.setDirectoryCorrectionPolicy}
+                  onDirectoryEntryTypesChange={controller.setDirectoryEntryTypes}
+                  onDirectoryGeographyLabelsChange={controller.setDirectoryGeographyLabels}
+                  onDirectoryIssueAreaIdsChange={controller.setDirectoryIssueAreaIds}
+                  onDirectoryMethodologySummaryChange={controller.setDirectoryMethodologySummary}
+                  onDirectoryReviewPolicyChange={controller.setDirectoryReviewPolicy}
+                  onDirectorySourcePolicyChange={controller.setDirectorySourcePolicy}
+                  onDirectorySponsorLabelChange={controller.setDirectorySponsorLabel}
+                  onDirectoryTitleChange={controller.setDirectoryTitle}
+                  onSubmit={(event) => {
+                    void controller.onDirectoryConfigSave(event);
+                  }}
+                />
+              ) : null}
 
               {controller.canUseTeamFeatures ? (
                 <WorkspaceMembershipSection

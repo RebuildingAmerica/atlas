@@ -1,9 +1,9 @@
-import type { AtlasProduct } from "@/domains/access/capabilities";
+import type { AtlasSelfServeProduct } from "@/domains/access/capabilities";
 
 export type PricingCheckoutInterval = "monthly" | "yearly" | "once" | "weekly";
 
 export interface PricingCheckoutParams {
-  product: AtlasProduct;
+  product: AtlasSelfServeProduct;
   interval: PricingCheckoutInterval;
 }
 
@@ -24,7 +24,10 @@ export function readCheckoutErrorMessage(error: unknown): string {
  * `pendingCheckoutKey` value so each plan card can independently show
  * its own "Opening checkout…" state.
  */
-export function checkoutKey(product: AtlasProduct, interval: PricingCheckoutInterval): string {
+export function checkoutKey(
+  product: AtlasSelfServeProduct,
+  interval: PricingCheckoutInterval,
+): string {
   return `${product}:${interval}`;
 }
 
@@ -49,7 +52,7 @@ export interface CheckoutCostPreview {
  * before they leave for Stripe.
  */
 export function describeCheckoutCost(
-  product: AtlasProduct,
+  product: AtlasSelfServeProduct,
   interval: PricingCheckoutInterval,
 ): CheckoutCostPreview {
   if (product === "atlas_pro") {

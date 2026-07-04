@@ -3,11 +3,13 @@ import {
   getEntity as getEntityRecord,
   listEntities,
   listIssueAreas,
+  listPublicDirectories as listPublicDirectoryRecords,
   type EntityDetailResponse,
   type EntityResponse,
   type GetEntitiesMapParams,
   type ListEntitiesParams,
   type MapPoint as MapPointResponse,
+  type PublicDirectoryIndexResponse,
   type SourceResponse,
 } from "@/lib/generated/atlas";
 import { atlasFetch } from "@/lib/orval/fetcher";
@@ -294,6 +296,10 @@ async function getConnections(entryId: string): Promise<ConnectionNetwork> {
   return mapConnectionNetwork(response);
 }
 
+async function listPublicDirectories(): Promise<PublicDirectoryIndexResponse> {
+  return listPublicDirectoryRecords();
+}
+
 export const api = {
   entries: {
     list: listEntries,
@@ -315,5 +321,8 @@ export const api = {
   },
   taxonomy: {
     list: listTaxonomy,
+  },
+  publicDirectories: {
+    list: listPublicDirectories,
   },
 };

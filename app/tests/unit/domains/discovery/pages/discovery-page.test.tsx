@@ -6,8 +6,11 @@ import { DiscoveryPage } from "@/domains/discovery/pages/discovery-page";
 
 const mocks = vi.hoisted(() => ({
   useAtlasSession: vi.fn(),
+  useCreateWorkspaceBrief: vi.fn(),
+  useDiscoveryJobQueue: vi.fn(),
   useDiscoveryRuns: vi.fn(),
   useStartDiscovery: vi.fn(),
+  useWorkspaceQualitySummary: vi.fn(),
   useTaxonomy: vi.fn(),
 }));
 
@@ -16,6 +19,7 @@ vi.mock("@/domains/access", () => ({
 }));
 
 vi.mock("@/domains/discovery/hooks/use-discovery", () => ({
+  useDiscoveryJobQueue: mocks.useDiscoveryJobQueue,
   useDiscoveryRuns: mocks.useDiscoveryRuns,
   useStartDiscovery: mocks.useStartDiscovery,
 }));
@@ -24,16 +28,29 @@ vi.mock("@/domains/catalog/hooks/use-taxonomy", () => ({
   useTaxonomy: mocks.useTaxonomy,
 }));
 
+vi.mock("@/domains/workspace/hooks/use-briefs", () => ({
+  useCreateWorkspaceBrief: mocks.useCreateWorkspaceBrief,
+}));
+
+vi.mock("@/domains/workspace/hooks/use-workspace-quality-summary", () => ({
+  useWorkspaceQualitySummary: mocks.useWorkspaceQualitySummary,
+}));
+
 vi.mock("@tanstack/react-router", () => ({
   Link: ({
     children,
+    params,
     to,
     search,
   }: {
     children: React.ReactNode;
+    params?: { briefId?: string };
     to: string;
     search?: { intent?: string };
-  }) => <a href={search?.intent ? `${to}?intent=${search.intent}` : to}>{children}</a>,
+  }) => {
+    const href = params?.briefId ? to.replace("$briefId", params.briefId) : to;
+    return <a href={search?.intent ? `${href}?intent=${search.intent}` : href}>{children}</a>;
+  },
 }));
 
 describe("DiscoveryPage", () => {
@@ -62,8 +79,43 @@ describe("DiscoveryPage", () => {
 
   beforeEach(() => {
     mocks.useAtlasSession.mockReturnValue({ data: null });
+    mocks.useCreateWorkspaceBrief.mockReturnValue({
+      mutate: vi.fn(),
+      isPending: false,
+    });
+    mocks.useDiscoveryJobQueue.mockReturnValue({
+      data: {
+        items: [],
+        status_counts: { claimed: 0, failed: 0, queued: 0, running: 0 },
+        total: 0,
+      },
+      isLoading: false,
+    });
     mocks.useDiscoveryRuns.mockReturnValue({ data: { items: [] }, isLoading: false });
     mocks.useStartDiscovery.mockReturnValue({ mutate: vi.fn(), isPending: false, error: null });
+    mocks.useWorkspaceQualitySummary.mockReturnValue({
+      data: {
+        confidence_distribution: [
+          { record_count: 0, state: "corroborated" },
+          { record_count: 0, state: "partial" },
+          { record_count: 0, state: "unverified" },
+        ],
+        data_boundary: {
+          private_notes_included: false,
+          statement: "Private notes are excluded.",
+        },
+        duplicate_risk: { cluster_count: 0, clusters: [], record_count: 0 },
+        org_id: "org_123",
+        source_coverage: {
+          coverage_percent: 0,
+          source_backed_records: 0,
+          total_records: 0,
+          unsourced_records: 0,
+        },
+        stale_records: { record_count: 0, records: [], threshold_days: 365 },
+      },
+      isLoading: false,
+    });
     mocks.useTaxonomy.mockReturnValue({
       data: { "Domain 1": [{ name: "Issue 1", slug: "issue-1", description: "desc" }] },
       isLoading: false,
@@ -88,6 +140,105 @@ describe("DiscoveryPage", () => {
     expect(
       recentRunsHeading.compareDocumentPosition(newRunHeading) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
+  });
+
+  it("shows research operations queue and worker visibility", () => {
+    mocks.useDiscoveryJobQueue.mockReturnValue({
+      data: {
+        items: [
+          {
+            claimed_by: "worker-a",
+            claimed_until: "2026-07-03T12:15:00.000Z",
+            created_at: "2026-07-03T12:00:00.000Z",
+            error_message: null,
+            id: "job_1",
+            issue_areas: ["worker_power"],
+            location_query: "Phoenix, AZ",
+            max_retries: 2,
+            next_attempt_at: null,
+            progress: { step: "fetching_sources" },
+            retry_count: 0,
+            run_id: "run_1",
+            started_at: "2026-07-03T12:00:00.000Z",
+            state: "AZ",
+            status: "running",
+          },
+        ],
+        status_counts: { claimed: 0, failed: 0, queued: 1, running: 1 },
+        total: 2,
+      },
+      isLoading: false,
+    });
+
+    render(<DiscoveryPage />);
+
+    expect(screen.getByRole("heading", { name: "Research operations" })).toBeInTheDocument();
+    expect(screen.getByText("1 queued")).toBeInTheDocument();
+    expect(screen.getByText("1 running")).toBeInTheDocument();
+    expect(screen.getByText("0 failed")).toBeInTheDocument();
+    expect(screen.getByText("Phoenix, AZ")).toBeInTheDocument();
+    expect(screen.getByText("worker-a")).toBeInTheDocument();
+  });
+
+  it("shows ingestion quality signals for workspace records", () => {
+    mocks.useWorkspaceQualitySummary.mockReturnValue({
+      data: {
+        confidence_distribution: [
+          { record_count: 3, state: "corroborated" },
+          { record_count: 2, state: "partial" },
+          { record_count: 1, state: "unverified" },
+        ],
+        data_boundary: {
+          private_notes_included: false,
+          statement: "Private notes are excluded.",
+        },
+        duplicate_risk: {
+          cluster_count: 1,
+          clusters: [
+            {
+              key: "Duplicate Worker Center (Detroit, MI)",
+              record_count: 2,
+              records: [
+                { id: "entry_1", name: "Duplicate Worker Center" },
+                { id: "entry_2", name: "Duplicate Worker Center" },
+              ],
+            },
+          ],
+          record_count: 2,
+        },
+        org_id: "org_123",
+        source_coverage: {
+          coverage_percent: 83.3,
+          source_backed_records: 5,
+          total_records: 6,
+          unsourced_records: 1,
+        },
+        stale_records: {
+          record_count: 1,
+          records: [
+            {
+              id: "entry_3",
+              latest_source_date: "2020-01-01",
+              name: "Tenant Legal Clinic",
+              source_count: 1,
+            },
+          ],
+          threshold_days: 365,
+        },
+      },
+      isLoading: false,
+    });
+
+    render(<DiscoveryPage />);
+
+    expect(screen.getByRole("heading", { name: "Ingestion quality" })).toBeInTheDocument();
+    expect(screen.getByText("83.3% source-backed")).toBeInTheDocument();
+    expect(screen.getByText("1 unsourced")).toBeInTheDocument();
+    expect(screen.getByText("1 duplicate cluster")).toBeInTheDocument();
+    expect(screen.getByText("1 stale")).toBeInTheDocument();
+    expect(screen.getByText("3 corroborated")).toBeInTheDocument();
+    expect(screen.getByText("Tenant Legal Clinic")).toBeInTheDocument();
+    expect(screen.getByText("Private notes are excluded.")).toBeInTheDocument();
   });
 
   it("shows setup notice when workspace is needed", () => {
@@ -137,6 +288,38 @@ describe("DiscoveryPage", () => {
     const checkbox = screen.getByRole("checkbox");
     fireEvent.click(checkbox);
     expect(checkbox).toBeChecked();
+    expect(screen.getByText("1 selected")).toBeInTheDocument();
+  });
+
+  it("prefills a research request from a coverage gap", () => {
+    mocks.useTaxonomy.mockReturnValue({
+      data: {
+        Housing: [
+          {
+            name: "Housing affordability",
+            slug: "housing_affordability",
+            description: "Tenant protections and housing costs",
+          },
+        ],
+      },
+      isLoading: false,
+    });
+
+    render(
+      <DiscoveryPage
+        initialRequest={{
+          issue_areas: "housing_affordability",
+          location: "Kansas City, MO",
+          research_goal: "partner_scan",
+          state: "mo",
+        }}
+      />,
+    );
+
+    expect(screen.getByPlaceholderText(/Kansas City, MO/i)).toHaveValue("Kansas City, MO");
+    expect(screen.getByPlaceholderText(/^MO$/i)).toHaveValue("MO");
+    expect(screen.getByLabelText("Partner scan")).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "Housing affordability" })).toBeChecked();
     expect(screen.getByText("1 selected")).toBeInTheDocument();
   });
 
@@ -495,6 +678,101 @@ describe("DiscoveryPage", () => {
     });
     expect(clipboardWriteText).toHaveBeenLastCalledWith(
       expect.stringContaining("rank,name,type,confidence,source_count"),
+    );
+  });
+
+  it("saves a completed research summary as an Atlas Brief", async () => {
+    interface CreatedBrief {
+      id: string;
+      title: string;
+    }
+
+    interface CreateBriefMutationOptions {
+      onSettled?: () => void;
+      onSuccess?: (brief: CreatedBrief) => void;
+    }
+
+    const createBrief = vi.fn((_input: unknown, options?: CreateBriefMutationOptions) => {
+      options?.onSuccess?.({
+        id: "brief_123",
+        title: "Kansas City Interview leads",
+      });
+      options?.onSettled?.();
+    });
+    mocks.useCreateWorkspaceBrief.mockReturnValue({
+      mutate: createBrief,
+      isPending: false,
+    });
+    mocks.useDiscoveryRuns.mockReturnValue({
+      data: {
+        items: [
+          {
+            id: "run_1",
+            location_query: "Kansas City",
+            research_goal: "interview_leads",
+            started_at: "2026-04-20T10:00:00.000Z",
+            completed_at: "2026-04-20T10:05:00.000Z",
+            state: "MO",
+            status: "completed",
+            issue_areas: ["housing_affordability"],
+            queries_generated: 2,
+            sources_fetched: 5,
+            sources_processed: 5,
+            entries_extracted: 10,
+            entries_after_dedup: 8,
+            entries_confirmed: 3,
+            error_message: null,
+            research_summary: {
+              brief: "Three source-backed tenant leads in Kansas City.",
+              ranked_leads: [
+                {
+                  entry_id: "entry_1",
+                  name: "KC Tenants",
+                  type: "organization",
+                  why_it_matters: "Named by city and community sources.",
+                  source_count: 2,
+                  confidence: "corroborated",
+                  latest_source_date: "2026-04-19",
+                },
+              ],
+              key_sources: [
+                {
+                  source_id: "source_1",
+                  title: "Tenant meeting agenda",
+                  url: "https://example.test/agenda",
+                  publication: "City Council",
+                  published_date: "2026-04-19",
+                  why_it_matters: "Names the lead and issue.",
+                },
+              ],
+              gaps: [{ label: "County groups", detail: "No suburban source yet." }],
+              reasoning_signals: ["Two independent sources point to the same actor."],
+            },
+          },
+        ],
+      },
+      isLoading: false,
+    });
+
+    render(<DiscoveryPage />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Save as Atlas Brief" }));
+      await Promise.resolve();
+    });
+
+    expect(createBrief).toHaveBeenCalledWith(
+      expect.objectContaining({
+        linked_discovery_run_ids: ["run_1"],
+        linked_entry_ids: ["entry_1"],
+        linked_source_ids: ["source_1"],
+        title: "Kansas City Interview leads",
+      }),
+      expect.any(Object),
+    );
+    expect(screen.getByRole("link", { name: "Open brief" })).toHaveAttribute(
+      "href",
+      "/briefs/brief_123",
     );
   });
 

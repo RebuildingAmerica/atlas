@@ -27,18 +27,16 @@ describe("organization-server-helpers", () => {
   });
 
   describe("assertOrganizationManagementEnabled", () => {
-    it("throws in local mode", () => {
+    it("throws in local mode", async () => {
       mocks.getAuthRuntimeConfig.mockReturnValue({ localMode: true });
-      expect(() => {
-        assertOrganizationManagementEnabled();
-      }).toThrow("Organization management is unavailable while auth is disabled.");
+      await expect(assertOrganizationManagementEnabled()).rejects.toThrow(
+        "Organization management is unavailable while auth is disabled.",
+      );
     });
 
-    it("does not throw when local mode is false", () => {
+    it("does not throw when local mode is false", async () => {
       mocks.getAuthRuntimeConfig.mockReturnValue({ localMode: false });
-      expect(() => {
-        assertOrganizationManagementEnabled();
-      }).not.toThrow();
+      await expect(assertOrganizationManagementEnabled()).resolves.toBeUndefined();
     });
   });
 

@@ -2,406 +2,115 @@
 
 [Docs](../README.md) > [Architecture](./README.md) > App Architecture
 
-How the app is organized, why we chose TanStack Start, and how to add new features.
+Atlas's app is the product surface for public civic discovery and paid workspace workflows. The route tree, server functions, generated API types, and domain folders exist to make the source-linked directory feel fast, trustworthy, and easy to act on.
 
 ## Tech Stack
 
-**Framework:** TanStack Start (React Router 7 + Vite)
-**Language:** TypeScript
-**Styling:** Tailwind CSS
-**State Management:** React Query (server state) + React hooks (UI state)
-**Type Safety:** TypeScript types mirror Pydantic schemas from API
-
-## Why TanStack Start?
-
-**What it is:** Meta-framework built on Vite and React Router. Provides file-based routing, selective SSR, and automatic code splitting.
-
-**Why we chose it:**
-
-1. **File-based routing** — No router configuration file needed. Each `.tsx` file in `src/routes/` is a route. `src/routes/entry/$id.tsx` automatically becomes `/entry/:id`.
-
-2. **Selective SSR** — Most routes are SPAs (rendered in browser). Some routes use SSR (rendered on server, sent to browser). Choose per-route:
-   - **SSR routes:** Home, entry detail (better initial load, SEO)
-   - **SPA routes:** Search results, admin panel (full interactivity, real-time)
-
-3. **Zero config** — Works out of the box. Vite handles bundling, HMR (hot module replacement), etc.
-
-4. **TypeScript first** — Built with TypeScript. No JavaScript-first confusion.
-
-5. **Small dependency footprint** — No Next.js cruft. Lighter bundle size.
+- **Framework:** TanStack Start + TanStack Router + Vite
+- **Language:** TypeScript
+- **UI:** React 19 + Tailwind CSS 4
+- **Server state:** TanStack Query
+- **API contracts:** FastAPI OpenAPI exported to `openapi/atlas.openapi.json`, then generated into `app/src/lib/generated/atlas.ts` with Orval
+- **Runtime:** Nitro server output in `.output/`
 
 ## Directory Structure
 
-```
+```text
 app/src/
-├── routes/                    # File-based routes (TanStack Start)
-│   ├── __root.tsx            # Root layout (wraps all routes)
-│   ├── index.tsx             # Home page (/)
-│   ├── search.tsx            # Search page (/search)
-│   ├── entry/
-│   │   └── $id.tsx           # Entry detail (/entry/:id)
-│   └── admin/                # Admin routes (password-protected)
-│       ├── __layout.tsx      # Admin layout
-│       ├── index.tsx         # Admin dashboard (/admin)
-│       └── discovery.tsx     # Run discovery pipeline (/admin/discovery)
-│
-├── components/               # Reusable React components
-│   ├── ui/                   # Low-level UI library
-│   │   ├── Button.tsx        # Styled button component
-│   │   ├── Card.tsx          # Container/card component
-│   │   ├── Input.tsx         # Form input component
-│   │   ├── Modal.tsx         # Modal dialog
-│   │   └── ...
-│   │
-│   └── features/             # Feature-level components
-│       ├── EntryCard.tsx     # Single entry display
-│       ├── EntryList.tsx     # List of entries
-│       ├── SearchForm.tsx    # Search input with filters
-│       ├── DiscoveryForm.tsx # Location + issues selector
-│       └── ...
-│
-├── hooks/                    # Custom React hooks
-│   ├── useEntries.ts         # Fetch entries from /api/v1/entries
-│   ├── useSearch.ts          # Search with query string
-│   ├── useDiscovery.ts       # Trigger and poll discovery run
-│   └── ...
-│
-├── lib/                      # Utilities and API client
-│   ├── api.ts                # Fetch wrapper, error handling
-│   ├── utils.ts              # Helper functions (format, validate, etc.)
-│   └── constants.ts          # Shared constants
-│
-├── types/                    # TypeScript type definitions
-│   ├── entry.ts              # Entry, EntryResponse types
-│   ├── source.ts             # Source type
-│   ├── discovery.ts          # DiscoveryRun, discovery request/response
-│   └── api.ts                # Error types, pagination
-│
-├── styles/                   # Global styles
-│   └── index.css             # Tailwind imports, global CSS
-│
-├── router.tsx                # Router configuration
-├── entry.client.tsx          # Client entry point
-├── entry.server.tsx          # Server entry point
-└── vite-env.d.ts             # Vite type definitions
+  routes/
+    __root.tsx
+    _public.tsx
+    _public/
+    _workspace.tsx
+    _workspace/
+    _auth.tsx
+    _auth/
+    api/
+    [.]well-known/
+    openapi[.]json.ts
+    sitemap[.]xml.ts
+  domains/
+    access/
+    billing/
+    catalog/
+    discovery/
+    workspace/
+  platform/
+  lib/
+    api.ts
+    generated/
+  routeTree.gen.ts
 ```
 
-## Routing Strategy
+## Routing
 
-### File-Based Routes (TanStack Start Convention)
+TanStack Router maps files in `src/routes/` to URLs. Atlas uses pathless layout groups to keep access boundaries legible without adding fake URL segments.
 
-Each file in `src/routes/` becomes a route:
+| Route file pattern | URL effect | Purpose |
+| --- | --- | --- |
+| `_public.tsx`, `_public/*` | `_public` is omitted | Public layout and open pages |
+| `_workspace.tsx`, `_workspace/*` | `_workspace` is omitted | Authenticated workspace layout and paid tools |
+| `_auth.tsx`, `_auth/*` | `_auth` is omitted | Sign-in, sign-up, account setup, invitations |
+| `api/*` | `/api/*` | Server routes and proxies |
+| `[.]well-known/*` | `/.well-known/*` | OAuth and MCP metadata |
+| `foo.$id.tsx` | `/foo/:id` | Parameterized route |
+| `openapi[.]json.ts` | `/openapi.json` | Literal dot route |
 
-| File                  | Route              | Type | Behavior         |
-| --------------------- | ------------------ | ---- | ---------------- |
-| `index.tsx`           | `/`                | SSR  | Home page        |
-| `search.tsx`          | `/search`          | SPA  | Search interface |
-| `entry/$id.tsx`       | `/entry/:id`       | SSR  | Entry detail     |
-| `admin/index.tsx`     | `/admin`           | SPA  | Admin dashboard  |
-| `admin/discovery.tsx` | `/admin/discovery` | SPA  | Run pipeline     |
+Current public pages include `/`, `/browse`, `/map`, `/pricing`, `/directories/:orgId`, profile claim and feedback pages, legal pages, and post-logout. Current workspace pages include `/home`, `/discovery`, `/feed`, `/lists`, `/briefs`, `/coverage`, `/watching`, checkout completion, account, and organization settings.
 
-### SSR vs. SPA Decision
+`src/routeTree.gen.ts` is generated by TanStack tooling. Do not edit it manually.
 
-**Use SSR for:**
+## Route Authoring Checklist
 
-- Static/mostly-static pages (home, entry detail)
-- Pages that benefit from SEO (public directory pages)
-- Pages with slow API calls (can fetch on server before sending HTML)
+- Public discovery, map, directory, marketing, or legal page: place it in `_public`.
+- Signed-in workspace page: place it in `_workspace`.
+- Sign-in or account setup flow: place it in `_auth`.
+- Server endpoint: place it under `api/` and keep response shapes typed.
+- Literal dot route: use `[.]`.
+- Route parameter: use `$paramName`.
+- Generated route tree changed: make sure the route file changed too.
 
-**Use SPA for:**
+## Domain Boundaries
 
-- Real-time, interactive pages (search, admin)
-- Pages with frequent user input
-- Pages with complex client-side state
+Atlas app code is organized by product domain rather than by generic component type.
 
-**How to specify:**
+- `access`: auth, workspace membership, SSO, API keys, organization settings, package capabilities, and workspace admin surfaces.
+- `billing`: pricing, checkout, Stripe helpers, discounts, and package labels.
+- `catalog`: browse, map, profiles, public directories, profile actions, and public-directory server functions.
+- `discovery`: discovery run creation, run status, research forms, and workflow pages.
+- `workspace`: paid workspace tools such as briefs, watches, coverage targets, quality summaries, and usage summaries.
+- `platform`: app shell, navigation, legal pages, layout helpers, and shared platform UI.
 
-```tsx
-export const shouldLoad = async () => ({
-  ssr: true, // or false
-});
-```
+Use an existing domain when the user-facing workflow belongs there. Add cross-domain helpers only when two or more domains genuinely share the same behavior.
 
-## Component Organization
+## Data Flow
 
-### UI Components (Low-Level)
+1. FastAPI owns backend schemas.
+2. `pnpm run openapi` exports `openapi/atlas.openapi.json` and `mintlify/openapi/atlas.openapi.json`.
+3. `cd app && pnpm run api-client` regenerates `src/lib/generated/atlas.ts`.
+4. `src/lib/api.ts` maps generated OpenAPI types into app-facing types such as `Entry`.
+5. Domain server functions and TanStack Query hooks load data for pages and components.
 
-Unstyled or minimally-styled building blocks. No business logic. Reusable across pages.
+When an API field changes, update the backend schema, regenerate OpenAPI, regenerate the app client, and update `src/lib/api.ts` if the app-facing type needs the field.
 
-**Examples:**
+## Rendering And Server Functions
 
-- `Button.tsx` — Styled button with size/variant options
-- `Card.tsx` — Container with padding and border
-- `Input.tsx` — Text input with label and validation feedback
-- `Modal.tsx` — Dialog box
+TanStack Start supports SSR and server functions. Atlas uses SSR where public trust, link previews, and initial page completeness matter, especially public directory and profile surfaces. Workspace pages can lean more heavily on TanStack Query because they are signed-in operational tools.
 
-**Location:** `src/components/ui/`
+Server functions live with the domain that owns the workflow. They should validate input, enforce workspace context, and call the API through shared server helpers rather than duplicating fetch logic in components.
 
-**Usage example:**
+## Testing
 
-```tsx
-<Button onClick={() => setOpen(true)}>Click me</Button>
-```
-
-### Feature Components (High-Level)
-
-Composed from UI components. Contain business logic or API calls. Specific to a feature.
-
-**Examples:**
-
-- `EntryCard.tsx` — Display single entry with actions (favorite, share)
-- `EntryList.tsx` — Display list of entries with sorting/filtering
-- `SearchForm.tsx` — Search input with issue area filters
-- `DiscoveryForm.tsx` — Location + issue areas selector, triggers API call
-
-**Location:** `src/components/features/`
-
-**Usage example:**
-
-```tsx
-<SearchForm onSubmit={(query) => performSearch(query)} />
-```
-
-## Hooks for API Calls
-
-Custom hooks encapsulate data fetching. Return data, loading state, and errors.
-
-**Pattern:**
-
-```tsx
-// src/hooks/useEntries.ts
-export function useEntries(state: string, location: string) {
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    async function fetchData() {
-      setLoading(true);
-      try {
-        const response = await api.get("/api/v1/entries", {
-          state,
-          location,
-        });
-        setData(response);
-      } catch (e) {
-        setError(e);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchData();
-  }, [state, location]);
-
-  return { data, loading, error };
-}
-```
-
-**Usage in a component:**
-
-```tsx
-function SearchResults({ state, location }) {
-  const { data, loading, error } = useEntries(state, location);
-
-  if (loading) return <Spinner />;
-  if (error) return <ErrorBanner error={error} />;
-  return <EntryList entries={data} />;
-}
-```
-
-## Type Safety
-
-TypeScript types on app **mirror** Pydantic schemas on API.
-
-**Backend (Python):**
-
-```python
-class EntryResponse(BaseModel):
-    id: UUID
-    name: str
-    description: str
-    city: str | None = None
-    state: str | None = None
-    issue_areas: List[str]
-    sources: List[SourceResponse]
-```
-
-**App (TypeScript):**
-
-```tsx
-interface EntryResponse {
-  id: string;
-  name: string;
-  description: string;
-  city?: string;
-  state?: string;
-  issue_areas: string[];
-  sources: SourceResponse[];
-}
-```
-
-**Why:** When you add a field to the Pydantic schema, TypeScript immediately complains at the call site if you don't handle it. Catches API breakages at compile time.
-
-## API Client
-
-Centralized fetch wrapper in `src/lib/api.ts`.
-
-**Features:**
-
-- Base URL configuration (`https://api.atlas.localhost:1355/api/v1`)
-- Error handling (parse error responses, throw typed errors)
-- Type safety (response is `T`, errors are `APIError`)
-- Automatic serialization/deserialization
-
-**Example:**
-
-```tsx
-// GET
-const entries = await api.get("/entries", { state: "KS" });
-
-// POST
-const run = await api.post("/discovery", {
-  location: "Kansas City, MO",
-  issue_areas: ["labor", "housing"],
-});
-
-// Error handling
-try {
-  const entries = await api.get("/entries");
-} catch (error) {
-  if (error instanceof APIError) {
-    console.error(error.message);
-  }
-}
-```
-
-## Adding a New Page
-
-1. **Create a route file** in `src/routes/`
-
-   ```tsx
-   // src/routes/about.tsx
-   export default function AboutPage() {
-     return <div>About page</div>;
-   }
-   ```
-
-2. **Create components** in `src/components/`
-
-   ```tsx
-   // src/components/features/AboutHero.tsx
-   export function AboutHero() { ... }
-   ```
-
-3. **Use hooks for data** in `src/hooks/` if needed
-
-   ```tsx
-   // src/hooks/useStats.ts
-   export function useStats() {
-     const { data, loading } = useAsync(() => api.get("/stats"));
-     return { data, loading };
-   }
-   ```
-
-4. **Add types** in `src/types/`
-
-   ```tsx
-   // src/types/stats.ts
-   export interface Stats { ... }
-   ```
-
-5. **Link from navigation** in `src/components/features/Nav.tsx` or root layout
-
-## Styling (Tailwind CSS)
-
-All styling uses Tailwind utility classes. No CSS files for component styling.
-
-**Example:**
-
-```tsx
-function Card({ title, children }) {
-  return (
-    <div className="rounded-lg border border-gray-200 p-6 shadow">
-      <h2 className="text-xl font-bold">{title}</h2>
-      {children}
-    </div>
-  );
-}
-```
-
-**Global styles** in `src/styles/index.css`:
-
-```css
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-/* Custom utilities go here */
-```
-
-## Current Implementation Status
-
-| Feature           | Status         | Notes                                               |
-| ----------------- | -------------- | --------------------------------------------------- |
-| Home page         | Basic scaffold | Shows static content                                |
-| Search page       | Basic scaffold | Form works, API integration pending                 |
-| Entry detail      | Basic scaffold | Layout done, data loading pending                   |
-| Admin dashboard   | Basic scaffold | Layout done, discovery trigger pending              |
-| Component library | In progress    | Button, Card, Input exist. More needed.             |
-| Type definitions  | Partial        | Entry, Source types defined. Need more.             |
-| Hooks             | Partial        | useEntries, useSearch stubbed. Need implementation. |
-
-**Next priorities:**
-
-1. Implement useEntries and useSearch hooks (connect to API)
-2. Test API integration
-3. Add more UI components (forms, modals, etc.)
-4. Implement admin discovery form
-5. Add entry favorites/bookmarking
-
-## Development Workflow
-
-### Running App Only
+Use focused tests for the behavior being changed, then broaden when touching shared contracts.
 
 ```bash
-make dev-app
-```
-
-Starts Vite dev server on https://atlas.localhost:1355 with HMR.
-
-### Type Checking
-
-```bash
+cd app && pnpm vitest run tests/unit/path/to/test.tsx
 cd app && pnpm run typecheck
-```
-
-Runs TypeScript type checker.
-
-### Linting
-
-```bash
 cd app && pnpm run lint
 ```
 
-Runs ESLint.
+Use Playwright acceptance tests for route-level behavior that depends on rendering, navigation, browser APIs, or multiple services.
 
-### Building for Production
+## Experience Rule
 
-```bash
-cd app && pnpm run build
-```
-
-Outputs optimized bundle to `app/dist/`.
-
----
-
-## See Also
-
-- [System Overview](./system-overview.md) — How app fits in architecture
-- [App Development](../development/app.md) — Step-by-step guide to adding features
-- [API Reference](./api-reference.md) — REST endpoints and schemas
-
----
-
-Last updated: March 25, 2026
+Every app-layer change must protect or improve something a user can see, trust, understand, or do. Route organization, generated clients, query keys, and server functions are product infrastructure only because they make Atlas clearer, faster, safer, or more trustworthy for the person using it.

@@ -15,7 +15,7 @@ describe("BrowseHero", () => {
     cleanup();
   });
 
-  it("renders the eyebrow, title, and description without tabs", () => {
+  it("renders the title and description without tabs", () => {
     render(
       <BrowseHero
         eyebrow="Discover"
@@ -23,7 +23,6 @@ describe("BrowseHero", () => {
         description="Find people and organizations working on civic issues."
       />,
     );
-    expect(screen.getByText("Discover")).toBeInTheDocument();
     expect(screen.getByText("Browse civic actors")).toBeInTheDocument();
     expect(screen.getByText(/Find people and organizations/)).toBeInTheDocument();
   });

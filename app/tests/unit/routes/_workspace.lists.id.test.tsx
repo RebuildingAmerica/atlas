@@ -46,6 +46,7 @@ describe("routes/_workspace/lists/$id", () => {
 
   afterEach(() => {
     cleanup();
+    vi.unstubAllGlobals();
   });
 
   it("shows the loading copy while the list query is in flight", async () => {
@@ -298,6 +299,68 @@ describe("routes/_workspace/lists/$id", () => {
   it("copies a spreadsheet-friendly export for a research thread", async () => {
     const claims = await import("@/domains/catalog/hooks/use-claims");
     const clipboardWriteText = vi.fn().mockResolvedValue(undefined);
+    const createObjectUrl = vi.fn().mockReturnValue("blob:atlas-list-export");
+    const revokeObjectUrl = vi.fn();
+    const click = vi
+      .spyOn(HTMLAnchorElement.prototype, "click")
+      .mockImplementation(() => undefined);
+    click.mockClear();
+    const csvExport = [
+      "list_id,list_name,entry_id,name,type,location,source_count,trust_level,source_urls,note,added_at,profile_slug",
+      '"list-1","Tenant power map","e1","KC Tenants","organization","Kansas City, MO","2","unverified","https://example.org/kc-tenants","Ask about eviction court organizing.","2026-06-24T00:00:00.000Z","kc-tenants"',
+    ].join("\n");
+    const jsonExport = {
+      format: "json",
+      list: {
+        id: "list-1",
+        name: "Tenant power map",
+        item_count: 1,
+      },
+      items: [
+        {
+          entry_id: "e1",
+          note: "Ask about eviction court organizing.",
+          trust_level: "unverified",
+          sources: [
+            {
+              id: "source-1",
+              url: "https://example.org/kc-tenants",
+              title: "KC Tenants source",
+              publication: "Metro Ledger",
+              type: "news_article",
+            },
+          ],
+          entry: {
+            name: "KC Tenants",
+            source_count: 2,
+          },
+        },
+      ],
+      provenance: {
+        item_count: 1,
+        source_count: 1,
+      },
+    };
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        text: () => Promise.resolve(csvExport),
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve(jsonExport),
+      } as Response);
+    vi.stubGlobal("fetch", fetchMock);
+    Object.defineProperty(URL, "createObjectURL", {
+      configurable: true,
+      value: createObjectUrl,
+    });
+    Object.defineProperty(URL, "revokeObjectURL", {
+      configurable: true,
+      value: revokeObjectUrl,
+    });
     Object.assign(navigator, {
       clipboard: {
         writeText: clipboardWriteText,
@@ -350,12 +413,47 @@ describe("routes/_workspace/lists/$id", () => {
         '"KC Tenants","organization","Kansas City, MO","2","Ask about eviction court organizing."',
       ].join("\n"),
     );
+
+    fireEvent.click(screen.getByRole("button", { name: "Download CSV" }));
+    await waitFor(() => {
+      expect(createObjectUrl).toHaveBeenCalledWith(expect.any(Blob));
+    });
+    const csvBlob = createObjectUrl.mock.calls[0]?.[0] as Blob;
+    await expect(csvBlob.text()).resolves.toContain("https://example.org/kc-tenants");
+    await expect(csvBlob.text()).resolves.toContain('"unverified"');
+
+    fireEvent.click(screen.getByRole("button", { name: "Download JSON" }));
+    await waitFor(() => {
+      expect(createObjectUrl).toHaveBeenCalledTimes(2);
+    });
+    const jsonBlob = createObjectUrl.mock.calls[1]?.[0] as Blob;
+    await expect(jsonBlob.text()).resolves.toContain('"name": "Tenant power map"');
+    await expect(jsonBlob.text()).resolves.toContain('"url": "https://example.org/kc-tenants"');
+    expect(fetchMock).toHaveBeenCalledWith("/api/lists/list-1/export?format=csv", {
+      headers: { Accept: "text/csv" },
+    });
+    expect(click).toHaveBeenCalledTimes(2);
+    expect(revokeObjectUrl).toHaveBeenLastCalledWith("blob:atlas-list-export");
   });
 
   it("copies institutional export and CRM handoff packets for team research workspaces", async () => {
     const claims = await import("@/domains/catalog/hooks/use-claims");
     const access = await import("@/domains/access");
     const clipboardWriteText = vi.fn().mockResolvedValue(undefined);
+    const createObjectUrl = vi.fn().mockReturnValue("blob:atlas-team-list-export");
+    const revokeObjectUrl = vi.fn();
+    const click = vi
+      .spyOn(HTMLAnchorElement.prototype, "click")
+      .mockImplementation(() => undefined);
+    click.mockClear();
+    Object.defineProperty(URL, "createObjectURL", {
+      configurable: true,
+      value: createObjectUrl,
+    });
+    Object.defineProperty(URL, "revokeObjectURL", {
+      configurable: true,
+      value: revokeObjectUrl,
+    });
     Object.assign(navigator, {
       clipboard: {
         writeText: clipboardWriteText,
@@ -446,6 +544,19 @@ describe("routes/_workspace/lists/$id", () => {
         2,
       ),
     );
+
+    fireEvent.click(screen.getByRole("button", { name: "Download institutional CSV" }));
+    const institutionalBlob = createObjectUrl.mock.calls[0]?.[0] as Blob;
+    await expect(institutionalBlob.text()).resolves.toContain(
+      '"Metro Desk","Tenant power map","e1","KC Tenants"',
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Download CRM JSON" }));
+    const crmBlob = createObjectUrl.mock.calls[1]?.[0] as Blob;
+    await expect(crmBlob.text()).resolves.toContain('"workspace": "Metro Desk"');
+    await expect(crmBlob.text()).resolves.toContain('"syncStatus": "ready_for_sync"');
+    expect(click).toHaveBeenCalledTimes(2);
+    expect(revokeObjectUrl).toHaveBeenLastCalledWith("blob:atlas-team-list-export");
   });
 
   it("copies a nonprofit systems packet for adjacent advocacy and grant tools", async () => {

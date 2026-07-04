@@ -6,6 +6,7 @@ import { renderHook } from "@testing-library/react";
 const mocks = vi.hoisted(() => ({
   getDiscoveryRun: vi.fn(),
   invalidateQueries: vi.fn(),
+  listDiscoveryJobQueue: vi.fn(),
   listDiscoveryRuns: vi.fn(),
   startDiscoveryRun: vi.fn(),
   useMutation: vi.fn(),
@@ -21,6 +22,7 @@ vi.mock("@tanstack/react-query", () => ({
 
 vi.mock("@/domains/discovery/functions", () => ({
   getDiscoveryRun: mocks.getDiscoveryRun,
+  listDiscoveryJobQueue: mocks.listDiscoveryJobQueue,
   listDiscoveryRuns: mocks.listDiscoveryRuns,
   startDiscoveryRun: mocks.startDiscoveryRun,
 }));
@@ -42,6 +44,19 @@ describe("discovery hooks", () => {
     }): false | number;
   }
 
+  interface DiscoveryJobQueueQueryConfig {
+    queryFn(): Promise<unknown>;
+    queryKey: string[];
+    refetchInterval(query: {
+      state: {
+        data?: {
+          status_counts?: { claimed?: number; failed?: number; queued?: number; running?: number };
+        };
+        dataUpdatedAt: number;
+      };
+    }): false | number;
+  }
+
   interface StartDiscoveryMutationConfig {
     mutationFn(data: {
       issue_areas: string[];
@@ -56,6 +71,7 @@ describe("discovery hooks", () => {
     vi.resetModules();
     mocks.getDiscoveryRun.mockReset();
     mocks.invalidateQueries.mockReset();
+    mocks.listDiscoveryJobQueue.mockReset();
     mocks.listDiscoveryRuns.mockReset();
     mocks.startDiscoveryRun.mockReset();
     mocks.useMutation.mockReset();
@@ -68,7 +84,9 @@ describe("discovery hooks", () => {
     mocks.useMutation.mockImplementation((config: StartDiscoveryMutationConfig) => config);
   });
 
-  function getUseQueryConfig(index: number): DiscoveryListQueryConfig | DiscoveryRunQueryConfig {
+  function getUseQueryConfig(
+    index: number,
+  ): DiscoveryListQueryConfig | DiscoveryRunQueryConfig | DiscoveryJobQueueQueryConfig {
     const call = mocks.useQuery.mock.calls.at(index) as [unknown] | undefined;
     const config = call?.[0];
 
@@ -76,7 +94,10 @@ describe("discovery hooks", () => {
       throw new TypeError("Expected useQuery to receive a config object.");
     }
 
-    return config as DiscoveryListQueryConfig | DiscoveryRunQueryConfig;
+    return config as
+      | DiscoveryListQueryConfig
+      | DiscoveryRunQueryConfig
+      | DiscoveryJobQueueQueryConfig;
   }
 
   function getUseMutationConfig(): StartDiscoveryMutationConfig {
@@ -144,6 +165,32 @@ describe("discovery hooks", () => {
     ).toBe(10_000);
     expect(
       typedConfig.refetchInterval({ state: { data: { status: "failed" }, dataUpdatedAt: 0 } }),
+    ).toBe(false);
+  });
+
+  it("configures research operations queue polling", async () => {
+    const mod = await import("@/domains/discovery/hooks/use-discovery");
+    renderHook(() => mod.useDiscoveryJobQueue());
+
+    const typedConfig = getUseQueryConfig(0) as DiscoveryJobQueueQueryConfig;
+    expect(typedConfig.queryKey).toEqual(["discovery", "jobs"]);
+    await typedConfig.queryFn();
+    expect(mocks.listDiscoveryJobQueue).toHaveBeenCalledWith({ data: { limit: 10 } });
+    expect(
+      typedConfig.refetchInterval({
+        state: {
+          data: { status_counts: { claimed: 0, failed: 0, queued: 1, running: 0 } },
+          dataUpdatedAt: Date.now(),
+        },
+      }),
+    ).toBe(3_000);
+    expect(
+      typedConfig.refetchInterval({
+        state: {
+          data: { status_counts: { claimed: 0, failed: 0, queued: 0, running: 0 } },
+          dataUpdatedAt: 0,
+        },
+      }),
     ).toBe(false);
   });
 

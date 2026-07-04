@@ -10,12 +10,24 @@ vi.mock("@/lib/api", () => ({
     entries: {
       list: vi.fn(),
     },
+    publicDirectories: {
+      list: vi.fn(),
+    },
   },
 }));
 
 describe("routes/sitemap.xml", () => {
   it("emits an XML sitemap with profile URLs and skips entries without a slug", async () => {
     const { api } = await import("@/lib/api");
+    vi.mocked(api.publicDirectories.list).mockResolvedValue({
+      directories: [
+        {
+          org_id: "tenant-kc",
+          record_count: 3,
+          last_published_at: "2024-04-03T10:00:00Z",
+        },
+      ],
+    });
     vi.mocked(api.entries.list).mockImplementation(((
       params: { entry_types?: string[] } | undefined,
     ) => {
@@ -57,12 +69,15 @@ describe("routes/sitemap.xml", () => {
     const body = await response.text();
     expect(body).toContain("https://atlas.rebuildingamerica.com/profiles/people/jane-doe");
     expect(body).toContain("https://atlas.rebuildingamerica.com/profiles/organizations/acme");
+    expect(body).toContain("https://atlas.rebuildingamerica.com/directories/tenant-kc");
+    expect(body).toContain("<lastmod>2024-04-03</lastmod>");
     expect(body).toContain("<lastmod>2024-04-01</lastmod>");
     expect(body).not.toContain("/profiles/people/null");
   });
 
   it("renders the static sitemap header when no entries are returned", async () => {
     const { api } = await import("@/lib/api");
+    vi.mocked(api.publicDirectories.list).mockResolvedValue({ directories: [] });
     vi.mocked(api.entries.list).mockResolvedValue({ data: undefined } as unknown as Awaited<
       ReturnType<typeof api.entries.list>
     >);

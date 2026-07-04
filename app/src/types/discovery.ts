@@ -63,6 +63,55 @@ export interface DiscoveryRunListResponse {
   page_size?: number;
 }
 
+export type DiscoveryJobStatus =
+  | "queued"
+  | "claimed"
+  | "running"
+  | "completed"
+  | "failed"
+  | "cancelled";
+
+export interface DiscoveryJobQueueStatusCounts {
+  claimed: number;
+  failed: number;
+  queued: number;
+  running: number;
+}
+
+export type DiscoveryJobProgressValue =
+  | string
+  | number
+  | boolean
+  | DiscoveryJobProgressValue[]
+  | { [key: string]: DiscoveryJobProgressValue };
+
+export type DiscoveryJobProgress = Record<string, DiscoveryJobProgressValue>;
+
+export interface DiscoveryJobQueueItem {
+  claimed_by?: string | null;
+  claimed_until?: string | null;
+  completed_at?: string | null;
+  created_at: string;
+  error_message?: string | null;
+  id: string;
+  issue_areas: string[];
+  location_query: string;
+  max_retries: number;
+  next_attempt_at?: string | null;
+  progress?: DiscoveryJobProgress | null;
+  retry_count: number;
+  run_id: string;
+  started_at?: string | null;
+  state: string;
+  status: DiscoveryJobStatus;
+}
+
+export interface DiscoveryJobQueueResponse {
+  items: DiscoveryJobQueueItem[];
+  status_counts: DiscoveryJobQueueStatusCounts;
+  total: number;
+}
+
 export interface StartDiscoveryRequest {
   location_query: string;
   state: string;

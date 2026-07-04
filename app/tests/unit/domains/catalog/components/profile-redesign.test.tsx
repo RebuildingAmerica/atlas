@@ -15,6 +15,12 @@ const claimsMocks = vi.hoisted(() => ({
   useRemoveSavedListItem: vi.fn(),
 }));
 
+const watchMocks = vi.hoisted(() => ({
+  useWorkspaceWatchStatus: vi.fn(),
+  useWatchWorkspaceResource: vi.fn(),
+  useUnwatchWorkspaceResource: vi.fn(),
+}));
+
 vi.mock("@tanstack/react-router", () => ({
   Link: ({
     children,
@@ -39,6 +45,7 @@ vi.mock("@tanstack/react-router", () => ({
 }));
 
 vi.mock("@/domains/catalog/hooks/use-claims", () => claimsMocks);
+vi.mock("@/domains/workspace/hooks/use-workspace-watches", () => watchMocks);
 vi.mock("@/domains/catalog/components/profiles/private-notes-panel", () => ({
   PrivateNotesPanel: ({
     targetId,
@@ -82,6 +89,18 @@ beforeEach(() => {
   claimsMocks.useCreateSavedList.mockReturnValue({ mutateAsync: vi.fn(), isPending: false });
   claimsMocks.useAddSavedListItem.mockReturnValue({ mutateAsync: vi.fn(), isPending: false });
   claimsMocks.useRemoveSavedListItem.mockReturnValue({ mutateAsync: vi.fn(), isPending: false });
+  watchMocks.useWorkspaceWatchStatus.mockReturnValue({
+    data: { watch: null, watched: false },
+    isLoading: false,
+  });
+  watchMocks.useWatchWorkspaceResource.mockReturnValue({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  });
+  watchMocks.useUnwatchWorkspaceResource.mockReturnValue({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  });
 });
 
 describe("formatFreshness", () => {
@@ -1177,6 +1196,72 @@ describe("ActionCluster", () => {
     });
 
     expect(unfollowMutate).toHaveBeenCalledWith("jane-doe-a3f2");
+  });
+
+  it("watches the entry in the active workspace when the profile is not watched", async () => {
+    const watchMutate = vi.fn().mockResolvedValue(undefined);
+    watchMocks.useWorkspaceWatchStatus.mockReturnValue({
+      data: { watch: null, watched: false },
+      isLoading: false,
+    });
+    watchMocks.useWatchWorkspaceResource.mockReturnValue({
+      mutateAsync: watchMutate,
+      isPending: false,
+    });
+
+    render(<ActionCluster {...baseProps} isSignedIn workspaceWatchingEnabled />);
+    await act(async () => {
+      screen.getByRole("button", { name: /^watch$/i }).click();
+      await Promise.resolve();
+    });
+
+    expect(watchMocks.useWorkspaceWatchStatus).toHaveBeenCalledWith(
+      {
+        resourceId: "entry-1",
+        resourceType: "entry",
+      },
+      true,
+    );
+    expect(watchMutate).toHaveBeenCalledWith({
+      notificationPreference: "digest",
+      resourceId: "entry-1",
+      resourceType: "entry",
+    });
+  });
+
+  it("unwatches the entry in the active workspace when the profile is watched", async () => {
+    const unwatchMutate = vi.fn().mockResolvedValue(undefined);
+    watchMocks.useWorkspaceWatchStatus.mockReturnValue({
+      data: {
+        watch: {
+          created_at: "2026-06-25T00:00:00Z",
+          created_by: "user_1",
+          id: "watch_1",
+          notification_preference: "digest",
+          org_id: "org_1",
+          resource_id: "entry-1",
+          resource_type: "entry",
+          updated_at: "2026-06-25T00:00:00Z",
+        },
+        watched: true,
+      },
+      isLoading: false,
+    });
+    watchMocks.useUnwatchWorkspaceResource.mockReturnValue({
+      mutateAsync: unwatchMutate,
+      isPending: false,
+    });
+
+    render(<ActionCluster {...baseProps} isSignedIn workspaceWatchingEnabled />);
+    await act(async () => {
+      screen.getByRole("button", { name: /^watching$/i }).click();
+      await Promise.resolve();
+    });
+
+    expect(unwatchMutate).toHaveBeenCalledWith({
+      resourceId: "entry-1",
+      resourceType: "entry",
+    });
   });
 
   it("leaves the share label unchanged when both Web Share and clipboard fail", async () => {

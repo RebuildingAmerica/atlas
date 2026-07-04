@@ -1,10 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   getDiscoveryRun,
+  listDiscoveryJobQueue,
   listDiscoveryRuns,
   startDiscoveryRun,
 } from "@/domains/discovery/functions";
-import type { DiscoveryRun, DiscoveryRunListResponse, StartDiscoveryRequest } from "@/types";
+import type {
+  DiscoveryJobQueueResponse,
+  DiscoveryRun,
+  DiscoveryRunListResponse,
+  StartDiscoveryRequest,
+} from "@/types";
 
 interface UseDiscoveryRunsOptions {
   initialData?: DiscoveryRunListResponse;
@@ -34,6 +40,23 @@ export function useDiscoveryRun(id: string) {
     refetchInterval: (query) => {
       const status = query.state.data?.status;
       if (status && status !== "running") {
+        return false;
+      }
+      const updatedAt = query.state.dataUpdatedAt;
+      return Date.now() - updatedAt > 60_000 ? 10_000 : 3_000;
+    },
+    staleTime: 0,
+  });
+}
+
+export function useDiscoveryJobQueue() {
+  return useQuery<DiscoveryJobQueueResponse>({
+    queryKey: ["discovery", "jobs"],
+    queryFn: () => listDiscoveryJobQueue({ data: { limit: 10 } }),
+    refetchInterval: (query) => {
+      const counts = query.state.data?.status_counts;
+      const activeJobs = (counts?.queued ?? 0) + (counts?.claimed ?? 0) + (counts?.running ?? 0);
+      if (activeJobs === 0) {
         return false;
       }
       const updatedAt = query.state.dataUpdatedAt;

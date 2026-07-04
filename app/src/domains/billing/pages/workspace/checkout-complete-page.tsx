@@ -2,7 +2,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { atlasSessionQueryKey, useAtlasSession } from "@/domains/access/client/use-atlas-session";
-import type { AtlasProduct } from "@/domains/access/capabilities";
+import type { AtlasSelfServeProduct } from "@/domains/access/capabilities";
 import { clearPendingCheckout } from "@/domains/billing/pending-checkout";
 import { PRODUCT_LABELS } from "@/domains/billing/product-labels";
 import { Button } from "@/platform/ui/button";
@@ -10,7 +10,7 @@ import { Button } from "@/platform/ui/button";
 const POLL_INTERVAL_MS = 1500;
 const TIMEOUT_MS = 30_000;
 
-const PRODUCT_FEATURES: Record<AtlasProduct, string[]> = {
+const PRODUCT_FEATURES: Record<AtlasSelfServeProduct, string[]> = {
   atlas_pro: [
     "Unlimited research requests",
     "Exports to CSV and JSON",
@@ -29,7 +29,7 @@ const PRODUCT_FEATURES: Record<AtlasProduct, string[]> = {
 };
 
 interface CheckoutCompletePageProps {
-  product?: AtlasProduct;
+  product?: AtlasSelfServeProduct;
 }
 
 type Phase = "waiting" | "ready" | "timeout";

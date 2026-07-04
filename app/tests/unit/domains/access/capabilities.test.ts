@@ -9,6 +9,7 @@ import {
   hasSerializedCapability,
   resolveCapabilities,
 } from "@/domains/access/capabilities";
+import { ENTERPRISE_PACKAGE_EXPECTATIONS } from "../../../fixtures/access/enterprise-package-expectations";
 
 describe("capabilities", () => {
   describe("resolveCapabilities", () => {
@@ -64,6 +65,23 @@ describe("capabilities", () => {
       expect(resolved.limits.max_api_keys).toBe(1);
       expect(resolved.limits.api_requests_per_day).toBe(1000);
     });
+
+    it.each(ENTERPRISE_PACKAGE_EXPECTATIONS)(
+      "resolves the $product enterprise package",
+      ({ excludedCapabilities, includedCapabilities, maxMembers, product }) => {
+        const resolved = resolveCapabilities([product]);
+
+        for (const capability of includedCapabilities) {
+          expect(resolved.capabilities.has(capability)).toBe(true);
+        }
+
+        for (const capability of excludedCapabilities) {
+          expect(resolved.capabilities.has(capability)).toBe(false);
+        }
+
+        expect(resolved.limits.max_members).toBe(maxMembers);
+      },
+    );
   });
 
   describe("hasCapability", () => {

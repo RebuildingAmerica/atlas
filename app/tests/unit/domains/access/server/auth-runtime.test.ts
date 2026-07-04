@@ -145,8 +145,8 @@ describe("auth runtime wiring", () => {
 
   it("builds Better Auth once with the Atlas database, plugins, and email callbacks", async () => {
     const mod = await import("@/domains/access/server/auth");
-    const auth = mod.getAuth();
-    const secondAuth = mod.getAuth();
+    const auth = await mod.getAuth();
+    const secondAuth = await mod.getAuth();
 
     expect(secondAuth).toBe(auth);
     expect(mocks.validateAuthRuntimeConfig).toHaveBeenCalledTimes(1);
@@ -239,6 +239,7 @@ describe("auth runtime wiring", () => {
       throw new TypeError("Expected the OAuth provider plugin to be configured.");
     }
     expect(typedOauthProviderOptions.validAudiences).toBeUndefined();
+    expect(typedOauthProviderOptions.scopes).toContain("api.mcp");
     expect(typedOauthProviderOptions.silenceWarnings?.oauthAuthServerConfig).toBe(true);
 
     const ssoCall = mocks.sso.mock.calls.at(0) as [Record<string, unknown>] | undefined;
@@ -285,7 +286,7 @@ describe("auth runtime wiring", () => {
     });
 
     const mod = await import("@/domains/access/server/auth");
-    mod.getAuth();
+    await mod.getAuth();
 
     const oauthProviderCall = mocks.oauthProvider.mock.calls.at(0) as
       | [OAuthProviderOptions]
@@ -302,7 +303,13 @@ describe("auth runtime wiring", () => {
     ]);
     await expect(
       typedOauthProviderOptions.customAccessTokenClaims({
-        scopes: ["openid", "discovery:write", "entities:write", "admin:all"] as Parameters<
+        scopes: [
+          "openid",
+          "discovery:write",
+          "entities:write",
+          "api.mcp",
+          "admin:all",
+        ] as Parameters<
           NonNullable<typeof typedOauthProviderOptions.customAccessTokenClaims>
         >[0]["scopes"],
       }),
@@ -334,7 +341,7 @@ describe("auth runtime wiring", () => {
     });
 
     const mod = await import("@/domains/access/server/auth");
-    mod.getAuth();
+    await mod.getAuth();
 
     const oauthProviderCall = mocks.oauthProvider.mock.calls.at(0) as
       | [OAuthProviderOptions]

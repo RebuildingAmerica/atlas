@@ -19,6 +19,23 @@ interface TeamSubscriptionRow {
 }
 
 /**
+ * Product grant Atlas can create without a Stripe checkout event.
+ */
+export interface WorkspaceProductGrantInput {
+  workspaceId: string;
+  product: AtlasProduct;
+}
+
+/**
+ * Builds the stable id used for operator-created product grants.
+ *
+ * @param input - Workspace and product to grant.
+ */
+function manualGrantId(input: WorkspaceProductGrantInput): string {
+  return `manual_${input.workspaceId}_${input.product}`;
+}
+
+/**
  * Queries active products for a workspace from a SQLite database.
  *
  * A product is considered active when its status is 'active' and either its
@@ -70,6 +87,45 @@ export async function queryActiveProducts(workspaceId: string): Promise<AtlasPro
   }
 
   return [];
+}
+
+/**
+ * Grants an active product to a workspace without requiring a Stripe event.
+ *
+ * This is used for operator-provisioned demo and customer workspaces where the
+ * user-facing outcome is immediate access to the real Team workspace surface.
+ *
+ * @param input - Workspace and product to activate.
+ */
+export async function grantWorkspaceProduct(input: WorkspaceProductGrantInput): Promise<void> {
+  const id = manualGrantId(input);
+  const pool = getAuthPgPool();
+  if (pool) {
+    await pool.query(
+      `INSERT INTO workspace_products (id, workspace_id, product, status, expires_at)
+       VALUES ($1, $2, $3, 'active', NULL)
+       ON CONFLICT (workspace_id, product) DO UPDATE
+       SET status = 'active',
+           expires_at = NULL,
+           granted_at = now()`,
+      [id, input.workspaceId, input.product],
+    );
+    return;
+  }
+
+  const db = getAuthDatabase();
+  if (!db) {
+    throw new Error("Auth database unavailable in current mode");
+  }
+
+  db.prepare(
+    `INSERT INTO workspace_products (id, workspace_id, product, status, expires_at)
+     VALUES (?, ?, ?, 'active', NULL)
+     ON CONFLICT (workspace_id, product) DO UPDATE
+     SET status = 'active',
+         expires_at = NULL,
+         granted_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')`,
+  ).run(id, input.workspaceId, input.product);
 }
 
 /**

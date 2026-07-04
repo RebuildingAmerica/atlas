@@ -1,6 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { buildAuthorizationServerMetadata } from "@/domains/access/oauth-as-metadata";
-import { getAuthRuntimeConfig } from "@/domains/access/server/runtime";
+
+async function loadRuntimeModule() {
+  if (import.meta.env.SSR) {
+    return await import("@/domains/access/server/runtime");
+  }
+
+  throw new Error("Auth runtime is only available on the server.");
+}
 
 /**
  * RFC 8414 §3 issuer-suffix path for the AS metadata document.  When the
@@ -14,7 +21,8 @@ import { getAuthRuntimeConfig } from "@/domains/access/server/runtime";
 export const Route = createFileRoute("/.well-known/oauth-authorization-server/api/auth")({
   server: {
     handlers: {
-      GET: () => {
+      GET: async () => {
+        const { getAuthRuntimeConfig } = await loadRuntimeModule();
         const metadata = buildAuthorizationServerMetadata(getAuthRuntimeConfig());
 
         return new Response(JSON.stringify(metadata), {

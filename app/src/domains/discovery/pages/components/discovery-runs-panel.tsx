@@ -1,10 +1,12 @@
+import { Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { Clipboard, FileJson2, FileText, Table2 } from "lucide-react";
+import { Clipboard, FileJson2, FilePlus, FileText, Table2 } from "lucide-react";
 import {
   buildAgentJsonExport,
   buildLeadCsvExport,
   buildMarkdownBriefExport,
 } from "@/domains/discovery/research-artifacts";
+import { canCreateBriefFromRun } from "@/domains/discovery/brief-request";
 import {
   blindSpotsForSummary,
   CONFIDENCE_LABELS,
@@ -16,18 +18,46 @@ import { copyToClipboard } from "@/lib/clipboard";
 import type { DiscoveryResearchGoal, DiscoveryResearchSummary } from "@/types";
 
 interface DiscoveryRunsPanelProps {
+  createdBriefs?: Record<string, CreatedBriefLink>;
+  createBriefErrors?: Record<string, string | null>;
+  creatingBriefRunId?: string | null;
   isLoading: boolean;
+  onCreateBrief?: (run: DiscoveryRunRecord) => void;
   runs: DiscoveryRunRecord[];
 }
 
+interface CreatedBriefLink {
+  id: string;
+  title: string;
+}
+
 interface ResearchSummaryBlockProps {
+  createdBrief?: CreatedBriefLink;
+  createBriefError?: string | null;
+  isCreatingBrief: boolean;
+  onCreateBrief?: () => void;
   researchGoal: DiscoveryResearchGoal;
   run: DiscoveryRunRecord;
   summary: DiscoveryResearchSummary;
 }
 
-function ResearchArtifactExports({ run }: { run: DiscoveryRunRecord }) {
+interface ResearchArtifactExportsProps {
+  createdBrief?: CreatedBriefLink;
+  createBriefError?: string | null;
+  isCreatingBrief: boolean;
+  onCreateBrief?: () => void;
+  run: DiscoveryRunRecord;
+}
+
+function ResearchArtifactExports({
+  createdBrief,
+  createBriefError,
+  isCreatingBrief,
+  onCreateBrief,
+  run,
+}: ResearchArtifactExportsProps) {
   const [statusLabel, setStatusLabel] = useState<string | null>(null);
+  const canSaveBrief = canCreateBriefFromRun(run) && onCreateBrief != null;
 
   async function copyArtifact(label: string, text: string) {
     const copied = await copyToClipboard(text);
@@ -67,17 +97,55 @@ function ResearchArtifactExports({ run }: { run: DiscoveryRunRecord }) {
           <Table2 className="h-4 w-4" aria-hidden />
           Copy leads CSV
         </button>
+        {canSaveBrief ? (
+          <button
+            type="button"
+            className="type-label-medium bg-ink-strong text-surface hover:bg-ink inline-flex items-center gap-2 rounded-full px-3 py-1.5 disabled:cursor-not-allowed disabled:opacity-60"
+            disabled={isCreatingBrief}
+            onClick={() => {
+              onCreateBrief();
+            }}
+          >
+            <FilePlus className="h-4 w-4" aria-hidden />
+            {isCreatingBrief ? "Saving..." : "Save as Atlas Brief"}
+          </button>
+        ) : null}
       </div>
       {statusLabel ? (
         <p className="type-label-small text-ink-muted" role="status">
           {statusLabel}
         </p>
       ) : null}
+      {createdBrief ? (
+        <p className="type-label-small text-ink-muted" role="status">
+          Saved as Atlas Brief.{" "}
+          <Link
+            to="/briefs/$briefId"
+            params={{ briefId: createdBrief.id }}
+            className="text-civic hover:text-civic-deep underline-offset-4 hover:underline"
+          >
+            Open brief
+          </Link>
+        </p>
+      ) : null}
+      {createBriefError ? (
+        <p className="type-label-small text-rose-700" role="alert">
+          {createBriefError}
+        </p>
+      ) : null}
     </div>
   );
 }
 
-function ResearchSummaryBlock({ researchGoal, run, summary }: ResearchSummaryBlockProps) {
+function ResearchSummaryBlock({
+  createdBrief,
+  createBriefError,
+  isCreatingBrief,
+  onCreateBrief,
+  researchGoal,
+  run,
+  summary,
+}: ResearchSummaryBlockProps) {
   const blindSpots = blindSpotsForSummary(researchGoal, summary);
 
   return (
@@ -109,7 +177,13 @@ function ResearchSummaryBlock({ researchGoal, run, summary }: ResearchSummaryBlo
         </div>
       ) : null}
 
-      <ResearchArtifactExports run={run} />
+      <ResearchArtifactExports
+        createdBrief={createdBrief}
+        createBriefError={createBriefError}
+        isCreatingBrief={isCreatingBrief}
+        onCreateBrief={onCreateBrief}
+        run={run}
+      />
 
       {summary.key_sources.length > 0 ? (
         <div className="space-y-2">
@@ -149,7 +223,14 @@ function ResearchSummaryBlock({ researchGoal, run, summary }: ResearchSummaryBlo
   );
 }
 
-export function DiscoveryRunsPanel({ isLoading, runs }: DiscoveryRunsPanelProps) {
+export function DiscoveryRunsPanel({
+  createdBriefs = {},
+  createBriefErrors = {},
+  creatingBriefRunId = null,
+  isLoading,
+  onCreateBrief,
+  runs,
+}: DiscoveryRunsPanelProps) {
   return (
     <section className="border-border-strong bg-surface space-y-5 rounded-[1rem] border p-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
@@ -205,6 +286,16 @@ export function DiscoveryRunsPanel({ isLoading, runs }: DiscoveryRunsPanelProps)
 
               {run.research_summary ? (
                 <ResearchSummaryBlock
+                  createdBrief={createdBriefs[run.id]}
+                  createBriefError={createBriefErrors[run.id]}
+                  isCreatingBrief={creatingBriefRunId === run.id}
+                  onCreateBrief={
+                    onCreateBrief
+                      ? () => {
+                          onCreateBrief(run);
+                        }
+                      : undefined
+                  }
                   researchGoal={run.research_goal ?? "landscape_scan"}
                   run={run}
                   summary={run.research_summary}

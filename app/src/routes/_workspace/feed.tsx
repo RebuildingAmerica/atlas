@@ -1,38 +1,83 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useFollowingFeed } from "@/domains/catalog/hooks/use-claims";
-import { FeedItemRow, type FeedItemRowData } from "@/domains/catalog/components/feed/feed-item-row";
-import { ChangeClassificationSection } from "@/domains/workspace/components/change-classification-section";
+import { ExternalLink } from "lucide-react";
+import { useWorkspaceWatchDigest } from "@/domains/workspace/hooks/use-workspace-watch-digest";
+import type { WorkspaceWatchDigestItem } from "@/domains/workspace/server/watch-digest";
 import { Badge } from "@/platform/ui/badge";
 
 export const Route = createFileRoute("/_workspace/feed")({
   component: FeedRoute,
 });
 
-interface MonitoringDigest {
-  actorCount: number;
-  sourceSignalCount: number;
-  thisWeekCount: number;
-}
-
-const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+const DIGEST_LIMIT = 50;
 
 function pluralize(count: number, singular: string, plural = `${singular}s`): string {
   return `${count} ${count === 1 ? singular : plural}`;
 }
 
-function buildMonitoringDigest(items: FeedItemRowData[], now = new Date()): MonitoringDigest {
-  const cutoff = now.getTime() - WEEK_MS;
-  return {
-    actorCount: new Set(items.map((item) => item.entry_id)).size,
-    sourceSignalCount: items.length,
-    thisWeekCount: items.filter((item) => new Date(item.ingested_at).getTime() >= cutoff).length,
-  };
+function eventTypeLabel(item: WorkspaceWatchDigestItem): string {
+  if (item.event_type === "new_source") {
+    return "Source signal";
+  }
+  if (item.event_type === "coverage_status_changed") {
+    return "Coverage change";
+  }
+  if (item.event_type === "relationship_added") {
+    return "New connection";
+  }
+  if (item.event_type === "correction") {
+    return "Correction";
+  }
+  return "Profile update";
+}
+
+function DigestItemRow({ item }: { item: WorkspaceWatchDigestItem }) {
+  const sourceTitle = item.source?.title ?? item.source?.url ?? null;
+
+  return (
+    <li className="border-border bg-surface-container space-y-3 rounded-lg border p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="space-y-1">
+          <p className="type-label-small text-ink-muted">{eventTypeLabel(item)}</p>
+          <h2 className="type-title-medium text-ink-strong">{item.title}</h2>
+        </div>
+        <time className="type-label-small text-ink-muted" dateTime={item.created_at}>
+          {new Date(item.created_at).toLocaleDateString(undefined, {
+            day: "numeric",
+            month: "short",
+            year: "numeric",
+          })}
+        </time>
+      </div>
+
+      <p className="type-body-medium text-ink-soft">{item.summary}</p>
+
+      <div className="flex flex-wrap items-center gap-2">
+        {item.entry ? <Badge>{item.entry.name}</Badge> : <Badge>{item.resource_type}</Badge>}
+        {sourceTitle ? <span className="type-body-small text-ink-muted">{sourceTitle}</span> : null}
+        {item.source?.publication ? (
+          <span className="type-body-small text-ink-muted">{item.source.publication}</span>
+        ) : null}
+      </div>
+
+      {item.source ? (
+        <a
+          href={item.source.url}
+          target="_blank"
+          rel="noreferrer"
+          className="type-label-medium text-ink-strong inline-flex items-center gap-2 underline"
+        >
+          Open source
+          <ExternalLink className="h-4 w-4" aria-hidden="true" />
+        </a>
+      ) : null}
+    </li>
+  );
 }
 
 function FeedRoute() {
-  const feed = useFollowingFeed(50);
-  const items = (feed.data?.items ?? []) as unknown as FeedItemRowData[];
-  const digest = buildMonitoringDigest(items);
+  const digestQuery = useWorkspaceWatchDigest(DIGEST_LIMIT);
+  const digest = digestQuery.data;
+  const items = digest?.items ?? [];
 
   return (
     <div className="mx-auto max-w-3xl space-y-8 py-12">
@@ -40,48 +85,45 @@ function FeedRoute() {
         <Badge variant="info">Activity</Badge>
         <h1 className="type-display-small text-ink-strong">Monitoring digest</h1>
         <p className="type-body-large text-ink-soft">
-          High-signal source changes for the profiles you follow.
+          Source-backed changes for watched actors and coverage targets.
         </p>
       </header>
 
-      {feed.isLoading ? (
+      {digestQuery.isLoading ? (
         <p className="type-body-medium text-ink-soft">Loading</p>
       ) : items.length === 0 ? (
-        <div className="bg-surface-container space-y-2 rounded-[1rem] p-5">
-          <p className="type-body-medium text-ink-strong">No followed-profile updates.</p>
-          <p className="type-body-small text-ink-soft">
-            Follow profiles to track new source signals.
-          </p>
+        <div className="bg-surface-container space-y-2 rounded-lg p-5">
+          <p className="type-body-medium text-ink-strong">No watch updates.</p>
         </div>
       ) : (
         <div className="space-y-5">
           <section
             aria-label="Monitoring summary"
-            className="bg-surface-container grid gap-3 rounded-[1rem] p-4 sm:grid-cols-3"
+            className="bg-surface-container grid gap-3 rounded-lg p-4 sm:grid-cols-3"
           >
             <div>
-              <p className="type-label-small text-ink-muted">Source signals</p>
+              <p className="type-label-small text-ink-muted">Updates</p>
               <p className="type-title-medium text-ink-strong">
-                {pluralize(digest.sourceSignalCount, "source signal")}
+                {pluralize(digest?.total ?? items.length, "watch update")}
               </p>
             </div>
             <div>
-              <p className="type-label-small text-ink-muted">Actors</p>
+              <p className="type-label-small text-ink-muted">Sources</p>
               <p className="type-title-medium text-ink-strong">
-                {pluralize(digest.actorCount, "followed actor")}
+                {pluralize(digest?.source_signal_count ?? 0, "source signal")}
               </p>
             </div>
             <div>
-              <p className="type-label-small text-ink-muted">Recent</p>
+              <p className="type-label-small text-ink-muted">Coverage</p>
               <p className="type-title-medium text-ink-strong">
-                {pluralize(digest.thisWeekCount, "this week", "this week")}
+                {pluralize(digest?.coverage_signal_count ?? 0, "coverage change")}
               </p>
             </div>
           </section>
-          <ChangeClassificationSection items={items} />
+
           <ul className="space-y-3">
             {items.map((item) => (
-              <FeedItemRow key={`${item.entry_id}-${item.source_id}`} item={item} />
+              <DigestItemRow key={item.id} item={item} />
             ))}
           </ul>
         </div>

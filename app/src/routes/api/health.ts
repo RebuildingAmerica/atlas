@@ -1,7 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { getAuthRuntimeConfig } from "@/domains/access/server/runtime";
 
 const NO_STORE = { "Cache-Control": "no-store" } as const;
+
+async function loadRuntimeModule() {
+  if (import.meta.env.SSR) {
+    return await import("@/domains/access/server/runtime");
+  }
+
+  throw new Error("Auth runtime is only available on the server.");
+}
 
 /**
  * Public health check endpoint.
@@ -16,6 +23,7 @@ export const Route = createFileRoute("/api/health")({
   server: {
     handlers: {
       GET: async () => {
+        const { getAuthRuntimeConfig } = await loadRuntimeModule();
         const { apiBaseUrl } = getAuthRuntimeConfig();
 
         if (!apiBaseUrl) {

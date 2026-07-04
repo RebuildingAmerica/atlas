@@ -1,6 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { buildProtectedResourceMetadata } from "@/domains/access/oauth-as-metadata";
-import { getAuthRuntimeConfig } from "@/domains/access/server/runtime";
+
+async function loadRuntimeModule() {
+  if (import.meta.env.SSR) {
+    return await import("@/domains/access/server/runtime");
+  }
+
+  throw new Error("Auth runtime is only available on the server.");
+}
 
 /**
  * RFC 9728 OAuth 2.0 Protected Resource Metadata for the Atlas MCP server.
@@ -17,7 +24,8 @@ import { getAuthRuntimeConfig } from "@/domains/access/server/runtime";
 export const Route = createFileRoute("/.well-known/oauth-protected-resource/")({
   server: {
     handlers: {
-      GET: () => {
+      GET: async () => {
+        const { getAuthRuntimeConfig } = await loadRuntimeModule();
         const metadata = buildProtectedResourceMetadata(getAuthRuntimeConfig());
 
         return new Response(JSON.stringify(metadata), {

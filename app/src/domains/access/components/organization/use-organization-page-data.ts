@@ -1,16 +1,31 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { hasSerializedCapability } from "@/domains/access/capabilities";
 import { atlasSessionQueryKey, useAtlasSession } from "@/domains/access/client/use-atlas-session";
 import type { AtlasSessionPayload } from "@/domains/access/organization-contracts";
+import { canManageAtlasOrganizationRole } from "@/domains/access/organization-metadata";
 import {
   getOrganizationDetails,
   getTeamSeatCostSummary,
 } from "@/domains/access/organizations.functions";
 import { getWorkspaceSAMLAllowedIssuers } from "@/domains/access/sso.functions";
 import type { TeamSeatCostSummary } from "@/domains/billing/team-cost";
+import { loadWorkspaceDirectoryConfig } from "@/domains/workspace/server/directory-config";
+import {
+  loadWorkspaceIntegrationMonitoring,
+  loadWorkspaceUsageAuditLog,
+  loadWorkspaceUsageSummary,
+} from "@/domains/workspace/server/usage-summary";
 
 export const organizationQueryKey = ["auth", "organization"] as const;
 export const samlAllowedIssuersQueryKey = ["auth", "saml-allowed-issuers"] as const;
 export const teamSeatCostSummaryQueryKey = ["auth", "team-seat-cost-summary"] as const;
+export const workspaceDirectoryConfigQueryKey = ["workspace", "directory-config"] as const;
+export const workspaceIntegrationMonitoringQueryKey = [
+  "workspace",
+  "integration-monitoring",
+] as const;
+export const workspaceUsageAuditLogQueryKey = ["workspace", "usage-audit-log"] as const;
+export const workspaceUsageSummaryQueryKey = ["workspace", "usage-summary"] as const;
 
 /**
  * Workspace-aware organization-page query state and refresh helpers.
@@ -19,6 +34,9 @@ export interface OrganizationPageData {
   activeWorkspace: AtlasSessionPayload["workspace"]["activeOrganization"];
   atlasSession: ReturnType<typeof useAtlasSession>;
   canSwitchOrganizations: boolean;
+  canUsePublicDirectories: boolean;
+  directoryConfig: Awaited<ReturnType<typeof loadWorkspaceDirectoryConfig>> | undefined;
+  directoryConfigLoading: boolean;
   hasPendingInvitations: boolean;
   memberships: AtlasSessionPayload["workspace"]["memberships"];
   needsWorkspace: boolean;
@@ -29,6 +47,12 @@ export interface OrganizationPageData {
   samlAllowedIssuerOrigins: readonly string[];
   session: AtlasSessionPayload | null | undefined;
   teamSeatCostSummary: TeamSeatCostSummary | null;
+  integrationMonitoring: Awaited<ReturnType<typeof loadWorkspaceIntegrationMonitoring>> | undefined;
+  integrationMonitoringLoading: boolean;
+  usageAuditLog: Awaited<ReturnType<typeof loadWorkspaceUsageAuditLog>> | undefined;
+  usageAuditLogLoading: boolean;
+  usageSummary: Awaited<ReturnType<typeof loadWorkspaceUsageSummary>> | undefined;
+  usageSummaryLoading: boolean;
 }
 
 /**
@@ -52,11 +76,15 @@ export function useOrganizationPageData(
   const atlasSession = useAtlasSession();
   const session = atlasSession.data;
   const activeWorkspace = session?.workspace.activeOrganization ?? null;
+  const canUsePublicDirectories = session
+    ? hasSerializedCapability(session.workspace.resolvedCapabilities, "public.directories")
+    : false;
   const memberships = session?.workspace.memberships ?? [];
   const pendingInvitations = session?.workspace.pendingInvitations ?? [];
   const canSwitchOrganizations = session?.workspace.capabilities.canSwitchOrganizations ?? false;
   const hasPendingInvitations = session?.workspace.onboarding.hasPendingInvitations ?? false;
   const needsWorkspace = session?.workspace.onboarding.needsWorkspace ?? false;
+  const canManageActiveWorkspace = canManageAtlasOrganizationRole(activeWorkspace?.role);
 
   const organizationQuery = useQuery({
     enabled: Boolean(activeWorkspace),
@@ -78,6 +106,30 @@ export function useOrganizationPageData(
     queryKey: [...teamSeatCostSummaryQueryKey, activeWorkspace?.id ?? "none"],
   });
 
+  const usageSummaryQuery = useQuery({
+    enabled: Boolean(activeWorkspace) && canManageActiveWorkspace,
+    queryFn: () => loadWorkspaceUsageSummary(),
+    queryKey: [...workspaceUsageSummaryQueryKey, activeWorkspace?.id ?? "none"],
+  });
+
+  const usageAuditLogQuery = useQuery({
+    enabled: Boolean(activeWorkspace) && canManageActiveWorkspace,
+    queryFn: () => loadWorkspaceUsageAuditLog({ data: { limit: 10 } }),
+    queryKey: [...workspaceUsageAuditLogQueryKey, activeWorkspace?.id ?? "none"],
+  });
+
+  const integrationMonitoringQuery = useQuery({
+    enabled: Boolean(activeWorkspace) && canManageActiveWorkspace,
+    queryFn: () => loadWorkspaceIntegrationMonitoring(),
+    queryKey: [...workspaceIntegrationMonitoringQueryKey, activeWorkspace?.id ?? "none"],
+  });
+
+  const directoryConfigQuery = useQuery({
+    enabled: Boolean(activeWorkspace) && canUsePublicDirectories,
+    queryFn: () => loadWorkspaceDirectoryConfig(),
+    queryKey: [...workspaceDirectoryConfigQueryKey, activeWorkspace?.id ?? "none"],
+  });
+
   /**
    * Refreshes the session and active-organization query after a mutation.
    */
@@ -91,11 +143,27 @@ export function useOrganizationPageData(
     const invalidateTeamSeatCostPromise = queryClient.invalidateQueries({
       queryKey: teamSeatCostSummaryQueryKey,
     });
+    const invalidateDirectoryConfigPromise = queryClient.invalidateQueries({
+      queryKey: workspaceDirectoryConfigQueryKey,
+    });
+    const invalidateUsageSummaryPromise = queryClient.invalidateQueries({
+      queryKey: workspaceUsageSummaryQueryKey,
+    });
+    const invalidateUsageAuditLogPromise = queryClient.invalidateQueries({
+      queryKey: workspaceUsageAuditLogQueryKey,
+    });
+    const invalidateIntegrationMonitoringPromise = queryClient.invalidateQueries({
+      queryKey: workspaceIntegrationMonitoringQueryKey,
+    });
 
     await Promise.all([
       invalidateSessionPromise,
       invalidateOrganizationPromise,
       invalidateTeamSeatCostPromise,
+      invalidateDirectoryConfigPromise,
+      invalidateUsageSummaryPromise,
+      invalidateUsageAuditLogPromise,
+      invalidateIntegrationMonitoringPromise,
     ]);
     await atlasSession.refetch();
   }
@@ -104,6 +172,9 @@ export function useOrganizationPageData(
     activeWorkspace,
     atlasSession,
     canSwitchOrganizations,
+    canUsePublicDirectories,
+    directoryConfig: directoryConfigQuery.data,
+    directoryConfigLoading: directoryConfigQuery.isLoading,
     hasPendingInvitations,
     memberships,
     needsWorkspace,
@@ -114,5 +185,11 @@ export function useOrganizationPageData(
     samlAllowedIssuerOrigins: samlAllowedIssuersQuery.data?.issuerOrigins ?? [],
     session,
     teamSeatCostSummary: teamSeatCostSummaryQuery.data ?? null,
+    integrationMonitoring: integrationMonitoringQuery.data,
+    integrationMonitoringLoading: integrationMonitoringQuery.isLoading,
+    usageAuditLog: usageAuditLogQuery.data,
+    usageAuditLogLoading: usageAuditLogQuery.isLoading,
+    usageSummary: usageSummaryQuery.data,
+    usageSummaryLoading: usageSummaryQuery.isLoading,
   };
 }

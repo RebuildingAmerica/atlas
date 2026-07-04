@@ -7,20 +7,45 @@ import {
   type ApiKeyScope,
 } from "./api-key-scopes";
 import { createdApiKeySchema, listedApiKeysResponseSchema } from "./server/api-key-schema";
-import { ensureAuthReady } from "./server/auth";
-import { getBrowserSessionHeaders } from "./server/request-headers";
-import {
-  getAuthRuntimeConfig,
-  validateAuthRuntimeConfig,
-  type AuthRuntimeConfig,
-} from "./server/runtime";
-import { requireAtlasSessionState, requireReadyAtlasSessionState } from "./server/session-state";
+import type { AuthRuntimeConfig } from "./server/runtime";
 
 const API_KEY_PROVISIONING_RETRIES = 10;
 const API_KEY_PROVISIONING_DELAY_MS = 100;
 const apiKeyProvisioningSchema = z.object({
   valid: z.boolean(),
 });
+
+async function loadAuthModule() {
+  if (import.meta.env.SSR) {
+    return await import("./server/auth");
+  }
+
+  throw new Error("Auth is only available on the server.");
+}
+
+async function loadRequestHeadersModule() {
+  if (import.meta.env.SSR) {
+    return await import("./server/request-headers");
+  }
+
+  throw new Error("Request headers are only available on the server.");
+}
+
+async function loadRuntimeModule() {
+  if (import.meta.env.SSR) {
+    return await import("./server/runtime");
+  }
+
+  throw new Error("Auth runtime is only available on the server.");
+}
+
+async function loadSessionStateModule() {
+  if (import.meta.env.SSR) {
+    return await import("./server/session-state");
+  }
+
+  throw new Error("Session state is only available on the server.");
+}
 
 /**
  * The HTTP boundary Atlas can probe while a new API key finishes provisioning.
@@ -166,6 +191,7 @@ async function createScopedApiKey(
   userId: string,
   organizationId: string | undefined,
 ) {
+  const { ensureAuthReady } = await loadAuthModule();
   const authPromise = ensureAuthReady();
   const auth = await authPromise;
   const createApiKeyPromise = auth.api.createApiKey({
@@ -199,6 +225,10 @@ async function createScopedApiKey(
  * when auth is disabled.
  */
 export const listApiKeys = createServerFn({ method: "GET" }).handler(async () => {
+  const { ensureAuthReady } = await loadAuthModule();
+  const { getBrowserSessionHeaders } = await loadRequestHeadersModule();
+  const { getAuthRuntimeConfig } = await loadRuntimeModule();
+  const { requireAtlasSessionState } = await loadSessionStateModule();
   const runtime = getAuthRuntimeConfig();
   if (runtime.localMode) {
     return [];
@@ -233,6 +263,8 @@ export const createApiKey = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ data }) => {
+    const { getAuthRuntimeConfig, validateAuthRuntimeConfig } = await loadRuntimeModule();
+    const { requireReadyAtlasSessionState } = await loadSessionStateModule();
     const runtime = getAuthRuntimeConfig();
     if (runtime.localMode) {
       throw new Error("API keys are unavailable while auth is disabled.");
@@ -262,6 +294,9 @@ export const deleteApiKey = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ data }) => {
+    const { ensureAuthReady } = await loadAuthModule();
+    const { getBrowserSessionHeaders } = await loadRequestHeadersModule();
+    const { requireAtlasSessionState } = await loadSessionStateModule();
     const sessionPromise = requireAtlasSessionState();
     await sessionPromise;
     const authPromise = ensureAuthReady();

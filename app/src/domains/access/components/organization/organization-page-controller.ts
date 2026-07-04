@@ -54,6 +54,18 @@ export interface OrganizationPageController {
   canSwitchOrganizations: boolean;
   canUseTeamFeatures: boolean;
   createWorkspacePending: boolean;
+  canUsePublicDirectories: boolean;
+  directoryConfigLoading: boolean;
+  directoryConfigPending: boolean;
+  directoryCorrectionPolicy: string;
+  directoryEntryTypes: string;
+  directoryGeographyLabels: string;
+  directoryIssueAreaIds: string;
+  directoryMethodologySummary: string;
+  directoryReviewPolicy: string;
+  directorySourcePolicy: string;
+  directorySponsorLabel: string;
+  directoryTitle: string;
   domainVerificationTokens: Record<string, string>;
   errorMessage: string | null;
   flashMessage: string | null;
@@ -82,6 +94,15 @@ export interface OrganizationPageController {
   session: AtlasSessionPayload | null | undefined;
   setInviteEmail: (value: string) => void;
   setInviteRole: (value: "admin" | "member") => void;
+  setDirectoryCorrectionPolicy: (value: string) => void;
+  setDirectoryEntryTypes: (value: string) => void;
+  setDirectoryGeographyLabels: (value: string) => void;
+  setDirectoryIssueAreaIds: (value: string) => void;
+  setDirectoryMethodologySummary: (value: string) => void;
+  setDirectoryReviewPolicy: (value: string) => void;
+  setDirectorySourcePolicy: (value: string) => void;
+  setDirectorySponsorLabel: (value: string) => void;
+  setDirectoryTitle: (value: string) => void;
   setOidcSetupForm: (
     updater: (current: WorkspaceOIDCSetupFormState) => WorkspaceOIDCSetupFormState,
   ) => void;
@@ -92,8 +113,18 @@ export interface OrganizationPageController {
   ) => void;
   ssoMutationPending: boolean;
   teamSeatCostSummary: TeamSeatCostSummary | null;
+  integrationMonitoring:
+    | NonNullable<ReturnType<typeof useOrganizationPageData>["integrationMonitoring"]>
+    | undefined;
+  integrationMonitoringLoading: boolean;
   updateWorkspaceMemberRolePending: boolean;
   upgradeToTeamPending: boolean;
+  usageAuditLog:
+    | NonNullable<ReturnType<typeof useOrganizationPageData>["usageAuditLog"]>
+    | undefined;
+  usageAuditLogLoading: boolean;
+  usageSummary: NonNullable<ReturnType<typeof useOrganizationPageData>["usageSummary"]> | undefined;
+  usageSummaryLoading: boolean;
   workspaceDelegatedEmail: string;
   workspaceDomain: string;
   workspaceName: string;
@@ -102,6 +133,7 @@ export interface OrganizationPageController {
   setWorkspaceDelegatedEmail: (value: string) => void;
   setWorkspaceDomain: (value: string) => void;
   onCreateWorkspace: (event: React.FormEvent<HTMLFormElement>) => Promise<void>;
+  onDirectoryConfigSave: (event: React.FormEvent<HTMLFormElement>) => Promise<void>;
   onDeleteSSOProvider: (providerId: string) => Promise<void>;
   onRotateSAMLCertificate: (providerId: string, certificate: string) => Promise<void>;
   onInviteMember: (event: React.FormEvent<HTMLFormElement>) => Promise<void>;
@@ -154,6 +186,7 @@ export function useOrganizationPageController(
   });
   const forms = useOrganizationPageForms({
     activeOrganizationId: data.activeWorkspace?.id,
+    directoryConfig: data.directoryConfig,
     needsWorkspace: data.needsWorkspace,
     organization: data.organization,
   });
@@ -181,13 +214,26 @@ export function useOrganizationPageController(
   });
   const canManageOrganization = data.organization?.capabilities.canManageOrganization ?? false;
   const canUseTeamFeatures = data.organization?.capabilities.canUseTeamFeatures ?? false;
+  const canUsePublicDirectories = data.canUsePublicDirectories;
 
   return {
     activeWorkspace: data.activeWorkspace,
     canManageOrganization,
     canSwitchOrganizations: data.canSwitchOrganizations,
     canUseTeamFeatures,
+    canUsePublicDirectories,
     createWorkspacePending: workspaceActions.createWorkspacePending,
+    directoryConfigLoading: data.directoryConfigLoading,
+    directoryConfigPending: workspaceActions.directoryConfigPending,
+    directoryCorrectionPolicy: forms.directoryCorrectionPolicy,
+    directoryEntryTypes: forms.directoryEntryTypes,
+    directoryGeographyLabels: forms.directoryGeographyLabels,
+    directoryIssueAreaIds: forms.directoryIssueAreaIds,
+    directoryMethodologySummary: forms.directoryMethodologySummary,
+    directoryReviewPolicy: forms.directoryReviewPolicy,
+    directorySourcePolicy: forms.directorySourcePolicy,
+    directorySponsorLabel: forms.directorySponsorLabel,
+    directoryTitle: forms.directoryTitle,
     domainVerificationTokens: ssoActions.domainVerificationTokens,
     errorMessage,
     flashMessage,
@@ -214,6 +260,15 @@ export function useOrganizationPageController(
     selectWorkspacePending: workspaceActions.selectWorkspacePending,
     selectedOrganizationId: forms.selectedOrganizationId,
     session: data.session,
+    setDirectoryCorrectionPolicy: forms.setDirectoryCorrectionPolicy,
+    setDirectoryEntryTypes: forms.setDirectoryEntryTypes,
+    setDirectoryGeographyLabels: forms.setDirectoryGeographyLabels,
+    setDirectoryIssueAreaIds: forms.setDirectoryIssueAreaIds,
+    setDirectoryMethodologySummary: forms.setDirectoryMethodologySummary,
+    setDirectoryReviewPolicy: forms.setDirectoryReviewPolicy,
+    setDirectorySourcePolicy: forms.setDirectorySourcePolicy,
+    setDirectorySponsorLabel: forms.setDirectorySponsorLabel,
+    setDirectoryTitle: forms.setDirectoryTitle,
     setInviteEmail: forms.setInviteEmail,
     setInviteRole: forms.setInviteRole,
     setOidcSetupForm: forms.setOidcSetupForm,
@@ -222,8 +277,14 @@ export function useOrganizationPageController(
     setSamlSetupForm: forms.setSamlSetupForm,
     ssoMutationPending: ssoActions.ssoMutationPending,
     teamSeatCostSummary: data.teamSeatCostSummary,
+    integrationMonitoring: data.integrationMonitoring,
+    integrationMonitoringLoading: data.integrationMonitoringLoading,
     updateWorkspaceMemberRolePending: workspaceActions.updateWorkspaceMemberRolePending,
     upgradeToTeamPending: workspaceActions.upgradeToTeamPending,
+    usageAuditLog: data.usageAuditLog,
+    usageAuditLogLoading: data.usageAuditLogLoading,
+    usageSummary: data.usageSummary,
+    usageSummaryLoading: data.usageSummaryLoading,
     workspaceDelegatedEmail: forms.workspaceDelegatedEmail,
     workspaceDomain: forms.workspaceDomain,
     workspaceName: forms.workspaceName,
@@ -232,6 +293,7 @@ export function useOrganizationPageController(
     setWorkspaceDelegatedEmail: forms.setWorkspaceDelegatedEmail,
     setWorkspaceDomain: forms.setWorkspaceDomain,
     onCreateWorkspace: workspaceActions.onCreateWorkspace,
+    onDirectoryConfigSave: workspaceActions.onDirectoryConfigSave,
     onDeleteSSOProvider: ssoActions.onDeleteSSOProvider,
     onRotateSAMLCertificate: ssoActions.onRotateSAMLCertificate,
     onInviteMember: workspaceActions.onInviteMember,

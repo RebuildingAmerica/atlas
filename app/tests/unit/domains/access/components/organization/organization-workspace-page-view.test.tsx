@@ -21,82 +21,216 @@ vi.mock("@/platform/ui/toast", () => ({
 }));
 
 describe("OrganizationWorkspacePageView", () => {
-  const buildController = (overrides = {}) => ({
-    needsWorkspace: false,
-    canUseTeamFeatures: true,
-    canSwitchOrganizations: false,
-    hasPendingInvitations: false,
-    organizationLoading: false,
-    organization: {
-      id: "org_1",
-      name: "Atlas",
-      slug: "atlas",
-      members: [],
-      invitations: [],
-      metadata: { workspaceType: "team" },
-      capabilities: { canUseTeamFeatures: true },
-      role: "owner",
-      workspaceType: "team",
-      sso: { providers: [] },
-    },
-    activeWorkspace: { id: "org_1", name: "Atlas" },
-    session: {
-      user: { id: "user_1" },
-      workspace: {
-        resolvedCapabilities: {
-          capabilities: ["research.run", "workspace.shared"],
-          limits: {
-            research_runs_per_month: 2,
-            max_shortlists: 1,
-            max_shortlist_entries: 25,
-            max_api_keys: 0,
-            api_requests_per_day: 0,
-            public_api_requests_per_hour: 100,
-            max_members: 1,
+  const buildController = (overrides = {}): OrganizationPageController => {
+    const baseController: OrganizationPageController = {
+      needsWorkspace: false,
+      canUseTeamFeatures: true,
+      canSwitchOrganizations: false,
+      hasPendingInvitations: false,
+      organizationLoading: false,
+      organization: {
+        capabilities: {
+          canInviteMembers: true,
+          canManageOrganization: true,
+          canSwitchOrganizations: false,
+          canUseTeamFeatures: true,
+        },
+        createdAt: "2026-01-01T00:00:00.000Z",
+        id: "org_1",
+        invitations: [],
+        members: [],
+        name: "Atlas",
+        role: "owner",
+        slug: "atlas",
+        sso: {
+          primaryHistory: [],
+          primaryProviderId: null,
+          providers: [],
+          setup: {
+            dnsTokenPrefix: "_atlas-sso",
+            googleWorkspaceIssuer: "https://accounts.google.com",
+            googleWorkspaceScopes: ["openid", "email", "profile"],
+            oidcProviderIdSuggestion: "atlas-google-workspace-oidc",
+            oidcRedirectUrl: "https://atlas.test/api/auth/sso/callback/atlas",
+            samlAcsUrl: "https://atlas.test/api/auth/sso/saml2/atlas",
+            samlEntityId: "https://atlas.test/saml/atlas",
+            samlMetadataUrl: "https://atlas.test/api/auth/sso/saml2/atlas/metadata",
+            samlProviderIdSuggestion: "atlas-google-workspace-saml",
+            workspaceDomainSuggestion: "atlas.test",
+          },
+        },
+        workspaceType: "team",
+      },
+      activeWorkspace: {
+        id: "org_1",
+        name: "Atlas",
+        role: "owner",
+        slug: "atlas",
+        workspaceType: "team",
+      },
+      session: {
+        accountReady: true,
+        hasPasskey: true,
+        isLocal: false,
+        passkeyCount: 1,
+        session: { id: "session_1" },
+        user: {
+          email: "user@atlas.test",
+          emailVerified: true,
+          id: "user_1",
+          name: "Atlas User",
+        },
+        workspace: {
+          activeOrganization: {
+            id: "org_1",
+            name: "Atlas",
+            role: "owner",
+            slug: "atlas",
+            workspaceType: "team",
+          },
+          activeProducts: [],
+          capabilities: {
+            canInviteMembers: true,
+            canManageOrganization: true,
+            canSwitchOrganizations: false,
+            canUseTeamFeatures: true,
+          },
+          memberships: [],
+          onboarding: {
+            hasPendingInvitations: false,
+            needsWorkspace: false,
+          },
+          pendingInvitations: [],
+          resolvedCapabilities: {
+            capabilities: ["research.run", "workspace.shared"],
+            limits: {
+              api_requests_per_day: 0,
+              max_api_keys: 0,
+              max_members: 1,
+              max_shortlist_entries: 25,
+              max_shortlists: 1,
+              public_api_requests_per_hour: 100,
+              research_runs_per_month: 2,
+            },
           },
         },
       },
-    },
-    workspaceDelegatedEmail: "",
-    workspaceDomain: "",
-    workspaceName: "Atlas",
-    workspaceSlug: "atlas",
-    workspaceType: "team",
-    setWorkspaceDelegatedEmail: vi.fn(),
-    setWorkspaceDomain: vi.fn(),
-    canManageOrganization: true,
-    profileName: "Atlas",
-    profileSlug: "atlas",
-    inviteEmail: "",
-    inviteRole: "member",
-    teamSeatCostSummary: null,
-    upgradeToTeamPending: false,
-    onUpdateWorkspaceName: vi.fn(),
-    onUpdateWorkspaceSlug: vi.fn(),
-    onUpdateWorkspaceType: vi.fn(),
-    onCreateWorkspace: vi.fn(),
-    setProfileName: vi.fn(),
-    setProfileSlug: vi.fn(),
-    onProfileSave: vi.fn(),
-    onLeaveWorkspace: vi.fn(),
-    onSelectWorkspace: vi.fn(),
-    onInvitationDecision: vi.fn(),
-    setInviteEmail: vi.fn(),
-    onUpdateInviteRole: vi.fn(),
-    onInviteMember: vi.fn(),
-    onRemoveMember: vi.fn(),
-    onUpdateMemberRole: vi.fn(),
-    onResendInvitation: vi.fn(),
-    onUpgradeToTeam: vi.fn(),
-    ...overrides,
-  });
+      workspaceDelegatedEmail: "",
+      workspaceDomain: "",
+      workspaceName: "Atlas",
+      workspaceSlug: "atlas",
+      workspaceType: "team",
+      setWorkspaceDelegatedEmail: vi.fn(),
+      setWorkspaceDomain: vi.fn(),
+      canManageOrganization: true,
+      canUsePublicDirectories: false,
+      createWorkspacePending: false,
+      directoryConfigLoading: false,
+      directoryConfigPending: false,
+      directoryCorrectionPolicy: "",
+      directoryEntryTypes: "",
+      directoryGeographyLabels: "",
+      directoryIssueAreaIds: "",
+      directoryMethodologySummary: "",
+      directoryReviewPolicy: "",
+      directorySourcePolicy: "",
+      directorySponsorLabel: "",
+      directoryTitle: "",
+      domainVerificationTokens: {},
+      errorMessage: null,
+      flashMessage: null,
+      inviteEmail: "",
+      invitePending: false,
+      inviteRole: "member",
+      leaveWorkspacePending: false,
+      memberships: [],
+      oidcSetupForm: {
+        clientId: "",
+        clientSecret: "",
+        domain: "",
+        providerId: "",
+        setAsPrimary: true,
+      },
+      pendingInvitationMutationPending: false,
+      pendingInvitations: [],
+      profileName: "Atlas",
+      profilePending: false,
+      profileSlug: "atlas",
+      removeMemberPending: false,
+      resendInvitationPending: false,
+      samlAllowedIssuerOrigins: [],
+      samlSetupForm: {
+        certificate: "",
+        domain: "",
+        entryPoint: "",
+        issuer: "",
+        providerId: "",
+        setAsPrimary: true,
+      },
+      samlVerificationTimedOutProviderIds: [],
+      selectWorkspacePending: false,
+      selectedOrganizationId: "org_1",
+      setDirectoryCorrectionPolicy: vi.fn(),
+      setDirectoryEntryTypes: vi.fn(),
+      setDirectoryGeographyLabels: vi.fn(),
+      setDirectoryIssueAreaIds: vi.fn(),
+      setDirectoryMethodologySummary: vi.fn(),
+      setDirectoryReviewPolicy: vi.fn(),
+      setDirectorySourcePolicy: vi.fn(),
+      setDirectorySponsorLabel: vi.fn(),
+      setDirectoryTitle: vi.fn(),
+      setInviteEmail: vi.fn(),
+      setInviteRole: vi.fn(),
+      setOidcSetupForm: vi.fn(),
+      setProfileName: vi.fn(),
+      setProfileSlug: vi.fn(),
+      setSamlSetupForm: vi.fn(),
+      ssoMutationPending: false,
+      teamSeatCostSummary: null,
+      integrationMonitoring: undefined,
+      integrationMonitoringLoading: false,
+      updateWorkspaceMemberRolePending: false,
+      upgradeToTeamPending: false,
+      usageAuditLog: undefined,
+      usageAuditLogLoading: false,
+      usageSummary: undefined,
+      usageSummaryLoading: false,
+      onCreateWorkspace: vi.fn(),
+      onDeleteSSOProvider: vi.fn(),
+      onDirectoryConfigSave: vi.fn(),
+      onInviteMember: vi.fn(),
+      onInvitationDecision: vi.fn(),
+      onLeaveWorkspace: vi.fn(),
+      onOidcFormSubmit: vi.fn(),
+      onProfileSave: vi.fn(),
+      onRemoveMember: vi.fn(),
+      onRequestDomainVerification: vi.fn(),
+      onResendInvitation: vi.fn(),
+      onRotateSAMLCertificate: vi.fn(),
+      onSamlFormSubmit: vi.fn(),
+      onSavePrimaryProvider: vi.fn(),
+      onSelectWorkspace: vi.fn(),
+      onUpdateInviteRole: vi.fn(),
+      onUpdateMemberRole: vi.fn(),
+      onUpdateWorkspaceName: vi.fn(),
+      onUpdateWorkspaceSlug: vi.fn(),
+      onUpdateWorkspaceType: vi.fn(),
+      onUpgradeToTeam: vi.fn(),
+      onVerifyDomain: vi.fn(),
+    };
+
+    return {
+      ...baseController,
+      ...overrides,
+    };
+  };
 
   afterEach(() => {
     cleanup();
   });
 
   it("renders the header and basic structure", () => {
-    const controller = buildController() as unknown as OrganizationPageController;
+    const controller = buildController();
     render(<OrganizationWorkspacePageView controller={controller} />);
     expect(screen.getByText("Organization")).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 1, name: "Atlas" })).toBeInTheDocument();
@@ -107,7 +241,7 @@ describe("OrganizationWorkspacePageView", () => {
     const controller = buildController({
       organizationLoading: true,
       organization: null,
-    }) as unknown as OrganizationPageController;
+    });
     render(<OrganizationWorkspacePageView controller={controller} />);
     expect(screen.getByText(/Loading workspace details/i)).toBeInTheDocument();
   });
@@ -117,7 +251,7 @@ describe("OrganizationWorkspacePageView", () => {
       needsWorkspace: false,
       hasPendingInvitations: false,
       organization: null,
-    }) as unknown as OrganizationPageController;
+    });
     render(<OrganizationWorkspacePageView controller={controller} />);
     expect(screen.getByText(/No active workspace/i)).toBeInTheDocument();
   });
@@ -126,10 +260,30 @@ describe("OrganizationWorkspacePageView", () => {
     const controller = buildController({
       needsWorkspace: true,
       organization: null,
-    }) as unknown as OrganizationPageController;
+    });
     render(<OrganizationWorkspacePageView controller={controller} />);
     expect(screen.getByText(/Create your workspace/i)).toBeInTheDocument();
     expect(screen.getByText(/Create workspace/i)).toBeInTheDocument();
+  });
+
+  it("renders public directory settings for directory-capable workspaces", () => {
+    const controller = buildController({
+      canUsePublicDirectories: true,
+      directoryCorrectionPolicy: "Readers can send corrections.",
+      directoryEntryTypes: "organization",
+      directoryGeographyLabels: "Detroit, MI",
+      directoryIssueAreaIds: "housing_affordability",
+      directoryMethodologySummary: "Reviewed records with linked public sources.",
+      directoryReviewPolicy: "Records are checked before publication.",
+      directorySourcePolicy: "Every listing includes a public source.",
+      directorySponsorLabel: "Supported by Detroit Housing Fund",
+      directoryTitle: "Detroit tenant power directory",
+    });
+
+    render(<OrganizationWorkspacePageView controller={controller} />);
+
+    expect(screen.getByRole("heading", { name: "Public directory" })).toBeInTheDocument();
+    expect(screen.getByDisplayValue("Detroit tenant power directory")).toBeInTheDocument();
   });
 
   it("forwards inline handlers (workspace switching, profile save, leaving the workspace, member removal, role change)", async () => {
@@ -181,7 +335,7 @@ describe("OrganizationWorkspacePageView", () => {
       },
       onRemoveMember,
       onUpdateMemberRole,
-    }) as unknown as OrganizationPageController;
+    });
 
     const view = render(<OrganizationWorkspacePageView controller={controller} />);
 
@@ -241,7 +395,7 @@ describe("OrganizationWorkspacePageView", () => {
         sso: { providers: [] },
       },
       pendingInvitationMutationPending: false,
-    }) as unknown as OrganizationPageController;
+    });
 
     render(<OrganizationWorkspacePageView controller={controller} />);
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
@@ -268,7 +422,7 @@ describe("OrganizationWorkspacePageView", () => {
       inviteRole: "member",
       invitePending: false,
       pendingInvitationMutationPending: false,
-    }) as unknown as OrganizationPageController;
+    });
 
     const view = render(<OrganizationWorkspacePageView controller={controller} />);
     const forms = view.container.querySelectorAll("form");
@@ -294,7 +448,7 @@ describe("OrganizationWorkspacePageView", () => {
       ],
       pendingInvitationMutationPending: false,
       onInvitationDecision,
-    }) as unknown as OrganizationPageController;
+    });
     render(<OrganizationWorkspacePageView controller={controller} />);
     fireEvent.click(screen.getByText("Accept"));
     expect(onInvitationDecision).toHaveBeenCalledWith("inv_1", "accept");
@@ -321,7 +475,7 @@ describe("OrganizationWorkspacePageView", () => {
       onUpdateWorkspaceSlug,
       onUpdateWorkspaceType,
       onCreateWorkspace,
-    }) as unknown as OrganizationPageController;
+    });
 
     const view = render(<OrganizationWorkspacePageView controller={controller} />);
     const form = view.container.querySelector("form");
@@ -345,7 +499,7 @@ describe("OrganizationWorkspacePageView", () => {
         sso: { providers: [] },
       },
       activeWorkspace: null,
-    }) as unknown as OrganizationPageController;
+    });
 
     render(<OrganizationWorkspacePageView controller={controller} />);
     expect(
@@ -356,7 +510,7 @@ describe("OrganizationWorkspacePageView", () => {
   it("treats invite permissions as unavailable when the controller session is null", () => {
     const controller = buildController({
       session: null,
-    }) as unknown as OrganizationPageController;
+    });
 
     render(<OrganizationWorkspacePageView controller={controller} />);
     // No invite form should render when the session is missing.
@@ -378,7 +532,7 @@ describe("OrganizationWorkspacePageView", () => {
         workspaceType: "individual",
         sso: { providers: [] },
       },
-    }) as unknown as OrganizationPageController;
+    });
 
     render(<OrganizationWorkspacePageView controller={controller} />);
     expect(screen.getByRole("heading", { level: 1, name: "Solo" })).toBeInTheDocument();
@@ -399,11 +553,152 @@ describe("OrganizationWorkspacePageView", () => {
         additionalSeatsCents: 0,
         totalCents: 2500,
       },
-    }) as unknown as OrganizationPageController;
+    });
 
     render(<OrganizationWorkspacePageView controller={controller} />);
     expect(screen.getByText(/Seats & cost/i)).toBeInTheDocument();
     expect(screen.getByText(/1 of 50 seats used/i)).toBeInTheDocument();
+  });
+
+  it("shows enterprise package access and limits to workspace admins", () => {
+    const controller = buildController({
+      session: {
+        user: { id: "user_1" },
+        workspace: {
+          activeProducts: ["atlas_field_intelligence"],
+          resolvedCapabilities: {
+            capabilities: [
+              "research.run",
+              "research.unlimited",
+              "workspace.export",
+              "workspace.shared",
+              "monitoring.watchlists",
+              "coverage.targets",
+              "integrations.slack",
+            ],
+            limits: {
+              research_runs_per_month: null,
+              max_shortlists: null,
+              max_shortlist_entries: null,
+              max_api_keys: null,
+              api_requests_per_day: 10000,
+              public_api_requests_per_hour: null,
+              max_members: 25,
+            },
+          },
+        },
+      },
+    });
+
+    render(<OrganizationWorkspacePageView controller={controller} />);
+
+    expect(screen.getByRole("heading", { level: 2, name: "Package access" })).toBeInTheDocument();
+    expect(screen.getByText("Atlas Field Intelligence")).toBeInTheDocument();
+    expect(screen.getByText("25 members")).toBeInTheDocument();
+    expect(screen.getByText("10,000 API requests/day")).toBeInTheDocument();
+    expect(screen.getByText("Exports")).toBeInTheDocument();
+    expect(screen.getByText("Monitoring")).toBeInTheDocument();
+    expect(screen.getByText("Coverage targets")).toBeInTheDocument();
+    expect(screen.getByText("SSO")).toBeInTheDocument();
+    expect(screen.getByText("Not included")).toBeInTheDocument();
+  });
+
+  it("shows renewal proof to workspace admins", () => {
+    const controller = buildController({
+      usageSummary: {
+        event_counts: { brief_opened: 2 },
+        org_id: "org_1",
+        renewal_signals: {
+          briefs_used: 2,
+          coverage_gaps_closed: 1,
+          integrations_used: 0,
+          public_records_improved: 3,
+          team_workflow_actions: 4,
+        },
+        total_events: 10,
+      },
+      usageAuditLog: {
+        data_boundary: {
+          metadata_included: false,
+          session_replay_included: false,
+          statement:
+            "The audit log shows timestamped workspace usage events without private metadata or behavioral session replay.",
+        },
+        items: [
+          {
+            actor_id: "user_1",
+            created_at: "2026-07-03T12:00:00.000Z",
+            event_type: "api_call",
+            id: "event_1",
+            org_id: "org_1",
+            resource_id: "GET /api/profiles/{slug}",
+            resource_type: "api",
+          },
+        ],
+        limit: 10,
+        offset: 0,
+        org_id: "org_1",
+        total: 1,
+      },
+      integrationMonitoring: {
+        api_calls: 2,
+        data_boundary: {
+          request_metadata_included: false,
+          session_replay_included: false,
+          statement:
+            "Integration monitoring shows counts, surfaces, routes, and last-seen times without request metadata or behavioral session replay.",
+        },
+        last_seen_at: "2026-07-03T12:00:00.000Z",
+        mcp_calls: 1,
+        org_id: "org_1",
+        top_resources: [
+          {
+            last_seen_at: "2026-07-03T12:00:00.000Z",
+            resource_id: "/mcp",
+            surface: "mcp",
+            total_calls: 1,
+          },
+        ],
+        total_calls: 3,
+      },
+    });
+
+    render(<OrganizationWorkspacePageView controller={controller} />);
+
+    expect(screen.getByRole("heading", { level: 2, name: "Renewal proof" })).toBeInTheDocument();
+    expect(screen.getByText("Public records improved")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 3, name: "Access log" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { level: 3, name: "Integration monitoring" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Download packet" })).toHaveAttribute(
+      "href",
+      "/api/orgs/org_1/usage-summary/renewal-packet?format=markdown",
+    );
+  });
+
+  it("hides renewal proof from workspaces the operator cannot manage", () => {
+    const controller = buildController({
+      canManageOrganization: false,
+      usageSummary: {
+        event_counts: { brief_opened: 2 },
+        org_id: "org_1",
+        renewal_signals: {
+          briefs_used: 2,
+          coverage_gaps_closed: 1,
+          integrations_used: 0,
+          public_records_improved: 3,
+          team_workflow_actions: 4,
+        },
+        total_events: 10,
+      },
+    });
+
+    render(<OrganizationWorkspacePageView controller={controller} />);
+
+    expect(
+      screen.queryByRole("heading", { level: 2, name: "Renewal proof" }),
+    ).not.toBeInTheDocument();
   });
 
   it("forwards resend requests from the invitations section to the controller", () => {
@@ -432,7 +727,7 @@ describe("OrganizationWorkspacePageView", () => {
         sso: { providers: [] },
       },
       pendingInvitationMutationPending: false,
-    }) as unknown as OrganizationPageController;
+    });
 
     render(<OrganizationWorkspacePageView controller={controller} />);
     fireEvent.click(screen.getByRole("button", { name: "Resend" }));
@@ -458,7 +753,7 @@ describe("OrganizationWorkspacePageView", () => {
           },
         },
       },
-    }) as unknown as OrganizationPageController;
+    });
 
     render(<OrganizationWorkspacePageView controller={controller} />);
     expect(
@@ -486,7 +781,7 @@ describe("OrganizationWorkspacePageView", () => {
         sso: { providers: [] },
       },
       onUpgradeToTeam,
-    }) as unknown as OrganizationPageController;
+    });
 
     render(<OrganizationWorkspacePageView controller={controller} />);
     fireEvent.click(screen.getByRole("button", { name: /Upgrade to a team workspace/i }));
@@ -497,6 +792,13 @@ describe("OrganizationWorkspacePageView", () => {
     const controller = buildController({
       canUseTeamFeatures: false,
       canManageOrganization: false,
+      activeWorkspace: {
+        id: "org_1",
+        name: "Solo",
+        role: "member",
+        slug: "solo",
+        workspaceType: "individual",
+      },
       organization: {
         id: "org_1",
         name: "Solo",
@@ -509,7 +811,7 @@ describe("OrganizationWorkspacePageView", () => {
         workspaceType: "individual",
         sso: { providers: [] },
       },
-    }) as unknown as OrganizationPageController;
+    });
 
     render(<OrganizationWorkspacePageView controller={controller} />);
     expect(

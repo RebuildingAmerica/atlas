@@ -13,8 +13,11 @@ type AppNavigationSession = Pick<AtlasSessionPayload, "isLocal" | "workspace">;
 const CORE_APP_NAV: AppNavItem[] = [
   { label: "Home", to: "/home" },
   { label: "Research", to: "/discovery" },
+  { label: "Coverage", to: "/coverage" },
+  { label: "Briefs", to: "/briefs" },
   { label: "Browse", to: "/browse" },
   { label: "Lists", to: "/lists" },
+  { label: "Watching", to: "/watching" },
   { label: "Activity", to: "/feed" },
 ];
 

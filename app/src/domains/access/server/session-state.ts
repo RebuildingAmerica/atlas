@@ -12,7 +12,7 @@ import type { AtlasSessionPayload } from "../organization-contracts";
 /**
  * Better Auth instance shape used by Atlas's session-state helpers.
  */
-type AtlasAuthInstance = ReturnType<typeof getAuth>;
+type AtlasAuthInstance = Awaited<ReturnType<typeof getAuth>>;
 
 /**
  * Local-mode single-operator session used when auth is disabled entirely.

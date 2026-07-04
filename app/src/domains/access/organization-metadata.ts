@@ -38,7 +38,16 @@ export interface AtlasSsoPrimaryHistoryEntry {
   providerId: string | null;
 }
 
+export interface AtlasWorkspaceOnboardingMetadata {
+  demoDataSeed?: string;
+  firstSavedViews?: string[];
+  product?: string;
+  provisionedAt?: string;
+}
+
 export interface AtlasOrganizationMetadata {
+  [metadataKey: string]: unknown;
+  onboarding?: AtlasWorkspaceOnboardingMetadata;
   ssoPrimaryHistory?: AtlasSsoPrimaryHistoryEntry[];
   ssoPrimaryProviderId: string | null;
   stripeCustomerId: string | null;
@@ -62,6 +71,14 @@ const atlasOrganizationMetadataSchema = z
     stripeCustomerId: z.string().trim().min(1).nullish(),
     workspaceType: atlasWorkspaceTypeSchema.optional(),
     workspaceDomain: z.string().trim().min(1).nullish(),
+    onboarding: z
+      .object({
+        demoDataSeed: z.string().optional(),
+        firstSavedViews: z.array(z.string()).optional(),
+        product: z.string().optional(),
+        provisionedAt: z.string().optional(),
+      })
+      .optional(),
     ssoPrimaryHistory: z
       .array(
         z.object({
@@ -117,6 +134,7 @@ export function normalizeAtlasOrganizationMetadata(metadata: unknown): AtlasOrga
       parsed.success && parsed.data.workspaceType ? parsed.data.workspaceType : "individual",
     workspaceDomain:
       parsed.success && parsed.data.workspaceDomain ? parsed.data.workspaceDomain : undefined,
+    onboarding: parsed.success && parsed.data.onboarding ? parsed.data.onboarding : undefined,
     ssoPrimaryHistory:
       parsed.success && parsed.data.ssoPrimaryHistory ? parsed.data.ssoPrimaryHistory : undefined,
     discountSegment: parsed.success ? parsed.data.discountSegment : undefined,
@@ -137,9 +155,14 @@ export function mergeAtlasOrganizationMetadata(
   metadata: unknown,
   updates: Partial<AtlasOrganizationMetadata>,
 ): AtlasOrganizationMetadata {
+  const metadataInput = parseAtlasOrganizationMetadataInput(metadata ?? {});
+  const parsed = atlasOrganizationMetadataSchema.safeParse(metadataInput);
+  const passthroughMetadata = parsed.success ? parsed.data : {};
   const normalizedMetadata = normalizeAtlasOrganizationMetadata(metadata);
 
   return {
+    ...passthroughMetadata,
+    onboarding: updates.onboarding ?? normalizedMetadata.onboarding,
     ssoPrimaryProviderId:
       updates.ssoPrimaryProviderId === undefined
         ? normalizedMetadata.ssoPrimaryProviderId

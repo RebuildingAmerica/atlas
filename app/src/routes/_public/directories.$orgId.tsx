@@ -1,6 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { GitBranch } from "lucide-react";
+import { GitBranch, Search } from "lucide-react";
+import { useMemo, useState } from "react";
 import { loadPublicDirectory } from "@/domains/catalog/server/public-directory";
+import type { Entry } from "@/types";
 
 export const Route = createFileRoute("/_public/directories/$orgId")({
   loader: async ({ params }) => {
@@ -10,11 +12,11 @@ export const Route = createFileRoute("/_public/directories/$orgId")({
   head: ({ loaderData }) => ({
     meta: [
       {
-        title: `${loaderData?.directory.workspace.name ?? "Workspace"} Directory | Atlas`,
+        title: `${loaderData?.directory.title ?? "Public Directory"} | Atlas`,
       },
       {
         name: "description",
-        content: "A source-linked public civic directory powered by Atlas.",
+        content: "A source-linked public civic directory.",
       },
     ],
   }),
@@ -23,10 +25,21 @@ export const Route = createFileRoute("/_public/directories/$orgId")({
 
 function PublicDirectoryPage() {
   const { directory } = Route.useLoaderData();
-  const entryCount = directory.entries.length;
+  const [searchQuery, setSearchQuery] = useState("");
+  const normalizedSearch = searchQuery.trim().toLowerCase();
+  const entryCount = directory.stats.record_count;
   const verifiedDomainLabel = directory.workspace.custom_domain
     ? `Verified domain: ${directory.workspace.custom_domain.domain}`
     : null;
+  const scopeLabels = [
+    ...directory.scope.geography_labels,
+    ...directory.scope.issue_area_ids.map(titleCaseIdentifier),
+    ...directory.scope.entry_types.map(titleCaseIdentifier),
+  ];
+  const visibleEntries = useMemo(
+    () => directory.entries.filter((entry) => directoryEntryMatchesSearch(entry, normalizedSearch)),
+    [directory.entries, normalizedSearch],
+  );
 
   return (
     <div className="bg-page-bg">
@@ -36,20 +49,123 @@ function PublicDirectoryPage() {
             Public directory
           </p>
           <div className="space-y-3">
-            <h1 className="type-display-small text-ink-strong">{directory.workspace.name}</h1>
+            <h1 className="type-display-small text-ink-strong">{directory.title}</h1>
+            {directory.sponsor_label ? (
+              <p className="type-label-large text-ink-soft">{directory.sponsor_label}</p>
+            ) : null}
             <p className="type-body-large text-ink-soft max-w-3xl">
-              Source-linked actors, profiles, and public evidence published from this workspace.
+              Source-linked actors, profiles, and public evidence.
             </p>
           </div>
-          <p className="type-label-large text-ink-soft">
-            {entryCount} {entryCount === 1 ? "profile" : "profiles"}
-          </p>
+          <div className="flex flex-wrap gap-2">
+            {scopeLabels.map((label) => (
+              <span
+                key={label}
+                className="type-label-medium bg-surface-container text-ink-soft rounded-full px-3 py-1"
+              >
+                {label}
+              </span>
+            ))}
+          </div>
+          <dl className="grid gap-4 pt-2 sm:grid-cols-4">
+            <div>
+              <dt className="type-label-small text-ink-muted">Profiles</dt>
+              <dd className="type-title-small text-ink-strong">
+                {countLabel(entryCount, "public profile")}
+              </dd>
+            </div>
+            <div>
+              <dt className="type-label-small text-ink-muted">Sources</dt>
+              <dd className="type-title-small text-ink-strong">
+                {countLabel(directory.stats.source_count, "source")}
+              </dd>
+            </div>
+            <div>
+              <dt className="type-label-small text-ink-muted">Source-backed</dt>
+              <dd className="type-title-small text-ink-strong">
+                {countLabel(directory.stats.source_backed_record_count, "record")}
+              </dd>
+            </div>
+            <div>
+              <dt className="type-label-small text-ink-muted">Review</dt>
+              <dd className="type-title-small text-ink-strong">
+                {directory.stats.last_reviewed_at
+                  ? `Last reviewed ${formatDirectoryDate(directory.stats.last_reviewed_at)}`
+                  : "No review date"}
+              </dd>
+            </div>
+          </dl>
+          {!directory.publication.private_notes_exposed ? (
+            <p className="type-body-small text-ink-soft">Private workspace notes are not public.</p>
+          ) : null}
+        </div>
+      </section>
+
+      <section
+        aria-label="Methodology"
+        className="border-border bg-surface-container-lowest border-b px-6 py-6"
+      >
+        <div className="mx-auto grid max-w-5xl gap-5 md:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
+          <div>
+            <p className="type-label-small text-ink-muted tracking-widest uppercase">Methodology</p>
+            <h2 className="type-title-large text-ink-strong mt-2">
+              {directory.methodology.summary}
+            </h2>
+          </div>
+          <dl className="grid gap-3">
+            <div>
+              <dt className="type-label-small text-ink-muted">Sources</dt>
+              <dd className="type-body-small text-ink-strong">
+                {directory.methodology.source_policy}
+              </dd>
+            </div>
+            <div>
+              <dt className="type-label-small text-ink-muted">Review</dt>
+              <dd className="type-body-small text-ink-strong">
+                {directory.methodology.review_policy}
+              </dd>
+            </div>
+            <div>
+              <dt className="type-label-small text-ink-muted">Corrections</dt>
+              <dd className="type-body-small text-ink-strong">
+                {directory.methodology.correction_policy}
+              </dd>
+            </div>
+          </dl>
         </div>
       </section>
 
       <section className="mx-auto grid max-w-5xl gap-4 px-6 py-8">
         {directory.entries.length > 0 ? (
-          directory.entries.map((entry) => (
+          <div className="grid gap-3">
+            <label className="grid max-w-xl gap-2">
+              <span className="type-label-medium text-ink-strong">Search directory</span>
+              <span className="relative">
+                <Search
+                  className="text-ink-muted pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2"
+                  aria-hidden
+                />
+                <input
+                  type="search"
+                  value={searchQuery}
+                  onChange={(event) => {
+                    setSearchQuery(event.target.value);
+                  }}
+                  className="border-border bg-surface-container-lowest text-ink-strong placeholder:text-ink-muted focus:border-civic w-full border py-2 pr-3 pl-9 outline-none"
+                  placeholder="Name, issue, place, or source"
+                />
+              </span>
+            </label>
+            {normalizedSearch ? (
+              <p className="type-label-medium text-ink-soft">
+                {countLabel(visibleEntries.length, "matching profile")}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+
+        {visibleEntries.length > 0 ? (
+          visibleEntries.map((entry) => (
             <article
               key={entry.id}
               className="border-border bg-surface-container-lowest grid gap-4 border p-5 md:grid-cols-[minmax(0,1fr)_auto]"
@@ -77,8 +193,24 @@ function PublicDirectoryPage() {
               >
                 Open profile
               </a>
+              <div className="flex flex-wrap gap-3 md:col-span-2">
+                <a
+                  href={`/feedback/${entry.slug}?kind=incorrect`}
+                  className="type-label-medium text-civic hover:text-civic-deep underline-offset-2 hover:underline"
+                >
+                  Report stale or incorrect information
+                </a>
+                <a
+                  href={`/feedback/${entry.slug}?kind=missing_context`}
+                  className="type-label-medium text-civic hover:text-civic-deep underline-offset-2 hover:underline"
+                >
+                  Suggest missing context
+                </a>
+              </div>
             </article>
           ))
+        ) : normalizedSearch ? (
+          <p className="type-body-medium text-ink-muted">No matching public profiles.</p>
         ) : (
           <p className="type-body-medium text-ink-muted">No public profiles listed yet.</p>
         )}
@@ -185,6 +317,54 @@ function sentenceCase(value: string): string {
     return value;
   }
   return `${value.charAt(0).toUpperCase()}${value.slice(1)}`;
+}
+
+function titleCaseIdentifier(value: string): string {
+  return value
+    .replaceAll("_", " ")
+    .replaceAll("-", " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function formatDirectoryDate(value: string): string {
+  const [yearText, monthText, dayText] = value.slice(0, 10).split("-");
+  if (!yearText || !monthText || !dayText) {
+    return value;
+  }
+  const year = Number(yearText);
+  const month = Number(monthText);
+  const day = Number(dayText);
+  if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) {
+    return value;
+  }
+  const date = new Date(year, month - 1, day);
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(date);
+}
+
+function directoryEntryMatchesSearch(entry: Entry, query: string): boolean {
+  if (!query) {
+    return true;
+  }
+
+  const searchableText = [
+    entry.name,
+    entry.description,
+    entry.type,
+    entry.city,
+    entry.state,
+    entry.region,
+    ...(entry.issue_areas ?? []),
+    ...(entry.source_types ?? []),
+  ]
+    .filter((value): value is string => Boolean(value))
+    .join(" ")
+    .toLowerCase();
+
+  return searchableText.includes(query);
 }
 
 function profileHref(entry: { slug: string; type: string }): string {

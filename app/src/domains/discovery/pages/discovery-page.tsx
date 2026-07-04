@@ -2,32 +2,279 @@ import { useMemo, useState } from "react";
 import { useAtlasSession } from "@/domains/access";
 import { hasSerializedCapability } from "@/domains/access/capabilities";
 import { isAtLimitError, resolveStartRunErrorMessage } from "@/domains/discovery/api-errors";
+import { buildBriefCreateInputFromRun } from "@/domains/discovery/brief-request";
 import { useTaxonomy } from "@/domains/catalog/hooks/use-taxonomy";
-import { useDiscoveryRuns, useStartDiscovery } from "@/domains/discovery/hooks/use-discovery";
+import {
+  useDiscoveryJobQueue,
+  useDiscoveryRuns,
+  useStartDiscovery,
+} from "@/domains/discovery/hooks/use-discovery";
+import { useCreateWorkspaceBrief } from "@/domains/workspace/hooks/use-briefs";
+import { useWorkspaceQualitySummary } from "@/domains/workspace/hooks/use-workspace-quality-summary";
 import { DiscoverySetupNotice, DiscoveryUpgradePrompt } from "./components/discovery-hero";
 import { DiscoveryRunForm } from "./components/discovery-run-form";
 import { DiscoveryRunsPanel } from "./components/discovery-runs-panel";
-import type { DiscoveryResearchGoal, DiscoveryRunListResponse, TaxonomyResponse } from "@/types";
+import type {
+  DiscoveryJobQueueItem,
+  DiscoveryJobQueueResponse,
+  DiscoveryResearchGoal,
+  DiscoveryRunListResponse,
+  TaxonomyResponse,
+} from "@/types";
+import type { DiscoveryRunRecord } from "@/domains/discovery/discovery-run-summary";
+import type { AtlasBriefCreateInput } from "@/domains/workspace/server/briefs";
+import type { WorkspaceQualitySummary } from "@/domains/workspace/server/quality-summary";
+
+interface CreatedBriefLink {
+  id: string;
+  title: string;
+}
 
 interface DiscoveryPageProps {
   initialRuns?: DiscoveryRunListResponse;
+  initialRequest?: DiscoveryPrefillRequest;
   initialTaxonomy?: TaxonomyResponse;
+}
+
+export interface DiscoveryPrefillRequest {
+  issue_areas?: string;
+  location?: string;
+  research_goal?: DiscoveryResearchGoal;
+  state?: string;
+}
+
+function prefilledIssueAreas(value: string | undefined): string[] {
+  if (!value) {
+    return [];
+  }
+  return value
+    .split(",")
+    .map((issueArea) => issueArea.trim())
+    .filter(Boolean);
+}
+
+function formatQueueStatus(status: string): string {
+  if (status === "claimed") {
+    return "running";
+  }
+
+  return status;
+}
+
+function formatProgressStep(progress: Record<string, unknown> | null | undefined): string | null {
+  const rawStep = progress?.step;
+  if (typeof rawStep !== "string" || rawStep.length === 0) {
+    return null;
+  }
+
+  return rawStep.replaceAll("_", " ");
+}
+
+function ResearchOperationsPanel({
+  isLoading,
+  queue,
+}: {
+  isLoading: boolean;
+  queue: DiscoveryJobQueueResponse | undefined;
+}) {
+  const counts = queue?.status_counts;
+  const queued = counts?.queued ?? 0;
+  const running = (counts?.running ?? 0) + (counts?.claimed ?? 0);
+  const failed = counts?.failed ?? 0;
+  const items = queue?.items ?? [];
+
+  function renderJob(job: DiscoveryJobQueueItem) {
+    const progressStep = formatProgressStep(job.progress);
+
+    return (
+      <li className="grid gap-2 py-3 sm:grid-cols-[minmax(0,1fr)_auto]" key={job.id}>
+        <div className="min-w-0 space-y-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="type-title-small text-ink-strong">{job.location_query}</p>
+            <span className="type-label-small border-border text-ink-muted rounded-full border px-2 py-0.5">
+              {formatQueueStatus(job.status)}
+            </span>
+          </div>
+          <p className="type-body-small text-ink-soft">
+            {job.state} · {job.issue_areas.length} issue areas
+          </p>
+          {progressStep ? <p className="type-label-small text-ink-muted">{progressStep}</p> : null}
+          {job.error_message ? (
+            <p className="type-label-small text-red-700">{job.error_message}</p>
+          ) : null}
+        </div>
+        <div className="space-y-1 sm:text-right">
+          <p className="type-label-small text-ink-muted">Retry {job.retry_count}</p>
+          {job.claimed_by ? (
+            <p className="type-label-small text-ink-strong">{job.claimed_by}</p>
+          ) : null}
+        </div>
+      </li>
+    );
+  }
+
+  return (
+    <section className="border-border-strong bg-surface space-y-4 rounded-[1rem] border p-6">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="space-y-2">
+          <h2 className="type-title-large text-ink-strong">Research operations</h2>
+          <p className="type-body-medium text-ink-muted">Queue, workers, and retries.</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <span className="type-label-medium border-border text-ink-soft rounded-full border px-3 py-1">
+            {queued} queued
+          </span>
+          <span className="type-label-medium border-border text-ink-soft rounded-full border px-3 py-1">
+            {running} running
+          </span>
+          <span className="type-label-medium border-border text-ink-soft rounded-full border px-3 py-1">
+            {failed} failed
+          </span>
+        </div>
+      </div>
+
+      {isLoading ? (
+        <p className="type-body-medium text-ink-muted">Loading...</p>
+      ) : items.length > 0 ? (
+        <ol className="divide-border divide-y">{items.map(renderJob)}</ol>
+      ) : (
+        <p className="type-body-medium text-ink-muted">No research operations queued.</p>
+      )}
+    </section>
+  );
+}
+
+function formatPercent(value: number): string {
+  return Number.isInteger(value) ? String(value) : value.toFixed(1);
+}
+
+function confidenceCount(summary: WorkspaceQualitySummary, state: string): number {
+  return (
+    summary.confidence_distribution.find((bucket) => bucket.state === state)?.record_count ?? 0
+  );
+}
+
+function IngestionQualityPanel({
+  isLoading,
+  summary,
+}: {
+  isLoading: boolean;
+  summary: WorkspaceQualitySummary | undefined;
+}) {
+  const sourceCoverage = summary?.source_coverage;
+  const duplicateRisk = summary?.duplicate_risk;
+  const staleRecords = summary?.stale_records;
+  const stalePreview = staleRecords?.records.slice(0, 3) ?? [];
+
+  return (
+    <section className="border-border-strong bg-surface space-y-4 rounded-[1rem] border p-6">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="space-y-2">
+          <h2 className="type-title-large text-ink-strong">Ingestion quality</h2>
+          <p className="type-body-medium text-ink-muted">
+            Source coverage, duplicates, confidence, stale records.
+          </p>
+        </div>
+        {sourceCoverage ? (
+          <span className="type-label-medium border-border text-ink-soft rounded-full border px-3 py-1">
+            {sourceCoverage.total_records} records
+          </span>
+        ) : null}
+      </div>
+
+      {isLoading ? (
+        <p className="type-body-medium text-ink-muted">Loading...</p>
+      ) : summary && sourceCoverage && duplicateRisk && staleRecords ? (
+        <div className="space-y-4">
+          <div className="grid gap-3 sm:grid-cols-4">
+            <div className="border-border rounded-xl border p-3">
+              <p className="type-title-small text-ink-strong">
+                {formatPercent(sourceCoverage.coverage_percent)}% source-backed
+              </p>
+              <p className="type-label-small text-ink-muted">
+                {sourceCoverage.unsourced_records} unsourced
+              </p>
+            </div>
+            <div className="border-border rounded-xl border p-3">
+              <p className="type-title-small text-ink-strong">
+                {duplicateRisk.cluster_count} duplicate{" "}
+                {duplicateRisk.cluster_count === 1 ? "cluster" : "clusters"}
+              </p>
+              <p className="type-label-small text-ink-muted">
+                {duplicateRisk.record_count} records
+              </p>
+            </div>
+            <div className="border-border rounded-xl border p-3">
+              <p className="type-title-small text-ink-strong">{staleRecords.record_count} stale</p>
+              <p className="type-label-small text-ink-muted">
+                {staleRecords.threshold_days} day threshold
+              </p>
+            </div>
+            <div className="border-border rounded-xl border p-3">
+              <p className="type-title-small text-ink-strong">
+                {confidenceCount(summary, "corroborated")} corroborated
+              </p>
+              <p className="type-label-small text-ink-muted">
+                {confidenceCount(summary, "partial")} partial ·{" "}
+                {confidenceCount(summary, "unverified")} unverified
+              </p>
+            </div>
+          </div>
+
+          {stalePreview.length > 0 ? (
+            <div className="space-y-2">
+              <p className="type-label-large text-ink-strong">Stale records</p>
+              <ul className="divide-border divide-y">
+                {stalePreview.map((record) => (
+                  <li className="flex flex-wrap justify-between gap-2 py-2" key={record.id}>
+                    <span className="type-body-small text-ink-strong">{record.name}</span>
+                    <span className="type-label-small text-ink-muted">
+                      {record.latest_source_date} · {record.source_count} source
+                      {record.source_count === 1 ? "" : "s"}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+
+          <p className="type-label-small text-ink-muted">{summary.data_boundary.statement}</p>
+        </div>
+      ) : (
+        <p className="type-body-medium text-ink-muted">No quality signals.</p>
+      )}
+    </section>
+  );
 }
 
 /**
  * Renders the workspace research surface around recent requests first, with
  * creation controls available below the request history.
  */
-export function DiscoveryPage({ initialRuns, initialTaxonomy }: DiscoveryPageProps = {}) {
+export function DiscoveryPage({
+  initialRequest,
+  initialRuns,
+  initialTaxonomy,
+}: DiscoveryPageProps = {}) {
   const atlasSession = useAtlasSession();
   const runsQuery = useDiscoveryRuns({ initialData: initialRuns });
+  const jobQueueQuery = useDiscoveryJobQueue();
   const startDiscovery = useStartDiscovery();
+  const createBrief = useCreateWorkspaceBrief();
+  const qualitySummaryQuery = useWorkspaceQualitySummary();
   const taxonomyQuery = useTaxonomy({ initialData: initialTaxonomy });
 
-  const [locationQuery, setLocationQuery] = useState("");
-  const [researchGoal, setResearchGoal] = useState<DiscoveryResearchGoal>("landscape_scan");
-  const [state, setState] = useState("");
-  const [selectedIssues, setSelectedIssues] = useState<string[]>([]);
+  const [locationQuery, setLocationQuery] = useState(initialRequest?.location ?? "");
+  const [researchGoal, setResearchGoal] = useState<DiscoveryResearchGoal>(
+    initialRequest?.research_goal ?? "landscape_scan",
+  );
+  const [state, setState] = useState((initialRequest?.state ?? "").toUpperCase().slice(0, 2));
+  const [selectedIssues, setSelectedIssues] = useState<string[]>(
+    prefilledIssueAreas(initialRequest?.issue_areas),
+  );
+  const [creatingBriefRunId, setCreatingBriefRunId] = useState<string | null>(null);
+  const [createdBriefs, setCreatedBriefs] = useState<Record<string, CreatedBriefLink>>({});
+  const [createBriefErrors, setCreateBriefErrors] = useState<Record<string, string | null>>({});
 
   const issueAreas = useMemo(() => {
     const taxonomy = taxonomyQuery.data ?? {};
@@ -86,9 +333,63 @@ export function DiscoveryPage({ initialRuns, initialTaxonomy }: DiscoveryPagePro
     );
   };
 
+  const handleCreateBrief = (run: DiscoveryRunRecord) => {
+    let input: AtlasBriefCreateInput;
+    try {
+      input = buildBriefCreateInputFromRun(run);
+    } catch {
+      setCreateBriefErrors((current) => ({
+        ...current,
+        [run.id]: "Could not save Atlas Brief.",
+      }));
+      return;
+    }
+
+    setCreatingBriefRunId(run.id);
+    setCreateBriefErrors((current) => ({
+      ...current,
+      [run.id]: null,
+    }));
+
+    createBrief.mutate(input, {
+      onError: () => {
+        setCreateBriefErrors((current) => ({
+          ...current,
+          [run.id]: "Could not save Atlas Brief.",
+        }));
+      },
+      onSettled: () => {
+        setCreatingBriefRunId((current) => (current === run.id ? null : current));
+      },
+      onSuccess: (brief) => {
+        setCreatedBriefs((current) => ({
+          ...current,
+          [run.id]: {
+            id: brief.id,
+            title: brief.title,
+          },
+        }));
+      },
+    });
+  };
+
   return (
     <div className="space-y-8">
-      <DiscoveryRunsPanel isLoading={runsQuery.isLoading} runs={latestRuns} />
+      <DiscoveryRunsPanel
+        createdBriefs={createdBriefs}
+        createBriefErrors={createBriefErrors}
+        creatingBriefRunId={creatingBriefRunId}
+        isLoading={runsQuery.isLoading}
+        onCreateBrief={handleCreateBrief}
+        runs={latestRuns}
+      />
+
+      <ResearchOperationsPanel isLoading={jobQueueQuery.isLoading} queue={jobQueueQuery.data} />
+
+      <IngestionQualityPanel
+        isLoading={qualitySummaryQuery.isLoading}
+        summary={qualitySummaryQuery.data}
+      />
 
       {needsWorkspace ? (
         <DiscoverySetupNotice

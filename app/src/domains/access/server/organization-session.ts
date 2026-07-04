@@ -20,7 +20,7 @@ export type AtlasSessionRecord = z.infer<typeof atlasSessionSchema>;
 /**
  * Better Auth instance shape used while Atlas normalizes workspace context.
  */
-type AtlasAuthInstance = ReturnType<typeof getAuth>;
+type AtlasAuthInstance = Awaited<ReturnType<typeof getAuth>>;
 
 /**
  * Better Auth organization summary shape Atlas reads from `listOrganizations`.

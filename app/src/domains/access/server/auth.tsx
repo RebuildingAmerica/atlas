@@ -4,14 +4,15 @@ import fs from "node:fs";
 import path from "node:path";
 import Database from "better-sqlite3";
 import { Pool } from "pg";
-import { sso } from "@better-auth/sso";
 import { betterAuth } from "better-auth";
 import { jwt } from "better-auth/plugins/jwt";
 import { magicLink } from "better-auth/plugins/magic-link";
 import { organization } from "better-auth/plugins";
 import { oauthProvider } from "@better-auth/oauth-provider";
+import { SUPPORTED_OAUTH_SCOPES } from "../oauth-as-metadata";
 import { buildAtlasAccessTokenClaims } from "./oauth-claims";
 import { resolvePrimaryWorkspaceId } from "./workspace-lookup";
+import { queryActiveProducts } from "./workspace-products";
 import { tanstackStartCookies } from "better-auth/tanstack-start";
 import { apiKey } from "@better-auth/api-key";
 import { passkey } from "@better-auth/passkey";
@@ -114,7 +115,8 @@ function buildAtlasTrustedOrigins(publicBaseUrl: string): string[] {
  *
  * @param runtime - The resolved auth runtime configuration for this process.
  */
-function createAtlasAuth(runtime: AuthRuntimeConfig) {
+async function createAtlasAuth(runtime: AuthRuntimeConfig) {
+  const { sso } = await import("@better-auth/sso");
   const configuredAudiences = runtime.apiAudiences ?? [];
   const validAudiences =
     configuredAudiences.length > 0
@@ -235,18 +237,11 @@ function createAtlasAuth(runtime: AuthRuntimeConfig) {
         silenceWarnings: {
           oauthAuthServerConfig: true,
         },
-        scopes: [
-          "openid",
-          "profile",
-          "email",
-          "offline_access",
-          "discovery:read",
-          "discovery:write",
-          "entities:write",
-        ],
+        scopes: [...SUPPORTED_OAUTH_SCOPES],
         customAccessTokenClaims: (params) =>
           buildAtlasAccessTokenClaims(params, {
             defaultAudience: runtime.apiAudience,
+            resolveActiveProductsForWorkspace: queryActiveProducts,
             resolvePrimaryWorkspaceId,
           }),
       }),
@@ -267,7 +262,7 @@ function createAtlasAuth(runtime: AuthRuntimeConfig) {
 /**
  * Concrete Better Auth instance Atlas uses after plugin registration.
  */
-type AtlasAuthInstance = ReturnType<typeof createAtlasAuth>;
+type AtlasAuthInstance = Awaited<ReturnType<typeof createAtlasAuth>>;
 
 /**
  * Better Auth context resolved before Atlas runs schema migrations.
@@ -275,6 +270,7 @@ type AtlasAuthInstance = ReturnType<typeof createAtlasAuth>;
 type AtlasAuthContext = Awaited<AtlasAuthInstance["$context"]>;
 
 let authInstance: AtlasAuthInstance | null = null;
+let authInstancePromise: Promise<AtlasAuthInstance> | null = null;
 let database: Database.Database | null = null;
 let pgPool: Pool | null = null;
 let authReadyPromise: Promise<AtlasAuthInstance> | null = null;
@@ -650,16 +646,21 @@ export function createVerificationEmailSender(
  * Returns the singleton Better Auth instance for the current app server
  * process.
  */
-export function getAuth() {
+export async function getAuth() {
   if (authInstance) {
     return authInstance;
   }
 
-  const runtime = getAuthRuntimeConfig();
-  validateAuthRuntimeConfig(runtime);
-  authInstance = createAtlasAuth(runtime);
+  if (!authInstancePromise) {
+    const runtime = getAuthRuntimeConfig();
+    validateAuthRuntimeConfig(runtime);
+    authInstancePromise = createAtlasAuth(runtime).then((auth) => {
+      authInstance = auth;
+      return auth;
+    });
+  }
 
-  return authInstance;
+  return await authInstancePromise;
 }
 
 /**
@@ -687,7 +688,7 @@ async function runAtlasAuthMigrations(context: AtlasAuthContext): Promise<AtlasA
 
   await enforceRequirePkceOnAllClients(getAuthDatabase(), getAuthPgPool());
 
-  const auth = getAuth();
+  const auth = await getAuth();
   return auth;
 }
 
@@ -698,7 +699,7 @@ async function runAtlasAuthMigrations(context: AtlasAuthContext): Promise<AtlasA
  * from failing on a fresh auth database.
  */
 export async function ensureAuthReady() {
-  const auth = getAuth();
+  const auth = await getAuth();
   if (!authReadyPromise) {
     authReadyPromise = auth.$context.then(runAtlasAuthMigrations);
   }

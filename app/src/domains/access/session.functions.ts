@@ -1,17 +1,31 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { loadOidcRpLogoutRedirect } from "./server/rp-logout";
-import { getAuthRuntimeConfig } from "./server/runtime";
-import {
-  checkEmailAccountExists,
-  loadAtlasSession,
-  requestMagicLinkForEmail,
-  requireAtlasSessionState,
-  requireReadyAtlasSessionState,
-  sendVerificationEmailForCurrentSession,
-} from "./server/session-state";
 
 export type { AtlasSessionPayload } from "./organization-contracts";
+
+async function loadRuntimeModule() {
+  if (import.meta.env.SSR) {
+    return await import("./server/runtime");
+  }
+
+  throw new Error("Auth runtime is only available on the server.");
+}
+
+async function loadSessionStateModule() {
+  if (import.meta.env.SSR) {
+    return await import("./server/session-state");
+  }
+
+  throw new Error("Session state is only available on the server.");
+}
+
+async function loadRpLogoutModule() {
+  if (import.meta.env.SSR) {
+    return await import("./server/rp-logout");
+  }
+
+  throw new Error("RP logout is only available on the server.");
+}
 
 /**
  * Returns whether Atlas is running in single-user (local) deployment mode.
@@ -22,7 +36,8 @@ export type { AtlasSessionPayload } from "./organization-contracts";
  * to know the deployment mode without a session in scope (route loaders,
  * public layouts, etc.).
  */
-export const getAtlasDeployMode = createServerFn({ method: "GET" }).handler(() => {
+export const getAtlasDeployMode = createServerFn({ method: "GET" }).handler(async () => {
+  const { getAuthRuntimeConfig } = await loadRuntimeModule();
   return { localMode: getAuthRuntimeConfig().localMode };
 });
 
@@ -31,6 +46,7 @@ export const getAtlasDeployMode = createServerFn({ method: "GET" }).handler(() =
  * session exists.
  */
 export const getAtlasSession = createServerFn({ method: "GET" }).handler(async () => {
+  const { loadAtlasSession } = await loadSessionStateModule();
   return await loadAtlasSession();
 });
 
@@ -39,6 +55,7 @@ export const getAtlasSession = createServerFn({ method: "GET" }).handler(async (
  * unauthorized.
  */
 export const ensureAtlasSession = createServerFn({ method: "GET" }).handler(async () => {
+  const { requireAtlasSessionState } = await loadSessionStateModule();
   return await requireAtlasSessionState();
 });
 
@@ -46,6 +63,7 @@ export const ensureAtlasSession = createServerFn({ method: "GET" }).handler(asyn
  * Returns the current operator session only when account setup is complete.
  */
 export const ensureReadyAtlasSession = createServerFn({ method: "GET" }).handler(async () => {
+  const { requireReadyAtlasSessionState } = await loadSessionStateModule();
   return await requireReadyAtlasSessionState();
 });
 
@@ -61,6 +79,7 @@ export const requestMagicLink = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ data }) => {
+    const { requestMagicLinkForEmail } = await loadSessionStateModule();
     return await requestMagicLinkForEmail(data);
   });
 
@@ -69,6 +88,7 @@ export const requestMagicLink = createServerFn({ method: "POST" })
  * yet ready.
  */
 export const sendVerificationEmail = createServerFn({ method: "POST" }).handler(async () => {
+  const { sendVerificationEmailForCurrentSession } = await loadSessionStateModule();
   return await sendVerificationEmailForCurrentSession();
 });
 
@@ -82,6 +102,7 @@ export const checkAccountExists = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ data }) => {
+    const { checkEmailAccountExists } = await loadSessionStateModule();
     const exists = await checkEmailAccountExists(data.email);
     return { exists };
   });
@@ -94,6 +115,7 @@ export const checkAccountExists = createServerFn({ method: "POST" })
  * `signOut()` so the federated session is terminated at the IdP.
  */
 export const getRpLogoutRedirect = createServerFn({ method: "GET" }).handler(async () => {
+  const { loadOidcRpLogoutRedirect } = await loadRpLogoutModule();
   const url = await loadOidcRpLogoutRedirect();
   return { url };
 });

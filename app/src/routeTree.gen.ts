@@ -20,12 +20,15 @@ import { Route as PublicIndexRouteImport } from './routes/_public/index'
 import { Route as DocsSplatRouteImport } from './routes/docs.$'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as ApiSplatRouteImport } from './routes/api/$'
+import { Route as WorkspaceWatchingRouteImport } from './routes/_workspace/watching'
 import { Route as WorkspaceOrganizationRouteImport } from './routes/_workspace/organization'
 import { Route as WorkspaceListsRouteImport } from './routes/_workspace/lists'
 import { Route as WorkspaceHomeRouteImport } from './routes/_workspace/home'
 import { Route as WorkspaceFeedRouteImport } from './routes/_workspace/feed'
 import { Route as WorkspaceDiscoveryRouteImport } from './routes/_workspace/discovery'
+import { Route as WorkspaceCoverageRouteImport } from './routes/_workspace/coverage'
 import { Route as WorkspaceCheckoutCompleteRouteImport } from './routes/_workspace/checkout-complete'
+import { Route as WorkspaceBriefsRouteImport } from './routes/_workspace/briefs'
 import { Route as WorkspaceAccountRouteImport } from './routes/_workspace/account'
 import { Route as PublicTermsRouteImport } from './routes/_public/terms'
 import { Route as PublicSecurityRouteImport } from './routes/_public/security'
@@ -47,6 +50,9 @@ import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as WorkspaceOrganizationSsoRouteImport } from './routes/_workspace/organization.sso'
 import { Route as WorkspaceManageSlugRouteImport } from './routes/_workspace/manage.$slug'
 import { Route as WorkspaceListsIdRouteImport } from './routes/_workspace/lists.$id'
+import { Route as WorkspaceCoverageTargetIdRouteImport } from './routes/_workspace/coverage.$targetId'
+import { Route as WorkspaceBriefsNewRouteImport } from './routes/_workspace/briefs.new'
+import { Route as WorkspaceBriefsBriefIdRouteImport } from './routes/_workspace/briefs.$briefId'
 import { Route as WorkspaceAdminDiscountsRouteImport } from './routes/_workspace/admin.discounts'
 import { Route as PublicProfilesPeopleRouteImport } from './routes/_public/profiles/people'
 import { Route as PublicProfilesOrganizationsRouteImport } from './routes/_public/profiles/organizations'
@@ -120,6 +126,11 @@ const ApiSplatRoute = ApiSplatRouteImport.update({
   path: '/api/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const WorkspaceWatchingRoute = WorkspaceWatchingRouteImport.update({
+  id: '/watching',
+  path: '/watching',
+  getParentRoute: () => WorkspaceRoute,
+} as any)
 const WorkspaceOrganizationRoute = WorkspaceOrganizationRouteImport.update({
   id: '/organization',
   path: '/organization',
@@ -145,12 +156,22 @@ const WorkspaceDiscoveryRoute = WorkspaceDiscoveryRouteImport.update({
   path: '/discovery',
   getParentRoute: () => WorkspaceRoute,
 } as any)
+const WorkspaceCoverageRoute = WorkspaceCoverageRouteImport.update({
+  id: '/coverage',
+  path: '/coverage',
+  getParentRoute: () => WorkspaceRoute,
+} as any)
 const WorkspaceCheckoutCompleteRoute =
   WorkspaceCheckoutCompleteRouteImport.update({
     id: '/checkout-complete',
     path: '/checkout-complete',
     getParentRoute: () => WorkspaceRoute,
   } as any)
+const WorkspaceBriefsRoute = WorkspaceBriefsRouteImport.update({
+  id: '/briefs',
+  path: '/briefs',
+  getParentRoute: () => WorkspaceRoute,
+} as any)
 const WorkspaceAccountRoute = WorkspaceAccountRouteImport.update({
   id: '/account',
   path: '/account',
@@ -259,6 +280,22 @@ const WorkspaceListsIdRoute = WorkspaceListsIdRouteImport.update({
   id: '/$id',
   path: '/$id',
   getParentRoute: () => WorkspaceListsRoute,
+} as any)
+const WorkspaceCoverageTargetIdRoute =
+  WorkspaceCoverageTargetIdRouteImport.update({
+    id: '/$targetId',
+    path: '/$targetId',
+    getParentRoute: () => WorkspaceCoverageRoute,
+  } as any)
+const WorkspaceBriefsNewRoute = WorkspaceBriefsNewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => WorkspaceBriefsRoute,
+} as any)
+const WorkspaceBriefsBriefIdRoute = WorkspaceBriefsBriefIdRouteImport.update({
+  id: '/$briefId',
+  path: '/$briefId',
+  getParentRoute: () => WorkspaceBriefsRoute,
 } as any)
 const WorkspaceAdminDiscountsRoute = WorkspaceAdminDiscountsRouteImport.update({
   id: '/admin/discounts',
@@ -391,12 +428,15 @@ export interface FileRoutesByFullPath {
   '/security': typeof PublicSecurityRoute
   '/terms': typeof PublicTermsRoute
   '/account': typeof WorkspaceAccountRoute
+  '/briefs': typeof WorkspaceBriefsRouteWithChildren
   '/checkout-complete': typeof WorkspaceCheckoutCompleteRoute
+  '/coverage': typeof WorkspaceCoverageRouteWithChildren
   '/discovery': typeof WorkspaceDiscoveryRoute
   '/feed': typeof WorkspaceFeedRoute
   '/home': typeof WorkspaceHomeRoute
   '/lists': typeof WorkspaceListsRouteWithChildren
   '/organization': typeof WorkspaceOrganizationRouteWithChildren
+  '/watching': typeof WorkspaceWatchingRoute
   '/api/$': typeof ApiSplatRoute
   '/api/health': typeof ApiHealthRoute
   '/docs/$': typeof DocsSplatRoute
@@ -410,6 +450,9 @@ export interface FileRoutesByFullPath {
   '/profiles/organizations': typeof PublicProfilesOrganizationsRouteWithChildren
   '/profiles/people': typeof PublicProfilesPeopleRouteWithChildren
   '/admin/discounts': typeof WorkspaceAdminDiscountsRoute
+  '/briefs/$briefId': typeof WorkspaceBriefsBriefIdRoute
+  '/briefs/new': typeof WorkspaceBriefsNewRoute
+  '/coverage/$targetId': typeof WorkspaceCoverageTargetIdRoute
   '/lists/$id': typeof WorkspaceListsIdRoute
   '/manage/$slug': typeof WorkspaceManageSlugRoute
   '/organization/sso': typeof WorkspaceOrganizationSsoRoute
@@ -448,11 +491,14 @@ export interface FileRoutesByTo {
   '/security': typeof PublicSecurityRoute
   '/terms': typeof PublicTermsRoute
   '/account': typeof WorkspaceAccountRoute
+  '/briefs': typeof WorkspaceBriefsRouteWithChildren
   '/checkout-complete': typeof WorkspaceCheckoutCompleteRoute
+  '/coverage': typeof WorkspaceCoverageRouteWithChildren
   '/discovery': typeof WorkspaceDiscoveryRoute
   '/feed': typeof WorkspaceFeedRoute
   '/home': typeof WorkspaceHomeRoute
   '/lists': typeof WorkspaceListsRouteWithChildren
+  '/watching': typeof WorkspaceWatchingRoute
   '/api/$': typeof ApiSplatRoute
   '/api/health': typeof ApiHealthRoute
   '/docs/$': typeof DocsSplatRoute
@@ -464,6 +510,9 @@ export interface FileRoutesByTo {
   '/entries/$entryId': typeof PublicEntriesEntryIdRoute
   '/feedback/$slug': typeof PublicFeedbackSlugRoute
   '/admin/discounts': typeof WorkspaceAdminDiscountsRoute
+  '/briefs/$briefId': typeof WorkspaceBriefsBriefIdRoute
+  '/briefs/new': typeof WorkspaceBriefsNewRoute
+  '/coverage/$targetId': typeof WorkspaceCoverageTargetIdRoute
   '/lists/$id': typeof WorkspaceListsIdRoute
   '/manage/$slug': typeof WorkspaceManageSlugRoute
   '/organization/sso': typeof WorkspaceOrganizationSsoRoute
@@ -505,12 +554,15 @@ export interface FileRoutesById {
   '/_public/security': typeof PublicSecurityRoute
   '/_public/terms': typeof PublicTermsRoute
   '/_workspace/account': typeof WorkspaceAccountRoute
+  '/_workspace/briefs': typeof WorkspaceBriefsRouteWithChildren
   '/_workspace/checkout-complete': typeof WorkspaceCheckoutCompleteRoute
+  '/_workspace/coverage': typeof WorkspaceCoverageRouteWithChildren
   '/_workspace/discovery': typeof WorkspaceDiscoveryRoute
   '/_workspace/feed': typeof WorkspaceFeedRoute
   '/_workspace/home': typeof WorkspaceHomeRoute
   '/_workspace/lists': typeof WorkspaceListsRouteWithChildren
   '/_workspace/organization': typeof WorkspaceOrganizationRouteWithChildren
+  '/_workspace/watching': typeof WorkspaceWatchingRoute
   '/api/$': typeof ApiSplatRoute
   '/api/health': typeof ApiHealthRoute
   '/docs/$': typeof DocsSplatRoute
@@ -525,6 +577,9 @@ export interface FileRoutesById {
   '/_public/profiles/organizations': typeof PublicProfilesOrganizationsRouteWithChildren
   '/_public/profiles/people': typeof PublicProfilesPeopleRouteWithChildren
   '/_workspace/admin/discounts': typeof WorkspaceAdminDiscountsRoute
+  '/_workspace/briefs/$briefId': typeof WorkspaceBriefsBriefIdRoute
+  '/_workspace/briefs/new': typeof WorkspaceBriefsNewRoute
+  '/_workspace/coverage/$targetId': typeof WorkspaceCoverageTargetIdRoute
   '/_workspace/lists/$id': typeof WorkspaceListsIdRoute
   '/_workspace/manage/$slug': typeof WorkspaceManageSlugRoute
   '/_workspace/organization/sso': typeof WorkspaceOrganizationSsoRoute
@@ -565,12 +620,15 @@ export interface FileRouteTypes {
     | '/security'
     | '/terms'
     | '/account'
+    | '/briefs'
     | '/checkout-complete'
+    | '/coverage'
     | '/discovery'
     | '/feed'
     | '/home'
     | '/lists'
     | '/organization'
+    | '/watching'
     | '/api/$'
     | '/api/health'
     | '/docs/$'
@@ -584,6 +642,9 @@ export interface FileRouteTypes {
     | '/profiles/organizations'
     | '/profiles/people'
     | '/admin/discounts'
+    | '/briefs/$briefId'
+    | '/briefs/new'
+    | '/coverage/$targetId'
     | '/lists/$id'
     | '/manage/$slug'
     | '/organization/sso'
@@ -622,11 +683,14 @@ export interface FileRouteTypes {
     | '/security'
     | '/terms'
     | '/account'
+    | '/briefs'
     | '/checkout-complete'
+    | '/coverage'
     | '/discovery'
     | '/feed'
     | '/home'
     | '/lists'
+    | '/watching'
     | '/api/$'
     | '/api/health'
     | '/docs/$'
@@ -638,6 +702,9 @@ export interface FileRouteTypes {
     | '/entries/$entryId'
     | '/feedback/$slug'
     | '/admin/discounts'
+    | '/briefs/$briefId'
+    | '/briefs/new'
+    | '/coverage/$targetId'
     | '/lists/$id'
     | '/manage/$slug'
     | '/organization/sso'
@@ -678,12 +745,15 @@ export interface FileRouteTypes {
     | '/_public/security'
     | '/_public/terms'
     | '/_workspace/account'
+    | '/_workspace/briefs'
     | '/_workspace/checkout-complete'
+    | '/_workspace/coverage'
     | '/_workspace/discovery'
     | '/_workspace/feed'
     | '/_workspace/home'
     | '/_workspace/lists'
     | '/_workspace/organization'
+    | '/_workspace/watching'
     | '/api/$'
     | '/api/health'
     | '/docs/$'
@@ -698,6 +768,9 @@ export interface FileRouteTypes {
     | '/_public/profiles/organizations'
     | '/_public/profiles/people'
     | '/_workspace/admin/discounts'
+    | '/_workspace/briefs/$briefId'
+    | '/_workspace/briefs/new'
+    | '/_workspace/coverage/$targetId'
     | '/_workspace/lists/$id'
     | '/_workspace/manage/$slug'
     | '/_workspace/organization/sso'
@@ -818,6 +891,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_workspace/watching': {
+      id: '/_workspace/watching'
+      path: '/watching'
+      fullPath: '/watching'
+      preLoaderRoute: typeof WorkspaceWatchingRouteImport
+      parentRoute: typeof WorkspaceRoute
+    }
     '/_workspace/organization': {
       id: '/_workspace/organization'
       path: '/organization'
@@ -853,11 +933,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WorkspaceDiscoveryRouteImport
       parentRoute: typeof WorkspaceRoute
     }
+    '/_workspace/coverage': {
+      id: '/_workspace/coverage'
+      path: '/coverage'
+      fullPath: '/coverage'
+      preLoaderRoute: typeof WorkspaceCoverageRouteImport
+      parentRoute: typeof WorkspaceRoute
+    }
     '/_workspace/checkout-complete': {
       id: '/_workspace/checkout-complete'
       path: '/checkout-complete'
       fullPath: '/checkout-complete'
       preLoaderRoute: typeof WorkspaceCheckoutCompleteRouteImport
+      parentRoute: typeof WorkspaceRoute
+    }
+    '/_workspace/briefs': {
+      id: '/_workspace/briefs'
+      path: '/briefs'
+      fullPath: '/briefs'
+      preLoaderRoute: typeof WorkspaceBriefsRouteImport
       parentRoute: typeof WorkspaceRoute
     }
     '/_workspace/account': {
@@ -1006,6 +1100,27 @@ declare module '@tanstack/react-router' {
       fullPath: '/lists/$id'
       preLoaderRoute: typeof WorkspaceListsIdRouteImport
       parentRoute: typeof WorkspaceListsRoute
+    }
+    '/_workspace/coverage/$targetId': {
+      id: '/_workspace/coverage/$targetId'
+      path: '/$targetId'
+      fullPath: '/coverage/$targetId'
+      preLoaderRoute: typeof WorkspaceCoverageTargetIdRouteImport
+      parentRoute: typeof WorkspaceCoverageRoute
+    }
+    '/_workspace/briefs/new': {
+      id: '/_workspace/briefs/new'
+      path: '/new'
+      fullPath: '/briefs/new'
+      preLoaderRoute: typeof WorkspaceBriefsNewRouteImport
+      parentRoute: typeof WorkspaceBriefsRoute
+    }
+    '/_workspace/briefs/$briefId': {
+      id: '/_workspace/briefs/$briefId'
+      path: '/$briefId'
+      fullPath: '/briefs/$briefId'
+      preLoaderRoute: typeof WorkspaceBriefsBriefIdRouteImport
+      parentRoute: typeof WorkspaceBriefsRoute
     }
     '/_workspace/admin/discounts': {
       id: '/_workspace/admin/discounts'
@@ -1246,6 +1361,31 @@ const PublicRouteChildren: PublicRouteChildren = {
 const PublicRouteWithChildren =
   PublicRoute._addFileChildren(PublicRouteChildren)
 
+interface WorkspaceBriefsRouteChildren {
+  WorkspaceBriefsBriefIdRoute: typeof WorkspaceBriefsBriefIdRoute
+  WorkspaceBriefsNewRoute: typeof WorkspaceBriefsNewRoute
+}
+
+const WorkspaceBriefsRouteChildren: WorkspaceBriefsRouteChildren = {
+  WorkspaceBriefsBriefIdRoute: WorkspaceBriefsBriefIdRoute,
+  WorkspaceBriefsNewRoute: WorkspaceBriefsNewRoute,
+}
+
+const WorkspaceBriefsRouteWithChildren = WorkspaceBriefsRoute._addFileChildren(
+  WorkspaceBriefsRouteChildren,
+)
+
+interface WorkspaceCoverageRouteChildren {
+  WorkspaceCoverageTargetIdRoute: typeof WorkspaceCoverageTargetIdRoute
+}
+
+const WorkspaceCoverageRouteChildren: WorkspaceCoverageRouteChildren = {
+  WorkspaceCoverageTargetIdRoute: WorkspaceCoverageTargetIdRoute,
+}
+
+const WorkspaceCoverageRouteWithChildren =
+  WorkspaceCoverageRoute._addFileChildren(WorkspaceCoverageRouteChildren)
+
 interface WorkspaceListsRouteChildren {
   WorkspaceListsIdRoute: typeof WorkspaceListsIdRoute
 }
@@ -1275,24 +1415,30 @@ const WorkspaceOrganizationRouteWithChildren =
 
 interface WorkspaceRouteChildren {
   WorkspaceAccountRoute: typeof WorkspaceAccountRoute
+  WorkspaceBriefsRoute: typeof WorkspaceBriefsRouteWithChildren
   WorkspaceCheckoutCompleteRoute: typeof WorkspaceCheckoutCompleteRoute
+  WorkspaceCoverageRoute: typeof WorkspaceCoverageRouteWithChildren
   WorkspaceDiscoveryRoute: typeof WorkspaceDiscoveryRoute
   WorkspaceFeedRoute: typeof WorkspaceFeedRoute
   WorkspaceHomeRoute: typeof WorkspaceHomeRoute
   WorkspaceListsRoute: typeof WorkspaceListsRouteWithChildren
   WorkspaceOrganizationRoute: typeof WorkspaceOrganizationRouteWithChildren
+  WorkspaceWatchingRoute: typeof WorkspaceWatchingRoute
   WorkspaceAdminDiscountsRoute: typeof WorkspaceAdminDiscountsRoute
   WorkspaceManageSlugRoute: typeof WorkspaceManageSlugRoute
 }
 
 const WorkspaceRouteChildren: WorkspaceRouteChildren = {
   WorkspaceAccountRoute: WorkspaceAccountRoute,
+  WorkspaceBriefsRoute: WorkspaceBriefsRouteWithChildren,
   WorkspaceCheckoutCompleteRoute: WorkspaceCheckoutCompleteRoute,
+  WorkspaceCoverageRoute: WorkspaceCoverageRouteWithChildren,
   WorkspaceDiscoveryRoute: WorkspaceDiscoveryRoute,
   WorkspaceFeedRoute: WorkspaceFeedRoute,
   WorkspaceHomeRoute: WorkspaceHomeRoute,
   WorkspaceListsRoute: WorkspaceListsRouteWithChildren,
   WorkspaceOrganizationRoute: WorkspaceOrganizationRouteWithChildren,
+  WorkspaceWatchingRoute: WorkspaceWatchingRoute,
   WorkspaceAdminDiscountsRoute: WorkspaceAdminDiscountsRoute,
   WorkspaceManageSlugRoute: WorkspaceManageSlugRoute,
 }
