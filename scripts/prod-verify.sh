@@ -14,3 +14,5 @@ pnpm exec turbo run \
   '@rebuildingamerica/atlas-app#test' \
   '@rebuildingamerica/atlas-app#test:acceptance' \
   '@rebuildingamerica/atlas-app#build'
+
+node --import tsx ./app/scripts/check-bundle-budget.ts
