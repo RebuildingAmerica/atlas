@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -36,16 +36,17 @@ describe("ProfileResearchContext", () => {
       />,
     );
 
-    expect(screen.getByRole("region", { name: "Research context" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Why this matters" })).toBeInTheDocument();
     expect(
       screen.getByText("Runs tenant clinics and eviction defense outreach."),
     ).toBeInTheDocument();
-    expect(screen.getByText("Issue focus")).toBeInTheDocument();
+    const facts = within(screen.getByRole("group", { name: "Quick facts" }));
+    expect(facts.getByText("Issues")).toBeInTheDocument();
     expect(screen.getByText("Housing affordability · Tenant protections")).toBeInTheDocument();
-    expect(screen.getByText("Place context")).toBeInTheDocument();
-    expect(screen.getByText("Kansas City, MO · local")).toBeInTheDocument();
-    expect(screen.getByText("Contact route")).toBeInTheDocument();
-    expect(screen.getByText("Email · hello@housingjusticekc.org")).toBeInTheDocument();
+    expect(facts.getByText("Place")).toBeInTheDocument();
+    expect(screen.getByText("Kansas City, MO")).toBeInTheDocument();
+    expect(facts.getByText("Contact")).toBeInTheDocument();
+    expect(screen.getByText("hello@housingjusticekc.org")).toBeInTheDocument();
     expect(screen.getByText("Last seen")).toBeInTheDocument();
     expect(screen.getByText("Apr 2026")).toBeInTheDocument();
   });
@@ -63,7 +64,8 @@ describe("ProfileResearchContext", () => {
       />,
     );
 
-    expect(screen.queryByText("Contact route")).not.toBeInTheDocument();
+    const facts = within(screen.getByRole("group", { name: "Quick facts" }));
+    expect(facts.queryByText("Contact")).not.toBeInTheDocument();
   });
 
   it("keeps correction actions practical without self-referential reuse-loop copy", () => {
@@ -78,9 +80,9 @@ describe("ProfileResearchContext", () => {
       />,
     );
 
-    expect(screen.getByText("Evidence snapshot")).toBeInTheDocument();
-    expect(screen.getByText("Related actors")).toBeInTheDocument();
-    expect(screen.getByText("Source trail")).toBeInTheDocument();
+    expect(screen.getByText("Evidence")).toBeInTheDocument();
+    expect(screen.getByText("Related people and groups")).toBeInTheDocument();
+    expect(screen.getByText("Sources")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Add missing context" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Claim representation" })).toBeInTheDocument();
     expect(screen.queryByText("Record reuse loop")).not.toBeInTheDocument();
@@ -100,10 +102,10 @@ describe("ProfileResearchContext", () => {
       />,
     );
 
-    expect(screen.getByRole("region", { name: "Primary research context" })).toBeInTheDocument();
-    expect(screen.getByRole("group", { name: "Research facts" })).toBeInTheDocument();
-    expect(screen.getByRole("group", { name: "Evidence snapshot" })).toBeInTheDocument();
-    expect(screen.getByRole("group", { name: "Correction actions" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Profile summary" })).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "Quick facts" })).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "Evidence" })).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "Corrections" })).toBeInTheDocument();
     expect(screen.getAllByTestId("research-context-icon").length).toBeGreaterThanOrEqual(4);
   });
 });

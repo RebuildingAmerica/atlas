@@ -50,7 +50,7 @@ function issueFocus(entry: Entry, labels: Record<string, string>): string | null
 }
 
 function placeContext(entry: Entry): string {
-  return `${formatProfileLocation(entry)} · ${entry.geo_specificity}`;
+  return formatProfileLocation(entry);
 }
 
 function contactRoute(entry: Entry): string | null {
@@ -59,19 +59,7 @@ function contactRoute(entry: Entry): string | null {
     return null;
   }
 
-  if (entry.preferred_contact_channel) {
-    return `${entry.preferred_contact_channel} · ${route}`;
-  }
-
-  if (entry.email) {
-    return `Email · ${route}`;
-  }
-
-  if (entry.website) {
-    return `Website · ${route}`;
-  }
-
-  return `Phone · ${route}`;
+  return route;
 }
 
 function summary(entry: Entry): string {
@@ -79,7 +67,7 @@ function summary(entry: Entry): string {
 }
 
 function sourcePacketLabel(count: number): string {
-  return `${count} ${count === 1 ? "source-linked packet" : "source-linked packets"}`;
+  return `${count} ${count === 1 ? "source" : "sources"}`;
 }
 
 function publicContactLabel(entry: Entry): string {
@@ -91,10 +79,10 @@ function publicContactLabel(entry: Entry): string {
 
 function researchRecordItems(entry: Entry): ResearchRecordItem[] {
   return [
-    { label: "Related actors", value: "Network section", Icon: Network },
-    { label: "Issue footprint", value: `${entry.issue_areas.length} issue areas`, Icon: Tags },
-    { label: "Source trail", value: sourcePacketLabel(entry.source_count), Icon: FileText },
-    { label: "Public contact", value: publicContactLabel(entry), Icon: Contact },
+    { label: "Related people and groups", value: "Connections", Icon: Network },
+    { label: "Issues", value: `${entry.issue_areas.length} issue areas`, Icon: Tags },
+    { label: "Sources", value: sourcePacketLabel(entry.source_count), Icon: FileText },
+    { label: "Contact", value: publicContactLabel(entry), Icon: Contact },
   ];
 }
 
@@ -104,13 +92,13 @@ function contextItems(entry: Entry, labels: Record<string, string>): ContextItem
   const route = contactRoute(entry);
 
   if (focus) {
-    items.push({ label: "Issue focus", value: focus, Icon: Tags });
+    items.push({ label: "Issues", value: focus, Icon: Tags });
   }
 
-  items.push({ label: "Place context", value: placeContext(entry), Icon: MapPin });
+  items.push({ label: "Place", value: placeContext(entry), Icon: MapPin });
 
   if (route) {
-    items.push({ label: "Contact route", value: route, Icon: Mail });
+    items.push({ label: "Contact", value: route, Icon: Mail });
   }
 
   items.push({
@@ -125,19 +113,19 @@ function contextItems(entry: Entry, labels: Record<string, string>): ContextItem
 function placePivot(entry: Entry): PivotLink | null {
   if (entry.city && entry.state) {
     return {
-      label: `${entry.city} civic actors`,
+      label: `People and groups in ${entry.city}`,
       search: { cities: entry.city, states: entry.state },
     };
   }
   if (entry.state) {
     return {
-      label: `${entry.state} civic actors`,
+      label: `People and groups in ${entry.state}`,
       search: { states: entry.state },
     };
   }
   if (entry.region) {
     return {
-      label: `${entry.region} civic actors`,
+      label: `People and groups in ${entry.region}`,
       search: { regions: entry.region },
     };
   }
@@ -171,7 +159,7 @@ export function ProfileResearchContext({ entry, issueAreaLabels }: ProfileResear
       className="border-border-taupe bg-paper-faded border-t px-6 py-6 sm:px-8"
     >
       <section
-        aria-label="Primary research context"
+        aria-label="Profile summary"
         className="border-ink-strong/80 border-l-[3px] py-1 pl-5"
       >
         <div className="flex items-center gap-2">
@@ -192,7 +180,7 @@ export function ProfileResearchContext({ entry, issueAreaLabels }: ProfileResear
         </p>
       </section>
 
-      <div role="group" aria-label="Research facts" className="mt-6">
+      <div role="group" aria-label="Quick facts" className="mt-6">
         <dl className="grid gap-x-5 gap-y-4 sm:grid-cols-2">
           {items.map((item) => (
             <div key={item.label} className="grid grid-cols-[1.75rem_1fr] gap-3">
