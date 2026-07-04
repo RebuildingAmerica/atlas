@@ -4,8 +4,10 @@ import type { OrganizationPendingInvitationPluginConfig as OrganizationPluginCon
 
 const mocks = vi.hoisted(() => ({
   apiKey: vi.fn(() => ({ kind: "api-key" })),
+  bearer: vi.fn(() => ({ kind: "bearer" })),
   betterAuth: vi.fn(),
   createEmailService: vi.fn(),
+  deviceAuthorization: vi.fn(() => ({ kind: "device-authorization" })),
   emailSend: vi.fn(),
   getActiveMemberRole: vi.fn(),
   getAuthRuntimeConfig: vi.fn(),
@@ -63,6 +65,8 @@ vi.mock("better-auth/plugins/jwt", () => ({
 }));
 
 vi.mock("better-auth/plugins", () => ({
+  bearer: mocks.bearer,
+  deviceAuthorization: mocks.deviceAuthorization,
   organization: mocks.organization,
 }));
 
