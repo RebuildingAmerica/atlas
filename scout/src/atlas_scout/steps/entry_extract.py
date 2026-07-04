@@ -318,6 +318,12 @@ async def _run_provider_extraction(
     senate_entries = _extract_senate_contact_entries(page, city=city, state=state)
     if senate_entries:
         return senate_entries
+    member_list_entries = _extract_member_list_entries(page, city=city, state=state)
+    if member_list_entries:
+        return member_list_entries
+    state_senate_entries = _extract_state_senate_entries(page, city=city, state=state)
+    if state_senate_entries:
+        return state_senate_entries
 
     # --- Pass 1: Identify all named entities ---
     identified = await _pass_identify(page, provider, on_retry=on_retry)
@@ -354,8 +360,9 @@ def _extract_roster_table_entries(page: PageContent, *, city: str, state: str) -
             continue
 
         normalized_cells = [cell.strip().lower() for cell in cells]
-        if "name" in normalized_cells and _looks_like_roster_header(normalized_cells):
-            name_index = normalized_cells.index("name")
+        header_name_index = _roster_name_column_index(normalized_cells)
+        if header_name_index is not None and _looks_like_roster_header(normalized_cells):
+            name_index = header_name_index
             district_index = _optional_cell_index(normalized_cells, "district")
             party_index = _optional_cell_index(normalized_cells, "party")
             continue
@@ -449,6 +456,94 @@ def _extract_senate_contact_entries(page: PageContent, *, city: str, state: str)
     return entries
 
 
+def _extract_member_list_entries(page: PageContent, *, city: str, state: str) -> list[RawEntry]:
+    """Extract state legislative members from repeated plain-text list blocks."""
+    entries: list[RawEntry] = []
+    source_date = page.published_date.date() if page.published_date else None
+    lines = [line.strip() for line in page.text.splitlines() if line.strip()]
+
+    for index, line in enumerate(lines):
+        if line != "-" or index + 3 >= len(lines):
+            continue
+
+        name = _normalize_roster_name(lines[index + 1])
+        district_line = lines[index + 2]
+        party = lines[index + 3]
+        if not name or not district_line.lower().startswith("district:"):
+            continue
+        if party.lower() not in {"democrat", "republican", "independent"}:
+            continue
+
+        district = district_line.split(":", maxsplit=1)[1].strip()
+        context = "\n".join(lines[index : index + 4])
+        entries.append(
+            RawEntry(
+                name=name,
+                entry_type="person",
+                description=(
+                    f"{name} is listed as a state legislative member for District {district} "
+                    f"with party marker {party} in the official member roster."
+                ),
+                city=city or None,
+                state=state or None,
+                geo_specificity="statewide",
+                issue_areas=[
+                    "political_polarization_and_democratic_norms",
+                    "electoral_reform",
+                ],
+                website=page.url,
+                affiliated_org=_affiliated_org_from_url(page.url),
+                extraction_context=context,
+                source_url=page.url,
+                source_date=source_date,
+            )
+        )
+
+    return entries
+
+
+def _extract_state_senate_entries(page: PageContent, *, city: str, state: str) -> list[RawEntry]:
+    """Extract state senators from plain-text blocks with party office markers."""
+    entries: list[RawEntry] = []
+    source_date = page.published_date.date() if page.published_date else None
+    lines = [line.strip() for line in page.text.splitlines() if line.strip()]
+
+    for index, line in enumerate(lines[1:], start=1):
+        if line not in {"(D)Capitol Office", "(R)Capitol Office", "(I)Capitol Office"}:
+            continue
+
+        name = _normalize_roster_name(lines[index - 1])
+        if not name:
+            continue
+
+        party = line[1]
+        context = "\n".join(lines[index - 1 : min(index + 3, len(lines))])
+        entries.append(
+            RawEntry(
+                name=name,
+                entry_type="person",
+                description=(
+                    f"{name} is listed as a state senator with party marker {party} "
+                    "and Capitol Office contact details in the official Senate roster."
+                ),
+                city=city or None,
+                state=state or None,
+                geo_specificity="statewide",
+                issue_areas=[
+                    "political_polarization_and_democratic_norms",
+                    "electoral_reform",
+                ],
+                website=page.url,
+                affiliated_org=_affiliated_org_from_url(page.url),
+                extraction_context=context,
+                source_url=page.url,
+                source_date=source_date,
+            )
+        )
+
+    return entries
+
+
 def _split_markdown_table_row(row: str) -> list[str]:
     """Split a markdown table row while keeping only non-empty edge cells."""
     return [cell.strip() for cell in row.strip().strip("|").split("|")]
@@ -464,6 +559,14 @@ def _looks_like_roster_header(cells: list[str]) -> bool:
     return "district" in cells or "office" in cells or "party" in cells
 
 
+def _roster_name_column_index(cells: list[str]) -> int | None:
+    """Return the column index containing a roster member's name."""
+    for candidate in ("name", "member", "representative", "senator"):
+        if candidate in cells:
+            return cells.index(candidate)
+    return None
+
+
 def _optional_cell_index(cells: list[str], name: str) -> int | None:
     """Return the index of an optional table column."""
     return cells.index(name) if name in cells else None
@@ -474,6 +577,15 @@ def _cell_at(cells: list[str], index: int | None) -> str:
     if index is None or index >= len(cells):
         return ""
     return cells[index].strip()
+
+
+def _affiliated_org_from_url(url: str) -> str:
+    """Return a readable source organization for known roster hosts."""
+    if "assembly.ca.gov" in url:
+        return "California State Assembly"
+    if "senate.ca.gov" in url:
+        return "California State Senate"
+    return "State legislature"
 
 
 def _normalize_roster_name(raw_name: str) -> str:
