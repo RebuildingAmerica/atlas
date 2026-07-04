@@ -43,7 +43,14 @@ export function ProfileHero({ entry, affiliation }: ProfileHeroProps) {
       >
         <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:gap-7">
           {showAvatar ? (
-            <ActorAvatar name={entry.name} type={avatarType} size="lg" photoUrl={entry.photo_url} />
+            <ActorAvatar
+              name={entry.name}
+              type={avatarType}
+              size="lg"
+              photoUrl={entry.photo_url}
+              loading="eager"
+              fetchPriority="high"
+            />
           ) : null}
           <div
             className={cn(

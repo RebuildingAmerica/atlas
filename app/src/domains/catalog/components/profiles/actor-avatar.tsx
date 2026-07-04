@@ -2,18 +2,28 @@ import { cn } from "@/lib/utils";
 
 type ActorType = "person" | "organization";
 type AvatarSize = "sm" | "md" | "lg";
+type ImageFetchPriority = "auto" | "high" | "low";
+type ImageLoading = "eager" | "lazy";
 
 interface ActorAvatarProps {
   name: string;
   type: ActorType;
   size?: AvatarSize;
   photoUrl?: string;
+  loading?: ImageLoading;
+  fetchPriority?: ImageFetchPriority;
 }
 
 const SIZE_MAP: Record<AvatarSize, string> = {
   sm: "h-8 w-8 text-xs",
   md: "h-12 w-12 text-sm",
   lg: "h-14 w-14 text-base",
+};
+
+const SIZE_PIXELS: Record<AvatarSize, number> = {
+  sm: 32,
+  md: 48,
+  lg: 56,
 };
 
 function getInitials(name: string): string {
@@ -25,8 +35,16 @@ function getInitials(name: string): string {
     .join("");
 }
 
-export function ActorAvatar({ name, type, size = "md", photoUrl }: ActorAvatarProps) {
+export function ActorAvatar({
+  name,
+  type,
+  size = "md",
+  photoUrl,
+  loading = "lazy",
+  fetchPriority = "auto",
+}: ActorAvatarProps) {
   const sizeClasses = SIZE_MAP[size];
+  const imageSize = SIZE_PIXELS[size];
   const shapeClass = type === "person" ? "rounded-full" : "rounded-xl";
   const gradientClass =
     type === "person"
@@ -35,7 +53,16 @@ export function ActorAvatar({ name, type, size = "md", photoUrl }: ActorAvatarPr
 
   if (photoUrl) {
     return (
-      <img src={photoUrl} alt={name} className={cn("object-cover", sizeClasses, shapeClass)} />
+      <img
+        src={photoUrl}
+        alt={name}
+        width={imageSize}
+        height={imageSize}
+        loading={loading}
+        decoding="async"
+        fetchPriority={fetchPriority}
+        className={cn("object-cover", sizeClasses, shapeClass)}
+      />
     );
   }
 

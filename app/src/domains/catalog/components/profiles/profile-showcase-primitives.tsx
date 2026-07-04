@@ -7,6 +7,17 @@ import { Badge } from "@/platform/ui/badge";
 import type { Entry } from "@/types";
 import type { ProfileBrowseScope } from "@/domains/catalog/profile-browse";
 
+type ImageFetchPriority = "auto" | "high" | "low";
+type ImageLoading = "eager" | "lazy";
+
+interface EntryHeroMediaProps {
+  entry: Entry;
+  className?: string;
+  initialsClassName?: string;
+  loading?: ImageLoading;
+  fetchPriority?: ImageFetchPriority;
+}
+
 export function formatLocation(entry: Entry): string {
   if (entry.city && entry.state) {
     return `${entry.city}, ${entry.state}`;
@@ -77,15 +88,20 @@ export function EntryHeroMedia({
   entry,
   className,
   initialsClassName,
-}: {
-  entry: Entry;
-  className?: string;
-  initialsClassName?: string;
-}) {
+  loading = "lazy",
+  fetchPriority = "auto",
+}: EntryHeroMediaProps) {
   if (entry.photo_url) {
     return (
       <div className={cn("relative w-full overflow-hidden", className)}>
-        <img src={entry.photo_url} alt="" className="absolute inset-0 h-full w-full object-cover" />
+        <img
+          src={entry.photo_url}
+          alt=""
+          loading={loading}
+          decoding="async"
+          fetchPriority={fetchPriority}
+          className="absolute inset-0 h-full w-full object-cover"
+        />
       </div>
     );
   }

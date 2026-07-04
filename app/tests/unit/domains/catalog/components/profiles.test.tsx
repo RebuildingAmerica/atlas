@@ -6,7 +6,9 @@ import "@testing-library/jest-dom/vitest";
 import { ActorAvatar } from "@/domains/catalog/components/profiles/actor-avatar";
 import { IssueFootprint } from "@/domains/catalog/components/profiles/issue-footprint";
 import { PresenceSection } from "@/domains/catalog/components/profiles/presence-section";
+import { EntryHeroMedia } from "@/domains/catalog/components/profiles/profile-showcase-primitives";
 import { ReachSection } from "@/domains/catalog/components/profiles/reach-section";
+import { createEntryFixture } from "../../../../fixtures/catalog/entries";
 
 afterEach(() => {
   cleanup();
@@ -29,12 +31,63 @@ describe("ActorAvatar", () => {
     render(<ActorAvatar name="Jane" type="person" photoUrl="https://img.test/j.png" />);
     const img = screen.getByRole("img");
     expect(img).toHaveAttribute("src", "https://img.test/j.png");
+    expect(img).toHaveAttribute("loading", "lazy");
+    expect(img).toHaveAttribute("decoding", "async");
+    expect(img).toHaveAttribute("fetchpriority", "auto");
+    expect(img).toHaveAttribute("width", "48");
+    expect(img).toHaveAttribute("height", "48");
+  });
+
+  it("can prioritize profile hero photos", () => {
+    render(
+      <ActorAvatar
+        name="Jane"
+        type="person"
+        photoUrl="https://img.test/j.png"
+        size="lg"
+        loading="eager"
+        fetchPriority="high"
+      />,
+    );
+    const img = screen.getByRole("img");
+    expect(img).toHaveAttribute("loading", "eager");
+    expect(img).toHaveAttribute("fetchpriority", "high");
+    expect(img).toHaveAttribute("width", "56");
   });
 
   it("applies size classes", () => {
     render(<ActorAvatar name="A B" type="person" size="sm" />);
     const el = screen.getByLabelText("A B");
     expect(el.className).toContain("h-8");
+  });
+});
+
+describe("EntryHeroMedia", () => {
+  it("lazy-loads decorative profile card photos by default", () => {
+    const { container } = render(
+      <EntryHeroMedia entry={createEntryFixture({ photo_url: "https://img.test/hero.jpg" })} />,
+    );
+
+    const img = container.querySelector("img");
+    expect(img).toHaveAttribute("src", "https://img.test/hero.jpg");
+    expect(img).toHaveAttribute("alt", "");
+    expect(img).toHaveAttribute("loading", "lazy");
+    expect(img).toHaveAttribute("decoding", "async");
+    expect(img).toHaveAttribute("fetchpriority", "auto");
+  });
+
+  it("can prioritize the leading profile spotlight image", () => {
+    const { container } = render(
+      <EntryHeroMedia
+        entry={createEntryFixture({ photo_url: "https://img.test/hero.jpg" })}
+        loading="eager"
+        fetchPriority="high"
+      />,
+    );
+
+    const img = container.querySelector("img");
+    expect(img).toHaveAttribute("loading", "eager");
+    expect(img).toHaveAttribute("fetchpriority", "high");
   });
 });
 

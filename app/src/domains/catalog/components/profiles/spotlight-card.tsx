@@ -32,6 +32,8 @@ export function SpotlightCard({ entry, issueAreaLabels }: SpotlightCardProps) {
         entry={entry}
         className="aspect-[16/9]"
         initialsClassName="type-display-large"
+        loading="eager"
+        fetchPriority="high"
       />
       <article className="flex flex-1 flex-col gap-4 p-6">
         <div className="flex flex-wrap items-center gap-3">
