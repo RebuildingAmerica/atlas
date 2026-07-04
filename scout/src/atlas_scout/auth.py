@@ -34,9 +34,42 @@ class DeviceAuthError(RuntimeError):
 
 def _payload_int(payload: dict[str, object], key: str) -> int:
     """Return an integer field from a JSON payload or raise a response error."""
-    value = payload[key]
+    value = payload.get(key)
+    if isinstance(value, bool):
+        raise DeviceAuthError(
+            error="invalid_response",
+            description=f"Atlas returned an invalid {key} value.",
+        )
     if isinstance(value, int | float | str):
-        return int(value)
+        try:
+            return int(value)
+        except (TypeError, ValueError) as exc:
+            raise DeviceAuthError(
+                error="invalid_response",
+                description=f"Atlas returned an invalid {key} value.",
+            ) from exc
+    raise DeviceAuthError(
+        error="invalid_response",
+        description=f"Atlas returned an invalid {key} value.",
+    )
+
+
+def _payload_str(payload: dict[str, object], key: str) -> str:
+    """Return a string field from a JSON payload or raise a response error."""
+    value = payload.get(key)
+    if isinstance(value, str):
+        return value
+    raise DeviceAuthError(
+        error="invalid_response",
+        description=f"Atlas returned an invalid {key} value.",
+    )
+
+
+def _optional_payload_str(payload: dict[str, object], key: str, default: str = "") -> str:
+    """Return an optional string field from a JSON payload."""
+    value = payload.get(key, default)
+    if isinstance(value, str):
+        return value
     raise DeviceAuthError(
         error="invalid_response",
         description=f"Atlas returned an invalid {key} value.",
@@ -111,10 +144,10 @@ class DeviceAuthClient:
             )
         payload = self._json_or_error(response)
         return DeviceCode(
-            device_code=str(payload["device_code"]),
-            user_code=str(payload["user_code"]),
-            verification_uri=str(payload["verification_uri"]),
-            verification_uri_complete=str(payload["verification_uri_complete"]),
+            device_code=_payload_str(payload, "device_code"),
+            user_code=_payload_str(payload, "user_code"),
+            verification_uri=_payload_str(payload, "verification_uri"),
+            verification_uri_complete=_payload_str(payload, "verification_uri_complete"),
             expires_in=_payload_int(payload, "expires_in"),
             interval=_payload_int(payload, "interval"),
         )
@@ -145,10 +178,10 @@ class DeviceAuthClient:
             )
         payload = self._json_or_error(response)
         return DeviceToken(
-            access_token=str(payload["access_token"]),
-            token_type=str(payload["token_type"]),
+            access_token=_payload_str(payload, "access_token"),
+            token_type=_payload_str(payload, "token_type"),
             expires_in=_payload_int(payload, "expires_in"),
-            scope=str(payload.get("scope", "")),
+            scope=_optional_payload_str(payload, "scope"),
         )
 
     async def exchange_session_for_api_token(
@@ -184,9 +217,9 @@ class DeviceAuthClient:
         if workspace_id is not None and not isinstance(workspace_id, str):
             raise ValueError("Atlas Scout token response field workspace_id must be a string")
         return ScoutTokenExchange(
-            token=str(payload["token"]),
-            user_id=str(user["id"]),
-            user_email=str(user["email"]),
+            token=_payload_str(payload, "token"),
+            user_id=_payload_str(user, "id"),
+            user_email=_payload_str(user, "email"),
             workspace_id=workspace_id,
         )
 
