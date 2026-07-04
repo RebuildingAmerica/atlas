@@ -143,6 +143,22 @@ async def test_rejects_workspace_target_without_actor_org_context(test_db: objec
 
 
 @pytest.mark.asyncio
+async def test_rejects_local_actor_workspace_header_without_org_context(test_db: object) -> None:
+    """Workspace headers cannot supply org context missing from the actor."""
+    with pytest.raises(HTTPException) as exc_info:
+        await discovery_api.sync_discovery_run(
+            _bundle("local_header_workspace"),
+            response=None,
+            actor=_local_actor(),
+            db=test_db,
+            x_atlas_upload_target="workspace",
+            x_atlas_workspace_id="org-123",
+        )
+
+    assert exc_info.value.status_code == HTTPStatus.FORBIDDEN
+
+
+@pytest.mark.asyncio
 async def test_public_target_leaves_run_unowned(test_db: object) -> None:
     """Public contribution syncs do not become workspace-private runs."""
     response = await discovery_api.sync_discovery_run(

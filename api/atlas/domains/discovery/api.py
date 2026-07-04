@@ -102,7 +102,7 @@ def _resolve_sync_destination(
     resolved_workspace_id = workspace_id or actor.org_id
     if not resolved_workspace_id:
         raise HTTPException(status_code=400, detail="Workspace upload target requires workspace id")
-    if actor.org_id is None and not actor.is_local:
+    if actor.org_id is None:
         raise HTTPException(status_code=403, detail="Workspace upload target requires org context")
     if actor.org_id is not None and actor.org_id != resolved_workspace_id:
         raise HTTPException(status_code=403, detail="Workspace upload target does not match actor")
