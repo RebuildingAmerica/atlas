@@ -8,11 +8,11 @@ Quality gates and enforcement. How the hooks work, what they check, and how to f
 
 Code quality is enforced by git hooks at three stages:
 
-| Stage | Hook | Checks |
-|---|---|---|
+| Stage         | Hook       | Checks                                |
+| ------------- | ---------- | ------------------------------------- |
 | Before commit | pre-commit | Format, lint, types (on staged files) |
-| After commit | commit-msg | Commit message format |
-| Before push | pre-push | Full types, full tests, build |
+| After commit  | commit-msg | Commit message format                 |
+| Before push   | pre-push   | Full types, full tests, build         |
 
 All checks must pass before code can be committed or pushed. This prevents broken code from reaching main.
 
@@ -21,6 +21,7 @@ All checks must pass before code can be committed or pushed. This prevents broke
 Runs before every commit. Checks only the files you're committing.
 
 **What it checks:**
+
 1. **Code formatting** — Code follows consistent style
    - Python: `ruff format`
    - TypeScript: `prettier`
@@ -93,11 +94,13 @@ git commit -m "feat: add variable"
 Validates that commit messages follow Conventional Commits format.
 
 **Format:**
+
 ```
 <type>(<scope>): <description>
 ```
 
 **Valid types:**
+
 - `feat` — New feature
 - `fix` — Bug fix
 - `docs` — Documentation
@@ -109,6 +112,7 @@ Validates that commit messages follow Conventional Commits format.
 - `build` — Build changes
 
 **Valid scopes:** (optional)
+
 - `api`, `app`, `pipeline`, `db`, `taxonomy`, `devops`, `docs`
 
 **If it fails:**
@@ -129,6 +133,7 @@ git commit --amend -m "fix(api): correct error handling"
 ```
 
 **Examples that pass:**
+
 ```
 ✅ feat(pipeline): add query generation
 ✅ fix: handle null values
@@ -142,13 +147,14 @@ git commit --amend -m "fix(api): correct error handling"
 Runs before pushing to the remote. Checks everything (not just staged files).
 
 **What it checks:**
+
 1. **Working directory is clean** — No uncommitted changes
 2. **Full type checking** — All code, entire project
    - Python: `mypy atlas`
    - TypeScript: `pnpm run typecheck`
 
-3. **Full test suite** — All tests pass, 90%+ coverage
-   - Python: `pytest --cov-fail-under=90`
+3. **Full test suite** — All tests pass, 100% coverage
+   - Python: `uv run pytest`
 
 4. **Build succeeds** — Project compiles
    - App: `pnpm run build`
@@ -159,7 +165,7 @@ Runs before pushing to the remote. Checks everything (not just staged files).
 error: uncommitted changes detected
 error: type checking failed (X errors)
 error: 2 test failures
-error: coverage dropped to 85% (need 90%)
+error: coverage dropped below the 100% gate
 ```
 
 **To fix:**
@@ -178,7 +184,7 @@ cd api && pytest -v
 # Fix failing tests
 
 # Improve coverage
-# Add more tests to reach 90%
+# Add more tests to restore 100% coverage
 
 # Try pushing again
 git push origin branch-name
@@ -213,7 +219,7 @@ make typecheck
 make test
 
 # Full test with coverage
-cd api && pytest --cov=atlas --cov-report=term-missing --cov-fail-under=90
+cd api && uv run pytest
 ```
 
 ---
@@ -223,18 +229,21 @@ cd api && pytest --cov=atlas --cov-report=term-missing --cov-fail-under=90
 ### Python (Ruff)
 
 **Missing type annotation:**
+
 ```python
 ❌ def create_entry(name, description):
 ✅ def create_entry(name: str, description: str) -> dict:
 ```
 
 **Unused import:**
+
 ```python
 ❌ import os, sys  # sys is unused
 ✅ import os
 ```
 
 **Line too long (>100 chars):**
+
 ```python
 ❌ message = "This is a very long string that exceeds the maximum line length"
 ✅ message = (
@@ -243,12 +252,14 @@ cd api && pytest --cov=atlas --cov-report=term-missing --cov-fail-under=90
 ```
 
 **Redefining built-in:**
+
 ```python
 ❌ id = "user-123"  # 'id' is built-in function
 ✅ user_id = "user-123"
 ```
 
 **Auto-fix:**
+
 ```bash
 cd api
 ruff check . --fix
@@ -257,24 +268,28 @@ ruff check . --fix
 ### TypeScript (ESLint)
 
 **`any` type:**
+
 ```typescript
 ❌ const data: any = response.json()
 ✅ const data: Response = response.json()
 ```
 
 **Missing type annotation:**
+
 ```typescript
 ❌ const handleClick = (event) => { ... }
 ✅ const handleClick = (event: React.MouseEvent) => { ... }
 ```
 
 **Unused variable:**
+
 ```typescript
 ❌ const unused = getValue()
 ✅ const used = getValue()
 ```
 
 **Auto-fix:**
+
 ```bash
 cd app
 pnpm run lint:fix
@@ -287,12 +302,14 @@ pnpm run lint:fix
 ### Python (MyPy)
 
 **Type mismatch:**
+
 ```python
 ❌ def get_age() -> int: return "25"
 ✅ def get_age() -> int: return 25
 ```
 
 **Missing optional check:**
+
 ```python
 ❌ def process(name: str | None): return name.upper()
 ✅ def process(name: str | None):
@@ -302,6 +319,7 @@ pnpm run lint:fix
 ```
 
 **Calling with wrong argument type:**
+
 ```python
 ❌ create_entry(name=123, description="test")  # name should be str
 ✅ create_entry(name="Test", description="test")
@@ -312,18 +330,21 @@ pnpm run lint:fix
 ### TypeScript (TSC)
 
 **Type mismatch:**
+
 ```typescript
 ❌ const age: number = "25"
 ✅ const age: number = 25
 ```
 
 **Missing required property:**
+
 ```typescript
 ❌ const entry: Entry = { id: "1", name: "Test" }  // description missing
 ✅ const entry: Entry = { id: "1", name: "Test", description: "..." }
 ```
 
 **Accessing optional property without check:**
+
 ```typescript
 ❌ function render(entry?: Entry) { return entry.name }
 ✅ function render(entry?: Entry) { return entry?.name }
@@ -335,23 +356,24 @@ pnpm run lint:fix
 
 ## Coverage Requirements
 
-**Minimum: 90%** on all changed code.
+**Minimum: 100%** on all changed code.
 
 ```bash
 cd api
 
 # Check coverage
-pytest --cov=atlas --cov-report=term-missing --cov-fail-under=90
+uv run pytest
 
 # Example output:
 # atlas/models/entry.py      45    4    91%
-# atlas/pipeline/dedup.py    87    9    90%
+# atlas/pipeline/dedup.py    87    0    100%
 # ---------------------
-# TOTAL                    450   45    90%
+# TOTAL                    450    0    100%
 # ✅ Passed
 ```
 
 **If you see:**
+
 ```
 TOTAL                    450   50    88%
 ❌ Coverage must be at least 90.0%
@@ -360,6 +382,7 @@ TOTAL                    450   50    88%
 **To fix:**
 
 1. Identify lines not covered:
+
 ```bash
 pytest --cov=atlas --cov-report=term-missing
 
@@ -406,6 +429,7 @@ git push --force-with-lease
 ```
 
 **But:**
+
 - This is dangerous
 - Only do it if hook is broken (not your code)
 - Tell the team

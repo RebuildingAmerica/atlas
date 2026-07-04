@@ -13,6 +13,7 @@ Use descriptive branch names with a prefix:
 ```
 
 **Types:**
+
 - `feat/` — New feature
 - `fix/` — Bug fix
 - `refactor/` — Code refactoring (no feature change)
@@ -21,6 +22,7 @@ Use descriptive branch names with a prefix:
 - `chore/` — Dependency, tooling, config changes
 
 **Examples:**
+
 ```bash
 git checkout -b feat/search-by-issue-area
 git checkout -b fix/entry-deduplication-crash
@@ -33,6 +35,7 @@ git checkout -b test/add-api-integration-tests
 Use Conventional Commits format. Enforced by pre-commit hook.
 
 **Format:**
+
 ```
 <type>(<scope>): <description>
 
@@ -40,6 +43,7 @@ Use Conventional Commits format. Enforced by pre-commit hook.
 ```
 
 **Types:**
+
 - `feat` — A new feature
 - `fix` — A bug fix
 - `docs` — Documentation only
@@ -49,6 +53,7 @@ Use Conventional Commits format. Enforced by pre-commit hook.
 - `perf` — Performance improvements
 
 **Scopes:** (optional but recommended)
+
 - `api` — Backend changes
 - `app` — App changes
 - `pipeline` — Pipeline/discovery changes
@@ -80,12 +85,14 @@ git commit -m "test(api): add 15 new tests for deduplicator"
 ```
 
 **Avoid:**
+
 - ❌ `Updated code`
 - ❌ `WIP`
 - ❌ `fixes`
 - ❌ `asdf`
 
 **Instead:**
+
 - ✅ `feat(pipeline): implement source deduplication`
 - ✅ `fix(api): handle empty query string`
 - ✅ `docs: clarify deployment process`
@@ -95,11 +102,13 @@ The pre-commit hook will reject non-conformant messages.
 ## Pull Request Process
 
 1. **Create a branch** from main:
+
    ```bash
    git checkout -b feat/your-feature
    ```
 
 2. **Make your changes** in small, logical commits:
+
    ```bash
    # Make change
    git add .
@@ -111,11 +120,13 @@ The pre-commit hook will reject non-conformant messages.
    ```
 
 3. **Run quality checks locally** before pushing:
+
    ```bash
    make quality
    ```
 
    If checks fail, fix them:
+
    ```bash
    make format lint-fix
    make typecheck  # Fix manually if needed
@@ -123,6 +134,7 @@ The pre-commit hook will reject non-conformant messages.
    ```
 
 4. **Push your branch:**
+
    ```bash
    git push origin feat/your-feature
    ```
@@ -146,12 +158,15 @@ The pre-commit hook will reject non-conformant messages.
 The project has three git hooks that automate quality checks:
 
 ### Pre-Commit Hook
+
 Runs before every commit. Checks:
+
 - Code formatting (ruff format, prettier)
 - Linting (ruff check, eslint)
 - Type safety (mypy, tsc)
 
 **If it fails:**
+
 1. Hook shows you the errors
 2. Fix them: `make format lint-fix`
 3. Type errors: fix manually then try again
@@ -160,19 +175,24 @@ Runs before every commit. Checks:
 **Don't bypass it:** Don't use `git commit --no-verify`. The hooks are your safety net.
 
 ### Commit-Msg Hook
+
 Validates commit message format (Conventional Commits).
 
 **If it fails:**
+
 - Message doesn't match `type(scope): description` format
 - Fix it: `git commit --amend -m "feat(scope): new message"`
 
 ### Pre-Push Hook
+
 Runs before pushing to remote. Checks:
+
 - Clean working directory (no unstaged changes)
 - Full type checking (mypy + tsc)
-- Full test suite (with 90%+ coverage)
+- Full test suite (with 100% coverage)
 
 **If it fails:**
+
 - Fix the issue
 - Commit if needed
 - Try pushing again
@@ -226,7 +246,7 @@ make typecheck       # Check types
 make test            # Run tests with coverage
 ```
 
-**Coverage requirement:** 90%+ on all changed files.
+**Coverage requirement:** 100% on all changed files.
 
 ## Deployment Notes
 

@@ -346,6 +346,7 @@ def generate_queries(location: str, issue_areas: list[str]) -> list[str]:
 ```
 
 Test it:
+
 ```python
 # api/tests/test_pipeline.py
 def test_generate_queries():
@@ -449,7 +450,7 @@ pytest tests/test_models.py::test_create_entry -v
 ptw
 ```
 
-**Coverage requirement:** 90%+ on all changes.
+**Coverage requirement:** 100% on all changes.
 
 ---
 
@@ -518,6 +519,7 @@ LOG_LEVEL=DEBUG
 ```
 
 In code:
+
 ```python
 from atlas.config import settings
 

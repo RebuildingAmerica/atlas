@@ -8,19 +8,19 @@ Atlas is an open-source civic actor discovery platform. It finds people, organiz
 
 ## What Matters Most: The End-User Experience
 
-**Read this before anything else in this file. It outranks every other instruction here.** Atlas's reason to exist — and its only real moat — is the *experience* of using it. Anyone can assemble a database of civic actors; the rows are a commodity, and dozens of datasets and "DB tools" already have them. What sets Atlas apart is how it *feels* to find a person, trust what you see, understand how they connect to others, and act on it. **The end-user experience is the product experience, and it is the reason this nonprofit exists. Everything else — the schema, the discovery pipeline, the knowledge graph, the API — is plumbing in service of it.** It does not matter how efficient, elegant, or complete our systems are if end users cannot feel the benefit: an internal improvement no user ever experiences is not an improvement. (Full statement: [docs/experience-first.md](docs/experience-first.md) — the principle that outranks all others in this repo.)
+**Read this before anything else in this file. It outranks every other instruction here.** Atlas's reason to exist — and its only real moat — is the _experience_ of using it. Anyone can assemble a database of civic actors; the rows are a commodity, and dozens of datasets and "DB tools" already have them. What sets Atlas apart is how it _feels_ to find a person, trust what you see, understand how they connect to others, and act on it. **The end-user experience is the product experience, and it is the reason this nonprofit exists. Everything else — the schema, the discovery pipeline, the knowledge graph, the API — is plumbing in service of it.** It does not matter how efficient, elegant, or complete our systems are if end users cannot feel the benefit: an internal improvement no user ever experiences is not an improvement. (Full statement: [docs/experience-first.md](docs/experience-first.md) — the principle that outranks all others in this repo.)
 
 **Three rules that are not negotiable:**
 
-1. **Every technical and architectural decision MUST be tied back to the end-user experience it enables or protects.** No exceptions. If you cannot name the concrete experience a change delivers, do not make it. "It's cleaner," "it's more scalable," "it's more correct," "it's more complete" are *not* sufficient justifications on their own — each must ladder up to something the user can see, trust, feel, or do. State that tie explicitly wherever the decision is recorded: the PR, the commit body, the design doc, the code comment.
-2. **Never substitute depth or complexity for experience.** Complexity is a cost we pay, never an achievement we celebrate. We build complex systems *solely* because — and only to the extent that — they produce a better experience for the end user. A simpler system that delivers the same experience is always the better system. Sophistication the user never feels is waste, and usually a liability. Never reach for the grander architecture when a smaller one gives the user the same thing sooner.
-3. **There is no such thing as "back-end-only work."** A schema migration, a pipeline change, an index, a job queue are *product* work, accountable to the experience they serve. "It's just backend" is never a reason to skip that accountability or to lower the bar on the polish, trust, and clarity the user ultimately feels. Every change, at every layer, is judged by the end-user experience it produces.
+1. **Every technical and architectural decision MUST be tied back to the end-user experience it enables or protects.** No exceptions. If you cannot name the concrete experience a change delivers, do not make it. "It's cleaner," "it's more scalable," "it's more correct," "it's more complete" are _not_ sufficient justifications on their own — each must ladder up to something the user can see, trust, feel, or do. State that tie explicitly wherever the decision is recorded: the PR, the commit body, the design doc, the code comment.
+2. **Never substitute depth or complexity for experience.** Complexity is a cost we pay, never an achievement we celebrate. We build complex systems _solely_ because — and only to the extent that — they produce a better experience for the end user. A simpler system that delivers the same experience is always the better system. Sophistication the user never feels is waste, and usually a liability. Never reach for the grander architecture when a smaller one gives the user the same thing sooner.
+3. **There is no such thing as "back-end-only work."** A schema migration, a pipeline change, an index, a job queue are _product_ work, accountable to the experience they serve. "It's just backend" is never a reason to skip that accountability or to lower the bar on the polish, trust, and clarity the user ultimately feels. Every change, at every layer, is judged by the end-user experience it produces.
 
 Apply it like this:
 
-- **Judge work by its effect on the person using Atlas, not by how clean or impressive the backend is.** When you finish infrastructure work, answer: *what can the end user now see, trust, or do that they couldn't before?* If you can't answer, the work isn't finished — or wasn't worth starting.
+- **Judge work by its effect on the person using Atlas, not by how clean or impressive the backend is.** When you finish infrastructure work, answer: _what can the end user now see, trust, or do that they couldn't before?_ If you can't answer, the work isn't finished — or wasn't worth starting.
 - **Trust is the core experience.** Atlas publishes claims about real, named people. Every surface must make it obvious where information came from and how confident we are. Data that is wrong, stale, or unsourced but shown confidently is the worst possible outcome — an experience failure, not merely a data bug.
-- **Polish is not optional and not "later."** Loading, empty, and error states; copy; spacing; motion; perceived speed; the feel of search and navigation *are* the product, not finishing touches. Hold them to the same bar as core features. (See *Copy and User-Facing Language* and the design conventions below.)
+- **Polish is not optional and not "later."** Loading, empty, and error states; copy; spacing; motion; perceived speed; the feel of search and navigation _are_ the product, not finishing touches. Hold them to the same bar as core features. (See _Copy and User-Facing Language_ and the design conventions below.)
 - **When you must trade off, favor the user-facing outcome.** Ship the smaller backend that makes the experience better now over the grander one that delivers nothing the user can feel yet.
 
 If a task ever feels purely "technical," stop and name the end-user outcome it serves. If there isn't one, question whether it should be done at all. Distinctive, trustworthy, delightful experience is the differentiator we protect in every commit.
@@ -31,18 +31,18 @@ If a task ever feels purely "technical," stop and name the end-user outcome it s
 
 ### Applications
 
-| Directory | Stack | Port |
-|-----------|-------|------|
-| `app/` | React 19 + TanStack Start + Vite + Nitro | 3000 |
-| `api/` | FastAPI + Python 3.12 + SQLite (dev) / PostgreSQL (prod) | 8000 |
-| `scout/` | Atlas Scout CLI — autonomous discovery pipeline | — |
-| `mintlify/` | API documentation (Mintlify) | — |
+| Directory   | Stack                                                    | Port |
+| ----------- | -------------------------------------------------------- | ---- |
+| `app/`      | React 19 + TanStack Start + Vite + Nitro                 | 3000 |
+| `api/`      | FastAPI + Python 3.12 + SQLite (dev) / PostgreSQL (prod) | 8000 |
+| `scout/`    | Atlas Scout CLI — autonomous discovery pipeline          | —    |
+| `mintlify/` | API documentation (Mintlify)                             | —    |
 
 ### Shared Libraries (Python)
 
-| Directory | Package | Purpose |
-|-----------|---------|---------|
-| `libs/shared/` | `atlas-shared` | Pydantic models, types, and taxonomy shared by all Python packages |
+| Directory                | Package                  | Purpose                                                                    |
+| ------------------------ | ------------------------ | -------------------------------------------------------------------------- |
+| `libs/shared/`           | `atlas-shared`           | Pydantic models, types, and taxonomy shared by all Python packages         |
 | `libs/discovery-engine/` | `atlas-discovery-engine` | Extraction primitives, query generation, dedup, scoring, coverage analysis |
 
 Both `api/` and `scout/` depend on these via editable path references in their `pyproject.toml` files.
@@ -72,10 +72,10 @@ cd app && pnpm run lint           # Lint TypeScript
 cd app && pnpm tsc --noEmit       # Type check TypeScript
 
 # Tests
-cd api && uv run pytest                    # All API tests (90% coverage required)
+cd api && uv run pytest                    # All API tests (100% coverage required)
 cd api && uv run pytest tests/path.py -v   # Single test file
 cd api && uv run pytest tests/path.py::TestClass::test_name -v  # Single test
-cd app && pnpm vitest run                  # All frontend tests (80% coverage required)
+cd app && pnpm vitest run                  # All frontend tests (100% coverage required)
 cd app && pnpm vitest run tests/unit/path  # Single test file
 cd app && pnpm run test:e2e               # Playwright E2E
 
@@ -97,6 +97,7 @@ Enforced by `.githooks/commit-msg`. Format: `type(scope)?: Description`
 **Scopes:** `api`, `app`, `scout`, `docs`, `dx` — or omit for cross-cutting changes. Never use `shared` as a scope.
 
 **Rules:**
+
 - Description starts with capital letter
 - `feat` is only for changes visible to end users — internal plumbing is `chore`
 - Commit bodies are prose, not bullet lists or step enumerations
@@ -106,6 +107,7 @@ Enforced by `.githooks/commit-msg`. Format: `type(scope)?: Description`
 ## Pre-commit Hook
 
 The `.githooks/pre-commit` hook runs on staged files only:
+
 - Python in `api/`: ruff format (auto-fix + re-stage) → ruff check (strict) → mypy (strict)
 - TypeScript in `app/`: prettier (auto-fix + re-stage) → eslint (strict)
 
@@ -128,7 +130,7 @@ Empty states should state the plain fact ("No people listed yet.") and nothing e
 - **No inline type definitions.** Always extract types into named interfaces or use existing ones.
 - **No fallbacks or silent defaults.** Fail explicitly. Work against defined specs, not guessed defaults.
 - **No CSS `transform: scale()`.** Resize actual dimensions. No overlapping surfaces during transitions.
-- **Python:** Line length 100. Async everywhere for I/O. Docstrings with Parameters/Returns (NumPy style). Test coverage minimum 90%.
-- **TypeScript:** No `any` or `as any`. ESLint enforces this. Extract types rather than inline them.
+- **Python:** Line length 100. Async everywhere for I/O. Docstrings with Parameters/Returns (NumPy style). Test coverage gate is 100% for Python packages.
+- **TypeScript:** No `any` or `as any`. ESLint enforces this. Extract types rather than inline them. Test coverage gate is 100% for the app.
 - **API responses** use Pydantic models validated through `_entity_record()` in `platform/mcp/data.py`. New fields must be added to both the Pydantic schema (`schemas/public.py`) and the record builder.
 - **Frontend API mapping** lives in `app/src/lib/api.ts`. The `mapEntity()` function converts generated OpenAPI types to the internal `Entry` type. New API fields must be mapped here.

@@ -9,7 +9,8 @@ Test strategies and how to write tests for both API and app. Running tests and c
 Code + tests + docs are one artifact. New behavior must be tested or it's incomplete.
 
 **Requirements:**
-- 90%+ coverage on all changed code
+
+- 100% coverage on all changed code
 - Tests describe intended behavior (not just pass/fail)
 - Tests catch regressions (would fail if behavior regressed)
 
@@ -24,7 +25,7 @@ cd api
 pytest
 
 # Run with coverage
-pytest --cov=atlas --cov-report=term-missing --cov-fail-under=90
+uv run pytest
 
 # Run specific file
 pytest tests/test_models.py -v
@@ -291,55 +292,55 @@ App testing is not yet set up. When it is, use Vitest + React Testing Library.
 
 ```tsx
 // app/tests/components/EntryCard.test.tsx
-import { describe, it, expect } from 'vitest'
-import { render, screen } from '@testing-library/react'
-import { EntryCard } from '../../src/components/features/EntryCard'
+import { describe, it, expect } from "vitest";
+import { render, screen } from "@testing-library/react";
+import { EntryCard } from "../../src/components/features/EntryCard";
 
-describe('EntryCard', () => {
+describe("EntryCard", () => {
   const mockEntry = {
-    id: '1',
-    name: 'Test Org',
-    description: 'Test description',
-    city: 'Denver',
-    state: 'CO',
-    issue_areas: ['labor'],
+    id: "1",
+    name: "Test Org",
+    description: "Test description",
+    city: "Denver",
+    state: "CO",
+    issue_areas: ["labor"],
     sources: [],
     active: true,
-    created_at: '2026-03-20T10:00:00Z',
-    updated_at: '2026-03-25T14:30:00Z'
-  }
+    created_at: "2026-03-20T10:00:00Z",
+    updated_at: "2026-03-25T14:30:00Z",
+  };
 
-  it('should render entry name', () => {
-    render(<EntryCard entry={mockEntry} />)
-    expect(screen.getByText('Test Org')).toBeInTheDocument()
-  })
+  it("should render entry name", () => {
+    render(<EntryCard entry={mockEntry} />);
+    expect(screen.getByText("Test Org")).toBeInTheDocument();
+  });
 
-  it('should render issue areas', () => {
-    render(<EntryCard entry={mockEntry} />)
-    expect(screen.getByText('labor')).toBeInTheDocument()
-  })
+  it("should render issue areas", () => {
+    render(<EntryCard entry={mockEntry} />);
+    expect(screen.getByText("labor")).toBeInTheDocument();
+  });
 
-  it('should call onClick when clicked', () => {
-    const onClick = vitest.fn()
-    render(<EntryCard entry={mockEntry} onClick={onClick} />)
+  it("should call onClick when clicked", () => {
+    const onClick = vitest.fn();
+    render(<EntryCard entry={mockEntry} onClick={onClick} />);
 
-    screen.getByText('Test Org').click()
-    expect(onClick).toHaveBeenCalledWith(mockEntry)
-  })
-})
+    screen.getByText("Test Org").click();
+    expect(onClick).toHaveBeenCalledWith(mockEntry);
+  });
+});
 ```
 
 ---
 
 ## Coverage Requirement
 
-**Minimum: 90%** on all changed code.
+**Minimum: 100%** on all changed code.
 
 ```bash
 cd api
 
 # Check coverage
-pytest --cov=atlas --cov-report=term-missing --cov-fail-under=90
+uv run pytest
 
 # HTML report (opens in browser)
 pytest --cov=atlas --cov-report=html
@@ -347,10 +348,12 @@ open htmlcov/index.html
 ```
 
 **Coverage includes:**
+
 - Line coverage (was every line executed?)
 - Branch coverage (all if/else paths?)
 
-**Don't just hit 90%:**
+**Don't just hit the threshold:**
+
 - Write tests that describe behavior
 - Test edge cases (null values, empty lists, errors)
 - Test happy path AND unhappy paths
@@ -379,6 +382,7 @@ def test_divide_with_floats():
 ```
 
 This tests:
+
 - Happy path (normal operation)
 - Error cases (division by zero)
 - Edge cases (negative, floats)
@@ -434,7 +438,7 @@ Git hooks run tests before you push:
 
 # Pre-push hook (before pushing to remote)
 # - Full type check
-# - Full test suite (90%+ required)
+# - Full test suite (100% required)
 # - Build check
 
 # If a hook fails, fix and try again
@@ -455,6 +459,7 @@ def test_something():
 ```
 
 Run with output:
+
 ```bash
 pytest tests/test_file.py -v -s
 ```
@@ -469,6 +474,7 @@ def test_something():
 ```
 
 Run with:
+
 ```bash
 pytest tests/test_file.py -v -s  # Will drop into debugger
 ```
@@ -489,6 +495,7 @@ pytest -v --tb=long     # Longer tracebacks
 ### Test Passes Locally, Fails in CI
 
 Usually a timing issue or missing dependency:
+
 - Mock external services (API calls, file access)
 - Don't rely on system time being specific
 - Ensure all dependencies are in `pyproject.toml`
@@ -496,6 +503,7 @@ Usually a timing issue or missing dependency:
 ### Test is Flaky (Sometimes Passes, Sometimes Fails)
 
 Usually involves timing, randomness, or shared state:
+
 - Use fixtures to isolate state
 - Mock time if testing time-based logic
 - Don't share databases between tests
@@ -503,6 +511,7 @@ Usually involves timing, randomness, or shared state:
 ### "No module named 'atlas'"
 
 Make sure API is installed in dev mode:
+
 ```bash
 cd api
 pip install -e ".[dev]"
