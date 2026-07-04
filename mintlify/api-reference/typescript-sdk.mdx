@@ -5,10 +5,12 @@ description: "A typed TypeScript client auto-generated from the Atlas OpenAPI sp
 
 ## Overview
 
-Atlas provides a typed TypeScript client generated from the same OpenAPI spec that powers the interactive API playground. Every function has typed parameters and return values, so your editor catches mistakes before you run the code.
+Atlas provides a typed TypeScript client generated from the same OpenAPI spec that powers the [interactive Scalar API reference](https://atlas.rebuildingus.org/api-reference). Every function has typed parameters and return values, so your editor catches mistakes before you run the code.
 
 <Note>
-The SDK is generated using [Orval](https://orval.dev/) from `openapi/atlas.openapi.json`. It uses the native `fetch` API with no external HTTP library dependencies.
+  The SDK is generated using [Orval](https://orval.dev/) from
+  `openapi/atlas.openapi.json`. It uses the native `fetch` API with no external
+  HTTP library dependencies.
 </Note>
 
 ## Installation
@@ -29,7 +31,11 @@ The generated client is written to `src/lib/generated/atlas.ts`.
 Import the functions you need and call them directly:
 
 ```typescript
-import { listEntities, getEntity, listPlaceEntities } from "./lib/generated/atlas";
+import {
+  listEntities,
+  getEntity,
+  listPlaceEntities,
+} from "./lib/generated/atlas";
 
 // Search entities by issue area
 const entities = await listEntities({
@@ -57,51 +63,51 @@ const kcEntities = await listPlaceEntities("kansas-city,missouri", {
 
 ### Discovery
 
-| Function | Description |
-|----------|-------------|
+| Function                     | Description                               |
+| ---------------------------- | ----------------------------------------- |
 | `listDiscoveryRuns(params?)` | List discovery runs with optional filters |
-| `createDiscoveryRun(body)` | Start a new discovery run |
-| `getDiscoveryRun(runId)` | Get status and results for a run |
+| `createDiscoveryRun(body)`   | Start a new discovery run                 |
+| `getDiscoveryRun(runId)`     | Get status and results for a run          |
 
 ### Entities
 
-| Function | Description |
-|----------|-------------|
-| `listEntities(params?)` | Search and list entities with filters |
-| `getEntity(entityId)` | Get full entity details |
-| `createEntity(body)` | Create a new entity |
-| `updateEntity(entityId, body)` | Update an existing entity |
-| `deleteEntity(entityId)` | Delete an entity |
-| `listEntitySources(entityId)` | Get sources backing an entity |
+| Function                       | Description                           |
+| ------------------------------ | ------------------------------------- |
+| `listEntities(params?)`        | Search and list entities with filters |
+| `getEntity(entityId)`          | Get full entity details               |
+| `createEntity(body)`           | Create a new entity                   |
+| `updateEntity(entityId, body)` | Update an existing entity             |
+| `deleteEntity(entityId)`       | Delete an entity                      |
+| `listEntitySources(entityId)`  | Get sources backing an entity         |
 
 ### Places
 
-| Function | Description |
-|----------|-------------|
-| `getPlace(placeKey)` | Get canonical place identity |
-| `listPlaceEntities(placeKey, params?)` | List entities in a place |
-| `getPlaceCoverage(placeKey)` | Coverage gaps and entity counts |
-| `getPlaceProfile(placeKey)` | Demographic and socioeconomic context |
-| `getPlaceIssueSignals(placeKey)` | Issue area summary |
-| `listPlaceSources(placeKey)` | Sources associated with a place |
+| Function                               | Description                           |
+| -------------------------------------- | ------------------------------------- |
+| `getPlace(placeKey)`                   | Get canonical place identity          |
+| `listPlaceEntities(placeKey, params?)` | List entities in a place              |
+| `getPlaceCoverage(placeKey)`           | Coverage gaps and entity counts       |
+| `getPlaceProfile(placeKey)`            | Demographic and socioeconomic context |
+| `getPlaceIssueSignals(placeKey)`       | Issue area summary                    |
+| `listPlaceSources(placeKey)`           | Sources associated with a place       |
 
 ### Taxonomy
 
-| Function | Description |
-|----------|-------------|
-| `listDomains(params?)` | List all domains |
-| `getDomain(domainSlug)` | Get domain details |
-| `listIssueAreas(params?)` | List all issue areas |
+| Function                      | Description            |
+| ----------------------------- | ---------------------- |
+| `listDomains(params?)`        | List all domains       |
+| `getDomain(domainSlug)`       | Get domain details     |
+| `listIssueAreas(params?)`     | List all issue areas   |
 | `getIssueArea(issueAreaSlug)` | Get issue area details |
 
 ### Flags
 
-| Function | Description |
-|----------|-------------|
+| Function                  | Description              |
+| ------------------------- | ------------------------ |
 | `listEntityFlags(params)` | List flags for an entity |
-| `createEntityFlag(body)` | Flag an entity |
-| `listSourceFlags(params)` | List flags for a source |
-| `createSourceFlag(body)` | Flag a source |
+| `createEntityFlag(body)`  | Flag an entity           |
+| `listSourceFlags(params)` | List flags for a source  |
+| `createSourceFlag(body)`  | Flag a source            |
 
 ## Key types
 
@@ -125,6 +131,7 @@ import type {
 ## Custom fetch configuration
 
 The SDK uses a custom `atlasFetch` wrapper that:
+
 - Automatically detects whether it's running in a browser or server environment
 - Sets `Accept: application/json` and `Content-Type: application/json` headers
 - Throws descriptive errors for non-2xx responses
@@ -134,7 +141,7 @@ To use your own API key, pass custom headers via the `options` parameter:
 ```typescript
 const entities = await listEntities(
   { issue_area: ["housing_affordability"] },
-  { headers: { "X-API-Key": "your-api-key" } }
+  { headers: { "X-API-Key": "your-api-key" } },
 );
 ```
 
@@ -147,4 +154,4 @@ pnpm openapi      # Regenerate the OpenAPI spec from the API
 pnpm api-client   # Regenerate the TypeScript client from the spec
 ```
 
-The client is always derived from `openapi/atlas.openapi.json` — the same spec that generates the [interactive API playground](/api-reference/overview).
+The client is always derived from `openapi/atlas.openapi.json` — the same spec that powers the [interactive Scalar API reference](https://atlas.rebuildingus.org/api-reference).

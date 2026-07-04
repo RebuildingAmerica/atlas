@@ -56,57 +56,58 @@ Then fill in the real values.
 
 ### Deployment
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `ATLAS_DEPLOY_MODE` | No | Omit in production. Set to `local` only for single-user local operation (disables auth, hides sign-in/account UI). This is the single setting that controls whether Atlas runs as a hosted multi-user service or a local standalone tool. |
-| `ATLAS_PUBLIC_URL` | Yes | The public origin of the Atlas app (e.g., `https://atlas.example.com`). Compiled into the app bundle and used as the base for auth endpoints, API calls, enterprise SSO callback URLs, and OAuth issuer derivation. |
-| `ATLAS_DOCS_URL` | Yes when `/docs` should proxy to Mintlify on Vercel | Absolute origin of the deployed Mintlify site (for example `https://your-subdomain.mintlify.dev`). Vercel uses this to rewrite `https://atlas.example.com/docs` to the hosted Mintlify docs while keeping the Atlas URL in the browser. |
-| `ATLAS_SERVER_API_PROXY_TARGET` | Yes when the app service must forward `/api/*` traffic to a separate Atlas API deployment | Absolute Atlas API origin used by the app server proxy routes. In Cloud Run, this can be the internal `atlas-api` service URL. In Vercel, set it to the public Atlas API origin that should serve proxied `/api/*` requests. |
-| `PORT` | Platform | The container listen port. On managed platforms like Google Cloud Run, bind to the platform-provided port. Do not expose custom HTTP/HTTPS port config. |
+| Variable                        | Required                                                                                  | Description                                                                                                                                                                                                                               |
+| ------------------------------- | ----------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ATLAS_DEPLOY_MODE`             | No                                                                                        | Omit in production. Set to `local` only for single-user local operation (disables auth, hides sign-in/account UI). This is the single setting that controls whether Atlas runs as a hosted multi-user service or a local standalone tool. |
+| `ATLAS_PUBLIC_URL`              | Yes                                                                                       | The public origin of the Atlas app (e.g., `https://atlas.example.com`). Compiled into the app bundle and used as the base for auth endpoints, API calls, enterprise SSO callback URLs, and OAuth issuer derivation.                       |
+| `ATLAS_DOCS_URL`                | Yes when `/docs` should proxy to Mintlify on Vercel                                       | Absolute origin of the deployed Mintlify site (for example `https://your-subdomain.mintlify.dev`). Vercel uses this to rewrite `https://atlas.example.com/docs` to the hosted Mintlify docs while keeping the Atlas URL in the browser.   |
+| `ATLAS_SERVER_API_PROXY_TARGET` | Yes when the app service must forward `/api/*` traffic to a separate Atlas API deployment | Absolute Atlas API origin used by the app server proxy routes. In Cloud Run, this can be the internal `atlas-api` service URL. In Vercel, set it to the public Atlas API origin that should serve proxied `/api/*` requests.              |
+| `PORT`                          | Platform                                                                                  | The container listen port. On managed platforms like Google Cloud Run, bind to the platform-provided port. Do not expose custom HTTP/HTTPS port config.                                                                                   |
 
 ### Auth
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `ATLAS_AUTH_INTERNAL_SECRET` | Yes | Shared secret between the app and API services. Used for trusted app-to-API requests (e.g., API key introspection). `make setup` generates this automatically. |
+| Variable                               | Required                                    | Description                                                                                                                                                                                                                                                                                 |
+| -------------------------------------- | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ATLAS_AUTH_INTERNAL_SECRET`           | Yes                                         | Shared secret between the app and API services. Used for trusted app-to-API requests (e.g., API key introspection). `make setup` generates this automatically.                                                                                                                              |
 | `ATLAS_AUTH_API_KEY_INTROSPECTION_URL` | Yes when `ATLAS_DEPLOY_MODE` is not `local` | Internal URL Atlas uses to validate API keys from the app server. In a Compose deployment, set this to `http://atlas-web:3000/api/auth/internal/api-key`. In a hosted app deployment, set it to the app's public auth route, such as `https://atlas.example.com/api/auth/internal/api-key`. |
-| `ATLAS_AUTH_DB_PATH` | Yes | Path to the Better Auth SQLite database. Must point at persistent storage that survives container restarts. |
-| `ATLAS_AUTH_ALLOWED_EMAILS` | No | Comma-separated bootstrap allowlist for first owners and private operator access. Leave this empty only when every allowed operator will enter through an existing workspace membership or a pending invitation. |
+| `ATLAS_AUTH_DB_PATH`                   | Yes                                         | Path to the Better Auth SQLite database. Must point at persistent storage that survives container restarts.                                                                                                                                                                                 |
+| `ATLAS_AUTH_ALLOWED_EMAILS`            | No                                          | Comma-separated bootstrap allowlist for first owners and private operator access. Leave this empty only when every allowed operator will enter through an existing workspace membership or a pending invitation.                                                                            |
 
 ### OAuth and MCP
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `ATLAS_API_AUDIENCE` | Yes when `ATLAS_DEPLOY_MODE` is not `local` | OAuth audience claim(s) (`aud`) that the API accepts. Put the MCP resource first, e.g. `https://atlas.example.com/mcp`, so MCP `WWW-Authenticate` challenges publish the correct protected-resource metadata URL. Add the REST API resource as a comma-separated additional value when direct API OAuth tokens are accepted, e.g. `https://atlas.example.com/mcp,https://api.atlas.example.com`. Atlas refuses to start in non-local mode without this set. |
-| `ATLAS_SAML_ALLOWED_ISSUERS` | Yes when SAML SSO will be used | Comma-separated allowlist of SAML IdP issuer URLs (matched by URL origin). DNS TXT domain verification only proves an admin owns the email domain, not the issuer URL, so the issuer host must be opted in by Atlas operators. Empty allowlist denies every SAML registration. Example: `https://accounts.google.com,https://login.microsoftonline.com`. The workspace SSO form surfaces this allowlist inline; admins see whether their pasted issuer is accepted before submit. |
-| `ATLAS_SAML_SP_PRIVATE_KEY` | No | PEM-encoded RSA private key used to sign outbound SAML AuthnRequests. When set, new workspace SAML registrations flip `authnRequestsSigned: true`. Existing registrations continue with their stored configuration. |
-| `ATLAS_SAML_SP_PRIVATE_KEY_PASS` | No | Passphrase for `ATLAS_SAML_SP_PRIVATE_KEY` if the key is encrypted. |
+| Variable                         | Required                                    | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| -------------------------------- | ------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ATLAS_API_AUDIENCE`             | Yes when `ATLAS_DEPLOY_MODE` is not `local` | OAuth audience claim(s) (`aud`) that the API accepts. Put the MCP resource first, e.g. `https://atlas.example.com/mcp`, so MCP `WWW-Authenticate` challenges publish the correct protected-resource metadata URL. Add the REST API resource as a comma-separated additional value when direct API OAuth tokens are accepted, e.g. `https://atlas.example.com/mcp,https://api.atlas.example.com`. Atlas refuses to start in non-local mode without this set.                       |
+| `ATLAS_SAML_ALLOWED_ISSUERS`     | Yes when SAML SSO will be used              | Comma-separated allowlist of SAML IdP issuer URLs (matched by URL origin). DNS TXT domain verification only proves an admin owns the email domain, not the issuer URL, so the issuer host must be opted in by Atlas operators. Empty allowlist denies every SAML registration. Example: `https://accounts.google.com,https://login.microsoftonline.com`. The workspace SSO form surfaces this allowlist inline; admins see whether their pasted issuer is accepted before submit. |
+| `ATLAS_SAML_SP_PRIVATE_KEY`      | No                                          | PEM-encoded RSA private key used to sign outbound SAML AuthnRequests. When set, new workspace SAML registrations flip `authnRequestsSigned: true`. Existing registrations continue with their stored configuration.                                                                                                                                                                                                                                                               |
+| `ATLAS_SAML_SP_PRIVATE_KEY_PASS` | No                                          | Passphrase for `ATLAS_SAML_SP_PRIVATE_KEY` if the key is encrypted.                                                                                                                                                                                                                                                                                                                                                                                                               |
 
 ### Email
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `ATLAS_EMAIL_PROVIDER` | Yes | `resend` for production, `capture` for local/test delivery. |
-| `ATLAS_EMAIL_FROM` | Yes | The sender address Atlas uses for auth and transactional mail. |
-| `ATLAS_EMAIL_RESEND_API_KEY` | When using resend | API key for the Resend email service. |
-| `ATLAS_EMAIL_CAPTURE_URL` | When using capture | URL of the local mail capture service (e.g., MailHog). |
+| Variable                     | Required           | Description                                                    |
+| ---------------------------- | ------------------ | -------------------------------------------------------------- |
+| `ATLAS_EMAIL_PROVIDER`       | Yes                | `resend` for production, `capture` for local/test delivery.    |
+| `ATLAS_EMAIL_FROM`           | Yes                | The sender address Atlas uses for auth and transactional mail. |
+| `ATLAS_EMAIL_RESEND_API_KEY` | When using resend  | API key for the Resend email service.                          |
+| `ATLAS_EMAIL_CAPTURE_URL`    | When using capture | URL of the local mail capture service (e.g., MailHog).         |
 
 ### API runtime
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `DATABASE_URL` | Yes | SQLite database path for the API. Must point at persistent storage. |
-| `CORS_ORIGINS` | Yes | JSON array of origins allowed to call the API (e.g., `["https://atlas.example.com"]`). |
-| `ENABLE_OPENAPI_SPEC` | No | Set to `true` to publish `/openapi.json`. |
-| `ENABLE_API_DOCS_UI` | No | Set to `true` only when you intentionally want FastAPI’s built-in `/docs` and `/redoc` UIs. For Mintlify-based production docs, leave this `false`. |
-| `ANTHROPIC_API_KEY` | For discovery | Required for the discovery pipeline (Claude-powered entity extraction). |
-| `SEARCH_API_KEY` | For discovery | API key for the search provider used during discovery source fetching. |
+| Variable              | Required      | Description                                                                                                                                                                                                                  |
+| --------------------- | ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`        | Yes           | SQLite database path for the API. Must point at persistent storage.                                                                                                                                                          |
+| `CORS_ORIGINS`        | Yes           | JSON array of origins allowed to call the API (e.g., `["https://atlas.example.com"]`).                                                                                                                                       |
+| `ENABLE_OPENAPI_SPEC` | No            | Set to `true` to publish `/openapi.json`.                                                                                                                                                                                    |
+| `ENABLE_API_DOCS_UI`  | No            | Set to `true` only when you intentionally want FastAPI’s built-in `/docs` and `/redoc` UIs. The public generated reference lives at the app route `/api-reference`, so leave this `false` for normal production deployments. |
+| `ANTHROPIC_API_KEY`   | For discovery | Required for the discovery pipeline (Claude-powered entity extraction).                                                                                                                                                      |
+| `SEARCH_API_KEY`      | For discovery | API key for the search provider used during discovery source fetching.                                                                                                                                                       |
 
 Use explicit absolute URLs in production.
 
 For the Mintlify deployment path, treat the public surfaces like this:
 
 - `https://<your-atlas-domain>/docs` -> Vercel rewrite to the hosted Mintlify site
+- `https://<your-atlas-domain>/api-reference` -> Scalar reference in the Atlas app
 - `https://<your-atlas-domain>/openapi.json` -> public machine-readable API contract
 - FastAPI `/docs` and `/redoc` -> disabled in production unless explicitly re-enabled
 

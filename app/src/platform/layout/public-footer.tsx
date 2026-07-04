@@ -30,21 +30,6 @@ function FooterInternalLink({ to, label, animationDelay }: FooterInternalLinkPro
   );
 }
 
-interface FooterPlaceholderLinkProps {
-  label: string;
-  animationDelay?: string;
-}
-
-function FooterPlaceholderLink({ label, animationDelay }: FooterPlaceholderLinkProps) {
-  return (
-    <li className="footer-fade-item" style={resolveFooterItemStyle(animationDelay)}>
-      <span className="footer-placeholder-link type-body-small text-ink-muted cursor-default opacity-50">
-        {label}
-      </span>
-    </li>
-  );
-}
-
 interface FooterExternalLinkProps {
   href: string;
   label: string;
@@ -235,9 +220,14 @@ export function PublicFooter({ localMode, status }: PublicFooterProps) {
             <FooterNavColumn heading="Product" baseDelay={80}>
               <FooterInternalLink to="/browse" label="Browse" animationDelay="120ms" />
               <FooterInternalLink to="/pricing" label="Pricing" animationDelay="140ms" />
-              <FooterPlaceholderLink label="API" animationDelay="160ms" />
+              <FooterInternalLink to="/docs" label="Docs" animationDelay="160ms" />
+              <FooterInternalLink
+                to="/api-reference"
+                label="API reference"
+                animationDelay="180ms"
+              />
               {shouldShowWorkspaceLink ? (
-                <FooterInternalLink to="/discovery" label="Workspace" animationDelay="180ms" />
+                <FooterInternalLink to="/discovery" label="Workspace" animationDelay="200ms" />
               ) : null}
             </FooterNavColumn>
 
@@ -245,17 +235,17 @@ export function PublicFooter({ localMode, status }: PublicFooterProps) {
               <FooterExternalLink
                 href="https://github.com/RebuildingAmerica/atlas"
                 label="GitHub"
-                animationDelay="180ms"
+                animationDelay="220ms"
               />
               <FooterExternalLink
                 href="https://climate.stripe.com/IbySpr"
                 label="Carbon removal"
-                animationDelay="200ms"
+                animationDelay="240ms"
               />
               <FooterExternalLink
                 href="https://github.com/RebuildingAmerica/atlas/issues"
                 label="Issues"
-                animationDelay="220ms"
+                animationDelay="260ms"
               />
             </FooterNavColumn>
 

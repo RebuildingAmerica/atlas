@@ -305,21 +305,5 @@
     "socials": {
       "github": "https://github.com/RebuildingAmerica/atlas"
     }
-  },
-  "api": {
-    "openapi": "openapi/atlas.openapi.json",
-    "playground": {
-      "display": "interactive"
-    },
-    "params": {
-      "expanded": "all"
-    },
-    "url": "full",
-    "examples": {
-      "languages": ["bash", "python", "javascript", "typescript"],
-      "defaults": "required",
-      "prefill": true,
-      "autogenerate": true
-    }
   }
 }

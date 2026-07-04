@@ -56,7 +56,7 @@ This starts both the api and app servers:
 
 - **API:** https://api.atlas.localhost:1355
 - **App:** https://atlas.localhost:1355
-- **API Docs (Swagger):** https://api.atlas.localhost:1355/docs
+- **API reference:** https://atlas.localhost:1355/api-reference
 
 You should see output like:
 
@@ -86,12 +86,14 @@ VITE v5.0.0  ready in 245 ms
 Open your browser and check:
 
 1. **App:** https://atlas.localhost:1355
+
    - Should show the Atlas homepage
    - Try navigating around
 
-2. **API:** https://api.atlas.localhost:1355/docs
-   - Should show interactive Swagger documentation
-   - All endpoints are listed here with test buttons
+2. **API reference:** https://atlas.localhost:1355/api-reference
+
+   - Should show the interactive Scalar reference
+   - All published endpoints are listed here with schemas and request examples
 
 3. **API (raw):** https://api.atlas.localhost:1355/api/v1/entries
    - Should return JSON (likely empty array if database is new)

@@ -32,6 +32,10 @@ describe("PublicTopNav", () => {
       "/profiles",
     );
     expect(screen.getByRole("link", { name: "Browse" })).toHaveAttribute("data-link-to", "/browse");
+    expect(screen.getByRole("link", { name: "API" })).toHaveAttribute(
+      "data-link-to",
+      "/api-reference",
+    );
     expect(screen.getByRole("link", { name: "Pricing" })).toHaveAttribute(
       "data-link-to",
       "/pricing",
@@ -104,6 +108,7 @@ describe("PublicTopNav", () => {
       "data-link-to",
       "/account",
     );
+    expect(screen.queryByRole("link", { name: "API" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Pricing" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Sign in" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Workspace" })).not.toBeInTheDocument();

@@ -36,6 +36,7 @@ const PUBLIC_NAV_ITEMS: AppNavItem[] = [
   { label: "Map", to: "/map" },
   { label: "Profiles", to: "/profiles" },
   { label: "Browse", to: "/browse" },
+  { label: "API", to: "/api-reference" },
 ];
 
 const PUBLIC_SESSION_NAV_ITEMS: AppNavItem[] = [

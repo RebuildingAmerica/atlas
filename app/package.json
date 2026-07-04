@@ -48,6 +48,7 @@
     "@openstatus/react": "^0.0.3",
     "@react-email/components": "^0.0.36",
     "@react-email/render": "^1.0.7",
+    "@scalar/api-reference-react": "^0.9.53",
     "@tanstack/react-query": "^5.95.2",
     "@tanstack/react-router": "^1.168.3",
     "@tanstack/react-start": "^1.167.6",

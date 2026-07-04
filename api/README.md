@@ -41,8 +41,9 @@ pnpm dev
 
 The API will be available at `https://api.atlas.localhost:1355`
 
-- OpenAPI docs: `https://api.atlas.localhost:1355/docs`
-- ReDoc: `https://api.atlas.localhost:1355/redoc`
+- Scalar API reference: `https://atlas.localhost:1355/api-reference`
+- OpenAPI JSON: `https://api.atlas.localhost:1355/openapi.json`
+- FastAPI Swagger/ReDoc fallback: `https://api.atlas.localhost:1355/docs` and `https://api.atlas.localhost:1355/redoc`
 - Health check: `https://api.atlas.localhost:1355/health`
 
 ### Production Server

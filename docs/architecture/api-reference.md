@@ -438,10 +438,10 @@ Common error types returned in error responses:
 When the API is running, visit:
 
 ```
-https://api.atlas.localhost:1355/docs
+https://atlas.localhost:1355/api-reference
 ```
 
-This opens Swagger UI with all endpoints, request/response schemas, and a "Try It" button for each endpoint.
+This opens the Scalar API reference with the generated endpoint list, request/response schemas, and request examples. The reference is powered by the machine-readable OpenAPI document at `https://api.atlas.localhost:1355/openapi.json`.
 
 ---
 

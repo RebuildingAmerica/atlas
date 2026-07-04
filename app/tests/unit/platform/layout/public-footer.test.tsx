@@ -57,6 +57,11 @@ describe("PublicFooter", () => {
   it("shows workspace link when not in local mode", async () => {
     await renderPublicFooter({ localMode: false, status: "operational" });
 
+    expect(screen.getByRole("link", { name: "Docs" })).toHaveAttribute("href", "/docs");
+    expect(screen.getByRole("link", { name: "API reference" })).toHaveAttribute(
+      "href",
+      "/api-reference",
+    );
     expect(screen.getByRole("link", { name: "Workspace" })).toHaveAttribute("href", "/discovery");
   });
 
