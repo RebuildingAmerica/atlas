@@ -33,6 +33,7 @@ export function BrowseHero({ description, scopeTabs, title }: BrowseHeroProps) {
               key={tab.label}
               to={tab.to}
               search={tab.search}
+              aria-current={tab.isActive ? "page" : undefined}
               className={[
                 "type-label-large rounded-full px-4 py-2 transition-colors",
                 tab.isActive
