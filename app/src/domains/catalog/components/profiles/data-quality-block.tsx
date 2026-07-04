@@ -123,7 +123,9 @@ function ClaimEvidenceBlock({ entry }: { entry: Entry }) {
 
   return (
     <div className="space-y-2">
-      <dt className="type-label-small text-ink-muted">Claim evidence</dt>
+      <dt>
+        <h3 className="type-label-small text-ink-muted">Claim evidence</h3>
+      </dt>
       <dd className="grid gap-2">
         {rows.map(([label, item]) => (
           <div
@@ -334,7 +336,9 @@ export function DataQualityBlock({ entry }: DataQualityBlockProps) {
         <ActorSpecificityBlock entry={entry} />
         <ProfileShapeBlock entry={entry} />
         <div className="space-y-1">
-          <dt className="type-label-small text-ink-muted">Verification</dt>
+          <dt>
+            <h3 className="type-label-small text-ink-muted">Verification</h3>
+          </dt>
           <dd className="space-y-1.5">
             <VerificationLine entry={entry} />
             <ClaimLink entry={entry} />

@@ -100,6 +100,14 @@ function CompactSourceRow({ source }: { source: Source }) {
         ) : null}
         <FreshnessChip isoDate={sourceFreshnessIso(source)} prefix="" className="ml-auto" />
       </div>
+      <a
+        href={source.url}
+        target="_blank"
+        rel="noreferrer"
+        className="type-body-medium text-accent block font-medium hover:underline"
+      >
+        {source.title ?? source.url}
+      </a>
       <SourceFreshnessWarning source={source} />
       <PrivateNotesPanel targetId={source.id} targetLabel={sourceNoteLabel(source)} type="source" />
     </div>

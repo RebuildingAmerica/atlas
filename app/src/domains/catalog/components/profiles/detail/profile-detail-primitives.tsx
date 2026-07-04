@@ -157,7 +157,11 @@ export function ProfileSection({
       >
         {Icon ? <Icon className="text-civic h-4 w-4 shrink-0" aria-hidden /> : null}
         <div className="min-w-0">
-          <p className="type-label-small text-ink-muted tracking-widest uppercase">{label}</p>
+          {title ? (
+            <p className="type-label-small text-ink-muted tracking-widest uppercase">{label}</p>
+          ) : (
+            <h2 className="type-label-small text-ink-muted tracking-widest uppercase">{label}</h2>
+          )}
           {title ? <h2 className="type-title-medium text-ink-strong">{title}</h2> : null}
         </div>
       </div>

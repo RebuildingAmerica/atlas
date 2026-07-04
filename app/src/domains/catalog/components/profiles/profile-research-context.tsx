@@ -167,7 +167,7 @@ export function ProfileResearchContext({ entry, issueAreaLabels }: ProfileResear
 
   return (
     <section
-      aria-label="Research context"
+      aria-labelledby="profile-context-heading"
       className="border-border-taupe bg-paper-faded border-t px-6 py-6 sm:px-8"
     >
       <section
@@ -180,9 +180,12 @@ export function ProfileResearchContext({ entry, issueAreaLabels }: ProfileResear
             className="text-civic h-4 w-4"
             aria-hidden
           />
-          <p className="type-label-small text-ink-muted tracking-widest uppercase">
-            Research context
-          </p>
+          <h2
+            id="profile-context-heading"
+            className="type-label-small text-ink-muted tracking-widest uppercase"
+          >
+            Why this matters
+          </h2>
         </div>
         <p className="type-title-large text-ink-strong mt-3 max-w-3xl leading-snug">
           {summary(entry)}
@@ -208,10 +211,13 @@ export function ProfileResearchContext({ entry, issueAreaLabels }: ProfileResear
       </div>
 
       <div className="border-border mt-6 border-t pt-5">
-        <div role="group" aria-label="Evidence snapshot">
-          <p className="type-label-small text-ink-muted tracking-widest uppercase">
-            Evidence snapshot
-          </p>
+        <div role="group" aria-labelledby="profile-context-evidence-heading">
+          <h3
+            id="profile-context-evidence-heading"
+            className="type-label-small text-ink-muted tracking-widest uppercase"
+          >
+            Evidence
+          </h3>
           <div className="mt-4 grid gap-x-5 gap-y-4 sm:grid-cols-4">
             {recordItems.map((item) => (
               <div key={item.label} className="grid grid-cols-[1.5rem_1fr] gap-2">
@@ -245,10 +251,15 @@ export function ProfileResearchContext({ entry, issueAreaLabels }: ProfileResear
 
         <div
           role="group"
-          aria-label="Correction actions"
+          aria-labelledby="profile-context-corrections-heading"
           className="border-border mt-5 border-t pt-5"
         >
-          <p className="type-label-small text-ink-muted tracking-widest uppercase">Corrections</p>
+          <h3
+            id="profile-context-corrections-heading"
+            className="type-label-small text-ink-muted tracking-widest uppercase"
+          >
+            Corrections
+          </h3>
           <p className="type-body-small text-ink-soft mt-2 max-w-2xl">
             Flag stale facts, missing context, or representation issues for review.
           </p>
