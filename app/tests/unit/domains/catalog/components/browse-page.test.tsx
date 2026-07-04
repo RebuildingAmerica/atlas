@@ -12,6 +12,14 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@tanstack/react-router", () => ({
+  Link: ({
+    children,
+    to,
+  }: {
+    children: ReactNode;
+    search?: Record<string, unknown>;
+    to: string;
+  }) => <a href={to}>{children}</a>,
   useNavigate: () => mocks.navigate,
 }));
 
@@ -140,7 +148,7 @@ describe("BrowsePage", () => {
     });
   });
 
-  it("renders map browse controls and issues navigate updates for search interactions", async () => {
+  it("renders search-first browse controls and issues navigate updates for search interactions", async () => {
     const { BrowsePage } = await import("@/domains/catalog/components/browse/browse-page");
 
     render(
@@ -156,20 +164,19 @@ describe("BrowsePage", () => {
       />,
     );
 
-    expect(screen.getByRole("heading", { name: "Source-linked civic research" })).not.toBeNull();
+    expect(screen.getByRole("heading", { name: "Find people and groups" })).not.toBeNull();
     expect(screen.queryByRole("heading", { name: "Browse Atlas" })).toBeNull();
     expect(screen.queryByText(/public civic graph/i)).toBeNull();
-    expect(
-      screen.getByText(/Find source-backed actors by place, issue, source type/i),
-    ).not.toBeNull();
-    fireEvent.change(screen.getByPlaceholderText("Search place, issue, or name"), {
+    expect(screen.getByText("Search by issue, place, or name.")).not.toBeNull();
+    expect(screen.queryByRole("button", { name: "Grid" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "List" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Map" })).toBeNull();
+    expect(screen.getByRole("link", { name: "Map" })).not.toBeNull();
+    fireEvent.change(screen.getByPlaceholderText("Try housing in Detroit"), {
       target: { value: "housing" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Search" }));
-    fireEvent.click(screen.getByRole("button", { name: "Grid" }));
-    fireEvent.click(screen.getByRole("button", { name: "List" }));
-    fireEvent.click(screen.getByRole("button", { name: "Map" }));
-    fireEvent.click(screen.getByRole("button", { name: "Select Missouri" }));
+    fireEvent.click(screen.getByRole("button", { name: "Missouri 10 matching records" }));
     fireEvent.click(screen.getByRole("button", { name: "Reset" }));
     fireEvent.click(screen.getByRole("button", { name: "Housing Affordability" }));
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
@@ -279,14 +286,16 @@ describe("BrowsePage", () => {
       within(startingPoints).getByRole("heading", { name: "Browse by actor type" }),
     ).not.toBeNull();
     expect(within(startingPoints).getByRole("heading", { name: "Guided paths" })).not.toBeNull();
-    expect(screen.getByRole("button", { name: "Missouri civic actors 10 records" })).not.toBeNull();
+    expect(
+      screen.getByRole("button", { name: "Missouri people and groups 10 records" }),
+    ).not.toBeNull();
     expect(screen.getByRole("button", { name: "Housing Affordability landscape" })).not.toBeNull();
     expect(screen.getByRole("button", { name: "People profiles" })).not.toBeNull();
     expect(
       screen.getByRole("button", { name: "Missouri Housing Affordability guided path" }),
     ).not.toBeNull();
 
-    fireEvent.click(screen.getByRole("button", { name: "Missouri civic actors 10 records" }));
+    fireEvent.click(screen.getByRole("button", { name: "Missouri people and groups 10 records" }));
     fireEvent.click(screen.getByRole("button", { name: "Housing Affordability landscape" }));
     fireEvent.click(screen.getByRole("button", { name: "People profiles" }));
     fireEvent.click(
@@ -373,14 +382,16 @@ describe("BrowsePage", () => {
     expect(screen.queryByText("Compare places")).toBeNull();
     expect(screen.queryByText("Compare issues")).toBeNull();
     expect(screen.getByRole("region", { name: "Browse starting points" })).not.toBeNull();
-    expect(screen.getByRole("button", { name: "Missouri civic actors 12 records" })).not.toBeNull();
     expect(
-      screen.getByRole("button", { name: "California civic actors 9 records" }),
+      screen.getByRole("button", { name: "Missouri people and groups 12 records" }),
+    ).not.toBeNull();
+    expect(
+      screen.getByRole("button", { name: "California people and groups 9 records" }),
     ).not.toBeNull();
     expect(screen.getByRole("button", { name: "Housing Affordability landscape" })).not.toBeNull();
     expect(screen.getByRole("button", { name: "Tenant Organizing landscape" })).not.toBeNull();
 
-    fireEvent.click(screen.getByRole("button", { name: "California civic actors 9 records" }));
+    fireEvent.click(screen.getByRole("button", { name: "California people and groups 9 records" }));
     fireEvent.click(screen.getByRole("button", { name: "Tenant Organizing landscape" }));
 
     const computedSearches = getNavigateCalls()
@@ -484,7 +495,7 @@ describe("BrowsePage", () => {
     expect(screen.getByRole("button", { name: "Housing Affordability landscape" })).not.toBeNull();
   });
 
-  it("summarizes the active place-plus-issue research focus above results", async () => {
+  it("summarizes the active place-plus-issue search without duplicating focus panels", async () => {
     const { BrowsePage } = await import("@/domains/catalog/components/browse/browse-page");
     mocks.useEntries.mockReturnValue({
       data: {
@@ -533,19 +544,16 @@ describe("BrowsePage", () => {
       />,
     );
 
-    expect(screen.getByText("Research focus")).not.toBeNull();
-    expect(screen.getAllByText("tenant union").length).toBeGreaterThan(0);
-    expect(screen.getByText("Atlas understood")).not.toBeNull();
+    expect(screen.queryByText("Research focus")).toBeNull();
+    expect(screen.getByDisplayValue("tenant union")).not.toBeNull();
+    expect(screen.getByText("Filters")).not.toBeNull();
     expect(screen.getAllByText("Missouri").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Housing Affordability").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Organizations").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Local news").length).toBeGreaterThan(0);
-    expect(
-      screen.getByText("Prioritize records with deeper source trails and recent coverage."),
-    ).not.toBeNull();
     expect(screen.getByText("Place brief")).not.toBeNull();
     expect(screen.getByText("Missouri housing ecosystem")).not.toBeNull();
-    expect(screen.getByText("25 source-linked records for Housing Affordability.")).not.toBeNull();
+    expect(screen.getAllByText("25 people or groups with sources.").length).toBeGreaterThan(0);
     expect(screen.getByText("Strongest signal: Multi-source confirmation")).not.toBeNull();
     expect(screen.getByText("Missouri Housing Affordability history")).not.toBeNull();
   });
@@ -566,7 +574,7 @@ describe("BrowsePage", () => {
       />,
     );
 
-    fireEvent.change(screen.getByPlaceholderText("Search place, issue, or name"), {
+    fireEvent.change(screen.getByPlaceholderText("Try housing in Detroit"), {
       target: { value: "organizations in Missouri from local news" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Search" }));
@@ -631,7 +639,7 @@ describe("BrowsePage", () => {
 
     expect(screen.getByText("Issue brief")).not.toBeNull();
     expect(screen.getByText("Housing Affordability landscape")).not.toBeNull();
-    expect(screen.getByText("11 source-linked actors across current results.")).not.toBeNull();
+    expect(screen.getByText("11 people or groups with sources.")).not.toBeNull();
     expect(screen.getByText("Source signal: Single-source leads")).not.toBeNull();
     expect(screen.getByText("Gap: build more multi-source confirmation.")).not.toBeNull();
   });
@@ -698,7 +706,7 @@ describe("BrowsePage", () => {
       />,
     );
 
-    fireEvent.change(screen.getByPlaceholderText("Search place, issue, or name"), {
+    fireEvent.change(screen.getByPlaceholderText("Try housing in Detroit"), {
       target: { value: "housing in Missouri" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Search" }));
@@ -762,22 +770,24 @@ describe("BrowsePage", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Previous" }));
     const latestHousingButton = screen
-      .getAllByRole("button", { name: "Housing Affordability" })
+      .getAllByRole("button", { name: "Remove Housing Affordability" })
       .at(-1);
     if (!latestHousingButton) {
       throw new TypeError("Expected a Housing Affordability filter button.");
     }
 
     fireEvent.click(latestHousingButton);
-    screen.getAllByRole("button", { name: "Organizations" }).forEach((button) => {
+    screen.getAllByRole("button", { name: "Remove Organizations" }).forEach((button) => {
       fireEvent.click(button);
     });
-    screen.getAllByRole("button", { name: "Local news" }).forEach((button) => {
+    screen.getAllByRole("button", { name: "Remove Local news" }).forEach((button) => {
       fireEvent.click(button);
     });
 
-    expect(screen.getAllByRole("button", { name: "Organizations" }).length).toBeGreaterThan(0);
-    expect(screen.getAllByRole("button", { name: "Local news" }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("button", { name: "Remove Organizations" }).length).toBeGreaterThan(
+      0,
+    );
+    expect(screen.getAllByRole("button", { name: "Remove Local news" }).length).toBeGreaterThan(0);
     expect(mocks.navigate).toHaveBeenCalled();
   });
 
@@ -804,7 +814,7 @@ describe("BrowsePage", () => {
     );
 
     expect(screen.getByText("United States")).not.toBeNull();
-    expect(screen.getByText("0 entries")).not.toBeNull();
+    expect(screen.getByText("0 matches")).not.toBeNull();
     expect(screen.getByText("Entry list total: 0")).not.toBeNull();
     expect(screen.queryByRole("button", { name: "Next" })).toBeNull();
 
@@ -905,7 +915,7 @@ describe("BrowsePage", () => {
 
     expect(screen.getAllByText("XX").length).toBeGreaterThan(0);
     expect(screen.getByRole("button", { name: "XX 3 matching records" })).not.toBeNull();
-    expect(screen.getAllByRole("button", { name: "Mutual Aid" }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("button", { name: "Remove Mutual Aid" }).length).toBeGreaterThan(0);
     expect(screen.getAllByRole("button", { name: /Community archive/i }).length).toBeGreaterThan(0);
     fireEvent.click(screen.getByRole("button", { name: "XX 3 matching records" }));
 
@@ -924,12 +934,7 @@ describe("BrowsePage", () => {
     );
 
     expect(screen.getAllByText("XX").length).toBeGreaterThan(0);
-    const latestUnknownState = screen.getAllByText("XX").at(-1);
-    if (!latestUnknownState) {
-      throw new TypeError("Expected an XX state label in the list view.");
-    }
-
-    fireEvent.click(latestUnknownState);
+    fireEvent.click(screen.getByRole("button", { name: "Remove XX" }));
     expect(mocks.navigate).toHaveBeenCalled();
   });
 });

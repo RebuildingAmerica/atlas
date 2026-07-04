@@ -2,26 +2,14 @@ import { EntryList } from "@/domains/catalog/components/entries/entry-list";
 import type { EntryDiscoveryContext } from "@/domains/catalog/components/entries/entry-card";
 import type { EmptyRecoveryAction } from "@/domains/catalog/components/entries/entry-list";
 import { Button } from "@/platform/ui/button";
-import type { BrowseFilterKey } from "@/domains/catalog/search-state";
 import type { BrowsePageContent } from "./browse-page-content";
 import type { Entry } from "@/types";
-
-interface RemovableBadge {
-  key: BrowseFilterKey;
-  label: string;
-  value: string;
-}
 
 interface PaginationState {
   has_more: boolean;
   limit: number;
   offset: number;
   total: number;
-}
-
-export interface BrowseResearchContext {
-  chips: string[];
-  query?: string;
 }
 
 export interface BrowsePlaceBrief {
@@ -48,13 +36,10 @@ interface BrowseResultsAsideProps {
   issueAreaLabels: Record<string, string>;
   issueBrief: BrowseIssueBrief | undefined;
   pagination: PaginationState | undefined;
-  removableBadges: RemovableBadge[];
   placeBrief: BrowsePlaceBrief | undefined;
-  researchContext: BrowseResearchContext | undefined;
   resultLabelPlural: string | undefined;
   resultsHeading: string | undefined;
   onPageChange: (offset: number) => void;
-  onToggleFilter: (key: BrowseFilterKey, value: string) => void;
 }
 
 /**
@@ -74,46 +59,19 @@ export function BrowseResultsAside({
   issueBrief,
   pagination,
   placeBrief,
-  removableBadges,
-  researchContext,
   resultLabelPlural,
   resultsHeading,
   onPageChange,
-  onToggleFilter,
 }: BrowseResultsAsideProps) {
   return (
-    <aside className="min-w-0 lg:pt-0">
-      <div className="bg-surface-container-high overflow-hidden rounded-[1.45rem] lg:sticky lg:top-20">
+    <section aria-label="Search results" className="min-w-0 lg:pt-0">
+      <div className="bg-surface-container-high overflow-hidden rounded-[1.45rem]">
         <div className="px-3 pt-3 lg:px-4 lg:pt-4">
           <p className="type-label-small text-ink-muted uppercase">Results</p>
           <h2 className="type-headline-small text-ink-strong mt-2">{resultsHeading}</h2>
         </div>
 
         <div className="px-3 pb-3 lg:px-4 lg:pb-4">
-          {researchContext ? (
-            <div className="border-border bg-surface-container-lowest mb-3 space-y-2 rounded-[1rem] border px-3 py-2.5">
-              <div>
-                <p className="type-label-small text-ink-muted uppercase">Research focus</p>
-                {researchContext.query ? (
-                  <p className="type-title-medium text-ink-strong mt-1">{researchContext.query}</p>
-                ) : null}
-              </div>
-              <div className="flex flex-wrap gap-1.5">
-                {researchContext.chips.map((chip) => (
-                  <span
-                    key={chip}
-                    className="type-label-large bg-surface-container-high text-ink-soft rounded-full px-2.5 py-1"
-                  >
-                    {chip}
-                  </span>
-                ))}
-              </div>
-              <p className="type-body-small text-ink-muted">
-                Prioritize records with deeper source trails and recent coverage.
-              </p>
-            </div>
-          ) : null}
-
           {placeBrief ? (
             <div className="border-border bg-surface-container-lowest mb-3 space-y-2 rounded-[1rem] border px-3 py-2.5">
               <p className="type-label-small text-ink-muted uppercase">Place brief</p>
@@ -136,23 +94,6 @@ export function BrowseResultsAside({
               {issueBrief.gap ? (
                 <p className="type-body-small text-ink-muted">{issueBrief.gap}</p>
               ) : null}
-            </div>
-          ) : null}
-
-          {removableBadges.length > 0 ? (
-            <div className="flex flex-wrap gap-x-2.5 gap-y-1.5">
-              {removableBadges.map((badge) => (
-                <button
-                  key={`${badge.key}:${badge.value}`}
-                  type="button"
-                  onClick={() => {
-                    onToggleFilter(badge.key, badge.value);
-                  }}
-                  className="type-label-large bg-surface-container-lowest text-ink-soft hover:text-ink-strong rounded-full px-2.5 py-1 transition-colors"
-                >
-                  {badge.label}
-                </button>
-              ))}
             </div>
           ) : null}
         </div>
@@ -199,6 +140,6 @@ export function BrowseResultsAside({
           </div>
         ) : null}
       </div>
-    </aside>
+    </section>
   );
 }

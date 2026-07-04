@@ -1,14 +1,14 @@
 import { useNavigate } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo } from "react";
 import { BrowseEcosystemHistorySection } from "@/domains/catalog/components/browse/browse-ecosystem-history-section";
 import {
   BrowseExplorationGuides,
   type BrowseCollectionFunnel,
   type BrowseIntentChip,
+  type BrowseSurfaceState,
   GridSurface,
   ListSurface,
 } from "@/domains/catalog/components/browse/browse-page-sections";
-import { UsMapSurface } from "@/domains/catalog/components/browse/us-map-surface";
 import { useEntries } from "@/domains/catalog/hooks/use-entries";
 import { useTaxonomy } from "@/domains/catalog/hooks/use-taxonomy";
 import {
@@ -38,7 +38,6 @@ import {
   BrowseResultsAside,
   type BrowseIssueBrief,
   type BrowsePlaceBrief,
-  type BrowseResearchContext,
 } from "./browse-results-aside";
 import { BrowseSearchHeader } from "./browse-search-header";
 
@@ -49,6 +48,11 @@ const SOURCE_PATTERN_BRIEF_LABELS: Record<SourcePattern, string> = {
   single_source: "Single-source leads",
   social_only: "Social-only signals",
 };
+
+const LazyUsMapSurface = lazy(async () => {
+  const module = await import("@/domains/catalog/components/browse/us-map-surface");
+  return { default: module.UsMapSurface };
+});
 
 interface BrowseIntentBadge {
   key: BrowseFilterKey;
@@ -62,8 +66,34 @@ interface BrowsePageProps {
   page?: BrowsePageContent;
 }
 
+interface BrowseMapSurfaceProps {
+  onSelectState: (state: string) => void;
+  selectedState?: string;
+  stateDensity: BrowseSurfaceState[];
+}
+
 function sourcePatternBriefLabel(value: string): string {
   return SOURCE_PATTERN_BRIEF_LABELS[value as SourcePattern] ?? humanize(value);
+}
+
+function BrowseMapSurface({ onSelectState, selectedState, stateDensity }: BrowseMapSurfaceProps) {
+  return (
+    <Suspense
+      fallback={
+        <GridSurface
+          states={stateDensity}
+          selectedState={selectedState}
+          onSelectState={onSelectState}
+        />
+      }
+    >
+      <LazyUsMapSurface
+        stateDensity={stateDensity}
+        selectedState={selectedState}
+        onSelectState={onSelectState}
+      />
+    </Suspense>
+  );
 }
 
 export function BrowsePage({ initialEntries, search, page }: BrowsePageProps) {
@@ -430,6 +460,21 @@ export function BrowsePage({ initialEntries, search, page }: BrowsePageProps) {
     types: pageContent.showEntryTypeFilter ? searchForActivity.entry_types.length : 0,
     sources: selectedFilters.source_types.length + selectedFilters.source_patterns.length,
   };
+  const mapSearch = useMemo<BrowseRouteSearch>(
+    () => ({
+      cities: serializeList(selectedFilters.cities),
+      entry_types: serializeList(selectedFilters.entry_types),
+      issue_areas: serializeList(selectedFilters.issue_areas),
+      offset: selectedFilters.offset,
+      query: selectedFilters.query,
+      regions: serializeList(selectedFilters.regions),
+      source_patterns: serializeList(selectedFilters.source_patterns),
+      source_types: serializeList(selectedFilters.source_types),
+      states: serializeList(selectedFilters.states),
+      view: "map",
+    }),
+    [selectedFilters],
+  );
   const intentChips = useMemo<BrowseIntentChip[]>(() => {
     const chips: BrowseIntentChip[] = [];
 
@@ -515,30 +560,6 @@ export function BrowsePage({ initialEntries, search, page }: BrowsePageProps) {
     }
   }, [entriesQuery.isLoading, results?.pagination.total]);
 
-  const researchContext = useMemo<BrowseResearchContext | undefined>(() => {
-    if (!hasActiveSearch) {
-      return undefined;
-    }
-
-    const chips = [
-      ...selectedFilters.states.map((value) => STATE_NAME_BY_CODE[value] ?? value),
-      ...selectedFilters.cities,
-      ...selectedFilters.regions,
-      ...selectedFilters.issue_areas.map((value) => issueAreaLabels[value] ?? humanize(value)),
-      ...selectedFilters.entry_types.map(
-        (value) => ENTITY_TYPE_LABELS[value as EntryType] ?? humanize(value),
-      ),
-      ...selectedFilters.source_types.map(
-        (value) => SOURCE_TYPE_LABELS[value as SourceType] ?? humanize(value),
-      ),
-      ...selectedFilters.source_patterns.map((value) => humanize(value)),
-    ];
-
-    return {
-      chips,
-      query: selectedFilters.query,
-    };
-  }, [hasActiveSearch, issueAreaLabels, selectedFilters]);
   const placeBrief = useMemo<BrowsePlaceBrief | undefined>(() => {
     const selectedIssueArea = selectedFilters.issue_areas[0];
     if (!selectedStateName || !selectedIssueArea || !results?.pagination) {
@@ -552,7 +573,7 @@ export function BrowsePage({ initialEntries, search, page }: BrowsePageProps) {
     )[0];
 
     return {
-      body: `${results.pagination.total} source-linked records for ${issueLabel}.`,
+      body: `${results.pagination.total} people or groups with sources.`,
       signal: strongestSourcePattern
         ? `Strongest signal: ${sourcePatternBriefLabel(strongestSourcePattern.value)}`
         : undefined,
@@ -586,7 +607,7 @@ export function BrowsePage({ initialEntries, search, page }: BrowsePageProps) {
         : undefined;
 
     return {
-      body: `${results.pagination.total} source-linked actors across current results.`,
+      body: `${results.pagination.total} people or groups with sources.`,
       gap,
       signal: strongestSourcePattern
         ? `Source signal: ${sourcePatternBriefLabel(strongestSourcePattern.value)}`
@@ -599,6 +620,7 @@ export function BrowsePage({ initialEntries, search, page }: BrowsePageProps) {
     results?.pagination,
     selectedFilters.issue_areas,
   ]);
+  const matchCountLabel = total === 1 ? "1 match" : `${total} matches`;
 
   return (
     <div className="mx-auto w-full max-w-[88rem] space-y-3 px-3 py-2 md:px-4 lg:space-y-4 lg:py-3">
@@ -613,43 +635,59 @@ export function BrowsePage({ initialEntries, search, page }: BrowsePageProps) {
         activeCounts={activeCounts}
         initialQuery={search.query ?? ""}
         intentChips={intentChips}
+        mapSearch={mapSearch}
         quickIssueAreas={quickIssueAreas}
         searchPlaceholder={pageContent.searchPlaceholder}
         selectedEntryTypes={selectedFilters.entry_types}
         selectedIssueAreas={selectedFilters.issue_areas}
         selectedSourceTypes={selectedFilters.source_types}
         showEntryTypeFilter={Boolean(pageContent.showEntryTypeFilter)}
-        view={selectedFilters.view}
         onResetBrowse={resetBrowse}
         onSearch={runSearch}
-        onSelectView={(value) => {
-          updateSearch({ view: value });
-        }}
         onToggleFilter={handleToggleFilter}
       />
 
-      <BrowseExplorationGuides
-        collectionFunnels={collectionFunnels}
-        entryTypes={pageContent.showEntryTypeFilter ? FEATURED_ENTRY_TYPES : []}
-        issues={explorationIssueAreas}
-        states={dominantStates}
-        onSelectEntryType={handleSelectEntryType}
-        onSelectIssue={handleSelectIssue}
-        onSelectState={handleSelectState}
-      />
+      {!hasActiveSearch ? (
+        <BrowseExplorationGuides
+          collectionFunnels={collectionFunnels}
+          entryTypes={pageContent.showEntryTypeFilter ? FEATURED_ENTRY_TYPES : []}
+          issues={explorationIssueAreas}
+          states={dominantStates}
+          onSelectEntryType={handleSelectEntryType}
+          onSelectIssue={handleSelectIssue}
+          onSelectState={handleSelectState}
+        />
+      ) : null}
 
-      <section className="grid gap-3 lg:grid-cols-[minmax(0,1.3fr)_minmax(18rem,0.7fr)] xl:grid-cols-[minmax(0,1.45fr)_minmax(22rem,0.9fr)] 2xl:grid-cols-[minmax(0,1.55fr)_minmax(24rem,0.85fr)]">
+      <section className="grid gap-3 lg:grid-cols-[minmax(22rem,0.9fr)_minmax(0,1.15fr)] xl:grid-cols-[minmax(24rem,0.85fr)_minmax(0,1.35fr)]">
+        <BrowseResultsAside
+          emptyAction={pageContent.emptyAction}
+          entries={rankedEntries}
+          error={entriesQuery.error}
+          hasActiveSearch={hasActiveSearch}
+          isLoading={entriesQuery.isLoading}
+          discoveryContext={discoveryContext}
+          emptyRecoveryActions={emptyRecoveryActions}
+          issueAreaLabels={issueAreaLabels}
+          issueBrief={issueBrief}
+          pagination={results?.pagination}
+          placeBrief={placeBrief}
+          resultLabelPlural={pageContent.resultLabelPlural}
+          resultsHeading={pageContent.resultsHeading}
+          onPageChange={(offset) => {
+            updateSearch({ offset });
+          }}
+        />
+
         <div className="min-w-0 space-y-3">
           <div className="bg-surface-container min-w-0 overflow-hidden rounded-[1.45rem]">
             <div className="flex items-center justify-between px-3 py-2 lg:px-4">
               <p className="type-title-medium text-ink-strong">{currentContext}</p>
-              <span className="type-body-small text-ink-muted">
-                {total} {pageContent.resultLabelPlural}
-              </span>
+              <span className="type-body-small text-ink-muted">{matchCountLabel}</span>
             </div>
 
             {selectedFilters.view === "map" ? (
-              <UsMapSurface
+              <BrowseMapSurface
                 stateDensity={stateDensity}
                 selectedState={selectedState}
                 onSelectState={handleSelectState}
@@ -676,28 +714,6 @@ export function BrowsePage({ initialEntries, search, page }: BrowsePageProps) {
             total={total}
           />
         </div>
-
-        <BrowseResultsAside
-          emptyAction={pageContent.emptyAction}
-          entries={rankedEntries}
-          error={entriesQuery.error}
-          hasActiveSearch={hasActiveSearch}
-          isLoading={entriesQuery.isLoading}
-          discoveryContext={discoveryContext}
-          emptyRecoveryActions={emptyRecoveryActions}
-          issueAreaLabels={issueAreaLabels}
-          issueBrief={issueBrief}
-          pagination={results?.pagination}
-          placeBrief={placeBrief}
-          removableBadges={removableBadges}
-          researchContext={researchContext}
-          resultLabelPlural={pageContent.resultLabelPlural}
-          resultsHeading={pageContent.resultsHeading}
-          onPageChange={(offset) => {
-            updateSearch({ offset });
-          }}
-          onToggleFilter={handleToggleFilter}
-        />
       </section>
     </div>
   );

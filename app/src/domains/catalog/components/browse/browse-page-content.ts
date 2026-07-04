@@ -23,13 +23,12 @@ export interface BrowsePageContent {
 }
 
 export const DEFAULT_BROWSE_PAGE_CONTENT: BrowsePageContent = {
-  eyebrow: "Research browser",
-  title: "Source-linked civic research",
-  description:
-    "Find source-backed actors by place, issue, source type, and role. Open any result to inspect where the record came from and why it belongs in the local landscape.",
-  emptyAction: { label: "Research", to: "/discovery" },
-  resultLabelPlural: "entries",
-  resultsHeading: "Entries",
-  searchPlaceholder: "Search place, issue, or name",
+  eyebrow: "Directory",
+  title: "Find people and groups",
+  description: "Search by issue, place, or name.",
+  emptyAction: { label: "Search", to: "/browse" },
+  resultLabelPlural: "people and groups",
+  resultsHeading: "People and groups",
+  searchPlaceholder: "Try housing in Detroit",
   showEntryTypeFilter: true,
 };
