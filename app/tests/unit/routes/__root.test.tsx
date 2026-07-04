@@ -56,4 +56,22 @@ describe("routes/__root", () => {
     expect(markup).toContain('data-testid="vercel-analytics"');
     expect(markup).toContain('data-testid="vercel-speed-insights"');
   });
+
+  it("leaves route titles and descriptions to HeadContent", async () => {
+    const routeModule = await import("@/routes/__root");
+    const { asRouteStub } = await import("@/../tests/helpers/router-harness");
+    const Route = asRouteStub(routeModule.Route);
+
+    const Component = Route.options.component;
+    if (!Component) throw new Error("Expected Route.options.component");
+
+    const markup = renderToStaticMarkup(<Component />);
+
+    expect(markup).toContain('<meta charSet="utf-8"/>');
+    expect(markup).toContain(
+      '<meta name="viewport" content="width=device-width, initial-scale=1"/>',
+    );
+    expect(markup).not.toContain("<title>");
+    expect(markup).not.toContain('name="description"');
+  });
 });

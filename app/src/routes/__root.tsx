@@ -18,11 +18,6 @@ function RootDocument() {
         <HeadContent />
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <meta
-          name="description"
-          content="Atlas helps you find people and organizations by place, issue, and source."
-        />
-        <title>The Atlas</title>
       </head>
       <body className="text-on-surface-variant flex min-h-screen flex-col">
         <Outlet />
