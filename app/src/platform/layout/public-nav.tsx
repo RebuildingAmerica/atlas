@@ -35,7 +35,7 @@ function useHydrated(): boolean {
 const PUBLIC_NAV_ITEMS: AppNavItem[] = [
   { label: "Search", to: "/browse" },
   { label: "Map", to: "/map" },
-  { label: "Docs", to: "/docs" },
+  { label: "Docs", native: true, to: "/docs" },
   { label: "API", to: "/api-reference" },
 ];
 

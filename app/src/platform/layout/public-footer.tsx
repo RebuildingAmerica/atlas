@@ -15,15 +15,31 @@ interface FooterInternalLinkProps {
   to: string;
   label: string;
   animationDelay?: string;
+  native?: boolean;
 }
 
-function FooterInternalLink({ to, label, animationDelay }: FooterInternalLinkProps) {
+function FooterInternalLink({
+  to,
+  label,
+  animationDelay,
+  native = false,
+}: FooterInternalLinkProps) {
+  const className =
+    "type-body-small text-ink-muted hover:text-ink no-underline transition-colors duration-150 hover:underline";
+
+  if (native) {
+    return (
+      <li className="footer-fade-item" style={resolveFooterItemStyle(animationDelay)}>
+        <a href={to} className={className}>
+          {label}
+        </a>
+      </li>
+    );
+  }
+
   return (
     <li className="footer-fade-item" style={resolveFooterItemStyle(animationDelay)}>
-      <Link
-        to={to}
-        className="type-body-small text-ink-muted hover:text-ink no-underline transition-colors duration-150 hover:underline"
-      >
+      <Link to={to} className={className}>
         {label}
       </Link>
     </li>
@@ -219,15 +235,17 @@ export function PublicFooter({ localMode, status }: PublicFooterProps) {
             <FooterNavColumn heading="Product" baseDelay={80}>
               <FooterInternalLink to="/browse" label="Search" animationDelay="120ms" />
               <FooterInternalLink to="/map" label="Map" animationDelay="140ms" />
-              <FooterInternalLink to="/docs" label="Docs" animationDelay="160ms" />
+              <FooterInternalLink to="/docs" label="Docs" native animationDelay="160ms" />
               <FooterInternalLink
                 to="/docs/how-it-works"
                 label="How it works"
+                native
                 animationDelay="180ms"
               />
               <FooterInternalLink
                 to="/docs/resources/trust"
                 label="Trust & sources"
+                native
                 animationDelay="200ms"
               />
               {!localMode ? (
@@ -239,6 +257,7 @@ export function PublicFooter({ localMode, status }: PublicFooterProps) {
               <FooterInternalLink
                 to="/docs/resources/open-source"
                 label="Open source"
+                native
                 animationDelay="240ms"
               />
               <FooterExternalLink

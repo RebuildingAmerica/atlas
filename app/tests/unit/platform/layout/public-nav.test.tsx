@@ -28,7 +28,8 @@ describe("PublicTopNav", () => {
 
     expect(screen.getByRole("link", { name: "Search" })).toHaveAttribute("data-link-to", "/browse");
     expect(screen.getByRole("link", { name: "Map" })).toHaveAttribute("data-link-to", "/map");
-    expect(screen.getByRole("link", { name: "Docs" })).toHaveAttribute("data-link-to", "/docs");
+    expect(screen.getByRole("link", { name: "Docs" })).toHaveAttribute("href", "/docs");
+    expect(screen.getByRole("link", { name: "Docs" })).not.toHaveAttribute("data-link-to");
     expect(screen.getByRole("link", { name: "API" })).toHaveAttribute(
       "data-link-to",
       "/api-reference",

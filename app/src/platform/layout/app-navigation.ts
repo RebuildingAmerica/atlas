@@ -5,6 +5,7 @@ import type { AtlasSessionPayload } from "@/domains/access/organization-contract
  */
 export interface AppNavItem {
   label: string;
+  native?: boolean;
   to: string;
 }
 

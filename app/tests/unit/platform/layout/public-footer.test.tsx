@@ -18,7 +18,7 @@ vi.mock("@tanstack/react-router", () => ({
     to?: string;
     className?: string;
   }) => (
-    <a href={props.to} className={props.className}>
+    <a href={props.to} className={props.className} data-router-link="">
       {children}
     </a>
   ),
@@ -60,19 +60,30 @@ describe("PublicFooter", () => {
     expect(screen.getByRole("link", { name: "Search" })).toHaveAttribute("href", "/browse");
     expect(screen.getByRole("link", { name: "Map" })).toHaveAttribute("href", "/map");
     expect(screen.getByRole("link", { name: "Docs" })).toHaveAttribute("href", "/docs");
+    expect(screen.getByRole("link", { name: "Docs" })).not.toHaveAttribute("data-router-link");
     expect(screen.getByRole("link", { name: "How it works" })).toHaveAttribute(
       "href",
       "/docs/how-it-works",
+    );
+    expect(screen.getByRole("link", { name: "How it works" })).not.toHaveAttribute(
+      "data-router-link",
     );
     expect(screen.getByRole("link", { name: "Trust & sources" })).toHaveAttribute(
       "href",
       "/docs/resources/trust",
     );
+    expect(screen.getByRole("link", { name: "Trust & sources" })).not.toHaveAttribute(
+      "data-router-link",
+    );
     expect(screen.getByRole("link", { name: "Open source" })).toHaveAttribute(
       "href",
       "/docs/resources/open-source",
     );
+    expect(screen.getByRole("link", { name: "Open source" })).not.toHaveAttribute(
+      "data-router-link",
+    );
     expect(screen.getByRole("link", { name: "Pricing" })).toHaveAttribute("href", "/pricing");
+    expect(screen.getByRole("link", { name: "Pricing" })).toHaveAttribute("data-router-link");
     expect(screen.queryByRole("link", { name: /workspace/i })).not.toBeInTheDocument();
   });
 

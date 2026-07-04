@@ -28,7 +28,18 @@ function useScrolledPastHero(): boolean {
   );
 }
 
-function TopNavLink({ label, to }: AppNavItem) {
+function TopNavLink({ label, native, to }: AppNavItem) {
+  if (native) {
+    return (
+      <a
+        href={to}
+        className="type-label-large text-ink-muted hover:bg-surface-container hover:text-ink-strong rounded-lg px-3 py-1.5 no-underline"
+      >
+        {label}
+      </a>
+    );
+  }
+
   return (
     <Link
       to={to}
@@ -72,7 +83,7 @@ export function TopNavChrome({ identitySlot, items }: TopNavChromeProps) {
 
         <div className="flex flex-wrap items-center gap-1">
           {items.map((item) => (
-            <TopNavLink key={item.to} label={item.label} to={item.to} />
+            <TopNavLink key={item.to} label={item.label} native={item.native} to={item.to} />
           ))}
         </div>
 
