@@ -41,6 +41,28 @@ volunteers.
 
 ## CLI Experience
 
+### Install And Update
+
+During local development, install the current checkout as the `scout` command
+with editable local libraries:
+
+```bash
+uv tool install --reinstall --editable ./scout \
+  --with-editable ./libs/shared \
+  --with-editable ./libs/discovery-engine
+```
+
+Verify the packaged command path without touching the real Scout config:
+
+```bash
+sh scripts/smoke-scout-install.sh
+```
+
+The smoke check installs Scout into a temporary virtualenv, runs the installed
+`scout` executable, exercises `search-key` and `worker` command surfaces, checks
+search-key file permissions, and confirms worker startup fails clearly before
+login.
+
 ### Auth Commands
 
 ```bash
@@ -169,21 +191,28 @@ database access.
 Implemented worker operations:
 
 - `POST /api/discovery-runs/jobs/claim` claims the oldest queued job with a
-  lease and returns the run target context.
+  lease and returns the run target context. Scout sends search capability so
+  workers without search keys do not receive normal exploratory discovery jobs.
 - `POST /api/discovery-runs/jobs/{job_id}/heartbeat` renews the current worker's
   lease and stores progress.
 - `POST /api/discovery-runs/jobs/{job_id}/complete` marks the current worker's
   leased job complete after Scout syncs canonical artifacts.
+- `POST /api/discovery-runs/jobs/{job_id}/fail` reports retryable or
+  non-retryable worker failures. Retryable failures requeue with backoff;
+  non-retryable failures dead-letter the job.
+- `POST /api/discovery-runs/jobs/workers/{worker_id}/release` releases claimed
+  or running jobs for a revoked Scout worker.
 - Account settings list enrolled Scout devices with worker name, last seen,
   default upload target, search capability, and a revoke action. Token exchange
-  rejects a revoked worker id before minting a fresh API token.
+  rejects a revoked worker id before minting a fresh API token, and account
+  revoke asks the API to release active leases for that worker.
 
 Still required before widening public worker enrollment:
 
-- Fail a job with retryable/non-retryable error metadata.
-- Revoke outstanding API job leases when a worker is revoked.
-- Capability matching that prevents workers without search keys from claiming
-  exploratory query-generation jobs.
+- Rich job-mode metadata for seeded/direct-URL/evidence-packet jobs so the API
+  can match more than the current search/no-search boundary.
+- A full browser-login installed-CLI smoke against the running app and API in
+  CI or release certification.
 
 Job compatibility is based on capability metadata:
 

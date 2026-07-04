@@ -14,7 +14,9 @@ from atlas.domains.discovery.models import DiscoveryJobCRUD
 from atlas.domains.discovery.schemas import (
     DiscoveryWorkerClaimRequest,
     DiscoveryWorkerCompleteRequest,
+    DiscoveryWorkerFailRequest,
     DiscoveryWorkerHeartbeatRequest,
+    DiscoveryWorkerReleaseResponse,
 )
 from atlas.models import DiscoveryRunCRUD, get_db_connection, init_db
 
@@ -102,6 +104,34 @@ async def test_claim_discovery_job_returns_empty_when_queue_is_empty(
 
 
 @pytest.mark.asyncio
+async def test_claim_discovery_job_respects_search_capability(
+    test_db: object,
+    actor: AuthenticatedActor,
+) -> None:
+    await _queued_job(test_db)
+    direct_run_id = await DiscoveryRunCRUD.create(
+        test_db,
+        location_query="",
+        state="",
+        issue_areas=[],
+        research_goal="landscape_scan",
+    )
+    direct_job_id = await DiscoveryJobCRUD.create(test_db, run_id=direct_run_id)
+
+    response = await discovery_api.claim_discovery_job(
+        DiscoveryWorkerClaimRequest(worker_id="worker-123", search_key_configured=False),
+        response=None,
+        actor=actor,
+        db=test_db,
+    )
+
+    assert response.job is not None
+    assert response.job.id == direct_job_id
+    assert response.job.location_query == ""
+    assert response.job.issue_areas == []
+
+
+@pytest.mark.asyncio
 async def test_heartbeat_renews_only_the_claiming_worker(
     test_db: object,
     actor: AuthenticatedActor,
@@ -165,3 +195,84 @@ async def test_complete_discovery_job_requires_the_claiming_worker(
 
     assert response.status == "completed"
     assert response.completed_at is not None
+
+
+@pytest.mark.asyncio
+async def test_fail_discovery_job_requeues_retryable_errors(
+    test_db: object,
+    actor: AuthenticatedActor,
+) -> None:
+    _, job_id = await _queued_job(test_db)
+    await DiscoveryJobCRUD.claim_next(test_db, claimed_by="worker-123")
+
+    response = await discovery_api.fail_discovery_job(
+        job_id,
+        DiscoveryWorkerFailRequest(
+            worker_id="worker-123",
+            error_message="Search provider timed out",
+            retryable=True,
+        ),
+        response=None,
+        actor=actor,
+        db=test_db,
+    )
+
+    assert response.status == "queued"
+    assert response.error_message == "Search provider timed out"
+    assert response.retry_count == 1
+    assert response.claimed_by is None
+    assert response.claimed_until is None
+    assert response.next_attempt_at is not None
+
+
+@pytest.mark.asyncio
+async def test_fail_discovery_job_dead_letters_non_retryable_errors(
+    test_db: object,
+    actor: AuthenticatedActor,
+) -> None:
+    _, job_id = await _queued_job(test_db)
+    await DiscoveryJobCRUD.claim_next(test_db, claimed_by="worker-123")
+
+    response = await discovery_api.fail_discovery_job(
+        job_id,
+        DiscoveryWorkerFailRequest(
+            worker_id="worker-123",
+            error_message="Unsupported job payload",
+            retryable=False,
+        ),
+        response=None,
+        actor=actor,
+        db=test_db,
+    )
+
+    assert response.status == "failed"
+    assert response.error_message == "Unsupported job payload"
+    assert response.claimed_by is None
+    assert response.claimed_until is None
+    assert response.completed_at is not None
+
+
+@pytest.mark.asyncio
+async def test_release_worker_jobs_requeues_active_leases(
+    test_db: object,
+    actor: AuthenticatedActor,
+) -> None:
+    _, job_id = await _queued_job(test_db)
+    await DiscoveryJobCRUD.claim_next(test_db, claimed_by="worker-123")
+
+    response = await discovery_api.release_worker_jobs(
+        "worker-123",
+        response=None,
+        actor=actor,
+        db=test_db,
+    )
+
+    assert isinstance(response, DiscoveryWorkerReleaseResponse)
+    assert response.worker_id == "worker-123"
+    assert response.jobs_released == 1
+
+    stored = await DiscoveryJobCRUD.get_by_id(test_db, job_id)
+    assert stored is not None
+    assert stored.status == "queued"
+    assert stored.claimed_by is None
+    assert stored.claimed_until is None

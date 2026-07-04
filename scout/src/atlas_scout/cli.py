@@ -91,6 +91,7 @@ signal = _daemon_helpers.signal
 subprocess = _daemon_helpers.subprocess
 
 WORKER_STATE_PATH = SCOUT_CONFIG_DIR / "worker.json"
+LOCAL_WORKER_PROVIDERS = frozenset({"ollama"})
 
 _DAEMON_ORIGINALS = {
     "_clear_failed_daemon_start": _daemon_helpers._clear_failed_daemon_start,
@@ -122,6 +123,17 @@ def _default_worker_name() -> str:
     """Return the display name Scout should use for this host device."""
     name = platform.node().strip()
     return name or "Scout worker"
+
+
+def _require_local_worker_provider(config: ScoutConfig) -> None:
+    """Refuse public worker mode when Scout is configured for a remote model provider."""
+    provider = config.llm.provider.strip().lower()
+    if provider not in LOCAL_WORKER_PROVIDERS:
+        allowed = ", ".join(sorted(LOCAL_WORKER_PROVIDERS))
+        raise click.ClickException(
+            "Scout worker mode requires a local model provider before public launch. "
+            f"Set llm.provider to one of: {allowed}."
+        )
 
 
 def _search_key_configured() -> bool:
@@ -1588,13 +1600,18 @@ async def _worker_claim_job(
     token: str,
     worker_id: str,
     lease_seconds: int,
+    search_key_configured: bool,
 ) -> dict[str, object] | None:
     """Claim the next Atlas discovery job, if any."""
     body = await _worker_post(
         atlas_url=atlas_url,
         token=token,
         path="/api/discovery-runs/jobs/claim",
-        payload={"worker_id": worker_id, "lease_seconds": lease_seconds},
+        payload={
+            "worker_id": worker_id,
+            "lease_seconds": lease_seconds,
+            "search_key_configured": search_key_configured,
+        },
     )
     job = body.get("job")
     if job is None:
@@ -1639,6 +1656,28 @@ async def _worker_complete_job(
         token=token,
         path=f"/api/discovery-runs/jobs/{job_id}/complete",
         payload={"worker_id": worker_id},
+    )
+
+
+async def _worker_fail_job(
+    *,
+    atlas_url: str,
+    token: str,
+    worker_id: str,
+    job_id: str,
+    error_message: str,
+    retryable: bool,
+) -> None:
+    """Report one failed Atlas job lease."""
+    await _worker_post(
+        atlas_url=atlas_url,
+        token=token,
+        path=f"/api/discovery-runs/jobs/{job_id}/fail",
+        payload={
+            "worker_id": worker_id,
+            "error_message": error_message,
+            "retryable": retryable,
+        },
     )
 
 
@@ -1693,6 +1732,7 @@ async def _worker_run_internal(
     session = load_session()
     if session is None:
         raise click.ClickException("Log in with `scout login` before starting the worker.")
+    _require_local_worker_provider(config)
     resolved_atlas_url = (atlas_url or session.atlas_url).rstrip("/")
     resolved_search_key = resolve_search_api_key(search_api_key)
     stop_event = asyncio.Event()
@@ -1709,9 +1749,7 @@ async def _worker_run_internal(
 
     while not stop_event.is_set():
         if not resolved_search_key:
-            _write_worker_state(mode="search_key_needed", current_job_id=None)
-            await asyncio.sleep(interval)
-            continue
+            _write_worker_state(mode="waiting_for_seeded_jobs", current_job_id=None)
 
         try:
             token = await _worker_api_token(
@@ -1724,9 +1762,14 @@ async def _worker_run_internal(
                 token=token,
                 worker_id=session.worker_id,
                 lease_seconds=lease_seconds,
+                search_key_configured=bool(resolved_search_key),
             )
             if job is None:
-                _write_worker_state(mode="idle", current_job_id=None, last_heartbeat_at=_now_iso())
+                _write_worker_state(
+                    mode="idle" if resolved_search_key else "waiting_for_seeded_jobs",
+                    current_job_id=None,
+                    last_heartbeat_at=_now_iso(),
+                )
                 await asyncio.sleep(interval)
                 continue
 
@@ -1769,6 +1812,27 @@ async def _worker_run_internal(
                     quiet=True,
                     sync_after_run=True,
                 )
+            except Exception as exc:
+                failure_token = await _worker_api_token(
+                    atlas_url=resolved_atlas_url,
+                    session=session,
+                    search_api_key=resolved_search_key,
+                )
+                await _worker_fail_job(
+                    atlas_url=resolved_atlas_url,
+                    token=failure_token,
+                    worker_id=session.worker_id,
+                    job_id=job_id,
+                    error_message=str(exc),
+                    retryable=True,
+                )
+                _write_worker_state(
+                    mode="error",
+                    current_job_id=None,
+                    last_error=str(exc),
+                    last_heartbeat_at=_now_iso(),
+                )
+                continue
             finally:
                 heartbeat_stop.set()
                 heartbeat_task.cancel()
@@ -1851,6 +1915,7 @@ async def _worker_start(
     session = load_session()
     if session is None:
         raise click.ClickException("Log in with `scout login` before starting the worker.")
+    _require_local_worker_provider(config)
     state = _read_worker_state()
     if _worker_state_running(state):
         raise click.ClickException(f"Scout worker is already running (PID {state['process_id']}).")

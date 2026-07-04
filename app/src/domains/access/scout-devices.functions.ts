@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { createInternalAuthHeaders } from "./config";
 
 async function loadRuntimeModule() {
   if (import.meta.env.SSR) {
@@ -23,6 +24,41 @@ async function loadScoutDevicesModule() {
   }
 
   throw new Error("Scout devices are only available on the server.");
+}
+
+interface ScoutLeaseReleaseSession {
+  user: {
+    email: string;
+    id: string;
+  };
+}
+
+async function releaseScoutWorkerLeases(
+  deviceId: string,
+  session: ScoutLeaseReleaseSession,
+): Promise<void> {
+  const { getAuthRuntimeConfig } = await loadRuntimeModule();
+  const runtime = getAuthRuntimeConfig();
+  if (runtime.localMode || !runtime.apiBaseUrl) {
+    return;
+  }
+  if (!runtime.internalSecret) {
+    throw new Error("ATLAS_AUTH_INTERNAL_SECRET is required to revoke Scout worker leases.");
+  }
+
+  const response = await fetch(
+    `${runtime.apiBaseUrl}/api/discovery-runs/jobs/workers/${encodeURIComponent(deviceId)}/release`,
+    {
+      headers: {
+        Accept: "application/json",
+        ...createInternalAuthHeaders(session.user, runtime.internalSecret),
+      },
+      method: "POST",
+    },
+  );
+  if (!response.ok) {
+    throw new Error("Atlas could not release that Scout worker's active jobs.");
+  }
 }
 
 /**
@@ -64,4 +100,5 @@ export const revokeScoutDevice = createServerFn({ method: "POST" })
       deviceId: data.deviceId,
       userId: session.user.id,
     });
+    await releaseScoutWorkerLeases(data.deviceId, session);
   });

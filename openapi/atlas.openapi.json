@@ -3577,6 +3577,12 @@
             "title": "Lease Seconds",
             "type": "integer"
           },
+          "search_key_configured": {
+            "default": true,
+            "description": "Whether this Scout host can perform search-backed discovery jobs",
+            "title": "Search Key Configured",
+            "type": "boolean"
+          },
           "worker_id": {
             "description": "Enrolled Scout device id",
             "minLength": 1,
@@ -3622,6 +3628,36 @@
           "worker_id"
         ],
         "title": "DiscoveryWorkerCompleteRequest",
+        "type": "object"
+      },
+      "DiscoveryWorkerFailRequest": {
+        "description": "Failure notice from the Scout host currently holding a job lease.",
+        "properties": {
+          "error_message": {
+            "description": "Failure reason",
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Error Message",
+            "type": "string"
+          },
+          "retryable": {
+            "default": true,
+            "description": "Whether Atlas should retry this job later",
+            "title": "Retryable",
+            "type": "boolean"
+          },
+          "worker_id": {
+            "description": "Enrolled Scout device id",
+            "minLength": 1,
+            "title": "Worker Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "worker_id",
+          "error_message"
+        ],
+        "title": "DiscoveryWorkerFailRequest",
         "type": "object"
       },
       "DiscoveryWorkerHeartbeatRequest": {
@@ -3734,6 +3770,18 @@
             "title": "Max Retries",
             "type": "integer"
           },
+          "next_attempt_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Earliest retry claim timestamp",
+            "title": "Next Attempt At"
+          },
           "progress": {
             "anyOf": [
               {
@@ -3797,6 +3845,28 @@
           "research_goal"
         ],
         "title": "DiscoveryWorkerJobResponse",
+        "type": "object"
+      },
+      "DiscoveryWorkerReleaseResponse": {
+        "description": "Result of releasing active leases for one Scout worker.",
+        "properties": {
+          "jobs_released": {
+            "description": "Number of active job leases released",
+            "minimum": 0.0,
+            "title": "Jobs Released",
+            "type": "integer"
+          },
+          "worker_id": {
+            "description": "Enrolled Scout device id",
+            "title": "Worker Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "worker_id",
+          "jobs_released"
+        ],
+        "title": "DiscoveryWorkerReleaseResponse",
         "type": "object"
       },
       "DomainDetailResponse": {
@@ -10367,6 +10437,129 @@
         ]
       }
     },
+    "/api/discovery-runs/jobs/workers/{worker_id}/release": {
+      "post": {
+        "description": "Release claimed or running jobs when an enrolled Scout device is revoked.",
+        "operationId": "releaseDiscoveryWorkerJobs",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "worker_id",
+            "required": true,
+            "schema": {
+              "title": "Worker Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-internal-secret",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Internal-Secret"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-email",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Email"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-organization-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Organization-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DiscoveryWorkerReleaseResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Release a Scout worker's active job leases",
+        "tags": [
+          "discovery-runs"
+        ]
+      }
+    },
     "/api/discovery-runs/jobs/{job_id}": {
       "get": {
         "description": "Return the current status and progress of a discovery pipeline job.",
@@ -10618,6 +10811,139 @@
           }
         },
         "summary": "Complete a discovery job",
+        "tags": [
+          "discovery-runs"
+        ]
+      }
+    },
+    "/api/discovery-runs/jobs/{job_id}/fail": {
+      "post": {
+        "description": "Mark a Scout worker's leased job failed, retryable, or permanently failed.",
+        "operationId": "failDiscoveryJob",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-internal-secret",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Internal-Secret"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-email",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Email"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-organization-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Organization-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DiscoveryWorkerFailRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DiscoveryWorkerJobResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Fail a discovery job",
         "tags": [
           "discovery-runs"
         ]

@@ -237,6 +237,7 @@ class DiscoveryWorkerJobResponse(DiscoveryJobResponse):
     research_goal: str = Field(..., description="Research job this run supports")
     claimed_by: str | None = Field(None, description="Worker that claimed the job")
     claimed_until: str | None = Field(None, description="Current worker lease expiration")
+    next_attempt_at: str | None = Field(None, description="Earliest retry claim timestamp")
 
 
 class DiscoveryJobQueueResponse(BaseModel):
@@ -254,6 +255,10 @@ class DiscoveryWorkerClaimRequest(BaseModel):
 
     worker_id: str = Field(..., min_length=1, description="Enrolled Scout device id")
     lease_seconds: int = Field(900, ge=30, le=3600, description="Claim lease duration")
+    search_key_configured: bool = Field(
+        True,
+        description="Whether this Scout host can perform search-backed discovery jobs",
+    )
 
 
 class DiscoveryWorkerClaimResponse(BaseModel):
@@ -276,6 +281,21 @@ class DiscoveryWorkerCompleteRequest(BaseModel):
     """Completion notice from the Scout host currently holding a job lease."""
 
     worker_id: str = Field(..., min_length=1, description="Enrolled Scout device id")
+
+
+class DiscoveryWorkerFailRequest(BaseModel):
+    """Failure notice from the Scout host currently holding a job lease."""
+
+    worker_id: str = Field(..., min_length=1, description="Enrolled Scout device id")
+    error_message: str = Field(..., min_length=1, max_length=2000, description="Failure reason")
+    retryable: bool = Field(True, description="Whether Atlas should retry this job later")
+
+
+class DiscoveryWorkerReleaseResponse(BaseModel):
+    """Result of releasing active leases for one Scout worker."""
+
+    worker_id: str = Field(..., description="Enrolled Scout device id")
+    jobs_released: int = Field(..., ge=0, description="Number of active job leases released")
 
 
 class DiscoveryRunCancelResponse(BaseModel):

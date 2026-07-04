@@ -825,6 +825,7 @@ class DiscoveryJobCRUD:
         *,
         claimed_by: str,
         lease_seconds: int = 900,
+        search_key_configured: bool = True,
     ) -> DiscoveryJobModel | None:
         """Atomically claim the oldest claimable job. Returns None if none available.
 
@@ -843,6 +844,10 @@ class DiscoveryJobCRUD:
             Identifier of the claiming worker.
         lease_seconds : int, optional
             Lease duration in seconds. Default is 900.
+        search_key_configured : bool, optional
+            Whether the worker can claim normal search-backed jobs. Workers
+            without search credentials only receive jobs that have no search
+            target, which are reserved for seeded/direct/evidence work.
 
         Returns
         -------
@@ -854,17 +859,24 @@ class DiscoveryJobCRUD:
         is_postgres = getattr(conn, "backend", "sqlite") == "postgres"
         now = db.now_iso()
         lease_until = (datetime.now(UTC) + timedelta(seconds=lease_seconds)).isoformat()
+        capability_clause = (
+            ""
+            if search_key_configured
+            else "AND COALESCE(r.location_query, '') = '' AND r.issue_areas = '[]'"
+        )
 
         if is_postgres:  # pragma: no cover - exercised only against PostgreSQL
             cursor = await conn.execute(
-                """
+                f"""
                 UPDATE discovery_jobs SET status = 'claimed', claimed_by = ?,
                     claimed_until = ?, started_at = COALESCE(started_at, ?)
                 WHERE id = (
-                    SELECT id FROM discovery_jobs
-                    WHERE (status = 'queued' OR (status = 'claimed' AND claimed_until < ?))
-                      AND (next_attempt_at IS NULL OR next_attempt_at <= ?)
-                    ORDER BY created_at ASC
+                    SELECT j.id FROM discovery_jobs j
+                    JOIN discovery_runs r ON r.id = j.run_id
+                    WHERE (j.status = 'queued' OR (j.status = 'claimed' AND j.claimed_until < ?))
+                      AND (j.next_attempt_at IS NULL OR j.next_attempt_at <= ?)
+                      {capability_clause}
+                    ORDER BY j.created_at ASC
                     LIMIT 1
                     FOR UPDATE SKIP LOCKED
                 )
@@ -881,11 +893,13 @@ class DiscoveryJobCRUD:
             return job
 
         cursor = await conn.execute(
-            """
-            SELECT * FROM discovery_jobs
-            WHERE (status = 'queued' OR (status = 'claimed' AND claimed_until < ?))
-              AND (next_attempt_at IS NULL OR next_attempt_at <= ?)
-            ORDER BY created_at ASC
+            f"""
+            SELECT j.* FROM discovery_jobs j
+            JOIN discovery_runs r ON r.id = j.run_id
+            WHERE (j.status = 'queued' OR (j.status = 'claimed' AND j.claimed_until < ?))
+              AND (j.next_attempt_at IS NULL OR j.next_attempt_at <= ?)
+              {capability_clause}
+            ORDER BY j.created_at ASC
             LIMIT 1
             """,
             (now, now),
@@ -964,6 +978,8 @@ class DiscoveryJobCRUD:
         conn: aiosqlite.Connection,
         job_id: str,
         error_message: str,
+        *,
+        retryable: bool = True,
     ) -> bool:
         """Mark a job as failed, or re-queue if retries remain. Returns True if re-queued.
 
@@ -977,7 +993,7 @@ class DiscoveryJobCRUD:
             return False
 
         new_retry = job.retry_count + 1
-        if new_retry <= job.max_retries:
+        if retryable and new_retry <= job.max_retries:
             next_attempt_at = _retry_backoff_at(job_id, new_retry)
             await conn.execute(
                 """
@@ -995,13 +1011,33 @@ class DiscoveryJobCRUD:
         await conn.execute(
             """
             UPDATE discovery_jobs
-            SET status = 'failed', retry_count = ?, error_message = ?, completed_at = ?
+            SET status = 'failed', retry_count = ?, error_message = ?, completed_at = ?,
+                claimed_by = NULL, claimed_until = NULL, next_attempt_at = NULL
             WHERE id = ?
             """,
             (new_retry, error_message, now, job_id),
         )
         await conn.commit()
         return False
+
+    @staticmethod
+    async def release_worker_leases(conn: aiosqlite.Connection, worker_id: str) -> int:
+        """Release active leases held by one revoked Scout worker.
+
+        Jobs return to ``queued`` without incrementing retries because the work
+        itself did not fail; the trusted host relationship was revoked.
+        """
+        cursor = await conn.execute(
+            """
+            UPDATE discovery_jobs
+            SET status = 'queued', claimed_by = NULL, claimed_until = NULL,
+                error_message = ?, next_attempt_at = NULL
+            WHERE claimed_by = ? AND status IN ('claimed', 'running')
+            """,
+            ("worker revoked: lease released", worker_id),
+        )
+        await conn.commit()
+        return int(getattr(cursor, "rowcount", 0))
 
     @staticmethod
     async def reap_orphans(

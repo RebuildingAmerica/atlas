@@ -4,11 +4,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pytest
 from click.testing import CliRunner
 
 import atlas_scout.cli as cli_module
 from atlas_scout.auth import ScoutSession
 from atlas_scout.cli import main
+from atlas_scout.config import ScoutConfig
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -88,3 +90,86 @@ def test_worker_start_spawns_background_process(tmp_path: Path, monkeypatch) -> 
     assert captured["interval"] == 5
     assert captured["search_api_key"] == "search-key"
     assert "Worker started" in result.output
+
+
+def test_worker_start_refuses_non_local_model_provider(monkeypatch) -> None:
+    """Public worker mode does not launch with paid remote model providers."""
+    config = ScoutConfig()
+    config.llm.provider = "anthropic"
+    monkeypatch.setattr(cli_module, "load_config", lambda _path: config)
+    monkeypatch.setattr(cli_module, "resolve_search_api_key", lambda _key=None: "search-key")
+    monkeypatch.setattr(
+        cli_module,
+        "load_session",
+        lambda: ScoutSession(
+            atlas_url="https://atlas.example",
+            access_token="device-session-token",
+            worker_id="worker-123",
+            user_id="user-123",
+            user_email="user@example.org",
+            worker_name="Scout Laptop",
+            default_upload_target="workspace",
+            workspace_id="org-123",
+        ),
+    )
+
+    result = CliRunner().invoke(main, ["worker", "start"])
+
+    assert result.exit_code != 0
+    assert "local model provider" in result.output
+
+
+@pytest.mark.asyncio
+async def test_worker_claim_reports_search_capability(monkeypatch) -> None:
+    """Worker claims include whether this host can perform search-backed jobs."""
+    captured: dict[str, object] = {}
+
+    async def post(**kwargs: object) -> dict[str, object]:
+        captured.update(kwargs)
+        return {"job": None}
+
+    monkeypatch.setattr(cli_module, "_worker_post", post)
+
+    job = await cli_module._worker_claim_job(
+        atlas_url="https://atlas.example",
+        token="api-token",
+        worker_id="worker-123",
+        lease_seconds=120,
+        search_key_configured=False,
+    )
+
+    assert job is None
+    assert captured["path"] == "/api/discovery-runs/jobs/claim"
+    assert captured["payload"] == {
+        "lease_seconds": 120,
+        "search_key_configured": False,
+        "worker_id": "worker-123",
+    }
+
+
+@pytest.mark.asyncio
+async def test_worker_fail_reports_retry_metadata(monkeypatch) -> None:
+    """Worker failure reporting sends retryability to Atlas."""
+    captured: dict[str, object] = {}
+
+    async def post(**kwargs: object) -> dict[str, object]:
+        captured.update(kwargs)
+        return {}
+
+    monkeypatch.setattr(cli_module, "_worker_post", post)
+
+    await cli_module._worker_fail_job(
+        atlas_url="https://atlas.example",
+        token="api-token",
+        worker_id="worker-123",
+        job_id="job-123",
+        error_message="Search provider timed out",
+        retryable=True,
+    )
+
+    assert captured["path"] == "/api/discovery-runs/jobs/job-123/fail"
+    assert captured["payload"] == {
+        "error_message": "Search provider timed out",
+        "retryable": True,
+        "worker_id": "worker-123",
+    }

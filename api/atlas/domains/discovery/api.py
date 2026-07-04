@@ -43,8 +43,10 @@ from atlas.domains.discovery.schemas import (
     DiscoveryWorkerClaimRequest,
     DiscoveryWorkerClaimResponse,
     DiscoveryWorkerCompleteRequest,
+    DiscoveryWorkerFailRequest,
     DiscoveryWorkerHeartbeatRequest,
     DiscoveryWorkerJobResponse,
+    DiscoveryWorkerReleaseResponse,
     ScheduledRunResponse,
     ScheduledRunResult,
 )
@@ -680,6 +682,7 @@ async def claim_discovery_job(
         db,
         claimed_by=req.worker_id,
         lease_seconds=req.lease_seconds,
+        search_key_configured=req.search_key_configured,
     )
     apply_no_store_headers(response)
     if job is None:
@@ -776,6 +779,53 @@ async def complete_discovery_job(
         raise HTTPException(status_code=404, detail="Job not found")
     apply_no_store_headers(response)
     return await _worker_job_to_response(db, completed)
+
+
+@router.post(
+    "/jobs/{job_id}/fail",
+    response_model=DiscoveryWorkerJobResponse,
+    summary="Fail a discovery job",
+    description="Mark a Scout worker's leased job failed, retryable, or permanently failed.",
+    operation_id="failDiscoveryJob",
+    tags=["discovery-runs"],
+)
+async def fail_discovery_job(
+    job_id: str,
+    req: DiscoveryWorkerFailRequest,
+    response: Response,
+    actor: AuthenticatedActor = Depends(require_actor_permission("discovery", "write")),
+    db: aiosqlite.Connection = Depends(get_db),
+) -> DiscoveryWorkerJobResponse:
+    """Fail a claimed job lease for its current Scout worker."""
+    _ = actor
+    job = await _require_worker_job(db, job_id=job_id, worker_id=req.worker_id)
+    await DiscoveryJobCRUD.fail(db, job.id, req.error_message, retryable=req.retryable)
+    failed = await DiscoveryJobCRUD.get_by_id(db, job.id)
+    if failed is None:
+        raise HTTPException(status_code=404, detail="Job not found")
+    apply_no_store_headers(response)
+    return await _worker_job_to_response(db, failed)
+
+
+@router.post(
+    "/jobs/workers/{worker_id}/release",
+    response_model=DiscoveryWorkerReleaseResponse,
+    summary="Release a Scout worker's active job leases",
+    description="Release claimed or running jobs when an enrolled Scout device is revoked.",
+    operation_id="releaseDiscoveryWorkerJobs",
+    tags=["discovery-runs"],
+)
+async def release_worker_jobs(
+    worker_id: str,
+    response: Response,
+    actor: AuthenticatedActor = Depends(require_actor_permission("discovery", "write")),
+    db: aiosqlite.Connection = Depends(get_db),
+) -> DiscoveryWorkerReleaseResponse:
+    """Release active job leases held by one Scout worker."""
+    _ = actor
+    released = await DiscoveryJobCRUD.release_worker_leases(db, worker_id)
+    apply_no_store_headers(response)
+    return DiscoveryWorkerReleaseResponse(worker_id=worker_id, jobs_released=released)
 
 
 @router.get(
@@ -975,6 +1025,7 @@ async def _worker_job_to_response(
         research_goal=run.research_goal,
         claimed_by=job.claimed_by,
         claimed_until=job.claimed_until,
+        next_attempt_at=job.next_attempt_at,
     )
 
 
