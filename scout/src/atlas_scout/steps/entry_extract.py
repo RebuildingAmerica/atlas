@@ -329,6 +329,11 @@ async def _run_provider_extraction(
     )
     if line_delimited_entries:
         return line_delimited_entries
+    plain_table_entries = _extract_plain_text_roster_table_entries(
+        page, city=city, state=state,
+    )
+    if plain_table_entries:
+        return plain_table_entries
 
     # --- Pass 1: Identify all named entities ---
     identified = await _pass_identify(page, provider, on_retry=on_retry)
@@ -602,6 +607,80 @@ def _extract_line_delimited_roster_entries(
         index += 6
 
     return entries
+
+
+def _extract_plain_text_roster_table_entries(
+    page: PageContent, *, city: str, state: str,
+) -> list[RawEntry]:
+    """Extract roster tables scraped as one plain-text cell per line."""
+    lines = [line.strip() for line in page.text.splitlines() if line.strip()]
+    data_start = _plain_text_roster_data_start(lines)
+    if data_start is None:
+        return []
+
+    entries: list[RawEntry] = []
+    source_date = page.published_date.date() if page.published_date else None
+    row_starts = [
+        index
+        for index in range(data_start, len(lines))
+        if re.fullmatch(r"\d{1,3}[A-Za-z]?", lines[index]) is not None
+    ]
+
+    for offset, row_start in enumerate(row_starts):
+        row_end = row_starts[offset + 1] if offset + 1 < len(row_starts) else len(lines)
+        cells = lines[row_start:row_end]
+        if len(cells) < 3:
+            continue
+
+        district = cells[0]
+        name = _normalize_roster_name(cells[1])
+        party = cells[2]
+        if not name or party.lower() not in {"democratic", "republican", "independent"}:
+            continue
+
+        context = "\n".join(cells)
+        entries.append(
+            RawEntry(
+                name=name,
+                entry_type="person",
+                description=(
+                    f"{name} is listed as a state legislative member for District {district} "
+                    f"with party marker {party} in the public roster."
+                ),
+                city=city or None,
+                state=state or None,
+                geo_specificity="statewide",
+                issue_areas=[
+                    "political_polarization_and_democratic_norms",
+                    "electoral_reform",
+                ],
+                website=page.url,
+                affiliated_org=_affiliated_org_from_url(page.url),
+                extraction_context=context,
+                source_url=page.url,
+                source_date=source_date,
+            )
+        )
+
+    return entries
+
+
+def _plain_text_roster_data_start(lines: list[str]) -> int | None:
+    """Return the first data-cell index after a plain-text roster header."""
+    name_headers = {"name", "member", "representative", "senator"}
+    for index in range(len(lines) - 2):
+        if (
+            lines[index].lower() == "district"
+            and lines[index + 1].lower() in name_headers
+            and lines[index + 2].lower() == "party"
+        ):
+            data_start = index + 3
+            while data_start < len(lines):
+                if re.fullmatch(r"\d{1,3}[A-Za-z]?", lines[data_start]) is not None:
+                    return data_start
+                data_start += 1
+            return None
+    return None
 
 
 def _split_markdown_table_row(row: str) -> list[str]:
