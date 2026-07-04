@@ -1,8 +1,8 @@
 import { type Mock, vi } from "vitest";
 import type { FakeMap } from "./fake-map";
 import type { MapNavigate } from "@/domains/catalog/hooks/use-map-page";
-import type { ReadableMap } from "@/domains/catalog/map/map-readout";
 import type { MapPointCollection, MapPointParams } from "@/types";
+import type { ReadableMap } from "@/domains/catalog/map/map-readout";
 
 /** The minimal move/load event the page reads a viewport off of. */
 export interface MapEventLike {
@@ -75,13 +75,12 @@ export interface MapPageMocks {
   navigate: NavigateSpy;
 }
 
-/** Holds the navigate spy and the fake map the `useMap()` mock reaches for. */
+/** Holds the navigate spy for one `useMapPage` test. */
 interface MapPageHarnessState {
   mocks: MapPageMocks | null;
-  map: FakeMap | null;
 }
 
-const harnessState: MapPageHarnessState = { mocks: null, map: null };
+const harnessState: MapPageHarnessState = { mocks: null };
 
 /**
  * Reset the recorders and return fresh spies for one `useMapPage` test.
@@ -95,7 +94,6 @@ export function installMapPageMocks(): MapPageMocks {
   mapPageMapPointsMock.mockClear();
   const navigate: NavigateSpy = vi.fn();
   harnessState.mocks = { navigate };
-  harnessState.map = null;
   return harnessState.mocks;
 }
 
@@ -105,16 +103,6 @@ export function requireMapPageMocks(): MapPageMocks {
     throw new Error("Map page mocks were not installed for this test.");
   }
   return harnessState.mocks;
-}
-
-/** Place a fake map for the next `useMap()` read; pass `null` for "not mounted". */
-export function setMapPageMap(map: FakeMap | null): void {
-  harnessState.map = map;
-}
-
-/** The map the `useMap()` mock should hand the hook. */
-export function currentMapPageMap(): FakeMap | null {
-  return harnessState.map;
 }
 
 /** Read the `search` patch from a navigate spy's most recent call. */

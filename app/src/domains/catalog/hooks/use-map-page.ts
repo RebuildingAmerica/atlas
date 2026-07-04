@@ -1,9 +1,9 @@
 import { useCallback, useMemo, useState } from "react";
-import { useMap } from "react-map-gl/maplibre";
 import { useMapPoints } from "@/domains/catalog/hooks/use-map-points";
 import { flyToPlace } from "@/domains/catalog/map/map-camera";
 import { mapPointParamsFor } from "@/domains/catalog/map/map-filters";
 import { readViewport } from "@/domains/catalog/map/map-readout";
+import type { FlyToCamera } from "@/domains/catalog/map/map-camera";
 import type { ReadableMap } from "@/domains/catalog/map/map-readout";
 import type { PlaceMatch } from "@/domains/catalog/map/map-place-search";
 import {
@@ -34,8 +34,7 @@ export type MapNavigate = (options: {
   to: ".";
   resetScroll?: boolean;
   search:
-    | ((previous: Record<string, unknown>) => Record<string, unknown>)
-    | Record<string, unknown>;
+    ((previous: Record<string, unknown>) => Record<string, unknown>) | Record<string, unknown>;
 }) => void;
 
 /** The minimal load/move event the page reads a settled viewport off of. */
@@ -48,6 +47,8 @@ interface UseMapPageOptions {
   search: MapRouteSearch;
   /** Drive URL updates; the route supplies TanStack Router's `navigate`. */
   navigate: MapNavigate;
+  /** The mounted map camera, or null while the WebGL surface is still loading. */
+  map?: FlyToCamera | null;
   /** The SSR-seeded CONUS points, hydrated as the initial query data. */
   initialPoints?: MapPointCollection;
 }
@@ -66,8 +67,7 @@ interface UseMapPageOptions {
  * @param options The route search, a navigate function, and seeded points.
  * @returns Everything the page renders and the handlers its chrome calls.
  */
-export function useMapPage({ search, navigate, initialPoints }: UseMapPageOptions) {
-  const map = useMap().current;
+export function useMapPage({ search, navigate, map = null, initialPoints }: UseMapPageOptions) {
   const filters = useMemo(() => buildBrowseSearch(search), [search]);
   const initialView = useMemo(() => viewFromSearch(search), [search]);
 

@@ -12,18 +12,12 @@ import {
   moveEvent,
   readMapPageMocks,
   requireMapPageMocks,
-  setMapPageMap,
 } from "../../../../helpers/catalog/use-map-page-harness";
 import type { PlaceMatch } from "@/domains/catalog/map/map-place-search";
 
 vi.mock("@/domains/catalog/hooks/use-map-points", async () => {
   const { mapPageMapPointsMock } = await import("../../../../helpers/catalog/use-map-page-harness");
   return { useMapPoints: mapPageMapPointsMock };
-});
-
-vi.mock("react-map-gl/maplibre", async () => {
-  const { currentMapPageMap } = await import("../../../../helpers/catalog/use-map-page-harness");
-  return { useMap: () => ({ current: currentMapPageMap() }) };
 });
 
 beforeEach(() => {
@@ -116,9 +110,8 @@ describe("useMapPage", () => {
       zoom: 4,
       bounds: { sw: { lng: -125, lat: 24 }, ne: { lng: -66.5, lat: 49.5 } },
     });
-    setMapPageMap(map);
     const { result } = renderHook(() =>
-      useMapPage({ search: {}, navigate: requireMapPageMocks().navigate }),
+      useMapPage({ search: {}, navigate: requireMapPageMocks().navigate, map }),
     );
     const place: PlaceMatch = {
       kind: "city",
@@ -144,9 +137,8 @@ describe("useMapPage", () => {
       zoom: 4,
       bounds: { sw: { lng: -125, lat: 24 }, ne: { lng: -66.5, lat: 49.5 } },
     });
-    setMapPageMap(map);
     const { result } = renderHook(() =>
-      useMapPage({ search: {}, navigate: requireMapPageMocks().navigate }),
+      useMapPage({ search: {}, navigate: requireMapPageMocks().navigate, map }),
     );
     const place: PlaceMatch = {
       kind: "state",
@@ -168,10 +160,9 @@ describe("useMapPage", () => {
       zoom: 4,
       bounds: { sw: { lng: -125, lat: 24 }, ne: { lng: -66.5, lat: 49.5 } },
     });
-    setMapPageMap(map);
     const point = makePoint({ id: "1", name: "Dallas Housing Trust", lng: -96.8, lat: 32.78 });
     const { result } = renderHook(() =>
-      useMapPage({ search: {}, navigate: requireMapPageMocks().navigate }),
+      useMapPage({ search: {}, navigate: requireMapPageMocks().navigate, map }),
     );
     act(() => {
       result.current.onSelectActor(point);
@@ -236,9 +227,8 @@ describe("useMapPage", () => {
       zoom: 9,
       bounds: { sw: { lng: -75, lat: 39 }, ne: { lng: -73, lat: 41 } },
     });
-    setMapPageMap(map);
     const { result } = renderHook(() =>
-      useMapPage({ search: {}, navigate: requireMapPageMocks().navigate }),
+      useMapPage({ search: {}, navigate: requireMapPageMocks().navigate, map }),
     );
     act(() => {
       result.current.onZoomOut();

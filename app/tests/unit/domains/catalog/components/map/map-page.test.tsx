@@ -11,6 +11,7 @@ import {
   setMapPageChromeRevealed,
   setMapPageTaxonomy,
 } from "../../../../../helpers/catalog/map-page-component-harness";
+import type { MapPageSurfaceProps } from "@/domains/catalog/components/map/map-page-surface";
 
 const routerNavigateSpy = vi.hoisted(() => vi.fn());
 
@@ -47,18 +48,13 @@ vi.mock("@/domains/catalog/hooks/use-taxonomy", async () => {
   return { useTaxonomy: () => ({ data: currentMapPageTaxonomy() }) };
 });
 
-vi.mock("react-map-gl/maplibre", () => ({
-  useMap: () => ({ current: null }),
-}));
-
-vi.mock("@/domains/catalog/components/map/actor-map-surface", () => ({
-  ActorMapSurface: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="surface">{children}</div>
+vi.mock("@/domains/catalog/components/map/map-page-surface", () => ({
+  MapPageSurface: ({ surfaceRef, bounds, controlsRevealed }: MapPageSurfaceProps) => (
+    <div ref={surfaceRef} tabIndex={-1} data-testid="surface">
+      {bounds ? <div data-testid="markers" /> : null}
+      {controlsRevealed ? <button type="button">Zoom in</button> : null}
+    </div>
   ),
-}));
-
-vi.mock("@/domains/catalog/components/map/map-marker-layer", () => ({
-  MapMarkerLayer: () => <div data-testid="markers" />,
 }));
 
 beforeEach(async () => {

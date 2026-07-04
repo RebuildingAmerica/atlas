@@ -1,11 +1,9 @@
-import { useCallback, useMemo, useRef } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { ActorMapSurface } from "@/domains/catalog/components/map/actor-map-surface";
-import { MapMarkerLayer } from "@/domains/catalog/components/map/map-marker-layer";
 import { MapCommandBar } from "@/domains/catalog/components/map/map-command-bar";
-import { MapControls } from "@/domains/catalog/components/map/map-controls";
 import { MapDetailPanel } from "@/domains/catalog/components/map/map-detail-panel";
 import { MapLegend } from "@/domains/catalog/components/map/map-legend";
+import { MapPageSurface } from "@/domains/catalog/components/map/map-page-surface";
 import {
   MAP_RESULTS_LIST_ID,
   MapResultsPanel,
@@ -18,17 +16,13 @@ import {
 } from "@/domains/catalog/components/map/map-states";
 import { useMapPage } from "@/domains/catalog/hooks/use-map-page";
 import { useMapReveal } from "@/domains/catalog/hooks/use-map-reveal";
-import { usePanelCamera } from "@/domains/catalog/hooks/use-panel-camera";
 import { useReducedMotion } from "@/domains/catalog/hooks/use-reduced-motion";
 import { useTaxonomy } from "@/domains/catalog/hooks/use-taxonomy";
 import { announceViewport, sparsityPill } from "@/domains/catalog/map/map-summary";
 import type { MapNavigate } from "@/domains/catalog/hooks/use-map-page";
-import type { MapSelection } from "@/domains/catalog/map/map-selection";
+import type { FlyToCamera } from "@/domains/catalog/map/map-camera";
 import type { MapRouteSearch } from "@/domains/catalog/search-state";
 import type { MapPointCollection } from "@/types";
-
-/** The detail panel's width in pixels, used to inset the camera beside it. */
-const PANEL_WIDTH_PX = 384;
 
 interface MapPageProps {
   /** The route's search params: shared filters plus a possibly-shared viewport. */
@@ -38,25 +32,7 @@ interface MapPageProps {
 }
 
 /**
- * Keep the open selection framed beside the panel.
- *
- * Lives inside the basemap so it can reach the map through `useMap`; it eases
- * the camera so the selected dot stays visible beside the sliding panel and the
- * two read as one gesture. Renders nothing.
- */
-function MapCameraSync({
-  selection,
-  reducedMotion,
-}: {
-  selection: MapSelection | null;
-  reducedMotion: boolean;
-}) {
-  usePanelCamera(selection, PANEL_WIDTH_PX, { reducedMotion });
-  return null;
-}
-
-/**
- * The `/map` page — Atlas's explorable map of civic actors, full-bleed.
+ * The `/map` page — Atlas's explorable map of people and groups, full-bleed.
  *
  * The map itself is the page: a vector basemap edge-to-edge under the nav, with
  * the live dots over it and the chrome floating above. It reads everything it
@@ -79,7 +55,8 @@ export function MapPage({ search, initialPoints }: MapPageProps) {
     [routerNavigate],
   );
   const { data: taxonomy } = useTaxonomy();
-  const page = useMapPage({ search, navigate, initialPoints });
+  const [mapCamera, setMapCamera] = useState<FlyToCamera | null>(null);
+  const page = useMapPage({ search, navigate, map: mapCamera, initialPoints });
   const reducedMotion = useReducedMotion();
   const reveal = useMapReveal({ reducedMotion });
   const surfaceRef = useRef<HTMLDivElement>(null);
@@ -122,26 +99,21 @@ export function MapPage({ search, initialPoints }: MapPageProps) {
         Skip to results list
       </a>
 
-      <div ref={surfaceRef} tabIndex={-1} className="absolute inset-0 outline-none">
-        <ActorMapSurface
-          initialView={page.initialView}
-          onLoad={page.onLoad}
-          onMoveEnd={page.onMoveEnd}
-        >
-          <MapCameraSync selection={selection} reducedMotion={reducedMotion} />
-          {page.bounds ? (
-            <MapMarkerLayer
-              points={points}
-              bounds={page.bounds}
-              zoom={page.zoom}
-              selectedId={selection?.kind === "actor" ? selection.point.id : undefined}
-              reducedMotion={reducedMotion}
-              onSelectPoint={page.onSelectPoint}
-              onSelectCluster={page.onSelectCluster}
-            />
-          ) : null}
-        </ActorMapSurface>
-      </div>
+      <MapPageSurface
+        surfaceRef={surfaceRef}
+        initialView={page.initialView}
+        points={points}
+        bounds={page.bounds}
+        zoom={page.zoom}
+        selection={selection}
+        reducedMotion={reducedMotion}
+        controlsRevealed={reveal.chromeRevealed}
+        onMapReady={setMapCamera}
+        onLoad={page.onLoad}
+        onMoveEnd={page.onMoveEnd}
+        onSelectPoint={page.onSelectPoint}
+        onSelectCluster={page.onSelectCluster}
+      />
 
       {!hasFetched ? <ClusterSkeletons /> : null}
 
@@ -177,10 +149,6 @@ export function MapPage({ search, initialPoints }: MapPageProps) {
 
         <div className="absolute bottom-3 left-3 sm:bottom-4 sm:left-4">
           <MapLegend />
-        </div>
-
-        <div className="absolute right-3 bottom-3 sm:right-4 sm:bottom-4">
-          <MapControls reducedMotion={reducedMotion} />
         </div>
 
         {isEmpty ? (
