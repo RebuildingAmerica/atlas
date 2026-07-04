@@ -1,3 +1,4 @@
+import { useId } from "react";
 import { cn } from "@/lib/utils";
 
 interface Option {
@@ -28,18 +29,24 @@ export function Select({
   required = false,
   className,
 }: SelectProps) {
+  const selectId = useId();
+  const errorId = error ? `${selectId}-error` : undefined;
+
   return (
     <div className="space-y-1">
       {label && (
-        <label className="block text-sm font-medium text-gray-700">
+        <label htmlFor={selectId} className="block text-sm font-medium text-gray-700">
           {label}
           {required && <span className="text-red-500">*</span>}
         </label>
       )}
       <select
+        id={selectId}
         value={value || ""}
         onChange={(e) => onChange?.(e.target.value)}
         disabled={disabled}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={errorId}
         className={cn(
           "w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-transparent focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:bg-gray-100",
           error && "border-red-500",
@@ -53,7 +60,11 @@ export function Select({
           </option>
         ))}
       </select>
-      {error && <span className="text-sm text-red-500">{error}</span>}
+      {error && (
+        <span id={errorId} role="alert" className="text-sm text-red-500">
+          {error}
+        </span>
+      )}
     </div>
   );
 }

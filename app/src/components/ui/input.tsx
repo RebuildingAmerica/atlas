@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useId, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 interface InputProps {
@@ -30,10 +30,13 @@ export function Input({
   min,
   max,
 }: InputProps) {
+  const inputId = useId();
+  const errorId = error ? `${inputId}-error` : undefined;
+
   return (
     <div className="space-y-1">
       {label && (
-        <label className="block text-sm font-medium text-gray-700">
+        <label htmlFor={inputId} className="block text-sm font-medium text-gray-700">
           {label}
           {required && <span className="text-red-500">*</span>}
         </label>
@@ -41,6 +44,7 @@ export function Input({
       <div className="relative">
         {icon && <div className="absolute top-3 left-3 text-gray-400">{icon}</div>}
         <input
+          id={inputId}
           type={type}
           value={value}
           onChange={(e) => onChange?.(e.target.value)}
@@ -48,6 +52,8 @@ export function Input({
           disabled={disabled}
           min={min}
           max={max}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={errorId}
           className={cn(
             "w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-transparent focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:bg-gray-100",
             icon && "pl-10",
@@ -56,7 +62,11 @@ export function Input({
           )}
         />
       </div>
-      {error && <span className="text-sm text-red-500">{error}</span>}
+      {error && (
+        <span id={errorId} role="alert" className="text-sm text-red-500">
+          {error}
+        </span>
+      )}
     </div>
   );
 }
