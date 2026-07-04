@@ -21,9 +21,12 @@ export interface ProfileStatItem {
 export function ProfileStats({ items }: ProfileStatsProps) {
   return (
     <section
-      aria-label="Coverage statistics"
+      aria-labelledby="profile-stats-heading"
       className="border-border-taupe border-t-ink-strong bg-surface-container-lowest grid grid-cols-2 border border-t-[2px] sm:grid-cols-4"
     >
+      <h2 id="profile-stats-heading" className="sr-only">
+        Coverage statistics
+      </h2>
       {items.map((item, idx) => (
         <div
           key={item.label}

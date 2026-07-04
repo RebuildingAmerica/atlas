@@ -33,8 +33,11 @@ export function SignatureQuote({ sources }: SignatureQuoteProps) {
   return (
     <section
       className="border-border-taupe bg-paper-deep border px-6 py-6 sm:px-8"
-      aria-label="Signature quote from coverage"
+      aria-labelledby="signature-quote-heading"
     >
+      <h2 id="signature-quote-heading" className="sr-only">
+        Signature quote from coverage
+      </h2>
       <blockquote className="type-editorial-quote text-ink-strong max-w-3xl">
         <span aria-hidden>&ldquo;</span>
         {source.extraction_context}

@@ -65,7 +65,7 @@ function describeWork(entry: Entry, labels: Record<string, string>): string {
   }
 
   const issues = issueLabels(entry, labels);
-  return issues.length > 0 ? issues.join(", ") : "Public civic actor";
+  return issues.length > 0 ? issues.join(", ") : "Civic work";
 }
 
 function describeWhy(entry: Entry, labels: Record<string, string>): string {
@@ -80,7 +80,7 @@ function buildAnswers(entry: Entry, labels: Record<string, string>): AnswerItem[
       { label: "What they do", value: entry.profile_answers.what_they_do },
       { label: "Where", value: entry.profile_answers.where },
       { label: "Why they matter", value: entry.profile_answers.why_they_matter },
-      { label: "How Atlas knows", value: entry.profile_answers.how_atlas_knows },
+      { label: "Sources", value: entry.profile_answers.how_atlas_knows },
     ];
   }
 
@@ -89,21 +89,25 @@ function buildAnswers(entry: Entry, labels: Record<string, string>): AnswerItem[
     { label: "What they do", value: describeWork(entry, labels) },
     { label: "Where", value: formatProfileLocation(entry) },
     { label: "Why they matter", value: describeWhy(entry, labels) },
-    { label: "How Atlas knows", value: formatClaimEvidence(entry.claim_evidence?.summary, entry) },
+    { label: "Sources", value: formatClaimEvidence(entry.claim_evidence?.summary, entry) },
   ];
 }
 
 export function ProfileAnswerCard({ entry, issueAreaLabels }: ProfileAnswerCardProps) {
   const answers = buildAnswers(entry, issueAreaLabels);
+  const headingId = `profile-answers-${entry.id}`;
 
   return (
     <section
-      aria-label="Profile answers"
+      aria-labelledby={headingId}
       className="border-border-taupe bg-surface-container-lowest border px-6 py-5 sm:px-8"
     >
-      <p className="text-ink-soft font-mono text-xs font-semibold tracking-[0.14em] uppercase">
+      <h2
+        id={headingId}
+        className="text-ink-soft font-mono text-xs font-semibold tracking-[0.14em] uppercase"
+      >
         Profile at a glance
-      </p>
+      </h2>
       <dl className="mt-4 grid gap-3 sm:grid-cols-2">
         {answers.map((answer) => (
           <div

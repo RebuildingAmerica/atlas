@@ -8,6 +8,10 @@ import { AppearancesList } from "@/domains/catalog/components/profiles/appearanc
 import { DataQualityBlock } from "@/domains/catalog/components/profiles/data-quality-block";
 import { ProfileResearchContext } from "@/domains/catalog/components/profiles/profile-research-context";
 import { ProfileSection } from "@/domains/catalog/components/profiles/detail/profile-detail-primitives";
+import { ProfileAnswerCard } from "@/domains/catalog/components/profiles/profile-answer-card";
+import { ProfileStats } from "@/domains/catalog/components/profiles/profile-stats";
+import { SignatureQuote } from "@/domains/catalog/components/profiles/signature-quote";
+import { WorkSection } from "@/domains/catalog/components/profiles/work-section";
 import {
   createEntryFixture as buildEntry,
   createSourceFixture as buildSource,
@@ -123,5 +127,35 @@ describe("profile evidence accessibility", () => {
     expect(screen.getByRole("heading", { name: "Why this matters" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Evidence" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Corrections" })).toBeInTheDocument();
+  });
+
+  it("exposes profile trust summary panels in the heading outline", () => {
+    const entry = buildEntry({
+      id: "entry-1",
+      sources: [
+        buildSource({
+          extraction_context: "The coalition hosts a tenant hotline.",
+          publication: "MS Today",
+          published_date: "2026-04-12",
+        }),
+      ],
+    });
+
+    render(
+      <>
+        <ProfileAnswerCard entry={entry} issueAreaLabels={{}} />
+        <ProfileStats items={[{ label: "Sources", value: "4" }]} />
+        <SignatureQuote sources={entry.sources ?? []} />
+        <WorkSection entry={entry} issueAreaLabels={{}} />
+      </>,
+    );
+
+    expect(screen.getByRole("heading", { name: "Profile at a glance" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Coverage statistics" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Signature quote from coverage" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Recent" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Issue focus" })).toBeInTheDocument();
   });
 });

@@ -64,12 +64,15 @@ export function WorkSection({ entry, issueAreaLabels, showIssueChips = true }: W
   if (!hasRecent && focusLabels.length === 0) {
     return (
       <section
-        aria-label="Recent activity"
+        aria-labelledby={`work-recent-empty-${entry.id}`}
         className="border-border-taupe bg-paper-faded flex flex-wrap items-baseline gap-x-3 gap-y-1 border px-6 py-4 sm:px-8"
       >
-        <span className="text-ink-soft font-mono text-xs font-semibold tracking-[0.14em] uppercase">
+        <h2
+          id={`work-recent-empty-${entry.id}`}
+          className="text-ink-soft font-mono text-xs font-semibold tracking-[0.14em] uppercase"
+        >
           Recent
-        </span>
+        </h2>
         <p className="text-ink-soft text-sm">No recent coverage on file.</p>
       </section>
     );
@@ -79,12 +82,15 @@ export function WorkSection({ entry, issueAreaLabels, showIssueChips = true }: W
     <>
       {mostRecent !== null ? (
         <section
-          aria-label="Recent coverage"
+          aria-labelledby={`work-recent-${entry.id}`}
           className="border-border-taupe bg-paper-faded flex flex-wrap items-baseline gap-x-3 gap-y-1 border px-6 py-4 sm:px-8"
         >
-          <span className="text-ink-soft font-mono text-xs font-semibold tracking-[0.14em] uppercase">
+          <h2
+            id={`work-recent-${entry.id}`}
+            className="text-ink-soft font-mono text-xs font-semibold tracking-[0.14em] uppercase"
+          >
             Recent
-          </span>
+          </h2>
           <p className="text-ink-strong text-sm">
             {recentCount > 0 ? (
               <strong className="text-civic font-bold">
@@ -103,12 +109,12 @@ export function WorkSection({ entry, issueAreaLabels, showIssueChips = true }: W
           aria-labelledby={`work-issues-${entry.id}`}
           className="border-border-taupe bg-surface-container-lowest border px-6 py-5 sm:px-8"
         >
-          <span
+          <h2
             id={`work-issues-${entry.id}`}
             className="text-ink-soft block font-mono text-xs font-semibold tracking-[0.14em] uppercase"
           >
             Issue focus
-          </span>
+          </h2>
           <ul className="mt-3 flex flex-wrap gap-x-5 gap-y-2">
             {focusLabels.map(({ slug, label }) => (
               <li key={slug}>
