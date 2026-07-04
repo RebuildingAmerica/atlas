@@ -31,7 +31,7 @@ high-signal, safety-aware follow and watch model.
    - Public users can follow a profile, place, issue, directory, or show topic
      after sign-in.
    - Follow buttons live on profiles, place pages, issue pages, directories,
-     search results, and show companion pages.
+     collections, and search results.
 
 2. Personal civic home
    - Shows followed places, issues, actors, directories, and show topics.

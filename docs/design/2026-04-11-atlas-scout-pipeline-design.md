@@ -3,6 +3,12 @@
 **Date:** 2026-04-11
 **Status:** Draft
 
+> **Update, 2026-07-04:** Scout's launch auth, worker enrollment, upload
+> destinations, and search-key behavior are now specified in
+> [Atlas Scout CLI Worker Auth And Discovery Spec](2026-07-04-atlas-scout-cli-worker-discovery.md).
+> This April document remains the pipeline architecture baseline, but API-key
+> contribution is no longer the primary user-facing auth path.
+
 ## Context
 
 Atlas is a searchable directory for finding people, organizations, and initiatives working on contemporary American issues. The current pipeline (embedded in the Atlas API) runs a 6-step discovery process using the Anthropic Claude API. This design extracts the pipeline into a standalone tool called **Scout** that:

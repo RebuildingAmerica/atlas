@@ -16,10 +16,10 @@ The governing rule is simple:
 > No feature ships unless it makes Atlas easier to use, easier to trust, or
 > easier to act on.
 
-Revenue, workspace, API, and research operations features are valid only when
-they fund, improve, or protect the public civic discovery experience. The
-Rebuilding America show is a flagship use case and distribution path for Atlas,
-not the exclusive home of the product.
+Revenue, workspace, API, research operations, and client-publishing features
+are valid only when they fund, improve, or protect the public civic discovery
+experience. Rebuilding America is a flagship client and reference
+implementation using Atlas primitives, not the exclusive home of the product.
 
 ## Product Contract
 
@@ -46,7 +46,7 @@ Every PRD in this suite answers four questions:
 | [Profile Claiming And Stewardship](./03-profile-claiming-and-stewardship-prd.md) | People and organizations can claim and improve profiles. |
 | [Find My People / Alignment](./04-find-my-people-alignment-prd.md) | Users find aligned civic actors by public work, not profiling. |
 | [Place, Issue, And Map Explorer](./05-place-issue-map-explorer-prd.md) | Place and issue exploration that works as map and list. |
-| [Rebuilding America Show Companion](./06-rebuilding-america-show-companion-prd.md) | Episode experiences built on reusable Atlas primitives. |
+| [Client Story Experiences And Atlas Collections](./06-client-story-experiences-and-atlas-collections-prd.md) | Reusable source-linked story, guide, and client experiences. |
 | [ATProto Federated Web](./07-atproto-federated-web-prd.md) | Federated identity, profile claims, provenance, and contribution paths. |
 | [Public Directories / Atlas For X](./08-public-directories-atlas-for-x-prd.md) | Partner directories without weakening Atlas trust standards. |
 | [Research Runs To Briefing Room](./09-research-runs-briefing-room-prd.md) | Research outputs become useful, source-linked artifacts. |
@@ -68,6 +68,11 @@ Every PRD in this suite answers four questions:
   subject-provided profile fields.
 - **Alignment lens:** A search or recommendation lens based on shared public
   work, issue area, place, organization type, or source-backed relationship.
+- **Collection:** A curated source-linked civic story, guide, episode
+  companion, map, source trail, or briefing assembled from canonical Atlas
+  objects.
+- **Client experience:** A branded or stewarded use of Atlas Collections by a
+  show, publisher, nonprofit, newsroom, civic educator, or partner.
 - **Workspace:** A private layer for saved lists, briefs, notes, coverage
   targets, and team workflows.
 
@@ -85,8 +90,8 @@ Every PRD in this suite answers four questions:
 - Error states name what failed in user language.
 - Alignment and monitoring features must never infer private ideology,
   personality, vulnerability, or susceptibility.
-- Rebuilding America surfaces must link back to reusable Atlas profiles, places,
-  issues, sources, and directories.
+- Client story experiences must link back to reusable Atlas profiles, places,
+  issues, sources, directories, and search.
 - Workspace and business features must not add clutter to public routes.
 
 ## Success Metrics
@@ -97,8 +102,8 @@ Every PRD in this suite answers four questions:
   follow, claim, correction, or share actions.
 - Profile pages show fewer unsupported or stale claims over time.
 - Claimed profiles increase the accuracy and humanity of subject representation.
-- Rebuilding America viewers continue into Atlas exploration after episode
-  surfaces.
+- Rebuilding America and other client-story visitors continue into Atlas
+  exploration after collection surfaces.
 - Workspace customers produce more source-linked outputs without changing the
   public product into a B2B dashboard.
 
@@ -107,4 +112,4 @@ Every PRD in this suite answers four questions:
 - [Experience First](../../experience-first.md)
 - [Atlas Roadmap](../../roadmap.md)
 - [The Atlas Product](../../the-atlas-product.md)
-- [Business Plan Toolkit](../../plans/atlas-business/README.md)
+- [UI/UX Architecture](../ui-ux-architecture.md)

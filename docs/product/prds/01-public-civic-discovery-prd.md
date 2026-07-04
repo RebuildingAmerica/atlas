@@ -23,7 +23,7 @@ more trustworthy than a black-box answer.
 ## Users
 
 - Resident looking for people doing work in their community.
-- Viewer coming from Rebuilding America.
+- Viewer coming from Rebuilding America or another client story.
 - Local organizer looking for allies.
 - Journalist or creator finding sources.
 - Student or researcher learning a local civic ecosystem.
@@ -100,8 +100,8 @@ Primary public discovery routes:
 - `/sources`
 - `/directories/:orgId`
 
-Search should be reachable from the public home, show companion pages,
-directories, profile pages, place pages, issue pages, and no-results states.
+Search should be reachable from the public home, collection pages, directories,
+profile pages, place pages, issue pages, and no-results states.
 
 ## Data And Interfaces
 

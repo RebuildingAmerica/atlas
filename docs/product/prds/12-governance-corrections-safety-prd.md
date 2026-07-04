@@ -30,8 +30,8 @@ operations; it must be visible in the product.
 ## Core Requirements
 
 1. Correction flow
-   - Available from profiles, result cards, directories, evidence packs, and
-     show companion pages.
+   - Available from profiles, result cards, directories, collections, and
+     evidence packs.
    - Supports wrong fact, outdated fact, missing context, harmful exposure,
      duplicate profile, wrong relationship, and source problem.
    - Gives submitter a status path when signed in or email is provided.

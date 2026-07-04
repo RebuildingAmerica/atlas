@@ -51,6 +51,7 @@
             "pages": [
               "use-cases/journalists",
               "use-cases/organizers",
+              "use-cases/civic-teams",
               "use-cases/documentary",
               "use-cases/developers"
             ]

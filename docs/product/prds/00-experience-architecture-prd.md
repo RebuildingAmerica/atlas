@@ -20,7 +20,7 @@ experience for real people: calm, clear, source-linked, and immediately useful.
 ## Users
 
 - Public visitor looking for people or organizations working on an issue.
-- Viewer arriving from a Rebuilding America episode.
+- Viewer arriving from a client story, including a Rebuilding America episode.
 - Civic actor checking how they appear in Atlas.
 - Journalist, organizer, researcher, or creator starting from public search.
 - Workspace user who needs deeper tools after discovery.
@@ -48,7 +48,7 @@ Primary public navigation:
 - Profiles
 - Sources
 - Directories
-- Rebuilding America
+- Collections
 - Claim profile
 - About methodology
 
@@ -68,8 +68,8 @@ Global IA rules:
 - Public routes can invite sign-in only when it helps the current user task.
 - Search is available from every public page.
 - Profiles always provide source inspection, correction, and claim paths.
-- Show companion pages reuse public Atlas routes and never trap users inside a
-  show-only section.
+- Client story and collection pages reuse public Atlas routes and never trap
+  users inside a client-only section.
 - Workspace pages can link back to public profiles, places, and sources.
 
 ## Core Requirements
@@ -151,7 +151,7 @@ them on every screen:
 31. Methodology page.
 32. Public safety page.
 33. Directory sponsor disclosure.
-34. Show episode links into reusable Atlas objects.
+34. Client story links into reusable Atlas objects.
 35. Public profile preview in claim flow.
 36. Claim status tracker.
 37. Subject-managed contact preference.
@@ -210,7 +210,7 @@ profile, directory, source, and workspace APIs.
 - A result card explains why it matched and how strongly it is supported.
 - A public profile can be inspected for sources without sign-in.
 - A subject can find claim and correction paths from the public profile.
-- Rebuilding America pages link into Atlas public objects.
+- Client story and collection pages link into Atlas public objects.
 - Workspace-only labels and package names do not appear in public discovery.
 - Mobile users can complete search, profile inspection, claim start, and
   correction start.

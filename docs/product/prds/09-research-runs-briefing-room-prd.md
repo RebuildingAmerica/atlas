@@ -25,6 +25,8 @@ enterprise research dashboard.
 - Rebuilding America producer.
 - Atlas research operator.
 - Workspace reviewer or editor.
+- Public Scout volunteer contributing local compute and source-backed discovery
+  artifacts.
 
 ## Core Requirements
 
@@ -60,6 +62,14 @@ enterprise research dashboard.
      actions.
    - Export as JSON, CSV, and print/PDF-friendly view with receipts.
 
+7. Scout CLI worker path
+   - A user can sign into Scout without manually creating an API key.
+   - A signed-in worker can process Atlas discovery jobs with a local model.
+   - Search keys are optional but strongly recommended; no-key workers can
+     process seeded/direct-URL jobs.
+   - Sync and upload require an explicit public or workspace destination.
+   - Public uploads enter review before changing public profiles.
+
 ## Data And Interfaces
 
 Research request:
@@ -85,6 +95,17 @@ Research run output:
 - Confidence summary.
 - Suggested next actions.
 - Created brief id when saved.
+
+Scout worker upload:
+
+- Worker id.
+- Local run id.
+- Upload target: public contribution queue or workspace-private import.
+- Optional workspace id.
+- Artifact hash.
+- Source receipts.
+- Capability metadata, including local model and search-key availability.
+- Contributor user id and email.
 
 Brief:
 
@@ -118,6 +139,10 @@ Brief:
 - Briefs must not recommend harassment, exposure, intimidation, or targeting.
 - Campaign and political uses stay within public-source civic landscape
   intelligence.
+- Public Scout uploads must be review-gated and source-linked before they affect
+  public profiles.
+- Workspace Scout imports must remain private until a workspace publishes them
+  through the existing source-gated directory flow.
 
 ## Metrics
 
@@ -137,3 +162,5 @@ Brief:
 - Users can save actors to a list and convert output to a brief.
 - Brief export preserves source receipts and trust metadata.
 - Restricted research requests are denied or routed to review with plain copy.
+- A Scout user can authenticate with browser/device-code login and sync a local
+  run to a chosen destination without creating an API key.

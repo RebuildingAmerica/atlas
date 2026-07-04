@@ -2,15 +2,16 @@
 
 [Docs](../README.md) > Plans
 
-This section holds working strategy and product-planning documents that
-are more tactical than the core design docs.
+This section holds working strategy and product-planning documents that are more
+tactical than the core reference docs. These files are useful when the team
+needs to understand where Atlas is going next, how a strategy turns into product
+decisions, or how a business goal changes the order of work.
 
-Use these docs when you want the current direction for where Atlas
-should go next or how a strategy is being translated into product bets.
-
-[Atlas Roadmap](../roadmap.md) is the canonical roadmap. If a working
-plan in this directory conflicts with that roadmap or a core reference
-doc, the roadmap or reference doc wins.
+The core roadmap still wins when there is a conflict. [Atlas Roadmap](../roadmap.md)
+is the canonical public roadmap, and durable reference docs should be treated as
+more stable than planning drafts. The documents in this folder are working
+material: they are meant to be read, challenged, and revised as the product and
+business model become more real.
 
 ## Current Documents
 
