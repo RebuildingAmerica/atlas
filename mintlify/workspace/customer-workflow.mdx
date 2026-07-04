@@ -37,11 +37,20 @@ action and the evidence boundary clear.
 | Discovery run review | `/discovery?run=<remote_run_id>`             | Run status, selected entries, source receipts, sync receipts, and workspace links.       |
 | Watching and feed    | `/watching`, `/feed`                         | Watched actors, coverage targets, brief changes, and review prompts.                     |
 
-The screenshots embedded in this documentation show public browse, profile
-review, and discovery run screens. Briefing and coverage screenshots should be
-captured from these routes once those screens are stable enough for public docs;
-until then, these route references are the source of truth for matching the docs
-to the actual product.
+The screenshots below show the briefing room and coverage workspace populated
+with local-mode demo data. Use them as the visual baseline for this workflow:
+briefs should preserve source counts and confidence state, while coverage should
+make gaps, next actions, and linked evidence counts visible.
+
+<img
+  src="/images/briefs.png"
+  alt="Atlas briefing room showing source-backed Detroit, Phoenix, and Milwaukee briefs."
+/>
+
+<img
+  src="/images/coverage.png"
+  alt="Atlas coverage workspace showing a Phoenix worker-power target with gaps, next actions, linked actors, and reviewed source counts."
+/>
 
 ## Task 1: Build a source-linked briefing for Phoenix
 
