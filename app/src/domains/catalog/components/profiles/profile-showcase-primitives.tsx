@@ -6,16 +6,21 @@ import { cn } from "@/lib/utils";
 import { Badge } from "@/platform/ui/badge";
 import type { Entry } from "@/types";
 import type { ProfileBrowseScope } from "@/domains/catalog/profile-browse";
+import {
+  ProfileImage,
+  type ProfileImageFetchPriority,
+  type ProfileImageLoading,
+} from "./profile-image";
 
-type ImageFetchPriority = "auto" | "high" | "low";
-type ImageLoading = "eager" | "lazy";
+const HERO_IMAGE_WIDTH = 1200;
+const HERO_IMAGE_HEIGHT = 675;
 
 interface EntryHeroMediaProps {
   entry: Entry;
   className?: string;
   initialsClassName?: string;
-  loading?: ImageLoading;
-  fetchPriority?: ImageFetchPriority;
+  loading?: ProfileImageLoading;
+  fetchPriority?: ProfileImageFetchPriority;
 }
 
 export function formatLocation(entry: Entry): string {
@@ -94,11 +99,12 @@ export function EntryHeroMedia({
   if (entry.photo_url) {
     return (
       <div className={cn("relative w-full overflow-hidden", className)}>
-        <img
+        <ProfileImage
           src={entry.photo_url}
           alt=""
+          width={HERO_IMAGE_WIDTH}
+          height={HERO_IMAGE_HEIGHT}
           loading={loading}
-          decoding="async"
           fetchPriority={fetchPriority}
           className="absolute inset-0 h-full w-full object-cover"
         />

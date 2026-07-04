@@ -1,17 +1,20 @@
 import { cn } from "@/lib/utils";
+import {
+  ProfileImage,
+  type ProfileImageFetchPriority,
+  type ProfileImageLoading,
+} from "./profile-image";
 
 type ActorType = "person" | "organization";
 type AvatarSize = "sm" | "md" | "lg";
-type ImageFetchPriority = "auto" | "high" | "low";
-type ImageLoading = "eager" | "lazy";
 
 interface ActorAvatarProps {
   name: string;
   type: ActorType;
   size?: AvatarSize;
   photoUrl?: string;
-  loading?: ImageLoading;
-  fetchPriority?: ImageFetchPriority;
+  loading?: ProfileImageLoading;
+  fetchPriority?: ProfileImageFetchPriority;
 }
 
 const SIZE_MAP: Record<AvatarSize, string> = {
@@ -53,15 +56,14 @@ export function ActorAvatar({
 
   if (photoUrl) {
     return (
-      <img
+      <ProfileImage
         src={photoUrl}
         alt={name}
         width={imageSize}
         height={imageSize}
         loading={loading}
-        decoding="async"
         fetchPriority={fetchPriority}
-        className={cn("object-cover", sizeClasses, shapeClass)}
+        className={cn(sizeClasses, shapeClass)}
       />
     );
   }

@@ -34,6 +34,7 @@ describe("ActorAvatar", () => {
     expect(img).toHaveAttribute("loading", "lazy");
     expect(img).toHaveAttribute("decoding", "async");
     expect(img).toHaveAttribute("fetchpriority", "auto");
+    expect(img).toHaveAttribute("referrerpolicy", "no-referrer");
     expect(img).toHaveAttribute("width", "48");
     expect(img).toHaveAttribute("height", "48");
   });
@@ -74,6 +75,9 @@ describe("EntryHeroMedia", () => {
     expect(img).toHaveAttribute("loading", "lazy");
     expect(img).toHaveAttribute("decoding", "async");
     expect(img).toHaveAttribute("fetchpriority", "auto");
+    expect(img).toHaveAttribute("referrerpolicy", "no-referrer");
+    expect(img).toHaveAttribute("width", "1200");
+    expect(img).toHaveAttribute("height", "675");
   });
 
   it("can prioritize the leading profile spotlight image", () => {
