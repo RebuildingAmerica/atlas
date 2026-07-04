@@ -45,9 +45,14 @@ describe("Textarea", () => {
 
   it("renders the error message and applies the danger border", () => {
     render(<Textarea label="Cert" error="Bad cert" value="" />);
-    expect(screen.getByText("Bad cert")).toBeInTheDocument();
     const node = screen.getByLabelText("Cert");
+    const error = screen.getByText("Bad cert");
+
+    expect(error).toBeInTheDocument();
     expect(node.className).toMatch(/border-red-500/);
+    expect(node).toHaveAttribute("aria-invalid", "true");
+    expect(error.id).not.toBe("");
+    expect(node).toHaveAttribute("aria-describedby", error.id);
   });
 
   it("renders the required asterisk next to the label", () => {

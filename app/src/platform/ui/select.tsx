@@ -39,6 +39,7 @@ export function Select({
 }: SelectProps) {
   const generatedId = useId();
   const selectId = label ? `select-${generatedId}` : undefined;
+  const errorId = error ? `select-${generatedId}-error` : undefined;
 
   return (
     <div className="space-y-1">
@@ -57,6 +58,8 @@ export function Select({
         <select
           id={selectId}
           aria-label={label ? undefined : ariaLabel}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={errorId}
           data-size={size}
           value={value || ""}
           onChange={(e) => onChange?.(e.target.value)}
@@ -82,7 +85,11 @@ export function Select({
           <ChevronDown className="text-ink-muted h-4 w-4" aria-hidden />
         </span>
       </div>
-      {error && <span className="type-body-small text-red-500">{error}</span>}
+      {error && (
+        <span id={errorId} role="alert" className="type-body-small text-red-500">
+          {error}
+        </span>
+      )}
     </div>
   );
 }

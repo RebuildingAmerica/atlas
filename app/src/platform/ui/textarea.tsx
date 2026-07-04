@@ -39,6 +39,7 @@ export function Textarea({
   value,
 }: TextareaProps) {
   const textareaId = useId();
+  const errorId = error ? `${textareaId}-error` : undefined;
   const ref = useRef<HTMLTextAreaElement | null>(null);
 
   useEffect(() => {
@@ -71,13 +72,19 @@ export function Textarea({
         placeholder={placeholder}
         disabled={disabled}
         autoComplete={autoComplete}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={errorId}
         className={cn(
           "type-body-large border-border bg-surface text-ink-strong focus:border-border-strong focus:ring-accent-soft w-full rounded-2xl border px-4 py-3 focus:ring-2 disabled:cursor-not-allowed disabled:bg-stone-100",
           error ? "border-red-500" : null,
           className,
         )}
       />
-      {error ? <span className="type-body-small text-red-500">{error}</span> : null}
+      {error ? (
+        <span id={errorId} role="alert" className="type-body-small text-red-500">
+          {error}
+        </span>
+      ) : null}
     </div>
   );
 }

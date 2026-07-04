@@ -31,8 +31,14 @@ describe("Input", () => {
 
   it("renders error message and applies error styles", () => {
     render(<Input label="Email" error="Invalid email" />);
+    const input = screen.getByLabelText(/Email/i);
+    const error = screen.getByText("Invalid email");
+
     expect(screen.getByText("Invalid email")).toBeInTheDocument();
-    expect(screen.getByLabelText(/Email/i)).toHaveClass("border-red-500");
+    expect(input).toHaveClass("border-red-500");
+    expect(input).toHaveAttribute("aria-invalid", "true");
+    expect(error.id).not.toBe("");
+    expect(input).toHaveAttribute("aria-describedby", error.id);
   });
 
   it("respects disabled state", () => {

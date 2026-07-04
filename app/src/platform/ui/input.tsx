@@ -33,6 +33,7 @@ export function Input({
   autoComplete,
 }: InputProps) {
   const inputId = useId();
+  const errorId = error ? `${inputId}-error` : undefined;
 
   return (
     <div className="space-y-1">
@@ -54,6 +55,8 @@ export function Input({
           min={min}
           max={max}
           autoComplete={autoComplete}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={errorId}
           className={cn(
             "type-body-large border-border bg-surface text-ink-strong focus:border-border-strong focus:ring-accent-soft w-full rounded-2xl border px-4 py-3 focus:ring-2 disabled:cursor-not-allowed disabled:bg-stone-100",
             icon && "pl-10",
@@ -62,7 +65,11 @@ export function Input({
           )}
         />
       </div>
-      {error && <span className="type-body-small text-red-500">{error}</span>}
+      {error && (
+        <span id={errorId} role="alert" className="type-body-small text-red-500">
+          {error}
+        </span>
+      )}
     </div>
   );
 }

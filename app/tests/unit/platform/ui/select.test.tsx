@@ -38,8 +38,14 @@ describe("Select", () => {
 
   it("renders error message and applies error styles", () => {
     render(<Select options={options} error="Selection required" />);
-    expect(screen.getByText("Selection required")).toBeInTheDocument();
-    expect(screen.getByRole("combobox")).toHaveClass("border-red-500");
+    const select = screen.getByRole("combobox");
+    const error = screen.getByText("Selection required");
+
+    expect(error).toBeInTheDocument();
+    expect(select).toHaveClass("border-red-500");
+    expect(select).toHaveAttribute("aria-invalid", "true");
+    expect(error.id).not.toBe("");
+    expect(select).toHaveAttribute("aria-describedby", error.id);
   });
 
   it("respects disabled state", () => {
