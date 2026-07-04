@@ -33,6 +33,7 @@ describe("buildEntityListParams", () => {
         entry_types: ["organization", "person"],
         source_types: ["news_article", "report"],
         source_patterns: ["multi_source"],
+        affiliated_org_id: "org_123",
         limit: 20,
         offset: 40,
       }),
@@ -45,6 +46,7 @@ describe("buildEntityListParams", () => {
       entity_type: ["organization", "person"],
       source_type: ["news_article", "report"],
       source_pattern: ["multi_source"],
+      affiliated_org_id: "org_123",
       limit: 20,
       cursor: "40",
     });
@@ -60,6 +62,7 @@ describe("buildEntityListParams", () => {
       entity_type: undefined,
       source_type: undefined,
       source_pattern: undefined,
+      affiliated_org_id: undefined,
       limit: undefined,
       cursor: undefined,
     });

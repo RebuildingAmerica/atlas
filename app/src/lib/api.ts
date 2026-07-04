@@ -134,6 +134,7 @@ export function buildEntityListParams(filters: EntryFilterParams = {}): ListEnti
     entity_type: filters.entry_types,
     source_type: filters.source_types,
     source_pattern: filters.source_patterns,
+    affiliated_org_id: filters.affiliated_org_id,
     limit: filters.limit,
     cursor: typeof filters.offset === "number" ? String(filters.offset) : undefined,
   };

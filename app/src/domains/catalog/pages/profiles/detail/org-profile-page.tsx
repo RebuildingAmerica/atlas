@@ -54,10 +54,12 @@ export function OrgProfilePage({ entry, initialConnections }: OrgProfilePageProp
       "monitoring.watchlists",
     ) ??
       false);
-  const affiliatedPeopleQuery = useEntries({ entry_types: ["person"], limit: 50 });
-  const affiliatedPeople = (affiliatedPeopleQuery.data?.data ?? []).filter(
-    (person) => person.affiliated_org_id === entry.id,
-  );
+  const affiliatedPeopleQuery = useEntries({
+    affiliated_org_id: entry.id,
+    entry_types: ["person"],
+    limit: 50,
+  });
+  const affiliatedPeople = affiliatedPeopleQuery.data?.data ?? [];
 
   const issueAreaLabels = Object.fromEntries(
     Object.values(taxonomyQuery.data ?? {})
