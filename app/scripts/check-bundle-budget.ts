@@ -30,6 +30,17 @@ const CHUNK_BUDGETS: ChunkBudget[] = [
     pattern: /^browse-[\w-]+\.js$/,
   },
   {
+    label: "map route JS",
+    maxBytes: 80 * KIB,
+    pattern: /^map(?:-[\w-]+)?-[\w-]+\.js$/,
+  },
+  {
+    label: "profile route JS",
+    maxBytes: 90 * KIB,
+    pattern:
+      /^(?:people|organizations)(?:\.index|\._slug)?-[\w-]+\.js$|^profiles-overview-page-[\w-]+\.js$/,
+  },
+  {
     label: "MapLibre JS",
     maxBytes: 1.2 * MIB,
     pattern: /^maplibre-gl-[\w-]+\.js$/,
