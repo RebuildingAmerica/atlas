@@ -11,13 +11,13 @@ import json
 import logging
 from typing import TYPE_CHECKING
 
-from atlas_shared import GapReport, RankedEntry, RawEntry
-
 from atlas_scout.pipeline_support import strip_code_fence as _strip_code_fence
 from atlas_scout.providers.base import Completion, Message
 from atlas_scout.steps.query_gen import SearchQuery
 
 if TYPE_CHECKING:
+    from atlas_shared import GapReport, RankedEntry
+
     from atlas_scout.providers.base import LLMProvider
 
 logger = logging.getLogger(__name__)

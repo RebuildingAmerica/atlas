@@ -268,7 +268,7 @@ async def test_refresh_extractions_bypasses_cache(tmp_db_path) -> None:
 
     await store.close()
 
-    # 2 calls per run × 2 runs (refresh bypasses cache) = 4
+    # 2 calls per run x 2 runs (refresh bypasses cache) = 4
     assert len(provider.calls) == 4
 
 

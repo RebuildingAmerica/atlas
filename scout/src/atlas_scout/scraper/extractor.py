@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import json
 import re
+from contextlib import suppress
 from dataclasses import dataclass
 from datetime import datetime
 from html.parser import HTMLParser
 from typing import Any
+from urllib.parse import urlparse
 
 import trafilatura
 from atlas_shared import PageContent, SourceType
@@ -143,10 +145,8 @@ def extract_structured_data(html: str) -> dict[str, Any]:
     Empty keys are omitted.
     """
     parser = _StructuredDataParser()
-    try:
+    with suppress(Exception):
         parser.feed(html)
-    except Exception:
-        pass
 
     result: dict[str, Any] = {}
     if parser.jsonld:
@@ -183,19 +183,23 @@ def _infer_source_type(url: str, structured_data: dict[str, Any] | None = None) 
             if schema_type in ("report", "technicalarticle", "scholarlyarticle"):
                 return SourceType.REPORT
 
-    # Check domain (not URL path or title keywords)
-    from urllib.parse import urlparse
-
     domain = urlparse(url).netloc.lower()
-    _SOCIAL_DOMAINS = {"twitter.com", "x.com", "instagram.com", "facebook.com", "linkedin.com", "tiktok.com"}
-    _VIDEO_DOMAINS = {"youtube.com", "youtu.be", "vimeo.com"}
-    _GOV_TLDS = (".gov", ".gov.uk", ".gob.mx", ".gc.ca")
+    social_domains = {
+        "twitter.com",
+        "x.com",
+        "instagram.com",
+        "facebook.com",
+        "linkedin.com",
+        "tiktok.com",
+    }
+    video_domains = {"youtube.com", "youtu.be", "vimeo.com"}
+    gov_tlds = (".gov", ".gov.uk", ".gob.mx", ".gc.ca")
 
-    if any(domain == d or domain.endswith("." + d) for d in _SOCIAL_DOMAINS):
+    if any(domain == d or domain.endswith("." + d) for d in social_domains):
         return SourceType.SOCIAL_MEDIA
-    if any(domain == d or domain.endswith("." + d) for d in _VIDEO_DOMAINS):
+    if any(domain == d or domain.endswith("." + d) for d in video_domains):
         return SourceType.VIDEO
-    if any(domain.endswith(tld) for tld in _GOV_TLDS):
+    if any(domain.endswith(tld) for tld in gov_tlds):
         return SourceType.GOVERNMENT_RECORD
 
     return SourceType.WEBSITE

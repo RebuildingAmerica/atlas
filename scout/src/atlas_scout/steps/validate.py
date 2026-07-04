@@ -10,8 +10,10 @@ from __future__ import annotations
 
 import logging
 from difflib import SequenceMatcher
+from typing import TYPE_CHECKING
 
-from atlas_shared import PageContent, RawEntry
+if TYPE_CHECKING:
+    from atlas_shared import PageContent, RawEntry
 
 logger = logging.getLogger(__name__)
 

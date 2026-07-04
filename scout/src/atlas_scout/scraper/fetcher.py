@@ -352,7 +352,7 @@ def _coerce_discovered_links(value: Any) -> list[str]:
 def _extract_pdf_content(data: bytes, *, url: str) -> ContentExtraction:
     """Extract text from PDF bytes using pymupdf if available, otherwise skip."""
     try:
-        import pymupdf  # noqa: PLC0415
+        import pymupdf
     except ImportError:
         logger.debug("pymupdf not installed — skipping PDF: %s", url)
         return ContentExtraction(page=None, reason="pdf_extraction_unavailable", discovered_links=[])
@@ -367,7 +367,7 @@ def _extract_pdf_content(data: bytes, *, url: str) -> ContentExtraction:
         logger.debug("PDF extraction failed for %s: %s", url, exc)
         return ContentExtraction(page=None, reason="pdf_extraction_failed", discovered_links=[])
 
-    from atlas_scout.scraper.extractor import content_quality_reason  # noqa: PLC0415
+    from atlas_scout.scraper.extractor import content_quality_reason
 
     quality_reason = content_quality_reason(text) if text else "content_below_min_words"
     if quality_reason is not None:

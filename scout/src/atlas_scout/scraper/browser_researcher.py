@@ -40,12 +40,12 @@ async def research_org_website(
     Falls back gracefully if Playwright is not installed.
     """
     try:
-        from playwright.async_api import async_playwright  # noqa: PLC0415
+        from playwright.async_api import async_playwright
     except ImportError:
         logger.debug("Playwright not installed — skipping browser research for %s", website_url)
         return []
 
-    from atlas_scout.steps.entry_extract import extract_page_entries  # noqa: PLC0415
+    from atlas_scout.steps.entry_extract import extract_page_entries
 
     all_entries: list[RawEntry] = []
     pages_visited = 0

@@ -10,10 +10,12 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from typing import TYPE_CHECKING
 
 import httpx
 
-from atlas_shared import RawEntry
+if TYPE_CHECKING:
+    from atlas_shared import RawEntry
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +50,7 @@ async def verify_entries(
         results = await asyncio.gather(*tasks)
 
     verified: list[RawEntry] = []
-    for entry, (is_verified, reason) in zip(entries, results):
+    for entry, (is_verified, reason) in zip(entries, results, strict=True):
         if not is_verified:
             logger.info(
                 "Verification failed for %r: %s",

@@ -35,11 +35,13 @@ def decide_extraction_admission(
     worth keeping — not URL heuristics. Depth controls priority so
     seed pages are processed first.
     """
+    _ = page
     return ExtractionAdmission(priority=depth * 10)
 
 
 def extract_worker_count(provider: object, *, direct_mode: bool) -> int:
     """Return the extraction worker count from the provider's configured concurrency."""
+    _ = direct_mode
     return max(1, int(getattr(provider, "max_concurrent", 1) or 1))
 
 
