@@ -1,9 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { MapPage, mapSearchSchema } from "@/domains/catalog";
+import { MapPage } from "@/domains/catalog/components/map/map-page";
 import { buildBrowseSearch } from "@/domains/catalog/search-state";
 import { loadMapPoints } from "@/domains/catalog/server/map-points";
 import { buildPageHead } from "@/platform/seo";
-import type { MapRouteSearch } from "@/domains/catalog/search-state";
+import { mapSearchSchema, type MapRouteSearch } from "@/domains/catalog/search-state";
 
 export const Route = createFileRoute("/_public/map")({
   ssr: false,

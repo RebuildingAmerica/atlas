@@ -2,6 +2,7 @@
 import "@testing-library/jest-dom/vitest";
 import { render, cleanup } from "@testing-library/react";
 import type { PageHead } from "@/platform/seo";
+import type * as CatalogSearchState from "@/domains/catalog/search-state";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@tanstack/react-router", async () => {
@@ -11,7 +12,11 @@ vi.mock("@tanstack/react-router", async () => {
 
 const mocks = vi.hoisted(() => ({ loadMapPoints: vi.fn() }));
 
-vi.mock("@/domains/catalog", () => ({
+vi.mock("@/domains/catalog", () => {
+  throw new Error("Map route should import direct map modules instead of the catalog barrel");
+});
+
+vi.mock("@/domains/catalog/components/map/map-page", () => ({
   MapPage: ({ search, initialPoints }: { search: unknown; initialPoints: unknown }) => (
     <div
       data-testid="map-page"
@@ -19,8 +24,15 @@ vi.mock("@/domains/catalog", () => ({
       data-seeded={JSON.stringify(initialPoints)}
     />
   ),
-  mapSearchSchema: { parse: (input: unknown) => input },
 }));
+
+vi.mock("@/domains/catalog/search-state", async (importOriginal) => {
+  const actual = await importOriginal<typeof CatalogSearchState>();
+  return {
+    ...actual,
+    mapSearchSchema: { parse: (input: unknown) => input },
+  };
+});
 
 vi.mock("@/domains/catalog/server/map-points", () => ({
   loadMapPoints: mocks.loadMapPoints,
@@ -37,7 +49,7 @@ afterEach(cleanup);
 describe("routes/_public/map", () => {
   it("registers the map search schema and disables SSR for the WebGL canvas", async () => {
     const routeModule = await import("@/routes/_public/map");
-    const { mapSearchSchema } = await import("@/domains/catalog");
+    const { mapSearchSchema } = await import("@/domains/catalog/search-state");
     const { asRouteStub } = await import("@/../tests/helpers/router-harness");
     const Route = asRouteStub(routeModule.Route);
 
