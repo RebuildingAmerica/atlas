@@ -11,8 +11,7 @@ export const Route = createFileRoute("/_public/map")({
   head: () =>
     buildPageHead({
       title: "Civic Map | Atlas",
-      description:
-        "Map source-linked civic actors by place, issue area, public evidence, and relationship.",
+      description: "Map people and groups by place, issue, and source.",
       path: "/map",
     }),
   loaderDeps: ({ search }: { search: MapRouteSearch }) => ({ search }),

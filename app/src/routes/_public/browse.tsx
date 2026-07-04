@@ -1,6 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { BrowsePage, browseSearchSchema } from "@/domains/catalog";
-import { buildBrowseSearch, type BrowseRouteSearch } from "@/domains/catalog/search-state";
+import { BrowsePage } from "@/domains/catalog/components/browse/browse-page";
+import {
+  browseSearchSchema,
+  buildBrowseSearch,
+  type BrowseRouteSearch,
+} from "@/domains/catalog/search-state";
 import { api } from "@/lib/api";
 import { buildPageHead } from "@/platform/seo";
 import type {
@@ -47,8 +51,7 @@ export const Route = createFileRoute("/_public/browse")({
   head: () =>
     buildPageHead({
       title: "Browse | Atlas",
-      description:
-        "Browse source-linked civic actors by place, issue, source type, and public evidence.",
+      description: "Find people and groups by place, issue, name, and source.",
       path: "/browse",
     }),
   component: BrowseRoute,

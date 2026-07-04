@@ -62,15 +62,14 @@ describe("routes/_public/map", () => {
     const { asRouteStub } = await import("@/../tests/helpers/router-harness");
     const Route = asRouteStub(routeModule.Route);
 
-    const head = Route.options.head?.({} as never) as PageHead;
+    const head = Route.options.head?.({}) as PageHead;
 
     expect(head.meta).toEqual(
       expect.arrayContaining([
         { title: "Civic Map | Atlas" },
         {
           name: "description",
-          content:
-            "Map source-linked civic actors by place, issue area, public evidence, and relationship.",
+          content: "Map people and groups by place, issue, and source.",
         },
         {
           property: "og:url",

@@ -28,15 +28,19 @@ vi.mock("@/lib/api", () => ({
 
 vi.mock("@/domains/catalog/search-state", () => ({
   buildBrowseSearch: mocks.buildBrowseSearch,
+  browseSearchSchema: mocks.browseSearchSchema,
 }));
 
-vi.mock("@/domains/catalog", () => ({
+vi.mock("@/domains/catalog", () => {
+  throw new Error("Browse route should import direct browse modules instead of the catalog barrel");
+});
+
+vi.mock("@/domains/catalog/components/browse/browse-page", () => ({
   BrowsePage: (props: { initialEntries?: unknown; search: unknown }) => {
     mocks.browsePageProps(props);
 
     return <div data-testid="browse-page" data-search={JSON.stringify(props.search)} />;
   },
-  browseSearchSchema: mocks.browseSearchSchema,
 }));
 
 describe("routes/_public/browse", () => {
@@ -55,21 +59,20 @@ describe("routes/_public/browse", () => {
 
   it("registers the browse search schema without opting out of SSR", async () => {
     const routeModule = await import("@/routes/_public/browse");
-    const { browseSearchSchema } = await import("@/domains/catalog");
+    const { browseSearchSchema } = await import("@/domains/catalog/search-state");
     const { asRouteStub } = await import("@/../tests/helpers/router-harness");
     const Route = asRouteStub(routeModule.Route);
 
     expect(Route.options.ssr).not.toBe(false);
     expect(Route.options.validateSearch).toBe(browseSearchSchema);
-    const head = Route.options.head?.({} as never) as PageHead;
+    const head = Route.options.head?.({}) as PageHead;
 
     expect(head.meta).toEqual(
       expect.arrayContaining([
         { title: "Browse | Atlas" },
         {
           name: "description",
-          content:
-            "Browse source-linked civic actors by place, issue, source type, and public evidence.",
+          content: "Find people and groups by place, issue, name, and source.",
         },
         {
           property: "og:url",
