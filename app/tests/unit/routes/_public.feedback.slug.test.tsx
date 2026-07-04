@@ -76,7 +76,7 @@ describe("routes/_public/feedback/$slug", () => {
     expect(validator.parse({ kind: "missing_context" })).toEqual({ kind: "missing_context" });
 
     if (!Route.options.loader) throw new Error("Expected loader");
-    const data = await Route.options.loader({ params: { slug: "acme" } } as never);
+    const data = await Route.options.loader({ params: { slug: "acme" } });
     expect(data).toEqual({ entry });
   });
 
@@ -95,9 +95,10 @@ describe("routes/_public/feedback/$slug", () => {
     const Component = Route.options.component;
     if (!Component) throw new Error("Expected Route.options.component");
 
-    render(<Component />);
+    const view = render(<Component />);
 
     expect(screen.getByRole("dialog", { name: "Record review" })).toBeInTheDocument();
+    expect(view.container.querySelector("main")).toBeNull();
     expect(screen.getByText("Review Acme")).toBeInTheDocument();
     expect(screen.queryByRole("region", { name: "Record stewardship" })).not.toBeInTheDocument();
     expect(screen.queryByText("Public source")).not.toBeInTheDocument();

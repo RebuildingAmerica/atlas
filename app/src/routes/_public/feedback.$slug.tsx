@@ -115,7 +115,7 @@ function FeedbackRoute() {
 
   return (
     <PageLayout className="pt-0 pb-12">
-      <main className="bg-ink-strong/10 -mx-4 min-h-[calc(100vh-8rem)] px-4 py-8">
+      <div className="bg-ink-strong/10 -mx-4 min-h-[calc(100vh-8rem)] px-4 py-8">
         <section
           role="dialog"
           aria-label="Record review"
@@ -219,7 +219,7 @@ function FeedbackRoute() {
             </div>
           </form>
         </section>
-      </main>
+      </div>
     </PageLayout>
   );
 }
