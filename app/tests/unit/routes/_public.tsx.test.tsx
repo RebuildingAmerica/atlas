@@ -23,8 +23,8 @@ vi.mock("@/platform/layout/public-nav", () => ({
 }));
 
 vi.mock("@/platform/layout/public-footer", () => ({
-  PublicFooter: ({ localMode, status }: { localMode: boolean; status: string }) => (
-    <div data-testid="public-footer" data-local-mode={String(localMode)} data-status={status} />
+  PublicFooter: ({ localMode }: { localMode: boolean }) => (
+    <div data-testid="public-footer" data-local-mode={String(localMode)} />
   ),
 }));
 
@@ -38,15 +38,12 @@ describe("routes/_public layout", () => {
     cleanup();
   });
 
-  it("loads deploy mode and the OpenStatus result in parallel", async () => {
+  it("loads deploy mode without blocking on OpenStatus", async () => {
     const { getAtlasDeployMode } = await import("@/domains/access/session.functions");
     const openstatus = await import("@openstatus/react");
     vi.mocked(getAtlasDeployMode).mockResolvedValue({
       localMode: true,
     } as Awaited<ReturnType<typeof getAtlasDeployMode>>);
-    vi.mocked(openstatus.getStatus).mockResolvedValue({
-      status: "operational",
-    } as Awaited<ReturnType<typeof openstatus.getStatus>>);
 
     const routeModule = await import("@/routes/_public");
     const { asRouteStub } = await import("@/../tests/helpers/router-harness");
@@ -55,18 +52,16 @@ describe("routes/_public layout", () => {
     if (!Route.options.loader) throw new Error("Expected loader");
     const data = await Route.options.loader();
     expect(getAtlasDeployMode).toHaveBeenCalled();
-    expect(openstatus.getStatus).toHaveBeenCalledWith("atlasapp");
-    expect(data).toEqual({ localMode: true, status: "operational" });
+    expect(openstatus.getStatus).not.toHaveBeenCalled();
+    expect(data).toEqual({ localMode: true });
     expect(Route.options.staleTime).toBe(1000 * 60 * 5);
   });
 
-  it("falls back to 'unknown' when the OpenStatus probe rejects", async () => {
+  it("does not include footer-only status data in the loader payload", async () => {
     const { getAtlasDeployMode } = await import("@/domains/access/session.functions");
-    const openstatus = await import("@openstatus/react");
     vi.mocked(getAtlasDeployMode).mockResolvedValue({
       localMode: false,
     } as Awaited<ReturnType<typeof getAtlasDeployMode>>);
-    vi.mocked(openstatus.getStatus).mockRejectedValue(new Error("probe failed"));
 
     const routeModule = await import("@/routes/_public");
     const { asRouteStub } = await import("@/../tests/helpers/router-harness");
@@ -74,13 +69,13 @@ describe("routes/_public layout", () => {
 
     if (!Route.options.loader) throw new Error("Expected loader");
     const data = await Route.options.loader();
-    expect(data).toEqual({ localMode: false, status: "unknown" });
+    expect(data).toEqual({ localMode: false });
   });
 
   it("renders the top nav, outlet, and footer with the loader payload", async () => {
     const { readRouterMocks, asRouteStub } = await import("@/../tests/helpers/router-harness");
     const router = readRouterMocks();
-    router.useLoaderData.mockReturnValue({ localMode: true, status: "operational" });
+    router.useLoaderData.mockReturnValue({ localMode: true });
 
     const routeModule = await import("@/routes/_public");
     const Route = asRouteStub(routeModule.Route);
@@ -89,6 +84,6 @@ describe("routes/_public layout", () => {
     render(<Component />);
     expect(screen.getByTestId("public-top-nav").dataset.localMode).toBe("true");
     expect(screen.getByTestId("router-outlet")).toBeInTheDocument();
-    expect(screen.getByTestId("public-footer").dataset.status).toBe("operational");
+    expect(screen.getByTestId("public-footer").dataset.localMode).toBe("true");
   });
 });

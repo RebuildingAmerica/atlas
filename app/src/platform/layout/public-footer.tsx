@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { ArrowUpRight } from "lucide-react";
-import type { Status } from "@openstatus/react";
+import { useEffect, useState } from "react";
+import { getStatus, type Status } from "@openstatus/react";
 
 /* v8 ignore start -- callers always pass an animationDelay; the undefined branch exists only to satisfy the optional prop */
 function resolveFooterItemStyle(
@@ -112,9 +113,47 @@ const STATUS_CONFIG: Record<Status, { label: string; color: string; pulse: boole
   unknown: { label: "Status unavailable", color: "bg-stone-400", pulse: false },
 };
 
+const STATUS_MONITOR_ID = "atlasapp";
+const STATUS_CACHE_MS = 1000 * 60;
+const STATUS_TIMEOUT_MS = 2500;
+
+interface StatusCacheEntry {
+  status: Status;
+  updatedAt: number;
+}
+
+let statusCache: StatusCacheEntry | null = null;
+
+function cachedFooterStatus(now: number): Status | null {
+  if (!statusCache) {
+    return null;
+  }
+
+  return now - statusCache.updatedAt <= STATUS_CACHE_MS ? statusCache.status : null;
+}
+
+async function loadFooterStatus(): Promise<Status> {
+  const cached = cachedFooterStatus(Date.now());
+  if (cached) {
+    return cached;
+  }
+
+  const timeoutPromise = new Promise<Status>((resolve) => {
+    window.setTimeout(() => {
+      resolve("unknown");
+    }, STATUS_TIMEOUT_MS);
+  });
+  const statusPromise = getStatus(STATUS_MONITOR_ID)
+    .then((result) => result.status)
+    .catch((): Status => "unknown");
+  const status = await Promise.race([statusPromise, timeoutPromise]);
+  statusCache = { status, updatedAt: Date.now() };
+  return status;
+}
+
 interface PublicFooterProps {
   localMode: boolean;
-  status: Status;
+  status?: Status;
 }
 
 /**
@@ -125,8 +164,24 @@ interface PublicFooterProps {
  * Sits flush at page bottom — no border-radius, not floating.
  */
 export function PublicFooter({ localMode, status }: PublicFooterProps) {
-  const { label, color, pulse } = STATUS_CONFIG[status];
+  const [footerStatus, setFooterStatus] = useState<Status>(status ?? "unknown");
+  const { label, color, pulse } = STATUS_CONFIG[footerStatus];
   const shouldShowWorkspaceLink = !localMode;
+
+  useEffect(() => {
+    let cancelled = false;
+
+    void loadFooterStatus().then((nextStatus) => {
+      if (!cancelled) {
+        setFooterStatus(nextStatus);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   return (
     <footer
       aria-label="Site footer"
