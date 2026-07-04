@@ -62,6 +62,7 @@ async def test_extracts_people_from_plain_text_roster_tables() -> None:
                 "Franklin Township",
                 "Chester",
                 "2010",
+                "14",
             ]
         ),
     )
@@ -81,3 +82,37 @@ async def test_extracts_people_from_plain_text_roster_tables() -> None:
     assert entries[0].state == "PA"
     assert entries[0].affiliated_org == "State legislature"
     assert "District 1" in entries[0].description
+
+
+@pytest.mark.asyncio
+async def test_plain_text_roster_header_without_rows_falls_back_to_provider() -> None:
+    """A header with no data rows should not become phantom entries."""
+    provider = UnusedProvider()
+    page = PageContent(
+        url="https://example.test/empty-roster",
+        title="Empty roster",
+        text="\n".join(
+            [
+                "District",
+                "Name",
+                "Party",
+                "Residence",
+                "Counties",
+                "Start",
+                "No current members listed",
+            ]
+        ),
+    )
+
+    entries = await extract_page_entries(
+        page,
+        provider,
+        "Pennsylvania",
+        "PA",
+        store=None,
+        run_id=None,
+        reuse_cached_extractions=False,
+    )
+
+    assert entries == []
+    assert len(provider.calls) == 1

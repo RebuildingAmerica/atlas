@@ -53,3 +53,34 @@ async def test_labels_state_roster_tables_with_state_legislature_source() -> Non
     assert [entry.name for entry in entries] == ["Alex Public"]
     assert entries[0].affiliated_org == "State legislature"
     assert provider.calls == []
+
+
+@pytest.mark.asyncio
+async def test_labels_senate_dot_gov_roster_tables_with_senate_source() -> None:
+    """Generic senate.gov roster tables should retain federal Senate provenance."""
+    provider = UnusedProvider()
+    page = PageContent(
+        url="https://www.senate.gov/example-roster",
+        title="Senate roster",
+        text="\n".join(
+            [
+                "| District | Senator | Party |",
+                "|---|---|---|",
+                "| At-large | Public, Alex | Independent |",
+            ]
+        ),
+    )
+
+    entries = await extract_page_entries(
+        page,
+        provider,
+        "United States",
+        "US",
+        store=None,
+        run_id=None,
+        reuse_cached_extractions=False,
+    )
+
+    assert [entry.name for entry in entries] == ["Alex Public"]
+    assert entries[0].affiliated_org == "United States Senate"
+    assert provider.calls == []

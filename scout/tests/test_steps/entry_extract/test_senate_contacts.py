@@ -65,6 +65,15 @@ async def test_extracts_senators_from_contact_blocks() -> None:
                 "(202) 224-0000",
                 "https://example.test/contact",
                 "https://example.test",
+                "NoWebsite (R-WY)",
+                "NoWebsite",
+                "Example",
+                "R",
+                "WY",
+                "Address",
+                "(202) 224-0001",
+                "Contact form unavailable",
+                "Contact form unavailable",
             ]
         ),
     )
