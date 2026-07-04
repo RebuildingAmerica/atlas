@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 import httpx
 from atlas_shared import (
@@ -121,11 +121,15 @@ async def contribute_entries(
     except httpx.HTTPStatusError as exc:
         reason = f"contribution batch failed: HTTP {exc.response.status_code}"
         logger.warning("Contribution failed: %s", reason)
-        return ContributionResult(attempted=len(eligible), created=0, failed=len(eligible), errors=[reason])
+        return ContributionResult(
+            attempted=len(eligible), created=0, failed=len(eligible), errors=[reason]
+        )
     except httpx.RequestError as exc:
         reason = f"contribution batch failed: {exc}"
         logger.warning("Contribution failed: %s", reason)
-        return ContributionResult(attempted=len(eligible), created=0, failed=len(eligible), errors=[reason])
+        return ContributionResult(
+            attempted=len(eligible), created=0, failed=len(eligible), errors=[reason]
+        )
 
     created = created_payload.entries_persisted
     failed = max(len(eligible) - created, 0)
@@ -136,13 +140,22 @@ async def sync_run_artifacts(
     artifacts: DiscoveryRunArtifacts,
     *,
     atlas_url: str,
-    api_key: str,
+    api_key: str = "",
+    bearer_token: str = "",
+    target: Literal["public", "workspace"] | None = None,
+    workspace_id: str | None = None,
 ) -> ContributionResult:
     """Sync a canonical local run bundle to the Atlas run-sync API."""
     url = f"{atlas_url.rstrip('/')}/api/discovery-runs/syncs"
     headers = {"Content-Type": "application/json"}
     if api_key:
         headers["X-API-Key"] = api_key
+    if bearer_token:
+        headers["Authorization"] = f"Bearer {bearer_token}"
+    if target:
+        headers["X-Atlas-Upload-Target"] = target
+    if workspace_id:
+        headers["X-Atlas-Workspace-Id"] = workspace_id
 
     payload = DiscoveryRunSyncRequest(artifacts=artifacts)
     attempted = len(artifacts.ranked_entries)

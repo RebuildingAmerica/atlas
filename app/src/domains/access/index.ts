@@ -2,6 +2,10 @@ export { useAtlasSession } from "@/domains/access/client/use-atlas-session";
 export { getAuthConfig } from "@/domains/access/config";
 export { AccountSetupPage } from "@/domains/access/pages/auth/account-setup-page";
 export {
+  DeviceApprovalPage,
+  deviceApprovalSearchSchema,
+} from "@/domains/access/pages/auth/device-approval-page";
+export {
   OAuthConsentPage,
   oauthConsentSearchSchema,
 } from "@/domains/access/pages/auth/oauth-consent-page";

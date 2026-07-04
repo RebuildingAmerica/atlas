@@ -193,6 +193,29 @@ async def test_runs_inspect_renders_sync_metadata(
 
 
 @pytest.mark.asyncio
+async def test_runs_inspect_renders_page_task_without_detail(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Page task rows with no entries or error still render cleanly."""
+    output = _capture_consoles(monkeypatch)
+    config = _make_config(tmp_path)
+    store = ScoutStore(config.store.path)
+    await store.initialize()
+    run_id = await store.create_run(
+        location="Austin, TX", issues=["housing"], search_depth="standard"
+    )
+    task_id = await store.create_page_task(run_id, "https://example.com/empty")
+    await store.update_page_task(task_id, "completed")
+    await store.close()
+
+    await _runs_inspect(config, run_id)
+
+    rendered = output.getvalue()
+    assert "https://example.com/empty" in rendered
+    assert "Pages" in rendered
+
+
+@pytest.mark.asyncio
 async def test_runs_inspect_missing_run_exits(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -226,7 +249,7 @@ async def test_runs_sync_requires_api_key(tmp_path: Path, monkeypatch: pytest.Mo
     config = _make_config(tmp_path, contribution=ContributionConfig(api_key="", atlas_url=""))
     with pytest.raises(SystemExit):
         await _runs_sync(config, "any", atlas_url="https://atlas.test", api_key=None)
-    assert "API key required" in output.getvalue()
+    assert "Log in with `scout login` or pass --api-key" in output.getvalue()
 
 
 @pytest.mark.asyncio

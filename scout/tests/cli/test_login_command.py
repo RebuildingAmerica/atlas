@@ -1,0 +1,129 @@
+"""Scout login command tests."""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+from click.testing import CliRunner
+
+import atlas_scout.cli as cli_module
+from atlas_scout.auth import DeviceCode, DeviceToken, ScoutSession, ScoutTokenExchange
+from atlas_scout.cli import main
+
+if TYPE_CHECKING:
+    import pytest
+
+
+class FakeDeviceAuthClient:
+    async def request_device_code(self, atlas_url: str) -> DeviceCode:
+        assert atlas_url == "https://atlas.example"
+        return DeviceCode(
+            device_code="device-code",
+            user_code="ABCD-EFGH",
+            verification_uri="https://atlas.example/device",
+            verification_uri_complete="https://atlas.example/device?user_code=ABCD-EFGH",
+            expires_in=1800,
+            interval=5,
+        )
+
+    async def request_device_token(self, atlas_url: str, *, device_code: str) -> DeviceToken:
+        assert atlas_url == "https://atlas.example"
+        assert device_code == "device-code"
+        return DeviceToken(
+            access_token="device-session-token",
+            token_type="Bearer",
+            expires_in=3600,
+            scope="openid profile email",
+        )
+
+    async def exchange_session_for_api_token(
+        self,
+        atlas_url: str,
+        *,
+        session_token: str,
+    ) -> ScoutTokenExchange:
+        assert atlas_url == "https://atlas.example"
+        assert session_token == "device-session-token"
+        return ScoutTokenExchange(
+            token="api-jwt",
+            user_id="user-123",
+            user_email="user@example.org",
+            workspace_id="org-123",
+        )
+
+
+def test_login_saves_browser_approved_session(monkeypatch: pytest.MonkeyPatch) -> None:
+    """login stores the browser-approved session and remembered upload target."""
+    saved: list[ScoutSession] = []
+    monkeypatch.setattr(cli_module, "DeviceAuthClient", FakeDeviceAuthClient)
+    monkeypatch.setattr(cli_module, "save_session", saved.append)
+    monkeypatch.setattr(cli_module.webbrowser, "open", lambda _url: True)
+
+    result = CliRunner().invoke(
+        main,
+        [
+            "login",
+            "--atlas-url",
+            "https://atlas.example",
+            "--target",
+            "workspace",
+            "--no-browser",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert saved == [
+        ScoutSession(
+            atlas_url="https://atlas.example",
+            access_token="device-session-token",
+            worker_id="user-123",
+            user_id="user-123",
+            user_email="user@example.org",
+            default_upload_target="workspace",
+            workspace_id="org-123",
+        )
+    ]
+    assert "ABCD-EFGH" in result.output
+    assert "Logged in as user@example.org" in result.output
+
+
+def test_login_rejects_workspace_target_without_workspace_hint(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Workspace-targeted login must remember an actual workspace id."""
+
+    class WorkspaceLessClient(FakeDeviceAuthClient):
+        async def exchange_session_for_api_token(
+            self,
+            atlas_url: str,
+            *,
+            session_token: str,
+        ) -> ScoutTokenExchange:
+            assert atlas_url == "https://atlas.example"
+            assert session_token == "device-session-token"
+            return ScoutTokenExchange(
+                token="api-jwt",
+                user_id="user-123",
+                user_email="user@example.org",
+                workspace_id=None,
+            )
+
+    saved: list[ScoutSession] = []
+    monkeypatch.setattr(cli_module, "DeviceAuthClient", WorkspaceLessClient)
+    monkeypatch.setattr(cli_module, "save_session", saved.append)
+
+    result = CliRunner().invoke(
+        main,
+        [
+            "login",
+            "--atlas-url",
+            "https://atlas.example",
+            "--target",
+            "workspace",
+            "--no-browser",
+        ],
+    )
+
+    assert result.exit_code != 0
+    assert saved == []
+    assert "Workspace required" in result.output

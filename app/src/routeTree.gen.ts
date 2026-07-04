@@ -40,6 +40,7 @@ import { Route as PublicMapRouteImport } from './routes/_public/map'
 import { Route as PublicBrowseRouteImport } from './routes/_public/browse'
 import { Route as AuthSignUpRouteImport } from './routes/_auth/sign-up'
 import { Route as AuthSignInRouteImport } from './routes/_auth/sign-in'
+import { Route as AuthDeviceRouteImport } from './routes/_auth/device'
 import { Route as AuthAccountSetupRouteImport } from './routes/_auth/account-setup'
 import { Route as WorkspaceOrganizationIndexRouteImport } from './routes/_workspace/organization.index'
 import { Route as PublicProfilesIndexRouteImport } from './routes/_public/profiles/index'
@@ -225,6 +226,11 @@ const AuthSignUpRoute = AuthSignUpRouteImport.update({
 const AuthSignInRoute = AuthSignInRouteImport.update({
   id: '/sign-in',
   path: '/sign-in',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthDeviceRoute = AuthDeviceRouteImport.update({
+  id: '/device',
+  path: '/device',
   getParentRoute: () => AuthRoute,
 } as any)
 const AuthAccountSetupRoute = AuthAccountSetupRouteImport.update({
@@ -417,6 +423,7 @@ export interface FileRoutesByFullPath {
   '/openapi.json': typeof OpenapiDotjsonRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/account-setup': typeof AuthAccountSetupRoute
+  '/device': typeof AuthDeviceRoute
   '/sign-in': typeof AuthSignInRoute
   '/sign-up': typeof AuthSignUpRoute
   '/browse': typeof PublicBrowseRoute
@@ -480,6 +487,7 @@ export interface FileRoutesByTo {
   '/openapi.json': typeof OpenapiDotjsonRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/account-setup': typeof AuthAccountSetupRoute
+  '/device': typeof AuthDeviceRoute
   '/sign-in': typeof AuthSignInRoute
   '/sign-up': typeof AuthSignUpRoute
   '/browse': typeof PublicBrowseRoute
@@ -543,6 +551,7 @@ export interface FileRoutesById {
   '/openapi.json': typeof OpenapiDotjsonRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/_auth/account-setup': typeof AuthAccountSetupRoute
+  '/_auth/device': typeof AuthDeviceRoute
   '/_auth/sign-in': typeof AuthSignInRoute
   '/_auth/sign-up': typeof AuthSignUpRoute
   '/_public/browse': typeof PublicBrowseRoute
@@ -609,6 +618,7 @@ export interface FileRouteTypes {
     | '/openapi.json'
     | '/sitemap.xml'
     | '/account-setup'
+    | '/device'
     | '/sign-in'
     | '/sign-up'
     | '/browse'
@@ -672,6 +682,7 @@ export interface FileRouteTypes {
     | '/openapi.json'
     | '/sitemap.xml'
     | '/account-setup'
+    | '/device'
     | '/sign-in'
     | '/sign-up'
     | '/browse'
@@ -734,6 +745,7 @@ export interface FileRouteTypes {
     | '/openapi.json'
     | '/sitemap.xml'
     | '/_auth/account-setup'
+    | '/_auth/device'
     | '/_auth/sign-in'
     | '/_auth/sign-up'
     | '/_public/browse'
@@ -1031,6 +1043,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthSignInRouteImport
       parentRoute: typeof AuthRoute
     }
+    '/_auth/device': {
+      id: '/_auth/device'
+      path: '/device'
+      fullPath: '/device'
+      preLoaderRoute: typeof AuthDeviceRouteImport
+      parentRoute: typeof AuthRoute
+    }
     '/_auth/account-setup': {
       id: '/_auth/account-setup'
       path: '/account-setup'
@@ -1267,6 +1286,7 @@ declare module '@tanstack/react-router' {
 
 interface AuthRouteChildren {
   AuthAccountSetupRoute: typeof AuthAccountSetupRoute
+  AuthDeviceRoute: typeof AuthDeviceRoute
   AuthSignInRoute: typeof AuthSignInRoute
   AuthSignUpRoute: typeof AuthSignUpRoute
   AuthAcceptInvitationInvitationIdRoute: typeof AuthAcceptInvitationInvitationIdRoute
@@ -1275,6 +1295,7 @@ interface AuthRouteChildren {
 
 const AuthRouteChildren: AuthRouteChildren = {
   AuthAccountSetupRoute: AuthAccountSetupRoute,
+  AuthDeviceRoute: AuthDeviceRoute,
   AuthSignInRoute: AuthSignInRoute,
   AuthSignUpRoute: AuthSignUpRoute,
   AuthAcceptInvitationInvitationIdRoute: AuthAcceptInvitationInvitationIdRoute,

@@ -25,6 +25,10 @@ async function loadAuthRouteModules() {
  */
 async function dispatch(request: Request): Promise<Response> {
   const { auth: authModule, cimdHandler, oauthGuard, runtime } = await loadAuthRouteModules();
+  const scoutToken = await import("@/domains/access/server/scout-token");
+  if (new URL(request.url).pathname === "/api/auth/scout/token") {
+    return scoutToken.issueScoutTokenRequest(request);
+  }
   const { ensureAuthReady } = authModule;
   const { handleCimdRequest } = cimdHandler;
   const { enforceOAuthTokenResourceConsistency } = oauthGuard;

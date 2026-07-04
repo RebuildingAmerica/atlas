@@ -39,6 +39,7 @@ export const SUPPORTED_OAUTH_SCOPES = [
 ] as const;
 
 const PROTECTED_RESOURCE_SCOPES = ["discovery:read", MCP_ENTERPRISE_SCOPE] as const;
+const DEVICE_CODE_GRANT_TYPE = "urn:ietf:params:oauth:grant-type:device_code" as const;
 
 function mcpResourceUrl(publicBaseUrl: string): string {
   return `${publicBaseUrl}/mcp`;
@@ -61,6 +62,7 @@ export function buildAuthorizationServerMetadata(input: MetadataInput) {
     issuer,
     authorization_endpoint: `${issuer}/oauth2/authorize`,
     token_endpoint: `${issuer}/oauth2/token`,
+    device_authorization_endpoint: `${issuer}/device/code`,
     userinfo_endpoint: `${issuer}/oauth2/userinfo`,
     jwks_uri: `${issuer}/jwks`,
     registration_endpoint: `${issuer}/oauth2/register`,
@@ -68,7 +70,12 @@ export function buildAuthorizationServerMetadata(input: MetadataInput) {
     revocation_endpoint: `${issuer}/oauth2/revoke`,
     end_session_endpoint: `${issuer}/oauth2/end-session`,
     response_types_supported: ["code"],
-    grant_types_supported: ["authorization_code", "refresh_token", "client_credentials"],
+    grant_types_supported: [
+      "authorization_code",
+      "refresh_token",
+      "client_credentials",
+      DEVICE_CODE_GRANT_TYPE,
+    ],
     token_endpoint_auth_methods_supported: ["client_secret_basic", "client_secret_post", "none"],
     code_challenge_methods_supported: ["S256"],
     id_token_signing_alg_values_supported: ["RS256", "ES256"],

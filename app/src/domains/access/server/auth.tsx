@@ -7,7 +7,8 @@ import { Pool } from "pg";
 import { betterAuth } from "better-auth";
 import { jwt } from "better-auth/plugins/jwt";
 import { magicLink } from "better-auth/plugins/magic-link";
-import { organization } from "better-auth/plugins";
+import { bearer, deviceAuthorization, organization } from "better-auth/plugins";
+import { API_KEY_SCOPES, scopesToPermissions } from "../api-key-scopes";
 import { oauthProvider } from "@better-auth/oauth-provider";
 import { SUPPORTED_OAUTH_SCOPES } from "../oauth-as-metadata";
 import { buildAtlasAccessTokenClaims } from "./oauth-claims";
@@ -45,6 +46,10 @@ interface StoredUserCountRow {
   userCount: number;
 }
 
+const SCOUT_CLIENT_ID = "atlas-scout-cli";
+const SCOUT_DEVICE_LOGIN_EXPIRES_IN = "30m";
+const SCOUT_DEVICE_LOGIN_INTERVAL = "5s";
+
 /**
  * Normalizes an email address before Atlas checks access or sends mail.
  *
@@ -52,6 +57,19 @@ interface StoredUserCountRow {
  */
 function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
+}
+
+/**
+ * Returns true when a device-authorization request belongs to Atlas Scout.
+ *
+ * Scout is a public CLI client, so the client id is an identifier rather than
+ * a secret. Keeping the allowlist narrow prevents unrelated device clients
+ * from using Atlas's CLI approval page without product review.
+ *
+ * @param clientId - Device-flow client identifier.
+ */
+function isScoutDeviceClient(clientId: string): boolean {
+  return clientId === SCOUT_CLIENT_ID;
 }
 
 /**
@@ -214,7 +232,24 @@ async function createAtlasAuth(runtime: AuthRuntimeConfig) {
           // /api/auth/.well-known/openid-configuration, which the existing
           // api/auth/$.ts catch-all serves automatically.
           issuer: `${runtime.publicBaseUrl}/api/auth`,
+          audience: runtime.apiAudience ?? undefined,
+          definePayload: async ({ user }) => {
+            const orgId = await resolvePrimaryWorkspaceId(user.id);
+            return {
+              email: user.email,
+              permissions: scopesToPermissions([...API_KEY_SCOPES]),
+              ...(orgId ? { org_id: orgId } : {}),
+              ...(runtime.apiAudience ? { aud: runtime.apiAudience } : {}),
+            };
+          },
         },
+      }),
+      bearer(),
+      deviceAuthorization({
+        expiresIn: SCOUT_DEVICE_LOGIN_EXPIRES_IN,
+        interval: SCOUT_DEVICE_LOGIN_INTERVAL,
+        validateClient: isScoutDeviceClient,
+        verificationUri: "/device",
       }),
       oauthProvider({
         loginPage: "/sign-in",

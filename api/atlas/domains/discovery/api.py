@@ -14,10 +14,11 @@ from atlas_shared import (
     DiscoveryRunSyncResponse,
     compute_artifact_hash,
 )
-from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response
 
 from atlas.domains.access import AuthenticatedActor, require_actor_permission
 from atlas.domains.access.capabilities import enforce_limit, require_capability
+from atlas.domains.catalog.models.ownership import OwnershipCRUD
 from atlas.domains.catalog.taxonomy import ALL_ISSUE_SLUGS
 from atlas.domains.discovery.models import (
     DiscoveryJobCRUD,
@@ -61,6 +62,8 @@ router = APIRouter()
 
 __all__ = ["router"]
 
+SYNC_UPLOAD_TARGETS = frozenset({"public", "workspace"})
+
 
 def _validate_issue_areas(issue_areas: list[str]) -> None:
     """Raise when any requested issue area falls outside the Atlas taxonomy."""
@@ -72,6 +75,67 @@ def _validate_issue_areas(issue_areas: list[str]) -> None:
             status_code=400,
             detail=f"Invalid issue area(s): {', '.join(invalid_issue_areas)}",
         )
+
+
+def _resolve_sync_destination(
+    *,
+    upload_target: str | None,
+    workspace_id: str | None,
+    actor: AuthenticatedActor,
+) -> tuple[str | None, str | None]:
+    """Validate and normalize Scout run-sync destination headers."""
+    if not isinstance(upload_target, str):
+        upload_target = None
+    if not isinstance(workspace_id, str):
+        workspace_id = None
+
+    if upload_target is None:
+        return None, None
+
+    normalized_target = upload_target.strip().lower()
+    if normalized_target not in SYNC_UPLOAD_TARGETS:
+        raise HTTPException(status_code=400, detail="Invalid Scout upload target")
+
+    if normalized_target == "public":
+        return normalized_target, None
+
+    resolved_workspace_id = workspace_id or actor.org_id
+    if not resolved_workspace_id:
+        raise HTTPException(status_code=400, detail="Workspace upload target requires workspace id")
+    if actor.org_id is None and not actor.is_local:
+        raise HTTPException(status_code=403, detail="Workspace upload target requires org context")
+    if actor.org_id is not None and actor.org_id != resolved_workspace_id:
+        raise HTTPException(status_code=403, detail="Workspace upload target does not match actor")
+    return normalized_target, resolved_workspace_id
+
+
+async def _ensure_workspace_run_ownership(
+    db: aiosqlite.Connection,
+    *,
+    run_id: str,
+    workspace_id: str | None,
+    actor: AuthenticatedActor,
+) -> None:
+    """Attach a synced discovery run to a workspace as private owned work."""
+    if workspace_id is None:
+        return
+
+    ownership = await OwnershipCRUD.get_ownership(db, run_id, "discovery_run")
+    if ownership is not None:
+        if ownership.org_id != workspace_id:
+            raise HTTPException(
+                status_code=409, detail="Discovery run belongs to another workspace"
+            )
+        return
+
+    await OwnershipCRUD.create_ownership(
+        db,
+        resource_id=run_id,
+        resource_type="discovery_run",
+        org_id=workspace_id,
+        visibility="private",
+        created_by=actor.user_id,
+    )
 
 
 async def get_db(
@@ -222,15 +286,22 @@ async def contribute_discovery_results(
     response_description="The result of syncing the local run bundle.",
     tags=["discovery-runs"],
 )
-async def sync_discovery_run(
+async def sync_discovery_run(  # noqa: PLR0913
     req: DiscoveryRunSyncRequest,
     response: Response,
     actor: AuthenticatedActor = Depends(require_actor_permission("discovery", "write")),
     db: aiosqlite.Connection = Depends(get_db),
+    x_atlas_upload_target: str | None = Header(None),
+    x_atlas_workspace_id: str | None = Header(None),
     _cap: None = Depends(require_capability("research.run")),
     _run_limit: int | None = Depends(enforce_limit("research_runs_per_month")),
 ) -> DiscoveryRunSyncResponse:
     """Persist a full discovery artifact bundle from an offline-capable runner."""
+    _sync_target, sync_workspace_id = _resolve_sync_destination(
+        upload_target=x_atlas_upload_target,
+        workspace_id=x_atlas_workspace_id,
+        actor=actor,
+    )
     _validate_issue_areas(req.artifacts.manifest.run.issue_areas)
     for ranked_entry in req.artifacts.ranked_entries:
         _validate_issue_areas(ranked_entry.entry.issue_areas)
@@ -253,6 +324,12 @@ async def sync_discovery_run(
             raise HTTPException(
                 status_code=500, detail="Synced discovery run could not be reloaded"
             )
+        await _ensure_workspace_run_ownership(
+            db,
+            run_id=existing_sync.remote_run_id,
+            workspace_id=sync_workspace_id,
+            actor=actor,
+        )
         apply_no_store_headers(response)
         return DiscoveryRunSyncResponse(
             run_id=existing_sync.remote_run_id,
@@ -282,6 +359,12 @@ async def sync_discovery_run(
             db,
             run_id=remote_run_id,
             artifacts=req.artifacts,
+        )
+        await _ensure_workspace_run_ownership(
+            db,
+            run_id=remote_run_id,
+            workspace_id=sync_workspace_id,
+            actor=actor,
         )
         await DiscoveryRunSyncCRUD.create(
             db,

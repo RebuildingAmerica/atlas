@@ -8,6 +8,8 @@ import io
 import json
 import logging
 import sys
+import time
+import webbrowser
 from pathlib import Path
 from typing import TYPE_CHECKING, cast
 
@@ -15,6 +17,17 @@ import click
 from rich.table import Table
 
 from atlas_scout import cli_daemon as _daemon_helpers
+from atlas_scout.auth import (
+    DeviceAuthClient,
+    DeviceAuthError,
+    DeviceCode,
+    DeviceToken,
+    ScoutSession,
+    UploadTarget,
+    delete_session,
+    load_session,
+    save_session,
+)
 from atlas_scout.cli_context import console, err_console
 from atlas_scout.cli_output import (
     print_duplicate_run_notice,
@@ -95,6 +108,89 @@ def _sync_daemon_module() -> None:
     _daemon_helpers.subprocess = subprocess
     for name in _DAEMON_ORIGINALS:
         setattr(_daemon_helpers, name, globals()[name])
+
+
+async def _poll_device_token(
+    client: DeviceAuthClient,
+    atlas_url: str,
+    code: DeviceCode,
+) -> DeviceToken:
+    """Poll Atlas until the browser-approved device session is ready."""
+    interval = max(code.interval, 1)
+    deadline = time.monotonic() + code.expires_in
+    while time.monotonic() <= deadline:
+        try:
+            return await client.request_device_token(atlas_url, device_code=code.device_code)
+        except DeviceAuthError as exc:
+            if exc.error == "authorization_pending":
+                await asyncio.sleep(interval)
+                continue
+            if exc.error == "slow_down":
+                interval += 5
+                await asyncio.sleep(interval)
+                continue
+            raise
+    raise DeviceAuthError(
+        error="expired_token",
+        description="The device code expired before approval.",
+    )
+
+
+async def _login(
+    *,
+    atlas_url: str,
+    target: UploadTarget | None,
+    workspace: str | None,
+    open_browser: bool,
+) -> None:
+    """Run Scout's browser-approved login flow."""
+    resolved_atlas_url = atlas_url.rstrip("/")
+    resolved_target = target or click.prompt(
+        "Upload target",
+        type=click.Choice(["public", "workspace"]),
+        default="workspace",
+    )
+    client = DeviceAuthClient()
+    try:
+        code = await client.request_device_code(resolved_atlas_url)
+    except DeviceAuthError as exc:
+        err_console.print(f"[red]Login failed:[/] {exc.description}")
+        sys.exit(1)
+
+    console.print(f"Open: {code.verification_uri_complete}")
+    console.print(f"Code: [bold]{code.user_code}[/]")
+    if open_browser:
+        webbrowser.open(code.verification_uri_complete)
+
+    try:
+        token = await _poll_device_token(client, resolved_atlas_url, code)
+        exchange = await client.exchange_session_for_api_token(
+            resolved_atlas_url,
+            session_token=token.access_token,
+        )
+    except DeviceAuthError as exc:
+        err_console.print(f"[red]Login failed:[/] {exc.description}")
+        sys.exit(1)
+
+    resolved_workspace = workspace or exchange.workspace_id
+    if resolved_target == "workspace" and not resolved_workspace:
+        err_console.print(
+            "[red]Workspace required:[/] pass --workspace for workspace-private sync."
+        )
+        sys.exit(1)
+
+    save_session(
+        ScoutSession(
+            atlas_url=resolved_atlas_url,
+            access_token=token.access_token,
+            worker_id=exchange.user_id,
+            user_id=exchange.user_id,
+            user_email=exchange.user_email,
+            default_upload_target=resolved_target,
+            workspace_id=resolved_workspace,
+        )
+    )
+    console.print(f"[green]Logged in as {exchange.user_email}[/]")
 
 
 def _require_schedule_targets(config: ScoutConfig) -> int:
@@ -929,11 +1025,34 @@ async def _runs_cancel(config: ScoutConfig, run_id: str) -> None:
 @click.argument("run_id")
 @click.option("--atlas-url", default=None, help="Override the Atlas base URL for sync.")
 @click.option("--api-key", default=None, envvar="ATLAS_API_KEY", help="Override the Atlas API key.")
+@click.option(
+    "--target",
+    type=click.Choice(["public", "workspace"]),
+    default=None,
+    help="Upload destination for logged-in Scout syncs.",
+)
+@click.option("--workspace", default=None, help="Workspace id for workspace-private sync.")
 @click.pass_context
-def runs_sync(ctx: click.Context, run_id: str, atlas_url: str | None, api_key: str | None) -> None:
+def runs_sync(
+    ctx: click.Context,
+    run_id: str,
+    atlas_url: str | None,
+    api_key: str | None,
+    target: UploadTarget | None,
+    workspace: str | None,
+) -> None:
     """Sync a completed local run to Atlas."""
     config: ScoutConfig = ctx.obj["config"]
-    asyncio.run(_runs_sync(config, run_id, atlas_url=atlas_url, api_key=api_key))
+    asyncio.run(
+        _runs_sync(
+            config,
+            run_id,
+            atlas_url=atlas_url,
+            api_key=api_key,
+            target=target,
+            workspace=workspace,
+        )
+    )
 
 
 async def _runs_sync(
@@ -942,20 +1061,44 @@ async def _runs_sync(
     *,
     atlas_url: str | None,
     api_key: str | None,
+    target: UploadTarget | None = None,
+    workspace: str | None = None,
 ) -> None:
     """Load a local run bundle and sync it to Atlas."""
     from atlas_scout.steps.contribute import sync_run_artifacts
     from atlas_scout.store import ScoutStore
 
-    resolved_atlas_url = atlas_url or config.contribution.atlas_url
+    session = None
     resolved_api_key = api_key or config.contribution.api_key
+    if not resolved_api_key:
+        session = load_session()
+
+    resolved_atlas_url = atlas_url or config.contribution.atlas_url
+    if session is not None:
+        resolved_atlas_url = atlas_url or session.atlas_url or config.contribution.atlas_url
+
     if not resolved_atlas_url:
         err_console.print(
             "[red]Atlas URL required:[/] set contribution.atlas_url or pass --atlas-url."
         )
         sys.exit(1)
-    if not resolved_api_key:
-        err_console.print("[red]API key required:[/] set contribution.api_key or pass --api-key.")
+    if not resolved_api_key and session is None:
+        err_console.print(
+            "[red]Authentication required:[/] Log in with `scout login` or pass --api-key."
+        )
+        sys.exit(1)
+
+    resolved_target = target or (session.default_upload_target if session else None)
+    resolved_workspace = workspace or (session.workspace_id if session else None)
+    if session is not None and resolved_target is None:
+        err_console.print(
+            "[red]Upload target required:[/] pass --target public or --target workspace."
+        )
+        sys.exit(1)
+    if session is not None and resolved_target == "workspace" and not resolved_workspace:
+        err_console.print(
+            "[red]Workspace required:[/] pass --workspace for workspace-private sync."
+        )
         sys.exit(1)
 
     store = ScoutStore(str(Path(config.store.path).expanduser()))
@@ -973,11 +1116,25 @@ async def _runs_sync(
             sys.exit(1)
 
         await store.update_run_sync(run_id, sync_status="syncing")
-        result = await sync_run_artifacts(
-            artifacts,
-            atlas_url=resolved_atlas_url,
-            api_key=resolved_api_key,
-        )
+        if session is not None:
+            token_exchange = await DeviceAuthClient().exchange_session_for_api_token(
+                resolved_atlas_url,
+                session_token=session.access_token,
+            )
+            result = await sync_run_artifacts(
+                artifacts,
+                atlas_url=resolved_atlas_url,
+                api_key="",
+                bearer_token=token_exchange.token,
+                target=resolved_target,
+                workspace_id=resolved_workspace,
+            )
+        else:
+            result = await sync_run_artifacts(
+                artifacts,
+                atlas_url=resolved_atlas_url,
+                api_key=resolved_api_key,
+            )
         if result.errors:
             await store.update_run_sync(
                 run_id,
@@ -997,6 +1154,73 @@ async def _runs_sync(
 
     message = "Already synced" if result.duplicate else "Synced"
     console.print(f"[green]{message}[/] run {run_id} -> [bold]{result.run_id}[/]")
+
+
+@main.command("login")
+@click.option(
+    "--atlas-url",
+    default="https://atlas.rebuildingus.org",
+    show_default=True,
+    help="Atlas app URL to authenticate against.",
+)
+@click.option(
+    "--target",
+    type=click.Choice(["public", "workspace"]),
+    default=None,
+    help="Default upload destination to remember after login.",
+)
+@click.option("--workspace", default=None, help="Workspace id for workspace-private sync.")
+@click.option("--no-browser", is_flag=True, help="Print the approval URL without opening it.")
+def login(
+    atlas_url: str, target: UploadTarget | None, workspace: str | None, no_browser: bool
+) -> None:
+    """Log in to Atlas from the browser and remember this worker."""
+    asyncio.run(
+        _login(
+            atlas_url=atlas_url,
+            target=target,
+            workspace=workspace,
+            open_browser=not no_browser,
+        )
+    )
+
+
+@main.group("auth")
+def auth_group() -> None:
+    """Manage Scout authentication."""
+
+
+@auth_group.command("status")
+def auth_status() -> None:
+    """Show the current Scout login state."""
+    session = load_session()
+    if session is None:
+        console.print("[yellow]Not logged in.[/]")
+        return
+    console.print("[bold]Scout auth[/]")
+    console.print(f"  Atlas: {session.atlas_url}")
+    console.print(f"  User: {session.user_email}")
+    console.print(f"  Worker: {session.worker_id}")
+    console.print(f"  Upload target: {session.default_upload_target or 'not set'}")
+    if session.workspace_id:
+        console.print(f"  Workspace: {session.workspace_id}")
+
+
+@main.command("whoami")
+def whoami() -> None:
+    """Show the signed-in Atlas user."""
+    session = load_session()
+    if session is None:
+        console.print("[yellow]Not logged in.[/]")
+        return
+    console.print(session.user_email)
+
+
+@main.command("logout")
+def logout() -> None:
+    """Remove the local Scout login session."""
+    delete_session()
+    console.print("[green]Logged out.[/]")
 
 
 # ---------------------------------------------------------------------------

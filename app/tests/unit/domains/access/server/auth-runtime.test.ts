@@ -7,6 +7,7 @@ import type { MagicLinkOptions as MagicLinkPluginOptions } from "better-auth/plu
 
 const mocks = vi.hoisted(() => ({
   apiKey: vi.fn((options: ApiKeyPluginOptions) => ({ kind: "api-key", options })),
+  bearer: vi.fn(() => ({ kind: "bearer" })),
   betterAuth: vi.fn(),
   createEmailService: vi.fn(),
   emailSend: vi.fn(),
@@ -27,10 +28,14 @@ const mocks = vi.hoisted(() => ({
     }
   },
   isAllowedEmail: vi.fn(),
+  deviceAuthorization: vi.fn((options: Record<string, unknown>) => ({
+    kind: "device-authorization",
+    options,
+  })),
   organization: vi.fn((options: Record<string, unknown>) => ({ kind: "organization", options })),
   magicLink: vi.fn((options: MagicLinkPluginOptions) => ({ kind: "magic-link", options })),
   mkdirSync: vi.fn(),
-  jwt: vi.fn(() => ({ kind: "jwt" })),
+  jwt: vi.fn((options: Record<string, unknown>) => ({ kind: "jwt", options })),
   oauthProvider: vi.fn((options: OAuthProviderOptions) => ({ kind: "oauth-provider", options })),
   passkey: vi.fn((options: PasskeyPluginOptions) => ({ kind: "passkey", options })),
   runMigrations: vi.fn(),
@@ -64,6 +69,8 @@ vi.mock("better-auth/plugins/jwt", () => ({
 }));
 
 vi.mock("better-auth/plugins", () => ({
+  bearer: mocks.bearer,
+  deviceAuthorization: mocks.deviceAuthorization,
   organization: mocks.organization,
 }));
 
@@ -101,6 +108,7 @@ describe("auth runtime wiring", () => {
   beforeEach(() => {
     vi.resetModules();
     mocks.apiKey.mockClear();
+    mocks.bearer.mockClear();
     mocks.betterAuth.mockClear();
     mocks.createEmailService.mockReset();
     mocks.emailSend.mockReset();
@@ -108,6 +116,7 @@ describe("auth runtime wiring", () => {
     mocks.databaseInstances.length = 0;
     mocks.getAuthRuntimeConfig.mockReset();
     mocks.isAllowedEmail.mockReset();
+    mocks.deviceAuthorization.mockClear();
     mocks.jwt.mockClear();
     mocks.magicLink.mockClear();
     mocks.mkdirSync.mockReset();

@@ -45,6 +45,8 @@ def test_cli_runs_inspect_help():
 def test_cli_runs_sync_help():
     result = CliRunner().invoke(main, ["runs", "sync", "--help"])
     assert result.exit_code == 0
+    assert "--target" in result.output
+    assert "--workspace" in result.output
 
 
 def test_cli_runs_cancel_help():
@@ -157,7 +159,9 @@ def test_cli_runs_cancel_updates_local_non_terminal_run_only(tmp_path, monkeypat
     config = ScoutConfig(store=StoreConfig(path=str(tmp_path / "scout.db")))
     store = ScoutStore(config.store.path)
     asyncio.run(store.initialize())
-    run_id = asyncio.run(store.create_run(location="Austin, TX", issues=["housing"], search_depth="standard"))
+    run_id = asyncio.run(
+        store.create_run(location="Austin, TX", issues=["housing"], search_depth="standard")
+    )
     asyncio.run(store.update_run_status(run_id, "running"))
     asyncio.run(store.close())
 
@@ -208,7 +212,9 @@ def test_cli_runs_cancel_refuses_terminal_runs(tmp_path, monkeypatch, status):
     async def seed_run() -> tuple[str, dict[str, object]]:
         store = ScoutStore(config.store.path)
         await store.initialize()
-        run_id = await store.create_run(location="Austin, TX", issues=["housing"], search_depth="standard")
+        run_id = await store.create_run(
+            location="Austin, TX", issues=["housing"], search_depth="standard"
+        )
         if status == "completed":
             await store.complete_run(
                 run_id,
