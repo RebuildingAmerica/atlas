@@ -89,12 +89,12 @@ describe("routes/_public/claim/$slug", () => {
     });
 
     if (!Route.options.loader) throw new Error("Expected loader");
-    const data = await Route.options.loader({ params: { slug: "acme" } } as never);
+    const data = await Route.options.loader({ params: { slug: "acme" } });
     expect(data).toEqual({ entry });
 
     if (!Route.options.head) throw new Error("Expected head");
-    expect(Route.options.head({ loaderData: undefined } as never)).toEqual({});
-    const head = Route.options.head({ loaderData: { entry } } as never) as {
+    expect(Route.options.head({ loaderData: undefined })).toEqual({});
+    const head = Route.options.head({ loaderData: { entry } }) as {
       meta: Record<string, string>[];
     };
     expect(head.meta[0]).toEqual({ title: "Claim Acme | Atlas" });
@@ -237,7 +237,7 @@ describe("routes/_public/claim/$slug", () => {
       data: [],
     } as unknown as ReturnType<typeof claims.useMyClaims>);
     const submitView = render(<Component />);
-    fireEvent.change(submitView.getByPlaceholderText(/Optional: link to a LinkedIn/i), {
+    fireEvent.change(submitView.getByRole("textbox", { name: "Evidence for this claim" }), {
       target: { value: "evidence" },
     });
     const submitButton = submitView.getByRole("button", { name: "Submit claim" });

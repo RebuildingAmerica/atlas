@@ -192,15 +192,25 @@ function ClaimRoute() {
               profile. If they match, you&apos;ll get a verification email that confirms ownership.
               If not, share evidence below and a moderator will review your request.
             </p>
-            <textarea
-              className="border-outline-variant focus:ring-accent bg-surface-container-lowest text-on-surface w-full rounded-lg border px-3 py-2 focus:ring-2 focus:outline-none"
-              rows={4}
-              placeholder="Optional: link to a LinkedIn profile, official email, or other evidence that you control this identity."
-              value={evidence}
-              onChange={(event) => {
-                setEvidence(event.target.value);
-              }}
-            />
+            <div className="space-y-2">
+              <label htmlFor="claim-evidence" className="type-label-medium text-ink-strong block">
+                Evidence for this claim
+              </label>
+              <textarea
+                id="claim-evidence"
+                aria-describedby="claim-evidence-help"
+                className="border-outline-variant focus:ring-accent bg-surface-container-lowest text-on-surface w-full rounded-lg border px-3 py-2 focus:ring-2 focus:outline-none"
+                rows={4}
+                value={evidence}
+                onChange={(event) => {
+                  setEvidence(event.target.value);
+                }}
+              />
+              <p id="claim-evidence-help" className="type-body-small text-ink-soft">
+                Optional: link to a LinkedIn profile, official email, or other evidence that you
+                control this identity.
+              </p>
+            </div>
             <Button
               onClick={() => {
                 void handleInitiate();
