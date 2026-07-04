@@ -31,7 +31,8 @@ export function reactConfig(tsconfigRootDir) {
       },
       rules: {
         ...baseRules,
-        ...reactHooks.configs.recommended.rules,
+        "react-hooks/rules-of-hooks": "error",
+        "react-hooks/exhaustive-deps": "warn",
         "no-console": ["warn", { allow: ["warn", "error"] }],
       },
     },

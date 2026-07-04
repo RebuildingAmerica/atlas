@@ -38,14 +38,14 @@ winget install Python.Python.3.12
 python --version  # Verify
 ```
 
-### Node.js 24+
+### Node.js 24.15+ in the 24.x line
 
-The app runs on Node.js 24+.
+The app runs on Node.js 24.15+ in the Node 24 release line.
 
 **macOS (Homebrew):**
 ```bash
 brew install node@24
-node --version  # Verify (should be v24.x.x)
+node --version  # Verify (should be v24.15+ and below v25)
 ```
 
 **Linux (Ubuntu/Debian):**
@@ -58,8 +58,8 @@ node --version  # Verify
 **macOS/Linux (nvm - Node Version Manager):**
 ```bash
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
-nvm install 24
-nvm use 24
+nvm install 24.18.0
+nvm use 24.18.0
 node --version  # Verify
 ```
 
@@ -68,6 +68,17 @@ Download from [nodejs.org](https://nodejs.org/) or use Windows Package Manager:
 ```powershell
 winget install OpenJS.NodeJS
 node --version  # Verify
+```
+
+### Corepack and pnpm
+
+Atlas uses Corepack 0.35.0 to activate pnpm 11.10.0.
+
+```bash
+npm install --global corepack@0.35.0
+corepack enable
+corepack prepare pnpm@11.10.0 --activate
+pnpm --version  # Verify
 ```
 
 ### Make
@@ -141,8 +152,8 @@ Run these commands to verify everything is installed:
 python3 --version          # Should be 3.12+
 
 # Node
-node --version             # Should be v24+
-pnpm --version             # Should be 10+ (enable with `corepack enable`)
+node --version             # Should be v24.15+ and below v25
+pnpm --version             # Should be 11.10+
 
 # Make
 make --version             # Should show version
@@ -165,7 +176,10 @@ If all commands return versions without errors, you're ready for [Quick Start](.
 Make sure Python 3.12+ is installed and in your PATH. On macOS with Homebrew, you may need to use `python3.12` instead of `python3`.
 
 ### "node command not found"
-Make sure Node.js 24+ is installed. If you installed with nvm, run `nvm use 24` first.
+Make sure Node.js 24.15+ in the Node 24 release line is installed. If you installed with nvm, run `nvm use 24.18.0` first.
+
+### "pnpm command not found"
+Run `npm install --global corepack@0.35.0`, `corepack enable`, and `corepack prepare pnpm@11.10.0 --activate`.
 
 ### "make command not found"
 Install Make (see instructions above). On Windows, consider using WSL or MinGW.

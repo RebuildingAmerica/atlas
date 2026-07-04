@@ -31,7 +31,7 @@ export const CAPABILITY_SPECS: CapabilityConfig[] = [
     requiredByDefault: true,
     binaryCommand: "command -v node",
     versionCommand: "node --version",
-    minVersion: "24.0.0",
+    minVersion: "24.15.0",
     installCommands: {
       macos: ["brew install node@24"],
       linux: [
@@ -48,10 +48,18 @@ export const CAPABILITY_SPECS: CapabilityConfig[] = [
     requiredByDefault: true,
     binaryCommand: "command -v pnpm",
     versionCommand: "pnpm --version",
-    minVersion: "10.0.0",
+    minVersion: "11.10.0",
     installCommands: {
-      macos: ["corepack enable", "corepack prepare pnpm@10.33.0 --activate"],
-      linux: ["corepack enable", "corepack prepare pnpm@10.33.0 --activate"],
+      macos: [
+        "npm install --global corepack@0.35.0",
+        "corepack enable",
+        "corepack prepare pnpm@11.10.0 --activate",
+      ],
+      linux: [
+        "npm install --global corepack@0.35.0",
+        "corepack enable",
+        "corepack prepare pnpm@11.10.0 --activate",
+      ],
     },
   },
   {

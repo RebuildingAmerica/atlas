@@ -9,7 +9,7 @@ Get The Atlas running on your machine in 4 steps.
 First, make sure you have installed:
 
 - Python 3.12+
-- Node.js 24+
+- Node.js 24.15+ in the 24.x line
 - Make
 - Git
 
@@ -86,12 +86,10 @@ VITE v5.0.0  ready in 245 ms
 Open your browser and check:
 
 1. **App:** https://atlas.localhost:1355
-
    - Should show the Atlas homepage
    - Try navigating around
 
 2. **API reference:** https://atlas.localhost:1355/api-reference
-
    - Should show the interactive Scalar reference
    - All published endpoints are listed here with schemas and request examples
 
@@ -121,7 +119,7 @@ cd ..
 
 ### "command not found: pnpm" on make setup
 
-Make sure Node.js 24+ is installed and run `corepack enable`. Verify with `node --version` and `pnpm --version`.
+Make sure Node.js 24.15+ in the Node 24 release line is installed, then run `npm install --global corepack@0.35.0`, `corepack enable`, and `corepack prepare pnpm@11.10.0 --activate`. Verify with `node --version` and `pnpm --version`.
 
 ### Port 8000 or 3000 already in use
 

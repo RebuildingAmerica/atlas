@@ -2,9 +2,9 @@
   "name": "@rebuildingamerica/atlas-monorepo",
   "private": true,
   "type": "module",
-  "packageManager": "pnpm@10.33.0",
+  "packageManager": "pnpm@11.10.0",
   "engines": {
-    "node": ">=24.0.0 <27"
+    "node": ">=24.15.0 <25"
   },
   "scripts": {
     "predev": "sh ./scripts/portless-reset.sh",
@@ -44,34 +44,15 @@
     "doctor": "tsx scripts/bootstrap/cold-start.ts --doctor"
   },
   "devDependencies": {
+    "@clack/prompts": "catalog:",
     "@rebuildingamerica/eslint-config": "workspace:*",
-    "@clack/prompts": "0.11.0",
-    "eslint": "9.17.0",
-    "mint": "4.2.537",
-    "picocolors": "1.1.0",
-    "portless": "0.10.3",
-    "prettier": "3.4.0",
-    "stripe": "18.0.0",
-    "tsx": "4.19.0",
-    "turbo": "2.9.6"
-  },
-  "pnpm": {
-    "overrides": {
-      "@xmldom/xmldom": "^0.8.13",
-      "fast-xml-parser": "^5.7.0",
-      "react": "19.2.5",
-      "react-dom": "19.2.5"
-    },
-    "peerDependencyRules": {
-      "allowedVersions": {
-        "@mintlify/mdx>react": "19",
-        "@mintlify/mdx>react-dom": "19",
-        "next-mdx-remote-client>react": "19",
-        "next-mdx-remote-client>react-dom": "19",
-        "@openstatus/react>react": "19",
-        "react-simple-maps>react": "19",
-        "react-simple-maps>react-dom": "19"
-      }
-    }
+    "eslint": "catalog:",
+    "mint": "catalog:",
+    "picocolors": "catalog:",
+    "portless": "catalog:",
+    "prettier": "catalog:",
+    "stripe": "catalog:",
+    "tsx": "catalog:",
+    "turbo": "catalog:"
   }
 }

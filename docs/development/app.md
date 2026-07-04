@@ -6,7 +6,7 @@ How to build features on the React/TanStack Start app. Adding routes, components
 
 ## Prerequisites
 
-- Node.js 24+ installed
+- Node.js 24.15+ in the Node 24 release line installed
 - App dependencies installed (`make setup` or `cd app && pnpm install`)
 - Familiar with React and TypeScript
 
