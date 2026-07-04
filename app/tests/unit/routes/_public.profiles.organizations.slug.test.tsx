@@ -39,12 +39,8 @@ describe("routes/_public/profiles/organizations/$slug", () => {
       slug: "acme",
       description: "An organization that does things.".repeat(10),
     };
-    const connections = { actors: [], total: 0 };
     vi.mocked(loadProfileBySlug).mockResolvedValue(
       entry as Awaited<ReturnType<typeof loadProfileBySlug>>,
-    );
-    vi.mocked(loadProfileConnections).mockResolvedValue(
-      connections as Awaited<ReturnType<typeof loadProfileConnections>>,
     );
 
     const routeModule = await import("@/routes/_public/profiles/organizations.$slug");
@@ -56,8 +52,8 @@ describe("routes/_public/profiles/organizations/$slug", () => {
     expect(loadProfileBySlug).toHaveBeenCalledWith({
       data: { type: "organizations", slug: "acme" },
     });
-    expect(loadProfileConnections).toHaveBeenCalledWith({ data: { entryId: "acme-1" } });
-    expect(loaded).toEqual({ entry, connections });
+    expect(loadProfileConnections).not.toHaveBeenCalled();
+    expect(loaded).toEqual({ entry });
 
     if (!Route.options.head) throw new Error("Expected head");
     const headPayload = Route.options.head({ loaderData: { entry } } as never) as PageHead;

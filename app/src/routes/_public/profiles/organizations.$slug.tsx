@@ -6,10 +6,7 @@
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { OrgProfilePage } from "@/domains/catalog/pages/profiles/detail/org-profile-page";
-import {
-  loadProfileBySlug,
-  loadProfileConnections,
-} from "@/domains/catalog/server/profiles/profile-loaders";
+import { loadProfileBySlug } from "@/domains/catalog/server/profiles/profile-loaders";
 import { buildPageHead } from "@/platform/seo";
 
 export const Route = createFileRoute("/_public/profiles/organizations/$slug")({
@@ -17,8 +14,7 @@ export const Route = createFileRoute("/_public/profiles/organizations/$slug")({
     const entry = await loadProfileBySlug({
       data: { type: "organizations", slug: params.slug },
     });
-    const connections = await loadProfileConnections({ data: { entryId: entry.id } });
-    return { entry, connections };
+    return { entry };
   },
   head: ({ loaderData }) => {
     const entry = loaderData?.entry;
@@ -35,6 +31,6 @@ export const Route = createFileRoute("/_public/profiles/organizations/$slug")({
 });
 
 function OrgProfileRoute() {
-  const { entry, connections } = Route.useLoaderData();
-  return <OrgProfilePage entry={entry} initialConnections={connections} />;
+  const { entry } = Route.useLoaderData();
+  return <OrgProfilePage entry={entry} />;
 }
