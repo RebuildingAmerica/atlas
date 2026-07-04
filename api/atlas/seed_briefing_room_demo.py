@@ -112,7 +112,7 @@ DEMO_LANES = (
         location_query="Phoenix, AZ",
         state="AZ",
         issue_areas=("wage_theft_and_labor_rights", "immigration_and_belonging"),
-        research_goal="worker_power_scan",
+        research_goal="partner_scan",
         entry_slugs=("sun-valley-worker-center", "luis-alvarez"),
         buyer_segment="labor organizations and worker-power funders",
         summary=(
@@ -148,7 +148,7 @@ DEMO_LANES = (
             "voter_suppression_and_electoral_access",
             "local_government_and_civic_engagement",
         ),
-        research_goal="democracy_field_scan",
+        research_goal="ecosystem_map",
         entry_slugs=("great-lakes-civic-lab", "aisha-patel"),
         buyer_segment="pro-democracy organizations, foundations, and campaigns",
         summary=(

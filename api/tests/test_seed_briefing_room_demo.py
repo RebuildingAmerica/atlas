@@ -11,6 +11,7 @@ import pytest
 
 from atlas.domains.access.models.saved_lists import SavedListCRUD
 from atlas.domains.catalog.models.ownership import OwnershipCRUD
+from atlas.domains.discovery.api import _run_to_response
 from atlas.domains.discovery.briefs import OrgBriefCRUD
 from atlas.domains.discovery.models import DiscoveryRunCRUD
 from atlas.models import EntryCRUD, get_db_connection
@@ -37,6 +38,17 @@ async def _count_rows(conn: aiosqlite.Connection, sql: str, params: tuple[str, .
     cursor = await conn.execute(sql, params)
     row = await cursor.fetchone()
     return int(row[0]) if row is not None else 0
+
+
+async def _assert_discovery_runs_serialize(
+    conn: aiosqlite.Connection,
+    run_ids: list[str],
+) -> None:
+    """Assert seeded runs satisfy the public discovery-run response schema."""
+    for run_id in run_ids:
+        demo_run = await DiscoveryRunCRUD.get_by_id(conn, run_id)
+        assert demo_run is not None
+        _run_to_response(demo_run)
 
 
 @pytest.mark.asyncio
@@ -89,6 +101,7 @@ async def test_seed_briefing_room_demo_creates_resettable_private_demo_artifacts
             await OrgBriefCRUD.get(conn, brief_id) for brief_id in second_result.brief_ids
         ]
         assert [item.title for item in seeded_briefs if item is not None] == list(DEMO_BRIEF_TITLES)
+        await _assert_discovery_runs_serialize(conn, second_result.discovery_run_ids)
 
         saved_lists = await SavedListCRUD.list_for_user(conn, DEMO_USER_ID)
         assert {saved_list.name for saved_list in saved_lists} == set(DEMO_LIST_NAMES)
