@@ -4,11 +4,12 @@ import type { ReactNode } from "react";
 import { render, screen, cleanup } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { NextActionsSection } from "@/domains/workspace/components/next-actions-section";
+import type { NextActionsWorkspaceState } from "@/domains/workspace/components/next-actions-section";
 import type { ResearchSummary } from "@/domains/workspace/server/research-summary";
 
 vi.mock("@tanstack/react-router", () => ({
-  Link: ({ children, to }: { children: ReactNode; to?: string }) => (
-    <a href={to} data-link-to={to}>
+  Link: ({ children, hash, to }: { children: ReactNode; hash?: string; to?: string }) => (
+    <a href={to} data-link-hash={hash} data-link-to={to}>
       {children}
     </a>
   ),
@@ -48,6 +49,33 @@ describe("NextActionsSection", () => {
     };
   }
 
+  function workspaceState(
+    overrides?: Partial<NextActionsWorkspaceState>,
+  ): NextActionsWorkspaceState {
+    return {
+      briefs: { data: { items: [], total: 0 }, status: "ready" },
+      coverageTargets: { data: { items: [], total: 0 }, status: "ready" },
+      showRenewalProof: true,
+      usageSummary: {
+        data: {
+          event_counts: {},
+          org_id: "org_123",
+          renewal_signals: {
+            briefs_used: 0,
+            coverage_gaps_closed: 0,
+            integrations_used: 0,
+            public_records_improved: 0,
+            team_workflow_actions: 0,
+          },
+          total_events: 0,
+        },
+        status: "ready",
+      },
+      watches: { data: { items: [], orgId: "org_123", total: 0 }, status: "ready" },
+      ...overrides,
+    };
+  }
+
   it("offers all three suggestions for a brand-new research base", () => {
     render(<NextActionsSection summary={emptySummary()} />);
 
@@ -79,5 +107,89 @@ describe("NextActionsSection", () => {
     const { container } = render(<NextActionsSection summary={fullSummary()} />);
 
     expect(container).toBeEmptyDOMElement();
+  });
+
+  it("continues the workspace workflow after the first research base exists", () => {
+    render(<NextActionsSection summary={fullSummary()} workspace={workspaceState()} />);
+
+    expect(screen.getByRole("link", { name: "New brief" })).toHaveAttribute(
+      "data-link-to",
+      "/briefs/new",
+    );
+    expect(screen.getByRole("link", { name: "Open coverage" })).toHaveAttribute(
+      "data-link-to",
+      "/coverage",
+    );
+    expect(screen.getByRole("link", { name: "Choose monitoring" })).toHaveAttribute(
+      "data-link-to",
+      "/coverage",
+    );
+    expect(screen.queryByRole("link", { name: "Start research" })).not.toBeInTheDocument();
+  });
+
+  it("points completed workspace workflows toward renewal proof", () => {
+    render(
+      <NextActionsSection
+        summary={fullSummary()}
+        workspace={workspaceState({
+          briefs: { data: { items: [], total: 1 }, status: "ready" },
+          coverageTargets: { data: { items: [], total: 1 }, status: "ready" },
+          usageSummary: {
+            data: {
+              event_counts: { brief_opened: 1 },
+              org_id: "org_123",
+              renewal_signals: {
+                briefs_used: 1,
+                coverage_gaps_closed: 0,
+                integrations_used: 0,
+                public_records_improved: 1,
+                team_workflow_actions: 1,
+              },
+              total_events: 3,
+            },
+            status: "ready",
+          },
+          watches: { data: { items: [], orgId: "org_123", total: 1 }, status: "ready" },
+        })}
+      />,
+    );
+
+    const proofLink = screen.getByRole("link", { name: "Open proof" });
+    expect(proofLink).toHaveAttribute("data-link-to", "/organization");
+    expect(proofLink).toHaveAttribute("data-link-hash", "renewal-proof");
+    expect(screen.queryByRole("link", { name: "New brief" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Open coverage" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Choose monitoring" })).not.toBeInTheDocument();
+  });
+
+  it("does not send personal workspaces toward team renewal proof", () => {
+    render(
+      <NextActionsSection
+        summary={fullSummary()}
+        workspace={workspaceState({
+          briefs: { data: { items: [], total: 1 }, status: "ready" },
+          coverageTargets: { data: { items: [], total: 1 }, status: "ready" },
+          showRenewalProof: false,
+          usageSummary: {
+            data: {
+              event_counts: { brief_opened: 1 },
+              org_id: "org_123",
+              renewal_signals: {
+                briefs_used: 1,
+                coverage_gaps_closed: 0,
+                integrations_used: 0,
+                public_records_improved: 1,
+                team_workflow_actions: 1,
+              },
+              total_events: 3,
+            },
+            status: "ready",
+          },
+          watches: { data: { items: [], orgId: "org_123", total: 1 }, status: "ready" },
+        })}
+      />,
+    );
+
+    expect(screen.queryByRole("link", { name: "Open proof" })).not.toBeInTheDocument();
   });
 });

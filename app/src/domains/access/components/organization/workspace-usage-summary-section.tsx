@@ -29,7 +29,10 @@ export function WorkspaceUsageSummarySection({
   usageSummary,
 }: WorkspaceUsageSummarySectionProps) {
   return (
-    <article className="border-border bg-surface space-y-4 rounded-[1.5rem] border p-6">
+    <article
+      id="renewal-proof"
+      className="border-border bg-surface scroll-mt-24 space-y-4 rounded-[1.5rem] border p-6"
+    >
       <div className="flex items-start justify-between gap-4">
         <div className="space-y-3">
           <div className="space-y-2">

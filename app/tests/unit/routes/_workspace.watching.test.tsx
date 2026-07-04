@@ -27,6 +27,7 @@ describe("routes/_workspace/watching", () => {
   function collection(): WorkspaceWatchCollection {
     return {
       items: [],
+      orgId: "org_123",
       total: 0,
     };
   }

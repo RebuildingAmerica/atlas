@@ -189,7 +189,7 @@ export function CoverageDetailPage({ detail }: CoverageDetailPageProps) {
     resourceId: target.id,
     resourceType: "coverage_target" as const,
   };
-  const watchStatus = useWorkspaceWatchStatus(watchInput);
+  const watchStatus = useWorkspaceWatchStatus(watchInput, true, target.org_id);
   const watchMutation = useWatchWorkspaceResource();
   const unwatchMutation = useUnwatchWorkspaceResource();
   const isWatched = watchStatus.data?.watched ?? false;

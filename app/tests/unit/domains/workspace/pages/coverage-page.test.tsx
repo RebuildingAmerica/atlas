@@ -142,7 +142,7 @@ describe("CoveragePage", () => {
 
     render(<CoveragePage initialCoverageTargets={initialCoverageTargets} orgId="org_123" />);
 
-    expect(mocks.useCoverageTargets).toHaveBeenCalledWith(initialCoverageTargets);
+    expect(mocks.useCoverageTargets).toHaveBeenCalledWith(initialCoverageTargets, "org_123");
     expect(screen.getByRole("heading", { name: "Coverage Workspace" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Research" })).toHaveAttribute(
       "data-link-to",

@@ -10,9 +10,18 @@ import {
 } from "@/domains/workspace/server/watches";
 
 export const WORKSPACE_WATCHES_KEY = ["workspace", "watches"] as const;
+const WORKSPACE_WATCH_STATUS_KEY = [...WORKSPACE_WATCHES_KEY, "status"] as const;
 
-function workspaceWatchKey(input: WorkspaceWatchInput): readonly unknown[] {
-  return [...WORKSPACE_WATCHES_KEY, input.resourceType, input.resourceId] as const;
+function workspaceWatchKey(
+  input: WorkspaceWatchInput,
+  workspaceId: string | null,
+): readonly unknown[] {
+  return [
+    ...WORKSPACE_WATCH_STATUS_KEY,
+    workspaceId,
+    input.resourceType,
+    input.resourceId,
+  ] as const;
 }
 
 /**
@@ -20,13 +29,18 @@ function workspaceWatchKey(input: WorkspaceWatchInput): readonly unknown[] {
  *
  * @param input - Resource type and id.
  * @param enabled - Whether the query should run.
+ * @param workspaceId - Active workspace id that owns this private watch status.
  * @returns React Query result wrapping workspace watch status.
  */
-export function useWorkspaceWatchStatus(input: WorkspaceWatchInput, enabled = true) {
+export function useWorkspaceWatchStatus(
+  input: WorkspaceWatchInput,
+  enabled = true,
+  workspaceId: string | null = null,
+) {
   return useQuery<WorkspaceWatchStatus>({
-    enabled,
+    enabled: enabled && workspaceId !== null,
     queryFn: () => loadWorkspaceWatchStatus({ data: input }),
-    queryKey: workspaceWatchKey(input),
+    queryKey: workspaceWatchKey(input, workspaceId),
   });
 }
 
@@ -40,7 +54,15 @@ export function useWorkspaceWatches(initialData: WorkspaceWatchCollection) {
   return useQuery<WorkspaceWatchCollection>({
     initialData,
     queryFn: () => loadWorkspaceWatches(),
-    queryKey: WORKSPACE_WATCHES_KEY,
+    queryKey: [...WORKSPACE_WATCHES_KEY, "list", initialData.orgId],
+  });
+}
+
+export function useWorkspaceWatchesSnapshot(enabled: boolean, workspaceId: string | null) {
+  return useQuery<WorkspaceWatchCollection>({
+    enabled: enabled && workspaceId !== null,
+    queryFn: () => loadWorkspaceWatches(),
+    queryKey: [...WORKSPACE_WATCHES_KEY, "snapshot", workspaceId],
   });
 }
 
@@ -52,8 +74,8 @@ export function useWatchWorkspaceResource() {
 
   return useMutation({
     mutationFn: (data: WorkspaceWatchInput) => watchWorkspaceResource({ data }),
-    onSuccess: async (_data, variables) => {
-      await queryClient.invalidateQueries({ queryKey: workspaceWatchKey(variables) });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: WORKSPACE_WATCH_STATUS_KEY });
       await queryClient.invalidateQueries({ queryKey: WORKSPACE_WATCHES_KEY });
     },
   });
@@ -67,8 +89,8 @@ export function useUnwatchWorkspaceResource() {
 
   return useMutation({
     mutationFn: (data: WorkspaceWatchInput) => unwatchWorkspaceResource({ data }),
-    onSuccess: async (_data, variables) => {
-      await queryClient.invalidateQueries({ queryKey: workspaceWatchKey(variables) });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: WORKSPACE_WATCH_STATUS_KEY });
       await queryClient.invalidateQueries({ queryKey: WORKSPACE_WATCHES_KEY });
     },
   });

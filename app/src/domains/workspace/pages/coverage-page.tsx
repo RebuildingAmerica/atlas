@@ -315,7 +315,7 @@ function CoverageTargetItem({ target }: { target: CoverageTarget }) {
 }
 
 export function CoveragePage({ initialCoverageTargets, orgId }: CoveragePageProps) {
-  const coverageTargetsQuery = useCoverageTargets(initialCoverageTargets);
+  const coverageTargetsQuery = useCoverageTargets(initialCoverageTargets, orgId);
   const importCoverageTargets = useImportCoverageTargets();
   const [exportError, setExportError] = useState<string | null>(null);
   const [importCsvText, setImportCsvText] = useState("");

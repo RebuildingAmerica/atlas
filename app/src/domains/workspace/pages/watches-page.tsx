@@ -1,3 +1,6 @@
+import { Link } from "@tanstack/react-router";
+import { MapPinned, ShieldCheck } from "lucide-react";
+import { useAtlasSession } from "@/domains/access";
 import type { WorkspaceWatchCollection } from "@/domains/workspace/server/watches";
 import { useWorkspaceWatches } from "@/domains/workspace/hooks/use-workspace-watches";
 import { Badge } from "@/platform/ui/badge";
@@ -17,18 +20,41 @@ function preferenceLabel(preference: string): string {
 }
 
 export function WorkspaceWatchesPage({ initialWatches }: WorkspaceWatchesPageProps) {
+  const session = useAtlasSession();
   const watchesQuery = useWorkspaceWatches(initialWatches);
   const watches = watchesQuery.data ?? initialWatches;
   const items = watches.items;
+  const showRenewalProof = session.data?.workspace.activeOrganization?.workspaceType === "team";
 
   return (
     <div className="mx-auto max-w-4xl space-y-8 py-12">
-      <header className="space-y-2">
-        <Badge variant="info">Monitoring</Badge>
-        <h1 className="type-display-small text-ink-strong">Watching</h1>
-        <p className="type-body-large text-ink-soft">
-          Shared actors and coverage targets this workspace follows.
-        </p>
+      <header className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
+        <div className="space-y-2">
+          <Badge variant="info">Monitoring</Badge>
+          <h1 className="type-display-small text-ink-strong">Watching</h1>
+          <p className="type-body-large text-ink-soft">
+            Shared actors and coverage targets this workspace follows.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2 sm:justify-end">
+          <Link
+            to="/coverage"
+            className="type-label-large border-outline-variant text-ink-strong hover:bg-surface-container-low inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border px-4 transition-colors"
+          >
+            <MapPinned className="h-4 w-4" aria-hidden="true" />
+            Open coverage
+          </Link>
+          {showRenewalProof ? (
+            <Link
+              hash="renewal-proof"
+              to="/organization"
+              className="type-label-large bg-ink-strong text-surface hover:bg-ink inline-flex min-h-10 items-center justify-center gap-2 rounded-lg px-4 transition-colors"
+            >
+              <ShieldCheck className="h-4 w-4" aria-hidden="true" />
+              Open proof
+            </Link>
+          ) : null}
+        </div>
       </header>
 
       {items.length === 0 ? (

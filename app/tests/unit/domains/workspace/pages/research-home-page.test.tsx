@@ -1,14 +1,24 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
+import type { ReactNode } from "react";
 import { render, screen, cleanup } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ResearchHomePage } from "@/domains/workspace/pages/research-home-page";
 import type { ResearchSummary } from "@/domains/workspace/server/research-summary";
 import type { AtlasSessionPayload } from "@/domains/access/organization-contracts";
+import type { NextActionsWorkspaceState } from "@/domains/workspace/components/next-actions-section";
+import type { AtlasBriefCollection } from "@/domains/workspace/server/briefs";
+import type { CoverageTargetCollection } from "@/domains/workspace/server/coverage-targets";
+import type { WorkspaceUsageSummary } from "@/domains/workspace/server/usage-summary";
+import type { WorkspaceWatchCollection } from "@/domains/workspace/server/watches";
 
 const mocks = vi.hoisted(() => ({
   useResearchSummary: vi.fn(),
   useAtlasSession: vi.fn(),
+  useWorkspaceBriefs: vi.fn(),
+  useWorkspaceCoverageTargets: vi.fn(),
+  useWorkspaceUsageSummary: vi.fn(),
+  useWorkspaceWatchesSnapshot: vi.fn(),
 }));
 
 vi.mock("@/domains/workspace/hooks/use-research-summary", () => ({
@@ -17,6 +27,30 @@ vi.mock("@/domains/workspace/hooks/use-research-summary", () => ({
 
 vi.mock("@/domains/access", () => ({
   useAtlasSession: mocks.useAtlasSession,
+}));
+
+vi.mock("@tanstack/react-router", () => ({
+  Link: ({ children, to }: { children: ReactNode; to?: string }) => (
+    <a href={to} data-link-to={to}>
+      {children}
+    </a>
+  ),
+}));
+
+vi.mock("@/domains/workspace/hooks/use-briefs", () => ({
+  useWorkspaceBriefs: mocks.useWorkspaceBriefs,
+}));
+
+vi.mock("@/domains/workspace/hooks/use-coverage-targets", () => ({
+  useWorkspaceCoverageTargets: mocks.useWorkspaceCoverageTargets,
+}));
+
+vi.mock("@/domains/workspace/hooks/use-workspace-usage-summary", () => ({
+  useWorkspaceUsageSummary: mocks.useWorkspaceUsageSummary,
+}));
+
+vi.mock("@/domains/workspace/hooks/use-workspace-watches", () => ({
+  useWorkspaceWatchesSnapshot: mocks.useWorkspaceWatchesSnapshot,
 }));
 
 vi.mock("@/domains/workspace/components/research-home-hero", () => ({
@@ -64,7 +98,14 @@ vi.mock("@/domains/workspace/components/recent-searches-section", () => ({
 }));
 
 vi.mock("@/domains/workspace/components/next-actions-section", () => ({
-  NextActionsSection: () => <div data-testid="next" />,
+  NextActionsSection: ({ workspace }: { workspace?: NextActionsWorkspaceState }) => (
+    <div
+      data-testid="next"
+      data-brief-status={workspace?.briefs.status ?? "none"}
+      data-brief-total={workspace?.briefs.data?.total ?? "none"}
+      data-has-workspace={workspace ? "true" : "false"}
+    />
+  ),
 }));
 
 describe("ResearchHomePage", () => {
@@ -92,10 +133,22 @@ describe("ResearchHomePage", () => {
     overrides: Partial<{
       isLocal: boolean;
       name: string;
+      activeWorkspace: boolean;
+      workspaceType: "individual" | "team";
       activeProducts: string[];
       runsPerMonth: number | null;
     }>,
   ): AtlasSessionPayload {
+    const activeOrganization = overrides.activeWorkspace
+      ? {
+          id: "org_123",
+          name: "Atlas Briefing Room Demo",
+          role: "owner",
+          slug: "atlas-briefing-room-demo",
+          workspaceType: overrides.workspaceType ?? "team",
+        }
+      : null;
+
     return {
       isLocal: overrides.isLocal ?? false,
       accountReady: true,
@@ -109,9 +162,9 @@ describe("ResearchHomePage", () => {
         name: overrides.name ?? "Ada Lovelace",
       },
       workspace: {
-        activeOrganization: null,
         activeProducts: (overrides.activeProducts ??
           []) as AtlasSessionPayload["workspace"]["activeProducts"],
+        activeOrganization,
         capabilities: {
           canInviteMembers: false,
           canManageOrganization: false,
@@ -130,7 +183,7 @@ describe("ResearchHomePage", () => {
             max_members: 1,
           },
         },
-        memberships: [],
+        memberships: activeOrganization ? [activeOrganization] : [],
         onboarding: { hasPendingInvitations: false, needsWorkspace: false },
         pendingInvitations: [],
       },
@@ -140,12 +193,59 @@ describe("ResearchHomePage", () => {
   beforeEach(() => {
     mocks.useResearchSummary.mockReset();
     mocks.useAtlasSession.mockReset();
+    mocks.useWorkspaceBriefs.mockReset();
+    mocks.useWorkspaceCoverageTargets.mockReset();
+    mocks.useWorkspaceUsageSummary.mockReset();
+    mocks.useWorkspaceWatchesSnapshot.mockReset();
     mocks.useResearchSummary.mockReturnValue({ data: summary() });
+    mocks.useWorkspaceBriefs.mockReturnValue({ data: briefCollection() });
+    mocks.useWorkspaceCoverageTargets.mockReturnValue({ data: coverageTargets() });
+    mocks.useWorkspaceUsageSummary.mockReturnValue({ data: usageSummary() });
+    mocks.useWorkspaceWatchesSnapshot.mockReturnValue({ data: watches() });
   });
 
   afterEach(() => {
     cleanup();
   });
+
+  function briefCollection(): AtlasBriefCollection {
+    return {
+      items: [],
+      total: 2,
+    };
+  }
+
+  function coverageTargets(): CoverageTargetCollection {
+    return {
+      items: [],
+      total: 0,
+    };
+  }
+
+  function usageSummary(): WorkspaceUsageSummary {
+    return {
+      event_counts: {
+        brief_opened: 1,
+      },
+      org_id: "org_123",
+      renewal_signals: {
+        briefs_used: 1,
+        coverage_gaps_closed: 0,
+        integrations_used: 0,
+        public_records_improved: 0,
+        team_workflow_actions: 1,
+      },
+      total_events: 1,
+    };
+  }
+
+  function watches(): WorkspaceWatchCollection {
+    return {
+      items: [],
+      orgId: "org_123",
+      total: 0,
+    };
+  }
 
   it("seeds the summary query from the loader payload and renders every section", () => {
     mocks.useAtlasSession.mockReturnValue({ data: sessionWith({}) });
@@ -199,5 +299,53 @@ describe("ResearchHomePage", () => {
     render(<ResearchHomePage initialSummary={summary()} />);
 
     expect(screen.getByTestId("hero")).toHaveTextContent("no-name");
+  });
+
+  it("renders a workspace operating picture for active team workspaces", () => {
+    mocks.useAtlasSession.mockReturnValue({ data: sessionWith({ activeWorkspace: true }) });
+
+    render(<ResearchHomePage initialSummary={summary()} />);
+
+    expect(
+      screen.getByRole("heading", { name: "Workspace operating picture" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Team workspace")).toBeInTheDocument();
+    expect(mocks.useWorkspaceBriefs).toHaveBeenCalledWith(true, "org_123");
+    expect(mocks.useWorkspaceCoverageTargets).toHaveBeenCalledWith(true, "org_123");
+    expect(mocks.useWorkspaceUsageSummary).toHaveBeenCalledWith(true, "org_123");
+    expect(mocks.useWorkspaceWatchesSnapshot).toHaveBeenCalledWith(true, "org_123");
+    expect(screen.getByText("2 briefs")).toBeInTheDocument();
+    expect(screen.getByText("1 proof event")).toBeInTheDocument();
+    expect(screen.getByTestId("next")).toHaveAttribute("data-has-workspace", "true");
+    expect(screen.getByTestId("next")).toHaveAttribute("data-brief-status", "ready");
+    expect(screen.getByTestId("next")).toHaveAttribute("data-brief-total", "2");
+  });
+
+  it("shows unavailable operating-picture lanes when workspace counts fail", () => {
+    mocks.useAtlasSession.mockReturnValue({ data: sessionWith({ activeWorkspace: true }) });
+    mocks.useWorkspaceBriefs.mockReturnValue({ data: undefined, isError: true });
+    mocks.useWorkspaceCoverageTargets.mockReturnValue({ data: undefined, isError: true });
+    mocks.useWorkspaceUsageSummary.mockReturnValue({ data: undefined, isError: true });
+    mocks.useWorkspaceWatchesSnapshot.mockReturnValue({ data: undefined, isError: true });
+
+    render(<ResearchHomePage initialSummary={summary()} />);
+
+    expect(screen.getAllByText("Unavailable")).toHaveLength(4);
+    expect(screen.getByText("Briefs could not load.")).toBeInTheDocument();
+    expect(screen.getByText("Coverage could not load.")).toBeInTheDocument();
+    expect(screen.getByText("Monitoring could not load.")).toBeInTheDocument();
+    expect(screen.getByText("Proof could not load.")).toBeInTheDocument();
+    expect(screen.queryByText("Loading")).not.toBeInTheDocument();
+  });
+
+  it("labels individual active workspaces as personal workspaces", () => {
+    mocks.useAtlasSession.mockReturnValue({
+      data: sessionWith({ activeWorkspace: true, workspaceType: "individual" }),
+    });
+
+    render(<ResearchHomePage initialSummary={summary()} />);
+
+    expect(screen.getByText("Personal workspace")).toBeInTheDocument();
+    expect(screen.queryByText("Team workspace")).not.toBeInTheDocument();
   });
 });

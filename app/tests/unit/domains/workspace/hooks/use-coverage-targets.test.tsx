@@ -28,7 +28,8 @@ vi.mock("@/domains/workspace/server/coverage-targets", () => ({
 
 describe("coverage target hooks", () => {
   interface CoverageTargetsQueryConfig {
-    initialData: CoverageTargetCollection;
+    enabled?: boolean;
+    initialData?: CoverageTargetCollection;
     queryFn(): Promise<unknown>;
     queryKey: readonly string[];
   }
@@ -73,14 +74,26 @@ describe("coverage target hooks", () => {
     return call[0] as CreateCoverageTargetMutationConfig;
   }
 
-  it("hydrates coverage targets from the route loader payload", async () => {
+  it("hydrates coverage targets under the active workspace key", async () => {
     const initialTargets = collection();
     const mod = await import("@/domains/workspace/hooks/use-coverage-targets");
-    renderHook(() => mod.useCoverageTargets(initialTargets));
+    renderHook(() => mod.useCoverageTargets(initialTargets, "org_123"));
 
     const config = queryConfig();
-    expect(config.queryKey).toEqual(["workspace", "coverage-targets"]);
+    expect(config.queryKey).toEqual(["workspace", "coverage-targets", "list", "org_123"]);
     expect(config.initialData).toBe(initialTargets);
+    await config.queryFn();
+    expect(mocks.loadWorkspaceCoverageTargets).toHaveBeenCalledWith();
+  });
+
+  it("loads a workspace coverage snapshot when enabled", async () => {
+    const mod = await import("@/domains/workspace/hooks/use-coverage-targets");
+    renderHook(() => mod.useWorkspaceCoverageTargets(true, "org_123"));
+
+    const config = queryConfig();
+    expect(config.queryKey).toEqual(["workspace", "coverage-targets", "snapshot", "org_123"]);
+    expect(config.enabled).toBe(true);
+    expect(config.initialData).toBeUndefined();
     await config.queryFn();
     expect(mocks.loadWorkspaceCoverageTargets).toHaveBeenCalledWith();
   });

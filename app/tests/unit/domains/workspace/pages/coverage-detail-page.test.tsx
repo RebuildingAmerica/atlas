@@ -132,6 +132,14 @@ describe("CoverageDetailPage", () => {
     expect(screen.getByRole("heading", { name: "Linked research" })).toBeInTheDocument();
     expect(screen.getByText("coverage review")).toBeInTheDocument();
     expect(screen.queryByText(/discovery run/i)).not.toBeInTheDocument();
+    expect(mocks.useWorkspaceWatchStatus).toHaveBeenCalledWith(
+      {
+        resourceId: "coverage_123",
+        resourceType: "coverage_target",
+      },
+      true,
+      "org_123",
+    );
 
     const actorLink = screen.getByRole("link", { name: "KC Tenants" });
     expect(actorLink).toHaveAttribute("data-link-to", "/profiles/organizations/$slug");

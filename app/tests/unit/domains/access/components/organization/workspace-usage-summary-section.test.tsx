@@ -88,6 +88,9 @@ describe("WorkspaceUsageSummarySection", () => {
     );
 
     expect(screen.getByRole("heading", { name: "Renewal proof" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Renewal proof" }).closest("article"),
+    ).toHaveAttribute("id", "renewal-proof");
     expect(screen.getByText("16")).toBeInTheDocument();
     expect(screen.getByText("Briefs used")).toBeInTheDocument();
     expect(screen.getByText("Coverage gaps closed")).toBeInTheDocument();

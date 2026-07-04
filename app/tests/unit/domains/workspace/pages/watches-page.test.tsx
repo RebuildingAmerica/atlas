@@ -5,12 +5,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { WorkspaceWatchCollection } from "@/domains/workspace/server/watches";
 
 const mocks = vi.hoisted(() => ({
+  useAtlasSession: vi.fn(),
   useWorkspaceWatches: vi.fn(),
 }));
 
 vi.mock("@tanstack/react-router", () => ({
-  Link: ({ children, to }: { children: React.ReactNode; to: string }) => (
-    <a href={to}>{children}</a>
+  Link: ({ children, hash, to }: { children: React.ReactNode; hash?: string; to: string }) => (
+    <a href={to} data-link-hash={hash} data-link-to={to}>
+      {children}
+    </a>
   ),
 }));
 
@@ -18,9 +21,23 @@ vi.mock("@/domains/workspace/hooks/use-workspace-watches", () => ({
   useWorkspaceWatches: mocks.useWorkspaceWatches,
 }));
 
+vi.mock("@/domains/access", () => ({
+  useAtlasSession: mocks.useAtlasSession,
+}));
+
 describe("WorkspaceWatchesPage", () => {
   beforeEach(() => {
+    mocks.useAtlasSession.mockReset();
     mocks.useWorkspaceWatches.mockReset();
+    mocks.useAtlasSession.mockReturnValue({
+      data: {
+        workspace: {
+          activeOrganization: {
+            workspaceType: "team",
+          },
+        },
+      },
+    });
   });
 
   afterEach(() => {
@@ -64,6 +81,7 @@ describe("WorkspaceWatchesPage", () => {
           },
         },
       ],
+      orgId: "org_123",
       total: 2,
       ...overrides,
     };
@@ -76,8 +94,17 @@ describe("WorkspaceWatchesPage", () => {
     const { WorkspaceWatchesPage } = await import("@/domains/workspace/pages/watches-page");
     render(<WorkspaceWatchesPage initialWatches={watches} />);
 
+    expect(mocks.useWorkspaceWatches).toHaveBeenCalledWith(watches);
     expect(screen.getByRole("heading", { name: "Watching" })).toBeInTheDocument();
     expect(screen.getByText("2 watched resources")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Open proof" })).toHaveAttribute(
+      "data-link-to",
+      "/organization",
+    );
+    expect(screen.getByRole("link", { name: "Open proof" })).toHaveAttribute(
+      "data-link-hash",
+      "renewal-proof",
+    );
     expect(screen.getByRole("link", { name: "KC Tenants" })).toHaveAttribute(
       "href",
       "/profiles/organizations/kc-tenants",
@@ -102,5 +129,30 @@ describe("WorkspaceWatchesPage", () => {
     render(<WorkspaceWatchesPage initialWatches={watches} />);
 
     expect(screen.getByText("No watched resources.")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Open coverage" })).toHaveAttribute(
+      "data-link-to",
+      "/coverage",
+    );
+    expect(screen.getByRole("link", { name: "Open proof" })).toBeInTheDocument();
+  });
+
+  it("does not render renewal proof links for personal workspaces", async () => {
+    const watches = collection();
+    mocks.useWorkspaceWatches.mockReturnValue({ data: watches });
+    mocks.useAtlasSession.mockReturnValue({
+      data: {
+        workspace: {
+          activeOrganization: {
+            workspaceType: "individual",
+          },
+        },
+      },
+    });
+
+    const { WorkspaceWatchesPage } = await import("@/domains/workspace/pages/watches-page");
+    render(<WorkspaceWatchesPage initialWatches={watches} />);
+
+    expect(screen.getByRole("link", { name: "Open coverage" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Open proof" })).not.toBeInTheDocument();
   });
 });

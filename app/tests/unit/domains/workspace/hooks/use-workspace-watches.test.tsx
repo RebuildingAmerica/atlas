@@ -35,7 +35,8 @@ describe("workspace watch hooks", () => {
   }
 
   interface WatchListQueryConfig {
-    initialData: unknown;
+    enabled?: boolean;
+    initialData?: unknown;
     queryFn(): Promise<unknown>;
     queryKey: readonly unknown[];
   }
@@ -87,14 +88,25 @@ describe("workspace watch hooks", () => {
   it("loads watch status for one resource", async () => {
     const mod = await import("@/domains/workspace/hooks/use-workspace-watches");
     renderHook(() =>
-      mod.useWorkspaceWatchStatus({
-        resourceId: "coverage_123",
-        resourceType: "coverage_target",
-      }),
+      mod.useWorkspaceWatchStatus(
+        {
+          resourceId: "coverage_123",
+          resourceType: "coverage_target",
+        },
+        true,
+        "org_123",
+      ),
     );
 
     const config = queryConfig();
-    expect(config.queryKey).toEqual(["workspace", "watches", "coverage_target", "coverage_123"]);
+    expect(config.queryKey).toEqual([
+      "workspace",
+      "watches",
+      "status",
+      "org_123",
+      "coverage_target",
+      "coverage_123",
+    ]);
     expect(config.enabled).toBe(true);
     await config.queryFn();
     expect(mocks.loadWorkspaceWatchStatus).toHaveBeenCalledWith({
@@ -105,14 +117,26 @@ describe("workspace watch hooks", () => {
     });
   });
 
-  it("hydrates the shared workspace watch list", async () => {
-    const collection = { items: [], total: 0 };
+  it("hydrates the shared workspace watch list under the active workspace key", async () => {
+    const collection = { items: [], orgId: "org_123", total: 0 };
     const mod = await import("@/domains/workspace/hooks/use-workspace-watches");
     renderHook(() => mod.useWorkspaceWatches(collection));
 
     const config = watchListQueryConfig();
-    expect(config.queryKey).toEqual(["workspace", "watches"]);
+    expect(config.queryKey).toEqual(["workspace", "watches", "list", "org_123"]);
     expect(config.initialData).toBe(collection);
+    await config.queryFn();
+    expect(mocks.loadWorkspaceWatches).toHaveBeenCalledWith();
+  });
+
+  it("loads a shared workspace watch snapshot when enabled", async () => {
+    const mod = await import("@/domains/workspace/hooks/use-workspace-watches");
+    renderHook(() => mod.useWorkspaceWatchesSnapshot(true, "org_123"));
+
+    const config = watchListQueryConfig();
+    expect(config.queryKey).toEqual(["workspace", "watches", "snapshot", "org_123"]);
+    expect(config.enabled).toBe(true);
+    expect(config.initialData).toBeUndefined();
     await config.queryFn();
     expect(mocks.loadWorkspaceWatches).toHaveBeenCalledWith();
   });
@@ -131,7 +155,7 @@ describe("workspace watch hooks", () => {
 
     expect(mocks.watchWorkspaceResource).toHaveBeenCalledWith({ data: input });
     expect(mocks.invalidateQueries).toHaveBeenCalledWith({
-      queryKey: ["workspace", "watches", "coverage_target", "coverage_123"],
+      queryKey: ["workspace", "watches", "status"],
     });
   });
 
@@ -149,7 +173,7 @@ describe("workspace watch hooks", () => {
 
     expect(mocks.unwatchWorkspaceResource).toHaveBeenCalledWith({ data: input });
     expect(mocks.invalidateQueries).toHaveBeenCalledWith({
-      queryKey: ["workspace", "watches", "entry", "entry_123"],
+      queryKey: ["workspace", "watches", "status"],
     });
   });
 });
