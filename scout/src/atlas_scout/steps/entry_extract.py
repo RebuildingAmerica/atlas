@@ -170,6 +170,8 @@ async def extract_page_entries(
                 return await _perform_extraction(
                     page,
                     provider,
+                    city=city,
+                    state=state,
                     system_prompt=system_prompt,
                     source_fingerprint=source_fingerprint,
                     provider_key=provider_key,
@@ -196,6 +198,8 @@ async def extract_page_entries(
                 return await _perform_unclaimed_extraction(
                     page,
                     provider,
+                    city=city,
+                    state=state,
                     system_prompt=system_prompt,
                     source_fingerprint=source_fingerprint,
                     provider_key=provider_key,
@@ -208,6 +212,8 @@ async def extract_page_entries(
     return await _run_provider_extraction(
         page,
         provider,
+        city=city,
+        state=state,
         system_prompt=system_prompt,
         on_retry=on_retry,
     )
@@ -217,6 +223,8 @@ async def _perform_extraction(
     page: PageContent,
     provider: LLMProvider,
     *,
+    city: str,
+    state: str,
     system_prompt: str,
     source_fingerprint: str,
     provider_key: str,
@@ -231,6 +239,8 @@ async def _perform_extraction(
         entries = await _run_provider_extraction(
             page,
             provider,
+            city=city,
+            state=state,
             system_prompt=system_prompt,
             on_retry=on_retry,
         )
@@ -253,6 +263,8 @@ async def _perform_unclaimed_extraction(
     page: PageContent,
     provider: LLMProvider,
     *,
+    city: str,
+    state: str,
     system_prompt: str,
     source_fingerprint: str,
     provider_key: str,
@@ -265,6 +277,8 @@ async def _perform_unclaimed_extraction(
     entries = await _run_provider_extraction(
         page,
         provider,
+        city=city,
+        state=state,
         system_prompt=system_prompt,
         on_retry=on_retry,
     )
@@ -282,6 +296,8 @@ async def _run_provider_extraction(
     page: PageContent,
     provider: LLMProvider,
     *,
+    city: str,
+    state: str,
     system_prompt: str,
     on_retry: Callable[[dict[str, object]], None] | None = None,
 ) -> list[RawEntry]:
@@ -292,6 +308,10 @@ async def _run_provider_extraction(
 
     This decomposition lets any model succeed — each call has one focused job.
     """
+    roster_entries = _extract_roster_table_entries(page, city=city, state=state)
+    if roster_entries:
+        return roster_entries
+
     # --- Pass 1: Identify all named entities ---
     identified = await _pass_identify(page, provider, on_retry=on_retry)
     if not identified:
@@ -307,6 +327,107 @@ async def _run_provider_extraction(
         entry.source_url = page.url
         entry.source_date = page_date
     return entries
+
+
+def _extract_roster_table_entries(page: PageContent, *, city: str, state: str) -> list[RawEntry]:
+    """Extract public-office roster rows from markdown-like tables."""
+    entries: list[RawEntry] = []
+    name_index: int | None = None
+    district_index: int | None = None
+    party_index: int | None = None
+    source_date = page.published_date.date() if page.published_date else None
+
+    for line in page.text.splitlines():
+        row = line.strip()
+        if not row.startswith("|") or not row.endswith("|"):
+            continue
+
+        cells = _split_markdown_table_row(row)
+        if not cells or _is_markdown_separator_row(cells):
+            continue
+
+        normalized_cells = [cell.strip().lower() for cell in cells]
+        if "name" in normalized_cells and _looks_like_roster_header(normalized_cells):
+            name_index = normalized_cells.index("name")
+            district_index = _optional_cell_index(normalized_cells, "district")
+            party_index = _optional_cell_index(normalized_cells, "party")
+            continue
+
+        if name_index is None or name_index >= len(cells):
+            continue
+
+        name = _normalize_roster_name(cells[name_index])
+        if not name:
+            continue
+
+        district = _cell_at(cells, district_index)
+        party = _cell_at(cells, party_index)
+        description_parts = [f"{name} is listed as a public officeholder"]
+        if district:
+            description_parts.append(f"for {district}")
+        if party:
+            description_parts.append(f"with party marker {party}")
+        description_parts.append("in the source roster.")
+
+        entries.append(
+            RawEntry(
+                name=name,
+                entry_type="person",
+                description=" ".join(description_parts),
+                city=city or None,
+                state=state or None,
+                geo_specificity="local",
+                issue_areas=[
+                    "political_polarization_and_democratic_norms",
+                    "electoral_reform",
+                ],
+                website=page.url,
+                affiliated_org="U.S. House of Representatives",
+                extraction_context=row,
+                source_url=page.url,
+                source_date=source_date,
+            )
+        )
+
+    return entries
+
+
+def _split_markdown_table_row(row: str) -> list[str]:
+    """Split a markdown table row while keeping only non-empty edge cells."""
+    return [cell.strip() for cell in row.strip().strip("|").split("|")]
+
+
+def _is_markdown_separator_row(cells: list[str]) -> bool:
+    """Return whether a markdown row is the header separator."""
+    return all(cell.replace("-", "").replace(":", "").strip() == "" for cell in cells)
+
+
+def _looks_like_roster_header(cells: list[str]) -> bool:
+    """Return whether a table header looks like a public-office roster."""
+    return "district" in cells or "office" in cells or "party" in cells
+
+
+def _optional_cell_index(cells: list[str], name: str) -> int | None:
+    """Return the index of an optional table column."""
+    return cells.index(name) if name in cells else None
+
+
+def _cell_at(cells: list[str], index: int | None) -> str:
+    """Return a table cell when that optional column exists."""
+    if index is None or index >= len(cells):
+        return ""
+    return cells[index].strip()
+
+
+def _normalize_roster_name(raw_name: str) -> str:
+    """Normalize roster names while rejecting vacancies and blank cells."""
+    name = raw_name.strip()
+    if not name or "vacancy" in name.lower():
+        return ""
+    if "," not in name:
+        return name
+    last, first = [part.strip() for part in name.split(",", maxsplit=1)]
+    return f"{first} {last}".strip()
 
 
 async def _pass_identify(
