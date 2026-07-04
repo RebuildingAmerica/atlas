@@ -19,6 +19,60 @@ from atlas.domains.access.capabilities import (
 from atlas.domains.access.principals import AuthenticatedActor
 from atlas.platform.config import Settings
 
+ENTERPRISE_PACKAGE_EXPECTATIONS = [
+    {
+        "product": "atlas_briefing_room",
+        "included": {
+            "workspace.export",
+            "workspace.shared",
+            "monitoring.watchlists",
+            "api.keys",
+            "api.mcp",
+        },
+        "excluded": {"auth.sso", "coverage.underwriting"},
+        "max_members": 10,
+    },
+    {
+        "product": "atlas_field_intelligence",
+        "included": {
+            "workspace.export",
+            "workspace.shared",
+            "monitoring.watchlists",
+            "coverage.targets",
+            "integrations.slack",
+        },
+        "excluded": {"auth.sso", "coverage.underwriting"},
+        "max_members": 25,
+    },
+    {
+        "product": "atlas_civic_operating_layer",
+        "included": {
+            "workspace.export",
+            "workspace.shared",
+            "monitoring.watchlists",
+            "coverage.targets",
+            "public.directories",
+            "api.keys",
+            "api.mcp",
+            "auth.sso",
+        },
+        "excluded": {"coverage.underwriting"},
+        "max_members": 75,
+    },
+    {
+        "product": "atlas_coverage_underwriting",
+        "included": {
+            "workspace.export",
+            "workspace.shared",
+            "coverage.targets",
+            "public.directories",
+            "coverage.underwriting",
+        },
+        "excluded": {"auth.sso"},
+        "max_members": 10,
+    },
+]
+
 
 class TestResolveCapabilities:
     def test_defaults_when_no_products(self) -> None:
@@ -63,6 +117,18 @@ class TestResolveCapabilities:
         assert resolved.limits["research_runs_per_month"] is None
         assert resolved.limits["max_api_keys"] == 1
         assert resolved.limits["api_requests_per_day"] == 1000  # noqa: PLR2004
+
+    @pytest.mark.parametrize("expectation", ENTERPRISE_PACKAGE_EXPECTATIONS)
+    def test_enterprise_package_capabilities(self, expectation: dict[str, object]) -> None:
+        resolved = resolve_capabilities([cast("str", expectation["product"])])
+
+        for capability in cast("set[str]", expectation["included"]):
+            assert capability in resolved.capabilities
+
+        for capability in cast("set[str]", expectation["excluded"]):
+            assert capability not in resolved.capabilities
+
+        assert resolved.limits["max_members"] == expectation["max_members"]
 
 
 class TestHasCapability:
@@ -161,6 +227,19 @@ class TestRequireCapabilityDependency:
         detail = cast("dict[str, object]", excinfo.value.detail)
         assert detail["error"] == "plan_required"
         assert detail["plan_required"] == "pro"
+
+    @pytest.mark.asyncio
+    async def test_enterprise_only_capability_names_required_package(self) -> None:
+        actor = _build_actor(auth_type="oauth_jwt", products=["atlas_field_intelligence"])
+        dependency = require_capability("coverage.underwriting")
+
+        with pytest.raises(HTTPException) as excinfo:
+            await dependency(actor=actor, settings=_build_settings())  # type: ignore[call-arg]
+
+        detail = cast("dict[str, object]", excinfo.value.detail)
+        assert detail["error"] == "plan_required"
+        assert detail["plan_required"] == "coverage_underwriting"
+        assert "Atlas Coverage Underwriting" in cast("str", detail["message"])
 
 
 class TestEnforceLimitDependency:

@@ -328,6 +328,14 @@ class SourceCRUD:
             (entry_id, source_id, extraction_context, db.now_iso()),
         )
         await conn.commit()
+        from atlas.domains.access.models.watch_events import OrgChangeEventCRUD
+
+        await OrgChangeEventCRUD.record_entry_source_events(
+            conn,
+            entry_id=entry_id,
+            source_id=source_id,
+            summary=extraction_context,
+        )
 
     @staticmethod
     async def unlink_from_entry(conn: aiosqlite.Connection, entry_id: str, source_id: str) -> bool:

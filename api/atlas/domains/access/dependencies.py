@@ -6,11 +6,16 @@ import logging
 from typing import TYPE_CHECKING
 
 from fastapi import Depends, Header, HTTPException, Request, status
+from starlette.routing import Route
 
 if TYPE_CHECKING:
-    from collections.abc import Awaitable, Callable
+    from collections.abc import AsyncGenerator, Awaitable, Callable
 
+    import aiosqlite
+
+from atlas.models import get_db_connection
 from atlas.platform.config import Settings, get_settings
+from atlas.platform.database import db as db_util
 
 from .api_keys import verify_api_key
 from .capabilities import resolve_capabilities
@@ -18,10 +23,65 @@ from .challenges import build_bearer_challenge
 from .internal import build_local_actor, verify_internal_actor
 from .jwt import verify_bearer_jwt
 from .membership import verify_org_membership
+from .models.usage_events import OrgUsageEventCRUD, OrgUsageEventRecord
 from .permissions import require_permission
 from .principals import AuthenticatedActor
 
 logger = logging.getLogger(__name__)
+
+_EXTERNAL_API_AUTH_TYPES = frozenset({"api_key", "oauth_jwt"})
+_API_USAGE_RECORDED_STATE_KEY = "_atlas_api_usage_recorded"
+
+
+async def get_usage_db(
+    settings: Settings = Depends(get_settings),
+) -> AsyncGenerator[aiosqlite.Connection, None]:
+    """Yield a request-scoped database connection for access usage accounting."""
+    conn = await get_db_connection(settings.database_url, backend=settings.database_backend)
+    try:
+        yield conn
+    finally:
+        await conn.close()
+
+
+def _route_usage_resource_id(request: Request) -> str:
+    """Return the matched route template for low-cardinality API usage proof."""
+    route = request.scope.get("route")
+    if isinstance(route, Route):
+        return route.path
+    return request.url.path
+
+
+async def _record_external_api_call_usage(
+    conn: aiosqlite.Connection,
+    *,
+    request: Request,
+    actor: AuthenticatedActor,
+) -> None:
+    """Record one successful external API call without counting app-server traffic."""
+    if actor.auth_type not in _EXTERNAL_API_AUTH_TYPES or actor.org_id is None:
+        return
+    if getattr(request.state, _API_USAGE_RECORDED_STATE_KEY, False):
+        return
+
+    setattr(request.state, _API_USAGE_RECORDED_STATE_KEY, True)
+    await OrgUsageEventCRUD.record(
+        conn,
+        OrgUsageEventRecord(
+            org_id=actor.org_id,
+            actor_id=actor.user_id,
+            event_type="api_call",
+            resource_type="api",
+            resource_id=_route_usage_resource_id(request),
+            metadata_json=db_util.encode_json(
+                {
+                    "auth_type": actor.auth_type,
+                    "method": request.method,
+                    "surface": "api",
+                }
+            ),
+        ),
+    )
 
 
 async def require_actor(  # noqa: PLR0913
@@ -98,14 +158,22 @@ async def require_actor(  # noqa: PLR0913
 def require_actor_permission(
     resource: str,
     action: str,
-) -> Callable[..., Awaitable[AuthenticatedActor]]:
+) -> Callable[..., AsyncGenerator[AuthenticatedActor, None]]:
     """Create a dependency that enforces an actor permission."""
 
     async def dependency(
+        request: Request,
         actor: AuthenticatedActor = Depends(require_actor),
         settings: Settings = Depends(get_settings),
-    ) -> AuthenticatedActor:
-        return require_permission(actor, resource, action, settings=settings)
+        usage_db: aiosqlite.Connection = Depends(get_usage_db),
+    ) -> AsyncGenerator[AuthenticatedActor, None]:
+        permitted_actor = require_permission(actor, resource, action, settings=settings)
+        yield permitted_actor
+        await _record_external_api_call_usage(
+            usage_db,
+            request=request,
+            actor=permitted_actor,
+        )
 
     return dependency
 
@@ -113,14 +181,22 @@ def require_actor_permission(
 def require_org_actor_permission(
     resource: str,
     action: str,
-) -> Callable[..., Awaitable[AuthenticatedActor]]:
+) -> Callable[..., AsyncGenerator[AuthenticatedActor, None]]:
     """Create a dependency that enforces org context and a resource permission."""
 
     async def dependency(
+        request: Request,
         actor: AuthenticatedActor = Depends(require_org_actor),
         settings: Settings = Depends(get_settings),
-    ) -> AuthenticatedActor:
-        return require_permission(actor, resource, action, settings=settings)
+        usage_db: aiosqlite.Connection = Depends(get_usage_db),
+    ) -> AsyncGenerator[AuthenticatedActor, None]:
+        permitted_actor = require_permission(actor, resource, action, settings=settings)
+        yield permitted_actor
+        await _record_external_api_call_usage(
+            usage_db,
+            request=request,
+            actor=permitted_actor,
+        )
 
     return dependency
 
@@ -145,8 +221,8 @@ async def require_org_actor(
 
     if not settings.auth_membership_verification_url:
         # Dev/local mode: trust the org_id from the token as-is.
-        actor.active_products = []
-        actor.resolved_capabilities = resolve_capabilities([])
+        actor.active_products = ["atlas_team"] if actor.is_local else []
+        actor.resolved_capabilities = resolve_capabilities(actor.active_products)
         return actor
 
     result = await verify_org_membership(actor.user_id, actor.org_id, settings)

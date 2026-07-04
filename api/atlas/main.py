@@ -189,7 +189,7 @@ def create_app() -> FastAPI:
             "resource": resource_url,
             "authorization_servers": [issuer] if issuer else [],
             "bearer_methods_supported": ["header"],
-            "scopes_supported": ["discovery:read"],
+            "scopes_supported": ["discovery:read", "api.mcp"],
         }
         if issuer_origin:
             metadata["resource_documentation"] = f"{issuer_origin}/docs/mcp"

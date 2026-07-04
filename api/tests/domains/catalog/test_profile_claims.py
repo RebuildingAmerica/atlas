@@ -4,12 +4,15 @@
 from __future__ import annotations
 
 import json
+from csv import DictReader
+from io import StringIO
 
 import pytest
 import pytest_asyncio
 
 from atlas.domains.access.models.follows import FollowCRUD
 from atlas.domains.access.models.saved_lists import SavedListCRUD
+from atlas.domains.access.models.usage_events import OrgUsageEventCRUD
 from atlas.domains.catalog.api import profiles as profile_api
 from atlas.domains.catalog.models.profile_claims import ProfileClaimCRUD
 from atlas.models import EntryCRUD, SourceCRUD
@@ -427,7 +430,7 @@ class TestSavedListsAPI:
 
     @pytest.mark.asyncio
     async def test_add_item_and_get_returns_hydrated_entry(
-        self, test_client: object, claimable_org: str
+        self, test_client: object, test_db: object, claimable_org: str
     ) -> None:
         create_resp = await test_client.post("/api/lists", json={"name": "Test"})
         list_id = create_resp.json()["id"]
@@ -444,6 +447,105 @@ class TestSavedListsAPI:
         get_resp = await test_client.get(f"/api/lists/{list_id}")
         assert get_resp.status_code == 200
         assert get_resp.json()["item_count"] == 1
+        assert await OrgUsageEventCRUD.count_by_type(test_db, org_id="local") == {
+            "list_item_saved": 1
+        }
+
+    @pytest.mark.asyncio
+    async def test_export_list_as_json_preserves_notes_and_provenance(
+        self,
+        test_client: object,
+        test_db: object,
+        claimable_org: str,
+    ) -> None:
+        source_id = await SourceCRUD.create(
+            test_db,
+            url="https://example.com/mississippi-rising",
+            source_type="news_article",
+            extraction_method="manual",
+            title="Mississippi Rising expands statewide organizing",
+            publication="Delta Ledger",
+        )
+        await SourceCRUD.link_to_entry(test_db, claimable_org, source_id)
+
+        create_resp = await test_client.post(
+            "/api/lists",
+            json={"name": "Mississippi power map", "description": "Follow-up leads"},
+        )
+        list_id = create_resp.json()["id"]
+        await test_client.post(
+            f"/api/lists/{list_id}/items",
+            json={"entry_id": claimable_org, "note": "Ask about statewide partners."},
+        )
+
+        export_resp = await test_client.get(f"/api/lists/{list_id}/export")
+
+        assert export_resp.status_code == 200
+        body = export_resp.json()
+        assert body["format"] == "json"
+        assert body["list"]["id"] == list_id
+        assert body["list"]["name"] == "Mississippi power map"
+        assert body["provenance"] == {"item_count": 1, "source_count": 1}
+        assert body["items"][0]["entry_id"] == claimable_org
+        assert body["items"][0]["note"] == "Ask about statewide partners."
+        assert body["items"][0]["entry"]["name"] == "Mississippi Rising"
+        assert body["items"][0]["entry"]["source_count"] == 1
+        assert body["items"][0]["trust_level"] == "unverified"
+        assert body["items"][0]["sources"] == [
+            {
+                "id": source_id,
+                "url": "https://example.com/mississippi-rising",
+                "title": "Mississippi Rising expands statewide organizing",
+                "publication": "Delta Ledger",
+                "type": "news_article",
+            }
+        ]
+
+    @pytest.mark.asyncio
+    async def test_export_list_as_csv_preserves_research_rows(
+        self,
+        test_client: object,
+        test_db: object,
+        claimable_org: str,
+    ) -> None:
+        source_id = await SourceCRUD.create(
+            test_db,
+            url="https://example.com/mississippi-rising",
+            source_type="news_article",
+            extraction_method="manual",
+        )
+        await SourceCRUD.link_to_entry(test_db, claimable_org, source_id)
+        create_resp = await test_client.post("/api/lists", json={"name": "MS / Delta Leads"})
+        list_id = create_resp.json()["id"]
+        await test_client.post(
+            f"/api/lists/{list_id}/items",
+            json={"entry_id": claimable_org, "note": "Invite to coalition call."},
+        )
+
+        export_resp = await test_client.get(f"/api/lists/{list_id}/export?format=csv")
+
+        assert export_resp.status_code == 200
+        assert export_resp.headers["content-type"].startswith("text/csv")
+        assert export_resp.headers["content-disposition"] == (
+            f'attachment; filename="ms-delta-leads-list-{list_id}.csv"'
+        )
+        rows = list(DictReader(StringIO(export_resp.text)))
+        assert rows == [
+            {
+                "list_id": list_id,
+                "list_name": "MS / Delta Leads",
+                "entry_id": claimable_org,
+                "name": "Mississippi Rising",
+                "type": "organization",
+                "location": "Jackson, MS",
+                "source_count": "1",
+                "trust_level": "unverified",
+                "source_urls": "https://example.com/mississippi-rising",
+                "note": "Invite to coalition call.",
+                "added_at": rows[0]["added_at"],
+                "profile_slug": rows[0]["profile_slug"],
+            }
+        ]
 
     @pytest.mark.asyncio
     async def test_membership_lookup(self, test_client: object, claimable_org: str) -> None:

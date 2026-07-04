@@ -30,6 +30,32 @@ class FlagCRUD:
     """CRUD helpers for entity and source flags."""
 
     @staticmethod
+    def _entity_flag_from_row(row: Any) -> FlagModel:
+        """Convert an entity flag row to a model."""
+        return FlagModel(
+            id=str(row[0]),
+            target_type="entity",
+            target_id=str(row[1]),
+            reason=str(row[2]),
+            note=str(row[3]) if row[3] is not None else None,
+            status=str(row[4]),
+            created_at=str(row[5]),
+        )
+
+    @staticmethod
+    def _source_flag_from_row(row: Any) -> FlagModel:
+        """Convert a source flag row to a model."""
+        return FlagModel(
+            id=str(row[0]),
+            target_type="source",
+            target_id=str(row[1]),
+            reason=str(row[2]),
+            note=str(row[3]) if row[3] is not None else None,
+            status=str(row[4]),
+            created_at=str(row[5]),
+        )
+
+    @staticmethod
     async def create_entity_flag(
         conn: aiosqlite.Connection,
         *,
@@ -104,18 +130,36 @@ class FlagCRUD:
             (entity_id, limit, offset),
         )
         rows = await cursor.fetchall()
-        return [
-            FlagModel(
-                id=row[0],
-                target_type="entity",
-                target_id=row[1],
-                reason=row[2],
-                note=row[3],
-                status=row[4],
-                created_at=row[5],
-            )
-            for row in rows
-        ]
+        return [FlagCRUD._entity_flag_from_row(row) for row in rows]
+
+    @staticmethod
+    async def get_entity_flag(conn: aiosqlite.Connection, flag_id: str) -> FlagModel | None:
+        """Return one entity flag by id."""
+        cursor = await conn.execute(
+            """
+            SELECT id, entity_id, reason, note, status, created_at
+            FROM entity_flags
+            WHERE id = ?
+            """,
+            (flag_id,),
+        )
+        row = await cursor.fetchone()
+        return FlagCRUD._entity_flag_from_row(row) if row is not None else None
+
+    @staticmethod
+    async def update_entity_flag_status(
+        conn: aiosqlite.Connection,
+        flag_id: str,
+        *,
+        status: str,
+    ) -> FlagModel | None:
+        """Update one entity flag workflow status."""
+        await conn.execute(
+            "UPDATE entity_flags SET status = ? WHERE id = ?",
+            (status, flag_id),
+        )
+        await conn.commit()
+        return await FlagCRUD.get_entity_flag(conn, flag_id)
 
     @staticmethod
     async def count_entity_flags(
@@ -150,18 +194,36 @@ class FlagCRUD:
             (source_id, limit, offset),
         )
         rows = await cursor.fetchall()
-        return [
-            FlagModel(
-                id=row[0],
-                target_type="source",
-                target_id=row[1],
-                reason=row[2],
-                note=row[3],
-                status=row[4],
-                created_at=row[5],
-            )
-            for row in rows
-        ]
+        return [FlagCRUD._source_flag_from_row(row) for row in rows]
+
+    @staticmethod
+    async def get_source_flag(conn: aiosqlite.Connection, flag_id: str) -> FlagModel | None:
+        """Return one source flag by id."""
+        cursor = await conn.execute(
+            """
+            SELECT id, source_id, reason, note, status, created_at
+            FROM source_flags
+            WHERE id = ?
+            """,
+            (flag_id,),
+        )
+        row = await cursor.fetchone()
+        return FlagCRUD._source_flag_from_row(row) if row is not None else None
+
+    @staticmethod
+    async def update_source_flag_status(
+        conn: aiosqlite.Connection,
+        flag_id: str,
+        *,
+        status: str,
+    ) -> FlagModel | None:
+        """Update one source flag workflow status."""
+        await conn.execute(
+            "UPDATE source_flags SET status = ? WHERE id = ?",
+            (status, flag_id),
+        )
+        await conn.commit()
+        return await FlagCRUD.get_source_flag(conn, flag_id)
 
     @staticmethod
     async def count_source_flags(

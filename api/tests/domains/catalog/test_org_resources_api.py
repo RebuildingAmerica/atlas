@@ -2,11 +2,24 @@
 
 from __future__ import annotations
 
-import pytest
+from typing import TYPE_CHECKING
 
+import httpx
+import pytest
+import pytest_asyncio
+
+from atlas.config import get_settings
+from atlas.domains.access.capabilities import ResolvedCapabilities
+from atlas.domains.access.dependencies import require_org_actor
+from atlas.domains.access.models.usage_events import OrgUsageEventCRUD
+from atlas.domains.access.principals import AuthenticatedActor
 from atlas.domains.catalog.models.ownership import OwnershipCRUD
 from atlas.domains.moderation.review_queue import ReviewQueueCRUD
+from atlas.main import create_app
 from atlas.models import EntryCRUD, SourceCRUD
+
+if TYPE_CHECKING:
+    from atlas.config import Settings
 
 STATUS_OK = 200
 STATUS_CREATED = 201
@@ -30,6 +43,37 @@ ENTRY_PAYLOAD = {
 }
 
 
+@pytest_asyncio.fixture
+async def directory_capable_client(test_settings: Settings) -> object:
+    """Test client whose actor can publish workspace public directories."""
+    app = create_app()
+
+    def override_get_settings() -> Settings:
+        return test_settings
+
+    async def override_require_org_actor() -> AuthenticatedActor:
+        actor = AuthenticatedActor(
+            user_id="local-user",
+            email="local@atlas.rebuildingus.org",
+            auth_type="local",
+            is_local=True,
+            org_id=ORG_ID,
+        )
+        actor.org_role = "owner"
+        actor.resolved_capabilities = ResolvedCapabilities(
+            capabilities=frozenset({"public.directories"}),
+            limits={},
+        )
+        return actor
+
+    app.dependency_overrides[get_settings] = override_get_settings
+    app.dependency_overrides[require_org_actor] = override_require_org_actor
+
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        yield client
+
+
 class TestOrgEntriesAccess:
     """Org access guard for private entry endpoints."""
 
@@ -48,6 +92,31 @@ class TestOrgEntriesAccess:
 
 class TestOrgEntriesCRUD:
     """Happy-path CRUD for org-scoped private entries."""
+
+    @pytest.mark.asyncio
+    async def test_init_db_creates_directory_config_table(self, test_db: object) -> None:
+        """Fresh databases should include editable public directory config."""
+        cursor = await test_db.execute("PRAGMA table_info(org_directory_configs)")
+        columns = {row[1] for row in await cursor.fetchall()}
+
+        assert {
+            "org_id",
+            "title",
+            "sponsor_label",
+            "issue_area_ids_json",
+            "geography_labels_json",
+            "entry_types_json",
+            "methodology_summary",
+            "source_policy",
+            "review_policy",
+            "correction_policy",
+            "correction_path_template",
+            "missing_context_path_template",
+            "created_by",
+            "updated_by",
+            "created_at",
+            "updated_at",
+        }.issubset(columns)
 
     @pytest.mark.asyncio
     async def test_list_returns_empty_initially(self, test_client: object) -> None:
@@ -144,10 +213,12 @@ class TestOrgEntriesCRUD:
 
     @pytest.mark.asyncio
     async def test_publish_entry_surfaces_it_in_public_directory(
-        self, test_client: object, test_db: object
+        self, directory_capable_client: object, test_db: object
     ) -> None:
         """Published workspace entries should become a source-linked public directory."""
-        create_resp = await test_client.post(f"/api/orgs/{ORG_ID}/entries", json=ENTRY_PAYLOAD)
+        create_resp = await directory_capable_client.post(
+            f"/api/orgs/{ORG_ID}/entries", json=ENTRY_PAYLOAD
+        )
         entry_id = create_resp.json()["id"]
         source_id = await SourceCRUD.create(
             test_db,
@@ -163,13 +234,40 @@ class TestOrgEntriesCRUD:
             "Source names Test Private Org as a tenant organizing actor.",
         )
 
-        publish_resp = await test_client.put(f"/api/orgs/{ORG_ID}/entries/{entry_id}/publish")
+        publish_resp = await directory_capable_client.put(
+            f"/api/orgs/{ORG_ID}/entries/{entry_id}/publish"
+        )
         assert publish_resp.status_code == STATUS_OK
         assert publish_resp.json()["visibility"] == "public"
 
-        directory_resp = await test_client.get(f"/api/orgs/{ORG_ID}/entries/public-directory")
+        directory_resp = await directory_capable_client.get(
+            f"/api/orgs/{ORG_ID}/entries/public-directory"
+        )
         assert directory_resp.status_code == STATUS_OK
         payload = directory_resp.json()
+        assert payload["title"] == "Detroit, MI civic directory"
+        assert payload["sponsor_label"] is None
+        assert payload["scope"] == {
+            "issue_area_ids": ["housing_affordability"],
+            "geography_labels": ["Detroit, MI"],
+            "entry_types": ["organization"],
+        }
+        assert payload["stats"]["record_count"] == 1
+        assert payload["stats"]["source_count"] == 1
+        assert payload["stats"]["source_backed_record_count"] == 1
+        assert payload["stats"]["last_reviewed_at"] is not None
+        assert payload["publication"] == {
+            "visibility": "public",
+            "private_notes_exposed": False,
+        }
+        assert payload["methodology"] == {
+            "summary": "Records qualify after workspace review and linked source evidence.",
+            "source_policy": "Every public record includes at least one linked source packet.",
+            "review_policy": "Unsourced workspace records are held for review before publication.",
+            "correction_policy": "Each listed record accepts stale, incorrect, or missing-context feedback.",
+            "correction_path_template": "/feedback/{slug}?kind=incorrect",
+            "missing_context_path_template": "/feedback/{slug}?kind=missing_context",
+        }
         assert payload["workspace"]["id"] == ORG_ID
         assert payload["trust_footer"]["label"] == "Powered by Atlas"
         assert payload["trust_footer"]["provenance_required"] is True
@@ -190,14 +288,157 @@ class TestOrgEntriesCRUD:
         assert entry["claim_evidence"]["summary"]["source_count"] == 1
 
     @pytest.mark.asyncio
-    async def test_publish_without_source_evidence_is_held_for_org_review(
+    async def test_public_directory_index_lists_source_backed_published_directories(
+        self, directory_capable_client: object, test_db: object
+    ) -> None:
+        """Sitemaps should discover only directories with public published records."""
+        empty_resp = await directory_capable_client.get("/api/public-directories")
+        assert empty_resp.status_code == STATUS_OK
+        assert empty_resp.json() == {"directories": []}
+
+        create_resp = await directory_capable_client.post(
+            f"/api/orgs/{ORG_ID}/entries", json=ENTRY_PAYLOAD
+        )
+        entry_id = create_resp.json()["id"]
+        source_id = await SourceCRUD.create(
+            test_db,
+            url="https://example.test/public-directory-index-source",
+            source_type="community_archive",
+            extraction_method="manual",
+            title="Public directory index source",
+        )
+        await SourceCRUD.link_to_entry(
+            test_db,
+            entry_id,
+            source_id,
+            "Source names Test Private Org as a public directory actor.",
+        )
+
+        publish_resp = await directory_capable_client.put(
+            f"/api/orgs/{ORG_ID}/entries/{entry_id}/publish"
+        )
+        assert publish_resp.status_code == STATUS_OK
+
+        index_resp = await directory_capable_client.get("/api/public-directories")
+        assert index_resp.status_code == STATUS_OK
+        payload = index_resp.json()
+        assert payload["directories"] == [
+            {
+                "org_id": ORG_ID,
+                "record_count": 1,
+                "last_published_at": payload["directories"][0]["last_published_at"],
+            }
+        ]
+        assert payload["directories"][0]["last_published_at"] is not None
+
+    @pytest.mark.asyncio
+    async def test_publish_requires_public_directory_capability(
         self, test_client: object, test_db: object
     ) -> None:
-        """Tenant publishing should hold unsourced entries inside that tenant boundary."""
+        """Only directory-capable workspaces should publish into a public directory."""
         create_resp = await test_client.post(f"/api/orgs/{ORG_ID}/entries", json=ENTRY_PAYLOAD)
         entry_id = create_resp.json()["id"]
+        source_id = await SourceCRUD.create(
+            test_db,
+            url="https://example.test/tenant-directory-source",
+            source_type="community_archive",
+            extraction_method="manual",
+            title="Tenant organizing directory source",
+        )
+        await SourceCRUD.link_to_entry(
+            test_db,
+            entry_id,
+            source_id,
+            "Source names Test Private Org as a tenant organizing actor.",
+        )
 
         publish_resp = await test_client.put(f"/api/orgs/{ORG_ID}/entries/{entry_id}/publish")
+
+        assert publish_resp.status_code == STATUS_FORBIDDEN
+        detail = publish_resp.json()["detail"]
+        assert detail["error"] == "plan_required"
+        assert detail["capability"] == "public.directories"
+        assert detail["plan_required"] == "civic_operating_layer"
+
+    @pytest.mark.asyncio
+    async def test_publish_records_public_map_improvement(
+        self, directory_capable_client: object, test_db: object
+    ) -> None:
+        """Publishing a sourced record should count toward public-good renewal impact."""
+        create_resp = await directory_capable_client.post(
+            f"/api/orgs/{ORG_ID}/entries", json=ENTRY_PAYLOAD
+        )
+        entry_id = create_resp.json()["id"]
+        source_id = await SourceCRUD.create(
+            test_db,
+            url="https://example.test/tenant-directory-source",
+            source_type="community_archive",
+            extraction_method="manual",
+            title="Tenant organizing directory source",
+        )
+        await SourceCRUD.link_to_entry(
+            test_db,
+            entry_id,
+            source_id,
+            "Source names Test Private Org as a tenant organizing actor.",
+        )
+
+        publish_resp = await directory_capable_client.put(
+            f"/api/orgs/{ORG_ID}/entries/{entry_id}/publish"
+        )
+
+        assert publish_resp.status_code == STATUS_OK
+        usage_counts = await OrgUsageEventCRUD.count_by_type(test_db, org_id=ORG_ID)
+        assert usage_counts["public_record_improved"] == 1
+
+    @pytest.mark.asyncio
+    async def test_republishing_public_entry_does_not_double_count_improvement(
+        self, directory_capable_client: object, test_db: object
+    ) -> None:
+        """Renewal impact should count the public-record improvement once."""
+        create_resp = await directory_capable_client.post(
+            f"/api/orgs/{ORG_ID}/entries", json=ENTRY_PAYLOAD
+        )
+        entry_id = create_resp.json()["id"]
+        source_id = await SourceCRUD.create(
+            test_db,
+            url="https://example.test/tenant-directory-source",
+            source_type="community_archive",
+            extraction_method="manual",
+            title="Tenant organizing directory source",
+        )
+        await SourceCRUD.link_to_entry(
+            test_db,
+            entry_id,
+            source_id,
+            "Source names Test Private Org as a tenant organizing actor.",
+        )
+
+        first_publish = await directory_capable_client.put(
+            f"/api/orgs/{ORG_ID}/entries/{entry_id}/publish"
+        )
+        second_publish = await directory_capable_client.put(
+            f"/api/orgs/{ORG_ID}/entries/{entry_id}/publish"
+        )
+
+        assert first_publish.status_code == STATUS_OK
+        assert second_publish.status_code == STATUS_OK
+        usage_counts = await OrgUsageEventCRUD.count_by_type(test_db, org_id=ORG_ID)
+        assert usage_counts["public_record_improved"] == 1
+
+    @pytest.mark.asyncio
+    async def test_publish_without_source_evidence_is_held_for_org_review(
+        self, directory_capable_client: object, test_db: object
+    ) -> None:
+        """Tenant publishing should hold unsourced entries inside that tenant boundary."""
+        create_resp = await directory_capable_client.post(
+            f"/api/orgs/{ORG_ID}/entries", json=ENTRY_PAYLOAD
+        )
+        entry_id = create_resp.json()["id"]
+
+        publish_resp = await directory_capable_client.put(
+            f"/api/orgs/{ORG_ID}/entries/{entry_id}/publish"
+        )
         assert publish_resp.status_code == STATUS_CONFLICT
         payload = publish_resp.json()
         assert payload["detail"]["entry_id"] == entry_id
@@ -215,7 +456,9 @@ class TestOrgEntriesCRUD:
         assert pending[0].kind == "tenant_publish"
         assert pending[0].hold_reason == "source_required_for_public_directory"
 
-        directory_resp = await test_client.get(f"/api/orgs/{ORG_ID}/entries/public-directory")
+        directory_resp = await directory_capable_client.get(
+            f"/api/orgs/{ORG_ID}/entries/public-directory"
+        )
         assert directory_resp.status_code == STATUS_OK
         assert directory_resp.json()["entries"] == []
 
@@ -231,10 +474,12 @@ class TestOrgEntriesCRUD:
 
     @pytest.mark.asyncio
     async def test_directory_templates_seed_issue_place_and_taxonomy_scope(
-        self, test_client: object
+        self, directory_capable_client: object
     ) -> None:
         """Workspace directory templates should expose ready-to-use issue/place scope."""
-        response = await test_client.get(f"/api/orgs/{ORG_ID}/entries/directory-templates")
+        response = await directory_capable_client.get(
+            f"/api/orgs/{ORG_ID}/entries/directory-templates"
+        )
         assert response.status_code == STATUS_OK
         payload = response.json()
         template = next(item for item in payload["templates"] if item["id"] == "housing-coalition")
@@ -244,11 +489,111 @@ class TestOrgEntriesCRUD:
         assert "organization" in template["entry_types"]
 
     @pytest.mark.asyncio
-    async def test_verified_custom_domain_is_exposed_on_public_directory(
+    async def test_directory_templates_require_public_directory_capability(
         self, test_client: object
     ) -> None:
+        """Directory templates should belong to directory-capable packages."""
+        response = await test_client.get(f"/api/orgs/{ORG_ID}/entries/directory-templates")
+
+        assert response.status_code == STATUS_FORBIDDEN
+        detail = response.json()["detail"]
+        assert detail["error"] == "plan_required"
+        assert detail["capability"] == "public.directories"
+
+    @pytest.mark.asyncio
+    async def test_directory_config_controls_public_directory_metadata(
+        self, directory_capable_client: object, test_db: object
+    ) -> None:
+        """Directory config should let partners publish a clear issue/place offer."""
+        config_payload = {
+            "title": "Detroit tenant power directory",
+            "sponsor_label": "Supported by Detroit Housing Fund",
+            "scope": {
+                "issue_area_ids": ["housing_affordability"],
+                "geography_labels": ["Detroit, MI"],
+                "entry_types": ["organization"],
+            },
+            "methodology": {
+                "summary": "Reviewed tenant-power records with linked public sources.",
+                "source_policy": "Each listing includes a public source reviewed by Atlas operators.",
+                "review_policy": "Records are checked before they appear in this public directory.",
+                "correction_policy": "Readers can send stale facts or missing context for review.",
+                "correction_path_template": "/feedback/{slug}?kind=incorrect",
+                "missing_context_path_template": "/feedback/{slug}?kind=missing_context",
+            },
+        }
+
+        config_resp = await directory_capable_client.put(
+            f"/api/orgs/{ORG_ID}/entries/directory-config",
+            json=config_payload,
+        )
+        get_config_resp = await directory_capable_client.get(
+            f"/api/orgs/{ORG_ID}/entries/directory-config",
+        )
+
+        assert config_resp.status_code == STATUS_OK
+        assert get_config_resp.status_code == STATUS_OK
+        assert get_config_resp.json()["title"] == "Detroit tenant power directory"
+        assert get_config_resp.json()["sponsor_label"] == "Supported by Detroit Housing Fund"
+        assert get_config_resp.json()["scope"] == config_payload["scope"]
+        assert get_config_resp.json()["methodology"] == config_payload["methodology"]
+
+        create_resp = await directory_capable_client.post(
+            f"/api/orgs/{ORG_ID}/entries", json=ENTRY_PAYLOAD
+        )
+        entry_id = create_resp.json()["id"]
+        source_id = await SourceCRUD.create(
+            test_db,
+            url="https://example.test/detroit-directory-source",
+            source_type="community_archive",
+            extraction_method="manual",
+            title="Detroit tenant directory source",
+        )
+        await SourceCRUD.link_to_entry(
+            test_db,
+            entry_id,
+            source_id,
+            "Source names Test Private Org as a tenant organizing actor.",
+        )
+        publish_resp = await directory_capable_client.put(
+            f"/api/orgs/{ORG_ID}/entries/{entry_id}/publish"
+        )
+        assert publish_resp.status_code == STATUS_OK
+
+        directory_resp = await directory_capable_client.get(
+            f"/api/orgs/{ORG_ID}/entries/public-directory"
+        )
+
+        assert directory_resp.status_code == STATUS_OK
+        directory = directory_resp.json()
+        assert directory["title"] == "Detroit tenant power directory"
+        assert directory["sponsor_label"] == "Supported by Detroit Housing Fund"
+        assert directory["scope"] == config_payload["scope"]
+        assert directory["methodology"] == config_payload["methodology"]
+        assert directory["stats"]["record_count"] == 1
+        assert directory["stats"]["source_count"] == 1
+
+    @pytest.mark.asyncio
+    async def test_directory_config_requires_public_directory_capability(
+        self, test_client: object
+    ) -> None:
+        """Directory configuration should belong to directory-capable packages."""
+        response = await test_client.put(
+            f"/api/orgs/{ORG_ID}/entries/directory-config",
+            json={"title": "Detroit tenant power directory"},
+        )
+
+        assert response.status_code == STATUS_FORBIDDEN
+        detail = response.json()["detail"]
+        assert detail["error"] == "plan_required"
+        assert detail["capability"] == "public.directories"
+
+    @pytest.mark.asyncio
+    async def test_verified_custom_domain_is_exposed_on_public_directory(
+        self, directory_capable_client: object
+    ) -> None:
         """Verified tenant domains should be visible on the public directory trust surface."""
-        create_resp = await test_client.post(
+        create_resp = await directory_capable_client.post(
             f"/api/orgs/{ORG_ID}/entries/directory-domain",
             json={"domain": "guide.kctenants.org"},
         )
@@ -258,20 +603,37 @@ class TestOrgEntriesCRUD:
         assert domain_payload["status"] == "pending"
         assert domain_payload["verification_token"].startswith("atlas-verify=")
 
-        verify_resp = await test_client.post(
+        verify_resp = await directory_capable_client.post(
             f"/api/orgs/{ORG_ID}/entries/directory-domain/verify",
             json={"txt_record": domain_payload["verification_token"]},
         )
         assert verify_resp.status_code == STATUS_OK
         assert verify_resp.json()["status"] == "verified"
 
-        directory_resp = await test_client.get(f"/api/orgs/{ORG_ID}/entries/public-directory")
+        directory_resp = await directory_capable_client.get(
+            f"/api/orgs/{ORG_ID}/entries/public-directory"
+        )
         assert directory_resp.status_code == STATUS_OK
         payload = directory_resp.json()
         assert payload["workspace"]["custom_domain"] == {
             "domain": "guide.kctenants.org",
             "status": "verified",
         }
+
+    @pytest.mark.asyncio
+    async def test_directory_domain_requires_public_directory_capability(
+        self, test_client: object
+    ) -> None:
+        """Custom directory domains should be reserved for directory-capable packages."""
+        response = await test_client.post(
+            f"/api/orgs/{ORG_ID}/entries/directory-domain",
+            json={"domain": "guide.kctenants.org"},
+        )
+
+        assert response.status_code == STATUS_FORBIDDEN
+        detail = response.json()["detail"]
+        assert detail["error"] == "plan_required"
+        assert detail["capability"] == "public.directories"
 
 
 class TestOrgEntriesOrphanOwnership:

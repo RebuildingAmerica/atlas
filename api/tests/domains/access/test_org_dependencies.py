@@ -157,3 +157,21 @@ async def test_require_org_actor_treats_unset_membership_url_as_dev_mode() -> No
     assert result is actor
     assert result.active_products == []
     assert result.resolved_capabilities is not None
+
+
+async def test_require_org_actor_grants_local_operator_workspace_export() -> None:
+    """Local mode should let the demo operator use paid workspace demo surfaces."""
+    actor = AuthenticatedActor(
+        user_id="local-operator",
+        email="local@atlas.rebuildingus.org",
+        auth_type="local",
+        is_local=True,
+        org_id="local",
+    )
+    settings = _make_settings(membership_url="")
+
+    result = await require_org_actor(actor=actor, settings=settings)
+
+    assert result.active_products == ["atlas_team"]
+    assert result.resolved_capabilities is not None
+    assert "workspace.export" in result.resolved_capabilities.capabilities

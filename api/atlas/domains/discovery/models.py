@@ -21,6 +21,7 @@ logger = logging.getLogger(__name__)
 __all__ = [
     "DiscoveryJobCRUD",
     "DiscoveryJobModel",
+    "DiscoveryJobQueueItemModel",
     "DiscoveryRunCRUD",
     "DiscoveryRunModel",
     "DiscoveryRunSyncCRUD",
@@ -695,6 +696,15 @@ class DiscoveryJobModel:
     completed_at: str | None
 
 
+@dataclass
+class DiscoveryJobQueueItemModel(DiscoveryJobModel):
+    """A durable discovery job with its research target context."""
+
+    location_query: str
+    state: str
+    issue_areas: list[str]
+
+
 class DiscoveryJobCRUD:
     """CRUD operations for discovery pipeline jobs."""
 
@@ -1161,6 +1171,49 @@ class DiscoveryJobCRUD:
         rows = await cursor.fetchall()
         return {str(row[0]): int(row[1]) for row in rows}
 
+    @staticmethod
+    async def list_queue(
+        conn: aiosqlite.Connection,
+        *,
+        limit: int = 25,
+    ) -> list[DiscoveryJobQueueItemModel]:
+        """List recent active or failed jobs with research target context."""
+        cursor = await conn.execute(
+            """
+            SELECT
+                j.id,
+                j.run_id,
+                j.status,
+                j.progress,
+                j.error_message,
+                j.retry_count,
+                j.max_retries,
+                j.claimed_by,
+                j.claimed_until,
+                j.idempotency_key,
+                j.next_attempt_at,
+                j.created_at,
+                j.started_at,
+                j.completed_at,
+                r.location_query,
+                r.state,
+                r.issue_areas
+            FROM discovery_jobs j
+            JOIN discovery_runs r ON r.id = j.run_id
+            WHERE j.status IN ('queued', 'claimed', 'running', 'failed')
+            ORDER BY j.created_at DESC, j.id DESC
+            LIMIT ?
+            """,
+            (limit,),
+        )
+        rows = await cursor.fetchall()
+        if not rows:
+            return []
+        columns = [col[0] for col in cursor.description]
+        return [
+            _row_to_discovery_job_queue_item(dict(zip(columns, row, strict=False))) for row in rows
+        ]
+
 
 _MAX_BACKOFF_SECONDS = 300
 _JITTER_BUCKETS = 5
@@ -1213,4 +1266,28 @@ def _row_to_discovery_job(row: dict[str, Any]) -> DiscoveryJobModel:
         created_at=row["created_at"],
         started_at=row.get("started_at"),
         completed_at=row.get("completed_at"),
+    )
+
+
+def _row_to_discovery_job_queue_item(row: dict[str, Any]) -> DiscoveryJobQueueItemModel:
+    """Convert database row to DiscoveryJobQueueItemModel."""
+    job = _row_to_discovery_job(row)
+    return DiscoveryJobQueueItemModel(
+        id=job.id,
+        run_id=job.run_id,
+        status=job.status,
+        progress=job.progress,
+        error_message=job.error_message,
+        retry_count=job.retry_count,
+        max_retries=job.max_retries,
+        claimed_by=job.claimed_by,
+        claimed_until=job.claimed_until,
+        idempotency_key=job.idempotency_key,
+        next_attempt_at=job.next_attempt_at,
+        created_at=job.created_at,
+        started_at=job.started_at,
+        completed_at=job.completed_at,
+        location_query=str(row["location_query"]),
+        state=str(row["state"]),
+        issue_areas=db.decode_json(row["issue_areas"]),  # type: ignore[arg-type]
     )

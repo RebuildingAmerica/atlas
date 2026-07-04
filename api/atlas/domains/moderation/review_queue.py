@@ -5,11 +5,16 @@ proactive queue of discovered records held back from the public directory.
 """
 
 from dataclasses import dataclass
+from datetime import UTC, date, datetime, timedelta
 from typing import Any
 
 from atlas.platform.database import db
 
 __all__ = ["ReviewQueueCRUD", "ReviewQueueItemModel"]
+
+STALE_SOURCE_REVIEW_DAYS = 365
+STALE_SOURCE_REVIEW_KIND = "source_staleness"
+STALE_SOURCE_REVIEW_REASON = "stale_public_source_review"
 
 
 @dataclass
@@ -124,6 +129,86 @@ class ReviewQueueCRUD:
         return [_row_to_item(row) for row in rows]
 
     @staticmethod
+    async def enqueue_stale_public_sources(
+        conn: Any,
+        *,
+        org_id: str | None = None,
+        stale_after_days: int = STALE_SOURCE_REVIEW_DAYS,
+    ) -> list[str]:
+        """Enqueue public records whose latest source receipt is stale."""
+        rows = await ReviewQueueCRUD._public_entry_source_rows(conn, org_id=org_id)
+        threshold = datetime.now(UTC).date() - timedelta(days=stale_after_days)
+        review_item_ids: list[str] = []
+        for row_org_id, entity_id, latest_source_date, source_count in rows:
+            latest_date = _coerce_date(str(latest_source_date) if latest_source_date else None)
+            if latest_date is None or latest_date > threshold:
+                continue
+            if await ReviewQueueCRUD._has_pending_staleness_item(
+                conn, org_id=str(row_org_id), entity_id=str(entity_id)
+            ):
+                continue
+            review_item_id = await ReviewQueueCRUD.enqueue(
+                conn,
+                org_id=str(row_org_id),
+                entity_id=str(entity_id),
+                kind=STALE_SOURCE_REVIEW_KIND,
+                hold_reason=STALE_SOURCE_REVIEW_REASON,
+                score=float(source_count),
+                dedup_suspect=False,
+                dedup_note=f"Latest source date: {latest_date.isoformat()}",
+            )
+            review_item_ids.append(review_item_id)
+        return review_item_ids
+
+    @staticmethod
+    async def _public_entry_source_rows(
+        conn: Any,
+        *,
+        org_id: str | None,
+    ) -> list[tuple[str, str, str | None, int]]:
+        """Return public entries with their latest source receipt date."""
+        where_org = "AND ro.org_id = ?" if org_id is not None else ""
+        params = (org_id,) if org_id is not None else ()
+        cursor = await conn.execute(
+            f"""
+            SELECT
+                ro.org_id,
+                e.id,
+                MAX(COALESCE(s.published_date, SUBSTR(s.ingested_at, 1, 10), SUBSTR(s.created_at, 1, 10))),
+                COUNT(DISTINCT s.id)
+            FROM resource_ownership ro
+            JOIN entries e ON e.id = ro.resource_id
+            JOIN entry_sources es ON es.entry_id = e.id
+            JOIN sources s ON s.id = es.source_id
+            WHERE ro.resource_type = 'entry'
+              AND ro.visibility = 'public'
+              AND e.active = TRUE
+              {where_org}
+            GROUP BY ro.org_id, e.id
+            """,
+            params,
+        )
+        rows = await cursor.fetchall()
+        return [(str(row[0]), str(row[1]), row[2], int(row[3] or 0)) for row in rows]
+
+    @staticmethod
+    async def _has_pending_staleness_item(conn: Any, *, org_id: str, entity_id: str) -> bool:
+        """Return whether a stale-source review item is already pending."""
+        cursor = await conn.execute(
+            """
+            SELECT 1 FROM review_queue
+            WHERE status = 'pending'
+              AND org_id = ?
+              AND entity_id = ?
+              AND kind = ?
+              AND hold_reason = ?
+            LIMIT 1
+            """,
+            (org_id, entity_id, STALE_SOURCE_REVIEW_KIND, STALE_SOURCE_REVIEW_REASON),
+        )
+        return await cursor.fetchone() is not None
+
+    @staticmethod
     async def get_by_id(conn: Any, item_id: str) -> ReviewQueueItemModel | None:
         """Fetch one held record by id."""
         cursor = await conn.execute(
@@ -162,3 +247,13 @@ class ReviewQueueCRUD:
         cursor = await conn.execute("SELECT COUNT(*) FROM review_queue WHERE status = 'pending'")
         row = await cursor.fetchone()
         return int(row[0]) if row else 0
+
+
+def _coerce_date(value: str | None) -> date | None:
+    """Parse a stored ISO date or timestamp into a date."""
+    if value is None:
+        return None
+    try:
+        return date.fromisoformat(value[:10])
+    except ValueError:
+        return None

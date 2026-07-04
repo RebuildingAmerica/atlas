@@ -149,6 +149,7 @@ omit = [
     "*/tests/*",
     "*/site-packages/*",
     "*/atlas/seed_profiles.py",
+    "*/atlas/seed_briefing_room_demo.py",
 ]
 
 [tool.coverage.report]

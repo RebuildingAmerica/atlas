@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 __all__ = [
     "ActorQualityInfo",
@@ -51,6 +51,10 @@ __all__ = [
     "ProfileFollowResponse",
     "ProfileManageRequest",
     "SavedListCreateRequest",
+    "SavedListExportItemResponse",
+    "SavedListExportProvenance",
+    "SavedListExportResponse",
+    "SavedListExportSource",
     "SavedListItemRequest",
     "SavedListItemResponse",
     "SavedListResponse",
@@ -656,6 +660,46 @@ class SavedListResponse(BaseModel):
     items: list[SavedListItemResponse] = Field(default_factory=list)
     created_at: str
     updated_at: str
+
+
+class SavedListExportProvenance(BaseModel):
+    """Provenance summary for a saved-list export."""
+
+    item_count: int = Field(0, ge=0)
+    source_count: int = Field(0, ge=0)
+
+
+class SavedListExportSource(BaseModel):
+    """Source receipt included in a saved-list export row."""
+
+    id: str
+    url: str
+    title: str | None = None
+    publication: str | None = None
+    type: str | None = None
+
+
+class SavedListExportItemResponse(BaseModel):
+    """Saved-list export row with actor, notes, and evidence receipts."""
+
+    list_id: str
+    entry_id: str
+    note: str | None = None
+    added_at: str
+    entry: EntityResponse | None = None
+    trust_level: str = "unverified"
+    sources: list[SavedListExportSource] = Field(default_factory=list)
+
+
+class SavedListExportResponse(BaseModel):
+    """Downloadable saved-list export with hydrated actor rows."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    format: Literal["json"] = "json"
+    list_: SavedListResponse = Field(alias="list")
+    items: list[SavedListExportItemResponse] = Field(default_factory=list)
+    provenance: SavedListExportProvenance
 
 
 class ProfileFollowResponse(BaseModel):

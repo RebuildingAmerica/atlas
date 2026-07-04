@@ -73,6 +73,37 @@ async def capable_test_client(test_settings: Settings) -> object:
 
 
 @pytest_asyncio.fixture
+async def no_notes_capability_client(test_settings: Settings) -> object:
+    """Test client whose local actor belongs to the org but cannot create notes."""
+    app = create_app()
+
+    def override_get_settings() -> Settings:
+        return test_settings
+
+    async def override_require_org_actor() -> AuthenticatedActor:
+        actor = AuthenticatedActor(
+            user_id=USER_ID,
+            email="local@atlas.rebuildingus.org",
+            auth_type="local",
+            is_local=True,
+            org_id=ORG_ID,
+        )
+        actor.org_role = "owner"
+        actor.resolved_capabilities = ResolvedCapabilities(
+            capabilities=frozenset({"research.run"}),
+            limits={},
+        )
+        return actor
+
+    app.dependency_overrides[get_settings] = override_get_settings
+    app.dependency_overrides[require_org_actor] = override_require_org_actor
+
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        yield client
+
+
+@pytest_asyncio.fixture
 async def sample_annotation_id(test_db: object) -> str:
     """Seed an annotation directly so update/delete endpoints can be exercised."""
     entry_id = await EntryCRUD.create(
@@ -141,9 +172,12 @@ class TestOrgAnnotationsAccess:
         assert response.status_code == STATUS_FORBIDDEN
 
     @pytest.mark.asyncio
-    async def test_create_without_capability_returns_403(self, test_client: object) -> None:
+    async def test_create_without_capability_returns_403(
+        self,
+        no_notes_capability_client: object,
+    ) -> None:
         """Creating an annotation without workspace.notes capability returns 403."""
-        response = await test_client.post(
+        response = await no_notes_capability_client.post(
             f"/api/orgs/{ORG_ID}/annotations",
             json={"entry_id": "any-id", "content": "test"},
         )

@@ -8,6 +8,8 @@ from atlas_shared import DiscoveryResearchGoal, DiscoveryRunInput
 from pydantic import BaseModel, ConfigDict, Field
 
 __all__ = [
+    "DiscoveryJobQueueItemResponse",
+    "DiscoveryJobQueueResponse",
     "DiscoveryResearchGap",
     "DiscoveryResearchLead",
     "DiscoveryResearchSource",
@@ -208,6 +210,27 @@ class DiscoveryJobResponse(BaseModel):
     created_at: str = Field(..., description="Creation timestamp")
     started_at: str | None = Field(None, description="Execution start timestamp")
     completed_at: str | None = Field(None, description="Completion timestamp")
+
+
+class DiscoveryJobQueueItemResponse(DiscoveryJobResponse):
+    """A discovery pipeline job with research target context."""
+
+    location_query: str = Field(..., description="Run location query")
+    state: str = Field(..., description="Run state")
+    issue_areas: list[str] = Field(..., description="Run issue area slugs")
+    claimed_by: str | None = Field(None, description="Worker that claimed the job")
+    claimed_until: str | None = Field(None, description="Current worker lease expiration")
+    next_attempt_at: str | None = Field(None, description="Earliest retry claim timestamp")
+
+
+class DiscoveryJobQueueResponse(BaseModel):
+    """Research-operations queue view for discovery jobs."""
+
+    items: list[DiscoveryJobQueueItemResponse] = Field(..., description="Recent active jobs")
+    total: int = Field(..., ge=0, description="Total queued, claimed, running, and failed jobs")
+    status_counts: dict[str, int] = Field(
+        ..., description="Queued, claimed, running, and failed job counts"
+    )
 
 
 class DiscoveryRunCancelResponse(BaseModel):

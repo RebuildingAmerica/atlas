@@ -5,6 +5,7 @@ from http import HTTPStatus
 import pytest
 
 from atlas.domains.access import ApiKeyPrincipal
+from atlas.domains.access.models.usage_events import OrgUsageEventCRUD
 from atlas.platform.config import Settings
 
 
@@ -66,6 +67,7 @@ async def test_protected_discovery_allows_local_mode_without_auth(
 async def test_protected_discovery_accepts_internal_actor_headers(
     test_client: object,
     test_settings: Settings,
+    test_db: object,
 ) -> None:
     """The app server should be able to call protected API routes with trusted headers."""
     test_settings.deploy_mode = ""
@@ -87,6 +89,7 @@ async def test_protected_discovery_accepts_internal_actor_headers(
     )
 
     assert response.status_code == HTTPStatus.ACCEPTED
+    assert await OrgUsageEventCRUD.count_by_type(test_db, org_id="org_123") == {}
 
 
 @pytest.mark.asyncio
@@ -94,6 +97,7 @@ async def test_protected_discovery_accepts_valid_api_key(
     monkeypatch: pytest.MonkeyPatch,
     test_client: object,
     test_settings: Settings,
+    test_db: object,
 ) -> None:
     """Direct API clients should be able to use API keys when auth is enabled."""
 
@@ -129,6 +133,7 @@ async def test_protected_discovery_accepts_valid_api_key(
     )
 
     assert response.status_code == HTTPStatus.ACCEPTED
+    assert await OrgUsageEventCRUD.count_by_type(test_db, org_id="org_123") == {"api_call": 1}
 
 
 @pytest.mark.asyncio
@@ -136,6 +141,7 @@ async def test_discovery_read_requires_matching_api_key_scope(
     monkeypatch: pytest.MonkeyPatch,
     test_client: object,
     test_settings: Settings,
+    test_db: object,
 ) -> None:
     """Discovery reads should reject API keys that only have write access."""
     test_settings.deploy_mode = ""
@@ -154,6 +160,7 @@ async def test_discovery_read_requires_matching_api_key_scope(
             permissions={"discovery": ["write"]},
             user_id="user_123",
             user_email="operator@example.com",
+            org_id="org_123",
         )
 
     monkeypatch.setattr("atlas.domains.access.dependencies.verify_api_key", fake_verify_api_key)
@@ -164,6 +171,7 @@ async def test_discovery_read_requires_matching_api_key_scope(
     )
 
     assert response.status_code == HTTPStatus.FORBIDDEN
+    assert await OrgUsageEventCRUD.count_by_type(test_db, org_id="org_123") == {}
 
 
 @pytest.mark.asyncio

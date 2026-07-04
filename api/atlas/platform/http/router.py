@@ -4,6 +4,9 @@ from fastapi import APIRouter
 
 from atlas.domains.access.api.health import router as auth_health_router
 from atlas.domains.access.api.lists import router as lists_router
+from atlas.domains.access.api.org_usage import router as org_usage_router
+from atlas.domains.access.api.org_watch_digest import router as org_watch_digest_router
+from atlas.domains.access.api.org_watches import router as org_watches_router
 from atlas.domains.access.api.verification import router as verification_router
 from atlas.domains.access.api.verification_admin import router as verification_admin_router
 from atlas.domains.catalog.api.entries import router as entries_router
@@ -15,6 +18,10 @@ from atlas.domains.catalog.api.public import router as public_router
 from atlas.domains.catalog.api.taxonomy import router as taxonomy_router
 from atlas.domains.discovery.api import router as discovery_router
 from atlas.domains.discovery.api_org import router as org_discovery_router
+from atlas.domains.discovery.api_org_briefs import router as org_briefs_router
+from atlas.domains.discovery.api_org_coverage import router as org_coverage_router
+from atlas.domains.discovery.api_org_coverage_reports import router as org_coverage_reports_router
+from atlas.domains.discovery.api_org_quality import router as org_quality_router
 from atlas.domains.moderation.api import router as flags_router
 
 __all__ = ["create_router"]
@@ -54,5 +61,12 @@ def create_router() -> APIRouter:
     router.include_router(org_resources_router, prefix="/api/orgs/{org_id}/entries")
     router.include_router(org_annotations_router, prefix="/api/orgs/{org_id}/annotations")
     router.include_router(org_discovery_router, prefix="/api/orgs/{org_id}/discovery-runs")
+    router.include_router(org_briefs_router, prefix="/api/orgs/{org_id}/briefs")
+    router.include_router(org_coverage_router, prefix="/api/orgs/{org_id}/coverage-targets")
+    router.include_router(org_coverage_reports_router, prefix="/api/orgs/{org_id}/coverage-reports")
+    router.include_router(org_quality_router, prefix="/api/orgs/{org_id}/quality-summary")
+    router.include_router(org_watches_router, prefix="/api/orgs/{org_id}/watches")
+    router.include_router(org_watch_digest_router, prefix="/api/orgs/{org_id}/watch-digest")
+    router.include_router(org_usage_router, prefix="/api/orgs/{org_id}/usage-summary")
 
     return router

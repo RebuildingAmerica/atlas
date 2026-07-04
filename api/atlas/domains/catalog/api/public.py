@@ -6,7 +6,9 @@ from collections.abc import AsyncGenerator  # noqa: TC003
 from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from pydantic import BaseModel, Field
 
+from atlas.domains.catalog.models.ownership import OwnershipCRUD
 from atlas.models import get_db_connection
 from atlas.platform.config import Settings, get_settings
 from atlas.platform.http.cache import apply_short_public_cache, apply_static_public_cache
@@ -26,6 +28,20 @@ if TYPE_CHECKING:
 router = APIRouter()
 
 __all__ = ["router"]
+
+
+class PublicDirectoryIndexItem(BaseModel):
+    """One public workspace directory that can be indexed."""
+
+    org_id: str
+    record_count: int = Field(..., ge=1)
+    last_published_at: str | None = None
+
+
+class PublicDirectoryIndexResponse(BaseModel):
+    """Public directories with source-backed published records."""
+
+    directories: list[PublicDirectoryIndexItem]
 
 
 async def get_db(
@@ -51,6 +67,34 @@ def _normalize_multi_value_query(values: list[str] | None) -> list[str] | None:
 
 def _get_service(settings: Settings) -> AtlasDataService:
     return AtlasDataService(settings.database_url)
+
+
+@router.get(
+    "/public-directories",
+    response_model=PublicDirectoryIndexResponse,
+    summary="List public directories",
+    description="List workspace directories that currently expose at least one published public record.",
+    operation_id="listPublicDirectories",
+    response_description="A collection of public directory URLs eligible for indexing.",
+    tags=["org-entries"],
+)
+async def list_public_directories(
+    response: Response,
+    db: aiosqlite.Connection = Depends(get_db),
+) -> PublicDirectoryIndexResponse:
+    """Return public directories with at least one published record."""
+    directories = await OwnershipCRUD.list_public_directory_index(db)
+    apply_short_public_cache(response)
+    return PublicDirectoryIndexResponse(
+        directories=[
+            PublicDirectoryIndexItem(
+                org_id=directory.org_id,
+                record_count=directory.record_count,
+                last_published_at=directory.last_published_at,
+            )
+            for directory in directories
+        ]
+    )
 
 
 @router.get(

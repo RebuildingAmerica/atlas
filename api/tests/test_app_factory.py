@@ -259,7 +259,7 @@ class TestOAuthProtectedResourceMetadata:
         assert body["authorization_servers"] == [settings.auth_jwt_issuer]
         assert body["jwks_uri"] == settings.auth_jwt_jwks_url
         assert body["resource_documentation"] == "https://issuer.test/docs/mcp"
-        assert body["scopes_supported"] == ["discovery:read"]
+        assert body["scopes_supported"] == ["discovery:read", "api.mcp"]
         assert "offline_access" not in body["scopes_supported"]
 
     @pytest.mark.asyncio

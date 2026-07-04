@@ -218,6 +218,7 @@ async def _init_sqlite(database_url: str) -> None:
         await _ensure_discovery_job_columns(conn)
         await _ensure_review_queue_columns(conn)
         await _ensure_org_annotation_columns(conn)
+        await _ensure_org_coverage_target_columns(conn)
         await conn.commit()
         await conn.executescript(DB_SCHEMA)
         await conn.commit()
@@ -525,6 +526,122 @@ CREATE TABLE IF NOT EXISTS org_directory_domains (
     verified_at TEXT
 );
 
+-- Editable public directory configuration for workspace-published directories.
+CREATE TABLE IF NOT EXISTS org_directory_configs (
+    org_id TEXT PRIMARY KEY,
+    title TEXT,
+    sponsor_label TEXT,
+    issue_area_ids_json TEXT NOT NULL DEFAULT '[]',
+    geography_labels_json TEXT NOT NULL DEFAULT '[]',
+    entry_types_json TEXT NOT NULL DEFAULT '[]',
+    methodology_summary TEXT,
+    source_policy TEXT,
+    review_policy TEXT,
+    correction_policy TEXT,
+    correction_path_template TEXT,
+    missing_context_path_template TEXT,
+    created_by TEXT NOT NULL,
+    updated_by TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);
+
+-- Private Atlas Brief artifacts saved inside a workspace.
+CREATE TABLE IF NOT EXISTS org_briefs (
+    id TEXT PRIMARY KEY,
+    org_id TEXT NOT NULL,
+    title TEXT NOT NULL,
+    scope_json TEXT NOT NULL,
+    summary TEXT NOT NULL,
+    linked_entry_ids_json TEXT NOT NULL,
+    linked_source_ids_json TEXT NOT NULL,
+    linked_discovery_run_ids_json TEXT NOT NULL,
+    confidence_summary_json TEXT NOT NULL,
+    gaps_json TEXT NOT NULL,
+    created_by TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);
+
+-- Coverage targets define workspace-scoped coverage expectations and status.
+CREATE TABLE IF NOT EXISTS org_coverage_targets (
+    id TEXT PRIMARY KEY,
+    org_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    geography TEXT NOT NULL,
+    issue_areas_json TEXT NOT NULL,
+    actor_types_json TEXT NOT NULL,
+    source_types_json TEXT NOT NULL,
+    status TEXT NOT NULL CHECK(status IN ('covered', 'thin', 'unknown', 'stale', 'blocked')),
+    status_reason TEXT NOT NULL,
+    review_state TEXT NOT NULL DEFAULT 'needs_research'
+        CHECK(review_state IN ('needs_research', 'in_review', 'ready_for_delivery')),
+    gaps_json TEXT NOT NULL,
+    next_actions_json TEXT NOT NULL,
+    records_found INTEGER NOT NULL DEFAULT 0,
+    sources_reviewed INTEGER NOT NULL DEFAULT 0,
+    last_run_at TEXT,
+    last_reviewed_at TEXT,
+    created_by TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);
+
+CREATE TABLE IF NOT EXISTS org_coverage_target_runs (
+    target_id TEXT NOT NULL REFERENCES org_coverage_targets(id) ON DELETE CASCADE,
+    run_id TEXT NOT NULL REFERENCES discovery_runs(id) ON DELETE CASCADE,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    PRIMARY KEY (target_id, run_id)
+);
+
+CREATE TABLE IF NOT EXISTS org_coverage_target_entries (
+    target_id TEXT NOT NULL REFERENCES org_coverage_targets(id) ON DELETE CASCADE,
+    entry_id TEXT NOT NULL REFERENCES entries(id) ON DELETE CASCADE,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    PRIMARY KEY (target_id, entry_id)
+);
+
+-- Workspace watches let teams monitor actors and coverage targets.
+CREATE TABLE IF NOT EXISTS org_watches (
+    id TEXT PRIMARY KEY,
+    org_id TEXT NOT NULL,
+    resource_type TEXT NOT NULL CHECK(resource_type IN ('entry', 'coverage_target')),
+    resource_id TEXT NOT NULL,
+    notification_preference TEXT NOT NULL DEFAULT 'digest' CHECK(notification_preference IN ('digest', 'immediate', 'muted')),
+    created_by TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    UNIQUE(org_id, resource_type, resource_id)
+);
+
+-- Workspace watch events power in-app monitoring digests.
+CREATE TABLE IF NOT EXISTS org_change_events (
+    id TEXT PRIMARY KEY,
+    org_id TEXT NOT NULL,
+    resource_type TEXT NOT NULL CHECK(resource_type IN ('entry', 'coverage_target')),
+    resource_id TEXT NOT NULL,
+    event_type TEXT NOT NULL CHECK(event_type IN ('new_source', 'profile_updated', 'relationship_added', 'coverage_status_changed', 'correction')),
+    title TEXT NOT NULL,
+    summary TEXT NOT NULL,
+    source_id TEXT REFERENCES sources(id) ON DELETE SET NULL,
+    entry_id TEXT REFERENCES entries(id) ON DELETE SET NULL,
+    coverage_target_id TEXT REFERENCES org_coverage_targets(id) ON DELETE SET NULL,
+    metadata_json TEXT NOT NULL DEFAULT '{}',
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);
+
+-- Workspace usage events power non-invasive renewal summaries.
+CREATE TABLE IF NOT EXISTS org_usage_events (
+    id TEXT PRIMARY KEY,
+    org_id TEXT NOT NULL,
+    actor_id TEXT,
+    event_type TEXT NOT NULL CHECK(event_type IN ('brief_opened', 'brief_exported', 'evidence_opened', 'list_item_saved', 'watch_created', 'digest_viewed', 'coverage_gap_closed', 'api_call', 'public_record_improved')),
+    resource_type TEXT CHECK(resource_type IS NULL OR resource_type IN ('brief', 'source', 'saved_list', 'watch', 'digest', 'coverage_target', 'api', 'public_record')),
+    resource_id TEXT,
+    metadata_json TEXT NOT NULL DEFAULT '{}',
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);
+
 -- Full-text search virtual table
 CREATE VIRTUAL TABLE IF NOT EXISTS entries_fts USING fts5(
     name,
@@ -577,6 +694,24 @@ CREATE INDEX IF NOT EXISTS idx_org_annotations_entry ON org_annotations(entry_id
 CREATE INDEX IF NOT EXISTS idx_org_annotations_source ON org_annotations(source_id);
 CREATE INDEX IF NOT EXISTS idx_org_annotations_target ON org_annotations(target_type, target_id);
 CREATE INDEX IF NOT EXISTS idx_org_directory_domains_status ON org_directory_domains(status);
+CREATE INDEX IF NOT EXISTS idx_org_directory_configs_updated ON org_directory_configs(updated_at);
+CREATE INDEX IF NOT EXISTS idx_org_briefs_org ON org_briefs(org_id);
+CREATE INDEX IF NOT EXISTS idx_org_briefs_updated ON org_briefs(updated_at);
+CREATE INDEX IF NOT EXISTS idx_org_coverage_targets_org ON org_coverage_targets(org_id);
+CREATE INDEX IF NOT EXISTS idx_org_coverage_targets_status ON org_coverage_targets(status);
+CREATE INDEX IF NOT EXISTS idx_org_coverage_target_runs_run ON org_coverage_target_runs(run_id);
+CREATE INDEX IF NOT EXISTS idx_org_coverage_target_entries_entry ON org_coverage_target_entries(entry_id);
+CREATE INDEX IF NOT EXISTS idx_org_watches_org ON org_watches(org_id);
+CREATE INDEX IF NOT EXISTS idx_org_watches_resource ON org_watches(resource_type, resource_id);
+CREATE INDEX IF NOT EXISTS idx_org_change_events_org_created ON org_change_events(org_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_org_change_events_resource ON org_change_events(resource_type, resource_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_org_change_events_source_once
+    ON org_change_events(org_id, resource_type, resource_id, event_type, source_id)
+    WHERE source_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_org_usage_events_org_created
+    ON org_usage_events(org_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_org_usage_events_org_type
+    ON org_usage_events(org_id, event_type);
 CREATE INDEX IF NOT EXISTS idx_entries_slug ON entries(slug);
 CREATE INDEX IF NOT EXISTS idx_entries_claim_status ON entries(claim_status);
 CREATE INDEX IF NOT EXISTS idx_entries_claimed_by ON entries(claimed_by_user_id);
@@ -891,3 +1026,20 @@ async def _ensure_org_annotation_columns(conn: Any) -> None:
         "CREATE INDEX IF NOT EXISTS idx_org_annotations_target "
         "ON org_annotations(target_type, target_id)"
     )
+
+
+async def _ensure_org_coverage_target_columns(conn: Any) -> None:
+    """Apply additive coverage-target migrations for customer delivery review state."""
+    cursor = await conn.execute("PRAGMA table_info(org_coverage_targets)")
+    rows = await cursor.fetchall()
+    if not rows:
+        return
+
+    existing_columns = {row[1] for row in rows}
+    if "review_state" not in existing_columns:
+        await conn.execute(
+            """
+            ALTER TABLE org_coverage_targets
+            ADD COLUMN review_state TEXT NOT NULL DEFAULT 'needs_research'
+            """
+        )

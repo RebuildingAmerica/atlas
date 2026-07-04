@@ -4,13 +4,19 @@ from __future__ import annotations
 
 import logging
 from collections.abc import AsyncGenerator  # noqa: TC003
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel, Field, field_validator
 
+from atlas.domains.access.capabilities import require_capability
 from atlas.domains.access.dependencies import require_org_actor
-from atlas.domains.catalog.models.ownership import DirectoryDomainModel, OwnershipCRUD
+from atlas.domains.access.models.usage_events import OrgUsageEventCRUD, OrgUsageEventRecord
+from atlas.domains.catalog.models.ownership import (
+    DirectoryConfigModel,
+    DirectoryDomainModel,
+    OwnershipCRUD,
+)
 from atlas.domains.moderation.review_queue import ReviewQueueCRUD
 from atlas.models import EntryCRUD, get_db_connection
 from atlas.platform.config import Settings, get_settings
@@ -69,6 +75,43 @@ class PublicDirectoryWorkspace(BaseModel):
     custom_domain: PublicDirectoryDomain | None = None
 
 
+class PublicDirectoryScope(BaseModel):
+    """Derived public scope for a workspace directory."""
+
+    issue_area_ids: list[str] = Field(default_factory=list)
+    geography_labels: list[str] = Field(default_factory=list)
+    entry_types: list[str] = Field(default_factory=list)
+
+
+class PublicDirectoryStats(BaseModel):
+    """Public counts that help visitors understand directory coverage."""
+
+    record_count: int = Field(..., ge=0)
+    source_count: int = Field(..., ge=0)
+    source_backed_record_count: int = Field(..., ge=0)
+    last_reviewed_at: str | None = None
+
+
+class PublicDirectoryPublication(BaseModel):
+    """Public/private boundary metadata for a directory."""
+
+    visibility: Literal["public"] = "public"
+    private_notes_exposed: bool = False
+
+
+class PublicDirectoryMethodology(BaseModel):
+    """Plain public methodology for how records qualify and can be corrected."""
+
+    summary: str = "Records qualify after workspace review and linked source evidence."
+    source_policy: str = "Every public record includes at least one linked source packet."
+    review_policy: str = "Unsourced workspace records are held for review before publication."
+    correction_policy: str = (
+        "Each listed record accepts stale, incorrect, or missing-context feedback."
+    )
+    correction_path_template: str = "/feedback/{slug}?kind=incorrect"
+    missing_context_path_template: str = "/feedback/{slug}?kind=missing_context"
+
+
 class PublicDirectoryTrustFooter(BaseModel):
     """Trust footer metadata every tenant directory carries."""
 
@@ -96,10 +139,37 @@ class PublicDirectoryFederation(BaseModel):
 class PublicDirectoryResponse(BaseModel):
     """Public, source-linked directory published by a workspace."""
 
+    title: str
+    sponsor_label: str | None = None
     workspace: PublicDirectoryWorkspace
+    scope: PublicDirectoryScope
+    stats: PublicDirectoryStats
+    publication: PublicDirectoryPublication = Field(default_factory=PublicDirectoryPublication)
+    methodology: PublicDirectoryMethodology = Field(default_factory=PublicDirectoryMethodology)
     entries: list[EntityDetailResponse] = Field(default_factory=list)
     trust_footer: PublicDirectoryTrustFooter = Field(default_factory=PublicDirectoryTrustFooter)
     federation: PublicDirectoryFederation = Field(default_factory=PublicDirectoryFederation)
+
+
+class DirectoryConfigRequest(BaseModel):
+    """Editable public metadata for a workspace directory."""
+
+    title: str | None = Field(default=None, min_length=1, max_length=140)
+    sponsor_label: str | None = Field(default=None, min_length=1, max_length=180)
+    scope: PublicDirectoryScope | None = None
+    methodology: PublicDirectoryMethodology | None = None
+
+
+class DirectoryConfigResponse(BaseModel):
+    """Public directory configuration returned to workspace admins."""
+
+    org_id: str
+    title: str | None = None
+    sponsor_label: str | None = None
+    scope: PublicDirectoryScope = Field(default_factory=PublicDirectoryScope)
+    methodology: PublicDirectoryMethodology = Field(default_factory=PublicDirectoryMethodology)
+    updated_by: str | None = None
+    updated_at: str | None = None
 
 
 class DirectoryTemplatePlaceScope(BaseModel):
@@ -276,6 +346,48 @@ def _directory_domain_response(domain: DirectoryDomainModel) -> DirectoryDomainR
     )
 
 
+def _directory_config_scope(config: DirectoryConfigModel) -> PublicDirectoryScope:
+    """Convert persisted directory scope into the public response model."""
+    return PublicDirectoryScope(
+        issue_area_ids=config.issue_area_ids,
+        geography_labels=config.geography_labels,
+        entry_types=config.entry_types,
+    )
+
+
+def _directory_config_methodology(config: DirectoryConfigModel) -> PublicDirectoryMethodology:
+    """Convert persisted methodology into a complete public methodology model."""
+    defaults = PublicDirectoryMethodology()
+    return PublicDirectoryMethodology(
+        summary=config.methodology_summary or defaults.summary,
+        source_policy=config.source_policy or defaults.source_policy,
+        review_policy=config.review_policy or defaults.review_policy,
+        correction_policy=config.correction_policy or defaults.correction_policy,
+        correction_path_template=config.correction_path_template
+        or defaults.correction_path_template,
+        missing_context_path_template=config.missing_context_path_template
+        or defaults.missing_context_path_template,
+    )
+
+
+def _directory_config_response(
+    org_id: str,
+    config: DirectoryConfigModel | None,
+) -> DirectoryConfigResponse:
+    """Convert an optional persisted config into the admin response model."""
+    if config is None:
+        return DirectoryConfigResponse(org_id=org_id)
+    return DirectoryConfigResponse(
+        org_id=config.org_id,
+        title=config.title,
+        sponsor_label=config.sponsor_label,
+        scope=_directory_config_scope(config),
+        methodology=_directory_config_methodology(config),
+        updated_by=config.updated_by,
+        updated_at=config.updated_at,
+    )
+
+
 def _public_directory_federation(
     entries: list[EntityDetailResponse],
 ) -> PublicDirectoryFederation:
@@ -286,6 +398,92 @@ def _public_directory_federation(
     return PublicDirectoryFederation(
         shared_record_count=len(entries),
         source_backed_record_count=source_backed_count,
+    )
+
+
+def _geography_label(entry: EntityDetailResponse) -> str | None:
+    """Return the most useful public geography label for one directory entry."""
+    if entry.address.city and entry.address.state:
+        return f"{entry.address.city}, {entry.address.state}"
+    if entry.address.city:
+        return entry.address.city
+    if entry.address.state:
+        return entry.address.state
+    return entry.address.region
+
+
+def _latest_source_date(entry: EntityDetailResponse) -> str | None:
+    """Return the latest visible source or freshness date for one directory entry."""
+    candidates = [
+        entry.freshness.latest_source_date,
+        *(
+            source.freshness.published_date
+            or source.freshness.ingested_at
+            or source.freshness.created_at
+            for source in entry.sources
+        ),
+    ]
+    dates = [candidate[:10] for candidate in candidates if candidate]
+    return max(dates) if dates else None
+
+
+def _public_directory_scope(entries: list[EntityDetailResponse]) -> PublicDirectoryScope:
+    """Derive a public scope summary from source-backed directory entries."""
+    geography_labels = sorted(
+        label for entry in entries if (label := _geography_label(entry)) is not None
+    )
+    return PublicDirectoryScope(
+        issue_area_ids=sorted({issue for entry in entries for issue in entry.issue_area_ids}),
+        geography_labels=geography_labels,
+        entry_types=sorted({entry.type for entry in entries}),
+    )
+
+
+def _public_directory_stats(entries: list[EntityDetailResponse]) -> PublicDirectoryStats:
+    """Derive public coverage stats from source-backed directory entries."""
+    last_reviewed_dates = [
+        latest_source_date
+        for entry in entries
+        if (latest_source_date := _latest_source_date(entry)) is not None
+    ]
+    return PublicDirectoryStats(
+        record_count=len(entries),
+        source_count=sum(entry.source_count for entry in entries),
+        source_backed_record_count=sum(1 for entry in entries if entry.source_count > 0),
+        last_reviewed_at=max(last_reviewed_dates) if last_reviewed_dates else None,
+    )
+
+
+def _humanize_identifier(value: str) -> str:
+    """Return a compact public label for a slug-like identifier."""
+    return value.replace("_", " ").replace("-", " ").title()
+
+
+def _public_directory_title(
+    org_id: str,
+    scope: PublicDirectoryScope,
+) -> str:
+    """Return the best available public title for a derived directory."""
+    if len(scope.geography_labels) == 1:
+        return f"{scope.geography_labels[0]} civic directory"
+    if len(scope.issue_area_ids) == 1:
+        return f"{_humanize_identifier(scope.issue_area_ids[0])} civic directory"
+    return f"{org_id} civic directory"
+
+
+def _effective_public_directory_scope(
+    entries: list[EntityDetailResponse],
+    config: DirectoryConfigModel | None,
+) -> PublicDirectoryScope:
+    """Return configured scope values while preserving derived coverage where unset."""
+    derived_scope = _public_directory_scope(entries)
+    if config is None:
+        return derived_scope
+    configured_scope = _directory_config_scope(config)
+    return PublicDirectoryScope(
+        issue_area_ids=configured_scope.issue_area_ids or derived_scope.issue_area_ids,
+        geography_labels=configured_scope.geography_labels or derived_scope.geography_labels,
+        entry_types=configured_scope.entry_types or derived_scope.entry_types,
     )
 
 
@@ -306,6 +504,7 @@ async def list_directory_templates(
     org_id: str,
     response: Response,
     actor: AuthenticatedActor = Depends(require_org_actor),
+    _cap: None = Depends(require_capability("public.directories")),
 ) -> DirectoryTemplatesResponse:
     """List templates that seed a workspace directory's issue and place scope."""
     _verify_org_access(actor, org_id)
@@ -327,12 +526,73 @@ async def configure_directory_domain(
     response: Response,
     actor: AuthenticatedActor = Depends(require_org_actor),
     db: aiosqlite.Connection = Depends(get_db),
+    _cap: None = Depends(require_capability("public.directories")),
 ) -> DirectoryDomainResponse:
     """Create a verification challenge for a workspace directory custom domain."""
     _verify_org_access(actor, org_id)
     domain = await OwnershipCRUD.upsert_directory_domain(db, org_id=org_id, domain=req.domain)
     apply_no_store_headers(response)
     return _directory_domain_response(domain)
+
+
+@router.get(
+    "/directory-config",
+    response_model=DirectoryConfigResponse,
+    summary="Get workspace directory configuration",
+    operation_id="getOrgDirectoryConfig",
+    tags=["org-entries"],
+)
+async def get_directory_config(
+    org_id: str,
+    response: Response,
+    actor: AuthenticatedActor = Depends(require_org_actor),
+    db: aiosqlite.Connection = Depends(get_db),
+    _cap: None = Depends(require_capability("public.directories")),
+) -> DirectoryConfigResponse:
+    """Return the editable public framing for a workspace directory."""
+    _verify_org_access(actor, org_id)
+    config = await OwnershipCRUD.get_directory_config(db, org_id)
+    apply_no_store_headers(response)
+    return _directory_config_response(org_id, config)
+
+
+@router.put(
+    "/directory-config",
+    response_model=DirectoryConfigResponse,
+    summary="Update workspace directory configuration",
+    operation_id="updateOrgDirectoryConfig",
+    tags=["org-entries"],
+)
+async def update_directory_config(
+    org_id: str,
+    req: DirectoryConfigRequest,
+    response: Response,
+    actor: AuthenticatedActor = Depends(require_org_actor),
+    db: aiosqlite.Connection = Depends(get_db),
+    _cap: None = Depends(require_capability("public.directories")),
+) -> DirectoryConfigResponse:
+    """Persist the public title, scope, and methodology for a workspace directory."""
+    _verify_org_access(actor, org_id)
+    scope = req.scope or PublicDirectoryScope()
+    methodology = req.methodology or PublicDirectoryMethodology()
+    config = await OwnershipCRUD.upsert_directory_config(
+        db,
+        org_id=org_id,
+        title=req.title,
+        sponsor_label=req.sponsor_label,
+        issue_area_ids=scope.issue_area_ids,
+        geography_labels=scope.geography_labels,
+        entry_types=scope.entry_types,
+        methodology_summary=methodology.summary,
+        source_policy=methodology.source_policy,
+        review_policy=methodology.review_policy,
+        correction_policy=methodology.correction_policy,
+        correction_path_template=methodology.correction_path_template,
+        missing_context_path_template=methodology.missing_context_path_template,
+        actor_id=actor.user_id,
+    )
+    apply_no_store_headers(response)
+    return _directory_config_response(org_id, config)
 
 
 @router.post(
@@ -348,6 +608,7 @@ async def verify_directory_domain(
     response: Response,
     actor: AuthenticatedActor = Depends(require_org_actor),
     db: aiosqlite.Connection = Depends(get_db),
+    _cap: None = Depends(require_capability("public.directories")),
 ) -> DirectoryDomainResponse:
     """Mark a workspace directory custom domain verified when TXT proof matches."""
     _verify_org_access(actor, org_id)
@@ -383,6 +644,7 @@ async def get_public_directory(
         entry = await _entry_to_source_linked_detail_response(db, record.resource_id)
         if entry is not None:
             entries.append(entry)
+    config = await OwnershipCRUD.get_directory_config(db, org_id)
     verified_domain = await OwnershipCRUD.get_verified_directory_domain(db, org_id)
     custom_domain = (
         PublicDirectoryDomain(domain=verified_domain.domain, status=verified_domain.status)
@@ -390,9 +652,22 @@ async def get_public_directory(
         else None
     )
 
+    scope = _effective_public_directory_scope(entries, config)
+    methodology = (
+        _directory_config_methodology(config)
+        if config is not None
+        else PublicDirectoryMethodology()
+    )
     apply_no_store_headers(response)
     return PublicDirectoryResponse(
+        title=config.title
+        if config is not None and config.title
+        else _public_directory_title(org_id, scope),
+        sponsor_label=config.sponsor_label if config is not None else None,
         workspace=PublicDirectoryWorkspace(id=org_id, name=org_id, custom_domain=custom_domain),
+        scope=scope,
+        stats=_public_directory_stats(entries),
+        methodology=methodology,
         entries=entries,
         federation=_public_directory_federation(entries),
     )
@@ -582,6 +857,7 @@ async def publish_org_entry(
     response: Response,
     actor: AuthenticatedActor = Depends(require_org_actor),
     db: aiosqlite.Connection = Depends(get_db),
+    _cap: None = Depends(require_capability("public.directories")),
 ) -> PublishEntryResponse:
     """Publish a workspace-owned entry into that workspace's public directory."""
     _verify_org_access(actor, org_id)
@@ -589,6 +865,8 @@ async def publish_org_entry(
     ownership = await OwnershipCRUD.get_ownership(db, entry_id, "entry")
     if ownership is None or ownership.org_id != org_id:
         raise HTTPException(status_code=404, detail="Entry not found")
+
+    should_record_public_improvement = ownership.visibility != "public"
 
     if await _source_count_for_entry(db, entry_id) == 0:
         review_item_id = await ReviewQueueCRUD.enqueue(
@@ -615,6 +893,17 @@ async def publish_org_entry(
         visibility="public",
     )
     assert updated is not None, "ownership existed moments before the visibility update"
+    if should_record_public_improvement:
+        await OrgUsageEventCRUD.record(
+            db,
+            OrgUsageEventRecord(
+                org_id=org_id,
+                actor_id=actor.user_id,
+                event_type="public_record_improved",
+                resource_type="public_record",
+                resource_id=entry_id,
+            ),
+        )
     apply_no_store_headers(response)
     return PublishEntryResponse(entry_id=entry_id, visibility=updated.visibility)
 

@@ -17,6 +17,7 @@ from atlas.domains.discovery.api_org import (
     OrgDiscoveryRunCollectionResponse,
     OrgDiscoveryRunResponse,
     OrgDiscoveryRunStartRequest,
+    _current_budget_month,
     _run_to_org_response,
     _verify_org_access,
     get_db,
@@ -366,7 +367,11 @@ class TestStartOrgDiscoveryRun:
         assert ownership is not None
         assert ownership.org_id == ORG_ID
         assert ownership.visibility == "private"
-        budget = await OrgDiscoveryBudgetCRUD.get_budget(db, org_id=ORG_ID, month="2026-06")
+        budget = await OrgDiscoveryBudgetCRUD.get_budget(
+            db,
+            org_id=ORG_ID,
+            month=_current_budget_month(),
+        )
         assert budget is not None
         assert budget.used_runs == 1
 
@@ -374,10 +379,11 @@ class TestStartOrgDiscoveryRun:
     async def test_monthly_budget_limit_blocks_new_run(self, db: aiosqlite.Connection) -> None:
         """Tenant discovery runs should stop at the org's monthly metered budget."""
         actor = _make_actor()
+        month = _current_budget_month()
         await OrgDiscoveryBudgetCRUD.set_budget(
             db,
             org_id=ORG_ID,
-            month="2026-06",
+            month=month,
             monthly_run_limit=1,
             used_runs=1,
         )
@@ -399,7 +405,7 @@ class TestStartOrgDiscoveryRun:
         assert exc_info.value.status_code == HTTPStatus.CONFLICT
         assert exc_info.value.detail == {
             "org_id": ORG_ID,
-            "month": "2026-06",
+            "month": month,
             "monthly_run_limit": 1,
             "used_runs": 1,
             "remaining_runs": 0,

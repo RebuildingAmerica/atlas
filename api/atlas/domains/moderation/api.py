@@ -6,6 +6,7 @@ from collections.abc import AsyncGenerator  # noqa: TC003
 from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from pydantic import BaseModel, Field
 
 from atlas.domains.access import AuthenticatedActor, require_actor_permission
 from atlas.domains.moderation.review_queue import ReviewQueueCRUD
@@ -28,6 +29,13 @@ if TYPE_CHECKING:
 router = APIRouter()
 
 __all__ = ["router"]
+
+
+class SourceStalenessReviewScanResponse(BaseModel):
+    """Review items created by a stale-source scan."""
+
+    enqueued: int = Field(..., ge=0)
+    review_item_ids: list[str] = Field(default_factory=list)
 
 
 async def get_db(
@@ -96,6 +104,64 @@ async def list_entity_flags(
     return EntityFlagListResponse(items=items, total=total, next_cursor=next_cursor)
 
 
+async def _update_entity_flag_status(
+    db: aiosqlite.Connection,
+    flag_id: str,
+    *,
+    status: str,
+) -> FlagResponse:
+    """Update one entity flag status or raise a 404."""
+    if await FlagCRUD.get_entity_flag(db, flag_id) is None:
+        raise HTTPException(status_code=404, detail="Entity flag not found")
+    flag = await FlagCRUD.update_entity_flag_status(db, flag_id, status=status)
+    assert flag is not None, "entity flag existed moments before status update"
+    return FlagResponse.model_validate(flag.__dict__)
+
+
+@router.post(
+    "/entity-flags/{flag_id}/resolve",
+    response_model=FlagResponse,
+    summary="Resolve an entity flag",
+    description="Close an entity correction, dispute, or sensitive-person report as resolved.",
+    operation_id="resolveEntityFlag",
+    response_description="The resolved entity flag.",
+    tags=["flags"],
+)
+async def resolve_entity_flag(
+    flag_id: str,
+    response: Response,
+    actor: AuthenticatedActor = Depends(require_actor_permission("discovery", "write")),
+    db: aiosqlite.Connection = Depends(get_db),
+) -> FlagResponse:
+    """Mark one entity flag resolved."""
+    _ = actor
+    flag = await _update_entity_flag_status(db, flag_id, status="resolved")
+    apply_no_store_headers(response)
+    return flag
+
+
+@router.post(
+    "/entity-flags/{flag_id}/dismiss",
+    response_model=FlagResponse,
+    summary="Dismiss an entity flag",
+    description="Close an entity correction, dispute, or sensitive-person report as dismissed.",
+    operation_id="dismissEntityFlag",
+    response_description="The dismissed entity flag.",
+    tags=["flags"],
+)
+async def dismiss_entity_flag(
+    flag_id: str,
+    response: Response,
+    actor: AuthenticatedActor = Depends(require_actor_permission("discovery", "write")),
+    db: aiosqlite.Connection = Depends(get_db),
+) -> FlagResponse:
+    """Mark one entity flag dismissed."""
+    _ = actor
+    flag = await _update_entity_flag_status(db, flag_id, status="reviewed")
+    apply_no_store_headers(response)
+    return flag
+
+
 @router.post(
     "/source-flags",
     response_model=FlagResponse,
@@ -151,6 +217,64 @@ async def list_source_flags(
     return SourceFlagListResponse(items=items, total=total, next_cursor=next_cursor)
 
 
+async def _update_source_flag_status(
+    db: aiosqlite.Connection,
+    flag_id: str,
+    *,
+    status: str,
+) -> FlagResponse:
+    """Update one source flag status or raise a 404."""
+    if await FlagCRUD.get_source_flag(db, flag_id) is None:
+        raise HTTPException(status_code=404, detail="Source flag not found")
+    flag = await FlagCRUD.update_source_flag_status(db, flag_id, status=status)
+    assert flag is not None, "source flag existed moments before status update"
+    return FlagResponse.model_validate(flag.__dict__)
+
+
+@router.post(
+    "/source-flags/{flag_id}/resolve",
+    response_model=FlagResponse,
+    summary="Resolve a source flag",
+    description="Close a source correction or dispute as resolved.",
+    operation_id="resolveSourceFlag",
+    response_description="The resolved source flag.",
+    tags=["flags"],
+)
+async def resolve_source_flag(
+    flag_id: str,
+    response: Response,
+    actor: AuthenticatedActor = Depends(require_actor_permission("discovery", "write")),
+    db: aiosqlite.Connection = Depends(get_db),
+) -> FlagResponse:
+    """Mark one source flag resolved."""
+    _ = actor
+    flag = await _update_source_flag_status(db, flag_id, status="resolved")
+    apply_no_store_headers(response)
+    return flag
+
+
+@router.post(
+    "/source-flags/{flag_id}/dismiss",
+    response_model=FlagResponse,
+    summary="Dismiss a source flag",
+    description="Close a source correction or dispute as dismissed.",
+    operation_id="dismissSourceFlag",
+    response_description="The dismissed source flag.",
+    tags=["flags"],
+)
+async def dismiss_source_flag(
+    flag_id: str,
+    response: Response,
+    actor: AuthenticatedActor = Depends(require_actor_permission("discovery", "write")),
+    db: aiosqlite.Connection = Depends(get_db),
+) -> FlagResponse:
+    """Mark one source flag dismissed."""
+    _ = actor
+    flag = await _update_source_flag_status(db, flag_id, status="reviewed")
+    apply_no_store_headers(response)
+    return flag
+
+
 @router.get(
     "/review-queue",
     response_model=ReviewQueueListResponse,
@@ -176,6 +300,31 @@ async def list_review_queue(
     total = await ReviewQueueCRUD.count_pending(db)
     apply_no_store_headers(response)
     return ReviewQueueListResponse(items=items, total=total)
+
+
+@router.post(
+    "/review-queue/source-staleness-scan",
+    response_model=SourceStalenessReviewScanResponse,
+    summary="Scan public records for stale source review",
+    description="Enqueue public records whose source receipts need freshness review.",
+    operation_id="scanSourceStalenessReviewQueue",
+    response_description="Review items created by the stale-source scan.",
+    tags=["moderation"],
+)
+async def scan_source_staleness_review_queue(
+    response: Response,
+    org_id: str | None = Query(None),
+    actor: AuthenticatedActor = Depends(require_actor_permission("discovery", "write")),
+    db: aiosqlite.Connection = Depends(get_db),
+) -> SourceStalenessReviewScanResponse:
+    """Enqueue stale public records for operator review."""
+    _ = actor
+    review_item_ids = await ReviewQueueCRUD.enqueue_stale_public_sources(db, org_id=org_id)
+    apply_no_store_headers(response)
+    return SourceStalenessReviewScanResponse(
+        enqueued=len(review_item_ids),
+        review_item_ids=review_item_ids,
+    )
 
 
 @router.post(

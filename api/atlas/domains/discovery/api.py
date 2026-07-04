@@ -32,6 +32,8 @@ from atlas.domains.discovery.pipeline.runner import (
     run_discovery_pipeline_for_run,
 )
 from atlas.domains.discovery.schemas import (
+    DiscoveryJobQueueItemResponse,
+    DiscoveryJobQueueResponse,
     DiscoveryJobResponse,
     DiscoveryPipelineSummaryResponse,
     DiscoveryRunCancelResponse,
@@ -51,7 +53,7 @@ from atlas.schemas import (
 if TYPE_CHECKING:
     import aiosqlite
 
-    from atlas.domains.discovery.models import DiscoveryRunModel
+    from atlas.domains.discovery.models import DiscoveryJobQueueItemModel, DiscoveryRunModel
 
 logger = logging.getLogger(__name__)
 
@@ -380,6 +382,39 @@ async def execute_scheduled_runs(
 
 
 @router.get(
+    "/jobs",
+    response_model=DiscoveryJobQueueResponse,
+    summary="List discovery job queue",
+    description="Return queued, claimed, running, and failed discovery jobs for research ops.",
+    operation_id="listDiscoveryJobQueue",
+    tags=["discovery-runs"],
+)
+async def list_discovery_job_queue(
+    response: Response,
+    *,
+    limit: int = Query(25, ge=1, le=100),
+    actor: AuthenticatedActor = Depends(require_actor_permission("discovery", "read")),
+    db: aiosqlite.Connection = Depends(get_db),
+) -> DiscoveryJobQueueResponse:
+    """Return a bounded research-operations queue view."""
+    _ = actor
+    jobs = await DiscoveryJobCRUD.list_queue(db, limit=limit)
+    raw_counts = await DiscoveryJobCRUD.count_by_status(db)
+    status_counts = {
+        "queued": raw_counts.get("queued", 0),
+        "claimed": raw_counts.get("claimed", 0),
+        "running": raw_counts.get("running", 0),
+        "failed": raw_counts.get("failed", 0),
+    }
+    apply_no_store_headers(response)
+    return DiscoveryJobQueueResponse(
+        items=[_job_queue_item_to_response(job) for job in jobs],
+        total=sum(status_counts.values()),
+        status_counts=status_counts,
+    )
+
+
+@router.get(
     "/jobs/{job_id}",
     response_model=DiscoveryJobResponse,
     summary="Get a discovery job",
@@ -561,6 +596,28 @@ async def cancel_discovery_run(
     cancelled = await DiscoveryJobCRUD.cancel_run_jobs(db, run_id)
     apply_no_store_headers(response)
     return DiscoveryRunCancelResponse(run_id=run_id, jobs_cancelled=cancelled)
+
+
+def _job_queue_item_to_response(job: DiscoveryJobQueueItemModel) -> DiscoveryJobQueueItemResponse:
+    """Convert a discovery job queue item into an API response."""
+    return DiscoveryJobQueueItemResponse(
+        id=job.id,
+        run_id=job.run_id,
+        status=job.status,
+        progress=job.progress,
+        error_message=job.error_message,
+        retry_count=job.retry_count,
+        max_retries=job.max_retries,
+        created_at=job.created_at,
+        started_at=job.started_at,
+        completed_at=job.completed_at,
+        location_query=job.location_query,
+        state=job.state,
+        issue_areas=job.issue_areas,
+        claimed_by=job.claimed_by,
+        claimed_until=job.claimed_until,
+        next_attempt_at=job.next_attempt_at,
+    )
 
 
 def _run_to_response(run: DiscoveryRunModel) -> DiscoveryRunResponse:
