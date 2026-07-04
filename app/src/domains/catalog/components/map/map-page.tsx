@@ -6,7 +6,10 @@ import { MapCommandBar } from "@/domains/catalog/components/map/map-command-bar"
 import { MapControls } from "@/domains/catalog/components/map/map-controls";
 import { MapDetailPanel } from "@/domains/catalog/components/map/map-detail-panel";
 import { MapLegend } from "@/domains/catalog/components/map/map-legend";
-import { MapResultsList } from "@/domains/catalog/components/map/map-results-list";
+import {
+  MAP_RESULTS_LIST_ID,
+  MapResultsPanel,
+} from "@/domains/catalog/components/map/map-results-panel";
 import {
   ClusterSkeletons,
   MapEmptyState,
@@ -110,7 +113,7 @@ export function MapPage({ search, initialPoints }: MapPageProps) {
   return (
     <div className="relative h-[calc(100vh-4rem)] w-full overflow-hidden">
       <a
-        href="#map-results-list"
+        href={`#${MAP_RESULTS_LIST_ID}`}
         onClick={() => {
           resultsListRef.current?.focus();
         }}
@@ -219,16 +222,12 @@ export function MapPage({ search, initialPoints }: MapPageProps) {
         ) : null}
       </div>
 
-      <section
-        id="map-results-list"
-        ref={resultsListRef}
-        tabIndex={-1}
-        aria-label="Civic actors on the map"
-        className="bg-surface-container-high/95 shadow-soft border-border-strong focus:ring-accent sr-only z-40 max-h-[min(70vh,36rem)] w-[min(28rem,calc(100vw-1.5rem))] overflow-y-auto rounded-[1.1rem] border p-3 focus:not-sr-only focus:absolute focus:top-16 focus:left-3 focus:ring-2 focus:outline-none sm:top-20 sm:left-4"
-      >
-        <h2>Civic actors on the map</h2>
-        <MapResultsList points={points} isLoading={!hasFetched} onFocusActor={page.onSelectActor} />
-      </section>
+      <MapResultsPanel
+        panelRef={resultsListRef}
+        points={points}
+        isLoading={!hasFetched}
+        onFocusActor={page.onSelectActor}
+      />
     </div>
   );
 }

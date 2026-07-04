@@ -82,7 +82,7 @@ describe("MapPage", () => {
     expect(screen.getByRole("button", { name: "Zoom in" })).toBeTruthy();
   });
 
-  it("announces the visible actor count in a polite live region", () => {
+  it("announces the visible result count in a polite live region", () => {
     requireMapPageHarness().setState({
       points: [makePoint({ id: "1", lat: 1, lng: 2 }), makePoint({ id: "2", lat: 3, lng: 4 })],
     });
@@ -90,7 +90,7 @@ describe("MapPage", () => {
 
     const live = screen.getByRole("status");
     expect(live.getAttribute("aria-live")).toBe("polite");
-    expect(live.textContent).toContain("Showing 2 civic actors");
+    expect(live.textContent).toContain("Showing 2 people and groups");
   });
 
   it("offers a skip link straight to the parallel results list", () => {
@@ -101,13 +101,14 @@ describe("MapPage", () => {
     expect(skip.getAttribute("href")).toBe("#map-results-list");
     expect(resultsList).not.toBeNull();
     expect(resultsList?.getAttribute("tabindex")).toBe("-1");
-    expect(resultsList?.className).toContain("focus:not-sr-only");
+    expect(resultsList?.className).toContain("focus-within:not-sr-only");
+    expect(resultsList?.className).toContain("focus-within:absolute");
   });
 
-  it("shows the friendly sparsity pill when actors are placed", () => {
+  it("shows the result count pill when points are placed", () => {
     requireMapPageHarness().setState({ points: [makePoint({ id: "1", lat: 1, lng: 2 })] });
     render(<MapPage search={{}} />);
-    expect(screen.getByText(/Atlas is mapping civic work/i)).toBeTruthy();
+    expect(screen.getByText(/1 person or group in 1 place/i)).toBeTruthy();
   });
 
   it("shows the empty state with its actions when a viewport holds no actors", () => {
@@ -117,7 +118,7 @@ describe("MapPage", () => {
     });
     render(<MapPage search={{}} />);
 
-    expect(screen.getByText(/No actors in this area yet/i)).toBeTruthy();
+    expect(screen.getAllByText(/No people or groups here/i).length).toBeGreaterThan(0);
     fireEvent.click(screen.getByRole("button", { name: "Zoom out to the US" }));
     expect(requireMapPageHarness().handlers.onZoomOut).toHaveBeenCalledOnce();
   });

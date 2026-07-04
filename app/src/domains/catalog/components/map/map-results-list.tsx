@@ -13,8 +13,6 @@ function avatarType(type: EntryType): "person" | "organization" {
 interface MapResultsListProps {
   /** The actors currently placed in the viewport. */
   points: MapPoint[];
-  /** Whether the viewport's actors are still being fetched. */
-  isLoading: boolean;
   /** Bring an actor's dot into focus on the map from its list row. */
   onFocusActor: (point: MapPoint) => void;
 }
@@ -72,27 +70,12 @@ function ResultRow({
 }
 
 /**
- * The parallel, accessible list of the actors on the map.
+ * The plain DOM rows for actors currently placed on the map.
  *
- * The map must never be the only path to the data: this list mirrors the dots
- * in plain DOM so a keyboard or screen-reader visitor reaches every actor in the
- * viewport, focuses any one of them on the map, and steps into its profile —
- * the same geography → actor → relationships flow the dots offer, without a
- * canvas. It stays honest about its two quiet states: a loading line while the
- * viewport's actors arrive, and a "no actors in view" line rather than a blank
- * list, so silence always reads as deliberate.
+ * Layout, skip-link behavior, and loading or empty states live in the panel
+ * shell so this component stays focused on turning point data into rows.
  */
-export function MapResultsList({ points, isLoading, onFocusActor }: MapResultsListProps) {
-  if (isLoading) {
-    return <p className="type-body-small text-ink-muted px-1 py-4">Loading actors in this view…</p>;
-  }
-  if (points.length === 0) {
-    return (
-      <p className="type-body-small text-ink-muted px-1 py-4">
-        No actors in view — pan, zoom out, or clear a filter to find more.
-      </p>
-    );
-  }
+export function MapResultsList({ points, onFocusActor }: MapResultsListProps) {
   return (
     <ul className="space-y-2">
       {points.map((point) => (
