@@ -6,6 +6,7 @@ import asyncio
 import hashlib
 import json
 import logging
+import re
 from typing import TYPE_CHECKING, Annotated, Any
 
 from atlas_shared import ISSUE_AREAS_BY_DOMAIN, PageContent, RawEntry
@@ -28,6 +29,9 @@ _CLAIM_LEASE_SECONDS = 60.0
 _CLAIM_WAIT_SECONDS = 60.0
 _MAX_EXTRACTION_ATTEMPTS = 5
 _RETRY_BACKOFF_SECONDS = 1.0
+_SENATE_CONTACT_HEADER_RE = re.compile(
+    r"^(?P<label>.+) \((?P<party>[A-Z])-(?P<state>[A-Z]{2})\)$"
+)
 
 
 class ExtractionFailedError(RuntimeError):
@@ -311,6 +315,9 @@ async def _run_provider_extraction(
     roster_entries = _extract_roster_table_entries(page, city=city, state=state)
     if roster_entries:
         return roster_entries
+    senate_entries = _extract_senate_contact_entries(page, city=city, state=state)
+    if senate_entries:
+        return senate_entries
 
     # --- Pass 1: Identify all named entities ---
     identified = await _pass_identify(page, provider, on_retry=on_retry)
@@ -384,6 +391,56 @@ def _extract_roster_table_entries(page: PageContent, *, city: str, state: str) -
                 website=page.url,
                 affiliated_org="U.S. House of Representatives",
                 extraction_context=row,
+                source_url=page.url,
+                source_date=source_date,
+            )
+        )
+
+    return entries
+
+
+def _extract_senate_contact_entries(page: PageContent, *, city: str, state: str) -> list[RawEntry]:
+    """Extract senators from senate.gov contact XML rendered as line blocks."""
+    entries: list[RawEntry] = []
+    source_date = page.published_date.date() if page.published_date else None
+    lines = [line.strip() for line in page.text.splitlines() if line.strip()]
+
+    for index, line in enumerate(lines):
+        match = _SENATE_CONTACT_HEADER_RE.match(line)
+        if match is None or index + 8 >= len(lines):
+            continue
+
+        last_name = lines[index + 1]
+        first_name = lines[index + 2]
+        party = lines[index + 3]
+        state_code = lines[index + 4]
+        phone = lines[index + 6]
+        website = lines[index + 8]
+        if party != match.group("party") or state_code != match.group("state"):
+            continue
+        if not website.startswith("http"):
+            continue
+
+        name = f"{first_name} {last_name}".strip()
+        context = "\n".join(lines[index : index + 9])
+        entries.append(
+            RawEntry(
+                name=name,
+                entry_type="person",
+                description=(
+                    f"{name} is listed as a United States senator for {state_code} "
+                    f"with party marker {party} and phone {phone} in the Senate contact roster."
+                ),
+                city=city or None,
+                state=state_code or state or None,
+                geo_specificity="statewide",
+                issue_areas=[
+                    "political_polarization_and_democratic_norms",
+                    "electoral_reform",
+                ],
+                website=website,
+                affiliated_org="United States Senate",
+                extraction_context=context,
                 source_url=page.url,
                 source_date=source_date,
             )
