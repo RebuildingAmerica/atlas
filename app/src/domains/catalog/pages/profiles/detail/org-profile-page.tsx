@@ -19,6 +19,7 @@ import { ProfileSection } from "@/domains/catalog/components/profiles/detail/pro
 import { useConnections } from "@/domains/catalog/hooks/use-connections";
 import { useEntries } from "@/domains/catalog/hooks/use-entries";
 import { useTaxonomy } from "@/domains/catalog/hooks/use-taxonomy";
+import { buildCanonicalUrl } from "@/platform/seo";
 import type { ConnectionNetwork, Entry } from "@/types";
 
 interface OrgProfilePageProps {
@@ -38,8 +39,7 @@ function shortRelative(iso: string, now: Date = new Date()): string {
 }
 
 function buildShareUrl(slug: string): string {
-  if (typeof window !== "undefined") return window.location.href;
-  return `https://rebuildingus.org/profiles/organizations/${slug}`;
+  return buildCanonicalUrl(`/profiles/organizations/${slug}`);
 }
 
 export function OrgProfilePage({ entry, initialConnections }: OrgProfilePageProps) {

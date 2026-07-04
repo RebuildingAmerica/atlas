@@ -8,6 +8,10 @@ import {
   createSourceFixture as buildSource,
 } from "../../../../fixtures/catalog/entries";
 
+const actionClusterCaptures = vi.hoisted(() => ({
+  shareUrls: [] as string[],
+}));
+
 vi.mock("@tanstack/react-router", () => ({
   Link: ({ children, to }: { children: React.ReactNode; to: string }) => (
     <a href={to}>{children}</a>
@@ -41,7 +45,10 @@ vi.mock("@/domains/catalog/hooks/use-entries", () => ({
 }));
 
 vi.mock("@/domains/catalog/components/profiles/action-cluster", () => ({
-  ActionCluster: () => <div data-testid="action-cluster" />,
+  ActionCluster: (props: { shareUrl: string }) => {
+    actionClusterCaptures.shareUrls.push(props.shareUrl);
+    return <div data-testid="action-cluster" />;
+  },
 }));
 
 vi.mock("@/domains/catalog/components/profiles/appearances-list", () => ({
@@ -98,6 +105,7 @@ vi.mock("@/domains/catalog/components/profiles/reach-section", () => ({
 
 afterEach(() => {
   cleanup();
+  actionClusterCaptures.shareUrls.length = 0;
 });
 
 describe("actor profile answer-card placement", () => {
@@ -146,5 +154,43 @@ describe("actor profile answer-card placement", () => {
     expect(header).not.toBeNull();
     expect(header?.className).not.toContain("sticky");
     expect(sourcesAndTrust).toHaveAttribute("data-profile-section", "sources-and-trust");
+  });
+
+  it("passes canonical Atlas URLs to profile sharing actions", async () => {
+    const { PersonProfilePage } =
+      await import("@/domains/catalog/pages/profiles/detail/person-profile-page");
+    const { OrgProfilePage } =
+      await import("@/domains/catalog/pages/profiles/detail/org-profile-page");
+
+    render(
+      <PersonProfilePage
+        entry={buildEntry({
+          slug: "jane-doe",
+          type: "person",
+          sources: [buildSource()],
+        })}
+      />,
+    );
+
+    expect(actionClusterCaptures.shareUrls.at(-1)).toBe(
+      "https://atlas.rebuildingamerica.com/profiles/people/jane-doe",
+    );
+
+    cleanup();
+    actionClusterCaptures.shareUrls.length = 0;
+
+    render(
+      <OrgProfilePage
+        entry={buildEntry({
+          slug: "housing-justice-kc",
+          type: "organization",
+          sources: [buildSource()],
+        })}
+      />,
+    );
+
+    expect(actionClusterCaptures.shareUrls.at(-1)).toBe(
+      "https://atlas.rebuildingamerica.com/profiles/organizations/housing-justice-kc",
+    );
   });
 });

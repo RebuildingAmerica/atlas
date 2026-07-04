@@ -31,6 +31,7 @@ import { useConnections } from "@/domains/catalog/hooks/use-connections";
 import { useEntry } from "@/domains/catalog/hooks/use-entries";
 import { useTaxonomy } from "@/domains/catalog/hooks/use-taxonomy";
 import { humanize } from "@/domains/catalog/catalog";
+import { buildCanonicalUrl } from "@/platform/seo";
 import type { ConnectionNetwork, Entry } from "@/types";
 
 interface PersonProfilePageProps {
@@ -58,8 +59,7 @@ function shortRelative(iso: string, now: Date = new Date()): string {
 }
 
 function buildShareUrl(slug: string): string {
-  if (typeof window !== "undefined") return window.location.href;
-  return `https://rebuildingus.org/profiles/people/${slug}`;
+  return buildCanonicalUrl(`/profiles/people/${slug}`);
 }
 
 export function PersonProfilePage({ entry, initialConnections }: PersonProfilePageProps) {
