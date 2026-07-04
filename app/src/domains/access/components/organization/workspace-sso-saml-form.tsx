@@ -47,6 +47,10 @@ export function WorkspaceSSOSamlForm({
     samlIssuerOrigin !== null && samlAllowedIssuerOrigins.includes(samlIssuerOrigin);
   const samlCertificateClassification = classifyPemCertificate(samlSetupForm.certificate);
   const samlCertificateLooksValid = samlCertificateClassification.kind === "ok";
+  const samlCertificateError =
+    samlCertificateClassification.kind === "invalid"
+      ? `${samlCertificateClassification.reason} Atlas parses the certificate server-side after save and shows the parsed expiry and fingerprint here.`
+      : undefined;
   const visibleAllowlist = canManageOrganization ? samlAllowedIssuerOrigins : [];
   const samlIssuerHelperText = samlAllowlistEmpty
     ? "SAML registration is disabled for this deployment. Email hello@rebuildingus.org to add an issuer host to the allowlist before configuring a provider."
@@ -192,14 +196,10 @@ export function WorkspaceSSOSamlForm({
                 }}
                 placeholder="-----BEGIN CERTIFICATE-----"
                 className="font-mono text-sm"
+                error={samlCertificateError}
               />
             </div>
-            {samlCertificateClassification.kind === "invalid" ? (
-              <p className="type-body-small text-error">
-                {samlCertificateClassification.reason} Atlas parses the certificate server-side
-                after save and shows the parsed expiry and fingerprint here.
-              </p>
-            ) : samlCertificateClassification.kind === "ok" ? (
+            {samlCertificateClassification.kind === "ok" ? (
               <p className="type-body-small text-outline">
                 Looks like a PEM certificate ({samlCertificateClassification.bodyLines} body line
                 {samlCertificateClassification.bodyLines === 1 ? "" : "s"}). Atlas will parse and

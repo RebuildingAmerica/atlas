@@ -363,7 +363,12 @@ describe("WorkspaceSSOSamlForm", () => {
         onSamlSubmit={vi.fn().mockResolvedValue(undefined)}
       />,
     );
-    expect(screen.getByText(/Atlas parses the certificate server-side/i)).toBeInTheDocument();
+    const certificateField = screen.getByLabelText("X.509 certificate");
+
+    expect(certificateField).toHaveAttribute("aria-invalid", "true");
+    expect(certificateField).toHaveAccessibleDescription(
+      /Atlas parses the certificate server-side/i,
+    );
   });
 
   it("invokes onSamlSubmit when the form is submitted", () => {
