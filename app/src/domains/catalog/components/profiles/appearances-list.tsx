@@ -213,7 +213,9 @@ export function AppearancesList({ sources, mode }: AppearancesListProps) {
   if (sources.length === 0) {
     return (
       <div className="space-y-3">
-        <p className="type-label-small text-ink-muted tracking-widest uppercase">{sectionTitle}</p>
+        <h2 className="type-label-small text-ink-muted tracking-widest uppercase">
+          {sectionTitle}
+        </h2>
         <p className="type-body-medium text-ink-muted">No linked sources yet.</p>
       </div>
     );
@@ -226,9 +228,9 @@ export function AppearancesList({ sources, mode }: AppearancesListProps) {
     <div className="space-y-4">
       <div className="space-y-2">
         <div className="flex items-center gap-2">
-          <p className="type-label-small text-ink-muted tracking-widest uppercase">
+          <h2 className="type-label-small text-ink-muted tracking-widest uppercase">
             {sectionTitle}
-          </p>
+          </h2>
           <Badge>{sources.length}</Badge>
         </div>
         <div className="flex flex-wrap items-center gap-2">
