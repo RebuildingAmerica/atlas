@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from atlas.domains.access.models.saved_lists import SavedListCRUD
+from atlas.domains.catalog.models.ownership import OwnershipCRUD
 from atlas.domains.discovery.briefs import OrgBriefCRUD
 from atlas.domains.discovery.models import DiscoveryRunCRUD
 from atlas.models import EntryCRUD, get_db_connection
@@ -66,6 +67,12 @@ async def test_seed_briefing_room_demo_creates_resettable_private_demo_artifacts
         assert run.research_summary["artifact_kind"] == "briefing_room_demo"
         assert len(run.research_summary["ranked_leads"]) == EXPECTED_DEMO_LEAD_COUNT
         assert len(run.research_summary["key_sources"]) == len(second_result.source_ids)
+        run_ownership = await OwnershipCRUD.get_ownership(
+            conn, second_result.discovery_run_id, "discovery_run"
+        )
+        assert run_ownership is not None
+        assert run_ownership.org_id == DEMO_ORG_ID
+        assert run_ownership.visibility == "private"
 
         brief = await OrgBriefCRUD.get(conn, second_result.brief_id)
         assert brief is not None
@@ -109,11 +116,32 @@ async def test_seed_briefing_room_demo_creates_resettable_private_demo_artifacts
                 conn,
                 """
                 SELECT COUNT(*) FROM discovery_runs
-                WHERE location_query = ? AND research_summary LIKE ?
+                WHERE research_summary LIKE ?
                 """,
-                ("Detroit, MI", '%"artifact_kind": "briefing_room_demo"%'),
+                ('%"artifact_kind": "briefing_room_demo"%',),
             )
-            == 1
+            == EXPECTED_DEMO_LANE_COUNT
+        )
+        assert (
+            await _count_rows(
+                conn,
+                """
+                SELECT COUNT(*)
+                FROM resource_ownership ownership
+                JOIN discovery_runs run ON run.id = ownership.resource_id
+                WHERE ownership.resource_type = ?
+                  AND ownership.org_id = ?
+                  AND ownership.visibility = ?
+                  AND run.research_summary LIKE ?
+                """,
+                (
+                    "discovery_run",
+                    DEMO_ORG_ID,
+                    "private",
+                    '%"artifact_kind": "briefing_room_demo"%',
+                ),
+            )
+            == EXPECTED_DEMO_LANE_COUNT
         )
     finally:
         await conn.close()

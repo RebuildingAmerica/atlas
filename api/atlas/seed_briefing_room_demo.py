@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 from atlas.domains.access.models.saved_lists import SavedListCRUD
+from atlas.domains.catalog.models.ownership import OwnershipCRUD
 from atlas.domains.discovery.briefs import OrgBriefCRUD
 from atlas.domains.discovery.models import DiscoveryRunCRUD
 from atlas.models import EntryCRUD, get_db_connection
@@ -220,13 +221,24 @@ async def _reset_demo_artifacts(conn: aiosqlite.Connection, *, org_id: str, user
         f"DELETE FROM saved_lists WHERE user_id = ? AND name IN ({list_placeholders})",
         (user_id, *DEMO_LIST_NAMES),
     )
-    await conn.execute(
-        """
-        DELETE FROM discovery_runs
-        WHERE location_query = ? AND research_goal = ? AND research_summary LIKE ?
-        """,
-        (DEMO_LOCATION_QUERY, DEMO_RESEARCH_GOAL, f'%"artifact_kind": "{DEMO_ARTIFACT_KIND}"%'),
+    cursor = await conn.execute(
+        "SELECT id FROM discovery_runs WHERE research_summary LIKE ?",
+        (f'%"artifact_kind": "{DEMO_ARTIFACT_KIND}"%',),
     )
+    demo_run_ids = [str(row[0]) for row in await cursor.fetchall()]
+    if demo_run_ids:
+        run_placeholders = ", ".join("?" for _ in demo_run_ids)
+        await conn.execute(
+            f"""
+            DELETE FROM resource_ownership
+            WHERE resource_type = ? AND resource_id IN ({run_placeholders})
+            """,
+            ("discovery_run", *demo_run_ids),
+        )
+        await conn.execute(
+            f"DELETE FROM discovery_runs WHERE id IN ({run_placeholders})",
+            tuple(demo_run_ids),
+        )
     await conn.commit()
 
 
@@ -516,6 +528,14 @@ async def seed_briefing_room_demo(
                 entries_extracted=len(entry_ids),
                 entries_after_dedup=len(entry_ids),
                 entries_confirmed=len(entry_ids),
+            )
+            await OwnershipCRUD.create_ownership(
+                conn,
+                resource_id=run_id,
+                resource_type="discovery_run",
+                org_id=org_id,
+                visibility="private",
+                created_by=user_id,
             )
 
             brief = await OrgBriefCRUD.create(
