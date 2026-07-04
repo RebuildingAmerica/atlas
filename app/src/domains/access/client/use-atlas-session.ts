@@ -12,6 +12,7 @@ export const atlasSessionQueryKey = ["auth", "session"] as const;
  */
 interface UseAtlasSessionOptions {
   enabled?: boolean;
+  initialData?: AtlasSessionPayload | null;
   staleTime?: number;
   gcTime?: number;
   queryKey?: unknown[];
@@ -34,6 +35,7 @@ export function useAtlasSession(options?: UseAtlasSessionOptions) {
     staleTime: options?.staleTime ?? 30_000,
     ...(options?.enabled !== undefined && { enabled: options.enabled }),
     ...(options?.gcTime !== undefined && { gcTime: options.gcTime }),
+    ...(options && "initialData" in options && { initialData: options.initialData }),
     ...(options?.retry !== undefined && { retry: options.retry }),
   });
 }

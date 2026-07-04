@@ -2,6 +2,7 @@
 import "@testing-library/jest-dom/vitest";
 import { render, screen, fireEvent, cleanup, act } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { createAtlasSessionFixture } from "@/../tests/fixtures/access/sessions";
 
 vi.mock("@tanstack/react-router", async () => {
   const harness = await import("@/../tests/helpers/router-harness");
@@ -89,8 +90,12 @@ vi.mock("@/platform/ui/select", () => ({
 
 describe("routes/_workspace layout", () => {
   beforeEach(async () => {
-    const { resetRouterMocks } = await import("@/../tests/helpers/router-harness");
+    await import("@/routes/_workspace");
+    const { readRouterMocks, resetRouterMocks } = await import("@/../tests/helpers/router-harness");
     resetRouterMocks();
+    readRouterMocks().useRouteContext.mockReturnValue({
+      session: createAtlasSessionFixture({ isLocal: true }),
+    });
     const { useMutation, useQueryClient } = await import("@tanstack/react-query");
     vi.mocked(useMutation).mockReturnValue({
       mutateAsync: vi.fn().mockResolvedValue(undefined),
@@ -120,6 +125,25 @@ describe("routes/_workspace layout", () => {
     const ctx = await Route.options.beforeLoad({ location: { href: "/dashboard" } });
     expect(access.requireReadyAtlasSession).toHaveBeenCalledWith("/dashboard");
     expect(ctx).toEqual({ session });
+  });
+
+  it("seeds the session hook with the ready session from route context", async () => {
+    const initialSession = createAtlasSessionFixture({ isLocal: true });
+    const { readRouterMocks } = await import("@/../tests/helpers/router-harness");
+    readRouterMocks().useRouteContext.mockReturnValue({ session: initialSession });
+    const { useAtlasSession } = await import("@/domains/access");
+    vi.mocked(useAtlasSession).mockReturnValue({
+      data: initialSession,
+    } as unknown as ReturnType<typeof useAtlasSession>);
+
+    const routeModule = await import("@/routes/_workspace");
+    const { asRouteStub } = await import("@/../tests/helpers/router-harness");
+    const Route = asRouteStub(routeModule.Route);
+    const Component = Route.options.component;
+    if (!Component) throw new Error("Expected Route.options.component");
+    render(<Component />);
+
+    expect(useAtlasSession).toHaveBeenCalledWith({ initialData: initialSession });
   });
 
   it("returns the core app tab list when the session is local", async () => {

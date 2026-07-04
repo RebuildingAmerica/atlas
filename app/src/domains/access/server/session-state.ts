@@ -1,7 +1,11 @@
 import "@tanstack/react-start/server-only";
 
 import { atlasSessionSchema } from "./session-schema";
-import { DEFAULT_CAPABILITIES, DEFAULT_LIMITS } from "../capabilities";
+import {
+  resolveCapabilities,
+  serializeResolvedCapabilities,
+  type AtlasProduct,
+} from "../capabilities";
 import { canEmailAccessAtlas, ensureAuthReady, hasExistingAccount, type getAuth } from "./auth";
 import { loadAtlasWorkspaceState } from "./organization-session";
 import { getBrowserSessionHeaders } from "./request-headers";
@@ -14,10 +18,17 @@ import type { AtlasSessionPayload } from "../organization-contracts";
  */
 type AtlasAuthInstance = Awaited<ReturnType<typeof getAuth>>;
 
+const LOCAL_WORKSPACE_ID = "local";
+const LOCAL_ACTIVE_PRODUCTS: AtlasProduct[] = ["atlas_team"];
+
 /**
  * Local-mode single-operator session used when auth is disabled entirely.
  */
 function getLocalSession(): AtlasSessionPayload {
+  const resolvedCapabilities = serializeResolvedCapabilities(
+    resolveCapabilities(LOCAL_ACTIVE_PRODUCTS),
+  );
+
   return {
     isLocal: true,
     accountReady: true,
@@ -34,13 +45,15 @@ function getLocalSession(): AtlasSessionPayload {
     },
     workspace: {
       activeOrganization: {
-        id: "local-workspace",
+        // Must match the API local actor org_id so org-scoped workspace routes
+        // can fetch their source-backed data in local development.
+        id: LOCAL_WORKSPACE_ID,
         name: "Local Workspace",
         role: "owner",
         slug: "local",
         workspaceType: "individual",
       },
-      activeProducts: [],
+      activeProducts: [...LOCAL_ACTIVE_PRODUCTS],
       capabilities: {
         canInviteMembers: false,
         canManageOrganization: false,
@@ -48,12 +61,12 @@ function getLocalSession(): AtlasSessionPayload {
         canUseTeamFeatures: false,
       },
       resolvedCapabilities: {
-        capabilities: Array.from(DEFAULT_CAPABILITIES),
-        limits: { ...DEFAULT_LIMITS },
+        capabilities: resolvedCapabilities.capabilities,
+        limits: resolvedCapabilities.limits,
       },
       memberships: [
         {
-          id: "local-workspace",
+          id: LOCAL_WORKSPACE_ID,
           name: "Local Workspace",
           role: "owner",
           slug: "local",

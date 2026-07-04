@@ -32,7 +32,8 @@ export const Route = createFileRoute("/_workspace")({
 });
 
 function WorkspaceRoute() {
-  const session = useAtlasSession();
+  const { session: initialSession } = Route.useRouteContext();
+  const session = useAtlasSession({ initialData: initialSession });
   const tabs = buildAuthenticatedAppNav(session.data);
   const sessionData = session.data;
   const showIdentity = sessionData != null && !sessionData.isLocal;

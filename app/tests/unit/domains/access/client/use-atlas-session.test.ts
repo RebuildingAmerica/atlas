@@ -24,4 +24,18 @@ describe("useAtlasSession", () => {
       }),
     );
   });
+
+  it("seeds the session query when initial data is supplied", () => {
+    vi.mocked(useQuery).mockReturnValue({ kind: "query-result" } as unknown as ReturnType<
+      typeof useQuery
+    >);
+
+    useAtlasSession({ initialData: null });
+
+    expect(useQuery).toHaveBeenCalledWith(
+      expect.objectContaining({
+        initialData: null,
+      }),
+    );
+  });
 });
