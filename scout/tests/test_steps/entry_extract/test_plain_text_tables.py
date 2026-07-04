@@ -116,3 +116,36 @@ async def test_plain_text_roster_header_without_rows_falls_back_to_provider() ->
 
     assert entries == []
     assert len(provider.calls) == 1
+
+
+@pytest.mark.asyncio
+async def test_extracts_democrat_party_label_from_plain_text_roster_tables() -> None:
+    """Plain-text roster tables should accept the same party labels as other roster paths."""
+    provider = UnusedProvider()
+    page = PageContent(
+        url="https://example.test/state-house",
+        title="State House",
+        text="\n".join(
+            [
+                "District",
+                "Name",
+                "Party",
+                "1",
+                "Alex Public",
+                "Democrat",
+            ]
+        ),
+    )
+
+    entries = await extract_page_entries(
+        page,
+        provider,
+        "Michigan",
+        "MI",
+        store=None,
+        run_id=None,
+        reuse_cached_extractions=False,
+    )
+
+    assert [entry.name for entry in entries] == ["Alex Public"]
+    assert provider.calls == []

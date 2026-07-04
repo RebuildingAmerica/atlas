@@ -187,6 +187,37 @@ async def test_seed_briefing_room_demo_accepts_hosted_workspace_identity(
         await conn.close()
 
 
+@pytest.mark.asyncio
+async def test_seed_briefing_room_demo_reset_preserves_other_workspace_runs(
+    db_url: str,
+) -> None:
+    """Resetting one workspace demo must not remove another workspace's run evidence."""
+    first_result = await seed_briefing_room_demo(
+        db_url,
+        reset=True,
+        org_id="briefing-room-demo-a",
+        user_id="demo-operator-a",
+    )
+    await seed_briefing_room_demo(
+        db_url,
+        reset=True,
+        org_id="briefing-room-demo-b",
+        user_id="demo-operator-b",
+    )
+
+    conn = await get_db_connection(db_url)
+    try:
+        for run_id in first_result.discovery_run_ids:
+            run = await DiscoveryRunCRUD.get_by_id(conn, run_id)
+            assert run is not None
+            ownership = await OwnershipCRUD.get_ownership(conn, run_id, "discovery_run")
+            assert ownership is not None
+            assert ownership.org_id == "briefing-room-demo-a"
+            assert ownership.visibility == "private"
+    finally:
+        await conn.close()
+
+
 def test_root_package_exposes_briefing_room_demo_seed_command() -> None:
     """The demo should be runnable without remembering the Python module path."""
     package_json = json.loads((REPO_ROOT / "package.json").read_text(encoding="utf-8"))

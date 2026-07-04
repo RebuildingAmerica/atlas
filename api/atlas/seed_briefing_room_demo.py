@@ -222,8 +222,22 @@ async def _reset_demo_artifacts(conn: aiosqlite.Connection, *, org_id: str, user
         (user_id, *DEMO_LIST_NAMES),
     )
     cursor = await conn.execute(
-        "SELECT id FROM discovery_runs WHERE research_summary LIKE ?",
-        (f'%"artifact_kind": "{DEMO_ARTIFACT_KIND}"%',),
+        """
+        SELECT run.id
+        FROM discovery_runs run
+        JOIN resource_ownership ownership
+          ON ownership.resource_id = run.id
+         AND ownership.resource_type = ?
+        WHERE ownership.org_id = ?
+          AND ownership.visibility = ?
+          AND run.research_summary LIKE ?
+        """,
+        (
+            "discovery_run",
+            org_id,
+            "private",
+            f'%"artifact_kind": "{DEMO_ARTIFACT_KIND}"%',
+        ),
     )
     demo_run_ids = [str(row[0]) for row in await cursor.fetchall()]
     if demo_run_ids:

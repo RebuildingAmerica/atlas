@@ -29,9 +29,8 @@ _CLAIM_LEASE_SECONDS = 60.0
 _CLAIM_WAIT_SECONDS = 60.0
 _MAX_EXTRACTION_ATTEMPTS = 5
 _RETRY_BACKOFF_SECONDS = 1.0
-_SENATE_CONTACT_HEADER_RE = re.compile(
-    r"^(?P<label>.+) \((?P<party>[A-Z])-(?P<state>[A-Z]{2})\)$"
-)
+_ROSTER_PARTY_LABELS = {"democrat", "democratic", "republican", "independent"}
+_SENATE_CONTACT_HEADER_RE = re.compile(r"^(?P<label>.+) \((?P<party>[A-Z])-(?P<state>[A-Z]{2})\)$")
 
 
 class ExtractionFailedError(RuntimeError):
@@ -59,14 +58,20 @@ class _StructuredExtractionItem(BaseModel):
     city: str | None = None
     state: str | None = None
     geo_specificity: str = "local"
-    issue_areas: Annotated[list[str], BeforeValidator(_coerce_str_list)] = Field(default_factory=list)
+    issue_areas: Annotated[list[str], BeforeValidator(_coerce_str_list)] = Field(
+        default_factory=list
+    )
     region: str | None = None
     website: str | None = None
     email: str | None = None
-    social_media: Annotated[dict[str, str], BeforeValidator(_coerce_dict)] = Field(default_factory=dict)
+    social_media: Annotated[dict[str, str], BeforeValidator(_coerce_dict)] = Field(
+        default_factory=dict
+    )
     affiliated_org: str | None = None
     extraction_context: str = ""
-    mentioned_entities: Annotated[list[dict[str, str]], BeforeValidator(_coerce_mention_list)] = Field(default_factory=list)
+    mentioned_entities: Annotated[list[dict[str, str]], BeforeValidator(_coerce_mention_list)] = (
+        Field(default_factory=list)
+    )
 
 
 class _StructuredExtractionResponse(BaseModel):
@@ -325,12 +330,16 @@ async def _run_provider_extraction(
     if state_senate_entries:
         return state_senate_entries
     line_delimited_entries = _extract_line_delimited_roster_entries(
-        page, city=city, state=state,
+        page,
+        city=city,
+        state=state,
     )
     if line_delimited_entries:
         return line_delimited_entries
     plain_table_entries = _extract_plain_text_roster_table_entries(
-        page, city=city, state=state,
+        page,
+        city=city,
+        state=state,
     )
     if plain_table_entries:
         return plain_table_entries
@@ -342,7 +351,11 @@ async def _run_provider_extraction(
 
     # --- Pass 2: Enrich each entity with structured details ---
     entries = await _pass_enrich(
-        identified, page, provider, system_prompt=system_prompt, on_retry=on_retry,
+        identified,
+        page,
+        provider,
+        system_prompt=system_prompt,
+        on_retry=on_retry,
     )
     entries = _validate_against_source(entries, page)
     page_date = page.published_date.date() if page.published_date else None
@@ -481,7 +494,7 @@ def _extract_member_list_entries(page: PageContent, *, city: str, state: str) ->
         party = lines[index + 3]
         if not name or not district_line.lower().startswith("district:"):
             continue
-        if party.lower() not in {"democrat", "republican", "independent"}:
+        if party.lower() not in _ROSTER_PARTY_LABELS:
             continue
 
         district = district_line.split(":", maxsplit=1)[1].strip()
@@ -555,7 +568,10 @@ def _extract_state_senate_entries(page: PageContent, *, city: str, state: str) -
 
 
 def _extract_line_delimited_roster_entries(
-    page: PageContent, *, city: str, state: str,
+    page: PageContent,
+    *,
+    city: str,
+    state: str,
 ) -> list[RawEntry]:
     """Extract rosters scraped as repeated pipe-delimited line blocks."""
     entries: list[RawEntry] = []
@@ -576,7 +592,7 @@ def _extract_line_delimited_roster_entries(
             not name
             or re.fullmatch(r"\d+[A-Za-z]?", district) is None
             or " to " not in term
-            or party.lower() not in {"democrat", "republican", "independent"}
+            or party.lower() not in _ROSTER_PARTY_LABELS
         ):
             index += 1
             continue
@@ -610,7 +626,10 @@ def _extract_line_delimited_roster_entries(
 
 
 def _extract_plain_text_roster_table_entries(
-    page: PageContent, *, city: str, state: str,
+    page: PageContent,
+    *,
+    city: str,
+    state: str,
 ) -> list[RawEntry]:
     """Extract roster tables scraped as one plain-text cell per line."""
     lines = [line.strip() for line in page.text.splitlines() if line.strip()]
@@ -635,7 +654,7 @@ def _extract_plain_text_roster_table_entries(
         district = cells[0]
         name = _normalize_roster_name(cells[1])
         party = cells[2]
-        if not name or party.lower() not in {"democratic", "republican", "independent"}:
+        if not name or party.lower() not in _ROSTER_PARTY_LABELS:
             continue
 
         context = "\n".join(cells)
@@ -824,8 +843,7 @@ async def _pass_enrich(
     text as context.
     """
     entity_summary = "\n".join(
-        f"- {e['name']} ({e.get('type', 'unknown')}): \"{e.get('quote', '')}\""
-        for e in identified
+        f'- {e["name"]} ({e.get("type", "unknown")}): "{e.get("quote", "")}"' for e in identified
     )
 
     messages = [
@@ -889,11 +907,13 @@ def _parse_identify_response(text: str) -> list[dict[str, str]]:
     results: list[dict[str, str]] = []
     for item in items:
         if isinstance(item, dict) and "name" in item:
-            results.append({
-                "name": str(item.get("name", "")),
-                "type": str(item.get("type", "organization")),
-                "quote": str(item.get("quote", "")),
-            })
+            results.append(
+                {
+                    "name": str(item.get("name", "")),
+                    "type": str(item.get("type", "organization")),
+                    "quote": str(item.get("quote", "")),
+                }
+            )
     return results
 
 
@@ -1076,7 +1096,11 @@ def _prompt_key(system_prompt: str) -> str:
 def _page_fingerprint(page: PageContent) -> str:
     """Build a stable page-content fingerprint independent of URL."""
     published = page.published_date.isoformat() if page.published_date else ""
-    structured = json.dumps(page.structured_data, sort_keys=True, default=str) if page.structured_data else ""
+    structured = (
+        json.dumps(page.structured_data, sort_keys=True, default=str)
+        if page.structured_data
+        else ""
+    )
     payload = "\n".join(
         [
             page.title or "",
