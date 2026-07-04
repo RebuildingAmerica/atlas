@@ -221,7 +221,13 @@ async def require_org_actor(
 
     if not settings.auth_membership_verification_url:
         # Dev/local mode: trust the org_id from the token as-is.
-        actor.active_products = ["atlas_team"] if actor.is_local else []
+        if actor.is_local:
+            actor.org_role = "owner"
+            actor.org_slug = actor.org_id
+            actor.workspace_type = "individual"
+            actor.active_products = ["atlas_team"]
+        else:
+            actor.active_products = []
         actor.resolved_capabilities = resolve_capabilities(actor.active_products)
         return actor
 

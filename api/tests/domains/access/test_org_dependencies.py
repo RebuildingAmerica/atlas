@@ -173,5 +173,6 @@ async def test_require_org_actor_grants_local_operator_workspace_export() -> Non
     result = await require_org_actor(actor=actor, settings=settings)
 
     assert result.active_products == ["atlas_team"]
+    assert result.org_role == "owner"
     assert result.resolved_capabilities is not None
     assert "workspace.export" in result.resolved_capabilities.capabilities
