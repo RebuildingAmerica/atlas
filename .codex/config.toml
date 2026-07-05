@@ -3,6 +3,8 @@
 
 [sandbox]
 deny = [
+  "git stash drop",
+  "git stash clear",
   "git stash",
   "git reset",
   "git checkout --",

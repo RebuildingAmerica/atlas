@@ -8,6 +8,8 @@
       "Bash(git commit --no-verify*)",
       "Bash(git push --no-verify*)",
       "Bash(*--no-verify*)",
+      "Bash(git stash drop*)",
+      "Bash(git stash clear*)",
       "Bash(git stash*)",
       "Bash(git reset*)",
       "Bash(git checkout -- *)",
@@ -19,6 +21,8 @@
       "Bash(git merge*)",
       "Bash(git branch -D*)",
       "Bash(git branch -d*)",
+      "Bash(*git stash drop*)",
+      "Bash(*git stash clear*)",
       "Bash(*git stash*)",
       "Bash(*git reset*)",
       "Bash(*&& git stash*)",
@@ -33,6 +37,10 @@
           {
             "type": "command",
             "command": "jq -r '.tool_input.command' | grep -q -- '--no-verify' && echo '{\"decision\":\"block\",\"reason\":\"--no-verify is banned. Fix the underlying issue instead of skipping hooks.\"}' && exit 1 || true"
+          },
+          {
+            "type": "command",
+            "command": "python3 .claude/hooks/block_git_stash_drop.py"
           }
         ]
       }

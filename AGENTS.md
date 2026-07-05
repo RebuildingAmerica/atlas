@@ -113,6 +113,14 @@ The `.githooks/pre-commit` hook runs on staged files only:
 
 When staging files for commit, always `git restore --staged .` first, then `git add` specific files, then commit. This prevents stale staging state.
 
+## Shared Git Safety
+
+This checkout is shared by multiple agents. Stashes may belong to another active agent or preserve user work.
+
+- Never run `git stash drop` or `git stash clear`.
+- Do not delete stash entries, even if you created them, unless the user explicitly names the exact stash and asks you to delete it.
+- If a temporary stash is needed, leave it in place and report its name/hash, or preserve it through a named ref when the user explicitly asks for cleanup.
+
 ## Copy and User-Facing Language
 
 **No self-referential copy.** User-facing text must never describe what the software is doing, explain its own behavior, or hedge about its own state. Specifically banned:
