@@ -14,19 +14,20 @@ Atlas uses OAuth 2.1 for authentication. Most MCP clients handle the authorizati
 
 ## Claude Desktop
 
-Claude Desktop supports remote MCP servers natively through Connectors.
+Claude Desktop supports remote MCP servers through custom web connectors.
 
-1. Open Claude Desktop and go to **Settings**.
-2. Select **Connectors** in the sidebar.
-3. Click **Add Connector**.
-4. Enter the server URL:
+1. Open **Customize → Connectors** in Claude Desktop.
+2. Click **Add** and choose **Add custom connector**.
+3. Enter **Atlas** as the connector name.
+4. Enter the remote MCP server URL:
    ```
    https://atlas.example.com/mcp
    ```
-5. Click **Connect**. A browser window will open for you to sign in to Atlas and approve access.
-6. Once authorized, Atlas tools will appear in your conversations.
+5. Click **Add**, then connect Atlas from the connector list.
+6. A browser window will open for you to sign in to Atlas and approve access.
+7. Once authorized, Atlas tools will appear in your conversations.
 
-No config file is needed — Claude Desktop handles everything through the UI.
+No local config file is needed — Claude Desktop handles the remote connector through the UI.
 
 ---
 

@@ -81,28 +81,32 @@ for every client; only the setup surface changes.
 <Tabs borderBottom>
 
 <Tab title="Claude Desktop" id="claude-desktop" icon="message">
-Claude Desktop supports remote MCP servers natively through Connectors. No
-config file is needed.
+Claude Desktop supports remote MCP servers through custom web connectors. No
+local config file is needed.
 
 <Steps>
 
-<Step title="Open Claude Desktop settings">
-Open Claude Desktop and go to **Settings**.
+<Step title="Open Connectors">
+Open **Customize → Connectors** in Claude Desktop.
 </Step>
 
-<Step title="Add a connector">
-Select **Connectors** in the sidebar, then click **Add Connector**.
+<Step title="Add a custom connector">
+Click **Add** and choose **Add custom connector**.
 </Step>
 
-<Step title="Enter the Atlas server URL">
+<Step title="Name the connector">
+Enter **Atlas** as the connector name.
+</Step>
+
+<Step title="Enter the remote MCP server URL">
 ```text
 https://atlas.rebuildingus.org/mcp
 ```
 </Step>
 
 <Step title="Authorize">
-Click **Connect**. A browser window will open for you to sign in to Atlas and
-approve access.
+Click **Add**, then connect Atlas from the connector list. Claude will open a
+browser window for you to sign in to Atlas and approve access.
 </Step>
 
 <Step title="Start using Atlas">
