@@ -476,4 +476,36 @@ describe("SignInPage", () => {
 
     Reflect.deleteProperty(globalThis, "PublicKeyCredential");
   });
+
+  it("signals the browser when the autofill sign-in returns a stale passkey", async () => {
+    const isConditionalMediationAvailable = vi.fn().mockResolvedValue(true);
+    Object.defineProperty(globalThis, "PublicKeyCredential", {
+      configurable: true,
+      writable: true,
+      value: { isConditionalMediationAvailable },
+    });
+    authClient.signIn.passkey.mockImplementation(
+      (options: { autoFill?: boolean; returnWebAuthnResponse?: boolean }) => {
+        if (options?.autoFill) {
+          return Promise.resolve({
+            error: { code: "PASSKEY_NOT_FOUND", message: "Passkey not found" },
+            webauthn: { response: { id: "cred-dead-autofill" } },
+          });
+        }
+        return Promise.resolve({ data: null });
+      },
+    );
+
+    render(<SignInPage />);
+
+    await vi.waitFor(() => {
+      expect(mocks.signalUnknownPasskey).toHaveBeenCalledWith("cred-dead-autofill");
+    });
+    expect(authClient.signIn.passkey).toHaveBeenCalledWith(
+      expect.objectContaining({ autoFill: true, returnWebAuthnResponse: true }),
+    );
+    expect(screen.queryByText(/no longer linked/)).toBeNull();
+
+    Reflect.deleteProperty(globalThis, "PublicKeyCredential");
+  });
 });

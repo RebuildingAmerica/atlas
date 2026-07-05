@@ -121,8 +121,9 @@ export function SignInPage({ errorCode, initialEmail, invitationId, redirectTo }
           return;
         }
 
-        await authClient.signIn.passkey({
+        const result = await authClient.signIn.passkey({
           autoFill: true,
+          returnWebAuthnResponse: true,
           fetchOptions: {
             onError: () => {
               return;
@@ -138,6 +139,15 @@ export function SignInPage({ errorCode, initialEmail, invitationId, redirectTo }
             },
           },
         });
+
+        if (
+          result.error &&
+          "code" in result.error &&
+          result.error.code === "PASSKEY_NOT_FOUND" &&
+          "webauthn" in result
+        ) {
+          signalUnknownPasskey(result.webauthn.response.id);
+        }
       } catch {
         return;
       }
