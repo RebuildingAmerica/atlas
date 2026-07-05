@@ -18,6 +18,7 @@ from atlas.schemas import (
     IssueSignalsResponse,
     PlaceCoverageResponse,
     PlaceIdentityResponse,
+    PlacePageContextResponse,
     PlaceProfileResponse,
     SourceCollectionResponse,
 )
@@ -119,6 +120,31 @@ async def get_place(
             "resource_uri": f"atlas://places/{place_key}",
         }
     )
+
+
+@router.get(
+    "/places/{place_key}/page-context",
+    response_model=PlacePageContextResponse,
+    summary="Get place page context",
+    description="Return the durable public context used to render one place page.",
+    operation_id="getPlacePageContext",
+    response_description="Public context for the requested place page.",
+    tags=["places"],
+)
+async def get_place_page_context(
+    place_key: str,
+    response: Response,
+    settings: Settings = Depends(get_settings),
+) -> PlacePageContextResponse:
+    """Return database-backed public context for a place page."""
+    service = _get_service(settings)
+    try:
+        apply_short_public_cache(response)
+        return PlacePageContextResponse.model_validate(
+            await service.get_place_page_context(normalize_place_key(place_key))
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 @router.get(

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 from collections import Counter, defaultdict
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 from datetime import UTC, date, datetime
 from typing import TYPE_CHECKING, Any, TypedDict, Unpack
 from urllib.parse import urlparse
@@ -30,6 +30,7 @@ from atlas.domains.catalog.schemas.public import (
     IssueSignalsResponse,
     IssueSignalSummary,
     PlaceCoverageResponse,
+    PlacePageContextResponse,
     PlaceProfileResponse,
     PlaceTypeCount,
     ProfileAnswers,
@@ -583,6 +584,112 @@ class AtlasDataService:
                 "place": normalized_place,
                 **profile,
                 "resource_uri": _place_resource_uri(normalized_place, "profile"),
+            }
+        ).model_dump(mode="json")
+
+    async def get_place_page_context(
+        self,
+        place: str | Mapping[str, str | None],
+    ) -> dict[str, Any]:
+        """Return database-backed context for a public place page."""
+        normalized_place = _normalize_place(place)
+        place_key = _place_resource_slug(normalized_place)
+
+        async with DatabaseSession(self._database_url) as conn:
+            context_cursor = await conn.execute(
+                """
+                SELECT place_key, name, display, kind
+                FROM place_contexts
+                WHERE place_key = ?
+                """,
+                [place_key],
+            )
+            context_row = await context_cursor.fetchone()
+            if context_row is None:
+                raise _place_page_context_not_found(place_key)
+            context_columns = [column[0] for column in context_cursor.description]
+            context = dict(zip(context_columns, context_row, strict=False))
+
+            scopes_cursor = await conn.execute(
+                """
+                SELECT label, href, active
+                FROM place_scope_links
+                WHERE place_key = ?
+                ORDER BY sort_order, label
+                """,
+                [place_key],
+            )
+            scopes = _rows_to_dicts(scopes_cursor, await scopes_cursor.fetchall())
+
+            facts_cursor = await conn.execute(
+                """
+                SELECT label, value, attribution
+                FROM place_summary_facts
+                WHERE place_key = ?
+                ORDER BY sort_order, label
+                """,
+                [place_key],
+            )
+            facts = _rows_to_dicts(facts_cursor, await facts_cursor.fetchall())
+
+            governments_cursor = await conn.execute(
+                """
+                SELECT id, name, role
+                FROM place_governments
+                WHERE place_key = ?
+                ORDER BY sort_order, name
+                """,
+                [place_key],
+            )
+            governments = _rows_to_dicts(
+                governments_cursor,
+                await governments_cursor.fetchall(),
+            )
+
+            government_ids = [government["id"] for government in governments]
+            government_links: dict[str, list[dict[str, Any]]] = defaultdict(list)
+            if government_ids:
+                placeholders = ",".join("?" for _ in government_ids)
+                links_cursor = await conn.execute(
+                    f"""
+                    SELECT government_id, label, href
+                    FROM place_government_links
+                    WHERE government_id IN ({placeholders})
+                    ORDER BY sort_order, label
+                    """,
+                    government_ids,
+                )
+                for link in _rows_to_dicts(links_cursor, await links_cursor.fetchall()):
+                    government_links[str(link["government_id"])].append(
+                        {"label": link["label"], "href": link["href"]}
+                    )
+
+            related_cursor = await conn.execute(
+                """
+                SELECT name, href, kind, summary, accent, latitude, longitude
+                FROM place_related_places
+                WHERE place_key = ?
+                ORDER BY sort_order, name
+                """,
+                [place_key],
+            )
+            related_places = _rows_to_dicts(related_cursor, await related_cursor.fetchall())
+
+        return PlacePageContextResponse.model_validate(
+            {
+                **context,
+                "scopes": scopes,
+                "summary_facts": facts,
+                "governments": [
+                    {
+                        "name": government["name"],
+                        "role": government["role"],
+                        "links": government_links.get(str(government["id"]), []),
+                    }
+                    for government in governments
+                ],
+                "places": related_places,
+                "resource_uri": _place_resource_uri(normalized_place, "page-context"),
             }
         ).model_dump(mode="json")
 
@@ -1246,6 +1353,11 @@ def _string_or_none(value: object | None) -> str | None:
     return None if value is None else str(value)
 
 
+def _rows_to_dicts(cursor: Any, rows: Iterable[Any]) -> list[dict[str, Any]]:
+    columns = [column[0] for column in cursor.description]
+    return [dict(zip(columns, row, strict=False)) for row in rows]
+
+
 def _relationship_ids(entity_id: str, entry: EntryModel, issue_area_ids: list[str]) -> list[str]:
     relationship_ids = [
         f"atlas://entities/{entity_id}/relationships/shared_issue_area/{issue_area_id}"
@@ -1302,6 +1414,10 @@ def _invalid_issue_areas(invalid: list[str]) -> ValueError:
 
 def _place_profile_not_found(place_display: str) -> ValueError:
     return ValueError(f"Place profile not found: {place_display}")
+
+
+def _place_page_context_not_found(place_key: str) -> ValueError:
+    return ValueError(f"Place page context not found: {place_key}")
 
 
 def _unsupported_place_key(place_key: str) -> ValueError:

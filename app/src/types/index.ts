@@ -55,3 +55,17 @@ export type {
   StartDiscoveryRequest,
 } from "./discovery";
 export type { IssueArea, TaxonomyResponse } from "./taxonomy";
+export type {
+  PlaceActorList,
+  PlaceActorSummary,
+  PlaceFact,
+  PlaceGovernmentLink,
+  PlaceGovernmentSummary,
+  PlaceIdentity,
+  PlaceIssueSummary,
+  PlaceKind,
+  PlaceLatestItem,
+  PlacePageData,
+  PlaceRelatedSummary,
+  PlaceScopeLink,
+} from "./place";

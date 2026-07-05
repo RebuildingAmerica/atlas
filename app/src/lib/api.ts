@@ -1,18 +1,28 @@
 import {
   getEntitiesMap,
   getEntity as getEntityRecord,
+  getPlace,
+  getPlaceIssueSignals,
+  getPlacePageContext,
+  getPlaceProfile,
   listEntities,
   listIssueAreas,
+  listPlaceEntities,
+  listPlaceSources,
   listPublicDirectories as listPublicDirectoryRecords,
   type EntityDetailResponse,
   type EntityResponse,
   type GetEntitiesMapParams,
+  type IssueSignalSummary,
   type ListEntitiesParams,
+  type ListPlaceEntitiesParams,
   type MapPoint as MapPointResponse,
+  type PlacePageContextResponse,
+  type PlaceProfileResponse,
   type PublicDirectoryIndexResponse,
   type SourceResponse,
 } from "@/lib/generated/atlas";
-import { atlasFetch } from "@/lib/orval/fetcher";
+import { AtlasApiError, atlasFetch } from "@/lib/orval/fetcher";
 import type {
   ActorQualityInfo,
   ConnectionNetwork,
@@ -24,9 +34,19 @@ import type {
   EntryFilterParams,
   EntrySlugScope,
   EntryListResponse,
+  EntryType,
   MapPoint,
   MapPointCollection,
   MapPointParams,
+  PlaceActorList,
+  PlaceActorSummary,
+  PlaceFact,
+  PlaceGovernmentSummary,
+  PlaceIdentity,
+  PlaceIssueSummary,
+  PlaceLatestItem,
+  PlacePageData,
+  PlaceRelatedSummary,
   Source,
   TaxonomyResponse,
 } from "@/types";
@@ -124,6 +144,297 @@ function mapEntityDetail(entity: EntityDetailResponse): Entry {
   };
 }
 
+const SHORT_DATE_FORMATTER = new Intl.DateTimeFormat("en-US", {
+  day: "numeric",
+  month: "short",
+});
+
+const DATE_ONLY_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+const WHOLE_NUMBER_FORMATTER = new Intl.NumberFormat("en-US", {
+  maximumFractionDigits: 0,
+});
+
+const CURRENCY_FORMATTER = new Intl.NumberFormat("en-US", {
+  currency: "USD",
+  maximumFractionDigits: 0,
+  style: "currency",
+});
+
+const PERCENT_FORMATTER = new Intl.NumberFormat("en-US", {
+  maximumFractionDigits: 0,
+  style: "percent",
+});
+
+interface PlaceProfileFactSpec {
+  block: "demographics" | "economics" | "education" | "health" | "housing";
+  formatter: (value: number) => string;
+  key: string;
+  label: string;
+}
+
+const PLACE_PROFILE_FACTS: PlaceProfileFactSpec[] = [
+  {
+    block: "demographics",
+    key: "population",
+    label: "Population",
+    formatter: (value) => WHOLE_NUMBER_FORMATTER.format(value),
+  },
+  {
+    block: "economics",
+    key: "median_household_income",
+    label: "Median household income",
+    formatter: (value) => CURRENCY_FORMATTER.format(value),
+  },
+  {
+    block: "housing",
+    key: "median_rent",
+    label: "Median rent",
+    formatter: (value) => CURRENCY_FORMATTER.format(value),
+  },
+  {
+    block: "housing",
+    key: "rent_burden_rate",
+    label: "Rent-burdened households",
+    formatter: (value) => PERCENT_FORMATTER.format(value),
+  },
+  {
+    block: "health",
+    key: "uninsured_rate",
+    label: "Adults without health insurance",
+    formatter: (value) => PERCENT_FORMATTER.format(value),
+  },
+  {
+    block: "education",
+    key: "bachelors_or_higher_rate",
+    label: "Bachelor's degree or higher",
+    formatter: (value) => PERCENT_FORMATTER.format(value),
+  },
+];
+
+function humanize(value: string): string {
+  return value
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function firstDefinedString(...values: (string | null | undefined)[]): string | undefined {
+  return values.find((value): value is string => typeof value === "string" && value.trim() !== "");
+}
+
+function formatShortDate(value: string | null | undefined): string | undefined {
+  if (!value) {
+    return undefined;
+  }
+  const dateOnly = DATE_ONLY_PATTERN.exec(value);
+  const parsed = dateOnly
+    ? new Date(Number(dateOnly[1]), Number(dateOnly[2]) - 1, Number(dateOnly[3]))
+    : new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return undefined;
+  }
+  return SHORT_DATE_FORMATTER.format(parsed);
+}
+
+function mapPlaceFact(
+  fact: NonNullable<PlacePageContextResponse["summary_facts"]>[number],
+): PlaceFact {
+  return {
+    attribution: fact.attribution ?? undefined,
+    label: fact.label,
+    value: fact.value,
+  };
+}
+
+function mapPlaceIdentity(slug: string, context: PlacePageContextResponse): PlaceIdentity {
+  return {
+    display: context.display,
+    kind: context.kind,
+    name: context.name,
+    scopes: context.scopes ?? [],
+    slug,
+  };
+}
+
+function mapPlaceGovernment(
+  government: NonNullable<PlacePageContextResponse["governments"]>[number],
+): PlaceGovernmentSummary {
+  return {
+    links: government.links ?? [],
+    name: government.name,
+    role: government.role,
+  };
+}
+
+function mapRelatedPlace(
+  place: NonNullable<PlacePageContextResponse["places"]>[number],
+): PlaceRelatedSummary {
+  return {
+    accent: place.accent,
+    href: place.href,
+    kind: place.kind,
+    latitude: place.latitude ?? undefined,
+    longitude: place.longitude ?? undefined,
+    name: place.name,
+    summary: place.summary,
+  };
+}
+
+function provenanceAttribution(profile: PlaceProfileResponse | null): string | undefined {
+  const first = profile?.provenance?.[0];
+  if (!first) {
+    return undefined;
+  }
+  const dataset = typeof first.dataset === "string" ? first.dataset : undefined;
+  const publisher = typeof first.publisher === "string" ? first.publisher : undefined;
+  const year =
+    typeof first.year === "number" || typeof first.year === "string"
+      ? String(first.year)
+      : undefined;
+  return [dataset ?? publisher, year].filter(Boolean).join(", ") || undefined;
+}
+
+function readNumericFact(block: Record<string, unknown> | undefined, key: string): number | null {
+  const value = block?.[key];
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function profileFacts(profile: PlaceProfileResponse | null): PlaceFact[] {
+  if (!profile) {
+    return [];
+  }
+  const attribution = provenanceAttribution(profile);
+  return PLACE_PROFILE_FACTS.flatMap((spec) => {
+    const value = readNumericFact(profile[spec.block], spec.key);
+    if (value === null) {
+      return [];
+    }
+    return [{ label: spec.label, value: spec.formatter(value), attribution }];
+  });
+}
+
+function summaryFacts(context: PlacePageContextResponse, facts: PlaceFact[]): PlaceFact[] {
+  const contextFacts = context.summary_facts?.map(mapPlaceFact) ?? [];
+  if (contextFacts.length) {
+    return contextFacts;
+  }
+  if (facts.length) {
+    return facts.slice(0, 5);
+  }
+  return [];
+}
+
+function sourceAttribution(source: Source): string {
+  const publisher = firstDefinedString(source.publication, humanize(source.type), source.title);
+  const date = formatShortDate(source.published_date ?? source.freshness?.published_date);
+  return [publisher, date].filter(Boolean).join(", ");
+}
+
+function mapLatestItem(source: Source): PlaceLatestItem {
+  return {
+    id: source.id,
+    title: source.title ?? source.publication ?? source.url,
+    attribution: sourceAttribution(source),
+    href: source.url,
+    excerpt: source.extraction_context,
+    topics: [humanize(source.type)],
+  };
+}
+
+function entityHref(entry: Entry): string {
+  if (!entry.slug) {
+    return `/entries/${entry.id}`;
+  }
+  const routeByType: Record<EntryType, string> = {
+    campaign: "campaigns",
+    event: "events",
+    initiative: "initiatives",
+    organization: "organizations",
+    person: "people",
+  };
+  return `/profiles/${routeByType[entry.type]}/${entry.slug}`;
+}
+
+function actorWork(entry: Entry): string {
+  if (entry.issue_areas.length) {
+    return entry.issue_areas.slice(0, 3).map(humanize).join(", ");
+  }
+  return entry.description;
+}
+
+function mapPlaceActor(entry: Entry): PlaceActorSummary {
+  return {
+    id: entry.id,
+    name: entry.name,
+    type: entry.type,
+    description: entry.description,
+    href: entityHref(entry),
+    work: actorWork(entry),
+    latest: formatShortDate(entry.latest_source_date),
+  };
+}
+
+function mapPlaceIssue(issue: IssueSignalSummary): PlaceIssueSummary {
+  return {
+    id: issue.issue_area_id,
+    name: issue.name,
+    domain: issue.domain ?? undefined,
+    actors: issue.top_entities?.slice(0, 4).map((entity) => entity.name) ?? [],
+    places: [],
+    records: issue.domain ? [humanize(issue.domain)] : [],
+  };
+}
+
+async function loadPlaceProfile(placeSlug: string): Promise<PlaceProfileResponse | null> {
+  try {
+    return await getPlaceProfile(placeSlug);
+  } catch (error) {
+    if (error instanceof AtlasApiError && error.status === 404) {
+      return null;
+    }
+    throw error;
+  }
+}
+
+async function getPlacePage(placeSlug: string): Promise<PlacePageData> {
+  const [, context, entities, issueSignals, profile, sources] = await Promise.all([
+    getPlace(placeSlug),
+    getPlacePageContext(placeSlug),
+    listPlaceEntities(placeSlug, { limit: 20 }),
+    getPlaceIssueSignals(placeSlug),
+    loadPlaceProfile(placeSlug),
+    listPlaceSources(placeSlug, { limit: 6 }),
+  ]);
+  const facts = profileFacts(profile);
+
+  return {
+    identity: mapPlaceIdentity(placeSlug, context),
+    summaryFacts: summaryFacts(context, facts),
+    latest: sources.items?.map(mapSource).map(mapLatestItem) ?? [],
+    actors: {
+      items: entities.items?.map(mapEntity).map(mapPlaceActor) ?? [],
+      nextCursor: entities.next_cursor ?? undefined,
+    },
+    issues: issueSignals.issues?.map(mapPlaceIssue) ?? [],
+    facts,
+    governments: context.governments?.map(mapPlaceGovernment) ?? [],
+    places: context.places?.map(mapRelatedPlace) ?? [],
+  };
+}
+
+async function listPlaceActors(
+  placeSlug: string,
+  params: ListPlaceEntitiesParams,
+): Promise<PlaceActorList> {
+  const response = await listPlaceEntities(placeSlug, params);
+  return {
+    items: response.items?.map(mapEntity).map(mapPlaceActor) ?? [],
+    nextCursor: response.next_cursor ?? undefined,
+  };
+}
+
 export function buildEntityListParams(filters: EntryFilterParams = {}): ListEntitiesParams {
   return {
     query: filters.query,
@@ -188,6 +499,13 @@ export function buildMapPointParams(params: MapPointParams): GetEntitiesMapParam
   };
 }
 
+function requireMapNumber(value: number | undefined, field: string): number {
+  if (typeof value !== "number") {
+    throw new TypeError(`Map point is missing ${field}`);
+  }
+  return value;
+}
+
 /** Map one wire map point onto the internal, strongly-typed shape. */
 function mapMapPoint(point: MapPointResponse): MapPoint {
   return {
@@ -195,9 +513,17 @@ function mapMapPoint(point: MapPointResponse): MapPoint {
     name: point.name,
     type: point.type as MapPoint["type"],
     slug: point.slug ?? null,
+    place_label: point.place_label ?? null,
+    geo_specificity: point.geo_specificity
+      ? (point.geo_specificity as MapPoint["geo_specificity"])
+      : null,
+    geocode_precision: point.geocode_precision ?? null,
+    geocode_source: point.geocode_source ?? null,
     lat: point.lat,
     lng: point.lng,
     issue_areas: point.issue_areas ?? [],
+    source_count: requireMapNumber(point.source_count, "source_count"),
+    latest_source_date: point.latest_source_date ?? null,
     trust_level: point.trust_level as MapPoint["trust_level"],
   };
 }
@@ -326,5 +652,9 @@ export const api = {
   },
   publicDirectories: {
     list: listPublicDirectories,
+  },
+  places: {
+    getPage: getPlacePage,
+    listActors: listPlaceActors,
   },
 };

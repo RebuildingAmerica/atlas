@@ -41,8 +41,14 @@ __all__ = [
     "MapPoint",
     "MapPointCollectionResponse",
     "PlaceCoverageResponse",
+    "PlaceGovernmentLinkResponse",
+    "PlaceGovernmentResponse",
     "PlaceIdentityResponse",
+    "PlacePageContextResponse",
     "PlaceProfileResponse",
+    "PlaceRelatedPlaceResponse",
+    "PlaceScopeLinkResponse",
+    "PlaceSummaryFactResponse",
     "PlaceTypeCount",
     "ProfileAnswers",
     "ProfileClaimRequest",
@@ -195,9 +201,15 @@ class MapPoint(BaseModel):
     name: str
     type: str
     slug: str | None = None
+    place_label: str | None = None
+    geo_specificity: str | None = None
+    geocode_precision: Literal["rooftop", "city", "state"] | None = None
+    geocode_source: Literal["census", "gazetteer", "manual"] | None = None
     lat: float
     lng: float
     issue_areas: list[str] = Field(default_factory=list)
+    source_count: int = Field(..., ge=0)
+    latest_source_date: str | None = None
     trust_level: str = Field(
         description="subject_verified | atlas_verified | corroborated | unverified.",
     )
@@ -506,6 +518,85 @@ class PlaceIdentityResponse(BaseModel):
 
     place: Address
     resource_uri: str | None = None
+
+
+class PlaceScopeLinkResponse(BaseModel):
+    """A sibling or parent place link for the place page selector."""
+
+    active: bool
+    href: str
+    label: str
+
+
+class PlaceSummaryFactResponse(BaseModel):
+    """One compact place fact shown in the page header."""
+
+    attribution: str | None = None
+    label: str
+    value: str
+
+
+class PlaceGovernmentLinkResponse(BaseModel):
+    """Public government link associated with a place."""
+
+    href: str
+    label: str
+
+
+class PlaceGovernmentResponse(BaseModel):
+    """Government or regional public body associated with a place."""
+
+    links: list[PlaceGovernmentLinkResponse] = Field(default_factory=list)
+    name: str
+    role: str
+
+
+class PlaceRelatedPlaceResponse(BaseModel):
+    """Related local place shown on a place page."""
+
+    accent: Literal["climate", "democracy", "education", "health", "housing", "labor", "neutral"]
+    href: str
+    kind: Literal[
+        "polity",
+        "borough",
+        "city",
+        "county",
+        "metro",
+        "neighborhood",
+        "corridor",
+        "district",
+        "service_area",
+        "state",
+    ]
+    latitude: float | None = None
+    longitude: float | None = None
+    name: str
+    summary: str
+
+
+class PlacePageContextResponse(BaseModel):
+    """Human-facing place context for public place pages."""
+
+    display: str
+    governments: list[PlaceGovernmentResponse] = Field(default_factory=list)
+    kind: Literal[
+        "polity",
+        "borough",
+        "city",
+        "county",
+        "metro",
+        "neighborhood",
+        "corridor",
+        "district",
+        "service_area",
+        "state",
+    ]
+    name: str
+    place_key: str
+    places: list[PlaceRelatedPlaceResponse] = Field(default_factory=list)
+    resource_uri: str
+    scopes: list[PlaceScopeLinkResponse] = Field(default_factory=list)
+    summary_facts: list[PlaceSummaryFactResponse] = Field(default_factory=list)
 
 
 class PlaceProfileResponse(BaseModel):

@@ -66,6 +66,7 @@ import { Route as WorkspaceBriefsBriefIdRouteImport } from './routes/_workspace/
 import { Route as WorkspaceAdminDiscountsRouteImport } from './routes/_workspace/admin/discounts'
 import { Route as PublicProfilesPeopleRouteImport } from './routes/_public/profiles/people'
 import { Route as PublicProfilesOrganizationsRouteImport } from './routes/_public/profiles/organizations'
+import { Route as PublicPlacesPlaceSlugRouteImport } from './routes/_public/places/$placeSlug'
 import { Route as PublicFeedbackSlugRouteImport } from './routes/_public/feedback/$slug'
 import { Route as PublicEntriesEntryIdRouteImport } from './routes/_public/entries/$entryId'
 import { Route as PublicDirectoriesOrgIdRouteImport } from './routes/_public/directories/$orgId'
@@ -82,6 +83,14 @@ import { Route as PublicProfilesOrganizationsSlugRouteImport } from './routes/_p
 import { Route as PublicProfilesInitiativesSlugRouteImport } from './routes/_public/profiles/initiatives/$slug'
 import { Route as PublicProfilesEventsSlugRouteImport } from './routes/_public/profiles/events/$slug'
 import { Route as PublicProfilesCampaignsSlugRouteImport } from './routes/_public/profiles/campaigns/$slug'
+import { Route as PublicPlacesPolitiesPlaceSlugRouteImport } from './routes/_public/places/polities/$placeSlug'
+import { Route as PublicPlacesNeighborhoodsPlaceSlugRouteImport } from './routes/_public/places/neighborhoods/$placeSlug'
+import { Route as PublicPlacesMetrosPlaceSlugRouteImport } from './routes/_public/places/metros/$placeSlug'
+import { Route as PublicPlacesDistrictsPlaceSlugRouteImport } from './routes/_public/places/districts/$placeSlug'
+import { Route as PublicPlacesCountiesPlaceSlugRouteImport } from './routes/_public/places/counties/$placeSlug'
+import { Route as PublicPlacesCorridorsPlaceSlugRouteImport } from './routes/_public/places/corridors/$placeSlug'
+import { Route as PublicPlacesCitiesPlaceSlugRouteImport } from './routes/_public/places/cities/$placeSlug'
+import { Route as PublicPlacesBoroughsPlaceSlugRouteImport } from './routes/_public/places/boroughs/$placeSlug'
 import { Route as DotwellKnownOauthAuthorizationServerApiAuthRouteImport } from './routes/[.]well-known/oauth-authorization-server/api/auth'
 import { Route as ApiAuthInternalMembershipsOrganizationIdMembersUserIdRouteImport } from './routes/api/auth/internal/memberships/$organizationId/members/$userId'
 
@@ -374,6 +383,11 @@ const PublicProfilesOrganizationsRoute =
     path: '/profiles/organizations',
     getParentRoute: () => PublicRoute,
   } as any)
+const PublicPlacesPlaceSlugRoute = PublicPlacesPlaceSlugRouteImport.update({
+  id: '/places/$placeSlug',
+  path: '/places/$placeSlug',
+  getParentRoute: () => PublicRoute,
+} as any)
 const PublicFeedbackSlugRoute = PublicFeedbackSlugRouteImport.update({
   id: '/feedback/$slug',
   path: '/feedback/$slug',
@@ -463,6 +477,54 @@ const PublicProfilesCampaignsSlugRoute =
     path: '/profiles/campaigns/$slug',
     getParentRoute: () => PublicRoute,
   } as any)
+const PublicPlacesPolitiesPlaceSlugRoute =
+  PublicPlacesPolitiesPlaceSlugRouteImport.update({
+    id: '/places/polities/$placeSlug',
+    path: '/places/polities/$placeSlug',
+    getParentRoute: () => PublicRoute,
+  } as any)
+const PublicPlacesNeighborhoodsPlaceSlugRoute =
+  PublicPlacesNeighborhoodsPlaceSlugRouteImport.update({
+    id: '/places/neighborhoods/$placeSlug',
+    path: '/places/neighborhoods/$placeSlug',
+    getParentRoute: () => PublicRoute,
+  } as any)
+const PublicPlacesMetrosPlaceSlugRoute =
+  PublicPlacesMetrosPlaceSlugRouteImport.update({
+    id: '/places/metros/$placeSlug',
+    path: '/places/metros/$placeSlug',
+    getParentRoute: () => PublicRoute,
+  } as any)
+const PublicPlacesDistrictsPlaceSlugRoute =
+  PublicPlacesDistrictsPlaceSlugRouteImport.update({
+    id: '/places/districts/$placeSlug',
+    path: '/places/districts/$placeSlug',
+    getParentRoute: () => PublicRoute,
+  } as any)
+const PublicPlacesCountiesPlaceSlugRoute =
+  PublicPlacesCountiesPlaceSlugRouteImport.update({
+    id: '/places/counties/$placeSlug',
+    path: '/places/counties/$placeSlug',
+    getParentRoute: () => PublicRoute,
+  } as any)
+const PublicPlacesCorridorsPlaceSlugRoute =
+  PublicPlacesCorridorsPlaceSlugRouteImport.update({
+    id: '/places/corridors/$placeSlug',
+    path: '/places/corridors/$placeSlug',
+    getParentRoute: () => PublicRoute,
+  } as any)
+const PublicPlacesCitiesPlaceSlugRoute =
+  PublicPlacesCitiesPlaceSlugRouteImport.update({
+    id: '/places/cities/$placeSlug',
+    path: '/places/cities/$placeSlug',
+    getParentRoute: () => PublicRoute,
+  } as any)
+const PublicPlacesBoroughsPlaceSlugRoute =
+  PublicPlacesBoroughsPlaceSlugRouteImport.update({
+    id: '/places/boroughs/$placeSlug',
+    path: '/places/boroughs/$placeSlug',
+    getParentRoute: () => PublicRoute,
+  } as any)
 const DotwellKnownOauthAuthorizationServerApiAuthRoute =
   DotwellKnownOauthAuthorizationServerApiAuthRouteImport.update({
     id: '/.well-known/oauth-authorization-server/api/auth',
@@ -523,6 +585,7 @@ export interface FileRoutesByFullPath {
   '/directories/$orgId': typeof PublicDirectoriesOrgIdRoute
   '/entries/$entryId': typeof PublicEntriesEntryIdRoute
   '/feedback/$slug': typeof PublicFeedbackSlugRoute
+  '/places/$placeSlug': typeof PublicPlacesPlaceSlugRoute
   '/profiles/organizations': typeof PublicProfilesOrganizationsRouteWithChildren
   '/profiles/people': typeof PublicProfilesPeopleRouteWithChildren
   '/admin/discounts': typeof WorkspaceAdminDiscountsRoute
@@ -540,6 +603,14 @@ export interface FileRoutesByFullPath {
   '/profiles/': typeof PublicProfilesIndexRoute
   '/organization/': typeof WorkspaceOrganizationIndexRoute
   '/.well-known/oauth-authorization-server/api/auth': typeof DotwellKnownOauthAuthorizationServerApiAuthRoute
+  '/places/boroughs/$placeSlug': typeof PublicPlacesBoroughsPlaceSlugRoute
+  '/places/cities/$placeSlug': typeof PublicPlacesCitiesPlaceSlugRoute
+  '/places/corridors/$placeSlug': typeof PublicPlacesCorridorsPlaceSlugRoute
+  '/places/counties/$placeSlug': typeof PublicPlacesCountiesPlaceSlugRoute
+  '/places/districts/$placeSlug': typeof PublicPlacesDistrictsPlaceSlugRoute
+  '/places/metros/$placeSlug': typeof PublicPlacesMetrosPlaceSlugRoute
+  '/places/neighborhoods/$placeSlug': typeof PublicPlacesNeighborhoodsPlaceSlugRoute
+  '/places/polities/$placeSlug': typeof PublicPlacesPolitiesPlaceSlugRoute
   '/profiles/campaigns/$slug': typeof PublicProfilesCampaignsSlugRoute
   '/profiles/events/$slug': typeof PublicProfilesEventsSlugRoute
   '/profiles/initiatives/$slug': typeof PublicProfilesInitiativesSlugRoute
@@ -595,6 +666,7 @@ export interface FileRoutesByTo {
   '/directories/$orgId': typeof PublicDirectoriesOrgIdRoute
   '/entries/$entryId': typeof PublicEntriesEntryIdRoute
   '/feedback/$slug': typeof PublicFeedbackSlugRoute
+  '/places/$placeSlug': typeof PublicPlacesPlaceSlugRoute
   '/admin/discounts': typeof WorkspaceAdminDiscountsRoute
   '/briefs/$briefId': typeof WorkspaceBriefsBriefIdRoute
   '/briefs/new': typeof WorkspaceBriefsNewRoute
@@ -610,6 +682,14 @@ export interface FileRoutesByTo {
   '/profiles': typeof PublicProfilesIndexRoute
   '/organization': typeof WorkspaceOrganizationIndexRoute
   '/.well-known/oauth-authorization-server/api/auth': typeof DotwellKnownOauthAuthorizationServerApiAuthRoute
+  '/places/boroughs/$placeSlug': typeof PublicPlacesBoroughsPlaceSlugRoute
+  '/places/cities/$placeSlug': typeof PublicPlacesCitiesPlaceSlugRoute
+  '/places/corridors/$placeSlug': typeof PublicPlacesCorridorsPlaceSlugRoute
+  '/places/counties/$placeSlug': typeof PublicPlacesCountiesPlaceSlugRoute
+  '/places/districts/$placeSlug': typeof PublicPlacesDistrictsPlaceSlugRoute
+  '/places/metros/$placeSlug': typeof PublicPlacesMetrosPlaceSlugRoute
+  '/places/neighborhoods/$placeSlug': typeof PublicPlacesNeighborhoodsPlaceSlugRoute
+  '/places/polities/$placeSlug': typeof PublicPlacesPolitiesPlaceSlugRoute
   '/profiles/campaigns/$slug': typeof PublicProfilesCampaignsSlugRoute
   '/profiles/events/$slug': typeof PublicProfilesEventsSlugRoute
   '/profiles/initiatives/$slug': typeof PublicProfilesInitiativesSlugRoute
@@ -671,6 +751,7 @@ export interface FileRoutesById {
   '/_public/directories/$orgId': typeof PublicDirectoriesOrgIdRoute
   '/_public/entries/$entryId': typeof PublicEntriesEntryIdRoute
   '/_public/feedback/$slug': typeof PublicFeedbackSlugRoute
+  '/_public/places/$placeSlug': typeof PublicPlacesPlaceSlugRoute
   '/_public/profiles/organizations': typeof PublicProfilesOrganizationsRouteWithChildren
   '/_public/profiles/people': typeof PublicProfilesPeopleRouteWithChildren
   '/_workspace/admin/discounts': typeof WorkspaceAdminDiscountsRoute
@@ -688,6 +769,14 @@ export interface FileRoutesById {
   '/_public/profiles/': typeof PublicProfilesIndexRoute
   '/_workspace/organization/': typeof WorkspaceOrganizationIndexRoute
   '/.well-known/oauth-authorization-server/api/auth': typeof DotwellKnownOauthAuthorizationServerApiAuthRoute
+  '/_public/places/boroughs/$placeSlug': typeof PublicPlacesBoroughsPlaceSlugRoute
+  '/_public/places/cities/$placeSlug': typeof PublicPlacesCitiesPlaceSlugRoute
+  '/_public/places/corridors/$placeSlug': typeof PublicPlacesCorridorsPlaceSlugRoute
+  '/_public/places/counties/$placeSlug': typeof PublicPlacesCountiesPlaceSlugRoute
+  '/_public/places/districts/$placeSlug': typeof PublicPlacesDistrictsPlaceSlugRoute
+  '/_public/places/metros/$placeSlug': typeof PublicPlacesMetrosPlaceSlugRoute
+  '/_public/places/neighborhoods/$placeSlug': typeof PublicPlacesNeighborhoodsPlaceSlugRoute
+  '/_public/places/polities/$placeSlug': typeof PublicPlacesPolitiesPlaceSlugRoute
   '/_public/profiles/campaigns/$slug': typeof PublicProfilesCampaignsSlugRoute
   '/_public/profiles/events/$slug': typeof PublicProfilesEventsSlugRoute
   '/_public/profiles/initiatives/$slug': typeof PublicProfilesInitiativesSlugRoute
@@ -747,6 +836,7 @@ export interface FileRouteTypes {
     | '/directories/$orgId'
     | '/entries/$entryId'
     | '/feedback/$slug'
+    | '/places/$placeSlug'
     | '/profiles/organizations'
     | '/profiles/people'
     | '/admin/discounts'
@@ -764,6 +854,14 @@ export interface FileRouteTypes {
     | '/profiles/'
     | '/organization/'
     | '/.well-known/oauth-authorization-server/api/auth'
+    | '/places/boroughs/$placeSlug'
+    | '/places/cities/$placeSlug'
+    | '/places/corridors/$placeSlug'
+    | '/places/counties/$placeSlug'
+    | '/places/districts/$placeSlug'
+    | '/places/metros/$placeSlug'
+    | '/places/neighborhoods/$placeSlug'
+    | '/places/polities/$placeSlug'
     | '/profiles/campaigns/$slug'
     | '/profiles/events/$slug'
     | '/profiles/initiatives/$slug'
@@ -819,6 +917,7 @@ export interface FileRouteTypes {
     | '/directories/$orgId'
     | '/entries/$entryId'
     | '/feedback/$slug'
+    | '/places/$placeSlug'
     | '/admin/discounts'
     | '/briefs/$briefId'
     | '/briefs/new'
@@ -834,6 +933,14 @@ export interface FileRouteTypes {
     | '/profiles'
     | '/organization'
     | '/.well-known/oauth-authorization-server/api/auth'
+    | '/places/boroughs/$placeSlug'
+    | '/places/cities/$placeSlug'
+    | '/places/corridors/$placeSlug'
+    | '/places/counties/$placeSlug'
+    | '/places/districts/$placeSlug'
+    | '/places/metros/$placeSlug'
+    | '/places/neighborhoods/$placeSlug'
+    | '/places/polities/$placeSlug'
     | '/profiles/campaigns/$slug'
     | '/profiles/events/$slug'
     | '/profiles/initiatives/$slug'
@@ -894,6 +1001,7 @@ export interface FileRouteTypes {
     | '/_public/directories/$orgId'
     | '/_public/entries/$entryId'
     | '/_public/feedback/$slug'
+    | '/_public/places/$placeSlug'
     | '/_public/profiles/organizations'
     | '/_public/profiles/people'
     | '/_workspace/admin/discounts'
@@ -911,6 +1019,14 @@ export interface FileRouteTypes {
     | '/_public/profiles/'
     | '/_workspace/organization/'
     | '/.well-known/oauth-authorization-server/api/auth'
+    | '/_public/places/boroughs/$placeSlug'
+    | '/_public/places/cities/$placeSlug'
+    | '/_public/places/corridors/$placeSlug'
+    | '/_public/places/counties/$placeSlug'
+    | '/_public/places/districts/$placeSlug'
+    | '/_public/places/metros/$placeSlug'
+    | '/_public/places/neighborhoods/$placeSlug'
+    | '/_public/places/polities/$placeSlug'
     | '/_public/profiles/campaigns/$slug'
     | '/_public/profiles/events/$slug'
     | '/_public/profiles/initiatives/$slug'
@@ -1350,6 +1466,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PublicProfilesOrganizationsRouteImport
       parentRoute: typeof PublicRoute
     }
+    '/_public/places/$placeSlug': {
+      id: '/_public/places/$placeSlug'
+      path: '/places/$placeSlug'
+      fullPath: '/places/$placeSlug'
+      preLoaderRoute: typeof PublicPlacesPlaceSlugRouteImport
+      parentRoute: typeof PublicRoute
+    }
     '/_public/feedback/$slug': {
       id: '/_public/feedback/$slug'
       path: '/feedback/$slug'
@@ -1462,6 +1585,62 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PublicProfilesCampaignsSlugRouteImport
       parentRoute: typeof PublicRoute
     }
+    '/_public/places/polities/$placeSlug': {
+      id: '/_public/places/polities/$placeSlug'
+      path: '/places/polities/$placeSlug'
+      fullPath: '/places/polities/$placeSlug'
+      preLoaderRoute: typeof PublicPlacesPolitiesPlaceSlugRouteImport
+      parentRoute: typeof PublicRoute
+    }
+    '/_public/places/neighborhoods/$placeSlug': {
+      id: '/_public/places/neighborhoods/$placeSlug'
+      path: '/places/neighborhoods/$placeSlug'
+      fullPath: '/places/neighborhoods/$placeSlug'
+      preLoaderRoute: typeof PublicPlacesNeighborhoodsPlaceSlugRouteImport
+      parentRoute: typeof PublicRoute
+    }
+    '/_public/places/metros/$placeSlug': {
+      id: '/_public/places/metros/$placeSlug'
+      path: '/places/metros/$placeSlug'
+      fullPath: '/places/metros/$placeSlug'
+      preLoaderRoute: typeof PublicPlacesMetrosPlaceSlugRouteImport
+      parentRoute: typeof PublicRoute
+    }
+    '/_public/places/districts/$placeSlug': {
+      id: '/_public/places/districts/$placeSlug'
+      path: '/places/districts/$placeSlug'
+      fullPath: '/places/districts/$placeSlug'
+      preLoaderRoute: typeof PublicPlacesDistrictsPlaceSlugRouteImport
+      parentRoute: typeof PublicRoute
+    }
+    '/_public/places/counties/$placeSlug': {
+      id: '/_public/places/counties/$placeSlug'
+      path: '/places/counties/$placeSlug'
+      fullPath: '/places/counties/$placeSlug'
+      preLoaderRoute: typeof PublicPlacesCountiesPlaceSlugRouteImport
+      parentRoute: typeof PublicRoute
+    }
+    '/_public/places/corridors/$placeSlug': {
+      id: '/_public/places/corridors/$placeSlug'
+      path: '/places/corridors/$placeSlug'
+      fullPath: '/places/corridors/$placeSlug'
+      preLoaderRoute: typeof PublicPlacesCorridorsPlaceSlugRouteImport
+      parentRoute: typeof PublicRoute
+    }
+    '/_public/places/cities/$placeSlug': {
+      id: '/_public/places/cities/$placeSlug'
+      path: '/places/cities/$placeSlug'
+      fullPath: '/places/cities/$placeSlug'
+      preLoaderRoute: typeof PublicPlacesCitiesPlaceSlugRouteImport
+      parentRoute: typeof PublicRoute
+    }
+    '/_public/places/boroughs/$placeSlug': {
+      id: '/_public/places/boroughs/$placeSlug'
+      path: '/places/boroughs/$placeSlug'
+      fullPath: '/places/boroughs/$placeSlug'
+      preLoaderRoute: typeof PublicPlacesBoroughsPlaceSlugRouteImport
+      parentRoute: typeof PublicRoute
+    }
     '/.well-known/oauth-authorization-server/api/auth': {
       id: '/.well-known/oauth-authorization-server/api/auth'
       path: '/.well-known/oauth-authorization-server/api/auth'
@@ -1558,9 +1737,18 @@ interface PublicRouteChildren {
   PublicDirectoriesOrgIdRoute: typeof PublicDirectoriesOrgIdRoute
   PublicEntriesEntryIdRoute: typeof PublicEntriesEntryIdRoute
   PublicFeedbackSlugRoute: typeof PublicFeedbackSlugRoute
+  PublicPlacesPlaceSlugRoute: typeof PublicPlacesPlaceSlugRoute
   PublicProfilesOrganizationsRoute: typeof PublicProfilesOrganizationsRouteWithChildren
   PublicProfilesPeopleRoute: typeof PublicProfilesPeopleRouteWithChildren
   PublicProfilesIndexRoute: typeof PublicProfilesIndexRoute
+  PublicPlacesBoroughsPlaceSlugRoute: typeof PublicPlacesBoroughsPlaceSlugRoute
+  PublicPlacesCitiesPlaceSlugRoute: typeof PublicPlacesCitiesPlaceSlugRoute
+  PublicPlacesCorridorsPlaceSlugRoute: typeof PublicPlacesCorridorsPlaceSlugRoute
+  PublicPlacesCountiesPlaceSlugRoute: typeof PublicPlacesCountiesPlaceSlugRoute
+  PublicPlacesDistrictsPlaceSlugRoute: typeof PublicPlacesDistrictsPlaceSlugRoute
+  PublicPlacesMetrosPlaceSlugRoute: typeof PublicPlacesMetrosPlaceSlugRoute
+  PublicPlacesNeighborhoodsPlaceSlugRoute: typeof PublicPlacesNeighborhoodsPlaceSlugRoute
+  PublicPlacesPolitiesPlaceSlugRoute: typeof PublicPlacesPolitiesPlaceSlugRoute
   PublicProfilesCampaignsSlugRoute: typeof PublicProfilesCampaignsSlugRoute
   PublicProfilesEventsSlugRoute: typeof PublicProfilesEventsSlugRoute
   PublicProfilesInitiativesSlugRoute: typeof PublicProfilesInitiativesSlugRoute
@@ -1581,10 +1769,20 @@ const PublicRouteChildren: PublicRouteChildren = {
   PublicDirectoriesOrgIdRoute: PublicDirectoriesOrgIdRoute,
   PublicEntriesEntryIdRoute: PublicEntriesEntryIdRoute,
   PublicFeedbackSlugRoute: PublicFeedbackSlugRoute,
+  PublicPlacesPlaceSlugRoute: PublicPlacesPlaceSlugRoute,
   PublicProfilesOrganizationsRoute:
     PublicProfilesOrganizationsRouteWithChildren,
   PublicProfilesPeopleRoute: PublicProfilesPeopleRouteWithChildren,
   PublicProfilesIndexRoute: PublicProfilesIndexRoute,
+  PublicPlacesBoroughsPlaceSlugRoute: PublicPlacesBoroughsPlaceSlugRoute,
+  PublicPlacesCitiesPlaceSlugRoute: PublicPlacesCitiesPlaceSlugRoute,
+  PublicPlacesCorridorsPlaceSlugRoute: PublicPlacesCorridorsPlaceSlugRoute,
+  PublicPlacesCountiesPlaceSlugRoute: PublicPlacesCountiesPlaceSlugRoute,
+  PublicPlacesDistrictsPlaceSlugRoute: PublicPlacesDistrictsPlaceSlugRoute,
+  PublicPlacesMetrosPlaceSlugRoute: PublicPlacesMetrosPlaceSlugRoute,
+  PublicPlacesNeighborhoodsPlaceSlugRoute:
+    PublicPlacesNeighborhoodsPlaceSlugRoute,
+  PublicPlacesPolitiesPlaceSlugRoute: PublicPlacesPolitiesPlaceSlugRoute,
   PublicProfilesCampaignsSlugRoute: PublicProfilesCampaignsSlugRoute,
   PublicProfilesEventsSlugRoute: PublicProfilesEventsSlugRoute,
   PublicProfilesInitiativesSlugRoute: PublicProfilesInitiativesSlugRoute,
