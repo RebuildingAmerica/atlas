@@ -6,6 +6,10 @@ dist/
 *.local
 .DS_Store
 coverage/
+!src/routes/_workspace/coverage/
+!src/routes/_workspace/coverage/**
+!tests/unit/routes/_workspace/coverage/
+!tests/unit/routes/_workspace/coverage/**
 test-results/
 .tanstack/
 src/lib/generated/

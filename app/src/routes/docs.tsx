@@ -4,7 +4,7 @@ import { getDocsUrl } from "@/platform/config/app-config";
 export const Route = createFileRoute("/docs")({
   loader: ({ location }) => {
     // Only redirect the bare /docs path. Deeper paths like /docs/mcp are
-    // handled by routes/docs.$.tsx; returning early lets the child loader run.
+    // handled by routes/docs/$.tsx; returning early lets the child loader run.
     const pathname = location.pathname.replace(/\/+$/, "");
     if (pathname !== "/docs") {
       return;
