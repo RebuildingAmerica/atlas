@@ -123,7 +123,7 @@ jobs:
               --location="$REGION" \
               --uri="${API_URL}/api/discovery-runs/scheduled" \
               --http-method=POST \
-              --headers="Content-Type=application/json,X-Atlas-Internal-Secret=${SECRET}" \
+              --update-headers="Content-Type=application/json,X-Atlas-Internal-Secret=${SECRET}" \
               --schedule="0 2 * * *" \
               --time-zone="America/Chicago" \
               --attempt-deadline=900s \
