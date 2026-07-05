@@ -31,7 +31,7 @@ describe("getStripeClient", () => {
     expect(first).toMatchObject(fakeClient);
     expect(stripeMocks.StripeCtor).toHaveBeenCalledTimes(1);
     expect(stripeMocks.StripeCtor).toHaveBeenCalledWith("sk_test_123", {
-      apiVersion: "2025-08-27.basil",
+      apiVersion: "2026-06-24.dahlia",
     });
   });
 

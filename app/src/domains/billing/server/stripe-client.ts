@@ -16,7 +16,7 @@ export function getStripeClient(): Stripe {
     if (!key) {
       throw new Error("STRIPE_API_KEY is required for billing operations.");
     }
-    _stripe = new Stripe(key, { apiVersion: "2025-08-27.basil" });
+    _stripe = new Stripe(key, { apiVersion: "2026-06-24.dahlia" });
   }
   return _stripe;
 }
