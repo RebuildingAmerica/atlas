@@ -60,6 +60,11 @@ get_staged_script_files() {
     get_staged_files | grep -E '^scripts/.*\.ts$' || echo ""
 }
 
+# Get staged Markdown files (anywhere in the repo)
+get_staged_markdown_files() {
+    get_staged_files | grep -E '\.md$' || echo ""
+}
+
 ROOT_DIR="$(git rev-parse --show-toplevel)"
 API_DIR="$ROOT_DIR/api"
 APP_DIR="$ROOT_DIR/app"
@@ -179,6 +184,27 @@ if [ -n "$SCRIPT_FILES" ]; then
     fi
 else
     print_info "No script files staged, skipping script checks"
+fi
+
+# ============================================
+# Markdown Checks
+# ============================================
+MD_FILES=$(get_staged_markdown_files)
+
+if [ -n "$MD_FILES" ]; then
+    print_info "Found $(echo "$MD_FILES" | wc -l | tr -d ' ') markdown file(s) to format"
+
+    print_info "Running prettier on staged markdown files..."
+    if ! (cd "$ROOT_DIR" && echo "$MD_FILES" | xargs pnpm exec prettier --write --log-level error > /dev/null 2>&1); then
+        print_error "Prettier failed on staged markdown files"
+        FAILED=1
+    else
+        # Re-stage any files prettier reformatted.
+        (cd "$ROOT_DIR" && echo "$MD_FILES" | xargs git add)
+        print_success "Prettier (markdown) passed"
+    fi
+else
+    print_info "No markdown files staged, skipping markdown checks"
 fi
 
 # ============================================
