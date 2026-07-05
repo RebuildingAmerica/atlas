@@ -60,18 +60,17 @@ scout run https://example.org
 scout sync
 ```
 
-`scout setup` is the low-decision onboarding command. It signs the user in when
-needed, checks local model readiness, saves a working detected model when one
-is available, and points to `scout doctor` for a read-only readiness check.
-If no local model is ready, setup first attempts safe headless repairs such as
-starting a single installed local model server and retrying model detection.
-When multiple installed providers or models are viable, setup presents the
-choice instead of guessing, even if the current profile already points at one
-working option. Scout never installs Ollama or LM Studio without explicit
-confirmation. Only when Scout cannot resolve the problem itself does it keep
-the successful sign-in and offer concrete next steps. Users can still run the
-steps individually, but they should not have to know those pieces before trying
-Scout.
+`scout setup` is the onboarding command. It signs the user in when needed, then
+handles local model provider setup before model selection. Provider setup is a
+separate stage from model configuration: Scout detects Ollama and LM Studio
+CLIs, shows provider choices when more than one path exists, offers to install
+a missing provider only after explicit confirmation, and starts the selected
+installed provider before listing models. Once a provider is selected, model
+configuration is scoped to that provider only; choosing LM Studio must not fall
+back to Ollama models just because Ollama is already ready. Only when Scout
+cannot resolve the provider or model itself does it keep the successful sign-in
+and offer concrete next steps. Users can still run the steps individually, but
+they should not have to know those pieces before trying Scout.
 
 `scout doctor` is the readiness checkpoint between login and work. Its default
 view answers whether this computer can run direct URL discovery, search-backed
@@ -93,8 +92,10 @@ scout config llm
 `scout config llm` detects Ollama at `http://localhost:11434` and LM Studio at
 `http://localhost:1234/v1`, lists available models in interactive mode, and
 writes non-secret provider/model/base URL settings to the active profile.
-Scout never silently installs model software, starts daemons, runs `sudo`, or
-stores LM Studio API tokens in setup or configuration flows.
+Scout never silently installs model software, runs `sudo`, or stores LM Studio
+API tokens in setup or configuration flows. Setup may start the selected
+installed local provider because that is part of getting this computer ready to
+run discovery.
 
 ### Install And Update
 
@@ -254,8 +255,15 @@ Normal discovery commands resolve local model settings before work starts:
   action: start Ollama, start LM Studio's server, download a model, or provide
   an LM Studio API token if that server requires one.
 
-`scout config llm` exposes the same resolver as a direct repair command. Default
-mode makes the best safe choice automatically. `--interactive` shows detected
+`scout setup` performs provider bootstrap before this resolver runs. If Ollama
+or LM Studio is installed but stopped, setup starts the selected provider. If a
+provider is missing, setup offers the platform install action and requires the
+user to confirm before running it or opening an installer. After provider
+bootstrap, setup lists models for the selected provider and saves the chosen
+provider/model/base URL.
+
+`scout config llm` exposes the resolver as a direct repair command. Default mode
+makes the best safe choice automatically. `--interactive` shows detected
 provider/model choices for users who want to override the automatic selection.
 `--provider`, `--model`, and `--base-url` support scripted setup. `scout doctor`
 continues to be read-only and recommends `scout config llm` only when setup can

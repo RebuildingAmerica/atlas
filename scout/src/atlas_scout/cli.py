@@ -9,7 +9,6 @@ import io
 import json
 import logging
 import platform
-import shutil
 import sys
 import time
 import tomllib
@@ -71,6 +70,14 @@ from atlas_scout.local_models import (
     provider_label,
     resolve_local_model,
     select_local_model_choice,
+)
+from atlas_scout.local_provider_bootstrap import (
+    LocalProviderInstallPlan,
+    install_local_model_provider,
+    install_plan_for_provider,
+    installed_local_model_providers,
+    missing_local_model_providers,
+    start_local_model_server,
 )
 from atlas_scout.login_flow import (
     LoginExecutionError,
@@ -218,6 +225,126 @@ def _resolve_or_repair_local_model(
     return resolution
 
 
+def _setup_local_model_provider(config: ScoutConfig) -> LocalModelResolution:
+    """Run provider bootstrap first, then resolve models for that provider."""
+    provider = _choose_setup_local_model_provider()
+    if provider is None:
+        return LocalModelResolution(
+            ready=False,
+            provider=None,
+            model=None,
+            base_url=None,
+            message="No local model provider is ready.",
+            remediation="Choose Ollama or LM Studio, then finish setup.",
+        )
+
+    config.llm.provider = provider
+    config.llm.base_url = None
+    _try_start_local_model_server(provider)
+    resolution = resolve_local_model(config)
+    return _resolution_for_provider(config, resolution, provider)
+
+
+def _choose_setup_local_model_provider() -> LocalProviderName | None:
+    """Choose or install a provider before model configuration."""
+    installed_providers = _installed_local_model_providers()
+    missing_providers = _missing_local_model_providers()
+    providers = _ordered_provider_choices(installed_providers, missing_providers)
+    if not providers:
+        return None
+
+    provider = (
+        providers[0]
+        if len(providers) == 1
+        else _choose_local_model_provider_interactively(
+            providers,
+            installed_providers=installed_providers,
+        )
+    )
+    if provider in installed_providers:
+        return provider
+    if _confirm_and_install_local_provider(provider):
+        return provider
+    return None
+
+
+def _ordered_provider_choices(
+    installed_providers: tuple[LocalProviderName, ...],
+    missing_providers: tuple[LocalProviderName, ...],
+) -> tuple[LocalProviderName, ...]:
+    """Return provider choices without duplicating installed/missing providers."""
+    providers: list[LocalProviderName] = []
+    for provider in (*installed_providers, *missing_providers):
+        if provider not in providers:
+            providers.append(provider)
+    return tuple(providers)
+
+
+def _confirm_and_install_local_provider(provider: LocalProviderName) -> bool:
+    """Ask before installing a missing provider, then run the confirmed action."""
+    plan = _install_plan_for_local_provider(provider)
+    console.print()
+    console.print(f"{provider_label(provider)} is not installed.")
+    if plan.command:
+        console.print("Scout can install it now:")
+        console.print(f"  {' '.join(plan.command)}")
+    elif plan.url is not None:
+        console.print("Scout can open the installer:")
+        console.print(f"  {plan.url}")
+    if not click.confirm(plan.label, default=False):
+        return False
+    console.print(f"[dim]{plan.label}...[/]")
+    return _install_local_model_provider(plan)
+
+
+def _resolution_for_provider(
+    config: ScoutConfig,
+    resolution: LocalModelResolution,
+    provider: LocalProviderName,
+) -> LocalModelResolution:
+    """Keep provider choice authoritative during setup model resolution."""
+    choices = _choices_for_provider(resolution, provider)
+    if choices:
+        choice = _preferred_provider_choice(config, choices)
+        return select_local_model_choice(config, choice, choices)
+    if resolution.ready and resolution.provider == provider:
+        return resolution
+    return LocalModelResolution(
+        ready=False,
+        provider=None,
+        model=None,
+        base_url=None,
+        message=f"{provider_label(provider)} is not ready.",
+        remediation=_provider_not_ready_remediation(provider, resolution),
+    )
+
+
+def _choices_for_provider(
+    resolution: LocalModelResolution,
+    provider: LocalProviderName,
+) -> tuple[LocalModelChoice, ...]:
+    """Return ready model choices for the selected provider only."""
+    return tuple(choice for choice in resolution.choices if choice.provider == provider)
+
+
+def _preferred_provider_choice(
+    config: ScoutConfig,
+    choices: tuple[LocalModelChoice, ...],
+) -> LocalModelChoice:
+    """Prefer the configured model when it exists for the chosen provider."""
+    return next((choice for choice in choices if choice.model == config.llm.model), choices[0])
+
+
+def _provider_not_ready_remediation(
+    provider: LocalProviderName,
+    resolution: LocalModelResolution,
+) -> str:
+    """Return provider-specific setup remediation without falling back to another provider."""
+    if resolution.remediation:
+        return resolution.remediation
+    return f"Start {provider_label(provider)} or download a chat model, then run `scout setup`."
+
+
 def _local_model_repair_provider(
     config: ScoutConfig,
     *,
@@ -243,12 +370,22 @@ def _local_model_repair_provider(
 
 def _installed_local_model_providers() -> tuple[LocalProviderName, ...]:
     """Return local model providers with installed command-line starters."""
-    providers: list[LocalProviderName] = []
-    if shutil.which("ollama") is not None:
-        providers.append("ollama")
-    if shutil.which("lms") is not None:
-        providers.append("lmstudio")
-    return tuple(providers)
+    return installed_local_model_providers()
+
+
+def _missing_local_model_providers() -> tuple[LocalProviderName, ...]:
+    """Return local model providers Scout can help install."""
+    return missing_local_model_providers()
+
+
+def _install_plan_for_local_provider(provider: LocalProviderName) -> LocalProviderInstallPlan:
+    """Return the best install action for one missing provider."""
+    return install_plan_for_provider(provider)
+
+
+def _install_local_model_provider(plan: LocalProviderInstallPlan) -> bool:
+    """Run a user-confirmed local provider install action."""
+    return install_local_model_provider(plan)
 
 
 def _local_provider_configured_explicitly(config_path: Path) -> bool:
@@ -266,49 +403,8 @@ def _local_provider_configured_explicitly(config_path: Path) -> bool:
 
 def _try_start_local_model_server(provider: str) -> bool:
     """Start one installed local model server."""
-    if provider == "ollama":
-        return _try_start_ollama_server()
-    if provider == "lmstudio":
-        return _try_start_lmstudio_server()
-    return False
-
-
-def _try_start_ollama_server() -> bool:
-    """Start Ollama if the CLI is installed."""
-    if shutil.which("ollama") is None:
-        return False
-    console.print("[dim]Starting Ollama...[/]")
-    try:
-        subprocess.Popen(
-            ["ollama", "serve"],
-            stdin=subprocess.DEVNULL,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            start_new_session=True,
-        )
-    except OSError:
-        return False
-    time.sleep(1)
-    return True
-
-
-def _try_start_lmstudio_server() -> bool:
-    """Start the LM Studio local server if the lms CLI is installed."""
-    if shutil.which("lms") is None:
-        return False
-    console.print("[dim]Starting LM Studio local server...[/]")
-    try:
-        result = subprocess.run(
-            ["lms", "server", "start"],
-            stdin=subprocess.DEVNULL,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            timeout=20,
-            check=False,
-        )
-    except (OSError, subprocess.TimeoutExpired):
-        return False
-    return result.returncode == 0
+    console.print(f"[dim]Starting {provider_label(provider)}...[/]")
+    return start_local_model_server(provider)
 
 
 def _local_model_error_message(resolution: LocalModelResolution) -> str:
@@ -364,32 +460,41 @@ def _choose_local_model_interactively(
     for index, choice in enumerate(resolution.choices, start=1):
         table.add_row(str(index), provider_label(choice.provider), choice.model)
     console.print(table)
-    selection = click.prompt(
-        "Choose a model",
-        type=click.IntRange(1, len(resolution.choices)),
-        default=1,
-        show_default=True,
+    selection = int(
+        click.prompt(
+            "Choose a model",
+            type=click.IntRange(1, len(resolution.choices)),
+            default=1,
+            show_default=True,
+        )
     )
-    choice = cast("LocalModelChoice", resolution.choices[selection - 1])
+    choice = resolution.choices[selection - 1]
     return select_local_model_choice(config, choice, resolution.choices)
 
 
 def _choose_local_model_provider_interactively(
     providers: tuple[LocalProviderName, ...],
+    *,
+    installed_providers: tuple[LocalProviderName, ...] | None = None,
 ) -> LocalProviderName:
     """Ask the user which installed local model server Scout should start."""
+    installed = installed_providers or providers
     console.print()
     table = Table(title="Local model providers", show_lines=False, pad_edge=False)
     table.add_column("#", style="dim")
     table.add_column("Provider", style="bold")
+    table.add_column("Status")
     for index, provider in enumerate(providers, start=1):
-        table.add_row(str(index), provider_label(provider))
+        status = "installed" if provider in installed else "can install"
+        table.add_row(str(index), provider_label(provider), status)
     console.print(table)
-    selection = click.prompt(
-        "Choose a provider",
-        type=click.IntRange(1, len(providers)),
-        default=1,
-        show_default=True,
+    selection = int(
+        click.prompt(
+            "Choose a provider",
+            type=click.IntRange(1, len(providers)),
+            default=1,
+            show_default=True,
+        )
     )
     return providers[selection - 1]
 
@@ -1544,7 +1649,7 @@ async def _setup_onboarding(
     else:
         console.print(f"Signed in as [bold]{session.user_email}[/]")
 
-    resolution = _resolve_or_repair_local_model(config, config_path=config_path)
+    resolution = _setup_local_model_provider(config)
     if not resolution.ready:
         print_local_model_setup_help(console, resolution, default_model=config.llm.model)
         return
