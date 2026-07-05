@@ -63,9 +63,15 @@ scout sync
 `scout setup` is the low-decision onboarding command. It signs the user in when
 needed, checks local model readiness, saves a working detected model when one
 is available, and points to `scout doctor` for a read-only readiness check.
-If no local model is ready, setup keeps the successful sign-in and offers
-concrete next steps for Ollama and LM Studio. Users can still run the steps
-individually, but they should not have to know those pieces before trying Scout.
+If no local model is ready, setup first attempts safe headless repairs such as
+starting a single installed local model server and retrying model detection.
+When multiple installed providers or models are viable, setup presents the
+choice instead of guessing, even if the current profile already points at one
+working option. Scout never installs Ollama or LM Studio without explicit
+confirmation. Only when Scout cannot resolve the problem itself does it keep
+the successful sign-in and offer concrete next steps. Users can still run the
+steps individually, but they should not have to know those pieces before trying
+Scout.
 
 `scout doctor` is the readiness checkpoint between login and work. Its default
 view answers whether this computer can run direct URL discovery, search-backed
@@ -76,8 +82,9 @@ Scout-initiated workflow.
 Local model setup is automatic in normal use. If the active profile points at a
 broken or missing local provider, `scout run` probes Ollama and LM Studio,
 chooses a usable detected model when there is one clear best choice, saves that
-choice to the active profile, and continues. Users only need the explicit
-repair command when Scout cannot find a working local model:
+choice to the active profile, and continues. A stale configured local URL does
+not prevent Scout from checking the provider's default local URL. Users only
+need the explicit repair command when Scout cannot find a working local model:
 
 ```bash
 scout config llm

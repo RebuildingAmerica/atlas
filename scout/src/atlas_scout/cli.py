@@ -9,6 +9,7 @@ import io
 import json
 import logging
 import platform
+import shutil
 import sys
 import time
 import tomllib
@@ -64,6 +65,7 @@ from atlas_scout.local_models import (
     LOCAL_PROVIDER_NAMES,
     LocalModelChoice,
     LocalModelResolution,
+    LocalProviderName,
     apply_local_model_resolution,
     is_local_provider,
     provider_label,
@@ -197,6 +199,118 @@ def _prepare_local_model_config(
     return resolution
 
 
+def _resolve_or_repair_local_model(
+    config: ScoutConfig,
+    *,
+    config_path: Path,
+) -> LocalModelResolution:
+    """Resolve a local model, attempting headless repairs before asking the user."""
+    resolution = resolve_local_model(config)
+    if resolution.ready:
+        return resolution
+
+    provider = _local_model_repair_provider(config, config_path=config_path)
+    if provider is not None and _try_start_local_model_server(provider):
+        resolution = resolve_local_model(config)
+        if resolution.ready:
+            return resolution
+
+    return resolution
+
+
+def _local_model_repair_provider(
+    config: ScoutConfig,
+    *,
+    config_path: Path,
+) -> LocalProviderName | None:
+    """Return the local provider setup may start without guessing."""
+    installed_providers = _installed_local_model_providers()
+    if not installed_providers:
+        return None
+
+    configured_provider = config.llm.provider.strip().lower()
+    if (
+        _local_provider_configured_explicitly(config_path)
+        and configured_provider in installed_providers
+    ):
+        return cast("LocalProviderName", configured_provider)
+
+    if len(installed_providers) == 1:
+        return installed_providers[0]
+
+    return _choose_local_model_provider_interactively(installed_providers)
+
+
+def _installed_local_model_providers() -> tuple[LocalProviderName, ...]:
+    """Return local model providers with installed command-line starters."""
+    providers: list[LocalProviderName] = []
+    if shutil.which("ollama") is not None:
+        providers.append("ollama")
+    if shutil.which("lms") is not None:
+        providers.append("lmstudio")
+    return tuple(providers)
+
+
+def _local_provider_configured_explicitly(config_path: Path) -> bool:
+    """Return whether the active profile explicitly chose a local provider."""
+    if not config_path.exists():
+        return False
+    try:
+        with config_path.open("rb") as handle:
+            data = tomllib.load(handle)
+    except (OSError, tomllib.TOMLDecodeError):
+        return False
+    llm_config = data.get("llm")
+    return isinstance(llm_config, dict) and ("provider" in llm_config or "base_url" in llm_config)
+
+
+def _try_start_local_model_server(provider: str) -> bool:
+    """Start one installed local model server."""
+    if provider == "ollama":
+        return _try_start_ollama_server()
+    if provider == "lmstudio":
+        return _try_start_lmstudio_server()
+    return False
+
+
+def _try_start_ollama_server() -> bool:
+    """Start Ollama if the CLI is installed."""
+    if shutil.which("ollama") is None:
+        return False
+    console.print("[dim]Starting Ollama...[/]")
+    try:
+        subprocess.Popen(
+            ["ollama", "serve"],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            start_new_session=True,
+        )
+    except OSError:
+        return False
+    time.sleep(1)
+    return True
+
+
+def _try_start_lmstudio_server() -> bool:
+    """Start the LM Studio local server if the lms CLI is installed."""
+    if shutil.which("lms") is None:
+        return False
+    console.print("[dim]Starting LM Studio local server...[/]")
+    try:
+        result = subprocess.run(
+            ["lms", "server", "start"],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            timeout=20,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+    return result.returncode == 0
+
+
 def _local_model_error_message(resolution: LocalModelResolution) -> str:
     """Return concise local model failure copy."""
     if resolution.remediation:
@@ -258,6 +372,33 @@ def _choose_local_model_interactively(
     )
     choice = cast("LocalModelChoice", resolution.choices[selection - 1])
     return select_local_model_choice(config, choice, resolution.choices)
+
+
+def _choose_local_model_provider_interactively(
+    providers: tuple[LocalProviderName, ...],
+) -> LocalProviderName:
+    """Ask the user which installed local model server Scout should start."""
+    console.print()
+    table = Table(title="Local model providers", show_lines=False, pad_edge=False)
+    table.add_column("#", style="dim")
+    table.add_column("Provider", style="bold")
+    for index, provider in enumerate(providers, start=1):
+        table.add_row(str(index), provider_label(provider))
+    console.print(table)
+    selection = click.prompt(
+        "Choose a provider",
+        type=click.IntRange(1, len(providers)),
+        default=1,
+        show_default=True,
+    )
+    return providers[selection - 1]
+
+
+def _should_prompt_for_setup_model_choice(
+    resolution: LocalModelResolution,
+) -> bool:
+    """Return whether setup should ask the user to choose between ready models."""
+    return resolution.ready and len(resolution.choices) > 1
 
 
 def _search_key_configured() -> bool:
@@ -1403,10 +1544,13 @@ async def _setup_onboarding(
     else:
         console.print(f"Signed in as [bold]{session.user_email}[/]")
 
-    resolution = resolve_local_model(config)
+    resolution = _resolve_or_repair_local_model(config, config_path=config_path)
     if not resolution.ready:
         print_local_model_setup_help(console, resolution, default_model=config.llm.model)
         return
+
+    if _should_prompt_for_setup_model_choice(resolution):
+        resolution = _choose_local_model_interactively(config, resolution)
 
     apply_local_model_resolution(config, resolution)
     _save_local_model_config(config_path, resolution)

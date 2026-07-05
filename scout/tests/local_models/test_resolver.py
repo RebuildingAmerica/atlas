@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from atlas_scout.config import ScoutConfig
 from atlas_scout.local_models import (
+    DEFAULT_OLLAMA_URL,
     LocalModelProbe,
     apply_local_model_resolution,
     is_local_provider,
@@ -72,6 +73,42 @@ def test_resolver_self_heals_default_config_to_lmstudio() -> None:
     assert config.llm.provider == "lmstudio"
     assert config.llm.model == "qwen3:latest"
     assert config.llm.base_url == "http://localhost:1234/v1"
+
+
+def test_resolver_self_heals_stale_configured_base_url_to_localhost() -> None:
+    config = ScoutConfig()
+    config.llm.provider = "ollama"
+    config.llm.model = "deepseek-r1:8b"
+    config.llm.base_url = "http://willies-mac-studio.tail244fac.ts.net:11434"
+    seen_base_urls: list[str | None] = []
+
+    def probe(provider: str, candidate: ScoutConfig) -> LocalModelProbe:
+        seen_base_urls.append(candidate.llm.base_url)
+        if provider == "ollama" and candidate.llm.base_url is None:
+            return LocalModelProbe(
+                provider="ollama",
+                base_url=DEFAULT_OLLAMA_URL,
+                status="ready",
+                models=("deepseek-r1:8b",),
+                message="Ollama is ready.",
+            )
+        return LocalModelProbe(
+            provider=provider,
+            base_url=candidate.llm.base_url or "http://localhost",
+            status="unreachable",
+            models=(),
+            message=f"{provider} is not reachable.",
+        )
+
+    resolution = resolve_local_model(config, probe=probe)
+
+    assert resolution.ready
+    assert resolution.provider == "ollama"
+    assert resolution.model == "deepseek-r1:8b"
+    assert resolution.base_url == DEFAULT_OLLAMA_URL
+    assert resolution.changed
+    assert config.llm.base_url in seen_base_urls
+    assert None in seen_base_urls
 
 
 def test_resolver_returns_one_clear_action_when_no_provider_is_ready() -> None:

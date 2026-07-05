@@ -9,7 +9,7 @@ from click.testing import CliRunner
 import atlas_scout.cli as cli_module
 from atlas_scout.auth import ScoutSession
 from atlas_scout.cli import main
-from atlas_scout.local_models import LocalModelResolution
+from atlas_scout.local_models import LocalModelChoice, LocalModelResolution
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -24,6 +24,47 @@ def _resolution(*, ready: bool = True) -> LocalModelResolution:
         message="Using LM Studio with qwen3:latest." if ready else "No local model is ready.",
         remediation=None if ready else "Start Ollama or LM Studio, then run `scout config llm`.",
         changed=ready,
+    )
+
+
+def _ollama_resolution() -> LocalModelResolution:
+    return LocalModelResolution(
+        ready=True,
+        provider="ollama",
+        model="deepseek-r1:8b",
+        base_url="http://localhost:11434",
+        message="Using Ollama with deepseek-r1:8b.",
+        changed=True,
+        choices=(
+            LocalModelChoice(
+                provider="ollama",
+                model="deepseek-r1:8b",
+                base_url="http://localhost:11434",
+            ),
+        ),
+    )
+
+
+def _multi_model_resolution() -> LocalModelResolution:
+    return LocalModelResolution(
+        ready=True,
+        provider="ollama",
+        model="deepseek-r1:8b",
+        base_url="http://localhost:11434",
+        message="Using Ollama with deepseek-r1:8b.",
+        changed=True,
+        choices=(
+            LocalModelChoice(
+                provider="ollama",
+                model="deepseek-r1:8b",
+                base_url="http://localhost:11434",
+            ),
+            LocalModelChoice(
+                provider="ollama",
+                model="llama3.2:latest",
+                base_url="http://localhost:11434",
+            ),
+        ),
     )
 
 
@@ -133,6 +174,18 @@ def test_setup_offers_local_model_next_steps_when_no_provider_is_ready(
         "resolve_local_model",
         lambda *_args, **_kwargs: _resolution(ready=False),
     )
+    monkeypatch.setattr(
+        cli_module,
+        "_try_start_local_model_server",
+        lambda *_args, **_kwargs: False,
+        raising=False,
+    )
+    monkeypatch.setattr(
+        cli_module,
+        "_installed_local_model_providers",
+        lambda: (),
+        raising=False,
+    )
 
     result = CliRunner().invoke(main, ["--config", str(config_path), "setup"])
 
@@ -145,3 +198,229 @@ def test_setup_offers_local_model_next_steps_when_no_provider_is_ready(
     assert "scout config llm" in result.output
     assert "scout setup llm" not in result.output
     assert not config_path.exists()
+
+
+def test_setup_starts_local_provider_before_showing_next_steps(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    config_path = tmp_path / "scout.toml"
+    resolutions = [_resolution(ready=False), _ollama_resolution()]
+
+    monkeypatch.setattr(
+        cli_module,
+        "load_session",
+        lambda: ScoutSession(
+            atlas_url="https://atlas.example",
+            access_token="token",
+            worker_id="worker-123",
+            user_id="user-123",
+            user_email="willie@example.org",
+            worker_name="Willies Mac",
+            default_upload_target="public",
+            workspace_id=None,
+        ),
+    )
+    started_providers: list[str] = []
+
+    monkeypatch.setattr(
+        cli_module, "resolve_local_model", lambda *_args, **_kwargs: resolutions.pop(0)
+    )
+    monkeypatch.setattr(
+        cli_module,
+        "_installed_local_model_providers",
+        lambda: ("ollama",),
+        raising=False,
+    )
+    monkeypatch.setattr(
+        cli_module,
+        "_try_start_local_model_server",
+        lambda provider: started_providers.append(provider) or True,
+        raising=False,
+    )
+
+    result = CliRunner().invoke(main, ["--config", str(config_path), "setup"])
+
+    assert result.exit_code == 0, result.output
+    assert "Using Ollama with deepseek-r1:8b" in result.output
+    assert "Local model not ready" not in result.output
+    assert 'provider = "ollama"' in config_path.read_text(encoding="utf-8")
+    assert started_providers == ["ollama"]
+
+
+def test_setup_prompts_for_provider_when_multiple_can_be_started(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    config_path = tmp_path / "scout.toml"
+    resolutions = [_resolution(ready=False), _resolution()]
+    started_providers: list[str] = []
+
+    monkeypatch.setattr(
+        cli_module,
+        "load_session",
+        lambda: ScoutSession(
+            atlas_url="https://atlas.example",
+            access_token="token",
+            worker_id="worker-123",
+            user_id="user-123",
+            user_email="willie@example.org",
+            worker_name="Willies Mac",
+            default_upload_target="public",
+            workspace_id=None,
+        ),
+    )
+    monkeypatch.setattr(
+        cli_module, "resolve_local_model", lambda *_args, **_kwargs: resolutions.pop(0)
+    )
+    monkeypatch.setattr(
+        cli_module,
+        "_installed_local_model_providers",
+        lambda: ("ollama", "lmstudio"),
+        raising=False,
+    )
+    monkeypatch.setattr(
+        cli_module,
+        "_try_start_local_model_server",
+        lambda provider: started_providers.append(provider) or True,
+        raising=False,
+    )
+
+    result = CliRunner().invoke(
+        main,
+        ["--config", str(config_path), "setup"],
+        input="2\n",
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "providers" in result.output
+    assert "Choose a provider" in result.output
+    assert started_providers == ["lmstudio"]
+
+
+def test_setup_respects_explicit_provider_when_multiple_can_be_started(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    config_path = tmp_path / "scout.toml"
+    config_path.write_text('[llm]\nprovider = "ollama"\n', encoding="utf-8")
+    resolutions = [_resolution(ready=False), _ollama_resolution()]
+    started_providers: list[str] = []
+
+    monkeypatch.setattr(
+        cli_module,
+        "load_session",
+        lambda: ScoutSession(
+            atlas_url="https://atlas.example",
+            access_token="token",
+            worker_id="worker-123",
+            user_id="user-123",
+            user_email="willie@example.org",
+            worker_name="Willies Mac",
+            default_upload_target="public",
+            workspace_id=None,
+        ),
+    )
+    monkeypatch.setattr(
+        cli_module, "resolve_local_model", lambda *_args, **_kwargs: resolutions.pop(0)
+    )
+    monkeypatch.setattr(
+        cli_module,
+        "_installed_local_model_providers",
+        lambda: ("ollama", "lmstudio"),
+        raising=False,
+    )
+    monkeypatch.setattr(
+        cli_module,
+        "_try_start_local_model_server",
+        lambda provider: started_providers.append(provider) or True,
+        raising=False,
+    )
+
+    result = CliRunner().invoke(main, ["--config", str(config_path), "setup"])
+
+    assert result.exit_code == 0, result.output
+    assert "Choose a provider" not in result.output
+    assert started_providers == ["ollama"]
+
+
+def test_setup_prompts_when_auto_detected_models_require_judgement(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    config_path = tmp_path / "scout.toml"
+
+    monkeypatch.setattr(
+        cli_module,
+        "load_session",
+        lambda: ScoutSession(
+            atlas_url="https://atlas.example",
+            access_token="token",
+            worker_id="worker-123",
+            user_id="user-123",
+            user_email="willie@example.org",
+            worker_name="Willies Mac",
+            default_upload_target="public",
+            workspace_id=None,
+        ),
+    )
+    monkeypatch.setattr(
+        cli_module,
+        "resolve_local_model",
+        lambda *_args, **_kwargs: _multi_model_resolution(),
+    )
+
+    result = CliRunner().invoke(
+        main,
+        ["--config", str(config_path), "setup"],
+        input="2\n",
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "Local models" in result.output
+    assert "Choose a model" in result.output
+    assert "Using Ollama with llama3.2:latest" in result.output
+    assert 'model = "llama3.2:latest"' in config_path.read_text(encoding="utf-8")
+
+
+def test_setup_still_prompts_when_current_model_is_ready_but_choices_exist(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    config_path = tmp_path / "scout.toml"
+    config_path.write_text(
+        '[llm]\nprovider = "ollama"\nmodel = "deepseek-r1:8b"\n',
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr(
+        cli_module,
+        "load_session",
+        lambda: ScoutSession(
+            atlas_url="https://atlas.example",
+            access_token="token",
+            worker_id="worker-123",
+            user_id="user-123",
+            user_email="willie@example.org",
+            worker_name="Willies Mac",
+            default_upload_target="public",
+            workspace_id=None,
+        ),
+    )
+    monkeypatch.setattr(
+        cli_module,
+        "resolve_local_model",
+        lambda *_args, **_kwargs: _multi_model_resolution(),
+    )
+
+    result = CliRunner().invoke(
+        main,
+        ["--config", str(config_path), "setup"],
+        input="2\n",
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "Local models" in result.output
+    assert "Choose a model" in result.output
+    assert "Using Ollama with llama3.2:latest" in result.output
+    assert 'model = "llama3.2:latest"' in config_path.read_text(encoding="utf-8")

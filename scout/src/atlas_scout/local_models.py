@@ -89,7 +89,11 @@ def resolve_local_model(
 ) -> LocalModelResolution:
     """Return the best local model configuration Scout can use right now."""
     configured_provider = _configured_local_provider(config)
-    probes = tuple(probe(provider, config) for provider in LOCAL_PROVIDER_NAMES)
+    probes = tuple(
+        candidate
+        for provider in LOCAL_PROVIDER_NAMES
+        for candidate in _probe_provider_candidates(provider, config, probe)
+    )
 
     if configured_provider is not None:
         current = _probe_for_provider(probes, configured_provider)
@@ -100,7 +104,7 @@ def resolve_local_model(
                 model=config.llm.model,
                 base_url=current.base_url,
                 message=(f"Using {provider_label(configured_provider)} with {config.llm.model}."),
-                changed=False,
+                changed=bool(config.llm.base_url and current.base_url != config.llm.base_url),
                 choices=_choices_from_probes(probes, config.llm.model),
             )
 
@@ -174,7 +178,39 @@ def _probe_for_provider(
     probes: tuple[LocalModelProbe, ...],
     provider: LocalProviderName,
 ) -> LocalModelProbe | None:
+    ready_probe = next(
+        (probe for probe in probes if probe.provider == provider and probe.status == "ready"),
+        None,
+    )
+    if ready_probe is not None:
+        return ready_probe
     return next((probe for probe in probes if probe.provider == provider), None)
+
+
+def _probe_provider_candidates(
+    provider: LocalProviderName,
+    config: ScoutConfig,
+    probe: ProbeLocalModel,
+) -> tuple[LocalModelProbe, ...]:
+    primary = probe(provider, config)
+    if not _should_probe_default_local(provider, config, primary):
+        return (primary,)
+
+    fallback_config = config.model_copy(deep=True)
+    fallback_config.llm.base_url = None
+    return (primary, probe(provider, fallback_config))
+
+
+def _should_probe_default_local(
+    provider: LocalProviderName,
+    config: ScoutConfig,
+    primary: LocalModelProbe,
+) -> bool:
+    return (
+        primary.status != "ready"
+        and config.llm.base_url is not None
+        and _configured_local_provider(config) == provider
+    )
 
 
 def _choices_from_probes(
