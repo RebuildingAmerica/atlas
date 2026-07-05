@@ -19,6 +19,7 @@ dependencies = [
     "prompt-toolkit>=3.0.52",
     "pydantic>=2.5.0",
     "pydantic-settings>=2.1.0",
+    "playwright>=1.50.0",
     "rich>=13.7.0",
     "qrcode>=8.0.0",
 ]

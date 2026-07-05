@@ -257,6 +257,128 @@ async def test_fetch_filtered_when_extraction_fails(monkeypatch: pytest.MonkeyPa
 
 
 @respx.mock
+async def test_fetch_uses_browser_fallback_for_news_app_shell(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """High-value JS-heavy news pages should get one bounded browser render pass."""
+    from atlas_scout.scraper.extractor import ContentExtraction
+
+    rendered_page = PageContent(
+        url="https://news.example.com/local/civic-story",
+        text="Rendered story names a local civic leader and organization. " * 80,
+        title="Rendered civic story",
+        source_type=SourceType.NEWS_ARTICLE,
+        discovered_links=["https://news.example.com/local/follow-up"],
+    )
+    calls: list[str] = []
+
+    async def fake_render(url: str, *, timeout_ms: int) -> ContentExtraction:
+        calls.append(f"{url}:{timeout_ms}")
+        return ContentExtraction(
+            page=rendered_page,
+            reason=None,
+            discovered_links=rendered_page.discovered_links,
+        )
+
+    monkeypatch.setattr(fetcher_module, "render_url_with_browser", fake_render)
+    respx.get("https://news.example.com/local/civic-story").mock(
+        return_value=httpx.Response(
+            200,
+            text="<html><body><div id='root'></div><script src='/app.js'></script></body></html>",
+        )
+    )
+
+    fetcher = AsyncFetcher(
+        max_concurrent=5,
+        request_delay_ms=0,
+        browser_fallback_enabled=True,
+        browser_render_timeout_ms=1234,
+    )
+    result = await fetcher.fetch("https://news.example.com/local/civic-story")
+
+    await fetcher.close()
+
+    assert result is not None
+    assert result.text == rendered_page.text
+    assert result.discovered_links == ["https://news.example.com/local/follow-up"]
+    assert calls == ["https://news.example.com/local/civic-story:1234"]
+
+
+@respx.mock
+async def test_fetch_skips_browser_fallback_for_low_value_thin_page(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Thin ordinary pages should not burn browser CPU."""
+
+    async def fake_render(url: str, *, timeout_ms: int) -> Any:
+        raise AssertionError(f"unexpected browser render for {url}:{timeout_ms}")
+
+    monkeypatch.setattr(fetcher_module, "render_url_with_browser", fake_render)
+    respx.get("https://example.com/tiny").mock(
+        return_value=httpx.Response(200, text="<html><body><p>tiny</p></body></html>")
+    )
+
+    fetcher = AsyncFetcher(
+        max_concurrent=5,
+        request_delay_ms=0,
+        browser_fallback_enabled=True,
+    )
+    result = await fetcher.fetch("https://example.com/tiny")
+
+    await fetcher.close()
+
+    assert result is None
+
+
+@respx.mock
+async def test_fetch_browser_fallback_respects_per_fetcher_budget(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Browser rendering should be capped so a run cannot spend unbounded CPU."""
+    from atlas_scout.scraper.extractor import ContentExtraction
+
+    calls: list[str] = []
+
+    async def fake_render(url: str, *, timeout_ms: int) -> ContentExtraction:
+        del timeout_ms
+        calls.append(url)
+        return ContentExtraction(
+            page=PageContent(
+                url=url,
+                text="Rendered civic article body. " * 80,
+                title="Rendered",
+                source_type=SourceType.NEWS_ARTICLE,
+            ),
+            reason=None,
+            discovered_links=[],
+        )
+
+    monkeypatch.setattr(fetcher_module, "render_url_with_browser", fake_render)
+    for suffix in ("one", "two"):
+        respx.get(f"https://news.example.com/local/{suffix}").mock(
+            return_value=httpx.Response(
+                200,
+                text="<html><body><div id='__next'></div><script></script></body></html>",
+            )
+        )
+
+    fetcher = AsyncFetcher(
+        max_concurrent=5,
+        request_delay_ms=0,
+        browser_fallback_enabled=True,
+        max_browser_renders_per_run=1,
+    )
+    first = await fetcher.fetch("https://news.example.com/local/one")
+    second = await fetcher.fetch("https://news.example.com/local/two")
+
+    await fetcher.close()
+
+    assert first is not None
+    assert second is None
+    assert calls == ["https://news.example.com/local/one"]
+
+
+@respx.mock
 async def test_fetch_pdf_content_type_routes_to_pdf_extractor(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

@@ -144,6 +144,10 @@ class ScraperConfig(BaseModel):
     max_link_depth: int = 2
     max_pages_per_seed: int = 20
     request_delay_ms: int = 200
+    browser_fallback_enabled: bool = True
+    browser_render_timeout_ms: int = 15000
+    max_browser_renders_per_run: int = 8
+    max_browser_concurrent: int = 1
     search_country: str = ""
     search_freshness: str = ""
 

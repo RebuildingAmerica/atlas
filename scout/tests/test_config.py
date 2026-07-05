@@ -21,6 +21,10 @@ def test_load_config_defaults():
     assert config.llm.max_concurrent == 10
     assert config.scraper.max_concurrent_fetches == 20
     assert config.scraper.page_cache_ttl_days == 7
+    assert config.scraper.browser_fallback_enabled is True
+    assert config.scraper.browser_render_timeout_ms == 15000
+    assert config.scraper.max_browser_renders_per_run == 8
+    assert config.scraper.max_browser_concurrent == 1
     assert config.pipeline.min_entry_score == 0.3
 
 
@@ -35,6 +39,8 @@ def test_load_config_from_toml(tmp_path: Path):
 
         [scraper]
         max_concurrent_fetches = 10
+        browser_fallback_enabled = false
+        max_browser_renders_per_run = 3
     """)
     )
     config = load_config(config_file)
@@ -43,6 +49,8 @@ def test_load_config_from_toml(tmp_path: Path):
     assert config.llm.max_concurrent == 5
     assert config.scraper.max_concurrent_fetches == 10
     assert config.scraper.page_cache_ttl_days == 7
+    assert config.scraper.browser_fallback_enabled is False
+    assert config.scraper.max_browser_renders_per_run == 3
 
 
 def test_load_config_with_targets(tmp_path: Path):

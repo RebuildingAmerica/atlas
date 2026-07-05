@@ -1407,6 +1407,10 @@ async def _run_pipeline(
         store=store,
         run_id="pending",
         force_refresh=refresh,
+        browser_fallback_enabled=config.scraper.browser_fallback_enabled,
+        browser_render_timeout_ms=config.scraper.browser_render_timeout_ms,
+        max_browser_renders_per_run=config.scraper.max_browser_renders_per_run,
+        max_browser_concurrent=config.scraper.max_browser_concurrent,
     )
     progress = ProgressRenderer(console=console, quiet=quiet, verbose=verbose_progress)
 

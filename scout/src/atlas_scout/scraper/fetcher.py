@@ -7,10 +7,12 @@ import importlib.util
 import logging
 from datetime import datetime
 from typing import TYPE_CHECKING, Any
+from urllib.parse import urlparse
 
 import httpx
 from atlas_shared import PageContent, SourceType
 
+from atlas_scout.scraper.browser_render import render_url_with_browser
 from atlas_scout.scraper.extractor import ContentExtraction, extract_content_verbose
 
 if TYPE_CHECKING:
@@ -20,6 +22,34 @@ logger = logging.getLogger(__name__)
 
 USER_AGENT = "AtlasScout/1.0 (+https://atlas.rebuildingus.org/scout)"
 _CLAIM_POLL_SECONDS = 0.25
+_BROWSER_FALLBACK_REASONS = frozenset(
+    {"content_not_extractable", "content_below_min_words", "empty_body"}
+)
+_BROWSER_FALLBACK_STATUS_CODES = frozenset({"http_401", "http_403"})
+_APP_SHELL_MARKERS = (
+    'id="__next"',
+    "id='__next'",
+    'id="root"',
+    "id='root'",
+    "data-reactroot",
+    "__NUXT__",
+    "__NEXT_DATA__",
+    "webpackJsonp",
+    "window.__",
+    "ng-version",
+)
+_NEWS_DOMAIN_MARKERS = (
+    "news",
+    "times",
+    "post",
+    "tribune",
+    "journal",
+    "gazette",
+    "herald",
+    "observer",
+    "daily",
+    "weekly",
+)
 
 
 class AsyncFetcher:
@@ -35,6 +65,10 @@ class AsyncFetcher:
         revisit_cached_urls: bool = False,
         force_refresh: bool = False,
         run_id: str | None = None,
+        browser_fallback_enabled: bool = False,
+        browser_render_timeout_ms: int = 15000,
+        max_browser_renders_per_run: int = 8,
+        max_browser_concurrent: int = 1,
     ) -> None:
         """Configure concurrency, delays, and cache refresh policy."""
         self._max_concurrent = max_concurrent
@@ -46,6 +80,12 @@ class AsyncFetcher:
         self._revisit_cached_urls = revisit_cached_urls
         self._force_refresh = force_refresh
         self._run_id = run_id or "anonymous"
+        self._browser_fallback_enabled = browser_fallback_enabled
+        self._browser_render_timeout_ms = browser_render_timeout_ms
+        self._max_browser_renders_per_run = max_browser_renders_per_run
+        self._browser_render_attempts = 0
+        self._browser_budget_lock = asyncio.Lock()
+        self._browser_semaphore = asyncio.Semaphore(max_browser_concurrent)
         self._client = httpx.AsyncClient(
             timeout=self._timeout,
             follow_redirects=True,
@@ -69,7 +109,8 @@ class AsyncFetcher:
     async def fetch(self, url: str) -> PageContent | None:
         """Fetch a URL and return extracted page content when available."""
         outcome = await self.fetch_tracked_verbose(url, task_id="", _store=self._store)
-        return outcome["page"]
+        page = outcome["page"]
+        return page if isinstance(page, PageContent) else None
 
     async def fetch_tracked(
         self,
@@ -79,7 +120,8 @@ class AsyncFetcher:
     ) -> PageContent | None:
         """Fetch a URL and stamp the current page-task ID on the result."""
         outcome = await self.fetch_tracked_verbose(url, task_id=task_id, _store=_store)
-        return outcome["page"]
+        page = outcome["page"]
+        return page if isinstance(page, PageContent) else None
 
     async def fetch_tracked_verbose(
         self,
@@ -141,7 +183,42 @@ class AsyncFetcher:
             try:
                 response = await self._client.get(url)
                 response.raise_for_status()
-            except (httpx.HTTPStatusError, httpx.RequestError) as exc:
+            except httpx.HTTPStatusError as exc:
+                reason = self._error_reason(exc)
+                rendered = await self._maybe_render_with_browser(
+                    url,
+                    html="",
+                    reason=reason,
+                )
+                if rendered is not None and rendered.page is not None:
+                    page = rendered.page.model_copy(
+                        update={"task_id": task_id or rendered.page.task_id}
+                    )
+                    await self._cache_positive_result(page, render_mode="browser")
+                    return self._make_outcome(
+                        url=url,
+                        task_id=task_id,
+                        page=page,
+                        status="fetched",
+                        error=None,
+                        discovered_links=rendered.discovered_links,
+                    )
+                logger.debug("Failed to fetch %s: %s", url, exc)
+                await self._cache_negative_result(
+                    url,
+                    reason=reason,
+                    discovered_links=(rendered.discovered_links if rendered is not None else []),
+                    browser_reason=rendered.reason if rendered is not None else None,
+                )
+                return self._make_outcome(
+                    url=url,
+                    task_id=task_id,
+                    page=None,
+                    status="filtered",
+                    error=reason,
+                    discovered_links=rendered.discovered_links if rendered is not None else [],
+                )
+            except httpx.RequestError as exc:
                 reason = self._error_reason(exc)
                 logger.debug("Failed to fetch %s: %s", url, exc)
                 await self._cache_negative_result(url, reason=reason, discovered_links=[])
@@ -161,10 +238,35 @@ class AsyncFetcher:
                 extracted = extract_content_verbose(response.text, url=url)
             if extracted.page is None:
                 reason = extracted.reason or "content_not_extractable"
+                rendered = await self._maybe_render_with_browser(
+                    url,
+                    html=response.text,
+                    reason=reason,
+                )
+                if rendered is not None and rendered.page is not None:
+                    page = rendered.page.model_copy(
+                        update={"task_id": task_id or rendered.page.task_id}
+                    )
+                    await self._cache_positive_result(page, render_mode="browser")
+                    return self._make_outcome(
+                        url=url,
+                        task_id=task_id,
+                        page=page,
+                        status="fetched",
+                        error=None,
+                        discovered_links=rendered.discovered_links,
+                    )
+
+                discovered_links = extracted.discovered_links
+                browser_reason = None
+                if rendered is not None:
+                    discovered_links = rendered.discovered_links or extracted.discovered_links
+                    browser_reason = rendered.reason
                 await self._cache_negative_result(
                     url,
                     reason=reason,
-                    discovered_links=extracted.discovered_links,
+                    discovered_links=discovered_links,
+                    browser_reason=browser_reason,
                 )
                 return self._make_outcome(
                     url=url,
@@ -172,7 +274,7 @@ class AsyncFetcher:
                     page=None,
                     status="filtered",
                     error=reason,
-                    discovered_links=extracted.discovered_links,
+                    discovered_links=discovered_links,
                 )
 
             page = extracted.page.model_copy(
@@ -181,7 +283,7 @@ class AsyncFetcher:
                     "discovered_links": extracted.discovered_links,
                 }
             )
-            await self._cache_positive_result(page)
+            await self._cache_positive_result(page, render_mode="html")
             return self._make_outcome(
                 url=url,
                 task_id=task_id,
@@ -240,7 +342,7 @@ class AsyncFetcher:
             discovered_links=discovered_links,
         )
 
-    async def _cache_positive_result(self, page: PageContent) -> None:
+    async def _cache_positive_result(self, page: PageContent, *, render_mode: str) -> None:
         """Persist a successfully fetched page outcome."""
         if self._store is None:
             return
@@ -255,6 +357,7 @@ class AsyncFetcher:
                 "published_date": page.published_date.isoformat() if page.published_date else None,
                 "source_type": str(page.source_type),
                 "discovered_links": page.discovered_links,
+                "render_mode": render_mode,
             },
         )
 
@@ -264,6 +367,7 @@ class AsyncFetcher:
         *,
         reason: str,
         discovered_links: list[str],
+        browser_reason: str | None = None,
     ) -> None:
         """Persist a negative fetch outcome so future runs skip duplicate work by default."""
         if self._store is None:
@@ -279,8 +383,39 @@ class AsyncFetcher:
                 "published_date": None,
                 "source_type": str(SourceType.WEBSITE),
                 "discovered_links": discovered_links,
+                "render_mode": "html",
+                "browser_reason": browser_reason,
             },
         )
+
+    async def _maybe_render_with_browser(
+        self,
+        url: str,
+        *,
+        html: str,
+        reason: str,
+    ) -> ContentExtraction | None:
+        """Render high-value failed pages with the bounded browser fallback."""
+        if not self._should_try_browser_render(url=url, html=html, reason=reason):
+            return None
+
+        async with self._browser_budget_lock:
+            if self._browser_render_attempts >= self._max_browser_renders_per_run:
+                return None
+            self._browser_render_attempts += 1
+
+        async with self._browser_semaphore:
+            return await render_url_with_browser(url, timeout_ms=self._browser_render_timeout_ms)
+
+    def _should_try_browser_render(self, *, url: str, html: str, reason: str) -> bool:
+        """Return whether a failed fetch/extract deserves browser CPU."""
+        if not self._browser_fallback_enabled or self._max_browser_renders_per_run <= 0:
+            return False
+        if reason in _BROWSER_FALLBACK_STATUS_CODES:
+            return _looks_like_high_value_url(url)
+        if reason not in _BROWSER_FALLBACK_REASONS:
+            return False
+        return _looks_like_high_value_url(url) or _looks_like_app_shell(html)
 
     @staticmethod
     def _make_outcome(
@@ -340,6 +475,38 @@ def _parse_source_type(value: Any) -> SourceType:
     return SourceType.WEBSITE
 
 
+def _looks_like_high_value_url(url: str) -> bool:
+    """Return whether a URL is worth bounded browser rendering."""
+    parsed = urlparse(url)
+    domain = parsed.netloc.lower()
+    path = parsed.path.lower()
+    if any(marker in domain for marker in _NEWS_DOMAIN_MARKERS):
+        return True
+    return any(
+        segment in path
+        for segment in (
+            "/news/",
+            "/article/",
+            "/articles/",
+            "/story/",
+            "/stories/",
+            "/local/",
+            "/politics/",
+            "/government/",
+        )
+    )
+
+
+def _looks_like_app_shell(html: str) -> bool:
+    """Return whether HTML looks like a JavaScript-rendered app shell."""
+    lower_html = html.lower()
+    if any(marker.lower() in lower_html for marker in _APP_SHELL_MARKERS):
+        return True
+    script_count = lower_html.count("<script")
+    visible_word_count = len(lower_html.replace("<", " ").replace(">", " ").split())
+    return script_count >= 3 and visible_word_count < 120
+
+
 def _coerce_discovered_links(value: Any) -> list[str]:
     """Normalize cached discovered-link metadata into a string list."""
     if isinstance(value, list):
@@ -350,7 +517,7 @@ def _coerce_discovered_links(value: Any) -> list[str]:
 def _extract_pdf_content(data: bytes, *, url: str) -> ContentExtraction:
     """Extract text from PDF bytes using pymupdf if available, otherwise skip."""
     try:
-        import pymupdf
+        import pymupdf  # type: ignore[import-not-found]
     except ImportError:
         logger.debug("pymupdf not installed — skipping PDF: %s", url)
         return ContentExtraction(

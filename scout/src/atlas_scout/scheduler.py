@@ -304,6 +304,10 @@ async def _run_schedule_targets(resources: _SchedulerResources) -> list[str]:
                 request_delay_ms=resources.config.scraper.request_delay_ms,
                 page_cache_ttl_days=resources.config.scraper.page_cache_ttl_days,
                 revisit_cached_urls=resources.config.scraper.revisit_cached_urls,
+                browser_fallback_enabled=resources.config.scraper.browser_fallback_enabled,
+                browser_render_timeout_ms=resources.config.scraper.browser_render_timeout_ms,
+                max_browser_renders_per_run=resources.config.scraper.max_browser_renders_per_run,
+                max_browser_concurrent=resources.config.scraper.max_browser_concurrent,
             )
             try:
                 logger.info(
