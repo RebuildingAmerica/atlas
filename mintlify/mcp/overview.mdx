@@ -42,15 +42,7 @@ Atlas runs a remote MCP server at:
 
 <McpServerUrl />
 
-When you connect your AI assistant to this server, it gains access to Atlas's search, discovery, and place-level civic data tools. Authentication happens automatically through OAuth 2.1 — your client will open a browser window for you to sign in and approve access on first use.
-
-The MCP server URL is also the OAuth resource identifier:
-
-```text
-https://atlas.rebuildingus.org/mcp
-```
-
-Clients that follow the current MCP authorization draft discover protected-resource metadata at `https://atlas.rebuildingus.org/.well-known/oauth-protected-resource/mcp`, then request that `/mcp` resource during both authorization and token exchange. Atlas binds access-token `aud` claims to that resource so tokens issued for a different API surface cannot be replayed against the MCP server.
+When you connect your AI assistant to this server, it gains access to Atlas's search, discovery, and place-level civic data tools. Authentication happens automatically — a compliant client opens a browser window for you to sign in and approve access on first use.
 
 ## Available tools
 
@@ -81,39 +73,217 @@ Workspace admins can see successful REST API and MCP activity in Integration mon
 
 See [Integration monitoring](/mcp/integration-monitoring) for the access requirements and data boundary.
 
-## Choose your client
+## Connect your client
 
-Pick the AI assistant you use and follow the setup guide:
+Pick the AI assistant you use. Atlas uses the same MCP server URL and OAuth flow
+for every client; only the setup surface changes.
 
-<CardGroup cols={2}>
+<Tabs borderBottom>
 
-<Card title="Claude Desktop" icon="message" href="/mcp/claude-desktop">
-Connect through the Connectors UI. No config file needed.
-</Card>
+<Tab title="Claude Desktop" id="claude-desktop" icon="message">
+Claude Desktop supports remote MCP servers natively through Connectors. No
+config file is needed.
 
-<Card title="Claude Code" icon="terminal" href="/mcp/claude-code">
-Add via CLI command or `.mcp.json` for team sharing.
-</Card>
+<Steps>
 
-<Card title="VS Code / Copilot" icon="code" href="/mcp/vscode-copilot">
-Configure in workspace or user settings.
-</Card>
+<Step title="Open Claude Desktop settings">
+Open Claude Desktop and go to **Settings**.
+</Step>
 
-<Card title="Gemini CLI" icon="sparkles" href="/mcp/gemini">
-Add via CLI command or `settings.json`.
-</Card>
+<Step title="Add a connector">
+Select **Connectors** in the sidebar, then click **Add Connector**.
+</Step>
 
-<Card title="Codex CLI" icon="robot" href="/mcp/codex">
-Configure via TOML config file.
-</Card>
+<Step title="Enter the Atlas server URL">
+```text
+https://atlas.rebuildingus.org/mcp
+```
+</Step>
 
-<Card title="Copilot CLI" icon="github" href="/mcp/copilot-cli">
-Configure via JSON config file.
-</Card>
+<Step title="Authorize">
+Click **Connect**. A browser window will open for you to sign in to Atlas and
+approve access.
+</Step>
 
-</CardGroup>
+<Step title="Start using Atlas">
+Once authorized, Atlas tools will appear in your conversations. Try asking:
 
-Using a different MCP client? See [Other MCP clients](/mcp/other-clients) for generic connection instructions.
+> Who's working on housing issues in Kansas City?
+</Step>
+
+</Steps>
+</Tab>
+
+<Tab title="Claude Code" id="claude-code" icon="terminal">
+Claude Code supports remote MCP servers via the `claude mcp add` command.
+
+```bash
+claude mcp add --transport http atlas https://atlas.rebuildingus.org/mcp
+```
+
+To make Atlas available across all projects, add `--scope user`:
+
+```bash
+claude mcp add --transport http --scope user atlas https://atlas.rebuildingus.org/mcp
+```
+
+Run `/mcp` inside a Claude Code session to trigger the OAuth flow. A browser
+window will open for you to sign in and approve access.
+
+To share the Atlas connection with collaborators, add it to your project's
+`.mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "atlas": {
+      "type": "http",
+      "url": "https://atlas.rebuildingus.org/mcp"
+    }
+  }
+}
+```
+
+Commit `.mcp.json` to version control. Each collaborator completes their own
+OAuth flow on first use.
+</Tab>
+
+<Tab title="VS Code / Copilot" id="vscode-copilot" icon="code">
+VS Code supports remote MCP servers for GitHub Copilot with automatic OAuth
+discovery.
+
+[Install Atlas in VS Code](vscode:mcp/install?%7B%22name%22%3A%22atlas%22%2C%22type%22%3A%22http%22%2C%22url%22%3A%22https%3A%2F%2Fatlas.rebuildingus.org%2Fmcp%22%7D)
+
+Or configure manually. For a workspace config, create `.vscode/mcp.json` in your
+project root:
+
+```json
+{
+  "servers": {
+    "atlas": {
+      "type": "http",
+      "url": "https://atlas.rebuildingus.org/mcp"
+    }
+  }
+}
+```
+
+For user settings, open the Command Palette (`Cmd+Shift+P` / `Ctrl+Shift+P`),
+search for **MCP: Add Server**, and enter:
+
+```text
+https://atlas.rebuildingus.org/mcp
+```
+
+The first time Copilot connects to Atlas, VS Code opens a browser window for you
+to sign in and approve access.
+</Tab>
+
+<Tab title="Gemini CLI" id="gemini" icon="sparkles">
+Gemini CLI supports remote MCP servers with automatic OAuth discovery.
+
+```bash
+gemini mcp add atlas "https://atlas.rebuildingus.org/mcp" \
+  --transport http \
+  --scope user
+```
+
+You can also edit `~/.gemini/settings.json` directly:
+
+```json
+{
+  "mcpServers": {
+    "atlas": {
+      "url": "https://atlas.rebuildingus.org/mcp",
+      "type": "http"
+    }
+  }
+}
+```
+
+Gemini CLI discovers Atlas's OAuth server automatically. On first use, it opens a
+browser for you to sign in and approve access. You can also trigger the OAuth
+flow manually:
+
+```text
+/mcp auth atlas
+```
+</Tab>
+
+<Tab title="Codex CLI" id="codex" icon="robot">
+Codex CLI uses TOML configuration and an explicit OAuth login command.
+
+Edit `~/.codex/config.toml` or `.codex/config.toml` in your project root:
+
+```toml
+[mcp_servers.atlas]
+url = "https://atlas.rebuildingus.org/mcp"
+```
+
+Then run:
+
+```bash
+codex mcp login atlas
+```
+
+Codex starts a local callback server, opens your browser, and stores tokens
+securely. Later sessions reuse the stored credentials automatically.
+</Tab>
+
+<Tab title="Copilot CLI" id="copilot-cli" icon="github">
+Copilot CLI supports remote MCP servers with automatic OAuth discovery.
+
+For global config, edit `~/.copilot/mcp-config.json`:
+
+```json
+{
+  "mcpServers": {
+    "atlas": {
+      "type": "http",
+      "url": "https://atlas.rebuildingus.org/mcp"
+    }
+  }
+}
+```
+
+For workspace config, create `.mcp.json` in your project root:
+
+```json
+{
+  "mcpServers": {
+    "atlas": {
+      "type": "http",
+      "url": "https://atlas.rebuildingus.org/mcp"
+    }
+  }
+}
+```
+
+Copilot CLI opens a browser for you to sign in and approve access the first time
+a tool call needs authentication.
+</Tab>
+
+<Tab title="Other MCP clients" id="other-clients" icon="plug">
+Any MCP client that supports remote HTTP MCP servers and the current MCP
+authorization flow can connect to Atlas.
+
+```text
+https://atlas.rebuildingus.org/mcp
+```
+
+If your client asks for a transport, choose **HTTP** or **Streamable HTTP**. If
+it asks for authentication, choose the automatic OAuth flow. Atlas publishes the
+metadata a compliant client needs, so the server URL should be enough.
+
+If your client only supports local `stdio` servers, SSE-only remote servers, or
+manual OAuth endpoint configuration, use a newer MCP client before connecting to
+Atlas.
+</Tab>
+
+</Tabs>
+
+After connecting, see [Available tools](/mcp/tools) for tool parameters or
+[Tutorial: Research a city](/mcp/tutorials/research-city) for a complete session.
 
 ## Troubleshooting
 
@@ -121,7 +291,7 @@ Using a different MCP client? See [Other MCP clients](/mcp/other-clients) for ge
 Check that `https://atlas.rebuildingus.org/mcp` is reachable from your network. If you're behind a corporate proxy, ensure it allows outbound HTTPS.
 
 **OAuth window doesn't open**
-Make sure your default browser is set correctly. Some clients require a specific callback URL to be reachable — check the client-specific guide.
+Make sure your default browser is set correctly and your MCP client supports remote OAuth login.
 
 **"Unauthorized" after connecting**
 Your OAuth token may have expired. Disconnect and reconnect the server in your client to trigger a fresh authorization flow.
@@ -133,12 +303,11 @@ For more help, see [MCP troubleshooting](/mcp/troubleshooting) or the general [T
 
 ## References
 
-Atlas builds on the published MCP specification and the OAuth 2.1 family of standards. If you're integrating a custom client or auditing Atlas's auth posture, these are the authoritative references:
+Atlas builds on the published MCP specification and the OAuth 2.1 family of standards. These references are useful background for understanding what compliant clients are doing automatically:
 
 - [MCP base protocol — current draft](https://modelcontextprotocol.io/specification/draft/basic) — Lifecycle, transports, and session semantics.
-- [MCP authorization — current draft](https://modelcontextprotocol.io/specification/draft/basic/authorization) — OAuth 2.1 flow, PKCE, RFC 9728 protected-resource metadata, RFC 8707 resource indicators, Client ID Metadata Documents, and step-up authorization.
-- [MCP Streamable HTTP transport — current draft](https://modelcontextprotocol.io/specification/draft/basic/transports#streamable-http) — Atlas mounts the FastMCP Streamable HTTP transport at `/mcp`.
+- [MCP authorization — current draft](https://modelcontextprotocol.io/specification/draft/basic/authorization) — The authorization behavior used by compliant remote MCP clients.
+- [MCP Streamable HTTP transport — current draft](https://modelcontextprotocol.io/specification/draft/basic/transports#streamable-http) — The remote transport Atlas supports.
 - [MCP security best practices](https://modelcontextprotocol.io/specification/draft/basic/security_best_practices) — Token audience validation, token passthrough prohibitions, confused-deputy mitigations.
 - [MCP Registry](/mcp/registry) — How Atlas lists itself and how clients discover it.
-- [Client ID Metadata Documents](/mcp/client-id-metadata) — Atlas's CIMD shim for clients with no prior relationship.
 - [Authentication reference](/api-reference/authentication) — Token lifecycle, refresh rotation, and the discovery URL catalog.

@@ -99,12 +99,6 @@ Authentication succeeded and tool calls don't return errors, but the client UI s
 
 **What to do.** Restart the client. If tools still don't appear, run the Inspector against Atlas to confirm `tools/list` returns the expected 12 tools.
 
-## OAuth client rotation
-
-If you're using [Client ID Metadata Documents](/mcp/client-id-metadata), updating your client metadata is as simple as editing the JSON document at the URL Atlas fetched. The next `/oauth2/authorize` call refetches the document and updates Atlas's synthetic `oauthClient` row in place.
-
-If you registered via Dynamic Client Registration, re-running registration with the same client_id shape returns a new client_secret. Update the secret in your client and discard the old one.
-
 ## Still stuck?
 
 - See the [authentication reference](/api-reference/authentication) for the full discovery-URL catalog and token semantics.
