@@ -992,7 +992,8 @@ class DiscoveryJobCRUD:
         """Mark a job as completed."""
         now = db.now_iso()
         await conn.execute(
-            "UPDATE discovery_jobs SET status = 'completed', completed_at = ? WHERE id = ?",
+            "UPDATE discovery_jobs SET status = 'completed', completed_at = ? "
+            "WHERE id = ? AND status != 'cancelled'",
             (now, job_id),
         )
         await conn.commit()
@@ -1019,17 +1020,17 @@ class DiscoveryJobCRUD:
         new_retry = job.retry_count + 1
         if retryable and new_retry <= job.max_retries:
             next_attempt_at = _retry_backoff_at(job_id, new_retry)
-            await conn.execute(
+            cursor = await conn.execute(
                 """
                 UPDATE discovery_jobs
                 SET status = 'queued', retry_count = ?, error_message = ?,
                     claimed_by = NULL, claimed_until = NULL, next_attempt_at = ?
-                WHERE id = ?
+                WHERE id = ? AND status != 'cancelled'
                 """,
                 (new_retry, error_message, next_attempt_at, job_id),
             )
             await conn.commit()
-            return True
+            return getattr(cursor, "rowcount", 0) > 0
 
         now = db.now_iso()
         await conn.execute(
@@ -1037,7 +1038,7 @@ class DiscoveryJobCRUD:
             UPDATE discovery_jobs
             SET status = 'failed', retry_count = ?, error_message = ?, completed_at = ?,
                 claimed_by = NULL, claimed_until = NULL, next_attempt_at = NULL
-            WHERE id = ?
+            WHERE id = ? AND status != 'cancelled'
             """,
             (new_retry, error_message, now, job_id),
         )

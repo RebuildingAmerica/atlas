@@ -435,6 +435,59 @@ class TestDiscoveryJobCRUDCancel:
         assert done is not None
         assert done.status == "completed"
 
+    @pytest.mark.asyncio
+    async def test_complete_after_cancel_does_not_resurrect_job(self, db_url: str) -> None:
+        conn = await get_db_connection(db_url)
+        try:
+            run_id = await DiscoveryRunCRUD.create(
+                conn, location_query="KC", state="MO", issue_areas=["x"]
+            )
+            job_id = await DiscoveryJobCRUD.create(conn, run_id=run_id)
+            await DiscoveryJobCRUD.cancel(conn, job_id)
+            await DiscoveryJobCRUD.complete(conn, job_id)
+            job = await DiscoveryJobCRUD.get_by_id(conn, job_id)
+        finally:
+            await conn.close()
+
+        assert job is not None
+        assert job.status == "cancelled"
+
+    @pytest.mark.asyncio
+    async def test_fail_after_cancel_does_not_resurrect_job(self, db_url: str) -> None:
+        conn = await get_db_connection(db_url)
+        try:
+            run_id = await DiscoveryRunCRUD.create(
+                conn, location_query="KC", state="MO", issue_areas=["x"]
+            )
+            job_id = await DiscoveryJobCRUD.create(conn, run_id=run_id)
+            await DiscoveryJobCRUD.cancel(conn, job_id)
+            requeued = await DiscoveryJobCRUD.fail(conn, job_id, "boom")
+            job = await DiscoveryJobCRUD.get_by_id(conn, job_id)
+        finally:
+            await conn.close()
+
+        assert requeued is False
+        assert job is not None
+        assert job.status == "cancelled"
+
+    @pytest.mark.asyncio
+    async def test_fail_dead_letter_after_cancel_does_not_resurrect_job(self, db_url: str) -> None:
+        conn = await get_db_connection(db_url)
+        try:
+            run_id = await DiscoveryRunCRUD.create(
+                conn, location_query="KC", state="MO", issue_areas=["x"]
+            )
+            job_id = await DiscoveryJobCRUD.create(conn, run_id=run_id, max_retries=0)
+            await DiscoveryJobCRUD.cancel(conn, job_id)
+            requeued = await DiscoveryJobCRUD.fail(conn, job_id, "boom")
+            job = await DiscoveryJobCRUD.get_by_id(conn, job_id)
+        finally:
+            await conn.close()
+
+        assert requeued is False
+        assert job is not None
+        assert job.status == "cancelled"
+
 
 class TestDiscoveryJobCRUDClaimNext:
     @pytest.mark.asyncio
