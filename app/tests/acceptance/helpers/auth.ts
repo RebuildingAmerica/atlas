@@ -104,6 +104,7 @@ export async function performSignIn(page: Page) {
     const pathname = url.pathname;
     return pathname === "/account" || pathname === "/account-setup" || pathname === "/organization";
   });
+  await page.waitForLoadState("networkidle");
 
   if (new URL(page.url()).pathname === "/account-setup") {
     await page.getByRole("button", { name: "Add passkey" }).click();
@@ -111,5 +112,6 @@ export async function performSignIn(page: Page) {
       const pathname = url.pathname;
       return pathname === "/account" || pathname === "/organization" || pathname === "/discovery";
     });
+    await page.waitForLoadState("networkidle");
   }
 }

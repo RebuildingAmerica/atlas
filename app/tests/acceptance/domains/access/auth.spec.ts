@@ -16,9 +16,11 @@ test("auth e2e: magic-link sign-in lands on /account and sign-out returns home",
   await expect(page.getByRole("heading", { name: "Account" })).toBeVisible();
   await expect(page.locator("#profile").getByText("person@atlas.test")).toBeVisible();
   await expect(page.getByText("Passkeys", { exact: true })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Workspace" })).toBeVisible();
-  await expect(page.getByText("Not set", { exact: true })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Open" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Workspace context" })).toBeVisible();
+
+  const workspaceContext = page.getByRole("heading", { name: "Workspace context" }).locator("..");
+  await expect(workspaceContext.getByText("Not set", { exact: true })).toBeVisible();
+  await expect(workspaceContext.getByRole("link", { name: "Open" })).toBeVisible();
 
   await page.getByRole("button", { name: "Profile menu" }).click();
   await Promise.all([
