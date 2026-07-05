@@ -101,6 +101,7 @@ SCOUT_DEV_DEFAULT_SCOUT_PROJECT=$quoted_scout_project
 SCOUT_DEV_ATLAS_URL="\${SCOUT_DEV_ATLAS_URL:-\$SCOUT_DEV_DEFAULT_ATLAS_URL}"
 SCOUT_DEV_SCOUT_PROJECT="\${SCOUT_DEV_SCOUT_PROJECT:-\$SCOUT_DEV_DEFAULT_SCOUT_PROJECT}"
 SCOUT_DEV_SCOUT_BIN="\${SCOUT_DEV_SCOUT_BIN:-}"
+export ATLAS_SCOUT_COMMAND_NAME="\${ATLAS_SCOUT_COMMAND_NAME:-scout-dev}"
 
 run_scout() {
   if [ -n "\$SCOUT_DEV_SCOUT_BIN" ]; then
@@ -194,6 +195,12 @@ forward_with_dev_atlas_url() {
 
   run_scout "\${prefix[@]}" "\$@" --atlas-url "\$SCOUT_DEV_ATLAS_URL" "\${remaining_args[@]}"
 }
+
+if [ -n "\${_SCOUT_DEV_COMPLETE:-}" ]; then
+  export _SCOUT_COMPLETE="\$_SCOUT_DEV_COMPLETE"
+  unset _SCOUT_DEV_COMPLETE
+  run_scout "\$@"
+fi
 
 if [ "\$#" -eq 0 ]; then
   run_scout --help

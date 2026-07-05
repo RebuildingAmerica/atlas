@@ -139,6 +139,30 @@ The smoke check installs Scout into a temporary virtualenv, runs the installed
 that search keys avoid plaintext file storage, and confirms worker startup
 fails clearly before login.
 
+Scout includes shell completion generation and standard man page generation as
+package capabilities, not as a top-level product command. Normal users should
+not have to discover a one-time `man` command; onboarding and installers should
+put shell help where the operating environment already expects it. `scout setup`
+can install both:
+
+```bash
+scout setup --install-completion --install-man
+```
+
+Completion generation uses Click's native shell completion for Bash, Zsh, and
+Fish. `--completion-shell auto` detects `$SHELL`; users can pass
+`--completion-shell bash|zsh|fish` and `--completion-dir` when they want a
+specific destination. Setup writes completion scripts to user-level standard
+locations, asks before changing `.zshrc` or `.bashrc`, and prints manual startup
+instructions in non-interactive shells. Fish completions load automatically from
+the standard user completions directory.
+
+Man pages are generated from the Click command tree and installed as ordinary
+section 1 files. `--man-dir` overrides the default user man directory. Hidden or
+internal commands are excluded. This keeps `man scout` and `man scout-run`
+available in environments that index user manpaths without making man page
+generation part of the everyday Scout command surface.
+
 For day-to-day local Atlas development, install the managed `scout-dev` command:
 
 ```bash
@@ -157,6 +181,10 @@ Local development must go through `scout-dev` or an explicit `--atlas-url`.
 For Portless HTTPS aliases, it also exports `SSL_CERT_FILE` to
 `~/.portless/ca.pem` when that file exists and no `SSL_CERT_FILE` override is
 already set. Use `PORTLESS_CA_FILE` when the Portless CA lives somewhere else.
+For shell integration, `scout-dev` sets `ATLAS_SCOUT_COMMAND_NAME=scout-dev` and
+maps `_SCOUT_DEV_COMPLETE` to the wrapped `scout` entry point, so completion
+scripts and generated man pages target the command the developer actually
+types.
 Explicit `--atlas-url` still wins. Acceptance tests or alternate local stacks
 can bake a different default into the wrapper:
 
@@ -185,6 +213,8 @@ completion, and the resulting remote run receipt.
 
 ```bash
 scout setup [--atlas-url https://atlas.rebuildingus.org] [--no-browser]
+            [--install-completion] [--completion-shell auto|bash|zsh|fish]
+            [--completion-dir DIR] [--install-man] [--man-dir DIR]
 scout login [--atlas-url https://atlas.rebuildingus.org] [--no-browser]
 scout doctor [--worker] [--json]
 scout config create-profile NAME

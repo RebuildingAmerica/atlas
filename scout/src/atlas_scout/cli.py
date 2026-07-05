@@ -87,6 +87,7 @@ from atlas_scout.login_flow import (
     begin_login,
     complete_login,
 )
+from atlas_scout.manpages import ManPageInstallResult, install_man_pages
 from atlas_scout.pipeline_support import close_if_supported as _close_if_supported
 from atlas_scout.runtime import build_runtime_profile
 from atlas_scout.search_keys import (
@@ -94,6 +95,16 @@ from atlas_scout.search_keys import (
     has_search_api_key,
     resolve_search_api_key,
     save_search_api_key,
+)
+from atlas_scout.shell_integration import (
+    CompletionInstallResult,
+    CompletionShellOption,
+    ShellIntegrationError,
+    ShellName,
+    append_managed_rc_block,
+    command_name_from_environment,
+    detect_shell,
+    install_completion_script,
 )
 
 if TYPE_CHECKING:
@@ -1741,8 +1752,42 @@ def _write_toml(path: Path, data: dict[str, dict[str, str | int | float | bool]]
 @main.command("setup")
 @click.option("--atlas-url", default=None, help="Atlas app URL for browser login.")
 @click.option("--no-browser", "open_browser", flag_value=False, default=True)
+@click.option(
+    "--install-completion",
+    is_flag=True,
+    help="Install shell autocomplete for scout or scout-dev.",
+)
+@click.option("--install-man", is_flag=True, help="Install standard man pages.")
+@click.option(
+    "--completion-shell",
+    type=click.Choice(["auto", "bash", "zsh", "fish"]),
+    default="auto",
+    show_default=True,
+    help="Shell to install autocomplete for.",
+)
+@click.option(
+    "--completion-dir",
+    type=click.Path(file_okay=False, dir_okay=True, path_type=Path),
+    default=None,
+    help="Completion install directory.",
+)
+@click.option(
+    "--man-dir",
+    type=click.Path(file_okay=False, dir_okay=True, path_type=Path),
+    default=None,
+    help="Man page install directory.",
+)
 @click.pass_context
-def setup_command(ctx: click.Context, atlas_url: str | None, open_browser: bool) -> None:
+def setup_command(
+    ctx: click.Context,
+    atlas_url: str | None,
+    open_browser: bool,
+    install_completion: bool,
+    install_man: bool,
+    completion_shell: CompletionShellOption,
+    completion_dir: Path | None,
+    man_dir: Path | None,
+) -> None:
     """Set up Scout on this computer."""
     asyncio.run(
         _setup_onboarding(
@@ -1752,6 +1797,11 @@ def setup_command(ctx: click.Context, atlas_url: str | None, open_browser: bool)
             requested_profile_name=ctx.obj["requested_profile_name"],
             atlas_url=atlas_url,
             open_browser=open_browser,
+            install_completion=install_completion,
+            install_man=install_man,
+            completion_shell=completion_shell,
+            completion_dir=completion_dir,
+            man_dir=man_dir,
         )
     )
 
@@ -1764,6 +1814,11 @@ async def _setup_onboarding(
     requested_profile_name: str | None,
     atlas_url: str | None,
     open_browser: bool,
+    install_completion: bool,
+    install_man: bool,
+    completion_shell: CompletionShellOption,
+    completion_dir: Path | None,
+    man_dir: Path | None,
 ) -> None:
     """Run Scout's low-decision onboarding flow."""
     console.print("[bold]Scout setup[/]")
@@ -1791,6 +1846,14 @@ async def _setup_onboarding(
     else:
         console.print(f"Signed in as [bold]{session.user_email}[/]")
 
+    _install_requested_shell_integrations(
+        install_completion=install_completion,
+        install_man=install_man,
+        completion_shell=completion_shell,
+        completion_dir=completion_dir,
+        man_dir=man_dir,
+    )
+
     resolution = _setup_local_model_provider(config)
     if not resolution.ready:
         print_local_model_setup_help(console, resolution, default_model=config.llm.model)
@@ -1806,6 +1869,101 @@ async def _setup_onboarding(
     console.print()
     console.print("[green]Scout setup complete.[/]")
     console.print("[dim]Run `scout doctor` to check this computer before discovery work.[/]")
+
+
+def _install_requested_shell_integrations(
+    *,
+    install_completion: bool,
+    install_man: bool,
+    completion_shell: CompletionShellOption,
+    completion_dir: Path | None,
+    man_dir: Path | None,
+) -> None:
+    """Install requested shell artifacts during setup."""
+    if not install_completion and not install_man:
+        return
+
+    command_name = command_name_from_environment()
+    if install_completion:
+        try:
+            shell = _resolve_completion_shell(completion_shell)
+            completion_result = _install_completion_for_setup(
+                command_name=command_name,
+                shell=shell,
+                completion_dir=completion_dir,
+            )
+        except ShellIntegrationError as exc:
+            _exit_with_error(CliError(title="Completion setup failed", message=str(exc)))
+        _print_completion_install_result(completion_result)
+
+    if install_man:
+        man_result = _install_man_pages_for_setup(command_name=command_name, man_dir=man_dir)
+        _print_man_page_install_result(man_result)
+
+
+def _resolve_completion_shell(completion_shell: CompletionShellOption) -> ShellName:
+    """Resolve auto shell selection to a concrete supported shell."""
+    if completion_shell != "auto":
+        return completion_shell
+    return detect_shell()
+
+
+def _install_completion_for_setup(
+    *,
+    command_name: str,
+    shell: ShellName,
+    completion_dir: Path | None,
+) -> CompletionInstallResult:
+    """Install shell completion for setup."""
+    return install_completion_script(
+        main,
+        command_name=command_name,
+        shell=shell,
+        completion_dir=completion_dir,
+    )
+
+
+def _install_man_pages_for_setup(
+    *,
+    command_name: str,
+    man_dir: Path | None,
+) -> ManPageInstallResult:
+    """Install man pages for setup."""
+    return install_man_pages(main, command_name=command_name, man_dir=man_dir)
+
+
+def _print_completion_install_result(result: CompletionInstallResult) -> None:
+    """Print completion install result and optional shell startup action."""
+    console.print(f"[green]Installed {result.shell} completion[/] {result.path}")
+    if result.rc_path is None or result.rc_block is None:
+        console.print(f"[dim]{result.activation_note}[/]")
+        return
+
+    if sys.stdin.isatty() and click.confirm(
+        f"Update {result.rc_path} so {result.command_name} completion loads automatically?",
+        default=False,
+    ):
+        changed = append_managed_rc_block(
+            result.rc_path,
+            name=f"{result.command_name} completion",
+            block=result.rc_block,
+        )
+        if changed:
+            console.print(f"[green]Updated[/] {result.rc_path}")
+        else:
+            console.print(f"[dim]{result.rc_path} already has the Scout completion block.[/]")
+        return
+
+    console.print(f"[dim]{result.activation_note}[/]")
+    console.print(f"[dim]To load it automatically, add this to {result.rc_path}:[/]")
+    console.print(result.rc_block)
+
+
+def _print_man_page_install_result(result: ManPageInstallResult) -> None:
+    """Print man page install result."""
+    count = len(result.files)
+    label = "man page" if count == 1 else "man pages"
+    console.print(f"[green]Installed {count} {label}[/] {result.man_dir}")
 
 
 def _select_setup_profile(
