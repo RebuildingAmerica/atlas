@@ -60,6 +60,16 @@ export interface PlaceLatestParams {
   sourceTypes?: SourceType[];
 }
 
+export type PlaceActorSort = "relevance" | "source_count" | "recent" | "name";
+
+export interface PlaceActorParams {
+  cursor?: string;
+  limit?: number;
+  query?: string;
+  sort?: PlaceActorSort;
+  type?: EntryType | null;
+}
+
 export interface PlaceLatestLinkedActor {
   href: string;
   id: string;

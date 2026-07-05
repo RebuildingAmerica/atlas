@@ -40,6 +40,7 @@ import type {
   MapPointCollection,
   MapPointParams,
   PlaceActorList,
+  PlaceActorParams,
   PlaceActorSummary,
   PlaceFact,
   PlaceGovernmentSummary,
@@ -406,6 +407,16 @@ function buildPlaceLatestParams(params: PlaceLatestParams = {}): ListPlaceSource
   };
 }
 
+function buildPlaceActorParams(params: PlaceActorParams = {}): ListPlaceEntitiesParams {
+  return {
+    cursor: params.cursor,
+    entity_type: params.type ? [params.type] : undefined,
+    limit: params.limit ?? 20,
+    sort: params.sort === "relevance" ? undefined : params.sort,
+    text: params.query?.trim() || undefined,
+  };
+}
+
 function entityHref(entry: Entry): string {
   if (!entry.slug) {
     return `/entries/${entry.id}`;
@@ -491,9 +502,9 @@ async function listPlaceLatest(
 
 async function listPlaceActors(
   placeSlug: string,
-  params: ListPlaceEntitiesParams,
+  params: PlaceActorParams = {},
 ): Promise<PlaceActorList> {
-  const response = await listPlaceEntities(placeSlug, params);
+  const response = await listPlaceEntities(placeSlug, buildPlaceActorParams(params));
   return {
     items: response.items?.map(mapEntity).map(mapPlaceActor) ?? [],
     nextCursor: response.next_cursor ?? undefined,

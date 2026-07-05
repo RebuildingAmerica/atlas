@@ -58,6 +58,8 @@ export type {
 export type { IssueArea, TaxonomyResponse } from "./taxonomy";
 export type {
   PlaceActorList,
+  PlaceActorParams,
+  PlaceActorSort,
   PlaceActorSummary,
   PlaceFact,
   PlaceGovernmentLink,

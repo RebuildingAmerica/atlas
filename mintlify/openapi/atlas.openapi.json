@@ -22018,7 +22018,7 @@
     },
     "/api/places/{place_key}/entities": {
       "get": {
-        "description": "List Atlas entities associated with one place, with optional issue-area, entity-type, source-type, and text filters.\n\nUse this place operation when the user's question is local. Place-first results are most useful when paired with issue filters, source review, and coverage context.\n\nThis is the most natural public discovery entry point: choose a place first, then refine by issue area or actor type. Use coverage and sources before interpreting absence as a real local gap.",
+        "description": "List Atlas entities associated with one place, with optional issue-area, entity-type, source-type, text, and sort controls.\n\nUse this place operation when the user's question is local. Place-first results are most useful when paired with issue filters, source review, and coverage context.\n\nThis is the most natural public discovery entry point: choose a place first, then refine by issue area or actor type. Use coverage and sources before interpreting absence as a real local gap.",
         "operationId": "listPlaceEntities",
         "parameters": [
           {
@@ -22101,6 +22101,22 @@
                 }
               ],
               "title": "Text"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "default": "relevance",
+              "enum": [
+                "relevance",
+                "source_count",
+                "recent",
+                "name"
+              ],
+              "title": "Sort",
+              "type": "string"
             }
           },
           {

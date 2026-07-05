@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import AsyncGenerator  # noqa: TC003
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel, Field
@@ -151,7 +151,7 @@ async def get_place_page_context(
     "/places/{place_key}/entities",
     response_model=EntityCollectionResponse,
     summary="List place entities",
-    description="List Atlas entities associated with one place, with optional issue-area, entity-type, source-type, and text filters.",
+    description="List Atlas entities associated with one place, with optional issue-area, entity-type, source-type, text, and sort controls.",
     operation_id="listPlaceEntities",
     response_description="A paginated collection of Atlas entities for the requested place.",
     tags=["places"],
@@ -163,6 +163,7 @@ async def get_place_entities(  # noqa: PLR0913
     entity_type: list[str] | None = Query(None),
     source_type: list[str] | None = Query(None),
     text: str | None = Query(None),
+    sort: Literal["relevance", "source_count", "recent", "name"] = Query("relevance"),
     limit: int = Query(20, ge=1, le=100),
     cursor: str | None = Query(None),
     settings: Settings = Depends(get_settings),
@@ -181,6 +182,7 @@ async def get_place_entities(  # noqa: PLR0913
                 entity_types=entity_type,
                 source_types=source_type,
                 text=text,
+                sort=sort,
                 limit=limit,
                 cursor=cursor,
             )

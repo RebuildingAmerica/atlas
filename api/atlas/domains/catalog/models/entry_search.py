@@ -137,6 +137,7 @@ class EntrySearchMixin:
         source_types: builtins.list[str] | None = None,
         source_patterns: builtins.list[str] | None = None,
         affiliated_org_id: str | None = None,
+        sort: str = "relevance",
         limit: int = 20,
         offset: int = 0,
     ) -> dict[str, Any]:
@@ -163,6 +164,8 @@ class EntrySearchMixin:
             Source-type filters. Default is None.
         source_patterns : builtins.list[str] | None, optional
             Source-pattern filters such as ``single_source`` or ``multi_source``. Default is None.
+        sort : str, optional
+            Sort order: relevance, source_count, recent, or name. Default is relevance.
         limit : int, optional
             Page size. Default is 20.
         offset : int, optional
@@ -196,6 +199,7 @@ class EntrySearchMixin:
         paged_records = await EntrySearchMixin._load_entries_with_metrics(
             conn,
             entry_ids=matched_ids,
+            sort=sort,
             limit=limit,
             offset=offset,
         )
@@ -422,6 +426,7 @@ class EntrySearchMixin:
     async def _load_entries_with_metrics(
         conn: aiosqlite.Connection,
         entry_ids: builtins.list[str],
+        sort: str,
         limit: int,
         offset: int,
     ) -> builtins.list[dict[str, Any]]:
@@ -429,6 +434,7 @@ class EntrySearchMixin:
             return []
 
         placeholders = _make_placeholders(entry_ids)
+        order_clause = _entry_search_order_clause(sort)
         cursor = await conn.execute(
             f"""
             SELECT
@@ -442,43 +448,7 @@ class EntrySearchMixin:
             LEFT JOIN sources s ON es.source_id = s.id
             WHERE e.id IN ({placeholders})
             GROUP BY e.id
-            ORDER BY
-                (
-                    CASE WHEN e.type IN ('person', 'organization') THEN 1 ELSE 0 END
-                    + CASE
-                        WHEN TRIM(COALESCE(e.description, '')) <> ''
-                          OR TRIM(COALESCE(e.custom_bio, '')) <> ''
-                        THEN 1 ELSE 0
-                      END
-                    + CASE
-                        WHEN e.city IS NOT NULL
-                          OR e.state IS NOT NULL
-                          OR e.region IS NOT NULL
-                          OR e.full_address IS NOT NULL
-                          OR e.geo_specificity = 'local'
-                        THEN 1 ELSE 0
-                      END
-                    + CASE WHEN COUNT(DISTINCT eia.issue_area) > 0 THEN 1 ELSE 0 END
-                    + CASE WHEN COUNT(DISTINCT es.source_id) > 0 THEN 1 ELSE 0 END
-                ) DESC,
-                CASE
-                    WHEN e.type IN ('person', 'organization') THEN 0
-                    WHEN e.type = 'initiative' THEN 1
-                    ELSE 2
-                END ASC,
-                CASE
-                    WHEN e.website IS NOT NULL
-                      OR e.email IS NOT NULL
-                      OR e.phone IS NOT NULL
-                      OR e.social_media IS NOT NULL
-                    THEN 1
-                    ELSE 0
-                END DESC,
-                source_count DESC,
-                latest_source_date DESC,
-                e.verified DESC,
-                e.updated_at DESC,
-                e.name ASC
+            ORDER BY {order_clause}
             LIMIT ? OFFSET ?
             """,
             [*entry_ids, limit, offset],
@@ -623,6 +593,75 @@ class EntrySearchMixin:
 def _make_placeholders(values: Sequence[object]) -> str:
     """Create a comma-separated placeholder list for SQLite IN clauses."""
     return ", ".join(["?"] * len(values))
+
+
+def _entry_search_order_clause(sort: str) -> str:
+    """Return a safe static ORDER BY clause for public entity search."""
+    clauses = {
+        "relevance": """
+            (
+                CASE WHEN e.type IN ('person', 'organization') THEN 1 ELSE 0 END
+                + CASE
+                    WHEN TRIM(COALESCE(e.description, '')) <> ''
+                      OR TRIM(COALESCE(e.custom_bio, '')) <> ''
+                    THEN 1 ELSE 0
+                  END
+                + CASE
+                    WHEN e.city IS NOT NULL
+                      OR e.state IS NOT NULL
+                      OR e.region IS NOT NULL
+                      OR e.full_address IS NOT NULL
+                      OR e.geo_specificity = 'local'
+                    THEN 1 ELSE 0
+                  END
+                + CASE WHEN COUNT(DISTINCT eia.issue_area) > 0 THEN 1 ELSE 0 END
+                + CASE WHEN COUNT(DISTINCT es.source_id) > 0 THEN 1 ELSE 0 END
+            ) DESC,
+            CASE
+                WHEN e.type IN ('person', 'organization') THEN 0
+                WHEN e.type = 'initiative' THEN 1
+                ELSE 2
+            END ASC,
+            CASE
+                WHEN e.website IS NOT NULL
+                  OR e.email IS NOT NULL
+                  OR e.phone IS NOT NULL
+                  OR e.social_media IS NOT NULL
+                THEN 1
+                ELSE 0
+            END DESC,
+            source_count DESC,
+            latest_source_date DESC,
+            e.verified DESC,
+            e.updated_at DESC,
+            LOWER(e.name) ASC
+        """,
+        "source_count": """
+            source_count DESC,
+            latest_source_date DESC,
+            e.verified DESC,
+            LOWER(e.name) ASC
+        """,
+        "recent": """
+            latest_source_date DESC,
+            source_count DESC,
+            e.verified DESC,
+            LOWER(e.name) ASC
+        """,
+        "name": """
+            LOWER(e.name) ASC,
+            source_count DESC,
+            latest_source_date DESC,
+            e.verified DESC
+        """,
+    }
+    if sort not in clauses:
+        raise _invalid_entity_sort(sort)
+    return clauses[sort]
+
+
+def _invalid_entity_sort(sort: str) -> ValueError:
+    return ValueError(f"Invalid entity sort: {sort}")
 
 
 def _facet_rows_to_dicts(rows: list[tuple[Any, Any]]) -> list[dict[str, Any]]:

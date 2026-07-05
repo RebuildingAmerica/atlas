@@ -58,6 +58,59 @@ async def test_get_place_entities_filters_by_issue_and_entity_type(
 
 
 @pytest.mark.asyncio
+async def test_get_place_entities_sorts_by_recent_activity(
+    test_client: object,
+    test_db: object,
+) -> None:
+    """Place entity sorting should be honored by the public endpoint."""
+    older_id = await EntryCRUD.create(
+        test_db,
+        entry_type="organization",
+        name="Reno Older Coalition",
+        description="Older source coverage.",
+        city="Reno",
+        state="NV",
+        geo_specificity="local",
+    )
+    newer_id = await EntryCRUD.create(
+        test_db,
+        entry_type="organization",
+        name="Reno Newer Coalition",
+        description="Newer source coverage.",
+        city="Reno",
+        state="NV",
+        geo_specificity="local",
+    )
+    older_source_id = await SourceCRUD.create(
+        test_db,
+        url="https://example.com/reno-older",
+        source_type="news_article",
+        extraction_method="manual",
+        title="Older Reno source",
+        publication="Reno Gazette",
+        published_date=date(2026, 1, 1),
+    )
+    newer_source_id = await SourceCRUD.create(
+        test_db,
+        url="https://example.com/reno-newer",
+        source_type="news_article",
+        extraction_method="manual",
+        title="Newer Reno source",
+        publication="Reno Gazette",
+        published_date=date(2026, 2, 1),
+    )
+    await SourceCRUD.link_to_entry(test_db, older_id, older_source_id)
+    await SourceCRUD.link_to_entry(test_db, newer_id, newer_source_id)
+    await test_db.commit()
+
+    response = await test_client.get("/api/places/reno-nv/entities?sort=recent")
+
+    assert response.status_code == STATUS_OK
+    payload = response.json()
+    assert payload["items"][0]["id"] == newer_id
+
+
+@pytest.mark.asyncio
 async def test_entity_and_place_filters_accept_comma_delimited_query_values(
     test_client: object,
     test_db: object,

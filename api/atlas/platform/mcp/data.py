@@ -122,6 +122,7 @@ class EntitySearchOptions(TypedDict, total=False):
     text: str | None
     entity_types: list[str] | None
     source_types: list[str] | None
+    sort: str | None
     limit: int
     cursor: str | None
 
@@ -179,12 +180,14 @@ class AtlasDataService:
         text: str | None = None,
         entity_types: list[str] | None = None,
         source_types: list[str] | None = None,
+        sort: str | None = "relevance",
         limit: int = 20,
         cursor: str | None = None,
     ) -> dict[str, Any]:
         """Search Atlas entities using place, issue, and free-text filters."""
         normalized_place = _normalize_place(place)
         validated_issue_areas = _validate_issue_areas(issue_areas)
+        validated_sort = _validate_entity_sort(sort)
         offset = _decode_cursor(cursor)
 
         async with DatabaseSession(self._database_url) as conn:
@@ -197,6 +200,7 @@ class AtlasDataService:
                 issue_areas=validated_issue_areas or None,
                 entry_types=entity_types,
                 source_types=source_types,
+                sort=validated_sort,
                 limit=limit,
                 offset=offset,
             )
@@ -948,6 +952,13 @@ def _validate_issue_areas(issue_areas: list[str] | None) -> list[str]:
     return validated
 
 
+def _validate_entity_sort(sort: str | None) -> str:
+    validated = sort or "relevance"
+    if validated not in {"relevance", "source_count", "recent", "name"}:
+        raise _invalid_entity_sort(validated)
+    return validated
+
+
 def _normalize_place(place: str | Mapping[str, str | None] | None) -> dict[str, str | None]:
     if place is None:
         return {"city": None, "state": None, "region": None, "display": None}
@@ -1480,6 +1491,10 @@ def _discovery_run_not_found(run_id: str) -> ValueError:
 
 def _invalid_issue_areas(invalid: list[str]) -> ValueError:
     return ValueError(f"Invalid issue area(s): {', '.join(sorted(invalid))}")
+
+
+def _invalid_entity_sort(sort: str) -> ValueError:
+    return ValueError(f"Invalid entity sort: {sort}")
 
 
 def _place_profile_not_found(place_display: str) -> ValueError:

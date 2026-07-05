@@ -642,6 +642,60 @@ async def test_get_place_entities_alias_delegates_to_search(
 
 
 @pytest.mark.asyncio
+async def test_get_place_entities_sorts_by_objective_actor_fields(
+    populated_service: AtlasDataService, test_db: object
+) -> None:
+    """Place actor sorting should use stable fields already computed by Atlas."""
+    conn: aiosqlite.Connection = test_db  # type: ignore[assignment]
+    alphabetical_id = await EntryCRUD.create(
+        conn,
+        entry_type="organization",
+        name="Aardvark Civic League",
+        description="Alphabetical coverage fixture.",
+        city="Gary",
+        state="IN",
+        geo_specificity="local",
+    )
+    recent_id = await EntryCRUD.create(
+        conn,
+        entry_type="organization",
+        name="Zeta Recent Coalition",
+        description="Recent coverage fixture.",
+        city="Gary",
+        state="IN",
+        geo_specificity="local",
+    )
+    recent_source_id = await SourceCRUD.create(
+        conn,
+        url="https://example.com/recent-zeta",
+        source_type="report",
+        extraction_method="manual",
+        title="Recent Zeta report",
+        publication="Example Journal",
+        published_date=date.today() + timedelta(days=1),  # noqa: DTZ011
+    )
+    await SourceCRUD.link_to_entry(conn, recent_id, recent_source_id)
+    await conn.commit()
+
+    by_source_count = await populated_service.get_place_entities("Gary, IN", sort="source_count")
+    by_recent = await populated_service.get_place_entities("Gary, IN", sort="recent")
+    by_name = await populated_service.get_place_entities("Gary, IN", sort="name")
+
+    assert by_source_count["items"][0]["name"] == "Atlas Primary Org"
+    assert by_recent["items"][0]["name"] == "Zeta Recent Coalition"
+    assert by_name["items"][0]["id"] == alphabetical_id
+
+
+@pytest.mark.asyncio
+async def test_get_place_entities_rejects_unknown_sort(
+    populated_service: AtlasDataService,
+) -> None:
+    """Unknown place actor sort values should fail instead of falling back."""
+    with pytest.raises(ValueError, match="Invalid entity sort"):
+        await populated_service.get_place_entities("Gary, IN", sort="made_up")
+
+
+@pytest.mark.asyncio
 async def test_get_entity_returns_detail_payload(
     populated_service: AtlasDataService, test_db: object
 ) -> None:

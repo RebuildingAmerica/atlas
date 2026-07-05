@@ -1,10 +1,12 @@
-import { useRef, useState, useTransition, type FormEvent, type ReactNode } from "react";
+import { useRef, useState, type FormEvent, type ReactNode } from "react";
 import { ExternalLink, MapPin, Search } from "lucide-react";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import type {
   EntryType,
   PlaceActorList,
+  PlaceActorParams,
+  PlaceActorSort,
   PlaceActorSummary,
   PlaceFact,
   PlaceGovernmentSummary,
@@ -67,7 +69,18 @@ interface ActorDirectoryProps {
 interface ActorLoadParams {
   cursor?: string;
   nextQuery?: string;
+  nextSort?: PlaceActorSort;
   nextType?: EntryType | null;
+}
+
+interface ActorListProps {
+  actors: PlaceActorSummary[];
+  sort: PlaceActorSort;
+}
+
+interface ActorGroup {
+  actors: PlaceActorSummary[];
+  label: string;
 }
 
 interface IssueGridProps {
@@ -104,6 +117,13 @@ const ACTOR_TYPES: { label: string; value: EntryType }[] = [
   { label: "Organizations", value: "organization" },
   { label: "People", value: "person" },
   { label: "Initiatives", value: "initiative" },
+];
+
+const ACTOR_SORTS: { label: string; value: PlaceActorSort }[] = [
+  { label: "Best match", value: "relevance" },
+  { label: "Most documented", value: "source_count" },
+  { label: "Recent", value: "recent" },
+  { label: "Name", value: "name" },
 ];
 
 const LATEST_SOURCE_TYPES: { label: string; value: SourceType }[] = [
@@ -460,43 +480,128 @@ function ActorCard({ actor }: ActorCardProps) {
   );
 }
 
+function actorInitial(name: string) {
+  const initial = name.trim().charAt(0).toUpperCase();
+  return /^[A-Z0-9]$/.test(initial) ? initial : "#";
+}
+
+function groupActorsByInitial(actors: PlaceActorSummary[]): ActorGroup[] {
+  const groups = new Map<string, PlaceActorSummary[]>();
+  actors.forEach((actor) => {
+    const label = actorInitial(actor.name);
+    const group = groups.get(label) ?? [];
+    group.push(actor);
+    groups.set(label, group);
+  });
+  return [...groups.entries()].map(([label, groupActors]) => ({
+    actors: groupActors,
+    label,
+  }));
+}
+
+function ActorList({ actors, sort }: ActorListProps) {
+  if (actors.length === 0) {
+    return (
+      <p className="type-body-medium text-ink-soft bg-surface-container-lowest rounded-lg p-4">
+        No people or organizations listed.
+      </p>
+    );
+  }
+
+  if (sort === "name") {
+    return (
+      <div className="space-y-5">
+        {groupActorsByInitial(actors).map((group) => (
+          <div key={group.label}>
+            <h3 className="type-label-large text-ink-muted mb-2">{group.label}</h3>
+            <div className="grid gap-3">
+              {group.actors.map((actor) => (
+                <ActorCard key={actor.id} actor={actor} />
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid gap-3">
+      {actors.map((actor) => (
+        <ActorCard key={actor.id} actor={actor} />
+      ))}
+    </div>
+  );
+}
+
 function ActorDirectory({ initialActors, placeSlug }: ActorDirectoryProps) {
   const [actors, setActors] = useState(initialActors);
   const [query, setQuery] = useState("");
   const [selectedType, setSelectedType] = useState<EntryType | null>(null);
-  const [isPending, startTransition] = useTransition();
+  const [selectedSort, setSelectedSort] = useState<PlaceActorSort>("relevance");
+  const [isActorLoading, setIsActorLoading] = useState(false);
+  const [actorError, setActorError] = useState<string | null>(null);
+  const actorRequestId = useRef(0);
 
-  function loadActors(params: ActorLoadParams) {
-    startTransition(() => {
-      void api.places
-        .listActors(placeSlug, {
-          cursor: params.cursor,
-          entity_type: params.nextType ? [params.nextType] : undefined,
-          limit: 20,
-          text: params.nextQuery || undefined,
-        })
-        .then((next) => {
-          setActors((current) => ({
-            items: params.cursor ? [...current.items, ...next.items] : next.items,
-            nextCursor: next.nextCursor,
-          }));
-        });
-    });
+  async function loadActors(params: ActorLoadParams) {
+    const requestId = actorRequestId.current + 1;
+    actorRequestId.current = requestId;
+    setIsActorLoading(true);
+    setActorError(null);
+
+    try {
+      const loadParams: PlaceActorParams = { limit: 20 };
+      const nextQuery = params.nextQuery?.trim();
+      if (params.cursor) {
+        loadParams.cursor = params.cursor;
+      }
+      if (nextQuery) {
+        loadParams.query = nextQuery;
+      }
+      if (params.nextSort) {
+        loadParams.sort = params.nextSort;
+      }
+      if (params.nextType) {
+        loadParams.type = params.nextType;
+      }
+
+      const next = await api.places.listActors(placeSlug, loadParams);
+      if (actorRequestId.current !== requestId) {
+        return;
+      }
+      setActors((current) => ({
+        items: params.cursor ? [...current.items, ...next.items] : next.items,
+        nextCursor: next.nextCursor,
+      }));
+    } catch {
+      if (actorRequestId.current === requestId) {
+        setActorError("People and organizations could not load.");
+      }
+    } finally {
+      if (actorRequestId.current === requestId) {
+        setIsActorLoading(false);
+      }
+    }
   }
 
   function submitSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    loadActors({ nextQuery: query, nextType: selectedType });
+    void loadActors({ nextQuery: query, nextSort: selectedSort, nextType: selectedType });
   }
 
   function chooseType(value: EntryType | null) {
     setSelectedType(value);
-    loadActors({ nextQuery: query, nextType: value });
+    void loadActors({ nextQuery: query, nextSort: selectedSort, nextType: value });
+  }
+
+  function chooseSort(value: PlaceActorSort) {
+    setSelectedSort(value);
+    void loadActors({ nextQuery: query, nextSort: value, nextType: selectedType });
   }
 
   return (
     <div className="space-y-4">
-      <form onSubmit={submitSearch} className="flex flex-col gap-3 lg:flex-row">
+      <form onSubmit={submitSearch} className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_12rem_auto]">
         <label className="sr-only" htmlFor="place-actor-search">
           Search people and organizations
         </label>
@@ -507,11 +612,30 @@ function ActorDirectory({ initialActors, placeSlug }: ActorDirectoryProps) {
             setQuery(event.target.value);
           }}
           className="type-body-medium bg-surface-container-lowest text-ink-strong placeholder:text-ink-muted focus:ring-civic rounded-lg px-4 py-3 outline-none focus:ring-2 lg:flex-1"
-          placeholder="Search people, organizations, neighborhoods, work"
+          placeholder="Search people, organizations, work"
         />
+        <label className="sr-only" htmlFor="place-actor-sort">
+          Sort people and organizations
+        </label>
+        <select
+          id="place-actor-sort"
+          value={selectedSort}
+          onChange={(event) => {
+            chooseSort(event.target.value as PlaceActorSort);
+          }}
+          className="type-body-medium bg-surface-container-lowest text-ink-strong focus:ring-civic rounded-lg px-4 py-3 outline-none focus:ring-2"
+          disabled={isActorLoading}
+        >
+          {ACTOR_SORTS.map((sort) => (
+            <option key={sort.value} value={sort.value}>
+              {sort.label}
+            </option>
+          ))}
+        </select>
         <button
           type="submit"
-          className="type-label-large bg-ink-strong text-surface hover:bg-ink inline-flex items-center justify-center gap-2 rounded-full px-5 py-3 transition-colors"
+          disabled={isActorLoading}
+          className="type-label-large bg-ink-strong text-surface hover:bg-ink inline-flex items-center justify-center gap-2 rounded-full px-5 py-3 transition-colors disabled:opacity-60"
         >
           <Search className="h-4 w-4" aria-hidden />
           Search
@@ -521,11 +645,12 @@ function ActorDirectory({ initialActors, placeSlug }: ActorDirectoryProps) {
       <div className="flex flex-wrap gap-2">
         <button
           type="button"
+          disabled={isActorLoading}
           onClick={() => {
             chooseType(null);
           }}
           className={cn(
-            "type-label-large rounded-full px-3 py-1.5 transition-colors",
+            "type-label-large rounded-full px-3 py-1.5 transition-colors disabled:opacity-60",
             selectedType === null
               ? "bg-ink-strong text-surface"
               : "bg-surface-container text-ink-soft hover:text-ink-strong",
@@ -537,11 +662,12 @@ function ActorDirectory({ initialActors, placeSlug }: ActorDirectoryProps) {
           <button
             key={type.value}
             type="button"
+            disabled={isActorLoading}
             onClick={() => {
               chooseType(type.value);
             }}
             className={cn(
-              "type-label-large rounded-full px-3 py-1.5 transition-colors",
+              "type-label-large rounded-full px-3 py-1.5 transition-colors disabled:opacity-60",
               selectedType === type.value
                 ? "bg-ink-strong text-surface"
                 : "bg-surface-container text-ink-soft hover:text-ink-strong",
@@ -552,29 +678,33 @@ function ActorDirectory({ initialActors, placeSlug }: ActorDirectoryProps) {
         ))}
       </div>
 
-      {actors.items.length > 0 ? (
-        <div className="grid gap-3">
-          {actors.items.map((actor) => (
-            <ActorCard key={actor.id} actor={actor} />
-          ))}
-        </div>
-      ) : (
-        <p className="type-body-medium text-ink-soft bg-surface-container-lowest rounded-lg p-4">
-          No people or organizations listed.
+      {actorError ? (
+        <p
+          role="alert"
+          className="type-body-medium border-error bg-error-container text-on-error-container rounded-lg border p-4"
+        >
+          {actorError}
         </p>
-      )}
+      ) : null}
+
+      <ActorList actors={actors.items} sort={selectedSort} />
 
       {actors.nextCursor ? (
         <div className="flex justify-center">
           <button
             type="button"
-            disabled={isPending}
+            disabled={isActorLoading}
             onClick={() => {
-              loadActors({ cursor: actors.nextCursor, nextQuery: query, nextType: selectedType });
+              void loadActors({
+                cursor: actors.nextCursor,
+                nextQuery: query,
+                nextSort: selectedSort,
+                nextType: selectedType,
+              });
             }}
             className="type-label-large bg-surface-container text-ink-strong hover:bg-surface-container-high rounded-full px-4 py-2 transition-colors disabled:opacity-60"
           >
-            {isPending ? "Loading" : "Show more"}
+            {isActorLoading ? "Loading" : "Show more"}
           </button>
         </div>
       ) : null}

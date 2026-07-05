@@ -105,4 +105,46 @@ describe("PlacePage", () => {
       screen.queryByText("County commissioners advance bus stop shade and water funding"),
     ).not.toBeInTheDocument();
   });
+
+  it("sorts people and organizations through the place API", async () => {
+    const user = userEvent.setup();
+    apiMocks.listActors.mockResolvedValueOnce({
+      items: [
+        {
+          id: "actor-a",
+          name: "Aardvark Civic League",
+          href: "/profiles/organizations/aardvark-civic-league",
+          type: "organization",
+          description: "Neighborhood housing and repair work.",
+          work: "Housing affordability",
+          latest: "Jul 1",
+        },
+        {
+          id: "actor-b",
+          name: "Boulder Transit Riders",
+          href: "/profiles/organizations/boulder-transit-riders",
+          type: "organization",
+          description: "Bus frequency and shade organizing.",
+          work: "Public transit",
+          latest: "Jun 28",
+        },
+      ],
+      nextCursor: undefined,
+    });
+
+    render(<PlacePage data={placePageFixture} />);
+    await user.selectOptions(
+      screen.getByRole("combobox", { name: "Sort people and organizations" }),
+      "name",
+    );
+
+    expect(apiMocks.listActors).toHaveBeenCalledWith("las-vegas-nv", {
+      limit: 20,
+      sort: "name",
+    });
+    expect(await screen.findByText("Aardvark Civic League")).toBeInTheDocument();
+    expect(screen.getByText("Boulder Transit Riders")).toBeInTheDocument();
+    expect(screen.getByText("A")).toBeInTheDocument();
+    expect(screen.getByText("B")).toBeInTheDocument();
+  });
 });
