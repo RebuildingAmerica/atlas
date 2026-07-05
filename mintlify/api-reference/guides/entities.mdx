@@ -1,198 +1,121 @@
 ---
-title: "Entities"
-description: "Working with Atlas entities: searching, filtering, creating, and understanding source linkage."
+title: "Find source-backed actors"
+description: "Use Atlas entity APIs to find civic actors and keep source evidence attached."
 ---
 
 ## Overview
 
-Entities are the core resource in Atlas. Each entity represents a person,
-organization, initiative, campaign, or event working on civic issues in a
-specific place.
+Entities are the people, organizations, initiatives, campaigns, and events in
+Atlas. Treat them as civic actors, not just rows: the useful result is an actor
+plus the public sources that make the record credible.
 
-This guide focuses on a concrete task: use the API to find organizations
-working on transit in Nevada, then inspect the source evidence before using the
-results.
+Use entity APIs when you need to answer questions like:
 
-## List and search entities
+- Who is working on tenant organizing in Kansas City?
+- Which organizations appear in more than one public source?
+- What source backs this actor before I publish, contact, or import it?
+
+For exact parameters and response schemas, use the
+[generated API reference](https://atlas.rebuildingus.org/api-reference).
+
+## Start with the question
+
+Choose the query path that matches the user's question.
+
+| Question                                     | Better starting point     |
+| -------------------------------------------- | ------------------------- |
+| "Who is working on this issue in this city?" | Place-first entity search |
+| "Where does this named organization appear?" | Global entity search      |
+| "What backs this record?"                    | Entity sources            |
+| "Can my team save or review this?"           | Workspace workflow        |
+
+Place-first search is usually the better public discovery flow because civic
+work is local. Global search is useful when the actor's name or source phrase is
+already known.
+
+## Search within a place
 
 ```bash
-GET /api/entities
+curl "https://atlas.rebuildingus.org/api/places/kansas-city,missouri/entities?issue_area=housing_affordability"
 ```
 
-**Query parameters:**
+Use issue areas to focus the result set. Use multiple values to widen that one
+facet; combine facets such as issue, actor type, and text to narrow the result.
 
-| Parameter     | Type    | Description                                                                 |
-| ------------- | ------- | --------------------------------------------------------------------------- |
-| `text`        | string  | Full-text search                                                            |
-| `issue_area`  | string  | Filter by issue area slug (repeatable)                                      |
-| `entity_type` | string  | Filter by type: `person`, `organization`, `initiative`, `campaign`, `event` |
-| `source_type` | string  | Filter by source type                                                       |
-| `limit`       | integer | Results per page (1–100, default 20)                                        |
-| `cursor`      | string  | Pagination cursor                                                           |
+```bash
+curl "https://atlas.rebuildingus.org/api/places/las-vegas,nevada/entities?issue_area=public_transit&entity_type=organization"
+```
 
-**Example:** Find organizations working on transit in Nevada:
+## Search globally
 
-<CodeGroup>
+Global search is helpful when the known phrase matters more than the geography.
 
-```bash cURL
+```bash
 curl "https://atlas.rebuildingus.org/api/entities?text=transit%20Nevada&entity_type=organization"
 ```
 
-```python Python
-import httpx
+Use the generated reference for the exact filter names supported by the current
+API contract.
 
-response = httpx.get(
-    "https://atlas.rebuildingus.org/api/entities",
-    params={
-        "text": "transit Nevada",
-        "entity_type": "organization",
-    },
-)
+## Inspect sources before reuse
 
-for entity in response.json()["data"]:
-    print(f"{entity['name']} — {entity['address']['city']}, {entity['address']['state']}")
-```
-
-</CodeGroup>
-
-## Get entity by place
-
-A more natural way to search — start with a place, then filter:
+A matching actor is a lead. It becomes useful only when the source evidence
+supports the claim you plan to repeat.
 
 ```bash
-GET /api/places/{place_key}/entities
+curl "https://atlas.rebuildingus.org/api/entities/{entity_id}/sources"
 ```
 
-```bash
-curl "https://atlas.rebuildingus.org/api/places/las-vegas,nevada/entities?issue_area=public_transit"
-```
+Before publishing, contacting, funding, or importing a record, check:
 
-Place keys use the format `city,state` (lowercase, hyphenated):
-`las-vegas,nevada`, `kansas-city,missouri`, `boise,idaho`,
-`garden-city,kansas`.
-
-## Read before reusing a result
-
-Do not treat a matching entity as a verified recommendation. Before publishing,
-contacting, funding, or importing a record into another system, inspect the
-evidence.
-
-For each result, check:
-
-- The entity type is what you need. A campaign is different from an
+- The actor type matches the workflow. A campaign is different from an
   organization.
-- The place matches the geography of your use case.
-- The issue tag is supported by sources, not merely inferred from a keyword.
-- The latest source is recent enough.
-- The source count is strong enough for your use.
-- The source excerpt supports the claim you plan to repeat.
+- The place matches the geography you care about.
+- The issue tag is supported by sources, not only by a keyword match.
+- The source date is recent enough for the decision.
+- The excerpt supports the sentence you plan to write.
+- The record has enough independent evidence for the risk of the use case.
 
-## Get a single entity
+## Preserve the evidence chain
 
-```bash
-GET /api/entities/{entity_id}
-```
+When you move Atlas data into another system, keep the context that made the
+result trustworthy.
 
-Returns the full entity record including address, contact information, issue areas, and metadata.
+Store:
 
-## Get entity sources
+- Atlas entity id.
+- Source ids or source URLs supporting the claim.
+- Retrieval timestamp.
+- Place and issue filters that produced the result.
+- Review state if a human has checked it.
 
-```bash
-GET /api/entities/{entity_id}/sources
-```
+Do not export a naked actor list and separate the evidence into another file.
+The source trail is part of the result.
 
-Returns all sources backing an entity: the articles, listings, records, and
-public pages where Atlas found information about this entity.
+## Writing requires authentication
 
-**Example response:**
+Public read flows can use unauthenticated requests. Creating or updating actors
+requires an authenticated workflow and should preserve source evidence.
 
-```json
-{
-  "data": [
-    {
-      "id": "src-123",
-      "url": "https://kcstar.com/article/...",
-      "title": "KC Tenants escalates fight against corporate landlords",
-      "publication": "Kansas City Star",
-      "published_date": "2026-03-15",
-      "type": "journalism",
-      "extraction_context": "KC Tenants, a citywide tenant union, announced..."
-    }
-  ]
-}
-```
+Use workspace APIs when a team needs private review state, briefs, lists, Scout
+sync receipts, or publication decisions. Read
+[Workspace visibility](/api-reference/guides/workspace) before importing records
+into a team workflow.
 
-## Create an entity <sup>auth required</sup>
-
-```bash
-POST /api/entities
-```
-
-Requires authentication via API key or OAuth. See [authentication](/api-reference/authentication).
-
-```bash
-curl -X POST https://atlas.rebuildingus.org/api/entities \
-  -H "X-API-Key: your-api-key" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "type": "organization",
-    "name": "Prairie Workers Cooperative",
-    "description": "Worker-owned cleaning cooperative in Garden City, KS",
-    "city": "Garden City",
-    "state": "KS",
-    "issue_areas": ["worker_cooperatives", "just_transition"]
-  }'
-```
-
-## Update an entity <sup>auth required</sup>
-
-```bash
-PATCH /api/entities/{entity_id}
-```
-
-Send only the fields you want to update:
-
-```bash
-curl -X PATCH https://atlas.rebuildingus.org/api/entities/{entity_id} \
-  -H "X-API-Key: your-api-key" \
-  -H "Content-Type: application/json" \
-  -d '{"description": "Updated description"}'
-```
-
-## Entity types
-
-| Type           | Description                                            |
-| -------------- | ------------------------------------------------------ |
-| `person`       | An individual doing civic work                         |
-| `organization` | A nonprofit, advocacy group, cooperative, or other org |
-| `initiative`   | A program, project, or ongoing effort                  |
-| `campaign`     | A time-bound advocacy or organizing campaign           |
-| `event`        | A civic event, summit, or gathering                    |
-
-## Safe import pattern
-
-When you move entities into another tool, preserve the evidence chain.
-
-1. Store the Atlas entity id.
-2. Store the source ids or source URLs that support the specific claim.
-3. Store the retrieved timestamp.
-4. Store the issue and place filters that produced the result.
-5. Re-check sources before using the record in a high-stakes workflow.
-
-If your integration writes to a workspace, read
-[Workspace endpoints and visibility](/api-reference/guides/workspace) before
-publishing or importing records.
-
-## What's next
+## Next steps
 
 <CardGroup cols={2}>
 
-<Card title="Places" icon="map" href="/api-reference/guides/places">
-  Place-first queries, profiles, and coverage data.
+<Card title="Research a place" icon="map" href="/api-reference/guides/places">
+  Start with a local question and add coverage context.
 </Card>
 
-<Card title="Taxonomy" icon="tags" href="/api-reference/guides/taxonomy">
-  Understanding domains and issue areas programmatically.
+<Card
+  title="Generated API reference"
+  icon="code"
+  href="https://atlas.rebuildingus.org/api-reference"
+>
+  Inspect exact endpoint parameters and response schemas.
 </Card>
 
 </CardGroup>

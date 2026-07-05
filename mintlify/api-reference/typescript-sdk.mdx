@@ -1,21 +1,34 @@
 ---
-title: "TypeScript SDK"
-description: "A typed TypeScript client auto-generated from the Atlas OpenAPI spec."
+title: "Generate a TypeScript client"
+description: "Use the Atlas OpenAPI contract to generate typed TypeScript functions for integrations."
 ---
 
 ## Overview
 
-Atlas provides a typed TypeScript client generated from the same OpenAPI spec that powers the [interactive Scalar API reference](https://atlas.rebuildingus.org/api-reference). Every function has typed parameters and return values, so your editor catches mistakes before you run the code.
+Atlas does not need a separate hand-written SDK to be useful from TypeScript.
+The source of truth is the OpenAPI contract, which also powers the generated
+Scalar reference.
+
+Use this page when you want typed functions in a TypeScript project and you are
+comfortable generating a client from the Atlas repo.
 
 <Note>
-  The SDK is generated using [Orval](https://orval.dev/) from
-  `openapi/atlas.openapi.json`. It uses the native `fetch` API with no external
-  HTTP library dependencies.
+  The generated client is built with Orval from `openapi/atlas.openapi.json`. It
+  is repo-local output, not a separately versioned npm package.
 </Note>
 
-## Installation
+## When to generate a client
 
-Clone the Atlas repository and generate the client:
+Generate a TypeScript client when:
+
+- You are building inside the Atlas app.
+- You want compile-time help for request and response shapes.
+- You need to keep a branch aligned with the current OpenAPI contract.
+
+For one-off scripts, direct `fetch` calls may be clearer. For exact function
+names and types, inspect the generated file after generation.
+
+## Generate the client
 
 ```bash
 git clone https://github.com/RebuildingAmerica/atlas.git
@@ -24,134 +37,73 @@ pnpm install
 pnpm api-client
 ```
 
-The generated client is written to `src/lib/generated/atlas.ts`.
+The generated output lives at:
 
-## Usage
+```text
+app/src/lib/generated/atlas.ts
+```
 
-Import the functions you need and call them directly:
+## Use it safely
+
+Import only the functions your workflow needs, and keep source evidence attached
+to any records you export.
 
 ```typescript
-import {
-  listEntities,
-  getEntity,
-  listPlaceEntities,
-} from "./lib/generated/atlas";
+import { listPlaceEntities, listEntitySources } from "./lib/generated/atlas";
 
-// Search entities by issue area
-const entities = await listEntities({
+const result = await listPlaceEntities("kansas-city,missouri", {
   issue_area: ["housing_affordability"],
-  limit: 10,
 });
 
-console.log(`Found ${entities.total} entities`);
-for (const entity of entities.items) {
-  console.log(`${entity.name} — ${entity.type}`);
+for (const actor of result.data) {
+  const sources = await listEntitySources(actor.id);
+  console.log(
+    actor.name,
+    sources.data.map((source) => source.url),
+  );
 }
-
-// Get a single entity
-const entity = await getEntity("entity-id-here");
-console.log(entity.data.name);
-console.log(entity.data.address?.city, entity.data.address?.state);
-
-// Search by place
-const kcEntities = await listPlaceEntities("kansas-city,missouri", {
-  issue_area: ["union_organizing"],
-});
 ```
 
-## Available functions
-
-### Discovery
-
-| Function                     | Description                               |
-| ---------------------------- | ----------------------------------------- |
-| `listDiscoveryRuns(params?)` | List discovery runs with optional filters |
-| `createDiscoveryRun(body)`   | Start a new discovery run                 |
-| `getDiscoveryRun(runId)`     | Get status and results for a run          |
-
-### Entities
-
-| Function                       | Description                           |
-| ------------------------------ | ------------------------------------- |
-| `listEntities(params?)`        | Search and list entities with filters |
-| `getEntity(entityId)`          | Get full entity details               |
-| `createEntity(body)`           | Create a new entity                   |
-| `updateEntity(entityId, body)` | Update an existing entity             |
-| `deleteEntity(entityId)`       | Delete an entity                      |
-| `listEntitySources(entityId)`  | Get sources backing an entity         |
-
-### Places
-
-| Function                               | Description                           |
-| -------------------------------------- | ------------------------------------- |
-| `getPlace(placeKey)`                   | Get canonical place identity          |
-| `listPlaceEntities(placeKey, params?)` | List entities in a place              |
-| `getPlaceCoverage(placeKey)`           | Coverage gaps and entity counts       |
-| `getPlaceProfile(placeKey)`            | Demographic and socioeconomic context |
-| `getPlaceIssueSignals(placeKey)`       | Issue area summary                    |
-| `listPlaceSources(placeKey)`           | Sources associated with a place       |
-
-### Taxonomy
-
-| Function                      | Description            |
-| ----------------------------- | ---------------------- |
-| `listDomains(params?)`        | List all domains       |
-| `getDomain(domainSlug)`       | Get domain details     |
-| `listIssueAreas(params?)`     | List all issue areas   |
-| `getIssueArea(issueAreaSlug)` | Get issue area details |
-
-### Flags
-
-| Function                  | Description              |
-| ------------------------- | ------------------------ |
-| `listEntityFlags(params)` | List flags for an entity |
-| `createEntityFlag(body)`  | Flag an entity           |
-| `listSourceFlags(params)` | List flags for a source  |
-| `createSourceFlag(body)`  | Flag a source            |
-
-## Key types
+If you need an API key, pass headers through the generated function options:
 
 ```typescript
-import type {
-  EntityDetailResponse,
-  EntityCollectionResponse,
-  EntityCreateRequest,
-  EntityUpdateRequest,
-  DiscoveryRunResponse,
-  DiscoveryRunStartRequest,
-  PlaceProfileResponse,
-  PlaceCoverageResponse,
-  IssueAreaResponse,
-  DomainDetailResponse,
-  Address,
-  ContactInfo,
-} from "./lib/generated/atlas";
-```
-
-## Custom fetch configuration
-
-The SDK uses a custom `atlasFetch` wrapper that:
-
-- Automatically detects whether it's running in a browser or server environment
-- Sets `Accept: application/json` and `Content-Type: application/json` headers
-- Throws descriptive errors for non-2xx responses
-
-To use your own API key, pass custom headers via the `options` parameter:
-
-```typescript
-const entities = await listEntities(
+await listPlaceEntities(
+  "kansas-city,missouri",
   { issue_area: ["housing_affordability"] },
-  { headers: { "X-API-Key": "your-api-key" } },
+  { headers: { "X-API-Key": process.env.ATLAS_API_KEY ?? "" } },
 );
 ```
 
-## Regenerating the client
+Do not ship API keys in browser bundles.
 
-When the API changes, regenerate the client to stay in sync:
+## Keep generated code in sync
+
+When backend API behavior changes, regenerate from the backend, then regenerate
+the app client:
 
 ```bash
-pnpm openapi      # Regenerate the OpenAPI spec from the API
-pnpm api-client   # Regenerate the TypeScript client from the spec
+pnpm run openapi
+cd app
+pnpm api-client
 ```
 
-The client is always derived from `openapi/atlas.openapi.json` — the same spec that powers the [interactive Scalar API reference](https://atlas.rebuildingus.org/api-reference).
+OpenAPI JSON files are generated artifacts. Do not hand-edit them to make a
+TypeScript compile error disappear.
+
+## Related docs
+
+<CardGroup cols={2}>
+
+<Card
+  title="Generated API reference"
+  icon="code"
+  href="https://atlas.rebuildingus.org/api-reference"
+>
+  Inspect exact endpoint and schema names.
+</Card>
+
+<Card title="Authentication" icon="key" href="/api-reference/authentication">
+  Decide how the generated client should authenticate.
+</Card>
+
+</CardGroup>

@@ -1,53 +1,82 @@
 ---
-title: "Sources & flags"
-description: "Working with source attribution and community corrections."
+title: "Use evidence and corrections"
+description: "Keep Atlas records tied to sources and handle correction reports without losing context."
 ---
 
 ## Overview
 
-Source attribution is a core design principle of Atlas — every entity traces back to the public sources where it was found. Flags let anyone help maintain data quality by reporting stale or incorrect information.
+Trust in Atlas comes from the connection between an actor, the claim being made,
+and the public source that supports it. Sources show where a record came from.
+Flags let users report stale, broken, or incorrect evidence.
 
-## Sources
+Use this guide when you are building an integration that displays, exports, or
+reviews Atlas data.
 
-### Get sources for an entity
+For exact source and flag schemas, use the
+[generated API reference](https://atlas.rebuildingus.org/api-reference).
 
-```bash
-GET /api/entities/{entity_id}/sources
-```
+## Treat sources as part of the result
 
-Returns all sources backing a specific entity:
+When an API response points to an actor, the useful unit is not just the actor's
+name. It is:
 
-```bash
-curl https://atlas.rebuildingus.org/api/entities/{entity_id}/sources
-```
+- Actor.
+- Place.
+- Issue or claim.
+- Source URL.
+- Source title or publication context.
+- Excerpt or extraction context.
+- Retrieved or published date when available.
 
-Each source includes:
-- `url` — Link to the original document
-- `title` — Article or page title
-- `publication` — Publication name
-- `published_date` — When the source was published
-- `type` — Category (journalism, nonprofit_listing, organizational_website, etc.)
-- `extraction_context` — The passage where the entity was mentioned
+Keep those fields together in exports, briefs, queues, and CRM records. A source
+shown later without the actor and claim it supports is easy to misread.
 
-### Get sources for a place
-
-```bash
-GET /api/places/{place_key}/sources
-```
-
-Returns all sources associated with entities in a given place.
-
-## Flags
-
-Flags let anyone report problems with Atlas data. Flagging is **anonymous** — no authentication required.
-
-### Flag an entity
+## Inspect sources for one actor
 
 ```bash
-POST /api/entity-flags
+curl "https://atlas.rebuildingus.org/api/entities/{entity_id}/sources"
 ```
 
-Report that an entity's information is stale, incorrect, or inappropriate:
+Use entity sources before:
+
+- Publishing a public list.
+- Sending outreach.
+- Importing actors into a team system.
+- Summarizing a local civic network.
+- Making a high-stakes decision from a single record.
+
+## Inspect sources for a place
+
+```bash
+curl "https://atlas.rebuildingus.org/api/places/kansas-city,missouri/sources"
+```
+
+Place sources are useful for local review, coverage analysis, and detecting when
+one source family dominates a result set.
+
+## Know what a source can and cannot prove
+
+A source can support a specific claim such as:
+
+- An organization exists.
+- A person is publicly associated with an organization.
+- A campaign happened in a place.
+- A source described an issue connection.
+
+A source does not automatically prove:
+
+- Current activity.
+- Quality or impact.
+- Endorsement by Atlas.
+- That every issue tag is equally strong.
+- That private workspace notes should become public evidence.
+
+## Use flags as correction signals
+
+Flags are correction reports. They should prompt review; they are not final
+judgments by themselves.
+
+Report an actor problem:
 
 ```bash
 curl -X POST https://atlas.rebuildingus.org/api/entity-flags \
@@ -59,43 +88,58 @@ curl -X POST https://atlas.rebuildingus.org/api/entity-flags \
   }'
 ```
 
-### Flag a source
-
-```bash
-POST /api/source-flags
-```
-
-Report that a source is broken, misattributed, or contains incorrect information:
+Report a source problem:
 
 ```bash
 curl -X POST https://atlas.rebuildingus.org/api/source-flags \
   -H "Content-Type: application/json" \
   -d '{
     "source_id": "src-abc123",
-    "reason": "Link is broken (404)",
+    "reason": "Link is broken",
     "flag_type": "broken_link"
   }'
 ```
 
-### List flags
+When you display flags in an internal workflow, include the original source
+context so reviewers can decide whether to update, remove, or keep the record.
 
-```bash
-GET /api/entity-flags?entity_id={entity_id}
-GET /api/source-flags?source_id={source_id}
-```
+## Correction workflow
 
-View existing flags for an entity or source.
+<Steps>
 
-## What's next
+<Step title="Keep the original source">
+  Do not drop the source URL or extraction context just because someone filed a
+  flag.
+</Step>
+
+<Step title="Check the claim">
+  Decide which specific claim is stale, incorrect, duplicated, or unsupported.
+</Step>
+
+<Step title="Find stronger evidence">
+  Add or prefer newer public evidence when it changes the record.
+</Step>
+
+<Step title="Record the review result">
+  Preserve the review state in the workspace or moderation workflow.
+</Step>
+
+</Steps>
+
+## Next steps
 
 <CardGroup cols={2}>
 
-<Card title="Entities" icon="users" href="/api-reference/guides/entities">
-Working with entity records.
+<Card
+  title="Find source-backed actors"
+  icon="users"
+  href="/api-reference/guides/entities"
+>
+  Keep actor records connected to evidence.
 </Card>
 
-<Card title="Data model" icon="database" href="/resources/data-model">
-Understanding how sources relate to entities.
+<Card title="Trust and provenance" icon="shield-check" href="/resources/trust">
+  Understand how Atlas presents source-backed claims.
 </Card>
 
 </CardGroup>

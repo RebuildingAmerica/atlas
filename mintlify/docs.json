@@ -121,7 +121,7 @@
         "tab": "Build with Atlas",
         "groups": [
           {
-            "group": "API guides",
+            "group": "API",
             "pages": [
               "api-reference/overview",
               "api-reference/quickstart",

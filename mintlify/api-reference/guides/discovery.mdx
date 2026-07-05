@@ -1,38 +1,44 @@
 ---
-title: "Discovery runs"
-description: "Running the Atlas autodiscovery pipeline programmatically."
+title: "Run discovery and review results"
+description: "Use hosted discovery or Scout sync without treating unfinished evidence as verified data."
 ---
 
 ## Overview
 
-Discovery runs are how you trigger Atlas's source discovery workflow through the
-API. You provide a location and issue areas, and Atlas searches public sources,
-extracts candidate civic actors, attaches evidence, and produces reviewable
-results.
+Discovery helps a team find public sources, extract candidate civic actors, and
+turn the results into reviewable Atlas records.
 
-This guide covers two common patterns:
-
-- Start and inspect a hosted Atlas discovery run.
-- Run Scout locally, sync selected results to Atlas, and open the resulting
-  workspace run.
+Use discovery when normal search is not enough: a place has thin coverage, a
+team needs a focused research pass, or Scout has produced local evidence that
+should be synced into a workspace.
 
 <Note>
-  Discovery runs require authentication and an Atlas Pro or Team plan. See
-  [authentication](/api-reference/authentication).
+  Discovery runs require authentication and plan access. See
+  [authentication](/api-reference/authentication) and [rate
+  limits](/api-reference/rate-limits).
 </Note>
 
-## Start a discovery run
+For exact request and response shapes, use the
+[generated API reference](https://atlas.rebuildingus.org/api-reference).
+
+## Choose hosted discovery or Scout
+
+| Need                                            | Better path          |
+| ----------------------------------------------- | -------------------- |
+| Start a managed research run from Atlas         | Hosted discovery run |
+| Inspect local research artifacts before syncing | Scout CLI            |
+| Keep records private until reviewed             | Workspace sync       |
+| Publish public-safe records with evidence       | Review, then publish |
+
+Hosted discovery is simpler. Scout is better when the team needs a local,
+inspectable research process before deciding what belongs in Atlas.
+
+## Start a hosted run
+
+Discovery runs are asynchronous. The API accepts the request, returns a run id,
+and processes the work in the background.
 
 ```bash
-POST /api/discovery-runs
-```
-
-Discovery runs are **asynchronous**. The API returns `202 Accepted` immediately
-with a run ID, then the pipeline executes in the background.
-
-<CodeGroup>
-
-```bash cURL
 curl -X POST https://atlas.rebuildingus.org/api/discovery-runs \
   -H "X-API-Key: your-api-key" \
   -H "Content-Type: application/json" \
@@ -42,194 +48,105 @@ curl -X POST https://atlas.rebuildingus.org/api/discovery-runs \
   }'
 ```
 
-```python Python
-import httpx
+Store the run id. The run id is the handle for status checks, workspace review,
+and later evidence review.
 
-response = httpx.post(
-    "https://atlas.rebuildingus.org/api/discovery-runs",
-    headers={"X-API-Key": "your-api-key"},
-    json={
-        "location": "Kansas City, MO",
-        "issue_areas": ["housing_affordability", "union_organizing"],
-    },
-)
+## Poll without turning it into a crawler
 
-run = response.json()["data"]
-print(f"Run started: {run['id']} — status: {run['status']}")
-```
-
-</CodeGroup>
-
-**Response (202 Accepted):**
-
-```json
-{
-  "data": {
-    "id": "run-abc123",
-    "location_query": "Kansas City, MO",
-    "issue_areas": ["housing_affordability", "union_organizing"],
-    "status": "pending",
-    "started_at": "2026-04-22T15:00:00Z",
-    "completed_at": null,
-    "entries_found": 0,
-    "sources_processed": 0
-  }
-}
-```
-
-## Check run status
-
-```bash
-GET /api/discovery-runs/{run_id}
-```
-
-Poll this endpoint to check progress:
+Poll a pending or running discovery run with a modest interval. Stop polling
+when the run completes or fails.
 
 ```bash
 curl -H "X-API-Key: your-api-key" \
-  https://atlas.rebuildingus.org/api/discovery-runs/run-abc123
+  "https://atlas.rebuildingus.org/api/discovery-runs/{run_id}"
 ```
 
-**Run statuses:**
+Completion means the pipeline finished. It does not mean every result is ready
+for publication, outreach, funding review, or import.
 
-| Status      | Meaning                        |
-| ----------- | ------------------------------ |
-| `pending`   | Run created, waiting to start  |
-| `running`   | Pipeline is executing          |
-| `completed` | Pipeline finished successfully |
-| `failed`    | Pipeline encountered an error  |
-
-When `status` is `completed`, `entries_found` and `sources_processed` show the results.
-
-## Inspect before using results
-
-Completion means the run finished, not that every result is ready for outreach,
-publication, funding review, or import.
+## Review before using results
 
 After a run completes, review:
 
-- Which entries are people, organizations, initiatives, campaigns, or events.
-- Which sources support each entry.
+- Which results are people, organizations, initiatives, campaigns, or events.
+- Which source supports each claim.
 - Whether source dates are recent enough.
 - Whether the same actor appears in multiple independent sources.
 - Which issue areas are well-covered and which remain thin.
-- Which records should stay private to a workspace until reviewed.
+- Which records should stay private until a human checks them.
 
-## List discovery runs
+A discovery run should make the review path easier. It should not remove review.
 
-```bash
-GET /api/discovery-runs
-```
+## Sync Scout artifacts
 
-Returns your discovery run history:
-
-```bash
-curl -H "X-API-Key: your-api-key" \
-  https://atlas.rebuildingus.org/api/discovery-runs
-```
-
-## Polling pattern
-
-A simple polling loop to wait for completion:
-
-```python
-import httpx
-import time
-
-client = httpx.Client(
-    base_url="https://atlas.rebuildingus.org/api",
-    headers={"X-API-Key": "your-api-key"},
-)
-
-# Start the run
-run = client.post("/discovery-runs", json={
-    "location": "Kansas City, MO",
-    "issue_areas": ["housing_affordability"],
-}).json()["data"]
-
-# Poll until done
-while run["status"] in ("pending", "running"):
-    time.sleep(10)
-    run = client.get(f"/discovery-runs/{run['id']}").json()["data"]
-    print(f"Status: {run['status']}")
-
-print(f"Done! Found {run['entries_found']} entries from {run['sources_processed']} sources.")
-```
-
-## Run Scout locally and sync to Atlas
-
-Scout is useful when you want a local, inspectable research process before
-syncing selected results into Atlas.
+Scout is useful when a researcher wants local control over queries, cache,
+source review, or iterative deepening before syncing selected results.
 
 The safe workflow is:
 
 <Steps>
 
 <Step title="Run Scout locally">
-  Run the Scout CLI for the place and issue set. Keep the local artifact so the
-  team can review source evidence before syncing.
+  Keep the local artifact and source evidence for review.
 </Step>
 
 <Step title="Decide visibility">
-  Separate entries that are ready for the public directory from entries that
-  should stay private to a workspace. A weak, stale, or sensitive record should
-  not become public just because Scout found it.
+  Separate public-safe records from private leads, skipped records, and items
+  that need review.
 </Step>
 
-<Step title="Sync the artifact">
-Use the Scout sync endpoint:
+<Step title="Sync selected results">
+  Sync the reviewed artifact to Atlas.
 
 ```bash
-POST /api/discovery-runs/syncs
+curl -X POST https://atlas.rebuildingus.org/api/discovery-runs/syncs \
+  -H "X-API-Key: your-api-key" \
+  -H "Content-Type: application/json" \
+  -d @scout-sync.json
 ```
-
-The sync response includes the remote Atlas run id, entry visibility receipts,
-and links that can open the synced run in the workspace.
 
 </Step>
 
 <Step title="Open the workspace run">
-Open `/discovery?run=<remote_run_id>` to inspect the synced run in Atlas. Link
-reviewed results to a brief, coverage target, or workspace list.
+  Use the returned run id and links to continue review in the Atlas workspace.
 </Step>
 
 </Steps>
 
-## What sync receipts are for
+## Use sync receipts
 
-Sync receipts make the boundary between local discovery, workspace data, and
-public directory records explicit.
+Sync receipts are there to protect trust at the boundary between local research,
+workspace data, and public directory records.
 
 Look for:
 
-| Receipt field   | Why it matters                                                                |
-| --------------- | ----------------------------------------------------------------------------- |
-| Remote run id   | Lets Scout and Atlas refer to the same synced run.                            |
-| Entry links     | Connects local Scout entries to Atlas entries created or matched during sync. |
-| Visibility      | Shows whether an entry is public, private, skipped, or needs review.          |
-| Workspace links | Gives users a direct path back to the run, brief, list, or coverage target.   |
+- Remote run id.
+- Local-to-remote entry links.
+- Visibility state.
+- Review state.
+- Workspace links for briefs, lists, or coverage targets.
 
-Read [Workspace endpoints and visibility](/api-reference/guides/workspace) for
-more detail on `entry_links` and safe workspace usage.
+Treat links as mappings, not proof. The sources determine whether a result is
+strong enough to use.
 
-## Rate limits
-
-| Plan | Research runs |
-| ---- | ------------- |
-| Free | 2/month       |
-| Pro  | Unlimited     |
-| Team | Unlimited     |
-
-## What's next
+## Next steps
 
 <CardGroup cols={2}>
 
-<Card title="Entities" icon="users" href="/api-reference/guides/entities">
-  Query the entities that discovery found.
+<Card
+  title="Workspace visibility"
+  icon="lock"
+  href="/api-reference/guides/workspace"
+>
+  Keep private review state separate from public records.
 </Card>
 
-<Card title="How Atlas works" icon="gears" href="/how-it-works">
-  Understand the 6-step pipeline in detail.
+<Card
+  title="Find source-backed actors"
+  icon="users"
+  href="/api-reference/guides/entities"
+>
+  Query and inspect the actors discovery found.
 </Card>
 
 </CardGroup>

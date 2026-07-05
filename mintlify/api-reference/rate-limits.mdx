@@ -1,66 +1,82 @@
 ---
 title: "Rate limits"
-description: "API usage limits by plan and how to handle rate limiting."
+description: "How Atlas API limits affect public reads, API keys, discovery, and workspace integrations."
 ---
 
 ## Overview
 
-Atlas enforces rate limits to ensure fair access for all users. Limits vary by plan and authentication method.
+Rate limits protect Atlas from noisy clients while keeping public civic data
+available. The important design choice is not just “how many requests can I
+send?” It is “what access pattern matches the workflow?”
 
-## Limits by plan
+## Choose the right access pattern
 
-| | **Free (unauthenticated)** | **Pro** | **Team** |
-|---|---|---|---|
-| **Public API** | 100 requests/hour | Unlimited | Unlimited |
-| **API key requests** | — | 1,000/day per key | 10,000/day per key |
-| **Max API keys** | 0 | 1 | Unlimited |
-| **Research runs** | 2/month | Unlimited | Unlimited |
+| Workflow                   | Recommended access                                          |
+| -------------------------- | ----------------------------------------------------------- |
+| Occasional public lookup   | Public unauthenticated API                                  |
+| Scheduled script or export | API key                                                     |
+| Team workflow automation   | API key scoped to the workspace                             |
+| AI assistant or MCP client | OAuth through the MCP client                                |
+| High-volume crawling       | Do not crawl blindly; use focused queries and cache results |
 
-<Note>
-Unauthenticated requests (no API key or OAuth token) use the Free tier limits regardless of your account status. Always authenticate to get your plan's full limits.
-</Note>
+Unauthenticated requests always use the public limit even if the user also has a
+paid account. Authenticate recurring integrations.
 
-## Rate limit headers
+## Current limits
 
-When you approach your limit, the API returns rate limit information in response headers:
+| Access pattern             | Limit                           |
+| -------------------------- | ------------------------------- |
+| Public unauthenticated API | 100 requests per hour           |
+| Pro API key                | 1,000 requests per day per key  |
+| Team API key               | 10,000 requests per day per key |
+| Free research runs         | 2 runs per month                |
+| Pro and Team research runs | Unlimited                       |
 
-| Header | Description |
-|--------|-------------|
-| `X-RateLimit-Limit` | Maximum requests allowed in the current window |
-| `X-RateLimit-Remaining` | Requests remaining in the current window |
-| `X-RateLimit-Reset` | Unix timestamp when the window resets |
+Use the generated reference and pricing page for exact plan details when limits
+change.
 
-## Handling rate limits
+## Build with limits in mind
 
-When you exceed your limit, the API returns `429 Too Many Requests`:
+- Cache place, taxonomy, and source responses when the source data does not need to be live.
+- Page through results deliberately instead of requesting every record.
+- Preserve entity ids and source ids so you can refresh specific records later.
+- Use coverage endpoints to decide where more API calls are worth spending.
+- Back off on `429` instead of retrying in a tight loop.
 
-```json
-{
-  "error": {
-    "type": "RATE_LIMITED",
-    "message": "Rate limit exceeded",
-    "detail": "You have exceeded 100 requests per hour. Upgrade to Pro for higher limits."
-  }
-}
-```
+## Handling 429
 
-**Best practices:**
+A rate-limited response means the request was understood but the client has
+exhausted its current window.
 
-- **Check response headers** — Monitor `X-RateLimit-Remaining` to avoid hitting the limit
-- **Use exponential backoff** — If you get a 429, wait and retry with increasing delays
-- **Cache responses** — Store results locally to avoid redundant requests
-- **Authenticate your requests** — Unauthenticated requests have the lowest limits
+When that happens:
 
-## Need higher limits?
+1. Stop the current loop.
+2. Check rate-limit headers when present.
+3. Wait until the reset window or retry with exponential backoff.
+4. Cache the successful responses you already received.
+5. Authenticate or upgrade only if the workflow truly needs higher volume.
+
+## When to redesign instead of upgrade
+
+Higher limits are not a substitute for a better workflow. Redesign the
+integration if it repeatedly:
+
+- Refetches the same actors without using ids.
+- Drops sources and has to rediscover evidence.
+- Crawls all places to answer one local question.
+- Starts discovery runs without a review plan.
+- Polls completed runs forever.
+
+## Next steps
 
 <CardGroup cols={2}>
 
-<Card title="Atlas Pro" icon="rocket" href="/account/pricing">
-1,000 API requests/day for $5/month.
+<Card title="API quickstart" icon="rocket" href="/api-reference/quickstart">
+  Make a focused public API request.
 </Card>
 
-<Card title="Atlas Team" icon="users" href="/account/pricing">
-10,000 requests/day per key, unlimited keys.
+<Card title="Authentication" icon="key" href="/api-reference/authentication">
+  Use API keys or OAuth for recurring workflows.
 </Card>
 
 </CardGroup>

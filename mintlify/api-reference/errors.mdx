@@ -1,97 +1,104 @@
 ---
-title: "Errors"
-description: "Atlas API error format, status codes, and common error types."
+title: "Troubleshoot API errors"
+description: "How to interpret Atlas API failures and decide what to do next."
 ---
 
 ## Overview
 
-When something goes wrong, the Atlas API returns a structured error response.
+Atlas errors are meant to tell you whether the problem is your request, your
+credentials, your plan/workspace, or Atlas itself.
 
-## Error format
+Use this page for recovery patterns. Use the generated reference for exact error
+schemas and endpoint-specific responses.
 
-```json
-{
-  "error": {
-    "type": "NOT_FOUND",
-    "message": "Entry not found",
-    "detail": "No entry with id=nonexistent"
-  }
-}
+## Read errors by action
+
+| If you see     | Treat it as                                                       | First action                                            |
+| -------------- | ----------------------------------------------------------------- | ------------------------------------------------------- |
+| `400`          | Request shape or parameter problem.                               | Check the endpoint in the generated reference.          |
+| `401`          | Missing or invalid credentials.                                   | Add a valid API key or reconnect OAuth.                 |
+| `403`          | Identity is valid, but access is not allowed.                     | Check plan, workspace, and permission.                  |
+| `404`          | The resource does not exist or is not visible to this credential. | Verify the id, slug, place key, or workspace.           |
+| `409`          | The request conflicts with existing state.                        | Reload the resource before retrying.                    |
+| `429`          | You exceeded a limit.                                             | Back off and inspect rate-limit headers.                |
+| `500` or `503` | Atlas failed or a dependency is unavailable.                      | Retry later and keep the failed request id/log context. |
+
+## Common fixes
+
+### Search returns validation errors
+
+Check the filter vocabulary before changing code. Issue areas, domains, actor
+types, source types, place keys, and pagination limits all have defined shapes.
+
+Use:
+
+- [Taxonomy guide](/api-reference/guides/taxonomy) for issue areas.
+- [Place guide](/api-reference/guides/places) for place keys.
+- [Generated reference](https://atlas.rebuildingus.org/api-reference) for exact parameters.
+
+### Authenticated request returns 401
+
+Make sure you are using one auth method, not a half-combination of both:
+
+```bash
+curl -H "X-API-Key: your-api-key" \
+  "https://atlas.rebuildingus.org/api/discovery-runs"
 ```
 
-| Field | Description |
-|-------|-------------|
-| `type` | Machine-readable error code (use this for programmatic handling) |
-| `message` | Human-readable summary |
-| `detail` | Additional context (optional) |
+For OAuth clients, reconnect the client rather than manually pasting stale
+tokens. MCP clients should refresh tokens automatically.
 
-## Error types
+### Authenticated request returns 403
 
-| Type | HTTP status | Meaning |
-|------|-------------|---------|
-| `VALIDATION_ERROR` | 400 | Request body or query parameters are invalid |
-| `UNAUTHORIZED` | 401 | No valid authentication provided |
-| `FORBIDDEN` | 403 | Authenticated but not authorized for this action |
-| `NOT_FOUND` | 404 | Resource doesn't exist |
-| `CONFLICT` | 409 | Resource already exists or conflicts with current state |
-| `RATE_LIMITED` | 429 | Too many requests — see [rate limits](/api-reference/rate-limits) |
-| `INTERNAL_ERROR` | 500 | Server error |
-| `SERVICE_UNAVAILABLE` | 503 | Service temporarily unavailable |
+The credential worked, but the requested action is outside the user, workspace,
+plan, or package. This is common when a free account signs in successfully but
+then tries to use MCP, workspace APIs, or higher-volume API access.
 
-## Common scenarios
+Check:
 
-### Invalid request (400)
+- The user belongs to the workspace.
+- The workspace has the right plan.
+- The token is bound to the expected workspace.
+- The endpoint is meant for public data, workspace data, or admin-only work.
 
-```json
-{
-  "error": {
-    "type": "VALIDATION_ERROR",
-    "message": "Invalid request",
-    "detail": "Field 'state' must be a 2-letter code"
-  }
-}
-```
+### A result is missing
 
-**Fix:** Check request body and query parameters against the API reference.
+Do not assume a missing result means the actor does not exist. It may mean the
+current filters are too narrow, the record is private to a workspace, or Atlas
+does not yet have enough public evidence.
 
-### Missing authentication (401)
+Widen the place, issue, source type, or text filter first. Then check place
+coverage to understand whether the local data is thin.
 
-```json
-{
-  "error": {
-    "type": "UNAUTHORIZED",
-    "message": "Authentication required",
-    "detail": "Provide a valid API key via X-API-Key header or a Bearer token via Authorization header"
-  }
-}
-```
+## Retry rules
 
-**Fix:** Add your API key or OAuth token. See [authentication](/api-reference/authentication).
+Retry only when the failure can reasonably resolve without changing the request:
 
-### Rate limited (429)
+- Retry `429` after the reset window or with exponential backoff.
+- Retry `500` and `503` with backoff.
+- Do not blindly retry `400`, `401`, `403`, or `404`; fix the request or credentials first.
 
-```json
-{
-  "error": {
-    "type": "RATE_LIMITED",
-    "message": "Rate limit exceeded",
-    "detail": "You have exceeded 100 requests per hour. Upgrade to Pro for higher limits."
-  }
-}
-```
+## Preserve context when reporting a problem
 
-**Fix:** Wait for the rate limit window to reset (check the `X-RateLimit-Reset` header), or upgrade your plan for higher limits.
+When you report an API issue, include:
 
-### Not found (404)
+- Endpoint path and method.
+- Timestamp.
+- Auth method used, but not the secret value.
+- Request parameters or body with sensitive values removed.
+- Error response body.
+- Whether the request was public, API-key, OAuth, or MCP-driven.
 
-```json
-{
-  "error": {
-    "type": "NOT_FOUND",
-    "message": "Entity not found",
-    "detail": "No entity with id=abc123"
-  }
-}
-```
+## Next steps
 
-**Fix:** Verify the resource ID. Entity IDs are UUIDs — make sure you're using the full ID.
+<CardGroup cols={2}>
+
+<Card title="Authentication" icon="key" href="/api-reference/authentication">
+  Choose public access, API keys, or OAuth.
+</Card>
+
+<Card title="Rate limits" icon="gauge" href="/api-reference/rate-limits">
+  Handle 429s and plan limits.
+</Card>
+
+</CardGroup>

@@ -1,90 +1,106 @@
 ---
-title: "Taxonomy"
-description: "Working with domains and issue areas programmatically."
+title: "Use issue taxonomy"
+description: "Choose Atlas domains and issue areas for search, discovery, and integrations."
 ---
 
 ## Overview
 
-Atlas organizes civic work into 11 domains and 47 issue areas. Use the taxonomy endpoints to discover what categories are available and how entities are tagged.
+Atlas uses a shared issue taxonomy so people, API clients, Scout, and MCP tools
+can talk about civic work with the same vocabulary.
 
-For the full human-readable taxonomy, see [Issue areas & domains](/taxonomy).
+Use taxonomy APIs when you need to choose issue area slugs, display labels, or
+translate a user's plain-language topic into API filters.
 
-## List all issue areas
+For the human-readable taxonomy, see [Issue areas and domains](/taxonomy). For
+exact schemas, use the
+[generated API reference](https://atlas.rebuildingus.org/api-reference).
+
+## Domains and issue areas
+
+Domains are broad categories. Issue areas are the practical filters you will use
+most often in API requests.
+
+For example:
+
+- A domain can help a UI group related topics.
+- An issue area can filter actors, places, discovery runs, and coverage.
+- A label can appear in the interface.
+- A slug should be stored in code and API calls.
+
+Use the API to fetch the current vocabulary instead of hard-coding a local copy.
 
 ```bash
-GET /api/issue-areas
+curl "https://atlas.rebuildingus.org/api/issue-areas"
+curl "https://atlas.rebuildingus.org/api/domains"
 ```
 
-Returns all 47 issue areas with their labels, descriptions, and domain associations.
+## Pick slugs from the user's intent
+
+Start with the user's actual question, then choose the narrowest issue area that
+still matches it.
+
+| User intent                                      | Likely issue area                     |
+| ------------------------------------------------ | ------------------------------------- |
+| Tenant organizing, evictions, rent burden        | `housing_affordability`               |
+| Bus service, transit advocacy, safer streets     | `public_transit`                      |
+| Worker centers, wage theft, union drives         | `union_organizing`                    |
+| Pollution, toxic sites, local environmental harm | `environmental_justice_and_pollution` |
+
+When the intent spans more than one issue, use multiple issue areas rather than
+inventing a new label in your integration.
+
+## Filter with issue areas
 
 ```bash
-curl https://atlas.rebuildingus.org/api/issue-areas
-```
-
-## Get a specific issue area
-
-```bash
-GET /api/issue-areas/{issue_area_slug}
-```
-
-```bash
-curl https://atlas.rebuildingus.org/api/issue-areas/housing_affordability
-```
-
-Returns the issue area's label, description, search terms used by the discovery pipeline, and parent domain.
-
-## List all domains
-
-```bash
-GET /api/domains
-```
-
-Returns all 11 domains with their issue areas.
-
-```bash
-curl https://atlas.rebuildingus.org/api/domains
-```
-
-## Get a specific domain
-
-```bash
-GET /api/domains/{domain_slug}
-```
-
-```bash
-curl https://atlas.rebuildingus.org/api/domains/housing-and-the-built-environment
-```
-
-## Filtering entities by issue area
-
-Use the `issue_area` query parameter on entity endpoints. It accepts issue area slugs and can be repeated for multiple filters:
-
-```bash
-# Single issue area
 curl "https://atlas.rebuildingus.org/api/places/kansas-city,missouri/entities?issue_area=housing_affordability"
+```
 
-# Multiple issue areas (OR logic)
+Use multiple values to widen the issue facet:
+
+```bash
 curl "https://atlas.rebuildingus.org/api/places/kansas-city,missouri/entities?issue_area=housing_affordability&issue_area=union_organizing"
 ```
 
-## MCP tool: resolve_issue_areas
+Then combine with place, actor type, text, or source filters only when the result
+set needs more focus.
 
-When using Atlas through an AI assistant, the `resolve_issue_areas` tool maps natural language to Atlas slugs:
+## Use MCP for natural language mapping
 
-> "What Atlas categories relate to affordable childcare?"
+When a user is working through an AI assistant, the MCP tool can map a phrase to
+Atlas issue slugs.
 
-This is useful when you're not sure which exact slug to use — the AI assistant handles the mapping for you.
+Example prompt:
 
-## What's next
+> What Atlas categories relate to affordable childcare?
+
+The assistant can call `resolve_issue_areas`, show candidate slugs, and then use
+the selected slug in a search or discovery workflow.
+
+This is usually better than asking the user to memorize taxonomy names.
+
+## Avoid taxonomy drift
+
+Do not maintain a second taxonomy in an app, spreadsheet, or agent prompt. It
+will drift from Atlas and make filters inconsistent.
+
+Instead:
+
+- Fetch issue areas and domains from the API.
+- Store slugs, not labels.
+- Display labels from the API response.
+- Refresh cached taxonomy data when the integration starts or on a schedule.
+- Use the generated reference when you need exact field names.
+
+## Next steps
 
 <CardGroup cols={2}>
 
 <Card title="Full taxonomy" icon="tags" href="/taxonomy">
-Human-readable listing of all 11 domains and 47 issue areas.
+  Browse the human-readable issue areas and domains.
 </Card>
 
-<Card title="Entities" icon="users" href="/api-reference/guides/entities">
-Working with entity records.
+<Card title="Research a place" icon="map" href="/api-reference/guides/places">
+  Apply issue areas to a place-first workflow.
 </Card>
 
 </CardGroup>

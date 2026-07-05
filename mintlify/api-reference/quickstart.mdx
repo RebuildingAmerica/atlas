@@ -1,53 +1,37 @@
 ---
 title: "API quickstart"
-description: "Make your first Atlas API call in under 5 minutes."
+description: "A short tutorial for finding source-backed civic actors with the Atlas API."
 ---
 
-## Overview
+## Goal
 
-The Atlas API lets you search the civic research directory, explore places, and run discovery programmatically. This guide gets you from zero to a working API call in under 5 minutes.
+In this tutorial, you will answer one practical question with the public API:
 
-## Base URL
+> Who is working on housing in Kansas City, and what sources back the results?
 
-All API requests go to:
+You do not need an account for this tutorial.
 
-```
-https://atlas.rebuildingus.org/api
-```
+## 1. Check that Atlas is reachable
 
-## Your first request
-
-The simplest way to verify the API is reachable:
-
-<CodeGroup>
-
-```bash cURL
+```bash
 curl https://atlas.rebuildingus.org/health
 ```
 
-```python Python
-import httpx
+The health endpoint is outside the `/api` base path. The data endpoints below
+use:
 
-response = httpx.get("https://atlas.rebuildingus.org/health")
-print(response.json())
+```text
+https://atlas.rebuildingus.org/api
 ```
 
-```typescript TypeScript
-const response = await fetch("https://atlas.rebuildingus.org/health");
-const data = await response.json();
-console.log(data);
-```
+## 2. Search from the place
 
-</CodeGroup>
-
-## Search for entities
-
-Find people and organizations working on an issue in a place. This endpoint is public — no authentication required.
+Start with the place because the question is local.
 
 <CodeGroup>
 
 ```bash cURL
-curl "https://atlas.rebuildingus.org/api/places/kansas-city,missouri/entities?issue_area=housing"
+curl "https://atlas.rebuildingus.org/api/places/kansas-city,missouri/entities?issue_area=housing_affordability"
 ```
 
 ```python Python
@@ -55,134 +39,104 @@ import httpx
 
 response = httpx.get(
     "https://atlas.rebuildingus.org/api/places/kansas-city,missouri/entities",
-    params={"issue_area": "housing"},
+    params={"issue_area": "housing_affordability"},
 )
 
-data = response.json()
-for entity in data["data"]:
-    print(f"{entity['name']} — {entity['description']}")
+for actor in response.json()["data"]:
+    print(actor["name"], actor["type"])
 ```
 
 ```typescript TypeScript
-const params = new URLSearchParams({ issue_area: "housing" });
+const params = new URLSearchParams({
+  issue_area: "housing_affordability",
+});
 
 const response = await fetch(
-  `https://atlas.rebuildingus.org/api/places/kansas-city,missouri/entities?${params}`
+  `https://atlas.rebuildingus.org/api/places/kansas-city,missouri/entities?${params}`,
 );
 
 const { data } = await response.json();
-data.forEach((entity) => {
-  console.log(`${entity.name} — ${entity.description}`);
-});
-```
-
-</CodeGroup>
-
-### Example response
-
-```json
-{
-  "data": [
-    {
-      "id": "a1b2c3d4-...",
-      "type": "organization",
-      "name": "KC Tenants",
-      "description": "Tenant organizing collective fighting for housing justice...",
-      "address": {
-        "city": "Kansas City",
-        "state": "MO"
-      },
-      "issue_areas": ["housing", "tenant_organizing"],
-      "contact": {
-        "website": "https://kctenants.org"
-      }
-    }
-  ],
-  "pagination": {
-    "total": 23,
-    "has_more": true
-  }
+for (const actor of data) {
+  console.log(actor.name, actor.type);
 }
 ```
 
-## Get entity details
-
-Retrieve full details for a specific entity, including all its sources:
-
-<CodeGroup>
-
-```bash cURL
-curl https://atlas.rebuildingus.org/api/entities/{entity_id}
-```
-
-```python Python
-entity = httpx.get(
-    f"https://atlas.rebuildingus.org/api/entities/{entity_id}"
-).json()
-
-print(entity["data"]["name"])
-for source in entity["data"].get("sources", []):
-    print(f"  Source: {source['title']} ({source['publication']})")
-```
-
 </CodeGroup>
 
-## Explore issue areas
+Place-first search is usually better than broad keyword search when your user
+already knows the city, county, or region they care about.
 
-Discover what issue areas Atlas tracks:
+## 3. Pick one result and inspect its sources
 
-```bash
-curl https://atlas.rebuildingus.org/api/issue-areas
-```
-
-Atlas organizes civic work into 11 domains and 47 issue areas. See the [taxonomy reference](/taxonomy) for the full listing.
-
-## Check place coverage
-
-See what Atlas knows about a place — and what's missing:
+Copy one entity id from the search response, then ask for its sources.
 
 ```bash
-curl https://atlas.rebuildingus.org/api/places/kansas-city,missouri/coverage
+curl "https://atlas.rebuildingus.org/api/entities/{entity_id}/sources"
 ```
 
-The coverage endpoint returns entity counts by issue area and highlights gaps where Atlas has limited data.
+Before you reuse the result, check:
 
-## Authenticate for protected endpoints
+- Does the source actually say what you plan to repeat?
+- Is the source recent enough for your use?
+- Is the record backed by more than one independent source?
+- Is the actor type right for your workflow?
 
-To create entities, run discovery, or use workspace features, you need to authenticate. Atlas supports API keys and OAuth 2.1.
+This is the most important habit in Atlas API usage: carry evidence forward
+with the record.
 
-The quickest way to get started:
+## 4. Add place context
 
-1. Sign up at [atlas.rebuildingus.org](https://atlas.rebuildingus.org)
-2. Subscribe to [Atlas Pro](/account/pricing) ($5/month)
-3. Go to **Account** > **API keys** > **Create key**
-4. Add the key to your requests:
+Coverage endpoints help you decide whether your result set is broad enough.
 
 ```bash
-curl -H "X-API-Key: your-api-key" \
-  https://atlas.rebuildingus.org/api/discovery-runs
+curl "https://atlas.rebuildingus.org/api/places/kansas-city,missouri/coverage"
 ```
 
-See the full [authentication guide](/api-reference/authentication) for details on API keys, OAuth, and per-endpoint requirements.
+Use coverage as context, not a final verdict. Thin coverage may mean Atlas has
+not found enough public sources yet, or it may reveal a real local gap.
 
-## What's next
+## 5. Decide whether you need authentication
+
+You can browse public directory data without credentials. You need credentials
+when your workflow does one of these:
+
+- Starts or syncs discovery runs.
+- Writes, updates, or imports records.
+- Uses workspace briefs, lists, watches, private review, or usage proof.
+- Needs higher API limits.
+
+For server-side integrations, create an API key. For AI assistants, connect the
+MCP server and let the client handle OAuth.
+
+## 6. Keep the generated reference nearby
+
+This tutorial shows the model and the workflow. Use the generated reference for
+exact parameters and response shapes.
 
 <CardGroup cols={2}>
 
+<Card
+  title="Generated API reference"
+  icon="code"
+  href="https://atlas.rebuildingus.org/api-reference"
+>
+  Search exact endpoints, parameters, and schemas.
+</Card>
+
 <Card title="Authentication" icon="key" href="/api-reference/authentication">
-API keys, OAuth 2.1, and which endpoints require auth.
+  Choose API keys or OAuth for protected workflows.
 </Card>
 
-<Card title="API overview" icon="book" href="/api-reference/overview">
-Response format, pagination, filtering, and error handling.
-</Card>
-
-<Card title="Rate limits" icon="gauge" href="/api-reference/rate-limits">
-Usage limits by plan.
+<Card
+  title="Find source-backed actors"
+  icon="users"
+  href="/api-reference/guides/entities"
+>
+  Learn the safe search and evidence pattern.
 </Card>
 
 <Card title="Connect an AI assistant" icon="robot" href="/mcp/overview">
-Use Atlas through Claude, Copilot, or Gemini instead of raw API calls.
+  Use the same data through Claude, Copilot, Gemini, or Codex.
 </Card>
 
 </CardGroup>
