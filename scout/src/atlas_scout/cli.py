@@ -20,7 +20,7 @@ import webbrowser
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal, cast
+from typing import TYPE_CHECKING, Literal, NoReturn, cast
 
 import click
 from rich.table import Table
@@ -668,8 +668,11 @@ def _should_prompt_for_setup_model_choice(
     return resolution.ready and len(resolution.choices) > 1
 
 
+_SECRET_CONFIG_FIELD_NAMES = frozenset({"api_key", "token", "secret", "credential"})
+
+
 def _search_key_configured() -> bool:
-    """Return whether this process has a search API key available."""
+    """Return whether this process has search-backed discovery available."""
     return has_search_api_key()
 
 
@@ -678,7 +681,7 @@ def _print_credential_store_error(exc: CredentialStoreError) -> None:
     print_cli_error(err_console, _credential_store_cli_error(exc))
 
 
-def _exit_with_error(error: CliError) -> None:
+def _exit_with_error(error: CliError) -> NoReturn:
     """Render a structured CLI error to stderr and stop command execution."""
     print_cli_error(err_console, error)
     sys.exit(error.exit_code)
@@ -687,6 +690,35 @@ def _exit_with_error(error: CliError) -> None:
 def _credential_store_cli_error(exc: CredentialStoreError) -> CliError:
     """Return a structured credential-storage error."""
     return CliError(title="Credential storage error", message=str(exc))
+
+
+def _resolve_search_connection(search_api_key: str | None) -> str:
+    """Resolve the search credential from an override, environment, or OS storage."""
+    try:
+        return resolve_search_api_key(search_api_key)
+    except CredentialStoreError as exc:
+        _exit_with_error(_credential_store_cli_error(exc))
+
+
+def _search_connection_required_error() -> CliError:
+    """Return the standard missing-search-connection error."""
+    return CliError(
+        title="Search-backed discovery is not connected",
+        message="Run `scout search connect`, or set SEARCH_API_KEY for automation.",
+    )
+
+
+def _require_search_connection(search_api_key: str | None) -> str:
+    """Resolve a search credential or stop with the standard user-facing guidance."""
+    resolved_search_key = _resolve_search_connection(search_api_key)
+    if resolved_search_key:
+        return resolved_search_key
+    _exit_with_error(_search_connection_required_error())
+
+
+def _is_secret_config_key(parts: list[str]) -> bool:
+    """Return whether a config path names a value Scout must not persist in TOML."""
+    return parts[-1].strip().lower() in _SECRET_CONFIG_FIELD_NAMES
 
 
 def _login_failure_cli_error(exc: DeviceAuthError) -> CliError:
@@ -1168,7 +1200,7 @@ def main(
     "--search-api-key",
     envvar="SEARCH_API_KEY",
     default=None,
-    help="Search provider API key. Enables search-backed discovery.",
+    help="Automation override for search-backed discovery. Normal use: scout search connect.",
 )
 @click.option(
     "--follow-links/--no-follow-links",
@@ -1234,7 +1266,8 @@ def run(
         scout run --prompt "Find free legal aid orgs" https://example.com
     \b
     Search mode:
-        scout run --location "Austin, TX" --issues housing_affordability --search-api-key KEY
+        scout search connect
+        scout run --location "Austin, TX" --issues housing_affordability
     """
     config: ScoutConfig = ctx.obj["config"]
 
@@ -1266,14 +1299,17 @@ def run(
         config.scraper.max_pages_per_seed = max_pages_per_seed
 
     # Validation
+    resolved_search_key = search_api_key
     if not url_list:
-        if not search_api_key:
+        resolved_search_key = _resolve_search_connection(search_api_key)
+        if not resolved_search_key:
             err_console.print(
                 "[bold]Direct URL discovery[/]\n"
                 "  scout run <url> [<url> ...]\n"
                 "  scout run -f urls.txt\n\n"
                 "[bold]Search-backed discovery[/]\n"
-                "  scout run --location 'City, ST' --issues <slugs> --search-api-key KEY\n\n"
+                "  scout search connect\n"
+                "  scout run --location 'City, ST' --issues <slugs>\n\n"
                 "Run `scout doctor` to check model, search, sync, and local data readiness."
             )
             sys.exit(1)
@@ -1316,7 +1352,7 @@ def run(
             location=location or "",
             issues=issue_list,
             depth=depth,
-            search_api_key=search_api_key,
+            search_api_key=resolved_search_key,
             direct_urls=url_list or None,
             quiet=quiet,
             directive=directive,
@@ -1688,16 +1724,11 @@ def config_show(ctx: click.Context) -> None:
 @config_group.command("set")
 @click.argument("key")
 @click.argument("value")
-def config_set(key: str, value: str) -> None:
+@click.pass_context
+def config_set(ctx: click.Context, key: str, value: str) -> None:
     """Set a configuration value persistently (e.g. scout config set llm.model gemma3n:latest)."""
     import tomllib
 
-    config_path = get_active_config_path()
-    config_path.parent.mkdir(parents=True, exist_ok=True)
-    data: dict[str, dict[str, str | int | float | bool]] = {}
-    if config_path.exists():
-        with config_path.open("rb") as f:
-            data = cast("dict[str, dict[str, str | int | float | bool]]", tomllib.load(f))
     parts = key.split(".")
     if len(parts) != 2:
         _exit_with_error(
@@ -1707,6 +1738,24 @@ def config_set(key: str, value: str) -> None:
                 hint="Example: llm.provider",
             )
         )
+    if _is_secret_config_key(parts):
+        _exit_with_error(
+            CliError(
+                title="Secret config not saved",
+                message="Secrets are not saved in Scout profile config.",
+                hint=(
+                    "Use `scout search connect` for search, `scout login` for Atlas sync, "
+                    "or an environment variable for automation."
+                ),
+            )
+        )
+
+    config_path: Path = ctx.obj["config_path"]
+    config_path.parent.mkdir(parents=True, exist_ok=True)
+    data: dict[str, dict[str, str | int | float | bool]] = {}
+    if config_path.exists():
+        with config_path.open("rb") as f:
+            data = cast("dict[str, dict[str, str | int | float | bool]]", tomllib.load(f))
     section, field = parts
     # Coerce types
     typed: str | int | float | bool
@@ -3100,7 +3149,12 @@ def worker_group() -> None:
 
 @worker_group.command("start")
 @click.option("--atlas-url", default=None, help="Atlas app URL. Defaults to the saved login.")
-@click.option("--search-api-key", default=None, envvar="SEARCH_API_KEY")
+@click.option(
+    "--search-api-key",
+    default=None,
+    envvar="SEARCH_API_KEY",
+    help="Automation override for search-backed discovery. Normal use: scout search connect.",
+)
 @click.option("--interval", default=10, show_default=True, help="Idle poll interval in seconds.")
 @click.option("--lease-seconds", default=900, show_default=True, help="Worker job lease seconds.")
 @click.pass_context
@@ -3357,14 +3411,22 @@ def daemon() -> None:
 
 
 @daemon.command("start")
-@click.option("--search-api-key", envvar="SEARCH_API_KEY", required=True)
+@click.option(
+    "--search-api-key",
+    envvar="SEARCH_API_KEY",
+    default=None,
+    help="Automation override for search-backed discovery. Normal use: scout search connect.",
+)
 @click.option(
     "--interval", default=0, help="Override interval in seconds (0 = use cron from config)"
 )
 @click.pass_context
-def daemon_start(ctx: click.Context, search_api_key: str, interval: int) -> None:
+def daemon_start(ctx: click.Context, search_api_key: str | None, interval: int) -> None:
     """Start the scheduler as a local background daemon."""
     config: ScoutConfig = ctx.obj["config"]
+    resolved_search_key = (
+        _require_search_connection(search_api_key) if config.schedule.targets else ""
+    )
     try:
         _run_async(
             _daemon_start(
@@ -3372,7 +3434,7 @@ def daemon_start(ctx: click.Context, search_api_key: str, interval: int) -> None
                 config_path=ctx.obj["config_path"],
                 profile_name=ctx.obj.get("profile_name"),
                 debug=bool(ctx.obj.get("debug")),
-                search_api_key=search_api_key,
+                search_api_key=resolved_search_key,
                 interval=interval,
             )
         )
@@ -3431,17 +3493,23 @@ def schedule() -> None:
 
 
 @schedule.command("run-once")
-@click.option("--search-api-key", envvar="SEARCH_API_KEY", required=True)
+@click.option(
+    "--search-api-key",
+    envvar="SEARCH_API_KEY",
+    default=None,
+    help="Automation override for search-backed discovery. Normal use: scout search connect.",
+)
 @click.pass_context
-def schedule_run_once(ctx: click.Context, search_api_key: str) -> None:
+def schedule_run_once(ctx: click.Context, search_api_key: str | None) -> None:
     """Run all configured schedule targets once."""
     config: ScoutConfig = ctx.obj["config"]
     if not config.schedule.targets:
         console.print("[yellow]No schedule targets configured.[/]")
         console.print("Add targets to your config under [schedule.targets].")
         return
+    resolved_search_key = _require_search_connection(search_api_key)
     console.print(f"[bold]Running {len(config.schedule.targets)} targets...[/]")
-    run_ids = _run_async(_schedule_run_once(config, search_api_key))
+    run_ids = _run_async(_schedule_run_once(config, resolved_search_key))
     console.print(f"\n[bold green]Completed {len(run_ids)} runs.[/]")
     for rid in run_ids:
         console.print(f"  {rid}")
@@ -3454,20 +3522,26 @@ async def _schedule_run_once(config: ScoutConfig, search_api_key: str) -> list[s
 
 
 @schedule.command("start")
-@click.option("--search-api-key", envvar="SEARCH_API_KEY", required=True)
+@click.option(
+    "--search-api-key",
+    envvar="SEARCH_API_KEY",
+    default=None,
+    help="Automation override for search-backed discovery. Normal use: scout search connect.",
+)
 @click.option(
     "--interval", default=0, help="Override interval in seconds (0 = use cron from config)"
 )
 @click.pass_context
-def schedule_start(ctx: click.Context, search_api_key: str, interval: int) -> None:
+def schedule_start(ctx: click.Context, search_api_key: str | None, interval: int) -> None:
     """Start the scheduler loop (runs until interrupted)."""
     config: ScoutConfig = ctx.obj["config"]
     if not config.schedule.targets:
         console.print("[yellow]No schedule targets configured.[/]")
         return
+    resolved_search_key = _require_search_connection(search_api_key)
     console.print(f"[bold]Starting scheduler with {len(config.schedule.targets)} targets...[/]")
     console.print("Press Ctrl+C to stop.\n")
-    _run_async(_schedule_start(config, search_api_key, interval))
+    _run_async(_schedule_start(config, resolved_search_key, interval))
 
 
 async def _schedule_start(config: ScoutConfig, search_api_key: str, interval: int) -> None:

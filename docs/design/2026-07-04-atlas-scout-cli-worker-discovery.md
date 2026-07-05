@@ -329,13 +329,16 @@ scout search disconnect
 
 The search credential is stored separately from the Atlas worker credential in
 the OS credential store. `SEARCH_API_KEY` still works and takes precedence as an
-ephemeral override. Scout shows whether search-backed discovery is connected and
-warns when it is not, but it still permits seeded/direct-URL work.
+ephemeral automation override. Scout shows whether search-backed discovery is
+connected and warns when it is not, but it still permits seeded/direct-URL work.
+Public Scout commands that need search-backed discovery resolve the connected
+credential by default; they should not force normal users to pass key-shaped
+flags after `scout search connect`.
 
 ### Optional Worker Commands
 
 ```bash
-scout worker start [--atlas-url URL] [--search-api-key KEY] [--interval 10] [--lease-seconds 900]
+scout worker start [--atlas-url URL] [--interval 10] [--lease-seconds 900]
 scout worker status
 scout worker stop
 ```
@@ -346,12 +349,14 @@ them with the local Scout pipeline, and returns canonical discovery artifacts.
 `scout worker status` reads a local state file with PID, mode, Atlas URL,
 search connection readiness, current job id, last completed job id, heartbeat, and last
 error. In public worker mode it should refuse non-local model providers before
-the public launch gate.
+the public launch gate. `--search-api-key` remains an automation override for
+headless environments, not the primary user path.
 
 ### Upload Commands
 
 ```bash
-scout run --location "Austin, TX" --issues housing_affordability --search-api-key "$SEARCH_API_KEY"
+scout search connect
+scout run --location "Austin, TX" --issues housing_affordability
 scout run --no-sync ...
 scout sync [latest|RUN_ID...] [--all-ready] [--target public|workspace] [--workspace ORG_ID]
 scout runs sync RUN_ID [--target public|workspace] [--workspace ORG_ID]
@@ -415,7 +420,12 @@ Local storage must use the OS credential store for browser-approved session
 tokens and search credentials. Plaintext token and search credential files are not supported
 for public launch. Config files may store non-secret values such as Atlas URL,
 worker id, destination preference, profile name, model name, and local provider
-endpoint URLs.
+endpoint URLs. Scout profile config is not a persistent secret store: command
+flows must refuse to write secret-like fields such as `*.api_key`, `*.token`,
+`*.secret`, and `*.credential` to profile TOML. Normal users should use
+`scout login` and `scout search connect`; automation may continue to use
+environment variables such as `ATLAS_API_KEY`, `SEARCH_API_KEY`,
+`LM_STUDIO_API_KEY`, and provider-specific API variables.
 
 ## Discovery Worker Contract
 
