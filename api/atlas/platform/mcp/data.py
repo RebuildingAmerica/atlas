@@ -303,7 +303,9 @@ class AtlasDataService:
             _source_record(
                 source,
                 linked_entity_ids=[entity_id],
-                linked_entities=[_source_linked_entity_record(entry)],
+                linked_entities=[
+                    _source_linked_entity_record(entry, issue_area_ids=issue_area_ids)
+                ],
                 extraction_context=source["extraction_context"],
                 flag_summary=source_flag_summaries.get(source["id"]),
             )
@@ -347,6 +349,7 @@ class AtlasDataService:
             suppressed_ids = set(entry.suppressed_source_ids or [])
             if suppressed_ids and not include_suppressed:
                 sources = [source for source in sources if source["id"] not in suppressed_ids]
+            issue_area_ids = await EntryCRUD.get_issue_areas(conn, entity_id)
             source_flag_summaries = await FlagCRUD.source_flag_summaries(
                 conn, [source["id"] for source in sources]
             )
@@ -357,7 +360,9 @@ class AtlasDataService:
                 _source_record(
                     source,
                     linked_entity_ids=[entity_id],
-                    linked_entities=[_source_linked_entity_record(entry)],
+                    linked_entities=[
+                        _source_linked_entity_record(entry, issue_area_ids=issue_area_ids)
+                    ],
                     extraction_context=source["extraction_context"],
                     flag_summary=source_flag_summaries.get(source["id"]),
                 )
@@ -1331,20 +1336,23 @@ def _source_record(
     ).model_dump(mode="json")
 
 
-def _source_linked_entity_record(entry: Any) -> dict[str, str | None]:
+def _source_linked_entity_record(
+    entry: Any, *, issue_area_ids: Sequence[str] | None = None
+) -> dict[str, Any]:
     """Return the minimal entity summary used on source cards."""
     return {
         "id": entry.id,
         "name": entry.name,
         "type": entry.type,
         "slug": entry.slug,
+        "issue_area_ids": list(issue_area_ids or []),
     }
 
 
 async def _source_linked_entities_by_id(
     conn: Any,
     entity_ids: Sequence[str],
-) -> dict[str, dict[str, str | None]]:
+) -> dict[str, dict[str, Any]]:
     """Fetch minimal linked entity summaries keyed by entity id."""
     ordered_ids = list(dict.fromkeys(entity_ids))
     if not ordered_ids:
@@ -1360,12 +1368,14 @@ async def _source_linked_entities_by_id(
         ordered_ids,
     )
     rows = _rows_to_dicts(cursor, await cursor.fetchall())
+    issue_map = await EntryCRUD.get_issue_areas_for_entries(conn, ordered_ids)
     return {
         str(row["id"]): {
             "id": str(row["id"]),
             "name": str(row["name"]),
             "type": str(row["type"]),
             "slug": str(row["slug"]) if row["slug"] is not None else None,
+            "issue_area_ids": issue_map.get(str(row["id"]), []),
         }
         for row in rows
     }

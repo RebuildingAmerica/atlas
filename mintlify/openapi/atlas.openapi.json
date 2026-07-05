@@ -10001,6 +10001,14 @@
             "title": "Id",
             "type": "string"
           },
+          "issue_area_ids": {
+            "description": "issue area ids for this source linked entity.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Issue Area Ids",
+            "type": "array"
+          },
           "name": {
             "description": "name for this source linked entity.",
             "title": "Name",

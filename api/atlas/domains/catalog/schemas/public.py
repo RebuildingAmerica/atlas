@@ -166,6 +166,7 @@ class SourceLinkedEntityResponse(BaseModel):
     name: str
     type: str
     slug: str | None = None
+    issue_area_ids: list[str] = Field(default_factory=list)
 
 
 class ReviewQueueItemResponse(BaseModel):

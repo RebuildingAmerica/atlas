@@ -262,6 +262,52 @@ describe("api.places", () => {
     });
   });
 
+  it("derives latest topics from linked actor issue areas", async () => {
+    placeMocks.listPlaceSources.mockResolvedValueOnce({
+      items: [
+        {
+          id: "source-issue-topics",
+          url: "https://example.test/gary-council-issues",
+          title: "Council hears transit and housing testimony",
+          publication: "Gary Common Council",
+          type: "government_record",
+          extraction_method: "manual",
+          linked_entity_ids: ["entry-4", "entry-5"],
+          linked_entities: [
+            {
+              id: "entry-4",
+              name: "Gary Transit Riders",
+              type: "organization",
+              slug: "gary-transit-riders",
+              issue_area_ids: ["public_transit", "housing_affordability"],
+            },
+            {
+              id: "entry-5",
+              name: "Gary Housing Action",
+              type: "organization",
+              slug: "gary-housing-action",
+              issue_area_ids: ["housing_affordability"],
+            },
+          ],
+          freshness: {
+            published_date: "2026-07-05",
+            ingested_at: "2026-07-05T12:00:00.000Z",
+            created_at: "2026-07-05T12:00:00.000Z",
+            staleness_status: "fresh",
+            staleness_reason: "Recent public record.",
+          },
+          resource_uri: "atlas://sources/source-issue-topics",
+        },
+      ],
+      total: 1,
+      next_cursor: null,
+    });
+
+    const result = await api.places.listLatest("gary-in");
+
+    expect(result.items[0]?.topics).toEqual(["Public transit", "Housing affordability"]);
+  });
+
   it("loads sorted people and organizations for a place", async () => {
     placeMocks.listPlaceEntities.mockResolvedValueOnce({
       items: [

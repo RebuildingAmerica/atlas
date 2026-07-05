@@ -328,6 +328,14 @@ async def test_source_responses_share_canonical_freshness_and_flag_shapes(
     await SourceCRUD.link_to_entry(
         test_db, entity_id, source_id, "Report documents unsafe housing conditions."
     )
+    await test_db.execute(
+        """
+        INSERT INTO entry_issue_areas (entry_id, issue_area, created_at)
+        VALUES (?, ?, datetime('now'))
+        """,
+        (entity_id, "housing_affordability"),
+    )
+    await test_db.commit()
 
     entity_sources_response = await test_client.get(f"/api/entities/{entity_id}/sources")
     place_sources_response = await test_client.get("/api/places/gary-in/sources")
@@ -347,6 +355,7 @@ async def test_source_responses_share_canonical_freshness_and_flag_shapes(
         assert linked_entity["name"] == "Gary Housing Justice"
         assert linked_entity["type"] == "organization"
         assert linked_entity["slug"].startswith("gary-housing-justice-")
+        assert linked_entity["issue_area_ids"] == ["housing_affordability"]
         assert "freshness" in payload
         assert payload["freshness"]["staleness_status"] in {"fresh", "aging", "stale", "unknown"}
         assert "flag_summary" in payload

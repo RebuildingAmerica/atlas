@@ -391,6 +391,7 @@ async def get_entity_sources(
     if not entry:
         raise HTTPException(status_code=404, detail="Entity not found")
 
+    issue_areas = await EntryCRUD.get_issue_areas(db, entity_id)
     source_flag_summaries = await FlagCRUD.source_flag_summaries(
         db, [source["id"] for source in sources]
     )
@@ -402,7 +403,9 @@ async def get_entity_sources(
                 _source_record(
                     source,
                     linked_entity_ids=[entity_id],
-                    linked_entities=[_source_linked_entity_record(entry)],
+                    linked_entities=[
+                        _source_linked_entity_record(entry, issue_area_ids=issue_areas)
+                    ],
                     extraction_context=source["extraction_context"],
                     flag_summary=source_flag_summaries.get(source["id"]),
                 )
@@ -648,7 +651,9 @@ def _entity_to_detail_response(  # noqa: PLR0913
                 _source_record(
                     source,
                     linked_entity_ids=[entry.id],
-                    linked_entities=[_source_linked_entity_record(entry)],
+                    linked_entities=[
+                        _source_linked_entity_record(entry, issue_area_ids=issue_areas)
+                    ],
                     extraction_context=source["extraction_context"],
                     flag_summary=source_flag_summaries.get(source["id"]),
                 )

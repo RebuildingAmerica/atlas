@@ -74,6 +74,7 @@ function mapSource(source: SourceResponse): Source {
     linked_entity_ids: source.linked_entity_ids ?? [],
     linked_entities: (source.linked_entities ?? []).map((entity) => ({
       id: entity.id,
+      issue_area_ids: entity.issue_area_ids ?? [],
       name: entity.name,
       slug: entity.slug ?? null,
       type: entity.type,
@@ -234,6 +235,11 @@ function humanize(value: string): string {
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
+function humanizeSentence(value: string): string {
+  const label = value.replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim().toLowerCase();
+  return label ? label.charAt(0).toUpperCase() + label.slice(1) : label;
+}
+
 function firstDefinedString(...values: (string | null | undefined)[]): string | undefined {
   return values.find((value): value is string => typeof value === "string" && value.trim() !== "");
 }
@@ -373,6 +379,21 @@ function linkedEntityHref(entity: Source["linked_entities"][number]): string {
   return `/profiles/${routeSegmentForEntryType(entity.type)}/${entity.slug}`;
 }
 
+function latestTopics(source: Source): string[] {
+  const seen = new Set<string>();
+  const topics: string[] = [];
+  source.linked_entities.forEach((entity) => {
+    entity.issue_area_ids.forEach((issueAreaId) => {
+      if (seen.has(issueAreaId)) {
+        return;
+      }
+      seen.add(issueAreaId);
+      topics.push(humanizeSentence(issueAreaId));
+    });
+  });
+  return topics;
+}
+
 function mapLatestItem(source: Source): PlaceLatestItem {
   const linkedEntityIds = source.linked_entity_ids;
   return {
@@ -389,7 +410,7 @@ function mapLatestItem(source: Source): PlaceLatestItem {
     })),
     linkedEntityIds,
     sourceType: source.type,
-    topics: [],
+    topics: latestTopics(source),
   };
 }
 

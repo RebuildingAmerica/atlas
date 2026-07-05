@@ -48,6 +48,7 @@ export interface Source {
 
 export interface SourceLinkedEntity {
   id: string;
+  issue_area_ids: string[];
   name: string;
   slug?: string | null;
   type: string;
