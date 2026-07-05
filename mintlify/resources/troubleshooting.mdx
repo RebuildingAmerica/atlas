@@ -5,6 +5,10 @@ description: "Common issues and how to resolve them."
 
 ## MCP connection issues
 
+For a setup-specific path, start with [MCP overview](/mcp/overview). For
+permission and scope problems, keep [Scopes and permissions](/mcp/scopes) open
+next to this page.
+
 ### "Connection failed" or timeout
 
 1. Check that `https://atlas.rebuildingus.org/mcp` is reachable from your network
@@ -39,20 +43,28 @@ Atlas uses **Streamable HTTP** transport only — SSE (Server-Sent Events) is no
 - **Invalid key:** Verify the key in your account settings — it may have been revoked
 - **Wrong header:** The header is `X-API-Key`, not `Authorization` (unless using OAuth)
 
+Read [Authentication](/api-reference/authentication) for the difference between
+public reads, API keys, and OAuth.
+
 ### 429 Rate Limited
 
 You've exceeded your plan's request limit. Check these headers in the response:
+
 - `X-RateLimit-Remaining` — how many requests you have left
 - `X-RateLimit-Reset` — when the window resets (Unix timestamp)
 
 Options:
+
 - Wait for the rate limit to reset
 - Upgrade to [Atlas Pro or Team](/account/pricing) for higher limits
 - Cache API responses to reduce requests
 
+See [Rate limits](/api-reference/rate-limits) for limits by access pattern.
+
 ### 404 Not Found for an entity
 
 Entity IDs are UUIDs. Common issues:
+
 - Truncated ID (check you're using the full UUID)
 - The entity was deleted or merged with another
 - Typo in the place key format (use `kansas-city,missouri`, not `Kansas City, MO`)
@@ -63,14 +75,19 @@ Entity IDs are UUIDs. Common issues:
 - Use `GET /api/issue-areas` to see valid slugs
 - Try a broader search (remove filters one at a time)
 
+For local searches, compare your request with [Research a place](/api-reference/guides/places)
+and [Issue areas & domains](/taxonomy).
+
 ## Account issues
 
 ### Can't sign in
 
-Atlas uses magic links (email sign-in). Check:
-- Your email inbox and spam folder
+Atlas is passkey-first. Check:
+
 - That you're using the same email you signed up with
-- Email delivery may take a few minutes
+- That your browser or password manager can offer the passkey for Atlas
+- That third-party browser extensions are not blocking the WebAuthn prompt
+- That your device clock is correct
 
 ### API key not working
 

@@ -15,7 +15,7 @@ Atlas organizes civic work into a two-level taxonomy: **domains** (broad categor
 - The taxonomy evolves as Atlas covers more cities and issues emerge
 
 <Tip>
-You can retrieve the full taxonomy programmatically via `GET /api/issue-areas` and `GET /api/domains`. See the [API reference](/api-reference/overview).
+You can retrieve the full taxonomy programmatically via `GET /api/issue-areas` and `GET /api/domains`. See the [taxonomy API guide](/api-reference/guides/taxonomy) for request patterns.
 </Tip>
 
 ## The taxonomy
@@ -179,3 +179,25 @@ curl https://atlas.rebuildingus.org/api/issue-areas/housing_affordability
 Use the MCP tool `resolve_issue_areas` to map natural language to Atlas issue area slugs:
 
 > "What Atlas issue areas relate to affordable childcare?"
+
+## Related guides
+
+<CardGroup cols={2}>
+
+<Card title="Taxonomy API guide" icon="code" href="/api-reference/guides/taxonomy">
+  Retrieve domains and issue areas from integrations.
+</Card>
+
+<Card title="Research a place" icon="map" href="/api-reference/guides/places">
+  Use issue area slugs in place-first searches.
+</Card>
+
+<Card title="Data model" icon="database" href="/resources/data-model">
+  See how domains, issue areas, entities, and sources fit together.
+</Card>
+
+<Card title="Trust and provenance" icon="shield-check" href="/resources/trust">
+  Understand how issue tags should be interpreted with sources.
+</Card>
+
+</CardGroup>

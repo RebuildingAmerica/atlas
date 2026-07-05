@@ -11,6 +11,13 @@ Once you've connected an AI assistant to Atlas ([setup guide](/mcp/overview)), t
 
 You don't need to call these tools directly — your AI assistant uses them automatically when you ask relevant questions. The reference below helps you understand what's possible and craft more effective prompts.
 
+<Note>
+  Tool access depends on your plan, OAuth scopes, and workspace. See
+  [Scopes and permissions](/mcp/scopes), [Authentication](/api-reference/authentication),
+  and [Workspace integration activity](/workspace/integration-activity) when a
+  tool is missing or returns a permission error.
+</Note>
+
 ## Entity tools
 
 ### search_entities
@@ -211,3 +218,25 @@ Get one source-linked Atlas research run and its structured output.
 <PlaceKeyFormat />
 
 Your AI assistant handles this normalization automatically — you can say "Kansas City" naturally.
+
+## Related guides
+
+<CardGroup cols={2}>
+
+<Card title="Research a city" icon="map" href="/mcp/tutorials/research-city">
+  Try the tools in a complete assistant workflow.
+</Card>
+
+<Card title="Scopes and permissions" icon="lock" href="/mcp/scopes">
+  See which capabilities unlock each tool family.
+</Card>
+
+<Card title="MCP troubleshooting" icon="wrench" href="/mcp/troubleshooting">
+  Resolve connection, consent, and tool-availability issues.
+</Card>
+
+<Card title="Discovery API guide" icon="terminal" href="/api-reference/guides/discovery">
+  Use the same research-run concepts outside an assistant.
+</Card>
+
+</CardGroup>
