@@ -43,7 +43,7 @@ describe("routes/_public layout", () => {
     const openstatus = await import("@openstatus/react");
     vi.mocked(getAtlasDeployMode).mockResolvedValue({
       localMode: true,
-    } as Awaited<ReturnType<typeof getAtlasDeployMode>>);
+    });
 
     const routeModule = await import("@/routes/_public");
     const { asRouteStub } = await import("@/../tests/helpers/router-harness");
@@ -61,7 +61,7 @@ describe("routes/_public layout", () => {
     const { getAtlasDeployMode } = await import("@/domains/access/session.functions");
     vi.mocked(getAtlasDeployMode).mockResolvedValue({
       localMode: false,
-    } as Awaited<ReturnType<typeof getAtlasDeployMode>>);
+    });
 
     const routeModule = await import("@/routes/_public");
     const { asRouteStub } = await import("@/../tests/helpers/router-harness");

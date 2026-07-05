@@ -202,7 +202,7 @@ describe("CoveragePage", () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       text: () => Promise.resolve("target_id,name\ncoverage_covered,Kansas City tenant power\n"),
-    } as Response);
+    });
     vi.stubGlobal("fetch", fetchMock);
     Object.defineProperty(URL, "createObjectURL", {
       configurable: true,

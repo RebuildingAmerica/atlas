@@ -64,14 +64,14 @@ describe.each([
     const Route = asRouteStub(routeModule.Route);
 
     if (!Route.options.loader) throw new Error("Expected loader");
-    const loaded = await Route.options.loader({ params: { slug: `${scope}-slug` } } as never);
+    const loaded = await Route.options.loader({ params: { slug: `${scope}-slug` } });
     expect(loadProfileBySlug).toHaveBeenCalledWith({
       data: { type: scope, slug: `${scope}-slug` },
     });
     expect(loaded).toEqual({ entry });
 
     if (!Route.options.head) throw new Error("Expected head");
-    const headPayload = Route.options.head({ loaderData: { entry } } as never) as {
+    const headPayload = Route.options.head({ loaderData: { entry } }) as {
       meta: Record<string, string>[];
       links: Record<string, string>[];
     };

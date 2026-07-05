@@ -18,18 +18,19 @@ type SitemapEntryType = Extract<EntryType, "person" | "organization">;
 async function listSitemapEntries(entryType: SitemapEntryType): Promise<Entry[]> {
   const entries: Entry[] = [];
   let offset = 0;
-  let hasMore = false;
 
-  do {
+  for (;;) {
     const response = await api.entries.list({
       entry_types: [entryType],
       limit: SITEMAP_PAGE_SIZE,
       offset,
     });
     entries.push(...response.data);
-    hasMore = response.pagination.has_more;
+    if (!response.pagination.has_more) {
+      break;
+    }
     offset += SITEMAP_PAGE_SIZE;
-  } while (hasMore);
+  }
 
   return entries;
 }

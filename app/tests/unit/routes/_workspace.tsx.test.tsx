@@ -417,7 +417,7 @@ describe("routes/_workspace layout", () => {
     } as unknown as ReturnType<typeof getAuthClient>);
     vi.mocked(getRpLogoutRedirect).mockResolvedValue({
       url: null,
-    } as Awaited<ReturnType<typeof getRpLogoutRedirect>>);
+    });
 
     const assignSpy = vi.fn();
     Object.defineProperty(window, "location", {
@@ -464,7 +464,7 @@ describe("routes/_workspace layout", () => {
     } as unknown as ReturnType<typeof getAuthClient>);
     vi.mocked(getRpLogoutRedirect).mockResolvedValue({
       url: "https://idp.test/logout",
-    } as Awaited<ReturnType<typeof getRpLogoutRedirect>>);
+    });
 
     const routeModule = await import("@/routes/_workspace");
     const { asRouteStub } = await import("@/../tests/helpers/router-harness");

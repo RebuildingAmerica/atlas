@@ -41,27 +41,27 @@ describe("routes/sitemap.xml", () => {
         },
       ],
     });
-    vi.mocked(api.entries.list).mockImplementation(((
-      params: { entry_types?: string[] } | undefined,
-    ) => {
-      if (params?.entry_types?.includes("person")) {
+    vi.mocked(api.entries.list).mockImplementation(
+      (params: { entry_types?: string[] } | undefined) => {
+        if (params?.entry_types?.includes("person")) {
+          return Promise.resolve(
+            buildSitemapEntryListResponse([
+              buildSitemapEntry({ type: "person", slug: "jane-doe" }),
+              buildSitemapEntry({ type: "person", slug: "" }),
+            ]),
+          );
+        }
         return Promise.resolve(
           buildSitemapEntryListResponse([
-            buildSitemapEntry({ type: "person", slug: "jane-doe" }),
-            buildSitemapEntry({ type: "person", slug: "" }),
+            buildSitemapEntry({
+              type: "organization",
+              slug: "acme",
+              updated_at: "2024-04-02T00:00:00Z",
+            }),
           ]),
         );
-      }
-      return Promise.resolve(
-        buildSitemapEntryListResponse([
-          buildSitemapEntry({
-            type: "organization",
-            slug: "acme",
-            updated_at: "2024-04-02T00:00:00Z",
-          }),
-        ]),
-      );
-    }) as typeof api.entries.list);
+      },
+    );
 
     const body = await readSitemapXml();
     expect(body).toContain("https://atlas.rebuildingamerica.com/profiles/people/jane-doe");
@@ -75,7 +75,7 @@ describe("routes/sitemap.xml", () => {
   it("paginates entry lists inside the public API limit", async () => {
     const { api } = await import("@/lib/api");
     vi.mocked(api.publicDirectories.list).mockResolvedValue({ directories: [] });
-    vi.mocked(api.entries.list).mockImplementation(((params) => {
+    vi.mocked(api.entries.list).mockImplementation((params) => {
       if (params?.entry_types?.includes("person") && params.offset === 100) {
         return Promise.resolve(
           buildSitemapEntryListResponse(
@@ -110,7 +110,7 @@ describe("routes/sitemap.xml", () => {
           },
         ),
       );
-    }) as typeof api.entries.list);
+    });
 
     const body = await readSitemapXml();
     const entryListCalls = vi.mocked(api.entries.list).mock.calls.map(([params]) => params);

@@ -31,9 +31,7 @@ describe("routes/docs/$ catch-all redirect", () => {
 
     if (!Route.options.loader) throw new Error("Expected loader");
     const loader = Route.options.loader;
-    expect(() => loader({ params: { _splat: "mcp" } } as never)).toThrow(
-      /ATLAS_DOCS_URL is not set/,
-    );
+    expect(() => loader({ params: { _splat: "mcp" } })).toThrow(/ATLAS_DOCS_URL is not set/);
   });
 
   it("redirects to the docs subpath when a splat is present", async () => {
@@ -46,7 +44,7 @@ describe("routes/docs/$ catch-all redirect", () => {
 
     if (!Route.options.loader) throw new Error("Expected loader");
     try {
-      Route.options.loader({ params: { _splat: "mcp" } } as never);
+      Route.options.loader({ params: { _splat: "mcp" } });
       throw new Error("Expected redirect");
     } catch (error) {
       expect((error as { isRedirect?: boolean }).isRedirect).toBe(true);
@@ -66,7 +64,7 @@ describe("routes/docs/$ catch-all redirect", () => {
 
     if (!Route.options.loader) throw new Error("Expected loader");
     try {
-      Route.options.loader({ params: { _splat: undefined } } as never);
+      Route.options.loader({ params: { _splat: undefined } });
       throw new Error("Expected redirect");
     } catch (error) {
       expect((error as { isRedirect?: boolean }).isRedirect).toBe(true);

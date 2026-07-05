@@ -29,9 +29,7 @@ describe("routes/_public/entries/$entryId", () => {
 
     if (!Route.options.loader) throw new Error("Expected loader");
     const loader = Route.options.loader;
-    const captured = await captureRouterRedirect(() =>
-      loader({ params: { entryId: "ent_1" } } as never),
-    );
+    const captured = await captureRouterRedirect(() => loader({ params: { entryId: "ent_1" } }));
     expect(captured.isRedirect).toBe(true);
     expect(captured.options.to).toBe("/profiles/people/$slug");
     expect(captured.options.params).toEqual({ slug: "jane-doe" });
@@ -51,9 +49,7 @@ describe("routes/_public/entries/$entryId", () => {
 
     if (!Route.options.loader) throw new Error("Expected loader");
     const loader = Route.options.loader;
-    const captured = await captureRouterRedirect(() =>
-      loader({ params: { entryId: "ent_2" } } as never),
-    );
+    const captured = await captureRouterRedirect(() => loader({ params: { entryId: "ent_2" } }));
     expect(captured.options.to).toBe("/profiles/organizations/$slug");
     expect(captured.options.params).toEqual({ slug: "acme" });
     expect(captured.options.statusCode).toBe(301);
@@ -76,9 +72,7 @@ describe("routes/_public/entries/$entryId", () => {
 
     if (!Route.options.loader) throw new Error("Expected loader");
     const loader = Route.options.loader;
-    const captured = await captureRouterRedirect(() =>
-      loader({ params: { entryId: "ent_3" } } as never),
-    );
+    const captured = await captureRouterRedirect(() => loader({ params: { entryId: "ent_3" } }));
     expect(captured.options.to).toBe(expectedRoute);
     expect(captured.options.params).toEqual({ slug: `${type}-slug` });
     expect(captured.options.statusCode).toBe(301);
@@ -97,9 +91,7 @@ describe("routes/_public/entries/$entryId", () => {
 
     if (!Route.options.loader) throw new Error("Expected loader");
     const loader = Route.options.loader;
-    const captured = await captureRouterRedirect(() =>
-      loader({ params: { entryId: "ent_3" } } as never),
-    );
+    const captured = await captureRouterRedirect(() => loader({ params: { entryId: "ent_3" } }));
     expect(captured.options.to).toBe("/browse");
     expect(captured.options.statusCode).toBe(302);
   });
@@ -117,9 +109,7 @@ describe("routes/_public/entries/$entryId", () => {
 
     if (!Route.options.loader) throw new Error("Expected loader");
     const loader = Route.options.loader;
-    const captured = await captureRouterRedirect(() =>
-      loader({ params: { entryId: "ent_4" } } as never),
-    );
+    const captured = await captureRouterRedirect(() => loader({ params: { entryId: "ent_4" } }));
     expect(captured.options.to).toBe("/browse");
   });
 

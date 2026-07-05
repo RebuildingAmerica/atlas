@@ -37,7 +37,7 @@ describe("routes/_auth layout", () => {
     const { asRouteStub } = await import("@/../tests/helpers/router-harness");
     const Route = asRouteStub(routeModule.Route);
 
-    expect(Route.options.head?.({} as never)).toEqual({
+    expect(Route.options.head?.({})).toEqual({
       meta: [
         { title: "Atlas account" },
         { name: "description", content: "Access your Atlas account." },

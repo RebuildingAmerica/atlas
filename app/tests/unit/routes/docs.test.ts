@@ -27,7 +27,7 @@ describe("routes/docs", () => {
     const Route = asRouteStub(routeModule.Route);
 
     if (!Route.options.loader) throw new Error("Expected loader");
-    expect(Route.options.loader({ location: { pathname: "/docs/mcp" } } as never)).toBeUndefined();
+    expect(Route.options.loader({ location: { pathname: "/docs/mcp" } })).toBeUndefined();
   });
 
   it("throws an explanatory error when ATLAS_DOCS_URL is unset for the bare /docs path", async () => {
@@ -40,9 +40,7 @@ describe("routes/docs", () => {
 
     if (!Route.options.loader) throw new Error("Expected loader");
     const loader = Route.options.loader;
-    expect(() => loader({ location: { pathname: "/docs/" } } as never)).toThrow(
-      /ATLAS_DOCS_URL is not set/,
-    );
+    expect(() => loader({ location: { pathname: "/docs/" } })).toThrow(/ATLAS_DOCS_URL is not set/);
   });
 
   it("throws a redirect to the configured docs origin for the bare /docs path", async () => {
@@ -55,6 +53,6 @@ describe("routes/docs", () => {
 
     if (!Route.options.loader) throw new Error("Expected loader");
     const loader = Route.options.loader;
-    expect(() => loader({ location: { pathname: "/docs" } } as never)).toThrow("Redirect");
+    expect(() => loader({ location: { pathname: "/docs" } })).toThrow("Redirect");
   });
 });

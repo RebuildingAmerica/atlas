@@ -34,10 +34,7 @@ const WORKSPACE_TYPE_OPTIONS: readonly WorkspaceTypeOption[] = [
 const SLUG_DEBOUNCE_MS = 400;
 
 type SlugAvailability =
-  | { state: "idle" }
-  | { state: "checking" }
-  | { state: "available" }
-  | { state: "taken" };
+  { state: "idle" } | { state: "checking" } | { state: "available" } | { state: "taken" };
 
 /**
  * Props for the first-workspace creation section.
@@ -226,7 +223,7 @@ export function WorkspaceCreationSection({
             <details
               open={isHandoffOpen}
               onToggle={(event) => {
-                setIsHandoffOpen((event.currentTarget as HTMLDetailsElement).open);
+                setIsHandoffOpen(event.currentTarget.open);
               }}
               className="border-outline-variant rounded-[1rem] border bg-white/70 p-4"
             >
