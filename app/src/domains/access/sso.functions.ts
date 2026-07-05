@@ -177,7 +177,7 @@ async function buildWorkspaceSSORegistrationDefaults(params: {
  * Registers a Google Workspace OIDC provider for the active team workspace.
  */
 export const registerWorkspaceGoogleOIDCProvider = createServerFn({ method: "POST" })
-  .inputValidator(googleWorkspaceOIDCProviderSchema)
+  .validator(googleWorkspaceOIDCProviderSchema)
   .handler(async ({ data }) => {
     const organizationRequestContext = await loadOrganizationRequestContext();
     const { auth, headers, session } = organizationRequestContext;
@@ -224,7 +224,7 @@ export const registerWorkspaceGoogleOIDCProvider = createServerFn({ method: "POS
  * IdP issuer URL, so the issuer host must be opted in by Atlas operators.
  */
 export const registerWorkspaceSAMLProvider = createServerFn({ method: "POST" })
-  .inputValidator(googleWorkspaceSAMLProviderSchema)
+  .validator(googleWorkspaceSAMLProviderSchema)
   .handler(async ({ data }) => {
     const { runtime: runtimeModule } = await loadWorkspaceSSOServerModules();
     const { getAuthRuntimeConfig, isAllowedSamlIssuer } = runtimeModule;
@@ -291,7 +291,7 @@ export const registerWorkspaceSAMLProvider = createServerFn({ method: "POST" })
  * point.
  */
 export const setWorkspacePrimarySSOProvider = createServerFn({ method: "POST" })
-  .inputValidator(workspacePrimaryProviderSchema)
+  .validator(workspacePrimaryProviderSchema)
   .handler(async ({ data }) => {
     await saveWorkspacePrimarySSOProvider(data.providerId);
 
@@ -302,7 +302,7 @@ export const setWorkspacePrimarySSOProvider = createServerFn({ method: "POST" })
  * Requests a fresh Better Auth domain-verification token for one provider.
  */
 export const requestWorkspaceSSODomainVerification = createServerFn({ method: "POST" })
-  .inputValidator(workspaceProviderIdSchema)
+  .validator(workspaceProviderIdSchema)
   .handler(async ({ data }) => {
     const organizationRequestContext = await loadOrganizationRequestContext();
     const { auth, headers, session } = organizationRequestContext;
@@ -323,7 +323,7 @@ export const requestWorkspaceSSODomainVerification = createServerFn({ method: "P
  * Submits a Better Auth domain-verification check for one provider.
  */
 export const verifyWorkspaceSSODomain = createServerFn({ method: "POST" })
-  .inputValidator(workspaceProviderIdSchema)
+  .validator(workspaceProviderIdSchema)
   .handler(async ({ data }) => {
     const organizationRequestContext = await loadOrganizationRequestContext();
     const { auth, headers, session } = organizationRequestContext;
@@ -405,7 +405,7 @@ export interface AtlasSAMLProviderHealth {
  * pre-flight check for admins to catch obvious misconfigurations.
  */
 export const checkWorkspaceSAMLProviderHealth = createServerFn({ method: "POST" })
-  .inputValidator(workspaceProviderIdSchema)
+  .validator(workspaceProviderIdSchema)
   .handler(async ({ data }): Promise<AtlasSAMLProviderHealth> => {
     const organizationRequestContext = await loadOrganizationRequestContext();
     const { auth, headers, session } = organizationRequestContext;
@@ -494,7 +494,7 @@ export const checkWorkspaceSAMLProviderHealth = createServerFn({ method: "POST" 
  * also stays put.
  */
 export const rotateWorkspaceSAMLCertificate = createServerFn({ method: "POST" })
-  .inputValidator(workspaceSamlCertificateRotationSchema)
+  .validator(workspaceSamlCertificateRotationSchema)
   .handler(async ({ data }) => {
     const organizationRequestContext = await loadOrganizationRequestContext();
     const { auth, headers, session } = organizationRequestContext;
@@ -529,7 +529,7 @@ export const rotateWorkspaceSAMLCertificate = createServerFn({ method: "POST" })
  * Deletes one SSO provider from the active team workspace.
  */
 export const deleteWorkspaceSSOProvider = createServerFn({ method: "POST" })
-  .inputValidator(workspaceProviderIdSchema)
+  .validator(workspaceProviderIdSchema)
   .handler(async ({ data }) => {
     const organizationRequestContext = await loadOrganizationRequestContext();
     const { auth, headers, session } = organizationRequestContext;
@@ -560,7 +560,7 @@ export const deleteWorkspaceSSOProvider = createServerFn({ method: "POST" })
  * decision.
  */
 export const resolveWorkspaceSSOSignIn = createServerFn({ method: "POST" })
-  .inputValidator(publicSSOResolutionSchema)
+  .validator(publicSSOResolutionSchema)
   .handler(async ({ data }) => {
     const rawDomain = data.email.split("@")[1];
     /* v8 ignore start -- publicSSOResolutionSchema validates `email` as RFC 5322, so split("@")[1] is always defined; tsc can't narrow that. */

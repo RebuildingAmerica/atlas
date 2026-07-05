@@ -188,7 +188,7 @@ export async function unwatchWorkspaceResourceData(input: WorkspaceWatchInput): 
 }
 
 export const loadWorkspaceWatchStatus = createServerFn({ method: "GET" })
-  .inputValidator(workspaceWatchInputSchema)
+  .validator(workspaceWatchInputSchema)
   .handler(async ({ data }) => {
     return await loadWorkspaceWatchStatusData(data);
   });
@@ -198,13 +198,13 @@ export const loadWorkspaceWatches = createServerFn({ method: "GET" }).handler(as
 });
 
 export const watchWorkspaceResource = createServerFn({ method: "POST" })
-  .inputValidator(workspaceWatchInputSchema)
+  .validator(workspaceWatchInputSchema)
   .handler(async ({ data }) => {
     return await watchWorkspaceResourceData(data);
   });
 
 export const unwatchWorkspaceResource = createServerFn({ method: "POST" })
-  .inputValidator(workspaceWatchInputSchema)
+  .validator(workspaceWatchInputSchema)
   .handler(async ({ data }) => {
     await unwatchWorkspaceResourceData(data);
   });

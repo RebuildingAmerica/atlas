@@ -225,7 +225,7 @@ export async function updateWorkspaceBriefData(
 }
 
 export const loadWorkspaceBriefExport = createServerFn({ method: "GET" })
-  .inputValidator(briefExportInputSchema)
+  .validator(briefExportInputSchema)
   .handler(async ({ data }) => {
     return await loadWorkspaceBriefExportData(data.briefId);
   });
@@ -235,13 +235,13 @@ export const loadWorkspaceBriefs = createServerFn({ method: "GET" }).handler(asy
 });
 
 export const createWorkspaceBrief = createServerFn({ method: "POST" })
-  .inputValidator(briefCreateInputSchema)
+  .validator(briefCreateInputSchema)
   .handler(async ({ data }) => {
     return await createWorkspaceBriefData(data);
   });
 
 export const updateWorkspaceBrief = createServerFn({ method: "POST" })
-  .inputValidator(briefUpdateServerInputSchema)
+  .validator(briefUpdateServerInputSchema)
   .handler(async ({ data }) => {
     const { briefId, ...input } = data;
     return await updateWorkspaceBriefData(briefId, input);

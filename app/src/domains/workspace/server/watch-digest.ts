@@ -28,7 +28,7 @@ export async function loadWorkspaceWatchDigestData(limit = 50): Promise<Workspac
 }
 
 export const loadWorkspaceWatchDigest = createServerFn({ method: "GET" })
-  .inputValidator(watchDigestInputSchema)
+  .validator(watchDigestInputSchema)
   .handler(async ({ data }) => {
     return await loadWorkspaceWatchDigestData(data.limit);
   });

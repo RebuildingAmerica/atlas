@@ -15,7 +15,7 @@ const profileSlugSchema = z.object({
 });
 
 export const loadProfileBySlug = createServerFn({ method: "GET" })
-  .inputValidator(profileSlugSchema)
+  .validator(profileSlugSchema)
   .handler(async ({ data }) => {
     try {
       return await api.entries.getBySlug(data.type, data.slug);
@@ -34,7 +34,7 @@ const connectionsSchema = z.object({
 });
 
 export const loadProfileConnections = createServerFn({ method: "GET" })
-  .inputValidator(connectionsSchema)
+  .validator(connectionsSchema)
   .handler(async ({ data }) => {
     return await api.entries.getConnections(data.entryId);
   });
@@ -51,7 +51,7 @@ const profilesOverviewSchema = z.object({
  * query key instead of issuing a fresh fetch on hydration.
  */
 export const loadProfilesCatalog = createServerFn({ method: "GET" })
-  .inputValidator(profilesOverviewSchema)
+  .validator(profilesOverviewSchema)
   .handler(async ({ data }): Promise<EntryListResponse> => {
     return await api.entries.list({
       entry_types: lockedEntryTypesForScope(data.scope),
@@ -75,7 +75,7 @@ function isNotFoundError(error: unknown): boolean {
  * 404 we throw `notFound`, otherwise the first non-404 error surfaces.
  */
 export const loadEntryBySlugAny = createServerFn({ method: "GET" })
-  .inputValidator(slugOnlySchema)
+  .validator(slugOnlySchema)
   .handler(async ({ data }): Promise<Entry> => {
     const [people, orgs] = await Promise.allSettled([
       api.entries.getBySlug("people", data.slug),

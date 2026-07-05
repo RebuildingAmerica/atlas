@@ -153,7 +153,7 @@ export const loadWorkspaceCoverage = createServerFn({ method: "GET" }).handler(a
 });
 
 export const loadWorkspaceCoverageTargetDetail = createServerFn({ method: "GET" })
-  .inputValidator(coverageTargetDetailInputSchema)
+  .validator(coverageTargetDetailInputSchema)
   .handler(async ({ data }) => {
     return await loadWorkspaceCoverageTargetDetailData(data.targetId);
   });
@@ -165,13 +165,13 @@ export const loadWorkspaceCoverageUnderwritingReport = createServerFn({
 });
 
 export const createWorkspaceCoverageTarget = createServerFn({ method: "POST" })
-  .inputValidator(coverageTargetCreateInputSchema)
+  .validator(coverageTargetCreateInputSchema)
   .handler(async ({ data }) => {
     return await createWorkspaceCoverageTargetData(data);
   });
 
 export const importWorkspaceCoverageTargets = createServerFn({ method: "POST" })
-  .inputValidator(coverageTargetImportInputSchema)
+  .validator(coverageTargetImportInputSchema)
   .handler(async ({ data }) => {
     return await importWorkspaceCoverageTargetsData(data);
   });

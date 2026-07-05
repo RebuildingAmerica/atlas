@@ -44,7 +44,7 @@ const mapSeedSchema = z.object({
  * @returns The placed actors inside the continental US for those filters.
  */
 export const loadMapPoints = createServerFn({ method: "GET" })
-  .inputValidator(mapSeedSchema)
+  .validator(mapSeedSchema)
   .handler(async ({ data }): Promise<MapPointCollection> => {
     return await api.entries.mapPoints({
       bounds: CONUS_BBOX_BOUNDS,

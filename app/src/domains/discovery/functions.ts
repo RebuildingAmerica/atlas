@@ -19,7 +19,7 @@ export const listDiscoveryRuns = createServerFn({ method: "GET" }).handler(async
 });
 
 export const listDiscoveryJobQueue = createServerFn({ method: "GET" })
-  .inputValidator(discoveryJobQueueInputSchema)
+  .validator(discoveryJobQueueInputSchema)
   .handler(async ({ data }) => {
     return await requestAtlasApi<DiscoveryJobQueueResponse>(
       `/discovery-runs/jobs?limit=${data.limit}`,
@@ -27,13 +27,13 @@ export const listDiscoveryJobQueue = createServerFn({ method: "GET" })
   });
 
 export const getDiscoveryRun = createServerFn({ method: "GET" })
-  .inputValidator(z.object({ id: z.string().min(1) }))
+  .validator(z.object({ id: z.string().min(1) }))
   .handler(async ({ data }) => {
     return await requestAtlasApi<DiscoveryRun>(`/discovery-runs/${data.id}`);
   });
 
 export const startDiscoveryRun = createServerFn({ method: "POST" })
-  .inputValidator(discoveryPayloadSchema)
+  .validator(discoveryPayloadSchema)
   .handler(async ({ data }) => {
     return await requestAtlasApi<DiscoveryRun>("/discovery-runs", {
       body: JSON.stringify(data),

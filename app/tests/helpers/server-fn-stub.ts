@@ -15,6 +15,11 @@ interface ParsedValidator {
 }
 
 /**
+ * Input validator shape supported by TanStack Start server functions.
+ */
+type ServerFnValidator = ParsedValidator | ((input: unknown) => unknown);
+
+/**
  * Result value supported by the shared server-function test stub.
  */
 type ServerFnResult<TResult = unknown> = Promise<TResult> | TResult;
@@ -27,18 +32,26 @@ export function createServerFnStub() {
   return () => {
     let validateInput: ((input: unknown) => unknown) | undefined;
 
+    function storeValidator(validator: ServerFnValidator) {
+      validateInput =
+        typeof validator === "function" ? validator : (input) => validator.parse(input);
+
+      return builder;
+    }
+
     const builder = {
       /**
        * Stores the input validator so the test stub can mimic runtime parsing.
        *
        * @param validator - The validator used by the server function.
        */
-      inputValidator(validator: ParsedValidator | ((input: unknown) => unknown)) {
-        validateInput =
-          typeof validator === "function" ? validator : (input) => validator.parse(input);
-
-        return builder;
-      },
+      inputValidator: storeValidator,
+      /**
+       * Stores the input validator using TanStack Start's current builder name.
+       *
+       * @param validator - The validator used by the server function.
+       */
+      validator: storeValidator,
       /**
        * Preserves the TanStack Start builder shape used in production code.
        */

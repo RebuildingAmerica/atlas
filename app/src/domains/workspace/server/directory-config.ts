@@ -63,7 +63,7 @@ export const loadWorkspaceDirectoryConfig = createServerFn({ method: "GET" }).ha
 });
 
 export const updateWorkspaceDirectoryConfig = createServerFn({ method: "POST" })
-  .inputValidator(directoryConfigInputSchema)
+  .validator(directoryConfigInputSchema)
   .handler(async ({ data }) => {
     return await updateWorkspaceDirectoryConfigData(data);
   });

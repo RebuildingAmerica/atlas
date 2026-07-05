@@ -91,7 +91,7 @@ export const listScoutDevices = createServerFn({ method: "GET" }).handler(async 
  * Revokes one Scout device enrollment owned by the current Atlas user.
  */
 export const revokeScoutDevice = createServerFn({ method: "POST" })
-  .inputValidator(z.object({ deviceId: z.string().min(1) }))
+  .validator(z.object({ deviceId: z.string().min(1) }))
   .handler(async ({ data }) => {
     const { requireAtlasSessionState } = await loadSessionStateModule();
     const { revokeScoutDevice: revokeStoredScoutDevice } = await loadScoutDevicesModule();

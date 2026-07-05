@@ -9,11 +9,7 @@ import { requestWorkspaceApi, requireActiveWorkspaceId } from "./workspace-api";
 export type WorkspaceUsageSummary = OrgUsageSummaryResponse;
 export type WorkspaceIntegrationMonitoring = OrgIntegrationMonitoringResponse;
 export type WorkspaceEvidenceOpenSurface =
-  | "brief"
-  | "coverage_target"
-  | "watch_digest"
-  | "saved_list"
-  | "profile";
+  "brief" | "coverage_target" | "watch_digest" | "saved_list" | "profile";
 
 export interface RecordWorkspaceEvidenceOpenInput {
   sourceId: string;
@@ -134,7 +130,7 @@ export const loadWorkspaceUsageSummary = createServerFn({ method: "GET" }).handl
 });
 
 export const loadWorkspaceUsageAuditLog = createServerFn({ method: "GET" })
-  .inputValidator(usageAuditLogQueryInputSchema)
+  .validator(usageAuditLogQueryInputSchema)
   .handler(async ({ data }) => {
     return await loadWorkspaceUsageAuditLogData(data ?? {});
   });
@@ -146,7 +142,7 @@ export const loadWorkspaceIntegrationMonitoring = createServerFn({ method: "GET"
 );
 
 export const recordWorkspaceEvidenceOpen = createServerFn({ method: "POST" })
-  .inputValidator(recordEvidenceOpenInputSchema)
+  .validator(recordEvidenceOpenInputSchema)
   .handler(async ({ data }) => {
     return await recordWorkspaceEvidenceOpenData(data);
   });

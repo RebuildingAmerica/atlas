@@ -83,7 +83,7 @@ function serverApiBaseUrl(): string {
 }
 
 export const loadPublicDirectory = createServerFn({ method: "GET" })
-  .inputValidator(publicDirectorySchema)
+  .validator(publicDirectorySchema)
   .handler(async ({ data }): Promise<PublicDirectoryResponse> => {
     const response = await fetch(
       `${serverApiBaseUrl()}/orgs/${encodeURIComponent(data.orgId)}/entries/public-directory`,

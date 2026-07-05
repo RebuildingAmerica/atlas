@@ -256,7 +256,7 @@ export const listApiKeys = createServerFn({ method: "GET" }).handler(async () =>
  * Creates a new scoped API key for the current operator session.
  */
 export const createApiKey = createServerFn({ method: "POST" })
-  .inputValidator(
+  .validator(
     z.object({
       name: z.string().min(1),
       scopes: z.array(z.enum(API_KEY_SCOPES)).min(1),
@@ -288,7 +288,7 @@ export const createApiKey = createServerFn({ method: "POST" })
  * Revokes an API key owned by the current operator session.
  */
 export const deleteApiKey = createServerFn({ method: "POST" })
-  .inputValidator(
+  .validator(
     z.object({
       keyId: z.string().min(1),
     }),

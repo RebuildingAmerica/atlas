@@ -196,7 +196,7 @@ const workspaceDomainSchema = z
  * operator is still typing.
  */
 export const checkWorkspaceSlugAvailability = createServerFn({ method: "POST" })
-  .inputValidator(
+  .validator(
     z.object({
       slug: workspaceSlugSchema,
     }),
@@ -239,7 +239,7 @@ export const checkWorkspaceSlugAvailability = createServerFn({ method: "POST" })
  * invited admin accepts.
  */
 export const createWorkspace = createServerFn({ method: "POST" })
-  .inputValidator(
+  .validator(
     z.object({
       delegatedAdminEmail: z.string().email().optional(),
       name: z.string().trim().min(1).max(80),
@@ -316,7 +316,7 @@ export const createWorkspace = createServerFn({ method: "POST" })
  * Switches the current operator into another workspace they already belong to.
  */
 export const setActiveWorkspace = createServerFn({ method: "POST" })
-  .inputValidator(
+  .validator(
     z.object({
       organizationId: z.string().min(1),
     }),
@@ -338,7 +338,7 @@ export const setActiveWorkspace = createServerFn({ method: "POST" })
  * Updates the active team's basic workspace profile.
  */
 export const updateWorkspaceProfile = createServerFn({ method: "POST" })
-  .inputValidator(
+  .validator(
     z.object({
       name: z.string().trim().min(1).max(80),
       slug: workspaceSlugSchema,
@@ -366,7 +366,7 @@ export const updateWorkspaceProfile = createServerFn({ method: "POST" })
  * Invites a new member into the active team workspace.
  */
 export const inviteWorkspaceMember = createServerFn({ method: "POST" })
-  .inputValidator(
+  .validator(
     z.object({
       email: z.string().email(),
       role: z.enum(["admin", "member"]),
@@ -428,7 +428,7 @@ export const inviteWorkspaceMember = createServerFn({ method: "POST" })
  * outstanding invitation the way a cancel-then-reinvite would.
  */
 export const resendWorkspaceInvitation = createServerFn({ method: "POST" })
-  .inputValidator(
+  .validator(
     z.object({
       email: z.string().email(),
       role: z.enum(["admin", "member"]),
@@ -459,7 +459,7 @@ export const resendWorkspaceInvitation = createServerFn({ method: "POST" })
  * Cancels an outstanding invitation for the active team workspace.
  */
 export const cancelWorkspaceInvitation = createServerFn({ method: "POST" })
-  .inputValidator(
+  .validator(
     z.object({
       invitationId: z.string().min(1),
     }),
@@ -483,7 +483,7 @@ export const cancelWorkspaceInvitation = createServerFn({ method: "POST" })
  * Accepts one of the current operator's pending workspace invitations.
  */
 export const acceptWorkspaceInvitation = createServerFn({ method: "POST" })
-  .inputValidator(
+  .validator(
     z.object({
       invitationId: z.string().min(1),
     }),
@@ -514,7 +514,7 @@ export const acceptWorkspaceInvitation = createServerFn({ method: "POST" })
  * Rejects one of the current operator's pending workspace invitations.
  */
 export const rejectWorkspaceInvitation = createServerFn({ method: "POST" })
-  .inputValidator(
+  .validator(
     z.object({
       invitationId: z.string().min(1),
     }),
@@ -536,7 +536,7 @@ export const rejectWorkspaceInvitation = createServerFn({ method: "POST" })
  * Updates one team member's role inside the active workspace.
  */
 export const updateWorkspaceMemberRole = createServerFn({ method: "POST" })
-  .inputValidator(
+  .validator(
     z.object({
       memberId: z.string().min(1),
       role: z.enum(["admin", "member"]),
@@ -562,7 +562,7 @@ export const updateWorkspaceMemberRole = createServerFn({ method: "POST" })
  * Removes a member from the active team workspace.
  */
 export const removeWorkspaceMember = createServerFn({ method: "POST" })
-  .inputValidator(
+  .validator(
     z.object({
       memberIdOrEmail: z.string().min(1),
     }),

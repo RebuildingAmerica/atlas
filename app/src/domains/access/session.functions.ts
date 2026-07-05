@@ -71,7 +71,7 @@ export const ensureReadyAtlasSession = createServerFn({ method: "GET" }).handler
  * Starts the magic-link sign-in flow for an email address.
  */
 export const requestMagicLink = createServerFn({ method: "POST" })
-  .inputValidator(
+  .validator(
     z.object({
       callbackURL: z.string().optional(),
       email: z.string().email(),
@@ -96,7 +96,7 @@ export const sendVerificationEmail = createServerFn({ method: "POST" }).handler(
  * Checks whether an Atlas account already exists for a given email address.
  */
 export const checkAccountExists = createServerFn({ method: "POST" })
-  .inputValidator(
+  .validator(
     z.object({
       email: z.string().email(),
     }),

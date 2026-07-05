@@ -61,7 +61,7 @@ export const listPasskeys = createServerFn({ method: "GET" }).handler(async () =
  * Deletes a passkey by ID for the current operator session.
  */
 export const deletePasskey = createServerFn({ method: "POST" })
-  .inputValidator(z.object({ id: z.string().min(1) }))
+  .validator(z.object({ id: z.string().min(1) }))
   .handler(async ({ data }) => {
     const { ensureAuthReady } = await loadAuthModule();
     const { getBrowserSessionHeaders } = await loadRequestHeadersModule();
@@ -78,7 +78,7 @@ export const deletePasskey = createServerFn({ method: "POST" })
  * Renames a passkey for the current operator session.
  */
 export const updatePasskey = createServerFn({ method: "POST" })
-  .inputValidator(z.object({ id: z.string().min(1), name: z.string().min(1) }))
+  .validator(z.object({ id: z.string().min(1), name: z.string().min(1) }))
   .handler(async ({ data }) => {
     const { ensureAuthReady } = await loadAuthModule();
     const { getBrowserSessionHeaders } = await loadRequestHeadersModule();

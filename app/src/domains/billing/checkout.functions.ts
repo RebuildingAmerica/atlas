@@ -74,7 +74,7 @@ function resolveSeatPriceId(interval: string): string {
  * ID and operator email are read from the current session context.
  */
 export const startCheckout = createServerFn({ method: "POST" })
-  .inputValidator(checkoutInputSchema)
+  .validator(checkoutInputSchema)
   .handler(async ({ data }) => {
     const {
       checkout,
