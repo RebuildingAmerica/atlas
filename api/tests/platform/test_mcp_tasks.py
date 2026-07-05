@@ -666,6 +666,108 @@ class TestInstallTasksExtension:
         assert options.capabilities.tasks.requests.tools.call is not None
 
 
+class TestLoggingIntegration:
+    @pytest.mark.asyncio
+    async def test_call_tool_logs_start_and_success(self, test_settings: Settings) -> None:
+        with patch("atlas.platform.mcp.server.get_settings", return_value=test_settings):
+            mcp = build_mcp()
+            handler = _handler_for(mcp, types.CallToolRequest)
+            request = types.CallToolRequest(
+                method="tools/call",
+                params=types.CallToolRequestParams(name="search_entities", arguments={"limit": 1}),
+            )
+            with patch.object(tasks_module, "log_operation", new=AsyncMock()) as log_mock:
+                result = await handler(request)
+
+        assert result.root.isError is False
+        assert log_mock.await_count >= 2  # noqa: PLR2004
+        levels = [call.kwargs["level"] for call in log_mock.await_args_list]
+        assert "error" not in levels
+
+    @pytest.mark.asyncio
+    async def test_call_tool_logs_error_for_failed_call(self, test_settings: Settings) -> None:
+        with patch("atlas.platform.mcp.server.get_settings", return_value=test_settings):
+            mcp = build_mcp()
+            handler = _handler_for(mcp, types.CallToolRequest)
+            request = types.CallToolRequest(
+                method="tools/call",
+                params=types.CallToolRequestParams(name="get_entity", arguments={"entity_id": "x"}),
+            )
+            with patch.object(tasks_module, "log_operation", new=AsyncMock()) as log_mock:
+                result = await handler(request)
+
+        assert result.root.isError is True
+        levels = [call.kwargs["level"] for call in log_mock.await_args_list]
+        assert "error" in levels
+
+    @pytest.mark.asyncio
+    async def test_get_task_logs_operation(self, test_db: object, test_settings: Settings) -> None:
+        run_id = await DiscoveryRunCRUD.create(
+            test_db, location_query="KC", state="MO", issue_areas=["x"]
+        )
+        job_id = await DiscoveryJobCRUD.create(test_db, run_id=run_id)
+        mcp = build_mcp()
+        handler = _handler_for(mcp, types.GetTaskRequest)
+
+        with (
+            patch.object(tasks_module, "get_settings", return_value=test_settings),
+            patch.object(tasks_module, "log_operation", new=AsyncMock()) as log_mock,
+        ):
+            await handler(
+                types.GetTaskRequest(
+                    method="tasks/get", params=types.GetTaskRequestParams(taskId=job_id)
+                )
+            )
+
+        log_mock.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_cancel_task_logs_operation(
+        self, test_db: object, test_settings: Settings
+    ) -> None:
+        run_id = await DiscoveryRunCRUD.create(
+            test_db, location_query="KC", state="MO", issue_areas=["x"]
+        )
+        job_id = await DiscoveryJobCRUD.create(test_db, run_id=run_id)
+        mcp = build_mcp()
+        handler = _handler_for(mcp, types.CancelTaskRequest)
+
+        with (
+            patch.object(tasks_module, "get_settings", return_value=test_settings),
+            patch.object(tasks_module, "log_operation", new=AsyncMock()) as log_mock,
+        ):
+            await handler(
+                types.CancelTaskRequest(
+                    method="tasks/cancel", params=types.CancelTaskRequestParams(taskId=job_id)
+                )
+            )
+
+        log_mock.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_get_task_result_logs_operation(
+        self, test_db: object, test_settings: Settings
+    ) -> None:
+        run_id = await DiscoveryRunCRUD.create(
+            test_db, location_query="KC", state="MO", issue_areas=["x"]
+        )
+        await DiscoveryJobCRUD.create(test_db, run_id=run_id, job_input=DiscoveryJobInput())
+        mcp = build_mcp()
+        handler = _handler_for(mcp, types.GetTaskPayloadRequest)
+
+        with (
+            patch.object(tasks_module, "get_settings", return_value=test_settings),
+            patch.object(tasks_module, "log_operation", new=AsyncMock()) as log_mock,
+        ):
+            await handler(
+                types.GetTaskPayloadRequest(
+                    method="tasks/result", params=types.GetTaskPayloadRequestParams(taskId=run_id)
+                )
+            )
+
+        log_mock.assert_awaited_once()
+
+
 class TestActorClaimsFromRequestContext:
     def test_returns_none_when_no_request(self) -> None:
         server = MagicMock()

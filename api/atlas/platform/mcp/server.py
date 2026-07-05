@@ -12,6 +12,7 @@ from mcp.server.transport_security import TransportSecuritySettings
 from atlas.platform.config import Settings, get_settings
 
 from .data import AtlasDataService
+from .logging_support import install_logging_extension
 from .tasks import install_tasks_extension
 
 if TYPE_CHECKING:
@@ -69,14 +70,16 @@ def build_transport_security_settings(settings: Settings) -> TransportSecuritySe
 
 
 def build_mcp() -> FastMCP:
-    """Construct a FastMCP server with Atlas's read tools and Tasks extension.
+    """Construct a FastMCP server with Atlas's read tools, Tasks, and logging.
 
     The server is configured for stateless Streamable HTTP so it can run behind
     a horizontally-scaled load balancer (Cloud Run) without sticky sessions.
     `streamable_http_path="/"` collapses the default `/mcp` suffix so the
     Streamable HTTP root sits directly at whatever mount point the host app
     chooses (Atlas mounts at `/mcp`). `install_tasks_extension` adds the one
-    write/compute tool (`start_discovery_run`) plus its `tasks/*` handlers.
+    write/compute tool (`start_discovery_run`) plus its `tasks/*` handlers;
+    `install_logging_extension` adds `logging/setLevel` and lets every custom
+    handler emit structured `notifications/message` log events.
     """
     settings = get_settings()
     mcp = FastMCP(
@@ -239,6 +242,7 @@ def build_mcp() -> FastMCP:
         return await service.resolve_issue_areas(text, limit=limit)
 
     install_tasks_extension(mcp)
+    install_logging_extension(mcp)
     return mcp
 
 

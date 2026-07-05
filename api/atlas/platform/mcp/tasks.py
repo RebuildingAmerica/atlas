@@ -36,6 +36,7 @@ from atlas.platform.config import get_settings
 from atlas.platform.database import db as db_util
 from atlas.platform.mcp.auth_middleware import _string_claim
 from atlas.platform.mcp.data import DatabaseSession, _discovery_run_record
+from atlas.platform.mcp.logging_support import log_operation
 from atlas.platform.mcp.pagination import decode_cursor, encode_cursor
 from atlas.schemas import DiscoveryRunStartRequest
 
@@ -305,6 +306,12 @@ async def _handle_start_discovery_run(
 
 async def _handle_get_task(req: types.GetTaskRequest) -> types.ServerResult:
     """Handle ``tasks/get``."""
+    await log_operation(
+        logger="atlas.mcp.tasks",
+        level="debug",
+        message="tasks/get",
+        taskId=req.params.taskId,
+    )
     settings = get_settings()
     async with DatabaseSession(settings.database_url) as conn:
         task = await _resolve_task(conn, req.params.taskId)
@@ -323,6 +330,12 @@ async def _handle_get_task(req: types.GetTaskRequest) -> types.ServerResult:
 
 async def _handle_get_task_result(req: types.GetTaskPayloadRequest) -> types.ServerResult:
     """Handle ``tasks/result``, returning the same shape as ``get_discovery_run``."""
+    await log_operation(
+        logger="atlas.mcp.tasks",
+        level="info",
+        message="tasks/result",
+        taskId=req.params.taskId,
+    )
     settings = get_settings()
     async with DatabaseSession(settings.database_url) as conn:
         job = await DiscoveryJobCRUD.get_by_id(conn, req.params.taskId)
@@ -347,6 +360,12 @@ async def _handle_get_task_result(req: types.GetTaskPayloadRequest) -> types.Ser
 
 async def _handle_cancel_task(req: types.CancelTaskRequest) -> types.ServerResult:
     """Handle ``tasks/cancel``. Only jobs are cancellable, not inline-mode runs."""
+    await log_operation(
+        logger="atlas.mcp.tasks",
+        level="info",
+        message="tasks/cancel",
+        taskId=req.params.taskId,
+    )
     settings = get_settings()
     async with DatabaseSession(settings.database_url) as conn:
         job = await DiscoveryJobCRUD.get_by_id(conn, req.params.taskId)
@@ -422,9 +441,27 @@ def install_tasks_extension(mcp: FastMCP) -> None:
     original_call_tool_handler = server.request_handlers[types.CallToolRequest]
 
     async def handle_call_tool(req: types.CallToolRequest) -> types.ServerResult:
-        if req.params.name != _START_DISCOVERY_RUN_TOOL.name:
-            return await original_call_tool_handler(req)
-        return await _handle_start_discovery_run(server, req)
+        tool_name = req.params.name
+        await log_operation(
+            logger="atlas.mcp.tools",
+            level="info",
+            message="tool call started",
+            tool=tool_name,
+        )
+
+        if tool_name != _START_DISCOVERY_RUN_TOOL.name:
+            result = await original_call_tool_handler(req)
+        else:
+            result = await _handle_start_discovery_run(server, req)
+
+        is_error = isinstance(result.root, types.CallToolResult) and result.root.isError
+        await log_operation(
+            logger="atlas.mcp.tools",
+            level="error" if is_error else "info",
+            message="tool call failed" if is_error else "tool call succeeded",
+            tool=tool_name,
+        )
+        return result
 
     server.request_handlers[types.CallToolRequest] = handle_call_tool
 
