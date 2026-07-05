@@ -15,6 +15,7 @@ class TestProductionConfig:
         settings = Settings(
             database_url="sqlite:///tmp/test.db",
             environment="production",
+            deploy_mode="local",
         )
 
         assert settings.enable_openapi_spec is True
@@ -46,6 +47,7 @@ class TestProductionConfig:
         settings = Settings(
             database_url="sqlite:///tmp/test.db",
             environment="production",
+            deploy_mode="local",
         )
 
         monkeypatch.setattr("atlas.main.get_settings", lambda: settings)
@@ -66,6 +68,22 @@ class TestProductionConfig:
         assert openapi_route.endpoint.__name__ == "openapi_schema"
         assert "/docs" not in route_paths
         assert "/redoc" not in route_paths
+
+    def test_app_factory_requires_audience_for_non_local_auth(
+        self,
+        monkeypatch: MonkeyPatch,
+    ) -> None:
+        """Production app startup should fail before serving unauthenticated MCP."""
+        settings = Settings(
+            database_url="sqlite:///tmp/test.db",
+            environment="production",
+            cors_origins=["https://atlas.test"],
+            deploy_mode="production",
+        )
+
+        monkeypatch.setattr("atlas.main.get_settings", lambda: settings)
+        with pytest.raises(RuntimeError, match="ATLAS_API_AUDIENCE is required"):
+            create_app()
 
     def test_auth_settings_use_atlas_prefixed_environment_variables(
         self, monkeypatch: MonkeyPatch
@@ -143,6 +161,17 @@ class TestSettingsValidatorEdgeCases:
             database_url="sqlite:///tmp/test.db",
             auth_jwt_audience="  https://a.test , ,https://b.test ",  # type: ignore[arg-type]
         )
+        assert settings.auth_jwt_audience == ["https://a.test", "https://b.test"]
+
+    def test_string_list_validator_parses_comma_separated_env_var(
+        self,
+        monkeypatch: MonkeyPatch,
+    ) -> None:
+        """Hosted env vars should accept the documented comma-separated audience format."""
+        monkeypatch.setenv("ATLAS_API_AUDIENCE", "https://a.test, https://b.test")
+
+        settings = Settings(database_url="sqlite:///tmp/test.db")
+
         assert settings.auth_jwt_audience == ["https://a.test", "https://b.test"]
 
     def test_postgres_backend_with_sqlite_url_rejected(self) -> None:

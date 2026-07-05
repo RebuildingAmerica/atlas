@@ -163,6 +163,9 @@ CREATE TABLE IF NOT EXISTS org_annotations (
 );
 
 -- Indexes for common queries
+ALTER TABLE entries ADD COLUMN IF NOT EXISTS search_vector tsvector GENERATED ALWAYS AS (
+    to_tsvector('english', coalesce(name, '') || ' ' || coalesce(description, ''))
+) STORED;
 CREATE INDEX IF NOT EXISTS idx_entries_state ON entries(state);
 CREATE INDEX IF NOT EXISTS idx_entries_city ON entries(city);
 CREATE INDEX IF NOT EXISTS idx_entries_region ON entries(region);
@@ -211,6 +214,8 @@ CREATE TABLE IF NOT EXISTS discovery_jobs (
     started_at TIMESTAMPTZ,
     completed_at TIMESTAMPTZ
 );
+ALTER TABLE discovery_jobs ADD COLUMN IF NOT EXISTS idempotency_key TEXT;
+ALTER TABLE discovery_jobs ADD COLUMN IF NOT EXISTS next_attempt_at TIMESTAMPTZ;
 CREATE INDEX IF NOT EXISTS idx_discovery_jobs_status ON discovery_jobs(status);
 CREATE INDEX IF NOT EXISTS idx_discovery_jobs_run_id ON discovery_jobs(run_id);
 CREATE INDEX IF NOT EXISTS idx_discovery_jobs_claimed_until ON discovery_jobs(claimed_until);

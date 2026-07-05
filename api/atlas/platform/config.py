@@ -7,10 +7,10 @@ with sensible defaults. Supports dev, staging, and production environments.
 
 import logging
 from pathlib import Path
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import Field, field_validator, model_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 logger = logging.getLogger(__name__)
 
@@ -68,7 +68,7 @@ class Settings(BaseSettings):
     auth_jwt_issuer: str = Field(default="", validation_alias="ATLAS_PUBLIC_URL")
     """JWT issuer (typically the public URL of the auth server)."""
 
-    auth_jwt_audience: list[str] = Field(
+    auth_jwt_audience: Annotated[list[str], NoDecode] = Field(
         default_factory=list, validation_alias="ATLAS_API_AUDIENCE"
     )
     """Accepted JWT audience claims. Comma-separated when supplied via env var.
@@ -82,7 +82,7 @@ class Settings(BaseSettings):
     auth_jwt_jwks_url: str = ""
     """JWKS endpoint URL. Auto-derived from auth_jwt_issuer when not set."""
 
-    auth_jwt_default_scope: list[str] = Field(
+    auth_jwt_default_scope: Annotated[list[str], NoDecode] = Field(
         default_factory=lambda: ["discovery:read"],
         validation_alias="ATLAS_AUTH_DEFAULT_SCOPE",
     )
@@ -257,8 +257,8 @@ def get_settings() -> Settings:
 def validate_runtime_auth_config(settings: Settings) -> None:
     """Fail fast when an auth-enabled deployment is missing required config.
 
-    Called from app startup (not from Settings construction) so unit tests can
-    instantiate ``Settings`` without supplying production env vars.
+    Called from app startup (not from Settings construction) so local dev and
+    unit tests can instantiate ``Settings`` without supplying hosted env vars.
 
     Parameters
     ----------
@@ -268,15 +268,18 @@ def validate_runtime_auth_config(settings: Settings) -> None:
     Raises
     ------
     RuntimeError
-        When ``ATLAS_DEPLOY_MODE`` is not ``"local"`` and ``ATLAS_API_AUDIENCE``
-        is empty, since the API would otherwise emit RFC 6750 challenges
-        without a discovery URL.
+        When ``ATLAS_DEPLOY_MODE`` explicitly selects a non-local mode, or when
+        the environment is staging/production, and ``ATLAS_API_AUDIENCE`` is
+        empty. Without an audience, the API would otherwise emit RFC 6750
+        challenges without a discovery URL.
     """
     if settings.deploy_mode == "local":
         return
+    if settings.environment == "dev" and settings.deploy_mode == "":
+        return
     if not settings.auth_jwt_audience:
         msg = (
-            "ATLAS_API_AUDIENCE is required when ATLAS_DEPLOY_MODE is not 'local'. "
+            "ATLAS_API_AUDIENCE is required for staging, production, and non-local deploy modes. "
             "Set it to the canonical resource URL(s) the API accepts in JWT 'aud' "
             "claims, e.g. https://atlas.example.com/api."
         )

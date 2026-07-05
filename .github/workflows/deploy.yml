@@ -83,8 +83,10 @@ jobs:
             DATABASE_URL=${{ secrets.DATABASE_URL }}
             ANTHROPIC_API_KEY=${{ secrets.ANTHROPIC_API_KEY }}
             SEARCH_API_KEY=${{ secrets.SEARCH_API_KEY }}
+            ATLAS_DEPLOY_MODE=production
             ATLAS_AUTH_INTERNAL_SECRET=${{ secrets.ATLAS_AUTH_INTERNAL_SECRET }}
             ATLAS_PUBLIC_URL=${{ secrets.ATLAS_PUBLIC_URL }}
+            ATLAS_API_AUDIENCE=https://atlas.rebuildingus.org/mcp,https://atlas-api.rebuildingus.org
             CORS_ORIGINS=["${{ secrets.ATLAS_PUBLIC_URL }}"]
 
       - name: Get API service URL and revision

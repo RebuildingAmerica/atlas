@@ -18,7 +18,7 @@ from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
 
-from atlas.config import get_settings
+from atlas.config import get_settings, validate_runtime_auth_config
 from atlas.models import init_db
 from atlas.platform.http import create_router
 from atlas.platform.http.cache import apply_no_store_headers, apply_static_public_cache
@@ -96,6 +96,7 @@ def create_app() -> FastAPI:
         The configured application.
     """
     settings = get_settings()
+    validate_runtime_auth_config(settings)
 
     # RFC 9700 §4.16: never reflect "*" origins while sending credentials in
     # production.  Catching the misconfiguration at app construction is far
