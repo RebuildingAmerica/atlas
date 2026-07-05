@@ -9,6 +9,7 @@ from atlas.domains.catalog.models.entry_model import (
     _row_to_entry,
     actor_quality,
 )
+from atlas.platform.database import db
 
 if TYPE_CHECKING:
     import builtins
@@ -257,10 +258,9 @@ class EntrySearchMixin:
         Reuses the exact browse facet filters via :meth:`_search_public_ids` so
         the map and the browse list can never diverge, then keeps only the rows
         that carry coordinates inside the requested bounding box. Each surviving
-        actor is reduced to the handful of fields the map renders — id, name,
-        type, slug, lat, lng, issue areas, and an honest trust level — so the
-        payload stays small enough to re-cluster client-side without a round
-        trip.
+        actor is reduced to the fields the map renders for a dot, its place
+        context, and the source-backed confidence cues available without a
+        profile round trip.
 
         Parameters
         ----------
@@ -303,7 +303,22 @@ class EntrySearchMixin:
         placeholders = _make_placeholders(matched_ids)
         cursor = await conn.execute(
             f"""
-            SELECT id, name, type, slug, latitude, longitude, verified, claim_status
+            SELECT
+                id,
+                name,
+                type,
+                slug,
+                city,
+                state,
+                region,
+                geo_specificity,
+                latitude,
+                longitude,
+                geocode_precision,
+                geocode_source,
+                suppressed_source_ids,
+                verified,
+                claim_status
             FROM entries
             WHERE id IN ({placeholders})
               AND latitude IS NOT NULL
@@ -325,23 +340,31 @@ class EntrySearchMixin:
         issue_map = await EntrySearchMixin.get_issue_areas_for_entries(conn, visible_ids)
         source_map = await EntrySearchMixin.get_sources_for_entries(conn, visible_ids)
 
-        points = [
-            {
-                "id": row["id"],
-                "name": row["name"],
-                "type": row["type"],
-                "slug": row["slug"],
-                "lat": float(row["latitude"]),
-                "lng": float(row["longitude"]),
-                "issue_areas": issue_map.get(row["id"], []),
-                "trust_level": _map_trust_level(
-                    verified=bool(row["verified"]),
-                    claim_status=row.get("claim_status"),
-                    sources=source_map.get(row["id"], []),
-                ),
-            }
-            for row in visible
-        ]
+        points = []
+        for row in visible:
+            sources = _public_map_sources(row, source_map.get(row["id"], []))
+            points.append(
+                {
+                    "id": row["id"],
+                    "name": row["name"],
+                    "type": row["type"],
+                    "slug": row["slug"],
+                    "place_label": _place_label(row),
+                    "geo_specificity": row.get("geo_specificity"),
+                    "geocode_precision": row.get("geocode_precision"),
+                    "geocode_source": row.get("geocode_source"),
+                    "lat": float(row["latitude"]),
+                    "lng": float(row["longitude"]),
+                    "issue_areas": issue_map.get(row["id"], []),
+                    "source_count": len(sources),
+                    "latest_source_date": _latest_source_date(sources),
+                    "trust_level": _map_trust_level(
+                        verified=bool(row["verified"]),
+                        claim_status=row.get("claim_status"),
+                        sources=sources,
+                    ),
+                }
+            )
         return {"points": points, "total": total, "capped": capped}
 
     @staticmethod
@@ -667,6 +690,65 @@ def _invalid_entity_sort(sort: str) -> ValueError:
 def _facet_rows_to_dicts(rows: list[tuple[Any, Any]]) -> list[dict[str, Any]]:
     """Convert raw facet SQL rows into API-friendly dictionaries."""
     return [{"value": value, "count": int(count)} for value, count in rows]
+
+
+def _place_label(row: dict[str, Any]) -> str | None:
+    """Build the shortest honest place label for a map point."""
+    city = row.get("city")
+    state = row.get("state")
+    region = row.get("region")
+    if city and state:
+        return f"{city}, {state}"
+    if city:
+        return str(city)
+    if region and state:
+        return f"{region}, {state}"
+    if region:
+        return str(region)
+    if state:
+        return str(state)
+    return None
+
+
+def _date_prefix(value: object) -> str | None:
+    if not isinstance(value, str) or not value:
+        return None
+    return value[:10]
+
+
+def _latest_source_date(sources: Sequence[dict[str, Any]]) -> str | None:
+    """Return the newest source date the map can show without loading sources."""
+    dates = [
+        candidate
+        for source in sources
+        if (
+            candidate := (
+                source.get("published_date")
+                or _date_prefix(source.get("ingested_at"))
+                or _date_prefix(source.get("created_at"))
+            )
+        )
+    ]
+    if not dates:
+        return None
+    return max(str(value) for value in dates)
+
+
+def _suppressed_source_ids(row: dict[str, Any]) -> set[str]:
+    raw = row.get("suppressed_source_ids")
+    if not isinstance(raw, str) or not raw.strip():
+        return set()
+    decoded = db.decode_json(raw)
+    if not isinstance(decoded, list):
+        return set()
+    return {str(item) for item in decoded}
+
+
+def _public_map_sources(row: dict[str, Any], sources: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    suppressed_ids = _suppressed_source_ids(row)
+    if not suppressed_ids:
+        return sources
+    return [source for source in sources if source["id"] not in suppressed_ids]
 
 
 def _empty_facets() -> dict[str, list[dict[str, Any]]]:

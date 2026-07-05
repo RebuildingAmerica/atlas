@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+from datetime import date
 from typing import TYPE_CHECKING
 
 import pytest
 
 from atlas.domains.catalog.models.entry import EntryCRUD
+from atlas.domains.catalog.schemas.public import MapPoint
 from atlas.models import SourceCRUD
 
 if TYPE_CHECKING:
@@ -68,14 +70,22 @@ async def _link_issue(conn: aiosqlite.Connection, entry_id: str, issue_area: str
     await conn.commit()
 
 
-async def _link_source(conn: aiosqlite.Connection, entry_id: str, url: str) -> None:
+async def _link_source(
+    conn: aiosqlite.Connection,
+    entry_id: str,
+    url: str,
+    *,
+    published_date: date | None = None,
+) -> str:
     source_id = await SourceCRUD.create(
         conn,
         url=url,
         source_type="news_article",
         extraction_method="manual",
+        published_date=published_date,
     )
     await SourceCRUD.link_to_entry(conn, entry_id, source_id, "context")
+    return source_id
 
 
 class TestBoundingBox:
@@ -119,6 +129,22 @@ class TestBoundingBox:
 class TestProjectionShape:
     """The projection carries exactly the fields the map renders."""
 
+    async def test_schema_requires_source_context_for_trust_rendering(self) -> None:
+        schema = MapPoint.model_json_schema()
+
+        assert "source_count" in schema["required"]
+        assert schema["properties"]["source_count"]["minimum"] == 0
+        assert schema["properties"]["geocode_precision"]["anyOf"][0]["enum"] == [
+            "rooftop",
+            "city",
+            "state",
+        ]
+        assert schema["properties"]["geocode_source"]["anyOf"][0]["enum"] == [
+            "census",
+            "gazetteer",
+            "manual",
+        ]
+
     async def test_point_carries_tiny_projection(self, test_db: aiosqlite.Connection) -> None:
         entry_id = await _place(test_db, name="Civic Org", entry_type="organization")
         await _link_issue(test_db, entry_id, "housing_affordability")
@@ -134,6 +160,33 @@ class TestProjectionShape:
         assert point["lng"] == _KC_LNG
         assert point["issue_areas"] == ["housing_affordability"]
         assert point["trust_level"] == "unverified"
+
+    async def test_point_carries_place_precision_and_source_context(
+        self, test_db: aiosqlite.Connection
+    ) -> None:
+        entry_id = await _place(test_db, name="Civic Org", entry_type="organization")
+        await _link_source(
+            test_db,
+            entry_id,
+            "https://one.example.com/a",
+            published_date=date(2026, 5, 4),
+        )
+        await _link_source(
+            test_db,
+            entry_id,
+            "https://two.example.org/b",
+            published_date=date(2026, 4, 28),
+        )
+
+        result = await EntryCRUD.search_map_points(test_db, **_US_BBOX, limit=2000)
+
+        point = result["points"][0]
+        assert point["place_label"] == "Kansas City, MO"
+        assert point["geo_specificity"] == "local"
+        assert point["geocode_precision"] == "city"
+        assert point["geocode_source"] == "gazetteer"
+        assert point["source_count"] == _TWO
+        assert point["latest_source_date"] == "2026-05-04"
 
 
 class TestTrustLevel:
@@ -163,6 +216,31 @@ class TestTrustLevel:
         result = await EntryCRUD.search_map_points(test_db, **_US_BBOX, limit=2000)
 
         assert result["points"][0]["trust_level"] == "unverified"
+
+    async def test_suppressed_sources_do_not_inflate_public_map_facts(
+        self, test_db: aiosqlite.Connection
+    ) -> None:
+        entry_id = await _place(test_db, name="Suppressed Source Org")
+        await _link_source(
+            test_db,
+            entry_id,
+            "https://visible.example.com/a",
+            published_date=date(2026, 4, 1),
+        )
+        hidden_source_id = await _link_source(
+            test_db,
+            entry_id,
+            "https://hidden.example.org/a",
+            published_date=date(2026, 5, 4),
+        )
+        await EntryCRUD.update(test_db, entry_id, suppressed_source_ids=[hidden_source_id])
+
+        result = await EntryCRUD.search_map_points(test_db, **_US_BBOX, limit=2000)
+
+        point = result["points"][0]
+        assert point["source_count"] == 1
+        assert point["latest_source_date"] == "2026-04-01"
+        assert point["trust_level"] == "unverified"
 
 
 class TestFilterParity:

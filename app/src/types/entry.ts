@@ -3,6 +3,8 @@ import type { Source, SourcePattern, SourceType } from "./source";
 export type EntryType = "person" | "organization" | "initiative" | "campaign" | "event";
 export type EntrySlugScope = "people" | "organizations" | "initiatives" | "campaigns" | "events";
 export type GeoSpecificity = "local" | "regional" | "statewide" | "national";
+export type GeocodePrecision = "rooftop" | "city" | "state";
+export type GeocodeSource = "census" | "gazetteer" | "manual";
 export type ContactStatus = "not_contacted" | "contacted" | "responded" | "confirmed" | "declined";
 export type Priority = "high" | "medium" | "low";
 
@@ -17,11 +19,7 @@ export interface ClaimStatusInfo {
 }
 
 export type ClaimEvidenceConfidence =
-  | "subject_verified"
-  | "atlas_verified"
-  | "corroborated"
-  | "partial"
-  | "unverified";
+  "subject_verified" | "atlas_verified" | "corroborated" | "partial" | "unverified";
 
 export interface ClaimEvidenceInfo {
   source_count: number;
@@ -167,11 +165,7 @@ export interface FollowingFeedItem {
 
 /** The kind of link behind a connection reason. */
 export type ConnectionReasonKind =
-  | "same_organization"
-  | "sourced_edge"
-  | "co_mentioned"
-  | "same_issue_area"
-  | "same_geography";
+  "same_organization" | "sourced_edge" | "co_mentioned" | "same_issue_area" | "same_geography";
 
 /** Connection strength tier, derived from the normalized 0-100 strength. */
 export type ConnectionTier = "strong" | "moderate" | "weak";
@@ -267,9 +261,15 @@ export interface MapPoint {
   type: EntryType;
   /** Canonical profile slug, or null when the actor has none yet. */
   slug: string | null;
+  place_label: string | null;
+  geo_specificity: GeoSpecificity | null;
+  geocode_precision: GeocodePrecision | null;
+  geocode_source: GeocodeSource | null;
   lat: number;
   lng: number;
   issue_areas: string[];
+  source_count: number;
+  latest_source_date: string | null;
   trust_level: TrustLevel;
 }
 
