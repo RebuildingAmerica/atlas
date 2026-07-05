@@ -47,7 +47,6 @@
     "@headlessui/react": "catalog:",
     "@openstatus/react": "catalog:",
     "@react-email/render": "catalog:",
-    "@scalar/api-reference-react": "catalog:",
     "@tanstack/react-query": "catalog:",
     "@tanstack/react-router": "catalog:",
     "@tanstack/react-start": "catalog:",

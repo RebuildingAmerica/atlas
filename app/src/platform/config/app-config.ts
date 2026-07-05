@@ -2,6 +2,7 @@ const API_PATH_SUFFIX = "/api";
 const DEFAULT_AUTH_BASE_PATH = "/api/auth";
 
 interface AppConfigEnv {
+  ATLAS_API_DOCS_URL?: string;
   ATLAS_AUTH_BASE_PATH?: string;
   ATLAS_DOCS_URL?: string;
   ATLAS_PUBLIC_URL?: string;
@@ -34,6 +35,26 @@ function normalizeDocsOrigin(value: string): string {
   /* v8 ignore stop */
 
   return url.origin;
+}
+
+function normalizeAbsoluteUrl(value: string, label: string): string {
+  const candidate = trimTrailingSlash(value.trim());
+  if (!isAbsoluteUrl(candidate)) {
+    throw new Error(`${label} must be an absolute URL.`);
+  }
+
+  let url: URL;
+  try {
+    url = new URL(candidate);
+  } catch {
+    throw new Error(`${label} must be an absolute URL.`);
+  }
+
+  if (!/^https?:$/.test(url.protocol) || !url.hostname) {
+    throw new Error(`${label} must be an absolute URL.`);
+  }
+
+  return trimTrailingSlash(url.toString());
 }
 
 function ensureApiSuffix(value: string): string {
@@ -71,6 +92,15 @@ function getConfiguredDocsUrl(env: AppConfigEnv): string | undefined {
   return normalizeDocsOrigin(docsUrl);
 }
 
+function getConfiguredApiDocsUrl(env: AppConfigEnv): string | undefined {
+  const apiDocsUrl = env.ATLAS_API_DOCS_URL?.trim();
+  if (!apiDocsUrl) {
+    return undefined;
+  }
+
+  return normalizeAbsoluteUrl(apiDocsUrl, "ATLAS_API_DOCS_URL");
+}
+
 export function getApiBaseUrl(env: AppConfigEnv = import.meta.env): string {
   const publicUrl = getConfiguredPublicUrl(env);
   if (!publicUrl) {
@@ -82,6 +112,7 @@ export function getApiBaseUrl(env: AppConfigEnv = import.meta.env): string {
 
 export function getAppConfig(env: AppConfigEnv = import.meta.env) {
   const authBasePath = env.ATLAS_AUTH_BASE_PATH?.trim() || DEFAULT_AUTH_BASE_PATH;
+  const apiDocsUrl = getConfiguredApiDocsUrl(env);
   const docsUrl = getConfiguredDocsUrl(env);
   const publicUrl = getConfiguredPublicUrl(env);
 
@@ -96,10 +127,15 @@ export function getAppConfig(env: AppConfigEnv = import.meta.env) {
 
   return {
     ...(publicUrl ? { apiBaseUrl: ensureApiSuffix(publicUrl) } : {}),
+    ...(apiDocsUrl ? { apiDocsUrl } : {}),
     authBasePath,
     ...(authBaseUrl ? { authBaseUrl } : {}),
     ...(docsUrl ? { docsUrl } : {}),
   };
+}
+
+export function getApiDocsUrl(env: AppConfigEnv = import.meta.env): string | undefined {
+  return getConfiguredApiDocsUrl(env);
 }
 
 export function getDocsUrl(env: AppConfigEnv = import.meta.env): string | undefined {

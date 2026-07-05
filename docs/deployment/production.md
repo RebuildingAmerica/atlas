@@ -60,6 +60,7 @@ Then fill in the real values.
 | ------------------------------- | ----------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `ATLAS_DEPLOY_MODE`             | No                                                                                        | Omit in production. Set to `local` only for single-user local operation (disables auth, hides sign-in/account UI). This is the single setting that controls whether Atlas runs as a hosted multi-user service or a local standalone tool. |
 | `ATLAS_PUBLIC_URL`              | Yes                                                                                       | The public origin of the Atlas app (e.g., `https://atlas.example.com`). Compiled into the app bundle and used as the base for auth endpoints, API calls, enterprise SSO callback URLs, and OAuth issuer derivation.                       |
+| `ATLAS_API_DOCS_URL`            | Yes                                                                                       | Absolute URL for the single generated Scalar API reference for this environment, e.g. `https://api.atlas.example.com/docs`. The app `/api-reference` route redirects here so docs and app links never hard-code production.                |
 | `ATLAS_DOCS_URL`                | Yes when `/docs` should proxy to Mintlify on Vercel                                       | Absolute origin of the deployed Mintlify site (for example `https://your-subdomain.mintlify.dev`). Vercel uses this to rewrite `https://atlas.example.com/docs` to the hosted Mintlify docs while keeping the Atlas URL in the browser.   |
 | `ATLAS_SERVER_API_PROXY_TARGET` | Yes when the app service must forward `/api/*` traffic to a separate Atlas API deployment | Absolute Atlas API origin used by the app server proxy routes. In Cloud Run, this can be the internal `atlas-api` service URL. In Vercel, set it to the public Atlas API origin that should serve proxied `/api/*` requests.              |
 | `PORT`                          | Platform                                                                                  | The container listen port. On managed platforms like Google Cloud Run, bind to the platform-provided port. Do not expose custom HTTP/HTTPS port config.                                                                                   |
@@ -98,7 +99,7 @@ Then fill in the real values.
 | `DATABASE_URL`        | Yes           | SQLite database path for the API. Must point at persistent storage.                                                                                                                                                          |
 | `CORS_ORIGINS`        | Yes           | JSON array of origins allowed to call the API (e.g., `["https://atlas.example.com"]`).                                                                                                                                       |
 | `ENABLE_OPENAPI_SPEC` | No            | Set to `true` to publish `/openapi.json`.                                                                                                                                                                                    |
-| `ENABLE_API_DOCS_UI`  | No            | Set to `true` only when you intentionally want FastAPI’s built-in `/docs` and `/redoc` UIs. The public generated reference lives at the app route `/api-reference`, so leave this `false` for normal production deployments. |
+| `ENABLE_API_DOCS_UI`  | No            | Set to `true` to publish the API-origin Scalar reference at `/docs`. The app `/api-reference` route redirects to this single generated reference.                                                                            |
 | `ANTHROPIC_API_KEY`   | For discovery | Required for the discovery pipeline (Claude-powered entity extraction).                                                                                                                                                      |
 | `SEARCH_API_KEY`      | For discovery | API key for the search provider used during discovery source fetching.                                                                                                                                                       |
 
@@ -107,9 +108,10 @@ Use explicit absolute URLs in production.
 For the Mintlify deployment path, treat the public surfaces like this:
 
 - `https://<your-atlas-domain>/docs` -> Vercel rewrite to the hosted Mintlify site
-- `https://<your-atlas-domain>/api-reference` -> Scalar reference in the Atlas app
+- `https://<your-atlas-domain>/api-reference` -> redirect to `ATLAS_API_DOCS_URL`
+- `https://<your-api-domain>/docs` -> Scalar generated REST API reference
 - `https://<your-atlas-domain>/openapi.json` -> public machine-readable API contract
-- FastAPI `/docs` and `/redoc` -> disabled in production unless explicitly re-enabled
+- `/redoc` -> not served
 
 Do not model public deployment around separate HTTP and HTTPS port environment variables. For managed platforms such as Google Cloud Run, the correct pattern is:
 

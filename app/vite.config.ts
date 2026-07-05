@@ -11,6 +11,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 export const PUBLIC_ATLAS_ENV_KEYS = [
   "ATLAS_DEPLOY_MODE",
   "ATLAS_PUBLIC_URL",
+  "ATLAS_API_DOCS_URL",
   "ATLAS_MAP_STYLE_URL",
   "ATLAS_DOCS_URL",
   "ATLAS_AUTH_BASE_PATH",

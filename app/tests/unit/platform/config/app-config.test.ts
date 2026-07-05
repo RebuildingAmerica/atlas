@@ -3,6 +3,7 @@ import {
   getAbsoluteApiBaseUrl,
   getApiBaseUrl,
   getAppConfig,
+  getApiDocsUrl,
   getDocsUrl,
   getServerApiBaseUrl,
 } from "@/platform/config/app-config";
@@ -103,6 +104,17 @@ describe("getAppConfig", () => {
     });
   });
 
+  it("exposes the configured API docs URL", () => {
+    expect(
+      getAppConfig({
+        ATLAS_API_DOCS_URL: "https://api.atlas.test/docs/",
+      }),
+    ).toEqual({
+      apiDocsUrl: "https://api.atlas.test/docs",
+      authBasePath: "/api/auth",
+    });
+  });
+
   it("rejects non-absolute public urls", () => {
     expect(() => getAppConfig({ ATLAS_PUBLIC_URL: "relative/path" })).toThrow(
       "ATLAS_PUBLIC_URL must be an absolute URL.",
@@ -198,6 +210,12 @@ describe("default exports and parameters", () => {
   it("getDocsUrl normalizes a bare hostname", () => {
     expect(getDocsUrl({ ATLAS_DOCS_URL: "rebuildingamericaproject.mintlify.dev" })).toBe(
       "https://rebuildingamericaproject.mintlify.dev",
+    );
+  });
+
+  it("getApiDocsUrl normalizes a configured docs route", () => {
+    expect(getApiDocsUrl({ ATLAS_API_DOCS_URL: "https://api.atlas.test/docs/" })).toBe(
+      "https://api.atlas.test/docs",
     );
   });
 });

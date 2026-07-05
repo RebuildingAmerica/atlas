@@ -36,9 +36,6 @@ catalogs:
     '@react-email/render':
       specifier: ^2.0.10
       version: 2.0.10
-    '@scalar/api-reference-react':
-      specifier: ^0.9.53
-      version: 0.9.53
     '@stoplight/spectral-cli':
       specifier: 6.16.1
       version: 6.16.1
@@ -271,9 +268,6 @@ importers:
       '@react-email/render':
         specifier: 'catalog:'
         version: 2.0.10(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
-      '@scalar/api-reference-react':
-        specifier: 'catalog:'
-        version: 0.9.53(axios@1.16.1)(react@19.2.7)(tailwindcss@4.3.2)(typescript@6.0.3)(zod@4.4.3)
       '@tanstack/react-query':
         specifier: 'catalog:'
         version: 5.101.2(react@19.2.7)
