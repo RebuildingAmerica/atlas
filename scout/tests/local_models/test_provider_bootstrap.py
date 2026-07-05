@@ -38,6 +38,12 @@ def test_installed_provider_detection_uses_provider_commands() -> None:
     assert providers == ("lmstudio",)
 
 
+def test_installed_provider_detection_prefers_lmstudio() -> None:
+    providers = installed_local_model_providers(command_exists=_CommandLookup("ollama", "lms"))
+
+    assert providers == ("lmstudio", "ollama")
+
+
 def test_install_plan_uses_macos_homebrew_when_available() -> None:
     plan = install_plan_for_provider(
         "lmstudio",

@@ -53,15 +53,6 @@ class LocalProviderSpec:
 
 LOCAL_PROVIDER_SPECS: tuple[LocalProviderSpec, ...] = (
     LocalProviderSpec(
-        provider="ollama",
-        cli_command="ollama",
-        label="Ollama",
-        start_command=("ollama", "serve"),
-        macos_homebrew_command=("brew", "install", "ollama"),
-        download_url="https://ollama.com/download/mac",
-        download_label="Open Ollama installer",
-    ),
-    LocalProviderSpec(
         provider="lmstudio",
         cli_command="lms",
         label="LM Studio",
@@ -69,6 +60,15 @@ LOCAL_PROVIDER_SPECS: tuple[LocalProviderSpec, ...] = (
         macos_homebrew_command=("brew", "install", "--cask", "lm-studio"),
         download_url="https://lmstudio.ai/download",
         download_label="Open LM Studio installer",
+    ),
+    LocalProviderSpec(
+        provider="ollama",
+        cli_command="ollama",
+        label="Ollama",
+        start_command=("ollama", "serve"),
+        macos_homebrew_command=("brew", "install", "ollama"),
+        download_url="https://ollama.com/download/mac",
+        download_label="Open Ollama installer",
     ),
 )
 

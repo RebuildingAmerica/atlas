@@ -48,6 +48,7 @@ from atlas_scout.cli_output import (
     styled_status,
 )
 from atlas_scout.cli_progress import ProgressRenderer
+from atlas_scout.cli_select import InteractiveChoice, SelectionCancelledError, select_with_arrows
 from atlas_scout.config import (
     SCOUT_CONFIG_DIR,
     SCOUT_CONFIGS_DIR,
@@ -274,6 +275,9 @@ def _ordered_provider_choices(
 ) -> tuple[LocalProviderName, ...]:
     """Return provider choices without duplicating installed/missing providers."""
     providers: list[LocalProviderName] = []
+    for provider in LOCAL_PROVIDER_NAMES:
+        if provider in installed_providers or provider in missing_providers:
+            providers.append(provider)
     for provider in (*installed_providers, *missing_providers):
         if provider not in providers:
             providers.append(provider)
@@ -452,6 +456,10 @@ def _choose_local_model_interactively(
     if len(resolution.choices) <= 1:
         return resolution
 
+    arrow_selection = _select_model_with_arrows(resolution.choices)
+    if arrow_selection is not None:
+        return select_local_model_choice(config, arrow_selection, resolution.choices)
+
     console.print()
     table = Table(title="Local models", show_lines=False, pad_edge=False)
     table.add_column("#", style="dim")
@@ -472,6 +480,27 @@ def _choose_local_model_interactively(
     return select_local_model_choice(config, choice, resolution.choices)
 
 
+def _select_model_with_arrows(
+    choices: tuple[LocalModelChoice, ...],
+) -> LocalModelChoice | None:
+    """Use an arrow-key picker for model selection when a TTY is available."""
+    try:
+        return select_with_arrows(
+            title="Local model",
+            text="Choose the model Scout should use for discovery.",
+            choices=tuple(
+                InteractiveChoice(
+                    value=choice,
+                    label=choice.model,
+                    detail=provider_label(choice.provider),
+                )
+                for choice in choices
+            ),
+        )
+    except SelectionCancelledError as exc:
+        raise click.Abort from exc
+
+
 def _choose_local_model_provider_interactively(
     providers: tuple[LocalProviderName, ...],
     *,
@@ -479,6 +508,10 @@ def _choose_local_model_provider_interactively(
 ) -> LocalProviderName:
     """Ask the user which installed local model server Scout should start."""
     installed = installed_providers or providers
+    arrow_selection = _select_provider_with_arrows(providers, installed)
+    if arrow_selection is not None:
+        return arrow_selection
+
     console.print()
     table = Table(title="Local model providers", show_lines=False, pad_edge=False)
     table.add_column("#", style="dim")
@@ -497,6 +530,28 @@ def _choose_local_model_provider_interactively(
         )
     )
     return providers[selection - 1]
+
+
+def _select_provider_with_arrows(
+    providers: tuple[LocalProviderName, ...],
+    installed_providers: tuple[LocalProviderName, ...],
+) -> LocalProviderName | None:
+    """Use an arrow-key picker for provider setup when a TTY is available."""
+    try:
+        return select_with_arrows(
+            title="Local model provider",
+            text="Choose the provider Scout should set up.",
+            choices=tuple(
+                InteractiveChoice(
+                    value=provider,
+                    label=provider_label(provider),
+                    detail="installed" if provider in installed_providers else "can install",
+                )
+                for provider in providers
+            ),
+        )
+    except SelectionCancelledError as exc:
+        raise click.Abort from exc
 
 
 def _should_prompt_for_setup_model_choice(

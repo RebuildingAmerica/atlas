@@ -23,11 +23,11 @@ LocalModelStatus = Literal[
     "no_models",
 ]
 
-LOCAL_PROVIDER_NAMES: tuple[LocalProviderName, ...] = ("ollama", "lmstudio")
+LOCAL_PROVIDER_NAMES: tuple[LocalProviderName, ...] = ("lmstudio", "ollama")
 DEFAULT_OLLAMA_URL = "http://localhost:11434"
 LOCAL_PROVIDER_LABELS: dict[LocalProviderName, str] = {
-    "ollama": "Ollama",
     "lmstudio": "LM Studio",
+    "ollama": "Ollama",
 }
 
 

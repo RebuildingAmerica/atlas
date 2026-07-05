@@ -65,12 +65,16 @@ handles local model provider setup before model selection. Provider setup is a
 separate stage from model configuration: Scout detects Ollama and LM Studio
 CLIs, shows provider choices when more than one path exists, offers to install
 a missing provider only after explicit confirmation, and starts the selected
-installed provider before listing models. Once a provider is selected, model
-configuration is scoped to that provider only; choosing LM Studio must not fall
-back to Ollama models just because Ollama is already ready. Only when Scout
-cannot resolve the provider or model itself does it keep the successful sign-in
-and offer concrete next steps. Users can still run the steps individually, but
-they should not have to know those pieces before trying Scout.
+installed provider before listing models. LM Studio is listed first when it is
+available because it gives new users a more familiar desktop model-management
+experience. In a real terminal, provider and model selection use arrow-key
+menus; numbered prompts are only a fallback for non-interactive shells, tests,
+and pipes. Once a provider is selected, model configuration is scoped to that
+provider only; choosing LM Studio must not fall back to Ollama models just
+because Ollama is already ready. Only when Scout cannot resolve the provider or
+model itself does it keep the successful sign-in and offer concrete next steps.
+Users can still run the steps individually, but they should not have to know
+those pieces before trying Scout.
 
 `scout doctor` is the readiness checkpoint between login and work. Its default
 view answers whether this computer can run direct URL discovery, search-backed
@@ -255,12 +259,13 @@ Normal discovery commands resolve local model settings before work starts:
   action: start Ollama, start LM Studio's server, download a model, or provide
   an LM Studio API token if that server requires one.
 
-`scout setup` performs provider bootstrap before this resolver runs. If Ollama
-or LM Studio is installed but stopped, setup starts the selected provider. If a
-provider is missing, setup offers the platform install action and requires the
-user to confirm before running it or opening an installer. After provider
-bootstrap, setup lists models for the selected provider and saves the chosen
-provider/model/base URL.
+`scout setup` performs provider bootstrap before this resolver runs. LM Studio
+is preferred when multiple provider paths are available. If Ollama or LM Studio
+is installed but stopped, setup starts the selected provider. If a provider is
+missing, setup offers the platform install action and requires the user to
+confirm before running it or opening an installer. After provider bootstrap,
+setup lists models for the selected provider and saves the chosen provider,
+model, and base URL.
 
 `scout config llm` exposes the resolver as a direct repair command. Default mode
 makes the best safe choice automatically. `--interactive` shows detected

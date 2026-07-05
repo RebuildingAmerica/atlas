@@ -338,7 +338,7 @@ def test_setup_prompts_for_provider_when_multiple_can_be_started(
     result = CliRunner().invoke(
         main,
         ["--config", str(config_path), "setup"],
-        input="2\n",
+        input="\n\n",
     )
 
     assert result.exit_code == 0, result.output
@@ -347,6 +347,56 @@ def test_setup_prompts_for_provider_when_multiple_can_be_started(
     assert started_providers == ["lmstudio"]
     assert "Using LM Studio with qwen3:latest" in result.output
     assert 'provider = "lmstudio"' in config_path.read_text(encoding="utf-8")
+
+
+def test_setup_defaults_to_lmstudio_when_multiple_providers_are_installed(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    config_path = tmp_path / "scout.toml"
+    started_providers: list[str] = []
+
+    monkeypatch.setattr(
+        cli_module,
+        "load_session",
+        lambda: ScoutSession(
+            atlas_url="https://atlas.example",
+            access_token="token",
+            worker_id="worker-123",
+            user_id="user-123",
+            user_email="willie@example.org",
+            worker_name="Willies Mac",
+            default_upload_target="public",
+            workspace_id=None,
+        ),
+    )
+    monkeypatch.setattr(
+        cli_module,
+        "_installed_local_model_providers",
+        lambda: ("lmstudio", "ollama"),
+        raising=False,
+    )
+    monkeypatch.setattr(
+        cli_module,
+        "_try_start_local_model_server",
+        _record_started_provider(started_providers),
+        raising=False,
+    )
+    monkeypatch.setattr(
+        cli_module,
+        "resolve_local_model",
+        lambda *_args, **_kwargs: _cross_provider_resolution(),
+    )
+
+    result = CliRunner().invoke(
+        main,
+        ["--config", str(config_path), "setup"],
+        input="\n\n",
+    )
+
+    assert result.exit_code == 0, result.output
+    assert started_providers == ["lmstudio"]
+    assert "Using LM Studio with qwen3:latest" in result.output
 
 
 def test_setup_prompts_for_provider_even_when_current_provider_is_ready(
@@ -393,7 +443,7 @@ def test_setup_prompts_for_provider_even_when_current_provider_is_ready(
     result = CliRunner().invoke(
         main,
         ["--config", str(config_path), "setup"],
-        input="2\n",
+        input="\n\n",
     )
 
     assert result.exit_code == 0, result.output
@@ -476,7 +526,7 @@ def test_setup_offers_install_for_missing_provider_before_model_choice(
     result = CliRunner().invoke(
         main,
         ["--config", str(config_path), "setup"],
-        input="2\ny\n",
+        input="\ny\n\n",
     )
 
     assert result.exit_code == 0, result.output
