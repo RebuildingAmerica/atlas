@@ -43,7 +43,7 @@ The API will be available at `https://api.atlas.localhost`
 
 - Scalar API reference: `https://atlas.localhost/api-reference`
 - OpenAPI JSON: `https://api.atlas.localhost/openapi.json`
-- FastAPI Swagger/ReDoc fallback: `https://api.atlas.localhost/docs` and `https://api.atlas.localhost/redoc`
+- API-origin Scalar reference: `https://api.atlas.localhost/docs`
 - Health check: `https://api.atlas.localhost/health`
 
 ### Production Server

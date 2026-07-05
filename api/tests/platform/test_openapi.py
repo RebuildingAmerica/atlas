@@ -11,14 +11,13 @@ MIN_TAG_DESCRIPTION_LENGTH = 120
 
 @pytest.mark.asyncio
 async def test_openapi_and_docs_are_public(test_client: object) -> None:
-    """The runtime app should publish the spec and both docs UIs."""
+    """The runtime app should publish the spec and Scalar docs UI."""
     openapi_response = await test_client.get("/openapi.json")
     docs_response = await test_client.get("/docs")
-    redoc_response = await test_client.get("/redoc")
 
     assert openapi_response.status_code == STATUS_OK
     assert docs_response.status_code == STATUS_OK
-    assert redoc_response.status_code == STATUS_OK
+    assert "Scalar.createApiReference" in docs_response.text
     assert (
         openapi_response.headers["cache-control"]
         == "public, max-age=3600, stale-while-revalidate=86400"

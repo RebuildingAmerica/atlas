@@ -106,7 +106,7 @@ class TestConditionalRoutes:
         assert "/openapi.json" not in route_paths
 
     def test_docs_routes_registered_when_enabled(self) -> None:
-        """When enable_api_docs_ui is True, /docs and /redoc should be registered."""
+        """When enable_api_docs_ui is True, only Scalar docs should be registered."""
         settings = Settings(
             database_url="sqlite:///tmp/test.db",
             deploy_mode="local",
@@ -118,7 +118,7 @@ class TestConditionalRoutes:
 
         route_paths = {getattr(r, "path", None) for r in app.routes}
         assert "/docs" in route_paths
-        assert "/redoc" in route_paths
+        assert "/redoc" not in route_paths
 
     def test_docs_routes_missing_when_disabled(self) -> None:
         """When enable_api_docs_ui is False, /docs and /redoc should not be registered."""
@@ -140,18 +140,22 @@ class TestDocsEndpoints:
     """Tests for the actual docs endpoints when enabled."""
 
     @pytest.mark.asyncio
-    async def test_swagger_ui_returns_html(self, test_client: object) -> None:
-        """The /docs endpoint should return an HTML response."""
+    async def test_scalar_docs_returns_html(self, test_client: object) -> None:
+        """The /docs endpoint should return the Scalar API reference."""
         response = await test_client.get("/docs")
         assert response.status_code == HTTPStatus.OK
         assert "text/html" in response.headers["content-type"]
+        assert "Scalar.createApiReference" in response.text
+        assert '"showOperationId": true' in response.text
+        assert '"persistAuth": true' in response.text
+        assert "swagger-ui" not in response.text.lower()
+        assert "redoc" not in response.text.lower()
 
     @pytest.mark.asyncio
-    async def test_redoc_returns_html(self, test_client: object) -> None:
-        """The /redoc endpoint should return an HTML response."""
+    async def test_redoc_route_is_removed(self, test_client: object) -> None:
+        """The legacy /redoc endpoint should not expose a docs UI."""
         response = await test_client.get("/redoc")
-        assert response.status_code == HTTPStatus.OK
-        assert "text/html" in response.headers["content-type"]
+        assert response.status_code == HTTPStatus.NOT_FOUND
 
     @pytest.mark.asyncio
     async def test_openapi_json_returns_schema(self, test_client: object) -> None:

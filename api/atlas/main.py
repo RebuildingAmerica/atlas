@@ -16,7 +16,7 @@ from typing import Any
 
 from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
+from fastapi.responses import HTMLResponse
 from starlette.types import ASGIApp, Receive, Scope, Send
 
 from atlas.config import get_settings, validate_runtime_auth_config
@@ -36,6 +36,7 @@ from atlas.platform.openapi import (
     OPENAPI_VERSION,
     install_openapi_enrichment,
 )
+from atlas.platform.scalar_docs import render_scalar_api_reference_html
 
 logger = logging.getLogger(__name__)
 
@@ -213,25 +214,15 @@ def create_app() -> FastAPI:
 
     if settings.enable_api_docs_ui:
 
-        @app.get("/docs", include_in_schema=False)
-        async def swagger_ui() -> Response:
-            """Serve Swagger UI for the current OpenAPI document."""
-            swagger_response = get_swagger_ui_html(
+        @app.get("/docs", include_in_schema=False, response_class=HTMLResponse)
+        async def scalar_api_reference() -> HTMLResponse:
+            """Serve Scalar API Reference for the current OpenAPI document."""
+            scalar_response = render_scalar_api_reference_html(
                 openapi_url="/openapi.json",
-                title=f"{app.title} - Swagger UI",
+                title=f"{app.title} Docs",
             )
-            apply_static_public_cache(swagger_response)
-            return swagger_response
-
-        @app.get("/redoc", include_in_schema=False)
-        async def redoc_ui() -> Response:
-            """Serve ReDoc for the current OpenAPI document."""
-            redoc_response = get_redoc_html(
-                openapi_url="/openapi.json",
-                title=f"{app.title} - ReDoc",
-            )
-            apply_static_public_cache(redoc_response)
-            return redoc_response
+            apply_static_public_cache(scalar_response)
+            return scalar_response
 
     # Include API router
     app.include_router(create_router())

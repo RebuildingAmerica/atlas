@@ -185,7 +185,7 @@ class Settings(BaseSettings):
     """Enable the OpenAPI schema endpoint (/openapi.json)."""
 
     enable_api_docs_ui: bool | None = None
-    """Enable interactive documentation UIs (/docs, /redoc)."""
+    """Enable the Scalar API reference UI (/docs)."""
 
     model_config = SettingsConfigDict(
         env_file=API_ENV_FILE,
@@ -217,7 +217,7 @@ class Settings(BaseSettings):
         if self.enable_openapi_spec is None:
             self.enable_openapi_spec = True
         if self.enable_api_docs_ui is None:
-            self.enable_api_docs_ui = self.environment != "production"
+            self.enable_api_docs_ui = True
         self.enable_api_docs = self.enable_openapi_spec and self.enable_api_docs_ui
         if self.auth_jwt_issuer:
             base = self.auth_jwt_issuer.rstrip("/")
