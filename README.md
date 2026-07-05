@@ -25,7 +25,7 @@ Whether you're a developer, researcher, organizer, or just curious — welcome. 
 
 ### Quick Start
 
-**Prerequisites:** Python 3.12+, Node.js 24.15+ in the Node 24 release line, and Make. See [full prerequisites](./docs/getting-started/prerequisites.md).
+**Prerequisites:** Python 3.12+, Node.js 24.18+ in the Node 24 release line, and Make. See [full prerequisites](./docs/getting-started/prerequisites.md).
 
 ```bash
 cd atlas
