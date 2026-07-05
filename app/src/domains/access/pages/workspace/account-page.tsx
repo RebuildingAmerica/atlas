@@ -6,6 +6,7 @@ import { hasSerializedCapability } from "@/domains/access/capabilities";
 import { getAuthClient } from "@/domains/access/client/auth-client";
 import { atlasSessionQueryKey, useAtlasSession } from "@/domains/access/client/use-atlas-session";
 import { resolvePasskeyName } from "@/domains/access/passkey-names";
+import { signalUnknownPasskey } from "@/domains/access/passkey-signal";
 import { deletePasskey, listPasskeys, updatePasskey } from "@/domains/access/passkeys.functions";
 import { listScoutDevices, revokeScoutDevice } from "@/domains/access/scout-devices.functions";
 import { AccountBillingSection } from "./components/account/billing";
@@ -64,8 +65,9 @@ export function AccountPage() {
   });
   const deletePasskeyMutation = useMutation({
     mutationFn: (id: string) => deletePasskey({ data: { id } }),
-    onSuccess: async () => {
+    onSuccess: async (_data, id) => {
       setFlashMessage("Passkey removed.");
+      signalUnknownPasskey(id);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: PASSKEYS_QUERY_KEY }),
         queryClient.invalidateQueries({ queryKey: atlasSessionQueryKey }),

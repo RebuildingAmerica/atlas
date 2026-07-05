@@ -17,6 +17,7 @@ const mocks = vi.hoisted(() => ({
   invalidateQueries: vi.fn(),
   revokeScoutDevice: vi.fn(),
   updatePasskey: vi.fn(),
+  signalUnknownPasskey: vi.fn(),
   useAtlasSession: vi.fn(),
   useMutation: vi.fn(),
   useQuery: vi.fn(),
@@ -122,6 +123,10 @@ vi.mock("@/domains/access/passkeys.functions", () => ({
   deletePasskey: mocks.deletePasskey,
   listPasskeys: vi.fn(),
   updatePasskey: mocks.updatePasskey,
+}));
+
+vi.mock("@/domains/access/passkey-signal", () => ({
+  signalUnknownPasskey: mocks.signalUnknownPasskey,
 }));
 
 vi.mock("@/domains/access/scout-devices.functions", () => ({
@@ -252,6 +257,7 @@ describe("AccountPage", () => {
     mocks.invalidateQueries.mockReset();
     mocks.revokeScoutDevice.mockReset();
     mocks.updatePasskey.mockReset();
+    mocks.signalUnknownPasskey.mockReset();
     mocks.useAtlasSession.mockReset();
     mocks.useMutation.mockReset();
     mocks.useQuery.mockReset();
@@ -263,13 +269,13 @@ describe("AccountPage", () => {
       (config: {
         mutationFn?: (input?: unknown) => Promise<unknown>;
         onError?: () => void;
-        onSuccess?: (result?: unknown) => void | Promise<void>;
+        onSuccess?: (result?: unknown, variables?: unknown) => void | Promise<void>;
       }) => ({
         isPending: false,
         mutate: (input?: unknown) => {
           Promise.resolve(config.mutationFn?.(input))
             .then(async (result) => {
-              await config.onSuccess?.(result);
+              await config.onSuccess?.(result, input);
             })
             .catch(() => {
               config.onError?.();
@@ -278,7 +284,7 @@ describe("AccountPage", () => {
         mutateAsync: async (input?: unknown) => {
           try {
             const result = await config.mutationFn?.(input);
-            await config.onSuccess?.(result);
+            await config.onSuccess?.(result, input);
             return result;
           } catch (error) {
             config.onError?.();
@@ -409,6 +415,7 @@ describe("AccountPage", () => {
     expect(mocks.deletePasskey).toHaveBeenCalledWith({
       data: { id: "pk_123" },
     });
+    expect(mocks.signalUnknownPasskey).toHaveBeenCalledWith("pk_123");
     expect(mocks.deleteApiKey).toHaveBeenCalledWith({
       data: { keyId: "key_123" },
     });
