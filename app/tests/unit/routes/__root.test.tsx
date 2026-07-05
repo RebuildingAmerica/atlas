@@ -74,4 +74,18 @@ describe("routes/__root", () => {
     expect(markup).not.toContain("<title>");
     expect(markup).not.toContain('name="description"');
   });
+
+  it("advertises Atlas favicon assets for browsers and connector clients", async () => {
+    const routeModule = await import("@/routes/__root");
+    const { asRouteStub } = await import("@/../tests/helpers/router-harness");
+    const Route = asRouteStub(routeModule.Route);
+
+    const Component = Route.options.component;
+    if (!Component) throw new Error("Expected Route.options.component");
+
+    const markup = renderToStaticMarkup(<Component />);
+
+    expect(markup).toContain('<link rel="icon" type="image/svg+xml" href="/favicon.svg"/>');
+    expect(markup).toContain('<link rel="alternate icon" href="/favicon.ico"/>');
+  });
 });
