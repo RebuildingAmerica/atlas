@@ -75,8 +75,8 @@
         "tab": "Use Atlas",
         "groups": [
           {
-            "group": "Start here",
-            "pages": ["quickstart-learn", "what-is-atlas"]
+            "group": "Introduction",
+            "pages": ["what-is-atlas", "quickstart-learn"]
           },
           {
             "group": "Public discovery",
@@ -89,7 +89,7 @@
             ]
           },
           {
-            "group": "Examples",
+            "group": "Use cases",
             "pages": [
               "use-cases/journalists",
               "use-cases/organizers",
