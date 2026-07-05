@@ -63,11 +63,22 @@ Once connected, your AI assistant can use these tools:
 | `get_place_issue_signals` | Issue area summary for a place                    |
 | `get_related_entities`    | Entities related through Atlas relationships      |
 | `resolve_issue_areas`     | Map natural language to Atlas issue area slugs    |
+| `start_discovery_run`     | Start a source-linked research run                |
 
 <Tip>
   See [Available tools](/mcp/tools) for detailed parameter descriptions and
   example prompts for each tool.
 </Tip>
+
+## Long-running research runs
+
+Most tools answer from Atlas data that already exists. `start_discovery_run`
+starts new source-linked research, so it returns a task handle for clients that
+support MCP task-augmented tool calls. Task-aware clients can poll until the run
+finishes instead of leaving the conversation blocked.
+
+Clients without task support receive an explicit error. Use
+`list_discovery_runs` or `get_discovery_run` to check on runs started elsewhere.
 
 ## Workspace admin activity
 

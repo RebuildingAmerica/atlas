@@ -44,3 +44,10 @@ Workspace admins can review successful external REST API and MCP use through the
 workspace integration activity surface. It reports counts, surfaces, paths, and
 last-seen timestamps without request metadata, prompts, private notes, or
 session replay.
+
+## Long-running research runs
+
+`start_discovery_run` starts source-linked research and requires
+`discovery:write`. Task-aware MCP clients receive a task handle immediately and
+poll until the run finishes. Clients without task support receive an explicit
+error instead of a partial result.

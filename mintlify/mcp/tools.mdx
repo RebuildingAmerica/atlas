@@ -1,6 +1,6 @@
 ---
 title: "Available tools"
-description: "Reference for all 12 Atlas MCP tools with parameters and example prompts."
+description: "Reference for all 13 Atlas MCP tools with parameters and example prompts."
 ---
 
 import PlaceKeyFormat from '/snippets/place-key-format.mdx';
@@ -212,6 +212,26 @@ Get one source-linked Atlas research run and its structured output.
 **Example prompts:**
 - "Open that research run"
 - "Summarize the entities and sources from this run"
+
+### start_discovery_run
+
+Trigger a new Atlas research run for a place and issue areas. Unlike the other tools, this one does real work — it kicks off the same LLM extraction and source-fetching pipeline behind the Atlas dashboard, which can take minutes rather than seconds.
+
+Because of that, `start_discovery_run` requires an MCP client that supports [task-augmented tool calls](https://modelcontextprotocol.io/docs/concepts/tasks): the call returns a task handle immediately, and your assistant polls it until the run finishes rather than blocking. If your client doesn't support tasks yet, use `list_discovery_runs`/`get_discovery_run` to check on runs you started elsewhere (like the dashboard).
+
+This tool requires the `discovery:write` scope, on top of the `discovery:read` + `api.mcp` scopes every other tool needs, and it's metered against your org's monthly discovery-run budget — see [Scopes and permissions](/mcp/scopes).
+
+**Parameters:**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `location_query` | string | Location to research, such as `Kansas City, MO` |
+| `state` | string | 2-letter state code |
+| `issue_areas` | string[] | Issue area slugs to research |
+| `research_goal` | string | Research focus (default: `landscape_scan`) |
+
+**Example prompts:**
+- "Start a new research run for civic organizations in Topeka, Kansas"
+- "Research worker cooperatives in Wichita — I don't see much coverage yet"
 
 ## Place key format
 

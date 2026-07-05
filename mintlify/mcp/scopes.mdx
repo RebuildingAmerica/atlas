@@ -23,6 +23,8 @@ Atlas requires both of these for MCP requests:
 
 If either check is missing, your client shows a permission or plan-required error. Reconnect the client after approving the missing access or upgrading the workspace.
 
+The `start_discovery_run` tool additionally requires `discovery:write` — every other MCP tool only needs `discovery:read` + `api.mcp`.
+
 ## OAuth scopes
 
 | Scope             | What it allows                                     |
