@@ -404,6 +404,8 @@ CREATE TABLE IF NOT EXISTS discovery_jobs (
     claimed_until TIMESTAMPTZ,
     idempotency_key TEXT,
     next_attempt_at TIMESTAMPTZ,
+    execution_mode TEXT NOT NULL DEFAULT 'search' CHECK(execution_mode IN ('search', 'direct_url')),
+    input_payload JSONB NOT NULL DEFAULT '{}'::jsonb,
     created_at TIMESTAMPTZ NOT NULL,
     started_at TIMESTAMPTZ,
     completed_at TIMESTAMPTZ

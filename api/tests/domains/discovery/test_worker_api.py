@@ -10,7 +10,7 @@ from fastapi import HTTPException
 
 from atlas.domains.access.principals import AuthenticatedActor
 from atlas.domains.discovery import api as discovery_api
-from atlas.domains.discovery.models import DiscoveryJobCRUD
+from atlas.domains.discovery.models import DiscoveryJobCRUD, DiscoveryJobInput
 from atlas.domains.discovery.schemas import (
     DiscoveryWorkerClaimRequest,
     DiscoveryWorkerCompleteRequest,
@@ -129,6 +129,43 @@ async def test_claim_discovery_job_respects_search_capability(
     assert response.job.id == direct_job_id
     assert response.job.location_query == ""
     assert response.job.issue_areas == []
+
+
+@pytest.mark.asyncio
+async def test_claim_discovery_job_allows_direct_url_jobs_without_search_key(
+    test_db: object,
+    actor: AuthenticatedActor,
+) -> None:
+    await _queued_job(test_db)
+    direct_run_id = await DiscoveryRunCRUD.create(
+        test_db,
+        location_query="Austin, TX",
+        state="TX",
+        issue_areas=["housing_affordability"],
+        research_goal="landscape_scan",
+    )
+    direct_job_id = await DiscoveryJobCRUD.create(
+        test_db,
+        run_id=direct_run_id,
+        job_input=DiscoveryJobInput(
+            execution_mode="direct_url",
+            payload={"direct_urls": ["https://example.test/seed"]},
+        ),
+    )
+
+    response = await discovery_api.claim_discovery_job(
+        DiscoveryWorkerClaimRequest(worker_id="worker-123", search_key_configured=False),
+        response=None,
+        actor=actor,
+        db=test_db,
+    )
+
+    assert response.job is not None
+    assert response.job.id == direct_job_id
+    assert response.job.location_query == "Austin, TX"
+    assert response.job.issue_areas == ["housing_affordability"]
+    assert response.job.execution_mode == "direct_url"
+    assert response.job.input_payload == {"direct_urls": ["https://example.test/seed"]}
 
 
 @pytest.mark.asyncio

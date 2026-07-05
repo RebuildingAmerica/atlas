@@ -170,21 +170,13 @@ def test_extract_structured_data_jsonld_array() -> None:
 
 
 def test_extract_structured_data_jsonld_invalid_json_ignored() -> None:
-    html = (
-        "<html><head>"
-        '<script type="application/ld+json">{not json</script>'
-        "</head></html>"
-    )
+    html = '<html><head><script type="application/ld+json">{not json</script></head></html>'
     structured = extract_structured_data(html)
     assert structured == {}
 
 
 def test_extract_structured_data_jsonld_empty_block_ignored() -> None:
-    html = (
-        "<html><head>"
-        '<script type="application/ld+json">   </script>'
-        "</head></html>"
-    )
+    html = '<html><head><script type="application/ld+json">   </script></head></html>'
     structured = extract_structured_data(html)
     assert structured == {}
 
@@ -235,16 +227,12 @@ def test_structured_data_parser_endtag_for_other_tags_noop() -> None:
 
 def test_infer_source_type_og_article() -> None:
     structured: dict[str, Any] = {"opengraph": {"type": "article"}}
-    assert (
-        _infer_source_type("https://news.example.com/x", structured) == SourceType.NEWS_ARTICLE
-    )
+    assert _infer_source_type("https://news.example.com/x", structured) == SourceType.NEWS_ARTICLE
 
 
 def test_infer_source_type_og_news() -> None:
     structured: dict[str, Any] = {"opengraph": {"type": "news"}}
-    assert (
-        _infer_source_type("https://news.example.com/x", structured) == SourceType.NEWS_ARTICLE
-    )
+    assert _infer_source_type("https://news.example.com/x", structured) == SourceType.NEWS_ARTICLE
 
 
 def test_infer_source_type_og_video() -> None:

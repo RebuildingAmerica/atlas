@@ -2193,10 +2193,26 @@
             "description": "Error message if failed",
             "title": "Error Message"
           },
+          "execution_mode": {
+            "default": "search",
+            "description": "How a Scout worker should execute this job",
+            "enum": [
+              "search",
+              "direct_url"
+            ],
+            "title": "Execution Mode",
+            "type": "string"
+          },
           "id": {
             "description": "Job ID",
             "title": "Id",
             "type": "string"
+          },
+          "input_payload": {
+            "additionalProperties": true,
+            "description": "Mode-specific worker input payload",
+            "title": "Input Payload",
+            "type": "object"
           },
           "issue_areas": {
             "description": "Run issue area slugs",
@@ -2354,10 +2370,26 @@
             "description": "Error message if failed",
             "title": "Error Message"
           },
+          "execution_mode": {
+            "default": "search",
+            "description": "How a Scout worker should execute this job",
+            "enum": [
+              "search",
+              "direct_url"
+            ],
+            "title": "Execution Mode",
+            "type": "string"
+          },
           "id": {
             "description": "Job ID",
             "title": "Id",
             "type": "string"
+          },
+          "input_payload": {
+            "additionalProperties": true,
+            "description": "Mode-specific worker input payload",
+            "title": "Input Payload",
+            "type": "object"
           },
           "max_retries": {
             "default": 2,
@@ -3059,6 +3091,7 @@
       "DiscoveryRunStartRequest": {
         "description": "Request to start a discovery run.",
         "example": {
+          "execution_mode": "search",
           "issue_areas": [
             "worker_cooperatives",
             "housing_affordability",
@@ -3070,6 +3103,24 @@
           "state": "MO"
         },
         "properties": {
+          "direct_urls": {
+            "description": "Seed URLs for direct-URL worker runs that do not require search credentials.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Direct Urls",
+            "type": "array"
+          },
+          "execution_mode": {
+            "default": "search",
+            "description": "How queued Scout workers should execute the discovery run.",
+            "enum": [
+              "search",
+              "direct_url"
+            ],
+            "title": "Execution Mode",
+            "type": "string"
+          },
           "issue_areas": {
             "description": "Issue area slugs that define the run.",
             "items": {
@@ -3746,10 +3797,26 @@
             "description": "Error message if failed",
             "title": "Error Message"
           },
+          "execution_mode": {
+            "default": "search",
+            "description": "How a Scout worker should execute this job",
+            "enum": [
+              "search",
+              "direct_url"
+            ],
+            "title": "Execution Mode",
+            "type": "string"
+          },
           "id": {
             "description": "Job ID",
             "title": "Id",
             "type": "string"
+          },
+          "input_payload": {
+            "additionalProperties": true,
+            "description": "Mode-specific worker input payload",
+            "title": "Input Payload",
+            "type": "object"
           },
           "issue_areas": {
             "description": "Run issue area slugs",

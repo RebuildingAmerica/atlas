@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
 from http import HTTPStatus
+from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
 import httpx
@@ -10,6 +12,23 @@ import pytest
 
 from atlas.main import McpMountPathAliasMiddleware, create_app, lifespan
 from atlas.platform.config import Settings, get_settings
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncIterator
+
+
+def _patch_mcp_session_manager(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Use a fresh no-op MCP session manager for direct lifespan tests."""
+
+    @asynccontextmanager
+    async def run() -> AsyncIterator[None]:
+        yield
+
+    session_manager = MagicMock()
+    session_manager.run = run
+    mcp = MagicMock()
+    mcp.session_manager = session_manager
+    monkeypatch.setattr("atlas.main.get_mcp", lambda: mcp)
 
 
 class TestLifespan:
@@ -296,6 +315,7 @@ class TestLifespanWorker:
         self, db_url: str, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """A clean lifespan should call start_job_worker and stop_job_worker."""
+        _patch_mcp_session_manager(monkeypatch)
         settings = Settings(
             database_url=db_url,
             deploy_mode="local",
@@ -319,3 +339,33 @@ class TestLifespanWorker:
                 # The lifespan should have already started the worker.
                 assert started, "expected start_job_worker to have been invoked"
         assert stopped == [True]
+
+    @pytest.mark.asyncio
+    async def test_lifespan_skips_job_worker_when_disabled(
+        self, db_url: str, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A disabled worker flag should leave job claiming to an external Scout."""
+        _patch_mcp_session_manager(monkeypatch)
+        settings = Settings(
+            database_url=db_url,
+            deploy_mode="local",
+            discovery_job_worker_enabled=False,
+        )
+
+        started: list[bool] = []
+        stopped: list[bool] = []
+
+        async def fake_start(_database_url: str, **_kwargs: object) -> None:
+            started.append(True)
+
+        async def fake_stop() -> None:
+            stopped.append(True)
+
+        monkeypatch.setattr("atlas.domains.discovery.worker.start_job_worker", fake_start)
+        monkeypatch.setattr("atlas.domains.discovery.worker.stop_job_worker", fake_stop)
+
+        mock_app = MagicMock()
+        with patch("atlas.main.get_settings", return_value=settings):
+            async with lifespan(mock_app):
+                assert started == []
+        assert stopped == []

@@ -134,8 +134,7 @@ function normalizeRegistrationInput(
 function getSqliteDeviceById(db: Database.Database, deviceId: string): StoredScoutDeviceRow | null {
   return (
     (db.prepare("SELECT * FROM scout_devices WHERE id = ? LIMIT 1").get(deviceId) as
-      | StoredScoutDeviceRow
-      | undefined) ?? null
+      StoredScoutDeviceRow | undefined) ?? null
   );
 }
 
@@ -155,6 +154,8 @@ function updateSqliteDevice(
   input: NormalizedScoutDeviceRegistration,
   current: StoredScoutDeviceRow,
 ): ScoutDeviceRecord {
+  const searchKeyConfigured =
+    input.searchKeyConfigured ?? normalizeSearchKeyConfigured(current.search_key_configured);
   db.prepare(
     `UPDATE scout_devices
      SET worker_name = ?,
@@ -167,12 +168,12 @@ function updateSqliteDevice(
     input.workerName,
     input.defaultUploadTarget,
     input.workspaceId,
-    input.searchKeyConfigured ?? current.search_key_configured,
+    searchKeyConfigured ? 1 : 0,
     input.now,
-    input.id,
+    current.id,
   );
 
-  const row = getSqliteDeviceById(db, input.id);
+  const row = getSqliteDeviceById(db, current.id);
   if (!row) {
     throw new Error("Scout device update did not return a stored row.");
   }
@@ -184,6 +185,8 @@ async function updatePgDevice(
   input: NormalizedScoutDeviceRegistration,
   current: StoredScoutDeviceRow,
 ): Promise<ScoutDeviceRecord> {
+  const searchKeyConfigured =
+    input.searchKeyConfigured ?? normalizeSearchKeyConfigured(current.search_key_configured);
   const result = await pool.query<StoredScoutDeviceRow>(
     `UPDATE scout_devices
      SET worker_name = $1,
@@ -197,9 +200,9 @@ async function updatePgDevice(
       input.workerName,
       input.defaultUploadTarget,
       input.workspaceId,
-      input.searchKeyConfigured ?? current.search_key_configured,
+      searchKeyConfigured,
       input.now,
-      input.id,
+      current.id,
     ],
   );
   const row = result.rows[0];

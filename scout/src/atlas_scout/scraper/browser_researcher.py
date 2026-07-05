@@ -68,7 +68,10 @@ async def research_org_website(
 
                 # Ask the LLM which links to follow
                 target_urls = await _select_links_with_llm(
-                    links, provider, org_name=org_name, max_links=_MAX_PAGES,
+                    links,
+                    provider,
+                    org_name=org_name,
+                    max_links=_MAX_PAGES,
                 )
 
                 for target_url in target_urls:
@@ -163,8 +166,7 @@ async def _select_links_with_llm(
         Message(
             role="user",
             content=(
-                f"Organization: {org_name or '(unknown)'}\n\n"
-                f"Links found on homepage:\n{link_list}"
+                f"Organization: {org_name or '(unknown)'}\n\nLinks found on homepage:\n{link_list}"
             ),
         ),
     ]

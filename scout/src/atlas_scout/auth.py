@@ -26,10 +26,22 @@ DEVICE_GRANT_TYPE = "urn:ietf:params:oauth:grant-type:device_code"
 class DeviceAuthError(RuntimeError):
     """Raised when the Atlas device authorization flow returns an OAuth error."""
 
-    def __init__(self, *, error: str, description: str) -> None:
+    def __init__(
+        self,
+        *,
+        error: str,
+        description: str,
+        status_code: int | None = None,
+        url: str | None = None,
+        content_type: str | None = None,
+    ) -> None:
         self.error = error
         self.description = description
-        super().__init__(f"{error}: {description}")
+        self.status_code = status_code
+        self.url = url
+        self.content_type = content_type
+        message = f"{error}: {description}" if description else error
+        super().__init__(message)
 
 
 def _payload_int(payload: dict[str, object], key: str) -> int:
@@ -139,11 +151,14 @@ class DeviceAuthClient:
         DeviceCode
             User-facing verification code and polling metadata.
         """
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.post(
-                self._auth_url(atlas_url, "/device/code"),
-                json={"client_id": SCOUT_CLIENT_ID, "scope": SCOUT_LOGIN_SCOPE},
-            )
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                response = await client.post(
+                    self._auth_url(atlas_url, "/device/code"),
+                    json={"client_id": SCOUT_CLIENT_ID, "scope": SCOUT_LOGIN_SCOPE},
+                )
+        except httpx.RequestError as exc:
+            raise self._request_error(exc, self._auth_url(atlas_url, "/device/code")) from exc
         payload = self._json_or_error(response)
         return DeviceCode(
             device_code=_payload_str(payload, "device_code"),
@@ -169,15 +184,18 @@ class DeviceAuthClient:
         DeviceToken
             Browser-approved bearer session token.
         """
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.post(
-                self._auth_url(atlas_url, "/device/token"),
-                json={
-                    "grant_type": DEVICE_GRANT_TYPE,
-                    "device_code": device_code,
-                    "client_id": SCOUT_CLIENT_ID,
-                },
-            )
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                response = await client.post(
+                    self._auth_url(atlas_url, "/device/token"),
+                    json={
+                        "grant_type": DEVICE_GRANT_TYPE,
+                        "device_code": device_code,
+                        "client_id": SCOUT_CLIENT_ID,
+                    },
+                )
+        except httpx.RequestError as exc:
+            raise self._request_error(exc, self._auth_url(atlas_url, "/device/token")) from exc
         payload = self._json_or_error(response)
         return DeviceToken(
             access_token=_payload_str(payload, "access_token"),
@@ -221,18 +239,21 @@ class DeviceAuthClient:
         ScoutTokenExchange
             Short-lived Atlas API token plus user/workspace metadata.
         """
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.post(
-                self._auth_url(atlas_url, "/scout/token"),
-                headers={"Authorization": f"Bearer {session_token}"},
-                json={
-                    "default_upload_target": default_upload_target,
-                    "search_key_configured": search_key_configured,
-                    "worker_id": worker_id,
-                    "worker_name": worker_name,
-                    "workspace_id": workspace_id,
-                },
-            )
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                response = await client.post(
+                    self._auth_url(atlas_url, "/scout/token"),
+                    headers={"Authorization": f"Bearer {session_token}"},
+                    json={
+                        "default_upload_target": default_upload_target,
+                        "search_key_configured": search_key_configured,
+                        "worker_id": worker_id,
+                        "worker_name": worker_name,
+                        "workspace_id": workspace_id,
+                    },
+                )
+        except httpx.RequestError as exc:
+            raise self._request_error(exc, self._auth_url(atlas_url, "/scout/token")) from exc
         payload = self._json_or_error(response)
         user = payload.get("user")
         if not isinstance(user, dict):
@@ -253,19 +274,61 @@ class DeviceAuthClient:
         """Build a Better Auth endpoint URL from the Atlas base URL."""
         return f"{atlas_url.rstrip('/')}/api/auth{path}"
 
+    def _request_error(self, exc: httpx.RequestError, fallback_url: str) -> DeviceAuthError:
+        """Convert transport failures into structured auth errors."""
+        request = exc.request
+        url = str(request.url) if request is not None else fallback_url
+        return DeviceAuthError(error="network_error", description="", url=url)
+
+    def _response_url(self, response: httpx.Response) -> str:
+        """Return the concrete URL used for an HTTP auth response."""
+        try:
+            return str(response.request.url)
+        except RuntimeError:
+            return str(response.url)
+
+    def _http_error_description(self, payload: dict[str, object] | None = None) -> str:
+        """Build a concrete auth error message from an HTTP response."""
+        if payload is not None:
+            for key in ("error_description", "message", "detail"):
+                value = payload.get(key)
+                if isinstance(value, str) and value.strip():
+                    return value.strip()
+        return ""
+
     def _json_or_error(self, response: httpx.Response) -> dict[str, object]:
         """Return JSON for successful responses or raise a device auth error."""
+        response_url = self._response_url(response)
+        content_type = response.headers.get("content-type")
         try:
             payload = response.json()
         except ValueError as exc:
             raise DeviceAuthError(
                 error=f"http_{response.status_code}",
-                description=response.text,
+                description=self._http_error_description(),
+                status_code=response.status_code,
+                url=response_url,
+                content_type=content_type,
             ) from exc
         if response.is_error:
-            error = str(payload.get("error", f"http_{response.status_code}"))
-            description = str(payload.get("error_description", response.text))
-            raise DeviceAuthError(error=error, description=description)
+            if not isinstance(payload, dict):
+                raise DeviceAuthError(
+                    error=f"http_{response.status_code}",
+                    description="",
+                    status_code=response.status_code,
+                    url=response_url,
+                    content_type=content_type,
+                )
+            error_value = payload.get("error")
+            error = str(error_value).strip() if error_value else f"http_{response.status_code}"
+            description = self._http_error_description(payload)
+            raise DeviceAuthError(
+                error=error,
+                description=description,
+                status_code=response.status_code,
+                url=response_url,
+                content_type=content_type,
+            )
         if not isinstance(payload, dict):
             raise ValueError("Atlas auth response must be a JSON object")
         return payload

@@ -1,5 +1,7 @@
 """Discovery run schemas for API requests and responses."""
 
+from typing import Literal
+
 from atlas_shared import DiscoveryResearchGoal, DiscoveryRunInput
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -7,9 +9,20 @@ from atlas.domains.discovery.schemas import DiscoveryResearchSummary
 
 __all__ = ["DiscoveryRunResponse", "DiscoveryRunStartRequest"]
 
+DiscoveryRunExecutionMode = Literal["search", "direct_url"]
+
 
 class DiscoveryRunStartRequest(DiscoveryRunInput):
     """Request to start a discovery run."""
+
+    execution_mode: DiscoveryRunExecutionMode = Field(
+        "search",
+        description="How queued Scout workers should execute the discovery run.",
+    )
+    direct_urls: list[str] = Field(
+        default_factory=list,
+        description="Seed URLs for direct-URL worker runs that do not require search credentials.",
+    )
 
     model_config = ConfigDict(
         json_schema_extra={
@@ -21,6 +34,7 @@ class DiscoveryRunStartRequest(DiscoveryRunInput):
                     "housing_affordability",
                     "local_government_and_civic_engagement",
                 ],
+                "execution_mode": "search",
                 "research_goal": "landscape_scan",
                 "search_depth": "standard",
             }

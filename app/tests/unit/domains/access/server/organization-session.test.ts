@@ -7,7 +7,6 @@ vi.mock("@/domains/access/server/workspace-products", () => ({
 
 describe("organization-session", () => {
   type AuthParam = Parameters<typeof loadAtlasWorkspaceState>[0];
-  type SessionParam = Parameters<typeof loadAtlasWorkspaceState>[2];
 
   const headers = new Headers();
   const session = {
@@ -62,11 +61,7 @@ describe("organization-session", () => {
       },
     } as unknown as AuthParam;
 
-    const workspace = await loadAtlasWorkspaceState(
-      auth,
-      headers,
-      session as unknown as SessionParam,
-    );
+    const workspace = await loadAtlasWorkspaceState(auth, headers, session);
 
     expect(workspace).toEqual({
       activeOrganization: {
@@ -148,11 +143,7 @@ describe("organization-session", () => {
       },
     } as unknown as AuthParam;
 
-    const workspace = await loadAtlasWorkspaceState(
-      auth,
-      headers,
-      sessionWithoutActive as unknown as SessionParam,
-    );
+    const workspace = await loadAtlasWorkspaceState(auth, headers, sessionWithoutActive);
 
     expect(workspace.activeOrganization?.id).toBe("org_1");
   });
@@ -165,11 +156,7 @@ describe("organization-session", () => {
       },
     } as unknown as AuthParam;
 
-    const workspace = await loadAtlasWorkspaceState(
-      auth,
-      headers,
-      session as unknown as SessionParam,
-    );
+    const workspace = await loadAtlasWorkspaceState(auth, headers, session);
 
     expect(workspace.onboarding.needsWorkspace).toBe(true);
     expect(workspace.activeOrganization).toBeNull();
@@ -193,11 +180,7 @@ describe("organization-session", () => {
       },
     } as unknown as AuthParam;
 
-    const workspace = await loadAtlasWorkspaceState(
-      auth,
-      headers,
-      session as unknown as SessionParam,
-    );
+    const workspace = await loadAtlasWorkspaceState(auth, headers, session);
 
     expect(workspace.pendingInvitations[0]?.expiresAt).toBe("2026-06-01T00:00:00.000Z");
   });
@@ -220,11 +203,7 @@ describe("organization-session", () => {
       },
     } as unknown as AuthParam;
 
-    const workspace = await loadAtlasWorkspaceState(
-      auth,
-      headers,
-      session as unknown as SessionParam,
-    );
+    const workspace = await loadAtlasWorkspaceState(auth, headers, session);
 
     expect(workspace.pendingInvitations[0]?.expiresAt).toBeNull();
     expect(workspace.pendingInvitations[0]?.organizationName).toBe("Atlas Workspace");
@@ -255,11 +234,7 @@ describe("organization-session", () => {
       },
     } as unknown as AuthParam;
 
-    const workspace = await loadAtlasWorkspaceState(
-      auth,
-      headers,
-      session as unknown as SessionParam,
-    );
+    const workspace = await loadAtlasWorkspaceState(auth, headers, session);
 
     expect(workspace.pendingInvitations).toHaveLength(1);
     expect(workspace.pendingInvitations[0]?.id).toBe("inv_pending");

@@ -279,7 +279,7 @@ describe("SignInPage", () => {
     Object.defineProperty(globalThis, "PublicKeyCredential", {
       configurable: true,
       writable: true,
-      value: { isConditionalMediationAvailable } as unknown as typeof PublicKeyCredential,
+      value: { isConditionalMediationAvailable },
     });
 
     let capturedOnSuccess: (() => Promise<void>) | null = null;
@@ -318,7 +318,7 @@ describe("SignInPage", () => {
     Object.defineProperty(globalThis, "PublicKeyCredential", {
       configurable: true,
       writable: true,
-      value: { isConditionalMediationAvailable } as unknown as typeof PublicKeyCredential,
+      value: { isConditionalMediationAvailable },
     });
     authClient.signIn.passkey.mockRejectedValueOnce(new Error("user gesture required"));
 
@@ -336,7 +336,7 @@ describe("SignInPage", () => {
     Object.defineProperty(globalThis, "PublicKeyCredential", {
       configurable: true,
       writable: true,
-      value: { isConditionalMediationAvailable } as unknown as typeof PublicKeyCredential,
+      value: { isConditionalMediationAvailable },
     });
 
     let capturedOnSuccess: (() => Promise<void>) | null = null;
@@ -374,7 +374,7 @@ describe("SignInPage", () => {
     Object.defineProperty(globalThis, "PublicKeyCredential", {
       configurable: true,
       writable: true,
-      value: { isConditionalMediationAvailable } as unknown as typeof PublicKeyCredential,
+      value: { isConditionalMediationAvailable },
     });
 
     render(<SignInPage />);

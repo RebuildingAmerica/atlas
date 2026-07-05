@@ -134,7 +134,11 @@ async def test_strips_code_fences() -> None:
     assert _strip_code_fence(fenced) == _make_entry_json("Fenced Org")
 
     provider = _MockProvider(response_text=fenced)
-    page = PageContent(url="https://example.com", text="Fenced Org is a local housing organization in Austin.", title="")
+    page = PageContent(
+        url="https://example.com",
+        text="Fenced Org is a local housing organization in Austin.",
+        title="",
+    )
     entries = [e async for e in extract_entries_stream(_pages_iter(page), provider, "Austin", "TX")]
 
     assert len(entries) == 1
@@ -146,11 +150,17 @@ async def test_multiple_pages_all_extracted() -> None:
     """Entries from multiple pages are all yielded."""
     provider = _MockProvider(response_text=_make_entry_json())
     pages = [
-        PageContent(url=f"https://example.com/page{i}", text="Test Org provides housing assistance in Austin TX.", title="")
+        PageContent(
+            url=f"https://example.com/page{i}",
+            text="Test Org provides housing assistance in Austin TX.",
+            title="",
+        )
         for i in range(3)
     ]
 
-    entries = [e async for e in extract_entries_stream(_pages_iter(*pages), provider, "Austin", "TX")]
+    entries = [
+        e async for e in extract_entries_stream(_pages_iter(*pages), provider, "Austin", "TX")
+    ]
 
     assert len(entries) == 3
     source_urls = {e.source_url for e in entries}
@@ -164,7 +174,11 @@ async def test_reuses_cached_extraction_for_same_content(tmp_db_path) -> None:
     store = ScoutStore(str(tmp_db_path))
     await store.initialize()
     provider = _MockProvider(response_text=_make_entry_json("Cached Org"))
-    page = PageContent(url="https://example.com/a", text="Cached Org does housing advocacy. Shared body " * 40, title="Same title")
+    page = PageContent(
+        url="https://example.com/a",
+        text="Cached Org does housing advocacy. Shared body " * 40,
+        title="Same title",
+    )
 
     first_entries = [
         e
@@ -203,8 +217,16 @@ async def test_cached_extraction_is_reused_across_urls_with_same_content(tmp_db_
     store = ScoutStore(str(tmp_db_path))
     await store.initialize()
     provider = _MockProvider(response_text=_make_entry_json("Shared Org"))
-    page_one = PageContent(url="https://example.com/a", text="Shared Org provides housing services. Shared body " * 40, title="Same title")
-    page_two = PageContent(url="https://example.com/b", text="Shared Org provides housing services. Shared body " * 40, title="Same title")
+    page_one = PageContent(
+        url="https://example.com/a",
+        text="Shared Org provides housing services. Shared body " * 40,
+        title="Same title",
+    )
+    page_two = PageContent(
+        url="https://example.com/b",
+        text="Shared Org provides housing services. Shared body " * 40,
+        title="Same title",
+    )
 
     first_entries = [
         e
@@ -242,7 +264,11 @@ async def test_refresh_extractions_bypasses_cache(tmp_db_path) -> None:
     store = ScoutStore(str(tmp_db_path))
     await store.initialize()
     provider = _MockProvider(response_text=_make_entry_json("Refreshed Org"))
-    page = PageContent(url="https://example.com/a", text="Refreshed Org serves the Austin housing community. Shared body " * 40, title="Same title")
+    page = PageContent(
+        url="https://example.com/a",
+        text="Refreshed Org serves the Austin housing community. Shared body " * 40,
+        title="Same title",
+    )
 
     _ = [
         e
@@ -299,7 +325,11 @@ async def test_claim_wait_timeout_falls_back_to_local_extraction(monkeypatch) ->
     monkeypatch.setattr(entry_extract_module, "_CLAIM_POLL_SECONDS", 0.0)
 
     provider = _MockProvider(response_text=_make_entry_json("Fallback Org"))
-    page = PageContent(url="https://example.com", text="Fallback Org organizes housing support. Shared body " * 40, title="Same title")
+    page = PageContent(
+        url="https://example.com",
+        text="Fallback Org organizes housing support. Shared body " * 40,
+        title="Same title",
+    )
 
     entries = await extract_page_entries(
         page,
@@ -434,11 +464,13 @@ def test_parse_identify_response_non_list_root_returns_empty() -> None:
 
 def test_parse_identify_response_skips_items_without_name() -> None:
     """Non-dict items and dicts without a name are skipped."""
-    text = json.dumps([
-        "string-item",
-        {"type": "person"},  # no name
-        {"name": "Real", "type": "person", "quote": "x"},
-    ])
+    text = json.dumps(
+        [
+            "string-item",
+            {"type": "person"},  # no name
+            {"name": "Real", "type": "person", "quote": "x"},
+        ]
+    )
     items = _parse_identify_response(text)
     assert len(items) == 1
     assert items[0]["name"] == "Real"
@@ -513,9 +545,9 @@ def test_parse_extraction_response_accepts_raw_array_payload() -> None:
     )
     # Use a list at the JSON layer
     completion = Completion(
-        text=json.dumps([
-            {"name": "ArrayOrg", "type": "organization", "extraction_context": "ctx"}
-        ]),
+        text=json.dumps(
+            [{"name": "ArrayOrg", "type": "organization", "extraction_context": "ctx"}]
+        ),
         parsed=None,
     )
 
@@ -584,7 +616,9 @@ async def test_extract_entries_stream_saturates_concurrency_window() -> None:
         for i in range(5)
     ]
 
-    entries = [e async for e in extract_entries_stream(_pages_iter(*pages), provider, "Austin", "TX")]
+    entries = [
+        e async for e in extract_entries_stream(_pages_iter(*pages), provider, "Austin", "TX")
+    ]
 
     assert len(entries) == 5
 

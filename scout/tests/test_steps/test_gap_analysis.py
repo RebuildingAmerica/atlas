@@ -48,6 +48,7 @@ def test_detects_all_domains_uncovered_when_no_entries() -> None:
     assert len(report.uncovered_domains) > 0
     # All known domains should be uncovered
     from atlas_shared import DOMAINS
+
     assert set(report.uncovered_domains) == set(DOMAINS)
 
 

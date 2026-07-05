@@ -90,7 +90,7 @@ async def test_anthropic_strips_markdown_code_fence() -> None:
     class Data(BaseModel):
         value: int
 
-    fenced = "```json\n{\"value\": 99}\n```"
+    fenced = '```json\n{"value": 99}\n```'
     respx.post("https://api.anthropic.com/v1/messages").mock(
         return_value=httpx.Response(
             200,
@@ -122,10 +122,12 @@ async def test_anthropic_system_message_separated() -> None:
         )
     )
     provider = AnthropicProvider(model="claude-sonnet-4-20250514", api_key="test-key")
-    await provider.complete([
-        Message(role="system", content="You are helpful."),
-        Message(role="user", content="Hello"),
-    ])
+    await provider.complete(
+        [
+            Message(role="system", content="You are helpful."),
+            Message(role="user", content="Hello"),
+        ]
+    )
 
     sent = json.loads(route.calls[0].request.content)
     assert sent["system"] == "You are helpful."

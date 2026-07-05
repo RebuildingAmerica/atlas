@@ -19,19 +19,23 @@ function requireEnv(name: string): string {
 
 const e2eDir = path.join(process.cwd(), "node_modules", ".cache", "e2e");
 const repoRoot = path.join(process.cwd(), "..");
-const apiDbPath = path.join(e2eDir, "atlas-api.sqlite");
-const authDbPath = path.join(e2eDir, "atlas-auth.sqlite");
-const mailboxFile = path.join(e2eDir, "mailbox.json");
+const e2eRunId = process.env.ATLAS_E2E_RUN_ID?.trim() || randomBytes(8).toString("hex");
+const apiDbPath = path.join(e2eDir, `atlas-api-${e2eRunId}.sqlite`);
+const authDbPath = path.join(e2eDir, `atlas-auth-${e2eRunId}.sqlite`);
+const mailboxFile = path.join(e2eDir, `mailbox-${e2eRunId}.json`);
 const appUrl = requireEnv("ATLAS_E2E_APP_URL");
 const apiUrl = requireEnv("ATLAS_E2E_API_URL");
 const apiAudience = apiUrl;
 const mailboxUrl = requireEnv("ATLAS_E2E_MAILBOX_URL");
 const authIntrospectionUrl = requireEnv("ATLAS_E2E_AUTH_INTROSPECTION_URL");
+const appPort = new URL(appUrl).port || "3100";
 const apiPort = new URL(apiUrl).port;
+const mailboxPort = new URL(mailboxUrl).port || "8025";
 if (!apiPort) {
   throw new Error("ATLAS_E2E_API_URL must include an explicit port.");
 }
-const e2eInternalSecret = randomBytes(32).toString("hex");
+const e2eInternalSecret =
+  process.env.ATLAS_E2E_INTERNAL_SECRET?.trim() || randomBytes(32).toString("hex");
 const baseWebServerEnv = { ...process.env };
 delete baseWebServerEnv.NO_COLOR;
 delete baseWebServerEnv.FORCE_COLOR;
@@ -50,6 +54,7 @@ const commonAuthEnv = {
   ATLAS_EMAIL_CAPTURE_URL: `${mailboxUrl}/messages`,
   ATLAS_EMAIL_FROM: "Atlas <noreply@localhost>",
   ATLAS_EMAIL_PROVIDER: "capture",
+  ATLAS_MAP_STYLE_URL: "https://atlas.example.test/maps/e2e/style.json",
   ATLAS_PUBLIC_URL: appUrl,
 };
 
@@ -71,6 +76,7 @@ export default defineConfig({
       env: {
         ...baseWebServerEnv,
         MAIL_CAPTURE_FILE: mailboxFile,
+        PORT: mailboxPort,
       },
       reuseExistingServer: false,
       timeout: 30_000,
@@ -86,30 +92,32 @@ export default defineConfig({
         ATLAS_AUTH_INTERNAL_SECRET: e2eInternalSecret,
         ATLAS_API_AUDIENCE: apiAudience,
         ATLAS_DEPLOY_MODE: "production",
+        ATLAS_PUBLIC_URL: appUrl,
         CORS_ORIGINS: `["${appUrl}"]`,
         DATABASE_URL: `sqlite:///${apiDbPath}`,
+        DISCOVERY_JOB_WORKER_ENABLED: "false",
         ENVIRONMENT: "dev",
         LOG_LEVEL: "info",
         PORT: apiPort,
         SEARCH_API_KEY: "",
       },
       reuseExistingServer: false,
-      timeout: 60_000,
+      timeout: 120_000,
       url: `${apiUrl}/health`,
     },
     {
-      command: "pnpm --filter @rebuildingamerica/atlas-app dev:e2e",
+      command: `pnpm --filter @rebuildingamerica/atlas-app exec vite dev --host 127.0.0.1 --port ${appPort} --strictPort`,
       cwd: repoRoot,
       env: {
         ...baseWebServerEnv,
         ...commonAuthEnv,
         ATLAS_SERVER_API_PROXY_TARGET: apiUrl,
         NODE_ENV: "development",
-        PORT: new URL(appUrl).port || "3100",
+        PORT: appPort,
         ATLAS_AUTH_DB_PATH: authDbPath,
       },
       reuseExistingServer: false,
-      timeout: 60_000,
+      timeout: 180_000,
       url: `${appUrl}/sign-in`,
     },
   ],

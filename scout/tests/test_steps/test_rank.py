@@ -109,7 +109,9 @@ async def test_scores_are_between_zero_and_one() -> None:
 async def test_results_are_sorted_descending() -> None:
     """Results are yielded in descending score order."""
     entries = [
-        _make_dedup(name="A", source_urls=["https://a.com"] * 4, website="https://a.com", email="a@a.com"),
+        _make_dedup(
+            name="A", source_urls=["https://a.com"] * 4, website="https://a.com", email="a@a.com"
+        ),
         _make_dedup(name="B", source_urls=[], website=None),
         _make_dedup(name="C", source_urls=["https://c.com"], website="https://c.com"),
     ]

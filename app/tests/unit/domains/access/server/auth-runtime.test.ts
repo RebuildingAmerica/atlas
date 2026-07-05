@@ -220,7 +220,7 @@ describe("auth runtime wiring", () => {
     );
 
     mocks.isAllowedEmail.mockReturnValue(true);
-    const magicLinkCall = mocks.magicLink.mock.calls.at(0) as [MagicLinkPluginOptions] | undefined;
+    const magicLinkCall = mocks.magicLink.mock.calls.at(0);
     const typedMagicLinkOptions = magicLinkCall?.[0];
     expect(typedMagicLinkOptions).toBeDefined();
     if (!typedMagicLinkOptions) {
@@ -239,9 +239,7 @@ describe("auth runtime wiring", () => {
       }),
     );
 
-    const oauthProviderCall = mocks.oauthProvider.mock.calls.at(0) as
-      | [OAuthProviderOptions]
-      | undefined;
+    const oauthProviderCall = mocks.oauthProvider.mock.calls.at(0);
     const typedOauthProviderOptions = oauthProviderCall?.[0];
     expect(typedOauthProviderOptions).toBeDefined();
     if (!typedOauthProviderOptions) {
@@ -251,7 +249,7 @@ describe("auth runtime wiring", () => {
     expect(typedOauthProviderOptions.scopes).toContain("api.mcp");
     expect(typedOauthProviderOptions.silenceWarnings?.oauthAuthServerConfig).toBe(true);
 
-    const ssoCall = mocks.sso.mock.calls.at(0) as [Record<string, unknown>] | undefined;
+    const ssoCall = mocks.sso.mock.calls.at(0);
     const ssoOptions = ssoCall?.[0];
     expect(ssoOptions).toBeDefined();
     expect(ssoOptions).toMatchObject({
@@ -297,9 +295,7 @@ describe("auth runtime wiring", () => {
     const mod = await import("@/domains/access/server/auth");
     await mod.getAuth();
 
-    const oauthProviderCall = mocks.oauthProvider.mock.calls.at(0) as
-      | [OAuthProviderOptions]
-      | undefined;
+    const oauthProviderCall = mocks.oauthProvider.mock.calls.at(0);
     const typedOauthProviderOptions = oauthProviderCall?.[0];
     expect(typedOauthProviderOptions).toBeDefined();
     if (!typedOauthProviderOptions?.customAccessTokenClaims) {
@@ -352,9 +348,7 @@ describe("auth runtime wiring", () => {
     const mod = await import("@/domains/access/server/auth");
     await mod.getAuth();
 
-    const oauthProviderCall = mocks.oauthProvider.mock.calls.at(0) as
-      | [OAuthProviderOptions]
-      | undefined;
+    const oauthProviderCall = mocks.oauthProvider.mock.calls.at(0);
     const typedOauthProviderOptions = oauthProviderCall?.[0];
     if (!typedOauthProviderOptions?.customAccessTokenClaims) {
       throw new TypeError("Expected OAuth provider access-token claim mapping.");

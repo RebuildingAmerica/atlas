@@ -40,9 +40,16 @@ def test_source_categories_are_populated() -> None:
     queries = generate_queries("Portland", "OR", ["energy_transition"])
     categories = {q.source_category for q in queries}
     expected = {
-        "local_journalism", "nonprofits", "individuals", "campaigns",
-        "academic_policy", "government", "coalitions", "events",
-        "directories", "social_media",
+        "local_journalism",
+        "nonprofits",
+        "individuals",
+        "campaigns",
+        "academic_policy",
+        "government",
+        "coalitions",
+        "events",
+        "directories",
+        "social_media",
     }
     assert categories == expected
 
@@ -51,7 +58,9 @@ def test_source_categories_are_populated() -> None:
 async def test_async_generator_yields_same_results() -> None:
     """generate_queries_stream yields the same queries as generate_queries."""
     sync_queries = generate_queries("Seattle", "WA", ["housing_affordability"])
-    async_queries = [q async for q in generate_queries_stream("Seattle", "WA", ["housing_affordability"])]
+    async_queries = [
+        q async for q in generate_queries_stream("Seattle", "WA", ["housing_affordability"])
+    ]
 
     assert len(async_queries) == len(sync_queries)
     assert [(q.query, q.source_category, q.issue_area) for q in async_queries] == [

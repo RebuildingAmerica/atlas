@@ -252,9 +252,7 @@ class AsyncFetcher:
                 "reason": None,
                 "title": page.title,
                 "publication": page.publication,
-                "published_date": page.published_date.isoformat()
-                if page.published_date
-                else None,
+                "published_date": page.published_date.isoformat() if page.published_date else None,
                 "source_type": str(page.source_type),
                 "discovered_links": page.discovered_links,
             },
@@ -355,7 +353,9 @@ def _extract_pdf_content(data: bytes, *, url: str) -> ContentExtraction:
         import pymupdf
     except ImportError:
         logger.debug("pymupdf not installed — skipping PDF: %s", url)
-        return ContentExtraction(page=None, reason="pdf_extraction_unavailable", discovered_links=[])
+        return ContentExtraction(
+            page=None, reason="pdf_extraction_unavailable", discovered_links=[]
+        )
 
     try:
         doc = pymupdf.open(stream=data, filetype="pdf")

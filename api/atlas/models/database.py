@@ -737,6 +737,8 @@ CREATE TABLE IF NOT EXISTS discovery_jobs (
     claimed_until DATETIME,
     idempotency_key TEXT,
     next_attempt_at DATETIME,
+    execution_mode TEXT NOT NULL DEFAULT 'search' CHECK(execution_mode IN ('search', 'direct_url')),
+    input_payload TEXT NOT NULL DEFAULT '{}',
     created_at DATETIME NOT NULL,
     started_at DATETIME,
     completed_at DATETIME
@@ -922,6 +924,14 @@ async def _ensure_discovery_job_columns(conn: Any) -> None:
     additive_columns = (
         ("idempotency_key", "ALTER TABLE discovery_jobs ADD COLUMN idempotency_key TEXT"),
         ("next_attempt_at", "ALTER TABLE discovery_jobs ADD COLUMN next_attempt_at DATETIME"),
+        (
+            "execution_mode",
+            "ALTER TABLE discovery_jobs ADD COLUMN execution_mode TEXT NOT NULL DEFAULT 'search'",
+        ),
+        (
+            "input_payload",
+            "ALTER TABLE discovery_jobs ADD COLUMN input_payload TEXT NOT NULL DEFAULT '{}'",
+        ),
     )
     for column, ddl in additive_columns:
         if column not in existing_columns:

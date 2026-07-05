@@ -7,7 +7,10 @@ from typing import Literal
 from atlas_shared import DiscoveryResearchGoal, DiscoveryRunInput
 from pydantic import BaseModel, ConfigDict, Field
 
+DiscoveryJobExecutionMode = Literal["search", "direct_url"]
+
 __all__ = [
+    "DiscoveryJobExecutionMode",
     "DiscoveryJobQueueItemResponse",
     "DiscoveryJobQueueResponse",
     "DiscoveryResearchGap",
@@ -208,6 +211,12 @@ class DiscoveryJobResponse(BaseModel):
     id: str = Field(..., description="Job ID")
     run_id: str = Field(..., description="Associated discovery run ID")
     status: str = Field(..., description="Job status (queued, claimed, running, completed, failed)")
+    execution_mode: DiscoveryJobExecutionMode = Field(
+        "search", description="How a Scout worker should execute this job"
+    )
+    input_payload: dict[str, object] = Field(
+        default_factory=dict, description="Mode-specific worker input payload"
+    )
     progress: dict[str, object] | None = Field(None, description="Current step and metrics")
     error_message: str | None = Field(None, description="Error message if failed")
     retry_count: int = Field(0, description="Number of retry attempts so far")

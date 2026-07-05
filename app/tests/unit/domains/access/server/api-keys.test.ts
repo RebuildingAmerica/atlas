@@ -27,6 +27,11 @@ vi.mock("@/domains/access/server/request-headers", () => ({
   getBrowserSessionHeaders: mocks.getBrowserSessionHeaders,
 }));
 
+vi.mock("@tanstack/react-start", async () => {
+  const { createServerFnStub } = await import("../../../../helpers/server-fn-stub");
+  return { createServerFn: createServerFnStub() };
+});
+
 describe("auth api-key server functions", () => {
   const browserSessionHeaders = new Headers({
     cookie: "better-auth.session_token=test-token",

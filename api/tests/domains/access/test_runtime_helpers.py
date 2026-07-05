@@ -301,6 +301,47 @@ def test_jwt_helpers_cache_keys_and_decode_bearer_tokens(
     )
 
 
+def test_jwt_helpers_accept_app_issued_eddsa_tokens(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """JWT verification should accept the EdDSA tokens issued by the Atlas app."""
+    ed25519 = pytest.importorskip("cryptography.hazmat.primitives.asymmetric.ed25519")
+    private_key = ed25519.Ed25519PrivateKey.generate()
+    public_key = private_key.public_key()
+    token = jwt.encode(
+        {
+            "aud": "atlas-api",
+            "email": "operator@example.com",
+            "iss": "https://atlas.example/api/auth",
+            "permissions": {"entities": ["write"]},
+            "sub": "user_123",
+        },
+        private_key,
+        algorithm="EdDSA",
+        headers={"kid": "test-key"},
+    )
+
+    class FakeJwksClient:
+        def get_signing_key_from_jwt(self, token_value: str) -> SimpleNamespace:
+            assert token_value == token
+            return SimpleNamespace(key=public_key)
+
+    monkeypatch.setattr(auth_jwt_module, "get_jwks_client", lambda _url: FakeJwksClient())
+
+    assert auth_jwt_module.verify_bearer_jwt(
+        f"Bearer {token}",
+        issuer="https://atlas.example/api/auth",
+        audience=["atlas-api"],
+        jwks_url="https://atlas.example/api/auth/jwks",
+    ) == {
+        "aud": "atlas-api",
+        "email": "operator@example.com",
+        "iss": "https://atlas.example/api/auth",
+        "permissions": {"entities": ["write"]},
+        "sub": "user_123",
+    }
+
+
 @pytest.mark.asyncio
 async def test_require_actor_accepts_oauth_jwts_and_rejects_anonymous_requests(
     monkeypatch: pytest.MonkeyPatch,

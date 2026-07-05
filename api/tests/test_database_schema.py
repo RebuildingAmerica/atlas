@@ -586,8 +586,8 @@ class TestEnsureDiscoveryJobColumns:
             await conn.close()
 
     @pytest.mark.asyncio
-    async def test_adds_idempotency_columns_before_indexes_run(self) -> None:
-        """Existing job rows should gain retry columns before schema indexes execute."""
+    async def test_adds_job_metadata_columns_before_indexes_run(self) -> None:
+        """Existing job rows should gain worker-routing columns before indexes execute."""
         conn = await aiosqlite.connect(":memory:")
         try:
             await conn.executescript(
@@ -620,7 +620,12 @@ class TestEnsureDiscoveryJobColumns:
 
             cursor = await conn.execute("PRAGMA table_info(discovery_jobs)")
             columns = {row[1] for row in await cursor.fetchall()}
-            assert {"idempotency_key", "next_attempt_at"} <= columns
+            assert {
+                "idempotency_key",
+                "input_payload",
+                "execution_mode",
+                "next_attempt_at",
+            } <= columns
 
             await conn.execute(
                 "CREATE UNIQUE INDEX IF NOT EXISTS idx_discovery_jobs_idempotency "

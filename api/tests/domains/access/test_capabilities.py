@@ -185,6 +185,18 @@ class TestRequireCapabilityDependency:
         await dependency(actor=actor, settings=_build_settings())  # type: ignore[call-arg]
 
     @pytest.mark.asyncio
+    async def test_public_actor_receives_default_research_capability(self) -> None:
+        actor = AuthenticatedActor(
+            user_id="user_public",
+            email="public@atlas.example",
+            auth_type="oauth_jwt",
+            permissions={"discovery": ["write"]},
+        )
+        dependency = require_capability("research.run")
+
+        await dependency(actor=actor, settings=_build_settings())  # type: ignore[call-arg]
+
+    @pytest.mark.asyncio
     async def test_oauth_jwt_missing_capability_emits_step_up_challenge(self) -> None:
         actor = _build_actor(auth_type="oauth_jwt", products=[])
         dependency = require_capability("api.mcp")
@@ -271,3 +283,19 @@ class TestEnforceLimitDependency:
 
         # Default tier returns the documented default limit.
         assert result == 0
+
+    @pytest.mark.asyncio
+    async def test_public_actor_receives_default_research_limit(self) -> None:
+        from atlas.domains.access.capabilities import enforce_limit
+
+        actor = AuthenticatedActor(
+            user_id="user_public",
+            email="public@atlas.example",
+            auth_type="oauth_jwt",
+            permissions={"discovery": ["write"]},
+        )
+        dependency = enforce_limit("research_runs_per_month")
+
+        result = await dependency(actor=actor)  # type: ignore[call-arg]
+
+        assert result == 2  # noqa: PLR2004

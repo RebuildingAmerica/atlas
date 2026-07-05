@@ -34,6 +34,7 @@ from atlas_scout.auth import (
 from atlas_scout.cli_context import console, err_console
 from atlas_scout.cli_output import (
     print_duplicate_run_notice,
+    print_login_failure,
     print_run_banner,
     print_run_results,
     styled_status,
@@ -47,6 +48,11 @@ from atlas_scout.config import (
     get_active_profile_name,
     load_config,
     set_active_profile_name,
+)
+from atlas_scout.login_flow import (
+    LoginExecutionError,
+    begin_login,
+    complete_login,
 )
 from atlas_scout.pipeline_support import close_if_supported as _close_if_supported
 from atlas_scout.runtime import build_runtime_profile
@@ -186,58 +192,40 @@ async def _login(
     open_browser: bool,
 ) -> None:
     """Run Scout's browser-approved login flow."""
-    resolved_atlas_url = atlas_url.rstrip("/")
-    resolved_target = target or click.prompt(
-        "Upload target",
-        type=click.Choice(["public", "workspace"]),
-        default="workspace",
-    )
     client = DeviceAuthClient()
     try:
-        code = await client.request_device_code(resolved_atlas_url)
+        pending = await begin_login(
+            client=client,
+            atlas_url=atlas_url,
+            target=target,
+            workspace=workspace,
+        )
     except DeviceAuthError as exc:
-        err_console.print(f"[red]Login failed:[/] {exc.description}")
+        print_login_failure(err_console, exc)
         sys.exit(1)
 
-    console.print(f"Open: {code.verification_uri_complete}")
-    console.print(f"Code: [bold]{code.user_code}[/]")
+    console.print(f"Open: {pending.code.verification_uri_complete}")
+    console.print(f"Code: [bold]{pending.code.user_code}[/]")
     if open_browser:
-        webbrowser.open(code.verification_uri_complete)
+        webbrowser.open(pending.code.verification_uri_complete)
 
+    worker_name = _default_worker_name()
     try:
-        token = await _poll_device_token(client, resolved_atlas_url, code)
-        exchange = await client.exchange_session_for_api_token(
-            resolved_atlas_url,
-            session_token=token.access_token,
-            worker_name=_default_worker_name(),
-            default_upload_target=resolved_target,
-            workspace_id=workspace,
+        session = await complete_login(
+            pending,
+            poll_device_token=_poll_device_token,
+            worker_name=worker_name,
             search_key_configured=_search_key_configured(),
         )
     except DeviceAuthError as exc:
-        err_console.print(f"[red]Login failed:[/] {exc.description}")
+        print_login_failure(err_console, exc)
+        sys.exit(1)
+    except LoginExecutionError as exc:
+        err_console.print(f"[red]{exc.title}:[/] {exc.message}")
         sys.exit(1)
 
-    resolved_workspace = workspace or exchange.workspace_id
-    if resolved_target == "workspace" and not resolved_workspace:
-        err_console.print(
-            "[red]Workspace required:[/] pass --workspace for workspace-private sync."
-        )
-        sys.exit(1)
-
-    save_session(
-        ScoutSession(
-            atlas_url=resolved_atlas_url,
-            access_token=token.access_token,
-            worker_id=exchange.worker_id,
-            user_id=exchange.user_id,
-            user_email=exchange.user_email,
-            worker_name=_default_worker_name(),
-            default_upload_target=resolved_target,
-            workspace_id=resolved_workspace,
-        )
-    )
-    console.print(f"[green]Logged in as {exchange.user_email}[/]")
+    save_session(session)
+    console.print(f"[green]Logged in as {session.user_email}[/]")
 
 
 def _require_schedule_targets(config: ScoutConfig) -> int:
@@ -738,6 +726,7 @@ async def _run_pipeline(
     refresh: bool = False,
     verbose_progress: bool = False,
     sync_after_run: bool | None = None,
+    sync_remote_run_id: str | None = None,
 ) -> None:
     """Create infrastructure, run the pipeline, print results."""
     from atlas_scout.pipeline import run_pipeline
@@ -792,6 +781,7 @@ async def _run_pipeline(
             max_pages_per_seed=config.scraper.max_pages_per_seed,
             iterative_deepening=config.pipeline.iterative_deepening,
             contribution_config=config.contribution,
+            remote_run_id=sync_remote_run_id,
         )
     finally:
         await _close_if_supported(fetcher)
@@ -1327,10 +1317,9 @@ async def _runs_sync(
     resolved_target = target or (session.default_upload_target if session else None)
     resolved_workspace = workspace or (session.workspace_id if session else None)
     if session is not None and resolved_target is None:
-        err_console.print(
-            "[red]Upload target required:[/] pass --target public or --target workspace."
-        )
-        sys.exit(1)
+        resolved_target = "public"
+    if resolved_target == "public":
+        resolved_workspace = None
     if session is not None and resolved_target == "workspace" and not resolved_workspace:
         err_console.print(
             "[red]Workspace required:[/] pass --workspace for workspace-private sync."
@@ -1414,7 +1403,7 @@ async def _runs_sync(
     "--target",
     type=click.Choice(["public", "workspace"]),
     default=None,
-    help="Default upload destination to remember after login.",
+    help="Default upload destination to remember. Defaults to public unless --workspace is passed.",
 )
 @click.option("--workspace", default=None, help="Workspace id for workspace-private sync.")
 @click.option("--no-browser", is_flag=True, help="Print the approval URL without opening it.")
@@ -1554,17 +1543,15 @@ async def _worker_api_token(
     search_api_key: str,
 ) -> str:
     """Exchange the saved Scout session for a short-lived API token."""
-    if session.default_upload_target is None:
-        raise click.ClickException(
-            "Run `scout login --target public` or choose a workspace target."
-        )
+    default_upload_target: UploadTarget = session.default_upload_target or "public"
+    workspace_id = session.workspace_id if default_upload_target == "workspace" else None
     exchange = await DeviceAuthClient().exchange_session_for_api_token(
         atlas_url,
         session_token=session.access_token,
         worker_id=session.worker_id,
         worker_name=session.worker_name or _default_worker_name(),
-        default_upload_target=session.default_upload_target,
-        workspace_id=session.workspace_id,
+        default_upload_target=default_upload_target,
+        workspace_id=workspace_id,
         search_key_configured=bool(search_api_key),
     )
     return exchange.token
@@ -1689,6 +1676,130 @@ def _worker_job_issues(job: dict[str, object]) -> list[str]:
     return list(raw_issues)
 
 
+def _worker_job_execution_mode(job: dict[str, object]) -> str:
+    """Return the worker execution mode for a claimed job."""
+    raw_mode = job.get("execution_mode", "search")
+    if raw_mode not in {"search", "direct_url"}:
+        raise ScoutSyncError(f"Unsupported Atlas worker job mode: {raw_mode}")
+    return str(raw_mode)
+
+
+def _worker_job_direct_urls(job: dict[str, object]) -> list[str]:
+    """Return seed URLs from a direct-URL worker job payload."""
+    payload = job.get("input_payload")
+    if not isinstance(payload, dict):
+        raise ScoutSyncError("Atlas direct-URL job is missing input payload.")
+    raw_urls = payload.get("direct_urls")
+    if not isinstance(raw_urls, list) or not all(isinstance(url, str) for url in raw_urls):
+        raise ScoutSyncError("Atlas direct-URL job is missing direct URLs.")
+    urls = [url.strip() for url in raw_urls if url.strip()]
+    if not urls:
+        raise ScoutSyncError("Atlas direct-URL job has no usable direct URLs.")
+    return urls
+
+
+async def _worker_process_job(
+    config: ScoutConfig,
+    *,
+    atlas_url: str,
+    session: ScoutSession,
+    token: str,
+    job: dict[str, object],
+    search_api_key: str,
+    lease_seconds: int,
+) -> None:
+    """Run one claimed Atlas worker job and report completion or failure."""
+    job_id = str(job["id"])
+    run_id = str(job["run_id"])
+    location = str(job["location_query"])
+    issues = _worker_job_issues(job)
+    execution_mode = _worker_job_execution_mode(job)
+    direct_urls = _worker_job_direct_urls(job) if execution_mode == "direct_url" else None
+
+    _write_worker_state(
+        mode="processing",
+        current_job_id=job_id,
+        current_location=location,
+        last_heartbeat_at=_now_iso(),
+    )
+    await _worker_heartbeat_job(
+        atlas_url=atlas_url,
+        token=token,
+        worker_id=session.worker_id,
+        job_id=job_id,
+        lease_seconds=lease_seconds,
+        progress={"step": "claimed", "claimed_at": _now_iso()},
+    )
+
+    heartbeat_stop = asyncio.Event()
+    heartbeat_task = asyncio.create_task(
+        _worker_heartbeat_loop(
+            atlas_url=atlas_url,
+            session=session,
+            search_api_key=search_api_key,
+            job_id=job_id,
+            lease_seconds=lease_seconds,
+            stop_event=heartbeat_stop,
+        )
+    )
+    try:
+        await _run_pipeline(
+            config=config,
+            location=location,
+            issues=issues,
+            depth="standard",
+            search_api_key=search_api_key,
+            direct_urls=direct_urls,
+            quiet=True,
+            sync_after_run=True,
+            sync_remote_run_id=run_id,
+        )
+    except Exception as exc:
+        failure_token = await _worker_api_token(
+            atlas_url=atlas_url,
+            session=session,
+            search_api_key=search_api_key,
+        )
+        await _worker_fail_job(
+            atlas_url=atlas_url,
+            token=failure_token,
+            worker_id=session.worker_id,
+            job_id=job_id,
+            error_message=str(exc),
+            retryable=True,
+        )
+        _write_worker_state(
+            mode="error",
+            current_job_id=None,
+            last_error=str(exc),
+            last_heartbeat_at=_now_iso(),
+        )
+        return
+    finally:
+        heartbeat_stop.set()
+        heartbeat_task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await heartbeat_task
+
+    complete_token = await _worker_api_token(
+        atlas_url=atlas_url,
+        session=session,
+        search_api_key=search_api_key,
+    )
+    await _worker_complete_job(
+        atlas_url=atlas_url,
+        token=complete_token,
+        worker_id=session.worker_id,
+        job_id=job_id,
+    )
+    _write_worker_state(
+        mode="idle",
+        current_job_id=None,
+        last_completed_job_id=job_id,
+        last_heartbeat_at=_now_iso(),
+    )
+
+
 async def _worker_heartbeat_loop(
     *,
     atlas_url: str,
@@ -1773,88 +1884,14 @@ async def _worker_run_internal(
                 await asyncio.sleep(interval)
                 continue
 
-            job_id = str(job["id"])
-            location = str(job["location_query"])
-            issues = _worker_job_issues(job)
-            _write_worker_state(
-                mode="processing",
-                current_job_id=job_id,
-                current_location=location,
-                last_heartbeat_at=_now_iso(),
-            )
-            await _worker_heartbeat_job(
-                atlas_url=resolved_atlas_url,
-                token=token,
-                worker_id=session.worker_id,
-                job_id=job_id,
-                lease_seconds=lease_seconds,
-                progress={"step": "claimed", "claimed_at": _now_iso()},
-            )
-
-            heartbeat_stop = asyncio.Event()
-            heartbeat_task = asyncio.create_task(
-                _worker_heartbeat_loop(
-                    atlas_url=resolved_atlas_url,
-                    session=session,
-                    search_api_key=resolved_search_key,
-                    job_id=job_id,
-                    lease_seconds=lease_seconds,
-                    stop_event=heartbeat_stop,
-                )
-            )
-            try:
-                await _run_pipeline(
-                    config,
-                    location=location,
-                    issues=issues,
-                    depth="standard",
-                    search_api_key=resolved_search_key,
-                    quiet=True,
-                    sync_after_run=True,
-                )
-            except Exception as exc:
-                failure_token = await _worker_api_token(
-                    atlas_url=resolved_atlas_url,
-                    session=session,
-                    search_api_key=resolved_search_key,
-                )
-                await _worker_fail_job(
-                    atlas_url=resolved_atlas_url,
-                    token=failure_token,
-                    worker_id=session.worker_id,
-                    job_id=job_id,
-                    error_message=str(exc),
-                    retryable=True,
-                )
-                _write_worker_state(
-                    mode="error",
-                    current_job_id=None,
-                    last_error=str(exc),
-                    last_heartbeat_at=_now_iso(),
-                )
-                continue
-            finally:
-                heartbeat_stop.set()
-                heartbeat_task.cancel()
-                with contextlib.suppress(asyncio.CancelledError):
-                    await heartbeat_task
-
-            complete_token = await _worker_api_token(
+            await _worker_process_job(
+                config,
                 atlas_url=resolved_atlas_url,
                 session=session,
+                token=token,
+                job=job,
                 search_api_key=resolved_search_key,
-            )
-            await _worker_complete_job(
-                atlas_url=resolved_atlas_url,
-                token=complete_token,
-                worker_id=session.worker_id,
-                job_id=job_id,
-            )
-            _write_worker_state(
-                mode="idle",
-                current_job_id=None,
-                last_completed_job_id=job_id,
-                last_heartbeat_at=_now_iso(),
+                lease_seconds=lease_seconds,
             )
         except Exception as exc:
             _write_worker_state(
@@ -2377,3 +2414,7 @@ async def _schedule_start(config: ScoutConfig, search_api_key: str, interval: in
     from atlas_scout.scheduler import run_schedule_loop
 
     await run_schedule_loop(config, search_api_key, interval_seconds=interval)
+
+
+if __name__ == "__main__":
+    main()

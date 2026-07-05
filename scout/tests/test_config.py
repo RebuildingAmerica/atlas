@@ -26,7 +26,8 @@ def test_load_config_defaults():
 
 def test_load_config_from_toml(tmp_path: Path):
     config_file = tmp_path / "scout.toml"
-    config_file.write_text(textwrap.dedent("""\
+    config_file.write_text(
+        textwrap.dedent("""\
         [llm]
         provider = "anthropic"
         model = "claude-sonnet-4-20250514"
@@ -34,7 +35,8 @@ def test_load_config_from_toml(tmp_path: Path):
 
         [scraper]
         max_concurrent_fetches = 10
-    """))
+    """)
+    )
     config = load_config(config_file)
     assert config.llm.provider == "anthropic"
     assert config.llm.model == "claude-sonnet-4-20250514"
@@ -45,7 +47,8 @@ def test_load_config_from_toml(tmp_path: Path):
 
 def test_load_config_with_targets(tmp_path: Path):
     config_file = tmp_path / "scout.toml"
-    config_file.write_text(textwrap.dedent("""\
+    config_file.write_text(
+        textwrap.dedent("""\
         [llm]
         provider = "ollama"
 
@@ -58,7 +61,8 @@ def test_load_config_with_targets(tmp_path: Path):
         location = "Houston, TX"
         issues = ["healthcare_access_and_coverage"]
         search_depth = "deep"
-    """))
+    """)
+    )
     config = load_config(config_file)
     assert len(config.schedule.targets) == 2
     assert config.schedule.targets[0].location == "Austin, TX"

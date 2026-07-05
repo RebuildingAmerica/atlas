@@ -65,6 +65,54 @@ class _FlakyProgressProvider:
         return Completion(text="[]")
 
 
+class _OneEntryProvider:
+    """Provider that identifies and enriches one source-backed organization."""
+
+    max_concurrent = 1
+
+    def __init__(self) -> None:
+        self.calls = 0
+
+    async def complete(
+        self,
+        messages: list[Message],
+        _response_schema=None,
+    ) -> Completion:
+        self.calls += 1
+        user_content = messages[1].content if len(messages) > 1 else ""
+        if "IDENTIFIED ENTITIES" in user_content:
+            return Completion(
+                text=json.dumps(
+                    {
+                        "entries": [
+                            {
+                                "name": "Tenant Defense Collective",
+                                "type": "organization",
+                                "description": "Organizes tenants locally.",
+                                "city": "Austin",
+                                "state": "TX",
+                                "geo_specificity": "local",
+                                "issue_areas": ["housing_affordability"],
+                                "website": "https://tenant.example",
+                                "email": "hello@tenant.example",
+                                "social_media": {},
+                                "affiliated_org": None,
+                                "extraction_context": (
+                                    "Tenant Defense Collective organizes tenants."
+                                ),
+                            }
+                        ]
+                    }
+                )
+            )
+        return Completion(
+            text=(
+                '[{"name": "Tenant Defense Collective", "type": "organization", '
+                '"quote": "Tenant Defense Collective organizes tenants locally in Austin."}]'
+            )
+        )
+
+
 # ---------------------------------------------------------------------------
 # Progress callback exception path (lines 145-146)
 # ---------------------------------------------------------------------------
@@ -104,49 +152,6 @@ async def test_run_pipeline_syncs_artifacts_when_contribution_enabled(
         min_score=0.0,
     )
 
-    class _OneEntryProvider:
-        max_concurrent = 1
-
-        def __init__(self) -> None:
-            self.calls = 0
-
-        async def complete(
-            self,
-            messages: list[Message],
-            _response_schema=None,
-        ) -> Completion:
-            self.calls += 1
-            user_content = messages[1].content if len(messages) > 1 else ""
-            if "IDENTIFIED ENTITIES" in user_content:
-                return Completion(
-                    text=json.dumps(
-                        {
-                            "entries": [
-                                {
-                                    "name": "Tenant Defense Collective",
-                                    "type": "organization",
-                                    "description": "Organizes tenants locally.",
-                                    "city": "Austin",
-                                    "state": "TX",
-                                    "geo_specificity": "local",
-                                    "issue_areas": ["housing_affordability"],
-                                    "website": "https://tenant.example",
-                                    "email": "hello@tenant.example",
-                                    "social_media": {},
-                                    "affiliated_org": None,
-                                    "extraction_context": "Tenant Defense Collective organizes tenants.",
-                                }
-                            ]
-                        }
-                    )
-                )
-            return Completion(
-                text=(
-                    '[{"name": "Tenant Defense Collective", "type": "organization", '
-                    '"quote": "Tenant Defense Collective organizes tenants locally in Austin."}]'
-                )
-            )
-
     async def _fake_search(*_args, **_kwargs):
         return [{"url": "https://example.com/result", "title": "x", "publication": "y"}]
 
@@ -165,6 +170,37 @@ async def test_run_pipeline_syncs_artifacts_when_contribution_enabled(
 
     assert sync_calls == [{"atlas_url": "https://atlas.example", "api_key": "test-token"}]
     assert result.artifacts is not None
+    await store.close()
+
+
+@pytest.mark.asyncio
+async def test_run_pipeline_records_remote_run_id_for_worker_sync(
+    monkeypatch: pytest.MonkeyPatch, tmp_db_path: Path
+) -> None:
+    from atlas_scout.store import ScoutStore
+
+    store = ScoutStore(str(tmp_db_path))
+    await store.initialize()
+
+    async def _fake_search(*_args, **_kwargs):
+        return [{"url": "https://example.com/result", "title": "x", "publication": "y"}]
+
+    monkeypatch.setattr("atlas_scout.steps.source_fetch._search_brave", _fake_search)
+
+    result = await run_pipeline(
+        location="Austin, TX",
+        issues=["housing_affordability"],
+        provider=_OneEntryProvider(),
+        store=store,
+        search_api_key="test-key",
+        fetcher=_SeedFetcher(),
+        min_entry_score=0.0,
+        remote_run_id="remote-run-123",
+    )
+
+    assert result.artifacts is not None
+    assert result.artifacts.manifest.sync is not None
+    assert result.artifacts.manifest.sync.remote_run_id == "remote-run-123"
     await store.close()
 
 

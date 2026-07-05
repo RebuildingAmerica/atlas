@@ -709,7 +709,9 @@ async def test_run_pipeline_reports_discovered_vs_queued_link_counts(tmp_db_path
 
 
 @pytest.mark.asyncio
-async def test_run_pipeline_prioritizes_seed_and_article_pages_over_section_pages(tmp_db_path) -> None:
+async def test_run_pipeline_prioritizes_seed_and_article_pages_over_section_pages(
+    tmp_db_path,
+) -> None:
     from atlas_scout.store import ScoutStore
 
     class _RecordingOllamaLikeProvider:
@@ -893,21 +895,26 @@ async def test_run_pipeline_retries_extraction_once_before_succeeding(tmp_db_pat
             if "IDENTIFIED ENTITIES" in user_content:
                 # Pass 2 (enrich)
                 return Completion(
-                    text=json.dumps({
-                        "entries": [{
-                            "name": "Tenant Defense Collective",
-                            "type": "organization",
-                            "description": "Organizes tenants locally.",
-                            "city": "Austin", "state": "TX",
-                            "geo_specificity": "local",
-                            "issue_areas": ["housing_affordability"],
-                            "website": "https://tenant.example",
-                            "email": "hello@tenant.example",
-                            "social_media": {},
-                            "affiliated_org": None,
-                            "extraction_context": "Tenant Defense Collective organizes tenants.",
-                        }]
-                    })
+                    text=json.dumps(
+                        {
+                            "entries": [
+                                {
+                                    "name": "Tenant Defense Collective",
+                                    "type": "organization",
+                                    "description": "Organizes tenants locally.",
+                                    "city": "Austin",
+                                    "state": "TX",
+                                    "geo_specificity": "local",
+                                    "issue_areas": ["housing_affordability"],
+                                    "website": "https://tenant.example",
+                                    "email": "hello@tenant.example",
+                                    "social_media": {},
+                                    "affiliated_org": None,
+                                    "extraction_context": "Tenant Defense Collective organizes tenants.",
+                                }
+                            ]
+                        }
+                    )
                 )
             # Pass 1 (identify)
             return Completion(

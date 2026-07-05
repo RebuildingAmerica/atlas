@@ -98,6 +98,7 @@ async def run_pipeline(
     max_pages_per_seed: int = 20,
     iterative_deepening: bool = False,
     contribution_config: ContributionConfig | None = None,
+    remote_run_id: str | None = None,
 ) -> PipelineResult:
     """Run Scout discovery in search mode or direct-URL mode."""
     from atlas_scout.scraper.fetcher import AsyncFetcher as DefaultFetcher
@@ -116,7 +117,9 @@ async def run_pipeline(
             await maybe
 
     frontier_queue: asyncio.Queue[_FrontierItem | None] = asyncio.Queue()
-    extract_queue: asyncio.PriorityQueue[tuple[int, int, PageContent | None]] = asyncio.PriorityQueue()
+    extract_queue: asyncio.PriorityQueue[tuple[int, int, PageContent | None]] = (
+        asyncio.PriorityQueue()
+    )
     frontier_lock = asyncio.Lock()
 
     queries_count = 0
@@ -374,13 +377,17 @@ async def run_pipeline(
                                 )
                                 if queued:  # pragma: no branch
                                     queued_links += 1
-                    skip_status = "filtered" if fetch_status in {"filtered", "skipped"} else fetch_status
+                    skip_status = (
+                        "filtered" if fetch_status in {"filtered", "skipped"} else fetch_status
+                    )
                     page_outcomes_by_task[item.task_id].update(
                         status=skip_status,
                         error=error,
                         discovered_links=discovered_links,
                     )
-                    await store.update_page_task(item.task_id, skip_status, error=str(error) if error else None)
+                    await store.update_page_task(
+                        item.task_id, skip_status, error=str(error) if error else None
+                    )
                     emit(
                         "fetch_skipped",
                         {
@@ -473,7 +480,9 @@ async def run_pipeline(
 
                 if entries:
                     raw_entries.extend(entries)
-                    await store.update_page_task(task_id, "extracted", entries_extracted=len(entries))
+                    await store.update_page_task(
+                        task_id, "extracted", entries_extracted=len(entries)
+                    )
                     page_outcomes_by_task[task_id].update(status="extracted", entries=len(entries))
                     emit(
                         "extract_completed",
@@ -554,10 +563,7 @@ async def run_pipeline(
             1,
             int(getattr(fetcher, "max_concurrent", 8) or 8),
         )
-        fetch_workers = [
-            asyncio.create_task(fetch_worker())
-            for _ in range(fetch_worker_count)
-        ]
+        fetch_workers = [asyncio.create_task(fetch_worker()) for _ in range(fetch_worker_count)]
         extract_workers = [
             asyncio.create_task(extract_worker())
             for _ in range(extract_worker_count(provider, direct_mode=bool(direct_urls)))
@@ -568,7 +574,9 @@ async def run_pipeline(
             for url in direct_urls:
                 normalized = normalize_url(url)
                 if normalized:
-                    await enqueue_url(normalized, depth=0, seed_url=normalized, discovered_from=None)
+                    await enqueue_url(
+                        normalized, depth=0, seed_url=normalized, discovered_from=None
+                    )
         else:
             queries = generate_queries(city=city, state=state, issue_areas=issues)
             queries_count = len(queries)
@@ -619,7 +627,8 @@ async def run_pipeline(
                 entry async for entry in deduplicate_stream(_iter_items(raw_entries))
             ]
             preliminary_ranked = [
-                r async for r in rank_entries_stream(
+                r
+                async for r in rank_entries_stream(
                     _iter_items(preliminary_deduped), min_score=min_entry_score
                 )
             ]
@@ -643,8 +652,12 @@ async def run_pipeline(
                     remember_page(page)
                     stats["pages_fetched"] += 1
                     entries = await extract_page_entries(
-                        page, provider, city, state,
-                        store=store, run_id=run_id,
+                        page,
+                        provider,
+                        city,
+                        state,
+                        store=store,
+                        run_id=run_id,
                         reuse_cached_extractions=reuse_cached_extractions,
                         extraction_directive=extraction_directive,
                     )
@@ -665,10 +678,13 @@ async def run_pipeline(
             )
             if followup_queries:
                 queries_count += len(followup_queries)
-                emit("status", {
-                    "phase": "deepening_search",
-                    "followup_queries": len(followup_queries),
-                })
+                emit(
+                    "status",
+                    {
+                        "phase": "deepening_search",
+                        "followup_queries": len(followup_queries),
+                    },
+                )
                 deeper_rpq = results_per_query_for_depth("deep")
                 deeper_results = await source_fetch._search_brave(
                     [q.query for q in followup_queries],
@@ -687,8 +703,12 @@ async def run_pipeline(
                             remember_page(page)
                             stats["pages_fetched"] += 1
                             entries = await extract_page_entries(
-                                page, provider, city, state,
-                                store=store, run_id=run_id,
+                                page,
+                                provider,
+                                city,
+                                state,
+                                store=store,
+                                run_id=run_id,
                                 reuse_cached_extractions=reuse_cached_extractions,
                                 extraction_directive=extraction_directive,
                             )
@@ -698,11 +718,10 @@ async def run_pipeline(
             # --- 3. Entity chasing: fetch org websites for staff/board/partners ---
             emit("status", {"phase": "entity_chasing"})
             # Re-rank with new entries before chasing
-            chase_deduped = [
-                entry async for entry in deduplicate_stream(_iter_items(raw_entries))
-            ]
+            chase_deduped = [entry async for entry in deduplicate_stream(_iter_items(raw_entries))]
             chase_ranked = [
-                r async for r in rank_entries_stream(
+                r
+                async for r in rank_entries_stream(
                     _iter_items(chase_deduped), min_score=min_entry_score
                 )
             ]
@@ -721,8 +740,12 @@ async def run_pipeline(
                             remember_page(page)
                             stats["pages_fetched"] += 1
                             entries = await extract_page_entries(
-                                page, provider, city, state,
-                                store=store, run_id=run_id,
+                                page,
+                                provider,
+                                city,
+                                state,
+                                store=store,
+                                run_id=run_id,
                                 reuse_cached_extractions=reuse_cached_extractions,
                                 extraction_directive=extraction_directive,
                             )
@@ -733,7 +756,9 @@ async def run_pipeline(
                 search_query = target.get("search_query", "")
                 if search_query and search_api_key:
                     chase_results = await source_fetch._search_brave(
-                        [search_query], search_api_key, results_per_query=5,
+                        [search_query],
+                        search_api_key,
+                        results_per_query=5,
                     )
                     for result in chase_results:
                         url = result.get("url")
@@ -746,8 +771,12 @@ async def run_pipeline(
                                     remember_page(page)
                                     stats["pages_fetched"] += 1
                                     entries = await extract_page_entries(
-                                        page, provider, city, state,
-                                        store=store, run_id=run_id,
+                                        page,
+                                        provider,
+                                        city,
+                                        state,
+                                        store=store,
+                                        run_id=run_id,
                                         reuse_cached_extractions=reuse_cached_extractions,
                                         extraction_directive=extraction_directive,
                                     )
@@ -756,8 +785,7 @@ async def run_pipeline(
 
             # --- 4. Browser research: deep-dive into top org websites ---
             browser_targets = [
-                t for t in chase_targets
-                if t.get("website") and normalize_url(t["website"])
+                t for t in chase_targets if t.get("website") and normalize_url(t["website"])
             ][:5]  # Top 5 orgs only
             if browser_targets:
                 emit("status", {"phase": "browser_research", "targets": len(browser_targets)})
@@ -773,11 +801,14 @@ async def run_pipeline(
                     )
                     if browser_entries:
                         raw_entries.extend(browser_entries)
-                        emit("status", {
-                            "phase": "browser_research_complete",
-                            "org": org_name,
-                            "entries": len(browser_entries),
-                        })
+                        emit(
+                            "status",
+                            {
+                                "phase": "browser_research_complete",
+                                "org": org_name,
+                                "entries": len(browser_entries),
+                            },
+                        )
 
         phase["value"] = "finalizing"
         deduped_entries = [entry async for entry in deduplicate_stream(_iter_items(raw_entries))]
@@ -785,7 +816,9 @@ async def run_pipeline(
 
         ranked_entries = [
             ranked
-            async for ranked in rank_entries_stream(_iter_items(deduped_entries), min_score=min_entry_score)
+            async for ranked in rank_entries_stream(
+                _iter_items(deduped_entries), min_score=min_entry_score
+            )
         ]
 
         for ranked in ranked_entries:
@@ -825,6 +858,7 @@ async def run_pipeline(
                 raw_entries=raw_entries,
                 ranked_entries=ranked_entries,
                 gap_report=gap_report,
+                remote_run_id=remote_run_id,
             )
             await store.save_run_artifacts(run_id, artifacts)
         else:
@@ -859,11 +893,14 @@ async def run_pipeline(
                     remote_run_id=contribution_result.run_id,
                     synced_at=datetime.now(UTC),
                 )
-            emit("status", {
-                "phase": "contributed",
-                "created": contribution_result.created,
-                "failed": contribution_result.failed,
-            })
+            emit(
+                "status",
+                {
+                    "phase": "contributed",
+                    "created": contribution_result.created,
+                    "failed": contribution_result.failed,
+                },
+            )
         elif contribution_config and contribution_config.enabled:
             logger.warning(
                 "Skipping Atlas sync for run %s because canonical run metadata was not provided",
@@ -1014,7 +1051,8 @@ def _build_run_artifacts(
     raw_entries: list[RawEntry],
     ranked_entries: list[RankedEntry],
     gap_report: GapReport,
-    ) -> DiscoveryRunArtifacts:
+    remote_run_id: str | None = None,
+) -> DiscoveryRunArtifacts:
     """Build the canonical run bundle emitted by the Scout runner."""
     return DiscoveryRunArtifacts(
         manifest=DiscoveryRunManifest(
@@ -1028,7 +1066,11 @@ def _build_run_artifacts(
             status=stats.status,
             started_at=started_at,
             completed_at=completed_at,
-            sync=DiscoverySyncInfo(local_run_id=run_id, sync_status="ready"),
+            sync=DiscoverySyncInfo(
+                local_run_id=run_id,
+                remote_run_id=remote_run_id,
+                sync_status="ready",
+            ),
         ),
         stats=stats,
         checkpoints=[

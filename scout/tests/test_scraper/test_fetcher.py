@@ -54,9 +54,7 @@ async def test_fetch_many_concurrent() -> None:
             + f"Page {i} content about policy. " * 55
             + "</p></article></body></html>"
         )
-        respx.get(f"https://example.com/page{i}").mock(
-            return_value=httpx.Response(200, text=html)
-        )
+        respx.get(f"https://example.com/page{i}").mock(return_value=httpx.Response(200, text=html))
     fetcher = AsyncFetcher(max_concurrent=3, request_delay_ms=0)
     results = await fetcher.fetch_many([f"https://example.com/page{i}" for i in range(5)])
     await fetcher.close()

@@ -173,3 +173,76 @@ async def test_worker_fail_reports_retry_metadata(monkeypatch) -> None:
         "retryable": True,
         "worker_id": "worker-123",
     }
+
+
+@pytest.mark.asyncio
+async def test_worker_processes_direct_url_job_without_search_key(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """Direct URL jobs run as seeded local work and sync into the queued Atlas run."""
+    session = ScoutSession(
+        atlas_url="https://atlas.example",
+        access_token="device-session-token",
+        worker_id="worker-123",
+        user_id="user-123",
+        user_email="user@example.org",
+        worker_name="Scout Laptop",
+        default_upload_target="public",
+        workspace_id=None,
+    )
+    job = {
+        "execution_mode": "direct_url",
+        "id": "job-123",
+        "input_payload": {"direct_urls": ["https://example.test/seed"]},
+        "issue_areas": ["housing_affordability"],
+        "location_query": "Austin, TX",
+        "run_id": "run-123",
+    }
+    captured: dict[str, object] = {}
+
+    async def heartbeat(**kwargs: object) -> None:
+        captured["heartbeat"] = kwargs
+
+    async def complete(**kwargs: object) -> None:
+        captured["complete"] = kwargs
+
+    async def api_token(**kwargs: object) -> str:
+        captured["api_token"] = kwargs
+        return "fresh-token"
+
+    async def run_pipeline(**kwargs: object) -> None:
+        captured["pipeline"] = kwargs
+
+    monkeypatch.setattr(cli_module, "WORKER_STATE_PATH", tmp_path / "worker.json")
+    monkeypatch.setattr(cli_module, "_worker_heartbeat_job", heartbeat)
+    monkeypatch.setattr(cli_module, "_worker_complete_job", complete)
+    monkeypatch.setattr(cli_module, "_worker_api_token", api_token)
+    monkeypatch.setattr(cli_module, "_run_pipeline", run_pipeline)
+
+    await cli_module._worker_process_job(
+        ScoutConfig(),
+        atlas_url="https://atlas.example",
+        session=session,
+        token="claim-token",
+        job=job,
+        search_api_key="",
+        lease_seconds=120,
+    )
+
+    assert captured["pipeline"] == {
+        "config": ScoutConfig(),
+        "depth": "standard",
+        "direct_urls": ["https://example.test/seed"],
+        "issues": ["housing_affordability"],
+        "location": "Austin, TX",
+        "quiet": True,
+        "search_api_key": "",
+        "sync_after_run": True,
+        "sync_remote_run_id": "run-123",
+    }
+    assert captured["complete"] == {
+        "atlas_url": "https://atlas.example",
+        "job_id": "job-123",
+        "token": "fresh-token",
+        "worker_id": "worker-123",
+    }

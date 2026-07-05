@@ -152,9 +152,7 @@ def test_config_flag_overrides_profile(tmp_path: Path):
     configs_dir = _setup_profiles(tmp_path, ["default"])
     patches = _patches(tmp_path, configs_dir)
     with patches[0], patches[1], patches[2], patches[3], patches[4]:
-        result = CliRunner().invoke(
-            main, ["--config", str(custom), "config", "show"]
-        )
+        result = CliRunner().invoke(main, ["--config", str(custom), "config", "show"])
     assert result.exit_code == 0
     assert "custom-model" in result.output
 

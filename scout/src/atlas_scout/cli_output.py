@@ -12,9 +12,12 @@ from atlas_scout.cli_progress import filter_visible_page_outcomes
 if TYPE_CHECKING:
     from rich.console import Console
 
+    from atlas_scout.auth import DeviceAuthError
     from atlas_scout.config import ScoutConfig
     from atlas_scout.pipeline import PipelineResult
     from atlas_scout.runtime import RuntimeProfile
+
+LOCAL_DEV_ATLAS_URL = "https://atlas.localhost:1355"
 
 STATUS_STYLES: dict[str, str] = {
     "completed": "green",
@@ -36,6 +39,47 @@ STATUS_STYLES: dict[str, str] = {
 def styled_status(status: str) -> Text:
     """Return a Rich Text with color for a pipeline status string."""
     return Text(status, style=STATUS_STYLES.get(status, ""))
+
+
+def format_device_auth_error(error: DeviceAuthError) -> str:
+    """Format a structured auth failure for CLI presentation."""
+    if error.description:
+        return error.description
+
+    if error.error == "network_error":
+        endpoint = f" at {error.url}" if error.url else ""
+        return (
+            f"Could not reach Atlas auth{endpoint}. "
+            f"Start Atlas with `pnpm dev` and use {LOCAL_DEV_ATLAS_URL} for local login."
+        )
+
+    if error.status_code is not None:
+        endpoint = f" from {error.url}" if error.url else ""
+        message = f"Atlas auth returned HTTP {error.status_code}{endpoint}."
+        if _looks_like_wrong_auth_surface(error):
+            return (
+                f"{message} Check that --atlas-url points to the Atlas app URL, "
+                f"not the API, docs, or another local server. Local development uses "
+                f"{LOCAL_DEV_ATLAS_URL}."
+            )
+        return message
+
+    return "Atlas auth returned an unexpected response."
+
+
+def print_login_failure(console: Console, error: DeviceAuthError) -> None:
+    """Print a login failure without leaking transport bodies."""
+    console.print(f"[red]Login failed:[/] {format_device_auth_error(error)}")
+
+
+def _looks_like_wrong_auth_surface(error: DeviceAuthError) -> bool:
+    """Return whether an auth error likely came from the wrong local surface."""
+    content_type = (error.content_type or "").lower()
+    return (
+        error.status_code in {404, 405}
+        or "text/html" in content_type
+        or "application/xhtml" in content_type
+    )
 
 
 def print_run_banner(
@@ -97,7 +141,12 @@ def print_run_results(console: Console, result: PipelineResult) -> None:
         for outcome in visible_page_outcomes:
             status = str(outcome["status"])
             style = STATUS_STYLES.get(status, "")
-            entries_found = int(outcome.get("entries", 0))
+            entries_value = outcome.get("entries", 0)
+            entries_found = (
+                entries_value
+                if isinstance(entries_value, int) and not isinstance(entries_value, bool)
+                else 0
+            )
             if entries_found > 0:
                 console.print(
                     f"  [{style}]{status}[/{style}]  {outcome['url']}  "
@@ -105,8 +154,7 @@ def print_run_results(console: Console, result: PipelineResult) -> None:
                 )
             elif outcome.get("error"):
                 console.print(
-                    f"  [{style}]{status}[/{style}]  {outcome['url']}  "
-                    f"[dim]{outcome['error']}[/]"
+                    f"  [{style}]{status}[/{style}]  {outcome['url']}  [dim]{outcome['error']}[/]"
                 )
             else:
                 console.print(f"  [{style}]{status}[/{style}]  {outcome['url']}")

@@ -65,9 +65,11 @@ def test_save_settings_creates_parent_dirs(tmp_path: Path):
 
 def test_load_settings_from_existing_toml(tmp_path: Path):
     fake_path = tmp_path / "settings.toml"
-    fake_path.write_text(textwrap.dedent("""\
+    fake_path.write_text(
+        textwrap.dedent("""\
         active_profile = "studio"
-    """))
+    """)
+    )
     with patch("atlas_scout.config.SETTINGS_PATH", fake_path):
         s = load_settings()
     assert s.active_profile == "studio"
@@ -76,10 +78,12 @@ def test_load_settings_from_existing_toml(tmp_path: Path):
 def test_load_settings_ignores_unknown_keys(tmp_path: Path):
     """Unknown keys in settings.toml should not cause errors."""
     fake_path = tmp_path / "settings.toml"
-    fake_path.write_text(textwrap.dedent("""\
+    fake_path.write_text(
+        textwrap.dedent("""\
         active_profile = "laptop"
         some_future_setting = true
-    """))
+    """)
+    )
     with patch("atlas_scout.config.SETTINGS_PATH", fake_path):
         s = load_settings()
     assert s.active_profile == "laptop"

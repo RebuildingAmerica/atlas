@@ -140,7 +140,9 @@ def _name_is_grounded(name: str, source_lower: str) -> bool:
 
     # Fuzzy: find best matching window in source
     if len(name_lower) >= 5:
-        best_ratio = _best_substring_similarity(name_lower, source_lower, early_exit=_NAME_SIMILARITY_THRESHOLD)
+        best_ratio = _best_substring_similarity(
+            name_lower, source_lower, early_exit=_NAME_SIMILARITY_THRESHOLD
+        )
         if best_ratio >= _NAME_SIMILARITY_THRESHOLD:
             return True
 
@@ -159,7 +161,9 @@ def _context_is_grounded(context: str, source_lower: str) -> bool:
         return True
 
     # Fuzzy match — LLMs sometimes slightly misquote
-    best_ratio = _best_substring_similarity(context_lower, source_lower, early_exit=_CONTEXT_SIMILARITY_THRESHOLD)
+    best_ratio = _best_substring_similarity(
+        context_lower, source_lower, early_exit=_CONTEXT_SIMILARITY_THRESHOLD
+    )
     return best_ratio >= _CONTEXT_SIMILARITY_THRESHOLD
 
 

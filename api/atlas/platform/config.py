@@ -136,6 +136,11 @@ class Settings(BaseSettings):
     discovery_inline: bool = False
     """Run discovery synchronously in-process. Useful for tests."""
 
+    discovery_job_worker_enabled: bool = Field(
+        default=True, validation_alias="DISCOVERY_JOB_WORKER_ENABLED"
+    )
+    """Start the API's durable discovery job worker in the application lifespan."""
+
     # Pipeline tuning
     discovery_search_depth: str = Field(
         default="standard", validation_alias="DISCOVERY_SEARCH_DEPTH"

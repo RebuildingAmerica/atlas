@@ -100,6 +100,58 @@ def test_login_saves_browser_approved_session(monkeypatch: pytest.MonkeyPatch) -
     assert "Logged in as user@example.org" in result.output
 
 
+def test_login_defaults_to_public_without_prompt(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Bare login should be browser-first and ready for public contributions."""
+
+    class PublicDefaultClient(FakeDeviceAuthClient):
+        async def exchange_session_for_api_token(
+            self,
+            atlas_url: str,
+            *,
+            session_token: str,
+            worker_name: str,
+            default_upload_target: str,
+            worker_id: str | None = None,
+            workspace_id: str | None = None,
+            search_key_configured: bool = False,
+        ) -> ScoutTokenExchange:
+            assert atlas_url == "https://atlas.example"
+            assert session_token == "device-session-token"
+            assert worker_name == "Scout Laptop"
+            assert default_upload_target == "public"
+            assert worker_id is None
+            assert workspace_id is None
+            assert search_key_configured is False
+            return ScoutTokenExchange(
+                token="api-jwt",
+                worker_id="worker-123",
+                user_id="user-123",
+                user_email="user@example.org",
+                workspace_id=None,
+            )
+
+    saved: list[ScoutSession] = []
+    monkeypatch.setattr(cli_module, "DeviceAuthClient", PublicDefaultClient)
+    monkeypatch.setattr(cli_module, "save_session", saved.append)
+    monkeypatch.setattr(cli_module.platform, "node", lambda: "Scout Laptop")
+    monkeypatch.setattr(cli_module.webbrowser, "open", lambda _url: True)
+
+    result = CliRunner().invoke(
+        main,
+        [
+            "login",
+            "--atlas-url",
+            "https://atlas.example",
+            "--no-browser",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert "Upload target" not in result.output
+    assert saved[0].default_upload_target == "public"
+    assert saved[0].workspace_id is None
+
+
 def test_login_rejects_workspace_target_without_workspace_hint(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

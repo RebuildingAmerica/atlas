@@ -63,8 +63,16 @@ async def test_fetch_sources_stream_deduplicates_urls(monkeypatch: pytest.Monkey
     monkeypatch.setattr(fetcher, "fetch", _mock_fetch)
 
     queries = [
-        SearchQuery(query="housing Austin TX nonprofit", source_category="nonprofits", issue_area="housing_affordability"),
-        SearchQuery(query="housing Austin TX organizer", source_category="individuals", issue_area="housing_affordability"),
+        SearchQuery(
+            query="housing Austin TX nonprofit",
+            source_category="nonprofits",
+            issue_area="housing_affordability",
+        ),
+        SearchQuery(
+            query="housing Austin TX organizer",
+            source_category="individuals",
+            issue_area="housing_affordability",
+        ),
     ]
 
     pages = [p async for p in fetch_sources_stream(queries, fetcher, _FAKE_API_KEY)]
@@ -81,17 +89,21 @@ async def test_fetch_sources_stream_yields_pages(monkeypatch: pytest.MonkeyPatch
     """fetch_sources_stream yields PageContent for each unique URL found."""
     urls = ["https://example.com/page1", "https://example.com/page2"]
 
-    respx.get(_BRAVE_SEARCH_URL).mock(
-        return_value=Response(200, json=_make_brave_response(urls))
-    )
+    respx.get(_BRAVE_SEARCH_URL).mock(return_value=Response(200, json=_make_brave_response(urls)))
 
     async def _mock_fetch(url: str) -> PageContent | None:
-        return PageContent(url=url, text="relevant content here with enough words " * 10, title="Title")
+        return PageContent(
+            url=url, text="relevant content here with enough words " * 10, title="Title"
+        )
 
     fetcher = AsyncFetcher()
     monkeypatch.setattr(fetcher, "fetch", _mock_fetch)
 
-    queries = [SearchQuery(query="test query", source_category="nonprofits", issue_area="housing_affordability")]
+    queries = [
+        SearchQuery(
+            query="test query", source_category="nonprofits", issue_area="housing_affordability"
+        )
+    ]
     pages = [p async for p in fetch_sources_stream(queries, fetcher, _FAKE_API_KEY)]
 
     assert len(pages) == 2
@@ -105,9 +117,7 @@ async def test_fetch_sources_stream_returns_when_no_unique_urls(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """When the search yields no URLs, the stream returns immediately."""
-    respx.get(_BRAVE_SEARCH_URL).mock(
-        return_value=Response(200, json={"web": {"results": []}})
-    )
+    respx.get(_BRAVE_SEARCH_URL).mock(return_value=Response(200, json={"web": {"results": []}}))
 
     fetched: list[str] = []
 
@@ -119,7 +129,9 @@ async def test_fetch_sources_stream_returns_when_no_unique_urls(
     monkeypatch.setattr(fetcher, "fetch", _mock_fetch)
 
     queries = [
-        SearchQuery(query="empty", source_category="nonprofits", issue_area="housing_affordability"),
+        SearchQuery(
+            query="empty", source_category="nonprofits", issue_area="housing_affordability"
+        ),
     ]
 
     pages = [p async for p in fetch_sources_stream(queries, fetcher, _FAKE_API_KEY)]
@@ -136,9 +148,7 @@ async def test_fetch_sources_stream_skips_none_fetches(
     """Pages that return None from the fetcher are not yielded."""
     urls = ["https://example.com/ok", "https://example.com/dead"]
 
-    respx.get(_BRAVE_SEARCH_URL).mock(
-        return_value=Response(200, json=_make_brave_response(urls))
-    )
+    respx.get(_BRAVE_SEARCH_URL).mock(return_value=Response(200, json=_make_brave_response(urls)))
 
     async def _mock_fetch(url: str) -> PageContent | None:
         if url.endswith("dead"):
@@ -148,7 +158,9 @@ async def test_fetch_sources_stream_skips_none_fetches(
     fetcher = AsyncFetcher()
     monkeypatch.setattr(fetcher, "fetch", _mock_fetch)
 
-    queries = [SearchQuery(query="q", source_category="nonprofits", issue_area="housing_affordability")]
+    queries = [
+        SearchQuery(query="q", source_category="nonprofits", issue_area="housing_affordability")
+    ]
     pages = [p async for p in fetch_sources_stream(queries, fetcher, _FAKE_API_KEY)]
 
     assert len(pages) == 1
@@ -181,6 +193,7 @@ async def test_fetch_sources_stream_accepts_async_iterator(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """An async iterator of queries is fully consumed before searching."""
+
     async def _async_queries():
         yield SearchQuery(
             query="async-q",
@@ -195,13 +208,12 @@ async def test_fetch_sources_stream_accepts_async_iterator(
         return PageContent(url=url, text="x" * 50, title="t")
 
     from atlas_scout.steps import source_fetch as source_fetch_module
+
     monkeypatch.setattr(source_fetch_module, "_search_brave", _stub_search)
     fetcher = AsyncFetcher()
     monkeypatch.setattr(fetcher, "fetch", _mock_fetch)
 
-    pages = [
-        p async for p in fetch_sources_stream(_async_queries(), fetcher, _FAKE_API_KEY)
-    ]
+    pages = [p async for p in fetch_sources_stream(_async_queries(), fetcher, _FAKE_API_KEY)]
 
     assert [page.url for page in pages] == ["https://example.com/async"]
 

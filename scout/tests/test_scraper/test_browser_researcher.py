@@ -51,11 +51,7 @@ def test_parse_url_list_returns_known_urls() -> None:
 
 def test_parse_url_list_handles_code_fence() -> None:
     valid = {"https://example.com/team"}
-    text = (
-        "```json\n"
-        '["https://example.com/team"]\n'
-        "```"
-    )
+    text = '```json\n["https://example.com/team"]\n```'
     result = br._parse_url_list(text, valid)
     assert result == ["https://example.com/team"]
 
@@ -92,9 +88,7 @@ async def test_select_links_with_llm_empty_input() -> None:
 
 
 async def test_select_links_with_llm_dedupes_and_returns_picks() -> None:
-    provider = _FakeProvider(
-        completion_text=json.dumps(["https://example.com/team"])
-    )
+    provider = _FakeProvider(completion_text=json.dumps(["https://example.com/team"]))
     links = [
         {"href": "https://example.com/team", "text": "Team"},
         {"href": "https://example.com/team", "text": "duplicate"},
@@ -316,9 +310,7 @@ async def test_research_org_website_full_path_extracts_entries(
     )
 
     provider = _FakeProvider(
-        completion_text=json.dumps(
-            ["https://example.org/team", "https://example.org/programs"]
-        )
+        completion_text=json.dumps(["https://example.org/team", "https://example.org/programs"])
     )
     result = await br.research_org_website(
         "https://example.org",
@@ -346,9 +338,7 @@ async def test_research_org_website_skips_low_quality_pages(
 
     extractor_calls = _patch_extract_page_entries(monkeypatch)
 
-    provider = _FakeProvider(
-        completion_text=json.dumps(["https://example.org/thin"])
-    )
+    provider = _FakeProvider(completion_text=json.dumps(["https://example.org/thin"]))
     result = await br.research_org_website(
         "https://example.org",
         provider=provider,
@@ -382,9 +372,7 @@ async def test_research_org_website_continues_when_page_visit_fails(
         by_url={"https://example.org/good": [_entry("Bob", "https://example.org/good")]},
     )
     provider = _FakeProvider(
-        completion_text=json.dumps(
-            ["https://example.org/broken", "https://example.org/good"]
-        )
+        completion_text=json.dumps(["https://example.org/broken", "https://example.org/good"])
     )
     result = await br.research_org_website(
         "https://example.org",

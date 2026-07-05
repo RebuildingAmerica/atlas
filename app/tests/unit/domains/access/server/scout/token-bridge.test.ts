@@ -106,6 +106,44 @@ describe("issueScoutTokenRequest", () => {
     expect(response.headers.get("Cache-Control")).toBe("no-store");
   });
 
+  it("accepts first-run public Scout logins with no worker id yet", async () => {
+    mocks.getSession.mockResolvedValue({
+      user: { id: "user-123", email: "user@example.org" },
+    });
+    mocks.getToken.mockResolvedValue({ token: "api-jwt" });
+    mocks.resolvePrimaryWorkspaceId.mockResolvedValue(null);
+    const { issueScoutTokenRequest } = await import("@/domains/access/server/scout-token");
+
+    const response = await issueScoutTokenRequest(
+      new Request("https://atlas.test/api/auth/scout/token", {
+        body: JSON.stringify({
+          default_upload_target: "public",
+          search_key_configured: false,
+          worker_id: null,
+          worker_name: "Willie's MacBook Pro",
+          workspace_id: null,
+        }),
+        headers: { Authorization: "Bearer device-session-token" },
+        method: "POST",
+      }),
+    );
+
+    await expect(response.json()).resolves.toEqual({
+      token: "api-jwt",
+      user: { id: "user-123", email: "user@example.org" },
+      worker_id: "worker-123",
+      workspace_id: null,
+    });
+    expect(mocks.registerOrTouchScoutDevice).toHaveBeenCalledWith({
+      defaultUploadTarget: "public",
+      id: undefined,
+      searchKeyConfigured: false,
+      userId: "user-123",
+      workerName: "Willie's MacBook Pro",
+      workspaceId: null,
+    });
+  });
+
   it("blocks revoked Scout workers before issuing a new API token", async () => {
     mocks.getSession.mockResolvedValue({
       user: { id: "user-123", email: "user@example.org" },

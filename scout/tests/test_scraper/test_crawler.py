@@ -74,7 +74,7 @@ def test_extract_links_ignores_non_anchor_tags_and_empty_href() -> None:
     html = (
         "<html><body>"
         "<div>not an anchor</div>"
-        '<a>no href</a>'
+        "<a>no href</a>"
         '<a href="">empty href</a>'
         '<a href="https://example.com/ok">OK</a>'
         "</body></html>"

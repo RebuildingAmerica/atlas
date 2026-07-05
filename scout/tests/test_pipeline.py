@@ -179,7 +179,9 @@ async def test_run_pipeline_gap_report_not_none(mock_provider, mock_fetcher, tmp
 
 
 @pytest.mark.asyncio
-async def test_run_pipeline_marks_run_failed_on_error(mock_provider, mock_fetcher, tmp_db_path: Path):
+async def test_run_pipeline_marks_run_failed_on_error(
+    mock_provider, mock_fetcher, tmp_db_path: Path
+):
     """When the pipeline raises an unhandled error, the run should be marked 'failed'."""
     from unittest.mock import patch
 
@@ -191,10 +193,13 @@ async def test_run_pipeline_marks_run_failed_on_error(mock_provider, mock_fetche
     # Patch analyze_gaps (step 6) to raise — it runs after all streaming is complete,
     # so this is a reliable way to trigger the failure path without depending on
     # internals of earlier steps that swallow their own exceptions.
-    with patch(
-        "atlas_scout.pipeline.analyze_gaps",
-        side_effect=RuntimeError("gap analysis exploded"),
-    ), pytest.raises(RuntimeError, match="gap analysis exploded"):
+    with (
+        patch(
+            "atlas_scout.pipeline.analyze_gaps",
+            side_effect=RuntimeError("gap analysis exploded"),
+        ),
+        pytest.raises(RuntimeError, match="gap analysis exploded"),
+    ):
         await run_pipeline(
             location="Austin, TX",
             issues=["housing_affordability"],
@@ -229,8 +234,9 @@ async def test_run_pipeline_marks_run_cancelled_on_interrupt(
         raise asyncio.CancelledError()
         yield  # pragma: no cover
 
-    with patch("atlas_scout.pipeline.rank_entries_stream", side_effect=cancelled_rank), pytest.raises(
-        asyncio.CancelledError
+    with (
+        patch("atlas_scout.pipeline.rank_entries_stream", side_effect=cancelled_rank),
+        pytest.raises(asyncio.CancelledError),
     ):
         await run_pipeline(
             location="Austin, TX",

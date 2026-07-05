@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import httpx
+import pytest
 from click.testing import CliRunner
 
 import atlas_scout.cli as cli_module
 from atlas_scout.auth import (
+    DeviceAuthClient,
     DeviceAuthError,
     DeviceCode,
     DeviceToken,
@@ -119,6 +122,23 @@ def test_login_surfaces_device_code_request_error(monkeypatch) -> None:
 
     assert result.exit_code != 0
     assert "Login failed: Atlas unavailable" in result.output
+
+
+def test_device_auth_empty_http_error_names_status_and_endpoint() -> None:
+    """Empty Atlas auth errors keep status and endpoint separate from presentation."""
+    response = httpx.Response(
+        404,
+        content=b"",
+        request=httpx.Request("POST", "https://atlas.example/api/auth/device/code"),
+    )
+
+    with pytest.raises(DeviceAuthError) as exc_info:
+        DeviceAuthClient()._json_or_error(response)
+
+    assert exc_info.value.error == "http_404"
+    assert exc_info.value.description == ""
+    assert exc_info.value.status_code == 404
+    assert exc_info.value.url == "https://atlas.example/api/auth/device/code"
 
 
 def test_login_surfaces_token_exchange_error(monkeypatch) -> None:

@@ -12,7 +12,7 @@ import pytest_asyncio
 
 from atlas.config import get_settings
 from atlas.domains.access.capabilities import ResolvedCapabilities
-from atlas.domains.access.dependencies import require_org_actor
+from atlas.domains.access.dependencies import require_actor, require_org_actor
 from atlas.domains.access.models.usage_events import OrgUsageEventCRUD
 from atlas.domains.access.principals import AuthenticatedActor
 from atlas.domains.catalog.models.ownership import OwnershipCRUD
@@ -63,7 +63,13 @@ async def capable_test_client(test_settings: Settings) -> object:
         )
         return actor
 
+    async def override_require_actor() -> AuthenticatedActor:
+        actor = await override_require_org_actor()
+        actor.org_id = None
+        return actor
+
     app.dependency_overrides[get_settings] = override_get_settings
+    app.dependency_overrides[require_actor] = override_require_actor
     app.dependency_overrides[require_org_actor] = override_require_org_actor
 
     transport = httpx.ASGITransport(app=app)
@@ -92,7 +98,13 @@ async def limited_test_client(test_settings: Settings) -> object:
         )
         return actor
 
+    async def override_require_actor() -> AuthenticatedActor:
+        actor = await override_require_org_actor()
+        actor.org_id = None
+        return actor
+
     app.dependency_overrides[get_settings] = override_get_settings
+    app.dependency_overrides[require_actor] = override_require_actor
     app.dependency_overrides[require_org_actor] = override_require_org_actor
 
     transport = httpx.ASGITransport(app=app)

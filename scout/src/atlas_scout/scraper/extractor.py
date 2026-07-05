@@ -56,7 +56,9 @@ def extract_content_verbose(html: str, url: str) -> ContentExtraction:
 
     quality_reason = content_quality_reason(text)
     if quality_reason is not None:
-        return ContentExtraction(page=None, reason=quality_reason, discovered_links=discovered_links)
+        return ContentExtraction(
+            page=None, reason=quality_reason, discovered_links=discovered_links
+        )
 
     metadata = trafilatura.extract_metadata(html)
     title: str = metadata.title if (metadata and metadata.title) else ""

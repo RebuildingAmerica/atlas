@@ -40,7 +40,8 @@ async def verify_entries(
     async with httpx.AsyncClient(timeout=15.0, follow_redirects=True) as client:
         tasks = [
             _verify_one(
-                entry, client,
+                entry,
+                client,
                 search_api_key=search_api_key,
                 check_websites=check_websites,
                 reverse_search=reverse_search,

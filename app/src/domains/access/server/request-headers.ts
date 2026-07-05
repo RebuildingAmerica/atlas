@@ -11,6 +11,6 @@ import { sanitizeBrowserSessionHeaders } from "./runtime";
  */
 export function getBrowserSessionHeaders(): Headers {
   // getRequestHeaders() returns Headers at runtime but TanStack types it loosely
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+
   return sanitizeBrowserSessionHeaders(getRequestHeaders());
 }

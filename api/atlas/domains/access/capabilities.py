@@ -288,6 +288,13 @@ def _resolve_pricing_url(settings: Settings) -> str | None:
     return f"{base}/pricing"
 
 
+def _ensure_actor_capabilities(actor: AuthenticatedActor) -> ResolvedCapabilities:
+    """Return actor capabilities, defaulting public actors to the free tier."""
+    if actor.resolved_capabilities is None:
+        actor.resolved_capabilities = resolve_capabilities(actor.active_products or [])
+    return actor.resolved_capabilities
+
+
 def require_capability(cap: str) -> Callable[..., Awaitable[None]]:
     """Return a FastAPI dependency that raises 403 if the actor lacks the capability.
 
@@ -297,16 +304,23 @@ def require_capability(cap: str) -> Callable[..., Awaitable[None]]:
     response body keeps a parallel structured representation for clients that
     don't introspect ``WWW-Authenticate``.
     """
-    from .dependencies import require_org_actor
+    from .dependencies import require_actor, require_org_actor
+
+    async def capability_actor(
+        actor: AuthenticatedActor = Depends(require_actor),
+        settings: Settings = Depends(get_settings),
+    ) -> AuthenticatedActor:
+        if actor.org_id is None:
+            _ensure_actor_capabilities(actor)
+            return actor
+        return await require_org_actor(actor=actor, settings=settings)
 
     async def dependency(
-        actor: AuthenticatedActor = Depends(require_org_actor),
+        actor: AuthenticatedActor = Depends(capability_actor),
         settings: Settings = Depends(get_settings),
     ) -> None:
-        if (
-            actor.resolved_capabilities is not None
-            and cap in actor.resolved_capabilities.capabilities
-        ):
+        resolved_capabilities = _ensure_actor_capabilities(actor)
+        if cap in resolved_capabilities.capabilities:
             return
 
         required_plan = _REQUIRED_PLAN_FOR_CAPABILITY.get(cap, "pro")
@@ -353,13 +367,21 @@ def enforce_limit(limit: str) -> Callable[..., Awaitable[int | None]]:
     Returns None for unlimited, or the numeric cap. The endpoint is
     responsible for checking current usage against this value.
     """
-    from .dependencies import require_org_actor
+    from .dependencies import require_actor, require_org_actor
+
+    async def capability_actor(
+        actor: AuthenticatedActor = Depends(require_actor),
+        settings: Settings = Depends(get_settings),
+    ) -> AuthenticatedActor:
+        if actor.org_id is None:
+            _ensure_actor_capabilities(actor)
+            return actor
+        return await require_org_actor(actor=actor, settings=settings)
 
     async def dependency(
-        actor: AuthenticatedActor = Depends(require_org_actor),
+        actor: AuthenticatedActor = Depends(capability_actor),
     ) -> int | None:
-        if actor.resolved_capabilities is None:
-            return DEFAULT_LIMITS.get(limit)
-        return actor.resolved_capabilities.limits.get(limit)
+        resolved_capabilities = _ensure_actor_capabilities(actor)
+        return resolved_capabilities.limits.get(limit)
 
     return dependency

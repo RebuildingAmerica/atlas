@@ -10,7 +10,7 @@ import pytest_asyncio
 
 from atlas.config import get_settings
 from atlas.domains.access.capabilities import ResolvedCapabilities
-from atlas.domains.access.dependencies import require_org_actor
+from atlas.domains.access.dependencies import require_actor, require_org_actor
 from atlas.domains.access.principals import AuthenticatedActor
 from atlas.domains.catalog.models.ownership import OwnershipCRUD
 from atlas.main import create_app
@@ -64,7 +64,13 @@ async def capable_test_client(test_settings: Settings) -> object:
         )
         return actor
 
+    async def override_require_actor() -> AuthenticatedActor:
+        actor = await override_require_org_actor()
+        actor.org_id = None
+        return actor
+
     app.dependency_overrides[get_settings] = override_get_settings
+    app.dependency_overrides[require_actor] = override_require_actor
     app.dependency_overrides[require_org_actor] = override_require_org_actor
 
     transport = httpx.ASGITransport(app=app)
@@ -95,7 +101,50 @@ async def no_notes_capability_client(test_settings: Settings) -> object:
         )
         return actor
 
+    async def override_require_actor() -> AuthenticatedActor:
+        actor = await override_require_org_actor()
+        actor.org_id = None
+        return actor
+
     app.dependency_overrides[get_settings] = override_get_settings
+    app.dependency_overrides[require_actor] = override_require_actor
+    app.dependency_overrides[require_org_actor] = override_require_org_actor
+
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        yield client
+
+
+@pytest_asyncio.fixture
+async def member_test_client(test_settings: Settings) -> object:
+    """Test client whose local actor is an org member, not an admin or owner."""
+    app = create_app()
+
+    def override_get_settings() -> Settings:
+        return test_settings
+
+    async def override_require_org_actor() -> AuthenticatedActor:
+        actor = AuthenticatedActor(
+            user_id=USER_ID,
+            email="local@atlas.rebuildingus.org",
+            auth_type="local",
+            is_local=True,
+            org_id=ORG_ID,
+        )
+        actor.org_role = "member"
+        actor.resolved_capabilities = ResolvedCapabilities(
+            capabilities=frozenset({"research.run", "workspace.notes"}),
+            limits={},
+        )
+        return actor
+
+    async def override_require_actor() -> AuthenticatedActor:
+        actor = await override_require_org_actor()
+        actor.org_id = None
+        return actor
+
+    app.dependency_overrides[get_settings] = override_get_settings
+    app.dependency_overrides[require_actor] = override_require_actor
     app.dependency_overrides[require_org_actor] = override_require_org_actor
 
     transport = httpx.ASGITransport(app=app)
@@ -389,7 +438,7 @@ class TestOrgAnnotationsUpdate:
     async def test_update_by_non_author_non_admin_returns_403(
         self,
         test_db: object,
-        test_client: object,
+        member_test_client: object,
     ) -> None:
         """A member who is not the author and not admin/owner should get 403."""
         # Seed an annotation authored by a different user
@@ -411,8 +460,7 @@ class TestOrgAnnotationsUpdate:
         )
         await test_db.commit()
 
-        # Local actor (user_id="local-operator") is not the author; no org_role set
-        response = await test_client.put(
+        response = await member_test_client.put(
             f"/api/orgs/{ORG_ID}/annotations/{annotation.id}",
             json={"content": "Attempting override"},
         )
@@ -449,7 +497,7 @@ class TestOrgAnnotationsDelete:
     async def test_delete_by_non_author_non_admin_returns_403(
         self,
         test_db: object,
-        test_client: object,
+        member_test_client: object,
     ) -> None:
         """A non-author, non-admin member should get 403 on delete."""
         entry_id = await EntryCRUD.create(
@@ -470,5 +518,7 @@ class TestOrgAnnotationsDelete:
         )
         await test_db.commit()
 
-        response = await test_client.delete(f"/api/orgs/{ORG_ID}/annotations/{annotation.id}")
+        response = await member_test_client.delete(
+            f"/api/orgs/{ORG_ID}/annotations/{annotation.id}"
+        )
         assert response.status_code == STATUS_FORBIDDEN

@@ -24,6 +24,7 @@ from atlas.domains.catalog.models.ownership import OwnershipCRUD
 from atlas.domains.catalog.taxonomy import ALL_ISSUE_SLUGS
 from atlas.domains.discovery.models import (
     DiscoveryJobCRUD,
+    DiscoveryJobInput,
     DiscoveryRunSyncCRUD,
     DiscoveryScheduleCRUD,
 )
@@ -324,6 +325,8 @@ async def start_discovery_run(
     """
     _ = actor
     _validate_issue_areas(req.issue_areas)
+    if req.execution_mode == "direct_url" and not req.direct_urls:
+        raise HTTPException(status_code=400, detail="Direct URL discovery requires direct_urls")
 
     run_id = await DiscoveryRunCRUD.create(
         db,
@@ -359,7 +362,17 @@ async def start_discovery_run(
         if not run:
             raise HTTPException(status_code=500, detail="Failed to refresh discovery run")
     else:
-        await DiscoveryJobCRUD.create(db, run_id=run_id)
+        input_payload: dict[str, object] = {}
+        if req.execution_mode == "direct_url":
+            input_payload = {"direct_urls": req.direct_urls}
+        await DiscoveryJobCRUD.create(
+            db,
+            run_id=run_id,
+            job_input=DiscoveryJobInput(
+                execution_mode=req.execution_mode,
+                payload=input_payload,
+            ),
+        )
 
     apply_no_store_headers(response)
     return _run_to_response(run)
@@ -714,6 +727,8 @@ async def get_discovery_job(
         id=job.id,
         run_id=job.run_id,
         status=job.status,
+        execution_mode=job.execution_mode,
+        input_payload=job.input_payload,
         progress=job.progress,
         error_message=job.error_message,
         retry_count=job.retry_count,
@@ -984,6 +999,8 @@ def _job_queue_item_to_response(job: DiscoveryJobQueueItemModel) -> DiscoveryJob
         id=job.id,
         run_id=job.run_id,
         status=job.status,
+        execution_mode=job.execution_mode,
+        input_payload=job.input_payload,
         progress=job.progress,
         error_message=job.error_message,
         retry_count=job.retry_count,
@@ -1012,6 +1029,8 @@ async def _worker_job_to_response(
         id=job.id,
         run_id=job.run_id,
         status=job.status,
+        execution_mode=job.execution_mode,
+        input_payload=job.input_payload,
         progress=job.progress,
         error_message=job.error_message,
         retry_count=job.retry_count,

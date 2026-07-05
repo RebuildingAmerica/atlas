@@ -200,10 +200,13 @@ def test_context_is_grounded_empty() -> None:
 
 def test_context_is_grounded_exact() -> None:
     """An exact substring match is grounded."""
-    assert _context_is_grounded(
-        "Housing First helps renters",
-        "the housing first helps renters group is active",
-    ) is True
+    assert (
+        _context_is_grounded(
+            "Housing First helps renters",
+            "the housing first helps renters group is active",
+        )
+        is True
+    )
 
 
 def test_context_is_grounded_fuzzy_succeeds() -> None:
@@ -214,10 +217,13 @@ def test_context_is_grounded_fuzzy_succeeds() -> None:
 
 def test_context_is_grounded_completely_different_returns_false() -> None:
     """Wholly different text below threshold is not grounded."""
-    assert _context_is_grounded(
-        "this exact quote does not appear",
-        "kittens and puppies live in a magical land far from here",
-    ) is False
+    assert (
+        _context_is_grounded(
+            "this exact quote does not appear",
+            "kittens and puppies live in a magical land far from here",
+        )
+        is False
+    )
 
 
 def test_best_substring_similarity_empty_inputs() -> None:

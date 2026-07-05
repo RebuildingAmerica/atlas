@@ -168,9 +168,11 @@ def _parse_chase_response(text: str) -> list[dict[str, str]]:
     targets = []
     for item in items:
         if isinstance(item, dict) and "name" in item:
-            targets.append({
-                "name": str(item.get("name", "")),
-                "website": str(item.get("website", "")),
-                "search_query": str(item.get("search_query", "")),
-            })
+            targets.append(
+                {
+                    "name": str(item.get("name", "")),
+                    "website": str(item.get("website", "")),
+                    "search_query": str(item.get("search_query", "")),
+                }
+            )
     return targets

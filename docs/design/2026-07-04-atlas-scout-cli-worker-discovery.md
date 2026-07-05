@@ -30,9 +30,10 @@ volunteers.
 - Search API keys are optional but strongly recommended. Workers with a search
   key can claim exploratory discovery jobs; workers without one can claim
   seeded, direct-URL, or evidence-packet jobs.
-- Upload destination is explicit. On first upload or sync, Scout asks whether
-  results go to the Atlas public contribution queue or to the active workspace,
-  remembers the answer, and supports `--target public|workspace` for scripts.
+- Upload destination is turnkey by default. `scout login` remembers public
+  uploads unless the user explicitly selects a workspace with
+  `--target workspace` or `--workspace`; scripts can still pass
+  `--target public|workspace`.
 - Public uploads never publish directly. They are staged for review with source
   packets, confidence data, dedup signals, and contributor attribution.
 - Workspace uploads import into the user's selected workspace as private
@@ -62,6 +63,43 @@ The smoke check installs Scout into a temporary virtualenv, runs the installed
 `scout` executable, exercises `search-key` and `worker` command surfaces, checks
 search-key file permissions, and confirms worker startup fails clearly before
 login.
+
+For day-to-day local Atlas development, install the managed `scout-dev` command:
+
+```bash
+./install-scout-dev.sh
+scout-dev login
+```
+
+`scout-dev` forwards to the installed `scout` command and injects
+`--atlas-url https://atlas.localhost:1355` for the Scout commands that support it:
+`login`, `worker start`, `worker run-internal`, `sync`, and `runs sync`.
+For Portless HTTPS aliases, it also exports `SSL_CERT_FILE` to
+`~/.portless/ca.pem` when that file exists and no `SSL_CERT_FILE` override is
+already set. Use `PORTLESS_CA_FILE` when the Portless CA lives somewhere else.
+Explicit `--atlas-url` still wins. Acceptance tests or alternate local stacks
+can bake a different default into the wrapper:
+
+```bash
+./install-scout-dev.sh --atlas-url https://atlas.localhost:1355
+SCOUT_DEV_ATLAS_URL=https://atlas.localhost:1355 scout-dev login --no-browser
+PORTLESS_CA_FILE=/path/to/portless-ca.pem scout-dev login --no-browser
+```
+
+Remove the managed wrapper with:
+
+```bash
+./uninstall-scout-dev.sh
+```
+
+The uninstaller refuses to delete an unmanaged `scout-dev` command unless
+`--force` is passed, so local shell aliases or hand-written wrappers are not
+removed by accident.
+
+The app acceptance suite also covers the real installed `scout` command against
+the running app and API: browser-approved login, account device visibility, API
+token exchange, direct-URL job queueing, `scout worker start`, worker sync, job
+completion, and the resulting remote run receipt.
 
 ### Auth Commands
 
@@ -137,13 +175,13 @@ auto-sync path.
 - `scout runs sync RUN_ID` remains a stable explicit alias for scripts and
   existing operators.
 
-If `--target` is omitted and no preference exists, Scout prompts once:
-
-- Public contribution queue: send source-backed artifacts to Atlas review.
-- Workspace private import: save artifacts to the selected workspace.
+If `--target` is omitted and no preference exists, Scout uses the public
+contribution queue and sends source-backed artifacts to Atlas review. Workspace
+private import is explicit: pass `--target workspace --workspace ORG_ID`, or use
+a session that already remembers a workspace destination.
 
 Scout remembers the destination in the active profile settings. Scripts can pass
-the explicit flag and bypass prompting.
+the explicit flag and bypass the default.
 
 Every sync prints a receipt with the remote Atlas run id, a web URL to
 `/discovery?run=<remote_run_id>`, and entry receipts. Entry receipts include the
@@ -211,8 +249,9 @@ Still required before widening public worker enrollment:
 
 - Rich job-mode metadata for seeded/direct-URL/evidence-packet jobs so the API
   can match more than the current search/no-search boundary.
-- A full browser-login installed-CLI smoke against the running app and API in
-  CI or release certification.
+- Release certification must verify that the deployed default Atlas URL serves
+  `/api/auth/device/code`; the CLI now reports the concrete HTTP status and
+  endpoint when that route is missing or empty.
 
 Job compatibility is based on capability metadata:
 

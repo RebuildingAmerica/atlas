@@ -51,6 +51,7 @@ def invalidate_jwks_cache() -> None:
 # non-zero window so legitimate tokens are not rejected by minor NTP drift on
 # either the AS or RS while still bounding any clock-skew abuse.
 _JWT_LEEWAY_SECONDS = 30
+_JWT_SIGNING_ALGORITHMS = ["RS256", "ES256", "EdDSA"]
 
 
 def verify_bearer_jwt(
@@ -76,7 +77,7 @@ def verify_bearer_jwt(
         return jwt.decode(
             token,
             signing_key.key,
-            algorithms=["RS256", "ES256"],
+            algorithms=_JWT_SIGNING_ALGORITHMS,
             issuer=issuer,
             audience=audience,
             leeway=_JWT_LEEWAY_SECONDS,

@@ -143,11 +143,13 @@ async def test_generate_followup_queries_with_non_list_returns_empty() -> None:
 @pytest.mark.asyncio
 async def test_generate_followup_queries_skips_non_dict_items_and_missing_query() -> None:
     """Non-dict items and dicts without a 'query' field are skipped."""
-    payload = json.dumps([
-        "not-a-dict",
-        {"issue_area": "no_query"},
-        {"query": "ok"},
-    ])
+    payload = json.dumps(
+        [
+            "not-a-dict",
+            {"issue_area": "no_query"},
+            {"query": "ok"},
+        ]
+    )
     provider = _StubProvider(response_text=payload)
 
     queries = await generate_followup_queries(
@@ -253,11 +255,13 @@ async def test_select_entities_to_chase_with_non_list_returns_empty() -> None:
 @pytest.mark.asyncio
 async def test_select_entities_to_chase_skips_non_dict_and_missing_name() -> None:
     """Items without a 'name' field are skipped."""
-    payload = json.dumps([
-        "string",
-        {"website": "no-name"},
-        {"name": "Real Org"},
-    ])
+    payload = json.dumps(
+        [
+            "string",
+            {"website": "no-name"},
+            {"name": "Real Org"},
+        ]
+    )
     provider = _StubProvider(response_text=payload)
 
     targets = await select_entities_to_chase(provider, entries=[_ranked()])

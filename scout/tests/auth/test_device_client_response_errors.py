@@ -133,7 +133,7 @@ async def test_rejects_invalid_optional_string_payload() -> None:
 @pytest.mark.asyncio
 @respx.mock
 async def test_surfaces_non_json_error_response() -> None:
-    """HTTP errors without OAuth JSON still produce a useful auth error."""
+    """HTTP errors without OAuth JSON still produce a structured auth error."""
     respx.post("https://atlas.example/api/auth/device/token").mock(
         return_value=httpx.Response(502, text="bad gateway")
     )
@@ -145,7 +145,9 @@ async def test_surfaces_non_json_error_response() -> None:
         )
 
     assert exc_info.value.error == "http_502"
-    assert exc_info.value.description == "bad gateway"
+    assert exc_info.value.status_code == 502
+    assert exc_info.value.url == "https://atlas.example/api/auth/device/token"
+    assert exc_info.value.description == ""
 
 
 @pytest.mark.asyncio

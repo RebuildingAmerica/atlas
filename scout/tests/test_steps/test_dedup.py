@@ -87,7 +87,9 @@ async def test_merges_similar_names_same_city() -> None:
 @pytest.mark.asyncio
 async def test_combines_issue_areas_on_merge() -> None:
     """Merged entries have the union of issue areas from both sources."""
-    a = _make_raw("Test Org", issue_areas=["housing_affordability"], source_url="https://a.example.com")
+    a = _make_raw(
+        "Test Org", issue_areas=["housing_affordability"], source_url="https://a.example.com"
+    )
     b = _make_raw("Test Org", issue_areas=["union_organizing"], source_url="https://b.example.com")
 
     results = [e async for e in deduplicate_stream(_entries_iter(a, b))]

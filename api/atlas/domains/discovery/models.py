@@ -20,6 +20,7 @@ logger = logging.getLogger(__name__)
 
 __all__ = [
     "DiscoveryJobCRUD",
+    "DiscoveryJobInput",
     "DiscoveryJobModel",
     "DiscoveryJobQueueItemModel",
     "DiscoveryRunCRUD",
@@ -691,6 +692,8 @@ class DiscoveryJobModel:
     claimed_until: str | None
     idempotency_key: str | None
     next_attempt_at: str | None
+    execution_mode: str
+    input_payload: dict[str, Any]
     created_at: str
     started_at: str | None
     completed_at: str | None
@@ -705,6 +708,14 @@ class DiscoveryJobQueueItemModel(DiscoveryJobModel):
     issue_areas: list[str]
 
 
+@dataclass(frozen=True)
+class DiscoveryJobInput:
+    """Mode-specific instructions for a queued discovery job."""
+
+    execution_mode: str = "search"
+    payload: dict[str, Any] | None = None
+
+
 class DiscoveryJobCRUD:
     """CRUD operations for discovery pipeline jobs."""
 
@@ -715,6 +726,7 @@ class DiscoveryJobCRUD:
         run_id: str,
         max_retries: int = 2,
         idempotency_key: str | None = None,
+        job_input: DiscoveryJobInput | None = None,
     ) -> str:
         """Create a new job in queued status. Returns the job ID.
 
@@ -732,6 +744,8 @@ class DiscoveryJobCRUD:
             Maximum retry attempts. Default is 2.
         idempotency_key : str | None, optional
             Unique key making re-enqueue a no-op. Default is None.
+        job_input : DiscoveryJobInput | None, optional
+            Mode-specific worker instructions. Default is a search job.
 
         Returns
         -------
@@ -745,14 +759,23 @@ class DiscoveryJobCRUD:
 
         job_id = db.generate_uuid()
         now = db.now_iso()
+        create_input = job_input or DiscoveryJobInput()
         await conn.execute(
             """
             INSERT INTO discovery_jobs (
                 id, run_id, status, retry_count, max_retries,
-                idempotency_key, created_at
-            ) VALUES (?, ?, 'queued', 0, ?, ?, ?)
+                idempotency_key, execution_mode, input_payload, created_at
+            ) VALUES (?, ?, 'queued', 0, ?, ?, ?, ?, ?)
             """,
-            (job_id, run_id, max_retries, idempotency_key, now),
+            (
+                job_id,
+                run_id,
+                max_retries,
+                idempotency_key,
+                create_input.execution_mode,
+                db.encode_json(create_input.payload or {}),
+                now,
+            ),
         )
         await conn.commit()
         return job_id
@@ -859,11 +882,12 @@ class DiscoveryJobCRUD:
         is_postgres = getattr(conn, "backend", "sqlite") == "postgres"
         now = db.now_iso()
         lease_until = (datetime.now(UTC) + timedelta(seconds=lease_seconds)).isoformat()
-        capability_clause = (
-            ""
-            if search_key_configured
-            else "AND COALESCE(r.location_query, '') = '' AND r.issue_areas = '[]'"
-        )
+        capability_clause = ""
+        if not search_key_configured:
+            capability_clause = (
+                "AND (j.execution_mode != 'search' "
+                "OR (COALESCE(r.location_query, '') = '' AND r.issue_areas = '[]'))"
+            )
 
         if is_postgres:  # pragma: no cover - exercised only against PostgreSQL
             cursor = await conn.execute(
@@ -1228,6 +1252,8 @@ class DiscoveryJobCRUD:
                 j.claimed_until,
                 j.idempotency_key,
                 j.next_attempt_at,
+                j.execution_mode,
+                j.input_payload,
                 j.created_at,
                 j.started_at,
                 j.completed_at,
@@ -1283,6 +1309,17 @@ def _retry_backoff_at(job_id: str, retry_count: int) -> str:
     return (datetime.now(UTC) + timedelta(seconds=delay)).isoformat()
 
 
+def _job_input_payload(row: dict[str, Any]) -> dict[str, Any]:
+    """Decode job input payloads from SQLite text or Postgres JSONB values."""
+    raw_payload = row.get("input_payload")
+    if isinstance(raw_payload, dict):
+        return raw_payload
+    if raw_payload:
+        decoded = db.decode_json(str(raw_payload))
+        return decoded if isinstance(decoded, dict) else {}
+    return {}
+
+
 def _row_to_discovery_job(row: dict[str, Any]) -> DiscoveryJobModel:
     """Convert database row to DiscoveryJobModel."""
     progress_raw = row.get("progress")
@@ -1299,6 +1336,8 @@ def _row_to_discovery_job(row: dict[str, Any]) -> DiscoveryJobModel:
         claimed_until=row.get("claimed_until"),
         idempotency_key=row.get("idempotency_key"),
         next_attempt_at=row.get("next_attempt_at"),
+        execution_mode=str(row.get("execution_mode") or "search"),
+        input_payload=_job_input_payload(row),
         created_at=row["created_at"],
         started_at=row.get("started_at"),
         completed_at=row.get("completed_at"),
@@ -1320,6 +1359,8 @@ def _row_to_discovery_job_queue_item(row: dict[str, Any]) -> DiscoveryJobQueueIt
         claimed_until=job.claimed_until,
         idempotency_key=job.idempotency_key,
         next_attempt_at=job.next_attempt_at,
+        execution_mode=job.execution_mode,
+        input_payload=job.input_payload,
         created_at=job.created_at,
         started_at=job.started_at,
         completed_at=job.completed_at,

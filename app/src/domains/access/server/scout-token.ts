@@ -23,7 +23,7 @@ const scoutJwtSchema = z
 const scoutTokenRequestSchema = z.object({
   default_upload_target: z.enum(["public", "workspace"]),
   search_key_configured: z.boolean().optional(),
-  worker_id: z.string().trim().min(1).optional(),
+  worker_id: z.string().trim().min(1).nullable().optional(),
   worker_name: z.string().trim().min(1),
   workspace_id: z.string().trim().min(1).nullable().optional(),
 });
@@ -85,7 +85,7 @@ export async function issueScoutTokenRequest(request: Request): Promise<Response
   try {
     const device = await registerOrTouchScoutDevice({
       defaultUploadTarget: body.default_upload_target,
-      id: body.worker_id,
+      id: body.worker_id ?? undefined,
       searchKeyConfigured: body.search_key_configured,
       userId: user.id,
       workerName: body.worker_name,

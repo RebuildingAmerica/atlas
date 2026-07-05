@@ -93,9 +93,14 @@ class ProgressRenderer:
             self.active_fetches[event_key] = (now, str(payload.get("url") or ""))
         elif event == "extract_started" and event_key is not None:
             self.active_extracts[event_key] = (now, str(payload.get("url") or ""))
-        elif event in {"fetch_completed", "fetch_skipped", "fetch_failed"} and event_key is not None:
+        elif (
+            event in {"fetch_completed", "fetch_skipped", "fetch_failed"} and event_key is not None
+        ):
             self.active_fetches.pop(event_key, None)
-        elif event in {"extract_completed", "extract_empty", "extract_failed"} and event_key is not None:
+        elif (
+            event in {"extract_completed", "extract_empty", "extract_failed"}
+            and event_key is not None
+        ):
             self.active_extracts.pop(event_key, None)
 
         if event == "status":
