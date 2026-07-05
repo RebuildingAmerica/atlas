@@ -508,7 +508,8 @@ describe("WorkSection", () => {
   it("renders a composed empty state when entry has no sources, issues, or recent activity", () => {
     const entry = buildEntry({ issue_areas: [], sources: [] });
     render(<WorkSection entry={entry} issueAreaLabels={{}} showIssueChips={false} />);
-    expect(screen.getByLabelText("Recent activity")).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Recent" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Recent" })).toBeInTheDocument();
     expect(screen.getByText("No recent coverage on file.")).toBeInTheDocument();
     expect(screen.queryByText(/Atlas keeps watching/i)).not.toBeInTheDocument();
   });

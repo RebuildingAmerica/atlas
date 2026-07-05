@@ -73,7 +73,8 @@ describe("ProfileAnswerCard", () => {
       />,
     );
 
-    expect(screen.getByRole("region", { name: "Profile answers" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Profile at a glance" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Profile at a glance" })).toBeInTheDocument();
     expect(screen.getByText("Who")).toBeInTheDocument();
     expect(screen.getByText("Organization")).toBeInTheDocument();
     expect(screen.getByText("What they do")).toBeInTheDocument();
