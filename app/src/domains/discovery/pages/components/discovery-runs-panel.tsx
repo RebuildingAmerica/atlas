@@ -1,12 +1,16 @@
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { Clipboard, FileJson2, FilePlus, FileText, Table2 } from "lucide-react";
+import { BellPlus, Clipboard, FileJson2, FilePlus, FileText, Table2, Target } from "lucide-react";
 import {
   buildAgentJsonExport,
   buildLeadCsvExport,
   buildMarkdownBriefExport,
 } from "@/domains/discovery/research-artifacts";
 import { canCreateBriefFromRun } from "@/domains/discovery/brief-request";
+import {
+  canCreateCoverageTargetFromRun,
+  topLeadEntryIdsFromRun,
+} from "@/domains/discovery/coverage-target-request";
 import {
   blindSpotsForSummary,
   CONFIDENCE_LABELS,
@@ -19,12 +23,20 @@ import type { DiscoveryResearchGoal, DiscoveryResearchSummary } from "@/types";
 
 interface DiscoveryRunsPanelProps {
   createdBriefs?: Record<string, CreatedBriefLink>;
+  createdCoverageTargets?: Record<string, CreatedCoverageTargetLink>;
   createBriefErrors?: Record<string, string | null>;
+  createCoverageTargetErrors?: Record<string, string | null>;
   creatingBriefRunId?: string | null;
+  creatingCoverageTargetRunId?: string | null;
   isLoading: boolean;
   onCreateBrief?: (run: DiscoveryRunRecord) => void;
+  onCreateCoverageTarget?: (run: DiscoveryRunRecord) => void;
+  onWatchTopLeads?: (run: DiscoveryRunRecord) => void;
   runs: DiscoveryRunRecord[];
   selectedRunId?: string;
+  watchedLeadCounts?: Record<string, number>;
+  watchLeadErrors?: Record<string, string | null>;
+  watchingLeadsRunId?: string | null;
 }
 
 interface CreatedBriefLink {
@@ -32,33 +44,65 @@ interface CreatedBriefLink {
   title: string;
 }
 
+interface CreatedCoverageTargetLink {
+  id: string;
+  name: string;
+}
+
 interface ResearchSummaryBlockProps {
   createdBrief?: CreatedBriefLink;
+  createdCoverageTarget?: CreatedCoverageTargetLink;
   createBriefError?: string | null;
+  createCoverageTargetError?: string | null;
   isCreatingBrief: boolean;
+  isCreatingCoverageTarget: boolean;
+  isWatchingLeads: boolean;
   onCreateBrief?: () => void;
+  onCreateCoverageTarget?: () => void;
+  onWatchTopLeads?: () => void;
   researchGoal: DiscoveryResearchGoal;
   run: DiscoveryRunRecord;
   summary: DiscoveryResearchSummary;
+  watchedLeadCount?: number;
+  watchLeadError?: string | null;
 }
 
 interface ResearchArtifactExportsProps {
   createdBrief?: CreatedBriefLink;
+  createdCoverageTarget?: CreatedCoverageTargetLink;
   createBriefError?: string | null;
+  createCoverageTargetError?: string | null;
   isCreatingBrief: boolean;
+  isCreatingCoverageTarget: boolean;
+  isWatchingLeads: boolean;
   onCreateBrief?: () => void;
+  onCreateCoverageTarget?: () => void;
+  onWatchTopLeads?: () => void;
   run: DiscoveryRunRecord;
+  watchedLeadCount?: number;
+  watchLeadError?: string | null;
 }
 
 function ResearchArtifactExports({
   createdBrief,
+  createdCoverageTarget,
   createBriefError,
+  createCoverageTargetError,
   isCreatingBrief,
+  isCreatingCoverageTarget,
+  isWatchingLeads,
   onCreateBrief,
+  onCreateCoverageTarget,
+  onWatchTopLeads,
   run,
+  watchedLeadCount,
+  watchLeadError,
 }: ResearchArtifactExportsProps) {
   const [statusLabel, setStatusLabel] = useState<string | null>(null);
   const canSaveBrief = canCreateBriefFromRun(run) && onCreateBrief != null;
+  const canCreateCoverageTarget =
+    canCreateCoverageTargetFromRun(run) && onCreateCoverageTarget != null;
+  const canWatchTopLeads = topLeadEntryIdsFromRun(run).length > 0 && onWatchTopLeads != null;
 
   async function copyArtifact(label: string, text: string) {
     const copied = await copyToClipboard(text);
@@ -111,6 +155,32 @@ function ResearchArtifactExports({
             {isCreatingBrief ? "Saving..." : "Save as Atlas Brief"}
           </button>
         ) : null}
+        {canCreateCoverageTarget ? (
+          <button
+            type="button"
+            className="type-label-medium bg-ink-strong text-surface hover:bg-ink inline-flex items-center gap-2 rounded-full px-3 py-1.5 disabled:cursor-not-allowed disabled:opacity-60"
+            disabled={isCreatingCoverageTarget}
+            onClick={() => {
+              onCreateCoverageTarget();
+            }}
+          >
+            <Target className="h-4 w-4" aria-hidden />
+            {isCreatingCoverageTarget ? "Creating target..." : "Create coverage target"}
+          </button>
+        ) : null}
+        {canWatchTopLeads ? (
+          <button
+            type="button"
+            className="type-label-medium border-border text-ink-strong hover:bg-surface-container inline-flex items-center gap-2 rounded-full border px-3 py-1.5 disabled:cursor-not-allowed disabled:opacity-60"
+            disabled={isWatchingLeads}
+            onClick={() => {
+              onWatchTopLeads();
+            }}
+          >
+            <BellPlus className="h-4 w-4" aria-hidden />
+            {isWatchingLeads ? "Watching..." : "Watch top leads"}
+          </button>
+        ) : null}
       </div>
       {statusLabel ? (
         <p className="type-label-small text-ink-muted" role="status">
@@ -134,18 +204,59 @@ function ResearchArtifactExports({
           {createBriefError}
         </p>
       ) : null}
+      {createdCoverageTarget ? (
+        <p className="type-label-small text-ink-muted" role="status">
+          Coverage target created.{" "}
+          <Link
+            to="/coverage/$targetId"
+            params={{ targetId: createdCoverageTarget.id }}
+            className="text-civic hover:text-civic-deep underline-offset-4 hover:underline"
+          >
+            Open coverage
+          </Link>
+        </p>
+      ) : null}
+      {createCoverageTargetError ? (
+        <p className="type-label-small text-rose-700" role="alert">
+          {createCoverageTargetError}
+        </p>
+      ) : null}
+      {watchedLeadCount ? (
+        <p className="type-label-small text-ink-muted" role="status">
+          Watching {watchedLeadCount} {watchedLeadCount === 1 ? "lead" : "leads"}.{" "}
+          <Link
+            to="/watching"
+            className="text-civic hover:text-civic-deep underline-offset-4 hover:underline"
+          >
+            Open watching
+          </Link>
+        </p>
+      ) : null}
+      {watchLeadError ? (
+        <p className="type-label-small text-rose-700" role="alert">
+          {watchLeadError}
+        </p>
+      ) : null}
     </div>
   );
 }
 
 function ResearchSummaryBlock({
   createdBrief,
+  createdCoverageTarget,
   createBriefError,
+  createCoverageTargetError,
   isCreatingBrief,
+  isCreatingCoverageTarget,
+  isWatchingLeads,
   onCreateBrief,
+  onCreateCoverageTarget,
+  onWatchTopLeads,
   researchGoal,
   run,
   summary,
+  watchedLeadCount,
+  watchLeadError,
 }: ResearchSummaryBlockProps) {
   const blindSpots = blindSpotsForSummary(researchGoal, summary);
 
@@ -180,10 +291,18 @@ function ResearchSummaryBlock({
 
       <ResearchArtifactExports
         createdBrief={createdBrief}
+        createdCoverageTarget={createdCoverageTarget}
         createBriefError={createBriefError}
+        createCoverageTargetError={createCoverageTargetError}
         isCreatingBrief={isCreatingBrief}
+        isCreatingCoverageTarget={isCreatingCoverageTarget}
+        isWatchingLeads={isWatchingLeads}
         onCreateBrief={onCreateBrief}
+        onCreateCoverageTarget={onCreateCoverageTarget}
+        onWatchTopLeads={onWatchTopLeads}
         run={run}
+        watchedLeadCount={watchedLeadCount}
+        watchLeadError={watchLeadError}
       />
 
       {summary.key_sources.length > 0 ? (
@@ -226,12 +345,20 @@ function ResearchSummaryBlock({
 
 export function DiscoveryRunsPanel({
   createdBriefs = {},
+  createdCoverageTargets = {},
   createBriefErrors = {},
+  createCoverageTargetErrors = {},
   creatingBriefRunId = null,
+  creatingCoverageTargetRunId = null,
   isLoading,
   onCreateBrief,
+  onCreateCoverageTarget,
+  onWatchTopLeads,
   runs,
   selectedRunId,
+  watchedLeadCounts = {},
+  watchLeadErrors = {},
+  watchingLeadsRunId = null,
 }: DiscoveryRunsPanelProps) {
   return (
     <section className="border-border-strong bg-surface space-y-5 rounded-[1rem] border p-6">
@@ -306,8 +433,12 @@ export function DiscoveryRunsPanel({
                 {run.research_summary ? (
                   <ResearchSummaryBlock
                     createdBrief={createdBriefs[run.id]}
+                    createdCoverageTarget={createdCoverageTargets[run.id]}
                     createBriefError={createBriefErrors[run.id]}
+                    createCoverageTargetError={createCoverageTargetErrors[run.id]}
                     isCreatingBrief={creatingBriefRunId === run.id}
+                    isCreatingCoverageTarget={creatingCoverageTargetRunId === run.id}
+                    isWatchingLeads={watchingLeadsRunId === run.id}
                     onCreateBrief={
                       onCreateBrief
                         ? () => {
@@ -315,9 +446,25 @@ export function DiscoveryRunsPanel({
                           }
                         : undefined
                     }
+                    onCreateCoverageTarget={
+                      onCreateCoverageTarget
+                        ? () => {
+                            onCreateCoverageTarget(run);
+                          }
+                        : undefined
+                    }
+                    onWatchTopLeads={
+                      onWatchTopLeads
+                        ? () => {
+                            onWatchTopLeads(run);
+                          }
+                        : undefined
+                    }
                     researchGoal={run.research_goal ?? "landscape_scan"}
                     run={run}
                     summary={run.research_summary}
+                    watchedLeadCount={watchedLeadCounts[run.id]}
+                    watchLeadError={watchLeadErrors[run.id]}
                   />
                 ) : null}
               </article>

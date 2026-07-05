@@ -1,15 +1,17 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, fireEvent, cleanup, act } from "@testing-library/react";
+import { render, screen, fireEvent, cleanup, act, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { DiscoveryPage } from "@/domains/discovery/pages/discovery-page";
 
 const mocks = vi.hoisted(() => ({
   useAtlasSession: vi.fn(),
+  useCreateCoverageTarget: vi.fn(),
   useCreateWorkspaceBrief: vi.fn(),
   useDiscoveryJobQueue: vi.fn(),
   useDiscoveryRuns: vi.fn(),
   useStartDiscovery: vi.fn(),
+  useWatchWorkspaceResource: vi.fn(),
   useWorkspaceQualitySummary: vi.fn(),
   useTaxonomy: vi.fn(),
 }));
@@ -32,6 +34,14 @@ vi.mock("@/domains/workspace/hooks/use-briefs", () => ({
   useCreateWorkspaceBrief: mocks.useCreateWorkspaceBrief,
 }));
 
+vi.mock("@/domains/workspace/hooks/use-coverage-targets", () => ({
+  useCreateCoverageTarget: mocks.useCreateCoverageTarget,
+}));
+
+vi.mock("@/domains/workspace/hooks/use-workspace-watches", () => ({
+  useWatchWorkspaceResource: mocks.useWatchWorkspaceResource,
+}));
+
 vi.mock("@/domains/workspace/hooks/use-workspace-quality-summary", () => ({
   useWorkspaceQualitySummary: mocks.useWorkspaceQualitySummary,
 }));
@@ -44,11 +54,17 @@ vi.mock("@tanstack/react-router", () => ({
     search,
   }: {
     children: React.ReactNode;
-    params?: { briefId?: string };
+    params?: { briefId?: string; targetId?: string };
     to: string;
     search?: { intent?: string };
   }) => {
-    const href = params?.briefId ? to.replace("$briefId", params.briefId) : to;
+    let href = to;
+    if (params?.briefId) {
+      href = href.replace("$briefId", params.briefId);
+    }
+    if (params?.targetId) {
+      href = href.replace("$targetId", params.targetId);
+    }
     return <a href={search?.intent ? `${href}?intent=${search.intent}` : href}>{children}</a>;
   },
 }));
@@ -79,6 +95,10 @@ describe("DiscoveryPage", () => {
 
   beforeEach(() => {
     mocks.useAtlasSession.mockReturnValue({ data: null });
+    mocks.useCreateCoverageTarget.mockReturnValue({
+      mutate: vi.fn(),
+      isPending: false,
+    });
     mocks.useCreateWorkspaceBrief.mockReturnValue({
       mutate: vi.fn(),
       isPending: false,
@@ -93,6 +113,10 @@ describe("DiscoveryPage", () => {
     });
     mocks.useDiscoveryRuns.mockReturnValue({ data: { items: [] }, isLoading: false });
     mocks.useStartDiscovery.mockReturnValue({ mutate: vi.fn(), isPending: false, error: null });
+    mocks.useWatchWorkspaceResource.mockReturnValue({
+      mutateAsync: vi.fn().mockResolvedValue(undefined),
+      isPending: false,
+    });
     mocks.useWorkspaceQualitySummary.mockReturnValue({
       data: {
         confidence_distribution: [
@@ -773,6 +797,194 @@ describe("DiscoveryPage", () => {
     expect(screen.getByRole("link", { name: "Open brief" })).toHaveAttribute(
       "href",
       "/briefs/brief_123",
+    );
+  });
+
+  it("creates a coverage target from a completed research summary", async () => {
+    interface CreatedCoverageTarget {
+      id: string;
+      name: string;
+    }
+
+    interface CreateCoverageTargetMutationOptions {
+      onSettled?: () => void;
+      onSuccess?: (target: CreatedCoverageTarget) => void;
+    }
+
+    const createCoverageTarget = vi.fn(
+      (_input: unknown, options?: CreateCoverageTargetMutationOptions) => {
+        options?.onSuccess?.({
+          id: "coverage_123",
+          name: "Kansas City Interview leads coverage",
+        });
+        options?.onSettled?.();
+      },
+    );
+    mocks.useCreateCoverageTarget.mockReturnValue({
+      mutate: createCoverageTarget,
+      isPending: false,
+    });
+    mocks.useDiscoveryRuns.mockReturnValue({
+      data: {
+        items: [
+          {
+            id: "run_1",
+            location_query: "Kansas City",
+            research_goal: "interview_leads",
+            started_at: "2026-04-20T10:00:00.000Z",
+            completed_at: "2026-04-20T10:05:00.000Z",
+            state: "MO",
+            status: "completed",
+            issue_areas: ["housing_affordability"],
+            queries_generated: 2,
+            sources_fetched: 5,
+            sources_processed: 5,
+            entries_extracted: 10,
+            entries_after_dedup: 8,
+            entries_confirmed: 3,
+            error_message: null,
+            research_summary: {
+              brief: "Three source-backed tenant leads in Kansas City.",
+              ranked_leads: [
+                {
+                  entry_id: "entry_1",
+                  name: "KC Tenants",
+                  type: "organization",
+                  why_it_matters: "Named by city and community sources.",
+                  source_count: 2,
+                  confidence: "corroborated",
+                  latest_source_date: "2026-04-19",
+                },
+              ],
+              key_sources: [
+                {
+                  source_id: "source_1",
+                  title: "Tenant meeting agenda",
+                  url: "https://example.test/agenda",
+                  publication: "City Council",
+                  published_date: "2026-04-19",
+                  why_it_matters: "Names the lead and issue.",
+                },
+              ],
+              gaps: [{ label: "County groups", detail: "No suburban source yet." }],
+              reasoning_signals: ["Two independent sources point to the same actor."],
+            },
+          },
+        ],
+      },
+      isLoading: false,
+    });
+
+    render(<DiscoveryPage />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Create coverage target" }));
+      await Promise.resolve();
+    });
+
+    expect(createCoverageTarget).toHaveBeenCalledWith(
+      expect.objectContaining({
+        linked_discovery_run_ids: ["run_1"],
+        linked_entry_ids: ["entry_1"],
+        name: "Kansas City Interview leads coverage",
+        review_state: "in_review",
+      }),
+      expect.any(Object),
+    );
+    expect(screen.getByRole("link", { name: "Open coverage" })).toHaveAttribute(
+      "href",
+      "/coverage/coverage_123",
+    );
+  });
+
+  it("watches the top ranked leads from a completed research summary", async () => {
+    const watchWorkspaceResource = vi.fn().mockResolvedValue(undefined);
+    mocks.useWatchWorkspaceResource.mockReturnValue({
+      mutateAsync: watchWorkspaceResource,
+      isPending: false,
+    });
+    mocks.useDiscoveryRuns.mockReturnValue({
+      data: {
+        items: [
+          {
+            id: "run_1",
+            location_query: "Kansas City",
+            research_goal: "interview_leads",
+            started_at: "2026-04-20T10:00:00.000Z",
+            completed_at: "2026-04-20T10:05:00.000Z",
+            state: "MO",
+            status: "completed",
+            issue_areas: ["housing_affordability"],
+            queries_generated: 2,
+            sources_fetched: 5,
+            sources_processed: 5,
+            entries_extracted: 10,
+            entries_after_dedup: 8,
+            entries_confirmed: 3,
+            error_message: null,
+            research_summary: {
+              brief: "Three source-backed tenant leads in Kansas City.",
+              ranked_leads: [
+                {
+                  entry_id: "entry_1",
+                  name: "KC Tenants",
+                  type: "organization",
+                  why_it_matters: "Named by city and community sources.",
+                  source_count: 2,
+                  confidence: "corroborated",
+                  latest_source_date: "2026-04-19",
+                },
+                {
+                  entry_id: "entry_2",
+                  name: "Tenant Hotline",
+                  type: "organization",
+                  why_it_matters: "Shows direct reachability for renter interviews.",
+                  source_count: 1,
+                  confidence: "partial",
+                  latest_source_date: "2026-04-18",
+                },
+              ],
+              key_sources: [
+                {
+                  source_id: "source_1",
+                  title: "Tenant meeting agenda",
+                  url: "https://example.test/agenda",
+                  publication: "City Council",
+                  published_date: "2026-04-19",
+                  why_it_matters: "Names the lead and issue.",
+                },
+              ],
+              gaps: [],
+              reasoning_signals: ["Two independent sources point to the same actor."],
+            },
+          },
+        ],
+      },
+      isLoading: false,
+    });
+
+    render(<DiscoveryPage />);
+
+    act(() => {
+      fireEvent.click(screen.getByRole("button", { name: "Watch top leads" }));
+    });
+
+    await waitFor(() => {
+      expect(watchWorkspaceResource).toHaveBeenCalledTimes(2);
+    });
+    expect(watchWorkspaceResource).toHaveBeenNthCalledWith(1, {
+      notificationPreference: "digest",
+      resourceId: "entry_1",
+      resourceType: "entry",
+    });
+    expect(watchWorkspaceResource).toHaveBeenNthCalledWith(2, {
+      notificationPreference: "digest",
+      resourceId: "entry_2",
+      resourceType: "entry",
+    });
+    expect(screen.getByRole("link", { name: "Open watching" })).toHaveAttribute(
+      "href",
+      "/watching",
     );
   });
 

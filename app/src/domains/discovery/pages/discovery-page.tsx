@@ -3,6 +3,10 @@ import { useAtlasSession } from "@/domains/access";
 import { hasSerializedCapability } from "@/domains/access/capabilities";
 import { isAtLimitError, resolveStartRunErrorMessage } from "@/domains/discovery/api-errors";
 import { buildBriefCreateInputFromRun } from "@/domains/discovery/brief-request";
+import {
+  buildCoverageTargetCreateInputFromRun,
+  topLeadEntryIdsFromRun,
+} from "@/domains/discovery/coverage-target-request";
 import { useTaxonomy } from "@/domains/catalog/hooks/use-taxonomy";
 import {
   useDiscoveryJobQueue,
@@ -10,6 +14,8 @@ import {
   useStartDiscovery,
 } from "@/domains/discovery/hooks/use-discovery";
 import { useCreateWorkspaceBrief } from "@/domains/workspace/hooks/use-briefs";
+import { useCreateCoverageTarget } from "@/domains/workspace/hooks/use-coverage-targets";
+import { useWatchWorkspaceResource } from "@/domains/workspace/hooks/use-workspace-watches";
 import { useWorkspaceQualitySummary } from "@/domains/workspace/hooks/use-workspace-quality-summary";
 import { DiscoverySetupNotice, DiscoveryUpgradePrompt } from "./components/discovery-hero";
 import { DiscoveryRunForm } from "./components/discovery-run-form";
@@ -23,11 +29,17 @@ import type {
 } from "@/types";
 import type { DiscoveryRunRecord } from "@/domains/discovery/discovery-run-summary";
 import type { AtlasBriefCreateInput } from "@/domains/workspace/server/briefs";
+import type { CoverageTargetCreateInput } from "@/domains/workspace/server/coverage-targets";
 import type { WorkspaceQualitySummary } from "@/domains/workspace/server/quality-summary";
 
 interface CreatedBriefLink {
   id: string;
   title: string;
+}
+
+interface CreatedCoverageTargetLink {
+  id: string;
+  name: string;
 }
 
 interface DiscoveryPageProps {
@@ -263,6 +275,8 @@ export function DiscoveryPage({
   const jobQueueQuery = useDiscoveryJobQueue();
   const startDiscovery = useStartDiscovery();
   const createBrief = useCreateWorkspaceBrief();
+  const createCoverageTarget = useCreateCoverageTarget();
+  const watchWorkspaceResource = useWatchWorkspaceResource();
   const qualitySummaryQuery = useWorkspaceQualitySummary();
   const taxonomyQuery = useTaxonomy({ initialData: initialTaxonomy });
 
@@ -275,8 +289,20 @@ export function DiscoveryPage({
     prefilledIssueAreas(initialRequest?.issue_areas),
   );
   const [creatingBriefRunId, setCreatingBriefRunId] = useState<string | null>(null);
+  const [creatingCoverageTargetRunId, setCreatingCoverageTargetRunId] = useState<string | null>(
+    null,
+  );
+  const [watchingLeadsRunId, setWatchingLeadsRunId] = useState<string | null>(null);
   const [createdBriefs, setCreatedBriefs] = useState<Record<string, CreatedBriefLink>>({});
+  const [createdCoverageTargets, setCreatedCoverageTargets] = useState<
+    Record<string, CreatedCoverageTargetLink>
+  >({});
   const [createBriefErrors, setCreateBriefErrors] = useState<Record<string, string | null>>({});
+  const [createCoverageTargetErrors, setCreateCoverageTargetErrors] = useState<
+    Record<string, string | null>
+  >({});
+  const [watchedLeadCounts, setWatchedLeadCounts] = useState<Record<string, number>>({});
+  const [watchLeadErrors, setWatchLeadErrors] = useState<Record<string, string | null>>({});
 
   const issueAreas = useMemo(() => {
     const taxonomy = taxonomyQuery.data ?? {};
@@ -375,16 +401,106 @@ export function DiscoveryPage({
     });
   };
 
+  const handleCreateCoverageTarget = (run: DiscoveryRunRecord) => {
+    let input: CoverageTargetCreateInput;
+    try {
+      input = buildCoverageTargetCreateInputFromRun(run);
+    } catch {
+      setCreateCoverageTargetErrors((current) => ({
+        ...current,
+        [run.id]: "Could not create coverage target.",
+      }));
+      return;
+    }
+
+    setCreatingCoverageTargetRunId(run.id);
+    setCreateCoverageTargetErrors((current) => ({
+      ...current,
+      [run.id]: null,
+    }));
+
+    createCoverageTarget.mutate(input, {
+      onError: () => {
+        setCreateCoverageTargetErrors((current) => ({
+          ...current,
+          [run.id]: "Could not create coverage target.",
+        }));
+      },
+      onSettled: () => {
+        setCreatingCoverageTargetRunId((current) => (current === run.id ? null : current));
+      },
+      onSuccess: (target) => {
+        setCreatedCoverageTargets((current) => ({
+          ...current,
+          [run.id]: {
+            id: target.id,
+            name: target.name,
+          },
+        }));
+      },
+    });
+  };
+
+  const handleWatchTopLeads = (run: DiscoveryRunRecord) => {
+    const leadIds = topLeadEntryIdsFromRun(run);
+    if (leadIds.length === 0) {
+      setWatchLeadErrors((current) => ({
+        ...current,
+        [run.id]: "Could not watch top leads.",
+      }));
+      return;
+    }
+
+    setWatchingLeadsRunId(run.id);
+    setWatchLeadErrors((current) => ({
+      ...current,
+      [run.id]: null,
+    }));
+
+    void Promise.all(
+      leadIds.map((resourceId) =>
+        watchWorkspaceResource.mutateAsync({
+          notificationPreference: "digest",
+          resourceId,
+          resourceType: "entry",
+        }),
+      ),
+    )
+      .then(() => {
+        setWatchedLeadCounts((current) => ({
+          ...current,
+          [run.id]: leadIds.length,
+        }));
+      })
+      .catch(() => {
+        setWatchLeadErrors((current) => ({
+          ...current,
+          [run.id]: "Could not watch top leads.",
+        }));
+      })
+      .finally(() => {
+        setWatchingLeadsRunId((current) => (current === run.id ? null : current));
+      });
+  };
+
   return (
     <div className="space-y-8">
       <DiscoveryRunsPanel
         createdBriefs={createdBriefs}
+        createdCoverageTargets={createdCoverageTargets}
         createBriefErrors={createBriefErrors}
+        createCoverageTargetErrors={createCoverageTargetErrors}
         creatingBriefRunId={creatingBriefRunId}
+        creatingCoverageTargetRunId={creatingCoverageTargetRunId}
         isLoading={runsQuery.isLoading}
         onCreateBrief={handleCreateBrief}
+        onCreateCoverageTarget={handleCreateCoverageTarget}
+        onWatchTopLeads={handleWatchTopLeads}
         runs={latestRuns}
         selectedRunId={selectedRunId}
+        watchedLeadCounts={watchedLeadCounts}
+        watchLeadErrors={watchLeadErrors}
+        watchingLeadsRunId={watchingLeadsRunId}
       />
 
       <ResearchOperationsPanel isLoading={jobQueueQuery.isLoading} queue={jobQueueQuery.data} />
