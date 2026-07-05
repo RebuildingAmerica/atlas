@@ -108,6 +108,10 @@ def _run_arrow_selector(
     def _cancel(event: KeyPressEvent) -> None:
         event.app.exit(result=None)
 
+    @bindings.add("c-c")
+    def _interrupt(event: KeyPressEvent) -> None:
+        event.app.exit(result=None)
+
     class ScoutSelectionApplication(Application[int | None]):
         def cpr_not_supported_callback(self) -> None:
             return

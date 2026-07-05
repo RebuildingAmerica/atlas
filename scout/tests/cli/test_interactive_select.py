@@ -91,3 +91,35 @@ def test_prompt_toolkit_selector_runs_in_thread(monkeypatch) -> None:
 
     assert selected == 0
     assert captured == {"in_thread": True}
+
+
+def test_prompt_toolkit_selector_binds_ctrl_c_to_cancel(monkeypatch) -> None:
+    handlers: dict[str, object] = {}
+
+    class FakeKeyBindings:
+        def add(self, key: str):
+            def decorator(handler: object) -> object:
+                handlers[key] = handler
+                return handler
+
+            return decorator
+
+    def init(_application: object, **_kwargs: object) -> None:
+        return None
+
+    def run(_application: object, *, in_thread: bool = False) -> int | None:
+        del _application, in_thread
+        return None
+
+    monkeypatch.setattr("prompt_toolkit.key_binding.KeyBindings", FakeKeyBindings)
+    monkeypatch.setattr("prompt_toolkit.application.Application.__init__", init)
+    monkeypatch.setattr("prompt_toolkit.application.Application.run", run)
+
+    selected = select_module._run_arrow_selector(
+        "Local model provider",
+        "Choose the provider Scout should set up.",
+        ((0, "LM Studio - installed"),),
+    )
+
+    assert selected is None
+    assert "c-c" in handlers
