@@ -26,6 +26,18 @@ from atlas.schemas import (
 if TYPE_CHECKING:
     import aiosqlite
 
+PlaceRouteKind = Literal[
+    "polity",
+    "borough",
+    "city",
+    "county",
+    "metro",
+    "neighborhood",
+    "district",
+    "service_area",
+    "state",
+]
+
 router = APIRouter()
 
 __all__ = ["router"]
@@ -134,6 +146,7 @@ async def get_place(
 async def get_place_page_context(
     place_key: str,
     response: Response,
+    kind: PlaceRouteKind | None = Query(None),
     settings: Settings = Depends(get_settings),
 ) -> PlacePageContextResponse:
     """Return database-backed public context for a place page."""
@@ -141,7 +154,7 @@ async def get_place_page_context(
     try:
         apply_short_public_cache(response)
         return PlacePageContextResponse.model_validate(
-            await service.get_place_page_context(normalize_place_key(place_key))
+            await service.get_place_page_context(normalize_place_key(place_key), kind=kind)
         )
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc

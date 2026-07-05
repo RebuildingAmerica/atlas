@@ -53,7 +53,7 @@ describe("routes/_public/places/cities/$placeSlug", () => {
     }) as PageHead;
 
     expect(result).toBe(placeCityRouteFixture);
-    expect(mocks.api.places.getPage).toHaveBeenCalledWith("las-vegas-nv");
+    expect(mocks.api.places.getPage).toHaveBeenCalledWith("las-vegas-nv", { kind: "city" });
     expect(head.links).toContainEqual({
       rel: "canonical",
       href: "https://atlas.rebuildingamerica.com/places/cities/las-vegas-nv",

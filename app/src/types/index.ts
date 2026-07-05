@@ -71,6 +71,7 @@ export type {
   PlaceLatestList,
   PlaceLatestParams,
   PlacePageData,
+  PlacePageParams,
   PlaceRelatedSummary,
   PlaceScopeLink,
 } from "./place";

@@ -755,6 +755,64 @@ ON CONFLICT (place_key) DO UPDATE SET
     source_url = excluded.source_url,
     updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now');
 
+INSERT INTO place_contexts (
+    place_key, name, display, kind, source_dataset, source_identifier, source_url
+)
+VALUES
+    (
+        'city:las-vegas-nv',
+        'City of Las Vegas',
+        'City of Las Vegas, NV',
+        'city',
+        'U.S. Census Bureau Places',
+        'census:place/3240000',
+        'https://www.census.gov/quickfacts/fact/table/lasvegascitynevada/PST045225'
+    ),
+    (
+        'county:clark-county-nv',
+        'Clark County',
+        'Clark County, NV',
+        'county',
+        'U.S. Census Bureau Counties',
+        'census:county/32003',
+        'https://www.census.gov/quickfacts/fact/table/clarkcountynevada/PST045225'
+    ),
+    (
+        'metro:las-vegas-henderson-paradise-nv',
+        'Las Vegas-Henderson-Paradise Metro',
+        'Las Vegas-Henderson-Paradise, NV Metro Area',
+        'metro',
+        'U.S. Office of Management and Budget Core Based Statistical Areas',
+        'omb:cbsa/29820',
+        'https://www.whitehouse.gov/wp-content/uploads/2023/07/OMB-Bulletin-23-01.pdf'
+    ),
+    (
+        'city:henderson-nv',
+        'Henderson',
+        'Henderson, NV',
+        'city',
+        'U.S. Census Bureau Places',
+        'census:place/3231900',
+        'https://www.census.gov/programs-surveys/geography.html'
+    ),
+    (
+        'city:north-las-vegas-nv',
+        'North Las Vegas',
+        'North Las Vegas, NV',
+        'city',
+        'U.S. Census Bureau Places',
+        'census:place/3251800',
+        'https://www.census.gov/programs-surveys/geography.html'
+    )
+ON CONFLICT (place_key) DO UPDATE SET
+    name = excluded.name,
+    display = excluded.display,
+    kind = excluded.kind,
+    source_dataset = excluded.source_dataset,
+    source_identifier = excluded.source_identifier,
+    source_url = excluded.source_url,
+    updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now');
+
 INSERT INTO place_scope_links (place_key, label, href, active, sort_order)
 VALUES
     ('las-vegas-nv', 'Valley', '/places/las-vegas-nv', 1, 10),
@@ -763,6 +821,43 @@ VALUES
     ('las-vegas-nv', 'Metro', '/places/metros/las-vegas-henderson-paradise-nv', 0, 40),
     ('las-vegas-nv', 'Henderson', '/places/cities/henderson-nv', 0, 50),
     ('las-vegas-nv', 'North Las Vegas', '/places/cities/north-las-vegas-nv', 0, 60)
+ON CONFLICT (place_key, href) DO UPDATE SET
+    label = excluded.label,
+    active = excluded.active,
+    sort_order = excluded.sort_order;
+
+INSERT INTO place_scope_links (place_key, label, href, active, sort_order)
+VALUES
+    ('city:las-vegas-nv', 'Valley', '/places/las-vegas-nv', 0, 10),
+    ('city:las-vegas-nv', 'City', '/places/cities/las-vegas-nv', 1, 20),
+    ('city:las-vegas-nv', 'Clark County', '/places/counties/clark-county-nv', 0, 30),
+    ('city:las-vegas-nv', 'Metro', '/places/metros/las-vegas-henderson-paradise-nv', 0, 40),
+    ('city:las-vegas-nv', 'Henderson', '/places/cities/henderson-nv', 0, 50),
+    ('city:las-vegas-nv', 'North Las Vegas', '/places/cities/north-las-vegas-nv', 0, 60),
+    ('county:clark-county-nv', 'Valley', '/places/las-vegas-nv', 0, 10),
+    ('county:clark-county-nv', 'City', '/places/cities/las-vegas-nv', 0, 20),
+    ('county:clark-county-nv', 'Clark County', '/places/counties/clark-county-nv', 1, 30),
+    ('county:clark-county-nv', 'Metro', '/places/metros/las-vegas-henderson-paradise-nv', 0, 40),
+    ('county:clark-county-nv', 'Henderson', '/places/cities/henderson-nv', 0, 50),
+    ('county:clark-county-nv', 'North Las Vegas', '/places/cities/north-las-vegas-nv', 0, 60),
+    ('metro:las-vegas-henderson-paradise-nv', 'Valley', '/places/las-vegas-nv', 0, 10),
+    ('metro:las-vegas-henderson-paradise-nv', 'City', '/places/cities/las-vegas-nv', 0, 20),
+    ('metro:las-vegas-henderson-paradise-nv', 'Clark County', '/places/counties/clark-county-nv', 0, 30),
+    ('metro:las-vegas-henderson-paradise-nv', 'Metro', '/places/metros/las-vegas-henderson-paradise-nv', 1, 40),
+    ('metro:las-vegas-henderson-paradise-nv', 'Henderson', '/places/cities/henderson-nv', 0, 50),
+    ('metro:las-vegas-henderson-paradise-nv', 'North Las Vegas', '/places/cities/north-las-vegas-nv', 0, 60),
+    ('city:henderson-nv', 'Valley', '/places/las-vegas-nv', 0, 10),
+    ('city:henderson-nv', 'City', '/places/cities/las-vegas-nv', 0, 20),
+    ('city:henderson-nv', 'Clark County', '/places/counties/clark-county-nv', 0, 30),
+    ('city:henderson-nv', 'Metro', '/places/metros/las-vegas-henderson-paradise-nv', 0, 40),
+    ('city:henderson-nv', 'Henderson', '/places/cities/henderson-nv', 1, 50),
+    ('city:henderson-nv', 'North Las Vegas', '/places/cities/north-las-vegas-nv', 0, 60),
+    ('city:north-las-vegas-nv', 'Valley', '/places/las-vegas-nv', 0, 10),
+    ('city:north-las-vegas-nv', 'City', '/places/cities/las-vegas-nv', 0, 20),
+    ('city:north-las-vegas-nv', 'Clark County', '/places/counties/clark-county-nv', 0, 30),
+    ('city:north-las-vegas-nv', 'Metro', '/places/metros/las-vegas-henderson-paradise-nv', 0, 40),
+    ('city:north-las-vegas-nv', 'Henderson', '/places/cities/henderson-nv', 0, 50),
+    ('city:north-las-vegas-nv', 'North Las Vegas', '/places/cities/north-las-vegas-nv', 1, 60)
 ON CONFLICT (place_key, href) DO UPDATE SET
     label = excluded.label,
     active = excluded.active,

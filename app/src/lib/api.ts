@@ -13,6 +13,7 @@ import {
   type EntityDetailResponse,
   type EntityResponse,
   type GetEntitiesMapParams,
+  type GetPlacePageContextParams,
   type IssueSignalSummary,
   type ListEntitiesParams,
   type ListPlaceEntitiesParams,
@@ -50,6 +51,7 @@ import type {
   PlaceLatestList,
   PlaceLatestParams,
   PlacePageData,
+  PlacePageParams,
   PlaceRelatedSummary,
   Source,
   TaxonomyResponse,
@@ -417,6 +419,12 @@ function buildPlaceActorParams(params: PlaceActorParams = {}): ListPlaceEntities
   };
 }
 
+function buildPlaceContextParams(params: PlacePageParams = {}): GetPlacePageContextParams {
+  return {
+    kind: params.kind,
+  };
+}
+
 function entityHref(entry: Entry): string {
   if (!entry.slug) {
     return `/entries/${entry.id}`;
@@ -465,10 +473,16 @@ async function loadPlaceProfile(placeSlug: string): Promise<PlaceProfileResponse
   }
 }
 
-async function getPlacePage(placeSlug: string): Promise<PlacePageData> {
+async function getPlacePage(
+  placeSlug: string,
+  params: PlacePageParams = {},
+): Promise<PlacePageData> {
+  const contextRequest = params.kind
+    ? getPlacePageContext(placeSlug, buildPlaceContextParams(params))
+    : getPlacePageContext(placeSlug);
   const [, context, entities, issueSignals, profile, sources] = await Promise.all([
     getPlace(placeSlug),
-    getPlacePageContext(placeSlug),
+    contextRequest,
     listPlaceEntities(placeSlug, { limit: 20 }),
     getPlaceIssueSignals(placeSlug),
     loadPlaceProfile(placeSlug),

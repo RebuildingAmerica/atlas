@@ -612,10 +612,12 @@ class AtlasDataService:
     async def get_place_page_context(
         self,
         place: str | Mapping[str, str | None],
+        *,
+        kind: str | None = None,
     ) -> dict[str, Any]:
         """Return database-backed context for a public place page."""
         normalized_place = _normalize_place(place)
-        place_key = _place_resource_slug(normalized_place)
+        place_key = _place_context_lookup_key(_place_resource_slug(normalized_place), kind)
 
         async with DatabaseSession(self._database_url) as conn:
             context_cursor = await conn.execute(
@@ -957,6 +959,12 @@ def _validate_entity_sort(sort: str | None) -> str:
     if validated not in {"relevance", "source_count", "recent", "name"}:
         raise _invalid_entity_sort(validated)
     return validated
+
+
+def _place_context_lookup_key(base_place_key: str, kind: str | None) -> str:
+    if kind is None or kind == "polity":
+        return base_place_key
+    return f"{kind}:{base_place_key}"
 
 
 def _normalize_place(place: str | Mapping[str, str | None] | None) -> dict[str, str | None]:

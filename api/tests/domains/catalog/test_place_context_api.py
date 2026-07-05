@@ -57,3 +57,20 @@ async def test_place_context_comes_from_seeded_database(test_client: object) -> 
         "source_identifier": "census:place/3231900",
         "source_url": "https://www.census.gov/programs-surveys/geography.html",
     }
+
+
+@pytest.mark.asyncio
+async def test_place_context_can_be_narrowed_to_route_kind(test_client: object) -> None:
+    """Kinded routes should not collapse back to the civic composition page."""
+    response = await test_client.get("/api/places/las-vegas-nv/page-context?kind=city")
+
+    assert response.status_code == HTTP_OK
+    payload = response.json()
+    assert payload["place_key"] == "city:las-vegas-nv"
+    assert payload["name"] == "City of Las Vegas"
+    assert payload["kind"] == "city"
+    assert payload["source_dataset"] == "U.S. Census Bureau Places"
+    assert payload["source_identifier"] == "census:place/3240000"
+    assert [scope for scope in payload["scopes"] if scope["active"]] == [
+        {"label": "City", "href": "/places/cities/las-vegas-nv", "active": True}
+    ]

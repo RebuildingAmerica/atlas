@@ -3,7 +3,7 @@ import { PlacePage } from "@/domains/catalog/pages/place-page";
 import { buildPlaceRouteHead, loadPlaceRoute } from "@/domains/catalog/pages/place-route";
 
 export const Route = createFileRoute("/_public/places/boroughs/$placeSlug")({
-  loader: async ({ params }) => loadPlaceRoute(params),
+  loader: async ({ params }) => loadPlaceRoute(params, { kind: "borough" }),
   head: ({ loaderData, params }) =>
     buildPlaceRouteHead(loaderData, `/places/boroughs/${params.placeSlug}`),
   component: PlaceRoute,

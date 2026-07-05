@@ -53,7 +53,7 @@ describe("routes/_public/places/boroughs/$placeSlug", () => {
     }) as PageHead;
 
     expect(result).toBe(placeBoroughRouteFixture);
-    expect(mocks.api.places.getPage).toHaveBeenCalledWith("brooklyn-ny");
+    expect(mocks.api.places.getPage).toHaveBeenCalledWith("brooklyn-ny", { kind: "borough" });
     expect(head.links).toContainEqual({
       rel: "canonical",
       href: "https://atlas.rebuildingamerica.com/places/boroughs/brooklyn-ny",

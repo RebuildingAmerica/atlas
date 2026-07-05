@@ -22251,6 +22251,33 @@
               "title": "Place Key",
               "type": "string"
             }
+          },
+          {
+            "in": "query",
+            "name": "kind",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "polity",
+                    "borough",
+                    "city",
+                    "county",
+                    "metro",
+                    "neighborhood",
+                    "district",
+                    "service_area",
+                    "state"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Kind"
+            }
           }
         ],
         "responses": {

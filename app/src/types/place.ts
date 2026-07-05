@@ -60,6 +60,10 @@ export interface PlaceLatestParams {
   sourceTypes?: SourceType[];
 }
 
+export interface PlacePageParams {
+  kind?: PlaceKind;
+}
+
 export type PlaceActorSort = "relevance" | "source_count" | "recent" | "name";
 
 export interface PlaceActorParams {

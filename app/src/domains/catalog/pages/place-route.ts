@@ -1,14 +1,24 @@
 import { api } from "@/lib/api";
 import { buildPageHead, type PageHead } from "@/platform/seo";
-import type { PlacePageData } from "@/types";
+import type { PlaceKind, PlacePageData } from "@/types";
 
 export interface PlaceRouteParams {
   placeSlug: string;
 }
 
+export interface PlaceRouteOptions {
+  kind?: PlaceKind;
+}
+
 export type PlaceRouteHead = PageHead | Record<string, never>;
 
-export async function loadPlaceRoute(params: PlaceRouteParams): Promise<PlacePageData> {
+export async function loadPlaceRoute(
+  params: PlaceRouteParams,
+  options: PlaceRouteOptions = {},
+): Promise<PlacePageData> {
+  if (options.kind) {
+    return api.places.getPage(params.placeSlug, { kind: options.kind });
+  }
   return api.places.getPage(params.placeSlug);
 }
 
