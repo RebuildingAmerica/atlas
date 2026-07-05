@@ -37,6 +37,7 @@ if TYPE_CHECKING:
 
 ARBITRARY_TTL_MS = 30 * 60 * 1000
 ARBITRARY_POLL_INTERVAL_MS = 5_000
+EXPECTED_TOTAL_TOOL_COUNT = 13
 
 
 def _handler_for(mcp: Any, request_type: type) -> Any:
@@ -409,6 +410,79 @@ class TestInstallTasksExtension:
         handler = _handler_for(mcp, types.ListToolsRequest)
         result = await handler(types.ListToolsRequest(method="tools/list"))
         assert any(tool.name == "start_discovery_run" for tool in result.root.tools)
+
+    @pytest.mark.asyncio
+    async def test_list_tools_request_handler_returns_all_tools_on_one_page_by_default(
+        self,
+    ) -> None:
+        mcp = build_mcp()
+        handler = _handler_for(mcp, types.ListToolsRequest)
+        result = await handler(types.ListToolsRequest(method="tools/list"))
+        assert len(result.root.tools) == EXPECTED_TOTAL_TOOL_COUNT
+        assert result.root.nextCursor is None
+
+    @pytest.mark.asyncio
+    async def test_list_tools_request_handler_paginates_with_smaller_page_size(self) -> None:
+        mcp = build_mcp()
+        handler = _handler_for(mcp, types.ListToolsRequest)
+        page_size = 2
+
+        with patch.object(tasks_module, "_TOOLS_PAGE_SIZE", page_size):
+            first_page = await handler(types.ListToolsRequest(method="tools/list"))
+            assert len(first_page.root.tools) == page_size
+            assert first_page.root.nextCursor == str(page_size)
+
+            second_page = await handler(
+                types.ListToolsRequest(
+                    method="tools/list",
+                    params=types.PaginatedRequestParams(cursor=first_page.root.nextCursor),
+                )
+            )
+            assert len(second_page.root.tools) == page_size
+            assert {t.name for t in first_page.root.tools}.isdisjoint(
+                {t.name for t in second_page.root.tools}
+            )
+
+    @pytest.mark.asyncio
+    async def test_list_tools_request_handler_last_page_has_no_next_cursor(self) -> None:
+        mcp = build_mcp()
+        handler = _handler_for(mcp, types.ListToolsRequest)
+
+        with patch.object(tasks_module, "_TOOLS_PAGE_SIZE", 2):
+            result = await handler(
+                types.ListToolsRequest(
+                    method="tools/list",
+                    params=types.PaginatedRequestParams(cursor=str(EXPECTED_TOTAL_TOOL_COUNT - 1)),
+                )
+            )
+            assert len(result.root.tools) == 1
+            assert result.root.nextCursor is None
+
+    @pytest.mark.asyncio
+    async def test_list_tools_request_handler_invalid_cursor_raises(self) -> None:
+        mcp = build_mcp()
+        handler = _handler_for(mcp, types.ListToolsRequest)
+
+        with pytest.raises(McpError):
+            await handler(
+                types.ListToolsRequest(
+                    method="tools/list",
+                    params=types.PaginatedRequestParams(cursor="not-a-number"),
+                )
+            )
+
+    @pytest.mark.asyncio
+    async def test_list_tools_request_handler_tolerates_none_request(self) -> None:
+        """_get_cached_tool_definition calls this handler with req=None to refresh
+        its cache; it must return everything, not paginate or raise."""
+        mcp = build_mcp()
+        handler = _handler_for(mcp, types.ListToolsRequest)
+
+        with patch.object(tasks_module, "_TOOLS_PAGE_SIZE", 2):
+            result = await handler(None)
+
+        assert len(result.root.tools) == EXPECTED_TOTAL_TOOL_COUNT
+        assert result.root.nextCursor is None
 
     @pytest.mark.asyncio
     async def test_call_tool_delegates_other_tools_unchanged(self, test_settings: Settings) -> None:

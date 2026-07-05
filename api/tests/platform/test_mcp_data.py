@@ -34,7 +34,6 @@ if TYPE_CHECKING:
     import aiosqlite
 
 
-EXPECTED_DECODED_CURSOR = 12
 EXPECTED_DISTINCT_DOMAINS = 2
 EXPECTED_THREE_SOURCES = 3
 EXPECTED_TWO_CONTACT_SOURCES = 2
@@ -330,17 +329,8 @@ class TestNormalizeState:
 # ---------------------------------------------------------------------------
 # Cursor and validation helpers
 # ---------------------------------------------------------------------------
-
-
-class TestDecodeCursor:
-    def test_none_zero(self) -> None:
-        assert data_module._decode_cursor(None) == 0  # noqa: SLF001
-
-    def test_negative_clamped_to_zero(self) -> None:
-        assert data_module._decode_cursor("-5") == 0  # noqa: SLF001
-
-    def test_positive(self) -> None:
-        assert data_module._decode_cursor("12") == EXPECTED_DECODED_CURSOR  # noqa: SLF001
+# decode_cursor/encode_cursor now live in atlas.platform.mcp.pagination and are
+# covered by tests/platform/test_mcp_pagination.py.
 
 
 class TestValidateIssueAreas:

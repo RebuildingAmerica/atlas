@@ -45,6 +45,7 @@ from atlas.domains.catalog.taxonomy import (
     get_issue_area_by_slug,
 )
 from atlas.models import DiscoveryRunCRUD, EntryCRUD, FlagCRUD, get_db_connection
+from atlas.platform.mcp.pagination import decode_cursor
 from atlas.schemas import DiscoveryRunResponse
 
 __all__ = ["AtlasDataService"]
@@ -192,7 +193,7 @@ class AtlasDataService:
         normalized_place = _normalize_place(place)
         validated_issue_areas = _validate_issue_areas(issue_areas)
         validated_sort = _validate_entity_sort(sort)
-        offset = _decode_cursor(cursor)
+        offset = decode_cursor(cursor)
 
         async with DatabaseSession(self._database_url) as conn:
             search = await EntryCRUD.search_public(
@@ -260,7 +261,7 @@ class AtlasDataService:
         cursor: str | None = None,
     ) -> dict[str, Any]:
         """List structured discovery-run artifacts for agent research workflows."""
-        offset = _decode_cursor(cursor)
+        offset = decode_cursor(cursor)
         async with DatabaseSession(self._database_url) as conn:
             runs = await DiscoveryRunCRUD.list(
                 conn,
@@ -396,7 +397,7 @@ class AtlasDataService:
         """Search Atlas sources with place and issue filtering."""
         normalized_place = _normalize_place(place)
         validated_issue_areas = _validate_issue_areas(issue_areas)
-        offset = _decode_cursor(cursor)
+        offset = decode_cursor(cursor)
 
         clauses = ["1 = 1"]
         params: list[Any] = []
@@ -1660,9 +1661,3 @@ def _format_place(city: str | None, state: str | None, region: str | None) -> st
     if region:
         return region
     return state
-
-
-def _decode_cursor(cursor: str | None) -> int:
-    if cursor is None:
-        return 0
-    return max(int(cursor), 0)

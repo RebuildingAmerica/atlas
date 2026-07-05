@@ -36,6 +36,7 @@ from atlas.platform.config import get_settings
 from atlas.platform.database import db as db_util
 from atlas.platform.mcp.auth_middleware import _string_claim
 from atlas.platform.mcp.data import DatabaseSession, _discovery_run_record
+from atlas.platform.mcp.pagination import decode_cursor, encode_cursor
 from atlas.schemas import DiscoveryRunStartRequest
 
 if TYPE_CHECKING:
@@ -53,6 +54,11 @@ _TASK_TTL_MS = 30 * 60 * 1000
 
 _TASK_POLL_INTERVAL_MS = 5_000
 """5 seconds: matches the LLM/browser-research latency of a discovery run."""
+
+_TOOLS_PAGE_SIZE = 50
+"""Generous default: today's 13 tools always fit on page one. Real pagination
+kicks in once the tool count actually exceeds this, without changing behavior
+for MCP clients that don't loop on nextCursor."""
 
 _JOB_STATUS_TO_TASK_STATUS: dict[str, types.TaskStatus] = {
     "queued": "working",
@@ -388,15 +394,28 @@ def install_tasks_extension(mcp: FastMCP) -> None:
 
     original_list_tools_handler = server.request_handlers[types.ListToolsRequest]
 
-    async def handle_list_tools(req: types.ListToolsRequest) -> types.ServerResult:
+    async def handle_list_tools(req: types.ListToolsRequest | None) -> types.ServerResult:
         result = await original_list_tools_handler(req)
         list_result = cast("types.ListToolsResult", result.root)
-        return types.ServerResult(
-            types.ListToolsResult(
-                tools=[*list_result.tools, _START_DISCOVERY_RUN_TOOL],
-                nextCursor=list_result.nextCursor,
-            )
-        )
+        tools = [*list_result.tools, _START_DISCOVERY_RUN_TOOL]
+
+        if req is None:
+            # _get_cached_tool_definition calls this handler with req=None to
+            # refresh its tool cache — always give it everything, unpaginated,
+            # so every tool (not just page one) ends up cached.
+            return types.ServerResult(types.ListToolsResult(tools=tools, nextCursor=None))
+
+        cursor = req.params.cursor if req.params is not None else None
+        try:
+            offset = decode_cursor(cursor)
+        except ValueError as exc:
+            raise McpError(types.ErrorData(code=types.INVALID_PARAMS, message=str(exc))) from exc
+
+        page = tools[offset : offset + _TOOLS_PAGE_SIZE]
+        next_offset = offset + _TOOLS_PAGE_SIZE
+        next_cursor = encode_cursor(next_offset) if next_offset < len(tools) else None
+
+        return types.ServerResult(types.ListToolsResult(tools=page, nextCursor=next_cursor))
 
     server.request_handlers[types.ListToolsRequest] = handle_list_tools
 
