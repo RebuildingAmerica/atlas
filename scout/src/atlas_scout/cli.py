@@ -108,6 +108,9 @@ from atlas_scout.shell_integration import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Coroutine
+    from typing import Any
+
     from atlas_shared import SyncedEntryLink
 
     from atlas_scout.providers.base import LLMProvider
@@ -190,6 +193,14 @@ class SetupProfileChoice:
 
     action: Literal["continue", "create"]
     name: str | None
+
+
+def _run_async[AsyncResult](coro: Coroutine[Any, Any, AsyncResult]) -> AsyncResult:
+    """Run an async command through Scout's shared interrupt boundary."""
+    try:
+        return asyncio.run(coro)
+    except KeyboardInterrupt as exc:
+        raise click.Abort from exc
 
 
 def _default_worker_name() -> str:
@@ -1240,7 +1251,7 @@ def run(
             url_count=len(url_list),
         )
 
-    asyncio.run(
+    _run_async(
         _run_pipeline(
             config=config,
             location=location or "",
@@ -1405,7 +1416,7 @@ def sync(
 ) -> None:
     """Sync the latest, selected, or all ready local runs to Atlas."""
     config: ScoutConfig = ctx.obj["config"]
-    asyncio.run(
+    _run_async(
         _sync_runs(
             config,
             run_ids,
@@ -1789,7 +1800,7 @@ def setup_command(
     man_dir: Path | None,
 ) -> None:
     """Set up Scout on this computer."""
-    asyncio.run(
+    _run_async(
         _setup_onboarding(
             config=ctx.obj["config"],
             config_path=ctx.obj["config_path"],
@@ -2070,7 +2081,7 @@ def runs() -> None:
 def runs_list(ctx: click.Context, limit: int) -> None:
     """List recent discovery runs."""
     config: ScoutConfig = ctx.obj["config"]
-    asyncio.run(_runs_list(config, limit))
+    _run_async(_runs_list(config, limit))
 
 
 async def _runs_list(config: ScoutConfig, limit: int) -> None:
@@ -2109,7 +2120,7 @@ async def _runs_list(config: ScoutConfig, limit: int) -> None:
 def runs_inspect(ctx: click.Context, run_id: str) -> None:
     """Show details of a specific run."""
     config: ScoutConfig = ctx.obj["config"]
-    asyncio.run(_runs_inspect(config, run_id))
+    _run_async(_runs_inspect(config, run_id))
 
 
 async def _runs_inspect(config: ScoutConfig, run_id: str) -> None:
@@ -2178,7 +2189,7 @@ async def _runs_inspect(config: ScoutConfig, run_id: str) -> None:
 def runs_cancel(ctx: click.Context, run_id: str) -> None:
     """Mark a local run record as cancelled."""
     config: ScoutConfig = ctx.obj["config"]
-    asyncio.run(_runs_cancel(config, run_id))
+    _run_async(_runs_cancel(config, run_id))
 
 
 async def _runs_cancel(config: ScoutConfig, run_id: str) -> None:
@@ -2238,7 +2249,7 @@ def runs_sync(
 ) -> None:
     """Sync a completed local run to Atlas."""
     config: ScoutConfig = ctx.obj["config"]
-    asyncio.run(
+    _run_async(
         _runs_sync(
             config,
             run_id,
@@ -2379,7 +2390,7 @@ def login(
     atlas_url: str | None, target: UploadTarget | None, workspace: str | None, no_browser: bool
 ) -> None:
     """Log in to Atlas from the browser and remember this computer."""
-    asyncio.run(
+    _run_async(
         _login(
             atlas_url=atlas_url,
             target=target,
@@ -3034,7 +3045,7 @@ def worker_start(
 ) -> None:
     """Start this computer as an Atlas worker."""
     try:
-        asyncio.run(
+        _run_async(
             _worker_start(
                 ctx.obj["config"],
                 config_path=ctx.obj["config_path"],
@@ -3052,7 +3063,7 @@ def worker_start(
 @worker_group.command("stop")
 def worker_stop() -> None:
     """Stop the tracked Atlas worker process."""
-    asyncio.run(_worker_stop())
+    _run_async(_worker_stop())
 
 
 @worker_group.command("status")
@@ -3076,7 +3087,7 @@ def worker_run_internal(
 ) -> None:
     """Run the foreground Atlas worker loop."""
     try:
-        asyncio.run(
+        _run_async(
             _worker_run_internal(
                 ctx.obj["config"],
                 atlas_url=atlas_url,
@@ -3112,7 +3123,7 @@ def entries_list(
 ) -> None:
     """List all discovered entries."""
     config: ScoutConfig = ctx.obj["config"]
-    asyncio.run(_entries_list(config, min_score, entry_type, limit, output_format))
+    _run_async(_entries_list(config, min_score, entry_type, limit, output_format))
 
 
 async def _entries_list(
@@ -3226,7 +3237,7 @@ def pages() -> None:
 def pages_list(ctx: click.Context, limit: int) -> None:
     """List all scraped pages with status."""
     config: ScoutConfig = ctx.obj["config"]
-    asyncio.run(_pages_list(config, limit))
+    _run_async(_pages_list(config, limit))
 
 
 async def _pages_list(config: ScoutConfig, limit: int) -> None:
@@ -3287,7 +3298,7 @@ def daemon_start(ctx: click.Context, search_api_key: str, interval: int) -> None
     """Start the scheduler as a local background daemon."""
     config: ScoutConfig = ctx.obj["config"]
     try:
-        asyncio.run(
+        _run_async(
             _daemon_start(
                 config,
                 config_path=ctx.obj["config_path"],
@@ -3307,7 +3318,7 @@ def daemon_stop(ctx: click.Context) -> None:
     """Stop the tracked local background daemon process."""
     config: ScoutConfig = ctx.obj["config"]
     try:
-        asyncio.run(_daemon_stop(config))
+        _run_async(_daemon_stop(config))
     except click.ClickException as exc:
         _exit_with_error(CliError(title="Error", message=exc.message))
 
@@ -3316,7 +3327,7 @@ def daemon_stop(ctx: click.Context) -> None:
 @click.pass_context
 def daemon_status(ctx: click.Context) -> None:
     """Show the tracked local daemon lifecycle state."""
-    asyncio.run(_daemon_status(ctx.obj["config"]))
+    _run_async(_daemon_status(ctx.obj["config"]))
 
 
 @daemon.command("run-internal", hidden=True)
@@ -3328,7 +3339,7 @@ def daemon_status(ctx: click.Context) -> None:
 def daemon_run_internal(ctx: click.Context, search_api_key: str, interval: int) -> None:
     """Run the hidden daemon scheduler loop."""
     try:
-        asyncio.run(
+        _run_async(
             _daemon_run_internal(
                 ctx.obj["config"],
                 config_path=ctx.obj["config_path"],
@@ -3362,7 +3373,7 @@ def schedule_run_once(ctx: click.Context, search_api_key: str) -> None:
         console.print("Add targets to your config under [schedule.targets].")
         return
     console.print(f"[bold]Running {len(config.schedule.targets)} targets...[/]")
-    run_ids = asyncio.run(_schedule_run_once(config, search_api_key))
+    run_ids = _run_async(_schedule_run_once(config, search_api_key))
     console.print(f"\n[bold green]Completed {len(run_ids)} runs.[/]")
     for rid in run_ids:
         console.print(f"  {rid}")
@@ -3388,10 +3399,7 @@ def schedule_start(ctx: click.Context, search_api_key: str, interval: int) -> No
         return
     console.print(f"[bold]Starting scheduler with {len(config.schedule.targets)} targets...[/]")
     console.print("Press Ctrl+C to stop.\n")
-    try:
-        asyncio.run(_schedule_start(config, search_api_key, interval))
-    except KeyboardInterrupt:
-        console.print("\n[bold]Scheduler stopped.[/]")
+    _run_async(_schedule_start(config, search_api_key, interval))
 
 
 async def _schedule_start(config: ScoutConfig, search_api_key: str, interval: int) -> None:

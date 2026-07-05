@@ -125,7 +125,7 @@ def test_schedule_start_no_targets(tmp_path: Path, monkeypatch: pytest.MonkeyPat
     assert "No schedule targets" in output.getvalue()
 
 
-def test_schedule_start_loops_until_keyboard_interrupt(
+def test_schedule_start_aborts_cleanly_on_keyboard_interrupt(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     config = _scheduled_config(tmp_path)
@@ -139,8 +139,9 @@ def test_schedule_start_loops_until_keyboard_interrupt(
 
     monkeypatch.setattr(scheduler_module, "run_schedule_loop", fake_run_schedule_loop)
     result = CliRunner().invoke(main, ["schedule", "start", "--search-api-key", "k"])
-    assert result.exit_code == 0
-    assert "Scheduler stopped" in output.getvalue()
+    assert result.exit_code != 0
+    assert "Aborted!" in result.output
+    assert "Scheduler stopped" not in output.getvalue()
 
 
 @pytest.mark.asyncio
