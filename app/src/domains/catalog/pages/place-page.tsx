@@ -98,6 +98,7 @@ interface GovernmentListProps {
 
 interface PlaceCardProps {
   place: PlaceRelatedSummary;
+  places: PlaceRelatedSummary[];
 }
 
 interface PlaceGridProps {
@@ -152,9 +153,76 @@ const PLACE_ACCENT_CLASSES: Record<PlaceRelatedSummary["accent"], string> = {
   neutral: "bg-surface-container-low",
 };
 
+const PLACE_THUMBNAIL_WIDTH = 160;
+const PLACE_THUMBNAIL_HEIGHT = 96;
+const PLACE_THUMBNAIL_PADDING = 14;
+const MIN_PLACE_THUMBNAIL_SPAN_DEGREES = 0.08;
+
+type CoordinatePlace = PlaceRelatedSummary & {
+  latitude: number;
+  longitude: number;
+};
+
+interface CoordinateBounds {
+  maxLat: number;
+  maxLng: number;
+  minLat: number;
+  minLng: number;
+}
+
+interface SvgPoint {
+  x: number;
+  y: number;
+}
+
 function formatSourceType(value: string): string {
   const label = value.replaceAll("_", " ");
   return label.charAt(0).toUpperCase() + label.slice(1);
+}
+
+function hasCoordinates(place: PlaceRelatedSummary): place is CoordinatePlace {
+  return (
+    typeof place.latitude === "number" &&
+    Number.isFinite(place.latitude) &&
+    typeof place.longitude === "number" &&
+    Number.isFinite(place.longitude)
+  );
+}
+
+function relatedCoordinatePlaces(places: PlaceRelatedSummary[]): CoordinatePlace[] {
+  return places.filter(hasCoordinates);
+}
+
+function coordinateBounds(places: CoordinatePlace[]): CoordinateBounds {
+  const latitudes = places.map((place) => place.latitude);
+  const longitudes = places.map((place) => place.longitude);
+  const minLat = Math.min(...latitudes);
+  const maxLat = Math.max(...latitudes);
+  const minLng = Math.min(...longitudes);
+  const maxLng = Math.max(...longitudes);
+  const latCenter = (minLat + maxLat) / 2;
+  const lngCenter = (minLng + maxLng) / 2;
+  const latSpan = Math.max(maxLat - minLat, MIN_PLACE_THUMBNAIL_SPAN_DEGREES);
+  const lngSpan = Math.max(maxLng - minLng, MIN_PLACE_THUMBNAIL_SPAN_DEGREES);
+
+  return {
+    maxLat: latCenter + latSpan / 2,
+    maxLng: lngCenter + lngSpan / 2,
+    minLat: latCenter - latSpan / 2,
+    minLng: lngCenter - lngSpan / 2,
+  };
+}
+
+function coordinatePoint(place: CoordinatePlace, bounds: CoordinateBounds): SvgPoint {
+  const drawableWidth = PLACE_THUMBNAIL_WIDTH - PLACE_THUMBNAIL_PADDING * 2;
+  const drawableHeight = PLACE_THUMBNAIL_HEIGHT - PLACE_THUMBNAIL_PADDING * 2;
+  const lngRange = bounds.maxLng - bounds.minLng;
+  const latRange = bounds.maxLat - bounds.minLat;
+
+  return {
+    x: PLACE_THUMBNAIL_PADDING + ((place.longitude - bounds.minLng) / lngRange) * drawableWidth,
+    y: PLACE_THUMBNAIL_PADDING + ((bounds.maxLat - place.latitude) / latRange) * drawableHeight,
+  };
 }
 
 function PlaceSection({ children, id, title }: PlaceSectionProps) {
@@ -808,12 +876,10 @@ function PlaceHighlights({ places }: PlaceHighlightsProps) {
   );
 }
 
-function PlaceCard({ place }: PlaceCardProps) {
-  return (
-    <a
-      href={place.href}
-      className="group bg-surface-container-lowest hover:bg-surface rounded-lg p-3 transition-colors"
-    >
+function PlaceMapThumbnail({ place, places }: PlaceCardProps) {
+  const coordinatePlaces = relatedCoordinatePlaces(places);
+  if (!hasCoordinates(place) || coordinatePlaces.length === 0) {
+    return (
       <div
         data-testid={`place-map-thumb-${place.name}`}
         className={cn(
@@ -826,6 +892,71 @@ function PlaceCard({ place }: PlaceCardProps) {
           <span className="type-label-medium">{place.kind}</span>
         </span>
       </div>
+    );
+  }
+
+  const bounds = coordinateBounds(coordinatePlaces);
+  return (
+    <div
+      data-testid={`place-map-thumb-${place.name}`}
+      className="bg-surface-container-low relative h-24 overflow-hidden rounded-lg"
+    >
+      <svg
+        role="img"
+        aria-label={`${place.name} location`}
+        viewBox={`0 0 ${PLACE_THUMBNAIL_WIDTH} ${PLACE_THUMBNAIL_HEIGHT}`}
+        className="h-full w-full"
+      >
+        <rect
+          x="0"
+          y="0"
+          width={PLACE_THUMBNAIL_WIDTH}
+          height={PLACE_THUMBNAIL_HEIGHT}
+          rx="10"
+          className="fill-surface-container-low"
+        />
+        {coordinatePlaces.map((coordinatePlace) => {
+          const point = coordinatePoint(coordinatePlace, bounds);
+          const isCurrentPlace = coordinatePlace.href === place.href;
+          return (
+            <g key={coordinatePlace.href}>
+              {isCurrentPlace ? (
+                <circle
+                  cx={point.x}
+                  cy={point.y}
+                  r="10"
+                  className="fill-ink-muted"
+                  opacity="0.12"
+                />
+              ) : null}
+              <circle
+                cx={point.x}
+                cy={point.y}
+                r={isCurrentPlace ? 4.5 : 3}
+                className={isCurrentPlace ? "fill-ink-strong" : "fill-ink-muted"}
+                data-current-place={isCurrentPlace ? "true" : undefined}
+                data-place-dot={coordinatePlace.name}
+                opacity={isCurrentPlace ? 1 : 0.45}
+              />
+            </g>
+          );
+        })}
+      </svg>
+      <span className="bg-surface-container-lowest/85 text-ink-strong shadow-soft absolute top-2 left-2 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1">
+        <MapPin className="h-3.5 w-3.5" aria-hidden />
+        <span className="type-label-small">{place.kind}</span>
+      </span>
+    </div>
+  );
+}
+
+function PlaceCard({ place, places }: PlaceCardProps) {
+  return (
+    <a
+      href={place.href}
+      className="group bg-surface-container-lowest hover:bg-surface rounded-lg p-3 transition-colors"
+    >
+      <PlaceMapThumbnail place={place} places={places} />
       <div className="px-1 pt-3">
         <p className="type-title-large text-ink-strong group-hover:text-accent">{place.name}</p>
         <p className="type-body-small text-ink-soft mt-1">{place.summary}</p>
@@ -846,7 +977,7 @@ function PlaceGrid({ places }: PlaceGridProps) {
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {places.map((place) => (
-        <PlaceCard key={place.href} place={place} />
+        <PlaceCard key={place.href} place={place} places={places} />
       ))}
     </div>
   );

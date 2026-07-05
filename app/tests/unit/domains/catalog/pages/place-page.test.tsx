@@ -66,6 +66,62 @@ describe("PlacePage", () => {
     ).toBeInTheDocument();
   });
 
+  it("plots related places from coordinates without exposing raw geography metadata", () => {
+    const view = render(<PlacePage data={placePageFixture} />);
+
+    const placesSection = screen.getByRole("heading", { name: "Places" }).closest("section");
+    if (placesSection === null) {
+      throw new Error("Places section was not rendered.");
+    }
+    const hendersonCard = within(placesSection).getByRole("link", { name: /Henderson/ });
+    const northLasVegasCard = within(placesSection).getByRole("link", {
+      name: /North Las Vegas/,
+    });
+
+    const hendersonThumb = within(hendersonCard).getByLabelText("Henderson location");
+    const northLasVegasThumb = within(northLasVegasCard).getByLabelText("North Las Vegas location");
+    const hendersonDot = hendersonThumb.querySelector('[data-current-place="true"]');
+    const northLasVegasDot = northLasVegasThumb.querySelector('[data-current-place="true"]');
+
+    expect(hendersonDot?.tagName).toBe("circle");
+    expect(northLasVegasDot?.tagName).toBe("circle");
+    expect(hendersonDot?.getAttribute("cx")).not.toBe(northLasVegasDot?.getAttribute("cx"));
+    expect(hendersonDot?.getAttribute("cy")).not.toBe(northLasVegasDot?.getAttribute("cy"));
+    expect(view.container).not.toHaveTextContent("36.039525");
+    expect(view.container).not.toHaveTextContent("census:place/3231900");
+  });
+
+  it("falls back cleanly when a related place has no coordinates yet", () => {
+    const firstPlace = placePageFixture.places[0];
+    if (!firstPlace) {
+      throw new Error("Fixture must include a related place.");
+    }
+
+    render(
+      <PlacePage
+        data={{
+          ...placePageFixture,
+          places: [
+            {
+              ...firstPlace,
+              latitude: undefined,
+              longitude: undefined,
+            },
+          ],
+        }}
+      />,
+    );
+
+    const placesSection = screen.getByRole("heading", { name: "Places" }).closest("section");
+    if (placesSection === null) {
+      throw new Error("Places section was not rendered.");
+    }
+    const hendersonCard = within(placesSection).getByRole("link", { name: /Henderson/ });
+
+    expect(within(hendersonCard).getByTestId("place-map-thumb-Henderson")).toBeInTheDocument();
+    expect(within(hendersonCard).queryByLabelText("Henderson location")).not.toBeInTheDocument();
+  });
+
   it("filters latest activity by source type", async () => {
     const user = userEvent.setup();
     apiMocks.listLatest.mockResolvedValueOnce({
