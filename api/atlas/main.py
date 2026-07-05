@@ -17,6 +17,7 @@ from typing import Any
 from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
+from starlette.types import ASGIApp, Receive, Scope, Send
 
 from atlas.config import get_settings, validate_runtime_auth_config
 from atlas.models import init_db
@@ -36,6 +37,22 @@ from atlas.platform.openapi import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+class McpMountPathAliasMiddleware:
+    """Route exact `/mcp` requests into the mounted MCP app without redirecting."""
+
+    def __init__(self, app: ASGIApp) -> None:
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] == "http" and scope.get("path") == "/mcp":
+            scope = dict(scope)
+            scope["path"] = "/mcp/"
+            if scope.get("raw_path") == b"/mcp":
+                scope["raw_path"] = b"/mcp/"
+
+        await self.app(scope, receive, send)
 
 
 def configure_logging() -> None:
@@ -132,6 +149,7 @@ def create_app() -> FastAPI:
         allow_methods=["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
         allow_headers=["*"],
     )
+    app.add_middleware(McpMountPathAliasMiddleware)
 
     # Health check endpoint
     @app.get(
