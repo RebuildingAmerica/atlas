@@ -1,4 +1,4 @@
-"""Scout search-key command tests."""
+"""Scout search command tests."""
 
 from __future__ import annotations
 
@@ -8,8 +8,8 @@ import atlas_scout.cli as cli_module
 from atlas_scout.cli import main
 
 
-def test_search_key_set_status_and_delete(monkeypatch) -> None:
-    """Search-key commands delegate to the local secret store."""
+def test_search_connect_status_and_disconnect(monkeypatch) -> None:
+    """Search commands connect Scout to search-backed discovery."""
     saved: list[str] = []
     deleted: list[bool] = []
     configured = {"value": False}
@@ -28,28 +28,37 @@ def test_search_key_set_status_and_delete(monkeypatch) -> None:
     monkeypatch.setattr(cli_module, "has_search_api_key", lambda: configured["value"])
 
     runner = CliRunner()
-    result = runner.invoke(main, ["search-key", "set", "--value", "search-secret"])
+    result = runner.invoke(main, ["search", "connect", "--key", "search-secret"])
     assert result.exit_code == 0
     assert saved == ["search-secret"]
-    assert "Search key saved" in result.output
+    assert "Search-backed discovery connected" in result.output
 
-    result = runner.invoke(main, ["search-key", "status"])
+    result = runner.invoke(main, ["search", "status"])
     assert result.exit_code == 0
-    assert "Search key configured" in result.output
+    assert "Search-backed discovery available" in result.output
     assert "OS credential store" in result.output
 
-    result = runner.invoke(main, ["search-key", "delete"])
+    result = runner.invoke(main, ["search", "disconnect"])
     assert result.exit_code == 0
     assert deleted == [True]
-    assert "Search key deleted" in result.output
+    assert "Search-backed discovery disconnected" in result.output
 
 
-def test_search_key_status_prefers_environment(monkeypatch) -> None:
+def test_search_status_prefers_environment(monkeypatch) -> None:
     """SEARCH_API_KEY is visible in status without touching stored config."""
     monkeypatch.setenv("SEARCH_API_KEY", "env-secret")
     monkeypatch.setattr(cli_module, "has_search_api_key", lambda: False)
 
-    result = CliRunner().invoke(main, ["search-key", "status"])
+    result = CliRunner().invoke(main, ["search", "status"])
 
     assert result.exit_code == 0
+    assert "Search-backed discovery available" in result.output
     assert "SEARCH_API_KEY" in result.output
+
+
+def test_search_key_group_is_not_available() -> None:
+    """The old credential-shaped command surface should not exist."""
+    result = CliRunner().invoke(main, ["search-key", "status"])
+
+    assert result.exit_code != 0
+    assert "No such command" in result.output

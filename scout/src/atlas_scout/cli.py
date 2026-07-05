@@ -1168,7 +1168,7 @@ def main(
     "--search-api-key",
     envvar="SEARCH_API_KEY",
     default=None,
-    help="Brave Search API key. Enables search mode.",
+    help="Search provider API key. Enables search-backed discovery.",
 )
 @click.option(
     "--follow-links/--no-follow-links",
@@ -2508,49 +2508,58 @@ def logout() -> None:
     console.print("[green]Logged out.[/]")
 
 
-@main.group("search-key")
-def search_key_group() -> None:
-    """Manage Scout's local search API key."""
+@main.group("search")
+def search_group() -> None:
+    """Manage search-backed discovery."""
 
 
-@search_key_group.command("set")
-@click.option("--value", default=None, help="Search API key value.")
-def search_key_set(value: str | None) -> None:
-    """Store the local search API key used by Scout workers."""
-    key = value or click.prompt("Search API key", hide_input=True)
+@search_group.command("connect")
+@click.option("--key", "search_key", default=None, help="Search provider API key.")
+def search_connect(search_key: str | None) -> None:
+    """Connect Scout to search-backed discovery."""
+    key = search_key or click.prompt("Search provider API key", hide_input=True)
     try:
         save_search_api_key(key)
     except (CredentialStoreError, ValueError) as exc:
-        _exit_with_error(CliError(title="Search key not saved", message=str(exc)))
-    console.print("[green]Search key saved.[/]")
+        _exit_with_error(CliError(title="Search not connected", message=str(exc)))
+    console.print("[green]Search-backed discovery connected.[/]")
+    console.print("  Source: OS credential store")
 
 
-@search_key_group.command("status")
-def search_key_status() -> None:
-    """Show whether Scout has a search API key available."""
+@search_group.command("status")
+def search_status() -> None:
+    """Show whether Scout can run search-backed discovery."""
     if os.environ.get("SEARCH_API_KEY", "").strip():
-        console.print("[green]Search key configured from SEARCH_API_KEY.[/]")
+        console.print("[green]Search-backed discovery available.[/]")
+        console.print("  Source: SEARCH_API_KEY")
         return
     try:
         if has_search_api_key():
-            console.print("[green]Search key configured in OS credential store.[/]")
+            console.print("[green]Search-backed discovery available.[/]")
+            console.print("  Source: OS credential store")
             return
     except CredentialStoreError as exc:
         _exit_with_error(_credential_store_cli_error(exc))
-    console.print("[yellow]Search key not configured.[/]")
+    console.print("[yellow]Search-backed discovery not connected.[/]")
+    console.print("  Run `scout search connect`.")
 
 
-@search_key_group.command("delete")
-def search_key_delete() -> None:
-    """Remove the stored local search API key."""
+@search_group.command("disconnect")
+def search_disconnect() -> None:
+    """Disconnect Scout from stored search-backed discovery credentials."""
     try:
         deleted = delete_stored_search_api_key()
     except CredentialStoreError as exc:
         _exit_with_error(_credential_store_cli_error(exc))
+    env_key_configured = bool(os.environ.get("SEARCH_API_KEY", "").strip())
     if deleted:
-        console.print("[green]Search key deleted.[/]")
+        console.print("[green]Search-backed discovery disconnected.[/]")
+        if env_key_configured:
+            console.print("  SEARCH_API_KEY is still set for this shell.")
         return
-    console.print("[yellow]Search key not configured.[/]")
+    console.print("[yellow]No stored search connection.[/]")
+    if env_key_configured:
+        console.print("  SEARCH_API_KEY is still set for this shell.")
 
 
 def _now_iso() -> str:
@@ -3073,7 +3082,7 @@ def _worker_status() -> None:
     if state.get("atlas_url"):
         console.print(f"  Atlas: {state['atlas_url']}")
     configured = "yes" if state.get("search_key_configured") else "no"
-    console.print(f"  Search key: {configured}")
+    console.print(f"  Search-backed discovery: {configured}")
     if state.get("current_job_id"):
         console.print(f"  Current job: {state['current_job_id']}")
     if state.get("last_completed_job_id"):

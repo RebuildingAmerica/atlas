@@ -25,7 +25,7 @@ def _credential_store(credential_store: CredentialStore | None) -> CredentialSto
 
 
 def _delete_legacy_file(path: Path) -> bool:
-    """Delete the legacy plaintext search-key file when present."""
+    """Delete the legacy plaintext search credential file when present."""
     if not path.exists():
         return False
     path.unlink()
@@ -33,11 +33,11 @@ def _delete_legacy_file(path: Path) -> bool:
 
 
 def _raise_for_legacy_file(path: Path) -> None:
-    """Refuse to read pre-launch plaintext search-key files."""
+    """Refuse to read pre-launch plaintext search credential files."""
     if path.exists():
         raise CredentialStoreError(
-            "Legacy plaintext search key file found. Run `scout search-key delete` "
-            "and set the key again."
+            "Legacy plaintext search credential file found. Run `scout search disconnect`, "
+            "then `scout search connect`."
         )
 
 
@@ -50,7 +50,7 @@ def save_search_api_key(
     """Persist a search API key in the OS credential store."""
     key = value.strip()
     if not key:
-        raise ValueError("Search API key is required.")
+        raise ValueError("Search provider API key is required.")
     _credential_store(credential_store).save_secret(SEARCH_API_KEY_ACCOUNT, key)
     _delete_legacy_file(legacy_path)
 
@@ -82,7 +82,7 @@ def resolve_search_api_key(
     credential_store: CredentialStore | None = None,
     legacy_path: Path = SEARCH_KEY_PATH,
 ) -> str:
-    """Resolve the search key from a flag, environment, or Scout storage."""
+    """Resolve the search credential from a flag, environment, or Scout storage."""
     if explicit and explicit.strip():
         return explicit.strip()
     env_value = os.environ.get("SEARCH_API_KEY", "").strip()

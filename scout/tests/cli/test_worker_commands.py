@@ -43,7 +43,7 @@ def test_worker_status_reads_local_state(tmp_path: Path, monkeypatch) -> None:
     assert result.exit_code == 0
     assert "Scout worker" in result.output
     assert "Scout Laptop" in result.output
-    assert "Search key: yes" in result.output
+    assert "Search-backed discovery: yes" in result.output
 
 
 def test_worker_stop_clears_stale_state_metadata(tmp_path: Path, monkeypatch) -> None:

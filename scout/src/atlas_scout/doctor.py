@@ -241,18 +241,18 @@ def _append_search_check(
     dependencies: DoctorDependencies,
     checks: list[DoctorCheck],
 ) -> bool:
-    """Append search-key readiness and return whether search is available."""
+    """Append search-backed discovery readiness and return whether search is available."""
     try:
         search_key_ready = dependencies.has_search_key()
     except CredentialStoreError as exc:
         checks.append(
             DoctorCheck(
-                id="search-key",
+                id="search",
                 group="Search",
-                label="Search key",
+                label="Search connection",
                 status="fail",
                 message=str(exc),
-                remediation="Run `scout search-key delete`, then `scout search-key set`.",
+                remediation="Run `scout search disconnect`, then `scout search connect`.",
             )
         )
         return False
@@ -260,9 +260,9 @@ def _append_search_check(
     if search_key_ready:
         checks.append(
             DoctorCheck(
-                id="search-key",
+                id="search",
                 group="Search",
-                label="Search key",
+                label="Search connection",
                 status="ok",
                 message="Search-backed discovery is available.",
                 remediation=None,
@@ -272,12 +272,12 @@ def _append_search_check(
 
     checks.append(
         DoctorCheck(
-            id="search-key",
+            id="search",
             group="Search",
-            label="Search key",
+            label="Search connection",
             status="warn",
-            message="Search key not configured.",
-            remediation="Run `scout search-key set` to enable search-backed discovery.",
+            message="Search-backed discovery is not connected.",
+            remediation="Run `scout search connect`.",
         )
     )
     return False
@@ -348,12 +348,12 @@ def _discovery_capabilities(
             message=(
                 "Ready to run search-backed discovery."
                 if direct_ready and search_key_ready
-                else "Search discovery needs a working model, local database, and search key."
+                else "Search discovery needs a working model, local database, and search connection."
             ),
             remediation=(
                 None
                 if direct_ready and search_key_ready
-                else _first_remediation(checks, ["model", "database", "search-key"])
+                else _first_remediation(checks, ["model", "database", "search"])
             ),
         ),
         DoctorCapability(
@@ -410,12 +410,12 @@ def _worker_readiness(
                 message=(
                     "Ready for search-backed Atlas worker jobs."
                     if base_ready and search_key_ready
-                    else "Search worker jobs need login, a local model provider, and a search key."
+                    else "Search worker jobs need login, a local model provider, and a search connection."
                 ),
                 remediation=(
                     None
                     if base_ready and search_key_ready
-                    else remediation or "Run `scout search-key set`."
+                    else remediation or "Run `scout search connect`."
                 ),
             ),
         ],
@@ -480,7 +480,7 @@ def _worker_remediation(
         return f"Run `scout config llm` to choose a local model provider ({allowed})."
     if not model_ready:
         return "Run `scout config llm` to choose a working local model."
-    return "Run `scout search-key set`."
+    return "Run `scout search connect`."
 
 
 def _sync_ready(

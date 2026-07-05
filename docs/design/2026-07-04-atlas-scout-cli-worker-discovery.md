@@ -31,9 +31,9 @@ volunteers.
   source-linked artifacts.
 - Public worker mode uses local model providers only. Atlas does not send paid
   vendor model credentials to volunteer machines.
-- Search API keys are optional but strongly recommended. Users with a search
-  key can run search-backed discovery; users without one can still run direct
-  URL discovery. Workers with a search key can claim exploratory discovery
+- Search credentials are optional but strongly recommended. Users who connect
+  search can run search-backed discovery; users without it can still run direct
+  URL discovery. Workers with search connected can claim exploratory discovery
   jobs; workers without one can claim seeded, direct-URL, or evidence-packet
   jobs.
 - Upload destination is turnkey by default. `scout login` remembers public
@@ -135,8 +135,8 @@ sh scripts/smoke-scout-install.sh
 ```
 
 The smoke check installs Scout into a temporary virtualenv, runs the installed
-`scout` executable, exercises `search-key` and `worker` command surfaces, checks
-that search keys avoid plaintext file storage, and confirms worker startup
+`scout` executable, exercises `search` and `worker` command surfaces, checks
+that search credentials avoid plaintext file storage, and confirms worker startup
 fails clearly before login.
 
 Scout includes shell completion generation and standard man page generation as
@@ -276,7 +276,7 @@ start workers, write config, or mutate Atlas state. It groups checks for
 credential storage, Atlas account, Atlas reachability, configured model, search
 key, local data path, and sync readiness. The default capability summary is
 Scout-initiated: direct URL runs, search discovery, and Atlas sync. Missing
-search keys are warnings, not failures, because direct URL discovery still
+missing search connections are warnings, not failures, because direct URL discovery still
 works.
 
 `scout doctor --worker` adds passive worker readiness: local worker state,
@@ -319,19 +319,18 @@ provider; the provider-named flags write their own endpoint regardless of which
 provider is active. `scout doctor` continues to be read-only and recommends
 `scout config llm` only when setup can fix the configured local model state.
 
-### Search Key Commands
+### Search Commands
 
 ```bash
-scout search-key set
-scout search-key status
-scout search-key delete
+scout search connect
+scout search status
+scout search disconnect
 ```
 
-The search key is stored separately from the Atlas worker credential in the OS
-credential store. `SEARCH_API_KEY` still works and takes precedence as an
-ephemeral override. Scout shows whether search-backed discovery is available and
-warns when no search key is configured, but it still permits seeded/direct-URL
-work.
+The search credential is stored separately from the Atlas worker credential in
+the OS credential store. `SEARCH_API_KEY` still works and takes precedence as an
+ephemeral override. Scout shows whether search-backed discovery is connected and
+warns when it is not, but it still permits seeded/direct-URL work.
 
 ### Optional Worker Commands
 
@@ -345,7 +344,7 @@ scout worker stop
 current capabilities, heartbeats while running, claims compatible jobs, executes
 them with the local Scout pipeline, and returns canonical discovery artifacts.
 `scout worker status` reads a local state file with PID, mode, Atlas URL,
-search-key readiness, current job id, last completed job id, heartbeat, and last
+search connection readiness, current job id, last completed job id, heartbeat, and last
 error. In public worker mode it should refuse non-local model providers before
 the public launch gate.
 
@@ -413,7 +412,7 @@ against product API-key limits, are named by device, and are revocable from
 account settings.
 
 Local storage must use the OS credential store for browser-approved session
-tokens and search keys. Plaintext token and search-key files are not supported
+tokens and search credentials. Plaintext token and search credential files are not supported
 for public launch. Config files may store non-secret values such as Atlas URL,
 worker id, destination preference, profile name, model name, and local provider
 endpoint URLs.
@@ -428,7 +427,7 @@ Implemented worker operations:
 
 - `POST /api/discovery-runs/jobs/claim` claims the oldest queued job with a
   lease and returns the run target context. Scout sends search capability so
-  workers without search keys do not receive normal exploratory discovery jobs.
+  workers without search connected do not receive normal exploratory discovery jobs.
 - `POST /api/discovery-runs/jobs/{job_id}/heartbeat` renews the current worker's
   lease and stores progress.
 - `POST /api/discovery-runs/jobs/{job_id}/complete` marks the current worker's
@@ -454,12 +453,12 @@ Still required before widening public worker enrollment:
 Job compatibility is based on capability metadata:
 
 - Local model provider and model name.
-- Search key present or absent.
+- Search connection present or absent.
 - Max concurrency and rough resource limits.
 - Supported job modes: full discovery, seeded/direct-URL discovery, artifact
   upload, and evidence packet extraction.
 
-Workers without search keys must not receive exploratory query-generation jobs.
+Workers without search connected must not receive exploratory query-generation jobs.
 They can process jobs where Atlas already has source URLs or seed pages.
 
 ## Upload Destination Semantics
@@ -537,7 +536,7 @@ make it easier to publish unsupported claims about real people.
   browser, and see `scout auth status` without creating an API key.
 - The same user can open account settings and see the enrolled Scout host with
   last-seen, upload target, search capability, and a revoke action.
-- The same user can run `scout search-key set`, `scout search-key status`, and
+- The same user can run `scout search connect`, `scout search status`, and
   `scout worker start/status/stop` without creating a general API key.
 - A logged-in user can run local discovery with canonical location/state
   metadata and sync it to either the public contribution queue or their
@@ -545,8 +544,8 @@ make it easier to publish unsupported claims about real people.
 - A logged-in user can run `scout sync`, `scout sync latest`, or
   `scout sync --all-ready` and receive remote run and entry visibility receipts.
 - A synced run URL opens the workspace discovery page with the run highlighted.
-- A logged-in worker with a local model and no search key can claim seeded jobs.
-- A logged-in worker with a local model and search key can claim full discovery
+- A logged-in worker with a local model and no search connection can claim seeded jobs.
+- A logged-in worker with a local model and search connected can claim full discovery
   jobs.
 - Public uploads create review-gated artifacts and do not publish records.
 - Workspace uploads create private workspace resources.

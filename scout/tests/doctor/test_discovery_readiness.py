@@ -34,28 +34,29 @@ def _dependencies(*, search_key: bool) -> DoctorDependencies:
 
 
 def test_missing_search_key_is_warning_not_direct_run_blocker() -> None:
-    """Direct URL discovery works without a search key, but search discovery does not."""
+    """Direct URL discovery works without search connected, but search discovery does not."""
     report = run_doctor(
         ScoutConfig(),
         include_worker=False,
         dependencies=_dependencies(search_key=False),
     )
 
-    assert report.check("search-key").status == "warn"
+    assert report.check("search").status == "warn"
     assert report.capability("direct-url-runs").ready
     assert not report.capability("search-discovery").ready
+    assert report.capability("search-discovery").remediation == "Run `scout search connect`."
     assert report.exit_code == 0
 
 
-def test_search_key_enables_search_discovery_readiness() -> None:
-    """Search-backed discovery should be ready once the model and search key are ready."""
+def test_search_connection_enables_search_discovery_readiness() -> None:
+    """Search-backed discovery should be ready once the model and search are ready."""
     report = run_doctor(
         ScoutConfig(),
         include_worker=False,
         dependencies=_dependencies(search_key=True),
     )
 
-    assert report.check("search-key").status == "ok"
+    assert report.check("search").status == "ok"
     assert report.capability("search-discovery").ready
 
 
