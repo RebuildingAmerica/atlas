@@ -19,11 +19,18 @@ from typing import TYPE_CHECKING, Any
 from atlas.platform.database import db
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     import aiosqlite
 
 logger = logging.getLogger(__name__)
 
-__all__ = ["VERIFICATION_TOKEN_TTL", "ProfileClaimCRUD", "ProfileClaimModel"]
+__all__ = [
+    "VERIFICATION_TOKEN_TTL",
+    "ProfileClaimCRUD",
+    "ProfileClaimModel",
+    "ProfileClaimProofModel",
+]
 
 VERIFICATION_TOKEN_TTL = timedelta(hours=24)
 
@@ -52,6 +59,28 @@ class ProfileClaimModel:
         if not self.evidence_json:
             return None
         return json.loads(self.evidence_json)
+
+
+@dataclass
+class ProfileClaimProofModel:
+    """Proof record supporting one profile-claim decision."""
+
+    id: str
+    claim_id: str
+    proof_type: str
+    proof_status: str
+    proof_summary: str
+    proof_metadata_json: str | None
+    created_at: str
+    reviewed_at: str | None
+    expires_at: str | None
+
+    @property
+    def metadata(self) -> Any:
+        """Parsed proof metadata, if any."""
+        if not self.proof_metadata_json:
+            return None
+        return json.loads(self.proof_metadata_json)
 
 
 class ProfileClaimCRUD:
@@ -193,7 +222,81 @@ class ProfileClaimCRUD:
         return _row_to_claim(dict(zip(columns, row, strict=False)))
 
     @staticmethod
-    async def mark_verified(conn: aiosqlite.Connection, claim_id: str) -> ProfileClaimModel | None:
+    async def record_proof(  # noqa: PLR0913
+        conn: aiosqlite.Connection,
+        *,
+        claim_id: str,
+        proof_type: str,
+        proof_status: str,
+        proof_summary: str,
+        proof_metadata: Any | None = None,
+        reviewed_at: str | None = None,
+        expires_at: str | None = None,
+    ) -> ProfileClaimProofModel:
+        """Record one proof artifact or reviewer decision for a claim."""
+        proof_id = db.generate_uuid()
+        now = db.now_iso()
+        metadata_json = json.dumps(proof_metadata, sort_keys=True) if proof_metadata else None
+        await conn.execute(
+            """
+            INSERT INTO profile_claim_proofs (
+                id, claim_id, proof_type, proof_status, proof_summary,
+                proof_metadata_json, created_at, reviewed_at, expires_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                proof_id,
+                claim_id,
+                proof_type,
+                proof_status,
+                proof_summary,
+                metadata_json,
+                now,
+                reviewed_at,
+                expires_at,
+            ),
+        )
+        await conn.commit()
+        return ProfileClaimProofModel(
+            id=proof_id,
+            claim_id=claim_id,
+            proof_type=proof_type,
+            proof_status=proof_status,
+            proof_summary=proof_summary,
+            proof_metadata_json=metadata_json,
+            created_at=now,
+            reviewed_at=reviewed_at,
+            expires_at=expires_at,
+        )
+
+    @staticmethod
+    async def list_proofs(
+        conn: aiosqlite.Connection,
+        claim_id: str,
+    ) -> list[ProfileClaimProofModel]:
+        """Return proof records for one claim, newest first."""
+        cursor = await conn.execute(
+            """
+            SELECT id, claim_id, proof_type, proof_status, proof_summary,
+                   proof_metadata_json, created_at, reviewed_at, expires_at
+            FROM profile_claim_proofs
+            WHERE claim_id = ?
+            ORDER BY created_at DESC
+            """,
+            (claim_id,),
+        )
+        rows = await cursor.fetchall()
+        return [_row_to_claim_proof(row) for row in rows]
+
+    @staticmethod
+    async def mark_verified(
+        conn: aiosqlite.Connection,
+        claim_id: str,
+        *,
+        proof_type: str = "manual_review",
+        proof_summary: str | None = None,
+        proof_metadata: Any | None = None,
+    ) -> ProfileClaimModel | None:
         """Transition a claim to verified and stamp the verification time."""
         now = db.now_iso()
         cursor = await conn.execute(
@@ -208,9 +311,27 @@ class ProfileClaimCRUD:
             """,
             (now, now, claim_id),
         )
-        await conn.commit()
         if cursor.rowcount == 0:
+            await conn.commit()
             return None
+        await conn.execute(
+            """
+            INSERT INTO profile_claim_proofs (
+                id, claim_id, proof_type, proof_status, proof_summary,
+                proof_metadata_json, created_at, reviewed_at, expires_at
+            ) VALUES (?, ?, ?, 'verified', ?, ?, ?, ?, NULL)
+            """,
+            (
+                db.generate_uuid(),
+                claim_id,
+                proof_type,
+                proof_summary or _default_verified_proof_summary(proof_type, proof_metadata),
+                json.dumps(proof_metadata, sort_keys=True) if proof_metadata else None,
+                now,
+                now,
+            ),
+        )
+        await conn.commit()
         return await ProfileClaimCRUD.get_by_id(conn, claim_id)
 
     @staticmethod
@@ -274,3 +395,25 @@ def _row_to_claim(row: dict[str, Any]) -> ProfileClaimModel:
         created_at=row["created_at"],
         updated_at=row["updated_at"],
     )
+
+
+def _row_to_claim_proof(row: Sequence[Any]) -> ProfileClaimProofModel:
+    return ProfileClaimProofModel(
+        id=str(row[0]),
+        claim_id=str(row[1]),
+        proof_type=str(row[2]),
+        proof_status=str(row[3]),
+        proof_summary=str(row[4]),
+        proof_metadata_json=str(row[5]) if row[5] is not None else None,
+        created_at=str(row[6]),
+        reviewed_at=str(row[7]) if row[7] is not None else None,
+        expires_at=str(row[8]) if row[8] is not None else None,
+    )
+
+
+def _default_verified_proof_summary(proof_type: str, proof_metadata: Any | None) -> str:
+    if proof_type == "email_domain" and isinstance(proof_metadata, dict):
+        domain = proof_metadata.get("user_email_domain")
+        if isinstance(domain, str) and domain:
+            return f"Verified email control for {domain}."
+    return "Verified by reviewer decision."

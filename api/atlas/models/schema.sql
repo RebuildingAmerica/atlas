@@ -513,10 +513,23 @@ CREATE TABLE IF NOT EXISTS profile_claims (
     created_at TIMESTAMPTZ NOT NULL,
     updated_at TIMESTAMPTZ NOT NULL
 );
+CREATE TABLE IF NOT EXISTS profile_claim_proofs (
+    id TEXT PRIMARY KEY,
+    claim_id TEXT NOT NULL REFERENCES profile_claims(id) ON DELETE CASCADE,
+    proof_type TEXT NOT NULL CHECK(proof_type IN ('email_domain', 'domain_dns', 'manual_review', 'atproto', 'w3c_vc', 'sso_admin', 'delegate_approval')),
+    proof_status TEXT NOT NULL CHECK(proof_status IN ('pending', 'verified', 'rejected', 'revoked')),
+    proof_summary TEXT NOT NULL,
+    proof_metadata_json TEXT,
+    created_at TIMESTAMPTZ NOT NULL,
+    reviewed_at TIMESTAMPTZ,
+    expires_at TIMESTAMPTZ
+);
 CREATE INDEX IF NOT EXISTS idx_profile_claims_entry ON profile_claims(entry_id);
 CREATE INDEX IF NOT EXISTS idx_profile_claims_user ON profile_claims(user_id);
 CREATE INDEX IF NOT EXISTS idx_profile_claims_status ON profile_claims(status);
 CREATE INDEX IF NOT EXISTS idx_profile_claims_token ON profile_claims(verification_token);
+CREATE INDEX IF NOT EXISTS idx_profile_claim_proofs_claim ON profile_claim_proofs(claim_id);
+CREATE INDEX IF NOT EXISTS idx_profile_claim_proofs_type ON profile_claim_proofs(proof_type);
 
 -- Saved profile lists (signed-in user collections)
 CREATE TABLE IF NOT EXISTS saved_lists (

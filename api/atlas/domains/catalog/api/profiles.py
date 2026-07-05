@@ -7,7 +7,6 @@ import logging
 from collections.abc import AsyncGenerator  # noqa: TC003
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
-from urllib.parse import urlparse
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 
@@ -24,6 +23,10 @@ from atlas.domains.catalog.schemas.public import (
     ProfileFollowResponse,
     ProfileManageRequest,
 )
+from atlas.domains.catalog.services.profile_claims import (
+    CLAIM_TIER_EMAIL_DOMAIN,
+    ProfileClaimPolicy,
+)
 from atlas.models import EntryCRUD, get_db_connection
 from atlas.platform.config import Settings, get_settings
 from atlas.platform.http.cache import apply_no_store_headers
@@ -39,8 +42,6 @@ router = APIRouter()
 
 __all__ = ["router"]
 
-CLAIM_TIER_TWO = 2
-
 
 async def get_db(
     settings: Settings = Depends(get_settings),
@@ -53,34 +54,9 @@ async def get_db(
         await conn.close()
 
 
-_WWW_PREFIX = "www."
-
-
-def _domain_of(value: str | None) -> str | None:
-    if not value:
-        return None
-    cleaned = value.strip()
-    if not cleaned:
-        return None
-    if "@" in cleaned:
-        cleaned = cleaned.rsplit("@", 1)[1]
-    parsed = urlparse(cleaned if "://" in cleaned else f"https://{cleaned}")
-    host = (parsed.hostname or cleaned).lower()
-    if host.startswith(_WWW_PREFIX):
-        host = host[len(_WWW_PREFIX) :]
-    return host
-
-
-def _entry_email_domains(entry: Any) -> set[str]:
-    """Return the set of domains derivable from the entry's email/website."""
-    domains: set[str] = set()
-    email_domain = _domain_of(entry.email)
-    if email_domain:
-        domains.add(email_domain)
-    website_domain = _domain_of(entry.website)
-    if website_domain:
-        domains.add(website_domain)
-    return domains
+def get_profile_claim_policy() -> ProfileClaimPolicy:
+    """Build the profile-claim policy service for request handlers."""
+    return ProfileClaimPolicy()
 
 
 def _claim_to_response(claim: Any, entry: Any) -> ProfileClaimResponse:
@@ -101,6 +77,27 @@ def _claim_to_response(claim: Any, entry: Any) -> ProfileClaimResponse:
     )
 
 
+def _blank_to_none(value: str | None) -> str | None:
+    if value is None:
+        return None
+    stripped = value.strip()
+    return stripped or None
+
+
+def _claim_evidence_payload(payload: ProfileClaimRequest) -> dict[str, str] | str | None:
+    structured = {
+        "relationship": _blank_to_none(payload.relationship),
+        "evidence": _blank_to_none(payload.evidence),
+        "requested_changes": _blank_to_none(payload.requested_changes),
+        "preferred_contact_channel": _blank_to_none(payload.preferred_contact_channel),
+        "private_note": _blank_to_none(payload.private_note),
+    }
+    intent = {key: value for key, value in structured.items() if value is not None}
+    if intent:
+        return intent
+    return None
+
+
 @router.post(
     "/{slug}/claim",
     response_model=ProfileClaimResponse,
@@ -115,12 +112,13 @@ def _claim_to_response(claim: Any, entry: Any) -> ProfileClaimResponse:
     status_code=status.HTTP_201_CREATED,
     tags=["claims"],
 )
-async def initiate_claim(
+async def initiate_claim(  # noqa: PLR0913
     slug: str,
     payload: ProfileClaimRequest,
     response: Response,
     actor: AuthenticatedActor = Depends(require_actor),
     db: aiosqlite.Connection = Depends(get_db),
+    claim_policy: ProfileClaimPolicy = Depends(get_profile_claim_policy),
 ) -> ProfileClaimResponse:
     """Initiate a claim for the profile identified by ``slug``."""
     entry = await EntryCRUD.get_by_slug(db, slug)
@@ -137,12 +135,12 @@ async def initiate_claim(
             detail="This profile is already verified by another user.",
         )
 
-    actor_domain = _domain_of(actor.email)
-    matched_domains = _entry_email_domains(entry)
-    is_tier_one = bool(actor_domain and actor_domain in matched_domains)
-    tier = 1 if is_tier_one else 2
+    claim_decision = claim_policy.classify(entry, actor.email)
+    tier = claim_decision.tier
 
-    if tier == CLAIM_TIER_TWO and not (payload.evidence and payload.evidence.strip()):
+    if claim_decision.requires_manual_evidence and not (
+        payload.evidence and payload.evidence.strip()
+    ):
         raise HTTPException(
             status_code=400,
             detail="Evidence is required for manual-review claims.",
@@ -154,7 +152,7 @@ async def initiate_claim(
         user_id=actor.user_id,
         user_email=actor.email,
         tier=tier,
-        evidence=payload.evidence,
+        evidence=_claim_evidence_payload(payload),
         token_ttl=VERIFICATION_TOKEN_TTL,
     )
 
@@ -184,6 +182,7 @@ async def verify_claim(
     payload: ProfileClaimVerifyRequest,
     response: Response,
     db: aiosqlite.Connection = Depends(get_db),
+    claim_policy: ProfileClaimPolicy = Depends(get_profile_claim_policy),
 ) -> ProfileClaimResponse:
     """Verify a tier-1 claim using its emailed token."""
     claim = await ProfileClaimCRUD.get_by_token(db, payload.token)
@@ -192,6 +191,17 @@ async def verify_claim(
 
     if claim.status != "pending":
         raise HTTPException(status_code=409, detail=f"Claim is {claim.status}.")
+
+    entry = await EntryCRUD.get_by_id(db, claim.entry_id)
+    if entry is None:
+        raise HTTPException(status_code=404, detail="Profile not found")
+
+    proof = claim_policy.email_domain_proof(entry, claim.user_email)
+    if claim.tier != CLAIM_TIER_EMAIL_DOMAIN or proof is None:
+        raise HTTPException(
+            status_code=409,
+            detail="Email verification is only available for low-risk organization claims.",
+        )
 
     expires = (
         datetime.fromisoformat(claim.verification_token_expires_at)
@@ -202,7 +212,13 @@ async def verify_claim(
         await ProfileClaimCRUD.mark_rejected(db, claim.id, reason="Verification token expired.")
         raise HTTPException(status_code=410, detail="Verification token expired.")
 
-    verified = await ProfileClaimCRUD.mark_verified(db, claim.id)
+    verified = await ProfileClaimCRUD.mark_verified(
+        db,
+        claim.id,
+        proof_type=proof.proof_type,
+        proof_summary=proof.summary,
+        proof_metadata=proof.metadata,
+    )
     if verified is None:
         raise HTTPException(status_code=500, detail="Failed to verify claim.")
 
@@ -215,9 +231,6 @@ async def verify_claim(
         last_confirmed_at=verified.verified_at,
     )
 
-    entry = await EntryCRUD.get_by_id(db, verified.entry_id)
-    if entry is None:
-        raise HTTPException(status_code=404, detail="Profile not found")
     apply_no_store_headers(response)
     return _claim_to_response(verified, entry)
 

@@ -9,6 +9,8 @@ from typing import TYPE_CHECKING
 from atlas.platform.database import db
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
+
     import aiosqlite
 
 logger = logging.getLogger(__name__)
@@ -16,6 +18,7 @@ logger = logging.getLogger(__name__)
 __all__ = [
     "AnnotationModel",
     "DirectoryConfigModel",
+    "DirectoryDomainAlreadyClaimedError",
     "DirectoryDomainModel",
     "OwnershipCRUD",
     "OwnershipModel",
@@ -25,6 +28,10 @@ __all__ = [
 
 class AnnotationTargetError(ValueError):
     """Raised when a private note target is missing or ambiguous."""
+
+
+class DirectoryDomainAlreadyClaimedError(ValueError):
+    """Raised when a workspace tries to claim another workspace's directory domain."""
 
 
 @dataclass
@@ -238,8 +245,16 @@ class OwnershipCRUD:
         org_id: str,
         domain: str,
     ) -> DirectoryDomainModel:
-        """Create or replace the verification token for a workspace directory domain."""
+        """Create or replace a workspace directory domain singleton."""
         normalized_domain = domain.strip().lower()
+        current = await OwnershipCRUD.get_directory_domain(conn, org_id)
+        if current is not None and current.domain == normalized_domain:
+            return current
+
+        existing = await OwnershipCRUD.get_directory_domain_by_domain(conn, normalized_domain)
+        if existing is not None and existing.org_id != org_id:
+            raise DirectoryDomainAlreadyClaimedError
+
         verification_token = f"atlas-verify={db.generate_uuid()}"
         now = db.now_iso()
         await conn.execute(
@@ -271,12 +286,15 @@ class OwnershipCRUD:
         conn: aiosqlite.Connection,
         *,
         org_id: str,
-        txt_record: str,
+        txt_records: Iterable[str],
     ) -> DirectoryDomainModel | None:
-        """Mark a workspace directory domain verified when the TXT proof matches."""
+        """Mark a workspace directory domain verified when DNS TXT proof matches."""
         current = await OwnershipCRUD.get_directory_domain(conn, org_id)
-        if current is None or current.verification_token != txt_record.strip():
+        normalized_records = {record.strip() for record in txt_records}
+        if current is None or current.verification_token not in normalized_records:
             return None
+        if current.status == "verified":
+            return current
 
         verified_at = db.now_iso()
         await conn.execute(
@@ -303,6 +321,32 @@ class OwnershipCRUD:
             WHERE org_id = ?
             """,
             (org_id,),
+        )
+        row = await cursor.fetchone()
+        if row is None:
+            return None
+        return DirectoryDomainModel(
+            org_id=row[0],
+            domain=row[1],
+            verification_token=row[2],
+            status=row[3],
+            created_at=row[4],
+            verified_at=row[5],
+        )
+
+    @staticmethod
+    async def get_directory_domain_by_domain(
+        conn: aiosqlite.Connection,
+        domain: str,
+    ) -> DirectoryDomainModel | None:
+        """Return the configured directory domain row for a hostname."""
+        cursor = await conn.execute(
+            """
+            SELECT org_id, domain, verification_token, status, created_at, verified_at
+            FROM org_directory_domains
+            WHERE domain = ?
+            """,
+            (domain,),
         )
         row = await cursor.fetchone()
         if row is None:

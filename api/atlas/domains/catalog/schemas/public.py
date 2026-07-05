@@ -581,7 +581,11 @@ class ProfileClaimRequest(BaseModel):
     `evidence` is required only for tier-2 (manual review) claims.
     """
 
+    relationship: str | None = None
     evidence: str | None = None
+    requested_changes: str | None = None
+    preferred_contact_channel: str | None = None
+    private_note: str | None = None
 
 
 class ProfileClaimVerifyRequest(BaseModel):
@@ -601,7 +605,7 @@ class ProfileClaimResponse(BaseModel):
     user_email: str
     status: str
     tier: int
-    evidence: str | None = None
+    evidence: Any | None = None
     verified_at: str | None = None
     rejected_reason: str | None = None
     created_at: str

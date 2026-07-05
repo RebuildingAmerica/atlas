@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import ipaddress
 import logging
+import re
 from collections.abc import AsyncGenerator  # noqa: TC003
 from typing import TYPE_CHECKING, Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from pydantic import BaseModel, Field, field_validator
 
 from atlas.domains.access.capabilities import require_capability
@@ -14,8 +16,15 @@ from atlas.domains.access.dependencies import require_org_actor
 from atlas.domains.access.models.usage_events import OrgUsageEventCRUD, OrgUsageEventRecord
 from atlas.domains.catalog.models.ownership import (
     DirectoryConfigModel,
+    DirectoryDomainAlreadyClaimedError,
     DirectoryDomainModel,
     OwnershipCRUD,
+)
+from atlas.domains.catalog.services.directory_domains import (
+    DirectoryDomainNotConfiguredError,
+    DirectoryDomainVerificationService,
+    DnsDirectoryDomainTxtResolver,
+    directory_domain_verification_host,
 )
 from atlas.domains.moderation.review_queue import ReviewQueueCRUD
 from atlas.models import EntryCRUD, get_db_connection
@@ -42,6 +51,8 @@ router = APIRouter()
 __all__ = ["router"]
 
 INVALID_DIRECTORY_DOMAIN_MESSAGE = "Enter a bare domain name, such as guide.example.org."
+DIRECTORY_DOMAIN_MAX_LENGTH = 253
+DIRECTORY_DOMAIN_LABEL_RE = re.compile(r"^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$")
 
 
 class PublishEntryResponse(BaseModel):
@@ -207,16 +218,7 @@ class DirectoryDomainRequest(BaseModel):
     @classmethod
     def validate_domain(cls, value: str) -> str:
         """Normalize and reject values that are not bare hostnames."""
-        domain = value.strip().lower()
-        if "://" in domain or "/" in domain or " " in domain or "." not in domain:
-            raise ValueError(INVALID_DIRECTORY_DOMAIN_MESSAGE)
-        return domain
-
-
-class DirectoryDomainVerifyRequest(BaseModel):
-    """TXT record proof for a workspace directory domain."""
-
-    txt_record: str = Field(min_length=1)
+        return _normalize_directory_domain(value)
 
 
 class DirectoryDomainResponse(BaseModel):
@@ -224,6 +226,7 @@ class DirectoryDomainResponse(BaseModel):
 
     domain: str
     status: str
+    verification_host: str
     verification_token: str
 
 
@@ -264,6 +267,47 @@ async def get_db(
         yield conn
     finally:
         await conn.close()
+
+
+def _normalize_directory_domain(value: str) -> str:
+    """Return a validated, IDNA-normalized directory domain hostname."""
+    domain = value.strip().lower()
+    if (
+        not domain
+        or domain.endswith(".")
+        or "*" in domain
+        or "://" in domain
+        or "/" in domain
+        or any(char.isspace() for char in domain)
+    ):
+        raise ValueError(INVALID_DIRECTORY_DOMAIN_MESSAGE)
+
+    try:
+        ascii_domain = domain.encode("idna").decode("ascii")
+    except UnicodeError as exc:
+        raise ValueError(INVALID_DIRECTORY_DOMAIN_MESSAGE) from exc
+
+    if len(ascii_domain) > DIRECTORY_DOMAIN_MAX_LENGTH or "." not in ascii_domain:
+        raise ValueError(INVALID_DIRECTORY_DOMAIN_MESSAGE)
+
+    try:
+        ipaddress.ip_address(ascii_domain)
+    except ValueError:
+        pass
+    else:
+        raise ValueError(INVALID_DIRECTORY_DOMAIN_MESSAGE)
+
+    labels = ascii_domain.split(".")
+    if any(not DIRECTORY_DOMAIN_LABEL_RE.fullmatch(label) for label in labels):
+        raise ValueError(INVALID_DIRECTORY_DOMAIN_MESSAGE)
+    return ascii_domain
+
+
+def get_directory_domain_verifier() -> DirectoryDomainVerificationService:
+    """Build the directory-domain verification service for request handlers."""
+    return DirectoryDomainVerificationService(
+        txt_resolver=DnsDirectoryDomainTxtResolver(),
+    )
 
 
 async def _entry_to_detail_response(
@@ -342,6 +386,7 @@ def _directory_domain_response(domain: DirectoryDomainModel) -> DirectoryDomainR
     return DirectoryDomainResponse(
         domain=domain.domain,
         status=domain.status,
+        verification_host=directory_domain_verification_host(domain.domain),
         verification_token=domain.verification_token,
     )
 
@@ -512,12 +557,17 @@ async def list_directory_templates(
     return DirectoryTemplatesResponse(templates=DIRECTORY_TEMPLATES)
 
 
-@router.post(
+@router.put(
     "/directory-domain",
     response_model=DirectoryDomainResponse,
-    status_code=201,
     summary="Configure a workspace directory domain",
-    operation_id="configureOrgDirectoryDomain",
+    operation_id="putOrgDirectoryDomain",
+    responses={
+        201: {
+            "description": "Directory domain created",
+            "model": DirectoryDomainResponse,
+        },
+    },
     tags=["org-entries"],
 )
 async def configure_directory_domain(
@@ -528,9 +578,15 @@ async def configure_directory_domain(
     db: aiosqlite.Connection = Depends(get_db),
     _cap: None = Depends(require_capability("public.directories")),
 ) -> DirectoryDomainResponse:
-    """Create a verification challenge for a workspace directory custom domain."""
+    """Create or replace the workspace directory custom domain resource."""
     _verify_org_access(actor, org_id)
-    domain = await OwnershipCRUD.upsert_directory_domain(db, org_id=org_id, domain=req.domain)
+    existing_domain = await OwnershipCRUD.get_directory_domain(db, org_id)
+    try:
+        domain = await OwnershipCRUD.upsert_directory_domain(db, org_id=org_id, domain=req.domain)
+    except DirectoryDomainAlreadyClaimedError as exc:
+        raise HTTPException(status_code=409, detail="Directory domain is already claimed.") from exc
+    if existing_domain is None:
+        response.status_code = status.HTTP_201_CREATED
     apply_no_store_headers(response)
     return _directory_domain_response(domain)
 
@@ -595,30 +651,29 @@ async def update_directory_config(
     return _directory_config_response(org_id, config)
 
 
-@router.post(
-    "/directory-domain/verify",
+@router.put(
+    "/directory-domain/verification",
     response_model=DirectoryDomainResponse,
     summary="Verify a workspace directory domain",
-    operation_id="verifyOrgDirectoryDomain",
+    operation_id="putOrgDirectoryDomainVerification",
     tags=["org-entries"],
 )
 async def verify_directory_domain(
     org_id: str,
-    req: DirectoryDomainVerifyRequest,
     response: Response,
     actor: AuthenticatedActor = Depends(require_org_actor),
     db: aiosqlite.Connection = Depends(get_db),
+    domain_verifier: DirectoryDomainVerificationService = Depends(get_directory_domain_verifier),
     _cap: None = Depends(require_capability("public.directories")),
 ) -> DirectoryDomainResponse:
-    """Mark a workspace directory custom domain verified when TXT proof matches."""
+    """Mark a workspace directory custom domain verified when DNS TXT proof matches."""
     _verify_org_access(actor, org_id)
-    domain = await OwnershipCRUD.verify_directory_domain(
-        db,
-        org_id=org_id,
-        txt_record=req.txt_record,
-    )
+    try:
+        domain = await domain_verifier.verify(db, org_id)
+    except DirectoryDomainNotConfiguredError as exc:
+        raise HTTPException(status_code=404, detail="Directory domain not configured") from exc
     if domain is None:
-        raise HTTPException(status_code=400, detail="Domain verification failed")
+        raise HTTPException(status_code=409, detail="Domain verification failed")
     apply_no_store_headers(response)
     return _directory_domain_response(domain)
 

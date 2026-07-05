@@ -13,7 +13,9 @@ from atlas.domains.access.capabilities import ResolvedCapabilities
 from atlas.domains.access.dependencies import require_actor, require_org_actor
 from atlas.domains.access.models.usage_events import OrgUsageEventCRUD
 from atlas.domains.access.principals import AuthenticatedActor
+from atlas.domains.catalog.api.org_resources import get_directory_domain_verifier
 from atlas.domains.catalog.models.ownership import OwnershipCRUD
+from atlas.domains.catalog.services.directory_domains import DirectoryDomainVerificationService
 from atlas.domains.moderation.review_queue import ReviewQueueCRUD
 from atlas.main import create_app
 from atlas.models import EntryCRUD, SourceCRUD
@@ -27,6 +29,7 @@ STATUS_CONFLICT = 409
 STATUS_NO_CONTENT = 204
 STATUS_FORBIDDEN = 403
 STATUS_NOT_FOUND = 404
+STATUS_UNPROCESSABLE_ENTITY = 422
 
 # Local mode actor always has org_id="local"
 ORG_ID = "local"
@@ -43,13 +46,49 @@ ENTRY_PAYLOAD = {
 }
 
 
+class _TestDirectoryDomainTxtResolver:
+    """Mutable TXT resolver for directory-domain HTTP tests."""
+
+    def __init__(self, records_by_domain: dict[str, set[str]], queries: list[str]) -> None:
+        self.records_by_domain = records_by_domain
+        self.queries = queries
+
+    async def resolve_txt_records(self, domain: str) -> set[str]:
+        """Return configured TXT records for ``domain``."""
+        self.queries.append(domain)
+        return self.records_by_domain.get(domain, set())
+
+
+@pytest.fixture
+def directory_domain_records() -> dict[str, set[str]]:
+    """TXT records visible to the directory-domain verifier in HTTP tests."""
+    return {}
+
+
+@pytest.fixture
+def directory_domain_queries() -> list[str]:
+    """TXT names queried by the directory-domain verifier in HTTP tests."""
+    return []
+
+
 @pytest_asyncio.fixture
-async def directory_capable_client(test_settings: Settings) -> object:
+async def directory_capable_client(
+    test_settings: Settings,
+    directory_domain_records: dict[str, set[str]],
+    directory_domain_queries: list[str],
+) -> object:
     """Test client whose actor can publish workspace public directories."""
     app = create_app()
+    txt_resolver = _TestDirectoryDomainTxtResolver(
+        directory_domain_records,
+        directory_domain_queries,
+    )
 
     def override_get_settings() -> Settings:
         return test_settings
+
+    def override_directory_domain_verifier() -> DirectoryDomainVerificationService:
+        return DirectoryDomainVerificationService(txt_resolver=txt_resolver)
 
     async def override_require_org_actor() -> AuthenticatedActor:
         actor = AuthenticatedActor(
@@ -74,6 +113,7 @@ async def directory_capable_client(test_settings: Settings) -> object:
     app.dependency_overrides[get_settings] = override_get_settings
     app.dependency_overrides[require_actor] = override_require_actor
     app.dependency_overrides[require_org_actor] = override_require_org_actor
+    app.dependency_overrides[get_directory_domain_verifier] = override_directory_domain_verifier
 
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
@@ -596,10 +636,12 @@ class TestOrgEntriesCRUD:
 
     @pytest.mark.asyncio
     async def test_verified_custom_domain_is_exposed_on_public_directory(
-        self, directory_capable_client: object
+        self,
+        directory_capable_client: object,
+        directory_domain_records: dict[str, set[str]],
     ) -> None:
         """Verified tenant domains should be visible on the public directory trust surface."""
-        create_resp = await directory_capable_client.post(
+        create_resp = await directory_capable_client.put(
             f"/api/orgs/{ORG_ID}/entries/directory-domain",
             json={"domain": "guide.kctenants.org"},
         )
@@ -607,11 +649,15 @@ class TestOrgEntriesCRUD:
         domain_payload = create_resp.json()
         assert domain_payload["domain"] == "guide.kctenants.org"
         assert domain_payload["status"] == "pending"
+        assert domain_payload["verification_host"] == "_atlas-verify.guide.kctenants.org"
         assert domain_payload["verification_token"].startswith("atlas-verify=")
 
-        verify_resp = await directory_capable_client.post(
-            f"/api/orgs/{ORG_ID}/entries/directory-domain/verify",
-            json={"txt_record": domain_payload["verification_token"]},
+        directory_domain_records["_atlas-verify.guide.kctenants.org"] = {
+            domain_payload["verification_token"],
+        }
+
+        verify_resp = await directory_capable_client.put(
+            f"/api/orgs/{ORG_ID}/entries/directory-domain/verification",
         )
         assert verify_resp.status_code == STATUS_OK
         assert verify_resp.json()["status"] == "verified"
@@ -627,11 +673,154 @@ class TestOrgEntriesCRUD:
         }
 
     @pytest.mark.asyncio
+    async def test_directory_domain_verify_rejects_pasted_token_without_dns_proof(
+        self, directory_capable_client: object
+    ) -> None:
+        """A pasted token is not proof unless the server sees it in DNS."""
+        create_resp = await directory_capable_client.put(
+            f"/api/orgs/{ORG_ID}/entries/directory-domain",
+            json={"domain": "directory.kctenants.org"},
+        )
+        assert create_resp.status_code == STATUS_CREATED
+
+        verify_resp = await directory_capable_client.put(
+            f"/api/orgs/{ORG_ID}/entries/directory-domain/verification",
+        )
+
+        assert verify_resp.status_code == STATUS_CONFLICT
+
+    @pytest.mark.asyncio
+    async def test_directory_domain_put_is_idempotent_for_existing_domain(
+        self, directory_capable_client: object
+    ) -> None:
+        """Repeated PUTs for the same domain should preserve the existing challenge."""
+        create_resp = await directory_capable_client.put(
+            f"/api/orgs/{ORG_ID}/entries/directory-domain",
+            json={"domain": "guide.kctenants.org"},
+        )
+        assert create_resp.status_code == STATUS_CREATED
+        created_payload = create_resp.json()
+
+        retry_resp = await directory_capable_client.put(
+            f"/api/orgs/{ORG_ID}/entries/directory-domain",
+            json={"domain": "guide.kctenants.org"},
+        )
+
+        assert retry_resp.status_code == STATUS_OK
+        retry_payload = retry_resp.json()
+        assert retry_payload["domain"] == "guide.kctenants.org"
+        assert retry_payload["status"] == "pending"
+        assert retry_payload["verification_host"] == "_atlas-verify.guide.kctenants.org"
+        assert retry_payload["verification_token"] == created_payload["verification_token"]
+
+    @pytest.mark.asyncio
+    async def test_directory_domain_put_replaces_existing_domain(
+        self, directory_capable_client: object
+    ) -> None:
+        """PUTting a different domain should replace the singleton domain resource."""
+        create_resp = await directory_capable_client.put(
+            f"/api/orgs/{ORG_ID}/entries/directory-domain",
+            json={"domain": "guide.kctenants.org"},
+        )
+        assert create_resp.status_code == STATUS_CREATED
+        created_payload = create_resp.json()
+
+        replace_resp = await directory_capable_client.put(
+            f"/api/orgs/{ORG_ID}/entries/directory-domain",
+            json={"domain": "directory.kctenants.org"},
+        )
+
+        assert replace_resp.status_code == STATUS_OK
+        replace_payload = replace_resp.json()
+        assert replace_payload["domain"] == "directory.kctenants.org"
+        assert replace_payload["status"] == "pending"
+        assert replace_payload["verification_host"] == "_atlas-verify.directory.kctenants.org"
+        assert replace_payload["verification_token"] != created_payload["verification_token"]
+
+    @pytest.mark.asyncio
+    async def test_directory_domain_legacy_verify_action_route_is_not_registered(
+        self, directory_capable_client: object
+    ) -> None:
+        """Domain verification should be exposed as a resource, not an action route."""
+        response = await directory_capable_client.post(
+            f"/api/orgs/{ORG_ID}/entries/directory-domain/verify",
+        )
+
+        assert response.status_code == STATUS_NOT_FOUND
+
+    @pytest.mark.asyncio
+    async def test_directory_domain_verifier_queries_challenge_host(
+        self,
+        directory_capable_client: object,
+        directory_domain_records: dict[str, set[str]],
+        directory_domain_queries: list[str],
+    ) -> None:
+        """TXT proof should live at _atlas-verify.<domain>, not the hosted domain."""
+        create_resp = await directory_capable_client.put(
+            f"/api/orgs/{ORG_ID}/entries/directory-domain",
+            json={"domain": "guide.kctenants.org"},
+        )
+        assert create_resp.status_code == STATUS_CREATED
+        domain_payload = create_resp.json()
+        directory_domain_records["_atlas-verify.guide.kctenants.org"] = {
+            domain_payload["verification_token"],
+        }
+
+        verify_resp = await directory_capable_client.put(
+            f"/api/orgs/{ORG_ID}/entries/directory-domain/verification",
+        )
+
+        assert verify_resp.status_code == STATUS_OK
+        assert directory_domain_queries == ["_atlas-verify.guide.kctenants.org"]
+
+    @pytest.mark.asyncio
+    async def test_directory_domain_rejects_malformed_hostnames(
+        self, directory_capable_client: object
+    ) -> None:
+        """Directory domains should be valid bare public hostnames."""
+        invalid_domains = [
+            "...",
+            "foo..example.com",
+            "-bad.example.com",
+            "bad-.example.com",
+            "*.example.com",
+            "guide.kctenants.org.",
+            "_atlas.example.com",
+        ]
+
+        for domain in invalid_domains:
+            response = await directory_capable_client.put(
+                f"/api/orgs/{ORG_ID}/entries/directory-domain",
+                json={"domain": domain},
+            )
+
+            assert response.status_code == STATUS_UNPROCESSABLE_ENTITY, domain
+
+    @pytest.mark.asyncio
+    async def test_directory_domain_duplicate_returns_conflict(
+        self, directory_capable_client: object, test_db: object
+    ) -> None:
+        """A domain already configured by another workspace should return a clean conflict."""
+        await OwnershipCRUD.upsert_directory_domain(
+            test_db,
+            org_id=OTHER_ORG_ID,
+            domain="guide.kctenants.org",
+        )
+
+        response = await directory_capable_client.put(
+            f"/api/orgs/{ORG_ID}/entries/directory-domain",
+            json={"domain": "guide.kctenants.org"},
+        )
+
+        assert response.status_code == STATUS_CONFLICT
+        assert response.json()["detail"] == "Directory domain is already claimed."
+
+    @pytest.mark.asyncio
     async def test_directory_domain_requires_public_directory_capability(
         self, test_client: object
     ) -> None:
         """Custom directory domains should be reserved for directory-capable packages."""
-        response = await test_client.post(
+        response = await test_client.put(
             f"/api/orgs/{ORG_ID}/entries/directory-domain",
             json={"domain": "guide.kctenants.org"},
         )

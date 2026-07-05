@@ -1933,6 +1933,10 @@
             "title": "Status",
             "type": "string"
           },
+          "verification_host": {
+            "title": "Verification Host",
+            "type": "string"
+          },
           "verification_token": {
             "title": "Verification Token",
             "type": "string"
@@ -1941,24 +1945,10 @@
         "required": [
           "domain",
           "status",
+          "verification_host",
           "verification_token"
         ],
         "title": "DirectoryDomainResponse",
-        "type": "object"
-      },
-      "DirectoryDomainVerifyRequest": {
-        "description": "TXT record proof for a workspace directory domain.",
-        "properties": {
-          "txt_record": {
-            "minLength": 1,
-            "title": "Txt Record",
-            "type": "string"
-          }
-        },
-        "required": [
-          "txt_record"
-        ],
-        "title": "DirectoryDomainVerifyRequest",
         "type": "object"
       },
       "DirectoryTemplatePlaceScope": {
@@ -7280,6 +7270,50 @@
               }
             ],
             "title": "Evidence"
+          },
+          "preferred_contact_channel": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preferred Contact Channel"
+          },
+          "private_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Private Note"
+          },
+          "relationship": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Relationship"
+          },
+          "requested_changes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Requested Changes"
           }
         },
         "title": "ProfileClaimRequest",
@@ -7313,9 +7347,7 @@
           },
           "evidence": {
             "anyOf": [
-              {
-                "type": "string"
-              },
+              {},
               {
                 "type": "null"
               }
@@ -18256,9 +18288,9 @@
       }
     },
     "/api/orgs/{org_id}/entries/directory-domain": {
-      "post": {
-        "description": "Create a verification challenge for a workspace directory custom domain.",
-        "operationId": "configureOrgDirectoryDomain",
+      "put": {
+        "description": "Create or replace the workspace directory custom domain resource.",
+        "operationId": "putOrgDirectoryDomain",
         "parameters": [
           {
             "in": "path",
@@ -18361,7 +18393,7 @@
           "required": true
         },
         "responses": {
-          "201": {
+          "200": {
             "content": {
               "application/json": {
                 "schema": {
@@ -18370,6 +18402,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DirectoryDomainResponse"
+                }
+              }
+            },
+            "description": "Directory domain created"
           },
           "422": {
             "content": {
@@ -18388,10 +18430,10 @@
         ]
       }
     },
-    "/api/orgs/{org_id}/entries/directory-domain/verify": {
-      "post": {
-        "description": "Mark a workspace directory custom domain verified when TXT proof matches.",
-        "operationId": "verifyOrgDirectoryDomain",
+    "/api/orgs/{org_id}/entries/directory-domain/verification": {
+      "put": {
+        "description": "Mark a workspace directory custom domain verified when DNS TXT proof matches.",
+        "operationId": "putOrgDirectoryDomainVerification",
         "parameters": [
           {
             "in": "path",
@@ -18483,16 +18525,6 @@
             }
           }
         ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/DirectoryDomainVerifyRequest"
-              }
-            }
-          },
-          "required": true
-        },
         "responses": {
           "200": {
             "content": {

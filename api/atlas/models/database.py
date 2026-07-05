@@ -295,6 +295,20 @@ CREATE TABLE IF NOT EXISTS profile_claims (
     FOREIGN KEY (entry_id) REFERENCES entries(id) ON DELETE CASCADE
 );
 
+-- Profile claim proofs (scoped evidence for stewardship decisions)
+CREATE TABLE IF NOT EXISTS profile_claim_proofs (
+    id TEXT PRIMARY KEY,
+    claim_id TEXT NOT NULL,
+    proof_type TEXT NOT NULL CHECK(proof_type IN ('email_domain', 'domain_dns', 'manual_review', 'atproto', 'w3c_vc', 'sso_admin', 'delegate_approval')),
+    proof_status TEXT NOT NULL CHECK(proof_status IN ('pending', 'verified', 'rejected', 'revoked')),
+    proof_summary TEXT NOT NULL,
+    proof_metadata_json TEXT,
+    created_at DATETIME NOT NULL,
+    reviewed_at DATETIME,
+    expires_at DATETIME,
+    FOREIGN KEY (claim_id) REFERENCES profile_claims(id) ON DELETE CASCADE
+);
+
 -- Saved profile lists (signed-in user collections)
 CREATE TABLE IF NOT EXISTS saved_lists (
     id TEXT PRIMARY KEY,
@@ -719,6 +733,8 @@ CREATE INDEX IF NOT EXISTS idx_profile_claims_entry ON profile_claims(entry_id);
 CREATE INDEX IF NOT EXISTS idx_profile_claims_user ON profile_claims(user_id);
 CREATE INDEX IF NOT EXISTS idx_profile_claims_status ON profile_claims(status);
 CREATE INDEX IF NOT EXISTS idx_profile_claims_token ON profile_claims(verification_token);
+CREATE INDEX IF NOT EXISTS idx_profile_claim_proofs_claim ON profile_claim_proofs(claim_id);
+CREATE INDEX IF NOT EXISTS idx_profile_claim_proofs_type ON profile_claim_proofs(proof_type);
 CREATE INDEX IF NOT EXISTS idx_saved_lists_user ON saved_lists(user_id);
 CREATE INDEX IF NOT EXISTS idx_saved_list_items_entry ON saved_list_items(entry_id);
 CREATE INDEX IF NOT EXISTS idx_profile_follows_entry ON profile_follows(entry_id);
