@@ -40,12 +40,26 @@ from atlas_scout.steps.rank import rank_entries_stream
 from atlas_scout.steps.source_fetch import results_per_query_for_depth
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import AsyncIterator, Awaitable, Callable
+    from typing import Protocol
 
     from atlas_scout.config import ContributionConfig
     from atlas_scout.providers.base import LLMProvider
     from atlas_scout.scraper.fetcher import AsyncFetcher
     from atlas_scout.store import ScoutStore
+
+    class EnqueueUrl(Protocol):
+        """Async URL enqueue callback used by search frontier producers."""
+
+        def __call__(
+            self,
+            url: str,
+            *,
+            depth: int,
+            seed_url: str,
+            discovered_from: str | None,
+        ) -> Awaitable[bool]:
+            """Enqueue a normalized URL for later fetching."""
 
 logger = logging.getLogger(__name__)
 
@@ -460,6 +474,18 @@ async def run_pipeline(
                     },
                 )
 
+                def emit_extract_retry(
+                    payload: dict[str, object],
+                    current_task_id: str = task_id,
+                ) -> None:
+                    emit(
+                        "extract_retry",
+                        {
+                            **payload,
+                            "task_id": current_task_id,
+                        },
+                    )
+
                 entries = await extract_page_entries(
                     page,
                     provider,
@@ -469,13 +495,7 @@ async def run_pipeline(
                     run_id=run_id,
                     reuse_cached_extractions=reuse_cached_extractions,
                     extraction_directive=extraction_directive,
-                    on_retry=lambda payload, current_task_id=task_id: emit(
-                        "extract_retry",
-                        {
-                            **payload,
-                            "task_id": current_task_id,
-                        },
-                    ),
+                    on_retry=emit_extract_retry,
                 )
 
                 if entries:
@@ -692,9 +712,9 @@ async def run_pipeline(
                     results_per_query=deeper_rpq,
                 )
                 for result in deeper_results:
-                    url = result.get("url")
-                    if isinstance(url, str) and url:
-                        normalized = normalize_url(url)
+                    result_url = result.get("url")
+                    if isinstance(result_url, str) and result_url:
+                        normalized = normalize_url(result_url)
                         if normalized and normalized not in seen_urls:
                             seen_urls.add(normalized)
                             page = await fetcher.fetch(normalized)
@@ -761,9 +781,9 @@ async def run_pipeline(
                         results_per_query=5,
                     )
                     for result in chase_results:
-                        url = result.get("url")
-                        if isinstance(url, str) and url:
-                            normalized = normalize_url(url)
+                        result_url = result.get("url")
+                        if isinstance(result_url, str) and result_url:
+                            normalized = normalize_url(result_url)
                             if normalized and normalized not in seen_urls:
                                 seen_urls.add(normalized)
                                 page = await fetcher.fetch(normalized)
@@ -997,7 +1017,7 @@ async def _produce_search_frontier(
     *,
     queries: list[str],
     search_api_key: str,
-    enqueue: Callable[..., asyncio.Future | Any],
+    enqueue: EnqueueUrl,
     max_concurrent: int,
     results_per_query: int = 5,
 ) -> None:
@@ -1018,22 +1038,32 @@ async def _produce_search_frontier(
             if isinstance(url, str) and url:
                 normalized = normalize_url(url)
                 if normalized:
-                    maybe = enqueue(
+                    await enqueue(
                         normalized,
                         depth=0,
                         seed_url=normalized,
                         discovered_from=None,
                     )
-                    # The pipeline's enqueue is always async; the iscoroutine guard
-                    # protects against future synchronous overrides.
-                    assert asyncio.iscoroutine(maybe)
-                    await maybe
 
 
-async def _iter_items(items: list[Any]):
+async def _iter_items[Item](items: list[Item]) -> AsyncIterator[Item]:
     """Yield items from a plain list as an async iterator."""
     for item in items:
         yield item
+
+
+def _outcome_int(value: object) -> int:
+    """Return an integer metric from a page outcome value."""
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float):
+        return int(value)
+    if isinstance(value, str):
+        try:
+            return int(value)
+        except ValueError:
+            return 0
+    return 0
 
 
 def _build_run_artifacts(
@@ -1090,8 +1120,8 @@ def _build_run_artifacts(
                 task_id=str(outcome.get("task_id") or ""),
                 url=str(outcome.get("url") or ""),
                 status=str(outcome.get("status") or "unknown"),
-                depth=int(outcome.get("depth") or 0),
-                entries_extracted=int(outcome.get("entries") or 0),
+                depth=_outcome_int(outcome.get("depth")),
+                entries_extracted=_outcome_int(outcome.get("entries")),
                 error=str(outcome["error"]) if outcome.get("error") is not None else None,
                 user_visible=bool(outcome.get("user_visible", False)),
             )

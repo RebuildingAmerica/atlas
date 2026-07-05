@@ -122,8 +122,8 @@ class ProgressRenderer:
         if now - self.last_status_print_at < _STATUS_QUIET_SECONDS:
             return None
 
-        fetch_active = int(payload.get("fetch_active") or 0)
-        extract_active = int(payload.get("extract_active") or 0)
+        fetch_active = _int_field(payload.get("fetch_active"))
+        extract_active = _int_field(payload.get("extract_active"))
         if fetch_active <= 0 and extract_active <= 0:
             return None
 
@@ -151,6 +151,20 @@ class ProgressRenderer:
     def _print_line(self, label: str, fields: list[str], *, elapsed: str) -> None:
         suffix = f" {' '.join(fields)}" if fields else ""
         self.console.print(f"{elapsed} [bold]{label:<13}[/]{suffix}")
+
+
+def _int_field(value: object) -> int:
+    """Return an integer metric from a progress payload value."""
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float):
+        return int(value)
+    if isinstance(value, str):
+        try:
+            return int(value)
+        except ValueError:
+            return 0
+    return 0
 
 
 def filter_visible_page_outcomes(page_outcomes: list[dict[str, object]]) -> list[dict[str, object]]:

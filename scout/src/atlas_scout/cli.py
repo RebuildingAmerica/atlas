@@ -8,8 +8,11 @@ import csv
 import io
 import json
 import logging
+import os
 import platform
 import re
+import signal
+import subprocess
 import sys
 import time
 import tomllib
@@ -108,7 +111,7 @@ from atlas_scout.shell_integration import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Coroutine
+    from collections.abc import Awaitable, Callable, Coroutine
     from typing import Any
 
     from atlas_shared import SyncedEntryLink
@@ -139,10 +142,6 @@ __all__ = [
     "main",
 ]
 
-os = _daemon_helpers.os
-signal = _daemon_helpers.signal
-subprocess = _daemon_helpers.subprocess
-
 WORKER_STATE_PATH = SCOUT_CONFIG_DIR / "worker.json"
 LOCAL_WORKER_PROVIDERS = frozenset(LOCAL_PROVIDER_NAMES)
 _PROFILE_NAME_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$")
@@ -161,26 +160,86 @@ _WORKER_STOPPED_STATE: dict[str, object] = {
     "worker_name": None,
 }
 
-_DAEMON_ORIGINALS = {
-    "_clear_failed_daemon_start": _daemon_helpers._clear_failed_daemon_start,
-    "_daemon_interval_metadata": _daemon_helpers._daemon_interval_metadata,
-    "_daemon_process_is_running": _daemon_helpers._daemon_process_is_running,
-    "_daemon_run_internal": _daemon_helpers._daemon_run_internal,
-    "_daemon_start": _daemon_helpers._daemon_start,
-    "_daemon_start_claim_is_stale": _daemon_helpers._daemon_start_claim_is_stale,
-    "_daemon_start_conflict_message": _daemon_helpers._daemon_start_conflict_message,
-    "_daemon_status": _daemon_helpers._daemon_status,
-    "_daemon_stop": _daemon_helpers._daemon_stop,
-    "_install_daemon_signal_handlers": _daemon_helpers._install_daemon_signal_handlers,
-    "_open_store": _daemon_helpers._open_store,
-    "_render_recent_run_summary": _daemon_helpers._render_recent_run_summary,
-    "_render_recent_tick_summary": _daemon_helpers._render_recent_tick_summary,
-    "_require_schedule_targets": _daemon_helpers._require_schedule_targets,
-    "_signal_daemon_process": _daemon_helpers._signal_daemon_process,
-    "_spawn_daemon_process": _daemon_helpers._spawn_daemon_process,
-    "_wait_for_daemon_start": _daemon_helpers._wait_for_daemon_start,
-    "_wait_for_daemon_stop": _daemon_helpers._wait_for_daemon_stop,
-}
+_DAEMON_PATCH_TARGETS = (
+    "_clear_failed_daemon_start",
+    "_daemon_interval_metadata",
+    "_daemon_process_is_running",
+    "_daemon_run_internal",
+    "_daemon_start",
+    "_daemon_start_claim_is_stale",
+    "_daemon_start_conflict_message",
+    "_daemon_status",
+    "_daemon_stop",
+    "_install_daemon_signal_handlers",
+    "_open_store",
+    "_render_recent_run_summary",
+    "_render_recent_tick_summary",
+    "_require_schedule_targets",
+    "_signal_daemon_process",
+    "_spawn_daemon_process",
+    "_wait_for_daemon_start",
+    "_wait_for_daemon_stop",
+)
+_ORIGINAL_CLEAR_FAILED_DAEMON_START = cast(
+    "Callable[..., Awaitable[None]]",
+    _daemon_helpers._clear_failed_daemon_start,
+)
+_ORIGINAL_DAEMON_INTERVAL_METADATA = cast(
+    "Callable[..., tuple[int, str]]",
+    _daemon_helpers._daemon_interval_metadata,
+)
+_ORIGINAL_DAEMON_PROCESS_IS_RUNNING = cast(
+    "Callable[[int], bool]",
+    _daemon_helpers._daemon_process_is_running,
+)
+_ORIGINAL_DAEMON_RUN_INTERNAL = cast(
+    "Callable[..., Awaitable[None]]",
+    _daemon_helpers._daemon_run_internal,
+)
+_ORIGINAL_DAEMON_START = cast("Callable[..., Awaitable[None]]", _daemon_helpers._daemon_start)
+_ORIGINAL_DAEMON_START_CLAIM_IS_STALE = cast(
+    "Callable[..., bool]",
+    _daemon_helpers._daemon_start_claim_is_stale,
+)
+_ORIGINAL_DAEMON_START_CONFLICT_MESSAGE = cast(
+    "Callable[[dict[str, object]], str]",
+    _daemon_helpers._daemon_start_conflict_message,
+)
+_ORIGINAL_DAEMON_STATUS = cast("Callable[[ScoutConfig], Awaitable[None]]", _daemon_helpers._daemon_status)
+_ORIGINAL_DAEMON_STOP = cast("Callable[[ScoutConfig], Awaitable[None]]", _daemon_helpers._daemon_stop)
+_ORIGINAL_INSTALL_DAEMON_SIGNAL_HANDLERS = cast(
+    "Callable[[asyncio.Event], None]",
+    _daemon_helpers._install_daemon_signal_handlers,
+)
+_ORIGINAL_OPEN_STORE = cast("Callable[[ScoutConfig], Awaitable[object]]", _daemon_helpers._open_store)
+_ORIGINAL_RENDER_RECENT_RUN_SUMMARY = cast(
+    "Callable[[dict[str, object] | None], str]",
+    _daemon_helpers._render_recent_run_summary,
+)
+_ORIGINAL_RENDER_RECENT_TICK_SUMMARY = cast(
+    "Callable[[dict[str, object]], str]",
+    _daemon_helpers._render_recent_tick_summary,
+)
+_ORIGINAL_REQUIRE_SCHEDULE_TARGETS = cast(
+    "Callable[[ScoutConfig], int]",
+    _daemon_helpers._require_schedule_targets,
+)
+_ORIGINAL_SIGNAL_DAEMON_PROCESS = cast(
+    "Callable[[int], None]",
+    _daemon_helpers._signal_daemon_process,
+)
+_ORIGINAL_SPAWN_DAEMON_PROCESS = cast(
+    "Callable[..., subprocess.Popen[bytes]]",
+    _daemon_helpers._spawn_daemon_process,
+)
+_ORIGINAL_WAIT_FOR_DAEMON_START = cast(
+    "Callable[..., Awaitable[dict[str, object]]]",
+    _daemon_helpers._wait_for_daemon_start,
+)
+_ORIGINAL_WAIT_FOR_DAEMON_STOP = cast(
+    "Callable[..., Awaitable[dict[str, object]]]",
+    _daemon_helpers._wait_for_daemon_stop,
+)
 
 
 class ScoutSyncError(RuntimeError):
@@ -399,7 +458,7 @@ def _local_model_repair_provider(
         _local_provider_configured_explicitly(config_path)
         and configured_provider in installed_providers
     ):
-        return cast("LocalProviderName", configured_provider)
+        return configured_provider
 
     if len(installed_providers) == 1:
         return installed_providers[0]
@@ -659,7 +718,7 @@ def _sync_daemon_module() -> None:
     _daemon_helpers.os = os
     _daemon_helpers.signal = signal
     _daemon_helpers.subprocess = subprocess
-    for name in _DAEMON_ORIGINALS:
+    for name in _DAEMON_PATCH_TARGETS:
         setattr(_daemon_helpers, name, globals()[name])
 
 
@@ -749,22 +808,22 @@ async def _resolve_login_atlas_url(atlas_url: str | None) -> tuple[str, bool]:
 
 def _require_schedule_targets(config: ScoutConfig) -> int:
     _sync_daemon_module()
-    return _DAEMON_ORIGINALS["_require_schedule_targets"](config)
+    return _ORIGINAL_REQUIRE_SCHEDULE_TARGETS(config)
 
 
 async def _open_store(config: ScoutConfig) -> object:
     _sync_daemon_module()
-    return await _DAEMON_ORIGINALS["_open_store"](config)
+    return await _ORIGINAL_OPEN_STORE(config)
 
 
 def _daemon_process_is_running(process_id: int) -> bool:
     _sync_daemon_module()
-    return _DAEMON_ORIGINALS["_daemon_process_is_running"](process_id)
+    return _ORIGINAL_DAEMON_PROCESS_IS_RUNNING(process_id)
 
 
 def _signal_daemon_process(process_id: int) -> None:
     _sync_daemon_module()
-    _DAEMON_ORIGINALS["_signal_daemon_process"](process_id)
+    _ORIGINAL_SIGNAL_DAEMON_PROCESS(process_id)
 
 
 def _spawn_daemon_process(
@@ -775,7 +834,7 @@ def _spawn_daemon_process(
     interval: int,
 ) -> object:
     _sync_daemon_module()
-    return _DAEMON_ORIGINALS["_spawn_daemon_process"](
+    return _ORIGINAL_SPAWN_DAEMON_PROCESS(
         config_path=config_path,
         debug=debug,
         search_api_key=search_api_key,
@@ -792,7 +851,7 @@ async def _wait_for_daemon_start(
     poll_interval_seconds: float = 0.1,
 ) -> dict[str, object]:
     _sync_daemon_module()
-    return await _DAEMON_ORIGINALS["_wait_for_daemon_start"](
+    return await _ORIGINAL_WAIT_FOR_DAEMON_START(
         config,
         expected_pid=expected_pid,
         process=process,
@@ -809,7 +868,7 @@ async def _wait_for_daemon_stop(
     poll_interval_seconds: float = 0.1,
 ) -> dict[str, object]:
     _sync_daemon_module()
-    return await _DAEMON_ORIGINALS["_wait_for_daemon_stop"](
+    return await _ORIGINAL_WAIT_FOR_DAEMON_STOP(
         store,
         process_id=process_id,
         timeout_seconds=timeout_seconds,
@@ -818,26 +877,26 @@ async def _wait_for_daemon_stop(
 
 
 def _render_recent_run_summary(run_record: dict[str, object] | None) -> str:
-    return _DAEMON_ORIGINALS["_render_recent_run_summary"](run_record)
+    return _ORIGINAL_RENDER_RECENT_RUN_SUMMARY(run_record)
 
 
 def _render_recent_tick_summary(daemon_state: dict[str, object]) -> str:
-    return _DAEMON_ORIGINALS["_render_recent_tick_summary"](daemon_state)
+    return _ORIGINAL_RENDER_RECENT_TICK_SUMMARY(daemon_state)
 
 
 def _daemon_interval_metadata(config: ScoutConfig, *, interval: int) -> tuple[int, str]:
     _sync_daemon_module()
-    return _DAEMON_ORIGINALS["_daemon_interval_metadata"](config, interval=interval)
+    return _ORIGINAL_DAEMON_INTERVAL_METADATA(config, interval=interval)
 
 
 def _daemon_start_conflict_message(daemon_state: dict[str, object]) -> str:
-    return _DAEMON_ORIGINALS["_daemon_start_conflict_message"](daemon_state)
+    return _ORIGINAL_DAEMON_START_CONFLICT_MESSAGE(daemon_state)
 
 
 def _daemon_start_claim_is_stale(
     daemon_state: dict[str, object], *, stale_after_seconds: float = 10.0
 ) -> bool:
-    return _DAEMON_ORIGINALS["_daemon_start_claim_is_stale"](
+    return _ORIGINAL_DAEMON_START_CLAIM_IS_STALE(
         daemon_state,
         stale_after_seconds=stale_after_seconds,
     )
@@ -845,7 +904,7 @@ def _daemon_start_claim_is_stale(
 
 async def _clear_failed_daemon_start(config: ScoutConfig, *, expected_pid: int | None) -> None:
     _sync_daemon_module()
-    await _DAEMON_ORIGINALS["_clear_failed_daemon_start"](config, expected_pid=expected_pid)
+    await _ORIGINAL_CLEAR_FAILED_DAEMON_START(config, expected_pid=expected_pid)
 
 
 async def _daemon_start(
@@ -858,7 +917,7 @@ async def _daemon_start(
     interval: int,
 ) -> None:
     _sync_daemon_module()
-    await _DAEMON_ORIGINALS["_daemon_start"](
+    await _ORIGINAL_DAEMON_START(
         config,
         config_path=config_path,
         profile_name=profile_name,
@@ -870,17 +929,17 @@ async def _daemon_start(
 
 async def _daemon_stop(config: ScoutConfig) -> None:
     _sync_daemon_module()
-    await _DAEMON_ORIGINALS["_daemon_stop"](config)
+    await _ORIGINAL_DAEMON_STOP(config)
 
 
 async def _daemon_status(config: ScoutConfig) -> None:
     _sync_daemon_module()
-    await _DAEMON_ORIGINALS["_daemon_status"](config)
+    await _ORIGINAL_DAEMON_STATUS(config)
 
 
 def _install_daemon_signal_handlers(stop_event: asyncio.Event) -> None:
     _sync_daemon_module()
-    _DAEMON_ORIGINALS["_install_daemon_signal_handlers"](stop_event)
+    _ORIGINAL_INSTALL_DAEMON_SIGNAL_HANDLERS(stop_event)
 
 
 async def _daemon_run_internal(
@@ -892,7 +951,7 @@ async def _daemon_run_internal(
     interval: int,
 ) -> None:
     _sync_daemon_module()
-    await _DAEMON_ORIGINALS["_daemon_run_internal"](
+    await _ORIGINAL_DAEMON_RUN_INTERNAL(
         config,
         config_path=config_path,
         profile_name=profile_name,
@@ -2912,7 +2971,7 @@ def _spawn_worker_process(
     search_api_key: str,
     interval: int,
     lease_seconds: int,
-) -> object:
+) -> subprocess.Popen[bytes]:
     """Launch the Atlas worker loop as a detached process."""
     command = [sys.executable, "-m", "atlas_scout.cli", "--config", str(config_path)]
     if debug:

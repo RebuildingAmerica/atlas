@@ -3,11 +3,18 @@
 from __future__ import annotations
 
 from html.parser import HTMLParser
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Protocol
 from urllib.parse import urljoin, urlparse
 
 if TYPE_CHECKING:
     from atlas_shared import PageContent
+
+
+class PageFetcher(Protocol):
+    """Fetcher surface required by the link crawler."""
+
+    async def fetch(self, url: str) -> PageContent | None:
+        """Fetch a page or return None when it cannot be read."""
 
 
 class _LinkExtractor(HTMLParser):
@@ -58,7 +65,7 @@ class LinkCrawler:
 
     def __init__(
         self,
-        fetcher: object,
+        fetcher: PageFetcher,
         max_depth: int = 2,
         max_pages: int = 20,
         same_domain: bool = True,
@@ -84,7 +91,7 @@ class LinkCrawler:
                 continue
             visited.add(url)
 
-            page = await self._fetcher.fetch(url)  # type: ignore[union-attr]
+            page = await self._fetcher.fetch(url)
             if page is None:
                 continue
             results.append(page)
