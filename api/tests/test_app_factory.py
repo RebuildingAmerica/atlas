@@ -105,27 +105,11 @@ class TestConditionalRoutes:
         route_paths = {getattr(r, "path", None) for r in app.routes}
         assert "/openapi.json" not in route_paths
 
-    def test_docs_routes_registered_when_enabled(self) -> None:
-        """When enable_api_docs_ui is True, only Scalar docs should be registered."""
+    def test_docs_routes_missing(self) -> None:
+        """The API server should not host the human docs UI."""
         settings = Settings(
             database_url="sqlite:///tmp/test.db",
             deploy_mode="local",
-            enable_api_docs_ui=True,
-        )
-
-        with patch("atlas.main.get_settings", return_value=settings):
-            app = create_app()
-
-        route_paths = {getattr(r, "path", None) for r in app.routes}
-        assert "/docs" in route_paths
-        assert "/redoc" not in route_paths
-
-    def test_docs_routes_missing_when_disabled(self) -> None:
-        """When enable_api_docs_ui is False, /docs and /redoc should not be registered."""
-        settings = Settings(
-            database_url="sqlite:///tmp/test.db",
-            deploy_mode="local",
-            enable_api_docs_ui=False,
         )
 
         with patch("atlas.main.get_settings", return_value=settings):
@@ -137,19 +121,13 @@ class TestConditionalRoutes:
 
 
 class TestDocsEndpoints:
-    """Tests for the actual docs endpoints when enabled."""
+    """Tests for API-owned machine-readable docs endpoints."""
 
     @pytest.mark.asyncio
-    async def test_scalar_docs_returns_html(self, test_client: object) -> None:
-        """The /docs endpoint should return the Scalar API reference."""
+    async def test_api_docs_route_is_not_served(self, test_client: object) -> None:
+        """The human API reference lives in Mintlify, not on the API server."""
         response = await test_client.get("/docs")
-        assert response.status_code == HTTPStatus.OK
-        assert "text/html" in response.headers["content-type"]
-        assert "Scalar.createApiReference" in response.text
-        assert '"showOperationId": true' in response.text
-        assert '"persistAuth": true' in response.text
-        assert "swagger-ui" not in response.text.lower()
-        assert "redoc" not in response.text.lower()
+        assert response.status_code == HTTPStatus.NOT_FOUND
 
     @pytest.mark.asyncio
     async def test_redoc_route_is_removed(self, test_client: object) -> None:
@@ -185,70 +163,6 @@ class TestProductionCorsGuard:
             pytest.raises(RuntimeError, match="CORS_ORIGINS"),
         ):
             create_app()
-
-
-class TestMcpMount:
-    """The public MCP mount accepts the documented path without redirects."""
-
-    @pytest.mark.asyncio
-    async def test_exact_mcp_mount_path_does_not_redirect(self, db_url: str) -> None:
-        """Clients configured with `/mcp` should receive the auth challenge directly."""
-        settings = Settings(
-            database_url=db_url,
-            auth_jwt_issuer="https://atlas.test",
-            auth_jwt_audience=["https://atlas.test/mcp"],
-            deploy_mode="production",
-        )
-
-        with (
-            patch("atlas.main.get_settings", return_value=settings),
-            patch("atlas.platform.mcp.auth_middleware.get_settings", return_value=settings),
-        ):
-            app = create_app()
-            transport = httpx.ASGITransport(app=app)
-            async with httpx.AsyncClient(
-                transport=transport,
-                base_url="https://atlas.test",
-                follow_redirects=False,
-            ) as client:
-                response = await client.post("/mcp", json={})
-
-        assert response.status_code == HTTPStatus.UNAUTHORIZED
-        assert "location" not in response.headers
-        assert response.headers["www-authenticate"].startswith("Bearer ")
-
-    @pytest.mark.asyncio
-    async def test_exact_mcp_mount_path_preserves_noncanonical_raw_path(self) -> None:
-        """Proxy-provided raw paths should not be guessed or rebuilt."""
-        received_scopes: list[dict[str, object]] = []
-        sent_messages: list[dict[str, object]] = []
-
-        async def inner_app(scope: dict[str, object], _receive: object, send: object) -> None:
-            received_scopes.append(scope)
-            await send({"type": "http.response.start", "status": HTTPStatus.NO_CONTENT})
-            await send({"type": "http.response.body", "body": b""})
-
-        middleware = McpMountPathAliasMiddleware(inner_app)
-        scope = {
-            "type": "http",
-            "method": "POST",
-            "path": "/mcp",
-            "raw_path": b"/edge/mcp",
-            "headers": [],
-        }
-
-        async def receive() -> dict[str, object]:
-            return {"type": "http.request", "body": b"", "more_body": False}
-
-        async def send(message: dict[str, object]) -> None:
-            sent_messages.append(message)
-
-        await middleware(scope, receive, send)
-
-        assert received_scopes[0]["path"] == "/mcp/"
-        assert received_scopes[0]["raw_path"] == b"/edge/mcp"
-        assert scope["path"] == "/mcp"
-        assert sent_messages[0]["status"] == HTTPStatus.NO_CONTENT
 
 
 class TestOAuthProtectedResourceMetadata:
@@ -309,6 +223,70 @@ class TestOAuthProtectedResourceMetadata:
         body = response.json()
         assert "jwks_uri" not in body
         assert body["authorization_servers"] == []
+
+
+class TestMcpMount:
+    """The public MCP mount accepts the documented path without redirects."""
+
+    @pytest.mark.asyncio
+    async def test_exact_mcp_mount_path_does_not_redirect(self, db_url: str) -> None:
+        """Clients configured with `/mcp` should receive the auth challenge directly."""
+        settings = Settings(
+            database_url=db_url,
+            auth_jwt_issuer="https://atlas.test",
+            auth_jwt_audience=["https://atlas.test/mcp"],
+            deploy_mode="local",
+        )
+
+        with (
+            patch("atlas.main.get_settings", return_value=settings),
+            patch("atlas.platform.mcp.auth_middleware.get_settings", return_value=settings),
+        ):
+            app = create_app()
+            transport = httpx.ASGITransport(app=app)
+            async with httpx.AsyncClient(
+                transport=transport,
+                base_url="https://atlas.test",
+                follow_redirects=False,
+            ) as client:
+                response = await client.post("/mcp", json={})
+
+        assert response.status_code == HTTPStatus.UNAUTHORIZED
+        assert "location" not in response.headers
+        assert response.headers["www-authenticate"].startswith("Bearer ")
+
+    @pytest.mark.asyncio
+    async def test_exact_mcp_mount_path_preserves_noncanonical_raw_path(self) -> None:
+        """Proxy-provided raw paths should not be guessed or rebuilt."""
+        received_scopes: list[dict[str, object]] = []
+        sent_messages: list[dict[str, object]] = []
+
+        async def inner_app(scope: dict[str, object], _receive: object, send: object) -> None:
+            received_scopes.append(scope)
+            await send({"type": "http.response.start", "status": HTTPStatus.NO_CONTENT})
+            await send({"type": "http.response.body", "body": b""})
+
+        middleware = McpMountPathAliasMiddleware(inner_app)
+        scope = {
+            "type": "http",
+            "method": "POST",
+            "path": "/mcp",
+            "raw_path": b"/edge/mcp",
+            "headers": [],
+        }
+
+        async def receive() -> dict[str, object]:
+            return {"type": "http.request", "body": b"", "more_body": False}
+
+        async def send(message: dict[str, object]) -> None:
+            sent_messages.append(message)
+
+        await middleware(scope, receive, send)
+
+        assert received_scopes[0]["path"] == "/mcp/"
+        assert received_scopes[0]["raw_path"] == b"/edge/mcp"
+        assert scope["path"] == "/mcp"
+        assert sent_messages[0]["status"] == HTTPStatus.NO_CONTENT
 
 
 class TestLifespanWorker:

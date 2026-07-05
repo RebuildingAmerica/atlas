@@ -27,6 +27,7 @@
     "test:e2e:headed": "pnpm run test:acceptance:headed",
     "test:acceptance": "playwright test",
     "test:acceptance:headed": "playwright test --headed",
+    "test:hosted-smoke": "playwright test --config playwright.hosted.config.ts",
     "test:watch": "vitest --watch",
     "test:coverage": "vitest run --coverage",
     "lint": "eslint src tests --max-warnings 0",

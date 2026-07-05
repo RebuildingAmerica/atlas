@@ -66,6 +66,7 @@ export function persistCloudflareToken(token: string): string {
 
 export async function acquireCloudflareToken(opts: {
   envVar?: string;
+  permissionsHint?: string;
   zoneHint?: string;
 }): Promise<AcquiredCloudflareToken> {
   const envName = opts.envVar ?? "CLOUDFLARE_API_TOKEN";
@@ -83,7 +84,7 @@ export async function acquireCloudflareToken(opts: {
 
   logSubline(
     pc.dim(
-      `Create one at https://dash.cloudflare.com/profile/api-tokens (template "Edit zone DNS"${opts.zoneHint ? `, restricted to ${opts.zoneHint}` : ""}).`,
+      `Create one at https://dash.cloudflare.com/profile/api-tokens (${opts.permissionsHint ?? 'template "Edit zone DNS"'}${opts.zoneHint ? `, restricted to ${opts.zoneHint}` : ""}).`,
     ),
   );
   const token = (await promptOrExit(

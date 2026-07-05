@@ -5,16 +5,20 @@ services:
       dockerfile: api/Dockerfile
     restart: unless-stopped
     environment:
+      DATABASE_BACKEND: ${DATABASE_BACKEND}
       DATABASE_URL: ${DATABASE_URL}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
       SEARCH_API_KEY: ${SEARCH_API_KEY}
       CORS_ORIGINS: ${CORS_ORIGINS}
       LOG_LEVEL: ${LOG_LEVEL}
       ENVIRONMENT: ${ENVIRONMENT}
+      ATLAS_DEPLOY_MODE: ${ATLAS_DEPLOY_MODE}
       ENABLE_OPENAPI_SPEC: ${ENABLE_OPENAPI_SPEC}
-      ENABLE_API_DOCS_UI: ${ENABLE_API_DOCS_UI}
       ATLAS_AUTH_INTERNAL_SECRET: ${ATLAS_AUTH_INTERNAL_SECRET}
       ATLAS_AUTH_API_KEY_INTROSPECTION_URL: http://atlas-web:3000/api/auth/internal/api-key
+      ATLAS_AUTH_MEMBERSHIP_URL: http://atlas-web:3000
+      ATLAS_PUBLIC_URL: ${ATLAS_PUBLIC_URL}
+      ATLAS_API_AUDIENCE: ${ATLAS_API_AUDIENCE}
     healthcheck:
       test:
         [
@@ -42,6 +46,7 @@ services:
       ATLAS_AUTH_BASE_PATH: /api/auth
       ATLAS_AUTH_DB_PATH: /app/data/auth/atlas-auth.sqlite
       ATLAS_AUTH_INTERNAL_SECRET: ${ATLAS_AUTH_INTERNAL_SECRET}
+      ATLAS_API_AUDIENCE: ${ATLAS_API_AUDIENCE}
       ATLAS_DEPLOY_MODE: ${ATLAS_DEPLOY_MODE}
       ATLAS_EMAIL_FROM: ${ATLAS_EMAIL_FROM}
       ATLAS_EMAIL_PROVIDER: ${ATLAS_EMAIL_PROVIDER}
@@ -49,6 +54,7 @@ services:
       ATLAS_EMAIL_CAPTURE_URL: ${ATLAS_EMAIL_CAPTURE_URL}
       ATLAS_PUBLIC_URL: ${ATLAS_PUBLIC_URL}
       ATLAS_DOCS_URL: ${ATLAS_DOCS_URL}
+      ATLAS_SERVER_API_PROXY_TARGET: http://atlas-api:8000
     restart: unless-stopped
     volumes:
       - atlas-data:/app/data

@@ -45,7 +45,6 @@ import { Route as PublicPricingRouteImport } from './routes/_public/pricing'
 import { Route as PublicPostLogoutRouteImport } from './routes/_public/post-logout'
 import { Route as PublicMapRouteImport } from './routes/_public/map'
 import { Route as PublicBrowseRouteImport } from './routes/_public/browse'
-import { Route as PublicApiReferenceRouteImport } from './routes/_public/api-reference'
 import { Route as AuthSignUpRouteImport } from './routes/_auth/sign-up'
 import { Route as AuthSignInRouteImport } from './routes/_auth/sign-in'
 import { Route as AuthDeviceRouteImport } from './routes/_auth/device'
@@ -269,11 +268,6 @@ const PublicMapRoute = PublicMapRouteImport.update({
 const PublicBrowseRoute = PublicBrowseRouteImport.update({
   id: '/browse',
   path: '/browse',
-  getParentRoute: () => PublicRoute,
-} as any)
-const PublicApiReferenceRoute = PublicApiReferenceRouteImport.update({
-  id: '/api-reference',
-  path: '/api-reference',
   getParentRoute: () => PublicRoute,
 } as any)
 const AuthSignUpRoute = AuthSignUpRouteImport.update({
@@ -543,7 +537,6 @@ export interface FileRoutesByFullPath {
   '/device': typeof AuthDeviceRouteWithChildren
   '/sign-in': typeof AuthSignInRoute
   '/sign-up': typeof AuthSignUpRoute
-  '/api-reference': typeof PublicApiReferenceRoute
   '/browse': typeof PublicBrowseRoute
   '/map': typeof PublicMapRoute
   '/post-logout': typeof PublicPostLogoutRoute
@@ -624,7 +617,6 @@ export interface FileRoutesByTo {
   '/account-setup': typeof AuthAccountSetupRoute
   '/sign-in': typeof AuthSignInRoute
   '/sign-up': typeof AuthSignUpRoute
-  '/api-reference': typeof PublicApiReferenceRoute
   '/browse': typeof PublicBrowseRoute
   '/map': typeof PublicMapRoute
   '/post-logout': typeof PublicPostLogoutRoute
@@ -706,7 +698,6 @@ export interface FileRoutesById {
   '/_auth/device': typeof AuthDeviceRouteWithChildren
   '/_auth/sign-in': typeof AuthSignInRoute
   '/_auth/sign-up': typeof AuthSignUpRoute
-  '/_public/api-reference': typeof PublicApiReferenceRoute
   '/_public/browse': typeof PublicBrowseRoute
   '/_public/map': typeof PublicMapRoute
   '/_public/post-logout': typeof PublicPostLogoutRoute
@@ -791,7 +782,6 @@ export interface FileRouteTypes {
     | '/device'
     | '/sign-in'
     | '/sign-up'
-    | '/api-reference'
     | '/browse'
     | '/map'
     | '/post-logout'
@@ -872,7 +862,6 @@ export interface FileRouteTypes {
     | '/account-setup'
     | '/sign-in'
     | '/sign-up'
-    | '/api-reference'
     | '/browse'
     | '/map'
     | '/post-logout'
@@ -953,7 +942,6 @@ export interface FileRouteTypes {
     | '/_auth/device'
     | '/_auth/sign-in'
     | '/_auth/sign-up'
-    | '/_public/api-reference'
     | '/_public/browse'
     | '/_public/map'
     | '/_public/post-logout'
@@ -1304,13 +1292,6 @@ declare module '@tanstack/react-router' {
       path: '/browse'
       fullPath: '/browse'
       preLoaderRoute: typeof PublicBrowseRouteImport
-      parentRoute: typeof PublicRoute
-    }
-    '/_public/api-reference': {
-      id: '/_public/api-reference'
-      path: '/api-reference'
-      fullPath: '/api-reference'
-      preLoaderRoute: typeof PublicApiReferenceRouteImport
       parentRoute: typeof PublicRoute
     }
     '/_auth/sign-up': {
@@ -1703,7 +1684,6 @@ const PublicProfilesPeopleRouteWithChildren =
   PublicProfilesPeopleRoute._addFileChildren(PublicProfilesPeopleRouteChildren)
 
 interface PublicRouteChildren {
-  PublicApiReferenceRoute: typeof PublicApiReferenceRoute
   PublicBrowseRoute: typeof PublicBrowseRoute
   PublicMapRoute: typeof PublicMapRoute
   PublicPostLogoutRoute: typeof PublicPostLogoutRoute
@@ -1734,7 +1714,6 @@ interface PublicRouteChildren {
 }
 
 const PublicRouteChildren: PublicRouteChildren = {
-  PublicApiReferenceRoute: PublicApiReferenceRoute,
   PublicBrowseRoute: PublicBrowseRoute,
   PublicMapRoute: PublicMapRoute,
   PublicPostLogoutRoute: PublicPostLogoutRoute,

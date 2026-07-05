@@ -22,7 +22,9 @@
     "src",
     "tests",
     "scripts/**/*.ts",
+    "playwright.hosted.config.ts",
     "playwright.config.ts",
+    "vercel.ts",
     "vite.config.ts",
     "vitest.config.ts"
   ]

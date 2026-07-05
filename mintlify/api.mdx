@@ -1,0 +1,224 @@
+---
+title: "API reference"
+description: "Search Atlas REST endpoints, schemas, and request examples."
+mode: "custom"
+---
+
+<div
+  data-atlas-scalar-reference
+  data-openapi-url="openapi/atlas.openapi.json"
+>
+  <noscript>
+    <style>
+      {`
+        .atlas-api-nojs {
+          min-height: min(760px, calc(100vh - 7rem));
+          display: grid;
+          align-items: center;
+          padding: clamp(2rem, 8vw, 5.5rem);
+          border: 1px solid rgba(103, 82, 59, 0.18);
+          border-radius: 8px;
+          background:
+            linear-gradient(135deg, rgba(248, 243, 235, 0.98), rgba(238, 225, 207, 0.76)),
+            radial-gradient(circle at 12% 18%, rgba(194, 149, 106, 0.18), transparent 30%),
+            #f8f3eb;
+          color: #1f1c18;
+        }
+
+        .atlas-api-nojs__layout {
+          width: min(100%, 980px);
+          margin: 0 auto;
+          display: grid;
+          grid-template-columns: minmax(0, 1.25fr) minmax(16rem, 0.75fr);
+          gap: clamp(2rem, 6vw, 4.5rem);
+          align-items: end;
+        }
+
+        .atlas-api-nojs__eyebrow {
+          margin: 0 0 0.875rem;
+          color: #8a6848;
+          font-size: 0.78rem;
+          font-weight: 700;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+        }
+
+        .atlas-api-nojs h1 {
+          margin: 0;
+          max-width: 11ch;
+          color: #1f1c18;
+          font-size: clamp(3rem, 9vw, 6.5rem);
+          line-height: 0.92;
+          letter-spacing: 0;
+        }
+
+        .atlas-api-nojs__copy {
+          max-width: 42rem;
+          margin: 1.5rem 0 0;
+          color: #5d554c;
+          font-size: clamp(1rem, 1.8vw, 1.2rem);
+          line-height: 1.7;
+        }
+
+        .atlas-api-nojs__actions {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 0.75rem;
+          margin-top: 2rem;
+        }
+
+        .atlas-api-nojs__action {
+          display: inline-flex;
+          align-items: center;
+          min-height: 2.75rem;
+          padding: 0 1rem;
+          border: 1px solid rgba(103, 82, 59, 0.22);
+          border-radius: 8px;
+          color: #2a241f;
+          font-size: 0.95rem;
+          font-weight: 700;
+          text-decoration: none;
+          background: rgba(255, 252, 247, 0.72);
+        }
+
+        .atlas-api-nojs__action:first-child {
+          border-color: #a67b50;
+          color: #ffffff;
+          background: #a67b50;
+        }
+
+        .atlas-api-nojs__panel {
+          border-left: 1px solid rgba(103, 82, 59, 0.22);
+          padding-left: clamp(1.25rem, 4vw, 2rem);
+        }
+
+        .atlas-api-nojs__panel-title {
+          margin: 0 0 1rem;
+          color: #8a6848;
+          font-size: 0.82rem;
+          font-weight: 700;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+        }
+
+        .atlas-api-nojs__list {
+          display: grid;
+          gap: 0.875rem;
+          margin: 0;
+          padding: 0;
+          list-style: none;
+          color: #3e362f;
+          font-size: 0.95rem;
+          line-height: 1.55;
+        }
+
+        .atlas-api-nojs__list strong {
+          display: block;
+          margin-bottom: 0.15rem;
+          color: #1f1c18;
+        }
+
+        @media (max-width: 760px) {
+          .atlas-api-nojs {
+            min-height: auto;
+            padding: 2rem 1.25rem;
+          }
+
+          .atlas-api-nojs__layout {
+            grid-template-columns: 1fr;
+            gap: 2rem;
+          }
+
+          .atlas-api-nojs__panel {
+            border-left: 0;
+            border-top: 1px solid rgba(103, 82, 59, 0.22);
+            padding: 1.5rem 0 0;
+          }
+
+          .atlas-api-nojs__action {
+            width: 100%;
+            justify-content: center;
+          }
+        }
+
+        @media (prefers-color-scheme: dark) {
+          .atlas-api-nojs {
+            border-color: rgba(194, 149, 106, 0.24);
+            background:
+              linear-gradient(135deg, rgba(26, 24, 21, 0.98), rgba(43, 36, 29, 0.88)),
+              radial-gradient(circle at 12% 18%, rgba(194, 149, 106, 0.14), transparent 30%),
+              #171512;
+            color: #f8f3eb;
+          }
+
+          .atlas-api-nojs h1,
+          .atlas-api-nojs__list strong {
+            color: #fff8ee;
+          }
+
+          .atlas-api-nojs__copy,
+          .atlas-api-nojs__list {
+            color: #cfc2b1;
+          }
+
+          .atlas-api-nojs__eyebrow,
+          .atlas-api-nojs__panel-title {
+            color: #d4b896;
+          }
+
+          .atlas-api-nojs__action {
+            border-color: rgba(212, 184, 150, 0.28);
+            color: #fff8ee;
+            background: rgba(255, 248, 238, 0.06);
+          }
+
+          .atlas-api-nojs__action:first-child {
+            border-color: #c2956a;
+            color: #171512;
+            background: #d4b896;
+          }
+        }
+      `}
+    </style>
+    <section className="atlas-api-nojs" aria-labelledby="atlas-api-nojs-title">
+      <div className="atlas-api-nojs__layout">
+        <div>
+          <p className="atlas-api-nojs__eyebrow">Atlas REST API</p>
+          <h1 id="atlas-api-nojs-title">API reference</h1>
+          <p className="atlas-api-nojs__copy">
+            JavaScript is off, so the interactive endpoint browser cannot load.
+            The OpenAPI document, overview, and quickstart remain available.
+          </p>
+          <div className="atlas-api-nojs__actions" aria-label="API reference alternatives">
+            <a className="atlas-api-nojs__action" href="openapi/atlas.openapi.json">
+              Open OpenAPI JSON
+            </a>
+            <a className="atlas-api-nojs__action" href="/api/overview">
+              Read API overview
+            </a>
+            <a className="atlas-api-nojs__action" href="/api/quickstart">
+              Start quickstart
+            </a>
+          </div>
+        </div>
+        <aside className="atlas-api-nojs__panel" aria-label="Available without JavaScript">
+          <p className="atlas-api-nojs__panel-title">Available without JavaScript</p>
+          <ul className="atlas-api-nojs__list">
+            <li>
+              <strong>Endpoint contract</strong>
+              Machine-readable OpenAPI JSON for generated clients and exact schemas.
+            </li>
+            <li>
+              <strong>Conceptual guides</strong>
+              Human-readable API overview, authentication, limits, and workflow guides.
+            </li>
+            <li>
+              <strong>First request</strong>
+              A short place-first tutorial with curl and TypeScript examples.
+            </li>
+          </ul>
+        </aside>
+      </div>
+    </section>
+  </noscript>
+</div>

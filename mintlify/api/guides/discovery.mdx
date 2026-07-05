@@ -14,19 +14,19 @@ should be synced into a workspace.
 
 <Note>
   Discovery runs require authentication and plan access. See
-  [authentication](/api-reference/authentication) and [rate
-  limits](/api-reference/rate-limits).
+  [authentication](/api/authentication) and [rate
+  limits](/api/rate-limits).
 </Note>
 
 For exact request and response shapes, use the
-[generated API reference](/api-reference).
+[API reference](/api).
 
 ## Choose hosted discovery or Scout
 
 | Need                                            | Better path          |
 | ----------------------------------------------- | -------------------- |
 | Start a managed research run from Atlas         | Hosted discovery run |
-| Inspect local research artifacts before syncing | Scout CLI            |
+| Inspect local research artifacts before syncing | [Scout CLI](/scout/overview) |
 | Keep records private until reviewed             | Workspace sync       |
 | Publish public-safe records with evidence       | Review, then publish |
 
@@ -80,7 +80,30 @@ A discovery run should make the review path easier. It should not remove review.
 ## Sync Scout artifacts
 
 Scout is useful when a researcher wants local control over queries, cache,
-source review, or iterative deepening before syncing selected results.
+source review, or iterative deepening before syncing selected results. Read the
+[Scout CLI guide](/scout/overview) for installation, setup, local runs, and
+worker mode.
+
+<Note>
+  Scout may launch a headless Chromium browser through Playwright when a public
+  source looks useful but normal HTML fetching cannot read enough text. This is
+  a bounded fallback for JavaScript-rendered pages, not the primary fetch path:
+  Scout fetches ordinary HTML first, defaults to 8 browser render attempts per
+  run, and keeps browser rendering serial by default. It does not open visible
+  browser windows.
+</Note>
+
+To disable the browser fallback:
+
+```bash
+scout config set scraper.browser_fallback_enabled false
+```
+
+To inspect the active limits:
+
+```bash
+scout config show
+```
 
 The safe workflow is:
 
@@ -136,7 +159,7 @@ strong enough to use.
 <Card
   title="Workspace visibility"
   icon="lock"
-  href="/api-reference/guides/workspace"
+  href="/api/guides/workspace"
 >
   Keep private review state separate from public records.
 </Card>
@@ -144,7 +167,7 @@ strong enough to use.
 <Card
   title="Find source-backed actors"
   icon="users"
-  href="/api-reference/guides/entities"
+  href="/api/guides/entities"
 >
   Query and inspect the actors discovery found.
 </Card>
@@ -154,11 +177,11 @@ strong enough to use.
 </Card>
 
 <Card
-  title="Generated API reference"
-  icon="code"
-  href="/api-reference"
+  title="Scout CLI"
+  icon="terminal"
+  href="/scout/overview"
 >
-  Check exact discovery-run request and response schemas.
+  Run local discovery, inspect evidence, and sync reviewed runs.
 </Card>
 
 </CardGroup>

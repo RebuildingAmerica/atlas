@@ -27,18 +27,28 @@ describe("runtime additional branches", () => {
     expect(runtime.emailProvider).toBe("resend");
   });
 
-  it("handles invalid URLs gracefully by returning null", () => {
-    const runtime = resolveAuthRuntimeConfig(
-      {
-        ATLAS_AUTH_API_KEY_INTROSPECTION_URL: "not a url", // pragma: allowlist secret
-        ATLAS_SERVER_API_PROXY_TARGET: "also not a url",
-        ATLAS_PUBLIC_URL: "https://atlas.example.com",
-      },
-      "/workspace",
-    );
+  it("rejects a configured introspection URL that is not absolute", () => {
+    expect(() =>
+      resolveAuthRuntimeConfig(
+        {
+          ATLAS_AUTH_API_KEY_INTROSPECTION_URL: "not a url", // pragma: allowlist secret
+          ATLAS_PUBLIC_URL: "https://atlas.example.com",
+        },
+        "/workspace",
+      ),
+    ).toThrow("ATLAS_AUTH_API_KEY_INTROSPECTION_URL must be an absolute URL.");
+  });
 
-    expect(runtime.apiKeyIntrospectionUrl).toBeNull();
-    expect(runtime.apiBaseUrl).toBeNull();
+  it("rejects a configured API proxy target that is not absolute", () => {
+    expect(() =>
+      resolveAuthRuntimeConfig(
+        {
+          ATLAS_PUBLIC_URL: "https://atlas.example.com",
+          ATLAS_SERVER_API_PROXY_TARGET: "also not a url",
+        },
+        "/workspace",
+      ),
+    ).toThrow("ATLAS_SERVER_API_PROXY_TARGET must be an absolute URL.");
   });
 
   it("does not require enabled-mode settings when auth is disabled", () => {
@@ -48,6 +58,13 @@ describe("runtime additional branches", () => {
         apiAudiences: [],
         apiBaseUrl: null,
         allowedEmails: new Set(),
+        anonymousRateLimit: {
+          enabled: true,
+          readsPerMinute: 30,
+          totalPerHour: 120,
+          trustedProxyHops: 1,
+          writesPerMinute: 10,
+        },
         apiKeyIntrospectionUrl: null,
         databaseUrl: null,
         localMode: true,

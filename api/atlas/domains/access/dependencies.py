@@ -25,7 +25,8 @@ from .jwt import verify_bearer_jwt
 from .membership import verify_org_membership
 from .models.usage_events import OrgUsageEventCRUD, OrgUsageEventRecord
 from .permissions import require_permission
-from .principals import AuthenticatedActor
+from .principals import ApiKeyPrincipal, AuthenticatedActor
+from .request_state import api_key_principal_from_state
 
 logger = logging.getLogger(__name__)
 
@@ -84,6 +85,26 @@ async def _record_external_api_call_usage(
     )
 
 
+def _authenticated_actor_from_api_key_principal(principal: ApiKeyPrincipal) -> AuthenticatedActor:
+    """Build the request actor represented by a verified API key."""
+    logger.debug(
+        "Accepted API key principal for protected request",
+        extra={
+            "api_key_id": principal.key_id,
+            "permissions": principal.permissions,
+            "user_id": principal.user_id,
+        },
+    )
+    return AuthenticatedActor(
+        user_id=principal.user_id,
+        email=principal.user_email,
+        auth_type="api_key",
+        api_key_id=principal.key_id,
+        permissions=principal.permissions,
+        org_id=principal.org_id,
+    )
+
+
 async def require_actor(  # noqa: PLR0913
     request: Request,
     settings: Settings = Depends(get_settings),
@@ -107,25 +128,14 @@ async def require_actor(  # noqa: PLR0913
     if trusted_actor is not None:
         return trusted_actor
 
+    cached_api_key_principal = api_key_principal_from_state(request)
+    if cached_api_key_principal is not None:
+        return _authenticated_actor_from_api_key_principal(cached_api_key_principal)
+
     if x_api_key:
         principal = await verify_api_key(x_api_key, settings)
         if principal is not None:
-            logger.debug(
-                "Accepted API key principal for protected request",
-                extra={
-                    "api_key_id": principal.key_id,
-                    "permissions": principal.permissions,
-                    "user_id": principal.user_id,
-                },
-            )
-            return AuthenticatedActor(
-                user_id=principal.user_id,
-                email=principal.user_email,
-                auth_type="api_key",
-                api_key_id=principal.key_id,
-                permissions=principal.permissions,
-                org_id=principal.org_id,
-            )
+            return _authenticated_actor_from_api_key_principal(principal)
 
     jwt_payload = verify_bearer_jwt(
         request.headers.get("authorization"),

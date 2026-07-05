@@ -17,8 +17,12 @@ interface DeployConfig {
   imageBase: string;
   databaseUrl: string;
   anthropicApiKey: string;
+  searchApiKey: string;
   authInternalSecret: string;
+  authApiKeyIntrospectionUrl: string;
+  authMembershipUrl: string;
   publicUrl: string;
+  apiAudience: string;
   allowedEmails: string;
   resendApiKey: string;
 }
@@ -105,10 +109,15 @@ export async function runDeployPhase(
       envVars: {
         ENVIRONMENT: "production",
         LOG_LEVEL: "info",
+        DATABASE_BACKEND: "postgres",
         DATABASE_URL: config.databaseUrl,
         ANTHROPIC_API_KEY: config.anthropicApiKey,
+        SEARCH_API_KEY: config.searchApiKey,
         ATLAS_AUTH_INTERNAL_SECRET: config.authInternalSecret,
+        ATLAS_AUTH_API_KEY_INTROSPECTION_URL: config.authApiKeyIntrospectionUrl,
+        ATLAS_AUTH_MEMBERSHIP_URL: config.authMembershipUrl,
         ATLAS_PUBLIC_URL: config.publicUrl,
+        ATLAS_API_AUDIENCE: config.apiAudience,
       },
     },
     followUpItems,
@@ -266,8 +275,14 @@ function readDeployConfig(projectRoot: string): DeployConfig | undefined {
   const region = resolve("GCP_REGION") || "us-central1";
   const databaseUrl = resolve("DATABASE_URL");
   const anthropicApiKey = resolve("ANTHROPIC_API_KEY");
+  const searchApiKey = resolve("SEARCH_API_KEY");
   const authInternalSecret = resolve("ATLAS_AUTH_INTERNAL_SECRET");
+  const authApiKeyIntrospectionUrl = resolve(
+    "ATLAS_AUTH_API_KEY_INTROSPECTION_URL",
+  );
+  const authMembershipUrl = resolve("ATLAS_AUTH_MEMBERSHIP_URL");
   const publicUrl = resolve("ATLAS_PUBLIC_URL");
+  const apiAudience = resolve("ATLAS_API_AUDIENCE");
 
   if (!projectId) {
     log.error("GCP_PROJECT_ID not found in env files.");
@@ -289,6 +304,21 @@ function readDeployConfig(projectRoot: string): DeployConfig | undefined {
     return undefined;
   }
 
+  if (!authApiKeyIntrospectionUrl) {
+    log.error("ATLAS_AUTH_API_KEY_INTROSPECTION_URL not found in env files.");
+    return undefined;
+  }
+
+  if (!authMembershipUrl) {
+    log.error("ATLAS_AUTH_MEMBERSHIP_URL not found in env files.");
+    return undefined;
+  }
+
+  if (!apiAudience) {
+    log.error("ATLAS_API_AUDIENCE not found in env files.");
+    return undefined;
+  }
+
   const imageBase = `${region}-docker.pkg.dev/${projectId}/${REPO_NAME}`;
 
   return {
@@ -297,8 +327,12 @@ function readDeployConfig(projectRoot: string): DeployConfig | undefined {
     imageBase,
     databaseUrl,
     anthropicApiKey,
+    searchApiKey,
     authInternalSecret,
+    authApiKeyIntrospectionUrl,
+    authMembershipUrl,
     publicUrl: publicUrl || "https://atlas.rebuildingus.org",
+    apiAudience,
     allowedEmails: resolve("ATLAS_AUTH_ALLOWED_EMAILS"),
     resendApiKey: resolve("ATLAS_EMAIL_RESEND_API_KEY"),
   };

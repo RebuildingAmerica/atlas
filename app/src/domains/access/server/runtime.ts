@@ -6,6 +6,10 @@ import {
   DEFAULT_CIMD_RESOLVER_OPTIONS,
   type ClientIdMetadataResolverOptions,
 } from "./client-id-metadata";
+import {
+  resolveAnonymousRateLimitConfig,
+  type AnonymousRateLimitConfig,
+} from "./anonymous-rate-limit";
 
 /**
  * Runtime configuration needed to enforce Atlas auth behavior on the app
@@ -15,6 +19,7 @@ export interface AuthRuntimeConfig {
   apiAudience: string | null;
   apiAudiences: readonly string[];
   apiKeyIntrospectionUrl: string | null;
+  anonymousRateLimit: AnonymousRateLimitConfig;
   allowedEmails: Set<string>;
   apiBaseUrl: string | null;
   databaseUrl: string | null;
@@ -40,6 +45,22 @@ export interface AuthRuntimeConfig {
  */
 function trimTrailingSlash(value: string): string {
   return value.replace(/\/+$/, "");
+}
+
+function parseAbsoluteUrl(value: string, label: string): URL {
+  try {
+    return new URL(value);
+  } catch {
+    throw new Error(`${label} must be an absolute URL.`);
+  }
+}
+
+function isLoopbackHostname(hostname: string): boolean {
+  return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
+}
+
+function buildMcpResourceUrl(publicBaseUrl: string): string {
+  return new URL("/mcp", publicBaseUrl).toString().replace(/\/$/, "");
 }
 
 /**
@@ -136,11 +157,7 @@ function resolveApiKeyIntrospectionUrl(env: NodeJS.ProcessEnv): string | null {
     return null;
   }
 
-  try {
-    return new URL(configuredUrl).toString();
-  } catch {
-    return null;
-  }
+  return parseAbsoluteUrl(configuredUrl, "ATLAS_AUTH_API_KEY_INTROSPECTION_URL").toString();
 }
 
 /**
@@ -155,11 +172,9 @@ function resolveApiBaseUrl(env: NodeJS.ProcessEnv): string | null {
     return null;
   }
 
-  try {
-    return trimTrailingSlash(new URL(configuredUrl).toString());
-  } catch {
-    return null;
-  }
+  return trimTrailingSlash(
+    parseAbsoluteUrl(configuredUrl, "ATLAS_SERVER_API_PROXY_TARGET").toString(),
+  );
 }
 
 /**
@@ -172,7 +187,8 @@ export function resolveAuthRuntimeConfig(env: NodeJS.ProcessEnv, cwd: string): A
   }
 
   const publicBaseUrl = trimTrailingSlash(configuredPublicUrl);
-  const publicDomain = new URL(publicBaseUrl).hostname;
+  const publicUrl = parseAbsoluteUrl(publicBaseUrl, "ATLAS_PUBLIC_URL");
+  const publicDomain = publicUrl.hostname;
   const localMode = env.ATLAS_DEPLOY_MODE === "local";
   const emailProvider = resolveEmailProvider(env);
 
@@ -184,13 +200,14 @@ export function resolveAuthRuntimeConfig(env: NodeJS.ProcessEnv, cwd: string): A
     apiAudiences,
     apiBaseUrl: resolveApiBaseUrl(env),
     apiKeyIntrospectionUrl: resolveApiKeyIntrospectionUrl(env),
+    anonymousRateLimit: resolveAnonymousRateLimitConfig(env),
     allowedEmails: normalizeEmailList(env.ATLAS_AUTH_ALLOWED_EMAILS),
     databaseUrl,
     localMode,
     openRegistration: env.ATLAS_AUTH_OPEN_REGISTRATION !== "false",
     captureUrl: env.ATLAS_EMAIL_CAPTURE_URL?.trim() || null,
     dbPath: env.ATLAS_AUTH_DB_PATH?.trim() || path.join(cwd, "data", "auth", "atlas-auth.sqlite"),
-    emailFrom: env.ATLAS_EMAIL_FROM?.trim() || `Atlas <noreply@${publicDomain}>`,
+    emailFrom: env.ATLAS_EMAIL_FROM?.trim() || `Atlas <hello@${publicDomain}>`,
     emailProvider,
     internalSecret: env.ATLAS_AUTH_INTERNAL_SECRET?.trim() || "",
     passkeyRpId: env.ATLAS_PASSKEY_RP_ID?.trim() || null,
@@ -247,6 +264,22 @@ export function validateAuthRuntimeConfig(runtime: AuthRuntimeConfig): void {
   if (!runtime.apiKeyIntrospectionUrl) {
     throw new Error(
       "ATLAS_AUTH_API_KEY_INTROSPECTION_URL is required when ATLAS_DEPLOY_MODE is not local.",
+    );
+  }
+
+  if (!runtime.apiAudience) {
+    throw new Error("ATLAS_API_AUDIENCE is required when ATLAS_DEPLOY_MODE is not local.");
+  }
+
+  const publicUrl = parseAbsoluteUrl(runtime.publicBaseUrl, "ATLAS_PUBLIC_URL");
+  if (publicUrl.protocol !== "https:" && !isLoopbackHostname(publicUrl.hostname)) {
+    throw new Error("ATLAS_PUBLIC_URL must use https when ATLAS_DEPLOY_MODE is not local.");
+  }
+
+  const expectedMcpAudience = buildMcpResourceUrl(runtime.publicBaseUrl);
+  if (runtime.apiAudience !== expectedMcpAudience) {
+    throw new Error(
+      `ATLAS_API_AUDIENCE must put the canonical MCP resource first: ${expectedMcpAudience}`,
     );
   }
 

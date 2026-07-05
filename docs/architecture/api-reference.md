@@ -18,11 +18,13 @@ https://api.atlas.localhost/api/v1
 
 Currently no authentication. All endpoints are public.
 
-**Future:** Admin endpoints (`POST /discovery`, etc.) will require authentication. TBD.
+**Future:** Admin endpoints (`POST /discovery`, etc.) will require
+authentication. TBD.
 
 ## Response Format
 
-All responses are JSON. Successful responses return the requested data. Errors return a structured error object.
+All responses are JSON. Successful responses return the requested data. Errors
+return a structured error object.
 
 **Success (2xx):**
 
@@ -427,10 +429,12 @@ Common error types returned in error responses:
 When the API is running, visit:
 
 ```
-https://atlas.localhost/api-reference
+https://atlas.localhost/docs/api
 ```
 
-This opens the Scalar API reference with the generated endpoint list, request/response schemas, and request examples. The reference is powered by the machine-readable OpenAPI document at `https://api.atlas.localhost/openapi.json`.
+This opens the Scalar API reference with the generated endpoint list,
+request/response schemas, and request examples. The reference is powered by the
+machine-readable OpenAPI document at `https://api.atlas.localhost/openapi.json`.
 
 ---
 
@@ -447,7 +451,9 @@ This opens the Scalar API reference with the generated endpoint list, request/re
 | `GET /taxonomy/issue-areas`        | Working | Returns all issue areas.                                                |
 | `GET /taxonomy/issue-areas/{slug}` | Working | Returns issue area details.                                             |
 
-**Key limitation:** `POST /discovery` doesn't actually run the pipeline. It creates a DiscoveryRun record but doesn't execute Steps 1-6. Status stays "pending" forever.
+**Key limitation:** `POST /discovery` doesn't actually run the pipeline. It
+creates a DiscoveryRun record but doesn't execute Steps 1-6. Status stays
+"pending" forever.
 
 ---
 
@@ -463,7 +469,8 @@ All JSON field names use `snake_case`:
 }
 ```
 
-This differs from TypeScript (camelCase) and Python (snake_case). The API client handles conversion automatically.
+This differs from TypeScript (camelCase) and Python (snake_case). The API client
+handles conversion automatically.
 
 ---
 
@@ -471,7 +478,8 @@ This differs from TypeScript (camelCase) and Python (snake_case). The API client
 
 API is currently `v1` (in the base URL: `/api/v1`).
 
-If we make breaking changes, we'll create `/api/v2` while maintaining `/api/v1` for backwards compatibility.
+If we make breaking changes, we'll create `/api/v2` while maintaining `/api/v1`
+for backwards compatibility.
 
 ---
 

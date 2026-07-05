@@ -30,7 +30,8 @@ cd atlas
 cp .env.example .env
 ```
 
-This creates a local `.env` file with default configuration. You can edit it if needed, but defaults work for local development.
+This creates a local `.env` file with default configuration. You can edit it if
+needed, but defaults work for local development.
 
 ### Step 3: Run setup
 
@@ -56,7 +57,7 @@ This starts both the api and app servers:
 
 - **API:** https://api.atlas.localhost
 - **App:** https://atlas.localhost
-- **API reference:** https://atlas.localhost/api-reference
+- **API reference:** https://atlas.localhost/docs/api
 
 You should see output like:
 
@@ -71,7 +72,8 @@ VITE v5.0.0  ready in 245 ms
 ### make setup
 
 1. Copies `.env.example` to `.env` (local configuration)
-2. Installs Python dependencies in `api/` (FastAPI, SQLite tools, testing frameworks)
+2. Installs Python dependencies in `api/` (FastAPI, SQLite tools, testing
+   frameworks)
 3. Installs Node.js dependencies in `app/` (React, TanStack Start, build tools)
 4. Initializes SQLite database with schema (creates `atlas.db`)
 
@@ -89,7 +91,7 @@ Open your browser and check:
    - Should show the Atlas homepage
    - Try navigating around
 
-2. **API reference:** https://atlas.localhost/api-reference
+2. **API reference:** https://atlas.localhost/docs/api
    - Should show the interactive Scalar reference
    - All published endpoints are listed here with schemas and request examples
 
@@ -119,7 +121,10 @@ cd ..
 
 ### "command not found: pnpm" on make setup
 
-Make sure Node.js 24.18+ in the Node 24 release line is installed, then run `npm install --global corepack@0.35.0`, `corepack enable`, and `corepack prepare pnpm@11.10.0 --activate`. Verify with `node --version` and `pnpm --version`.
+Make sure Node.js 24.18+ in the Node 24 release line is installed, then run
+`npm install --global corepack@0.35.0`, `corepack enable`, and
+`corepack prepare pnpm@11.10.0 --activate`. Verify with `node --version` and
+`pnpm --version`.
 
 ### Port 8000 or 3000 already in use
 
@@ -140,7 +145,8 @@ make db-reset
 
 ### Changes not reflecting
 
-Make sure you're running `make dev` (which enables hot-reload). If hot-reload isn't working:
+Make sure you're running `make dev` (which enables hot-reload). If hot-reload
+isn't working:
 
 1. Stop the servers (Ctrl+C)
 2. Run `make dev` again

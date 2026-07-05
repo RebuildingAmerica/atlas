@@ -1,16 +1,14 @@
-name: Deploy
+name: Deploy Staging
 
 on:
-  push:
-    branches:
-      - main
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: deploy-production
-  cancel-in-progress: false
+  group: deploy-staging
+  cancel-in-progress: true
 
 jobs:
   ci:
@@ -20,7 +18,7 @@ jobs:
   deploy:
     needs: ci
     runs-on: ubuntu-latest
-    environment: production
+    environment: staging
     timeout-minutes: 30
     permissions:
       contents: read
@@ -34,11 +32,11 @@ jobs:
       - uses: ./.github/actions/deploy-atlas-api
         id: deploy-api
         with:
-          service-name: atlas-api
-          environment-name: production
+          service-name: atlas-api-staging
+          environment-name: staging
           image-registry: ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/atlas-images
           image-tag: ${{ github.sha }}
-          cache-scope: atlas-api
+          cache-scope: atlas-api-staging
           gcp-region: ${{ secrets.GCP_REGION }}
           workload-identity-provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
           service-account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
@@ -51,8 +49,6 @@ jobs:
           auth-membership-url: ${{ secrets.ATLAS_AUTH_MEMBERSHIP_URL }}
           atlas-public-url: ${{ secrets.ATLAS_PUBLIC_URL }}
           atlas-api-audience: ${{ secrets.ATLAS_API_AUDIENCE }}
-          scheduler-job-name: atlas-discovery-scheduled
-          openstatus-api-key: ${{ secrets.OPENSTATUS_API_KEY }}
 
       - uses: ./.github/actions/setup-toolchain
         with:
@@ -68,7 +64,7 @@ jobs:
       - name: Notify Slack on failure
         if: failure()
         env:
-          ATLAS_DEPLOY_MODE: production
+          ATLAS_DEPLOY_MODE: staging
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_DEPLOY_WEBHOOK_URL }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           COMMIT: ${{ github.sha }}

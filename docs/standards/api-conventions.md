@@ -2,7 +2,8 @@
 
 [Docs](../README.md) > [Standards](./README.md) > API Conventions
 
-REST API design standards. How we structure endpoints, responses, errors, and versioning.
+REST API design standards. How we structure endpoints, responses, errors, and
+versioning.
 
 ## Base Path
 
@@ -13,23 +14,25 @@ All API endpoints are versioned and prefixed:
 ```
 
 Examples:
+
 - `/api/v1/entries`
 - `/api/v1/entries/{id}`
 - `/api/v1/discovery`
 - `/api/v1/taxonomy/issue-areas`
 
-**Future:** If we make breaking changes, we'll create `/api/v2` while maintaining `/api/v1` for backwards compatibility.
+**Future:** If we make breaking changes, we'll create `/api/v2` while
+maintaining `/api/v1` for backwards compatibility.
 
 ## HTTP Methods
 
 Follow standard REST conventions:
 
-| Method | Action | Idempotent | Response Code |
-|---|---|---|---|
-| `GET` | Fetch data | Yes | 200, 404 |
-| `POST` | Create resource | No | 201 (created), 400 |
-| `PUT` | Update resource | Yes | 200 (updated), 404, 400 |
-| `DELETE` | Delete resource | Yes | 204 (no content), 404 |
+| Method   | Action          | Idempotent | Response Code           |
+| -------- | --------------- | ---------- | ----------------------- |
+| `GET`    | Fetch data      | Yes        | 200, 404                |
+| `POST`   | Create resource | No         | 201 (created), 400      |
+| `PUT`    | Update resource | Yes        | 200 (updated), 404, 400 |
+| `DELETE` | Delete resource | Yes        | 204 (no content), 404   |
 
 ## Response Format
 
@@ -77,6 +80,7 @@ For lists:
 ```
 
 **Fields:**
+
 - `type` — Machine-readable error code (all caps)
 - `message` — Human-readable summary
 - `detail` — Additional context (optional)
@@ -112,7 +116,8 @@ Include pagination metadata:
 }
 ```
 
-**Usage:** Client can show "Showing items X-Y of Z" and "Next page" button based on `has_more`.
+**Usage:** Client can show "Showing items X-Y of Z" and "Next page" button based
+on `has_more`.
 
 ## Filtering and Search
 
@@ -127,6 +132,7 @@ GET /api/v1/entries?state=MO&active=true&page=1
 ```
 
 Standard filter params:
+
 - `q` — Full-text search query
 - `state` — 2-letter state code
 - `issue_area` — Issue area slug
@@ -155,7 +161,8 @@ All JSON field names use `snake_case`:
 }
 ```
 
-**Why:** JSON convention. Python also uses snake_case. TypeScript uses camelCase internally but converts to/from snake_case via API client.
+**Why:** JSON convention. Python also uses snake_case. TypeScript uses camelCase
+internally but converts to/from snake_case via API client.
 
 ## Timestamps
 
@@ -174,14 +181,14 @@ All timestamps are UTC. No locale-specific formatting.
 
 Standard error codes used across the API:
 
-| Type | HTTP | Meaning |
-|---|---|---|
-| `VALIDATION_ERROR` | 400 | Request validation failed |
-| `INVALID_QUERY` | 400 | Query parameters invalid |
-| `NOT_FOUND` | 404 | Resource not found |
-| `CONFLICT` | 409 | Resource already exists |
-| `INTERNAL_ERROR` | 500 | Server error |
-| `SERVICE_UNAVAILABLE` | 503 | Service temporarily down |
+| Type                  | HTTP | Meaning                   |
+| --------------------- | ---- | ------------------------- |
+| `VALIDATION_ERROR`    | 400  | Request validation failed |
+| `INVALID_QUERY`       | 400  | Query parameters invalid  |
+| `NOT_FOUND`           | 404  | Resource not found        |
+| `CONFLICT`            | 409  | Resource already exists   |
+| `INTERNAL_ERROR`      | 500  | Server error              |
+| `SERVICE_UNAVAILABLE` | 503  | Service temporarily down  |
 
 ### Error Response Example
 
@@ -199,18 +206,18 @@ Standard error codes used across the API:
 
 Use appropriate HTTP status codes:
 
-| Code | Meaning | When to use |
-|---|---|---|
-| `200` | OK | Successful GET, PUT, PATCH |
-| `201` | Created | Successful POST |
-| `204` | No Content | Successful DELETE |
-| `400` | Bad Request | Invalid input, validation error |
-| `401` | Unauthorized | Missing authentication |
-| `403` | Forbidden | Authenticated but not authorized |
-| `404` | Not Found | Resource doesn't exist |
-| `409` | Conflict | Resource already exists |
-| `500` | Internal Error | Server crashed |
-| `503` | Service Unavailable | Database down, etc. |
+| Code  | Meaning             | When to use                      |
+| ----- | ------------------- | -------------------------------- |
+| `200` | OK                  | Successful GET, PUT, PATCH       |
+| `201` | Created             | Successful POST                  |
+| `204` | No Content          | Successful DELETE                |
+| `400` | Bad Request         | Invalid input, validation error  |
+| `401` | Unauthorized        | Missing authentication           |
+| `403` | Forbidden           | Authenticated but not authorized |
+| `404` | Not Found           | Resource doesn't exist           |
+| `409` | Conflict            | Resource already exists          |
+| `500` | Internal Error      | Server crashed                   |
+| `503` | Service Unavailable | Database down, etc.              |
 
 ## Request Validation
 
@@ -229,6 +236,7 @@ Invalid requests are rejected with 400:
 ```
 
 **What gets validated:**
+
 - Required fields present
 - Types are correct
 - String lengths
@@ -330,7 +338,18 @@ Response 404:
 
 ## Rate Limiting
 
-Currently no rate limiting. May be added in future based on usage patterns.
+Unauthenticated public traffic is rate-limited aggressively to protect the
+public discovery experience from wrappers and scrapers that put unnecessary
+strain on Atlas servers. Hosted defaults are 30 anonymous read requests per
+minute, 10 anonymous write requests per minute, and 120 anonymous requests per
+hour per client. Limit responses use HTTP 429 with `Retry-After` and
+`X-RateLimit-*` headers; `X-RateLimit-Reset` is a Unix timestamp in seconds.
+Requests with `Authorization` or `X-API-Key` first pass through credential
+pre-auth buckets of 60 requests per minute and 600 requests per hour, because a
+header is not authentication until Atlas verifies it. Valid API keys, OAuth
+JWTs, browser sessions, and trusted app-to-API requests do not spend anonymous
+buckets after verification. Invalid credentials fall through to the anonymous
+buckets.
 
 ## CORS
 

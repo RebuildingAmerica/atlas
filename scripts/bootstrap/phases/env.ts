@@ -82,6 +82,26 @@ function normalizeDocsOrigin(value: string): string {
   return url.origin;
 }
 
+function normalizeHostedHttpsOrigin(value: string, label: string): string {
+  const candidate = value.trim();
+  const normalizedCandidate = /^https?:\/\//.test(candidate)
+    ? candidate
+    : `https://${candidate}`;
+
+  let url: URL;
+  try {
+    url = new URL(normalizedCandidate);
+  } catch {
+    throw new Error(`${label} must be a valid URL or hostname.`);
+  }
+
+  if (url.protocol !== "https:" || !url.hostname) {
+    throw new Error(`${label} must use https:// for hosted deployments.`);
+  }
+
+  return url.origin;
+}
+
 export async function runEnvPhase(
   projectRoot: string,
   doctorMode: boolean,
@@ -159,7 +179,7 @@ export async function runEnvPhase(
         ? password({
             message: `Paste your ${config.prompt}${config.required ? "" : " (or leave blank to skip)"}`,
             validate: (v) => {
-              if (config.required && !v.trim()) {
+              if (config.required && !(v ?? "").trim()) {
                 return `${config.prompt} is required.`;
               }
             },
@@ -167,7 +187,7 @@ export async function runEnvPhase(
         : text({
             message: `Enter your ${config.prompt}${config.required ? "" : " (or leave blank to skip)"}`,
             validate: (v) => {
-              if (config.required && !v.trim()) {
+              if (config.required && !(v ?? "").trim()) {
                 return `${config.prompt} is required.`;
               }
             },
@@ -248,8 +268,8 @@ async function ensureProductionRoutingConfig(
   const prodEnv = parseEnvFile(prodEnvPath);
   const updates = new Map<string, string>();
 
-  const publicUrl = prodEnv.get("ATLAS_PUBLIC_URL")?.trim();
-  if (!publicUrl) {
+  let resolvedPublicUrl = prodEnv.get("ATLAS_PUBLIC_URL")?.trim();
+  if (!resolvedPublicUrl) {
     note(
       "Atlas needs its public production origin so Vercel, Cloud Run, auth, and Mintlify all agree on the same site URL.",
       "Production app URL",
@@ -259,14 +279,67 @@ async function ensureProductionRoutingConfig(
         message: "Production Atlas URL",
         placeholder: "https://atlas.rebuildingus.org",
         validate: (input) => {
-          if (!input.trim()) return "The production Atlas URL is required.";
-          if (!/^https?:\/\//.test(input.trim())) {
-            return "Use an absolute URL starting with https://";
+          const value = input ?? "";
+          if (!value.trim()) return "The production Atlas URL is required.";
+          try {
+            normalizeHostedHttpsOrigin(value, "ATLAS_PUBLIC_URL");
+          } catch (error) {
+            return error instanceof Error
+              ? error.message
+              : "Enter a valid HTTPS Atlas URL.";
           }
         },
       }),
     )) as string;
-    updates.set("ATLAS_PUBLIC_URL", value.trim().replace(/\/+$/, ""));
+    resolvedPublicUrl = normalizeHostedHttpsOrigin(value, "ATLAS_PUBLIC_URL");
+    updates.set("ATLAS_PUBLIC_URL", resolvedPublicUrl);
+  }
+
+  const apiProxyTarget = prodEnv.get("ATLAS_SERVER_API_PROXY_TARGET")?.trim();
+  if (apiProxyTarget) {
+    const normalizedApiProxyTarget = normalizeHostedHttpsOrigin(
+      apiProxyTarget,
+      "ATLAS_SERVER_API_PROXY_TARGET",
+    );
+    if (normalizedApiProxyTarget !== apiProxyTarget) {
+      updates.set("ATLAS_SERVER_API_PROXY_TARGET", normalizedApiProxyTarget);
+    }
+  } else {
+    note(
+      "The Vercel app uses this HTTPS origin to proxy browser-visible API and MCP traffic to Cloud Run.",
+      "Atlas API proxy origin",
+    );
+    const value = (await promptOrExit(
+      text({
+        message: "Public Atlas API origin",
+        placeholder: "https://atlas-api.rebuildingus.org",
+        validate: (input) => {
+          const value = input ?? "";
+          if (!value.trim()) return "The public Atlas API origin is required.";
+          try {
+            normalizeHostedHttpsOrigin(value, "ATLAS_SERVER_API_PROXY_TARGET");
+          } catch (error) {
+            return error instanceof Error
+              ? error.message
+              : "Enter a valid HTTPS API origin.";
+          }
+        },
+      }),
+    )) as string;
+    updates.set(
+      "ATLAS_SERVER_API_PROXY_TARGET",
+      normalizeHostedHttpsOrigin(value, "ATLAS_SERVER_API_PROXY_TARGET"),
+    );
+  }
+
+  if (resolvedPublicUrl) {
+    const normalizedPublicUrl = normalizeHostedHttpsOrigin(
+      resolvedPublicUrl,
+      "ATLAS_PUBLIC_URL",
+    );
+    if (normalizedPublicUrl !== resolvedPublicUrl) {
+      updates.set("ATLAS_PUBLIC_URL", normalizedPublicUrl);
+    }
   }
 
   const docsUrl = prodEnv.get("ATLAS_DOCS_URL")?.trim();
@@ -285,9 +358,10 @@ async function ensureProductionRoutingConfig(
         message: "Mintlify docs origin",
         placeholder: "https://your-subdomain.mintlify.dev",
         validate: (input) => {
-          if (!input.trim()) return "The Mintlify docs origin is required.";
+          const value = input ?? "";
+          if (!value.trim()) return "The Mintlify docs origin is required.";
           try {
-            normalizeDocsOrigin(input);
+            normalizeDocsOrigin(value);
           } catch (error) {
             return error instanceof Error
               ? error.message
@@ -332,6 +406,12 @@ function buildVercelEnvVars(env: Map<string, string>): VercelVar[] {
   add("ATLAS_DEPLOY_MODE", "local", ["preview"]);
   add("ATLAS_PUBLIC_URL", get("ATLAS_PUBLIC_URL"), prod);
   add("ATLAS_DOCS_URL", get("ATLAS_DOCS_URL"), prod);
+  add(
+    "ATLAS_SERVER_API_PROXY_TARGET",
+    get("ATLAS_SERVER_API_PROXY_TARGET"),
+    prod,
+  );
+  add("ATLAS_MAP_STYLE_URL", get("ATLAS_MAP_STYLE_URL"), prod);
   add("ATLAS_API_AUDIENCE", get("ATLAS_API_AUDIENCE"), prod);
   add("ATLAS_EMAIL_PROVIDER", get("ATLAS_EMAIL_PROVIDER", "resend"), prod);
   add("ATLAS_AUTH_INTERNAL_SECRET", get("ATLAS_AUTH_INTERNAL_SECRET"), prod);

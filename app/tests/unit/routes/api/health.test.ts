@@ -19,6 +19,7 @@ describe("routes/api/health", () => {
     vi.mocked(getAuthRuntimeConfig).mockReturnValue({
       apiBaseUrl: null,
     } as ReturnType<typeof getAuthRuntimeConfig>);
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
 
     const routeModule = await import("@/routes/api/health");
     const { asRouteStub } = await import("@/../tests/helpers/router-harness");
@@ -27,6 +28,8 @@ describe("routes/api/health", () => {
     if (!handlers?.GET) throw new Error("Expected GET handler");
 
     const response = (await handlers.GET({})) as Response;
+
+    expect(fetchSpy).not.toHaveBeenCalled();
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ status: "ok" });
   });
@@ -36,7 +39,9 @@ describe("routes/api/health", () => {
     vi.mocked(getAuthRuntimeConfig).mockReturnValue({
       apiBaseUrl: "https://api.atlas.test",
     } as ReturnType<typeof getAuthRuntimeConfig>);
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("{}", { status: 200 }));
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(new Response("{}", { status: 200 }));
 
     const routeModule = await import("@/routes/api/health");
     const { asRouteStub } = await import("@/../tests/helpers/router-harness");
@@ -45,6 +50,12 @@ describe("routes/api/health", () => {
     if (!handlers?.GET) throw new Error("Expected GET handler");
 
     const response = (await handlers.GET({})) as Response;
+
+    const fetchCall = fetchSpy.mock.calls[0];
+    if (!fetchCall) throw new Error("Expected API health fetch call.");
+    const [fetchUrl, fetchInit] = fetchCall;
+    expect(fetchUrl).toEqual(new URL("/health", "https://api.atlas.test"));
+    expect(fetchInit?.signal).toBeInstanceOf(AbortSignal);
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ status: "ok" });
   });

@@ -1,0 +1,183 @@
+name: Deploy Atlas API
+description: Build, publish, and deploy the Atlas API Cloud Run service.
+
+inputs:
+  service-name:
+    description: Cloud Run service name.
+    required: true
+  environment-name:
+    description: Atlas runtime environment name.
+    required: true
+  image-registry:
+    description: Artifact Registry repository path without the image name.
+    required: true
+  image-tag:
+    description: Image tag to build and deploy.
+    required: true
+  cache-scope:
+    description: Buildx cache scope.
+    required: false
+    default: atlas-api
+  gcp-region:
+    description: GCP region for Artifact Registry and Cloud Run.
+    required: true
+  workload-identity-provider:
+    description: GCP workload identity provider.
+    required: true
+  service-account:
+    description: GCP service account used for deployment.
+    required: true
+  database-url:
+    description: Hosted database URL.
+    required: true
+  anthropic-api-key:
+    description: Anthropic API key for discovery.
+    required: true
+  search-api-key:
+    description: Search provider API key for discovery.
+    required: false
+    default: ""
+  auth-internal-secret:
+    description: Shared app/API internal auth secret.
+    required: true
+  edge-origin-secret:
+    description: Shared Cloudflare/API origin identity secret.
+    required: true
+  auth-api-key-introspection-url:
+    description: App endpoint the API calls to verify Atlas API keys.
+    required: true
+  auth-membership-url:
+    description: App origin the API calls for workspace membership checks.
+    required: true
+  atlas-public-url:
+    description: Public Atlas app origin for this environment.
+    required: true
+  atlas-api-audience:
+    description: Accepted OAuth audience values for this environment.
+    required: true
+  scheduler-job-name:
+    description: Optional Cloud Scheduler job name for autonomous discovery.
+    required: false
+    default: ""
+  openstatus-api-key:
+    description: Optional OpenStatus API key for synthetic checks.
+    required: false
+    default: ""
+
+outputs:
+  api-url:
+    description: Cloud Run URL for the deployed API service.
+    value: ${{ steps.api-url.outputs.url }}
+  revision:
+    description: Latest ready Cloud Run revision for the deployed API service.
+    value: ${{ steps.api-url.outputs.revision }}
+
+runs:
+  using: composite
+  steps:
+    - name: Authenticate to GCP
+      id: auth
+      uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+      with:
+        workload_identity_provider: ${{ inputs.workload-identity-provider }}
+        service_account: ${{ inputs.service-account }}
+        token_format: access_token
+
+    - name: Set up gcloud
+      uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
+
+    - name: Log in to Artifact Registry
+      uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
+      with:
+        registry: ${{ inputs.gcp-region }}-docker.pkg.dev
+        username: oauth2accesstoken
+        password: ${{ steps.auth.outputs.access_token }}
+
+    - name: Build, push, and attest atlas-api
+      uses: ./.github/actions/build-attest-push
+      with:
+        image: ${{ inputs.image-registry }}/atlas-api
+        tag: ${{ inputs.image-tag }}
+        context: .
+        dockerfile: api/Dockerfile
+        cache-scope: ${{ inputs.cache-scope }}
+
+    - name: Deploy ${{ inputs.service-name }}
+      uses: google-github-actions/deploy-cloudrun@2028e2d7d30a78c6910e0632e48dd561b064884d # v3.0.1
+      with:
+        service: ${{ inputs.service-name }}
+        region: ${{ inputs.gcp-region }}
+        image: ${{ inputs.image-registry }}/atlas-api:${{ inputs.image-tag }}
+        flags: |
+          --ingress=all
+          --allow-unauthenticated
+          --min-instances=0
+          --max-instances=4
+          --memory=768Mi
+          --cpu=1
+          --timeout=900
+          --concurrency=1
+          --port=8000
+        env_vars: |
+          ATLAS_DEPLOY_MODE=${{ inputs.environment-name }}
+          ENVIRONMENT=${{ inputs.environment-name }}
+          LOG_LEVEL=info
+          DATABASE_BACKEND=postgres
+          DATABASE_URL=${{ inputs.database-url }}
+          ANTHROPIC_API_KEY=${{ inputs.anthropic-api-key }}
+          SEARCH_API_KEY=${{ inputs.search-api-key }}
+          ATLAS_AUTH_INTERNAL_SECRET=${{ inputs.auth-internal-secret }}
+          ATLAS_EDGE_ORIGIN_SECRET=${{ inputs.edge-origin-secret }}
+          ATLAS_AUTH_API_KEY_INTROSPECTION_URL=${{ inputs.auth-api-key-introspection-url }}
+          ATLAS_AUTH_MEMBERSHIP_URL=${{ inputs.auth-membership-url }}
+          ATLAS_PUBLIC_URL=${{ inputs.atlas-public-url }}
+          ATLAS_API_AUDIENCE=${{ inputs.atlas-api-audience }}
+          ATLAS_ANON_RATE_LIMIT_ENABLED=true
+          ATLAS_ANON_RATE_LIMIT_READS_PER_MINUTE=30
+          ATLAS_ANON_RATE_LIMIT_WRITES_PER_MINUTE=10
+          ATLAS_ANON_RATE_LIMIT_TOTAL_PER_HOUR=120
+          ATLAS_ANON_CREDENTIAL_RATE_LIMIT_PER_MINUTE=60
+          ATLAS_ANON_CREDENTIAL_RATE_LIMIT_TOTAL_PER_HOUR=600
+          ATLAS_TRUSTED_PROXY_HOPS=1
+          ATLAS_TRUST_UNSIGNED_FORWARD_HEADERS=false
+          CORS_ORIGINS=["${{ inputs.atlas-public-url }}"]
+
+    - name: Get API service URL and revision
+      id: api-url
+      shell: bash
+      env:
+        SERVICE_NAME: ${{ inputs.service-name }}
+        GCP_REGION: ${{ inputs.gcp-region }}
+      run: node scripts/deploy/cloud-run-release.mjs describe
+
+    - name: Ensure Cloud Scheduler job for autonomous discovery
+      if: ${{ inputs.scheduler-job-name != '' }}
+      shell: bash
+      env:
+        API_URL: ${{ steps.api-url.outputs.url }}
+        ATLAS_AUTH_INTERNAL_SECRET: ${{ inputs.auth-internal-secret }}
+        GCP_REGION: ${{ inputs.gcp-region }}
+        JOB_NAME: ${{ inputs.scheduler-job-name }}
+      run: node scripts/deploy/cloud-run-release.mjs ensure-scheduler
+
+    - name: Run OpenStatus synthetics
+      if: ${{ inputs.openstatus-api-key != '' }}
+      uses: openstatushq/openstatus-github-action@adb7e3ec5e8918d11b7e73ffa74a873ce62b5f75 # v1
+      with:
+        api_key: ${{ inputs.openstatus-api-key }}
+      continue-on-error: true
+
+    - name: Write deploy summary
+      if: always()
+      shell: bash
+      env:
+        API_URL: ${{ steps.api-url.outputs.url }}
+        API_REVISION: ${{ steps.api-url.outputs.revision }}
+        IMAGE: ${{ inputs.image-registry }}/atlas-api:${{ inputs.image-tag }}
+        ATLAS_DEPLOY_MODE: ${{ inputs.environment-name }}
+        SERVICE_NAME: ${{ inputs.service-name }}
+        IMAGE_TAG: ${{ inputs.image-tag }}
+      run: node scripts/deploy/cloud-run-release.mjs summary

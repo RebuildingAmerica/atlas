@@ -44,7 +44,7 @@ describe("routes/openapi.json", () => {
       status: 200,
       headers: { "content-type": "application/json" },
     });
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(apiResponse);
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(apiResponse);
 
     const routeModule = await import("@/routes/openapi[.]json");
     const { asRouteStub } = await import("@/../tests/helpers/router-harness");
@@ -52,6 +52,12 @@ describe("routes/openapi.json", () => {
     const handlers = Route.options.server?.handlers;
     if (!handlers?.GET) throw new Error("Expected GET handler");
     const response = (await handlers.GET({})) as Response;
+
+    const fetchCall = fetchSpy.mock.calls[0];
+    if (!fetchCall) throw new Error("Expected OpenAPI fetch call.");
+    const [fetchUrl, fetchInit] = fetchCall;
+    expect(fetchUrl).toEqual(new URL("/openapi.json", "https://api.atlas.test"));
+    expect(fetchInit?.signal).toBeInstanceOf(AbortSignal);
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ openapi: "3.0.0" });
   });

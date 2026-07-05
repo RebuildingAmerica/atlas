@@ -4,29 +4,38 @@
 
 This guide walks through getting Atlas running in production.
 
-If you are looking for release workflow rather than environment setup,
-see [Release Process](./release.md).
+If you are looking for release workflow rather than environment setup, see
+[Release Process](./release.md).
 
 Atlas supports two production paths:
 
-- `Vercel + Docker`: deploy the app from `app/` to Vercel and run the API from Docker on a small VM.
-- `Docker full stack`: run the app, API, and reverse proxy together with `compose.yaml`.
+- `Managed hosted`: deploy the app from `app/` to Vercel, deploy the API to
+  Google Cloud Run, and use PostgreSQL for durable data.
+- `Docker self-hosted`: run the app, API, and reverse proxy together with
+  `compose.yaml`.
 
-If you are new to deployment, use `Vercel + Docker`. It is the simplest setup to understand and the easiest one to operate alone.
+Use `Managed hosted` for the Rebuilding America production and staging
+environments. It keeps the public app fast on Vercel, puts the API worker on
+Cloud Run, and lets GitHub Environments keep staging and production secrets
+separate. Use the Docker path only when you are operating your own host.
 
-## Recommended low-cost setup
+## Recommended hosted setup
 
-For a single operator, the simplest production topology is:
+The recommended hosted topology is:
 
 - Vercel for the app
-- one small VM for the API
-- SQLite on a persistent volume
+- Google Cloud Run for the API
+- PostgreSQL for API data
+- GitHub Environments for production and staging deploy secrets
 
 Why this is the recommended path:
 
 - Vercel handles the public app well and gives you easy rollbacks.
-- A small VM is a better fit for the API because Atlas currently uses SQLite and background-style discovery work.
-- This setup is usually cheaper and easier to debug than putting everything on one platform.
+- Cloud Run gives the API a production-grade worker surface for MCP, discovery,
+  and scheduled jobs.
+- PostgreSQL avoids tying trust-critical civic data to a single VM volume.
+- Separate GitHub Environments reduce the chance that staging points at
+  production URLs or databases.
 
 ## Before you start
 
@@ -34,19 +43,24 @@ Make sure you understand these pieces:
 
 - `app/` is the app
 - `api/` is the API
-- `.env.production` holds your production environment variables. `make setup` scaffolds it automatically and generates `ATLAS_AUTH_INTERNAL_SECRET` if it is still a placeholder.
+- `.env.production` holds your production environment variables. `make setup`
+  scaffolds it automatically and generates `ATLAS_AUTH_INTERNAL_SECRET` if it is
+  still a placeholder.
 - `.env` is the optional local Compose smoke-test environment file
-- `compose.yaml` is the canonical Docker setup for both local e2e runs and production
+- `compose.yaml` is the canonical Docker setup for both local e2e runs and
+  production
 
 Keep these roles in mind:
 
 - Vercel is for the app
-- Docker is for the API or for a full-stack VM-style deployment
-- SQLite must live on persistent storage
+- Cloud Run is for the hosted API
+- Docker is for local smoke tests and self-hosted deployments
+- PostgreSQL is the hosted production database
 
 ## Environment files
 
-`make setup` already creates `.env.production` for you. If you need to recreate it manually:
+`make setup` already creates `.env.production` for you. If you need to recreate
+it manually:
 
 ```bash
 cp .env.production.example .env.production
@@ -56,14 +70,15 @@ Then fill in the real values.
 
 ### Deployment
 
-| Variable                        | Required                                                                                  | Description                                                                                                                                                                                                                               |
-| ------------------------------- | ----------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ATLAS_DEPLOY_MODE`             | No                                                                                        | Omit in production. Set to `local` only for single-user local operation (disables auth, hides sign-in/account UI). This is the single setting that controls whether Atlas runs as a hosted multi-user service or a local standalone tool. |
-| `ATLAS_PUBLIC_URL`              | Yes                                                                                       | The public origin of the Atlas app (e.g., `https://atlas.example.com`). Compiled into the app bundle and used as the base for auth endpoints, API calls, enterprise SSO callback URLs, and OAuth issuer derivation.                       |
-| `ATLAS_API_DOCS_URL`            | Yes                                                                                       | Absolute URL for the single generated Scalar API reference for this environment, e.g. `https://api.atlas.example.com/docs`. The app `/api-reference` route redirects here so docs and app links never hard-code production.                |
-| `ATLAS_DOCS_URL`                | Yes when `/docs` should proxy to Mintlify on Vercel                                       | Absolute origin of the deployed Mintlify site (for example `https://your-subdomain.mintlify.dev`). Vercel uses this to rewrite `https://atlas.example.com/docs` to the hosted Mintlify docs while keeping the Atlas URL in the browser.   |
-| `ATLAS_SERVER_API_PROXY_TARGET` | Yes when the app service must forward `/api/*` traffic to a separate Atlas API deployment | Absolute Atlas API origin used by the app server proxy routes. In Cloud Run, this can be the internal `atlas-api` service URL. In Vercel, set it to the public Atlas API origin that should serve proxied `/api/*` requests.              |
-| `PORT`                          | Platform                                                                                  | The container listen port. On managed platforms like Google Cloud Run, bind to the platform-provided port. Do not expose custom HTTP/HTTPS port config.                                                                                   |
+| Variable                        | Required                                                                                  | Description                                                                                                                                                                                                                                                                                                       |
+| ------------------------------- | ----------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ATLAS_DEPLOY_MODE`             | Yes for self-hosted or CI-managed deployments                                             | Set to `production` for production and `staging` for staging. Vercel production builds also validate through `VERCEL_ENV=production`, but setting this explicitly keeps every hosted surface on the same contract. Set to `local` only for single-user local operation (disables auth, hides sign-in/account UI). |
+| `ATLAS_PUBLIC_URL`              | Yes                                                                                       | The public origin of the Atlas app (e.g., `https://atlas.example.com`). Compiled into the app bundle and used as the base for auth endpoints, API calls, enterprise SSO callback URLs, and OAuth issuer derivation.                                                                                               |
+| `ATLAS_API_URL`                 | Yes for hosted deploy smoke                                                               | The canonical Cloudflare-backed Atlas API origin (e.g., `https://api.atlas.example.com`). GitHub Actions uses this for hosted smoke tests so the deploy proves the edge domain, not the raw Cloud Run URL.                                                                                                        |
+| `ATLAS_DOCS_URL`                | Yes when `/docs` should proxy to Mintlify on Vercel                                       | Absolute origin of the deployed Mintlify site (for example `https://your-subdomain.mintlify.dev`). Vercel uses this to rewrite `https://atlas.example.com/docs` to the hosted Mintlify docs while keeping the Atlas URL in the browser.                                                                           |
+| `ATLAS_MAP_STYLE_URL`           | Yes for hosted app deployments                                                            | Absolute MapTiler style URL for the public map. Use a domain-restricted key before production cutover; hosted builds reject the placeholder style URL.                                                                                                                                                            |
+| `ATLAS_SERVER_API_PROXY_TARGET` | Yes when the app service must forward `/api/*` traffic to a separate Atlas API deployment | Absolute Atlas API origin used by the app server proxy routes. In Cloud Run, this can be the internal `atlas-api` service URL. In Vercel, set it to the public Atlas API origin that should serve proxied `/api/*` requests.                                                                                      |
+| `PORT`                          | Platform                                                                                  | The container listen port. On managed platforms like Google Cloud Run, bind to the platform-provided port. Do not expose custom HTTP/HTTPS port config.                                                                                                                                                           |
 
 ### Auth
 
@@ -94,26 +109,38 @@ Then fill in the real values.
 
 ### API runtime
 
-| Variable              | Required      | Description                                                                                                                                                                                                                  |
-| --------------------- | ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `DATABASE_URL`        | Yes           | SQLite database path for the API. Must point at persistent storage.                                                                                                                                                          |
-| `CORS_ORIGINS`        | Yes           | JSON array of origins allowed to call the API (e.g., `["https://atlas.example.com"]`).                                                                                                                                       |
-| `ENABLE_OPENAPI_SPEC` | No            | Set to `true` to publish `/openapi.json`.                                                                                                                                                                                    |
-| `ENABLE_API_DOCS_UI`  | No            | Set to `true` to publish the API-origin Scalar reference at `/docs`. The app `/api-reference` route redirects to this single generated reference.                                                                            |
-| `ANTHROPIC_API_KEY`   | For discovery | Required for the discovery pipeline (Claude-powered entity extraction).                                                                                                                                                      |
-| `SEARCH_API_KEY`      | For discovery | API key for the search provider used during discovery source fetching.                                                                                                                                                       |
+| Variable                                          | Required                | Description                                                                                                                                                                                                   |
+| ------------------------------------------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`                                    | Yes                     | Database URL for the API. Use PostgreSQL for hosted production and staging. Self-hosted Docker deployments may use SQLite only when the database path points at persistent storage.                           |
+| `CORS_ORIGINS`                                    | Yes                     | JSON array of origins allowed to call the API (e.g., `["https://atlas.example.com"]`).                                                                                                                        |
+| `ENABLE_OPENAPI_SPEC`                             | No                      | Set to `true` to publish `/openapi.json`.                                                                                                                                                                     |
+| `ATLAS_ANON_RATE_LIMIT_ENABLED`                   | No                      | Enable anonymous abuse limits at the app proxy and API. Defaults to `true`; keep it enabled in hosted environments.                                                                                           |
+| `ATLAS_ANON_RATE_LIMIT_READS_PER_MINUTE`          | No                      | Anonymous public read burst limit per client. Hosted default: `30`.                                                                                                                                           |
+| `ATLAS_ANON_RATE_LIMIT_WRITES_PER_MINUTE`         | No                      | Anonymous public write burst limit per client. Hosted default: `10`.                                                                                                                                          |
+| `ATLAS_ANON_RATE_LIMIT_TOTAL_PER_HOUR`            | No                      | Sustained anonymous public request limit per client. Hosted default: `120`.                                                                                                                                   |
+| `ATLAS_ANON_CREDENTIAL_RATE_LIMIT_PER_MINUTE`     | No                      | Credential-present pre-auth request burst limit per client. Hosted default: `60`. This protects API key introspection and JWT verification from forged credentials.                                           |
+| `ATLAS_ANON_CREDENTIAL_RATE_LIMIT_TOTAL_PER_HOUR` | No                      | Sustained credential-present pre-auth request limit per client. Hosted default: `600`.                                                                                                                        |
+| `ATLAS_TRUSTED_PROXY_HOPS`                        | No                      | Number of trusted proxy hops when deriving a client IP from unsigned forwarded headers. Hosted default: `1`, but hosted deploys keep unsigned forwarded headers disabled.                                     |
+| `ATLAS_TRUST_UNSIGNED_FORWARD_HEADERS`            | No                      | Whether direct API traffic may derive client identity from raw forwarded headers. Hosted default: `false`; keep it false unless a trusted ingress strips client-supplied forwarding headers before Cloud Run. |
+| `ATLAS_EDGE_ORIGIN_SECRET`                        | Yes for hosted API edge | Shared secret Cloudflare writes into `X-Atlas-Proxy-Secret` when setting the signed `X-Atlas-Client-IP` origin header. Use a long random value distinct from `ATLAS_AUTH_INTERNAL_SECRET`.                    |
+| `ANTHROPIC_API_KEY`                               | For discovery           | Required for the discovery pipeline (Claude-powered entity extraction).                                                                                                                                       |
+| `SEARCH_API_KEY`                                  | For discovery           | API key for the search provider used during discovery source fetching.                                                                                                                                        |
 
 Use explicit absolute URLs in production.
 
 For the Mintlify deployment path, treat the public surfaces like this:
 
-- `https://<your-atlas-domain>/docs` -> Vercel rewrite to the hosted Mintlify site
-- `https://<your-atlas-domain>/api-reference` -> redirect to `ATLAS_API_DOCS_URL`
-- `https://<your-api-domain>/docs` -> Scalar generated REST API reference
-- `https://<your-atlas-domain>/openapi.json` -> public machine-readable API contract
-- `/redoc` -> not served
+- `https://<your-atlas-domain>/docs` -> Vercel rewrite to the hosted Mintlify
+  site
+- `https://<your-atlas-domain>/docs/api` -> generated Scalar REST API reference
+  embedded in Mintlify
+- `https://<your-atlas-domain>/openapi.json` -> public machine-readable API
+  contract
+- API-origin `/docs` and `/redoc` -> not served
 
-Do not model public deployment around separate HTTP and HTTPS port environment variables. For managed platforms such as Google Cloud Run, the correct pattern is:
+Do not model public deployment around separate HTTP and HTTPS port environment
+variables. For managed platforms such as Google Cloud Run, the correct pattern
+is:
 
 - the platform injects `PORT`
 - the container listens on `PORT`
@@ -135,21 +162,30 @@ Create a Vercel project with these settings:
 Set these app env values in Vercel:
 
 ```env
+ATLAS_DEPLOY_MODE=production
 ATLAS_PUBLIC_URL=https://atlas.example.com
 ATLAS_DOCS_URL=https://your-subdomain.mintlify.dev
+ATLAS_MAP_STYLE_URL=https://api.maptiler.com/maps/<style-id>/style.json?key=<domain-restricted-key>
 ATLAS_SERVER_API_PROXY_TARGET=https://api.atlas.example.com
+ATLAS_API_AUDIENCE=https://atlas.example.com/mcp,https://api.atlas.example.com
 ```
 
-Atlas targets the unversioned API base at `/api`. If you provide only the origin, the app will resolve requests under `/api`.
+Atlas targets the unversioned API base at `/api`. If you provide only the
+origin, the app will resolve requests under `/api`.
 
 Mintlify’s Vercel subpath flow requires both repo config and dashboard setup:
 
 1. In Mintlify, open **Settings > Deployment > Custom Domain**
 2. Turn on **Host at `/docs`**
 3. Add your Atlas domain
-4. Set `ATLAS_DOCS_URL` in Vercel to the Mintlify deployment origin (`https://<subdomain>.mintlify.dev`)
+4. Set `ATLAS_DOCS_URL` in Vercel to the Mintlify deployment origin
+   (`https://<subdomain>.mintlify.dev`)
 
-With `ATLAS_DOCS_URL` configured, `app/vercel.ts` rewrites `/docs` and `/docs/*` to Mintlify while keeping the public Atlas URL in place. With `ATLAS_SERVER_API_PROXY_TARGET` configured, the app's server routes proxy public `/api/*` traffic and `/openapi.json` to the Atlas API deployment.
+With `ATLAS_DOCS_URL` configured, `app/vercel.ts` rewrites `/docs` and `/docs/*`
+to Mintlify while keeping the public Atlas URL in place. With
+`ATLAS_SERVER_API_PROXY_TARGET` configured, `app/vercel.ts` rewrites `/mcp`
+directly to the API origin, while the app's server routes proxy public `/api/*`
+traffic and `/openapi.json` to the Atlas API deployment.
 
 Set these auth values in Vercel as well:
 
@@ -157,46 +193,108 @@ Set these auth values in Vercel as well:
 - `ATLAS_AUTH_INTERNAL_SECRET=<same shared secret used by the API service>`
 - `ATLAS_AUTH_ALLOWED_EMAILS=<optional bootstrap allowlist for first owners>`
 - `ATLAS_EMAIL_PROVIDER=resend`
-- `ATLAS_EMAIL_FROM=Atlas <noreply@atlas-mail.example.com>`
+- `ATLAS_EMAIL_FROM=Atlas <hello@atlas-mail.example.com>`
 - `ATLAS_EMAIL_RESEND_API_KEY=<your Resend API key>`
 
 Use [Email Domain Setup](./email-domain-setup.md) before production cutover so
-platform operators verify the sender domain and publish the required DNS
-records in advance.
+platform operators verify the sender domain and publish the required DNS records
+in advance.
 
 If you are launching team workspaces with enterprise sign-in, the admin setup
 entrypoint is:
 
 - `https://<your-atlas-domain>/organization/sso`
-- `https://<your-atlas-domain>/sign-in?redirect=/organization/sso` for signed-out admins
+- `https://<your-atlas-domain>/sign-in?redirect=/organization/sso` for
+  signed-out admins
 
-Use the dedicated setup guides before asking a workspace admin to configure a
-provider:
+Use the dedicated SSO provider docs before asking a workspace admin to configure
+a provider:
 
 - [Google Workspace OIDC SSO](./google-workspace-oidc-sso.md)
 - [Google Workspace SAML SSO](./google-workspace-saml-sso.md)
 
+## GitHub Actions production deploy
+
+Pushes to `main` run `.github/workflows/deploy.yml` after CI passes. The
+workflow deploys the API service named `atlas-api`; the public app still ships
+through Vercel's GitHub integration.
+
+The deploy job uses the `production` GitHub Environment. Configure these secrets
+on that environment, not as shared repository-level secrets, so staging cannot
+accidentally inherit production URLs or databases:
+
+- `GCP_WORKLOAD_IDENTITY_PROVIDER`
+- `GCP_SERVICE_ACCOUNT`
+- `GCP_REGION`
+- `GCP_PROJECT_ID`
+- `DATABASE_URL`
+- `ANTHROPIC_API_KEY`
+- `SEARCH_API_KEY`
+- `ATLAS_AUTH_INTERNAL_SECRET`
+- `ATLAS_EDGE_ORIGIN_SECRET`
+- `ATLAS_AUTH_API_KEY_INTROSPECTION_URL`
+- `ATLAS_AUTH_MEMBERSHIP_URL`
+- `ATLAS_PUBLIC_URL`
+- `ATLAS_API_URL`
+- `ATLAS_API_AUDIENCE`
+- `OPENSTATUS_API_KEY` when synthetics should run
+- `SLACK_DEPLOY_WEBHOOK_URL` when failed deploys should notify Slack
+
+Set `ATLAS_API_AUDIENCE` to the production resource URL list the API accepts.
+Put the MCP resource first, for example:
+
+```env
+ATLAS_DEPLOY_MODE=production
+ATLAS_API_AUDIENCE=https://atlas.example.com/mcp,https://api.atlas.example.com
+ATLAS_AUTH_API_KEY_INTROSPECTION_URL=https://atlas.example.com/api/auth/internal/api-key
+ATLAS_AUTH_MEMBERSHIP_URL=https://atlas.example.com
+ATLAS_SERVER_API_PROXY_TARGET=https://api.atlas.example.com
+```
+
+The first value controls the protected-resource metadata URL Atlas publishes in
+MCP OAuth challenges. A wrong or missing value makes compliant clients discover
+the wrong authorization metadata, so the workflow and bootstrap deploy path both
+require it.
+
+Set `ATLAS_API_URL` to the canonical Cloudflare-backed API origin, not the raw
+Cloud Run service URL. The hosted smoke suite runs with
+`ATLAS_HOSTED_EXPECT_EDGE=true` in CI and fails if the API response lacks
+Cloudflare headers or if the URL ends in `.run.app`.
+
+`ATLAS_SERVER_API_PROXY_TARGET` must use `https://` in hosted deployments. A
+plain `http://` target makes `/mcp` redirect through the API domain before the
+MCP client can complete OAuth discovery.
+
+Before changing deploy workflow or hosted auth configuration, run the checks
+that parse or exercise the real deploy surfaces:
+
+```bash
+actionlint
+pnpm run compose:validate
+(cd app && pnpm vitest run tests/unit/platform/config/hosted-env.test.ts tests/unit/domains/access/server/runtime.test.ts)
+(cd api && uv run pytest tests/platform/test_production_config.py tests/platform/test_mcp_server.py -q)
+(cd app && ATLAS_HOSTED_PUBLIC_URL=https://atlas.example.com ATLAS_HOSTED_API_URL=https://api.atlas.example.com pnpm run test:hosted-smoke)
+```
+
 ### SAML maintenance
 
 These tasks live on the per-provider card under `Organization` →
-`Enterprise SSO`; operators do not need to delete and re-register a
-provider for any of them.
+`Enterprise SSO`; operators do not need to delete and re-register a provider for
+any of them.
 
-- **Certificate rotation.** When the IdP rotates its signing key, the
-  workspace admin pastes the new PEM into the per-provider
-  `Rotate signing certificate` disclosure. Atlas pushes it through
-  Better Auth's `updateSSOProvider` endpoint as a partial `samlConfig`
-  patch, so the verified domain, primary marker, and SP signing key are
-  preserved.
-- **Health check.** The `Run SAML health check` disclosure pings the
-  IdP entry point and inspects the stored certificate's expiry without
-  starting a real AuthnRequest. Useful as a smoke test before telling
-  end users to sign in.
-- **DNS verification.** Atlas auto-polls DNS silently every 30 seconds
-  for up to ten minutes after registration. `verifyDomain` performs a
-  real `dns.resolveTxt` lookup; the card flips to `Domain verified` as
-  soon as the resolver sees the TXT record. Admins can click
-  `Verify domain` to force an immediate lookup.
+- **Certificate rotation.** When the IdP rotates its signing key, the workspace
+  admin pastes the new PEM into the per-provider `Rotate signing certificate`
+  disclosure. Atlas pushes it through Better Auth's `updateSSOProvider` endpoint
+  as a partial `samlConfig` patch, so the verified domain, primary marker, and
+  SP signing key are preserved.
+- **Health check.** The `Run SAML health check` disclosure pings the IdP entry
+  point and inspects the stored certificate's expiry without starting a real
+  AuthnRequest. Useful as a smoke test before telling end users to sign in.
+- **DNS verification.** Atlas auto-polls DNS silently every 30 seconds for up to
+  ten minutes after registration. `verifyDomain` performs a real
+  `dns.resolveTxt` lookup; the card flips to `Domain verified` as soon as the
+  resolver sees the TXT record. Admins can click `Verify domain` to force an
+  immediate lookup.
 
 For local or end-to-end runs, use:
 
@@ -207,9 +305,11 @@ Atlas’s auth boundary is now:
 
 - browser sessions manage operator UI access and account/API-key management
 - API keys are for direct API calls only
-- app-to-API trusted headers use the same API routes as browser traffic; the trust boundary comes from auth/session behavior, not a separate host setting
+- app-to-API trusted headers use the same API routes as browser traffic; the
+  trust boundary comes from auth/session behavior, not a separate host setting
 
-After deploying the app, visit the site and make sure it can load real data from the API.
+After deploying the app, visit the site and make sure it can load real data from
+the API.
 
 ## Docker full stack
 
@@ -242,11 +342,13 @@ Caddy sends:
 
 In this mode, keep `ATLAS_PUBLIC_URL=https://atlas.example.com`.
 
-The fixed `80:80` and `443:443` mappings in `compose.yaml` are a Docker deployment concern, not part of Atlas’s public application config.
+The fixed `80:80` and `443:443` mappings in `compose.yaml` are a Docker
+deployment concern, not part of Atlas’s public application config.
 
 ## Docker API for a Vercel app
 
-Use this path if your app is already on Vercel and you only need to run the API on your VM.
+Use this path if your app is already on Vercel and you only need to run the API
+on your VM.
 
 Start the API with:
 
@@ -258,20 +360,73 @@ docker compose --env-file .env.production -f compose.yaml up -d --build atlas-ap
 Then:
 
 1. expose the API through your host, reverse proxy, or load balancer
-2. point Vercel’s `ATLAS_PUBLIC_URL` at that public Atlas origin
+2. point Vercel's `ATLAS_SERVER_API_PROXY_TARGET` at that public API origin
 3. redeploy the app if you changed the environment variable
 
 ## Cloud Run note
 
-If you deploy Atlas containers to Google Cloud Run, prefer the platform-native model:
+If you deploy Atlas containers to Google Cloud Run, prefer the platform-native
+model:
 
 - one container per service
 - bind to `PORT`
 - let Cloud Run handle HTTPS and public ingress
 
-The Caddy-based Docker stack is for VM-style deployments and production-like local smoke testing, not a requirement for Cloud Run.
+The Caddy-based Docker stack is for VM-style deployments and production-like
+local smoke testing, not a requirement for Cloud Run.
 
-If the app is on Vercel and only the API is on Cloud Run, point Vercel's `ATLAS_SERVER_API_PROXY_TARGET` at a stable subdomain (e.g. `https://atlas-api.<your-domain>`) backed by a Cloud Run domain mapping rather than the raw `*.run.app` URL. The mapping survives service recreations; the raw URL does not, and any Vercel env that hardcodes it becomes a quiet trap waiting for the next redeploy.
+If the app is on Vercel and only the API is on Cloud Run, point Vercel's
+`ATLAS_SERVER_API_PROXY_TARGET` at a stable subdomain (e.g.
+`https://atlas-api.<your-domain>`) backed by a Cloud Run domain mapping rather
+than the raw `*.run.app` URL. The mapping survives service recreations; the raw
+URL does not, and any Vercel env that hardcodes it becomes a quiet trap waiting
+for the next redeploy.
+
+Cloud Run currently stays deployed with `--ingress=all` and
+`--allow-unauthenticated` because the canonical API domain maps directly to the
+Cloud Run service; tightening ingress to internal-only or load-balancer-only
+would break that domain unless Atlas moves the API behind a Google external load
+balancer or another private origin architecture. The raw `*.run.app` URL
+therefore remains reachable, but it is not a supported public integration
+surface: hosted runtime keeps `ATLAS_TRUST_UNSIGNED_FORWARD_HEADERS=false`, the
+API trusts only signed app/edge client identity headers, and the same
+anonymous/credential-present middleware buckets protect direct origin traffic.
+
+## API edge protection
+
+Hosted Atlas should keep the API behind the canonical Cloudflare-backed domain,
+not a raw `*.run.app` URL. The bootstrap flow is intentionally two-step:
+
+```bash
+pnpm bootstrap --api-domain
+pnpm bootstrap --api-edge
+```
+
+`--api-domain` creates or verifies the Cloud Run domain mapping with a DNS-only
+Cloudflare CNAME so the Cloud Run certificate can become healthy. `--api-edge`
+then enables the Cloudflare proxy, installs anonymous and credential-present API
+rate-limit rules, and installs the signed origin identity header transform.
+
+For staging, add `--target staging` to both commands. For read-only checks:
+
+```bash
+pnpm bootstrap --api-domain --doctor
+pnpm bootstrap --api-edge --doctor
+```
+
+See [Anonymous API Rate Limits Runbook](../runbooks/rate-limits.md) for the
+Cloudflare rule names, incident response, and opt-in hosted rate-limit smoke
+test.
+
+To intentionally exercise the hosted anonymous throttle after edge protection is
+enabled:
+
+```bash
+(cd app && ATLAS_HOSTED_EXPECT_RATE_LIMIT=true ATLAS_HOSTED_PUBLIC_URL=https://atlas.rebuildingus.org ATLAS_HOSTED_API_URL=https://atlas-api.rebuildingus.org pnpm run test:hosted-smoke)
+```
+
+Add `ATLAS_HOSTED_EXPECT_EDGE=true` to require Cloudflare response headers in
+the hosted smoke suite.
 
 ## Verification checklist
 
@@ -284,21 +439,38 @@ After every deployment, check these in order:
 5. passkey sign-in succeeds after a passkey is registered
 6. API key creation succeeds and direct `X-API-Key` access works
 7. `/organization` loads and lets an owner create or manage a workspace
-8. `/organization/sso` loads and shows copy-paste enterprise setup values for team workspaces
-9. if enterprise SSO is enabled, domain verification and a real SP-initiated sign-in succeed
-10. creating a discovery run succeeds
-11. restarting the API does not lose SQLite data
+8. `/organization/sso` loads and shows copy-paste enterprise setup values for
+   team workspaces
+9. if enterprise SSO is enabled, domain verification and a real SP-initiated
+   sign-in succeed
+10. `GET https://<your-atlas-domain>/.well-known/oauth-protected-resource/mcp`
+    returns the MCP protected-resource metadata for the public Atlas origin
+11. unauthenticated `POST https://<your-atlas-domain>/mcp` and
+    `POST https://<your-atlas-domain>/mcp/` return `401` with a
+    `WWW-Authenticate: Bearer ...` challenge and no redirect
+12. `(cd app && ATLAS_HOSTED_PUBLIC_URL=https://<your-atlas-domain> ATLAS_HOSTED_API_URL=https://<your-api-health-origin> pnpm run test:hosted-smoke)`
+    passes
+13. `pnpm bootstrap --api-edge --doctor` reports Cloudflare proxying and
+    rate-limit rules as installed
+14. creating a discovery run succeeds
+15. restarting the API does not lose database data
 
-If one of these fails, fix it before moving to the next release. This checklist is meant to catch the most common “deployment succeeded but the app is not actually usable” problems.
+If one of these fails, fix it before moving to the next release. This checklist
+is meant to catch the most common “deployment succeeded but the app is not
+actually usable” problems.
 
 ## Backups
 
-Production SQLite must live on the `atlas-data` volume or another mounted disk. This now includes both Atlas's content DB and the Better Auth DB. Do not keep either inside the container filesystem.
+Hosted production and staging should use managed PostgreSQL backups. Self-hosted
+Docker deployments that use SQLite must keep the database files on the
+`atlas-data` volume or another mounted disk. Do not keep Atlas content data or
+the Better Auth DB inside the container filesystem.
 
 At minimum, do these three things:
 
-1. copy or snapshot the SQLite file on a schedule
-2. store backups somewhere other than the VM itself
+1. copy, snapshot, or export the database on a schedule
+2. store backups somewhere other than the service host itself
 3. test a restore into a fresh `atlas-data` volume
 
-If you skip the restore test, you do not really know whether your backup is useful.
+If you skip the restore test, you do not really know whether your backup is
+useful.

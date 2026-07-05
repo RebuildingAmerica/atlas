@@ -10,14 +10,13 @@ MIN_TAG_DESCRIPTION_LENGTH = 120
 
 
 @pytest.mark.asyncio
-async def test_openapi_and_docs_are_public(test_client: object) -> None:
-    """The runtime app should publish the spec and Scalar docs UI."""
+async def test_openapi_is_public_and_api_docs_ui_is_not_served(test_client: object) -> None:
+    """The API publishes the spec; the human reference lives in Mintlify."""
     openapi_response = await test_client.get("/openapi.json")
     docs_response = await test_client.get("/docs")
 
     assert openapi_response.status_code == STATUS_OK
-    assert docs_response.status_code == STATUS_OK
-    assert "Scalar.createApiReference" in docs_response.text
+    assert docs_response.status_code == HTTPStatus.NOT_FOUND
     assert (
         openapi_response.headers["cache-control"]
         == "public, max-age=3600, stale-while-revalidate=86400"

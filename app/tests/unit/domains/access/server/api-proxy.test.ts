@@ -26,6 +26,13 @@ describe("proxyAtlasApiRequest", () => {
     mocks.loadAtlasSession.mockReset();
     vi.spyOn(globalThis, "fetch").mockImplementation(vi.fn());
     mocks.getAuthRuntimeConfig.mockReturnValue({
+      anonymousRateLimit: {
+        enabled: true,
+        readsPerMinute: 30,
+        totalPerHour: 120,
+        trustedProxyHops: 1,
+        writesPerMinute: 10,
+      },
       apiBaseUrl: "https://api.atlas.test",
       internalSecret: "internal-test-secret",
       localMode: false,
@@ -39,6 +46,13 @@ describe("proxyAtlasApiRequest", () => {
 
   it("returns 502 when the API proxy target is not configured", async () => {
     mocks.getAuthRuntimeConfig.mockReturnValue({
+      anonymousRateLimit: {
+        enabled: true,
+        readsPerMinute: 30,
+        totalPerHour: 120,
+        trustedProxyHops: 1,
+        writesPerMinute: 10,
+      },
       apiBaseUrl: null,
       internalSecret: "internal-test-secret",
     });
@@ -92,7 +106,14 @@ describe("proxyAtlasApiRequest", () => {
         Accept: "application/json",
         Cookie: "session=secret",
         "Content-Type": "application/json",
+        Forwarded: "for=203.0.113.10;host=spoofed.example",
         Host: "atlas.test",
+        "X-Forwarded-For": "203.0.113.10",
+        "X-Forwarded-Host": "spoofed.example",
+        "X-Forwarded-Proto": "http",
+        "X-Atlas-Client-IP": "192.0.2.99",
+        "X-Atlas-Proxy-Secret": "spoofed-secret",
+        "X-Real-IP": "203.0.113.10",
       },
       method: "POST",
     });
@@ -110,7 +131,14 @@ describe("proxyAtlasApiRequest", () => {
     expect(forwardedHeaders.get("accept")).toBe("application/json");
     expect(forwardedHeaders.get("content-type")).toBe("application/json");
     expect(forwardedHeaders.get("cookie")).toBeNull();
+    expect(forwardedHeaders.get("forwarded")).toBeNull();
     expect(forwardedHeaders.get("host")).toBeNull();
+    expect(forwardedHeaders.get("x-forwarded-for")).toBeNull();
+    expect(forwardedHeaders.get("x-forwarded-host")).toBeNull();
+    expect(forwardedHeaders.get("x-forwarded-proto")).toBeNull();
+    expect(forwardedHeaders.get("x-real-ip")).toBeNull();
+    expect(forwardedHeaders.get("x-atlas-client-ip")).toBe("203.0.113.10");
+    expect(forwardedHeaders.get("x-atlas-proxy-secret")).toBe("internal-test-secret");
     expect(forwardedHeaders.get("x-atlas-actor-email")).toBe("operator@atlas.test");
     expect(forwardedHeaders.get("x-atlas-actor-id")).toBe("user-123");
     expect(forwardedHeaders.get("x-atlas-internal-secret")).toBe("internal-test-secret");
@@ -191,6 +219,7 @@ describe("proxyAtlasApiRequest", () => {
       new Request("https://atlas.test/api/entities?limit=1", {
         headers: {
           Accept: "application/json",
+          "X-Forwarded-For": "203.0.113.50",
         },
       }),
     );
@@ -206,5 +235,211 @@ describe("proxyAtlasApiRequest", () => {
         redirect: "manual",
       }),
     );
+  });
+
+  it("blocks anonymous proxy requests before they reach the API", async () => {
+    const fetchMock = vi.mocked(global.fetch);
+    fetchMock.mockResolvedValue(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+    mocks.getAuthRuntimeConfig.mockReturnValue({
+      anonymousRateLimit: {
+        enabled: true,
+        readsPerMinute: 1,
+        totalPerHour: 100,
+        trustedProxyHops: 1,
+        writesPerMinute: 1,
+      },
+      apiBaseUrl: "https://api.atlas.test",
+      internalSecret: "internal-test-secret",
+      localMode: false,
+    });
+
+    const { proxyAtlasApiRequest } = await import("@/domains/access/server/api-proxy");
+    const first = await proxyAtlasApiRequest(
+      new Request("https://atlas.test/api/entities", {
+        headers: { "X-Forwarded-For": "203.0.113.77" },
+      }),
+    );
+    const blocked = await proxyAtlasApiRequest(
+      new Request("https://atlas.test/api/entities", {
+        headers: { "X-Forwarded-For": "203.0.113.77" },
+      }),
+    );
+
+    expect(first.status).toBe(200);
+    expect(blocked.status).toBe(429);
+    expect(await blocked.json()).toEqual({ detail: "Too many requests." });
+    expect(blocked.headers.get("cache-control")).toBe("no-store");
+    expect(blocked.headers.get("retry-after")).toBe("60");
+    expect(blocked.headers.get("x-ratelimit-limit")).toBe("1");
+    expect(Number(blocked.headers.get("x-ratelimit-reset"))).toBeGreaterThan(1_000_000_000);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("logs privacy-safe anonymous proxy blocks", async () => {
+    const fetchMock = vi.mocked(global.fetch);
+    fetchMock.mockResolvedValue(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+    const warnCalls: unknown[][] = [];
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation((...args: unknown[]) => {
+      warnCalls.push(args);
+    });
+    mocks.getAuthRuntimeConfig.mockReturnValue({
+      anonymousRateLimit: {
+        enabled: true,
+        readsPerMinute: 1,
+        totalPerHour: 100,
+        trustedProxyHops: 1,
+        writesPerMinute: 1,
+      },
+      apiBaseUrl: "https://api.atlas.test",
+      internalSecret: "internal-test-secret",
+      localMode: false,
+    });
+
+    const { proxyAtlasApiRequest } = await import("@/domains/access/server/api-proxy");
+    await proxyAtlasApiRequest(
+      new Request("https://atlas.test/api/entities", {
+        headers: { "X-Forwarded-For": "203.0.113.77" },
+      }),
+    );
+    const blocked = await proxyAtlasApiRequest(
+      new Request("https://atlas.test/api/entities", {
+        headers: { "X-Forwarded-For": "203.0.113.77" },
+      }),
+    );
+
+    expect(blocked.status).toBe(429);
+    expect(warnSpy).toHaveBeenCalledWith(
+      "anonymous_rate_limited",
+      expect.objectContaining({
+        bucket: "read-minute",
+        event: "anonymous_rate_limited",
+        layer: "app-proxy",
+        method: "GET",
+        path_group: "/api/*",
+        retry_after_seconds: 60,
+      }),
+    );
+    const payload = warnCalls[0]?.[1];
+    expect(JSON.stringify(payload)).not.toContain("203.0.113.77");
+  });
+
+  it("does not let credential headers bypass anonymous proxy buckets without a session", async () => {
+    const fetchMock = vi.mocked(global.fetch);
+    fetchMock.mockResolvedValue(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+    mocks.getAuthRuntimeConfig.mockReturnValue({
+      anonymousRateLimit: {
+        enabled: true,
+        readsPerMinute: 1,
+        totalPerHour: 1,
+        trustedProxyHops: 1,
+        writesPerMinute: 1,
+      },
+      apiBaseUrl: "https://api.atlas.test",
+      internalSecret: "internal-test-secret",
+      localMode: false,
+    });
+
+    const { proxyAtlasApiRequest } = await import("@/domains/access/server/api-proxy");
+    const requestInit = {
+      headers: {
+        "X-API-Key": "atlas_test_key",
+        "X-Forwarded-For": "203.0.113.99",
+      },
+    };
+    const first = await proxyAtlasApiRequest(
+      new Request("https://atlas.test/api/entities", requestInit),
+    );
+    const second = await proxyAtlasApiRequest(
+      new Request("https://atlas.test/api/entities", requestInit),
+    );
+
+    expect(first.status).toBe(200);
+    expect(second.status).toBe(429);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("ignores spoof-prone provider IP headers when deriving proxy buckets", async () => {
+    const fetchMock = vi.mocked(global.fetch);
+    fetchMock.mockResolvedValue(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+    mocks.getAuthRuntimeConfig.mockReturnValue({
+      anonymousRateLimit: {
+        enabled: true,
+        readsPerMinute: 1,
+        totalPerHour: 100,
+        trustedProxyHops: 1,
+        writesPerMinute: 1,
+      },
+      apiBaseUrl: "https://api.atlas.test",
+      internalSecret: "internal-test-secret",
+      localMode: false,
+    });
+
+    const { proxyAtlasApiRequest } = await import("@/domains/access/server/api-proxy");
+    const first = await proxyAtlasApiRequest(
+      new Request("https://atlas.test/api/entities", {
+        headers: { "CF-Connecting-IP": "203.0.113.10" },
+      }),
+    );
+    const blocked = await proxyAtlasApiRequest(
+      new Request("https://atlas.test/api/entities", {
+        headers: { "CF-Connecting-IP": "198.51.100.20" },
+      }),
+    );
+
+    expect(first.status).toBe(200);
+    expect(blocked.status).toBe(429);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not spend anonymous proxy buckets for authenticated sessions", async () => {
+    const fetchMock = vi.mocked(global.fetch);
+    fetchMock.mockResolvedValue(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+    mocks.getAuthRuntimeConfig.mockReturnValue({
+      anonymousRateLimit: {
+        enabled: true,
+        readsPerMinute: 1,
+        totalPerHour: 1,
+        trustedProxyHops: 1,
+        writesPerMinute: 1,
+      },
+      apiBaseUrl: "https://api.atlas.test",
+      internalSecret: "internal-test-secret",
+      localMode: false,
+    });
+    mocks.loadAtlasSession.mockResolvedValue({
+      user: {
+        email: "operator@atlas.test",
+        id: "user-123",
+      },
+      workspace: {
+        activeOrganization: {
+          id: "org-456",
+        },
+      },
+    });
+    mocks.createInternalAuthHeaders.mockReturnValue({
+      "X-Atlas-Actor-Email": "operator@atlas.test",
+      "X-Atlas-Actor-Id": "user-123",
+      "X-Atlas-Internal-Secret": "internal-test-secret",
+      "X-Atlas-Organization-Id": "org-456",
+    });
+
+    const { proxyAtlasApiRequest } = await import("@/domains/access/server/api-proxy");
+    const requestInit = {
+      headers: {
+        Cookie: "session=secret",
+        "X-Forwarded-For": "203.0.113.88",
+      },
+    };
+    const first = await proxyAtlasApiRequest(
+      new Request("https://atlas.test/api/entities", requestInit),
+    );
+    const second = await proxyAtlasApiRequest(
+      new Request("https://atlas.test/api/entities", requestInit),
+    );
+
+    expect(first.status).toBe(200);
+    expect(second.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 });

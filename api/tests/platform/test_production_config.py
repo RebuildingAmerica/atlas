@@ -6,12 +6,7 @@ import pytest
 from _pytest.monkeypatch import MonkeyPatch
 
 from atlas.main import create_app
-from atlas.platform.config import (
-    API_ENV_FILE,
-    Settings,
-    get_settings,
-    validate_runtime_auth_config,
-)
+from atlas.platform.config import API_ENV_FILE, Settings, get_settings, validate_runtime_auth_config
 
 
 class TestProductionConfig:
@@ -34,7 +29,7 @@ class TestProductionConfig:
         assert settings.database_url == "sqlite:///tmp/from-api-env.db"
 
     def test_openapi_defaults_on_in_production(self) -> None:
-        """Production settings should keep OpenAPI and Scalar docs public by default."""
+        """Production settings should publish the spec."""
         settings = Settings(
             database_url="sqlite:///tmp/test.db",
             environment="production",
@@ -42,31 +37,18 @@ class TestProductionConfig:
         )
 
         assert settings.enable_openapi_spec is True
-        assert settings.enable_api_docs_ui is True
 
     def test_openapi_defaults_on_outside_production(self) -> None:
-        """Development-like environments should continue to expose docs by default."""
+        """Development-like environments should publish the spec."""
         settings = Settings(
             database_url="sqlite:///tmp/test.db",
             environment="staging",
         )
 
         assert settings.enable_openapi_spec is True
-        assert settings.enable_api_docs_ui is True
-
-    def test_legacy_enable_api_docs_populates_new_flags(self) -> None:
-        """Legacy settings continue to map onto the explicit OpenAPI flags."""
-        settings = Settings(
-            database_url="sqlite:///tmp/test.db",
-            environment="production",
-            enable_api_docs=False,
-        )
-
-        assert settings.enable_openapi_spec is False
-        assert settings.enable_api_docs_ui is False
 
     def test_health_endpoint_includes_environment(self, monkeypatch: MonkeyPatch) -> None:
-        """Production app factories should keep health, OpenAPI, and Scalar docs public."""
+        """Production app factories should keep health and OpenAPI public."""
         settings = Settings(
             database_url="sqlite:///tmp/test.db",
             environment="production",
@@ -89,7 +71,7 @@ class TestProductionConfig:
         assert app.openapi_url is None
         assert health_route.endpoint.__name__ == "health_check"
         assert openapi_route.endpoint.__name__ == "openapi_schema"
-        assert "/docs" in route_paths
+        assert "/docs" not in route_paths
         assert "/redoc" not in route_paths
 
     def test_app_factory_requires_audience_for_non_local_auth(
@@ -186,16 +168,20 @@ class TestSettingsValidatorEdgeCases:
         )
         assert settings.auth_jwt_audience == ["https://a.test", "https://b.test"]
 
-    def test_string_list_validator_parses_comma_separated_env_var(
-        self,
-        monkeypatch: MonkeyPatch,
+    def test_string_list_validator_parses_comma_separated_env_vars(
+        self, monkeypatch: MonkeyPatch
     ) -> None:
-        """Hosted env vars should accept the documented comma-separated audience format."""
-        monkeypatch.setenv("ATLAS_API_AUDIENCE", "https://a.test, https://b.test")
+        """Comma-separated env vars should reach the list validator unchanged."""
+        monkeypatch.setenv("ATLAS_API_AUDIENCE", "https://atlas.test/mcp,https://api.atlas.test")
+        monkeypatch.setenv("ATLAS_AUTH_DEFAULT_SCOPE", "discovery:read,profiles:write")
 
         settings = Settings(database_url="sqlite:///tmp/test.db")
 
-        assert settings.auth_jwt_audience == ["https://a.test", "https://b.test"]
+        assert settings.auth_jwt_audience == [
+            "https://atlas.test/mcp",
+            "https://api.atlas.test",
+        ]
+        assert settings.auth_jwt_default_scope == ["discovery:read", "profiles:write"]
 
     def test_postgres_backend_with_sqlite_url_rejected(self) -> None:
         """Selecting postgres backend with a sqlite URL should fail loudly."""
@@ -296,7 +282,119 @@ class TestValidateRuntimeAuthConfig:
         monkeypatch.setenv("ATLAS_DEPLOY_MODE", "production")
         settings = Settings(
             database_url="sqlite:///tmp/test.db",
-            auth_jwt_audience=["https://atlas.test/api"],
+            auth_jwt_issuer="https://atlas.test",
+            auth_jwt_audience=["https://atlas.test/mcp", "https://api.atlas.test"],
+            auth_internal_secret="internal-secret",
+            auth_api_key_introspection_url="https://atlas.test/api/auth/internal/api-key",
+            auth_membership_verification_url="https://atlas.test",
         )
         # No exception expected.
         validate_runtime_auth_config(settings)
+
+    def test_non_local_mode_requires_internal_secret(self, monkeypatch: MonkeyPatch) -> None:
+        """A hosted deploy needs the shared app/API secret for trusted internal calls."""
+        monkeypatch.setenv("ATLAS_DEPLOY_MODE", "production")
+        settings = Settings(
+            database_url="sqlite:///tmp/test.db",
+            auth_jwt_audience=["https://atlas.test/mcp"],
+        )
+        with pytest.raises(RuntimeError, match="ATLAS_AUTH_INTERNAL_SECRET is required"):
+            validate_runtime_auth_config(settings)
+
+    def test_non_local_mode_requires_api_key_introspection(self, monkeypatch: MonkeyPatch) -> None:
+        """Hosted API-key access needs the app introspection endpoint."""
+        monkeypatch.setenv("ATLAS_DEPLOY_MODE", "production")
+        settings = Settings(
+            database_url="sqlite:///tmp/test.db",
+            auth_jwt_audience=["https://atlas.test/mcp"],
+            auth_internal_secret="internal-secret",
+        )
+        with pytest.raises(
+            RuntimeError,
+            match="ATLAS_AUTH_API_KEY_INTROSPECTION_URL is required",
+        ):
+            validate_runtime_auth_config(settings)
+
+    def test_non_local_mode_requires_membership_verification(
+        self, monkeypatch: MonkeyPatch
+    ) -> None:
+        """Hosted workspace checks need the app membership verification endpoint."""
+        monkeypatch.setenv("ATLAS_DEPLOY_MODE", "production")
+        settings = Settings(
+            database_url="sqlite:///tmp/test.db",
+            auth_jwt_audience=["https://atlas.test/mcp"],
+            auth_internal_secret="internal-secret",
+            auth_api_key_introspection_url="https://atlas.test/api/auth/internal/api-key",
+        )
+        with pytest.raises(RuntimeError, match="ATLAS_AUTH_MEMBERSHIP_URL is required"):
+            validate_runtime_auth_config(settings)
+
+    def test_non_local_mode_requires_public_url(self, monkeypatch: MonkeyPatch) -> None:
+        """Hosted OAuth challenges need the app origin to publish metadata URLs."""
+        monkeypatch.setenv("ATLAS_DEPLOY_MODE", "production")
+        settings = Settings(
+            database_url="sqlite:///tmp/test.db",
+            auth_jwt_audience=["https://atlas.test/mcp"],
+            auth_internal_secret="internal-secret",
+            auth_api_key_introspection_url="https://atlas.test/api/auth/internal/api-key",
+            auth_membership_verification_url="https://atlas.test",
+        )
+        with pytest.raises(RuntimeError, match="ATLAS_PUBLIC_URL is required"):
+            validate_runtime_auth_config(settings)
+
+    def test_non_local_mode_requires_https_public_url(self, monkeypatch: MonkeyPatch) -> None:
+        """Hosted OAuth metadata must not advertise an insecure issuer origin."""
+        monkeypatch.setenv("ATLAS_DEPLOY_MODE", "production")
+        settings = Settings(
+            database_url="sqlite:///tmp/test.db",
+            auth_jwt_issuer="http://atlas.test",
+            auth_jwt_audience=["http://atlas.test/mcp"],
+            auth_internal_secret="internal-secret",
+            auth_api_key_introspection_url="https://atlas.test/api/auth/internal/api-key",
+            auth_membership_verification_url="https://atlas.test",
+        )
+        with pytest.raises(RuntimeError, match="ATLAS_PUBLIC_URL must use https"):
+            validate_runtime_auth_config(settings)
+
+    def test_non_local_mode_allows_loopback_public_url_for_e2e(
+        self, monkeypatch: MonkeyPatch
+    ) -> None:
+        """Local E2E runs auth-enabled services on loopback HTTP."""
+        monkeypatch.setenv("ATLAS_DEPLOY_MODE", "production")
+        settings = Settings(
+            database_url="sqlite:///tmp/test.db",
+            auth_jwt_issuer="http://127.0.0.1:3100",
+            auth_jwt_audience=["http://127.0.0.1:3100/mcp", "http://127.0.0.1:8000"],
+            auth_internal_secret="internal-secret",
+            auth_api_key_introspection_url="http://127.0.0.1:3100/api/auth/internal/api-key",
+            auth_membership_verification_url="http://127.0.0.1:3100",
+        )
+
+        validate_runtime_auth_config(settings)
+
+    def test_non_local_mode_requires_mcp_audience_first(self, monkeypatch: MonkeyPatch) -> None:
+        """The first audience drives the MCP protected-resource metadata URL."""
+        monkeypatch.setenv("ATLAS_DEPLOY_MODE", "production")
+        settings = Settings(
+            database_url="sqlite:///tmp/test.db",
+            auth_jwt_issuer="https://atlas.test",
+            auth_jwt_audience=["https://api.atlas.test", "https://atlas.test/mcp"],
+            auth_internal_secret="internal-secret",
+            auth_api_key_introspection_url="https://atlas.test/api/auth/internal/api-key",
+            auth_membership_verification_url="https://atlas.test",
+        )
+        with pytest.raises(RuntimeError, match="ATLAS_API_AUDIENCE must put"):
+            validate_runtime_auth_config(settings)
+
+    def test_lifespan_runs_runtime_auth_validation(self, monkeypatch: MonkeyPatch) -> None:
+        """App startup should fail before serving MCP with missing hosted auth config."""
+        monkeypatch.setenv("ATLAS_DEPLOY_MODE", "production")
+        settings = Settings(
+            database_url="sqlite:///tmp/test.db",
+            deploy_mode="production",
+            discovery_job_worker_enabled=False,
+        )
+        monkeypatch.setattr("atlas.main.get_settings", lambda: settings)
+
+        with pytest.raises(RuntimeError, match="ATLAS_API_AUDIENCE is required"):
+            create_app()

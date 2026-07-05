@@ -33,7 +33,7 @@ Your OAuth token may have expired. Disconnect the Atlas server from your MCP cli
 
 ### "Transport not supported" or SSE errors
 
-Atlas uses **Streamable HTTP** transport only — SSE (Server-Sent Events) is not supported. Make sure your MCP client is configured with `"type": "http"`, not `"type": "sse"`.
+Atlas uses **Streamable HTTP** transport only. SSE-only clients cannot use the hosted Atlas MCP server.
 
 ## API issues
 
@@ -43,7 +43,7 @@ Atlas uses **Streamable HTTP** transport only — SSE (Server-Sent Events) is no
 - **Invalid key:** Verify the key in your account settings — it may have been revoked
 - **Wrong header:** The header is `X-API-Key`, not `Authorization` (unless using OAuth)
 
-Read [Authentication](/api-reference/authentication) for the difference between
+Read [Authentication](/api/authentication) for the difference between
 public reads, API keys, and OAuth.
 
 ### 429 Rate Limited
@@ -52,6 +52,7 @@ You've exceeded your plan's request limit. Check these headers in the response:
 
 - `X-RateLimit-Remaining` — how many requests you have left
 - `X-RateLimit-Reset` — when the window resets (Unix timestamp)
+- `Retry-After` — how many seconds to wait before retrying
 
 Options:
 
@@ -59,7 +60,7 @@ Options:
 - Upgrade to [Atlas Pro or Team](/account/pricing) for higher limits
 - Cache API responses to reduce requests
 
-See [Rate limits](/api-reference/rate-limits) for limits by access pattern.
+See [Rate limits](/api/rate-limits) for limits by access pattern.
 
 ### 404 Not Found for an entity
 
@@ -75,7 +76,7 @@ Entity IDs are UUIDs. Common issues:
 - Use `GET /api/issue-areas` to see valid slugs
 - Try a broader search (remove filters one at a time)
 
-For local searches, compare your request with [Research a place](/api-reference/guides/places)
+For local searches, compare your request with [Research a place](/api/guides/places)
 and [Issue areas & domains](/taxonomy).
 
 ## Account issues

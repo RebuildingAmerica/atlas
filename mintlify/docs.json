@@ -66,7 +66,55 @@
     },
     {
       "source": "/api-reference",
-      "destination": "/api-reference/overview"
+      "destination": "/api"
+    },
+    {
+      "source": "/api-reference/overview",
+      "destination": "/api/overview"
+    },
+    {
+      "source": "/api-reference/quickstart",
+      "destination": "/api/quickstart"
+    },
+    {
+      "source": "/api-reference/guides/entities",
+      "destination": "/api/guides/entities"
+    },
+    {
+      "source": "/api-reference/guides/places",
+      "destination": "/api/guides/places"
+    },
+    {
+      "source": "/api-reference/guides/discovery",
+      "destination": "/api/guides/discovery"
+    },
+    {
+      "source": "/api-reference/guides/sources-flags",
+      "destination": "/api/guides/sources-flags"
+    },
+    {
+      "source": "/api-reference/guides/workspace",
+      "destination": "/api/guides/workspace"
+    },
+    {
+      "source": "/api-reference/guides/taxonomy",
+      "destination": "/api/guides/taxonomy"
+    },
+    {
+      "source": "/api-reference/typescript-sdk",
+      "destination": "/api/typescript-sdk"
+    },
+    {
+      "source": "/api-reference/authentication",
+      "destination": "/api/authentication"
+    },
+    {
+      "source": "/api-reference/rate-limits",
+      "destination": "/api/rate-limits"
+    },
+    {
+      "source": "/api-reference/errors",
+      "destination": "/api/errors"
     }
   ],
   "navigation": {
@@ -76,7 +124,10 @@
         "groups": [
           {
             "group": "Introduction",
-            "pages": ["what-is-atlas", "quickstart-learn"]
+            "pages": [
+              "what-is-atlas",
+              "quickstart-learn"
+            ]
           },
           {
             "group": "Public discovery",
@@ -104,7 +155,10 @@
         "groups": [
           {
             "group": "Workspaces",
-            "pages": ["workspace/customer-workflow", "account/pricing"]
+            "pages": [
+              "workspace/customer-workflow",
+              "account/pricing"
+            ]
           },
           {
             "group": "Research patterns",
@@ -123,18 +177,19 @@
           {
             "group": "API",
             "pages": [
-              "api-reference/overview",
-              "api-reference/quickstart",
-              "api-reference/guides/entities",
-              "api-reference/guides/places",
-              "api-reference/guides/discovery",
-              "api-reference/guides/sources-flags",
-              "api-reference/guides/workspace",
-              "api-reference/guides/taxonomy",
-              "api-reference/typescript-sdk",
-              "api-reference/authentication",
-              "api-reference/rate-limits",
-              "api-reference/errors"
+              "api",
+              "api/overview",
+              "api/quickstart",
+              "api/guides/entities",
+              "api/guides/places",
+              "api/guides/discovery",
+              "api/guides/sources-flags",
+              "api/guides/workspace",
+              "api/guides/taxonomy",
+              "api/typescript-sdk",
+              "api/authentication",
+              "api/rate-limits",
+              "api/errors"
             ]
           },
           {
@@ -192,7 +247,10 @@
           },
           {
             "group": "Project",
-            "pages": ["resources/changelog", "resources/open-source"]
+            "pages": [
+              "resources/changelog",
+              "resources/open-source"
+            ]
           }
         ]
       }
@@ -205,8 +263,8 @@
           "icon": "github"
         },
         {
-          "anchor": "Generated API reference",
-          "href": "/api-reference",
+          "anchor": "API reference",
+          "href": "/api",
           "icon": "code"
         }
       ]

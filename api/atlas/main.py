@@ -16,12 +16,12 @@ from typing import Any
 
 from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse
 from starlette.types import ASGIApp, Receive, Scope, Send
 
 from atlas.config import get_settings, validate_runtime_auth_config
 from atlas.models import init_db
 from atlas.platform.http import create_router
+from atlas.platform.http.anonymous_rate_limit import AnonymousRateLimitMiddleware
 from atlas.platform.http.cache import apply_no_store_headers, apply_static_public_cache
 from atlas.platform.mcp import get_mcp, get_mcp_asgi_app
 from atlas.platform.mcp.auth_middleware import McpBearerAuthMiddleware
@@ -36,7 +36,6 @@ from atlas.platform.openapi import (
     OPENAPI_VERSION,
     install_openapi_enrichment,
 )
-from atlas.platform.scalar_docs import render_scalar_api_reference_html
 
 logger = logging.getLogger(__name__)
 
@@ -80,6 +79,7 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
 
     # Startup
     settings = get_settings()
+    validate_runtime_auth_config(settings)
     try:
         await init_db(settings.database_url, backend=settings.database_backend)
         logger.info("Database initialized successfully")
@@ -145,8 +145,10 @@ def create_app() -> FastAPI:
         openapi_url=None,
         lifespan=lifespan,
     )
-
     install_openapi_enrichment(app)
+
+    app.add_middleware(AnonymousRateLimitMiddleware, settings=settings)
+
     # CORS middleware — narrow methods so that the OAuth token endpoint and
     # other credentialed routes only see the verbs Atlas actually serves.
     app.add_middleware(
@@ -211,18 +213,6 @@ def create_app() -> FastAPI:
             """Serve the OpenAPI document with static-public cache headers."""
             apply_static_public_cache(response)
             return app.openapi()
-
-    if settings.enable_api_docs_ui:
-
-        @app.get("/docs", include_in_schema=False, response_class=HTMLResponse)
-        async def scalar_api_reference() -> HTMLResponse:
-            """Serve Scalar API Reference for the current OpenAPI document."""
-            scalar_response = render_scalar_api_reference_html(
-                openapi_url="/openapi.json",
-                title=f"{app.title} Docs",
-            )
-            apply_static_public_cache(scalar_response)
-            return scalar_response
 
     # Include API router
     app.include_router(create_router())

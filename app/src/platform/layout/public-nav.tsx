@@ -36,7 +36,7 @@ const PUBLIC_NAV_ITEMS: AppNavItem[] = [
   { label: "Search", to: "/browse" },
   { label: "Map", to: "/map" },
   { label: "Docs", native: true, to: "/docs" },
-  { label: "API", to: "/api-reference" },
+  { label: "API", native: true, to: "/docs/api" },
 ];
 
 const PUBLIC_SESSION_NAV_ITEMS: AppNavItem[] = [{ label: "Sign in", to: "/sign-in" }];

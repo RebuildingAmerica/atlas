@@ -20,29 +20,14 @@
  *                    session-aware Nitro proxy.
  */
 
-/**
- * Normalizes an arbitrary string into a bare origin (scheme + host + optional port).
- * Accepts values with or without a scheme — bare hostnames are assumed to be HTTPS.
- * Returns undefined for empty, missing, or malformed values so callers can safely
- * use optional-chaining to gate on the result.
- */
-function normalizeOrigin(value: string | undefined): string | undefined {
-  const candidate = value?.trim();
-  if (!candidate) {
-    return undefined;
-  }
+import {
+  buildHostedRewriteDestination,
+  normalizeApiProxyOrigin,
+  normalizeDocsOrigin,
+} from "./src/platform/config/hosted-env";
 
-  const normalizedCandidate = /^https?:\/\//.test(candidate) ? candidate : `https://${candidate}`;
-
-  try {
-    return new URL(normalizedCandidate).origin;
-  } catch {
-    return undefined;
-  }
-}
-
-const docsOrigin = normalizeOrigin(process.env.ATLAS_DOCS_URL);
-const apiOrigin = normalizeOrigin(process.env.ATLAS_SERVER_API_PROXY_TARGET);
+const docsOrigin = normalizeDocsOrigin(process.env.ATLAS_DOCS_URL);
+const apiOrigin = normalizeApiProxyOrigin(process.env);
 
 /**
  * Proxy rewrites — only included when the corresponding env var is configured.
@@ -54,11 +39,11 @@ const rewrites = [
     ? [
         {
           source: "/docs",
-          destination: `${docsOrigin}/docs`,
+          destination: buildHostedRewriteDestination(docsOrigin, "/docs"),
         },
         {
           source: "/docs/:match*",
-          destination: `${docsOrigin}/docs/:match*`,
+          destination: buildHostedRewriteDestination(docsOrigin, "/docs/:match*"),
         },
       ]
     : []),
@@ -66,7 +51,11 @@ const rewrites = [
     ? [
         {
           source: "/mcp",
-          destination: `${apiOrigin}/mcp`,
+          destination: buildHostedRewriteDestination(apiOrigin, "/mcp"),
+        },
+        {
+          source: "/mcp/",
+          destination: buildHostedRewriteDestination(apiOrigin, "/mcp/"),
         },
         {
           source: "/mcp/",
@@ -74,7 +63,7 @@ const rewrites = [
         },
         {
           source: "/mcp/:match*",
-          destination: `${apiOrigin}/mcp/:match*`,
+          destination: buildHostedRewriteDestination(apiOrigin, "/mcp/:match*"),
         },
       ]
     : []),

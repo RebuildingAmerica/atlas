@@ -1,6 +1,7 @@
 # The Atlas API
 
-A FastAPI + SQLite API for The Atlas — a discovery platform for people, organizations, and initiatives working on contemporary American issues.
+A FastAPI + SQLite API for The Atlas — a discovery platform for people,
+organizations, and initiatives working on contemporary American issues.
 
 ## Setup
 
@@ -41,9 +42,8 @@ pnpm dev
 
 The API will be available at `https://api.atlas.localhost`
 
-- Scalar API reference: `https://atlas.localhost/api-reference`
+- Scalar API reference: `https://atlas.localhost/docs/api`
 - OpenAPI JSON: `https://api.atlas.localhost/openapi.json`
-- API-origin Scalar reference: `https://api.atlas.localhost/docs`
 - Health check: `https://api.atlas.localhost/health`
 
 ### Production Server
@@ -144,9 +144,11 @@ api/
 
 ### Three-Layer Design
 
-1. **Autodiscovery Pipeline** — converts location + issue areas into structured entries via 6-step process
+1. **Autodiscovery Pipeline** — converts location + issue areas into structured
+   entries via 6-step process
 2. **Storage Layer** — SQLite with FTS5 full-text search
-3. **Interface Layer** — REST API with filtering, search, and taxonomy navigation
+3. **Interface Layer** — REST API with filtering, search, and taxonomy
+   navigation
 
 ### Data Model
 
@@ -250,7 +252,8 @@ Query parameters for listing:
 
 ### Async-First
 
-All database operations are async via `aiosqlite`. API endpoints use async/await for scalability.
+All database operations are async via `aiosqlite`. API endpoints use async/await
+for scalability.
 
 ### Type Annotations
 
@@ -258,19 +261,24 @@ Every function has complete type annotations. Mypy runs in strict mode.
 
 ### SQLite + FTS5
 
-Suitable for Phase 1-2. Full-text search via SQLite's built-in FTS5 virtual table. Upgrade to Postgres when concurrent public access is needed.
+Suitable for Phase 1-2. Full-text search via SQLite's built-in FTS5 virtual
+table. Upgrade to Postgres when concurrent public access is needed.
 
 ### 47 Issue Areas
 
-Not 48 or 50 — exactly matching Rebuilding America series taxonomy. Cross-tagging is encouraged (entries can be tagged with multiple areas across domains).
+Not 48 or 50 — exactly matching Rebuilding America series taxonomy.
+Cross-tagging is encouraged (entries can be tagged with multiple areas across
+domains).
 
 ### Stub Pipeline Steps
 
-Steps 2-6 of the pipeline are implemented as stubs with proper signatures. Ready to fill in when APIs are available (web search, Claude, etc.).
+Steps 2-6 of the pipeline are implemented as stubs with proper signatures. Ready
+to fill in when APIs are available (web search, Claude, etc.).
 
 ## Next Steps
 
-1. Implement pipeline steps 2-6 (source fetching, extraction, deduplication, ranking, gap analysis)
+1. Implement pipeline steps 2-6 (source fetching, extraction, deduplication,
+   ranking, gap analysis)
 2. Add authentication and authorization
 3. Build React app for triage and editing
 4. Implement batch operations for managing entries

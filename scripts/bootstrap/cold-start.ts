@@ -12,6 +12,8 @@
  *   pnpm bootstrap --ci-cache          Wire Vercel Remote Cache into Actions
  *   pnpm bootstrap --api-domain        Ensure atlas-api Cloud Run + Cloudflare CNAME
  *   pnpm bootstrap --api-domain --target staging  Same, for atlas-api-staging
+ *   pnpm bootstrap --api-edge          Enable Cloudflare proxy + API rate limits
+ *   pnpm bootstrap --api-edge --target staging  Same, for atlas-api-staging
  *   pnpm bootstrap --live              Use Stripe live mode (default: test)
  */
 
@@ -38,6 +40,7 @@ import {
   runApiDomainPhase,
   type ApiDomainTarget,
 } from "./phases/api-domain.js";
+import { runApiEdgePhase } from "./phases/api-edge.js";
 
 interface CliArgs {
   localOnly: boolean;
@@ -47,6 +50,7 @@ interface CliArgs {
   mcpRegistryOnly: boolean;
   ciCacheOnly: boolean;
   apiDomainOnly: boolean;
+  apiEdgeOnly: boolean;
   apiDomainTarget: ApiDomainTarget;
   live: boolean;
 }
@@ -66,6 +70,7 @@ function parseArgs(argv: string[]): CliArgs {
     mcpRegistryOnly: argv.includes("--mcp-registry"),
     ciCacheOnly: argv.includes("--ci-cache"),
     apiDomainOnly: argv.includes("--api-domain"),
+    apiEdgeOnly: argv.includes("--api-edge"),
     apiDomainTarget,
     live: argv.includes("--live"),
   };
@@ -196,6 +201,29 @@ async function main(): Promise<void> {
       result.success
         ? `atlas-api ${args.apiDomainTarget} canonical domain ready.`
         : "API domain wiring had issues.",
+    );
+    return;
+  }
+
+  // API edge-only mode
+  if (args.apiEdgeOnly) {
+    log.info(
+      `Running atlas-api edge protection only (target=${args.apiDomainTarget}).`,
+    );
+    const result = await runApiEdgePhase(
+      projectRoot,
+      args.doctorMode,
+      args.apiDomainTarget,
+    );
+    markPhase(state, "api-edge", result.success ? "complete" : "partial");
+    saveReadiness(projectRoot, state);
+    if (result.followUpItems.length > 0) {
+      note(result.followUpItems.join("\n"), "Follow-up");
+    }
+    outro(
+      result.success
+        ? `atlas-api ${args.apiDomainTarget} edge protection ready.`
+        : "API edge protection had issues.",
     );
     return;
   }
@@ -371,6 +399,18 @@ async function main(): Promise<void> {
       log.step("Phase 10: API Canonical Domain");
       const result = await runApiDomainPhase(projectRoot, args.doctorMode);
       markPhase(state, "api-domain", result.success ? "complete" : "partial");
+      saveReadiness(projectRoot, state);
+      allFollowUp.push(...result.followUpItems);
+    }
+
+    // Phase 11: API edge protection (Cloudflare proxy + WAF rate limits)
+    if (
+      !shouldSkipPhase("api-edge", state, args.resume) ||
+      !(await confirmResumeSkip("API Edge"))
+    ) {
+      log.step("Phase 11: API Edge Protection");
+      const result = await runApiEdgePhase(projectRoot, args.doctorMode);
+      markPhase(state, "api-edge", result.success ? "complete" : "partial");
       saveReadiness(projectRoot, state);
       allFollowUp.push(...result.followUpItems);
     }

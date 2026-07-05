@@ -177,15 +177,65 @@ class Settings(BaseSettings):
     )
     """Operator kill switch. When True, discovery spend is halted immediately."""
 
-    # Feature flags
-    enable_api_docs: bool | None = None
-    """Legacy toggle for OpenAPI spec + docs UI publishing."""
-
     enable_openapi_spec: bool | None = None
     """Enable the OpenAPI schema endpoint (/openapi.json)."""
 
-    enable_api_docs_ui: bool | None = None
-    """Enable the Scalar API reference UI (/docs)."""
+    anonymous_rate_limit_enabled: bool = Field(
+        default=True,
+        validation_alias="ATLAS_ANON_RATE_LIMIT_ENABLED",
+    )
+    """Enable in-process rate limits for unauthenticated public traffic."""
+
+    anonymous_rate_limit_reads_per_minute: int = Field(
+        default=30,
+        ge=0,
+        validation_alias="ATLAS_ANON_RATE_LIMIT_READS_PER_MINUTE",
+    )
+    """Anonymous public read requests allowed per client per minute."""
+
+    anonymous_rate_limit_writes_per_minute: int = Field(
+        default=10,
+        ge=0,
+        validation_alias="ATLAS_ANON_RATE_LIMIT_WRITES_PER_MINUTE",
+    )
+    """Anonymous public write requests allowed per client per minute."""
+
+    anonymous_rate_limit_total_per_hour: int = Field(
+        default=120,
+        ge=0,
+        validation_alias="ATLAS_ANON_RATE_LIMIT_TOTAL_PER_HOUR",
+    )
+    """Anonymous public requests allowed per client per hour."""
+
+    anonymous_credential_rate_limit_per_minute: int = Field(
+        default=60,
+        ge=0,
+        validation_alias="ATLAS_ANON_CREDENTIAL_RATE_LIMIT_PER_MINUTE",
+    )
+    """Credential-bearing requests allowed before auth verification per client per minute."""
+
+    anonymous_credential_rate_limit_total_per_hour: int = Field(
+        default=600,
+        ge=0,
+        validation_alias="ATLAS_ANON_CREDENTIAL_RATE_LIMIT_TOTAL_PER_HOUR",
+    )
+    """Credential-bearing requests allowed before auth verification per client per hour."""
+
+    trusted_proxy_hops: int = Field(
+        default=1,
+        ge=0,
+        validation_alias="ATLAS_TRUSTED_PROXY_HOPS",
+    )
+    """Number of trusted proxy hops at the end of a forwarded-for chain."""
+
+    trust_unsigned_forward_headers: bool = Field(
+        default=False,
+        validation_alias="ATLAS_TRUST_UNSIGNED_FORWARD_HEADERS",
+    )
+    """Trust unsigned forwarded headers when deriving direct API client identity."""
+
+    edge_origin_secret: str = Field(default="", validation_alias="ATLAS_EDGE_ORIGIN_SECRET")
+    """Shared secret used by the edge proxy when signing origin identity headers."""
 
     model_config = SettingsConfigDict(
         env_file_encoding="utf-8",
@@ -210,14 +260,8 @@ class Settings(BaseSettings):
                 "Set DATABASE_BACKEND=postgres explicitly to use PostgreSQL."
             )
             raise ValueError(msg)
-        if self.enable_api_docs is not None:
-            self.enable_openapi_spec = self.enable_api_docs
-            self.enable_api_docs_ui = self.enable_api_docs
         if self.enable_openapi_spec is None:
             self.enable_openapi_spec = True
-        if self.enable_api_docs_ui is None:
-            self.enable_api_docs_ui = True
-        self.enable_api_docs = self.enable_openapi_spec and self.enable_api_docs_ui
         if self.auth_jwt_issuer:
             base = self.auth_jwt_issuer.rstrip("/")
             # The OAuth issuer includes the auth basePath (/api/auth)
@@ -307,6 +351,38 @@ def validate_runtime_auth_config(settings: Settings) -> None:
         msg = (
             "ATLAS_API_AUDIENCE is required for staging, production, and non-local deploy modes. "
             "Set it to the canonical resource URL(s) the API accepts in JWT 'aud' "
-            "claims, e.g. https://atlas.example.com/api."
+            "claims, with the MCP resource first, e.g. https://atlas.example.com/mcp."
+        )
+        raise RuntimeError(msg)
+    if not settings.auth_internal_secret:
+        msg = "ATLAS_AUTH_INTERNAL_SECRET is required when ATLAS_DEPLOY_MODE is not 'local'."
+        raise RuntimeError(msg)
+    if not settings.auth_api_key_introspection_url:
+        msg = (
+            "ATLAS_AUTH_API_KEY_INTROSPECTION_URL is required when "
+            "ATLAS_DEPLOY_MODE is not 'local'."
+        )
+        raise RuntimeError(msg)
+    if not settings.auth_membership_verification_url:
+        msg = "ATLAS_AUTH_MEMBERSHIP_URL is required when ATLAS_DEPLOY_MODE is not 'local'."
+        raise RuntimeError(msg)
+    if not settings.auth_jwt_issuer:
+        msg = "ATLAS_PUBLIC_URL is required when ATLAS_DEPLOY_MODE is not 'local'."
+        raise RuntimeError(msg)
+
+    public_origin = settings.auth_jwt_issuer.removesuffix("/api/auth")
+    public_url = urlsplit(public_origin)
+    if public_url.scheme != "https" and public_url.hostname not in {
+        "localhost",
+        "127.0.0.1",
+        "::1",
+    }:
+        msg = "ATLAS_PUBLIC_URL must use https when ATLAS_DEPLOY_MODE is not 'local'."
+        raise RuntimeError(msg)
+
+    expected_mcp_audience = urlunsplit((public_url.scheme, public_url.netloc, "/mcp", "", ""))
+    if settings.auth_jwt_audience[0] != expected_mcp_audience:
+        msg = (
+            f"ATLAS_API_AUDIENCE must put the canonical MCP resource first: {expected_mcp_audience}"
         )
         raise RuntimeError(msg)
