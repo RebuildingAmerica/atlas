@@ -8,7 +8,7 @@ import {
 } from "../organization-metadata";
 import { queryActiveProducts } from "./workspace-products";
 import type { AtlasSessionPayload } from "../organization-contracts";
-import type { getAuth } from "./auth";
+import type { AtlasWorkspaceStateAuth } from "./auth";
 import type { atlasSessionSchema } from "./session-schema";
 
 /**
@@ -16,11 +16,6 @@ import type { atlasSessionSchema } from "./session-schema";
  * context.
  */
 export type AtlasSessionRecord = z.infer<typeof atlasSessionSchema>;
-
-/**
- * Better Auth instance shape used while Atlas normalizes workspace context.
- */
-type AtlasAuthInstance = Awaited<ReturnType<typeof getAuth>>;
 
 /**
  * Better Auth organization summary shape Atlas reads from `listOrganizations`.
@@ -85,7 +80,7 @@ function toIsoString(value: Date | string | null | undefined): string | null {
  * @param organization - The Better Auth organization summary to normalize.
  */
 async function loadAtlasMembership(
-  auth: AtlasAuthInstance,
+  auth: AtlasWorkspaceStateAuth,
   headers: Headers,
   userId: string,
   organization: z.infer<typeof organizationSummarySchema>,
@@ -166,7 +161,7 @@ function toAtlasWorkspaceInvitation(
  * @param session - The parsed Better Auth session that owns the workspace data.
  */
 export async function loadAtlasWorkspaceState(
-  auth: AtlasAuthInstance,
+  auth: AtlasWorkspaceStateAuth,
   headers: Headers,
   session: AtlasSessionRecord,
 ): Promise<AtlasSessionPayload["workspace"]> {

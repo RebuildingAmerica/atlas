@@ -2,7 +2,7 @@ import "@tanstack/react-start/server-only";
 
 import type { AtlasProduct } from "../capabilities";
 import { mergeAtlasOrganizationMetadata } from "../organization-metadata";
-import { ensureAuthReady } from "./auth";
+import { ensureAuthReady, type AtlasAuthAdapter, type AtlasAuthInternalAdapter } from "./auth";
 import { grantWorkspaceProduct } from "./workspace-products";
 
 export interface CustomerWorkspaceIdentityInput {
@@ -51,11 +51,6 @@ interface CustomerWorkspaceOrganizationMetadata {
   onboarding: CustomerWorkspaceOnboardingMetadata;
   workspaceType: "team";
 }
-
-type ReadyAuth = Awaited<ReturnType<typeof ensureAuthReady>>;
-type BetterAuthContext = Awaited<ReadyAuth["$context"]>;
-type BetterAuthAdapter = BetterAuthContext["adapter"];
-type BetterAuthInternalAdapter = BetterAuthContext["internalAdapter"];
 
 interface MemberRecord {
   id: string;
@@ -183,7 +178,7 @@ function isOrganizationMetadataRecord(value: unknown): value is OrganizationMeta
  * @param input - Demo workspace identity.
  */
 async function upsertDemoUser(
-  internalAdapter: BetterAuthInternalAdapter,
+  internalAdapter: AtlasAuthInternalAdapter,
   input: CustomerWorkspaceIdentityInput,
 ): Promise<void> {
   const email = normalizeEmail(input.userEmail);
@@ -228,7 +223,7 @@ async function upsertDemoUser(
  * @param input - Demo workspace identity.
  */
 async function upsertDemoOrganization(
-  adapter: BetterAuthAdapter,
+  adapter: AtlasAuthAdapter,
   input: CustomerWorkspaceProvisionInput,
   provisionedAt: Date,
 ): Promise<void> {
@@ -278,7 +273,7 @@ async function upsertDemoOrganization(
  * @param input - Demo workspace identity.
  */
 async function upsertDemoMembership(
-  adapter: BetterAuthAdapter,
+  adapter: AtlasAuthAdapter,
   input: CustomerWorkspaceIdentityInput,
 ): Promise<void> {
   const memberId = demoMemberId(input.organizationId, input.userId);

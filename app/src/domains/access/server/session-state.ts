@@ -6,17 +6,17 @@ import {
   serializeResolvedCapabilities,
   type AtlasProduct,
 } from "../capabilities";
-import { canEmailAccessAtlas, ensureAuthReady, hasExistingAccount, type getAuth } from "./auth";
+import {
+  canEmailAccessAtlas,
+  ensureAuthReady,
+  hasExistingAccount,
+  type AtlasPasskeyAuth,
+} from "./auth";
 import { loadAtlasWorkspaceState } from "./organization-session";
 import { getBrowserSessionHeaders } from "./request-headers";
 import { getAuthRuntimeConfig, validateAuthRuntimeConfig } from "./runtime";
 import { AtlasAuthError, AUTH_ERROR_CODE } from "../auth-errors";
 import type { AtlasSessionPayload } from "../organization-contracts";
-
-/**
- * Better Auth instance shape used by Atlas's session-state helpers.
- */
-type AtlasAuthInstance = Awaited<ReturnType<typeof getAuth>>;
 
 const LOCAL_WORKSPACE_ID = "local";
 const LOCAL_ACTIVE_PRODUCTS: AtlasProduct[] = ["atlas_team"];
@@ -88,7 +88,7 @@ function getLocalSession(): AtlasSessionPayload {
  * @param auth - The initialized Better Auth instance for the current server.
  * @param headers - The browser session headers for the current request.
  */
-async function getPasskeyCount(auth: AtlasAuthInstance, headers: Headers): Promise<number> {
+async function getPasskeyCount(auth: AtlasPasskeyAuth, headers: Headers): Promise<number> {
   const passkeys = await auth.api.listPasskeys({ headers });
   return passkeys.length;
 }

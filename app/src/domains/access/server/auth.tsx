@@ -302,7 +302,37 @@ type AtlasAuthInstance = Awaited<ReturnType<typeof createAtlasAuth>>;
 /**
  * Better Auth context resolved before Atlas runs schema migrations.
  */
-type AtlasAuthContext = Awaited<AtlasAuthInstance["$context"]>;
+export type AtlasAuthContext = Awaited<AtlasAuthInstance["$context"]>;
+
+/**
+ * Adapter surfaces exposed for modules that work with Better Auth storage
+ * directly instead of the full request handler.
+ */
+export type AtlasAuthAdapter = AtlasAuthContext["adapter"];
+export type AtlasAuthInternalAdapter = AtlasAuthContext["internalAdapter"];
+
+type AtlasAuthApi = AtlasAuthInstance["api"];
+
+type AtlasPasskeyApi = Pick<AtlasAuthApi, "listPasskeys">;
+
+type AtlasWorkspaceApi = Pick<
+  AtlasAuthApi,
+  "getActiveMemberRole" | "listOrganizations" | "listUserInvitations"
+>;
+
+/**
+ * Minimal Better Auth surface Atlas needs to read passkey state.
+ */
+export interface AtlasPasskeyAuth {
+  api: AtlasPasskeyApi;
+}
+
+/**
+ * Minimal Better Auth surface Atlas needs to build workspace session state.
+ */
+export interface AtlasWorkspaceStateAuth {
+  api: AtlasWorkspaceApi;
+}
 
 let authInstance: AtlasAuthInstance | null = null;
 let authInstancePromise: Promise<AtlasAuthInstance> | null = null;
