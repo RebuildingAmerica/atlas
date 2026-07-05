@@ -41,17 +41,46 @@ Scout can use local providers such as LM Studio or Ollama. Configure the active
 provider and model:
 
 ```bash
-scout config llm
+scout config model
 ```
 
-You can also set values directly:
+For an interactive repair flow:
 
 ```bash
-scout config set llm.provider lmstudio
-scout config set llm.model local-model-name
+scout config model --interactive
 ```
 
-Use `scout config show` to inspect the active profile.
+For scripts, pass the provider and model explicitly:
+
+```bash
+scout config model --provider lmstudio --model local-model-name
+```
+
+Use `scout config show` to inspect the active profile and `scout config path` to
+print the profile file path.
+
+## Profile Configuration
+
+Scout profile files store non-secret settings for this computer. Use dedicated
+commands for credentials and structured state:
+
+```bash
+scout config show
+scout config path
+scout config get llm.provider
+scout config set scraper.max_concurrent_fetches 6
+```
+
+`scout config set` accepts known scalar settings only. It will not save API
+keys, tokens, or structured values.
+
+Scheduled discovery targets use their own commands:
+
+```bash
+scout config schedule set --enabled --cron "0 8 * * 1"
+scout config schedule target add --location "Austin, TX" --issues housing_affordability,transportation
+scout config schedule target list
+```
 
 ## Search-Backed Discovery
 
