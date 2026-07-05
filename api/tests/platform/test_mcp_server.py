@@ -7,14 +7,13 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from atlas.config import Settings
 from atlas.platform.mcp import server as server_module
 from atlas.platform.mcp.auth_middleware import McpBearerAuthMiddleware
 from atlas.platform.mcp.server import build_mcp, get_mcp, get_mcp_asgi_app, mcp_session_lifespan
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
-
-    from atlas.config import Settings
 
 HTTP_UNAUTHORIZED = 401
 
@@ -172,6 +171,34 @@ async def test_get_mcp_asgi_app_returns_mountable_app(patched_settings: Settings
     """`get_mcp_asgi_app` should return the Starlette streamable_http_app."""
     app = get_mcp_asgi_app()
     assert callable(app)
+
+
+def test_build_mcp_allows_configured_public_transport_hosts(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Hosted MCP traffic should not inherit FastMCP's localhost-only host guard."""
+    settings = Settings(
+        database_url="sqlite:///tmp/test.db",
+        environment="production",
+        cors_origins=["https://atlas.rebuildingus.org", "*"],
+        auth_jwt_issuer="https://atlas.rebuildingus.org",
+        auth_jwt_audience=[
+            "https://atlas.rebuildingus.org/mcp",
+            "https://atlas-api.rebuildingus.org",
+        ],
+    )
+    monkeypatch.setattr(server_module, "get_settings", lambda: settings)
+
+    mcp = build_mcp()
+
+    transport_security = mcp.settings.transport_security
+    assert transport_security is not None
+    assert transport_security.enable_dns_rebinding_protection is True
+    assert "atlas.rebuildingus.org" in transport_security.allowed_hosts
+    assert "atlas-api.rebuildingus.org" in transport_security.allowed_hosts
+    assert "*" not in transport_security.allowed_hosts
+    assert "https://atlas.rebuildingus.org" in transport_security.allowed_origins
+    assert "*" not in transport_security.allowed_origins
 
 
 @pytest.mark.asyncio
