@@ -34,12 +34,13 @@ EXPECTED_TOOL_NAMES = {
     "get_place_issue_signals",
     "get_related_entities",
     "resolve_issue_areas",
+    "start_discovery_run",
 }
 
 
 @pytest.mark.asyncio
-async def test_build_mcp_registers_all_atlas_read_tools() -> None:
-    """build_mcp() registers exactly the read-only Atlas tool surface."""
+async def test_build_mcp_registers_all_atlas_tools() -> None:
+    """build_mcp() registers exactly Atlas's 12 read tools plus start_discovery_run."""
     mcp = build_mcp()
     tools = await mcp.list_tools()
     tool_names = {tool.name for tool in tools}
@@ -365,6 +366,178 @@ async def test_auth_middleware_rejects_tokens_without_mcp_package_access() -> No
         in challenge
     )
     next_handler.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_auth_middleware_allows_read_tool_call_without_discovery_write_scope() -> None:
+    """A tools/call for a read tool never requires discovery:write."""
+    middleware = McpBearerAuthMiddleware(app=AsyncMock())
+    request = MagicMock()
+    request.headers = {"authorization": "Bearer valid-token"}
+    request.json = AsyncMock(
+        return_value={"method": "tools/call", "params": {"name": "search_entities"}}
+    )
+    next_handler = AsyncMock(return_value="ok")
+
+    with (
+        patch("atlas.platform.mcp.auth_middleware.get_settings") as get_settings_mock,
+        patch("atlas.platform.mcp.auth_middleware.verify_bearer_jwt") as verify_mock,
+    ):
+        settings = MagicMock()
+        settings.auth_jwt_audience = ["https://atlas.example.com/mcp"]
+        settings.auth_jwt_issuer = "https://atlas.example.com/api/auth"
+        settings.auth_jwt_jwks_url = "https://atlas.example.com/api/auth/jwks"
+        settings.auth_jwt_resource_url = "https://atlas.example.com/mcp"
+        get_settings_mock.return_value = settings
+        verify_mock.return_value = {
+            "sub": "user-123",
+            "aud": "https://atlas.example.com/mcp",
+            "capabilities": ["api.mcp"],
+            "permissions": {"discovery": ["read"]},
+        }
+
+        result = await middleware.dispatch(request, next_handler)
+
+    assert result == "ok"
+    next_handler.assert_awaited_once_with(request)
+
+
+@pytest.mark.asyncio
+async def test_auth_middleware_ignores_non_tools_call_methods() -> None:
+    """A JSON-RPC method other than tools/call never requires discovery:write."""
+    middleware = McpBearerAuthMiddleware(app=AsyncMock())
+    request = MagicMock()
+    request.headers = {"authorization": "Bearer valid-token"}
+    request.json = AsyncMock(return_value={"method": "tools/list", "params": {}})
+    next_handler = AsyncMock(return_value="ok")
+
+    with (
+        patch("atlas.platform.mcp.auth_middleware.get_settings") as get_settings_mock,
+        patch("atlas.platform.mcp.auth_middleware.verify_bearer_jwt") as verify_mock,
+    ):
+        settings = MagicMock()
+        settings.auth_jwt_audience = ["https://atlas.example.com/mcp"]
+        settings.auth_jwt_issuer = "https://atlas.example.com/api/auth"
+        settings.auth_jwt_jwks_url = "https://atlas.example.com/api/auth/jwks"
+        settings.auth_jwt_resource_url = "https://atlas.example.com/mcp"
+        get_settings_mock.return_value = settings
+        verify_mock.return_value = {
+            "sub": "user-123",
+            "aud": "https://atlas.example.com/mcp",
+            "capabilities": ["api.mcp"],
+            "permissions": {"discovery": ["read"]},
+        }
+
+        result = await middleware.dispatch(request, next_handler)
+
+    assert result == "ok"
+    next_handler.assert_awaited_once_with(request)
+
+
+@pytest.mark.asyncio
+async def test_auth_middleware_ignores_tools_call_with_malformed_params() -> None:
+    """A tools/call body with non-dict params never requires discovery:write."""
+    middleware = McpBearerAuthMiddleware(app=AsyncMock())
+    request = MagicMock()
+    request.headers = {"authorization": "Bearer valid-token"}
+    request.json = AsyncMock(return_value={"method": "tools/call", "params": "not-a-dict"})
+    next_handler = AsyncMock(return_value="ok")
+
+    with (
+        patch("atlas.platform.mcp.auth_middleware.get_settings") as get_settings_mock,
+        patch("atlas.platform.mcp.auth_middleware.verify_bearer_jwt") as verify_mock,
+    ):
+        settings = MagicMock()
+        settings.auth_jwt_audience = ["https://atlas.example.com/mcp"]
+        settings.auth_jwt_issuer = "https://atlas.example.com/api/auth"
+        settings.auth_jwt_jwks_url = "https://atlas.example.com/api/auth/jwks"
+        settings.auth_jwt_resource_url = "https://atlas.example.com/mcp"
+        get_settings_mock.return_value = settings
+        verify_mock.return_value = {
+            "sub": "user-123",
+            "aud": "https://atlas.example.com/mcp",
+            "capabilities": ["api.mcp"],
+            "permissions": {"discovery": ["read"]},
+        }
+
+        result = await middleware.dispatch(request, next_handler)
+
+    assert result == "ok"
+    next_handler.assert_awaited_once_with(request)
+
+
+@pytest.mark.asyncio
+async def test_auth_middleware_rejects_start_discovery_run_without_write_scope() -> None:
+    """Triggering a discovery run over MCP requires discovery:write, not just read."""
+    middleware = McpBearerAuthMiddleware(app=AsyncMock())
+    request = MagicMock()
+    request.headers = {"authorization": "Bearer valid-token"}
+    request.json = AsyncMock(
+        return_value={"method": "tools/call", "params": {"name": "start_discovery_run"}}
+    )
+    next_handler = AsyncMock(return_value="ok")
+
+    with (
+        patch("atlas.platform.mcp.auth_middleware.get_settings") as get_settings_mock,
+        patch("atlas.platform.mcp.auth_middleware.verify_bearer_jwt") as verify_mock,
+    ):
+        settings = MagicMock()
+        settings.auth_jwt_audience = ["https://atlas.example.com/mcp"]
+        settings.auth_jwt_issuer = "https://atlas.example.com/api/auth"
+        settings.auth_jwt_jwks_url = "https://atlas.example.com/api/auth/jwks"
+        settings.auth_jwt_resource_url = "https://atlas.example.com/mcp"
+        settings.auth_resource_metadata_url = (
+            "https://atlas.example.com/.well-known/oauth-protected-resource/mcp"
+        )
+        get_settings_mock.return_value = settings
+        verify_mock.return_value = {
+            "sub": "user-123",
+            "aud": "https://atlas.example.com/mcp",
+            "capabilities": ["api.mcp"],
+            "permissions": {"discovery": ["read"]},
+        }
+
+        response = await middleware.dispatch(request, next_handler)
+
+    assert response.status_code == HTTP_FORBIDDEN
+    challenge = response.headers["WWW-Authenticate"]
+    assert 'error="insufficient_scope"' in challenge
+    assert 'scope="discovery:write"' in challenge
+    next_handler.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_auth_middleware_allows_start_discovery_run_with_write_scope() -> None:
+    """A token with discovery:write may call the start_discovery_run tool."""
+    middleware = McpBearerAuthMiddleware(app=AsyncMock())
+    request = MagicMock()
+    request.headers = {"authorization": "Bearer valid-token"}
+    request.json = AsyncMock(
+        return_value={"method": "tools/call", "params": {"name": "start_discovery_run"}}
+    )
+    next_handler = AsyncMock(return_value="ok")
+
+    with (
+        patch("atlas.platform.mcp.auth_middleware.get_settings") as get_settings_mock,
+        patch("atlas.platform.mcp.auth_middleware.verify_bearer_jwt") as verify_mock,
+    ):
+        settings = MagicMock()
+        settings.auth_jwt_audience = ["https://atlas.example.com/mcp"]
+        settings.auth_jwt_issuer = "https://atlas.example.com/api/auth"
+        settings.auth_jwt_jwks_url = "https://atlas.example.com/api/auth/jwks"
+        settings.auth_jwt_resource_url = "https://atlas.example.com/mcp"
+        get_settings_mock.return_value = settings
+        verify_mock.return_value = {
+            "sub": "user-123",
+            "aud": "https://atlas.example.com/mcp",
+            "capabilities": ["api.mcp"],
+            "permissions": {"discovery": ["read", "write"]},
+        }
+
+        result = await middleware.dispatch(request, next_handler)
+
+    assert result == "ok"
+    next_handler.assert_awaited_once_with(request)
 
 
 @pytest.mark.asyncio

@@ -23,9 +23,11 @@ if TYPE_CHECKING:
 
 RequestResponseEndpoint = Callable[["Request"], Awaitable[Response]]
 DISCOVERY_READ_SCOPE = "discovery:read"
+DISCOVERY_WRITE_SCOPE = "discovery:write"
 MCP_CAPABILITY_SCOPE = "api.mcp"
 REQUIRED_MCP_SCOPES = (DISCOVERY_READ_SCOPE, MCP_CAPABILITY_SCOPE)
 STATUS_CLIENT_ERROR_MIN = 400
+WRITE_TOOL_NAMES = frozenset({"start_discovery_run"})
 logger = logging.getLogger(__name__)
 
 
@@ -48,6 +50,51 @@ def _has_discovery_read_scope(payload: object) -> bool:
 
     scopes = payload.get("scopes")
     return isinstance(scopes, list) and DISCOVERY_READ_SCOPE in scopes
+
+
+def _has_discovery_write_scope(payload: object) -> bool:
+    """Return whether a verified access-token payload allows MCP write tools."""
+    if not isinstance(payload, dict):
+        return False
+
+    permissions = payload.get("permissions")
+    if isinstance(permissions, dict):
+        discovery_permissions = permissions.get("discovery")
+        if isinstance(discovery_permissions, list) and "write" in discovery_permissions:
+            return True
+
+    scope = payload.get("scope")
+    if isinstance(scope, str) and DISCOVERY_WRITE_SCOPE in scope.split():
+        return True
+    if isinstance(scope, list) and DISCOVERY_WRITE_SCOPE in scope:
+        return True
+
+    scopes = payload.get("scopes")
+    return isinstance(scopes, list) and DISCOVERY_WRITE_SCOPE in scopes
+
+
+async def _requested_write_tool_name(request: Request) -> str | None:
+    """Return the tool name being called if this request targets a write tool.
+
+    MCP tool calls are JSON-RPC ``tools/call`` requests; reading the body here
+    is safe because Starlette's ``BaseHTTPMiddleware`` replays it for the
+    downstream ASGI app. Any failure to parse (non-JSON body, unrelated
+    JSON-RPC method) just means this isn't a write-tool call.
+    """
+    try:
+        body = await request.json()
+    except Exception:
+        return None
+
+    if not isinstance(body, dict) or body.get("method") != "tools/call":
+        return None
+
+    params = body.get("params")
+    if not isinstance(params, dict):
+        return None
+
+    name = params.get("name")
+    return name if name in WRITE_TOOL_NAMES else None
 
 
 def _has_mcp_package_access(payload: object) -> bool:
@@ -169,6 +216,23 @@ class McpBearerAuthMiddleware(BaseHTTPMiddleware):
                 },
             )
 
+        write_tool_name = await _requested_write_tool_name(request)
+        if write_tool_name is not None and not _has_discovery_write_scope(payload):
+            return Response(
+                status_code=403,
+                headers={
+                    "WWW-Authenticate": build_bearer_challenge(
+                        settings,
+                        scope=[DISCOVERY_WRITE_SCOPE],
+                        error="insufficient_scope",
+                        error_description=(
+                            f"Atlas MCP requires discovery:write to call {write_tool_name}."
+                        ),
+                    ),
+                },
+            )
+
+        request.state.mcp_auth_payload = payload
         response = await call_next(request)
         try:
             await _record_successful_mcp_usage(

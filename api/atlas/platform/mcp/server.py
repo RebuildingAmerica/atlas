@@ -12,6 +12,7 @@ from mcp.server.transport_security import TransportSecuritySettings
 from atlas.platform.config import Settings, get_settings
 
 from .data import AtlasDataService
+from .tasks import install_tasks_extension
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
@@ -68,13 +69,14 @@ def build_transport_security_settings(settings: Settings) -> TransportSecuritySe
 
 
 def build_mcp() -> FastMCP:
-    """Construct a FastMCP server with all Atlas read tools registered.
+    """Construct a FastMCP server with Atlas's read tools and Tasks extension.
 
     The server is configured for stateless Streamable HTTP so it can run behind
     a horizontally-scaled load balancer (Cloud Run) without sticky sessions.
     `streamable_http_path="/"` collapses the default `/mcp` suffix so the
     Streamable HTTP root sits directly at whatever mount point the host app
-    chooses (Atlas mounts at `/mcp`).
+    chooses (Atlas mounts at `/mcp`). `install_tasks_extension` adds the one
+    write/compute tool (`start_discovery_run`) plus its `tasks/*` handlers.
     """
     settings = get_settings()
     mcp = FastMCP(
@@ -232,6 +234,7 @@ def build_mcp() -> FastMCP:
         service = AtlasDataService(get_settings().database_url)
         return await service.resolve_issue_areas(text, limit=limit)
 
+    install_tasks_extension(mcp)
     return mcp
 
 
