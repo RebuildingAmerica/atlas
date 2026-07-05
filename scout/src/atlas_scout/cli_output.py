@@ -55,7 +55,7 @@ def format_device_auth_error(error: DeviceAuthError) -> str:
     if error.error == "invalid_response":
         return "Atlas auth returned an unexpected response. Update Scout and try again."
 
-    if error.description:
+    if error.description and not _is_generic_auth_description(error.description):
         return error.description
 
     if error.error == "network_error":
@@ -108,7 +108,7 @@ def print_login_success(console: Console, email: str) -> None:
     """Print the successful login identity."""
     console.print()
     console.print(f"[green]Logged in as[/] [bold]{email}[/]")
-    console.print("[dim]This computer is now connected to Atlas.[/]")
+    console.print("[dim]Run `scout doctor` to check this computer before discovery work.[/]")
 
 
 def format_user_code(user_code: str) -> str:
@@ -169,6 +169,20 @@ def _looks_like_wrong_auth_surface(error: DeviceAuthError) -> bool:
         or "text/html" in content_type
         or "application/xhtml" in content_type
     )
+
+
+def _is_generic_auth_description(description: str) -> bool:
+    """Return whether a server error description is too vague to show alone."""
+    normalized = description.strip().lower()
+    return normalized in {
+        "error",
+        "httperror",
+        "http error",
+        "internal server error",
+        "requesterror",
+        "request error",
+        "server error",
+    }
 
 
 def print_run_banner(

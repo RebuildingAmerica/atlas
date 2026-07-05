@@ -53,6 +53,9 @@ from atlas_scout.config import (
     load_config,
     set_active_profile_name,
 )
+from atlas_scout.credentials import CredentialStoreError
+from atlas_scout.doctor import run_doctor
+from atlas_scout.doctor_output import print_doctor_report
 from atlas_scout.login_flow import (
     LoginExecutionError,
     begin_login,
@@ -165,6 +168,28 @@ def _search_key_configured() -> bool:
     return has_search_api_key()
 
 
+def _print_credential_store_error(exc: CredentialStoreError) -> None:
+    """Render a credential-store error without exposing secret values."""
+    err_console.print(f"[red]Credential storage error:[/] {exc}")
+
+
+def _load_session_or_exit() -> ScoutSession | None:
+    """Load the Scout session or exit with a clear credential-store error."""
+    try:
+        return load_session()
+    except CredentialStoreError as exc:
+        _print_credential_store_error(exc)
+        sys.exit(1)
+
+
+def _load_session_or_click_exception() -> ScoutSession | None:
+    """Load the Scout session or raise a Click error for worker commands."""
+    try:
+        return load_session()
+    except CredentialStoreError as exc:
+        raise click.ClickException(f"Credential storage error: {exc}") from exc
+
+
 def _sync_daemon_module() -> None:
     """Keep legacy cli monkeypatch targets wired into the daemon helper module."""
     _daemon_helpers.asyncio = asyncio
@@ -240,6 +265,9 @@ async def _login(
             worker_name=worker_name,
             search_key_configured=_search_key_configured(),
         )
+    except CredentialStoreError as exc:
+        _print_credential_store_error(exc)
+        sys.exit(1)
     except DeviceAuthError as exc:
         print_login_failure(err_console, exc)
         sys.exit(1)
@@ -247,7 +275,11 @@ async def _login(
         err_console.print(f"[red]{exc.title}:[/] {exc.message}")
         sys.exit(1)
 
-    save_session(session)
+    try:
+        save_session(session)
+    except CredentialStoreError as exc:
+        _print_credential_store_error(exc)
+        sys.exit(1)
     print_login_success(console, session.user_email)
 
 
@@ -500,7 +532,11 @@ def _should_sync_after_run(
         return True
     if config.contribution.enabled:
         return False
-    return load_session() is not None
+    try:
+        return load_session() is not None
+    except CredentialStoreError as exc:
+        _print_credential_store_error(exc)
+        return False
 
 
 # ---------------------------------------------------------------------------
@@ -527,7 +563,15 @@ def _should_sync_after_run(
 def main(
     ctx: click.Context, config_path: str | None, profile_name: str | None, debug: bool
 ) -> None:
-    """Atlas Scout — discover people, orgs, and initiatives from the web."""
+    """Atlas Scout — discover people, orgs, and initiatives from the web.
+
+    \b
+    Start here:
+      scout login
+      scout doctor
+      scout run https://example.org
+      scout sync
+    """
     ctx.ensure_object(dict)
     if config_path:
         path = Path(config_path)
@@ -702,10 +746,12 @@ def run(
     if not url_list:
         if not search_api_key:
             err_console.print(
-                "[bold]Usage:[/]\n"
+                "[bold]Direct URL discovery[/]\n"
                 "  scout run <url> [<url> ...]\n"
-                "  scout run -f urls.txt\n"
-                "  scout run --location 'City, ST' --issues <slugs> --search-api-key KEY"
+                "  scout run -f urls.txt\n\n"
+                "[bold]Search-backed discovery[/]\n"
+                "  scout run --location 'City, ST' --issues <slugs> --search-api-key KEY\n\n"
+                "Run `scout doctor` to check model, search, sync, and local data readiness."
             )
             sys.exit(1)
         if not location:
@@ -839,6 +885,28 @@ def _build_provider(config: ScoutConfig, *, max_concurrent: int | None = None) -
     from atlas_scout.providers import create_provider
 
     return create_provider(config.llm, max_concurrent=max_concurrent)
+
+
+# ---------------------------------------------------------------------------
+# doctor command
+# ---------------------------------------------------------------------------
+
+
+@main.command("doctor")
+@click.option(
+    "--worker", "include_worker", is_flag=True, help="Include background worker readiness."
+)
+@click.option("--json", "json_output", is_flag=True, help="Print machine-readable JSON.")
+@click.pass_context
+def doctor(ctx: click.Context, include_worker: bool, json_output: bool) -> None:
+    """Check whether Scout is ready to run discovery and sync results."""
+    config: ScoutConfig = ctx.obj["config"]
+    report = run_doctor(config, include_worker=include_worker)
+    if json_output:
+        click.echo(report.to_json())
+    else:
+        print_doctor_report(console, report)
+    sys.exit(report.exit_code)
 
 
 # ---------------------------------------------------------------------------
@@ -1327,7 +1395,7 @@ async def _runs_sync(
     session = None
     resolved_api_key = api_key or config.contribution.api_key
     if not resolved_api_key:
-        session = load_session()
+        session = _load_session_or_exit()
 
     resolved_atlas_url = atlas_url or config.contribution.atlas_url
     if session is not None:
@@ -1439,7 +1507,7 @@ async def _runs_sync(
 def login(
     atlas_url: str | None, target: UploadTarget | None, workspace: str | None, no_browser: bool
 ) -> None:
-    """Log in to Atlas from the browser and remember this worker."""
+    """Log in to Atlas from the browser and remember this computer."""
     asyncio.run(
         _login(
             atlas_url=atlas_url,
@@ -1458,7 +1526,7 @@ def auth_group() -> None:
 @auth_group.command("status")
 def auth_status() -> None:
     """Show the current Scout login state."""
-    session = load_session()
+    session = _load_session_or_exit()
     if session is None:
         console.print("[yellow]Not logged in.[/]")
         return
@@ -1468,6 +1536,7 @@ def auth_status() -> None:
     console.print(f"  Worker: {session.worker_name or session.worker_id}")
     console.print(f"  Worker id: {session.worker_id}")
     console.print(f"  Upload target: {session.default_upload_target or 'not set'}")
+    console.print("  Credential storage: OS credential store")
     if session.workspace_id:
         console.print(f"  Workspace: {session.workspace_id}")
 
@@ -1475,7 +1544,7 @@ def auth_status() -> None:
 @main.command("whoami")
 def whoami() -> None:
     """Show the signed-in Atlas user."""
-    session = load_session()
+    session = _load_session_or_exit()
     if session is None:
         console.print("[yellow]Not logged in.[/]")
         return
@@ -1485,7 +1554,13 @@ def whoami() -> None:
 @main.command("logout")
 def logout() -> None:
     """Remove the local Scout login session."""
-    delete_session()
+    try:
+        delete_session()
+    except CredentialStoreError as exc:
+        err_console.print(
+            f"[red]Scout could not remove local credentials from the OS credential store:[/] {exc}"
+        )
+        sys.exit(1)
     console.print("[green]Logged out.[/]")
 
 
@@ -1501,7 +1576,7 @@ def search_key_set(value: str | None) -> None:
     key = value or click.prompt("Search API key", hide_input=True)
     try:
         save_search_api_key(key)
-    except ValueError as exc:
+    except (CredentialStoreError, ValueError) as exc:
         err_console.print(f"[red]Search key not saved:[/] {exc}")
         sys.exit(1)
     console.print("[green]Search key saved.[/]")
@@ -1513,16 +1588,24 @@ def search_key_status() -> None:
     if os.environ.get("SEARCH_API_KEY", "").strip():
         console.print("[green]Search key configured from SEARCH_API_KEY.[/]")
         return
-    if has_search_api_key():
-        console.print("[green]Search key configured.[/]")
-        return
+    try:
+        if has_search_api_key():
+            console.print("[green]Search key configured in OS credential store.[/]")
+            return
+    except CredentialStoreError as exc:
+        _print_credential_store_error(exc)
+        sys.exit(1)
     console.print("[yellow]Search key not configured.[/]")
 
 
 @search_key_group.command("delete")
 def search_key_delete() -> None:
     """Remove the stored local search API key."""
-    deleted = delete_stored_search_api_key()
+    try:
+        deleted = delete_stored_search_api_key()
+    except CredentialStoreError as exc:
+        _print_credential_store_error(exc)
+        sys.exit(1)
     if deleted:
         console.print("[green]Search key deleted.[/]")
         return
@@ -1874,7 +1957,7 @@ async def _worker_run_internal(
     lease_seconds: int,
 ) -> None:
     """Run the Atlas worker foreground loop used by the background process."""
-    session = load_session()
+    session = _load_session_or_click_exception()
     if session is None:
         raise click.ClickException("Log in with `scout login` before starting the worker.")
     _require_local_worker_provider(config)
@@ -1983,7 +2066,7 @@ async def _worker_start(
 ) -> None:
     """Start the local Atlas worker process."""
     _ = config
-    session = load_session()
+    session = _load_session_or_click_exception()
     if session is None:
         raise click.ClickException("Log in with `scout login` before starting the worker.")
     _require_local_worker_provider(config)

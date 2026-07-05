@@ -302,7 +302,9 @@ def test_run_no_urls_no_search_key_errors(tmp_path: Path, monkeypatch: pytest.Mo
     monkeypatch.setattr(cli_module, "load_config", lambda _path: _make_config(tmp_path))
     result = CliRunner().invoke(main, ["run"], env={"SEARCH_API_KEY": ""})
     assert result.exit_code != 0
-    assert "Usage:" in result.output
+    assert "Direct URL discovery" in result.output
+    assert "Search-backed discovery" in result.output
+    assert "scout doctor" in result.output
 
 
 def test_run_search_mode_missing_location(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

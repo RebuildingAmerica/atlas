@@ -10,6 +10,12 @@ import httpx
 
 from atlas_scout.atlas_urls import verify_for_atlas_url
 from atlas_scout.config import SCOUT_CONFIG_DIR
+from atlas_scout.credentials import (
+    SESSION_TOKEN_ACCOUNT,
+    CredentialStore,
+    CredentialStoreError,
+    SystemCredentialStore,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -17,6 +23,7 @@ if TYPE_CHECKING:
 UploadTarget = Literal["public", "workspace"]
 
 SESSION_PATH = SCOUT_CONFIG_DIR / "session.json"
+SESSION_CREDENTIAL_STORE = "system"
 SCOUT_CLIENT_ID = "atlas-scout-cli"
 SCOUT_LOGIN_SCOPE = (
     "openid profile email discovery:read discovery:write entities:write offline_access"
@@ -383,8 +390,13 @@ class DeviceAuthClient:
 class FileSessionStore:
     """Persist a Scout session in a local JSON file."""
 
-    def __init__(self, path: Path = SESSION_PATH) -> None:
+    def __init__(
+        self,
+        path: Path = SESSION_PATH,
+        credential_store: CredentialStore | None = None,
+    ) -> None:
         self.path = path
+        self.credential_store = credential_store or SystemCredentialStore()
 
     def load(self) -> ScoutSession | None:
         """Return the stored Scout session, if present."""
@@ -392,12 +404,27 @@ class FileSessionStore:
             return None
         with self.path.open("r", encoding="utf-8") as handle:
             payload = json.load(handle)
+        if "access_token" in payload:
+            raise CredentialStoreError(
+                "Legacy plaintext Scout session file found. Delete it and run `scout login`."
+            )
+        if payload.get("credential_store") != SESSION_CREDENTIAL_STORE:
+            raise CredentialStoreError(
+                "Scout session metadata does not use the OS credential store. "
+                "Delete it and run `scout login`."
+            )
+        access_token = self.credential_store.load_secret(SESSION_TOKEN_ACCOUNT)
+        if access_token is None:
+            raise CredentialStoreError(
+                "Scout session metadata exists, but the OS credential store token is missing. "
+                "Run `scout logout` and `scout login`."
+            )
         worker_name = payload.get("worker_name")
         if worker_name is not None and not isinstance(worker_name, str):
             raise ValueError("Scout session field worker_name must be a string")
         return ScoutSession(
             atlas_url=str(payload["atlas_url"]),
-            access_token=str(payload["access_token"]),
+            access_token=access_token,
             worker_id=str(payload["worker_id"]),
             user_id=str(payload["user_id"]),
             user_email=str(payload["user_email"]),
@@ -407,15 +434,20 @@ class FileSessionStore:
         )
 
     def save(self, session: ScoutSession) -> None:
-        """Store a Scout session with user-only file permissions."""
+        """Store session metadata on disk and the token in OS credential storage."""
+        self.credential_store.save_secret(SESSION_TOKEN_ACCOUNT, session.access_token)
+        payload = asdict(session)
+        payload.pop("access_token")
+        payload["credential_store"] = SESSION_CREDENTIAL_STORE
         self.path.parent.mkdir(parents=True, exist_ok=True)
         with self.path.open("w", encoding="utf-8") as handle:
-            json.dump(asdict(session), handle, indent=2, sort_keys=True)
+            json.dump(payload, handle, indent=2, sort_keys=True)
             handle.write("\n")
         self.path.chmod(0o600)
 
     def delete(self) -> None:
         """Remove any stored Scout session."""
+        self.credential_store.delete_secret(SESSION_TOKEN_ACCOUNT)
         if self.path.exists():
             self.path.unlink()
 

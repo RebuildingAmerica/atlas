@@ -44,6 +44,7 @@ def test_auth_status_logged_in_with_workspace(monkeypatch) -> None:
     assert "user@example.org" in result.output
     assert "worker-123" in result.output
     assert "org-123" in result.output
+    assert "OS credential store" in result.output
     assert "secret-token" not in result.output
 
 
@@ -104,11 +105,11 @@ def test_whoami_logged_in(monkeypatch) -> None:
     assert "user@example.org" in result.output
 
 
-def test_logout_deletes_session(monkeypatch) -> None:
-    """logout removes the local Scout session."""
+def test_logout_deletes_local_session(monkeypatch) -> None:
+    """logout removes the local Scout credentials."""
     import atlas_scout.cli as cli_module
 
-    deleted = []
+    deleted: list[bool] = []
     monkeypatch.setattr(cli_module, "delete_session", lambda: deleted.append(True))
 
     result = CliRunner().invoke(main, ["logout"])
@@ -116,3 +117,19 @@ def test_logout_deletes_session(monkeypatch) -> None:
     assert result.exit_code == 0
     assert deleted == [True]
     assert "Logged out" in result.output
+
+
+def test_logout_reports_local_credential_delete_failure(monkeypatch) -> None:
+    """Credential store failures stay visible when logout cannot clear secrets."""
+    import atlas_scout.cli as cli_module
+    from atlas_scout.credentials import CredentialStoreError
+
+    def fail_delete_session() -> None:
+        raise CredentialStoreError("Keychain unavailable")
+
+    monkeypatch.setattr(cli_module, "delete_session", fail_delete_session)
+
+    result = CliRunner().invoke(main, ["logout"])
+
+    assert result.exit_code != 0
+    assert "could not remove local credentials" in result.output

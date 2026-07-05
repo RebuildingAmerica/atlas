@@ -1,4 +1,4 @@
-# Atlas Scout CLI Worker Auth And Discovery Spec
+# Atlas Scout CLI Auth And Discovery Spec
 
 **Date:** 2026-07-04
 **Status:** Draft
@@ -21,15 +21,21 @@ volunteers.
 
 - Public Scout users sign in with normal free Atlas accounts.
 - `scout login` uses browser-based device authorization, prints a user code, and
-  enrolls the current machine as a revocable Scout worker.
-- The enrolled worker can process Atlas jobs with the host device, similar in
-  spirit to SETI@home: Atlas queues work; trusted local workers claim, process,
-  and return source-linked artifacts.
+  authorizes Scout-initiated discovery and sync workflows from the current
+  machine. The same browser-approved device session can also back optional
+  worker mode.
+- Scout-initiated workflows are the primary CLI value: a user runs discovery
+  locally, reviews the terminal receipt, and syncs source-backed artifacts to
+  Atlas public review or a private workspace. Background worker mode is
+  secondary: Atlas queues work; trusted local workers claim, process, and return
+  source-linked artifacts.
 - Public worker mode uses local model providers only. Atlas does not send paid
   vendor model credentials to volunteer machines.
-- Search API keys are optional but strongly recommended. Workers with a search
-  key can claim exploratory discovery jobs; workers without one can claim
-  seeded, direct-URL, or evidence-packet jobs.
+- Search API keys are optional but strongly recommended. Users with a search
+  key can run search-backed discovery; users without one can still run direct
+  URL discovery. Workers with a search key can claim exploratory discovery
+  jobs; workers without one can claim seeded, direct-URL, or evidence-packet
+  jobs.
 - Upload destination is turnkey by default. `scout login` remembers public
   uploads unless the user explicitly selects a workspace with
   `--target workspace` or `--workspace`; scripts can still pass
@@ -41,6 +47,23 @@ volunteers.
   reviewed, source-gated action.
 
 ## CLI Experience
+
+### Primary Scout-Initiated Path
+
+The first-run path is discovery-first:
+
+```bash
+scout login
+scout doctor
+scout run https://example.org
+scout sync
+```
+
+`scout doctor` is the readiness checkpoint between login and work. Its default
+view answers whether this computer can run direct URL discovery, search-backed
+discovery, and Atlas sync. Worker readiness is opt-in with
+`scout doctor --worker` so passive background contribution does not obscure the
+Scout-initiated workflow.
 
 ### Install And Update
 
@@ -61,8 +84,8 @@ sh scripts/smoke-scout-install.sh
 
 The smoke check installs Scout into a temporary virtualenv, runs the installed
 `scout` executable, exercises `search-key` and `worker` command surfaces, checks
-search-key file permissions, and confirms worker startup fails clearly before
-login.
+that search keys avoid plaintext file storage, and confirms worker startup
+fails clearly before login.
 
 For day-to-day local Atlas development, install the managed `scout-dev` command:
 
@@ -109,6 +132,7 @@ completion, and the resulting remote run receipt.
 
 ```bash
 scout login [--atlas-url https://atlas.rebuildingus.org] [--no-browser]
+scout doctor [--worker] [--json]
 scout auth status
 scout whoami
 scout logout
@@ -123,7 +147,7 @@ short approval URL and the code separately. If Atlas omits
 Atlas omits the polling interval, Scout uses RFC 8628's five-second default.
 After browser approval, Scout exchanges the approved device session for a narrow
 API token, enrolls the current host as a named Scout device, and stores the
-browser-approved session locally with user-only file permissions.
+browser-approved session token in the OS credential store.
 
 The browser approval page follows the RFC 8628 user-interaction shape:
 
@@ -152,6 +176,30 @@ secrets.
 revocation is exposed from the Atlas account page so a user can see and revoke
 specific host computers.
 
+### Doctor Command
+
+```bash
+scout doctor
+scout doctor --worker
+scout doctor --json
+```
+
+`scout doctor` is read-only. It does not create device codes, exchange tokens,
+start workers, write config, or mutate Atlas state. It groups checks for
+credential storage, Atlas account, Atlas reachability, configured model, search
+key, local data path, and sync readiness. The default capability summary is
+Scout-initiated: direct URL runs, search discovery, and Atlas sync. Missing
+search keys are warnings, not failures, because direct URL discovery still
+works.
+
+`scout doctor --worker` adds passive worker readiness: local worker state,
+local-provider requirement, seeded worker jobs, and search worker jobs. This
+keeps worker mode available without making it the onboarding front door.
+
+`scout doctor --json` emits stable machine-readable check and capability
+results for tests and automation. Doctor output must never include secrets, raw
+HTTP bodies, exception reprs, HTML error pages, or full credential values.
+
 ### Search Key Commands
 
 ```bash
@@ -160,12 +208,13 @@ scout search-key status
 scout search-key delete
 ```
 
-The search key is stored separately from the Atlas worker credential with
-user-only file permissions. `SEARCH_API_KEY` still works and takes precedence.
-Scout shows whether search-backed discovery is available and warns when no
-search key is configured, but it still permits seeded/direct-URL work.
+The search key is stored separately from the Atlas worker credential in the OS
+credential store. `SEARCH_API_KEY` still works and takes precedence as an
+ephemeral override. Scout shows whether search-backed discovery is available and
+warns when no search key is configured, but it still permits seeded/direct-URL
+work.
 
-### Worker Commands
+### Optional Worker Commands
 
 ```bash
 scout worker start [--atlas-url URL] [--search-api-key KEY] [--interval 10] [--lease-seconds 900]
@@ -240,13 +289,13 @@ credential rather than asking users to create general-purpose API keys.
    scopes, capability metadata, created time, last seen time, and revoked time.
 
 Worker credentials are separate from user-created API keys. They do not count
-against product API-key limits, are named by device, and are revocable from both
-CLI and account settings.
+against product API-key limits, are named by device, and are revocable from
+account settings.
 
-Local storage must prefer the OS credential store. A plaintext token file is
-allowed only with an explicit CLI flag and a clear warning. Config files may
-store non-secret values such as Atlas URL, worker id, destination preference,
-and profile name.
+Local storage must use the OS credential store for browser-approved session
+tokens and search keys. Plaintext token and search-key files are not supported
+for public launch. Config files may store non-secret values such as Atlas URL,
+worker id, destination preference, and profile name.
 
 ## Discovery Worker Contract
 
@@ -380,5 +429,6 @@ make it easier to publish unsupported claims about real people.
   jobs.
 - Public uploads create review-gated artifacts and do not publish records.
 - Workspace uploads create private workspace resources.
-- `scout logout` revokes the worker credential.
+- `scout logout` removes local credentials without calling a non-standard
+  device-flow revoke endpoint.
 - Legacy API-key sync still works.

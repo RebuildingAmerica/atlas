@@ -36,6 +36,7 @@ def test_search_key_set_status_and_delete(monkeypatch) -> None:
     result = runner.invoke(main, ["search-key", "status"])
     assert result.exit_code == 0
     assert "Search key configured" in result.output
+    assert "OS credential store" in result.output
 
     result = runner.invoke(main, ["search-key", "delete"])
     assert result.exit_code == 0
