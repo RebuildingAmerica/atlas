@@ -5,6 +5,8 @@ from http import HTTPStatus
 import pytest
 
 STATUS_OK = HTTPStatus.OK
+MIN_OPERATION_DESCRIPTION_LENGTH = 140
+MIN_TAG_DESCRIPTION_LENGTH = 120
 
 
 @pytest.mark.asyncio
@@ -47,19 +49,50 @@ async def test_openapi_declares_all_public_route_tags(test_client: object) -> No
     response = await test_client.get("/openapi.json")
     payload = response.json()
 
-    declared_tags = {tag["name"] for tag in payload["tags"]}
+    declared_tags = {tag["name"]: tag for tag in payload["tags"]}
+    used_tags = {
+        tag
+        for path_item in payload["paths"].values()
+        for operation in path_item.values()
+        for tag in operation.get("tags", [])
+    }
 
-    assert {
-        "access",
-        "claims",
-        "discovery-schedules",
-        "feed",
-        "follows",
-        "lists",
-        "org-annotations",
-        "org-discovery-runs",
-        "org-entries",
-    }.issubset(declared_tags)
+    assert used_tags <= set(declared_tags)
+    assert all(
+        len(tag["description"]) >= MIN_TAG_DESCRIPTION_LENGTH for tag in declared_tags.values()
+    )
+
+
+@pytest.mark.asyncio
+async def test_openapi_operation_descriptions_are_explanatory(test_client: object) -> None:
+    """Scalar operation descriptions should explain workflow context, not only restate verbs."""
+    response = await test_client.get("/openapi.json")
+    payload = response.json()
+
+    terse_operations = [
+        operation["operationId"]
+        for path_item in payload["paths"].values()
+        for method, operation in path_item.items()
+        if method in {"get", "put", "post", "delete", "patch"}
+        and len(operation.get("description", "")) < MIN_OPERATION_DESCRIPTION_LENGTH
+    ]
+
+    assert terse_operations == []
+
+
+@pytest.mark.asyncio
+async def test_openapi_component_properties_have_descriptions(test_client: object) -> None:
+    """Scalar schemas should explain response fields instead of showing bare generated titles."""
+    response = await test_client.get("/openapi.json")
+    payload = response.json()
+
+    missing_descriptions = []
+    for schema_name, schema in payload["components"]["schemas"].items():
+        for property_name, property_schema in schema.get("properties", {}).items():
+            if "description" not in property_schema:
+                missing_descriptions.append(f"{schema_name}.{property_name}")
+
+    assert missing_descriptions == []
 
 
 @pytest.mark.asyncio

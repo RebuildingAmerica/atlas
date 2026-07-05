@@ -34,6 +34,7 @@ from atlas.platform.openapi import (
     OPENAPI_TAGS,
     OPENAPI_TITLE,
     OPENAPI_VERSION,
+    install_openapi_enrichment,
 )
 
 logger = logging.getLogger(__name__)
@@ -144,6 +145,7 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
+    install_openapi_enrichment(app)
     # CORS middleware — narrow methods so that the OAuth token endpoint and
     # other credentialed routes only see the verbs Atlas actually serves.
     app.add_middleware(
