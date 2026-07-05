@@ -40,6 +40,7 @@ from atlas_scout.cli_output import (
     format_verification_uri_complete,
     print_cli_error,
     print_duplicate_run_notice,
+    print_local_model_setup_help,
     print_login_instructions,
     print_login_success,
     print_run_banner,
@@ -172,7 +173,7 @@ def _require_local_worker_provider(config: ScoutConfig) -> None:
         allowed = ", ".join(sorted(LOCAL_WORKER_PROVIDERS))
         raise click.ClickException(
             "Scout worker mode requires a local model provider before public launch. "
-            f"Run `scout setup llm` to choose one of: {allowed}."
+            f"Run `scout config llm` to choose one of: {allowed}."
         )
 
 
@@ -1294,6 +1295,48 @@ def config_get(ctx: click.Context, key: str) -> None:
         console.print(str(val) if val is not None else "[dim]not set[/]")
 
 
+@config_group.command("llm")
+@click.option("--provider", type=click.Choice(list(LOCAL_PROVIDER_NAMES)), default=None)
+@click.option("--model", "model_name", default=None, help="Local model name to use.")
+@click.option("--base-url", default=None, help="Local model server URL.")
+@click.option("--interactive", is_flag=True, help="Choose from detected local models.")
+@click.pass_context
+def config_llm(
+    ctx: click.Context,
+    provider: str | None,
+    model_name: str | None,
+    base_url: str | None,
+    interactive: bool,
+) -> None:
+    """Detect and save the local model Scout should use."""
+    config: ScoutConfig = ctx.obj["config"]
+    if provider is not None:
+        config.llm.provider = provider
+    if model_name is not None:
+        config.llm.model = model_name
+    if base_url is not None:
+        config.llm.base_url = base_url
+
+    try:
+        resolution = resolve_local_model(config)
+        if interactive:
+            resolution = _choose_local_model_interactively(config, resolution)
+        if not resolution.ready:
+            _exit_with_error(
+                CliError(
+                    title="Local model unavailable",
+                    message=resolution.message,
+                    hint=resolution.remediation,
+                )
+            )
+        apply_local_model_resolution(config, resolution)
+        _save_local_model_config(ctx.obj["config_path"], resolution)
+    except click.ClickException as exc:
+        _exit_with_error(CliError(title="Local model unavailable", message=exc.message))
+
+    _print_local_model_resolution(resolution, saved=True)
+
+
 def _write_toml(path: Path, data: dict[str, dict[str, str | int | float | bool]]) -> None:
     """Write a flat dict-of-dicts as TOML."""
     lines: list[str] = []
@@ -1318,14 +1361,12 @@ def _write_toml(path: Path, data: dict[str, dict[str, str | int | float | bool]]
 # ---------------------------------------------------------------------------
 
 
-@main.group("setup", invoke_without_command=True)
+@main.command("setup")
 @click.option("--atlas-url", default=None, help="Atlas app URL for browser login.")
 @click.option("--no-browser", "open_browser", flag_value=False, default=True)
 @click.pass_context
-def setup_group(ctx: click.Context, atlas_url: str | None, open_browser: bool) -> None:
+def setup_command(ctx: click.Context, atlas_url: str | None, open_browser: bool) -> None:
     """Set up Scout on this computer."""
-    if ctx.invoked_subcommand is not None:
-        return
     asyncio.run(
         _setup_onboarding(
             config=ctx.obj["config"],
@@ -1362,61 +1403,18 @@ async def _setup_onboarding(
     else:
         console.print(f"Signed in as [bold]{session.user_email}[/]")
 
-    try:
-        resolution = _prepare_local_model_config(
-            config,
-            config_path=config_path,
-            force_save=True,
-        )
-    except click.ClickException as exc:
-        _exit_with_error(CliError(title="Local model unavailable", message=exc.message))
+    resolution = resolve_local_model(config)
+    if not resolution.ready:
+        print_local_model_setup_help(console, resolution, default_model=config.llm.model)
+        return
+
+    apply_local_model_resolution(config, resolution)
+    _save_local_model_config(config_path, resolution)
 
     _print_local_model_resolution(resolution, saved=bool(resolution))
     console.print()
     console.print("[green]Scout setup complete.[/]")
     console.print("[dim]Run `scout doctor` to check this computer before discovery work.[/]")
-
-
-@setup_group.command("llm")
-@click.option("--provider", type=click.Choice(list(LOCAL_PROVIDER_NAMES)), default=None)
-@click.option("--model", "model_name", default=None, help="Local model name to use.")
-@click.option("--base-url", default=None, help="Local model server URL.")
-@click.option("--interactive", is_flag=True, help="Choose from detected local models.")
-@click.pass_context
-def setup_llm(
-    ctx: click.Context,
-    provider: str | None,
-    model_name: str | None,
-    base_url: str | None,
-    interactive: bool,
-) -> None:
-    """Detect and save the local model Scout should use."""
-    config: ScoutConfig = ctx.obj["config"]
-    if provider is not None:
-        config.llm.provider = provider
-    if model_name is not None:
-        config.llm.model = model_name
-    if base_url is not None:
-        config.llm.base_url = base_url
-
-    try:
-        resolution = resolve_local_model(config)
-        if interactive:
-            resolution = _choose_local_model_interactively(config, resolution)
-        if not resolution.ready:
-            _exit_with_error(
-                CliError(
-                    title="Local model unavailable",
-                    message=resolution.message,
-                    hint=resolution.remediation,
-                )
-            )
-        apply_local_model_resolution(config, resolution)
-        _save_local_model_config(ctx.obj["config_path"], resolution)
-    except click.ClickException as exc:
-        _exit_with_error(CliError(title="Local model unavailable", message=exc.message))
-
-    _print_local_model_resolution(resolution, saved=True)
 
 
 # ---------------------------------------------------------------------------

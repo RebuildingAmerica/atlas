@@ -18,6 +18,7 @@ if TYPE_CHECKING:
 
     from atlas_scout.auth import DeviceAuthError, DeviceCode
     from atlas_scout.config import ScoutConfig
+    from atlas_scout.local_models import LocalModelResolution
     from atlas_scout.pipeline import PipelineResult
     from atlas_scout.runtime import RuntimeProfile
 
@@ -119,6 +120,32 @@ def print_login_success(console: Console, email: str) -> None:
     console.print()
     console.print(f"[green]Logged in as[/] [bold]{email}[/]")
     console.print("[dim]Run `scout doctor` to check this computer before discovery work.[/]")
+
+
+def print_local_model_setup_help(
+    console: Console,
+    resolution: LocalModelResolution,
+    *,
+    default_model: str,
+) -> None:
+    """Print actionable local-model onboarding help."""
+    console.print()
+    console.print("[yellow]Local model not ready[/]")
+    console.print("Scout needs a local chat model before it can run discovery on this computer.")
+    if resolution.remediation:
+        console.print(f"[dim]{resolution.remediation}[/]")
+    console.print()
+    console.print("[bold]Recommended[/]")
+    console.print("  Install Ollama: https://ollama.com/download")
+    console.print(f"  Then run: ollama pull {default_model}")
+    console.print()
+    console.print("[bold]Also supported[/]")
+    console.print("  LM Studio: install a chat model, then start the local server.")
+    console.print()
+    console.print("[bold]Finish model setup[/]")
+    console.print("  scout config llm")
+    console.print()
+    console.print("[dim]Run `scout setup` again after a local model is running.[/]")
 
 
 def format_user_code(user_code: str) -> str:

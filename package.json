@@ -9,6 +9,7 @@
   "scripts": {
     "predev": "sh ./scripts/portless-reset.sh",
     "dev": "ATLAS_DEPLOY_MODE= turbo run dev e2e:mail",
+    "setup": "tsx scripts/bootstrap/cold-start.ts --local-only",
     "predev:local": "sh ./scripts/portless-reset.sh",
     "dev:local": "ATLAS_DEPLOY_MODE=local turbo run dev",
     "portless:reset": "sh ./scripts/portless-reset.sh",
@@ -29,7 +30,7 @@
     "compose:validate": "sh ./scripts/compose-validate.sh",
     "scout-dev:install": "bash ./install-scout-dev.sh",
     "scout-dev:uninstall": "bash ./uninstall-scout-dev.sh",
-    "scout-dev:test": "bash ./scripts/test-scout-dev-installer.sh",
+    "scout-dev:test": "uv --directory ./scout run pytest --no-cov tests/e2e/test_scout_dev_installer.py -q",
     "turbo:validate": "node ./scripts/validate-turbo-selectors.mjs",
     "e2e:api": "uv --directory ./api run python -m atlas.seed_profiles --database-url ${DATABASE_URL:-sqlite:///atlas.db} && uv --directory ./api run python -m atlas.main",
     "seed:profiles": "uv --directory ./api run python -m atlas.seed_profiles",

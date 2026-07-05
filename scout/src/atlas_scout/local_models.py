@@ -237,8 +237,8 @@ def _unavailable_remediation(probes: tuple[LocalModelProbe, ...]) -> str:
             "LM Studio API authentication."
         )
     if probes and all(probe.status == "no_models" for probe in probes):
-        return "Download a chat model in Ollama or LM Studio, then run `scout setup llm`."
-    return "Start Ollama or LM Studio, then run `scout setup llm`."
+        return "Download a chat model in Ollama or LM Studio, then run `scout config llm`."
+    return "Start Ollama or LM Studio, then run `scout config llm`."
 
 
 def _probe_ollama(config: ScoutConfig) -> LocalModelProbe:
@@ -259,7 +259,7 @@ def _probe_ollama(config: ScoutConfig) -> LocalModelProbe:
             status="unreachable",
             models=(),
             message=f"Ollama is not reachable at {base_url}.",
-            remediation="Start Ollama, then run `scout setup llm`.",
+            remediation="Start Ollama, then run `scout config llm`.",
         )
 
     names = _ollama_model_names(payload)
@@ -298,7 +298,7 @@ def _probe_lmstudio(config: ScoutConfig) -> LocalModelProbe:
                     status="auth_required",
                     models=(),
                     message="LM Studio requires an API token.",
-                    remediation="Set LM_STUDIO_API_KEY, then run `scout setup llm`.",
+                    remediation="Set LM_STUDIO_API_KEY, then run `scout config llm`.",
                 )
             response.raise_for_status()
             payload = response.json()
@@ -327,7 +327,7 @@ def _probe_lmstudio(config: ScoutConfig) -> LocalModelProbe:
         status="no_models",
         models=(),
         message="LM Studio has no visible models.",
-        remediation="Download a chat model in LM Studio, then run `scout setup llm`.",
+        remediation="Download a chat model in LM Studio, then run `scout config llm`.",
     )
 
 

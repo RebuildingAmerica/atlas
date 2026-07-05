@@ -61,10 +61,11 @@ scout sync
 ```
 
 `scout setup` is the low-decision onboarding command. It signs the user in when
-needed, resolves and saves a working local model provider, and points to
-`scout doctor` for a read-only readiness check. Users can still run the steps
-individually, but they should not have to know those pieces before trying
-Scout.
+needed, checks local model readiness, saves a working detected model when one
+is available, and points to `scout doctor` for a read-only readiness check.
+If no local model is ready, setup keeps the successful sign-in and offers
+concrete next steps for Ollama and LM Studio. Users can still run the steps
+individually, but they should not have to know those pieces before trying Scout.
 
 `scout doctor` is the readiness checkpoint between login and work. Its default
 view answers whether this computer can run direct URL discovery, search-backed
@@ -79,16 +80,21 @@ choice to the active profile, and continues. Users only need the explicit
 repair command when Scout cannot find a working local model:
 
 ```bash
-scout setup llm
+scout config llm
 ```
 
-`scout setup llm` detects Ollama at `http://localhost:11434` and LM Studio at
+`scout config llm` detects Ollama at `http://localhost:11434` and LM Studio at
 `http://localhost:1234/v1`, lists available models in interactive mode, and
 writes non-secret provider/model/base URL settings to the active profile.
 Scout never silently installs model software, starts daemons, runs `sudo`, or
-stores LM Studio API tokens in the setup flow.
+stores LM Studio API tokens in setup or configuration flows.
 
 ### Install And Update
+
+Repo setup and Scout product setup are separate. `pnpm setup` prepares the
+Atlas checkout for local development; it must not sign a user into Atlas,
+configure a local model, or mutate Scout product state. Scout product onboarding
+starts at `scout setup` or `scout-dev setup`.
 
 During local development, install the current checkout as the `scout` command
 with editable local libraries:
@@ -158,7 +164,7 @@ completion, and the resulting remote run receipt.
 scout setup [--atlas-url https://atlas.rebuildingus.org] [--no-browser]
 scout login [--atlas-url https://atlas.rebuildingus.org] [--no-browser]
 scout doctor [--worker] [--json]
-scout setup llm [--interactive] [--provider ollama|lmstudio] [--model MODEL] [--base-url URL]
+scout config llm [--interactive] [--provider ollama|lmstudio] [--model MODEL] [--base-url URL]
 scout auth status
 scout whoami
 scout logout
@@ -241,11 +247,11 @@ Normal discovery commands resolve local model settings before work starts:
   action: start Ollama, start LM Studio's server, download a model, or provide
   an LM Studio API token if that server requires one.
 
-`scout setup llm` exposes the same resolver as a direct repair command. Default
+`scout config llm` exposes the same resolver as a direct repair command. Default
 mode makes the best safe choice automatically. `--interactive` shows detected
 provider/model choices for users who want to override the automatic selection.
 `--provider`, `--model`, and `--base-url` support scripted setup. `scout doctor`
-continues to be read-only and recommends `scout setup llm` only when setup can
+continues to be read-only and recommends `scout config llm` only when setup can
 fix the configured local model state.
 
 ### Search Key Commands
