@@ -17,6 +17,9 @@ async def test_place_context_comes_from_seeded_database(test_client: object) -> 
     assert payload["place_key"] == "las-vegas-nv"
     assert payload["name"] == "Las Vegas"
     assert payload["kind"] == "polity"
+    assert payload["source_dataset"] == "Atlas civic place composition"
+    assert payload["source_identifier"] == "atlas:place-composition/las-vegas-nv"
+    assert payload["source_url"] is None
     assert payload["summary_facts"] == [
         {"label": "Metro", "value": "Las Vegas-Henderson-Paradise", "attribution": None},
         {"label": "County", "value": "Clark County", "attribution": None},
@@ -41,12 +44,16 @@ async def test_place_context_comes_from_seeded_database(test_client: object) -> 
         "label": "Council agendas",
         "href": "https://www.lasvegasnevada.gov/Government",
     }
+    assert [place["kind"] for place in payload["places"]] == ["city", "city"]
     assert payload["places"][0] == {
-        "name": "The Strip",
-        "href": "/places/neighborhoods/the-strip-nv",
-        "kind": "corridor",
-        "summary": "Hospitality labor, tourism economy, transit access, public safety.",
-        "accent": "labor",
-        "latitude": 36.114647,
-        "longitude": -115.172813,
+        "name": "Henderson",
+        "href": "/places/cities/henderson-nv",
+        "kind": "city",
+        "summary": "Housing growth, water, parks, transit access, public safety.",
+        "accent": "neutral",
+        "latitude": 36.039525,
+        "longitude": -114.981721,
+        "source_dataset": "U.S. Census Bureau Places",
+        "source_identifier": "census:place/3231900",
+        "source_url": "https://www.census.gov/programs-surveys/geography.html",
     }

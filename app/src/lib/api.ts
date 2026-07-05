@@ -64,6 +64,7 @@ function mapSource(source: SourceResponse): Source {
     ingested_at: source.freshness.ingested_at ?? source.freshness.created_at ?? "",
     extraction_method: (source.extraction_method ?? "manual") as Source["extraction_method"],
     extraction_context: source.extraction_context ?? undefined,
+    linked_entity_ids: source.linked_entity_ids ?? [],
     freshness: source.freshness as Source["freshness"],
     created_at: source.freshness.created_at ?? "",
   };
@@ -255,6 +256,9 @@ function mapPlaceIdentity(slug: string, context: PlacePageContextResponse): Plac
     name: context.name,
     scopes: context.scopes ?? [],
     slug,
+    sourceDataset: context.source_dataset ?? undefined,
+    sourceIdentifier: context.source_identifier ?? undefined,
+    sourceUrl: context.source_url ?? undefined,
   };
 }
 
@@ -278,6 +282,9 @@ function mapRelatedPlace(
     latitude: place.latitude ?? undefined,
     longitude: place.longitude ?? undefined,
     name: place.name,
+    sourceDataset: place.source_dataset ?? undefined,
+    sourceIdentifier: place.source_identifier ?? undefined,
+    sourceUrl: place.source_url ?? undefined,
     summary: place.summary,
   };
 }
@@ -332,14 +339,25 @@ function sourceAttribution(source: Source): string {
   return [publisher, date].filter(Boolean).join(", ");
 }
 
-function mapLatestItem(source: Source): PlaceLatestItem {
+function mapLatestItem(
+  source: Source,
+  actorById: ReadonlyMap<string, PlaceActorSummary>,
+): PlaceLatestItem {
+  const linkedEntityIds = source.linked_entity_ids;
   return {
     id: source.id,
     title: source.title ?? source.publication ?? source.url,
     attribution: sourceAttribution(source),
+    dateLabel: formatShortDate(source.published_date ?? source.freshness?.published_date),
     href: source.url,
     excerpt: source.extraction_context,
-    topics: [humanize(source.type)],
+    linkedActors: linkedEntityIds.flatMap((id) => {
+      const actor = actorById.get(id);
+      return actor ? [{ id: actor.id, name: actor.name, href: actor.href }] : [];
+    }),
+    linkedEntityIds,
+    sourceType: source.type,
+    topics: [],
   };
 }
 
@@ -408,13 +426,15 @@ async function getPlacePage(placeSlug: string): Promise<PlacePageData> {
     listPlaceSources(placeSlug, { limit: 6 }),
   ]);
   const facts = profileFacts(profile);
+  const actorItems = entities.items?.map(mapEntity).map(mapPlaceActor) ?? [];
+  const actorById = new Map(actorItems.map((actor) => [actor.id, actor]));
 
   return {
     identity: mapPlaceIdentity(placeSlug, context),
     summaryFacts: summaryFacts(context, facts),
-    latest: sources.items?.map(mapSource).map(mapLatestItem) ?? [],
+    latest: sources.items?.map(mapSource).map((source) => mapLatestItem(source, actorById)) ?? [],
     actors: {
-      items: entities.items?.map(mapEntity).map(mapPlaceActor) ?? [],
+      items: actorItems,
       nextCursor: entities.next_cursor ?? undefined,
     },
     issues: issueSignals.issues?.map(mapPlaceIssue) ?? [],

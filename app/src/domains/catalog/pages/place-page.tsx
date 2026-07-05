@@ -112,6 +112,11 @@ const PLACE_ACCENT_CLASSES: Record<PlaceRelatedSummary["accent"], string> = {
   neutral: "bg-surface-container-low",
 };
 
+function formatSourceType(value: string): string {
+  const label = value.replaceAll("_", " ");
+  return label.charAt(0).toUpperCase() + label.slice(1);
+}
+
 function PlaceSection({ children, id, title }: PlaceSectionProps) {
   return (
     <section id={id} className="bg-surface-container-low scroll-mt-32 rounded-2xl p-4 sm:p-6">
@@ -210,6 +215,9 @@ function LatestList({ items }: LatestListProps) {
         <article key={item.id} className="bg-surface-container-lowest rounded-lg p-4 sm:p-5">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
             <div className="min-w-0 space-y-2">
+              <p className="type-label-medium text-ink-muted">
+                {formatSourceType(item.sourceType)}
+              </p>
               <a
                 href={item.href}
                 className="type-title-large text-ink-strong hover:text-accent inline-flex items-start gap-2 transition-colors"
@@ -220,6 +228,19 @@ function LatestList({ items }: LatestListProps) {
               <p className="type-body-small text-ink-muted font-medium">{item.attribution}</p>
               {item.excerpt ? (
                 <p className="type-body-medium text-ink-soft max-w-3xl">{item.excerpt}</p>
+              ) : null}
+              {item.linkedActors.length > 0 ? (
+                <div className="flex flex-wrap gap-2 pt-1">
+                  {item.linkedActors.map((actor) => (
+                    <a
+                      key={actor.id}
+                      href={actor.href}
+                      className="type-label-medium bg-surface-container text-ink-soft hover:text-ink-strong rounded-full px-3 py-1"
+                    >
+                      {actor.name}
+                    </a>
+                  ))}
+                </div>
               ) : null}
             </div>
             {item.topics.length > 0 ? (

@@ -219,6 +219,7 @@ async def _init_sqlite(database_url: str) -> None:
         await _ensure_review_queue_columns(conn)
         await _ensure_org_annotation_columns(conn)
         await _ensure_org_coverage_target_columns(conn)
+        await _ensure_place_context_columns(conn)
         await _ensure_place_related_place_columns(conn)
         await conn.commit()
         await conn.executescript(DB_SCHEMA)
@@ -663,7 +664,10 @@ CREATE TABLE IF NOT EXISTS place_contexts (
     place_key TEXT PRIMARY KEY,
     name TEXT NOT NULL,
     display TEXT NOT NULL,
-    kind TEXT NOT NULL CHECK(kind IN ('polity', 'city', 'county', 'metro', 'neighborhood', 'corridor', 'district', 'service_area', 'state')),
+    kind TEXT NOT NULL CHECK(kind IN ('polity', 'borough', 'city', 'county', 'metro', 'neighborhood', 'district', 'service_area', 'state')),
+    source_dataset TEXT,
+    source_identifier TEXT,
+    source_url TEXT,
     created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
     updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
 );
@@ -711,7 +715,10 @@ CREATE TABLE IF NOT EXISTS place_related_places (
     place_key TEXT NOT NULL,
     name TEXT NOT NULL,
     href TEXT NOT NULL,
-    kind TEXT NOT NULL CHECK(kind IN ('polity', 'city', 'county', 'metro', 'neighborhood', 'corridor', 'district', 'service_area', 'state')),
+    kind TEXT NOT NULL CHECK(kind IN ('polity', 'borough', 'city', 'county', 'metro', 'neighborhood', 'district', 'service_area', 'state')),
+    source_dataset TEXT,
+    source_identifier TEXT,
+    source_url TEXT,
     latitude REAL,
     longitude REAL,
     summary TEXT NOT NULL,
@@ -727,12 +734,25 @@ CREATE INDEX IF NOT EXISTS idx_place_government_links_government
     ON place_government_links(government_id);
 CREATE INDEX IF NOT EXISTS idx_place_related_places_place ON place_related_places(place_key);
 
-INSERT INTO place_contexts (place_key, name, display, kind)
-VALUES ('las-vegas-nv', 'Las Vegas', 'Las Vegas, NV', 'polity')
+INSERT INTO place_contexts (
+    place_key, name, display, kind, source_dataset, source_identifier, source_url
+)
+VALUES (
+    'las-vegas-nv',
+    'Las Vegas',
+    'Las Vegas, NV',
+    'polity',
+    'Atlas civic place composition',
+    'atlas:place-composition/las-vegas-nv',
+    NULL
+)
 ON CONFLICT (place_key) DO UPDATE SET
     name = excluded.name,
     display = excluded.display,
     kind = excluded.kind,
+    source_dataset = excluded.source_dataset,
+    source_identifier = excluded.source_identifier,
+    source_url = excluded.source_url,
     updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now');
 
 INSERT INTO place_scope_links (place_key, label, href, active, sort_order)
@@ -782,19 +802,41 @@ ON CONFLICT (government_id, href) DO UPDATE SET
     label = excluded.label,
     sort_order = excluded.sort_order;
 
-INSERT INTO place_related_places (id, place_key, name, href, kind, latitude, longitude, summary, accent, sort_order)
+DELETE FROM place_related_places
+WHERE id IN (
+    'las-vegas-nv-strip',
+    'las-vegas-nv-east-las-vegas',
+    'las-vegas-nv-historic-westside',
+    'las-vegas-nv-maryland-parkway',
+    'las-vegas-nv-boulder-highway'
+);
+
+INSERT INTO place_related_places (
+    id,
+    place_key,
+    name,
+    href,
+    kind,
+    source_dataset,
+    source_identifier,
+    source_url,
+    latitude,
+    longitude,
+    summary,
+    accent,
+    sort_order
+)
 VALUES
-    ('las-vegas-nv-strip', 'las-vegas-nv', 'The Strip', '/places/neighborhoods/the-strip-nv', 'corridor', 36.114647, -115.172813, 'Hospitality labor, tourism economy, transit access, public safety.', 'labor', 10),
-    ('las-vegas-nv-east-las-vegas', 'las-vegas-nv', 'East Las Vegas', '/places/neighborhoods/east-las-vegas-nv', 'neighborhood', 36.162000, -115.080000, 'Tenant organizing, immigrant services, heat, bus reliability.', 'housing', 20),
-    ('las-vegas-nv-historic-westside', 'las-vegas-nv', 'Historic Westside', '/places/neighborhoods/historic-westside-las-vegas-nv', 'neighborhood', 36.181000, -115.154000, 'Redevelopment, cultural preservation, health access, small business retention.', 'health', 30),
-    ('las-vegas-nv-maryland-parkway', 'las-vegas-nv', 'Maryland Parkway', '/places/corridors/maryland-parkway-nv', 'corridor', 36.111000, -115.136000, 'Bus rapid transit, campus access, hospital corridor, station planning.', 'climate', 40),
-    ('las-vegas-nv-boulder-highway', 'las-vegas-nv', 'Boulder Highway', '/places/corridors/boulder-highway-nv', 'corridor', 36.079000, -115.067000, 'Road safety, homelessness services, affordable housing, pedestrian deaths.', 'housing', 50),
-    ('las-vegas-nv-henderson', 'las-vegas-nv', 'Henderson', '/places/cities/henderson-nv', 'city', 36.039525, -114.981721, 'Housing growth, water, parks, transit access, public safety.', 'neutral', 60)
+    ('las-vegas-nv-henderson', 'las-vegas-nv', 'Henderson', '/places/cities/henderson-nv', 'city', 'U.S. Census Bureau Places', 'census:place/3231900', 'https://www.census.gov/programs-surveys/geography.html', 36.039525, -114.981721, 'Housing growth, water, parks, transit access, public safety.', 'neutral', 10),
+    ('las-vegas-nv-north-las-vegas', 'las-vegas-nv', 'North Las Vegas', '/places/cities/north-las-vegas-nv', 'city', 'U.S. Census Bureau Places', 'census:place/3251800', 'https://www.census.gov/programs-surveys/geography.html', 36.200000, -115.120000, 'Industrial growth, housing, transit access, parks, and public safety.', 'neutral', 20)
 ON CONFLICT (id) DO UPDATE SET
     place_key = excluded.place_key,
     name = excluded.name,
     href = excluded.href,
     kind = excluded.kind,
+    source_dataset = excluded.source_dataset,
+    source_identifier = excluded.source_identifier,
+    source_url = excluded.source_url,
     latitude = excluded.latitude,
     longitude = excluded.longitude,
     summary = excluded.summary,
@@ -1210,6 +1252,27 @@ async def _ensure_place_related_place_columns(conn: Any) -> None:
     additive_columns = (
         ("latitude", "ALTER TABLE place_related_places ADD COLUMN latitude REAL"),
         ("longitude", "ALTER TABLE place_related_places ADD COLUMN longitude REAL"),
+        ("source_dataset", "ALTER TABLE place_related_places ADD COLUMN source_dataset TEXT"),
+        ("source_identifier", "ALTER TABLE place_related_places ADD COLUMN source_identifier TEXT"),
+        ("source_url", "ALTER TABLE place_related_places ADD COLUMN source_url TEXT"),
+    )
+    for column, ddl in additive_columns:
+        if column not in existing_columns:
+            await conn.execute(ddl)
+
+
+async def _ensure_place_context_columns(conn: Any) -> None:
+    """Apply additive place-context migrations for local SQLite databases."""
+    cursor = await conn.execute("PRAGMA table_info(place_contexts)")
+    rows = await cursor.fetchall()
+    if not rows:
+        return
+
+    existing_columns = {row[1] for row in rows}
+    additive_columns = (
+        ("source_dataset", "ALTER TABLE place_contexts ADD COLUMN source_dataset TEXT"),
+        ("source_identifier", "ALTER TABLE place_contexts ADD COLUMN source_identifier TEXT"),
+        ("source_url", "ALTER TABLE place_contexts ADD COLUMN source_url TEXT"),
     )
     for column, ddl in additive_columns:
         if column not in existing_columns:

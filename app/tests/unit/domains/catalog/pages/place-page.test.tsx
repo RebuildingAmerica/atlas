@@ -15,6 +15,7 @@ describe("PlacePage", () => {
 
     expect(screen.getByRole("heading", { level: 1, name: "Las Vegas" })).toBeInTheDocument();
     expect(screen.getByText("Clark County agenda, Jul 2")).toBeInTheDocument();
+    expect(screen.getByText("Government record")).toBeInTheDocument();
     expect(screen.getByText("HUD CHAS, 2023")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "People & Organizations" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Places" })).toBeInTheDocument();
@@ -35,12 +36,12 @@ describe("PlacePage", () => {
     if (placesSection === null) {
       throw new Error("Places section was not rendered.");
     }
-    const stripCard = within(placesSection).getByRole("link", { name: /The Strip/ });
-    expect(stripCard).toHaveClass("bg-surface-container-lowest");
-    expect(within(stripCard).getByTestId("place-map-thumb-The Strip")).toBeInTheDocument();
+    const hendersonCard = within(placesSection).getByRole("link", { name: /Henderson/ });
+    expect(hendersonCard).toHaveClass("bg-surface-container-lowest");
+    expect(within(hendersonCard).getByTestId("place-map-thumb-Henderson")).toBeInTheDocument();
     expect(
-      within(stripCard).getByText(
-        "Hospitality labor, tourism economy, transit access, public safety.",
+      within(hendersonCard).getByText(
+        "Housing growth, water, parks, transit access, public safety.",
       ),
     ).toBeInTheDocument();
   });

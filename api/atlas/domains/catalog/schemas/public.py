@@ -563,7 +563,6 @@ class PlaceRelatedPlaceResponse(BaseModel):
         "county",
         "metro",
         "neighborhood",
-        "corridor",
         "district",
         "service_area",
         "state",
@@ -571,6 +570,9 @@ class PlaceRelatedPlaceResponse(BaseModel):
     latitude: float | None = None
     longitude: float | None = None
     name: str
+    source_dataset: str | None = None
+    source_identifier: str | None = None
+    source_url: str | None = None
     summary: str
 
 
@@ -586,7 +588,6 @@ class PlacePageContextResponse(BaseModel):
         "county",
         "metro",
         "neighborhood",
-        "corridor",
         "district",
         "service_area",
         "state",
@@ -596,6 +597,9 @@ class PlacePageContextResponse(BaseModel):
     places: list[PlaceRelatedPlaceResponse] = Field(default_factory=list)
     resource_uri: str
     scopes: list[PlaceScopeLinkResponse] = Field(default_factory=list)
+    source_dataset: str | None = None
+    source_identifier: str | None = None
+    source_url: str | None = None
     summary_facts: list[PlaceSummaryFactResponse] = Field(default_factory=list)
 
 

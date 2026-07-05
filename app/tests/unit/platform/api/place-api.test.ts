@@ -122,6 +122,7 @@ describe("api.places", () => {
           publication: "Gary Common Council",
           type: "government_record",
           extraction_method: "manual",
+          linked_entity_ids: ["entry-1"],
           freshness: {
             published_date: "2026-07-02",
             ingested_at: "2026-07-03T00:00:00.000Z",
@@ -173,6 +174,9 @@ describe("api.places", () => {
       expect.objectContaining({
         title: "City council considers housing repair fund",
         attribution: "Gary Common Council, Jul 2",
+        dateLabel: "Jul 2",
+        linkedEntityIds: ["entry-1"],
+        sourceType: "government_record",
       }),
     );
   });

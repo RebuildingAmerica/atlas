@@ -1,4 +1,5 @@
 import type { EntryType } from "./entry";
+import type { SourceType } from "./source";
 
 export type PlaceKind =
   | "polity"
@@ -7,7 +8,6 @@ export type PlaceKind =
   | "county"
   | "metro"
   | "neighborhood"
-  | "corridor"
   | "district"
   | "service_area"
   | "state";
@@ -24,6 +24,9 @@ export interface PlaceIdentity {
   name: string;
   scopes: PlaceScopeLink[];
   slug: string;
+  sourceDataset?: string;
+  sourceIdentifier?: string;
+  sourceUrl?: string;
 }
 
 export interface PlaceFact {
@@ -34,11 +37,21 @@ export interface PlaceFact {
 
 export interface PlaceLatestItem {
   attribution: string;
+  dateLabel?: string;
   excerpt?: string;
   href: string;
   id: string;
+  linkedActors: PlaceLatestLinkedActor[];
+  linkedEntityIds: string[];
+  sourceType: SourceType;
   title: string;
   topics: string[];
+}
+
+export interface PlaceLatestLinkedActor {
+  href: string;
+  id: string;
+  name: string;
 }
 
 export interface PlaceActorSummary {
@@ -83,6 +96,9 @@ export interface PlaceRelatedSummary {
   latitude?: number;
   longitude?: number;
   name: string;
+  sourceDataset?: string;
+  sourceIdentifier?: string;
+  sourceUrl?: string;
   summary: string;
 }
 

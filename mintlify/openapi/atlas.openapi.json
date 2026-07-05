@@ -7774,7 +7774,6 @@
               "county",
               "metro",
               "neighborhood",
-              "corridor",
               "district",
               "service_area",
               "state"
@@ -7812,6 +7811,42 @@
             },
             "title": "Scopes",
             "type": "array"
+          },
+          "source_dataset": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "source dataset for this place page context.",
+            "title": "Source Dataset"
+          },
+          "source_identifier": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "source identifier for this place page context.",
+            "title": "Source Identifier"
+          },
+          "source_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "source url for this place page context.",
+            "title": "Source Url"
           },
           "summary_facts": {
             "description": "summary facts for this place page context.",
@@ -7922,7 +7957,6 @@
               "county",
               "metro",
               "neighborhood",
-              "corridor",
               "district",
               "service_area",
               "state"
@@ -7958,6 +7992,42 @@
             "description": "name for this place related place.",
             "title": "Name",
             "type": "string"
+          },
+          "source_dataset": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "source dataset for this place related place.",
+            "title": "Source Dataset"
+          },
+          "source_identifier": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "source identifier for this place related place.",
+            "title": "Source Identifier"
+          },
+          "source_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "source url for this place related place.",
+            "title": "Source Url"
           },
           "summary": {
             "description": "summary for this place related place.",

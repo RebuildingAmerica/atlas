@@ -88,7 +88,6 @@ import { Route as PublicPlacesNeighborhoodsPlaceSlugRouteImport } from './routes
 import { Route as PublicPlacesMetrosPlaceSlugRouteImport } from './routes/_public/places/metros/$placeSlug'
 import { Route as PublicPlacesDistrictsPlaceSlugRouteImport } from './routes/_public/places/districts/$placeSlug'
 import { Route as PublicPlacesCountiesPlaceSlugRouteImport } from './routes/_public/places/counties/$placeSlug'
-import { Route as PublicPlacesCorridorsPlaceSlugRouteImport } from './routes/_public/places/corridors/$placeSlug'
 import { Route as PublicPlacesCitiesPlaceSlugRouteImport } from './routes/_public/places/cities/$placeSlug'
 import { Route as PublicPlacesBoroughsPlaceSlugRouteImport } from './routes/_public/places/boroughs/$placeSlug'
 import { Route as DotwellKnownOauthAuthorizationServerApiAuthRouteImport } from './routes/[.]well-known/oauth-authorization-server/api/auth'
@@ -507,12 +506,6 @@ const PublicPlacesCountiesPlaceSlugRoute =
     path: '/places/counties/$placeSlug',
     getParentRoute: () => PublicRoute,
   } as any)
-const PublicPlacesCorridorsPlaceSlugRoute =
-  PublicPlacesCorridorsPlaceSlugRouteImport.update({
-    id: '/places/corridors/$placeSlug',
-    path: '/places/corridors/$placeSlug',
-    getParentRoute: () => PublicRoute,
-  } as any)
 const PublicPlacesCitiesPlaceSlugRoute =
   PublicPlacesCitiesPlaceSlugRouteImport.update({
     id: '/places/cities/$placeSlug',
@@ -605,7 +598,6 @@ export interface FileRoutesByFullPath {
   '/.well-known/oauth-authorization-server/api/auth': typeof DotwellKnownOauthAuthorizationServerApiAuthRoute
   '/places/boroughs/$placeSlug': typeof PublicPlacesBoroughsPlaceSlugRoute
   '/places/cities/$placeSlug': typeof PublicPlacesCitiesPlaceSlugRoute
-  '/places/corridors/$placeSlug': typeof PublicPlacesCorridorsPlaceSlugRoute
   '/places/counties/$placeSlug': typeof PublicPlacesCountiesPlaceSlugRoute
   '/places/districts/$placeSlug': typeof PublicPlacesDistrictsPlaceSlugRoute
   '/places/metros/$placeSlug': typeof PublicPlacesMetrosPlaceSlugRoute
@@ -684,7 +676,6 @@ export interface FileRoutesByTo {
   '/.well-known/oauth-authorization-server/api/auth': typeof DotwellKnownOauthAuthorizationServerApiAuthRoute
   '/places/boroughs/$placeSlug': typeof PublicPlacesBoroughsPlaceSlugRoute
   '/places/cities/$placeSlug': typeof PublicPlacesCitiesPlaceSlugRoute
-  '/places/corridors/$placeSlug': typeof PublicPlacesCorridorsPlaceSlugRoute
   '/places/counties/$placeSlug': typeof PublicPlacesCountiesPlaceSlugRoute
   '/places/districts/$placeSlug': typeof PublicPlacesDistrictsPlaceSlugRoute
   '/places/metros/$placeSlug': typeof PublicPlacesMetrosPlaceSlugRoute
@@ -771,7 +762,6 @@ export interface FileRoutesById {
   '/.well-known/oauth-authorization-server/api/auth': typeof DotwellKnownOauthAuthorizationServerApiAuthRoute
   '/_public/places/boroughs/$placeSlug': typeof PublicPlacesBoroughsPlaceSlugRoute
   '/_public/places/cities/$placeSlug': typeof PublicPlacesCitiesPlaceSlugRoute
-  '/_public/places/corridors/$placeSlug': typeof PublicPlacesCorridorsPlaceSlugRoute
   '/_public/places/counties/$placeSlug': typeof PublicPlacesCountiesPlaceSlugRoute
   '/_public/places/districts/$placeSlug': typeof PublicPlacesDistrictsPlaceSlugRoute
   '/_public/places/metros/$placeSlug': typeof PublicPlacesMetrosPlaceSlugRoute
@@ -856,7 +846,6 @@ export interface FileRouteTypes {
     | '/.well-known/oauth-authorization-server/api/auth'
     | '/places/boroughs/$placeSlug'
     | '/places/cities/$placeSlug'
-    | '/places/corridors/$placeSlug'
     | '/places/counties/$placeSlug'
     | '/places/districts/$placeSlug'
     | '/places/metros/$placeSlug'
@@ -935,7 +924,6 @@ export interface FileRouteTypes {
     | '/.well-known/oauth-authorization-server/api/auth'
     | '/places/boroughs/$placeSlug'
     | '/places/cities/$placeSlug'
-    | '/places/corridors/$placeSlug'
     | '/places/counties/$placeSlug'
     | '/places/districts/$placeSlug'
     | '/places/metros/$placeSlug'
@@ -1021,7 +1009,6 @@ export interface FileRouteTypes {
     | '/.well-known/oauth-authorization-server/api/auth'
     | '/_public/places/boroughs/$placeSlug'
     | '/_public/places/cities/$placeSlug'
-    | '/_public/places/corridors/$placeSlug'
     | '/_public/places/counties/$placeSlug'
     | '/_public/places/districts/$placeSlug'
     | '/_public/places/metros/$placeSlug'
@@ -1620,13 +1607,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PublicPlacesCountiesPlaceSlugRouteImport
       parentRoute: typeof PublicRoute
     }
-    '/_public/places/corridors/$placeSlug': {
-      id: '/_public/places/corridors/$placeSlug'
-      path: '/places/corridors/$placeSlug'
-      fullPath: '/places/corridors/$placeSlug'
-      preLoaderRoute: typeof PublicPlacesCorridorsPlaceSlugRouteImport
-      parentRoute: typeof PublicRoute
-    }
     '/_public/places/cities/$placeSlug': {
       id: '/_public/places/cities/$placeSlug'
       path: '/places/cities/$placeSlug'
@@ -1743,7 +1723,6 @@ interface PublicRouteChildren {
   PublicProfilesIndexRoute: typeof PublicProfilesIndexRoute
   PublicPlacesBoroughsPlaceSlugRoute: typeof PublicPlacesBoroughsPlaceSlugRoute
   PublicPlacesCitiesPlaceSlugRoute: typeof PublicPlacesCitiesPlaceSlugRoute
-  PublicPlacesCorridorsPlaceSlugRoute: typeof PublicPlacesCorridorsPlaceSlugRoute
   PublicPlacesCountiesPlaceSlugRoute: typeof PublicPlacesCountiesPlaceSlugRoute
   PublicPlacesDistrictsPlaceSlugRoute: typeof PublicPlacesDistrictsPlaceSlugRoute
   PublicPlacesMetrosPlaceSlugRoute: typeof PublicPlacesMetrosPlaceSlugRoute
@@ -1776,7 +1755,6 @@ const PublicRouteChildren: PublicRouteChildren = {
   PublicProfilesIndexRoute: PublicProfilesIndexRoute,
   PublicPlacesBoroughsPlaceSlugRoute: PublicPlacesBoroughsPlaceSlugRoute,
   PublicPlacesCitiesPlaceSlugRoute: PublicPlacesCitiesPlaceSlugRoute,
-  PublicPlacesCorridorsPlaceSlugRoute: PublicPlacesCorridorsPlaceSlugRoute,
   PublicPlacesCountiesPlaceSlugRoute: PublicPlacesCountiesPlaceSlugRoute,
   PublicPlacesDistrictsPlaceSlugRoute: PublicPlacesDistrictsPlaceSlugRoute,
   PublicPlacesMetrosPlaceSlugRoute: PublicPlacesMetrosPlaceSlugRoute,

@@ -39,6 +39,7 @@ export interface Source {
   ingested_at: string; // datetime
   extraction_method: ExtractionMethod;
   extraction_context?: string;
+  linked_entity_ids: string[];
   freshness?: FreshnessInfo;
   raw_content?: string;
   created_at: string; // datetime

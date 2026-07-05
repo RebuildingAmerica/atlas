@@ -598,7 +598,7 @@ class AtlasDataService:
         async with DatabaseSession(self._database_url) as conn:
             context_cursor = await conn.execute(
                 """
-                SELECT place_key, name, display, kind
+                SELECT place_key, name, display, kind, source_dataset, source_identifier, source_url
                 FROM place_contexts
                 WHERE place_key = ?
                 """,
@@ -666,7 +666,17 @@ class AtlasDataService:
 
             related_cursor = await conn.execute(
                 """
-                SELECT name, href, kind, summary, accent, latitude, longitude
+                SELECT
+                    name,
+                    href,
+                    kind,
+                    summary,
+                    accent,
+                    latitude,
+                    longitude,
+                    source_dataset,
+                    source_identifier,
+                    source_url
                 FROM place_related_places
                 WHERE place_key = ?
                 ORDER BY sort_order, name
