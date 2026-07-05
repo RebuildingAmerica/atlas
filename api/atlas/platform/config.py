@@ -15,7 +15,7 @@ from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 logger = logging.getLogger(__name__)
 
-API_ENV_FILE = Path(__file__).resolve().parents[1] / ".env"
+API_ENV_FILE = Path(__file__).resolve().parents[2] / ".env"
 
 
 def protected_resource_metadata_url(resource_url: str) -> str:
@@ -188,7 +188,6 @@ class Settings(BaseSettings):
     """Enable the Scalar API reference UI (/docs)."""
 
     model_config = SettingsConfigDict(
-        env_file=API_ENV_FILE,
         env_file_encoding="utf-8",
         case_sensitive=False,
         populate_by_name=True,
@@ -278,7 +277,7 @@ def get_settings() -> Settings:
     Settings
         The loaded application settings.
     """
-    return Settings()
+    return Settings(_env_file=API_ENV_FILE)
 
 
 def validate_runtime_auth_config(settings: Settings) -> None:

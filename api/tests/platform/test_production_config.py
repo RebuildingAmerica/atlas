@@ -1,14 +1,37 @@
 """Production configuration tests."""
 
+from pathlib import Path
+
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
 
 from atlas.main import create_app
-from atlas.platform.config import Settings, validate_runtime_auth_config
+from atlas.platform.config import (
+    API_ENV_FILE,
+    Settings,
+    get_settings,
+    validate_runtime_auth_config,
+)
 
 
 class TestProductionConfig:
     """Tests for production-oriented configuration defaults."""
+
+    def test_api_env_file_points_to_api_package_root(self) -> None:
+        """The API dev server should load api/.env when started by pnpm dev."""
+        assert Path(__file__).resolve().parents[2] / ".env" == API_ENV_FILE
+
+    def test_get_settings_loads_api_env_file(
+        self, tmp_path: Path, monkeypatch: MonkeyPatch
+    ) -> None:
+        """Runtime settings should read the configured API env file."""
+        env_file = tmp_path / ".env"
+        env_file.write_text("DATABASE_URL=sqlite:///tmp/from-api-env.db\n")
+        monkeypatch.setattr("atlas.platform.config.API_ENV_FILE", env_file)
+
+        settings = get_settings()
+
+        assert settings.database_url == "sqlite:///tmp/from-api-env.db"
 
     def test_openapi_defaults_on_in_production(self) -> None:
         """Production settings should keep OpenAPI and Scalar docs public by default."""
