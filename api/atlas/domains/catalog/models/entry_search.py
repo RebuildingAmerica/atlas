@@ -13,7 +13,7 @@ from atlas.platform.database import db
 
 if TYPE_CHECKING:
     import builtins
-    from collections.abc import Sequence
+    from collections.abc import Mapping, Sequence
 
     import aiosqlite
 
@@ -133,6 +133,7 @@ class EntrySearchMixin:
         states: builtins.list[str] | None = None,
         cities: builtins.list[str] | None = None,
         regions: builtins.list[str] | None = None,
+        place_filters: Sequence[Mapping[str, str | None]] | None = None,
         issue_areas: builtins.list[str] | None = None,
         entry_types: builtins.list[str] | None = None,
         source_types: builtins.list[str] | None = None,
@@ -183,6 +184,7 @@ class EntrySearchMixin:
             states=states,
             cities=cities,
             regions=regions,
+            place_filters=place_filters,
             issue_areas=issue_areas,
             entry_types=entry_types,
             source_types=source_types,
@@ -247,6 +249,7 @@ class EntrySearchMixin:
         states: builtins.list[str] | None = None,
         cities: builtins.list[str] | None = None,
         regions: builtins.list[str] | None = None,
+        place_filters: Sequence[Mapping[str, str | None]] | None = None,
         issue_areas: builtins.list[str] | None = None,
         entry_types: builtins.list[str] | None = None,
         source_types: builtins.list[str] | None = None,
@@ -292,6 +295,7 @@ class EntrySearchMixin:
             states=states,
             cities=cities,
             regions=regions,
+            place_filters=place_filters,
             issue_areas=issue_areas,
             entry_types=entry_types,
             source_types=source_types,
@@ -374,6 +378,7 @@ class EntrySearchMixin:
         states: builtins.list[str] | None = None,
         cities: builtins.list[str] | None = None,
         regions: builtins.list[str] | None = None,
+        place_filters: Sequence[Mapping[str, str | None]] | None = None,
         issue_areas: builtins.list[str] | None = None,
         entry_types: builtins.list[str] | None = None,
         source_types: builtins.list[str] | None = None,
@@ -409,15 +414,16 @@ class EntrySearchMixin:
                     )
                 """
             params.append(query)
-        if states:
-            query_sql += f" AND e.state IN ({_make_placeholders(states)})"
-            params.extend(states)
-        if cities:
-            query_sql += f" AND e.city IN ({_make_placeholders(cities)})"
-            params.extend(cities)
-        if regions:
-            query_sql += f" AND e.region IN ({_make_placeholders(regions)})"
-            params.extend(regions)
+        place_clause = _entry_place_clause(
+            states=states,
+            cities=cities,
+            regions=regions,
+            place_filters=place_filters,
+            params=params,
+        )
+        if place_clause is None:
+            return []
+        query_sql += place_clause
         if issue_areas:
             query_sql += f" AND eia.issue_area IN ({_make_placeholders(issue_areas)})"
             params.extend(issue_areas)
@@ -762,6 +768,54 @@ def _empty_facets() -> dict[str, list[dict[str, Any]]]:
         "source_types": [],
         "source_patterns": [],
     }
+
+
+def _entry_place_clause(
+    *,
+    states: list[str] | None,
+    cities: list[str] | None,
+    regions: list[str] | None,
+    place_filters: Sequence[Mapping[str, str | None]] | None,
+    params: list[Any],
+) -> str | None:
+    """Build the geography predicate for public entry search."""
+    if place_filters is not None:
+        clause = _place_filter_or_clause(place_filters, params)
+        return f" AND ({clause})" if clause else None
+
+    clauses: list[str] = []
+    if states:
+        clauses.append(f"e.state IN ({_make_placeholders(states)})")
+        params.extend(states)
+    if cities:
+        clauses.append(f"e.city IN ({_make_placeholders(cities)})")
+        params.extend(cities)
+    if regions:
+        clauses.append(f"e.region IN ({_make_placeholders(regions)})")
+        params.extend(regions)
+    return " AND " + " AND ".join(clauses) if clauses else ""
+
+
+def _place_filter_or_clause(
+    place_filters: Sequence[Mapping[str, str | None]],
+    params: list[Any],
+) -> str | None:
+    """Build exact place-scope filters without city/state cross products."""
+    filter_clauses: list[str] = []
+    for place_filter in place_filters:
+        filter_parts: list[str] = []
+        if place_filter.get("state"):
+            filter_parts.append("e.state = ?")
+            params.append(place_filter["state"])
+        if place_filter.get("city"):
+            filter_parts.append("e.city = ?")
+            params.append(place_filter["city"])
+        if place_filter.get("region"):
+            filter_parts.append("e.region = ?")
+            params.append(place_filter["region"])
+        if filter_parts:
+            filter_clauses.append("(" + " AND ".join(filter_parts) + ")")
+    return " OR ".join(filter_clauses) or None
 
 
 def _source_pattern_having_clause(source_patterns: Sequence[str]) -> str:

@@ -197,6 +197,69 @@ describe("api.places", () => {
     expect(result.latest.nextCursor).toBeUndefined();
   });
 
+  it("passes typed route kind through the place page bundle", async () => {
+    placeMocks.getPlace.mockResolvedValueOnce({
+      place: { city: "Las Vegas", state: "NV", region: null, display: "Las Vegas, NV" },
+      resource_uri: "atlas://places/las-vegas-nv",
+    });
+    placeMocks.getPlacePageContext.mockResolvedValueOnce({
+      place_key: "city:las-vegas-nv",
+      name: "City of Las Vegas",
+      display: "City of Las Vegas, NV",
+      kind: "city",
+      scopes: [{ label: "City", href: "/places/cities/las-vegas-nv", active: true }],
+      summary_facts: [],
+      governments: [],
+      places: [],
+      resource_uri: "atlas://places/las-vegas-nv/page-context",
+    });
+    placeMocks.listPlaceEntities.mockResolvedValueOnce({
+      items: [],
+      total: 0,
+      next_cursor: null,
+    });
+    placeMocks.getPlaceIssueSignals.mockResolvedValueOnce({
+      issues: [],
+      place: { city: "Las Vegas", state: "NV", region: null, display: "Las Vegas, NV" },
+      resource_uri: "atlas://places/las-vegas-nv/issue-signals",
+    });
+    placeMocks.getPlaceProfile.mockResolvedValueOnce({
+      place: { city: "Las Vegas", state: "NV", region: null, display: "Las Vegas, NV" },
+      demographics: {},
+      economics: {},
+      housing: {},
+      education: {},
+      health: {},
+      provenance: [],
+      resource_uri: "atlas://places/las-vegas-nv/profile",
+    });
+    placeMocks.listPlaceSources.mockResolvedValueOnce({
+      items: [],
+      total: 0,
+      next_cursor: null,
+    });
+
+    await api.places.getPage("las-vegas-nv", { kind: "city" });
+
+    expect(placeMocks.getPlacePageContext).toHaveBeenCalledWith("las-vegas-nv", {
+      kind: "city",
+    });
+    expect(placeMocks.listPlaceEntities).toHaveBeenCalledWith("las-vegas-nv", {
+      kind: "city",
+      limit: 20,
+    });
+    expect(placeMocks.getPlaceIssueSignals).toHaveBeenCalledWith("las-vegas-nv", {
+      kind: "city",
+    });
+    expect(placeMocks.getPlaceProfile).toHaveBeenCalledWith("las-vegas-nv", {
+      kind: "city",
+    });
+    expect(placeMocks.listPlaceSources).toHaveBeenCalledWith("las-vegas-nv", {
+      kind: "city",
+      limit: 10,
+    });
+  });
+
   it("loads paginated latest activity for a place", async () => {
     placeMocks.listPlaceSources.mockResolvedValueOnce({
       items: [
@@ -233,6 +296,7 @@ describe("api.places", () => {
 
     const result = await api.places.listLatest("gary-in", {
       cursor: "5",
+      kind: "city",
       limit: 10,
       query: "housing",
       sourceTypes: ["report"],
@@ -240,6 +304,7 @@ describe("api.places", () => {
 
     expect(placeMocks.listPlaceSources).toHaveBeenCalledWith("gary-in", {
       cursor: "5",
+      kind: "city",
       limit: 10,
       source_type: ["report"],
       text: "housing",
@@ -336,6 +401,7 @@ describe("api.places", () => {
 
     const result = await api.places.listActors("gary-in", {
       cursor: "10",
+      kind: "city",
       limit: 20,
       query: "housing",
       sort: "recent",
@@ -345,6 +411,7 @@ describe("api.places", () => {
     expect(placeMocks.listPlaceEntities).toHaveBeenCalledWith("gary-in", {
       cursor: "10",
       entity_type: ["organization"],
+      kind: "city",
       limit: 20,
       sort: "recent",
       text: "housing",

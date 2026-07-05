@@ -55,6 +55,7 @@ export interface PlaceLatestList {
 
 export interface PlaceLatestParams {
   cursor?: string;
+  kind?: PlaceKind;
   limit?: number;
   query?: string;
   sourceTypes?: SourceType[];
@@ -68,6 +69,7 @@ export type PlaceActorSort = "relevance" | "source_count" | "recent" | "name";
 
 export interface PlaceActorParams {
   cursor?: string;
+  kind?: PlaceKind;
   limit?: number;
   query?: string;
   sort?: PlaceActorSort;

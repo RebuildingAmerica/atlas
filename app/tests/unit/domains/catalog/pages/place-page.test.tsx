@@ -152,7 +152,10 @@ describe("PlacePage", () => {
     await user.click(screen.getByRole("button", { name: "Reports" }));
 
     expect(apiMocks.listLatest).toHaveBeenCalledWith("las-vegas-nv", {
+      cursor: undefined,
+      kind: "polity",
       limit: 10,
+      query: undefined,
       sourceTypes: ["report"],
     });
     expect(await screen.findByText("Housing conditions report")).toBeInTheDocument();
@@ -195,6 +198,7 @@ describe("PlacePage", () => {
     );
 
     expect(apiMocks.listActors).toHaveBeenCalledWith("las-vegas-nv", {
+      kind: "polity",
       limit: 20,
       sort: "name",
     });

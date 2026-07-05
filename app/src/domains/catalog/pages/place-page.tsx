@@ -11,6 +11,7 @@ import type {
   PlaceFact,
   PlaceGovernmentSummary,
   PlaceIssueSummary,
+  PlaceKind,
   PlaceLatestItem,
   PlaceLatestList,
   PlacePageData,
@@ -48,6 +49,7 @@ interface LatestListProps {
 
 interface LatestFeedProps {
   initialLatest: PlaceLatestList;
+  placeKind: PlaceKind;
   placeSlug: string;
 }
 
@@ -63,6 +65,7 @@ interface ActorCardProps {
 
 interface ActorDirectoryProps {
   initialActors: PlaceActorList;
+  placeKind: PlaceKind;
   placeSlug: string;
 }
 
@@ -375,7 +378,7 @@ function LatestList({ items }: LatestListProps) {
   );
 }
 
-function LatestFeed({ initialLatest, placeSlug }: LatestFeedProps) {
+function LatestFeed({ initialLatest, placeKind, placeSlug }: LatestFeedProps) {
   const [latest, setLatest] = useState(initialLatest);
   const [query, setQuery] = useState("");
   const [selectedSourceType, setSelectedSourceType] = useState<SourceType | null>(null);
@@ -392,6 +395,7 @@ function LatestFeed({ initialLatest, placeSlug }: LatestFeedProps) {
     try {
       const next = await api.places.listLatest(placeSlug, {
         cursor: params.cursor,
+        kind: placeKind,
         limit: 10,
         query: params.nextQuery?.trim() || undefined,
         sourceTypes: params.nextSourceType ? [params.nextSourceType] : undefined,
@@ -602,7 +606,7 @@ function ActorList({ actors, sort }: ActorListProps) {
   );
 }
 
-function ActorDirectory({ initialActors, placeSlug }: ActorDirectoryProps) {
+function ActorDirectory({ initialActors, placeKind, placeSlug }: ActorDirectoryProps) {
   const [actors, setActors] = useState(initialActors);
   const [query, setQuery] = useState("");
   const [selectedType, setSelectedType] = useState<EntryType | null>(null);
@@ -619,6 +623,7 @@ function ActorDirectory({ initialActors, placeSlug }: ActorDirectoryProps) {
 
     try {
       const loadParams: PlaceActorParams = { limit: 20 };
+      loadParams.kind = placeKind;
       const nextQuery = params.nextQuery?.trim();
       if (params.cursor) {
         loadParams.cursor = params.cursor;
@@ -1020,11 +1025,19 @@ export function PlacePage({ data }: PlacePageProps) {
 
         <div className="mt-4 grid gap-5">
           <PlaceSection id="latest" title="Latest">
-            <LatestFeed initialLatest={data.latest} placeSlug={data.identity.slug} />
+            <LatestFeed
+              initialLatest={data.latest}
+              placeKind={data.identity.kind}
+              placeSlug={data.identity.slug}
+            />
           </PlaceSection>
 
           <PlaceSection id="people-organizations" title="People & Organizations">
-            <ActorDirectory initialActors={data.actors} placeSlug={data.identity.slug} />
+            <ActorDirectory
+              initialActors={data.actors}
+              placeKind={data.identity.kind}
+              placeSlug={data.identity.slug}
+            />
           </PlaceSection>
 
           <PlaceSection id="issues" title="Issues">

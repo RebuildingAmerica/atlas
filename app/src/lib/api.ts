@@ -424,6 +424,7 @@ function mapLatestList(response: Awaited<ReturnType<typeof listPlaceSources>>): 
 function buildPlaceLatestParams(params: PlaceLatestParams = {}): ListPlaceSourcesParams {
   return {
     cursor: params.cursor,
+    kind: params.kind,
     limit: params.limit ?? PLACE_LATEST_PAGE_SIZE,
     source_type: params.sourceTypes?.length ? params.sourceTypes : undefined,
     text: params.query || undefined,
@@ -434,6 +435,7 @@ function buildPlaceActorParams(params: PlaceActorParams = {}): ListPlaceEntities
   return {
     cursor: params.cursor,
     entity_type: params.type ? [params.type] : undefined,
+    kind: params.kind,
     limit: params.limit ?? 20,
     sort: params.sort === "relevance" ? undefined : params.sort,
     text: params.query?.trim() || undefined,
@@ -483,8 +485,14 @@ function mapPlaceIssue(issue: IssueSignalSummary): PlaceIssueSummary {
   };
 }
 
-async function loadPlaceProfile(placeSlug: string): Promise<PlaceProfileResponse | null> {
+async function loadPlaceProfile(
+  placeSlug: string,
+  params: PlacePageParams = {},
+): Promise<PlaceProfileResponse | null> {
   try {
+    if (params.kind) {
+      return await getPlaceProfile(placeSlug, buildPlaceContextParams(params));
+    }
     return await getPlaceProfile(placeSlug);
   } catch (error) {
     if (error instanceof AtlasApiError && error.status === 404) {
@@ -501,13 +509,21 @@ async function getPlacePage(
   const contextRequest = params.kind
     ? getPlacePageContext(placeSlug, buildPlaceContextParams(params))
     : getPlacePageContext(placeSlug);
+  const actorParams = buildPlaceActorParams({ kind: params.kind, limit: 20 });
+  const issueRequest = params.kind
+    ? getPlaceIssueSignals(placeSlug, buildPlaceContextParams(params))
+    : getPlaceIssueSignals(placeSlug);
+  const latestParams = buildPlaceLatestParams({
+    kind: params.kind,
+    limit: PLACE_LATEST_PAGE_SIZE,
+  });
   const [, context, entities, issueSignals, profile, sources] = await Promise.all([
     getPlace(placeSlug),
     contextRequest,
-    listPlaceEntities(placeSlug, { limit: 20 }),
-    getPlaceIssueSignals(placeSlug),
-    loadPlaceProfile(placeSlug),
-    listPlaceSources(placeSlug, { limit: PLACE_LATEST_PAGE_SIZE }),
+    listPlaceEntities(placeSlug, actorParams),
+    issueRequest,
+    loadPlaceProfile(placeSlug, params),
+    listPlaceSources(placeSlug, latestParams),
   ]);
   const facts = profileFacts(profile);
   const actorItems = entities.items?.map(mapEntity).map(mapPlaceActor) ?? [];

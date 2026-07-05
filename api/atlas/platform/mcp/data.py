@@ -137,6 +137,9 @@ class SourceSearchOptions(TypedDict, total=False):
     cursor: str | None
 
 
+PlaceQueryFilter = dict[str, str | None]
+
+
 class EntityRecordContext:
     """Structured metadata needed to serialize an entity record."""
 
@@ -176,6 +179,7 @@ class AtlasDataService:
         self,
         *,
         place: str | Mapping[str, str | None] | None = None,
+        place_filters: Sequence[Mapping[str, str | None]] | None = None,
         issue_areas: list[str] | None = None,
         text: str | None = None,
         entity_types: list[str] | None = None,
@@ -197,6 +201,7 @@ class AtlasDataService:
                 states=[normalized_place["state"]] if normalized_place["state"] else None,
                 cities=[normalized_place["city"]] if normalized_place["city"] else None,
                 regions=[normalized_place["region"]] if normalized_place["region"] else None,
+                place_filters=place_filters,
                 issue_areas=validated_issue_areas or None,
                 entry_types=entity_types,
                 source_types=source_types,
@@ -234,10 +239,17 @@ class AtlasDataService:
     async def get_place_entities(
         self,
         place: str | Mapping[str, str | None],
+        *,
+        kind: str | None = None,
         **kwargs: Unpack[EntitySearchOptions],
     ) -> dict[str, Any]:
         """Convenience place-first alias for entity search."""
-        return await self.search_entities(place=place, **kwargs)
+        normalized_place, place_filters = await self._resolve_place_query_scope(place, kind=kind)
+        return await self.search_entities(
+            place=normalized_place,
+            place_filters=place_filters,
+            **kwargs,
+        )
 
     async def list_discovery_runs(
         self,
@@ -374,6 +386,7 @@ class AtlasDataService:
         self,
         *,
         place: str | Mapping[str, str | None] | None = None,
+        place_filters: Sequence[Mapping[str, str | None]] | None = None,
         issue_areas: list[str] | None = None,
         text: str | None = None,
         source_types: list[str] | None = None,
@@ -388,15 +401,12 @@ class AtlasDataService:
         clauses = ["1 = 1"]
         params: list[Any] = []
 
-        if normalized_place["state"]:
-            clauses.append("e.state = ?")
-            params.append(normalized_place["state"])
-        if normalized_place["city"]:
-            clauses.append("e.city = ?")
-            params.append(normalized_place["city"])
-        if normalized_place["region"]:
-            clauses.append("e.region = ?")
-            params.append(normalized_place["region"])
+        _append_source_place_clauses(
+            clauses=clauses,
+            params=params,
+            normalized_place=normalized_place,
+            place_filters=place_filters,
+        )
         if validated_issue_areas:
             placeholders = ", ".join(["?"] * len(validated_issue_areas))
             clauses.append(f"eia.issue_area IN ({placeholders})")
@@ -490,10 +500,61 @@ class AtlasDataService:
     async def get_place_sources(
         self,
         place: str | Mapping[str, str | None],
+        *,
+        kind: str | None = None,
         **kwargs: Unpack[SourceSearchOptions],
     ) -> dict[str, Any]:
         """Convenience place-first alias for source search."""
-        return await self.search_sources(place=place, **kwargs)
+        normalized_place, place_filters = await self._resolve_place_query_scope(place, kind=kind)
+        return await self.search_sources(
+            place=normalized_place,
+            place_filters=place_filters,
+            **kwargs,
+        )
+
+    async def _resolve_place_query_scope(
+        self,
+        place: str | Mapping[str, str | None],
+        *,
+        kind: str | None = None,
+    ) -> tuple[dict[str, str | None], list[PlaceQueryFilter] | None]:
+        """Return stored place filter rows for context-backed place pages."""
+        normalized_place = _normalize_place(place)
+        place_key = _place_context_lookup_key(_place_resource_slug(normalized_place), kind)
+
+        async with DatabaseSession(self._database_url) as conn:
+            filter_cursor = await conn.execute(
+                """
+                SELECT city, state, region
+                FROM place_query_filters
+                WHERE place_key = ?
+                ORDER BY sort_order, city, state, region
+                """,
+                [place_key],
+            )
+            filter_rows = await filter_cursor.fetchall()
+            if filter_rows:
+                return (
+                    normalized_place,
+                    [
+                        {
+                            "city": _clean_string(row[0]),
+                            "state": _normalize_state(row[1]),
+                            "region": _clean_string(row[2]),
+                        }
+                        for row in filter_rows
+                    ],
+                )
+
+            context_cursor = await conn.execute(
+                "SELECT 1 FROM place_contexts WHERE place_key = ?",
+                [place_key],
+            )
+            context_exists = await context_cursor.fetchone()
+
+        if context_exists:
+            return normalized_place, []
+        return normalized_place, None
 
     async def resolve_issue_areas(self, text: str, limit: int = 10) -> dict[str, Any]:
         """Resolve natural language into Atlas issue areas."""
@@ -542,14 +603,16 @@ class AtlasDataService:
         self,
         place: str | Mapping[str, str | None],
         *,
+        kind: str | None = None,
         issue_areas: list[str] | None = None,
         top_entities_per_issue: int = 5,
     ) -> dict[str, Any]:
         """Summarize which issues Atlas represents for a place."""
-        normalized_place = _normalize_place(place)
+        normalized_place, place_filters = await self._resolve_place_query_scope(place, kind=kind)
         validated_issue_areas = _validate_issue_areas(issue_areas)
         search = await self.search_entities(
             place=normalized_place,
+            place_filters=place_filters,
             issue_areas=validated_issue_areas or None,
             limit=500,
         )
@@ -598,10 +661,18 @@ class AtlasDataService:
             resource_uri=_place_resource_uri(normalized_place, "issue-signals"),
         ).model_dump(mode="json")
 
-    async def get_place_profile(self, place: str | Mapping[str, str | None]) -> dict[str, Any]:
+    async def get_place_profile(
+        self,
+        place: str | Mapping[str, str | None],
+        *,
+        kind: str | None = None,
+    ) -> dict[str, Any]:
         """Return structured demographic and socioeconomic context for a place."""
         normalized_place = _normalize_place(place)
+        place_key = _place_context_lookup_key(_place_resource_slug(normalized_place), kind)
         profile_key = _place_resource_slug(normalized_place)
+        if kind and place_key in PLACE_PROFILES:
+            profile_key = place_key
         profile = PLACE_PROFILES.get(profile_key)
         if profile is None:
             raise _place_profile_not_found(str(normalized_place["display"]))
@@ -736,14 +807,16 @@ class AtlasDataService:
         self,
         place: str | Mapping[str, str | None],
         *,
+        kind: str | None = None,
         issue_areas: list[str] | None = None,
     ) -> dict[str, Any]:
         """Return structured Atlas coverage for a place."""
-        normalized_place = _normalize_place(place)
+        normalized_place, place_filters = await self._resolve_place_query_scope(place, kind=kind)
         validated_issue_areas = _validate_issue_areas(issue_areas)
 
         search = await self.search_entities(
             place=normalized_place,
+            place_filters=place_filters,
             issue_areas=validated_issue_areas or None,
             limit=500,
         )
@@ -1482,6 +1555,51 @@ def _place_resource_uri(place: Mapping[str, str | None], suffix: str) -> str:
         return f"atlas://states/{str(place['state']).upper()}/{suffix}"
     slug = _place_resource_slug(place)
     return f"atlas://cities/{slug}/{suffix}"
+
+
+def _append_source_place_clauses(
+    *,
+    clauses: list[str],
+    params: list[Any],
+    normalized_place: Mapping[str, str | None],
+    place_filters: Sequence[Mapping[str, str | None]] | None,
+) -> None:
+    """Append geography predicates for source search."""
+    if place_filters is not None:
+        clauses.append(_source_place_filter_clause(place_filters, params) or "0 = 1")
+        return
+
+    if normalized_place["state"]:
+        clauses.append("e.state = ?")
+        params.append(normalized_place["state"])
+    if normalized_place["city"]:
+        clauses.append("e.city = ?")
+        params.append(normalized_place["city"])
+    if normalized_place["region"]:
+        clauses.append("e.region = ?")
+        params.append(normalized_place["region"])
+
+
+def _source_place_filter_clause(
+    place_filters: Sequence[Mapping[str, str | None]],
+    params: list[Any],
+) -> str | None:
+    """Build exact source place-scope filters without city/state cross products."""
+    filter_clauses: list[str] = []
+    for place_filter in place_filters:
+        filter_parts: list[str] = []
+        if place_filter.get("state"):
+            filter_parts.append("e.state = ?")
+            params.append(place_filter["state"])
+        if place_filter.get("city"):
+            filter_parts.append("e.city = ?")
+            params.append(place_filter["city"])
+        if place_filter.get("region"):
+            filter_parts.append("e.region = ?")
+            params.append(place_filter["region"])
+        if filter_parts:
+            filter_clauses.append("(" + " AND ".join(filter_parts) + ")")
+    return " OR ".join(filter_clauses) or None
 
 
 def _tokenize(text: str) -> list[str]:

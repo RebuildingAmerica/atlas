@@ -682,6 +682,16 @@ CREATE TABLE IF NOT EXISTS place_scope_links (
     FOREIGN KEY (place_key) REFERENCES place_contexts(place_key) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS place_query_filters (
+    id TEXT PRIMARY KEY,
+    place_key TEXT NOT NULL,
+    city TEXT,
+    state TEXT,
+    region TEXT,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    FOREIGN KEY (place_key) REFERENCES place_contexts(place_key) ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS place_summary_facts (
     place_key TEXT NOT NULL,
     label TEXT NOT NULL,
@@ -728,6 +738,7 @@ CREATE TABLE IF NOT EXISTS place_related_places (
 );
 
 CREATE INDEX IF NOT EXISTS idx_place_scope_links_place ON place_scope_links(place_key);
+CREATE INDEX IF NOT EXISTS idx_place_query_filters_place ON place_query_filters(place_key);
 CREATE INDEX IF NOT EXISTS idx_place_summary_facts_place ON place_summary_facts(place_key);
 CREATE INDEX IF NOT EXISTS idx_place_governments_place ON place_governments(place_key);
 CREATE INDEX IF NOT EXISTS idx_place_government_links_government
@@ -861,6 +872,27 @@ VALUES
 ON CONFLICT (place_key, href) DO UPDATE SET
     label = excluded.label,
     active = excluded.active,
+    sort_order = excluded.sort_order;
+
+INSERT INTO place_query_filters (id, place_key, city, state, region, sort_order)
+VALUES
+    ('las-vegas-nv-las-vegas', 'las-vegas-nv', 'Las Vegas', 'NV', NULL, 10),
+    ('las-vegas-nv-henderson', 'las-vegas-nv', 'Henderson', 'NV', NULL, 20),
+    ('las-vegas-nv-north-las-vegas', 'las-vegas-nv', 'North Las Vegas', 'NV', NULL, 30),
+    ('city-las-vegas-nv', 'city:las-vegas-nv', 'Las Vegas', 'NV', NULL, 10),
+    ('county-clark-county-nv-las-vegas', 'county:clark-county-nv', 'Las Vegas', 'NV', NULL, 10),
+    ('county-clark-county-nv-henderson', 'county:clark-county-nv', 'Henderson', 'NV', NULL, 20),
+    ('county-clark-county-nv-north-las-vegas', 'county:clark-county-nv', 'North Las Vegas', 'NV', NULL, 30),
+    ('metro-las-vegas-henderson-paradise-nv-las-vegas', 'metro:las-vegas-henderson-paradise-nv', 'Las Vegas', 'NV', NULL, 10),
+    ('metro-las-vegas-henderson-paradise-nv-henderson', 'metro:las-vegas-henderson-paradise-nv', 'Henderson', 'NV', NULL, 20),
+    ('metro-las-vegas-henderson-paradise-nv-north-las-vegas', 'metro:las-vegas-henderson-paradise-nv', 'North Las Vegas', 'NV', NULL, 30),
+    ('city-henderson-nv', 'city:henderson-nv', 'Henderson', 'NV', NULL, 10),
+    ('city-north-las-vegas-nv', 'city:north-las-vegas-nv', 'North Las Vegas', 'NV', NULL, 10)
+ON CONFLICT (id) DO UPDATE SET
+    place_key = excluded.place_key,
+    city = excluded.city,
+    state = excluded.state,
+    region = excluded.region,
     sort_order = excluded.sort_order;
 
 INSERT INTO place_summary_facts (place_key, label, value, attribution, sort_order)

@@ -172,6 +172,7 @@ async def get_place_page_context(
 async def get_place_entities(  # noqa: PLR0913
     place_key: str,
     response: Response,
+    kind: PlaceRouteKind | None = Query(None),
     issue_area: list[str] | None = Query(None),
     entity_type: list[str] | None = Query(None),
     source_type: list[str] | None = Query(None),
@@ -191,6 +192,7 @@ async def get_place_entities(  # noqa: PLR0913
         return EntityCollectionResponse.model_validate(
             await service.get_place_entities(
                 normalize_place_key(place_key),
+                kind=kind,
                 issue_areas=issue_area,
                 entity_types=entity_type,
                 source_types=source_type,
@@ -216,6 +218,7 @@ async def get_place_entities(  # noqa: PLR0913
 async def get_place_sources(  # noqa: PLR0913
     place_key: str,
     response: Response,
+    kind: PlaceRouteKind | None = Query(None),
     issue_area: list[str] | None = Query(None),
     source_type: list[str] | None = Query(None),
     text: str | None = Query(None),
@@ -232,6 +235,7 @@ async def get_place_sources(  # noqa: PLR0913
         return SourceCollectionResponse.model_validate(
             await service.get_place_sources(
                 normalize_place_key(place_key),
+                kind=kind,
                 issue_areas=issue_area,
                 source_types=source_type,
                 text=text,
@@ -255,6 +259,7 @@ async def get_place_sources(  # noqa: PLR0913
 async def get_place_issue_signals(
     place_key: str,
     response: Response,
+    kind: PlaceRouteKind | None = Query(None),
     issue_area: list[str] | None = Query(None),
     settings: Settings = Depends(get_settings),
 ) -> IssueSignalsResponse:
@@ -266,6 +271,7 @@ async def get_place_issue_signals(
         return IssueSignalsResponse.model_validate(
             await service.get_place_issue_signals(
                 normalize_place_key(place_key),
+                kind=kind,
                 issue_areas=issue_area,
             )
         )
@@ -285,6 +291,7 @@ async def get_place_issue_signals(
 async def get_place_coverage(
     place_key: str,
     response: Response,
+    kind: PlaceRouteKind | None = Query(None),
     issue_area: list[str] | None = Query(None),
     settings: Settings = Depends(get_settings),
 ) -> PlaceCoverageResponse:
@@ -296,6 +303,7 @@ async def get_place_coverage(
         return PlaceCoverageResponse.model_validate(
             await service.get_place_coverage(
                 normalize_place_key(place_key),
+                kind=kind,
                 issue_areas=issue_area,
             )
         )
@@ -315,6 +323,7 @@ async def get_place_coverage(
 async def get_place_profile(
     place_key: str,
     response: Response,
+    kind: PlaceRouteKind | None = Query(None),
     settings: Settings = Depends(get_settings),
 ) -> PlaceProfileResponse:
     """Return place demographic and socioeconomic context."""
@@ -322,7 +331,7 @@ async def get_place_profile(
     try:
         apply_static_public_cache(response)
         return PlaceProfileResponse.model_validate(
-            await service.get_place_profile(normalize_place_key(place_key))
+            await service.get_place_profile(normalize_place_key(place_key), kind=kind)
         )
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
