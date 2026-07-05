@@ -10,6 +10,7 @@ from __future__ import annotations
 from dataclasses import replace
 from datetime import UTC, date, datetime, timedelta
 from typing import TYPE_CHECKING
+from unittest.mock import patch
 
 import pytest
 import pytest_asyncio
@@ -896,6 +897,38 @@ async def test_get_place_issue_signals_filters_to_requested_issues(
     )
     slugs = [issue["issue_area_id"] for issue in payload["issues"]]
     assert slugs == ["housing_affordability"]
+
+
+@pytest.mark.asyncio
+async def test_get_place_issue_signals_scans_beyond_first_page(
+    populated_service: AtlasDataService,
+) -> None:
+    """A place with more matches than one internal page must still be complete.
+
+    The Gary, IN fixture has 2 entities. Shrinking the internal scan page size
+    to 1 forces get_place_issue_signals to walk 2 pages; if it only read the
+    first page, `worker_cooperatives` (on primary only) would still show up,
+    but the counts for the shared `housing_affordability` issue would
+    undercount the second entity.
+    """
+    with patch.object(data_module, "_EXHAUSTIVE_SCAN_PAGE_SIZE", 1):
+        payload = await populated_service.get_place_issue_signals("Gary, IN")
+
+    housing = next(
+        issue for issue in payload["issues"] if issue["issue_area_id"] == "housing_affordability"
+    )
+    assert housing["entity_count"] == EXPECTED_TWO_RELATED_ENTITIES
+
+
+@pytest.mark.asyncio
+async def test_get_place_coverage_scans_beyond_first_page(
+    populated_service: AtlasDataService,
+) -> None:
+    """Same exhaustive-scan guarantee, for the coverage summary."""
+    with patch.object(data_module, "_EXHAUSTIVE_SCAN_PAGE_SIZE", 1):
+        payload = await populated_service.get_place_coverage("Gary, IN")
+
+    assert payload["entity_count"] == EXPECTED_TWO_RELATED_ENTITIES
 
 
 @pytest.mark.asyncio

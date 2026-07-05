@@ -170,11 +170,42 @@ class EntityRecordContext:
         self.email_grounded = email_grounded
 
 
+_EXHAUSTIVE_SCAN_PAGE_SIZE = 500
+"""Page size for internal place-wide scans (get_place_coverage,
+get_place_issue_signals). These build aggregates over every matching entity,
+not just one page, so they walk search_entities's own cursor to completion
+rather than reading a single capped page and silently under-counting large
+places."""
+
+
 class AtlasDataService:
     """Structured place/entity retrieval service for agents and APIs."""
 
     def __init__(self, database_url: str) -> None:
         self._database_url = database_url
+
+    async def _search_all_entities(
+        self,
+        *,
+        place: str | Mapping[str, str | None] | None,
+        place_filters: Sequence[Mapping[str, str | None]] | None,
+        issue_areas: list[str] | None,
+    ) -> list[dict[str, Any]]:
+        """Page through every matching entity via search_entities's own cursor."""
+        items: list[dict[str, Any]] = []
+        cursor: str | None = None
+        while True:
+            page = await self.search_entities(
+                place=place,
+                place_filters=place_filters,
+                issue_areas=issue_areas,
+                limit=_EXHAUSTIVE_SCAN_PAGE_SIZE,
+                cursor=cursor,
+            )
+            items.extend(page["items"])
+            cursor = page["next_cursor"]
+            if cursor is None:
+                return items
 
     async def search_entities(  # noqa: PLR0913
         self,
@@ -623,18 +654,17 @@ class AtlasDataService:
         """Summarize which issues Atlas represents for a place."""
         normalized_place, place_filters = await self._resolve_place_query_scope(place, kind=kind)
         validated_issue_areas = _validate_issue_areas(issue_areas)
-        search = await self.search_entities(
+        all_items = await self._search_all_entities(
             place=normalized_place,
             place_filters=place_filters,
             issue_areas=validated_issue_areas or None,
-            limit=500,
         )
 
         entities_by_issue: dict[str, list[dict[str, Any]]] = defaultdict(list)
         source_count_by_issue: Counter[str] = Counter()
         type_counts_by_issue: dict[str, Counter[str]] = defaultdict(Counter)
 
-        for entity in search["items"]:
+        for entity in all_items:
             for issue_area_id in entity["issue_area_ids"]:
                 if validated_issue_areas and issue_area_id not in validated_issue_areas:
                     continue
@@ -827,14 +857,13 @@ class AtlasDataService:
         normalized_place, place_filters = await self._resolve_place_query_scope(place, kind=kind)
         validated_issue_areas = _validate_issue_areas(issue_areas)
 
-        search = await self.search_entities(
+        all_items = await self._search_all_entities(
             place=normalized_place,
             place_filters=place_filters,
             issue_areas=validated_issue_areas or None,
-            limit=500,
         )
         issue_counts: dict[str, int] = defaultdict(int)
-        for entity in search["items"]:
+        for entity in all_items:
             for issue_area_id in entity["issue_area_ids"]:
                 issue_counts[issue_area_id] += 1
 
@@ -862,7 +891,7 @@ class AtlasDataService:
 
         return PlaceCoverageResponse(
             place=Address.model_validate(normalized_place),
-            entity_count=search["total"],
+            entity_count=len(all_items),
             issue_counts=[
                 CoverageCount(issue_area_id=issue_area_id, count=issue_counts.get(issue_area_id, 0))
                 for issue_area_id in sorted(issue_pool)
