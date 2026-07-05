@@ -2,6 +2,7 @@ import { existsSync, mkdirSync } from "node:fs";
 import { randomBytes } from "node:crypto";
 import path from "node:path";
 import { defineConfig } from "@playwright/test";
+import { buildAtlasApiAudience } from "./src/domains/access/oauth-resource-config";
 
 const e2eEnvFile = path.join(process.cwd(), ".env.e2e");
 if (existsSync(e2eEnvFile)) {
@@ -30,7 +31,7 @@ const authDbPath = path.join(e2eDir, `atlas-auth-${e2eRunId}.sqlite`);
 const mailboxFile = path.join(e2eDir, `mailbox-${e2eRunId}.json`);
 const appUrl = requireEnv("ATLAS_E2E_APP_URL");
 const apiUrl = requireEnv("ATLAS_E2E_API_URL");
-const apiAudience = [absoluteUrl(appUrl, "/mcp"), new URL(apiUrl).origin].join(",");
+const apiAudience = buildAtlasApiAudience({ apiBaseUrl: apiUrl, publicBaseUrl: appUrl });
 const mailboxUrl = requireEnv("ATLAS_E2E_MAILBOX_URL");
 const authIntrospectionUrl = requireEnv("ATLAS_E2E_AUTH_INTROSPECTION_URL");
 const appPort = new URL(appUrl).port || "3100";
