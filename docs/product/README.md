@@ -9,6 +9,9 @@ Start here:
 - [Atlas Roadmap](../roadmap.md) is the source of truth for product direction.
 - [UI/UX Architecture](./ui-ux-architecture.md) defines the experience model,
   screen archetypes, trust layer, and client storytelling layer.
+- [Trust, Safety, And Verification System](./trust-safety-verification-system.md)
+  explains the layers that make source evidence, identity, stewardship,
+  corrections, and review trustworthy.
 - [PRD Suite](./prds/README.md) defines the experience-first product surfaces.
 - [ATProto-Native Identity Transition](./atproto-native-identity-transition.md)
   describes the decentralized identity architecture and migration path.
