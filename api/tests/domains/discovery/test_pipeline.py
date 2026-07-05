@@ -370,7 +370,7 @@ class TestDiscoveryApiIntegration:
                 await conn.close()
 
         monkeypatch.setattr(
-            "atlas.domains.discovery.api.run_discovery_pipeline_for_run", fake_runner
+            "atlas.domains.discovery.run_creation.run_discovery_pipeline_for_run", fake_runner
         )
 
         settings = Settings(

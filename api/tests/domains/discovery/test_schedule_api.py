@@ -10,7 +10,7 @@ import pytest_asyncio
 
 from atlas.domains.access.principals import AuthenticatedActor
 from atlas.domains.discovery import api as discovery_api
-from atlas.domains.discovery import api_schedule
+from atlas.domains.discovery import api_schedule, run_creation
 from atlas.domains.discovery.models import (
     DiscoveryJobCRUD,
     DiscoveryScheduleCRUD,
@@ -338,7 +338,7 @@ class TestScheduledRunEndpoint:
             _ = database_url, job, credentials
             raise AssertionError(_INLINE_FORBIDDEN)
 
-        monkeypatch.setattr(discovery_api, "run_discovery_pipeline_for_run", _explode)
+        monkeypatch.setattr(run_creation, "run_discovery_pipeline_for_run", _explode)
 
         settings = SimpleNamespace(
             database_url="sqlite:///test.db",

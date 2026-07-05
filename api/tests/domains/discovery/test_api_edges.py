@@ -95,7 +95,7 @@ async def test_start_discovery_run_surfaces_create_and_refresh_failures(
         return None
 
     monkeypatch.setattr(
-        "atlas.domains.discovery.api.run_discovery_pipeline_for_run",
+        "atlas.domains.discovery.run_creation.run_discovery_pipeline_for_run",
         fake_run_pipeline,
     )
 

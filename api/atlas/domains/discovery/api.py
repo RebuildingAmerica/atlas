@@ -21,20 +21,16 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response
 from atlas.domains.access import AuthenticatedActor, require_actor_permission
 from atlas.domains.access.capabilities import enforce_limit, require_capability
 from atlas.domains.catalog.models.ownership import OwnershipCRUD
-from atlas.domains.catalog.taxonomy import ALL_ISSUE_SLUGS
 from atlas.domains.discovery.models import (
     DiscoveryJobCRUD,
-    DiscoveryJobInput,
     DiscoveryRunSyncCRUD,
     DiscoveryScheduleCRUD,
 )
 from atlas.domains.discovery.pipeline.runner import (
-    DiscoveryPipelineCredentials,
-    DiscoveryPipelineJob,
     persist_discovery_artifacts,
     persist_discovery_results,
-    run_discovery_pipeline_for_run,
 )
+from atlas.domains.discovery.run_creation import create_discovery_run_records, validate_issue_areas
 from atlas.domains.discovery.schemas import (
     DiscoveryJobQueueItemResponse,
     DiscoveryJobQueueResponse,
@@ -83,18 +79,6 @@ SyncEntryVisibility = Literal[
     "workspace_private",
     "existing_shared",
 ]
-
-
-def _validate_issue_areas(issue_areas: list[str]) -> None:
-    """Raise when any requested issue area falls outside the Atlas taxonomy."""
-    invalid_issue_areas = [
-        issue_area for issue_area in issue_areas if issue_area not in ALL_ISSUE_SLUGS
-    ]
-    if invalid_issue_areas:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Invalid issue area(s): {', '.join(invalid_issue_areas)}",
-        )
 
 
 def _resolve_sync_destination(
@@ -324,56 +308,7 @@ async def start_discovery_run(
     via the durable job worker, or inline if discovery_inline is set.
     """
     _ = actor
-    _validate_issue_areas(req.issue_areas)
-    if req.execution_mode == "direct_url" and not req.direct_urls:
-        raise HTTPException(status_code=400, detail="Direct URL discovery requires direct_urls")
-
-    run_id = await DiscoveryRunCRUD.create(
-        db,
-        location_query=req.location_query,
-        state=req.state,
-        issue_areas=req.issue_areas,
-        research_goal=req.research_goal,
-    )
-
-    run = await DiscoveryRunCRUD.get_by_id(db, run_id)
-    if not run:
-        raise HTTPException(status_code=500, detail="Failed to create discovery run")
-
-    if settings.discovery_inline:
-        pipeline_job = DiscoveryPipelineJob(
-            run_id=run_id,
-            location_query=req.location_query,
-            state=req.state,
-            issue_areas=req.issue_areas,
-            research_goal=req.research_goal,
-        )
-        pipeline_credentials = DiscoveryPipelineCredentials(
-            search_api_key=settings.search_api_key,
-            anthropic_api_key=settings.anthropic_api_key,
-        )
-        await run_discovery_pipeline_for_run(
-            database_url=settings.database_url,
-            job=pipeline_job,
-            credentials=pipeline_credentials,
-            settings=settings,
-        )
-        run = await DiscoveryRunCRUD.get_by_id(db, run_id)
-        if not run:
-            raise HTTPException(status_code=500, detail="Failed to refresh discovery run")
-    else:
-        input_payload: dict[str, object] = {}
-        if req.execution_mode == "direct_url":
-            input_payload = {"direct_urls": req.direct_urls}
-        await DiscoveryJobCRUD.create(
-            db,
-            run_id=run_id,
-            job_input=DiscoveryJobInput(
-                execution_mode=req.execution_mode,
-                payload=input_payload,
-            ),
-        )
-
+    run = await create_discovery_run_records(db, req=req, settings=settings)
     apply_no_store_headers(response)
     return _run_to_response(run)
 
@@ -401,9 +336,9 @@ async def contribute_discovery_results(
 ) -> DiscoveryContributionResponse:
     """Persist a full discovery payload contributed by a local runner."""
     _ = actor
-    _validate_issue_areas(req.run.issue_areas)
+    validate_issue_areas(req.run.issue_areas)
     for ranked_entry in req.ranked_entries:
-        _validate_issue_areas(ranked_entry.entry.issue_areas)
+        validate_issue_areas(ranked_entry.entry.issue_areas)
 
     run_id = await DiscoveryRunCRUD.create(
         db,
@@ -463,9 +398,9 @@ async def sync_discovery_run(  # noqa: PLR0913
         workspace_id=x_atlas_workspace_id,
         actor=actor,
     )
-    _validate_issue_areas(req.artifacts.manifest.run.issue_areas)
+    validate_issue_areas(req.artifacts.manifest.run.issue_areas)
     for ranked_entry in req.artifacts.ranked_entries:
-        _validate_issue_areas(ranked_entry.entry.issue_areas)
+        validate_issue_areas(ranked_entry.entry.issue_areas)
 
     sync_info = req.artifacts.manifest.sync
     if sync_info is None or not sync_info.local_run_id:
