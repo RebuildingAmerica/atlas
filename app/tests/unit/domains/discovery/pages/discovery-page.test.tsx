@@ -982,10 +982,12 @@ describe("DiscoveryPage", () => {
       resourceId: "entry_2",
       resourceType: "entry",
     });
-    expect(screen.getByRole("link", { name: "Open watching" })).toHaveAttribute(
-      "href",
-      "/watching",
-    );
+    await waitFor(() => {
+      expect(screen.getByRole("link", { name: "Open watching" })).toHaveAttribute(
+        "href",
+        "/watching",
+      );
+    });
   });
 
   it("renders ranked leads without a nested recommended lead set card", () => {
