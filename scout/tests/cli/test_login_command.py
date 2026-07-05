@@ -8,7 +8,7 @@ from click.testing import CliRunner
 
 import atlas_scout.cli as cli_module
 from atlas_scout.auth import DeviceCode, DeviceToken, ScoutSession, ScoutTokenExchange
-from atlas_scout.cli import main
+from atlas_scout.cli import DEFAULT_ATLAS_URL, main
 
 if TYPE_CHECKING:
     import pytest
@@ -19,9 +19,9 @@ class FakeDeviceAuthClient:
         assert atlas_url == "https://atlas.example"
         return DeviceCode(
             device_code="device-code",
-            user_code="ABCD-EFGH",
+            user_code="ABCDEFGH",
             verification_uri="https://atlas.example/device",
-            verification_uri_complete="https://atlas.example/device?user_code=ABCD-EFGH",
+            verification_uri_complete="https://atlas.example/device?user_code=ABCDEFGH",
             expires_in=1800,
             interval=5,
         )
@@ -63,6 +63,61 @@ class FakeDeviceAuthClient:
         )
 
 
+class DefaultUrlDeviceAuthClient(FakeDeviceAuthClient):
+    expected_atlas_url = "https://atlas.example"
+
+    async def request_device_code(self, atlas_url: str) -> DeviceCode:
+        assert atlas_url == self.expected_atlas_url
+        return DeviceCode(
+            device_code="device-code",
+            user_code="ABCDEFGH",
+            verification_uri=f"{atlas_url}/device",
+            verification_uri_complete=f"{atlas_url}/device?user_code=ABCDEFGH",
+            expires_in=1800,
+            interval=5,
+        )
+
+    async def request_device_token(self, atlas_url: str, *, device_code: str) -> DeviceToken:
+        assert atlas_url == self.expected_atlas_url
+        assert device_code == "device-code"
+        return DeviceToken(
+            access_token="device-session-token",
+            token_type="Bearer",
+            expires_in=3600,
+            scope="openid profile email",
+        )
+
+    async def exchange_session_for_api_token(
+        self,
+        atlas_url: str,
+        *,
+        session_token: str,
+        worker_name: str,
+        default_upload_target: str,
+        worker_id: str | None = None,
+        workspace_id: str | None = None,
+        search_key_configured: bool = False,
+    ) -> ScoutTokenExchange:
+        assert atlas_url == self.expected_atlas_url
+        assert session_token == "device-session-token"
+        assert worker_name == "Scout Laptop"
+        assert default_upload_target == "public"
+        assert worker_id is None
+        assert workspace_id is None
+        assert search_key_configured is False
+        return ScoutTokenExchange(
+            token="api-jwt",
+            worker_id="worker-123",
+            user_id="user-123",
+            user_email="user@example.org",
+            workspace_id=None,
+        )
+
+
+class ProductionDeviceAuthClient(DefaultUrlDeviceAuthClient):
+    expected_atlas_url = DEFAULT_ATLAS_URL
+
+
 def test_login_saves_browser_approved_session(monkeypatch: pytest.MonkeyPatch) -> None:
     """login stores the browser-approved session and remembered upload target."""
     saved: list[ScoutSession] = []
@@ -96,10 +151,46 @@ def test_login_saves_browser_approved_session(monkeypatch: pytest.MonkeyPatch) -
             workspace_id="org-123",
         )
     ]
-    assert "Visit: https://atlas.example/device" in result.output
-    assert "Code: ABCD-EFGH" in result.output
+    assert "██" in result.output
+    assert "https://atlas.example/device" in result.output
+    assert "ABCD-EFGH" in result.output
     assert "https://atlas.example/device?user_code=ABCD-EFGH" not in result.output
-    assert "Logged in as user@example.org" in result.output
+    assert "user@example.org" in result.output
+
+
+def test_login_uses_production_when_url_is_omitted_even_if_local_atlas_is_running(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Bare login is production-first; scout-dev owns local Atlas defaults."""
+    saved: list[ScoutSession] = []
+
+    monkeypatch.setattr(cli_module, "DeviceAuthClient", ProductionDeviceAuthClient)
+    monkeypatch.setattr(cli_module, "save_session", saved.append)
+    monkeypatch.setattr(cli_module.platform, "node", lambda: "Scout Laptop")
+
+    result = CliRunner().invoke(main, ["login", "--no-browser"])
+
+    assert result.exit_code == 0
+    assert saved[0].atlas_url == DEFAULT_ATLAS_URL
+    assert "https://atlas.rebuildingus.org/device" in result.output
+    assert "https://atlas.localhost" not in result.output
+
+
+def test_login_uses_production_when_url_is_omitted(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Production remains the bare-login default."""
+    saved: list[ScoutSession] = []
+
+    monkeypatch.setattr(cli_module, "DeviceAuthClient", ProductionDeviceAuthClient)
+    monkeypatch.setattr(cli_module, "save_session", saved.append)
+    monkeypatch.setattr(cli_module.platform, "node", lambda: "Scout Laptop")
+
+    result = CliRunner().invoke(main, ["login", "--no-browser"])
+
+    assert result.exit_code == 0
+    assert saved[0].atlas_url == DEFAULT_ATLAS_URL
+    assert "Using local Atlas" not in result.output
 
 
 def test_login_defaults_to_public_without_prompt(monkeypatch: pytest.MonkeyPatch) -> None:

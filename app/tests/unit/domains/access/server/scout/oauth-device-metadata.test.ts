@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { deviceAuthUrl } from "@/domains/access/device-auth-paths";
 import { buildAuthorizationServerMetadata } from "@/domains/access/oauth-as-metadata";
 
 describe("Scout CLI device auth metadata", () => {
@@ -8,7 +9,7 @@ describe("Scout CLI device auth metadata", () => {
     });
 
     expect(metadata.device_authorization_endpoint).toBe(
-      "https://atlas.example/api/auth/device/code",
+      deviceAuthUrl("https://atlas.example", "code"),
     );
   });
 

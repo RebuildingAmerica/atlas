@@ -71,6 +71,10 @@ For day-to-day local Atlas development, install the managed `scout-dev` command:
 scout-dev login
 ```
 
+Plain `scout` is production-first: if no `--atlas-url` is passed, `scout login`
+uses `https://atlas.rebuildingus.org` even when a local Atlas app is running.
+Local development must go through `scout-dev` or an explicit `--atlas-url`.
+
 `scout-dev` forwards to the installed `scout` command and injects
 `--atlas-url https://atlas.localhost` for the Scout commands that support it:
 `login`, `worker start`, `worker run-internal`, `sync`, and `runs sync`.
@@ -110,12 +114,35 @@ scout whoami
 scout logout
 ```
 
-`scout login` requests a device code from the Atlas app auth server, prints the
-plain verification URI plus user code, and may open the complete verification
-URI as a browser shortcut. After browser
-approval, Scout exchanges the approved device session for a narrow API token,
-enrolls the current host as a named Scout device, and stores the browser-approved
-session locally with user-only file permissions.
+`scout login` requests a device code from Atlas's `/device/code` endpoint,
+prints the plain verification URI plus user code, and renders a QR/browser
+shortcut when Atlas returns `verification_uri_complete`. The complete URI is
+never printed as terminal text; users who cannot scan the QR code still get the
+short approval URL and the code separately. If Atlas omits
+`verification_uri_complete`, Scout continues with the plain approval URL. If
+Atlas omits the polling interval, Scout uses RFC 8628's five-second default.
+After browser approval, Scout exchanges the approved device session for a narrow
+API token, enrolls the current host as a named Scout device, and stores the
+browser-approved session locally with user-only file permissions.
+
+The browser approval page follows the RFC 8628 user-interaction shape:
+
+- `/device` accepts a typed code or a prepopulated `user_code` from the complete
+  URI shortcut.
+- Prepopulated codes are shown for confirmation; the page does not approve on
+  load.
+- The user can approve or deny the request without a second confirmation step.
+- Approval redirects to `/device/approved`; denial redirects to a denied result
+  state; failed verification redirects to a failed result state.
+- Code input is normalized for user mistakes: lowercase, spaces, dashes, and
+  other punctuation do not invalidate an otherwise correct code.
+
+Scout polling handles `authorization_pending`, `slow_down`, `access_denied`,
+and `expired_token`. Transient auth transport failures back off before retrying
+instead of dumping raw HTTP or HTML content into the terminal. Unsupported
+optional RFC 8628 alternatives, including Bluetooth, NFC, audio code
+transmission, and companion-app handoff, are intentionally out of scope for the
+v1 browser-based Scout flow.
 
 `scout auth status` shows the signed-in account, worker name, worker id, Atlas
 URL, workspace destination preference, and workspace id. It must not print raw
@@ -251,8 +278,8 @@ Still required before widening public worker enrollment:
 - Rich job-mode metadata for seeded/direct-URL/evidence-packet jobs so the API
   can match more than the current search/no-search boundary.
 - Release certification must verify that the deployed default Atlas URL serves
-  `/api/auth/device/code`; the CLI now reports the concrete HTTP status and
-  endpoint when that route is missing or empty.
+  `/device/code` and `/device/token`; the CLI reports the concrete HTTP status
+  and endpoint when those routes are missing or empty.
 
 Job compatibility is based on capability metadata:
 

@@ -14,12 +14,12 @@ def test_login_does_not_print_html_auth_error_body(monkeypatch) -> None:
 
     class HtmlErrorClient:
         async def request_device_code(self, atlas_url: str) -> object:
-            assert atlas_url == "https://atlas.localhost"
+            assert atlas_url == "https://atlas.example"
             raise DeviceAuthError(
                 error="http_405",
                 description="",
                 status_code=405,
-                url="https://atlas.localhost/api/auth/device/code",
+                url="https://atlas.example/device/code",
                 content_type="text/html; charset=utf-8",
             )
 
@@ -30,13 +30,14 @@ def test_login_does_not_print_html_auth_error_body(monkeypatch) -> None:
         [
             "login",
             "--atlas-url",
-            "https://atlas.localhost",
+            "https://atlas.example",
             "--no-browser",
         ],
     )
 
     assert result.exit_code != 0
     assert "Login failed: Atlas auth returned HTTP 405" in result.output
-    assert "https://atlas.localhost" in result.output
+    assert "https://atlas.example" in result.output
+    assert "https://atlas.localhost" not in result.output
     assert "<html" not in result.output
     assert "Method Not Allowed" not in result.output

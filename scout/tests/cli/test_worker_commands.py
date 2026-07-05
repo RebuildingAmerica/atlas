@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from typing import TYPE_CHECKING
 
 import pytest
@@ -42,6 +43,51 @@ def test_worker_status_reads_local_state(tmp_path: Path, monkeypatch) -> None:
     assert "Scout worker" in result.output
     assert "Scout Laptop" in result.output
     assert "Search key: yes" in result.output
+
+
+def test_worker_stop_clears_stale_state_metadata(tmp_path: Path, monkeypatch) -> None:
+    """worker stop removes stale live fields when the tracked process is gone."""
+    state_path = tmp_path / "worker.json"
+    state_path.write_text(
+        """
+{
+  "atlas_url": "https://atlas.example",
+  "current_job_id": "job-123",
+  "last_completed_job_id": "job-122",
+  "last_error": "previous failure",
+  "last_heartbeat_at": "2026-07-04T21:33:16.687443+00:00",
+  "mode": "starting",
+  "process_id": 94108,
+  "search_key_configured": true,
+  "started_at": "2026-07-04T21:33:16.687348+00:00",
+  "status": "running",
+  "worker_id": "worker-123",
+  "worker_name": "Scout Laptop"
+}
+""".strip()
+        + "\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(cli_module, "WORKER_STATE_PATH", state_path)
+    monkeypatch.setattr(cli_module, "_daemon_process_is_running", lambda _pid: False)
+
+    result = CliRunner().invoke(main, ["worker", "stop"])
+
+    assert result.exit_code == 0
+    assert "not running" in result.output
+    state = json.loads(state_path.read_text(encoding="utf-8"))
+    assert state["status"] == "stopped"
+    assert state["mode"] == "stopped"
+    assert state["process_id"] is None
+    assert state["atlas_url"] is None
+    assert state["worker_id"] is None
+    assert state["worker_name"] is None
+    assert state["search_key_configured"] is False
+    assert state["current_job_id"] is None
+    assert state["last_completed_job_id"] is None
+    assert state["last_error"] is None
+    assert state["last_heartbeat_at"] is None
+    assert state["started_at"] is None
 
 
 def test_worker_start_requires_login(monkeypatch) -> None:

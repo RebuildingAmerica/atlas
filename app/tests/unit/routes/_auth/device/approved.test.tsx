@@ -8,11 +8,15 @@ vi.mock("@tanstack/react-router", async () => {
   return harness.installRouterMocks();
 });
 
+vi.mock("@/domains/access", () => ({
+  DeviceApprovalCompletePage: () => <div data-testid="device-approved" />,
+}));
+
 vi.mock("@/domains/access/server", () => ({
   requireAtlasSession: vi.fn(),
 }));
 
-describe("routes/_auth/device", () => {
+describe("routes/_auth/device.approved", () => {
   beforeEach(async () => {
     const { resetRouterMocks } = await import("@/../tests/helpers/router-harness");
     resetRouterMocks();
@@ -22,28 +26,20 @@ describe("routes/_auth/device", () => {
     cleanup();
   });
 
-  it("disables SSR for the device authorization layout", async () => {
-    const routeModule = await import("@/routes/_auth/device");
-    const { asRouteStub } = await import("@/../tests/helpers/router-harness");
-    const Route = asRouteStub(routeModule.Route);
-
-    expect(Route.options.ssr).toBe(false);
-  });
-
-  it("requires a signed-in Atlas session before approval", async () => {
-    const routeModule = await import("@/routes/_auth/device");
+  it("requires a signed-in Atlas session before showing completion", async () => {
+    const routeModule = await import("@/routes/_auth/device/approved");
     const access = await import("@/domains/access/server");
     const { asRouteStub } = await import("@/../tests/helpers/router-harness");
     const Route = asRouteStub(routeModule.Route);
 
     if (!Route.options.beforeLoad) throw new Error("Expected beforeLoad");
-    await Route.options.beforeLoad({ location: { href: "/device?user_code=ABCD-EFGH" } });
+    await Route.options.beforeLoad({ location: { href: "/device/approved" } });
 
-    expect(access.requireAtlasSession).toHaveBeenCalledWith("/device?user_code=ABCD-EFGH");
+    expect(access.requireAtlasSession).toHaveBeenCalledWith("/device/approved");
   });
 
-  it("renders child device routes through an outlet", async () => {
-    const routeModule = await import("@/routes/_auth/device");
+  it("renders the device approval completion page", async () => {
+    const routeModule = await import("@/routes/_auth/device/approved");
     const { asRouteStub } = await import("@/../tests/helpers/router-harness");
     const Route = asRouteStub(routeModule.Route);
     const Component = Route.options.component;
@@ -51,6 +47,6 @@ describe("routes/_auth/device", () => {
 
     render(<Component />);
 
-    expect(screen.getByTestId("router-outlet")).toBeInTheDocument();
+    expect(screen.getByTestId("device-approved")).toBeInTheDocument();
   });
 });

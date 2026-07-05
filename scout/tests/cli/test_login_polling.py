@@ -109,6 +109,26 @@ async def test_slow_down_extends_the_poll_interval(monkeypatch: pytest.MonkeyPat
 
 
 @pytest.mark.asyncio
+async def test_network_error_backs_off_before_polling_again(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Transient auth transport failures reduce polling frequency instead of ending login."""
+    sleeps = _capture_sleep(monkeypatch)
+    _freeze_monotonic(monkeypatch, [0.0, 0.0, 1.0])
+    client = SequencedTokenClient(
+        [
+            DeviceAuthError(error="network_error", description=""),
+            _token(),
+        ]
+    )
+
+    token = await _poll_device_token(client, "https://atlas.example", _code(interval=2))
+
+    assert token.access_token == "device-session-token"
+    assert sleeps == [4]
+
+
+@pytest.mark.asyncio
 async def test_access_denied_stops_polling(monkeypatch: pytest.MonkeyPatch) -> None:
     """Non-retryable OAuth errors should surface immediately."""
     _freeze_monotonic(monkeypatch, [0.0, 0.0])

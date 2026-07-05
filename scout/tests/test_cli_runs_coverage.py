@@ -258,6 +258,7 @@ async def test_runs_sync_requires_atlas_url(
 @pytest.mark.asyncio
 async def test_runs_sync_requires_api_key(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     output = _capture_consoles(monkeypatch)
+    monkeypatch.setattr(cli_module, "load_session", lambda: None)
     config = _make_config(tmp_path, contribution=ContributionConfig(api_key="", atlas_url=""))
     with pytest.raises(SystemExit):
         await _runs_sync(config, "any", atlas_url="https://atlas.test", api_key=None)

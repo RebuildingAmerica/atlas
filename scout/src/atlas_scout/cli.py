@@ -20,6 +20,7 @@ import click
 from rich.table import Table
 
 from atlas_scout import cli_daemon as _daemon_helpers
+from atlas_scout.atlas_urls import DEFAULT_ATLAS_URL
 from atlas_scout.auth import (
     DeviceAuthClient,
     DeviceAuthError,
@@ -33,8 +34,11 @@ from atlas_scout.auth import (
 )
 from atlas_scout.cli_context import console, err_console
 from atlas_scout.cli_output import (
+    format_verification_uri_complete,
     print_duplicate_run_notice,
     print_login_failure,
+    print_login_instructions,
+    print_login_success,
     print_run_banner,
     print_run_results,
     styled_status,
@@ -98,6 +102,20 @@ subprocess = _daemon_helpers.subprocess
 
 WORKER_STATE_PATH = SCOUT_CONFIG_DIR / "worker.json"
 LOCAL_WORKER_PROVIDERS = frozenset({"ollama"})
+_WORKER_STOPPED_STATE: dict[str, object] = {
+    "atlas_url": None,
+    "current_job_id": None,
+    "last_completed_job_id": None,
+    "last_error": None,
+    "last_heartbeat_at": None,
+    "mode": "stopped",
+    "process_id": None,
+    "search_key_configured": False,
+    "started_at": None,
+    "status": "stopped",
+    "worker_id": None,
+    "worker_name": None,
+}
 
 _DAEMON_ORIGINALS = {
     "_clear_failed_daemon_start": _daemon_helpers._clear_failed_daemon_start,
@@ -177,6 +195,10 @@ async def _poll_device_token(
                 interval += 5
                 await asyncio.sleep(interval)
                 continue
+            if exc.error == "network_error":
+                interval *= 2
+                await asyncio.sleep(interval)
+                continue
             raise
     raise DeviceAuthError(
         error="expired_token",
@@ -186,17 +208,19 @@ async def _poll_device_token(
 
 async def _login(
     *,
-    atlas_url: str,
+    atlas_url: str | None,
     target: UploadTarget | None,
     workspace: str | None,
     open_browser: bool,
 ) -> None:
     """Run Scout's browser-approved login flow."""
+    resolved_atlas_url, _ = await _resolve_login_atlas_url(atlas_url)
+
     client = DeviceAuthClient()
     try:
         pending = await begin_login(
             client=client,
-            atlas_url=atlas_url,
+            atlas_url=resolved_atlas_url,
             target=target,
             workspace=workspace,
         )
@@ -204,10 +228,9 @@ async def _login(
         print_login_failure(err_console, exc)
         sys.exit(1)
 
-    console.print(f"Visit: {pending.code.verification_uri}")
-    console.print(f"Code: [bold]{pending.code.user_code}[/]")
+    print_login_instructions(console, pending.code)
     if open_browser:
-        webbrowser.open(pending.code.verification_uri_complete)
+        webbrowser.open(format_verification_uri_complete(pending.code))
 
     worker_name = _default_worker_name()
     try:
@@ -225,7 +248,14 @@ async def _login(
         sys.exit(1)
 
     save_session(session)
-    console.print(f"[green]Logged in as {session.user_email}[/]")
+    print_login_success(console, session.user_email)
+
+
+async def _resolve_login_atlas_url(atlas_url: str | None) -> tuple[str, bool]:
+    """Resolve the Atlas URL for a login command and whether it was auto-detected."""
+    if atlas_url:
+        return atlas_url.rstrip("/"), False
+    return DEFAULT_ATLAS_URL, False
 
 
 def _require_schedule_targets(config: ScoutConfig) -> int:
@@ -1395,9 +1425,8 @@ async def _runs_sync(
 @main.command("login")
 @click.option(
     "--atlas-url",
-    default="https://atlas.rebuildingus.org",
-    show_default=True,
-    help="Atlas app URL to authenticate against.",
+    default=None,
+    help=(f"Atlas app URL to authenticate against. Defaults to {DEFAULT_ATLAS_URL}."),
 )
 @click.option(
     "--target",
@@ -1408,7 +1437,7 @@ async def _runs_sync(
 @click.option("--workspace", default=None, help="Workspace id for workspace-private sync.")
 @click.option("--no-browser", is_flag=True, help="Print the approval URL without opening it.")
 def login(
-    atlas_url: str, target: UploadTarget | None, workspace: str | None, no_browser: bool
+    atlas_url: str | None, target: UploadTarget | None, workspace: str | None, no_browser: bool
 ) -> None:
     """Log in to Atlas from the browser and remember this worker."""
     asyncio.run(
@@ -1524,6 +1553,11 @@ def _write_worker_state(**state: object) -> None:
         json.dump(payload, handle, indent=2, sort_keys=True)
         handle.write("\n")
     WORKER_STATE_PATH.chmod(0o600)
+
+
+def _write_stopped_worker_state() -> None:
+    """Persist a stopped worker state without stale live metadata."""
+    _write_worker_state(**_WORKER_STOPPED_STATE)
 
 
 def _worker_state_running(state: dict[str, object]) -> bool:
@@ -1902,7 +1936,7 @@ async def _worker_run_internal(
             )
             await asyncio.sleep(interval)
 
-    _write_worker_state(status="stopped", mode="stopped", current_job_id=None)
+    _write_stopped_worker_state()
 
 
 def _spawn_worker_process(
@@ -1984,16 +2018,16 @@ async def _worker_stop() -> None:
     state = _read_worker_state()
     process_id = state.get("process_id")
     if not _worker_state_running(state):
-        _write_worker_state(status="stopped", mode="stopped", current_job_id=None)
+        _write_stopped_worker_state()
         console.print("[yellow]Worker is not running.[/]")
         return
     if not isinstance(process_id, int):
-        _write_worker_state(status="stopped", mode="stopped", current_job_id=None)
+        _write_stopped_worker_state()
         console.print("[yellow]Worker metadata had no PID. State reconciled.[/]")
         return
     with contextlib.suppress(ProcessLookupError):
         _signal_daemon_process(process_id)
-    _write_worker_state(status="stopped", mode="stopped", current_job_id=None)
+    _write_stopped_worker_state()
     console.print(f"[bold green]Worker stopped.[/] PID {process_id}")
 
 

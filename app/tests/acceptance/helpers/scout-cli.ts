@@ -456,22 +456,41 @@ export async function approveScoutLogin(
 ): Promise<ScoutSessionFile> {
   const login = spawnScout(["login", "--atlas-url", appUrl, "--no-browser"], scoutHome.env);
   const match = await login.waitForOutput(
-    /Visit:\s*(https?:\/\/\S+)[\s\S]*Code:\s*([A-Z0-9-]+)/,
+    /https?:\/\/\S+[\s\S]*\b[A-Z0-9]{4}-[A-Z0-9]{4}\b/,
     45_000,
   );
-  const approvalUrl = assertString(match[1], "approval URL");
-  const userCode = assertString(match[2], "user code");
+  const approvalUrl = extractScoutApprovalUrl(match.input ?? "");
+  const userCode = extractScoutUserCode(match.input ?? "");
   await page.goto(approvalUrl);
   await expect(page.getByRole("heading", { name: "Approve Scout login" })).toBeVisible();
-  await page.getByLabel("Device code").fill(userCode);
-  await page.getByRole("button", { name: "Continue" }).click();
-  await expect(page.getByText("Confirm this code before granting access.")).toBeVisible();
-  await page.getByRole("button", { name: "Approve" }).click();
-  await expect(page.getByText("Device approved.")).toBeVisible();
+  await page.getByRole("textbox", { name: "Code shown in Scout" }).fill(userCode);
+  await page.getByRole("button", { name: "Approve Scout login" }).click();
+  await page.waitForURL((url) => url.pathname === "/device/approved");
+  await expect(page.getByRole("heading", { name: "Scout login approved" })).toBeVisible();
 
   const result = await login.waitForExit(45_000);
   expect(result.exitCode, result.output).toBe(0);
   return readScoutSession(scoutHome.sessionPath);
+}
+
+function extractScoutApprovalUrl(output: string): string {
+  const urls = output.match(/https?:\/\/\S+/g) ?? [];
+  const approvalUrl = urls.find((url) => {
+    if (url.includes("user_code=")) {
+      return false;
+    }
+    try {
+      return new URL(url).pathname === "/device";
+    } catch {
+      return false;
+    }
+  });
+  return assertString(approvalUrl, "approval URL");
+}
+
+function extractScoutUserCode(output: string): string {
+  const match = /\b[A-Z0-9]{4}-[A-Z0-9]{4}\b/.exec(output);
+  return assertString(match?.[0], "user code");
 }
 
 export async function readScoutSession(sessionPath: string): Promise<ScoutSessionFile> {

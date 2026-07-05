@@ -20,6 +20,11 @@ import { Route as PublicRouteImport } from './routes/_public'
 import { Route as AuthRouteImport } from './routes/_auth'
 import { Route as PublicIndexRouteImport } from './routes/_public/index'
 import { Route as DocsSplatRouteImport } from './routes/docs/$'
+import { Route as DeviceTokenRouteImport } from './routes/device/token'
+import { Route as DeviceStatusRouteImport } from './routes/device/status'
+import { Route as DeviceDenyRouteImport } from './routes/device/deny'
+import { Route as DeviceCodeRouteImport } from './routes/device/code'
+import { Route as DeviceApproveRouteImport } from './routes/device/approve'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as ApiSplatRouteImport } from './routes/api/$'
 import { Route as WorkspaceWatchingRouteImport } from './routes/_workspace/watching'
@@ -47,6 +52,7 @@ import { Route as AuthDeviceRouteImport } from './routes/_auth/device'
 import { Route as AuthAccountSetupRouteImport } from './routes/_auth/account-setup'
 import { Route as WorkspaceOrganizationIndexRouteImport } from './routes/_workspace/organization/index'
 import { Route as PublicProfilesIndexRouteImport } from './routes/_public/profiles/index'
+import { Route as AuthDeviceIndexRouteImport } from './routes/_auth/device/index'
 import { Route as DotwellKnownOauthProtectedResourceIndexRouteImport } from './routes/[.]well-known/oauth-protected-resource/index'
 import { Route as DotwellKnownOauthAuthorizationServerIndexRouteImport } from './routes/[.]well-known/oauth-authorization-server/index'
 import { Route as ApiStripeWebhookRouteImport } from './routes/api/stripe/webhook'
@@ -65,6 +71,7 @@ import { Route as PublicEntriesEntryIdRouteImport } from './routes/_public/entri
 import { Route as PublicDirectoriesOrgIdRouteImport } from './routes/_public/directories/$orgId'
 import { Route as PublicClaimSlugRouteImport } from './routes/_public/claim/$slug'
 import { Route as AuthOauthConsentRouteImport } from './routes/_auth/oauth/consent'
+import { Route as AuthDeviceApprovedRouteImport } from './routes/_auth/device/approved'
 import { Route as AuthAcceptInvitationInvitationIdRouteImport } from './routes/_auth/accept-invitation/$invitationId'
 import { Route as DotwellKnownOauthProtectedResourceMcpRouteImport } from './routes/[.]well-known/oauth-protected-resource/mcp'
 import { Route as PublicProfilesPeopleIndexRouteImport } from './routes/_public/profiles/people/index'
@@ -129,6 +136,31 @@ const DocsSplatRoute = DocsSplatRouteImport.update({
   id: '/$',
   path: '/$',
   getParentRoute: () => DocsRoute,
+} as any)
+const DeviceTokenRoute = DeviceTokenRouteImport.update({
+  id: '/device/token',
+  path: '/device/token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DeviceStatusRoute = DeviceStatusRouteImport.update({
+  id: '/device/status',
+  path: '/device/status',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DeviceDenyRoute = DeviceDenyRouteImport.update({
+  id: '/device/deny',
+  path: '/device/deny',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DeviceCodeRoute = DeviceCodeRouteImport.update({
+  id: '/device/code',
+  path: '/device/code',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DeviceApproveRoute = DeviceApproveRouteImport.update({
+  id: '/device/approve',
+  path: '/device/approve',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ApiHealthRoute = ApiHealthRouteImport.update({
   id: '/api/health',
@@ -267,6 +299,11 @@ const PublicProfilesIndexRoute = PublicProfilesIndexRouteImport.update({
   path: '/profiles/',
   getParentRoute: () => PublicRoute,
 } as any)
+const AuthDeviceIndexRoute = AuthDeviceIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AuthDeviceRoute,
+} as any)
 const DotwellKnownOauthProtectedResourceIndexRoute =
   DotwellKnownOauthProtectedResourceIndexRouteImport.update({
     id: '/.well-known/oauth-protected-resource/',
@@ -362,6 +399,11 @@ const AuthOauthConsentRoute = AuthOauthConsentRouteImport.update({
   path: '/oauth/consent',
   getParentRoute: () => AuthRoute,
 } as any)
+const AuthDeviceApprovedRoute = AuthDeviceApprovedRouteImport.update({
+  id: '/approved',
+  path: '/approved',
+  getParentRoute: () => AuthDeviceRoute,
+} as any)
 const AuthAcceptInvitationInvitationIdRoute =
   AuthAcceptInvitationInvitationIdRouteImport.update({
     id: '/accept-invitation/$invitationId',
@@ -443,7 +485,7 @@ export interface FileRoutesByFullPath {
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/account-setup': typeof AuthAccountSetupRoute
-  '/device': typeof AuthDeviceRoute
+  '/device': typeof AuthDeviceRouteWithChildren
   '/sign-in': typeof AuthSignInRoute
   '/sign-up': typeof AuthSignUpRoute
   '/api-reference': typeof PublicApiReferenceRoute
@@ -467,9 +509,15 @@ export interface FileRoutesByFullPath {
   '/watching': typeof WorkspaceWatchingRoute
   '/api/$': typeof ApiSplatRoute
   '/api/health': typeof ApiHealthRoute
+  '/device/approve': typeof DeviceApproveRoute
+  '/device/code': typeof DeviceCodeRoute
+  '/device/deny': typeof DeviceDenyRoute
+  '/device/status': typeof DeviceStatusRoute
+  '/device/token': typeof DeviceTokenRoute
   '/docs/$': typeof DocsSplatRoute
   '/.well-known/oauth-protected-resource/mcp': typeof DotwellKnownOauthProtectedResourceMcpRoute
   '/accept-invitation/$invitationId': typeof AuthAcceptInvitationInvitationIdRoute
+  '/device/approved': typeof AuthDeviceApprovedRoute
   '/oauth/consent': typeof AuthOauthConsentRoute
   '/claim/$slug': typeof PublicClaimSlugRoute
   '/directories/$orgId': typeof PublicDirectoriesOrgIdRoute
@@ -488,6 +536,7 @@ export interface FileRoutesByFullPath {
   '/api/stripe/webhook': typeof ApiStripeWebhookRoute
   '/.well-known/oauth-authorization-server/': typeof DotwellKnownOauthAuthorizationServerIndexRoute
   '/.well-known/oauth-protected-resource/': typeof DotwellKnownOauthProtectedResourceIndexRoute
+  '/device/': typeof AuthDeviceIndexRoute
   '/profiles/': typeof PublicProfilesIndexRoute
   '/organization/': typeof WorkspaceOrganizationIndexRoute
   '/.well-known/oauth-authorization-server/api/auth': typeof DotwellKnownOauthAuthorizationServerApiAuthRoute
@@ -510,7 +559,6 @@ export interface FileRoutesByTo {
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/account-setup': typeof AuthAccountSetupRoute
-  '/device': typeof AuthDeviceRoute
   '/sign-in': typeof AuthSignInRoute
   '/sign-up': typeof AuthSignUpRoute
   '/api-reference': typeof PublicApiReferenceRoute
@@ -533,9 +581,15 @@ export interface FileRoutesByTo {
   '/watching': typeof WorkspaceWatchingRoute
   '/api/$': typeof ApiSplatRoute
   '/api/health': typeof ApiHealthRoute
+  '/device/approve': typeof DeviceApproveRoute
+  '/device/code': typeof DeviceCodeRoute
+  '/device/deny': typeof DeviceDenyRoute
+  '/device/status': typeof DeviceStatusRoute
+  '/device/token': typeof DeviceTokenRoute
   '/docs/$': typeof DocsSplatRoute
   '/.well-known/oauth-protected-resource/mcp': typeof DotwellKnownOauthProtectedResourceMcpRoute
   '/accept-invitation/$invitationId': typeof AuthAcceptInvitationInvitationIdRoute
+  '/device/approved': typeof AuthDeviceApprovedRoute
   '/oauth/consent': typeof AuthOauthConsentRoute
   '/claim/$slug': typeof PublicClaimSlugRoute
   '/directories/$orgId': typeof PublicDirectoriesOrgIdRoute
@@ -552,6 +606,7 @@ export interface FileRoutesByTo {
   '/api/stripe/webhook': typeof ApiStripeWebhookRoute
   '/.well-known/oauth-authorization-server': typeof DotwellKnownOauthAuthorizationServerIndexRoute
   '/.well-known/oauth-protected-resource': typeof DotwellKnownOauthProtectedResourceIndexRoute
+  '/device': typeof AuthDeviceIndexRoute
   '/profiles': typeof PublicProfilesIndexRoute
   '/organization': typeof WorkspaceOrganizationIndexRoute
   '/.well-known/oauth-authorization-server/api/auth': typeof DotwellKnownOauthAuthorizationServerApiAuthRoute
@@ -577,7 +632,7 @@ export interface FileRoutesById {
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/_auth/account-setup': typeof AuthAccountSetupRoute
-  '/_auth/device': typeof AuthDeviceRoute
+  '/_auth/device': typeof AuthDeviceRouteWithChildren
   '/_auth/sign-in': typeof AuthSignInRoute
   '/_auth/sign-up': typeof AuthSignUpRoute
   '/_public/api-reference': typeof PublicApiReferenceRoute
@@ -601,10 +656,16 @@ export interface FileRoutesById {
   '/_workspace/watching': typeof WorkspaceWatchingRoute
   '/api/$': typeof ApiSplatRoute
   '/api/health': typeof ApiHealthRoute
+  '/device/approve': typeof DeviceApproveRoute
+  '/device/code': typeof DeviceCodeRoute
+  '/device/deny': typeof DeviceDenyRoute
+  '/device/status': typeof DeviceStatusRoute
+  '/device/token': typeof DeviceTokenRoute
   '/docs/$': typeof DocsSplatRoute
   '/_public/': typeof PublicIndexRoute
   '/.well-known/oauth-protected-resource/mcp': typeof DotwellKnownOauthProtectedResourceMcpRoute
   '/_auth/accept-invitation/$invitationId': typeof AuthAcceptInvitationInvitationIdRoute
+  '/_auth/device/approved': typeof AuthDeviceApprovedRoute
   '/_auth/oauth/consent': typeof AuthOauthConsentRoute
   '/_public/claim/$slug': typeof PublicClaimSlugRoute
   '/_public/directories/$orgId': typeof PublicDirectoriesOrgIdRoute
@@ -623,6 +684,7 @@ export interface FileRoutesById {
   '/api/stripe/webhook': typeof ApiStripeWebhookRoute
   '/.well-known/oauth-authorization-server/': typeof DotwellKnownOauthAuthorizationServerIndexRoute
   '/.well-known/oauth-protected-resource/': typeof DotwellKnownOauthProtectedResourceIndexRoute
+  '/_auth/device/': typeof AuthDeviceIndexRoute
   '/_public/profiles/': typeof PublicProfilesIndexRoute
   '/_workspace/organization/': typeof WorkspaceOrganizationIndexRoute
   '/.well-known/oauth-authorization-server/api/auth': typeof DotwellKnownOauthAuthorizationServerApiAuthRoute
@@ -671,9 +733,15 @@ export interface FileRouteTypes {
     | '/watching'
     | '/api/$'
     | '/api/health'
+    | '/device/approve'
+    | '/device/code'
+    | '/device/deny'
+    | '/device/status'
+    | '/device/token'
     | '/docs/$'
     | '/.well-known/oauth-protected-resource/mcp'
     | '/accept-invitation/$invitationId'
+    | '/device/approved'
     | '/oauth/consent'
     | '/claim/$slug'
     | '/directories/$orgId'
@@ -692,6 +760,7 @@ export interface FileRouteTypes {
     | '/api/stripe/webhook'
     | '/.well-known/oauth-authorization-server/'
     | '/.well-known/oauth-protected-resource/'
+    | '/device/'
     | '/profiles/'
     | '/organization/'
     | '/.well-known/oauth-authorization-server/api/auth'
@@ -714,7 +783,6 @@ export interface FileRouteTypes {
     | '/robots.txt'
     | '/sitemap.xml'
     | '/account-setup'
-    | '/device'
     | '/sign-in'
     | '/sign-up'
     | '/api-reference'
@@ -737,9 +805,15 @@ export interface FileRouteTypes {
     | '/watching'
     | '/api/$'
     | '/api/health'
+    | '/device/approve'
+    | '/device/code'
+    | '/device/deny'
+    | '/device/status'
+    | '/device/token'
     | '/docs/$'
     | '/.well-known/oauth-protected-resource/mcp'
     | '/accept-invitation/$invitationId'
+    | '/device/approved'
     | '/oauth/consent'
     | '/claim/$slug'
     | '/directories/$orgId'
@@ -756,6 +830,7 @@ export interface FileRouteTypes {
     | '/api/stripe/webhook'
     | '/.well-known/oauth-authorization-server'
     | '/.well-known/oauth-protected-resource'
+    | '/device'
     | '/profiles'
     | '/organization'
     | '/.well-known/oauth-authorization-server/api/auth'
@@ -804,10 +879,16 @@ export interface FileRouteTypes {
     | '/_workspace/watching'
     | '/api/$'
     | '/api/health'
+    | '/device/approve'
+    | '/device/code'
+    | '/device/deny'
+    | '/device/status'
+    | '/device/token'
     | '/docs/$'
     | '/_public/'
     | '/.well-known/oauth-protected-resource/mcp'
     | '/_auth/accept-invitation/$invitationId'
+    | '/_auth/device/approved'
     | '/_auth/oauth/consent'
     | '/_public/claim/$slug'
     | '/_public/directories/$orgId'
@@ -826,6 +907,7 @@ export interface FileRouteTypes {
     | '/api/stripe/webhook'
     | '/.well-known/oauth-authorization-server/'
     | '/.well-known/oauth-protected-resource/'
+    | '/_auth/device/'
     | '/_public/profiles/'
     | '/_workspace/organization/'
     | '/.well-known/oauth-authorization-server/api/auth'
@@ -852,6 +934,11 @@ export interface RootRouteChildren {
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   ApiSplatRoute: typeof ApiSplatRoute
   ApiHealthRoute: typeof ApiHealthRoute
+  DeviceApproveRoute: typeof DeviceApproveRoute
+  DeviceCodeRoute: typeof DeviceCodeRoute
+  DeviceDenyRoute: typeof DeviceDenyRoute
+  DeviceStatusRoute: typeof DeviceStatusRoute
+  DeviceTokenRoute: typeof DeviceTokenRoute
   DotwellKnownOauthProtectedResourceMcpRoute: typeof DotwellKnownOauthProtectedResourceMcpRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiStripeWebhookRoute: typeof ApiStripeWebhookRoute
@@ -940,6 +1027,41 @@ declare module '@tanstack/react-router' {
       fullPath: '/docs/$'
       preLoaderRoute: typeof DocsSplatRouteImport
       parentRoute: typeof DocsRoute
+    }
+    '/device/token': {
+      id: '/device/token'
+      path: '/device/token'
+      fullPath: '/device/token'
+      preLoaderRoute: typeof DeviceTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/device/status': {
+      id: '/device/status'
+      path: '/device/status'
+      fullPath: '/device/status'
+      preLoaderRoute: typeof DeviceStatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/device/deny': {
+      id: '/device/deny'
+      path: '/device/deny'
+      fullPath: '/device/deny'
+      preLoaderRoute: typeof DeviceDenyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/device/code': {
+      id: '/device/code'
+      path: '/device/code'
+      fullPath: '/device/code'
+      preLoaderRoute: typeof DeviceCodeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/device/approve': {
+      id: '/device/approve'
+      path: '/device/approve'
+      fullPath: '/device/approve'
+      preLoaderRoute: typeof DeviceApproveRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/health': {
       id: '/api/health'
@@ -1130,6 +1252,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PublicProfilesIndexRouteImport
       parentRoute: typeof PublicRoute
     }
+    '/_auth/device/': {
+      id: '/_auth/device/'
+      path: '/'
+      fullPath: '/device/'
+      preLoaderRoute: typeof AuthDeviceIndexRouteImport
+      parentRoute: typeof AuthDeviceRoute
+    }
     '/.well-known/oauth-protected-resource/': {
       id: '/.well-known/oauth-protected-resource/'
       path: '/.well-known/oauth-protected-resource'
@@ -1256,6 +1385,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthOauthConsentRouteImport
       parentRoute: typeof AuthRoute
     }
+    '/_auth/device/approved': {
+      id: '/_auth/device/approved'
+      path: '/approved'
+      fullPath: '/device/approved'
+      preLoaderRoute: typeof AuthDeviceApprovedRouteImport
+      parentRoute: typeof AuthDeviceRoute
+    }
     '/_auth/accept-invitation/$invitationId': {
       id: '/_auth/accept-invitation/$invitationId'
       path: '/accept-invitation/$invitationId'
@@ -1343,9 +1479,23 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AuthDeviceRouteChildren {
+  AuthDeviceApprovedRoute: typeof AuthDeviceApprovedRoute
+  AuthDeviceIndexRoute: typeof AuthDeviceIndexRoute
+}
+
+const AuthDeviceRouteChildren: AuthDeviceRouteChildren = {
+  AuthDeviceApprovedRoute: AuthDeviceApprovedRoute,
+  AuthDeviceIndexRoute: AuthDeviceIndexRoute,
+}
+
+const AuthDeviceRouteWithChildren = AuthDeviceRoute._addFileChildren(
+  AuthDeviceRouteChildren,
+)
+
 interface AuthRouteChildren {
   AuthAccountSetupRoute: typeof AuthAccountSetupRoute
-  AuthDeviceRoute: typeof AuthDeviceRoute
+  AuthDeviceRoute: typeof AuthDeviceRouteWithChildren
   AuthSignInRoute: typeof AuthSignInRoute
   AuthSignUpRoute: typeof AuthSignUpRoute
   AuthAcceptInvitationInvitationIdRoute: typeof AuthAcceptInvitationInvitationIdRoute
@@ -1354,7 +1504,7 @@ interface AuthRouteChildren {
 
 const AuthRouteChildren: AuthRouteChildren = {
   AuthAccountSetupRoute: AuthAccountSetupRoute,
-  AuthDeviceRoute: AuthDeviceRoute,
+  AuthDeviceRoute: AuthDeviceRouteWithChildren,
   AuthSignInRoute: AuthSignInRoute,
   AuthSignUpRoute: AuthSignUpRoute,
   AuthAcceptInvitationInvitationIdRoute: AuthAcceptInvitationInvitationIdRoute,
@@ -1551,6 +1701,11 @@ const rootRouteChildren: RootRouteChildren = {
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   ApiSplatRoute: ApiSplatRoute,
   ApiHealthRoute: ApiHealthRoute,
+  DeviceApproveRoute: DeviceApproveRoute,
+  DeviceCodeRoute: DeviceCodeRoute,
+  DeviceDenyRoute: DeviceDenyRoute,
+  DeviceStatusRoute: DeviceStatusRoute,
+  DeviceTokenRoute: DeviceTokenRoute,
   DotwellKnownOauthProtectedResourceMcpRoute:
     DotwellKnownOauthProtectedResourceMcpRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,

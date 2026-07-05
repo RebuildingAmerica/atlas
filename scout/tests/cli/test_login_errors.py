@@ -21,9 +21,9 @@ from atlas_scout.cli import main
 def _code() -> DeviceCode:
     return DeviceCode(
         device_code="device-code",
-        user_code="ABCD-EFGH",
+        user_code="ABCDEFGH",
         verification_uri="https://atlas.example/device",
-        verification_uri_complete="https://atlas.example/device?user_code=ABCD-EFGH",
+        verification_uri_complete="https://atlas.example/device?user_code=ABCDEFGH",
         expires_in=1800,
         interval=5,
     )
@@ -95,8 +95,9 @@ def test_login_opens_browser_for_approval(monkeypatch) -> None:
 
     assert result.exit_code == 0
     assert opened == ["https://atlas.example/device?user_code=ABCD-EFGH"]
-    assert "Visit: https://atlas.example/device" in result.output
-    assert "Code: ABCD-EFGH" in result.output
+    assert "██" in result.output
+    assert "approval page:\n  https://atlas.example/device" in result.output
+    assert "Confirm this code in the browser:\n  ABCD-EFGH" in result.output
     assert "https://atlas.example/device?user_code=ABCD-EFGH" not in result.output
     assert saved[0].default_upload_target == "public"
 
@@ -132,7 +133,7 @@ def test_device_auth_empty_http_error_names_status_and_endpoint() -> None:
     response = httpx.Response(
         404,
         content=b"",
-        request=httpx.Request("POST", "https://atlas.example/api/auth/device/code"),
+        request=httpx.Request("POST", "https://atlas.example/device/code"),
     )
 
     with pytest.raises(DeviceAuthError) as exc_info:
@@ -141,7 +142,7 @@ def test_device_auth_empty_http_error_names_status_and_endpoint() -> None:
     assert exc_info.value.error == "http_404"
     assert exc_info.value.description == ""
     assert exc_info.value.status_code == 404
-    assert exc_info.value.url == "https://atlas.example/api/auth/device/code"
+    assert exc_info.value.url == "https://atlas.example/device/code"
 
 
 def test_login_surfaces_token_exchange_error(monkeypatch) -> None:

@@ -1,4 +1,5 @@
 import { API_KEY_SCOPES } from "./api-key-scopes";
+import { deviceAuthUrl } from "./device-auth-paths";
 
 /**
  * RFC 8414 OAuth 2.0 Authorization Server Metadata payload, plus the matching
@@ -62,7 +63,7 @@ export function buildAuthorizationServerMetadata(input: MetadataInput) {
     issuer,
     authorization_endpoint: `${issuer}/oauth2/authorize`,
     token_endpoint: `${issuer}/oauth2/token`,
-    device_authorization_endpoint: `${issuer}/device/code`,
+    device_authorization_endpoint: deviceAuthUrl(input.publicBaseUrl, "code"),
     userinfo_endpoint: `${issuer}/oauth2/userinfo`,
     jwks_uri: `${issuer}/jwks`,
     registration_endpoint: `${issuer}/oauth2/register`,

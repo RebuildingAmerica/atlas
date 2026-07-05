@@ -6,6 +6,7 @@ import httpx
 import pytest
 import respx
 
+from atlas_scout.atlas_urls import verify_for_atlas_url
 from atlas_scout.auth import (
     DEVICE_GRANT_TYPE,
     SCOUT_CLIENT_ID,
@@ -18,8 +19,8 @@ from atlas_scout.auth import (
 @pytest.mark.asyncio
 @respx.mock
 async def test_requests_device_code() -> None:
-    """Scout starts login through Better Auth's device-code endpoint."""
-    route = respx.post("https://atlas.example/api/auth/device/code").mock(
+    """Scout starts login through Atlas's canonical device-code endpoint."""
+    route = respx.post("https://atlas.example/device/code").mock(
         return_value=httpx.Response(
             200,
             json={
@@ -47,9 +48,46 @@ async def test_requests_device_code() -> None:
 
 @pytest.mark.asyncio
 @respx.mock
+async def test_requests_device_code_accepts_optional_shortcut_and_interval() -> None:
+    """RFC 8628 allows omitting the complete URI and polling interval."""
+    respx.post("https://atlas.example/device/code").mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "device_code": "device-code",
+                "user_code": "ABCDEFGH",
+                "verification_uri": "https://atlas.example/device",
+                "expires_in": 1800,
+            },
+        )
+    )
+
+    code = await DeviceAuthClient().request_device_code("https://atlas.example")
+
+    assert code.verification_uri_complete is None
+    assert code.interval == 5
+
+
+def test_plain_scout_does_not_configure_portless_tls(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path,
+) -> None:
+    """Local Atlas TLS configuration belongs to scout-dev, not Scout itself."""
+    ca_path = tmp_path / ".portless" / "ca.pem"
+    ca_path.parent.mkdir()
+    ca_path.write_text("ca", encoding="utf-8")
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.delenv("SSL_CERT_FILE", raising=False)
+    monkeypatch.delenv("REQUESTS_CA_BUNDLE", raising=False)
+
+    assert verify_for_atlas_url("https://atlas.localhost") is True
+
+
+@pytest.mark.asyncio
+@respx.mock
 async def test_exchanges_device_code_for_session_token() -> None:
     """After browser approval, Scout receives a bearer session token."""
-    route = respx.post("https://atlas.example/api/auth/device/token").mock(
+    route = respx.post("https://atlas.example/device/token").mock(
         return_value=httpx.Response(
             200,
             json={
@@ -80,7 +118,7 @@ async def test_exchanges_device_code_for_session_token() -> None:
 @respx.mock
 async def test_surfaces_pending_device_token_error() -> None:
     """Pending device authorization stays distinguishable for CLI polling."""
-    respx.post("https://atlas.example/api/auth/device/token").mock(
+    respx.post("https://atlas.example/device/token").mock(
         return_value=httpx.Response(
             400,
             json={
