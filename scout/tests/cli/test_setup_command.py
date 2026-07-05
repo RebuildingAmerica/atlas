@@ -24,7 +24,7 @@ def _resolution(*, ready: bool = True) -> LocalModelResolution:
         model="qwen3:latest" if ready else None,
         base_url="http://localhost:1234/v1" if ready else None,
         message="Using LM Studio with qwen3:latest." if ready else "No local model is ready.",
-        remediation=None if ready else "Start Ollama or LM Studio, then run `scout config llm`.",
+        remediation=None if ready else "Start Ollama or LM Studio, then run `scout config model`.",
         changed=ready,
     )
 
@@ -346,7 +346,8 @@ def test_setup_offers_local_model_next_steps_when_no_provider_is_ready(
     assert "Install Ollama" in result.output
     assert "ollama pull llama3.1:8b" in result.output
     assert "LM Studio" in result.output
-    assert "scout config llm" in result.output
+    assert "scout config model" in result.output
+    assert "scout config llm" not in result.output
     assert "scout setup llm" not in result.output
     assert not config_path.exists()
 

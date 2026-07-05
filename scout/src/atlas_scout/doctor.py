@@ -477,9 +477,9 @@ def _worker_remediation(
         return "Run `scout login`."
     if not local_provider_ready:
         allowed = ", ".join(LOCAL_PROVIDER_NAMES)
-        return f"Run `scout config llm` to choose a local model provider ({allowed})."
+        return f"Run `scout config model` to choose a local model provider ({allowed})."
     if not model_ready:
-        return "Run `scout config llm` to choose a working local model."
+        return "Run `scout config model` to choose a working local model."
     return "Run `scout search connect`."
 
 
@@ -594,7 +594,7 @@ def _default_probe_model(config: ScoutConfig) -> ProbeResult:
     return ProbeResult(
         "fail",
         f"LM Studio model {config.llm.model} is not available.",
-        "Run `scout config llm` to choose a visible LM Studio model.",
+        "Run `scout config model` to choose a visible LM Studio model.",
     )
 
 

@@ -57,11 +57,21 @@ from atlas_scout.cli_select import InteractiveChoice, SelectionCancelledError, s
 from atlas_scout.config import (
     SCOUT_CONFIG_DIR,
     SCOUT_CONFIGS_DIR,
+    ConfigMutationError,
+    ScheduleTarget,
     ScoutConfig,
+    add_schedule_target,
+    clear_schedule_targets,
     get_active_config_path,
     get_active_profile_name,
+    get_scalar_config_value,
     load_config,
+    remove_schedule_target,
+    save_local_model_settings,
+    scalar_config_rows,
     set_active_profile_name,
+    set_scalar_config_value,
+    update_schedule_settings,
 )
 from atlas_scout.credentials import CredentialStoreError
 from atlas_scout.doctor import run_doctor
@@ -275,7 +285,7 @@ def _require_local_worker_provider(config: ScoutConfig) -> None:
         allowed = ", ".join(sorted(LOCAL_WORKER_PROVIDERS))
         raise click.ClickException(
             "Scout worker mode requires a local model provider before public launch. "
-            f"Run `scout config llm` to choose one of: {allowed}."
+            f"Run `scout config model` to choose one of: {allowed}."
         )
 
 
@@ -521,25 +531,13 @@ def _save_local_model_config(
     """Persist selected local model settings without storing secrets."""
     if resolution.provider is None or resolution.model is None:
         return
-    config_path.parent.mkdir(parents=True, exist_ok=True)
-    data: dict[str, dict[str, str | int | float | bool]] = {}
-    if config_path.exists():
-        with config_path.open("rb") as handle:
-            data = cast("dict[str, dict[str, str | int | float | bool]]", tomllib.load(handle))
-    llm = data.setdefault("llm", {})
-    llm["provider"] = resolution.provider
-    llm["model"] = resolution.model
-    llm.pop("base_url", None)
-    if config.llm.ollama_base_url:
-        llm["ollama_base_url"] = config.llm.ollama_base_url
-    if config.llm.lmstudio_base_url:
-        llm["lmstudio_base_url"] = config.llm.lmstudio_base_url
-    if resolution.base_url:
-        if resolution.provider == "ollama":
-            llm["ollama_base_url"] = resolution.base_url
-        elif resolution.provider == "lmstudio":
-            llm["lmstudio_base_url"] = resolution.base_url
-    _write_toml(config_path, data)
+    save_local_model_settings(
+        config_path,
+        config,
+        provider=resolution.provider,
+        model=resolution.model,
+        base_url=resolution.base_url,
+    )
 
 
 def _print_local_model_resolution(
@@ -668,9 +666,6 @@ def _should_prompt_for_setup_model_choice(
     return resolution.ready and len(resolution.choices) > 1
 
 
-_SECRET_CONFIG_FIELD_NAMES = frozenset({"api_key", "token", "secret", "credential"})
-
-
 def _search_key_configured() -> bool:
     """Return whether this process has search-backed discovery available."""
     return has_search_api_key()
@@ -690,6 +685,11 @@ def _exit_with_error(error: CliError) -> NoReturn:
 def _credential_store_cli_error(exc: CredentialStoreError) -> CliError:
     """Return a structured credential-storage error."""
     return CliError(title="Credential storage error", message=str(exc))
+
+
+def _config_mutation_cli_error(exc: ConfigMutationError) -> CliError:
+    """Return a structured config mutation error."""
+    return CliError(title=exc.title, message=exc.message, hint=exc.hint)
 
 
 def _resolve_search_connection(search_api_key: str | None) -> str:
@@ -714,11 +714,6 @@ def _require_search_connection(search_api_key: str | None) -> str:
     if resolved_search_key:
         return resolved_search_key
     _exit_with_error(_search_connection_required_error())
-
-
-def _is_secret_config_key(parts: list[str]) -> bool:
-    """Return whether a config path names a value Scout must not persist in TOML."""
-    return parts[-1].strip().lower() in _SECRET_CONFIG_FIELD_NAMES
 
 
 def _login_failure_cli_error(exc: DeviceAuthError) -> CliError:
@@ -1705,24 +1700,22 @@ def _create_profile_file(name: str) -> Path:
 def config_show(ctx: click.Context) -> None:
     """Print the current configuration."""
     config: ScoutConfig = ctx.obj["config"]
-    table = Table(title="Scout Configuration", show_lines=False, pad_edge=False)
+    table = Table(title="Scout profile configuration", show_lines=False, pad_edge=False)
     table.add_column("Setting", style="bold")
     table.add_column("Value")
-    table.add_row("llm.provider", config.llm.provider)
-    table.add_row("llm.model", config.llm.model)
-    table.add_row("llm.ollama_base_url", config.llm.ollama_base_url or "[dim]default[/]")
-    table.add_row("llm.lmstudio_base_url", config.llm.lmstudio_base_url or "[dim]default[/]")
-    if config.llm.base_url:
-        table.add_row("llm.base_url", f"{config.llm.base_url} [dim](legacy)[/]")
-    table.add_row("llm.api_key", "[dim]***[/]" if config.llm.api_key else "[dim]not set[/]")
-    table.add_row("llm.max_concurrent", str(config.llm.max_concurrent))
-    table.add_row("scraper.max_concurrent_fetches", str(config.scraper.max_concurrent_fetches))
-    table.add_row("scraper.request_delay_ms", str(config.scraper.request_delay_ms))
-    table.add_row("pipeline.min_entry_score", str(config.pipeline.min_entry_score))
-    table.add_row("store.path", config.store.path)
+    for row in scalar_config_rows(config):
+        table.add_row(row.key, _format_config_value(row.value))
     console.print(table)
     loaded_path: Path = ctx.obj["config_path"]
     console.print(f"\n[dim]Profile: {loaded_path.stem} ({loaded_path})[/]")
+
+
+@config_group.command("path")
+@click.pass_context
+def config_path(ctx: click.Context) -> None:
+    """Print the active profile config path."""
+    loaded_path: Path = ctx.obj["config_path"]
+    click.echo(str(loaded_path))
 
 
 @config_group.command("set")
@@ -1730,52 +1723,12 @@ def config_show(ctx: click.Context) -> None:
 @click.argument("value")
 @click.pass_context
 def config_set(ctx: click.Context, key: str, value: str) -> None:
-    """Set a configuration value persistently (e.g. scout config set llm.model gemma3n:latest)."""
-    import tomllib
-
-    parts = key.split(".")
-    if len(parts) != 2:
-        _exit_with_error(
-            CliError(
-                title="Invalid config key",
-                message="key must be section.field.",
-                hint="Example: llm.provider",
-            )
-        )
-    if _is_secret_config_key(parts):
-        _exit_with_error(
-            CliError(
-                title="Secret config not saved",
-                message="Secrets are not saved in Scout profile config.",
-                hint=(
-                    "Use `scout search connect` for search, `scout login` for Atlas sync, "
-                    "or an environment variable for automation."
-                ),
-            )
-        )
-
-    config_path: Path = ctx.obj["config_path"]
-    config_path.parent.mkdir(parents=True, exist_ok=True)
-    data: dict[str, dict[str, str | int | float | bool]] = {}
-    if config_path.exists():
-        with config_path.open("rb") as f:
-            data = cast("dict[str, dict[str, str | int | float | bool]]", tomllib.load(f))
-    section, field = parts
-    # Coerce types
-    typed: str | int | float | bool
-    if value.lower() in ("true", "false"):
-        typed = value.lower() == "true"
-    else:
-        try:
-            typed = int(value)
-        except ValueError:
-            try:
-                typed = float(value)
-            except ValueError:
-                typed = value
-    data.setdefault(section, {})[field] = typed
-    _write_toml(config_path, data)
-    console.print(f"[green]Set[/] {key} = [bold]{value}[/]")
+    """Set a known scalar profile value persistently."""
+    try:
+        typed_value = set_scalar_config_value(ctx.obj["config_path"], key, value)
+    except ConfigMutationError as exc:
+        _exit_with_error(_config_mutation_cli_error(exc))
+    console.print(f"[green]Set[/] {key} = [bold]{_format_config_value(typed_value)}[/]")
 
 
 @config_group.command("get")
@@ -1784,21 +1737,14 @@ def config_set(ctx: click.Context, key: str, value: str) -> None:
 def config_get(ctx: click.Context, key: str) -> None:
     """Get a single configuration value."""
     config: ScoutConfig = ctx.obj["config"]
-    parts = key.split(".")
-    if len(parts) != 2:
-        _exit_with_error(CliError(title="Invalid config key", message="key must be section.field."))
-    section_obj = getattr(config, parts[0], None)
-    if section_obj is None:
-        err_console.print(f"[red]Unknown section:[/] {parts[0]}")
-        sys.exit(1)
-    val = getattr(section_obj, parts[1], None)
-    if parts[1] == "api_key" and val:
-        console.print("[dim]***[/]")
-    else:
-        console.print(str(val) if val is not None else "[dim]not set[/]")
+    try:
+        value = get_scalar_config_value(config, key)
+    except ConfigMutationError as exc:
+        _exit_with_error(_config_mutation_cli_error(exc))
+    console.print(_format_config_value(value))
 
 
-@config_group.command("llm")
+@config_group.command("model")
 @click.option("--provider", type=click.Choice(list(LOCAL_PROVIDER_NAMES)), default=None)
 @click.option("--model", "model_name", default=None, help="Local model name to use.")
 @click.option("--base-url", default=None, help="Endpoint URL for the selected provider.")
@@ -1806,7 +1752,7 @@ def config_get(ctx: click.Context, key: str) -> None:
 @click.option("--lmstudio-url", default=None, help="LM Studio endpoint URL.")
 @click.option("--interactive", is_flag=True, help="Choose from detected local models.")
 @click.pass_context
-def config_llm(
+def config_model(
     ctx: click.Context,
     provider: str | None,
     model_name: str | None,
@@ -1848,23 +1794,164 @@ def config_llm(
     _print_local_model_resolution(resolution, saved=True)
 
 
-def _write_toml(path: Path, data: dict[str, dict[str, str | int | float | bool]]) -> None:
-    """Write a flat dict-of-dicts as TOML."""
-    lines: list[str] = []
-    for section, values in data.items():
-        assert isinstance(values, dict), (
-            f"Section '{section}' must map to a dict, not {type(values).__name__}"
+@config_group.group("schedule")
+def config_schedule() -> None:
+    """View and update scheduled discovery config."""
+
+
+@config_schedule.command("show")
+@click.pass_context
+def config_schedule_show(ctx: click.Context) -> None:
+    """Show configured schedule settings and targets."""
+    config: ScoutConfig = ctx.obj["config"]
+    table = Table(title="Scout schedule", show_lines=False, pad_edge=False)
+    table.add_column("Setting", style="bold")
+    table.add_column("Value")
+    table.add_row("enabled", _format_config_value(config.schedule.enabled))
+    table.add_row("cron", config.schedule.cron)
+    table.add_row("max_concurrent_runs", str(config.schedule.max_concurrent_runs))
+    console.print(table)
+    _print_schedule_targets(config.schedule.targets)
+
+
+@config_schedule.command("set")
+@click.option("--enabled/--disabled", "enabled", default=None, help="Enable or disable schedule.")
+@click.option("--cron", default=None, help="Cron expression for scheduled runs.")
+@click.option(
+    "--max-concurrent-runs",
+    type=click.IntRange(1),
+    default=None,
+    help="Maximum scheduled runs that may execute concurrently.",
+)
+@click.pass_context
+def config_schedule_set(
+    ctx: click.Context,
+    enabled: bool | None,
+    cron: str | None,
+    max_concurrent_runs: int | None,
+) -> None:
+    """Set scalar scheduled discovery settings."""
+    if enabled is None and cron is None and max_concurrent_runs is None:
+        _exit_with_error(
+            CliError(
+                title="No schedule settings provided",
+                message="Pass --enabled, --disabled, --cron, or --max-concurrent-runs.",
+            )
         )
-        lines.append(f"[{section}]")
-        for k, v in values.items():
-            if isinstance(v, bool):
-                lines.append(f"{k} = {str(v).lower()}")
-            elif isinstance(v, str):
-                lines.append(f'{k} = "{v}"')
-            else:
-                lines.append(f"{k} = {v}")
-        lines.append("")
-    path.write_text("\n".join(lines) + "\n")
+    try:
+        schedule_config = update_schedule_settings(
+            ctx.obj["config_path"],
+            enabled=enabled,
+            cron=cron,
+            max_concurrent_runs=max_concurrent_runs,
+        )
+    except ConfigMutationError as exc:
+        _exit_with_error(_config_mutation_cli_error(exc))
+    console.print("[green]Updated schedule config.[/]")
+    console.print(f"  Enabled: {_format_config_value(schedule_config.enabled)}")
+    console.print(f"  Cron: {schedule_config.cron}")
+    console.print(f"  Max concurrent runs: {schedule_config.max_concurrent_runs}")
+
+
+@config_schedule.group("target")
+def config_schedule_target() -> None:
+    """Manage scheduled discovery targets."""
+
+
+@config_schedule_target.command("add")
+@click.option("--location", required=True, help="Location to discover.")
+@click.option("--issues", required=True, help="Comma-separated issue slugs.")
+@click.option(
+    "--depth",
+    type=click.Choice(["standard", "deep"]),
+    default="standard",
+    show_default=True,
+    help="Search depth.",
+)
+@click.pass_context
+def config_schedule_target_add(
+    ctx: click.Context,
+    location: str,
+    issues: str,
+    depth: str,
+) -> None:
+    """Add a scheduled discovery target."""
+    issue_list = _parse_config_issue_list(issues)
+    if not issue_list:
+        _exit_with_error(
+            CliError(title="Missing issues", message="Pass at least one issue slug with --issues.")
+        )
+    target = ScheduleTarget(location=location, issues=issue_list, search_depth=depth)
+    try:
+        add_schedule_target(ctx.obj["config_path"], target)
+    except ConfigMutationError as exc:
+        _exit_with_error(_config_mutation_cli_error(exc))
+    console.print(f"[green]Added schedule target.[/] {location}")
+
+
+@config_schedule_target.command("list")
+@click.pass_context
+def config_schedule_target_list(ctx: click.Context) -> None:
+    """List scheduled discovery targets."""
+    config: ScoutConfig = ctx.obj["config"]
+    _print_schedule_targets(config.schedule.targets)
+
+
+@config_schedule_target.command("remove")
+@click.argument("index", type=click.IntRange(1))
+@click.pass_context
+def config_schedule_target_remove(ctx: click.Context, index: int) -> None:
+    """Remove a scheduled discovery target by its list index."""
+    try:
+        removed = remove_schedule_target(ctx.obj["config_path"], index - 1)
+    except ConfigMutationError as exc:
+        _exit_with_error(_config_mutation_cli_error(exc))
+    console.print(f"[green]Removed schedule target.[/] {removed.location}")
+
+
+@config_schedule_target.command("clear")
+@click.pass_context
+def config_schedule_target_clear(ctx: click.Context) -> None:
+    """Remove all scheduled discovery targets."""
+    try:
+        removed_count = clear_schedule_targets(ctx.obj["config_path"])
+    except ConfigMutationError as exc:
+        _exit_with_error(_config_mutation_cli_error(exc))
+    console.print(f"[green]Cleared {removed_count} schedule targets.[/]")
+
+
+def _print_schedule_targets(targets: list[ScheduleTarget]) -> None:
+    """Print configured schedule targets."""
+    if not targets:
+        console.print("[yellow]No schedule targets configured.[/]")
+        return
+    table = Table(title="Schedule targets", show_lines=False, pad_edge=False)
+    table.add_column("#", justify="right")
+    table.add_column("Location")
+    table.add_column("Issues")
+    table.add_column("Depth")
+    for index, target in enumerate(targets, start=1):
+        table.add_row(
+            str(index),
+            target.location,
+            ", ".join(target.issues),
+            target.search_depth,
+        )
+    console.print(table)
+
+
+def _parse_config_issue_list(issues: str) -> list[str]:
+    """Parse comma-separated issue slugs from config commands."""
+    return [issue.strip() for issue in issues.split(",") if issue.strip()]
+
+
+def _format_config_value(value: str | int | float | bool | None) -> str:
+    """Format one profile config value for CLI output."""
+    if value is None or value == "":
+        return "[dim]not set[/]"
+    if isinstance(value, bool):
+        return str(value).lower()
+    return str(value)
 
 
 # ---------------------------------------------------------------------------

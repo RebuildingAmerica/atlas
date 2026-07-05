@@ -1,4 +1,4 @@
-"""Scout local LLM configuration command tests."""
+"""Scout local model configuration command tests."""
 
 from __future__ import annotations
 
@@ -22,19 +22,31 @@ def _resolution(*, ready: bool = True) -> LocalModelResolution:
         model="qwen3:latest" if ready else None,
         base_url="http://localhost:1234/v1" if ready else None,
         message="Using LM Studio with qwen3:latest." if ready else "No local model is ready.",
-        remediation=None if ready else "Start Ollama or LM Studio, then run `scout config llm`.",
+        remediation=None if ready else "Start Ollama or LM Studio, then run `scout config model`.",
         changed=ready,
     )
 
 
-def test_config_llm_auto_saves_detected_provider(
+def test_config_model_replaces_old_llm_command() -> None:
+    """The public config command should use model language, not LLM jargon."""
+    result = CliRunner().invoke(main, ["config", "--help"])
+
+    assert result.exit_code == 0, result.output
+    assert "model" in result.output
+    assert "llm" not in result.output
+
+    old_result = CliRunner().invoke(main, ["config", "llm"])
+    assert old_result.exit_code != 0
+
+
+def test_config_model_auto_saves_detected_provider(
     tmp_path: Path,
     monkeypatch,
 ) -> None:
     config_path = tmp_path / "scout.toml"
     monkeypatch.setattr(cli_module, "resolve_local_model", lambda *_args, **_kwargs: _resolution())
 
-    result = CliRunner().invoke(main, ["--config", str(config_path), "config", "llm"])
+    result = CliRunner().invoke(main, ["--config", str(config_path), "config", "model"])
 
     assert result.exit_code == 0, result.output
     assert "Using LM Studio with qwen3:latest" in result.output
@@ -45,7 +57,7 @@ def test_config_llm_auto_saves_detected_provider(
     assert 'lmstudio_base_url = "http://localhost:1234/v1"' in text
 
 
-def test_config_llm_explains_when_no_provider_is_ready(
+def test_config_model_explains_when_no_provider_is_ready(
     tmp_path: Path,
     monkeypatch,
 ) -> None:
@@ -56,17 +68,18 @@ def test_config_llm_explains_when_no_provider_is_ready(
         lambda *_args, **_kwargs: _resolution(ready=False),
     )
 
-    result = CliRunner().invoke(main, ["--config", str(config_path), "config", "llm"])
+    result = CliRunner().invoke(main, ["--config", str(config_path), "config", "model"])
 
     assert result.exit_code != 0
     assert "No local model is ready" in result.output
     assert "Start Ollama or LM Studio" in result.output
-    assert "scout config llm" in result.output
+    assert "scout config model" in result.output
+    assert "scout config llm" not in result.output
     assert "scout setup llm" not in result.output
     assert not config_path.exists()
 
 
-def test_config_llm_saves_provider_specific_endpoint_flags(
+def test_config_model_saves_provider_specific_endpoint_flags(
     tmp_path: Path,
     monkeypatch,
 ) -> None:
@@ -86,7 +99,7 @@ def test_config_llm_saves_provider_specific_endpoint_flags(
             "--config",
             str(config_path),
             "config",
-            "llm",
+            "model",
             "--provider",
             "lmstudio",
             "--ollama-url",
@@ -106,7 +119,7 @@ def test_config_llm_saves_provider_specific_endpoint_flags(
     assert 'lmstudio_base_url = "http://localhost:1234/v1"' in text
 
 
-def test_config_llm_base_url_sets_selected_provider_endpoint(
+def test_config_model_base_url_sets_selected_provider_endpoint(
     tmp_path: Path,
     monkeypatch,
 ) -> None:
@@ -127,7 +140,7 @@ def test_config_llm_base_url_sets_selected_provider_endpoint(
             "--config",
             str(config_path),
             "config",
-            "llm",
+            "model",
             "--provider",
             "lmstudio",
             "--base-url",
@@ -190,5 +203,6 @@ def test_run_explains_missing_local_model_before_pipeline(
 
     assert result.exit_code != 0
     assert "No local model is ready" in result.output
-    assert "scout config llm" in result.output
+    assert "scout config model" in result.output
+    assert "scout config llm" not in result.output
     assert not called

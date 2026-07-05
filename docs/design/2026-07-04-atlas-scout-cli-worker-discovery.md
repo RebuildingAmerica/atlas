@@ -97,16 +97,17 @@ not prevent Scout from checking the provider's default local URL. Users only
 need the explicit repair command when Scout cannot find a working local model:
 
 ```bash
-scout config llm
+scout config model
 ```
 
-`scout config llm` detects Ollama at `http://localhost:11434` and LM Studio at
+`scout config model` detects Ollama at `http://localhost:11434` and LM Studio at
 `http://localhost:1234/v1`, lists available models in interactive mode, and
 writes non-secret provider/model/provider endpoint settings to the active
 profile. Ollama and LM Studio endpoints are stored separately, so changing one
 provider does not overwrite the other. The legacy `base_url` field is still read
 for older profiles, but new writes use `ollama_base_url` and
-`lmstudio_base_url`.
+`lmstudio_base_url`. `scout config llm` is not a compatibility alias; the public
+command uses model language.
 Scout never silently installs model software, runs `sudo`, or stores LM Studio
 API tokens in setup or configuration flows. Setup may start the selected
 installed local provider because that is part of getting this computer ready to
@@ -214,8 +215,16 @@ scout setup [--atlas-url https://atlas.rebuildingus.org] [--no-browser]
 scout login [--atlas-url https://atlas.rebuildingus.org] [--no-browser]
 scout doctor [--worker] [--json]
 scout config create-profile NAME
-scout config llm [--interactive] [--provider ollama|lmstudio] [--model MODEL] [--base-url URL]
-                 [--ollama-url URL] [--lmstudio-url URL]
+scout config model [--interactive] [--provider ollama|lmstudio] [--model MODEL] [--base-url URL]
+                   [--ollama-url URL] [--lmstudio-url URL]
+scout config path
+scout config get SECTION.FIELD
+scout config set SECTION.FIELD VALUE
+scout config schedule set [--enabled|--disabled] [--cron CRON] [--max-concurrent-runs N]
+scout config schedule target add --location LOCATION --issues SLUG[,SLUG] [--depth standard|deep]
+scout config schedule target list
+scout config schedule target remove INDEX
+scout config schedule target clear
 scout auth status
 scout whoami
 scout logout
@@ -306,14 +315,32 @@ confirm before running it or opening an installer. After provider bootstrap,
 setup lists models for the selected provider and saves the chosen provider,
 model, and provider-specific endpoint URL.
 
-`scout config llm` exposes the resolver as a direct repair command. Default mode
-makes the best safe choice automatically. `--interactive` shows detected
+`scout config model` exposes the resolver as a direct repair command. Default
+mode makes the best safe choice automatically. `--interactive` shows detected
 provider/model choices for users who want to override the automatic selection.
 `--provider`, `--model`, `--base-url`, `--ollama-url`, and `--lmstudio-url`
 support scripted setup. `--base-url` writes the endpoint for the selected
 provider; the provider-named flags write their own endpoint regardless of which
 provider is active. `scout doctor` continues to be read-only and recommends
-`scout config llm` only when setup can fix the configured local model state.
+`scout config model` only when setup can fix the configured local model state.
+
+### Configuration Model
+
+Scout has one configuration rule: profile TOML stores non-secret settings for
+this computer, and dedicated commands own credentials or structured state.
+`scout config show`, `path`, `get`, and `set` are the profile config surface.
+`scout config set` is an expert scalar editor, not the primary onboarding UX: it
+accepts only known `ScoutConfig` scalar fields, validates type before writing,
+and refuses secret-like fields or structured values. Structured schedule targets
+must be edited with `scout config schedule target ...` so users do not have to
+hand-author TOML arrays of tables.
+
+Secrets and account-bound state are deliberately outside generic config writes.
+Atlas identity uses `scout login`, `scout logout`, and `scout auth status`.
+Search credentials use `scout search connect`, `status`, and `disconnect`.
+Command flags such as `--search-api-key`, `--atlas-url`, and sync target
+overrides affect the current invocation unless a domain command explicitly says
+it saves a profile preference.
 
 ### Search Commands
 
@@ -413,15 +440,16 @@ against product API-key limits, are named by device, and are revocable from
 account settings.
 
 Local storage must use the OS credential store for browser-approved session
-tokens and search credentials. Plaintext token and search credential files are not supported
-for public launch. Config files may store non-secret values such as Atlas URL,
-worker id, destination preference, profile name, model name, and local provider
-endpoint URLs. Scout profile config is not a persistent secret store: command
-flows must refuse to write secret-like fields such as `*.api_key`, `*.token`,
-`*.secret`, and `*.credential` to profile TOML. Normal users should use
-`scout login` and `scout search connect`; automation may continue to use
-environment variables such as `ATLAS_API_KEY`, `SEARCH_API_KEY`,
-`LM_STUDIO_API_KEY`, and provider-specific API variables.
+tokens and search credentials. Plaintext token and search credential files are
+not supported for public launch. Config files may store non-secret values such
+as Atlas URL, worker id, destination preference, profile name, model name, local
+provider endpoint URLs, runtime limits, scraper settings, and schedule settings.
+Scout profile config is not a persistent secret store: command flows must refuse
+to write secret-like fields such as `*.api_key`, `*.token`, `*.secret`, and
+`*.credential` to profile TOML. Normal users should use `scout login` and
+`scout search connect`; automation may continue to use environment variables
+such as `ATLAS_API_KEY`, `SEARCH_API_KEY`, `LM_STUDIO_API_KEY`, and
+provider-specific API variables.
 
 ## Discovery Worker Contract
 

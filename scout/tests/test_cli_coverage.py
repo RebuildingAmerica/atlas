@@ -501,18 +501,18 @@ def test_config_get_unknown_section(tmp_path: Path, monkeypatch: pytest.MonkeyPa
     output = _capture_consoles(monkeypatch)
     result = CliRunner().invoke(main, ["config", "get", "nope.thing"])
     assert result.exit_code != 0
-    assert "Unknown section" in output.getvalue()
+    assert "Unknown config section" in output.getvalue()
 
 
-def test_config_get_redacts_api_key(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_config_get_rejects_api_key(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     config = _make_config(
         tmp_path, llm=LLMConfig(provider="anthropic", model="claude", api_key="secret")
     )
     monkeypatch.setattr(cli_module, "load_config", lambda _p: config)
     result = CliRunner().invoke(main, ["config", "get", "llm.api_key"])
-    assert result.exit_code == 0
+    assert result.exit_code != 0
+    assert "not saved in Scout profile config" in result.output
     assert "secret" not in result.output
-    assert "***" in result.output
 
 
 def test_config_get_returns_not_set_when_value_none(
@@ -531,8 +531,8 @@ def test_config_get_api_key_when_unset_shows_not_set(
     config = _make_config(tmp_path)
     monkeypatch.setattr(cli_module, "load_config", lambda _p: config)
     result = CliRunner().invoke(main, ["config", "get", "llm.api_key"])
-    assert result.exit_code == 0
-    assert "not set" in result.output
+    assert result.exit_code != 0
+    assert "not saved in Scout profile config" in result.output
 
 
 # ---------------------------------------------------------------------------

@@ -143,7 +143,7 @@ def print_local_model_setup_help(
     console.print("  LM Studio: install a chat model, then start the local server.")
     console.print()
     console.print("[bold]Finish model setup[/]")
-    console.print("  scout config llm")
+    console.print("  scout config model")
     console.print()
     console.print("[dim]Run `scout setup` again after a local model is running.[/]")
 
@@ -272,7 +272,9 @@ def print_run_results(console: Console, result: PipelineResult) -> None:
     console.print(
         f"  Queries: {result.queries_generated}  "
         f"Pages: {result.pages_fetched}  "
-        f"Entries: {result.entries_found}"
+        f"Extracted: {result.entries_found}  "
+        f"Deduped: {result.entries_after_dedup}  "
+        f"Saved: {len(result.ranked_entries)}"
     )
 
     visible_page_outcomes = filter_visible_page_outcomes(result.page_outcomes)
@@ -316,4 +318,4 @@ def print_run_results(console: Console, result: PipelineResult) -> None:
         console.print(table)
         return
 
-    console.print("\n[dim]No entities discovered.[/]")
+    console.print("\n[dim]No entries passed quality checks.[/]")
