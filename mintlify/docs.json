@@ -63,58 +63,6 @@
     {
       "source": "/mcp/client-id-metadata",
       "destination": "/mcp/overview"
-    },
-    {
-      "source": "/api-reference",
-      "destination": "/api"
-    },
-    {
-      "source": "/api-reference/overview",
-      "destination": "/api/overview"
-    },
-    {
-      "source": "/api-reference/quickstart",
-      "destination": "/api/quickstart"
-    },
-    {
-      "source": "/api-reference/guides/entities",
-      "destination": "/api/guides/entities"
-    },
-    {
-      "source": "/api-reference/guides/places",
-      "destination": "/api/guides/places"
-    },
-    {
-      "source": "/api-reference/guides/discovery",
-      "destination": "/api/guides/discovery"
-    },
-    {
-      "source": "/api-reference/guides/sources-flags",
-      "destination": "/api/guides/sources-flags"
-    },
-    {
-      "source": "/api-reference/guides/workspace",
-      "destination": "/api/guides/workspace"
-    },
-    {
-      "source": "/api-reference/guides/taxonomy",
-      "destination": "/api/guides/taxonomy"
-    },
-    {
-      "source": "/api-reference/typescript-sdk",
-      "destination": "/api/typescript-sdk"
-    },
-    {
-      "source": "/api-reference/authentication",
-      "destination": "/api/authentication"
-    },
-    {
-      "source": "/api-reference/rate-limits",
-      "destination": "/api/rate-limits"
-    },
-    {
-      "source": "/api-reference/errors",
-      "destination": "/api/errors"
     }
   ],
   "navigation": {
