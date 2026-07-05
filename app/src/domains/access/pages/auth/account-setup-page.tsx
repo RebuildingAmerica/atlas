@@ -60,7 +60,7 @@ export function AccountSetupPage({ redirectTo }: AccountSetupPageProps) {
       const result = await getAuthClient().passkey.addPasskey({});
 
       if (result.error) {
-        throw new Error(describePasskeyError(result.error.message));
+        throw new Error(describePasskeyError(result.error));
       }
 
       if (result.data) {

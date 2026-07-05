@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   getAuthClient: vi.fn(),
   getAuthConfig: vi.fn(),
   readLastUsedAtlasEmail: vi.fn(),
+  signalUnknownPasskey: vi.fn(),
 }));
 
 vi.mock("@/domains/access/client/auth-client", () => ({
@@ -41,6 +42,10 @@ vi.mock("@/domains/access/client/last-login-method", () => ({
 vi.mock("@/domains/access/client/last-used-email", () => ({
   rememberLastUsedAtlasEmail: vi.fn(),
   readLastUsedAtlasEmail: mocks.readLastUsedAtlasEmail,
+}));
+
+vi.mock("@/domains/access/passkey-signal", () => ({
+  signalUnknownPasskey: mocks.signalUnknownPasskey,
 }));
 
 vi.mock("@/domains/access/client/sso-diagnostics-log", () => ({
@@ -301,6 +306,32 @@ describe("SignInPage", () => {
       // Passkey error description always falls back to a friendly string.
       expect(screen.queryByText(/Last used/)).toBeDefined();
     });
+  });
+
+  it("signals the browser and shows a specific message when the passkey no longer exists", async () => {
+    authClient.signIn.passkey.mockResolvedValue({
+      error: { code: "PASSKEY_NOT_FOUND", message: "Passkey not found" },
+      webauthn: { response: { id: "cred-dead" } },
+    });
+
+    render(<SignInPage />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByText(/Sign in with passkey/i));
+      await Promise.resolve();
+    });
+
+    await vi.waitFor(() => {
+      expect(
+        screen.getByText(
+          "This passkey is no longer linked to your account. Please sign in another way.",
+        ),
+      ).toBeInTheDocument();
+    });
+    expect(mocks.signalUnknownPasskey).toHaveBeenCalledWith("cred-dead");
+    expect(authClient.signIn.passkey).toHaveBeenCalledWith(
+      expect.objectContaining({ returnWebAuthnResponse: true }),
+    );
   });
 
   it("renders the generic passkey-failure copy when the call throws", async () => {

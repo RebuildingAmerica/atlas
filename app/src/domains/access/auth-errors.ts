@@ -48,11 +48,21 @@ export function buildAuthErrorLabels(action: "sign-in" | "sign-up"): Record<Auth
   };
 }
 
+export interface PasskeySignInError {
+  code?: string;
+  message?: string;
+}
+
 /**
- * Maps a raw WebAuthn or BetterAuth passkey error message to a safe,
- * user-facing string.  Never surfaces internal error details.
+ * Maps a raw WebAuthn or BetterAuth passkey error to a safe, user-facing
+ * string. Never surfaces internal error details.
  */
-export function describePasskeyError(rawMessage: string | undefined): string {
+export function describePasskeyError(error: PasskeySignInError | undefined): string {
+  if (error?.code === "PASSKEY_NOT_FOUND") {
+    return "This passkey is no longer linked to your account. Please sign in another way.";
+  }
+
+  const rawMessage = error?.message;
   if (!rawMessage) return "Passkey authentication failed. Please try again.";
   if (rawMessage.includes("NotAllowedError") || rawMessage.includes("AbortError")) {
     return "Passkey authentication was cancelled.";

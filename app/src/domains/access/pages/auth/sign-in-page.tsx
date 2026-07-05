@@ -11,6 +11,7 @@ import { suggestEmailDomainCorrection } from "@/domains/access/email-domain-sugg
 import { describeSsoError } from "@/domains/access/sso-error-messages";
 import { recordSsoDiagnostics } from "@/domains/access/client/sso-diagnostics-log";
 import { waitForAtlasAuthenticatedSession } from "@/domains/access/client/session-confirmation";
+import { signalUnknownPasskey } from "@/domains/access/passkey-signal";
 import { requestMagicLink } from "@/domains/access/session.functions";
 import {
   buildAuthErrorLabels,
@@ -210,10 +211,17 @@ export function SignInPage({ errorCode, initialEmail, invitationId, redirectTo }
     setIsPasskeyPending(true);
 
     try {
-      const result = await authClient.signIn.passkey();
+      const result = await authClient.signIn.passkey({ returnWebAuthnResponse: true });
 
       if (result.error) {
-        setErrorMessage(describePasskeyError(result.error.message));
+        if (
+          "code" in result.error &&
+          result.error.code === "PASSKEY_NOT_FOUND" &&
+          "webauthn" in result
+        ) {
+          signalUnknownPasskey(result.webauthn.response.id);
+        }
+        setErrorMessage(describePasskeyError(result.error));
         return;
       }
 

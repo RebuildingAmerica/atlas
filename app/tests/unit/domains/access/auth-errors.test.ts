@@ -43,35 +43,41 @@ describe("buildAuthErrorLabels", () => {
 });
 
 describe("describePasskeyError", () => {
-  it("returns the generic message when no raw message is supplied", () => {
+  it("returns the generic message when no error is supplied", () => {
     expect(describePasskeyError(undefined)).toBe(
       "Passkey authentication failed. Please try again.",
     );
   });
 
+  it("explains that the passkey is gone when the server returns PASSKEY_NOT_FOUND", () => {
+    expect(describePasskeyError({ code: "PASSKEY_NOT_FOUND", message: "Passkey not found" })).toBe(
+      "This passkey is no longer linked to your account. Please sign in another way.",
+    );
+  });
+
   it("treats NotAllowedError or AbortError as cancellation", () => {
-    expect(describePasskeyError("NotAllowedError: blocked")).toBe(
+    expect(describePasskeyError({ message: "NotAllowedError: blocked" })).toBe(
       "Passkey authentication was cancelled.",
     );
-    expect(describePasskeyError("AbortError: user aborted")).toBe(
+    expect(describePasskeyError({ message: "AbortError: user aborted" })).toBe(
       "Passkey authentication was cancelled.",
     );
   });
 
   it("explains NotSupportedError in plain language", () => {
-    expect(describePasskeyError("NotSupportedError: nope")).toBe(
+    expect(describePasskeyError({ message: "NotSupportedError: nope" })).toBe(
       "Passkeys are not supported on this device or browser.",
     );
   });
 
   it("flags InvalidStateError as a duplicate registration", () => {
-    expect(describePasskeyError("InvalidStateError: already registered")).toBe(
+    expect(describePasskeyError({ message: "InvalidStateError: already registered" })).toBe(
       "This passkey is already registered on your account.",
     );
   });
 
   it("falls back to the generic message for unknown errors", () => {
-    expect(describePasskeyError("RandomError: weird")).toBe(
+    expect(describePasskeyError({ message: "RandomError: weird" })).toBe(
       "Passkey authentication failed. Please try again.",
     );
   });
