@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState, type FormEvent } from "react";
 import { z } from "zod";
 import { Button } from "@/platform/ui/button";
 
@@ -17,6 +17,8 @@ interface DeviceStatusResponse {
   user_code: string;
 }
 
+type DeviceApprovalStatus = DeviceStatusResponse["status"] | "entry" | "loading";
+
 const deviceStatusResponseSchema = z.object({
   status: z.enum(["pending", "approved", "denied"]),
   user_code: z.string(),
@@ -30,55 +32,49 @@ function decisionEndpoint(decision: DeviceDecision): string {
  * Browser approval page for Scout CLI device authorization.
  */
 export function DeviceApprovalPage({ userCode }: DeviceApprovalPageProps) {
-  const [status, setStatus] = useState<DeviceStatusResponse["status"] | "loading" | "missing">(
-    userCode ? "loading" : "missing",
-  );
+  const [codeInput, setCodeInput] = useState(userCode ?? "");
+  const [verifiedCode, setVerifiedCode] = useState<string | null>(null);
+  const [status, setStatus] = useState<DeviceApprovalStatus>("entry");
   const [message, setMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  useEffect(() => {
-    if (!userCode) {
-      setStatus("missing");
+  async function verifyDeviceCode(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const trimmedCode = codeInput.trim().toUpperCase();
+    if (!trimmedCode) {
+      setMessage("Enter the device code.");
       return;
     }
 
-    const code = userCode;
-    let active = true;
-
-    async function loadDeviceCode() {
-      try {
-        const params = new URLSearchParams({ user_code: code });
-        const response = await fetch(`/api/auth/device?${params.toString()}`, {
-          credentials: "include",
-        });
-        if (!active) return;
-        if (!response.ok) {
-          setMessage("Device code could not be loaded.");
-          return;
-        }
-        const payload = deviceStatusResponseSchema.parse(await response.json());
-        setStatus(payload.status);
-      } catch {
-        if (active) {
-          setMessage("Device code could not be loaded.");
-        }
+    setStatus("loading");
+    setMessage(null);
+    try {
+      const params = new URLSearchParams({ user_code: trimmedCode });
+      const response = await fetch(`/api/auth/device?${params.toString()}`, {
+        credentials: "include",
+      });
+      if (!response.ok) {
+        setStatus("entry");
+        setMessage("Device code could not be verified.");
+        return;
       }
+      const payload = deviceStatusResponseSchema.parse(await response.json());
+      setVerifiedCode(payload.user_code);
+      setCodeInput(payload.user_code);
+      setStatus(payload.status);
+    } catch {
+      setStatus("entry");
+      setMessage("Device code could not be verified.");
     }
-
-    void loadDeviceCode();
-
-    return () => {
-      active = false;
-    };
-  }, [userCode]);
+  }
 
   async function submitDecision(decision: DeviceDecision) {
-    if (!userCode) return;
+    if (!verifiedCode) return;
     setIsSubmitting(true);
     setMessage(null);
     try {
       const response = await fetch(decisionEndpoint(decision), {
-        body: JSON.stringify({ userCode }),
+        body: JSON.stringify({ userCode: verifiedCode }),
         credentials: "include",
         headers: { "Content-Type": "application/json" },
         method: "POST",
@@ -100,30 +96,47 @@ export function DeviceApprovalPage({ userCode }: DeviceApprovalPageProps) {
     }
   }
 
-  if (status === "missing") {
-    return <p className="type-body-large text-on-surface">Device code missing.</p>;
-  }
-
   const isComplete = status === "approved" || status === "denied";
+  const isEntry = status === "entry" || status === "loading";
 
   return (
     <div className="space-y-6">
       <div className="space-y-2">
         <p className="type-label-medium text-outline">Atlas Scout</p>
         <h1 className="type-display-small text-on-surface">Approve Scout login</h1>
-        <p className="type-body-large text-outline">Confirm this code before granting access.</p>
+        <p className="type-body-large text-outline">
+          {isEntry ? "Enter the code shown in Scout." : "Confirm this code before granting access."}
+        </p>
       </div>
 
       <div className="border-border-strong bg-surface-container-lowest space-y-5 rounded-lg border p-6">
-        <div>
-          <p className="type-label-small text-outline">Code</p>
-          <p className="text-on-surface font-mono text-3xl tracking-normal">{userCode}</p>
-        </div>
+        {isEntry ? (
+          <form className="space-y-4" onSubmit={(event) => void verifyDeviceCode(event)}>
+            <label className="block space-y-2">
+              <span className="type-label-small text-outline">Device code</span>
+              <input
+                className="border-border-strong text-on-surface focus:ring-primary w-full rounded-lg border bg-white px-4 py-3 font-mono text-2xl tracking-normal outline-none focus:ring-2"
+                onChange={(event) => {
+                  setCodeInput(event.target.value.toUpperCase());
+                }}
+                value={codeInput}
+              />
+            </label>
+            <Button disabled={status === "loading" || !codeInput.trim()} type="submit">
+              Continue
+            </Button>
+          </form>
+        ) : (
+          <div>
+            <p className="type-label-small text-outline">Code</p>
+            <p className="text-on-surface font-mono text-3xl tracking-normal">{verifiedCode}</p>
+          </div>
+        )}
 
-        {!isComplete ? (
+        {!isEntry && !isComplete ? (
           <div className="flex flex-wrap items-center gap-3">
             <Button
-              disabled={isSubmitting || status === "loading"}
+              disabled={isSubmitting}
               onClick={() => {
                 void submitDecision("approve");
               }}
@@ -131,7 +144,7 @@ export function DeviceApprovalPage({ userCode }: DeviceApprovalPageProps) {
               Approve
             </Button>
             <Button
-              disabled={isSubmitting || status === "loading"}
+              disabled={isSubmitting}
               onClick={() => {
                 void submitDecision("deny");
               }}

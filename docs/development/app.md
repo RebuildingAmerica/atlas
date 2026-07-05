@@ -114,7 +114,7 @@ export function Navigation() {
 cd app && pnpm run dev
 ```
 
-Navigate to `https://atlas.localhost:1355/my-page`
+Navigate to `https://atlas.localhost/my-page`
 
 ---
 

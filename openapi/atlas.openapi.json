@@ -22909,7 +22909,7 @@
     },
     {
       "description": "Local development",
-      "url": "https://api.atlas.localhost:1355"
+      "url": "https://api.atlas.localhost"
     },
     {
       "description": "Relative to current host",

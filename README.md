@@ -33,11 +33,11 @@ make setup
 pnpm dev
 ```
 
-| Service  | URL                                |
-|----------|------------------------------------|
-| Frontend | http://app.localhost:1355          |
-| API      | http://api.localhost:1355          |
-| API Docs | http://api.localhost:1355/docs     |
+| Service  | URL                              |
+|----------|----------------------------------|
+| Frontend | https://atlas.localhost          |
+| API      | https://api.atlas.localhost      |
+| API Docs | https://api.atlas.localhost/docs |
 
 > [!TIP]
 > We use [Portless](https://github.com/vercel-labs/portless) to manage local services. It eliminates port conflicts by providing stable, named URLs for each service. Ensure your local environment variables (e.g., in `app/.env.local`) are updated to point to these URLs.

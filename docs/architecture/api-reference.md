@@ -9,10 +9,10 @@ REST API endpoints, request/response schemas, and conventions.
 All requests go to:
 
 ```
-https://api.atlas.localhost:1355/api/v1
+https://api.atlas.localhost/api/v1
 ```
 
-**In production:** Replace `api.atlas.localhost:1355` with the deployed API domain.
+**In production:** Replace `api.atlas.localhost` with the deployed API domain.
 
 ## Authentication
 
@@ -427,10 +427,10 @@ Common error types returned in error responses:
 When the API is running, visit:
 
 ```
-https://atlas.localhost:1355/api-reference
+https://atlas.localhost/api-reference
 ```
 
-This opens the Scalar API reference with the generated endpoint list, request/response schemas, and request examples. The reference is powered by the machine-readable OpenAPI document at `https://api.atlas.localhost:1355/openapi.json`.
+This opens the Scalar API reference with the generated endpoint list, request/response schemas, and request examples. The reference is powered by the machine-readable OpenAPI document at `https://api.atlas.localhost/openapi.json`.
 
 ---
 

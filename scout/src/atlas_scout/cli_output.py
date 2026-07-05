@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     from atlas_scout.pipeline import PipelineResult
     from atlas_scout.runtime import RuntimeProfile
 
-LOCAL_DEV_ATLAS_URL = "https://atlas.localhost:1355"
+LOCAL_DEV_ATLAS_URL = "https://atlas.localhost"
 
 STATUS_STYLES: dict[str, str] = {
     "completed": "green",

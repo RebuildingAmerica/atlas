@@ -13,14 +13,14 @@ def test_html_http_error_renders_concise_dev_url_guidance() -> None:
             error="http_405",
             description="",
             status_code=405,
-            url="https://atlas.localhost:1355/api/auth/device/code",
+            url="https://atlas.localhost/api/auth/device/code",
             content_type="text/html; charset=utf-8",
         )
     )
 
     assert "HTTP 405" in message
-    assert "https://atlas.localhost:1355/api/auth/device/code" in message
-    assert "https://atlas.localhost:1355" in message
+    assert "https://atlas.localhost/api/auth/device/code" in message
+    assert "https://atlas.localhost" in message
     assert "<html" not in message
     assert "Method Not Allowed" not in message
 

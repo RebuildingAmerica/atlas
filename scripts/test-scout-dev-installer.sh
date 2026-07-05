@@ -58,22 +58,22 @@ REQUESTS_CA_BUNDLE="/custom/requests.pem" run_scout_dev login --no-browser
 run_scout_dev worker status
 HELP_OUTPUT=$(run_scout_dev login --help)
 
-if [[ "$HELP_OUTPUT" != *"scout-dev Atlas URL: https://atlas.localhost:1355"* ]]; then
+if [[ "$HELP_OUTPUT" != *"scout-dev Atlas URL: https://atlas.localhost"* ]]; then
   echo "Expected scout-dev help to show the active dev Atlas URL." >&2
   exit 1
 fi
 
 cat >"$TMP_DIR/expected-calls.log" <<'EOF'
-login --atlas-url https://atlas.localhost:1355 --no-browser
-worker start --atlas-url https://atlas.localhost:1355 --interval 1
-worker run-internal --atlas-url https://atlas.localhost:1355 --lease-seconds 30
-sync --atlas-url https://atlas.localhost:1355 latest
-runs sync --atlas-url https://atlas.localhost:1355 run-123 --target public
---config dev.toml login --atlas-url https://atlas.localhost:1355 --no-browser
+login --atlas-url https://atlas.localhost --no-browser
+worker start --atlas-url https://atlas.localhost --interval 1
+worker run-internal --atlas-url https://atlas.localhost --lease-seconds 30
+sync --atlas-url https://atlas.localhost latest
+runs sync --atlas-url https://atlas.localhost run-123 --target public
+--config dev.toml login --atlas-url https://atlas.localhost --no-browser
 login --atlas-url https://atlas.localhost:2468 --no-browser
 login --atlas-url http://custom.test --no-browser
-login --atlas-url https://atlas.localhost:1355 --no-browser
-login --atlas-url https://atlas.localhost:1355 --no-browser
+login --atlas-url https://atlas.localhost --no-browser
+login --atlas-url https://atlas.localhost --no-browser
 worker status
 login --help
 EOF

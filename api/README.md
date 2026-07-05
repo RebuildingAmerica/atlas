@@ -26,7 +26,7 @@ Create a `.env` file in the api directory:
 DATABASE_URL=sqlite:///atlas.db
 ANTHROPIC_API_KEY=your-api-key-here
 SEARCH_API_KEY=optional-search-api-key
-CORS_ORIGINS=["https://atlas.localhost:1355"]
+CORS_ORIGINS=["https://atlas.localhost"]
 LOG_LEVEL=info
 ENVIRONMENT=dev
 ```
@@ -39,12 +39,12 @@ ENVIRONMENT=dev
 pnpm dev
 ```
 
-The API will be available at `https://api.atlas.localhost:1355`
+The API will be available at `https://api.atlas.localhost`
 
-- Scalar API reference: `https://atlas.localhost:1355/api-reference`
-- OpenAPI JSON: `https://api.atlas.localhost:1355/openapi.json`
-- FastAPI Swagger/ReDoc fallback: `https://api.atlas.localhost:1355/docs` and `https://api.atlas.localhost:1355/redoc`
-- Health check: `https://api.atlas.localhost:1355/health`
+- Scalar API reference: `https://atlas.localhost/api-reference`
+- OpenAPI JSON: `https://api.atlas.localhost/openapi.json`
+- FastAPI Swagger/ReDoc fallback: `https://api.atlas.localhost/docs` and `https://api.atlas.localhost/redoc`
+- Health check: `https://api.atlas.localhost/health`
 
 ### Production Server
 

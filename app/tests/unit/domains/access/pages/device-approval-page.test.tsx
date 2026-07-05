@@ -21,14 +21,25 @@ describe("DeviceApprovalPage", () => {
     vi.restoreAllMocks();
   });
 
-  it("loads the device code and approves Scout login", async () => {
+  it("prepopulates the complete-uri code without verifying it automatically", () => {
+    render(<DeviceApprovalPage userCode="ABCD-EFGH" />);
+
+    expect(screen.getByLabelText("Device code")).toHaveValue("ABCD-EFGH");
+    expect(screen.getByRole("button", { name: "Continue" })).toBeInTheDocument();
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it("verifies an entered device code and approves Scout login", async () => {
     vi.mocked(global.fetch)
       .mockResolvedValueOnce(jsonResponse({ status: "pending", user_code: "ABCD-EFGH" }))
       .mockResolvedValueOnce(jsonResponse({ success: true }));
 
     render(<DeviceApprovalPage userCode="ABCD-EFGH" />);
 
-    expect(await screen.findByText("ABCD-EFGH")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    expect(
+      await screen.findByText("Confirm this code before granting access."),
+    ).toBeInTheDocument();
     fireEvent.click(screen.getByText("Approve"));
 
     await waitFor(() => {
@@ -51,7 +62,8 @@ describe("DeviceApprovalPage", () => {
   it("shows a plain error when the URL has no code", () => {
     render(<DeviceApprovalPage />);
 
-    expect(screen.getByText("Device code missing.")).toBeInTheDocument();
+    expect(screen.getByLabelText("Device code")).toHaveValue("");
+    expect(screen.getByRole("button", { name: "Continue" })).toBeInTheDocument();
     expect(global.fetch).not.toHaveBeenCalled();
   });
 });

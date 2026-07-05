@@ -96,7 +96,9 @@ def test_login_saves_browser_approved_session(monkeypatch: pytest.MonkeyPatch) -
             workspace_id="org-123",
         )
     ]
-    assert "ABCD-EFGH" in result.output
+    assert "Visit: https://atlas.example/device" in result.output
+    assert "Code: ABCD-EFGH" in result.output
+    assert "https://atlas.example/device?user_code=ABCD-EFGH" not in result.output
     assert "Logged in as user@example.org" in result.output
 
 

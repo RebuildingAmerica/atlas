@@ -72,7 +72,7 @@ scout-dev login
 ```
 
 `scout-dev` forwards to the installed `scout` command and injects
-`--atlas-url https://atlas.localhost:1355` for the Scout commands that support it:
+`--atlas-url https://atlas.localhost` for the Scout commands that support it:
 `login`, `worker start`, `worker run-internal`, `sync`, and `runs sync`.
 For Portless HTTPS aliases, it also exports `SSL_CERT_FILE` to
 `~/.portless/ca.pem` when that file exists and no `SSL_CERT_FILE` override is
@@ -81,8 +81,8 @@ Explicit `--atlas-url` still wins. Acceptance tests or alternate local stacks
 can bake a different default into the wrapper:
 
 ```bash
-./install-scout-dev.sh --atlas-url https://atlas.localhost:1355
-SCOUT_DEV_ATLAS_URL=https://atlas.localhost:1355 scout-dev login --no-browser
+./install-scout-dev.sh --atlas-url https://atlas.localhost
+SCOUT_DEV_ATLAS_URL=https://atlas.localhost scout-dev login --no-browser
 PORTLESS_CA_FILE=/path/to/portless-ca.pem scout-dev login --no-browser
 ```
 
@@ -110,8 +110,9 @@ scout whoami
 scout logout
 ```
 
-`scout login` requests a device code from the Atlas app auth server, opens the
-browser when possible, and prints a fallback URL plus code. After browser
+`scout login` requests a device code from the Atlas app auth server, prints the
+plain verification URI plus user code, and may open the complete verification
+URI as a browser shortcut. After browser
 approval, Scout exchanges the approved device session for a narrow API token,
 enrolls the current host as a named Scout device, and stores the browser-approved
 session locally with user-only file permissions.

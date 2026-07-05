@@ -21,6 +21,10 @@ vi.mock("@/domains/access", () => {
   };
 });
 
+vi.mock("@/domains/access/server", () => ({
+  requireAtlasSession: vi.fn(),
+}));
+
 describe("routes/_auth/device", () => {
   beforeEach(async () => {
     const { resetRouterMocks } = await import("@/../tests/helpers/router-harness");
@@ -39,6 +43,18 @@ describe("routes/_auth/device", () => {
 
     expect(Route.options.ssr).toBe(false);
     expect(Route.options.validateSearch).toBe(deviceApprovalSearchSchema);
+  });
+
+  it("requires a signed-in Atlas session before approval", async () => {
+    const routeModule = await import("@/routes/_auth/device");
+    const access = await import("@/domains/access/server");
+    const { asRouteStub } = await import("@/../tests/helpers/router-harness");
+    const Route = asRouteStub(routeModule.Route);
+
+    if (!Route.options.beforeLoad) throw new Error("Expected beforeLoad");
+    await Route.options.beforeLoad({ location: { href: "/device?user_code=ABCD-EFGH" } });
+
+    expect(access.requireAtlasSession).toHaveBeenCalledWith("/device?user_code=ABCD-EFGH");
   });
 
   it("forwards the user code to DeviceApprovalPage", async () => {

@@ -75,7 +75,7 @@ class BrowserLoginClient:
 
 
 def test_login_opens_browser_for_approval(monkeypatch) -> None:
-    """Browser login opens the prefilled Atlas approval link."""
+    """Browser login opens the prefilled approval shortcut while displaying code entry."""
     opened: list[str] = []
     saved: list[ScoutSession] = []
     monkeypatch.setattr(cli_module, "DeviceAuthClient", BrowserLoginClient)
@@ -95,6 +95,9 @@ def test_login_opens_browser_for_approval(monkeypatch) -> None:
 
     assert result.exit_code == 0
     assert opened == ["https://atlas.example/device?user_code=ABCD-EFGH"]
+    assert "Visit: https://atlas.example/device" in result.output
+    assert "Code: ABCD-EFGH" in result.output
+    assert "https://atlas.example/device?user_code=ABCD-EFGH" not in result.output
     assert saved[0].default_upload_target == "public"
 
 

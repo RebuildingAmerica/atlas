@@ -455,10 +455,17 @@ export async function approveScoutLogin(
   appUrl: string,
 ): Promise<ScoutSessionFile> {
   const login = spawnScout(["login", "--atlas-url", appUrl, "--no-browser"], scoutHome.env);
-  const match = await login.waitForOutput(/Open:\s*(https?:\/\/\S+)/, 45_000);
+  const match = await login.waitForOutput(
+    /Visit:\s*(https?:\/\/\S+)[\s\S]*Code:\s*([A-Z0-9-]+)/,
+    45_000,
+  );
   const approvalUrl = assertString(match[1], "approval URL");
+  const userCode = assertString(match[2], "user code");
   await page.goto(approvalUrl);
   await expect(page.getByRole("heading", { name: "Approve Scout login" })).toBeVisible();
+  await page.getByLabel("Device code").fill(userCode);
+  await page.getByRole("button", { name: "Continue" }).click();
+  await expect(page.getByText("Confirm this code before granting access.")).toBeVisible();
   await page.getByRole("button", { name: "Approve" }).click();
   await expect(page.getByText("Device approved.")).toBeVisible();
 

@@ -59,7 +59,7 @@ class Settings(BaseSettings):
     """Optional search API key (e.g., SerpAPI, Brave Search)."""
 
     # CORS
-    cors_origins: list[str] = ["https://atlas.localhost:1355"]
+    cors_origins: list[str] = ["https://atlas.localhost"]
     """Allowed CORS origins for app access."""
 
     # Logging

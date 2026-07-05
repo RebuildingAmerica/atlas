@@ -15,7 +15,7 @@ export const Route = createFileRoute("/docs/$")({
     const docsUrl = getDocsUrl(import.meta.env);
     if (!docsUrl) {
       throw new Error(
-        "ATLAS_DOCS_URL is not set. In dev, set it to the local docs origin (e.g. https://docs.atlas.localhost:1355).",
+        "ATLAS_DOCS_URL is not set. In dev, set it to the local docs origin (e.g. https://docs.atlas.localhost).",
       );
     }
     const trimmed = docsUrl.replace(/\/+$/, "");

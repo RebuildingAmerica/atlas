@@ -3,14 +3,14 @@
 #
 # Why: routes/lock files corrupt when prior dev runs crash or race, and
 # parallel `portless <name> <cmd>` invocations cannot auto-start the proxy
-# (it needs sudo for port 443 — no TTY available under pnpm). We start it
-# here on an unprivileged port so route registrations from the workspace
-# tasks all succeed.
+# consistently. Atlas local development uses standard HTTPS Portless aliases
+# such as https://atlas.localhost; if that setup needs sudo or a service
+# install, fail loudly instead of hiding the requirement behind a numbered port.
 
 set -e
 
 PORTLESS_DIR="${HOME}/.portless"
-PORTLESS_PORT="${PORTLESS_PORT:-1355}"
+PORTLESS_PORT="${PORTLESS_PORT:-443}"
 
 mkdir -p "${PORTLESS_DIR}"
 
@@ -37,8 +37,23 @@ rm -rf \
   "${PORTLESS_DIR}/proxy.tls" \
   "${PORTLESS_DIR}/proxy.log"
 
-# Start a fresh proxy on an unprivileged port (no sudo required).
-pnpm exec portless proxy start --port "${PORTLESS_PORT}" --https >/dev/null 2>&1
+# Start a fresh proxy on the standard HTTPS port.
+if ! pnpm exec portless proxy start --port "${PORTLESS_PORT}" --https; then
+  cat >&2 <<'EOF'
+[portless-reset] Atlas local dev requires standard Portless HTTPS aliases:
+  https://atlas.localhost
+  https://api.atlas.localhost
+
+Portless could not start the HTTPS proxy. If Portless asks for sudo,
+complete that setup or install the Portless service, then rerun pnpm dev:
+  pnpm exec portless trust
+  pnpm exec portless service install
+
+Atlas does not fall back to a numbered localhost port. Stop any process
+already using port 443 before starting Atlas.
+EOF
+  exit 1
+fi
 
 # Wait for the proxy to write its pid/port files before returning, so the
 # subsequent parallel `portless <name> <cmd>` invocations all see it ready.

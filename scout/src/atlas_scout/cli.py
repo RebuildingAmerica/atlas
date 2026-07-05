@@ -204,7 +204,7 @@ async def _login(
         print_login_failure(err_console, exc)
         sys.exit(1)
 
-    console.print(f"Open: {pending.code.verification_uri_complete}")
+    console.print(f"Visit: {pending.code.verification_uri}")
     console.print(f"Code: [bold]{pending.code.user_code}[/]")
     if open_browser:
         webbrowser.open(pending.code.verification_uri_complete)

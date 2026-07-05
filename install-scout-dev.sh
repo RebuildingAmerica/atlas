@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-DEFAULT_ATLAS_URL="https://atlas.localhost:1355"
+DEFAULT_ATLAS_URL="https://atlas.localhost"
 
 usage() {
   cat <<'EOF'
@@ -13,7 +13,7 @@ development defaults.
 Options:
   --bin-dir DIR     Install directory. Defaults to SCOUT_DEV_BIN_DIR or ~/.local/bin.
   --atlas-url URL   Default Atlas app URL baked into scout-dev. Defaults to
-                   SCOUT_DEV_ATLAS_URL or https://atlas.localhost:1355.
+                   SCOUT_DEV_ATLAS_URL or https://atlas.localhost.
   --force           Replace an existing unmanaged scout-dev command.
   -h, --help        Show this help.
 
