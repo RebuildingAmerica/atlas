@@ -27,8 +27,8 @@ export function AuthFlowLayout({ children }: AuthFlowLayoutProps) {
 
       {/* Form content */}
       <div className="bg-surface flex flex-1 flex-col lg:w-3/5">
-        <main className="flex flex-1 items-center justify-center px-6 py-12 lg:px-12">
-          <div className="w-full max-w-xl">{children}</div>
+        <main className="flex flex-1 items-start justify-center px-6 pt-16 pb-12 sm:pt-20 lg:px-12 lg:pt-32 lg:pb-16">
+          <div className="w-full max-w-[30rem]">{children}</div>
         </main>
 
         <div className="flex items-center justify-center gap-4 px-6 pb-8">

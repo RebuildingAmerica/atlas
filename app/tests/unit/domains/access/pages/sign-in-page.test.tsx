@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, fireEvent, cleanup, act } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
-import { SignInPage } from "@/domains/access/pages/auth/sign-in-page";
+import { SignInPage, signInSearchSchema } from "@/domains/access/pages/auth/sign-in-page";
 
 const mocks = vi.hoisted(() => ({
   requestMagicLink: vi.fn(),
@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   setLastUsedAtlasLoginMethod: vi.fn(),
   getAuthClient: vi.fn(),
   getAuthConfig: vi.fn(),
+  readLastUsedAtlasEmail: vi.fn(),
 }));
 
 vi.mock("@/domains/access/client/auth-client", () => ({
@@ -39,7 +40,7 @@ vi.mock("@/domains/access/client/last-login-method", () => ({
 
 vi.mock("@/domains/access/client/last-used-email", () => ({
   rememberLastUsedAtlasEmail: vi.fn(),
-  readLastUsedAtlasEmail: vi.fn(() => null),
+  readLastUsedAtlasEmail: mocks.readLastUsedAtlasEmail,
 }));
 
 vi.mock("@/domains/access/client/sso-diagnostics-log", () => ({
@@ -73,10 +74,18 @@ describe("SignInPage", () => {
   const originalLocation = window.location;
   const mockLocationAssign = vi.fn();
 
+  function revealEmailFallback(): HTMLFormElement {
+    fireEvent.click(screen.getByRole("button", { name: /Can't use a passkey/i }));
+    const form = screen.getByRole("button", { name: /Continue with email/i }).closest("form");
+    if (!form) throw new Error("Expected form element");
+    return form;
+  }
+
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.getAuthClient.mockReturnValue(authClient);
     mocks.getAuthConfig.mockReturnValue({ localMode: false, authBasePath: "/api/auth" });
+    mocks.readLastUsedAtlasEmail.mockReturnValue(null);
     authClient.getLastUsedLoginMethod.mockReturnValue(null);
 
     // Direct result mocks bypassing createServerFn complications
@@ -105,13 +114,66 @@ describe("SignInPage", () => {
     expect(screen.getByRole("heading", { name: /Sign in to Atlas/i })).toBeInTheDocument();
   });
 
+  it("does not accept account-existence claims from the URL", () => {
+    expect(
+      signInSearchSchema.parse({
+        email: "operator@atlas.test",
+        existing: "true",
+        redirect: "/device?user_code=ABCD-EFGH",
+      }),
+    ).toEqual({
+      email: "operator@atlas.test",
+      redirect: "/device?user_code=ABCD-EFGH",
+    });
+  });
+
+  it("anchors passkey-first sign-in around the email field for conditional UI", () => {
+    render(<SignInPage />);
+
+    const emailInput = screen.getByLabelText(/Email/i);
+    const passkeyButton = screen.getByRole("button", { name: /Sign in with passkey/i });
+    const emailFallbackButton = screen.getByRole("button", { name: /Can't use a passkey/i });
+
+    expect(emailInput).toHaveAttribute("autocomplete", "username webauthn");
+    expect(emailInput.compareDocumentPosition(passkeyButton)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+    expect(passkeyButton.compareDocumentPosition(emailFallbackButton)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+    expect(screen.queryByRole("button", { name: /Continue with email/i })).toBeNull();
+    expect(screen.queryByText("Account access")).toBeNull();
+  });
+
+  it("loads remembered email after the first client render without promoting email sign-in", async () => {
+    authClient.getLastUsedLoginMethod.mockReturnValue("magic-link");
+    mocks.readLastUsedAtlasEmail.mockReturnValue("stored@example.com");
+
+    render(<SignInPage />);
+
+    await vi.waitFor(() => {
+      expect(screen.getByLabelText(/Email/i)).toHaveValue("stored@example.com");
+    });
+    expect(screen.queryByText("Last used")).toBeNull();
+    expect(screen.queryByRole("button", { name: /Continue with email/i })).toBeNull();
+  });
+
+  it("highlights passkey when it was the last sign-in method", async () => {
+    authClient.getLastUsedLoginMethod.mockReturnValue("passkey");
+
+    render(<SignInPage />);
+
+    await vi.waitFor(() => {
+      expect(screen.getByText("Last used")).toBeInTheDocument();
+    });
+  });
+
   it("handles email sign-in", async () => {
     render(<SignInPage />);
 
     fireEvent.change(screen.getByLabelText(/Email/i), { target: { value: "user@atlas.test" } });
 
-    const form = screen.getByRole("button", { name: /Continue with email/i }).closest("form");
-    if (!form) throw new Error("Expected form element");
+    const form = revealEmailFallback();
     await act(async () => {
       fireEvent.submit(form);
       await Promise.resolve();
@@ -142,8 +204,7 @@ describe("SignInPage", () => {
     render(<SignInPage />);
 
     fireEvent.change(screen.getByLabelText(/Email/i), { target: { value: "user@atlas.test" } });
-    const form = screen.getByRole("button", { name: /Continue with email/i }).closest("form");
-    if (!form) throw new Error("Expected form element");
+    const form = revealEmailFallback();
     await act(async () => {
       fireEvent.submit(form);
       await Promise.resolve();
@@ -163,8 +224,7 @@ describe("SignInPage", () => {
     });
 
     render(<SignInPage initialEmail="ops@acme.test" />);
-    const form = screen.getByRole("button", { name: /Continue with email/i }).closest("form");
-    if (!form) throw new Error("Expected form element");
+    const form = revealEmailFallback();
     await act(async () => {
       fireEvent.submit(form);
       await Promise.resolve();
@@ -185,8 +245,7 @@ describe("SignInPage", () => {
     authClient.signIn.sso.mockResolvedValue({ data: { url: null } });
 
     render(<SignInPage initialEmail="ops@acme.test" />);
-    const form = screen.getByRole("button", { name: /Continue with email/i }).closest("form");
-    if (!form) throw new Error("Expected form element");
+    const form = revealEmailFallback();
     await act(async () => {
       fireEvent.submit(form);
       await Promise.resolve();
@@ -204,8 +263,7 @@ describe("SignInPage", () => {
 
     render(<SignInPage />);
     fireEvent.change(screen.getByLabelText(/Email/i), { target: { value: "ops@acme.test" } });
-    const form = screen.getByRole("button", { name: /Continue with email/i }).closest("form");
-    if (!form) throw new Error("Expected form element");
+    const form = revealEmailFallback();
     await act(async () => {
       fireEvent.submit(form);
       await Promise.resolve();
@@ -220,13 +278,6 @@ describe("SignInPage", () => {
     render(<SignInPage redirectTo="/workspace/billing" />);
     const link = screen.getByRole("link", { name: /Create a free account/ });
     expect(link).toBeInTheDocument();
-  });
-
-  it("shows the existing-account banner when existingAccount is true", () => {
-    render(<SignInPage existingAccount={true} />);
-    expect(
-      screen.getByText("Looks like you already have an account. Sign in below."),
-    ).toBeInTheDocument();
   });
 
   it("renders the invitation-flow heading copy and hides the new-account link", () => {
@@ -283,10 +334,15 @@ describe("SignInPage", () => {
     });
 
     let capturedOnSuccess: (() => Promise<void>) | null = null;
+    let capturedOnError: (() => void) | null = null;
     authClient.signIn.passkey.mockImplementation(
-      (options: { autoFill?: boolean; fetchOptions?: { onSuccess?: () => Promise<void> } }) => {
+      (options: {
+        autoFill?: boolean;
+        fetchOptions?: { onError?: () => void; onSuccess?: () => Promise<void> };
+      }) => {
         if (options?.autoFill) {
           capturedOnSuccess = options?.fetchOptions?.onSuccess ?? null;
+          capturedOnError = options?.fetchOptions?.onError ?? null;
         }
         return Promise.resolve({ data: null });
       },
@@ -302,6 +358,7 @@ describe("SignInPage", () => {
         expect.objectContaining({ autoFill: true }),
       );
     });
+    expect(capturedOnError).toEqual(expect.any(Function));
 
     if (capturedOnSuccess) {
       await act(async () => {

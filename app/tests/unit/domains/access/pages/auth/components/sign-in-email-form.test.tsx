@@ -8,16 +8,18 @@ import { SignInEmailForm } from "@/domains/access/pages/auth/components/sign-in-
 vi.mock("@/platform/ui/button", () => ({
   Button: ({
     children,
+    className,
     disabled,
     onClick,
     type,
   }: {
     children: ReactNode;
+    className?: string;
     disabled?: boolean;
     onClick?: () => void;
     type?: "button" | "submit" | "reset";
   }) => (
-    <button type={type ?? "button"} disabled={disabled} onClick={onClick}>
+    <button className={className} type={type ?? "button"} disabled={disabled} onClick={onClick}>
       {children}
     </button>
   ),
@@ -52,24 +54,44 @@ afterEach(() => {
 });
 
 describe("SignInEmailForm", () => {
-  it("renders the form, swaps in the pending label, and toggles the last-used badge", () => {
+  it("keeps email-link sign-in collapsed behind a passkey recovery control", () => {
     const onSubmit = vi.fn((event: React.FormEvent) => {
       event.preventDefault();
     });
     const onEmailChange = vi.fn();
+    const onRevealEmailFallback = vi.fn();
+
     render(
       <SignInEmailForm
         domainSuggestion={null}
         email="ops@atlas.test"
-        isLastUsed={true}
-        isPending={true}
+        isEmailFallbackVisible={false}
+        isPending={false}
         onEmailChange={onEmailChange}
+        onRevealEmailFallback={onRevealEmailFallback}
         onSubmit={onSubmit}
       />,
     );
 
-    expect(screen.getByText("Continuing...")).not.toBeNull();
-    expect(screen.getByText("Last used")).not.toBeNull();
+    expect(screen.queryByRole("button", { name: "Continue with email" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Can't use a passkey?" }));
+    expect(onRevealEmailFallback).toHaveBeenCalledOnce();
+  });
+
+  it("renders the email fallback submit action only after it is revealed", () => {
+    render(
+      <SignInEmailForm
+        domainSuggestion={null}
+        email="ops@atlas.test"
+        isEmailFallbackVisible={true}
+        isPending={true}
+        onEmailChange={vi.fn()}
+        onRevealEmailFallback={vi.fn()}
+        onSubmit={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "Sending..." })).not.toBeNull();
   });
 
   it("invokes onEmailChange with the suggested domain when the suggestion link is clicked", () => {
@@ -78,9 +100,10 @@ describe("SignInEmailForm", () => {
       <SignInEmailForm
         domainSuggestion="ops@gmail.com"
         email="ops@gmial.com"
-        isLastUsed={false}
+        isEmailFallbackVisible={false}
         isPending={false}
         onEmailChange={onEmailChange}
+        onRevealEmailFallback={vi.fn()}
         onSubmit={vi.fn()}
       />,
     );
@@ -97,9 +120,10 @@ describe("SignInEmailForm", () => {
       <SignInEmailForm
         domainSuggestion={null}
         email="ops@atlas.test"
-        isLastUsed={false}
+        isEmailFallbackVisible={true}
         isPending={false}
         onEmailChange={vi.fn()}
+        onRevealEmailFallback={vi.fn()}
         onSubmit={onSubmit}
       />,
     );

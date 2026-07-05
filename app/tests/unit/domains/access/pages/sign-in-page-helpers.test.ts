@@ -153,9 +153,9 @@ describe("resolveSignInHeadingCopy", () => {
 
   it("uses default account-access copy when no flow is selected", () => {
     expect(resolveSignInHeadingCopy({ isInvitationFlow: false, pricingIntent: null })).toEqual({
-      eyebrow: "Account access",
+      eyebrow: undefined,
       heading: "Sign in to Atlas",
-      subhead: "Use your passkey, or enter your email for a sign-in link.",
+      subhead: "Use your passkey to continue.",
     });
   });
 });

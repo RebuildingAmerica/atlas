@@ -1,5 +1,4 @@
 import { Link } from "@tanstack/react-router";
-import { Info } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { z } from "zod";
 import { getAuthClient } from "@/domains/access/client/auth-client";
@@ -40,14 +39,12 @@ const MAGIC_LINK_ERROR_LABELS = buildAuthErrorLabels("sign-in");
 export const signInSearchSchema = z.object({
   email: z.string().optional(),
   error: z.string().optional(),
-  existing: z.coerce.boolean().optional(),
   invitation: z.string().optional(),
   redirect: z.string().optional(),
 });
 
 interface SignInPageProps {
   errorCode?: string;
-  existingAccount?: boolean;
   initialEmail?: string;
   invitationId?: string;
   redirectTo?: string;
@@ -59,29 +56,40 @@ interface SignInPageProps {
  * Atlas resolves enterprise providers server-side from the submitted email
  * address before falling back to the privacy-preserving magic-link path.
  */
-export function SignInPage({
-  errorCode,
-  existingAccount,
-  initialEmail,
-  invitationId,
-  redirectTo,
-}: SignInPageProps) {
+export function SignInPage({ errorCode, initialEmail, invitationId, redirectTo }: SignInPageProps) {
   const authClient = getAuthClient();
-  const [lastMethod] = useState<string | null>(() => authClient.getLastUsedLoginMethod() ?? null);
-  const [email, setEmail] = useState(() => initialEmail ?? readLastUsedAtlasEmail() ?? "");
+  const [lastMethod, setLastMethod] = useState<string | null>(null);
+  const [email, setEmail] = useState(initialEmail ?? "");
   const domainSuggestion = useMemo(() => suggestEmailDomainCorrection(email), [email]);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [captureMailboxUrl, setCaptureMailboxUrl] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isEmailFallbackVisible, setIsEmailFallbackVisible] = useState(false);
   const [isEmailFlowPending, setIsEmailFlowPending] = useState(false);
   const [isPasskeyPending, setIsPasskeyPending] = useState(false);
 
   const isInvitationFlow = Boolean(invitationId);
+  const emailFallbackVisible = isInvitationFlow || isEmailFallbackVisible;
   const callbackURL = buildSignInCallbackURL(invitationId, redirectTo);
   const errorCallbackURL = buildSignInErrorCallbackURL(invitationId, redirectTo);
   const pricingIntent = useMemo(() => parsePricingIntent(redirectTo), [redirectTo]);
   const oauthOriginSignIn = useMemo(() => isOAuthOriginSignIn(redirectTo), [redirectTo]);
   const ssoErrorMessage = useMemo(() => describeSsoError(errorCode), [errorCode]);
+
+  useEffect(() => {
+    setLastMethod(authClient.getLastUsedLoginMethod() ?? null);
+
+    if (initialEmail !== undefined) {
+      return;
+    }
+
+    const rememberedEmail = readLastUsedAtlasEmail();
+    if (!rememberedEmail) {
+      return;
+    }
+
+    setEmail((currentEmail) => currentEmail || rememberedEmail);
+  }, [authClient, initialEmail]);
 
   useEffect(() => {
     if (!errorCode) return;
@@ -115,12 +123,16 @@ export function SignInPage({
         await authClient.signIn.passkey({
           autoFill: true,
           fetchOptions: {
+            onError: () => {
+              return;
+            },
             onSuccess: async () => {
               if (!active) {
                 return;
               }
               await waitForAtlasAuthenticatedSession();
               setLastUsedAtlasLoginMethod("passkey");
+              setLastMethod("passkey");
               window.location.assign(callbackURL);
             },
           },
@@ -139,6 +151,12 @@ export function SignInPage({
 
   const handleEmailContinue = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+
+    if (!emailFallbackVisible) {
+      setIsEmailFallbackVisible(true);
+      return;
+    }
+
     setErrorMessage(null);
     setStatusMessage(null);
     setIsEmailFlowPending(true);
@@ -175,6 +193,7 @@ export function SignInPage({
       });
       setCaptureMailboxUrl(magicLinkResult.captureMailboxUrl ?? null);
       setLastUsedAtlasLoginMethod("magic-link");
+      setLastMethod("magic-link");
       rememberLastUsedAtlasEmail(email);
       setStatusMessage(buildMagicLinkStatusMessage(invitationId));
     } catch (error) {
@@ -200,6 +219,7 @@ export function SignInPage({
 
       await waitForAtlasAuthenticatedSession();
       setLastUsedAtlasLoginMethod("passkey");
+      setLastMethod("passkey");
       window.location.assign(callbackURL);
     } catch {
       setErrorMessage("Passkey sign-in failed. Please try again.");
@@ -214,46 +234,35 @@ export function SignInPage({
   });
 
   return (
-    <div className="space-y-8">
-      <div className="space-y-2">
-        <p className="type-label-medium text-outline">{eyebrow}</p>
+    <div className="space-y-7">
+      <div className="space-y-3">
+        {eyebrow ? <p className="type-label-medium text-outline">{eyebrow}</p> : null}
         <h1 className="type-display-small text-on-surface">{heading}</h1>
-        <p className="type-body-large text-outline">{subhead}</p>
+        <p className="type-body-large text-outline max-w-xl">{subhead}</p>
       </div>
 
-      {existingAccount ? (
-        <div className="flex items-start gap-3 rounded-2xl bg-blue-50 px-4 py-3">
-          <Info className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" />
-          <p className="type-body-medium text-blue-800">
-            Looks like you already have an account. Sign in below.
-          </p>
-        </div>
-      ) : null}
-
       <div className="space-y-5">
-        <SignInPasskeyButton
-          isLastUsed={lastMethod === "passkey"}
-          isPending={isPasskeyPending}
-          onClick={() => {
-            void handlePasskey();
-          }}
-        />
-
-        <div className="flex items-center gap-3">
-          <div className="bg-border h-px flex-1" />
-          <span className="type-label-small text-outline">or</span>
-          <div className="bg-border h-px flex-1" />
-        </div>
-
         <SignInEmailForm
           domainSuggestion={domainSuggestion}
           email={email}
-          isLastUsed={lastMethod === "magic-link"}
+          isEmailFallbackVisible={emailFallbackVisible}
           isPending={isEmailFlowPending}
           onEmailChange={setEmail}
+          onRevealEmailFallback={() => {
+            setIsEmailFallbackVisible(true);
+          }}
           onSubmit={(e) => {
             void handleEmailContinue(e);
           }}
+          passkeyAction={
+            <SignInPasskeyButton
+              isLastUsed={lastMethod === "passkey"}
+              isPending={isPasskeyPending}
+              onClick={() => {
+                void handlePasskey();
+              }}
+            />
+          }
         />
 
         <SignInStatusBlocks

@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import type { MouseEvent } from "react";
+import { ComposableMap, Geographies, Geography, Marker } from "react-simple-maps";
+import usAtlasStates from "us-atlas/states-10m.json";
 import { FALLBACK_ISSUE_COLOR, issueColor } from "@/domains/catalog/map/issue-colors";
 import { api } from "@/lib/api";
 import type { Entry } from "@/types";
@@ -10,8 +13,7 @@ interface DotActor {
   name: string;
   issues: string[];
   city: string;
-  x: number;
-  y: number;
+  coordinates: [number, number];
   color: string;
 }
 
@@ -21,14 +23,16 @@ interface Stats {
   issueAreas: number;
 }
 
-const VIEWBOX_W = 360;
-const VIEWBOX_H = 220;
-
-function project(lat: number, lon: number): { x: number; y: number } {
-  const x = 18 + ((lon - -124.7) / (-66.9 - -124.7)) * (VIEWBOX_W - 36);
-  const y = 10 + ((49.4 - lat) / (49.4 - 24.5)) * (VIEWBOX_H - 20);
-  return { x, y };
+interface MapGeography {
+  id: string | number;
+  properties: {
+    name: string;
+  };
+  rsmKey: string;
 }
+
+const MAP_WIDTH = 975;
+const MAP_HEIGHT = 610;
 
 function buildDots(entries: Entry[]): DotActor[] {
   const dots: DotActor[] = [];
@@ -45,7 +49,7 @@ function buildDots(entries: Entry[]): DotActor[] {
         entry.issue_areas[0] !== undefined
           ? issueColor(entry.issue_areas[0])
           : FALLBACK_ISSUE_COLOR,
-      ...project(coords.lat, coords.lon),
+      coordinates: [coords.lon, coords.lat],
     });
   }
   return dots;
@@ -72,29 +76,44 @@ export function CivicMapPanel() {
     left: 0,
     top: 0,
   });
-  const svgRef = useRef<SVGSVGElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    void api.entries.list({ limit: 50 }).then((res) => {
-      setDots(buildDots(res.data));
-      setStats({
-        actors: res.pagination.total,
-        cities: res.facets.cities.length,
-        issueAreas: res.facets.issue_areas.length,
+    let active = true;
+
+    void api.entries
+      .list({ limit: 50 })
+      .then((res) => {
+        if (!active) {
+          return;
+        }
+        setDots(buildDots(res.data));
+        setStats({
+          actors: res.pagination.total,
+          cities: res.facets.cities.length,
+          issueAreas: res.facets.issue_areas.length,
+        });
+      })
+      .catch(() => {
+        if (!active) {
+          return;
+        }
+        setDots([]);
+        setStats(null);
       });
-    });
+
+    return () => {
+      active = false;
+    };
   }, []);
 
-  function handleEnter(idx: number, dot: DotActor) {
+  function handleEnter(event: MouseEvent<SVGGElement>, idx: number, dot: DotActor) {
     setActiveIdx(idx);
-    if (!svgRef.current || !wrapRef.current) return;
-    const svgRect = svgRef.current.getBoundingClientRect();
+    if (!wrapRef.current) return;
     const wrapRect = wrapRef.current.getBoundingClientRect();
-    const px = (dot.x / VIEWBOX_W) * svgRect.width;
-    const py = (dot.y / VIEWBOX_H) * svgRect.height;
-    const relX = svgRect.left - wrapRect.left + px;
-    const relY = svgRect.top - wrapRect.top + py;
+    const markerRect = event.currentTarget.getBoundingClientRect();
+    const relX = markerRect.left - wrapRect.left + markerRect.width / 2;
+    const relY = markerRect.top - wrapRect.top + markerRect.height / 2;
     const tipW = 175;
     let left = relX + 12;
     if (left + tipW > wrapRect.width) left = relX - tipW - 12;
@@ -117,60 +136,80 @@ export function CivicMapPanel() {
     <div className="flex min-h-0 flex-1 flex-col gap-4">
       {/* Map */}
       <div ref={wrapRef} className="relative min-h-0 flex-1">
-        <svg
-          ref={svgRef}
-          viewBox={`0 0 ${VIEWBOX_W} ${VIEWBOX_H}`}
+        <ComposableMap
+          projection="geoAlbersUsa"
+          width={MAP_WIDTH}
+          height={MAP_HEIGHT}
           className="h-full w-full"
-          xmlns="http://www.w3.org/2000/svg"
+          aria-label="United States map"
         >
-          {/* CONUS outline — simplified polygon */}
-          <path
-            d="M 16,48 L 18,42 L 26,34 L 38,26 L 54,20 L 72,15 L 92,11 L 114,9 L 138,8 L 162,8 L 184,9 L 204,8 L 224,9 L 242,12 L 258,16 L 272,21 L 284,27 L 294,34 L 300,42 L 304,50 L 302,58 L 296,66 L 284,74 L 270,80 L 254,86 L 238,91 L 222,96 L 205,102 L 188,108 L 170,113 L 152,116 L 134,114 L 116,110 L 98,104 L 80,97 L 62,88 L 46,78 L 32,66 L 20,56 Z"
-            fill="rgba(250,246,238,0.025)"
-            stroke="rgba(250,246,238,0.10)"
-            strokeWidth="1"
-            strokeLinejoin="round"
-          />
-          {/* Florida peninsula */}
-          <path
-            d="M 214,113 L 220,124 L 217,138 L 210,142 L 205,134 L 208,120 Z"
-            fill="rgba(250,246,238,0.025)"
-            stroke="rgba(250,246,238,0.10)"
-            strokeWidth="1"
-          />
+          <Geographies geography={usAtlasStates}>
+            {({ geographies }) =>
+              (geographies as MapGeography[]).map((geography) => (
+                <Geography
+                  key={geography.rsmKey}
+                  geography={geography}
+                  aria-label={geography.properties.name}
+                  tabIndex={-1}
+                  style={{
+                    default: {
+                      fill: "rgba(250,246,238,0.035)",
+                      stroke: "rgba(250,246,238,0.13)",
+                      strokeWidth: 0.65,
+                      outline: "none",
+                    },
+                    hover: {
+                      fill: "rgba(250,246,238,0.055)",
+                      stroke: "rgba(250,246,238,0.18)",
+                      strokeWidth: 0.65,
+                      outline: "none",
+                    },
+                    pressed: {
+                      fill: "rgba(250,246,238,0.055)",
+                      stroke: "rgba(250,246,238,0.18)",
+                      strokeWidth: 0.65,
+                      outline: "none",
+                    },
+                  }}
+                />
+              ))
+            }
+          </Geographies>
+
           {dots.map((dot, idx) => {
             const active = activeIdx === idx;
             return (
-              <g
-                key={idx}
-                style={{ cursor: "pointer" }}
-                onMouseEnter={() => {
-                  handleEnter(idx, dot);
-                }}
-                onMouseLeave={handleLeave}
-              >
-                <circle
-                  cx={dot.x}
-                  cy={dot.y}
-                  r={active ? 10 : 0}
-                  fill="none"
-                  stroke={dot.color}
-                  strokeWidth="0.8"
-                  opacity={active ? 0.3 : 0}
-                  style={{ transition: "r 0.18s ease, opacity 0.18s ease" }}
-                />
-                <circle
-                  cx={dot.x}
-                  cy={dot.y}
-                  r={active ? 5 : 2.8}
-                  fill={dot.color}
-                  opacity={active ? 1 : 0.7}
-                  style={{ transition: "r 0.18s ease, opacity 0.18s ease" }}
-                />
-              </g>
+              <Marker key={idx} coordinates={dot.coordinates}>
+                <g
+                  style={{ cursor: "pointer" }}
+                  onMouseEnter={(event) => {
+                    handleEnter(event, idx, dot);
+                  }}
+                  onMouseLeave={handleLeave}
+                >
+                  <circle
+                    cx={0}
+                    cy={0}
+                    r={active ? 10 : 0}
+                    fill="none"
+                    stroke={dot.color}
+                    strokeWidth="0.8"
+                    opacity={active ? 0.3 : 0}
+                    style={{ transition: "r 0.18s ease, opacity 0.18s ease" }}
+                  />
+                  <circle
+                    cx={0}
+                    cy={0}
+                    r={active ? 5 : 2.8}
+                    fill={dot.color}
+                    opacity={active ? 1 : 0.7}
+                    style={{ transition: "r 0.18s ease, opacity 0.18s ease" }}
+                  />
+                </g>
+              </Marker>
             );
           })}
-        </svg>
+        </ComposableMap>
 
         {tooltip.visible && (
           <div
@@ -219,14 +258,14 @@ function StatItem({ value, label }: StatItemProps) {
   return (
     <div>
       <div
-        className="text-surface text-[26px] leading-none font-extrabold tracking-tight"
-        style={{ letterSpacing: "-0.03em" }}
+        className="text-surface text-[26px] leading-none font-extrabold"
+        style={{ letterSpacing: "0" }}
       >
         {value !== undefined ? value.toLocaleString() : "—"}
       </div>
       <div
-        className="mt-[3px] text-[10px] tracking-[0.07em] uppercase"
-        style={{ color: "rgba(250,246,238,0.38)" }}
+        className="mt-[3px] text-[10px] uppercase"
+        style={{ color: "rgba(250,246,238,0.38)", letterSpacing: "0" }}
       >
         {label}
       </div>

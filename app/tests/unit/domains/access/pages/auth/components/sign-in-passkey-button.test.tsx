@@ -39,6 +39,8 @@ describe("SignInPasskeyButton", () => {
     render(<SignInPasskeyButton isLastUsed={true} isPending={true} onClick={vi.fn()} />);
 
     expect(screen.getByText("Waiting for passkey...")).not.toBeNull();
-    expect(screen.getByText("Last used")).not.toBeNull();
+    const lastUsedBadge = screen.getByText("Last used");
+    expect(lastUsedBadge).not.toBeNull();
+    expect(lastUsedBadge.className.split(/\s+/)).not.toContain("absolute");
   });
 });

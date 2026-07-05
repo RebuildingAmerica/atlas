@@ -2,7 +2,7 @@ import type { AtlasProduct } from "@/domains/access/capabilities";
 import { PRODUCT_LABELS } from "@/domains/billing/product-labels";
 
 interface SignInHeadingCopy {
-  eyebrow: string;
+  eyebrow?: string;
   heading: string;
   subhead: string;
 }
@@ -41,9 +41,9 @@ export function resolveSignInHeadingCopy(args: {
     };
   }
   return {
-    eyebrow: "Account access",
+    eyebrow: undefined,
     heading: "Sign in to Atlas",
-    subhead: "Use your passkey, or enter your email for a sign-in link.",
+    subhead: "Use your passkey to continue.",
   };
 }
 
