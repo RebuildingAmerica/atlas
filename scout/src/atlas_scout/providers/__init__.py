@@ -19,20 +19,20 @@ def create_provider(
         max_concurrent if max_concurrent is not None else config.max_concurrent
     )
     if config.provider == "ollama":
-        from atlas_scout.providers.ollama import OllamaProvider
+        from atlas_scout.providers.ollama import DEFAULT_OLLAMA_URL, OllamaProvider
 
         return OllamaProvider(
             model=config.model,
-            base_url=config.base_url or "http://localhost:11434",
+            base_url=config.configured_base_url("ollama") or DEFAULT_OLLAMA_URL,
             max_concurrent=effective_max_concurrent,
             timeout_seconds=config.timeout_seconds,
         )
     if config.provider == "lmstudio":
-        from atlas_scout.providers.lmstudio import LMStudioProvider
+        from atlas_scout.providers.lmstudio import DEFAULT_LMSTUDIO_URL, LMStudioProvider
 
         return LMStudioProvider(
             model=config.model,
-            base_url=config.base_url or "http://localhost:1234/v1",
+            base_url=config.configured_base_url("lmstudio") or DEFAULT_LMSTUDIO_URL,
             api_key=config.api_key,
             max_concurrent=effective_max_concurrent,
             timeout_seconds=config.timeout_seconds,

@@ -42,7 +42,7 @@ def test_config_llm_auto_saves_detected_provider(
     text = config_path.read_text(encoding="utf-8")
     assert 'provider = "lmstudio"' in text
     assert 'model = "qwen3:latest"' in text
-    assert 'base_url = "http://localhost:1234/v1"' in text
+    assert 'lmstudio_base_url = "http://localhost:1234/v1"' in text
 
 
 def test_config_llm_explains_when_no_provider_is_ready(
@@ -64,6 +64,83 @@ def test_config_llm_explains_when_no_provider_is_ready(
     assert "scout config llm" in result.output
     assert "scout setup llm" not in result.output
     assert not config_path.exists()
+
+
+def test_config_llm_saves_provider_specific_endpoint_flags(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    config_path = tmp_path / "scout.toml"
+    captured: dict[str, object] = {}
+
+    def resolve(config: ScoutConfig) -> LocalModelResolution:
+        captured["ollama_base_url"] = config.llm.ollama_base_url
+        captured["lmstudio_base_url"] = config.llm.lmstudio_base_url
+        return _resolution()
+
+    monkeypatch.setattr(cli_module, "resolve_local_model", resolve)
+
+    result = CliRunner().invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "config",
+            "llm",
+            "--provider",
+            "lmstudio",
+            "--ollama-url",
+            "http://ollama.test:11434",
+            "--lmstudio-url",
+            "http://studio.test:1234",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert captured == {
+        "ollama_base_url": "http://ollama.test:11434",
+        "lmstudio_base_url": "http://studio.test:1234",
+    }
+    text = config_path.read_text(encoding="utf-8")
+    assert 'ollama_base_url = "http://ollama.test:11434"' in text
+    assert 'lmstudio_base_url = "http://localhost:1234/v1"' in text
+
+
+def test_config_llm_base_url_sets_selected_provider_endpoint(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    config_path = tmp_path / "scout.toml"
+    captured: dict[str, object] = {}
+
+    def resolve(config: ScoutConfig) -> LocalModelResolution:
+        captured["provider"] = config.llm.provider
+        captured["lmstudio_base_url"] = config.llm.lmstudio_base_url
+        captured["base_url"] = config.llm.base_url
+        return _resolution()
+
+    monkeypatch.setattr(cli_module, "resolve_local_model", resolve)
+
+    result = CliRunner().invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "config",
+            "llm",
+            "--provider",
+            "lmstudio",
+            "--base-url",
+            "http://studio.test:1234",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert captured == {
+        "provider": "lmstudio",
+        "lmstudio_base_url": "http://studio.test:1234",
+        "base_url": None,
+    }
 
 
 def test_run_auto_resolves_local_model_before_pipeline(

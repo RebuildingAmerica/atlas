@@ -95,9 +95,42 @@ class LLMConfig(BaseModel):
     provider: str = "ollama"
     model: str = "llama3.1:8b"
     base_url: str | None = None
+    ollama_base_url: str | None = None
+    lmstudio_base_url: str | None = None
     api_key: str | None = None
     max_concurrent: int = 10
     timeout_seconds: float = 120.0
+
+    def configured_base_url(self, provider: str) -> str | None:
+        """Return a configured endpoint for a local provider, including legacy fallback."""
+        normalized = provider.strip().lower()
+        if normalized == "ollama":
+            return self.ollama_base_url or self._legacy_base_url_for("ollama")
+        if normalized == "lmstudio":
+            return self.lmstudio_base_url or self._legacy_base_url_for("lmstudio")
+        return None
+
+    def set_configured_base_url(self, provider: str, base_url: str | None) -> None:
+        """Store an endpoint on the provider-specific field."""
+        normalized = provider.strip().lower()
+        if normalized == "ollama":
+            self.ollama_base_url = base_url
+        elif normalized == "lmstudio":
+            self.lmstudio_base_url = base_url
+        self.base_url = None
+
+    def clear_configured_base_url(self, provider: str) -> None:
+        """Clear a provider endpoint and any matching legacy endpoint."""
+        self.set_configured_base_url(provider, None)
+
+    def has_configured_base_url(self, provider: str) -> bool:
+        """Return whether a local provider has an explicit endpoint configured."""
+        return self.configured_base_url(provider) is not None
+
+    def _legacy_base_url_for(self, provider: str) -> str | None:
+        if self.provider.strip().lower() == provider:
+            return self.base_url
+        return None
 
 
 class ScraperConfig(BaseModel):

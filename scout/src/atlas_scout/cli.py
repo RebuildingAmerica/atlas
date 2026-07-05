@@ -9,13 +9,15 @@ import io
 import json
 import logging
 import platform
+import re
 import sys
 import time
 import tomllib
 import webbrowser
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Literal, cast
 
 import click
 from rich.table import Table
@@ -129,6 +131,7 @@ subprocess = _daemon_helpers.subprocess
 
 WORKER_STATE_PATH = SCOUT_CONFIG_DIR / "worker.json"
 LOCAL_WORKER_PROVIDERS = frozenset(LOCAL_PROVIDER_NAMES)
+_PROFILE_NAME_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$")
 _WORKER_STOPPED_STATE: dict[str, object] = {
     "atlas_url": None,
     "current_job_id": None,
@@ -170,6 +173,14 @@ class ScoutSyncError(RuntimeError):
     """Raised when a local run cannot be synced to Atlas."""
 
 
+@dataclass(frozen=True, slots=True)
+class SetupProfileChoice:
+    """Profile action selected during Scout setup."""
+
+    action: Literal["continue", "create"]
+    name: str | None
+
+
 def _default_worker_name() -> str:
     """Return the display name Scout should use for this host device."""
     name = platform.node().strip()
@@ -203,7 +214,7 @@ def _prepare_local_model_config(
 
     apply_local_model_resolution(config, resolution)
     if resolution.changed or force_save:
-        _save_local_model_config(config_path, resolution)
+        _save_local_model_config(config_path, config, resolution)
     return resolution
 
 
@@ -239,8 +250,10 @@ def _setup_local_model_provider(config: ScoutConfig) -> LocalModelResolution:
             remediation="Choose Ollama or LM Studio, then finish setup.",
         )
 
+    previous_provider = config.llm.provider.strip().lower()
     config.llm.provider = provider
-    config.llm.base_url = None
+    if previous_provider != provider:
+        config.llm.base_url = None
     _try_start_local_model_server(provider)
     resolution = resolve_local_model(config)
     return _resolution_for_provider(config, resolution, provider)
@@ -402,7 +415,8 @@ def _local_provider_configured_explicitly(config_path: Path) -> bool:
     except (OSError, tomllib.TOMLDecodeError):
         return False
     llm_config = data.get("llm")
-    return isinstance(llm_config, dict) and ("provider" in llm_config or "base_url" in llm_config)
+    configured_keys = {"provider", "base_url", "ollama_base_url", "lmstudio_base_url"}
+    return isinstance(llm_config, dict) and bool(configured_keys.intersection(llm_config))
 
 
 def _try_start_local_model_server(provider: str) -> bool:
@@ -418,7 +432,11 @@ def _local_model_error_message(resolution: LocalModelResolution) -> str:
     return resolution.message
 
 
-def _save_local_model_config(config_path: Path, resolution: LocalModelResolution) -> None:
+def _save_local_model_config(
+    config_path: Path,
+    config: ScoutConfig,
+    resolution: LocalModelResolution,
+) -> None:
     """Persist selected local model settings without storing secrets."""
     if resolution.provider is None or resolution.model is None:
         return
@@ -430,8 +448,16 @@ def _save_local_model_config(config_path: Path, resolution: LocalModelResolution
     llm = data.setdefault("llm", {})
     llm["provider"] = resolution.provider
     llm["model"] = resolution.model
+    llm.pop("base_url", None)
+    if config.llm.ollama_base_url:
+        llm["ollama_base_url"] = config.llm.ollama_base_url
+    if config.llm.lmstudio_base_url:
+        llm["lmstudio_base_url"] = config.llm.lmstudio_base_url
     if resolution.base_url:
-        llm["base_url"] = resolution.base_url
+        if resolution.provider == "ollama":
+            llm["ollama_base_url"] = resolution.base_url
+        elif resolution.provider == "lmstudio":
+            llm["lmstudio_base_url"] = resolution.base_url
     _write_toml(config_path, data)
 
 
@@ -1004,6 +1030,8 @@ def main(
         requested_profile_name=profile_name,
         loaded_path=path,
     )
+    ctx.obj["explicit_config_path"] = config_path
+    ctx.obj["requested_profile_name"] = profile_name
     ctx.obj["debug"] = debug
 
     if debug:
@@ -1514,6 +1542,43 @@ def config_use_profile(name: str) -> None:
     console.print(f"[green]Active profile set to '{name}'.[/]")
 
 
+@config_group.command("create-profile")
+@click.argument("name")
+def config_create_profile(name: str) -> None:
+    """Create and activate a new configuration profile."""
+    try:
+        profile_name = _validate_profile_name(name)
+        _create_profile_file(profile_name)
+    except click.ClickException as exc:
+        _exit_with_error(CliError(title=exc.message, message=f"profile: {name}"))
+
+    set_active_profile_name(profile_name)
+    console.print(f"[green]Created profile[/] [bold]{profile_name}[/]")
+
+
+def _validate_profile_name(name: str) -> str:
+    """Return a safe profile name or raise a user-facing error."""
+    normalized = name.strip()
+    if not _PROFILE_NAME_PATTERN.fullmatch(normalized):
+        raise click.ClickException("Invalid profile name")
+    return normalized
+
+
+def _profile_config_path(name: str) -> Path:
+    """Return the config path for a validated profile name."""
+    return SCOUT_CONFIGS_DIR / f"{name}.toml"
+
+
+def _create_profile_file(name: str) -> Path:
+    """Create an empty profile config file."""
+    path = _profile_config_path(name)
+    if path.exists():
+        raise click.ClickException("Profile already exists")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("", encoding="utf-8")
+    return path
+
+
 @config_group.command("show")
 @click.pass_context
 def config_show(ctx: click.Context) -> None:
@@ -1524,7 +1589,10 @@ def config_show(ctx: click.Context) -> None:
     table.add_column("Value")
     table.add_row("llm.provider", config.llm.provider)
     table.add_row("llm.model", config.llm.model)
-    table.add_row("llm.base_url", config.llm.base_url or "[dim]default[/]")
+    table.add_row("llm.ollama_base_url", config.llm.ollama_base_url or "[dim]default[/]")
+    table.add_row("llm.lmstudio_base_url", config.llm.lmstudio_base_url or "[dim]default[/]")
+    if config.llm.base_url:
+        table.add_row("llm.base_url", f"{config.llm.base_url} [dim](legacy)[/]")
     table.add_row("llm.api_key", "[dim]***[/]" if config.llm.api_key else "[dim]not set[/]")
     table.add_row("llm.max_concurrent", str(config.llm.max_concurrent))
     table.add_row("scraper.max_concurrent_fetches", str(config.scraper.max_concurrent_fetches))
@@ -1599,7 +1667,9 @@ def config_get(ctx: click.Context, key: str) -> None:
 @config_group.command("llm")
 @click.option("--provider", type=click.Choice(list(LOCAL_PROVIDER_NAMES)), default=None)
 @click.option("--model", "model_name", default=None, help="Local model name to use.")
-@click.option("--base-url", default=None, help="Local model server URL.")
+@click.option("--base-url", default=None, help="Endpoint URL for the selected provider.")
+@click.option("--ollama-url", default=None, help="Ollama endpoint URL.")
+@click.option("--lmstudio-url", default=None, help="LM Studio endpoint URL.")
 @click.option("--interactive", is_flag=True, help="Choose from detected local models.")
 @click.pass_context
 def config_llm(
@@ -1607,6 +1677,8 @@ def config_llm(
     provider: str | None,
     model_name: str | None,
     base_url: str | None,
+    ollama_url: str | None,
+    lmstudio_url: str | None,
     interactive: bool,
 ) -> None:
     """Detect and save the local model Scout should use."""
@@ -1615,8 +1687,12 @@ def config_llm(
         config.llm.provider = provider
     if model_name is not None:
         config.llm.model = model_name
+    if ollama_url is not None:
+        config.llm.set_configured_base_url("ollama", ollama_url)
+    if lmstudio_url is not None:
+        config.llm.set_configured_base_url("lmstudio", lmstudio_url)
     if base_url is not None:
-        config.llm.base_url = base_url
+        config.llm.set_configured_base_url(config.llm.provider, base_url)
 
     try:
         resolution = resolve_local_model(config)
@@ -1631,7 +1707,7 @@ def config_llm(
                 )
             )
         apply_local_model_resolution(config, resolution)
-        _save_local_model_config(ctx.obj["config_path"], resolution)
+        _save_local_model_config(ctx.obj["config_path"], config, resolution)
     except click.ClickException as exc:
         _exit_with_error(CliError(title="Local model unavailable", message=exc.message))
 
@@ -1672,6 +1748,8 @@ def setup_command(ctx: click.Context, atlas_url: str | None, open_browser: bool)
         _setup_onboarding(
             config=ctx.obj["config"],
             config_path=ctx.obj["config_path"],
+            explicit_config_path=ctx.obj["explicit_config_path"],
+            requested_profile_name=ctx.obj["requested_profile_name"],
             atlas_url=atlas_url,
             open_browser=open_browser,
         )
@@ -1682,12 +1760,21 @@ async def _setup_onboarding(
     *,
     config: ScoutConfig,
     config_path: Path,
+    explicit_config_path: str | None,
+    requested_profile_name: str | None,
     atlas_url: str | None,
     open_browser: bool,
 ) -> None:
     """Run Scout's low-decision onboarding flow."""
     console.print("[bold]Scout setup[/]")
     console.print()
+
+    config, config_path = _select_setup_profile(
+        config,
+        config_path,
+        explicit_config_path=explicit_config_path,
+        requested_profile_name=requested_profile_name,
+    )
 
     try:
         session = load_session()
@@ -1713,12 +1800,98 @@ async def _setup_onboarding(
         resolution = _choose_local_model_interactively(config, resolution)
 
     apply_local_model_resolution(config, resolution)
-    _save_local_model_config(config_path, resolution)
+    _save_local_model_config(config_path, config, resolution)
 
     _print_local_model_resolution(resolution, saved=bool(resolution))
     console.print()
     console.print("[green]Scout setup complete.[/]")
     console.print("[dim]Run `scout doctor` to check this computer before discovery work.[/]")
+
+
+def _select_setup_profile(
+    config: ScoutConfig,
+    config_path: Path,
+    *,
+    explicit_config_path: str | None,
+    requested_profile_name: str | None,
+) -> tuple[ScoutConfig, Path]:
+    """Let interactive setup continue an existing profile or create a new one."""
+    if explicit_config_path is not None or requested_profile_name is not None:
+        return config, config_path
+
+    choice = _select_setup_profile_with_arrows(config_path)
+    if choice is None:
+        return config, config_path
+
+    if choice.action == "continue":
+        if choice.name is None:
+            return config, config_path
+        selected_path = _profile_config_path(choice.name)
+        set_active_profile_name(choice.name)
+        return load_config(selected_path), selected_path
+
+    profile_name = _prompt_for_new_profile_name()
+    selected_path = _create_profile_file(profile_name)
+    set_active_profile_name(profile_name)
+    console.print(f"[green]Created profile[/] [bold]{profile_name}[/]")
+    console.print()
+    return load_config(selected_path), selected_path
+
+
+def _select_setup_profile_with_arrows(config_path: Path) -> SetupProfileChoice | None:
+    """Use an arrow-key picker for setup profile selection when a TTY is available."""
+    choices = _setup_profile_choices(config_path)
+    if not choices:
+        return None
+    try:
+        return select_with_arrows(
+            title="Scout profile",
+            text="Continue an existing setup or create a separate profile for this computer.",
+            choices=choices,
+        )
+    except SelectionCancelledError as exc:
+        raise click.Abort from exc
+
+
+def _setup_profile_choices(
+    config_path: Path,
+) -> tuple[InteractiveChoice[SetupProfileChoice], ...]:
+    """Return profile choices for setup."""
+    SCOUT_CONFIGS_DIR.mkdir(parents=True, exist_ok=True)
+    active_name = get_active_profile_name()
+    profiles = sorted(path.stem for path in SCOUT_CONFIGS_DIR.glob("*.toml"))
+    if config_path.parent == SCOUT_CONFIGS_DIR and config_path.stem not in profiles:
+        profiles.insert(0, config_path.stem)
+
+    choices = [
+        InteractiveChoice(
+            value=SetupProfileChoice(action="continue", name=name),
+            label=f"Continue {name}",
+            detail="active" if name == active_name else "profile",
+        )
+        for name in profiles
+    ]
+    choices.append(
+        InteractiveChoice(
+            value=SetupProfileChoice(action="create", name=None),
+            label="Create new profile",
+            detail="separate settings",
+        )
+    )
+    return tuple(choices)
+
+
+def _prompt_for_new_profile_name() -> str:
+    """Prompt until the user enters a valid, unused profile name."""
+    while True:
+        name = click.prompt("Profile name", type=str)
+        try:
+            profile_name = _validate_profile_name(name)
+            if _profile_config_path(profile_name).exists():
+                raise click.ClickException("Profile already exists")
+            return profile_name
+        except click.ClickException as exc:
+            err_console.print(f"[red]{exc.message}:[/] {name}")
 
 
 # ---------------------------------------------------------------------------

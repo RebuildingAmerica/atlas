@@ -76,6 +76,13 @@ model itself does it keep the successful sign-in and offer concrete next steps.
 Users can still run the steps individually, but they should not have to know
 those pieces before trying Scout.
 
+When setup is run without an explicit `--config` or `--profile`, it starts by
+letting the user continue an existing profile or create a new profile. This
+keeps first-run customization in one place: a person can keep separate local
+model, endpoint, database, and sync settings for a laptop, workstation, studio,
+or test environment without learning the profile commands first. Explicit
+`--config` and `--profile` runs remain deterministic for scripts.
+
 `scout doctor` is the readiness checkpoint between login and work. Its default
 view answers whether this computer can run direct URL discovery, search-backed
 discovery, and Atlas sync. Worker readiness is opt-in with
@@ -95,7 +102,11 @@ scout config llm
 
 `scout config llm` detects Ollama at `http://localhost:11434` and LM Studio at
 `http://localhost:1234/v1`, lists available models in interactive mode, and
-writes non-secret provider/model/base URL settings to the active profile.
+writes non-secret provider/model/provider endpoint settings to the active
+profile. Ollama and LM Studio endpoints are stored separately, so changing one
+provider does not overwrite the other. The legacy `base_url` field is still read
+for older profiles, but new writes use `ollama_base_url` and
+`lmstudio_base_url`.
 Scout never silently installs model software, runs `sudo`, or stores LM Studio
 API tokens in setup or configuration flows. Setup may start the selected
 installed local provider because that is part of getting this computer ready to
@@ -176,7 +187,9 @@ completion, and the resulting remote run receipt.
 scout setup [--atlas-url https://atlas.rebuildingus.org] [--no-browser]
 scout login [--atlas-url https://atlas.rebuildingus.org] [--no-browser]
 scout doctor [--worker] [--json]
+scout config create-profile NAME
 scout config llm [--interactive] [--provider ollama|lmstudio] [--model MODEL] [--base-url URL]
+                 [--ollama-url URL] [--lmstudio-url URL]
 scout auth status
 scout whoami
 scout logout
@@ -265,14 +278,16 @@ is installed but stopped, setup starts the selected provider. If a provider is
 missing, setup offers the platform install action and requires the user to
 confirm before running it or opening an installer. After provider bootstrap,
 setup lists models for the selected provider and saves the chosen provider,
-model, and base URL.
+model, and provider-specific endpoint URL.
 
 `scout config llm` exposes the resolver as a direct repair command. Default mode
 makes the best safe choice automatically. `--interactive` shows detected
 provider/model choices for users who want to override the automatic selection.
-`--provider`, `--model`, and `--base-url` support scripted setup. `scout doctor`
-continues to be read-only and recommends `scout config llm` only when setup can
-fix the configured local model state.
+`--provider`, `--model`, `--base-url`, `--ollama-url`, and `--lmstudio-url`
+support scripted setup. `--base-url` writes the endpoint for the selected
+provider; the provider-named flags write their own endpoint regardless of which
+provider is active. `scout doctor` continues to be read-only and recommends
+`scout config llm` only when setup can fix the configured local model state.
 
 ### Search Key Commands
 
@@ -370,7 +385,8 @@ account settings.
 Local storage must use the OS credential store for browser-approved session
 tokens and search keys. Plaintext token and search-key files are not supported
 for public launch. Config files may store non-secret values such as Atlas URL,
-worker id, destination preference, and profile name.
+worker id, destination preference, profile name, model name, and local provider
+endpoint URLs.
 
 ## Discovery Worker Contract
 

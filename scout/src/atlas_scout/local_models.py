@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Literal
 import httpx
 
 from atlas_scout.providers.lmstudio import DEFAULT_LMSTUDIO_URL, normalize_lmstudio_base_url
+from atlas_scout.providers.ollama import DEFAULT_OLLAMA_URL
 
 if TYPE_CHECKING:
     from atlas_scout.config import ScoutConfig
@@ -24,7 +25,6 @@ LocalModelStatus = Literal[
 ]
 
 LOCAL_PROVIDER_NAMES: tuple[LocalProviderName, ...] = ("lmstudio", "ollama")
-DEFAULT_OLLAMA_URL = "http://localhost:11434"
 LOCAL_PROVIDER_LABELS: dict[LocalProviderName, str] = {
     "lmstudio": "LM Studio",
     "ollama": "Ollama",
@@ -104,7 +104,7 @@ def resolve_local_model(
                 model=config.llm.model,
                 base_url=current.base_url,
                 message=(f"Using {provider_label(configured_provider)} with {config.llm.model}."),
-                changed=bool(config.llm.base_url and current.base_url != config.llm.base_url),
+                changed=_resolved_endpoint_changes(config, configured_provider, current.base_url),
                 choices=_choices_from_probes(probes, config.llm.model),
             )
 
@@ -140,7 +140,7 @@ def apply_local_model_resolution(
         return
     config.llm.provider = resolution.provider
     config.llm.model = resolution.model
-    config.llm.base_url = resolution.base_url
+    config.llm.set_configured_base_url(resolution.provider, resolution.base_url)
 
 
 def select_local_model_choice(
@@ -197,7 +197,7 @@ def _probe_provider_candidates(
         return (primary,)
 
     fallback_config = config.model_copy(deep=True)
-    fallback_config.llm.base_url = None
+    fallback_config.llm.clear_configured_base_url(provider)
     return (primary, probe(provider, fallback_config))
 
 
@@ -206,11 +206,7 @@ def _should_probe_default_local(
     config: ScoutConfig,
     primary: LocalModelProbe,
 ) -> bool:
-    return (
-        primary.status != "ready"
-        and config.llm.base_url is not None
-        and _configured_local_provider(config) == provider
-    )
+    return primary.status != "ready" and config.llm.has_configured_base_url(provider)
 
 
 def _choices_from_probes(
@@ -262,8 +258,17 @@ def _choice_changes_config(config: ScoutConfig, choice: LocalModelChoice) -> boo
     return (
         config.llm.provider != choice.provider
         or config.llm.model != choice.model
-        or config.llm.base_url != choice.base_url
+        or _resolved_endpoint_changes(config, choice.provider, choice.base_url)
     )
+
+
+def _resolved_endpoint_changes(
+    config: ScoutConfig,
+    provider: LocalProviderName,
+    resolved_base_url: str,
+) -> bool:
+    configured_base_url = _configured_base_url(config, provider)
+    return configured_base_url is not None and configured_base_url != resolved_base_url
 
 
 def _unavailable_remediation(probes: tuple[LocalModelProbe, ...]) -> str:
@@ -278,11 +283,7 @@ def _unavailable_remediation(probes: tuple[LocalModelProbe, ...]) -> str:
 
 
 def _probe_ollama(config: ScoutConfig) -> LocalModelProbe:
-    base_url = (
-        config.llm.base_url
-        if config.llm.provider.strip().lower() == "ollama" and config.llm.base_url
-        else DEFAULT_OLLAMA_URL
-    ).rstrip("/")
+    base_url = (_configured_base_url(config, "ollama") or DEFAULT_OLLAMA_URL).rstrip("/")
     try:
         with httpx.Client(timeout=3.0) as client:
             response = client.get(f"{base_url}/api/tags")
@@ -318,9 +319,10 @@ def _probe_ollama(config: ScoutConfig) -> LocalModelProbe:
 
 
 def _probe_lmstudio(config: ScoutConfig) -> LocalModelProbe:
+    configured_base_url = _configured_base_url(config, "lmstudio")
     base_url = (
-        normalize_lmstudio_base_url(config.llm.base_url)
-        if config.llm.provider.strip().lower() == "lmstudio" and config.llm.base_url
+        normalize_lmstudio_base_url(configured_base_url)
+        if configured_base_url
         else DEFAULT_LMSTUDIO_URL
     )
     api_key = config.llm.api_key or os.environ.get("LM_STUDIO_API_KEY")
@@ -401,3 +403,7 @@ def _auth_headers(api_key: str | None) -> dict[str, str] | None:
     if not api_key:
         return None
     return {"Authorization": f"Bearer {api_key}"}
+
+
+def _configured_base_url(config: ScoutConfig, provider: LocalProviderName) -> str | None:
+    return config.llm.configured_base_url(provider)

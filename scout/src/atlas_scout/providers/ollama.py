@@ -12,6 +12,8 @@ from atlas_scout.providers.base import Completion, Message
 if TYPE_CHECKING:
     from pydantic import BaseModel
 
+DEFAULT_OLLAMA_URL = "http://localhost:11434"
+
 
 class OllamaProvider:
     """LLM provider that connects to a local Ollama instance."""
@@ -19,7 +21,7 @@ class OllamaProvider:
     def __init__(
         self,
         model: str,
-        base_url: str = "http://localhost:11434",
+        base_url: str = DEFAULT_OLLAMA_URL,
         max_concurrent: int = 10,
         timeout_seconds: float = 120.0,
     ) -> None:

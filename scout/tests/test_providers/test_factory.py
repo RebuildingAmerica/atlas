@@ -58,7 +58,7 @@ async def test_create_provider_returns_lmstudio_provider_for_lmstudio_config() -
         LLMConfig(
             provider="lmstudio",
             model="qwen3:latest",
-            base_url="http://studio.test:1234",
+            lmstudio_base_url="http://studio.test:1234",
             max_concurrent=2,
         ),
     )
@@ -72,3 +72,37 @@ async def test_create_provider_returns_lmstudio_provider_for_lmstudio_config() -
 def test_create_provider_raises_for_unknown_provider() -> None:
     with pytest.raises(ValueError, match="Unknown LLM provider: mistral"):
         create_provider(LLMConfig(provider="mistral", model="something"))
+
+
+@pytest.mark.asyncio
+async def test_create_provider_uses_provider_specific_ollama_url() -> None:
+    provider = create_provider(
+        LLMConfig(
+            provider="ollama",
+            model="qwen3.5:latest",
+            base_url="http://legacy.test:11434",
+            ollama_base_url="http://ollama.test:11434",
+        ),
+    )
+    try:
+        assert isinstance(provider, OllamaProvider)
+        assert provider._base_url == "http://ollama.test:11434"
+    finally:
+        await provider.aclose()
+
+
+@pytest.mark.asyncio
+async def test_create_provider_uses_provider_specific_lmstudio_url() -> None:
+    provider = create_provider(
+        LLMConfig(
+            provider="lmstudio",
+            model="qwen3:latest",
+            base_url="http://legacy.test:1234",
+            lmstudio_base_url="http://studio.test:1234",
+        ),
+    )
+    try:
+        assert isinstance(provider, LMStudioProvider)
+        assert provider._base_url == "http://studio.test:1234/v1"
+    finally:
+        await provider.aclose()

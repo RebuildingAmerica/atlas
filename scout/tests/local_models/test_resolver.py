@@ -72,19 +72,19 @@ def test_resolver_self_heals_default_config_to_lmstudio() -> None:
 
     assert config.llm.provider == "lmstudio"
     assert config.llm.model == "qwen3:latest"
-    assert config.llm.base_url == "http://localhost:1234/v1"
+    assert config.llm.lmstudio_base_url == "http://localhost:1234/v1"
 
 
-def test_resolver_self_heals_stale_configured_base_url_to_localhost() -> None:
+def test_resolver_self_heals_stale_configured_provider_url_to_localhost() -> None:
     config = ScoutConfig()
     config.llm.provider = "ollama"
     config.llm.model = "deepseek-r1:8b"
-    config.llm.base_url = "http://willies-mac-studio.tail244fac.ts.net:11434"
+    config.llm.ollama_base_url = "http://willies-mac-studio.tail244fac.ts.net:11434"
     seen_base_urls: list[str | None] = []
 
     def probe(provider: str, candidate: ScoutConfig) -> LocalModelProbe:
-        seen_base_urls.append(candidate.llm.base_url)
-        if provider == "ollama" and candidate.llm.base_url is None:
+        seen_base_urls.append(candidate.llm.ollama_base_url)
+        if provider == "ollama" and candidate.llm.ollama_base_url is None:
             return LocalModelProbe(
                 provider="ollama",
                 base_url=DEFAULT_OLLAMA_URL,
@@ -94,7 +94,7 @@ def test_resolver_self_heals_stale_configured_base_url_to_localhost() -> None:
             )
         return LocalModelProbe(
             provider=provider,
-            base_url=candidate.llm.base_url or "http://localhost",
+            base_url=candidate.llm.ollama_base_url or "http://localhost",
             status="unreachable",
             models=(),
             message=f"{provider} is not reachable.",
@@ -107,8 +107,61 @@ def test_resolver_self_heals_stale_configured_base_url_to_localhost() -> None:
     assert resolution.model == "deepseek-r1:8b"
     assert resolution.base_url == DEFAULT_OLLAMA_URL
     assert resolution.changed
-    assert config.llm.base_url in seen_base_urls
+    assert config.llm.ollama_base_url in seen_base_urls
     assert None in seen_base_urls
+
+
+def test_resolver_uses_provider_specific_urls_without_active_provider_switch() -> None:
+    config = ScoutConfig()
+    config.llm.provider = "ollama"
+    config.llm.ollama_base_url = "http://ollama.custom:11434"
+    config.llm.lmstudio_base_url = "http://studio.custom:1234"
+    seen: dict[str, list[str | None]] = {"lmstudio": [], "ollama": []}
+
+    def probe(provider: str, candidate: ScoutConfig) -> LocalModelProbe:
+        endpoint = (
+            candidate.llm.lmstudio_base_url
+            if provider == "lmstudio"
+            else candidate.llm.ollama_base_url
+        )
+        seen[provider].append(endpoint)
+        return LocalModelProbe(
+            provider=provider,
+            base_url=endpoint or "http://localhost",
+            status="unreachable",
+            models=(),
+            message=f"{provider} is not reachable.",
+        )
+
+    resolve_local_model(config, probe=probe)
+
+    assert seen == {
+        "lmstudio": ["http://studio.custom:1234", None],
+        "ollama": ["http://ollama.custom:11434", None],
+    }
+
+
+def test_legacy_base_url_still_applies_to_active_provider() -> None:
+    config = ScoutConfig()
+    config.llm.provider = "lmstudio"
+    config.llm.base_url = "http://legacy-studio.test:1234"
+    seen: list[str | None] = []
+
+    def probe(provider: str, candidate: ScoutConfig) -> LocalModelProbe:
+        if provider == "lmstudio":
+            seen.append(candidate.llm.base_url)
+        return LocalModelProbe(
+            provider=provider,
+            base_url=candidate.llm.base_url or "http://localhost",
+            status="unreachable",
+            models=(),
+            message=f"{provider} is not reachable.",
+        )
+
+    resolve_local_model(config, probe=probe)
+
+    assert "http://legacy-studio.test:1234" in seen
+    assert None in seen
 
 
 def test_resolver_returns_one_clear_action_when_no_provider_is_ready() -> None:
