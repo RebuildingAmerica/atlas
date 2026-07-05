@@ -116,10 +116,12 @@ def build_mcp() -> FastMCP:
         return await service.get_entity(entity_id)
 
     @mcp.tool()
-    async def get_entity_sources(entity_id: str) -> dict[str, Any]:
+    async def get_entity_sources(
+        entity_id: str, limit: int = 20, cursor: str | None = None
+    ) -> dict[str, Any]:
         """Return the public sources backing one Atlas entity."""
         service = AtlasDataService(get_settings().database_url)
-        return await service.get_entity_sources(entity_id)
+        return await service.get_entity_sources(entity_id, limit=limit, cursor=cursor)
 
     @mcp.tool()
     async def search_sources(  # noqa: PLR0913
@@ -219,6 +221,7 @@ def build_mcp() -> FastMCP:
         entity_id: str,
         relation_types: list[str] | None = None,
         limit: int = 20,
+        cursor: str | None = None,
     ) -> dict[str, Any]:
         """Return mechanically derived relationships for an entity."""
         service = AtlasDataService(get_settings().database_url)
@@ -226,6 +229,7 @@ def build_mcp() -> FastMCP:
             entity_id,
             relation_types=relation_types,
             limit=limit,
+            cursor=cursor,
         )
 
     @mcp.tool()

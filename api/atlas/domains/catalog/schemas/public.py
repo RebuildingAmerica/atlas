@@ -438,6 +438,8 @@ class EntitySourcesResponse(BaseModel):
 
     entity_id: str
     sources: list[SourceResponse] = Field(default_factory=list)
+    total: int = 0
+    next_cursor: str | None = None
 
 
 class EntityCollectionResponse(BaseModel):
@@ -648,6 +650,8 @@ class EntityRelationshipsResponse(BaseModel):
 
     entity_id: str
     items: list[EntityRelationshipItem] = Field(default_factory=list)
+    total: int = 0
+    next_cursor: str | None = None
 
 
 class DomainResponse(BaseModel):

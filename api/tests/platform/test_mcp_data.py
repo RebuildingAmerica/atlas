@@ -37,6 +37,7 @@ if TYPE_CHECKING:
 EXPECTED_DISTINCT_DOMAINS = 2
 EXPECTED_THREE_SOURCES = 3
 EXPECTED_TWO_CONTACT_SOURCES = 2
+EXPECTED_TWO_RELATED_ENTITIES = 2
 
 
 @pytest.mark.asyncio
@@ -771,6 +772,51 @@ async def test_get_entity_sources_not_found_raises(
 
 
 @pytest.mark.asyncio
+async def test_get_entity_sources_respects_limit(
+    populated_service: AtlasDataService, test_db: object
+) -> None:
+    conn: aiosqlite.Connection = test_db  # type: ignore[assignment]
+    cursor = await conn.execute("SELECT id FROM entries WHERE name = 'Atlas Primary Org'")
+    primary_id = (await cursor.fetchone())[0]
+
+    payload = await populated_service.get_entity_sources(primary_id, limit=1)
+
+    assert len(payload["sources"]) == 1
+    assert payload["total"] == EXPECTED_TWO_CONTACT_SOURCES
+    assert payload["next_cursor"] == "1"
+
+
+@pytest.mark.asyncio
+async def test_get_entity_sources_second_page_via_cursor(
+    populated_service: AtlasDataService, test_db: object
+) -> None:
+    conn: aiosqlite.Connection = test_db  # type: ignore[assignment]
+    cursor = await conn.execute("SELECT id FROM entries WHERE name = 'Atlas Primary Org'")
+    primary_id = (await cursor.fetchone())[0]
+
+    first_page = await populated_service.get_entity_sources(primary_id, limit=1)
+    second_page = await populated_service.get_entity_sources(
+        primary_id, limit=1, cursor=first_page["next_cursor"]
+    )
+
+    assert len(second_page["sources"]) == 1
+    assert second_page["next_cursor"] is None
+    assert first_page["sources"][0]["id"] != second_page["sources"][0]["id"]
+
+
+@pytest.mark.asyncio
+async def test_get_entity_sources_invalid_cursor_raises(
+    populated_service: AtlasDataService, test_db: object
+) -> None:
+    conn: aiosqlite.Connection = test_db  # type: ignore[assignment]
+    cursor = await conn.execute("SELECT id FROM entries WHERE name = 'Atlas Primary Org'")
+    primary_id = (await cursor.fetchone())[0]
+
+    with pytest.raises(ValueError, match="Invalid cursor"):
+        await populated_service.get_entity_sources(primary_id, cursor="not-a-number")
+
+
+@pytest.mark.asyncio
 async def test_search_sources_applies_filters_and_text(
     populated_service: AtlasDataService,
 ) -> None:
@@ -993,6 +1039,51 @@ async def test_get_related_entities_partial_relationship_branches(
     # The other optional branches must NOT fire because the shared sets are empty.
     assert "shared_issue_area" not in types
     assert "shared_source" not in types
+
+
+@pytest.mark.asyncio
+async def test_get_related_entities_respects_limit_and_cursor(
+    populated_service: AtlasDataService, test_db: object
+) -> None:
+    """A second affiliated sibling gives primary_id two related items to page over."""
+    conn: aiosqlite.Connection = test_db  # type: ignore[assignment]
+    cursor = await conn.execute("SELECT id FROM entries WHERE name = 'Atlas Primary Org'")
+    primary_id = (await cursor.fetchone())[0]
+
+    await EntryCRUD.create(
+        conn,
+        entry_type="organization",
+        name="Second Sibling Org",
+        description="Another affiliated sibling so there are two related items.",
+        city="Gary",
+        state="IN",
+        geo_specificity="local",
+        affiliated_org_id=primary_id,
+    )
+
+    first_page = await populated_service.get_related_entities(primary_id, limit=1)
+    assert len(first_page["items"]) == 1
+    assert first_page["total"] == EXPECTED_TWO_RELATED_ENTITIES
+    assert first_page["next_cursor"] == "1"
+
+    second_page = await populated_service.get_related_entities(
+        primary_id, limit=1, cursor=first_page["next_cursor"]
+    )
+    assert len(second_page["items"]) == 1
+    assert second_page["next_cursor"] is None
+    assert first_page["items"][0]["entity"]["id"] != second_page["items"][0]["entity"]["id"]
+
+
+@pytest.mark.asyncio
+async def test_get_related_entities_invalid_cursor_raises(
+    populated_service: AtlasDataService, test_db: object
+) -> None:
+    conn: aiosqlite.Connection = test_db  # type: ignore[assignment]
+    cursor = await conn.execute("SELECT id FROM entries WHERE name = 'Atlas Primary Org'")
+    primary_id = (await cursor.fetchone())[0]
+
+    with pytest.raises(ValueError, match="Invalid cursor"):
+        await populated_service.get_related_entities(primary_id, cursor="not-a-number")
 
 
 @pytest.mark.asyncio

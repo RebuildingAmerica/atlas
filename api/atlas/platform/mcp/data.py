@@ -45,7 +45,7 @@ from atlas.domains.catalog.taxonomy import (
     get_issue_area_by_slug,
 )
 from atlas.models import DiscoveryRunCRUD, EntryCRUD, FlagCRUD, get_db_connection
-from atlas.platform.mcp.pagination import decode_cursor
+from atlas.platform.mcp.pagination import decode_cursor, encode_cursor
 from atlas.schemas import DiscoveryRunResponse
 
 __all__ = ["AtlasDataService"]
@@ -348,13 +348,19 @@ class AtlasDataService:
         return EntityDetailResponse.model_validate(entity).model_dump(mode="json")
 
     async def get_entity_sources(
-        self, entity_id: str, *, include_suppressed: bool = False
+        self,
+        entity_id: str,
+        *,
+        include_suppressed: bool = False,
+        limit: int = 20,
+        cursor: str | None = None,
     ) -> dict[str, Any]:
         """Return supporting sources for one entity.
 
         Suppressed sources (hidden by the verified subject) are excluded by
         default. Pass ``include_suppressed=True`` for admin views.
         """
+        offset = decode_cursor(cursor)
         async with DatabaseSession(self._database_url) as conn:
             entry, sources = await EntryCRUD.get_with_sources(conn, entity_id)
             if entry is None:
@@ -366,6 +372,10 @@ class AtlasDataService:
             source_flag_summaries = await FlagCRUD.source_flag_summaries(
                 conn, [source["id"] for source in sources]
             )
+
+        total = len(sources)
+        page = sources[offset : offset + limit]
+        next_cursor = encode_cursor(offset + limit) if offset + limit < total else None
 
         return EntitySourcesResponse(
             entity_id=entity_id,
@@ -379,8 +389,10 @@ class AtlasDataService:
                     extraction_context=source["extraction_context"],
                     flag_summary=source_flag_summaries.get(source["id"]),
                 )
-                for source in sources
+                for source in page
             ],
+            total=total,
+            next_cursor=next_cursor,
         ).model_dump(mode="json")
 
     async def search_sources(  # noqa: PLR0913
@@ -868,9 +880,11 @@ class AtlasDataService:
         *,
         relation_types: list[str] | None = None,
         limit: int = 20,
+        cursor: str | None = None,
     ) -> dict[str, Any]:
         """Return mechanically derived related entities."""
         normalized_relation_types = set(relation_types or [])
+        offset = decode_cursor(cursor)
 
         async with DatabaseSession(self._database_url) as conn:
             entry, sources = await EntryCRUD.get_with_sources(conn, entity_id)
@@ -959,9 +973,15 @@ class AtlasDataService:
                 }
             )
 
+        total = len(items)
+        page = items[offset : offset + limit]
+        next_cursor = encode_cursor(offset + limit) if offset + limit < total else None
+
         return EntityRelationshipsResponse(
             entity_id=entity_id,
-            items=[EntityRelationshipItem.model_validate(item) for item in items[:limit]],
+            items=[EntityRelationshipItem.model_validate(item) for item in page],
+            total=total,
+            next_cursor=next_cursor,
         ).model_dump(mode="json")
 
     async def create_entity_flag(

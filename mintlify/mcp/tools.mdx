@@ -63,6 +63,8 @@ Get all sources backing a specific entity.
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | `entity_id` | string | The entity's unique ID |
+| `limit` | integer | Max results (default: 20) |
+| `cursor` | string | Pagination cursor from a previous response |
 
 **Example prompts:**
 - "What are the sources for KC Tenants?"
@@ -76,6 +78,8 @@ Find entities related through Atlas relationships.
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | `entity_id` | string | The entity's unique ID |
+| `limit` | integer | Max results (default: 20) |
+| `cursor` | string | Pagination cursor from a previous response |
 
 **Example prompts:**
 - "Who else is connected to this organization?"
