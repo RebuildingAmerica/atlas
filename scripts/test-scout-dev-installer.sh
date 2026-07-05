@@ -22,10 +22,18 @@ touch "$PORTLESS_CA_FILE"
 cat >"$FAKE_BIN_DIR/scout" <<'SH'
 #!/usr/bin/env bash
 set -euo pipefail
-printf '%s\n' "$*" >>"$SCOUT_DEV_CALL_LOG"
+printf 'scout-bin %s\n' "$*" >>"$SCOUT_DEV_CALL_LOG"
 printf 'SSL_CERT_FILE=%s\n' "${SSL_CERT_FILE:-}" >>"$SCOUT_DEV_ENV_LOG"
 SH
 chmod 0755 "$FAKE_BIN_DIR/scout"
+
+cat >"$FAKE_BIN_DIR/uv" <<'SH'
+#!/usr/bin/env bash
+set -euo pipefail
+printf 'uv %s\n' "$*" >>"$SCOUT_DEV_CALL_LOG"
+printf 'SSL_CERT_FILE=%s\n' "${SSL_CERT_FILE:-}" >>"$SCOUT_DEV_ENV_LOG"
+SH
+chmod 0755 "$FAKE_BIN_DIR/uv"
 
 PATH="$BIN_DIR:$FAKE_BIN_DIR:$PATH" \
   HOME="$HOME_DIR" \
@@ -46,6 +54,7 @@ run_scout_dev() {
 }
 
 run_scout_dev login --no-browser
+run_scout_dev setup
 run_scout_dev worker start --interval 1
 run_scout_dev worker run-internal --lease-seconds 30
 run_scout_dev sync latest
@@ -56,6 +65,7 @@ run_scout_dev login --atlas-url "http://custom.test" --no-browser
 SSL_CERT_FILE="/custom/ca.pem" run_scout_dev login --no-browser
 REQUESTS_CA_BUNDLE="/custom/requests.pem" run_scout_dev login --no-browser
 run_scout_dev worker status
+SCOUT_DEV_SCOUT_BIN="$FAKE_BIN_DIR/scout" run_scout_dev whoami
 HELP_OUTPUT=$(run_scout_dev login --help)
 
 if [[ "$HELP_OUTPUT" != *"scout-dev Atlas URL: https://atlas.localhost"* ]]; then
@@ -63,19 +73,21 @@ if [[ "$HELP_OUTPUT" != *"scout-dev Atlas URL: https://atlas.localhost"* ]]; the
   exit 1
 fi
 
-cat >"$TMP_DIR/expected-calls.log" <<'EOF'
-login --atlas-url https://atlas.localhost --no-browser
-worker start --atlas-url https://atlas.localhost --interval 1
-worker run-internal --atlas-url https://atlas.localhost --lease-seconds 30
-sync --atlas-url https://atlas.localhost latest
-runs sync --atlas-url https://atlas.localhost run-123 --target public
---config dev.toml login --atlas-url https://atlas.localhost --no-browser
-login --atlas-url https://atlas.localhost:2468 --no-browser
-login --atlas-url http://custom.test --no-browser
-login --atlas-url https://atlas.localhost --no-browser
-login --atlas-url https://atlas.localhost --no-browser
-worker status
-login --help
+cat >"$TMP_DIR/expected-calls.log" <<EOF
+uv run --project $ROOT_DIR/scout scout login --atlas-url https://atlas.localhost --no-browser
+uv run --project $ROOT_DIR/scout scout setup --atlas-url https://atlas.localhost
+uv run --project $ROOT_DIR/scout scout worker start --atlas-url https://atlas.localhost --interval 1
+uv run --project $ROOT_DIR/scout scout worker run-internal --atlas-url https://atlas.localhost --lease-seconds 30
+uv run --project $ROOT_DIR/scout scout sync --atlas-url https://atlas.localhost latest
+uv run --project $ROOT_DIR/scout scout runs sync --atlas-url https://atlas.localhost run-123 --target public
+uv run --project $ROOT_DIR/scout scout --config dev.toml login --atlas-url https://atlas.localhost --no-browser
+uv run --project $ROOT_DIR/scout scout login --atlas-url https://atlas.localhost:2468 --no-browser
+uv run --project $ROOT_DIR/scout scout login --atlas-url http://custom.test --no-browser
+uv run --project $ROOT_DIR/scout scout login --atlas-url https://atlas.localhost --no-browser
+uv run --project $ROOT_DIR/scout scout login --atlas-url https://atlas.localhost --no-browser
+uv run --project $ROOT_DIR/scout scout worker status
+scout-bin whoami
+uv run --project $ROOT_DIR/scout scout login --help
 EOF
 
 if ! diff -u "$TMP_DIR/expected-calls.log" "$CALL_LOG"; then
@@ -91,9 +103,11 @@ SSL_CERT_FILE=$PORTLESS_CA_FILE
 SSL_CERT_FILE=$PORTLESS_CA_FILE
 SSL_CERT_FILE=$PORTLESS_CA_FILE
 SSL_CERT_FILE=$PORTLESS_CA_FILE
+SSL_CERT_FILE=$PORTLESS_CA_FILE
 SSL_CERT_FILE=
 SSL_CERT_FILE=/custom/ca.pem
 SSL_CERT_FILE=$PORTLESS_CA_FILE
+SSL_CERT_FILE=
 SSL_CERT_FILE=
 SSL_CERT_FILE=$PORTLESS_CA_FILE
 EOF

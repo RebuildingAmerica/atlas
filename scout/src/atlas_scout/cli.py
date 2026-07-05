@@ -1318,9 +1318,63 @@ def _write_toml(path: Path, data: dict[str, dict[str, str | int | float | bool]]
 # ---------------------------------------------------------------------------
 
 
-@main.group("setup")
-def setup_group() -> None:
-    """Set up local Scout dependencies."""
+@main.group("setup", invoke_without_command=True)
+@click.option("--atlas-url", default=None, help="Atlas app URL for browser login.")
+@click.option("--no-browser", "open_browser", flag_value=False, default=True)
+@click.pass_context
+def setup_group(ctx: click.Context, atlas_url: str | None, open_browser: bool) -> None:
+    """Set up Scout on this computer."""
+    if ctx.invoked_subcommand is not None:
+        return
+    asyncio.run(
+        _setup_onboarding(
+            config=ctx.obj["config"],
+            config_path=ctx.obj["config_path"],
+            atlas_url=atlas_url,
+            open_browser=open_browser,
+        )
+    )
+
+
+async def _setup_onboarding(
+    *,
+    config: ScoutConfig,
+    config_path: Path,
+    atlas_url: str | None,
+    open_browser: bool,
+) -> None:
+    """Run Scout's low-decision onboarding flow."""
+    console.print("[bold]Scout setup[/]")
+    console.print()
+
+    try:
+        session = load_session()
+    except CredentialStoreError as exc:
+        _exit_with_error(_credential_store_cli_error(exc))
+
+    if session is None:
+        await _login(
+            atlas_url=atlas_url,
+            target=None,
+            workspace=None,
+            open_browser=open_browser,
+        )
+    else:
+        console.print(f"Signed in as [bold]{session.user_email}[/]")
+
+    try:
+        resolution = _prepare_local_model_config(
+            config,
+            config_path=config_path,
+            force_save=True,
+        )
+    except click.ClickException as exc:
+        _exit_with_error(CliError(title="Local model unavailable", message=exc.message))
+
+    _print_local_model_resolution(resolution, saved=bool(resolution))
+    console.print()
+    console.print("[green]Scout setup complete.[/]")
+    console.print("[dim]Run `scout doctor` to check this computer before discovery work.[/]")
 
 
 @setup_group.command("llm")

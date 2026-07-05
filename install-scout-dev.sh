@@ -2,6 +2,7 @@
 set -euo pipefail
 
 DEFAULT_ATLAS_URL="https://atlas.localhost"
+ROOT_DIR=$(cd -- "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 
 usage() {
   cat <<'EOF'
@@ -19,7 +20,9 @@ Options:
 
 Runtime overrides:
   SCOUT_DEV_ATLAS_URL   Override the baked Atlas URL for one invocation.
-  SCOUT_DEV_SCOUT_BIN   Scout executable to run. Defaults to scout.
+  SCOUT_DEV_SCOUT_PROJECT
+                         Scout project used by uv. Defaults to this repo's scout package.
+  SCOUT_DEV_SCOUT_BIN   Optional Scout executable override. Bypasses uv when set.
   PORTLESS_CA_FILE      Portless CA path. Defaults to ~/.portless/ca.pem.
 EOF
 }
@@ -85,6 +88,7 @@ fi
 
 mkdir -p "$bin_dir"
 quoted_atlas_url=$(printf "%q" "$atlas_url")
+quoted_scout_project=$(printf "%q" "$ROOT_DIR/scout")
 tmp_file="$target.tmp.$$"
 
 cat >"$tmp_file" <<WRAPPER
@@ -93,8 +97,18 @@ cat >"$tmp_file" <<WRAPPER
 set -euo pipefail
 
 SCOUT_DEV_DEFAULT_ATLAS_URL=$quoted_atlas_url
+SCOUT_DEV_DEFAULT_SCOUT_PROJECT=$quoted_scout_project
 SCOUT_DEV_ATLAS_URL="\${SCOUT_DEV_ATLAS_URL:-\$SCOUT_DEV_DEFAULT_ATLAS_URL}"
-SCOUT_DEV_SCOUT_BIN="\${SCOUT_DEV_SCOUT_BIN:-scout}"
+SCOUT_DEV_SCOUT_PROJECT="\${SCOUT_DEV_SCOUT_PROJECT:-\$SCOUT_DEV_DEFAULT_SCOUT_PROJECT}"
+SCOUT_DEV_SCOUT_BIN="\${SCOUT_DEV_SCOUT_BIN:-}"
+
+run_scout() {
+  if [ -n "\$SCOUT_DEV_SCOUT_BIN" ]; then
+    exec "\$SCOUT_DEV_SCOUT_BIN" "\$@"
+  fi
+
+  exec uv run --project "\$SCOUT_DEV_SCOUT_PROJECT" scout "\$@"
+}
 
 has_atlas_url() {
   local arg
@@ -164,21 +178,36 @@ show_wrapped_help() {
   echo "Override with SCOUT_DEV_ATLAS_URL or an explicit --atlas-url."
   echo
   configure_portless_tls "\${original_args[@]}"
-  exec "\$SCOUT_DEV_SCOUT_BIN" "\${original_args[@]}"
+  run_scout "\${original_args[@]}"
+}
+
+forward_with_dev_atlas_url() {
+  if has_help_arg "\${original_args[@]}" && ! has_atlas_url "\${original_args[@]}"; then
+    show_wrapped_help
+  fi
+
+  configure_portless_tls "\${original_args[@]}"
+
+  if has_atlas_url "\${original_args[@]}"; then
+    run_scout "\${original_args[@]}"
+  fi
+
+  run_scout "\${prefix[@]}" "\$@" --atlas-url "\$SCOUT_DEV_ATLAS_URL" "\${remaining_args[@]}"
 }
 
 if [ "\$#" -eq 0 ]; then
-  exec "\$SCOUT_DEV_SCOUT_BIN" --help
+  run_scout --help
 fi
 
 original_args=("\$@")
 prefix=()
+remaining_args=()
 
 while [ "\$#" -gt 0 ]; do
   case "\$1" in
     --config | --profile)
       if [ "\$#" -lt 2 ]; then
-        exec "\$SCOUT_DEV_SCOUT_BIN" "\${original_args[@]}"
+        run_scout "\${original_args[@]}"
       fi
       prefix+=("\$1" "\$2")
       shift 2
@@ -188,10 +217,10 @@ while [ "\$#" -gt 0 ]; do
       shift
       ;;
     -h | --help | help)
-      exec "\$SCOUT_DEV_SCOUT_BIN" "\${original_args[@]}"
+      run_scout "\${original_args[@]}"
       ;;
     -*)
-      exec "\$SCOUT_DEV_SCOUT_BIN" "\${original_args[@]}"
+      run_scout "\${original_args[@]}"
       ;;
     *)
       break
@@ -201,61 +230,41 @@ done
 
 command_name="\${1:-}"
 if [ -z "\$command_name" ]; then
-  exec "\$SCOUT_DEV_SCOUT_BIN" "\${prefix[@]}" --help
+  run_scout "\${prefix[@]}" --help
 fi
 shift
+remaining_args=("\$@")
 
 case "\$command_name" in
-  login | sync)
-    if has_help_arg "\${original_args[@]}" && ! has_atlas_url "\${original_args[@]}"; then
-      show_wrapped_help
-    fi
-    configure_portless_tls "\${original_args[@]}"
-    if has_atlas_url "\${original_args[@]}"; then
-      exec "\$SCOUT_DEV_SCOUT_BIN" "\${original_args[@]}"
-    fi
-    exec "\$SCOUT_DEV_SCOUT_BIN" "\${prefix[@]}" "\$command_name" --atlas-url "\$SCOUT_DEV_ATLAS_URL" "\$@"
+  login | setup | sync)
+    forward_with_dev_atlas_url "\$command_name"
     ;;
   worker)
-    worker_command="\${1:-}"
+    worker_command="\${remaining_args[0]:-}"
     case "\$worker_command" in
       start | run-internal)
-        shift
-        if has_help_arg "\${original_args[@]}" && ! has_atlas_url "\${original_args[@]}"; then
-          show_wrapped_help
-        fi
-        configure_portless_tls "\${original_args[@]}"
-        if has_atlas_url "\${original_args[@]}"; then
-          exec "\$SCOUT_DEV_SCOUT_BIN" "\${original_args[@]}"
-        fi
-        exec "\$SCOUT_DEV_SCOUT_BIN" "\${prefix[@]}" worker "\$worker_command" --atlas-url "\$SCOUT_DEV_ATLAS_URL" "\$@"
+        remaining_args=("\${remaining_args[@]:1}")
+        forward_with_dev_atlas_url worker "\$worker_command"
         ;;
       *)
-        exec "\$SCOUT_DEV_SCOUT_BIN" "\${original_args[@]}"
+        run_scout "\${original_args[@]}"
         ;;
     esac
     ;;
   runs)
-    runs_command="\${1:-}"
+    runs_command="\${remaining_args[0]:-}"
     case "\$runs_command" in
       sync)
-        shift
-        if has_help_arg "\${original_args[@]}" && ! has_atlas_url "\${original_args[@]}"; then
-          show_wrapped_help
-        fi
-        configure_portless_tls "\${original_args[@]}"
-        if has_atlas_url "\${original_args[@]}"; then
-          exec "\$SCOUT_DEV_SCOUT_BIN" "\${original_args[@]}"
-        fi
-        exec "\$SCOUT_DEV_SCOUT_BIN" "\${prefix[@]}" runs sync --atlas-url "\$SCOUT_DEV_ATLAS_URL" "\$@"
+        remaining_args=("\${remaining_args[@]:1}")
+        forward_with_dev_atlas_url runs sync
         ;;
       *)
-        exec "\$SCOUT_DEV_SCOUT_BIN" "\${original_args[@]}"
+        run_scout "\${original_args[@]}"
         ;;
     esac
     ;;
   *)
-    exec "\$SCOUT_DEV_SCOUT_BIN" "\${original_args[@]}"
+    run_scout "\${original_args[@]}"
     ;;
 esac
 WRAPPER

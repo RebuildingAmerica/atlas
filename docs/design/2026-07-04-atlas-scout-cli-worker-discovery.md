@@ -53,11 +53,18 @@ volunteers.
 The first-run path is discovery-first:
 
 ```bash
+scout setup
 scout login
 scout doctor
 scout run https://example.org
 scout sync
 ```
+
+`scout setup` is the low-decision onboarding command. It signs the user in when
+needed, resolves and saves a working local model provider, and points to
+`scout doctor` for a read-only readiness check. Users can still run the steps
+individually, but they should not have to know those pieces before trying
+Scout.
 
 `scout doctor` is the readiness checkpoint between login and work. Its default
 view answers whether this computer can run direct URL discovery, search-backed
@@ -107,7 +114,7 @@ For day-to-day local Atlas development, install the managed `scout-dev` command:
 
 ```bash
 ./install-scout-dev.sh
-scout-dev login
+scout-dev setup
 ```
 
 Plain `scout` is production-first: if no `--atlas-url` is passed, `scout login`
@@ -116,7 +123,8 @@ Local development must go through `scout-dev` or an explicit `--atlas-url`.
 
 `scout-dev` forwards to the installed `scout` command and injects
 `--atlas-url https://atlas.localhost` for the Scout commands that support it:
-`login`, `worker start`, `worker run-internal`, `sync`, and `runs sync`.
+`setup`, `login`, `worker start`, `worker run-internal`, `sync`, and
+`runs sync`.
 For Portless HTTPS aliases, it also exports `SSL_CERT_FILE` to
 `~/.portless/ca.pem` when that file exists and no `SSL_CERT_FILE` override is
 already set. Use `PORTLESS_CA_FILE` when the Portless CA lives somewhere else.
@@ -147,6 +155,7 @@ completion, and the resulting remote run receipt.
 ### Auth Commands
 
 ```bash
+scout setup [--atlas-url https://atlas.rebuildingus.org] [--no-browser]
 scout login [--atlas-url https://atlas.rebuildingus.org] [--no-browser]
 scout doctor [--worker] [--json]
 scout setup llm [--interactive] [--provider ollama|lmstudio] [--model MODEL] [--base-url URL]
