@@ -7,15 +7,15 @@ import { ClusterBubble } from "@/domains/catalog/components/map/cluster-bubble";
 afterEach(cleanup);
 
 describe("ClusterBubble", () => {
-  it("labels the bubble with its actor count and an accessible name", () => {
+  it("labels the bubble with its result count and an accessible name", () => {
     render(<ClusterBubble pointCount={14} onOpen={vi.fn()} />);
-    const button = screen.getByRole("button", { name: "14 civic actors here — see who" });
+    const button = screen.getByRole("button", { name: "14 people and groups here" });
     expect(button.textContent).toContain("14");
   });
 
-  it("names the smallest possible cluster of two actors", () => {
+  it("names the smallest possible cluster of two results", () => {
     render(<ClusterBubble pointCount={2} onOpen={vi.fn()} />);
-    expect(screen.getByRole("button", { name: "2 civic actors here — see who" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "2 people and groups here" })).toBeTruthy();
   });
 
   it("calls onOpen when clicked", () => {

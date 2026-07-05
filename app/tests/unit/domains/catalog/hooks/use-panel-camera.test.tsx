@@ -10,8 +10,8 @@ import {
   installPanelCameraMap,
 } from "../../../../helpers/catalog/panel-camera-harness";
 
-const control = vi.hoisted(() => {
-  return { value: { map: null, calls: [] } as ReturnType<typeof createPanelCameraControl> };
+const control = vi.hoisted<{ value: ReturnType<typeof createPanelCameraControl> }>(() => {
+  return { value: { map: null, calls: [] } };
 });
 
 vi.mock("react-map-gl/maplibre", () => ({

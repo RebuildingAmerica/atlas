@@ -83,7 +83,7 @@ export function ActorMapSurface({
         onLoad={onLoad}
         onMoveEnd={onMoveEnd}
         style={{ position: "absolute", inset: 0 }}
-        aria-label="Map of civic actors across the United States"
+        aria-label="Map of people and groups across the United States"
       >
         {children}
       </Map>

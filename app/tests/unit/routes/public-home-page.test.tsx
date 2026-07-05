@@ -48,20 +48,29 @@ describe("HomePage", () => {
       isLoading: false,
     });
     render(<HomePage />);
-    expect(screen.getByText("Verify")).toBeInTheDocument();
-    expect(screen.getByText("Every entry links back to public sources.")).toBeInTheDocument();
+    expect(screen.getByText("Sources you can check.")).toBeInTheDocument();
     expect(screen.queryByText(/Want to save your work\?/)).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /Go to your research/ })).not.toBeInTheDocument();
   });
 
-  it("renders the create-account prompt for anonymous visitors", () => {
+  it("renders public example searches before account prompts for anonymous visitors", () => {
     mocks.useAtlasSession.mockReturnValue({
       data: null,
       isLoading: false,
     });
     render(<HomePage />);
-    expect(screen.getByText("Save")).toBeInTheDocument();
-    expect(screen.getByText("Create a free account to save research.")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Housing in Detroit" })).toHaveAttribute(
+      "href",
+      "/browse",
+    );
+    expect(screen.getByRole("link", { name: "Labor organizers in Kansas City" })).toHaveAttribute(
+      "href",
+      "/browse",
+    );
+    expect(screen.getByRole("link", { name: "Transit groups near Phoenix" })).toHaveAttribute(
+      "href",
+      "/browse",
+    );
     expect(screen.getByText(/Want to save your work\?/)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Create a free account/ })).toHaveAttribute(
       "href",
@@ -70,10 +79,14 @@ describe("HomePage", () => {
     expect(screen.queryByRole("link", { name: /Go to your research/ })).not.toBeInTheDocument();
   });
 
-  it("frames Atlas as source-linked local intelligence on the public home page", () => {
+  it("frames Atlas as public civic search on the public home page", () => {
     render(<HomePage />);
 
-    expect(screen.getByText(/source-linked local intelligence/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Find people and groups doing civic work." }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Search by issue, place, or name.")).toBeInTheDocument();
+    expect(screen.queryByText(/source-linked local intelligence/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/profile directories/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/broader civic graph/i)).not.toBeInTheDocument();
   });
@@ -98,7 +111,7 @@ describe("HomePage", () => {
     const searchInput = screen.getByRole("textbox", {
       name: "Search Atlas by issue, place, or name",
     });
-    const form = screen.getByRole("button", { name: /search atlas/i }).closest("form");
+    const form = screen.getByRole("button", { name: /^search$/i }).closest("form");
     if (!form) {
       throw new Error("Expected search form");
     }

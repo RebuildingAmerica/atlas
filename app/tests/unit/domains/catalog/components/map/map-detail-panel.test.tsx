@@ -134,7 +134,7 @@ describe("MapDetailPanel — cluster view", () => {
         onSelectMember={vi.fn()}
       />,
     );
-    expect(screen.getByRole("heading", { name: /3 civic actors here/ })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: /3 people and groups here/ })).toBeTruthy();
     const list = screen.getByRole("list", { name: /who's working here/i });
     expect(within(list).getAllByRole("listitem")).toHaveLength(3);
     expect(screen.getByText("Austin Housing Coalition")).toBeTruthy();

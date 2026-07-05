@@ -27,7 +27,7 @@ describe("MapEmptyState", () => {
       <MapEmptyState hasActiveFilters onZoomOut={onZoomOut} onClearFilters={onClearFilters} />,
     );
 
-    expect(screen.getByText(/No actors in this area yet/i)).toBeTruthy();
+    expect(screen.getByText(/No people or groups here/i)).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Zoom out to the US" }));
     expect(onZoomOut).toHaveBeenCalledOnce();
     fireEvent.click(screen.getByRole("button", { name: "Clear filters" }));
@@ -54,9 +54,7 @@ describe("MapErrorState", () => {
 
 describe("SparsityPill", () => {
   it("renders the honest framing copy", () => {
-    render(<SparsityPill label="Atlas is mapping civic work — 3 actors in 2 places so far" />);
-    expect(
-      screen.getByText("Atlas is mapping civic work — 3 actors in 2 places so far"),
-    ).toBeTruthy();
+    render(<SparsityPill label="3 people and groups in 2 places" />);
+    expect(screen.getByText("3 people and groups in 2 places")).toBeTruthy();
   });
 });

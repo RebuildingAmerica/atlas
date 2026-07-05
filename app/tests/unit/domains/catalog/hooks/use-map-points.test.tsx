@@ -120,8 +120,9 @@ describe("useMapPoints", () => {
   });
 
   it("clears the debounced viewport when the params drop back to null", () => {
+    const initialProps: { params: MapPointParams | null } = { params: HOUSING_VIEWPORT };
     const { rerender } = renderHook(({ params }) => useMapPoints(params), {
-      initialProps: { params: HOUSING_VIEWPORT as MapPointParams | null },
+      initialProps,
     });
 
     rerender({ params: null });

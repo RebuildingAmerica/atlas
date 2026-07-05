@@ -22,9 +22,9 @@ export function sparsityPill(points: MapPoint[]): string | null {
     return null;
   }
   const places = new Set(points.map((point) => `${point.lng},${point.lat}`)).size;
-  const actorWord = plural(points.length, "actor");
+  const groupWord = points.length === 1 ? "person or group" : "people and groups";
   const placeWord = plural(places, "place");
-  return `Atlas is mapping civic work — ${points.length} ${actorWord} in ${places} ${placeWord} so far`;
+  return `${points.length} ${groupWord} in ${places} ${placeWord}`;
 }
 
 /**
@@ -39,7 +39,8 @@ export function sparsityPill(points: MapPoint[]): string | null {
  */
 export function announceViewport(count: number): string {
   if (count === 0) {
-    return "No civic actors in this part of the map.";
+    return "No people or groups here.";
   }
-  return `Showing ${count} civic ${plural(count, "actor")} on the map.`;
+  const groupWord = count === 1 ? "person or group" : "people and groups";
+  return `Showing ${count} ${groupWord}.`;
 }

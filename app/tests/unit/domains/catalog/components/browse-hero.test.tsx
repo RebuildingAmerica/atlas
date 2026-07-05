@@ -19,11 +19,11 @@ describe("BrowseHero", () => {
     render(
       <BrowseHero
         eyebrow="Discover"
-        title="Browse civic actors"
+        title="Browse people and groups"
         description="Find people and organizations working on civic issues."
       />,
     );
-    expect(screen.getByText("Browse civic actors")).toBeInTheDocument();
+    expect(screen.getByText("Browse people and groups")).toBeInTheDocument();
     expect(screen.getByText(/Find people and organizations/)).toBeInTheDocument();
   });
 
@@ -31,7 +31,7 @@ describe("BrowseHero", () => {
     render(
       <BrowseHero
         eyebrow="Discover"
-        title="Browse civic actors"
+        title="Browse people and groups"
         description="Description"
         scopeTabs={[
           { label: "All", to: "/profiles", isActive: true },

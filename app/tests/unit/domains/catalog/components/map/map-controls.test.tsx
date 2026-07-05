@@ -7,7 +7,9 @@ import { CONUS_VIEW } from "@/domains/catalog/map/map-viewport";
 import { makeFakeMap } from "../../../../../helpers/catalog/fake-map";
 import { createMapControl } from "../../../../../helpers/catalog/map-control-harness";
 
-const control = vi.hoisted(() => ({ value: { map: null } as ReturnType<typeof createMapControl> }));
+const control = vi.hoisted<{ value: ReturnType<typeof createMapControl> }>(() => ({
+  value: { map: null },
+}));
 
 vi.mock("react-map-gl/maplibre", () => ({
   useMap: () => ({ current: control.value.map }),

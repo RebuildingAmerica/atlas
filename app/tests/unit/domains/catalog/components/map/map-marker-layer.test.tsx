@@ -7,12 +7,13 @@ import type { SelectionAnchor } from "@/domains/catalog/map/map-selection";
 import type { MapPoint } from "@/types";
 import { CONUS_BOUNDS, makePoint } from "../../../../../helpers/catalog/map-clustering-harness";
 import {
+  type MarkerCapture,
   type MockMarkerProps,
   createMarkerCapture,
 } from "../../../../../helpers/catalog/marker-mock-harness";
 
-const capture = vi.hoisted(() => ({
-  value: { markers: [] } as ReturnType<typeof createMarkerCapture>,
+const capture = vi.hoisted<{ value: MarkerCapture }>(() => ({
+  value: { markers: [] },
 }));
 
 vi.mock("react-map-gl/maplibre", () => ({
@@ -59,7 +60,7 @@ describe("MapMarkerLayer", () => {
         onSelectCluster={vi.fn()}
       />,
     );
-    expect(screen.getByRole("button", { name: /12 civic actors here/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /12 people and groups here/ })).toBeTruthy();
   });
 
   it("opens a cluster's crowd with every actor it holds when its bubble is clicked", () => {
@@ -77,7 +78,7 @@ describe("MapMarkerLayer", () => {
         onSelectCluster={onSelectCluster}
       />,
     );
-    fireEvent.click(screen.getByRole("button", { name: /12 civic actors here/ }));
+    fireEvent.click(screen.getByRole("button", { name: /12 people and groups here/ }));
     expect(onSelectCluster).toHaveBeenCalledOnce();
     const call = onSelectCluster.mock.calls[0];
     expect(call?.[0]).toHaveLength(12);

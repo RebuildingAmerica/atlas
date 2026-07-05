@@ -47,12 +47,12 @@ export function EntryList({
     return (
       <div className="rounded-[2rem] border border-dashed border-stone-300 bg-white p-12 text-center">
         <p className="text-lg font-semibold text-stone-900">
-          {hasActiveSearch ? "No matching civic actors." : "No civic actors listed."}
+          {hasActiveSearch ? "No matching people or groups." : "No people or groups listed."}
         </p>
         <p className="mt-2 text-sm leading-6 text-stone-500">
           {hasActiveSearch
             ? "Try fewer filters, a broader place, or a different issue."
-            : "Start research to find source-backed people, organizations, initiatives, and public mentions."}
+            : "Start with a place, issue, person, or group."}
         </p>
         {!hasActiveSearch ? (
           <div className="mt-5 flex justify-center">
@@ -68,7 +68,9 @@ export function EntryList({
   return (
     <div className="space-y-5">
       {typeof total === "number" ? (
-        <p className="text-sm font-medium text-stone-500">{total} matched entries</p>
+        <p className="text-sm font-medium text-stone-500">
+          {total === 1 ? "1 match" : `${total} matches`}
+        </p>
       ) : null}
       {entries.map((entry) => (
         <EntryCard key={entry.id} entry={entry} issueAreaLabels={issueAreaLabels} />

@@ -99,7 +99,7 @@ function mapEntity(entity: EntityResponse): Entry {
         "source-derived") as Entry["claim"]["verification_level"],
     },
     claim_evidence: entity.claim_evidence as Entry["claim_evidence"],
-    profile_answers: entity.profile_answers as Entry["profile_answers"],
+    profile_answers: entity.profile_answers,
     actor_quality: mapActorQuality(entity),
     trust: {
       level: (entity.trust?.level ?? "unverified") as Entry["trust"]["level"],
@@ -202,7 +202,7 @@ function mapMapPoint(point: MapPointResponse): MapPoint {
   };
 }
 
-/** Fetch the placed civic actors inside a viewport, filtered by the browse facets. */
+/** Fetch placed people and groups inside a viewport, filtered by the browse facets. */
 async function mapPoints(params: MapPointParams): Promise<MapPointCollection> {
   const response = await getEntitiesMap(buildMapPointParams(params));
   return {

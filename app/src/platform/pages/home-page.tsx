@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Compass, Search, Users } from "lucide-react";
+import { Map, Search } from "lucide-react";
 import { useState } from "react";
 import { useAtlasSession } from "@/domains/access/client/use-atlas-session";
 import { PageLayout } from "@/platform/layout/page-layout";
@@ -9,6 +9,12 @@ interface HomeHeroActionsProps {
   query: string;
   onQueryChange: (value: string) => void;
 }
+
+const EXAMPLE_SEARCHES = [
+  { label: "Housing in Detroit", query: "housing in Detroit" },
+  { label: "Labor organizers in Kansas City", query: "labor organizers in Kansas City" },
+  { label: "Transit groups near Phoenix", query: "transit groups near Phoenix" },
+] as const;
 
 function HomeHeroActions({ onQueryChange, query }: HomeHeroActionsProps) {
   return (
@@ -26,7 +32,7 @@ function HomeHeroActions({ onQueryChange, query }: HomeHeroActionsProps) {
                 onChange={(event) => {
                   onQueryChange(event.target.value);
                 }}
-                placeholder="Search housing in Detroit, labor in Kansas City, transit organizers"
+                placeholder="Try housing in Detroit"
                 className="type-body-large text-ink-strong placeholder:text-ink-muted w-full bg-transparent outline-none"
               />
             </label>
@@ -36,57 +42,33 @@ function HomeHeroActions({ onQueryChange, query }: HomeHeroActionsProps) {
                 type="submit"
                 className="bg-ink-strong text-surface hover:bg-ink justify-center rounded-full px-8"
               >
-                Search Atlas
+                Search
               </Button>
             </div>
           </div>
         </div>
       </form>
 
-      <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+      <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
+        {EXAMPLE_SEARCHES.map((example) => (
+          <Link
+            key={example.query}
+            to="/browse"
+            search={{ query: example.query, offset: 0 }}
+            className="type-label-large border-border-strong text-ink-strong hover:bg-surface-alt inline-flex items-center rounded-full border px-4 py-2 transition-colors"
+          >
+            {example.label}
+          </Link>
+        ))}
         <Link
-          to="/profiles"
-          className="type-label-large border-border-strong text-ink-strong hover:bg-surface-alt inline-flex items-center gap-2 rounded-full border px-5 py-2.5 transition-colors"
+          to="/map"
+          className="type-label-large text-ink-muted hover:text-ink-strong inline-flex items-center gap-2 rounded-full px-3 py-2 transition-colors"
         >
-          <Users className="h-4 w-4" />
-          Browse profiles
-        </Link>
-        <Link
-          to="/browse"
-          className="type-label-large text-ink-muted hover:text-ink-strong inline-flex items-center gap-2 rounded-full px-3 py-2.5 transition-colors"
-        >
-          <Compass className="h-4 w-4" />
-          Research browser
+          <Map className="h-4 w-4" />
+          Open map
         </Link>
       </div>
     </>
-  );
-}
-
-function HomeHighlights({ isLocal }: { isLocal: boolean }) {
-  return (
-    <div className="mt-12 grid gap-3 text-left sm:grid-cols-3">
-      <div className="border-border rounded-[1.4rem] border bg-white/70 p-4">
-        <p className="type-title-small text-ink-strong">Search</p>
-        <p className="type-body-medium text-ink-soft mt-1">
-          Start with a person, group, issue, or city.
-        </p>
-      </div>
-      <div className="border-border rounded-[1.4rem] border bg-white/70 p-4">
-        <p className="type-title-small text-ink-strong">Profiles</p>
-        <p className="type-body-medium text-ink-soft mt-1">
-          Inspect source-linked people and organizations by place and issue.
-        </p>
-      </div>
-      <div className="border-border rounded-[1.4rem] border bg-white/70 p-4">
-        <p className="type-title-small text-ink-strong">{isLocal ? "Verify" : "Save"}</p>
-        <p className="type-body-medium text-ink-soft mt-1">
-          {isLocal
-            ? "Every entry links back to public sources."
-            : "Create a free account to save research."}
-        </p>
-      </div>
-    </div>
   );
 }
 
@@ -101,18 +83,17 @@ export function HomePage() {
       <section className="mx-auto w-full max-w-4xl">
         <div className="text-center">
           <h1 className="type-display-large text-ink-strong text-balance">
-            Find the people and organizations rebuilding America.
+            Find people and groups doing civic work.
           </h1>
 
           <p className="type-body-large text-ink-soft mx-auto mt-4 max-w-2xl text-balance">
-            Search source-linked local intelligence by person, organization, issue, or place. Open
-            profiles and research views with provenance attached.
+            Search by issue, place, or name.
           </p>
 
           <HomeHeroActions onQueryChange={setQuery} query={query} />
-        </div>
 
-        <HomeHighlights isLocal={localMode} />
+          <p className="type-body-medium text-ink-soft mt-5">Sources you can check.</p>
+        </div>
 
         {isSignedIn ? (
           <div className="mt-8 flex justify-center">

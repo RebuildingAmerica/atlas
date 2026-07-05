@@ -405,7 +405,7 @@ function ListDetailRoute() {
 
       {items.length === 0 ? (
         <div className="bg-surface-container space-y-2 rounded-[1rem] p-5">
-          <p className="type-body-medium text-ink-strong">No actors yet.</p>
+          <p className="type-body-medium text-ink-strong">No people or groups yet.</p>
           <p className="type-body-small text-ink-soft">
             Use the <span className="font-semibold">Save</span> button on any profile to add it
             here.

@@ -29,5 +29,5 @@ export function makeRawFeature(coordinates: number[]): RawClusterFeature {
     type: "Feature",
     properties: { point: makePoint({ id: "raw" }) },
     geometry: { type: "Point", coordinates },
-  } as RawClusterFeature;
+  };
 }

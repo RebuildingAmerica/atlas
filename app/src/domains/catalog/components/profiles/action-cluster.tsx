@@ -2,8 +2,8 @@
  * ActionCluster — bottom-of-page action strip for profile pages.
  *
  * Square buttons on a warm surface-container band so the strip reads as part of
- * the profile card stack rather than detached chrome. Save / Share / Contact /
- * Follow — labels only, no decorative icons. Save and Follow are auth-aware:
+ * the profile card stack rather than detached chrome. Sources / Share /
+ * Contact / Save / Follow. Save and Follow are auth-aware:
  * anonymous visitors get sign-in links with a redirect; signed-in visitors get
  * the real list-picker and follow toggle.
  */
@@ -31,6 +31,7 @@ interface ActionClusterProps {
   email?: string;
   isSignedIn: boolean;
   profilePath: string;
+  sourcesHref?: string;
   workspaceId?: string | null;
   workspaceWatchingEnabled?: boolean;
 }
@@ -68,6 +69,7 @@ export function ActionCluster({
   email,
   isSignedIn,
   profilePath,
+  sourcesHref,
   workspaceId = null,
   workspaceWatchingEnabled = false,
 }: ActionClusterProps) {
@@ -155,9 +157,25 @@ export function ActionCluster({
       aria-label="Profile actions"
       className="border-border-taupe bg-surface-container flex flex-wrap items-center gap-2.5 border px-6 py-5 sm:px-8"
     >
+      {sourcesHref ? (
+        <a href={sourcesHref} className={SOLID_BUTTON}>
+          Inspect sources
+        </a>
+      ) : null}
+
+      <button type="button" className={GHOST_BUTTON} onClick={onShareClick}>
+        {shareLabel}
+      </button>
+
+      {email ? (
+        <a href={`mailto:${email}`} className={GHOST_BUTTON}>
+          Contact
+        </a>
+      ) : null}
+
       {isSignedIn ? (
         <div className="relative">
-          <button type="button" className={SOLID_BUTTON} onClick={onSaveClick}>
+          <button type="button" className={GHOST_BUTTON} onClick={onSaveClick}>
             Save
           </button>
           <SaveListPicker
@@ -169,20 +187,10 @@ export function ActionCluster({
           />
         </div>
       ) : (
-        <Link to="/sign-in" search={{ redirect: profilePath }} className={SOLID_BUTTON}>
+        <Link to="/sign-in" search={{ redirect: profilePath }} className={GHOST_BUTTON}>
           Save
         </Link>
       )}
-
-      <button type="button" className={GHOST_BUTTON} onClick={onShareClick}>
-        {shareLabel}
-      </button>
-
-      {email ? (
-        <a href={`mailto:${email}`} className={GHOST_BUTTON}>
-          Contact
-        </a>
-      ) : null}
 
       {isSignedIn && workspaceWatchingEnabled ? (
         <button

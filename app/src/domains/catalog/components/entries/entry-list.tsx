@@ -28,8 +28,8 @@ interface EntryListProps {
 }
 
 function emptyHeading(resultLabelPlural: string, hasActiveSearch: boolean): string {
-  if (resultLabelPlural === "entries") {
-    return hasActiveSearch ? "No matching civic actors." : "No civic actors listed.";
+  if (resultLabelPlural === "people and groups") {
+    return hasActiveSearch ? "No matching people or groups." : "No people or groups listed.";
   }
 
   return hasActiveSearch ? `No matching ${resultLabelPlural}.` : `No ${resultLabelPlural} listed.`;
@@ -37,18 +37,14 @@ function emptyHeading(resultLabelPlural: string, hasActiveSearch: boolean): stri
 
 function emptyDescription(hasActiveSearch: boolean): string {
   if (hasActiveSearch) {
-    return "Try fewer filters, a broader place, another issue, or a source submission.";
+    return "Try fewer filters, a broader place, or another issue.";
   }
 
-  return "Browse places, issues, or actor types to find source-backed civic profiles.";
+  return "Start with a place, issue, person, or group.";
 }
 
-function resultSummary(total: number, resultLabelPlural: string): string {
-  if (total === 1 && resultLabelPlural === "entries") {
-    return "1 matched entry";
-  }
-
-  return `${total} matched ${resultLabelPlural}`;
+function resultSummary(total: number): string {
+  return total === 1 ? "1 match" : `${total} matches`;
 }
 
 export function EntryList({
@@ -58,7 +54,7 @@ export function EntryList({
   error = null,
   issueAreaLabels = {},
   hasActiveSearch = false,
-  resultLabelPlural = "entries",
+  resultLabelPlural = "people and groups",
   discoveryContext,
   emptyAction = { label: "Browse profiles", to: "/profiles" },
   emptyRecoveryActions = [],
@@ -125,7 +121,7 @@ export function EntryList({
     <div className="space-y-3">
       {typeof total === "number" ? (
         <p className="type-body-medium bg-surface-container-lowest text-ink-muted rounded-[1rem] px-3 py-2 font-medium">
-          {resultSummary(total, resultLabelPlural)}
+          {resultSummary(total)}
         </p>
       ) : null}
       {entries.map((entry) => (

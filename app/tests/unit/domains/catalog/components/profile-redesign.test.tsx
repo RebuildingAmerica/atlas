@@ -669,16 +669,16 @@ describe("ProfileResearchContext", () => {
       />,
     );
 
-    expect(screen.getByText("Evidence snapshot")).toBeInTheDocument();
+    expect(screen.getByText("Evidence")).toBeInTheDocument();
     expect(screen.queryByText("Reusable research record")).not.toBeInTheDocument();
     expect(screen.queryByText("Record reuse loop")).not.toBeInTheDocument();
-    expect(screen.getByText("Related actors")).toBeInTheDocument();
-    expect(screen.getByText("Issue footprint")).toBeInTheDocument();
-    expect(screen.getByText("Source trail")).toBeInTheDocument();
-    expect(screen.getByText("Public contact")).toBeInTheDocument();
-    expect(screen.getByText("3 source-linked packets")).toBeInTheDocument();
+    expect(screen.getByText("Related people and groups")).toBeInTheDocument();
+    expect(screen.getAllByText("Issues").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Sources").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Contact").length).toBeGreaterThan(0);
+    expect(screen.getByText("3 sources")).toBeInTheDocument();
 
-    const placeLink = screen.getByRole("link", { name: "Jackson civic actors" });
+    const placeLink = screen.getByRole("link", { name: "People and groups in Jackson" });
     expect(placeLink).toHaveAttribute(
       "data-link-search",
       JSON.stringify({ cities: "Jackson", states: "MS" }),
@@ -1046,7 +1046,16 @@ describe("ActionCluster", () => {
     shareUrl: "https://example.com/jane",
     shareTitle: "Jane Doe",
     profilePath: "/profiles/people/jane-doe",
+    sourcesHref: "#reporting-trail",
   };
+
+  it("keeps source inspection in the public action strip", () => {
+    render(<ActionCluster {...baseProps} isSignedIn={false} />);
+    expect(screen.getByRole("link", { name: /inspect sources/i })).toHaveAttribute(
+      "href",
+      "#reporting-trail",
+    );
+  });
 
   it("renders the Share button always", () => {
     render(<ActionCluster {...baseProps} isSignedIn={false} />);

@@ -303,8 +303,6 @@ export function DataQualityBlock({ entry }: DataQualityBlockProps) {
 
   return (
     <div className="space-y-4">
-      <p className="type-label-medium text-ink-muted">Data quality</p>
-
       <dl className="space-y-3">
         <Row
           label="First surfaced"

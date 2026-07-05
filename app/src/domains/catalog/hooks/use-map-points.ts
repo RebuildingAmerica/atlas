@@ -75,7 +75,7 @@ function useDebouncedMapPointParams(params: MapPointParams | null): MapPointPara
 }
 
 /**
- * Fetch the placed civic actors inside the current viewport.
+ * Fetch placed people and groups inside the current viewport.
  *
  * Debounces the viewport (so panning feels buttery, not chattery), keys the
  * cache on a rounded bounding box plus the browse facet filters, and keeps the

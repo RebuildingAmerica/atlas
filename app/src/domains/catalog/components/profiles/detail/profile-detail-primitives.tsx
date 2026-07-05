@@ -152,7 +152,7 @@ export function ProfileSection({
       id={htmlId}
     >
       <div
-        className="bg-surface-container-lowest/95 border-border/70 sticky top-16 z-10 -mx-6 -mt-6 mb-5 flex items-center gap-2 border-b px-6 py-3 backdrop-blur sm:-mx-8 sm:px-8"
+        className="border-border/70 -mx-6 -mt-6 mb-5 flex items-center gap-2 border-b px-6 py-3 sm:-mx-8 sm:px-8"
         data-profile-section-header="true"
       >
         {Icon ? <Icon className="text-civic h-4 w-4 shrink-0" aria-hidden /> : null}

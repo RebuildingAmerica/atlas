@@ -32,7 +32,7 @@ describe("ActorMapSurface", () => {
   it("renders a flat, north-up basemap framed on the continental US", () => {
     render(<ActorMapSurface />);
 
-    expect(screen.getByLabelText("Map of civic actors across the United States")).toBeTruthy();
+    expect(screen.getByLabelText("Map of people and groups across the United States")).toBeTruthy();
     const props = mapCapture.props;
     expect(props).not.toBeNull();
     expect(props?.initialViewState.bounds).toEqual([

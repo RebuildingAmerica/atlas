@@ -171,7 +171,9 @@ function ClusterView({
   return (
     <div className="space-y-4">
       <h2 id={headingId} className="type-body-large text-ink-strong font-semibold">
-        {selection.members.length} civic actors here
+        {selection.members.length === 1
+          ? "1 person or group here"
+          : `${selection.members.length} people and groups here`}
       </h2>
       <ul className="space-y-2" aria-label="Who's working here">
         {selection.members.map((point) => (

@@ -100,7 +100,7 @@ describe("routes/_workspace/lists/$id", () => {
     const Component = Route.options.component;
     if (!Component) throw new Error("Expected Route.options.component");
     render(<Component />);
-    expect(screen.getByText("No actors yet.")).toBeInTheDocument();
+    expect(screen.getByText("No people or groups yet.")).toBeInTheDocument();
   });
 
   it("renders actors with mixed metadata and removes them via the trash button", async () => {
@@ -346,12 +346,12 @@ describe("routes/_workspace/lists/$id", () => {
       .mockResolvedValueOnce({
         ok: true,
         text: () => Promise.resolve(csvExport),
-      } as Response)
+      })
       .mockResolvedValueOnce({
         ok: true,
         status: 200,
         json: () => Promise.resolve(jsonExport),
-      } as Response);
+      });
     vi.stubGlobal("fetch", fetchMock);
     Object.defineProperty(URL, "createObjectURL", {
       configurable: true,

@@ -202,7 +202,7 @@ export function CivicMapPanel() {
 
       {/* Stats */}
       <div className="flex flex-shrink-0 gap-6 pb-1">
-        <StatItem value={stats?.actors} label="civic actors" />
+        <StatItem value={stats?.actors} label="people and groups" />
         <StatItem value={stats?.cities} label="cities" />
         <StatItem value={stats?.issueAreas} label="issue areas" />
       </div>

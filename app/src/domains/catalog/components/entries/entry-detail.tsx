@@ -65,13 +65,13 @@ function researchUseText(entry: Entry, issueAreaLabels: Record<string, string>):
 
 function placePivotLabel(entry: Entry): string | null {
   if (entry.city) {
-    return `${entry.city} civic actors`;
+    return `People and groups in ${entry.city}`;
   }
   if (entry.state) {
-    return `${entry.state} civic actors`;
+    return `People and groups in ${entry.state}`;
   }
   if (entry.region) {
-    return `${entry.region} civic actors`;
+    return `People and groups in ${entry.region}`;
   }
   return null;
 }

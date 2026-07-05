@@ -43,7 +43,8 @@ export function ClusterBubble({ pointCount, onOpen, reducedMotion = false }: Clu
   }, [reducedMotion]);
 
   const size = revealed ? diameter : diameter * REVEAL_START_FRACTION;
-  const accessibleName = `${pointCount} civic actors here — see who`;
+  const accessibleName =
+    pointCount === 1 ? "1 person or group here" : `${pointCount} people and groups here`;
 
   return (
     <button

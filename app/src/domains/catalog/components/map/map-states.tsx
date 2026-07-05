@@ -57,11 +57,10 @@ export function MapEmptyState({ hasActiveFilters, onZoomOut, onClearFilters }: M
     <div className="bg-surface-container-high/95 shadow-soft border-border-strong pointer-events-auto max-w-sm rounded-[1.1rem] border p-5 backdrop-blur-md">
       <div className="text-ink-soft flex items-center gap-2">
         <MapPinOff className="h-5 w-5" aria-hidden />
-        <p className="type-title-medium text-ink-strong">No actors in this area yet</p>
+        <p className="type-title-medium text-ink-strong">No people or groups here</p>
       </div>
       <p className="type-body-small text-ink-soft mt-1.5">
-        Try widening the view or easing a filter — Atlas is still mapping civic work across the
-        country.
+        Try widening the view or easing a filter.
       </p>
       <div className="mt-3 flex flex-wrap gap-2">
         <Button variant="secondary" size="sm" onClick={onZoomOut}>
@@ -98,8 +97,7 @@ export function MapErrorState({ onRetry }: MapErrorStateProps) {
     <div className="bg-surface-container-high/95 shadow-soft border-border-strong pointer-events-auto max-w-sm rounded-[1.1rem] border p-5 backdrop-blur-md">
       <p className="type-title-medium text-ink-strong">We couldn&rsquo;t load the map right now</p>
       <p className="type-body-small text-ink-soft mt-1.5">
-        Something went wrong fetching the actors in this view. The map is still here — give it
-        another try.
+        Something went wrong. Give it another try.
       </p>
       <div className="mt-3">
         <Button variant="secondary" size="sm" onClick={onRetry}>

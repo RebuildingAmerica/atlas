@@ -222,13 +222,11 @@ describe("catalog entry components", () => {
 
     rerender(
       <EntryCard
-        entry={
-          {
-            ...regionEntry,
-            region: undefined,
-            state: "KS",
-          } as Entry
-        }
+        entry={{
+          ...regionEntry,
+          region: undefined,
+          state: "KS",
+        }}
       />,
     );
 
@@ -236,13 +234,11 @@ describe("catalog entry components", () => {
 
     rerender(
       <EntryCard
-        entry={
-          {
-            ...regionEntry,
-            region: undefined,
-            state: undefined,
-          } as Entry
-        }
+        entry={{
+          ...regionEntry,
+          region: undefined,
+          state: undefined,
+        }}
       />,
     );
 
@@ -261,7 +257,7 @@ describe("catalog entry components", () => {
       />,
     );
 
-    expect(screen.getByText("No matching civic actors.")).not.toBeNull();
+    expect(screen.getByText("No matching people or groups.")).not.toBeNull();
     expect(screen.getByRole("button", { name: "Remove Housing" })).not.toBeNull();
     expect(screen.getByRole("button", { name: "Browse Missouri" })).not.toBeNull();
     expect(screen.getByText("Submit a source")).not.toBeNull();
@@ -356,19 +352,17 @@ describe("catalog entry components", () => {
 
     rerender(
       <EntryDetail
-        entry={
-          {
-            ...sampleEntry,
-            city: undefined,
-            state: undefined,
-            region: "Midwest",
-            full_address: undefined,
-            issue_areas: [],
-            sources: [],
-            trust: { ...sampleEntry.trust, level: "unverified" },
-            verified: false,
-          } as Entry
-        }
+        entry={{
+          ...sampleEntry,
+          city: undefined,
+          state: undefined,
+          region: "Midwest",
+          full_address: undefined,
+          issue_areas: [],
+          sources: [],
+          trust: { ...sampleEntry.trust, level: "unverified" },
+          verified: false,
+        }}
       />,
     );
 
@@ -378,16 +372,14 @@ describe("catalog entry components", () => {
 
     rerender(
       <EntryDetail
-        entry={
-          {
-            ...sampleEntry,
-            city: undefined,
-            region: undefined,
-            state: undefined,
-            issue_areas: [],
-            sources: [],
-          } as Entry
-        }
+        entry={{
+          ...sampleEntry,
+          city: undefined,
+          region: undefined,
+          state: undefined,
+          issue_areas: [],
+          sources: [],
+        }}
       />,
     );
 
@@ -395,26 +387,24 @@ describe("catalog entry components", () => {
 
     rerender(
       <EntryDetail
-        entry={
-          {
-            ...sampleEntry,
-            email: undefined,
-            full_address: "123 Main St, Kansas City, MO",
-            issue_areas: ["water_quality"],
-            phone: undefined,
-            sources: [
-              {
-                ...sampleSource,
-                extraction_context: undefined,
-                publication: undefined,
-                published_date: undefined,
-                title: undefined,
-                url: "https://atlas.test/fallback-source",
-              } as Source,
-            ],
-            website: undefined,
-          } as Entry
-        }
+        entry={{
+          ...sampleEntry,
+          email: undefined,
+          full_address: "123 Main St, Kansas City, MO",
+          issue_areas: ["water_quality"],
+          phone: undefined,
+          sources: [
+            {
+              ...sampleSource,
+              extraction_context: undefined,
+              publication: undefined,
+              published_date: undefined,
+              title: undefined,
+              url: "https://atlas.test/fallback-source",
+            },
+          ],
+          website: undefined,
+        }}
       />,
     );
 
@@ -436,7 +426,7 @@ describe("catalog entry components", () => {
     expect(screen.getAllByText("Atlas-verified").length).toBeGreaterThan(0);
     expect(screen.getByText("Pivot from this actor")).not.toBeNull();
 
-    const placeLink = screen.getByRole("link", { name: "Kansas City civic actors" });
+    const placeLink = screen.getByRole("link", { name: "People and groups in Kansas City" });
     expect(placeLink.getAttribute("data-link-to")).toBe("/browse");
     expect(placeLink.getAttribute("data-link-search")).toBe(
       JSON.stringify({ cities: "Kansas City", states: "MO" }),
@@ -575,20 +565,16 @@ describe("catalog entry components", () => {
     expect(screen.getAllByText("Search unavailable")).toHaveLength(2);
 
     rerender(<EntryList entries={[]} hasActiveSearch />);
-    expect(screen.getByText("No matching civic actors.")).not.toBeNull();
+    expect(screen.getByText("No matching people or groups.")).not.toBeNull();
     expect(screen.queryByText(/yet/i)).toBeNull();
 
     rerender(<EntryList entries={[]} />);
-    expect(screen.getByText("No civic actors listed.")).not.toBeNull();
-    expect(
-      screen.getByText(
-        "Browse places, issues, or actor types to find source-backed civic profiles.",
-      ),
-    ).not.toBeNull();
+    expect(screen.getByText("No people or groups listed.")).not.toBeNull();
+    expect(screen.getByText("Start with a place, issue, person, or group.")).not.toBeNull();
     expect(screen.queryByText(/seed the directory/i)).toBeNull();
 
     rerender(<EntryList entries={[sampleEntry]} total={1} />);
-    expect(screen.getByText("1 matched entry")).not.toBeNull();
+    expect(screen.getByText("1 match")).not.toBeNull();
     expect(screen.getByText("Housing Justice KC")).not.toBeNull();
 
     rerender(<EntryList entries={[sampleEntry]} />);

@@ -14,7 +14,7 @@ afterEach(() => {
 });
 
 describe("ProfileAnswerCard", () => {
-  it("answers who, what, where, why, and how Atlas knows for a strong profile", () => {
+  it("answers who, what, where, why, and sources for a strong profile", () => {
     render(
       <ProfileAnswerCard
         entry={buildEntry({
@@ -83,7 +83,7 @@ describe("ProfileAnswerCard", () => {
     expect(screen.getByText("Kansas City, MO")).toBeInTheDocument();
     expect(screen.getByText("Why they matter")).toBeInTheDocument();
     expect(screen.getByText("4 sources · Housing affordability")).toBeInTheDocument();
-    expect(screen.getByText("How Atlas knows")).toBeInTheDocument();
+    expect(screen.getByText("Sources")).toBeInTheDocument();
     expect(screen.getByText("4 sources · corroborated · Apr 2026")).toBeInTheDocument();
   });
 
