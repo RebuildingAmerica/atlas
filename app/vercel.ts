@@ -69,6 +69,10 @@ const rewrites = [
           destination: `${apiOrigin}/mcp`,
         },
         {
+          source: "/mcp/",
+          destination: `${apiOrigin}/mcp/`,
+        },
+        {
           source: "/mcp/:match*",
           destination: `${apiOrigin}/mcp/:match*`,
         },
