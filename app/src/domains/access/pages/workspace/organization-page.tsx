@@ -12,7 +12,7 @@ export interface OrganizationPageProps {
 /**
  * Thin route-level page for workspace management.
  */
-export function OrganizationPage({ initialOrganization = null }: OrganizationPageProps) {
+export function OrganizationPage({ initialOrganization }: OrganizationPageProps) {
   const controller = useOrganizationPageController({
     initialOrganization,
   });

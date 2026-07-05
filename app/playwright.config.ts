@@ -24,6 +24,7 @@ const authDbPath = path.join(e2eDir, "atlas-auth.sqlite");
 const mailboxFile = path.join(e2eDir, "mailbox.json");
 const appUrl = requireEnv("ATLAS_E2E_APP_URL");
 const apiUrl = requireEnv("ATLAS_E2E_API_URL");
+const apiAudience = apiUrl;
 const mailboxUrl = requireEnv("ATLAS_E2E_MAILBOX_URL");
 const authIntrospectionUrl = requireEnv("ATLAS_E2E_AUTH_INTROSPECTION_URL");
 const apiPort = new URL(apiUrl).port;
@@ -44,6 +45,7 @@ const commonAuthEnv = {
   ATLAS_AUTH_API_KEY_INTROSPECTION_URL: authIntrospectionUrl,
   ATLAS_AUTH_BASE_PATH: "/api/auth",
   ATLAS_AUTH_INTERNAL_SECRET: e2eInternalSecret,
+  ATLAS_API_AUDIENCE: apiAudience,
   ATLAS_DEPLOY_MODE: "production",
   ATLAS_EMAIL_CAPTURE_URL: `${mailboxUrl}/messages`,
   ATLAS_EMAIL_FROM: "Atlas <noreply@localhost>",
@@ -82,6 +84,7 @@ export default defineConfig({
         ANTHROPIC_API_KEY: "e2e-test-key",
         ATLAS_AUTH_API_KEY_INTROSPECTION_URL: authIntrospectionUrl,
         ATLAS_AUTH_INTERNAL_SECRET: e2eInternalSecret,
+        ATLAS_API_AUDIENCE: apiAudience,
         ATLAS_DEPLOY_MODE: "production",
         CORS_ORIGINS: `["${appUrl}"]`,
         DATABASE_URL: `sqlite:///${apiDbPath}`,

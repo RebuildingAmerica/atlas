@@ -12,7 +12,7 @@ export interface OrganizationSSOPageProps {
 /**
  * Thin route-level page for enterprise sign-in configuration.
  */
-export function OrganizationSSOPage({ initialOrganization = null }: OrganizationSSOPageProps) {
+export function OrganizationSSOPage({ initialOrganization }: OrganizationSSOPageProps) {
   const controller = useOrganizationPageController({
     initialOrganization,
   });
