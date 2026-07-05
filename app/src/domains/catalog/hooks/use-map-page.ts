@@ -12,7 +12,12 @@ import {
   selectActor,
   selectCluster,
 } from "@/domains/catalog/map/map-selection";
-import { CONUS_VIEW, viewFromSearch, viewToSearch } from "@/domains/catalog/map/map-viewport";
+import {
+  CONUS_VIEW,
+  boundsFromSearch,
+  viewFromSearch,
+  viewToSearch,
+} from "@/domains/catalog/map/map-viewport";
 import {
   type BrowseFilterKey,
   type MapRouteSearch,
@@ -70,8 +75,9 @@ interface UseMapPageOptions {
 export function useMapPage({ search, navigate, map = null, initialPoints }: UseMapPageOptions) {
   const filters = useMemo(() => buildBrowseSearch(search), [search]);
   const initialView = useMemo(() => viewFromSearch(search), [search]);
+  const initialBounds = useMemo(() => boundsFromSearch(search), [search]);
 
-  const [bounds, setBounds] = useState<MapBounds | null>(null);
+  const [bounds, setBounds] = useState<MapBounds | null>(initialBounds);
   const [zoom, setZoom] = useState(initialView.zoom);
   const [selection, setSelection] = useState<MapSelection | null>(null);
 

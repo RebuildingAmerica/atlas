@@ -72,6 +72,22 @@ describe("MapDetailPanel — actor view", () => {
     expect(screen.getByText("labor-organizing")).toBeTruthy();
   });
 
+  it("shows place, location precision, and source context for the selected actor", () => {
+    render(
+      <MapDetailPanel
+        selection={selectActor(PANEL_ORG_ACTOR, { lng: -96.8, lat: 32.78 })}
+        onClose={vi.fn()}
+        onSelectMember={vi.fn()}
+      />,
+    );
+
+    const facts = screen.getByLabelText("Map facts");
+    expect(within(facts).getByText("Dallas, TX")).toBeTruthy();
+    expect(within(facts).getByText("City-level location")).toBeTruthy();
+    expect(within(facts).getByText("3 links")).toBeTruthy();
+    expect(within(facts).getByText("Newest May 4, 2026")).toBeTruthy();
+  });
+
   it("shows no issue badges when an actor carries no issue areas", () => {
     const unsorted = makePoint({
       id: "bare-1",

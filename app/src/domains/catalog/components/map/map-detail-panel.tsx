@@ -23,9 +23,83 @@ const TYPE_LABEL: Record<EntryType, string> = {
   event: "Event",
 };
 
+const LOCATION_PRECISION_LABEL: Record<NonNullable<MapPoint["geocode_precision"]>, string> = {
+  rooftop: "Exact public address",
+  city: "City-level location",
+  state: "State-level location",
+};
+const DATE_ONLY_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+interface MapFact {
+  label: string;
+  value: string;
+  detail?: string;
+}
+
 /** Map an actor type to the two avatar shapes Atlas draws (people vs. everything else). */
 function avatarType(type: EntryType): "person" | "organization" {
   return type === "person" ? "person" : "organization";
+}
+
+function sourceCountLabel(count: number): string {
+  return count === 1 ? "1 link" : `${count} links`;
+}
+
+function locationPrecisionLabel(point: MapPoint): string {
+  if (point.geocode_precision) {
+    return LOCATION_PRECISION_LABEL[point.geocode_precision];
+  }
+  return "Mapped location";
+}
+
+function formatMapDate(value: string | null): string | null {
+  if (!value) {
+    return null;
+  }
+  const dateOnly = DATE_ONLY_PATTERN.exec(value);
+  const parsed = dateOnly
+    ? new Date(Number(dateOnly[1]), Number(dateOnly[2]) - 1, Number(dateOnly[3]))
+    : new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return value;
+  }
+  return parsed.toLocaleDateString("en-US", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function mapFacts(point: MapPoint): MapFact[] {
+  const latest = formatMapDate(point.latest_source_date);
+  return [
+    ...(point.place_label ? [{ label: "Place", value: point.place_label }] : []),
+    { label: "Location", value: locationPrecisionLabel(point) },
+    {
+      label: "Source links",
+      value: sourceCountLabel(point.source_count),
+      detail: latest ? `Newest ${latest}` : undefined,
+    },
+  ];
+}
+
+function MapFacts({ point }: { point: MapPoint }) {
+  return (
+    <dl
+      aria-label="Map facts"
+      className="bg-surface-container-low grid gap-2 rounded-[0.875rem] p-3"
+    >
+      {mapFacts(point).map((fact) => (
+        <div key={fact.label} className="grid grid-cols-[5rem_minmax(0,1fr)] gap-3">
+          <dt className="type-label-small text-ink-muted">{fact.label}</dt>
+          <dd className="type-body-small text-ink-strong min-w-0">
+            <span>{fact.value}</span>
+            {fact.detail ? <span className="text-ink-soft block">{fact.detail}</span> : null}
+          </dd>
+        </div>
+      ))}
+    </dl>
+  );
 }
 
 interface MapDetailPanelProps {
@@ -73,6 +147,8 @@ function ActorView({ headingId, selection }: { headingId: string; selection: Act
           <Badge variant="default">{TYPE_LABEL[point.type]}</Badge>
         </div>
       </div>
+
+      <MapFacts point={point} />
 
       <MapTrustRow trustLevel={point.trust_level} />
 

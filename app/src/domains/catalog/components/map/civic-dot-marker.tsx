@@ -9,7 +9,9 @@ import {
 import type { DotShape } from "@/domains/catalog/map/marker-style";
 
 /** The SVG box the dot is drawn in, leaving room for the ring and the hover lift. */
-const DOT_BOX_PX = Math.ceil(DOT_CORE_PX * DOT_HOVER_SCALE) + DOT_RING_PX * 2 + 2;
+const APPROX_LOCATION_HALO_PX = 3;
+const DOT_BOX_PX =
+  Math.ceil(DOT_CORE_PX * DOT_HOVER_SCALE) + DOT_RING_PX * 2 + APPROX_LOCATION_HALO_PX * 2 + 2;
 
 interface CivicDotMarkerProps {
   /** The placed actor this dot represents. */
@@ -23,7 +25,9 @@ interface CivicDotMarkerProps {
 /** Describe an actor's location and trust for assistive technology. */
 function describePoint(point: MapPoint): string {
   const trust = TRUST_DESCRIPTIONS[point.trust_level];
-  return `${point.name}, ${point.type}, ${trust}`;
+  const place = point.place_label ? `${point.place_label}, ` : "";
+  const precision = LOCATION_DESCRIPTIONS[point.geocode_precision ?? "unknown"];
+  return `${point.name}, ${point.type}, ${place}${precision}, ${trust}`;
 }
 
 /** Short, human trust phrases for the marker's accessible name. */
@@ -32,6 +36,16 @@ const TRUST_DESCRIPTIONS: Record<MapPoint["trust_level"], string> = {
   atlas_verified: "Atlas-verified",
   corroborated: "corroborated",
   unverified: "unverified",
+};
+
+const LOCATION_DESCRIPTIONS: Record<
+  NonNullable<MapPoint["geocode_precision"]> | "unknown",
+  string
+> = {
+  rooftop: "exact public address",
+  city: "city-level location",
+  state: "state-level location",
+  unknown: "mapped location",
 };
 
 interface DotGeometryProps {
@@ -90,6 +104,7 @@ export function CivicDotMarker({ point, selected, onSelect }: CivicDotMarkerProp
   const center = DOT_BOX_PX / 2;
   const baseRadius = DOT_CORE_PX / 2;
   const radius = selected ? baseRadius * DOT_HOVER_SCALE : baseRadius;
+  const isApproximate = point.geocode_precision !== "rooftop";
 
   return (
     <button
@@ -107,6 +122,7 @@ export function CivicDotMarker({ point, selected, onSelect }: CivicDotMarkerProp
         height={DOT_BOX_PX}
         viewBox={`0 0 ${DOT_BOX_PX} ${DOT_BOX_PX}`}
         aria-hidden
+        className="text-ink-muted"
         style={{ filter: "drop-shadow(0 1px 3px rgba(28,25,23,0.18))" }}
       >
         <DotGeometry
@@ -118,6 +134,19 @@ export function CivicDotMarker({ point, selected, onSelect }: CivicDotMarkerProp
           ringColor={style.ringColor}
           ringWidth={style.ringWidth}
         />
+        {isApproximate ? (
+          <circle
+            cx={center}
+            cy={center}
+            r={radius + DOT_RING_PX + APPROX_LOCATION_HALO_PX}
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={1}
+            strokeDasharray="2 2"
+            opacity={0.72}
+            data-location-halo="approximate"
+          />
+        ) : null}
       </svg>
     </button>
   );

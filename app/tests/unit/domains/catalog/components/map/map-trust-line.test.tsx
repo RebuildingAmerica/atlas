@@ -23,9 +23,9 @@ describe("MapTrustLine", () => {
     expect(screen.getByText("Corroborated")).toBeTruthy();
   });
 
-  it("reads as a single source for an unverified actor — silence stays honest", () => {
+  it("reads as unverified without inventing a source count", () => {
     render(<MapTrustLine trustLevel="unverified" />);
-    expect(screen.getByText("Single source")).toBeTruthy();
+    expect(screen.getByText("Unverified")).toBeTruthy();
   });
 
   it("never claims more than the catalog can back for any tier", () => {

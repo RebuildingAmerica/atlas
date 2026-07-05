@@ -19,9 +19,32 @@ describe("CivicDotMarker", () => {
       />,
     );
     const button = screen.getByRole("button", {
-      name: "River Keepers, organization, corroborated",
+      name: "River Keepers, organization, Kansas City, MO, city-level location, corroborated",
     });
     expect(button.getAttribute("aria-pressed")).toBe("false");
+  });
+
+  it("draws a dashed halo for approximate city and state points", () => {
+    const { container } = render(
+      <CivicDotMarker
+        point={makePoint({ id: "p", geocode_precision: "city" })}
+        selected={false}
+        onSelect={vi.fn()}
+      />,
+    );
+    const halo = container.querySelector('[data-location-halo="approximate"]');
+    expect(halo?.getAttribute("stroke-dasharray")).toBe("2 2");
+  });
+
+  it("draws a dashed halo when coordinate precision is unknown", () => {
+    const { container } = render(
+      <CivicDotMarker
+        point={makePoint({ id: "p", geocode_precision: null })}
+        selected={false}
+        onSelect={vi.fn()}
+      />,
+    );
+    expect(container.querySelector('[data-location-halo="approximate"]')).not.toBeNull();
   });
 
   it("calls onSelect with the actor when clicked", () => {

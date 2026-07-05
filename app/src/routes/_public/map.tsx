@@ -20,6 +20,9 @@ export const Route = createFileRoute("/_public/map")({
     const initialPoints = await loadMapPoints({
       data: {
         query: filters.query,
+        z: deps.search.z,
+        lat: deps.search.lat,
+        lng: deps.search.lng,
         states: filters.states,
         cities: filters.cities,
         regions: filters.regions,

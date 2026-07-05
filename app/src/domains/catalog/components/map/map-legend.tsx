@@ -14,7 +14,7 @@ interface TrustRow {
 const TRUST_ROWS: TrustRow[] = [
   { swatch: "verified", description: "Verified by Atlas or the subject" },
   { swatch: "corroborated", description: "Corroborated across sources" },
-  { swatch: "unverified", description: "Unverified — shown quietly" },
+  { swatch: "unverified", description: "Unverified, shown quietly" },
 ];
 
 /** A small dot drawn the way a marker of that trust tier would read on the map. */
@@ -44,6 +44,15 @@ function TrustSwatch({ swatch }: { swatch: TrustRow["swatch"] }) {
     <span
       className="block h-3 w-3 rounded-full"
       style={{ backgroundColor: FALLBACK_ISSUE_COLOR, opacity: 0.8 }}
+      aria-hidden
+    />
+  );
+}
+
+function ApproximateLocationSwatch() {
+  return (
+    <span
+      className="border-ink-muted block h-3 w-3 rounded-full border border-dashed"
       aria-hidden
     />
   );
@@ -87,6 +96,12 @@ export function MapLegend() {
               <span className="type-body-small text-ink-soft">{row.description}</span>
             </li>
           ))}
+          <li className="flex items-center gap-2">
+            <ApproximateLocationSwatch />
+            <span className="type-body-small text-ink-soft">
+              City or state location, approximate
+            </span>
+          </li>
         </ul>
       ) : null}
     </div>

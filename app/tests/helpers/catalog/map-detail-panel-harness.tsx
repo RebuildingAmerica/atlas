@@ -28,7 +28,9 @@ export const PANEL_ORG_ACTOR = makePoint({
   name: "Dallas Tenants United",
   type: "organization",
   slug: "dallas-tenants-united",
+  place_label: "Dallas, TX",
   issue_areas: ["housing-affordability", "labor-organizing"],
+  source_count: 3,
   trust_level: "atlas_verified",
 });
 

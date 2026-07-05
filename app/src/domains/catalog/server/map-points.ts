@@ -1,26 +1,18 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { api } from "@/lib/api";
-import type { EntryType, MapBounds, MapPointCollection, SourcePattern, SourceType } from "@/types";
+import { CONUS_BBOX_BOUNDS, boundsFromSearch } from "@/domains/catalog/map/map-viewport";
+import type { EntryType, MapPointCollection, SourcePattern, SourceType } from "@/types";
 
-/**
- * The continental-US bounding box the map opens on.
- *
- * Matches the basemap's initial framing so the dots the loader seeds line up
- * with the country the visitor first sees, with a little breathing room on
- * every edge.
- */
-export const CONUS_BBOX_BOUNDS: MapBounds = {
-  minLng: -125,
-  minLat: 24,
-  maxLng: -66.5,
-  maxLat: 49.5,
-};
+export { CONUS_BBOX_BOUNDS };
 
 const optionalList = z.array(z.string()).optional();
 
 const mapSeedSchema = z.object({
   query: z.string().optional(),
+  z: z.number().optional(),
+  lat: z.number().optional(),
+  lng: z.number().optional(),
   states: optionalList,
   cities: optionalList,
   regions: optionalList,
@@ -47,7 +39,7 @@ export const loadMapPoints = createServerFn({ method: "GET" })
   .validator(mapSeedSchema)
   .handler(async ({ data }): Promise<MapPointCollection> => {
     return await api.entries.mapPoints({
-      bounds: CONUS_BBOX_BOUNDS,
+      bounds: boundsFromSearch(data),
       query: data.query ? data.query : undefined,
       states: data.states ?? [],
       cities: data.cities ?? [],

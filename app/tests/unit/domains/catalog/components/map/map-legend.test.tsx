@@ -32,6 +32,7 @@ describe("MapLegend", () => {
     render(<MapLegend />);
     fireEvent.click(screen.getByRole("button", { name: /legend/i }));
     expect(screen.getByText("Corroborated across sources")).toBeTruthy();
-    expect(screen.getByText("Unverified — shown quietly")).toBeTruthy();
+    expect(screen.getByText("Unverified, shown quietly")).toBeTruthy();
+    expect(screen.getByText("City or state location, approximate")).toBeTruthy();
   });
 });

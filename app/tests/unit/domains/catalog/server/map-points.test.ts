@@ -1,7 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { CONUS_BBOX_BOUNDS, loadMapPoints } from "@/domains/catalog/server/map-points";
+import type { MapPointCollection, MapPointParams } from "@/types";
 
-const mocks = vi.hoisted(() => ({ mapPoints: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  mapPoints: vi.fn<(params: MapPointParams) => Promise<MapPointCollection>>(),
+}));
 
 vi.mock("@tanstack/react-start", async () => {
   const { createServerFnStub } = await import("../../../../helpers/server-fn-stub");
@@ -69,5 +72,19 @@ describe("loadMapPoints", () => {
     mocks.mapPoints.mockClear();
     await loadMapPoints({ data: { query: "" } });
     expect(mocks.mapPoints).toHaveBeenCalledWith(expect.objectContaining({ query: undefined }));
+  });
+
+  it("seeds shared camera links near their saved viewport", async () => {
+    mocks.mapPoints.mockResolvedValue({ points: [], total: 0, capped: false });
+
+    await loadMapPoints({ data: { lng: -96.8, lat: 32.78, z: 9 } });
+
+    const lastCall = mocks.mapPoints.mock.calls.at(-1);
+    if (!lastCall) {
+      throw new Error("Expected mapPoints to be called.");
+    }
+    const [request] = lastCall;
+    expect(request.bounds.minLng).toBeGreaterThan(-100);
+    expect(request.bounds.maxLng).toBeLessThan(-93);
   });
 });

@@ -17,8 +17,7 @@ interface TrustPresentation {
 /**
  * Resolve a trust tier to the same words and icons the profile's data-quality
  * block uses, so the panel a visitor reaches from a dot says exactly what the
- * full profile will. Unverified is named "Single source" rather than dressed up
- * — the map never claims confidence the catalog can't back.
+ * full profile will.
  */
 const TRUST_PRESENTATION: Record<TrustLevel, TrustPresentation> = {
   subject_verified: {
@@ -42,7 +41,7 @@ const TRUST_PRESENTATION: Record<TrustLevel, TrustPresentation> = {
   unverified: {
     Icon: ShieldQuestion,
     iconClass: "text-ink-muted",
-    label: "Single source",
+    label: "Unverified",
     toneClass: "text-ink-soft",
   },
 };

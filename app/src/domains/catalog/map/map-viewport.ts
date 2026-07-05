@@ -25,16 +25,61 @@ export const CONUS_VIEW: MapView = {
   zoom: 3.4,
 };
 
+/**
+ * The continental-US bounding box the first `/map` data load uses.
+ *
+ * Kept beside the opening camera so the route loader, hook, and marker layer
+ * agree on the country-sized viewport available before MapLibre reports live
+ * bounds.
+ */
+export const CONUS_BBOX_BOUNDS: MapBounds = {
+  minLng: -125,
+  minLat: 24,
+  maxLng: -66.5,
+  maxLat: 49.5,
+};
+
 /** Decimal places a shared coordinate is rounded to (~10m) for a tidy URL. */
 const COORD_PRECISION = 4;
 
 /** Decimal places a shared zoom is rounded to for a tidy URL. */
 const ZOOM_PRECISION = 2;
+const MERCATOR_TILE_SIZE_PX = 512;
+const INITIAL_VIEWPORT_WIDTH_PX = 1024;
+const INITIAL_VIEWPORT_HEIGHT_PX = 768;
+const WEB_MERCATOR_MAX_LAT = 85.05112878;
 
 /** Round a number to a fixed number of decimal places. */
 function round(value: number, precision: number): number {
   const factor = 10 ** precision;
   return Math.round(value * factor) / factor;
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
+}
+
+function worldSize(zoom: number): number {
+  return MERCATOR_TILE_SIZE_PX * 2 ** Math.max(0, zoom);
+}
+
+function lngToWorldX(lng: number, zoom: number): number {
+  return ((lng + 180) / 360) * worldSize(zoom);
+}
+
+function latToWorldY(lat: number, zoom: number): number {
+  const clamped = clamp(lat, -WEB_MERCATOR_MAX_LAT, WEB_MERCATOR_MAX_LAT);
+  const sin = Math.sin((clamped * Math.PI) / 180);
+  return (0.5 - Math.log((1 + sin) / (1 - sin)) / (4 * Math.PI)) * worldSize(zoom);
+}
+
+function worldXToLng(x: number, zoom: number): number {
+  return (x / worldSize(zoom)) * 360 - 180;
+}
+
+function worldYToLat(y: number, zoom: number): number {
+  const value = Math.PI - (2 * Math.PI * y) / worldSize(zoom);
+  return (180 / Math.PI) * Math.atan(0.5 * (Math.exp(value) - Math.exp(-value)));
 }
 
 /**
@@ -52,6 +97,26 @@ export function viewFromSearch(search: ViewportSearch): MapView {
     return CONUS_VIEW;
   }
   return { center: { lng: search.lng, lat: search.lat }, zoom: search.z };
+}
+
+export function boundsFromView(view: MapView): MapBounds {
+  const centerX = lngToWorldX(view.center.lng, view.zoom);
+  const centerY = latToWorldY(view.center.lat, view.zoom);
+  const west = worldXToLng(centerX - INITIAL_VIEWPORT_WIDTH_PX / 2, view.zoom);
+  const east = worldXToLng(centerX + INITIAL_VIEWPORT_WIDTH_PX / 2, view.zoom);
+  const north = worldYToLat(centerY - INITIAL_VIEWPORT_HEIGHT_PX / 2, view.zoom);
+  const south = worldYToLat(centerY + INITIAL_VIEWPORT_HEIGHT_PX / 2, view.zoom);
+  return boundsFromCorners(
+    { lng: clamp(west, -180, 180), lat: clamp(south, -90, 90) },
+    { lng: clamp(east, -180, 180), lat: clamp(north, -90, 90) },
+  );
+}
+
+export function boundsFromSearch(search: ViewportSearch): MapBounds {
+  if (search.z === undefined || search.lat === undefined || search.lng === undefined) {
+    return CONUS_BBOX_BOUNDS;
+  }
+  return boundsFromView(viewFromSearch(search));
 }
 
 /**

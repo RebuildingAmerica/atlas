@@ -35,6 +35,33 @@ describe("useMapPage", () => {
     expect(result.current.hasActiveFilters).toBe(false);
   });
 
+  it("starts with continental-US bounds so seeded markers render before the basemap loads", () => {
+    const { result } = renderHook(() =>
+      useMapPage({ search: {}, navigate: requireMapPageMocks().navigate }),
+    );
+
+    expect(result.current.bounds).toEqual({
+      minLng: -125,
+      minLat: 24,
+      maxLng: -66.5,
+      maxLat: 49.5,
+    });
+    expect(readMapPageMocks().lastParams()?.bounds).toEqual(result.current.bounds);
+  });
+
+  it("starts shared viewport URLs with bounds near the saved camera", () => {
+    const { result } = renderHook(() =>
+      useMapPage({
+        search: { lng: -96.8, lat: 32.78, z: 9 },
+        navigate: requireMapPageMocks().navigate,
+      }),
+    );
+
+    expect(result.current.bounds?.minLng).toBeGreaterThan(-100);
+    expect(result.current.bounds?.maxLng).toBeLessThan(-93);
+    expect(readMapPageMocks().lastParams()?.bounds).toEqual(result.current.bounds);
+  });
+
   it("reads the viewport off the map after a move and fetches its actors", () => {
     const map = makeFakeMap({
       center: { lng: -96.8, lat: 32.78 },

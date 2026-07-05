@@ -37,7 +37,7 @@ interface MapInteractiveSurfaceProps {
   initialView: MapView;
   /** Actors currently fetched for the viewport. */
   points: MapPoint[];
-  /** The known viewport bounds; markers wait for the first map readout. */
+  /** The best-known viewport bounds; seeded to the country until MapLibre reports live bounds. */
   bounds: MapBounds | null;
   /** The current map zoom, which drives client-side clustering. */
   zoom: number;
