@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { AccountScoutDevicesSection } from "@/domains/access/pages/workspace/components/account-scout-devices-section";
+import { AccountScoutDevices } from "@/domains/access/pages/workspace/components/account/scout";
 
 vi.mock("lucide-react", () => {
   const makeIcon = (label: string) => () => <span>{label}</span>;
@@ -38,12 +38,12 @@ afterEach(() => {
   cleanup();
 });
 
-describe("AccountScoutDevicesSection", () => {
+describe("AccountScoutDevices", () => {
   it("renders enrolled Scout devices and revokes one", () => {
     const onRevoke = vi.fn();
 
     render(
-      <AccountScoutDevicesSection
+      <AccountScoutDevices
         devices={[
           {
             createdAt: "2026-07-04T16:00:00.000Z",
@@ -90,7 +90,7 @@ describe("AccountScoutDevicesSection", () => {
 
   it("renders empty and error states", () => {
     const { rerender } = render(
-      <AccountScoutDevicesSection
+      <AccountScoutDevices
         devices={[]}
         isError={true}
         isRevokePending={false}
@@ -103,7 +103,7 @@ describe("AccountScoutDevicesSection", () => {
     expect(screen.queryByText("No Scout devices.")).toBeNull();
 
     rerender(
-      <AccountScoutDevicesSection
+      <AccountScoutDevices
         devices={[]}
         isError={false}
         isRevokePending={false}

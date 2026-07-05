@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import {
-  AccountSettingsRow,
-  AccountSettingsSurface,
-} from "@/domains/access/pages/workspace/components/account-settings-section";
+  AccountRow,
+  AccountSurface,
+} from "@/domains/access/pages/workspace/components/account/rows";
 import type { AtlasProduct } from "../../access/capabilities";
 import { createPortalSession } from "../billing.functions";
 import { PRODUCT_LABELS } from "../product-labels";
@@ -41,11 +41,11 @@ export function WorkspaceBillingSection({ activeProducts }: WorkspaceBillingSect
         <div className="space-y-3">
           <div className="space-y-2">
             <h3 className="type-title-medium text-ink-strong">Products</h3>
-            <AccountSettingsSurface>
+            <AccountSurface>
               {activeProducts.map((product) => (
-                <AccountSettingsRow key={product} label="Product" value={PRODUCT_LABELS[product]} />
+                <AccountRow key={product} label="Product" value={PRODUCT_LABELS[product]} />
               ))}
-            </AccountSettingsSurface>
+            </AccountSurface>
           </div>
 
           <div className="flex flex-wrap gap-3">
@@ -71,8 +71,8 @@ export function WorkspaceBillingSection({ activeProducts }: WorkspaceBillingSect
           {portalError ? <p className="type-body-medium text-ink-strong">{portalError}</p> : null}
         </div>
       ) : (
-        <AccountSettingsSurface>
-          <AccountSettingsRow
+        <AccountSurface>
+          <AccountRow
             label="Plan"
             value="Free"
             action={
@@ -84,7 +84,7 @@ export function WorkspaceBillingSection({ activeProducts }: WorkspaceBillingSect
               </Link>
             }
           />
-        </AccountSettingsSurface>
+        </AccountSurface>
       )}
     </div>
   );

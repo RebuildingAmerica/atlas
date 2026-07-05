@@ -2,15 +2,25 @@
 
 import { afterEach, describe, expect, it } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
-import { AccountHeader } from "@/domains/access/pages/workspace/components/account-header";
+import { AccountLayout } from "@/domains/access/pages/workspace/components/account/layout";
 
 afterEach(() => {
   cleanup();
 });
 
-describe("AccountHeader", () => {
+describe("AccountLayout", () => {
   it("renders the account heading and email when the name is missing", () => {
-    render(<AccountHeader email="ops@atlas.test" name={undefined} />);
+    render(
+      <AccountLayout
+        email="ops@atlas.test"
+        errorMessage={null}
+        flashMessage={null}
+        name={undefined}
+        tabs={[]}
+      >
+        <div />
+      </AccountLayout>,
+    );
 
     expect(screen.getByRole("heading", { name: "Account" })).not.toBeNull();
     expect(screen.getByText("ops@atlas.test")).not.toBeNull();
@@ -19,14 +29,34 @@ describe("AccountHeader", () => {
   });
 
   it("renders the stored name and email", () => {
-    render(<AccountHeader email="person@atlas.test" name="Willie" />);
+    render(
+      <AccountLayout
+        email="person@atlas.test"
+        errorMessage={null}
+        flashMessage={null}
+        name="Willie"
+        tabs={[]}
+      >
+        <div />
+      </AccountLayout>,
+    );
 
     expect(screen.getByText("Willie")).not.toBeNull();
     expect(screen.getByText("person@atlas.test")).not.toBeNull();
   });
 
   it("renders only the heading when identity data is unavailable", () => {
-    render(<AccountHeader email={undefined} name={null} />);
+    render(
+      <AccountLayout
+        email={undefined}
+        errorMessage={null}
+        flashMessage={null}
+        name={null}
+        tabs={[]}
+      >
+        <div />
+      </AccountLayout>,
+    );
 
     expect(screen.getByRole("heading", { name: "Account" })).not.toBeNull();
     expect(screen.queryByText("Signed-in user")).toBeNull();

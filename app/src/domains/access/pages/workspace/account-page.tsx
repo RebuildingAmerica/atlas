@@ -8,15 +8,15 @@ import { atlasSessionQueryKey, useAtlasSession } from "@/domains/access/client/u
 import { resolvePasskeyName } from "@/domains/access/passkey-names";
 import { deletePasskey, listPasskeys, updatePasskey } from "@/domains/access/passkeys.functions";
 import { listScoutDevices, revokeScoutDevice } from "@/domains/access/scout-devices.functions";
-import { WorkspaceBillingSection } from "@/domains/billing/components/workspace-billing-section";
-import { AccountDeveloperAccessSection } from "./components/account-developer-access-section";
-import { AccountHeader } from "./components/account-header";
-import { AccountPageFeedback } from "./components/account-page-feedback";
-import type { AccountApiKeyRecord } from "./components/account-api-keys-section";
-import type { AccountPasskeyRecord } from "./components/account-passkeys-section";
-import { AccountSecuritySection } from "./components/account-security-section";
-import type { AccountScoutDeviceRecord } from "./components/account-scout-devices-section";
-import { AccountWorkspaceCards } from "./components/account-workspace-cards";
+import { AccountBillingSection } from "./components/account/billing";
+import { AccountDeveloperSection } from "./components/account/developer";
+import type { AccountApiKeyRecord } from "./components/account/keys";
+import { AccountLayout } from "./components/account/layout";
+import type { AccountPasskeyRecord } from "./components/account/passkeys";
+import { AccountProfileSection } from "./components/account/profile";
+import { AccountScoutSection, type AccountScoutDeviceRecord } from "./components/account/scout";
+import { AccountSecuritySection } from "./components/account/security";
+import type { AccountTab } from "./components/account/tabs";
 
 const PASSKEYS_QUERY_KEY = ["auth", "passkeys"] as const;
 const API_KEYS_QUERY_KEY = ["auth", "api-keys"] as const;
@@ -163,9 +163,18 @@ export function AccountPage() {
     }
   };
 
-  const showSecuritySection = !isLocal;
-  const showDeveloperAccessSection = !isLocal;
-  const showBillingSection = !isLocal;
+  const hasSession = atlasSession.data != null;
+  const showSecuritySection = hasSession && !isLocal;
+  const showDeveloperSection = hasSession && !isLocal && canCreateApiKeys;
+  const showScoutSection = hasSession && !isLocal;
+  const showBillingSection = hasSession && !isLocal;
+  const tabs: AccountTab[] = [
+    { id: "profile", label: "Profile" },
+    ...(showSecuritySection ? [{ id: "security", label: "Security" }] : []),
+    ...(showDeveloperSection ? [{ id: "developer", label: "Developer" }] : []),
+    ...(showScoutSection ? [{ id: "scout", label: "Scout" }] : []),
+    ...(showBillingSection ? [{ id: "billing", label: "Billing" }] : []),
+  ];
 
   const toggleScope = (scope: ApiKeyScope) => {
     setApiKeyScopes((current) =>
@@ -174,15 +183,19 @@ export function AccountPage() {
   };
 
   return (
-    <div className="mx-auto max-w-4xl space-y-10 py-8">
-      <AccountHeader email={atlasSession.data?.user.email} name={atlasSession.data?.user.name} />
-
-      <AccountPageFeedback errorMessage={errorMessage} flashMessage={flashMessage} />
-
-      <AccountWorkspaceCards
+    <AccountLayout
+      email={atlasSession.data?.user.email}
+      errorMessage={errorMessage}
+      flashMessage={flashMessage}
+      name={atlasSession.data?.user.name}
+      tabs={tabs}
+    >
+      <AccountProfileSection
         activeWorkspaceName={activeWorkspace?.name ?? null}
+        email={atlasSession.data?.user.email}
         hasPendingInvitations={hasPendingInvitations}
         isLocal={isLocal}
+        name={atlasSession.data?.user.name}
         needsWorkspace={needsWorkspace}
       />
 
@@ -216,20 +229,15 @@ export function AccountPage() {
         />
       ) : null}
 
-      {showDeveloperAccessSection ? (
-        <AccountDeveloperAccessSection
+      {showDeveloperSection ? (
+        <AccountDeveloperSection
           apiKeyName={apiKeyName}
           apiKeyScopes={apiKeyScopes}
           apiKeySecret={apiKeySecret}
           apiKeys={apiKeysQuery.data}
-          canCreateApiKeys={canCreateApiKeys}
-          devices={scoutDevicesQuery.data}
           isCreatePending={createApiKeyMutation.isPending}
           isDeletePending={deleteApiKeyMutation.isPending}
           isError={apiKeysQuery.isError}
-          isLocal={isLocal}
-          isRevokePending={revokeScoutDeviceMutation.isPending}
-          isScoutDevicesError={scoutDevicesQuery.isError}
           onCreate={() => {
             setFlashMessage(null);
             setErrorMessage(null);
@@ -241,22 +249,26 @@ export function AccountPage() {
             deleteApiKeyMutation.mutate(id);
           }}
           onNameChange={setApiKeyName}
+          onToggleScope={toggleScope}
+        />
+      ) : null}
+
+      {showScoutSection ? (
+        <AccountScoutSection
+          devices={scoutDevicesQuery.data}
+          isError={scoutDevicesQuery.isError}
+          isRevokePending={revokeScoutDeviceMutation.isPending}
           onRevoke={(id) => {
             setFlashMessage(null);
             setErrorMessage(null);
             revokeScoutDeviceMutation.mutate(id);
           }}
-          onToggleScope={toggleScope}
         />
       ) : null}
 
       {showBillingSection ? (
-        <section id="billing" className="scroll-mt-24">
-          <WorkspaceBillingSection
-            activeProducts={atlasSession.data?.workspace.activeProducts ?? []}
-          />
-        </section>
+        <AccountBillingSection activeProducts={atlasSession.data?.workspace.activeProducts ?? []} />
       ) : null}
-    </div>
+    </AccountLayout>
   );
 }

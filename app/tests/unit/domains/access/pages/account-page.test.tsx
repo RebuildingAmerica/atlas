@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import {
   createAtlasSessionFixture,
   createAtlasWorkspace,
@@ -341,12 +341,31 @@ describe("AccountPage", () => {
     await (mocks.useQuery.mock.calls[2]?.[0] as { queryFn: () => Promise<unknown> }).queryFn();
 
     expect(screen.getByRole("heading", { name: "Account" })).not.toBeNull();
-    expect(screen.getByText("Willie")).not.toBeNull();
-    expect(screen.getByText("person@atlas.test")).not.toBeNull();
-    expect(screen.getByRole("heading", { name: "Workspace" })).not.toBeNull();
+    expect(screen.getAllByText("Willie").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("person@atlas.test").length).toBeGreaterThan(0);
+    const settingsNav = screen.getByRole("navigation", { name: "Account settings" });
+    expect(within(settingsNav).getByRole("link", { name: "Profile" }).getAttribute("href")).toBe(
+      "#profile",
+    );
+    expect(within(settingsNav).getByRole("link", { name: "Security" }).getAttribute("href")).toBe(
+      "#security",
+    );
+    expect(within(settingsNav).getByRole("link", { name: "Developer" }).getAttribute("href")).toBe(
+      "#developer",
+    );
+    expect(within(settingsNav).getByRole("link", { name: "Scout" }).getAttribute("href")).toBe(
+      "#scout",
+    );
+    expect(within(settingsNav).getByRole("link", { name: "Billing" }).getAttribute("href")).toBe(
+      "#billing",
+    );
+    expect(screen.getByRole("heading", { name: "Profile" })).not.toBeNull();
+    expect(screen.getByText("Personal details")).not.toBeNull();
+    expect(screen.getByText("Workspace context")).not.toBeNull();
     expect(screen.getByText("Atlas Team")).not.toBeNull();
     expect(screen.getByRole("heading", { name: "Security" })).not.toBeNull();
-    expect(screen.getByRole("heading", { name: "Developer access" })).not.toBeNull();
+    expect(screen.getByRole("heading", { name: "Developer" })).not.toBeNull();
+    expect(screen.getByRole("heading", { name: "Scout" })).not.toBeNull();
     expect(screen.getByTestId("billing-section")).not.toBeNull();
     expect(screen.queryByRole("button", { name: /Sign out/i })).toBeNull();
 
@@ -614,7 +633,8 @@ describe("AccountPage", () => {
 
     render(<AccountPage />);
     expect(screen.queryByText("Billing")).toBeNull();
-    expect(screen.queryByRole("heading", { name: "Developer access" })).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Developer" })).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Scout" })).toBeNull();
     expect(screen.queryByLabelText("Key name")).toBeNull();
     expect(screen.queryByRole("button", { name: "Add passkey" })).toBeNull();
   });

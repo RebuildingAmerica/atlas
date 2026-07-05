@@ -2,7 +2,7 @@ import { Plus } from "lucide-react";
 import { API_KEY_SCOPES, type ApiKeyScope } from "@/domains/access/api-key-scopes";
 import { Button } from "@/platform/ui/button";
 import { Input } from "@/platform/ui/input";
-import { AccountSettingsRow, AccountSettingsSurface } from "./account-settings-section";
+import { AccountRow, AccountSurface } from "./rows";
 
 export interface AccountApiKeyRecord {
   createdAt: string;
@@ -12,7 +12,7 @@ export interface AccountApiKeyRecord {
   scopes?: ApiKeyScope[];
 }
 
-interface AccountApiKeysSectionProps {
+interface AccountApiKeysProps {
   apiKeyName: string;
   apiKeyScopes: ApiKeyScope[];
   apiKeys: AccountApiKeyRecord[] | undefined;
@@ -25,7 +25,7 @@ interface AccountApiKeysSectionProps {
   onToggleScope: (scope: ApiKeyScope) => void;
 }
 
-export function AccountApiKeysSection({
+export function AccountApiKeys({
   apiKeyName,
   apiKeyScopes,
   apiKeys,
@@ -36,13 +36,11 @@ export function AccountApiKeysSection({
   onDelete,
   onNameChange,
   onToggleScope,
-}: AccountApiKeysSectionProps) {
+}: AccountApiKeysProps) {
   const apiKeyCount = apiKeys?.length;
 
   return (
     <div className="space-y-4">
-      <h3 className="type-title-medium text-ink-strong">API keys</h3>
-
       <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
         <Input
           value={apiKeyName}
@@ -68,7 +66,7 @@ export function AccountApiKeysSection({
           {API_KEY_SCOPES.map((scope) => (
             <label
               key={scope}
-              className="bg-surface-container-lowest flex items-start gap-3 rounded-lg px-3 py-3"
+              className="border-border bg-surface-container-lowest flex items-start gap-3 rounded-lg border px-3 py-3"
             >
               <input
                 type="checkbox"
@@ -84,8 +82,8 @@ export function AccountApiKeysSection({
         </div>
       </div>
 
-      <AccountSettingsSurface>
-        <AccountSettingsRow label="Keys" value={isError ? "Unavailable" : (apiKeyCount ?? 0)} />
+      <AccountSurface>
+        <AccountRow label="Keys" value={isError ? "Unavailable" : (apiKeyCount ?? 0)} />
         {apiKeys?.map((apiKey) => (
           <article key={apiKey.id} className="flex items-center justify-between gap-3 px-4 py-3.5">
             <div>
@@ -113,7 +111,7 @@ export function AccountApiKeysSection({
         {isError ? (
           <p className="type-body-medium text-ink-soft px-4 py-3">Could not load API keys.</p>
         ) : null}
-      </AccountSettingsSurface>
+      </AccountSurface>
     </div>
   );
 }
