@@ -67,6 +67,7 @@ __all__ = [
     "SourceCollectionResponse",
     "SourceFlagCreateRequest",
     "SourceFlagListResponse",
+    "SourceLinkedEntityResponse",
     "SourceResponse",
 ]
 
@@ -156,6 +157,15 @@ class SourceFlagListResponse(BaseModel):
     items: list[FlagResponse] = Field(default_factory=list)
     total: int
     next_cursor: str | None = None
+
+
+class SourceLinkedEntityResponse(BaseModel):
+    """Minimal entity summary linked to a source."""
+
+    id: str
+    name: str
+    type: str
+    slug: str | None = None
 
 
 class ReviewQueueItemResponse(BaseModel):
@@ -408,6 +418,7 @@ class SourceResponse(BaseModel):
     extraction_method: str | None = None
     extraction_context: str | None = None
     linked_entity_ids: list[str] = Field(default_factory=list)
+    linked_entities: list[SourceLinkedEntityResponse] = Field(default_factory=list)
     freshness: FreshnessInfo
     flag_summary: FlagSummary = Field(default_factory=FlagSummary)
     resource_uri: str

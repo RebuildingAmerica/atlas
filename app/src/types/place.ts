@@ -48,6 +48,18 @@ export interface PlaceLatestItem {
   topics: string[];
 }
 
+export interface PlaceLatestList {
+  items: PlaceLatestItem[];
+  nextCursor?: string;
+}
+
+export interface PlaceLatestParams {
+  cursor?: string;
+  limit?: number;
+  query?: string;
+  sourceTypes?: SourceType[];
+}
+
 export interface PlaceLatestLinkedActor {
   href: string;
   id: string;
@@ -108,7 +120,7 @@ export interface PlacePageData {
   governments: PlaceGovernmentSummary[];
   identity: PlaceIdentity;
   issues: PlaceIssueSummary[];
-  latest: PlaceLatestItem[];
+  latest: PlaceLatestList;
   places: PlaceRelatedSummary[];
   summaryFacts: PlaceFact[];
 }

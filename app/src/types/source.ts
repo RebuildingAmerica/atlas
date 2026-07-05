@@ -40,9 +40,17 @@ export interface Source {
   extraction_method: ExtractionMethod;
   extraction_context?: string;
   linked_entity_ids: string[];
+  linked_entities: SourceLinkedEntity[];
   freshness?: FreshnessInfo;
   raw_content?: string;
   created_at: string; // datetime
+}
+
+export interface SourceLinkedEntity {
+  id: string;
+  name: string;
+  slug?: string | null;
+  type: string;
 }
 
 export interface SourceListResponse {

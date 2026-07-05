@@ -35,6 +35,7 @@ from atlas.domains.catalog.schemas.public import (
     SourceCollectionResponse,
     SourceFlagCreateRequest,
     SourceFlagListResponse,
+    SourceLinkedEntityResponse,
 )
 from atlas.domains.catalog.schemas.public import (
     EntityDetailResponse as PublicEntityDetailResponse,
@@ -111,5 +112,6 @@ __all__ = [
     "SourceCollectionResponse",
     "SourceFlagCreateRequest",
     "SourceFlagListResponse",
+    "SourceLinkedEntityResponse",
     "SourceResponse",
 ]

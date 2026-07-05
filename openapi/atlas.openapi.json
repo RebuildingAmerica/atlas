@@ -9993,6 +9993,45 @@
         "title": "SourceFlagListResponse",
         "type": "object"
       },
+      "SourceLinkedEntityResponse": {
+        "description": "Minimal entity summary linked to a source.",
+        "properties": {
+          "id": {
+            "description": "id for this source linked entity.",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "description": "name for this source linked entity.",
+            "title": "Name",
+            "type": "string"
+          },
+          "slug": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "slug for this source linked entity.",
+            "title": "Slug"
+          },
+          "type": {
+            "description": "type for this source linked entity.",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "type"
+        ],
+        "title": "SourceLinkedEntityResponse",
+        "type": "object"
+      },
       "SourceResponse": {
         "description": "Canonical public source shape.",
         "properties": {
@@ -10032,6 +10071,14 @@
             "description": "id for this source.",
             "title": "Id",
             "type": "string"
+          },
+          "linked_entities": {
+            "description": "linked entities for this source.",
+            "items": {
+              "$ref": "#/components/schemas/SourceLinkedEntityResponse"
+            },
+            "title": "Linked Entities",
+            "type": "array"
           },
           "linked_entity_ids": {
             "description": "linked entity ids for this source.",

@@ -51,6 +51,8 @@ export function createSourceFixture(overrides: Partial<Source> = {}): Source {
     ingested_at: "2026-02-01T00:00:00Z",
     extraction_method: "ai_assisted",
     extraction_context: "Jane Doe leads the housing fight.",
+    linked_entity_ids: [],
+    linked_entities: [],
     created_at: "2026-02-01T00:00:00Z",
     ...overrides,
   };

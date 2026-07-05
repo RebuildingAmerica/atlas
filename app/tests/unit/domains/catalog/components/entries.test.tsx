@@ -46,6 +46,8 @@ describe("catalog entry components", () => {
     extraction_method: "manual",
     id: "source_123",
     ingested_at: "2026-04-10T00:00:00.000Z",
+    linked_entity_ids: [],
+    linked_entities: [],
     publication: "Atlas Weekly",
     published_date: "2026-04-11",
     title: "Coverage story",

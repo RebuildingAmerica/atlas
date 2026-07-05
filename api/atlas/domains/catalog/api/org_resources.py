@@ -30,7 +30,12 @@ from atlas.domains.moderation.review_queue import ReviewQueueCRUD
 from atlas.models import EntryCRUD, get_db_connection
 from atlas.platform.config import Settings, get_settings
 from atlas.platform.http.cache import apply_no_store_headers
-from atlas.platform.mcp.data import EntityRecordContext, _entity_record, _source_record
+from atlas.platform.mcp.data import (
+    EntityRecordContext,
+    _entity_record,
+    _source_linked_entity_record,
+    _source_record,
+)
 from atlas.schemas import (
     EntityCreateRequest,
     EntityDetailResponse,
@@ -363,6 +368,7 @@ async def _entry_to_source_linked_detail_response(
                 _source_record(
                     source,
                     linked_entity_ids=[entry.id],
+                    linked_entities=[_source_linked_entity_record(entry)],
                     extraction_context=source["extraction_context"],
                     flag_summary=None,
                 )

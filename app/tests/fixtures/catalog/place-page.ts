@@ -17,26 +17,29 @@ export const placePageFixture = {
     { label: "County", value: "Clark County" },
     { label: "Largest work base", value: "Tourism, service, logistics" },
   ],
-  latest: [
-    {
-      id: "latest-1",
-      title: "County commissioners advance bus stop shade and water funding",
-      attribution: "Clark County agenda, Jul 2",
-      dateLabel: "Jul 2",
-      href: "https://example.test/agenda",
-      linkedActors: [
-        {
-          id: "actor-1",
-          name: "RTC Southern Nevada",
-          href: "/profiles/organizations/rtc-southern-nevada",
-        },
-      ],
-      linkedEntityIds: ["actor-1"],
-      sourceType: "government_record",
-      excerpt: "East-west routes and downtown transfer areas were named in public comment.",
-      topics: ["Transit", "Heat"],
-    },
-  ],
+  latest: {
+    items: [
+      {
+        id: "latest-1",
+        title: "County commissioners advance bus stop shade and water funding",
+        attribution: "Clark County agenda, Jul 2",
+        dateLabel: "Jul 2",
+        href: "https://example.test/agenda",
+        linkedActors: [
+          {
+            id: "actor-1",
+            name: "RTC Southern Nevada",
+            href: "/profiles/organizations/rtc-southern-nevada",
+          },
+        ],
+        linkedEntityIds: ["actor-1"],
+        sourceType: "government_record",
+        excerpt: "East-west routes and downtown transfer areas were named in public comment.",
+        topics: ["Transit", "Heat"],
+      },
+    ],
+    nextCursor: "10",
+  },
   actors: {
     items: [
       {

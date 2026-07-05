@@ -299,6 +299,7 @@ class AtlasDataService:
             _source_record(
                 source,
                 linked_entity_ids=[entity_id],
+                linked_entities=[_source_linked_entity_record(entry)],
                 extraction_context=source["extraction_context"],
                 flag_summary=source_flag_summaries.get(source["id"]),
             )
@@ -352,6 +353,7 @@ class AtlasDataService:
                 _source_record(
                     source,
                     linked_entity_ids=[entity_id],
+                    linked_entities=[_source_linked_entity_record(entry)],
                     extraction_context=source["extraction_context"],
                     flag_summary=source_flag_summaries.get(source["id"]),
                 )
@@ -430,10 +432,21 @@ class AtlasDataService:
             source_flag_summaries = await FlagCRUD.source_flag_summaries(
                 conn, [row[0] for row in rows]
             )
+            linked_entity_ids_by_source = {
+                str(row[0]): row[9].split(",") if row[9] else [] for row in rows
+            }
+            linked_entities_by_id = await _source_linked_entities_by_id(
+                conn,
+                [
+                    entity_id
+                    for linked_entity_ids in linked_entity_ids_by_source.values()
+                    for entity_id in linked_entity_ids
+                ],
+            )
 
         items = []
         for row in rows:
-            linked_entity_ids = row[9].split(",") if row[9] else []
+            linked_entity_ids = linked_entity_ids_by_source[str(row[0])]
             items.append(
                 _source_record(
                     {
@@ -448,6 +461,11 @@ class AtlasDataService:
                         "created_at": row[8],
                     },
                     linked_entity_ids=linked_entity_ids,
+                    linked_entities=[
+                        linked_entities_by_id[entity_id]
+                        for entity_id in linked_entity_ids
+                        if entity_id in linked_entities_by_id
+                    ],
                     flag_summary=source_flag_summaries.get(row[0]),
                 )
             )
@@ -1274,6 +1292,7 @@ def _source_record(
     source: Mapping[str, Any],
     *,
     linked_entity_ids: list[str],
+    linked_entities: list[Mapping[str, Any]] | None = None,
     extraction_context: str | None = None,
     flag_summary: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
@@ -1285,11 +1304,52 @@ def _source_record(
         type=source.get("type"),
         extraction_method=source.get("extraction_method"),
         linked_entity_ids=linked_entity_ids,
+        linked_entities=list(linked_entities or []),
         extraction_context=extraction_context,
         freshness=_source_freshness(source),
         flag_summary=FlagSummary.model_validate(flag_summary or {}),
         resource_uri=f"atlas://sources/{source['id']}",
     ).model_dump(mode="json")
+
+
+def _source_linked_entity_record(entry: Any) -> dict[str, str | None]:
+    """Return the minimal entity summary used on source cards."""
+    return {
+        "id": entry.id,
+        "name": entry.name,
+        "type": entry.type,
+        "slug": entry.slug,
+    }
+
+
+async def _source_linked_entities_by_id(
+    conn: Any,
+    entity_ids: Sequence[str],
+) -> dict[str, dict[str, str | None]]:
+    """Fetch minimal linked entity summaries keyed by entity id."""
+    ordered_ids = list(dict.fromkeys(entity_ids))
+    if not ordered_ids:
+        return {}
+
+    placeholders = ", ".join("?" for _ in ordered_ids)
+    cursor = await conn.execute(
+        f"""
+        SELECT id, name, type, slug
+        FROM entries
+        WHERE id IN ({placeholders})
+        """,
+        ordered_ids,
+    )
+    rows = _rows_to_dicts(cursor, await cursor.fetchall())
+    return {
+        str(row["id"]): {
+            "id": str(row["id"]),
+            "name": str(row["name"]),
+            "type": str(row["type"]),
+            "slug": str(row["slug"]) if row["slug"] is not None else None,
+        }
+        for row in rows
+    }
 
 
 def _latest_source_date(sources: Sequence[Mapping[str, Any]], fallback: str) -> str:

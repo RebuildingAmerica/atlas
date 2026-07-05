@@ -288,6 +288,12 @@ async def test_source_responses_share_canonical_freshness_and_flag_shapes(
     for payload in [entity_source, place_source]:
         assert payload["id"] == source_id
         assert payload["linked_entity_ids"] == [entity_id]
+        assert len(payload["linked_entities"]) == 1
+        linked_entity = payload["linked_entities"][0]
+        assert linked_entity["id"] == entity_id
+        assert linked_entity["name"] == "Gary Housing Justice"
+        assert linked_entity["type"] == "organization"
+        assert linked_entity["slug"].startswith("gary-housing-justice-")
         assert "freshness" in payload
         assert payload["freshness"]["staleness_status"] in {"fresh", "aging", "stale", "unknown"}
         assert "flag_summary" in payload

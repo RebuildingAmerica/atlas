@@ -1,4 +1,4 @@
-import { useState, useTransition, type FormEvent, type ReactNode } from "react";
+import { useRef, useState, useTransition, type FormEvent, type ReactNode } from "react";
 import { ExternalLink, MapPin, Search } from "lucide-react";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -10,9 +10,11 @@ import type {
   PlaceGovernmentSummary,
   PlaceIssueSummary,
   PlaceLatestItem,
+  PlaceLatestList,
   PlacePageData,
   PlaceRelatedSummary,
   PlaceScopeLink,
+  SourceType,
 } from "@/types";
 
 interface PlacePageProps {
@@ -40,6 +42,17 @@ interface FactGridProps {
 
 interface LatestListProps {
   items: PlaceLatestItem[];
+}
+
+interface LatestFeedProps {
+  initialLatest: PlaceLatestList;
+  placeSlug: string;
+}
+
+interface LatestLoadParams {
+  cursor?: string;
+  nextQuery?: string;
+  nextSourceType?: SourceType | null;
 }
 
 interface ActorCardProps {
@@ -91,6 +104,13 @@ const ACTOR_TYPES: { label: string; value: EntryType }[] = [
   { label: "Organizations", value: "organization" },
   { label: "People", value: "person" },
   { label: "Initiatives", value: "initiative" },
+];
+
+const LATEST_SOURCE_TYPES: { label: string; value: SourceType }[] = [
+  { label: "Government records", value: "government_record" },
+  { label: "News", value: "news_article" },
+  { label: "Reports", value: "report" },
+  { label: "Org websites", value: "org_website" },
 ];
 
 const SECTION_NAV_ITEMS: SectionNavItem[] = [
@@ -204,7 +224,7 @@ function LatestList({ items }: LatestListProps) {
   if (items.length === 0) {
     return (
       <p className="type-body-medium text-ink-soft bg-surface-container-lowest rounded-lg p-4">
-        No recent public records listed.
+        No recent activity listed.
       </p>
     );
   }
@@ -215,9 +235,14 @@ function LatestList({ items }: LatestListProps) {
         <article key={item.id} className="bg-surface-container-lowest rounded-lg p-4 sm:p-5">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
             <div className="min-w-0 space-y-2">
-              <p className="type-label-medium text-ink-muted">
-                {formatSourceType(item.sourceType)}
-              </p>
+              <div className="flex flex-wrap gap-2">
+                <span className="type-label-medium text-ink-muted">
+                  {formatSourceType(item.sourceType)}
+                </span>
+                {item.dateLabel ? (
+                  <span className="type-label-medium text-ink-muted">{item.dateLabel}</span>
+                ) : null}
+              </div>
               <a
                 href={item.href}
                 className="type-title-large text-ink-strong hover:text-accent inline-flex items-start gap-2 transition-colors"
@@ -258,6 +283,149 @@ function LatestList({ items }: LatestListProps) {
           </div>
         </article>
       ))}
+    </div>
+  );
+}
+
+function LatestFeed({ initialLatest, placeSlug }: LatestFeedProps) {
+  const [latest, setLatest] = useState(initialLatest);
+  const [query, setQuery] = useState("");
+  const [selectedSourceType, setSelectedSourceType] = useState<SourceType | null>(null);
+  const [isLatestLoading, setIsLatestLoading] = useState(false);
+  const [latestError, setLatestError] = useState<string | null>(null);
+  const latestRequestId = useRef(0);
+
+  async function loadLatest(params: LatestLoadParams) {
+    const requestId = latestRequestId.current + 1;
+    latestRequestId.current = requestId;
+    setIsLatestLoading(true);
+    setLatestError(null);
+
+    try {
+      const next = await api.places.listLatest(placeSlug, {
+        cursor: params.cursor,
+        limit: 10,
+        query: params.nextQuery?.trim() || undefined,
+        sourceTypes: params.nextSourceType ? [params.nextSourceType] : undefined,
+      });
+      if (latestRequestId.current !== requestId) {
+        return;
+      }
+      setLatest((current) => ({
+        items: params.cursor ? [...current.items, ...next.items] : next.items,
+        nextCursor: next.nextCursor,
+      }));
+    } catch {
+      if (latestRequestId.current === requestId) {
+        setLatestError("Latest activity could not load.");
+      }
+    } finally {
+      if (latestRequestId.current === requestId) {
+        setIsLatestLoading(false);
+      }
+    }
+  }
+
+  function submitSearch(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    void loadLatest({ nextQuery: query, nextSourceType: selectedSourceType });
+  }
+
+  function chooseSourceType(value: SourceType | null) {
+    setSelectedSourceType(value);
+    void loadLatest({ nextQuery: query, nextSourceType: value });
+  }
+
+  return (
+    <div className="space-y-4">
+      <form onSubmit={submitSearch} className="flex flex-col gap-3 lg:flex-row">
+        <label className="sr-only" htmlFor="place-latest-search">
+          Search latest activity
+        </label>
+        <input
+          id="place-latest-search"
+          value={query}
+          onChange={(event) => {
+            setQuery(event.target.value);
+          }}
+          className="type-body-medium bg-surface-container-lowest text-ink-strong placeholder:text-ink-muted focus:ring-civic rounded-lg px-4 py-3 outline-none focus:ring-2 lg:flex-1"
+          placeholder="Search latest activity"
+        />
+        <button
+          type="submit"
+          disabled={isLatestLoading}
+          className="type-label-large bg-ink-strong text-surface hover:bg-ink inline-flex items-center justify-center gap-2 rounded-full px-5 py-3 transition-colors disabled:opacity-60"
+        >
+          <Search className="h-4 w-4" aria-hidden />
+          Search
+        </button>
+      </form>
+
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          disabled={isLatestLoading}
+          onClick={() => {
+            chooseSourceType(null);
+          }}
+          className={cn(
+            "type-label-large rounded-full px-3 py-1.5 transition-colors disabled:opacity-60",
+            selectedSourceType === null
+              ? "bg-ink-strong text-surface"
+              : "bg-surface-container text-ink-soft hover:text-ink-strong",
+          )}
+        >
+          All
+        </button>
+        {LATEST_SOURCE_TYPES.map((sourceType) => (
+          <button
+            key={sourceType.value}
+            type="button"
+            disabled={isLatestLoading}
+            onClick={() => {
+              chooseSourceType(sourceType.value);
+            }}
+            className={cn(
+              "type-label-large rounded-full px-3 py-1.5 transition-colors disabled:opacity-60",
+              selectedSourceType === sourceType.value
+                ? "bg-ink-strong text-surface"
+                : "bg-surface-container text-ink-soft hover:text-ink-strong",
+            )}
+          >
+            {sourceType.label}
+          </button>
+        ))}
+      </div>
+
+      {latestError ? (
+        <p
+          role="alert"
+          className="type-body-medium border-error bg-error-container text-on-error-container rounded-lg border p-4"
+        >
+          {latestError}
+        </p>
+      ) : null}
+
+      <LatestList items={latest.items} />
+
+      {latest.nextCursor ? (
+        <div className="flex justify-center">
+          <button
+            type="button"
+            disabled={isLatestLoading}
+            onClick={() => {
+              void loadLatest({
+                cursor: latest.nextCursor,
+                nextQuery: query,
+                nextSourceType: selectedSourceType,
+              });
+            }}
+            className="type-label-large bg-surface-container text-ink-strong hover:bg-surface-container-high rounded-full px-4 py-2 transition-colors disabled:opacity-60"
+          >
+            {isLatestLoading ? "Loading" : "Show more"}
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -591,7 +759,7 @@ export function PlacePage({ data }: PlacePageProps) {
 
         <div className="mt-4 grid gap-5">
           <PlaceSection id="latest" title="Latest">
-            <LatestList items={data.latest} />
+            <LatestFeed initialLatest={data.latest} placeSlug={data.identity.slug} />
           </PlaceSection>
 
           <PlaceSection id="people-organizations" title="People & Organizations">

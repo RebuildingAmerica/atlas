@@ -16,6 +16,7 @@ import {
   type IssueSignalSummary,
   type ListEntitiesParams,
   type ListPlaceEntitiesParams,
+  type ListPlaceSourcesParams,
   type MapPoint as MapPointResponse,
   type PlacePageContextResponse,
   type PlaceProfileResponse,
@@ -45,6 +46,8 @@ import type {
   PlaceIdentity,
   PlaceIssueSummary,
   PlaceLatestItem,
+  PlaceLatestList,
+  PlaceLatestParams,
   PlacePageData,
   PlaceRelatedSummary,
   Source,
@@ -52,6 +55,7 @@ import type {
 } from "@/types";
 
 const TAXONOMY_PAGE_SIZE = 100;
+const PLACE_LATEST_PAGE_SIZE = 10;
 
 function mapSource(source: SourceResponse): Source {
   return {
@@ -65,6 +69,12 @@ function mapSource(source: SourceResponse): Source {
     extraction_method: (source.extraction_method ?? "manual") as Source["extraction_method"],
     extraction_context: source.extraction_context ?? undefined,
     linked_entity_ids: source.linked_entity_ids ?? [],
+    linked_entities: (source.linked_entities ?? []).map((entity) => ({
+      id: entity.id,
+      name: entity.name,
+      slug: entity.slug ?? null,
+      type: entity.type,
+    })),
     freshness: source.freshness as Source["freshness"],
     created_at: source.freshness.created_at ?? "",
   };
@@ -339,10 +349,28 @@ function sourceAttribution(source: Source): string {
   return [publisher, date].filter(Boolean).join(", ");
 }
 
-function mapLatestItem(
-  source: Source,
-  actorById: ReadonlyMap<string, PlaceActorSummary>,
-): PlaceLatestItem {
+function routeSegmentForEntryType(type: string): string {
+  const routeByType: Record<EntryType, string> = {
+    campaign: "campaigns",
+    event: "events",
+    initiative: "initiatives",
+    organization: "organizations",
+    person: "people",
+  };
+  if (type in routeByType) {
+    return routeByType[type as EntryType];
+  }
+  throw new TypeError(`Unsupported entry type: ${type}`);
+}
+
+function linkedEntityHref(entity: Source["linked_entities"][number]): string {
+  if (!entity.slug) {
+    return `/entries/${entity.id}`;
+  }
+  return `/profiles/${routeSegmentForEntryType(entity.type)}/${entity.slug}`;
+}
+
+function mapLatestItem(source: Source): PlaceLatestItem {
   const linkedEntityIds = source.linked_entity_ids;
   return {
     id: source.id,
@@ -351,13 +379,30 @@ function mapLatestItem(
     dateLabel: formatShortDate(source.published_date ?? source.freshness?.published_date),
     href: source.url,
     excerpt: source.extraction_context,
-    linkedActors: linkedEntityIds.flatMap((id) => {
-      const actor = actorById.get(id);
-      return actor ? [{ id: actor.id, name: actor.name, href: actor.href }] : [];
-    }),
+    linkedActors: source.linked_entities.map((entity) => ({
+      id: entity.id,
+      name: entity.name,
+      href: linkedEntityHref(entity),
+    })),
     linkedEntityIds,
     sourceType: source.type,
     topics: [],
+  };
+}
+
+function mapLatestList(response: Awaited<ReturnType<typeof listPlaceSources>>): PlaceLatestList {
+  return {
+    items: response.items?.map(mapSource).map(mapLatestItem) ?? [],
+    nextCursor: response.next_cursor ?? undefined,
+  };
+}
+
+function buildPlaceLatestParams(params: PlaceLatestParams = {}): ListPlaceSourcesParams {
+  return {
+    cursor: params.cursor,
+    limit: params.limit ?? PLACE_LATEST_PAGE_SIZE,
+    source_type: params.sourceTypes?.length ? params.sourceTypes : undefined,
+    text: params.query || undefined,
   };
 }
 
@@ -365,14 +410,7 @@ function entityHref(entry: Entry): string {
   if (!entry.slug) {
     return `/entries/${entry.id}`;
   }
-  const routeByType: Record<EntryType, string> = {
-    campaign: "campaigns",
-    event: "events",
-    initiative: "initiatives",
-    organization: "organizations",
-    person: "people",
-  };
-  return `/profiles/${routeByType[entry.type]}/${entry.slug}`;
+  return `/profiles/${routeSegmentForEntryType(entry.type)}/${entry.slug}`;
 }
 
 function actorWork(entry: Entry): string {
@@ -423,16 +461,15 @@ async function getPlacePage(placeSlug: string): Promise<PlacePageData> {
     listPlaceEntities(placeSlug, { limit: 20 }),
     getPlaceIssueSignals(placeSlug),
     loadPlaceProfile(placeSlug),
-    listPlaceSources(placeSlug, { limit: 6 }),
+    listPlaceSources(placeSlug, { limit: PLACE_LATEST_PAGE_SIZE }),
   ]);
   const facts = profileFacts(profile);
   const actorItems = entities.items?.map(mapEntity).map(mapPlaceActor) ?? [];
-  const actorById = new Map(actorItems.map((actor) => [actor.id, actor]));
 
   return {
     identity: mapPlaceIdentity(placeSlug, context),
     summaryFacts: summaryFacts(context, facts),
-    latest: sources.items?.map(mapSource).map((source) => mapLatestItem(source, actorById)) ?? [],
+    latest: mapLatestList(sources),
     actors: {
       items: actorItems,
       nextCursor: entities.next_cursor ?? undefined,
@@ -442,6 +479,14 @@ async function getPlacePage(placeSlug: string): Promise<PlacePageData> {
     governments: context.governments?.map(mapPlaceGovernment) ?? [],
     places: context.places?.map(mapRelatedPlace) ?? [],
   };
+}
+
+async function listPlaceLatest(
+  placeSlug: string,
+  params: PlaceLatestParams = {},
+): Promise<PlaceLatestList> {
+  const response = await listPlaceSources(placeSlug, buildPlaceLatestParams(params));
+  return mapLatestList(response);
 }
 
 async function listPlaceActors(
@@ -676,5 +721,6 @@ export const api = {
   places: {
     getPage: getPlacePage,
     listActors: listPlaceActors,
+    listLatest: listPlaceLatest,
   },
 };

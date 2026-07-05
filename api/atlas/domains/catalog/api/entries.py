@@ -23,7 +23,12 @@ from atlas.domains.catalog.taxonomy import ALL_ISSUE_SLUGS
 from atlas.models import EntryCRUD, FlagCRUD, get_db_connection
 from atlas.platform.config import Settings, get_settings
 from atlas.platform.http.cache import apply_no_store_headers, apply_short_public_cache
-from atlas.platform.mcp.data import EntityRecordContext, _entity_record, _source_record
+from atlas.platform.mcp.data import (
+    EntityRecordContext,
+    _entity_record,
+    _source_linked_entity_record,
+    _source_record,
+)
 from atlas.schemas import (
     EntityCollectionResponse,
     EntityCreateRequest,
@@ -397,6 +402,7 @@ async def get_entity_sources(
                 _source_record(
                     source,
                     linked_entity_ids=[entity_id],
+                    linked_entities=[_source_linked_entity_record(entry)],
                     extraction_context=source["extraction_context"],
                     flag_summary=source_flag_summaries.get(source["id"]),
                 )
@@ -642,6 +648,7 @@ def _entity_to_detail_response(  # noqa: PLR0913
                 _source_record(
                     source,
                     linked_entity_ids=[entry.id],
+                    linked_entities=[_source_linked_entity_record(entry)],
                     extraction_context=source["extraction_context"],
                     flag_summary=source_flag_summaries.get(source["id"]),
                 )

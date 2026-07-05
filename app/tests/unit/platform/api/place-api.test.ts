@@ -123,6 +123,14 @@ describe("api.places", () => {
           type: "government_record",
           extraction_method: "manual",
           linked_entity_ids: ["entry-1"],
+          linked_entities: [
+            {
+              id: "entry-1",
+              name: "Gary Housing Action",
+              type: "organization",
+              slug: "gary-housing-action",
+            },
+          ],
           freshness: {
             published_date: "2026-07-02",
             ingested_at: "2026-07-03T00:00:00.000Z",
@@ -144,7 +152,7 @@ describe("api.places", () => {
     expect(placeMocks.listPlaceEntities).toHaveBeenCalledWith("gary-in", { limit: 20 });
     expect(placeMocks.getPlaceIssueSignals).toHaveBeenCalledWith("gary-in");
     expect(placeMocks.getPlaceProfile).toHaveBeenCalledWith("gary-in");
-    expect(placeMocks.listPlaceSources).toHaveBeenCalledWith("gary-in", { limit: 6 });
+    expect(placeMocks.listPlaceSources).toHaveBeenCalledWith("gary-in", { limit: 10 });
     expect(result.identity.name).toBe("Gary");
     expect(result.identity.scopes).toEqual([
       { label: "City", href: "/places/gary-in", active: true },
@@ -170,14 +178,87 @@ describe("api.places", () => {
         }),
       ]),
     );
-    expect(result.latest[0]).toEqual(
+    expect(result.latest.items[0]).toEqual(
       expect.objectContaining({
         title: "City council considers housing repair fund",
         attribution: "Gary Common Council, Jul 2",
         dateLabel: "Jul 2",
+        linkedActors: [
+          {
+            id: "entry-1",
+            name: "Gary Housing Action",
+            href: "/profiles/organizations/gary-housing-action",
+          },
+        ],
         linkedEntityIds: ["entry-1"],
         sourceType: "government_record",
       }),
     );
+    expect(result.latest.nextCursor).toBeUndefined();
+  });
+
+  it("loads paginated latest activity for a place", async () => {
+    placeMocks.listPlaceSources.mockResolvedValueOnce({
+      items: [
+        {
+          id: "source-2",
+          url: "https://example.test/gary-report",
+          title: "Gary housing conditions report",
+          publication: "City Lab",
+          type: "report",
+          extraction_method: "manual",
+          extraction_context: "The report names repair funds and tenant groups.",
+          linked_entity_ids: ["entry-2"],
+          linked_entities: [
+            {
+              id: "entry-2",
+              name: "Gary Tenants Union",
+              type: "organization",
+              slug: "gary-tenants-union",
+            },
+          ],
+          freshness: {
+            published_date: "2026-06-20",
+            ingested_at: "2026-06-21T00:00:00.000Z",
+            created_at: "2026-06-21T00:00:00.000Z",
+            staleness_status: "fresh",
+            staleness_reason: "Recent report.",
+          },
+          resource_uri: "atlas://sources/source-2",
+        },
+      ],
+      total: 2,
+      next_cursor: "10",
+    });
+
+    const result = await api.places.listLatest("gary-in", {
+      cursor: "5",
+      limit: 10,
+      query: "housing",
+      sourceTypes: ["report"],
+    });
+
+    expect(placeMocks.listPlaceSources).toHaveBeenCalledWith("gary-in", {
+      cursor: "5",
+      limit: 10,
+      source_type: ["report"],
+      text: "housing",
+    });
+    expect(result).toEqual({
+      items: [
+        expect.objectContaining({
+          title: "Gary housing conditions report",
+          sourceType: "report",
+          linkedActors: [
+            {
+              id: "entry-2",
+              name: "Gary Tenants Union",
+              href: "/profiles/organizations/gary-tenants-union",
+            },
+          ],
+        }),
+      ],
+      nextCursor: "10",
+    });
   });
 });
