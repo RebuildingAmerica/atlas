@@ -1,0 +1,122 @@
+---
+title: "Scout troubleshooting"
+description: "Fix common Scout setup, run, browser, search, sync, and worker issues."
+---
+
+Start with doctor:
+
+```bash
+scout doctor
+scout doctor --worker
+```
+
+Use `--debug` on any Scout command when you need verbose logs:
+
+```bash
+scout --debug run https://example.org
+```
+
+## Scout Cannot Find A Model
+
+Inspect the active model configuration:
+
+```bash
+scout config show
+```
+
+Re-run model setup:
+
+```bash
+scout config llm
+```
+
+If you use LM Studio or Ollama, make sure the app or local server is running
+before retrying the run.
+
+## Search-Backed Discovery Fails
+
+Check search status:
+
+```bash
+scout search status
+```
+
+Reconnect search-backed discovery:
+
+```bash
+scout search connect
+```
+
+Direct URL runs do not need a search key. Runs with `--location` and `--issues`
+do.
+
+## Browser Rendering Fails
+
+Scout uses normal HTML fetching first. When a page looks useful but only exposes
+content after JavaScript runs, Scout may try headless Chromium through
+Playwright.
+
+If the browser fallback is unavailable or too expensive for your machine, turn
+it off:
+
+```bash
+scout config set scraper.browser_fallback_enabled false
+```
+
+If Playwright is installed but Chromium is missing, install the browser binary:
+
+```bash
+uvx --from playwright playwright install chromium
+```
+
+If JavaScript-heavy public pages are important for the run, leave it enabled and
+keep the browser budget bounded:
+
+```bash
+scout config set scraper.max_browser_renders_per_run 8
+scout config set scraper.max_browser_concurrent 1
+```
+
+## Sync Fails
+
+Check login:
+
+```bash
+scout auth status
+scout whoami
+```
+
+Log in again:
+
+```bash
+scout login
+```
+
+For workspace sync, confirm the workspace id:
+
+```bash
+scout sync RUN_ID --target workspace --workspace WORKSPACE_ID
+```
+
+## Local Data Looks Wrong
+
+Find the local database:
+
+```bash
+scout db path
+```
+
+List recent runs and pages:
+
+```bash
+scout runs list
+scout pages list --limit 20
+```
+
+Resetting the database deletes local runs, entries, and pages:
+
+```bash
+scout db reset
+```
+
+Use reset only when you no longer need the local artifacts.

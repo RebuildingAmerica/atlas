@@ -1,0 +1,106 @@
+---
+title: "Review and sync Scout results"
+description: "Inspect local runs, pages, and entries before syncing selected artifacts to Atlas."
+---
+
+Scout keeps a local record of runs, fetched pages, and extracted entries. Review
+those artifacts before syncing anything to Atlas.
+
+## Inspect Local Runs
+
+List recent runs:
+
+```bash
+scout runs list
+```
+
+Inspect one run:
+
+```bash
+scout runs inspect RUN_ID
+```
+
+Cancel an in-flight or stale local run record:
+
+```bash
+scout runs cancel RUN_ID
+```
+
+## Inspect Pages And Entries
+
+List fetched pages:
+
+```bash
+scout pages list --limit 20
+```
+
+List entries:
+
+```bash
+scout entries list --limit 20
+```
+
+Show aggregate counts:
+
+```bash
+scout entries stats
+```
+
+These views help answer whether Scout found source-backed actors, which sources
+were processed, and what still needs human judgment.
+
+## Sync A Reviewed Run
+
+Sync the latest ready run:
+
+```bash
+scout sync
+```
+
+Sync a specific run:
+
+```bash
+scout sync RUN_ID
+```
+
+Sync every completed run with ready artifacts:
+
+```bash
+scout sync --all-ready
+```
+
+The same explicit sync path is available under `runs`:
+
+```bash
+scout runs sync RUN_ID
+```
+
+## Choose Visibility
+
+Public sync stages source-backed artifacts for Atlas review. It does not publish
+records directly:
+
+```bash
+scout sync RUN_ID --target public
+```
+
+Workspace sync keeps the reviewed run private to a workspace:
+
+```bash
+scout sync RUN_ID --target workspace --workspace WORKSPACE_ID
+```
+
+Use workspace sync when the run contains private review context, uncertain
+leads, or work that should not be visible in the public directory.
+
+## Read Sync Receipts
+
+A sync receipt should tell you:
+
+- The remote Atlas run id.
+- Which local entries mapped to Atlas entries.
+- Which records stayed private, staged for review, or were skipped.
+- Which workspace or public review surface should be opened next.
+
+Treat sync links as mappings, not proof. The sources determine whether a result
+is strong enough to use.

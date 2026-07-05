@@ -1,0 +1,66 @@
+---
+title: "Scout CLI"
+description: "Run Atlas discovery locally, review source evidence, and sync selected results when they are ready."
+---
+
+Scout is the local Atlas discovery CLI. It can run on its own against public
+URLs, files of URLs, or search-backed place and issue queries. When connected to
+Atlas, it can sync reviewed local research into a public review flow or a
+private workspace.
+
+Use Scout when you need local control over discovery: a specific city, a narrow
+research question, a repeatable script, or a reviewable source trail before
+anything enters Atlas.
+
+## What Scout Does Locally
+
+- Fetches public sources and extracts possible civic actors.
+- Follows same-domain links when configured.
+- Uses a local or configured model provider to structure results.
+- Stores local runs, pages, and entries in a local Scout database.
+- Lets you inspect the evidence before syncing.
+
+Scout is not only an Atlas API client. You can run local discovery without
+syncing anything. Atlas becomes useful when you want shared review, workspace
+visibility, or contribution receipts.
+
+## Standalone And Atlas-Connected Modes
+
+| Mode | Best for | Atlas account |
+| --- | --- | --- |
+| Local direct URL run | Inspecting known public pages and saving local artifacts. | Not required |
+| Local search-backed run | Finding sources for a place and issue set. | Not required, but a search key is required |
+| Sync to Atlas | Moving reviewed local artifacts into Atlas review or a workspace. | Required |
+| Worker mode | Letting Atlas assign discovery jobs to this machine. | Required |
+
+## Trust Boundary
+
+Scout produces research artifacts, not verified public claims. A completed run
+means Scout finished processing sources. It does not mean every extracted person,
+organization, initiative, campaign, or event is ready for outreach,
+publication, funding review, or import.
+
+Keep the source URL, title, date, source type, and extraction context with any
+claim you use. The source evidence is what makes Scout results useful.
+
+## Start Here
+
+<CardGroup cols={2}>
+
+<Card title="Install Scout" icon="download" href="/scout/install">
+  Install the CLI and confirm the command is available.
+</Card>
+
+<Card title="Set up Scout" icon="sliders" href="/scout/setup">
+  Configure Atlas login, local models, search keys, and readiness checks.
+</Card>
+
+<Card title="Run discovery" icon="terminal" href="/scout/run">
+  Run direct URL, file, and search-backed discovery.
+</Card>
+
+<Card title="Review and sync" icon="rotate" href="/scout/review-sync">
+  Inspect local artifacts and sync reviewed runs to Atlas.
+</Card>
+
+</CardGroup>

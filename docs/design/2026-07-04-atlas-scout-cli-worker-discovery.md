@@ -128,16 +128,12 @@ uv tool install --reinstall --editable ./scout \
   --with-editable ./libs/discovery-engine
 ```
 
-Verify the packaged command path without touching the real Scout config:
-
-```bash
-sh scripts/smoke-scout-install.sh
-```
-
-The smoke check installs Scout into a temporary virtualenv, runs the installed
-`scout` executable, exercises `search` and `worker` command surfaces, checks
-that search credentials avoid plaintext file storage, and confirms worker startup
-fails clearly before login.
+Verify the packaged command path in an isolated environment before release.
+The release check should install `libs/shared`, `libs/discovery-engine`, and
+`scout` into a temporary virtualenv or Homebrew formula test, then run
+`scout --help`, `scout doctor --json`, and the focused CLI tests for search,
+sync, and worker startup. This keeps install verification aligned with the
+real packaging target instead of maintaining a separate repo-local smoke script.
 
 Scout includes shell completion generation and standard man page generation as
 package capabilities, not as a top-level product command. Normal users should

@@ -1,0 +1,99 @@
+---
+title: "Set up Scout"
+description: "Connect Scout to Atlas, configure a model provider, and check readiness."
+---
+
+`scout setup` is the normal first-run path. It helps choose a local profile,
+log in when needed, configure a local model provider, and install optional shell
+integration.
+
+```bash
+scout setup
+```
+
+## Atlas Login
+
+Login connects this computer to Atlas for sync and worker mode:
+
+```bash
+scout login
+```
+
+Scout opens an Atlas approval page in your browser. If you are on a server or
+inside a terminal-only environment, print the approval URL instead:
+
+```bash
+scout login --no-browser
+```
+
+Check the current login:
+
+```bash
+scout auth status
+scout whoami
+```
+
+Local direct URL runs do not require login. Sync and worker mode do.
+
+## Local Model Provider
+
+Scout can use local providers such as LM Studio or Ollama. Configure the active
+provider and model:
+
+```bash
+scout config llm
+```
+
+You can also set values directly:
+
+```bash
+scout config set llm.provider lmstudio
+scout config set llm.model local-model-name
+```
+
+Use `scout config show` to inspect the active profile.
+
+## Search-Backed Discovery
+
+Direct URL runs do not need a search key. Place and issue discovery does:
+
+```bash
+scout search connect
+scout search status
+```
+
+Disconnect stored search credentials:
+
+```bash
+scout search disconnect
+```
+
+## Readiness Check
+
+Run doctor before a serious run:
+
+```bash
+scout doctor
+```
+
+Include worker checks only when this machine should process Atlas-assigned jobs:
+
+```bash
+scout doctor --worker
+```
+
+For scripts:
+
+```bash
+scout doctor --json
+```
+
+## Profiles
+
+Profiles keep laptop, workstation, and test settings separate:
+
+```bash
+scout config create-profile studio
+scout config use-profile studio
+scout --profile studio run https://example.org
+```

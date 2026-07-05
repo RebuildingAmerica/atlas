@@ -1,0 +1,125 @@
+---
+title: "Run discovery with Scout"
+description: "Run direct URL, file, and search-backed local discovery."
+---
+
+Scout runs discovery locally and stores the results on your machine. You can
+review them before deciding whether anything should sync to Atlas.
+
+## Direct URL Runs
+
+Use direct URL mode when you already know which public source to inspect:
+
+```bash
+scout run https://example.org/article
+```
+
+Add a prompt to focus extraction:
+
+```bash
+scout run \
+  --prompt "Find tenant organizers and legal aid groups mentioned on this page" \
+  https://example.org/article
+```
+
+## Files Of URLs
+
+Use one URL per line:
+
+```bash
+scout run --file urls.txt
+```
+
+Use standard input for scripts:
+
+```bash
+cat urls.txt | scout run --file -
+```
+
+## Search-Backed Runs
+
+Connect search first:
+
+```bash
+scout search connect
+```
+
+Then run a place and issue search:
+
+```bash
+scout run \
+  --location "Austin, TX" \
+  --issues housing_affordability
+```
+
+Use comma-separated issue area slugs:
+
+```bash
+scout run \
+  --location "Las Vegas, NV" \
+  --issues housing_affordability,public_transit
+```
+
+## Crawl Controls
+
+Scout can follow same-domain links from seed pages:
+
+```bash
+scout run https://example.org --follow-links
+```
+
+Limit crawl depth and pages per seed:
+
+```bash
+scout run https://example.org \
+  --max-link-depth 1 \
+  --max-pages-per-seed 10
+```
+
+Bypass cached fetch and extraction results:
+
+```bash
+scout run https://example.org --refresh
+```
+
+## Headless Browser Fallback
+
+Scout may launch a headless Chromium browser through Playwright when a public
+source looks useful but normal HTML fetching cannot read enough text. This is a
+bounded fallback for JavaScript-rendered pages, not the primary fetch path.
+
+Defaults:
+
+| Setting | Default |
+| --- | ---: |
+| Browser fallback enabled | `true` |
+| Browser render attempts per run | `8` |
+| Concurrent browser renders | `1` |
+
+Scout does not open visible browser windows. Disable the fallback:
+
+```bash
+scout config set scraper.browser_fallback_enabled false
+```
+
+Inspect active limits:
+
+```bash
+scout config show
+```
+
+## Progress And Sync
+
+Use default progress for interactive work. Use quiet mode for scripts:
+
+```bash
+scout run --quiet https://example.org
+```
+
+Sync after a run:
+
+```bash
+scout run --sync https://example.org
+```
+
+For review-first workflows, run locally first, then sync from the saved run.

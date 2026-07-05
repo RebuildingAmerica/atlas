@@ -1,0 +1,70 @@
+---
+title: "Run Scout as an Atlas worker"
+description: "Let Atlas assign discovery jobs to a trusted local Scout process."
+---
+
+Worker mode lets a logged-in Scout installation claim Atlas discovery jobs,
+process them locally, and return source-linked artifacts for review.
+
+Use worker mode only on a machine you intend to leave running. For one-off local
+research, use `scout run`.
+
+## Requirements
+
+- Atlas login on this machine.
+- A local model provider or configured model provider.
+- Search-backed discovery access for exploratory jobs.
+- `scout doctor --worker` passing before long-running work.
+
+Check readiness:
+
+```bash
+scout doctor --worker
+```
+
+## Start A Worker
+
+```bash
+scout worker start
+```
+
+Change the idle polling interval:
+
+```bash
+scout worker start --interval 30
+```
+
+Pass a search key for automation when needed:
+
+```bash
+scout worker start --search-api-key "$SEARCH_API_KEY"
+```
+
+Normal interactive use should prefer:
+
+```bash
+scout search connect
+```
+
+## Check Or Stop Worker Mode
+
+Show tracked worker state:
+
+```bash
+scout worker status
+```
+
+Stop the tracked worker process:
+
+```bash
+scout worker stop
+```
+
+## What Worker Output Means
+
+Worker output is not a direct publish path. Returned artifacts still need the
+same evidence review, visibility decision, and publication gate as other Scout
+or hosted discovery runs.
+
+If the worker is revoked in Atlas, active leases should be released and the
+machine should stop claiming new jobs.

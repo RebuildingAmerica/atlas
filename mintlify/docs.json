@@ -138,6 +138,18 @@
             ]
           },
           {
+            "group": "Scout CLI",
+            "pages": [
+              "scout/overview",
+              "scout/install",
+              "scout/setup",
+              "scout/run",
+              "scout/review-sync",
+              "scout/worker",
+              "scout/troubleshooting"
+            ]
+          },
+          {
             "group": "MCP and agents",
             "pages": [
               "mcp/overview",
