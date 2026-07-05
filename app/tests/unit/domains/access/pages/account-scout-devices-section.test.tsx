@@ -16,17 +16,19 @@ vi.mock("lucide-react", () => {
 
 vi.mock("@/platform/ui/button", () => ({
   Button: ({
+    ariaLabel,
     children,
     disabled,
     onClick,
     type = "button",
   }: {
+    ariaLabel?: string;
     children: ReactNode;
     disabled?: boolean;
     onClick?: () => void;
     type?: "button" | "submit" | "reset";
   }) => (
-    <button type={type} disabled={disabled} onClick={onClick}>
+    <button type={type} aria-label={ariaLabel} disabled={disabled} onClick={onClick}>
       {children}
     </button>
   ),
@@ -87,7 +89,7 @@ describe("AccountScoutDevicesSection", () => {
   });
 
   it("renders empty and error states", () => {
-    render(
+    const { rerender } = render(
       <AccountScoutDevicesSection
         devices={[]}
         isError={true}
@@ -96,7 +98,19 @@ describe("AccountScoutDevicesSection", () => {
       />,
     );
 
-    expect(screen.getByText("Atlas could not load your Scout devices right now.")).not.toBeNull();
-    expect(screen.getByText("No Scout devices connected.")).not.toBeNull();
+    expect(screen.getByText("Could not load Scout devices.")).not.toBeNull();
+    expect(screen.getByText("Unavailable")).not.toBeNull();
+    expect(screen.queryByText("No Scout devices.")).toBeNull();
+
+    rerender(
+      <AccountScoutDevicesSection
+        devices={[]}
+        isError={false}
+        isRevokePending={false}
+        onRevoke={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("No Scout devices.")).not.toBeNull();
   });
 });

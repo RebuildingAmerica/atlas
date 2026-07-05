@@ -18,7 +18,7 @@ afterEach(() => {
 });
 
 describe("AccountWorkspaceCards", () => {
-  it("renders nothing for local-mode operators", () => {
+  it("renders nothing in local mode", () => {
     const { container } = render(
       <AccountWorkspaceCards
         activeWorkspaceName="Atlas Local"
@@ -31,7 +31,7 @@ describe("AccountWorkspaceCards", () => {
     expect(container.textContent).toBe("");
   });
 
-  it("renders all three cards when workspace is needed, invitations pending, and an active workspace exists", () => {
+  it("renders workspace and invitation rows", () => {
     render(
       <AccountWorkspaceCards
         activeWorkspaceName="Atlas Team"
@@ -41,14 +41,31 @@ describe("AccountWorkspaceCards", () => {
       />,
     );
 
-    expect(screen.getByText("Workspace setup is waiting")).not.toBeNull();
-    expect(screen.getByText("Workspace invitations waiting")).not.toBeNull();
-    expect(screen.getByText("Current workspace")).not.toBeNull();
+    expect(screen.getByRole("heading", { name: "Workspace" })).not.toBeNull();
     expect(screen.getByText("Atlas Team")).not.toBeNull();
+    expect(screen.getByText("Invitations")).not.toBeNull();
+    expect(screen.getByText("Pending")).not.toBeNull();
+    expect(screen.getByRole("link", { name: "Manage" })).not.toBeNull();
+    expect(screen.getByRole("link", { name: "Review" })).not.toBeNull();
   });
 
-  it("hides the workspace-needed and pending-invitation cards when the operator is fully onboarded", () => {
+  it("renders setup state when no workspace is active", () => {
     render(
+      <AccountWorkspaceCards
+        activeWorkspaceName={null}
+        hasPendingInvitations={false}
+        isLocal={false}
+        needsWorkspace={true}
+      />,
+    );
+
+    expect(screen.getByRole("heading", { name: "Workspace" })).not.toBeNull();
+    expect(screen.getByText("Not set")).not.toBeNull();
+    expect(screen.getByRole("link", { name: "Open" })).not.toBeNull();
+  });
+
+  it("renders nothing when no workspace state needs attention", () => {
+    const { container } = render(
       <AccountWorkspaceCards
         activeWorkspaceName={null}
         hasPendingInvitations={false}
@@ -57,8 +74,6 @@ describe("AccountWorkspaceCards", () => {
       />,
     );
 
-    expect(screen.queryByText("Workspace setup is waiting")).toBeNull();
-    expect(screen.queryByText("Workspace invitations waiting")).toBeNull();
-    expect(screen.queryByText("Current workspace")).toBeNull();
+    expect(container.textContent).toBe("");
   });
 });

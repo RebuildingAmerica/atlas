@@ -1,53 +1,34 @@
-import { LogOut } from "lucide-react";
-import { Button } from "@/platform/ui/button";
-
 interface AccountHeaderProps {
   email: string | undefined;
-  isLocal: boolean;
   name: string | null | undefined;
-  rpLogoutAvailable: boolean | null;
-  onSignOut: () => void;
 }
 
-/**
- * Top header row of the account page — name / email block on the left,
- * and (in deployed mode) a Sign out button paired with the RP-Initiated
- * Logout caption that tells the operator whether Atlas will also sign
- * them out of their identity provider.
- */
-export function AccountHeader({
-  email,
-  isLocal,
-  name,
-  rpLogoutAvailable,
-  onSignOut,
-}: AccountHeaderProps) {
+export function AccountHeader({ email, name }: AccountHeaderProps) {
+  const nameText = name?.trim() || null;
+  const visibleIdentity = nameText || email || null;
+  const avatarInitial = (visibleIdentity ?? "A").trim().charAt(0).toUpperCase() || "A";
+
   return (
-    <section className="flex flex-wrap items-start justify-between gap-4">
-      <div className="space-y-2">
-        <p className="type-label-medium text-outline">Account</p>
-        <h1 className="type-headline-large text-on-surface">{name?.trim() || email}</h1>
-        <p className="type-body-large text-outline">{email}</p>
-      </div>
-      {!isLocal ? (
-        <div className="flex flex-col items-end gap-1">
-          <Button variant="secondary" onClick={onSignOut}>
-            <span className="inline-flex items-center gap-2">
-              <LogOut className="h-4 w-4" />
-              Sign out
-            </span>
-          </Button>
-          {rpLogoutAvailable === true ? (
-            <p className="type-body-small text-outline" aria-live="polite">
-              Atlas will also sign you out of your identity provider.
-            </p>
-          ) : rpLogoutAvailable === false ? (
-            <p className="type-body-small text-outline" aria-live="polite">
-              Your identity provider session may stay active until it expires on its own.
-            </p>
-          ) : null}
+    <section id="profile" className="scroll-mt-24">
+      <div className="border-border flex flex-wrap items-end justify-between gap-5 border-b pb-6">
+        <div className="min-w-0">
+          <h1 className="type-display-small text-ink-strong">Account</h1>
         </div>
-      ) : null}
+
+        {visibleIdentity ? (
+          <div className="bg-surface-container-lowest flex min-w-0 items-center gap-3 rounded-xl px-3 py-2 shadow-[0_1px_2px_rgba(15,23,42,0.04)] ring-1 ring-black/5">
+            <div className="bg-civic text-surface flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-semibold">
+              {avatarInitial}
+            </div>
+            <div className="min-w-0">
+              {nameText ? (
+                <p className="type-title-small text-ink-strong truncate">{nameText}</p>
+              ) : null}
+              {email ? <p className="type-body-small text-ink-soft truncate">{email}</p> : null}
+            </div>
+          </div>
+        ) : null}
+      </div>
     </section>
   );
 }

@@ -1,6 +1,7 @@
 import { Check, KeyRound, Pencil, Trash2, X } from "lucide-react";
 import { Button } from "@/platform/ui/button";
 import { Input } from "@/platform/ui/input";
+import { AccountSettingsRow, AccountSettingsSurface } from "./account-settings-section";
 
 export interface AccountPasskeyRecord {
   id: string;
@@ -26,12 +27,6 @@ interface AccountPasskeysSectionProps {
   onSubmitRename: (id: string, name: string) => void;
 }
 
-/**
- * Card on the account page that lists registered passkeys and exposes
- * inline rename, delete, and add-new controls.  Empty and error states
- * sit at the bottom of the card so the operator always sees the add
- * button and any existing passkeys above them.
- */
 export function AccountPasskeysSection({
   editingPasskeyId,
   editingPasskeyName,
@@ -47,27 +42,31 @@ export function AccountPasskeysSection({
   onStartRename,
   onSubmitRename,
 }: AccountPasskeysSectionProps) {
-  return (
-    <div className="border-outline bg-surface space-y-4 rounded-[1.5rem] border p-6">
-      <div className="space-y-2">
-        <h2 className="type-title-large text-on-surface">Passkeys</h2>
-        <p className="type-body-medium text-outline">
-          Register a passkey after your email-based sign-in so future access is faster.
-        </p>
-      </div>
-      <Button variant="secondary" disabled={isAddingPasskey} onClick={onAddPasskey}>
-        <span className="inline-flex items-center gap-2">
-          <KeyRound className="h-4 w-4" />
-          {isAddingPasskey ? "Adding passkey..." : "Add passkey"}
-        </span>
-      </Button>
+  const passkeyCount = passkeys?.length;
 
-      <div className="space-y-3">
+  return (
+    <div className="space-y-3">
+      <AccountSettingsSurface>
+        <AccountSettingsRow
+          label="Passkeys"
+          value={isError ? "Unavailable" : (passkeyCount ?? 0)}
+          action={
+            <Button
+              ariaLabel="Add passkey"
+              variant="secondary"
+              size="sm"
+              disabled={isAddingPasskey}
+              onClick={onAddPasskey}
+            >
+              <span className="inline-flex items-center gap-2">
+                <KeyRound aria-hidden="true" className="h-4 w-4" />
+                {isAddingPasskey ? "Adding..." : "Add"}
+              </span>
+            </Button>
+          }
+        />
         {passkeys?.map((pk) => (
-          <article
-            key={pk.id}
-            className="border-outline-variant flex items-center justify-between gap-3 rounded-2xl border bg-white/70 px-4 py-3"
-          >
+          <article key={pk.id} className="flex items-center justify-between gap-3 px-4 py-3.5">
             <div className="min-w-0 flex-1 space-y-1">
               {editingPasskeyId === pk.id ? (
                 <form
@@ -79,20 +78,26 @@ export function AccountPasskeysSection({
                 >
                   <Input value={editingPasskeyName} onChange={onRenameChange} label="" />
                   <Button
+                    ariaLabel="Save passkey name"
                     type="submit"
                     variant="ghost"
                     disabled={!editingPasskeyName.trim() || isRenamePending}
                   >
-                    <Check className="h-4 w-4" />
+                    <Check aria-hidden="true" className="h-4 w-4" />
                   </Button>
-                  <Button type="button" variant="ghost" onClick={onCancelRename}>
-                    <X className="h-4 w-4" />
+                  <Button
+                    ariaLabel="Cancel passkey rename"
+                    type="button"
+                    variant="ghost"
+                    onClick={onCancelRename}
+                  >
+                    <X aria-hidden="true" className="h-4 w-4" />
                   </Button>
                 </form>
               ) : (
-                <p className="type-title-small text-on-surface">{pk.name || "Unnamed passkey"}</p>
+                <p className="type-title-small text-ink-strong">{pk.name || "Unnamed passkey"}</p>
               )}
-              <p className="type-body-small text-outline">
+              <p className="type-body-small text-ink-soft">
                 {pk.deviceType === "platform" ? "Device passkey" : "Hardware key"}
                 {pk.backedUp ? " · synced" : ""}
                 {" · "}
@@ -102,21 +107,23 @@ export function AccountPasskeysSection({
             {editingPasskeyId !== pk.id ? (
               <div className="flex items-center gap-1">
                 <Button
+                  ariaLabel="Rename passkey"
                   variant="ghost"
                   onClick={() => {
                     onStartRename(pk.id, pk.name ?? "");
                   }}
                 >
-                  <Pencil className="h-4 w-4" />
+                  <Pencil aria-hidden="true" className="h-4 w-4" />
                 </Button>
                 <Button
+                  ariaLabel="Delete passkey"
                   variant="ghost"
                   onClick={() => {
                     onDelete(pk.id);
                   }}
                   disabled={isDeletePending}
                 >
-                  <Trash2 className="h-4 w-4" />
+                  <Trash2 aria-hidden="true" className="h-4 w-4" />
                 </Button>
               </div>
             ) : null}
@@ -124,17 +131,9 @@ export function AccountPasskeysSection({
         ))}
 
         {isError ? (
-          <p className="type-body-medium text-outline">
-            Atlas could not load your passkeys right now.
-          </p>
+          <p className="type-body-medium text-ink-soft px-4 py-3">Could not load passkeys.</p>
         ) : null}
-
-        {passkeys?.length === 0 ? (
-          <p className="type-body-medium text-outline">
-            No passkeys yet. Add one above for faster sign-in.
-          </p>
-        ) : null}
-      </div>
+      </AccountSettingsSurface>
     </div>
   );
 }

@@ -1,13 +1,31 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
+import type { ReactNode } from "react";
 import { render, screen, fireEvent, cleanup, act } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { createAtlasSessionFixture } from "@/../tests/fixtures/access/sessions";
+import {
+  createAtlasSessionFixture,
+  createAtlasWorkspace,
+} from "@/../tests/fixtures/access/sessions";
 
 vi.mock("@tanstack/react-router", async () => {
   const harness = await import("@/../tests/helpers/router-harness");
   return harness.installRouterMocks();
 });
+
+vi.mock("@headlessui/react", () => ({
+  Popover: ({ children, className }: { children: ReactNode; className?: string }) => (
+    <div className={className}>{children}</div>
+  ),
+  PopoverButton: ({ children, className }: { children: ReactNode; className?: string }) => (
+    <button type="button" className={className}>
+      {children}
+    </button>
+  ),
+  PopoverPanel: ({ children, className }: { children: ReactNode; className?: string }) => (
+    <div className={className}>{children}</div>
+  ),
+}));
 
 vi.mock("@tanstack/react-query", () => ({
   useMutation: vi.fn(),
@@ -112,10 +130,8 @@ describe("routes/_workspace layout", () => {
 
   it("requires a ready session in beforeLoad", async () => {
     const access = await import("@/domains/access/server");
-    const session = { user: { id: "u1" } };
-    vi.mocked(access.requireReadyAtlasSession).mockResolvedValue(
-      session as Awaited<ReturnType<typeof access.requireReadyAtlasSession>>,
-    );
+    const session = createAtlasSessionFixture();
+    vi.mocked(access.requireReadyAtlasSession).mockResolvedValue(session);
 
     const routeModule = await import("@/routes/_workspace");
     const { asRouteStub } = await import("@/../tests/helpers/router-harness");
@@ -125,6 +141,53 @@ describe("routes/_workspace layout", () => {
     const ctx = await Route.options.beforeLoad({ location: { href: "/dashboard" } });
     expect(access.requireReadyAtlasSession).toHaveBeenCalledWith("/dashboard");
     expect(ctx).toEqual({ session });
+  });
+
+  it("redirects workspace-less sessions away from app routes before child loaders run", async () => {
+    const access = await import("@/domains/access/server");
+    const session = createAtlasSessionFixture({
+      workspace: createAtlasWorkspace({
+        activeOrganization: null,
+        memberships: [],
+        onboarding: { needsWorkspace: true },
+      }),
+    });
+    vi.mocked(access.requireReadyAtlasSession).mockResolvedValue(session);
+
+    const routeModule = await import("@/routes/_workspace");
+    const { asRouteStub, readRouterMocks } = await import("@/../tests/helpers/router-harness");
+    const Route = asRouteStub(routeModule.Route);
+
+    if (!Route.options.beforeLoad) throw new Error("Expected beforeLoad");
+    await expect(Route.options.beforeLoad({ location: { href: "/discovery" } })).rejects.toThrow(
+      "Redirect",
+    );
+    expect(readRouterMocks().redirect).toHaveBeenCalledWith({ to: "/organization" });
+  });
+
+  it("keeps workspace setup and user settings reachable for workspace-less sessions", async () => {
+    const access = await import("@/domains/access/server");
+    const session = createAtlasSessionFixture({
+      workspace: createAtlasWorkspace({
+        activeOrganization: null,
+        memberships: [],
+        onboarding: { needsWorkspace: true },
+      }),
+    });
+    vi.mocked(access.requireReadyAtlasSession).mockResolvedValue(session);
+
+    const routeModule = await import("@/routes/_workspace");
+    const { asRouteStub, readRouterMocks } = await import("@/../tests/helpers/router-harness");
+    const Route = asRouteStub(routeModule.Route);
+
+    if (!Route.options.beforeLoad) throw new Error("Expected beforeLoad");
+    await expect(
+      Route.options.beforeLoad({ location: { href: "/organization" } }),
+    ).resolves.toEqual({ session });
+    await expect(Route.options.beforeLoad({ location: { href: "/account" } })).resolves.toEqual({
+      session,
+    });
+    expect(readRouterMocks().redirect).not.toHaveBeenCalled();
   });
 
   it("seeds the session hook with the ready session from route context", async () => {
@@ -298,7 +361,7 @@ describe("routes/_workspace layout", () => {
     vi.mocked(useAtlasSession).mockReturnValue({
       data: {
         isLocal: false,
-        user: { id: "u1", name: "Operator", email: "ops@acme.test" },
+        user: { id: "u1", name: "Willie", email: "person@atlas.test" },
         workspace: {
           activeOrganization: { id: "org_1", name: "Acme", workspaceType: "team" },
           memberships: [{ id: "org_1", name: "Acme" }],
@@ -331,7 +394,7 @@ describe("routes/_workspace layout", () => {
       "Organization",
       "Account",
     ]);
-    expect(screen.getByText("Operator")).toBeInTheDocument();
+    expect(screen.getAllByText("Willie").length).toBeGreaterThan(0);
     expect(screen.getByText("Enterprise SSO")).toBeInTheDocument();
 
     const select = screen.getByLabelText("workspace-select");
@@ -388,7 +451,7 @@ describe("routes/_workspace layout", () => {
     const Component = Route.options.component;
     if (!Component) throw new Error("Expected Route.options.component");
     render(<Component />);
-    expect(screen.getByText("ops@acme.test")).toBeInTheDocument();
+    expect(screen.getAllByText("ops@acme.test").length).toBeGreaterThan(0);
     expect(screen.getByText("Acme")).toBeInTheDocument();
     expect(screen.queryByLabelText("workspace-select")).toBeNull();
   });

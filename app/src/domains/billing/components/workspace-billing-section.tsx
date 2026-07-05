@@ -1,5 +1,9 @@
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
+import {
+  AccountSettingsRow,
+  AccountSettingsSurface,
+} from "@/domains/access/pages/workspace/components/account-settings-section";
 import type { AtlasProduct } from "../../access/capabilities";
 import { createPortalSession } from "../billing.functions";
 import { PRODUCT_LABELS } from "../product-labels";
@@ -8,12 +12,6 @@ interface WorkspaceBillingSectionProps {
   activeProducts: AtlasProduct[];
 }
 
-/**
- * Billing summary section for the account/workspace settings page.
- *
- * Shows the user's active products, a link to manage their subscription
- * through the Stripe Customer Portal, and an upgrade link to the pricing page.
- */
 export function WorkspaceBillingSection({ activeProducts }: WorkspaceBillingSectionProps) {
   const [isLoadingPortal, setIsLoadingPortal] = useState(false);
   const [portalError, setPortalError] = useState<string | null>(null);
@@ -36,27 +34,18 @@ export function WorkspaceBillingSection({ activeProducts }: WorkspaceBillingSect
   const hasActiveProducts = activeProducts.length > 0;
 
   return (
-    <div className="border-border bg-surface-container-lowest rounded-[1.5rem] border p-5">
-      <div className="space-y-2">
-        <h2 className="type-title-large text-ink-strong">Billing</h2>
-        <p className="type-body-medium text-ink-soft">
-          {hasActiveProducts
-            ? "Manage your Atlas subscription and billing details."
-            : "You're on the free Atlas plan. Upgrade for unlimited research, exports, and API access."}
-        </p>
-      </div>
+    <div className="space-y-4">
+      <h2 className="type-title-large text-ink-strong">Billing</h2>
 
       {hasActiveProducts ? (
-        <div className="mt-4 space-y-3">
-          <div className="space-y-1.5">
-            <p className="type-label-medium text-ink-muted">Active products</p>
-            <ul className="space-y-1">
+        <div className="space-y-3">
+          <div className="space-y-2">
+            <h3 className="type-title-medium text-ink-strong">Products</h3>
+            <AccountSettingsSurface>
               {activeProducts.map((product) => (
-                <li key={product} className="type-body-medium text-ink-strong">
-                  {PRODUCT_LABELS[product]}
-                </li>
+                <AccountSettingsRow key={product} label="Product" value={PRODUCT_LABELS[product]} />
               ))}
-            </ul>
+            </AccountSettingsSurface>
           </div>
 
           <div className="flex flex-wrap gap-3">
@@ -66,14 +55,14 @@ export function WorkspaceBillingSection({ activeProducts }: WorkspaceBillingSect
                 void handleManageSubscription();
               }}
               disabled={isLoadingPortal}
-              className="type-label-large text-ink-strong hover:bg-surface-container-high border-border focus:ring-border-strong rounded-full border bg-transparent px-4 py-2 font-medium transition-[background-color,border-color] duration-150 focus:ring-2 focus:ring-offset-2 focus:outline-none disabled:opacity-50"
+              className="type-label-large text-ink-strong hover:bg-surface-container-high focus:ring-border-strong bg-surface-container rounded-full px-4 py-2 font-medium transition-[background-color] duration-150 focus:ring-2 focus:ring-offset-2 focus:outline-none disabled:opacity-50"
             >
-              {isLoadingPortal ? "Opening portal..." : "Manage Subscription"}
+              {isLoadingPortal ? "Opening..." : "Manage subscription"}
             </button>
 
             <Link
               to="/pricing"
-              className="type-label-large text-ink-strong hover:bg-surface-container-high border-border focus:ring-border-strong inline-flex items-center rounded-full border bg-transparent px-4 py-2 font-medium no-underline transition-[background-color,border-color] duration-150 focus:ring-2 focus:ring-offset-2 focus:outline-none"
+              className="type-label-large text-ink-strong hover:bg-surface-container-high focus:ring-border-strong bg-surface-container inline-flex items-center rounded-full px-4 py-2 font-medium no-underline transition-[background-color] duration-150 focus:ring-2 focus:ring-offset-2 focus:outline-none"
             >
               Upgrade
             </Link>
@@ -82,14 +71,20 @@ export function WorkspaceBillingSection({ activeProducts }: WorkspaceBillingSect
           {portalError ? <p className="type-body-medium text-ink-strong">{portalError}</p> : null}
         </div>
       ) : (
-        <div className="mt-4">
-          <Link
-            to="/pricing"
-            className="type-label-large text-ink-strong underline underline-offset-2"
-          >
-            Upgrade to Pro or Team
-          </Link>
-        </div>
+        <AccountSettingsSurface>
+          <AccountSettingsRow
+            label="Plan"
+            value="Free"
+            action={
+              <Link
+                to="/pricing"
+                className="type-label-large text-ink-strong underline underline-offset-2"
+              >
+                Upgrade
+              </Link>
+            }
+          />
+        </AccountSettingsSurface>
       )}
     </div>
   );

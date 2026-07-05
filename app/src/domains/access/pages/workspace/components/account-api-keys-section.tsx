@@ -2,6 +2,7 @@ import { Plus } from "lucide-react";
 import { API_KEY_SCOPES, type ApiKeyScope } from "@/domains/access/api-key-scopes";
 import { Button } from "@/platform/ui/button";
 import { Input } from "@/platform/ui/input";
+import { AccountSettingsRow, AccountSettingsSurface } from "./account-settings-section";
 
 export interface AccountApiKeyRecord {
   createdAt: string;
@@ -24,12 +25,6 @@ interface AccountApiKeysSectionProps {
   onToggleScope: (scope: ApiKeyScope) => void;
 }
 
-/**
- * Card on the account page for direct API-key creation and revocation.
- * The form is intentionally session-only — Atlas keeps API-key
- * provisioning attached to the operator's browser session rather than
- * letting an existing API key mint more API keys.
- */
 export function AccountApiKeysSection({
   apiKeyName,
   apiKeyScopes,
@@ -42,42 +37,38 @@ export function AccountApiKeysSection({
   onNameChange,
   onToggleScope,
 }: AccountApiKeysSectionProps) {
-  return (
-    <div className="border-outline bg-surface space-y-4 rounded-[1.5rem] border p-6">
-      <div className="space-y-2">
-        <h2 className="type-title-large text-on-surface">API keys</h2>
-        <p className="type-body-medium text-outline">
-          Create keys for direct API access to protected Atlas endpoints.
-        </p>
-      </div>
+  const apiKeyCount = apiKeys?.length;
 
-      <div className="flex gap-3">
+  return (
+    <div className="space-y-4">
+      <h3 className="type-title-medium text-ink-strong">API keys</h3>
+
+      <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
         <Input
           value={apiKeyName}
           onChange={onNameChange}
           placeholder="Desktop script"
           label="Key name"
         />
-        <div className="pt-7">
-          <Button
-            onClick={onCreate}
-            disabled={!apiKeyName || apiKeyScopes.length === 0 || isCreatePending}
-          >
-            <span className="inline-flex items-center gap-2">
-              <Plus className="h-4 w-4" />
-              Create
-            </span>
-          </Button>
-        </div>
+        <Button
+          ariaLabel="Create API key"
+          onClick={onCreate}
+          disabled={!apiKeyName || apiKeyScopes.length === 0 || isCreatePending}
+        >
+          <span className="inline-flex items-center gap-2">
+            <Plus aria-hidden="true" className="h-4 w-4" />
+            Create
+          </span>
+        </Button>
       </div>
 
       <div className="space-y-2">
-        <p className="type-label-large text-on-surface">Scopes</p>
+        <p className="type-label-large text-ink-strong">Scopes</p>
         <div className="grid gap-2 sm:grid-cols-2">
           {API_KEY_SCOPES.map((scope) => (
             <label
               key={scope}
-              className="border-outline-variant flex items-start gap-3 rounded-lg border px-3 py-3"
+              className="bg-surface-container-lowest flex items-start gap-3 rounded-lg px-3 py-3"
             >
               <input
                 type="checkbox"
@@ -87,28 +78,27 @@ export function AccountApiKeysSection({
                 }}
                 className="mt-1"
               />
-              <span className="type-title-small text-on-surface block">{scope}</span>
+              <span className="type-title-small text-ink-strong block">{scope}</span>
             </label>
           ))}
         </div>
       </div>
 
-      <div className="space-y-3">
+      <AccountSettingsSurface>
+        <AccountSettingsRow label="Keys" value={isError ? "Unavailable" : (apiKeyCount ?? 0)} />
         {apiKeys?.map((apiKey) => (
-          <article
-            key={apiKey.id}
-            className="border-outline-variant flex items-center justify-between gap-3 rounded-2xl border bg-white/70 px-4 py-3"
-          >
+          <article key={apiKey.id} className="flex items-center justify-between gap-3 px-4 py-3.5">
             <div>
-              <p className="type-title-small text-on-surface">{apiKey.name || "Untitled key"}</p>
-              <p className="type-body-small text-outline">
+              <p className="type-title-small text-ink-strong">{apiKey.name || "Untitled key"}</p>
+              <p className="type-body-small text-ink-soft">
                 {apiKey.prefix || "atlas"} · {apiKey.createdAt}
               </p>
-              <p className="type-body-small text-outline">
+              <p className="type-body-small text-ink-soft">
                 {(apiKey.scopes ?? []).join(", ") || "No scopes"}
               </p>
             </div>
             <Button
+              ariaLabel="Revoke API key"
               variant="ghost"
               onClick={() => {
                 onDelete(apiKey.id);
@@ -121,17 +111,9 @@ export function AccountApiKeysSection({
         ))}
 
         {isError ? (
-          <p className="type-body-medium text-outline">
-            Atlas could not load your API keys right now.
-          </p>
+          <p className="type-body-medium text-ink-soft px-4 py-3">Could not load API keys.</p>
         ) : null}
-
-        {!apiKeys?.length ? (
-          <p className="type-body-medium text-outline">
-            No API keys yet. Create one for scripts or CLI access.
-          </p>
-        ) : null}
-      </div>
+      </AccountSettingsSurface>
     </div>
   );
 }

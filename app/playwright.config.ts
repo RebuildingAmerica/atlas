@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs";
+import { existsSync, mkdirSync } from "node:fs";
 import { randomBytes } from "node:crypto";
 import path from "node:path";
 import { defineConfig } from "@playwright/test";
@@ -17,7 +17,12 @@ function requireEnv(name: string): string {
   return value;
 }
 
+function absoluteUrl(origin: string, pathname: string): string {
+  return new URL(pathname, origin).toString().replace(/\/$/, "");
+}
+
 const e2eDir = path.join(process.cwd(), "node_modules", ".cache", "e2e");
+mkdirSync(e2eDir, { recursive: true });
 const repoRoot = path.join(process.cwd(), "..");
 const e2eRunId = process.env.ATLAS_E2E_RUN_ID?.trim() || randomBytes(8).toString("hex");
 const apiDbPath = path.join(e2eDir, `atlas-api-${e2eRunId}.sqlite`);
@@ -45,14 +50,15 @@ const mailServerCommand = process.env.CI
   ? "pnpm --filter @rebuildingamerica/atlas-app e2e:mail:ci"
   : "pnpm --filter @rebuildingamerica/atlas-app e2e:mail";
 const commonAuthEnv = {
-  ATLAS_AUTH_ALLOWED_EMAILS: "operator@atlas.test",
+  ATLAS_AUTH_ALLOWED_EMAILS: "person@atlas.test",
   ATLAS_AUTH_API_KEY_INTROSPECTION_URL: authIntrospectionUrl,
   ATLAS_AUTH_BASE_PATH: "/api/auth",
   ATLAS_AUTH_INTERNAL_SECRET: e2eInternalSecret,
+  ATLAS_AUTH_MEMBERSHIP_URL: appUrl,
   ATLAS_API_AUDIENCE: apiAudience,
   ATLAS_DEPLOY_MODE: "production",
   ATLAS_EMAIL_CAPTURE_URL: `${mailboxUrl}/messages`,
-  ATLAS_EMAIL_FROM: "Atlas <noreply@localhost>",
+  ATLAS_EMAIL_FROM: "Atlas <hello@localhost>",
   ATLAS_EMAIL_PROVIDER: "capture",
   ATLAS_MAP_STYLE_URL: "https://atlas.example.test/maps/e2e/style.json",
   ATLAS_PUBLIC_URL: appUrl,
@@ -90,6 +96,7 @@ export default defineConfig({
         ANTHROPIC_API_KEY: "e2e-test-key",
         ATLAS_AUTH_API_KEY_INTROSPECTION_URL: authIntrospectionUrl,
         ATLAS_AUTH_INTERNAL_SECRET: e2eInternalSecret,
+        ATLAS_AUTH_MEMBERSHIP_URL: appUrl,
         ATLAS_API_AUDIENCE: apiAudience,
         ATLAS_DEPLOY_MODE: "production",
         ATLAS_PUBLIC_URL: appUrl,
@@ -103,7 +110,7 @@ export default defineConfig({
       },
       reuseExistingServer: false,
       timeout: 120_000,
-      url: `${apiUrl}/health`,
+      url: absoluteUrl(apiUrl, "/health"),
     },
     {
       command: `pnpm --filter @rebuildingamerica/atlas-app exec vite dev --host 127.0.0.1 --port ${appPort} --strictPort`,
@@ -118,7 +125,7 @@ export default defineConfig({
       },
       reuseExistingServer: false,
       timeout: 180_000,
-      url: `${appUrl}/sign-in`,
+      url: absoluteUrl(appUrl, "/sign-in"),
     },
   ],
 });

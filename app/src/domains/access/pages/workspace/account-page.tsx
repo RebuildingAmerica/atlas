@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { createApiKey, deleteApiKey, listApiKeys } from "@/domains/access/api-keys.functions";
 import { type ApiKeyScope } from "@/domains/access/api-key-scopes";
 import { hasSerializedCapability } from "@/domains/access/capabilities";
@@ -8,21 +8,14 @@ import { atlasSessionQueryKey, useAtlasSession } from "@/domains/access/client/u
 import { resolvePasskeyName } from "@/domains/access/passkey-names";
 import { deletePasskey, listPasskeys, updatePasskey } from "@/domains/access/passkeys.functions";
 import { listScoutDevices, revokeScoutDevice } from "@/domains/access/scout-devices.functions";
-import { getRpLogoutRedirect } from "@/domains/access/session.functions";
 import { WorkspaceBillingSection } from "@/domains/billing/components/workspace-billing-section";
+import { AccountDeveloperAccessSection } from "./components/account-developer-access-section";
 import { AccountHeader } from "./components/account-header";
-import {
-  AccountApiKeysSection,
-  type AccountApiKeyRecord,
-} from "./components/account-api-keys-section";
-import {
-  AccountPasskeysSection,
-  type AccountPasskeyRecord,
-} from "./components/account-passkeys-section";
-import {
-  AccountScoutDevicesSection,
-  type AccountScoutDeviceRecord,
-} from "./components/account-scout-devices-section";
+import { AccountPageFeedback } from "./components/account-page-feedback";
+import type { AccountApiKeyRecord } from "./components/account-api-keys-section";
+import type { AccountPasskeyRecord } from "./components/account-passkeys-section";
+import { AccountSecuritySection } from "./components/account-security-section";
+import type { AccountScoutDeviceRecord } from "./components/account-scout-devices-section";
 import { AccountWorkspaceCards } from "./components/account-workspace-cards";
 
 const PASSKEYS_QUERY_KEY = ["auth", "passkeys"] as const;
@@ -45,12 +38,6 @@ function readCreatedApiKeySecret(result: unknown): string | null {
   return typeof key === "string" ? key : null;
 }
 
-/**
- * Operator account screen for passkeys and direct API-key management.
- *
- * This page is session-only; API keys are intentionally managed from the
- * browser operator session rather than from direct API-key auth.
- */
 export function AccountPage() {
   const queryClient = useQueryClient();
   const atlasSession = useAtlasSession();
@@ -176,37 +163,9 @@ export function AccountPage() {
     }
   };
 
-  // Resolve the OIDC RP-Initiated Logout URL once on mount.  We need it
-  // both to render the "Atlas will also sign you out…" caption and to
-  // hand off to the IdP at sign-out, so caching it here avoids a second
-  // round trip on the click path.
-  const [rpLogoutUrl, setRpLogoutUrl] = useState<string | null>(null);
-  const [rpLogoutResolved, setRpLogoutResolved] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      try {
-        const result = await getRpLogoutRedirect();
-        if (cancelled) return;
-        setRpLogoutUrl(result.url);
-      } catch {
-        // Treat as unavailable; fall through to setRpLogoutResolved.
-      } finally {
-        if (!cancelled) setRpLogoutResolved(true);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const rpLogoutAvailable = rpLogoutResolved ? rpLogoutUrl !== null : null;
-
-  const handleSignOut = async () => {
-    await getAuthClient().signOut();
-    window.location.assign(rpLogoutUrl ?? "/");
-  };
+  const showSecuritySection = !isLocal;
+  const showDeveloperAccessSection = !isLocal;
+  const showBillingSection = !isLocal;
 
   const toggleScope = (scope: ApiKeyScope) => {
     setApiKeyScopes((current) =>
@@ -215,35 +174,10 @@ export function AccountPage() {
   };
 
   return (
-    <div className="space-y-8 py-2">
-      <AccountHeader
-        email={atlasSession.data?.user.email}
-        isLocal={isLocal}
-        name={atlasSession.data?.user.name}
-        rpLogoutAvailable={rpLogoutAvailable}
-        onSignOut={() => {
-          void handleSignOut();
-        }}
-      />
+    <div className="mx-auto max-w-4xl space-y-10 py-8">
+      <AccountHeader email={atlasSession.data?.user.email} name={atlasSession.data?.user.name} />
 
-      {flashMessage ? (
-        <p className="type-body-medium bg-surface-container-lowest text-on-surface rounded-2xl px-4 py-3">
-          {flashMessage}
-        </p>
-      ) : null}
-
-      {errorMessage ? (
-        <p className="type-body-medium border-outline bg-surface text-on-surface rounded-2xl border px-4 py-3">
-          {errorMessage}
-        </p>
-      ) : null}
-
-      {apiKeySecret ? (
-        <div className="border-outline bg-surface rounded-[1.5rem] border p-5">
-          <p className="type-title-small text-on-surface">New API key</p>
-          <p className="type-body-medium text-outline mt-2 break-all">{apiKeySecret}</p>
-        </div>
-      ) : null}
+      <AccountPageFeedback errorMessage={errorMessage} flashMessage={flashMessage} />
 
       <AccountWorkspaceCards
         activeWorkspaceName={activeWorkspace?.name ?? null}
@@ -252,79 +186,77 @@ export function AccountPage() {
         needsWorkspace={needsWorkspace}
       />
 
-      {!isLocal ? (
-        <WorkspaceBillingSection
-          activeProducts={atlasSession.data?.workspace.activeProducts ?? []}
+      {showSecuritySection ? (
+        <AccountSecuritySection
+          editingPasskeyId={editingPasskeyId}
+          editingPasskeyName={editingPasskeyName}
+          isAddingPasskey={isAddingPasskey}
+          isDeletePending={deletePasskeyMutation.isPending}
+          isError={passkeysQuery.isError}
+          isRenamePending={renamePasskeyMutation.isPending}
+          passkeys={passkeysQuery.data}
+          onAddPasskey={() => {
+            void handlePasskeyAdd();
+          }}
+          onCancelRename={() => {
+            setEditingPasskeyId(null);
+            setEditingPasskeyName("");
+          }}
+          onDelete={(id) => {
+            deletePasskeyMutation.mutate(id);
+          }}
+          onRenameChange={setEditingPasskeyName}
+          onStartRename={(id, name) => {
+            setEditingPasskeyId(id);
+            setEditingPasskeyName(name);
+          }}
+          onSubmitRename={(id, name) => {
+            renamePasskeyMutation.mutate({ id, name });
+          }}
         />
       ) : null}
 
-      <section className="grid gap-6 lg:grid-cols-2">
-        {!isLocal ? (
-          <AccountPasskeysSection
-            editingPasskeyId={editingPasskeyId}
-            editingPasskeyName={editingPasskeyName}
-            isAddingPasskey={isAddingPasskey}
-            isDeletePending={deletePasskeyMutation.isPending}
-            isError={passkeysQuery.isError}
-            isRenamePending={renamePasskeyMutation.isPending}
-            passkeys={passkeysQuery.data}
-            onAddPasskey={() => {
-              void handlePasskeyAdd();
-            }}
-            onCancelRename={() => {
-              setEditingPasskeyId(null);
-              setEditingPasskeyName("");
-            }}
-            onDelete={(id) => {
-              deletePasskeyMutation.mutate(id);
-            }}
-            onRenameChange={setEditingPasskeyName}
-            onStartRename={(id, name) => {
-              setEditingPasskeyId(id);
-              setEditingPasskeyName(name);
-            }}
-            onSubmitRename={(id, name) => {
-              renamePasskeyMutation.mutate({ id, name });
-            }}
-          />
-        ) : null}
+      {showDeveloperAccessSection ? (
+        <AccountDeveloperAccessSection
+          apiKeyName={apiKeyName}
+          apiKeyScopes={apiKeyScopes}
+          apiKeySecret={apiKeySecret}
+          apiKeys={apiKeysQuery.data}
+          canCreateApiKeys={canCreateApiKeys}
+          devices={scoutDevicesQuery.data}
+          isCreatePending={createApiKeyMutation.isPending}
+          isDeletePending={deleteApiKeyMutation.isPending}
+          isError={apiKeysQuery.isError}
+          isLocal={isLocal}
+          isRevokePending={revokeScoutDeviceMutation.isPending}
+          isScoutDevicesError={scoutDevicesQuery.isError}
+          onCreate={() => {
+            setFlashMessage(null);
+            setErrorMessage(null);
+            createApiKeyMutation.mutate({ name: apiKeyName, scopes: apiKeyScopes });
+          }}
+          onDelete={(id) => {
+            setFlashMessage(null);
+            setErrorMessage(null);
+            deleteApiKeyMutation.mutate(id);
+          }}
+          onNameChange={setApiKeyName}
+          onRevoke={(id) => {
+            setFlashMessage(null);
+            setErrorMessage(null);
+            revokeScoutDeviceMutation.mutate(id);
+          }}
+          onToggleScope={toggleScope}
+        />
+      ) : null}
 
-        {!isLocal ? (
-          <AccountScoutDevicesSection
-            devices={scoutDevicesQuery.data}
-            isError={scoutDevicesQuery.isError}
-            isRevokePending={revokeScoutDeviceMutation.isPending}
-            onRevoke={(id) => {
-              setFlashMessage(null);
-              setErrorMessage(null);
-              revokeScoutDeviceMutation.mutate(id);
-            }}
+      {showBillingSection ? (
+        <section id="billing" className="scroll-mt-24">
+          <WorkspaceBillingSection
+            activeProducts={atlasSession.data?.workspace.activeProducts ?? []}
           />
-        ) : null}
-
-        {canCreateApiKeys ? (
-          <AccountApiKeysSection
-            apiKeyName={apiKeyName}
-            apiKeyScopes={apiKeyScopes}
-            apiKeys={apiKeysQuery.data}
-            isCreatePending={createApiKeyMutation.isPending}
-            isDeletePending={deleteApiKeyMutation.isPending}
-            isError={apiKeysQuery.isError}
-            onCreate={() => {
-              setFlashMessage(null);
-              setErrorMessage(null);
-              createApiKeyMutation.mutate({ name: apiKeyName, scopes: apiKeyScopes });
-            }}
-            onDelete={(id) => {
-              setFlashMessage(null);
-              setErrorMessage(null);
-              deleteApiKeyMutation.mutate(id);
-            }}
-            onNameChange={setApiKeyName}
-            onToggleScope={toggleScope}
-          />
-        ) : null}
-      </section>
+        </section>
+      ) : null}
     </div>
   );
 }

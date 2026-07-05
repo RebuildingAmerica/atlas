@@ -12,7 +12,7 @@ interface WorkspaceLayoutProps {
 }
 
 /**
- * Shell layout for authenticated operator pages.
+ * Shell layout for authenticated workspace pages.
  *
  * Renders the shared workspace navigation bar and a max-width content area.
  */

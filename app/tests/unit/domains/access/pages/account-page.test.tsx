@@ -14,10 +14,8 @@ const mocks = vi.hoisted(() => ({
   deleteApiKey: vi.fn(),
   deletePasskey: vi.fn(),
   listScoutDevices: vi.fn(),
-  getRpLogoutRedirect: vi.fn(),
   invalidateQueries: vi.fn(),
   revokeScoutDevice: vi.fn(),
-  signOut: vi.fn(),
   updatePasskey: vi.fn(),
   useAtlasSession: vi.fn(),
   useMutation: vi.fn(),
@@ -31,7 +29,6 @@ vi.mock("lucide-react", () => {
   return {
     Check: makeIcon("Check"),
     KeyRound: makeIcon("KeyRound"),
-    LogOut: makeIcon("LogOut"),
     MonitorUp: makeIcon("MonitorUp"),
     Pencil: makeIcon("Pencil"),
     Plus: makeIcon("Plus"),
@@ -46,17 +43,19 @@ vi.mock("@/platform/layout/page-layout", () => ({
 
 vi.mock("@/platform/ui/button", () => ({
   Button: ({
+    ariaLabel,
     children,
     disabled,
     onClick,
     type = "button",
   }: {
+    ariaLabel?: string;
     children: ReactNode;
     disabled?: boolean;
     onClick?: () => void;
     type?: "button" | "submit" | "reset";
   }) => (
-    <button type={type} disabled={disabled} onClick={onClick}>
+    <button type={type} aria-label={ariaLabel} disabled={disabled} onClick={onClick}>
       {children}
     </button>
   ),
@@ -105,7 +104,6 @@ vi.mock("@/domains/access/client/auth-client", () => ({
     passkey: {
       addPasskey: mocks.addPasskey,
     },
-    signOut: mocks.signOut,
   }),
 }));
 
@@ -131,10 +129,6 @@ vi.mock("@/domains/access/scout-devices.functions", () => ({
   revokeScoutDevice: mocks.revokeScoutDevice,
 }));
 
-vi.mock("@/domains/access/session.functions", () => ({
-  getRpLogoutRedirect: mocks.getRpLogoutRedirect,
-}));
-
 vi.mock("@/domains/billing/components/workspace-billing-section", () => ({
   WorkspaceBillingSection: () => <div data-testid="billing-section">Billing</div>,
 }));
@@ -144,8 +138,6 @@ afterEach(() => {
 });
 
 describe("AccountPage", () => {
-  const originalWindow = globalThis.window;
-  let assignMock: ReturnType<typeof vi.fn>;
   const setQueryResults = ({
     apiKeys = [
       {
@@ -257,11 +249,8 @@ describe("AccountPage", () => {
     mocks.deleteApiKey.mockReset();
     mocks.deletePasskey.mockReset();
     mocks.listScoutDevices.mockReset();
-    mocks.getRpLogoutRedirect.mockReset();
-    mocks.getRpLogoutRedirect.mockResolvedValue({ url: null });
     mocks.invalidateQueries.mockReset();
     mocks.revokeScoutDevice.mockReset();
-    mocks.signOut.mockReset();
     mocks.updatePasskey.mockReset();
     mocks.useAtlasSession.mockReset();
     mocks.useMutation.mockReset();
@@ -300,6 +289,10 @@ describe("AccountPage", () => {
     );
     mocks.useAtlasSession.mockReturnValue({
       data: createAtlasSessionFixture({
+        user: {
+          email: "person@atlas.test",
+          name: "Willie",
+        },
         workspace: createAtlasWorkspace({
           resolvedCapabilities: {
             capabilities: [
@@ -336,22 +329,10 @@ describe("AccountPage", () => {
     mocks.deleteApiKey.mockResolvedValue(undefined);
     mocks.deletePasskey.mockResolvedValue(undefined);
     mocks.revokeScoutDevice.mockResolvedValue(undefined);
-    mocks.signOut.mockResolvedValue(undefined);
     mocks.updatePasskey.mockResolvedValue(undefined);
-    assignMock = vi.fn();
-    const testWindow = Object.create(originalWindow) as Window & typeof globalThis;
-    Object.defineProperty(testWindow, "location", {
-      configurable: true,
-      value: { assign: assignMock },
-    });
-    vi.stubGlobal("window", testWindow);
   });
 
-  afterEach(() => {
-    vi.unstubAllGlobals();
-  });
-
-  it("renders account resources and supports passkey, API-key, and sign-out actions", async () => {
+  it("renders account data and supports passkey and API-key actions", async () => {
     const { AccountPage } = await import("@/domains/access/pages/workspace/account-page");
 
     render(<AccountPage />);
@@ -359,21 +340,31 @@ describe("AccountPage", () => {
     await (mocks.useQuery.mock.calls[1]?.[0] as { queryFn: () => Promise<unknown> }).queryFn();
     await (mocks.useQuery.mock.calls[2]?.[0] as { queryFn: () => Promise<unknown> }).queryFn();
 
-    fireEvent.click(screen.getByRole("button", { name: /Add passkey/i }));
-    fireEvent.click(screen.getByRole("button", { name: /Pencil/i }));
+    expect(screen.getByRole("heading", { name: "Account" })).not.toBeNull();
+    expect(screen.getByText("Willie")).not.toBeNull();
+    expect(screen.getByText("person@atlas.test")).not.toBeNull();
+    expect(screen.getByRole("heading", { name: "Workspace" })).not.toBeNull();
+    expect(screen.getByText("Atlas Team")).not.toBeNull();
+    expect(screen.getByRole("heading", { name: "Security" })).not.toBeNull();
+    expect(screen.getByRole("heading", { name: "Developer access" })).not.toBeNull();
+    expect(screen.getByTestId("billing-section")).not.toBeNull();
+    expect(screen.queryByRole("button", { name: /Sign out/i })).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Add passkey" }));
+    fireEvent.click(screen.getByRole("button", { name: "Rename passkey" }));
     fireEvent.change(screen.getByDisplayValue("Desk key"), {
       target: { value: "Laptop key" },
     });
-    fireEvent.click(screen.getByRole("button", { name: /Check/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Save passkey name" }));
 
     await waitFor(() => {
       expect(mocks.updatePasskey).toHaveBeenCalledWith({
         data: { id: "pk_123", name: "Laptop key" },
       });
-      expect(screen.getByRole("button", { name: "Trash2" })).not.toBeNull();
+      expect(screen.getByRole("button", { name: "Delete passkey" })).not.toBeNull();
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "Trash2" }));
+    fireEvent.click(screen.getByRole("button", { name: "Delete passkey" }));
 
     fireEvent.change(screen.getByLabelText("Key name"), {
       target: { value: "Desktop script" },
@@ -394,8 +385,7 @@ describe("AccountPage", () => {
       expect(screen.getByText("atlas_secret_key")).not.toBeNull();
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "Revoke" }));
-    fireEvent.click(screen.getByRole("button", { name: /Sign out/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Revoke API key" }));
 
     expect(mocks.deletePasskey).toHaveBeenCalledWith({
       data: { id: "pk_123" },
@@ -406,8 +396,6 @@ describe("AccountPage", () => {
     expect(screen.getByText("Willie's MacBook Pro")).not.toBeNull();
 
     await waitFor(() => {
-      expect(mocks.signOut).toHaveBeenCalledTimes(1);
-      expect(assignMock).toHaveBeenCalledWith("/");
       expect(screen.getByText("API key revoked.")).not.toBeNull();
     });
   });
@@ -416,6 +404,7 @@ describe("AccountPage", () => {
     mocks.useAtlasSession.mockReturnValue({
       data: createAtlasSessionFixture({
         user: {
+          email: "person@atlas.test",
           name: "   ",
         },
         workspace: createAtlasWorkspace({
@@ -465,14 +454,14 @@ describe("AccountPage", () => {
 
     render(<AccountPage />);
 
-    expect(screen.getAllByText("operator@atlas.test").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("person@atlas.test").length).toBeGreaterThan(0);
     expect(screen.getByText("Unnamed passkey")).not.toBeNull();
     expect(screen.getByText(/Hardware key/)).not.toBeNull();
     expect(screen.getByText("Untitled key")).not.toBeNull();
     expect(screen.getByText("No scopes")).not.toBeNull();
 
-    fireEvent.click(screen.getByRole("button", { name: /Pencil/i }));
-    fireEvent.click(screen.getByRole("button", { name: /X/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Rename passkey" }));
+    fireEvent.click(screen.getByRole("button", { name: "Cancel passkey rename" }));
 
     await waitFor(() => {
       expect(screen.getByText("Unnamed passkey")).not.toBeNull();
@@ -503,12 +492,9 @@ describe("AccountPage", () => {
 
     render(<AccountPage />);
 
-    expect(screen.getByText("Atlas could not load your passkeys right now.")).not.toBeNull();
-    expect(screen.getByText("No passkeys yet. Add one above for faster sign-in.")).not.toBeNull();
-    expect(screen.getByText("Atlas could not load your API keys right now.")).not.toBeNull();
-    expect(
-      screen.getByText("No API keys yet. Create one for scripts or CLI access."),
-    ).not.toBeNull();
+    expect(screen.getByText("Could not load passkeys.")).not.toBeNull();
+    expect(screen.getByText("Could not load API keys.")).not.toBeNull();
+    expect(screen.getAllByText("Unavailable").length).toBeGreaterThanOrEqual(2);
   });
 
   it("surfaces passkey and API-key mutation failures", async () => {
@@ -523,26 +509,26 @@ describe("AccountPage", () => {
 
     render(<AccountPage />);
 
-    fireEvent.click(screen.getByRole("button", { name: /Add passkey/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Add passkey" }));
     await waitFor(() => {
       expect(
         screen.getByText("Atlas could not add that passkey. Please try again."),
       ).not.toBeNull();
     });
 
-    fireEvent.click(screen.getByRole("button", { name: /Pencil/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Rename passkey" }));
     fireEvent.change(screen.getByDisplayValue("Desk key"), {
       target: { value: "Broken key" },
     });
-    fireEvent.click(screen.getByRole("button", { name: /Check/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Save passkey name" }));
     await waitFor(() => {
       expect(
         screen.getByText("Atlas could not rename that passkey. Please try again."),
       ).not.toBeNull();
     });
 
-    fireEvent.click(screen.getByRole("button", { name: /X/i }));
-    fireEvent.click(screen.getByRole("button", { name: "Trash2" }));
+    fireEvent.click(screen.getByRole("button", { name: "Cancel passkey rename" }));
+    fireEvent.click(screen.getByRole("button", { name: "Delete passkey" }));
     await waitFor(() => {
       expect(
         screen.getByText("Atlas could not remove that passkey. Please try again."),
@@ -559,7 +545,7 @@ describe("AccountPage", () => {
       ).not.toBeNull();
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "Revoke" }));
+    fireEvent.click(screen.getByRole("button", { name: "Revoke API key" }));
     await waitFor(() => {
       expect(
         screen.getByText("Atlas could not revoke that API key. Please try again."),
@@ -573,8 +559,7 @@ describe("AccountPage", () => {
     const { AccountPage } = await import("@/domains/access/pages/workspace/account-page");
 
     render(<AccountPage />);
-    // The account-header label is always rendered even when session data is missing.
-    expect(screen.getByText("Account")).not.toBeNull();
+    expect(screen.getByRole("heading", { name: "Account" })).not.toBeNull();
   });
 
   it("hides the API-key panel when capabilities omit api.keys", async () => {
@@ -604,19 +589,19 @@ describe("AccountPage", () => {
     expect(screen.queryByText("Create an API key")).toBeNull();
   });
 
-  it("hides the passkey panel and billing section when running in local mode", async () => {
+  it("hides security, developer access, and billing when running in local mode", async () => {
     mocks.useAtlasSession.mockReturnValue({
       data: createAtlasSessionFixture({
         isLocal: true,
         workspace: createAtlasWorkspace({
           resolvedCapabilities: {
-            capabilities: ["research.run"],
+            capabilities: ["research.run", "api.keys", "api.mcp"],
             limits: {
               research_runs_per_month: 2,
               max_shortlists: 1,
               max_shortlist_entries: 25,
-              max_api_keys: 0,
-              api_requests_per_day: 0,
+              max_api_keys: 1,
+              api_requests_per_day: 1000,
               public_api_requests_per_hour: 100,
               max_members: 1,
             },
@@ -629,45 +614,9 @@ describe("AccountPage", () => {
 
     render(<AccountPage />);
     expect(screen.queryByText("Billing")).toBeNull();
-    expect(screen.queryByRole("button", { name: /Add passkey/i })).toBeNull();
-  });
-
-  it("ignores the rp-logout response if the component unmounts first", async () => {
-    let resolveLogout: ((value: { url: string | null }) => void) | null = null;
-    mocks.getRpLogoutRedirect.mockImplementation(
-      () =>
-        new Promise<{ url: string | null }>((resolve) => {
-          resolveLogout = resolve;
-        }),
-    );
-    setQueryResults({ apiKeys: [], passkeys: [] });
-    const { AccountPage } = await import("@/domains/access/pages/workspace/account-page");
-
-    const view = render(<AccountPage />);
-    view.unmount();
-
-    if (resolveLogout) {
-      (resolveLogout as (value: { url: string | null }) => void)({ url: null });
-    }
-  });
-
-  it("ignores the rp-logout failure if the component unmounts first", async () => {
-    let rejectLogout: ((reason: Error) => void) | null = null;
-    mocks.getRpLogoutRedirect.mockImplementation(
-      () =>
-        new Promise<{ url: string | null }>((_, reject) => {
-          rejectLogout = reject;
-        }),
-    );
-    setQueryResults({ apiKeys: [], passkeys: [] });
-    const { AccountPage } = await import("@/domains/access/pages/workspace/account-page");
-
-    const view = render(<AccountPage />);
-    view.unmount();
-
-    if (rejectLogout) {
-      (rejectLogout as (reason: Error) => void)(new Error("late"));
-    }
+    expect(screen.queryByRole("heading", { name: "Developer access" })).toBeNull();
+    expect(screen.queryByLabelText("Key name")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Add passkey" })).toBeNull();
   });
 
   it("treats a non-string key field on the createApiKey response as a missing secret", async () => {
@@ -713,7 +662,7 @@ describe("AccountPage", () => {
     render(<AccountPage />);
 
     fireEvent.click(screen.getByRole("checkbox", { name: "discovery:write" }));
-    fireEvent.click(screen.getByRole("button", { name: /Add passkey/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Add passkey" }));
 
     await waitFor(() => {
       const createdPasskeyRename = mocks.updatePasskey.mock.calls.some(([payload]) =>

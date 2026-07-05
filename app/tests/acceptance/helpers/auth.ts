@@ -1,7 +1,7 @@
 import { expect, type Page } from "@playwright/test";
 import { extractFirstUrlFromEmail } from "./email";
 
-const operatorEmail = "operator@atlas.test";
+const accountEmail = "person@atlas.test";
 
 /**
  * Returns one required end-to-end environment variable.
@@ -81,32 +81,22 @@ export async function installVirtualAuthenticator(page: Page) {
 }
 
 /**
- * Performs a magic link sign-in for the operator and returns when redirected to the account setup or organization page.
+ * Performs a magic-link sign-in and returns when redirected to the account setup or organization page.
  *
  * @param page - The active Playwright page.
  */
 export async function performSignIn(page: Page) {
   await resetMailbox();
-
-  // Conditional-mediation passkey autofill on the sign-in page intercepts
-  // the email input before React 19 hydration completes, blocking
-  // page.fill() from propagating into form state.  Disable it for tests.
-  await page.addInitScript(() => {
-    if (typeof PublicKeyCredential !== "undefined") {
-      Object.defineProperty(PublicKeyCredential, "isConditionalMediationAvailable", {
-        configurable: true,
-        value: () => Promise.resolve(false),
-      });
-    }
-  });
+  await installVirtualAuthenticator(page);
 
   // Wait for hydration so the React onChange handler is attached before fill().
   await page.goto("/sign-in?redirect=%2Faccount", { waitUntil: "networkidle" });
-  await page.getByLabel("Email").fill(operatorEmail);
+  await page.getByLabel("Email").fill(accountEmail);
+  await page.getByRole("button", { name: "Can't use a passkey?" }).click();
   await page.getByRole("button", { name: "Continue with email" }).click();
   await expect(page.getByText("A sign-in link is on the way. Check your inbox.")).toBeVisible();
 
-  const rawEmail = await pollLatestMessage(operatorEmail);
+  const rawEmail = await pollLatestMessage(accountEmail);
   const magicLinkUrl = extractFirstUrlFromEmail(rawEmail);
   await page.goto(magicLinkUrl);
 
@@ -115,8 +105,7 @@ export async function performSignIn(page: Page) {
     return pathname === "/account" || pathname === "/account-setup" || pathname === "/organization";
   });
 
-  if (page.url().endsWith("/account-setup")) {
-    await installVirtualAuthenticator(page);
+  if (new URL(page.url()).pathname === "/account-setup") {
     await page.getByRole("button", { name: "Add passkey" }).click();
     await page.waitForURL((url) => {
       const pathname = url.pathname;

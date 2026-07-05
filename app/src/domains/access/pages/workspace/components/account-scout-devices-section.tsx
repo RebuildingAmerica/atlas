@@ -1,5 +1,6 @@
 import { MonitorUp, Trash2 } from "lucide-react";
 import { Button } from "@/platform/ui/button";
+import { AccountSettingsRow, AccountSettingsSurface } from "./account-settings-section";
 
 export interface AccountScoutDeviceRecord {
   id: string;
@@ -30,49 +31,41 @@ function targetLabel(target: AccountScoutDeviceRecord["defaultUploadTarget"]): s
   return target === "workspace" ? "Workspace uploads" : "Public uploads";
 }
 
-/**
- * Account-page card for host computers approved to run Atlas Scout locally.
- */
 export function AccountScoutDevicesSection({
   devices,
   isError,
   isRevokePending,
   onRevoke,
 }: AccountScoutDevicesSectionProps) {
-  return (
-    <div className="border-outline bg-surface space-y-4 rounded-[1.5rem] border p-6">
-      <div className="space-y-2">
-        <div className="flex items-center gap-2">
-          <MonitorUp className="text-primary h-5 w-5" />
-          <h2 className="type-title-large text-on-surface">Scout devices</h2>
-        </div>
-        <p className="type-body-medium text-outline">
-          Approved computers that can upload Scout results.
-        </p>
-      </div>
+  const deviceCount = devices?.length;
 
-      <div className="space-y-3">
+  return (
+    <div className="space-y-3">
+      <AccountSettingsSurface>
+        <AccountSettingsRow label="Scout devices">
+          <span className="inline-flex items-center gap-2">
+            <MonitorUp aria-hidden="true" className="text-civic h-4 w-4" />
+            <span>{isError ? "Unavailable" : (deviceCount ?? 0)}</span>
+          </span>
+        </AccountSettingsRow>
         {devices?.map((device) => (
-          <article
-            key={device.id}
-            className="border-outline-variant flex items-start justify-between gap-3 rounded-2xl border bg-white/70 px-4 py-3"
-          >
+          <article key={device.id} className="flex items-start justify-between gap-3 px-4 py-3.5">
             <div className="min-w-0 flex-1 space-y-2">
               <div className="space-y-1">
-                <p className="type-title-small text-on-surface truncate">{device.workerName}</p>
-                <p className="type-body-small text-outline">
+                <p className="type-title-small text-ink-strong truncate">{device.workerName}</p>
+                <p className="type-body-small text-ink-soft">
                   Last seen {formatLastSeen(device.lastSeenAt)}
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
-                <span className="type-label-small bg-surface-container-low text-on-surface rounded-full px-3 py-1">
+                <span className="type-label-small bg-surface-container-low text-ink-strong rounded-full px-3 py-1">
                   {targetLabel(device.defaultUploadTarget)}
                 </span>
                 <span
                   className={
                     device.searchKeyConfigured
-                      ? "type-label-small bg-primary-container text-on-primary-container rounded-full px-3 py-1"
-                      : "type-label-small bg-surface-container-low text-on-surface rounded-full px-3 py-1"
+                      ? "type-label-small bg-civic text-surface rounded-full px-3 py-1"
+                      : "type-label-small bg-surface-container-low text-ink-strong rounded-full px-3 py-1"
                   }
                 >
                   {device.searchKeyConfigured ? "Search enabled" : "Search key needed"}
@@ -80,6 +73,7 @@ export function AccountScoutDevicesSection({
               </div>
             </div>
             <Button
+              ariaLabel="Revoke device"
               variant="ghost"
               disabled={isRevokePending}
               onClick={() => {
@@ -87,7 +81,7 @@ export function AccountScoutDevicesSection({
               }}
             >
               <span className="inline-flex items-center gap-2">
-                <Trash2 className="h-4 w-4" />
+                <Trash2 aria-hidden="true" className="h-4 w-4" />
                 Revoke device
               </span>
             </Button>
@@ -95,15 +89,12 @@ export function AccountScoutDevicesSection({
         ))}
 
         {isError ? (
-          <p className="type-body-medium text-outline">
-            Atlas could not load your Scout devices right now.
-          </p>
+          <p className="type-body-medium text-ink-soft px-4 py-3">Could not load Scout devices.</p>
         ) : null}
-
-        {devices?.length === 0 ? (
-          <p className="type-body-medium text-outline">No Scout devices connected.</p>
+        {!isError && devices?.length === 0 ? (
+          <p className="type-body-medium text-ink-soft px-4 py-3">No Scout devices.</p>
         ) : null}
-      </div>
+      </AccountSettingsSurface>
     </div>
   );
 }

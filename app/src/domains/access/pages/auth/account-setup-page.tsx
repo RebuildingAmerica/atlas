@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getAuthClient } from "@/domains/access/client/auth-client";
+import { signOutWithRedirect } from "@/domains/access/client/sign-out";
 import { waitForAtlasPasskeyRegistration } from "@/domains/access/client/session-confirmation";
 import { atlasSessionQueryKey, useAtlasSession } from "@/domains/access/client/use-atlas-session";
 import { createWorkspace } from "@/domains/access/organizations.functions";
@@ -72,8 +73,7 @@ export function AccountSetupPage({ redirectTo }: AccountSetupPageProps) {
   const signOutMutation = useMutation({
     mutationFn: async () => {
       const rpLogout = await getRpLogoutRedirect();
-      await getAuthClient().signOut();
-      window.location.assign(rpLogout.url ?? "/");
+      await signOutWithRedirect({ redirectTo: rpLogout.url ?? "/" });
     },
   });
 

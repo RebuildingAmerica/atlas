@@ -1,4 +1,6 @@
 import { Link } from "@tanstack/react-router";
+import type { ReactNode } from "react";
+import { AccountSettingsRow, AccountSettingsSurface } from "./account-settings-section";
 
 interface AccountWorkspaceCardsProps {
   activeWorkspaceName: string | null;
@@ -7,60 +9,70 @@ interface AccountWorkspaceCardsProps {
   needsWorkspace: boolean;
 }
 
-/**
- * Stack of three optional workspace-context cards on the account page:
- * the "create your first workspace" prompt, the pending-invitations
- * reminder, and the current-workspace summary card with a link into
- * the workspace management surface.
- */
 export function AccountWorkspaceCards({
   activeWorkspaceName,
   hasPendingInvitations,
   isLocal,
   needsWorkspace,
 }: AccountWorkspaceCardsProps) {
+  if (isLocal) {
+    return null;
+  }
+
+  const rows: ReactNode[] = [];
+
+  if (activeWorkspaceName) {
+    rows.push(
+      <WorkspaceRow
+        key="workspace"
+        label="Workspace"
+        value={activeWorkspaceName}
+        actionLabel="Manage"
+      />,
+    );
+  } else if (needsWorkspace) {
+    rows.push(
+      <WorkspaceRow key="workspace" label="Workspace" value="Not set" actionLabel="Open" />,
+    );
+  }
+
+  if (hasPendingInvitations) {
+    rows.push(
+      <WorkspaceRow key="invitations" label="Invitations" value="Pending" actionLabel="Review" />,
+    );
+  }
+
+  if (rows.length === 0) {
+    return null;
+  }
+
   return (
-    <>
-      {needsWorkspace && !isLocal ? (
-        <div className="border-outline bg-surface rounded-[1.5rem] border p-5">
-          <p className="type-title-small text-on-surface">Workspace setup is waiting</p>
-          <p className="type-body-medium text-outline mt-2">
-            Finish creating your first workspace so Atlas can keep account security separate from
-            workspace context.
-          </p>
-          <div className="mt-4">
-            <Link className="type-label-large text-on-surface underline" to="/organization">
-              Open workspace setup
-            </Link>
-          </div>
-        </div>
-      ) : null}
+    <section id="workspace" className="scroll-mt-24 space-y-3">
+      <h2 className="type-title-large text-ink-strong">Workspace</h2>
+      <AccountSettingsSurface>{rows}</AccountSettingsSurface>
+    </section>
+  );
+}
 
-      {hasPendingInvitations && !isLocal ? (
-        <div className="border-outline bg-surface rounded-[1.5rem] border p-5">
-          <p className="type-title-small text-on-surface">Workspace invitations waiting</p>
-          <p className="type-body-medium text-outline mt-2">
-            Review your pending invitations before Atlas decides which workspace should open next.
-          </p>
-          <div className="mt-4">
-            <Link className="type-label-large text-on-surface underline" to="/organization">
-              Review invitations
-            </Link>
-          </div>
-        </div>
-      ) : null}
+interface WorkspaceRowProps {
+  actionLabel: string;
+  label: string;
+  value: string;
+}
 
-      {activeWorkspaceName && !isLocal ? (
-        <div className="border-outline-variant bg-surface-container-lowest rounded-[1.5rem] border p-5">
-          <p className="type-title-small text-on-surface">Current workspace</p>
-          <p className="type-body-medium text-outline mt-2">{activeWorkspaceName}</p>
-          <div className="mt-4">
-            <Link className="type-label-large text-on-surface underline" to="/organization">
-              Manage workspace
-            </Link>
-          </div>
-        </div>
-      ) : null}
-    </>
+function WorkspaceRow({ actionLabel, label, value }: WorkspaceRowProps) {
+  return (
+    <AccountSettingsRow
+      label={label}
+      value={value}
+      action={
+        <Link
+          className="type-label-large text-ink-strong underline underline-offset-2"
+          to="/organization"
+        >
+          {actionLabel}
+        </Link>
+      }
+    />
   );
 }

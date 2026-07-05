@@ -11,7 +11,7 @@ test.describe("organization management journey", () => {
     await performSignIn(page);
 
     await page.goto("/organization");
-    // A signed-in operator without a workspace yet sees the workspace setup
+    // A signed-in account without a workspace yet sees the workspace setup
     // surface; once the solo workspace is auto-created they see workspace
     // management copy.  Either is the right place for this test.
     await expect(
@@ -21,8 +21,8 @@ test.describe("organization management journey", () => {
     ).toBeVisible();
 
     await page.goto("/organization/sso");
-    // Free-tier operators without the auth.sso capability see the
-    // gated "Enterprise sign-in" header; team-tier operators see
+    // Free-tier accounts without the auth.sso capability see the
+    // gated "Enterprise sign-in" header; team-tier accounts see
     // "Configure enterprise sign-in".  Either header is the right
     // landing for this test.
     await expect(
