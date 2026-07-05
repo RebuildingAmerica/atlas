@@ -28,9 +28,7 @@ All responses are JSON. Successful responses return the requested data. Errors r
 
 ```json
 {
-  "data": {
-    /* requested data */
-  }
+  "data": {}
 }
 ```
 
@@ -59,14 +57,7 @@ List endpoints support pagination via query parameters.
 
 ```json
 {
-  "data": [
-    {
-      /* item */
-    },
-    {
-      /* item */
-    }
-  ],
+  "data": [{}, {}],
   "pagination": {
     "page": 1,
     "page_size": 20,
@@ -156,9 +147,7 @@ GET /entries/{id}
     "geo_specificity": "local",
     "website": "https://...",
     "issue_areas": ["labor", "worker_cooperatives"],
-    "sources": [
-      /* array of sources */
-    ],
+    "sources": [],
     "affiliated_org_id": "uuid-of-org",
     "active": true,
     "created_at": "2026-03-20T10:00:00Z",
