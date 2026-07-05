@@ -7,6 +7,7 @@ import pytest
 from atlas_scout.config import LLMConfig
 from atlas_scout.providers import create_provider
 from atlas_scout.providers.anthropic import AnthropicProvider
+from atlas_scout.providers.lmstudio import LMStudioProvider
 from atlas_scout.providers.ollama import OllamaProvider
 
 
@@ -47,6 +48,23 @@ async def test_create_provider_returns_anthropic_provider_for_anthropic_config()
     try:
         assert isinstance(provider, AnthropicProvider)
         assert provider.max_concurrent == 4
+    finally:
+        await provider.aclose()
+
+
+@pytest.mark.asyncio
+async def test_create_provider_returns_lmstudio_provider_for_lmstudio_config() -> None:
+    provider = create_provider(
+        LLMConfig(
+            provider="lmstudio",
+            model="qwen3:latest",
+            base_url="http://studio.test:1234",
+            max_concurrent=2,
+        ),
+    )
+    try:
+        assert isinstance(provider, LMStudioProvider)
+        assert provider.max_concurrent == 2
     finally:
         await provider.aclose()
 

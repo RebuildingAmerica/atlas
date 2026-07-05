@@ -10,6 +10,7 @@ import qrcode  # type: ignore[import-untyped]
 from rich.table import Table
 from rich.text import Text
 
+from atlas_scout.cli_errors import CliError
 from atlas_scout.cli_progress import filter_visible_page_outcomes
 
 if TYPE_CHECKING:
@@ -77,7 +78,16 @@ def format_device_auth_error(error: DeviceAuthError) -> str:
 
 def print_login_failure(console: Console, error: DeviceAuthError) -> None:
     """Print a login failure without leaking transport bodies."""
-    console.print(f"[red]Login failed:[/] {format_device_auth_error(error)}")
+    print_cli_error(
+        console, CliError(title="Login failed", message=format_device_auth_error(error))
+    )
+
+
+def print_cli_error(console: Console, error: CliError) -> None:
+    """Render one structured CLI error."""
+    console.print(f"[red]{error.title}:[/] {error.message}", soft_wrap=True)
+    if error.hint:
+        console.print(f"[dim]{error.hint}[/]", soft_wrap=True)
 
 
 def print_login_instructions(console: Console, code: DeviceCode) -> None:

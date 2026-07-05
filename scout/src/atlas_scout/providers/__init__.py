@@ -27,6 +27,16 @@ def create_provider(
             max_concurrent=effective_max_concurrent,
             timeout_seconds=config.timeout_seconds,
         )
+    if config.provider == "lmstudio":
+        from atlas_scout.providers.lmstudio import LMStudioProvider
+
+        return LMStudioProvider(
+            model=config.model,
+            base_url=config.base_url or "http://localhost:1234/v1",
+            api_key=config.api_key,
+            max_concurrent=effective_max_concurrent,
+            timeout_seconds=config.timeout_seconds,
+        )
     if config.provider == "anthropic":
         from atlas_scout.providers.anthropic import AnthropicProvider
 

@@ -33,3 +33,20 @@ def test_plain_auth_error_uses_server_description() -> None:
     )
 
     assert message == "Atlas unavailable"
+
+
+def test_generic_server_http_error_message_is_not_repeated() -> None:
+    """Generic server exception names should not become the whole login error."""
+    message = format_device_auth_error(
+        DeviceAuthError(
+            error="http_500",
+            description="HTTPError",
+            status_code=500,
+            url="https://atlas.localhost/device/code",
+            content_type="application/json;charset=UTF-8",
+        )
+    )
+
+    assert "HTTP 500" in message
+    assert "https://atlas.localhost/device/code" in message
+    assert message != "HTTPError"

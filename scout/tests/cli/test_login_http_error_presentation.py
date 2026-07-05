@@ -41,3 +41,37 @@ def test_login_does_not_print_html_auth_error_body(monkeypatch) -> None:
     assert "https://atlas.localhost" not in result.output
     assert "<html" not in result.output
     assert "Method Not Allowed" not in result.output
+
+
+def test_login_keeps_generic_server_error_out_of_stdout(monkeypatch) -> None:
+    """Generic server exception names are converted into structured stderr output."""
+
+    class GenericServerErrorClient:
+        async def request_device_code(self, atlas_url: str) -> object:
+            assert atlas_url == "https://atlas.localhost"
+            raise DeviceAuthError(
+                error="http_500",
+                description="HTTPError",
+                status_code=500,
+                url="https://atlas.localhost/device/code",
+                content_type="application/json;charset=UTF-8",
+            )
+
+    monkeypatch.setattr(cli_module, "DeviceAuthClient", GenericServerErrorClient)
+
+    result = CliRunner().invoke(
+        main,
+        [
+            "login",
+            "--atlas-url",
+            "https://atlas.localhost",
+            "--no-browser",
+        ],
+    )
+
+    assert result.exit_code != 0
+    assert result.stdout == ""
+    assert "Login failed:" in result.stderr
+    assert "HTTP 500" in result.stderr
+    assert "https://atlas.localhost/device/code" in result.stderr
+    assert "HTTPError" not in result.stderr

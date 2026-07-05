@@ -14,6 +14,19 @@ from click.testing import CliRunner
 from rich.console import Console
 
 from atlas_scout.cli import _run_pipeline, main
+from atlas_scout.local_models import LocalModelResolution
+
+
+def _ready_local_model_resolution() -> LocalModelResolution:
+    """Return a ready local model for CLI tests with a stubbed run pipeline."""
+    return LocalModelResolution(
+        ready=True,
+        provider="ollama",
+        model="llama3.1:8b",
+        base_url="http://localhost:11434",
+        message="Using Ollama with llama3.1:8b.",
+    )
+
 
 # ---------------------------------------------------------------------------
 # Help output tests
@@ -322,7 +335,10 @@ def test_cli_run_calls_pipeline():
     async def fake_run(*_args, **_kwargs):
         return fake_result
 
-    with patch("atlas_scout.cli._run_pipeline", side_effect=fake_run):
+    with (
+        patch("atlas_scout.cli._run_pipeline", side_effect=fake_run),
+        patch("atlas_scout.cli.resolve_local_model", return_value=_ready_local_model_resolution()),
+    ):
         runner = CliRunner()
         result = runner.invoke(
             main,
@@ -360,7 +376,10 @@ def test_cli_run_refresh_flag_reaches_runner():
             gap_report=GapReport(location="Austin, TX", total_entries=0),
         )
 
-    with patch("atlas_scout.cli._run_pipeline", side_effect=fake_run):
+    with (
+        patch("atlas_scout.cli._run_pipeline", side_effect=fake_run),
+        patch("atlas_scout.cli.resolve_local_model", return_value=_ready_local_model_resolution()),
+    ):
         runner = CliRunner()
         result = runner.invoke(
             main,
@@ -399,7 +418,10 @@ def test_cli_run_verbose_progress_flag_reaches_runner():
             gap_report=GapReport(location="Austin, TX", total_entries=0),
         )
 
-    with patch("atlas_scout.cli._run_pipeline", side_effect=fake_run):
+    with (
+        patch("atlas_scout.cli._run_pipeline", side_effect=fake_run),
+        patch("atlas_scout.cli.resolve_local_model", return_value=_ready_local_model_resolution()),
+    ):
         runner = CliRunner()
         result = runner.invoke(
             main,

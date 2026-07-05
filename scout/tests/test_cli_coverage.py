@@ -33,6 +33,7 @@ from atlas_scout.config import (
     ScoutConfig,
     StoreConfig,
 )
+from atlas_scout.local_models import LocalModelResolution
 
 if TYPE_CHECKING:
     import pytest
@@ -70,6 +71,17 @@ def _scheduled_config(tmp_path: Path) -> ScoutConfig:
         schedule=ScheduleConfig(
             targets=[ScheduleTarget(location="Austin, TX", issues=["housing"])]
         ),
+    )
+
+
+def _ready_local_model_resolution() -> LocalModelResolution:
+    """Return a ready local model resolution for CLI tests with a stubbed pipeline."""
+    return LocalModelResolution(
+        ready=True,
+        provider="ollama",
+        model="llama3.1:8b",
+        base_url="http://localhost:11434",
+        message="Using Ollama with llama3.1:8b.",
     )
 
 
@@ -276,6 +288,11 @@ def test_run_reads_urls_and_prompt_from_files(
 
     monkeypatch.setattr(cli_module, "load_config", lambda _path: _make_config(tmp_path))
     monkeypatch.setattr(cli_module, "_run_pipeline", fake_pipeline)
+    monkeypatch.setattr(
+        cli_module,
+        "resolve_local_model",
+        lambda *_args, **_kwargs: _ready_local_model_resolution(),
+    )
 
     result = CliRunner().invoke(
         main,
@@ -320,7 +337,7 @@ def test_run_search_mode_missing_location(tmp_path: Path, monkeypatch: pytest.Mo
         ],
     )
     assert result.exit_code != 0
-    assert "--location required" in result.output
+    assert "--location is required" in result.output
 
 
 def test_run_search_mode_missing_issues(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -336,7 +353,7 @@ def test_run_search_mode_missing_issues(tmp_path: Path, monkeypatch: pytest.Monk
         ],
     )
     assert result.exit_code != 0
-    assert "--issues required" in result.output
+    assert "--issues is required" in result.output
 
 
 # ---------------------------------------------------------------------------

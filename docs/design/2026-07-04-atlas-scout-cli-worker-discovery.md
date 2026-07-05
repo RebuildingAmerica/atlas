@@ -65,6 +65,22 @@ discovery, and Atlas sync. Worker readiness is opt-in with
 `scout doctor --worker` so passive background contribution does not obscure the
 Scout-initiated workflow.
 
+Local model setup is automatic in normal use. If the active profile points at a
+broken or missing local provider, `scout run` probes Ollama and LM Studio,
+chooses a usable detected model when there is one clear best choice, saves that
+choice to the active profile, and continues. Users only need the explicit
+repair command when Scout cannot find a working local model:
+
+```bash
+scout setup llm
+```
+
+`scout setup llm` detects Ollama at `http://localhost:11434` and LM Studio at
+`http://localhost:1234/v1`, lists available models in interactive mode, and
+writes non-secret provider/model/base URL settings to the active profile.
+Scout never silently installs model software, starts daemons, runs `sudo`, or
+stores LM Studio API tokens in the setup flow.
+
 ### Install And Update
 
 During local development, install the current checkout as the `scout` command
@@ -133,6 +149,7 @@ completion, and the resulting remote run receipt.
 ```bash
 scout login [--atlas-url https://atlas.rebuildingus.org] [--no-browser]
 scout doctor [--worker] [--json]
+scout setup llm [--interactive] [--provider ollama|lmstudio] [--model MODEL] [--base-url URL]
 scout auth status
 scout whoami
 scout logout
@@ -200,6 +217,28 @@ keeps worker mode available without making it the onboarding front door.
 results for tests and automation. Doctor output must never include secrets, raw
 HTTP bodies, exception reprs, HTML error pages, or full credential values.
 
+### Local Model Setup
+
+Scout supports Ollama and LM Studio as first-class local model providers.
+Ollama uses the native `/api/chat` and `/api/tags` endpoints. LM Studio uses
+the OpenAI-compatible `/v1/chat/completions` and `/v1/models` endpoints.
+
+Normal discovery commands resolve local model settings before work starts:
+
+- If the configured local provider and model are reachable, Scout uses them.
+- If the configured provider is broken but another local provider is ready,
+  Scout saves the detected provider/model/base URL and continues.
+- If no local model is ready, Scout stops before discovery and gives one next
+  action: start Ollama, start LM Studio's server, download a model, or provide
+  an LM Studio API token if that server requires one.
+
+`scout setup llm` exposes the same resolver as a direct repair command. Default
+mode makes the best safe choice automatically. `--interactive` shows detected
+provider/model choices for users who want to override the automatic selection.
+`--provider`, `--model`, and `--base-url` support scripted setup. `scout doctor`
+continues to be read-only and recommends `scout setup llm` only when setup can
+fix the configured local model state.
+
 ### Search Key Commands
 
 ```bash
@@ -222,12 +261,13 @@ scout worker status
 scout worker stop
 ```
 
-`scout worker start` registers current capabilities, heartbeats while running,
-claims compatible jobs, executes them with the local Scout pipeline, and returns
-canonical discovery artifacts. `scout worker status` reads a local state file
-with PID, mode, Atlas URL, search-key readiness, current job id, last completed
-job id, heartbeat, and last error. In public worker mode it should refuse
-non-local model providers before the public launch gate.
+`scout worker start` resolves local model settings before launch, registers
+current capabilities, heartbeats while running, claims compatible jobs, executes
+them with the local Scout pipeline, and returns canonical discovery artifacts.
+`scout worker status` reads a local state file with PID, mode, Atlas URL,
+search-key readiness, current job id, last completed job id, heartbeat, and last
+error. In public worker mode it should refuse non-local model providers before
+the public launch gate.
 
 ### Upload Commands
 

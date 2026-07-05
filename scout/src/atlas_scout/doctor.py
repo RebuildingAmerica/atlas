@@ -14,6 +14,13 @@ from atlas_scout.atlas_urls import DEFAULT_ATLAS_URL
 from atlas_scout.auth import ScoutSession, load_session
 from atlas_scout.config import SCOUT_CONFIG_DIR, ScoutConfig
 from atlas_scout.credentials import CredentialStoreError, SystemCredentialStore
+from atlas_scout.local_models import (
+    LOCAL_PROVIDER_NAMES,
+    LocalProviderName,
+    is_local_provider,
+    probe_local_model,
+    provider_label,
+)
 from atlas_scout.search_keys import has_search_api_key
 
 if TYPE_CHECKING:
@@ -23,8 +30,6 @@ DoctorStatus = Literal["ok", "warn", "fail"]
 
 WORKER_STATE_PATH = SCOUT_CONFIG_DIR / "worker.json"
 DOCTOR_CREDENTIAL_PROBE_ACCOUNT = "doctor-probe"
-LOCAL_WORKER_PROVIDER = "ollama"
-DEFAULT_OLLAMA_URL = "http://localhost:11434"
 
 
 @dataclass(frozen=True, slots=True)
@@ -376,7 +381,7 @@ def _worker_readiness(
     """Return optional passive worker readiness."""
     state = dependencies.load_worker_state()
     worker_check = _worker_state_check(state, dependencies.process_is_running)
-    local_provider_ready = config.llm.provider.strip().lower() == LOCAL_WORKER_PROVIDER
+    local_provider_ready = is_local_provider(config.llm.provider)
     base_ready = session is not None and local_provider_ready and model_ready
     remediation = _worker_remediation(
         session=session,
@@ -471,9 +476,10 @@ def _worker_remediation(
     if session is None:
         return "Run `scout login`."
     if not local_provider_ready:
-        return "Set `llm.provider` to a local model provider such as ollama."
+        allowed = ", ".join(LOCAL_PROVIDER_NAMES)
+        return f"Run `scout setup llm` to choose a local model provider ({allowed})."
     if not model_ready:
-        return "Start Ollama and install the configured model."
+        return "Run `scout setup llm` to choose a working local model."
     return "Run `scout search-key set`."
 
 
@@ -560,52 +566,36 @@ def _default_probe_atlas(atlas_url: str) -> ProbeResult:
 def _default_probe_model(config: ScoutConfig) -> ProbeResult:
     """Probe the configured model provider enough for local discovery readiness."""
     provider = config.llm.provider.strip().lower()
-    if provider != LOCAL_WORKER_PROVIDER:
+    if not is_local_provider(provider):
         return ProbeResult(
             "ok",
             f"Configured provider is {config.llm.provider}.",
         )
 
-    base_url = (config.llm.base_url or DEFAULT_OLLAMA_URL).rstrip("/")
-    try:
-        with httpx.Client(timeout=3.0) as client:
-            response = client.get(f"{base_url}/api/tags")
-            response.raise_for_status()
-            payload = response.json()
-    except (httpx.HTTPError, ValueError):
+    local_provider = cast("LocalProviderName", provider)
+    probe = probe_local_model(local_provider, config)
+    label = provider_label(local_provider)
+    if probe.status != "ready":
         return ProbeResult(
             "fail",
-            f"Ollama is not reachable at {base_url}.",
-            "Start Ollama, then run `scout doctor` again.",
+            probe.message,
+            probe.remediation,
         )
 
-    if not isinstance(payload, dict):
+    if config.llm.model in probe.models:
+        return ProbeResult("ok", f"{label} model {config.llm.model} available.")
+
+    if local_provider == "ollama":
         return ProbeResult(
             "fail",
-            "Ollama returned an invalid model list.",
-            "Start Ollama, then run `scout doctor` again.",
+            f"Ollama model {config.llm.model} is not available.",
+            f"Install it with `ollama pull {config.llm.model}`.",
         )
-
-    model_names = _ollama_model_names(payload)
-    if config.llm.model in model_names:
-        return ProbeResult("ok", f"Ollama model {config.llm.model} available.")
     return ProbeResult(
         "fail",
-        f"Ollama model {config.llm.model} is not available.",
-        f"Install it with `ollama pull {config.llm.model}`.",
+        f"LM Studio model {config.llm.model} is not available.",
+        "Run `scout setup llm` to choose a visible LM Studio model.",
     )
-
-
-def _ollama_model_names(payload: dict[str, object]) -> set[str]:
-    """Extract model names from an Ollama tags response."""
-    models = payload.get("models")
-    if not isinstance(models, list):
-        return set()
-    names: set[str] = set()
-    for model in models:
-        if isinstance(model, dict) and isinstance(model.get("name"), str):
-            names.add(cast("str", model["name"]))
-    return names
 
 
 def _default_load_worker_state() -> dict[str, object]:

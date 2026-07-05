@@ -11,6 +11,7 @@ import logging
 import platform
 import sys
 import time
+import tomllib
 import webbrowser
 from datetime import UTC, datetime
 from pathlib import Path
@@ -33,10 +34,12 @@ from atlas_scout.auth import (
     save_session,
 )
 from atlas_scout.cli_context import console, err_console
+from atlas_scout.cli_errors import CliError
 from atlas_scout.cli_output import (
+    format_device_auth_error,
     format_verification_uri_complete,
+    print_cli_error,
     print_duplicate_run_notice,
-    print_login_failure,
     print_login_instructions,
     print_login_success,
     print_run_banner,
@@ -56,6 +59,16 @@ from atlas_scout.config import (
 from atlas_scout.credentials import CredentialStoreError
 from atlas_scout.doctor import run_doctor
 from atlas_scout.doctor_output import print_doctor_report
+from atlas_scout.local_models import (
+    LOCAL_PROVIDER_NAMES,
+    LocalModelChoice,
+    LocalModelResolution,
+    apply_local_model_resolution,
+    is_local_provider,
+    provider_label,
+    resolve_local_model,
+    select_local_model_choice,
+)
 from atlas_scout.login_flow import (
     LoginExecutionError,
     begin_login,
@@ -104,7 +117,7 @@ signal = _daemon_helpers.signal
 subprocess = _daemon_helpers.subprocess
 
 WORKER_STATE_PATH = SCOUT_CONFIG_DIR / "worker.json"
-LOCAL_WORKER_PROVIDERS = frozenset({"ollama"})
+LOCAL_WORKER_PROVIDERS = frozenset(LOCAL_PROVIDER_NAMES)
 _WORKER_STOPPED_STATE: dict[str, object] = {
     "atlas_url": None,
     "current_job_id": None,
@@ -159,8 +172,91 @@ def _require_local_worker_provider(config: ScoutConfig) -> None:
         allowed = ", ".join(sorted(LOCAL_WORKER_PROVIDERS))
         raise click.ClickException(
             "Scout worker mode requires a local model provider before public launch. "
-            f"Set llm.provider to one of: {allowed}."
+            f"Run `scout setup llm` to choose one of: {allowed}."
         )
+
+
+def _prepare_local_model_config(
+    config: ScoutConfig,
+    *,
+    config_path: Path,
+    force_save: bool = False,
+) -> LocalModelResolution | None:
+    """Resolve and optionally save local model settings for commands that run work."""
+    if not is_local_provider(config.llm.provider):
+        return None
+
+    resolution = resolve_local_model(config)
+    if not resolution.ready:
+        raise click.ClickException(_local_model_error_message(resolution))
+
+    apply_local_model_resolution(config, resolution)
+    if resolution.changed or force_save:
+        _save_local_model_config(config_path, resolution)
+    return resolution
+
+
+def _local_model_error_message(resolution: LocalModelResolution) -> str:
+    """Return concise local model failure copy."""
+    if resolution.remediation:
+        return f"{resolution.message} {resolution.remediation}"
+    return resolution.message
+
+
+def _save_local_model_config(config_path: Path, resolution: LocalModelResolution) -> None:
+    """Persist selected local model settings without storing secrets."""
+    if resolution.provider is None or resolution.model is None:
+        return
+    config_path.parent.mkdir(parents=True, exist_ok=True)
+    data: dict[str, dict[str, str | int | float | bool]] = {}
+    if config_path.exists():
+        with config_path.open("rb") as handle:
+            data = cast("dict[str, dict[str, str | int | float | bool]]", tomllib.load(handle))
+    llm = data.setdefault("llm", {})
+    llm["provider"] = resolution.provider
+    llm["model"] = resolution.model
+    if resolution.base_url:
+        llm["base_url"] = resolution.base_url
+    _write_toml(config_path, data)
+
+
+def _print_local_model_resolution(
+    resolution: LocalModelResolution | None,
+    *,
+    saved: bool,
+) -> None:
+    """Print the local model choice in a compact user-facing form."""
+    if resolution is None or not resolution.ready:
+        return
+    console.print(resolution.message)
+    if saved:
+        console.print(f"[dim]Saved local model settings to profile: {get_active_profile_name()}[/]")
+
+
+def _choose_local_model_interactively(
+    config: ScoutConfig,
+    resolution: LocalModelResolution,
+) -> LocalModelResolution:
+    """Let a user override automatic local model selection in setup."""
+    if len(resolution.choices) <= 1:
+        return resolution
+
+    console.print()
+    table = Table(title="Local models", show_lines=False, pad_edge=False)
+    table.add_column("#", style="dim")
+    table.add_column("Provider")
+    table.add_column("Model", style="bold")
+    for index, choice in enumerate(resolution.choices, start=1):
+        table.add_row(str(index), provider_label(choice.provider), choice.model)
+    console.print(table)
+    selection = click.prompt(
+        "Choose a model",
+        type=click.IntRange(1, len(resolution.choices)),
+        default=1,
+        show_default=True,
+    )
+    choice = cast("LocalModelChoice", resolution.choices[selection - 1])
+    return select_local_model_choice(config, choice, resolution.choices)
 
 
 def _search_key_configured() -> bool:
@@ -170,7 +266,23 @@ def _search_key_configured() -> bool:
 
 def _print_credential_store_error(exc: CredentialStoreError) -> None:
     """Render a credential-store error without exposing secret values."""
-    err_console.print(f"[red]Credential storage error:[/] {exc}")
+    print_cli_error(err_console, _credential_store_cli_error(exc))
+
+
+def _exit_with_error(error: CliError) -> None:
+    """Render a structured CLI error to stderr and stop command execution."""
+    print_cli_error(err_console, error)
+    sys.exit(error.exit_code)
+
+
+def _credential_store_cli_error(exc: CredentialStoreError) -> CliError:
+    """Return a structured credential-storage error."""
+    return CliError(title="Credential storage error", message=str(exc))
+
+
+def _login_failure_cli_error(exc: DeviceAuthError) -> CliError:
+    """Return a structured Scout login error."""
+    return CliError(title="Login failed", message=format_device_auth_error(exc))
 
 
 def _load_session_or_exit() -> ScoutSession | None:
@@ -250,8 +362,7 @@ async def _login(
             workspace=workspace,
         )
     except DeviceAuthError as exc:
-        print_login_failure(err_console, exc)
-        sys.exit(1)
+        _exit_with_error(_login_failure_cli_error(exc))
 
     print_login_instructions(console, pending.code)
     if open_browser:
@@ -266,20 +377,16 @@ async def _login(
             search_key_configured=_search_key_configured(),
         )
     except CredentialStoreError as exc:
-        _print_credential_store_error(exc)
-        sys.exit(1)
+        _exit_with_error(_credential_store_cli_error(exc))
     except DeviceAuthError as exc:
-        print_login_failure(err_console, exc)
-        sys.exit(1)
+        _exit_with_error(_login_failure_cli_error(exc))
     except LoginExecutionError as exc:
-        err_console.print(f"[red]{exc.title}:[/] {exc.message}")
-        sys.exit(1)
+        _exit_with_error(CliError(title=exc.title, message=exc.message))
 
     try:
         save_session(session)
     except CredentialStoreError as exc:
-        _print_credential_store_error(exc)
-        sys.exit(1)
+        _exit_with_error(_credential_store_cli_error(exc))
     print_login_success(console, session.user_email)
 
 
@@ -579,10 +686,13 @@ def main(
         path = SCOUT_CONFIGS_DIR / f"{profile_name}.toml"
         if not path.exists():
             available = sorted(p.stem for p in SCOUT_CONFIGS_DIR.glob("*.toml"))
-            err_console.print(f"[red]Error:[/] profile '{profile_name}' not found at {path}")
-            if available:
-                err_console.print(f"Available profiles: {', '.join(available)}")
-            ctx.exit(1)
+            _exit_with_error(
+                CliError(
+                    title="Profile not found",
+                    message=f"profile '{profile_name}' not found at {path}",
+                    hint=f"Available profiles: {', '.join(available)}" if available else None,
+                )
+            )
     else:
         path = get_active_config_path()
     ctx.obj["config"] = load_config(path)
@@ -630,7 +740,9 @@ def main(
     default=None,
     help="File containing extraction directive.",
 )
-@click.option("--provider", default=None, help="LLM provider override (ollama, anthropic).")
+@click.option(
+    "--provider", default=None, help="LLM provider override (ollama, lmstudio, anthropic)."
+)
 @click.option("--model", "model_name", default=None, help="Model name override.")
 @click.option("--location", default=None, help="Location hint (e.g. 'Austin, TX').")
 @click.option("--issues", default=None, help="Comma-separated issue area slugs.")
@@ -755,14 +867,28 @@ def run(
             )
             sys.exit(1)
         if not location:
-            err_console.print("[red]Error:[/] --location required for search mode.")
-            sys.exit(1)
+            _exit_with_error(
+                CliError(title="Missing option", message="--location is required for search mode.")
+            )
         if not issue_list:
-            err_console.print("[red]Error:[/] --issues required for search mode.")
-            sys.exit(1)
+            _exit_with_error(
+                CliError(title="Missing option", message="--issues is required for search mode.")
+            )
+
+    try:
+        resolution = _prepare_local_model_config(
+            config,
+            config_path=ctx.obj["config_path"],
+        )
+    except click.ClickException as exc:
+        _exit_with_error(CliError(title="Local model unavailable", message=exc.message))
 
     if not quiet:
         profile = _runtime_profile_for_run(config, direct_mode=bool(url_list))
+        _print_local_model_resolution(
+            resolution,
+            saved=bool(resolution and resolution.changed),
+        )
         print_run_banner(
             console,
             config=config,
@@ -1005,8 +1131,7 @@ async def _sync_runs(
                 workspace=workspace,
             )
     except ScoutSyncError as exc:
-        err_console.print(f"[red]Sync failed:[/] {exc}")
-        sys.exit(1)
+        _exit_with_error(CliError(title="Sync failed", message=str(exc)))
 
 
 # ---------------------------------------------------------------------------
@@ -1076,10 +1201,13 @@ def config_use_profile(name: str) -> None:
     source = SCOUT_CONFIGS_DIR / f"{name}.toml"
     if not source.exists():
         available = sorted(p.stem for p in SCOUT_CONFIGS_DIR.glob("*.toml"))
-        err_console.print(f"[red]Error:[/] profile '{name}' not found.")
-        if available:
-            err_console.print(f"Available profiles: {', '.join(available)}")
-        sys.exit(1)
+        _exit_with_error(
+            CliError(
+                title="Profile not found",
+                message=f"profile '{name}' not found.",
+                hint=f"Available profiles: {', '.join(available)}" if available else None,
+            )
+        )
     set_active_profile_name(name)
     console.print(f"[green]Active profile set to '{name}'.[/]")
 
@@ -1121,8 +1249,13 @@ def config_set(key: str, value: str) -> None:
             data = cast("dict[str, dict[str, str | int | float | bool]]", tomllib.load(f))
     parts = key.split(".")
     if len(parts) != 2:
-        err_console.print("[red]Error:[/] key must be section.field (e.g. llm.provider)")
-        sys.exit(1)
+        _exit_with_error(
+            CliError(
+                title="Invalid config key",
+                message="key must be section.field.",
+                hint="Example: llm.provider",
+            )
+        )
     section, field = parts
     # Coerce types
     typed: str | int | float | bool
@@ -1149,8 +1282,7 @@ def config_get(ctx: click.Context, key: str) -> None:
     config: ScoutConfig = ctx.obj["config"]
     parts = key.split(".")
     if len(parts) != 2:
-        err_console.print("[red]Error:[/] key must be section.field")
-        sys.exit(1)
+        _exit_with_error(CliError(title="Invalid config key", message="key must be section.field."))
     section_obj = getattr(config, parts[0], None)
     if section_obj is None:
         err_console.print(f"[red]Unknown section:[/] {parts[0]}")
@@ -1179,6 +1311,58 @@ def _write_toml(path: Path, data: dict[str, dict[str, str | int | float | bool]]
                 lines.append(f"{k} = {v}")
         lines.append("")
     path.write_text("\n".join(lines) + "\n")
+
+
+# ---------------------------------------------------------------------------
+# setup commands
+# ---------------------------------------------------------------------------
+
+
+@main.group("setup")
+def setup_group() -> None:
+    """Set up local Scout dependencies."""
+
+
+@setup_group.command("llm")
+@click.option("--provider", type=click.Choice(list(LOCAL_PROVIDER_NAMES)), default=None)
+@click.option("--model", "model_name", default=None, help="Local model name to use.")
+@click.option("--base-url", default=None, help="Local model server URL.")
+@click.option("--interactive", is_flag=True, help="Choose from detected local models.")
+@click.pass_context
+def setup_llm(
+    ctx: click.Context,
+    provider: str | None,
+    model_name: str | None,
+    base_url: str | None,
+    interactive: bool,
+) -> None:
+    """Detect and save the local model Scout should use."""
+    config: ScoutConfig = ctx.obj["config"]
+    if provider is not None:
+        config.llm.provider = provider
+    if model_name is not None:
+        config.llm.model = model_name
+    if base_url is not None:
+        config.llm.base_url = base_url
+
+    try:
+        resolution = resolve_local_model(config)
+        if interactive:
+            resolution = _choose_local_model_interactively(config, resolution)
+        if not resolution.ready:
+            _exit_with_error(
+                CliError(
+                    title="Local model unavailable",
+                    message=resolution.message,
+                    hint=resolution.remediation,
+                )
+            )
+        apply_local_model_resolution(config, resolution)
+        _save_local_model_config(ctx.obj["config_path"], resolution)
+    except click.ClickException as exc:
+        _exit_with_error(CliError(title="Local model unavailable", message=exc.message))
+
+    _print_local_model_resolution(resolution, saved=True)
 
 
 # ---------------------------------------------------------------------------
@@ -1467,13 +1651,13 @@ async def _runs_sync(
                 api_key=resolved_api_key,
             )
         if result.errors:
+            sync_error = "; ".join(result.errors)
             await store.update_run_sync(
                 run_id,
                 sync_status="failed",
-                last_error="; ".join(result.errors),
+                last_error=sync_error,
             )
-            err_console.print(f"[red]Sync failed:[/] {'; '.join(result.errors)}")
-            sys.exit(1)
+            _exit_with_error(CliError(title="Sync failed", message=sync_error))
 
         await store.update_run_sync(
             run_id,
@@ -1557,10 +1741,13 @@ def logout() -> None:
     try:
         delete_session()
     except CredentialStoreError as exc:
-        err_console.print(
-            f"[red]Scout could not remove local credentials from the OS credential store:[/] {exc}"
+        _exit_with_error(
+            CliError(
+                title="Logout failed",
+                message="Scout could not remove local credentials from the OS credential store.",
+                hint=str(exc),
+            )
         )
-        sys.exit(1)
     console.print("[green]Logged out.[/]")
 
 
@@ -1577,8 +1764,7 @@ def search_key_set(value: str | None) -> None:
     try:
         save_search_api_key(key)
     except (CredentialStoreError, ValueError) as exc:
-        err_console.print(f"[red]Search key not saved:[/] {exc}")
-        sys.exit(1)
+        _exit_with_error(CliError(title="Search key not saved", message=str(exc)))
     console.print("[green]Search key saved.[/]")
 
 
@@ -1593,8 +1779,7 @@ def search_key_status() -> None:
             console.print("[green]Search key configured in OS credential store.[/]")
             return
     except CredentialStoreError as exc:
-        _print_credential_store_error(exc)
-        sys.exit(1)
+        _exit_with_error(_credential_store_cli_error(exc))
     console.print("[yellow]Search key not configured.[/]")
 
 
@@ -1604,8 +1789,7 @@ def search_key_delete() -> None:
     try:
         deleted = delete_stored_search_api_key()
     except CredentialStoreError as exc:
-        _print_credential_store_error(exc)
-        sys.exit(1)
+        _exit_with_error(_credential_store_cli_error(exc))
     if deleted:
         console.print("[green]Search key deleted.[/]")
         return
@@ -2069,6 +2253,7 @@ async def _worker_start(
     session = _load_session_or_click_exception()
     if session is None:
         raise click.ClickException("Log in with `scout login` before starting the worker.")
+    _prepare_local_model_config(config, config_path=config_path)
     _require_local_worker_provider(config)
     state = _read_worker_state()
     if _worker_state_running(state):
@@ -2174,8 +2359,7 @@ def worker_start(
             )
         )
     except click.ClickException as exc:
-        err_console.print(f"[red]Error:[/] {exc.message}")
-        sys.exit(1)
+        _exit_with_error(CliError(title="Error", message=exc.message))
 
 
 @worker_group.command("stop")
@@ -2215,8 +2399,7 @@ def worker_run_internal(
             )
         )
     except click.ClickException as exc:
-        err_console.print(f"[red]Error:[/] {exc.message}")
-        sys.exit(1)
+        _exit_with_error(CliError(title="Error", message=exc.message))
 
 
 # ---------------------------------------------------------------------------
@@ -2428,8 +2611,7 @@ def daemon_start(ctx: click.Context, search_api_key: str, interval: int) -> None
             )
         )
     except click.ClickException as exc:
-        err_console.print(f"[red]Error:[/] {exc.message}")
-        sys.exit(1)
+        _exit_with_error(CliError(title="Error", message=exc.message))
 
 
 @daemon.command("stop")
@@ -2440,8 +2622,7 @@ def daemon_stop(ctx: click.Context) -> None:
     try:
         asyncio.run(_daemon_stop(config))
     except click.ClickException as exc:
-        err_console.print(f"[red]Error:[/] {exc.message}")
-        sys.exit(1)
+        _exit_with_error(CliError(title="Error", message=exc.message))
 
 
 @daemon.command("status")
@@ -2470,8 +2651,7 @@ def daemon_run_internal(ctx: click.Context, search_api_key: str, interval: int) 
             )
         )
     except click.ClickException as exc:
-        err_console.print(f"[red]Error:[/] {exc.message}")
-        sys.exit(1)
+        _exit_with_error(CliError(title="Error", message=exc.message))
 
 
 # ---------------------------------------------------------------------------

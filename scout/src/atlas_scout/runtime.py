@@ -6,6 +6,8 @@ import os
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from atlas_scout.local_models import is_local_provider
+
 if TYPE_CHECKING:
     from atlas_scout.config import ScoutConfig
 
@@ -34,7 +36,7 @@ def build_runtime_profile(config: ScoutConfig, *, direct_mode: bool = False) -> 
     runtime = config.runtime
 
     max_total_workers = runtime.max_total_workers or max(16, cpu_count * 8)
-    local_provider = config.llm.provider == "ollama"
+    local_provider = is_local_provider(config.llm.provider)
 
     if local_provider:
         configured_cap = (

@@ -66,6 +66,21 @@ def test_runtime_profile_uses_conservative_ollama_extract_concurrency_for_direct
     assert profile.extract_concurrency == 1
 
 
+def test_runtime_profile_treats_lmstudio_as_local_provider() -> None:
+    config = ScoutConfig.model_validate(
+        {
+            "llm": {
+                "provider": "lmstudio",
+                "max_concurrent": 12,
+            }
+        }
+    )
+
+    profile = build_runtime_profile(config)
+
+    assert profile.extract_concurrency == 2
+
+
 def test_runtime_profile_remote_provider_with_zero_max_concurrent_uses_cpu_default() -> None:
     """When the remote provider config has max_concurrent=0, extract sizing scales with CPU."""
     config = ScoutConfig.model_validate(

@@ -126,8 +126,8 @@ class LLMProvider(Protocol):
 
 | Provider | Structured Output | Connection | Install Extra |
 |----------|------------------|------------|---------------|
-| Ollama | `format: json` | `http://localhost:11434` | `[ollama]` |
-| LM Studio | OpenAI-compatible API | `http://localhost:1234` | `[lmstudio]` |
+| Ollama | Native JSON schema via `/api/chat` `format` | `http://localhost:11434` | `[ollama]` |
+| LM Studio | OpenAI-compatible JSON schema via `/v1/chat/completions` | `http://localhost:1234/v1` | `[lmstudio]` |
 | Anthropic | Native tool use | API key required | `[anthropic]` |
 | OpenAI | Native JSON mode | API key required | `[openai]` |
 | Google | Native JSON mode | API key required | `[google]` |

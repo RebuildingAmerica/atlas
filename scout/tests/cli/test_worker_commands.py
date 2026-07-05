@@ -12,6 +12,7 @@ import atlas_scout.cli as cli_module
 from atlas_scout.auth import ScoutSession
 from atlas_scout.cli import main
 from atlas_scout.config import ScoutConfig
+from atlas_scout.local_models import LocalModelResolution
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -115,6 +116,17 @@ def test_worker_start_spawns_background_process(tmp_path: Path, monkeypatch) -> 
     monkeypatch.setattr(cli_module, "WORKER_STATE_PATH", state_path)
     monkeypatch.setattr(cli_module, "_spawn_worker_process", spawn)
     monkeypatch.setattr(cli_module, "resolve_search_api_key", lambda _key=None: "search-key")
+    monkeypatch.setattr(
+        cli_module,
+        "resolve_local_model",
+        lambda *_args, **_kwargs: LocalModelResolution(
+            ready=True,
+            provider="ollama",
+            model="llama3.1:8b",
+            base_url="http://localhost:11434",
+            message="Using Ollama with llama3.1:8b.",
+        ),
+    )
     monkeypatch.setattr(
         cli_module,
         "load_session",
