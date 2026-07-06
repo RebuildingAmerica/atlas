@@ -45,3 +45,44 @@ export interface EntityCardData {
   /** Absolute URL to the full profile; omit the link entirely when null. */
   profile_url: string | null;
 }
+
+/**
+ * Minimal, presentation-only data shape for one row in the compact
+ * search-results list.
+ *
+ * A strict subset of `EntityCardData`'s identity/trust fields — no
+ * `description`/`photo_url`/`profile_url`, since a dense list row doesn't
+ * render any of them. `src/adapters/app-client.ts` parses both this shape
+ * and `EntityCardData` from the same underlying MCP tool payload shape
+ * (`EntityResponse`), sharing the parsing logic for the fields they have in
+ * common so the two can't silently drift apart.
+ */
+export interface SearchResultRow {
+  id: string;
+  name: string;
+  type: EntityType;
+  /** Pre-formatted "City, State" display string, from `address.display`. */
+  place_label: string | null;
+  trust_level: TrustLevel;
+  source_count: number;
+}
+
+/**
+ * Presentation-only data shape for the whole search-results widget: one
+ * page of rows plus enough pagination metadata for a "Showing N of TOTAL"
+ * count and a "Load more" control.
+ *
+ * Mirrors Atlas's `EntityCollectionResponse`
+ * (`api/atlas/domains/catalog/schemas/public.py`) narrowed down the same way
+ * `EntityCardData` narrows `EntityResponse`: deliberately decoupled from
+ * both that API schema and the main app's internal `Entry` type
+ * (`app/src/types/entry.ts`), since `app/` depends on this package and not
+ * the other way around. `place` (the resolved search place/address) is
+ * omitted — this widget's list rows and count don't render it.
+ */
+export interface SearchResultsData {
+  items: SearchResultRow[];
+  total: number;
+  /** Opaque pagination cursor for the next page; null when there isn't one. */
+  next_cursor: string | null;
+}

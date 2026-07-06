@@ -1,7 +1,13 @@
-import { useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useApp, useHostStyles } from "@modelcontextprotocol/ext-apps/react";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import type { EntityCardData, EntityType, TrustLevel } from "../types";
+import type {
+  EntityCardData,
+  EntityType,
+  SearchResultRow,
+  SearchResultsData,
+  TrustLevel,
+} from "../types";
 
 const ENTITY_TYPES: readonly EntityType[] = [
   "person",
@@ -65,19 +71,22 @@ function readHttpsProfileUrl(record: Record<string, unknown>): string | null {
 /**
  * Defensively narrow an MCP tool's `structuredContent` payload — shaped like
  * Atlas's full `EntityResponse` (see `api/atlas/domains/catalog/schemas/public.py`)
- * — down to the flat `EntityCardData` this widget renders.
+ * — down to the `SearchResultRow` fields shared by every rendering of an
+ * entity: identity, type, formatted location, trust tier, and source count.
+ *
+ * `parseEntityCardData` builds `EntityCardData` on top of this same parsing
+ * step (rather than re-checking these fields itself) so the full card and
+ * the compact list row can never drift apart on the fields they share.
  *
  * Atlas's own MCP server is the only source for this payload in Phase 1, so
  * this performs reasonable shape checks rather than full schema validation.
  * Returns `null` when the payload doesn't look like a usable entity record.
  */
-export function parseEntityCardData(
-  structuredContent: unknown,
-): EntityCardData | null {
-  if (typeof structuredContent !== "object" || structuredContent === null) {
+function parseSearchResultRow(value: unknown): SearchResultRow | null {
+  if (typeof value !== "object" || value === null) {
     return null;
   }
-  const record = structuredContent as Record<string, unknown>;
+  const record = value as Record<string, unknown>;
 
   if (
     typeof record.id !== "string" ||
@@ -103,13 +112,77 @@ export function parseEntityCardData(
     id: record.id,
     name: record.name,
     type: record.type,
-    description: readOptionalString(record, "description"),
-    photo_url: readOptionalString(record, "photo_url"),
     place_label,
     trust_level,
     source_count: record.source_count,
+  };
+}
+
+/**
+ * Defensively narrow an MCP tool's `structuredContent` payload — shaped like
+ * Atlas's full `EntityResponse` — down to the flat `EntityCardData` this
+ * widget renders. Returns `null` when the payload doesn't look like a usable
+ * entity record.
+ */
+export function parseEntityCardData(
+  structuredContent: unknown,
+): EntityCardData | null {
+  const row = parseSearchResultRow(structuredContent);
+  if (!row) {
+    return null;
+  }
+  const record = structuredContent as Record<string, unknown>;
+
+  return {
+    ...row,
+    description: readOptionalString(record, "description"),
+    photo_url: readOptionalString(record, "photo_url"),
     profile_url: readHttpsProfileUrl(record),
   };
+}
+
+/**
+ * Defensively narrow an MCP tool's `structuredContent` payload — shaped like
+ * Atlas's `EntityCollectionResponse` (see
+ * `api/atlas/domains/catalog/schemas/public.py`) — down to the flat
+ * `SearchResultsData` this widget renders.
+ *
+ * A malformed *individual* row is dropped (with a console warning) rather
+ * than failing the whole page: a page of otherwise-good results is more
+ * useful than an empty list because one entry didn't parse. The top-level
+ * shape (`items` an array, `total` a number) still has to be correct, or the
+ * whole payload is rejected the same way `parseEntityCardData` rejects an
+ * unusable single record.
+ */
+export function parseSearchResultsData(
+  structuredContent: unknown,
+): SearchResultsData | null {
+  if (typeof structuredContent !== "object" || structuredContent === null) {
+    return null;
+  }
+  const record = structuredContent as Record<string, unknown>;
+
+  if (!Array.isArray(record.items) || typeof record.total !== "number") {
+    return null;
+  }
+
+  const items: SearchResultRow[] = [];
+  for (const rawItem of record.items) {
+    const parsed = parseSearchResultRow(rawItem);
+    if (parsed) {
+      items.push(parsed);
+    } else {
+      console.warn(
+        "search-results widget: dropped a list item that didn't parse into SearchResultRow",
+        rawItem,
+      );
+    }
+  }
+
+  const next_cursor =
+    typeof record.next_cursor === "string" ? record.next_cursor : null;
+
+  return { items, total: record.total, next_cursor };
 }
 
 export interface EntityCardConnectionState {
@@ -179,4 +252,124 @@ export function useEntityCardData(): EntityCardConnectionState {
   useHostStyles(app, app?.getHostContext());
 
   return { data, error };
+}
+
+const SEARCH_ENTITIES_TOOL_NAME = "search_entities";
+
+export interface SearchResultsConnectionState {
+  /** Parsed tool result, or `null` until the first one arrives. */
+  data: SearchResultsData | null;
+  /**
+   * Set when the host connection itself failed (handshake/transport error,
+   * surfaced by `useApp`) — distinct from a malformed tool payload, which is
+   * logged as a console warning and otherwise leaves `data` as `null`.
+   */
+  error: Error | null;
+  /**
+   * Re-invoke `search_entities` with the original search's filters plus the
+   * next page's cursor, appending the new rows to `data.items` rather than
+   * replacing them.
+   *
+   * A no-op while `data` is `null`, `data.next_cursor` is `null` (no further
+   * page), or a previous `loadMore` call is still in flight.
+   */
+  loadMore: () => Promise<void>;
+  /** True while a `loadMore` call is in flight. */
+  isLoadingMore: boolean;
+}
+
+/**
+ * React hook that connects to the MCP Apps host, listens for the
+ * `search_entities` tool's result, keeps the document theme/styles/fonts in
+ * sync with the host, and supports paginating via `app.callServerTool` — the
+ * documented SDK method for a widget to re-invoke a tool on the originating
+ * MCP server (proxied through the host).
+ *
+ * Pagination re-sends the *original* call's arguments (whatever
+ * place/issue_areas/text/entity_types/source_types/limit the host actually
+ * called `search_entities` with) plus the new cursor, rather than guessing
+ * at a simplified `{ cursor, limit }` that would silently drop any other
+ * filter the original search used. The original arguments are captured from
+ * `app.ontoolinput` — a real, documented handler the host calls with the
+ * tool's complete arguments before its result arrives (see
+ * `McpUiToolInputNotification` in `@modelcontextprotocol/ext-apps`) — since
+ * neither the tool result's `structuredContent` nor any other callback
+ * exposes the arguments the host actually called the tool with.
+ *
+ * `loadMore` appends the new page's rows to the existing list rather than
+ * replacing it. Like `useEntityCardData`, this hook is only used by the
+ * widget build's mount entry point (`src/widget-entries/search-results.entry.tsx`).
+ */
+export function useSearchResultsData(): SearchResultsConnectionState {
+  const [data, setData] = useState<SearchResultsData | null>(null);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const originalArgumentsRef = useRef<Record<string, unknown>>({});
+
+  const { app, error } = useApp({
+    appInfo: { name: "atlas-search-results", version: "1.0.0" },
+    capabilities: {},
+    onAppCreated: (app) => {
+      app.ontoolinput = (params) => {
+        originalArgumentsRef.current = params.arguments ?? {};
+      };
+      app.ontoolresult = (result: CallToolResult) => {
+        const parsed = parseSearchResultsData(result.structuredContent);
+        if (parsed) {
+          setData(parsed);
+        } else {
+          console.warn(
+            "search-results widget: received a tool result that didn't parse into SearchResultsData",
+            result.structuredContent,
+          );
+        }
+      };
+      // See `useEntityCardData` for why this is registered directly instead
+      // of relying on `useApp`'s own `error`, which only reflects the
+      // initial connect handshake.
+      app.onerror = (error: Error) => {
+        console.error(error);
+      };
+    },
+  });
+
+  useHostStyles(app, app?.getHostContext());
+
+  const loadMore = useCallback(async () => {
+    if (!app || data?.next_cursor == null || isLoadingMore) {
+      return;
+    }
+    setIsLoadingMore(true);
+    try {
+      const result = await app.callServerTool({
+        name: SEARCH_ENTITIES_TOOL_NAME,
+        arguments: {
+          ...originalArgumentsRef.current,
+          cursor: data.next_cursor,
+        },
+      });
+      const parsed = parseSearchResultsData(result.structuredContent);
+      if (parsed) {
+        // Append to this call's own closed-over `data` rather than reading
+        // React's latest state via a functional updater: the guard above
+        // already confirmed `data` is non-null before `callServerTool` was
+        // ever invoked, so there's no "previous state is absent" case here
+        // to defend against within a single `loadMore` call.
+        setData({ ...parsed, items: [...data.items, ...parsed.items] });
+      } else {
+        console.warn(
+          "search-results widget: loadMore received a tool result that didn't parse into SearchResultsData",
+          result.structuredContent,
+        );
+      }
+    } catch (loadMoreError) {
+      // Never surface a raw error to the UI: log it and leave the existing
+      // page of results in place so a transient failure doesn't blank the
+      // widget. The user can retry via the same "Load more" control.
+      console.error(loadMoreError);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [app, data, isLoadingMore]);
+
+  return { data, error, loadMore, isLoadingMore };
 }

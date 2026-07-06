@@ -1,23 +1,6 @@
-import type { EntityCardData, EntityType } from "../../types";
+import type { EntityCardData } from "../../types";
+import { formatEntityTypeAndPlace } from "../../lib/entity-type-labels";
 import { TrustBadgeRow } from "../trust-badge-row/trust-badge-row";
-
-const ENTITY_TYPE_LABELS: Record<EntityType, string> = {
-  person: "Person",
-  organization: "Organization",
-  initiative: "Initiative",
-  campaign: "Campaign",
-  event: "Event",
-};
-
-/**
- * "Organization · Columbus, OH" — humanized type, then location when known.
- * `type` is always present, so the type label is never omitted; only the
- * location half is conditional, and no stray separator is ever rendered.
- */
-function buildSubtitle(data: EntityCardData): string {
-  const typeLabel = ENTITY_TYPE_LABELS[data.type];
-  return data.place_label ? `${typeLabel} · ${data.place_label}` : typeLabel;
-}
 
 export interface EntityCardProps {
   data: EntityCardData;
@@ -53,7 +36,9 @@ export function EntityCard({ data }: EntityCardProps) {
             <h3 className="text-ew-ink truncate text-base font-bold">
               {data.name}
             </h3>
-            <p className="text-ew-ink-soft text-sm">{buildSubtitle(data)}</p>
+            <p className="text-ew-ink-soft text-sm">
+              {formatEntityTypeAndPlace(data)}
+            </p>
           </div>
         </div>
 
