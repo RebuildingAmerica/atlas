@@ -12,6 +12,9 @@ Atlas is a civic tech codebase. Changes should be:
   correction paths when changing records, APIs, imports, exports, or displays.
 - **Useful:** Prefer work that helps someone find, understand, verify, run,
   self-host, or build on Atlas.
+- **Documented with the change:** Docs are part of the work, not cleanup after
+  the work. Update docs in the same change as the feature, process, contract, or
+  behavior they explain.
 - **Small enough to review:** Keep changes focused and explain the practical
   outcome.
 - **Respectful of people in the data:** Atlas represents real people and
@@ -30,8 +33,9 @@ Atlas is a civic tech codebase. Changes should be:
 
 ## Good First Contributions
 
-- Clarify setup, self-hosting, API, MCP, Scout, or public/private data
-  boundaries.
+- Correct setup, self-hosting, API, MCP, Scout, or public/private data guidance
+  when the existing docs are wrong, unclear, broken, or missing for behavior
+  that already exists.
 - Report setup gaps with the exact command, environment, expected result, and
   actual result.
 - Fix narrow bugs with a clear user or developer outcome.

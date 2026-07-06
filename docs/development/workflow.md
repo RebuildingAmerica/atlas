@@ -14,13 +14,26 @@ Use descriptive branch names with a prefix:
 
 **Types:**
 
-- `feature/` — Product, API, Scout, docs, or data behavior that changes what
-  someone can use, see, trust, or do.
+- `feature/` — Product, API, Scout, or data behavior that changes what someone
+  can use, see, trust, or do.
 - `fix/` — A narrow correction to broken, incorrect, or unsafe behavior.
 - `chore/` — Maintenance, dependencies, tooling, tests, refactors, docs cleanup,
   and repo health work.
 
 Local Git hooks block other branch prefixes by default.
+
+## Documentation Belongs With The Change
+
+Docs are not an afterthought and should not usually be split into a separate
+branch or follow-up commit. When product behavior, developer workflow,
+architecture, operations, API contracts, Scout behavior, or public/private data
+boundaries change, update the relevant docs in the same branch and the same
+reviewable change.
+
+A docs-only change is the exception, not the default. Use it for correcting
+existing guidance that is wrong, unclear, broken, or missing for behavior that
+already exists. Do not use docs-only work to finish explaining a feature,
+process, or contract that changed somewhere else.
 
 **Examples:**
 
@@ -47,7 +60,7 @@ Use Conventional Commits format. Enforced by pre-commit hook.
 
 - `feat` — A new feature
 - `fix` — A bug fix
-- `docs` — Documentation only
+- `docs` — Documentation-only correction for existing behavior or guidance
 - `refactor` — Code refactoring
 - `test` — Adding or updating tests
 - `chore` — Dependency, tooling, config changes
@@ -78,8 +91,8 @@ git commit -m "feat(api): add entry deduplication logic
 Deduplicates entries by fuzzy matching on name and location.
 Merges sources from duplicate entries into single record."
 
-# Documentation
-git commit -m "docs: add pipeline architecture overview"
+# Documentation-only correction for existing behavior
+git commit -m "docs: clarify pipeline architecture overview"
 
 # Test
 git commit -m "test(api): add 15 new tests for deduplicator"
