@@ -131,9 +131,12 @@ export interface EntityCardConnectionState {
  * Built on top of `@modelcontextprotocol/ext-apps/react`'s own `useApp` (for
  * the connect lifecycle — including surfacing connect failures via `error`,
  * rather than this package re-deriving that from a bare `.then()`) and
- * `useHostStyles` (for applying the host's theme/CSS variables/fonts). The
- * only thing this package adds on top is narrowing a tool result into
- * `EntityCardData` (`parseEntityCardData`).
+ * `useHostStyles` (for applying the host's theme/CSS variables/fonts). This
+ * package's own code is limited to narrowing a tool result into
+ * `EntityCardData` (`parseEntityCardData`) plus registering `app.onerror` —
+ * `useApp`'s `error` only reflects the initial connect handshake, so a
+ * runtime protocol error after a successful connection would otherwise be
+ * silently dropped.
  *
  * Returns `{ data: null, error: null }` until the first tool result arrives
  * or the connection fails, so callers can render a loading state in the
@@ -161,6 +164,14 @@ export function useEntityCardData(): EntityCardConnectionState {
             result.structuredContent,
           );
         }
+      };
+      // `useApp`'s own `error` return value only reflects the initial connect
+      // handshake — it never updates for protocol-level errors that happen
+      // after a successful connection. Without this, such errors (the
+      // Protocol base class's `onerror`, invoked for the life of the
+      // connection) would be silently dropped.
+      app.onerror = (error: Error) => {
+        console.error(error);
       };
     },
   });

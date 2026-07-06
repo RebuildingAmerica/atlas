@@ -6,10 +6,11 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 /**
  * Minimal stand-in for the real `App` instance `useApp` would create. Only
  * the members `useEntityCardData` actually touches (`ontoolresult`,
- * `getHostContext`) are modeled.
+ * `onerror`, `getHostContext`) are modeled.
  */
 interface FakeApp {
   ontoolresult?: (result: CallToolResult) => void;
+  onerror?: (error: Error) => void;
   getHostContext: ReturnType<typeof vi.fn>;
 }
 
@@ -219,5 +220,18 @@ describe("useEntityCardData", () => {
     renderHook(() => useEntityCardData());
 
     expect(useHostStyles).toHaveBeenCalledWith(null, undefined);
+  });
+
+  it("logs runtime protocol errors reported after a successful connection", () => {
+    const consoleErrorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    renderHook(() => useEntityCardData());
+    const runtimeError = new Error("transport dropped");
+
+    fakeApp.onerror?.(runtimeError);
+
+    expect(consoleErrorSpy).toHaveBeenCalledWith(runtimeError);
+    consoleErrorSpy.mockRestore();
   });
 });
