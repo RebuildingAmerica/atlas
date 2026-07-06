@@ -19,6 +19,11 @@ export default defineConfig({
         // own. Mirrors the precedent in app/vitest.config.ts for excluding
         // Vite-only entry points that aren't meaningfully unit-testable.
         "src/widget-entries/**",
+        // Shared test fixtures/mocks (FakeApp, fixture payloads) imported
+        // only by *.test.ts files in src/adapters/ — test infrastructure,
+        // not shipped library or widget code, so it isn't held to the same
+        // coverage gate as production source.
+        "src/adapters/test-support/**",
       ],
       thresholds: {
         branches: 100,

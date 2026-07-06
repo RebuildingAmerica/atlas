@@ -1,3 +1,5 @@
+import { humanizeSlug } from "../../lib/humanize-slug";
+
 /**
  * Human labels for Atlas's known verification tiers. Covers both
  * `trust.level` (underscored: `atlas_verified`) and `claim.verification_level`
@@ -25,20 +27,12 @@ const VERIFIED_LEVELS = new Set([
 
 /**
  * Turn a raw verification-level string into a human label. Falls back to
- * title-casing the raw value (splitting on `-`/`_`) for any level this
- * component doesn't recognize by name, so an unexpected value still renders
- * something reasonable instead of a raw enum string.
+ * `humanizeSlug` (title-casing the raw value) for any level this component
+ * doesn't recognize by name, so an unexpected value still renders something
+ * reasonable instead of a raw enum string.
  */
 function humanizeVerificationLevel(level: string): string {
-  const known = KNOWN_VERIFICATION_LABELS[level];
-  if (known) {
-    return known;
-  }
-  return level
-    .split(/[-_]/)
-    .filter((word) => word.length > 0)
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
+  return KNOWN_VERIFICATION_LABELS[level] ?? humanizeSlug(level);
 }
 
 export interface TrustBadgeRowProps {

@@ -1,4 +1,5 @@
 import type { ConnectionRelationship } from "../types";
+import { humanizeSlug } from "./humanize-slug";
 
 /**
  * Human labels for Atlas's mechanically-derived relationship types.
@@ -22,21 +23,6 @@ const KNOWN_RELATIONSHIP_LABELS: Record<string, string> = {
   shared_place: "Same place",
   shared_source: "Shared source",
 };
-
-/**
- * Title-cases a raw slug by splitting on `-`/`_` — the same fallback
- * humanization `TrustBadgeRow`'s `humanizeVerificationLevel` applies to an
- * unrecognized verification level, used here both for issue-area ids
- * (`"criminal-justice"` -> `"Criminal Justice"`) and for a relationship
- * `type` this component doesn't recognize by name.
- */
-function humanizeSlug(slug: string): string {
-  return slug
-    .split(/[-_]/)
-    .filter((word) => word.length > 0)
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
-}
 
 /**
  * Turn one `ConnectionRelationship` into a short, human pill label, e.g.

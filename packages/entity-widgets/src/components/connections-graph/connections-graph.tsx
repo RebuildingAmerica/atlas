@@ -48,9 +48,9 @@ function ConnectionRowItem({ item }: ConnectionRowItemProps) {
 
       {item.relationships.length > 0 ? (
         <div className="flex flex-wrap items-center gap-1.5">
-          {item.relationships.map((relationship) => (
+          {item.relationships.map((relationship, index) => (
             <span
-              key={relationship.type}
+              key={`${relationship.type}-${index}`}
               className="bg-ew-muted text-ew-muted-ink inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
             >
               {formatRelationshipLabel(relationship)}

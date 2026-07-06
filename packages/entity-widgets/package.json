@@ -10,7 +10,7 @@
     }
   },
   "scripts": {
-    "build": "vite build --config vite.lib.config.ts && tsc -p tsconfig.build.json && rm -rf dist/widget && INPUT=entity-card.html vite build --config vite.widget.config.ts && INPUT=search-results.html vite build --config vite.widget.config.ts && INPUT=connections-graph.html vite build --config vite.widget.config.ts && node scripts/verify-widget-build.mjs",
+    "build": "vite build --config vite.lib.config.ts && tsc -p tsconfig.build.json && rm -rf dist/widget && node scripts/build-widgets.mjs && node scripts/verify-widget-build.mjs",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src --max-warnings 0",
     "test": "vitest run",

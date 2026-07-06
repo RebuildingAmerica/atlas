@@ -1,22 +1,25 @@
 #!/usr/bin/env node
 // Fail the build if any of this package's widget bundles didn't actually get
-// produced by `pnpm build`'s per-widget vite invocations.
+// produced by scripts/build-widgets.mjs's per-widget vite invocations.
 //
-// `package.json`'s build script chains one `INPUT=<name>.html vite build`
-// invocation per widget (vite-plugin-singlefile can't build more than one
-// HTML entry per config — see vite.widget.config.ts). Nothing about that
-// chain fails if a future invocation is forgotten or the script gets
-// reordered: `vite build` still exits 0 for every widget that *did* build,
-// so `pnpm build` (and CI) would too. Without this check, a missing widget
-// would only surface later as a RuntimeError from `resolve_widget_asset_dir`
-// (api/atlas/platform/mcp/widgets.py) at request time in production, not in
-// CI. Keep WIDGET_NAMES in sync with the INPUT=... invocations in
-// package.json's build script and with WIDGET_RESOURCES in widgets.py.
+// This is a defense-in-depth backstop, not the primary safeguard:
+// build-widgets.mjs already fails loudly and immediately if a given
+// widget's own `vite build` invocation fails (e.g. because its `<name>.html`
+// entry is missing). This script instead catches the case where every `vite
+// build` reported success but the expected output still isn't on disk —
+// e.g. a future bug in build-widgets.mjs itself, or a manual/partial
+// `dist/widget/` cleanup between the build and this check.
+//
+// Imports WIDGET_NAMES from scripts/widget-names.mjs — the single source of
+// truth also read by build-widgets.mjs — rather than keeping its own
+// hand-maintained copy of the widget list. Before this shared import
+// existed, a name added to one list but not the other could build (or fail
+// to build) with no verification catching the gap; importing the same array
+// both scripts consume makes that specific drift impossible.
 
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-
-const WIDGET_NAMES = ["entity-card", "search-results", "connections-graph"];
+import { WIDGET_NAMES } from "./widget-names.mjs";
 
 const distWidgetDir = fileURLToPath(new URL("../dist/widget/", import.meta.url));
 
@@ -25,9 +28,8 @@ const missing = WIDGET_NAMES.filter((name) => !existsSync(`${distWidgetDir}${nam
 if (missing.length > 0) {
   console.error(
     `Widget build verification failed: missing built HTML for ${missing.join(", ")} in ` +
-      `${distWidgetDir}. Check that package.json's build script has an ` +
-      "INPUT=<name>.html vite build --config vite.widget.config.ts invocation for each " +
-      "name in WIDGET_NAMES (scripts/verify-widget-build.mjs).",
+      `${distWidgetDir}. Check that scripts/widget-names.mjs lists every widget this package ` +
+      "builds, and that scripts/build-widgets.mjs successfully built each one.",
   );
   process.exit(1);
 }
