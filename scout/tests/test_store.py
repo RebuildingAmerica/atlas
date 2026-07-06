@@ -34,6 +34,62 @@ async def test_initialize_creates_tables(store: ScoutStore) -> None:
     assert "runs" in tables
     assert "pages" in tables
     assert "entries" in tables
+    assert "articles" in tables
+
+
+async def test_bulk_save_articles_dedupes_by_url_and_reports_stats(store: ScoutStore) -> None:
+    saved = await store.bulk_save_articles(
+        [
+            {
+                "url": "https://example.com/2006/story",
+                "title": "Older article",
+                "published_at": "2006-07-06T12:00:00Z",
+                "source_name": "Example News",
+                "source_domain": "example.com",
+                "section": "World",
+                "provider": "guardian",
+                "provider_id": "example/older",
+                "api_url": "https://content.guardianapis.com/example/older",
+                "metadata": {"pillar": "News"},
+            },
+            {
+                "url": "https://example.com/2026/story",
+                "title": "Current article",
+                "published_at": "2026-07-05T12:00:00Z",
+                "source_name": "Example News",
+                "source_domain": "example.com",
+                "section": "US news",
+                "provider": "guardian",
+                "provider_id": "example/current",
+                "api_url": "https://content.guardianapis.com/example/current",
+                "metadata": {"pillar": "News"},
+            },
+            {
+                "url": "https://example.com/2026/story",
+                "title": "Current article duplicate",
+                "published_at": "2026-07-05T12:00:00Z",
+                "source_name": "Example News",
+                "source_domain": "example.com",
+                "section": "US news",
+                "provider": "guardian",
+                "provider_id": "example/current",
+                "api_url": "https://content.guardianapis.com/example/current",
+                "metadata": {"pillar": "News"},
+            },
+        ]
+    )
+
+    stats = await store.article_stats()
+    articles = await store.list_articles()
+
+    assert saved == {"attempted": 3, "saved": 2, "skipped": 1}
+    assert stats["total_articles"] == 2
+    assert stats["earliest_published_at"] == "2006-07-06T12:00:00Z"
+    assert stats["latest_published_at"] == "2026-07-05T12:00:00Z"
+    assert stats["by_year"] == {"2006": 1, "2026": 1}
+    assert stats["by_source_domain"] == {"example.com": 2}
+    assert stats["by_provider"] == {"guardian": 2}
+    assert [article["title"] for article in articles] == ["Current article", "Older article"]
 
 
 async def test_get_daemon_state_defaults_to_stopped(store: ScoutStore) -> None:

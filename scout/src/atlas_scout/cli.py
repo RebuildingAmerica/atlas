@@ -19,9 +19,10 @@ import time
 import tomllib
 import webbrowser
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal, NoReturn, cast
+from urllib.parse import urlparse
 
 import click
 from rich.table import Table
@@ -3333,6 +3334,475 @@ def worker_run_internal(
         )
     except click.ClickException as exc:
         _exit_with_error(CliError(title="Error", message=exc.message))
+
+
+# ---------------------------------------------------------------------------
+# articles commands
+# ---------------------------------------------------------------------------
+
+_GUARDIAN_SEARCH_URL = "https://content.guardianapis.com/search"
+_ARTICLE_EXPORT_CSV_FIELDS = [
+    "url",
+    "title",
+    "published_at",
+    "source_name",
+    "source_domain",
+    "section",
+    "provider",
+    "provider_id",
+    "api_url",
+    "metadata",
+    "created_at",
+]
+
+
+@main.group()
+def articles() -> None:
+    """Collect and export local news article corpora."""
+
+
+@articles.group("import")
+def articles_import() -> None:
+    """Import article metadata from public news indexes."""
+
+
+@articles_import.command("guardian")
+@click.option("--api-key", envvar="GUARDIAN_API_KEY", required=True)
+@click.option("--from-date", "from_date_value", required=True, help="Start date YYYY-MM-DD.")
+@click.option("--to-date", "to_date_value", required=True, help="End date YYYY-MM-DD.")
+@click.option("--target-count", type=click.IntRange(1), required=True)
+@click.option("--page-size", type=click.IntRange(1, 200), default=200, show_default=True)
+@click.option("--query", default=None, help="Optional Guardian search query.")
+@click.option("--section", default=None, help="Optional Guardian section filter.")
+@click.option("--delay-ms", type=click.IntRange(0), default=100, show_default=True)
+@click.option("--json", "json_output", is_flag=True, help="Print machine-readable JSON.")
+@click.pass_context
+def articles_import_guardian(
+    ctx: click.Context,
+    api_key: str,
+    from_date_value: str,
+    to_date_value: str,
+    target_count: int,
+    page_size: int,
+    query: str | None,
+    section: str | None,
+    delay_ms: int,
+    json_output: bool,
+) -> None:
+    """Import Guardian Content API article metadata into the local Scout DB."""
+    config: ScoutConfig = ctx.obj["config"]
+    from_date = _parse_date_option(from_date_value, option_name="from-date")
+    to_date = _parse_date_option(to_date_value, option_name="to-date")
+    _run_async(
+        _import_guardian_articles(
+            config,
+            api_key=api_key,
+            from_date=from_date,
+            to_date=to_date,
+            target_count=target_count,
+            page_size=page_size,
+            query=query,
+            section=section,
+            delay_ms=delay_ms,
+            json_output=json_output,
+        )
+    )
+
+
+async def _import_guardian_articles(
+    config: ScoutConfig,
+    *,
+    api_key: str,
+    from_date: date,
+    to_date: date,
+    target_count: int,
+    page_size: int,
+    query: str | None,
+    section: str | None,
+    delay_ms: int,
+    json_output: bool,
+) -> None:
+    """Import Guardian article metadata across yearly date windows."""
+    if from_date > to_date:
+        raise click.ClickException("--from-date must be on or before --to-date.")
+
+    import httpx
+
+    from atlas_scout.store import ScoutStore
+
+    store = ScoutStore(str(Path(config.store.path).expanduser()))
+    await store.initialize()
+    total_fetched = 0
+    total_saved = 0
+    total_skipped = 0
+    by_year: dict[str, int] = {}
+    windows = _year_windows(from_date, to_date)
+    try:
+        async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
+            for index, (window_start, window_end) in enumerate(windows):
+                if total_saved >= target_count:
+                    break
+                remaining_windows = len(windows) - index
+                remaining_target = target_count - total_saved
+                window_target = max(
+                    1, (remaining_target + remaining_windows - 1) // remaining_windows
+                )
+                page = 1
+                saved_in_window = 0
+                pages = 1
+                while (
+                    total_saved < target_count and saved_in_window < window_target and page <= pages
+                ):
+                    payload = await _fetch_guardian_page(
+                        client,
+                        api_key=api_key,
+                        from_date=window_start,
+                        to_date=window_end,
+                        page=page,
+                        page_size=page_size,
+                        query=query,
+                        section=section,
+                    )
+                    response = payload.get("response")
+                    if not isinstance(response, dict) or response.get("status") != "ok":
+                        raise click.ClickException("Guardian API returned an invalid response.")
+                    pages = int(response.get("pages") or 0)
+                    articles = _guardian_articles_from_response(response)
+                    total_fetched += len(articles)
+                    saved = await store.bulk_save_articles(articles)
+                    total_saved += saved["saved"]
+                    total_skipped += saved["skipped"]
+                    saved_in_window += saved["saved"]
+                    for article in articles:
+                        published_at = str(article["published_at"])
+                        year = published_at[:4]
+                        by_year[year] = by_year.get(year, 0) + 1
+                    page += 1
+                    if delay_ms > 0 and total_saved < target_count and page <= pages:
+                        await asyncio.sleep(delay_ms / 1000)
+    finally:
+        await store.close()
+
+    payload = {
+        "provider": "guardian",
+        "from_date": from_date.isoformat(),
+        "to_date": to_date.isoformat(),
+        "target_count": target_count,
+        "fetched": total_fetched,
+        "saved": total_saved,
+        "skipped": total_skipped,
+        "by_year": by_year,
+    }
+    if json_output:
+        click.echo(json.dumps(payload, sort_keys=True))
+        return
+    console.print(
+        f"Imported {total_saved} Guardian articles "
+        f"({total_fetched} fetched, {total_skipped} skipped)."
+    )
+
+
+@articles.command("stats")
+@click.option("--json", "json_output", is_flag=True, help="Print machine-readable JSON.")
+@click.option("--min-count", type=click.IntRange(0), default=None)
+@click.option(
+    "--from-date", "from_date_value", default=None, help="Require coverage from YYYY-MM-DD."
+)
+@click.option(
+    "--to-date", "to_date_value", default=None, help="Require coverage through YYYY-MM-DD."
+)
+@click.pass_context
+def articles_stats(
+    ctx: click.Context,
+    json_output: bool,
+    min_count: int | None,
+    from_date_value: str | None,
+    to_date_value: str | None,
+) -> None:
+    """Show aggregate article corpus counts."""
+    config: ScoutConfig = ctx.obj["config"]
+    from_date = (
+        _parse_date_option(from_date_value, option_name="from-date")
+        if from_date_value is not None
+        else None
+    )
+    to_date = (
+        _parse_date_option(to_date_value, option_name="to-date")
+        if to_date_value is not None
+        else None
+    )
+    _run_async(
+        _articles_stats(
+            config,
+            json_output=json_output,
+            min_count=min_count,
+            from_date=from_date,
+            to_date=to_date,
+        )
+    )
+
+
+async def _articles_stats(
+    config: ScoutConfig,
+    *,
+    json_output: bool,
+    min_count: int | None,
+    from_date: date | None,
+    to_date: date | None,
+) -> None:
+    """Load and print article stats with optional verification gates."""
+    from atlas_scout.store import ScoutStore
+
+    store = ScoutStore(str(Path(config.store.path).expanduser()))
+    await store.initialize()
+    try:
+        stats = await store.article_stats()
+    finally:
+        await store.close()
+
+    total_articles = int(stats["total_articles"])
+    if min_count is not None and total_articles < min_count:
+        raise click.ClickException(
+            f"Only {total_articles} articles; expected at least {min_count}."
+        )
+    earliest = _date_from_timestamp(stats.get("earliest_published_at"))
+    latest = _date_from_timestamp(stats.get("latest_published_at"))
+    if from_date is not None and (earliest is None or earliest > from_date):
+        raise click.ClickException(f"Article coverage starts after {from_date.isoformat()}.")
+    if to_date is not None and (latest is None or latest < to_date):
+        raise click.ClickException(f"Article coverage ends before {to_date.isoformat()}.")
+
+    if json_output:
+        click.echo(json.dumps(stats, sort_keys=True))
+        return
+
+    table = Table(title="Article stats", show_lines=False, pad_edge=False)
+    table.add_column("Metric", style="bold")
+    table.add_column("Value")
+    table.add_row("Total articles", str(total_articles))
+    table.add_row("Earliest published", str(stats["earliest_published_at"]))
+    table.add_row("Latest published", str(stats["latest_published_at"]))
+    table.add_row("By year", json.dumps(stats["by_year"], sort_keys=True))
+    table.add_row("By source domain", json.dumps(stats["by_source_domain"], sort_keys=True))
+    table.add_row("By provider", json.dumps(stats["by_provider"], sort_keys=True))
+    console.print(table)
+
+
+@articles.command("export")
+@click.option(
+    "--format",
+    "-o",
+    "output_format",
+    type=click.Choice(["jsonl", "json", "csv"]),
+    default="jsonl",
+    show_default=True,
+)
+@click.option("--limit", type=click.IntRange(0), default=0, show_default=True)
+@click.option("--provider", default=None)
+@click.option("--source-domain", default=None)
+@click.option(
+    "--output",
+    type=click.Path(dir_okay=False, path_type=Path),
+    default=None,
+    help="Write to a file instead of stdout.",
+)
+@click.pass_context
+def articles_export(
+    ctx: click.Context,
+    output_format: str,
+    limit: int,
+    provider: str | None,
+    source_domain: str | None,
+    output: Path | None,
+) -> None:
+    """Export stored article records."""
+    config: ScoutConfig = ctx.obj["config"]
+    _run_async(
+        _articles_export(
+            config,
+            output_format=output_format,
+            limit=limit,
+            provider=provider,
+            source_domain=source_domain,
+            output=output,
+        )
+    )
+
+
+async def _articles_export(
+    config: ScoutConfig,
+    *,
+    output_format: str,
+    limit: int,
+    provider: str | None,
+    source_domain: str | None,
+    output: Path | None,
+) -> None:
+    """Export stored article records to stdout or a file."""
+    from atlas_scout.store import ScoutStore
+
+    store = ScoutStore(str(Path(config.store.path).expanduser()))
+    await store.initialize()
+    try:
+        rows = await store.list_articles(
+            limit=limit,
+            provider=provider,
+            source_domain=source_domain,
+        )
+    finally:
+        await store.close()
+
+    if output is None:
+        _write_article_export(rows, output_format, sys.stdout)
+        return
+
+    output_path = output.expanduser()
+    if not output_path.parent.exists():
+        raise click.ClickException(f"Output directory does not exist: {output_path.parent}")
+    with output_path.open("w", encoding="utf-8", newline="") as handle:
+        _write_article_export(rows, output_format, handle)
+    console.print(f"Exported {len(rows)} articles to {output_path}")
+
+
+async def _fetch_guardian_page(
+    client: Any,
+    *,
+    api_key: str,
+    from_date: date,
+    to_date: date,
+    page: int,
+    page_size: int,
+    query: str | None,
+    section: str | None,
+) -> dict[str, Any]:
+    """Fetch one Guardian Content API page."""
+    params: dict[str, str | int] = {
+        "api-key": api_key,
+        "from-date": from_date.isoformat(),
+        "to-date": to_date.isoformat(),
+        "page": page,
+        "page-size": page_size,
+        "order-by": "oldest",
+        "show-fields": "trailText",
+    }
+    if query:
+        params["q"] = query
+    if section:
+        params["section"] = section
+    response = await client.get(_GUARDIAN_SEARCH_URL, params=params)
+    response.raise_for_status()
+    payload = response.json()
+    return payload if isinstance(payload, dict) else {}
+
+
+def _guardian_articles_from_response(response: dict[str, Any]) -> list[dict[str, Any]]:
+    """Map Guardian Content API results to local article records."""
+    results = response.get("results")
+    if not isinstance(results, list):
+        return []
+    articles: list[dict[str, Any]] = []
+    for item in results:
+        if not isinstance(item, dict) or item.get("type") != "article":
+            continue
+        url = item.get("webUrl")
+        title = item.get("webTitle")
+        published_at = item.get("webPublicationDate")
+        if (
+            not isinstance(url, str)
+            or not isinstance(title, str)
+            or not isinstance(published_at, str)
+        ):
+            continue
+        parsed_url = urlparse(url)
+        if not parsed_url.netloc:
+            continue
+        fields = item.get("fields")
+        fields = fields if isinstance(fields, dict) else {}
+        articles.append(
+            {
+                "url": url,
+                "title": title,
+                "published_at": published_at,
+                "source_name": "The Guardian",
+                "source_domain": parsed_url.netloc.lower(),
+                "section": item.get("sectionName"),
+                "provider": "guardian",
+                "provider_id": item.get("id"),
+                "api_url": item.get("apiUrl"),
+                "metadata": {
+                    "guardian_id": item.get("id"),
+                    "section_id": item.get("sectionId"),
+                    "pillar_name": item.get("pillarName"),
+                    "trail_text": fields.get("trailText"),
+                },
+            }
+        )
+    return articles
+
+
+def _year_windows(from_date: date, to_date: date) -> list[tuple[date, date]]:
+    """Return inclusive yearly date windows for balanced archive import."""
+    windows: list[tuple[date, date]] = []
+    year = from_date.year
+    while year <= to_date.year:
+        start = max(from_date, date(year, 1, 1))
+        end = min(to_date, date(year, 12, 31))
+        windows.append((start, end))
+        year += 1
+    return windows
+
+
+def _parse_date_option(value: str, *, option_name: str) -> date:
+    """Parse a YYYY-MM-DD CLI option."""
+    try:
+        return date.fromisoformat(value)
+    except ValueError as exc:
+        raise click.ClickException(f"--{option_name} must use YYYY-MM-DD.") from exc
+
+
+def _date_from_timestamp(value: object) -> date | None:
+    """Return a date from an ISO-like timestamp value."""
+    if not isinstance(value, str) or not value:
+        return None
+    try:
+        return date.fromisoformat(value[:10])
+    except ValueError:
+        return None
+
+
+def _write_article_export(rows: list[dict[str, Any]], output_format: str, handle: Any) -> None:
+    """Write article rows to a text handle."""
+    if output_format == "json":
+        json.dump(rows, handle, indent=2)
+        handle.write("\n")
+        return
+    if output_format == "jsonl":
+        for row in rows:
+            handle.write(json.dumps(row, sort_keys=True))
+            handle.write("\n")
+        return
+
+    writer = csv.DictWriter(handle, fieldnames=_ARTICLE_EXPORT_CSV_FIELDS)
+    writer.writeheader()
+    for row in rows:
+        writer.writerow(_article_export_csv_row(row))
+
+
+def _article_export_csv_row(row: dict[str, Any]) -> dict[str, str]:
+    """Flatten an article row for CSV export."""
+    return {
+        "url": str(row.get("url") or ""),
+        "title": str(row.get("title") or ""),
+        "published_at": str(row.get("published_at") or ""),
+        "source_name": str(row.get("source_name") or ""),
+        "source_domain": str(row.get("source_domain") or ""),
+        "section": str(row.get("section") or ""),
+        "provider": str(row.get("provider") or ""),
+        "provider_id": str(row.get("provider_id") or ""),
+        "api_url": str(row.get("api_url") or ""),
+        "metadata": json.dumps(row.get("metadata") or {}, sort_keys=True),
+        "created_at": str(row.get("created_at") or ""),
+    }
 
 
 # ---------------------------------------------------------------------------

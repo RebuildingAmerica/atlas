@@ -145,6 +145,7 @@
               "scout/install",
               "scout/setup",
               "scout/run",
+              "scout/articles",
               "scout/review-sync",
               "scout/worker",
               "scout/troubleshooting"

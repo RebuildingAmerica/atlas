@@ -68,6 +68,33 @@ CREATE TABLE IF NOT EXISTS entries (
 )
 """
 
+_CREATE_ARTICLES = """
+CREATE TABLE IF NOT EXISTS articles (
+    id TEXT PRIMARY KEY,
+    url TEXT NOT NULL UNIQUE,
+    title TEXT NOT NULL,
+    published_at TEXT NOT NULL,
+    source_name TEXT,
+    source_domain TEXT NOT NULL,
+    section TEXT,
+    provider TEXT NOT NULL,
+    provider_id TEXT,
+    api_url TEXT,
+    metadata TEXT NOT NULL DEFAULT '{}',
+    created_at TEXT NOT NULL
+)
+"""
+
+_CREATE_ARTICLES_PUBLISHED_INDEX = """
+CREATE INDEX IF NOT EXISTS idx_articles_published_at
+ON articles(published_at)
+"""
+
+_CREATE_ARTICLES_SOURCE_INDEX = """
+CREATE INDEX IF NOT EXISTS idx_articles_source_domain
+ON articles(source_domain)
+"""
+
 _CREATE_EXTRACTIONS = """
 CREATE TABLE IF NOT EXISTS extractions (
     cache_key TEXT PRIMARY KEY,
@@ -206,6 +233,13 @@ def _entry_exact_key(
     )
 
 
+def _article_record(row: aiosqlite.Row) -> dict[str, Any]:
+    """Return a JSON-ready article record from a SQLite row."""
+    record = dict(row)
+    record["metadata"] = json.loads(record["metadata"])
+    return record
+
+
 class ScoutStore:
     """Async SQLite store for Scout's local state."""
 
@@ -225,12 +259,15 @@ class ScoutStore:
         await self._conn.execute(_CREATE_PAGES)
         await self._conn.execute(_CREATE_PAGE_TASKS)
         await self._conn.execute(_CREATE_ENTRIES)
+        await self._conn.execute(_CREATE_ARTICLES)
         await self._conn.execute(_CREATE_EXTRACTIONS)
         await self._conn.execute(_CREATE_RUN_ARTIFACTS)
         await self._conn.execute(_CREATE_WORK_CLAIMS)
         await self._ensure_daemon_state_table()
         await self._conn.execute(_CREATE_PAGE_TASKS_RUN_URL_INDEX)
         await self._conn.execute(_CREATE_PAGE_TASKS_RUN_STATUS_INDEX)
+        await self._conn.execute(_CREATE_ARTICLES_PUBLISHED_INDEX)
+        await self._conn.execute(_CREATE_ARTICLES_SOURCE_INDEX)
         await self._conn.execute(
             """
             INSERT INTO daemon_state (key, status, target_count, updated_at)
@@ -833,6 +870,173 @@ class ScoutStore:
             item["metadata"] = json.loads(item["metadata"])
             results.append(item)
         return results
+
+    # ------------------------------------------------------------------
+    # Articles
+    # ------------------------------------------------------------------
+
+    async def bulk_save_articles(
+        self,
+        articles: list[dict[str, Any]],
+        *,
+        batch_size: int = 5000,
+    ) -> dict[str, int]:
+        """Insert many article records, deduping existing URLs.
+
+        Parameters
+        ----------
+        articles : list[dict[str, Any]]
+            Article payloads keyed by URL.
+        batch_size : int, optional
+            Number of rows to commit per batch. Default is 5000.
+
+        Returns
+        -------
+        dict[str, int]
+            Attempted, saved, and skipped row counts.
+        """
+        if batch_size <= 0:
+            raise ValueError("batch_size must be positive")
+
+        assert self._conn is not None
+        urls = [str(article["url"]) for article in articles if article.get("url")]
+        existing_urls = await self.existing_article_urls(urls)
+        seen_urls: set[str] = set()
+        rows: list[tuple[Any, ...]] = []
+        now = _now()
+        skipped = 0
+
+        for article in articles:
+            url = str(article.get("url") or "")
+            if not url or url in existing_urls or url in seen_urls:
+                skipped += 1
+                continue
+            seen_urls.add(url)
+            rows.append(
+                (
+                    _new_id(),
+                    url,
+                    str(article["title"]),
+                    str(article["published_at"]),
+                    article.get("source_name"),
+                    str(article["source_domain"]),
+                    article.get("section"),
+                    str(article["provider"]),
+                    article.get("provider_id"),
+                    article.get("api_url"),
+                    json.dumps(article.get("metadata", {})),
+                    now,
+                )
+            )
+
+        for start in range(0, len(rows), batch_size):
+            await self._conn.executemany(
+                """
+                INSERT INTO articles
+                    (
+                        id,
+                        url,
+                        title,
+                        published_at,
+                        source_name,
+                        source_domain,
+                        section,
+                        provider,
+                        provider_id,
+                        api_url,
+                        metadata,
+                        created_at
+                    )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                rows[start : start + batch_size],
+            )
+            await self._conn.commit()
+
+        return {"attempted": len(articles), "saved": len(rows), "skipped": skipped}
+
+    async def existing_article_urls(self, urls: list[str] | None = None) -> set[str]:
+        """Return article URLs already stored locally."""
+        assert self._conn is not None
+        if urls is None:
+            async with self._conn.execute("SELECT url FROM articles") as cursor:
+                rows = await cursor.fetchall()
+            return {str(row["url"]) for row in rows}
+        if not urls:
+            return set()
+
+        existing: set[str] = set()
+        for start in range(0, len(urls), 900):
+            chunk = urls[start : start + 900]
+            placeholders = ", ".join("?" for _ in chunk)
+            async with self._conn.execute(
+                f"SELECT url FROM articles WHERE url IN ({placeholders})",
+                tuple(chunk),
+            ) as cursor:
+                rows = await cursor.fetchall()
+            existing.update(str(row["url"]) for row in rows)
+        return existing
+
+    async def list_articles(
+        self,
+        *,
+        limit: int = 100,
+        provider: str | None = None,
+        source_domain: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """Return stored articles ordered by publication time descending."""
+        assert self._conn is not None
+        filters: list[str] = []
+        params: list[Any] = []
+        if provider is not None:
+            filters.append("provider = ?")
+            params.append(provider)
+        if source_domain is not None:
+            filters.append("source_domain = ?")
+            params.append(source_domain)
+
+        where_clause = f"WHERE {' AND '.join(filters)}" if filters else ""
+        limit_clause = ""
+        if limit > 0:
+            limit_clause = "LIMIT ?"
+            params.append(limit)
+        async with self._conn.execute(
+            f"SELECT * FROM articles {where_clause} ORDER BY published_at DESC {limit_clause}",
+            tuple(params),
+        ) as cursor:
+            rows = await cursor.fetchall()
+        return [_article_record(row) for row in rows]
+
+    async def article_stats(self) -> dict[str, Any]:
+        """Return article corpus counts and date coverage."""
+        assert self._conn is not None
+        async with self._conn.execute("SELECT * FROM articles") as cursor:
+            rows = list(await cursor.fetchall())
+
+        by_year: dict[str, int] = {}
+        by_source_domain: dict[str, int] = {}
+        by_provider: dict[str, int] = {}
+        earliest: str | None = None
+        latest: str | None = None
+        for row in rows:
+            published_at = str(row["published_at"])
+            year = published_at[:4]
+            by_year[year] = by_year.get(year, 0) + 1
+            source_domain = str(row["source_domain"])
+            by_source_domain[source_domain] = by_source_domain.get(source_domain, 0) + 1
+            provider = str(row["provider"])
+            by_provider[provider] = by_provider.get(provider, 0) + 1
+            earliest = published_at if earliest is None else min(earliest, published_at)
+            latest = published_at if latest is None else max(latest, published_at)
+
+        return {
+            "total_articles": len(rows),
+            "earliest_published_at": earliest,
+            "latest_published_at": latest,
+            "by_year": by_year,
+            "by_source_domain": by_source_domain,
+            "by_provider": by_provider,
+        }
 
     # ------------------------------------------------------------------
     # Page tasks

@@ -1,0 +1,78 @@
+---
+title: "Build article corpora with Scout"
+description: "Collect dated news article records for later source review and extraction."
+---
+
+Scout can store a local article corpus separately from discovered entries. Use
+this when you need dated news records first, then want to review or mine those
+articles for people, organizations, and initiatives later.
+
+Article records are not Atlas profiles. They are source artifacts with a URL,
+title, publication date, source domain, provider id, and provider metadata.
+
+## Import Guardian Articles
+
+Guardian imports require a Guardian Content API key:
+
+```bash
+scout articles import guardian \
+  --api-key "$GUARDIAN_API_KEY" \
+  --from-date 2006-07-06 \
+  --to-date 2026-07-06 \
+  --target-count 100000
+```
+
+Scout imports yearly windows across the requested range so a large target does
+not collapse into the first dense archive period. Use a lower delay for local
+backfills only when the provider limit allows it:
+
+```bash
+scout articles import guardian \
+  --api-key "$GUARDIAN_API_KEY" \
+  --from-date 2006-07-06 \
+  --to-date 2026-07-06 \
+  --target-count 100000 \
+  --page-size 200 \
+  --delay-ms 100 \
+  --json
+```
+
+## Verify Coverage
+
+Use stats gates before treating the corpus as ready:
+
+```bash
+scout articles stats \
+  --min-count 100000 \
+  --from-date 2006-07-06 \
+  --to-date 2026-07-06
+```
+
+JSON output includes total articles, earliest and latest publication dates,
+counts by year, counts by source domain, and counts by provider:
+
+```bash
+scout articles stats --json
+```
+
+## Export Articles
+
+JSONL is the safest large-file handoff:
+
+```bash
+scout articles export \
+  --format jsonl \
+  --output articles.jsonl
+```
+
+Use CSV when the next review step is a spreadsheet:
+
+```bash
+scout articles export \
+  --format csv \
+  --output articles.csv
+```
+
+The export keeps URLs, titles, publication dates, source domains, provider ids,
+API URLs, metadata, and local creation timestamps together. Keep those fields
+attached when handing the file to another review or extraction step.
