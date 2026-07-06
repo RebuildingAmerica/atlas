@@ -1,0 +1,78 @@
+name: Product bug
+description: Report something in Atlas that does not work as expected.
+title: "[Bug]: "
+labels:
+  - type: bug
+  - status: needs repro
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please do not include private data, secrets, unpublished contact details, or sensitive claims about a person. Use the security policy for security-sensitive reports.
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Affected surface
+      options:
+        - Public app
+        - API
+        - MCP
+        - Scout
+        - Self-hosting
+        - Workspace tools
+        - Documentation
+        - Not sure
+    validations:
+      required: true
+  - type: input
+    id: link
+    attributes:
+      label: Link, route, or command
+      description: Paste the URL, route, API endpoint, Scout command, or local command involved.
+      placeholder: https://atlas.rebuildingus.org/...
+    validations:
+      required: false
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: List the shortest steps that show the problem.
+      placeholder: |
+        1. Go to ...
+        2. Search for ...
+        3. See ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected result
+      description: What should have happened?
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual result
+      description: What happened instead?
+    validations:
+      required: true
+  - type: dropdown
+    id: trust-impact
+    attributes:
+      label: Does this affect trust in a public record?
+      options:
+        - "No"
+        - "Yes, a source link or citation is wrong"
+        - "Yes, a record is inaccurate or stale"
+        - "Yes, confidence or correction behavior is unclear"
+        - Not sure
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Screenshots, logs, or source evidence
+      description: Add public-safe evidence. Remove secrets, tokens, private data, and sensitive personal information.
+    validations:
+      required: false

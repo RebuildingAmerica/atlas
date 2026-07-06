@@ -44,3 +44,14 @@ For deployment, authentication, billing, workspace, API contract, generated
 client, or hosted Atlas behavior, read the relevant repo docs first. Those areas
 affect the boundary between the open-source project, hosted service, and public
 data model.
+
+## Triage And Public Data Safety
+
+Atlas works with public information about real people and organizations. When
+reporting problems or proposing changes, include public source links where they
+help reviewers verify the claim, but do not post private contact details,
+secrets, credentials, unpublished personal information, or sensitive claims that
+do not belong in a public GitHub thread.
+
+Security vulnerabilities and sensitive data exposure should be reported through
+[SECURITY.md](./SECURITY.md), not public issues or pull requests.

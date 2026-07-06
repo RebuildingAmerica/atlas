@@ -1,0 +1,53 @@
+name: Feature proposal
+description: Suggest a user-facing Atlas improvement.
+title: "[Feature]: "
+labels:
+  - type: feature
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Start with the person using Atlas and the public-interest work they are trying to understand.
+  - type: textarea
+    id: user-need
+    attributes:
+      label: User need
+      description: Who is this for, and what should they be able to see, trust, understand, or do?
+    validations:
+      required: true
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Affected surface
+      options:
+        - Public app
+        - API
+        - MCP
+        - Scout
+        - Self-hosting
+        - Workspace tools
+        - Documentation
+        - Not sure
+    validations:
+      required: true
+  - type: textarea
+    id: trust
+    attributes:
+      label: Source, trust, or safety considerations
+      description: Note any provenance, confidence, correction, privacy, or public/private boundary concerns.
+    validations:
+      required: false
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: What smaller change, existing workflow, or documentation update might address the same need?
+    validations:
+      required: false
+  - type: textarea
+    id: out-of-scope
+    attributes:
+      label: Out of scope
+      description: Anything this proposal should not try to solve.
+    validations:
+      required: false

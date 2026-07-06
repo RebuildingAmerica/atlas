@@ -1,0 +1,73 @@
+name: Setup problem
+description: Report a local development or self-hosting setup issue.
+title: "[Setup]: "
+labels:
+  - type: setup
+  - status: needs repro
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Report problems installing, starting, validating, or self-hosting Atlas.
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Before reporting
+      options:
+        - label: I checked the README and relevant setup or self-hosting docs.
+          required: true
+        - label: I can reproduce this with the commands shown below.
+          required: true
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Affected setup path
+      options:
+        - Local development
+        - Self-hosting
+        - Public docs validation
+        - API only
+        - App only
+        - Scout
+        - Not sure
+    validations:
+      required: true
+  - type: textarea
+    id: command
+    attributes:
+      label: Command or step that failed
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Include OS, Node version, pnpm version, Python version, and anything else relevant.
+      placeholder: |
+        macOS ...
+        node --version
+        pnpm --version
+        python3 --version
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected result
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual result
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Remove secrets, tokens, private data, and machine-specific credentials before posting.
+      render: shell
+    validations:
+      required: false

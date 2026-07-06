@@ -1,0 +1,47 @@
+name: Documentation problem
+description: Report unclear, stale, missing, or broken documentation.
+title: "[Docs]: "
+labels:
+  - area: docs
+  - type: docs
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Report problems in repo docs, public docs, API docs, Scout docs, MCP docs, and self-hosting docs.
+  - type: input
+    id: page
+    attributes:
+      label: Page or link
+      description: Paste the page URL or name the file/section if you know it.
+      placeholder: https://atlas.rebuildingus.org/docs/...
+    validations:
+      required: true
+  - type: dropdown
+    id: audience
+    attributes:
+      label: Which docs are affected?
+      options:
+        - Public usage docs
+        - Repository contributor docs
+        - API docs
+        - MCP docs
+        - Scout docs
+        - Self-hosting docs
+        - Not sure
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: What is wrong or confusing?
+      description: Describe what you expected to learn and where the docs fell short.
+    validations:
+      required: true
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: Suggested fix
+      description: If you know what would help, describe the change in plain language.
+    validations:
+      required: false

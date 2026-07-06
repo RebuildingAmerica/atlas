@@ -48,11 +48,10 @@ The product has four durable pieces:
 
 ## Current State
 
-Atlas is usable as a public product and active development repo, and it is still
-being cleaned up for broader open-source participation. Some code is clearly
-public and self-hostable; some hosted, workspace, and operator surfaces are
-being documented and separated more clearly. Treat that boundary as part of the
-work: changes should make the repo easier to run, audit, trust, or responsibly
+Atlas is usable as a public product and active development repo. Some code is
+public and self-hostable; some hosted, workspace, and operator surfaces need
+clear public/private boundaries. Treat that boundary as part of the work:
+changes should make the repo easier to run, audit, trust, or responsibly
 self-host.
 
 ## Quick Links

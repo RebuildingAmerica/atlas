@@ -72,11 +72,11 @@ and public directory exist to support and present what the pipeline finds.
 
 ## Current Status
 
-Atlas is a live open-source project with public product, API, MCP, Scout,
-self-hosting, and workspace surfaces under active development. The repo is also
-still being prepared for broader outside participation: some code is clearly
-public and self-hostable, while hosted, workspace, and maintainer workflows are
-being documented into clearer public boundaries.
+Atlas is a live project with a public product, API, MCP server, Scout CLI,
+self-hosting path, and hosted workspace surfaces under active development.
+Public and self-hostable code should keep source provenance clear. Hosted,
+workspace, and operator workflows should keep public/private boundaries
+explicit.
 
 ## Technology Stack
 
@@ -95,8 +95,9 @@ people, organizations, and ideas rebuilding public life across the country.
 Atlas supports that mission by making it easier to discover who is doing the
 work, where they are doing it, and how to trace that back to public evidence.
 
-Atlas is meant to stand on its own as an open-source project and public
-resource, while still supporting the larger Rebuilding America effort.
+Atlas also serves journalists, organizers, researchers, developers, nonprofits,
+funders, civic educators, and public users who need source-linked civic
+discovery.
 
 ## Canonical External References
 
