@@ -17,6 +17,7 @@
     "secrets:update-baseline": "sh ./scripts/secrets-update-baseline.sh",
     "secrets:scan": "sh ./scripts/secrets-scan.sh",
     "openapi": "sh ./scripts/openapi-export.sh",
+    "asyncapi": "uv --directory ./api run python -m atlas.domains.firehose.asyncapi",
     "predocs:dev": "sh ./scripts/portless-reset.sh",
     "docs:dev": "pnpm --filter docs run dev",
     "docs:validate": "cd mintlify && mint validate",

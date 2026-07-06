@@ -19,12 +19,13 @@ response schemas, and status codes.
 
 ## The API in one picture
 
-Atlas has three API surfaces that fit together:
+Atlas has four API surfaces that fit together:
 
 | Surface              | Use it for                                                                                      | Start here                                    |
 | -------------------- | ----------------------------------------------------------------------------------------------- | --------------------------------------------- |
 | Public directory     | Search people, organizations, initiatives, campaigns, events, places, sources, and issue areas. | [Find actors](/api/guides/entities)           |
 | Workspace workflows  | Build briefs, lists, watches, usage proof, private review, and Scout sync handoffs.             | [Workspace visibility](/api/guides/workspace) |
+| Firehose             | Query, probe, or observe source-backed civic signals through snapshots, SSE, and WebSockets.    | [Firehose protocol](/api/guides/firehose)     |
 | Discovery and agents | Start hosted discovery runs, run Scout locally, or use MCP through an assistant.                | [Discovery and Scout](/api/guides/discovery)  |
 
 If you only need exact field names, open the generated reference. If you need to
@@ -110,6 +111,10 @@ data, starts discovery, or accesses a workspace.
 
 <Card title="Understand place data" icon="map" href="/api/guides/places">
   Use profiles, coverage, signals, and source lists together.
+</Card>
+
+<Card title="Observe civic signals" icon="radio" href="/api/guides/firehose">
+  Query snapshots, open streams, and keep protocol contracts in sync.
 </Card>
 
 <Card title="Generated reference" icon="code" href="/api/reference">

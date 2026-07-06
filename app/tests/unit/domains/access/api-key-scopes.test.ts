@@ -7,7 +7,7 @@ import {
 
 describe("scopeToPermission", () => {
   it("splits an Atlas scope into resource and action", () => {
-    expect(scopeToPermission("discovery:write")).toEqual(["discovery", "write"]);
+    expect(scopeToPermission("firehose:read")).toEqual(["firehose", "read"]);
   });
 });
 
@@ -17,12 +17,14 @@ describe("scopesToPermissions", () => {
       scopesToPermissions([
         "discovery:read",
         "discovery:write",
+        "firehose:read",
         "discovery:read",
         "entities:write",
       ]),
     ).toEqual({
       discovery: ["read", "write"],
       entities: ["write"],
+      firehose: ["read"],
     });
   });
 });
@@ -38,8 +40,9 @@ describe("permissionsToScopes", () => {
       permissionsToScopes({
         discovery: ["read", "write", "admin"],
         entities: ["write"],
+        firehose: ["read"],
         unknown: ["read"],
       }),
-    ).toEqual(["discovery:read", "discovery:write", "entities:write"]);
+    ).toEqual(["discovery:read", "discovery:write", "entities:write", "firehose:read"]);
   });
 });

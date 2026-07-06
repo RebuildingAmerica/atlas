@@ -1,0 +1,211 @@
+---
+title: "Firehose protocol"
+description: "Use Firehose snapshots, Server-Sent Events, and WebSocket sessions from one query contract."
+---
+
+## Overview
+
+Firehose returns source-backed civic signals for places, issues, actors, public
+meetings, filings, votes, source changes, and related public activity.
+
+The same query can be read three ways:
+
+| Need                             | Use                                                  |
+| -------------------------------- | ---------------------------------------------------- |
+| Current state                    | `GET /api/firehose` with `Accept: application/json`  |
+| Freshness and quota probe        | `HEAD /api/firehose`                                 |
+| Browser or server event stream   | `GET /api/firehose` with `Accept: text/event-stream` |
+| Durable observed query           | `POST /api/firehose/sessions`                        |
+| Bidirectional session connection | `/api/firehose/sessions/{session_id}/socket`         |
+
+Use the snapshot response for pages, reports, and periodic checks. Use `HEAD`
+for cheap freshness checks before downloading a snapshot. Use Server-Sent
+Events when a client only needs to receive updates. Use the WebSocket session
+when a client needs one long-lived connection with explicit Firehose protocol
+negotiation.
+
+## Generated contracts
+
+Firehose has two generated contracts:
+
+| Contract | Owns                                                                                | Artifact                          |
+| -------- | ----------------------------------------------------------------------------------- | --------------------------------- |
+| OpenAPI  | HTTP routes, request bodies, response bodies, status codes, headers, JSON snapshots | `openapi/atlas.openapi.json`      |
+| AsyncAPI | Event channels, stream messages, WebSocket protocol, SSE messages                   | `asyncapi/firehose.asyncapi.json` |
+
+Regenerate them from the repository root:
+
+```bash
+pnpm run openapi
+uv --directory ./api run python -m atlas.domains.firehose.asyncapi
+```
+
+The AsyncAPI document is generated from the Firehose Pydantic schemas. The API
+test suite compares the checked-in JSON artifact with the generated contract so
+the protocol document cannot silently drift from the implementation.
+
+## Query shape
+
+Firehose filters use repeated query parameters:
+
+```bash
+curl "https://atlas.rebuildingus.org/api/firehose?place=las-vegas-nv&issue=transit&signal_type=public_meeting" \
+  -H "X-API-Key: your-api-key" \
+  -H "Accept: application/json"
+```
+
+Common filters:
+
+| Parameter      | Meaning                                                             |
+| -------------- | ------------------------------------------------------------------- |
+| `place`        | Place slug or compatible place key.                                 |
+| `issue`        | Issue key.                                                          |
+| `actor_type`   | `person`, `organization`, `initiative`, `campaign`, or `event`.     |
+| `signal_type`  | Public activity type such as `public_meeting`, `vote`, or `filing`. |
+| `source_class` | Public source class.                                                |
+| `visibility`   | `workspace`, `partner`, `public`, or `reviewer`.                    |
+| `since`        | Lower time bound.                                                   |
+| `until`        | Upper time bound.                                                   |
+| `cursor`       | Pagination cursor.                                                  |
+| `limit`        | Page size from 1 to 200.                                            |
+| `sort`         | `detected_at_desc`, `occurred_at_desc`, or `relevance_desc`.        |
+
+## Content negotiation
+
+Use the HTTP `Accept` header to choose a representation:
+
+| Accept value        | Result                     |
+| ------------------- | -------------------------- |
+| `application/json`  | Snapshot JSON response.    |
+| `text/event-stream` | Server-Sent Events stream. |
+| `*/*`               | Snapshot JSON response.    |
+
+Unsupported representations return `406 Not Acceptable` with an `Accept`
+response header listing the supported media types.
+
+Requests with JSON bodies, such as `POST /api/firehose/sessions`, require
+`Content-Type: application/json`. Unsupported request media types return
+`415 Unsupported Media Type` with `Accept-Post: application/json`.
+
+## Server-Sent Events
+
+Open an SSE stream with `Accept: text/event-stream`:
+
+```bash
+curl -N "https://atlas.rebuildingus.org/api/firehose?place=las-vegas-nv&issue=transit" \
+  -H "X-API-Key: your-api-key" \
+  -H "Accept: text/event-stream"
+```
+
+The stream emits JSON event payloads. The first event is `firehose.ready`.
+Signals are delivered as `firehose.signal` events with the matched
+`FirehoseSignal`, query, workspace, usage, event id, and delivery timestamp.
+Idle connections receive `heartbeat` events. The stream includes an SSE `retry`
+value so clients have a default reconnect delay.
+
+Use `Last-Event-ID` on reconnect when the client has a stored event id.
+
+## Sessions
+
+Create a durable observed query:
+
+```bash
+curl -X POST "https://atlas.rebuildingus.org/api/firehose/sessions" \
+  -H "X-API-Key: your-api-key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": {
+      "places": ["las-vegas-nv"],
+      "issues": ["transit"],
+      "actor_types": [],
+      "signal_types": ["public_meeting"],
+      "source_classes": [],
+      "visibility": "workspace",
+      "since": null,
+      "until": null,
+      "cursor": null,
+      "limit": 50,
+      "sort": "detected_at_desc"
+    },
+    "delivery": {
+      "mode": "sse"
+    }
+  }'
+```
+
+The response includes `snapshot_url`, `events_url`, and `socket_url`. Use those
+links rather than constructing session URLs by hand.
+
+## WebSocket protocol
+
+Firehose WebSockets use the `atlas.firehose.v1` subprotocol:
+
+```text
+Sec-WebSocket-Protocol: atlas.firehose.v1
+```
+
+Clients should request that subprotocol during the WebSocket handshake. The
+session socket emits the same JSON message payloads documented in the AsyncAPI
+artifact.
+
+## Standard headers
+
+Firehose consumes and returns standard HTTP headers where they help clients
+cache, reconnect, meter, and trace requests.
+
+| Header                   | Direction        | Use                                                  |
+| ------------------------ | ---------------- | ---------------------------------------------------- |
+| `Accept`                 | Request          | Select JSON snapshots or SSE streams.                |
+| `Content-Type`           | Request          | Declare JSON bodies for session creation.            |
+| `X-Request-ID`           | Request/response | Correlate one client request with server logs.       |
+| `Traceparent`            | Request/response | Carry W3C trace context.                             |
+| `Tracestate`             | Request/response | Carry vendor trace context.                          |
+| `Prefer`                 | Request          | Request supported wait or return preferences.        |
+| `Preference-Applied`     | Response         | Confirm honored `Prefer` values.                     |
+| `ETag`                   | Response         | Identify the snapshot representation.                |
+| `Content-Location`       | Response         | Report the canonical URL for the representation.     |
+| `Vary`                   | Response         | Describe request headers that affect the response.   |
+| `RateLimit-Limit`        | Response         | Report the current rate-limit window.                |
+| `RateLimit-Remaining`    | Response         | Report remaining requests in the window.             |
+| `RateLimit-Reset`        | Response         | Report seconds until the window resets.              |
+| `Retry-After`            | Response         | Tell clients when to retry unsupported wait windows. |
+| `Server-Timing`          | Response         | Expose coarse request timing.                        |
+| `Last-Event-ID`          | Request          | Resume an SSE stream from a stored event id.         |
+| `Sec-WebSocket-Protocol` | Request/response | Negotiate `atlas.firehose.v1`.                       |
+
+## Status codes
+
+| Status                       | Meaning                                                             |
+| ---------------------------- | ------------------------------------------------------------------- |
+| `200 OK`                     | Snapshot, SSE stream, session snapshot, or session stream accepted. |
+| `201 Created`                | Firehose session created.                                           |
+| `304 Not Modified`           | Conditional snapshot request matched the current `ETag`.            |
+| `400 Bad Request`            | Malformed header or invalid request field.                          |
+| `401 Unauthorized`           | Missing or invalid authentication.                                  |
+| `403 Forbidden`              | Authenticated caller lacks Firehose access.                         |
+| `404 Not Found`              | Session id does not exist.                                          |
+| `406 Not Acceptable`         | Requested representation is unsupported.                            |
+| `415 Unsupported Media Type` | Request body media type is unsupported.                             |
+| `503 Service Unavailable`    | Requested wait window is larger than the supported window.          |
+
+## Related guides
+
+<CardGroup cols={2}>
+
+<Card title="API reference" icon="code" href="/api/reference">
+  Inspect exact Firehose HTTP routes and schemas.
+</Card>
+
+<Card title="Workspace visibility" icon="lock" href="/api/guides/workspace">
+  Keep private workspace state separate from public evidence.
+</Card>
+
+<Card title="Rate limits" icon="gauge" href="/api/rate-limits">
+  Understand metering and request windows.
+</Card>
+
+<Card title="Errors" icon="triangle-alert" href="/api/errors">
+  Handle status codes consistently.
+</Card>
+
+</CardGroup>

@@ -8,7 +8,12 @@
  * specific organization.  The `org:` prefix is not listed here because it is
  * a dynamic scope parsed at token-issuance time, not a static resource scope.
  */
-export const API_KEY_SCOPES = ["discovery:read", "discovery:write", "entities:write"] as const;
+export const API_KEY_SCOPES = [
+  "discovery:read",
+  "discovery:write",
+  "entities:write",
+  "firehose:read",
+] as const;
 
 /**
  * Union type for every supported API-key scope string.

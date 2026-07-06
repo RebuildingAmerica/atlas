@@ -129,6 +129,7 @@
               "api/guides/entities",
               "api/guides/places",
               "api/guides/discovery",
+              "api/guides/firehose",
               "api/guides/sources-flags",
               "api/guides/workspace",
               "api/guides/taxonomy",

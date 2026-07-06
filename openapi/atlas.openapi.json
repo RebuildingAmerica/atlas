@@ -5344,6 +5344,801 @@
         "title": "FacetOption",
         "type": "object"
       },
+      "FirehoseActorRef": {
+        "description": "Actor reference attached to one Firehose signal.",
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "id for this firehose actor ref.",
+            "title": "Id"
+          },
+          "name": {
+            "description": "name for this firehose actor ref.",
+            "title": "Name",
+            "type": "string"
+          },
+          "role": {
+            "description": "role for this firehose actor ref.",
+            "title": "Role",
+            "type": "string"
+          },
+          "type": {
+            "description": "type for this firehose actor ref.",
+            "enum": [
+              "person",
+              "organization",
+              "initiative",
+              "campaign",
+              "event"
+            ],
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "type",
+          "role"
+        ],
+        "title": "FirehoseActorRef",
+        "type": "object"
+      },
+      "FirehoseDeliveryRequest": {
+        "description": "Requested delivery mode for a durable Firehose session.",
+        "properties": {
+          "mode": {
+            "default": "sse",
+            "description": "mode for this firehose delivery.",
+            "enum": [
+              "sse",
+              "websocket"
+            ],
+            "title": "Mode",
+            "type": "string"
+          }
+        },
+        "title": "FirehoseDeliveryRequest",
+        "type": "object"
+      },
+      "FirehoseDestination": {
+        "description": "Destination where a Firehose signal is allowed to appear.",
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "id for this firehose destination.",
+            "title": "Id"
+          },
+          "state": {
+            "description": "state for this firehose destination.",
+            "enum": [
+              "active",
+              "held",
+              "suppressed"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "type": {
+            "description": "type for this firehose destination.",
+            "enum": [
+              "workspace",
+              "profile",
+              "place",
+              "issue",
+              "partner",
+              "public",
+              "review"
+            ],
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "id",
+          "state"
+        ],
+        "title": "FirehoseDestination",
+        "type": "object"
+      },
+      "FirehoseEvidence": {
+        "description": "Public evidence backing one Firehose signal.",
+        "properties": {
+          "captured_at": {
+            "description": "captured at for this firehose evidence.",
+            "title": "Captured At",
+            "type": "string"
+          },
+          "content_hash": {
+            "description": "content hash for this firehose evidence.",
+            "title": "Content Hash",
+            "type": "string"
+          },
+          "locator": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "locator for this firehose evidence.",
+            "title": "Locator"
+          },
+          "passage": {
+            "description": "passage for this firehose evidence.",
+            "title": "Passage",
+            "type": "string"
+          },
+          "published_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "published at for this firehose evidence.",
+            "title": "Published At"
+          },
+          "publisher": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "publisher for this firehose evidence.",
+            "title": "Publisher"
+          },
+          "source_url": {
+            "description": "source url for this firehose evidence.",
+            "title": "Source Url",
+            "type": "string"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "title for this firehose evidence.",
+            "title": "Title"
+          }
+        },
+        "required": [
+          "source_url",
+          "title",
+          "publisher",
+          "published_at",
+          "captured_at",
+          "passage",
+          "locator",
+          "content_hash"
+        ],
+        "title": "FirehoseEvidence",
+        "type": "object"
+      },
+      "FirehoseLinkSet": {
+        "description": "HTTP and client links for the current Firehose view.",
+        "properties": {
+          "events": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "events for this firehose link set.",
+            "title": "Events"
+          },
+          "next": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "next for this firehose link set.",
+            "title": "Next"
+          },
+          "self": {
+            "description": "self for this firehose link set.",
+            "title": "Self",
+            "type": "string"
+          }
+        },
+        "required": [
+          "self",
+          "next",
+          "events"
+        ],
+        "title": "FirehoseLinkSet",
+        "type": "object"
+      },
+      "FirehoseQuery": {
+        "description": "Normalized Firehose query filters.",
+        "properties": {
+          "actor_types": {
+            "description": "actor types for this firehose query.",
+            "items": {
+              "enum": [
+                "person",
+                "organization",
+                "initiative",
+                "campaign",
+                "event"
+              ],
+              "type": "string"
+            },
+            "title": "Actor Types",
+            "type": "array"
+          },
+          "cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "cursor for this firehose query.",
+            "title": "Cursor"
+          },
+          "issues": {
+            "description": "issues for this firehose query.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Issues",
+            "type": "array"
+          },
+          "limit": {
+            "default": 50,
+            "description": "limit for this firehose query.",
+            "maximum": 200.0,
+            "minimum": 1.0,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "places": {
+            "description": "places for this firehose query.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Places",
+            "type": "array"
+          },
+          "signal_types": {
+            "description": "signal types for this firehose query.",
+            "items": {
+              "enum": [
+                "public_meeting",
+                "public_comment",
+                "vote",
+                "filing",
+                "grant_award",
+                "coalition_activity",
+                "new_source",
+                "role_change",
+                "freshness_change"
+              ],
+              "type": "string"
+            },
+            "title": "Signal Types",
+            "type": "array"
+          },
+          "since": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "since for this firehose query.",
+            "title": "Since"
+          },
+          "sort": {
+            "default": "detected_at_desc",
+            "description": "sort for this firehose query.",
+            "enum": [
+              "detected_at_desc",
+              "occurred_at_desc",
+              "relevance_desc"
+            ],
+            "title": "Sort",
+            "type": "string"
+          },
+          "source_classes": {
+            "description": "source classes for this firehose query.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Source Classes",
+            "type": "array"
+          },
+          "until": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "until for this firehose query.",
+            "title": "Until"
+          },
+          "visibility": {
+            "default": "workspace",
+            "description": "visibility for this firehose query.",
+            "enum": [
+              "workspace",
+              "partner",
+              "public",
+              "reviewer"
+            ],
+            "title": "Visibility",
+            "type": "string"
+          }
+        },
+        "title": "FirehoseQuery",
+        "type": "object"
+      },
+      "FirehoseSession": {
+        "description": "Durable observed Firehose query.",
+        "properties": {
+          "created_at": {
+            "description": "created at for this firehose session.",
+            "title": "Created At",
+            "type": "string"
+          },
+          "events_url": {
+            "description": "events url for this firehose session.",
+            "title": "Events Url",
+            "type": "string"
+          },
+          "expires_at": {
+            "description": "expires at for this firehose session.",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "id": {
+            "description": "id for this firehose session.",
+            "title": "Id",
+            "type": "string"
+          },
+          "query": {
+            "$ref": "#/components/schemas/FirehoseQuery",
+            "description": "query for this firehose session."
+          },
+          "snapshot_url": {
+            "description": "snapshot url for this firehose session.",
+            "title": "Snapshot Url",
+            "type": "string"
+          },
+          "socket_url": {
+            "description": "socket url for this firehose session.",
+            "title": "Socket Url",
+            "type": "string"
+          },
+          "state": {
+            "description": "state for this firehose session.",
+            "enum": [
+              "active",
+              "expired"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "usage": {
+            "$ref": "#/components/schemas/FirehoseUsageContext",
+            "description": "usage for this firehose session."
+          },
+          "workspace": {
+            "$ref": "#/components/schemas/FirehoseWorkspaceContext",
+            "description": "workspace for this firehose session."
+          }
+        },
+        "required": [
+          "id",
+          "state",
+          "query",
+          "workspace",
+          "usage",
+          "created_at",
+          "expires_at",
+          "snapshot_url",
+          "events_url",
+          "socket_url"
+        ],
+        "title": "FirehoseSession",
+        "type": "object"
+      },
+      "FirehoseSessionRequest": {
+        "description": "Request to create a durable Firehose observed query.",
+        "properties": {
+          "delivery": {
+            "$ref": "#/components/schemas/FirehoseDeliveryRequest",
+            "description": "delivery for this firehose session."
+          },
+          "query": {
+            "$ref": "#/components/schemas/FirehoseQuery",
+            "description": "query for this firehose session."
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "title": "FirehoseSessionRequest",
+        "type": "object"
+      },
+      "FirehoseSignal": {
+        "description": "Source-backed civic signal returned by Firehose.",
+        "properties": {
+          "actors": {
+            "description": "actors for this firehose signal.",
+            "items": {
+              "$ref": "#/components/schemas/FirehoseActorRef"
+            },
+            "title": "Actors",
+            "type": "array"
+          },
+          "confidence": {
+            "description": "confidence for this firehose signal.",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Confidence",
+            "type": "number"
+          },
+          "destinations": {
+            "description": "destinations for this firehose signal.",
+            "items": {
+              "$ref": "#/components/schemas/FirehoseDestination"
+            },
+            "title": "Destinations",
+            "type": "array"
+          },
+          "detected_at": {
+            "description": "detected at for this firehose signal.",
+            "title": "Detected At",
+            "type": "string"
+          },
+          "evidence": {
+            "description": "evidence for this firehose signal.",
+            "items": {
+              "$ref": "#/components/schemas/FirehoseEvidence"
+            },
+            "title": "Evidence",
+            "type": "array"
+          },
+          "id": {
+            "description": "id for this firehose signal.",
+            "title": "Id",
+            "type": "string"
+          },
+          "issues": {
+            "description": "issues for this firehose signal.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Issues",
+            "type": "array"
+          },
+          "occurred_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "occurred at for this firehose signal.",
+            "title": "Occurred At"
+          },
+          "places": {
+            "description": "places for this firehose signal.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Places",
+            "type": "array"
+          },
+          "public_realm_basis": {
+            "description": "public realm basis for this firehose signal.",
+            "title": "Public Realm Basis",
+            "type": "string"
+          },
+          "review_state": {
+            "description": "review state for this firehose signal.",
+            "enum": [
+              "not_required",
+              "pending",
+              "approved",
+              "held",
+              "rejected"
+            ],
+            "title": "Review State",
+            "type": "string"
+          },
+          "sensitivity": {
+            "description": "sensitivity for this firehose signal.",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Sensitivity",
+            "type": "number"
+          },
+          "summary": {
+            "description": "summary for this firehose signal.",
+            "title": "Summary",
+            "type": "string"
+          },
+          "title": {
+            "description": "title for this firehose signal.",
+            "title": "Title",
+            "type": "string"
+          },
+          "type": {
+            "description": "type for this firehose signal.",
+            "enum": [
+              "public_meeting",
+              "public_comment",
+              "vote",
+              "filing",
+              "grant_award",
+              "coalition_activity",
+              "new_source",
+              "role_change",
+              "freshness_change"
+            ],
+            "title": "Type",
+            "type": "string"
+          },
+          "visibility": {
+            "description": "visibility for this firehose signal.",
+            "enum": [
+              "workspace",
+              "partner",
+              "public",
+              "reviewer"
+            ],
+            "title": "Visibility",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "title",
+          "summary",
+          "occurred_at",
+          "detected_at",
+          "public_realm_basis",
+          "places",
+          "issues",
+          "actors",
+          "confidence",
+          "sensitivity",
+          "review_state",
+          "visibility",
+          "evidence",
+          "destinations"
+        ],
+        "title": "FirehoseSignal",
+        "type": "object"
+      },
+      "FirehoseSnapshot": {
+        "description": "Point-in-time Firehose query result.",
+        "properties": {
+          "cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "cursor for this firehose snapshot.",
+            "title": "Cursor"
+          },
+          "generated_at": {
+            "description": "generated at for this firehose snapshot.",
+            "title": "Generated At",
+            "type": "string"
+          },
+          "links": {
+            "$ref": "#/components/schemas/FirehoseLinkSet",
+            "description": "links for this firehose snapshot."
+          },
+          "query": {
+            "$ref": "#/components/schemas/FirehoseQuery",
+            "description": "query for this firehose snapshot."
+          },
+          "session": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FirehoseSession"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "session for this firehose snapshot."
+          },
+          "signals": {
+            "description": "signals for this firehose snapshot.",
+            "items": {
+              "$ref": "#/components/schemas/FirehoseSignal"
+            },
+            "title": "Signals",
+            "type": "array"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/FirehoseSummary",
+            "description": "summary for this firehose snapshot."
+          },
+          "usage": {
+            "$ref": "#/components/schemas/FirehoseUsageContext",
+            "description": "usage for this firehose snapshot."
+          },
+          "workspace": {
+            "$ref": "#/components/schemas/FirehoseWorkspaceContext",
+            "description": "workspace for this firehose snapshot."
+          }
+        },
+        "required": [
+          "query",
+          "workspace",
+          "usage",
+          "generated_at",
+          "cursor",
+          "summary",
+          "signals",
+          "links"
+        ],
+        "title": "FirehoseSnapshot",
+        "type": "object"
+      },
+      "FirehoseSummary": {
+        "description": "Counts for the current Firehose view.",
+        "properties": {
+          "held_signals": {
+            "description": "held signals for this firehose summary.",
+            "minimum": 0.0,
+            "title": "Held Signals",
+            "type": "integer"
+          },
+          "latest_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "latest cursor for this firehose summary.",
+            "title": "Latest Cursor"
+          },
+          "total_signals": {
+            "description": "total signals for this firehose summary.",
+            "minimum": 0.0,
+            "title": "Total Signals",
+            "type": "integer"
+          },
+          "visible_signals": {
+            "description": "visible signals for this firehose summary.",
+            "minimum": 0.0,
+            "title": "Visible Signals",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total_signals",
+          "visible_signals",
+          "held_signals",
+          "latest_cursor"
+        ],
+        "title": "FirehoseSummary",
+        "type": "object"
+      },
+      "FirehoseUsageContext": {
+        "description": "Billing and metering context for one Firehose request.",
+        "properties": {
+          "meter": {
+            "description": "meter for this firehose usage context.",
+            "enum": [
+              "firehose_snapshot",
+              "firehose_session",
+              "firehose_stream",
+              "firehose_socket"
+            ],
+            "title": "Meter",
+            "type": "string"
+          },
+          "query_fingerprint": {
+            "description": "query fingerprint for this firehose usage context.",
+            "title": "Query Fingerprint",
+            "type": "string"
+          }
+        },
+        "required": [
+          "meter",
+          "query_fingerprint"
+        ],
+        "title": "FirehoseUsageContext",
+        "type": "object"
+      },
+      "FirehoseWorkspaceContext": {
+        "description": "Workspace and actor context that owns Firehose usage.",
+        "properties": {
+          "actor_id": {
+            "description": "actor id for this firehose workspace context.",
+            "title": "Actor Id",
+            "type": "string"
+          },
+          "api_key_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "api key id for this firehose workspace context.",
+            "title": "Api Key Id"
+          },
+          "auth_type": {
+            "description": "auth type for this firehose workspace context.",
+            "title": "Auth Type",
+            "type": "string"
+          },
+          "org_id": {
+            "description": "org id for this firehose workspace context.",
+            "title": "Org Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "org_id",
+          "actor_id",
+          "auth_type"
+        ],
+        "title": "FirehoseWorkspaceContext",
+        "type": "object"
+      },
       "FlagResponse": {
         "description": "Flag resource for an entity or source.",
         "properties": {
@@ -15318,6 +16113,1434 @@
         ]
       }
     },
+    "/api/firehose": {
+      "get": {
+        "description": "Return a source-backed Firehose snapshot for a civic query, or stream the same query as Server-Sent Events when the client requests text/event-stream.\n\nUse this Firehose operation to query or observe source-backed civic signals for an authenticated workspace. Preserve workspace, usage, signal, and evidence context so billing and trust stay tied to the query that produced the data.",
+        "operationId": "getFirehose",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "place",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Place"
+            }
+          },
+          {
+            "in": "query",
+            "name": "issue",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Issue"
+            }
+          },
+          {
+            "in": "query",
+            "name": "actor_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Actor Type"
+            }
+          },
+          {
+            "in": "query",
+            "name": "signal_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Signal Type"
+            }
+          },
+          {
+            "in": "query",
+            "name": "source_class",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Source Class"
+            }
+          },
+          {
+            "in": "query",
+            "name": "visibility",
+            "required": false,
+            "schema": {
+              "default": "workspace",
+              "enum": [
+                "workspace",
+                "partner",
+                "public",
+                "reviewer"
+              ],
+              "title": "Visibility",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "since",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Since"
+            }
+          },
+          {
+            "in": "query",
+            "name": "until",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Until"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "default": "detected_at_desc",
+              "enum": [
+                "detected_at_desc",
+                "occurred_at_desc",
+                "relevance_desc"
+              ],
+              "title": "Sort",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Last-Event-ID",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Last-Event-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Accept",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Accept"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Request-ID",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Request-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Traceparent",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Traceparent"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Tracestate",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tracestate"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Prefer",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Prefer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-internal-secret",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Internal-Secret"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-email",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Email"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-organization-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Organization-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FirehoseSnapshot"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Query Firehose",
+        "tags": [
+          "firehose"
+        ]
+      },
+      "head": {
+        "description": "Return snapshot headers for a Firehose query without downloading the JSON response body.\n\nUse this Firehose operation to query or observe source-backed civic signals for an authenticated workspace. Preserve workspace, usage, signal, and evidence context so billing and trust stay tied to the query that produced the data.",
+        "operationId": "headFirehose",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "place",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Place"
+            }
+          },
+          {
+            "in": "query",
+            "name": "issue",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Issue"
+            }
+          },
+          {
+            "in": "query",
+            "name": "actor_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Actor Type"
+            }
+          },
+          {
+            "in": "query",
+            "name": "signal_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Signal Type"
+            }
+          },
+          {
+            "in": "query",
+            "name": "source_class",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Source Class"
+            }
+          },
+          {
+            "in": "query",
+            "name": "visibility",
+            "required": false,
+            "schema": {
+              "default": "workspace",
+              "enum": [
+                "workspace",
+                "partner",
+                "public",
+                "reviewer"
+              ],
+              "title": "Visibility",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "since",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Since"
+            }
+          },
+          {
+            "in": "query",
+            "name": "until",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Until"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "default": "detected_at_desc",
+              "enum": [
+                "detected_at_desc",
+                "occurred_at_desc",
+                "relevance_desc"
+              ],
+              "title": "Sort",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Accept",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Accept"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Request-ID",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Request-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Traceparent",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Traceparent"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Tracestate",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tracestate"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Prefer",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Prefer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-internal-secret",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Internal-Secret"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-email",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Email"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-organization-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Organization-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Probe Firehose",
+        "tags": [
+          "firehose"
+        ]
+      }
+    },
+    "/api/firehose/sessions": {
+      "post": {
+        "description": "Create a durable observed Firehose query when filters are too rich for URL parameters or a client needs stable live-session URLs.\n\nUse this Firehose operation to query or observe source-backed civic signals for an authenticated workspace. Preserve workspace, usage, signal, and evidence context so billing and trust stay tied to the query that produced the data.",
+        "operationId": "createFirehoseSession",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Content-Type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Content-Type"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Accept",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Accept"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Request-ID",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Request-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Traceparent",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Traceparent"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Tracestate",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tracestate"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Prefer",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Prefer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-internal-secret",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Internal-Secret"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-email",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Email"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-organization-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Organization-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FirehoseSessionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FirehoseSession"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create a Firehose session",
+        "tags": [
+          "firehose"
+        ]
+      }
+    },
+    "/api/firehose/sessions/{session_id}": {
+      "get": {
+        "description": "Return the current snapshot for a durable Firehose session. The MVP stub keeps the session readable and typed before real persisted sessions exist.\n\nUse this Firehose operation to query or observe source-backed civic signals for an authenticated workspace. Preserve workspace, usage, signal, and evidence context so billing and trust stay tied to the query that produced the data.",
+        "operationId": "getFirehoseSession",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "title": "Session Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Accept",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Accept"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Request-ID",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Request-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Traceparent",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Traceparent"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Tracestate",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tracestate"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Prefer",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Prefer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-internal-secret",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Internal-Secret"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-email",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Email"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-organization-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Organization-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FirehoseSnapshot"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Firehose session",
+        "tags": [
+          "firehose"
+        ]
+      }
+    },
+    "/api/firehose/sessions/{session_id}/events": {
+      "get": {
+        "description": "Stream Server-Sent Events for a durable Firehose session. Clients can reconnect with Last-Event-ID without changing the query contract.\n\nUse this Firehose operation to query or observe source-backed civic signals for an authenticated workspace. Preserve workspace, usage, signal, and evidence context so billing and trust stay tied to the query that produced the data.",
+        "operationId": "streamFirehoseSessionEvents",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "title": "Session Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Last-Event-ID",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Last-Event-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Accept",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Accept"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Request-ID",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Request-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Traceparent",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Traceparent"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Tracestate",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tracestate"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Prefer",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Prefer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-internal-secret",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Internal-Secret"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-email",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Email"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-organization-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Organization-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Stream Firehose session events",
+        "tags": [
+          "firehose"
+        ]
+      }
+    },
     "/api/issue-areas": {
       "get": {
         "description": "List Atlas issue areas or resolve natural-language issue queries.\n\nUse this issue-area operation to translate user intent into stable Atlas filters. Fetch the taxonomy from the API instead of maintaining a second copy in an app or agent prompt.",
@@ -24578,6 +26801,10 @@
       "name": "follows"
     },
     {
+      "description": "Live civic-intelligence query APIs. Firehose lets a workspace ask what changed in a public civic field, receive source-backed signals with billing context attached, and observe the same query through standards-based HTTP streams.",
+      "name": "firehose"
+    },
+    {
       "description": "Small operational health checks for clients and monitors. Health responses are intentionally minimal and do not expose user, workspace, or discovery data.",
       "name": "health"
     },
@@ -24679,6 +26906,7 @@
       "tags": [
         "discovery-runs",
         "discovery-schedules",
+        "firehose",
         "moderation",
         "health"
       ]

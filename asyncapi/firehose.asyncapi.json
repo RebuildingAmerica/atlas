@@ -1,0 +1,1340 @@
+{
+  "asyncapi": "3.0.0",
+  "channels": {
+    "firehoseQueryEvents": {
+      "address": "/api/firehose",
+      "bindings": {
+        "http": {
+          "bindingVersion": "0.3.0",
+          "headers": {
+            "additionalProperties": true,
+            "properties": {
+              "Accept": {
+                "description": "Use text/event-stream for Server-Sent Events.",
+                "type": "string"
+              },
+              "Authorization": {
+                "type": "string"
+              },
+              "Last-Event-ID": {
+                "type": "string"
+              },
+              "Prefer": {
+                "description": "Supports wait, return=minimal, and return=representation.",
+                "type": "string"
+              },
+              "Traceparent": {
+                "type": "string"
+              },
+              "Tracestate": {
+                "type": "string"
+              },
+              "X-API-Key": {
+                "type": "string"
+              },
+              "X-Request-ID": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "method": "GET",
+          "query": {
+            "additionalProperties": false,
+            "properties": {
+              "actor_type": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "cursor": {
+                "type": "string"
+              },
+              "issue": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "limit": {
+                "maximum": 200,
+                "minimum": 1,
+                "type": "integer"
+              },
+              "place": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "signal_type": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "since": {
+                "type": "string"
+              },
+              "sort": {
+                "type": "string"
+              },
+              "source_class": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "until": {
+                "type": "string"
+              },
+              "visibility": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        }
+      },
+      "messages": {
+        "FirehoseHeartbeat": {
+          "$ref": "#/components/messages/FirehoseHeartbeat"
+        },
+        "FirehoseReady": {
+          "$ref": "#/components/messages/FirehoseReady"
+        },
+        "FirehoseSignalReceived": {
+          "$ref": "#/components/messages/FirehoseSignalReceived"
+        }
+      },
+      "title": "Top-level Firehose SSE stream"
+    },
+    "firehoseSessionEvents": {
+      "address": "/api/firehose/sessions/{session_id}/events",
+      "bindings": {
+        "http": {
+          "bindingVersion": "0.3.0",
+          "headers": {
+            "additionalProperties": true,
+            "properties": {
+              "Accept": {
+                "description": "Use text/event-stream for Server-Sent Events.",
+                "type": "string"
+              },
+              "Authorization": {
+                "type": "string"
+              },
+              "Last-Event-ID": {
+                "type": "string"
+              },
+              "Prefer": {
+                "description": "Supports wait, return=minimal, and return=representation.",
+                "type": "string"
+              },
+              "Traceparent": {
+                "type": "string"
+              },
+              "Tracestate": {
+                "type": "string"
+              },
+              "X-API-Key": {
+                "type": "string"
+              },
+              "X-Request-ID": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "method": "GET",
+          "query": {
+            "additionalProperties": false,
+            "properties": {
+              "actor_type": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "cursor": {
+                "type": "string"
+              },
+              "issue": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "limit": {
+                "maximum": 200,
+                "minimum": 1,
+                "type": "integer"
+              },
+              "place": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "signal_type": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "since": {
+                "type": "string"
+              },
+              "sort": {
+                "type": "string"
+              },
+              "source_class": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "until": {
+                "type": "string"
+              },
+              "visibility": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        }
+      },
+      "messages": {
+        "FirehoseHeartbeat": {
+          "$ref": "#/components/messages/FirehoseHeartbeat"
+        },
+        "FirehoseReady": {
+          "$ref": "#/components/messages/FirehoseReady"
+        },
+        "FirehoseSignalReceived": {
+          "$ref": "#/components/messages/FirehoseSignalReceived"
+        }
+      },
+      "parameters": {
+        "session_id": {
+          "description": "Durable Firehose session id returned by POST /api/firehose/sessions.",
+          "schema": {
+            "pattern": "^fhs_[a-f0-9]{24}$",
+            "type": "string"
+          }
+        }
+      },
+      "title": "Durable Firehose session SSE stream"
+    },
+    "firehoseSessionSocket": {
+      "address": "/api/firehose/sessions/{session_id}/socket",
+      "bindings": {
+        "ws": {
+          "bindingVersion": "0.1.0",
+          "headers": {
+            "allOf": [
+              {
+                "additionalProperties": true,
+                "properties": {
+                  "Accept": {
+                    "description": "Use text/event-stream for Server-Sent Events.",
+                    "type": "string"
+                  },
+                  "Authorization": {
+                    "type": "string"
+                  },
+                  "Last-Event-ID": {
+                    "type": "string"
+                  },
+                  "Prefer": {
+                    "description": "Supports wait, return=minimal, and return=representation.",
+                    "type": "string"
+                  },
+                  "Traceparent": {
+                    "type": "string"
+                  },
+                  "Tracestate": {
+                    "type": "string"
+                  },
+                  "X-API-Key": {
+                    "type": "string"
+                  },
+                  "X-Request-ID": {
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              },
+              {
+                "properties": {
+                  "Sec-WebSocket-Protocol": {
+                    "const": "atlas.firehose.v1",
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              }
+            ]
+          },
+          "method": "GET",
+          "query": {
+            "additionalProperties": false,
+            "properties": {
+              "actor_type": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "cursor": {
+                "type": "string"
+              },
+              "issue": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "limit": {
+                "maximum": 200,
+                "minimum": 1,
+                "type": "integer"
+              },
+              "place": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "signal_type": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "since": {
+                "type": "string"
+              },
+              "sort": {
+                "type": "string"
+              },
+              "source_class": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "until": {
+                "type": "string"
+              },
+              "visibility": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        }
+      },
+      "messages": {
+        "FirehoseHeartbeat": {
+          "$ref": "#/components/messages/FirehoseHeartbeat"
+        },
+        "FirehoseReady": {
+          "$ref": "#/components/messages/FirehoseReady"
+        },
+        "FirehoseSignalReceived": {
+          "$ref": "#/components/messages/FirehoseSignalReceived"
+        }
+      },
+      "parameters": {
+        "session_id": {
+          "description": "Durable Firehose session id returned by POST /api/firehose/sessions.",
+          "schema": {
+            "pattern": "^fhs_[a-f0-9]{24}$",
+            "type": "string"
+          }
+        }
+      },
+      "title": "Durable Firehose WebSocket"
+    }
+  },
+  "components": {
+    "messages": {
+      "FirehoseHeartbeat": {
+        "contentType": "application/json",
+        "payload": {
+          "$ref": "#/components/schemas/FirehoseHeartbeatEvent"
+        },
+        "summary": "The stream remains open with no newer signal to deliver.",
+        "title": "Firehose heartbeat"
+      },
+      "FirehoseReady": {
+        "contentType": "application/json",
+        "payload": {
+          "$ref": "#/components/schemas/FirehoseReadyEvent"
+        },
+        "summary": "The stream is open for a source-backed Firehose query.",
+        "title": "Firehose ready"
+      },
+      "FirehoseSignalReceived": {
+        "contentType": "application/json",
+        "payload": {
+          "$ref": "#/components/schemas/FirehoseSignalEvent"
+        },
+        "summary": "A source-backed civic signal matched the Firehose query.",
+        "title": "Firehose signal received"
+      }
+    },
+    "schemas": {
+      "FirehoseActorRef": {
+        "description": "Actor reference attached to one Firehose signal.",
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "role": {
+            "title": "Role",
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "person",
+              "organization",
+              "initiative",
+              "campaign",
+              "event"
+            ],
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "type",
+          "role"
+        ],
+        "title": "FirehoseActorRef",
+        "type": "object"
+      },
+      "FirehoseDeliveryRequest": {
+        "description": "Requested delivery mode for a durable Firehose session.",
+        "properties": {
+          "mode": {
+            "default": "sse",
+            "enum": [
+              "sse",
+              "websocket"
+            ],
+            "title": "Mode",
+            "type": "string"
+          }
+        },
+        "title": "FirehoseDeliveryRequest",
+        "type": "object"
+      },
+      "FirehoseDestination": {
+        "description": "Destination where a Firehose signal is allowed to appear.",
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "state": {
+            "enum": [
+              "active",
+              "held",
+              "suppressed"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "workspace",
+              "profile",
+              "place",
+              "issue",
+              "partner",
+              "public",
+              "review"
+            ],
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "id",
+          "state"
+        ],
+        "title": "FirehoseDestination",
+        "type": "object"
+      },
+      "FirehoseEvidence": {
+        "description": "Public evidence backing one Firehose signal.",
+        "properties": {
+          "captured_at": {
+            "title": "Captured At",
+            "type": "string"
+          },
+          "content_hash": {
+            "title": "Content Hash",
+            "type": "string"
+          },
+          "locator": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Locator"
+          },
+          "passage": {
+            "title": "Passage",
+            "type": "string"
+          },
+          "published_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published At"
+          },
+          "publisher": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Publisher"
+          },
+          "source_url": {
+            "title": "Source Url",
+            "type": "string"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "required": [
+          "source_url",
+          "title",
+          "publisher",
+          "published_at",
+          "captured_at",
+          "passage",
+          "locator",
+          "content_hash"
+        ],
+        "title": "FirehoseEvidence",
+        "type": "object"
+      },
+      "FirehoseHeartbeatEvent": {
+        "description": "Heartbeat event emitted by a Firehose stream.",
+        "properties": {
+          "session_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Session Id"
+          },
+          "type": {
+            "const": "heartbeat",
+            "default": "heartbeat",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id"
+        ],
+        "title": "FirehoseHeartbeatEvent",
+        "type": "object"
+      },
+      "FirehoseLinkSet": {
+        "description": "HTTP and client links for the current Firehose view.",
+        "properties": {
+          "events": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Events"
+          },
+          "next": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next"
+          },
+          "self": {
+            "title": "Self",
+            "type": "string"
+          }
+        },
+        "required": [
+          "self",
+          "next",
+          "events"
+        ],
+        "title": "FirehoseLinkSet",
+        "type": "object"
+      },
+      "FirehoseQuery": {
+        "description": "Normalized Firehose query filters.",
+        "properties": {
+          "actor_types": {
+            "items": {
+              "enum": [
+                "person",
+                "organization",
+                "initiative",
+                "campaign",
+                "event"
+              ],
+              "type": "string"
+            },
+            "title": "Actor Types",
+            "type": "array"
+          },
+          "cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Cursor"
+          },
+          "issues": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Issues",
+            "type": "array"
+          },
+          "limit": {
+            "default": 50,
+            "maximum": 200,
+            "minimum": 1,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "places": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Places",
+            "type": "array"
+          },
+          "signal_types": {
+            "items": {
+              "enum": [
+                "public_meeting",
+                "public_comment",
+                "vote",
+                "filing",
+                "grant_award",
+                "coalition_activity",
+                "new_source",
+                "role_change",
+                "freshness_change"
+              ],
+              "type": "string"
+            },
+            "title": "Signal Types",
+            "type": "array"
+          },
+          "since": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Since"
+          },
+          "sort": {
+            "default": "detected_at_desc",
+            "enum": [
+              "detected_at_desc",
+              "occurred_at_desc",
+              "relevance_desc"
+            ],
+            "title": "Sort",
+            "type": "string"
+          },
+          "source_classes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Source Classes",
+            "type": "array"
+          },
+          "until": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Until"
+          },
+          "visibility": {
+            "default": "workspace",
+            "enum": [
+              "workspace",
+              "partner",
+              "public",
+              "reviewer"
+            ],
+            "title": "Visibility",
+            "type": "string"
+          }
+        },
+        "title": "FirehoseQuery",
+        "type": "object"
+      },
+      "FirehoseReadyEvent": {
+        "description": "Readiness event emitted when a Firehose stream opens.",
+        "properties": {
+          "last_event_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Event Id"
+          },
+          "query": {
+            "$ref": "#/components/schemas/FirehoseQuery"
+          },
+          "session_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Session Id"
+          },
+          "type": {
+            "const": "firehose.ready",
+            "default": "firehose.ready",
+            "title": "Type",
+            "type": "string"
+          },
+          "usage": {
+            "$ref": "#/components/schemas/FirehoseUsageContext"
+          },
+          "workspace": {
+            "$ref": "#/components/schemas/FirehoseWorkspaceContext"
+          }
+        },
+        "required": [
+          "session_id",
+          "workspace",
+          "usage",
+          "query",
+          "last_event_id"
+        ],
+        "title": "FirehoseReadyEvent",
+        "type": "object"
+      },
+      "FirehoseSession": {
+        "description": "Durable observed Firehose query.",
+        "properties": {
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "events_url": {
+            "title": "Events Url",
+            "type": "string"
+          },
+          "expires_at": {
+            "title": "Expires At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "query": {
+            "$ref": "#/components/schemas/FirehoseQuery"
+          },
+          "snapshot_url": {
+            "title": "Snapshot Url",
+            "type": "string"
+          },
+          "socket_url": {
+            "title": "Socket Url",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "active",
+              "expired"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "usage": {
+            "$ref": "#/components/schemas/FirehoseUsageContext"
+          },
+          "workspace": {
+            "$ref": "#/components/schemas/FirehoseWorkspaceContext"
+          }
+        },
+        "required": [
+          "id",
+          "state",
+          "query",
+          "workspace",
+          "usage",
+          "created_at",
+          "expires_at",
+          "snapshot_url",
+          "events_url",
+          "socket_url"
+        ],
+        "title": "FirehoseSession",
+        "type": "object"
+      },
+      "FirehoseSessionRequest": {
+        "description": "Request to create a durable Firehose observed query.",
+        "properties": {
+          "delivery": {
+            "$ref": "#/components/schemas/FirehoseDeliveryRequest"
+          },
+          "query": {
+            "$ref": "#/components/schemas/FirehoseQuery"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "title": "FirehoseSessionRequest",
+        "type": "object"
+      },
+      "FirehoseSignal": {
+        "description": "Source-backed civic signal returned by Firehose.",
+        "properties": {
+          "actors": {
+            "items": {
+              "$ref": "#/components/schemas/FirehoseActorRef"
+            },
+            "title": "Actors",
+            "type": "array"
+          },
+          "confidence": {
+            "maximum": 1,
+            "minimum": 0,
+            "title": "Confidence",
+            "type": "number"
+          },
+          "destinations": {
+            "items": {
+              "$ref": "#/components/schemas/FirehoseDestination"
+            },
+            "title": "Destinations",
+            "type": "array"
+          },
+          "detected_at": {
+            "title": "Detected At",
+            "type": "string"
+          },
+          "evidence": {
+            "items": {
+              "$ref": "#/components/schemas/FirehoseEvidence"
+            },
+            "title": "Evidence",
+            "type": "array"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "issues": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Issues",
+            "type": "array"
+          },
+          "occurred_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Occurred At"
+          },
+          "places": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Places",
+            "type": "array"
+          },
+          "public_realm_basis": {
+            "title": "Public Realm Basis",
+            "type": "string"
+          },
+          "review_state": {
+            "enum": [
+              "not_required",
+              "pending",
+              "approved",
+              "held",
+              "rejected"
+            ],
+            "title": "Review State",
+            "type": "string"
+          },
+          "sensitivity": {
+            "maximum": 1,
+            "minimum": 0,
+            "title": "Sensitivity",
+            "type": "number"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "public_meeting",
+              "public_comment",
+              "vote",
+              "filing",
+              "grant_award",
+              "coalition_activity",
+              "new_source",
+              "role_change",
+              "freshness_change"
+            ],
+            "title": "Type",
+            "type": "string"
+          },
+          "visibility": {
+            "enum": [
+              "workspace",
+              "partner",
+              "public",
+              "reviewer"
+            ],
+            "title": "Visibility",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "title",
+          "summary",
+          "occurred_at",
+          "detected_at",
+          "public_realm_basis",
+          "places",
+          "issues",
+          "actors",
+          "confidence",
+          "sensitivity",
+          "review_state",
+          "visibility",
+          "evidence",
+          "destinations"
+        ],
+        "title": "FirehoseSignal",
+        "type": "object"
+      },
+      "FirehoseSignalEvent": {
+        "description": "Signal event emitted when a Firehose stream delivers a civic signal.",
+        "properties": {
+          "delivered_at": {
+            "title": "Delivered At",
+            "type": "string"
+          },
+          "event_id": {
+            "title": "Event Id",
+            "type": "string"
+          },
+          "query": {
+            "$ref": "#/components/schemas/FirehoseQuery"
+          },
+          "session_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Session Id"
+          },
+          "signal": {
+            "$ref": "#/components/schemas/FirehoseSignal"
+          },
+          "type": {
+            "const": "firehose.signal",
+            "default": "firehose.signal",
+            "title": "Type",
+            "type": "string"
+          },
+          "usage": {
+            "$ref": "#/components/schemas/FirehoseUsageContext"
+          },
+          "workspace": {
+            "$ref": "#/components/schemas/FirehoseWorkspaceContext"
+          }
+        },
+        "required": [
+          "event_id",
+          "session_id",
+          "workspace",
+          "usage",
+          "query",
+          "signal",
+          "delivered_at"
+        ],
+        "title": "FirehoseSignalEvent",
+        "type": "object"
+      },
+      "FirehoseSnapshot": {
+        "description": "Point-in-time Firehose query result.",
+        "properties": {
+          "cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cursor"
+          },
+          "generated_at": {
+            "title": "Generated At",
+            "type": "string"
+          },
+          "links": {
+            "$ref": "#/components/schemas/FirehoseLinkSet"
+          },
+          "query": {
+            "$ref": "#/components/schemas/FirehoseQuery"
+          },
+          "session": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FirehoseSession"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "signals": {
+            "items": {
+              "$ref": "#/components/schemas/FirehoseSignal"
+            },
+            "title": "Signals",
+            "type": "array"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/FirehoseSummary"
+          },
+          "usage": {
+            "$ref": "#/components/schemas/FirehoseUsageContext"
+          },
+          "workspace": {
+            "$ref": "#/components/schemas/FirehoseWorkspaceContext"
+          }
+        },
+        "required": [
+          "query",
+          "workspace",
+          "usage",
+          "generated_at",
+          "cursor",
+          "summary",
+          "signals",
+          "links"
+        ],
+        "title": "FirehoseSnapshot",
+        "type": "object"
+      },
+      "FirehoseSummary": {
+        "description": "Counts for the current Firehose view.",
+        "properties": {
+          "held_signals": {
+            "minimum": 0,
+            "title": "Held Signals",
+            "type": "integer"
+          },
+          "latest_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Cursor"
+          },
+          "total_signals": {
+            "minimum": 0,
+            "title": "Total Signals",
+            "type": "integer"
+          },
+          "visible_signals": {
+            "minimum": 0,
+            "title": "Visible Signals",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total_signals",
+          "visible_signals",
+          "held_signals",
+          "latest_cursor"
+        ],
+        "title": "FirehoseSummary",
+        "type": "object"
+      },
+      "FirehoseUsageContext": {
+        "description": "Billing and metering context for one Firehose request.",
+        "properties": {
+          "meter": {
+            "enum": [
+              "firehose_snapshot",
+              "firehose_session",
+              "firehose_stream",
+              "firehose_socket"
+            ],
+            "title": "Meter",
+            "type": "string"
+          },
+          "query_fingerprint": {
+            "title": "Query Fingerprint",
+            "type": "string"
+          }
+        },
+        "required": [
+          "meter",
+          "query_fingerprint"
+        ],
+        "title": "FirehoseUsageContext",
+        "type": "object"
+      },
+      "FirehoseWorkspaceContext": {
+        "description": "Workspace and actor context that owns Firehose usage.",
+        "properties": {
+          "actor_id": {
+            "title": "Actor Id",
+            "type": "string"
+          },
+          "api_key_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Api Key Id"
+          },
+          "auth_type": {
+            "title": "Auth Type",
+            "type": "string"
+          },
+          "org_id": {
+            "title": "Org Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "org_id",
+          "actor_id",
+          "auth_type"
+        ],
+        "title": "FirehoseWorkspaceContext",
+        "type": "object"
+      }
+    },
+    "securitySchemes": {
+      "apiKey": {
+        "in": "header",
+        "name": "X-API-Key",
+        "type": "apiKey"
+      },
+      "bearerJwt": {
+        "scheme": "bearer",
+        "type": "http"
+      }
+    }
+  },
+  "defaultContentType": "application/json",
+  "info": {
+    "description": "Message contract for source-backed Firehose observations over Server-Sent Events and WebSockets.",
+    "title": "Atlas Firehose Protocol",
+    "version": "0.1.0"
+  },
+  "operations": {
+    "receiveSessionFirehoseEvents": {
+      "action": "receive",
+      "channel": {
+        "$ref": "#/channels/firehoseSessionEvents"
+      },
+      "messages": [
+        {
+          "$ref": "#/components/messages/FirehoseReady"
+        },
+        {
+          "$ref": "#/components/messages/FirehoseSignalReceived"
+        },
+        {
+          "$ref": "#/components/messages/FirehoseHeartbeat"
+        }
+      ]
+    },
+    "receiveSessionFirehoseSocketEvents": {
+      "action": "receive",
+      "channel": {
+        "$ref": "#/channels/firehoseSessionSocket"
+      },
+      "messages": [
+        {
+          "$ref": "#/components/messages/FirehoseReady"
+        },
+        {
+          "$ref": "#/components/messages/FirehoseSignalReceived"
+        },
+        {
+          "$ref": "#/components/messages/FirehoseHeartbeat"
+        }
+      ]
+    },
+    "receiveTopLevelFirehoseEvents": {
+      "action": "receive",
+      "channel": {
+        "$ref": "#/channels/firehoseQueryEvents"
+      },
+      "messages": [
+        {
+          "$ref": "#/components/messages/FirehoseReady"
+        },
+        {
+          "$ref": "#/components/messages/FirehoseSignalReceived"
+        },
+        {
+          "$ref": "#/components/messages/FirehoseHeartbeat"
+        }
+      ]
+    }
+  },
+  "security": [
+    {
+      "apiKey": []
+    },
+    {
+      "bearerJwt": []
+    }
+  ],
+  "servers": {
+    "atlasApi": {
+      "host": "atlas.rebuildingus.org",
+      "pathname": "/",
+      "protocol": "https"
+    }
+  },
+  "x-atlas": {
+    "representations": [
+      "application/json",
+      "text/event-stream"
+    ],
+    "sseRetryMs": 3000,
+    "websocketSubprotocol": "atlas.firehose.v1"
+  }
+}

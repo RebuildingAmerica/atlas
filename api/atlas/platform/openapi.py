@@ -114,6 +114,14 @@ OPENAPI_TAGS = [
         ),
     },
     {
+        "name": "firehose",
+        "description": (
+            "Live civic-intelligence query APIs. Firehose lets a workspace ask what changed in a "
+            "public civic field, receive source-backed signals with billing context attached, "
+            "and observe the same query through standards-based HTTP streams."
+        ),
+    },
+    {
         "name": "health",
         "description": (
             "Small operational health checks for clients and monitors. Health responses are "
@@ -260,7 +268,7 @@ OPENAPI_TAG_GROUPS = [
     },
     {
         "name": "Discovery operations",
-        "tags": ["discovery-runs", "discovery-schedules", "moderation", "health"],
+        "tags": ["discovery-runs", "discovery-schedules", "firehose", "moderation", "health"],
     },
 ]
 
@@ -304,6 +312,11 @@ OPENAPI_TAG_OPERATION_GUIDANCE = {
     "follows": (
         "Use this follow operation to manage a user's subscription to profile activity. Follow "
         "state controls personal notifications and feed contents, not public record visibility."
+    ),
+    "firehose": (
+        "Use this Firehose operation to query or observe source-backed civic signals for an "
+        "authenticated workspace. Preserve workspace, usage, signal, and evidence context so "
+        "billing and trust stay tied to the query that produced the data."
     ),
     "health": (
         "Use this health operation for uptime and dependency checks. It is intentionally minimal "
