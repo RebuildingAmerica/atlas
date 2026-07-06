@@ -1,32 +1,24 @@
 import { createRoot } from "react-dom/client";
 import { ConnectionsGraph } from "../components/connections-graph/connections-graph";
 import { useConnectionsData } from "../adapters/app-client";
+import { WidgetStatus } from "../lib/widget-status";
 import "../styles/widget.css";
 
 function ConnectionsWidget() {
-  const { data, error, loadMore, isLoadingMore } = useConnectionsData();
-
-  if (error) {
-    // Never surface `error.message`/details in the UI — log the real error
-    // for diagnostics and show a safe, generic message instead.
-    console.error(error);
-    return (
-      <p className="text-ew-ink-soft p-4 text-sm">
-        Something went wrong loading these connections.
-      </p>
-    );
-  }
-
-  if (!data) {
-    return <p className="text-ew-ink-soft p-4 text-sm">Loading…</p>;
-  }
-
+  const state = useConnectionsData();
   return (
-    <ConnectionsGraph
-      data={data}
-      onLoadMore={loadMore}
-      isLoadingMore={isLoadingMore}
-    />
+    <WidgetStatus
+      state={state}
+      errorMessage="Something went wrong loading these connections."
+    >
+      {(data) => (
+        <ConnectionsGraph
+          data={data}
+          onLoadMore={state.loadMore}
+          isLoadingMore={state.isLoadingMore}
+        />
+      )}
+    </WidgetStatus>
   );
 }
 

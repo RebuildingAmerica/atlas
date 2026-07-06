@@ -12,30 +12,43 @@
 // runs after it) automatically pick it up without either needing a matching
 // hand-edited invocation of its own.
 //
-// A widget whose vite build fails (e.g. because its `<name>.html` entry
-// doesn't exist yet) fails this script immediately and loudly — it does not
-// continue on to build the remaining widgets and rely solely on
+// Each widget's build is fully independent (different `INPUT`, different
+// output file — `vite.widget.config.ts` sets `emptyOutDir: false` for
+// exactly this reason), so all of them run concurrently rather than one
+// after another. If any fail, this script reports every failure (not just
+// the first) and exits non-zero; it does not rely solely on
 // verify-widget-build.mjs to notice afterward.
 
-import { spawnSync } from "node:child_process";
+import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { WIDGET_NAMES } from "./widget-names.mjs";
 
 const packageRoot = fileURLToPath(new URL("..", import.meta.url));
 
-for (const name of WIDGET_NAMES) {
-  const result = spawnSync(
-    "vite",
-    ["build", "--config", "vite.widget.config.ts"],
-    {
-      cwd: packageRoot,
-      stdio: "inherit",
-      env: { ...process.env, INPUT: `${name}.html` },
-    },
-  );
+/** @returns {Promise<{ name: string, code: number | null }>} */
+function buildWidget(name) {
+  return new Promise((resolve) => {
+    const child = spawn(
+      "vite",
+      ["build", "--config", "vite.widget.config.ts"],
+      {
+        cwd: packageRoot,
+        stdio: "inherit",
+        env: { ...process.env, INPUT: `${name}.html` },
+      },
+    );
+    child.on("exit", (code) => resolve({ name, code }));
+  });
+}
 
-  if (result.status !== 0) {
-    console.error(`Widget build failed for ${name}.html (see vite output above).`);
-    process.exit(result.status ?? 1);
+const results = await Promise.all(WIDGET_NAMES.map(buildWidget));
+
+const failed = results.filter((result) => result.code !== 0);
+if (failed.length > 0) {
+  for (const { name, code } of failed) {
+    console.error(
+      `Widget build failed for ${name}.html (exit code ${code}, see vite output above).`,
+    );
   }
+  process.exit(1);
 }

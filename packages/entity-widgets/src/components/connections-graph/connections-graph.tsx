@@ -2,35 +2,38 @@ import type { ConnectionItem, ConnectionsData } from "../../types";
 import { formatEntityTypeAndPlace } from "../../lib/entity-type-labels";
 import { formatRelationshipLabel } from "../../lib/relationship-labels";
 import { TrustBadgeRow } from "../trust-badge-row/trust-badge-row";
+import { PaginatedListShell } from "../paginated-list-shell/paginated-list-shell";
 
 export interface ConnectionsGraphProps {
   data: ConnectionsData;
   /**
    * Fetch and append the next page. Returns a `Promise` (mirrors
-   * `useConnectionsData`'s `loadMore`) — the button's `onClick` wraps the
-   * call in `void` rather than passing it directly, so a rejected promise
-   * can never surface as an unhandled rejection from a native DOM event
-   * handler.
+   * `useConnectionsData`'s `loadMore`) — passed straight through to
+   * `PaginatedListShell`, which handles not letting a rejection surface as
+   * an unhandled rejection from a native DOM event handler.
    */
   onLoadMore: () => Promise<void>;
   isLoadingMore: boolean;
 }
 
-export interface ConnectionRowItemProps {
+export interface ConnectionRowContentProps {
   item: ConnectionItem;
 }
 
 /**
- * One related-entity row: name, a "Type · City, State" one-liner, a trust
- * indicator, and — unlike a plain `SearchResultRowItem` — a row of small
- * pill tags naming every relationship this entity shares with the subject
- * entity (e.g. "Same organization", "Shared issue: Housing"). A related
- * entity can carry more than one relationship at once, so this renders one
- * pill per relationship rather than assuming exactly one.
+ * One related-entity row's content: name, a "Type · City, State" one-liner,
+ * a trust indicator, and — unlike a plain `SearchResultRowContent` — a row
+ * of small pill tags naming every relationship this entity shares with the
+ * subject entity (e.g. "Same organization", "Shared issue: Housing"). A
+ * related entity can carry more than one relationship at once, so this
+ * renders one pill per relationship rather than assuming exactly one.
+ *
+ * Renders only the row's inner content — `PaginatedListShell` owns the
+ * surrounding `<li>`/border/padding.
  */
-function ConnectionRowItem({ item }: ConnectionRowItemProps) {
+function ConnectionRowContent({ item }: ConnectionRowContentProps) {
   return (
-    <li className="border-ew-border flex flex-col gap-1.5 border-b py-3 last:border-b-0">
+    <div className="flex flex-col gap-1.5">
       <div className="flex flex-col gap-1 @sm:flex-row @sm:items-center @sm:justify-between @sm:gap-3">
         <div className="min-w-0 flex-1">
           <p className="text-ew-ink truncate text-sm font-semibold">
@@ -58,7 +61,7 @@ function ConnectionRowItem({ item }: ConnectionRowItemProps) {
           ))}
         </div>
       ) : null}
-    </li>
+    </div>
   );
 }
 
@@ -67,7 +70,8 @@ function ConnectionRowItem({ item }: ConnectionRowItemProps) {
  * `get_related_entities` MCP Apps widget: one row per related entity (name,
  * type/location, a trust indicator reused from `TrustBadgeRow`, and a set of
  * relationship-type pill tags), a "Showing N of TOTAL" count, and a "Load
- * more" button when there's a further page (`data.next_cursor !== null`).
+ * more" button when there's a further page — all via the shared
+ * `PaginatedListShell`, which also backs `SearchResultsList`.
  *
  * Deliberately a labeled list, not a node-link/force-directed graph: this
  * renders inside a small chat-sidebar-width widget, where a well-labeled
@@ -82,11 +86,6 @@ function ConnectionRowItem({ item }: ConnectionRowItemProps) {
  * (`src/widget-entries/connections-graph.entry.tsx`) wires it to
  * `useConnectionsData`; a future non-widget consumer (`app/`) would wire it
  * to its own data fetching and pagination instead.
- *
- * Uses CSS container queries (`@container`/`@sm:`), not viewport media
- * queries, so it reflows correctly whether it's rendered in a narrow chat
- * sidebar or at full width — same responsiveness convention as `EntityCard`
- * and `SearchResultsList`.
  */
 export function ConnectionsGraph({
   data,
@@ -94,35 +93,16 @@ export function ConnectionsGraph({
   isLoadingMore,
 }: ConnectionsGraphProps) {
   return (
-    <div className="@container">
-      <div className="bg-ew-surface border-ew-border flex flex-col gap-3 rounded-2xl border p-4">
-        <p className="text-ew-ink-soft text-xs font-medium">
-          Showing {data.items.length} of {data.total}
-        </p>
-
-        {data.items.length > 0 ? (
-          <ul className="flex flex-col">
-            {data.items.map((item) => (
-              <ConnectionRowItem key={item.entity.id} item={item} />
-            ))}
-          </ul>
-        ) : (
-          <p className="text-ew-ink text-sm">No connections found.</p>
-        )}
-
-        {data.next_cursor !== null ? (
-          <button
-            type="button"
-            onClick={() => {
-              void onLoadMore();
-            }}
-            disabled={isLoadingMore}
-            className="bg-ew-muted text-ew-muted-ink self-start rounded-full px-3 py-1.5 text-sm font-medium disabled:opacity-60"
-          >
-            {isLoadingMore ? "Loading…" : "Load more"}
-          </button>
-        ) : null}
-      </div>
-    </div>
+    <PaginatedListShell
+      items={data.items}
+      total={data.total}
+      nextCursor={data.next_cursor}
+      onLoadMore={onLoadMore}
+      isLoadingMore={isLoadingMore}
+      emptyMessage="No connections found."
+      itemKey={(item) => item.entity.id}
+    >
+      {(item) => <ConnectionRowContent item={item} />}
+    </PaginatedListShell>
   );
 }
