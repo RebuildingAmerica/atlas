@@ -15,7 +15,6 @@ export {
 export {
   SearchResultsList,
   type SearchResultsListProps,
-  type SearchResultRowItemProps,
 } from "./components/search-results-list/search-results-list";
 export {
   TrustBadgeRow,
