@@ -3,33 +3,45 @@
 from __future__ import annotations
 
 import contextlib
+import re
 from typing import TYPE_CHECKING, Any
 from urllib.parse import urlsplit
 
 from mcp.server.fastmcp import FastMCP
 from mcp.server.transport_security import TransportSecuritySettings
+from starlette.middleware.cors import CORSMiddleware
 
 from atlas.platform.config import Settings, get_settings
 
+from .auth_middleware import McpBearerAuthMiddleware
 from .data import AtlasDataService
 from .logging_support import install_logging_extension
 from .prompts import install_prompts
 from .tasks import DraftTasksJsonRpcMiddleware, install_tasks_extension
+from .widgets import WIDGET_RESOURCE_URI, install_widget_extension
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterator
+    from collections.abc import AsyncIterator, Iterable
 
     from starlette.applications import Starlette
 
 __all__ = [
     "build_mcp",
+    "build_transport_security_settings",
     "get_mcp",
     "get_mcp_asgi_app",
     "mcp_session_lifespan",
+    "split_cors_origins",
 ]
 
 LOCAL_ALLOWED_HOSTS = ["127.0.0.1:*", "localhost:*", "[::1]:*"]
 LOCAL_ALLOWED_ORIGINS = ["http://127.0.0.1:*", "http://localhost:*", "http://[::1]:*"]
+
+_CORS_WILDCARD_PORT_SUFFIX = ":*"
+_CORS_ALLOWED_METHODS = ["GET", "POST", "OPTIONS"]
+"""Streamable HTTP only needs GET (SSE listen) and POST (JSON-RPC calls); the
+server runs stateless so there's no session to DELETE. OPTIONS is required
+for CORS preflight itself."""
 
 
 def _origin_and_host(value: str) -> tuple[str | None, str | None]:
@@ -92,6 +104,57 @@ def build_transport_security_settings(settings: Settings) -> TransportSecuritySe
     )
 
 
+def split_cors_origins(allowed_origins: Iterable[str]) -> tuple[list[str], str | None]:
+    """Split an MCP transport-security origin allowlist for `CORSMiddleware`.
+
+    `build_transport_security_settings` computes an allowlist that mixes
+    exact production origins (e.g. `https://atlas.example.com`) with
+    wildcard-port local-dev patterns (`http://127.0.0.1:*`, from
+    `LOCAL_ALLOWED_ORIGINS`). FastMCP's own transport-security guard
+    understands that `:*` wildcard suffix, but `CORSMiddleware.allow_origins`
+    only matches origins by exact string — passing it `"http://127.0.0.1:*"`
+    verbatim would never match a real `Origin: http://127.0.0.1:5173` header.
+    This derives a combined regex for `CORSMiddleware`'s
+    `allow_origin_regex` from whichever entries in the allowlist end in
+    `:*`, so local dev keeps working without hardcoding a second copy of
+    `LOCAL_ALLOWED_ORIGINS`'s patterns.
+
+    `main.py` also calls this for the outer FastAPI app's own CORS
+    middleware, not just `get_mcp_asgi_app()`'s: Starlette applies a
+    mounted sub-app's middleware only *after* the outer app's own
+    middleware stack lets a request through, so a preflight `OPTIONS`
+    request for `/mcp` is answered by the outer app's CORS middleware
+    before it ever reaches the one `get_mcp_asgi_app()` adds. Both have to
+    agree on the same wildcard-aware allowlist, or a local MCP host on an
+    arbitrary port would pass `get_mcp_asgi_app()`'s check but still get
+    rejected by the outer one first.
+
+    Parameters
+    ----------
+    allowed_origins:
+        The origin allowlist computed by `build_transport_security_settings`.
+
+    Returns
+    -------
+    tuple[list[str], str | None]
+        Exact origins for `allow_origins`, and a combined regex pattern for
+        `allow_origin_regex` (`None` when the allowlist has no wildcard-port
+        entries).
+    """
+    exact_origins: list[str] = []
+    wildcard_patterns: list[str] = []
+    for origin in allowed_origins:
+        if origin.endswith(_CORS_WILDCARD_PORT_SUFFIX):
+            prefix = re.escape(origin.removesuffix(_CORS_WILDCARD_PORT_SUFFIX))
+            wildcard_patterns.append(rf"{prefix}:\d+")
+        else:
+            exact_origins.append(origin)
+
+    if not wildcard_patterns:
+        return exact_origins, None
+    return exact_origins, "|".join(wildcard_patterns)
+
+
 def build_mcp() -> FastMCP:
     """Construct a FastMCP server with Atlas's read tools, Tasks, and logging.
 
@@ -102,7 +165,9 @@ def build_mcp() -> FastMCP:
     chooses (Atlas mounts at `/mcp`). `install_tasks_extension` adds the one
     write/compute tool (`start_discovery_run`) plus its `tasks/*` handlers;
     `install_logging_extension` adds `logging/setLevel` and lets every custom
-    handler emit structured `notifications/message` log events.
+    handler emit structured `notifications/message` log events;
+    `install_widget_extension` registers the MCP Apps entity-card resource
+    that `get_entity`'s `_meta` points a compliant host at.
     """
     settings = get_settings()
     mcp = FastMCP(
@@ -135,7 +200,7 @@ def build_mcp() -> FastMCP:
             cursor=cursor,
         )
 
-    @mcp.tool()
+    @mcp.tool(meta={"ui": {"resourceUri": WIDGET_RESOURCE_URI}})
     async def get_entity(entity_id: str) -> dict[str, Any]:
         """Get one Atlas entity with its sources, issue areas, and relationship ids."""
         service = _build_data_service()
@@ -267,6 +332,7 @@ def build_mcp() -> FastMCP:
     install_tasks_extension(mcp)
     install_logging_extension(mcp)
     install_prompts(mcp)
+    install_widget_extension(mcp)
     return mcp
 
 
@@ -282,11 +348,44 @@ def get_mcp() -> FastMCP:
 
 
 def get_mcp_asgi_app() -> Starlette:
-    """Return the Streamable HTTP Starlette app for mounting on FastAPI."""
+    """Return the Streamable HTTP Starlette app for mounting on FastAPI.
+
+    Wires the draft-Tasks JSON-RPC shim, the bearer-auth guard, and CORS
+    support directly onto the returned app, in that order, rather than
+    leaving the mounting caller to do it. `CORSMiddleware` has to sit
+    *outside* `McpBearerAuthMiddleware`, or an unauthenticated preflight
+    `OPTIONS` request — which never carries a bearer token, by construction
+    of the CORS protocol — would be rejected with 401 by the auth guard
+    before `CORSMiddleware` ever gets a chance to answer it, and a
+    browser-based MCP host would never get past its own preflight to send a
+    real request. `DraftTasksJsonRpcMiddleware` sits *inside* the auth guard
+    so draft-Tasks JSON-RPC calls remain subject to authentication like any
+    other MCP request. Starlette's `add_middleware` treats the
+    most-recently-added middleware as outermost (it runs first on the way
+    in), so middleware is added innermost-first: draft-Tasks, then auth,
+    then CORS last.
+
+    `streamable_http_app()` returns a fresh Starlette instance on every
+    call, but this guards against re-adding middleware if a caller ever
+    memoizes and re-passes the same app instance — Starlette raises once an
+    app has already started handling requests.
+    """
     app = get_mcp().streamable_http_app()
-    if not getattr(app.state, "atlas_draft_tasks_middleware_installed", False):
+    if not getattr(app.state, "atlas_mcp_asgi_middleware_installed", False):
         app.add_middleware(DraftTasksJsonRpcMiddleware)
-        app.state.atlas_draft_tasks_middleware_installed = True
+        app.add_middleware(McpBearerAuthMiddleware)
+
+        exact_origins, origin_regex = split_cors_origins(
+            build_transport_security_settings(get_settings()).allowed_origins
+        )
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=exact_origins,
+            allow_origin_regex=origin_regex,
+            allow_methods=_CORS_ALLOWED_METHODS,
+            allow_headers=["*"],
+        )
+        app.state.atlas_mcp_asgi_middleware_installed = True
     return app
 
 

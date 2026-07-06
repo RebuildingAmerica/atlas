@@ -23,8 +23,12 @@ from atlas.models import init_db
 from atlas.platform.http import create_router
 from atlas.platform.http.anonymous_rate_limit import AnonymousRateLimitMiddleware
 from atlas.platform.http.cache import apply_no_store_headers, apply_static_public_cache
-from atlas.platform.mcp import get_mcp, get_mcp_asgi_app
-from atlas.platform.mcp.auth_middleware import McpBearerAuthMiddleware
+from atlas.platform.mcp import (
+    build_transport_security_settings,
+    get_mcp,
+    get_mcp_asgi_app,
+    split_cors_origins,
+)
 from atlas.platform.openapi import (
     OPENAPI_CONTACT,
     OPENAPI_DESCRIPTION,
@@ -151,9 +155,23 @@ def create_app() -> FastAPI:
 
     # CORS middleware — narrow methods so that the OAuth token endpoint and
     # other credentialed routes only see the verbs Atlas actually serves.
+    #
+    # Origins are widened beyond the literal `settings.cors_origins` list to
+    # the full MCP transport-security allowlist (local-dev wildcard ports,
+    # plus the configured auth issuer/audience origins) because Starlette
+    # answers a mounted sub-app's preflight requests with the *outer* app's
+    # own CORS middleware, never delegating to the sub-app's middleware for
+    # `OPTIONS`. Without this, `get_mcp_asgi_app()`'s own CORS middleware
+    # would never see a preflight request for `/mcp` at all, and a browser
+    # MCP host on an arbitrary local port would get rejected here first. See
+    # `split_cors_origins`'s docstring for the full explanation.
+    exact_origins, origin_regex = split_cors_origins(
+        build_transport_security_settings(settings).allowed_origins
+    )
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=settings.cors_origins,
+        allow_origins=exact_origins,
+        allow_origin_regex=origin_regex,
         allow_credentials=True,
         allow_methods=["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
         allow_headers=["*"],
@@ -217,12 +235,11 @@ def create_app() -> FastAPI:
     # Include API router
     app.include_router(create_router())
 
-    # Mount the MCP Streamable HTTP transport at /mcp behind bearer-token auth.
-    # The middleware advertises the resource-specific PRM URL on 401s so MCP
-    # clients can discover the OAuth issuer automatically.
-    mcp_app = get_mcp_asgi_app()
-    mcp_app.add_middleware(McpBearerAuthMiddleware)
-    app.mount("/mcp", mcp_app)
+    # Mount the MCP Streamable HTTP transport at /mcp. get_mcp_asgi_app()
+    # already wires the bearer-token auth guard (which advertises the
+    # resource-specific PRM URL on 401s so MCP clients can discover the OAuth
+    # issuer automatically) and CORS support onto the returned app.
+    app.mount("/mcp", get_mcp_asgi_app())
 
     return app
 

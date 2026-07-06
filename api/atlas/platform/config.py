@@ -237,6 +237,18 @@ class Settings(BaseSettings):
     edge_origin_secret: str = Field(default="", validation_alias="ATLAS_EDGE_ORIGIN_SECRET")
     """Shared secret used by the edge proxy when signing origin identity headers."""
 
+    # MCP widgets
+    mcp_widget_assets_dir: str | None = Field(
+        default=None, validation_alias="ATLAS_MCP_WIDGET_ASSETS_DIR"
+    )
+    """Optional override directory for built MCP Apps widget bundles.
+
+    See `atlas.platform.mcp.widgets.resolve_widget_asset_dir`. Only needed
+    when the built widget assets don't live at either of that resolver's two
+    default locations (a production Docker-populated directory co-located
+    with the module, or the monorepo dev build output).
+    """
+
     model_config = SettingsConfigDict(
         env_file_encoding="utf-8",
         case_sensitive=False,
