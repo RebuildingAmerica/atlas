@@ -49,6 +49,30 @@ scout entries stats
 These views help answer whether Scout found source-backed actors, which sources
 were processed, and what still needs human judgment.
 
+For people directories, verify exact unique people rather than raw rows:
+
+```bash
+scout entries stats \
+  --require-type person \
+  --min-source-backed 100000 \
+  --min-unique-people 100000
+```
+
+Then review a random sample for source context and currentness:
+
+```bash
+scout entries list \
+  --type person \
+  --random \
+  --unique-names \
+  --limit 100 \
+  --format json
+```
+
+Do not sync a run as current people data only because the counts pass. Historical
+archives, old filings, and stale pages can be valid evidence while still being
+wrong for current outreach or sales workflows.
+
 ## Sync A Reviewed Run
 
 Sync the latest ready run:

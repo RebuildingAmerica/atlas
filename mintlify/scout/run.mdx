@@ -68,6 +68,10 @@ scout entries list \
   --format json
 ```
 
+Structured public records may be historical. A row from an old archive is useful
+evidence, but it should not be treated as current contact, employment, role, or
+location information unless the source date and row context support that claim.
+
 ## Search-Backed Runs
 
 Connect search first:
@@ -176,3 +180,23 @@ and source context fields so reviewers can check why each person belongs in the
 result set. Repeat `--run-id` to combine reviewed runs while leaving discarded
 or retry runs out of the sample. Add `--unique-names` when overlapping sources
 may mention the same person.
+
+## Verify Counts And Currentness
+
+Use `entries stats` for launch gates and audit checks:
+
+```bash
+scout entries stats \
+  --require-type person \
+  --min-source-backed 100000 \
+  --min-unique-people 100000
+```
+
+`--min-source-backed` checks rows with provenance. `--min-unique-people` checks
+exact unique person keys so duplicate run artifacts do not inflate the launch
+count.
+
+Passing those gates does not certify currentness. Before syncing or exporting a
+people list, inspect source dates and source context for the relevant run. If a
+source is an archive, old filing, historical roster, or stale page, treat its
+entries as historical evidence rather than current outreach data.

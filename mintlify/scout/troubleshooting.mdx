@@ -64,6 +64,33 @@ scout run \
 If the output has names in the wrong field or empty context, inspect the source
 file's published data dictionary and rerun with the corrected column list.
 
+## Counts Pass But Data Looks Outdated
+
+Source-backed counts do not prove currentness. Check exact unique people and
+source coverage first:
+
+```bash
+scout entries stats \
+  --require-type person \
+  --min-source-backed 100000 \
+  --min-unique-people 100000
+```
+
+Then inspect a random people sample:
+
+```bash
+scout entries list \
+  --type person \
+  --random \
+  --unique-names \
+  --limit 100 \
+  --format json
+```
+
+If source context points to an old filing, archive, historical roster, or stale
+page, treat the entry as historical evidence. Re-run discovery against current
+sources before using the data for outreach, sales, or launch claims.
+
 ## Browser Rendering Fails
 
 Scout uses normal HTML fetching first. When a page looks useful but only exposes
