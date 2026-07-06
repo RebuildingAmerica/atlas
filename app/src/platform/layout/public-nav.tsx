@@ -85,6 +85,7 @@ const PUBLIC_NAV_ITEMS: AppNavItem[] = [
   { label: "People", to: "/profiles/people" },
   { label: "Organizations", to: "/profiles/organizations" },
   { label: "Pricing", to: "/pricing" },
+  { label: "Firehose", to: "/firehose" },
   { label: "Docs", native: true, to: "/docs" },
   { label: "API", native: true, to: "/docs/api" },
 ];

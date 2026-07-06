@@ -13,6 +13,7 @@ import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as RobotsDottxtRouteImport } from './routes/robots[.]txt'
 import { Route as OpenapiDotjsonRouteImport } from './routes/openapi[.]json'
 import { Route as LlmsDottxtRouteImport } from './routes/llms[.]txt'
+import { Route as FirehoseDotrssRouteImport } from './routes/firehose[.]rss'
 import { Route as DocsRouteImport } from './routes/docs'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as WorkspaceRouteImport } from './routes/_workspace'
@@ -44,6 +45,7 @@ import { Route as PublicPrivacyRouteImport } from './routes/_public/privacy'
 import { Route as PublicPricingRouteImport } from './routes/_public/pricing'
 import { Route as PublicPostLogoutRouteImport } from './routes/_public/post-logout'
 import { Route as PublicMapRouteImport } from './routes/_public/map'
+import { Route as PublicFirehoseRouteImport } from './routes/_public/firehose'
 import { Route as PublicBrowseRouteImport } from './routes/_public/browse'
 import { Route as AuthSignUpRouteImport } from './routes/_auth/sign-up'
 import { Route as AuthSignInRouteImport } from './routes/_auth/sign-in'
@@ -110,6 +112,11 @@ const OpenapiDotjsonRoute = OpenapiDotjsonRouteImport.update({
 const LlmsDottxtRoute = LlmsDottxtRouteImport.update({
   id: '/llms.txt',
   path: '/llms.txt',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FirehoseDotrssRoute = FirehoseDotrssRouteImport.update({
+  id: '/firehose.rss',
+  path: '/firehose.rss',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DocsRoute = DocsRouteImport.update({
@@ -263,6 +270,11 @@ const PublicPostLogoutRoute = PublicPostLogoutRouteImport.update({
 const PublicMapRoute = PublicMapRouteImport.update({
   id: '/map',
   path: '/map',
+  getParentRoute: () => PublicRoute,
+} as any)
+const PublicFirehoseRoute = PublicFirehoseRouteImport.update({
+  id: '/firehose',
+  path: '/firehose',
   getParentRoute: () => PublicRoute,
 } as any)
 const PublicBrowseRoute = PublicBrowseRouteImport.update({
@@ -529,6 +541,7 @@ export interface FileRoutesByFullPath {
   '/': typeof PublicIndexRoute
   '/dashboard': typeof DashboardRoute
   '/docs': typeof DocsRouteWithChildren
+  '/firehose.rss': typeof FirehoseDotrssRoute
   '/llms.txt': typeof LlmsDottxtRoute
   '/openapi.json': typeof OpenapiDotjsonRoute
   '/robots.txt': typeof RobotsDottxtRoute
@@ -538,6 +551,7 @@ export interface FileRoutesByFullPath {
   '/sign-in': typeof AuthSignInRoute
   '/sign-up': typeof AuthSignUpRoute
   '/browse': typeof PublicBrowseRoute
+  '/firehose': typeof PublicFirehoseRoute
   '/map': typeof PublicMapRoute
   '/post-logout': typeof PublicPostLogoutRoute
   '/pricing': typeof PublicPricingRoute
@@ -610,6 +624,7 @@ export interface FileRoutesByTo {
   '/': typeof PublicIndexRoute
   '/dashboard': typeof DashboardRoute
   '/docs': typeof DocsRouteWithChildren
+  '/firehose.rss': typeof FirehoseDotrssRoute
   '/llms.txt': typeof LlmsDottxtRoute
   '/openapi.json': typeof OpenapiDotjsonRoute
   '/robots.txt': typeof RobotsDottxtRoute
@@ -618,6 +633,7 @@ export interface FileRoutesByTo {
   '/sign-in': typeof AuthSignInRoute
   '/sign-up': typeof AuthSignUpRoute
   '/browse': typeof PublicBrowseRoute
+  '/firehose': typeof PublicFirehoseRoute
   '/map': typeof PublicMapRoute
   '/post-logout': typeof PublicPostLogoutRoute
   '/pricing': typeof PublicPricingRoute
@@ -690,6 +706,7 @@ export interface FileRoutesById {
   '/_workspace': typeof WorkspaceRouteWithChildren
   '/dashboard': typeof DashboardRoute
   '/docs': typeof DocsRouteWithChildren
+  '/firehose.rss': typeof FirehoseDotrssRoute
   '/llms.txt': typeof LlmsDottxtRoute
   '/openapi.json': typeof OpenapiDotjsonRoute
   '/robots.txt': typeof RobotsDottxtRoute
@@ -699,6 +716,7 @@ export interface FileRoutesById {
   '/_auth/sign-in': typeof AuthSignInRoute
   '/_auth/sign-up': typeof AuthSignUpRoute
   '/_public/browse': typeof PublicBrowseRoute
+  '/_public/firehose': typeof PublicFirehoseRoute
   '/_public/map': typeof PublicMapRoute
   '/_public/post-logout': typeof PublicPostLogoutRoute
   '/_public/pricing': typeof PublicPricingRoute
@@ -774,6 +792,7 @@ export interface FileRouteTypes {
     | '/'
     | '/dashboard'
     | '/docs'
+    | '/firehose.rss'
     | '/llms.txt'
     | '/openapi.json'
     | '/robots.txt'
@@ -783,6 +802,7 @@ export interface FileRouteTypes {
     | '/sign-in'
     | '/sign-up'
     | '/browse'
+    | '/firehose'
     | '/map'
     | '/post-logout'
     | '/pricing'
@@ -855,6 +875,7 @@ export interface FileRouteTypes {
     | '/'
     | '/dashboard'
     | '/docs'
+    | '/firehose.rss'
     | '/llms.txt'
     | '/openapi.json'
     | '/robots.txt'
@@ -863,6 +884,7 @@ export interface FileRouteTypes {
     | '/sign-in'
     | '/sign-up'
     | '/browse'
+    | '/firehose'
     | '/map'
     | '/post-logout'
     | '/pricing'
@@ -934,6 +956,7 @@ export interface FileRouteTypes {
     | '/_workspace'
     | '/dashboard'
     | '/docs'
+    | '/firehose.rss'
     | '/llms.txt'
     | '/openapi.json'
     | '/robots.txt'
@@ -943,6 +966,7 @@ export interface FileRouteTypes {
     | '/_auth/sign-in'
     | '/_auth/sign-up'
     | '/_public/browse'
+    | '/_public/firehose'
     | '/_public/map'
     | '/_public/post-logout'
     | '/_public/pricing'
@@ -1019,6 +1043,7 @@ export interface RootRouteChildren {
   WorkspaceRoute: typeof WorkspaceRouteWithChildren
   DashboardRoute: typeof DashboardRoute
   DocsRoute: typeof DocsRouteWithChildren
+  FirehoseDotrssRoute: typeof FirehoseDotrssRoute
   LlmsDottxtRoute: typeof LlmsDottxtRoute
   OpenapiDotjsonRoute: typeof OpenapiDotjsonRoute
   RobotsDottxtRoute: typeof RobotsDottxtRoute
@@ -1068,6 +1093,13 @@ declare module '@tanstack/react-router' {
       path: '/llms.txt'
       fullPath: '/llms.txt'
       preLoaderRoute: typeof LlmsDottxtRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/firehose.rss': {
+      id: '/firehose.rss'
+      path: '/firehose.rss'
+      fullPath: '/firehose.rss'
+      preLoaderRoute: typeof FirehoseDotrssRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/docs': {
@@ -1285,6 +1317,13 @@ declare module '@tanstack/react-router' {
       path: '/map'
       fullPath: '/map'
       preLoaderRoute: typeof PublicMapRouteImport
+      parentRoute: typeof PublicRoute
+    }
+    '/_public/firehose': {
+      id: '/_public/firehose'
+      path: '/firehose'
+      fullPath: '/firehose'
+      preLoaderRoute: typeof PublicFirehoseRouteImport
       parentRoute: typeof PublicRoute
     }
     '/_public/browse': {
@@ -1685,6 +1724,7 @@ const PublicProfilesPeopleRouteWithChildren =
 
 interface PublicRouteChildren {
   PublicBrowseRoute: typeof PublicBrowseRoute
+  PublicFirehoseRoute: typeof PublicFirehoseRoute
   PublicMapRoute: typeof PublicMapRoute
   PublicPostLogoutRoute: typeof PublicPostLogoutRoute
   PublicPricingRoute: typeof PublicPricingRoute
@@ -1715,6 +1755,7 @@ interface PublicRouteChildren {
 
 const PublicRouteChildren: PublicRouteChildren = {
   PublicBrowseRoute: PublicBrowseRoute,
+  PublicFirehoseRoute: PublicFirehoseRoute,
   PublicMapRoute: PublicMapRoute,
   PublicPostLogoutRoute: PublicPostLogoutRoute,
   PublicPricingRoute: PublicPricingRoute,
@@ -1850,6 +1891,7 @@ const rootRouteChildren: RootRouteChildren = {
   WorkspaceRoute: WorkspaceRouteWithChildren,
   DashboardRoute: DashboardRoute,
   DocsRoute: DocsRouteWithChildren,
+  FirehoseDotrssRoute: FirehoseDotrssRoute,
   LlmsDottxtRoute: LlmsDottxtRoute,
   OpenapiDotjsonRoute: OpenapiDotjsonRoute,
   RobotsDottxtRoute: RobotsDottxtRoute,

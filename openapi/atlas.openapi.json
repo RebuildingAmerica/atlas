@@ -9712,6 +9712,355 @@
         "title": "PublicDirectoryWorkspace",
         "type": "object"
       },
+      "PublicFirehoseEvidence": {
+        "description": "Public source evidence for one signal.",
+        "properties": {
+          "captured_at": {
+            "description": "captured at for this public firehose evidence.",
+            "title": "Captured At",
+            "type": "string"
+          },
+          "content_hash": {
+            "description": "content hash for this public firehose evidence.",
+            "title": "Content Hash",
+            "type": "string"
+          },
+          "passage": {
+            "description": "passage for this public firehose evidence.",
+            "title": "Passage",
+            "type": "string"
+          },
+          "published_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "published at for this public firehose evidence.",
+            "title": "Published At"
+          },
+          "publisher": {
+            "description": "publisher for this public firehose evidence.",
+            "title": "Publisher",
+            "type": "string"
+          },
+          "source_class": {
+            "description": "source class for this public firehose evidence.",
+            "title": "Source Class",
+            "type": "string"
+          },
+          "source_url": {
+            "description": "source url for this public firehose evidence.",
+            "title": "Source Url",
+            "type": "string"
+          },
+          "title": {
+            "description": "title for this public firehose evidence.",
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "captured_at",
+          "content_hash",
+          "passage",
+          "published_at",
+          "publisher",
+          "source_class",
+          "source_url",
+          "title"
+        ],
+        "title": "PublicFirehoseEvidence",
+        "type": "object"
+      },
+      "PublicFirehoseIssue": {
+        "description": "Public issue label attached to a signal.",
+        "properties": {
+          "label": {
+            "description": "label for this public firehose issue.",
+            "title": "Label",
+            "type": "string"
+          },
+          "slug": {
+            "description": "slug for this public firehose issue.",
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "label",
+          "slug"
+        ],
+        "title": "PublicFirehoseIssue",
+        "type": "object"
+      },
+      "PublicFirehosePlace": {
+        "description": "Public place label attached to a signal.",
+        "properties": {
+          "label": {
+            "description": "label for this public firehose place.",
+            "title": "Label",
+            "type": "string"
+          },
+          "slug": {
+            "description": "slug for this public firehose place.",
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "label",
+          "slug"
+        ],
+        "title": "PublicFirehosePlace",
+        "type": "object"
+      },
+      "PublicFirehoseQueryParams": {
+        "description": "Raw public Firehose query parameters.",
+        "properties": {
+          "issue": {
+            "description": "issue for this public firehose query params.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Issue",
+            "type": "array"
+          },
+          "limit": {
+            "default": 50,
+            "description": "limit for this public firehose query params.",
+            "maximum": 50.0,
+            "minimum": 1.0,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "place": {
+            "description": "place for this public firehose query params.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Place",
+            "type": "array"
+          },
+          "signal_type": {
+            "description": "signal type for this public firehose query params.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Signal Type",
+            "type": "array"
+          },
+          "source_class": {
+            "description": "source class for this public firehose query params.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Source Class",
+            "type": "array"
+          }
+        },
+        "title": "PublicFirehoseQueryParams",
+        "type": "object"
+      },
+      "PublicFirehoseSignal": {
+        "description": "Public-safe Firehose signal.",
+        "properties": {
+          "confidence": {
+            "description": "confidence for this public firehose signal.",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Confidence",
+            "type": "number"
+          },
+          "detected_at": {
+            "description": "detected at for this public firehose signal.",
+            "title": "Detected At",
+            "type": "string"
+          },
+          "evidence": {
+            "$ref": "#/components/schemas/PublicFirehoseEvidence",
+            "description": "evidence for this public firehose signal."
+          },
+          "id": {
+            "description": "id for this public firehose signal.",
+            "title": "Id",
+            "type": "string"
+          },
+          "issues": {
+            "description": "issues for this public firehose signal.",
+            "items": {
+              "$ref": "#/components/schemas/PublicFirehoseIssue"
+            },
+            "title": "Issues",
+            "type": "array"
+          },
+          "occurred_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "occurred at for this public firehose signal.",
+            "title": "Occurred At"
+          },
+          "places": {
+            "description": "places for this public firehose signal.",
+            "items": {
+              "$ref": "#/components/schemas/PublicFirehosePlace"
+            },
+            "title": "Places",
+            "type": "array"
+          },
+          "public_realm_basis": {
+            "description": "public realm basis for this public firehose signal.",
+            "title": "Public Realm Basis",
+            "type": "string"
+          },
+          "review_state": {
+            "description": "review state for this public firehose signal.",
+            "enum": [
+              "not_required",
+              "pending",
+              "approved",
+              "held"
+            ],
+            "title": "Review State",
+            "type": "string"
+          },
+          "sensitivity": {
+            "description": "sensitivity for this public firehose signal.",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Sensitivity",
+            "type": "number"
+          },
+          "signal_type": {
+            "description": "signal type for this public firehose signal.",
+            "enum": [
+              "public_meeting",
+              "coalition_activity",
+              "grant_award",
+              "new_source"
+            ],
+            "title": "Signal Type",
+            "type": "string"
+          },
+          "summary": {
+            "description": "summary for this public firehose signal.",
+            "title": "Summary",
+            "type": "string"
+          },
+          "title": {
+            "description": "title for this public firehose signal.",
+            "title": "Title",
+            "type": "string"
+          },
+          "visibility": {
+            "description": "visibility for this public firehose signal.",
+            "enum": [
+              "public",
+              "workspace",
+              "reviewer"
+            ],
+            "title": "Visibility",
+            "type": "string"
+          }
+        },
+        "required": [
+          "confidence",
+          "detected_at",
+          "evidence",
+          "id",
+          "issues",
+          "occurred_at",
+          "places",
+          "public_realm_basis",
+          "review_state",
+          "sensitivity",
+          "signal_type",
+          "summary",
+          "title",
+          "visibility"
+        ],
+        "title": "PublicFirehoseSignal",
+        "type": "object"
+      },
+      "PublicFirehoseSnapshot": {
+        "description": "Public Firehose feed snapshot.",
+        "properties": {
+          "generated_at": {
+            "description": "generated at for this public firehose snapshot.",
+            "title": "Generated At",
+            "type": "string"
+          },
+          "query": {
+            "$ref": "#/components/schemas/PublicFirehoseQueryParams",
+            "description": "query for this public firehose snapshot."
+          },
+          "signals": {
+            "description": "signals for this public firehose snapshot.",
+            "items": {
+              "$ref": "#/components/schemas/PublicFirehoseSignal"
+            },
+            "title": "Signals",
+            "type": "array"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/PublicFirehoseSummary",
+            "description": "summary for this public firehose snapshot."
+          }
+        },
+        "required": [
+          "generated_at",
+          "query",
+          "signals",
+          "summary"
+        ],
+        "title": "PublicFirehoseSnapshot",
+        "type": "object"
+      },
+      "PublicFirehoseSummary": {
+        "description": "Summary of the public Firehose snapshot.",
+        "properties": {
+          "latest_detected_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "latest detected at for this public firehose summary.",
+            "title": "Latest Detected At"
+          },
+          "total_signals": {
+            "description": "total signals for this public firehose summary.",
+            "minimum": 0.0,
+            "title": "Total Signals",
+            "type": "integer"
+          },
+          "visible_signals": {
+            "description": "visible signals for this public firehose summary.",
+            "minimum": 0.0,
+            "title": "Visible Signals",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "latest_detected_at",
+          "total_signals",
+          "visible_signals"
+        ],
+        "title": "PublicFirehoseSummary",
+        "type": "object"
+      },
       "PublishEntryResponse": {
         "description": "Response returned when a workspace entry's visibility changes.",
         "properties": {
@@ -16880,6 +17229,248 @@
           }
         },
         "summary": "Probe Firehose",
+        "tags": [
+          "firehose"
+        ]
+      }
+    },
+    "/api/firehose/public": {
+      "get": {
+        "description": "Return a public-safe Firehose proof snapshot.\n\nUse this Firehose operation to query or observe source-backed civic signals for an authenticated workspace. Preserve workspace, usage, signal, and evidence context so billing and trust stay tied to the query that produced the data.",
+        "operationId": "getPublicFirehose",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "place",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Place"
+            }
+          },
+          {
+            "in": "query",
+            "name": "issue",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Issue"
+            }
+          },
+          {
+            "in": "query",
+            "name": "signal_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Signal Type"
+            }
+          },
+          {
+            "in": "query",
+            "name": "source_class",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Source Class"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 50,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicFirehoseSnapshot"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Public Firehose",
+        "tags": [
+          "firehose"
+        ]
+      }
+    },
+    "/api/firehose/public/events": {
+      "get": {
+        "description": "Stream public-safe Firehose proof events.\n\nUse this Firehose operation to query or observe source-backed civic signals for an authenticated workspace. Preserve workspace, usage, signal, and evidence context so billing and trust stay tied to the query that produced the data.",
+        "operationId": "streamPublicFirehoseEvents",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "place",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Place"
+            }
+          },
+          {
+            "in": "query",
+            "name": "issue",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Issue"
+            }
+          },
+          {
+            "in": "query",
+            "name": "signal_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Signal Type"
+            }
+          },
+          {
+            "in": "query",
+            "name": "source_class",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Source Class"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 50,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Stream Public Firehose Events",
         "tags": [
           "firehose"
         ]

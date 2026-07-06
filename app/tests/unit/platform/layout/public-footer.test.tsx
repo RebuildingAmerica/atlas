@@ -59,6 +59,7 @@ describe("PublicFooter", () => {
 
     expect(screen.getByRole("link", { name: "Search" })).toHaveAttribute("href", "/browse");
     expect(screen.getByRole("link", { name: "Map" })).toHaveAttribute("href", "/map");
+    expect(screen.getByRole("link", { name: "Firehose" })).toHaveAttribute("href", "/firehose");
     expect(screen.getByRole("link", { name: "Docs" })).toHaveAttribute("href", "/docs");
     expect(screen.getByRole("link", { name: "Docs" })).not.toHaveAttribute("data-router-link");
     expect(screen.getByRole("link", { name: "How it works" })).toHaveAttribute(

@@ -235,21 +235,22 @@ export function PublicFooter({ localMode, status }: PublicFooterProps) {
             <FooterNavColumn heading="Product" baseDelay={80}>
               <FooterInternalLink to="/browse" label="Search" animationDelay="120ms" />
               <FooterInternalLink to="/map" label="Map" animationDelay="140ms" />
-              <FooterInternalLink to="/docs" label="Docs" native animationDelay="160ms" />
+              <FooterInternalLink to="/firehose" label="Firehose" animationDelay="160ms" />
+              <FooterInternalLink to="/docs" label="Docs" native animationDelay="180ms" />
               <FooterInternalLink
                 to="/docs/how-it-works"
                 label="How it works"
                 native
-                animationDelay="180ms"
+                animationDelay="200ms"
               />
               <FooterInternalLink
                 to="/docs/resources/trust"
                 label="Trust & sources"
                 native
-                animationDelay="200ms"
+                animationDelay="220ms"
               />
               {!localMode ? (
-                <FooterInternalLink to="/pricing" label="Pricing" animationDelay="220ms" />
+                <FooterInternalLink to="/pricing" label="Pricing" animationDelay="240ms" />
               ) : null}
             </FooterNavColumn>
 

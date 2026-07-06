@@ -41,6 +41,10 @@ describe("PublicTopNav", () => {
       "data-link-to",
       "/pricing",
     );
+    expect(screen.getByRole("link", { name: "Firehose" })).toHaveAttribute(
+      "data-link-to",
+      "/firehose",
+    );
     expect(screen.getByRole("link", { name: "Docs" })).toHaveAttribute("href", "/docs");
     expect(screen.getByRole("link", { name: "API" })).toHaveAttribute("href", "/docs/api");
     expect(screen.getByRole("button", { name: "Open public navigation menu" })).toBeInTheDocument();

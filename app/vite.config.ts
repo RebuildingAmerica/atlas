@@ -73,6 +73,7 @@ export default defineConfig(({ mode }) => {
         "/api": {
           target: process.env.ATLAS_DEV_API_PROXY_TARGET,
           changeOrigin: true,
+          ws: true,
         },
       },
     },
