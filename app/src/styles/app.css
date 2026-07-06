@@ -1,5 +1,6 @@
 @import url("https://fonts.googleapis.com/css2?family=Public+Sans:wght@100..900&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@400;500;700&display=swap");
 @import "tailwindcss";
+@source "../../../packages/entity-widgets/src/**/*.{ts,tsx}";
 
 @theme {
   /* Surface hierarchy (warm stone palette) */

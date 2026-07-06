@@ -48,6 +48,7 @@
     "@headlessui/react": "catalog:",
     "@openstatus/react": "catalog:",
     "@react-email/render": "catalog:",
+    "@rebuildingamerica/entity-widgets": "workspace:*",
     "@tanstack/react-query": "catalog:",
     "@tanstack/react-router": "catalog:",
     "@tanstack/react-start": "catalog:",
