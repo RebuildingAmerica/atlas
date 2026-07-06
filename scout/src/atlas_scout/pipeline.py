@@ -299,6 +299,7 @@ async def run_pipeline(
         while True:
             item = await frontier_queue.get()
             if item is None:
+                frontier_queue.task_done()
                 return
 
             stats["fetch_active"] += 1
@@ -456,6 +457,7 @@ async def run_pipeline(
         while True:
             _priority, _order, page = await extract_queue.get()
             if page is None:
+                extract_queue.task_done()
                 return
 
             # The fetch_worker always stamps task_id onto every page it places on

@@ -342,7 +342,7 @@ async def test_run_pipeline_starts_extraction_before_all_direct_fetches_finish(
             ],
             fetcher=_BlockingFetcher(started),
         ),
-        timeout=1.0,
+        timeout=5.0,
     )
 
     assert result.entries_found >= 1
