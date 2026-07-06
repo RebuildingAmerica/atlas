@@ -165,6 +165,93 @@ class TestProductionCorsGuard:
             create_app()
 
 
+class TestOuterCorsLoopbackScoping:
+    """The outer, credentialed CORS middleware must not trust arbitrary loopback ports in production.
+
+    `split_cors_origins` can derive a wildcard-port regex from
+    `LOCAL_ALLOWED_ORIGINS` for FastMCP's own DNS-rebinding host guard, where
+    trusting any loopback port is harmless. Reusing that regex verbatim for
+    this outer, `allow_credentials=True` middleware would let any page served
+    from a loopback origin make credentialed cross-origin requests against
+    the real production API, so production must drop it.
+    """
+
+    @pytest.mark.asyncio
+    async def test_production_rejects_a_loopback_wildcard_origin(self) -> None:
+        """A production deployment must not reflect an arbitrary loopback origin."""
+        settings = Settings(
+            database_url="sqlite:///tmp/test.db",
+            environment="production",
+            cors_origins=["https://atlas.rebuildingus.org"],
+            deploy_mode="local",
+        )
+
+        with patch("atlas.main.get_settings", return_value=settings):
+            app = create_app()
+
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            response = await client.options(
+                "/health",
+                headers={
+                    "Origin": "http://127.0.0.1:9999",
+                    "Access-Control-Request-Method": "GET",
+                },
+            )
+
+        assert "access-control-allow-origin" not in response.headers
+
+    @pytest.mark.asyncio
+    async def test_production_still_allows_its_configured_origin(self) -> None:
+        """The environment gate must not break CORS for Atlas's own production origin."""
+        settings = Settings(
+            database_url="sqlite:///tmp/test.db",
+            environment="production",
+            cors_origins=["https://atlas.rebuildingus.org"],
+            deploy_mode="local",
+        )
+
+        with patch("atlas.main.get_settings", return_value=settings):
+            app = create_app()
+
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            response = await client.options(
+                "/health",
+                headers={
+                    "Origin": "https://atlas.rebuildingus.org",
+                    "Access-Control-Request-Method": "GET",
+                },
+            )
+
+        assert response.headers["access-control-allow-origin"] == "https://atlas.rebuildingus.org"
+
+    @pytest.mark.asyncio
+    async def test_dev_still_allows_a_loopback_wildcard_origin(self) -> None:
+        """Local dev keeps trusting arbitrary loopback ports for iterating on the widget/app."""
+        settings = Settings(
+            database_url="sqlite:///tmp/test.db",
+            environment="dev",
+            cors_origins=["http://localhost:3000"],
+            deploy_mode="local",
+        )
+
+        with patch("atlas.main.get_settings", return_value=settings):
+            app = create_app()
+
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            response = await client.options(
+                "/health",
+                headers={
+                    "Origin": "http://127.0.0.1:9999",
+                    "Access-Control-Request-Method": "GET",
+                },
+            )
+
+        assert response.headers["access-control-allow-origin"] == "http://127.0.0.1:9999"
+
+
 class TestOAuthProtectedResourceMetadata:
     """The API mirrors RFC 9728 metadata for direct API-origin clients."""
 

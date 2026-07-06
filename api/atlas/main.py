@@ -157,17 +157,29 @@ def create_app() -> FastAPI:
     # other credentialed routes only see the verbs Atlas actually serves.
     #
     # Origins are widened beyond the literal `settings.cors_origins` list to
-    # the full MCP transport-security allowlist (local-dev wildcard ports,
-    # plus the configured auth issuer/audience origins) because Starlette
-    # answers a mounted sub-app's preflight requests with the *outer* app's
-    # own CORS middleware, never delegating to the sub-app's middleware for
-    # `OPTIONS`. Without this, `get_mcp_asgi_app()`'s own CORS middleware
-    # would never see a preflight request for `/mcp` at all, and a browser
-    # MCP host on an arbitrary local port would get rejected here first. See
+    # also include the configured auth issuer/audience origins, because
+    # Starlette answers a mounted sub-app's preflight requests with the
+    # *outer* app's own CORS middleware, never delegating to the sub-app's
+    # middleware for `OPTIONS`. Without this, `get_mcp_asgi_app()`'s own CORS
+    # middleware would never see a preflight request for `/mcp` at all. See
     # `split_cors_origins`'s docstring for the full explanation.
+    #
+    # The wildcard local-dev regex `split_cors_origins` can derive from
+    # `LOCAL_ALLOWED_ORIGINS` is deliberately dropped outside of local/dev use:
+    # those patterns exist for FastMCP's own DNS-rebinding *host guard*, where
+    # trusting an arbitrary loopback port is harmless — it's just a transport
+    # allowlist, not a credentialed CORS policy. This middleware *is* a
+    # credentialed (`allow_credentials=True`), app-wide CORS policy, so
+    # reusing that regex verbatim in production would let any page served
+    # from a loopback origin make credentialed cross-origin requests against
+    # the real API. In production, this middleware stays scoped to exact
+    # origins only: `cors_origins` plus the configured auth issuer/audience
+    # origins.
     exact_origins, origin_regex = split_cors_origins(
         build_transport_security_settings(settings).allowed_origins
     )
+    if settings.environment == "production":
+        origin_regex = None
     app.add_middleware(
         CORSMiddleware,
         allow_origins=exact_origins,
