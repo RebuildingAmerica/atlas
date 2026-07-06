@@ -4,7 +4,7 @@ import { extractFirstUrlFromEmail } from "../../../../tests/acceptance/helpers/e
 describe("extractFirstUrlFromEmail", () => {
   it("keeps plain query strings intact when the raw message already contains a URL", () => {
     const rawEmail = [
-      "From: Atlas <noreply@localhost>",
+      "From: Atlas <hello@localhost>",
       "To: operator@atlas.test",
       "Subject: Sign in to Atlas",
       "",

@@ -43,7 +43,11 @@ const PROTECTED_RESOURCE_SCOPES = ["discovery:read", MCP_ENTERPRISE_SCOPE] as co
 const DEVICE_CODE_GRANT_TYPE = "urn:ietf:params:oauth:grant-type:device_code" as const;
 
 function mcpResourceUrl(publicBaseUrl: string): string {
-  return `${publicBaseUrl}/mcp`;
+  return new URL("/mcp", publicBaseUrl).toString().replace(/\/$/, "");
+}
+
+function authUrl(publicBaseUrl: string, pathname: string): string {
+  return new URL(`/api/auth${pathname}`, publicBaseUrl).toString().replace(/\/$/, "");
 }
 
 function protectedResourceScopes(): string[] {
@@ -57,19 +61,19 @@ function protectedResourceScopes(): string[] {
  *   used for issuer and endpoint URLs.
  */
 export function buildAuthorizationServerMetadata(input: MetadataInput) {
-  const issuer = `${input.publicBaseUrl}/api/auth`;
+  const issuer = authUrl(input.publicBaseUrl, "");
 
   return {
     issuer,
-    authorization_endpoint: `${issuer}/oauth2/authorize`,
-    token_endpoint: `${issuer}/oauth2/token`,
+    authorization_endpoint: authUrl(input.publicBaseUrl, "/oauth2/authorize"),
+    token_endpoint: authUrl(input.publicBaseUrl, "/oauth2/token"),
     device_authorization_endpoint: deviceAuthUrl(input.publicBaseUrl, "code"),
-    userinfo_endpoint: `${issuer}/oauth2/userinfo`,
-    jwks_uri: `${issuer}/jwks`,
-    registration_endpoint: `${issuer}/oauth2/register`,
-    introspection_endpoint: `${issuer}/oauth2/introspect`,
-    revocation_endpoint: `${issuer}/oauth2/revoke`,
-    end_session_endpoint: `${issuer}/oauth2/end-session`,
+    userinfo_endpoint: authUrl(input.publicBaseUrl, "/oauth2/userinfo"),
+    jwks_uri: authUrl(input.publicBaseUrl, "/jwks"),
+    registration_endpoint: authUrl(input.publicBaseUrl, "/oauth2/register"),
+    introspection_endpoint: authUrl(input.publicBaseUrl, "/oauth2/introspect"),
+    revocation_endpoint: authUrl(input.publicBaseUrl, "/oauth2/revoke"),
+    end_session_endpoint: authUrl(input.publicBaseUrl, "/oauth2/end-session"),
     response_types_supported: ["code"],
     grant_types_supported: [
       "authorization_code",
@@ -104,9 +108,9 @@ export function buildAuthorizationServerMetadata(input: MetadataInput) {
 export function buildProtectedResourceMetadata(input: MetadataInput) {
   return {
     resource: mcpResourceUrl(input.publicBaseUrl),
-    authorization_servers: [`${input.publicBaseUrl}/api/auth`],
+    authorization_servers: [authUrl(input.publicBaseUrl, "")],
     bearer_methods_supported: ["header"],
     scopes_supported: protectedResourceScopes(),
-    resource_documentation: `${input.publicBaseUrl}/docs/mcp`,
+    resource_documentation: new URL("/docs/mcp", input.publicBaseUrl).toString(),
   };
 }

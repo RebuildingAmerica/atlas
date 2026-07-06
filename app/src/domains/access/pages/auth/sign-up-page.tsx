@@ -44,7 +44,7 @@ const TEAM_SSO_REDIRECT = "/pricing?intent=atlas_team&interval=monthly";
  * Sign-up page for new Atlas accounts.
  *
  * Collects an email address and sends a magic link.  When the email already
- * has an account, redirects to /sign-in with a notice.  After the link is
+ * has an account, redirects to /sign-in with the email prefilled. After the link is
  * sent the page swaps into a confirmation view that:
  *
  *   - counts the magic-link TTL down to zero,
@@ -136,9 +136,7 @@ export function SignUpPage({ intent, redirectTo }: SignUpPageProps = {}) {
     if (accountCheck.exists) {
       await navigate({
         to: "/sign-in",
-        search: effectiveRedirect
-          ? { email, existing: true, redirect: effectiveRedirect }
-          : { email, existing: true },
+        search: effectiveRedirect ? { email, redirect: effectiveRedirect } : { email },
       });
       return false;
     }

@@ -178,7 +178,7 @@ async def test_auth_middleware_lets_through_valid_token() -> None:
 
 @pytest.mark.asyncio
 async def test_auth_middleware_records_successful_mcp_usage() -> None:
-    """Successful MCP requests should count toward workspace integration monitoring."""
+    """Successful MCP requests should count toward workspace integration activity."""
     middleware = McpBearerAuthMiddleware(app=AsyncMock())
     request = MagicMock()
     request.headers = {"authorization": "Bearer valid-token"}

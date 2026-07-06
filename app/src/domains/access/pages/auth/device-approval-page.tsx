@@ -34,7 +34,7 @@ function redirectBrowser(path: string): void {
 }
 
 /**
- * Browser approval page for Scout CLI device authorization.
+ * Browser approval page for OAuth device authorization.
  */
 export function DeviceApprovalPage({
   redirect = redirectBrowser,
@@ -101,7 +101,7 @@ export function DeviceApprovalPage({
     return (
       <div className="space-y-6">
         <div className="space-y-2">
-          <h1 className="type-display-small text-on-surface">Scout login failed</h1>
+          <h1 className="type-display-small text-on-surface">Device approval failed</h1>
           <p className="type-body-large text-outline">Device could not be approved.</p>
         </div>
       </div>
@@ -112,9 +112,9 @@ export function DeviceApprovalPage({
     return (
       <div className="space-y-6">
         <div className="space-y-2">
-          <h1 className="type-display-small text-on-surface">Scout login denied</h1>
+          <h1 className="type-display-small text-on-surface">Device approval denied</h1>
           <p className="type-body-large text-outline">
-            This computer was not connected to your Atlas account.
+            That device was not connected to your Atlas account.
           </p>
         </div>
       </div>
@@ -124,18 +124,18 @@ export function DeviceApprovalPage({
   return (
     <div className="space-y-6">
       <div className="space-y-3">
-        <h1 className="type-display-small text-on-surface">Approve Scout login</h1>
+        <h1 className="type-display-small text-on-surface">Approve device</h1>
         <p className="type-body-large text-outline">
           {hasPrefilledCode
-            ? "Confirm this code matches Scout before approving this computer."
-            : "Enter the code shown in Scout."}
+            ? "Confirm this code matches the one on your device."
+            : "Enter the code shown on your device."}
         </p>
       </div>
 
       <div className="border-border-strong bg-surface-container-lowest rounded-lg border p-6">
         <form className="space-y-5" onSubmit={submitApproval}>
           <input
-            aria-label="Code shown in Scout"
+            aria-label="Device code"
             className="border-border-strong text-on-surface focus:ring-primary w-full rounded-md border bg-white px-4 py-3 font-mono text-2xl tracking-normal outline-none focus:ring-2"
             onChange={(event) => {
               setCodeInput(normalizeDeviceUserCode(event.target.value));
@@ -144,7 +144,7 @@ export function DeviceApprovalPage({
           />
           <div className="flex flex-wrap gap-3">
             <Button disabled={Boolean(submittingAction) || !codeInput.trim()} type="submit">
-              Approve Scout login
+              Approve device
             </Button>
             <Button
               disabled={Boolean(submittingAction) || !codeInput.trim()}
@@ -154,7 +154,7 @@ export function DeviceApprovalPage({
               type="button"
               variant="secondary"
             >
-              Deny Scout login
+              Deny device
             </Button>
           </div>
         </form>
@@ -173,10 +173,8 @@ export function DeviceApprovalCompletePage() {
       </div>
 
       <div className="space-y-3">
-        <h1 className="type-display-small text-on-surface">Scout login approved</h1>
-        <p className="type-body-large text-outline">
-          You're done in the browser. Return to Scout to continue.
-        </p>
+        <h1 className="type-display-small text-on-surface">Device approved</h1>
+        <p className="type-body-large text-outline">You're done in the browser.</p>
       </div>
 
       <p className="border-border bg-surface-container-lowest text-outline rounded-lg border px-5 py-4 text-sm">

@@ -33,6 +33,7 @@ dependencies = [
     "anthropic>=0.7.0",
     "pydantic>=2.5.0",
     "pydantic-settings>=2.1.0",
+    "dnspython>=2.8.0",
     "email-validator>=2.0.0",
     "PyJWT>=2.10.0",
     "trafilatura>=1.6.0",

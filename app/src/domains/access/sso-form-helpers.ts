@@ -41,9 +41,7 @@ export function isLikelyFreeEmailDomain(domain: string): boolean {
 }
 
 export type PemCertificateClassification =
-  | { kind: "empty" }
-  | { kind: "ok"; bodyLines: number }
-  | { kind: "invalid"; reason: string };
+  { kind: "empty" } | { kind: "ok"; bodyLines: number } | { kind: "invalid"; reason: string };
 
 /**
  * Lightweight check that the pasted X.509 certificate at least has PEM

@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { createAtlasResolvedCapabilities } from "../../../../fixtures/access/sessions";
 
 const mocks = vi.hoisted(() => ({
   ensureAtlasSession: vi.fn(),
@@ -90,7 +91,7 @@ describe("auth api-key server functions", () => {
     });
   });
 
-  it("creates API keys without sending metadata into Better Auth", async () => {
+  it("creates API keys with workspace-scoped Better Auth metadata", async () => {
     const createApiKeyMock = vi.fn().mockResolvedValue({
       key: "atlas_secret_key_1234567890",
     });
@@ -106,7 +107,13 @@ describe("auth api-key server functions", () => {
         email: "operator@atlas.test",
         id: "user_123",
       },
-      workspace: { activeOrganization: { id: "org_123" } },
+      workspace: {
+        activeOrganization: { id: "org_123" },
+        resolvedCapabilities: createAtlasResolvedCapabilities(
+          { api_requests_per_day: 1000, max_api_keys: null },
+          ["research.run", "api.keys"],
+        ),
+      },
     });
     mocks.ensureAuthReady.mockResolvedValue({
       api: {
@@ -126,7 +133,7 @@ describe("auth api-key server functions", () => {
       body: {
         metadata: {
           organizationId: "org_123",
-          userEmail: "user_123",
+          userEmail: "operator@atlas.test",
         },
         name: "CLI key",
         permissions: {

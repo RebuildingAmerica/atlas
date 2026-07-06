@@ -40,4 +40,30 @@ describe("handleDeviceAuthAlias", () => {
     expect(forwardedRequest.headers.get("Content-Type")).toBe("application/json");
     expect(await response.text()).toBe("handled:/api/auth/device/token:POST");
   });
+
+  it("accepts OAuth form-encoded device code requests at the public route", async () => {
+    const { handleDeviceAuthAlias } = await import("@/domains/access/server/device-auth-alias");
+    await handleDeviceAuthAlias(
+      new Request("https://atlas.test/device/code", {
+        body: new URLSearchParams({
+          client_id: "atlas-scout-cli",
+          scope: "atlas:read",
+        }),
+        headers: { "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8" },
+        method: "POST",
+      }),
+      "code",
+    );
+
+    const forwardedRequest = mocks.authHandler.mock.calls.at(0)?.[0];
+    if (!forwardedRequest) throw new Error("Expected a forwarded auth request.");
+
+    const forwardedUrl = new URL(forwardedRequest.url);
+    expect(forwardedUrl.pathname).toBe("/api/auth/device/code");
+    expect(forwardedRequest.headers.get("Content-Type")).toBe("application/json");
+    expect(await forwardedRequest.json()).toEqual({
+      client_id: "atlas-scout-cli",
+      scope: "atlas:read",
+    });
+  });
 });

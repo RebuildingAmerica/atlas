@@ -114,14 +114,12 @@ export interface OrganizationPageController {
   ssoMutationPending: boolean;
   teamSeatCostSummary: TeamSeatCostSummary | null;
   integrationMonitoring:
-    | NonNullable<ReturnType<typeof useOrganizationPageData>["integrationMonitoring"]>
-    | undefined;
+    NonNullable<ReturnType<typeof useOrganizationPageData>["integrationMonitoring"]> | undefined;
   integrationMonitoringLoading: boolean;
   updateWorkspaceMemberRolePending: boolean;
   upgradeToTeamPending: boolean;
   usageAuditLog:
-    | NonNullable<ReturnType<typeof useOrganizationPageData>["usageAuditLog"]>
-    | undefined;
+    NonNullable<ReturnType<typeof useOrganizationPageData>["usageAuditLog"]> | undefined;
   usageAuditLogLoading: boolean;
   usageSummary: NonNullable<ReturnType<typeof useOrganizationPageData>["usageSummary"]> | undefined;
   usageSummaryLoading: boolean;

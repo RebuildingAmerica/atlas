@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { AtlasSessionPayload } from "@/domains/access/organization-contracts";
+import type { CreateApiKeyMock } from "../../../helpers/access/api-key-mock";
 import type { ServerFnExecutionResponse } from "../../../helpers/server-fn-stub";
-import { createAtlasSessionFixture } from "../../../fixtures/access/sessions";
+import { createAtlasSessionFixture, createAtlasWorkspace } from "../../../fixtures/access/sessions";
 
 const mocks = vi.hoisted(() => ({
   ensureAtlasSession: vi.fn(),
@@ -39,6 +41,32 @@ describe("api-keys.functions", () => {
     cookie: "better-auth.session_token=test-token",
   });
   const fetchMock = vi.fn();
+  const apiKeyEnabledCapabilities = {
+    capabilities: ["research.run", "api.keys"] as const,
+    limits: {
+      research_runs_per_month: 2,
+      max_shortlists: 1,
+      max_shortlist_entries: 25,
+      max_api_keys: null,
+      api_requests_per_day: 1000,
+      public_api_requests_per_hour: 100,
+      max_members: 1,
+    },
+  };
+
+  type ApiKeySessionUserOverride = Partial<AtlasSessionPayload["user"]>;
+
+  function createApiKeyEnabledSession(user: ApiKeySessionUserOverride = {}) {
+    return createAtlasSessionFixture({
+      user,
+      workspace: createAtlasWorkspace({
+        resolvedCapabilities: {
+          capabilities: [...apiKeyEnabledCapabilities.capabilities],
+          limits: apiKeyEnabledCapabilities.limits,
+        },
+      }),
+    });
+  }
 
   beforeEach(() => {
     vi.resetModules();
@@ -192,7 +220,7 @@ describe("api-keys.functions", () => {
   it("waits for discovery-read API keys until the protected Atlas API accepts them", async () => {
     vi.useFakeTimers();
 
-    const createApiKeyMock = vi.fn().mockResolvedValue({
+    const createApiKeyMock = vi.fn<CreateApiKeyMock>().mockResolvedValue({
       key: "atlas_secret_key_1234567890",
     });
     fetchMock
@@ -205,11 +233,9 @@ describe("api-keys.functions", () => {
       });
 
     mocks.ensureReadyAtlasSession.mockResolvedValue(
-      createAtlasSessionFixture({
-        user: {
-          email: "operator@atlas.test",
-          id: "user_123",
-        },
+      createApiKeyEnabledSession({
+        email: "operator@atlas.test",
+        id: "user_123",
       }),
     );
     mocks.ensureAuthReady.mockResolvedValue({
@@ -246,6 +272,117 @@ describe("api-keys.functions", () => {
         method: "GET",
       }),
     );
+    const createApiKeyRequest = createApiKeyMock.mock.calls[0]?.[0];
+    if (!createApiKeyRequest) {
+      throw new Error("Expected Better Auth API key creation.");
+    }
+    expect(createApiKeyRequest.body.metadata).toEqual({
+      organizationId: "org_team",
+      userEmail: "operator@atlas.test",
+    });
+    expect(createApiKeyRequest.body.userId).toBe("user_123");
+  });
+
+  it("rejects API-key creation when the workspace lacks API-key access", async () => {
+    const createApiKeyMock = vi.fn().mockResolvedValue({
+      key: "atlas_secret_key_1234567890",
+    });
+    mocks.ensureReadyAtlasSession.mockResolvedValue(
+      createAtlasSessionFixture({
+        workspace: createAtlasWorkspace({
+          resolvedCapabilities: {
+            capabilities: ["research.run"],
+            limits: {
+              research_runs_per_month: 2,
+              max_shortlists: 1,
+              max_shortlist_entries: 25,
+              max_api_keys: 0,
+              api_requests_per_day: 0,
+              public_api_requests_per_hour: 100,
+              max_members: 1,
+            },
+          },
+        }),
+      }),
+    );
+    mocks.ensureAuthReady.mockResolvedValue({
+      api: {
+        createApiKey: createApiKeyMock,
+      },
+    });
+
+    const { createApiKey } = await import("@/domains/access/api-keys.functions");
+    const response = (await createApiKey.__executeServer({
+      method: "POST",
+      data: {
+        name: "CLI key",
+        scopes: ["discovery:read"],
+      },
+    })) as ServerFnExecutionResponse;
+
+    expect(response.error).toBeInstanceOf(Error);
+    expect((response.error as Error).message).toBe("This workspace cannot create Atlas API keys.");
+    expect(createApiKeyMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects API-key creation when the workspace key limit is reached", async () => {
+    const createApiKeyMock = vi.fn().mockResolvedValue({
+      key: "atlas_secret_key_1234567890",
+    });
+    const listApiKeysMock = vi.fn().mockResolvedValue({
+      apiKeys: [
+        {
+          createdAt: "2026-04-10T00:00:00.000Z",
+          id: "key_existing",
+          name: "Existing key",
+          permissions: null,
+          prefix: "atlas_1234",
+        },
+      ],
+      total: 1,
+    });
+    mocks.ensureReadyAtlasSession.mockResolvedValue(
+      createAtlasSessionFixture({
+        workspace: createAtlasWorkspace({
+          resolvedCapabilities: {
+            capabilities: ["research.run", "api.keys"],
+            limits: {
+              research_runs_per_month: 2,
+              max_shortlists: 1,
+              max_shortlist_entries: 25,
+              max_api_keys: 1,
+              api_requests_per_day: 1000,
+              public_api_requests_per_hour: 100,
+              max_members: 1,
+            },
+          },
+        }),
+      }),
+    );
+    mocks.ensureAuthReady.mockResolvedValue({
+      api: {
+        createApiKey: createApiKeyMock,
+        listApiKeys: listApiKeysMock,
+      },
+    });
+
+    const { createApiKey } = await import("@/domains/access/api-keys.functions");
+    const response = (await createApiKey.__executeServer({
+      method: "POST",
+      data: {
+        name: "CLI key",
+        scopes: ["discovery:read"],
+      },
+    })) as ServerFnExecutionResponse;
+
+    expect(response.error).toBeInstanceOf(Error);
+    expect((response.error as Error).message).toBe(
+      "This workspace has reached its Atlas API key limit.",
+    );
+    expect(listApiKeysMock).toHaveBeenCalledWith({
+      headers: browserSessionHeaders,
+    });
+    expect(createApiKeyMock).not.toHaveBeenCalled();
   });
 
   it("falls back to internal introspection for scope sets without a safe public probe", async () => {
@@ -266,11 +403,9 @@ describe("api-keys.functions", () => {
       });
 
     mocks.ensureReadyAtlasSession.mockResolvedValue(
-      createAtlasSessionFixture({
-        user: {
-          email: "operator@atlas.test",
-          id: "user_123",
-        },
+      createApiKeyEnabledSession({
+        email: "operator@atlas.test",
+        id: "user_123",
       }),
     );
     mocks.ensureAuthReady.mockResolvedValue({
@@ -316,11 +451,9 @@ describe("api-keys.functions", () => {
       /* suppress */
     });
     mocks.ensureReadyAtlasSession.mockResolvedValue(
-      createAtlasSessionFixture({
-        user: {
-          email: "operator@atlas.test",
-          id: "user_123",
-        },
+      createApiKeyEnabledSession({
+        email: "operator@atlas.test",
+        id: "user_123",
       }),
     );
     mocks.ensureAuthReady.mockResolvedValue({
@@ -366,11 +499,9 @@ describe("api-keys.functions", () => {
     const createApiKeyMock = vi.fn().mockResolvedValue({});
 
     mocks.ensureReadyAtlasSession.mockResolvedValue(
-      createAtlasSessionFixture({
-        user: {
-          email: "operator@atlas.test",
-          id: "user_123",
-        },
+      createApiKeyEnabledSession({
+        email: "operator@atlas.test",
+        id: "user_123",
       }),
     );
     mocks.ensureAuthReady.mockResolvedValue({
@@ -404,11 +535,9 @@ describe("api-keys.functions", () => {
       publicBaseUrl: "http://atlas.test",
     });
     mocks.ensureReadyAtlasSession.mockResolvedValue(
-      createAtlasSessionFixture({
-        user: {
-          email: "operator@atlas.test",
-          id: "user_123",
-        },
+      createApiKeyEnabledSession({
+        email: "operator@atlas.test",
+        id: "user_123",
       }),
     );
     mocks.ensureAuthReady.mockResolvedValue({

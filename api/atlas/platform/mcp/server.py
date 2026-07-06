@@ -39,9 +39,9 @@ def _origin_and_host(value: str) -> tuple[str | None, str | None]:
 def build_transport_security_settings(settings: Settings) -> TransportSecuritySettings:
     """Build MCP host/origin allowlists from Atlas's configured public URLs.
 
-    FastMCP's host guard defaults to localhost-only. Atlas mounts MCP inside a
-    public FastAPI deployment, so the guard has to know the hosted app and API
-    domains that users and compliant MCP clients actually reach.
+    FastMCP enables a localhost-only host guard when its default host is
+    `127.0.0.1`. Atlas mounts MCP inside a public FastAPI deployment, so the
+    guard has to know the hosted app and API domains users actually reach.
     """
     allowed_hosts = set(LOCAL_ALLOWED_HOSTS)
     allowed_origins = set(LOCAL_ALLOWED_ORIGINS)

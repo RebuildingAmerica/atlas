@@ -123,7 +123,11 @@ describe("scout-devices.functions", () => {
     const releaseCall = fetchMock.mock.calls[0];
     if (!releaseCall) throw new Error("Expected Scout lease release request.");
     const [releaseUrl, releaseInit] = releaseCall;
-    expect(releaseUrl).toBe(
+    expect(releaseUrl).toBeInstanceOf(URL);
+    if (!(releaseUrl instanceof URL)) {
+      throw new TypeError("Expected Scout lease release request to use a URL object.");
+    }
+    expect(releaseUrl.href).toBe(
       "http://atlas-api.test/api/discovery-runs/jobs/workers/worker-123/release",
     );
     expect(releaseInit?.method).toBe("POST");

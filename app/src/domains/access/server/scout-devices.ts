@@ -70,6 +70,13 @@ class ScoutDeviceOwnershipError extends Error {
   }
 }
 
+class ScoutDeviceRevocationError extends Error {
+  constructor(deviceId: string) {
+    super(`Scout device ${deviceId} could not be revoked.`);
+    this.name = "ScoutDeviceRevocationError";
+  }
+}
+
 function buildScoutDeviceId(): string {
   return `scout_${randomUUID()}`;
 }
@@ -360,12 +367,15 @@ export async function revokeScoutDevice(input: ScoutDeviceRevocationInput): Prom
   const revokedAt = (input.now ?? new Date()).toISOString();
   const pool = getAuthPgPool();
   if (pool) {
-    await pool.query(
+    const result = await pool.query(
       `UPDATE scout_devices
        SET revoked_at = $1
        WHERE id = $2 AND user_id = $3 AND revoked_at IS NULL`,
       [revokedAt, deviceId, userId],
     );
+    if (result.rowCount !== 1) {
+      throw new ScoutDeviceRevocationError(deviceId);
+    }
     return;
   }
 
@@ -374,9 +384,14 @@ export async function revokeScoutDevice(input: ScoutDeviceRevocationInput): Prom
     throw new Error("Auth database unavailable in current mode");
   }
 
-  db.prepare(
-    `UPDATE scout_devices
+  const result = db
+    .prepare(
+      `UPDATE scout_devices
      SET revoked_at = ?
      WHERE id = ? AND user_id = ? AND revoked_at IS NULL`,
-  ).run(revokedAt, deviceId, userId);
+    )
+    .run(revokedAt, deviceId, userId);
+  if (result.changes !== 1) {
+    throw new ScoutDeviceRevocationError(deviceId);
+  }
 }

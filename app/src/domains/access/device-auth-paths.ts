@@ -6,7 +6,7 @@ export function deviceAuthPath(endpoint: DeviceEndpoint): string {
 }
 
 export function deviceAuthUrl(baseUrl: string, endpoint: DeviceEndpoint): string {
-  return `${baseUrl}${deviceAuthPath(endpoint)}`;
+  return new URL(deviceAuthPath(endpoint), baseUrl).toString();
 }
 
 export function deviceResultPath(result: DeviceResult): string {

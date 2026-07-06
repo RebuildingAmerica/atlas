@@ -29,15 +29,6 @@ export interface AtlasWorkspaceSSOSetupValues {
 }
 
 /**
- * Trims trailing slashes from public origins before Atlas builds callback URLs.
- *
- * @param value - The public origin or path to normalize.
- */
-function trimTrailingSlash(value: string): string {
-  return value.replace(/\/+$/, "");
-}
-
-/**
  * Builds the default Google Workspace OIDC provider identifier for a workspace.
  *
  * @param organizationSlug - The workspace slug used to namespace the provider.
@@ -75,9 +66,7 @@ export function buildWorkspaceSSODomainVerificationHost(providerId: string): str
  * @param publicBaseUrl - The public Atlas origin.
  */
 export function buildWorkspaceOIDCRedirectUrl(publicBaseUrl: string): string {
-  const normalizedBaseUrl = trimTrailingSlash(publicBaseUrl);
-
-  return `${normalizedBaseUrl}/api/auth/sso/callback`;
+  return new URL("/api/auth/sso/callback", publicBaseUrl).toString();
 }
 
 /**
@@ -87,9 +76,10 @@ export function buildWorkspaceOIDCRedirectUrl(publicBaseUrl: string): string {
  * @param providerId - The Better Auth SAML provider identifier.
  */
 export function buildWorkspaceSamlAcsUrl(publicBaseUrl: string, providerId: string): string {
-  const normalizedBaseUrl = trimTrailingSlash(publicBaseUrl);
-
-  return `${normalizedBaseUrl}/api/auth/sso/saml2/sp/acs/${providerId}`;
+  return new URL(
+    `/api/auth/sso/saml2/sp/acs/${encodeURIComponent(providerId)}`,
+    publicBaseUrl,
+  ).toString();
 }
 
 /**
@@ -99,9 +89,10 @@ export function buildWorkspaceSamlAcsUrl(publicBaseUrl: string, providerId: stri
  * @param providerId - The Better Auth SAML provider identifier.
  */
 export function buildWorkspaceSamlMetadataUrl(publicBaseUrl: string, providerId: string): string {
-  const normalizedBaseUrl = trimTrailingSlash(publicBaseUrl);
-
-  return `${normalizedBaseUrl}/api/auth/sso/saml2/sp/metadata?providerId=${providerId}&format=xml`;
+  const url = new URL("/api/auth/sso/saml2/sp/metadata", publicBaseUrl);
+  url.searchParams.set("providerId", providerId);
+  url.searchParams.set("format", "xml");
+  return url.toString();
 }
 
 /**

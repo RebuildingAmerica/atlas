@@ -6,6 +6,8 @@ import {
   scopesToPermissions,
   type ApiKeyScope,
 } from "./api-key-scopes";
+import { hasSerializedCapability } from "./capabilities";
+import type { AtlasSessionPayload } from "./organization-contracts";
 import { createdApiKeySchema, listedApiKeysResponseSchema } from "./server/api-key-schema";
 import type { AuthRuntimeConfig } from "./server/runtime";
 
@@ -183,12 +185,14 @@ async function confirmApiKeyProvisioning(
  * @param name - The operator-facing API-key label.
  * @param scopes - The scopes granted to the new API key.
  * @param userId - The Better Auth user id that owns the key.
+ * @param userEmail - The user email stored for API-side actor attribution.
  */
 async function createScopedApiKey(
   runtime: AuthRuntimeConfig,
   name: string,
   scopes: ApiKeyScope[],
   userId: string,
+  userEmail: string,
   organizationId: string | undefined,
 ) {
   const { ensureAuthReady } = await loadAuthModule();
@@ -197,7 +201,7 @@ async function createScopedApiKey(
   const createApiKeyPromise = auth.api.createApiKey({
     body: {
       name,
-      metadata: { organizationId, userEmail: userId },
+      metadata: { organizationId, userEmail },
       permissions: scopesToPermissions(scopes),
       userId,
     },
@@ -216,6 +220,31 @@ async function createScopedApiKey(
   }
 
   return createdApiKey;
+}
+
+async function assertCanCreateApiKey(session: AtlasSessionPayload): Promise<void> {
+  const resolvedCapabilities = session.workspace.resolvedCapabilities;
+  if (!hasSerializedCapability(resolvedCapabilities, "api.keys")) {
+    throw new Error("This workspace cannot create Atlas API keys.");
+  }
+
+  const maxApiKeys = resolvedCapabilities.limits.max_api_keys;
+  if (maxApiKeys === null) {
+    return;
+  }
+
+  const { ensureAuthReady } = await loadAuthModule();
+  const { getBrowserSessionHeaders } = await loadRequestHeadersModule();
+  const auth = await ensureAuthReady();
+  const response = listedApiKeysResponseSchema.parse(
+    await auth.api.listApiKeys({
+      headers: getBrowserSessionHeaders(),
+    }),
+  );
+
+  if (response.total >= maxApiKeys) {
+    throw new Error("This workspace has reached its Atlas API key limit.");
+  }
 }
 
 /**
@@ -273,11 +302,13 @@ export const createApiKey = createServerFn({ method: "POST" })
 
     const sessionPromise = requireReadyAtlasSessionState();
     const session = await sessionPromise;
+    await assertCanCreateApiKey(session);
     const createApiKeyPromise = createScopedApiKey(
       runtime,
       data.name,
       data.scopes,
       session.user.id,
+      session.user.email,
       session.workspace.activeOrganization?.id,
     );
     const createdApiKey = await createApiKeyPromise;

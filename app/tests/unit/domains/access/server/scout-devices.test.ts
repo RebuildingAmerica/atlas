@@ -145,6 +145,48 @@ describe("scout-devices", () => {
     ).rejects.toBeInstanceOf(ScoutDeviceRevokedError);
   });
 
+  it("rejects revocation when no active device is owned by that user", async () => {
+    await registerOrTouchScoutDevice({
+      defaultUploadTarget: "workspace",
+      id: "worker-123",
+      now: new Date("2026-07-04T16:00:00.000Z"),
+      searchKeyConfigured: false,
+      userId: "user-123",
+      workerName: "Laptop",
+      workspaceId: "org-123",
+    });
+
+    await expect(
+      revokeScoutDevice({
+        deviceId: "worker-123",
+        now: new Date("2026-07-04T18:00:00.000Z"),
+        userId: "other-user",
+      }),
+    ).rejects.toThrow("Scout device worker-123 could not be revoked.");
+
+    expect(await listScoutDevicesForUser("user-123")).toHaveLength(1);
+  });
+
+  it("rejects missed PostgreSQL revocations", async () => {
+    const query = vi.fn().mockResolvedValueOnce({ rowCount: 0, rows: [] });
+    authMocks.getAuthPgPool.mockReturnValue({ query });
+    authMocks.getAuthDatabase.mockReturnValue(null);
+
+    await expect(
+      revokeScoutDevice({
+        deviceId: "worker-123",
+        now: new Date("2026-07-04T18:00:00.000Z"),
+        userId: "user-123",
+      }),
+    ).rejects.toThrow("Scout device worker-123 could not be revoked.");
+
+    expect(query).toHaveBeenCalledWith(expect.stringMatching(/UPDATE scout_devices/), [
+      "2026-07-04T18:00:00.000Z",
+      "worker-123",
+      "user-123",
+    ]);
+  });
+
   it("uses PostgreSQL when the auth runtime is backed by a pool", async () => {
     const query = vi
       .fn()

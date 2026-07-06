@@ -17,10 +17,6 @@ vi.mock("@/domains/access/pages/workspace/organization-sso-page", () => ({
   ),
 }));
 
-vi.mock("@/domains/access/organizations.functions", () => ({
-  getOrganizationDetails: vi.fn(),
-}));
-
 describe("routes/_workspace/organization/sso", () => {
   beforeEach(async () => {
     const { resetRouterMocks } = await import("@/../tests/helpers/router-harness");
@@ -31,35 +27,22 @@ describe("routes/_workspace/organization/sso", () => {
     cleanup();
   });
 
-  it("loads organization details into the route context before rendering", async () => {
-    const fns = await import("@/domains/access/organizations.functions");
-    const initialOrganization = { id: "org_1", name: "Acme" };
-    vi.mocked(fns.getOrganizationDetails).mockResolvedValue(
-      initialOrganization as Awaited<ReturnType<typeof fns.getOrganizationDetails>>,
-    );
-
+  it("does not eager-load organization details before rendering", async () => {
     const routeModule = await import("@/routes/_workspace/organization/sso");
     const { asRouteStub } = await import("@/../tests/helpers/router-harness");
     const Route = asRouteStub(routeModule.Route);
 
-    if (!Route.options.beforeLoad) throw new Error("Expected beforeLoad");
-    const ctx = await Route.options.beforeLoad({});
-    expect(ctx).toEqual({ initialOrganization });
+    expect(Route.options.beforeLoad).toBeUndefined();
   });
 
-  it("renders OrganizationSSOPage with the route context organization", async () => {
-    const { readRouterMocks, asRouteStub } = await import("@/../tests/helpers/router-harness");
-    const router = readRouterMocks();
-    router.useRouteContext.mockReturnValue({ initialOrganization: { id: "org_1" } });
-
+  it("renders OrganizationSSOPage without an initial organization payload", async () => {
+    const { asRouteStub } = await import("@/../tests/helpers/router-harness");
     const routeModule = await import("@/routes/_workspace/organization/sso");
     const Route = asRouteStub(routeModule.Route);
 
     const Component = Route.options.component;
     if (!Component) throw new Error("Expected Route.options.component");
     const view = render(<Component />);
-    expect(view.getByTestId("organization-sso-page").dataset.initial).toBe(
-      JSON.stringify({ id: "org_1" }),
-    );
+    expect(view.getByTestId("organization-sso-page").dataset.initial).toBe(JSON.stringify(null));
   });
 });

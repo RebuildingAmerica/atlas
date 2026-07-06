@@ -20,10 +20,17 @@ import { passkey } from "@better-auth/passkey";
 import { GOOGLE_WORKSPACE_ISSUER } from "../organization-sso";
 import {
   type AuthRuntimeConfig,
+  getCimdResolverOptions,
   getAuthRuntimeConfig,
   isAllowedEmail,
   validateAuthRuntimeConfig,
 } from "./runtime";
+import {
+  ClientIdMetadataError,
+  isClientIdMetadataDocumentUrl,
+  resolveClientIdMetadataDocument,
+} from "./client-id-metadata";
+import { upsertCimdClientPg, upsertCimdClientSqlite } from "./cimd-sync";
 import { render } from "@react-email/render";
 import { MagicLinkEmail } from "@/platform/email/templates/magic-link-email";
 import { VerificationEmail } from "@/platform/email/templates/verification-email";
@@ -46,7 +53,13 @@ interface StoredUserCountRow {
   userCount: number;
 }
 
-const SCOUT_CLIENT_ID = "atlas-scout-cli";
+/**
+ * Result row returned when Atlas checks whether a device-flow client is known.
+ */
+interface StoredOAuthDeviceClientRow {
+  disabled: boolean | number | null;
+}
+
 const SCOUT_DEVICE_LOGIN_EXPIRES_IN = "30m";
 const SCOUT_DEVICE_LOGIN_INTERVAL = "5s";
 
@@ -59,17 +72,75 @@ function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
 }
 
+function isActiveOAuthDeviceClientRow(row: StoredOAuthDeviceClientRow | undefined): boolean {
+  if (!row) {
+    return false;
+  }
+
+  return row.disabled !== true && row.disabled !== 1;
+}
+
+async function materializeCimdDeviceClient(clientId: string): Promise<void> {
+  if (!isClientIdMetadataDocumentUrl(clientId)) {
+    return;
+  }
+
+  let document;
+  try {
+    document = await resolveClientIdMetadataDocument(clientId, getCimdResolverOptions());
+  } catch (error) {
+    if (error instanceof ClientIdMetadataError) {
+      return;
+    }
+    throw error;
+  }
+
+  const pool = getAuthPgPool();
+  if (pool) {
+    await upsertCimdClientPg(pool, document);
+    return;
+  }
+
+  const database = getAuthDatabase();
+  if (!database) {
+    throw new Error("OAuth device client validation requires an auth database.");
+  }
+  upsertCimdClientSqlite(database, document);
+}
+
 /**
- * Returns true when a device-authorization request belongs to Atlas Scout.
+ * Returns true when a device-authorization request belongs to a registered
+ * OAuth client.
  *
- * Scout is a public CLI client, so the client id is an identifier rather than
- * a secret. Keeping the allowlist narrow prevents unrelated device clients
- * from using Atlas's CLI approval page without product review.
- *
- * @param clientId - Device-flow client identifier.
+ * Atlas keeps Scout as one first-party client, but the device grant itself is
+ * generic: any active OAuth client row, including a URL-shaped CIMD client, can
+ * request a device code.
  */
-function isScoutDeviceClient(clientId: string): boolean {
-  return clientId === SCOUT_CLIENT_ID;
+async function isRegisteredOAuthDeviceClient(clientId: string): Promise<boolean> {
+  const normalizedClientId = clientId.trim();
+  if (!normalizedClientId) {
+    return false;
+  }
+
+  await materializeCimdDeviceClient(normalizedClientId);
+
+  const pool = getAuthPgPool();
+  if (pool) {
+    const result = await pool.query<StoredOAuthDeviceClientRow>(
+      'select "disabled" from "oauthClient" where "clientId" = $1 limit 1',
+      [normalizedClientId],
+    );
+    return isActiveOAuthDeviceClientRow(result.rows[0]);
+  }
+
+  const database = getAuthDatabase();
+  if (!database) {
+    throw new Error("OAuth device client validation requires an auth database.");
+  }
+  const row = database
+    .prepare("select disabled from oauthClient where clientId = ? limit 1")
+    .get(normalizedClientId) as StoredOAuthDeviceClientRow | undefined;
+  return isActiveOAuthDeviceClientRow(row);
 }
 
 /**
@@ -181,13 +252,6 @@ async function createAtlasAuth(runtime: AuthRuntimeConfig) {
         // surface they don't want.  The sign-up page surfaces the same
         // value via `MAGIC_LINK_EXPIRY_SECONDS`; keep them in sync.
         expiresIn: 300,
-        // Browsers often pre-fetch the verify URL when the email client
-        // opens it (Outlook safe-link scanners, antivirus link previews,
-        // some Vite dev-server prefetch behavior in tests).  Allow a
-        // small replay window so the legitimate user request is not
-        // mistaken for a replay attack.  The token still expires in 5
-        // minutes via expiresIn above.
-        allowedAttempts: 5,
         sendMagicLink: createMagicLinkSender(),
       }),
       passkey({
@@ -231,7 +295,7 @@ async function createAtlasAuth(runtime: AuthRuntimeConfig) {
           // endpoint at {issuer}/.well-known/openid-configuration maps to
           // /api/auth/.well-known/openid-configuration, which the existing
           // api/auth/$.ts catch-all serves automatically.
-          issuer: `${runtime.publicBaseUrl}/api/auth`,
+          issuer: new URL("/api/auth", runtime.publicBaseUrl).toString().replace(/\/$/, ""),
           audience: runtime.apiAudience ?? undefined,
           definePayload: async ({ user }) => {
             const orgId = await resolvePrimaryWorkspaceId(user.id);
@@ -248,7 +312,7 @@ async function createAtlasAuth(runtime: AuthRuntimeConfig) {
       deviceAuthorization({
         expiresIn: SCOUT_DEVICE_LOGIN_EXPIRES_IN,
         interval: SCOUT_DEVICE_LOGIN_INTERVAL,
-        validateClient: isScoutDeviceClient,
+        validateClient: isRegisteredOAuthDeviceClient,
         verificationUri: "/device",
       }),
       oauthProvider({

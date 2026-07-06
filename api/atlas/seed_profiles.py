@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from datetime import date
 from typing import TYPE_CHECKING
 
+from atlas.domains.catalog.geo import geocode_entry
 from atlas.models import EntryCRUD, SourceCRUD, get_db_connection, init_db
 from atlas.models.database import db
 
@@ -400,6 +401,25 @@ async def _get_entry_id_by_slug(conn: aiosqlite.Connection, slug: str) -> str | 
     return entry.id if entry is not None else None
 
 
+async def _place_seed_entry(conn: aiosqlite.Connection, entry_id: str, seed: SeedEntry) -> None:
+    existing = await EntryCRUD.get_by_id(conn, entry_id)
+    if existing is not None and existing.latitude is not None and existing.longitude is not None:
+        return
+
+    located = await geocode_entry(seed.city, seed.state, None, allow_remote=False)
+    if located is None:
+        return
+
+    await EntryCRUD.update(
+        conn,
+        entry_id,
+        latitude=located.latitude,
+        longitude=located.longitude,
+        geocode_precision=located.precision,
+        geocode_source=located.source,
+    )
+
+
 async def _ensure_entry(
     conn: aiosqlite.Connection, seed: SeedEntry, affiliated_org_id: str | None
 ) -> str:
@@ -469,6 +489,7 @@ async def _ensure_entry(
     )
     await conn.commit()
     await EntryCRUD.set_vanity_slug(conn, existing_id, seed.slug)
+    await _place_seed_entry(conn, existing_id, seed)
     return existing_id
 
 

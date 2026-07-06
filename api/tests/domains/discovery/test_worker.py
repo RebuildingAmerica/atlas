@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import tempfile
+from typing import TYPE_CHECKING
 
 import pytest
 import pytest_asyncio
@@ -11,6 +12,13 @@ import pytest_asyncio
 from atlas.domains.discovery.models import DiscoveryJobCRUD
 from atlas.domains.discovery.worker import start_job_worker, stop_job_worker
 from atlas.models import DiscoveryRunCRUD, get_db_connection, init_db
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+_POLL_TEST_INTERVAL_SECONDS = 0.05
+_WORKER_RECOVERY_TIMEOUT_SECONDS = 2.0
+_EXPECTED_RECOVERY_DB_CONNECTION_ATTEMPTS = 2
 
 
 @pytest_asyncio.fixture
@@ -20,6 +28,19 @@ async def db_url() -> str:
         url = f"sqlite:///{f.name}"
     await init_db(url)
     return url
+
+
+async def _wait_until(predicate: Callable[[], bool], *, timeout_seconds: float) -> None:
+    """Wait until a side-effect predicate becomes true."""
+    loop = asyncio.get_running_loop()
+    deadline = loop.time() + timeout_seconds
+    while loop.time() < deadline:
+        if predicate():
+            return
+        await asyncio.sleep(_POLL_TEST_INTERVAL_SECONDS)
+    if predicate():
+        return
+    pytest.fail("Timed out waiting for worker side effect.")
 
 
 class TestWorkerLifecycle:
@@ -287,10 +308,13 @@ class TestWorkerExecution:
 
         monkeypatch.setattr(worker_module, "get_db_connection", flaky)
         # Speed up the poll to keep the test short.
-        monkeypatch.setattr(worker_module, "_POLL_INTERVAL_SECONDS", 0.05)
+        monkeypatch.setattr(worker_module, "_POLL_INTERVAL_SECONDS", _POLL_TEST_INTERVAL_SECONDS)
 
         await start_job_worker(db_url, anthropic_api_key="test")
-        await asyncio.sleep(0.3)
+        await _wait_until(
+            lambda: calls["n"] >= _EXPECTED_RECOVERY_DB_CONNECTION_ATTEMPTS,
+            timeout_seconds=_WORKER_RECOVERY_TIMEOUT_SECONDS,
+        )
         await stop_job_worker()
 
-        assert calls["n"] >= 2, "Recovered and continued polling."  # noqa: PLR2004
+        assert calls["n"] >= _EXPECTED_RECOVERY_DB_CONNECTION_ATTEMPTS

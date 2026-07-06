@@ -314,8 +314,8 @@ class TestOrgUsageApi:
             "request_metadata_included": False,
             "session_replay_included": False,
             "statement": (
-                "Integration monitoring shows counts, surfaces, routes, and last-seen times "
-                "without request metadata or behavioral session replay."
+                "Workspace integration activity records counts, surfaces, paths, and "
+                "last-seen times without request metadata or behavioral session replay."
             ),
         }
 
@@ -326,7 +326,7 @@ class TestOrgUsageApi:
         test_db: object,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Integration monitoring should not load every raw API call into the route."""
+        """Workspace integration activity should not load every raw API call into the route."""
         for index in range(EXPECTED_ROLLUP_EVENTS):
             await OrgUsageEventCRUD.record(
                 test_db,
@@ -341,7 +341,7 @@ class TestOrgUsageApi:
             )
 
         async def fail_raw_event_listing(*_: object, **__: object) -> list[object]:
-            pytest.fail("Integration monitoring must use bounded rollups.")
+            pytest.fail("Workspace integration activity must use bounded rollups.")
 
         monkeypatch.setattr(OrgUsageEventCRUD, "list_api_calls_by_org", fail_raw_event_listing)
 
@@ -356,7 +356,7 @@ class TestOrgUsageApi:
 
     @pytest.mark.asyncio
     async def test_integration_summary_rejects_other_org_path(self, usage_client: object) -> None:
-        """Integration monitoring should stay inside the actor's workspace."""
+        """Workspace integration activity should stay inside the actor's workspace."""
         response = await usage_client.get("/api/orgs/other-org/usage-summary/integrations")
 
         assert response.status_code == STATUS_FORBIDDEN

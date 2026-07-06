@@ -29,10 +29,9 @@ describe("DeviceApprovalPage", () => {
   it("prepopulates the complete-uri code without verifying it automatically", () => {
     render(<DeviceApprovalPage userCode="ABCDEFGH" />);
 
-    expect(screen.getByRole("textbox", { name: "Code shown in Scout" })).toHaveValue("ABCD-EFGH");
-    expect(screen.getByRole("button", { name: "Approve Scout login" })).toBeInTheDocument();
-    expect(screen.queryByText("Atlas Scout")).not.toBeInTheDocument();
-    expect(screen.queryByText("Device code")).not.toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "Device code" })).toHaveValue("ABCD-EFGH");
+    expect(screen.getByRole("button", { name: "Approve device" })).toBeInTheDocument();
+    expect(screen.queryByText(/Scout/)).not.toBeInTheDocument();
     expect(global.fetch).not.toHaveBeenCalled();
   });
 
@@ -49,7 +48,7 @@ describe("DeviceApprovalPage", () => {
 
     render(<DeviceApprovalPage redirect={redirect} userCode="ABCDEFGH" />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Approve Scout login" }));
+    fireEvent.click(screen.getByRole("button", { name: "Approve device" }));
 
     await waitFor(() => {
       expect(redirect).toHaveBeenCalledWith(deviceAuthPath("approved"));
@@ -83,7 +82,7 @@ describe("DeviceApprovalPage", () => {
 
     render(<DeviceApprovalPage redirect={redirect} userCode="ABCDEFGH" />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Approve Scout login" }));
+    fireEvent.click(screen.getByRole("button", { name: "Approve device" }));
 
     await waitFor(() => {
       expect(redirect).toHaveBeenCalledWith(deviceAuthPath("approved"));
@@ -97,7 +96,7 @@ describe("DeviceApprovalPage", () => {
 
     render(<DeviceApprovalPage redirect={redirect} userCode="ABCDEFGH" />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Approve Scout login" }));
+    fireEvent.click(screen.getByRole("button", { name: "Approve device" }));
 
     await waitFor(() => {
       expect(redirect).toHaveBeenCalledWith(deviceResultPath("failed"));
@@ -117,7 +116,7 @@ describe("DeviceApprovalPage", () => {
 
     render(<DeviceApprovalPage redirect={redirect} userCode="ABCDEFGH" />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Deny Scout login" }));
+    fireEvent.click(screen.getByRole("button", { name: "Deny device" }));
 
     await waitFor(() => {
       expect(redirect).toHaveBeenCalledWith(deviceResultPath("denied"));
@@ -143,36 +142,34 @@ describe("DeviceApprovalPage", () => {
   it("renders the redirected failure state", () => {
     render(<DeviceApprovalPage status="failed" />);
 
-    expect(screen.getByRole("heading", { name: "Scout login failed" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Device approval failed" })).toBeInTheDocument();
     expect(screen.getByText("Device could not be approved.")).toBeInTheDocument();
   });
 
   it("renders a finished browser completion state", () => {
     render(<DeviceApprovalCompletePage />);
 
-    expect(screen.getByRole("heading", { name: "Scout login approved" })).toBeInTheDocument();
-    expect(
-      screen.getByText("You're done in the browser. Return to Scout to continue."),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Device approved" })).toBeInTheDocument();
+    expect(screen.getByText("You're done in the browser.")).toBeInTheDocument();
     expect(screen.getByText("You can close this tab.")).toBeInTheDocument();
   });
 
   it("shows a plain error when the URL has no code", () => {
     render(<DeviceApprovalPage />);
 
-    expect(screen.getByRole("textbox", { name: "Code shown in Scout" })).toHaveValue("");
-    expect(screen.getByRole("button", { name: "Approve Scout login" })).toBeDisabled();
+    expect(screen.getByRole("textbox", { name: "Device code" })).toHaveValue("");
+    expect(screen.getByRole("button", { name: "Approve device" })).toBeDisabled();
     expect(global.fetch).not.toHaveBeenCalled();
   });
 
   it("normalizes typed device codes for easier comparison", () => {
     render(<DeviceApprovalPage />);
 
-    fireEvent.change(screen.getByRole("textbox", { name: "Code shown in Scout" }), {
+    fireEvent.change(screen.getByRole("textbox", { name: "Device code" }), {
       target: { value: "abcd efgh" },
     });
 
-    expect(screen.getByRole("textbox", { name: "Code shown in Scout" })).toHaveValue("ABCD-EFGH");
+    expect(screen.getByRole("textbox", { name: "Device code" })).toHaveValue("ABCD-EFGH");
   });
 
   it("normalizes punctuation and lowercase codes through the shared helper", () => {

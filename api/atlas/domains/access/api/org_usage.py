@@ -103,22 +103,30 @@ class OrgIntegrationResourceCount(BaseModel):
 
 
 class OrgIntegrationMonitoringDataBoundary(BaseModel):
-    """Boundary statement for integration monitoring."""
+    """Boundary statement for workspace integration activity."""
 
-    request_metadata_included: bool
-    session_replay_included: bool
-    statement: str
+    request_metadata_included: bool = Field(
+        description="Whether request metadata is included in the workspace integration view."
+    )
+    session_replay_included: bool = Field(
+        description="Whether behavioral session replay is included in the workspace integration view."
+    )
+    statement: str = Field(
+        description="Plain-language boundary for the workspace integration activity summary."
+    )
 
 
 class OrgIntegrationMonitoringResponse(BaseModel):
-    """Customer-safe API/MCP integration usage summary for one workspace."""
+    """Customer-safe workspace integration activity summary for one workspace."""
 
-    org_id: str
-    total_calls: int
-    api_calls: int
-    mcp_calls: int
-    last_seen_at: str | None
-    top_resources: list[OrgIntegrationResourceCount]
+    org_id: str = Field(description="Workspace id for the integration activity summary.")
+    total_calls: int = Field(description="Total API and MCP calls counted for this workspace.")
+    api_calls: int = Field(description="REST API calls counted for this workspace.")
+    mcp_calls: int = Field(description="MCP calls counted for this workspace.")
+    last_seen_at: str | None = Field(description="Most recent integration activity timestamp.")
+    top_resources: list[OrgIntegrationResourceCount] = Field(
+        description="Most-used API paths and MCP resources for this workspace."
+    )
     data_boundary: OrgIntegrationMonitoringDataBoundary
 
 
@@ -304,13 +312,13 @@ def _usage_audit_log_boundary() -> OrgUsageAuditLogDataBoundary:
 
 
 def _integration_monitoring_boundary() -> OrgIntegrationMonitoringDataBoundary:
-    """Return the privacy boundary for integration monitoring."""
+    """Return the privacy boundary for workspace integration activity."""
     return OrgIntegrationMonitoringDataBoundary(
         request_metadata_included=False,
         session_replay_included=False,
         statement=(
-            "Integration monitoring shows counts, surfaces, routes, and last-seen times "
-            "without request metadata or behavioral session replay."
+            "Workspace integration activity records counts, surfaces, paths, and "
+            "last-seen times without request metadata or behavioral session replay."
         ),
     )
 
@@ -321,7 +329,7 @@ def _integration_monitoring_response(
     surface_counts: OrgIntegrationSurfaceCounts,
     top_resources: list[OrgIntegrationResourceUsage],
 ) -> OrgIntegrationMonitoringResponse:
-    """Build the customer-safe API/MCP integration summary."""
+    """Build the customer-safe workspace integration activity summary."""
     return OrgIntegrationMonitoringResponse(
         org_id=org_id,
         total_calls=surface_counts.total_calls,
@@ -454,7 +462,7 @@ async def get_org_usage_audit_log(
 @router.get(
     "/integrations",
     response_model=OrgIntegrationMonitoringResponse,
-    summary="Get workspace integration monitoring",
+    summary="Get workspace integration activity",
     operation_id="getOrgIntegrationMonitoring",
     tags=["org-usage"],
 )
@@ -462,7 +470,7 @@ async def get_org_integration_monitoring(
     org_id: str,
     context: UsageSummaryContext = Depends(get_usage_summary_context),
 ) -> OrgIntegrationMonitoringResponse:
-    """Return customer-safe API/MCP integration monitoring for one workspace."""
+    """Return customer-safe workspace integration activity for one workspace."""
     _verify_org_access(context.actor, org_id)
     surface_counts = await OrgUsageEventCRUD.count_integration_calls_by_surface(
         context.db, org_id=org_id

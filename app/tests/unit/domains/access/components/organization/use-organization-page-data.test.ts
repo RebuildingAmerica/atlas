@@ -389,7 +389,7 @@ describe("useOrganizationPageData", () => {
     expect(result.current.usageAuditLogLoading).toBe(false);
   });
 
-  it("loads integration monitoring for workspace managers", () => {
+  it("loads workspace integration activity for workspace managers", () => {
     const integrationMonitoringQueryFn = vi.fn();
     mocks.useAtlasSession.mockReturnValue({
       data: {

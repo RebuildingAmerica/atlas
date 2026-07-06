@@ -475,7 +475,9 @@ async def test_search_public_filters_and_facets_source_patterns(test_db: object)
 @pytest.mark.asyncio
 async def test_load_entries_with_metrics_returns_empty_for_empty_ids(test_db: object) -> None:
     """_load_entries_with_metrics should short-circuit on empty input (line 1001)."""
-    rows = await EntryCRUD._load_entries_with_metrics(test_db, [], limit=10, offset=0)  # noqa: SLF001
+    rows = await EntryCRUD._load_entries_with_metrics(  # noqa: SLF001
+        test_db, [], limit=10, offset=0, sort="relevance"
+    )
     assert rows == []
 
 
@@ -485,7 +487,7 @@ async def test_load_entries_with_metrics_returns_empty_when_offset_overshoots(
 ) -> None:
     """_load_entries_with_metrics should return [] when no rows match the page (line 1022)."""
     rows = await EntryCRUD._load_entries_with_metrics(  # noqa: SLF001
-        test_db, [sample_entry], limit=1, offset=100
+        test_db, [sample_entry], limit=1, offset=100, sort="relevance"
     )
     assert rows == []
 

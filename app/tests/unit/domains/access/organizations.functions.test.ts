@@ -827,8 +827,7 @@ describe("organizations.functions", () => {
       body: { data: { metadata: { workspaceType: string; stripeCustomerId: string | null } } };
     }
     const call = authApi.updateOrganization.mock.calls[0]?.[0] as
-      | UpdateOrganizationCall
-      | undefined;
+      UpdateOrganizationCall | undefined;
     expect(call?.body.data.metadata.workspaceType).toBe("team");
     expect(call?.body.data.metadata.stripeCustomerId).toBe("cus_x");
   });
@@ -877,8 +876,7 @@ describe("organizations.functions", () => {
       body: { data: { metadata: { workspaceType: string } } };
     }
     const call = authApi.updateOrganization.mock.calls[0]?.[0] as
-      | UpdateOrganizationCall
-      | undefined;
+      UpdateOrganizationCall | undefined;
     expect(call?.body.data.metadata.workspaceType).toBe("team");
   });
 

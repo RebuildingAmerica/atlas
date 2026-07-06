@@ -48,7 +48,7 @@ describe("WorkspaceUsageSummarySection", () => {
             request_metadata_included: false,
             session_replay_included: false,
             statement:
-              "Integration monitoring shows counts, surfaces, routes, and last-seen times without request metadata or behavioral session replay.",
+              "Workspace integration activity records counts, surfaces, paths, and last-seen times without request metadata or behavioral session replay.",
           },
           last_seen_at: "2026-07-03T12:00:00.000Z",
           mcp_calls: 1,
@@ -104,13 +104,16 @@ describe("WorkspaceUsageSummarySection", () => {
     expect(screen.getByText("GET /api/profiles/{slug}")).toBeInTheDocument();
     expect(screen.getAllByText("Brief opened")).toHaveLength(2);
     expect(screen.getByText("Private metadata excluded")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Integration monitoring" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Workspace integration activity" }),
+    ).toBeInTheDocument();
     expect(screen.getAllByText("REST API").length).toBeGreaterThan(0);
     expect(screen.getAllByText("MCP").length).toBeGreaterThan(0);
     expect(screen.getByText("Last seen Jul 3, 2026")).toBeInTheDocument();
+    expect(screen.getByText("Most used paths")).toBeInTheDocument();
     expect(screen.getByText("/api/public-directories")).toBeInTheDocument();
     expect(screen.getByText("/mcp")).toBeInTheDocument();
-    expect(screen.getByText("Request metadata excluded")).toBeInTheDocument();
+    expect(screen.getByText("No request metadata or session replay")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Download packet" })).toHaveAttribute(
       "href",
       "/api/orgs/org_123/usage-summary/renewal-packet?format=markdown",
@@ -137,6 +140,45 @@ describe("WorkspaceUsageSummarySection", () => {
     );
 
     expect(screen.getByText("No renewal events yet.")).toBeInTheDocument();
+  });
+
+  it("shows a plain empty state when no API or MCP activity exists", () => {
+    render(
+      <WorkspaceUsageSummarySection
+        integrationMonitoring={{
+          api_calls: 0,
+          data_boundary: {
+            request_metadata_included: false,
+            session_replay_included: false,
+            statement:
+              "Workspace integration activity records counts, surfaces, paths, and last-seen times without request metadata or behavioral session replay.",
+          },
+          last_seen_at: null,
+          mcp_calls: 0,
+          org_id: "org_123",
+          top_resources: [],
+          total_calls: 0,
+        }}
+        renewalPacketUrl="/api/orgs/org_123/usage-summary/renewal-packet?format=markdown"
+        usageSummary={{
+          event_counts: {},
+          org_id: "org_123",
+          renewal_signals: {
+            briefs_used: 0,
+            coverage_gaps_closed: 0,
+            integrations_used: 0,
+            public_records_improved: 0,
+            team_workflow_actions: 0,
+          },
+          total_events: 0,
+        }}
+      />,
+    );
+
+    expect(
+      screen.getByRole("heading", { name: "Workspace integration activity" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("No workspace integration activity yet.")).toBeInTheDocument();
   });
 
   it("keeps renewal proof visible when event counts are omitted", () => {

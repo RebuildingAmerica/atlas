@@ -151,8 +151,7 @@ describe("sso.functions", () => {
       headers: Headers;
     }
     const updateCallArgs = authApi.updateOrganization.mock.calls[0]?.[0] as
-      | UpdateOrgCall
-      | undefined;
+      UpdateOrgCall | undefined;
     expect(updateCallArgs?.body.organizationId).toBe("org_team");
     expect(updateCallArgs?.body.data.metadata.ssoPrimaryProviderId).toBe(
       "atlas-team-google-workspace-oidc",

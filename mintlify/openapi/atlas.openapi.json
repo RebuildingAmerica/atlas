@@ -6803,20 +6803,20 @@
         "type": "object"
       },
       "OrgIntegrationMonitoringDataBoundary": {
-        "description": "Boundary statement for integration monitoring.",
+        "description": "Boundary statement for workspace integration activity.",
         "properties": {
           "request_metadata_included": {
-            "description": "request metadata included for this org integration monitoring data boundary.",
+            "description": "Whether request metadata is included in the workspace integration view.",
             "title": "Request Metadata Included",
             "type": "boolean"
           },
           "session_replay_included": {
-            "description": "session replay included for this org integration monitoring data boundary.",
+            "description": "Whether behavioral session replay is included in the workspace integration view.",
             "title": "Session Replay Included",
             "type": "boolean"
           },
           "statement": {
-            "description": "statement for this org integration monitoring data boundary.",
+            "description": "Plain-language boundary for the workspace integration activity summary.",
             "title": "Statement",
             "type": "string"
           }
@@ -6830,16 +6830,16 @@
         "type": "object"
       },
       "OrgIntegrationMonitoringResponse": {
-        "description": "Customer-safe API/MCP integration usage summary for one workspace.",
+        "description": "Customer-safe workspace integration activity summary for one workspace.",
         "properties": {
           "api_calls": {
-            "description": "api calls for this org integration monitoring.",
+            "description": "REST API calls counted for this workspace.",
             "title": "Api Calls",
             "type": "integer"
           },
           "data_boundary": {
             "$ref": "#/components/schemas/OrgIntegrationMonitoringDataBoundary",
-            "description": "Limits on integration monitoring data."
+            "description": "Limits on workspace integration activity data."
           },
           "last_seen_at": {
             "anyOf": [
@@ -6850,21 +6850,21 @@
                 "type": "null"
               }
             ],
-            "description": "last seen at for this org integration monitoring.",
+            "description": "Most recent integration activity timestamp.",
             "title": "Last Seen At"
           },
           "mcp_calls": {
-            "description": "mcp calls for this org integration monitoring.",
+            "description": "MCP calls counted for this workspace.",
             "title": "Mcp Calls",
             "type": "integer"
           },
           "org_id": {
-            "description": "org id for this org integration monitoring.",
+            "description": "Workspace id for the integration activity summary.",
             "title": "Org Id",
             "type": "string"
           },
           "top_resources": {
-            "description": "top resources for this org integration monitoring.",
+            "description": "Most-used API paths and MCP resources for this workspace.",
             "items": {
               "$ref": "#/components/schemas/OrgIntegrationResourceCount"
             },
@@ -6872,7 +6872,7 @@
             "type": "array"
           },
           "total_calls": {
-            "description": "total calls for this org integration monitoring.",
+            "description": "Total API and MCP calls counted for this workspace.",
             "title": "Total Calls",
             "type": "integer"
           }
@@ -10837,7 +10837,7 @@
   },
   "externalDocs": {
     "description": "Atlas API concepts, tutorials, authentication, and trust guidance",
-    "url": "https://atlas.rebuildingus.org/docs/api-reference/overview"
+    "url": "https://atlas.rebuildingus.org/docs/api/overview"
   },
   "info": {
     "contact": {
@@ -20560,7 +20560,7 @@
     },
     "/api/orgs/{org_id}/usage-summary": {
       "get": {
-        "description": "Return non-invasive renewal usage counts for one workspace.\n\nUse this usage operation for customer-safe renewal proof and integration monitoring. Usage counts explain how a workspace used Atlas without exposing sensitive notes.",
+        "description": "Return non-invasive renewal usage counts for one workspace.\n\nUse this usage operation for customer-safe renewal proof and integration activity. Usage counts explain how a workspace used Atlas without exposing sensitive notes.",
         "operationId": "getOrgUsageSummary",
         "parameters": [
           {
@@ -20683,7 +20683,7 @@
     },
     "/api/orgs/{org_id}/usage-summary/audit-log": {
       "get": {
-        "description": "Return a customer-safe usage audit log for one workspace.\n\nUse this usage operation for customer-safe renewal proof and integration monitoring. Usage counts explain how a workspace used Atlas without exposing sensitive notes.",
+        "description": "Return a customer-safe usage audit log for one workspace.\n\nUse this usage operation for customer-safe renewal proof and integration activity. Usage counts explain how a workspace used Atlas without exposing sensitive notes.",
         "operationId": "getOrgUsageAuditLog",
         "parameters": [
           {
@@ -20829,7 +20829,7 @@
     },
     "/api/orgs/{org_id}/usage-summary/evidence-opens": {
       "post": {
-        "description": "Record a deliberate workspace source-receipt open for renewal proof.\n\nUse this usage operation for customer-safe renewal proof and integration monitoring. Usage counts explain how a workspace used Atlas without exposing sensitive notes.",
+        "description": "Record a deliberate workspace source-receipt open for renewal proof.\n\nUse this usage operation for customer-safe renewal proof and integration activity. Usage counts explain how a workspace used Atlas without exposing sensitive notes.",
         "operationId": "recordOrgEvidenceOpen",
         "parameters": [
           {
@@ -20962,7 +20962,7 @@
     },
     "/api/orgs/{org_id}/usage-summary/integrations": {
       "get": {
-        "description": "Return customer-safe API/MCP integration monitoring for one workspace.\n\nUse this usage operation for customer-safe renewal proof and integration monitoring. Usage counts explain how a workspace used Atlas without exposing sensitive notes.",
+        "description": "Return customer-safe workspace integration activity for one workspace.\n\nUse this usage operation for customer-safe renewal proof and integration activity. Usage counts explain how a workspace used Atlas without exposing sensitive notes.",
         "operationId": "getOrgIntegrationMonitoring",
         "parameters": [
           {
@@ -21077,7 +21077,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Get workspace integration monitoring",
+        "summary": "Get workspace integration activity",
         "tags": [
           "org-usage"
         ]
@@ -21085,7 +21085,7 @@
     },
     "/api/orgs/{org_id}/usage-summary/renewal-packet": {
       "get": {
-        "description": "Export customer-success renewal proof for one workspace.\n\nUse this usage operation for customer-safe renewal proof and integration monitoring. Usage counts explain how a workspace used Atlas without exposing sensitive notes.",
+        "description": "Export customer-success renewal proof for one workspace.\n\nUse this usage operation for customer-safe renewal proof and integration activity. Usage counts explain how a workspace used Atlas without exposing sensitive notes.",
         "operationId": "exportOrgUsageRenewalPacket",
         "parameters": [
           {

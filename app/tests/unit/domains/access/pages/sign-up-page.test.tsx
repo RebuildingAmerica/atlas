@@ -59,7 +59,7 @@ describe("SignUpPage", () => {
     expect(screen.getByRole("button", { name: /Continue with team setup/i })).toBeInTheDocument();
   });
 
-  it("redirects to /sign-in with existing=true when the email is already an Atlas account", async () => {
+  it("redirects existing-account emails to sign-in without URL account-state claims", async () => {
     mocks.checkAccountExists.mockResolvedValue({ exists: true });
     render(<SignUpPage />);
 
@@ -75,11 +75,10 @@ describe("SignUpPage", () => {
     });
 
     const navArgs = mocks.navigate.mock.calls[0]?.[0] as
-      | { to: string; search: { existing: boolean; email: string } }
-      | undefined;
+      { to: string; search: { email: string } } | undefined;
     expect(navArgs?.to).toBe("/sign-in");
-    expect(navArgs?.search.existing).toBe(true);
     expect(navArgs?.search.email).toBe("operator@atlas.test");
+    expect(navArgs?.search).not.toHaveProperty("existing");
     expect(mocks.requestMagicLink).not.toHaveBeenCalled();
   });
 
@@ -335,9 +334,9 @@ describe("SignUpPage", () => {
     });
 
     const navArgs = mocks.navigate.mock.calls[0]?.[0] as
-      | { to: string; search: { existing: boolean; email: string; redirect?: string } }
-      | undefined;
+      { to: string; search: { email: string; redirect?: string } } | undefined;
     expect(navArgs?.search.redirect).toBe("/workspace/billing");
+    expect(navArgs?.search).not.toHaveProperty("existing");
   });
 
   it("maps a recognised auth-error code to its localised submit label", async () => {

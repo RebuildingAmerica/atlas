@@ -16,7 +16,7 @@ vi.mock("@/domains/access/server/device-auth-alias", () => ({
 }));
 
 describe("device auth alias routes", () => {
-  it("serves the canonical Scout device code endpoint", async () => {
+  it("serves the canonical OAuth device code endpoint", async () => {
     const routeModule = await import("@/routes/device/code");
     const { asRouteStub } = await import("@/../tests/helpers/router-harness");
     const Route = asRouteStub(routeModule.Route);
@@ -30,7 +30,7 @@ describe("device auth alias routes", () => {
     expect(await response.text()).toBe("code:POST");
   });
 
-  it("serves the canonical Scout device token endpoint", async () => {
+  it("serves the canonical OAuth device token endpoint", async () => {
     const routeModule = await import("@/routes/device/token");
     const { asRouteStub } = await import("@/../tests/helpers/router-harness");
     const Route = asRouteStub(routeModule.Route);

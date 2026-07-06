@@ -4,8 +4,13 @@ const mocks = vi.hoisted(() => ({
   apiKey: vi.fn(() => ({ kind: "api-key" })),
   bearer: vi.fn(() => ({ kind: "bearer" })),
   betterAuth: vi.fn(),
+  registeredClientIds: new Set<string>(),
   Database: class MockDatabase {
     pragma = vi.fn();
+    prepare = vi.fn(() => ({
+      get: (clientId: string) =>
+        mocks.registeredClientIds.has(clientId) ? { disabled: 0 } : undefined,
+    }));
   },
   deviceAuthorization: vi.fn((options: Record<string, unknown>) => ({
     kind: "device-authorization",
@@ -58,7 +63,7 @@ vi.mock("@/domains/access/server/workspace-lookup", () => ({
   resolvePrimaryWorkspaceId: mocks.resolvePrimaryWorkspaceId,
 }));
 
-describe("Scout CLI auth runtime wiring", () => {
+describe("OAuth device auth runtime wiring", () => {
   beforeEach(() => {
     vi.resetModules();
     mocks.apiKey.mockClear();
@@ -66,6 +71,7 @@ describe("Scout CLI auth runtime wiring", () => {
     mocks.betterAuth.mockReset();
     mocks.deviceAuthorization.mockClear();
     mocks.getAuthRuntimeConfig.mockReset();
+    mocks.registeredClientIds.clear();
     mocks.jwt.mockClear();
     mocks.mkdirSync.mockReset();
     mocks.resolvePrimaryWorkspaceId.mockReset();
@@ -93,7 +99,7 @@ describe("Scout CLI auth runtime wiring", () => {
     }));
   });
 
-  it("registers the browser-approved Scout device login flow", async () => {
+  it("registers a browser-approved device flow for registered OAuth clients", async () => {
     const mod = await import("@/domains/access/server/auth");
     await mod.getAuth();
 
@@ -110,8 +116,10 @@ describe("Scout CLI auth runtime wiring", () => {
     expect(options?.interval).toBe("5s");
     expect(options?.verificationUri).toBe("/device");
     expect(typeof options?.validateClient).toBe("function");
-    expect(await options?.validateClient?.("atlas-scout-cli")).toBe(true);
-    expect(await options?.validateClient?.("unknown-client")).toBe(false);
+
+    mocks.registeredClientIds.add("example-oauth-client");
+    await expect(options?.validateClient?.("example-oauth-client")).resolves.toBe(true);
+    await expect(options?.validateClient?.("unknown-client")).resolves.toBe(false);
   });
 
   it("mints API JWTs with Atlas discovery write permissions", async () => {

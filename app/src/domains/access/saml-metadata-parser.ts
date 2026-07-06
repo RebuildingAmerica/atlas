@@ -13,8 +13,7 @@ export interface ParsedSamlIdpMetadata {
  * Outcome of trying to parse pasted SAML metadata XML.
  */
 export type SamlMetadataParseResult =
-  | { ok: true; metadata: ParsedSamlIdpMetadata }
-  | { ok: false; error: string };
+  { ok: true; metadata: ParsedSamlIdpMetadata } | { ok: false; error: string };
 
 const HTTP_REDIRECT_BINDING = "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect";
 const HTTP_POST_BINDING = "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST";

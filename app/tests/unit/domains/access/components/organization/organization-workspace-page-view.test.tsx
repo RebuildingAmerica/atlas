@@ -646,7 +646,7 @@ describe("OrganizationWorkspacePageView", () => {
           request_metadata_included: false,
           session_replay_included: false,
           statement:
-            "Integration monitoring shows counts, surfaces, routes, and last-seen times without request metadata or behavioral session replay.",
+            "Workspace integration activity records counts, surfaces, paths, and last-seen times without request metadata or behavioral session replay.",
         },
         last_seen_at: "2026-07-03T12:00:00.000Z",
         mcp_calls: 1,
@@ -669,7 +669,7 @@ describe("OrganizationWorkspacePageView", () => {
     expect(screen.getByText("Public records improved")).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 3, name: "Access log" })).toBeInTheDocument();
     expect(
-      screen.getByRole("heading", { level: 3, name: "Integration monitoring" }),
+      screen.getByRole("heading", { level: 3, name: "Workspace integration activity" }),
     ).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Download packet" })).toHaveAttribute(
       "href",

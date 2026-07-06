@@ -74,19 +74,11 @@ export const DEFAULT_CIMD_RESOLVER_OPTIONS: ClientIdMetadataResolverOptions = {
  */
 export class ClientIdMetadataError extends Error {
   readonly code:
-    | "invalid_url"
-    | "untrusted_host"
-    | "fetch_failed"
-    | "invalid_document"
-    | "client_id_mismatch";
+    "invalid_url" | "untrusted_host" | "fetch_failed" | "invalid_document" | "client_id_mismatch";
 
   constructor(
     code:
-      | "invalid_url"
-      | "untrusted_host"
-      | "fetch_failed"
-      | "invalid_document"
-      | "client_id_mismatch",
+      "invalid_url" | "untrusted_host" | "fetch_failed" | "invalid_document" | "client_id_mismatch",
     message: string,
   ) {
     super(message);

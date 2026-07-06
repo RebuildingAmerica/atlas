@@ -20,7 +20,11 @@ const mocks = vi.hoisted(() => ({
   Database: class MockDatabase {
     exec = vi.fn();
     pragma = vi.fn();
-    prepare = vi.fn().mockReturnValue({ all: vi.fn().mockReturnValue([]), run: vi.fn() });
+    prepare = vi.fn().mockReturnValue({
+      all: vi.fn().mockReturnValue([]),
+      get: vi.fn().mockReturnValue(undefined),
+      run: vi.fn(),
+    });
     transaction = vi.fn((fn: () => void) => fn);
 
     constructor(_path: string) {
@@ -226,6 +230,7 @@ describe("auth runtime wiring", () => {
     if (!typedMagicLinkOptions) {
       throw new TypeError("Expected the Better Auth magic-link plugin to be configured.");
     }
+    expect(typedMagicLinkOptions).not.toHaveProperty("allowedAttempts");
     await typedMagicLinkOptions.sendMagicLink({
       email: "operator@atlas.test",
       url: "https://atlas.test/sign-in",

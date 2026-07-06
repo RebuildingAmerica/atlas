@@ -92,7 +92,7 @@ export async function loadWorkspaceUsageAuditLogData(
 }
 
 /**
- * Loads customer-safe API/MCP integration monitoring for the signed-in workspace.
+ * Loads customer-safe workspace integration activity for the signed-in workspace.
  *
  * @returns API and MCP usage counts without request metadata or session replay.
  */

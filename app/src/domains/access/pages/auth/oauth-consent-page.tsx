@@ -191,11 +191,7 @@ export function OAuthConsentPage({
           </p>
         ) : (
           <>
-            <OAuthClientSummary
-              clientId={clientId}
-              clientInfo={clientInfo}
-              redirectHostname={redirectHostname}
-            />
+            <OAuthClientSummary clientInfo={clientInfo} redirectHostname={redirectHostname} />
 
             {!workspaceScopePinned ? (
               <OAuthWorkspacePicker

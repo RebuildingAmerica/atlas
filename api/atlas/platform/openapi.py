@@ -232,7 +232,7 @@ OPENAPI_SERVERS = [
 ]
 OPENAPI_EXTERNAL_DOCS = {
     "description": "Atlas API concepts, tutorials, authentication, and trust guidance",
-    "url": "https://atlas.rebuildingus.org/docs/api-reference/overview",
+    "url": "https://atlas.rebuildingus.org/docs/api/overview",
 }
 OPENAPI_TAG_GROUPS = [
     {
@@ -354,7 +354,7 @@ OPENAPI_TAG_OPERATION_GUIDANCE = {
         "than replacing it."
     ),
     "org-usage": (
-        "Use this usage operation for customer-safe renewal proof and integration monitoring. "
+        "Use this usage operation for customer-safe renewal proof and integration activity. "
         "Usage counts explain how a workspace used Atlas without exposing sensitive notes."
     ),
     "org-watch-digest": (
@@ -473,7 +473,10 @@ SCHEMA_PROPERTY_DESCRIPTIONS: dict[SchemaPropertyKey, str] = {
     ("OrgBriefResponse", "confidence_summary"): "Confidence notes saved with the brief.",
     ("OrgBriefResponse", "scope"): "Research scope saved with the brief.",
     ("OrgBriefUpdateRequest", "confidence_summary"): "Updated confidence notes for the brief.",
-    ("OrgIntegrationMonitoringResponse", "data_boundary"): "Limits on integration monitoring data.",
+    (
+        "OrgIntegrationMonitoringResponse",
+        "data_boundary",
+    ): "Limits on workspace integration activity data.",
     ("OrgQualitySummaryResponse", "data_boundary"): "Limits on the workspace quality summary.",
     ("OrgQualitySummaryResponse", "duplicate_risk"): "Duplicate-risk signals for workspace data.",
     ("OrgQualitySummaryResponse", "source_coverage"): "Source coverage signals for workspace data.",

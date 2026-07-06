@@ -1,5 +1,3 @@
-import { isUrlShapedClientId } from "../oauth-consent-helpers";
-
 export interface OAuthClientInfo {
   name: string;
   icon?: string;
@@ -7,24 +5,17 @@ export interface OAuthClientInfo {
 }
 
 interface OAuthClientSummaryProps {
-  clientId: string;
   clientInfo: OAuthClientInfo | null;
   redirectHostname: string | null;
 }
 
 /**
  * Header block for the OAuth consent card.  Renders the application
- * icon (or initial fallback), the client name + URI, the CIMD client
- * ID line when applicable, and the "X is requesting access" copy with
- * the eventual redirect host.
+ * icon, client name, and "X is requesting access" copy with the eventual
+ * redirect host.
  */
-export function OAuthClientSummary({
-  clientId,
-  clientInfo,
-  redirectHostname,
-}: OAuthClientSummaryProps) {
+export function OAuthClientSummary({ clientInfo, redirectHostname }: OAuthClientSummaryProps) {
   const clientName = clientInfo?.name ?? "Unknown app";
-  const isCimdClient = isUrlShapedClientId(clientId);
 
   return (
     <>
@@ -40,11 +31,6 @@ export function OAuthClientSummary({
           <p className="type-title-medium text-ink-strong">{clientName}</p>
           {clientInfo?.uri ? (
             <p className="type-body-small text-ink-muted">{clientInfo.uri}</p>
-          ) : null}
-          {isCimdClient ? (
-            <p className="type-body-small text-ink-muted break-all">
-              Client ID document: {clientId}
-            </p>
           ) : null}
         </div>
       </div>

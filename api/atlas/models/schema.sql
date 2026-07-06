@@ -32,6 +32,9 @@ CREATE TABLE IF NOT EXISTS entries (
         to_tsvector('english', coalesce(name, '') || ' ' || coalesce(description, ''))
     ) STORED
 );
+ALTER TABLE entries ADD COLUMN IF NOT EXISTS search_vector tsvector GENERATED ALWAYS AS (
+    to_tsvector('english', coalesce(name, '') || ' ' || coalesce(description, ''))
+) STORED;
 
 -- Sources table (web sources, articles, etc.)
 CREATE TABLE IF NOT EXISTS sources (

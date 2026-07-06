@@ -62,8 +62,7 @@ export function buildInvitationSignInPath(invitationId: string): string {
  * or `null` when the cached session predates the invite.
  */
 export type InvitationDecision =
-  | { kind: "wrong_account" }
-  | { kind: "accept"; invitation: AtlasWorkspaceInvitation | null };
+  { kind: "wrong_account" } | { kind: "accept"; invitation: AtlasWorkspaceInvitation | null };
 
 /**
  * Decides how to handle an invitation for the signed-in operator before any

@@ -131,7 +131,10 @@ async function fetchEndSessionEndpoint(issuer: string): Promise<string | null> {
     return null;
   }
 
-  const discoveryUrl = `${safeIssuer.toString().replace(/\/+$/, "")}/.well-known/openid-configuration`;
+  const discoveryUrl = new URL(
+    ".well-known/openid-configuration",
+    `${safeIssuer.toString().replace(/\/+$/, "")}/`,
+  ).toString();
   try {
     const response = await fetch(discoveryUrl, {
       signal: AbortSignal.timeout(DISCOVERY_FETCH_TIMEOUT_MS),
@@ -182,6 +185,9 @@ export async function loadOidcRpLogoutRedirect(): Promise<string | null> {
   const runtime = getAuthRuntimeConfig();
   const url = new URL(endSessionEndpoint);
   url.searchParams.set("id_token_hint", account.idToken);
-  url.searchParams.set("post_logout_redirect_uri", `${runtime.publicBaseUrl}/post-logout`);
+  url.searchParams.set(
+    "post_logout_redirect_uri",
+    new URL("/post-logout", runtime.publicBaseUrl).toString(),
+  );
   return url.toString();
 }

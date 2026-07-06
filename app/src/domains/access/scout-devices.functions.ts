@@ -46,16 +46,17 @@ async function releaseScoutWorkerLeases(
     throw new Error("ATLAS_AUTH_INTERNAL_SECRET is required to revoke Scout worker leases.");
   }
 
-  const response = await fetch(
-    `${runtime.apiBaseUrl}/api/discovery-runs/jobs/workers/${encodeURIComponent(deviceId)}/release`,
-    {
-      headers: {
-        Accept: "application/json",
-        ...createInternalAuthHeaders(session.user, runtime.internalSecret),
-      },
-      method: "POST",
-    },
+  const releaseUrl = new URL(
+    `/api/discovery-runs/jobs/workers/${encodeURIComponent(deviceId)}/release`,
+    runtime.apiBaseUrl,
   );
+  const response = await fetch(releaseUrl, {
+    headers: {
+      Accept: "application/json",
+      ...createInternalAuthHeaders(session.user, runtime.internalSecret),
+    },
+    method: "POST",
+  });
   if (!response.ok) {
     throw new Error("Atlas could not release that Scout worker's active jobs.");
   }

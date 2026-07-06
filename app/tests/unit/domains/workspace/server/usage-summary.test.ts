@@ -145,14 +145,14 @@ describe("workspace usage summary server helper", () => {
     );
   });
 
-  it("loads the integration monitoring summary for the active workspace", async () => {
+  it("loads the workspace integration activity summary for the active workspace", async () => {
     const integrationMonitoring = {
       api_calls: 2,
       data_boundary: {
         request_metadata_included: false,
         session_replay_included: false,
         statement:
-          "Integration monitoring shows counts, surfaces, routes, and last-seen times without request metadata or behavioral session replay.",
+          "Workspace integration activity records counts, surfaces, paths, and last-seen times without request metadata or behavioral session replay.",
       },
       last_seen_at: "2026-07-03T12:00:00.000Z",
       mcp_calls: 1,

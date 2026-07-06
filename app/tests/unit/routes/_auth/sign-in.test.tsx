@@ -63,13 +63,12 @@ describe("routes/_auth/sign-in", () => {
     const view = render(<Component />);
     const props = JSON.parse(view.getByTestId("sign-in-page").dataset.props ?? "{}") as {
       errorCode?: string;
-      existingAccount?: boolean;
       initialEmail?: string;
       invitationId?: string;
       redirectTo?: string;
     };
     expect(props.errorCode).toBe("missing_provider");
-    expect(props.existingAccount).toBe(true);
+    expect(props).not.toHaveProperty("existingAccount");
     expect(props.initialEmail).toBe("ops@acme.test");
     expect(props.invitationId).toBe("inv_1");
     expect(props.redirectTo).toBe("/discovery");

@@ -190,7 +190,7 @@ const integrationMonitoringFixture: WorkspaceIntegrationMonitoring = {
     request_metadata_included: false,
     session_replay_included: false,
     statement:
-      "Integration monitoring shows counts, surfaces, routes, and last-seen times without request metadata or behavioral session replay.",
+      "Workspace integration activity records counts, surfaces, paths, and last-seen times without request metadata or behavioral session replay.",
   },
   last_seen_at: null,
   mcp_calls: 0,
