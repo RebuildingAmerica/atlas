@@ -1257,14 +1257,23 @@ class ScoutStore:
         Returns
         -------
         dict[str, Any]
-            Entry totals grouped by type, source provenance, run, and metro.
+            Entry totals grouped by type, source provenance, run, location, and metro.
         """
         assert self._conn is not None
         if run_id is None:
-            sql = "SELECT run_id, entry_type, description, data FROM entries"
+            sql = """
+                SELECT e.run_id, e.entry_type, e.description, e.data, r.location
+                FROM entries e
+                JOIN runs r ON r.id = e.run_id
+            """
             params: tuple[Any, ...] = ()
         else:
-            sql = "SELECT run_id, entry_type, description, data FROM entries WHERE run_id = ?"
+            sql = """
+                SELECT e.run_id, e.entry_type, e.description, e.data, r.location
+                FROM entries e
+                JOIN runs r ON r.id = e.run_id
+                WHERE e.run_id = ?
+            """
             params = (run_id,)
 
         async with self._conn.execute(sql, params) as cursor:
@@ -1273,6 +1282,7 @@ class ScoutStore:
         excluded_datasets = excluded_source_datasets or set()
         by_type: dict[str, int] = {}
         by_source_dataset: dict[str, int] = {}
+        by_location: dict[str, int] = {}
         by_metro: dict[str, int] = {}
         by_run: dict[str, int] = {}
         total_entries = 0
@@ -1298,6 +1308,9 @@ class ScoutStore:
 
             row_run_id = str(row["run_id"])
             by_run[row_run_id] = by_run.get(row_run_id, 0) + 1
+            row_location = str(row["location"] or "")
+            if row_location:
+                by_location[row_location] = by_location.get(row_location, 0) + 1
 
             source_key = data.get("source_key")
             source_urls = data.get("source_urls")
@@ -1340,6 +1353,7 @@ class ScoutStore:
             "by_type": by_type,
             "source_backed_entries": source_backed_entries,
             "by_source_dataset": by_source_dataset,
+            "by_location": by_location,
             "by_metro": by_metro,
             "by_run": by_run,
             "contextual_person_count": contextual_person_count,

@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import importlib.util
 import logging
+import re
 from datetime import datetime
 from typing import TYPE_CHECKING, Any
 from urllib.parse import urlparse
@@ -23,7 +24,7 @@ logger = logging.getLogger(__name__)
 USER_AGENT = "AtlasScout/1.0 (+https://atlas.rebuildingus.org/scout)"
 _CLAIM_POLL_SECONDS = 0.25
 _BROWSER_FALLBACK_REASONS = frozenset(
-    {"content_not_extractable", "content_below_min_words", "empty_body"}
+    {"content_not_extractable", "content_below_min_words", "empty_body", "sparse_civic_roster"}
 )
 _BROWSER_FALLBACK_STATUS_CODES = frozenset({"http_401", "http_403"})
 _APP_SHELL_MARKERS = (
@@ -283,6 +284,25 @@ class AsyncFetcher:
                     "discovered_links": extracted.discovered_links,
                 }
             )
+            if _looks_like_sparse_civic_roster(page.text):
+                rendered = await self._maybe_render_with_browser(
+                    url,
+                    html=response.text,
+                    reason="sparse_civic_roster",
+                )
+                if rendered is not None and rendered.page is not None:
+                    page = rendered.page.model_copy(
+                        update={"task_id": task_id or rendered.page.task_id}
+                    )
+                    await self._cache_positive_result(page, render_mode="browser")
+                    return self._make_outcome(
+                        url=url,
+                        task_id=task_id,
+                        page=page,
+                        status="fetched",
+                        error=None,
+                        discovered_links=rendered.discovered_links,
+                    )
             await self._cache_positive_result(page, render_mode="html")
             return self._make_outcome(
                 url=url,
@@ -505,6 +525,24 @@ def _looks_like_app_shell(html: str) -> bool:
     script_count = lower_html.count("<script")
     visible_word_count = len(lower_html.replace("<", " ").replace(">", " ").split())
     return script_count >= 3 and visible_word_count < 120
+
+
+def _looks_like_sparse_civic_roster(text: str) -> bool:
+    """Return whether extracted text kept offices but likely lost rendered names."""
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    office_lines = [
+        line
+        for line in lines
+        if re.search(r"\b(mayor|council(?:man|woman)?|trustee|commissioner)\b", line, re.I)
+    ]
+    if len(office_lines) < 2:
+        return False
+    person_like_lines = [
+        line
+        for line in lines
+        if re.fullmatch(r"[A-Z][A-Za-z.'-]+(?:\s+[A-Z][A-Za-z.'-]+){1,4}", line)
+    ]
+    return len(person_like_lines) < 2
 
 
 def _coerce_discovered_links(value: Any) -> list[str]:

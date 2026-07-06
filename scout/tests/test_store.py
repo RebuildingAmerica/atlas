@@ -485,6 +485,7 @@ async def test_purge_entries_by_source_dataset_removes_matching_rows(
     assert deleted == 1
     assert [entry["name"] for entry in active_entries] == ["Web Person"]
     assert stats["by_source_dataset"] == {}
+    assert stats["by_location"] == {"Las Vegas, NV": 1}
 
 
 async def test_list_runs(store: ScoutStore) -> None:

@@ -79,8 +79,9 @@ def normalize_url(url: str) -> str:
     if not stripped:
         return ""
     normalized, _fragment = urldefrag(stripped)
-    if normalized.endswith("/"):
-        normalized = normalized.rstrip("/")
+    parsed = urlparse(normalized)
+    if parsed.path == "/" and not parsed.params and not parsed.query:
+        normalized = parsed._replace(path="").geturl()
     return normalized
 
 

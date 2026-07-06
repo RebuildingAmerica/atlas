@@ -57,7 +57,7 @@ def test_extract_links_allows_cross_domain_when_same_domain_false() -> None:
     assert "https://other.com/external" in links
 
 
-def test_extract_links_dedupes_repeats_and_strips_fragments() -> None:
+def test_extract_links_dedupes_fragments_and_preserves_path_slashes() -> None:
     html = (
         "<html><body>"
         '<a href="https://example.com/page#a">A</a>'
@@ -66,8 +66,7 @@ def test_extract_links_dedupes_repeats_and_strips_fragments() -> None:
         "</body></html>"
     )
     links = extract_links(html, base_url="https://example.com")
-    # All three normalize to the same URL
-    assert links == ["https://example.com/page"]
+    assert links == ["https://example.com/page", "https://example.com/page/"]
 
 
 def test_extract_links_ignores_non_anchor_tags_and_empty_href() -> None:

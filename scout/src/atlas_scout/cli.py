@@ -104,6 +104,7 @@ from atlas_scout.login_flow import (
 )
 from atlas_scout.manpages import ManPageInstallResult, install_man_pages
 from atlas_scout.pipeline_support import close_if_supported as _close_if_supported
+from atlas_scout.pipeline_support import normalize_url
 from atlas_scout.runtime import build_runtime_profile
 from atlas_scout.search_keys import (
     delete_stored_search_api_key,
@@ -1391,7 +1392,7 @@ async def _run_pipeline(
     store = ScoutStore(str(db_path))
     await store.initialize()
 
-    normalized_direct_urls = [url.strip().rstrip("/") for url in (direct_urls or []) if url.strip()]
+    normalized_direct_urls = [normalize_url(url) for url in (direct_urls or []) if url.strip()]
     if normalized_direct_urls and not refresh:
         existing_run_id = await store.find_running_direct_run(normalized_direct_urls)
         if existing_run_id is not None:
@@ -3413,8 +3414,18 @@ def entries_purge(
 @click.option("--min-score", default=0.0, type=float)
 @click.option("--type", "entry_type", default=None)
 @click.option("--limit", default=50, show_default=True)
-@click.option("--run-id", default=None, help="Restrict entries to one local run.")
+@click.option(
+    "--run-id",
+    "run_ids",
+    multiple=True,
+    help="Restrict entries to one or more local runs. Repeat to combine reviewed runs.",
+)
 @click.option("--random", "random_sample", is_flag=True, help="Return a random sample.")
+@click.option(
+    "--unique-names",
+    is_flag=True,
+    help="Return at most one entry per normalized name, type, city, and state.",
+)
 @click.option(
     "--format", "-o", "output_format", type=click.Choice(["table", "json", "csv"]), default="table"
 )
@@ -3424,8 +3435,9 @@ def entries_list(
     min_score: float,
     entry_type: str | None,
     limit: int,
-    run_id: str | None,
+    run_ids: tuple[str, ...],
     random_sample: bool,
+    unique_names: bool,
     output_format: str,
 ) -> None:
     """List all discovered entries."""
@@ -3437,8 +3449,9 @@ def entries_list(
             entry_type,
             limit,
             output_format,
-            run_id=run_id,
+            run_ids=run_ids,
             random_sample=random_sample,
+            unique_names=unique_names,
         )
     )
 
@@ -3450,8 +3463,9 @@ async def _entries_list(
     limit: int,
     output_format: str,
     *,
-    run_id: str | None = None,
+    run_ids: tuple[str, ...] = (),
     random_sample: bool = False,
+    unique_names: bool = False,
 ) -> None:
     """Fetch and display entries in the requested format."""
     from atlas_scout.store import ScoutStore
@@ -3463,11 +3477,18 @@ async def _entries_list(
     store = ScoutStore(str(db_path))
     await store.initialize()
     try:
-        all_entries = await store.list_entries(run_id=run_id, min_score=min_score)
+        if run_ids:
+            all_entries = []
+            for run_id in run_ids:
+                all_entries.extend(await store.list_entries(run_id=run_id, min_score=min_score))
+        else:
+            all_entries = await store.list_entries(min_score=min_score)
     finally:
         await store.close()
     if entry_type:
         all_entries = [e for e in all_entries if e["entry_type"] == entry_type]
+    if unique_names:
+        all_entries = _dedupe_entries_by_name(all_entries)
     normalized_limit = max(0, limit)
     shown = (
         random.sample(all_entries, min(normalized_limit, len(all_entries)))
@@ -3552,6 +3573,35 @@ async def _entries_list(
     console.print(table)
     if len(all_entries) > limit:
         console.print(f"\n[dim]... and {len(all_entries) - limit} more (--limit to show more)[/]")
+
+
+def _dedupe_entries_by_name(entries: list[dict[str, object]]) -> list[dict[str, object]]:
+    """Return one entry per normalized name/type/location, preferring higher scores."""
+    best_by_key: dict[tuple[str, str, str, str], dict[str, object]] = {}
+    ordered_keys: list[tuple[str, str, str, str]] = []
+    for entry in entries:
+        key = (
+            str(entry.get("name", "")).strip().casefold(),
+            str(entry.get("entry_type", "")).strip().casefold(),
+            str(entry.get("city") or "").strip().casefold(),
+            str(entry.get("state") or "").strip().casefold(),
+        )
+        if key[0] == "":
+            continue
+        existing = best_by_key.get(key)
+        if existing is None:
+            ordered_keys.append(key)
+            best_by_key[key] = entry
+            continue
+        if _entry_score(entry) > _entry_score(existing):
+            best_by_key[key] = entry
+    return [best_by_key[key] for key in ordered_keys]
+
+
+def _entry_score(entry: dict[str, object]) -> float:
+    """Return an entry score as a sortable float."""
+    score = entry.get("score", 0.0)
+    return float(score) if isinstance(score, (int, float)) else 0.0
 
 
 # ---------------------------------------------------------------------------

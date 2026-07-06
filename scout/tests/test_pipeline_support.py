@@ -124,8 +124,12 @@ def test_merge_discovered_links_when_page_is_not_pagecontent() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_normalize_url_strips_trailing_slash() -> None:
-    assert normalize_url("https://example.com/path/") == "https://example.com/path"
+def test_normalize_url_preserves_path_trailing_slash() -> None:
+    assert normalize_url("https://example.com/path/") == "https://example.com/path/"
+
+
+def test_normalize_url_strips_root_trailing_slash() -> None:
+    assert normalize_url("https://example.com/") == "https://example.com"
 
 
 def test_normalize_url_returns_empty_for_blank_input() -> None:

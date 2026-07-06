@@ -131,12 +131,16 @@ Use run-scoped entry listing to review the people Scout found before syncing:
 ```bash
 scout entries list \
   --run-id RUN_ID \
+  --run-id ANOTHER_REVIEWED_RUN_ID \
   --type person \
   --random \
+  --unique-names \
   --limit 100 \
   --format json
 ```
 
 JSON output includes the local run id, description, issue areas, source URLs,
 and source context fields so reviewers can check why each person belongs in the
-result set.
+result set. Repeat `--run-id` to combine reviewed runs while leaving discarded
+or retry runs out of the sample. Add `--unique-names` when overlapping sources
+may mention the same person.

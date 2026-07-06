@@ -6,6 +6,8 @@ from html.parser import HTMLParser
 from typing import TYPE_CHECKING, Protocol
 from urllib.parse import urljoin, urlparse
 
+from atlas_scout.pipeline_support import normalize_url
+
 if TYPE_CHECKING:
     from atlas_shared import PageContent
 
@@ -52,7 +54,7 @@ def extract_links(html: str, base_url: str, same_domain: bool = True) -> list[st
             continue
         if same_domain and parsed.netloc != base_domain:
             continue
-        normalized = parsed._replace(fragment="").geturl().rstrip("/")
+        normalized = normalize_url(parsed._replace(fragment="").geturl())
         if normalized not in seen:
             seen.add(normalized)
             result.append(normalized)

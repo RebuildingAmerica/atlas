@@ -148,6 +148,31 @@ async def _seed_other_run(config: ScoutConfig) -> str:
     return run_id
 
 
+async def _seed_duplicate_person_run(config: ScoutConfig) -> str:
+    """Seed a duplicate person with a higher score for unique-name review tests."""
+    store = ScoutStore(config.store.path)
+    await store.initialize()
+    run_id = await store.create_run(
+        location="Austin, TX", issues=["housing"], search_depth="standard"
+    )
+    await store.save_entry(
+        run_id=run_id,
+        name="Bob Smith",
+        entry_type="person",
+        description="A more recent individual profile.",
+        city=None,
+        state=None,
+        score=0.9,
+        data={
+            "issue_areas": ["housing"],
+            "source_urls": ["https://src.example/bob-latest"],
+            "source_contexts": {"https://src.example/bob-latest": "Bob Smith chaired the hearing."},
+        },
+    )
+    await store.close()
+    return run_id
+
+
 @pytest.mark.asyncio
 async def test_entries_list_table(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     output = _capture_consoles(monkeypatch)
@@ -247,6 +272,73 @@ def test_entries_list_command_filters_run_and_random_json(
             "source_dataset": None,
         }
     ]
+
+
+def test_entries_list_command_accepts_multiple_run_ids(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    config = _make_config(tmp_path)
+    first_run_id = asyncio.run(_seed_entries(config))
+    second_run_id = asyncio.run(_seed_other_run(config))
+    monkeypatch.setattr(cli_module, "load_config", lambda _p: config)
+
+    result = CliRunner().invoke(
+        main,
+        [
+            "entries",
+            "list",
+            "--run-id",
+            first_run_id,
+            "--run-id",
+            second_run_id,
+            "--type",
+            "person",
+            "--limit",
+            "10",
+            "--format",
+            "json",
+        ],
+    )
+
+    assert result.exit_code == 0
+    payload = json.loads(result.output)
+    assert [item["run_id"] for item in payload] == [first_run_id, second_run_id]
+    assert [item["name"] for item in payload] == ["Bob Smith", "Dallas Organizer"]
+
+
+def test_entries_list_command_can_dedupe_names_across_runs(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    config = _make_config(tmp_path)
+    first_run_id = asyncio.run(_seed_entries(config))
+    second_run_id = asyncio.run(_seed_duplicate_person_run(config))
+    monkeypatch.setattr(cli_module, "load_config", lambda _p: config)
+
+    result = CliRunner().invoke(
+        main,
+        [
+            "entries",
+            "list",
+            "--run-id",
+            first_run_id,
+            "--run-id",
+            second_run_id,
+            "--type",
+            "person",
+            "--unique-names",
+            "--limit",
+            "10",
+            "--format",
+            "json",
+        ],
+    )
+
+    assert result.exit_code == 0
+    payload = json.loads(result.output)
+    assert len(payload) == 1
+    assert payload[0]["run_id"] == second_run_id
+    assert payload[0]["name"] == "Bob Smith"
+    assert payload[0]["score"] == 0.9
 
 
 @pytest.mark.asyncio

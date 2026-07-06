@@ -71,6 +71,7 @@ async def entries_stats_command(
     table.add_row("Source domains", str(stats["source_domain_count"]))
     table.add_row("By type", json.dumps(stats["by_type"], sort_keys=True))
     table.add_row("By source dataset", json.dumps(stats["by_source_dataset"], sort_keys=True))
+    table.add_row("By location", json.dumps(stats["by_location"], sort_keys=True))
     table.add_row("By metro", json.dumps(stats["by_metro"], sort_keys=True))
     console.print(table)
 
@@ -150,6 +151,7 @@ def _empty_entry_stats() -> dict[str, Any]:
         "by_type": {},
         "source_backed_entries": 0,
         "by_source_dataset": {},
+        "by_location": {},
         "by_metro": {},
         "by_run": {},
         "contextual_person_count": 0,

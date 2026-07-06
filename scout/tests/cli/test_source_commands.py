@@ -117,6 +117,7 @@ def test_entries_stats_excludes_source_datasets_and_enforces_people_count(
     assert payload["contextual_person_count"] == 1
     assert payload["source_url_count"] == 1
     assert payload["source_domain_count"] == 1
+    assert payload["by_location"] == {"Las Vegas, NV": 1}
     assert payload["by_source_dataset"] == {}
 
 

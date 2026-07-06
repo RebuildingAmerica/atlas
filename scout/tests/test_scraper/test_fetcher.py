@@ -305,6 +305,74 @@ async def test_fetch_uses_browser_fallback_for_news_app_shell(
 
 
 @respx.mock
+async def test_fetch_uses_browser_fallback_for_sparse_civic_roster(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Civic rosters that lose rendered names should get a bounded browser pass."""
+    from atlas_scout.scraper.extractor import ContentExtraction
+
+    sparse_page = PageContent(
+        url="https://example.gov/government/mayor-city-council",
+        text="\n".join(
+            [
+                "Mayor and City Council positions are elected by registered voters.",
+                "Mayor",
+                "Councilman Ward 1",
+                "Councilwoman Ward 2",
+            ]
+        ),
+        title="Mayor and City Council",
+    )
+    rendered_page = PageContent(
+        url="https://example.gov/government/mayor-city-council",
+        text="\n".join(
+            [
+                "Shelley Berkley",
+                "Mayor",
+                "Brian Knudsen",
+                "Councilman Ward 1",
+            ]
+        ),
+        title="Mayor and City Council",
+        discovered_links=["https://example.gov/government/mayor"],
+    )
+    calls: list[str] = []
+
+    def fake_extract(_html: str, *, url: str) -> ContentExtraction:
+        del url
+        return ContentExtraction(page=sparse_page, reason=None, discovered_links=[])
+
+    async def fake_render(url: str, *, timeout_ms: int) -> ContentExtraction:
+        calls.append(f"{url}:{timeout_ms}")
+        return ContentExtraction(
+            page=rendered_page,
+            reason=None,
+            discovered_links=rendered_page.discovered_links,
+        )
+
+    monkeypatch.setattr(fetcher_module, "extract_content_verbose", fake_extract)
+    monkeypatch.setattr(fetcher_module, "render_url_with_browser", fake_render)
+    respx.get("https://example.gov/government/mayor-city-council").mock(
+        return_value=httpx.Response(200, text="<html><body>shell</body></html>")
+    )
+
+    fetcher = AsyncFetcher(
+        max_concurrent=5,
+        request_delay_ms=0,
+        browser_fallback_enabled=True,
+        browser_render_timeout_ms=1234,
+    )
+    result = await fetcher.fetch("https://example.gov/government/mayor-city-council")
+
+    await fetcher.close()
+
+    assert result is not None
+    assert "Shelley Berkley" in result.text
+    assert result.discovered_links == ["https://example.gov/government/mayor"]
+    assert calls == ["https://example.gov/government/mayor-city-council:1234"]
+
+
+@respx.mock
 async def test_fetch_skips_browser_fallback_for_low_value_thin_page(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
