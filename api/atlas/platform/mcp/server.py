@@ -13,7 +13,7 @@ from atlas.platform.config import Settings, get_settings
 
 from .data import AtlasDataService
 from .logging_support import install_logging_extension
-from .tasks import install_tasks_extension
+from .tasks import DraftTasksJsonRpcMiddleware, install_tasks_extension
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
@@ -281,7 +281,11 @@ def get_mcp() -> FastMCP:
 
 def get_mcp_asgi_app() -> Starlette:
     """Return the Streamable HTTP Starlette app for mounting on FastAPI."""
-    return get_mcp().streamable_http_app()
+    app = get_mcp().streamable_http_app()
+    if not getattr(app.state, "atlas_draft_tasks_middleware_installed", False):
+        app.add_middleware(DraftTasksJsonRpcMiddleware)
+        app.state.atlas_draft_tasks_middleware_installed = True
+    return app
 
 
 @contextlib.asynccontextmanager

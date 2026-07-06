@@ -4,7 +4,7 @@ Atlas's 12 read-only MCP tools are all fast lookups, so none of them need an
 async task handle. ``start_discovery_run`` is the first write/compute tool on
 the MCP surface — it can take minutes (LLM extraction + browser research) — so
 it returns a ``CreateTaskResult`` instead of blocking, and callers poll
-``tasks/get``/``tasks/result`` or call ``tasks/cancel``.
+``tasks/get`` or call ``tasks/cancel``.
 
 FastMCP's own tool-call pipeline (``FastMCP.call_tool`` ->
 ``ToolManager.call_tool(..., convert_result=True)``) normalizes every tool
@@ -18,12 +18,14 @@ from __future__ import annotations
 import hashlib
 import json
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any, Literal, cast
 
 from fastapi import HTTPException
 from mcp import types
 from mcp.shared.exceptions import McpError
-from pydantic import ValidationError
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
+from starlette.responses import JSONResponse, Response
 
 from atlas.domains.access.membership import verify_org_membership
 from atlas.domains.access.models.usage_events import OrgUsageEventCRUD, OrgUsageEventRecord
@@ -44,11 +46,15 @@ if TYPE_CHECKING:
     import aiosqlite
     from mcp.server.fastmcp import FastMCP
     from mcp.server.lowlevel import Server as LowLevelServer
+    from starlette.requests import Request
 
     from atlas.domains.discovery.models import DiscoveryJobModel, DiscoveryRunModel
     from atlas.platform.config import Settings
 
-__all__ = ["install_tasks_extension"]
+__all__ = ["TASKS_EXTENSION", "DraftTasksJsonRpcMiddleware", "install_tasks_extension"]
+
+TASKS_EXTENSION = "io.modelcontextprotocol/tasks"
+MISSING_REQUIRED_CLIENT_CAPABILITY = -32003
 
 _TASK_TTL_MS = 30 * 60 * 1000
 """30 minutes: enough to cover queueing, backoff, and a full pipeline run."""
@@ -61,26 +67,121 @@ _TOOLS_PAGE_SIZE = 50
 kicks in once the tool count actually exceeds this, without changing behavior
 for MCP clients that don't loop on nextCursor."""
 
-_JOB_STATUS_TO_TASK_STATUS: dict[str, types.TaskStatus] = {
+DraftTaskStatus = Literal["working", "input_required", "completed", "cancelled", "failed"]
+
+_JOB_STATUS_TO_TASK_STATUS: dict[str, DraftTaskStatus] = {
     "queued": "working",
     "claimed": "working",
     "running": "working",
     "completed": "completed",
-    "failed": "failed",
+    # Discovery failures are tool-level outcomes, not JSON-RPC protocol errors.
+    "failed": "completed",
     "cancelled": "cancelled",
+}
+
+_REQUIRED_TASKS_CAPABILITY_DATA: dict[str, Any] = {
+    "requiredCapabilities": {"extensions": {TASKS_EXTENSION: {}}},
 }
 
 _START_DISCOVERY_RUN_TOOL = types.Tool(
     name="start_discovery_run",
     description=(
         "Trigger an Atlas discovery run for a place and issue areas. Requires "
-        "task-augmented execution: pass `task` in the tool-call params and poll "
-        "tasks/get, or use list_discovery_runs/get_discovery_run to check "
-        "manually. Metered against the calling org's monthly discovery budget."
+        "the MCP Tasks extension and returns a task handle immediately; poll "
+        "tasks/get until it completes. Metered against the calling org's "
+        "monthly discovery budget."
     ),
     inputSchema=DiscoveryRunStartRequest.model_json_schema(),
-    execution=types.ToolExecution(taskSupport="required"),
 )
+
+
+class DraftTask(BaseModel):
+    """Task shape from the draft ``io.modelcontextprotocol/tasks`` extension."""
+
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    task_id: str = Field(alias="taskId")
+    status: DraftTaskStatus
+    status_message: str | None = Field(default=None, alias="statusMessage")
+    created_at: datetime = Field(alias="createdAt")
+    last_updated_at: datetime = Field(alias="lastUpdatedAt")
+    ttl_ms: int | None = Field(alias="ttlMs")
+    poll_interval_ms: int | None = Field(default=None, alias="pollIntervalMs")
+
+
+class DraftCreateTaskResult(BaseModel):
+    """Draft CreateTaskResult: a flat result discriminator plus task fields."""
+
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    result_type: Literal["task"] = Field(default="task", alias="resultType")
+    task: DraftTask
+    result: dict[str, Any] | None = None
+    error: dict[str, Any] | None = None
+
+    def model_dump(self, *args: Any, **kwargs: Any) -> dict[str, Any]:
+        """Serialize as ``Result & Task`` instead of nesting under ``task``."""
+        dump_kwargs = dict(kwargs)
+        dump_kwargs.setdefault("by_alias", True)
+        data = self.task.model_dump(*args, **dump_kwargs)
+        data["resultType"] = self.result_type
+        if self.result is not None:
+            data["result"] = self.result
+        if self.error is not None:
+            data["error"] = self.error
+        return data
+
+
+class DraftGetTaskResult(DraftTask):
+    """Draft tasks/get result with status-specific payload fields."""
+
+    result_type: Literal["complete"] = Field(default="complete", alias="resultType")
+    input_requests: dict[str, Any] | None = Field(default=None, alias="inputRequests")
+    result: dict[str, Any] | None = None
+    error: dict[str, Any] | None = None
+
+
+class DraftEmptyResult(BaseModel):
+    """Draft empty acknowledgement result."""
+
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    result_type: Literal["complete"] = Field(default="complete", alias="resultType")
+
+
+DraftResultRoot = DraftCreateTaskResult | DraftGetTaskResult | DraftEmptyResult
+
+
+class DraftServerResult:
+    """Small response wrapper compatible with MCP session serialization."""
+
+    def __init__(self, root: DraftResultRoot) -> None:
+        self.root = root
+
+    def model_dump(self, **kwargs: Any) -> dict[str, Any]:
+        """Return the wrapped draft result in JSON-RPC ``result`` shape."""
+        dump_kwargs = dict(kwargs)
+        dump_kwargs.setdefault("by_alias", True)
+        return self.root.model_dump(**dump_kwargs)
+
+
+McpHandlerResult = types.ServerResult | DraftServerResult
+
+
+def _draft_result(root: DraftResultRoot) -> DraftServerResult:
+    """Wrap a draft result for FastMCP's low-level request responder."""
+    return DraftServerResult(root)
+
+
+def _missing_required_tasks_capability() -> McpError:
+    """Return the draft extension's missing-capability JSON-RPC error."""
+    return McpError(
+        types.ErrorData(
+            code=MISSING_REQUIRED_CLIENT_CAPABILITY,
+            message="Missing required client capability",
+            data=_REQUIRED_TASKS_CAPABILITY_DATA,
+        )
+    )
 
 
 def _progress_message(progress: dict[str, Any] | None) -> str | None:
@@ -91,41 +192,43 @@ def _progress_message(progress: dict[str, Any] | None) -> str | None:
     return message if isinstance(message, str) else None
 
 
-def _job_to_task(job: DiscoveryJobModel) -> types.Task:
+def _job_to_task(job: DiscoveryJobModel) -> DraftTask:
     """Map a discovery job's state onto an MCP Task."""
     status = _JOB_STATUS_TO_TASK_STATUS.get(job.status, "working")
-    status_message = job.error_message if status == "failed" else _progress_message(job.progress)
+    status_message = (
+        job.error_message if job.status == "failed" else _progress_message(job.progress)
+    )
     created_at = datetime.fromisoformat(job.created_at)
     last_updated_at = datetime.fromisoformat(job.completed_at) if job.completed_at else created_at
-    return types.Task(
-        taskId=job.id,
+    return DraftTask(
+        task_id=job.id,
         status=status,
-        statusMessage=status_message,
-        createdAt=created_at,
-        lastUpdatedAt=last_updated_at,
-        ttl=_TASK_TTL_MS,
-        pollInterval=_TASK_POLL_INTERVAL_MS,
+        status_message=status_message,
+        created_at=created_at,
+        last_updated_at=last_updated_at,
+        ttl_ms=_TASK_TTL_MS,
+        poll_interval_ms=_TASK_POLL_INTERVAL_MS,
     )
 
 
-def _run_to_task(run: DiscoveryRunModel) -> types.Task:
+def _run_to_task(run: DiscoveryRunModel) -> DraftTask:
     """Map a discovery run's state onto an MCP Task.
 
     Used only when ``settings.discovery_inline`` ran the pipeline synchronously
     and no job was ever created to poll.
     """
     status = _JOB_STATUS_TO_TASK_STATUS.get(run.status, "working")
-    status_message = run.error_message if status == "failed" else None
+    status_message = run.error_message if run.status == "failed" else None
     created_at = datetime.fromisoformat(run.started_at)
     last_updated_at = datetime.fromisoformat(run.completed_at) if run.completed_at else created_at
-    return types.Task(
-        taskId=run.id,
+    return DraftTask(
+        task_id=run.id,
         status=status,
-        statusMessage=status_message,
-        createdAt=created_at,
-        lastUpdatedAt=last_updated_at,
-        ttl=_TASK_TTL_MS,
-        pollInterval=_TASK_POLL_INTERVAL_MS,
+        status_message=status_message,
+        created_at=created_at,
+        last_updated_at=last_updated_at,
+        ttl_ms=_TASK_TTL_MS,
+        poll_interval_ms=_TASK_POLL_INTERVAL_MS,
     )
 
 
@@ -178,7 +281,38 @@ def _derive_idempotency_key(org_id: str, req: DiscoveryRunStartRequest) -> str:
     return f"mcp:{org_id}:{digest}:{today}"
 
 
-async def _resolve_task(conn: aiosqlite.Connection, task_id: str) -> types.Task:
+def _params_meta(params: object) -> object | None:
+    """Return request ``_meta`` from SDK params or raw JSON params."""
+    if isinstance(params, dict):
+        return params.get("_meta")
+    return getattr(params, "meta", None)
+
+
+def _declares_tasks_extension(meta: object | None) -> bool:
+    """Return whether request metadata declares the draft Tasks extension."""
+    if meta is None:
+        return False
+
+    if hasattr(meta, "model_dump"):
+        meta = meta.model_dump(by_alias=True, exclude_none=True)
+    if not isinstance(meta, dict):
+        return False
+
+    capabilities = meta.get("io.modelcontextprotocol/clientCapabilities")
+    if not isinstance(capabilities, dict):
+        return False
+
+    extensions = capabilities.get("extensions")
+    return isinstance(extensions, dict) and isinstance(extensions.get(TASKS_EXTENSION), dict)
+
+
+def _require_tasks_extension(params: object) -> None:
+    """Raise when a draft task method lacks per-request Tasks capability."""
+    if not _declares_tasks_extension(_params_meta(params)):
+        raise _missing_required_tasks_capability()
+
+
+async def _resolve_task(conn: aiosqlite.Connection, task_id: str) -> DraftTask:
     """Resolve a task id to its current state.
 
     A task id is normally a job id. It falls back to a run id when
@@ -202,7 +336,7 @@ async def _create_discovery_run_task(
     user_id: str,
     settings: Settings,
     arguments: dict[str, Any],
-) -> types.ServerResult:
+) -> McpHandlerResult:
     """Validate, budget-gate, and create a discovery run for an MCP caller."""
     try:
         tool_req = DiscoveryRunStartRequest.model_validate(arguments)
@@ -217,7 +351,7 @@ async def _create_discovery_run_task(
     idempotency_key = _derive_idempotency_key(org_id, tool_req)
     existing_job = await DiscoveryJobCRUD.get_by_idempotency_key(conn, idempotency_key)
     if existing_job is not None:
-        return types.ServerResult(types.CreateTaskResult(task=_job_to_task(existing_job)))
+        return _draft_result(DraftCreateTaskResult(task=_job_to_task(existing_job)))
 
     try:
         await OrgDiscoveryBudgetCRUD.reserve_run(
@@ -256,7 +390,7 @@ async def _create_discovery_run_task(
     )
 
     task = _job_to_task(job) if job is not None else _run_to_task(run)
-    return types.ServerResult(types.CreateTaskResult(task=task))
+    return _draft_result(DraftCreateTaskResult(task=task))
 
 
 def _actor_claims_from_request_context(server: LowLevelServer) -> tuple[str | None, str | None]:
@@ -280,14 +414,9 @@ def _actor_claims_from_request_context(server: LowLevelServer) -> tuple[str | No
 
 async def _handle_start_discovery_run(
     server: LowLevelServer, req: types.CallToolRequest
-) -> types.ServerResult:
-    """Handle a task-augmented ``start_discovery_run`` tool call."""
-    if req.params.task is None:
-        return _tool_error(
-            "start_discovery_run requires task-augmented execution. Declare the "
-            "MCP tasks capability and include `task` in the tool-call params; "
-            "use list_discovery_runs/get_discovery_run to poll manually otherwise."
-        )
+) -> McpHandlerResult:
+    """Handle a draft Tasks ``start_discovery_run`` tool call."""
+    _require_tasks_extension(req.params)
 
     org_id, user_id = _actor_claims_from_request_context(server)
     if org_id is None or user_id is None:
@@ -304,52 +433,15 @@ async def _handle_start_discovery_run(
         )
 
 
-async def _handle_get_task(req: types.GetTaskRequest) -> types.ServerResult:
-    """Handle ``tasks/get``."""
-    await log_operation(
-        logger="atlas.mcp.tasks",
-        level="debug",
-        message="tasks/get",
-        taskId=req.params.taskId,
-    )
-    settings = get_settings()
-    async with DatabaseSession(settings.database_url) as conn:
-        task = await _resolve_task(conn, req.params.taskId)
-    return types.ServerResult(
-        types.GetTaskResult(
-            taskId=task.taskId,
-            status=task.status,
-            statusMessage=task.statusMessage,
-            createdAt=task.createdAt,
-            lastUpdatedAt=task.lastUpdatedAt,
-            ttl=task.ttl,
-            pollInterval=task.pollInterval,
-        )
-    )
+def _call_tool_result_payload(result: types.CallToolResult) -> dict[str, Any]:
+    """Serialize a CallToolResult for inlining in draft ``tasks/get``."""
+    return result.model_dump(by_alias=True, mode="json", exclude_none=True)
 
 
-async def _handle_get_task_result(req: types.GetTaskPayloadRequest) -> types.ServerResult:
-    """Handle ``tasks/result``, returning the same shape as ``get_discovery_run``."""
-    await log_operation(
-        logger="atlas.mcp.tasks",
-        level="info",
-        message="tasks/result",
-        taskId=req.params.taskId,
-    )
-    settings = get_settings()
-    async with DatabaseSession(settings.database_url) as conn:
-        job = await DiscoveryJobCRUD.get_by_id(conn, req.params.taskId)
-        run_id = job.run_id if job is not None else req.params.taskId
-        run = await DiscoveryRunCRUD.get_by_id(conn, run_id)
-        if run is None:
-            raise McpError(
-                types.ErrorData(
-                    code=types.INVALID_PARAMS, message=f"Unknown task: {req.params.taskId}"
-                )
-            )
-        record = _discovery_run_record(run)
-
-    return types.ServerResult(
+def _run_result_payload(run: DiscoveryRunModel) -> dict[str, Any]:
+    """Return the successful tool result payload for a completed discovery run."""
+    record = _discovery_run_record(run)
+    return _call_tool_result_payload(
         types.CallToolResult(
             content=[types.TextContent(type="text", text=json.dumps(record, indent=2))],
             structuredContent=record,
@@ -358,8 +450,69 @@ async def _handle_get_task_result(req: types.GetTaskPayloadRequest) -> types.Ser
     )
 
 
-async def _handle_cancel_task(req: types.CancelTaskRequest) -> types.ServerResult:
+def _failed_tool_result_payload(message: str | None) -> dict[str, Any]:
+    """Return a completed tool-level error payload for a failed discovery run."""
+    return _call_tool_result_payload(
+        types.CallToolResult(
+            content=[
+                types.TextContent(
+                    type="text",
+                    text=message or "Discovery run failed.",
+                )
+            ],
+            isError=True,
+        )
+    )
+
+
+async def _detailed_task_result(conn: aiosqlite.Connection, task_id: str) -> DraftGetTaskResult:
+    """Resolve a task id to the draft ``tasks/get`` result shape."""
+    job = await DiscoveryJobCRUD.get_by_id(conn, task_id)
+    if job is not None:
+        task = _job_to_task(job)
+        payload: dict[str, Any] | None = None
+        if job.status == "completed":
+            run = await DiscoveryRunCRUD.get_by_id(conn, job.run_id)
+            if run is None:
+                raise McpError(
+                    types.ErrorData(code=types.INVALID_PARAMS, message=f"Unknown task: {task_id}")
+                )
+            payload = _run_result_payload(run)
+        elif job.status == "failed":
+            payload = _failed_tool_result_payload(job.error_message)
+        return DraftGetTaskResult(**task.model_dump(), result=payload)
+
+    run = await DiscoveryRunCRUD.get_by_id(conn, task_id)
+    if run is not None:
+        task = _run_to_task(run)
+        payload = None
+        if run.status == "completed":
+            payload = _run_result_payload(run)
+        elif run.status == "failed":
+            payload = _failed_tool_result_payload(run.error_message)
+        return DraftGetTaskResult(**task.model_dump(), result=payload)
+
+    raise McpError(types.ErrorData(code=types.INVALID_PARAMS, message=f"Unknown task: {task_id}"))
+
+
+async def _handle_get_task(req: types.GetTaskRequest) -> McpHandlerResult:
+    """Handle ``tasks/get``."""
+    _require_tasks_extension(req.params)
+    await log_operation(
+        logger="atlas.mcp.tasks",
+        level="debug",
+        message="tasks/get",
+        taskId=req.params.taskId,
+    )
+    settings = get_settings()
+    async with DatabaseSession(settings.database_url) as conn:
+        task = await _detailed_task_result(conn, req.params.taskId)
+    return _draft_result(task)
+
+
+async def _handle_cancel_task(req: types.CancelTaskRequest) -> McpHandlerResult:
     """Handle ``tasks/cancel``. Only jobs are cancellable, not inline-mode runs."""
+    _require_tasks_extension(req.params)
     await log_operation(
         logger="atlas.mcp.tasks",
         level="info",
@@ -377,28 +530,120 @@ async def _handle_cancel_task(req: types.CancelTaskRequest) -> types.ServerResul
                 )
             )
         await DiscoveryJobCRUD.cancel(conn, req.params.taskId)
-        job = await DiscoveryJobCRUD.get_by_id(conn, req.params.taskId)
 
-    assert job is not None, "job existed moments ago in the same request"
-    task = _job_to_task(job)
-    return types.ServerResult(
-        types.CancelTaskResult(
-            taskId=task.taskId,
-            status=task.status,
-            statusMessage=task.statusMessage,
-            createdAt=task.createdAt,
-            lastUpdatedAt=task.lastUpdatedAt,
-            ttl=task.ttl,
-            pollInterval=task.pollInterval,
+    return _draft_result(DraftEmptyResult())
+
+
+def _jsonrpc_success(request_id: object, result: dict[str, Any]) -> dict[str, Any]:
+    """Build a JSON-RPC success response."""
+    return {"jsonrpc": "2.0", "id": request_id, "result": result}
+
+
+def _jsonrpc_error(request_id: object, error: types.ErrorData) -> dict[str, Any]:
+    """Build a JSON-RPC error response."""
+    return {
+        "jsonrpc": "2.0",
+        "id": request_id,
+        "error": error.model_dump(by_alias=True, mode="json", exclude_none=True),
+    }
+
+
+def _draft_jsonrpc_request(payload: object) -> tuple[dict[str, Any], str] | None:
+    """Return the JSON-RPC payload and method when a request can be inspected."""
+    if not isinstance(payload, dict):
+        return None
+
+    method = payload.get("method")
+    if not isinstance(method, str):
+        return None
+
+    return payload, method
+
+
+def _task_id_from_update_params(params: dict[str, Any]) -> str:
+    """Return a valid task id from ``tasks/update`` params."""
+    task_id = params.get("taskId")
+    if not isinstance(task_id, str) or not task_id:
+        raise McpError(
+            types.ErrorData(code=types.INVALID_PARAMS, message="Invalid or missing taskId")
         )
-    )
+    return task_id
+
+
+def _input_responses_from_update_params(params: dict[str, Any]) -> dict[str, Any]:
+    """Return valid input responses from ``tasks/update`` params."""
+    input_responses = params.get("inputResponses")
+    if not isinstance(input_responses, dict):
+        raise McpError(types.ErrorData(code=types.INVALID_PARAMS, message="Invalid inputResponses"))
+    return input_responses
+
+
+async def _handle_draft_tasks_jsonrpc(payload: object) -> dict[str, Any] | None:
+    """Handle draft-only Tasks JSON-RPC methods before SDK parsing.
+
+    The installed MCP SDK knows an older task surface and cannot parse
+    ``tasks/update`` or ``server/discover``. Atlas intercepts only those draft
+    methods here; all SDK-supported methods continue through FastMCP.
+    """
+    request = _draft_jsonrpc_request(payload)
+    if request is None:
+        return None
+
+    payload, method = request
+    request_id = payload.get("id")
+    if method == "server/discover":
+        return _jsonrpc_success(
+            request_id,
+            {"capabilities": {"extensions": {TASKS_EXTENSION: {}}}},
+        )
+
+    if method != "tasks/update":
+        return None
+
+    params = payload.get("params")
+    if not isinstance(params, dict):
+        return _jsonrpc_error(
+            request_id,
+            types.ErrorData(code=types.INVALID_PARAMS, message="Invalid tasks/update params"),
+        )
+
+    try:
+        _require_tasks_extension(params)
+        task_id = _task_id_from_update_params(params)
+        _input_responses_from_update_params(params)
+
+        settings = get_settings()
+        async with DatabaseSession(settings.database_url) as conn:
+            await _resolve_task(conn, task_id)
+    except McpError as exc:
+        return _jsonrpc_error(request_id, exc.error)
+
+    return _jsonrpc_success(request_id, DraftEmptyResult().model_dump(by_alias=True))
+
+
+class DraftTasksJsonRpcMiddleware(BaseHTTPMiddleware):
+    """Intercept draft Tasks methods that the current MCP SDK cannot parse."""
+
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
+        if request.method != "POST":
+            return await call_next(request)
+
+        try:
+            payload = await request.json()
+        except Exception:
+            return await call_next(request)
+
+        response = await _handle_draft_tasks_jsonrpc(payload)
+        if response is None:
+            return await call_next(request)
+        return JSONResponse(response)
 
 
 def install_tasks_extension(mcp: FastMCP) -> None:
     """Wire the MCP Tasks extension onto a FastMCP server instance.
 
-    Adds ``start_discovery_run`` plus ``tasks/get``, ``tasks/result``, and
-    ``tasks/cancel`` handlers. Registered directly on the low-level
+    Adds ``start_discovery_run`` plus ``tasks/get`` and ``tasks/cancel``
+    handlers. Registered directly on the low-level
     ``Server.request_handlers`` dict — see the module docstring for why.
     """
     server = mcp._mcp_server  # noqa: SLF001
@@ -440,7 +685,7 @@ def install_tasks_extension(mcp: FastMCP) -> None:
 
     original_call_tool_handler = server.request_handlers[types.CallToolRequest]
 
-    async def handle_call_tool(req: types.CallToolRequest) -> types.ServerResult:
+    async def handle_call_tool(req: types.CallToolRequest) -> McpHandlerResult:
         tool_name = req.params.name
         await log_operation(
             logger="atlas.mcp.tools",
@@ -449,6 +694,7 @@ def install_tasks_extension(mcp: FastMCP) -> None:
             tool=tool_name,
         )
 
+        result: McpHandlerResult
         if tool_name != _START_DISCOVERY_RUN_TOOL.name:
             result = await original_call_tool_handler(req)
         else:
@@ -463,24 +709,7 @@ def install_tasks_extension(mcp: FastMCP) -> None:
         )
         return result
 
-    server.request_handlers[types.CallToolRequest] = handle_call_tool
+    server.request_handlers[types.CallToolRequest] = cast("Any", handle_call_tool)
 
-    server.request_handlers[types.GetTaskRequest] = _handle_get_task
-    server.request_handlers[types.GetTaskPayloadRequest] = _handle_get_task_result
-    server.request_handlers[types.CancelTaskRequest] = _handle_cancel_task
-
-    original_create_initialization_options = server.create_initialization_options
-
-    def create_initialization_options_with_tasks(*args: Any, **kwargs: Any) -> Any:
-        options = original_create_initialization_options(*args, **kwargs)
-        options.capabilities.tasks = types.ServerTasksCapability(
-            cancel=types.TasksCancelCapability(),
-            requests=types.ServerTasksRequestsCapability(
-                tools=types.TasksToolsCapability(call=types.TasksCallCapability())
-            ),
-        )
-        return options
-
-    server.create_initialization_options = (  # type: ignore[method-assign]
-        create_initialization_options_with_tasks
-    )
+    server.request_handlers[types.GetTaskRequest] = cast("Any", _handle_get_task)
+    server.request_handlers[types.CancelTaskRequest] = cast("Any", _handle_cancel_task)

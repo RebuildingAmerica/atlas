@@ -11,6 +11,7 @@ import pytest
 from fastapi import HTTPException
 from mcp import types
 from mcp.shared.exceptions import McpError
+from starlette.responses import Response
 
 from atlas.domains.access.models.usage_events import OrgUsageEventCRUD
 from atlas.domains.discovery.budget import OrgDiscoveryBudgetCRUD
@@ -21,6 +22,7 @@ from atlas.platform.mcp import tasks as tasks_module
 from atlas.platform.mcp.server import build_mcp
 from atlas.platform.mcp.tasks import (
     _START_DISCOVERY_RUN_TOOL,
+    MISSING_REQUIRED_CLIENT_CAPABILITY,
     _actor_claims_from_request_context,
     _budget_exceeded_result,
     _create_discovery_run_task,
@@ -38,11 +40,54 @@ if TYPE_CHECKING:
 ARBITRARY_TTL_MS = 30 * 60 * 1000
 ARBITRARY_POLL_INTERVAL_MS = 5_000
 EXPECTED_TOTAL_TOOL_COUNT = 13
+HTTP_OK = 200
+HTTP_NO_CONTENT = 204
+TASKS_EXTENSION = "io.modelcontextprotocol/tasks"
+
+
+def _tasks_meta() -> dict[str, Any]:
+    return {
+        "io.modelcontextprotocol/clientCapabilities": {
+            "extensions": {
+                TASKS_EXTENSION: {},
+            },
+        },
+    }
+
+
+def _call_tool_request(name: str, arguments: dict[str, Any] | None = None) -> types.CallToolRequest:
+    return types.CallToolRequest.model_validate(
+        {
+            "method": "tools/call",
+            "params": {
+                "name": name,
+                "arguments": arguments,
+                "_meta": _tasks_meta(),
+            },
+        }
+    )
+
+
+def _get_task_request(task_id: str) -> types.GetTaskRequest:
+    return types.GetTaskRequest.model_validate(
+        {"method": "tasks/get", "params": {"taskId": task_id, "_meta": _tasks_meta()}}
+    )
+
+
+def _cancel_task_request(task_id: str) -> types.CancelTaskRequest:
+    return types.CancelTaskRequest.model_validate(
+        {"method": "tasks/cancel", "params": {"taskId": task_id, "_meta": _tasks_meta()}}
+    )
 
 
 def _handler_for(mcp: Any, request_type: type) -> Any:
     """Return the low-level request handler registered for a request type."""
     return mcp._mcp_server.request_handlers[request_type]  # noqa: SLF001
+
+
+async def _handle_draft_tasks_jsonrpc(payload: object) -> dict[str, Any] | None:
+    """Call the draft JSON-RPC shim under test."""
+    return await tasks_module._handle_draft_tasks_jsonrpc(payload)  # noqa: SLF001
 
 
 def _init_options(mcp: Any) -> Any:
@@ -62,9 +107,10 @@ def _start_request(**overrides: Any) -> dict[str, Any]:
 
 
 class TestStartDiscoveryRunToolDefinition:
-    def test_tool_requires_task_augmented_execution(self) -> None:
-        assert _START_DISCOVERY_RUN_TOOL.execution is not None
-        assert _START_DISCOVERY_RUN_TOOL.execution.taskSupport == "required"
+    def test_tool_uses_draft_capability_negotiation_instead_of_legacy_task_metadata(
+        self,
+    ) -> None:
+        assert _START_DISCOVERY_RUN_TOOL.execution is None
 
     def test_tool_schema_matches_discovery_run_start_request(self) -> None:
         properties = _START_DISCOVERY_RUN_TOOL.inputSchema.get("properties", {})
@@ -110,11 +156,11 @@ class TestJobAndRunToTask:
             completed_at=None,
         )
         task = _job_to_task(job)
-        assert task.taskId == "job_1"
+        assert task.task_id == "job_1"
         assert task.status == "working"
-        assert task.statusMessage is None
-        assert task.ttl == ARBITRARY_TTL_MS
-        assert task.pollInterval == ARBITRARY_POLL_INTERVAL_MS
+        assert task.status_message is None
+        assert task.ttl_ms == ARBITRARY_TTL_MS
+        assert task.poll_interval_ms == ARBITRARY_POLL_INTERVAL_MS
 
     def test_running_job_surfaces_progress_message(self) -> None:
         job = MagicMock(
@@ -127,7 +173,7 @@ class TestJobAndRunToTask:
         )
         task = _job_to_task(job)
         assert task.status == "working"
-        assert task.statusMessage == "fetching sources"
+        assert task.status_message == "fetching sources"
 
     def test_failed_job_surfaces_error_message(self) -> None:
         job = MagicMock(
@@ -139,9 +185,9 @@ class TestJobAndRunToTask:
             completed_at="2026-01-01T00:05:00+00:00",
         )
         task = _job_to_task(job)
-        assert task.status == "failed"
-        assert task.statusMessage == "boom"
-        assert task.lastUpdatedAt > task.createdAt
+        assert task.status == "completed"
+        assert task.status_message == "boom"
+        assert task.last_updated_at > task.created_at
 
     def test_completed_job_maps_to_completed(self) -> None:
         job = MagicMock(
@@ -174,7 +220,7 @@ class TestJobAndRunToTask:
             completed_at="2026-01-01T00:05:00+00:00",
         )
         task = _run_to_task(run)
-        assert task.taskId == "run_1"
+        assert task.task_id == "run_1"
         assert task.status == "completed"
 
     def test_failed_run_surfaces_error_message(self) -> None:
@@ -186,8 +232,8 @@ class TestJobAndRunToTask:
             completed_at="2026-01-01T00:05:00+00:00",
         )
         task = _run_to_task(run)
-        assert task.status == "failed"
-        assert task.statusMessage == "pipeline exploded"
+        assert task.status == "completed"
+        assert task.status_message == "pipeline exploded"
 
 
 class TestToolErrorBuilders:
@@ -213,6 +259,38 @@ class TestToolErrorBuilders:
         assert "org_1" in result.root.content[0].text
 
 
+class TestDraftResultSerialization:
+    def test_create_task_result_serializes_flat_wire_shape(self) -> None:
+        task = tasks_module.DraftTask(
+            task_id="task_1",
+            status="working",
+            created_at=datetime(2026, 1, 1, tzinfo=UTC),
+            last_updated_at=datetime(2026, 1, 1, tzinfo=UTC),
+            ttl_ms=ARBITRARY_TTL_MS,
+            poll_interval_ms=ARBITRARY_POLL_INTERVAL_MS,
+        )
+        result = tasks_module.DraftCreateTaskResult(
+            task=task,
+            result={"ok": True},
+            error={"code": types.INTERNAL_ERROR, "message": "boom"},
+        )
+
+        payload = result.model_dump(exclude_none=True)
+
+        assert payload["resultType"] == "task"
+        assert payload["taskId"] == "task_1"
+        assert "task" not in payload
+        assert payload["ttlMs"] == ARBITRARY_TTL_MS
+        assert payload["pollIntervalMs"] == ARBITRARY_POLL_INTERVAL_MS
+        assert payload["result"] == {"ok": True}
+        assert payload["error"]["code"] == types.INTERNAL_ERROR
+
+    def test_server_result_serializes_aliases(self) -> None:
+        result = tasks_module.DraftServerResult(tasks_module.DraftEmptyResult())
+
+        assert result.model_dump(exclude_none=True) == {"resultType": "complete"}
+
+
 class TestCreateDiscoveryRunTask:
     @pytest.mark.asyncio
     async def test_creates_job_and_returns_working_task(
@@ -226,10 +304,11 @@ class TestCreateDiscoveryRunTask:
             settings=test_settings,
             arguments=_start_request(),
         )
-        assert isinstance(result.root, types.CreateTaskResult)
+        assert result.root.result_type == "task"
         assert result.root.task.status == "working"
+        assert result.root.task.ttl_ms == ARBITRARY_TTL_MS
 
-        job = await DiscoveryJobCRUD.get_by_id(test_db, result.root.task.taskId)
+        job = await DiscoveryJobCRUD.get_by_id(test_db, result.root.task.task_id)
         assert job is not None
         assert job.status == "queued"
 
@@ -250,8 +329,8 @@ class TestCreateDiscoveryRunTask:
                 arguments=_start_request(),
             )
 
-        assert isinstance(result.root, types.CreateTaskResult)
-        job = await DiscoveryJobCRUD.get_by_run_id(test_db, result.root.task.taskId)
+        assert result.root.result_type == "task"
+        job = await DiscoveryJobCRUD.get_by_run_id(test_db, result.root.task.task_id)
         assert job is None
 
     @pytest.mark.asyncio
@@ -286,7 +365,7 @@ class TestCreateDiscoveryRunTask:
             settings=test_settings,
             arguments=_start_request(),
         )
-        assert first.root.task.taskId == second.root.task.taskId
+        assert first.root.task.task_id == second.root.task.task_id
 
     @pytest.mark.asyncio
     async def test_budget_exhaustion_returns_error_without_creating_job(
@@ -350,7 +429,7 @@ class TestCreateDiscoveryRunTask:
                 arguments=_start_request(),
             )
 
-        assert isinstance(result.root, types.CreateTaskResult)
+        assert result.root.result_type == "task"
 
     @pytest.mark.asyncio
     async def test_records_org_usage_event_with_target_metadata(
@@ -381,7 +460,7 @@ class TestResolveTask:
         )
         job_id = await DiscoveryJobCRUD.create(test_db, run_id=run_id)
         task = await _resolve_task(test_db, job_id)
-        assert task.taskId == job_id
+        assert task.task_id == job_id
 
     @pytest.mark.asyncio
     async def test_falls_back_to_run_when_no_job(self, test_db: object) -> None:
@@ -389,7 +468,7 @@ class TestResolveTask:
             test_db, location_query="KC", state="MO", issue_areas=["x"]
         )
         task = await _resolve_task(test_db, run_id)
-        assert task.taskId == run_id
+        assert task.task_id == run_id
 
     @pytest.mark.asyncio
     async def test_unknown_task_id_raises_mcp_error(self, test_db: object) -> None:
@@ -498,7 +577,7 @@ class TestInstallTasksExtension:
         assert result.root.isError is False
 
     @pytest.mark.asyncio
-    async def test_call_tool_rejects_start_discovery_run_without_task_param(self) -> None:
+    async def test_call_tool_rejects_start_discovery_run_without_tasks_capability(self) -> None:
         mcp = build_mcp()
         handler = _handler_for(mcp, types.CallToolRequest)
         request = types.CallToolRequest(
@@ -507,21 +586,18 @@ class TestInstallTasksExtension:
                 name="start_discovery_run", arguments=_start_request()
             ),
         )
-        result = await handler(request)
-        assert result.root.isError is True
+        with pytest.raises(McpError) as exc_info:
+            await handler(request)
+        assert exc_info.value.error.code == MISSING_REQUIRED_CLIENT_CAPABILITY
+        assert (
+            exc_info.value.error.data["requiredCapabilities"]["extensions"][TASKS_EXTENSION] == {}
+        )
 
     @pytest.mark.asyncio
     async def test_call_tool_rejects_start_discovery_run_without_authenticated_actor(self) -> None:
         mcp = build_mcp()
         handler = _handler_for(mcp, types.CallToolRequest)
-        request = types.CallToolRequest(
-            method="tools/call",
-            params=types.CallToolRequestParams(
-                name="start_discovery_run",
-                arguments=_start_request(),
-                task=types.TaskMetadata(),
-            ),
-        )
+        request = _call_tool_request("start_discovery_run", _start_request())
         with patch.object(
             tasks_module, "_actor_claims_from_request_context", return_value=(None, None)
         ):
@@ -535,14 +611,7 @@ class TestInstallTasksExtension:
         test_settings.discovery_inline = False
         mcp = build_mcp()
         handler = _handler_for(mcp, types.CallToolRequest)
-        request = types.CallToolRequest(
-            method="tools/call",
-            params=types.CallToolRequestParams(
-                name="start_discovery_run",
-                arguments=_start_request(),
-                task=types.TaskMetadata(),
-            ),
-        )
+        request = _call_tool_request("start_discovery_run", _start_request())
         with (
             patch.object(tasks_module, "get_settings", return_value=test_settings),
             patch.object(
@@ -550,7 +619,9 @@ class TestInstallTasksExtension:
             ),
         ):
             result = await handler(request)
-        assert isinstance(result.root, types.CreateTaskResult)
+        assert result.root.result_type == "task"
+        assert result.root.task.status == "working"
+        assert result.root.task.ttl_ms == ARBITRARY_TTL_MS
 
     @pytest.mark.asyncio
     async def test_get_task_wire_handler(self, test_db: object, test_settings: Settings) -> None:
@@ -562,14 +633,12 @@ class TestInstallTasksExtension:
         handler = _handler_for(mcp, types.GetTaskRequest)
 
         with patch.object(tasks_module, "get_settings", return_value=test_settings):
-            result = await handler(
-                types.GetTaskRequest(
-                    method="tasks/get", params=types.GetTaskRequestParams(taskId=job_id)
-                )
-            )
+            result = await handler(_get_task_request(job_id))
 
-        assert result.root.taskId == job_id
+        assert result.root.task_id == job_id
+        assert result.root.result_type == "complete"
         assert result.root.status == "working"
+        assert result.root.ttl_ms == ARBITRARY_TTL_MS
 
     @pytest.mark.asyncio
     async def test_get_task_wire_handler_unknown_id_raises(self, test_settings: Settings) -> None:
@@ -580,49 +649,86 @@ class TestInstallTasksExtension:
             patch.object(tasks_module, "get_settings", return_value=test_settings),
             pytest.raises(McpError),
         ):
-            await handler(
-                types.GetTaskRequest(
-                    method="tasks/get", params=types.GetTaskRequestParams(taskId="nope")
-                )
-            )
+            await handler(_get_task_request("nope"))
 
     @pytest.mark.asyncio
-    async def test_get_task_result_wire_handler(
+    async def test_get_task_completed_inlines_discovery_run_result(
         self, test_db: object, test_settings: Settings
     ) -> None:
         run_id = await DiscoveryRunCRUD.create(
             test_db, location_query="KC", state="MO", issue_areas=["x"]
         )
-        await DiscoveryJobCRUD.create(test_db, run_id=run_id, job_input=DiscoveryJobInput())
+        job_id = await DiscoveryJobCRUD.create(
+            test_db, run_id=run_id, job_input=DiscoveryJobInput()
+        )
+        await DiscoveryRunCRUD.complete(test_db, run_id, queries_generated=1)
+        await DiscoveryJobCRUD.complete(test_db, job_id)
         mcp = build_mcp()
-        handler = _handler_for(mcp, types.GetTaskPayloadRequest)
+        handler = _handler_for(mcp, types.GetTaskRequest)
 
         with patch.object(tasks_module, "get_settings", return_value=test_settings):
-            result = await handler(
-                types.GetTaskPayloadRequest(
-                    method="tasks/result", params=types.GetTaskPayloadRequestParams(taskId=run_id)
-                )
-            )
+            result = await handler(_get_task_request(job_id))
 
-        assert isinstance(result.root, types.CallToolResult)
-        assert result.root.structuredContent["id"] == run_id
+        assert result.root.result_type == "complete"
+        assert result.root.status == "completed"
+        assert result.root.result["structuredContent"]["id"] == run_id
+        assert result.root.result["isError"] is False
 
     @pytest.mark.asyncio
-    async def test_get_task_result_wire_handler_unknown_id_raises(
-        self, test_settings: Settings
+    async def test_get_task_failed_job_returns_completed_tool_error(
+        self, test_db: object, test_settings: Settings
     ) -> None:
+        run_id = await DiscoveryRunCRUD.create(
+            test_db, location_query="KC", state="MO", issue_areas=["x"]
+        )
+        job_id = await DiscoveryJobCRUD.create(test_db, run_id=run_id)
+        await DiscoveryJobCRUD.fail(test_db, job_id, "pipeline exploded", retryable=False)
         mcp = build_mcp()
-        handler = _handler_for(mcp, types.GetTaskPayloadRequest)
+        handler = _handler_for(mcp, types.GetTaskRequest)
 
-        with (
-            patch.object(tasks_module, "get_settings", return_value=test_settings),
-            pytest.raises(McpError),
-        ):
-            await handler(
-                types.GetTaskPayloadRequest(
-                    method="tasks/result", params=types.GetTaskPayloadRequestParams(taskId="nope")
-                )
-            )
+        with patch.object(tasks_module, "get_settings", return_value=test_settings):
+            result = await handler(_get_task_request(job_id))
+
+        assert result.root.result_type == "complete"
+        assert result.root.status == "completed"
+        assert result.root.result["isError"] is True
+        assert "pipeline exploded" in result.root.result["content"][0]["text"]
+
+    @pytest.mark.asyncio
+    async def test_get_task_completed_inline_run_inlines_result(
+        self, test_db: object, test_settings: Settings
+    ) -> None:
+        run_id = await DiscoveryRunCRUD.create(
+            test_db, location_query="KC", state="MO", issue_areas=["x"]
+        )
+        await DiscoveryRunCRUD.complete(test_db, run_id, queries_generated=1)
+        mcp = build_mcp()
+        handler = _handler_for(mcp, types.GetTaskRequest)
+
+        with patch.object(tasks_module, "get_settings", return_value=test_settings):
+            result = await handler(_get_task_request(run_id))
+
+        assert result.root.status == "completed"
+        assert result.root.result["structuredContent"]["id"] == run_id
+        assert result.root.result["isError"] is False
+
+    @pytest.mark.asyncio
+    async def test_get_task_failed_inline_run_returns_completed_tool_error(
+        self, test_db: object, test_settings: Settings
+    ) -> None:
+        run_id = await DiscoveryRunCRUD.create(
+            test_db, location_query="KC", state="MO", issue_areas=["x"]
+        )
+        await DiscoveryRunCRUD.fail(test_db, run_id, error_message="inline exploded")
+        mcp = build_mcp()
+        handler = _handler_for(mcp, types.GetTaskRequest)
+
+        with patch.object(tasks_module, "get_settings", return_value=test_settings):
+            result = await handler(_get_task_request(run_id))
+
+        assert result.root.status == "completed"
+        assert result.root.result["isError"] is True
+        assert "inline exploded" in result.root.result["content"][0]["text"]
 
     @pytest.mark.asyncio
     async def test_cancel_task_wire_handler(self, test_db: object, test_settings: Settings) -> None:
@@ -634,13 +740,12 @@ class TestInstallTasksExtension:
         handler = _handler_for(mcp, types.CancelTaskRequest)
 
         with patch.object(tasks_module, "get_settings", return_value=test_settings):
-            result = await handler(
-                types.CancelTaskRequest(
-                    method="tasks/cancel", params=types.CancelTaskRequestParams(taskId=job_id)
-                )
-            )
+            result = await handler(_cancel_task_request(job_id))
 
-        assert result.root.status == "cancelled"
+        assert result.root.result_type == "complete"
+        assert result.root.model_dump(by_alias=True, exclude_none=True) == {
+            "resultType": "complete"
+        }
 
     @pytest.mark.asyncio
     async def test_cancel_task_wire_handler_unknown_id_raises(
@@ -653,17 +758,198 @@ class TestInstallTasksExtension:
             patch.object(tasks_module, "get_settings", return_value=test_settings),
             pytest.raises(McpError),
         ):
-            await handler(
-                types.CancelTaskRequest(
-                    method="tasks/cancel", params=types.CancelTaskRequestParams(taskId="nope")
-                )
-            )
+            await handler(_cancel_task_request("nope"))
 
-    def test_initialization_options_advertise_tasks_capability(self) -> None:
+    def test_initialization_options_do_not_advertise_legacy_tasks_capability(self) -> None:
         mcp = build_mcp()
         options = _init_options(mcp)
-        assert options.capabilities.tasks is not None
-        assert options.capabilities.tasks.requests.tools.call is not None
+        assert options.capabilities.tasks is None
+
+    @pytest.mark.asyncio
+    async def test_draft_server_discover_advertises_tasks_extension(self) -> None:
+        response = await _handle_draft_tasks_jsonrpc(
+            {"jsonrpc": "2.0", "id": 1, "method": "server/discover", "params": {}}
+        )
+        assert response == {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "result": {"capabilities": {"extensions": {TASKS_EXTENSION: {}}}},
+        }
+
+    @pytest.mark.asyncio
+    async def test_draft_tasks_update_acknowledges_known_task(
+        self, test_db: object, test_settings: Settings
+    ) -> None:
+        run_id = await DiscoveryRunCRUD.create(
+            test_db, location_query="KC", state="MO", issue_areas=["x"]
+        )
+        job_id = await DiscoveryJobCRUD.create(test_db, run_id=run_id)
+
+        with patch.object(tasks_module, "get_settings", return_value=test_settings):
+            response = await _handle_draft_tasks_jsonrpc(
+                {
+                    "jsonrpc": "2.0",
+                    "id": 7,
+                    "method": "tasks/update",
+                    "params": {
+                        "taskId": job_id,
+                        "inputResponses": {"unknown": {"action": "accept"}},
+                        "_meta": _tasks_meta(),
+                    },
+                }
+            )
+
+        assert response == {"jsonrpc": "2.0", "id": 7, "result": {"resultType": "complete"}}
+
+    @pytest.mark.asyncio
+    async def test_draft_tasks_update_requires_tasks_capability(self) -> None:
+        response = await _handle_draft_tasks_jsonrpc(
+            {
+                "jsonrpc": "2.0",
+                "id": 8,
+                "method": "tasks/update",
+                "params": {"taskId": "job_1", "inputResponses": {}},
+            }
+        )
+
+        assert response["error"]["code"] == MISSING_REQUIRED_CLIENT_CAPABILITY
+        assert (
+            response["error"]["data"]["requiredCapabilities"]["extensions"][TASKS_EXTENSION] == {}
+        )
+
+    @pytest.mark.asyncio
+    async def test_draft_jsonrpc_ignores_unhandled_payloads(self) -> None:
+        assert await _handle_draft_tasks_jsonrpc("not-json") is None
+        assert await _handle_draft_tasks_jsonrpc({"jsonrpc": "2.0", "method": 7}) is None
+        assert (
+            await _handle_draft_tasks_jsonrpc(
+                {"jsonrpc": "2.0", "id": 9, "method": "tools/list", "params": {}}
+            )
+            is None
+        )
+
+    @pytest.mark.asyncio
+    async def test_draft_tasks_update_rejects_invalid_params(self) -> None:
+        response = await _handle_draft_tasks_jsonrpc(
+            {"jsonrpc": "2.0", "id": 9, "method": "tasks/update", "params": []}
+        )
+
+        assert response["error"]["code"] == types.INVALID_PARAMS
+
+    @pytest.mark.asyncio
+    async def test_draft_tasks_update_rejects_invalid_task_id(self) -> None:
+        response = await _handle_draft_tasks_jsonrpc(
+            {
+                "jsonrpc": "2.0",
+                "id": 9,
+                "method": "tasks/update",
+                "params": {
+                    "taskId": "",
+                    "inputResponses": {},
+                    "_meta": _tasks_meta(),
+                },
+            }
+        )
+
+        assert response["error"]["code"] == types.INVALID_PARAMS
+        assert response["error"]["message"] == "Invalid or missing taskId"
+
+    @pytest.mark.asyncio
+    async def test_draft_tasks_update_rejects_invalid_input_responses(self) -> None:
+        response = await _handle_draft_tasks_jsonrpc(
+            {
+                "jsonrpc": "2.0",
+                "id": 9,
+                "method": "tasks/update",
+                "params": {
+                    "taskId": "job_1",
+                    "inputResponses": [],
+                    "_meta": _tasks_meta(),
+                },
+            }
+        )
+
+        assert response["error"]["code"] == types.INVALID_PARAMS
+        assert response["error"]["message"] == "Invalid inputResponses"
+
+    @pytest.mark.asyncio
+    async def test_draft_tasks_update_rejects_unknown_task(self, test_settings: Settings) -> None:
+        with patch.object(tasks_module, "get_settings", return_value=test_settings):
+            response = await _handle_draft_tasks_jsonrpc(
+                {
+                    "jsonrpc": "2.0",
+                    "id": 9,
+                    "method": "tasks/update",
+                    "params": {
+                        "taskId": "nope",
+                        "inputResponses": {},
+                        "_meta": _tasks_meta(),
+                    },
+                }
+            )
+
+        assert response["error"]["code"] == types.INVALID_PARAMS
+        assert response["error"]["message"] == "Unknown task: nope"
+
+
+class TestDraftTasksJsonRpcMiddleware:
+    @pytest.mark.asyncio
+    async def test_non_post_requests_pass_through(self) -> None:
+        middleware = tasks_module.DraftTasksJsonRpcMiddleware(app=AsyncMock())
+        request = MagicMock()
+        request.method = "GET"
+        call_next = AsyncMock(return_value=Response(status_code=HTTP_NO_CONTENT))
+
+        response = await middleware.dispatch(request, call_next)
+
+        assert response.status_code == HTTP_NO_CONTENT
+        call_next.assert_awaited_once_with(request)
+
+    @pytest.mark.asyncio
+    async def test_invalid_json_passes_through(self) -> None:
+        middleware = tasks_module.DraftTasksJsonRpcMiddleware(app=AsyncMock())
+        request = MagicMock()
+        request.method = "POST"
+        request.json = AsyncMock(side_effect=ValueError)
+        call_next = AsyncMock(return_value=Response(status_code=HTTP_NO_CONTENT))
+
+        response = await middleware.dispatch(request, call_next)
+
+        assert response.status_code == HTTP_NO_CONTENT
+        call_next.assert_awaited_once_with(request)
+
+    @pytest.mark.asyncio
+    async def test_unhandled_jsonrpc_passes_through(self) -> None:
+        middleware = tasks_module.DraftTasksJsonRpcMiddleware(app=AsyncMock())
+        request = MagicMock()
+        request.method = "POST"
+        request.json = AsyncMock(return_value={"jsonrpc": "2.0", "method": "tools/list"})
+        call_next = AsyncMock(return_value=Response(status_code=HTTP_NO_CONTENT))
+
+        response = await middleware.dispatch(request, call_next)
+
+        assert response.status_code == HTTP_NO_CONTENT
+        call_next.assert_awaited_once_with(request)
+
+    @pytest.mark.asyncio
+    async def test_handled_jsonrpc_returns_json_response(self) -> None:
+        middleware = tasks_module.DraftTasksJsonRpcMiddleware(app=AsyncMock())
+        request = MagicMock()
+        request.method = "POST"
+        request.json = AsyncMock(
+            return_value={"jsonrpc": "2.0", "id": 1, "method": "server/discover", "params": {}}
+        )
+        call_next = AsyncMock()
+
+        response = await middleware.dispatch(request, call_next)
+
+        assert response.status_code == HTTP_OK
+        assert json.loads(response.body) == {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "result": {"capabilities": {"extensions": {TASKS_EXTENSION: {}}}},
+        }
+        call_next.assert_not_awaited()
 
 
 class TestLoggingIntegration:
@@ -713,11 +999,7 @@ class TestLoggingIntegration:
             patch.object(tasks_module, "get_settings", return_value=test_settings),
             patch.object(tasks_module, "log_operation", new=AsyncMock()) as log_mock,
         ):
-            await handler(
-                types.GetTaskRequest(
-                    method="tasks/get", params=types.GetTaskRequestParams(taskId=job_id)
-                )
-            )
+            await handler(_get_task_request(job_id))
 
         log_mock.assert_awaited_once()
 
@@ -736,34 +1018,30 @@ class TestLoggingIntegration:
             patch.object(tasks_module, "get_settings", return_value=test_settings),
             patch.object(tasks_module, "log_operation", new=AsyncMock()) as log_mock,
         ):
-            await handler(
-                types.CancelTaskRequest(
-                    method="tasks/cancel", params=types.CancelTaskRequestParams(taskId=job_id)
-                )
-            )
+            await handler(_cancel_task_request(job_id))
 
         log_mock.assert_awaited_once()
 
     @pytest.mark.asyncio
-    async def test_get_task_result_logs_operation(
+    async def test_get_completed_task_logs_operation(
         self, test_db: object, test_settings: Settings
     ) -> None:
         run_id = await DiscoveryRunCRUD.create(
             test_db, location_query="KC", state="MO", issue_areas=["x"]
         )
-        await DiscoveryJobCRUD.create(test_db, run_id=run_id, job_input=DiscoveryJobInput())
+        job_id = await DiscoveryJobCRUD.create(
+            test_db, run_id=run_id, job_input=DiscoveryJobInput()
+        )
+        await DiscoveryRunCRUD.complete(test_db, run_id, queries_generated=1)
+        await DiscoveryJobCRUD.complete(test_db, job_id)
         mcp = build_mcp()
-        handler = _handler_for(mcp, types.GetTaskPayloadRequest)
+        handler = _handler_for(mcp, types.GetTaskRequest)
 
         with (
             patch.object(tasks_module, "get_settings", return_value=test_settings),
             patch.object(tasks_module, "log_operation", new=AsyncMock()) as log_mock,
         ):
-            await handler(
-                types.GetTaskPayloadRequest(
-                    method="tasks/result", params=types.GetTaskPayloadRequestParams(taskId=run_id)
-                )
-            )
+            await handler(_get_task_request(job_id))
 
         log_mock.assert_awaited_once()
 

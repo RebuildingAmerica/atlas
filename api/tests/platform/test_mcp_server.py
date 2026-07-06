@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from types import SimpleNamespace
 from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -63,6 +64,22 @@ async def test_get_mcp_returns_singleton() -> None:
     first = get_mcp()
     second = get_mcp()
     assert first is second
+
+
+def test_get_mcp_asgi_app_installs_draft_tasks_middleware_once() -> None:
+    """Repeated app access does not stack duplicate draft Tasks middleware."""
+    app = MagicMock()
+    app.state = SimpleNamespace()
+    mcp = MagicMock()
+    mcp.streamable_http_app.return_value = app
+
+    with patch.object(server_module, "get_mcp", return_value=mcp):
+        first = get_mcp_asgi_app()
+        second = get_mcp_asgi_app()
+
+    assert first is app
+    assert second is app
+    app.add_middleware.assert_called_once()
 
 
 @pytest.mark.asyncio

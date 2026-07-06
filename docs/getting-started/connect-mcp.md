@@ -48,6 +48,6 @@ session replay.
 ## Long-running research runs
 
 `start_discovery_run` starts source-linked research and requires
-`discovery:write`. Task-aware MCP clients receive a task handle immediately and
-poll until the run finishes. Clients without task support receive an explicit
-error instead of a partial result.
+`discovery:write`. MCP clients that declare the Tasks extension receive a task
+handle immediately and poll until the run finishes. Clients without task support
+receive an explicit error instead of a partial result.
