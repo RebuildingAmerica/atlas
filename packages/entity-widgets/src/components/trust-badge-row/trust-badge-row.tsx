@@ -50,9 +50,22 @@ export interface TrustBadgeRowProps {
 /**
  * Two small pill badges: a verification/trust badge and a source-count
  * badge. Kept generic and standalone (plain strings/numbers in, no
- * dependency on `EntityCardData`) so it's reusable outside the entity card —
- * a later task replaces duplicated badge-rendering logic in the main app's
- * `entry-card.tsx`/`entry-detail.tsx` with this same component.
+ * dependency on `EntityCardData`) so it's reusable outside the entity card.
+ *
+ * A prior attempt to have the main app's `entry-card.tsx`/`entry-detail.tsx`
+ * consume this component in place of their own inline badge rendering was
+ * deliberately not carried out, and the concrete, verified blocker is this
+ * component's `sourceLabel` below: it hardcodes `"N sources"`/`"1 source"`
+ * and isn't parameterizable, while both app files render different, tested
+ * text — `pluralize(entry.source_count, "source packet")`, i.e.
+ * `"N source packets"`/`"1 source packet"` — for the same count. Swapping
+ * either file to this component as-is would silently change that displayed
+ * text. (There are further blockers too — the app's `Badge` variants vs.
+ * this component's `ew-*`-token pill styling, and badge ordering relative
+ * to other badges on the same row — but this text mismatch alone is enough
+ * to rule out a drop-in replacement without a parameterizable source-count
+ * label, or a design that separates the verification pill from the
+ * source-count pill entirely.)
  */
 export function TrustBadgeRow({
   verificationLevel,
