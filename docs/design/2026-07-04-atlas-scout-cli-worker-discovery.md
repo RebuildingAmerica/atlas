@@ -362,6 +362,14 @@ Public Scout commands that need search-backed discovery resolve the connected
 credential by default; they should not force normal users to pass key-shaped
 flags after `scout search connect`.
 
+Search storage is optional capability, not core Scout identity. If the operating
+system credential store is unavailable while Scout is only checking whether
+search is connected, Scout treats search as disconnected and continues with the
+direct-URL and login paths that do not require search. Commands that explicitly
+manage stored search credentials, such as `scout search connect` and
+`disconnect`, still surface credential-store failures because those commands are
+about writing or deleting a secret.
+
 ### Optional Worker Commands
 
 ```bash
@@ -454,6 +462,12 @@ to write secret-like fields such as `*.api_key`, `*.token`, `*.secret`, and
 `scout search connect`; automation may continue to use environment variables
 such as `ATLAS_API_KEY`, `SEARCH_API_KEY`, `LM_STUDIO_API_KEY`, and
 provider-specific API variables.
+
+The only file-backed Scout credential store is the explicit E2E test harness
+selected by `ATLAS_SCOUT_E2E_FILE_CREDENTIAL_STORE=1`. It exists so CI and
+Playwright can verify browser-approved login on Linux runners without requiring
+Secret Service. It must not be documented as a normal user setup path, used by
+production workers, or used as a fallback when the OS credential store fails.
 
 ## Discovery Worker Contract
 

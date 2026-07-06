@@ -2,11 +2,13 @@
 
 [Docs](../README.md) > [Development](./README.md) > Testing
 
-Test strategies and how to write tests for both API and app. Running tests and coverage requirements.
+Test strategies and how to write tests for both API and app. Running tests and
+coverage requirements.
 
 ## Testing Philosophy
 
-Code + tests + docs are one artifact. New behavior must be tested or it's incomplete.
+Code + tests + docs are one artifact. New behavior must be tested or it's
+incomplete.
 
 **Requirements:**
 
@@ -15,6 +17,18 @@ Code + tests + docs are one artifact. New behavior must be tested or it's incomp
 - Tests catch regressions (would fail if behavior regressed)
 
 ## Backend Testing (pytest)
+
+### Scout Credential Storage In Tests
+
+Scout's normal runtime stores login tokens and saved search credentials in the
+operating system credential store. Tests and Playwright acceptance runs may set
+`ATLAS_SCOUT_E2E_FILE_CREDENTIAL_STORE=1` to use the explicit file-backed E2E
+credential store instead. That switch is test infrastructure only: it is not a
+production fallback and should not be presented as a normal Scout setup path.
+
+Optional search capability should not block unrelated Scout flows. Tests that
+clear `SEARCH_API_KEY` and assert direct-URL behavior should preserve the E2E
+credential-store flag when they pass an explicit environment map.
 
 ### Running Tests
 

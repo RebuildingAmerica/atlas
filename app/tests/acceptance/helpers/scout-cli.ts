@@ -501,7 +501,8 @@ export async function approveScoutLogin(
     45_000,
   );
   const approvalUrl = extractScoutApprovalUrl(match.input ?? "");
-  const userCode = extractScoutUserCode(match.input ?? "");
+  const userCode =
+    extractScoutUserCodeFromUrl(approvalUrl) ?? extractScoutUserCode(match.input ?? "");
   await page.goto(approvalUrl);
   await expect(page.getByRole("heading", { name: "Approve device" })).toBeVisible();
   const deviceCodeInput = page.getByRole("textbox", { name: "Device code" });
@@ -549,6 +550,14 @@ function extractScoutApprovalUrl(output: string): string {
     }
   });
   return assertString(fallbackApprovalUrl, "approval URL");
+}
+
+function extractScoutUserCodeFromUrl(url: string): string | null {
+  try {
+    return new URL(url).searchParams.get("user_code");
+  } catch {
+    return null;
+  }
 }
 
 function extractScoutUserCode(output: string): string {

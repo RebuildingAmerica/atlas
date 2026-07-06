@@ -50,6 +50,18 @@ scout search connect
 Direct URL runs do not need a search key. Runs with `--location` and `--issues`
 do.
 
+Scripts can pass `SEARCH_API_KEY` instead of saving a search key.
+
+## Credential Storage Fails
+
+Scout uses the operating system credential store for login tokens and stored
+search keys. Configure macOS Keychain, Windows Credential Manager, or Linux
+Secret Service, then retry the command.
+
+Profile TOML is not a secret store. Do not put API keys, login tokens, or search
+keys in `scout config` files. Use `scout login`, `scout search connect`, or an
+environment variable for automation.
+
 ## Structured Resource Rows Look Wrong
 
 For headerless CSV, TSV, pipe-delimited text, or ZIP resources, pass column

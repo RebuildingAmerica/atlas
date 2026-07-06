@@ -140,6 +140,12 @@ def test_setup_can_create_new_profile_before_onboarding(
         lambda: ("lmstudio",),
         raising=False,
     )
+    monkeypatch.setattr(
+        cli_module,
+        "_missing_local_model_providers",
+        lambda: (),
+        raising=False,
+    )
     monkeypatch.setattr(cli_module, "resolve_local_model", lambda *_args, **_kwargs: _resolution())
 
     result = CliRunner().invoke(
@@ -196,6 +202,12 @@ def test_setup_can_continue_existing_profile_before_onboarding(
         cli_module,
         "_installed_local_model_providers",
         lambda: ("lmstudio",),
+        raising=False,
+    )
+    monkeypatch.setattr(
+        cli_module,
+        "_missing_local_model_providers",
+        lambda: (),
         raising=False,
     )
     monkeypatch.setattr(cli_module, "resolve_local_model", lambda *_args, **_kwargs: _resolution())
@@ -381,6 +393,12 @@ def test_setup_starts_local_provider_before_showing_next_steps(
         cli_module,
         "_installed_local_model_providers",
         lambda: ("ollama",),
+        raising=False,
+    )
+    monkeypatch.setattr(
+        cli_module,
+        "_missing_local_model_providers",
+        lambda: (),
         raising=False,
     )
     monkeypatch.setattr(

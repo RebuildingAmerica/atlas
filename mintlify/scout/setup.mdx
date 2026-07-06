@@ -33,6 +33,9 @@ scout auth status
 scout whoami
 ```
 
+Scout stores login tokens in your operating system's credential store. Atlas
+does not store login tokens in Scout profile TOML files.
+
 Local direct URL runs do not require login. Sync and worker mode do.
 
 ## Local Model Provider
@@ -90,6 +93,10 @@ Direct URL runs do not need a search key. Place and issue discovery does:
 scout search connect
 scout search status
 ```
+
+Scout stores saved search keys in your operating system's credential store.
+`SEARCH_API_KEY` can be used as an automation override for a single shell or
+script.
 
 Disconnect stored search credentials:
 
