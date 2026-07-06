@@ -53,9 +53,10 @@ function SearchResultRowContent({ row }: SearchResultRowContentProps) {
  *
  * A pure, presentational component — like `EntityCard`, it takes its data
  * and pagination callback as props rather than fetching anything itself.
- * The widget build's mount entry (`src/widget-entries/search-results.entry.tsx`)
- * wires it to `useSearchResultsData`; a future non-widget consumer (`app/`)
- * would wire it to its own data fetching and pagination instead.
+ * The sibling `entity-widgets-mcp` package's widget mount entry
+ * (`src/widget-entries/search-results.entry.tsx`) wires it to
+ * `useSearchResultsData`; a future non-widget consumer (`app/`) would wire
+ * it to its own data fetching and pagination instead.
  */
 export function SearchResultsList({
   data,

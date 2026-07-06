@@ -82,7 +82,7 @@ function ConnectionRowContent({ item }: ConnectionRowContentProps) {
  *
  * A pure, presentational component — like `SearchResultsList`, it takes its
  * data and pagination callback as props rather than fetching anything
- * itself. The widget build's mount entry
+ * itself. The sibling `entity-widgets-mcp` package's widget mount entry
  * (`src/widget-entries/connections-graph.entry.tsx`) wires it to
  * `useConnectionsData`; a future non-widget consumer (`app/`) would wire it
  * to its own data fetching and pagination instead.

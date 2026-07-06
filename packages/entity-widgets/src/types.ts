@@ -25,9 +25,9 @@ export type TrustLevel =
  * real API response but are omitted here because the card's layout doesn't
  * show them.
  *
- * The MCP tool result that feeds the widget build (wired up in a later,
- * separate task) carries the full nested `EntityResponse` shape; the
- * adapter in `src/adapters/app-client.ts` is responsible for narrowing that
+ * The MCP tool result that feeds the widget build carries the full nested
+ * `EntityResponse` shape; the adapter in the sibling `entity-widgets-mcp`
+ * package's `src/adapters/app-client.ts` is responsible for narrowing that
  * down to this flat shape.
  */
 export interface EntityCardData {
@@ -52,10 +52,11 @@ export interface EntityCardData {
  *
  * A strict subset of `EntityCardData`'s identity/trust fields — no
  * `description`/`photo_url`/`profile_url`, since a dense list row doesn't
- * render any of them. `src/adapters/app-client.ts` parses both this shape
- * and `EntityCardData` from the same underlying MCP tool payload shape
- * (`EntityResponse`), sharing the parsing logic for the fields they have in
- * common so the two can't silently drift apart.
+ * render any of them. The sibling `entity-widgets-mcp` package's
+ * `src/adapters/app-client.ts` parses both this shape and `EntityCardData`
+ * from the same underlying MCP tool payload shape (`EntityResponse`),
+ * sharing the parsing logic for the fields they have in common so the two
+ * can't silently drift apart.
  */
 export interface SearchResultRow {
   id: string;
@@ -117,9 +118,10 @@ export interface ConnectionRelationship {
  *
  * `entity` reuses `SearchResultRow` — the same dense-row shape
  * `SearchResultsList` renders — rather than a third, near-duplicate entity
- * shape: `src/adapters/app-client.ts`'s `parseSearchResultRow` already
- * narrows the full MCP `EntityResponse` payload (the shape of each item's
- * `"entity"` field) down to exactly this shape.
+ * shape: the sibling `entity-widgets-mcp` package's `src/adapters/app-client.ts`'s
+ * `parseSearchResultRow` already narrows the full MCP `EntityResponse`
+ * payload (the shape of each item's `"entity"` field) down to exactly this
+ * shape.
  */
 export interface ConnectionItem {
   entity: SearchResultRow;

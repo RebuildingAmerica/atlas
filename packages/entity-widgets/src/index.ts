@@ -3,10 +3,10 @@
  *
  * `app/` imports from here. Widget-build-only internals — the
  * `useEntityCardData`/`useSearchResultsData` hooks and the `App`
- * host-communication plumbing in `src/adapters/app-client.ts`, and the
- * mount entries in `src/widget-entries/` — are deliberately not exported:
- * `app/` fetches its own data and passes presentation-typed props (e.g.
- * `EntityCardData`, `SearchResultsData`) to these components directly.
+ * host-communication plumbing, and the mount entries — live in the sibling
+ * `entity-widgets-mcp` package, not this one: `app/` fetches its own data
+ * and passes presentation-typed props (e.g. `EntityCardData`,
+ * `SearchResultsData`) to these components directly.
  */
 export {
   ConnectionsGraph,
