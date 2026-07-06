@@ -5,6 +5,7 @@ async function loadInternalMembershipModule() {
     return await import("@/domains/access/server/internal-membership");
   }
 
+  /* v8 ignore next -- TanStack server handlers execute with SSR enabled; this guard protects accidental client imports. */
   throw new Error("Internal membership verification is only available on the server.");
 }
 

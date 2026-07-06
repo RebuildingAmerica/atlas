@@ -5,6 +5,7 @@ async function loadWebhookModule() {
     return await import("@/domains/billing/server/webhook-handler");
   }
 
+  /* v8 ignore next -- TanStack server handlers execute with SSR enabled; this guard protects accidental client imports. */
   throw new Error("Stripe webhook handling is only available on the server.");
 }
 

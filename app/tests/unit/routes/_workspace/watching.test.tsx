@@ -59,6 +59,16 @@ describe("routes/_workspace/watching", () => {
     expect(mocks.loadWorkspaceWatches).toHaveBeenCalledWith();
   });
 
+  it("sets the watching page title", async () => {
+    const routeModule = await import("@/routes/_workspace/watching");
+    const { asRouteStub } = await import("@/../tests/helpers/router-harness");
+    const Route = asRouteStub(routeModule.Route);
+
+    expect(Route.options.head?.({})).toEqual({
+      meta: [{ title: "Watching | Atlas" }],
+    });
+  });
+
   it("renders the watches page with loader data", async () => {
     const routeModule = await import("@/routes/_workspace/watching");
     const { asRouteStub, readRouterMocks } = await import("@/../tests/helpers/router-harness");

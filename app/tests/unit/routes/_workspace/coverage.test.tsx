@@ -68,6 +68,16 @@ describe("routes/_workspace/coverage", () => {
     expect(mocks.loadWorkspaceCoverage).toHaveBeenCalledWith();
   });
 
+  it("sets the coverage workspace page title", async () => {
+    const routeModule = await import("@/routes/_workspace/coverage");
+    const { asRouteStub } = await import("@/../tests/helpers/router-harness");
+    const Route = asRouteStub(routeModule.Route);
+
+    expect(Route.options.head?.({})).toEqual({
+      meta: [{ title: "Coverage Workspace | Atlas" }],
+    });
+  });
+
   it("renders the coverage page with loader data", async () => {
     const routeModule = await import("@/routes/_workspace/coverage");
     const { asRouteStub, readRouterMocks } = await import("@/../tests/helpers/router-harness");

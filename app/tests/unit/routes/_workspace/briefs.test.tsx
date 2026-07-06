@@ -58,6 +58,16 @@ describe("routes/_workspace/briefs", () => {
     expect(mocks.loadWorkspaceBriefs).toHaveBeenCalledWith();
   });
 
+  it("sets the workspace briefs page title", async () => {
+    const routeModule = await import("@/routes/_workspace/briefs");
+    const { asRouteStub } = await import("@/../tests/helpers/router-harness");
+    const Route = asRouteStub(routeModule.Route);
+
+    expect(Route.options.head?.({})).toEqual({
+      meta: [{ title: "Atlas Briefs | Atlas" }],
+    });
+  });
+
   it("renders the brief list page with loader data", async () => {
     const routeModule = await import("@/routes/_workspace/briefs");
     const { asRouteStub, readRouterMocks } = await import("@/../tests/helpers/router-harness");

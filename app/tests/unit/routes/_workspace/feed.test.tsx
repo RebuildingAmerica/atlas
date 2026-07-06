@@ -170,6 +170,61 @@ describe("routes/_workspace/feed", () => {
     expect(screen.queryByRole("link", { name: "Open source" })).not.toBeInTheDocument();
   });
 
+  it("labels relationship, correction, and profile digest events", async () => {
+    const digest = await import("@/domains/workspace/hooks/use-workspace-watch-digest");
+    vi.mocked(digest.useWorkspaceWatchDigest).mockReturnValue(
+      watchDigestQuery({
+        data: {
+          coverage_signal_count: 0,
+          items: [
+            {
+              created_at: "2026-06-26T00:00:00Z",
+              entry: null,
+              event_type: "relationship_added",
+              id: "event_relationship",
+              resource_id: "entry_1",
+              resource_type: "entry",
+              source: null,
+              summary: "A connection was added.",
+              title: "New connection for KC Tenants",
+            },
+            {
+              created_at: "2026-06-27T00:00:00Z",
+              entry: null,
+              event_type: "correction",
+              id: "event_correction",
+              resource_id: "entry_2",
+              resource_type: "entry",
+              source: null,
+              summary: "A correction was recorded.",
+              title: "Correction for a profile",
+            },
+            {
+              created_at: "2026-06-28T00:00:00Z",
+              entry: null,
+              event_type: "profile_updated",
+              id: "event_profile",
+              resource_id: "entry_3",
+              resource_type: "entry",
+              source: null,
+              summary: "A profile changed.",
+              title: "Profile update for a civic actor",
+            },
+          ],
+          source_signal_count: 0,
+          total: 3,
+        },
+        isLoading: false,
+      }),
+    );
+
+    await renderRoute();
+
+    expect(screen.getByText("New connection")).toBeInTheDocument();
+    expect(screen.getByText("Correction")).toBeInTheDocument();
+    expect(screen.getByText("Profile update")).toBeInTheDocument();
+  });
+
   it("falls back to an empty digest when the query has no data shape", async () => {
     const digest = await import("@/domains/workspace/hooks/use-workspace-watch-digest");
     vi.mocked(digest.useWorkspaceWatchDigest).mockReturnValue(
