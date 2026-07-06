@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import csv
+import html
 import io
 import json
 import logging
@@ -3341,6 +3342,167 @@ def worker_run_internal(
 # ---------------------------------------------------------------------------
 
 _GUARDIAN_SEARCH_URL = "https://content.guardianapis.com/search"
+_GUARDIAN_SHOW_FIELDS = "trailText,byline,shortUrl,thumbnail,bodyText"
+_GUARDIAN_BODY_TEXT_EXCERPT_CHARS = 500
+_ARTICLE_MENTION_LIMIT = 50
+_ARTICLE_MENTION_CONNECTORS = frozenset({"and", "for", "of", "the", "&"})
+_ARTICLE_MENTION_PREFIX_TRIM_WORDS = frozenset(
+    {
+        "a",
+        "an",
+        "anyone",
+        "after",
+        "as",
+        "at",
+        "audience",
+        "before",
+        "by",
+        "during",
+        "for",
+        "from",
+        "if",
+        "in",
+        "into",
+        "of",
+        "on",
+        "over",
+        "that",
+        "the",
+        "these",
+        "this",
+        "those",
+        "to",
+        "under",
+        "when",
+        "while",
+        "with",
+        "without",
+    }
+)
+_ARTICLE_MENTION_SUFFIX_TRIM_WORDS = _ARTICLE_MENTION_CONNECTORS | frozenset(
+    {"do", "does", "don't", "dont", "for", "from", "in", "of", "on", "the", "to", "with"}
+)
+_ARTICLE_MENTION_STOPWORDS = frozenset(
+    {
+        "a",
+        "an",
+        "after",
+        "amid",
+        "also",
+        "and",
+        "annual",
+        "april",
+        "as",
+        "at",
+        "before",
+        "by",
+        "christmas",
+        "city",
+        "current",
+        "december",
+        "development",
+        "during",
+        "everyone",
+        "exclusive",
+        "february",
+        "five",
+        "fresh",
+        "for",
+        "fortunately",
+        "friday",
+        "from",
+        "food",
+        "goals",
+        "he",
+        "her",
+        "here",
+        "hers",
+        "him",
+        "his",
+        "how",
+        "hundreds",
+        "i",
+        "i'm",
+        "i've",
+        "in",
+        "interview",
+        "industry",
+        "into",
+        "it",
+        "it's",
+        "january",
+        "july",
+        "june",
+        "just",
+        "knife",
+        "latest",
+        "letter",
+        "letters",
+        "live",
+        "look",
+        "looking",
+        "march",
+        "may",
+        "monday",
+        "more",
+        "most",
+        "new",
+        "news",
+        "next",
+        "now",
+        "november",
+        "october",
+        "on",
+        "older",
+        "ouch",
+        "over",
+        "people",
+        "police",
+        "radio",
+        "renovating",
+        "response",
+        "saturday",
+        "september",
+        "she",
+        "since",
+        "spat",
+        "staff",
+        "sunday",
+        "that",
+        "the",
+        "their",
+        "there",
+        "these",
+        "they",
+        "this",
+        "those",
+        "thursday",
+        "today",
+        "to",
+        "tuesday",
+        "under",
+        "virtual",
+        "watching",
+        "wednesday",
+        "we",
+        "well",
+        "what",
+        "when",
+        "while",
+        "with",
+        "world",
+        "you",
+        "you're",
+        "you\u2019re",
+    }
+)
+_ARTICLE_MENTION_PATTERN = re.compile(
+    r"\b(?:[A-Z]{2,}|[A-Z][A-Za-z0-9]*(?:['\u2019][A-Za-z0-9]+)?"
+    r"(?:-[A-Z][A-Za-z0-9]*(?:['\u2019][A-Za-z0-9]+)?)*)(?:\s+"
+    r"(?:and|for|of|the|&|[A-Z]{2,}|[A-Z][A-Za-z0-9]*(?:['\u2019][A-Za-z0-9]+)?"
+    r"(?:-[A-Z][A-Za-z0-9]*(?:['\u2019][A-Za-z0-9]+)?)*)){0,5}\b"
+)
+_ARTICLE_MENTION_EDGE_CHARS = " \t\n\r'\"\u201c\u201d\u2018\u2019.,:;!?()[]{}"
 _ARTICLE_EXPORT_CSV_FIELDS = [
     "url",
     "title",
@@ -3435,6 +3597,7 @@ async def _import_guardian_articles(
     total_fetched = 0
     total_saved = 0
     total_skipped = 0
+    total_updated = 0
     by_year: dict[str, int] = {}
     windows = _year_windows(from_date, to_date)
     try:
@@ -3469,9 +3632,10 @@ async def _import_guardian_articles(
                     pages = int(response.get("pages") or 0)
                     articles = _guardian_articles_from_response(response)
                     total_fetched += len(articles)
-                    saved = await store.bulk_save_articles(articles)
+                    saved = await store.bulk_save_articles(articles, update_existing=True)
                     total_saved += saved["saved"]
                     total_skipped += saved["skipped"]
+                    total_updated += saved["updated"]
                     saved_in_window += saved["saved"]
                     for article in articles:
                         published_at = str(article["published_at"])
@@ -3491,6 +3655,7 @@ async def _import_guardian_articles(
         "fetched": total_fetched,
         "saved": total_saved,
         "skipped": total_skipped,
+        "updated": total_updated,
         "by_year": by_year,
     }
     if json_output:
@@ -3498,13 +3663,15 @@ async def _import_guardian_articles(
         return
     console.print(
         f"Imported {total_saved} Guardian articles "
-        f"({total_fetched} fetched, {total_skipped} skipped)."
+        f"({total_fetched} fetched, {total_updated} updated, {total_skipped} skipped)."
     )
 
 
 @articles.command("stats")
 @click.option("--json", "json_output", is_flag=True, help="Print machine-readable JSON.")
 @click.option("--min-count", type=click.IntRange(0), default=None)
+@click.option("--min-with-mentions", type=click.IntRange(0), default=None)
+@click.option("--min-metadata-complete", type=click.IntRange(0), default=None)
 @click.option(
     "--from-date", "from_date_value", default=None, help="Require coverage from YYYY-MM-DD."
 )
@@ -3516,6 +3683,8 @@ def articles_stats(
     ctx: click.Context,
     json_output: bool,
     min_count: int | None,
+    min_with_mentions: int | None,
+    min_metadata_complete: int | None,
     from_date_value: str | None,
     to_date_value: str | None,
 ) -> None:
@@ -3536,6 +3705,8 @@ def articles_stats(
             config,
             json_output=json_output,
             min_count=min_count,
+            min_with_mentions=min_with_mentions,
+            min_metadata_complete=min_metadata_complete,
             from_date=from_date,
             to_date=to_date,
         )
@@ -3547,6 +3718,8 @@ async def _articles_stats(
     *,
     json_output: bool,
     min_count: int | None,
+    min_with_mentions: int | None,
+    min_metadata_complete: int | None,
     from_date: date | None,
     to_date: date | None,
 ) -> None:
@@ -3565,6 +3738,18 @@ async def _articles_stats(
         raise click.ClickException(
             f"Only {total_articles} articles; expected at least {min_count}."
         )
+    articles_with_mentions = int(stats["articles_with_mentions"])
+    if min_with_mentions is not None and articles_with_mentions < min_with_mentions:
+        raise click.ClickException(
+            f"Only {articles_with_mentions} articles with mentions; expected at least "
+            f"{min_with_mentions}."
+        )
+    metadata_complete_articles = int(stats["metadata_complete_articles"])
+    if min_metadata_complete is not None and metadata_complete_articles < min_metadata_complete:
+        raise click.ClickException(
+            f"Only {metadata_complete_articles} metadata-complete articles; expected at least "
+            f"{min_metadata_complete}."
+        )
     earliest = _date_from_timestamp(stats.get("earliest_published_at"))
     latest = _date_from_timestamp(stats.get("latest_published_at"))
     if from_date is not None and (earliest is None or earliest > from_date):
@@ -3580,12 +3765,68 @@ async def _articles_stats(
     table.add_column("Metric", style="bold")
     table.add_column("Value")
     table.add_row("Total articles", str(total_articles))
+    table.add_row("Metadata-complete articles", str(metadata_complete_articles))
+    table.add_row("Articles with mentions", str(articles_with_mentions))
+    table.add_row("Total mentions", str(stats["total_mentions"]))
+    table.add_row("Unique mentions", str(stats["unique_mentions"]))
     table.add_row("Earliest published", str(stats["earliest_published_at"]))
     table.add_row("Latest published", str(stats["latest_published_at"]))
     table.add_row("By year", json.dumps(stats["by_year"], sort_keys=True))
     table.add_row("By source domain", json.dumps(stats["by_source_domain"], sort_keys=True))
     table.add_row("By provider", json.dumps(stats["by_provider"], sort_keys=True))
+    table.add_row("By mention type", json.dumps(stats["by_mention_type"], sort_keys=True))
     console.print(table)
+
+
+@articles.command("refresh-mentions")
+@click.option("--json", "json_output", is_flag=True, help="Print machine-readable JSON.")
+@click.pass_context
+def articles_refresh_mentions(ctx: click.Context, json_output: bool) -> None:
+    """Recompute stored article mention candidates from local article text fields."""
+    config: ScoutConfig = ctx.obj["config"]
+    _run_async(_articles_refresh_mentions(config, json_output=json_output))
+
+
+async def _articles_refresh_mentions(config: ScoutConfig, *, json_output: bool) -> None:
+    """Refresh article mentions without importing new source records."""
+    from atlas_scout.store import ScoutStore
+
+    store = ScoutStore(str(Path(config.store.path).expanduser()))
+    await store.initialize()
+    try:
+        rows = await store.list_articles(limit=0)
+        articles_with_mentions = 0
+        total_mentions = 0
+        for row in rows:
+            metadata = row.get("metadata")
+            metadata = metadata if isinstance(metadata, dict) else {}
+            mentions = _extract_article_mentions(
+                title=str(row.get("title") or ""),
+                trail_text=_plain_article_text(metadata.get("trail_text")),
+                body_text=_plain_article_text(metadata.get("body_text_excerpt")),
+            )
+            metadata["mentions"] = mentions
+            row["metadata"] = metadata
+            if mentions:
+                articles_with_mentions += 1
+                total_mentions += len(mentions)
+        saved = await store.bulk_save_articles(rows, update_existing=True)
+    finally:
+        await store.close()
+
+    payload = {
+        "articles": len(rows),
+        "updated": saved["updated"],
+        "articles_with_mentions": articles_with_mentions,
+        "total_mentions": total_mentions,
+    }
+    if json_output:
+        click.echo(json.dumps(payload, sort_keys=True))
+        return
+    console.print(
+        f"Refreshed mentions for {payload['updated']} articles "
+        f"({articles_with_mentions} with mentions, {total_mentions} total mentions)."
+    )
 
 
 @articles.command("export")
@@ -3683,7 +3924,8 @@ async def _fetch_guardian_page(
         "page": page,
         "page-size": page_size,
         "order-by": "oldest",
-        "show-fields": "trailText",
+        "show-fields": _GUARDIAN_SHOW_FIELDS,
+        "show-tags": "all",
     }
     if query:
         params["q"] = query
@@ -3718,10 +3960,30 @@ def _guardian_articles_from_response(response: dict[str, Any]) -> list[dict[str,
             continue
         fields = item.get("fields")
         fields = fields if isinstance(fields, dict) else {}
+        title_text = _plain_article_text(title)
+        trail_text = _plain_article_text(fields.get("trailText"))
+        body_text = _plain_article_text(fields.get("bodyText"))
+        metadata = {
+            "guardian_id": item.get("id"),
+            "section_id": item.get("sectionId"),
+            "pillar_name": item.get("pillarName"),
+            "trail_text": trail_text,
+            "byline": _plain_article_text(fields.get("byline")),
+            "short_url": _optional_article_text(fields.get("shortUrl")),
+            "thumbnail": _optional_article_text(fields.get("thumbnail")),
+            "body_text_length": len(body_text),
+            "body_text_excerpt": body_text[:_GUARDIAN_BODY_TEXT_EXCERPT_CHARS],
+            "guardian_tags": _guardian_tags_from_item(item),
+            "mentions": _extract_article_mentions(
+                title=title_text,
+                trail_text=trail_text,
+                body_text=body_text,
+            ),
+        }
         articles.append(
             {
                 "url": url,
-                "title": title,
+                "title": title_text,
                 "published_at": published_at,
                 "source_name": "The Guardian",
                 "source_domain": parsed_url.netloc.lower(),
@@ -3729,15 +3991,109 @@ def _guardian_articles_from_response(response: dict[str, Any]) -> list[dict[str,
                 "provider": "guardian",
                 "provider_id": item.get("id"),
                 "api_url": item.get("apiUrl"),
-                "metadata": {
-                    "guardian_id": item.get("id"),
-                    "section_id": item.get("sectionId"),
-                    "pillar_name": item.get("pillarName"),
-                    "trail_text": fields.get("trailText"),
-                },
+                "metadata": metadata,
             }
         )
     return articles
+
+
+def _guardian_tags_from_item(item: dict[str, Any]) -> list[dict[str, str]]:
+    """Return Guardian taxonomy tags as provider metadata."""
+    tags = item.get("tags")
+    if not isinstance(tags, list):
+        return []
+
+    results: list[dict[str, str]] = []
+    for tag in tags:
+        if not isinstance(tag, dict):
+            continue
+        tag_id = _optional_article_text(tag.get("id"))
+        tag_type = _optional_article_text(tag.get("type"))
+        tag_title = _optional_article_text(tag.get("webTitle"))
+        if not tag_id and not tag_type and not tag_title:
+            continue
+        results.append({"id": tag_id, "type": tag_type, "title": tag_title})
+    return results
+
+
+def _extract_article_mentions(
+    *,
+    title: str,
+    trail_text: str,
+    body_text: str,
+) -> list[dict[str, str]]:
+    """Extract conservative text-derived mention candidates from article copy."""
+    seen: set[str] = set()
+    mentions: list[dict[str, str]] = []
+    for source, text in (
+        ("headline", title),
+        ("trail_text", trail_text),
+        ("body_text", body_text),
+    ):
+        for match in _ARTICLE_MENTION_PATTERN.finditer(text):
+            mention_name = _clean_article_mention(match.group(0))
+            if not _is_meaningful_article_mention(mention_name):
+                continue
+            key = mention_name.casefold()
+            if key in seen:
+                continue
+            seen.add(key)
+            mentions.append({"name": mention_name, "type": "text", "source": source})
+            if len(mentions) >= _ARTICLE_MENTION_LIMIT:
+                return mentions
+    return mentions
+
+
+def _plain_article_text(value: object) -> str:
+    """Return plain text from a Guardian text field."""
+    if not isinstance(value, str):
+        return ""
+    without_markup = re.sub(r"<[^>]+>", " ", html.unescape(value))
+    return re.sub(r"\s+", " ", without_markup).strip()
+
+
+def _optional_article_text(value: object) -> str:
+    """Return a stripped string for optional metadata fields."""
+    return value.strip() if isinstance(value, str) else ""
+
+
+def _clean_article_mention(value: str) -> str:
+    """Normalize punctuation around a text-derived mention candidate."""
+    cleaned = re.sub(r"\s+", " ", value).strip(_ARTICLE_MENTION_EDGE_CHARS)
+    cleaned = re.sub(r"(?:'s|\u2019s)$", "", cleaned).strip()
+    tokens = cleaned.split()
+    while tokens and _article_mention_token_key(tokens[0]) in _ARTICLE_MENTION_PREFIX_TRIM_WORDS:
+        tokens.pop(0)
+    while tokens and _article_mention_token_key(tokens[-1]) in _ARTICLE_MENTION_SUFFIX_TRIM_WORDS:
+        tokens.pop()
+    return " ".join(tokens).strip(_ARTICLE_MENTION_EDGE_CHARS)
+
+
+def _is_meaningful_article_mention(value: str) -> bool:
+    """Return whether a candidate looks like an entity mention."""
+    if not value:
+        return False
+    tokens = value.split()
+    content_tokens = [
+        token.strip(_ARTICLE_MENTION_EDGE_CHARS)
+        for token in tokens
+        if token.casefold() not in _ARTICLE_MENTION_CONNECTORS
+    ]
+    if not content_tokens:
+        return False
+    if all(token.casefold() in _ARTICLE_MENTION_STOPWORDS for token in content_tokens):
+        return False
+    if len(content_tokens) == 1:
+        token = content_tokens[0]
+        if token.casefold() in _ARTICLE_MENTION_STOPWORDS or len(token) < 3:
+            return False
+        return token.isupper() or len(token) >= 4
+    return any(token[:1].isupper() or token.isupper() for token in content_tokens)
+
+
+def _article_mention_token_key(value: str) -> str:
+    """Return a normalized key for mention token filtering."""
+    return value.strip(_ARTICLE_MENTION_EDGE_CHARS).casefold()
 
 
 def _year_windows(from_date: date, to_date: date) -> list[tuple[date, date]]:

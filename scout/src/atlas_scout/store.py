@@ -240,6 +240,51 @@ def _article_record(row: aiosqlite.Row) -> dict[str, Any]:
     return record
 
 
+def _article_update_row(article: dict[str, Any], url: str) -> tuple[Any, ...]:
+    """Return an UPDATE row for an existing article URL."""
+    return (
+        str(article["title"]),
+        str(article["published_at"]),
+        article.get("source_name"),
+        str(article["source_domain"]),
+        article.get("section"),
+        str(article["provider"]),
+        article.get("provider_id"),
+        article.get("api_url"),
+        json.dumps(article.get("metadata", {})),
+        url,
+    )
+
+
+def _article_has_complete_metadata(row: aiosqlite.Row, metadata: dict[str, Any]) -> bool:
+    """Return whether an article has enough metadata to review later."""
+    required_row_values = (
+        row["url"],
+        row["title"],
+        row["published_at"],
+        row["source_domain"],
+        row["provider"],
+        row["provider_id"],
+    )
+    has_core_row = all(isinstance(value, str) and value.strip() for value in required_row_values)
+    if not has_core_row:
+        return False
+    has_text_context = bool(
+        metadata.get("trail_text")
+        or metadata.get("body_text_excerpt")
+        or metadata.get("body_text_length")
+    )
+    has_provider_context = bool(
+        metadata.get("guardian_tags")
+        or metadata.get("byline")
+        or metadata.get("short_url")
+        or metadata.get("thumbnail")
+        or metadata.get("section_id")
+        or metadata.get("pillar_name")
+    )
+    return has_text_context and has_provider_context
+
+
 class ScoutStore:
     """Async SQLite store for Scout's local state."""
 
@@ -880,6 +925,7 @@ class ScoutStore:
         articles: list[dict[str, Any]],
         *,
         batch_size: int = 5000,
+        update_existing: bool = False,
     ) -> dict[str, int]:
         """Insert many article records, deduping existing URLs.
 
@@ -889,11 +935,13 @@ class ScoutStore:
             Article payloads keyed by URL.
         batch_size : int, optional
             Number of rows to commit per batch. Default is 5000.
+        update_existing : bool, optional
+            Replace metadata for existing URLs instead of skipping them.
 
         Returns
         -------
         dict[str, int]
-            Attempted, saved, and skipped row counts.
+            Attempted, saved, skipped, and updated row counts.
         """
         if batch_size <= 0:
             raise ValueError("batch_size must be positive")
@@ -903,15 +951,22 @@ class ScoutStore:
         existing_urls = await self.existing_article_urls(urls)
         seen_urls: set[str] = set()
         rows: list[tuple[Any, ...]] = []
+        update_rows: list[tuple[Any, ...]] = []
         now = _now()
         skipped = 0
 
         for article in articles:
             url = str(article.get("url") or "")
-            if not url or url in existing_urls or url in seen_urls:
+            if not url or url in seen_urls:
                 skipped += 1
                 continue
             seen_urls.add(url)
+            if url in existing_urls:
+                if update_existing:
+                    update_rows.append(_article_update_row(article, url))
+                else:
+                    skipped += 1
+                continue
             rows.append(
                 (
                     _new_id(),
@@ -953,7 +1008,31 @@ class ScoutStore:
             )
             await self._conn.commit()
 
-        return {"attempted": len(articles), "saved": len(rows), "skipped": skipped}
+        for start in range(0, len(update_rows), batch_size):
+            await self._conn.executemany(
+                """
+                UPDATE articles
+                SET title = ?,
+                    published_at = ?,
+                    source_name = ?,
+                    source_domain = ?,
+                    section = ?,
+                    provider = ?,
+                    provider_id = ?,
+                    api_url = ?,
+                    metadata = ?
+                WHERE url = ?
+                """,
+                update_rows[start : start + batch_size],
+            )
+            await self._conn.commit()
+
+        return {
+            "attempted": len(articles),
+            "saved": len(rows),
+            "skipped": skipped,
+            "updated": len(update_rows),
+        }
 
     async def existing_article_urls(self, urls: list[str] | None = None) -> set[str]:
         """Return article URLs already stored locally."""
@@ -1016,8 +1095,13 @@ class ScoutStore:
         by_year: dict[str, int] = {}
         by_source_domain: dict[str, int] = {}
         by_provider: dict[str, int] = {}
+        by_mention_type: dict[str, int] = {}
+        unique_mentions: set[tuple[str, str]] = set()
         earliest: str | None = None
         latest: str | None = None
+        articles_with_mentions = 0
+        metadata_complete_articles = 0
+        total_mentions = 0
         for row in rows:
             published_at = str(row["published_at"])
             year = published_at[:4]
@@ -1028,6 +1112,22 @@ class ScoutStore:
             by_provider[provider] = by_provider.get(provider, 0) + 1
             earliest = published_at if earliest is None else min(earliest, published_at)
             latest = published_at if latest is None else max(latest, published_at)
+            metadata = json.loads(row["metadata"])
+            if _article_has_complete_metadata(row, metadata):
+                metadata_complete_articles += 1
+            mentions = metadata.get("mentions")
+            if isinstance(mentions, list) and mentions:
+                articles_with_mentions += 1
+                total_mentions += len(mentions)
+                for mention in mentions:
+                    if not isinstance(mention, dict):
+                        continue
+                    mention_name = str(mention.get("name") or "").strip()
+                    mention_type = str(mention.get("type") or "unknown").strip() or "unknown"
+                    if not mention_name:
+                        continue
+                    unique_mentions.add((mention_type, mention_name.casefold()))
+                    by_mention_type[mention_type] = by_mention_type.get(mention_type, 0) + 1
 
         return {
             "total_articles": len(rows),
@@ -1036,6 +1136,11 @@ class ScoutStore:
             "by_year": by_year,
             "by_source_domain": by_source_domain,
             "by_provider": by_provider,
+            "articles_with_mentions": articles_with_mentions,
+            "metadata_complete_articles": metadata_complete_articles,
+            "total_mentions": total_mentions,
+            "unique_mentions": len(unique_mentions),
+            "by_mention_type": by_mention_type,
         }
 
     # ------------------------------------------------------------------

@@ -8,7 +8,13 @@ this when you need dated news records first, then want to review or mine those
 articles for people, organizations, and initiatives later.
 
 Article records are not Atlas profiles. They are source artifacts with a URL,
-title, publication date, source domain, provider id, and provider metadata.
+title, publication date, source domain, provider id, provider metadata, and
+text-derived mention candidates.
+
+Guardian imports use the Guardian Content API. They do not open a browser or
+crawl article pages. Scout requests article text fields from the API, stores
+reviewable metadata, and extracts mention candidates from headline, trail text,
+and body text fields.
 
 ## Import Guardian Articles
 
@@ -44,16 +50,39 @@ Use stats gates before treating the corpus as ready:
 ```bash
 scout articles stats \
   --min-count 100000 \
+  --min-with-mentions 100000 \
+  --min-metadata-complete 100000 \
   --from-date 2006-07-06 \
   --to-date 2026-07-06
 ```
 
 JSON output includes total articles, earliest and latest publication dates,
-counts by year, counts by source domain, and counts by provider:
+counts by year, counts by source domain, counts by provider, metadata-complete
+article counts, mention coverage, total mentions, unique mentions, and mention
+type counts:
 
 ```bash
 scout articles stats --json
 ```
+
+`guardian_tags` are Guardian taxonomy labels such as keywords, contributors,
+series, tones, or tracking tags. They are source-provided metadata. Scout keeps
+them separate from `mentions`, which are candidates extracted from article text.
+Do not treat provider tags as proof that Scout found a person, organization, or
+place in the article body.
+
+## Refresh Mention Candidates
+
+When Scout's text mention extractor improves, refresh stored article metadata
+without importing new source records:
+
+```bash
+scout articles refresh-mentions --json
+```
+
+The refresh command recomputes `mentions` from each stored article title,
+`trail_text`, and `body_text_excerpt`. It preserves provider metadata such as
+`guardian_tags`, and it does not convert provider tags into mentions.
 
 ## Export Articles
 
@@ -74,5 +103,7 @@ scout articles export \
 ```
 
 The export keeps URLs, titles, publication dates, source domains, provider ids,
-API URLs, metadata, and local creation timestamps together. Keep those fields
-attached when handing the file to another review or extraction step.
+API URLs, metadata, and local creation timestamps together. Metadata includes
+Guardian tags, bylines, short URLs, thumbnails, body-text length and excerpt,
+and text-derived mention candidates when available. Keep those fields attached
+when handing the file to another review or extraction step.
