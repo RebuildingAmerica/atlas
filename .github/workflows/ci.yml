@@ -35,6 +35,8 @@ jobs:
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      ATLAS_SCOUT_E2E_FILE_CREDENTIAL_STORE: "1"
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - uses: ./.github/actions/setup-toolchain
@@ -44,6 +46,8 @@ jobs:
   acceptance:
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    env:
+      ATLAS_SCOUT_E2E_FILE_CREDENTIAL_STORE: "1"
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - uses: ./.github/actions/setup-toolchain
