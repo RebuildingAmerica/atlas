@@ -5054,6 +5054,18 @@
             "title": "Entity Id",
             "type": "string"
           },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "next cursor for this entity sources.",
+            "title": "Next Cursor"
+          },
           "sources": {
             "description": "sources for this entity sources.",
             "items": {
@@ -5061,6 +5073,12 @@
             },
             "title": "Sources",
             "type": "array"
+          },
+          "total": {
+            "default": 0,
+            "description": "total for this entity sources.",
+            "title": "Total",
+            "type": "integer"
           }
         },
         "required": [
