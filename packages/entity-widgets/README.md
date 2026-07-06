@@ -2,16 +2,18 @@
 
 Shared React components rendered both as MCP App UI widgets (rendered inline in
 Claude and other compliant hosts) and inside Atlas's main web app: a compact
-"entity card" and a paginated "search results" list.
+"entity card", a paginated "search results" list, and a "connections" list
+showing which other Atlas entities are mechanically linked to a given one.
 
 ## Two build targets
 
 - **Library** (`pnpm build` → `dist/lib/`): a normal ESM React library, consumed
   by `app/`. React/React DOM are external peer dependencies.
 - **Widget** (`pnpm build` → `dist/widget/<name>.html`, one file per widget —
-  currently `entity-card.html` and `search-results.html`): each widget's HTML
-  entry is built into its own single, fully self-contained file (all JS and CSS
-  inlined via `vite-plugin-singlefile`) served as an MCP App UI resource.
+  currently `entity-card.html`, `search-results.html`, and
+  `connections-graph.html`): each widget's HTML entry is built into its own
+  single, fully self-contained file (all JS and CSS inlined via
+  `vite-plugin-singlefile`) served as an MCP App UI resource.
 
 See `vite.lib.config.ts` and `vite.widget.config.ts` for the two configs.
 
@@ -28,11 +30,12 @@ or silently rebuilding only one of several — is worse than failing loudly), an
 rm -rf dist/widget \
   && INPUT=entity-card.html vite build --config vite.widget.config.ts \
   && INPUT=search-results.html vite build --config vite.widget.config.ts \
+  && INPUT=connections-graph.html vite build --config vite.widget.config.ts \
   && node scripts/verify-widget-build.mjs
 ```
 
 `dist/widget/` is cleared once up front — not via each config's own
-`emptyOutDir`, which is `false` — so the two `INPUT=...` invocations don't
+`emptyOutDir`, which is `false` — so the three `INPUT=...` invocations don't
 delete each other's output, while a full `pnpm build` still starts from a clean
 directory (no stale widget file left over from a since-renamed or since-removed
 entry). `scripts/verify-widget-build.mjs` runs last and fails the build if any
@@ -41,10 +44,10 @@ because an `INPUT=...` invocation was forgotten or the script got reordered — 
 a missing widget is caught here, in CI, rather than later as a `RuntimeError`
 from the API's `resolve_widget_asset_dir` at request time.
 
-### Adding a third widget
+### Adding another widget
 
 1. Add `<name>.html` and `src/widget-entries/<name>.entry.tsx` (mirror the
-   existing `entity-card`/`search-results` pair).
+   existing `entity-card`/`search-results`/`connections-graph` trio).
 2. Add one more `INPUT=<name>.html vite build --config vite.widget.config.ts`
    invocation to `package.json`'s `build` script, and add `"<name>"` to
    `WIDGET_NAMES` in `scripts/verify-widget-build.mjs`.

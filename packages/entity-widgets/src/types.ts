@@ -86,3 +86,65 @@ export interface SearchResultsData {
   /** Opaque pagination cursor for the next page; null when there isn't one. */
   next_cursor: string | null;
 }
+
+/**
+ * One mechanically-derived relationship between two entities, as returned by
+ * `get_related_entities` (`AtlasDataService.get_related_entities` in
+ * `api/atlas/platform/mcp/data.py`; mirrors `EntityRelationship` in
+ * `api/atlas/domains/catalog/schemas/public.py`).
+ *
+ * `type` is a plain string rather than a closed union: Atlas's relationship
+ * taxonomy (`affiliated_organization`, `affiliated_member`,
+ * `shared_issue_area`, `shared_place`, `shared_source` today) is defined
+ * server-side and may grow, and `formatRelationshipLabel`
+ * (`src/lib/relationship-labels.ts`) humanizes both known and unknown values
+ * — so a new relationship type this client doesn't recognize yet still
+ * renders a reasonable label instead of failing to parse.
+ */
+export interface ConnectionRelationship {
+  type: string;
+  /** Populated only for `shared_issue_area`; empty array for every other type. */
+  issue_area_ids: string[];
+  /** Populated only for `shared_source`; empty array for every other type. */
+  source_ids: string[];
+}
+
+/**
+ * One related entity plus every relationship it shares with the subject
+ * entity `get_related_entities` was called for. A related entity can carry
+ * more than one relationship simultaneously (e.g. both `shared_issue_area`
+ * and `shared_place`), so this is a list, not a single value.
+ *
+ * `entity` reuses `SearchResultRow` — the same dense-row shape
+ * `SearchResultsList` renders — rather than a third, near-duplicate entity
+ * shape: `src/adapters/app-client.ts`'s `parseSearchResultRow` already
+ * narrows the full MCP `EntityResponse` payload (the shape of each item's
+ * `"entity"` field) down to exactly this shape.
+ */
+export interface ConnectionItem {
+  entity: SearchResultRow;
+  relationships: ConnectionRelationship[];
+}
+
+/**
+ * Presentation-only data shape for the whole connections widget: one page of
+ * related-entity rows plus enough pagination metadata for a "Showing N of
+ * TOTAL" count and a "Load more" control — the same pagination shape as
+ * `SearchResultsData`, plus `entity_id` (the subject entity these
+ * connections are relative to; `useConnectionsData`'s `loadMore` re-sends it
+ * as part of `get_related_entities`' original arguments, the same way
+ * `useSearchResultsData`'s `loadMore` re-sends `search_entities`'s original
+ * filter arguments).
+ *
+ * Mirrors Atlas's `EntityRelationshipsResponse`
+ * (`api/atlas/domains/catalog/schemas/public.py`), deliberately decoupled
+ * from both that API schema and the main app's internal `Entry` type the
+ * same way `SearchResultsData` is.
+ */
+export interface ConnectionsData {
+  entity_id: string;
+  items: ConnectionItem[];
+  total: number;
+  /** Opaque pagination cursor for the next page; null when there isn't one. */
+  next_cursor: string | null;
+}

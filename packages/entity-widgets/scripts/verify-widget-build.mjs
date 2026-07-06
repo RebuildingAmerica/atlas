@@ -16,7 +16,7 @@
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
-const WIDGET_NAMES = ["entity-card", "search-results"];
+const WIDGET_NAMES = ["entity-card", "search-results", "connections-graph"];
 
 const distWidgetDir = fileURLToPath(new URL("../dist/widget/", import.meta.url));
 

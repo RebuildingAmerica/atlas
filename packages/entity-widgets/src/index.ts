@@ -9,6 +9,10 @@
  * `EntityCardData`, `SearchResultsData`) to these components directly.
  */
 export {
+  ConnectionsGraph,
+  type ConnectionsGraphProps,
+} from "./components/connections-graph/connections-graph";
+export {
   EntityCard,
   type EntityCardProps,
 } from "./components/entity-card/entity-card";
@@ -21,6 +25,9 @@ export {
   type TrustBadgeRowProps,
 } from "./components/trust-badge-row/trust-badge-row";
 export type {
+  ConnectionItem,
+  ConnectionRelationship,
+  ConnectionsData,
   EntityCardData,
   EntityType,
   SearchResultRow,
