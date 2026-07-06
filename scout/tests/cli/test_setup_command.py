@@ -239,6 +239,12 @@ def test_setup_runs_onboarding_login_and_local_model_setup(
         lambda: ("lmstudio",),
         raising=False,
     )
+    monkeypatch.setattr(
+        cli_module,
+        "_missing_local_model_providers",
+        lambda: (),
+        raising=False,
+    )
     monkeypatch.setattr(cli_module, "resolve_local_model", lambda *_args, **_kwargs: _resolution())
 
     result = CliRunner().invoke(
@@ -296,6 +302,12 @@ def test_setup_skips_login_when_already_signed_in(
         cli_module,
         "_installed_local_model_providers",
         lambda: ("lmstudio",),
+        raising=False,
+    )
+    monkeypatch.setattr(
+        cli_module,
+        "_missing_local_model_providers",
+        lambda: (),
         raising=False,
     )
     monkeypatch.setattr(cli_module, "resolve_local_model", lambda *_args, **_kwargs: _resolution())

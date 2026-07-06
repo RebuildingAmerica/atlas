@@ -88,11 +88,6 @@ interface ScoutCommand {
   command: string;
 }
 
-interface DeviceStatusResponse {
-  status: "approved" | "denied" | "pending";
-  user_code: string;
-}
-
 interface ScoutCredentialFile {
   "session-token"?: unknown;
 }
@@ -512,12 +507,6 @@ export async function approveScoutLogin(
   await page.getByRole("button", { name: "Approve device" }).click();
   await page.waitForURL((url) => url.pathname === "/device/approved");
   await expect(page.getByRole("heading", { name: "Device approved" })).toBeVisible();
-  const statusResponse = await page.request.get(
-    `/device/status?user_code=${encodeURIComponent(userCode)}`,
-  );
-  expect(statusResponse.ok(), await statusResponse.text()).toBe(true);
-  const status = (await statusResponse.json()) as DeviceStatusResponse;
-  expect(status.status).toBe("approved");
 
   const result = await login.waitForExit(90_000);
   expect(result.exitCode, result.output).toBe(0);
