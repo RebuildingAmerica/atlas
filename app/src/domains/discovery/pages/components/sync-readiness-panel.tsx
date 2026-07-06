@@ -1,4 +1,5 @@
 import { ClipboardList, FileJson, Newspaper, Users } from "lucide-react";
+import { pluralize } from "@/lib/pluralize";
 import type { DiscoveryRun } from "@/types";
 
 interface SyncReadinessPanelProps {
@@ -8,10 +9,6 @@ interface SyncReadinessPanelProps {
 interface SyncReadinessItem {
   icon: typeof Users;
   label: string;
-}
-
-function pluralize(count: number, singular: string, plural: string) {
-  return count === 1 ? `${count} ${singular}` : `${count} ${plural}`;
 }
 
 export function SyncReadinessPanel({ run }: SyncReadinessPanelProps) {

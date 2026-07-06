@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { ExternalLink } from "lucide-react";
 import { useWorkspaceWatchDigest } from "@/domains/workspace/hooks/use-workspace-watch-digest";
 import type { WorkspaceWatchDigestItem } from "@/domains/workspace/server/watch-digest";
+import { pluralize } from "@/lib/pluralize";
 import { Badge } from "@/platform/ui/badge";
 
 export const Route = createFileRoute("/_workspace/feed")({
@@ -9,10 +10,6 @@ export const Route = createFileRoute("/_workspace/feed")({
 });
 
 const DIGEST_LIMIT = 50;
-
-function pluralize(count: number, singular: string, plural = `${singular}s`): string {
-  return `${count} ${count === 1 ? singular : plural}`;
-}
 
 function eventTypeLabel(item: WorkspaceWatchDigestItem): string {
   if (item.event_type === "new_source") {

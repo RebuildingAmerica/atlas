@@ -3,14 +3,11 @@ import { MapPinned, ShieldCheck } from "lucide-react";
 import { useAtlasSession } from "@/domains/access";
 import type { WorkspaceWatchCollection } from "@/domains/workspace/server/watches";
 import { useWorkspaceWatches } from "@/domains/workspace/hooks/use-workspace-watches";
+import { pluralize } from "@/lib/pluralize";
 import { Badge } from "@/platform/ui/badge";
 
 interface WorkspaceWatchesPageProps {
   initialWatches: WorkspaceWatchCollection;
-}
-
-function pluralize(count: number, singular: string, plural = `${singular}s`): string {
-  return `${count} ${count === 1 ? singular : plural}`;
 }
 
 function preferenceLabel(preference: string): string {

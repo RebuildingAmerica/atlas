@@ -13,15 +13,12 @@ import { NonprofitSystemsBridgePanel } from "@/domains/workspace/components/nonp
 import { buildNewsroomAssignmentPacket } from "@/domains/workspace/newsroom-handoff";
 import { buildNonprofitSystemsPacket } from "@/domains/workspace/nonprofit-systems-bridge";
 import { exportSavedList, getExportSavedListUrl } from "@/lib/generated/atlas";
+import { pluralize } from "@/lib/pluralize";
 import { Badge } from "@/platform/ui/badge";
 
 export const Route = createFileRoute("/_workspace/lists/$id")({
   component: ListDetailRoute,
 });
-
-function pluralize(count: number, singular: string, plural = `${singular}s`): string {
-  return `${count} ${count === 1 ? singular : plural}`;
-}
 
 function ListDetailRoute() {
   const { id } = Route.useParams();

@@ -3,6 +3,7 @@ import { Badge } from "@/platform/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/platform/ui/card";
 import { formatFreshness } from "@/domains/catalog/components/profiles/detail/profile-detail-primitives";
 import { PrivateNotesPanel } from "@/domains/catalog/components/profiles/private-notes-panel";
+import { pluralize } from "@/lib/pluralize";
 import type { Entry } from "@/types";
 
 interface EntryDetailProps {
@@ -32,10 +33,6 @@ function formatLocation(entry: Entry): string {
     return entry.region;
   }
   return entry.state ?? "Location not specified";
-}
-
-function pluralize(count: number, singular: string, plural = `${singular}s`): string {
-  return `${count} ${count === 1 ? singular : plural}`;
 }
 
 function sourcePacketSummary(sources: Entry["sources"]): {

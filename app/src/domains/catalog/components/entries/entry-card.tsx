@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { LeadQualitySignals } from "@/domains/catalog/components/profiles/lead-quality-signals";
 import { trackDiscoveryEvent } from "@/domains/catalog/discovery-events";
+import { pluralize } from "@/lib/pluralize";
 import { Badge } from "@/platform/ui/badge";
 import type { Entry, EntryType, SourceType } from "@/types";
 
@@ -36,10 +37,6 @@ function humanize(value: string): string {
     .split("_")
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
-}
-
-function pluralize(count: number, singular: string, plural = `${singular}s`): string {
-  return `${count} ${count === 1 ? singular : plural}`;
 }
 
 interface EntryBadgeInfo {
