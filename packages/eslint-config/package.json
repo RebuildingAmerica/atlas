@@ -9,6 +9,9 @@
     "./node": "./node.js",
     "./tests": "./tests.js"
   },
+  "scripts": {
+    "build": "node -e \"\""
+  },
   "dependencies": {
     "@eslint/js": "catalog:",
     "eslint-config-prettier": "catalog:",

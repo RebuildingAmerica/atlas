@@ -42,7 +42,7 @@ const lsFiles = execFileSync("git", ["ls-files", "--", ...trackedGlobs], {
 // or a npm package name (with optional @scope/), and task may use `:` or `-`.
 // Word-ish boundaries on both sides to avoid matching URL fragments.
 const SELECTOR =
-  /(?<![A-Za-z0-9._/-])((?:@[\w.-]+\/)?[\w.-]+|\/\/)#([A-Za-z][\w:.-]*)(?![A-Za-z0-9])/g;
+  /(?<![A-Za-z0-9._/{-])((?:@[\w.-]+\/)?[\w.-]+|\/\/)#([A-Za-z][\w:.-]*)(?![A-Za-z0-9])/g;
 
 // Anything that doesn't make sense as a package: e.g. URL anchors, html ids.
 // Heuristic: skip selectors whose scope contains a `.` AND a path-y suffix.
