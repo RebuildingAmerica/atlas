@@ -36,6 +36,7 @@ print_info() {
 }
 
 ROOT_DIR="$(git rev-parse --show-toplevel)"
+VALIDATE_BRANCH_NAME="$ROOT_DIR/.githooks/validate-branch-name"
 
 print_header "Pre-push Quality Gates"
 
@@ -48,7 +49,29 @@ fi
 
 FAILED=0
 
-# 1. Check if working directory is clean
+# 1. Validate pushed branch names.
+print_info "Checking pushed branch names..."
+while IFS=' ' read -r local_ref local_sha remote_ref remote_sha; do
+    if [ -z "${local_ref:-}" ] || [ "${local_sha:-}" = "0000000000000000000000000000000000000000" ]; then
+        continue
+    fi
+
+    case "$local_ref" in
+        refs/heads/*) ;;
+        *) continue ;;
+    esac
+
+    if ! "$VALIDATE_BRANCH_NAME" ref "$local_ref"; then
+        print_error "Pushed branch name is not allowed"
+        FAILED=1
+    fi
+done <<< "$refs_content"
+
+if [ $FAILED -eq 0 ]; then
+    print_success "Pushed branch names are allowed"
+fi
+
+# 2. Check if working directory is clean
 print_info "Checking working directory status..."
 if [ -n "$(git status --porcelain)" ]; then
     print_error "Working directory has uncommitted changes"
@@ -62,7 +85,7 @@ else
     print_success "Working directory is clean"
 fi
 
-# 2. Validate every Turbo task selector resolves to a real package and task
+# 3. Validate every Turbo task selector resolves to a real package and task
 if [ $FAILED -eq 0 ]; then
     print_info "Validating turbo task selectors..."
     if ! (cd "$ROOT_DIR" && pnpm run turbo:validate 2>&1); then
@@ -80,7 +103,7 @@ if [ $FAILED -eq 0 ]; then
     fi
 fi
 
-# 3. Run full quality suite via turbo (typecheck + lint + test for all packages)
+# 4. Run full quality suite via turbo (typecheck + lint + test for all packages)
 if [ $FAILED -eq 0 ]; then
     print_info "Running full quality suite (turbo run typecheck lint test)..."
     if ! (cd "$ROOT_DIR" && TURBO_UI=0 pnpm run quality 2>&1); then
@@ -96,7 +119,7 @@ if [ $FAILED -eq 0 ]; then
     fi
 fi
 
-# 4. Reject merge commits in any branch tip being pushed so mainline stays linear.
+# 5. Reject merge commits in any branch tip being pushed so mainline stays linear.
 if [ $FAILED -eq 0 ]; then
     print_info "Checking pushed refs for merge commits..."
     while IFS=' ' read -r local_ref local_sha remote_ref remote_sha; do

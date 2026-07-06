@@ -14,20 +14,21 @@ Use descriptive branch names with a prefix:
 
 **Types:**
 
-- `feat/` — New feature
-- `fix/` — Bug fix
-- `refactor/` — Code refactoring (no feature change)
-- `docs/` — Documentation only
-- `test/` — Adding or updating tests
-- `chore/` — Dependency, tooling, config changes
+- `feature/` — Product, API, Scout, docs, or data behavior that changes what
+  someone can use, see, trust, or do.
+- `fix/` — A narrow correction to broken, incorrect, or unsafe behavior.
+- `chore/` — Maintenance, dependencies, tooling, tests, refactors, docs cleanup,
+  and repo health work.
+
+Local Git hooks block other branch prefixes by default.
 
 **Examples:**
 
 ```bash
-git checkout -b feat/search-by-issue-area
+git checkout -b feature/search-by-issue-area
 git checkout -b fix/entry-deduplication-crash
-git checkout -b docs/add-pipeline-overview
-git checkout -b test/add-api-integration-tests
+git checkout -b chore/add-pipeline-overview
+git checkout -b chore/add-api-integration-tests
 ```
 
 ## Commit Messages

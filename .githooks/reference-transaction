@@ -1,0 +1,26 @@
+#!/bin/bash
+set -euo pipefail
+
+state="${1:-}"
+
+# Only the prepared phase can block the ref update.
+[ "$state" = "prepared" ] || exit 0
+
+ROOT_DIR="$(git rev-parse --show-toplevel)"
+VALIDATE_BRANCH_NAME="$ROOT_DIR/.githooks/validate-branch-name"
+
+while IFS=' ' read -r old_sha new_sha ref_name; do
+    [ -n "${ref_name:-}" ] || continue
+
+    case "$ref_name" in
+        refs/heads/*) ;;
+        *) continue ;;
+    esac
+
+    # Deletions do not introduce a new invalid branch name.
+    if [ "${new_sha:-}" = "0000000000000000000000000000000000000000" ]; then
+        continue
+    fi
+
+    "$VALIDATE_BRANCH_NAME" ref "$ref_name"
+done

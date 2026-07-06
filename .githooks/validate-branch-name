@@ -1,0 +1,74 @@
+#!/bin/bash
+set -euo pipefail
+
+print_policy() {
+    cat <<'EOF'
+Allowed branch names:
+  main
+  feature/<lowercase-slug>
+  fix/<lowercase-slug>
+  chore/<lowercase-slug>
+
+Examples:
+  feature/source-linked-profile-export
+  fix/auth-signup-passkey-required
+  chore/file-placement-guards
+
+See docs/development/workflow.md for the branch naming policy.
+EOF
+}
+
+is_valid_branch_name() {
+    local branch="$1"
+
+    if [ "$branch" = "main" ]; then
+        return 0
+    fi
+
+    if ! git check-ref-format --branch "$branch" >/dev/null 2>&1; then
+        return 1
+    fi
+
+    [[ "$branch" =~ ^(feature|fix|chore)/[a-z0-9][a-z0-9._/-]*[a-z0-9]$ ]] || return 1
+}
+
+validate_branch_name() {
+    local branch="$1"
+
+    if is_valid_branch_name "$branch"; then
+        return 0
+    fi
+
+    echo "Invalid branch name: $branch" >&2
+    echo "" >&2
+    print_policy >&2
+    return 1
+}
+
+case "${1:-}" in
+    current)
+        current_branch="$(git branch --show-current)"
+        if [ -z "$current_branch" ]; then
+            exit 0
+        fi
+        validate_branch_name "$current_branch"
+        ;;
+    name)
+        validate_branch_name "${2:-}"
+        ;;
+    ref)
+        ref="${2:-}"
+        case "$ref" in
+            refs/heads/*)
+                validate_branch_name "${ref#refs/heads/}"
+                ;;
+        esac
+        ;;
+    policy)
+        print_policy
+        ;;
+    *)
+        echo "Usage: $0 current | name <branch> | ref <ref> | policy" >&2
+        exit 2
+        ;;
+esac

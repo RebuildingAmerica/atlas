@@ -68,11 +68,23 @@ get_staged_markdown_files() {
 ROOT_DIR="$(git rev-parse --show-toplevel)"
 API_DIR="$ROOT_DIR/api"
 APP_DIR="$ROOT_DIR/app"
+VALIDATE_BRANCH_NAME="$ROOT_DIR/.githooks/validate-branch-name"
 
 print_header "Pre-commit Quality Checks"
 
 # Track if any check failed
 FAILED=0
+
+# ============================================
+# Branch Name Check
+# ============================================
+print_info "Checking branch name..."
+if ! "$VALIDATE_BRANCH_NAME" current; then
+    print_error "Branch name is not allowed"
+    FAILED=1
+else
+    print_success "Branch name is allowed"
+fi
 
 # ============================================
 # Python Checks
