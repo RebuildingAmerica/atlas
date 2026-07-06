@@ -668,6 +668,12 @@ def test_setup_prompts_when_auto_detected_models_require_judgement(
         lambda: ("ollama",),
         raising=False,
     )
+    monkeypatch.setattr(
+        cli_module,
+        "_missing_local_model_providers",
+        lambda: (),
+        raising=False,
+    )
 
     result = CliRunner().invoke(
         main,
@@ -723,6 +729,12 @@ def test_setup_still_allows_model_choice_when_current_model_is_ready(
         cli_module,
         "_installed_local_model_providers",
         lambda: ("ollama",),
+        raising=False,
+    )
+    monkeypatch.setattr(
+        cli_module,
+        "_missing_local_model_providers",
+        lambda: (),
         raising=False,
     )
 

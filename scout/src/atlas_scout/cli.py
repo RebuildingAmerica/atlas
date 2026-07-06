@@ -679,7 +679,10 @@ def _should_prompt_for_setup_model_choice(
 
 def _search_key_configured() -> bool:
     """Return whether this process has search-backed discovery available."""
-    return has_search_api_key()
+    try:
+        return has_search_api_key()
+    except CredentialStoreError:
+        return False
 
 
 def _print_credential_store_error(exc: CredentialStoreError) -> None:
@@ -708,6 +711,8 @@ def _resolve_search_connection(search_api_key: str | None) -> str:
     try:
         return resolve_search_api_key(search_api_key)
     except CredentialStoreError as exc:
+        if search_api_key is None:
+            return ""
         _exit_with_error(_credential_store_cli_error(exc))
 
 
