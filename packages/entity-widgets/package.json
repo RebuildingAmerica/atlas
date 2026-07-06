@@ -17,8 +17,9 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
-    "@modelcontextprotocol/ext-apps": "^1.7.0",
-    "@modelcontextprotocol/sdk": "^1.29.0"
+    "@modelcontextprotocol/ext-apps": "1.7.4",
+    "@modelcontextprotocol/sdk": "1.29.0",
+    "zod": "catalog:"
   },
   "peerDependencies": {
     "react": "catalog:",
@@ -41,7 +42,7 @@
     "tailwindcss": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
-    "vite-plugin-singlefile": "^2.3.3",
+    "vite-plugin-singlefile": "2.3.3",
     "vitest": "catalog:"
   }
 }
