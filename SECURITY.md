@@ -10,8 +10,10 @@ Use GitHub's private vulnerability reporting flow:
 
 https://github.com/RebuildingAmerica/atlas/security/advisories/new
 
-If that flow is unavailable, request a private contact path through the
-repository owner before sharing details.
+If that flow is unavailable, email
+[contact@rebuildingus.org](mailto:contact@rebuildingus.org) with the subject
+`Atlas security report`. Do not include secrets, tokens, or sensitive personal
+information in the subject line.
 
 ## What To Report Privately
 
