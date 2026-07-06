@@ -23,6 +23,7 @@
     "docs:broken-links": "cd mintlify && mint broken-links",
     "api:test": "sh ./scripts/api-test.sh",
     "python:test": "sh ./scripts/python-test.sh",
+    "prequality": "cd api && uv sync --extra dev --frozen",
     "quality": "turbo run typecheck lint test",
     "test:coverage": "turbo run //#python:test '@rebuildingamerica/atlas-app#test:coverage'",
     "test:e2e": "pnpm --filter @rebuildingamerica/atlas-app run test:acceptance",
