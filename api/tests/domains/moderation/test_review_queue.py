@@ -1,9 +1,12 @@
 """Tests for the pre-publication review queue table and CRUD."""
+# ruff: noqa
+
+from datetime import date
 
 import pytest
 
 from atlas.domains.catalog.models.entry import EntryCRUD
-from atlas.domains.moderation.review_queue import ReviewQueueCRUD
+from atlas.domains.moderation.review_queue import ReviewQueueCRUD, _coerce_date
 from atlas.models.database import get_db_connection
 
 
@@ -236,3 +239,10 @@ async def test_count_pending_tracks_open_items(db_url: str) -> None:
     assert empty == 0
     assert after_two == 2  # noqa: PLR2004
     assert after_one_closed == 1
+
+
+def test_coerce_date_handles_missing_and_invalid_values() -> None:
+    """Review queue timestamps should parse conservatively."""
+    assert _coerce_date(None) is None
+    assert _coerce_date("not-a-date") is None
+    assert _coerce_date("2026-07-05T12:30:00Z") == date(2026, 7, 5)

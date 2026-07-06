@@ -1,8 +1,10 @@
 """Edge-case tests for Atlas catalog API surfaces."""
+# ruff: noqa
 
 from __future__ import annotations
 
 from types import SimpleNamespace
+from unittest.mock import AsyncMock
 
 import pytest
 
@@ -46,6 +48,7 @@ async def test_public_place_db_dependency_closes_connections(
         ("/api/places/kansas-city-mo/sources", 400),
         ("/api/places/kansas-city-mo/issue-signals", 400),
         ("/api/places/kansas-city-mo/coverage", 400),
+        ("/api/places/kansas-city-mo/page-context", 404),
         ("/api/places/kansas-city-mo/profile", 404),
     ],
 )
@@ -76,6 +79,13 @@ async def test_public_place_routes_translate_service_value_errors(
 
         async def get_place_profile(self, *args: object, **kwargs: object) -> dict[str, object]:  # noqa: ARG002
             raise ValueError("missing profile")  # noqa: TRY003
+
+        async def get_place_page_context(
+            self,
+            *args: object,  # noqa: ARG002
+            **kwargs: object,  # noqa: ARG002
+        ) -> dict[str, object]:
+            raise ValueError("missing page context")  # noqa: TRY003
 
     monkeypatch.setattr(public_api, "_get_service", lambda _settings: FailingService())
 
@@ -141,6 +151,20 @@ async def test_entity_routes_cover_validation_missing_and_failure_edges(
     noop_update = await test_client.patch(f"/api/entities/{entity_id}", json={})
     assert noop_update.status_code == 200  # noqa: PLR2004
     assert noop_update.json()["id"] == entity_id
+
+    monkeypatch.setattr(
+        "atlas.domains.catalog.api.entries.EntryCRUD.is_publicly_visible",
+        AsyncMock(return_value=True),
+    )
+    monkeypatch.setattr(
+        "atlas.domains.catalog.api.entries.EntryCRUD.get_with_sources",
+        AsyncMock(return_value=(None, [])),
+    )
+    missing_detail = await test_client.get("/api/entities/missing-entity")
+    missing_entity_sources = await test_client.get("/api/entities/missing-entity/sources")
+
+    assert missing_detail.status_code == 404  # noqa: PLR2004
+    assert missing_entity_sources.status_code == 404  # noqa: PLR2004
 
     async def fake_create(_db: object, **kwargs: object) -> str:  # noqa: ARG001
         return "entity_failure"

@@ -1,4 +1,5 @@
 """Tests for the FastMCP server module and bearer-auth middleware."""
+# ruff: noqa
 
 from __future__ import annotations
 
@@ -102,6 +103,32 @@ async def test_list_discovery_runs_tool_has_expected_schema() -> None:
     properties = tool.inputSchema.get("properties", {})
     expected = {"state", "status", "limit", "cursor"}
     assert expected <= set(properties)
+
+
+@pytest.mark.asyncio
+async def test_discovery_run_tools_delegate_to_the_data_service(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The MCP wrappers should forward run lookups to the shared data service."""
+
+    class StubService:
+        async def list_discovery_runs(self, **kwargs: object) -> dict[str, object]:
+            return {"kwargs": kwargs}
+
+        async def get_discovery_run(self, run_id: str) -> dict[str, str]:
+            return {"run_id": run_id}
+
+    monkeypatch.setattr(server_module, "_build_data_service", lambda: StubService())
+    mcp = build_mcp()
+
+    list_result = await mcp.call_tool(
+        "list_discovery_runs",
+        {"state": "MO", "limit": 1},
+    )
+    get_result = await mcp.call_tool("get_discovery_run", {"run_id": "run-1"})
+
+    assert list_result[1] == {"kwargs": {"state": "MO", "status": None, "limit": 1, "cursor": None}}
+    assert get_result[1] == {"run_id": "run-1"}
 
 
 @pytest.mark.asyncio

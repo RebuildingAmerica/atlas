@@ -1,4 +1,5 @@
 """Tests for org-scoped ingestion quality summaries."""
+# ruff: noqa
 
 from __future__ import annotations
 
@@ -14,6 +15,7 @@ from atlas.config import get_settings
 from atlas.domains.access.dependencies import require_org_actor
 from atlas.domains.access.principals import AuthenticatedActor
 from atlas.domains.catalog.models.ownership import OwnershipCRUD
+from atlas.domains.discovery import api_org_quality as quality_api
 from atlas.main import create_app
 from atlas.models import EntryCRUD, SourceCRUD
 
@@ -96,6 +98,26 @@ class TestOrgQualityApi:
     """Workspace quality summary behavior."""
 
     @pytest.mark.asyncio
+    async def test_quality_summary_returns_empty_payload(
+        self,
+        quality_client: object,
+    ) -> None:
+        """An empty workspace should get zeroed quality signals."""
+        response = await quality_client.get(f"/api/orgs/{ORG_ID}/quality-summary")
+
+        assert response.status_code == STATUS_OK
+        body = response.json()
+        assert body["source_coverage"] == {
+            "total_records": 0,
+            "source_backed_records": 0,
+            "unsourced_records": 0,
+            "coverage_percent": 0.0,
+        }
+        assert body["duplicate_risk"] == {"cluster_count": 0, "record_count": 0, "clusters": []}
+        assert body["stale_records"]["record_count"] == 0
+        assert body["stale_records"]["records"] == []
+
+    @pytest.mark.asyncio
     async def test_quality_summary_reports_source_duplicate_confidence_and_stale_signals(
         self,
         quality_client: object,
@@ -170,3 +192,12 @@ class TestOrgQualityApi:
         response = await quality_client.get(f"/api/orgs/{OTHER_ORG_ID}/quality-summary")
 
         assert response.status_code == STATUS_FORBIDDEN
+
+
+class TestQualityHelpers:
+    """Coverage for the small date parsing helper."""
+
+    def test_parse_date_handles_missing_and_invalid_values(self) -> None:
+        """A malformed source date should fail closed."""
+        assert quality_api._parse_date(None) is None
+        assert quality_api._parse_date("not-a-date") is None

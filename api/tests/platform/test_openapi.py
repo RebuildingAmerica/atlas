@@ -1,8 +1,13 @@
 """OpenAPI publishing tests."""
+# ruff: noqa
 
 from http import HTTPStatus
+from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
+
+from atlas.platform import openapi as openapi_module
 
 STATUS_OK = HTTPStatus.OK
 MIN_OPERATION_DESCRIPTION_LENGTH = 140
@@ -141,3 +146,158 @@ async def test_cache_headers_match_resource_type(test_client: object) -> None:
     assert domains.headers["cache-control"] == "public, max-age=3600, stale-while-revalidate=86400"
     assert entities.headers["cache-control"] == "public, max-age=60, stale-while-revalidate=300"
     assert health.headers["cache-control"] == "no-store"
+
+
+def test_openapi_helper_branches_cover_empty_inputs() -> None:
+    """The OpenAPI helper functions should fail closed on empty structures."""
+    schema: dict[str, object] = {}
+    openapi_module._enrich_operations(schema)  # noqa: SLF001
+    openapi_module._enrich_schema_components(schema)  # noqa: SLF001
+    assert openapi_module._humanize_identifier("SimpleCase") == "simple case"  # noqa: SLF001
+    assert openapi_module._humanize_identifier("snake_case_value") == "snake case value"  # noqa: SLF001
+
+
+def test_openapi_helper_branches_cover_operation_and_component_enrichment() -> None:
+    """Operation and schema enrichment should skip malformed child nodes cleanly."""
+    schema = {
+        "paths": {
+            "/test": {
+                "get": "not-a-dict",
+                "post": {
+                    "description": "Existing.",
+                    "tags": ["health"],
+                    "operationId": "getHealth",
+                },
+                "patch": {
+                    "description": "",
+                    "tags": ["missing-tag"],
+                    "operationId": "missing-operation",
+                },
+            },
+            "/ignore": [],
+        },
+        "components": {
+            "schemas": {
+                "ExampleResponse": {
+                    "properties": {
+                        "simple_field": {},
+                        "other": "not-a-dict",
+                    }
+                },
+                "Ignored": "not-a-dict",
+            }
+        },
+    }
+
+    openapi_module._enrich_operations(schema)  # noqa: SLF001
+    openapi_module._enrich_schema_components(schema)  # noqa: SLF001
+
+    assert schema["paths"]["/test"]["post"]["description"].startswith("Existing.")
+    assert (
+        schema["components"]["schemas"]["ExampleResponse"]["description"] == "Schema for example."
+    )
+    assert (
+        schema["components"]["schemas"]["ExampleResponse"]["properties"]["simple_field"][
+            "description"
+        ]
+        == "simple field for this example."
+    )
+
+
+def test_openapi_helper_branches_skip_non_string_tags_and_malformed_children() -> None:
+    """Malformed OpenAPI child values should be ignored without mutating the payload."""
+    operation = {
+        "description": "",
+        "tags": [123],
+        "operationId": 456,
+    }
+    openapi_module._enrich_operation(operation)  # noqa: SLF001
+    assert operation == {
+        "description": "",
+        "tags": [123],
+        "operationId": 456,
+    }
+
+    sections = ["Already there"]
+    openapi_module._append_unique_section(sections, None)  # noqa: SLF001
+    openapi_module._append_unique_section(sections, "   ")  # noqa: SLF001
+    openapi_module._append_unique_section(sections, "Already there")  # noqa: SLF001
+    assert sections == ["Already there"]
+
+    schema = {
+        "components": {
+            "schemas": {
+                "Ignored": "not-a-dict",
+                "ExampleResponse": {
+                    "properties": {
+                        "simple_field": "not-a-dict",
+                    }
+                },
+            }
+        }
+    }
+    openapi_module._enrich_schema_components(schema)  # noqa: SLF001
+    assert (
+        schema["components"]["schemas"]["ExampleResponse"]["description"] == "Schema for example."
+    )
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        ("", ""),
+        ("  ", ""),
+        ("snake__case", "snake case"),
+    ],
+)
+def test_openapi_humanize_identifier_handles_empty_and_whitespace_inputs(
+    value: str,
+    expected: str,
+) -> None:
+    """Identifier humanization should stay stable for degenerate inputs."""
+    assert openapi_module._humanize_identifier(value) == expected  # noqa: SLF001
+
+
+def test_openapi_helper_branches_cover_cached_schema_and_export_paths(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """OpenAPI helpers should honor cached schemas and CLI export wiring."""
+
+    class FakeApp:
+        def __init__(self) -> None:
+            self.openapi_schema: dict[str, object] | None = None
+            self.calls = 0
+
+        def openapi(self) -> dict[str, object]:
+            self.calls += 1
+            return {"paths": {}}
+
+    route = SimpleNamespace(name="listEntities")
+    assert openapi_module.generate_operation_id(route) == "listEntities"
+
+    cached_app = FakeApp()
+    openapi_module.install_openapi_enrichment(cached_app)
+    cached_app.openapi_schema = {"cached": True}
+    assert cached_app.openapi() == {"cached": True}
+    assert cached_app.calls == 0
+
+    export_app = FakeApp()
+    output_path = tmp_path / "atlas.openapi.json"
+    written_path = openapi_module.export_openapi_schema(export_app, output_path)
+    assert written_path == output_path
+    assert output_path.exists()
+    assert '"paths": {}' in output_path.read_text(encoding="utf-8")
+
+    fake_module = SimpleNamespace(create_app=lambda: export_app)
+    monkeypatch.setattr(openapi_module.importlib, "import_module", lambda _name: fake_module)
+
+    called: dict[str, Path] = {}
+
+    def fake_export(app: object, path: Path) -> Path:
+        called["path"] = path
+        return path
+
+    monkeypatch.setattr(openapi_module, "export_openapi_schema", fake_export)
+    openapi_module.main()
+    assert called["path"].name == "atlas.openapi.json"

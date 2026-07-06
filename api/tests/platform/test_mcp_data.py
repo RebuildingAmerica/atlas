@@ -4,6 +4,7 @@ Drives the AtlasDataService methods, helper functions, and DatabaseSession
 context manager against a real SQLite test database. Focuses on branch
 coverage for normalization, freshness scoring, and relationship derivation.
 """
+# ruff: noqa
 
 from __future__ import annotations
 
@@ -695,6 +696,56 @@ def test_place_resource_slug_state_only_uses_short_path() -> None:
     )
 
 
+def test_place_context_lookup_key_handles_kind_prefixes() -> None:
+    """Kind-specific place keys should only prefix non-polity lookups."""
+    assert data_module._place_context_lookup_key("gary-in", None) == "gary-in"  # noqa: SLF001
+    assert data_module._place_context_lookup_key("gary-in", "polity") == "gary-in"  # noqa: SLF001
+    assert data_module._place_context_lookup_key("gary-in", "city") == "city:gary-in"  # noqa: SLF001
+
+
+def test_append_source_place_clauses_uses_filters_or_falls_back_to_false_clause() -> None:
+    """Source place filters should emit exact predicates or a hard false clause."""
+    clauses: list[str] = []
+    params: list[object] = []
+
+    data_module._append_source_place_clauses(  # noqa: SLF001
+        clauses=clauses,
+        params=params,
+        normalized_place={"city": None, "state": None, "region": None},
+        place_filters=[{"state": "IN", "city": "Gary", "region": None}],
+    )
+    assert clauses == ["(e.state = ? AND e.city = ?)"]
+    assert params == ["IN", "Gary"]
+
+    clauses = []
+    params = []
+    data_module._append_source_place_clauses(  # noqa: SLF001
+        clauses=clauses,
+        params=params,
+        normalized_place={"city": None, "state": None, "region": None},
+        place_filters=[{"state": None, "city": None, "region": None}],
+    )
+    assert clauses == ["0 = 1"]
+    assert params == []
+
+
+def test_source_place_filter_clause_skips_empty_filters_and_keeps_params() -> None:
+    """Exact place filters should skip empty rows and preserve comparison order."""
+    params: list[object] = []
+    clause = data_module._source_place_filter_clause(  # noqa: SLF001
+        [
+            {"state": "IN", "city": "Gary", "region": None},
+            {"state": None, "city": None, "region": None},
+            {"state": "IN", "city": None, "region": "Midwest"},
+        ],
+        params,
+    )
+
+    assert clause == "(e.state = ? AND e.city = ?) OR (e.state = ? AND e.region = ?)"
+    assert params == ["IN", "Gary", "IN", "Midwest"]
+    assert data_module._source_place_filter_clause([{"state": None}], []) is None  # noqa: SLF001
+
+
 # ---------------------------------------------------------------------------
 # AtlasDataService - integration coverage against a populated DB
 # ---------------------------------------------------------------------------
@@ -710,6 +761,18 @@ async def test_search_entities_returns_items_with_pagination(
     assert len(page["items"]) == 1
     assert page["next_cursor"] == "1"
     assert page["place"]["display"] == "Gary, IN"
+
+
+@pytest.mark.asyncio
+async def test_search_entities_without_place_returns_empty_page(db_url: str) -> None:
+    """Searches without a place scope should fail closed with no matches."""
+    service = AtlasDataService(db_url)
+
+    page = await service.search_entities(place_filters=[], limit=1)
+
+    assert page["items"] == []
+    assert page["total"] == 0
+    assert page["next_cursor"] is None
 
 
 @pytest.mark.asyncio
@@ -1098,6 +1161,204 @@ async def test_get_place_profile_not_found_raises(
 ) -> None:
     with pytest.raises(ValueError, match="Place profile not found"):
         await populated_service.get_place_profile("Nowhere, ZZ")
+
+
+@pytest.mark.asyncio
+async def test_list_discovery_runs_sets_next_cursor(
+    db_url: str,
+    test_db: object,
+) -> None:
+    """Discovery-run listings should advertise pagination when more rows exist."""
+    conn: aiosqlite.Connection = test_db  # type: ignore[assignment]
+    for index in range(2):
+        await DiscoveryRunCRUD.create(
+            conn,
+            location_query=f"Kansas City, MO {index}",
+            state="MO",
+            issue_areas=["housing_affordability"],
+        )
+
+    service = AtlasDataService(db_url)
+    payload = await service.list_discovery_runs(limit=1)
+
+    assert payload["total"] >= 2
+    assert payload["next_cursor"] == "1"
+
+
+@pytest.mark.asyncio
+async def test_get_discovery_run_not_found_raises(db_url: str) -> None:
+    """Missing discovery runs should fail with the public not-found error."""
+    service = AtlasDataService(db_url)
+
+    with pytest.raises(ValueError, match="Discovery run not found"):
+        await service.get_discovery_run("missing-run")
+
+
+@pytest.mark.asyncio
+async def test_get_place_query_scope_uses_context_rows(
+    db_url: str,
+    test_db: object,
+) -> None:
+    """Stored place contexts should return an empty filter list when no query filters exist."""
+    conn: aiosqlite.Connection = test_db  # type: ignore[assignment]
+    await conn.execute(
+        """
+        INSERT INTO place_contexts (
+            place_key, name, display, kind, source_dataset, source_identifier, source_url,
+            created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            "gary-in",
+            "Gary",
+            "Gary, IN",
+            "polity",
+            "seed",
+            "gary",
+            "https://example.test",
+            datetime.now(UTC).isoformat(),
+            datetime.now(UTC).isoformat(),
+        ),
+    )
+    await conn.commit()
+
+    service = AtlasDataService(db_url)
+    normalized_place, place_filters = await service._resolve_place_query_scope("Gary, IN")
+
+    assert normalized_place["display"] == "Gary, IN"
+    assert place_filters == []
+
+
+@pytest.mark.asyncio
+async def test_get_place_profile_honors_polity_kind_lookup(
+    populated_service: AtlasDataService,
+) -> None:
+    """Polity-scoped lookups should resolve the kind-specific profile key."""
+    payload = await populated_service.get_place_profile("Gary, IN", kind="polity")
+
+    assert payload["place"]["display"] == "Gary, IN"
+
+
+@pytest.mark.asyncio
+async def test_get_place_page_context_rejects_missing_place(
+    populated_service: AtlasDataService,
+) -> None:
+    """A missing place page context should fail plainly."""
+    with pytest.raises(ValueError, match="Place page context not found"):
+        await populated_service.get_place_page_context("Nowhere, ZZ")
+
+
+def test_contact_source_ids_returns_matching_source_id() -> None:
+    """Matching source receipts should be surfaced for contact claims."""
+    entry = replace(_build_entry(), website="https://primary.example", email="info@primary.example")
+    source_ids = data_module._contact_source_ids(  # noqa: SLF001
+        entry,
+        [
+            {
+                "id": "source-1",
+                "url": "https://primary.example/story",
+                "extraction_context": "primary.example mentions contact details",
+            },
+            {
+                "id": None,
+                "url": "https://primary.example/about",
+                "extraction_context": "info@primary.example listed here",
+            },
+        ],
+    )
+    assert source_ids == ["source-1"]
+
+
+@pytest.mark.asyncio
+async def test_get_place_page_context_returns_database_backed_context(
+    db_url: str,
+    test_db: object,
+) -> None:
+    """Stored place-page context should include scopes, facts, governments, and links."""
+    conn: aiosqlite.Connection = test_db  # type: ignore[assignment]
+    place_key = "city:gary-in"
+    now = datetime.now(UTC).isoformat()
+    await conn.execute(
+        """
+        INSERT INTO place_contexts (
+            place_key, name, display, kind, source_dataset, source_identifier, source_url,
+            created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            place_key,
+            "Gary",
+            "Gary, IN",
+            "city",
+            "seed",
+            "gary-city",
+            "https://example.test/gary",
+            now,
+            now,
+        ),
+    )
+    await conn.execute(
+        "INSERT INTO place_scope_links (place_key, label, href, active, sort_order) VALUES (?, ?, ?, ?, ?)",
+        (place_key, "Gary", "/places/cities/gary-in", 1, 10),
+    )
+    await conn.execute(
+        "INSERT INTO place_summary_facts (place_key, label, value, attribution, sort_order) VALUES (?, ?, ?, ?, ?)",
+        (place_key, "Population", "75,000", "Seed source", 10),
+    )
+    await conn.execute(
+        "INSERT INTO place_governments (id, place_key, name, role, sort_order) VALUES (?, ?, ?, ?, ?)",
+        (
+            "gary-city-government",
+            place_key,
+            "Gary City Government",
+            "City council and city services.",
+            10,
+        ),
+    )
+    await conn.execute(
+        "INSERT INTO place_government_links (government_id, label, href, sort_order) VALUES (?, ?, ?, ?)",
+        ("gary-city-government", "Council", "https://example.test/council", 10),
+    )
+    await conn.execute(
+        """
+        INSERT INTO place_related_places (
+            id, place_key, name, href, kind, source_dataset, source_identifier, source_url,
+            latitude, longitude, summary, accent, sort_order
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            "gary-hammond",
+            place_key,
+            "Hammond",
+            "/places/cities/hammond-in",
+            "city",
+            "seed",
+            "gary-related",
+            "https://example.test/related",
+            41.582,
+            -87.5,
+            "Nearby city context.",
+            "neutral",
+            10,
+        ),
+    )
+    await conn.commit()
+
+    service = AtlasDataService(db_url)
+    context = await service.get_place_page_context("Gary, IN", kind="city")
+
+    assert context["place_key"] == place_key
+    assert context["kind"] == "city"
+    assert context["scopes"] == [
+        {"label": "Gary", "href": "/places/cities/gary-in", "active": True}
+    ]
+    assert context["summary_facts"] == [
+        {"label": "Population", "value": "75,000", "attribution": "Seed source"}
+    ]
+    assert context["governments"][0]["links"] == [
+        {"label": "Council", "href": "https://example.test/council"}
+    ]
+    assert context["places"][0]["name"] == "Hammond"
 
 
 @pytest.mark.asyncio

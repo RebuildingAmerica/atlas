@@ -1,4 +1,5 @@
 """Discovery pipeline runner helper-path tests."""
+# ruff: noqa
 
 from __future__ import annotations
 
@@ -7,6 +8,7 @@ import importlib.util
 
 import pytest
 from atlas_discovery_engine import BraveSearchProvider
+from atlas_shared import DeduplicatedEntry as SharedDeduplicatedEntry
 from atlas_shared import RawEntry
 
 from atlas.domains.catalog.models.relationships import RelationshipCRUD
@@ -30,6 +32,13 @@ def _load_runner_module() -> object:
 
 class TestRunnerHelpers:
     """Tests for runner helper paths not covered by the main e2e case."""
+
+    @pytest.mark.asyncio
+    async def test_research_lead_confidence_returns_unverified_for_zero_sources(self) -> None:
+        """A lead with no sources should stay explicitly unverified."""
+        runner_module = _load_runner_module()
+
+        assert runner_module._research_lead_confidence(0) == "unverified"  # noqa: SLF001
 
     @pytest.mark.asyncio
     async def test_run_discovery_pipeline_routes_search_through_a_provider(
@@ -304,6 +313,53 @@ class TestRunnerHelpers:
             "Tenant Clinic KC supports renters facing displacement."
         )
         assert results["entries"][0]["source_count"] == STRENGTHENED_SOURCE_COUNT
+
+    @pytest.mark.asyncio
+    async def test_find_existing_entry_returns_none_when_resolved_type_mismatches(
+        self,
+        test_db: object,
+    ) -> None:
+        """Domain matches should still fail closed when the resolved type differs."""
+        runner_module = _load_runner_module()
+        wrong_type_id = await EntryCRUD.create(
+            test_db,
+            entry_type="person",
+            name="River City Mutual Aid",
+            description="A person record used to cover type mismatch fallback.",
+            city="Kansas City",
+            state="MO",
+            geo_specificity="local",
+            website="https://rivercityaid.org",
+        )
+        source_id = await SourceCRUD.create(
+            test_db,
+            url="https://rivercityaid.org/about",
+            source_type="org_website",
+            extraction_method="manual",
+            title="About River City Mutual Aid",
+        )
+        await RelationshipCRUD.upsert_identity_key(
+            test_db,
+            entry_id=wrong_type_id,
+            key_type="domain",
+            key_value="rivercityaid.org",
+            source_id=source_id,
+            confidence=0.95,
+        )
+
+        entry = SharedDeduplicatedEntry(
+            name="River City Mutual Aid",
+            entry_type="organization",
+            description="A matching domain should not absorb the wrong entity type.",
+            city="Kansas City",
+            state="MO",
+            geo_specificity="local",
+            issue_areas=["housing_affordability"],
+            website="https://rivercityaid.org",
+            source_urls=["https://rivercityaid.org/about"],
+        )
+
+        assert await runner_module._find_existing_entry(test_db, entry) is None  # noqa: SLF001
 
     @pytest.mark.asyncio
     async def test_run_discovery_pipeline_skips_confirmed_entries_missing_on_reload(

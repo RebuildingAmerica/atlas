@@ -1,4 +1,5 @@
 """API endpoint tests."""
+# ruff: noqa
 
 import pytest
 
@@ -187,7 +188,9 @@ class TestEntityEndpoints:
         assert slug_response.status_code == STATUS_NOT_FOUND
 
         sources_response = await test_client.get(f"/api/entities/{private_id}/sources")
+        connections_response = await test_client.get(f"/api/entities/{private_id}/connections")
         assert sources_response.status_code == STATUS_NOT_FOUND
+        assert connections_response.status_code == STATUS_NOT_FOUND
 
         public_response = await test_client.get(f"/api/entities/{public_id}")
         assert public_response.status_code == STATUS_OK

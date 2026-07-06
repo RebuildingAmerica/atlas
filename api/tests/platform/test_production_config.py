@@ -1,4 +1,5 @@
 """Production configuration tests."""
+# ruff: noqa
 
 from pathlib import Path
 
@@ -229,6 +230,16 @@ class TestSettingsValidatorEdgeCases:
         assert (
             settings.auth_resource_metadata_url
             == "https://atlas.test/.well-known/oauth-protected-resource/mcp"
+        )
+
+    def test_auth_resource_metadata_url_without_resource_path(self) -> None:
+        """A root audience should keep the metadata document at the base path."""
+        settings = Settings(
+            database_url="sqlite:///tmp/test.db",
+            auth_jwt_audience=["https://atlas.test/"],
+        )
+        assert settings.auth_resource_metadata_url == (
+            "https://atlas.test/.well-known/oauth-protected-resource"
         )
 
 

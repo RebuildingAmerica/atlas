@@ -1,10 +1,14 @@
 """Anonymous request rate-limit tests."""
+# ruff: noqa
 
 from __future__ import annotations
 
+import hashlib
+from collections import deque
 from http import HTTPStatus
+from types import SimpleNamespace
 from typing import TYPE_CHECKING
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 import httpx
 import pytest
@@ -17,6 +21,8 @@ from atlas.platform.http.anonymous_rate_limit import (
     AnonymousRateLimitMiddleware,
     _ApiKeyCacheEntry,
     _BucketSpec,
+    _forwarded_client_ip,
+    _path_group,
     _SlidingWindowLimiter,
 )
 
@@ -819,3 +825,164 @@ async def test_sliding_window_limiter_expires_old_events() -> None:
 
     assert first.allowed is True
     assert second.allowed is True
+
+
+def test_sliding_window_limiter_uses_window_size_for_empty_retry_after() -> None:
+    """An empty bucket should fall back to its configured window size."""
+    assert _SlidingWindowLimiter._retry_after([], now=0.0, window_seconds=60) == 60
+
+
+def test_sliding_window_limiter_prunes_overflow_buckets() -> None:
+    """Long-lived workers should trim the oldest tracked buckets when overflowing."""
+    limiter = _SlidingWindowLimiter()
+
+    limiter._events = {  # noqa: SLF001
+        ("client-a", "minute"): deque([0.0]),
+        ("client-b", "minute"): deque([0.0]),
+        ("client-c", "minute"): deque([0.0]),
+    }
+    limiter._bucket_windows = {"minute": 3600}  # noqa: SLF001
+
+    with patch("atlas.platform.http.anonymous_rate_limit._MAX_TRACKED_RATE_LIMIT_BUCKETS", 2):
+        limiter._prune_stale_buckets(0.0)  # noqa: SLF001
+
+    assert len(limiter._events) == 2  # noqa: SLF001
+    assert ("client-a", "minute") not in limiter._events  # noqa: SLF001
+
+
+@pytest.mark.parametrize(
+    ("headers", "expected"),
+    [
+        ({"x-api-key": "abc", "authorization": "Bearer token"}, "multiple"),
+        ({"x-api-key": "abc"}, "api_key"),
+        ({"authorization": "Bearer token"}, "bearer"),
+        ({"authorization": "Token token"}, "authorization"),
+        ({}, "none"),
+    ],
+)
+def test_credential_kind_handles_all_header_shapes(
+    headers: dict[str, str],
+    expected: str,
+) -> None:
+    """Credential classification should stay explicit for logging and routing."""
+    middleware = AnonymousRateLimitMiddleware(app=AsyncMock(), settings=_settings("sqlite:///"))
+    request = SimpleNamespace(headers=headers)
+    assert middleware._credential_kind(request) == expected  # noqa: SLF001
+
+
+@pytest.mark.parametrize(
+    ("header_value", "trusted_proxy_hops", "expected"),
+    [
+        (None, 1, None),
+        ("garbage, still garbage", 1, None),
+        ("198.51.100.10, 10.0.0.1", 1, "198.51.100.10"),
+        ("198.51.100.10, 10.0.0.1", 0, "10.0.0.1"),
+    ],
+)
+def test_forwarded_client_ip_honors_proxy_hop_policy(
+    header_value: str | None,
+    trusted_proxy_hops: int,
+    expected: str | None,
+) -> None:
+    """Forwarded-for parsing should only trust configured hops."""
+    assert _forwarded_client_ip(header_value, trusted_proxy_hops=trusted_proxy_hops) == expected
+
+
+@pytest.mark.parametrize(
+    ("path", "expected"),
+    [
+        ("/mcp", "/mcp/*"),
+        ("/api/orgs/local/entries", "/api/*"),
+        ("/health", "/health"),
+    ],
+)
+def test_path_group_collapses_api_and_mcp_paths(path: str, expected: str) -> None:
+    """Rate-limit logs should bucket common API surfaces consistently."""
+    assert _path_group(path) == expected
+
+
+@pytest.mark.asyncio
+async def test_has_valid_api_key_removes_expired_cache_entries(
+    db_url: str,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Expired cache entries should be replaced after a fresh API-key lookup."""
+    settings = _settings(db_url)
+    middleware = AnonymousRateLimitMiddleware(app=AsyncMock(), settings=settings)
+    cache_key = hashlib.sha256(b"expired").hexdigest()
+    middleware._api_key_cache = {  # noqa: SLF001
+        cache_key: _ApiKeyCacheEntry(principal=None, expires_at=1.0),
+    }
+    request = SimpleNamespace(
+        headers={"x-api-key": "expired"},
+        state=SimpleNamespace(),
+    )
+
+    async def fake_verify_api_key(api_key: str, _settings: Settings) -> ApiKeyPrincipal | None:
+        assert api_key == "expired"
+        return None
+
+    monkeypatch.setattr(
+        "atlas.platform.http.anonymous_rate_limit.verify_api_key",
+        fake_verify_api_key,
+        raising=False,
+    )
+
+    with patch("atlas.platform.http.anonymous_rate_limit.time.monotonic", return_value=2.0):
+        assert await middleware._has_valid_api_key(request) is False  # noqa: SLF001
+
+    cached = middleware._api_key_cache[cache_key]  # noqa: SLF001
+    assert cached.principal is None
+    assert cached.expires_at > 2.0
+
+
+@pytest.mark.asyncio
+async def test_has_valid_api_key_logs_and_handles_lookup_errors(
+    db_url: str,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Lookup failures should fail closed instead of letting anonymous traffic through."""
+    settings = _settings(db_url)
+    middleware = AnonymousRateLimitMiddleware(app=AsyncMock(), settings=settings)
+    request = SimpleNamespace(headers={"x-api-key": "broken"}, state=SimpleNamespace())
+
+    async def boom(_api_key: str, _settings: Settings) -> ApiKeyPrincipal | None:
+        raise RuntimeError("verification down")
+
+    monkeypatch.setattr(
+        "atlas.platform.http.anonymous_rate_limit.verify_api_key",
+        boom,
+        raising=False,
+    )
+
+    with patch("atlas.platform.http.anonymous_rate_limit.time.monotonic", return_value=2.0):
+        assert await middleware._has_valid_api_key(request) is False  # noqa: SLF001
+
+
+@pytest.mark.asyncio
+async def test_authenticated_internal_actor_bypasses_anonymous_limit_checks(
+    db_url: str,
+) -> None:
+    """Trusted app-to-API traffic should be recognized before anonymous billing."""
+    settings = _settings(db_url)
+    middleware = AnonymousRateLimitMiddleware(app=AsyncMock(), settings=settings)
+    request = SimpleNamespace(
+        headers={
+            "x-atlas-actor-email": "operator@atlas.test",
+            "x-atlas-actor-id": "user-123",
+            "x-atlas-internal-secret": "internal-test-secret",
+        }
+    )
+
+    assert await middleware._is_authenticated_request(request) is True  # noqa: SLF001
+
+
+def test_client_key_falls_back_to_direct_host_when_forwarded_headers_fail(db_url: str) -> None:
+    """Direct traffic should use the peer address when proxy hints are unusable."""
+    settings = _settings(db_url, trust_unsigned_forward_headers=True)
+    middleware = AnonymousRateLimitMiddleware(app=AsyncMock(), settings=settings)
+    request = SimpleNamespace(
+        headers={"x-forwarded-for": "garbage"}, client=SimpleNamespace(host="203.0.113.10")
+    )
+
+    assert middleware._client_key(request) == "direct:203.0.113.10"  # noqa: SLF001

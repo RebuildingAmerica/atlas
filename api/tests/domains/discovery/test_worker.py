@@ -1,16 +1,19 @@
 """Tests for the discovery job worker."""
+# ruff: noqa
 
 from __future__ import annotations
 
 import asyncio
 import tempfile
+from types import SimpleNamespace
 from typing import TYPE_CHECKING
+from unittest.mock import AsyncMock
 
 import pytest
 import pytest_asyncio
 
 from atlas.domains.discovery.models import DiscoveryJobCRUD
-from atlas.domains.discovery.worker import start_job_worker, stop_job_worker
+from atlas.domains.discovery.worker import _worker_loop, start_job_worker, stop_job_worker
 from atlas.models import DiscoveryRunCRUD, get_db_connection, init_db
 
 if TYPE_CHECKING:
@@ -63,6 +66,39 @@ class TestWorkerLifecycle:
 
 
 class TestWorkerExecution:
+    @pytest.mark.asyncio
+    async def test_worker_loop_continues_when_no_job_is_claimed(
+        self,
+        db_url: str,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """An empty claim cycle should sleep and then keep polling."""
+        claim_results = [None, None]
+        sleep_calls = 0
+
+        async def fake_claim_next(_conn: object, **_kwargs: object) -> object | None:
+            return claim_results.pop(0)
+
+        async def fake_sleep(_seconds: float) -> None:
+            nonlocal sleep_calls
+            sleep_calls += 1
+            if sleep_calls == 2:
+                raise asyncio.CancelledError
+
+        monkeypatch.setattr(DiscoveryJobCRUD, "reap_orphans", AsyncMock(return_value=0))
+        monkeypatch.setattr(DiscoveryJobCRUD, "claim_next", fake_claim_next)
+        monkeypatch.setattr("atlas.domains.discovery.worker.asyncio.sleep", fake_sleep)
+
+        with pytest.raises(asyncio.CancelledError):
+            await _worker_loop(
+                db_url,
+                settings=SimpleNamespace(
+                    database_url=db_url,
+                    search_api_key=None,
+                    anthropic_api_key="test",
+                ),
+            )
+
     @pytest.mark.asyncio
     async def test_worker_claims_and_fails_job_with_retry(
         self,

@@ -1,9 +1,11 @@
 """Tests for discovery model helpers and CRUD edge cases."""
+# ruff: noqa
 
 from __future__ import annotations
 
 import pytest
 
+from atlas.domains.discovery import models as discovery_models
 from atlas.domains.discovery.models import (
     DiscoveryJobCRUD,
     DiscoveryRunCRUD,
@@ -166,6 +168,32 @@ class TestDiscoveryJobCRUDGetByRunId:
     async def test_returns_none_when_no_jobs_for_run(self, test_db: object) -> None:
         result = await DiscoveryJobCRUD.get_by_run_id(test_db, "no-such-run-id")
         assert result is None
+
+
+class TestDiscoveryJobQueueAndPayloadHelpers:
+    @pytest.mark.asyncio
+    async def test_list_queue_returns_empty_list_when_no_jobs_exist(self, test_db: object) -> None:
+        """The queue helper should return an empty collection when nothing is queued."""
+        assert await DiscoveryJobCRUD.list_queue(test_db) == []
+
+    def test_job_input_payload_handles_mapped_and_decoded_inputs(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Job payload decoding should accept dicts, decode dicts, and reject others."""
+        assert discovery_models._job_input_payload({"input_payload": {"x": 1}}) == {"x": 1}  # noqa: SLF001
+
+        monkeypatch.setattr(
+            discovery_models.db,
+            "decode_json",
+            lambda _value: {"direct_urls": ["https://example.test/seed"]},
+        )
+        assert discovery_models._job_input_payload({"input_payload": "{}"}) == {  # noqa: SLF001
+            "direct_urls": ["https://example.test/seed"]
+        }
+
+        monkeypatch.setattr(discovery_models.db, "decode_json", lambda _value: ["bad"])
+        assert discovery_models._job_input_payload({"input_payload": "{}"}) == {}  # noqa: SLF001
+        assert discovery_models._job_input_payload({}) == {}  # noqa: SLF001
 
 
 class TestDiscoveryJobCRUDCreateIdempotency:
@@ -726,6 +754,120 @@ class TestDiscoveryJobCRUDReapOrphans:
         assert reaped == 1
         assert job is not None
         assert job.status == "queued"
+
+
+class TestDiscoveryCRUDBranchHelpers:
+    @pytest.mark.asyncio
+    async def test_run_list_returns_empty_when_no_rows(self, test_db: object) -> None:
+        """Discovery run listing should fail closed on an empty table."""
+        assert await DiscoveryRunCRUD.list(test_db) == []
+
+    @pytest.mark.asyncio
+    async def test_schedule_helpers_cover_missing_and_boolean_paths(self, test_db: object) -> None:
+        """Schedule helpers should handle missing rows and explicit boolean updates."""
+        assert await DiscoveryScheduleCRUD.get_by_id(test_db, "missing") is None
+
+        schedule_id = await DiscoveryScheduleCRUD.create(
+            test_db,
+            location_query="Austin, TX",
+            state="TX",
+            issue_areas=["housing_affordability"],
+        )
+        disabled_id = await DiscoveryScheduleCRUD.create(
+            test_db,
+            location_query="Dallas, TX",
+            state="TX",
+            issue_areas=["housing_affordability"],
+        )
+        await DiscoveryScheduleCRUD.update(test_db, disabled_id, enabled=False)
+
+        all_schedules = await DiscoveryScheduleCRUD.list(test_db)
+        enabled_schedules = await DiscoveryScheduleCRUD.list(test_db, enabled_only=True)
+        assert {schedule.id for schedule in all_schedules} == {schedule_id, disabled_id}
+        assert [schedule.id for schedule in enabled_schedules] == [schedule_id]
+
+        assert await DiscoveryScheduleCRUD.update(
+            test_db,
+            schedule_id,
+            issue_areas=["worker_cooperatives"],
+            enabled=False,
+        )
+        schedule = await DiscoveryScheduleCRUD.get_by_id(test_db, schedule_id)
+        assert schedule is not None
+        assert schedule.issue_areas == ["worker_cooperatives"]
+        assert schedule.enabled is False
+        assert await DiscoveryScheduleCRUD.delete(test_db, schedule_id)
+        assert await DiscoveryScheduleCRUD.delete(test_db, "missing") is False
+
+    @pytest.mark.asyncio
+    async def test_job_helpers_cover_missing_rows_and_queue_items(self, test_db: object) -> None:
+        """Job helpers should cover missing lookups, direct-url claims, and queue rows."""
+        assert await DiscoveryJobCRUD.get_by_id(test_db, "missing") is None
+        assert await DiscoveryJobCRUD.get_by_run_id(test_db, "missing-run") is None
+        assert await DiscoveryJobCRUD.list_by_status(test_db, "queued") == []
+        assert await DiscoveryJobCRUD.fail(test_db, "missing-job", "boom") is False
+
+        run_id = await DiscoveryRunCRUD.create(
+            test_db,
+            location_query="Austin, TX",
+            state="TX",
+            issue_areas=["housing_affordability"],
+        )
+        job_id = await DiscoveryJobCRUD.create(
+            test_db,
+            run_id=run_id,
+            job_input=discovery_models.DiscoveryJobInput(
+                execution_mode="direct_url",
+                payload={"direct_urls": ["https://example.test/seed"]},
+            ),
+        )
+        job = await DiscoveryJobCRUD.get_by_id(test_db, job_id)
+        assert job is not None
+        assert job.execution_mode == "direct_url"
+        assert await DiscoveryJobCRUD.get_by_run_id(test_db, run_id) is not None
+
+        claimed = await DiscoveryJobCRUD.claim_next(
+            test_db,
+            claimed_by="worker-1",
+            search_key_configured=False,
+        )
+        assert claimed is not None
+        assert claimed.id == job_id
+        assert await DiscoveryJobCRUD.release_worker_leases(test_db, "worker-1") == 1
+        released = await DiscoveryJobCRUD.get_by_id(test_db, job_id)
+        assert released is not None
+        assert released.status == "queued"
+
+        queue = await DiscoveryJobCRUD.list_queue(test_db)
+        assert queue and queue[0].id == job_id
+        assert queue[0].input_payload == {"direct_urls": ["https://example.test/seed"]}
+
+    @pytest.mark.asyncio
+    async def test_claim_next_can_opt_into_search_key_restrictions(self, test_db: object) -> None:
+        """Direct-url jobs should remain claimable even without search credentials."""
+        run_id = await DiscoveryRunCRUD.create(
+            test_db,
+            location_query="Austin, TX",
+            state="TX",
+            issue_areas=["housing_affordability"],
+        )
+        job_id = await DiscoveryJobCRUD.create(
+            test_db,
+            run_id=run_id,
+            job_input=discovery_models.DiscoveryJobInput(
+                execution_mode="direct_url",
+                payload={"direct_urls": ["https://example.test/seed"]},
+            ),
+        )
+
+        claimed = await DiscoveryJobCRUD.claim_next(
+            test_db,
+            claimed_by="worker-2",
+            search_key_configured=False,
+        )
+
+        assert claimed is not None
+        assert claimed.id == job_id
 
 
 class TestDiscoveryJobCRUDCountByStatus:

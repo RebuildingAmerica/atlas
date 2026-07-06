@@ -1,4 +1,5 @@
 """Tests for the ranked, scored connection network."""
+# ruff: noqa
 
 from types import SimpleNamespace
 from typing import Any, cast
@@ -227,6 +228,35 @@ class TestSourcedEdges:
         assert actor.reasons[0].label == "Staff profile"
         assert actor.reasons[0].count == 1
         assert actor.reasons[0].source_id == source_id
+
+    @pytest.mark.asyncio
+    async def test_inactive_relationship_target_is_skipped(self, test_db: object) -> None:
+        """Inactive linked actors should not appear in the connection graph."""
+        person_id = await _make_person(test_db, "Maya Lee")
+        org_id = await EntryCRUD.create(
+            test_db,
+            entry_type="organization",
+            name="Inactive Neighborhood Legal Center",
+            description="Inactive profile.",
+            city="Kansas City",
+            state="MO",
+            geo_specificity="local",
+            active=False,
+        )
+        source_id = await _co_mention(test_db, [person_id], publication="State Bar")
+        await RelationshipCRUD.upsert_edge(
+            test_db,
+            source_entry_id=person_id,
+            target_entry_id=org_id,
+            relationship_type="staff",
+            source_id=source_id,
+            evidence_label="Inactive profile",
+            confidence=1.0,
+        )
+
+        result = await compute_connections(test_db, person_id)
+
+        assert result.total == 0
 
 
 class TestSameIssueArea:

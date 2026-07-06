@@ -1,10 +1,12 @@
 """Tests for org-scoped Atlas Brief artifacts."""
+# ruff: noqa
 
 from __future__ import annotations
 
 import csv
 import io
 from typing import TYPE_CHECKING
+from unittest.mock import AsyncMock
 
 import httpx
 import pytest
@@ -210,6 +212,51 @@ class TestOrgBriefsSchema:
         with pytest.raises(StoredBriefDecodeError):
             _decode_json_object_list('[{"label": "ok"}, "not-object"]')
 
+    @pytest.mark.asyncio
+    async def test_update_returns_existing_brief_when_no_fields_are_sent(
+        self,
+        test_db: object,
+    ) -> None:
+        """Omitting every editable field should leave the stored brief untouched."""
+        brief = await OrgBriefCRUD.create(
+            test_db,
+            org_id=ORG_ID,
+            title="Kansas City housing landscape brief",
+            scope={"geography": "Kansas City, MO"},
+            summary="One source-backed housing lead is ready for review.",
+            linked_entry_ids=[],
+            linked_source_ids=[],
+            linked_discovery_run_ids=[],
+            confidence_summary={},
+            gaps=[],
+            created_by="local-user",
+        )
+
+        updated = await OrgBriefCRUD.update(test_db, brief.id)
+
+        assert updated is not None
+        assert updated.id == brief.id
+
+    @pytest.mark.asyncio
+    async def test_update_returns_none_for_missing_brief(self, test_db: object) -> None:
+        """Missing briefs should stay missing during updates."""
+        assert await OrgBriefCRUD.update(test_db, "missing-brief") is None
+
+    @pytest.mark.asyncio
+    async def test_update_returns_none_when_a_missing_brief_is_changed(
+        self,
+        test_db: object,
+    ) -> None:
+        """Updating a missing brief with fields should still fail cleanly."""
+        assert (
+            await OrgBriefCRUD.update(
+                test_db,
+                "missing-brief",
+                title="Updated title",
+            )
+            is None
+        )
+
 
 class TestOrgBriefsApi:
     """Org-scoped brief artifact behavior."""
@@ -271,6 +318,59 @@ class TestOrgBriefsApi:
         assert get_response.status_code == STATUS_OK
         assert get_response.json()["id"] == brief_id
         assert await OrgUsageEventCRUD.count_by_type(test_db, org_id=ORG_ID) == {"brief_opened": 1}
+
+    @pytest.mark.asyncio
+    async def test_update_brief_reports_missing_brief(self, capable_test_client: object) -> None:
+        """Updates should fail plainly when the brief no longer exists."""
+        response = await capable_test_client.patch(
+            f"/api/orgs/{ORG_ID}/briefs/missing",
+            json={},
+        )
+
+        assert response.status_code == STATUS_NOT_FOUND
+
+    @pytest.mark.asyncio
+    async def test_update_brief_requires_fields(
+        self, capable_test_client: object, test_db: object
+    ) -> None:
+        """Blank updates should be rejected before they reach persistence."""
+        entry_id, source_id, run_id = await _create_linked_records(test_db)
+        create_response = await capable_test_client.post(
+            f"/api/orgs/{ORG_ID}/briefs",
+            json=_brief_payload(entry_id, source_id, run_id),
+        )
+        brief_id = create_response.json()["id"]
+
+        response = await capable_test_client.patch(
+            f"/api/orgs/{ORG_ID}/briefs/{brief_id}",
+            json={},
+        )
+
+        assert response.status_code == STATUS_BAD_REQUEST
+
+    @pytest.mark.asyncio
+    async def test_update_brief_reports_missing_after_persistence(
+        self,
+        capable_test_client: object,
+        test_db: object,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """If the update disappears mid-write, the route should fail closed."""
+        entry_id, source_id, run_id = await _create_linked_records(test_db)
+        create_response = await capable_test_client.post(
+            f"/api/orgs/{ORG_ID}/briefs",
+            json=_brief_payload(entry_id, source_id, run_id),
+        )
+        brief_id = create_response.json()["id"]
+
+        monkeypatch.setattr(OrgBriefCRUD, "update", AsyncMock(return_value=None))
+
+        response = await capable_test_client.patch(
+            f"/api/orgs/{ORG_ID}/briefs/{brief_id}",
+            json={"title": "Updated title"},
+        )
+
+        assert response.status_code == STATUS_NOT_FOUND
 
     @pytest.mark.asyncio
     async def test_export_brief_preserves_sources_and_linked_actor_context(

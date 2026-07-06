@@ -1,10 +1,11 @@
 """Tests for profile claim persistence."""
-# ruff: noqa: PLR2004
+# ruff: noqa: PLR2004, SLF001
 
 from __future__ import annotations
 
 import pytest
 
+from atlas.domains.catalog.models import profile_claims
 from atlas.domains.catalog.models.profile_claims import ProfileClaimCRUD
 
 
@@ -124,6 +125,16 @@ class TestProfileClaimCRUD:
 
         assert verified is not None
         assert proofs[0].proof_summary == "Verified email control for mississippirising.org."
+
+    def test_default_verified_proof_summary_falls_back_without_domain(self) -> None:
+        """Email-domain proofs without a real domain should stay generic."""
+        assert (
+            profile_claims._default_verified_proof_summary(
+                "email_domain",
+                {"user_email_domain": ""},
+            )
+            == "Verified by reviewer decision."
+        )
 
     @pytest.mark.asyncio
     async def test_mark_rejected_records_reason(

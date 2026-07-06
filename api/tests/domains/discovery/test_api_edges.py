@@ -1,4 +1,5 @@
 """Edge-case coverage for discovery API routes and models."""
+# ruff: noqa
 
 from __future__ import annotations
 
@@ -23,6 +24,7 @@ from fastapi import HTTPException
 from atlas.domains.access.principals import AuthenticatedActor
 from atlas.domains.catalog.models.ownership import OwnershipCRUD
 from atlas.domains.discovery import api as discovery_api
+from atlas.domains.discovery import run_creation
 from atlas.domains.discovery.models import (
     DiscoveryJobCRUD,
     DiscoveryRunCRUD,
@@ -109,6 +111,74 @@ async def test_start_discovery_run_surfaces_create_and_refresh_failures(
     )
 
     assert refresh_failure.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
+
+
+@pytest.mark.asyncio
+async def test_create_discovery_run_records_requires_direct_urls_for_direct_url_mode(
+    test_db: object,
+) -> None:
+    """Direct-URL runs should reject missing seed URLs before any records are created."""
+    with pytest.raises(HTTPException) as exc_info:
+        await run_creation.create_discovery_run_records(
+            test_db,
+            req=DiscoveryRunStartRequest(
+                location_query="Kansas City, MO",
+                state="MO",
+                issue_areas=["housing_affordability"],
+                execution_mode="direct_url",
+            ),
+            settings=SimpleNamespace(
+                database_url="sqlite:///atlas.db",
+                search_api_key=None,
+                anthropic_api_key="test-key",
+                discovery_inline=False,
+            ),
+        )
+
+    assert exc_info.value.status_code == HTTPStatus.BAD_REQUEST
+
+
+@pytest.mark.asyncio
+async def test_create_discovery_run_records_writes_direct_url_job_payload(
+    test_db: object,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Direct-URL runs should carry seed URLs into the durable job payload."""
+    payloads: dict[str, object] = {}
+
+    async def fake_create(
+        _db: object, *, run_id: str, idempotency_key: str | None, job_input: object
+    ) -> None:
+        payloads["run_id"] = run_id
+        payloads["idempotency_key"] = idempotency_key
+        payloads["job_input"] = job_input
+
+    monkeypatch.setattr(run_creation.DiscoveryJobCRUD, "create", fake_create)
+
+    request = DiscoveryRunStartRequest(
+        location_query="Kansas City, MO",
+        state="MO",
+        issue_areas=["housing_affordability"],
+        execution_mode="direct_url",
+        direct_urls=["https://example.test/seed"],
+    )
+    run = await run_creation.create_discovery_run_records(
+        test_db,
+        req=request,
+        settings=SimpleNamespace(
+            database_url="sqlite:///atlas.db",
+            search_api_key=None,
+            anthropic_api_key="test-key",
+            discovery_inline=False,
+        ),
+        idempotency_key="dedupe-key",
+    )
+
+    assert run.id
+    job_input = payloads["job_input"]
+    assert payloads["idempotency_key"] == "dedupe-key"
+    assert job_input.execution_mode == "direct_url"  # type: ignore[attr-defined]
+    assert job_input.payload == {"direct_urls": ["https://example.test/seed"]}  # type: ignore[attr-defined]
 
 
 @pytest.mark.asyncio
