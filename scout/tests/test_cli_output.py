@@ -184,9 +184,9 @@ def test_print_run_results_reports_no_entities_when_ranked_empty() -> None:
     result = PipelineResult(
         run_id="run-empty",
         queries_generated=1,
-        pages_fetched=0,
-        entries_found=0,
-        entries_after_dedup=0,
+        pages_fetched=1,
+        entries_found=1,
+        entries_after_dedup=1,
         ranked_entries=[],
         gap_report=GapReport(location="Austin, TX", total_entries=0),
         page_outcomes=[],
@@ -195,7 +195,10 @@ def test_print_run_results_reports_no_entities_when_ranked_empty() -> None:
     print_run_results(console, result)
 
     output = buffer.getvalue()
-    assert "No entities discovered" in output
+    assert "Extracted: 1" in output
+    assert "Deduped: 1" in output
+    assert "Saved: 0" in output
+    assert "No entries passed quality checks." in output
 
 
 def test_print_run_results_handles_missing_city_state() -> None:

@@ -443,6 +443,50 @@ async def test_save_and_list_entries(store: ScoutStore) -> None:
     assert entries[0]["score"] == 0.85
 
 
+async def test_purge_entries_by_source_dataset_removes_matching_rows(
+    store: ScoutStore,
+) -> None:
+    """Purging source-dataset rows removes them from active entries."""
+    run_id = await store.create_run(location="Las Vegas, NV", issues=[], search_depth="standard")
+    await store.save_entry(
+        run_id=run_id,
+        name="IRS Person",
+        entry_type="person",
+        description="Structured filing person",
+        city="Las Vegas",
+        state="NV",
+        score=0.82,
+        data={
+            "source_dataset": "irs_990_people",
+            "source_key": "irs-990:test",
+            "source_urls": ["file://sample.zip#sample.xml"],
+        },
+    )
+    await store.save_entry(
+        run_id=run_id,
+        name="Web Person",
+        entry_type="person",
+        description="Discovered from a web source",
+        city="Las Vegas",
+        state="NV",
+        score=0.9,
+        data={
+            "source_urls": ["https://example.org"],
+            "source_contexts": {"https://example.org": "Web Person said ..."},
+        },
+    )
+
+    count = await store.count_entries_by_source_dataset("irs_990_people")
+    deleted = await store.purge_entries_by_source_dataset("irs_990_people")
+    active_entries = await store.list_entries()
+    stats = await store.entry_stats()
+
+    assert count == 1
+    assert deleted == 1
+    assert [entry["name"] for entry in active_entries] == ["Web Person"]
+    assert stats["by_source_dataset"] == {}
+
+
 async def test_list_runs(store: ScoutStore) -> None:
     await store.create_run(location="Austin, TX", issues=[], search_depth="standard")
     await store.create_run(location="Houston, TX", issues=[], search_depth="deep")

@@ -76,6 +76,7 @@ from atlas_scout.config import (
 from atlas_scout.credentials import CredentialStoreError
 from atlas_scout.doctor import run_doctor
 from atlas_scout.doctor_output import print_doctor_report
+from atlas_scout.entries_commands import entries_purge_command, entries_stats_command
 from atlas_scout.local_models import (
     LOCAL_PROVIDER_NAMES,
     LocalModelChoice,
@@ -215,13 +216,19 @@ _ORIGINAL_DAEMON_START_CONFLICT_MESSAGE = cast(
     "Callable[[dict[str, object]], str]",
     _daemon_helpers._daemon_start_conflict_message,
 )
-_ORIGINAL_DAEMON_STATUS = cast("Callable[[ScoutConfig], Awaitable[None]]", _daemon_helpers._daemon_status)
-_ORIGINAL_DAEMON_STOP = cast("Callable[[ScoutConfig], Awaitable[None]]", _daemon_helpers._daemon_stop)
+_ORIGINAL_DAEMON_STATUS = cast(
+    "Callable[[ScoutConfig], Awaitable[None]]", _daemon_helpers._daemon_status
+)
+_ORIGINAL_DAEMON_STOP = cast(
+    "Callable[[ScoutConfig], Awaitable[None]]", _daemon_helpers._daemon_stop
+)
 _ORIGINAL_INSTALL_DAEMON_SIGNAL_HANDLERS = cast(
     "Callable[[asyncio.Event], None]",
     _daemon_helpers._install_daemon_signal_handlers,
 )
-_ORIGINAL_OPEN_STORE = cast("Callable[[ScoutConfig], Awaitable[object]]", _daemon_helpers._open_store)
+_ORIGINAL_OPEN_STORE = cast(
+    "Callable[[ScoutConfig], Awaitable[object]]", _daemon_helpers._open_store
+)
 _ORIGINAL_RENDER_RECENT_RUN_SUMMARY = cast(
     "Callable[[dict[str, object] | None], str]",
     _daemon_helpers._render_recent_run_summary,
@@ -3321,6 +3328,84 @@ def worker_run_internal(
 @main.group()
 def entries() -> None:
     """Browse discovered entries."""
+
+
+@entries.command("stats")
+@click.option("--json", "json_output", is_flag=True, help="Print machine-readable JSON.")
+@click.option(
+    "--require-type",
+    "required_types",
+    multiple=True,
+    help="Fail unless this entry type exists. Repeat for multiple types.",
+)
+@click.option(
+    "--min-source-backed",
+    type=click.IntRange(0),
+    default=None,
+    help="Fail unless at least this many entries have source provenance.",
+)
+@click.option("--run-id", default=None, help="Restrict stats to one local run.")
+@click.option(
+    "--exclude-source-dataset",
+    "excluded_source_datasets",
+    multiple=True,
+    help="Ignore entries tagged with this source_dataset. Repeat for multiple datasets.",
+)
+@click.option(
+    "--min-people",
+    type=click.IntRange(0),
+    default=None,
+    help="Fail unless at least this many person entries remain after filters.",
+)
+@click.pass_context
+def entries_stats(
+    ctx: click.Context,
+    json_output: bool,
+    required_types: tuple[str, ...],
+    min_source_backed: int | None,
+    run_id: str | None,
+    excluded_source_datasets: tuple[str, ...],
+    min_people: int | None,
+) -> None:
+    """Show aggregate entry counts for discovery verification."""
+    config: ScoutConfig = ctx.obj["config"]
+    _run_async(
+        entries_stats_command(
+            config,
+            json_output,
+            required_types,
+            min_source_backed,
+            run_id=run_id,
+            excluded_source_datasets=excluded_source_datasets,
+            min_people=min_people,
+        )
+    )
+
+
+@entries.command("purge")
+@click.option("--source-dataset", required=True, help="Delete entries tagged with this dataset.")
+@click.option("--yes", is_flag=True, help="Confirm deletion.")
+@click.option("--dry-run", is_flag=True, help="Count matching entries without deleting them.")
+@click.option("--json", "json_output", is_flag=True, help="Print machine-readable JSON.")
+@click.pass_context
+def entries_purge(
+    ctx: click.Context,
+    source_dataset: str,
+    yes: bool,
+    dry_run: bool,
+    json_output: bool,
+) -> None:
+    """Delete active entries matching a source dataset marker."""
+    config: ScoutConfig = ctx.obj["config"]
+    _run_async(
+        entries_purge_command(
+            config,
+            source_dataset=source_dataset,
+            yes=yes,
+            dry_run=dry_run,
+            json_output=json_output,
+        )
+    )
 
 
 @entries.command("list")

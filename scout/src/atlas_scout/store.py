@@ -7,6 +7,7 @@ import uuid
 from datetime import UTC, datetime, timedelta
 from hashlib import sha256
 from typing import Any
+from urllib.parse import urlparse
 
 import aiosqlite
 from atlas_shared import DiscoveryRunArtifacts, DiscoverySyncInfo, compute_artifact_hash
@@ -170,6 +171,23 @@ def _validate_interval_seconds(interval_seconds: int | None) -> int | None:
     if interval_seconds is not None and interval_seconds < 0:
         raise ValueError("interval_seconds must be non-negative")
     return interval_seconds
+
+
+def _has_source_context(data: dict[str, Any]) -> bool:
+    """Return whether an entry has source-local context beyond a bare URL."""
+    source_context = data.get("source_context")
+    if isinstance(source_context, str) and source_context.strip():
+        return True
+
+    extraction_context = data.get("extraction_context")
+    if isinstance(extraction_context, str) and extraction_context.strip():
+        return True
+
+    source_contexts = data.get("source_contexts")
+    if isinstance(source_contexts, dict):
+        return any(isinstance(value, str) and value.strip() for value in source_contexts.values())
+
+    return False
 
 
 class ScoutStore:
@@ -1061,6 +1079,274 @@ class ScoutStore:
             ),
         )
         return entry_id
+
+    async def bulk_save_entries(
+        self,
+        *,
+        run_id: str,
+        entries: list[dict[str, Any]],
+        batch_size: int = 5000,
+    ) -> list[str]:
+        """Insert many entries efficiently and return their IDs.
+
+        Parameters
+        ----------
+        run_id : str
+            Owning Scout run ID.
+        entries : list[dict[str, Any]]
+            Entry payloads with the same fields accepted by `save_entry`.
+        batch_size : int, optional
+            Number of rows to commit per batch. Default is 5000.
+
+        Returns
+        -------
+        list[str]
+            IDs assigned to the inserted entries.
+        """
+        if batch_size <= 0:
+            raise ValueError("batch_size must be positive")
+
+        assert self._conn is not None
+        entry_ids: list[str] = []
+        now = _now()
+        rows: list[tuple[Any, ...]] = []
+        for entry in entries:
+            entry_id = _new_id()
+            entry_ids.append(entry_id)
+            rows.append(
+                (
+                    entry_id,
+                    run_id,
+                    entry["name"],
+                    entry["entry_type"],
+                    entry.get("description", ""),
+                    entry.get("city"),
+                    entry.get("state"),
+                    entry.get("score", 0.0),
+                    json.dumps(entry.get("data", {})),
+                    now,
+                )
+            )
+
+        for start in range(0, len(rows), batch_size):
+            await self._conn.executemany(
+                """
+                INSERT INTO entries
+                    (id, run_id, name, entry_type, description, city, state, score, data, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                rows[start : start + batch_size],
+            )
+            await self._conn.commit()
+
+        return entry_ids
+
+    async def existing_source_keys(self, entry_type: str | None = None) -> set[str]:
+        """Return source identity keys already present in local entries.
+
+        Parameters
+        ----------
+        entry_type : str | None, optional
+            Restrict the lookup to one entry type.
+
+        Returns
+        -------
+        set[str]
+            Existing structured-source keys.
+        """
+        assert self._conn is not None
+        if entry_type is None:
+            sql = "SELECT data FROM entries"
+            params: tuple[Any, ...] = ()
+        else:
+            sql = "SELECT data FROM entries WHERE entry_type = ?"
+            params = (entry_type,)
+
+        keys: set[str] = set()
+        async with self._conn.execute(sql, params) as cursor:
+            rows = await cursor.fetchall()
+        for row in rows:
+            data = json.loads(row["data"])
+            source_key = data.get("source_key")
+            if isinstance(source_key, str) and source_key:
+                keys.add(source_key)
+        return keys
+
+    async def count_entries_by_source_dataset(self, source_dataset: str) -> int:
+        """Return the number of active entries tagged with one source dataset.
+
+        Parameters
+        ----------
+        source_dataset : str
+            Dataset marker stored in each entry's JSON payload.
+
+        Returns
+        -------
+        int
+            Number of matching active entries.
+        """
+        resolved_source_dataset = source_dataset.strip()
+        if not resolved_source_dataset:
+            raise ValueError("source_dataset must not be blank")
+
+        assert self._conn is not None
+        async with self._conn.execute("SELECT data FROM entries") as cursor:
+            rows = list(await cursor.fetchall())
+
+        matches = 0
+        for row in rows:
+            data = json.loads(row["data"])
+            if data.get("source_dataset") == resolved_source_dataset:
+                matches += 1
+        return matches
+
+    async def purge_entries_by_source_dataset(self, source_dataset: str) -> int:
+        """Delete active entries tagged with one source dataset.
+
+        Parameters
+        ----------
+        source_dataset : str
+            Dataset marker stored in each entry's JSON payload.
+
+        Returns
+        -------
+        int
+            Number of entries deleted.
+        """
+        resolved_source_dataset = source_dataset.strip()
+        if not resolved_source_dataset:
+            raise ValueError("source_dataset must not be blank")
+
+        assert self._conn is not None
+        async with self._conn.execute("SELECT id, data FROM entries") as cursor:
+            rows = list(await cursor.fetchall())
+
+        delete_rows = [
+            (row["id"],)
+            for row in rows
+            if json.loads(row["data"]).get("source_dataset") == resolved_source_dataset
+        ]
+        if not delete_rows:
+            return 0
+
+        await self._conn.execute("BEGIN IMMEDIATE")
+        try:
+            await self._conn.executemany("DELETE FROM entries WHERE id = ?", delete_rows)
+            await self._conn.commit()
+        except Exception:
+            await self._conn.rollback()
+            raise
+
+        return len(delete_rows)
+
+    async def entry_stats(
+        self,
+        *,
+        run_id: str | None = None,
+        excluded_source_datasets: set[str] | None = None,
+    ) -> dict[str, Any]:
+        """Return aggregate entry counts for launch-data quality checks.
+
+        Parameters
+        ----------
+        run_id : str | None, optional
+            Restrict stats to one run.
+        excluded_source_datasets : set[str] | None, optional
+            Source dataset names to omit from active quality gates.
+
+        Returns
+        -------
+        dict[str, Any]
+            Entry totals grouped by type, source provenance, run, and metro.
+        """
+        assert self._conn is not None
+        if run_id is None:
+            sql = "SELECT run_id, entry_type, description, data FROM entries"
+            params: tuple[Any, ...] = ()
+        else:
+            sql = "SELECT run_id, entry_type, description, data FROM entries WHERE run_id = ?"
+            params = (run_id,)
+
+        async with self._conn.execute(sql, params) as cursor:
+            rows = list(await cursor.fetchall())
+
+        excluded_datasets = excluded_source_datasets or set()
+        by_type: dict[str, int] = {}
+        by_source_dataset: dict[str, int] = {}
+        by_metro: dict[str, int] = {}
+        by_run: dict[str, int] = {}
+        total_entries = 0
+        source_backed_entries = 0
+        contextual_person_count = 0
+        source_key_counts: dict[str, int] = {}
+        source_urls_seen: set[str] = set()
+        source_domains_seen: set[str] = set()
+
+        for row in rows:
+            data = json.loads(row["data"])
+            source_dataset = data.get("source_dataset")
+            if (
+                isinstance(source_dataset, str)
+                and source_dataset
+                and source_dataset in excluded_datasets
+            ):
+                continue
+
+            total_entries += 1
+            entry_type = str(row["entry_type"])
+            by_type[entry_type] = by_type.get(entry_type, 0) + 1
+
+            row_run_id = str(row["run_id"])
+            by_run[row_run_id] = by_run.get(row_run_id, 0) + 1
+
+            source_key = data.get("source_key")
+            source_urls = data.get("source_urls")
+            has_source_key = isinstance(source_key, str) and bool(source_key)
+            has_source_urls = isinstance(source_urls, list) and bool(source_urls)
+            if has_source_key or has_source_urls:
+                source_backed_entries += 1
+            if has_source_key:
+                source_key_counts[source_key] = source_key_counts.get(source_key, 0) + 1
+
+            if isinstance(source_dataset, str) and source_dataset:
+                by_source_dataset[source_dataset] = by_source_dataset.get(source_dataset, 0) + 1
+
+            if isinstance(source_urls, list):
+                for source_url in source_urls:
+                    if isinstance(source_url, str) and source_url:
+                        source_urls_seen.add(source_url)
+                        parsed_url = urlparse(source_url)
+                        if parsed_url.netloc:
+                            source_domains_seen.add(parsed_url.netloc.lower())
+
+            description = row["description"]
+            if (
+                entry_type == "person"
+                and isinstance(description, str)
+                and description.strip()
+                and _has_source_context(data)
+            ):
+                contextual_person_count += 1
+
+            metro = data.get("metro")
+            if isinstance(metro, str) and metro:
+                by_metro[metro] = by_metro.get(metro, 0) + 1
+
+        duplicate_source_keys = {
+            source_key: count for source_key, count in source_key_counts.items() if count > 1
+        }
+        return {
+            "total_entries": total_entries,
+            "by_type": by_type,
+            "source_backed_entries": source_backed_entries,
+            "by_source_dataset": by_source_dataset,
+            "by_metro": by_metro,
+            "by_run": by_run,
+            "contextual_person_count": contextual_person_count,
+            "source_url_count": len(source_urls_seen),
+            "source_domain_count": len(source_domains_seen),
+            "duplicate_source_keys": duplicate_source_keys,
+        }
 
     async def list_entries(
         self,
