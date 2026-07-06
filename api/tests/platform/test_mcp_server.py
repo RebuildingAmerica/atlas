@@ -32,6 +32,7 @@ if TYPE_CHECKING:
 HTTP_UNAUTHORIZED = 401
 HTTP_FORBIDDEN = 403
 HTTP_OK = 200
+EXPECTED_ASGI_APP_MIDDLEWARE_COUNT = 3  # draft-Tasks, auth, CORS
 
 EXPECTED_TOOL_NAMES = {
     "get_discovery_run",
@@ -90,9 +91,9 @@ def test_get_mcp_asgi_app_installs_middleware_once(patched_settings: Settings) -
 
     assert first is app
     assert second is app
-    # First call installs draft-Tasks, auth, and CORS (3 calls); the second
-    # call must add none of them again.
-    assert app.add_middleware.call_count == 3
+    # First call installs draft-Tasks, auth, and CORS; the second call must
+    # add none of them again.
+    assert app.add_middleware.call_count == EXPECTED_ASGI_APP_MIDDLEWARE_COUNT
 
 
 @pytest.mark.asyncio
