@@ -27,6 +27,7 @@
   ],
   "tasks": {
     "build": {
+      "dependsOn": ["^build"],
       "inputs": ["$TURBO_DEFAULT$"],
       "outputs": [".output/**", "dist/**"],
       "env": [
@@ -54,6 +55,7 @@
       "dependsOn": ["docs#favicons"]
     },
     "typecheck": {
+      "dependsOn": ["^build"],
       "inputs": [
         "$TURBO_DEFAULT$",
         "tsconfig.json",
@@ -64,6 +66,7 @@
       "env": ["ATLAS_DEPLOY_MODE"]
     },
     "lint": {
+      "dependsOn": ["^build"],
       "inputs": [
         "$TURBO_DEFAULT$",
         "eslint.config.js",
@@ -73,6 +76,7 @@
       ]
     },
     "test": {
+      "dependsOn": ["^build"],
       "inputs": [
         "$TURBO_DEFAULT$",
         "vitest.config.ts",
