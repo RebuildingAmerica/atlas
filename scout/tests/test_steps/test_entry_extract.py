@@ -68,6 +68,27 @@ def _make_entry_json(name: str = "Test Org", issue: str = "housing_affordability
     )
 
 
+def _make_entry_json_without_location(name: str = "Jane Doe") -> str:
+    return json.dumps(
+        [
+            {
+                "name": name,
+                "type": "person",
+                "description": "A named local official.",
+                "city": None,
+                "state": None,
+                "geo_specificity": "local",
+                "issue_areas": ["local_government_and_civic_engagement"],
+                "affiliated_org": None,
+                "website": None,
+                "email": None,
+                "social_media": {},
+                "extraction_context": f"{name} serves the city.",
+            }
+        ]
+    )
+
+
 async def _pages_iter(*pages: PageContent) -> AsyncIterator[PageContent]:
     for page in pages:
         yield page
@@ -80,6 +101,8 @@ async def test_builds_extraction_prompt_with_taxonomy() -> None:
     assert "housing_affordability" in prompt
     assert "union_organizing" in prompt
     assert "Austin, TX" in prompt
+    assert "actual proper name" in prompt
+    assert "Councilman Ward 1" in prompt
 
 
 @pytest.mark.asyncio
@@ -102,6 +125,19 @@ async def test_extracts_entries_from_pages() -> None:
     assert entries[0].name == "Housing First ATX"
     assert entries[0].source_url == "https://example.com"
     assert isinstance(entries[0], RawEntry)
+
+
+@pytest.mark.asyncio
+async def test_extracts_entries_fill_target_location_when_model_omits_it() -> None:
+    """Target location should keep source-backed entries place-aware."""
+    provider = _MockProvider(response_text=_make_entry_json_without_location("Jane Doe"))
+    page = PageContent(url="https://example.com", text="Jane Doe serves the city.", title="")
+
+    entries = [e async for e in extract_entries_stream(_pages_iter(page), provider, "Dallas", "TX")]
+
+    assert len(entries) == 1
+    assert entries[0].city == "Dallas"
+    assert entries[0].state == "TX"
 
 
 @pytest.mark.asyncio

@@ -10,6 +10,7 @@ import json
 import logging
 import os
 import platform
+import random
 import re
 import signal
 import subprocess
@@ -3412,20 +3413,45 @@ def entries_purge(
 @click.option("--min-score", default=0.0, type=float)
 @click.option("--type", "entry_type", default=None)
 @click.option("--limit", default=50, show_default=True)
+@click.option("--run-id", default=None, help="Restrict entries to one local run.")
+@click.option("--random", "random_sample", is_flag=True, help="Return a random sample.")
 @click.option(
     "--format", "-o", "output_format", type=click.Choice(["table", "json", "csv"]), default="table"
 )
 @click.pass_context
 def entries_list(
-    ctx: click.Context, min_score: float, entry_type: str | None, limit: int, output_format: str
+    ctx: click.Context,
+    min_score: float,
+    entry_type: str | None,
+    limit: int,
+    run_id: str | None,
+    random_sample: bool,
+    output_format: str,
 ) -> None:
     """List all discovered entries."""
     config: ScoutConfig = ctx.obj["config"]
-    _run_async(_entries_list(config, min_score, entry_type, limit, output_format))
+    _run_async(
+        _entries_list(
+            config,
+            min_score,
+            entry_type,
+            limit,
+            output_format,
+            run_id=run_id,
+            random_sample=random_sample,
+        )
+    )
 
 
 async def _entries_list(
-    config: ScoutConfig, min_score: float, entry_type: str | None, limit: int, output_format: str
+    config: ScoutConfig,
+    min_score: float,
+    entry_type: str | None,
+    limit: int,
+    output_format: str,
+    *,
+    run_id: str | None = None,
+    random_sample: bool = False,
 ) -> None:
     """Fetch and display entries in the requested format."""
     from atlas_scout.store import ScoutStore
@@ -3437,12 +3463,17 @@ async def _entries_list(
     store = ScoutStore(str(db_path))
     await store.initialize()
     try:
-        all_entries = await store.list_entries(min_score=min_score)
+        all_entries = await store.list_entries(run_id=run_id, min_score=min_score)
     finally:
         await store.close()
     if entry_type:
         all_entries = [e for e in all_entries if e["entry_type"] == entry_type]
-    shown = all_entries[:limit]
+    normalized_limit = max(0, limit)
+    shown = (
+        random.sample(all_entries, min(normalized_limit, len(all_entries)))
+        if random_sample
+        else all_entries[:normalized_limit]
+    )
     if not shown:
         if output_format == "json":
             click.echo("[]")
@@ -3453,6 +3484,7 @@ async def _entries_list(
     if output_format == "json":
         rows = [
             {
+                "run_id": e.get("run_id"),
                 "name": e["name"],
                 "entry_type": e["entry_type"],
                 "description": e.get("description", ""),
@@ -3463,6 +3495,9 @@ async def _entries_list(
                 "email": e.get("data", {}).get("email"),
                 "issue_areas": e.get("data", {}).get("issue_areas", []),
                 "source_urls": e.get("data", {}).get("source_urls", []),
+                "source_contexts": e.get("data", {}).get("source_contexts", {}),
+                "source_context": e.get("data", {}).get("source_context"),
+                "source_dataset": e.get("data", {}).get("source_dataset"),
             }
             for e in shown
         ]

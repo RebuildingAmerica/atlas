@@ -123,3 +123,20 @@ scout run --sync https://example.org
 ```
 
 For review-first workflows, run locally first, then sync from the saved run.
+
+## Inspect A People Sample
+
+Use run-scoped entry listing to review the people Scout found before syncing:
+
+```bash
+scout entries list \
+  --run-id RUN_ID \
+  --type person \
+  --random \
+  --limit 100 \
+  --format json
+```
+
+JSON output includes the local run id, description, issue areas, source URLs,
+and source context fields so reviewers can check why each person belongs in the
+result set.

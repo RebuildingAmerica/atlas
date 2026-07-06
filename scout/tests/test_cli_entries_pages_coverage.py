@@ -9,7 +9,9 @@ helper functions.
 
 from __future__ import annotations
 
+import asyncio
 import io
+import json
 from typing import TYPE_CHECKING, Any
 
 import pytest
@@ -111,7 +113,36 @@ async def _seed_entries(config: ScoutConfig) -> str:
         city=None,
         state=None,
         score=0.5,
-        data={},
+        data={
+            "issue_areas": ["housing"],
+            "source_urls": ["https://src.example/bob"],
+            "source_contexts": {"https://src.example/bob": "Bob Smith testified about rent."},
+        },
+    )
+    await store.close()
+    return run_id
+
+
+async def _seed_other_run(config: ScoutConfig) -> str:
+    """Seed a second run for run filtering tests."""
+    store = ScoutStore(config.store.path)
+    await store.initialize()
+    run_id = await store.create_run(
+        location="Dallas, TX", issues=["public_transit"], search_depth="standard"
+    )
+    await store.save_entry(
+        run_id=run_id,
+        name="Dallas Organizer",
+        entry_type="person",
+        description="A transit organizer.",
+        city="Dallas",
+        state="TX",
+        score=0.88,
+        data={
+            "issue_areas": ["public_transit"],
+            "source_urls": ["https://src.example/dallas"],
+            "source_contexts": {"https://src.example/dallas": "Dallas Organizer organized riders."},
+        },
     )
     await store.close()
     return run_id
@@ -156,15 +187,66 @@ async def test_entries_list_filtered_by_type(
 @pytest.mark.asyncio
 async def test_entries_list_json_output(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     config = _make_config(tmp_path)
-    await _seed_entries(config)
+    run_id = await _seed_entries(config)
     await _entries_list(config, 0.0, None, 50, "json")
     captured = capsys.readouterr()
-    import json
 
     payload = json.loads(captured.out)
     assert isinstance(payload, list)
     assert payload[0]["name"] == "Acme Org"
+    assert payload[0]["run_id"] == run_id
     assert payload[0]["website"] == "https://acme.example"
+    assert payload[1]["source_contexts"] == {
+        "https://src.example/bob": "Bob Smith testified about rent."
+    }
+    assert "source_dataset" in payload[0]
+
+
+def test_entries_list_command_filters_run_and_random_json(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    config = _make_config(tmp_path)
+    asyncio.run(_seed_entries(config))
+    run_id = asyncio.run(_seed_other_run(config))
+    monkeypatch.setattr(cli_module, "load_config", lambda _p: config)
+
+    result = CliRunner().invoke(
+        main,
+        [
+            "entries",
+            "list",
+            "--run-id",
+            run_id,
+            "--type",
+            "person",
+            "--random",
+            "--limit",
+            "1",
+            "--format",
+            "json",
+        ],
+    )
+
+    assert result.exit_code == 0
+    payload = json.loads(result.output)
+    assert payload == [
+        {
+            "run_id": run_id,
+            "name": "Dallas Organizer",
+            "entry_type": "person",
+            "description": "A transit organizer.",
+            "city": "Dallas",
+            "state": "TX",
+            "score": 0.88,
+            "website": None,
+            "email": None,
+            "issue_areas": ["public_transit"],
+            "source_urls": ["https://src.example/dallas"],
+            "source_contexts": {"https://src.example/dallas": "Dallas Organizer organized riders."},
+            "source_context": None,
+            "source_dataset": None,
+        }
+    ]
 
 
 @pytest.mark.asyncio

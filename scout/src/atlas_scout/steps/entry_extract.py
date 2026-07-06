@@ -360,6 +360,10 @@ async def _run_provider_extraction(
     entries = _validate_against_source(entries, page)
     page_date = page.published_date.date() if page.published_date else None
     for entry in entries:
+        if city and not entry.city:
+            entry.city = city
+        if state and not entry.state:
+            entry.state = state
         entry.source_url = page.url
         entry.source_date = page_date
     return entries
@@ -959,12 +963,17 @@ def _build_system_prompt(
         "   - People quoted, interviewed, or named as leaders/staff/board members\n"
         "   - Organizations named as partners, funders, allies, or coalition members\n"
         "   - Campaigns, initiatives, or events referenced by name\n"
-        "4. For each entry, populate mentioned_entities: other entities referenced "
+        "4. For person entries, the name MUST be the person's actual proper name, "
+        "not only a title, role, office, district, ward, or seat label. Do not "
+        "create person entries named like 'Councilman Ward 1', 'Board Member', "
+        "'District 3 representative', or 'Chair'. If the source names only a role "
+        "without a person's proper name, do not create a person entry for it.\n"
+        "5. For each entry, populate mentioned_entities: other entities referenced "
         "in connection to this entry. Each mention needs: "
         '"name" (verbatim from text), "type" (person/organization/initiative), '
         'and "relationship" (founder, board_member, partner, funder, member, '
         "coalition_member, staff, quoted_source, ally).\n"
-        "5. At the top level, include discovery_leads: URLs and entity names from "
+        "6. At the top level, include discovery_leads: URLs and entity names from "
         "the text worth following up. Only include leads that appear in the text.\n\n"
         'Return JSON with keys: "entries" (array) and "discovery_leads" (array of strings). '
         "Each entry must contain: name, type, description, city, state, "
