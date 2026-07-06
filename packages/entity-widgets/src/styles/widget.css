@@ -1,0 +1,23 @@
+/**
+ * Tailwind entry point for the widget build only. The library build does
+ * not import this — see `vite.lib.config.ts`.
+ */
+@import "tailwindcss";
+@import "./theme-tokens.css";
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  color-scheme: light dark;
+}
+
+body {
+  font-family:
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    sans-serif;
+  background-color: var(--color-ew-surface);
+}

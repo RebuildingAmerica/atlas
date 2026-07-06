@@ -1,0 +1,50 @@
+/**
+ * Phase-1 color tokens for the entity card widget.
+ *
+ * Deliberately small and self-contained: just enough to render the compact
+ * card (surface, ink, borders, and the two badge accents) in both light and
+ * dark hosts. Prefixed with `ew-` (entity-widgets) so these never silently
+ * collide with `app/`'s own `--color-*` tokens (see `app/src/styles/app.css`)
+ * once the library build is imported there — reconciling the two token sets
+ * into one source of truth is explicitly deferred to a later task.
+ *
+ * Dark mode: MCP App hosts signal theme by calling `applyDocumentTheme()`
+ * (from `@modelcontextprotocol/ext-apps`), which sets `data-theme="dark"` on
+ * `document.documentElement`. We key off that attribute directly, and also
+ * accept a `.dark` class for compatibility with Tailwind's conventional
+ * class-based dark mode strategy, in case a host (or `app/`, later) toggles
+ * dark mode that way instead.
+ *
+ * This file intentionally does not `@import "tailwindcss"` itself — it's
+ * meant to be importable from any Tailwind entry point (this package's own
+ * `styles/widget.css`, or later, `app/`'s) without pulling in a second copy
+ * of Tailwind's base layer.
+ */
+@custom-variant dark (&:where(.dark, .dark *, [data-theme="dark"], [data-theme="dark"] *));
+
+@theme {
+  --color-ew-surface: #ffffff;
+  --color-ew-surface-alt: #f4f4f5;
+  --color-ew-ink: #18181b;
+  --color-ew-ink-soft: #71717a;
+  --color-ew-border: #e4e4e7;
+  --color-ew-accent: #0b3d7a;
+  --color-ew-accent-ink: #ffffff;
+  --color-ew-muted: #e4e4e7;
+  --color-ew-muted-ink: #3f3f46;
+  --color-ew-link: #0b3d7a;
+}
+
+:root[data-theme="dark"],
+.dark {
+  --color-ew-surface: #18181b;
+  --color-ew-surface-alt: #27272a;
+  --color-ew-ink: #f4f4f5;
+  --color-ew-ink-soft: #a1a1aa;
+  --color-ew-border: #3f3f46;
+  --color-ew-accent: #6ea8e0;
+  --color-ew-accent-ink: #0b1f33;
+  --color-ew-muted: #3f3f46;
+  --color-ew-muted-ink: #d4d4d8;
+  --color-ew-link: #8fbdea;
+}
