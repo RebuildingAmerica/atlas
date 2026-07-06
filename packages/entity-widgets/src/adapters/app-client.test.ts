@@ -1,52 +1,35 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
-import type {
-  McpUiHostContext,
-  McpUiStyles,
-} from "@modelcontextprotocol/ext-apps";
+import { act, cleanup, renderHook } from "@testing-library/react";
+import type { App } from "@modelcontextprotocol/ext-apps";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
 /**
- * `McpUiStyles` is a `Record` over ~75 specific CSS variable keys, so a real
- * host always sends the full set. Our fixtures only need to prove that a
- * couple of keys are forwarded correctly, so this cast stands in for the
- * other ~73 the host would normally include.
+ * Minimal stand-in for the real `App` instance `useApp` would create. Only
+ * the members `useEntityCardData` actually touches (`ontoolresult`,
+ * `getHostContext`) are modeled.
  */
-function partialStyles(variables: Record<string, string>): McpUiStyles {
-  return variables as McpUiStyles;
+interface FakeApp {
+  ontoolresult?: (result: CallToolResult) => void;
+  getHostContext: ReturnType<typeof vi.fn>;
 }
 
-const { FakeApp, applyDocumentTheme, applyHostStyleVariables, applyHostFonts } =
-  vi.hoisted(() => {
-    class FakeApp {
-      static instances: FakeApp[] = [];
-      ontoolresult: ((result: unknown) => void) | undefined;
-      onhostcontextchanged: ((context: unknown) => void) | undefined;
-      onerror: ((error: Error) => void) | undefined;
-      connect = vi.fn().mockResolvedValue(undefined);
-      getHostContext = vi.fn().mockReturnValue(undefined);
+function createFakeApp(): FakeApp {
+  return {
+    getHostContext: vi.fn().mockReturnValue(undefined),
+  };
+}
 
-      constructor(public info: { name: string; version: string }) {
-        FakeApp.instances.push(this);
-      }
-    }
-
-    return {
-      FakeApp,
-      applyDocumentTheme: vi.fn(),
-      applyHostStyleVariables: vi.fn(),
-      applyHostFonts: vi.fn(),
-    };
-  });
-
-vi.mock("@modelcontextprotocol/ext-apps", () => ({
-  App: FakeApp,
-  applyDocumentTheme,
-  applyHostStyleVariables,
-  applyHostFonts,
+const { useApp, useHostStyles } = vi.hoisted(() => ({
+  useApp: vi.fn(),
+  useHostStyles: vi.fn(),
 }));
 
-const { applyHostContext, parseEntityCardData, useEntityCardData } =
-  await import("./app-client");
+vi.mock("@modelcontextprotocol/ext-apps/react", () => ({
+  useApp,
+  useHostStyles,
+}));
+
+const { parseEntityCardData, useEntityCardData } = await import("./app-client");
 
 const FULL_PAYLOAD = {
   id: "e1",
@@ -67,9 +50,17 @@ const MINIMAL_PAYLOAD = {
   source_count: 0,
 };
 
+let fakeApp: FakeApp;
+
 beforeEach(() => {
   vi.clearAllMocks();
-  FakeApp.instances.length = 0;
+  fakeApp = createFakeApp();
+  useApp.mockImplementation(
+    ({ onAppCreated }: { onAppCreated?: (app: FakeApp) => void }) => {
+      onAppCreated?.(fakeApp);
+      return { app: fakeApp as unknown as App, isConnected: true, error: null };
+    },
+  );
 });
 
 afterEach(() => {
@@ -113,6 +104,14 @@ describe("parseEntityCardData", () => {
     expect(parsed?.trust_level).toBe("unverified");
   });
 
+  it("treats a non-https profile_url as null", () => {
+    const parsed = parseEntityCardData({
+      ...MINIMAL_PAYLOAD,
+      profile_url: "javascript:alert(1)",
+    });
+    expect(parsed?.profile_url).toBeNull();
+  });
+
   it("returns null for null input", () => {
     expect(parseEntityCardData(null)).toBeNull();
   });
@@ -142,124 +141,83 @@ describe("parseEntityCardData", () => {
   });
 });
 
-describe("applyHostContext", () => {
-  it("applies theme, style variables, and fonts when all are present", () => {
-    const context: McpUiHostContext = {
-      theme: "dark",
-      styles: {
-        variables: partialStyles({ "--color-background-primary": "#000000" }),
-        css: { fonts: "@font-face { font-family: Test; }" },
-      },
-    };
+describe("useEntityCardData", () => {
+  it("returns null data and null error before any tool result arrives", () => {
+    const { result } = renderHook(() => useEntityCardData());
 
-    applyHostContext(context);
-
-    expect(applyDocumentTheme).toHaveBeenCalledWith("dark");
-    expect(applyHostStyleVariables).toHaveBeenCalledWith({
-      "--color-background-primary": "#000000",
-    });
-    expect(applyHostFonts).toHaveBeenCalledWith(
-      "@font-face { font-family: Test; }",
+    expect(result.current).toEqual({ data: null, error: null });
+    expect(useApp).toHaveBeenCalledWith(
+      expect.objectContaining({
+        appInfo: { name: "atlas-entity-card", version: "1.0.0" },
+        capabilities: {},
+      }),
     );
   });
 
-  it("does nothing when the context has no theme, styles, or fonts", () => {
-    applyHostContext({});
-
-    expect(applyDocumentTheme).not.toHaveBeenCalled();
-    expect(applyHostStyleVariables).not.toHaveBeenCalled();
-    expect(applyHostFonts).not.toHaveBeenCalled();
-  });
-
-  it("applies only style variables when fonts are absent", () => {
-    applyHostContext({
-      styles: {
-        variables: partialStyles({ "--color-text-primary": "#ffffff" }),
-      },
-    });
-
-    expect(applyHostStyleVariables).toHaveBeenCalled();
-    expect(applyHostFonts).not.toHaveBeenCalled();
-  });
-});
-
-describe("useEntityCardData", () => {
-  it("returns null and connects to the host on mount", async () => {
+  it("registers ontoolresult via useApp's onAppCreated and updates data on a valid tool result", () => {
     const { result } = renderHook(() => useEntityCardData());
 
-    expect(result.current).toBeNull();
-    const app = FakeApp.instances.at(-1);
-    expect(app).toBeDefined();
-    await waitFor(() => {
-      expect(app?.connect).toHaveBeenCalledTimes(1);
-    });
-  });
-
-  it("updates the returned data when a valid tool result arrives", async () => {
-    const { result } = renderHook(() => useEntityCardData());
-    const app = FakeApp.instances.at(-1);
-    await waitFor(() => {
-      expect(app?.connect).toHaveBeenCalled();
-    });
-
     act(() => {
-      app?.ontoolresult?.({ structuredContent: FULL_PAYLOAD });
+      fakeApp.ontoolresult?.({
+        structuredContent: FULL_PAYLOAD,
+      } as unknown as CallToolResult);
     });
 
-    await waitFor(() => {
-      expect(result.current?.id).toBe("e1");
-    });
+    expect(result.current.data?.id).toBe("e1");
+    expect(result.current.error).toBeNull();
   });
 
-  it("ignores a tool result that doesn't parse into EntityCardData", async () => {
-    const { result } = renderHook(() => useEntityCardData());
-    const app = FakeApp.instances.at(-1);
-    await waitFor(() => {
-      expect(app?.connect).toHaveBeenCalled();
-    });
-
-    act(() => {
-      app?.ontoolresult?.({ structuredContent: { nope: true } });
-    });
-
-    expect(result.current).toBeNull();
-  });
-
-  it("applies the host's initial context when it's already available right after connect", async () => {
-    renderHook(() => useEntityCardData());
-    const app = FakeApp.instances.at(-1);
-    app?.getHostContext.mockReturnValue({ theme: "dark" });
-
-    await waitFor(() => {
-      expect(applyDocumentTheme).toHaveBeenCalledWith("dark");
-    });
-  });
-
-  it("applies host context updates as they arrive", async () => {
-    renderHook(() => useEntityCardData());
-    const app = FakeApp.instances.at(-1);
-    await waitFor(() => {
-      expect(app?.connect).toHaveBeenCalled();
-    });
-
-    act(() => {
-      app?.onhostcontextchanged?.({ theme: "light" });
-    });
-
-    expect(applyDocumentTheme).toHaveBeenCalledWith("light");
-  });
-
-  it("logs errors reported by the host connection", () => {
-    const consoleErrorSpy = vi
-      .spyOn(console, "error")
+  it("warns and leaves data null when the tool result doesn't parse into EntityCardData", () => {
+    const warnSpy = vi
+      .spyOn(console, "warn")
       .mockImplementation(() => undefined);
+    const { result } = renderHook(() => useEntityCardData());
+
+    act(() => {
+      fakeApp.ontoolresult?.({
+        structuredContent: { nope: true },
+      } as unknown as CallToolResult);
+    });
+
+    expect(result.current.data).toBeNull();
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining("didn't parse"),
+      { nope: true },
+    );
+    warnSpy.mockRestore();
+  });
+
+  it("surfaces a connect error reported by useApp instead of hanging silently", () => {
+    const connectError = new Error("handshake failed");
+    useApp.mockReturnValue({
+      app: null,
+      isConnected: false,
+      error: connectError,
+    });
+
+    const { result } = renderHook(() => useEntityCardData());
+
+    expect(result.current).toEqual({ data: null, error: connectError });
+  });
+
+  it("applies host styles via useHostStyles, passing the app and its current host context", () => {
+    const hostContext = { theme: "dark" as const };
+    fakeApp.getHostContext.mockReturnValue(hostContext);
+
     renderHook(() => useEntityCardData());
-    const app = FakeApp.instances.at(-1);
-    const error = new Error("connection lost");
 
-    app?.onerror?.(error);
+    expect(useHostStyles).toHaveBeenCalledWith(fakeApp, hostContext);
+  });
 
-    expect(consoleErrorSpy).toHaveBeenCalledWith(error);
-    consoleErrorSpy.mockRestore();
+  it("passes a null app and undefined context to useHostStyles when the connection failed", () => {
+    useApp.mockReturnValue({
+      app: null,
+      isConnected: false,
+      error: new Error("nope"),
+    });
+
+    renderHook(() => useEntityCardData());
+
+    expect(useHostStyles).toHaveBeenCalledWith(null, undefined);
   });
 });
