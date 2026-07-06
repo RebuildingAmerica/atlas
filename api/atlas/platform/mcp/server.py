@@ -17,6 +17,7 @@ from .auth_middleware import McpBearerAuthMiddleware
 from .data import AtlasDataService
 from .logging_support import install_logging_extension
 from .prompts import install_prompts
+from .resources import install_data_resources
 from .tasks import DraftTasksJsonRpcMiddleware, install_tasks_extension
 from .widgets import (
     CONNECTIONS_GRAPH_RESOURCE_URI,
@@ -161,7 +162,7 @@ def split_cors_origins(allowed_origins: Iterable[str]) -> tuple[list[str], str |
 
 
 def build_mcp() -> FastMCP:
-    """Construct a FastMCP server with Atlas's read tools, Tasks, and logging.
+    """Construct a FastMCP server with Atlas's tools, resources, Tasks, and logging.
 
     The server is configured for stateless Streamable HTTP so it can run behind
     a horizontally-scaled load balancer (Cloud Run) without sticky sessions.
@@ -173,7 +174,9 @@ def build_mcp() -> FastMCP:
     handler emit structured `notifications/message` log events;
     `install_widget_extension` registers the MCP Apps UI resources that
     `get_entity`'s, `search_entities`'s, and `get_related_entities`'s `_meta`
-    point a compliant host at.
+    point a compliant host at; `install_data_resources` registers durable
+    `atlas://...` research artifacts for clients to pin, re-read, and include as
+    context without listing the whole catalog.
     """
     settings = get_settings()
     mcp = FastMCP(
@@ -339,6 +342,7 @@ def build_mcp() -> FastMCP:
     install_logging_extension(mcp)
     install_prompts(mcp)
     install_widget_extension(mcp)
+    install_data_resources(mcp, _build_data_service)
     return mcp
 
 

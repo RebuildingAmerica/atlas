@@ -45,6 +45,11 @@ Atlas runs a remote MCP server at:
 
 When you connect your AI assistant to this server, it gains access to Atlas's search, discovery, and place-level civic data tools. Authentication happens automatically — a compliant client opens a browser window for you to sign in and approve access on first use.
 
+Atlas also exposes durable MCP resources for selected research artifacts. Tools
+find the relevant records, then resources let clients re-read source-linked
+briefs, source trails, and place coverage summaries as context. Atlas does not
+list the entire entity catalog as MCP resources.
+
 ## Available tools
 
 Once connected, your AI assistant can use these tools:
@@ -68,6 +73,28 @@ Once connected, your AI assistant can use these tools:
 <Tip>
   See [Available tools](/mcp/tools) for detailed parameter descriptions and
   example prompts for each tool.
+</Tip>
+
+## Available resources
+
+Compatible clients can read Atlas resources for durable research context:
+
+| Resource | What it provides |
+| -------- | ---------------- |
+| `atlas://discovery-runs/{run_id}` | Structured discovery-run record |
+| `atlas://discovery-runs/{run_id}/brief` | Source-linked research brief |
+| `atlas://discovery-runs/{run_id}/sources` | Sources referenced by a run summary |
+| `atlas://entities/{entity_id}/sources` | Public source trail for one entity |
+| `atlas://cities/{place_key}/coverage` | City coverage summary |
+| `atlas://states/{state}/coverage` | State coverage summary |
+
+`resources/list` returns a small research shelf. Use tools to search the full
+Atlas catalog, then use returned `resource_uri` values when your client needs to
+pin or re-read an artifact.
+
+<Tip>
+  See [Available resources](/mcp/resources) for the resource templates and scale
+  boundary.
 </Tip>
 
 ## Guided prompts
@@ -112,7 +139,7 @@ https://atlas.rebuildingus.org/mcp
 
 Atlas expects a compliant client that supports remote Streamable HTTP MCP servers and browser-based OAuth. The client should open a browser for Atlas sign-in and consent the first time it needs access. Clients that only support local `stdio` servers or SSE-only remote servers cannot use the hosted Atlas MCP server.
 
-After connecting, see [Available tools](/mcp/tools) for tool parameters or [Tutorial: Research a city](/mcp/tutorials/research-city) for a complete session.
+After connecting, see [Available tools](/mcp/tools), [Available resources](/mcp/resources), or [Tutorial: Research a city](/mcp/tutorials/research-city) for a complete session.
 
 ## Troubleshooting
 
@@ -135,4 +162,5 @@ For more help, see [MCP troubleshooting](/mcp/troubleshooting) or the general [T
 Atlas publishes the hosted server URL, required plan, available tools, scopes, and Atlas-side troubleshooting. Client-specific menus and command names belong in the client documentation.
 
 - [MCP Registry](/mcp/registry) — Atlas's prepared registry namespace and metadata status.
+- [MCP resources](/mcp/resources) — Durable context artifacts exposed through MCP.
 - [Authentication reference](/api/authentication) — Token lifecycle, refresh rotation, and discovery URL catalog.

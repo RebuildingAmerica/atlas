@@ -157,6 +157,7 @@
               "mcp/overview",
               "mcp/registry",
               "mcp/tools",
+              "mcp/resources",
               "mcp/prompts",
               "mcp/scopes",
               "mcp/troubleshooting"

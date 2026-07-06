@@ -1,0 +1,60 @@
+---
+title: "Available resources"
+description: "Durable Atlas MCP resources for source-linked research context."
+---
+
+## Overview
+
+Atlas MCP resources expose durable research artifacts your client can read as
+context. Tools still do the searching: they find entities, sources, places, and
+research runs. Resources make selected artifacts reusable after the assistant
+knows the URI.
+
+`resources/list` is intentionally small. It returns a bounded research shelf,
+such as recent completed research runs and Atlas UI resources for clients that
+support MCP Apps. It does not list every entity, source, place, or run in Atlas.
+
+## Resource templates
+
+Compatible clients can discover these addressable resources through
+`resources/templates/list`:
+
+| Resource template | What it returns |
+| ----------------- | --------------- |
+| `atlas://discovery-runs/{run_id}` | Full structured discovery-run record |
+| `atlas://discovery-runs/{run_id}/brief` | Markdown research brief with leads, sources, and gaps |
+| `atlas://discovery-runs/{run_id}/sources` | Sources referenced by a discovery-run summary |
+| `atlas://entities/{entity_id}/sources` | Public source trail for one known entity |
+| `atlas://cities/{place_key}/coverage` | Coverage summary for one city, such as `gary-in` |
+| `atlas://states/{state}/coverage` | Coverage summary for one state, such as `IN` |
+
+## How clients use resources
+
+Atlas tools return `resource_uri` fields for artifacts that can become durable
+context. For example, `get_discovery_run` returns
+`atlas://discovery-runs/{run_id}`, and place coverage responses return
+`atlas://cities/{place_key}/coverage` or `atlas://states/{state}/coverage`.
+
+A client can pass a supported URI to `resources/read` to fetch the artifact
+again without repeating the search that found it.
+
+## Scale boundary
+
+Atlas can contain thousands of entities, so entity resources are not globally
+listed or globally autocompleted. Search tools such as `search_entities`,
+`get_place_entities`, and `list_discovery_runs` discover the relevant records
+first. Resources preserve the selected context afterward.
+
+## Related
+
+<CardGroup cols={2}>
+
+<Card title="MCP tools" icon="wrench" href="/mcp/tools">
+  Search and inspect Atlas data.
+</Card>
+
+<Card title="MCP prompts" icon="sparkles" href="/mcp/prompts">
+  Start guided civic research workflows.
+</Card>
+
+</CardGroup>
