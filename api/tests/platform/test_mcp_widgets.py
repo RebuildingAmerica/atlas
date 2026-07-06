@@ -94,7 +94,7 @@ class TestResolveWidgetAssetDir:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """When neither override nor co-located tiers resolve, fall back to the dev build path."""
-        monorepo_dir = tmp_path / "packages" / "entity-widgets" / "dist" / "widget"
+        monorepo_dir = tmp_path / "packages" / "entity-widgets-mcp" / "dist" / "widget"
         monorepo_dir.mkdir(parents=True)
         (monorepo_dir / "entity-card.html").write_text("<html>monorepo dev</html>")
 
@@ -118,7 +118,7 @@ class TestResolveWidgetAssetDir:
         co_located_dir.mkdir()
         (co_located_dir / "entity-card.html").write_text("<html>entity card</html>")
 
-        monorepo_dir = tmp_path / "packages" / "entity-widgets" / "dist" / "widget"
+        monorepo_dir = tmp_path / "packages" / "entity-widgets-mcp" / "dist" / "widget"
         monorepo_dir.mkdir(parents=True)
         (monorepo_dir / "search-results.html").write_text("<html>search results</html>")
 
@@ -137,7 +137,9 @@ class TestResolveWidgetAssetDir:
         monkeypatch.setattr(widgets, "_CO_LOCATED_ASSET_DIR", tmp_path / "missing-co-located")
         monkeypatch.setattr(widgets, "_MONOREPO_DEV_ASSET_DIR", tmp_path / "missing-monorepo")
 
-        with pytest.raises(RuntimeError, match="pnpm --filter @rebuildingamerica/entity-widgets"):
+        with pytest.raises(
+            RuntimeError, match="pnpm --filter @rebuildingamerica/entity-widgets-mcp"
+        ):
             resolve_widget_asset_dir("entity-card")
 
     def test_error_message_mentions_env_var_override(

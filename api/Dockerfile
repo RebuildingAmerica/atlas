@@ -27,6 +27,16 @@ WORKDIR /build/api
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-dev --no-editable
 
+FROM node:24-alpine AS widget-pruner
+
+# Pinned to match pnpm-workspace.yaml's catalog "turbo" version, so pruning
+# behavior can't drift from what the rest of the monorepo actually runs.
+RUN npm install -g turbo@2.10.3
+
+WORKDIR /repo
+COPY . .
+RUN turbo prune @rebuildingamerica/entity-widgets-mcp --docker
+
 FROM node:24-alpine AS widget-builder
 
 ENV PNPM_HOME=/pnpm \
@@ -36,18 +46,18 @@ RUN corepack enable
 
 WORKDIR /repo
 
-# Copy manifests only so the install layer is cached independently of source.
-COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
-COPY packages/entity-widgets/package.json packages/entity-widgets/package.json
-COPY packages/eslint-config/package.json packages/eslint-config/package.json
-
+# turbo prune computed the full dependency closure this package actually
+# needs (entity-widgets-mcp, entity-widgets, eslint-config) and copied their
+# manifests into out/json/ -- so this install layer stays correctly scoped
+# and cacheable without a hand-maintained COPY list that has to be updated
+# every time a package is added, renamed, or split.
+COPY --from=widget-pruner /repo/out/json/ .
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
-    pnpm install --frozen-lockfile --filter @rebuildingamerica/entity-widgets...
+    pnpm install --frozen-lockfile
 
-COPY packages/entity-widgets packages/entity-widgets
-
-WORKDIR /repo/packages/entity-widgets
-RUN pnpm run build
+# Same pruned package set, this time with source (out/full/).
+COPY --from=widget-pruner /repo/out/full/ .
+RUN pnpm turbo run build --filter=@rebuildingamerica/entity-widgets-mcp
 
 FROM python:3.12-slim
 
@@ -55,7 +65,7 @@ WORKDIR /app
 
 COPY --from=builder /app/.venv /app/.venv
 COPY --from=builder /build/api/atlas /app/atlas
-COPY --from=widget-builder /repo/packages/entity-widgets/dist/widget /app/atlas/platform/mcp/_widget_assets
+COPY --from=widget-builder /repo/packages/entity-widgets-mcp/dist/widget /app/atlas/platform/mcp/_widget_assets
 
 ENV PATH="/app/.venv/bin:${PATH}"
 

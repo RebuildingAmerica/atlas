@@ -2,14 +2,14 @@
 
 Registers Atlas's MCP Apps UI resources — one per entry in `WIDGET_RESOURCES`
 below — as MCP resources using the MCP Apps extension's resource MIME type.
-Each built widget bundle comes from `@rebuildingamerica/entity-widgets` at
-`packages/entity-widgets/dist/widget/<name>.html`. `server.py` attaches
+Each built widget bundle comes from `@rebuildingamerica/entity-widgets-mcp` at
+`packages/entity-widgets-mcp/dist/widget/<name>.html`. `server.py` attaches
 `_meta={"ui": {"resourceUri": ...}}` to the tool each widget renders for
 (e.g. `get_entity` for the entity-card widget) so a compliant MCP host (one
 implementing the MCP Apps extension) knows to fetch and render the matching
 resource inline instead of, or alongside, the tool's raw JSON result.
 
-Adding a new widget: build it under `packages/entity-widgets` as
+Adding a new widget: build it under `packages/entity-widgets-mcp` as
 `<name>.html`, add a `"<name>": "ui://atlas/<name>"` entry to
 `WIDGET_RESOURCES`, and point the relevant tool's `meta=` at that URI in
 `server.py`.
@@ -65,9 +65,9 @@ _CO_LOCATED_ASSET_DIR = Path(__file__).parent / "_widget_assets"
 """Populated by a production Docker build stage (a later task), not by us."""
 
 _MONOREPO_DEV_ASSET_DIR = (
-    Path(__file__).resolve().parents[4] / "packages" / "entity-widgets" / "dist" / "widget"
+    Path(__file__).resolve().parents[4] / "packages" / "entity-widgets-mcp" / "dist" / "widget"
 )
-"""Populated by running `pnpm --filter @rebuildingamerica/entity-widgets build`
+"""Populated by running `pnpm --filter @rebuildingamerica/entity-widgets-mcp build`
 in a developer's monorepo checkout. `parents[4]` walks up from this file
 (`api/atlas/platform/mcp/widgets.py`) through `mcp`, `platform`, `atlas`, and
 `api` to the repo root that also contains `packages/`."""
@@ -118,8 +118,8 @@ def resolve_widget_asset_dir(widget_name: str) -> Path:
     2. A directory co-located with this module (`_widget_assets/`) —
        populated by a production Docker build stage.
     3. The monorepo-relative dev path
-       (`packages/entity-widgets/dist/widget/`) — populated by running
-       `pnpm --filter @rebuildingamerica/entity-widgets build` locally.
+       (`packages/entity-widgets-mcp/dist/widget/`) — populated by running
+       `pnpm --filter @rebuildingamerica/entity-widgets-mcp build` locally.
 
     Parameters
     ----------
@@ -158,7 +158,7 @@ def resolve_widget_asset_dir(widget_name: str) -> Path:
         f"No built MCP widget assets found. Looked for {filename} in: "
         f"the ATLAS_MCP_WIDGET_ASSETS_DIR override ({override or 'not set'}), "
         f"{_CO_LOCATED_ASSET_DIR}, and {_MONOREPO_DEV_ASSET_DIR}. Run "
-        "`pnpm --filter @rebuildingamerica/entity-widgets build` from the repo root "
+        "`pnpm --filter @rebuildingamerica/entity-widgets-mcp build` from the repo root "
         "to populate the monorepo dev path, or set ATLAS_MCP_WIDGET_ASSETS_DIR to a "
         "directory that already contains it."
     )
