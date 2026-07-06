@@ -18,7 +18,11 @@ from .data import AtlasDataService
 from .logging_support import install_logging_extension
 from .prompts import install_prompts
 from .tasks import DraftTasksJsonRpcMiddleware, install_tasks_extension
-from .widgets import WIDGET_RESOURCE_URI, install_widget_extension
+from .widgets import (
+    ENTITY_CARD_RESOURCE_URI,
+    SEARCH_RESULTS_RESOURCE_URI,
+    install_widget_extension,
+)
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator, Iterable
@@ -166,8 +170,8 @@ def build_mcp() -> FastMCP:
     write/compute tool (`start_discovery_run`) plus its `tasks/*` handlers;
     `install_logging_extension` adds `logging/setLevel` and lets every custom
     handler emit structured `notifications/message` log events;
-    `install_widget_extension` registers the MCP Apps entity-card resource
-    that `get_entity`'s `_meta` points a compliant host at.
+    `install_widget_extension` registers the MCP Apps UI resources that
+    `get_entity`'s and `search_entities`'s `_meta` point a compliant host at.
     """
     settings = get_settings()
     mcp = FastMCP(
@@ -178,7 +182,7 @@ def build_mcp() -> FastMCP:
         transport_security=build_transport_security_settings(settings),
     )
 
-    @mcp.tool()
+    @mcp.tool(meta={"ui": {"resourceUri": SEARCH_RESULTS_RESOURCE_URI}})
     async def search_entities(  # noqa: PLR0913
         place: str | None = None,
         issue_areas: list[str] | None = None,
@@ -200,7 +204,7 @@ def build_mcp() -> FastMCP:
             cursor=cursor,
         )
 
-    @mcp.tool(meta={"ui": {"resourceUri": WIDGET_RESOURCE_URI}})
+    @mcp.tool(meta={"ui": {"resourceUri": ENTITY_CARD_RESOURCE_URI}})
     async def get_entity(entity_id: str) -> dict[str, Any]:
         """Get one Atlas entity with its sources, issue areas, and relationship ids."""
         service = _build_data_service()
