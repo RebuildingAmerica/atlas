@@ -1,48 +1,72 @@
-# Getting Started with The Atlas
+# Getting Started With Atlas
 
 [Docs](../README.md) > Getting Started
 
-A one-way ramp from zero to running. Everything you need to understand the project and start developing.
+A one-way ramp from zero to running. Use this section when you want to
+understand the repo, start the local stack, and make a small change without
+needing private project context.
 
 ## For New Contributors
 
 If you're joining the project for the first time, follow this order:
 
-1. **[Prerequisites](./prerequisites.md)** — Make sure you have Python, Node, Docker, and Make installed
-2. **[Quick Start](./quick-start.md)** — Clone the repo and get it running in 4 steps
-3. **[Project Structure](./project-structure.md)** — Tour of the codebase with explanations
-4. Then jump to [Architecture](../architecture/README.md) to understand how pieces fit together
+1. **[Prerequisites](./prerequisites.md)** — Install Python, Node, pnpm, Git,
+   and Make.
+2. **[Quick Start](./quick-start.md)** — Clone the repo and start Atlas locally.
+3. **[Project Structure](./project-structure.md)** — Tour the app, API, docs,
+   Scout, and shared libraries.
+4. Then read [Experience First](../experience-first.md) and
+   [Architecture](../architecture/README.md) before changing product behavior.
 
 ## For Existing Contributors
 
-- [Prerequisites](./prerequisites.md) — Set up a new machine or troubleshoot install issues
-- [Project Structure](./project-structure.md) — Reference for where code lives
-- [Quick Start](./quick-start.md) — Running the project locally
+- [Prerequisites](./prerequisites.md) — Set up a new machine or troubleshoot
+  install issues.
+- [Project Structure](./project-structure.md) — Reference for where code lives.
+- [Quick Start](./quick-start.md) — Run the local stack.
 - See [Development](../development/README.md) for day-to-day development
 
-## What is The Atlas?
+## What Is Atlas?
 
-The Atlas is a national directory and autodiscovery engine for organizations, people, and initiatives working on transformative change across America.
+Atlas is open-source civic discovery infrastructure for finding the people,
+organizations, initiatives, campaigns, and events working on public problems
+across America. The public project lives at
+[atlas.rebuildingus.org](https://atlas.rebuildingus.org).
 
-The product has three key pieces:
+The product has four durable pieces:
 
-1. **Autodiscovery Pipeline** — Takes a location and set of issues, systematically searches the web, extracts structured data, deduplicates, and ranks results. This is the core product.
+1. **Public Directory** — Search, browse, maps, profiles, places, and issue
+   pages that help people find civic actors and inspect sources.
+2. **Trust Layer** — Source links, excerpts, confidence, freshness, corrections,
+   and public/private boundaries that make records usable without asking readers
+   to trust a black box.
+3. **Discovery Pipeline** — Shared extraction, deduplication, scoring, review,
+   and sync logic used by the API worker and Scout.
+4. **Developer And Workspace Tools** — API, MCP, Scout, lists, briefs, watches,
+   exports, and self-hosting paths that let people build on Atlas without losing
+   provenance.
 
-2. **Storage Layer** — SQLite database with FTS5 (full-text search) storing entries, sources, and their relationships.
+## Current State
 
-3. **Public Directory** — A searchable, browsable interface where people can find organizations and initiatives in their area and around issues they care about.
-
-**Current Phase:** Phase 1 (Scaffold)
-
-The core APIs and database schema are in place. The pipeline is stubbed with all 6 steps. App is built with routing and components. See individual docs for what's working vs. what's pending.
+Atlas is usable as a public product and active development repo, and it is still
+being cleaned up for broader open-source participation. Some code is clearly
+public and self-hostable; some hosted, workspace, and operator surfaces are
+being documented and separated more clearly. Treat that boundary as part of the
+work: changes should make the repo easier to run, audit, trust, or responsibly
+self-host.
 
 ## Quick Links
 
-- **[Architecture](../architecture/README.md)** — Understand how the system is built
-- **[Development](../development/README.md)** — Learn how to build features
-- **[Standards](../standards/README.md)** — Engineering standards for the project
-- **[Design](../design/README.md)** — Product vision and system design docs
+- **[Experience First](../experience-first.md)** — The principle that governs
+  every technical decision.
+- **[Architecture](../architecture/README.md)** — Understand how the system is
+  built.
+- **[Development](../development/README.md)** — Learn how to build features.
+- **[Standards](../standards/README.md)** — Engineering standards for the
+  project.
+- **[Open source](../../mintlify/resources/open-source.mdx)** — Public project
+  model and self-hosting posture.
 
 ---
 
-Last updated: March 25, 2026
+Last updated: July 6, 2026

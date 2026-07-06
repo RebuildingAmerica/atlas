@@ -5,11 +5,14 @@ description: "How to contribute to Atlas development."
 
 ## Overview
 
-Atlas is open source and welcomes contributions. Here's how to get involved.
+Atlas is open source and maintained as a public-interest civic technology
+project. The contribution path is intentionally lightweight while the repo
+becomes easier to run, read, audit, and improve from the outside.
 
 Before choosing a contribution path, read [Open source](/resources/open-source)
-for the project model and [Self-hosting](/self-hosting/guide) if your change
-affects deployment, configuration, or operations.
+for the project model, [Trust and provenance](/resources/trust) for the product
+boundary, and [Self-hosting](/self-hosting/guide) if your change affects
+deployment, configuration, or operations.
 
 ## Repository
 
@@ -49,15 +52,21 @@ Atlas lives at [github.com/RebuildingAmerica/atlas](https://github.com/Rebuildin
 
 ## How to contribute
 
-- **Report bugs** — Open an issue on GitHub with reproduction steps
-- **Suggest features** — Open a discussion or issue describing the use case
-- **Fix bugs** — Fork the repo, create a branch, submit a PR
-- **Improve docs** — Documentation PRs are always welcome
-- **Add data** — Flag incorrect entries, suggest new sources, or run discovery in underserved areas
+- **Improve docs** — Clarify setup, self-hosting, trust, API, MCP, Scout, or public/private boundaries.
+- **Report setup gaps** — Include the exact command, environment, expected result, and actual result.
+- **Fix small bugs** — Keep the change narrow and explain what user-facing trust or usability outcome it protects.
+- **Improve data quality workflows** — Preserve source URLs, excerpts, review state, and correction paths.
+- **Suggest features carefully** — Start from the public civic discovery experience, not internal architecture or generic enterprise workflow.
 
 ## Code conventions
 
-Atlas follows conventional commits, uses `pnpm` for package management, and enforces code quality through pre-commit hooks. See the internal `docs/` directory for detailed development standards.
+Atlas follows conventional commits, uses `pnpm` for package management, and
+enforces code quality through hooks. See the repository `docs/` directory for
+detailed development standards.
+
+Every change should tie back to what an Atlas user can see, trust, understand,
+or do. That applies to docs, API behavior, Scout, app UI, self-hosting, and
+internal cleanup.
 
 ## Related
 

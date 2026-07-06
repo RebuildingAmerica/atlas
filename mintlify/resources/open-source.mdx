@@ -5,7 +5,16 @@ description: "Atlas's open source status, license, and relationship to Rebuildin
 
 ## Overview
 
-Atlas is open source and designed to be independently useful beyond any single organization or initiative.
+Atlas is open-source civic discovery infrastructure. It is designed to help
+people find source-linked civic actors and use that information responsibly,
+whether they use the hosted public project at
+[atlas.rebuildingus.org](https://atlas.rebuildingus.org), build against the API,
+or run their own instance.
+
+Atlas is maintained by The Rebuilding America Project, a nonprofit steward. The
+project should still stand on its own: the public map, trust model, API,
+self-hosting path, and developer tooling are intended to be useful beyond any
+single campaign, show, client, or organization.
 
 ## Repository
 
@@ -13,33 +22,60 @@ The full source code is available at [github.com/RebuildingAmerica/atlas](https:
 
 - `app/` — Web application (TanStack Start + React + TypeScript)
 - `api/` — REST API and autodiscovery pipeline (Python + FastAPI)
-- `mintlify/` — This documentation site
-- `docs/` — Internal development documentation
+- `scout/` — Local discovery CLI and review/sync workflow
+- `libs/` — Shared models, taxonomy, and discovery engine primitives
+- `mintlify/` — This public documentation site
+- `docs/` — Contributor, architecture, product, deployment, and standards docs
 
-Check the repository for the current license terms.
+Atlas is licensed under MIT. Check the repository for the current license text.
+
+## Project status
+
+Atlas is open source, self-hosting is intended to be real, and the hosted
+service at atlas.rebuildingus.org is the easiest way to use the public product.
+
+The repository is also still being prepared for broader outside participation.
+Some surfaces are clearly public and self-hostable today; others exist for
+hosted Atlas, workspace operations, or early maintainer workflows and are being
+documented into clearer public boundaries. That means the best open-source work
+right now improves understandability, trust, setup, docs, self-hosting, and
+source-linked product behavior.
 
 ## Relationship to Rebuilding America
 
-Atlas is maintained by [The Rebuilding America Project](https://rebuildingus.org), which supports the broader mission of surfacing the people, organizations, and ideas rebuilding public life across America.
+Atlas is maintained by [The Rebuilding America Project](https://rebuildingus.org).
+The nonprofit provides stewardship, public-benefit discipline, and a real use
+case for source-linked civic research.
 
-For Rebuilding America, Atlas helps:
-- Identify credible local people to feature, interview, or learn from
-- Compare civic work across issue areas and places
-- Create reusable research assets instead of one-off investigations
+Atlas is not only a Rebuilding America companion project. It is meant to be a
+reusable civic technology project for journalists, organizers, researchers,
+developers, nonprofits, funders, civic educators, and public users who need to
+find and verify civic work.
 
-At the same time, Atlas is designed to stand on its own as a public resource. It should be useful to anyone doing civic research — journalists, organizers, researchers, developers — whether or not they've heard of Rebuilding America.
+For Rebuilding America, Atlas helps identify credible local people to feature,
+compare civic work across places and issues, and make research reusable. For
+everyone else, Atlas should still be useful as a public map, source-linked data
+layer, API, and self-hostable tool.
 
 ## Self-hosting
 
-You can run your own Atlas instance on your own infrastructure. Atlas is designed for this — the [self-hosting guide](/self-hosting/guide) covers the recommended deployment topology, environment configuration, and verification steps.
+You can run your own Atlas instance on your own infrastructure. The
+[self-hosting guide](/self-hosting/guide) covers the recommended deployment
+topology, environment configuration, persistent storage, and verification steps.
 
 ## Contributing
 
-Atlas welcomes contributions of all kinds:
+Atlas is keeping the public contribution path intentionally lightweight while
+the repo boundaries become clearer. Useful contributions are still welcome,
+especially work that makes the project easier to understand, verify, self-host,
+or use responsibly.
 
-- **Bug reports and feature suggestions** — [Open an issue](https://github.com/RebuildingAmerica/atlas/issues) on GitHub
-- **Code contributions** — Fork the repo, create a branch, submit a PR
-- **Documentation** — PRs to the `mintlify/` directory improve this site
-- **Data quality** — Flag incorrect entries, suggest new sources, run discovery in underserved areas
+Good starting points:
 
-See the [contributing guide](/resources/contributing) for setup instructions and code conventions.
+- Documentation that clarifies setup, self-hosting, trust, API, Scout, or public/private boundaries
+- Small fixes tied to what users can see, trust, understand, or do
+- Data-quality workflows that preserve source evidence and review state
+- Public-safe improvements to API, MCP, or Scout behavior
+
+See the [contributing guide](/resources/contributing) for setup instructions and
+code conventions.

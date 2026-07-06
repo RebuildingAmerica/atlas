@@ -10,25 +10,25 @@ maintains it, or how to reach the right person, start here.
 ## Atlas At A Glance
 
 - **Project Name:** Atlas
-- **Website:** [atlas.example.com](https://atlas.example.com)
+- **Website:** [atlas.rebuildingus.org](https://atlas.rebuildingus.org)
 - **Primary Maintainer:** The Rebuilding America Project
-- **Maintainer Website:** [example.com](https://example.com)
-- **Point Of Contact:** [willie@example.com](mailto:willie@example.com)
-- **LinkedIn:** [linkedin.com/in/willie-chalmers-iii](https://www.linkedin.com/in/willie-chalmers-iii)
+- **Maintainer Website:** [rebuildingus.org](https://rebuildingus.org)
+- **Repository:**
+  [github.com/RebuildingAmerica/atlas](https://github.com/RebuildingAmerica/atlas)
 
 ## What Atlas Is
 
-Atlas is a national directory and autodiscovery tool for finding the
-people, organizations, and initiatives rebuilding America in public.
+Atlas is a national directory and autodiscovery tool for finding the people,
+organizations, and initiatives rebuilding America in public.
 
-It focuses on the issues that define this moment in American life:
-housing, healthcare, climate, democracy, labor, education, justice,
-infrastructure, and the connective tissue between them.
+It focuses on the issues that define this moment in American life: housing,
+healthcare, climate, democracy, labor, education, justice, infrastructure, and
+the connective tissue between them.
 
-Every entry is tied to a place, connected to issue areas, and linked
-back to the public sources where the information came from. Atlas does
-not try to invent a hidden story. It documents, links, and organizes
-what is already in the public record.
+Every entry is tied to a place, connected to issue areas, and linked back to the
+public sources where the information came from. Atlas does not try to invent a
+hidden story. It documents, links, and organizes what is already in the public
+record.
 
 Atlas is meant to be a source-linked map people can actually use.
 
@@ -42,22 +42,22 @@ Atlas organizes source-linked information about:
 - Campaigns
 - Events
 
-Entries are tied to places and issue areas, and each one points back to
-the public sources where the information came from.
+Entries are tied to places and issue areas, and each one points back to the
+public sources where the information came from.
 
-The project is designed to surface specific people doing specific things
-in specific places, not vague institutional placeholders.
+The project is designed to surface specific people doing specific things in
+specific places, not vague institutional placeholders.
 
 ## Who Atlas Is For
 
-- **Researchers and organizers** who need structured local discovery and
-  want to go from a place and issue area to a credible set of leads
+- **Researchers and organizers** who need structured local discovery and want to
+  go from a place and issue area to a credible set of leads
 - **Journalists and producers** looking for source-linked people and
   organizations to learn from, interview, or feature
-- **The public** looking for the people and groups doing real work on a
-  specific issue in a specific place
-- **Developers and integrators** building on top of Atlas's API or
-  extending the discovery workflow
+- **The public** looking for the people and groups doing real work on a specific
+  issue in a specific place
+- **Developers and integrators** building on top of Atlas's API or extending the
+  discovery workflow
 
 ## Product Shape
 
@@ -67,15 +67,16 @@ Atlas currently brings together three connected surfaces:
 - **REST API** for entries, sources, and discovery workflows
 - **Autodiscovery pipeline** for finding and structuring new entries
 
-The autodiscovery pipeline is the core of the product. The database,
-interface, and public directory exist to support and present what the
-pipeline finds.
+The autodiscovery pipeline is the core of the product. The database, interface,
+and public directory exist to support and present what the pipeline finds.
 
 ## Current Status
 
-Core API and database foundations are in place. The pipeline and app
-surfaces are under active development, with the autodiscovery workflow
-serving as the center of the product.
+Atlas is a live open-source project with public product, API, MCP, Scout,
+self-hosting, and workspace surfaces under active development. The repo is also
+still being prepared for broader outside participation: some code is clearly
+public and self-hostable, while hosted, workspace, and maintainer workflows are
+being documented into clearer public boundaries.
 
 ## Technology Stack
 
@@ -86,21 +87,20 @@ serving as the center of the product.
 
 ## Rebuilding America Context
 
-Atlas is maintained by The Rebuilding America Project and was created
-alongside the broader Rebuilding America initiative.
+Atlas is maintained by The Rebuilding America Project and was created alongside
+the broader Rebuilding America initiative.
 
-Rebuilding America uses storytelling, research, and civic tooling to
-surface the people, organizations, and ideas rebuilding public life
-across the country. Atlas supports that mission by making it easier to
-discover who is doing the work, where they are doing it, and how to
-trace that back to public evidence.
+Rebuilding America uses storytelling, research, and civic tooling to surface the
+people, organizations, and ideas rebuilding public life across the country.
+Atlas supports that mission by making it easier to discover who is doing the
+work, where they are doing it, and how to trace that back to public evidence.
 
 Atlas is meant to stand on its own as an open-source project and public
 resource, while still supporting the larger Rebuilding America effort.
 
 ## Canonical External References
 
-- **Atlas:** [atlas.example.com](https://atlas.example.com)
-- **Rebuilding America Project:** [example.com](https://example.com)
-- **Contact Email:** [willie@example.com](mailto:willie@example.com)
-- **LinkedIn:** [linkedin.com/in/willie-chalmers-iii](https://www.linkedin.com/in/willie-chalmers-iii)
+- **Atlas:** [atlas.rebuildingus.org](https://atlas.rebuildingus.org)
+- **Repository:**
+  [github.com/RebuildingAmerica/atlas](https://github.com/RebuildingAmerica/atlas)
+- **Rebuilding America Project:** [rebuildingus.org](https://rebuildingus.org)
