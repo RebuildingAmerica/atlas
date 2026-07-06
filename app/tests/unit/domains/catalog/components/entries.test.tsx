@@ -563,8 +563,12 @@ describe("catalog entry components", () => {
     const { rerender } = render(<EntryList entries={[]} isLoading />);
     expect(screen.queryByText(/Searching the Atlas/i)).toBeNull();
 
-    rerender(<EntryList entries={[]} error={new Error("Search unavailable")} />);
-    expect(screen.getAllByText("Search unavailable")).toHaveLength(2);
+    rerender(<EntryList entries={[]} error={new Error("HTTP 500: /api/entries stack trace")} />);
+    const alert = screen.getByRole("alert");
+    expect(alert.textContent).toContain("Search unavailable");
+    expect(alert.textContent).toContain("Results could not load. Try again in a moment.");
+    expect(alert.textContent).not.toContain("HTTP 500");
+    expect(alert.textContent).not.toContain("/api/entries");
 
     rerender(<EntryList entries={[]} hasActiveSearch />);
     expect(screen.getByText("No matching people or groups.")).not.toBeNull();

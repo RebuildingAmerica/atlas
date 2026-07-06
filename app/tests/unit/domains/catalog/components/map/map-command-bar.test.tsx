@@ -67,8 +67,13 @@ describe("MapCommandBar", () => {
 
   it("explains a no-match query rather than showing an empty menu", () => {
     renderCommandBar(undefined, []);
-    fireEvent.change(screen.getByRole("combobox"), { target: { value: "zzzznowhere" } });
-    expect(screen.getByText(/No places or actors match/i)).toBeTruthy();
+    const input = screen.getByRole("combobox");
+    fireEvent.change(input, { target: { value: "zzzznowhere" } });
+
+    const status = screen.getByRole("status");
+    expect(status.textContent).toContain("No places or actors match");
+    expect(input.getAttribute("aria-describedby")).toBe(status.id);
+    expect(input.getAttribute("aria-controls")).toBeNull();
   });
 
   it("toggles an issue filter through the disclosure", () => {

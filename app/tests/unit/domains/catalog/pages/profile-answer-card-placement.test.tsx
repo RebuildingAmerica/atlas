@@ -123,7 +123,7 @@ describe("actor profile answer-card placement", () => {
       />,
     );
 
-    expect(screen.getByRole("region", { name: "Profile answers" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Profile at a glance" })).toBeInTheDocument();
     expect(screen.getByText("Profile at a glance")).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "Why this matters" })).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "Record history" })).toBeInTheDocument();
@@ -136,7 +136,7 @@ describe("actor profile answer-card placement", () => {
 
     render(<PersonProfilePage entry={buildEntry({ sources: [buildSource()] })} />);
 
-    expect(screen.getByRole("region", { name: "Profile answers" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Profile at a glance" })).toBeInTheDocument();
     expect(screen.getByText("Profile at a glance")).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "Why this matters" })).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "Record history" })).toBeInTheDocument();

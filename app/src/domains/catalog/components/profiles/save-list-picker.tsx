@@ -17,11 +17,12 @@ import { Button } from "@/platform/ui/button";
 
 interface SaveListPickerProps {
   entryId: string;
+  id?: string;
   open: boolean;
   onClose: () => void;
 }
 
-export function SaveListPicker({ entryId, open, onClose }: SaveListPickerProps) {
+export function SaveListPicker({ entryId, id, open, onClose }: SaveListPickerProps) {
   const lists = useSavedLists();
   const membership = useSavedListMembership(entryId, open);
   const createList = useCreateSavedList();
@@ -72,6 +73,7 @@ export function SaveListPicker({ entryId, open, onClose }: SaveListPickerProps) 
 
   return (
     <div
+      id={id}
       ref={ref}
       role="dialog"
       aria-label="Save to list"

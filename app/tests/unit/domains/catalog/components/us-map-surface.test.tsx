@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
-import type { ReactNode } from "react";
+import "@testing-library/jest-dom/vitest";
+import type { KeyboardEvent, ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { UsMapSurface } from "@/domains/catalog/components/browse/us-map-surface";
@@ -31,14 +32,30 @@ vi.mock("react-simple-maps", () => ({
   },
   Geography: ({
     "aria-label": ariaLabel,
+    "aria-pressed": ariaPressed,
     onClick,
+    onKeyDown,
+    role,
+    tabIndex,
   }: {
     "aria-label": string;
+    "aria-pressed"?: boolean;
     onClick: () => void;
+    onKeyDown?: (event: KeyboardEvent<SVGPathElement>) => void;
+    role?: string;
+    tabIndex?: number;
   }) => (
-    <button type="button" aria-label={ariaLabel} onClick={onClick}>
-      {ariaLabel}
-    </button>
+    <svg>
+      <path
+        aria-label={ariaLabel}
+        aria-pressed={ariaPressed}
+        data-testid={ariaLabel}
+        onClick={onClick}
+        onKeyDown={onKeyDown}
+        role={role}
+        tabIndex={tabIndex}
+      />
+    </svg>
   ),
 }));
 
@@ -61,13 +78,24 @@ describe("UsMapSurface", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "California, 12 results" }));
-    fireEvent.click(screen.getByRole("button", { name: "Missouri, 6 results" }));
-    fireEvent.click(screen.getByRole("button", { name: "Unknown" }));
+    const california = screen.getByRole("button", { name: "California, 12 results" });
+    const missouri = screen.getByRole("button", { name: "Missouri, 6 results" });
+    const unknown = screen.getByLabelText("Unknown");
+
+    expect(california).toHaveAttribute("aria-pressed", "true");
+    expect(missouri).toHaveAttribute("aria-pressed", "false");
+    expect(california).toHaveAttribute("tabindex", "0");
+    expect(screen.queryByRole("button", { name: "Unknown" })).toBeNull();
+
+    fireEvent.click(california);
+    fireEvent.keyDown(missouri, { key: "Enter" });
+    fireEvent.keyDown(missouri, { key: " " });
+    fireEvent.click(unknown);
 
     expect(onSelectState).toHaveBeenCalledWith("CA");
     expect(onSelectState).toHaveBeenNthCalledWith(2, "MO");
-    expect(onSelectState).toHaveBeenCalledTimes(2);
+    expect(onSelectState).toHaveBeenNthCalledWith(3, "MO");
+    expect(onSelectState).toHaveBeenCalledTimes(3);
     expect(screen.getByText("Darker states have more results.")).not.toBeNull();
     expect(screen.getByText("12")).not.toBeNull();
   });

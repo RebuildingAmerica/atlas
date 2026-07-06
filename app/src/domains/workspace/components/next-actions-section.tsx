@@ -16,12 +16,7 @@ import type { OperatingPictureResource } from "./workspace-operating-picture-sec
 
 /** Targets the suggestion links can deep-link into. */
 type SuggestionTarget =
-  | "/profiles"
-  | "/lists"
-  | "/discovery"
-  | "/briefs/new"
-  | "/coverage"
-  | "/organization";
+  "/profiles" | "/lists" | "/discovery" | "/briefs/new" | "/coverage" | "/organization";
 
 /** A single suggested next action. */
 interface NextAction {

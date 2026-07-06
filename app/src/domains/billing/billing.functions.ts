@@ -60,7 +60,7 @@ export const createPortalSession = createServerFn({ method: "POST" }).handler(as
   const stripe = getStripeClient();
   const portalSession = await stripe.billingPortal.sessions.create({
     customer: orgMetadata.stripeCustomerId,
-    return_url: `${runtime.publicBaseUrl}/account`,
+    return_url: new URL("/account", runtime.publicBaseUrl).toString(),
   });
 
   return { url: portalSession.url };

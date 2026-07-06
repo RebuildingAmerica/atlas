@@ -1,3 +1,4 @@
+import type { Ref } from "react";
 import { Link } from "@tanstack/react-router";
 import { ArrowRight, Network, X } from "lucide-react";
 import { ActorAvatar } from "@/domains/catalog/components/profiles/actor-avatar";
@@ -103,6 +104,8 @@ function MapFacts({ point }: { point: MapPoint }) {
 }
 
 interface MapDetailPanelProps {
+  /** Imperative focus target used when the panel opens. */
+  panelRef?: Ref<HTMLDivElement>;
   /** What the panel is currently showing — one actor or a cluster's crowd. */
   selection: MapSelection;
   /** Dismiss the panel and return focus to the map. */
@@ -278,6 +281,7 @@ function ClusterView({
  * reduced-motion visitors, who get the resting panel immediately.
  */
 export function MapDetailPanel({
+  panelRef,
   selection,
   onClose,
   onSelectMember,
@@ -286,11 +290,17 @@ export function MapDetailPanel({
   const headingId = "map-detail-panel-heading";
   return (
     <div
+      ref={panelRef}
       role="dialog"
       aria-modal={false}
       aria-labelledby={headingId}
+      tabIndex={-1}
       data-motion={reducedMotion ? "none" : "slide"}
-      className={reducedMotion ? "" : "motion-safe:animate-[map-panel-in_240ms_ease-out]"}
+      className={
+        reducedMotion
+          ? "focus:ring-accent focus:ring-2 focus:outline-none"
+          : "focus:ring-accent focus:ring-2 focus:outline-none motion-safe:animate-[map-panel-in_240ms_ease-out]"
+      }
     >
       <div className="flex items-center justify-end p-2">
         <button

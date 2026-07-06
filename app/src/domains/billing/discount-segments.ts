@@ -1,7 +1,5 @@
 export type DiscountSegment =
-  | "independent_journalist"
-  | "grassroots_nonprofit"
-  | "civic_tech_worker";
+  "independent_journalist" | "grassroots_nonprofit" | "civic_tech_worker";
 
 export const DISCOUNT_SEGMENT_LABELS: Record<DiscountSegment, string> = {
   independent_journalist: "Independent Journalist",

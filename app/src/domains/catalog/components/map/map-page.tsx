@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { MapCommandBar } from "@/domains/catalog/components/map/map-command-bar";
 import { MapDetailPanel } from "@/domains/catalog/components/map/map-detail-panel";
@@ -61,6 +61,7 @@ export function MapPage({ search, initialPoints }: MapPageProps) {
   const reveal = useMapReveal({ reducedMotion });
   const surfaceRef = useRef<HTMLDivElement>(null);
   const resultsListRef = useRef<HTMLElement>(null);
+  const detailPanelRef = useRef<HTMLDivElement>(null);
 
   const quickIssueAreas = useMemo(() => {
     if (!taxonomy) {
@@ -73,6 +74,11 @@ export function MapPage({ search, initialPoints }: MapPageProps) {
   }, [taxonomy]);
 
   const { points, pointsQuery, selection, filters } = page;
+  const selectionFocusKey = selection
+    ? selection.kind === "actor"
+      ? `actor:${selection.point.id}`
+      : `cluster:${selection.clusterId}`
+    : null;
   const hasFetched = pointsQuery.data !== undefined;
   const isEmpty = hasFetched && points.length === 0 && !pointsQuery.isError;
   const pill = sparsityPill(points);
@@ -86,6 +92,12 @@ export function MapPage({ search, initialPoints }: MapPageProps) {
     page.onClosePanel();
     surfaceRef.current?.focus();
   };
+
+  useEffect(() => {
+    if (selectionFocusKey) {
+      detailPanelRef.current?.focus();
+    }
+  }, [selectionFocusKey]);
 
   return (
     <div className="relative h-[calc(100vh-4rem)] w-full overflow-hidden">
@@ -181,6 +193,7 @@ export function MapPage({ search, initialPoints }: MapPageProps) {
             }}
           >
             <MapDetailPanel
+              panelRef={detailPanelRef}
               selection={selection}
               reducedMotion={reducedMotion}
               onClose={closePanel}

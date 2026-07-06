@@ -165,6 +165,51 @@ describe("PlacePage", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("exposes latest activity filter state and result count", async () => {
+    const user = userEvent.setup();
+    apiMocks.listLatest.mockResolvedValueOnce({
+      items: [
+        {
+          id: "latest-report",
+          title: "Housing conditions report",
+          attribution: "City Lab, Jun 20",
+          dateLabel: "Jun 20",
+          href: "https://example.test/report",
+          linkedActors: [],
+          linkedEntityIds: [],
+          sourceType: "report",
+          excerpt: "The report names eviction filings and rent burden in valley cities.",
+          topics: [],
+        },
+      ],
+      nextCursor: undefined,
+    });
+
+    render(<PlacePage data={placePageFixture} />);
+
+    const latestSection = screen.getByRole("heading", { name: "Latest" }).closest("section");
+    if (latestSection === null) {
+      throw new Error("Latest section was not rendered.");
+    }
+
+    const allButton = within(latestSection).getByRole("button", { name: "All" });
+    const reportsButton = within(latestSection).getByRole("button", { name: "Reports" });
+    expect(allButton).toHaveAttribute("aria-pressed", "true");
+    expect(reportsButton).toHaveAttribute("aria-pressed", "false");
+    expect(within(latestSection).getByRole("status")).toHaveTextContent(
+      "Showing 1 latest activity item",
+    );
+
+    await user.click(reportsButton);
+
+    expect(allButton).toHaveAttribute("aria-pressed", "false");
+    expect(reportsButton).toHaveAttribute("aria-pressed", "true");
+    expect(await within(latestSection).findByText("Housing conditions report")).toBeInTheDocument();
+    expect(within(latestSection).getByRole("status")).toHaveTextContent(
+      "Showing 1 latest activity item",
+    );
+  });
+
   it("sorts people and organizations through the place API", async () => {
     const user = userEvent.setup();
     apiMocks.listActors.mockResolvedValueOnce({
@@ -206,5 +251,57 @@ describe("PlacePage", () => {
     expect(screen.getByText("Boulder Transit Riders")).toBeInTheDocument();
     expect(screen.getByText("A")).toBeInTheDocument();
     expect(screen.getByText("B")).toBeInTheDocument();
+  });
+
+  it("exposes people and organizations filter state and result count", async () => {
+    const user = userEvent.setup();
+    apiMocks.listActors.mockResolvedValueOnce({
+      items: [
+        {
+          id: "actor-a",
+          name: "Aardvark Civic League",
+          href: "/profiles/organizations/aardvark-civic-league",
+          type: "organization",
+          description: "Neighborhood housing and repair work.",
+          work: "Housing affordability",
+          latest: "Jul 1",
+        },
+      ],
+      nextCursor: undefined,
+    });
+
+    render(<PlacePage data={placePageFixture} />);
+
+    const actorsSection = screen
+      .getByRole("heading", { name: "People & Organizations" })
+      .closest("section");
+    if (actorsSection === null) {
+      throw new Error("People & Organizations section was not rendered.");
+    }
+
+    const allButton = within(actorsSection).getByRole("button", { name: "All" });
+    const organizationsButton = within(actorsSection).getByRole("button", {
+      name: "Organizations",
+    });
+    expect(allButton).toHaveAttribute("aria-pressed", "true");
+    expect(organizationsButton).toHaveAttribute("aria-pressed", "false");
+    expect(within(actorsSection).getByRole("status")).toHaveTextContent(
+      "Showing 1 person or organization",
+    );
+
+    await user.click(organizationsButton);
+
+    expect(apiMocks.listActors).toHaveBeenCalledWith("las-vegas-nv", {
+      kind: "polity",
+      limit: 20,
+      sort: "relevance",
+      type: "organization",
+    });
+    expect(allButton).toHaveAttribute("aria-pressed", "false");
+    expect(organizationsButton).toHaveAttribute("aria-pressed", "true");
+    expect(await within(actorsSection).findByText("Aardvark Civic League")).toBeInTheDocument();
+    expect(within(actorsSection).getByRole("status")).toHaveTextContent(
+      "Showing 1 person or organization",
+    );
   });
 });

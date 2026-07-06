@@ -1084,13 +1084,25 @@ describe("ActionCluster", () => {
   it("renders Save and Follow as buttons when signed in", () => {
     render(<ActionCluster {...baseProps} isSignedIn />);
     expect(screen.getByRole("button", { name: /save/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /follow/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /follow/i })).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
   });
 
   it("opens the save-list picker on Save click when signed in", () => {
     render(<ActionCluster {...baseProps} isSignedIn />);
-    fireEvent.click(screen.getByRole("button", { name: /save/i }));
-    expect(screen.getByRole("dialog", { name: /save to list/i })).toBeInTheDocument();
+    const saveButton = screen.getByRole("button", { name: /save/i });
+    expect(saveButton).toHaveAttribute("aria-expanded", "false");
+    expect(saveButton).toHaveAttribute("aria-controls", "profile-save-list-picker");
+
+    fireEvent.click(saveButton);
+
+    expect(saveButton).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("dialog", { name: /save to list/i })).toHaveAttribute(
+      "id",
+      "profile-save-list-picker",
+    );
   });
 
   it("copies the URL to clipboard when Web Share is unavailable", async () => {
@@ -1206,6 +1218,10 @@ describe("ActionCluster", () => {
     });
 
     render(<ActionCluster {...baseProps} isSignedIn />);
+    expect(screen.getByRole("button", { name: /following/i })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
     await act(async () => {
       screen.getByRole("button", { name: /following/i }).click();
       await Promise.resolve();
@@ -1227,6 +1243,10 @@ describe("ActionCluster", () => {
 
     render(
       <ActionCluster {...baseProps} isSignedIn workspaceId="org_123" workspaceWatchingEnabled />,
+    );
+    expect(screen.getByRole("button", { name: /^watch$/i })).toHaveAttribute(
+      "aria-pressed",
+      "false",
     );
     await act(async () => {
       screen.getByRole("button", { name: /^watch$/i }).click();
@@ -1272,6 +1292,10 @@ describe("ActionCluster", () => {
     });
 
     render(<ActionCluster {...baseProps} isSignedIn workspaceWatchingEnabled />);
+    expect(screen.getByRole("button", { name: /^watching$/i })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
     await act(async () => {
       screen.getByRole("button", { name: /^watching$/i }).click();
       await Promise.resolve();

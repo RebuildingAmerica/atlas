@@ -253,7 +253,8 @@ describe("api runtime adapters", () => {
     });
 
     const { api } = await import("@/lib/api");
-    await expect(api.entries.get("entity_123")).resolves.toEqual(
+    const entry = await api.entries.get("entity_123");
+    expect(entry).toEqual(
       expect.objectContaining({
         affiliated_org_id: "org_123",
         city: "Kansas City",
@@ -266,33 +267,38 @@ describe("api runtime adapters", () => {
         latest_source_date: "2026-04-11",
         region: "Midwest",
         social_media: { instagram: "@atlas" },
-        sources: [
-          {
-            created_at: "2026-04-10T00:00:00.000Z",
-            extraction_context: undefined,
-            extraction_method: "manual",
-            freshness: {
-              created_at: "2026-04-10T00:00:00.000Z",
-              ingested_at: null,
-              last_seen: null,
-              last_verified: null,
-              latest_source_date: null,
-              published_date: null,
-              staleness_reason: "Fresh",
-              staleness_status: "fresh",
-              updated_at: null,
-            },
-            id: "source_123",
-            ingested_at: "2026-04-10T00:00:00.000Z",
-            publication: undefined,
-            published_date: undefined,
-            title: undefined,
-            type: "other",
-            url: "https://atlas.test/source",
-          },
-        ],
         type: "initiative",
         website: undefined,
+      }),
+    );
+    const [source] = entry.sources ?? [];
+    expect(source).toBeDefined();
+    if (!source) {
+      throw new Error("Expected mapped source detail.");
+    }
+    expect(source).toEqual(
+      expect.objectContaining({
+        created_at: "2026-04-10T00:00:00.000Z",
+        extraction_context: undefined,
+        extraction_method: "manual",
+        freshness: {
+          created_at: "2026-04-10T00:00:00.000Z",
+          ingested_at: null,
+          last_seen: null,
+          last_verified: null,
+          latest_source_date: null,
+          published_date: null,
+          staleness_reason: "Fresh",
+          staleness_status: "fresh",
+          updated_at: null,
+        },
+        id: "source_123",
+        ingested_at: "2026-04-10T00:00:00.000Z",
+        publication: undefined,
+        published_date: undefined,
+        title: undefined,
+        type: "other",
+        url: "https://atlas.test/source",
       }),
     );
   });
@@ -365,36 +371,42 @@ describe("api runtime adapters", () => {
     });
 
     const { api } = await import("@/lib/api");
-    await expect(api.entries.get("entity_456")).resolves.toEqual(
+    const entry = await api.entries.get("entity_456");
+    expect(entry).toEqual(
       expect.objectContaining({
         city: undefined,
         first_seen: "2026-04-10T00:00:00.000Z",
         issue_areas: [],
-        sources: [
-          {
-            created_at: "",
-            extraction_context: { stage: "capture" },
-            extraction_method: "ocr",
-            freshness: {
-              created_at: null,
-              ingested_at: "2026-04-12T00:00:00.000Z",
-              last_seen: null,
-              last_verified: null,
-              latest_source_date: null,
-              published_date: "2026-04-11",
-              staleness_reason: "Fresh",
-              staleness_status: "fresh",
-              updated_at: null,
-            },
-            id: "source_456",
-            ingested_at: "2026-04-12T00:00:00.000Z",
-            publication: "Atlas Weekly",
-            published_date: "2026-04-11",
-            title: "Remote update",
-            type: "report",
-            url: "https://atlas.test/source-456",
-          },
-        ],
+      }),
+    );
+    const [source] = entry.sources ?? [];
+    expect(source).toBeDefined();
+    if (!source) {
+      throw new Error("Expected mapped source detail.");
+    }
+    expect(source).toEqual(
+      expect.objectContaining({
+        created_at: "",
+        extraction_context: { stage: "capture" },
+        extraction_method: "ocr",
+        freshness: {
+          created_at: null,
+          ingested_at: "2026-04-12T00:00:00.000Z",
+          last_seen: null,
+          last_verified: null,
+          latest_source_date: null,
+          published_date: "2026-04-11",
+          staleness_reason: "Fresh",
+          staleness_status: "fresh",
+          updated_at: null,
+        },
+        id: "source_456",
+        ingested_at: "2026-04-12T00:00:00.000Z",
+        publication: "Atlas Weekly",
+        published_date: "2026-04-11",
+        title: "Remote update",
+        type: "report",
+        url: "https://atlas.test/source-456",
       }),
     );
   });

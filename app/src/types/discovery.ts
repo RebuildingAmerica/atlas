@@ -1,9 +1,6 @@
 export type DiscoveryStatus = "running" | "completed" | "failed";
 export type DiscoveryResearchGoal =
-  | "landscape_scan"
-  | "interview_leads"
-  | "partner_scan"
-  | "ecosystem_map";
+  "landscape_scan" | "interview_leads" | "partner_scan" | "ecosystem_map";
 export type DiscoveryConfidenceState = "corroborated" | "partial" | "unverified";
 
 export interface DiscoveryResearchLead {
@@ -64,12 +61,7 @@ export interface DiscoveryRunListResponse {
 }
 
 export type DiscoveryJobStatus =
-  | "queued"
-  | "claimed"
-  | "running"
-  | "completed"
-  | "failed"
-  | "cancelled";
+  "queued" | "claimed" | "running" | "completed" | "failed" | "cancelled";
 
 export interface DiscoveryJobQueueStatusCounts {
   claimed: number;

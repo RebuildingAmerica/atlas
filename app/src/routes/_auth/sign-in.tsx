@@ -13,7 +13,6 @@ function SignInRoute() {
   return (
     <SignInPage
       errorCode={search.error}
-      existingAccount={search.existing}
       initialEmail={search.email}
       invitationId={search.invitation}
       redirectTo={search.redirect}

@@ -96,7 +96,7 @@ export function PlanCard({
       </div>
 
       <div className="mb-4">
-        <p className={`${priceColorClass} type-title-medium font-medium`}>{showPrice}</p>
+        <div className={`${priceColorClass} type-title-medium font-medium`}>{showPrice}</div>
         {annualNote && billing === "annual" && (
           <p className={`${priceSubColorClass} type-body-small mt-1`}>{annualNote}</p>
         )}

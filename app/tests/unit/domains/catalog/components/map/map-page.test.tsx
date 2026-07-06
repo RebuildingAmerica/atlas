@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import "@testing-library/jest-dom/vitest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { MapPage } from "@/domains/catalog/components/map/map-page";
@@ -142,6 +143,7 @@ describe("MapPage", () => {
 
     const dialog = screen.getByRole("dialog");
     expect(dialog.getAttribute("aria-modal")).toBe("false");
+    expect(dialog).toHaveFocus();
     fireEvent.click(screen.getByRole("button", { name: "Close detail panel" }));
     expect(requireMapPageHarness().handlers.onClosePanel).toHaveBeenCalledOnce();
   });
@@ -156,6 +158,7 @@ describe("MapPage", () => {
 
     fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
     expect(requireMapPageHarness().handlers.onClosePanel).toHaveBeenCalledOnce();
+    expect(screen.getByTestId("surface")).toHaveFocus();
   });
 
   it("does not render the panel when nothing is selected", () => {

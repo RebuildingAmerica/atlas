@@ -95,9 +95,7 @@ describe("discovery hooks", () => {
     }
 
     return config as
-      | DiscoveryListQueryConfig
-      | DiscoveryRunQueryConfig
-      | DiscoveryJobQueueQueryConfig;
+      DiscoveryListQueryConfig | DiscoveryRunQueryConfig | DiscoveryJobQueueQueryConfig;
   }
 
   function getUseMutationConfig(): StartDiscoveryMutationConfig {

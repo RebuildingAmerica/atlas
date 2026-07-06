@@ -183,6 +183,20 @@ function formatSourceType(value: string): string {
   return label.charAt(0).toUpperCase() + label.slice(1);
 }
 
+function latestStatusText(isLoading: boolean, count: number): string {
+  if (isLoading) {
+    return "Loading";
+  }
+  return `Showing ${count} latest activity ${count === 1 ? "item" : "items"}`;
+}
+
+function actorStatusText(isLoading: boolean, count: number): string {
+  if (isLoading) {
+    return "Loading";
+  }
+  return `Showing ${count} ${count === 1 ? "person or organization" : "people and organizations"}`;
+}
+
 function hasCoordinates(place: PlaceRelatedSummary): place is CoordinatePlace {
   return (
     typeof place.latitude === "number" &&
@@ -429,7 +443,7 @@ function LatestFeed({ initialLatest, placeKind, placeSlug }: LatestFeedProps) {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" aria-busy={isLatestLoading}>
       <form onSubmit={submitSearch} className="flex flex-col gap-3 lg:flex-row">
         <label className="sr-only" htmlFor="place-latest-search">
           Search latest activity
@@ -453,10 +467,11 @@ function LatestFeed({ initialLatest, placeKind, placeSlug }: LatestFeedProps) {
         </button>
       </form>
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2" role="group" aria-label="Latest activity source">
         <button
           type="button"
           disabled={isLatestLoading}
+          aria-pressed={selectedSourceType === null}
           onClick={() => {
             chooseSourceType(null);
           }}
@@ -474,6 +489,7 @@ function LatestFeed({ initialLatest, placeKind, placeSlug }: LatestFeedProps) {
             key={sourceType.value}
             type="button"
             disabled={isLatestLoading}
+            aria-pressed={selectedSourceType === sourceType.value}
             onClick={() => {
               chooseSourceType(sourceType.value);
             }}
@@ -488,6 +504,10 @@ function LatestFeed({ initialLatest, placeKind, placeSlug }: LatestFeedProps) {
           </button>
         ))}
       </div>
+
+      <p role="status" aria-live="polite" className="sr-only">
+        {latestStatusText(isLatestLoading, latest.items.length)}
+      </p>
 
       {latestError ? (
         <p
@@ -673,7 +693,7 @@ function ActorDirectory({ initialActors, placeKind, placeSlug }: ActorDirectoryP
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" aria-busy={isActorLoading}>
       <form onSubmit={submitSearch} className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_12rem_auto]">
         <label className="sr-only" htmlFor="place-actor-search">
           Search people and organizations
@@ -715,10 +735,11 @@ function ActorDirectory({ initialActors, placeKind, placeSlug }: ActorDirectoryP
         </button>
       </form>
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2" role="group" aria-label="People and organizations type">
         <button
           type="button"
           disabled={isActorLoading}
+          aria-pressed={selectedType === null}
           onClick={() => {
             chooseType(null);
           }}
@@ -736,6 +757,7 @@ function ActorDirectory({ initialActors, placeKind, placeSlug }: ActorDirectoryP
             key={type.value}
             type="button"
             disabled={isActorLoading}
+            aria-pressed={selectedType === type.value}
             onClick={() => {
               chooseType(type.value);
             }}
@@ -750,6 +772,10 @@ function ActorDirectory({ initialActors, placeKind, placeSlug }: ActorDirectoryP
           </button>
         ))}
       </div>
+
+      <p role="status" aria-live="polite" className="sr-only">
+        {actorStatusText(isActorLoading, actors.items.length)}
+      </p>
 
       {actorError ? (
         <p

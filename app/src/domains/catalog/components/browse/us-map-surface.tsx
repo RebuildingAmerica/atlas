@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, type KeyboardEvent } from "react";
 import { ComposableMap, Geographies, Geography } from "react-simple-maps";
 import usAtlasStates from "us-atlas/states-10m.json";
 import { buildUsMapStateStyles, getStateCodeFromFips } from "@/domains/catalog/us-map";
@@ -50,6 +50,16 @@ export function UsMapSurface({ stateDensity, selectedState, onSelectState }: UsM
                     ? `rgba(208, 117, 52, ${0.16 + density.intensity * 0.64})`
                     : "rgba(255,255,255,0.96)";
 
+                function handleKeyDown(event: KeyboardEvent<SVGElement>) {
+                  if (!stateCode) {
+                    return;
+                  }
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    onSelectState(stateCode);
+                  }
+                }
+
                 return (
                   <Geography
                     key={geography.rsmKey}
@@ -57,17 +67,25 @@ export function UsMapSurface({ stateDensity, selectedState, onSelectState }: UsM
                     aria-label={
                       stateCode ? `${stateName}, ${density?.count ?? 0} results` : stateName
                     }
+                    aria-pressed={stateCode ? isSelected : undefined}
+                    role={stateCode ? "button" : undefined}
+                    tabIndex={stateCode ? 0 : undefined}
                     onClick={() => {
                       if (stateCode) {
                         onSelectState(stateCode);
                       }
                     }}
+                    onKeyDown={handleKeyDown}
+                    className={
+                      stateCode
+                        ? "focus:outline-accent focus:outline-2 focus:outline-offset-2"
+                        : undefined
+                    }
                     style={{
                       default: {
                         fill,
                         stroke: "rgba(79, 63, 47, 0.35)",
                         strokeWidth: isSelected ? 1.8 : 0.9,
-                        outline: "none",
                         transition: "fill 160ms ease, stroke 160ms ease",
                         cursor: stateCode ? "pointer" : "default",
                       },
@@ -75,14 +93,12 @@ export function UsMapSurface({ stateDensity, selectedState, onSelectState }: UsM
                         fill: isSelected ? "rgba(208, 117, 52, 0.92)" : "rgba(208, 117, 52, 0.72)",
                         stroke: "rgba(79, 63, 47, 0.78)",
                         strokeWidth: isSelected ? 1.8 : 1.2,
-                        outline: "none",
                         cursor: stateCode ? "pointer" : "default",
                       },
                       pressed: {
                         fill: "rgba(177, 93, 35, 0.95)",
                         stroke: "rgba(79, 63, 47, 0.9)",
                         strokeWidth: 1.8,
-                        outline: "none",
                         cursor: stateCode ? "pointer" : "default",
                       },
                     }}

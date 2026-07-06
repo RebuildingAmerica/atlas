@@ -44,8 +44,14 @@ export function PricingPlansGrid({
 
       <div className="mb-6 flex flex-wrap items-center justify-between gap-2 sm:gap-4">
         <p className="type-label-medium text-ink-muted tracking-wider uppercase">Plans</p>
-        <div className="border-border inline-flex items-center gap-0.5 rounded-full border bg-white px-1 py-1">
+        <div
+          className="border-border inline-flex items-center gap-0.5 rounded-full border bg-white px-1 py-1"
+          role="group"
+          aria-label="Billing interval"
+        >
           <button
+            type="button"
+            aria-pressed={billing === "monthly"}
             onClick={() => {
               onBillingChange("monthly");
             }}
@@ -58,6 +64,8 @@ export function PricingPlansGrid({
             Monthly
           </button>
           <button
+            type="button"
+            aria-pressed={billing === "annual"}
             onClick={() => {
               onBillingChange("annual");
             }}
@@ -80,7 +88,7 @@ export function PricingPlansGrid({
             "Read any profile (no account)",
             "Sign up for 2 research requests/month",
             "Sign up for 1 shortlist (25 entries)",
-            "Public API 100 req/hr",
+            "Public API with anti-abuse limits",
           ]}
           monthlyPrice="Free"
           billing={billing}

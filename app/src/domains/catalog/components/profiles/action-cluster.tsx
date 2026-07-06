@@ -60,6 +60,7 @@ const SOLID_BUTTON =
 const GHOST_BUTTON =
   "inline-flex min-h-[44px] items-center justify-center border border-border-taupe bg-surface-container-lowest px-5 py-2.5 font-sans text-sm font-semibold text-ink-strong transition-colors hover:border-civic hover:text-civic disabled:cursor-not-allowed disabled:opacity-60 " +
   FOCUS_RING;
+const SAVE_LIST_PICKER_ID = "profile-save-list-picker";
 
 export function ActionCluster({
   entryId,
@@ -175,10 +176,17 @@ export function ActionCluster({
 
       {isSignedIn ? (
         <div className="relative">
-          <button type="button" className={GHOST_BUTTON} onClick={onSaveClick}>
+          <button
+            type="button"
+            className={GHOST_BUTTON}
+            aria-expanded={savePickerOpen}
+            aria-controls={SAVE_LIST_PICKER_ID}
+            onClick={onSaveClick}
+          >
             Save
           </button>
           <SaveListPicker
+            id={SAVE_LIST_PICKER_ID}
             entryId={entryId}
             open={savePickerOpen}
             onClose={() => {
@@ -201,6 +209,7 @@ export function ActionCluster({
           )}
           onClick={onWorkspaceWatchClickWrapper}
           disabled={workspaceWatchDisabled}
+          aria-pressed={isWorkspaceWatched}
         >
           {isWorkspaceWatched ? "Watching" : "Watch"}
         </button>
@@ -215,6 +224,7 @@ export function ActionCluster({
           )}
           onClick={onFollowClickWrapper}
           disabled={followMutation.isPending || unfollowMutation.isPending}
+          aria-pressed={isFollowing}
         >
           {isFollowing ? "Following" : "Follow updates"}
         </button>

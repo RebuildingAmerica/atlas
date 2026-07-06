@@ -69,6 +69,8 @@ interface ActorCommandOption {
 
 type CommandOption = PlaceCommandOption | ActorCommandOption;
 
+const MAP_COMMAND_NO_RESULTS_ID = "map-command-no-results";
+
 interface CommandSelectHandlers {
   onSelectActor: (point: MapPoint) => void;
   onSelectPlace: (place: PlaceMatch) => void;
@@ -217,6 +219,7 @@ export function MapCommandBar({
             role="combobox"
             aria-expanded={open}
             aria-controls={hasMatches ? "map-command-menu" : undefined}
+            aria-describedby={open && !hasMatches ? MAP_COMMAND_NO_RESULTS_ID : undefined}
             aria-activedescendant={activeOption?.id}
             aria-autocomplete="list"
             aria-label="Search a place or find an actor"
@@ -318,7 +321,11 @@ export function MapCommandBar({
                 ) : null}
               </ul>
             ) : (
-              <p className="type-body-small text-ink-muted px-2.5 py-2">
+              <p
+                id={MAP_COMMAND_NO_RESULTS_ID}
+                role="status"
+                className="type-body-small text-ink-muted px-2.5 py-2"
+              >
                 No places or actors match “{trimmed}”.
               </p>
             )}

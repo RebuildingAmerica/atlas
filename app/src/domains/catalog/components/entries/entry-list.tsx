@@ -27,6 +27,8 @@ interface EntryListProps {
   emptyRecoveryActions?: EmptyRecoveryAction[];
 }
 
+const ENTRY_LIST_ERROR_MESSAGE = "Results could not load. Try again in a moment.";
+
 function emptyHeading(resultLabelPlural: string, hasActiveSearch: boolean): string {
   if (resultLabelPlural === "people and groups") {
     return hasActiveSearch ? "No matching people or groups." : "No people or groups listed.";
@@ -70,12 +72,12 @@ export function EntryList({
 
   if (error) {
     return (
-      <div className="rounded-[1.4rem] bg-red-50 px-4 py-6 text-red-800">
+      <div role="alert" className="rounded-[1.4rem] bg-red-50 px-4 py-6 text-red-800">
         <div className="flex items-center gap-2 font-semibold">
-          <AlertCircle className="h-5 w-5" />
+          <AlertCircle className="h-5 w-5" aria-hidden />
           Search unavailable
         </div>
-        <p className="type-body-medium mt-2">{error.message}</p>
+        <p className="type-body-medium mt-2">{ENTRY_LIST_ERROR_MESSAGE}</p>
       </div>
     );
   }
