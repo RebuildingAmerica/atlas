@@ -5,10 +5,10 @@ description: "OAuth scopes and Atlas package capabilities for MCP access."
 
 ## Overview
 
-Atlas MCP access depends on two checks:
+Atlas MCP access depends on two things:
 
-1. OAuth permissions in the access token
-2. Atlas package capabilities attached to the workspace
+1. The permissions you approve during sign-in
+2. The Atlas package attached to your workspace
 
 This keeps public browsing open while making agent and integration access explicit.
 
@@ -16,48 +16,46 @@ This keeps public browsing open while making agent and integration access explic
 
 Atlas requires both of these for MCP requests:
 
-| Requirement | Where it appears | Why it matters |
-| --- | --- | --- |
-| `discovery:read` | OAuth scope or permission claim | Allows read-only discovery and catalog retrieval tools |
-| `api.mcp` | Atlas capability claim | Confirms the workspace package includes MCP access |
+| Requirement      | Where it appears        | Why it matters                                         |
+| ---------------- | ----------------------- | ------------------------------------------------------ |
+| `discovery:read` | Consent screen          | Allows read-only discovery and catalog retrieval tools |
+| `api.mcp`        | Atlas workspace package | Confirms the workspace includes MCP access             |
 
-If either check is missing, `/mcp` returns `403 Forbidden` with a `WWW-Authenticate` challenge that names the missing permission.
+If either check is missing, your client shows a permission or plan-required error. Reconnect the client after approving the missing access or upgrading the workspace.
 
 ## OAuth scopes
 
-| Scope | What it allows |
-| --- | --- |
-| `openid` | Basic identity verification |
-| `profile` | User profile details |
-| `email` | User email address |
-| `offline_access` | Refresh-token access from the authorization server |
-| `discovery:read` | Read source-linked discovery and catalog results |
-| `discovery:write` | Create and manage discovery runs where enabled |
-| `entities:write` | Create or update catalog entries where enabled |
+| Scope             | What it allows                                     |
+| ----------------- | -------------------------------------------------- |
+| `openid`          | Basic identity verification                        |
+| `profile`         | User profile details                               |
+| `email`           | User email address                                 |
+| `offline_access`  | Refresh-token access from the authorization server |
+| `discovery:read`  | Read source-linked discovery and catalog results   |
+| `discovery:write` | Create and manage discovery runs where enabled     |
+| `entities:write`  | Create or update catalog entries where enabled     |
 
-Most MCP read tools use `discovery:read`. Write scopes are not enough to access MCP unless the token also carries the Atlas `api.mcp` capability.
+Most MCP read tools use `discovery:read`. Write permissions are not enough to access MCP unless the workspace package also includes MCP access.
 
 ## Workspace binding
 
-Atlas binds OAuth tokens to a workspace. Single-workspace users are bound automatically. Multi-workspace users pick the workspace during consent.
-
-The token carries an `org_id` claim for the selected workspace. Organization-scoped API endpoints reject requests whose path org does not match that claim.
+Atlas connects each MCP session to a workspace. Single-workspace users are selected automatically. Multi-workspace users pick the workspace during consent.
 
 ## Package capabilities
 
 Package capabilities are derived by Atlas, not requested directly by the client. For MCP, the important capability is:
 
-| Capability | Meaning |
-| --- | --- |
-| `api.mcp` | The workspace package includes MCP access |
+| Capability | Meaning                                   |
+| ---------- | ----------------------------------------- |
+| `api.mcp`  | The workspace package includes MCP access |
 
 See [Plans & pricing](/account/pricing) for which packages include MCP access.
 
-## Integration monitoring
+## Workspace integration activity
 
-Successful MCP requests and successful external REST API calls can appear in workspace integration monitoring. The monitoring view shows counts, surfaces, routes or resources, and last-seen timestamps only.
+Successful MCP requests and successful external REST API calls can appear in workspace integration activity. The activity view shows counts, surfaces, paths or resources, and last-seen timestamps only.
 
-See [Integration monitoring](/mcp/integration-monitoring) for the data boundary.
+See [Workspace integration activity](/workspace/integration-activity) for the data boundary.
 
 ## Revoking access
 

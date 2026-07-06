@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 import { spawn } from "node:child_process";
+import { request } from "node:https";
 
 const PORTLESS_NAME = "docs.atlas";
-const PORTLESS_PORT = process.env.PORTLESS_PORT || "1355";
+const PORTLESS_PORT = process.env.PORTLESS_PORT || "443";
 const LOCAL_PREVIEW_PATTERN = /local\s+.*?http:\/\/localhost:(\d+)/i;
 
 let activeAliasPort = null;
@@ -38,7 +39,45 @@ function run(command, args, options = {}) {
   });
 }
 
+function portlessOrigin() {
+  if (PORTLESS_PORT === "443") {
+    return `https://${PORTLESS_NAME}.localhost`;
+  }
+  return `https://${PORTLESS_NAME}.localhost:${PORTLESS_PORT}`;
+}
+
+function httpsProxyIsReady() {
+  return new Promise((resolve) => {
+    const proxyRequest = request(
+      {
+        host: "127.0.0.1",
+        method: "HEAD",
+        port: Number(PORTLESS_PORT),
+        rejectUnauthorized: false,
+        timeout: 2000,
+      },
+      (response) => {
+        response.resume();
+        resolve(response.headers["x-portless"] === "1");
+      },
+    );
+
+    proxyRequest.on("error", () => {
+      resolve(false);
+    });
+    proxyRequest.on("timeout", () => {
+      proxyRequest.destroy();
+      resolve(false);
+    });
+    proxyRequest.end();
+  });
+}
+
 async function ensureProxy() {
+  if (await httpsProxyIsReady()) {
+    return;
+  }
+
   await run(
     "pnpm",
     ["exec", "portless", "proxy", "start", "--port", PORTLESS_PORT, "--https"],
@@ -62,7 +101,7 @@ async function registerAlias(port) {
   );
   activeAliasPort = port;
   process.stdout.write(
-    `[portless-docs] https://${PORTLESS_NAME}.localhost:${PORTLESS_PORT} -> localhost:${port}\n`,
+    `[portless-docs] ${portlessOrigin()} -> localhost:${port}\n`,
   );
 }
 

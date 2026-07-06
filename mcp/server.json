@@ -2,24 +2,35 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "org.rebuildingus.atlas/atlas",
   "title": "Atlas",
-  "description": "Civic actor discovery: people, orgs, initiatives on social issues across America.",
+  "description": "Search source-linked people, organizations, initiatives, and civic work across the United States.",
   "repository": {
+    "id": "1206079057",
     "url": "https://github.com/RebuildingAmerica/atlas",
     "source": "github"
   },
   "version": "0.1.0",
+  "websiteUrl": "https://atlas.rebuildingus.org",
+  "icons": [
+    {
+      "src": "https://atlas.rebuildingus.org/docs/favicons/favicon-48x48.png",
+      "mimeType": "image/png",
+      "sizes": ["48x48"]
+    },
+    {
+      "src": "https://atlas.rebuildingus.org/docs/favicons/android-chrome-192x192.png",
+      "mimeType": "image/png",
+      "sizes": ["192x192"]
+    },
+    {
+      "src": "https://atlas.rebuildingus.org/docs/favicons/android-chrome-512x512.png",
+      "mimeType": "image/png",
+      "sizes": ["512x512"]
+    }
+  ],
   "remotes": [
     {
       "type": "streamable-http",
-      "url": "https://atlas.rebuildingus.org/mcp",
-      "headers": [
-        {
-          "name": "Authorization",
-          "description": "Bearer token issued by Atlas OAuth 2.1 (PKCE). Most clients obtain this automatically via the protected-resource discovery endpoint at /.well-known/oauth-protected-resource.",
-          "isRequired": true,
-          "isSecret": true
-        }
-      ]
+      "url": "https://atlas.rebuildingus.org/mcp"
     }
   ]
 }

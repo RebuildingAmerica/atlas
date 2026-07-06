@@ -10,7 +10,7 @@ from the root domain. Use a pattern like:
 
 - root domain: `example.com`
 - sending subdomain: `atlas-mail.example.com`
-- sender address: `Atlas <noreply@atlas-mail.example.com>`
+- sender address: `Atlas <hello@atlas-mail.example.com>`
 
 Replace `example.com` with your real domain everywhere below.
 
@@ -96,8 +96,7 @@ dig +short MX send.atlas-mail.example.com
 dig +short TXT _dmarc.atlas-mail.example.com
 ```
 
-If your actual DKIM or MX hostnames differ, use the exact Resend-provided
-names.
+If your actual DKIM or MX hostnames differ, use the exact Resend-provided names.
 
 If `dig` is not installed, run:
 
@@ -118,8 +117,7 @@ Do not continue until the public lookup returns the records you just created.
 4. Refresh until the domain shows `Verified`.
 5. Confirm SPF and DKIM both show as passing in Resend.
 
-Once the domain is verified, Resend can send from any mailbox at that
-subdomain.
+Once the domain is verified, Resend can send from any mailbox at that subdomain.
 
 ## Step 7: Configure Atlas Production
 
@@ -127,7 +125,7 @@ Set these production environment variables for the app:
 
 ```env
 ATLAS_EMAIL_PROVIDER=resend
-ATLAS_EMAIL_FROM=Atlas <noreply@atlas-mail.example.com>
+ATLAS_EMAIL_FROM=Atlas <hello@atlas-mail.example.com>
 ATLAS_EMAIL_RESEND_API_KEY=<your resend api key>
 ```
 
@@ -151,8 +149,7 @@ Before declaring email ready, confirm all of these:
 - Resend shows your Atlas mail subdomain as verified.
 - Public DNS lookups return the SPF, DKIM, MX, and DMARC records.
 - Atlas production uses `ATLAS_EMAIL_PROVIDER=resend`.
-- Atlas production uses an `ATLAS_EMAIL_FROM` mailbox on the verified
-  subdomain.
+- Atlas production uses an `ATLAS_EMAIL_FROM` mailbox on the verified subdomain.
 - A real magic-link email arrives in a mailbox you control.
 - The delivered message passes provider authentication checks.
 

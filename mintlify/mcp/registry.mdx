@@ -1,40 +1,47 @@
 ---
-title: "Atlas in the MCP Registry"
-description: "Find Atlas in the MCP Registry, understand its namespace, and connect from a registry-aware client."
+title: "MCP Registry status"
+description: "Prepared registry metadata, namespace, and publication status for Atlas MCP."
 ---
 
-import McpServerUrl from '/snippets/mcp-server-url.mdx';
+import McpServerUrl from "/snippets/mcp-server-url.mdx";
 
-Atlas plans to publish to the [MCP Registry](https://registry.modelcontextprotocol.io) so registry-aware clients can find and connect to the server without operators wiring up the URL by hand.
+The MCP Registry is a public metadata catalog for MCP servers. Atlas has prepared the metadata for registry-aware discovery, but the listing has not been published.
 
 <Note>
-  Atlas is **not currently listed** in the MCP Registry. The earlier `1.0.0` listing was unpublished pending stabilization of the read/write tool surface; the next publish will start from `0.1.0`. The connection URL below remains live in the meantime.
+  Atlas is not active in the official MCP Registry yet. The prepared manifest is
+  ready for review, but it has not been submitted or published.
 </Note>
 
-## Listing details (planned)
+## Prepared metadata
 
-| Field | Value |
-|-------|-------|
-| Namespace | `org.rebuildingus.atlas/atlas` |
-| Server URL | <McpServerUrl /> |
-| Transport | `streamable-http` |
-| Version | `0.1.0` |
-| Authorization | OAuth through compliant MCP clients |
+| Field         | Value                                        |
+| ------------- | -------------------------------------------- |
+| Namespace     | `org.rebuildingus.atlas/atlas`               |
+| Title         | `Atlas`                                      |
+| Website       | `https://atlas.rebuildingus.org`             |
+| Repository    | `https://github.com/RebuildingAmerica/atlas` |
+| Repository ID | `1206079057`                                 |
+| Server URL    | <McpServerUrl />                             |
+| Transport     | `streamable-http`                            |
+| Version       | `0.1.0`                                      |
+| Authorization | OAuth through compliant MCP clients          |
 
-The namespace follows the [MCP Registry naming rules](https://modelcontextprotocol.io/registry/namespaces): reverse-DNS, scoped to a domain Atlas controls. Ownership of `rebuildingus.org` grants the entire `org.rebuildingus.*` prefix; the trailing `atlas` segment scopes this manifest within that prefix.
+The prepared manifest lives in `mcp/server.json`. It includes the public Streamable HTTP remote, homepage, source repository metadata, and deployed PNG icons. It intentionally does not include manual authorization headers because Atlas relies on OAuth discovery and authorization challenges for compliant clients.
 
-## How clients will discover Atlas
+## Current status
 
-Once relisted, registry-aware clients can:
+| Check                     | Status                                        |
+| ------------------------- | --------------------------------------------- |
+| Official registry listing | Not published                                 |
+| Prepared `server.json`    | Ready in the repository                       |
+| Remote endpoint           | Public Atlas production URL                   |
+| Registry namespace        | Prepared under `org.rebuildingus.atlas/atlas` |
+| Publication approval      | Pending maintainer approval                   |
 
-1. **Search by name or namespace.** A user types "Atlas" or `org.rebuildingus.atlas/atlas` into a registry-aware UI.
-2. **Select the Atlas server.** The client receives the Atlas MCP server URL and the metadata it needs to connect.
-3. **Authorize access.** The client opens Atlas sign-in and consent, then stores its own connection state.
+Once the listing is published and verified, registry-aware clients and downstream catalogs can discover Atlas by name or namespace. Until then, compliant clients connect directly to the server URL.
 
-The manual fallback works today regardless of registry state — point any MCP client directly at the URL:
+## Related
 
-```
-claude mcp add atlas https://atlas.rebuildingus.org/mcp
-```
-
-For client-by-client setup walkthroughs, see the [MCP overview](/mcp/overview).
+- [MCP overview](/mcp/overview)
+- [Available tools](/mcp/tools)
+- [Scopes and permissions](/mcp/scopes)

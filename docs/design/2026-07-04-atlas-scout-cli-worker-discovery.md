@@ -1,8 +1,6 @@
 # Atlas Scout CLI Auth And Discovery Spec
 
-**Date:** 2026-07-04
-**Status:** Draft
-**Owner:** Rebuilding America Project
+**Date:** 2026-07-04 **Status:** Draft **Owner:** Rebuilding America Project
 
 ## Purpose
 
@@ -63,8 +61,8 @@ scout sync
 `scout setup` is the onboarding command. It signs the user in when needed, then
 handles local model provider setup before model selection. Provider setup is a
 separate stage from model configuration: Scout detects Ollama and LM Studio
-CLIs, shows provider choices when more than one path exists, offers to install
-a missing provider only after explicit confirmation, and starts the selected
+CLIs, shows provider choices when more than one path exists, offers to install a
+missing provider only after explicit confirmation, and starts the selected
 installed provider before listing models. LM Studio is listed first when it is
 available because it gives new users a more familiar desktop model-management
 experience. In a real terminal, provider and model selection use arrow-key
@@ -107,18 +105,26 @@ profile. Ollama and LM Studio endpoints are stored separately, so changing one
 provider does not overwrite the other. The legacy `base_url` field is still read
 for older profiles, but new writes use `ollama_base_url` and
 `lmstudio_base_url`. `scout config llm` is not a compatibility alias; the public
-command uses model language.
-Scout never silently installs model software, runs `sudo`, or stores LM Studio
-API tokens in setup or configuration flows. Setup may start the selected
-installed local provider because that is part of getting this computer ready to
-run discovery.
+command uses model language. Scout never silently installs model software, runs
+`sudo`, or stores LM Studio API tokens in setup or configuration flows. Setup
+may start the selected installed local provider because that is part of getting
+this computer ready to run discovery.
+
+### Discovery Fetching
+
+Scout fetches ordinary HTML first, then uses bounded browser rendering only when
+a failed page looks like a high-value public source or a JavaScript-heavy app
+shell. This keeps local news and civic pages discoverable without spending
+Chromium CPU on every URL. The operator behavior, tuning knobs, cache metadata,
+and failure modes are documented in
+[`docs/runbooks/scout-browser-rendering.md`](../runbooks/scout-browser-rendering.md).
 
 ### Install And Update
 
-Repo setup and Scout product setup are separate. `pnpm setup` prepares the
-Atlas checkout for local development; it must not sign a user into Atlas,
-configure a local model, or mutate Scout product state. Scout product onboarding
-starts at `scout setup` or `scout-dev setup`.
+Repo setup and Scout product setup are separate. `pnpm setup` prepares the Atlas
+checkout for local development; it must not sign a user into Atlas, configure a
+local model, or mutate Scout product state. Scout product onboarding starts at
+`scout setup` or `scout-dev setup`.
 
 During local development, install the current checkout as the `scout` command
 with editable local libraries:
@@ -129,12 +135,12 @@ uv tool install --reinstall --editable ./scout \
   --with-editable ./libs/discovery-engine
 ```
 
-Verify the packaged command path in an isolated environment before release.
-The release check should install `libs/shared`, `libs/discovery-engine`, and
-`scout` into a temporary virtualenv or Homebrew formula test, then run
-`scout --help`, `scout doctor --json`, and the focused CLI tests for search,
-sync, and worker startup. This keeps install verification aligned with the
-real packaging target instead of maintaining a separate repo-local smoke script.
+Verify the packaged command path in an isolated environment before release. The
+release check should install `libs/shared`, `libs/discovery-engine`, and `scout`
+into a temporary virtualenv or Homebrew formula test, then run `scout --help`,
+`scout doctor --json`, and the focused CLI tests for search, sync, and worker
+startup. This keeps install verification aligned with the real packaging target
+instead of maintaining a separate repo-local smoke script.
 
 Scout includes shell completion generation and standard man page generation as
 package capabilities, not as a top-level product command. Normal users should
@@ -174,14 +180,12 @@ Local development must go through `scout-dev` or an explicit `--atlas-url`.
 `scout-dev` forwards to the installed `scout` command and injects
 `--atlas-url https://atlas.localhost` for the Scout commands that support it:
 `setup`, `login`, `worker start`, `worker run-internal`, `sync`, and
-`runs sync`.
-For Portless HTTPS aliases, it also exports `SSL_CERT_FILE` to
+`runs sync`. For Portless HTTPS aliases, it also exports `SSL_CERT_FILE` to
 `~/.portless/ca.pem` when that file exists and no `SSL_CERT_FILE` override is
 already set. Use `PORTLESS_CA_FILE` when the Portless CA lives somewhere else.
 For shell integration, `scout-dev` sets `ATLAS_SCOUT_COMMAND_NAME=scout-dev` and
 maps `_SCOUT_DEV_COMPLETE` to the wrapped `scout` entry point, so completion
-scripts and generated man pages target the command the developer actually
-types.
+scripts and generated man pages target the command the developer actually types.
 Explicit `--atlas-url` still wins. Acceptance tests or alternate local stacks
 can bake a different default into the wrapper:
 
@@ -253,8 +257,8 @@ The browser approval page follows the RFC 8628 user-interaction shape:
 - Code input is normalized for user mistakes: lowercase, spaces, dashes, and
   other punctuation do not invalidate an otherwise correct code.
 
-Scout polling handles `authorization_pending`, `slow_down`, `access_denied`,
-and `expired_token`. Transient auth transport failures back off before retrying
+Scout polling handles `authorization_pending`, `slow_down`, `access_denied`, and
+`expired_token`. Transient auth transport failures back off before retrying
 instead of dumping raw HTTP or HTML content into the terminal. Unsupported
 optional RFC 8628 alternatives, including Bluetooth, NFC, audio code
 transmission, and companion-app handoff, are intentionally out of scope for the
@@ -281,22 +285,22 @@ start workers, write config, or mutate Atlas state. It groups checks for
 credential storage, Atlas account, Atlas reachability, configured model, search
 key, local data path, and sync readiness. The default capability summary is
 Scout-initiated: direct URL runs, search discovery, and Atlas sync. Missing
-missing search connections are warnings, not failures, because direct URL discovery still
-works.
+missing search connections are warnings, not failures, because direct URL
+discovery still works.
 
 `scout doctor --worker` adds passive worker readiness: local worker state,
 local-provider requirement, seeded worker jobs, and search worker jobs. This
 keeps worker mode available without making it the onboarding front door.
 
-`scout doctor --json` emits stable machine-readable check and capability
-results for tests and automation. Doctor output must never include secrets, raw
-HTTP bodies, exception reprs, HTML error pages, or full credential values.
+`scout doctor --json` emits stable machine-readable check and capability results
+for tests and automation. Doctor output must never include secrets, raw HTTP
+bodies, exception reprs, HTML error pages, or full credential values.
 
 ### Local Model Setup
 
-Scout supports Ollama and LM Studio as first-class local model providers.
-Ollama uses the native `/api/chat` and `/api/tags` endpoints. LM Studio uses
-the OpenAI-compatible `/v1/chat/completions` and `/v1/models` endpoints.
+Scout supports Ollama and LM Studio as first-class local model providers. Ollama
+uses the native `/api/chat` and `/api/tags` endpoints. LM Studio uses the
+OpenAI-compatible `/v1/chat/completions` and `/v1/models` endpoints.
 
 Normal discovery commands resolve local model settings before work starts:
 
@@ -369,8 +373,8 @@ scout worker stop
 `scout worker start` resolves local model settings before launch, registers
 current capabilities, heartbeats while running, claims compatible jobs, executes
 them with the local Scout pipeline, and returns canonical discovery artifacts.
-`scout worker status` reads a local state file with PID, mode, Atlas URL,
-search connection readiness, current job id, last completed job id, heartbeat, and last
+`scout worker status` reads a local state file with PID, mode, Atlas URL, search
+connection readiness, current job id, last completed job id, heartbeat, and last
 error. In public worker mode it should refuse non-local model providers before
 the public launch gate. `--search-api-key` remains an automation override for
 headless environments, not the primary user path.
@@ -461,7 +465,8 @@ Implemented worker operations:
 
 - `POST /api/discovery-runs/jobs/claim` claims the oldest queued job with a
   lease and returns the run target context. Scout sends search capability so
-  workers without search connected do not receive normal exploratory discovery jobs.
+  workers without search connected do not receive normal exploratory discovery
+  jobs.
 - `POST /api/discovery-runs/jobs/{job_id}/heartbeat` renews the current worker's
   lease and stores progress.
 - `POST /api/discovery-runs/jobs/{job_id}/complete` marks the current worker's
@@ -492,8 +497,8 @@ Job compatibility is based on capability metadata:
 - Supported job modes: full discovery, seeded/direct-URL discovery, artifact
   upload, and evidence packet extraction.
 
-Workers without search connected must not receive exploratory query-generation jobs.
-They can process jobs where Atlas already has source URLs or seed pages.
+Workers without search connected must not receive exploratory query-generation
+jobs. They can process jobs where Atlas already has source URLs or seed pages.
 
 ## Upload Destination Semantics
 
@@ -578,9 +583,10 @@ make it easier to publish unsupported claims about real people.
 - A logged-in user can run `scout sync`, `scout sync latest`, or
   `scout sync --all-ready` and receive remote run and entry visibility receipts.
 - A synced run URL opens the workspace discovery page with the run highlighted.
-- A logged-in worker with a local model and no search connection can claim seeded jobs.
-- A logged-in worker with a local model and search connected can claim full discovery
-  jobs.
+- A logged-in worker with a local model and no search connection can claim
+  seeded jobs.
+- A logged-in worker with a local model and search connected can claim full
+  discovery jobs.
 - Public uploads create review-gated artifacts and do not publish records.
 - Workspace uploads create private workspace resources.
 - `scout logout` removes local credentials without calling a non-standard

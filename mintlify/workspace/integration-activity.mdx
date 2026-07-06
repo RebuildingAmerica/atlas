@@ -1,15 +1,15 @@
 ---
-title: "Integration monitoring"
-description: "What workspace admins can see about API and MCP adoption, and what Atlas keeps private."
+title: "Workspace integration activity"
+description: "What workspace admins can see about REST API and MCP adoption, and what Atlas keeps private."
 ---
 
 ## Overview
 
-Integration monitoring answers a simple admin question: **is this workspace using
-Atlas through connected tools?**
+Workspace integration activity answers a simple admin question: **is this
+workspace using Atlas through external access paths?**
 
-It is for workspace owners, administrators, and customer-success teams who need
-to understand adoption of REST API and MCP access. It is not a developer trace,
+It is for workspace owners, administrators, and customer-success teams who need to
+understand adoption of REST API and MCP access. It is not a developer trace,
 prompt log, security audit stream, or surveillance surface.
 
 Use it to answer:
@@ -51,13 +51,13 @@ the content of civic research or private workspace activity.
 
 Atlas counts successful integration calls only.
 
-| Surface | What counts |
-| --- | --- |
-| REST API | Successful external API calls authorized for the workspace |
-| MCP | Successful MCP transport requests after Atlas verifies account, workspace, permission, and package access |
+| Surface  | What counts                                                                                               |
+| -------- | --------------------------------------------------------------------------------------------------------- |
+| REST API | Successful external API calls authorized for the workspace                                                |
+| MCP      | Successful MCP transport requests after Atlas verifies account, workspace, permission, and package access |
 
 Failed authorization attempts, rejected requests, browser page views, and normal
-public browsing do not count as integration usage.
+public browsing do not count as API or MCP activity.
 
 ## Last seen and top resources
 
@@ -74,27 +74,16 @@ Admins need access to the workspace to view its integration summary.
 Free accounts can browse public Atlas data, but MCP and higher-volume API
 workflows require a paid package. See [Plans & pricing](/account/pricing).
 
-## API endpoint
+## API reference
 
-The workspace integration summary is available through:
+The same workspace activity summary is available through:
 
 ```http
 GET /api/orgs/{org_id}/usage-summary/integrations
 ```
 
-Use this endpoint when you need the same adoption summary outside the Atlas UI.
-Use the generated OpenAPI reference for the exact response schema.
-
-The response includes:
-
-| Field | Meaning |
-| --- | --- |
-| `total_calls` | Successful REST API plus MCP integration calls |
-| `api_calls` | Successful REST API calls |
-| `mcp_calls` | Successful MCP transport requests |
-| `last_seen_at` | Latest successful integration event timestamp |
-| `top_resources` | Top routes or MCP resources by count |
-| `data_boundary` | Privacy boundary for the response |
+Use the [generated OpenAPI reference](/api/reference) for response fields and
+authentication details.
 
 ## Related
 

@@ -1,8 +1,6 @@
 # Atlas Experience-First PRD Suite
 
-Status: Draft
-Date: 2026-07-03
-Owner: Rebuilding America Project
+Status: Draft Date: 2026-07-05 Owner: Rebuilding America Project
 
 ## Purpose
 
@@ -16,10 +14,10 @@ The governing rule is simple:
 > No feature ships unless it makes Atlas easier to use, easier to trust, or
 > easier to act on.
 
-Revenue, workspace, API, research operations, and client-publishing features
-are valid only when they fund, improve, or protect the public civic discovery
-experience. Rebuilding America is a flagship client and reference
-implementation using Atlas primitives, not the exclusive home of the product.
+Revenue, workspace, API, research operations, and client-publishing features are
+valid only when they fund, improve, or protect the public civic discovery
+experience. Rebuilding America is a flagship client and reference implementation
+using Atlas primitives, not the exclusive home of the product.
 
 ## Product Contract
 
@@ -38,22 +36,23 @@ Every PRD in this suite answers four questions:
 
 ## PRDs
 
-| PRD | Primary outcome |
-| --- | --- |
-| [Experience Architecture](./00-experience-architecture-prd.md) | Public-first information architecture and UI guardrails. |
-| [Public Civic Discovery](./01-public-civic-discovery-prd.md) | Search and browse that normal people can use. |
-| [Profile And Evidence](./02-profile-and-evidence-prd.md) | Source-linked profiles that feel trustworthy. |
-| [Profile Claiming And Stewardship](./03-profile-claiming-and-stewardship-prd.md) | People and organizations can claim and improve profiles. |
-| [Find My People / Alignment](./04-find-my-people-alignment-prd.md) | Users find aligned civic actors by public work, not profiling. |
-| [Place, Issue, And Map Explorer](./05-place-issue-map-explorer-prd.md) | Place and issue exploration that works as map and list. |
-| [Client Story Experiences And Atlas Collections](./06-client-story-experiences-and-atlas-collections-prd.md) | Reusable source-linked story, guide, and client experiences. |
-| [ATProto Federated Web](./07-atproto-federated-web-prd.md) | Federated identity, profile claims, provenance, and contribution paths. |
-| [Public Directories / Atlas For X](./08-public-directories-atlas-for-x-prd.md) | Partner directories without weakening Atlas trust standards. |
-| [Research Runs To Briefing Room](./09-research-runs-briefing-room-prd.md) | Research outputs become useful, source-linked artifacts. |
-| [Follow, Watch, And Personal Civic Home](./10-follow-watch-personal-civic-home-prd.md) | Lightweight civic awareness without surveillance dynamics. |
-| [Workspace For Teams](./11-workspace-for-teams-prd.md) | Quiet team utility that does not overtake public discovery. |
-| [Governance, Corrections, And Safety](./12-governance-corrections-safety-prd.md) | Correction, dispute, moderation, and misuse boundaries. |
-| [Developer, API, MCP, And Open Data](./13-developer-api-mcp-open-data-prd.md) | Reuse outside the app while preserving provenance and safety. |
+| PRD                                                                                                          | Primary outcome                                                         |
+| ------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------- |
+| [Experience Architecture](./00-experience-architecture-prd.md)                                               | Public-first information architecture and UI guardrails.                |
+| [Public Civic Discovery](./01-public-civic-discovery-prd.md)                                                 | Search and browse that normal people can use.                           |
+| [Profile And Evidence](./02-profile-and-evidence-prd.md)                                                     | Source-linked profiles that feel trustworthy.                           |
+| [Profile Claiming And Stewardship](./03-profile-claiming-and-stewardship-prd.md)                             | People and organizations can claim and improve profiles.                |
+| [Find My People / Alignment](./04-find-my-people-alignment-prd.md)                                           | Users find aligned civic actors by public work, not profiling.          |
+| [Place, Issue, And Map Explorer](./05-place-issue-map-explorer-prd.md)                                       | Place and issue exploration that works as map and list.                 |
+| [Client Story Experiences And Atlas Collections](./06-client-story-experiences-and-atlas-collections-prd.md) | Reusable source-linked story, guide, and client experiences.            |
+| [ATProto Federated Web](./07-atproto-federated-web-prd.md)                                                   | Federated identity, profile claims, provenance, and contribution paths. |
+| [Public Directories / Atlas For X](./08-public-directories-atlas-for-x-prd.md)                               | Partner directories without weakening Atlas trust standards.            |
+| [Research Runs To Briefing Room](./09-research-runs-briefing-room-prd.md)                                    | Research outputs become useful, source-linked artifacts.                |
+| [Follow, Watch, And Personal Civic Home](./10-follow-watch-personal-civic-home-prd.md)                       | Lightweight civic awareness without surveillance dynamics.              |
+| [Workspace For Teams](./11-workspace-for-teams-prd.md)                                                       | Quiet team utility that does not overtake public discovery.             |
+| [Governance, Corrections, And Safety](./12-governance-corrections-safety-prd.md)                             | Correction, dispute, moderation, and misuse boundaries.                 |
+| [Developer, API, MCP, And Open Data](./13-developer-api-mcp-open-data-prd.md)                                | Reuse outside the app while preserving provenance and safety.           |
+| [Firehose Civic Intelligence](./14-firehose-civic-intelligence-prd.md)                                       | Source-backed public civic signals without private-person tracking.     |
 
 ## Shared Product Language
 
@@ -61,6 +60,12 @@ Every PRD in this suite answers four questions:
   entity represented in Atlas.
 - **Claim:** A factual statement about an actor, place, issue, source, or
   relationship.
+- **Civic signal:** A source-backed observation that something in the public
+  civic field happened, changed, appeared, disappeared, gained evidence, lost
+  freshness, or became worth review.
+- **Coverage target:** A governed place, issue, actor cluster, public role,
+  source class, workspace scope, directory, or public-interest seed that tells
+  Firehose what to watch.
 - **Evidence:** A public source or reviewed record supporting a claim.
 - **Trust summary:** A compact user-facing explanation of evidence count,
   confidence, freshness, review state, and known gaps.
@@ -68,9 +73,8 @@ Every PRD in this suite answers four questions:
   subject-provided profile fields.
 - **Alignment lens:** A search or recommendation lens based on shared public
   work, issue area, place, organization type, or source-backed relationship.
-- **Collection:** A curated source-linked civic story, guide, episode
-  companion, map, source trail, or briefing assembled from canonical Atlas
-  objects.
+- **Collection:** A curated source-linked civic story, guide, episode companion,
+  map, source trail, or briefing assembled from canonical Atlas objects.
 - **Client experience:** A branded or stewarded use of Atlas Collections by a
   show, publisher, nonprofit, newsroom, civic educator, or partner.
 - **Workspace:** A private layer for saved lists, briefs, notes, coverage
@@ -90,6 +94,10 @@ Every PRD in this suite answers four questions:
 - Error states name what failed in user language.
 - Alignment and monitoring features must never infer private ideology,
   personality, vulnerability, or susceptibility.
+- Firehose-derived signals must keep source, public realm basis, confidence,
+  review state, and visibility scope attached wherever they appear.
+- Person-centered monitoring must stay anchored to public-role or civic context,
+  with high-risk signals routed to review.
 - Client story experiences must link back to reusable Atlas profiles, places,
   issues, sources, directories, and search.
 - Workspace and business features must not add clutter to public routes.
@@ -113,3 +121,4 @@ Every PRD in this suite answers four questions:
 - [Atlas Roadmap](../../roadmap.md)
 - [The Atlas Product](../../the-atlas-product.md)
 - [UI/UX Architecture](../ui-ux-architecture.md)
+- [Firehose Architecture Overview](../../design/firehose/README.md)

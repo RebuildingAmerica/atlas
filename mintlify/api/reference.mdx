@@ -1,0 +1,97 @@
+---
+title: "REST API reference"
+description: "Search Atlas REST endpoints, schemas, and request examples."
+mode: "wide"
+---
+
+<div data-atlas-scalar-reference data-openapi-url="/openapi.json"></div>
+
+<section
+  data-atlas-api-static-fallback
+  className="atlas-api-fallback border-primary/30 bg-background-dark flex min-h-screen items-center rounded-xl border p-6 text-gray-100 sm:p-10 lg:p-16"
+  aria-labelledby="atlas-api-fallback-title"
+>
+  <div className="mx-auto flex w-full max-w-5xl flex-wrap items-end gap-10 lg:gap-16">
+    <div className="min-w-72 flex-1">
+      <p className="text-primary-light mb-3 text-xs font-bold tracking-widest uppercase">
+        {"Atlas REST API"}
+      </p>
+      <h1
+        id="atlas-api-fallback-title"
+        className="max-w-xs text-5xl leading-none font-semibold tracking-normal text-white sm:text-6xl lg:text-7xl"
+      >
+        {"API reference"}
+      </h1>
+      <div className="mt-6 max-w-2xl text-base leading-7 text-gray-300 sm:text-lg">
+        {
+          "Endpoint schemas, authentication requirements, and request examples are available through the OpenAPI contract and the core API guides."
+        }
+      </div>
+      <div
+        aria-label="API reference alternatives"
+        className="mt-8 flex flex-wrap gap-3"
+      >
+        <a
+          href="https://atlas.rebuildingus.org/openapi.json"
+          className="border-primary-light bg-primary-light text-background-dark inline-flex min-h-11 items-center rounded-lg border px-4 text-sm font-bold no-underline"
+        >
+          {"Open OpenAPI JSON"}
+        </a>
+        <a
+          href="/api"
+          className="inline-flex min-h-11 items-center rounded-lg border border-white/20 bg-white/5 px-4 text-sm font-bold text-white no-underline"
+        >
+          {"Read API guide"}
+        </a>
+        <a
+          href="/api/quickstart"
+          className="inline-flex min-h-11 items-center rounded-lg border border-white/20 bg-white/5 px-4 text-sm font-bold text-white no-underline"
+        >
+          {"Start quickstart"}
+        </a>
+      </div>
+    </div>
+    <div
+      role="complementary"
+      aria-label="Reference formats"
+      className="min-w-72 flex-1 border-t border-white/20 pt-6 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-8"
+    >
+      <p className="text-primary-light mb-4 text-xs font-bold tracking-widest uppercase">
+        {"Reference formats"}
+      </p>
+      <ul className="grid list-none gap-4 p-0 text-sm leading-6 text-gray-300">
+        <li>
+          <span className="mb-1 block font-bold text-white">
+            {"Endpoint contract"}
+          </span>
+          {
+            "Machine-readable OpenAPI JSON for generated clients and exact schemas."
+          }
+        </li>
+        <li>
+          <span className="mb-1 block font-bold text-white">
+            {"Conceptual guides"}
+          </span>
+          {
+            "Human-readable API model, authentication, limits, and workflow guides."
+          }
+        </li>
+        <li>
+          <span className="mb-1 block font-bold text-white">
+            {"First request"}
+          </span>
+          {"A short place-first tutorial with curl and TypeScript examples."}
+        </li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+## Reference links
+
+Open the contract directly, or use the API guide and quickstart when the
+interactive endpoint browser is unavailable.
+
+- [Open OpenAPI JSON](https://atlas.rebuildingus.org/openapi.json)
+- [Read the API guide](/api)
+- [Start the quickstart](/api/quickstart)

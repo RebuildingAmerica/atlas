@@ -34,35 +34,39 @@
     },
     {
       "source": "/mcp/claude-desktop",
-      "destination": "/mcp/overview#claude-desktop"
+      "destination": "/mcp/overview"
     },
     {
       "source": "/mcp/claude-code",
-      "destination": "/mcp/overview#claude-code"
+      "destination": "/mcp/overview"
     },
     {
       "source": "/mcp/vscode-copilot",
-      "destination": "/mcp/overview#vscode-copilot"
+      "destination": "/mcp/overview"
     },
     {
       "source": "/mcp/gemini",
-      "destination": "/mcp/overview#gemini"
+      "destination": "/mcp/overview"
     },
     {
       "source": "/mcp/codex",
-      "destination": "/mcp/overview#codex"
+      "destination": "/mcp/overview"
     },
     {
       "source": "/mcp/copilot-cli",
-      "destination": "/mcp/overview#copilot-cli"
+      "destination": "/mcp/overview"
     },
     {
       "source": "/mcp/other-clients",
-      "destination": "/mcp/overview#other-clients"
+      "destination": "/mcp/overview"
     },
     {
-      "source": "/mcp/client-id-metadata",
-      "destination": "/mcp/overview"
+      "source": "/mcp/integration-monitoring",
+      "destination": "/workspace/integration-activity"
+    },
+    {
+      "source": "/api/overview",
+      "destination": "/api"
     }
   ],
   "navigation": {
@@ -72,10 +76,7 @@
         "groups": [
           {
             "group": "Introduction",
-            "pages": [
-              "what-is-atlas",
-              "quickstart-learn"
-            ]
+            "pages": ["what-is-atlas", "quickstart-learn"]
           },
           {
             "group": "Public discovery",
@@ -103,10 +104,7 @@
         "groups": [
           {
             "group": "Workspaces",
-            "pages": [
-              "workspace/customer-workflow",
-              "account/pricing"
-            ]
+            "pages": ["workspace/customer-workflow", "account/pricing"]
           },
           {
             "group": "Research patterns",
@@ -126,8 +124,8 @@
             "group": "API",
             "pages": [
               "api",
-              "api/overview",
               "api/quickstart",
+              "api/reference",
               "api/guides/entities",
               "api/guides/places",
               "api/guides/discovery",
@@ -159,9 +157,12 @@
               "mcp/registry",
               "mcp/tools",
               "mcp/scopes",
-              "mcp/integration-monitoring",
               "mcp/troubleshooting"
             ]
+          },
+          {
+            "group": "Workspace access",
+            "pages": ["workspace/integration-activity"]
           },
           {
             "group": "Tutorials",
@@ -195,10 +196,7 @@
           },
           {
             "group": "Project",
-            "pages": [
-              "resources/changelog",
-              "resources/open-source"
-            ]
+            "pages": ["resources/changelog", "resources/open-source"]
           }
         ]
       }
@@ -212,7 +210,7 @@
         },
         {
           "anchor": "API reference",
-          "href": "/api",
+          "href": "/api/reference",
           "icon": "code"
         }
       ]
