@@ -9,6 +9,7 @@ import pytest
 from atlas.platform.mcp import widgets
 from atlas.platform.mcp.server import build_mcp
 from atlas.platform.mcp.widgets import (
+    CONNECTIONS_GRAPH_RESOURCE_URI,
     ENTITY_CARD_RESOURCE_URI,
     MCP_APP_RESOURCE_MIME_TYPE,
     SEARCH_RESULTS_RESOURCE_URI,
@@ -221,6 +222,7 @@ class TestInstallWidgetExtension:
         asset_dir.mkdir()
         (asset_dir / "entity-card.html").write_text("<html>entity card widget</html>")
         (asset_dir / "search-results.html").write_text("<html>search results widget</html>")
+        (asset_dir / "connections-graph.html").write_text("<html>connections widget</html>")
         monkeypatch.setattr(widgets, "resolve_widget_asset_dir", lambda name: asset_dir)  # noqa: ARG005
         widgets._widget_html_cache.clear()  # noqa: SLF001
 
@@ -228,6 +230,7 @@ class TestInstallWidgetExtension:
 
         entity_card_contents = list(await mcp.read_resource(ENTITY_CARD_RESOURCE_URI))
         search_results_contents = list(await mcp.read_resource(SEARCH_RESULTS_RESOURCE_URI))
+        connections_graph_contents = list(await mcp.read_resource(CONNECTIONS_GRAPH_RESOURCE_URI))
 
         assert len(entity_card_contents) == 1
         assert entity_card_contents[0].content == "<html>entity card widget</html>"
@@ -236,6 +239,10 @@ class TestInstallWidgetExtension:
         assert len(search_results_contents) == 1
         assert search_results_contents[0].content == "<html>search results widget</html>"
         assert search_results_contents[0].mime_type == MCP_APP_RESOURCE_MIME_TYPE
+
+        assert len(connections_graph_contents) == 1
+        assert connections_graph_contents[0].content == "<html>connections widget</html>"
+        assert connections_graph_contents[0].mime_type == MCP_APP_RESOURCE_MIME_TYPE
 
     @pytest.mark.asyncio
     async def test_install_widget_extension_is_idempotent_on_a_fresh_server(self) -> None:

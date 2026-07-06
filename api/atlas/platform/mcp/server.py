@@ -19,6 +19,7 @@ from .logging_support import install_logging_extension
 from .prompts import install_prompts
 from .tasks import DraftTasksJsonRpcMiddleware, install_tasks_extension
 from .widgets import (
+    CONNECTIONS_GRAPH_RESOURCE_URI,
     ENTITY_CARD_RESOURCE_URI,
     SEARCH_RESULTS_RESOURCE_URI,
     install_widget_extension,
@@ -171,7 +172,8 @@ def build_mcp() -> FastMCP:
     `install_logging_extension` adds `logging/setLevel` and lets every custom
     handler emit structured `notifications/message` log events;
     `install_widget_extension` registers the MCP Apps UI resources that
-    `get_entity`'s and `search_entities`'s `_meta` point a compliant host at.
+    `get_entity`'s, `search_entities`'s, and `get_related_entities`'s `_meta`
+    point a compliant host at.
     """
     settings = get_settings()
     mcp = FastMCP(
@@ -311,7 +313,7 @@ def build_mcp() -> FastMCP:
             top_entities_per_issue=top_entities_per_issue,
         )
 
-    @mcp.tool()
+    @mcp.tool(meta={"ui": {"resourceUri": CONNECTIONS_GRAPH_RESOURCE_URI}})
     async def get_related_entities(
         entity_id: str,
         relation_types: list[str] | None = None,

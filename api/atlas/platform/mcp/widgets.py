@@ -28,6 +28,7 @@ if TYPE_CHECKING:
     from mcp.server.fastmcp import FastMCP
 
 __all__ = [
+    "CONNECTIONS_GRAPH_RESOURCE_URI",
     "ENTITY_CARD_RESOURCE_URI",
     "MCP_APP_RESOURCE_MIME_TYPE",
     "SEARCH_RESULTS_RESOURCE_URI",
@@ -50,15 +51,15 @@ ENTITY_CARD_RESOURCE_URI = "ui://atlas/entity-card"
 SEARCH_RESULTS_RESOURCE_URI = "ui://atlas/search-results"
 """The paginated search-results list widget's resource URI. Wired to `search_entities`."""
 
+CONNECTIONS_GRAPH_RESOURCE_URI = "ui://atlas/connections-graph"
+"""The related-entities list widget's resource URI. Wired to `get_related_entities`."""
+
 WIDGET_RESOURCES: dict[str, str] = {
     "entity-card": ENTITY_CARD_RESOURCE_URI,
     "search-results": SEARCH_RESULTS_RESOURCE_URI,
+    "connections-graph": CONNECTIONS_GRAPH_RESOURCE_URI,
 }
-"""Every widget this server serves: built-bundle name -> MCP resource URI.
-
-The connections-graph widget (wired to `get_related_entities`) is a
-separate, later task; adding it means adding one more entry here.
-"""
+"""Every widget this server serves: built-bundle name -> MCP resource URI."""
 
 _CO_LOCATED_ASSET_DIR = Path(__file__).parent / "_widget_assets"
 """Populated by a production Docker build stage (a later task), not by us."""

@@ -24,7 +24,11 @@ from atlas.platform.mcp.server import (
     mcp_session_lifespan,
     split_cors_origins,
 )
-from atlas.platform.mcp.widgets import ENTITY_CARD_RESOURCE_URI, SEARCH_RESULTS_RESOURCE_URI
+from atlas.platform.mcp.widgets import (
+    CONNECTIONS_GRAPH_RESOURCE_URI,
+    ENTITY_CARD_RESOURCE_URI,
+    SEARCH_RESULTS_RESOURCE_URI,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -163,12 +167,26 @@ async def test_search_entities_tool_has_widget_meta() -> None:
 
 
 @pytest.mark.asyncio
-async def test_only_get_entity_and_search_entities_tools_have_widget_meta() -> None:
+async def test_get_related_entities_tool_has_widget_meta() -> None:
+    """get_related_entities should associate the MCP Apps connections-graph widget via _meta."""
+    mcp = build_mcp()
+    tools = await mcp.list_tools()
+    tool = next(tool for tool in tools if tool.name == "get_related_entities")
+    assert tool.meta == {"ui": {"resourceUri": CONNECTIONS_GRAPH_RESOURCE_URI}}
+
+
+@pytest.mark.asyncio
+async def test_only_three_widget_tools_have_widget_meta() -> None:
     """No other tool should have gained _meta as a side effect of this wiring."""
     mcp = build_mcp()
     tools = await mcp.list_tools()
-    widget_tool_names = {"get_entity", "search_entities"}
+    widget_tool_names = {"get_entity", "search_entities", "get_related_entities"}
+    widget_tools = [tool for tool in tools if tool.name in widget_tool_names]
     other_tools = [tool for tool in tools if tool.name not in widget_tool_names]
+
+    assert len(widget_tools) == len(widget_tool_names)
+    for tool in widget_tools:
+        assert tool.meta is not None
 
     assert other_tools  # sanity: there are other tools to check
     for tool in other_tools:
