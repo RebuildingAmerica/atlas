@@ -1,0 +1,83 @@
+name: Provenance
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment-name:
+        description: Environment secrets to use for the Artifact Registry image.
+        required: true
+        default: production
+        type: choice
+        options:
+          - production
+          - staging
+      image-tag:
+        description: Optional image tag to build and attest. Defaults to the selected commit SHA.
+        required: false
+        type: string
+      cache-scope:
+        description: Docker build cache scope.
+        required: false
+        default: atlas-api-provenance
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: provenance-${{ github.ref }}-${{ inputs.environment-name }}
+  cancel-in-progress: false
+
+jobs:
+  api-image:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment-name }}
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+      artifact-metadata: write
+      packages: write
+
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Resolve image tag
+        id: image-tag
+        shell: bash
+        env:
+          INPUT_IMAGE_TAG: ${{ inputs.image-tag }}
+        run: |
+          if [ -n "$INPUT_IMAGE_TAG" ]; then
+            echo "value=$INPUT_IMAGE_TAG" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=$GITHUB_SHA" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Authenticate to GCP
+        id: auth
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+          token_format: access_token
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+
+      - name: Log in to Artifact Registry
+        uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0
+        with:
+          registry: ${{ secrets.GCP_REGION }}-docker.pkg.dev
+          username: oauth2accesstoken
+          password: ${{ steps.auth.outputs.access_token }}
+
+      - name: Build, push, and attest atlas-api
+        uses: ./.github/actions/build-attest-push
+        with:
+          image: ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/atlas-images/atlas-api
+          tag: ${{ steps.image-tag.outputs.value }}
+          context: .
+          dockerfile: api/Dockerfile
+          cache-scope: ${{ inputs.cache-scope }}
