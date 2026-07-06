@@ -20,7 +20,10 @@ Use descriptive branch names with a prefix:
 - `chore/` — Maintenance, dependencies, tooling, tests, refactors, docs cleanup,
   and repo health work.
 
-Local Git hooks block other branch prefixes by default.
+Local Git hooks block other branch prefixes by default. This keeps branch intent
+obvious before review, makes automation and triage simpler, and reinforces that
+docs/process updates should travel with the underlying `feature/`, `fix/`, or
+`chore/` change instead of becoming after-the-fact cleanup.
 
 ## Documentation Belongs With The Change
 
