@@ -12,6 +12,7 @@ import atlas_scout.cli as cli_module
 from atlas_scout.auth import ScoutSession
 from atlas_scout.cli import main
 from atlas_scout.config import ScoutConfig
+from atlas_scout.credentials import CredentialStoreError
 from atlas_scout.local_models import LocalModelResolution
 
 if TYPE_CHECKING:
@@ -147,6 +148,61 @@ def test_worker_start_spawns_background_process(tmp_path: Path, monkeypatch) -> 
     assert result.exit_code == 0
     assert captured["interval"] == 5
     assert captured["search_api_key"] == "search-key"
+    assert "Worker started" in result.output
+
+
+def test_worker_start_treats_missing_search_storage_as_disconnected(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """worker start can run direct-URL jobs when optional search storage is unavailable."""
+    state_path = tmp_path / "worker.json"
+    captured: dict[str, object] = {}
+
+    class Process:
+        pid = 12345
+
+    def spawn(**kwargs: object) -> Process:
+        captured.update(kwargs)
+        return Process()
+
+    def unavailable_search_key(_key: str | None = None) -> str:
+        raise CredentialStoreError("No OS credential store is available.")
+
+    monkeypatch.setattr(cli_module, "WORKER_STATE_PATH", state_path)
+    monkeypatch.setattr(cli_module, "_spawn_worker_process", spawn)
+    monkeypatch.setattr(cli_module, "resolve_search_api_key", unavailable_search_key)
+    monkeypatch.setattr(
+        cli_module,
+        "resolve_local_model",
+        lambda *_args, **_kwargs: LocalModelResolution(
+            ready=True,
+            provider="ollama",
+            model="llama3.1:8b",
+            base_url="http://localhost:11434",
+            message="Using Ollama with llama3.1:8b.",
+        ),
+    )
+    monkeypatch.setattr(
+        cli_module,
+        "load_session",
+        lambda: ScoutSession(
+            atlas_url="https://atlas.example",
+            access_token="device-session-token",
+            worker_id="worker-123",
+            user_id="user-123",
+            user_email="user@example.org",
+            worker_name="Scout Laptop",
+            default_upload_target="public",
+            workspace_id=None,
+        ),
+    )
+
+    result = CliRunner().invoke(main, ["worker", "start", "--interval", "5"])
+
+    assert result.exit_code == 0
+    assert captured["search_api_key"] == ""
+    state = json.loads(state_path.read_text(encoding="utf-8"))
+    assert state["search_key_configured"] is False
     assert "Worker started" in result.output
 
 
