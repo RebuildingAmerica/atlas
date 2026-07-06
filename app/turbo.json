@@ -56,7 +56,7 @@
       "persistent": true
     },
     "build": {
-      "dependsOn": ["api-client"],
+      "dependsOn": ["api-client", "^build"],
       "env": [
         "ATLAS_AUTH_JWT_AUDIENCES",
         "ATLAS_AUTH_BASE_PATH",
@@ -87,11 +87,11 @@
       "outputs": []
     },
     "typecheck": {
-      "dependsOn": ["api-client"],
+      "dependsOn": ["api-client", "^build"],
       "outputs": []
     },
     "lint": {
-      "dependsOn": ["api-client"],
+      "dependsOn": ["api-client", "^build"],
       "outputs": []
     },
     "format:check": {
@@ -102,19 +102,19 @@
       "outputs": []
     },
     "test": {
-      "dependsOn": ["api-client"],
+      "dependsOn": ["api-client", "^build"],
       "outputs": []
     },
     "test:coverage": {
-      "dependsOn": ["api-client"],
+      "dependsOn": ["api-client", "^build"],
       "outputs": ["coverage/**"]
     },
     "test:unit": {
-      "dependsOn": ["api-client"],
+      "dependsOn": ["api-client", "^build"],
       "outputs": []
     },
     "test:integration": {
-      "dependsOn": ["api-client"],
+      "dependsOn": ["api-client", "^build"],
       "outputs": []
     },
     "test:e2e": {
