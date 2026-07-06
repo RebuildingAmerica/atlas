@@ -181,6 +181,36 @@ result set. Repeat `--run-id` to combine reviewed runs while leaving discarded
 or retry runs out of the sample. Add `--unique-names` when overlapping sources
 may mention the same person.
 
+## Export Entries
+
+Use `scout export entries` when you need a file instead of an interactive
+sample. JSONL is the default and works well for large handoffs:
+
+```bash
+scout export entries \
+  --run-id RUN_ID \
+  --type person \
+  --unique-names \
+  --limit 100000 \
+  --output people.jsonl
+```
+
+Export CSV when the next review step is a spreadsheet:
+
+```bash
+scout export entries \
+  --run-id RUN_ID \
+  --type person \
+  --unique-names \
+  --format csv \
+  --output people.csv
+```
+
+Exports include local entry ids, run ids, descriptions, issue areas, source
+URLs, source context, dataset markers, source keys, source dates, and local
+creation timestamps. Keep those fields attached when sharing or auditing the
+file.
+
 ## Verify Counts And Currentness
 
 Use `entries stats` for launch gates and audit checks:

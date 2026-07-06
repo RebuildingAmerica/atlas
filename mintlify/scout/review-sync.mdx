@@ -73,6 +73,34 @@ Do not sync a run as current people data only because the counts pass. Historica
 archives, old filings, and stale pages can be valid evidence while still being
 wrong for current outreach or sales workflows.
 
+## Export Reviewed Entries
+
+Export reviewed entries when the next step is audit, sharing, or offline review:
+
+```bash
+scout export entries \
+  --run-id RUN_ID \
+  --type person \
+  --unique-names \
+  --format jsonl \
+  --output people.jsonl
+```
+
+Use CSV for spreadsheet review:
+
+```bash
+scout export entries \
+  --run-id RUN_ID \
+  --type person \
+  --unique-names \
+  --format csv \
+  --output people.csv
+```
+
+The export keeps source URLs, source context, run ids, dataset markers, source
+keys, dates, and local timestamps with each row. Treat those fields as part of
+the evidence, not optional metadata.
+
 ## Sync A Reviewed Run
 
 Sync the latest ready run:
