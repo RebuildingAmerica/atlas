@@ -112,9 +112,10 @@ export async function runDatabasePhase(
         placeholder:
           "postgresql://user:password@ep-xxx.us-east-2.aws.neon.tech/atlas?sslmode=require",
         validate(value) {
+          const input = value ?? "";
           if (
-            !value.startsWith("postgres://") &&
-            !value.startsWith("postgresql://")
+            !input.startsWith("postgres://") &&
+            !input.startsWith("postgresql://")
           ) {
             return "Must start with postgresql:// or postgres://";
           }

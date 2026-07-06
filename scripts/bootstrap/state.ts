@@ -66,14 +66,14 @@ export function markCapability(
   update: Partial<CapabilityState>,
 ): void {
   const existing = state.capabilities[id];
+  const checkedAt = new Date().toISOString();
   state.capabilities[id] = {
     status: "ready",
     installStatus: "ready",
     authStatus: "not_required",
-    checkedAt: new Date().toISOString(),
     ...existing,
     ...update,
-    checkedAt: new Date().toISOString(),
+    checkedAt,
   };
 }
 

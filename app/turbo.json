@@ -19,7 +19,6 @@
         "ATLAS_EMAIL_PROVIDER",
         "ATLAS_EMAIL_RESEND_API_KEY",
         "ATLAS_DEV_API_PROXY_TARGET",
-        "ATLAS_API_DOCS_URL",
         "ATLAS_MAP_STYLE_URL",
         "ATLAS_PUBLIC_URL"
       ],
@@ -39,7 +38,6 @@
         "ATLAS_EMAIL_FROM",
         "ATLAS_EMAIL_PROVIDER",
         "ATLAS_EMAIL_RESEND_API_KEY",
-        "ATLAS_API_DOCS_URL",
         "ATLAS_MAP_STYLE_URL",
         "NODE_ENV",
         "ATLAS_PUBLIC_URL",
@@ -63,7 +61,6 @@
         "ATLAS_API_AUDIENCE",
         "ATLAS_AUTH_BASE_PATH",
         "ATLAS_DEPLOY_MODE",
-        "ATLAS_API_DOCS_URL",
         "ATLAS_DOCS_URL",
         "ATLAS_EMAIL_PROVIDER",
         "ATLAS_MAP_STYLE_URL",

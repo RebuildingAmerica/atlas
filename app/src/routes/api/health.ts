@@ -31,7 +31,7 @@ export const Route = createFileRoute("/api/health")({
         }
 
         try {
-          const apiResponse = await fetch(`${apiBaseUrl}/health`, {
+          const apiResponse = await fetch(new URL("/health", apiBaseUrl), {
             signal: AbortSignal.timeout(5000),
           });
 

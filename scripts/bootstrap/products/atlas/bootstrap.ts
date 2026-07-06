@@ -71,7 +71,7 @@ export async function runProductPhase(
 
   // Step 2: Initialize Stripe SDK client
   const stripe = new Stripe(apiKey, {
-    apiVersion: "2025-03-31.basil",
+    apiVersion: "2026-06-24.dahlia",
   });
 
   // Step 3: Display account context
@@ -80,7 +80,7 @@ export async function runProductPhase(
 
   let accountName: string;
   try {
-    const account = await stripe.accounts.retrieve();
+    const account = await stripe.accounts.retrieveCurrent();
     accountName =
       account.settings?.dashboard?.display_name ??
       account.business_profile?.name ??

@@ -26,5 +26,5 @@ export async function promptConfirm(
     confirm({ message, initialValue }),
     cancelMessage,
   );
-  return result;
+  return result === true;
 }

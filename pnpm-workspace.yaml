@@ -78,6 +78,7 @@ overrides:
   "fast-xml-parser": "^5.7.0"
   react: "catalog:"
   "react-dom": "catalog:"
+  sharp: "0.34.5"
 
 peerDependencyRules:
   allowedVersions:

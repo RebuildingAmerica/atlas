@@ -6,5 +6,8 @@
     "typecheck": "uv run mypy atlas",
     "lint": "uv run ruff check atlas",
     "test": "uv run pytest --cov=atlas --cov-report=term-missing"
+  },
+  "devDependencies": {
+    "portless": "catalog:"
   }
 }

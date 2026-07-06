@@ -32,7 +32,21 @@ describe("routes/openapi.json", () => {
     if (!handlers?.GET) throw new Error("Expected GET handler");
     const response = (await handlers.GET({})) as Response;
     expect(response.status).toBe(502);
+    expect(response.headers.get("access-control-allow-origin")).toBe("*");
     expect(await response.text()).toContain("Atlas API proxy target is not configured");
+  });
+
+  it("allows cross-origin docs consumers to read the public schema", async () => {
+    const routeModule = await import("@/routes/openapi[.]json");
+    const { asRouteStub } = await import("@/../tests/helpers/router-harness");
+    const Route = asRouteStub(routeModule.Route);
+    const handlers = Route.options.server?.handlers;
+    if (!handlers?.OPTIONS) throw new Error("Expected OPTIONS handler");
+    const response = (await handlers.OPTIONS({})) as Response;
+
+    expect(response.status).toBe(204);
+    expect(response.headers.get("access-control-allow-origin")).toBe("*");
+    expect(response.headers.get("access-control-allow-methods")).toBe("GET, OPTIONS");
   });
 
   it("proxies a 200 response from the API service", async () => {
@@ -59,6 +73,7 @@ describe("routes/openapi.json", () => {
     expect(fetchUrl).toEqual(new URL("/openapi.json", "https://api.atlas.test"));
     expect(fetchInit?.signal).toBeInstanceOf(AbortSignal);
     expect(response.status).toBe(200);
+    expect(response.headers.get("access-control-allow-origin")).toBe("*");
     expect(await response.json()).toEqual({ openapi: "3.0.0" });
   });
 
@@ -76,6 +91,7 @@ describe("routes/openapi.json", () => {
     if (!handlers?.GET) throw new Error("Expected GET handler");
     const response = (await handlers.GET({})) as Response;
     expect(response.status).toBe(503);
+    expect(response.headers.get("access-control-allow-origin")).toBe("*");
     expect(await response.text()).toContain("OpenAPI document is unavailable");
   });
 });

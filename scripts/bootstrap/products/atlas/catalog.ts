@@ -18,8 +18,9 @@ export async function ensureProduct(
     query: `metadata["atlas_product_id"]:"${definition.id}"`,
   });
 
-  if (existing.data.length > 0) {
-    return existing.data[0];
+  const [existingProduct] = existing.data;
+  if (existingProduct) {
+    return existingProduct;
   }
 
   // Create new product
@@ -49,8 +50,9 @@ export async function ensurePrice(
     query: `metadata["atlas_price_id"]:"${priceDef.id}"`,
   });
 
-  if (existing.data.length > 0) {
-    return existing.data[0];
+  const [existingPrice] = existing.data;
+  if (existingPrice) {
+    return existingPrice;
   }
 
   // Build the price creation params

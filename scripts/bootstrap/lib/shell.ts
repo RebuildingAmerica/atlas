@@ -24,7 +24,7 @@ export function commandOutput(result: CommandResult): string {
 }
 
 export function summarizeOutputLine(result: CommandResult): string {
-  return commandOutput(result).split("\n")[0].trim();
+  return (commandOutput(result).split("\n")[0] ?? "").trim();
 }
 
 export function runInteractiveCommand(command: string): boolean {
