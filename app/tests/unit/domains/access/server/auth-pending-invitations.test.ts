@@ -123,7 +123,7 @@ describe("auth — invitation success path and organization invitation email", (
     mocks.getAuthRuntimeConfig.mockReturnValue({
       allowedEmails: new Set(),
       apiKeyIntrospectionUrl: "http://127.0.0.1:3100/api-key",
-      apiAudience: null,
+      authJwtAudience: null,
       apiBaseUrl: null,
       databaseUrl: null,
       localMode: false,
@@ -215,7 +215,7 @@ describe("auth — invitation success path and organization invitation email", (
   it("uses the Postgres pool for membership lookup when DATABASE_URL is set", async () => {
     mocks.getAuthRuntimeConfig.mockReturnValue({
       allowedEmails: new Set(),
-      apiAudience: null,
+      authJwtAudience: null,
       apiBaseUrl: null,
       apiKeyIntrospectionUrl: "http://127.0.0.1:3100/api-key",
       databaseUrl: "postgres://atlas",
@@ -249,7 +249,7 @@ describe("auth — invitation success path and organization invitation email", (
   it("forces requirePKCE = true on every existing oauthClient row in Postgres", async () => {
     mocks.getAuthRuntimeConfig.mockReturnValue({
       allowedEmails: new Set(),
-      apiAudience: null,
+      authJwtAudience: null,
       apiBaseUrl: null,
       apiKeyIntrospectionUrl: "http://127.0.0.1:3100/api-key",
       databaseUrl: "postgres://atlas",
@@ -282,7 +282,7 @@ describe("auth — invitation success path and organization invitation email", (
   it("returns the Postgres-backed account existence count", async () => {
     mocks.getAuthRuntimeConfig.mockReturnValue({
       allowedEmails: new Set(),
-      apiAudience: null,
+      authJwtAudience: null,
       apiBaseUrl: null,
       apiKeyIntrospectionUrl: "http://127.0.0.1:3100/api-key",
       databaseUrl: "postgres://atlas",

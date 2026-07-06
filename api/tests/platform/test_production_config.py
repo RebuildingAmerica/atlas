@@ -88,7 +88,7 @@ class TestProductionConfig:
         )
 
         monkeypatch.setattr("atlas.main.get_settings", lambda: settings)
-        with pytest.raises(RuntimeError, match="ATLAS_API_AUDIENCE is required"):
+        with pytest.raises(RuntimeError, match="ATLAS_AUTH_JWT_AUDIENCES is required"):
             create_app()
 
     def test_auth_settings_use_atlas_prefixed_environment_variables(
@@ -173,7 +173,9 @@ class TestSettingsValidatorEdgeCases:
         self, monkeypatch: MonkeyPatch
     ) -> None:
         """Comma-separated env vars should reach the list validator unchanged."""
-        monkeypatch.setenv("ATLAS_API_AUDIENCE", "https://atlas.test/mcp,https://api.atlas.test")
+        monkeypatch.setenv(
+            "ATLAS_AUTH_JWT_AUDIENCES", "https://atlas.test/mcp,https://api.atlas.test"
+        )
         monkeypatch.setenv("ATLAS_AUTH_DEFAULT_SCOPE", "discovery:read,profiles:write")
 
         settings = Settings(database_url="sqlite:///tmp/test.db")
@@ -271,7 +273,7 @@ class TestValidateRuntimeAuthConfig:
     """Runtime guard for non-local deploys without a configured audience."""
 
     def test_local_mode_skips_audience_check(self) -> None:
-        """Local deploy mode shouldn't require ATLAS_API_AUDIENCE."""
+        """Local deploy mode shouldn't require ATLAS_AUTH_JWT_AUDIENCES."""
         settings = Settings(
             database_url="sqlite:///tmp/test.db",
             deploy_mode="local",
@@ -280,16 +282,16 @@ class TestValidateRuntimeAuthConfig:
         validate_runtime_auth_config(settings)
 
     def test_non_local_mode_requires_audience(self, monkeypatch: MonkeyPatch) -> None:
-        """A non-local deploy without ATLAS_API_AUDIENCE should fail fast."""
+        """A non-local deploy without ATLAS_AUTH_JWT_AUDIENCES should fail fast."""
         monkeypatch.setenv("ATLAS_DEPLOY_MODE", "production")
         settings = Settings(database_url="sqlite:///tmp/test.db")
         assert settings.deploy_mode == "production"
         assert settings.auth_jwt_audience == []
-        with pytest.raises(RuntimeError, match="ATLAS_API_AUDIENCE is required"):
+        with pytest.raises(RuntimeError, match="ATLAS_AUTH_JWT_AUDIENCES is required"):
             validate_runtime_auth_config(settings)
 
     def test_non_local_mode_passes_when_audience_configured(self, monkeypatch: MonkeyPatch) -> None:
-        """A non-local deploy with ATLAS_API_AUDIENCE should not raise."""
+        """A non-local deploy with ATLAS_AUTH_JWT_AUDIENCES should not raise."""
         monkeypatch.setenv("ATLAS_DEPLOY_MODE", "production")
         settings = Settings(
             database_url="sqlite:///tmp/test.db",
@@ -394,7 +396,7 @@ class TestValidateRuntimeAuthConfig:
             auth_api_key_introspection_url="https://atlas.test/api/auth/internal/api-key",
             auth_membership_verification_url="https://atlas.test",
         )
-        with pytest.raises(RuntimeError, match="ATLAS_API_AUDIENCE must put"):
+        with pytest.raises(RuntimeError, match="ATLAS_AUTH_JWT_AUDIENCES must put"):
             validate_runtime_auth_config(settings)
 
     def test_lifespan_runs_runtime_auth_validation(self, monkeypatch: MonkeyPatch) -> None:
@@ -407,5 +409,5 @@ class TestValidateRuntimeAuthConfig:
         )
         monkeypatch.setattr("atlas.main.get_settings", lambda: settings)
 
-        with pytest.raises(RuntimeError, match="ATLAS_API_AUDIENCE is required"):
+        with pytest.raises(RuntimeError, match="ATLAS_AUTH_JWT_AUDIENCES is required"):
             create_app()

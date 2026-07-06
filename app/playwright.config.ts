@@ -2,7 +2,7 @@ import { existsSync, mkdirSync } from "node:fs";
 import { randomBytes } from "node:crypto";
 import path from "node:path";
 import { defineConfig } from "@playwright/test";
-import { buildAtlasApiAudience } from "./src/domains/access/oauth-resource-config";
+import { buildAtlasAuthJwtAudiences } from "./src/domains/access/oauth-resource-config";
 
 const e2eEnvFile = path.join(process.cwd(), ".env.e2e");
 if (existsSync(e2eEnvFile)) {
@@ -31,7 +31,10 @@ const authDbPath = path.join(e2eDir, `atlas-auth-${e2eRunId}.sqlite`);
 const mailboxFile = path.join(e2eDir, `mailbox-${e2eRunId}.json`);
 const appUrl = requireEnv("ATLAS_E2E_APP_URL");
 const apiUrl = requireEnv("ATLAS_E2E_API_URL");
-const apiAudience = buildAtlasApiAudience({ apiBaseUrl: apiUrl, publicBaseUrl: appUrl });
+const authJwtAudiences = buildAtlasAuthJwtAudiences({
+  apiBaseUrl: apiUrl,
+  publicBaseUrl: appUrl,
+});
 const mailboxUrl = requireEnv("ATLAS_E2E_MAILBOX_URL");
 const authIntrospectionUrl = requireEnv("ATLAS_E2E_AUTH_INTROSPECTION_URL");
 const appPort = new URL(appUrl).port || "3100";
@@ -56,7 +59,7 @@ const commonAuthEnv = {
   ATLAS_AUTH_BASE_PATH: "/api/auth",
   ATLAS_AUTH_INTERNAL_SECRET: e2eInternalSecret,
   ATLAS_AUTH_MEMBERSHIP_URL: appUrl,
-  ATLAS_API_AUDIENCE: apiAudience,
+  ATLAS_AUTH_JWT_AUDIENCES: authJwtAudiences,
   ATLAS_DEPLOY_MODE: "production",
   ATLAS_EMAIL_CAPTURE_URL: `${mailboxUrl}/messages`,
   ATLAS_EMAIL_FROM: "Atlas <hello@localhost>",
@@ -98,7 +101,7 @@ export default defineConfig({
         ATLAS_AUTH_API_KEY_INTROSPECTION_URL: authIntrospectionUrl,
         ATLAS_AUTH_INTERNAL_SECRET: e2eInternalSecret,
         ATLAS_AUTH_MEMBERSHIP_URL: appUrl,
-        ATLAS_API_AUDIENCE: apiAudience,
+        ATLAS_AUTH_JWT_AUDIENCES: authJwtAudiences,
         ATLAS_DEPLOY_MODE: "production",
         ATLAS_PUBLIC_URL: appUrl,
         CORS_ORIGINS: `["${appUrl}"]`,

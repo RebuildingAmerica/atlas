@@ -1,6 +1,7 @@
 # Auth Architecture
 
-Atlas uses a split auth architecture where the app server owns identity and the API server verifies tokens.
+Atlas uses a split auth architecture where the app server owns identity and the
+API server verifies tokens.
 
 ## Ownership Boundary
 
@@ -18,7 +19,8 @@ The app server is the authority for user identity and session management.
 
 ### API (FastAPI)
 
-The API server is a resource server that verifies credentials and enforces access.
+The API server is a resource server that verifies credentials and enforces
+access.
 
 - JWT Bearer token verification via JWKS
 - API key introspection via HTTP callback to the app
@@ -28,12 +30,14 @@ The API server is a resource server that verifies credentials and enforces acces
 
 ### Internal Bridge
 
-The app exposes private endpoints that the API calls to verify credentials and membership. These are secured by a shared secret (`ATLAS_AUTH_INTERNAL_SECRET`) passed in the `X-Atlas-Internal-Secret` header.
+The app exposes private endpoints that the API calls to verify credentials and
+membership. These are secured by a shared secret (`ATLAS_AUTH_INTERNAL_SECRET`)
+passed in the `X-Atlas-Internal-Secret` header.
 
-| Endpoint | Purpose |
-|----------|---------|
+| Endpoint                                                  | Purpose                                                                 |
+| --------------------------------------------------------- | ----------------------------------------------------------------------- |
 | `/api/auth/internal/memberships/{orgId}/members/{userId}` | Verify org membership, return role, workspace type, and active products |
-| `/api/auth/internal/api-key` | Introspect an API key, return user, org, and permissions |
+| `/api/auth/internal/api-key`                              | Introspect an API key, return user, org, and permissions                |
 
 ## Token Flow
 
@@ -53,28 +57,31 @@ API resolves capabilities from active products → enforces on endpoint
 
 ## Auth Methods
 
-| Method | Primary Use | How It Works |
-|--------|-------------|--------------|
-| Passkey (WebAuthn) | Primary sign-in | Browser-native FIDO2 via Better Auth passkey plugin |
-| Magic Link | Sign-up and fallback sign-in | Email with time-limited link |
-| Enterprise SSO | Org-managed sign-in | OIDC or SAML via domain discovery |
-| OAuth Access Token | MCP clients, third-party apps | Better Auth oauthProvider plugin with PKCE |
-| API Key | Programmatic access | Better Auth apiKey plugin, introspected by API |
-| Internal Secret | App-to-API trust | Shared secret in header, bypasses JWT verification |
+| Method             | Primary Use                   | How It Works                                        |
+| ------------------ | ----------------------------- | --------------------------------------------------- |
+| Passkey (WebAuthn) | Primary sign-in               | Browser-native FIDO2 via Better Auth passkey plugin |
+| Magic Link         | Sign-up and fallback sign-in  | Email with time-limited link                        |
+| Enterprise SSO     | Org-managed sign-in           | OIDC or SAML via domain discovery                   |
+| OAuth Access Token | MCP clients, third-party apps | Better Auth oauthProvider plugin with PKCE          |
+| API Key            | Programmatic access           | Better Auth apiKey plugin, introspected by API      |
+| Internal Secret    | App-to-API trust              | Shared secret in header, bypasses JWT verification  |
 
 ## Organization Context in Tokens
 
-OAuth access tokens carry `org_id` when the client requests an `org:{org_id}` scope during authorization. The API reads this from the JWT `org_id` claim and verifies membership via the internal endpoint.
+OAuth access tokens carry `org_id` when the client requests an `org:{org_id}`
+scope during authorization. The API reads this from the JWT `org_id` claim and
+verifies membership via the internal endpoint.
 
 ## Configuration Alignment
 
 Both services must agree on these values:
 
-| Setting | App (env var) | API (env var) |
-|---------|--------------|---------------|
-| JWT issuer | `{ATLAS_PUBLIC_URL}/api/auth` (derived) | `{ATLAS_PUBLIC_URL}/api/auth` (derived) |
-| JWT audience | `ATLAS_API_AUDIENCE` | `ATLAS_API_AUDIENCE` |
-| JWKS URL | `{ATLAS_PUBLIC_URL}/api/auth/jwks` (derived) | Auto-derived from issuer |
-| Internal secret | `ATLAS_AUTH_INTERNAL_SECRET` | `ATLAS_AUTH_INTERNAL_SECRET` |
+| Setting         | App (env var)                                | API (env var)                           |
+| --------------- | -------------------------------------------- | --------------------------------------- |
+| JWT issuer      | `{ATLAS_PUBLIC_URL}/api/auth` (derived)      | `{ATLAS_PUBLIC_URL}/api/auth` (derived) |
+| JWT audience    | `ATLAS_AUTH_JWT_AUDIENCES`                   | `ATLAS_AUTH_JWT_AUDIENCES`              |
+| JWKS URL        | `{ATLAS_PUBLIC_URL}/api/auth/jwks` (derived) | Auto-derived from issuer                |
+| Internal secret | `ATLAS_AUTH_INTERNAL_SECRET`                 | `ATLAS_AUTH_INTERNAL_SECRET`            |
 
-The API health check at `GET /api/auth/health` reports the reachability of JWKS and membership endpoints.
+The API health check at `GET /api/auth/health` reports the reachability of JWKS
+and membership endpoints.

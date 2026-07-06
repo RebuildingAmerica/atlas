@@ -1,4 +1,4 @@
-export interface AtlasApiAudienceInput {
+export interface AtlasAuthJwtAudiencesInput {
   apiBaseUrl: string | null | undefined;
   publicBaseUrl: string;
 }
@@ -7,10 +7,10 @@ export function buildMcpResourceUrl(publicBaseUrl: string): string {
   return new URL("/mcp", publicBaseUrl).toString().replace(/\/$/, "");
 }
 
-export function buildAtlasApiAudience({
+export function buildAtlasAuthJwtAudiences({
   apiBaseUrl,
   publicBaseUrl,
-}: AtlasApiAudienceInput): string {
+}: AtlasAuthJwtAudiencesInput): string {
   const audiences = [buildMcpResourceUrl(publicBaseUrl)];
   const apiOrigin = apiBaseUrl ? new URL(apiBaseUrl).origin : null;
 

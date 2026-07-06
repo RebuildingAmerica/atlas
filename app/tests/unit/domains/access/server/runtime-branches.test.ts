@@ -54,8 +54,8 @@ describe("runtime additional branches", () => {
   it("does not require enabled-mode settings when auth is disabled", () => {
     expect(() => {
       validateAuthRuntimeConfig({
-        apiAudience: null,
-        apiAudiences: [],
+        authJwtAudience: null,
+        authJwtAudiences: [],
         apiBaseUrl: null,
         allowedEmails: new Set(),
         anonymousRateLimit: {

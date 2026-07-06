@@ -18,8 +18,8 @@ vi.mock("resend", () => ({
 describe("email service error branches", () => {
   function buildRuntime(overrides: Partial<AuthRuntimeConfig> = {}): AuthRuntimeConfig {
     return {
-      apiAudience: null,
-      apiAudiences: [],
+      authJwtAudience: null,
+      authJwtAudiences: [],
       apiBaseUrl: null,
       apiKeyIntrospectionUrl: "https://atlas.example.com/api/auth/internal/api-key",
       anonymousRateLimit: {

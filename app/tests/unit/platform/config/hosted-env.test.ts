@@ -15,7 +15,7 @@ describe("hosted Atlas environment validation", () => {
           ATLAS_DEPLOY_MODE: "production",
           ATLAS_PUBLIC_URL: "https://atlas.example.com",
           ATLAS_SERVER_API_PROXY_TARGET: "https://api.atlas.example.com",
-          ATLAS_API_AUDIENCE: buildMcpResourceUrl("https://atlas.example.com"),
+          ATLAS_AUTH_JWT_AUDIENCES: buildMcpResourceUrl("https://atlas.example.com"),
         },
         { requireMapStyle: true },
       );
@@ -27,7 +27,7 @@ describe("hosted Atlas environment validation", () => {
           ATLAS_MAP_STYLE_URL: "https://maptiler.invalid/maps/atlas-placeholder/style.json",
           ATLAS_PUBLIC_URL: "https://atlas.example.com",
           ATLAS_SERVER_API_PROXY_TARGET: "https://api.atlas.example.com",
-          ATLAS_API_AUDIENCE: buildMcpResourceUrl("https://atlas.example.com"),
+          ATLAS_AUTH_JWT_AUDIENCES: buildMcpResourceUrl("https://atlas.example.com"),
           VERCEL_ENV: "production",
         },
         { requireMapStyle: true },
@@ -52,7 +52,7 @@ describe("hosted Atlas environment validation", () => {
           ATLAS_DEPLOY_MODE: "production",
           ATLAS_MAP_STYLE_URL: "https://api.maptiler.com/maps/atlas/style.json",
           ATLAS_PUBLIC_URL: "https://atlas.example.com",
-          ATLAS_API_AUDIENCE: buildMcpResourceUrl("https://atlas.example.com"),
+          ATLAS_AUTH_JWT_AUDIENCES: buildMcpResourceUrl("https://atlas.example.com"),
         },
         { requireMapStyle: true },
       );
@@ -67,7 +67,7 @@ describe("hosted Atlas environment validation", () => {
           ATLAS_MAP_STYLE_URL: "https://api.maptiler.com/maps/atlas/style.json",
           ATLAS_PUBLIC_URL: "http://atlas.example.com",
           ATLAS_SERVER_API_PROXY_TARGET: "https://api.atlas.example.com",
-          ATLAS_API_AUDIENCE: buildMcpResourceUrl("http://atlas.example.com"),
+          ATLAS_AUTH_JWT_AUDIENCES: buildMcpResourceUrl("http://atlas.example.com"),
         },
         { requireMapStyle: true },
       );
@@ -80,7 +80,7 @@ describe("hosted Atlas environment validation", () => {
           ATLAS_MAP_STYLE_URL: "https://api.maptiler.com/maps/atlas/style.json",
           ATLAS_PUBLIC_URL: "https://atlas.example.com",
           ATLAS_SERVER_API_PROXY_TARGET: "http://api.atlas.example.com",
-          ATLAS_API_AUDIENCE: buildMcpResourceUrl("https://atlas.example.com"),
+          ATLAS_AUTH_JWT_AUDIENCES: buildMcpResourceUrl("https://atlas.example.com"),
         },
         { requireMapStyle: true },
       );
@@ -95,7 +95,7 @@ describe("hosted Atlas environment validation", () => {
           ATLAS_MAP_STYLE_URL: "https://api.maptiler.com/maps/atlas/style.json",
           ATLAS_PUBLIC_URL: "http://localhost:3100",
           ATLAS_SERVER_API_PROXY_TARGET: "http://127.0.0.1:38000",
-          ATLAS_API_AUDIENCE: buildMcpResourceUrl("http://localhost:3100"),
+          ATLAS_AUTH_JWT_AUDIENCES: buildMcpResourceUrl("http://localhost:3100"),
         },
         { requireMapStyle: true },
       );
@@ -110,7 +110,7 @@ describe("hosted Atlas environment validation", () => {
           ATLAS_MAP_STYLE_URL: "https://api.maptiler.com/maps/atlas/style.json",
           ATLAS_PUBLIC_URL: "https://atlas.example.com",
           ATLAS_SERVER_API_PROXY_TARGET: "https://api.atlas.example.com",
-          ATLAS_API_AUDIENCE: [
+          ATLAS_AUTH_JWT_AUDIENCES: [
             "https://api.atlas.example.com",
             buildMcpResourceUrl("https://atlas.example.com"),
           ].join(","),
@@ -118,7 +118,7 @@ describe("hosted Atlas environment validation", () => {
         { requireMapStyle: true },
       );
     }).toThrow(
-      "ATLAS_API_AUDIENCE must put the canonical MCP resource first: https://atlas.example.com/mcp",
+      "ATLAS_AUTH_JWT_AUDIENCES must put the canonical MCP resource first: https://atlas.example.com/mcp",
     );
   });
 
@@ -130,7 +130,7 @@ describe("hosted Atlas environment validation", () => {
           ATLAS_MAP_STYLE_URL: "https://api.maptiler.com/maps/atlas/style.json",
           ATLAS_PUBLIC_URL: "https://atlas.example.com",
           ATLAS_SERVER_API_PROXY_TARGET: "https://api.atlas.example.com",
-          ATLAS_API_AUDIENCE: [
+          ATLAS_AUTH_JWT_AUDIENCES: [
             buildMcpResourceUrl("https://atlas.example.com"),
             "https://api.atlas.example.com",
           ].join(","),

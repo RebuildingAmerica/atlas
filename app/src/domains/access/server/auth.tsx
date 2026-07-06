@@ -206,12 +206,12 @@ function buildAtlasTrustedOrigins(publicBaseUrl: string): string[] {
  */
 async function createAtlasAuth(runtime: AuthRuntimeConfig) {
   const { sso } = await import("@better-auth/sso");
-  const configuredAudiences = runtime.apiAudiences ?? [];
+  const configuredAudiences = runtime.authJwtAudiences ?? [];
   const validAudiences =
     configuredAudiences.length > 0
       ? [...configuredAudiences]
-      : runtime.apiAudience
-        ? [runtime.apiAudience]
+      : runtime.authJwtAudience
+        ? [runtime.authJwtAudience]
         : [];
 
   return betterAuth({
@@ -296,14 +296,14 @@ async function createAtlasAuth(runtime: AuthRuntimeConfig) {
           // /api/auth/.well-known/openid-configuration, which the existing
           // api/auth/$.ts catch-all serves automatically.
           issuer: new URL("/api/auth", runtime.publicBaseUrl).toString().replace(/\/$/, ""),
-          audience: runtime.apiAudience ?? undefined,
+          audience: runtime.authJwtAudience ?? undefined,
           definePayload: async ({ user }) => {
             const orgId = await resolvePrimaryWorkspaceId(user.id);
             return {
               email: user.email,
               permissions: scopesToPermissions([...API_KEY_SCOPES]),
               ...(orgId ? { org_id: orgId } : {}),
-              ...(runtime.apiAudience ? { aud: runtime.apiAudience } : {}),
+              ...(runtime.authJwtAudience ? { aud: runtime.authJwtAudience } : {}),
             };
           },
         },
@@ -339,7 +339,7 @@ async function createAtlasAuth(runtime: AuthRuntimeConfig) {
         scopes: [...SUPPORTED_OAUTH_SCOPES],
         customAccessTokenClaims: (params) =>
           buildAtlasAccessTokenClaims(params, {
-            defaultAudience: runtime.apiAudience,
+            defaultAudience: runtime.authJwtAudience,
             resolveActiveProductsForWorkspace: queryActiveProducts,
             resolvePrimaryWorkspaceId,
           }),

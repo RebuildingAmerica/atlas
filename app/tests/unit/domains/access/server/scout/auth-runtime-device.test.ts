@@ -79,8 +79,8 @@ describe("OAuth device auth runtime wiring", () => {
     mocks.validateAuthRuntimeConfig.mockReset();
     mocks.getAuthRuntimeConfig.mockReturnValue({
       allowedEmails: new Set(["operator@atlas.test"]),
-      apiAudience: "https://atlas.test/api",
-      apiAudiences: ["https://atlas.test/api"],
+      authJwtAudience: "https://atlas.test/api",
+      authJwtAudiences: ["https://atlas.test/api"],
       apiKeyIntrospectionUrl: "http://127.0.0.1:3100/api/auth/internal/api-key",
       captureUrl: "http://127.0.0.1:8025/messages",
       dbPath: "/tmp/atlas/auth/atlas-auth.sqlite",

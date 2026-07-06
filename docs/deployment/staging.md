@@ -41,17 +41,17 @@ Use the same secret names as production, but store staging values in the
 - `ATLAS_AUTH_MEMBERSHIP_URL`
 - `ATLAS_PUBLIC_URL`
 - `ATLAS_API_URL`
-- `ATLAS_API_AUDIENCE`
+- `ATLAS_AUTH_JWT_AUDIENCES`
 - `SLACK_DEPLOY_WEBHOOK_URL` when failed deploys should notify Slack
 
-Set `ATLAS_PUBLIC_URL` to the staging app origin. Set `ATLAS_API_AUDIENCE` to
-the staging resource URL list the API accepts, with the MCP resource first:
+Set `ATLAS_PUBLIC_URL` to the staging app origin. Set `ATLAS_AUTH_JWT_AUDIENCES`
+to the staging resource URL list the API accepts, with the MCP resource first:
 
 ```env
 ATLAS_DEPLOY_MODE=staging
 ATLAS_PUBLIC_URL=https://staging.atlas.rebuildingus.org
 ATLAS_API_URL=https://atlas-api-staging.rebuildingus.org
-ATLAS_API_AUDIENCE=https://staging.atlas.rebuildingus.org/mcp,https://atlas-api-staging.rebuildingus.org
+ATLAS_AUTH_JWT_AUDIENCES=https://staging.atlas.rebuildingus.org/mcp,https://atlas-api-staging.rebuildingus.org
 ATLAS_AUTH_API_KEY_INTROSPECTION_URL=https://staging.atlas.rebuildingus.org/api/auth/internal/api-key
 ATLAS_AUTH_MEMBERSHIP_URL=https://staging.atlas.rebuildingus.org
 ATLAS_SERVER_API_PROXY_TARGET=https://atlas-api-staging.rebuildingus.org
@@ -72,7 +72,7 @@ ATLAS_DEPLOY_MODE=staging
 ATLAS_PUBLIC_URL=https://staging.atlas.rebuildingus.org
 ATLAS_MAP_STYLE_URL=https://api.maptiler.com/maps/<style-id>/style.json?key=<staging-domain-restricted-key>
 ATLAS_SERVER_API_PROXY_TARGET=https://atlas-api-staging.rebuildingus.org
-ATLAS_API_AUDIENCE=https://staging.atlas.rebuildingus.org/mcp,https://atlas-api-staging.rebuildingus.org
+ATLAS_AUTH_JWT_AUDIENCES=https://staging.atlas.rebuildingus.org/mcp,https://atlas-api-staging.rebuildingus.org
 ATLAS_AUTH_API_KEY_INTROSPECTION_URL=https://staging.atlas.rebuildingus.org/api/auth/internal/api-key
 ATLAS_AUTH_INTERNAL_SECRET=<same staging secret used by atlas-api-staging>
 ```

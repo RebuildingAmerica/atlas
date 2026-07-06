@@ -16,8 +16,8 @@ import {
  * server.
  */
 export interface AuthRuntimeConfig {
-  apiAudience: string | null;
-  apiAudiences: readonly string[];
+  authJwtAudience: string | null;
+  authJwtAudiences: readonly string[];
   apiKeyIntrospectionUrl: string | null;
   anonymousRateLimit: AnonymousRateLimitConfig;
   allowedEmails: Set<string>;
@@ -193,11 +193,11 @@ export function resolveAuthRuntimeConfig(env: NodeJS.ProcessEnv, cwd: string): A
   const emailProvider = resolveEmailProvider(env);
 
   const databaseUrl = env.DATABASE_URL?.trim() || null;
-  const apiAudiences = normalizeStringList(env.ATLAS_API_AUDIENCE);
+  const authJwtAudiences = normalizeStringList(env.ATLAS_AUTH_JWT_AUDIENCES);
 
   return {
-    apiAudience: apiAudiences[0] ?? null,
-    apiAudiences,
+    authJwtAudience: authJwtAudiences[0] ?? null,
+    authJwtAudiences,
     apiBaseUrl: resolveApiBaseUrl(env),
     apiKeyIntrospectionUrl: resolveApiKeyIntrospectionUrl(env),
     anonymousRateLimit: resolveAnonymousRateLimitConfig(env),
@@ -267,8 +267,8 @@ export function validateAuthRuntimeConfig(runtime: AuthRuntimeConfig): void {
     );
   }
 
-  if (!runtime.apiAudience) {
-    throw new Error("ATLAS_API_AUDIENCE is required when ATLAS_DEPLOY_MODE is not local.");
+  if (!runtime.authJwtAudience) {
+    throw new Error("ATLAS_AUTH_JWT_AUDIENCES is required when ATLAS_DEPLOY_MODE is not local.");
   }
 
   const publicUrl = parseAbsoluteUrl(runtime.publicBaseUrl, "ATLAS_PUBLIC_URL");
@@ -277,9 +277,9 @@ export function validateAuthRuntimeConfig(runtime: AuthRuntimeConfig): void {
   }
 
   const expectedMcpAudience = buildMcpResourceUrl(runtime.publicBaseUrl);
-  if (runtime.apiAudience !== expectedMcpAudience) {
+  if (runtime.authJwtAudience !== expectedMcpAudience) {
     throw new Error(
-      `ATLAS_API_AUDIENCE must put the canonical MCP resource first: ${expectedMcpAudience}`,
+      `ATLAS_AUTH_JWT_AUDIENCES must put the canonical MCP resource first: ${expectedMcpAudience}`,
     );
   }
 

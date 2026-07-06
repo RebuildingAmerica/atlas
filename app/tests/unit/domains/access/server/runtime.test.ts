@@ -53,7 +53,7 @@ describe("resolveAuthRuntimeConfig", () => {
       {
         ATLAS_AUTH_INTERNAL_SECRET: "internal-test-secret",
         ATLAS_AUTH_API_KEY_INTROSPECTION_URL: "https://atlas.example.com/api/auth/internal/api-key",
-        ATLAS_API_AUDIENCE: "http://atlas.example.com/mcp",
+        ATLAS_AUTH_JWT_AUDIENCES: "http://atlas.example.com/mcp",
         ATLAS_EMAIL_PROVIDER: "resend",
         ATLAS_EMAIL_RESEND_API_KEY: "re_test_123",
         ATLAS_PUBLIC_URL: "http://atlas.example.com",
@@ -123,14 +123,14 @@ describe("resolveAuthRuntimeConfig", () => {
   it("normalizes comma-separated OAuth resource audiences for MCP and API tokens", () => {
     const runtime = resolveAuthRuntimeConfig(
       {
-        ATLAS_API_AUDIENCE: " https://atlas.example.com/mcp, https://api.atlas.example.com ",
+        ATLAS_AUTH_JWT_AUDIENCES: " https://atlas.example.com/mcp, https://api.atlas.example.com ",
         ATLAS_PUBLIC_URL: "https://atlas.example.com",
       },
       "/workspace/atlas/app",
     );
 
-    expect(runtime.apiAudience).toBe("https://atlas.example.com/mcp");
-    expect(runtime.apiAudiences).toEqual([
+    expect(runtime.authJwtAudience).toBe("https://atlas.example.com/mcp");
+    expect(runtime.authJwtAudiences).toEqual([
       "https://atlas.example.com/mcp",
       "https://api.atlas.example.com",
     ]);
@@ -141,7 +141,7 @@ describe("resolveAuthRuntimeConfig", () => {
       {
         ATLAS_AUTH_INTERNAL_SECRET: "internal-test-secret",
         ATLAS_AUTH_API_KEY_INTROSPECTION_URL: "http://127.0.0.1:3100/api/auth/internal/api-key",
-        ATLAS_API_AUDIENCE: "https://atlas.example.com/mcp",
+        ATLAS_AUTH_JWT_AUDIENCES: "https://atlas.example.com/mcp",
 
         ATLAS_EMAIL_PROVIDER: "resend",
         ATLAS_EMAIL_RESEND_API_KEY: "re_test_123",
@@ -191,7 +191,7 @@ describe("resolveAuthRuntimeConfig", () => {
 
     expect(() => {
       validateAuthRuntimeConfig(runtime);
-    }).toThrow("ATLAS_API_AUDIENCE is required when ATLAS_DEPLOY_MODE is not local.");
+    }).toThrow("ATLAS_AUTH_JWT_AUDIENCES is required when ATLAS_DEPLOY_MODE is not local.");
   });
 
   it("rejects auth-enabled deployments when the MCP audience is not first", () => {
@@ -199,7 +199,7 @@ describe("resolveAuthRuntimeConfig", () => {
       {
         ATLAS_AUTH_INTERNAL_SECRET: "internal-test-secret",
         ATLAS_AUTH_API_KEY_INTROSPECTION_URL: "https://atlas.example.com/api/auth/internal/api-key",
-        ATLAS_API_AUDIENCE: "https://api.atlas.example.com,https://atlas.example.com/mcp",
+        ATLAS_AUTH_JWT_AUDIENCES: "https://api.atlas.example.com,https://atlas.example.com/mcp",
 
         ATLAS_EMAIL_PROVIDER: "resend",
         ATLAS_EMAIL_RESEND_API_KEY: "re_test_123",
@@ -211,7 +211,7 @@ describe("resolveAuthRuntimeConfig", () => {
     expect(() => {
       validateAuthRuntimeConfig(runtime);
     }).toThrow(
-      "ATLAS_API_AUDIENCE must put the canonical MCP resource first: https://atlas.example.com/mcp",
+      "ATLAS_AUTH_JWT_AUDIENCES must put the canonical MCP resource first: https://atlas.example.com/mcp",
     );
   });
 
@@ -220,7 +220,7 @@ describe("resolveAuthRuntimeConfig", () => {
       {
         ATLAS_AUTH_INTERNAL_SECRET: "internal-test-secret",
         ATLAS_AUTH_API_KEY_INTROSPECTION_URL: "http://127.0.0.1:3100/api/auth/internal/api-key",
-        ATLAS_API_AUDIENCE: "https://atlas.example.com/mcp",
+        ATLAS_AUTH_JWT_AUDIENCES: "https://atlas.example.com/mcp",
 
         ATLAS_EMAIL_PROVIDER: "capture",
         ATLAS_PUBLIC_URL: "https://atlas.example.com",
@@ -238,7 +238,7 @@ describe("resolveAuthRuntimeConfig", () => {
       {
         ATLAS_AUTH_INTERNAL_SECRET: "internal-test-secret",
         ATLAS_AUTH_API_KEY_INTROSPECTION_URL: "http://127.0.0.1:3100/api/auth/internal/api-key",
-        ATLAS_API_AUDIENCE: "https://atlas.example.com/mcp",
+        ATLAS_AUTH_JWT_AUDIENCES: "https://atlas.example.com/mcp",
 
         ATLAS_EMAIL_PROVIDER: "resend",
         ATLAS_PUBLIC_URL: "https://atlas.example.com",

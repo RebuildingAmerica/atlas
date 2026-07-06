@@ -32,7 +32,7 @@ export interface BuildAtlasClaimsOptions {
   /**
    * The fallback audience Atlas binds to access tokens when the OAuth client
    * does not pass an explicit `resource` parameter (RFC 8707).  Sourced from
-   * `ATLAS_API_AUDIENCE` so the binding stays consistent with the resource
+   * `ATLAS_AUTH_JWT_AUDIENCES` so the binding stays consistent with the resource
    * server's audience-validation logic.
    */
   defaultAudience: string | null;

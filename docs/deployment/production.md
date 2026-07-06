@@ -93,7 +93,7 @@ Then fill in the real values.
 
 | Variable                         | Required                                    | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | -------------------------------- | ------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ATLAS_API_AUDIENCE`             | Yes when `ATLAS_DEPLOY_MODE` is not `local` | OAuth audience claim(s) (`aud`) that the API accepts. Put the MCP resource first, e.g. `https://atlas.example.com/mcp`, so MCP `WWW-Authenticate` challenges publish the correct protected-resource metadata URL. Add the REST API resource as a comma-separated additional value when direct API OAuth tokens are accepted, e.g. `https://atlas.example.com/mcp,https://api.atlas.example.com`. Atlas refuses to start in non-local mode without this set.                       |
+| `ATLAS_AUTH_JWT_AUDIENCES`       | Yes when `ATLAS_DEPLOY_MODE` is not `local` | OAuth audience claim(s) (`aud`) that the API accepts. Put the MCP resource first, e.g. `https://atlas.example.com/mcp`, so MCP `WWW-Authenticate` challenges publish the correct protected-resource metadata URL. Add the REST API resource as a comma-separated additional value when direct API OAuth tokens are accepted, e.g. `https://atlas.example.com/mcp,https://api.atlas.example.com`. Atlas refuses to start in non-local mode without this set.                       |
 | `ATLAS_SAML_ALLOWED_ISSUERS`     | Yes when SAML SSO will be used              | Comma-separated allowlist of SAML IdP issuer URLs (matched by URL origin). DNS TXT domain verification only proves an admin owns the email domain, not the issuer URL, so the issuer host must be opted in by Atlas operators. Empty allowlist denies every SAML registration. Example: `https://accounts.google.com,https://login.microsoftonline.com`. The workspace SSO form surfaces this allowlist inline; admins see whether their pasted issuer is accepted before submit. |
 | `ATLAS_SAML_SP_PRIVATE_KEY`      | No                                          | PEM-encoded RSA private key used to sign outbound SAML AuthnRequests. When set, new workspace SAML registrations flip `authnRequestsSigned: true`. Existing registrations continue with their stored configuration.                                                                                                                                                                                                                                                               |
 | `ATLAS_SAML_SP_PRIVATE_KEY_PASS` | No                                          | Passphrase for `ATLAS_SAML_SP_PRIVATE_KEY` if the key is encrypted.                                                                                                                                                                                                                                                                                                                                                                                                               |
@@ -167,7 +167,7 @@ ATLAS_PUBLIC_URL=https://atlas.example.com
 ATLAS_DOCS_URL=https://your-subdomain.mintlify.dev
 ATLAS_MAP_STYLE_URL=https://api.maptiler.com/maps/<style-id>/style.json?key=<domain-restricted-key>
 ATLAS_SERVER_API_PROXY_TARGET=https://api.atlas.example.com
-ATLAS_API_AUDIENCE=https://atlas.example.com/mcp,https://api.atlas.example.com
+ATLAS_AUTH_JWT_AUDIENCES=https://atlas.example.com/mcp,https://api.atlas.example.com
 ```
 
 Atlas targets the unversioned API base at `/api`. If you provide only the
@@ -236,16 +236,16 @@ accidentally inherit production URLs or databases:
 - `ATLAS_AUTH_MEMBERSHIP_URL`
 - `ATLAS_PUBLIC_URL`
 - `ATLAS_API_URL`
-- `ATLAS_API_AUDIENCE`
+- `ATLAS_AUTH_JWT_AUDIENCES`
 - `OPENSTATUS_API_KEY` when synthetics should run
 - `SLACK_DEPLOY_WEBHOOK_URL` when failed deploys should notify Slack
 
-Set `ATLAS_API_AUDIENCE` to the production resource URL list the API accepts.
-Put the MCP resource first, for example:
+Set `ATLAS_AUTH_JWT_AUDIENCES` to the production resource URL list the API
+accepts. Put the MCP resource first, for example:
 
 ```env
 ATLAS_DEPLOY_MODE=production
-ATLAS_API_AUDIENCE=https://atlas.example.com/mcp,https://api.atlas.example.com
+ATLAS_AUTH_JWT_AUDIENCES=https://atlas.example.com/mcp,https://api.atlas.example.com
 ATLAS_AUTH_API_KEY_INTROSPECTION_URL=https://atlas.example.com/api/auth/internal/api-key
 ATLAS_AUTH_MEMBERSHIP_URL=https://atlas.example.com
 ATLAS_SERVER_API_PROXY_TARGET=https://api.atlas.example.com

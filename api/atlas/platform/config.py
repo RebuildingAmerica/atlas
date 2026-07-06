@@ -91,7 +91,7 @@ class Settings(BaseSettings):
     """JWT issuer (typically the public URL of the auth server)."""
 
     auth_jwt_audience: Annotated[list[str], NoDecode] = Field(
-        default_factory=list, validation_alias="ATLAS_API_AUDIENCE"
+        default_factory=list, validation_alias="ATLAS_AUTH_JWT_AUDIENCES"
     )
     """Accepted JWT audience claims. Comma-separated when supplied via env var.
 
@@ -351,7 +351,7 @@ def validate_runtime_auth_config(settings: Settings) -> None:
     ------
     RuntimeError
         When ``ATLAS_DEPLOY_MODE`` explicitly selects a non-local mode, or when
-        the environment is staging/production, and ``ATLAS_API_AUDIENCE`` is
+        the environment is staging/production, and ``ATLAS_AUTH_JWT_AUDIENCES`` is
         empty. Without an audience, the API would otherwise emit RFC 6750
         challenges without a discovery URL.
     """
@@ -361,7 +361,7 @@ def validate_runtime_auth_config(settings: Settings) -> None:
         return
     if not settings.auth_jwt_audience:
         msg = (
-            "ATLAS_API_AUDIENCE is required for staging, production, and non-local deploy modes. "
+            "ATLAS_AUTH_JWT_AUDIENCES is required for staging, production, and non-local deploy modes. "
             "Set it to the canonical resource URL(s) the API accepts in JWT 'aud' "
             "claims, with the MCP resource first, e.g. https://atlas.example.com/mcp."
         )
@@ -394,7 +394,5 @@ def validate_runtime_auth_config(settings: Settings) -> None:
 
     expected_mcp_audience = urlunsplit((public_url.scheme, public_url.netloc, "/mcp", "", ""))
     if settings.auth_jwt_audience[0] != expected_mcp_audience:
-        msg = (
-            f"ATLAS_API_AUDIENCE must put the canonical MCP resource first: {expected_mcp_audience}"
-        )
+        msg = f"ATLAS_AUTH_JWT_AUDIENCES must put the canonical MCP resource first: {expected_mcp_audience}"
         raise RuntimeError(msg)

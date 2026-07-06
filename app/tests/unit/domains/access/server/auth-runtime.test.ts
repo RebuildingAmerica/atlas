@@ -283,8 +283,8 @@ describe("auth runtime wiring", () => {
   it("forwards configured API audiences and maps access-token scope claims", async () => {
     mocks.getAuthRuntimeConfig.mockReturnValue({
       allowedEmails: new Set(["operator@atlas.test"]),
-      apiAudience: "https://atlas.test/mcp",
-      apiAudiences: ["https://atlas.test/mcp", "https://atlas.test/api"],
+      authJwtAudience: "https://atlas.test/mcp",
+      authJwtAudiences: ["https://atlas.test/mcp", "https://atlas.test/api"],
       apiKeyIntrospectionUrl: "http://127.0.0.1:3100/api/auth/internal/api-key",
       localMode: false,
       captureUrl: "http://127.0.0.1:8025/messages",
@@ -324,7 +324,7 @@ describe("auth runtime wiring", () => {
         >[0]["scopes"],
       }),
     ).resolves.toEqual({
-      // RFC 8707 audience binding falls back to apiAudience when the OAuth
+      // RFC 8707 audience binding falls back to authJwtAudience when the OAuth
       // client does not pass an explicit `resource` parameter.
       aud: "https://atlas.test/mcp",
       permissions: {
@@ -337,7 +337,7 @@ describe("auth runtime wiring", () => {
   it("binds the access token aud to the resource parameter when supplied (RFC 8707)", async () => {
     mocks.getAuthRuntimeConfig.mockReturnValue({
       allowedEmails: new Set(["operator@atlas.test"]),
-      apiAudience: "atlas-api",
+      authJwtAudience: "atlas-api",
       apiKeyIntrospectionUrl: "http://127.0.0.1:3100/api/auth/internal/api-key",
       localMode: false,
       captureUrl: "http://127.0.0.1:8025/messages",

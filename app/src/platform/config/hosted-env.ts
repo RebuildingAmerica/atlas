@@ -1,5 +1,5 @@
 export interface HostedAtlasEnv {
-  ATLAS_API_AUDIENCE?: string;
+  ATLAS_AUTH_JWT_AUDIENCES?: string;
   ATLAS_DEPLOY_MODE?: string;
   ATLAS_MAP_STYLE_URL?: string;
   ATLAS_PUBLIC_URL?: string;
@@ -51,7 +51,7 @@ function normalizeUrlLikeOrigin(value: string, label: string): URL {
 }
 
 function audienceValues(env: HostedAtlasEnv, context: string): string[] {
-  return requiredValue(env, "ATLAS_API_AUDIENCE", context)
+  return requiredValue(env, "ATLAS_AUTH_JWT_AUDIENCES", context)
     .split(",")
     .map((item) => item.trim())
     .filter(Boolean);
@@ -112,7 +112,7 @@ export function validateHostedAtlasEnv(env: HostedAtlasEnv, options: HostedAtlas
   const expectedMcpAudience = buildMcpResourceUrl(publicUrl.origin);
   if (firstAudience !== expectedMcpAudience) {
     throw new Error(
-      `ATLAS_API_AUDIENCE must put the canonical MCP resource first: ${expectedMcpAudience}`,
+      `ATLAS_AUTH_JWT_AUDIENCES must put the canonical MCP resource first: ${expectedMcpAudience}`,
     );
   }
 

@@ -22,7 +22,7 @@ interface DeployConfig {
   authApiKeyIntrospectionUrl: string;
   authMembershipUrl: string;
   publicUrl: string;
-  apiAudience: string;
+  authJwtAudiences: string;
   allowedEmails: string;
   resendApiKey: string;
 }
@@ -117,7 +117,7 @@ export async function runDeployPhase(
         ATLAS_AUTH_API_KEY_INTROSPECTION_URL: config.authApiKeyIntrospectionUrl,
         ATLAS_AUTH_MEMBERSHIP_URL: config.authMembershipUrl,
         ATLAS_PUBLIC_URL: config.publicUrl,
-        ATLAS_API_AUDIENCE: config.apiAudience,
+        ATLAS_AUTH_JWT_AUDIENCES: config.authJwtAudiences,
       },
     },
     followUpItems,
@@ -282,7 +282,7 @@ function readDeployConfig(projectRoot: string): DeployConfig | undefined {
   );
   const authMembershipUrl = resolve("ATLAS_AUTH_MEMBERSHIP_URL");
   const publicUrl = resolve("ATLAS_PUBLIC_URL");
-  const apiAudience = resolve("ATLAS_API_AUDIENCE");
+  const authJwtAudiences = resolve("ATLAS_AUTH_JWT_AUDIENCES");
 
   if (!projectId) {
     log.error("GCP_PROJECT_ID not found in env files.");
@@ -314,8 +314,8 @@ function readDeployConfig(projectRoot: string): DeployConfig | undefined {
     return undefined;
   }
 
-  if (!apiAudience) {
-    log.error("ATLAS_API_AUDIENCE not found in env files.");
+  if (!authJwtAudiences) {
+    log.error("ATLAS_AUTH_JWT_AUDIENCES not found in env files.");
     return undefined;
   }
 
@@ -332,7 +332,7 @@ function readDeployConfig(projectRoot: string): DeployConfig | undefined {
     authApiKeyIntrospectionUrl,
     authMembershipUrl,
     publicUrl: publicUrl || "https://atlas.rebuildingus.org",
-    apiAudience,
+    authJwtAudiences,
     allowedEmails: resolve("ATLAS_AUTH_ALLOWED_EMAILS"),
     resendApiKey: resolve("ATLAS_EMAIL_RESEND_API_KEY"),
   };
