@@ -285,10 +285,39 @@ class TestDraftResultSerialization:
         assert payload["result"] == {"ok": True}
         assert payload["error"]["code"] == types.INTERNAL_ERROR
 
+    def test_create_task_result_omits_absent_payload_fields(self) -> None:
+        task = tasks_module.DraftTask(
+            task_id="task_1",
+            status="working",
+            created_at=datetime(2026, 1, 1, tzinfo=UTC),
+            last_updated_at=datetime(2026, 1, 1, tzinfo=UTC),
+            ttl_ms=ARBITRARY_TTL_MS,
+            poll_interval_ms=ARBITRARY_POLL_INTERVAL_MS,
+        )
+        result = tasks_module.DraftCreateTaskResult(task=task)
+
+        payload = result.model_dump(exclude_none=True)
+
+        assert "result" not in payload
+        assert "error" not in payload
+
     def test_server_result_serializes_aliases(self) -> None:
         result = tasks_module.DraftServerResult(tasks_module.DraftEmptyResult())
 
         assert result.model_dump(exclude_none=True) == {"resultType": "complete"}
+
+
+class TestTaskCapabilityMetadata:
+    def test_declares_tasks_extension_rejects_non_dict_meta(self) -> None:
+        assert tasks_module._declares_tasks_extension("not-metadata") is False  # noqa: SLF001
+
+    def test_declares_tasks_extension_rejects_non_dict_capabilities(self) -> None:
+        assert (
+            tasks_module._declares_tasks_extension(  # noqa: SLF001
+                {"io.modelcontextprotocol/clientCapabilities": "not-capabilities"}
+            )
+            is False
+        )
 
 
 class TestCreateDiscoveryRunTask:
@@ -675,6 +704,32 @@ class TestInstallTasksExtension:
         assert result.root.result["isError"] is False
 
     @pytest.mark.asyncio
+    async def test_get_task_completed_job_without_run_raises(
+        self, test_db: object, test_settings: Settings
+    ) -> None:
+        run_id = await DiscoveryRunCRUD.create(
+            test_db, location_query="KC", state="MO", issue_areas=["x"]
+        )
+        job_id = await DiscoveryJobCRUD.create(
+            test_db, run_id=run_id, job_input=DiscoveryJobInput()
+        )
+        await DiscoveryJobCRUD.complete(test_db, job_id)
+        mcp = build_mcp()
+        handler = _handler_for(mcp, types.GetTaskRequest)
+
+        with (
+            patch.object(tasks_module, "get_settings", return_value=test_settings),
+            patch.object(
+                tasks_module.DiscoveryRunCRUD, "get_by_id", new=AsyncMock(return_value=None)
+            ),
+            pytest.raises(McpError) as exc_info,
+        ):
+            await handler(_get_task_request(job_id))
+
+        assert exc_info.value.error.code == types.INVALID_PARAMS
+        assert "Unknown task" in exc_info.value.error.message
+
+    @pytest.mark.asyncio
     async def test_get_task_failed_job_returns_completed_tool_error(
         self, test_db: object, test_settings: Settings
     ) -> None:
@@ -711,6 +766,22 @@ class TestInstallTasksExtension:
         assert result.root.status == "completed"
         assert result.root.result["structuredContent"]["id"] == run_id
         assert result.root.result["isError"] is False
+
+    @pytest.mark.asyncio
+    async def test_get_task_working_inline_run_has_no_result(
+        self, test_db: object, test_settings: Settings
+    ) -> None:
+        run_id = await DiscoveryRunCRUD.create(
+            test_db, location_query="KC", state="MO", issue_areas=["x"]
+        )
+        mcp = build_mcp()
+        handler = _handler_for(mcp, types.GetTaskRequest)
+
+        with patch.object(tasks_module, "get_settings", return_value=test_settings):
+            result = await handler(_get_task_request(run_id))
+
+        assert result.root.status == "working"
+        assert result.root.result is None
 
     @pytest.mark.asyncio
     async def test_get_task_failed_inline_run_returns_completed_tool_error(

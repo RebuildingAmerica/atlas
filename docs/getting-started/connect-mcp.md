@@ -2,7 +2,8 @@
 
 Atlas exposes a hosted Model Context Protocol server for compliant remote MCP
 clients. The server gives assistants access to Atlas search, source review,
-discovery-run artifacts, and place-level civic context.
+discovery-run artifacts, place-level civic context, and user-selected prompt
+workflows.
 
 ## Endpoint
 
@@ -37,6 +38,7 @@ client's built-in remote MCP server flow and enter the Atlas endpoint above.
 | Registry manifest  | [mcp/server.json](../../mcp/server.json)        |
 | Public docs        | [MCP overview](../../mintlify/mcp/overview.mdx) |
 | Tool reference     | [MCP tools](../../mintlify/mcp/tools.mdx)       |
+| Prompt reference   | [MCP prompts](../../mintlify/mcp/prompts.mdx)   |
 
 ## Workspace activity
 
@@ -51,3 +53,16 @@ session replay.
 `discovery:write`. MCP clients that declare the Tasks extension receive a task
 handle immediately and poll until the run finishes. Clients without task support
 receive an explicit error instead of a partial result.
+
+## Guided prompts
+
+Atlas exposes static, read-only prompts for common assistant workflows:
+
+- `research_place`
+- `find_civic_actors`
+- `inspect_source_trail`
+- `assess_coverage_gaps`
+- `create_research_brief`
+
+These prompts guide clients through existing read tools. They do not start
+discovery runs or require the Tasks extension.

@@ -13,6 +13,7 @@ from atlas.platform.config import Settings, get_settings
 
 from .data import AtlasDataService
 from .logging_support import install_logging_extension
+from .prompts import install_prompts
 from .tasks import DraftTasksJsonRpcMiddleware, install_tasks_extension
 
 if TYPE_CHECKING:
@@ -265,6 +266,7 @@ def build_mcp() -> FastMCP:
 
     install_tasks_extension(mcp)
     install_logging_extension(mcp)
+    install_prompts(mcp)
     return mcp
 
 

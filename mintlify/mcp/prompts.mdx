@@ -1,0 +1,66 @@
+---
+title: "Available prompts"
+description: "User-selectable Atlas MCP prompts for guided civic research workflows."
+---
+
+## Overview
+
+Atlas MCP prompts are guided research workflows exposed to compatible clients as
+user-selected commands. They help you start with a clear civic research shape
+while keeping Atlas sources, trust signals, and coverage limits attached to the
+answer.
+
+Prompts do not create or modify Atlas data. They guide your assistant through
+read-only Atlas tools such as search, source inspection, place context, coverage
+analysis, and existing discovery-run lookup.
+
+## Prompts
+
+| Prompt | What it helps with | Required arguments | Optional arguments |
+| ------ | ------------------ | ------------------ | ------------------ |
+| `research_place` | Build a source-linked civic landscape for a place. | `place` | `issue_focus` |
+| `find_civic_actors` | Find people, organizations, initiatives, campaigns, or events for a topic. | `query` | `place`, `issue_focus` |
+| `inspect_source_trail` | Verify what Atlas knows about one civic actor and where it came from. | `entity` | `place` |
+| `assess_coverage_gaps` | Explain strong and weak Atlas coverage for a place or issue focus. | `place` | `issue_focus` |
+| `create_research_brief` | Create a source-linked brief from an existing Atlas discovery run. | `run_id` | - |
+
+## How to use them
+
+Open your MCP client's prompt or slash-command picker, choose an Atlas prompt,
+and fill in the requested arguments. For example:
+
+```text
+Prompt: research_place
+place: Kansas City, MO
+issue_focus: housing and labor
+```
+
+The assistant can then use Atlas tools to gather place context, search matching
+actors, inspect sources, and explain coverage gaps. Good answers should show
+where claims came from and distinguish weak Atlas coverage from evidence that
+civic work does not exist.
+
+## Permissions
+
+Prompt access follows the same requirements as Atlas MCP read tools:
+
+- `discovery:read` OAuth scope
+- `api.mcp` workspace package capability
+- An active workspace selected during consent
+
+Prompts do not call `start_discovery_run` in this version, so they do not require
+`discovery:write` or MCP Tasks support.
+
+## Related
+
+<CardGroup cols={2}>
+
+<Card title="MCP overview" icon="robot" href="/mcp/overview">
+  Connect an assistant to Atlas.
+</Card>
+
+<Card title="MCP tools" icon="wrench" href="/mcp/tools">
+  Review the tools prompts can guide your assistant to use.
+</Card>
+
+</CardGroup>
