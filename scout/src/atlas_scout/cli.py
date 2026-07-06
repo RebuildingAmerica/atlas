@@ -3372,6 +3372,12 @@ def entries() -> None:
     default=None,
     help="Fail unless at least this many person entries remain after filters.",
 )
+@click.option(
+    "--min-unique-people",
+    type=click.IntRange(0),
+    default=None,
+    help="Fail unless at least this many exact unique person keys remain after filters.",
+)
 @click.pass_context
 def entries_stats(
     ctx: click.Context,
@@ -3381,6 +3387,7 @@ def entries_stats(
     run_id: str | None,
     excluded_source_datasets: tuple[str, ...],
     min_people: int | None,
+    min_unique_people: int | None,
 ) -> None:
     """Show aggregate entry counts for discovery verification."""
     config: ScoutConfig = ctx.obj["config"]
@@ -3393,6 +3400,7 @@ def entries_stats(
             run_id=run_id,
             excluded_source_datasets=excluded_source_datasets,
             min_people=min_people,
+            min_unique_people=min_unique_people,
         )
     )
 

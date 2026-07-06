@@ -121,6 +121,74 @@ def test_entries_stats_excludes_source_datasets_and_enforces_people_count(
     assert payload["by_source_dataset"] == {}
 
 
+def test_entries_stats_enforces_unique_people_count(tmp_path: Path) -> None:
+    """Stats gates should be able to count exact unique people, not only row artifacts."""
+    config_path = _write_config(tmp_path)
+    db_path = config_path.parent / "scout.db"
+    store = ScoutStore(str(db_path))
+    asyncio.run(store.initialize())
+    first_run_id = asyncio.run(
+        store.create_run(location="United States", issues=[], search_depth="standard")
+    )
+    second_run_id = asyncio.run(
+        store.create_run(location="United States", issues=[], search_depth="standard")
+    )
+    for run_id, source_url in (
+        (first_run_id, "https://example.gov/a.csv"),
+        (second_run_id, "https://example.gov/b.csv"),
+    ):
+        asyncio.run(
+            store.save_entry(
+                run_id=run_id,
+                name="Jane Doe",
+                entry_type="person",
+                description="Source-backed person",
+                city="Dallas",
+                state="TX",
+                score=0.8,
+                data={
+                    "source_urls": [source_url],
+                    "source_contexts": {source_url: "name=DOE, JANE"},
+                },
+            )
+        )
+    asyncio.run(store.close())
+
+    passing_result = CliRunner().invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "entries",
+            "stats",
+            "--json",
+            "--min-people",
+            "2",
+            "--min-unique-people",
+            "1",
+        ],
+    )
+    failing_result = CliRunner().invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "entries",
+            "stats",
+            "--min-unique-people",
+            "2",
+        ],
+    )
+
+    assert passing_result.exit_code == 0
+    payload = json.loads(passing_result.output)
+    assert payload["by_type"] == {"person": 2}
+    assert payload["unique_person_keys"] == 1
+    assert payload["exact_duplicate_surplus"] == 1
+    assert failing_result.exit_code != 0
+    assert "Only 1 exact unique people; expected at least 2." in failing_result.output
+
+
 def test_entries_purge_deletes_source_dataset_from_active_entries(tmp_path: Path) -> None:
     """Purge should remove structured source rows from active discovery stats."""
     config_path = _write_config(tmp_path)

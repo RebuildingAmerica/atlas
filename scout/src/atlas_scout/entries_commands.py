@@ -26,6 +26,7 @@ async def entries_stats_command(
     run_id: str | None = None,
     excluded_source_datasets: tuple[str, ...] = (),
     min_people: int | None = None,
+    min_unique_people: int | None = None,
 ) -> None:
     """Fetch and display source-neutral entry statistics."""
     stats = await _load_entry_stats(
@@ -56,6 +57,14 @@ async def entries_stats_command(
     if min_people is not None and people_count < min_people:
         raise click.ClickException(f"Only {people_count} people; expected at least {min_people}.")
 
+    unique_people_value = stats.get("unique_person_keys", 0)
+    unique_people_count = unique_people_value if isinstance(unique_people_value, int) else 0
+    if min_unique_people is not None and unique_people_count < min_unique_people:
+        raise click.ClickException(
+            f"Only {unique_people_count} exact unique people; expected at least "
+            f"{min_unique_people}."
+        )
+
     if json_output:
         click.echo(json.dumps(stats, sort_keys=True))
         return
@@ -65,8 +74,11 @@ async def entries_stats_command(
     table.add_column("Value")
     table.add_row("Total entries", str(stats["total_entries"]))
     table.add_row("People", str(people_count))
+    table.add_row("Exact unique people", str(unique_people_count))
     table.add_row("Source-backed entries", str(source_backed_entries))
     table.add_row("Contextual people", str(stats["contextual_person_count"]))
+    table.add_row("Exact duplicate groups", str(stats["exact_duplicate_groups"]))
+    table.add_row("Exact duplicate surplus", str(stats["exact_duplicate_surplus"]))
     table.add_row("Source URLs", str(stats["source_url_count"]))
     table.add_row("Source domains", str(stats["source_domain_count"]))
     table.add_row("By type", json.dumps(stats["by_type"], sort_keys=True))
@@ -158,6 +170,9 @@ def _empty_entry_stats() -> dict[str, Any]:
         "source_url_count": 0,
         "source_domain_count": 0,
         "duplicate_source_keys": {},
+        "exact_duplicate_groups": 0,
+        "exact_duplicate_surplus": 0,
+        "unique_person_keys": 0,
     }
 
 

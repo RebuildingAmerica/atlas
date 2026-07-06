@@ -190,6 +190,22 @@ def _has_source_context(data: dict[str, Any]) -> bool:
     return False
 
 
+def _entry_exact_key(
+    *,
+    name: str,
+    city: str | None,
+    state: str | None,
+    entry_type: str,
+) -> tuple[str, str, str, str]:
+    """Return the conservative exact key used for entry uniqueness stats."""
+    return (
+        name.strip().lower(),
+        city.strip().upper() if city else "",
+        state.strip().upper() if state else "",
+        entry_type.strip().lower(),
+    )
+
+
 class ScoutStore:
     """Async SQLite store for Scout's local state."""
 
@@ -1262,14 +1278,16 @@ class ScoutStore:
         assert self._conn is not None
         if run_id is None:
             sql = """
-                SELECT e.run_id, e.entry_type, e.description, e.data, r.location
+                SELECT e.run_id, e.name, e.entry_type, e.description, e.city, e.state, e.data,
+                       r.location
                 FROM entries e
                 JOIN runs r ON r.id = e.run_id
             """
             params: tuple[Any, ...] = ()
         else:
             sql = """
-                SELECT e.run_id, e.entry_type, e.description, e.data, r.location
+                SELECT e.run_id, e.name, e.entry_type, e.description, e.city, e.state, e.data,
+                       r.location
                 FROM entries e
                 JOIN runs r ON r.id = e.run_id
                 WHERE e.run_id = ?
@@ -1291,6 +1309,8 @@ class ScoutStore:
         source_key_counts: dict[str, int] = {}
         source_urls_seen: set[str] = set()
         source_domains_seen: set[str] = set()
+        exact_key_counts: dict[tuple[str, str, str, str], int] = {}
+        unique_person_keys: set[tuple[str, str, str, str]] = set()
 
         for row in rows:
             data = json.loads(row["data"])
@@ -1305,6 +1325,15 @@ class ScoutStore:
             total_entries += 1
             entry_type = str(row["entry_type"])
             by_type[entry_type] = by_type.get(entry_type, 0) + 1
+            exact_key = _entry_exact_key(
+                name=str(row["name"]),
+                city=row["city"],
+                state=row["state"],
+                entry_type=entry_type,
+            )
+            exact_key_counts[exact_key] = exact_key_counts.get(exact_key, 0) + 1
+            if entry_type == "person":
+                unique_person_keys.add(exact_key)
 
             row_run_id = str(row["run_id"])
             by_run[row_run_id] = by_run.get(row_run_id, 0) + 1
@@ -1348,6 +1377,7 @@ class ScoutStore:
         duplicate_source_keys = {
             source_key: count for source_key, count in source_key_counts.items() if count > 1
         }
+        exact_duplicate_counts = [count for count in exact_key_counts.values() if count > 1]
         return {
             "total_entries": total_entries,
             "by_type": by_type,
@@ -1360,6 +1390,9 @@ class ScoutStore:
             "source_url_count": len(source_urls_seen),
             "source_domain_count": len(source_domains_seen),
             "duplicate_source_keys": duplicate_source_keys,
+            "exact_duplicate_groups": len(exact_duplicate_counts),
+            "exact_duplicate_surplus": sum(count - 1 for count in exact_duplicate_counts),
+            "unique_person_keys": len(unique_person_keys),
         }
 
     async def list_entries(

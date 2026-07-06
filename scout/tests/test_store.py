@@ -488,6 +488,42 @@ async def test_purge_entries_by_source_dataset_removes_matching_rows(
     assert stats["by_location"] == {"Las Vegas, NV": 1}
 
 
+async def test_entry_stats_reports_unique_people_and_exact_duplicates(
+    store: ScoutStore,
+) -> None:
+    """Stats distinguish run artifacts from exact unique person keys."""
+    first_run_id = await store.create_run(
+        location="United States", issues=[], search_depth="standard"
+    )
+    second_run_id = await store.create_run(
+        location="United States", issues=[], search_depth="standard"
+    )
+    for run_id, source_url in (
+        (first_run_id, "https://example.gov/candidates.csv"),
+        (second_run_id, "https://example.gov/contributions.csv"),
+    ):
+        await store.save_entry(
+            run_id=run_id,
+            name="Jane Doe",
+            entry_type="person",
+            description="Source-backed person",
+            city="Dallas",
+            state="TX",
+            score=0.8,
+            data={
+                "source_urls": [source_url],
+                "source_contexts": {source_url: "name=DOE, JANE; city=Dallas; state=TX"},
+            },
+        )
+
+    stats = await store.entry_stats()
+
+    assert stats["by_type"] == {"person": 2}
+    assert stats["exact_duplicate_groups"] == 1
+    assert stats["exact_duplicate_surplus"] == 1
+    assert stats["unique_person_keys"] == 1
+
+
 async def test_list_runs(store: ScoutStore) -> None:
     await store.create_run(location="Austin, TX", issues=[], search_depth="standard")
     await store.create_run(location="Houston, TX", issues=[], search_depth="deep")
