@@ -102,6 +102,8 @@ export interface Entry {
   sources?: Source[];
   /** Human-readable URL slug for canonical profile URLs. */
   slug: string;
+  /** Absolute URL to the entity's public profile page, when derivable. */
+  profile_url?: string;
   created_at: string;
   updated_at: string;
 }

@@ -147,6 +147,7 @@ function mapEntity(entity: EntityResponse): Entry {
     source_count: entity.source_count ?? 0,
     latest_source_date: entity.freshness.latest_source_date ?? undefined,
     slug: entity.slug ?? "",
+    profile_url: entity.profile_url ?? undefined,
     created_at: entity.created_at,
     updated_at: entity.updated_at,
   };

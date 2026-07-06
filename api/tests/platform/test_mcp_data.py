@@ -514,6 +514,104 @@ class TestEntityRecordClaimVariants:
         assert record["flag_summary"]["flag_count"] == 1
 
 
+class TestProfileUrl:
+    """`_entity_record` computes an absolute `profile_url` from the configured public origin."""
+
+    def test_none_when_public_url_not_configured(self) -> None:
+        entry = _build_entry()
+        record = data_module._entity_record(  # noqa: SLF001
+            entry,
+            EntityRecordContext(
+                issue_area_ids=[],
+                source_types=[],
+                source_count=0,
+                latest_source_date=None,
+            ),
+        )
+        assert record["profile_url"] is None
+
+    def test_none_when_slug_missing(self) -> None:
+        entry = replace(_build_entry(), slug=None)
+        record = data_module._entity_record(  # noqa: SLF001
+            entry,
+            EntityRecordContext(
+                issue_area_ids=[],
+                source_types=[],
+                source_count=0,
+                latest_source_date=None,
+                public_url="https://atlas.rebuildingus.org",
+            ),
+        )
+        assert record["profile_url"] is None
+
+    def test_organization_route_segment(self) -> None:
+        entry = _build_entry()
+        record = data_module._entity_record(  # noqa: SLF001
+            entry,
+            EntityRecordContext(
+                issue_area_ids=[],
+                source_types=[],
+                source_count=0,
+                latest_source_date=None,
+                public_url="https://atlas.rebuildingus.org",
+            ),
+        )
+        assert (
+            record["profile_url"]
+            == "https://atlas.rebuildingus.org/profiles/organizations/helper-org-aaaa"
+        )
+
+    def test_person_route_segment(self) -> None:
+        entry = replace(_build_entry(), type="person", slug="jane-doe-a3f2")
+        record = data_module._entity_record(  # noqa: SLF001
+            entry,
+            EntityRecordContext(
+                issue_area_ids=[],
+                source_types=[],
+                source_count=0,
+                latest_source_date=None,
+                public_url="https://atlas.rebuildingus.org",
+            ),
+        )
+        assert (
+            record["profile_url"] == "https://atlas.rebuildingus.org/profiles/people/jane-doe-a3f2"
+        )
+
+    def test_unmapped_type_falls_back_to_pluralized_segment(self) -> None:
+        entry = replace(_build_entry(), type="campaign", slug="rent-strike-2026")
+        record = data_module._entity_record(  # noqa: SLF001
+            entry,
+            EntityRecordContext(
+                issue_area_ids=[],
+                source_types=[],
+                source_count=0,
+                latest_source_date=None,
+                public_url="https://atlas.rebuildingus.org",
+            ),
+        )
+        assert (
+            record["profile_url"]
+            == "https://atlas.rebuildingus.org/profiles/campaigns/rent-strike-2026"
+        )
+
+    def test_strips_trailing_slash_from_public_url(self) -> None:
+        entry = _build_entry()
+        record = data_module._entity_record(  # noqa: SLF001
+            entry,
+            EntityRecordContext(
+                issue_area_ids=[],
+                source_types=[],
+                source_count=0,
+                latest_source_date=None,
+                public_url="https://atlas.rebuildingus.org/",
+            ),
+        )
+        assert (
+            record["profile_url"]
+            == "https://atlas.rebuildingus.org/profiles/organizations/helper-org-aaaa"
+        )
+
+
 class TestEntityFreshnessFallbackChain:
     def test_uses_last_confirmed_at_when_present(self) -> None:
         today = datetime.now(UTC).date().isoformat()
@@ -688,6 +786,28 @@ async def test_get_place_entities_rejects_unknown_sort(
 
 
 @pytest.mark.asyncio
+async def test_search_entities_profile_url_none_by_default(
+    populated_service: AtlasDataService,
+) -> None:
+    """Without a configured public_url, search_entities leaves profile_url as None."""
+    page = await populated_service.search_entities(place="Gary, IN", limit=1)
+    assert page["items"][0]["profile_url"] is None
+
+
+@pytest.mark.asyncio
+async def test_search_entities_profile_url_when_public_url_configured(
+    db_url: str,
+    populated_service: AtlasDataService,  # noqa: ARG001
+) -> None:
+    """search_entities builds an absolute profile_url once the service has a public_url."""
+    service = AtlasDataService(db_url, public_url="https://atlas.rebuildingus.org")
+    page = await service.search_entities(place="Gary, IN", limit=1)
+    assert page["items"][0]["profile_url"].startswith(
+        "https://atlas.rebuildingus.org/profiles/organizations/"
+    )
+
+
+@pytest.mark.asyncio
 async def test_get_entity_returns_detail_payload(
     populated_service: AtlasDataService, test_db: object
 ) -> None:
@@ -730,6 +850,38 @@ async def test_get_entity_excludes_suppressed_sources(
 async def test_get_entity_not_found_raises(populated_service: AtlasDataService) -> None:
     with pytest.raises(ValueError, match="Entity not found"):
         await populated_service.get_entity("does-not-exist")
+
+
+@pytest.mark.asyncio
+async def test_get_entity_profile_url_none_without_configured_public_url(
+    populated_service: AtlasDataService, test_db: object
+) -> None:
+    """Without a configured public_url, get_entity leaves profile_url as None."""
+    conn: aiosqlite.Connection = test_db  # type: ignore[assignment]
+    cursor = await conn.execute("SELECT id FROM entries WHERE name = 'Atlas Primary Org'")
+    primary_id = (await cursor.fetchone())[0]
+
+    detail = await populated_service.get_entity(primary_id)
+    assert detail["profile_url"] is None
+
+
+@pytest.mark.asyncio
+async def test_get_entity_profile_url_when_public_url_configured(
+    db_url: str,
+    test_db: object,
+    populated_service: AtlasDataService,  # noqa: ARG001
+) -> None:
+    """get_entity builds an absolute profile_url once the service has a public_url."""
+    conn: aiosqlite.Connection = test_db  # type: ignore[assignment]
+    cursor = await conn.execute("SELECT id, slug FROM entries WHERE name = 'Atlas Primary Org'")
+    primary_id, primary_slug = await cursor.fetchone()
+
+    service = AtlasDataService(db_url, public_url="https://atlas.rebuildingus.org")
+    detail = await service.get_entity(primary_id)
+    assert (
+        detail["profile_url"]
+        == f"https://atlas.rebuildingus.org/profiles/organizations/{primary_slug}"
+    )
 
 
 @pytest.mark.asyncio
@@ -988,6 +1140,25 @@ async def test_get_related_entities_includes_all_relationship_types(
     relationships = payload["items"][0]["relationships"]
     types = {relationship["type"] for relationship in relationships}
     assert {"affiliated_member", "shared_issue_area", "shared_place", "shared_source"} <= types
+    assert payload["items"][0]["entity"]["profile_url"] is None
+
+
+@pytest.mark.asyncio
+async def test_get_related_entities_profile_url_when_public_url_configured(
+    db_url: str,
+    test_db: object,
+    populated_service: AtlasDataService,  # noqa: ARG001
+) -> None:
+    """get_related_entities threads public_url through to nested entity records."""
+    conn: aiosqlite.Connection = test_db  # type: ignore[assignment]
+    cursor = await conn.execute("SELECT id FROM entries WHERE name = 'Atlas Primary Org'")
+    primary_id = (await cursor.fetchone())[0]
+
+    service = AtlasDataService(db_url, public_url="https://atlas.rebuildingus.org")
+    payload = await service.get_related_entities(primary_id)
+    assert payload["items"][0]["entity"]["profile_url"].startswith(
+        "https://atlas.rebuildingus.org/profiles/organizations/"
+    )
 
 
 @pytest.mark.asyncio

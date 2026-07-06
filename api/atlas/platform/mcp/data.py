@@ -157,6 +157,7 @@ class EntityRecordContext:
         independent_source_count: int | None = None,
         website_grounded: bool | None = None,
         email_grounded: bool | None = None,
+        public_url: str | None = None,
     ) -> None:
         self.issue_area_ids = issue_area_ids
         self.source_types = source_types
@@ -168,6 +169,7 @@ class EntityRecordContext:
         self.independent_source_count = independent_source_count
         self.website_grounded = website_grounded
         self.email_grounded = email_grounded
+        self.public_url = public_url
 
 
 _EXHAUSTIVE_SCAN_PAGE_SIZE = 500
@@ -181,8 +183,9 @@ places."""
 class AtlasDataService:
     """Structured place/entity retrieval service for agents and APIs."""
 
-    def __init__(self, database_url: str) -> None:
+    def __init__(self, database_url: str, *, public_url: str | None = None) -> None:
         self._database_url = database_url
+        self._public_url = public_url
 
     async def _search_all_entities(
         self,
@@ -253,6 +256,7 @@ class AtlasDataService:
                     source_count=record["source_count"],
                     latest_source_date=record["latest_source_date"],
                     flag_summary=flag_summaries.get(record["entry"].id),
+                    public_url=self._public_url,
                 ),
             )
             for record in search["entries"]
@@ -371,6 +375,7 @@ class AtlasDataService:
                 independent_source_count=independent_source_count,
                 website_grounded=website_grounded,
                 email_grounded=email_grounded,
+                public_url=self._public_url,
             ),
         )
         entity["source_ids"] = [source["id"] for source in sources]
@@ -996,6 +1001,7 @@ class AtlasDataService:
                                 str(source["id"]) for source in source_map.get(related_entry.id, [])
                             ],
                             latest_source_date=record["latest_source_date"],
+                            public_url=self._public_url,
                         ),
                     ),
                     "relationships": relationships,
@@ -1407,6 +1413,7 @@ def _entity_record(entry: EntryModel, context: EntityRecordContext) -> dict[str,
         created_at=entry.created_at,
         updated_at=entry.updated_at,
         resource_uri=f"atlas://entities/{entry.id}",
+        profile_url=_profile_url(entry, context),
     ).model_dump(mode="json")
 
 
@@ -1590,6 +1597,39 @@ def _relationship_ids(entity_id: str, entry: EntryModel, issue_area_ids: list[st
             f"atlas://entities/{entity_id}/relationships/affiliated_organization/{entry.affiliated_org_id}"
         )
     return relationship_ids
+
+
+_PROFILE_ROUTE_SEGMENT_BY_TYPE = {
+    "person": "people",
+    "organization": "organizations",
+}
+
+
+def _profile_url(entry: EntryModel, context: EntityRecordContext) -> str | None:
+    """Build the absolute public profile URL for an entity, when derivable.
+
+    Mirrors the type-to-route-segment convention in the frontend's
+    `profileHref()` (`app/src/domains/catalog/components/entries/entry-card.tsx`):
+    person -> "people", organization -> "organizations", everything else ->
+    the pluralized type.
+
+    Parameters
+    ----------
+    entry : EntryModel
+        The entry being serialized.
+    context : EntityRecordContext
+        Serialization context, carrying the configured public app origin.
+
+    Returns
+    -------
+    str | None
+        The absolute profile URL, or None when the public origin or slug is
+        not available.
+    """
+    if not context.public_url or not entry.slug:
+        return None
+    segment = _PROFILE_ROUTE_SEGMENT_BY_TYPE.get(entry.type, f"{entry.type}s")
+    return f"{context.public_url.rstrip('/')}/profiles/{segment}/{entry.slug}"
 
 
 def _place_resource_slug(place: Mapping[str, str | None]) -> str:

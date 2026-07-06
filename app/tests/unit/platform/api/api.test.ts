@@ -268,6 +268,7 @@ describe("api.entries.getBySlug and getConnections", () => {
       source_types: [],
       source_count: 0,
       slug: "ada-lovelace-1234",
+      profile_url: "https://atlas.rebuildingus.org/profiles/people/ada-lovelace-1234",
       created_at: "2026-04-10T00:00:00.000Z",
       updated_at: "2026-04-10T00:00:00.000Z",
       active: true,
@@ -301,6 +302,9 @@ describe("api.entries.getBySlug and getConnections", () => {
     expect(fetchMock).toHaveBeenCalledWith("/api/entities/by-slug/people/ada-lovelace-1234");
     expect(result.id).toBe("ent_1");
     expect(result.slug).toBe("ada-lovelace-1234");
+    expect(result.profile_url).toBe(
+      "https://atlas.rebuildingus.org/profiles/people/ada-lovelace-1234",
+    );
     expect(result.actor_quality).toEqual({
       level: "specific_actor",
       score: 5,
@@ -343,6 +347,7 @@ describe("api.entries.getBySlug and getConnections", () => {
       source_types: [],
       source_count: 3,
       slug: "prairie-workers-cooperative-1",
+      profile_url: null,
       created_at: "2026-04-10T00:00:00.000Z",
       updated_at: "2026-04-10T00:00:00.000Z",
       active: true,
@@ -359,6 +364,8 @@ describe("api.entries.getBySlug and getConnections", () => {
       website_grounded: true,
       email_grounded: false,
     });
+    // No configured public app origin (e.g. local dev) means no profile_url to show.
+    expect(result.profile_url).toBeUndefined();
   });
 
   it("maps the ranked connection network from the API", async () => {

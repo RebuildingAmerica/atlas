@@ -406,6 +406,10 @@ class EntityResponse(BaseModel):
     created_at: str
     updated_at: str
     resource_uri: str
+    profile_url: str | None = Field(
+        None,
+        description="Absolute URL to the entity's public profile page, when derivable.",
+    )
 
 
 class SourceResponse(BaseModel):

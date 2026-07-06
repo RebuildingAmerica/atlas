@@ -4674,6 +4674,18 @@
             "$ref": "#/components/schemas/ProfileAnswers",
             "description": "Subject-managed profile answers."
           },
+          "profile_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Absolute URL to the entity's public profile page, when derivable.",
+            "title": "Profile Url"
+          },
           "relationship_ids": {
             "description": "relationship ids for this entity detail.",
             "items": {
@@ -4951,6 +4963,18 @@
           "profile_answers": {
             "$ref": "#/components/schemas/ProfileAnswers",
             "description": "Subject-managed profile answers."
+          },
+          "profile_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Absolute URL to the entity's public profile page, when derivable.",
+            "title": "Profile Url"
           },
           "resource_uri": {
             "description": "resource uri for this entity.",

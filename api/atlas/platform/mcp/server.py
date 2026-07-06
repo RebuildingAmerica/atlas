@@ -38,6 +38,28 @@ def _origin_and_host(value: str) -> tuple[str | None, str | None]:
     return f"{parsed.scheme}://{parsed.netloc}", parsed.netloc
 
 
+def _atlas_public_origin(settings: Settings) -> str | None:
+    """Return Atlas's public app origin, derived from the configured auth issuer.
+
+    `settings.auth_jwt_issuer` is sourced from `ATLAS_PUBLIC_URL` and has the
+    auth service's `/api/auth` suffix appended during settings normalization;
+    stripping it back off recovers the frontend app's public base URL.
+    """
+    origin = settings.auth_jwt_issuer.removesuffix("/api/auth")
+    return origin or None
+
+
+def _build_data_service() -> AtlasDataService:
+    """Construct an AtlasDataService wired with the current request's settings.
+
+    Centralizing this in one helper (rather than repeating it per tool)
+    avoids inflating each tool body from one statement to two, which would
+    push `build_mcp()` over its statement-count lint budget.
+    """
+    settings = get_settings()
+    return AtlasDataService(settings.database_url, public_url=_atlas_public_origin(settings))
+
+
 def build_transport_security_settings(settings: Settings) -> TransportSecuritySettings:
     """Build MCP host/origin allowlists from Atlas's configured public URLs.
 
@@ -101,7 +123,7 @@ def build_mcp() -> FastMCP:
         cursor: str | None = None,
     ) -> dict[str, Any]:
         """Search Atlas entities by place, issue area, and free-text query."""
-        service = AtlasDataService(get_settings().database_url)
+        service = _build_data_service()
         return await service.search_entities(
             place=place,
             issue_areas=issue_areas,
@@ -115,7 +137,7 @@ def build_mcp() -> FastMCP:
     @mcp.tool()
     async def get_entity(entity_id: str) -> dict[str, Any]:
         """Get one Atlas entity with its sources, issue areas, and relationship ids."""
-        service = AtlasDataService(get_settings().database_url)
+        service = _build_data_service()
         return await service.get_entity(entity_id)
 
     @mcp.tool()
@@ -123,7 +145,7 @@ def build_mcp() -> FastMCP:
         entity_id: str, limit: int = 20, cursor: str | None = None
     ) -> dict[str, Any]:
         """Return the public sources backing one Atlas entity."""
-        service = AtlasDataService(get_settings().database_url)
+        service = _build_data_service()
         return await service.get_entity_sources(entity_id, limit=limit, cursor=cursor)
 
     @mcp.tool()
@@ -136,7 +158,7 @@ def build_mcp() -> FastMCP:
         cursor: str | None = None,
     ) -> dict[str, Any]:
         """Search Atlas sources with optional place, issue, and free-text filters."""
-        service = AtlasDataService(get_settings().database_url)
+        service = _build_data_service()
         return await service.search_sources(
             place=place,
             issue_areas=issue_areas,
@@ -157,7 +179,7 @@ def build_mcp() -> FastMCP:
         cursor: str | None = None,
     ) -> dict[str, Any]:
         """Get entities Atlas tracks for a specific place."""
-        service = AtlasDataService(get_settings().database_url)
+        service = _build_data_service()
         return await service.search_entities(
             place=place,
             issue_areas=issue_areas,
@@ -176,7 +198,7 @@ def build_mcp() -> FastMCP:
         cursor: str | None = None,
     ) -> dict[str, Any]:
         """List source-linked Atlas research runs and their structured outputs."""
-        service = AtlasDataService(get_settings().database_url)
+        service = _build_data_service()
         return await service.list_discovery_runs(
             state=state,
             status=status,
@@ -187,13 +209,13 @@ def build_mcp() -> FastMCP:
     @mcp.tool()
     async def get_discovery_run(run_id: str) -> dict[str, Any]:
         """Get one source-linked Atlas research run and its structured output."""
-        service = AtlasDataService(get_settings().database_url)
+        service = _build_data_service()
         return await service.get_discovery_run(run_id)
 
     @mcp.tool()
     async def get_place_profile(place: str) -> dict[str, Any]:
         """Return demographic and socioeconomic context for a place."""
-        service = AtlasDataService(get_settings().database_url)
+        service = _build_data_service()
         return await service.get_place_profile(place)
 
     @mcp.tool()
@@ -202,7 +224,7 @@ def build_mcp() -> FastMCP:
         issue_areas: list[str] | None = None,
     ) -> dict[str, Any]:
         """Summarize Atlas coverage gaps and entity counts for a place."""
-        service = AtlasDataService(get_settings().database_url)
+        service = _build_data_service()
         return await service.get_place_coverage(place, issue_areas=issue_areas)
 
     @mcp.tool()
@@ -212,7 +234,7 @@ def build_mcp() -> FastMCP:
         top_entities_per_issue: int = 5,
     ) -> dict[str, Any]:
         """Summarize which issues Atlas represents for a place."""
-        service = AtlasDataService(get_settings().database_url)
+        service = _build_data_service()
         return await service.get_place_issue_signals(
             place,
             issue_areas=issue_areas,
@@ -227,7 +249,7 @@ def build_mcp() -> FastMCP:
         cursor: str | None = None,
     ) -> dict[str, Any]:
         """Return mechanically derived relationships for an entity."""
-        service = AtlasDataService(get_settings().database_url)
+        service = _build_data_service()
         return await service.get_related_entities(
             entity_id,
             relation_types=relation_types,
@@ -238,7 +260,7 @@ def build_mcp() -> FastMCP:
     @mcp.tool()
     async def resolve_issue_areas(text: str, limit: int = 10) -> dict[str, Any]:
         """Resolve free-text into ranked Atlas issue area slugs."""
-        service = AtlasDataService(get_settings().database_url)
+        service = _build_data_service()
         return await service.resolve_issue_areas(text, limit=limit)
 
     install_tasks_extension(mcp)
