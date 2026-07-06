@@ -19,6 +19,7 @@ from atlas_scout.scraper.extractor import (
     content_quality_reason,
     extract_content,
     extract_content_verbose,
+    extract_structured_content,
     extract_structured_data,
     is_quality_content,
 )
@@ -138,6 +139,51 @@ def test_extract_content_verbose_metadata_missing_fields(monkeypatch: pytest.Mon
     assert result.page.title == ""
     assert result.page.publication is None
     assert result.page.published_date is None
+
+
+def test_extract_structured_content_accepts_csv_resource() -> None:
+    body = (
+        b"name,office,office_state,election_year\n"
+        b"Jane Doe,Mayor,CA,2026\n"
+        b"John Smith,Council,TX,2026\n"
+    )
+
+    result = extract_structured_content(
+        body,
+        url="https://example.gov/people.csv",
+        content_type="text/csv",
+    )
+
+    assert result is not None
+    assert result.reason is None
+    assert result.page is not None
+    assert result.page.text.startswith("name,office")
+    assert result.page.title == "people.csv"
+    assert result.page.structured_data["resource_format"] == "csv"
+
+
+def test_extract_structured_content_reads_delimited_zip_member() -> None:
+    import io
+    import zipfile
+
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w") as archive:
+        archive.writestr("readme.txt", "not structured")
+        archive.writestr("people.txt", "Jane Doe|Mayor|CA\nJohn Smith|Council|TX\n")
+
+    result = extract_structured_content(
+        buffer.getvalue(),
+        url="https://example.gov/people.zip",
+        content_type="application/zip",
+    )
+
+    assert result is not None
+    assert result.reason is None
+    assert result.page is not None
+    assert "Jane Doe|Mayor|CA" in result.page.text
+    assert result.page.title == "people.txt"
+    assert result.page.structured_data["resource_format"] == "zip"
+    assert result.page.structured_data["archive_member"] == "people.txt"
 
 
 def test_content_quality_reason_login_pattern() -> None:

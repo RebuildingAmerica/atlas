@@ -50,6 +50,20 @@ scout search connect
 Direct URL runs do not need a search key. Runs with `--location` and `--issues`
 do.
 
+## Structured Resource Rows Look Wrong
+
+For headerless CSV, TSV, pipe-delimited text, or ZIP resources, pass column
+names in source order:
+
+```bash
+scout run \
+  --structured-columns "id,name,role,organization,city,state,source_url" \
+  https://example.gov/public-roster.zip
+```
+
+If the output has names in the wrong field or empty context, inspect the source
+file's published data dictionary and rerun with the corrected column list.
+
 ## Browser Rendering Fails
 
 Scout uses normal HTML fetching first. When a page looks useful but only exposes

@@ -150,6 +150,79 @@ async def test_run_pipeline_persists_run(mock_provider, mock_fetcher, tmp_db_pat
 
 
 @pytest.mark.asyncio
+async def test_run_pipeline_bulk_saves_ranked_entries(tmp_db_path: Path) -> None:
+    """Large structured runs should use the store's batch insert path."""
+    from atlas_scout.store import ScoutStore
+
+    store = ScoutStore(str(tmp_db_path))
+    await store.initialize()
+    bulk_counts: list[int] = []
+    original_bulk_save = store.bulk_save_entries
+
+    async def bulk_save_entries(**kwargs):
+        bulk_counts.append(len(kwargs["entries"]))
+        return await original_bulk_save(**kwargs)
+
+    async def save_entry(**_kwargs):
+        raise AssertionError("run_pipeline should use bulk_save_entries")
+
+    store.bulk_save_entries = bulk_save_entries  # type: ignore[method-assign]
+    store.save_entry = save_entry  # type: ignore[method-assign]
+
+    class StructuredFetcher:
+        max_concurrent = 1
+
+        def bind_run(self, _run_id: str) -> None:
+            return None
+
+        async def fetch_tracked_verbose(
+            self,
+            url: str,
+            task_id: str,
+            _store: object,
+        ) -> dict[str, object]:
+            return {
+                "url": url,
+                "task_id": task_id,
+                "page": PageContent(
+                    url="https://example.gov/candidates.csv",
+                    text="\n".join(
+                        [
+                            "name,office,office_state,district,party,election_year,city,state",
+                            '"DOE, JANE",House,CA,12,Democratic,2026,Los Angeles,CA',
+                            '"SMITH, JOHN",Mayor,TX,,Independent,2026,Dallas,TX',
+                        ]
+                    ),
+                    title="candidates.csv",
+                    structured_data={"resource_format": "csv"},
+                ),
+                "status": "fetched",
+                "error": None,
+                "discovered_links": [],
+            }
+
+    provider = AsyncMock()
+    provider.max_concurrent = 1
+    provider.complete.return_value = Completion(text="[]")
+
+    result = await run_pipeline(
+        location="United States",
+        issues=["electoral_reform"],
+        provider=provider,
+        store=store,
+        direct_urls=["https://example.gov/candidates.csv"],
+        fetcher=StructuredFetcher(),
+        follow_links=False,
+        min_entry_score=0.0,
+    )
+
+    assert len(result.ranked_entries) == 2
+    assert bulk_counts == [2]
+
+    await store.close()
+
+
+@pytest.mark.asyncio
 async def test_run_pipeline_gap_report_not_none(mock_provider, mock_fetcher, tmp_db_path: Path):
     from atlas_scout.store import ScoutStore
 

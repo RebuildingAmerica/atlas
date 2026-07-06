@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import atlas_discovery_engine.dedup as shared_dedup
 import pytest
 from atlas_shared import RawEntry
 
@@ -56,6 +57,44 @@ async def test_merges_exact_duplicates() -> None:
     assert results[0].description == "A much longer description that should win."
     # Both source URLs combined
     assert set(results[0].source_urls) == {"https://a.example.com", "https://b.example.com"}
+
+
+@pytest.mark.asyncio
+async def test_deduplicate_stream_uses_index_for_exact_people_matches(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Large structured runs should not compare every person against every prior row."""
+    calls = 0
+    original_match_type = shared_dedup._match_type
+
+    def counting_match_type(**kwargs: object) -> str | None:
+        nonlocal calls
+        calls += 1
+        return original_match_type(**kwargs)
+
+    monkeypatch.setattr(shared_dedup, "_match_type", counting_match_type)
+    entries = [
+        _make_raw(
+            f"Person {index}",
+            city="Austin",
+            entry_type="person",
+            source_url=f"https://source.example.com/{index}",
+        )
+        for index in range(300)
+    ]
+    entries.append(
+        _make_raw(
+            "Person 42",
+            city="Austin",
+            entry_type="person",
+            source_url="https://source.example.com/duplicate",
+        )
+    )
+
+    results = [e async for e in deduplicate_stream(_entries_iter(*entries))]
+
+    assert len(results) == 300
+    assert calls < 1000
 
 
 @pytest.mark.asyncio

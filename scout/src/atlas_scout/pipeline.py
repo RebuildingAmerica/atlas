@@ -61,6 +61,7 @@ if TYPE_CHECKING:
         ) -> Awaitable[bool]:
             """Enqueue a normalized URL for later fetching."""
 
+
 logger = logging.getLogger(__name__)
 
 _STATUS_INTERVAL_SECONDS = 0.5
@@ -113,6 +114,7 @@ async def run_pipeline(
     iterative_deepening: bool = False,
     contribution_config: ContributionConfig | None = None,
     remote_run_id: str | None = None,
+    structured_columns: list[str] | None = None,
 ) -> PipelineResult:
     """Run Scout discovery in search mode or direct-URL mode."""
     from atlas_scout.scraper.fetcher import AsyncFetcher as DefaultFetcher
@@ -487,7 +489,7 @@ async def run_pipeline(
                     )
 
                 entries = await extract_page_entries(
-                    page,
+                    _page_with_structured_columns(page, structured_columns),
                     provider,
                     city,
                     state,
@@ -841,17 +843,7 @@ async def run_pipeline(
             )
         ]
 
-        for ranked in ranked_entries:
-            await store.save_entry(
-                run_id=run_id,
-                name=ranked.entry.name,
-                entry_type=str(ranked.entry.entry_type),
-                description=ranked.entry.description,
-                city=ranked.entry.city,
-                state=ranked.entry.state,
-                score=ranked.score,
-                data=ranked.entry.model_dump(mode="json"),
-            )
+        await _save_ranked_entries(store=store, run_id=run_id, ranked_entries=ranked_entries)
 
         gap_report = analyze_gaps(location, ranked_entries)
         run_stats = DiscoveryRunStats(
@@ -1050,6 +1042,42 @@ async def _iter_items[Item](items: list[Item]) -> AsyncIterator[Item]:
     """Yield items from a plain list as an async iterator."""
     for item in items:
         yield item
+
+
+async def _save_ranked_entries(
+    *,
+    store: ScoutStore,
+    run_id: str,
+    ranked_entries: list[RankedEntry],
+) -> None:
+    """Persist ranked entries through the store's batch path."""
+    await store.bulk_save_entries(
+        run_id=run_id,
+        entries=[
+            {
+                "name": ranked.entry.name,
+                "entry_type": str(ranked.entry.entry_type),
+                "description": ranked.entry.description,
+                "city": ranked.entry.city,
+                "state": ranked.entry.state,
+                "score": ranked.score,
+                "data": ranked.entry.model_dump(mode="json"),
+            }
+            for ranked in ranked_entries
+        ],
+    )
+
+
+def _page_with_structured_columns(
+    page: PageContent,
+    structured_columns: list[str] | None,
+) -> PageContent:
+    """Attach operator-provided structured columns to a fetched page."""
+    if not structured_columns:
+        return page
+    structured_data = dict(page.structured_data)
+    structured_data["structured_columns"] = structured_columns
+    return page.model_copy(update={"structured_data": structured_data})
 
 
 def _outcome_int(value: object) -> int:

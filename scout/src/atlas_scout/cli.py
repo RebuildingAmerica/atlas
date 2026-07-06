@@ -1227,6 +1227,14 @@ def main(
     "--refresh", is_flag=True, help="Bypass cached fetch and extraction results for this run."
 )
 @click.option(
+    "--structured-columns",
+    default=None,
+    help=(
+        "Comma-separated column names for headerless CSV/TSV/pipe resources. "
+        "Used with direct URL runs."
+    ),
+)
+@click.option(
     "--verbose-progress",
     is_flag=True,
     help="Show internal worker and queue events instead of the default user-facing firehose.",
@@ -1255,6 +1263,7 @@ def run(
     max_link_depth: int | None,
     max_pages_per_seed: int | None,
     refresh: bool,
+    structured_columns: str | None,
     verbose_progress: bool,
     sync_after_run: bool | None,
     quiet: bool,
@@ -1294,6 +1303,7 @@ def run(
         directive = prompt_file.read().strip()
 
     issue_list = [i.strip() for i in issues.split(",") if i.strip()] if issues else []
+    structured_column_list = _parse_structured_columns(structured_columns)
 
     if follow_links is not None:
         config.scraper.follow_links = follow_links
@@ -1361,6 +1371,7 @@ def run(
             quiet=quiet,
             directive=directive,
             refresh=refresh,
+            structured_columns=structured_column_list,
             verbose_progress=verbose_progress,
             sync_after_run=sync_after_run,
         )
@@ -1377,6 +1388,7 @@ async def _run_pipeline(
     quiet: bool = False,
     directive: str | None = None,
     refresh: bool = False,
+    structured_columns: list[str] | None = None,
     verbose_progress: bool = False,
     sync_after_run: bool | None = None,
     sync_remote_run_id: str | None = None,
@@ -1439,6 +1451,7 @@ async def _run_pipeline(
             iterative_deepening=config.pipeline.iterative_deepening,
             contribution_config=config.contribution,
             remote_run_id=sync_remote_run_id,
+            structured_columns=structured_columns,
         )
     finally:
         await _close_if_supported(fetcher)
@@ -3602,6 +3615,14 @@ def _entry_score(entry: dict[str, object]) -> float:
     """Return an entry score as a sortable float."""
     score = entry.get("score", 0.0)
     return float(score) if isinstance(score, (int, float)) else 0.0
+
+
+def _parse_structured_columns(value: str | None) -> list[str] | None:
+    """Parse comma-separated structured resource column names."""
+    if value is None:
+        return None
+    columns = [column.strip() for column in value.split(",") if column.strip()]
+    return columns or None
 
 
 # ---------------------------------------------------------------------------

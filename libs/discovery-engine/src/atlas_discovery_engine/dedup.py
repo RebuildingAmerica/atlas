@@ -103,16 +103,23 @@ async def deduplicate_raw_entries_stream(
 ) -> AsyncIterator[DeduplicatedEntry]:
     """Deduplicate a stream of raw entries into canonical shared entries."""
     canonical: list[DeduplicatedEntry] = []
+    merge_index: dict[tuple[str, ...], int] = {}
     batch: list[RawEntry] = []
+
+    def _index_entry(index: int) -> None:
+        for key in _shared_merge_keys(canonical[index]):
+            merge_index[key] = index
 
     async def _flush(items: list[RawEntry]) -> None:
         for raw in items:
             dedup = _raw_to_dedup(raw)
-            matched_index = _find_shared_match(dedup, canonical)
+            matched_index = _find_indexed_shared_match(dedup, canonical, merge_index)
             if matched_index is not None:
                 canonical[matched_index] = _merge_shared_entries(canonical[matched_index], dedup)
+                _index_entry(matched_index)
             else:
                 canonical.append(dedup)
+                _index_entry(len(canonical) - 1)
 
     async for entry in entries:
         batch.append(entry)
@@ -168,6 +175,66 @@ def _find_shared_match(entry: DeduplicatedEntry, canonical: list[DeduplicatedEnt
         ):
             return idx
     return None
+
+
+def _find_indexed_shared_match(
+    entry: DeduplicatedEntry,
+    canonical: list[DeduplicatedEntry],
+    merge_index: dict[tuple[str, ...], int],
+) -> int | None:
+    """Return an indexed merge match for exact shared-entry merge cases."""
+    for key in _shared_merge_keys(entry):
+        matched_index = merge_index.get(key)
+        if matched_index is None:
+            continue
+        existing = canonical[matched_index]
+        if (
+            _match_type(
+                name_left=existing.name,
+                name_right=entry.name,
+                city_left=existing.city,
+                city_right=entry.city,
+                entry_type_left=str(existing.entry_type),
+                entry_type_right=str(entry.entry_type),
+                affiliated_org_left=existing.affiliated_org,
+                affiliated_org_right=entry.affiliated_org,
+            )
+            == "merge"
+        ):
+            return matched_index
+    return None
+
+
+def _shared_merge_keys(entry: DeduplicatedEntry) -> list[tuple[str, ...]]:
+    """Return exact keys that can produce merge matches for shared entries."""
+    entry_type = str(entry.entry_type)
+    normalized_name = _normalized_key(entry.name)
+    keys: list[tuple[str, ...]] = []
+    if normalized_name and entry.city:
+        keys.append(
+            (
+                "exact_name_city_type",
+                normalized_name,
+                _normalized_key(entry.city),
+                _normalized_key(entry_type),
+            )
+        )
+    if entry_type == "person" and entry.affiliated_org:
+        keys.append(
+            (
+                "person_affiliated_name",
+                normalized_name,
+                _normalized_key(entry.affiliated_org),
+            )
+        )
+    if entry_type == "organization" and len(entry.name.split()) == 1:
+        keys.append(("single_word_org_name", normalized_name))
+    return keys
+
+
+def _normalized_key(value: str | None) -> str:
+    """Normalize an optional value for exact-match indexes."""
+    return value.strip().lower() if value else ""
 
 
 def _merge_shared_entries(left: DeduplicatedEntry, right: DeduplicatedEntry) -> DeduplicatedEntry:

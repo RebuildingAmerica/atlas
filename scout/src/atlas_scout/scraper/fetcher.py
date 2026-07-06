@@ -14,7 +14,11 @@ import httpx
 from atlas_shared import PageContent, SourceType
 
 from atlas_scout.scraper.browser_render import render_url_with_browser
-from atlas_scout.scraper.extractor import ContentExtraction, extract_content_verbose
+from atlas_scout.scraper.extractor import (
+    ContentExtraction,
+    extract_content_verbose,
+    extract_structured_content,
+)
 
 if TYPE_CHECKING:
     from atlas_scout.store import ScoutStore
@@ -233,7 +237,14 @@ class AsyncFetcher:
                 )
 
             content_type = response.headers.get("content-type", "")
-            if "application/pdf" in content_type:
+            structured = extract_structured_content(
+                response.content,
+                url=url,
+                content_type=content_type,
+            )
+            if structured is not None:
+                extracted = structured
+            elif "application/pdf" in content_type:
                 extracted = _extract_pdf_content(response.content, url=url)
             else:
                 extracted = extract_content_verbose(response.text, url=url)

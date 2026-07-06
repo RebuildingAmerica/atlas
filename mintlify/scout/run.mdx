@@ -36,6 +36,38 @@ Use standard input for scripts:
 cat urls.txt | scout run --file -
 ```
 
+## Structured Public Resources
+
+Scout can read CSV, TSV, pipe-delimited text, and ZIP files that contain one of
+those formats. Use this for public bulk resources where each row already
+contains people, places, roles, dates, or other civic context.
+
+Header rows are detected automatically:
+
+```bash
+scout run https://example.gov/public-roster.csv
+```
+
+For headerless files, pass the column names in order:
+
+```bash
+scout run \
+  --structured-columns "id,name,role,organization,city,state,source_url" \
+  https://example.gov/public-roster.zip
+```
+
+Structured runs still create ordinary local Scout runs, pages, entries, source
+URLs, and source context. Review the people sample before syncing:
+
+```bash
+scout entries list \
+  --type person \
+  --random \
+  --unique-names \
+  --limit 100 \
+  --format json
+```
+
 ## Search-Backed Runs
 
 Connect search first:
