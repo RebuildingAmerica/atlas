@@ -353,7 +353,9 @@ def get_mcp() -> FastMCP:
     return _mcp
 
 
-def get_mcp_asgi_app() -> Starlette:
+def get_mcp_asgi_app(
+    transport_security: TransportSecuritySettings | None = None,
+) -> Starlette:
     """Return the Streamable HTTP Starlette app for mounting on FastAPI.
 
     Wires the draft-Tasks JSON-RPC shim, the bearer-auth guard, and CORS
@@ -375,15 +377,26 @@ def get_mcp_asgi_app() -> Starlette:
     call, but this guards against re-adding middleware if a caller ever
     memoizes and re-passes the same app instance — Starlette raises once an
     app has already started handling requests.
+
+    Parameters
+    ----------
+    transport_security:
+        A precomputed `TransportSecuritySettings` to derive this app's CORS
+        allowlist from. `create_app()` already computes one (for its own,
+        outer CORS middleware — see `split_cors_origins`'s docstring for why
+        both need to agree) and passes it through here to avoid deriving the
+        same allowlist from `Settings` twice. Callers with no settings of
+        their own (e.g. this module's own tests) can omit it; it's computed
+        fresh from `get_settings()` in that case.
     """
     app = get_mcp().streamable_http_app()
     if not getattr(app.state, "atlas_mcp_asgi_middleware_installed", False):
         app.add_middleware(DraftTasksJsonRpcMiddleware)
         app.add_middleware(McpBearerAuthMiddleware)
 
-        exact_origins, origin_regex = split_cors_origins(
-            build_transport_security_settings(get_settings()).allowed_origins
-        )
+        if transport_security is None:
+            transport_security = build_transport_security_settings(get_settings())
+        exact_origins, origin_regex = split_cors_origins(transport_security.allowed_origins)
         app.add_middleware(
             CORSMiddleware,
             allow_origins=exact_origins,

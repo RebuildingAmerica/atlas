@@ -175,9 +175,8 @@ def create_app() -> FastAPI:
     # the real API. In production, this middleware stays scoped to exact
     # origins only: `cors_origins` plus the configured auth issuer/audience
     # origins.
-    exact_origins, origin_regex = split_cors_origins(
-        build_transport_security_settings(settings).allowed_origins
-    )
+    transport_security = build_transport_security_settings(settings)
+    exact_origins, origin_regex = split_cors_origins(transport_security.allowed_origins)
     if settings.environment == "production":
         origin_regex = None
     app.add_middleware(
@@ -250,8 +249,10 @@ def create_app() -> FastAPI:
     # Mount the MCP Streamable HTTP transport at /mcp. get_mcp_asgi_app()
     # already wires the bearer-token auth guard (which advertises the
     # resource-specific PRM URL on 401s so MCP clients can discover the OAuth
-    # issuer automatically) and CORS support onto the returned app.
-    app.mount("/mcp", get_mcp_asgi_app())
+    # issuer automatically) and CORS support onto the returned app. Passing
+    # the `transport_security` computed above avoids deriving the same
+    # allowlist from `settings` a second time.
+    app.mount("/mcp", get_mcp_asgi_app(transport_security))
 
     return app
 
