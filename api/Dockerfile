@@ -27,12 +27,35 @@ WORKDIR /build/api
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-dev --no-editable
 
+FROM node:24-alpine AS widget-builder
+
+ENV PNPM_HOME=/pnpm \
+    PATH=/pnpm:$PATH
+
+RUN corepack enable
+
+WORKDIR /repo
+
+# Copy manifests only so the install layer is cached independently of source.
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
+COPY packages/entity-widgets/package.json packages/entity-widgets/package.json
+COPY packages/eslint-config/package.json packages/eslint-config/package.json
+
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
+    pnpm install --frozen-lockfile --filter @rebuildingamerica/entity-widgets...
+
+COPY packages/entity-widgets packages/entity-widgets
+
+WORKDIR /repo/packages/entity-widgets
+RUN pnpm run build
+
 FROM python:3.12-slim
 
 WORKDIR /app
 
 COPY --from=builder /app/.venv /app/.venv
 COPY --from=builder /build/api/atlas /app/atlas
+COPY --from=widget-builder /repo/packages/entity-widgets/dist/widget /app/atlas/platform/mcp/_widget_assets
 
 ENV PATH="/app/.venv/bin:${PATH}"
 
