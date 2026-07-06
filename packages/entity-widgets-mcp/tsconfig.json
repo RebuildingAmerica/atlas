@@ -16,5 +16,5 @@
     "noEmit": true,
     "lib": ["DOM", "DOM.Iterable", "ES2022"]
   },
-  "include": ["src", "vite.lib.config.ts", "vitest.config.ts", "vitest.setup.ts"]
+  "include": ["src", "vite.widget.config.ts", "vitest.config.ts", "vitest.setup.ts"]
 }

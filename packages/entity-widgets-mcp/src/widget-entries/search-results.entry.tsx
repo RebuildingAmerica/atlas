@@ -1,7 +1,9 @@
 import { createRoot } from "react-dom/client";
-import { SearchResultsList } from "../components/search-results-list/search-results-list";
+import {
+  SearchResultsList,
+  WidgetStatus,
+} from "@rebuildingamerica/entity-widgets";
 import { useSearchResultsData } from "../adapters/app-client";
-import { WidgetStatus } from "../lib/widget-status";
 import "../styles/widget.css";
 
 function SearchResultsWidget() {

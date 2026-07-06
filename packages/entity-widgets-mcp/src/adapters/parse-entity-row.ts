@@ -1,4 +1,8 @@
-import type { EntityType, SearchResultRow, TrustLevel } from "../types";
+import type {
+  EntityType,
+  SearchResultRow,
+  TrustLevel,
+} from "@rebuildingamerica/entity-widgets";
 
 const ENTITY_TYPES: readonly EntityType[] = [
   "person",

@@ -1,4 +1,7 @@
-import type { SearchResultRow, SearchResultsData } from "../types";
+import type {
+  SearchResultRow,
+  SearchResultsData,
+} from "@rebuildingamerica/entity-widgets";
 import { parseSearchResultRow } from "./parse-entity-row";
 import {
   usePaginatedWidgetData,

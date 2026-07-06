@@ -1,4 +1,4 @@
-import type { EntityCardData } from "../types";
+import type { EntityCardData } from "@rebuildingamerica/entity-widgets";
 import { parseSearchResultRow, readOptionalString } from "./parse-entity-row";
 import {
   useWidgetToolConnection,

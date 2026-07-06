@@ -1,7 +1,9 @@
 import { createRoot } from "react-dom/client";
-import { ConnectionsGraph } from "../components/connections-graph/connections-graph";
+import {
+  ConnectionsGraph,
+  WidgetStatus,
+} from "@rebuildingamerica/entity-widgets";
 import { useConnectionsData } from "../adapters/app-client";
-import { WidgetStatus } from "../lib/widget-status";
 import "../styles/widget.css";
 
 function ConnectionsWidget() {

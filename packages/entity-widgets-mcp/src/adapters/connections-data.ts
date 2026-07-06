@@ -2,7 +2,7 @@ import type {
   ConnectionItem,
   ConnectionRelationship,
   ConnectionsData,
-} from "../types";
+} from "@rebuildingamerica/entity-widgets";
 import { parseSearchResultRow } from "./parse-entity-row";
 import {
   usePaginatedWidgetData,

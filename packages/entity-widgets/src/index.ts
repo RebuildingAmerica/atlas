@@ -24,6 +24,7 @@ export {
   TrustBadgeRow,
   type TrustBadgeRowProps,
 } from "./components/trust-badge-row/trust-badge-row";
+export { WidgetStatus, type WidgetStatusProps } from "./lib/widget-status";
 export type {
   ConnectionItem,
   ConnectionRelationship,

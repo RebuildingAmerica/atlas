@@ -3,7 +3,7 @@
  * not import this — see `vite.lib.config.ts`.
  */
 @import "tailwindcss";
-@import "./theme-tokens.css";
+@import "@rebuildingamerica/entity-widgets/theme-tokens.css";
 
 html,
 body {

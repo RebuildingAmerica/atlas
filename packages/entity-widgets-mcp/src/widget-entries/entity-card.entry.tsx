@@ -1,7 +1,6 @@
 import { createRoot } from "react-dom/client";
-import { EntityCard } from "../components/entity-card/entity-card";
+import { EntityCard, WidgetStatus } from "@rebuildingamerica/entity-widgets";
 import { useEntityCardData } from "../adapters/app-client";
-import { WidgetStatus } from "../lib/widget-status";
 import "../styles/widget.css";
 
 function EntityCardWidget() {
