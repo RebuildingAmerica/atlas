@@ -96,6 +96,36 @@ if [ $FAILED -eq 0 ]; then
     fi
 fi
 
+# 4. Reject merge commits in any branch tip being pushed so mainline stays linear.
+if [ $FAILED -eq 0 ]; then
+    print_info "Checking pushed refs for merge commits..."
+    while IFS=' ' read -r local_ref local_sha remote_ref remote_sha; do
+        if [ -z "${local_ref:-}" ] || [ "${local_sha:-}" = "0000000000000000000000000000000000000000" ]; then
+            continue
+        fi
+
+        case "$local_ref" in
+            refs/heads/*) ;;
+            *) continue ;;
+        esac
+
+        merge_base="$(git merge-base origin/main "$local_sha")"
+        if [ -n "$(git rev-list --merges "${merge_base}..${local_sha}")" ]; then
+            print_error "Merge commits detected in ${local_ref}"
+            echo ""
+            echo -e "${YELLOW}HOW TO FIX:${NC}"
+            echo "  Rebase the branch onto origin/main so the history stays linear,"
+            echo "  then push again."
+            echo ""
+            FAILED=1
+        fi
+    done <<< "$refs_content"
+
+    if [ $FAILED -eq 0 ]; then
+        print_success "Pushed refs are linear"
+    fi
+fi
+
 # Final result
 if [ $FAILED -eq 0 ]; then
     print_header "All pre-push checks passed! Ready to push..."

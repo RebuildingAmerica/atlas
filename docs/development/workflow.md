@@ -147,10 +147,10 @@ The pre-commit hook will reject non-conformant messages.
 6. **Address review feedback:**
    - Make requested changes
    - Commit with descriptive message
-   - Push again (don't rebase, let history show iteration)
+   - Rebase if needed, then push again so the branch stays linear
 
 7. **Merge when approved:**
-   - GitHub merges to main
+   - GitHub lands to main through the repo's linear-history rules
    - Delete feature branch
 
 ## Git Hooks
@@ -172,7 +172,8 @@ Runs before every commit. Checks:
 3. Type errors: fix manually then try again
 4. Re-run: `git commit` again
 
-**Don't bypass it:** Don't use `git commit --no-verify`. The hooks are your safety net.
+**Don't bypass it:** Don't use `git commit --no-verify`. The hooks are your
+safety net.
 
 ### Commit-Msg Hook
 
@@ -199,16 +200,20 @@ Runs before pushing to remote. Checks:
 
 **Purpose:** Prevent broken code from going to main.
 
-**Don't bypass it:** Don't use `git push --force` on main. If you must, get team approval.
+**Don't bypass it:** Don't use `git push --force` on main. If you must, get team
+approval.
 
 ## Code Review Expectations
 
 ### What Reviewers Look For
 
 1. **Does it work?** Tests pass, code compiles, no obvious bugs
-2. **Does it follow standards?** Commit messages, code style, conventions (see [Standards](../standards/README.md))
-3. **Is it understandable?** Clear variable names, functions do one thing, comments where needed
-4. **Is it maintainable?** No copy-paste code, reuses existing patterns, no technical debt
+2. **Does it follow standards?** Commit messages, code style, conventions (see
+   [Standards](../standards/README.md))
+3. **Is it understandable?** Clear variable names, functions do one thing,
+   comments where needed
+4. **Is it maintainable?** No copy-paste code, reuses existing patterns, no
+   technical debt
 5. **Is it complete?** Code + tests + docs all updated
 
 ### Code Review Checklist for Authors
@@ -227,7 +232,7 @@ Before requesting review:
 
 - Don't be defensive — reviewers are helping
 - Ask for clarification if feedback is unclear
-- Make changes and commit (don't rebase history)
+- Make changes and commit; rebase the branch before pushing if needed
 - Reply to each comment (acknowledge, explain, or ask for help)
 - Re-request review when done
 
