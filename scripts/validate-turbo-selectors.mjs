@@ -19,6 +19,7 @@ const trackedGlobs = [
   "package.json",
   "turbo.json",
   "*/package.json",
+  "libs/*/package.json",
   "*/turbo.json",
   "packages/*/package.json",
   ".github/workflows/*.yml",

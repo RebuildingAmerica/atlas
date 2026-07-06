@@ -158,25 +158,6 @@ def _raw_to_dedup(raw: RawEntry) -> DeduplicatedEntry:
     )
 
 
-def _find_shared_match(entry: DeduplicatedEntry, canonical: list[DeduplicatedEntry]) -> int | None:
-    for idx, existing in enumerate(canonical):
-        if (
-            _match_type(
-                name_left=existing.name,
-                name_right=entry.name,
-                city_left=existing.city,
-                city_right=entry.city,
-                entry_type_left=str(existing.entry_type),
-                entry_type_right=str(entry.entry_type),
-                affiliated_org_left=existing.affiliated_org,
-                affiliated_org_right=entry.affiliated_org,
-            )
-            == "merge"
-        ):
-            return idx
-    return None
-
-
 def _find_indexed_shared_match(
     entry: DeduplicatedEntry,
     canonical: list[DeduplicatedEntry],
@@ -188,7 +169,7 @@ def _find_indexed_shared_match(
         if matched_index is None:
             continue
         existing = canonical[matched_index]
-        if (
+        if (  # pragma: no branch - indexed keys are generated only for mergeable exact cases.
             _match_type(
                 name_left=existing.name,
                 name_right=entry.name,

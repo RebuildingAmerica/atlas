@@ -23,8 +23,6 @@
     "pnpm-workspace.yaml",
     "package.json",
     "pnpm-lock.yaml",
-    "api/pyproject.toml",
-    "api/uv.lock",
     ".env.example"
   ],
   "tasks": {
@@ -114,17 +112,140 @@
         "ATLAS_SERVER_API_PROXY_TARGET"
       ]
     },
-    "//#api:test": {
-      "dependsOn": ["//#openapi"],
-      "inputs": ["api/**", "openapi/atlas.openapi.json"]
+    "@rebuildingamerica/atlas-shared#test": {
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "!*.pyc",
+        "!**/__pycache__/**",
+        "!.coverage",
+        "!.coverage.*",
+        "!.hypothesis/**",
+        "!.mypy_cache/**",
+        "!.pytest_cache/**",
+        "!.ruff_cache/**",
+        "!.venv/**",
+        "!htmlcov/**",
+        "!node_modules/**"
+      ],
+      "env": []
     },
-    "//#python:test": {
-      "dependsOn": ["//#openapi"],
-      "inputs": ["api/**", "scout/**", "libs/**", "openapi/atlas.openapi.json"]
+    "@rebuildingamerica/atlas-discovery-engine#test": {
+      "dependsOn": ["@rebuildingamerica/atlas-shared#test"],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/libs/shared/**",
+        "!*.pyc",
+        "!**/__pycache__/**",
+        "!.coverage",
+        "!.coverage.*",
+        "!.hypothesis/**",
+        "!.mypy_cache/**",
+        "!.pytest_cache/**",
+        "!.ruff_cache/**",
+        "!.venv/**",
+        "!htmlcov/**",
+        "!node_modules/**",
+        "!$TURBO_ROOT$/libs/shared/**/*.pyc",
+        "!$TURBO_ROOT$/libs/shared/**/__pycache__/**",
+        "!$TURBO_ROOT$/libs/shared/.coverage",
+        "!$TURBO_ROOT$/libs/shared/.coverage.*",
+        "!$TURBO_ROOT$/libs/shared/.hypothesis/**",
+        "!$TURBO_ROOT$/libs/shared/.mypy_cache/**",
+        "!$TURBO_ROOT$/libs/shared/.pytest_cache/**",
+        "!$TURBO_ROOT$/libs/shared/.ruff_cache/**",
+        "!$TURBO_ROOT$/libs/shared/.venv/**",
+        "!$TURBO_ROOT$/libs/shared/htmlcov/**",
+        "!$TURBO_ROOT$/libs/shared/node_modules/**"
+      ],
+      "env": []
+    },
+    "@rebuildingamerica/atlas-scout#test": {
+      "dependsOn": [
+        "@rebuildingamerica/atlas-discovery-engine#test",
+        "@rebuildingamerica/atlas-shared#test"
+      ],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/libs/discovery-engine/**",
+        "$TURBO_ROOT$/libs/shared/**",
+        "!*.pyc",
+        "!**/__pycache__/**",
+        "!.coverage",
+        "!.coverage.*",
+        "!.hypothesis/**",
+        "!.mypy_cache/**",
+        "!.pytest_cache/**",
+        "!.ruff_cache/**",
+        "!.venv/**",
+        "!htmlcov/**",
+        "!node_modules/**",
+        "!$TURBO_ROOT$/libs/**/*.pyc",
+        "!$TURBO_ROOT$/libs/**/__pycache__/**",
+        "!$TURBO_ROOT$/libs/**/.coverage",
+        "!$TURBO_ROOT$/libs/**/.coverage.*",
+        "!$TURBO_ROOT$/libs/**/.hypothesis/**",
+        "!$TURBO_ROOT$/libs/**/.mypy_cache/**",
+        "!$TURBO_ROOT$/libs/**/.pytest_cache/**",
+        "!$TURBO_ROOT$/libs/**/.ruff_cache/**",
+        "!$TURBO_ROOT$/libs/**/.venv/**",
+        "!$TURBO_ROOT$/libs/**/htmlcov/**",
+        "!$TURBO_ROOT$/libs/**/node_modules/**"
+      ],
+      "env": []
+    },
+    "@rebuildingamerica/atlas-api#test": {
+      "dependsOn": [
+        "@rebuildingamerica/atlas-discovery-engine#test",
+        "@rebuildingamerica/atlas-shared#test"
+      ],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/libs/discovery-engine/**",
+        "$TURBO_ROOT$/libs/shared/**",
+        "!*.pyc",
+        "!**/__pycache__/**",
+        "!.coverage",
+        "!.coverage.*",
+        "!.hypothesis/**",
+        "!.mypy_cache/**",
+        "!.pytest_cache/**",
+        "!.ruff_cache/**",
+        "!.venv/**",
+        "!htmlcov/**",
+        "!node_modules/**",
+        "!openapi/**",
+        "!$TURBO_ROOT$/libs/**/*.pyc",
+        "!$TURBO_ROOT$/libs/**/__pycache__/**",
+        "!$TURBO_ROOT$/libs/**/.coverage",
+        "!$TURBO_ROOT$/libs/**/.coverage.*",
+        "!$TURBO_ROOT$/libs/**/.hypothesis/**",
+        "!$TURBO_ROOT$/libs/**/.mypy_cache/**",
+        "!$TURBO_ROOT$/libs/**/.pytest_cache/**",
+        "!$TURBO_ROOT$/libs/**/.ruff_cache/**",
+        "!$TURBO_ROOT$/libs/**/.venv/**",
+        "!$TURBO_ROOT$/libs/**/htmlcov/**",
+        "!$TURBO_ROOT$/libs/**/node_modules/**"
+      ],
+      "env": []
     },
     "//#contract:test": {
       "dependsOn": ["//#openapi"],
-      "inputs": ["api/**", "openapi/atlas.openapi.json"]
+      "inputs": [
+        "api/**",
+        "!api/.coverage",
+        "!api/.coverage.*",
+        "!api/.hypothesis/**",
+        "!api/.mypy_cache/**",
+        "!api/.pytest_cache/**",
+        "!api/.ruff_cache/**",
+        "!api/.venv/**",
+        "!api/**/__pycache__/**",
+        "!api/**/*.pyc",
+        "!api/htmlcov/**",
+        "!api/node_modules/**",
+        "!api/openapi/**",
+        "openapi/atlas.openapi.json"
+      ]
     },
     "//#compose:validate": {
       "inputs": [
@@ -147,7 +268,22 @@
       ]
     },
     "//#e2e:api": {
-      "inputs": ["api/**", "openapi/atlas.openapi.json"],
+      "inputs": [
+        "api/**",
+        "!api/.coverage",
+        "!api/.coverage.*",
+        "!api/.hypothesis/**",
+        "!api/.mypy_cache/**",
+        "!api/.pytest_cache/**",
+        "!api/.ruff_cache/**",
+        "!api/.venv/**",
+        "!api/**/__pycache__/**",
+        "!api/**/*.pyc",
+        "!api/htmlcov/**",
+        "!api/node_modules/**",
+        "!api/openapi/**",
+        "openapi/atlas.openapi.json"
+      ],
       "env": [
         "ANTHROPIC_API_KEY",
         "ATLAS_AUTH_JWT_AUDIENCES",
@@ -166,22 +302,6 @@
         "SEARCH_API_KEY"
       ],
       "persistent": true
-    },
-    "//#prod:verify": {
-      "dependsOn": [
-        "//#python:test",
-        "//#contract:test",
-        "//#compose:validate",
-        "//#secrets:scan",
-        "@rebuildingamerica/atlas-app#api-client",
-        "@rebuildingamerica/atlas-app#openapi:lint",
-        "@rebuildingamerica/atlas-app#typecheck",
-        "@rebuildingamerica/atlas-app#lint",
-        "@rebuildingamerica/atlas-app#format:check",
-        "@rebuildingamerica/atlas-app#test",
-        "@rebuildingamerica/atlas-app#test:acceptance",
-        "@rebuildingamerica/atlas-app#build"
-      ]
     }
   }
 }

@@ -1,6 +1,8 @@
 packages:
   - app
   - api
+  - scout
+  - libs/*
   - mintlify
   - packages/*
 

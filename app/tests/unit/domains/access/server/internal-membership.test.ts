@@ -3,7 +3,8 @@ import { verifyMembershipRequest } from "@/domains/access/server/internal-member
 
 const mocks = vi.hoisted(() => ({
   getAuthRuntimeConfig: vi.fn(),
-  ensureAuthReady: vi.fn(),
+  getAuthDatabase: vi.fn(),
+  getAuthPgPool: vi.fn(),
 }));
 
 vi.mock("@/domains/access/server/runtime", () => ({
@@ -11,7 +12,8 @@ vi.mock("@/domains/access/server/runtime", () => ({
 }));
 
 vi.mock("@/domains/access/server/auth", () => ({
-  ensureAuthReady: mocks.ensureAuthReady,
+  getAuthDatabase: mocks.getAuthDatabase,
+  getAuthPgPool: mocks.getAuthPgPool,
 }));
 
 vi.mock("@/domains/access/server/workspace-products", () => ({
@@ -22,11 +24,14 @@ describe("internal-membership", () => {
   beforeEach(() => {
     vi.resetModules();
     mocks.getAuthRuntimeConfig.mockReset();
-    mocks.ensureAuthReady.mockReset();
+    mocks.getAuthDatabase.mockReset();
+    mocks.getAuthPgPool.mockReset();
 
     mocks.getAuthRuntimeConfig.mockReturnValue({
       internalSecret: "test-secret",
     });
+    mocks.getAuthDatabase.mockReturnValue(null);
+    mocks.getAuthPgPool.mockReturnValue(null);
   });
 
   it("verifies the internal secret and returns 401 on mismatch", async () => {
@@ -39,12 +44,6 @@ describe("internal-membership", () => {
   });
 
   it("returns 404 if the organization is not found", async () => {
-    mocks.ensureAuthReady.mockResolvedValue({
-      api: {
-        getFullOrganization: vi.fn().mockResolvedValue(null),
-      },
-    });
-
     const request = new Request("http://localhost", {
       headers: { "x-atlas-internal-secret": "test-secret" },
     });
@@ -54,14 +53,9 @@ describe("internal-membership", () => {
   });
 
   it("returns 404 if the user is not a member of the organization", async () => {
-    mocks.ensureAuthReady.mockResolvedValue({
-      api: {
-        getFullOrganization: vi.fn().mockResolvedValue({
-          id: "org_1",
-          members: [{ userId: "other" }],
-        }),
-      },
-    });
+    const get = vi.fn().mockReturnValue(null);
+    const prepare = vi.fn().mockReturnValue({ get });
+    mocks.getAuthDatabase.mockReturnValue({ prepare });
 
     const request = new Request("http://localhost", {
       headers: { "x-atlas-internal-secret": "test-secret" },
@@ -72,17 +66,14 @@ describe("internal-membership", () => {
   });
 
   it("returns membership details when confirmed", async () => {
-    mocks.ensureAuthReady.mockResolvedValue({
-      api: {
-        getFullOrganization: vi.fn().mockResolvedValue({
-          id: "org_1",
-          name: "Atlas",
-          slug: "atlas",
-          members: [{ userId: "user_1", role: "admin" }],
-          metadata: { workspaceType: "team" },
-        }),
-      },
+    const get = vi.fn().mockReturnValue({
+      metadata: { workspaceType: "team" },
+      name: "Atlas",
+      role: "admin",
+      slug: "atlas",
     });
+    const prepare = vi.fn().mockReturnValue({ get });
+    mocks.getAuthDatabase.mockReturnValue({ prepare });
 
     const request = new Request("http://localhost", {
       headers: { "x-atlas-internal-secret": "test-secret" },
@@ -97,6 +88,30 @@ describe("internal-membership", () => {
       role: "admin",
       slug: "atlas",
       workspaceType: "team",
+    });
+  });
+
+  it("parses stored JSON metadata from the membership lookup", async () => {
+    const get = vi.fn().mockReturnValue({
+      metadata: JSON.stringify({ workspaceType: "individual" }),
+      name: "Atlas",
+      role: "owner",
+      slug: "atlas",
+    });
+    const prepare = vi.fn().mockReturnValue({ get });
+    mocks.getAuthDatabase.mockReturnValue({ prepare });
+
+    const request = new Request("http://localhost", {
+      headers: { "x-atlas-internal-secret": "test-secret" },
+    });
+    const response = await verifyMembershipRequest(request, "org_1", "user_1");
+
+    expect(response.status).toBe(200);
+    expect(prepare).toHaveBeenCalledOnce();
+    expect(get).toHaveBeenCalledWith("org_1", "user_1");
+    await expect(response.json()).resolves.toMatchObject({
+      role: "owner",
+      workspaceType: "individual",
     });
   });
 });

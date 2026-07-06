@@ -344,6 +344,37 @@ class TestDeduplicateRawEntriesStream:
         assert merged.region == "Central Texas"
 
     @pytest.mark.asyncio
+    async def test_stream_merges_same_person_with_shared_affiliation(self) -> None:
+        results: list[DeduplicatedEntry] = []
+        async for entry in deduplicate_raw_entries_stream(
+            self._stream(
+                [
+                    self._raw(
+                        name="Jane Doe",
+                        city=None,
+                        entry_type="person",
+                        affiliated_org="Housing First",
+                        source_url="https://a.example",
+                        source_date=date(2024, 1, 1),
+                    ),
+                    self._raw(
+                        name="jane doe",
+                        city=None,
+                        entry_type="person",
+                        affiliated_org="housing first",
+                        source_url="https://b.example",
+                        source_date=date(2024, 6, 1),
+                    ),
+                ]
+            )
+        ):
+            results.append(entry)
+
+        assert len(results) == 1
+        assert results[0].affiliated_org == "Housing First"
+        assert sorted(results[0].source_urls) == ["https://a.example", "https://b.example"]
+
+    @pytest.mark.asyncio
     async def test_flushes_in_batches(self) -> None:
         items = [self._raw(name=f"Org{i}", city=f"City{i}") for i in range(150)]
         results: list[DeduplicatedEntry] = []

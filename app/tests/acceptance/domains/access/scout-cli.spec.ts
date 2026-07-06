@@ -31,8 +31,8 @@ test("Scout installed CLI e2e: login, device, direct job, worker sync, complete"
   const scoutHome = await createScoutHome(ollama.url);
 
   try {
-    await performSignIn(page);
-    await page.waitForURL((url) => url.pathname === "/account");
+    await performSignIn(page, { createWorkspace: true });
+    await page.goto("/account", { waitUntil: "networkidle" });
 
     const session = await approveScoutLogin(page, scoutHome, appUrl);
     await page.goto("/account", { waitUntil: "networkidle" });

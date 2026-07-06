@@ -22,7 +22,8 @@ This is the current build and runtime dependency map for the Atlas web app.
 7. `pnpm run contract:test`
    - verifies exported OpenAPI stays in sync with the FastAPI runtime
 
-The production graph is wired through `turbo.json` under `//#prod:verify`.
+Production verification is wired through `pnpm run verify`, which calls the
+deploy verification script and then fans out through package-owned Turbo tasks.
 
 ## Runtime Tree
 
@@ -91,11 +92,15 @@ The production graph is wired through `turbo.json` under `//#prod:verify`.
 ## Shared Contract Points
 
 - Backend schemas are the source of truth for API response shape.
-- `openapi/atlas.openapi.json` and `mintlify/openapi/atlas.openapi.json` must stay in sync.
+- `openapi/atlas.openapi.json` and `mintlify/openapi/atlas.openapi.json` must
+  stay in sync.
 - `app/src/lib/generated/atlas.ts` is generated and should not be hand-edited.
 - `app/src/lib/api.ts` maps generated API types to app-facing types.
 - `app/src/routeTree.gen.ts` is generated and should not be hand-edited.
 
 ## Route Group Reminder
 
-The leading underscore in `_public`, `_workspace`, and `_auth` means "pathless layout group." It is a TanStack Router convention and is not part of the URL. These groups make the access boundary visible in code while keeping URLs clean for users.
+The leading underscore in `_public`, `_workspace`, and `_auth` means "pathless
+layout group." It is a TanStack Router convention and is not part of the URL.
+These groups make the access boundary visible in code while keeping URLs clean
+for users.

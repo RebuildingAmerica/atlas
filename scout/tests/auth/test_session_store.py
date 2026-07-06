@@ -9,9 +9,13 @@ import pytest
 
 import atlas_scout.auth as auth_module
 from atlas_scout.auth import (
+    E2E_FILE_CREDENTIAL_STORE,
+    E2E_FILE_CREDENTIAL_STORE_ENV,
     SESSION_TOKEN_ACCOUNT,
+    E2EFileCredentialStore,
     FileSessionStore,
     ScoutSession,
+    default_session_credential_store,
 )
 from atlas_scout.credentials import CredentialStoreError
 
@@ -88,6 +92,57 @@ def test_file_session_store_deletes_session(tmp_path: Path) -> None:
 
     assert store.load() is None
     assert SESSION_TOKEN_ACCOUNT not in credentials.secrets
+
+
+def test_e2e_file_credential_store_round_trips_secret(tmp_path: Path) -> None:
+    """The e2e credential store avoids interactive OS keychain prompts."""
+    path = tmp_path / "credentials.json"
+    store = E2EFileCredentialStore(path)
+
+    store.save_secret(SESSION_TOKEN_ACCOUNT, "secret-token")
+
+    assert store.load_secret(SESSION_TOKEN_ACCOUNT) == "secret-token"
+    assert json.loads(path.read_text(encoding="utf-8")) == {SESSION_TOKEN_ACCOUNT: "secret-token"}
+    assert store.delete_secret(SESSION_TOKEN_ACCOUNT) is True
+    assert store.load_secret(SESSION_TOKEN_ACCOUNT) is None
+
+
+def test_default_session_store_uses_e2e_file_store_when_enabled(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """The e2e store is explicit and scoped to the session path."""
+    monkeypatch.setenv(E2E_FILE_CREDENTIAL_STORE_ENV, "1")
+    path = tmp_path / "session.json"
+
+    credential_store, credential_store_name = default_session_credential_store(path)
+
+    assert isinstance(credential_store, E2EFileCredentialStore)
+    assert credential_store.path == tmp_path / "session.credentials.json"
+    assert credential_store_name == E2E_FILE_CREDENTIAL_STORE
+
+
+def test_file_session_store_uses_e2e_file_store_when_enabled(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """Default session persistence can run without the OS credential store in e2e."""
+    monkeypatch.setenv(E2E_FILE_CREDENTIAL_STORE_ENV, "1")
+    path = tmp_path / "session.json"
+    store = FileSessionStore(path)
+    session = ScoutSession(
+        atlas_url="https://atlas.example",
+        access_token="secret-token",
+        worker_id="worker-123",
+        user_id="user-123",
+        user_email="user@example.org",
+    )
+
+    store.save(session)
+
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    assert payload["credential_store"] == E2E_FILE_CREDENTIAL_STORE
+    assert store.load() == session
 
 
 def test_file_session_store_delete_ignores_missing_file(tmp_path: Path) -> None:

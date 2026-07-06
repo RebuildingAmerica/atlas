@@ -56,13 +56,29 @@ def mock_provider():
 @pytest.fixture
 def mock_fetcher():
     """Return a mock AsyncFetcher that returns a single page."""
-    fetcher = AsyncMock()
-    fetcher.fetch.return_value = PageContent(
-        url="https://example.com/article",
-        text="Article about Test Org housing advocacy in Austin " * 50,
-        title="Housing News",
-    )
-    return fetcher
+
+    class _MockFetcher:
+        max_concurrent = 1
+
+        def bind_run(self, _run_id: str) -> None:
+            return None
+
+        async def fetch(self, url: str) -> PageContent:
+            return self._page(url=url, task_id=None)
+
+        async def fetch_tracked(self, url: str, task_id: str, _store) -> PageContent:
+            return self._page(url=url, task_id=task_id)
+
+        @staticmethod
+        def _page(url: str, task_id: str | None) -> PageContent:
+            return PageContent(
+                url=url,
+                text="Article about Test Org housing advocacy in Austin " * 50,
+                title="Housing News",
+                task_id=task_id,
+            )
+
+    return _MockFetcher()
 
 
 # ---------------------------------------------------------------------------
@@ -112,13 +128,14 @@ async def test_run_pipeline_returns_result(mock_provider, mock_fetcher, tmp_db_p
         issues=["housing_affordability"],
         provider=mock_provider,
         store=store,
-        search_api_key="test-key",
+        direct_urls=["https://example.com/article"],
         fetcher=mock_fetcher,
+        follow_links=False,
     )
 
     assert isinstance(result, PipelineResult)
     assert result.run_id is not None
-    assert result.queries_generated > 0
+    assert result.pages_fetched == 1
     assert result.gap_report is not None
 
     await store.close()
@@ -137,8 +154,9 @@ async def test_run_pipeline_persists_run(mock_provider, mock_fetcher, tmp_db_pat
         issues=["housing_affordability"],
         provider=mock_provider,
         store=store,
-        search_api_key="test-key",
+        direct_urls=["https://example.com/article"],
         fetcher=mock_fetcher,
+        follow_links=False,
     )
 
     run_record = await store.get_run(result.run_id)
@@ -234,8 +252,9 @@ async def test_run_pipeline_gap_report_not_none(mock_provider, mock_fetcher, tmp
         issues=["housing_affordability"],
         provider=mock_provider,
         store=store,
-        search_api_key="test-key",
+        direct_urls=["https://example.com/article"],
         fetcher=mock_fetcher,
+        follow_links=False,
     )
 
     assert result.gap_report.location == "Austin, TX"
@@ -278,8 +297,9 @@ async def test_run_pipeline_marks_run_failed_on_error(
             issues=["housing_affordability"],
             provider=mock_provider,
             store=store,
-            search_api_key="test-key",
+            direct_urls=["https://example.com/article"],
             fetcher=mock_fetcher,
+            follow_links=False,
         )
 
     runs = await store.list_runs()
@@ -316,8 +336,9 @@ async def test_run_pipeline_marks_run_cancelled_on_interrupt(
             issues=["housing_affordability"],
             provider=mock_provider,
             store=store,
-            search_api_key="test-key",
+            direct_urls=["https://example.com/article"],
             fetcher=mock_fetcher,
+            follow_links=False,
         )
 
     runs = await store.list_runs()

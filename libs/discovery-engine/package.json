@@ -1,0 +1,7 @@
+{
+  "name": "@rebuildingamerica/atlas-discovery-engine",
+  "private": true,
+  "scripts": {
+    "test": "uv run pytest"
+  }
+}

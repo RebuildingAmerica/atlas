@@ -5,7 +5,7 @@ test.describe("admin journey", () => {
   test("should be able to access administrative pages", async ({ page, browserName }) => {
     test.skip(browserName !== "chromium", "Virtual authenticator support requires Chromium.");
 
-    await performSignIn(page);
+    await performSignIn(page, { createWorkspace: true, email: "person@atlas.test" });
 
     await page.goto("/admin/discounts");
     await expect(

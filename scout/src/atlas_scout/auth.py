@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from dataclasses import asdict, dataclass
 from typing import TYPE_CHECKING, Literal
 
@@ -24,6 +25,8 @@ UploadTarget = Literal["public", "workspace"]
 
 SESSION_PATH = SCOUT_CONFIG_DIR / "session.json"
 SESSION_CREDENTIAL_STORE = "system"
+E2E_FILE_CREDENTIAL_STORE = "e2e-file"
+E2E_FILE_CREDENTIAL_STORE_ENV = "ATLAS_SCOUT_E2E_FILE_CREDENTIAL_STORE"
 SCOUT_CLIENT_ID = "atlas-scout-cli"
 SCOUT_LOGIN_SCOPE = (
     "openid profile email discovery:read discovery:write entities:write offline_access"
@@ -394,9 +397,14 @@ class FileSessionStore:
         self,
         path: Path = SESSION_PATH,
         credential_store: CredentialStore | None = None,
+        credential_store_name: str | None = None,
     ) -> None:
         self.path = path
-        self.credential_store = credential_store or SystemCredentialStore()
+        default_store, default_name = default_session_credential_store(path)
+        self.credential_store = credential_store or default_store
+        self.credential_store_name = credential_store_name or (
+            SESSION_CREDENTIAL_STORE if credential_store is not None else default_name
+        )
 
     def load(self) -> ScoutSession | None:
         """Return the stored Scout session, if present."""
@@ -408,9 +416,9 @@ class FileSessionStore:
             raise CredentialStoreError(
                 "Legacy plaintext Scout session file found. Delete it and run `scout login`."
             )
-        if payload.get("credential_store") != SESSION_CREDENTIAL_STORE:
+        if payload.get("credential_store") != self.credential_store_name:
             raise CredentialStoreError(
-                "Scout session metadata does not use the OS credential store. "
+                "Scout session metadata uses a different credential store. "
                 "Delete it and run `scout login`."
             )
         access_token = self.credential_store.load_secret(SESSION_TOKEN_ACCOUNT)
@@ -438,7 +446,7 @@ class FileSessionStore:
         self.credential_store.save_secret(SESSION_TOKEN_ACCOUNT, session.access_token)
         payload = asdict(session)
         payload.pop("access_token")
-        payload["credential_store"] = SESSION_CREDENTIAL_STORE
+        payload["credential_store"] = self.credential_store_name
         self.path.parent.mkdir(parents=True, exist_ok=True)
         with self.path.open("w", encoding="utf-8") as handle:
             json.dump(payload, handle, indent=2, sort_keys=True)
@@ -465,3 +473,61 @@ def save_session(session: ScoutSession) -> None:
 def delete_session() -> None:
     """Delete the default Scout session."""
     FileSessionStore().delete()
+
+
+class E2EFileCredentialStore:
+    """Non-interactive credential store used only by Playwright e2e runs."""
+
+    def __init__(self, path: Path) -> None:
+        self.path = path
+
+    def save_secret(self, account: str, value: str) -> None:
+        """Store one secret value in the e2e credential file."""
+        secret = value.strip()
+        if not secret:
+            raise CredentialStoreError("Secret value is required.")
+        credentials = self._read()
+        credentials[account] = secret
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        with self.path.open("w", encoding="utf-8") as handle:
+            json.dump(credentials, handle, indent=2, sort_keys=True)
+            handle.write("\n")
+        self.path.chmod(0o600)
+
+    def load_secret(self, account: str) -> str | None:
+        """Return one secret value from the e2e credential file."""
+        value = self._read().get(account)
+        return value.strip() if isinstance(value, str) and value.strip() else None
+
+    def delete_secret(self, account: str) -> bool:
+        """Delete one secret value from the e2e credential file."""
+        credentials = self._read()
+        if account not in credentials:
+            return False
+        credentials.pop(account)
+        if credentials:
+            with self.path.open("w", encoding="utf-8") as handle:
+                json.dump(credentials, handle, indent=2, sort_keys=True)
+                handle.write("\n")
+            self.path.chmod(0o600)
+        elif self.path.exists():
+            self.path.unlink()
+        return True
+
+    def _read(self) -> dict[str, str]:
+        if not self.path.exists():
+            return {}
+        with self.path.open("r", encoding="utf-8") as handle:
+            payload = json.load(handle)
+        if not isinstance(payload, dict):
+            raise CredentialStoreError("E2E credential file must contain a JSON object.")
+        return {str(key): str(value) for key, value in payload.items()}
+
+
+def default_session_credential_store(path: Path) -> tuple[CredentialStore, str]:
+    """Return the credential store Scout should use for session persistence."""
+    if os.environ.get(E2E_FILE_CREDENTIAL_STORE_ENV) == "1":
+        return E2EFileCredentialStore(
+            path.with_suffix(".credentials.json")
+        ), E2E_FILE_CREDENTIAL_STORE
+    return SystemCredentialStore(), SESSION_CREDENTIAL_STORE

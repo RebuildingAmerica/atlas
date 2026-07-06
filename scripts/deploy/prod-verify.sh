@@ -1,8 +1,15 @@
 #!/bin/sh
 set -eu
 
+ROOT_DIR="$(CDPATH= cd -- "$(dirname "$0")/../.." && pwd)"
+
+cd "$ROOT_DIR"
+
 pnpm exec turbo run \
-  '//#python:test' \
+  '@rebuildingamerica/atlas-shared#test' \
+  '@rebuildingamerica/atlas-discovery-engine#test' \
+  '@rebuildingamerica/atlas-scout#test' \
+  '@rebuildingamerica/atlas-api#test' \
   '//#contract:test' \
   '//#compose:validate' \
   '//#secrets:scan' \

@@ -1,7 +1,6 @@
+import { randomUUID } from "node:crypto";
 import { expect, type Page } from "@playwright/test";
 import { extractFirstUrlFromEmail } from "./email";
-
-const accountEmail = "person@atlas.test";
 
 /**
  * Returns one required end-to-end environment variable.
@@ -18,6 +17,35 @@ export function requireEnv(name: string): string {
 }
 
 const mailboxApi = requireEnv("ATLAS_E2E_MAILBOX_URL");
+
+interface SignInOptions {
+  createWorkspace?: boolean;
+  email?: string;
+}
+
+function createAccountEmail(): string {
+  return `person+${randomUUID()}@atlas.test`;
+}
+
+async function createReadyWorkspace(page: Page) {
+  if (new URL(page.url()).pathname !== "/organization") {
+    await page.goto("/organization", { waitUntil: "networkidle" });
+  }
+
+  if ((await page.getByRole("heading", { name: "Create your workspace" }).count()) === 0) {
+    return;
+  }
+
+  const workspaceId = randomUUID().slice(0, 8);
+  await page.getByText("Individual workspace", { exact: false }).first().click();
+  await page.getByLabel("Workspace name").fill(`E2E Workspace ${workspaceId}`);
+  await page.getByLabel("Workspace slug").fill(`e2e-${workspaceId}`);
+  const createButton = page.getByRole("button", { name: "Create workspace" });
+  await expect(createButton).toBeEnabled({ timeout: 15_000 });
+  await createButton.click();
+  await expect(page.getByText("Workspace created.")).toBeVisible({ timeout: 15_000 });
+  await page.waitForLoadState("networkidle");
+}
 
 /**
  * Clears the captured mailbox before the auth flow starts.
@@ -85,8 +113,11 @@ export async function installVirtualAuthenticator(page: Page) {
  *
  * @param page - The active Playwright page.
  */
-export async function performSignIn(page: Page) {
-  await resetMailbox();
+export async function performSignIn(
+  page: Page,
+  options: SignInOptions = {},
+): Promise<{ email: string }> {
+  const accountEmail = options.email ?? createAccountEmail();
   await installVirtualAuthenticator(page);
 
   // Wait for hydration so the React onChange handler is attached before fill().
@@ -114,4 +145,10 @@ export async function performSignIn(page: Page) {
     });
     await page.waitForLoadState("networkidle");
   }
+
+  if (options.createWorkspace) {
+    await createReadyWorkspace(page);
+  }
+
+  return { email: accountEmail };
 }

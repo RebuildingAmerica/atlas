@@ -23,6 +23,7 @@ async function expectProfileSsrHtml(
   const response = await request.get(path);
   expect(response.status(), `expected 200 for ${path}`).toBeLessThan(400);
   const html = await response.text();
+  const expectedUrl = new URL(path, response.url()).toString();
   expect(html, `expected main landmark in SSR HTML for ${path}`).toMatch(/<main\b/);
   expect(html, `expected h1 ${heading} in SSR HTML for ${path}`).toMatch(
     new RegExp(`<h1\\b[\\s\\S]*${escapeRegExp(heading)}[\\s\\S]*<\\/h1>`),
@@ -32,7 +33,7 @@ async function expectProfileSsrHtml(
       expect.objectContaining({
         "@type": schemaType,
         name: heading,
-        url: `https://atlas.rebuildingamerica.com${path}`,
+        url: expectedUrl,
       }),
     ]),
   );
@@ -62,7 +63,7 @@ test.describe("public profile routes", () => {
 
     // Hero — name as h1 + breadcrumb identifies type
     await expect(page.getByRole("heading", { name: "Maya Thompson", level: 1 })).toBeVisible();
-    await expect(page.getByRole("link", { name: "PEOPLE" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "PEOPLE", exact: true })).toBeVisible();
 
     // Old "What Atlas has surfaced" copy must not appear
     await expect(page.getByText("What Atlas has surfaced")).toHaveCount(0);
@@ -70,8 +71,8 @@ test.describe("public profile routes", () => {
     // Stacked panels still render their identifying labels
     await expect(page.getByText(/Reporting trail/i).first()).toBeVisible();
     await expect(page.getByRole("heading", { name: /who else is doing this work/i })).toBeVisible();
-    await expect(page.getByText(/Data quality/i).first()).toBeVisible();
     await expect(page.getByText(/first surfaced/i)).toBeVisible();
+    await expect(page.getByText(/Lead signals/i).first()).toBeVisible();
 
     // Action cluster anchored at the bottom of the stack
     expect(
@@ -98,7 +99,7 @@ test.describe("public profile routes", () => {
     await expect(page.getByText(/Issue footprint/i).first()).toBeVisible();
     await expect(page.getByText(/Appearances and coverage/i).first()).toBeVisible();
     await expect(page.getByRole("heading", { name: /who else is doing this work/i })).toBeVisible();
-    await expect(page.getByText(/Data quality/i).first()).toBeVisible();
+    await expect(page.getByText(/Lead signals/i).first()).toBeVisible();
 
     await expect(page.getByRole("button", { name: /share/i })).toBeVisible();
     await expect(page.getByText("Hide Error")).toHaveCount(0);
@@ -146,7 +147,7 @@ test.describe("public profile routes", () => {
       },
       {
         path: "/claim/maya-thompson",
-        needles: [/Maya Thompson/, /Claim a profile/i],
+        needles: [/Maya Thompson/, /Profile claim/i],
       },
     ];
 

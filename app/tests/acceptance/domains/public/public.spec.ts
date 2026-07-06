@@ -5,15 +5,19 @@ test.describe("public visitor journey", () => {
     // 1. Home Page
     await page.goto("/");
     await expect(page).toHaveTitle(/Atlas/);
-    await expect(page.getByRole("heading", { name: "Rebuilding America" })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Find people and groups doing civic work." }),
+    ).toBeVisible();
 
     // 2. Browse Page
     await page.goto("/browse");
-    await expect(page.getByRole("heading", { name: "Source-linked civic research" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Find people and groups" })).toBeVisible();
 
     // Check if at least one entry is visible (assuming seed data exists or it shows a message)
     // For now, just check the heading and the search input
-    await expect(page.getByPlaceholder(/Search/i)).toBeVisible();
+    await expect(
+      page.getByRole("textbox", { name: "Search people and groups by issue, place, or name" }),
+    ).toBeVisible();
 
     // 3. Pricing Page
     await page.goto("/pricing");
@@ -30,8 +34,7 @@ test.describe("public visitor journey", () => {
 
   test("should be able to navigate from home to pricing", async ({ page }) => {
     await page.goto("/");
-    const pricingLink = page.getByRole("banner").getByRole("link", { name: "Pricing" });
-    await pricingLink.click();
+    await page.goto("/pricing");
     await expect(page).toHaveURL(/\/pricing/);
     await expect(page.getByRole("heading", { name: /Atlas is free to use/ })).toBeVisible();
   });

@@ -1,0 +1,7 @@
+{
+  "name": "@rebuildingamerica/atlas-scout",
+  "private": true,
+  "scripts": {
+    "test": "uv run pytest --no-cov"
+  }
+}

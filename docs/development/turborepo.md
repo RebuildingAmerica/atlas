@@ -2,11 +2,14 @@
 
 [Docs](../README.md) > [Development](./README.md) > Turborepo
 
-Atlas uses [Turborepo](https://turbo.build/repo) to orchestrate tasks across the monorepo. It handles dependency ordering between tasks, caches results to skip redundant work, and runs independent tasks in parallel.
+Atlas uses [Turborepo](https://turbo.build/repo) to orchestrate tasks across the
+monorepo. It handles dependency ordering between tasks, caches results to skip
+redundant work, and runs independent tasks in parallel.
 
 ## How It Works
 
-Turborepo reads `turbo.json` at the repo root (and `app/turbo.json` which extends it) to understand the task graph. When you run a task, Turbo:
+Turborepo reads `turbo.json` at the repo root (and `app/turbo.json` which
+extends it) to understand the task graph. When you run a task, Turbo:
 
 1. Hashes the task's inputs (source files, dependencies, env vars)
 2. Checks the cache for a matching hash
@@ -19,14 +22,16 @@ This means unchanged tasks complete in milliseconds on repeat runs.
 
 There are two config files:
 
-| File | Purpose |
-|---|---|
-| `turbo.json` | Root config. Defines shared tasks and root-level tasks (`//#` prefix) |
-| `app/turbo.json` | App package config. Extends root, adds app-specific tasks |
+| File             | Purpose                                                                 |
+| ---------------- | ----------------------------------------------------------------------- |
+| `turbo.json`     | Root config. Defines shared package task defaults and narrow root tasks |
+| `app/turbo.json` | App package config. Extends root, adds app-specific tasks               |
 
 ### Env Mode
 
-Atlas uses `"envMode": "strict"`, which means Turbo only passes environment variables that are explicitly listed in each task's `env` array. This prevents accidental cache pollution from unrelated env changes.
+Atlas uses `"envMode": "strict"`, which means Turbo only passes environment
+variables that are explicitly listed in each task's `env` array. This prevents
+accidental cache pollution from unrelated env changes.
 
 ### Global Dependencies
 
@@ -38,40 +43,49 @@ These files invalidate the cache for every task when changed:
 
 ## Task Graph
 
-### Root-Level Tasks
+### Root Command Menu
 
-Root-level tasks (prefixed with `//#`) run scripts defined in the root `package.json` and operate on files outside any workspace package.
+The root `package.json` is intentionally small. Use it for common repo-wide
+workflows only:
 
-| Task | Purpose | Inputs |
-|---|---|---|
-| `//#openapi` | Export OpenAPI spec from Python API | `api/atlas/**/*.py`, `api/pyproject.toml` |
-| `//#api:test` | Run Python API tests | `api/**`, OpenAPI spec |
-| `//#contract:test` | Run contract tests | `api/**`, OpenAPI spec |
-| `//#compose:validate` | Validate Docker Compose config | `compose.yaml`, env examples, Caddyfile |
-| `//#secrets:scan` | Scan for leaked secrets | `.secrets.baseline`, env examples, lock files |
-| `//#e2e:api` | Start API E2E server | `api/**`, OpenAPI spec (persistent) |
-| `//#prod:verify` | Full production verification | Depends on all other tasks |
+| Command                  | Purpose                                |
+| ------------------------ | -------------------------------------- |
+| `pnpm run quality`       | Repo quality graph                     |
+| `pnpm run test:coverage` | Python package tests plus app coverage |
+| `pnpm run verify`        | Full production verification workflow  |
+
+Narrow root-level Turbo tasks (prefixed with `//#`) are reserved for operations
+that read repo-level files outside a single workspace package.
+
+| Task                  | Purpose                             | Inputs                                        |
+| --------------------- | ----------------------------------- | --------------------------------------------- |
+| `//#openapi`          | Export OpenAPI spec from Python API | `api/atlas/**/*.py`, `api/pyproject.toml`     |
+| `//#contract:test`    | Run contract tests                  | `api/**`, OpenAPI spec                        |
+| `//#compose:validate` | Validate Docker Compose config      | `compose.yaml`, env examples, Caddyfile       |
+| `//#secrets:scan`     | Scan for leaked secrets             | `.secrets.baseline`, env examples, lock files |
+| `//#e2e:api`          | Start API E2E server                | `api/**`, OpenAPI spec (persistent)           |
 
 ### Package Tasks
 
-These run within workspace packages (currently just `app`):
+These run within workspace packages:
 
-| Task | Purpose | Key Detail |
-|---|---|---|
-| `build` | Production build | Depends on `api-client` |
-| `api-client` | Generate TypeScript client from OpenAPI spec | Output: `src/lib/generated/atlas.ts` |
-| `openapi:lint` | Lint the OpenAPI spec | Uses `.spectral.yaml` |
-| `typecheck` | TypeScript type checking | Depends on `api-client` |
-| `lint` | ESLint | Depends on `api-client` |
-| `test` | Vitest unit tests | Depends on `api-client` |
-| `test:coverage` | Tests with coverage report | Output: `coverage/**` |
-| `test:e2e` | Playwright E2E tests | Not cached |
-| `quality` | All quality checks | Depends on `typecheck`, `lint`, `format:check` |
-| `dev` | Dev server | Persistent, not cached |
+| Task            | Purpose                                      | Key Detail                                     |
+| --------------- | -------------------------------------------- | ---------------------------------------------- |
+| `build`         | Production build                             | Depends on `api-client`                        |
+| `api-client`    | Generate TypeScript client from OpenAPI spec | Output: `src/lib/generated/atlas.ts`           |
+| `openapi:lint`  | Lint the OpenAPI spec                        | Uses `.spectral.yaml`                          |
+| `typecheck`     | TypeScript type checking                     | Depends on `api-client`                        |
+| `lint`          | ESLint                                       | Depends on `api-client`                        |
+| `test`          | Vitest unit tests                            | Depends on `api-client`                        |
+| `test:coverage` | Tests with coverage report                   | Output: `coverage/**`                          |
+| `test:e2e`      | Playwright E2E tests                         | Not cached                                     |
+| `quality`       | All quality checks                           | Depends on `typecheck`, `lint`, `format:check` |
+| `dev`           | Dev server                                   | Persistent, not cached                         |
 
 ### Dependency Chain
 
-Many app tasks depend on `api-client`, which depends on `//#openapi`. This means changing Python API code triggers:
+Many app tasks depend on `api-client`, which depends on `//#openapi`. This means
+changing Python API code triggers:
 
 ```
 Python source changed
@@ -86,7 +100,8 @@ Turbo handles this ordering automatically.
 
 ### What Gets Cached
 
-By default, all tasks are cached. Tasks explicitly marked `"cache": false` are excluded (dev servers, E2E tests). The cache key includes:
+By default, all tasks are cached. Tasks explicitly marked `"cache": false` are
+excluded (dev servers, E2E tests). The cache key includes:
 
 - Source files in the package (or listed in `inputs`)
 - Dependencies (other tasks this task depends on)
@@ -95,7 +110,8 @@ By default, all tasks are cached. Tasks explicitly marked `"cache": false` are e
 
 ### Local Cache
 
-The local cache lives in `node_modules/.cache/turbo`. It works out of the box with no setup.
+The local cache lives in `node_modules/.cache/turbo`. It works out of the box
+with no setup.
 
 To clear it:
 
@@ -150,17 +166,14 @@ pnpm turbo run typecheck lint test
 # Target a specific package
 pnpm turbo run app#build
 
-# Run a root-level task
-pnpm turbo run //#api:test
-
-# Run the full production verification graph
-pnpm turbo run //#prod:verify
+# Run the full production verification workflow
+pnpm run verify
 
 # Force run (ignore cache)
 pnpm turbo run typecheck --force
 
 # Dry run (show what would execute)
-pnpm turbo run //#prod:verify --dry
+pnpm turbo run typecheck --dry
 ```
 
 ### Filtering
@@ -177,7 +190,7 @@ pnpm turbo run test --filter=...[main]
 
 ```bash
 # Show the task graph
-pnpm turbo run //#prod:verify --graph
+pnpm turbo run typecheck --graph
 
 # Show verbose output including cache status
 pnpm turbo run typecheck --verbosity=2
@@ -189,12 +202,15 @@ pnpm turbo run typecheck --summarize
 ## Adding a New Task
 
 1. Add the script to the relevant `package.json`
-2. Add the task definition to `turbo.json` (root tasks) or `app/turbo.json` (app tasks)
+2. Add the task definition to `turbo.json` (root tasks) or `app/turbo.json` (app
+   tasks)
 3. Specify `inputs` if the task only reads a subset of files
 4. Specify `outputs` if the task produces files (e.g., `dist/**`, `coverage/**`)
-5. Specify `env` if the task reads environment variables (required by strict env mode)
+5. Specify `env` if the task reads environment variables (required by strict env
+   mode)
 6. Add `dependsOn` if the task must run after other tasks
-7. Set `"cache": false` only for tasks with side effects (dev servers, E2E cleanup)
+7. Set `"cache": false` only for tasks with side effects (dev servers, E2E
+   cleanup)
 8. Set `"persistent": true` for long-running tasks (dev servers, watch mode)
 
 Example:
@@ -207,9 +223,9 @@ Example:
       "dependsOn": ["api-client"],
       "inputs": ["src/**/*.ts", "config.json"],
       "outputs": ["out/**"],
-      "env": ["MY_ENV_VAR"]
-    }
-  }
+      "env": ["MY_ENV_VAR"],
+    },
+  },
 }
 ```
 

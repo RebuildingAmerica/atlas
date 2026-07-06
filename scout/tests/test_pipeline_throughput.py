@@ -811,8 +811,16 @@ async def test_run_pipeline_skips_depth_two_articles_in_direct_mode(tmp_db_path)
 
 
 @pytest.mark.asyncio
-async def test_run_pipeline_reports_extraction_failures_not_empty(tmp_db_path) -> None:
+async def test_run_pipeline_reports_extraction_failures_not_empty(
+    tmp_db_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     from atlas_scout.store import ScoutStore
+
+    async def no_retry_sleep(_seconds: float) -> None:
+        return None
+
+    monkeypatch.setattr("atlas_scout.steps.entry_extract.asyncio.sleep", no_retry_sleep)
 
     class _SinglePageFetcher:
         async def fetch_tracked(self, url: str, task_id: str, _store) -> PageContent | None:
@@ -865,8 +873,16 @@ async def test_run_pipeline_reports_extraction_failures_not_empty(tmp_db_path) -
 
 
 @pytest.mark.asyncio
-async def test_run_pipeline_retries_extraction_once_before_succeeding(tmp_db_path) -> None:
+async def test_run_pipeline_retries_extraction_once_before_succeeding(
+    tmp_db_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     from atlas_scout.store import ScoutStore
+
+    async def no_retry_sleep(_seconds: float) -> None:
+        return None
+
+    monkeypatch.setattr("atlas_scout.steps.entry_extract.asyncio.sleep", no_retry_sleep)
 
     class _SinglePageFetcher:
         async def fetch_tracked(self, url: str, task_id: str, _store) -> PageContent | None:

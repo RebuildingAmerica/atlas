@@ -40,6 +40,10 @@ const authIntrospectionUrl = requireEnv("ATLAS_E2E_AUTH_INTROSPECTION_URL");
 const appPort = new URL(appUrl).port || "3100";
 const apiPort = new URL(apiUrl).port;
 const mailboxPort = new URL(mailboxUrl).port || "8025";
+const workerCount = Number.parseInt(process.env.ATLAS_E2E_WORKERS || "4", 10);
+if (!Number.isInteger(workerCount) || workerCount < 1) {
+  throw new Error("ATLAS_E2E_WORKERS must be a positive integer.");
+}
 if (!apiPort) {
   throw new Error("ATLAS_E2E_API_URL must include an explicit port.");
 }
@@ -48,11 +52,10 @@ const e2eInternalSecret =
 const baseWebServerEnv = { ...process.env };
 delete baseWebServerEnv.NO_COLOR;
 delete baseWebServerEnv.FORCE_COLOR;
-// In CI, skip the portless DNS shim — the mail capture server only needs to
-// listen on localhost, and portless requires a writable /etc/hosts.
-const mailServerCommand = process.env.CI
-  ? "pnpm --filter @rebuildingamerica/atlas-app e2e:mail:ci"
-  : "pnpm --filter @rebuildingamerica/atlas-app e2e:mail";
+// The app posts directly to ATLAS_EMAIL_CAPTURE_URL, so the mail capture server
+// only needs to listen on localhost. Avoiding the portless DNS shim keeps local
+// acceptance startup deterministic.
+const mailServerCommand = "pnpm --filter @rebuildingamerica/atlas-app e2e:mail:ci";
 const commonAuthEnv = {
   ATLAS_AUTH_ALLOWED_EMAILS: "person@atlas.test",
   ATLAS_AUTH_API_KEY_INTROSPECTION_URL: authIntrospectionUrl,
@@ -72,7 +75,8 @@ export default defineConfig({
   testDir: "./tests/acceptance",
   globalSetup: "./tests/acceptance/helpers/global-setup.ts",
   timeout: 60_000,
-  fullyParallel: false,
+  fullyParallel: true,
+  workers: workerCount,
   retries: 0,
   use: {
     baseURL: appUrl,

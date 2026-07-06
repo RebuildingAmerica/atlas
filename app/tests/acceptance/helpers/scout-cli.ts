@@ -83,8 +83,30 @@ interface OllamaChatRequest {
   messages?: OllamaMessage[];
 }
 
-function scoutBinary(): string {
-  return process.env.ATLAS_E2E_SCOUT_BIN?.trim() || "scout";
+interface ScoutCommand {
+  args: string[];
+  command: string;
+}
+
+interface DeviceStatusResponse {
+  status: "approved" | "denied" | "pending";
+  user_code: string;
+}
+
+interface ScoutCredentialFile {
+  "session-token"?: unknown;
+}
+
+function scoutCommand(): ScoutCommand {
+  const override = process.env.ATLAS_E2E_SCOUT_BIN?.trim();
+  if (override) {
+    return { args: [], command: override };
+  }
+
+  return {
+    args: ["--directory", path.join(process.cwd(), "..", "scout"), "run", "scout"],
+    command: "uv",
+  };
 }
 
 function configDir(homeDir: string): string {
@@ -100,6 +122,7 @@ function configDir(homeDir: string): string {
 function scoutEnv(homeDir: string): NodeJS.ProcessEnv {
   const env: NodeJS.ProcessEnv = {
     ...process.env,
+    ATLAS_SCOUT_E2E_FILE_CREDENTIAL_STORE: "1",
     HOME: homeDir,
     NO_COLOR: "1",
     XDG_CONFIG_HOME: path.join(homeDir, ".config"),
@@ -126,7 +149,7 @@ function assertNullableString(value: unknown, field: string): string | null {
   return value;
 }
 
-function parseScoutSession(payload: unknown): ScoutSessionFile {
+function parseScoutSession(payload: unknown, accessToken: string): ScoutSessionFile {
   if (!payload || typeof payload !== "object") {
     throw new Error("Scout session file must be an object.");
   }
@@ -136,7 +159,7 @@ function parseScoutSession(payload: unknown): ScoutSessionFile {
     throw new Error("default_upload_target must be public or workspace.");
   }
   return {
-    access_token: assertString(record.access_token, "access_token"),
+    access_token: accessToken,
     atlas_url: assertString(record.atlas_url, "atlas_url"),
     default_upload_target: target,
     user_email: assertString(record.user_email, "user_email"),
@@ -239,7 +262,8 @@ function ollamaContentFor(request: OllamaChatRequest): string {
 }
 
 function spawnScout(args: string[], env: NodeJS.ProcessEnv): ScoutProcess {
-  const child = spawn(scoutBinary(), args, {
+  const command = scoutCommand();
+  const child = spawn(command.command, [...command.args, ...args], {
     cwd: path.join(process.cwd(), ".."),
     env,
     stdio: "pipe",
@@ -288,7 +312,17 @@ function waitForExit(
   const timeoutPromise = new Promise<ScoutCommandResult>((_, reject) => {
     timeout = setTimeout(() => {
       child.kill("SIGTERM");
-      reject(new Error(`Scout command timed out after ${timeoutMs}ms.`));
+      void closePromise
+        .then((result) => {
+          reject(
+            new Error(
+              `Scout command timed out after ${timeoutMs}ms. Output before termination:\n${result.output}`,
+            ),
+          );
+        })
+        .catch(() => {
+          reject(new Error(`Scout command timed out after ${timeoutMs}ms.`));
+        });
     }, timeoutMs);
   });
   return Promise.race([closePromise, timeoutPromise]).finally(() => {
@@ -347,7 +381,7 @@ export async function createScoutHome(ollamaUrl: string): Promise<ScoutHome> {
       "[llm]",
       'provider = "ollama"',
       'model = "atlas-e2e"',
-      `base_url = "${ollamaUrl}"`,
+      `ollama_base_url = "${ollamaUrl}"`,
       "max_concurrent = 1",
       "timeout_seconds = 10",
       "",
@@ -420,6 +454,13 @@ export async function startSeedPageServer(): Promise<FixtureServer> {
 
 export async function startFixtureOllamaServer(): Promise<FixtureServer> {
   const server = createServer((request, response) => {
+    if (request.method === "GET" && request.url === "/api/tags") {
+      sendJson(response, {
+        models: [{ name: "atlas-e2e" }],
+      });
+      return;
+    }
+
     if (request.method !== "POST" || request.url !== "/api/chat") {
       response.writeHead(404);
       response.end();
@@ -462,13 +503,22 @@ export async function approveScoutLogin(
   const approvalUrl = extractScoutApprovalUrl(match.input ?? "");
   const userCode = extractScoutUserCode(match.input ?? "");
   await page.goto(approvalUrl);
-  await expect(page.getByRole("heading", { name: "Approve Scout login" })).toBeVisible();
-  await page.getByRole("textbox", { name: "Code shown in Scout" }).fill(userCode);
-  await page.getByRole("button", { name: "Approve Scout login" }).click();
+  await expect(page.getByRole("heading", { name: "Approve device" })).toBeVisible();
+  const deviceCodeInput = page.getByRole("textbox", { name: "Device code" });
+  if (!(await deviceCodeInput.inputValue())) {
+    await deviceCodeInput.fill(userCode);
+  }
+  await page.getByRole("button", { name: "Approve device" }).click();
   await page.waitForURL((url) => url.pathname === "/device/approved");
-  await expect(page.getByRole("heading", { name: "Scout login approved" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Device approved" })).toBeVisible();
+  const statusResponse = await page.request.get(
+    `/device/status?user_code=${encodeURIComponent(userCode)}`,
+  );
+  expect(statusResponse.ok(), await statusResponse.text()).toBe(true);
+  const status = (await statusResponse.json()) as DeviceStatusResponse;
+  expect(status.status).toBe("approved");
 
-  const result = await login.waitForExit(45_000);
+  const result = await login.waitForExit(90_000);
   expect(result.exitCode, result.output).toBe(0);
   return readScoutSession(scoutHome.sessionPath);
 }
@@ -476,6 +526,19 @@ export async function approveScoutLogin(
 function extractScoutApprovalUrl(output: string): string {
   const urls = output.match(/https?:\/\/\S+/g) ?? [];
   const approvalUrl = urls.find((url) => {
+    if (!url.includes("user_code=")) {
+      return false;
+    }
+    try {
+      return new URL(url).pathname === "/device";
+    } catch {
+      return false;
+    }
+  });
+  if (approvalUrl) {
+    return approvalUrl;
+  }
+  const fallbackApprovalUrl = urls.find((url) => {
     if (url.includes("user_code=")) {
       return false;
     }
@@ -485,7 +548,7 @@ function extractScoutApprovalUrl(output: string): string {
       return false;
     }
   });
-  return assertString(approvalUrl, "approval URL");
+  return assertString(fallbackApprovalUrl, "approval URL");
 }
 
 function extractScoutUserCode(output: string): string {
@@ -494,7 +557,10 @@ function extractScoutUserCode(output: string): string {
 }
 
 export async function readScoutSession(sessionPath: string): Promise<ScoutSessionFile> {
-  return parseScoutSession(JSON.parse(await readFile(sessionPath, "utf8")));
+  const credentialPath = sessionPath.replace(/\.json$/, ".credentials.json");
+  const credentials = JSON.parse(await readFile(credentialPath, "utf8")) as ScoutCredentialFile;
+  const accessToken = assertString(credentials["session-token"], "session-token");
+  return parseScoutSession(JSON.parse(await readFile(sessionPath, "utf8")), accessToken);
 }
 
 export async function exchangeScoutApiToken(

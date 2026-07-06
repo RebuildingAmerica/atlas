@@ -31,6 +31,9 @@ if TYPE_CHECKING:
 
 MINUTE_SECONDS = 60
 EXPECTED_CACHE_ENTRIES_AFTER_PRE_INSERT_PRUNE = 9_999
+READ_PATH = "/api/domains"
+READ_PATH_GROUP = "/api/*"
+OPENAPI_PATH = "/openapi.json"
 
 
 def _settings(db_url: str, **overrides: object) -> Settings:
@@ -72,9 +75,9 @@ async def test_anonymous_public_reads_are_limited_per_client(db_url: str) -> Non
         patch("atlas.platform.http.anonymous_rate_limit.time.monotonic", return_value=0.0),
     ):
         async for client in _client(_settings(db_url)):
-            first = await client.get("/openapi.json")
-            second = await client.get("/openapi.json")
-            blocked = await client.get("/openapi.json")
+            first = await client.get(OPENAPI_PATH)
+            second = await client.get(OPENAPI_PATH)
+            blocked = await client.get(OPENAPI_PATH)
 
     assert first.status_code == HTTPStatus.OK
     assert second.status_code == HTTPStatus.OK
@@ -97,8 +100,8 @@ async def test_rate_limit_logs_privacy_safe_operator_event(
 
     with patch("atlas.platform.http.anonymous_rate_limit.time.monotonic", return_value=0.0):
         async for client in _client(settings, host="203.0.113.10"):
-            await client.get("/openapi.json")
-            blocked = await client.get("/openapi.json")
+            await client.get(READ_PATH)
+            blocked = await client.get(READ_PATH)
 
     assert blocked.status_code == HTTPStatus.TOO_MANY_REQUESTS
     matching_records = [
@@ -111,7 +114,7 @@ async def test_rate_limit_logs_privacy_safe_operator_event(
     assert record.layer == "api"
     assert record.bucket == "read-minute"
     assert record.method == "GET"
-    assert record.path_group == "/openapi.json"
+    assert record.path_group == READ_PATH_GROUP
     assert record.retry_after_seconds == MINUTE_SECONDS
     assert isinstance(record.client_key_hash, str)
     assert "203.0.113.10" not in caplog.text
@@ -123,7 +126,7 @@ async def test_zero_limit_blocks_cleanly(db_url: str) -> None:
     settings = _settings(db_url, anonymous_rate_limit_reads_per_minute=0)
 
     async for client in _client(settings):
-        blocked = await client.get("/openapi.json")
+        blocked = await client.get(READ_PATH)
 
     assert blocked.status_code == HTTPStatus.TOO_MANY_REQUESTS
     assert blocked.headers["retry-after"] == "60"
@@ -153,9 +156,9 @@ async def test_anonymous_total_hourly_bucket_limits_wrapping(db_url: str) -> Non
 
     with patch("atlas.platform.http.anonymous_rate_limit.time.monotonic", return_value=0.0):
         async for client in _client(settings):
-            first = await client.get("/openapi.json")
-            second = await client.get("/openapi.json")
-            blocked = await client.get("/openapi.json")
+            first = await client.get(READ_PATH)
+            second = await client.get(READ_PATH)
+            blocked = await client.get(READ_PATH)
 
     assert first.status_code == HTTPStatus.OK
     assert second.status_code == HTTPStatus.OK
@@ -170,10 +173,10 @@ async def test_anonymous_limits_are_keyed_by_client_address(db_url: str) -> None
     settings = _settings(db_url, anonymous_rate_limit_reads_per_minute=1)
 
     async for first_client in _client(settings, host="203.0.113.10"):
-        first = await first_client.get("/openapi.json")
-        blocked = await first_client.get("/openapi.json")
+        first = await first_client.get(READ_PATH)
+        blocked = await first_client.get(READ_PATH)
     async for second_client in _client(settings, host="198.51.100.20"):
-        second = await second_client.get("/openapi.json")
+        second = await second_client.get(READ_PATH)
 
     assert first.status_code == HTTPStatus.OK
     assert blocked.status_code == HTTPStatus.TOO_MANY_REQUESTS
@@ -214,9 +217,9 @@ async def test_disabled_rate_limit_and_options_requests_pass_through(db_url: str
     enabled_settings = _settings(db_url, anonymous_rate_limit_reads_per_minute=0)
 
     async for client in _client(disabled_settings):
-        disabled_response = await client.get("/openapi.json")
+        disabled_response = await client.get(READ_PATH)
     async for client in _client(enabled_settings):
-        options_response = await client.options("/openapi.json")
+        options_response = await client.options(READ_PATH)
 
     assert disabled_response.status_code == HTTPStatus.OK
     assert options_response.status_code != HTTPStatus.TOO_MANY_REQUESTS
@@ -233,7 +236,7 @@ async def test_internal_app_requests_bypass_anonymous_limits(db_url: str) -> Non
     }
 
     async for client in _client(settings):
-        responses = [await client.get("/openapi.json", headers=headers) for _ in range(3)]
+        responses = [await client.get(READ_PATH, headers=headers) for _ in range(3)]
 
     assert [response.status_code for response in responses] == [
         HTTPStatus.OK,
@@ -253,8 +256,8 @@ async def test_wrong_internal_secret_does_not_bypass_anonymous_limits(db_url: st
     }
 
     async for client in _client(settings):
-        first = await client.get("/openapi.json", headers=headers)
-        blocked = await client.get("/openapi.json", headers=headers)
+        first = await client.get(READ_PATH, headers=headers)
+        blocked = await client.get(READ_PATH, headers=headers)
 
     assert first.status_code == HTTPStatus.OK
     assert blocked.status_code == HTTPStatus.TOO_MANY_REQUESTS
@@ -280,11 +283,11 @@ async def test_valid_jwt_bypasses_and_fake_bearer_counts_as_anonymous(
 
     async for client in _client(settings):
         valid_responses = [
-            await client.get("/openapi.json", headers={"Authorization": "Bearer valid-token"})
+            await client.get(READ_PATH, headers={"Authorization": "Bearer valid-token"})
             for _ in range(2)
         ]
-        first_fake = await client.get("/openapi.json", headers={"Authorization": "Bearer fake"})
-        second_fake = await client.get("/openapi.json", headers={"Authorization": "Bearer fake"})
+        first_fake = await client.get(READ_PATH, headers={"Authorization": "Bearer fake"})
+        second_fake = await client.get(READ_PATH, headers={"Authorization": "Bearer fake"})
 
     assert [response.status_code for response in valid_responses] == [
         HTTPStatus.OK,
@@ -326,8 +329,8 @@ async def test_fake_api_key_is_pre_auth_limited_before_repeated_introspection(
 
     with patch("atlas.platform.http.anonymous_rate_limit.time.monotonic", return_value=0.0):
         async for client in _client(settings):
-            first = await client.get("/openapi.json", headers={"X-API-Key": "fake-key"})
-            blocked = await client.get("/openapi.json", headers={"X-API-Key": "fake-key"})
+            first = await client.get(READ_PATH, headers={"X-API-Key": "fake-key"})
+            blocked = await client.get(READ_PATH, headers={"X-API-Key": "fake-key"})
 
     assert first.status_code == HTTPStatus.OK
     assert blocked.status_code == HTTPStatus.TOO_MANY_REQUESTS
@@ -340,7 +343,7 @@ async def test_fake_api_key_is_pre_auth_limited_before_repeated_introspection(
     ]
     assert len(invalid_records) == 1
     assert invalid_records[0].credential_kind == "api_key"
-    assert invalid_records[0].path_group == "/openapi.json"
+    assert invalid_records[0].path_group == READ_PATH_GROUP
     assert isinstance(invalid_records[0].client_key_hash, str)
     assert "fake-key" not in caplog.text
 
@@ -376,8 +379,8 @@ async def test_fake_api_key_spends_anonymous_quota_after_failed_verification(
 
     with patch("atlas.platform.http.anonymous_rate_limit.time.monotonic", return_value=0.0):
         async for client in _client(settings):
-            first = await client.get("/openapi.json", headers={"X-API-Key": "fake-key"})
-            blocked = await client.get("/openapi.json", headers={"X-API-Key": "fake-key"})
+            first = await client.get(READ_PATH, headers={"X-API-Key": "fake-key"})
+            blocked = await client.get(READ_PATH, headers={"X-API-Key": "fake-key"})
 
     assert first.status_code == HTTPStatus.OK
     assert blocked.status_code == HTTPStatus.TOO_MANY_REQUESTS
@@ -418,8 +421,8 @@ async def test_fake_bearer_is_pre_auth_limited_before_repeated_jwt_verification(
     )
 
     async for client in _client(settings):
-        first = await client.get("/openapi.json", headers={"Authorization": "Bearer fake"})
-        blocked = await client.get("/openapi.json", headers={"Authorization": "Bearer fake"})
+        first = await client.get(READ_PATH, headers={"Authorization": "Bearer fake"})
+        blocked = await client.get(READ_PATH, headers={"Authorization": "Bearer fake"})
 
     assert first.status_code == HTTPStatus.OK
     assert blocked.status_code == HTTPStatus.TOO_MANY_REQUESTS
@@ -432,7 +435,7 @@ async def test_fake_bearer_is_pre_auth_limited_before_repeated_jwt_verification(
     ]
     assert len(invalid_records) == 1
     assert invalid_records[0].credential_kind == "bearer"
-    assert invalid_records[0].path_group == "/openapi.json"
+    assert invalid_records[0].path_group == READ_PATH_GROUP
     assert "Bearer fake" not in caplog.text
 
 
@@ -518,8 +521,8 @@ async def test_unsigned_proxy_client_headers_cannot_change_limit_identity(db_url
     settings = _settings(db_url, anonymous_rate_limit_reads_per_minute=1)
 
     async for client in _client(settings):
-        first = await client.get("/openapi.json", headers={"X-Atlas-Client-IP": "203.0.113.20"})
-        blocked = await client.get("/openapi.json", headers={"X-Atlas-Client-IP": "198.51.100.30"})
+        first = await client.get(READ_PATH, headers={"X-Atlas-Client-IP": "203.0.113.20"})
+        blocked = await client.get(READ_PATH, headers={"X-Atlas-Client-IP": "198.51.100.30"})
 
     assert first.status_code == HTTPStatus.OK
     assert blocked.status_code == HTTPStatus.TOO_MANY_REQUESTS
@@ -532,14 +535,14 @@ async def test_invalid_signed_proxy_client_ip_falls_back_to_direct_client(db_url
 
     async for client in _client(settings):
         first = await client.get(
-            "/openapi.json",
+            READ_PATH,
             headers={
                 "X-Atlas-Client-IP": "not-an-ip",
                 "X-Atlas-Proxy-Secret": "internal-test-secret",
             },
         )
         blocked = await client.get(
-            "/openapi.json",
+            READ_PATH,
             headers={
                 "X-Atlas-Client-IP": "also-not-an-ip",
                 "X-Atlas-Proxy-Secret": "internal-test-secret",
@@ -559,11 +562,11 @@ async def test_signed_proxy_secret_without_client_ip_falls_back_to_direct_client
 
     async for client in _client(settings):
         first = await client.get(
-            "/openapi.json",
+            READ_PATH,
             headers={"X-Atlas-Proxy-Secret": "internal-test-secret"},
         )
         blocked = await client.get(
-            "/openapi.json",
+            READ_PATH,
             headers={"X-Atlas-Proxy-Secret": "internal-test-secret"},
         )
 
@@ -578,14 +581,14 @@ async def test_wrong_proxy_secret_does_not_unlock_proxy_identity(db_url: str) ->
 
     async for client in _client(settings):
         first = await client.get(
-            "/openapi.json",
+            READ_PATH,
             headers={
                 "X-Atlas-Client-IP": "203.0.113.20",
                 "X-Atlas-Proxy-Secret": "wrong-secret",
             },
         )
         blocked = await client.get(
-            "/openapi.json",
+            READ_PATH,
             headers={
                 "X-Atlas-Client-IP": "198.51.100.30",
                 "X-Atlas-Proxy-Secret": "wrong-secret",
@@ -607,11 +610,11 @@ async def test_forwarded_for_identity_honors_trusted_proxy_hops(db_url: str) -> 
 
     async for client in _client(settings):
         first = await client.get(
-            "/openapi.json",
+            READ_PATH,
             headers={"X-Forwarded-For": "198.51.100.10, 10.0.0.1"},
         )
         blocked = await client.get(
-            "/openapi.json",
+            READ_PATH,
             headers={"X-Forwarded-For": "198.51.100.10, 10.0.0.2"},
         )
 
@@ -631,11 +634,11 @@ async def test_forwarded_for_zero_trusted_hops_uses_rightmost_address(db_url: st
 
     async for client in _client(settings):
         first = await client.get(
-            "/openapi.json",
+            READ_PATH,
             headers={"X-Forwarded-For": "198.51.100.10, 10.0.0.1"},
         )
         blocked = await client.get(
-            "/openapi.json",
+            READ_PATH,
             headers={"X-Forwarded-For": "203.0.113.10, 10.0.0.1"},
         )
 
@@ -649,8 +652,8 @@ async def test_malformed_forwarded_for_falls_back_to_direct_client(db_url: str) 
     settings = _settings(db_url, anonymous_rate_limit_reads_per_minute=1)
 
     async for client in _client(settings):
-        first = await client.get("/openapi.json", headers={"X-Forwarded-For": "garbage"})
-        blocked = await client.get("/openapi.json", headers={"X-Forwarded-For": "more garbage"})
+        first = await client.get(READ_PATH, headers={"X-Forwarded-For": "garbage"})
+        blocked = await client.get(READ_PATH, headers={"X-Forwarded-For": "more garbage"})
 
     assert first.status_code == HTTPStatus.OK
     assert blocked.status_code == HTTPStatus.TOO_MANY_REQUESTS
@@ -663,11 +666,11 @@ async def test_unsigned_forwarded_for_is_ignored_by_default(db_url: str) -> None
 
     async for client in _client(settings):
         first = await client.get(
-            "/openapi.json",
+            READ_PATH,
             headers={"X-Forwarded-For": "198.51.100.10, 10.0.0.1"},
         )
         blocked = await client.get(
-            "/openapi.json",
+            READ_PATH,
             headers={"X-Forwarded-For": "203.0.113.10, 10.0.0.2"},
         )
 
@@ -682,14 +685,14 @@ async def test_signed_proxy_client_headers_partition_proxied_clients(db_url: str
 
     async for client in _client(settings):
         first = await client.get(
-            "/openapi.json",
+            READ_PATH,
             headers={
                 "X-Atlas-Client-IP": "203.0.113.20",
                 "X-Atlas-Proxy-Secret": "internal-test-secret",
             },
         )
         second = await client.get(
-            "/openapi.json",
+            READ_PATH,
             headers={
                 "X-Atlas-Client-IP": "198.51.100.30",
                 "X-Atlas-Proxy-Secret": "internal-test-secret",
@@ -711,14 +714,14 @@ async def test_signed_edge_origin_secret_partitions_proxied_clients(db_url: str)
 
     async for client in _client(settings):
         first = await client.get(
-            "/openapi.json",
+            READ_PATH,
             headers={
                 "X-Atlas-Client-IP": "203.0.113.20",
                 "X-Atlas-Proxy-Secret": "edge-test-secret",
             },
         )
         second = await client.get(
-            "/openapi.json",
+            READ_PATH,
             headers={
                 "X-Atlas-Client-IP": "198.51.100.30",
                 "X-Atlas-Proxy-Secret": "edge-test-secret",
@@ -736,28 +739,28 @@ async def test_signed_proxy_client_header_normalizes_ipv6_and_ipv4_ports(db_url:
 
     async for client in _client(settings):
         ipv6_first = await client.get(
-            "/openapi.json",
+            READ_PATH,
             headers={
                 "X-Atlas-Client-IP": "[2001:db8::1]",
                 "X-Atlas-Proxy-Secret": "internal-test-secret",
             },
         )
         ipv6_blocked = await client.get(
-            "/openapi.json",
+            READ_PATH,
             headers={
                 "X-Atlas-Client-IP": "2001:db8::1",
                 "X-Atlas-Proxy-Secret": "internal-test-secret",
             },
         )
         port_first = await client.get(
-            "/openapi.json",
+            READ_PATH,
             headers={
                 "X-Atlas-Client-IP": "203.0.113.20:4321",
                 "X-Atlas-Proxy-Secret": "internal-test-secret",
             },
         )
         port_blocked = await client.get(
-            "/openapi.json",
+            READ_PATH,
             headers={
                 "X-Atlas-Client-IP": "203.0.113.20",
                 "X-Atlas-Proxy-Secret": "internal-test-secret",
