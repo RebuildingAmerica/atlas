@@ -45,14 +45,6 @@ def extract_worker_count(provider: object, *, direct_mode: bool) -> int:
     return max(1, int(getattr(provider, "max_concurrent", 1) or 1))
 
 
-def is_ollama_provider(provider: object) -> bool:
-    """Return True when the provider is Ollama-backed."""
-    cache_identity = getattr(provider, "cache_identity", "")
-    if isinstance(cache_identity, str) and cache_identity.startswith("ollama:"):
-        return True
-    return provider.__class__.__name__.lower().startswith("ollama")
-
-
 def merge_discovered_links(raw_links: object, page: object) -> list[str]:
     """Merge discovered-link metadata from the fetch outcome and page payload."""
     merged: list[str] = []

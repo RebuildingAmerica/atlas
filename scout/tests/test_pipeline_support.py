@@ -11,7 +11,6 @@ from atlas_scout.pipeline_support import (
     decide_extraction_admission,
     error_reason,
     extract_worker_count,
-    is_ollama_provider,
     merge_discovered_links,
     normalize_url,
     parse_location,
@@ -55,32 +54,6 @@ def test_extract_worker_count_clamps_to_at_least_one() -> None:
         max_concurrent = 0
 
     assert extract_worker_count(Provider(), direct_mode=True) == 1
-
-
-# ---------------------------------------------------------------------------
-# is_ollama_provider
-# ---------------------------------------------------------------------------
-
-
-def test_is_ollama_provider_detects_cache_identity_prefix() -> None:
-    class Provider:
-        cache_identity = "ollama:qwen3.5:latest"
-
-    assert is_ollama_provider(Provider()) is True
-
-
-def test_is_ollama_provider_detects_class_name_prefix() -> None:
-    class OllamaLikeProvider:
-        cache_identity = ""
-
-    assert is_ollama_provider(OllamaLikeProvider()) is True
-
-
-def test_is_ollama_provider_returns_false_for_other_providers() -> None:
-    class AnthropicProvider:
-        cache_identity = "anthropic:claude-sonnet-4-20250514"
-
-    assert is_ollama_provider(AnthropicProvider()) is False
 
 
 # ---------------------------------------------------------------------------
