@@ -7,8 +7,8 @@ from io import StringIO
 from click.testing import CliRunner
 from rich.console import Console
 
+from atlas_scout.auth_output import print_login_success
 from atlas_scout.cli import main
-from atlas_scout.cli_output import print_login_success
 
 
 def test_root_help_points_to_scout_initiated_workflow() -> None:

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from atlas_scout.auth import DeviceAuthError
-from atlas_scout.cli_output import format_device_auth_error
+from atlas_scout.auth_output import format_device_auth_error
 
 
 def test_html_http_error_renders_concise_url_guidance() -> None:

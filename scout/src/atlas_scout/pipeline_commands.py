@@ -12,7 +12,6 @@ from atlas_scout.auth_commands import _resolve_search_connection
 from atlas_scout.cli_common import _exit_with_error, _run_async
 from atlas_scout.cli_context import console, err_console
 from atlas_scout.cli_errors import CliError
-from atlas_scout.cli_output import print_duplicate_run_notice, print_run_banner, print_run_results
 from atlas_scout.cli_progress import ProgressRenderer
 from atlas_scout.local_model_commands import (
     _prepare_local_model_config,
@@ -20,6 +19,7 @@ from atlas_scout.local_model_commands import (
 )
 from atlas_scout.pipeline_support import close_if_supported as _close_if_supported
 from atlas_scout.pipeline_support import normalize_url
+from atlas_scout.run_report import print_duplicate_run_notice, print_run_banner, print_run_results
 from atlas_scout.runs_commands import _runs_sync, _should_sync_after_run
 from atlas_scout.runtime import build_runtime_profile
 

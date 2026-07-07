@@ -1,4 +1,4 @@
-"""Tests for the Rich-backed Scout CLI output helpers."""
+"""Tests for Scout discovery run reporting output."""
 
 from __future__ import annotations
 
@@ -12,38 +12,16 @@ from atlas_shared import (
     RankedEntry,
 )
 from rich.console import Console
-from rich.text import Text
 
-from atlas_scout.cli_output import (
-    print_duplicate_run_notice,
-    print_run_banner,
-    print_run_results,
-    styled_status,
-)
 from atlas_scout.config import ScoutConfig
 from atlas_scout.pipeline import PipelineResult
+from atlas_scout.run_report import print_duplicate_run_notice, print_run_banner, print_run_results
 from atlas_scout.runtime import build_runtime_profile
 
 
 def _captured_console() -> tuple[Console, io.StringIO]:
     buffer = io.StringIO()
     return Console(file=buffer, width=120, color_system=None, record=False), buffer
-
-
-# ---------------------------------------------------------------------------
-# styled_status
-# ---------------------------------------------------------------------------
-
-
-def test_styled_status_known_status_uses_colour() -> None:
-    text = styled_status("completed")
-    assert isinstance(text, Text)
-    assert text.style == "green"
-
-
-def test_styled_status_unknown_status_falls_back_to_blank_style() -> None:
-    text = styled_status("never-seen-before")
-    assert text.style == ""
 
 
 # ---------------------------------------------------------------------------

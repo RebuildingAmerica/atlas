@@ -22,6 +22,12 @@ from atlas_scout.auth import (
     load_session,
     save_session,
 )
+from atlas_scout.auth_output import (
+    format_device_auth_error,
+    format_verification_uri_complete,
+    print_login_instructions,
+    print_login_success,
+)
 from atlas_scout.cli_common import (
     _credential_store_cli_error,
     _exit_with_error,
@@ -30,12 +36,6 @@ from atlas_scout.cli_common import (
 )
 from atlas_scout.cli_context import console
 from atlas_scout.cli_errors import CliError
-from atlas_scout.cli_output import (
-    format_device_auth_error,
-    format_verification_uri_complete,
-    print_login_instructions,
-    print_login_success,
-)
 from atlas_scout.credentials import CredentialStoreError
 from atlas_scout.login_flow import LoginExecutionError, begin_login, complete_login
 from atlas_scout.search_keys import (

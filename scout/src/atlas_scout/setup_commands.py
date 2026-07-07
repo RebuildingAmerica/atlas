@@ -14,7 +14,6 @@ from atlas_scout.auth_commands import _login
 from atlas_scout.cli_common import _credential_store_cli_error, _exit_with_error, _run_async
 from atlas_scout.cli_context import console, err_console
 from atlas_scout.cli_errors import CliError
-from atlas_scout.cli_output import print_local_model_setup_help
 from atlas_scout.cli_select import InteractiveChoice, SelectionCancelledError, select_with_arrows
 from atlas_scout.config import (
     SCOUT_CONFIGS_DIR,
@@ -36,6 +35,7 @@ from atlas_scout.local_model_commands import (
     _setup_local_model_provider,
     _should_prompt_for_setup_model_choice,
 )
+from atlas_scout.local_model_output import print_local_model_setup_help
 from atlas_scout.local_models import apply_local_model_resolution
 from atlas_scout.manpages import ManPageInstallResult, install_man_pages
 from atlas_scout.shell_integration import (
