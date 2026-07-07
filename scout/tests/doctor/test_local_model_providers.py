@@ -6,7 +6,8 @@ import httpx
 import respx
 
 from atlas_scout.config import ScoutConfig
-from atlas_scout.doctor import _default_probe_model, run_doctor
+from atlas_scout.diagnostics import run_doctor
+from atlas_scout.diagnostics.probes import probe_model
 
 
 @respx.mock
@@ -21,7 +22,7 @@ def test_doctor_probe_accepts_lmstudio_model() -> None:
     config.llm.provider = "lmstudio"
     config.llm.model = "qwen3:latest"
 
-    result = _default_probe_model(config)
+    result = probe_model(config)
 
     assert result.status == "ok"
     assert "LM Studio" in result.message
@@ -34,7 +35,7 @@ def test_doctor_probe_explains_lmstudio_server_down() -> None:
     config.llm.provider = "lmstudio"
     config.llm.model = "qwen3:latest"
 
-    result = _default_probe_model(config)
+    result = probe_model(config)
 
     assert result.status == "fail"
     assert "LM Studio" in result.message

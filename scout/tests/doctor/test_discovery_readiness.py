@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from atlas_scout.auth import ScoutSession
 from atlas_scout.config import ScoutConfig
-from atlas_scout.doctor import DoctorDependencies, ProbeResult, run_doctor
+from atlas_scout.diagnostics import DoctorDependencies, ProbeResult, run_doctor
 
 
 def _session() -> ScoutSession:

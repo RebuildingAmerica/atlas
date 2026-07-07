@@ -44,9 +44,6 @@ from atlas_scout import (
     db_commands as _db_commands,
 )
 from atlas_scout import (
-    doctor as _doctor,
-)
-from atlas_scout import (
     doctor_commands as _doctor_commands,
 )
 from atlas_scout import (
@@ -82,6 +79,7 @@ from atlas_scout import (
 from atlas_scout import (
     worker_commands as _worker_commands,
 )
+from atlas_scout.diagnostics import report as _diagnostics_report
 from atlas_scout.shared import atlas_urls as _atlas_urls
 
 if TYPE_CHECKING:
@@ -159,7 +157,7 @@ _LEGACY_EXPORT_MODULES: tuple[tuple[types.ModuleType, tuple[str, ...]], ...] = (
             "set_active_profile_name",
         ),
     ),
-    (_doctor, ("run_doctor",)),
+    (_diagnostics_report, ("run_doctor",)),
     (
         _local_model_commands,
         (

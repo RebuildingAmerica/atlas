@@ -8,7 +8,7 @@ from click.testing import CliRunner
 
 import atlas_scout.cli as cli_module
 from atlas_scout.cli import main
-from atlas_scout.doctor import DoctorCapability, DoctorCheck, DoctorReport
+from atlas_scout.diagnostics import DoctorCapability, DoctorCheck, DoctorReport
 
 
 def _report(*, failed: bool = False) -> DoctorReport:

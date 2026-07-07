@@ -10,7 +10,7 @@ from rich.text import Text
 if TYPE_CHECKING:
     from rich.console import Console
 
-    from atlas_scout.doctor import DoctorCheck, DoctorReport, DoctorStatus
+    from atlas_scout.diagnostics.models import DoctorCheck, DoctorReport, DoctorStatus
 
 STATUS_LABELS: dict[DoctorStatus, str] = {
     "ok": "OK",

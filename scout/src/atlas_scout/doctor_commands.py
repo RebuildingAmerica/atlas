@@ -8,8 +8,8 @@ from typing import TYPE_CHECKING
 import click
 
 from atlas_scout.cli_context import console
-from atlas_scout.doctor import run_doctor
-from atlas_scout.doctor_output import print_doctor_report
+from atlas_scout.diagnostics import run_doctor
+from atlas_scout.diagnostics.output import print_doctor_report
 
 if TYPE_CHECKING:
     from atlas_scout.config import ScoutConfig
