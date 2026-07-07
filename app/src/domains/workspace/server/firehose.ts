@@ -1,6 +1,25 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requestWorkspaceApi, requireActiveWorkspaceId } from "./workspace-api";
+export {
+  createWorkspaceFirehoseSourceTarget,
+  createWorkspaceFirehoseSourceTargetData,
+  loadWorkspaceFirehoseSourceTargets,
+  loadWorkspaceFirehoseSourceTargetsData,
+  runWorkspaceFirehoseSourceTarget,
+  runWorkspaceFirehoseSourceTargetData,
+} from "./firehose-source-targets";
+export type {
+  WorkspaceFirehoseSourceKind,
+  WorkspaceFirehoseSourcePriority,
+  WorkspaceFirehoseSourceSafetyPolicy,
+  WorkspaceFirehoseSourceTarget,
+  WorkspaceFirehoseSourceTargetCollection,
+  WorkspaceFirehoseSourceTargetInput,
+  WorkspaceFirehoseSourceTargetListInput,
+  WorkspaceFirehoseSourceTargetRunInput,
+  WorkspaceFirehoseSourceTargetRunResult,
+} from "./firehose-source-targets";
 
 export type WorkspaceFirehoseActorType =
   "person" | "organization" | "initiative" | "campaign" | "event";

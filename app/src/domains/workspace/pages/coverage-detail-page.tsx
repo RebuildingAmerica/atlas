@@ -11,6 +11,7 @@ import {
   ExternalLink,
   FileText,
   MapPin,
+  RadioTower,
   Search,
   ShieldCheck,
   Users,
@@ -20,6 +21,10 @@ import type {
   CoverageTargetDetail,
   CoverageTargetStatus,
 } from "@/domains/workspace/server/coverage-targets";
+import type {
+  WorkspaceFirehoseSourceTarget,
+  WorkspaceFirehoseSourceTargetCollection,
+} from "@/domains/workspace/server/firehose";
 import {
   useUnwatchWorkspaceResource,
   useWatchWorkspaceResource,
@@ -29,6 +34,7 @@ import { Badge } from "@/platform/ui/badge";
 
 interface CoverageDetailPageProps {
   detail: CoverageTargetDetail;
+  sourceTargets: WorkspaceFirehoseSourceTargetCollection;
 }
 
 interface CountLabelOptions {
@@ -135,6 +141,37 @@ function formatDate(value: string | null): string {
   });
 }
 
+function formatDateTime(value: string | null): string {
+  if (!value) {
+    return "Not checked";
+  }
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return "Unknown";
+  }
+
+  return parsed.toLocaleString(undefined, {
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    month: "short",
+    timeZone: "UTC",
+    year: "numeric",
+  });
+}
+
+function formatCadence(seconds: number): string {
+  if (seconds < 120) {
+    return `${seconds}s`;
+  }
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 120) {
+    return `${minutes}m`;
+  }
+  return `${Math.round(minutes / 60)}h`;
+}
+
 function stateFromGeography(geography: string): string {
   const stateMatch = /,\s*([A-Za-z]{2})\s*$/.exec(geography);
   return stateMatch?.[1]?.toUpperCase() ?? "";
@@ -171,6 +208,39 @@ function ReviewStateBadge({ reviewState }: { reviewState: CoverageReviewState })
   return <Badge variant={display.variant}>{display.label}</Badge>;
 }
 
+function SourceTargetRow({ target }: { target: WorkspaceFirehoseSourceTarget }) {
+  return (
+    <li className="border-outline-variant rounded-lg border p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0 space-y-1">
+          <a
+            href={target.url}
+            className="type-label-large text-ink-strong hover:text-civic inline-flex items-center gap-1.5 transition-colors"
+          >
+            {target.label}
+            <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+          </a>
+          <p className="type-body-small text-ink-soft">
+            {humanize(target.source_class)} | {target.source_kind.toUpperCase()} |{" "}
+            {formatCadence(target.cadence_seconds)}
+          </p>
+        </div>
+        <div className="flex flex-wrap justify-end gap-2">
+          <Badge variant={target.enabled ? "success" : "warning"}>
+            {target.enabled ? "Enabled" : "Paused"}
+          </Badge>
+          {target.public_route_enabled ? <Badge variant="info">Public route</Badge> : null}
+        </div>
+      </div>
+      <div className="type-body-small text-ink-soft mt-3 flex flex-wrap gap-x-4 gap-y-1">
+        <span>{formatDateTime(target.last_checked_at)}</span>
+        {target.last_http_status ? <span>HTTP {target.last_http_status}</span> : null}
+        {target.last_error ? <span>{target.last_error}</span> : null}
+      </div>
+    </li>
+  );
+}
+
 function DetailMetric({ label, value, detail }: { detail: string; label: string; value: string }) {
   return (
     <div className="border-outline-variant bg-surface-container-lowest rounded-lg border p-4">
@@ -181,7 +251,7 @@ function DetailMetric({ label, value, detail }: { detail: string; label: string;
   );
 }
 
-export function CoverageDetailPage({ detail }: CoverageDetailPageProps) {
+export function CoverageDetailPage({ detail, sourceTargets }: CoverageDetailPageProps) {
   const target = detail.target;
   const display = STATUS_DISPLAY[target.status];
   const researchState = detail.discovery_runs.at(0)?.state ?? stateFromGeography(target.geography);
@@ -321,6 +391,25 @@ export function CoverageDetailPage({ detail }: CoverageDetailPageProps) {
             )}
           </section>
         </div>
+      </section>
+
+      <section className="border-outline-variant bg-surface-container-lowest space-y-4 rounded-lg border p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <RadioTower className="text-civic h-5 w-5" aria-hidden="true" />
+            <h2 className="type-title-large text-ink-strong">Firehose sources</h2>
+          </div>
+          <Badge>{countLabel(sourceTargets.total, "source")}</Badge>
+        </div>
+        {sourceTargets.items.length > 0 ? (
+          <ul className="space-y-3">
+            {sourceTargets.items.map((sourceTarget) => (
+              <SourceTargetRow key={sourceTarget.id} target={sourceTarget} />
+            ))}
+          </ul>
+        ) : (
+          <p className="type-body-medium text-ink-soft">No Firehose sources listed.</p>
+        )}
       </section>
 
       <div

@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import {
-  listPublicFirehoseSignals,
+  fetchPublicFirehoseSignals,
   type PublicFirehoseSearchInput,
 } from "@/domains/firehose/public-feed";
 import { buildFirehoseRss } from "@/domains/firehose/rss";
@@ -29,9 +29,9 @@ function searchInputFromUrl(url: URL): PublicFirehoseSearchInput {
 export const Route = createFileRoute("/firehose.rss")({
   server: {
     handlers: {
-      GET: ({ request }: FirehoseRssHandlerInput) => {
+      GET: async ({ request }: FirehoseRssHandlerInput) => {
         const requestUrl = new URL(request.url);
-        const snapshot = listPublicFirehoseSignals(searchInputFromUrl(requestUrl));
+        const snapshot = await fetchPublicFirehoseSignals(searchInputFromUrl(requestUrl));
         const body = buildFirehoseRss(snapshot, requestUrl.toString());
         return new Response(body, {
           headers: {

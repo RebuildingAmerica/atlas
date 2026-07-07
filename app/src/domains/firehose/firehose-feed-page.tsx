@@ -22,8 +22,8 @@ import {
 } from "./feed-model";
 import {
   buildPublicFirehoseSearchParams,
+  fetchPublicFirehoseSignals,
   isPublicFirehoseEvent,
-  listPublicFirehoseSignals,
   type PublicFirehoseLiveState,
   type PublicFirehoseSignal,
   type PublicFirehoseSnapshot,
@@ -38,7 +38,7 @@ interface FirehoseFeedViewProps {
   liveState: PublicFirehoseLiveState;
   onApplyPendingSignals?: () => void;
   onReadingLatestChange?: (readingLatest: boolean) => void;
-  onRefreshSignals?: () => void;
+  onRefreshSignals?: () => Promise<void> | void;
   pendingSignalCount?: number;
   snapshot: PublicFirehoseSnapshot;
 }
@@ -94,7 +94,7 @@ interface FirehoseLiveResult {
   applyPendingSignals: () => void;
   liveState: PublicFirehoseLiveState;
   pendingSignalCount: number;
-  refreshSignals: () => void;
+  refreshSignals: () => Promise<void>;
   setReadingLatest: (readingLatest: boolean) => void;
   snapshot: PublicFirehoseSnapshot;
 }
@@ -212,10 +212,11 @@ function usePublicFirehoseLive(initialSnapshot: PublicFirehoseSnapshot): Firehos
     readingLatestRef.current = true;
   }, []);
 
-  const refreshSignals = useCallback(() => {
+  const refreshSignals = useCallback(async () => {
+    const snapshot = await fetchPublicFirehoseSignals(initialSnapshot.query);
     setStreamState({
       pendingSignals: [],
-      snapshot: listPublicFirehoseSignals(initialSnapshot.query),
+      snapshot,
     });
     readingLatestRef.current = true;
     setLiveState("updated-manually");
@@ -294,7 +295,7 @@ function usePublicFirehoseLive(initialSnapshot: PublicFirehoseSnapshot): Firehos
     }
 
     const interval = window.setInterval(() => {
-      refreshSignals();
+      void refreshSignals();
     }, 30000);
     return () => {
       window.clearInterval(interval);
@@ -659,7 +660,9 @@ export function FirehoseFeedView({
               {liveState === "updated-manually" && onRefreshSignals ? (
                 <button
                   className="type-label-medium border-outline-variant text-ink-strong hover:bg-surface-container focus-visible:ring-accent rounded-md border px-3 py-1.5 transition-colors focus-visible:ring-2 focus-visible:outline-none"
-                  onClick={onRefreshSignals}
+                  onClick={() => {
+                    void onRefreshSignals();
+                  }}
                   type="button"
                 >
                   Refresh

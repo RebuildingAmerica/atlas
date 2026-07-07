@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { getServerApiBaseUrl } from "@/platform/config/app-config";
 
 export type PublicFirehoseLiveState = "live" | "reconnecting" | "offline" | "updated-manually";
 export type PublicFirehoseReviewState = "not_required" | "pending" | "approved" | "held";
@@ -89,6 +90,8 @@ export interface PublicFirehoseHeartbeatEvent {
 
 export type PublicFirehoseEvent =
   PublicFirehoseReadyEvent | PublicFirehoseSignalEvent | PublicFirehoseHeartbeatEvent;
+
+type PublicFirehoseFetcher = (input: string, init?: RequestInit) => Promise<Response>;
 
 export const publicFirehoseSearchSchema = z.object({
   issue: z.string().optional(),
@@ -303,6 +306,38 @@ export function buildPublicFirehoseSearchParams(query: PublicFirehoseQuery): URL
     params.set("limit", String(query.limit));
   }
   return params;
+}
+
+function publicFirehosePath(query: PublicFirehoseQuery): string {
+  const params = buildPublicFirehoseSearchParams(query).toString();
+  return params ? `/api/firehose/public?${params}` : "/api/firehose/public";
+}
+
+function publicFirehoseFetchUrl(path: string): string {
+  if (typeof window !== "undefined") {
+    return path;
+  }
+
+  return new URL(path, getServerApiBaseUrl()).toString();
+}
+
+export async function fetchPublicFirehoseSignals(
+  input: PublicFirehoseSearchInput = {},
+  fetcher?: PublicFirehoseFetcher,
+): Promise<PublicFirehoseSnapshot> {
+  const query = normalizePublicFirehoseSearch(input);
+  const path = publicFirehosePath(query);
+  const requestUrl = fetcher ? path : publicFirehoseFetchUrl(path);
+  const requestFetch = fetcher ?? globalThis.fetch.bind(globalThis);
+  const response = await requestFetch(requestUrl, {
+    headers: { Accept: "application/json" },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Public Firehose request failed (${response.status})`);
+  }
+
+  return (await response.json()) as PublicFirehoseSnapshot;
 }
 
 export function mergePublicFirehoseSignal(

@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   buildFirehoseRss: vi.fn(),
-  listPublicFirehoseSignals: vi.fn(),
+  fetchPublicFirehoseSignals: vi.fn(),
 }));
 
 vi.mock("@tanstack/react-router", async () => {
@@ -11,7 +11,7 @@ vi.mock("@tanstack/react-router", async () => {
 });
 
 vi.mock("@/domains/firehose/public-feed", () => ({
-  listPublicFirehoseSignals: mocks.listPublicFirehoseSignals,
+  fetchPublicFirehoseSignals: mocks.fetchPublicFirehoseSignals,
 }));
 
 vi.mock("@/domains/firehose/rss", () => ({
@@ -21,12 +21,12 @@ vi.mock("@/domains/firehose/rss", () => ({
 describe("routes/firehose.rss", () => {
   beforeEach(() => {
     mocks.buildFirehoseRss.mockReset();
-    mocks.listPublicFirehoseSignals.mockReset();
+    mocks.fetchPublicFirehoseSignals.mockReset();
   });
 
   it("returns RSS XML for the filtered public Firehose feed", async () => {
     const snapshot = { signals: [] };
-    mocks.listPublicFirehoseSignals.mockReturnValue(snapshot);
+    mocks.fetchPublicFirehoseSignals.mockResolvedValue(snapshot);
     mocks.buildFirehoseRss.mockReturnValue("<rss />");
     const routeModule = await import("@/routes/firehose[.]rss");
     const { asRouteStub } = await import("@/../tests/helpers/router-harness");
@@ -35,7 +35,7 @@ describe("routes/firehose.rss", () => {
       request: new Request("https://atlas.example/firehose.rss?place=detroit-mi"),
     })) as Response;
 
-    expect(mocks.listPublicFirehoseSignals).toHaveBeenCalledWith({ place: "detroit-mi" });
+    expect(mocks.fetchPublicFirehoseSignals).toHaveBeenCalledWith({ place: "detroit-mi" });
     expect(mocks.buildFirehoseRss).toHaveBeenCalledWith(
       snapshot,
       "https://atlas.example/firehose.rss?place=detroit-mi",

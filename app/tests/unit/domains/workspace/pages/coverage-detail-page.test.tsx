@@ -4,6 +4,7 @@ import { cleanup, fireEvent, render, screen, within } from "@testing-library/rea
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CoverageDetailPage } from "@/domains/workspace/pages/coverage-detail-page";
 import type { CoverageTargetDetail } from "@/domains/workspace/server/coverage-targets";
+import type { WorkspaceFirehoseSourceTargetCollection } from "@/domains/workspace/server/firehose";
 
 const mocks = vi.hoisted(() => ({
   unwatchWorkspaceResource: vi.fn(),
@@ -116,8 +117,44 @@ describe("CoverageDetailPage", () => {
     };
   }
 
+  function sourceTargets(): WorkspaceFirehoseSourceTargetCollection {
+    return {
+      items: [
+        {
+          cadence_seconds: 60,
+          content_hash: null,
+          coverage_target_id: "coverage_123",
+          created_at: "2026-07-07T16:00:00Z",
+          created_by: "operator_1",
+          enabled: true,
+          etag: null,
+          id: "source_target_123",
+          issues: ["housing_affordability"],
+          label: "Kansas City housing agenda",
+          last_checked_at: null,
+          last_error: null,
+          last_http_status: null,
+          last_modified: null,
+          last_success_at: null,
+          org_id: "org_123",
+          origin: "api",
+          origin_note: null,
+          places: ["kansas-city-mo"],
+          priority: "hot",
+          public_route_enabled: true,
+          safety_policy: "standard",
+          source_class: "government_agenda",
+          source_kind: "rss",
+          updated_at: "2026-07-07T16:00:00Z",
+          url: "https://example.test/kc-agenda.xml",
+        },
+      ],
+      total: 1,
+    };
+  }
+
   it("renders target evidence and routes thin coverage into prefilled research", () => {
-    render(<CoverageDetailPage detail={detail()} />);
+    render(<CoverageDetailPage detail={detail()} sourceTargets={sourceTargets()} />);
 
     expect(screen.getByRole("heading", { name: "Kansas City tenant power" })).toBeInTheDocument();
     expect(screen.getByText("Thin")).toBeInTheDocument();
@@ -130,6 +167,11 @@ describe("CoverageDetailPage", () => {
     expect(screen.getByText("Review county-level tenant organizations.")).toBeInTheDocument();
     expect(screen.getByText("Review county source coverage")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Linked research" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Firehose sources" })).toBeInTheDocument();
+    expect(screen.getByText("Kansas City housing agenda")).toBeInTheDocument();
+    expect(screen.getByText(/government agenda/)).toBeInTheDocument();
+    expect(screen.getByText("Public route")).toBeInTheDocument();
+    expect(screen.getByText("Not checked")).toBeInTheDocument();
     expect(screen.getByText("coverage review")).toBeInTheDocument();
     expect(screen.queryByText(/discovery run/i)).not.toBeInTheDocument();
     expect(mocks.useWorkspaceWatchStatus).toHaveBeenCalledWith(
@@ -181,7 +223,7 @@ describe("CoverageDetailPage", () => {
       isLoading: false,
     });
 
-    render(<CoverageDetailPage detail={detail()} />);
+    render(<CoverageDetailPage detail={detail()} sourceTargets={sourceTargets()} />);
 
     fireEvent.click(screen.getByRole("button", { name: "Watching" }));
     expect(mocks.unwatchWorkspaceResource).toHaveBeenCalledWith({
@@ -197,11 +239,12 @@ describe("CoverageDetailPage", () => {
     emptyDetail.target.gaps = [];
     emptyDetail.target.next_actions = [];
 
-    render(<CoverageDetailPage detail={emptyDetail} />);
+    render(<CoverageDetailPage detail={emptyDetail} sourceTargets={{ items: [], total: 0 }} />);
 
     const evidence = screen.getByTestId("coverage-detail-evidence");
     expect(within(evidence).getByText("No linked research yet.")).toBeInTheDocument();
     expect(within(evidence).getByText("No linked actors yet.")).toBeInTheDocument();
+    expect(screen.getByText("No Firehose sources listed.")).toBeInTheDocument();
     expect(screen.getByText("No gaps listed.")).toBeInTheDocument();
     expect(screen.getByText("No next actions listed.")).toBeInTheDocument();
   });

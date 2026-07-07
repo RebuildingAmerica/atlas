@@ -5,8 +5,8 @@ import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
+  fetchPublicFirehoseSignals: vi.fn(),
   firehosePageProps: vi.fn(),
-  listPublicFirehoseSignals: vi.fn(),
 }));
 
 vi.mock("@tanstack/react-router", async () => {
@@ -22,7 +22,7 @@ vi.mock("@/domains/firehose/firehose-feed-page", () => ({
 }));
 
 vi.mock("@/domains/firehose/public-feed", () => ({
-  listPublicFirehoseSignals: mocks.listPublicFirehoseSignals,
+  fetchPublicFirehoseSignals: mocks.fetchPublicFirehoseSignals,
   publicFirehoseSearchSchema: {
     parse: vi.fn((input: unknown) => input),
   },
@@ -32,8 +32,8 @@ describe("routes/_public/firehose", () => {
   beforeEach(async () => {
     const { resetRouterMocks } = await import("@/../tests/helpers/router-harness");
     resetRouterMocks();
+    mocks.fetchPublicFirehoseSignals.mockReset();
     mocks.firehosePageProps.mockReset();
-    mocks.listPublicFirehoseSignals.mockReset();
   });
 
   afterEach(() => {
@@ -42,7 +42,7 @@ describe("routes/_public/firehose", () => {
 
   it("loads the public Firehose snapshot from the search params", async () => {
     const snapshot = { signals: [] };
-    mocks.listPublicFirehoseSignals.mockReturnValue(snapshot);
+    mocks.fetchPublicFirehoseSignals.mockResolvedValue(snapshot);
     const routeModule = await import("@/routes/_public/firehose");
     const { asRouteStub } = await import("@/../tests/helpers/router-harness");
     const Route = asRouteStub(routeModule.Route);
@@ -51,7 +51,7 @@ describe("routes/_public/firehose", () => {
       deps: { search: { issue: "transit", place: "detroit-mi" } },
     });
 
-    expect(mocks.listPublicFirehoseSignals).toHaveBeenCalledWith({
+    expect(mocks.fetchPublicFirehoseSignals).toHaveBeenCalledWith({
       issue: "transit",
       place: "detroit-mi",
     });

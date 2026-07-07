@@ -109,6 +109,98 @@ describe("workspace Firehose server helpers", () => {
     expect(mocks.requestAtlasApi).not.toHaveBeenCalled();
   });
 
+  it("lists workspace Firehose source targets for a coverage target", async () => {
+    const collection = { items: [], total: 0 };
+    mocks.requireReadyAtlasSessionState.mockResolvedValue({
+      workspace: {
+        activeOrganization: {
+          id: "org_123",
+        },
+      },
+    });
+    mocks.requestAtlasApi.mockResolvedValue(collection);
+
+    const { loadWorkspaceFirehoseSourceTargetsData } =
+      await import("@/domains/workspace/server/firehose");
+    const result = await loadWorkspaceFirehoseSourceTargetsData({
+      coverageTargetId: "target_123",
+    });
+
+    expect(result).toBe(collection);
+    expect(mocks.requestAtlasApi).toHaveBeenCalledWith(
+      "/firehose/source-targets?coverage_target_id=target_123",
+    );
+  });
+
+  it("creates and runs workspace Firehose source targets", async () => {
+    const sourceTarget = { id: "source_target_123" };
+    const runResult = {
+      artifacts_created: 1,
+      routes_created: 2,
+      signals_created: 1,
+      unchanged: false,
+    };
+    mocks.requireReadyAtlasSessionState.mockResolvedValue({
+      workspace: {
+        activeOrganization: {
+          id: "org_123",
+        },
+      },
+    });
+    mocks.requestAtlasApi.mockResolvedValueOnce(sourceTarget).mockResolvedValueOnce(runResult);
+
+    const { createWorkspaceFirehoseSourceTargetData, runWorkspaceFirehoseSourceTargetData } =
+      await import("@/domains/workspace/server/firehose");
+    const created = await createWorkspaceFirehoseSourceTargetData({
+      coverage_target_id: "target_123",
+      issues: ["transit"],
+      label: "Toledo Civic Agenda",
+      places: ["toledo-oh"],
+      public_route_enabled: true,
+      source_class: "government_agenda",
+      source_kind: "rss",
+      url: "https://toledo.example/feed.xml",
+    });
+    const result = await runWorkspaceFirehoseSourceTargetData({
+      body: "<rss />",
+      content_type: "application/rss+xml",
+      fetched_at: "2026-07-07T16:21:00Z",
+      sourceTargetId: "source_target_123",
+      status_code: 200,
+      url: "https://toledo.example/feed.xml",
+    });
+
+    expect(created).toBe(sourceTarget);
+    expect(result).toBe(runResult);
+    expect(mocks.requestAtlasApi).toHaveBeenNthCalledWith(1, "/firehose/source-targets", {
+      body: JSON.stringify({
+        coverage_target_id: "target_123",
+        issues: ["transit"],
+        label: "Toledo Civic Agenda",
+        places: ["toledo-oh"],
+        public_route_enabled: true,
+        source_class: "government_agenda",
+        source_kind: "rss",
+        url: "https://toledo.example/feed.xml",
+      }),
+      method: "POST",
+    });
+    expect(mocks.requestAtlasApi).toHaveBeenNthCalledWith(
+      2,
+      "/firehose/source-targets/source_target_123/runs",
+      {
+        body: JSON.stringify({
+          body: "<rss />",
+          content_type: "application/rss+xml",
+          fetched_at: "2026-07-07T16:21:00Z",
+          status_code: 200,
+          url: "https://toledo.example/feed.xml",
+        }),
+        method: "POST",
+      },
+    );
+  });
+
   it("fails before fetching when there is no active workspace", async () => {
     mocks.requireReadyAtlasSessionState.mockResolvedValue({
       workspace: {

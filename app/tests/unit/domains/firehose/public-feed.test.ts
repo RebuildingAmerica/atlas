@@ -1,6 +1,41 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 describe("public Firehose feed provider", () => {
+  it("fetches public signals from the Firehose API", async () => {
+    const { fetchPublicFirehoseSignals, listPublicFirehoseSignals } =
+      await import("@/domains/firehose/public-feed");
+    const snapshot = listPublicFirehoseSignals({
+      issue: "transit",
+      limit: 1,
+      place: "detroit-mi",
+      signal_type: "public_meeting",
+      source_class: "government_agenda",
+    });
+    const fetcher = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify(snapshot), {
+        headers: { "Content-Type": "application/json" },
+        status: 200,
+      }),
+    );
+
+    const result = await fetchPublicFirehoseSignals(
+      {
+        issue: "transit",
+        limit: "1",
+        place: "detroit-mi",
+        signal_type: "public_meeting",
+        source_class: "government_agenda",
+      },
+      fetcher,
+    );
+
+    expect(fetcher).toHaveBeenCalledWith(
+      "/api/firehose/public?place=detroit-mi&issue=transit&signal_type=public_meeting&source_class=government_agenda&limit=1",
+      { headers: { Accept: "application/json" } },
+    );
+    expect(result).toEqual(snapshot);
+  });
+
   it("returns only public-safe signals newest first", async () => {
     const { listPublicFirehoseSignals } = await import("@/domains/firehose/public-feed");
 

@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { FirehoseFeedPage } from "@/domains/firehose/firehose-feed-page";
 import {
-  listPublicFirehoseSignals,
+  fetchPublicFirehoseSignals,
   publicFirehoseSearchSchema,
   type PublicFirehoseSnapshot,
 } from "@/domains/firehose/public-feed";
@@ -24,9 +24,9 @@ interface FirehoseLoaderData {
 export const Route = createFileRoute("/_public/firehose")({
   validateSearch: publicFirehoseSearchSchema,
   loaderDeps: ({ search }): FirehoseLoaderDeps => ({ search }),
-  loader: ({ deps }): FirehoseLoaderData => {
+  loader: async ({ deps }): Promise<FirehoseLoaderData> => {
     return {
-      initialSnapshot: listPublicFirehoseSignals(deps.search),
+      initialSnapshot: await fetchPublicFirehoseSignals(deps.search),
     };
   },
   head: () => {
