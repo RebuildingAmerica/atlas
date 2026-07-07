@@ -82,6 +82,10 @@ from atlas_scout.daemon import process as _daemon_process
 from atlas_scout.daemon import state as _daemon_state
 from atlas_scout.diagnostics import report as _diagnostics_report
 from atlas_scout.shared import atlas_urls as _atlas_urls
+from atlas_scout.worker import api_client as _worker_api_client
+from atlas_scout.worker import job as _worker_job
+from atlas_scout.worker import lifecycle as _worker_lifecycle
+from atlas_scout.worker import state as _worker_state
 
 if TYPE_CHECKING:
     from collections.abc import MutableMapping
@@ -213,19 +217,21 @@ _LEGACY_EXPORT_MODULES: tuple[tuple[types.ModuleType, tuple[str, ...]], ...] = (
         ),
     ),
     (
-        _worker_commands,
+        _worker_api_client,
         (
-            "WORKER_STATE_PATH",
-            "_read_worker_state",
-            "_spawn_worker_process",
             "_worker_api_token",
             "_worker_claim_job",
             "_worker_complete_job",
             "_worker_fail_job",
             "_worker_heartbeat_job",
             "_worker_post",
-            "_worker_process_job",
         ),
+    ),
+    (_worker_job, ("_worker_process_job",)),
+    (_worker_lifecycle, ("_spawn_worker_process",)),
+    (
+        _worker_state,
+        ("WORKER_STATE_PATH", "_read_worker_state"),
     ),
 )
 
@@ -248,7 +254,11 @@ _PATCH_TARGET_MODULES = (
     _runs_commands,
     _schedule_commands,
     _setup_commands,
+    _worker_api_client,
     _worker_commands,
+    _worker_job,
+    _worker_lifecycle,
+    _worker_state,
 )
 
 
