@@ -123,9 +123,13 @@ export async function performSignIn(
 
   // Wait for hydration so the React onChange handler is attached before fill().
   await page.goto("/sign-in?redirect=%2Faccount", { waitUntil: "networkidle" });
-  await page.getByLabel("Email").fill(accountEmail);
   await page.getByRole("button", { name: "Can't use a passkey?" }).click();
-  await page.getByRole("button", { name: "Continue with email" }).click();
+  const emailInput = page.getByLabel("Email");
+  await emailInput.fill(accountEmail);
+  await expect(emailInput).toHaveValue(accountEmail);
+  const continueButton = page.getByRole("button", { name: "Continue with email" });
+  await expect(continueButton).toBeEnabled({ timeout: 15_000 });
+  await continueButton.click();
   await expect(page.getByText("A sign-in link is on the way. Check your inbox.")).toBeVisible();
 
   const rawEmail = await pollLatestMessage(accountEmail);
