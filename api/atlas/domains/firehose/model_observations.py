@@ -27,12 +27,19 @@ class FirehoseObservationCRUD:
         observation_input: FirehoseObservationCreate,
     ) -> FirehoseObservationModel:
         """Create one observation unless the producer already delivered it."""
+        from .model_deliveries import FirehoseObservationDeliveryCRUD
+
         existing = await FirehoseObservationCRUD.get_by_producer_key(
             conn,
             producer=observation_input.producer,
             dedupe_key=observation_input.dedupe_key,
         )
         if existing is not None:
+            await FirehoseObservationDeliveryCRUD.enqueue(
+                conn,
+                observation_id=existing.id,
+                next_attempt_at=existing.observed_at,
+            )
             return existing
 
         observation_id = db.generate_uuid()
@@ -73,6 +80,11 @@ class FirehoseObservationCRUD:
         await conn.commit()
         created = await FirehoseObservationCRUD.get_by_id(conn, observation_id)
         assert created is not None, "observation was just inserted"
+        await FirehoseObservationDeliveryCRUD.enqueue(
+            conn,
+            observation_id=created.id,
+            next_attempt_at=created.observed_at,
+        )
         return created
 
     @staticmethod

@@ -81,6 +81,10 @@ async def test_create_and_list_firehose_source_targets(
     assert body["items"][0]["id"] == created["id"]
     assert body["items"][0]["url"] == "https://toledo.example/feed.xml"
 
+    unfiltered_response = await test_client.get("/api/firehose/source-targets")
+    assert unfiltered_response.status_code == HTTPStatus.OK
+    assert unfiltered_response.json()["total"] == 1
+
 
 @pytest.mark.asyncio
 async def test_run_firehose_source_target_once_creates_queryable_signal(
@@ -171,3 +175,25 @@ async def test_create_firehose_source_target_rejects_wrong_workspace_target(
     )
 
     assert response.status_code == HTTPStatus.NOT_FOUND
+
+
+@pytest.mark.asyncio
+async def test_run_firehose_source_target_once_rejects_unknown_target(
+    test_client: object,
+) -> None:
+    """Source target runs should stay scoped to targets the workspace owns."""
+    response = await test_client.post(
+        "/api/firehose/source-targets/missing-source-target/runs",
+        json={
+            "body": RSS_BODY,
+            "content_type": "application/rss+xml",
+            "etag": '"rss-v1"',
+            "fetched_at": "2026-07-07T16:21:00Z",
+            "last_modified": None,
+            "status_code": 200,
+            "url": "https://toledo.example/feed.xml",
+        },
+    )
+
+    assert response.status_code == HTTPStatus.NOT_FOUND
+    assert response.json()["detail"] == "Firehose source target not found"

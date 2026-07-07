@@ -141,6 +141,30 @@ class Settings(BaseSettings):
     )
     """Start the API's durable discovery job worker in the application lifespan."""
 
+    firehose_delivery_worker_enabled: bool = Field(
+        default=False,
+        validation_alias="FIREHOSE_DELIVERY_WORKER_ENABLED",
+    )
+    """Start the Firehose observation delivery worker in the application lifespan."""
+
+    firehose_delivery_worker_poll_seconds: float = Field(
+        default=10,
+        validation_alias="FIREHOSE_DELIVERY_WORKER_POLL_SECONDS",
+    )
+    """Seconds between Firehose delivery worker polling cycles."""
+
+    firehose_delivery_worker_batch_size: int = Field(
+        default=25,
+        validation_alias="FIREHOSE_DELIVERY_WORKER_BATCH_SIZE",
+    )
+    """Maximum Firehose observation deliveries claimed per worker pass."""
+
+    firehose_delivery_worker_lease_seconds: int = Field(
+        default=60,
+        validation_alias="FIREHOSE_DELIVERY_WORKER_LEASE_SECONDS",
+    )
+    """Lease duration for claimed Firehose observation deliveries."""
+
     # Pipeline tuning
     discovery_search_depth: str = Field(
         default="standard", validation_alias="DISCOVERY_SEARCH_DEPTH"

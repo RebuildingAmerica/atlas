@@ -5,9 +5,13 @@ from __future__ import annotations
 from http import HTTPStatus
 
 import pytest
+from fastapi import HTTPException, Response
 
 from atlas.domains.discovery.coverage_targets import CoverageTargetCRUD
+from atlas.domains.firehose import observation_signals_api
 from atlas.domains.firehose.models import FirehoseObservationCreate, FirehoseObservationCRUD
+from atlas.domains.firehose.observation_signals_api import require_internal_firehose_request
+from atlas.platform.config import Settings
 
 
 async def _coverage_target(test_db: object) -> str:
@@ -105,3 +109,79 @@ async def test_post_observation_signals_is_idempotent(
     assert second.status_code == HTTPStatus.OK
     assert second.json()["signals_created"] == 0
     assert second.json()["unchanged"] is True
+
+
+@pytest.mark.asyncio
+async def test_post_observation_signals_returns_not_found_for_unknown_observation(
+    test_client: object,
+) -> None:
+    """Missing observations should return a resource-oriented 404."""
+    response = await test_client.post("/api/internal/firehose/observations/missing/signals")
+
+    assert response.status_code == HTTPStatus.NOT_FOUND
+    assert response.json()["detail"] == "Unknown Firehose observation."
+
+
+def test_internal_firehose_request_rejects_untrusted_production_call() -> None:
+    """Production internal signal writes should require trusted caller headers."""
+    settings = Settings(
+        database_url="sqlite:///tmp/test.db",
+        deploy_mode="production",
+        auth_internal_secret="internal-secret",
+    )
+
+    with pytest.raises(HTTPException) as exc_info:
+        require_internal_firehose_request(
+            settings=settings,
+            x_atlas_internal_secret=None,
+            x_atlas_actor_id=None,
+            x_atlas_actor_email=None,
+            x_atlas_organization_id=None,
+        )
+
+    assert exc_info.value.status_code == HTTPStatus.FORBIDDEN
+    assert exc_info.value.detail == "Trusted Firehose internal access is required."
+
+
+def test_internal_firehose_request_accepts_trusted_production_call() -> None:
+    """Trusted production callers should be allowed to deliver observation signals."""
+    settings = Settings(
+        database_url="sqlite:///tmp/test.db",
+        deploy_mode="production",
+        auth_internal_secret="internal-secret",
+    )
+
+    assert (
+        require_internal_firehose_request(
+            settings=settings,
+            x_atlas_internal_secret="internal-secret",
+            x_atlas_actor_id="worker_123",
+            x_atlas_actor_email="worker@atlas.local",
+            x_atlas_organization_id="org_firehose",
+        )
+        is None
+    )
+
+
+@pytest.mark.asyncio
+async def test_create_observation_signals_reraises_unexpected_value_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Unexpected materializer errors should not be flattened into a missing-observation 404."""
+
+    async def fail_materialization(*_args: object, **_kwargs: object) -> object:
+        raise ValueError("unexpected")
+
+    monkeypatch.setattr(
+        observation_signals_api,
+        "create_signals_for_observation",
+        fail_materialization,
+    )
+
+    with pytest.raises(ValueError, match="unexpected"):
+        await observation_signals_api.create_observation_signals(
+            "obs_123",
+            Response(),
+            None,
+            object(),
+        )

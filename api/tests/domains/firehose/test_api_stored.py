@@ -136,6 +136,29 @@ async def test_firehose_snapshot_returns_stored_workspace_signals(
 
 
 @pytest.mark.asyncio
+async def test_firehose_snapshot_ignores_malformed_actor_json(
+    test_client: object,
+    test_db: object,
+) -> None:
+    """Malformed stored actor refs should not become confident public claims."""
+    signal_id = await _stored_signal(test_db)
+    await test_db.execute(
+        "UPDATE firehose_signals SET actors_json = ? WHERE id = ?",
+        ('"not-a-list"', signal_id),
+    )
+    await test_db.commit()
+
+    response = await test_client.get(
+        "/api/firehose",
+        params={"place": "las-vegas-nv"},
+        headers={"Accept": "application/json"},
+    )
+
+    assert response.status_code == HTTPStatus.OK
+    assert response.json()["signals"][0]["actors"] == []
+
+
+@pytest.mark.asyncio
 async def test_firehose_sse_replays_stored_workspace_signals(
     test_client: object,
     test_db: object,

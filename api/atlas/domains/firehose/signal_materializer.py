@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, cast
 
+from atlas.domains.access.models.watch_events import OrgChangeEventCRUD, OrgChangeEventRecord
 from atlas.platform.database import db
 
 from .model_observations import FirehoseObservationCRUD, link_signal_observation
@@ -18,6 +19,7 @@ if TYPE_CHECKING:
 
 
 UNKNOWN_OBSERVATION_MESSAGE = "Unknown Firehose observation."
+WATCH_DIGEST_SENSITIVITY_THRESHOLD = 0.5
 
 
 @dataclass(slots=True)
@@ -40,6 +42,7 @@ def _signal_type(observation: FirehoseObservationModel, payload: dict[str, objec
         provided = payload.get("signal_type")
         if isinstance(provided, str) and provided:
             return provided
+        return "new_source"
     return observation.observation_type
 
 
@@ -130,6 +133,123 @@ async def _route_signal(
     return created
 
 
+async def _workspace_watches_coverage_target(
+    conn: aiosqlite.Connection,
+    *,
+    org_id: str,
+    coverage_target_id: str,
+) -> bool:
+    cursor = await conn.execute(
+        """
+        SELECT 1
+        FROM org_watches
+        WHERE org_id = ?
+          AND resource_type = 'coverage_target'
+          AND resource_id = ?
+          AND notification_preference <> 'muted'
+        LIMIT 1
+        """,
+        (org_id, coverage_target_id),
+    )
+    return await cursor.fetchone() is not None
+
+
+async def _civic_signal_event_exists(
+    conn: aiosqlite.Connection,
+    *,
+    org_id: str,
+    coverage_target_id: str,
+    signal_id: str,
+) -> bool:
+    cursor = await conn.execute(
+        """
+        SELECT metadata_json
+        FROM org_change_events
+        WHERE org_id = ?
+          AND resource_type = 'coverage_target'
+          AND resource_id = ?
+          AND event_type = 'civic_signal'
+        """,
+        (org_id, coverage_target_id),
+    )
+    rows = await cursor.fetchall()
+    for row in rows:
+        metadata = db.decode_json(str(row[0]))
+        if isinstance(metadata, dict) and metadata.get("firehose_signal_id") == signal_id:
+            return True
+    return False
+
+
+def _is_digest_safe_signal(
+    observation: FirehoseObservationModel,
+    *,
+    review_state: str,
+    visibility: str,
+) -> bool:
+    return (
+        observation.coverage_target_id is not None
+        and observation.org_id is not None
+        and visibility == "workspace"
+        and review_state in {"not_required", "approved"}
+        and observation.sensitivity < WATCH_DIGEST_SENSITIVITY_THRESHOLD
+    )
+
+
+async def _route_watch_digest_event(  # noqa: PLR0913
+    conn: aiosqlite.Connection,
+    *,
+    observation: FirehoseObservationModel,
+    signal_id: str,
+    signal_type: str,
+    title: str,
+    summary: str,
+    review_state: str,
+    visibility: str,
+) -> bool:
+    if not _is_digest_safe_signal(observation, review_state=review_state, visibility=visibility):
+        return False
+
+    assert observation.org_id is not None
+    assert observation.coverage_target_id is not None
+    if not await _workspace_watches_coverage_target(
+        conn,
+        org_id=observation.org_id,
+        coverage_target_id=observation.coverage_target_id,
+    ):
+        return False
+
+    if await _civic_signal_event_exists(
+        conn,
+        org_id=observation.org_id,
+        coverage_target_id=observation.coverage_target_id,
+        signal_id=signal_id,
+    ):
+        return False
+
+    await OrgChangeEventCRUD.record(
+        conn,
+        OrgChangeEventRecord(
+            org_id=observation.org_id,
+            resource_type="coverage_target",
+            resource_id=observation.coverage_target_id,
+            event_type="civic_signal",
+            title=title,
+            summary=summary,
+            coverage_target_id=observation.coverage_target_id,
+            metadata_json=db.encode_json(
+                {
+                    "firehose_observation_id": observation.id,
+                    "firehose_signal_id": signal_id,
+                    "firehose_signal_type": signal_type,
+                    "confidence": observation.confidence,
+                    "sensitivity": observation.sensitivity,
+                }
+            ),
+        ),
+    )
+    return True
+
+
 async def create_signals_for_observation(
     conn: aiosqlite.Connection,
     *,
@@ -150,6 +270,10 @@ async def create_signals_for_observation(
     payload = _payload(observation)
     signal_type = _signal_type(observation, payload)
     signal_key = _signal_key(observation, signal_type)
+    title = _title(observation, payload)
+    summary = _summary(observation, payload)
+    review_state = _review_state(payload)
+    visibility = _visibility(payload)
     existing_signal_id = await _signal_id_for_key(
         conn,
         org_id=observation.org_id,
@@ -170,8 +294,8 @@ async def create_signals_for_observation(
             org_id=observation.org_id,
             coverage_target_id=observation.coverage_target_id,
             signal_type=signal_type,
-            title=_title(observation, payload),
-            summary=_summary(observation, payload),
+            title=title,
+            summary=summary,
             occurred_at=observation.occurred_at,
             detected_at=observation.observed_at,
             public_realm_basis=observation.public_realm_basis,
@@ -180,8 +304,8 @@ async def create_signals_for_observation(
             actors=cast("list[dict[str, object]]", payload.get("actors") or []),
             confidence=observation.confidence,
             sensitivity=observation.sensitivity,
-            review_state=_review_state(payload),
-            visibility=_visibility(payload),
+            review_state=review_state,
+            visibility=visibility,
             route_state="routed",
             primary_observation_id=observation.id,
             signal_key=signal_key,
@@ -198,6 +322,16 @@ async def create_signals_for_observation(
         observation=observation,
         payload=payload,
         signal_id=signal.id,
+    )
+    await _route_watch_digest_event(
+        conn,
+        observation=observation,
+        signal_id=signal.id,
+        signal_type=signal_type,
+        title=title,
+        summary=summary,
+        review_state=review_state,
+        visibility=visibility,
     )
     await FirehoseObservationCRUD.mark_signals_created(conn, observation.id)
     return FirehoseSignalMaterializationResult(

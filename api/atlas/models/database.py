@@ -219,6 +219,7 @@ async def _init_sqlite(database_url: str) -> None:
         await _ensure_review_queue_columns(conn)
         await _ensure_org_annotation_columns(conn)
         await _ensure_org_coverage_target_columns(conn)
+        await _ensure_org_change_events_civic_signal(conn)
         await _ensure_place_context_columns(conn)
         await _ensure_place_related_place_columns(conn)
         await _ensure_firehose_signal_columns(conn)
@@ -637,7 +638,7 @@ CREATE TABLE IF NOT EXISTS org_change_events (
     org_id TEXT NOT NULL,
     resource_type TEXT NOT NULL CHECK(resource_type IN ('entry', 'coverage_target')),
     resource_id TEXT NOT NULL,
-    event_type TEXT NOT NULL CHECK(event_type IN ('new_source', 'profile_updated', 'relationship_added', 'coverage_status_changed', 'correction')),
+    event_type TEXT NOT NULL CHECK(event_type IN ('new_source', 'profile_updated', 'relationship_added', 'coverage_status_changed', 'correction', 'civic_signal')),
     title TEXT NOT NULL,
     summary TEXT NOT NULL,
     source_id TEXT REFERENCES sources(id) ON DELETE SET NULL,
@@ -682,6 +683,22 @@ CREATE TABLE IF NOT EXISTS firehose_observations (
     created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
     updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
     UNIQUE(producer, dedupe_key)
+);
+
+CREATE TABLE IF NOT EXISTS firehose_observation_deliveries (
+    id TEXT PRIMARY KEY,
+    observation_id TEXT NOT NULL REFERENCES firehose_observations(id) ON DELETE CASCADE,
+    status TEXT NOT NULL DEFAULT 'pending'
+        CHECK(status IN ('pending', 'claimed', 'delivered', 'failed')),
+    attempts INTEGER NOT NULL DEFAULT 0 CHECK(attempts >= 0),
+    claimed_by TEXT,
+    claimed_until TEXT,
+    next_attempt_at TEXT NOT NULL,
+    last_error TEXT,
+    delivered_at TEXT,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    UNIQUE(observation_id)
 );
 
 CREATE TABLE IF NOT EXISTS firehose_source_targets (
@@ -1200,6 +1217,10 @@ CREATE INDEX IF NOT EXISTS idx_firehose_observations_org_observed
     ON firehose_observations(org_id, observed_at DESC);
 CREATE INDEX IF NOT EXISTS idx_firehose_observations_subject
     ON firehose_observations(subject_type, subject_id);
+CREATE INDEX IF NOT EXISTS idx_firehose_observation_deliveries_due
+    ON firehose_observation_deliveries(status, next_attempt_at);
+CREATE INDEX IF NOT EXISTS idx_firehose_observation_deliveries_observation
+    ON firehose_observation_deliveries(observation_id);
 CREATE INDEX IF NOT EXISTS idx_firehose_source_targets_due
     ON firehose_source_targets(enabled, priority, updated_at);
 CREATE INDEX IF NOT EXISTS idx_firehose_artifacts_target_detected
@@ -1603,6 +1624,58 @@ async def _ensure_org_coverage_target_columns(conn: Any) -> None:
             ADD COLUMN review_state TEXT NOT NULL DEFAULT 'needs_research'
             """
         )
+
+
+async def _ensure_org_change_events_civic_signal(conn: Any) -> None:
+    """Rebuild org change events when SQLite has the older event-type check."""
+    cursor = await conn.execute("PRAGMA table_info(org_change_events)")
+    rows = await cursor.fetchall()
+    if not rows:
+        return
+
+    schema_cursor = await conn.execute(
+        """
+        SELECT sql
+        FROM sqlite_master
+        WHERE type = 'table' AND name = 'org_change_events'
+        """
+    )
+    schema_row = await schema_cursor.fetchone()
+    if schema_row is None or "civic_signal" in str(schema_row[0]):
+        return
+
+    await conn.execute("ALTER TABLE org_change_events RENAME TO org_change_events_legacy")
+    await conn.execute(
+        """
+        CREATE TABLE org_change_events (
+            id TEXT PRIMARY KEY,
+            org_id TEXT NOT NULL,
+            resource_type TEXT NOT NULL CHECK(resource_type IN ('entry', 'coverage_target')),
+            resource_id TEXT NOT NULL,
+            event_type TEXT NOT NULL CHECK(event_type IN ('new_source', 'profile_updated', 'relationship_added', 'coverage_status_changed', 'correction', 'civic_signal')),
+            title TEXT NOT NULL,
+            summary TEXT NOT NULL,
+            source_id TEXT REFERENCES sources(id) ON DELETE SET NULL,
+            entry_id TEXT REFERENCES entries(id) ON DELETE SET NULL,
+            coverage_target_id TEXT REFERENCES org_coverage_targets(id) ON DELETE SET NULL,
+            metadata_json TEXT NOT NULL DEFAULT '{}',
+            created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+        )
+        """
+    )
+    await conn.execute(
+        """
+        INSERT INTO org_change_events (
+            id, org_id, resource_type, resource_id, event_type, title, summary,
+            source_id, entry_id, coverage_target_id, metadata_json, created_at
+        )
+        SELECT
+            id, org_id, resource_type, resource_id, event_type, title, summary,
+            source_id, entry_id, coverage_target_id, metadata_json, created_at
+        FROM org_change_events_legacy
+        """
+    )
+    await conn.execute("DROP TABLE org_change_events_legacy")
 
 
 async def _ensure_firehose_signal_columns(conn: Any) -> None:

@@ -17,6 +17,7 @@ WatchEventType = Literal[
     "relationship_added",
     "coverage_status_changed",
     "correction",
+    "civic_signal",
 ]
 
 __all__ = [

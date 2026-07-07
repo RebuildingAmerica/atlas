@@ -16,7 +16,7 @@ from atlas.domains.catalog.services.directory_domains import (
     DirectoryDomainNotConfiguredError,
     DirectoryDomainVerificationService,
 )
-from atlas.models import EntryCRUD
+from atlas.models import EntryCRUD, SourceCRUD
 
 
 @pytest.mark.parametrize(
@@ -401,6 +401,44 @@ async def test_entry_to_source_linked_detail_response_returns_none_when_entry_mi
     monkeypatch.setattr(EntryCRUD, "get_with_sources", fake_get_with_sources)
     result = await org_resources._entry_to_source_linked_detail_response(test_db, "missing")
     assert result is None
+
+
+@pytest.mark.asyncio
+async def test_source_link_tolerates_missing_source_refetch(
+    test_db: object,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Source links should still persist if a follow-up source refetch is unavailable."""
+    entry_id = await EntryCRUD.create(
+        test_db,
+        entry_type="organization",
+        name="Refetch Missing Source Org",
+        description="Used to cover source link refetch behavior.",
+        city="Gary",
+        state="IN",
+        geo_specificity="local",
+    )
+    source_id = await SourceCRUD.create(
+        test_db,
+        url="https://example.org/refetch-missing",
+        source_type="news_article",
+        extraction_method="manual",
+        title="Refetch missing source",
+    )
+
+    async def missing_source(_conn: object, _source_id: str) -> object:
+        return None
+
+    monkeypatch.setattr(SourceCRUD, "get_by_id", missing_source)
+
+    await SourceCRUD.link_to_entry(test_db, entry_id, source_id, "Source refetch missing.")
+
+    cursor = await test_db.execute(
+        "SELECT extraction_context FROM entry_sources WHERE entry_id = ? AND source_id = ?",
+        (entry_id, source_id),
+    )
+    row = await cursor.fetchone()
+    assert row[0] == "Source refetch missing."
 
 
 @pytest.mark.asyncio

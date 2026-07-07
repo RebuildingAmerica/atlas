@@ -9,6 +9,10 @@ from http import HTTPStatus
 import pytest
 
 from atlas.domains.discovery.coverage_targets import CoverageTargetCRUD
+from atlas.domains.firehose.bus import (
+    INVALID_OBSERVATION_DELIVERY_MESSAGE,
+    parse_observation_delivery,
+)
 from atlas.domains.firehose.models import FirehoseObservationCreate, FirehoseObservationCRUD
 
 
@@ -77,6 +81,29 @@ def _delivery_payload(observation_id: str) -> dict[str, object]:
         },
         "subscription": "projects/atlas/subscriptions/firehose-observations",
     }
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {"message": "not-a-dict"},
+        {"message": {"data": 123}},
+        _delivery_payload(""),
+    ],
+)
+def test_parse_observation_delivery_rejects_ambiguous_envelopes(
+    payload: dict[str, object],
+) -> None:
+    """Malformed bus envelopes should fail before any signal work starts."""
+    with pytest.raises(ValueError, match=INVALID_OBSERVATION_DELIVERY_MESSAGE):
+        parse_observation_delivery(payload)
+
+
+def test_parse_observation_delivery_returns_observation_id() -> None:
+    """A valid message envelope should expose only the stored observation id."""
+    delivery = parse_observation_delivery(_delivery_payload("obs_123"))
+
+    assert delivery.observation_id == "obs_123"
 
 
 @pytest.mark.asyncio

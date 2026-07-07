@@ -1,6 +1,7 @@
 """Public Firehose persistence imports."""
 
 from .model_artifacts import FirehoseArtifactCRUD
+from .model_deliveries import FirehoseObservationDeliveryCRUD
 from .model_observations import FirehoseObservationCRUD
 from .model_records import (
     FirehoseArtifactCreate,
@@ -8,6 +9,8 @@ from .model_records import (
     FirehoseDestinationModel,
     FirehoseEvidenceModel,
     FirehoseObservationCreate,
+    FirehoseObservationDeliveryModel,
+    FirehoseObservationDeliveryStatus,
     FirehoseObservationModel,
     FirehoseObservationProducer,
     FirehoseObservationStatus,
@@ -37,6 +40,9 @@ __all__ = [
     "FirehoseEvidenceModel",
     "FirehoseObservationCRUD",
     "FirehoseObservationCreate",
+    "FirehoseObservationDeliveryCRUD",
+    "FirehoseObservationDeliveryModel",
+    "FirehoseObservationDeliveryStatus",
     "FirehoseObservationModel",
     "FirehoseObservationProducer",
     "FirehoseObservationStatus",

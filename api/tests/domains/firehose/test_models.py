@@ -7,9 +7,12 @@ import json
 import pytest
 
 from atlas.domains.discovery.coverage_targets import CoverageTargetCRUD
+from atlas.domains.firehose.model_records import decode_string_list
 from atlas.domains.firehose.models import (
     FirehoseArtifactCreate,
     FirehoseArtifactCRUD,
+    FirehoseObservationCreate,
+    FirehoseObservationCRUD,
     FirehoseRouteCreate,
     FirehoseRouteCRUD,
     FirehoseSignalCreate,
@@ -200,3 +203,170 @@ async def test_signals_round_trip_with_routes_and_query_filters(test_db: object)
     assert stored[0].evidence[0].source_url == "https://news.example/housing-brief"
     assert stored[0].destinations[0].id == route.destination_id
     assert json.loads(stored[0].actors_json)[0]["name"] == "Tenant Coalition"
+
+
+@pytest.mark.asyncio
+async def test_firehose_models_reuse_existing_records_and_filter_globally(
+    test_db: object,
+) -> None:
+    """Idempotent stored Firehose records should be reused across repeated writes."""
+    coverage_target_id = await _coverage_target(test_db)
+    target = await FirehoseSourceTargetCRUD.create(
+        test_db,
+        FirehoseSourceTargetCreate(
+            org_id="org_firehose",
+            coverage_target_id=coverage_target_id,
+            label="Housing newsroom RSS",
+            url="https://news.example/housing.xml",
+            source_kind="rss",
+            source_class="local_news",
+            places=["las-vegas-nv"],
+            issues=["housing"],
+            created_by="user_firehose",
+        ),
+    )
+    artifact_input = FirehoseArtifactCreate(
+        source_target_id=target.id,
+        org_id="org_firehose",
+        coverage_target_id=coverage_target_id,
+        source_url="https://news.example/housing-brief",
+        canonical_url="https://news.example/housing-brief",
+        title="Housing coalition posts public forum",
+        publisher="Example News",
+        source_kind="rss",
+        source_class="local_news",
+        published_at="2026-07-07T15:00:00Z",
+        detected_at="2026-07-07T15:01:00Z",
+        fetched_at="2026-07-07T15:01:03Z",
+        content_hash="sha256:housing-forum",
+        fingerprint="rss:housing-forum",
+        relevant_text="A tenant coalition announced a public forum on rental assistance.",
+        raw_content=None,
+        http_status=200,
+        metadata={"feed_item_id": "housing-forum"},
+    )
+    artifact = await FirehoseArtifactCRUD.create(test_db, artifact_input)
+    duplicate_artifact = await FirehoseArtifactCRUD.create(test_db, artifact_input)
+
+    signal_input = FirehoseSignalCreate(
+        artifact_id=artifact.id,
+        org_id="org_firehose",
+        coverage_target_id=coverage_target_id,
+        signal_type="coalition_activity",
+        title="Housing coalition posts public forum",
+        summary="A tenant coalition announced a public forum on rental assistance.",
+        occurred_at="2026-07-09T01:00:00Z",
+        detected_at="2026-07-07T15:01:00Z",
+        public_realm_basis="Published local news item",
+        places=["las-vegas-nv"],
+        issues=["housing"],
+        actors=[],
+        confidence=0.78,
+        sensitivity=0.12,
+        review_state="not_required",
+        visibility="workspace",
+        route_state="pending",
+    )
+    signal = await FirehoseSignalCRUD.create(test_db, signal_input)
+    duplicate_signal = await FirehoseSignalCRUD.create(test_db, signal_input)
+    route_input = FirehoseRouteCreate(
+        signal_id=signal.id,
+        destination_type="workspace",
+        destination_id=coverage_target_id,
+        state="active",
+        route_reason="Matches watched coverage target",
+    )
+    route = await FirehoseRouteCRUD.create(test_db, route_input)
+    duplicate_route = await FirehoseRouteCRUD.create(test_db, route_input)
+
+    unkeyed_signal = await FirehoseSignalCRUD.create(
+        test_db,
+        FirehoseSignalCreate(
+            artifact_id=None,
+            org_id="org_firehose",
+            coverage_target_id=None,
+            signal_type="new_source",
+            title="Standalone public source",
+            summary="Standalone public source",
+            occurred_at=None,
+            detected_at="2026-07-07T15:02:00Z",
+            public_realm_basis="Published public source",
+            places=["las-vegas-nv"],
+            issues=["housing"],
+            actors=[],
+            confidence=0.7,
+            sensitivity=0.1,
+            review_state="not_required",
+            visibility="workspace",
+            route_state="pending",
+        ),
+    )
+    observation = await FirehoseObservationCRUD.create(
+        test_db,
+        FirehoseObservationCreate(
+            producer="catalog",
+            observation_type="source_attached",
+            subject_type="source",
+            subject_id="source_123",
+            org_id="org_firehose",
+            coverage_target_id=coverage_target_id,
+            places=["las-vegas-nv"],
+            issues=["housing"],
+            source_class="org_website",
+            occurred_at=None,
+            observed_at="2026-07-07T15:02:30Z",
+            dedupe_key="source:known-observation",
+            public_realm_basis="Public organization website source attached to Atlas record",
+            confidence=0.84,
+            sensitivity=0.08,
+            payload={},
+            evidence=[],
+        ),
+    )
+    observation_keyed_signal = await FirehoseSignalCRUD.create(
+        test_db,
+        FirehoseSignalCreate(
+            artifact_id=None,
+            org_id="org_firehose",
+            coverage_target_id=coverage_target_id,
+            signal_type="actor_discovered",
+            title="Observation-backed public source",
+            summary="Observation-backed public source",
+            occurred_at=None,
+            detected_at="2026-07-07T15:03:00Z",
+            public_realm_basis="Source-backed public observation",
+            places=["las-vegas-nv"],
+            issues=["housing"],
+            actors=[],
+            confidence=0.7,
+            sensitivity=0.1,
+            review_state="not_required",
+            visibility="workspace",
+            route_state="pending",
+            primary_observation_id=observation.id,
+        ),
+    )
+
+    global_limited = await FirehoseSignalCRUD.list_for_query(
+        test_db,
+        FirehoseSignalQuery(org_id=None, visibility="workspace", limit=1),
+    )
+    unmatched = await FirehoseSignalCRUD.list_for_query(
+        test_db,
+        FirehoseSignalQuery(org_id=None, places=["nowhere"], visibility="workspace", limit=10),
+    )
+
+    assert duplicate_artifact.id == artifact.id
+    assert duplicate_signal.id == signal.id
+    assert duplicate_route.id == route.id
+    assert unkeyed_signal.signal_key is None
+    assert observation_keyed_signal.signal_key == f"observation:{observation.id}:actor_discovered"
+    assert await FirehoseSignalCRUD.get_by_id(test_db, "missing_signal") is None
+    assert len(global_limited) == 1
+    assert unmatched == []
+
+
+def test_decode_string_list_returns_empty_list_for_malformed_values() -> None:
+    """Malformed stored JSON lists should not leak bad filter values to clients."""
+    assert decode_string_list('"not-a-list"') == []
+    assert decode_string_list('["valid", 123]') == []

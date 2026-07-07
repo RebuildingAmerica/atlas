@@ -80,6 +80,7 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
     Initializes the database on startup and starts the job worker.
     """
     from atlas.domains.discovery.worker import start_job_worker, stop_job_worker
+    from atlas.domains.firehose.delivery_worker import start_delivery_worker, stop_delivery_worker
 
     # Startup
     settings = get_settings()
@@ -92,6 +93,7 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
         raise
 
     job_worker_started = False
+    firehose_worker_started = False
     if settings.discovery_job_worker_enabled:
         await start_job_worker(
             settings.database_url,
@@ -101,6 +103,15 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
             settings=settings,
         )
         job_worker_started = True
+    if settings.firehose_delivery_worker_enabled:
+        await start_delivery_worker(
+            settings.database_url,
+            database_backend=settings.database_backend,
+            poll_seconds=settings.firehose_delivery_worker_poll_seconds,
+            lease_seconds=settings.firehose_delivery_worker_lease_seconds,
+            batch_size=settings.firehose_delivery_worker_batch_size,
+        )
+        firehose_worker_started = True
 
     # The FastMCP session manager owns the Streamable HTTP request lifecycle
     # and must be running before any /mcp request lands.
@@ -108,6 +119,8 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
         yield
 
     # Shutdown
+    if firehose_worker_started:
+        await stop_delivery_worker()
     if job_worker_started:
         await stop_job_worker()
     logger.info("Application shutting down")

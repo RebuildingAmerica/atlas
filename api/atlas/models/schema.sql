@@ -306,7 +306,7 @@ CREATE TABLE IF NOT EXISTS org_change_events (
     org_id TEXT NOT NULL,
     resource_type TEXT NOT NULL CHECK(resource_type IN ('entry', 'coverage_target')),
     resource_id TEXT NOT NULL,
-    event_type TEXT NOT NULL CHECK(event_type IN ('new_source', 'profile_updated', 'relationship_added', 'coverage_status_changed', 'correction')),
+    event_type TEXT NOT NULL CHECK(event_type IN ('new_source', 'profile_updated', 'relationship_added', 'coverage_status_changed', 'correction', 'civic_signal')),
     title TEXT NOT NULL,
     summary TEXT NOT NULL,
     source_id TEXT REFERENCES sources(id) ON DELETE SET NULL,
@@ -351,6 +351,22 @@ CREATE TABLE IF NOT EXISTS firehose_observations (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     UNIQUE(producer, dedupe_key)
+);
+
+CREATE TABLE IF NOT EXISTS firehose_observation_deliveries (
+    id TEXT PRIMARY KEY,
+    observation_id TEXT NOT NULL REFERENCES firehose_observations(id) ON DELETE CASCADE,
+    status TEXT NOT NULL DEFAULT 'pending'
+        CHECK(status IN ('pending', 'claimed', 'delivered', 'failed')),
+    attempts INTEGER NOT NULL DEFAULT 0 CHECK(attempts >= 0),
+    claimed_by TEXT,
+    claimed_until TIMESTAMPTZ,
+    next_attempt_at TIMESTAMPTZ NOT NULL,
+    last_error TEXT,
+    delivered_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE(observation_id)
 );
 
 CREATE TABLE IF NOT EXISTS firehose_source_targets (
@@ -544,6 +560,10 @@ CREATE INDEX IF NOT EXISTS idx_firehose_observations_org_observed
     ON firehose_observations(org_id, observed_at DESC);
 CREATE INDEX IF NOT EXISTS idx_firehose_observations_subject
     ON firehose_observations(subject_type, subject_id);
+CREATE INDEX IF NOT EXISTS idx_firehose_observation_deliveries_due
+    ON firehose_observation_deliveries(status, next_attempt_at);
+CREATE INDEX IF NOT EXISTS idx_firehose_observation_deliveries_observation
+    ON firehose_observation_deliveries(observation_id);
 CREATE INDEX IF NOT EXISTS idx_firehose_source_targets_due
     ON firehose_source_targets(enabled, priority, updated_at);
 CREATE INDEX IF NOT EXISTS idx_firehose_artifacts_target_detected

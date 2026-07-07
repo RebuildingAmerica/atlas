@@ -12404,7 +12404,8 @@
               "profile_updated",
               "relationship_added",
               "coverage_status_changed",
-              "correction"
+              "correction",
+              "civic_signal"
             ],
             "title": "Event Type",
             "type": "string"

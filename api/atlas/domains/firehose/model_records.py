@@ -21,6 +21,7 @@ FirehoseObservationProducer = Literal[
     "review",
 ]
 FirehoseObservationStatus = Literal["observed", "signals_created", "ignored", "failed"]
+FirehoseObservationDeliveryStatus = Literal["pending", "claimed", "delivered", "failed"]
 
 
 @dataclass(slots=True)
@@ -172,6 +173,23 @@ class FirehoseObservationModel:
     payload_json: str
     evidence_json: str
     status: FirehoseObservationStatus
+    created_at: str
+    updated_at: str
+
+
+@dataclass(slots=True)
+class FirehoseObservationDeliveryModel:
+    """Durable delivery state for one stored observation."""
+
+    id: str
+    observation_id: str
+    status: FirehoseObservationDeliveryStatus
+    attempts: int
+    claimed_by: str | None
+    claimed_until: str | None
+    next_attempt_at: str
+    last_error: str | None
+    delivered_at: str | None
     created_at: str
     updated_at: str
 
@@ -381,6 +399,23 @@ def observation_from_row(row: dict[str, Any]) -> FirehoseObservationModel:
         payload_json=str(row["payload_json"]),
         evidence_json=str(row["evidence_json"]),
         status=cast("FirehoseObservationStatus", row["status"]),
+        created_at=str(row["created_at"]),
+        updated_at=str(row["updated_at"]),
+    )
+
+
+def observation_delivery_from_row(row: dict[str, Any]) -> FirehoseObservationDeliveryModel:
+    """Build an observation delivery model from a database row."""
+    return FirehoseObservationDeliveryModel(
+        id=str(row["id"]),
+        observation_id=str(row["observation_id"]),
+        status=cast("FirehoseObservationDeliveryStatus", row["status"]),
+        attempts=int(row["attempts"]),
+        claimed_by=row["claimed_by"],
+        claimed_until=row["claimed_until"],
+        next_attempt_at=str(row["next_attempt_at"]),
+        last_error=row["last_error"],
+        delivered_at=row["delivered_at"],
         created_at=str(row["created_at"]),
         updated_at=str(row["updated_at"]),
     )

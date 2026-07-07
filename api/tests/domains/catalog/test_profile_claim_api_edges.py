@@ -286,3 +286,33 @@ class TestProfileClaimAPIEdgeCases:
     async def test_get_follow_returns_404_for_unknown_slug(self, test_client: object) -> None:
         resp = await test_client.get("/api/profiles/no-slug/follow")
         assert resp.status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_claim_decisions_tolerate_missing_refetch(
+        self,
+        test_db: object,
+        claimable_org: str,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Decision writes should not crash if a follow-up claim refetch disappears."""
+        claims = [
+            await ProfileClaimCRUD.create(
+                test_db,
+                entry_id=claimable_org,
+                user_id=f"user-{status}",
+                user_email=f"{status}@example.com",
+                tier=2,
+            )
+            for status in ("verified", "rejected", "revoked")
+        ]
+
+        async def missing_claim(_conn: object, _claim_id: str) -> object:
+            return None
+
+        monkeypatch.setattr(ProfileClaimCRUD, "get_by_id", missing_claim)
+
+        assert await ProfileClaimCRUD.mark_verified(test_db, claims[0].id) is None
+        assert (
+            await ProfileClaimCRUD.mark_rejected(test_db, claims[1].id, "not enough proof") is None
+        )
+        assert await ProfileClaimCRUD.revoke(test_db, claims[2].id, "claim withdrawn") is None

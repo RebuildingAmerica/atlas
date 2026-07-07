@@ -3,10 +3,15 @@
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 
 import pytest
 
 from atlas.domains.discovery.coverage_targets import CoverageTargetCRUD
+from atlas.domains.firehose.model_observations import (
+    evidence_models_from_observation,
+    link_signal_observation,
+)
 from atlas.domains.firehose.models import (
     FirehoseObservationCreate,
     FirehoseObservationCRUD,
@@ -183,3 +188,148 @@ async def test_observation_creates_user_facing_signal_once(test_db: object) -> N
     assert signals[0].title == "New housing organization found"
     assert signals[0].evidence[0].source_url == "https://example.org/about"
     assert signals[0].destinations[0].type == "workspace"
+    assert (
+        await link_signal_observation(
+            test_db,
+            signal_id=signals[0].id,
+            observation_id=observation.id,
+            role="primary",
+        )
+        is False
+    )
+
+
+@pytest.mark.asyncio
+async def test_orgless_observation_does_not_create_workspace_signal(test_db: object) -> None:
+    """Observations without a workspace should stay in the log without leaking to users."""
+    observation = await FirehoseObservationCRUD.create(
+        test_db,
+        FirehoseObservationCreate(
+            producer="catalog",
+            observation_type="source_attached",
+            subject_type="source",
+            subject_id="source_123",
+            org_id=None,
+            coverage_target_id=None,
+            places=[],
+            issues=[],
+            source_class="org_website",
+            occurred_at=None,
+            observed_at="2026-07-07T15:01:00Z",
+            dedupe_key="source:orgless",
+            public_realm_basis="Public organization website source attached to Atlas record",
+            confidence=0.84,
+            sensitivity=0.08,
+            payload={},
+            evidence=[],
+        ),
+    )
+
+    result = await create_signals_for_observation(test_db, observation_id=observation.id)
+
+    assert result.unchanged is True
+    assert result.signals_created == 0
+
+
+@pytest.mark.asyncio
+async def test_materializer_uses_fallback_signal_values_without_routes(
+    test_db: object,
+) -> None:
+    """Workspace observations without coverage targets should still become source-backed signals."""
+    observation = await FirehoseObservationCRUD.create(
+        test_db,
+        FirehoseObservationCreate(
+            producer="source_target",
+            observation_type="watched_source_artifact",
+            subject_type="source_target",
+            subject_id=None,
+            org_id="org_firehose",
+            coverage_target_id=None,
+            places=["las-vegas-nv"],
+            issues=["housing"],
+            source_class="org_website",
+            occurred_at=None,
+            observed_at="2026-07-07T15:01:00Z",
+            dedupe_key="source:no-route",
+            public_realm_basis="Published public civic source",
+            confidence=0.72,
+            sensitivity=0.12,
+            payload={},
+            evidence=[],
+        ),
+    )
+
+    result = await create_signals_for_observation(test_db, observation_id=observation.id)
+    signals = await FirehoseSignalCRUD.list_for_query(
+        test_db,
+        FirehoseSignalQuery(
+            org_id="org_firehose",
+            signal_types=["new_source"],
+            visibility="workspace",
+            limit=10,
+        ),
+    )
+
+    assert result.routes_created == 0
+    assert result.signals_created == 1
+    assert signals[0].title == "Watched Source Artifact"
+    assert signals[0].summary == "Watched Source Artifact"
+
+
+@pytest.mark.asyncio
+async def test_materializer_rejects_unknown_observation(test_db: object) -> None:
+    """Missing observations should produce a precise error before signal writes."""
+    with pytest.raises(ValueError, match=r"Unknown Firehose observation\."):
+        await create_signals_for_observation(test_db, observation_id="missing_observation")
+
+
+@pytest.mark.asyncio
+async def test_evidence_models_ignore_malformed_stored_evidence(test_db: object) -> None:
+    """Malformed evidence blobs should fail closed instead of appearing as confident proof."""
+    observation = await FirehoseObservationCRUD.create(
+        test_db,
+        FirehoseObservationCreate(
+            producer="catalog",
+            observation_type="source_attached",
+            subject_type="source",
+            subject_id="source_123",
+            org_id="org_firehose",
+            coverage_target_id=None,
+            places=[],
+            issues=[],
+            source_class="org_website",
+            occurred_at=None,
+            observed_at="2026-07-07T15:01:00Z",
+            dedupe_key="source:malformed-evidence",
+            public_realm_basis="Public organization website source attached to Atlas record",
+            confidence=0.84,
+            sensitivity=0.08,
+            payload={},
+            evidence=[],
+        ),
+    )
+    non_list_evidence = replace(observation, evidence_json='"not-a-list"')
+    mixed_evidence = replace(
+        observation,
+        evidence_json=json.dumps(
+            [
+                123,
+                {
+                    "source_url": "https://example.org",
+                    "title": "Example Org",
+                    "publisher": "Example Org",
+                    "published_at": None,
+                    "captured_at": "2026-07-07T15:01:00Z",
+                    "passage": "Example Org supports tenants.",
+                    "locator": None,
+                    "content_hash": "sha256:example-org",
+                    "source_class": "org_website",
+                },
+            ]
+        ),
+    )
+
+    assert evidence_models_from_observation(non_list_evidence) == []
+    assert [
+        evidence.source_url for evidence in evidence_models_from_observation(mixed_evidence)
+    ] == ["https://example.org"]
