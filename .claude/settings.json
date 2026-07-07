@@ -36,7 +36,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "jq -r '.tool_input.command' | grep -q -- '--no-verify' && echo '{\"decision\":\"block\",\"reason\":\"--no-verify is banned. Fix the underlying issue instead of skipping hooks.\"}' && exit 1 || true"
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/block_git_no_verify.py\""
           },
           {
             "type": "command",
