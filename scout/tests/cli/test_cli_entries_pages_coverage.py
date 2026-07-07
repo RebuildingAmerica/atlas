@@ -20,7 +20,8 @@ from click.testing import CliRunner
 from rich.console import Console
 
 import atlas_scout.cli as cli_module
-import atlas_scout.entries_commands as entries_module
+import atlas_scout.entries.browse as entries_browse_module
+import atlas_scout.entries.export as entries_export_module
 import atlas_scout.pages_commands as pages_module
 from atlas_scout.cli import main
 from atlas_scout.config import (
@@ -53,7 +54,12 @@ def _capture_consoles(monkeypatch: pytest.MonkeyPatch) -> io.StringIO:
         Console(file=output, force_terminal=False, color_system=None, width=240),
     )
     monkeypatch.setattr(
-        entries_module,
+        entries_browse_module,
+        "console",
+        Console(file=output, force_terminal=False, color_system=None, width=240),
+    )
+    monkeypatch.setattr(
+        entries_export_module,
         "console",
         Console(file=output, force_terminal=False, color_system=None, width=240),
     )

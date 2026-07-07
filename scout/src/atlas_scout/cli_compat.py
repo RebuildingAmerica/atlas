@@ -81,6 +81,10 @@ from atlas_scout.daemon import lifecycle as _daemon_lifecycle
 from atlas_scout.daemon import process as _daemon_process
 from atlas_scout.daemon import state as _daemon_state
 from atlas_scout.diagnostics import report as _diagnostics_report
+from atlas_scout.entries import browse as _entries_browse
+from atlas_scout.entries import export as _entries_export
+from atlas_scout.entries import purge as _entries_purge
+from atlas_scout.entries import stats as _entries_stats
 from atlas_scout.shared import atlas_urls as _atlas_urls
 from atlas_scout.worker import api_client as _worker_api_client
 from atlas_scout.worker import job as _worker_job
@@ -247,7 +251,11 @@ _PATCH_TARGET_MODULES = (
     _daemon_state,
     _db_commands,
     _doctor_commands,
+    _entries_browse,
     _entries_commands,
+    _entries_export,
+    _entries_purge,
+    _entries_stats,
     _local_model_commands,
     _pages_commands,
     _pipeline_commands,

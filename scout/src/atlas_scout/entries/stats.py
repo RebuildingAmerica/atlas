@@ -1,0 +1,130 @@
+"""Source-neutral entry statistics for Scout."""
+
+from __future__ import annotations
+
+import json
+from pathlib import Path
+from typing import TYPE_CHECKING, Any
+
+import click
+from rich.table import Table
+
+from atlas_scout.cli_context import console
+
+if TYPE_CHECKING:
+    from atlas_scout.config import ScoutConfig
+
+
+async def entries_stats_command(
+    config: ScoutConfig,
+    json_output: bool,
+    required_types: tuple[str, ...],
+    min_source_backed: int | None,
+    *,
+    run_id: str | None = None,
+    excluded_source_datasets: tuple[str, ...] = (),
+    min_people: int | None = None,
+    min_unique_people: int | None = None,
+) -> None:
+    """Fetch and display source-neutral entry statistics."""
+    stats = await _load_entry_stats(
+        config,
+        run_id=run_id,
+        excluded_source_datasets=set(excluded_source_datasets),
+    )
+    by_type = stats["by_type"]
+    if isinstance(by_type, dict):
+        missing_types = [
+            entry_type for entry_type in required_types if by_type.get(entry_type, 0) <= 0
+        ]
+        people_count = by_type.get("person", 0)
+    else:
+        missing_types = list(required_types)
+        people_count = 0
+    if missing_types:
+        raise click.ClickException(f"Missing required entry type(s): {', '.join(missing_types)}")
+
+    source_backed_value = stats.get("source_backed_entries", 0)
+    source_backed_entries = source_backed_value if isinstance(source_backed_value, int) else 0
+    if min_source_backed is not None and source_backed_entries < min_source_backed:
+        raise click.ClickException(
+            f"Only {source_backed_entries} source-backed entries; expected at least "
+            f"{min_source_backed}."
+        )
+
+    if min_people is not None and people_count < min_people:
+        raise click.ClickException(f"Only {people_count} people; expected at least {min_people}.")
+
+    unique_people_value = stats.get("unique_person_keys", 0)
+    unique_people_count = unique_people_value if isinstance(unique_people_value, int) else 0
+    if min_unique_people is not None and unique_people_count < min_unique_people:
+        raise click.ClickException(
+            f"Only {unique_people_count} exact unique people; expected at least "
+            f"{min_unique_people}."
+        )
+
+    if json_output:
+        click.echo(json.dumps(stats, sort_keys=True))
+        return
+
+    table = Table(title="Entry stats", show_lines=False, pad_edge=False)
+    table.add_column("Metric", style="bold")
+    table.add_column("Value")
+    table.add_row("Total entries", str(stats["total_entries"]))
+    table.add_row("People", str(people_count))
+    table.add_row("Exact unique people", str(unique_people_count))
+    table.add_row("Source-backed entries", str(source_backed_entries))
+    table.add_row("Contextual people", str(stats["contextual_person_count"]))
+    table.add_row("Exact duplicate groups", str(stats["exact_duplicate_groups"]))
+    table.add_row("Exact duplicate surplus", str(stats["exact_duplicate_surplus"]))
+    table.add_row("Source URLs", str(stats["source_url_count"]))
+    table.add_row("Source domains", str(stats["source_domain_count"]))
+    table.add_row("By type", json.dumps(stats["by_type"], sort_keys=True))
+    table.add_row("By source dataset", json.dumps(stats["by_source_dataset"], sort_keys=True))
+    table.add_row("By location", json.dumps(stats["by_location"], sort_keys=True))
+    table.add_row("By metro", json.dumps(stats["by_metro"], sort_keys=True))
+    console.print(table)
+
+
+async def _load_entry_stats(
+    config: ScoutConfig,
+    *,
+    run_id: str | None,
+    excluded_source_datasets: set[str],
+) -> dict[str, Any]:
+    """Load entry stats or return an empty shape when no local store exists."""
+    db_path = Path(config.store.path).expanduser()
+    if not db_path.exists():
+        return _empty_entry_stats()
+
+    from atlas_scout.store import ScoutStore
+
+    store = ScoutStore(str(db_path))
+    await store.initialize()
+    try:
+        return await store.entry_stats(
+            run_id=run_id,
+            excluded_source_datasets=excluded_source_datasets,
+        )
+    finally:
+        await store.close()
+
+
+def _empty_entry_stats() -> dict[str, Any]:
+    """Return the stats shape for an empty or missing local store."""
+    return {
+        "total_entries": 0,
+        "by_type": {},
+        "source_backed_entries": 0,
+        "by_source_dataset": {},
+        "by_location": {},
+        "by_metro": {},
+        "by_run": {},
+        "contextual_person_count": 0,
+        "source_url_count": 0,
+        "source_domain_count": 0,
+        "duplicate_source_keys": {},
+        "exact_duplicate_groups": 0,
+        "exact_duplicate_surplus": 0,
+        "unique_person_keys": 0,
+    }
