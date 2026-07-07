@@ -28,6 +28,7 @@ def test_scout_dev_forwards_dev_atlas_url(tmp_path: Path) -> None:
     _run_scout_dev(harness, "setup")
     _run_scout_dev(harness, "worker", "start", "--interval", "1")
     _run_scout_dev(harness, "worker", "run-internal", "--lease-seconds", "30")
+    _run_scout_dev(harness, "doctor", "--json")
     _run_scout_dev(harness, "sync", "latest")
     _run_scout_dev(harness, "runs", "sync", "run-123", "--target", "public")
     _run_scout_dev(harness, "--config", "dev.toml", "login", "--no-browser")
@@ -53,6 +54,8 @@ def test_scout_dev_forwards_dev_atlas_url(tmp_path: Path) -> None:
         "https://atlas.localhost --interval 1",
         f"uv run --project {harness.root_dir / 'scout'} scout worker run-internal --atlas-url "
         "https://atlas.localhost --lease-seconds 30",
+        f"uv run --project {harness.root_dir / 'scout'} scout doctor --atlas-url "
+        "https://atlas.localhost --json",
         f"uv run --project {harness.root_dir / 'scout'} scout sync --atlas-url "
         "https://atlas.localhost latest",
         f"uv run --project {harness.root_dir / 'scout'} scout runs sync --atlas-url "

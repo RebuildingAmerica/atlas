@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from atlas_scout.auth import DeviceAuthClient, load_session
+from atlas_scout.auth.errors import DeviceAuthError
 from atlas_scout.auth_commands import (
     _default_worker_name,
     _load_session_or_exit,
@@ -25,6 +26,24 @@ from atlas_scout.runs.receipt import _print_sync_receipt
 if TYPE_CHECKING:
     from atlas_scout.auth import UploadTarget
     from atlas_scout.config import ScoutConfig
+
+
+def _device_auth_sync_error(exc: DeviceAuthError, *, atlas_url: str) -> CliError:
+    """Return a user-facing sync error for Scout login token exchange failures."""
+    hint_parts: list[str] = []
+    if exc.url:
+        hint_parts.append(f"Atlas auth URL: {exc.url}")
+    if exc.status_code is not None:
+        hint_parts.append(f"HTTP status: {exc.status_code}")
+    hint_parts.append(
+        f"Run `scout login --atlas-url {atlas_url.rstrip('/')}` again for this environment, "
+        "or pass --api-key for automation."
+    )
+    return CliError(
+        title="Sync failed",
+        message="Could not exchange your Scout login for an Atlas API token.",
+        hint=" ".join(hint_parts),
+    )
 
 
 def _should_sync_after_run(
@@ -174,15 +193,23 @@ async def _runs_sync(
             if resolved_target is None:
                 raise ScoutSyncError("Upload target was not resolved for logged-in sync.")
             session_target: UploadTarget = resolved_target
-            token_exchange = await DeviceAuthClient().exchange_session_for_api_token(
-                resolved_atlas_url,
-                session_token=session.access_token,
-                worker_id=session.worker_id,
-                worker_name=session.worker_name or _default_worker_name(),
-                default_upload_target=session_target,
-                workspace_id=resolved_workspace,
-                search_key_configured=_search_key_configured(),
-            )
+            try:
+                token_exchange = await DeviceAuthClient().exchange_session_for_api_token(
+                    resolved_atlas_url,
+                    session_token=session.access_token,
+                    worker_id=session.worker_id,
+                    worker_name=session.worker_name or _default_worker_name(),
+                    default_upload_target=session_target,
+                    workspace_id=resolved_workspace,
+                    search_key_configured=_search_key_configured(),
+                )
+            except DeviceAuthError as exc:
+                await store.update_run_sync(
+                    run_id,
+                    sync_status="failed",
+                    last_error=str(exc),
+                )
+                _exit_with_error(_device_auth_sync_error(exc, atlas_url=resolved_atlas_url))
             result = await sync_run_artifacts(
                 artifacts,
                 atlas_url=resolved_atlas_url,

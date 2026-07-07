@@ -2,18 +2,21 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import os
 from typing import TYPE_CHECKING, cast
 
 import httpx
 
+from atlas_scout.auth import DeviceAuthClient, DeviceAuthError
 from atlas_scout.config import SCOUT_CONFIG_DIR
 from atlas_scout.credentials import CredentialStoreError, SystemCredentialStore
 from atlas_scout.diagnostics.models import ProbeResult
 from atlas_scout.local_models import is_local_provider, probe_local_model, provider_label
 
 if TYPE_CHECKING:
+    from atlas_scout.auth import ScoutSession
     from atlas_scout.config import ScoutConfig
     from atlas_scout.local_models import LocalProviderName
 
@@ -90,6 +93,42 @@ def probe_model(config: ScoutConfig) -> ProbeResult:
     )
 
 
+def probe_session_sync_token(
+    atlas_url: str,
+    session: ScoutSession,
+    search_key_configured: bool,
+) -> ProbeResult:
+    """Exercise the saved Scout login enough to prove upload-token readiness."""
+    normalized_url = atlas_url.rstrip("/")
+    try:
+        asyncio.run(
+            DeviceAuthClient().exchange_session_for_api_token(
+                normalized_url,
+                session_token=session.access_token,
+                worker_id=session.worker_id,
+                worker_name=session.worker_name or session.worker_id,
+                default_upload_target=session.default_upload_target or "public",
+                workspace_id=session.workspace_id,
+                search_key_configured=search_key_configured,
+            )
+        )
+    except DeviceAuthError as exc:
+        detail = _device_auth_failure_detail(exc)
+        return ProbeResult(
+            "warn",
+            f"Saved Scout login could not mint an Atlas upload token{detail}.",
+            f"Run `scout login --atlas-url {normalized_url}` again, "
+            "or set `ATLAS_API_KEY` for automation.",
+        )
+    except ValueError as exc:
+        return ProbeResult(
+            "warn",
+            f"Atlas returned an invalid Scout token response: {exc}",
+            f"Run `scout login --atlas-url {normalized_url}` again.",
+        )
+    return ProbeResult("ok", "Saved Scout login can mint Atlas upload tokens.")
+
+
 def load_worker_state() -> dict[str, object]:
     """Read the worker state file without mutating it."""
     if not WORKER_STATE_PATH.exists():
@@ -110,3 +149,15 @@ def process_is_running(process_id: int) -> bool:
     except OSError:
         return False
     return True
+
+
+def _device_auth_failure_detail(exc: DeviceAuthError) -> str:
+    """Return a compact non-secret suffix for failed token exchange."""
+    details: list[str] = []
+    if exc.status_code is not None:
+        details.append(f"HTTP {exc.status_code}")
+    if exc.error:
+        details.append(exc.error)
+    if not details:
+        return ""
+    return f" ({', '.join(details)})"

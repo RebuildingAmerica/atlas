@@ -16,6 +16,7 @@ from rich.console import Console
 
 import atlas_scout.cli as cli_module
 from atlas_scout.auth import ScoutSession, ScoutTokenExchange
+from atlas_scout.auth.errors import DeviceAuthError
 from atlas_scout.cli import _runs_sync, _should_sync_after_run
 from atlas_scout.config import ContributionConfig, ScoutConfig, StoreConfig
 from atlas_scout.store import ScoutStore
@@ -339,3 +340,70 @@ async def test_sync_requires_workspace_for_workspace_target(
         )
 
     assert "Workspace required" in output.getvalue()
+
+
+@pytest.mark.asyncio
+async def test_sync_session_exchange_error_is_user_facing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Network/auth exchange failures should not dump a Python traceback."""
+    output = _capture_consoles(monkeypatch)
+    config = _config(tmp_path)
+    run_id = await _seed_run_with_artifacts(config)
+    monkeypatch.setattr("atlas_scout.cli.load_session", _workspace_session)
+
+    class FakeDeviceAuthClient:
+        async def exchange_session_for_api_token(
+            self,
+            atlas_url: str,
+            *,
+            session_token: str,
+            worker_name: str,
+            default_upload_target: str,
+            worker_id: str | None = None,
+            workspace_id: str | None = None,
+            search_key_configured: bool = False,
+        ) -> ScoutTokenExchange:
+            _ = (
+                session_token,
+                worker_name,
+                default_upload_target,
+                worker_id,
+                workspace_id,
+                search_key_configured,
+            )
+            raise DeviceAuthError(
+                error="network_error",
+                description="Could not reach Atlas.",
+                url=f"{atlas_url}/api/auth/scout/token",
+            )
+
+    monkeypatch.setattr("atlas_scout.cli.DeviceAuthClient", FakeDeviceAuthClient)
+
+    with pytest.raises(SystemExit):
+        await _runs_sync(
+            config,
+            run_id,
+            atlas_url="https://missing.example",
+            api_key=None,
+            target=None,
+            workspace=None,
+        )
+
+    rendered = output.getvalue()
+    assert "Sync failed" in rendered
+    assert "Could not exchange your Scout login for an Atlas API token." in rendered
+    assert "https://missing.example/api/auth/scout/token" in rendered
+    assert "scout login --atlas-url https://missing.example" in rendered
+    assert "Traceback" not in rendered
+
+    store = ScoutStore(config.store.path)
+    await store.initialize()
+    try:
+        artifacts = await store.get_run_artifacts(run_id)
+    finally:
+        await store.close()
+    assert artifacts is not None
+    assert artifacts.manifest.sync is not None
+    assert artifacts.manifest.sync.sync_status == "failed"
+    assert artifacts.manifest.sync.last_error == "network_error: Could not reach Atlas."

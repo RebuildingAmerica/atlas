@@ -114,6 +114,16 @@ Run doctor before a serious run:
 scout doctor
 ```
 
+Check the exact Atlas environment before sync:
+
+```bash
+scout doctor --atlas-url https://atlas.rebuildingus.org
+```
+
+When a saved login is present, doctor contacts Atlas and verifies that the
+login can create an upload token for the selected environment. It discards that
+token and does not sync any run data.
+
 Include worker checks only when this machine should process Atlas-assigned jobs:
 
 ```bash

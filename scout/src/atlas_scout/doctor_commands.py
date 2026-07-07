@@ -23,12 +23,18 @@ if TYPE_CHECKING:
 @click.option(
     "--worker", "include_worker", is_flag=True, help="Include background worker readiness."
 )
+@click.option("--atlas-url", default=None, help="Atlas app URL to validate for sync.")
 @click.option("--json", "json_output", is_flag=True, help="Print machine-readable JSON.")
 @click.pass_context
-def doctor(ctx: click.Context, include_worker: bool, json_output: bool) -> None:
+def doctor(
+    ctx: click.Context,
+    include_worker: bool,
+    atlas_url: str | None,
+    json_output: bool,
+) -> None:
     """Check whether Scout is ready to run discovery and sync results."""
     config: ScoutConfig = ctx.obj["config"]
-    report = run_doctor(config, include_worker=include_worker)
+    report = run_doctor(config, include_worker=include_worker, atlas_url=atlas_url)
     if json_output:
         click.echo(report.to_json())
     else:

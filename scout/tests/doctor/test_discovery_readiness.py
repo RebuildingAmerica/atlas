@@ -28,6 +28,10 @@ def _dependencies(*, search_key: bool) -> DoctorDependencies:
         load_worker_state=lambda: {"status": "stopped"},
         probe_atlas=lambda atlas_url: ProbeResult("ok", f"{atlas_url} reachable."),
         probe_model=lambda _config: ProbeResult("ok", "Ollama model available."),
+        probe_session_sync_token=lambda _atlas_url, _session, _search_key: ProbeResult(
+            "ok",
+            "Saved Scout login can mint Atlas upload tokens.",
+        ),
         process_is_running=lambda _pid: False,
         env={},
     )
@@ -75,6 +79,10 @@ def test_model_failure_blocks_discovery_readiness() -> None:
                 "fail",
                 "Ollama model llama3.1:8b is not available.",
                 "Install the model with `ollama pull llama3.1:8b`.",
+            ),
+            probe_session_sync_token=lambda _atlas_url, _session, _search_key: ProbeResult(
+                "ok",
+                "Saved Scout login can mint Atlas upload tokens.",
             ),
             process_is_running=lambda _pid: False,
             env={},

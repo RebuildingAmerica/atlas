@@ -128,6 +128,34 @@ def append_search_check(
     return False
 
 
+def append_session_sync_token_check(
+    dependencies: DoctorDependencies,
+    checks: list[DoctorCheck],
+    *,
+    session: ScoutSession | None,
+    atlas_url_value: str,
+    search_key_ready: bool,
+    should_probe: bool,
+) -> bool:
+    """Append saved-session upload-token readiness and return whether it passed."""
+    if session is None or not should_probe:
+        return False
+
+    checks.append(
+        probe_check(
+            "atlas-sync-token",
+            "Atlas sync",
+            "Login token",
+            dependencies.probe_session_sync_token(
+                atlas_url_value,
+                session,
+                search_key_ready,
+            ),
+        )
+    )
+    return checks[-1].status == "ok"
+
+
 def database_check(config: ScoutConfig) -> DoctorCheck:
     """Check whether Scout can use the configured local database path."""
     db_path = Path(config.store.path).expanduser()
@@ -204,8 +232,14 @@ def worker_state_check(
     )
 
 
-def atlas_url(config: ScoutConfig, session: ScoutSession | None) -> str:
+def atlas_url(
+    config: ScoutConfig,
+    session: ScoutSession | None,
+    override: str | None = None,
+) -> str:
     """Return the Atlas URL doctor should probe."""
+    if override is not None and override.strip():
+        return override.rstrip("/")
     if session is not None and session.atlas_url.strip():
         return session.atlas_url.rstrip("/")
     if config.contribution.atlas_url.strip():

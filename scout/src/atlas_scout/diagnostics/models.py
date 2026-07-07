@@ -82,12 +82,14 @@ class DoctorReport:
 
 @dataclass(frozen=True, slots=True)
 class DoctorDependencies:
-    """Injectable read-only dependencies for Scout doctor.
+    """Injectable dependencies for Scout doctor.
 
-    Deliberately has no field defaults: this keeps the dependency contract
-    free of any concrete adapter (httpx, OS credential store, local-model
-    probing). The orchestrator wires real adapters in when the caller does
-    not supply a DoctorDependencies of its own.
+    Deliberately has no field defaults: this keeps the dependency contract free
+    of any concrete adapter (httpx, OS credential store, local-model probing,
+    upload-token probing). Doctor may validate a saved login by minting and
+    discarding a short-lived upload token, but it does not ingest or sync run
+    data. The orchestrator wires real adapters in when the caller does not
+    supply a DoctorDependencies of its own.
     """
 
     check_credential_store: Callable[[], ProbeResult]
@@ -96,5 +98,6 @@ class DoctorDependencies:
     load_worker_state: Callable[[], dict[str, object]]
     probe_atlas: Callable[[str], ProbeResult]
     probe_model: Callable[[ScoutConfig], ProbeResult]
+    probe_session_sync_token: Callable[[str, ScoutSession, bool], ProbeResult]
     process_is_running: Callable[[int], bool]
     env: Mapping[str, str]

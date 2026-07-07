@@ -1,4 +1,4 @@
-"""Orchestrates Scout doctor's read-only readiness checks."""
+"""Orchestrates Scout doctor's non-ingesting readiness checks."""
 
 from __future__ import annotations
 
@@ -14,11 +14,12 @@ from atlas_scout.diagnostics.capabilities import (
 )
 from atlas_scout.diagnostics.checks import (
     append_search_check,
-    atlas_url,
+    append_session_sync_token_check,
     database_check,
     load_session_check,
     probe_check,
 )
+from atlas_scout.diagnostics.checks import atlas_url as resolve_atlas_url
 from atlas_scout.diagnostics.models import DoctorCheck, DoctorDependencies, DoctorReport
 from atlas_scout.search_keys import has_search_api_key
 
@@ -35,6 +36,7 @@ def _default_dependencies() -> DoctorDependencies:
         load_worker_state=probes.load_worker_state,
         probe_atlas=probes.probe_atlas,
         probe_model=probes.probe_model,
+        probe_session_sync_token=probes.probe_session_sync_token,
         process_is_running=probes.process_is_running,
         env=os.environ,
     )
@@ -44,9 +46,10 @@ def run_doctor(
     config: ScoutConfig,
     *,
     include_worker: bool,
+    atlas_url: str | None = None,
     dependencies: DoctorDependencies | None = None,
 ) -> DoctorReport:
-    """Run read-only Scout readiness checks."""
+    """Run non-ingesting Scout readiness checks."""
     deps = dependencies or _default_dependencies()
     checks: list[DoctorCheck] = []
 
@@ -63,7 +66,7 @@ def run_doctor(
     )
 
     session = load_session_check(deps, checks)
-    resolved_atlas_url = atlas_url(config, session)
+    resolved_atlas_url = resolve_atlas_url(config, session, override=atlas_url)
     checks.append(
         probe_check(
             "atlas-connection", "Atlas connection", "Atlas", deps.probe_atlas(resolved_atlas_url)
@@ -81,6 +84,17 @@ def run_doctor(
     )
 
     search_key_ready = append_search_check(deps, checks)
+    api_key_ready = bool(
+        config.contribution.api_key.strip() or deps.env.get("ATLAS_API_KEY", "").strip()
+    )
+    session_sync_ready = append_session_sync_token_check(
+        deps,
+        checks,
+        session=session,
+        atlas_url_value=resolved_atlas_url,
+        search_key_ready=search_key_ready,
+        should_probe=session is not None and (include_worker or not api_key_ready),
+    )
     checks.append(database_check(config))
 
     capabilities = discovery_capabilities(
@@ -95,6 +109,8 @@ def run_doctor(
             config=config,
             dependencies=deps,
             session=session,
+            session_sync_ready=session_sync_ready,
+            session_sync_remediation=_check_remediation(checks, "atlas-sync-token"),
             search_key_ready=search_key_ready,
             model_ready=check_ready(checks, "model"),
         )
@@ -102,3 +118,9 @@ def run_doctor(
         capabilities.extend(worker_capabilities)
 
     return DoctorReport(checks=tuple(checks), capabilities=tuple(capabilities))
+
+
+def _check_remediation(checks: list[DoctorCheck], check_id: str) -> str | None:
+    """Return remediation for one doctor check."""
+    check = next((candidate for candidate in checks if candidate.id == check_id), None)
+    return check.remediation if check is not None else None

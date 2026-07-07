@@ -243,7 +243,7 @@ shift
 remaining_args=("\$@")
 
 case "\$command_name" in
-  login | setup | sync)
+  doctor | login | setup | sync)
     forward_with_dev_atlas_url "\$command_name"
     ;;
   worker)

@@ -7,6 +7,7 @@ Start with doctor:
 
 ```bash
 scout doctor
+scout doctor --atlas-url https://atlas.rebuildingus.org
 scout doctor --worker
 ```
 
@@ -133,7 +134,16 @@ scout config set scraper.max_browser_concurrent 1
 
 ## Sync Fails
 
-Check login:
+Check sync readiness for the Atlas environment you are targeting:
+
+```bash
+scout doctor --atlas-url https://atlas.rebuildingus.org
+```
+
+If doctor says the saved login cannot create an Atlas upload token, log in
+again for that environment or use `ATLAS_API_KEY` for automation.
+
+Check the current saved login:
 
 ```bash
 scout auth status
@@ -143,7 +153,7 @@ scout whoami
 Log in again:
 
 ```bash
-scout login
+scout login --atlas-url https://atlas.rebuildingus.org
 ```
 
 For workspace sync, confirm the workspace id:

@@ -32,6 +32,10 @@ def _dependencies(*, running: bool = False, search_key: bool = False) -> DoctorD
         },
         probe_atlas=lambda atlas_url: ProbeResult("ok", f"{atlas_url} reachable."),
         probe_model=lambda _config: ProbeResult("ok", "Ollama model available."),
+        probe_session_sync_token=lambda _atlas_url, _session, _search_key: ProbeResult(
+            "ok",
+            "Saved Scout login can mint Atlas upload tokens.",
+        ),
         process_is_running=lambda _pid: running,
         env={},
     )

@@ -83,9 +83,9 @@ or test environment without learning the profile commands first. Explicit
 
 `scout doctor` is the readiness checkpoint between login and work. Its default
 view answers whether this computer can run direct URL discovery, search-backed
-discovery, and Atlas sync. Worker readiness is opt-in with
-`scout doctor --worker` so passive background contribution does not obscure the
-Scout-initiated workflow.
+discovery, and Atlas sync for the selected Atlas environment. Worker readiness
+is opt-in with `scout doctor --worker` so passive background contribution does
+not obscure the Scout-initiated workflow.
 
 Local model setup is automatic in normal use. If the active profile points at a
 broken or missing local provider, `scout run` probes Ollama and LM Studio,
@@ -179,7 +179,7 @@ Local development must go through `scout-dev` or an explicit `--atlas-url`.
 
 `scout-dev` forwards to the installed `scout` command and injects
 `--atlas-url https://atlas.localhost` for the Scout commands that support it:
-`setup`, `login`, `worker start`, `worker run-internal`, `sync`, and
+`setup`, `login`, `doctor`, `worker start`, `worker run-internal`, `sync`, and
 `runs sync`. For Portless HTTPS aliases, it also exports `SSL_CERT_FILE` to
 `~/.portless/ca.pem` when that file exists and no `SSL_CERT_FILE` override is
 already set. Use `PORTLESS_CA_FILE` when the Portless CA lives somewhere else.
@@ -217,7 +217,7 @@ scout setup [--atlas-url https://atlas.rebuildingus.org] [--no-browser]
             [--install-completion] [--completion-shell auto|bash|zsh|fish]
             [--completion-dir DIR] [--install-man] [--man-dir DIR]
 scout login [--atlas-url https://atlas.rebuildingus.org] [--no-browser]
-scout doctor [--worker] [--json]
+scout doctor [--atlas-url https://atlas.rebuildingus.org] [--worker] [--json]
 scout config create-profile NAME
 scout config model [--interactive] [--provider ollama|lmstudio] [--model MODEL] [--base-url URL]
                    [--ollama-url URL] [--lmstudio-url URL]
@@ -276,25 +276,29 @@ specific host computers.
 
 ```bash
 scout doctor
+scout doctor --atlas-url https://atlas.rebuildingus.org
 scout doctor --worker
 scout doctor --json
 ```
 
-`scout doctor` is read-only. It does not create device codes, exchange tokens,
-start workers, write config, or mutate Atlas state. It groups checks for
-credential storage, Atlas account, Atlas reachability, configured model, search
-key, local data path, and sync readiness. The default capability summary is
-Scout-initiated: direct URL runs, search discovery, and Atlas sync. Missing
-missing search connections are warnings, not failures, because direct URL
-discovery still works.
+`scout doctor` is non-ingesting: it does not create device codes, start workers,
+write config, or sync run data. When a saved Scout login is present and no API
+key path is selected, doctor validates Atlas sync readiness by exchanging that
+saved login for a short-lived upload token against the selected Atlas URL, then
+discarding the token. It groups checks for credential storage, Atlas account,
+Atlas reachability, configured model, search key, local data path, and sync
+readiness. The default capability summary is Scout-initiated: direct URL runs,
+search discovery, and Atlas sync. Missing search connections are warnings, not
+failures, because direct URL discovery still works.
 
 `scout doctor --worker` adds passive worker readiness: local worker state,
 local-provider requirement, seeded worker jobs, and search worker jobs. This
 keeps worker mode available without making it the onboarding front door.
 
 `scout doctor --json` emits stable machine-readable check and capability results
-for tests and automation. Doctor output must never include secrets, raw HTTP
-bodies, exception reprs, HTML error pages, or full credential values.
+for tests and automation. Doctor output must never include secrets, upload
+tokens, raw HTTP bodies, exception reprs, HTML error pages, or full credential
+values.
 
 ### Local Model Setup
 
@@ -325,7 +329,7 @@ provider/model choices for users who want to override the automatic selection.
 `--provider`, `--model`, `--base-url`, `--ollama-url`, and `--lmstudio-url`
 support scripted setup. `--base-url` writes the endpoint for the selected
 provider; the provider-named flags write their own endpoint regardless of which
-provider is active. `scout doctor` continues to be read-only and recommends
+provider is active. `scout doctor` remains non-ingesting and recommends
 `scout config model` only when setup can fix the configured local model state.
 
 ### Configuration Model

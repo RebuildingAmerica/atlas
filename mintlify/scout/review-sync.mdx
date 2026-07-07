@@ -103,6 +103,13 @@ the evidence, not optional metadata.
 
 ## Sync A Reviewed Run
 
+Before syncing to a shared Atlas environment, check that login and upload-token
+exchange are ready for that exact URL:
+
+```bash
+scout doctor --atlas-url https://atlas.rebuildingus.org
+```
+
 Sync the latest ready run:
 
 ```bash

@@ -11,6 +11,18 @@ from click.testing import CliRunner
 from rich.console import Console
 
 from atlas_scout.cli import main
+from atlas_scout.local_models import LocalModelResolution
+
+
+def _ready_local_model_resolution() -> LocalModelResolution:
+    """Return a ready local model for CLI tests with a stubbed run pipeline."""
+    return LocalModelResolution(
+        ready=True,
+        provider="ollama",
+        model="llama3.1:8b",
+        base_url="http://localhost:11434",
+        message="Using Ollama with llama3.1:8b.",
+    )
 
 
 def test_cli_help() -> None:
@@ -73,8 +85,30 @@ def test_cli_run_requires_issues() -> None:
     assert result.exit_code != 0
 
 
-def test_cli_run_missing_api_key_exits_nonzero() -> None:
+def test_cli_run_missing_api_key_exits_nonzero(monkeypatch: pytest.MonkeyPatch) -> None:
     """When SEARCH_API_KEY is absent, the run command should exit with an error."""
+
+    def ready_model(_config, *, config_path):
+        _ = config_path
+        return _ready_local_model_resolution()
+
+    async def missing_search_input(**_kwargs):
+        raise ValueError(
+            "Connect search or build a local article corpus before running by place and issue."
+        )
+
+    monkeypatch.setattr(
+        "atlas_scout.pipeline_commands._resolve_search_connection",
+        lambda _search_api_key: "",
+    )
+    monkeypatch.setattr(
+        "atlas_scout.pipeline_commands._prepare_local_model_config",
+        ready_model,
+    )
+    monkeypatch.setattr(
+        "atlas_scout.pipeline_commands._build_provider", lambda *_args, **_kwargs: object()
+    )
+    monkeypatch.setattr("atlas_scout.pipeline.run_pipeline", missing_search_input)
     runner = CliRunner()
     result = runner.invoke(
         main,

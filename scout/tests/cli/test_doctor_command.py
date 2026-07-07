@@ -92,3 +92,22 @@ def test_doctor_worker_flag_requests_worker_checks(monkeypatch) -> None:
 
     assert result.exit_code == 0
     assert captured["include_worker"] is True
+
+
+def test_doctor_atlas_url_flag_targets_release_environment(monkeypatch) -> None:
+    """Release checks should be able to target the same Atlas URL as sync."""
+    captured: dict[str, object] = {}
+
+    def run_fake(*_args: object, **kwargs: object) -> DoctorReport:
+        captured.update(kwargs)
+        return _report()
+
+    monkeypatch.setattr(cli_module, "run_doctor", run_fake)
+
+    result = CliRunner().invoke(
+        main,
+        ["doctor", "--atlas-url", "https://atlas.example"],
+    )
+
+    assert result.exit_code == 0
+    assert captured["atlas_url"] == "https://atlas.example"

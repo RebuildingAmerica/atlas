@@ -28,7 +28,8 @@ def discovery_capabilities(
     model_ready = check_ready(checks, "model")
     database_ready = check_ready(checks, "database")
     direct_ready = model_ready and database_ready
-    sync_ready = _sync_ready(config, session, env)
+    sync_ready = _sync_ready(config, session, checks, env)
+    sync_remediation = _sync_remediation(config, checks, env)
 
     return [
         DoctorCapability(
@@ -64,9 +65,9 @@ def discovery_capabilities(
             message=(
                 "Ready to sync completed runs to Atlas."
                 if sync_ready
-                else "Atlas sync needs browser login or an Atlas API key."
+                else "Atlas sync needs a valid browser login or an Atlas API key."
             ),
-            remediation=None if sync_ready else "Run `scout login` or set `ATLAS_API_KEY`.",
+            remediation=None if sync_ready else sync_remediation,
         ),
     ]
 
@@ -76,6 +77,8 @@ def worker_readiness(
     config: ScoutConfig,
     dependencies: DoctorDependencies,
     session: ScoutSession | None,
+    session_sync_ready: bool,
+    session_sync_remediation: str | None,
     search_key_ready: bool,
     model_ready: bool,
 ) -> tuple[DoctorCheck, list[DoctorCapability]]:
@@ -83,9 +86,11 @@ def worker_readiness(
     state = dependencies.load_worker_state()
     worker_check = worker_state_check(state, dependencies.process_is_running)
     local_provider_ready = is_local_provider(config.llm.provider)
-    base_ready = session is not None and local_provider_ready and model_ready
+    base_ready = session is not None and session_sync_ready and local_provider_ready and model_ready
     remediation = _worker_remediation(
         session=session,
+        session_sync_ready=session_sync_ready,
+        session_sync_remediation=session_sync_remediation,
         local_provider_ready=local_provider_ready,
         model_ready=model_ready,
     )
@@ -126,12 +131,16 @@ def worker_readiness(
 def _worker_remediation(
     *,
     session: ScoutSession | None,
+    session_sync_ready: bool,
+    session_sync_remediation: str | None,
     local_provider_ready: bool,
     model_ready: bool,
 ) -> str:
     """Return the first action needed to make worker mode ready."""
     if session is None:
         return "Run `scout login`."
+    if not session_sync_ready:
+        return session_sync_remediation or "Run `scout login` again."
     if not local_provider_ready:
         allowed = ", ".join(LOCAL_PROVIDER_NAMES)
         return f"Run `scout config model` to choose a local model provider ({allowed})."
@@ -143,14 +152,30 @@ def _worker_remediation(
 def _sync_ready(
     config: ScoutConfig,
     session: ScoutSession | None,
+    checks: list[DoctorCheck],
     env: Mapping[str, str],
 ) -> bool:
-    """Return whether sync has an authentication path."""
-    return bool(
-        session is not None
-        or config.contribution.api_key.strip()
-        or env.get("ATLAS_API_KEY", "").strip()
-    )
+    """Return whether sync has a verified authentication path."""
+    if _api_key_ready(config, env):
+        return True
+    return session is not None and check_ready(checks, "atlas-sync-token")
+
+
+def _sync_remediation(
+    config: ScoutConfig,
+    checks: list[DoctorCheck],
+    env: Mapping[str, str],
+) -> str:
+    """Return the most actionable Atlas sync remediation."""
+    if _api_key_ready(config, env):
+        return "Run `scout sync --api-key ...` or check the configured Atlas API key."
+    remediation = _first_remediation(checks, ["atlas-sync-token", "atlas-account"])
+    return remediation or "Run `scout login` or set `ATLAS_API_KEY`."
+
+
+def _api_key_ready(config: ScoutConfig, env: Mapping[str, str]) -> bool:
+    """Return whether sync can use an API key without a browser session."""
+    return bool(config.contribution.api_key.strip() or env.get("ATLAS_API_KEY", "").strip())
 
 
 def check_ready(checks: list[DoctorCheck], check_id: str) -> bool:
