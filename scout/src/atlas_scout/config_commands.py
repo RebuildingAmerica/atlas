@@ -27,13 +27,11 @@ from atlas_scout.config import (
     update_schedule_settings,
 )
 from atlas_scout.local_model_commands import (
+    _apply_and_persist_local_model,
     _choose_local_model_interactively,
-    _print_local_model_resolution,
-    _save_local_model_config,
 )
 from atlas_scout.local_models import (
     LOCAL_PROVIDER_NAMES,
-    apply_local_model_resolution,
     resolve_local_model,
 )
 
@@ -214,12 +212,9 @@ def config_model(
                     hint=resolution.remediation,
                 )
             )
-        apply_local_model_resolution(config, resolution)
-        _save_local_model_config(ctx.obj["config_path"], config, resolution)
+        _apply_and_persist_local_model(ctx.obj["config_path"], config, resolution)
     except click.ClickException as exc:
         _exit_with_error(CliError(title="Local model unavailable", message=exc.message))
-
-    _print_local_model_resolution(resolution, saved=True)
 
 
 @config_group.group("schedule")

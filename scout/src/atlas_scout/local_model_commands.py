@@ -310,6 +310,17 @@ def _save_local_model_config(
     )
 
 
+def _apply_and_persist_local_model(
+    config_path: Path,
+    config: ScoutConfig,
+    resolution: LocalModelResolution,
+) -> None:
+    """Apply a ready local model resolution to config, save it, and report the choice."""
+    apply_local_model_resolution(config, resolution)
+    _save_local_model_config(config_path, config, resolution)
+    _print_local_model_resolution(resolution, saved=True)
+
+
 def _print_local_model_resolution(
     resolution: LocalModelResolution | None,
     *,

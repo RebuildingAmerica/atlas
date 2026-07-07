@@ -29,14 +29,12 @@ from atlas_scout.config_commands import (
 )
 from atlas_scout.credentials import CredentialStoreError
 from atlas_scout.local_model_commands import (
+    _apply_and_persist_local_model,
     _choose_local_model_interactively,
-    _print_local_model_resolution,
-    _save_local_model_config,
     _setup_local_model_provider,
     _should_prompt_for_setup_model_choice,
 )
 from atlas_scout.local_model_output import print_local_model_setup_help
-from atlas_scout.local_models import apply_local_model_resolution
 from atlas_scout.manpages import ManPageInstallResult, install_man_pages
 from atlas_scout.shell_integration import (
     CompletionInstallResult,
@@ -176,10 +174,7 @@ async def _setup_onboarding(
     if _should_prompt_for_setup_model_choice(resolution):
         resolution = _choose_local_model_interactively(config, resolution)
 
-    apply_local_model_resolution(config, resolution)
-    _save_local_model_config(config_path, config, resolution)
-
-    _print_local_model_resolution(resolution, saved=bool(resolution))
+    _apply_and_persist_local_model(config_path, config, resolution)
     console.print()
     console.print("[green]Scout setup complete.[/]")
     console.print("[dim]Run `scout doctor` to check this computer before discovery work.[/]")
