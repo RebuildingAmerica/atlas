@@ -1109,3 +1109,66 @@ narrow protocols, the full `cli.py` breakup into feature verticals, the
 `entry_extract.py` → `heuristics/` subpackage split, the daemon/worker dedup,
 etc. — are documented above but not executed; each is its own PR-sized, reviewed
 piece of follow-up work.
+
+**Update (2026-07-07):** most of Phases 4-7 have since landed as individual,
+independently-reviewed commits on `main` (one PR-sized change per finding, each
+verified against the full 100%-coverage test suite, ruff, and mypy before
+merging): `config.py` → `config/`, `auth.py` → `auth/`, `doctor.py` →
+`diagnostics/`, `cli_daemon.py` → `daemon/` (with the dead in-`cli.py` duplicate
+shim deleted, not migrated), `worker_commands.py` → `worker/`,
+`entries_commands.py` → `entries/`, the `article_*` flat-prefix cluster →
+`articles/`, `runs_commands.py` → `runs/`, and `scraper/fetcher.py` narrowed to
+a `FetcherStore` Protocol instead of the concrete store. `pipeline.py`'s
+875-line `run_pipeline` lost its 4x-duplicated deepening logic to two extracted
+closures and a `pipeline_fetch_support.py`/`pipeline_artifacts.py` split;
+`scraper/browser_researcher.py`'s layering inversion is fixed
+(`steps/browser_research.py` now owns the live half,
+`scraper/browser_session.py` the shared Playwright launch/close code).
+`ScoutSyncError` no longer covers the worker job-protocol domain
+(`worker/errors.WorkerJobError` now does); Brave search duplication (finding
+#25) is gone via a `SearchProvider` Protocol in `pipeline_fetch_support.py`; the
+two export writers (finding #27) now share `shared/export_writer.py`;
+local-model persistence duplication between `config_commands.py` and
+`setup_commands.py` is gone via
+`local_model_commands._apply_and_persist_local_model`; the
+`'ollama'`/`'lmstudio'` literal duplication in finding #21 is narrowed —
+`local_models.py`'s provider names/labels now derive from
+`local_provider_bootstrap.LOCAL_PROVIDER_SPECS` rather than re-declaring them
+(the `providers/__init__.py` factory dispatch and `config/schema.py`'s defaults
+were deliberately left alone: unifying those would mean either a runtime import
+cycle — `providers/__init__.py` already lazily imports provider submodules
+specifically to dodge this — or inverting `config`'s position as a
+dependency-free foundational module).
+
+Two items were investigated and closed **without** a code change, by deliberate
+decision rather than oversight:
+
+- **`cli_*.py` → `cli/` package** (finding #16) was re-attempted directly once
+  `cli.py` had shrunk to 12 lines via the splits above, since the original
+  file/package name collision no longer applied. It hit a real circular import
+  instead — see the "Update (2026-07-07)" note under Phase 2 above for the full
+  mechanism. Reverted; `cli_context.py`/`cli_errors.py`/`cli_select.py` stay
+  flat until Phase 9's full scope (making `cli_app`'s `main` construction lazy)
+  is reached.
+- **`cli_compat.py`'s monkeypatch-propagation facade** (the `_CliFacadeModule`/
+  `_LEGACY_EXPORT_MODULES`/`_PATCH_TARGET_MODULES` machinery, ~308 lines) was
+  investigated for reduction after being touched by nearly every split above. It
+  exists solely so the pre-existing test suite's
+  `monkeypatch.setattr(cli_module, "X", ...)` and
+  `from atlas_scout.cli import X` calls keep working unchanged after 20+ files
+  moved during this pass, rather than requiring every one of those test call
+  sites to be rewritten to patch the new location directly. Reducing it for real
+  means rewriting on the order of 50-100+ monkeypatch targets and import lines
+  across `tests/cli/` and friends — a large, regression-prone change to test
+  infrastructure with no end-user-visible benefit (the production code this
+  facade fronts is already correctly organized into `auth/`, `config/`,
+  `worker/`, `entries/`, `articles/`, `diagnostics/`, `daemon/`, `runs/`,
+  `shared/`). Left in place; worth reducing incrementally the next time a test
+  file in its orbit is touched for another reason, not as a dedicated pass.
+
+`steps/entry_extract.py`'s split into a subpackage (findings #7/#8) was in
+active, uncommitted progress by a concurrent contributor as of this update and
+was deliberately not touched to avoid colliding with that work — still open. The
+single largest remaining piece is unchanged: the `ScoutStore` split into
+per-aggregate repos behind narrow protocols (finding #1, Phase 3), plus the rest
+of Phase 8's discovery-pipeline relocation.
