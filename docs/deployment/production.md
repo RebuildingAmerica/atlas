@@ -256,6 +256,13 @@ MCP OAuth challenges. A wrong or missing value makes compliant clients discover
 the wrong authorization metadata, so the workflow and bootstrap deploy path both
 require it.
 
+The GitHub Actions deploy path accepts either `ATLAS_API_AUDIENCE` or
+`ATLAS_AUTH_JWT_AUDIENCES` for the API audience secret. If the hosted auth
+endpoint secrets are omitted, the deploy action derives the production defaults
+from `ATLAS_PUBLIC_URL`: `ATLAS_PUBLIC_URL/mcp`,
+`ATLAS_PUBLIC_URL/api/auth/internal/api-key`, and `ATLAS_PUBLIC_URL`. Prefer
+setting the explicit secrets when the hosted app and API origins diverge.
+
 Set `ATLAS_API_URL` to the canonical Cloudflare-backed API origin, not the raw
 Cloud Run service URL. The hosted smoke suite runs with
 `ATLAS_HOSTED_EXPECT_EDGE=true` in CI and fails if the API response lacks

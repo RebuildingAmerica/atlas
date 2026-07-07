@@ -44,17 +44,20 @@ inputs:
     description: Shared Cloudflare/API origin identity secret.
     required: true
   auth-api-key-introspection-url:
-    description: App endpoint the API calls to verify Atlas API keys.
-    required: true
+    description: App endpoint the API calls to verify Atlas API keys. Defaults to <atlas-public-url>/api/auth/internal/api-key when omitted.
+    required: false
+    default: ""
   auth-membership-url:
-    description: App origin the API calls for workspace membership checks.
-    required: true
+    description: App origin the API calls for workspace membership checks. Defaults to atlas-public-url when omitted.
+    required: false
+    default: ""
   atlas-public-url:
     description: Public Atlas app origin for this environment.
     required: true
   atlas-api-audience:
-    description: Accepted OAuth audience values for this environment.
-    required: true
+    description: Accepted OAuth audience values for this environment. Defaults to <atlas-public-url>/mcp when omitted.
+    required: false
+    default: ""
   scheduler-job-name:
     description: Optional Cloud Scheduler job name for autonomous discovery.
     required: false
@@ -105,6 +108,33 @@ runs:
         dockerfile: api/Dockerfile
         cache-scope: ${{ inputs.cache-scope }}
 
+    - name: Resolve hosted auth config
+      id: hosted-auth
+      shell: bash
+      env:
+        ATLAS_PUBLIC_URL: ${{ inputs.atlas-public-url }}
+        AUTH_API_KEY_INTROSPECTION_URL: ${{ inputs.auth-api-key-introspection-url }}
+        AUTH_MEMBERSHIP_URL: ${{ inputs.auth-membership-url }}
+        ATLAS_API_AUDIENCE: ${{ inputs.atlas-api-audience }}
+      run: |
+        set -euo pipefail
+
+        public_url="${ATLAS_PUBLIC_URL%/}"
+        if [[ -z "${public_url}" ]]; then
+          echo "atlas-public-url is required to deploy hosted auth config." >&2
+          exit 1
+        fi
+
+        introspection_url="${AUTH_API_KEY_INTROSPECTION_URL:-${public_url}/api/auth/internal/api-key}"
+        membership_url="${AUTH_MEMBERSHIP_URL:-${public_url}}"
+        api_audience="${ATLAS_API_AUDIENCE:-${public_url}/mcp}"
+
+        {
+          echo "auth-api-key-introspection-url=${introspection_url}"
+          echo "auth-membership-url=${membership_url}"
+          echo "atlas-api-audience=${api_audience}"
+        } >> "${GITHUB_OUTPUT}"
+
     - name: Deploy ${{ inputs.service-name }}
       uses: google-github-actions/deploy-cloudrun@2028e2d7d30a78c6910e0632e48dd561b064884d # v3.0.1
       with:
@@ -131,10 +161,10 @@ runs:
           SEARCH_API_KEY=${{ inputs.search-api-key }}
           ATLAS_AUTH_INTERNAL_SECRET=${{ inputs.auth-internal-secret }}
           ATLAS_EDGE_ORIGIN_SECRET=${{ inputs.edge-origin-secret }}
-          ATLAS_AUTH_API_KEY_INTROSPECTION_URL=${{ inputs.auth-api-key-introspection-url }}
-          ATLAS_AUTH_MEMBERSHIP_URL=${{ inputs.auth-membership-url }}
+          ATLAS_AUTH_API_KEY_INTROSPECTION_URL=${{ steps.hosted-auth.outputs.auth-api-key-introspection-url }}
+          ATLAS_AUTH_MEMBERSHIP_URL=${{ steps.hosted-auth.outputs.auth-membership-url }}
           ATLAS_PUBLIC_URL=${{ inputs.atlas-public-url }}
-          ATLAS_AUTH_JWT_AUDIENCES=${{ inputs.atlas-api-audience }}
+          ATLAS_AUTH_JWT_AUDIENCES=${{ steps.hosted-auth.outputs.atlas-api-audience }}
           ATLAS_ANON_RATE_LIMIT_ENABLED=true
           ATLAS_ANON_RATE_LIMIT_READS_PER_MINUTE=30
           ATLAS_ANON_RATE_LIMIT_WRITES_PER_MINUTE=10

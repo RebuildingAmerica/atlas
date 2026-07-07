@@ -812,6 +812,10 @@ async function setGithubSecrets(
     "ATLAS_AUTH_ALLOWED_EMAILS",
     "ATLAS_EMAIL_RESEND_API_KEY",
     "OPENSTATUS_API_KEY",
+    "ATLAS_AUTH_API_KEY_INTROSPECTION_URL",
+    "ATLAS_AUTH_MEMBERSHIP_URL",
+    "ATLAS_API_AUDIENCE",
+    "ATLAS_AUTH_JWT_AUDIENCES",
   ];
 
   for (const key of appSecretKeys) {

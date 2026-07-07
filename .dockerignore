@@ -1,5 +1,10 @@
 .git
 .github
+.atlas
+.claude
+.codex
+.superpowers
+.worktrees
 .turbo
 .venv
 node_modules

@@ -62,6 +62,13 @@ Those values keep OAuth challenges, MCP protected-resource metadata, CORS, and
 app-to-API traffic on staging origins. That separation lets someone test sign-in
 and MCP access without risking production users or production data.
 
+The GitHub Actions deploy path accepts either `ATLAS_API_AUDIENCE` or
+`ATLAS_AUTH_JWT_AUDIENCES` for the API audience secret. If the hosted auth
+endpoint secrets are omitted, the deploy action derives staging defaults from
+`ATLAS_PUBLIC_URL`: `ATLAS_PUBLIC_URL/mcp`,
+`ATLAS_PUBLIC_URL/api/auth/internal/api-key`, and `ATLAS_PUBLIC_URL`. Set the
+explicit secrets when staging uses split hosted app and API origins.
+
 ## Vercel staging app
 
 Use either a dedicated Vercel staging project or a Vercel Preview environment.

@@ -50,7 +50,7 @@ jobs:
           auth-api-key-introspection-url: ${{ secrets.ATLAS_AUTH_API_KEY_INTROSPECTION_URL }}
           auth-membership-url: ${{ secrets.ATLAS_AUTH_MEMBERSHIP_URL }}
           atlas-public-url: ${{ secrets.ATLAS_PUBLIC_URL }}
-          atlas-api-audience: ${{ secrets.ATLAS_API_AUDIENCE }}
+          atlas-api-audience: ${{ secrets.ATLAS_API_AUDIENCE || secrets.ATLAS_AUTH_JWT_AUDIENCES }}
           scheduler-job-name: atlas-discovery-scheduled
           openstatus-api-key: ${{ secrets.OPENSTATUS_API_KEY }}
 
