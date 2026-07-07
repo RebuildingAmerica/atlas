@@ -5,7 +5,7 @@ from datetime import date
 
 
 def test_news_sitemap_entry_becomes_source_backed_article() -> None:
-    discovery_records = importlib.import_module("atlas_scout.article_discovery_records")
+    discovery_records = importlib.import_module("atlas_scout.articles.discovery_records")
     body = b"""
     <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
             xmlns:news="http://www.google.com/schemas/sitemap-news/0.9">
@@ -47,7 +47,7 @@ def test_news_sitemap_entry_becomes_source_backed_article() -> None:
 
 
 def test_news_sitemap_entry_without_mentions_is_skipped() -> None:
-    discovery_records = importlib.import_module("atlas_scout.article_discovery_records")
+    discovery_records = importlib.import_module("atlas_scout.articles.discovery_records")
     body = b"""
     <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
             xmlns:news="http://www.google.com/schemas/sitemap-news/0.9">
@@ -74,7 +74,7 @@ def test_news_sitemap_entry_without_mentions_is_skipped() -> None:
 
 
 def test_regular_sitemap_article_url_becomes_url_derived_article() -> None:
-    discovery_records = importlib.import_module("atlas_scout.article_discovery_records")
+    discovery_records = importlib.import_module("atlas_scout.articles.discovery_records")
     body = b"""
     <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
       <url>

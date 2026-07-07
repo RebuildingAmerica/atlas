@@ -9,8 +9,8 @@ from typing import TYPE_CHECKING, Any
 import click
 from rich.table import Table
 
-from atlas_scout.article_command_support import date_from_timestamp
-from atlas_scout.article_mentions import extract_article_mentions, plain_article_text
+from atlas_scout.articles.command_support import date_from_timestamp
+from atlas_scout.articles.mentions import extract_article_mentions, plain_article_text
 from atlas_scout.cli_context import console
 
 if TYPE_CHECKING:

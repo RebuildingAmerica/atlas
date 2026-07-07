@@ -42,20 +42,20 @@ def test_articles_command_group_stays_as_command_wiring() -> None:
     assert "@articles.command" not in articles_source
     assert "articles.add_command" in articles_source
     for module_name in (
-        "article_command_support.py",
-        "article_crawl_commands.py",
-        "article_export_commands.py",
-        "article_frontier_commands.py",
-        "article_import_commands.py",
-        "article_stats_commands.py",
+        "command_support.py",
+        "crawl_commands.py",
+        "export_commands.py",
+        "frontier_commands.py",
+        "import_commands.py",
+        "stats_commands.py",
     ):
-        assert (scout_package / module_name).exists(), module_name
+        assert (scout_package / "articles" / module_name).exists(), module_name
 
 
 def test_article_modules_stay_under_three_hundred_lines() -> None:
     """Keep article modules small enough to read in one sitting."""
     scout_package = Path(__file__).parents[2] / "src" / "atlas_scout"
-    article_modules = list(scout_package.glob("article_*.py"))
+    article_modules = list((scout_package / "articles").glob("*.py"))
 
     oversized = {
         path.name: line_count
@@ -64,3 +64,4 @@ def test_article_modules_stay_under_three_hundred_lines() -> None:
     }
 
     assert oversized == {}
+    assert len(article_modules) > 0

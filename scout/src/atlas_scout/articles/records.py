@@ -8,13 +8,13 @@ from urllib.parse import urlparse
 
 from atlas_shared import PageContent, SourceType
 
-from atlas_scout.article_guardian_records import guardian_articles_from_response
-from atlas_scout.article_mentions import (
+from atlas_scout.articles.guardian_records import guardian_articles_from_response
+from atlas_scout.articles.mentions import (
     extract_article_mentions,
     optional_article_text,
     plain_article_text,
 )
-from atlas_scout.article_urls import canonicalize_article_url
+from atlas_scout.articles.urls import canonicalize_article_url
 
 __all__ = [
     "crawled_article_from_page",
@@ -101,7 +101,7 @@ def crawled_article_from_page(
         "published_at": published_at.isoformat(),
         "source_name": publication or parsed_url.netloc.lower(),
         "source_domain": parsed_url.netloc.lower(),
-        "section": _article_section_from_url(url),
+        "section": article_section_from_url(url),
         "provider": "crawl",
         "provider_id": url,
         "api_url": None,
@@ -251,7 +251,7 @@ def _page_opengraph_value(page: PageContent, key: str) -> str:
     return optional_article_text(opengraph.get(key))
 
 
-def _article_section_from_url(url: str) -> str | None:
+def article_section_from_url(url: str) -> str | None:
     """Return the first path segment as a compact source section label."""
     parsed_path = urlparse(url).path.strip("/")
     if not parsed_path:

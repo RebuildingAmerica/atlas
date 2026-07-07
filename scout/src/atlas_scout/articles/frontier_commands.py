@@ -6,9 +6,9 @@ from typing import TYPE_CHECKING
 
 import click
 
-from atlas_scout.article_command_support import article_crawl_seed_urls, parse_date_option
-from atlas_scout.article_frontier_expand import expand_frontier
-from atlas_scout.article_frontier_runtime import (
+from atlas_scout.articles.command_support import article_crawl_seed_urls, parse_date_option
+from atlas_scout.articles.frontier_expand import expand_frontier
+from atlas_scout.articles.frontier_runtime import (
     release_frontier_claims,
     reprioritize_frontier,
     seed_frontier,

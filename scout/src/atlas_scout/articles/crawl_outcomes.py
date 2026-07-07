@@ -7,14 +7,14 @@ from urllib.parse import urlparse
 
 from atlas_shared import PageContent
 
-from atlas_scout.article_frontier import (
+from atlas_scout.articles.frontier import (
     article_crawl_domain_at_cap,
     article_crawl_is_discovery_resource,
     article_crawl_url_outside_date_window,
     article_frontier_item,
 )
-from atlas_scout.article_records import crawled_article_from_page
-from atlas_scout.article_urls import canonicalize_article_url
+from atlas_scout.articles.records import crawled_article_from_page
+from atlas_scout.articles.urls import canonicalize_article_url
 from atlas_scout.pipeline_support import normalize_url
 
 if TYPE_CHECKING:

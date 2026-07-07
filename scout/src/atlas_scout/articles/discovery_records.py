@@ -8,13 +8,13 @@ from typing import Any
 from urllib.parse import unquote, urlparse
 from xml.etree import ElementTree
 
-from atlas_scout.article_frontier import (
+from atlas_scout.articles.frontier import (
     article_crawl_is_discovery_resource,
     article_crawl_url_date_span,
 )
-from atlas_scout.article_mentions import extract_article_mentions, plain_article_text
-from atlas_scout.article_records import _article_section_from_url
-from atlas_scout.article_urls import canonicalize_article_url
+from atlas_scout.articles.mentions import extract_article_mentions, plain_article_text
+from atlas_scout.articles.records import article_section_from_url
+from atlas_scout.articles.urls import canonicalize_article_url
 
 _DISCOVERY_CONTENT_TYPES = {
     "application/atom+xml",
@@ -113,7 +113,7 @@ def _news_sitemap_article(
         "published_at": published_at.isoformat(),
         "source_name": publication,
         "source_domain": parsed_url.netloc.lower(),
-        "section": _article_section_from_url(article_url),
+        "section": article_section_from_url(article_url),
         "provider": "crawl",
         "provider_id": article_url,
         "api_url": None,
@@ -202,7 +202,7 @@ def url_derived_article_record(
         "published_at": published_at.isoformat(),
         "source_name": source_name,
         "source_domain": source_name,
-        "section": _article_section_from_url(article_url),
+        "section": article_section_from_url(article_url),
         "provider": "crawl",
         "provider_id": article_url,
         "api_url": None,

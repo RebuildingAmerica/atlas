@@ -10,7 +10,7 @@ from datetime import date
 from typing import Any
 from urllib.parse import urlparse
 
-from atlas_scout.article_urls import canonicalize_article_url
+from atlas_scout.articles.urls import canonicalize_article_url
 
 _ARTICLE_CRAWL_DAY_DATE_PATTERN = re.compile(
     r"(?<!\d)(?P<year>19\d{2}|20\d{2})[/-](?P<month>0?[1-9]|1[0-2])[/-]"

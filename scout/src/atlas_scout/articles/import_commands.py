@@ -10,8 +10,8 @@ from typing import TYPE_CHECKING, Any
 
 import click
 
-from atlas_scout.article_command_support import parse_date_option
-from atlas_scout.article_records import guardian_articles_from_response
+from atlas_scout.articles.command_support import parse_date_option
+from atlas_scout.articles.records import guardian_articles_from_response
 from atlas_scout.cli_common import _run_async
 from atlas_scout.cli_context import console
 

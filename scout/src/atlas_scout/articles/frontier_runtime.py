@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Any
 import click
 from rich.table import Table
 
-from atlas_scout.article_frontier import (
+from atlas_scout.articles.frontier import (
     article_frontier_item,
     article_frontier_priority,
     source_seed_frontier_priority,

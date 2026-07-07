@@ -1,6 +1,6 @@
 """Tests for article URL canonicalization."""
 
-from atlas_scout.article_urls import canonicalize_article_url
+from atlas_scout.articles.urls import canonicalize_article_url
 
 
 def test_canonicalize_article_url_normalizes_http_to_https() -> None:

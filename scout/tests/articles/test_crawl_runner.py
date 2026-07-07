@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from atlas_scout.article_crawl_runner import _refresh_domain_saved_counts
+from atlas_scout.articles.crawl_runner import _refresh_domain_saved_counts
 
 
 class _StatsStore:

@@ -1,6 +1,6 @@
 """Tests for article crawl frontier helpers."""
 
-from atlas_scout.article_frontier import (
+from atlas_scout.articles.frontier import (
     article_frontier_priority,
     source_seed_frontier_priority,
 )

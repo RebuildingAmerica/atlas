@@ -6,15 +6,15 @@ from typing import TYPE_CHECKING
 
 import click
 
-from atlas_scout.article_command_support import parse_date_option
-from atlas_scout.article_stats_runtime import (
+from atlas_scout.articles.command_support import parse_date_option
+from atlas_scout.articles.stats_runtime import (
     dedupe_articles,
     prune_article_quality,
     refresh_article_mentions,
     show_article_stats,
     show_article_status,
 )
-from atlas_scout.article_verification import verify_articles
+from atlas_scout.articles.verification import verify_articles
 from atlas_scout.cli_common import _run_async
 
 if TYPE_CHECKING:

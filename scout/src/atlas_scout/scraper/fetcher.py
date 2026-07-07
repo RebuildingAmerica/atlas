@@ -13,7 +13,7 @@ from urllib.parse import urlparse
 import httpx
 from atlas_shared import PageContent, SourceType
 
-from atlas_scout.article_discovery_records import discovery_articles_from_resource
+from atlas_scout.articles.discovery_records import discovery_articles_from_resource
 from atlas_scout.scraper.browser_render import render_url_with_browser
 from atlas_scout.scraper.discovery_resources import extract_discovery_links
 from atlas_scout.scraper.extractor import (

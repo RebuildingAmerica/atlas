@@ -9,15 +9,15 @@ from typing import TYPE_CHECKING, Any
 
 import click
 
-from atlas_scout.article_command_support import date_from_timestamp
-from atlas_scout.article_discovery_records import url_derived_article_record
-from atlas_scout.article_frontier import (
+from atlas_scout.articles.command_support import date_from_timestamp
+from atlas_scout.articles.discovery_records import url_derived_article_record
+from atlas_scout.articles.frontier import (
     article_crawl_is_discovery_resource,
     article_crawl_url_outside_date_window,
     article_frontier_item,
     source_seed_frontier_priority,
 )
-from atlas_scout.article_urls import canonicalize_article_url
+from atlas_scout.articles.urls import canonicalize_article_url
 from atlas_scout.cli_context import console
 from atlas_scout.pipeline_support import close_if_supported, normalize_url
 

@@ -7,8 +7,8 @@ from typing import TYPE_CHECKING, Any
 
 import click
 
-from atlas_scout.article_command_support import date_from_timestamp
-from atlas_scout.article_stats_runtime import load_article_stats
+from atlas_scout.articles.command_support import date_from_timestamp
+from atlas_scout.articles.stats_runtime import load_article_stats
 from atlas_scout.cli_context import console
 
 if TYPE_CHECKING:

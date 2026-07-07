@@ -2,7 +2,7 @@
 
 from datetime import date
 
-from atlas_scout.article_frontier_expand import collect_expansion_frontier_items
+from atlas_scout.articles.frontier_expand import collect_expansion_frontier_items
 
 
 def test_collect_expansion_items_saves_discovery_articles_before_frontier() -> None:

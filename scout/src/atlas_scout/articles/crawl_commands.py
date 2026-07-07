@@ -6,8 +6,8 @@ from typing import TYPE_CHECKING
 
 import click
 
-from atlas_scout.article_command_support import article_crawl_seed_urls, parse_date_option
-from atlas_scout.article_crawl_runner import run_article_crawl
+from atlas_scout.articles.command_support import article_crawl_seed_urls, parse_date_option
+from atlas_scout.articles.crawl_runner import run_article_crawl
 from atlas_scout.cli_common import _run_async
 
 if TYPE_CHECKING:

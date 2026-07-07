@@ -12,8 +12,8 @@ from typing import TYPE_CHECKING, Any
 
 import click
 
-from atlas_scout.article_crawl_outcomes import handle_crawl_outcome
-from atlas_scout.article_frontier import (
+from atlas_scout.articles.crawl_outcomes import handle_crawl_outcome
+from atlas_scout.articles.frontier import (
     article_crawl_blocked_domains,
     next_article_crawl_batch,
 )

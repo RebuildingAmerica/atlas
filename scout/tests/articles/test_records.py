@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 
 from atlas_shared import PageContent, SourceType
 
-from atlas_scout.article_records import crawled_article_from_page
+from atlas_scout.articles.records import crawled_article_from_page
 
 
 def test_crawled_article_from_page_rejects_utility_pages_marked_as_articles() -> None:

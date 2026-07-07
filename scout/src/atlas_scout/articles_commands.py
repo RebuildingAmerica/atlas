@@ -4,12 +4,12 @@ from __future__ import annotations
 
 import click
 
-from atlas_scout.article_crawl_commands import crawl
-from atlas_scout.article_export_commands import export
-from atlas_scout.article_frontier_commands import frontier
-from atlas_scout.article_import_commands import import_group
-from atlas_scout.article_mentions import extract_article_mentions as _extract_article_mentions
-from atlas_scout.article_stats_commands import (
+from atlas_scout.articles.crawl_commands import crawl
+from atlas_scout.articles.export_commands import export
+from atlas_scout.articles.frontier_commands import frontier
+from atlas_scout.articles.import_commands import import_group
+from atlas_scout.articles.mentions import extract_article_mentions as _extract_article_mentions
+from atlas_scout.articles.stats_commands import (
     dedupe,
     prune_quality,
     refresh_mentions,

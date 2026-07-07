@@ -1,6 +1,6 @@
 """Article frontier expansion candidate selection."""
 
-from atlas_scout.article_frontier import article_frontier_item
+from atlas_scout.articles.frontier import article_frontier_item
 from atlas_scout.store import ScoutStore
 
 

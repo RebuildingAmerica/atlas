@@ -5,12 +5,12 @@ from __future__ import annotations
 from typing import Any
 from urllib.parse import urlparse
 
-from atlas_scout.article_mentions import (
+from atlas_scout.articles.mentions import (
     extract_article_mentions,
     optional_article_text,
     plain_article_text,
 )
-from atlas_scout.article_urls import canonicalize_article_url
+from atlas_scout.articles.urls import canonicalize_article_url
 
 _GUARDIAN_BODY_TEXT_EXCERPT_CHARS = 500
 

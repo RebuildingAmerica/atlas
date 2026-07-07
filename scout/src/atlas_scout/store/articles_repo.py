@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from typing import TYPE_CHECKING, Any
 
-from atlas_scout.article_records import is_article_utility_page
+from atlas_scout.articles.records import is_article_utility_page
 from atlas_scout.store._util import new_id, now
 
 if TYPE_CHECKING:

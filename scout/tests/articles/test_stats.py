@@ -5,9 +5,9 @@ from collections.abc import AsyncIterator
 from types import SimpleNamespace
 from typing import Any
 
-import atlas_scout.article_stats_runtime as stats_runtime
-from atlas_scout.article_frontier import article_frontier_item
-from atlas_scout.article_stats_runtime import load_article_stats
+import atlas_scout.articles.stats_runtime as stats_runtime
+from atlas_scout.articles.frontier import article_frontier_item
+from atlas_scout.articles.stats_runtime import load_article_stats
 from atlas_scout.store import ScoutStore
 
 
