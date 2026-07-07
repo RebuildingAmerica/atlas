@@ -29,9 +29,6 @@ from atlas_scout import (
     cli_context as _cli_context,
 )
 from atlas_scout import (
-    cli_daemon as _cli_daemon,
-)
-from atlas_scout import (
     config as _config,
 )
 from atlas_scout import (
@@ -79,6 +76,10 @@ from atlas_scout import (
 from atlas_scout import (
     worker_commands as _worker_commands,
 )
+from atlas_scout.daemon import formatting as _daemon_formatting
+from atlas_scout.daemon import lifecycle as _daemon_lifecycle
+from atlas_scout.daemon import process as _daemon_process
+from atlas_scout.daemon import state as _daemon_state
 from atlas_scout.diagnostics import report as _diagnostics_report
 from atlas_scout.shared import atlas_urls as _atlas_urls
 
@@ -125,27 +126,31 @@ _LEGACY_EXPORT_MODULES: tuple[tuple[types.ModuleType, tuple[str, ...]], ...] = (
     ),
     (_cli_context, ("console", "err_console")),
     (
-        _cli_daemon,
+        _daemon_process,
+        (
+            "_daemon_process_is_running",
+            "_install_daemon_signal_handlers",
+            "_signal_daemon_process",
+            "_spawn_daemon_process",
+        ),
+    ),
+    (
+        _daemon_state,
         (
             "_clear_failed_daemon_start",
             "_daemon_interval_metadata",
-            "_daemon_process_is_running",
-            "_daemon_run_internal",
-            "_daemon_start",
             "_daemon_start_claim_is_stale",
             "_daemon_start_conflict_message",
-            "_daemon_status",
-            "_daemon_stop",
-            "_install_daemon_signal_handlers",
             "_open_store",
-            "_render_recent_run_summary",
-            "_render_recent_tick_summary",
             "_require_schedule_targets",
-            "_signal_daemon_process",
-            "_spawn_daemon_process",
             "_wait_for_daemon_start",
             "_wait_for_daemon_stop",
         ),
+    ),
+    (_daemon_formatting, ("_render_recent_run_summary", "_render_recent_tick_summary")),
+    (
+        _daemon_lifecycle,
+        ("_daemon_run_internal", "_daemon_start", "_daemon_status", "_daemon_stop"),
     ),
     (
         _config,
@@ -228,9 +233,12 @@ _PATCH_TARGET_MODULES = (
     _cli_app,
     _auth_commands,
     _cli_common,
-    _cli_daemon,
     _config_commands,
     _daemon_commands,
+    _daemon_formatting,
+    _daemon_lifecycle,
+    _daemon_process,
+    _daemon_state,
     _db_commands,
     _doctor_commands,
     _entries_commands,

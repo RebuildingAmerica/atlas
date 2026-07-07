@@ -6,8 +6,6 @@ import asyncio
 import contextlib
 import json
 import os
-import subprocess
-import sys
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, cast
 
@@ -20,14 +18,15 @@ from atlas_scout.auth_commands import (
 )
 from atlas_scout.cli_common import ScoutSyncError, _exit_with_error, _run_async
 from atlas_scout.cli_context import console
-from atlas_scout.cli_daemon import (
-    _daemon_process_is_running,
-    _install_daemon_signal_handlers,
-    _signal_daemon_process,
-)
 from atlas_scout.cli_errors import CliError
 from atlas_scout.config import SCOUT_CONFIG_DIR, ScoutConfig
 from atlas_scout.credentials import CredentialStoreError
+from atlas_scout.daemon import (
+    _daemon_process_is_running,
+    _install_daemon_signal_handlers,
+    _signal_daemon_process,
+    spawn_detached_scout_process,
+)
 from atlas_scout.local_model_commands import (
     _prepare_local_model_config,
     _require_local_worker_provider,
@@ -36,6 +35,7 @@ from atlas_scout.pipeline_commands import _run_pipeline
 from atlas_scout.search_keys import resolve_search_api_key
 
 if TYPE_CHECKING:
+    import subprocess
     from pathlib import Path
 
 WORKER_STATE_PATH = SCOUT_CONFIG_DIR / "worker.json"
@@ -483,25 +483,24 @@ def _spawn_worker_process(
     lease_seconds: int,
 ) -> subprocess.Popen[bytes]:
     """Launch the Atlas worker loop as a detached process."""
-    command = [sys.executable, "-m", "atlas_scout.cli", "--config", str(config_path)]
-    if debug:
-        command.append("--debug")
-    command.extend(["worker", "run-internal", "--interval", str(interval)])
-    command.extend(["--lease-seconds", str(lease_seconds)])
+    extra_args = [
+        "worker",
+        "run-internal",
+        "--interval",
+        str(interval),
+        "--lease-seconds",
+        str(lease_seconds),
+    ]
     if atlas_url:
-        command.extend(["--atlas-url", atlas_url])
+        extra_args.extend(["--atlas-url", atlas_url])
     if search_api_key:
-        command.extend(["--search-api-key", search_api_key])
-    env = os.environ.copy()
-    if search_api_key:
-        env["SEARCH_API_KEY"] = search_api_key
-    return subprocess.Popen(
-        command,
-        env=env,
-        stdin=subprocess.DEVNULL,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-        start_new_session=True,
+        extra_args.extend(["--search-api-key", search_api_key])
+    env_overrides = {"SEARCH_API_KEY": search_api_key} if search_api_key else None
+    return spawn_detached_scout_process(
+        config_path=config_path,
+        debug=debug,
+        extra_args=extra_args,
+        env_overrides=env_overrides,
     )
 
 

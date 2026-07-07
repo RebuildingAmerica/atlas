@@ -8,8 +8,8 @@ import click
 
 from atlas_scout.auth_commands import _require_search_connection
 from atlas_scout.cli_common import _exit_with_error, _run_async
-from atlas_scout.cli_daemon import _daemon_run_internal, _daemon_start, _daemon_status, _daemon_stop
 from atlas_scout.cli_errors import CliError
+from atlas_scout.daemon import _daemon_run_internal, _daemon_start, _daemon_status, _daemon_stop
 
 if TYPE_CHECKING:
     from atlas_scout.config import ScoutConfig
