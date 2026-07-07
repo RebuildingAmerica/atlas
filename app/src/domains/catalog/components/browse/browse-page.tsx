@@ -1,14 +1,12 @@
 import { useNavigate } from "@tanstack/react-router";
-import { lazy, Suspense, useCallback, useEffect, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { BrowseEcosystemHistorySection } from "@/domains/catalog/components/browse/browse-ecosystem-history-section";
 import {
   BrowseExplorationGuides,
-  type BrowseCollectionFunnel,
-  type BrowseIntentChip,
-  type BrowseSurfaceState,
   GridSurface,
   ListSurface,
 } from "@/domains/catalog/components/browse/browse-page-sections";
+import { BrowseMapSurface } from "@/domains/catalog/components/browse/browse-map-surface";
 import { useEntries } from "@/domains/catalog/hooks/use-entries";
 import { useTaxonomy } from "@/domains/catalog/hooks/use-taxonomy";
 import {
@@ -34,66 +32,16 @@ import { STATE_NAME_BY_CODE } from "@/domains/catalog/us-state-grid";
 import type { EntryListResponse, EntryType, SourcePattern, SourceType } from "@/types";
 import { BrowseHero } from "./browse-hero";
 import { type BrowsePageContent, DEFAULT_BROWSE_PAGE_CONTENT } from "./browse-page-content";
-import {
-  BrowseResultsAside,
-  type BrowseIssueBrief,
-  type BrowsePlaceBrief,
-} from "./browse-results-aside";
+import { BrowseResultsAside } from "./browse-results-aside";
 import { BrowseSearchHeader } from "./browse-search-header";
+import { useBrowsePageDetails } from "@/domains/catalog/hooks/use-browse-page-details";
 
 export type { BrowsePageContent } from "./browse-page-content";
-
-const SOURCE_PATTERN_BRIEF_LABELS: Record<SourcePattern, string> = {
-  multi_source: "Multi-source confirmation",
-  single_source: "Single-source leads",
-  social_only: "Social-only signals",
-};
-
-const LazyUsMapSurface = lazy(async () => {
-  const module = await import("@/domains/catalog/components/browse/us-map-surface");
-  return { default: module.UsMapSurface };
-});
-
-interface BrowseIntentBadge {
-  key: BrowseFilterKey;
-  label: string;
-  value: string;
-}
 
 interface BrowsePageProps {
   initialEntries?: EntryListResponse;
   search: BrowseRouteSearch;
   page?: BrowsePageContent;
-}
-
-interface BrowseMapSurfaceProps {
-  onSelectState: (state: string) => void;
-  selectedState?: string;
-  stateDensity: BrowseSurfaceState[];
-}
-
-function sourcePatternBriefLabel(value: string): string {
-  return SOURCE_PATTERN_BRIEF_LABELS[value as SourcePattern] ?? humanize(value);
-}
-
-function BrowseMapSurface({ onSelectState, selectedState, stateDensity }: BrowseMapSurfaceProps) {
-  return (
-    <Suspense
-      fallback={
-        <GridSurface
-          states={stateDensity}
-          selectedState={selectedState}
-          onSelectState={onSelectState}
-        />
-      }
-    >
-      <LazyUsMapSurface
-        stateDensity={stateDensity}
-        selectedState={selectedState}
-        onSelectState={onSelectState}
-      />
-    </Suspense>
-  );
 }
 
 export function BrowsePage({ initialEntries, search, page }: BrowsePageProps) {
@@ -211,52 +159,6 @@ export function BrowsePage({ initialEntries, search, page }: BrowsePageProps) {
     [stateDensity],
   );
 
-  const selectedBadges: BrowseIntentBadge[] = [
-    ...selectedFilters.states.map((value) => ({
-      key: "states" as const,
-      value,
-      label: STATE_NAME_BY_CODE[value] ?? value,
-    })),
-    ...selectedFilters.issue_areas.map((value) => ({
-      key: "issue_areas" as const,
-      value,
-      label: issueAreaLabels[value] ?? humanize(value),
-    })),
-    ...selectedFilters.entry_types.map((value) => ({
-      key: "entry_types" as const,
-      value,
-      label: ENTITY_TYPE_LABELS[value as EntryType] ?? humanize(value),
-    })),
-    ...selectedFilters.source_types.map((value) => ({
-      key: "source_types" as const,
-      value,
-      label: SOURCE_TYPE_LABELS[value as SourceType] ?? humanize(value),
-    })),
-    ...selectedFilters.source_patterns.map((value) => ({
-      key: "source_patterns" as const,
-      value,
-      label: humanize(value),
-    })),
-  ];
-  const removableBadges = selectedBadges.filter((badge) => {
-    return !(
-      badge.key === "entry_types" &&
-      pageContent.lockedEntryTypes?.includes(badge.value as EntryType)
-    );
-  });
-  const discoveryContext = useMemo(
-    () => ({
-      issueAreas: selectedFilters.issue_areas,
-      places: [
-        ...selectedFilters.cities,
-        ...selectedFilters.regions,
-        ...selectedFilters.states.map((value) => STATE_NAME_BY_CODE[value] ?? value),
-      ],
-      query: selectedFilters.query,
-      sourceTypes: selectedFilters.source_types,
-    }),
-    [selectedFilters],
-  );
   const rankedEntries = useMemo(
     () =>
       rankEntriesForDiscovery(resultEntries, {
@@ -372,256 +274,22 @@ export function BrowsePage({ initialEntries, search, page }: BrowsePageProps) {
     });
   }, [navigate]);
 
-  const collectionFunnels = useMemo<BrowseCollectionFunnel[]>(() => {
-    const fallbackState = selectedState ?? dominantStates[0]?.state;
-    const fallbackStateName = fallbackState
-      ? (STATE_NAME_BY_CODE[fallbackState] ?? fallbackState)
-      : undefined;
-    const fallbackIssue = selectedFilters.issue_areas[0] ?? explorationIssueAreas[0]?.slug;
-    const fallbackIssueLabel = fallbackIssue
-      ? (issueAreaLabels[fallbackIssue] ?? humanize(fallbackIssue))
-      : undefined;
-    const funnels: BrowseCollectionFunnel[] = [];
-
-    if (fallbackState && fallbackStateName && fallbackIssue && fallbackIssueLabel) {
-      funnels.push({
-        id: `${fallbackState}:${fallbackIssue}:landscape`,
-        label: `${fallbackStateName} ${fallbackIssueLabel}`,
-        meta: "People and organizations",
-        onSelect: () => {
-          updateSearch({
-            issue_areas: fallbackIssue,
-            offset: 0,
-            states: fallbackState,
-            view: "list",
-          });
-        },
-      });
-    }
-
-    if (fallbackIssue && fallbackIssueLabel) {
-      funnels.push({
-        id: `${fallbackIssue}:people`,
-        label: `People working on ${fallbackIssueLabel}`,
-        meta: "Actor-first path",
-        onSelect: () => {
-          updateSearch({
-            entry_types: "person",
-            issue_areas: fallbackIssue,
-            offset: 0,
-            view: "list",
-          });
-        },
-      });
-    }
-
-    if (fallbackState && fallbackStateName) {
-      funnels.push({
-        id: `${fallbackState}:organizations`,
-        label: `${fallbackStateName} organizations`,
-        meta: "Local organizations",
-        onSelect: () => {
-          updateSearch({
-            entry_types: "organization",
-            offset: 0,
-            states: fallbackState,
-            view: "list",
-          });
-        },
-      });
-    }
-
-    return funnels;
-  }, [
+  const pageDetails = useBrowsePageDetails({
     dominantStates,
     explorationIssueAreas,
-    issueAreaLabels,
-    selectedFilters.issue_areas,
-    selectedState,
-    updateSearch,
-  ]);
-
-  const currentContext = [
-    selectedStateName ?? "United States",
-    selectedFilters.issue_areas[0] ? issueAreaLabels[selectedFilters.issue_areas[0]] : null,
-    selectedFilters.entry_types[0]
-      ? ENTITY_TYPE_LABELS[selectedFilters.entry_types[0] as EntryType]
-      : null,
-    selectedFilters.source_types[0]
-      ? SOURCE_TYPE_LABELS[selectedFilters.source_types[0] as SourceType]
-      : null,
-    selectedFilters.source_patterns[0] ? humanize(selectedFilters.source_patterns[0]) : null,
-  ]
-    .filter(Boolean)
-    .join(" · ");
-
-  const activeCounts = {
-    issues: selectedFilters.issue_areas.length,
-    types: pageContent.showEntryTypeFilter ? searchForActivity.entry_types.length : 0,
-    sources: selectedFilters.source_types.length + selectedFilters.source_patterns.length,
-  };
-  const mapSearch = useMemo<BrowseRouteSearch>(
-    () => ({
-      cities: serializeList(selectedFilters.cities),
-      entry_types: serializeList(selectedFilters.entry_types),
-      issue_areas: serializeList(selectedFilters.issue_areas),
-      offset: selectedFilters.offset,
-      query: selectedFilters.query,
-      regions: serializeList(selectedFilters.regions),
-      source_patterns: serializeList(selectedFilters.source_patterns),
-      source_types: serializeList(selectedFilters.source_types),
-      states: serializeList(selectedFilters.states),
-      view: "map",
-    }),
-    [selectedFilters],
-  );
-  const intentChips = useMemo<BrowseIntentChip[]>(() => {
-    const chips: BrowseIntentChip[] = [];
-
-    if (selectedFilters.query) {
-      chips.push({
-        id: "query",
-        label: `Search: ${selectedFilters.query}`,
-        onRemove: () => {
-          updateSearch({ offset: 0, query: undefined });
-        },
-      });
-    }
-
-    removableBadges.forEach((badge) => {
-      chips.push({
-        id: `${badge.key}:${badge.value}`,
-        label: badge.label,
-        onRemove: () => {
-          handleToggleFilter(badge.key, badge.value);
-        },
-      });
-    });
-
-    return chips;
-  }, [handleToggleFilter, removableBadges, selectedFilters.query, updateSearch]);
-  const emptyRecoveryActions = useMemo(() => {
-    const actions = removableBadges.slice(0, 3).map((badge) => ({
-      label: `Remove ${badge.label}`,
-      onClick: () => {
-        handleToggleFilter(badge.key, badge.value);
-      },
-    }));
-
-    if (selectedState && selectedStateName) {
-      actions.push({
-        label: `Browse ${selectedStateName}`,
-        onClick: () => {
-          updateSearch({
-            cities: undefined,
-            entry_types: undefined,
-            issue_areas: undefined,
-            offset: 0,
-            query: undefined,
-            regions: undefined,
-            source_patterns: undefined,
-            source_types: undefined,
-            states: selectedState,
-            view: "list",
-          });
-        },
-      });
-    }
-
-    actions.push({
-      label: "Clear all filters",
-      onClick: resetBrowse,
-    });
-
-    return actions;
-  }, [
+    hasActiveSearch,
+    isLoading: entriesQuery.isLoading,
     handleToggleFilter,
-    removableBadges,
+    issueAreaLabels,
+    pageContent,
     resetBrowse,
+    results,
+    searchForActivity,
+    selectedFilters,
     selectedState,
     selectedStateName,
     updateSearch,
-  ]);
-
-  useEffect(() => {
-    if (!entriesQuery.isLoading && hasActiveSearch && results?.pagination.total === 0) {
-      trackDiscoveryEvent("catalog_zero_results", {
-        query: selectedFilters.query,
-        result_count: 0,
-      });
-    }
-  }, [entriesQuery.isLoading, hasActiveSearch, results?.pagination.total, selectedFilters.query]);
-
-  useEffect(() => {
-    if (!entriesQuery.isLoading && results?.pagination.total !== undefined) {
-      trackDiscoveryEvent("catalog_results_rendered", {
-        result_count: results.pagination.total,
-      });
-    }
-  }, [entriesQuery.isLoading, results?.pagination.total]);
-
-  const placeBrief = useMemo<BrowsePlaceBrief | undefined>(() => {
-    const selectedIssueArea = selectedFilters.issue_areas[0];
-    if (!selectedStateName || !selectedIssueArea || !results?.pagination) {
-      return undefined;
-    }
-
-    const issueLabel = issueAreaLabels[selectedIssueArea] ?? humanize(selectedIssueArea);
-    const ecosystemLabel = issueLabel.split(/\s+/)[0]?.toLowerCase() ?? "local";
-    const strongestSourcePattern = [...(results.facets.source_patterns ?? [])].sort(
-      (left, right) => right.count - left.count,
-    )[0];
-
-    return {
-      body: `${results.pagination.total} people or groups with sources.`,
-      signal: strongestSourcePattern
-        ? `Strongest signal: ${sourcePatternBriefLabel(strongestSourcePattern.value)}`
-        : undefined,
-      title: `${selectedStateName} ${ecosystemLabel} ecosystem`,
-    };
-  }, [
-    issueAreaLabels,
-    results?.facets.source_patterns,
-    results?.pagination,
-    selectedFilters.issue_areas,
-    selectedStateName,
-  ]);
-  const selectedIssueLabel = selectedFilters.issue_areas[0]
-    ? (issueAreaLabels[selectedFilters.issue_areas[0]] ?? humanize(selectedFilters.issue_areas[0]))
-    : undefined;
-  const issueBrief = useMemo<BrowseIssueBrief | undefined>(() => {
-    const selectedIssueArea = selectedFilters.issue_areas[0];
-    if (!selectedIssueArea || !results?.pagination) {
-      return undefined;
-    }
-
-    const issueLabel = issueAreaLabels[selectedIssueArea] ?? humanize(selectedIssueArea);
-    const strongestSourcePattern = [...(results.facets.source_patterns ?? [])].sort(
-      (left, right) => right.count - left.count,
-    )[0];
-    const multiSourceCount =
-      results.facets.source_patterns?.find((facet) => facet.value === "multi_source")?.count ?? 0;
-    const gap =
-      results.pagination.total > 0 && multiSourceCount < results.pagination.total / 2
-        ? "Gap: build more multi-source confirmation."
-        : undefined;
-
-    return {
-      body: `${results.pagination.total} people or groups with sources.`,
-      gap,
-      signal: strongestSourcePattern
-        ? `Source signal: ${sourcePatternBriefLabel(strongestSourcePattern.value)}`
-        : undefined,
-      title: `${issueLabel} landscape`,
-    };
-  }, [
-    issueAreaLabels,
-    results?.facets.source_patterns,
-    results?.pagination,
-    selectedFilters.issue_areas,
-  ]);
-  const matchCountLabel = total === 1 ? "1 match" : `${total} matches`;
-
+  });
   return (
     <div className="mx-auto w-full max-w-[88rem] space-y-3 px-3 py-2 md:px-4 lg:space-y-4 lg:py-3">
       <BrowseHero
@@ -632,10 +300,10 @@ export function BrowsePage({ initialEntries, search, page }: BrowsePageProps) {
       />
 
       <BrowseSearchHeader
-        activeCounts={activeCounts}
+        activeCounts={pageDetails.activeCounts}
         initialQuery={search.query ?? ""}
-        intentChips={intentChips}
-        mapSearch={mapSearch}
+        intentChips={pageDetails.intentChips}
+        mapSearch={pageDetails.mapSearch}
         quickIssueAreas={quickIssueAreas}
         searchPlaceholder={pageContent.searchPlaceholder}
         selectedEntryTypes={selectedFilters.entry_types}
@@ -649,7 +317,7 @@ export function BrowsePage({ initialEntries, search, page }: BrowsePageProps) {
 
       {!hasActiveSearch ? (
         <BrowseExplorationGuides
-          collectionFunnels={collectionFunnels}
+          collectionFunnels={pageDetails.collectionFunnels}
           entryTypes={pageContent.showEntryTypeFilter ? FEATURED_ENTRY_TYPES : []}
           issues={explorationIssueAreas}
           states={dominantStates}
@@ -666,12 +334,12 @@ export function BrowsePage({ initialEntries, search, page }: BrowsePageProps) {
           error={entriesQuery.error}
           hasActiveSearch={hasActiveSearch}
           isLoading={entriesQuery.isLoading}
-          discoveryContext={discoveryContext}
-          emptyRecoveryActions={emptyRecoveryActions}
+          discoveryContext={pageDetails.discoveryContext}
+          emptyRecoveryActions={pageDetails.emptyRecoveryActions}
           issueAreaLabels={issueAreaLabels}
-          issueBrief={issueBrief}
+          issueBrief={pageDetails.issueBrief}
           pagination={results?.pagination}
-          placeBrief={placeBrief}
+          placeBrief={pageDetails.placeBrief}
           resultLabelPlural={pageContent.resultLabelPlural}
           resultsHeading={pageContent.resultsHeading}
           onPageChange={(offset) => {
@@ -682,8 +350,8 @@ export function BrowsePage({ initialEntries, search, page }: BrowsePageProps) {
         <div className="min-w-0 space-y-3">
           <div className="bg-surface-container min-w-0 overflow-hidden rounded-[1.45rem]">
             <div className="flex items-center justify-between px-3 py-2 lg:px-4">
-              <p className="type-title-medium text-ink-strong">{currentContext}</p>
-              <span className="type-body-small text-ink-muted">{matchCountLabel}</span>
+              <p className="type-title-medium text-ink-strong">{pageDetails.currentContext}</p>
+              <span className="type-body-small text-ink-muted">{pageDetails.matchCountLabel}</span>
             </div>
 
             {selectedFilters.view === "map" ? (
@@ -709,7 +377,7 @@ export function BrowsePage({ initialEntries, search, page }: BrowsePageProps) {
 
           <BrowseEcosystemHistorySection
             entries={rankedEntries}
-            issueLabel={selectedIssueLabel}
+            issueLabel={pageDetails.selectedIssueLabel}
             placeLabel={selectedStateName}
             total={total}
           />
