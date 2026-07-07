@@ -76,6 +76,17 @@ print_header "Pre-commit Quality Checks"
 FAILED=0
 
 # ============================================
+# File Placement Checks
+# ============================================
+print_info "Checking staged file placement..."
+if ! python3 "$ROOT_DIR/scripts/check/file_placement.py" --staged; then
+    print_error "File placement check failed"
+    FAILED=1
+else
+    print_success "File placement check passed"
+fi
+
+# ============================================
 # Branch Name Check
 # ============================================
 print_info "Checking branch name..."

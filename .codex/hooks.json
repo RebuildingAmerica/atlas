@@ -1,0 +1,40 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$(git rev-parse --show-toplevel)/scripts/check/agent_policy_hook.py\"",
+            "statusMessage": "Checking Atlas agent policy"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$(git rev-parse --show-toplevel)/scripts/check/agent_policy_hook.py\"",
+            "statusMessage": "Checking Atlas file placement"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$(git rev-parse --show-toplevel)/scripts/check/agent_policy_hook.py\"",
+            "statusMessage": "Checking Atlas file placement"
+          }
+        ]
+      }
+    ]
+  }
+}

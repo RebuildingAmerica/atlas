@@ -32,15 +32,36 @@
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Bash",
+        "matcher": "Bash|Write|Edit|MultiEdit",
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/block_git_no_verify.py\""
-          },
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/scripts/check/agent_policy_hook.py\"",
+            "statusMessage": "Checking Atlas agent policy"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash|Write|Edit|MultiEdit",
+        "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/block_git_stash_drop.py\""
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/scripts/check/agent_policy_hook.py\"",
+            "statusMessage": "Checking Atlas file placement"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/scripts/check/agent_policy_hook.py\"",
+            "statusMessage": "Checking Atlas file placement"
           }
         ]
       }
