@@ -91,6 +91,16 @@ class FakeUrlContext:
         return SimpleNamespace(action=self._action)
 
 
+class FakeBrokenRequestContext:
+    @property
+    def request_context(self) -> object:
+        raise ValueError
+
+
+class FakeMissingRequestContext:
+    request_context = SimpleNamespace(request=None, meta={"ok": True})
+
+
 def _url_elicitation_meta() -> dict[str, object]:
     return {CLIENT_CAPABILITIES_META_KEY: {"elicitation": {"url": {}}}}
 
@@ -244,6 +254,77 @@ async def test_handoff_flag_blocks_save(
         "message": "MCP Workbench handoffs are disabled.",
     }
     handoff_mock.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("tool_name", "arguments"),
+    [
+        (
+            "create_coverage_target",
+            {
+                "name": "Kansas City tenant power",
+                "geography": "Kansas City, MO",
+                "issue_areas": ["housing_affordability"],
+                "actor_types": ["organization"],
+                "source_types": ["community_archive"],
+            },
+        ),
+        (
+            "create_research_brief",
+            {
+                "title": "Kansas City housing brief",
+                "scope": {"geography": "Kansas City, MO"},
+                "summary": "One source-backed lead is ready for review.",
+            },
+        ),
+        ("export_research_brief", {"brief_id": "brief_1"}),
+        ("export_coverage_report", {}),
+        (
+            "sync_scout_artifacts",
+            {
+                "artifacts": {
+                    "manifest": {
+                        "runner": "atlas-scout",
+                        "run": {
+                            "location_query": "Wichita, KS",
+                            "state": "KS",
+                            "issue_areas": ["worker_cooperatives"],
+                        },
+                        "status": "completed",
+                        "sync": {"local_run_id": "local_1", "sync_status": "ready"},
+                    },
+                    "stats": {},
+                    "sources": [],
+                    "ranked_entries": [],
+                },
+            },
+        ),
+        (
+            "watch_workspace_resource",
+            {
+                "resource_type": "entry",
+                "resource_id": "entry_1",
+                "notification_preference": "immediate",
+            },
+        ),
+    ],
+)
+async def test_handoff_flag_blocks_every_workbench_write_tool(
+    patched_settings: Settings,
+    tool_name: str,
+    arguments: dict[str, object],
+) -> None:
+    """The Workbench rollback flag should disable every write handoff uniformly."""
+    patched_settings.mcp_workbench_handoffs_enabled = False
+    mcp = build_mcp()
+
+    _content, payload = await mcp.call_tool(tool_name, arguments)
+
+    assert payload == {
+        "status": "disabled",
+        "message": "MCP Workbench handoffs are disabled.",
+    }
 
 
 @pytest.mark.asyncio
@@ -521,6 +602,61 @@ async def test_billing_needs_url_capability(
         "message": "Open Atlas account settings to manage billing.",
         "path": "/account",
     }
+
+
+def test_context_helpers_tolerate_missing_request_state() -> None:
+    assert server_module._actor_claims_from_context(None) == (None, None)  # noqa: SLF001
+    assert server_module._actor_claims_from_context(FakeBrokenRequestContext()) == (  # noqa: SLF001
+        None,
+        None,
+    )
+    assert server_module._actor_claims_from_context(FakeMissingRequestContext()) == (  # noqa: SLF001
+        None,
+        None,
+    )
+    assert server_module._request_context_and_meta(FakeBrokenRequestContext()) == (  # noqa: SLF001
+        None,
+        None,
+    )
+
+
+@pytest.mark.asyncio
+async def test_api_key_settings_unavailable_without_public_origin(
+    patched_settings: Settings,
+) -> None:
+    patched_settings.auth_jwt_issuer = ""
+
+    result = await server_module._require_api_key_settings_url(  # noqa: SLF001
+        ctx=FakeUrlContext(action="accept", meta=_url_elicitation_meta()),
+        settings=patched_settings,
+    )
+
+    assert result == {
+        "status": "unavailable",
+        "message": "Atlas account settings are unavailable right now.",
+    }
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("tool_name", "helper_name"),
+    [
+        ("open_billing_settings", "_open_billing_settings_url"),
+        ("open_api_key_settings", "_open_api_key_settings_url"),
+        ("require_api_key_settings", "_require_api_key_settings_url"),
+    ],
+)
+async def test_account_settings_tools_delegate_to_url_helpers(
+    tool_name: str,
+    helper_name: str,
+) -> None:
+    helper = AsyncMock(return_value={"status": "delegated"})
+
+    with patch.object(server_module, helper_name, helper):
+        _content, payload = await build_mcp().call_tool(tool_name, {})
+
+    assert payload == {"status": "delegated"}
+    helper.assert_awaited_once()
 
 
 @pytest.mark.asyncio

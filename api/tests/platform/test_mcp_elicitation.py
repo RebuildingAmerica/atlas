@@ -12,6 +12,7 @@ import pytest
 from mcp import types
 from mcp.shared.exceptions import McpError
 
+from atlas.platform.mcp import elicitation as elicitation_module
 from atlas.platform.mcp.elicitation import (
     CLIENT_CAPABILITIES_META_KEY,
     URL_ELICITATION_REQUIRED,
@@ -32,6 +33,7 @@ from atlas.platform.mcp.elicitation import (
     declares_form_elicitation,
     declares_url_elicitation,
     get_url_elicitation_state,
+    has_completed_url_elicitation,
     log_elicitation_event,
     should_elicit_place_clarification,
     should_elicit_search_entities_clarification,
@@ -159,6 +161,71 @@ class TestUrlElicitationState:
 
         assert get_url_elicitation_state(state.elicitation_id) is None
 
+    def test_completed_url_state_matching_ignores_unusable_states(self) -> None:
+        elicitation_module._URL_ELICITATION_STATES.clear()  # noqa: SLF001
+        expired = create_url_elicitation_state(
+            user_id="user_1",
+            org_id="org_1",
+            target_flow="api_key_settings",
+            target_url="/account",
+            now=datetime(2000, 1, 1, tzinfo=UTC),
+        )
+        expired = expired.__class__(
+            elicitation_id=expired.elicitation_id,
+            user_id=expired.user_id,
+            org_id=expired.org_id,
+            target_flow=expired.target_flow,
+            target_url=expired.target_url,
+            created_at=expired.created_at,
+            expires_at=expired.expires_at,
+            session=expired.session,
+            completed_at=datetime(2000, 1, 1, tzinfo=UTC),
+        )
+        elicitation_module._URL_ELICITATION_STATES[expired.elicitation_id] = expired  # noqa: SLF001
+        completed = create_url_elicitation_state(
+            user_id="user_1",
+            org_id="org_1",
+            target_flow="billing_settings",
+            target_url="/account",
+        )
+        completed = completed.__class__(
+            elicitation_id=completed.elicitation_id,
+            user_id=completed.user_id,
+            org_id=completed.org_id,
+            target_flow=completed.target_flow,
+            target_url=completed.target_url,
+            created_at=completed.created_at,
+            expires_at=completed.expires_at,
+            session=completed.session,
+            completed_at=datetime.now(UTC),
+        )
+        elicitation_module._URL_ELICITATION_STATES[completed.elicitation_id] = completed  # noqa: SLF001
+
+        assert (
+            has_completed_url_elicitation(
+                target_flow=expired.target_flow,
+                user_id=expired.user_id,
+                org_id=expired.org_id,
+            )
+            is False
+        )
+        assert (
+            has_completed_url_elicitation(
+                target_flow=completed.target_flow,
+                user_id=completed.user_id,
+                org_id="other_org",
+            )
+            is False
+        )
+        assert (
+            has_completed_url_elicitation(
+                target_flow=completed.target_flow,
+                user_id=completed.user_id,
+                org_id=completed.org_id,
+            )
+            is True
+        )
+
     @pytest.mark.asyncio
     async def test_expired_completion_logs_event(self) -> None:
         state = create_url_elicitation_state(
@@ -184,6 +251,20 @@ class TestUrlElicitationState:
             log_mock.await_args.kwargs,
             {state.elicitation_id, "user_1", "org_1", "mcpElicitationId"},
         )
+
+    @pytest.mark.asyncio
+    async def test_unknown_completion_logs_generic_event(self) -> None:
+        with patch("atlas.platform.mcp.elicitation.log_operation", new=AsyncMock()) as log_mock:
+            completed = await complete_url_elicitation_state(
+                "missing_elicitation",
+                user_id="user_1",
+                org_id="org_1",
+            )
+
+        assert completed is None
+        log_mock.assert_awaited_once()
+        assert log_mock.await_args.kwargs["interaction"] == "url_completion_notification"
+        assert log_mock.await_args.kwargs["action"] == "unknown"
 
     @pytest.mark.asyncio
     async def test_matching_actor_completes_url_state(self) -> None:
@@ -253,6 +334,52 @@ class TestUrlElicitationState:
             log_mock.await_args.kwargs,
             {state.elicitation_id, "user_1", "user_2", "org_1", "mcpElicitationId"},
         )
+
+    @pytest.mark.asyncio
+    async def test_mismatched_org_logs_event(self) -> None:
+        state = create_url_elicitation_state(
+            user_id="user_1",
+            org_id="org_1",
+            target_flow="billing_settings",
+            target_url="/account",
+        )
+
+        with patch("atlas.platform.mcp.elicitation.log_operation", new=AsyncMock()) as log_mock:
+            completed = await complete_url_elicitation_state(
+                state.elicitation_id,
+                user_id="user_1",
+                org_id="org_2",
+            )
+
+        assert completed is None
+        log_mock.assert_awaited_once()
+        assert log_mock.await_args.kwargs["interaction"] == "billing_settings"
+        assert log_mock.await_args.kwargs["action"] == "identity_mismatch"
+
+    @pytest.mark.asyncio
+    async def test_completion_notification_failure_is_logged(self) -> None:
+        session = SimpleNamespace(send_elicit_complete=AsyncMock(side_effect=RuntimeError))
+        state = create_url_elicitation_state(
+            user_id="user_1",
+            org_id="org_1",
+            target_flow="billing_settings",
+            target_url="/account",
+            session=session,
+        )
+
+        with patch("atlas.platform.mcp.elicitation.log_operation", new=AsyncMock()) as log_mock:
+            completed = await complete_url_elicitation_state(
+                state.elicitation_id,
+                user_id="user_1",
+                org_id="org_1",
+            )
+
+        assert completed is not None
+        session.send_elicit_complete.assert_awaited_once_with(elicitation_id=state.elicitation_id)
+        assert [call.kwargs["action"] for call in log_mock.await_args_list] == [
+            "unavailable",
+            "completed",
+        ]
 
     @pytest.mark.asyncio
     async def test_completed_state_cannot_be_reused(self) -> None:
@@ -346,6 +473,10 @@ class TestSearchEntitiesClarification:
     @pytest.mark.asyncio
     async def test_unsupported_client_keeps_place(self) -> None:
         assert await clarify_place_argument(None, place="Portland") == "Portland"
+
+    @pytest.mark.asyncio
+    async def test_unambiguous_place_skips_elicitation(self) -> None:
+        assert await clarify_place_argument(None, place="Detroit, MI") == "Detroit, MI"
 
     @pytest.mark.asyncio
     async def test_declined_place_keeps_original(self) -> None:
@@ -584,6 +715,24 @@ class TestSearchEntitiesClarification:
         assert arguments["entity_types"] == ["person", "organization"]
         assert arguments["limit"] == DEEP_RESULT_LIMIT
 
+    def test_search_clarification_ignores_empty_or_unknown_choices(self) -> None:
+        assert elicitation_module._has_value(1) is True  # noqa: SLF001
+        clarified = elicitation_module._apply_search_entities_clarification(  # noqa: SLF001
+            {"issue_areas": ["worker_power"], "entity_types": ["person"], "limit": 20},
+            SearchEntitiesClarification.model_construct(
+                issue_areas=["unknown_issue"],
+                actor_types=[""],
+                result_depth=None,
+                evidence_threshold=None,
+            ),
+        )
+
+        assert clarified == {
+            "issue_areas": ["worker_power"],
+            "entity_types": ["person"],
+            "limit": 20,
+        }
+
     @pytest.mark.asyncio
     async def test_accepted_search_prioritizes_sources(self) -> None:
         ctx = FakeElicitationContext(
@@ -669,6 +818,45 @@ class TestSearchEntitiesClarification:
 
 
 class TestResolveIssueAreasClarification:
+    def test_issue_area_matching_helpers_ignore_unusable_items(self) -> None:
+        assert elicitation_module._issue_match_slug("not a match") is None  # noqa: SLF001
+        assert elicitation_module._issue_match_score("not a match") == 0.0  # noqa: SLF001
+        assert (
+            elicitation_module._should_elicit_issue_area_selection(  # noqa: SLF001
+                {"items": [{"slug": "housing_affordability", "match_score": 5}]}
+            )
+            is False
+        )
+        assert (
+            elicitation_module._should_elicit_issue_area_selection(  # noqa: SLF001
+                {"items": [{"slug": "not_real", "match_score": 5}, {"name": "No slug"}]}
+            )
+            is False
+        )
+
+    def test_issue_area_filter_keeps_payload_when_selection_is_unusable(self) -> None:
+        payload = {
+            "items": [{"slug": "housing_affordability", "match_score": 5}],
+            "total": 1,
+            "next_cursor": "cursor_2",
+        }
+
+        assert (
+            elicitation_module._filter_issue_area_payload(payload, []) is payload  # noqa: SLF001
+        )
+        assert (
+            elicitation_module._filter_issue_area_payload(  # noqa: SLF001
+                {"items": "not a list"}, ["housing_affordability"]
+            )["items"]
+            == "not a list"
+        )
+        assert (
+            elicitation_module._filter_issue_area_payload(  # noqa: SLF001
+                payload, ["transportation_and_mobility"]
+            )
+            is payload
+        )
+
     @pytest.mark.asyncio
     async def test_accepted_issue_matches_filter_slugs(self) -> None:
         payload = {
@@ -733,6 +921,33 @@ class TestResolveIssueAreasClarification:
         clarified = await clarify_resolve_issue_areas_result(ctx, payload)
 
         assert clarified == payload
+
+    @pytest.mark.asyncio
+    async def test_unsupported_issue_match_client_keeps_payload(self) -> None:
+        payload = {
+            "items": [
+                {"slug": "housing_affordability", "name": "Housing", "match_score": 5},
+                {
+                    "slug": "homelessness_and_housing_insecurity",
+                    "name": "Homelessness",
+                    "match_score": 4,
+                },
+            ],
+            "total": 2,
+            "next_cursor": None,
+        }
+
+        assert await clarify_resolve_issue_areas_result(None, payload) == payload
+
+    @pytest.mark.asyncio
+    async def test_unambiguous_issue_match_payload_skips_elicitation(self) -> None:
+        payload = {
+            "items": [{"slug": "housing_affordability", "name": "Housing", "match_score": 5}],
+            "total": 1,
+            "next_cursor": None,
+        }
+
+        assert await clarify_resolve_issue_areas_result(None, payload) == payload
 
 
 class TestElicitationLogging:

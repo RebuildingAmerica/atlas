@@ -4,7 +4,12 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import TYPE_CHECKING
 
+if TYPE_CHECKING:
+    import pytest
+
+from atlas.domains.firehose import asyncapi as asyncapi_module
 from atlas.domains.firehose.asyncapi import (
     build_firehose_asyncapi,
     export_firehose_asyncapi,
@@ -69,3 +74,17 @@ def test_export_firehose_asyncapi_writes_contract(tmp_path: Path) -> None:
     artifact = json.loads(output_path.read_text(encoding="utf-8"))
     assert artifact == build_firehose_asyncapi()
     assert output_path.read_text(encoding="utf-8").endswith("\n")
+
+
+def test_firehose_asyncapi_main_reports_exported_path(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    tmp_path: Path,
+) -> None:
+    """The CLI entrypoint should tell operators where it wrote the contract."""
+    output_path = tmp_path / "firehose.asyncapi.json"
+    monkeypatch.setattr(asyncapi_module, "export_firehose_asyncapi", lambda: output_path)
+
+    asyncapi_module.main()
+
+    assert capsys.readouterr().out == f"Wrote {output_path}\n"

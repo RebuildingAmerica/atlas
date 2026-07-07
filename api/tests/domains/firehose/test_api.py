@@ -5,10 +5,14 @@ from __future__ import annotations
 from http import HTTPStatus
 
 import pytest
+from fastapi import HTTPException, WebSocketException
 from fastapi.testclient import TestClient
+from starlette.datastructures import Headers
 
 from atlas.domains.access import ApiKeyPrincipal
 from atlas.domains.access.models.usage_events import OrgUsageEventCRUD
+from atlas.domains.firehose import api as firehose_api
+from atlas.domains.firehose import http as firehose_http
 from atlas.main import create_app
 from atlas.platform.config import Settings, get_settings
 
@@ -20,8 +24,16 @@ FIREHOSE_RATE_LIMIT_REMAINING = "600"
 FIREHOSE_RATE_LIMIT_RESET = "60"
 FIREHOSE_SSE_RETRY_MS = 3000
 FIREHOSE_WEBSOCKET_PROTOCOL = "atlas.firehose.v1"
+FIREHOSE_WEBSOCKET_POLICY_VIOLATION = 1008
 SUPPORTED_FIREHOSE_REPRESENTATIONS = "application/json, text/event-stream"
 VALID_TRACEPARENT = "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"
+
+
+class _FakeWebSocket:
+    """Minimal WebSocket stand-in for auth helper coverage."""
+
+    def __init__(self, headers: dict[str, str]) -> None:
+        self.headers = Headers(headers)
 
 
 @pytest.mark.asyncio
@@ -96,6 +108,38 @@ async def test_firehose_snapshot_consumes_standard_http_headers(test_client: obj
     assert response.headers["x-atlas-workspace-id"] == "local"
     assert response.headers["x-atlas-usage-meter"] == "firehose_snapshot"
     assert response.headers["x-atlas-query-fingerprint"] == body["usage"]["query_fingerprint"]
+
+
+@pytest.mark.asyncio
+async def test_firehose_snapshot_content_location_preserves_full_query(
+    test_client: object,
+) -> None:
+    """Canonical snapshot links should preserve every supported Firehose filter."""
+    response = await test_client.get(
+        "/api/firehose",
+        params={
+            "actor_type": "person",
+            "cursor": "cursor_2",
+            "issue": "housing",
+            "limit": "10",
+            "place": "detroit-mi",
+            "signal_type": "public_meeting",
+            "since": "2026-01-01T00:00:00Z",
+            "sort": "occurred_at_desc",
+            "source_class": "government",
+            "until": "2026-02-01T00:00:00Z",
+            "visibility": "public",
+        },
+        headers={"Accept": "application/json"},
+    )
+
+    assert response.status_code == HTTPStatus.OK
+    assert response.headers["content-location"] == (
+        "/api/firehose?place=detroit-mi&issue=housing&actor_type=person"
+        "&signal_type=public_meeting&source_class=government&visibility=public"
+        "&since=2026-01-01T00%3A00%3A00Z&until=2026-02-01T00%3A00%3A00Z"
+        "&cursor=cursor_2&limit=10&sort=occurred_at_desc"
+    )
 
 
 @pytest.mark.asyncio
@@ -192,6 +236,117 @@ async def test_firehose_rejects_malformed_trace_headers(test_client: object) -> 
 
     assert response.status_code == HTTPStatus.BAD_REQUEST
     assert response.json()["detail"] == "Invalid traceparent header."
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("header_name", "header_value", "detail"),
+    [
+        ("X-Request-ID", "", "Invalid X-Request-ID header."),
+        ("X-Request-ID", "req_\x00bad", "Invalid X-Request-ID header."),
+        ("Tracestate", "", "Invalid tracestate header."),
+        ("Tracestate", "atlas=\x00bad", "Invalid tracestate header."),
+    ],
+)
+async def test_firehose_rejects_malformed_correlation_headers(
+    test_client: object,
+    header_name: str,
+    header_value: str,
+    detail: str,
+) -> None:
+    """Correlation headers should fail closed instead of entering logs or links."""
+    response = await test_client.get(
+        "/api/firehose",
+        headers={header_name: header_value},
+    )
+
+    assert response.status_code == HTTPStatus.BAD_REQUEST
+    assert response.json()["detail"] == detail
+
+
+def test_firehose_http_context_accepts_default_headers() -> None:
+    """Firehose clients may omit optional HTTP negotiation headers."""
+    context = firehose_http._build_http_context(  # noqa: SLF001
+        accept="",
+        x_request_id=None,
+        traceparent=None,
+        tracestate=None,
+        prefer=None,
+    )
+
+    assert context.representation == "json"
+    assert context.request_id.startswith("req_")
+    assert context.preferences.applied_header(include_return=True) is None
+
+
+def test_firehose_http_context_prefers_event_stream_with_quality_params() -> None:
+    """Accept negotiation should honor media ranges and q parameters."""
+    context = firehose_http._build_http_context(  # noqa: SLF001
+        accept=", , text/*; q=0.9; version=1, application/json; q=0.1; preview",
+        x_request_id="req_quality",
+        traceparent=None,
+        tracestate=None,
+        prefer=", return=representation",
+    )
+
+    assert context.representation == "sse"
+    assert context.preferences.applied_header(include_return=True) == "return=representation"
+
+
+def test_firehose_http_context_ignores_unknown_preferences() -> None:
+    """Unknown Prefer tokens should not erase supported Firehose preferences."""
+    context = firehose_http._build_http_context(  # noqa: SLF001
+        accept="application/json",
+        x_request_id="req_unknown_prefer",
+        traceparent=None,
+        tracestate=None,
+        prefer="respond-async, wait=1",
+    )
+
+    assert context.preferences.applied_header(include_return=True) == "wait=1"
+
+
+def test_firehose_http_context_rejects_bad_return_preference() -> None:
+    """Malformed return preferences should not be silently ignored."""
+    with pytest.raises(HTTPException) as exc_info:
+        firehose_http._build_http_context(  # noqa: SLF001
+            accept="application/json",
+            x_request_id="req_bad_prefer",
+            traceparent=None,
+            tracestate=None,
+            prefer="return=full",
+        )
+
+    assert exc_info.value.status_code == HTTPStatus.BAD_REQUEST
+    assert exc_info.value.detail == "Invalid Prefer header."
+
+
+@pytest.mark.parametrize("accept", ["application/json; q=soon", "application/json; q=2"])
+def test_firehose_http_context_rejects_bad_accept_quality(accept: str) -> None:
+    """Malformed Accept quality values should fail closed."""
+    with pytest.raises(HTTPException) as exc_info:
+        firehose_http._build_http_context(  # noqa: SLF001
+            accept=accept,
+            x_request_id="req_bad_q",
+            traceparent=None,
+            tracestate=None,
+            prefer=None,
+        )
+
+    assert exc_info.value.status_code == HTTPStatus.NOT_ACCEPTABLE
+
+
+def test_firehose_json_http_context_accepts_missing_content_type() -> None:
+    """JSON session clients may omit Content-Type when no body media type is present."""
+    context = firehose_http._build_http_context(  # noqa: SLF001
+        accept="application/json",
+        x_request_id="req_json",
+        traceparent=None,
+        tracestate=None,
+        prefer=None,
+    )
+
+    assert firehose_http.firehose_json_http_context(context, content_type=None) is context
 
 
 @pytest.mark.asyncio
@@ -374,6 +529,23 @@ async def test_firehose_session_snapshot_and_events_are_empty_but_typed(
     assert '"last_event_id":"fhe_prior"' in events.text
 
 
+@pytest.mark.asyncio
+async def test_firehose_session_snapshot_supports_conditional_polling(
+    test_client: object,
+) -> None:
+    """Durable session snapshots should use the same cheap revalidation path."""
+    first = await test_client.get("/api/firehose/sessions/fhs_test")
+
+    response = await test_client.get(
+        "/api/firehose/sessions/fhs_test",
+        headers={"If-None-Match": first.headers["etag"]},
+    )
+
+    assert response.status_code == HTTPStatus.NOT_MODIFIED
+    assert response.content == b""
+    assert response.headers["cache-control"] == "no-store"
+
+
 def test_firehose_session_socket_emits_ready_event(test_settings: Settings) -> None:
     """The WebSocket stub should expose the future bidirectional session surface."""
     test_settings.deploy_mode = "local"
@@ -402,6 +574,227 @@ def test_firehose_session_socket_emits_ready_event(test_settings: Settings) -> N
     assert len(ready["usage"]["query_fingerprint"]) == FINGERPRINT_LENGTH
     assert ready["query"]["limit"] == DEFAULT_FIREHOSE_LIMIT
     assert ready["last_event_id"] is None
+
+
+def test_firehose_session_socket_rejects_unknown_subprotocol() -> None:
+    """Firehose sockets should reject clients that request the wrong protocol."""
+    websocket = _FakeWebSocket({"Sec-WebSocket-Protocol": "not-atlas-firehose"})
+
+    with pytest.raises(WebSocketException) as exc_info:
+        firehose_api._websocket_subprotocol(websocket)  # noqa: SLF001
+
+    assert exc_info.value.code == FIREHOSE_WEBSOCKET_POLICY_VIOLATION
+
+
+def test_firehose_session_socket_allows_missing_subprotocol() -> None:
+    """Clients may connect without an explicit subprotocol."""
+    websocket = _FakeWebSocket({})
+
+    assert firehose_api._websocket_subprotocol(websocket) is None  # noqa: SLF001
+
+
+@pytest.mark.asyncio
+async def test_firehose_session_socket_accepts_internal_actor(test_settings: Settings) -> None:
+    """Internal trusted callers should be able to consume workspace Firehose sockets."""
+    test_settings.deploy_mode = ""
+    test_settings.auth_internal_secret = "internal-test-secret"
+    websocket = _FakeWebSocket(
+        {
+            "X-Atlas-Internal-Secret": "internal-test-secret",
+            "X-Atlas-Actor-ID": "user_123",
+            "X-Atlas-Actor-Email": "operator@example.com",
+            "X-Atlas-Organization-ID": "org_123",
+        }
+    )
+
+    actor = await firehose_api._websocket_actor(websocket, test_settings)  # noqa: SLF001
+
+    assert actor.org_id == "org_123"
+    assert actor.user_id == "user_123"
+    assert actor.auth_type == "internal"
+    assert actor.api_key_id is None
+
+
+@pytest.mark.asyncio
+async def test_firehose_session_socket_rejects_internal_actor_without_org(
+    test_settings: Settings,
+) -> None:
+    """Trusted Firehose socket callers must still be scoped to an organization."""
+    test_settings.deploy_mode = ""
+    test_settings.auth_internal_secret = "internal-test-secret"
+    websocket = _FakeWebSocket(
+        {
+            "X-Atlas-Internal-Secret": "internal-test-secret",
+            "X-Atlas-Actor-ID": "user_123",
+            "X-Atlas-Actor-Email": "operator@example.com",
+        }
+    )
+
+    with pytest.raises(WebSocketException) as exc_info:
+        await firehose_api._websocket_actor(websocket, test_settings)  # noqa: SLF001
+
+    assert exc_info.value.code == FIREHOSE_WEBSOCKET_POLICY_VIOLATION
+
+
+@pytest.mark.asyncio
+async def test_firehose_session_socket_accepts_api_key_actor(
+    monkeypatch: pytest.MonkeyPatch,
+    test_settings: Settings,
+) -> None:
+    """API-key callers with Firehose read scope should be able to stream."""
+    test_settings.deploy_mode = ""
+    test_settings.auth_api_key_introspection_url = "http://auth.test/internal/api-keys/introspect"
+
+    async def fake_verify_api_key(api_key: str, settings: Settings) -> ApiKeyPrincipal | None:
+        assert api_key == "atlas_test_key"
+        assert settings.auth_api_key_introspection_url is not None
+        return ApiKeyPrincipal(
+            key_id="key_123",
+            name="Test Key",
+            permissions={"firehose": ["read"]},
+            user_id="user_123",
+            user_email="operator@example.com",
+            org_id="org_123",
+        )
+
+    monkeypatch.setattr("atlas.domains.firehose.api.verify_api_key", fake_verify_api_key)
+    websocket = _FakeWebSocket({"X-API-Key": "atlas_test_key"})
+
+    actor = await firehose_api._websocket_actor(websocket, test_settings)  # noqa: SLF001
+
+    assert actor.org_id == "org_123"
+    assert actor.user_id == "user_123"
+    assert actor.auth_type == "api_key"
+    assert actor.api_key_id == "key_123"
+
+
+@pytest.mark.asyncio
+async def test_firehose_session_socket_rejects_unknown_api_key(
+    monkeypatch: pytest.MonkeyPatch,
+    test_settings: Settings,
+) -> None:
+    """Unknown API keys should not fall through to a workspace stream."""
+    test_settings.deploy_mode = ""
+    test_settings.auth_api_key_introspection_url = "http://auth.test/internal/api-keys/introspect"
+
+    async def fake_verify_api_key(api_key: str, settings: Settings) -> None:
+        assert api_key == "atlas_test_key"
+        assert settings.auth_api_key_introspection_url is not None
+
+    monkeypatch.setattr("atlas.domains.firehose.api.verify_api_key", fake_verify_api_key)
+    websocket = _FakeWebSocket({"X-API-Key": "atlas_test_key"})
+
+    with pytest.raises(WebSocketException) as exc_info:
+        await firehose_api._websocket_actor(websocket, test_settings)  # noqa: SLF001
+
+    assert exc_info.value.code == FIREHOSE_WEBSOCKET_POLICY_VIOLATION
+
+
+@pytest.mark.asyncio
+async def test_firehose_session_socket_rejects_api_key_without_org(
+    monkeypatch: pytest.MonkeyPatch,
+    test_settings: Settings,
+) -> None:
+    """API-key Firehose streams must be scoped to an organization."""
+    test_settings.deploy_mode = ""
+    test_settings.auth_api_key_introspection_url = "http://auth.test/internal/api-keys/introspect"
+
+    async def fake_verify_api_key(api_key: str, settings: Settings) -> ApiKeyPrincipal | None:
+        assert api_key == "atlas_test_key"
+        assert settings.auth_api_key_introspection_url is not None
+        return ApiKeyPrincipal(
+            key_id="key_123",
+            name="Test Key",
+            permissions={"firehose": ["read"]},
+            user_id="user_123",
+            user_email="operator@example.com",
+            org_id=None,
+        )
+
+    monkeypatch.setattr("atlas.domains.firehose.api.verify_api_key", fake_verify_api_key)
+    websocket = _FakeWebSocket({"X-API-Key": "atlas_test_key"})
+
+    with pytest.raises(WebSocketException) as exc_info:
+        await firehose_api._websocket_actor(websocket, test_settings)  # noqa: SLF001
+
+    assert exc_info.value.code == FIREHOSE_WEBSOCKET_POLICY_VIOLATION
+
+
+@pytest.mark.asyncio
+async def test_firehose_session_socket_accepts_oauth_jwt_actor(
+    monkeypatch: pytest.MonkeyPatch,
+    test_settings: Settings,
+) -> None:
+    """OAuth JWT callers with Firehose read permission should be able to stream."""
+    test_settings.deploy_mode = ""
+    test_settings.auth_jwt_audience = ["https://atlas.example/api"]
+    test_settings.auth_jwt_issuer = "https://atlas.example/auth"
+    test_settings.auth_jwt_jwks_url = "https://atlas.example/auth/jwks"
+
+    def fake_verify_bearer_jwt(
+        authorization: str | None,
+        *,
+        issuer: str,
+        audience: list[str],
+        jwks_url: str,
+    ) -> dict[str, object] | None:
+        assert authorization == "Bearer token_123"
+        assert issuer == "https://atlas.example/auth"
+        assert audience == ["https://atlas.example/api"]
+        assert jwks_url == "https://atlas.example/auth/jwks"
+        return {
+            "sub": "user_123",
+            "email": "operator@example.com",
+            "org_id": "org_123",
+            "permissions": {"firehose": ["read"]},
+        }
+
+    monkeypatch.setattr("atlas.domains.firehose.api.verify_bearer_jwt", fake_verify_bearer_jwt)
+    websocket = _FakeWebSocket({"Authorization": "Bearer token_123"})
+
+    actor = await firehose_api._websocket_actor(websocket, test_settings)  # noqa: SLF001
+
+    assert actor.org_id == "org_123"
+    assert actor.user_id == "user_123"
+    assert actor.auth_type == "oauth_jwt"
+    assert actor.api_key_id is None
+
+
+@pytest.mark.asyncio
+async def test_firehose_session_socket_rejects_oauth_jwt_without_org(
+    monkeypatch: pytest.MonkeyPatch,
+    test_settings: Settings,
+) -> None:
+    """OAuth Firehose streams must be scoped to an organization."""
+    test_settings.deploy_mode = ""
+    test_settings.auth_jwt_audience = ["https://atlas.example/api"]
+    test_settings.auth_jwt_issuer = "https://atlas.example/auth"
+    test_settings.auth_jwt_jwks_url = "https://atlas.example/auth/jwks"
+
+    def fake_verify_bearer_jwt(
+        authorization: str | None,
+        *,
+        issuer: str,
+        audience: list[str],
+        jwks_url: str,
+    ) -> dict[str, object] | None:
+        assert authorization == "Bearer token_123"
+        assert issuer == "https://atlas.example/auth"
+        assert audience == ["https://atlas.example/api"]
+        assert jwks_url == "https://atlas.example/auth/jwks"
+        return {
+            "sub": "user_123",
+            "email": "operator@example.com",
+            "permissions": {"firehose": ["read"]},
+        }
+
+    monkeypatch.setattr("atlas.domains.firehose.api.verify_bearer_jwt", fake_verify_bearer_jwt)
+    websocket = _FakeWebSocket({"Authorization": "Bearer token_123"})
+
+    with pytest.raises(WebSocketException) as exc_info:
+        await firehose_api._websocket_actor(websocket, test_settings)  # noqa: SLF001
+
+    assert exc_info.value.code == FIREHOSE_WEBSOCKET_POLICY_VIOLATION
 
 
 @pytest.mark.asyncio

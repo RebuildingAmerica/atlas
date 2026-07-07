@@ -80,6 +80,23 @@ def _prompt_candidate_meta() -> dict[str, Any]:
     return meta
 
 
+class PromptCandidateMetaModel:
+    def model_dump(self, *, by_alias: bool) -> dict[str, Any]:
+        assert by_alias is True
+        return {
+            "atlas": {
+                "promptCandidates": {
+                    "entity": [
+                        " entry_plain ",
+                        {"const": " entry_titled ", "title": " Titled entry "},
+                        {"const": " entry_without_title ", "title": ""},
+                        "",
+                    ]
+                }
+            }
+        }
+
+
 class FakePromptElicitationSession:
     def __init__(self, result: types.ElicitResult) -> None:
         self.result = result
@@ -107,6 +124,15 @@ class FakePromptMcp:
         self.session = FakePromptElicitationSession(result)
         self._mcp_server = MagicMock()
         self._mcp_server.request_context = MagicMock(session=self.session, request_id="req_1")
+
+
+class FakePromptMcpWithoutContext:
+    class Server:
+        @property
+        def request_context(self) -> object:
+            raise LookupError
+
+    _mcp_server = Server()
 
 
 @pytest.mark.asyncio
@@ -246,6 +272,46 @@ async def test_missing_args_without_context() -> None:
 
     assert exc_info.value.error.code == types.INVALID_PARAMS
     assert "Missing required arguments" in exc_info.value.error.message
+
+
+@pytest.mark.asyncio
+async def test_missing_args_logs_unavailable_without_request_context() -> None:
+    request = types.GetPromptRequest.model_validate(
+        {
+            "method": "prompts/get",
+            "params": {
+                "name": "research_place",
+                "arguments": {},
+                "_meta": _elicitation_meta(),
+            },
+        }
+    )
+
+    arguments = await prompts_module._clarify_prompt_arguments(  # noqa: SLF001
+        FakePromptMcpWithoutContext(), request
+    )
+
+    assert arguments == {}
+
+
+@pytest.mark.asyncio
+async def test_optional_prompt_without_context_keeps_arguments() -> None:
+    request = types.GetPromptRequest.model_validate(
+        {
+            "method": "prompts/get",
+            "params": {
+                "name": "find_civic_actors",
+                "arguments": {"query": "housing"},
+                "_meta": _elicitation_meta(),
+            },
+        }
+    )
+
+    arguments = await prompts_module._clarify_prompt_arguments(  # noqa: SLF001
+        FakePromptMcpWithoutContext(), request
+    )
+
+    assert arguments == {"query": "housing"}
 
 
 @pytest.mark.asyncio
@@ -460,3 +526,46 @@ def test_initialization_skips_completions() -> None:
     capabilities = options.capabilities.model_dump(by_alias=True, exclude_none=True)
     assert capabilities["prompts"] == {"listChanged": False}
     assert "completions" not in capabilities
+
+
+def test_prompt_helpers_cover_optional_and_candidate_edges() -> None:
+    assert prompts_module._optional_context("Place", None) == ""  # noqa: SLF001
+    assert prompts_module._optional_context("Place", "  ") == ""  # noqa: SLF001
+    assert prompts_module._evidence_threshold_context("multiple_independent_sources") == (  # noqa: SLF001
+        "\n- Evidence threshold: Multiple independent sources"
+    )
+    assert prompts_module._evidence_threshold_context("any_source_backed_leads") == (  # noqa: SLF001
+        "\n- Evidence threshold: Any source-backed leads"
+    )
+    assert prompts_module._evidence_threshold_context("unknown") == ""  # noqa: SLF001
+    assert prompts_module._tool_sequence("search_entities", "get_entity") == (  # noqa: SLF001
+        "`search_entities`, `get_entity`"
+    )
+    assert prompts_module._params_meta({"_meta": {"ok": True}}) == {"ok": True}  # noqa: SLF001
+    assert prompts_module._has_prompt_value(None) is False  # noqa: SLF001
+    assert prompts_module._prompt_candidate_choices(None, "entity") == []  # noqa: SLF001
+    assert prompts_module._prompt_candidate_choices({}, "entity") == []  # noqa: SLF001
+    assert prompts_module._prompt_candidate_choices({"atlas": {}}, "entity") == []  # noqa: SLF001
+    assert (
+        prompts_module._prompt_candidate_choices(  # noqa: SLF001
+            {"atlas": {"promptCandidates": {"entity": "not-list"}}}, "entity"
+        )
+        == []
+    )
+    assert prompts_module._prompt_candidate_choices(PromptCandidateMetaModel(), "entity") == [  # noqa: SLF001
+        {"const": "entry_plain", "title": "entry_plain"},
+        {"const": "entry_titled", "title": "Titled entry"},
+        {"const": "entry_without_title", "title": "entry_without_title"},
+    ]
+    assert (
+        prompts_module._prompt_candidate_choices(  # noqa: SLF001
+            {"atlas": {"promptCandidates": {"entity": [{"title": "No value"}]}}}, "entity"
+        )
+        == []
+    )
+    assert prompts_module._apply_prompt_elicitation_content({"query": "housing"}, None) == {  # noqa: SLF001
+        "query": "housing"
+    }
+    assert prompts_module._apply_prompt_elicitation_content(  # noqa: SLF001
+        {"query": "housing"}, {"place": " Detroit ", "limit": 20}
+    ) == {"query": "housing", "place": "Detroit"}

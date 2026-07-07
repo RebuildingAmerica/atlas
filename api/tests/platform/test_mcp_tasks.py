@@ -162,6 +162,12 @@ class FakePreflightServer:
         return MagicMock(session=self.session, request_id="req_1")
 
 
+class FakePreflightServerWithoutContext:
+    @property
+    def request_context(self) -> Any:
+        raise LookupError
+
+
 class TestStartDiscoveryRunToolDefinition:
     def test_tool_uses_draft_capability_negotiation_instead_of_legacy_task_metadata(
         self,
@@ -395,6 +401,21 @@ class TestDiscoveryRunPreflight:
         assert arguments["issue_areas"] == ["housing_affordability", "public_transit"]
         assert arguments["search_depth"] == "deep"
 
+    def test_preflight_keeps_existing_args_when_optional_values_empty(self) -> None:
+        arguments = _apply_discovery_run_preflight(
+            _start_request(search_depth="quick"),
+            DiscoveryRunPreflight(
+                confirm_run=True,
+                location_query=" ",
+                state=None,
+                issue_areas=None,
+                research_goal=" ",
+                search_depth=None,
+            ),
+        )
+
+        assert arguments == _start_request(search_depth="quick")
+
     @pytest.mark.asyncio
     async def test_preflight_needs_client_support(self) -> None:
         server = FakePreflightServer(types.ElicitResult(action="decline"))
@@ -407,6 +428,18 @@ class TestDiscoveryRunPreflight:
 
         assert result == _start_request()
         assert server.session.calls == []
+
+    @pytest.mark.asyncio
+    async def test_preflight_without_request_context_keeps_args(self) -> None:
+        result = await _preflight_discovery_run_arguments(
+            FakePreflightServerWithoutContext(),
+            params=types.CallToolRequestParams(
+                name="start_discovery_run", _meta=_tasks_and_elicitation_meta()
+            ),
+            arguments=_start_request(),
+        )
+
+        assert result == _start_request()
 
     @pytest.mark.asyncio
     async def test_preflight_accept_applies_args(self) -> None:
