@@ -85,6 +85,9 @@ from atlas_scout.entries import browse as _entries_browse
 from atlas_scout.entries import export as _entries_export
 from atlas_scout.entries import purge as _entries_purge
 from atlas_scout.entries import stats as _entries_stats
+from atlas_scout.runs import history as _runs_history
+from atlas_scout.runs import receipt as _runs_receipt
+from atlas_scout.runs import sync as _runs_sync_module
 from atlas_scout.shared import atlas_urls as _atlas_urls
 from atlas_scout.worker import api_client as _worker_api_client
 from atlas_scout.worker import job as _worker_job
@@ -260,6 +263,9 @@ _PATCH_TARGET_MODULES = (
     _pages_commands,
     _pipeline_commands,
     _runs_commands,
+    _runs_history,
+    _runs_receipt,
+    _runs_sync_module,
     _schedule_commands,
     _setup_commands,
     _worker_api_client,
