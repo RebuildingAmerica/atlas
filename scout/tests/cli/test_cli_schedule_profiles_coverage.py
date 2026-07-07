@@ -171,7 +171,7 @@ def test_profile_flag_missing_when_no_other_profiles_exist(
     """Cover the branch where requested profile is missing AND no others exist."""
     configs_dir = tmp_path / "configs"
     configs_dir.mkdir()
-    monkeypatch.setattr("atlas_scout.config.SCOUT_CONFIGS_DIR", configs_dir)
+    monkeypatch.setattr("atlas_scout.config.paths.SCOUT_CONFIGS_DIR", configs_dir)
     monkeypatch.setattr(cli_module, "SCOUT_CONFIGS_DIR", configs_dir)
     output = _capture_consoles(monkeypatch)
     result = CliRunner().invoke(main, ["--profile", "missing", "config", "show"])
@@ -187,7 +187,7 @@ def test_use_profile_missing_when_no_profiles_exist(
 ) -> None:
     configs_dir = tmp_path / "configs"
     configs_dir.mkdir()
-    monkeypatch.setattr("atlas_scout.config.SCOUT_CONFIGS_DIR", configs_dir)
+    monkeypatch.setattr("atlas_scout.config.paths.SCOUT_CONFIGS_DIR", configs_dir)
     monkeypatch.setattr(cli_module, "SCOUT_CONFIGS_DIR", configs_dir)
     output = _capture_consoles(monkeypatch)
     result = CliRunner().invoke(main, ["config", "use-profile", "missing"])

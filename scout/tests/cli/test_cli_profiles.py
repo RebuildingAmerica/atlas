@@ -25,10 +25,10 @@ def _setup_profiles(tmp_path: Path, names: list[str]) -> Path:
 def _patches(tmp_path: Path, configs_dir: Path):
     """Return a stack of patches for isolating config/settings to tmp_path."""
     return (
-        patch("atlas_scout.config.SCOUT_CONFIGS_DIR", configs_dir),
-        patch("atlas_scout.config.SETTINGS_PATH", tmp_path / "settings.toml"),
-        patch("atlas_scout.config.SCOUT_CONFIG_DIR", tmp_path),
-        patch("atlas_scout.config.SCOUT_DATA_DIR", tmp_path / "data"),
+        patch("atlas_scout.config.paths.SCOUT_CONFIGS_DIR", configs_dir),
+        patch("atlas_scout.config.paths.SETTINGS_PATH", tmp_path / "settings.toml"),
+        patch("atlas_scout.config.paths.SCOUT_CONFIG_DIR", tmp_path),
+        patch("atlas_scout.config.paths.SCOUT_DATA_DIR", tmp_path / "data"),
         patch("atlas_scout.cli.SCOUT_CONFIGS_DIR", configs_dir),
     )
 

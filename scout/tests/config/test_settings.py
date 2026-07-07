@@ -43,14 +43,14 @@ def test_settings_custom_profile():
 def test_load_settings_missing_file(tmp_path: Path):
     """Returns defaults when settings.toml does not exist."""
     fake_path = tmp_path / "settings.toml"
-    with patch("atlas_scout.config.SETTINGS_PATH", fake_path):
+    with patch("atlas_scout.config.paths.SETTINGS_PATH", fake_path):
         s = load_settings()
     assert s.active_profile == DEFAULT_PROFILE_NAME
 
 
 def test_save_and_load_settings_roundtrip(tmp_path: Path):
     fake_path = tmp_path / "settings.toml"
-    with patch("atlas_scout.config.SETTINGS_PATH", fake_path):
+    with patch("atlas_scout.config.paths.SETTINGS_PATH", fake_path):
         save_settings(Settings(active_profile="laptop"))
         loaded = load_settings()
     assert loaded.active_profile == "laptop"
@@ -58,7 +58,7 @@ def test_save_and_load_settings_roundtrip(tmp_path: Path):
 
 def test_save_settings_creates_parent_dirs(tmp_path: Path):
     fake_path = tmp_path / "nested" / "dir" / "settings.toml"
-    with patch("atlas_scout.config.SETTINGS_PATH", fake_path):
+    with patch("atlas_scout.config.paths.SETTINGS_PATH", fake_path):
         save_settings(Settings(active_profile="studio"))
     assert fake_path.exists()
 
@@ -70,7 +70,7 @@ def test_load_settings_from_existing_toml(tmp_path: Path):
         active_profile = "studio"
     """)
     )
-    with patch("atlas_scout.config.SETTINGS_PATH", fake_path):
+    with patch("atlas_scout.config.paths.SETTINGS_PATH", fake_path):
         s = load_settings()
     assert s.active_profile == "studio"
 
@@ -84,7 +84,7 @@ def test_load_settings_ignores_unknown_keys(tmp_path: Path):
         some_future_setting = true
     """)
     )
-    with patch("atlas_scout.config.SETTINGS_PATH", fake_path):
+    with patch("atlas_scout.config.paths.SETTINGS_PATH", fake_path):
         s = load_settings()
     assert s.active_profile == "laptop"
 
@@ -96,13 +96,13 @@ def test_load_settings_ignores_unknown_keys(tmp_path: Path):
 
 def test_get_active_profile_name_default(tmp_path: Path):
     fake_path = tmp_path / "settings.toml"
-    with patch("atlas_scout.config.SETTINGS_PATH", fake_path):
+    with patch("atlas_scout.config.paths.SETTINGS_PATH", fake_path):
         assert get_active_profile_name() == DEFAULT_PROFILE_NAME
 
 
 def test_set_and_get_active_profile_name(tmp_path: Path):
     fake_path = tmp_path / "settings.toml"
-    with patch("atlas_scout.config.SETTINGS_PATH", fake_path):
+    with patch("atlas_scout.config.paths.SETTINGS_PATH", fake_path):
         set_active_profile_name("studio")
         assert get_active_profile_name() == "studio"
 
@@ -110,7 +110,7 @@ def test_set_and_get_active_profile_name(tmp_path: Path):
 def test_set_active_profile_preserves_file_format(tmp_path: Path):
     """The saved file should be valid TOML."""
     fake_path = tmp_path / "settings.toml"
-    with patch("atlas_scout.config.SETTINGS_PATH", fake_path):
+    with patch("atlas_scout.config.paths.SETTINGS_PATH", fake_path):
         set_active_profile_name("laptop")
     content = fake_path.read_text()
     assert 'active_profile = "laptop"' in content
@@ -125,8 +125,8 @@ def test_get_active_config_path_default(tmp_path: Path):
     fake_settings = tmp_path / "settings.toml"
     fake_configs = tmp_path / "configs"
     with (
-        patch("atlas_scout.config.SETTINGS_PATH", fake_settings),
-        patch("atlas_scout.config.SCOUT_CONFIGS_DIR", fake_configs),
+        patch("atlas_scout.config.paths.SETTINGS_PATH", fake_settings),
+        patch("atlas_scout.config.paths.SCOUT_CONFIGS_DIR", fake_configs),
     ):
         result = get_active_config_path()
     assert result == fake_configs / "default.toml"
@@ -136,8 +136,8 @@ def test_get_active_config_path_after_set(tmp_path: Path):
     fake_settings = tmp_path / "settings.toml"
     fake_configs = tmp_path / "configs"
     with (
-        patch("atlas_scout.config.SETTINGS_PATH", fake_settings),
-        patch("atlas_scout.config.SCOUT_CONFIGS_DIR", fake_configs),
+        patch("atlas_scout.config.paths.SETTINGS_PATH", fake_settings),
+        patch("atlas_scout.config.paths.SCOUT_CONFIGS_DIR", fake_configs),
     ):
         set_active_profile_name("studio")
         result = get_active_config_path()
