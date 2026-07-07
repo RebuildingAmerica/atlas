@@ -102,6 +102,16 @@ describe("OrganizationSSOPageView", () => {
     render(<OrganizationSSOPageView controller={controller} />);
     expect(screen.getByText("Enterprise SSO setup")).toBeInTheDocument();
     expect(screen.getAllByText(/Configure enterprise sign-in/i).length).toBeGreaterThan(0);
+    const settingsNav = screen.getByRole("navigation", { name: "Organization settings" });
+    expect(settingsNav).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Workspace" })).toHaveAttribute(
+      "href",
+      "/organization",
+    );
+    expect(screen.getByRole("link", { name: "Enterprise sign-in" })).toHaveAttribute(
+      "href",
+      "/organization/sso",
+    );
   });
 
   it("shows team requirement message for personal workspaces", () => {

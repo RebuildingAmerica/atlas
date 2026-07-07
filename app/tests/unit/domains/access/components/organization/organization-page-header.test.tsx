@@ -24,12 +24,13 @@ describe("OrganizationPageHeader", () => {
     expect(screen.getByText("Header Description")).toBeInTheDocument();
   });
 
-  it("renders navigation links when provided", () => {
+  it("renders organization settings navigation links when provided", () => {
     const links = [
       { label: "Link 1", to: "/organization" as const },
       { label: "Link 2", to: "/organization/sso" as const },
     ];
     render(<OrganizationPageHeader label="L" title="T" description="D" links={links} />);
+    expect(screen.getByRole("navigation", { name: "Organization settings" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Link 1" })).toHaveAttribute("href", "/organization");
     expect(screen.getByRole("link", { name: "Link 2" })).toHaveAttribute(
       "href",

@@ -3,7 +3,7 @@ import type { OrganizationPageController } from "./organization-page-controller"
 import { OrganizationEmptyState } from "./organization-empty-state";
 import { OrganizationLoadingState } from "./organization-loading-state";
 import { OrganizationPageFeedback } from "./organization-page-feedback";
-import { OrganizationPageHeader } from "./organization-page-header";
+import { ORGANIZATION_SETTINGS_LINKS, OrganizationPageHeader } from "./organization-page-header";
 import { OrganizationTeamWorkspaceRequiredState } from "./organization-team-workspace-required-state";
 import { PendingWorkspaceInvitationsSection } from "./pending-workspace-invitations-section";
 import { SsoDiagnosticsDisclosure } from "./sso-diagnostics-disclosure";
@@ -84,7 +84,7 @@ export function OrganizationSSOPageView({ controller }: OrganizationSSOPageViewP
         <OrganizationPageHeader
           description="Enterprise SSO configuration is not available for your current workspace plan."
           label="Enterprise SSO setup"
-          links={[{ label: "View full organization settings", to: "/organization" }]}
+          links={ORGANIZATION_SETTINGS_LINKS}
           title="Enterprise sign-in"
         />
       </div>
@@ -96,7 +96,7 @@ export function OrganizationSSOPageView({ controller }: OrganizationSSOPageViewP
       <OrganizationPageHeader
         description="Use this page to configure Google Workspace OIDC, SAML 2.0, domain verification, and the workspace primary provider."
         label="Enterprise SSO setup"
-        links={[{ label: "View full organization settings", to: "/organization" }]}
+        links={ORGANIZATION_SETTINGS_LINKS}
         title="Configure enterprise sign-in"
       />
 

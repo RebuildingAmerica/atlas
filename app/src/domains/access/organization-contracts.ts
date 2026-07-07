@@ -76,6 +76,7 @@ export interface AtlasSessionPayload {
     email: string;
     emailVerified: boolean;
     id: string;
+    image?: string | null;
     name: string;
   };
   workspace: AtlasWorkspaceState;

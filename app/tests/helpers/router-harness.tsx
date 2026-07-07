@@ -31,6 +31,7 @@ export interface RouteStub<TProps = Record<string, never>> {
   useSearch: ReturnType<typeof vi.fn>;
   useParams: ReturnType<typeof vi.fn>;
   useRouteContext: ReturnType<typeof vi.fn>;
+  useRouterState: ReturnType<typeof vi.fn>;
 }
 
 /**
@@ -54,6 +55,24 @@ export interface RouterMockHooks {
   useSearch: ReturnType<typeof vi.fn>;
   useParams: ReturnType<typeof vi.fn>;
   useRouteContext: ReturnType<typeof vi.fn>;
+  useRouterState: ReturnType<typeof vi.fn>;
+}
+
+interface RouterStateMockValue {
+  location: {
+    pathname: string;
+  };
+}
+
+interface RouterStateMockOptions {
+  select?: (state: RouterStateMockValue) => unknown;
+}
+
+export function routerPathnameState(pathname: string) {
+  return ({ select }: RouterStateMockOptions = {}) => {
+    const state: RouterStateMockValue = { location: { pathname } };
+    return select ? select(state) : state;
+  };
 }
 
 /**
@@ -101,6 +120,7 @@ export function buildRouterMockModule(api: RouterMockApi): Record<string, unknow
         useSearch: api.useSearch,
         useParams: api.useParams,
         useRouteContext: api.useRouteContext,
+        useRouterState: api.useRouterState,
       },
     );
   }
@@ -108,6 +128,7 @@ export function buildRouterMockModule(api: RouterMockApi): Record<string, unknow
   return {
     createFileRoute: (_path: string) => (options: unknown) => attachHooks(options),
     createRootRoute: (options: unknown) => attachHooks(options),
+    useRouterState: api.useRouterState,
     redirect: api.redirect,
     Outlet: () => <div data-testid="router-outlet" />,
     HeadContent: () => null,
@@ -153,6 +174,7 @@ export function createRouterMocks(): RouterMockApi {
     useSearch: vi.fn(),
     useParams: vi.fn(),
     useRouteContext: vi.fn(),
+    useRouterState: vi.fn(routerPathnameState("/")),
   };
 }
 
@@ -202,6 +224,8 @@ export function resetRouterMocks(): void {
   activeRouterMocks.useSearch.mockReset();
   activeRouterMocks.useParams.mockReset();
   activeRouterMocks.useRouteContext.mockReset();
+  activeRouterMocks.useRouterState.mockReset();
+  activeRouterMocks.useRouterState.mockImplementation(routerPathnameState("/"));
   activeRouterMocks.redirect.mockClear();
   activeRouterMocks.redirect.mockImplementation((options: Record<string, unknown>) => {
     throwRouterRedirect(options);

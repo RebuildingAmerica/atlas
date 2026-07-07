@@ -1,5 +1,4 @@
 import type { ReactNode } from "react";
-import type { AppNavItem } from "./app-navigation";
 import { TopNavChrome } from "./top-nav-chrome";
 
 /**
@@ -7,21 +6,15 @@ import { TopNavChrome } from "./top-nav-chrome";
  */
 interface WorkspaceNavProps {
   identitySlot?: ReactNode;
-  tabs?: AppNavItem[];
+  menuSlot?: ReactNode;
 }
-
-const DEFAULT_WORKSPACE_TABS: AppNavItem[] = [
-  { label: "Home", to: "/home" },
-  { label: "Research", to: "/discovery" },
-  { label: "Browse", to: "/browse" },
-];
 
 /**
  * Top navigation bar for the authenticated workspace shell.
  *
- * Domain-specific identity controls flow in through `identitySlot`, while the
- * route decides which tabs are relevant for the current session.
+ * Domain-specific identity controls flow in through `identitySlot`; primary
+ * workspace destinations live in the workbench rail.
  */
-export function WorkspaceNav({ identitySlot, tabs = DEFAULT_WORKSPACE_TABS }: WorkspaceNavProps) {
-  return <TopNavChrome identitySlot={identitySlot} items={tabs} />;
+export function WorkspaceNav({ identitySlot, menuSlot }: WorkspaceNavProps) {
+  return <TopNavChrome identitySlot={identitySlot} rightSlot={menuSlot} />;
 }

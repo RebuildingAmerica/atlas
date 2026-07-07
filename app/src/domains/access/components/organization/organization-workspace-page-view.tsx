@@ -5,7 +5,7 @@ import type { OrganizationPageController } from "./organization-page-controller"
 import { OrganizationEmptyState } from "./organization-empty-state";
 import { OrganizationLoadingState } from "./organization-loading-state";
 import { OrganizationPageFeedback } from "./organization-page-feedback";
-import { OrganizationPageHeader } from "./organization-page-header";
+import { ORGANIZATION_SETTINGS_LINKS, OrganizationPageHeader } from "./organization-page-header";
 import { OrganizationSSOSetupCard } from "./organization-sso-setup-card";
 import { PendingWorkspaceInvitationsSection } from "./pending-workspace-invitations-section";
 import { RolePermissionsGuide } from "./role-permissions-guide";
@@ -81,7 +81,12 @@ export function OrganizationWorkspacePageView({ controller }: OrganizationWorksp
 
   return (
     <div className="space-y-8 py-2">
-      <OrganizationPageHeader description={pageDescription} label={pageLabel} title={pageTitle} />
+      <OrganizationPageHeader
+        description={pageDescription}
+        label={pageLabel}
+        links={ORGANIZATION_SETTINGS_LINKS}
+        title={pageTitle}
+      />
 
       <OrganizationPageFeedback
         errorMessage={controller.errorMessage}

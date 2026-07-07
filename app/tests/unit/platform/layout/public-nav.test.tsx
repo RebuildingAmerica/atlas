@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
-import { act, cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { PublicTopNav } from "@/platform/layout/public-nav";
 
@@ -26,52 +26,117 @@ describe("PublicTopNav", () => {
 
     render(<PublicTopNav localMode={false} />);
 
-    expect(screen.getByRole("link", { name: "Search" })).toHaveAttribute("data-link-to", "/browse");
+    expect(screen.getByRole("searchbox", { name: "Search Atlas" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Browse" })).toHaveAttribute("data-link-to", "/browse");
     expect(screen.getByRole("link", { name: "Map" })).toHaveAttribute("data-link-to", "/map");
+    expect(screen.getByRole("link", { name: "People" })).toHaveAttribute(
+      "data-link-to",
+      "/profiles/people",
+    );
+    expect(screen.getByRole("link", { name: "Organizations" })).toHaveAttribute(
+      "data-link-to",
+      "/profiles/organizations",
+    );
+    expect(screen.getByRole("link", { name: "Pricing" })).toHaveAttribute(
+      "data-link-to",
+      "/pricing",
+    );
     expect(screen.getByRole("link", { name: "Docs" })).toHaveAttribute("href", "/docs");
-    expect(screen.getByRole("link", { name: "Docs" })).not.toHaveAttribute("data-link-to");
     expect(screen.getByRole("link", { name: "API" })).toHaveAttribute("href", "/docs/api");
-    expect(screen.getByRole("link", { name: "API" })).not.toHaveAttribute("data-link-to");
+    expect(screen.getByRole("button", { name: "Open public navigation menu" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Sign in" })).toHaveAttribute(
       "data-link-to",
       "/sign-in",
     );
+    expect(screen.queryByRole("link", { name: "Search" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Profiles" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Browse" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Pricing" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Research" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Lists" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Watching" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Activity" })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Open public navigation menu" }));
+    const menu = screen.getByRole("navigation", { name: "Public navigation menu" });
+    expect(within(menu).getByRole("link", { name: "Browse" })).toHaveAttribute(
+      "data-link-to",
+      "/browse",
+    );
   });
 
-  it("uses morphing rounded chrome that anchors after scroll", async () => {
+  it("lets the home page own search instead of duplicating it in chrome", async () => {
     const { useAtlasSession } = await import("@/domains/access");
     vi.mocked(useAtlasSession).mockReturnValue({
       data: null,
     } as unknown as ReturnType<typeof useAtlasSession>);
-    Object.defineProperty(window, "scrollY", { configurable: true, value: 0 });
+
+    render(<PublicTopNav localMode={false} showSearch={false} />);
+
+    expect(screen.queryByRole("searchbox", { name: "Search Atlas" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("searchbox", { name: "Search Atlas on mobile" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("puts the public menu control first and exposes its animated open state", async () => {
+    const { useAtlasSession } = await import("@/domains/access");
+    vi.mocked(useAtlasSession).mockReturnValue({
+      data: null,
+    } as unknown as ReturnType<typeof useAtlasSession>);
 
     render(<PublicTopNav localMode={false} />);
 
-    const nav = screen.getByRole("navigation", { name: "Primary navigation" });
-    expect(nav).toHaveAttribute("data-chrome-state", "floating");
-    expect(nav).toHaveClass("rounded-[1.25rem]");
-
-    Object.defineProperty(window, "scrollY", { configurable: true, value: 48 });
-    act(() => {
-      window.dispatchEvent(new Event("scroll"));
+    const primaryNavigation = screen.getByRole("navigation", { name: "Primary navigation" });
+    const brandLink = primaryNavigation.querySelector('[data-link-to="/"]');
+    const menuButton = within(primaryNavigation).getByRole("button", {
+      name: "Open public navigation menu",
     });
 
-    expect(nav).toHaveAttribute("data-chrome-state", "anchored");
-    expect(nav).toHaveClass("border-b");
+    expect(brandLink).toBeInTheDocument();
+    if (brandLink == null) {
+      throw new Error("Expected the Atlas brand link to render in primary navigation.");
+    }
+    expect(menuButton.compareDocumentPosition(brandLink)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(menuButton).toHaveAttribute("data-menu-state", "closed");
+    expect(within(menuButton).getByTestId("public-menu-icon-top")).toHaveAttribute(
+      "data-icon-state",
+      "closed",
+    );
+
+    fireEvent.click(menuButton);
+
+    expect(menuButton).toHaveAttribute("aria-expanded", "true");
+    expect(menuButton).toHaveAttribute("data-menu-state", "open");
+    expect(within(menuButton).getByTestId("public-menu-icon-top")).toHaveAttribute(
+      "data-icon-state",
+      "open",
+    );
   });
 
-  it("uses the app navigation model for signed-in visitors on public pages", async () => {
+  it("lets signed-out public chrome float before anchoring on scroll", async () => {
+    const { useAtlasSession } = await import("@/domains/access");
+    vi.mocked(useAtlasSession).mockReturnValue({
+      data: null,
+    } as unknown as ReturnType<typeof useAtlasSession>);
+    render(<PublicTopNav localMode={false} />);
+
+    const nav = screen.getByRole("navigation", { name: "Primary navigation" });
+    expect(nav).toHaveAttribute("data-chrome-frame", "showcase");
+    expect(nav).toHaveClass("flex-nowrap");
+    expect(nav).toHaveClass("atlas-top-bar-showcase");
+  });
+
+  it("keeps signed-in public pages discovery-first instead of rendering the app nav in the top bar", async () => {
     const { useAtlasSession } = await import("@/domains/access");
     vi.mocked(useAtlasSession).mockReturnValue({
       data: {
         isLocal: false,
+        user: {
+          email: "admin@example.com",
+          emailVerified: true,
+          id: "user_1",
+          image: "https://example.com/avatar.png",
+          name: "Admin",
+        },
         workspace: {
           activeOrganization: { id: "org_1", name: "Acme", workspaceType: "individual" },
           memberships: [{ id: "org_1", name: "Acme" }],
@@ -83,32 +148,26 @@ describe("PublicTopNav", () => {
 
     render(<PublicTopNav localMode={false} />);
 
-    expect(screen.getByRole("link", { name: "Home" })).toHaveAttribute("data-link-to", "/home");
-    expect(screen.getByRole("link", { name: "Research" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Workbench" })).toHaveAttribute(
       "data-link-to",
-      "/discovery",
+      "/home",
     );
-    expect(screen.getByRole("link", { name: "Coverage" })).toHaveAttribute(
+    expect(screen.queryByRole("link", { name: "Home" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Research" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Coverage" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Lists" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Watching" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Activity" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Account" })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Pricing" })).toHaveAttribute(
       "data-link-to",
-      "/coverage",
+      "/pricing",
     );
-    expect(screen.getByRole("link", { name: "Browse" })).toHaveAttribute("data-link-to", "/browse");
-    expect(screen.getByRole("link", { name: "Lists" })).toHaveAttribute("data-link-to", "/lists");
-    expect(screen.getByRole("link", { name: "Watching" })).toHaveAttribute(
-      "data-link-to",
-      "/watching",
-    );
-    expect(screen.getByRole("link", { name: "Activity" })).toHaveAttribute("data-link-to", "/feed");
-    expect(screen.getByRole("link", { name: "Account" })).toHaveAttribute(
-      "data-link-to",
-      "/account",
-    );
-    expect(screen.queryByRole("link", { name: "Pricing" })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "API" })).toHaveAttribute("href", "/docs/api");
     expect(screen.queryByRole("link", { name: "Sign in" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Workspace" })).not.toBeInTheDocument();
   });
 
-  it("uses core app navigation in local single-user mode without account links", async () => {
+  it("keeps local single-user mode compact while linking into the workbench", async () => {
     const { useAtlasSession } = await import("@/domains/access");
     vi.mocked(useAtlasSession).mockReturnValue({
       data: {
@@ -119,26 +178,23 @@ describe("PublicTopNav", () => {
 
     render(<PublicTopNav localMode />);
 
-    expect(screen.getByRole("link", { name: "Home" })).toHaveAttribute("data-link-to", "/home");
-    expect(screen.getByRole("link", { name: "Research" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Workbench" })).toHaveAttribute(
       "data-link-to",
-      "/discovery",
+      "/home",
     );
-    expect(screen.getByRole("link", { name: "Coverage" })).toHaveAttribute(
-      "data-link-to",
-      "/coverage",
-    );
-    expect(screen.getByRole("link", { name: "Browse" })).toHaveAttribute("data-link-to", "/browse");
-    expect(screen.getByRole("link", { name: "Lists" })).toHaveAttribute("data-link-to", "/lists");
-    expect(screen.getByRole("link", { name: "Watching" })).toHaveAttribute(
-      "data-link-to",
-      "/watching",
-    );
-    expect(screen.getByRole("link", { name: "Activity" })).toHaveAttribute("data-link-to", "/feed");
-    expect(screen.queryByRole("link", { name: "Docs" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "API" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Home" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Research" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Coverage" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Lists" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Watching" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Activity" })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Docs" })).toHaveAttribute("href", "/docs");
+    expect(screen.getByRole("link", { name: "API" })).toHaveAttribute("href", "/docs/api");
     expect(screen.queryByRole("link", { name: "Account" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Pricing" })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Pricing" })).toHaveAttribute(
+      "data-link-to",
+      "/pricing",
+    );
     expect(screen.queryByRole("link", { name: "Sign in" })).not.toBeInTheDocument();
   });
 });

@@ -225,6 +225,21 @@ describe("OrganizationWorkspacePageView", () => {
     };
   };
 
+  it("renders local organization settings navigation", () => {
+    render(<OrganizationWorkspacePageView controller={buildController()} />);
+
+    const settingsNav = screen.getByRole("navigation", { name: "Organization settings" });
+    expect(settingsNav).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Workspace" })).toHaveAttribute(
+      "href",
+      "/organization",
+    );
+    expect(screen.getByRole("link", { name: "Enterprise sign-in" })).toHaveAttribute(
+      "href",
+      "/organization/sso",
+    );
+  });
+
   afterEach(() => {
     cleanup();
   });

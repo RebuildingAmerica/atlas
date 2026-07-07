@@ -1,7 +1,13 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
-import { render, screen, cleanup } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  asRouteStub,
+  readRouterMocks,
+  resetRouterMocks,
+  routerPathnameState,
+} from "@/../tests/helpers/router-harness";
 
 vi.mock("@tanstack/react-router", async () => {
   const harness = await import("@/../tests/helpers/router-harness");
@@ -17,8 +23,12 @@ vi.mock("@/domains/access/session.functions", () => ({
 }));
 
 vi.mock("@/platform/layout/public-nav", () => ({
-  PublicTopNav: ({ localMode }: { localMode: boolean }) => (
-    <div data-testid="public-top-nav" data-local-mode={String(localMode)} />
+  PublicTopNav: ({ localMode, showSearch }: { localMode: boolean; showSearch: boolean }) => (
+    <div
+      data-testid="public-top-nav"
+      data-local-mode={String(localMode)}
+      data-show-search={String(showSearch)}
+    />
   ),
 }));
 
@@ -29,8 +39,7 @@ vi.mock("@/platform/layout/public-footer", () => ({
 }));
 
 describe("routes/_public layout", () => {
-  beforeEach(async () => {
-    const { resetRouterMocks } = await import("@/../tests/helpers/router-harness");
+  beforeEach(() => {
     resetRouterMocks();
   });
 
@@ -46,7 +55,6 @@ describe("routes/_public layout", () => {
     });
 
     const routeModule = await import("@/routes/_public");
-    const { asRouteStub } = await import("@/../tests/helpers/router-harness");
     const Route = asRouteStub(routeModule.Route);
 
     if (!Route.options.loader) throw new Error("Expected loader");
@@ -64,7 +72,6 @@ describe("routes/_public layout", () => {
     });
 
     const routeModule = await import("@/routes/_public");
-    const { asRouteStub } = await import("@/../tests/helpers/router-harness");
     const Route = asRouteStub(routeModule.Route);
 
     if (!Route.options.loader) throw new Error("Expected loader");
@@ -73,9 +80,9 @@ describe("routes/_public layout", () => {
   });
 
   it("renders the top nav, outlet, and footer with the loader payload", async () => {
-    const { readRouterMocks, asRouteStub } = await import("@/../tests/helpers/router-harness");
     const router = readRouterMocks();
     router.useLoaderData.mockReturnValue({ localMode: true });
+    router.useRouterState.mockImplementation(routerPathnameState("/pricing"));
 
     const routeModule = await import("@/routes/_public");
     const Route = asRouteStub(routeModule.Route);
@@ -83,7 +90,22 @@ describe("routes/_public layout", () => {
     if (!Component) throw new Error("Expected Route.options.component");
     render(<Component />);
     expect(screen.getByTestId("public-top-nav").dataset.localMode).toBe("true");
+    expect(screen.getByTestId("public-top-nav").dataset.showSearch).toBe("true");
     expect(screen.getByTestId("router-outlet")).toBeInTheDocument();
     expect(screen.getByTestId("public-footer").dataset.localMode).toBe("true");
+  });
+
+  it("lets the public home page own search", async () => {
+    const router = readRouterMocks();
+    router.useLoaderData.mockReturnValue({ localMode: false });
+    router.useRouterState.mockImplementation(routerPathnameState("/"));
+
+    const routeModule = await import("@/routes/_public");
+    const Route = asRouteStub(routeModule.Route);
+    const Component = Route.options.component;
+    if (!Component) throw new Error("Expected Route.options.component");
+    render(<Component />);
+
+    expect(screen.getByTestId("public-top-nav").dataset.showSearch).toBe("false");
   });
 });

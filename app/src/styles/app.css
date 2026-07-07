@@ -142,6 +142,63 @@ button:disabled,
   cursor: not-allowed;
 }
 
+.atlas-top-bar-shell,
+.atlas-top-bar {
+  will-change: padding, border-radius;
+}
+
+.atlas-top-bar-shell-showcase {
+  --atlas-top-bar-inline-inset: 0.75rem;
+  padding: 0.75rem var(--atlas-top-bar-inline-inset) 0;
+  animation: atlas-top-bar-shell-morph linear both;
+  animation-timeline: scroll(root block);
+  animation-range: 0 48px;
+}
+
+.atlas-top-bar-showcase {
+  border-radius: 1rem;
+  animation: atlas-top-bar-morph linear both;
+  animation-timeline: scroll(root block);
+  animation-range: 0 48px;
+}
+
+@media (min-width: 40rem) {
+  .atlas-top-bar-shell-showcase {
+    --atlas-top-bar-inline-inset: 1.5rem;
+  }
+}
+
+@keyframes atlas-top-bar-shell-morph {
+  from {
+    padding-top: 0.75rem;
+    padding-right: var(--atlas-top-bar-inline-inset);
+    padding-left: var(--atlas-top-bar-inline-inset);
+  }
+  to {
+    padding-top: 0;
+    padding-right: 0;
+    padding-left: 0;
+  }
+}
+
+@keyframes atlas-top-bar-morph {
+  from {
+    border-radius: 1rem;
+  }
+  to {
+    border-radius: 0;
+  }
+}
+
+@supports not (animation-timeline: scroll(root block)) {
+  .atlas-top-bar-shell-showcase,
+  .atlas-top-bar-showcase {
+    transition:
+      padding 180ms ease,
+      border-radius 180ms ease;
+  }
+}
+
 /* MD3 Type Scale — exact spec values */
 /* https://m3.material.io/styles/typography/type-scale-tokens */
 

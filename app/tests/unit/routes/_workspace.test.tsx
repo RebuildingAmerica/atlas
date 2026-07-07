@@ -70,7 +70,7 @@ vi.mock("@/platform/layout/workspace-layout", () => ({
     identitySlot: React.ReactNode;
     children: React.ReactNode;
   }) => (
-    <div data-testid="workspace-layout" data-tabs={JSON.stringify(tabs)}>
+    <div data-testid="workspace-layout" data-rail-items={JSON.stringify(tabs)}>
       <div data-testid="identity-slot">{identitySlot}</div>
       {children}
     </div>
@@ -209,7 +209,7 @@ describe("routes/_workspace layout", () => {
     expect(useAtlasSession).toHaveBeenCalledWith({ initialData: initialSession });
   });
 
-  it("returns the core app tab list when the session is local", async () => {
+  it("returns the core workbench rail items when the session is local", async () => {
     const { useAtlasSession } = await import("@/domains/access");
     vi.mocked(useAtlasSession).mockReturnValue({
       data: { isLocal: true, workspace: {} },
@@ -222,8 +222,8 @@ describe("routes/_workspace layout", () => {
     if (!Component) throw new Error("Expected Route.options.component");
     render(<Component />);
     const layout = screen.getByTestId("workspace-layout");
-    const tabs = JSON.parse(layout.dataset.tabs ?? "[]") as { label: string }[];
-    expect(tabs.map((t) => t.label)).toEqual([
+    const railItems = JSON.parse(layout.dataset.railItems ?? "[]") as { label: string }[];
+    expect(railItems.map((t) => t.label)).toEqual([
       "Home",
       "Research",
       "Coverage",
@@ -236,7 +236,7 @@ describe("routes/_workspace layout", () => {
     expect(screen.getByTestId("identity-slot")).toBeEmptyDOMElement();
   });
 
-  it("surfaces saved-work tabs without Organization for a signed-in session that does not need it", async () => {
+  it("surfaces saved-work rail items without Organization for a signed-in session that does not need it", async () => {
     const { useAtlasSession } = await import("@/domains/access");
     vi.mocked(useAtlasSession).mockReturnValue({
       data: {
@@ -257,10 +257,12 @@ describe("routes/_workspace layout", () => {
     const Component = Route.options.component;
     if (!Component) throw new Error("Expected Route.options.component");
     render(<Component />);
-    const tabs = JSON.parse(screen.getByTestId("workspace-layout").dataset.tabs ?? "[]") as {
+    const railItems = JSON.parse(
+      screen.getByTestId("workspace-layout").dataset.railItems ?? "[]",
+    ) as {
       label: string;
     }[];
-    expect(tabs.map((t) => t.label)).toEqual([
+    expect(railItems.map((t) => t.label)).toEqual([
       "Home",
       "Research",
       "Coverage",
@@ -273,7 +275,7 @@ describe("routes/_workspace layout", () => {
     ]);
   });
 
-  it("falls back to the core app tab list when the session is null", async () => {
+  it("falls back to the core workbench rail items when the session is null", async () => {
     const { useAtlasSession } = await import("@/domains/access");
     vi.mocked(useAtlasSession).mockReturnValue({
       data: null,
@@ -285,10 +287,12 @@ describe("routes/_workspace layout", () => {
     const Component = Route.options.component;
     if (!Component) throw new Error("Expected Route.options.component");
     render(<Component />);
-    const tabs = JSON.parse(screen.getByTestId("workspace-layout").dataset.tabs ?? "[]") as {
+    const railItems = JSON.parse(
+      screen.getByTestId("workspace-layout").dataset.railItems ?? "[]",
+    ) as {
       label: string;
     }[];
-    expect(tabs.map((t) => t.label)).toEqual([
+    expect(railItems.map((t) => t.label)).toEqual([
       "Home",
       "Research",
       "Coverage",
@@ -342,7 +346,7 @@ describe("routes/_workspace layout", () => {
     expect(setActiveWorkspace).toHaveBeenCalledWith({ data: { organizationId: "org_1" } });
   });
 
-  it("includes the Organization tab when onboarding needs it and renders the workspace switcher", async () => {
+  it("includes Organization in the rail when onboarding needs it and renders the workspace switcher", async () => {
     const { useAtlasSession } = await import("@/domains/access");
     const { setActiveWorkspace } = await import("@/domains/access/organizations.functions");
     const { useMutation, useQueryClient } = await import("@tanstack/react-query");
@@ -379,10 +383,12 @@ describe("routes/_workspace layout", () => {
     if (!Component) throw new Error("Expected Route.options.component");
     render(<Component />);
 
-    const tabs = JSON.parse(screen.getByTestId("workspace-layout").dataset.tabs ?? "[]") as {
+    const railItems = JSON.parse(
+      screen.getByTestId("workspace-layout").dataset.railItems ?? "[]",
+    ) as {
       label: string;
     }[];
-    expect(tabs.map((t) => t.label)).toEqual([
+    expect(railItems.map((t) => t.label)).toEqual([
       "Home",
       "Research",
       "Coverage",

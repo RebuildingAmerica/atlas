@@ -41,6 +41,7 @@ function getLocalSession(): AtlasSessionPayload {
       email: "local@atlas.local",
       emailVerified: true,
       id: "local-operator",
+      image: null,
       name: "Local Operator",
     },
     workspace: {
@@ -137,6 +138,7 @@ export async function loadAtlasSession(): Promise<AtlasSessionPayload | null> {
       email: session.user.email,
       emailVerified: session.user.emailVerified,
       id: session.user.id,
+      image: session.user.image ?? null,
       name: session.user.name,
     },
     workspace,

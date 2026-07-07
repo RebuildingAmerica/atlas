@@ -15,6 +15,7 @@ export const atlasSessionSchema = z.object({
       email: z.string(),
       emailVerified: z.boolean(),
       id: z.string(),
+      image: z.string().nullish(),
       name: z.string(),
     })
     .passthrough(),
