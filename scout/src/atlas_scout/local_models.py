@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Literal
 
 import httpx
 
+from atlas_scout.local_provider_bootstrap import LOCAL_PROVIDER_SPECS
 from atlas_scout.providers.lmstudio import DEFAULT_LMSTUDIO_URL, normalize_lmstudio_base_url
 from atlas_scout.providers.ollama import DEFAULT_OLLAMA_URL
 
@@ -24,10 +25,14 @@ LocalModelStatus = Literal[
     "no_models",
 ]
 
-LOCAL_PROVIDER_NAMES: tuple[LocalProviderName, ...] = ("lmstudio", "ollama")
+# LOCAL_PROVIDER_SPECS (local_provider_bootstrap.py) is the canonical registry
+# of local providers; names and labels below are derived from it rather than
+# re-declared, so a new provider only needs to be added in one place.
+LOCAL_PROVIDER_NAMES: tuple[LocalProviderName, ...] = tuple(
+    spec.provider for spec in LOCAL_PROVIDER_SPECS
+)
 LOCAL_PROVIDER_LABELS: dict[LocalProviderName, str] = {
-    "lmstudio": "LM Studio",
-    "ollama": "Ollama",
+    spec.provider: spec.label for spec in LOCAL_PROVIDER_SPECS
 }
 
 
