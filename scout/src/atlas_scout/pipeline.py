@@ -6,22 +6,28 @@ import asyncio
 import logging
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from atlas_shared import (
     DiscoveryRunArtifacts,
-    DiscoveryRunInput,
-    DiscoveryRunManifest,
     DiscoveryRunStats,
-    DiscoverySyncInfo,
     GapReport,
     PageContent,
-    PageTaskOutcome,
     RankedEntry,
     RawEntry,
-    RunCheckpoint,
 )
 
+from atlas_scout.pipeline_artifacts import (
+    build_run_artifacts,
+    can_build_run_artifacts,
+    save_ranked_entries,
+)
+from atlas_scout.pipeline_fetch_support import (
+    fetch_outcome,
+    iter_items,
+    page_with_structured_columns,
+    produce_search_frontier,
+)
 from atlas_scout.pipeline_support import (
     decide_extraction_admission,
     error_reason,
@@ -39,26 +45,12 @@ from atlas_scout.steps.query_gen import generate_queries
 from atlas_scout.steps.source_fetch import results_per_query_for_depth
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterator, Awaitable, Callable
-    from typing import Protocol
+    from collections.abc import Callable
 
     from atlas_scout.config import ContributionConfig
     from atlas_scout.providers.base import LLMProvider
     from atlas_scout.scraper.fetcher import AsyncFetcher
     from atlas_scout.store import ScoutStore
-
-    class EnqueueUrl(Protocol):
-        """Async URL enqueue callback used by search frontier producers."""
-
-        def __call__(
-            self,
-            url: str,
-            *,
-            depth: int,
-            seed_url: str,
-            discovered_from: str | None,
-        ) -> Awaitable[bool]:
-            """Enqueue a normalized URL for later fetching."""
 
 
 logger = logging.getLogger(__name__)
@@ -314,7 +306,9 @@ async def run_pipeline(
                     },
                 )
 
-                outcome = await _fetch_outcome(fetcher, item, store)
+                outcome = await fetch_outcome(
+                    fetcher, url=item.url, task_id=item.task_id, store=store
+                )
                 discovered_links = merge_discovered_links(
                     outcome.get("discovered_links"),
                     outcome.get("page"),
@@ -490,7 +484,7 @@ async def run_pipeline(
                     )
 
                 entries = await extract_page_entries(
-                    _page_with_structured_columns(page, structured_columns),
+                    page_with_structured_columns(page, structured_columns),
                     provider,
                     city,
                     state,
@@ -605,7 +599,7 @@ async def run_pipeline(
             queries_count = len(queries)
             if not search_api_key:
                 raise ValueError("search_api_key is required in search mode")
-            await _produce_search_frontier(
+            await produce_search_frontier(
                 queries=[query.query for query in queries],
                 search_api_key=search_api_key,
                 enqueue=enqueue_url,
@@ -646,13 +640,42 @@ async def run_pipeline(
             )
 
             phase["value"] = "deepening"
+
+            async def claim_new_url(candidate: str) -> str | None:
+                """Normalize a candidate URL and claim it if not already seen."""
+                normalized = normalize_url(candidate)
+                if not normalized or normalized in seen_urls:
+                    return None
+                seen_urls.add(normalized)
+                return normalized
+
+            async def fetch_and_extract(url: str) -> None:
+                """Fetch one URL directly and extend raw_entries with any entries found."""
+                page = await fetcher.fetch(url)
+                if page is None:
+                    return
+                remember_page(page)
+                stats["pages_fetched"] += 1
+                entries = await extract_page_entries(
+                    page,
+                    provider,
+                    city,
+                    state,
+                    store=store,
+                    run_id=run_id,
+                    reuse_cached_extractions=reuse_cached_extractions,
+                    extraction_directive=extraction_directive,
+                )
+                if entries:
+                    raw_entries.extend(entries)
+
             preliminary_deduped = [
-                entry async for entry in deduplicate_stream(_iter_items(raw_entries))
+                entry async for entry in deduplicate_stream(iter_items(raw_entries))
             ]
             preliminary_ranked = [
                 r
                 async for r in rank_entries_stream(
-                    _iter_items(preliminary_deduped), min_score=min_entry_score
+                    iter_items(preliminary_deduped), min_score=min_entry_score
                 )
             ]
             preliminary_gaps = analyze_gaps(location, preliminary_ranked)
@@ -661,31 +684,14 @@ async def run_pipeline(
             all_leads: list[str] = []
             for entry in raw_entries:
                 for lead in getattr(entry, "discovery_leads", []):
-                    normalized = normalize_url(lead)
-                    if normalized and normalized not in seen_urls:
-                        seen_urls.add(normalized)
-                        all_leads.append(normalized)
+                    claimed = await claim_new_url(lead)
+                    if claimed:
+                        all_leads.append(claimed)
 
             if all_leads:
                 emit("status", {"phase": "following_leads", "lead_count": len(all_leads)})
                 for url in all_leads[:50]:  # cap at 50 leads
-                    page = await fetcher.fetch(url)
-                    if page is None:
-                        continue
-                    remember_page(page)
-                    stats["pages_fetched"] += 1
-                    entries = await extract_page_entries(
-                        page,
-                        provider,
-                        city,
-                        state,
-                        store=store,
-                        run_id=run_id,
-                        reuse_cached_extractions=reuse_cached_extractions,
-                        extraction_directive=extraction_directive,
-                    )
-                    if entries:
-                        raw_entries.extend(entries)
+                    await fetch_and_extract(url)
 
             # --- 2. LLM-driven follow-up queries ---
             # Search mode raises earlier when search_api_key is empty, and deepening
@@ -717,35 +723,18 @@ async def run_pipeline(
                 for result in deeper_results:
                     result_url = result.get("url")
                     if isinstance(result_url, str) and result_url:
-                        normalized = normalize_url(result_url)
-                        if normalized and normalized not in seen_urls:
-                            seen_urls.add(normalized)
-                            page = await fetcher.fetch(normalized)
-                            if page is None:
-                                continue
-                            remember_page(page)
-                            stats["pages_fetched"] += 1
-                            entries = await extract_page_entries(
-                                page,
-                                provider,
-                                city,
-                                state,
-                                store=store,
-                                run_id=run_id,
-                                reuse_cached_extractions=reuse_cached_extractions,
-                                extraction_directive=extraction_directive,
-                            )
-                            if entries:
-                                raw_entries.extend(entries)
+                        claimed = await claim_new_url(result_url)
+                        if claimed:
+                            await fetch_and_extract(claimed)
 
             # --- 3. Entity chasing: fetch org websites for staff/board/partners ---
             emit("status", {"phase": "entity_chasing"})
             # Re-rank with new entries before chasing
-            chase_deduped = [entry async for entry in deduplicate_stream(_iter_items(raw_entries))]
+            chase_deduped = [entry async for entry in deduplicate_stream(iter_items(raw_entries))]
             chase_ranked = [
                 r
                 async for r in rank_entries_stream(
-                    _iter_items(chase_deduped), min_score=min_entry_score
+                    iter_items(chase_deduped), min_score=min_entry_score
                 )
             ]
             chase_targets = await select_entities_to_chase(
@@ -755,25 +744,9 @@ async def run_pipeline(
             for target in chase_targets:
                 target_url = target.get("website", "")
                 if target_url:
-                    normalized = normalize_url(target_url)
-                    if normalized and normalized not in seen_urls:
-                        seen_urls.add(normalized)
-                        page = await fetcher.fetch(normalized)
-                        if page is not None:
-                            remember_page(page)
-                            stats["pages_fetched"] += 1
-                            entries = await extract_page_entries(
-                                page,
-                                provider,
-                                city,
-                                state,
-                                store=store,
-                                run_id=run_id,
-                                reuse_cached_extractions=reuse_cached_extractions,
-                                extraction_directive=extraction_directive,
-                            )
-                            if entries:
-                                raw_entries.extend(entries)
+                    claimed = await claim_new_url(target_url)
+                    if claimed:
+                        await fetch_and_extract(claimed)
 
                 # Also search for the entity if we have a query
                 search_query = target.get("search_query", "")
@@ -786,25 +759,9 @@ async def run_pipeline(
                     for result in chase_results:
                         result_url = result.get("url")
                         if isinstance(result_url, str) and result_url:
-                            normalized = normalize_url(result_url)
-                            if normalized and normalized not in seen_urls:
-                                seen_urls.add(normalized)
-                                page = await fetcher.fetch(normalized)
-                                if page is not None:
-                                    remember_page(page)
-                                    stats["pages_fetched"] += 1
-                                    entries = await extract_page_entries(
-                                        page,
-                                        provider,
-                                        city,
-                                        state,
-                                        store=store,
-                                        run_id=run_id,
-                                        reuse_cached_extractions=reuse_cached_extractions,
-                                        extraction_directive=extraction_directive,
-                                    )
-                                    if entries:
-                                        raw_entries.extend(entries)
+                            claimed = await claim_new_url(result_url)
+                            if claimed:
+                                await fetch_and_extract(claimed)
 
             # --- 4. Browser research: deep-dive into top org websites ---
             browser_targets = [
@@ -834,17 +791,17 @@ async def run_pipeline(
                         )
 
         phase["value"] = "finalizing"
-        deduped_entries = [entry async for entry in deduplicate_stream(_iter_items(raw_entries))]
+        deduped_entries = [entry async for entry in deduplicate_stream(iter_items(raw_entries))]
         deduped_entries_count = len(deduped_entries)
 
         ranked_entries = [
             ranked
             async for ranked in rank_entries_stream(
-                _iter_items(deduped_entries), min_score=min_entry_score
+                iter_items(deduped_entries), min_score=min_entry_score
             )
         ]
 
-        await _save_ranked_entries(store=store, run_id=run_id, ranked_entries=ranked_entries)
+        await save_ranked_entries(store=store, run_id=run_id, ranked_entries=ranked_entries)
 
         gap_report = analyze_gaps(location, ranked_entries)
         run_stats = DiscoveryRunStats(
@@ -856,8 +813,8 @@ async def run_pipeline(
             entries_confirmed=len(ranked_entries),
         )
         artifacts: DiscoveryRunArtifacts | None = None
-        if _can_build_run_artifacts(location=location, state=state, issues=issues):
-            artifacts = _build_run_artifacts(
+        if can_build_run_artifacts(location=location, state=state, issues=issues):
+            artifacts = build_run_artifacts(
                 run_id=run_id,
                 location=location,
                 state=state,
@@ -969,200 +926,3 @@ async def run_pipeline(
 
 
 _parse_location = parse_location
-
-
-async def _fetch_outcome(
-    fetcher: AsyncFetcher,
-    item: _FrontierItem,
-    store: ScoutStore,
-) -> dict[str, Any]:
-    """Call the most capable tracked-fetch method the fetcher exposes."""
-    if hasattr(fetcher, "fetch_tracked_verbose"):
-        outcome = await fetcher.fetch_tracked_verbose(item.url, item.task_id, store)
-        if isinstance(outcome, dict):
-            return outcome
-
-    if hasattr(fetcher, "fetch_tracked"):
-        page = await fetcher.fetch_tracked(item.url, item.task_id, store)
-        return {
-            "url": item.url,
-            "task_id": item.task_id,
-            "page": page,
-            "status": "fetched" if page is not None else "filtered",
-            "error": None if page is not None else "content_not_extractable",
-            "discovered_links": page.discovered_links if page is not None else [],
-        }
-
-    page = await fetcher.fetch(item.url)
-    if page is not None:
-        page = page.model_copy(update={"task_id": item.task_id})
-    return {
-        "url": item.url,
-        "task_id": item.task_id,
-        "page": page,
-        "status": "fetched" if page is not None else "filtered",
-        "error": None if page is not None else "content_not_extractable",
-        "discovered_links": page.discovered_links if page is not None else [],
-    }
-
-
-async def _produce_search_frontier(
-    *,
-    queries: list[str],
-    search_api_key: str,
-    enqueue: EnqueueUrl,
-    max_concurrent: int,
-    results_per_query: int = 5,
-) -> None:
-    """Search queries concurrently and enqueue unique result URLs as they arrive."""
-    semaphore = asyncio.Semaphore(max(1, max_concurrent))
-
-    async def _search_one(query: str) -> list[dict[str, str | None]]:
-        async with semaphore:
-            return await source_fetch._search_brave(
-                [query], search_api_key, results_per_query=results_per_query
-            )
-
-    tasks = [asyncio.create_task(_search_one(query)) for query in queries]
-    for task in asyncio.as_completed(tasks):
-        results = await task
-        for result in results:
-            url = result.get("url")
-            if isinstance(url, str) and url:
-                normalized = normalize_url(url)
-                if normalized:
-                    await enqueue(
-                        normalized,
-                        depth=0,
-                        seed_url=normalized,
-                        discovered_from=None,
-                    )
-
-
-async def _iter_items[Item](items: list[Item]) -> AsyncIterator[Item]:
-    """Yield items from a plain list as an async iterator."""
-    for item in items:
-        yield item
-
-
-async def _save_ranked_entries(
-    *,
-    store: ScoutStore,
-    run_id: str,
-    ranked_entries: list[RankedEntry],
-) -> None:
-    """Persist ranked entries through the store's batch path."""
-    await store.bulk_save_entries(
-        run_id=run_id,
-        entries=[
-            {
-                "name": ranked.entry.name,
-                "entry_type": str(ranked.entry.entry_type),
-                "description": ranked.entry.description,
-                "city": ranked.entry.city,
-                "state": ranked.entry.state,
-                "score": ranked.score,
-                "data": ranked.entry.model_dump(mode="json"),
-            }
-            for ranked in ranked_entries
-        ],
-    )
-
-
-def _page_with_structured_columns(
-    page: PageContent,
-    structured_columns: list[str] | None,
-) -> PageContent:
-    """Attach operator-provided structured columns to a fetched page."""
-    if not structured_columns:
-        return page
-    structured_data = dict(page.structured_data)
-    structured_data["structured_columns"] = structured_columns
-    return page.model_copy(update={"structured_data": structured_data})
-
-
-def _outcome_int(value: object) -> int:
-    """Return an integer metric from a page outcome value."""
-    if isinstance(value, int):
-        return value
-    if isinstance(value, float):
-        return int(value)
-    if isinstance(value, str):
-        try:
-            return int(value)
-        except ValueError:
-            return 0
-    return 0
-
-
-def _build_run_artifacts(
-    *,
-    run_id: str,
-    location: str,
-    state: str,
-    issues: list[str],
-    search_depth: str,
-    started_at: datetime,
-    completed_at: datetime,
-    stats: DiscoveryRunStats,
-    page_outcomes: dict[str, dict[str, object]],
-    sources: list[PageContent],
-    raw_entries: list[RawEntry],
-    ranked_entries: list[RankedEntry],
-    gap_report: GapReport,
-    remote_run_id: str | None = None,
-) -> DiscoveryRunArtifacts:
-    """Build the canonical run bundle emitted by the Scout runner."""
-    return DiscoveryRunArtifacts(
-        manifest=DiscoveryRunManifest(
-            runner="atlas-scout",
-            run=DiscoveryRunInput(
-                location_query=location,
-                state=state,
-                issue_areas=issues,
-                search_depth=search_depth,
-            ),
-            status=stats.status,
-            started_at=started_at,
-            completed_at=completed_at,
-            sync=DiscoverySyncInfo(
-                local_run_id=run_id,
-                remote_run_id=remote_run_id,
-                sync_status="ready",
-            ),
-        ),
-        stats=stats,
-        checkpoints=[
-            RunCheckpoint(
-                phase="completed",
-                status=stats.status,
-                metrics={
-                    "queries_generated": stats.queries_generated,
-                    "sources_fetched": stats.sources_fetched,
-                    "entries_confirmed": stats.entries_confirmed,
-                },
-                created_at=completed_at,
-            )
-        ],
-        page_tasks=[
-            PageTaskOutcome(
-                task_id=str(outcome.get("task_id") or ""),
-                url=str(outcome.get("url") or ""),
-                status=str(outcome.get("status") or "unknown"),
-                depth=_outcome_int(outcome.get("depth")),
-                entries_extracted=_outcome_int(outcome.get("entries")),
-                error=str(outcome["error"]) if outcome.get("error") is not None else None,
-                user_visible=bool(outcome.get("user_visible", False)),
-            )
-            for outcome in page_outcomes.values()
-        ],
-        sources=sources,
-        raw_entries=raw_entries,
-        ranked_entries=ranked_entries,
-        gap_report=gap_report,
-    )
-
-
-def _can_build_run_artifacts(*, location: str, state: str, issues: list[str]) -> bool:
-    """Return whether the run has enough metadata to build a canonical sync bundle."""
-    return bool(location.strip() and len(state.strip()) >= 2 and issues)
