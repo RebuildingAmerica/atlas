@@ -92,6 +92,13 @@ interface ScoutCredentialFile {
   "session-token"?: unknown;
 }
 
+interface FileSystemError extends Error {
+  code?: string;
+}
+
+const SCOUT_HOME_CLEANUP_RETRIES = 5;
+const SCOUT_HOME_CLEANUP_RETRY_DELAY_MS = 100;
+
 function scoutCommand(): ScoutCommand {
   const override = process.env.ATLAS_E2E_SCOUT_BIN?.trim();
   if (override) {
@@ -183,6 +190,35 @@ async function readBody(request: IncomingMessage): Promise<string> {
 function sendJson(response: ServerResponse, payload: unknown): void {
   response.writeHead(200, { "Content-Type": "application/json" });
   response.end(JSON.stringify(payload));
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function isRetriableCleanupError(error: unknown): boolean {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+  const code = (error as FileSystemError).code;
+  return code === "ENOTEMPTY" || code === "EBUSY" || code === "EPERM";
+}
+
+async function removeScoutHome(homeDir: string): Promise<void> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt <= SCOUT_HOME_CLEANUP_RETRIES; attempt += 1) {
+    try {
+      await rm(homeDir, { force: true, recursive: true });
+      return;
+    } catch (error) {
+      lastError = error;
+      if (!isRetriableCleanupError(error) || attempt === SCOUT_HOME_CLEANUP_RETRIES) {
+        throw error;
+      }
+      await delay(SCOUT_HOME_CLEANUP_RETRY_DELAY_MS * (attempt + 1));
+    }
+  }
+  throw lastError;
 }
 
 async function expectJsonResponse<T>(response: Response): Promise<T> {
@@ -404,7 +440,7 @@ export async function createScoutHome(ollamaUrl: string): Promise<ScoutHome> {
         process.stderr.write(`Preserved Scout E2E home: ${homeDir}\n`);
         return;
       }
-      await rm(homeDir, { force: true, recursive: true });
+      await removeScoutHome(homeDir);
     },
     configPath,
     env: scoutEnv(homeDir),
