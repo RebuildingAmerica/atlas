@@ -43,6 +43,35 @@ scout articles import guardian \
   --json
 ```
 
+## Crawl News Sites
+
+Use crawl mode when you have public news sitemaps, RSS feeds, Atom feeds, or
+article index pages and want Scout to discover article URLs itself:
+
+```bash
+scout articles crawl \
+  --seed https://example-news.org/sitemap.xml \
+  --target-count 1000 \
+  --max-pages 10000 \
+  --max-depth 3 \
+  --max-concurrent 24 \
+  --max-per-domain 2 \
+  --from-date 2006-07-06 \
+  --to-date 2026-07-06 \
+  --browser-renders 8 \
+  --json
+```
+
+For larger jobs, put one seed URL per line and pass `--seed-file seeds.txt`.
+Scout parses sitemap and feed resources as discovery indexes, prioritizes likely
+article URLs ahead of deeper index pages, canonicalizes tracking-query variants,
+and stores crawl provenance with each article record.
+
+Scout fetches ordinary HTML first. If browser fallback is enabled in the active
+Scout profile and the page looks useful but JavaScript-dependent, Scout may use
+bounded headless Chromium rendering through Playwright. `--browser-renders`
+sets the crawl-level render budget; use `0` for a no-browser crawl.
+
 ## Verify Coverage
 
 Use stats gates before treating the corpus as ready:
@@ -64,6 +93,25 @@ type counts:
 ```bash
 scout articles stats --json
 ```
+
+Use `articles verify` when the corpus is a launch or handoff gate:
+
+```bash
+scout articles verify \
+  --min-count 100000 \
+  --min-unique-urls 100000 \
+  --min-crawl 100000 \
+  --min-crawl-discovered 100000 \
+  --min-with-mentions 100000 \
+  --min-metadata-complete 100000 \
+  --published-from 2006-07-06 \
+  --published-through 2026-07-06
+```
+
+`--from-date` and `--to-date` on `stats` and `verify` prove the corpus covers a
+date range. `--published-from` and `--published-through` on `verify` prove every
+stored article is inside the accepted publication window. Use the published
+window flags when stale rows would make the corpus unfit for review.
 
 `guardian_tags` are Guardian taxonomy labels such as keywords, contributors,
 series, tones, or tracking tags. They are source-provided metadata. Scout keeps

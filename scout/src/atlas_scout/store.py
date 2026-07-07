@@ -12,6 +12,11 @@ from urllib.parse import urlparse
 import aiosqlite
 from atlas_shared import DiscoveryRunArtifacts, DiscoverySyncInfo, compute_artifact_hash
 
+from atlas_scout.article_records import is_article_utility_page
+from atlas_scout.sqlite_retry import run_sqlite_write
+
+_SQLITE_BUSY_TIMEOUT_MS = 60000
+
 _CREATE_RUNS = """
 CREATE TABLE IF NOT EXISTS runs (
     id TEXT PRIMARY KEY,
@@ -95,6 +100,38 @@ CREATE INDEX IF NOT EXISTS idx_articles_source_domain
 ON articles(source_domain)
 """
 
+_CREATE_ARTICLE_FRONTIER = """
+CREATE TABLE IF NOT EXISTS article_frontier (
+    url TEXT PRIMARY KEY,
+    seed_url TEXT NOT NULL,
+    depth INTEGER NOT NULL DEFAULT 0 CHECK(depth >= 0),
+    priority INTEGER NOT NULL DEFAULT 0,
+    source_domain TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending', 'fetched', 'skipped')),
+    discovered_at TEXT NOT NULL,
+    fetched_at TEXT,
+    claimed_by TEXT,
+    claimed_at TEXT,
+    claim_expires_at TEXT,
+    updated_at TEXT NOT NULL
+)
+"""
+
+_CREATE_ARTICLE_FRONTIER_STATUS_INDEX = """
+CREATE INDEX IF NOT EXISTS idx_article_frontier_status_priority
+ON article_frontier(status, priority DESC, discovered_at ASC)
+"""
+
+_CREATE_ARTICLE_FRONTIER_DOMAIN_INDEX = """
+CREATE INDEX IF NOT EXISTS idx_article_frontier_source_domain
+ON article_frontier(source_domain, status)
+"""
+
+_CREATE_ARTICLE_FRONTIER_CLAIM_INDEX = """
+CREATE INDEX IF NOT EXISTS idx_article_frontier_claims
+ON article_frontier(status, claim_expires_at, priority DESC, discovered_at ASC)
+"""
+
 _CREATE_EXTRACTIONS = """
 CREATE TABLE IF NOT EXISTS extractions (
     cache_key TEXT PRIMARY KEY,
@@ -168,6 +205,14 @@ def _now() -> str:
 def _new_id() -> str:
     """Generate a short random hex ID (12 characters)."""
     return uuid.uuid4().hex[:12]
+
+
+def _optional_row_int(row: aiosqlite.Row | None, key: str) -> int:
+    """Return an integer aggregate value from an optional SQLite row."""
+    if row is None:
+        return 0
+    value = row[key]
+    return int(value) if value is not None else 0
 
 
 def _serialize_timestamp(value: datetime | None) -> str | None:
@@ -274,7 +319,13 @@ def _article_has_complete_metadata(row: aiosqlite.Row, metadata: dict[str, Any])
         or metadata.get("body_text_excerpt")
         or metadata.get("body_text_length")
     )
-    has_provider_context = bool(
+    has_provider_context = _article_has_provider_context(metadata)
+    return has_text_context and has_provider_context
+
+
+def _article_has_provider_context(metadata: dict[str, Any]) -> bool:
+    """Return whether provider metadata identifies how the article was sourced."""
+    has_guardian_context = bool(
         metadata.get("guardian_tags")
         or metadata.get("byline")
         or metadata.get("short_url")
@@ -282,7 +333,16 @@ def _article_has_complete_metadata(row: aiosqlite.Row, metadata: dict[str, Any])
         or metadata.get("section_id")
         or metadata.get("pillar_name")
     )
-    return has_text_context and has_provider_context
+    if has_guardian_context:
+        return True
+    if metadata.get("discovery_method") != "crawl" or not metadata.get("seed_url"):
+        return False
+    return bool(
+        metadata.get("publication")
+        or metadata.get("schema_types")
+        or metadata.get("opengraph_type")
+        or metadata.get("source_type")
+    )
 
 
 class ScoutStore:
@@ -293,35 +353,46 @@ class ScoutStore:
         self._db_path = db_path
         self._conn: aiosqlite.Connection | None = None
 
-    async def initialize(self) -> None:
+    async def initialize(self, *, create_schema: bool = True) -> None:
         """Open the database connection and create tables if needed."""
         self._conn = await aiosqlite.connect(self._db_path)
         self._conn.row_factory = aiosqlite.Row
-        await self._conn.execute("PRAGMA journal_mode=WAL")
-        await self._conn.execute("PRAGMA synchronous=NORMAL")
-        await self._conn.execute("PRAGMA busy_timeout=5000")
-        await self._conn.execute(_CREATE_RUNS)
-        await self._conn.execute(_CREATE_PAGES)
-        await self._conn.execute(_CREATE_PAGE_TASKS)
-        await self._conn.execute(_CREATE_ENTRIES)
-        await self._conn.execute(_CREATE_ARTICLES)
-        await self._conn.execute(_CREATE_EXTRACTIONS)
-        await self._conn.execute(_CREATE_RUN_ARTIFACTS)
-        await self._conn.execute(_CREATE_WORK_CLAIMS)
-        await self._ensure_daemon_state_table()
-        await self._conn.execute(_CREATE_PAGE_TASKS_RUN_URL_INDEX)
-        await self._conn.execute(_CREATE_PAGE_TASKS_RUN_STATUS_INDEX)
-        await self._conn.execute(_CREATE_ARTICLES_PUBLISHED_INDEX)
-        await self._conn.execute(_CREATE_ARTICLES_SOURCE_INDEX)
-        await self._conn.execute(
-            """
-            INSERT INTO daemon_state (key, status, target_count, updated_at)
-            VALUES (?, 'stopped', 0, ?)
-            ON CONFLICT(key) DO NOTHING
-            """,
-            (_DAEMON_STATE_KEY, _now()),
-        )
-        await self._conn.commit()
+        await self._conn.execute(f"PRAGMA busy_timeout={_SQLITE_BUSY_TIMEOUT_MS}")
+        if not create_schema:
+            return
+
+        async def operation() -> None:
+            assert self._conn is not None
+            await self._conn.execute("PRAGMA journal_mode=WAL")
+            await self._conn.execute("PRAGMA synchronous=NORMAL")
+            await self._conn.execute(_CREATE_RUNS)
+            await self._conn.execute(_CREATE_PAGES)
+            await self._conn.execute(_CREATE_PAGE_TASKS)
+            await self._conn.execute(_CREATE_ENTRIES)
+            await self._conn.execute(_CREATE_ARTICLES)
+            await self._ensure_article_frontier_table()
+            await self._conn.execute(_CREATE_EXTRACTIONS)
+            await self._conn.execute(_CREATE_RUN_ARTIFACTS)
+            await self._conn.execute(_CREATE_WORK_CLAIMS)
+            await self._ensure_daemon_state_table()
+            await self._conn.execute(_CREATE_PAGE_TASKS_RUN_URL_INDEX)
+            await self._conn.execute(_CREATE_PAGE_TASKS_RUN_STATUS_INDEX)
+            await self._conn.execute(_CREATE_ARTICLES_PUBLISHED_INDEX)
+            await self._conn.execute(_CREATE_ARTICLES_SOURCE_INDEX)
+            await self._conn.execute(_CREATE_ARTICLE_FRONTIER_STATUS_INDEX)
+            await self._conn.execute(_CREATE_ARTICLE_FRONTIER_DOMAIN_INDEX)
+            await self._conn.execute(_CREATE_ARTICLE_FRONTIER_CLAIM_INDEX)
+            await self._conn.execute(
+                """
+                INSERT INTO daemon_state (key, status, target_count, updated_at)
+                VALUES (?, 'stopped', 0, ?)
+                ON CONFLICT(key) DO NOTHING
+                """,
+                (_DAEMON_STATE_KEY, _now()),
+            )
+            await self._conn.commit()
+
+        await run_sqlite_write(operation, on_locked=self._rollback_quietly)
 
     async def close(self) -> None:
         """Close the database connection."""
@@ -345,8 +416,48 @@ class ScoutStore:
     async def _execute(self, sql: str, params: tuple[Any, ...] = ()) -> None:
         """Execute a single statement and commit."""
         assert self._conn is not None
-        await self._conn.execute(sql, params)
-        await self._conn.commit()
+
+        async def operation() -> None:
+            assert self._conn is not None
+            await self._conn.execute(sql, params)
+            await self._conn.commit()
+
+        await run_sqlite_write(operation, on_locked=self._rollback_quietly)
+
+    async def _executemany(self, sql: str, rows: list[tuple[Any, ...]]) -> int:
+        """Execute many write rows and commit with transient lock retry."""
+        if not rows:
+            return 0
+        assert self._conn is not None
+
+        async def operation() -> int:
+            assert self._conn is not None
+            cursor = await self._conn.executemany(sql, rows)
+            await self._conn.commit()
+            return max(cursor.rowcount, 0)
+
+        return await run_sqlite_write(operation, on_locked=self._rollback_quietly)
+
+    async def _execute_count(self, sql: str, params: tuple[Any, ...] = ()) -> int:
+        """Execute a single write statement and return affected rows."""
+        assert self._conn is not None
+
+        async def operation() -> int:
+            assert self._conn is not None
+            cursor = await self._conn.execute(sql, params)
+            await self._conn.commit()
+            return max(cursor.rowcount, 0)
+
+        return await run_sqlite_write(operation, on_locked=self._rollback_quietly)
+
+    async def _rollback_quietly(self) -> None:
+        """Rollback the current transaction, ignoring rollback failures."""
+        if self._conn is None:
+            return
+        try:
+            await self._conn.rollback()
+        except Exception:
+            return
 
     async def _ensure_daemon_state_table(self) -> None:
         """Create or migrate the daemon_state table to enforce current constraints."""
@@ -412,6 +523,22 @@ class ScoutStore:
 
         for statement in migration_sql:
             await self._conn.execute(statement)
+
+    async def _ensure_article_frontier_table(self) -> None:
+        """Create or migrate the article frontier table for durable crawl leases."""
+        assert self._conn is not None
+        await self._conn.execute(_CREATE_ARTICLE_FRONTIER)
+        async with self._conn.execute("PRAGMA table_info(article_frontier)") as cursor:
+            rows = await cursor.fetchall()
+        columns = {str(row["name"]) for row in rows}
+        migrations = {
+            "claimed_by": "ALTER TABLE article_frontier ADD COLUMN claimed_by TEXT",
+            "claimed_at": "ALTER TABLE article_frontier ADD COLUMN claimed_at TEXT",
+            "claim_expires_at": "ALTER TABLE article_frontier ADD COLUMN claim_expires_at TEXT",
+        }
+        for column, sql in migrations.items():
+            if column not in columns:
+                await self._conn.execute(sql)
 
     # ------------------------------------------------------------------
     # Daemon state
@@ -985,7 +1112,7 @@ class ScoutStore:
             )
 
         for start in range(0, len(rows), batch_size):
-            await self._conn.executemany(
+            await self._executemany(
                 """
                 INSERT INTO articles
                     (
@@ -1006,10 +1133,9 @@ class ScoutStore:
                 """,
                 rows[start : start + batch_size],
             )
-            await self._conn.commit()
 
         for start in range(0, len(update_rows), batch_size):
-            await self._conn.executemany(
+            await self._executemany(
                 """
                 UPDATE articles
                 SET title = ?,
@@ -1025,7 +1151,6 @@ class ScoutStore:
                 """,
                 update_rows[start : start + batch_size],
             )
-            await self._conn.commit()
 
         return {
             "attempted": len(articles),
@@ -1055,6 +1180,539 @@ class ScoutStore:
                 rows = await cursor.fetchall()
             existing.update(str(row["url"]) for row in rows)
         return existing
+
+    async def upsert_article_frontier(
+        self,
+        items: list[dict[str, Any]],
+        *,
+        batch_size: int = 5000,
+    ) -> dict[str, int]:
+        """Persist newly discovered article frontier URLs for resumable crawls."""
+        if batch_size <= 0:
+            raise ValueError("batch_size must be positive")
+
+        assert self._conn is not None
+        seen_urls: set[str] = set()
+        candidate_rows: list[tuple[str, str, int, int, str, str, str]] = []
+        now = _now()
+        skipped = 0
+        for item in items:
+            url = str(item.get("url") or "").strip()
+            if not url or url in seen_urls:
+                skipped += 1
+                continue
+            seen_urls.add(url)
+            seed_url = str(item.get("seed_url") or url)
+            depth = int(item.get("depth") or 0)
+            priority = int(item.get("priority") or 0)
+            source_domain = str(item.get("source_domain") or urlparse(url).netloc.lower())
+            candidate_rows.append((url, seed_url, depth, priority, source_domain, now, now))
+
+        if not candidate_rows:
+            return {"attempted": len(items), "saved": 0, "skipped": skipped}
+
+        existing_urls = await self._existing_frontier_urls([row[0] for row in candidate_rows])
+        insert_rows = [row for row in candidate_rows if row[0] not in existing_urls]
+        skipped += len(candidate_rows) - len(insert_rows)
+        for start in range(0, len(insert_rows), batch_size):
+            await self._executemany(
+                """
+                INSERT INTO article_frontier
+                    (
+                        url,
+                        seed_url,
+                        depth,
+                        priority,
+                        source_domain,
+                        discovered_at,
+                        updated_at
+                    )
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                insert_rows[start : start + batch_size],
+            )
+
+        return {
+            "attempted": len(items),
+            "saved": len(insert_rows),
+            "skipped": skipped,
+        }
+
+    async def _existing_frontier_urls(self, urls: list[str]) -> set[str]:
+        """Return URLs that are already in the persisted article frontier."""
+        assert self._conn is not None
+        existing: set[str] = set()
+        for start in range(0, len(urls), 900):
+            chunk = urls[start : start + 900]
+            placeholders = ", ".join("?" for _ in chunk)
+            async with self._conn.execute(
+                f"SELECT url FROM article_frontier WHERE url IN ({placeholders})",
+                tuple(chunk),
+            ) as cursor:
+                rows = await cursor.fetchall()
+            existing.update(str(row["url"]) for row in rows)
+        return existing
+
+    async def claim_article_frontier_batch(
+        self,
+        *,
+        limit: int,
+        max_per_domain: int,
+        blocked_domains: set[str],
+        existing_article_urls: set[str],
+        worker_id: str | None = None,
+        lease_seconds: int = 900,
+    ) -> list[dict[str, Any]]:
+        """Lease pending article frontier URLs, balanced by domain."""
+        if limit <= 0:
+            return []
+        if max_per_domain <= 0:
+            raise ValueError("max_per_domain must be positive")
+        if lease_seconds <= 0:
+            raise ValueError("lease_seconds must be positive")
+
+        assert self._conn is not None
+        owner = worker_id or f"article-frontier-{uuid.uuid4().hex}"
+        now = datetime.now(UTC)
+        now_iso = now.isoformat()
+        lease_expires_at = (now + timedelta(seconds=lease_seconds)).isoformat()
+        scan_limit = max(limit * 100, limit)
+
+        async def operation() -> list[dict[str, Any]]:
+            assert self._conn is not None
+            await self._conn.execute("BEGIN IMMEDIATE")
+            try:
+                async with self._conn.execute(
+                    """
+                    SELECT *
+                    FROM article_frontier
+                    WHERE status = 'pending'
+                      AND (claim_expires_at IS NULL OR claim_expires_at <= ?)
+                    ORDER BY priority DESC, discovered_at ASC, url ASC
+                    LIMIT ?
+                    """,
+                    (now_iso, scan_limit),
+                ) as cursor:
+                    rows = await cursor.fetchall()
+
+                domain_queues: dict[str, list[dict[str, Any]]] = {}
+                domain_order: list[str] = []
+                skipped_existing: list[str] = []
+                for row in rows:
+                    url = str(row["url"])
+                    if url in existing_article_urls:
+                        skipped_existing.append(url)
+                        continue
+                    source_domain = str(row["source_domain"])
+                    if source_domain in blocked_domains:
+                        continue
+                    item = dict(row)
+                    if source_domain not in domain_queues:
+                        domain_queues[source_domain] = []
+                        domain_order.append(source_domain)
+                    domain_queues[source_domain].append(item)
+
+                if skipped_existing:
+                    await self._conn.executemany(
+                        """
+                        UPDATE article_frontier
+                        SET status = 'skipped',
+                            fetched_at = NULL,
+                            claimed_by = NULL,
+                            claimed_at = NULL,
+                            claim_expires_at = NULL,
+                            updated_at = ?
+                        WHERE url = ?
+                        """,
+                        [(now_iso, url) for url in skipped_existing],
+                    )
+
+                claimed: list[dict[str, Any]] = []
+                for source_domain in domain_order:
+                    domain_queue = domain_queues[source_domain]
+                    for _ in range(max_per_domain):
+                        if not domain_queue or len(claimed) >= limit:
+                            break
+                        item = domain_queue.pop(0)
+                        item["claimed_by"] = owner
+                        item["claimed_at"] = now_iso
+                        item["claim_expires_at"] = lease_expires_at
+                        claimed.append(item)
+                    if len(claimed) >= limit:
+                        break
+
+                if claimed:
+                    await self._conn.executemany(
+                        """
+                        UPDATE article_frontier
+                        SET claimed_by = ?,
+                            claimed_at = ?,
+                            claim_expires_at = ?,
+                            updated_at = ?
+                        WHERE url = ?
+                          AND status = 'pending'
+                          AND (claim_expires_at IS NULL OR claim_expires_at <= ?)
+                        """,
+                        [
+                            (
+                                owner,
+                                now_iso,
+                                lease_expires_at,
+                                now_iso,
+                                str(item["url"]),
+                                now_iso,
+                            )
+                            for item in claimed
+                        ],
+                    )
+                await self._conn.commit()
+            except Exception:
+                await self._rollback_quietly()
+                raise
+            return claimed
+
+        return await run_sqlite_write(operation, on_locked=self._rollback_quietly)
+
+    async def list_article_frontier_pending(self, *, limit: int = 0) -> list[dict[str, Any]]:
+        """Return pending article frontier rows ordered by current crawl priority."""
+        if limit < 0:
+            raise ValueError("limit must be non-negative")
+        assert self._conn is not None
+        query = """
+            SELECT *
+            FROM article_frontier
+            WHERE status = 'pending'
+            ORDER BY priority DESC, discovered_at ASC, url ASC
+        """
+        params: tuple[int, ...] = ()
+        if limit > 0:
+            query += " LIMIT ?"
+            params = (limit,)
+        async with self._conn.execute(query, params) as cursor:
+            rows = await cursor.fetchall()
+        return [dict(row) for row in rows]
+
+    async def list_article_frontier_expansion_candidates(
+        self,
+        *,
+        limit: int = 0,
+        include_fetched: bool = False,
+    ) -> list[dict[str, Any]]:
+        """Return pending source, sitemap, feed, and robots rows for frontier expansion."""
+        if limit < 0:
+            raise ValueError("limit must be non-negative")
+        assert self._conn is not None
+        status_clause = """
+            (
+                status = 'pending'
+                AND (claim_expires_at IS NULL OR claim_expires_at <= ?)
+            )
+        """
+        if include_fetched:
+            status_clause = f"({status_clause} OR status = 'fetched')"
+        query = f"""
+            SELECT *
+            FROM article_frontier
+            WHERE {status_clause}
+                AND (
+                    depth = 0
+                    OR lower(url) LIKE '%/robots.txt'
+                    OR lower(url) LIKE '%.xml'
+                    OR lower(url) LIKE '%.xml.gz'
+                    OR lower(url) LIKE '%.rss'
+                    OR lower(url) LIKE '%.atom'
+                    OR lower(url) LIKE '%sitemap%'
+                    OR lower(url) LIKE '%/feed'
+                    OR lower(url) LIKE '%/rss'
+                    OR lower(url) LIKE '%/atom'
+                )
+            ORDER BY priority DESC, discovered_at ASC, url ASC
+        """
+        params: tuple[str, int] | tuple[str] = (_now(),)
+        if limit > 0:
+            query += " LIMIT ?"
+            params = (_now(), limit)
+        async with self._conn.execute(query, params) as cursor:
+            rows = await cursor.fetchall()
+        return [dict(row) for row in rows]
+
+    async def update_article_frontier_priorities(
+        self,
+        priorities: dict[str, int],
+        *,
+        batch_size: int = 5000,
+    ) -> int:
+        """Update pending article frontier priorities by URL."""
+        if batch_size <= 0:
+            raise ValueError("batch_size must be positive")
+        if not priorities:
+            return 0
+
+        assert self._conn is not None
+        now = _now()
+        updated = 0
+        rows = [
+            (int(priority), now, url, int(priority)) for url, priority in priorities.items() if url
+        ]
+        for start in range(0, len(rows), batch_size):
+            updated += await self._executemany(
+                """
+                UPDATE article_frontier
+                SET priority = ?,
+                    updated_at = ?
+                WHERE url = ?
+                  AND status = 'pending'
+                  AND priority != ?
+                """,
+                rows[start : start + batch_size],
+            )
+        return updated
+
+    async def mark_article_frontier_fetched(self, urls: list[str]) -> None:
+        """Mark article frontier URLs as fetched."""
+        await self._mark_article_frontier_urls(urls, status="fetched")
+
+    async def mark_article_frontier_skipped(self, urls: list[str]) -> None:
+        """Mark article frontier URLs as skipped because they no longer need fetching."""
+        await self._mark_article_frontier_urls(urls, status="skipped")
+
+    async def release_article_frontier_claims(self, urls: list[str], *, worker_id: str) -> int:
+        """Release unfinished article frontier leases owned by one worker."""
+        if not urls:
+            return 0
+        assert self._conn is not None
+        now = _now()
+        updated = 0
+        rows = [(now, url, worker_id) for url in urls]
+        for start in range(0, len(rows), 5000):
+            updated += await self._executemany(
+                """
+                UPDATE article_frontier
+                SET claimed_by = NULL,
+                    claimed_at = NULL,
+                    claim_expires_at = NULL,
+                    updated_at = ?
+                WHERE url = ?
+                  AND status = 'pending'
+                  AND claimed_by = ?
+                """,
+                rows[start : start + 5000],
+            )
+        return updated
+
+    async def release_article_frontier_claims_by_worker(self, *, worker_id: str) -> int:
+        """Release all unfinished article frontier leases owned by one worker."""
+        if not worker_id:
+            raise ValueError("worker_id must be non-empty")
+        return await self._execute_count(
+            """
+            UPDATE article_frontier
+            SET claimed_by = NULL,
+                claimed_at = NULL,
+                claim_expires_at = NULL,
+                updated_at = ?
+            WHERE status = 'pending'
+              AND claimed_by = ?
+            """,
+            (_now(), worker_id),
+        )
+
+    async def _mark_article_frontier_urls(self, urls: list[str], *, status: str) -> None:
+        """Update the status for a collection of persisted frontier URLs."""
+        if status not in {"fetched", "skipped"}:
+            raise ValueError("status must be fetched or skipped")
+        if not urls:
+            return
+        assert self._conn is not None
+        now = _now()
+        rows = [(status, now if status == "fetched" else None, now, url) for url in urls]
+        await self._executemany(
+            """
+            UPDATE article_frontier
+            SET status = ?,
+                fetched_at = COALESCE(?, fetched_at),
+                claimed_by = NULL,
+                claimed_at = NULL,
+                claim_expires_at = NULL,
+                updated_at = ?
+            WHERE url = ?
+            """,
+            rows,
+        )
+
+    async def article_frontier_stats(self) -> dict[str, Any]:
+        """Return pending/fetched/skipped article frontier counts."""
+        assert self._conn is not None
+        stats = {"pending": 0, "fetched": 0, "skipped": 0, "claimed": 0, "by_source_domain": {}}
+        async with self._conn.execute(
+            "SELECT status, COUNT(*) AS count FROM article_frontier GROUP BY status"
+        ) as cursor:
+            rows = await cursor.fetchall()
+        for row in rows:
+            status = str(row["status"])
+            if status in {"pending", "fetched", "skipped"}:
+                stats[status] = int(row["count"])
+
+        async with self._conn.execute(
+            """
+            SELECT COUNT(*) AS count
+            FROM article_frontier
+            WHERE status = 'pending'
+              AND claim_expires_at > ?
+            """,
+            (_now(),),
+        ) as cursor:
+            claim_count_row = await cursor.fetchone()
+        stats["claimed"] = int(claim_count_row["count"]) if claim_count_row is not None else 0
+
+        async with self._conn.execute(
+            """
+            SELECT source_domain, COUNT(*) AS count
+            FROM article_frontier
+            WHERE status = 'pending'
+            GROUP BY source_domain
+            ORDER BY count DESC, source_domain ASC
+            """
+        ) as cursor:
+            rows = await cursor.fetchall()
+        stats["by_source_domain"] = {str(row["source_domain"]): int(row["count"]) for row in rows}
+        return stats
+
+    async def article_semantic_duplicate_stats(self) -> dict[str, int]:
+        """Return duplicate article counts for exact normalized title/date signatures."""
+        assert self._conn is not None
+        async with self._conn.execute(
+            """
+            SELECT
+                COUNT(*) AS duplicate_groups,
+                COALESCE(SUM(count_per_signature - 1), 0) AS duplicate_surplus
+            FROM (
+                SELECT LOWER(TRIM(title)) AS title_key,
+                       published_at,
+                       COUNT(*) AS count_per_signature
+                FROM articles
+                GROUP BY title_key, published_at
+                HAVING count_per_signature > 1
+            )
+            """
+        ) as cursor:
+            row = await cursor.fetchone()
+        if row is None:
+            return {"duplicate_groups": 0, "duplicate_surplus": 0}
+        return {
+            "duplicate_groups": int(row["duplicate_groups"]),
+            "duplicate_surplus": int(row["duplicate_surplus"]),
+        }
+
+    async def article_status_counts(self) -> dict[str, Any]:
+        """Return fast article/frontier counts for live crawl status."""
+        assert self._conn is not None
+        async with self._conn.execute(
+            """
+            SELECT
+                COUNT(*) AS total_articles,
+                COUNT(DISTINCT url) AS unique_article_urls,
+                MIN(published_at) AS earliest_published_at,
+                MAX(published_at) AS latest_published_at,
+                SUM(CASE WHEN provider = 'crawl' THEN 1 ELSE 0 END) AS crawl_articles,
+                SUM(
+                    CASE
+                        WHEN provider = 'crawl'
+                         AND json_extract(metadata, '$.discovery_method') = 'crawl'
+                        THEN 1
+                        ELSE 0
+                    END
+                ) AS crawl_discovered_articles,
+                SUM(
+                    CASE
+                        WHEN COALESCE(json_array_length(json_extract(metadata, '$.mentions')), 0) > 0
+                        THEN 1
+                        ELSE 0
+                    END
+                ) AS articles_with_mentions
+            FROM articles
+            """
+        ) as cursor:
+            article_row = await cursor.fetchone()
+
+        async with self._conn.execute(
+            "SELECT status, COUNT(*) AS count FROM article_frontier GROUP BY status"
+        ) as cursor:
+            frontier_rows = await cursor.fetchall()
+        frontier_counts = {"pending": 0, "fetched": 0, "skipped": 0}
+        for row in frontier_rows:
+            status = str(row["status"])
+            if status in frontier_counts:
+                frontier_counts[status] = int(row["count"])
+
+        async with self._conn.execute(
+            """
+            SELECT COUNT(*) AS count
+            FROM article_frontier
+            WHERE status = 'pending'
+              AND claim_expires_at > ?
+            """,
+            (_now(),),
+        ) as cursor:
+            claimed_row = await cursor.fetchone()
+
+        total_articles = _optional_row_int(article_row, "total_articles")
+        unique_article_urls = _optional_row_int(article_row, "unique_article_urls")
+        return {
+            "total_articles": total_articles,
+            "unique_article_urls": unique_article_urls,
+            "duplicate_url_count": total_articles - unique_article_urls,
+            "earliest_published_at": (
+                article_row["earliest_published_at"] if article_row is not None else None
+            ),
+            "latest_published_at": (
+                article_row["latest_published_at"] if article_row is not None else None
+            ),
+            "crawl_articles": _optional_row_int(article_row, "crawl_articles"),
+            "crawl_discovered_articles": _optional_row_int(
+                article_row,
+                "crawl_discovered_articles",
+            ),
+            "articles_with_mentions": _optional_row_int(article_row, "articles_with_mentions"),
+            "frontier_pending": frontier_counts["pending"],
+            "frontier_fetched": frontier_counts["fetched"],
+            "frontier_skipped": frontier_counts["skipped"],
+            "frontier_claimed": _optional_row_int(claimed_row, "count"),
+            "frontier_total": sum(frontier_counts.values()),
+        }
+
+    async def dedupe_articles_by_title_date(self, *, dry_run: bool) -> dict[str, int | bool]:
+        """Delete duplicate article rows sharing the same normalized title and timestamp."""
+        assert self._conn is not None
+        duplicate_stats = await self.article_semantic_duplicate_stats()
+        deleted = 0
+        if not dry_run and duplicate_stats["duplicate_surplus"]:
+            await self._conn.execute(
+                """
+                WITH ranked AS (
+                    SELECT id,
+                           ROW_NUMBER() OVER (
+                               PARTITION BY LOWER(TRIM(title)), published_at
+                               ORDER BY created_at ASC, LENGTH(url) ASC, url ASC
+                           ) AS rank_in_signature
+                    FROM articles
+                )
+                DELETE FROM articles
+                WHERE id IN (
+                    SELECT id
+                    FROM ranked
+                    WHERE rank_in_signature > 1
+                )
+                """
+            )
+            await self._conn.commit()
+            deleted = duplicate_stats["duplicate_surplus"]
+        return {
+            "duplicate_groups": duplicate_stats["duplicate_groups"],
+            "duplicate_surplus": duplicate_stats["duplicate_surplus"],
+            "deleted": deleted,
+            "dry_run": dry_run,
+        }
 
     async def list_articles(
         self,
@@ -1089,59 +1747,102 @@ class ScoutStore:
     async def article_stats(self) -> dict[str, Any]:
         """Return article corpus counts and date coverage."""
         assert self._conn is not None
-        async with self._conn.execute("SELECT * FROM articles") as cursor:
-            rows = list(await cursor.fetchall())
-
         by_year: dict[str, int] = {}
         by_source_domain: dict[str, int] = {}
         by_provider: dict[str, int] = {}
         by_mention_type: dict[str, int] = {}
+        article_urls: set[str] = set()
         unique_mentions: set[tuple[str, str]] = set()
         earliest: str | None = None
         latest: str | None = None
         articles_with_mentions = 0
         metadata_complete_articles = 0
         total_mentions = 0
-        for row in rows:
-            published_at = str(row["published_at"])
-            year = published_at[:4]
-            by_year[year] = by_year.get(year, 0) + 1
-            source_domain = str(row["source_domain"])
-            by_source_domain[source_domain] = by_source_domain.get(source_domain, 0) + 1
-            provider = str(row["provider"])
-            by_provider[provider] = by_provider.get(provider, 0) + 1
-            earliest = published_at if earliest is None else min(earliest, published_at)
-            latest = published_at if latest is None else max(latest, published_at)
-            metadata = json.loads(row["metadata"])
-            if _article_has_complete_metadata(row, metadata):
-                metadata_complete_articles += 1
-            mentions = metadata.get("mentions")
-            if isinstance(mentions, list) and mentions:
-                articles_with_mentions += 1
-                total_mentions += len(mentions)
-                for mention in mentions:
-                    if not isinstance(mention, dict):
-                        continue
-                    mention_name = str(mention.get("name") or "").strip()
-                    mention_type = str(mention.get("type") or "unknown").strip() or "unknown"
-                    if not mention_name:
-                        continue
-                    unique_mentions.add((mention_type, mention_name.casefold()))
-                    by_mention_type[mention_type] = by_mention_type.get(mention_type, 0) + 1
+        total_articles = 0
+        crawl_articles = 0
+        crawl_discovered_articles = 0
+        utility_page_articles = 0
+        async with self._conn.execute("SELECT * FROM articles") as cursor:
+            async for row in cursor:
+                total_articles += 1
+                article_url = str(row["url"])
+                article_urls.add(article_url)
+                published_at = str(row["published_at"])
+                year = published_at[:4]
+                by_year[year] = by_year.get(year, 0) + 1
+                source_domain = str(row["source_domain"])
+                by_source_domain[source_domain] = by_source_domain.get(source_domain, 0) + 1
+                provider = str(row["provider"])
+                by_provider[provider] = by_provider.get(provider, 0) + 1
+                if provider == "crawl":
+                    crawl_articles += 1
+                earliest = published_at if earliest is None else min(earliest, published_at)
+                latest = published_at if latest is None else max(latest, published_at)
+                metadata = json.loads(row["metadata"])
+                metadata = metadata if isinstance(metadata, dict) else {}
+                schema_types = metadata.get("schema_types")
+                schema_types = schema_types if isinstance(schema_types, list) else []
+                if is_article_utility_page(
+                    url=article_url,
+                    title=str(row["title"]),
+                    schema_types=[str(schema_type) for schema_type in schema_types],
+                ):
+                    utility_page_articles += 1
+                if provider == "crawl" and metadata.get("discovery_method") == "crawl":
+                    crawl_discovered_articles += 1
+                if _article_has_complete_metadata(row, metadata):
+                    metadata_complete_articles += 1
+                mentions = metadata.get("mentions")
+                if isinstance(mentions, list) and mentions:
+                    articles_with_mentions += 1
+                    total_mentions += len(mentions)
+                    for mention in mentions:
+                        if not isinstance(mention, dict):
+                            continue
+                        mention_name = str(mention.get("name") or "").strip()
+                        mention_type = str(mention.get("type") or "unknown").strip() or "unknown"
+                        if not mention_name:
+                            continue
+                        unique_mentions.add((mention_type, mention_name.casefold()))
+                        by_mention_type[mention_type] = by_mention_type.get(mention_type, 0) + 1
+
+        unique_article_urls = len(article_urls)
+        duplicate_url_count = total_articles - unique_article_urls
+        semantic_duplicates = await self.article_semantic_duplicate_stats()
 
         return {
-            "total_articles": len(rows),
+            "total_articles": total_articles,
+            "unique_article_urls": unique_article_urls,
+            "duplicate_url_count": duplicate_url_count,
+            "semantic_duplicate_groups": semantic_duplicates["duplicate_groups"],
+            "semantic_duplicate_surplus": semantic_duplicates["duplicate_surplus"],
             "earliest_published_at": earliest,
             "latest_published_at": latest,
             "by_year": by_year,
             "by_source_domain": by_source_domain,
             "by_provider": by_provider,
+            "crawl_articles": crawl_articles,
+            "crawl_discovered_articles": crawl_discovered_articles,
+            "utility_page_articles": utility_page_articles,
             "articles_with_mentions": articles_with_mentions,
             "metadata_complete_articles": metadata_complete_articles,
             "total_mentions": total_mentions,
             "unique_mentions": len(unique_mentions),
             "by_mention_type": by_mention_type,
         }
+
+    async def article_domain_counts(self) -> dict[str, int]:
+        """Return article counts by source domain without scanning article metadata."""
+        assert self._conn is not None
+        async with self._conn.execute(
+            """
+            SELECT source_domain, COUNT(*) AS count
+            FROM articles
+            GROUP BY source_domain
+            """
+        ) as cursor:
+            rows = await cursor.fetchall()
+        return {str(row["source_domain"]): int(row["count"]) for row in rows}
 
     # ------------------------------------------------------------------
     # Page tasks
@@ -1289,7 +1990,7 @@ class ScoutStore:
                 await self.fail_work(key, "reclaimed_from_inactive_run")
 
         lease_expires_at = (now + timedelta(seconds=lease_seconds)).isoformat()
-        await self._conn.execute(
+        await self._execute(
             """
             INSERT INTO work_claims (key, owner_run_id, status, lease_expires_at, updated_at, error)
             VALUES (?, ?, 'inflight', ?, ?, NULL)
@@ -1304,7 +2005,6 @@ class ScoutStore:
             """,
             (key, owner_run_id, lease_expires_at, now_iso),
         )
-        await self._conn.commit()
         async with self._conn.execute(
             "SELECT owner_run_id, status, lease_expires_at FROM work_claims WHERE key = ?",
             (key,),

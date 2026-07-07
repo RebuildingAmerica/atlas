@@ -13,7 +13,9 @@ from urllib.parse import urlparse
 import httpx
 from atlas_shared import PageContent, SourceType
 
+from atlas_scout.article_discovery_records import discovery_articles_from_resource
 from atlas_scout.scraper.browser_render import render_url_with_browser
+from atlas_scout.scraper.discovery_resources import extract_discovery_links
 from atlas_scout.scraper.extractor import (
     ContentExtraction,
     extract_content_verbose,
@@ -237,6 +239,32 @@ class AsyncFetcher:
                 )
 
             content_type = response.headers.get("content-type", "")
+            discovery_links = extract_discovery_links(
+                response.content,
+                url=url,
+                content_type=content_type,
+            )
+            discovery_articles = discovery_articles_from_resource(
+                response.content,
+                url=url,
+                content_type=content_type,
+            )
+            if discovery_links:
+                await self._cache_negative_result(
+                    url,
+                    reason="discovery_resource",
+                    discovered_links=discovery_links,
+                    discovery_articles=discovery_articles,
+                )
+                return self._make_outcome(
+                    url=url,
+                    task_id=task_id,
+                    page=None,
+                    status="filtered",
+                    error="discovery_resource",
+                    discovered_links=discovery_links,
+                    discovery_articles=discovery_articles,
+                )
             structured = extract_structured_content(
                 response.content,
                 url=url,
@@ -340,6 +368,7 @@ class AsyncFetcher:
 
         metadata = cached["metadata"]
         discovered_links = _coerce_discovered_links(metadata.get("discovered_links"))
+        discovery_articles = _coerce_discovery_articles(metadata.get("discovery_articles"))
         status = str(metadata.get("status") or "fetched")
         reason = metadata.get("reason")
 
@@ -362,6 +391,7 @@ class AsyncFetcher:
                 status="fetched",
                 error=None,
                 discovered_links=discovered_links,
+                discovery_articles=discovery_articles,
             )
 
         return True, self._make_outcome(
@@ -371,6 +401,7 @@ class AsyncFetcher:
             status=status,
             error=str(reason) if reason else None,
             discovered_links=discovered_links,
+            discovery_articles=discovery_articles,
         )
 
     async def _cache_positive_result(self, page: PageContent, *, render_mode: str) -> None:
@@ -398,6 +429,7 @@ class AsyncFetcher:
         *,
         reason: str,
         discovered_links: list[str],
+        discovery_articles: list[dict[str, Any]] | None = None,
         browser_reason: str | None = None,
     ) -> None:
         """Persist a negative fetch outcome so future runs skip duplicate work by default."""
@@ -414,6 +446,7 @@ class AsyncFetcher:
                 "published_date": None,
                 "source_type": str(SourceType.WEBSITE),
                 "discovered_links": discovered_links,
+                "discovery_articles": discovery_articles or [],
                 "render_mode": "html",
                 "browser_reason": browser_reason,
             },
@@ -457,6 +490,7 @@ class AsyncFetcher:
         status: str,
         error: str | None,
         discovered_links: list[str],
+        discovery_articles: list[dict[str, Any]] | None = None,
     ) -> dict[str, Any]:
         """Build the normalized fetch outcome used by the pipeline."""
         return {
@@ -466,6 +500,7 @@ class AsyncFetcher:
             "status": status,
             "error": error,
             "discovered_links": discovered_links,
+            "discovery_articles": discovery_articles or [],
         }
 
     @staticmethod
@@ -561,6 +596,13 @@ def _coerce_discovered_links(value: Any) -> list[str]:
     if isinstance(value, list):
         return [str(item) for item in value if str(item)]
     return []
+
+
+def _coerce_discovery_articles(value: Any) -> list[dict[str, Any]]:
+    """Normalize cached discovery-article metadata into record dictionaries."""
+    if not isinstance(value, list):
+        return []
+    return [item for item in value if isinstance(item, dict)]
 
 
 def _extract_pdf_content(data: bytes, *, url: str) -> ContentExtraction:

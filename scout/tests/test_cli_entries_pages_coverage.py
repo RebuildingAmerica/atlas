@@ -20,17 +20,17 @@ from click.testing import CliRunner
 from rich.console import Console
 
 import atlas_scout.cli as cli_module
-from atlas_scout.cli import (
-    _entries_list,
-    _pages_list,
-    main,
-)
+import atlas_scout.entries_commands as entries_module
+import atlas_scout.pages_commands as pages_module
+from atlas_scout.cli import main
 from atlas_scout.config import (
     ScheduleConfig,
     ScheduleTarget,
     ScoutConfig,
     StoreConfig,
 )
+from atlas_scout.entries_commands import _entries_list
+from atlas_scout.pages_commands import _pages_list
 from atlas_scout.store import ScoutStore
 
 if TYPE_CHECKING:
@@ -50,6 +50,16 @@ def _capture_consoles(monkeypatch: pytest.MonkeyPatch) -> io.StringIO:
     monkeypatch.setattr(
         cli_module,
         "err_console",
+        Console(file=output, force_terminal=False, color_system=None, width=240),
+    )
+    monkeypatch.setattr(
+        entries_module,
+        "console",
+        Console(file=output, force_terminal=False, color_system=None, width=240),
+    )
+    monkeypatch.setattr(
+        pages_module,
+        "console",
         Console(file=output, force_terminal=False, color_system=None, width=240),
     )
     return output
