@@ -548,7 +548,7 @@ async def test_run_pipeline_skips_malformed_search_results(
             {"url": "https://example.com/seed", "title": "Seed", "publication": "Ex"},
         ]
 
-    monkeypatch.setattr("atlas_scout.steps.source_fetch._search_brave", _fake_search)
+    monkeypatch.setattr("atlas_scout.steps.source_fetch.search_brave", _fake_search)
 
     store = ScoutStore(str(tmp_db_path))
     await store.initialize()

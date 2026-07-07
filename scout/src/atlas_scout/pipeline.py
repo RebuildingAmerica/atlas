@@ -876,7 +876,7 @@ async def run_pipeline(
                     },
                 )
                 deeper_rpq = results_per_query_for_depth("deep")
-                deeper_results = await source_fetch._search_brave(
+                deeper_results = await source_fetch.search_brave(
                     [q.query for q in followup_queries],
                     search_api_key,
                     results_per_query=deeper_rpq,
@@ -912,7 +912,7 @@ async def run_pipeline(
                 # Also search for the entity if we have a query
                 search_query = target.get("search_query", "")
                 if search_query and search_api_key:
-                    chase_results = await source_fetch._search_brave(
+                    chase_results = await source_fetch.search_brave(
                         [search_query],
                         search_api_key,
                         results_per_query=5,

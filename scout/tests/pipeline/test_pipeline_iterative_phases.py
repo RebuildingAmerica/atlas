@@ -87,7 +87,7 @@ async def test_run_pipeline_iterative_deepening_executes_all_phases(
             return [{"url": "https://example.com/seed", "title": "Seed", "publication": "Ex"}]
         return [{"url": "https://example.com/followup", "title": "Followup", "publication": "Ex"}]
 
-    monkeypatch.setattr("atlas_scout.steps.source_fetch._search_brave", _fake_search)
+    monkeypatch.setattr("atlas_scout.steps.source_fetch.search_brave", _fake_search)
 
     # Entity-chase generators return dummy targets and follow-up queries.
     async def _fake_followup(*_args, **_kwargs):
@@ -230,7 +230,7 @@ async def test_run_pipeline_iterative_deepening_drives_followup_and_chase_search
             }
         ]
 
-    monkeypatch.setattr("atlas_scout.steps.source_fetch._search_brave", _fake_search)
+    monkeypatch.setattr("atlas_scout.steps.source_fetch.search_brave", _fake_search)
 
     async def _fake_followup(*_args, **_kwargs):
         from atlas_scout.steps.query_gen import SearchQuery
@@ -378,7 +378,7 @@ async def test_run_pipeline_iterative_deepening_skips_followup_results_with_none
             {"url": "https://example.com/empty-extract", "title": "x", "publication": "y"},
         ]
 
-    monkeypatch.setattr("atlas_scout.steps.source_fetch._search_brave", _fake_search)
+    monkeypatch.setattr("atlas_scout.steps.source_fetch.search_brave", _fake_search)
 
     async def _fake_followup(*_args, **_kwargs):
         from atlas_scout.steps.query_gen import SearchQuery

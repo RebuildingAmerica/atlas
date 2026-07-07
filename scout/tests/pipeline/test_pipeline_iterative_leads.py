@@ -106,7 +106,7 @@ async def test_run_pipeline_iterative_deepening_lead_loop_with_empty_extraction(
     async def _fake_search(_queries, _key, **_kwargs):
         return [{"url": "https://example.com/seed", "title": "Seed", "publication": "Ex"}]
 
-    monkeypatch.setattr("atlas_scout.steps.source_fetch._search_brave", _fake_search)
+    monkeypatch.setattr("atlas_scout.steps.source_fetch.search_brave", _fake_search)
 
     async def _empty_followup(*_args, **_kwargs):
         return []
@@ -203,7 +203,7 @@ async def test_run_pipeline_iterative_deepening_chase_target_without_website(
             }
         ]
 
-    monkeypatch.setattr("atlas_scout.steps.source_fetch._search_brave", _fake_search)
+    monkeypatch.setattr("atlas_scout.steps.source_fetch.search_brave", _fake_search)
 
     async def _empty_followup(*_args, **_kwargs):
         return []
@@ -263,7 +263,7 @@ async def test_run_pipeline_iterative_deepening_chase_with_empty_extractions(
             {"url": "https://example.com/chase-empty", "title": "x", "publication": "y"},
         ]
 
-    monkeypatch.setattr("atlas_scout.steps.source_fetch._search_brave", _fake_search)
+    monkeypatch.setattr("atlas_scout.steps.source_fetch.search_brave", _fake_search)
 
     async def _empty_followup(*_args, **_kwargs):
         return []
@@ -376,7 +376,7 @@ async def test_run_pipeline_iterative_deepening_browser_research_emits_status_wh
     async def _fake_search(_queries, _key, **_kwargs):
         return [{"url": "https://example.com/seed", "title": "Seed", "publication": "Ex"}]
 
-    monkeypatch.setattr("atlas_scout.steps.source_fetch._search_brave", _fake_search)
+    monkeypatch.setattr("atlas_scout.steps.source_fetch.search_brave", _fake_search)
 
     async def _empty_followup(*_args, **_kwargs):
         return []
@@ -498,7 +498,7 @@ async def test_run_pipeline_iterative_deepening_handles_dead_ends(
     async def _fake_search(_queries, _key, **_kwargs):
         return [{"url": "https://example.com/seed", "title": "Seed", "publication": "Ex"}]
 
-    monkeypatch.setattr("atlas_scout.steps.source_fetch._search_brave", _fake_search)
+    monkeypatch.setattr("atlas_scout.steps.source_fetch.search_brave", _fake_search)
 
     async def _empty_followup(*_args, **_kwargs):
         return []
@@ -543,7 +543,7 @@ async def test_run_pipeline_iterative_deepening_skips_lead_when_fetch_returns_no
     async def _fake_search(_queries, _key, **_kwargs):
         return [{"url": "https://example.com/seed", "title": "Seed", "publication": "Ex"}]
 
-    monkeypatch.setattr("atlas_scout.steps.source_fetch._search_brave", _fake_search)
+    monkeypatch.setattr("atlas_scout.steps.source_fetch.search_brave", _fake_search)
 
     async def _empty_followup(*_args, **_kwargs):
         return []

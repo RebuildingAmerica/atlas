@@ -31,6 +31,21 @@ class EnqueueUrl(Protocol):
         """Enqueue a normalized URL for later fetching."""
 
 
+class SearchProvider(Protocol):
+    """Async web-search callable used by search frontier producers."""
+
+    def __call__(
+        self,
+        queries: list[str],
+        api_key: str,
+        results_per_query: int = 5,
+        *,
+        country: str = "",
+        freshness: str = "",
+    ) -> Awaitable[list[dict[str, str | None]]]:
+        """Search the given queries and return flat result metadata."""
+
+
 async def fetch_outcome(
     fetcher: AsyncFetcher,
     *,
@@ -75,15 +90,17 @@ async def produce_search_frontier(
     enqueue: EnqueueUrl,
     max_concurrent: int,
     results_per_query: int = 5,
+    search: SearchProvider | None = None,
 ) -> None:
     """Search queries concurrently and enqueue unique result URLs as they arrive."""
+    # Resolved at call time (not bound as a default) so callers can still patch
+    # atlas_scout.steps.source_fetch.search_brave and have it take effect here.
+    search_fn = search or source_fetch.search_brave
     semaphore = asyncio.Semaphore(max(1, max_concurrent))
 
     async def _search_one(query: str) -> list[dict[str, str | None]]:
         async with semaphore:
-            return await source_fetch._search_brave(
-                [query], search_api_key, results_per_query=results_per_query
-            )
+            return await search_fn([query], search_api_key, results_per_query=results_per_query)
 
     tasks = [asyncio.create_task(_search_one(query)) for query in queries]
     for task in asyncio.as_completed(tasks):

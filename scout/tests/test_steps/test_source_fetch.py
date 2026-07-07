@@ -9,7 +9,7 @@ from httpx import Response
 
 from atlas_scout.scraper.fetcher import AsyncFetcher
 from atlas_scout.steps.query_gen import SearchQuery
-from atlas_scout.steps.source_fetch import _search_brave, fetch_sources_stream
+from atlas_scout.steps.source_fetch import fetch_sources_stream, search_brave
 
 _BRAVE_SEARCH_URL = "https://api.search.brave.com/res/v1/web/search"
 _FAKE_API_KEY = "test-key-123"
@@ -30,12 +30,12 @@ def _make_brave_response(urls: list[str]) -> dict:
 @pytest.mark.asyncio
 @respx.mock
 async def test_search_brave_returns_urls() -> None:
-    """_search_brave returns a list of result dicts with 'url' keys."""
+    """search_brave returns a list of result dicts with 'url' keys."""
     respx.get(_BRAVE_SEARCH_URL).mock(
         return_value=Response(200, json=_make_brave_response(["https://example.com/a"]))
     )
 
-    results = await _search_brave(["affordable housing Austin TX"], _FAKE_API_KEY)
+    results = await search_brave(["affordable housing Austin TX"], _FAKE_API_KEY)
 
     assert len(results) == 1
     assert results[0]["url"] == "https://example.com/a"
@@ -175,7 +175,7 @@ async def test_search_brave_passes_country_and_freshness_filters() -> None:
         return_value=Response(200, json=_make_brave_response(["https://example.com/q"]))
     )
 
-    results = await _search_brave(
+    results = await search_brave(
         ["filtered query"],
         _FAKE_API_KEY,
         country="US",
@@ -209,7 +209,7 @@ async def test_fetch_sources_stream_accepts_async_iterator(
 
     from atlas_scout.steps import source_fetch as source_fetch_module
 
-    monkeypatch.setattr(source_fetch_module, "_search_brave", _stub_search)
+    monkeypatch.setattr(source_fetch_module, "search_brave", _stub_search)
     fetcher = AsyncFetcher()
     monkeypatch.setattr(fetcher, "fetch", _mock_fetch)
 
@@ -227,7 +227,7 @@ async def test_search_brave_logs_and_continues_on_http_error(
     respx.get(_BRAVE_SEARCH_URL).mock(return_value=Response(503, json={"error": "fail"}))
 
     with caplog.at_level("WARNING", logger="atlas_scout.steps.source_fetch"):
-        results = await _search_brave(["any"], _FAKE_API_KEY)
+        results = await search_brave(["any"], _FAKE_API_KEY)
 
     assert results == []
     assert any("Brave search failed" in r.message for r in caplog.records)

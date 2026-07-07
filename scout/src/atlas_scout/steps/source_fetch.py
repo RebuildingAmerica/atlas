@@ -22,7 +22,7 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-__all__ = ["fetch_sources_stream"]
+__all__ = ["fetch_sources_stream", "search_brave"]
 
 _BRAVE_SEARCH_URL = "https://api.search.brave.com/res/v1/web/search"
 
@@ -56,7 +56,7 @@ async def fetch_sources_stream(
 
     # Search and collect unique URLs
     query_strings = [q.query for q in query_list]
-    search_results = await _search_brave(query_strings, search_api_key)
+    search_results = await search_brave(query_strings, search_api_key)
 
     seen_urls: set[str] = set()
     unique_urls: list[str] = []
@@ -89,7 +89,7 @@ def results_per_query_for_depth(search_depth: str) -> int:
     return _DEPTH_RESULTS.get(search_depth, _DEPTH_RESULTS["standard"])
 
 
-async def _search_brave(
+async def search_brave(
     queries: list[str],
     api_key: str,
     results_per_query: int = 5,
