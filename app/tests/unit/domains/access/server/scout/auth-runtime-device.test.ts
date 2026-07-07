@@ -146,6 +146,7 @@ describe("OAuth device auth runtime wiring", () => {
       permissions: {
         discovery: ["read", "write"],
         entities: ["write"],
+        firehose: ["read"],
       },
       org_id: "org-123",
     });

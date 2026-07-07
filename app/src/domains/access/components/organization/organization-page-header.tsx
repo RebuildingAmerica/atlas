@@ -13,6 +13,10 @@ export const ORGANIZATION_SETTINGS_LINKS: OrganizationPageHeaderLink[] = [
   { label: "Enterprise sign-in", to: "/organization/sso" },
 ];
 
+export const WORKSPACE_SETTINGS_LINKS: OrganizationPageHeaderLink[] = [
+  { label: "Workspace", to: "/organization" },
+];
+
 /**
  * Props for the shared organization page header.
  */

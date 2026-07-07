@@ -27,6 +27,7 @@ from atlas_scout.cli_daemon import (
 )
 from atlas_scout.cli_errors import CliError
 from atlas_scout.config import SCOUT_CONFIG_DIR, ScoutConfig
+from atlas_scout.credentials import CredentialStoreError
 from atlas_scout.local_model_commands import (
     _prepare_local_model_config,
     _require_local_worker_provider,
@@ -78,6 +79,14 @@ def _write_worker_state(**state: object) -> None:
         json.dump(payload, handle, indent=2, sort_keys=True)
         handle.write("\n")
     WORKER_STATE_PATH.chmod(0o600)
+
+
+def _resolve_optional_worker_search_key(search_api_key: str | None) -> str:
+    """Return a search key for worker jobs, or empty when storage is unavailable."""
+    try:
+        return resolve_search_api_key(search_api_key)
+    except CredentialStoreError:
+        return ""
 
 
 def _write_stopped_worker_state() -> None:
@@ -404,7 +413,7 @@ async def _worker_run_internal(
         raise click.ClickException("Log in with `scout login` before starting the worker.")
     _require_local_worker_provider(config)
     resolved_atlas_url = (atlas_url or session.atlas_url).rstrip("/")
-    resolved_search_key = resolve_search_api_key(search_api_key)
+    resolved_search_key = _resolve_optional_worker_search_key(search_api_key)
     stop_event = asyncio.Event()
     _install_daemon_signal_handlers(stop_event)
     _write_worker_state(
@@ -516,7 +525,7 @@ async def _worker_start(
     state = _read_worker_state()
     if _worker_state_running(state):
         raise click.ClickException(f"Scout worker is already running (PID {state['process_id']}).")
-    resolved_search_key = resolve_search_api_key(search_api_key)
+    resolved_search_key = _resolve_optional_worker_search_key(search_api_key)
     process = _spawn_worker_process(
         config_path=config_path,
         debug=debug,

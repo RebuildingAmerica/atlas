@@ -481,7 +481,7 @@ describe("OrganizationPage", () => {
 
     await renderOrganizationPage();
 
-    expect(screen.getByText("Enterprise sign-in")).not.toBeNull();
+    expect(screen.getByRole("link", { name: "Enterprise sign-in" })).not.toBeNull();
     expect(screen.getByText("Manage enterprise SSO")).not.toBeNull();
     expect(screen.getByText("Primary provider: atlas-team-google-workspace-saml.")).not.toBeNull();
     expect(screen.queryByText("Configured providers")).toBeNull();
@@ -496,7 +496,7 @@ describe("OrganizationPage", () => {
         "Use this page to configure Google Workspace OIDC, SAML 2.0, domain verification, and the workspace primary provider.",
       ),
     ).not.toBeNull();
-    expect(screen.getByText("View full organization settings")).not.toBeNull();
+    expect(screen.getByRole("link", { name: "Workspace" })).not.toBeNull();
   });
 
   it("prefills the workspace domain from the server suggestion", async () => {

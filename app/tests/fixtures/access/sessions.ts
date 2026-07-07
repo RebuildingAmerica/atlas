@@ -50,6 +50,7 @@ export function createBetterAuthSession(
     activeOrganizationId?: string | null;
     email?: string;
     emailVerified?: boolean;
+    image?: string | null;
     sessionId?: string;
     userId?: string;
     userName?: string;
@@ -64,6 +65,7 @@ export function createBetterAuthSession(
       email: options.email ?? "operator@atlas.test",
       emailVerified: options.emailVerified ?? true,
       id: options.userId ?? "user_123",
+      image: options.image ?? null,
       name: options.userName ?? "Operator",
     },
   };
@@ -216,6 +218,7 @@ export function createAtlasSessionFixture(
       email: options.user?.email ?? "operator@atlas.test",
       emailVerified: options.user?.emailVerified ?? true,
       id: options.user?.id ?? "user_123",
+      image: options.user?.image ?? null,
       name: options.user?.name ?? "Operator",
     },
     workspace: options.workspace ?? createAtlasWorkspace({ role: options.role }),
