@@ -919,7 +919,31 @@ confusing intermediate states:
   happen until Phase 9**. `src/atlas_scout/cli.py` still exists as a 4,914-line
   file; Python cannot have both a module `cli.py` and a package `cli/` in the
   same parent — the package would silently shadow the file. This move is only
-  safe once `cli.py` itself becomes `cli/__init__.py`.
+  safe once `cli.py` itself becomes `cli/__init__.py`. **Update (2026-07-07):**
+  by the end of Phases 1-2 and the follow-up cleanup tasks below, `cli.py` had
+  shrunk to 12 lines and no longer collided with a `cli/` package on name alone,
+  so this move was re-attempted directly. It still isn't safe, for a deeper
+  reason than file/package naming: `cli.py` re-exports `main`
+  (`from atlas_scout.cli_app import main`), and `cli_app.py` builds `main` by
+  importing every command vertical, which collectively touch nearly every module
+  in the codebase — including `console`/`err_console` (`cli_context.py`) and
+  `CliError` (`cli_errors.py`), which are used almost everywhere. Once those
+  three files become submodules of `cli/`, importing `atlas_scout.cli.context`
+  from anywhere first requires fully executing `cli/__init__.py`, which pulls in
+  `cli_app` → the entire command tree → and, for any module reached that way
+  that itself imports `atlas_scout.cli.context`/`.errors`/`.select`, a circular
+  import back into itself. This reproduced concretely: importing
+  `atlas_scout.articles.crawl_runner` (which imports `cli.context`) walked
+  through `cli/__init__.py` → `cli_app` → `articles_commands` →
+  `crawl_commands`, which imports `crawl_runner` back from itself while it was
+  still mid-import. This isn't fixable by reordering imports in the three files
+  being moved — it requires `cli/__init__.py` to stop eagerly constructing the
+  full `main` Click group at import time, which is exactly Phase 9's own stated
+  scope ("reduce `cli/__init__.py` to registering every vertical's
+  `cli_commands.py` group") and depends on Phases 3-8 having already split every
+  command vertical out first. The attempt was reverted;
+  `cli_context.py`/`cli_errors.py`/`cli_select.py` remain flat top-level modules
+  until Phase 9 is reached in full, not just until `cli.py` is short.
 - `runtime.py` → `discovery/runtime.py` deferred to Phase 8 (its real
   destination package doesn't meaningfully exist until then).
 - `doctor_output.py` → `diagnostics/output.py` deferred to Phase 5, alongside
