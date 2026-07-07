@@ -8,6 +8,7 @@ from urllib.parse import urlparse
 
 from atlas_shared import PageContent, SourceType
 
+from atlas_scout.scraper.browser_session import browser_page
 from atlas_scout.scraper.crawler import extract_links
 from atlas_scout.scraper.extractor import ContentExtraction, content_quality_reason
 
@@ -33,27 +34,18 @@ async def render_url_with_browser(url: str, *, timeout_ms: int) -> ContentExtrac
     or the rendered content is still too thin.
     """
     try:
-        from playwright.async_api import async_playwright
+        async with browser_page() as page:
+            await page.goto(url, wait_until="domcontentloaded", timeout=timeout_ms)
+            await page.wait_for_timeout(750)
+            text = await page.evaluate("() => document.body?.innerText || ''")
+            html = await page.content()
+            title = await page.title()
     except ImportError:
         return ContentExtraction(
             page=None,
             reason="browser_render_unavailable",
             discovered_links=[],
         )
-
-    browser = None
-    try:
-        async with async_playwright() as playwright:
-            browser = await playwright.chromium.launch(headless=True)
-            page = await browser.new_page()
-            await page.set_extra_http_headers(
-                {"User-Agent": "AtlasScout/1.0 (+https://atlas.rebuildingus.org/scout)"}
-            )
-            await page.goto(url, wait_until="domcontentloaded", timeout=timeout_ms)
-            await page.wait_for_timeout(750)
-            text = await page.evaluate("() => document.body?.innerText || ''")
-            html = await page.content()
-            title = await page.title()
     except Exception:
         logger.debug("Browser render failed for %s", url, exc_info=True)
         return ContentExtraction(
@@ -61,9 +53,6 @@ async def render_url_with_browser(url: str, *, timeout_ms: int) -> ContentExtrac
             reason="browser_render_failed",
             discovered_links=[],
         )
-    finally:
-        if browser is not None:
-            await browser.close()
 
     discovered_links = extract_links(html, base_url=url, same_domain=True)
     quality_reason = content_quality_reason(text)

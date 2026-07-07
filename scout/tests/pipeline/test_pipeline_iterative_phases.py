@@ -117,7 +117,7 @@ async def test_run_pipeline_iterative_deepening_executes_all_phases(
     async def _no_browser(*_args, **_kwargs) -> list[RawEntry]:
         return []
 
-    monkeypatch.setattr("atlas_scout.scraper.browser_researcher.research_org_website", _no_browser)
+    monkeypatch.setattr("atlas_scout.steps.browser_research.research_org_website", _no_browser)
 
     class _LeadProvider:
         """A provider that emits one entry with discovery_leads on its first call."""
@@ -260,7 +260,7 @@ async def test_run_pipeline_iterative_deepening_drives_followup_and_chase_search
     async def _no_browser(*_args, **_kwargs) -> list[RawEntry]:
         return []
 
-    monkeypatch.setattr("atlas_scout.scraper.browser_researcher.research_org_website", _no_browser)
+    monkeypatch.setattr("atlas_scout.steps.browser_research.research_org_website", _no_browser)
 
     class _AlwaysExtractsProvider:
         max_concurrent = 1
@@ -400,7 +400,7 @@ async def test_run_pipeline_iterative_deepening_skips_followup_results_with_none
     async def _no_browser(*_args, **_kwargs) -> list[RawEntry]:
         return []
 
-    monkeypatch.setattr("atlas_scout.scraper.browser_researcher.research_org_website", _no_browser)
+    monkeypatch.setattr("atlas_scout.steps.browser_research.research_org_website", _no_browser)
 
     class _MixedProvider:
         max_concurrent = 1

@@ -120,7 +120,7 @@ async def test_run_pipeline_iterative_deepening_lead_loop_with_empty_extraction(
     async def _no_browser(*_args, **_kwargs) -> list[RawEntry]:
         return []
 
-    monkeypatch.setattr("atlas_scout.scraper.browser_researcher.research_org_website", _no_browser)
+    monkeypatch.setattr("atlas_scout.steps.browser_research.research_org_website", _no_browser)
 
     class _TwoLeadProvider:
         max_concurrent = 1
@@ -221,7 +221,7 @@ async def test_run_pipeline_iterative_deepening_chase_target_without_website(
     async def _no_browser(*_args, **_kwargs) -> list[RawEntry]:
         return []
 
-    monkeypatch.setattr("atlas_scout.scraper.browser_researcher.research_org_website", _no_browser)
+    monkeypatch.setattr("atlas_scout.steps.browser_research.research_org_website", _no_browser)
 
     result = await run_pipeline(
         location="Austin, TX",
@@ -283,7 +283,7 @@ async def test_run_pipeline_iterative_deepening_chase_with_empty_extractions(
     async def _no_browser(*_args, **_kwargs) -> list[RawEntry]:
         return []
 
-    monkeypatch.setattr("atlas_scout.scraper.browser_researcher.research_org_website", _no_browser)
+    monkeypatch.setattr("atlas_scout.steps.browser_research.research_org_website", _no_browser)
 
     class _ChaseFetcher:
         max_concurrent = 1
@@ -403,7 +403,7 @@ async def test_run_pipeline_iterative_deepening_browser_research_emits_status_wh
         ]
 
     monkeypatch.setattr(
-        "atlas_scout.scraper.browser_researcher.research_org_website",
+        "atlas_scout.steps.browser_research.research_org_website",
         _browser_yields_entries,
     )
 
@@ -565,7 +565,7 @@ async def test_run_pipeline_iterative_deepening_skips_lead_when_fetch_returns_no
     async def _no_browser(*_args, **_kwargs) -> list[RawEntry]:
         return []
 
-    monkeypatch.setattr("atlas_scout.scraper.browser_researcher.research_org_website", _no_browser)
+    monkeypatch.setattr("atlas_scout.steps.browser_research.research_org_website", _no_browser)
 
     class _LeadProvider:
         max_concurrent = 1

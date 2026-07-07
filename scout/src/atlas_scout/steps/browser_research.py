@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING
 from atlas_shared import PageContent, RawEntry, SourceType
 
 from atlas_scout.providers.base import Completion, Message
+from atlas_scout.scraper.browser_session import browser_page
 from atlas_scout.scraper.extractor import content_quality_reason
 
 if TYPE_CHECKING:
@@ -39,79 +40,69 @@ async def research_org_website(
     Uses the LLM to select which links to follow — no hardcoded keyword lists.
     Falls back gracefully if Playwright is not installed.
     """
-    try:
-        from playwright.async_api import async_playwright
-    except (AttributeError, ImportError):
-        logger.debug("Playwright unavailable — skipping browser research for %s", website_url)
-        return []
-
     from atlas_scout.steps.entry_extract import extract_page_entries
 
     all_entries: list[RawEntry] = []
     pages_visited = 0
 
     try:
-        async with async_playwright() as pw:
-            browser = await pw.chromium.launch(headless=True)
-            try:
-                page = await browser.new_page()
-                await page.set_extra_http_headers({"User-Agent": "AtlasScout/1.0"})
+        async with browser_page() as page:
+            await page.goto(website_url, wait_until="domcontentloaded", timeout=15000)
 
-                await page.goto(website_url, wait_until="domcontentloaded", timeout=15000)
+            # Extract all links from homepage
+            links = await page.evaluate("""
+                () => Array.from(document.querySelectorAll('a[href]'))
+                    .map(a => ({ href: a.href, text: (a.textContent || '').trim() }))
+                    .filter(l => l.href.startsWith('http'))
+            """)
 
-                # Extract all links from homepage
-                links = await page.evaluate("""
-                    () => Array.from(document.querySelectorAll('a[href]'))
-                        .map(a => ({ href: a.href, text: (a.textContent || '').trim() }))
-                        .filter(l => l.href.startsWith('http'))
-                """)
+            # Ask the LLM which links to follow
+            target_urls = await _select_links_with_llm(
+                links,
+                provider,
+                org_name=org_name,
+                max_links=_MAX_PAGES,
+            )
 
-                # Ask the LLM which links to follow
-                target_urls = await _select_links_with_llm(
-                    links,
-                    provider,
-                    org_name=org_name,
-                    max_links=_MAX_PAGES,
-                )
+            for target_url in target_urls:
+                try:
+                    await page.goto(target_url, wait_until="domcontentloaded", timeout=10000)
+                    text = await page.evaluate("() => document.body?.innerText || ''")
+                    pages_visited += 1
 
-                for target_url in target_urls:
-                    try:
-                        await page.goto(target_url, wait_until="domcontentloaded", timeout=10000)
-                        text = await page.evaluate("() => document.body?.innerText || ''")
-                        pages_visited += 1
-
-                        if content_quality_reason(text) is not None:
-                            continue
-
-                        page_content = PageContent(
-                            url=target_url,
-                            text=text,
-                            title=await page.title() or "",
-                            source_type=SourceType.WEBSITE,
-                        )
-
-                        entries = await extract_page_entries(
-                            page_content,
-                            provider,
-                            city,
-                            state,
-                            store=None,
-                            run_id=None,
-                            reuse_cached_extractions=False,
-                        )
-                        if entries:
-                            all_entries.extend(entries)
-                            logger.info(
-                                "Browser research: %d entries from %s",
-                                len(entries),
-                                target_url,
-                            )
-                    except Exception:
-                        logger.debug("Browser page visit failed: %s", target_url, exc_info=True)
+                    if content_quality_reason(text) is not None:
                         continue
-            finally:
-                await browser.close()
 
+                    page_content = PageContent(
+                        url=target_url,
+                        text=text,
+                        title=await page.title() or "",
+                        source_type=SourceType.WEBSITE,
+                    )
+
+                    entries = await extract_page_entries(
+                        page_content,
+                        provider,
+                        city,
+                        state,
+                        store=None,
+                        run_id=None,
+                        reuse_cached_extractions=False,
+                    )
+                    if entries:
+                        all_entries.extend(entries)
+                        logger.info(
+                            "Browser research: %d entries from %s",
+                            len(entries),
+                            target_url,
+                        )
+                except Exception:
+                    logger.debug("Browser page visit failed: %s", target_url, exc_info=True)
+                    continue
+
+    except (AttributeError, ImportError):
+        logger.debug("Playwright unavailable — skipping browser research for %s", website_url)
+        return []
     except Exception:
         logger.warning("Browser research failed for %s", website_url, exc_info=True)
 

@@ -633,7 +633,7 @@ async def run_pipeline(
 
         # --- AI-native deepening: LLM-driven queries + entity chasing + lead following ---
         if iterative_deepening and not direct_urls:
-            from atlas_scout.scraper.browser_researcher import research_org_website
+            from atlas_scout.steps.browser_research import research_org_website
             from atlas_scout.steps.entity_chase import (
                 generate_followup_queries,
                 select_entities_to_chase,

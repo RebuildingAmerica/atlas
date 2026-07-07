@@ -1,4 +1,4 @@
-"""Tests for atlas_scout.scraper.browser_researcher."""
+"""Tests for atlas_scout.steps.browser_research."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, Any
 from atlas_shared import RawEntry
 
 from atlas_scout.providers.base import Completion, Message
-from atlas_scout.scraper import browser_researcher as br
+from atlas_scout.steps import browser_research as br
 
 if TYPE_CHECKING:
     import pytest
