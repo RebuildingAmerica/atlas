@@ -40,6 +40,7 @@ async function createReadyWorkspace(page: Page) {
   await page.getByText("Individual workspace", { exact: false }).first().click();
   await page.getByLabel("Workspace name").fill(`E2E Workspace ${workspaceId}`);
   await page.getByLabel("Workspace slug").fill(`e2e-${workspaceId}`);
+  await expect(page.getByText("Slug is available.")).toBeVisible({ timeout: 30_000 });
   const createButton = page.getByRole("button", { name: "Create workspace" });
   await expect(createButton).toBeEnabled({ timeout: 15_000 });
   await createButton.click();
