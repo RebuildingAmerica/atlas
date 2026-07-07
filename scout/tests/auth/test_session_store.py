@@ -7,17 +7,16 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-import atlas_scout.auth as auth_module
+import atlas_scout.auth.session_store as session_store_module
 from atlas_scout.auth import (
     E2E_FILE_CREDENTIAL_STORE,
     E2E_FILE_CREDENTIAL_STORE_ENV,
-    SESSION_TOKEN_ACCOUNT,
     E2EFileCredentialStore,
     FileSessionStore,
     ScoutSession,
     default_session_credential_store,
 )
-from atlas_scout.credentials import CredentialStoreError
+from atlas_scout.credentials import SESSION_TOKEN_ACCOUNT, CredentialStoreError
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -217,10 +216,10 @@ def test_default_session_helpers_delegate_to_store(monkeypatch: pytest.MonkeyPat
         def delete(self) -> None:
             calls.append("delete")
 
-    monkeypatch.setattr(auth_module, "FileSessionStore", FakeStore)
+    monkeypatch.setattr(session_store_module, "FileSessionStore", FakeStore)
 
-    assert auth_module.load_session() == session
-    auth_module.save_session(session)
-    auth_module.delete_session()
+    assert session_store_module.load_session() == session
+    session_store_module.save_session(session)
+    session_store_module.delete_session()
 
     assert calls == ["load", session, "delete"]
