@@ -133,6 +133,20 @@ describe("MapPage", () => {
     expect(refetch).toHaveBeenCalledOnce();
   });
 
+  it("shows the error state when the route could not seed initial points", () => {
+    const refetch = vi.fn();
+    requireMapPageHarness().setState({
+      points: [],
+      pointsQuery: { data: undefined, isError: false, refetch },
+    });
+    render(<MapPage search={{}} initialPointsLoadFailed />);
+
+    expect(screen.getByText(/couldn.t load the map/i)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(refetch).toHaveBeenCalledOnce();
+    expect(readMapPageHarness().lastInitialPointsLoadFailed()).toBe(true);
+  });
+
   it("opens the detail panel as a non-modal dialog when an actor is selected", () => {
     const point = makePoint({ id: "1", name: "Dallas Housing Trust" });
     requireMapPageHarness().setState({

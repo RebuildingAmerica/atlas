@@ -55,6 +55,28 @@ describe("BrowsePage results", () => {
     );
   });
 
+  it("shows an in-page results error when the route could not seed entries", () => {
+    render(
+      <BrowsePage
+        initialEntriesLoadFailed
+        search={{
+          issue_areas: undefined,
+          offset: undefined,
+          query: undefined,
+          source_types: undefined,
+          states: undefined,
+          view: "list",
+        }}
+      />,
+    );
+
+    expect(mocks.useEntries).toHaveBeenCalledWith(expect.objectContaining({ limit: 20 }), {
+      enabled: false,
+      retry: false,
+    });
+    expect(screen.getByRole("alert").textContent).toBe("Results could not load.");
+  });
+
   it("converts place-plus-issue search phrases into browse filters", () => {
     render(
       <BrowsePage
@@ -226,7 +248,7 @@ describe("BrowsePage results", () => {
         entry_types: ["person"],
         query: "organizer",
       }),
-      undefined,
+      { retry: false },
     );
   });
 

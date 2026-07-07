@@ -76,7 +76,6 @@ Then fill in the real values.
 | `ATLAS_PUBLIC_URL`              | Yes                                                                                       | The public origin of the Atlas app (e.g., `https://atlas.example.com`). Compiled into the app bundle and used as the base for auth endpoints, API calls, enterprise SSO callback URLs, and OAuth issuer derivation.                                                                                               |
 | `ATLAS_API_URL`                 | Yes for hosted deploy smoke                                                               | The canonical Cloudflare-backed Atlas API origin (e.g., `https://api.atlas.example.com`). GitHub Actions uses this for hosted smoke tests so the deploy proves the edge domain, not the raw Cloud Run URL.                                                                                                        |
 | `ATLAS_DOCS_URL`                | Yes when `/docs` should proxy to Mintlify on Vercel                                       | Absolute origin of the deployed Mintlify site (for example `https://your-subdomain.mintlify.dev`). Vercel uses this to rewrite `https://atlas.example.com/docs` to the hosted Mintlify docs while keeping the Atlas URL in the browser.                                                                           |
-| `ATLAS_MAP_STYLE_URL`           | Yes for hosted app deployments                                                            | Absolute MapTiler style URL for the public map. Use a domain-restricted key before production cutover; hosted builds reject the placeholder style URL.                                                                                                                                                            |
 | `ATLAS_SERVER_API_PROXY_TARGET` | Yes when the app service must forward `/api/*` traffic to a separate Atlas API deployment | Absolute Atlas API origin used by the app server proxy routes. In Cloud Run, this can be the internal `atlas-api` service URL. In Vercel, set it to the public Atlas API origin that should serve proxied `/api/*` requests.                                                                                      |
 | `PORT`                          | Platform                                                                                  | The container listen port. On managed platforms like Google Cloud Run, bind to the platform-provided port. Do not expose custom HTTP/HTTPS port config.                                                                                                                                                           |
 
@@ -168,7 +167,6 @@ Set these app env values in Vercel:
 ATLAS_DEPLOY_MODE=production
 ATLAS_PUBLIC_URL=https://atlas.example.com
 ATLAS_DOCS_URL=https://your-subdomain.mintlify.dev
-ATLAS_MAP_STYLE_URL=https://api.maptiler.com/maps/<style-id>/style.json?key=<domain-restricted-key>
 ATLAS_SERVER_API_PROXY_TARGET=https://api.atlas.example.com
 ATLAS_AUTH_JWT_AUDIENCES=https://atlas.example.com/mcp,https://api.atlas.example.com
 ```

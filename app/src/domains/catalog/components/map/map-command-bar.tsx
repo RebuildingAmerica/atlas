@@ -1,6 +1,6 @@
-import { useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { MapPin, Search, Users } from "lucide-react";
-import { FilterDisclosure } from "@/domains/catalog/components/browse/browse-page-sections";
+import type { LucideIcon } from "lucide-react";
 import {
   ENTITY_TYPE_LABELS,
   FEATURED_ENTRY_TYPES,
@@ -30,6 +30,14 @@ export interface CommandBarActiveCounts {
   issues: number;
   types: number;
   sources: number;
+}
+
+interface MapFilterItem {
+  active: boolean;
+  icon?: LucideIcon;
+  key: string;
+  label: string;
+  onClick: () => void;
 }
 
 export interface MapCommandBarProps {
@@ -68,6 +76,7 @@ interface ActorCommandOption {
 }
 
 type CommandOption = PlaceCommandOption | ActorCommandOption;
+type OpenFilter = "issues" | "types" | "sources" | null;
 
 const MAP_COMMAND_NO_RESULTS_ID = "map-command-no-results";
 
@@ -84,6 +93,102 @@ function selectCommandOption(option: CommandOption, handlers: CommandSelectHandl
     handlers.onSelectActor(option.actor.point);
   }
   handlers.reset();
+}
+
+interface MapFilterMenuDefinition {
+  count: number;
+  icon: LucideIcon;
+  items: MapFilterItem[];
+  key: Exclude<OpenFilter, null>;
+  label: string;
+}
+
+function MapFilterTrigger({
+  count,
+  icon: Icon,
+  label,
+  menuKey,
+  openFilter,
+  setOpenFilter,
+}: {
+  count: number;
+  icon: LucideIcon;
+  label: string;
+  menuKey: Exclude<OpenFilter, null>;
+  openFilter: OpenFilter;
+  setOpenFilter: (value: OpenFilter) => void;
+}) {
+  const buttonId = useId();
+  const open = openFilter === menuKey;
+
+  return (
+    <button
+      id={buttonId}
+      type="button"
+      aria-expanded={open}
+      onClick={() => {
+        setOpenFilter(open ? null : menuKey);
+      }}
+      onKeyDown={(event) => {
+        if (event.key === "Escape") {
+          setOpenFilter(null);
+        }
+      }}
+      className="bg-surface-container-lowest hover:bg-surface-container focus-visible:ring-accent flex w-full cursor-pointer items-center justify-between gap-3 rounded-[0.85rem] px-3 py-2 transition-colors outline-none focus-visible:ring-2"
+    >
+      <span className="flex min-w-0 items-center gap-2">
+        <Icon className="text-ink-muted h-4 w-4 shrink-0" aria-hidden />
+        <span className="type-label-large text-ink-strong truncate">{label}</span>
+      </span>
+      <span className="type-body-small text-ink-muted">
+        {count > 0 ? `${count} selected` : "All"}
+      </span>
+    </button>
+  );
+}
+
+function MapFilterPanel({
+  menu,
+  setOpenFilter,
+}: {
+  menu: MapFilterMenuDefinition;
+  setOpenFilter: (value: OpenFilter) => void;
+}) {
+  return (
+    <div
+      role="group"
+      aria-label={menu.label}
+      className="bg-surface-container-high/98 shadow-soft border-border-strong mt-1.5 max-h-[min(22rem,calc(100vh-18rem))] overflow-y-auto rounded-[0.9rem] border p-1.5 backdrop-blur-md"
+    >
+      <div className="grid gap-1">
+        {menu.items.map((item) => {
+          const ItemIcon = item.icon;
+          return (
+            <button
+              key={item.key}
+              type="button"
+              aria-pressed={item.active}
+              onClick={() => {
+                item.onClick();
+                setOpenFilter(null);
+              }}
+              className={[
+                "type-label-large flex min-h-10 w-full items-center gap-2 rounded-[0.7rem] px-2.5 py-2 text-left transition-colors",
+                item.active
+                  ? "bg-surface-container-highest text-accent-deep"
+                  : "text-ink-soft hover:bg-surface-container-lowest hover:text-ink-strong",
+              ].join(" ")}
+            >
+              <span className="flex h-4 w-4 shrink-0 items-center justify-center">
+                {ItemIcon ? <ItemIcon className="h-3.5 w-3.5" aria-hidden /> : null}
+              </span>
+              <span className="min-w-0 flex-1">{item.label}</span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 /** A single place option in the menu. */
@@ -174,6 +279,8 @@ export function MapCommandBar({
 }: MapCommandBarProps) {
   const [query, setQuery] = useState("");
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
+  const [openFilter, setOpenFilter] = useState<OpenFilter>(null);
+  const filtersRef = useRef<HTMLDivElement>(null);
   const trimmed = query.trim();
   const open = trimmed !== "";
   const places = useMemo(() => (open ? searchPlaces(query) : []), [open, query]);
@@ -204,11 +311,82 @@ export function MapCommandBar({
   const resolvedActiveIndex =
     activeIndex !== null && activeIndex < options.length ? activeIndex : null;
   const activeOption = resolvedActiveIndex !== null ? options[resolvedActiveIndex] : undefined;
+  const filterMenus: MapFilterMenuDefinition[] = [
+    {
+      key: "issues",
+      label: "Issues",
+      count: activeCounts.issues,
+      icon: ISSUE_FILTER_ICON,
+      items: quickIssueAreas.map((issue) => ({
+        key: issue.slug,
+        label: issue.label,
+        active: selectedIssueAreas.includes(issue.slug),
+        icon: ISSUE_FILTER_ICON,
+        onClick: () => {
+          onToggleFilter("issue_areas", issue.slug);
+        },
+      })),
+    },
+    ...(showEntryTypeFilter
+      ? [
+          {
+            key: "types" as const,
+            label: "Types",
+            count: activeCounts.types,
+            icon: TYPE_FILTER_ICON,
+            items: FEATURED_ENTRY_TYPES.map((entryType) => ({
+              key: entryType,
+              label: ENTITY_TYPE_LABELS[entryType],
+              active: selectedEntryTypes.includes(entryType),
+              icon: ENTRY_TYPE_ICONS[entryType],
+              onClick: () => {
+                onToggleFilter("entry_types", entryType);
+              },
+            })),
+          },
+        ]
+      : []),
+    {
+      key: "sources",
+      label: "Sources",
+      count: activeCounts.sources,
+      icon: SOURCE_FILTER_ICON,
+      items: FEATURED_SOURCE_TYPES.map((sourceType) => ({
+        key: sourceType,
+        label: SOURCE_TYPE_LABELS[sourceType],
+        active: selectedSourceTypes.includes(sourceType),
+        icon: SOURCE_TYPE_ICONS[sourceType],
+        onClick: () => {
+          onToggleFilter("source_types", sourceType);
+        },
+      })),
+    },
+  ];
+  const activeFilterMenu = filterMenus.find((menu) => menu.key === openFilter);
 
   const reset = () => {
     setQuery("");
     setActiveIndex(null);
   };
+
+  useEffect(() => {
+    if (!openFilter) {
+      return;
+    }
+
+    function closeOnOutsidePointer(event: PointerEvent) {
+      const target = event.target;
+      if (target instanceof Node && filtersRef.current?.contains(target)) {
+        return;
+      }
+      setOpenFilter(null);
+    }
+
+    document.addEventListener("pointerdown", closeOnOutsidePointer);
+    return () => {
+      document.removeEventListener("pointerdown", closeOnOutsidePointer);
+    };
+  }, [openFilter]);
 
   return (
     <div className="bg-surface-container-high/92 shadow-soft border-border-strong pointer-events-auto w-80 max-w-[calc(100vw-2rem)] space-y-2 rounded-[1.1rem] border p-2.5 backdrop-blur-md">
@@ -333,51 +511,23 @@ export function MapCommandBar({
         ) : null}
       </div>
 
-      <div className="flex flex-wrap gap-1.5">
-        <FilterDisclosure
-          label="Issues"
-          count={activeCounts.issues}
-          icon={ISSUE_FILTER_ICON}
-          items={quickIssueAreas.map((issue) => ({
-            key: issue.slug,
-            label: issue.label,
-            active: selectedIssueAreas.includes(issue.slug),
-            icon: ISSUE_FILTER_ICON,
-            onClick: () => {
-              onToggleFilter("issue_areas", issue.slug);
-            },
-          }))}
-        />
-        {showEntryTypeFilter ? (
-          <FilterDisclosure
-            label="Types"
-            count={activeCounts.types}
-            icon={TYPE_FILTER_ICON}
-            items={FEATURED_ENTRY_TYPES.map((entryType) => ({
-              key: entryType,
-              label: ENTITY_TYPE_LABELS[entryType],
-              active: selectedEntryTypes.includes(entryType),
-              icon: ENTRY_TYPE_ICONS[entryType],
-              onClick: () => {
-                onToggleFilter("entry_types", entryType);
-              },
-            }))}
-          />
+      <div ref={filtersRef}>
+        <div className="grid gap-1.5">
+          {filterMenus.map((menu) => (
+            <MapFilterTrigger
+              key={menu.key}
+              menuKey={menu.key}
+              label={menu.label}
+              count={menu.count}
+              icon={menu.icon}
+              openFilter={openFilter}
+              setOpenFilter={setOpenFilter}
+            />
+          ))}
+        </div>
+        {activeFilterMenu ? (
+          <MapFilterPanel menu={activeFilterMenu} setOpenFilter={setOpenFilter} />
         ) : null}
-        <FilterDisclosure
-          label="Sources"
-          count={activeCounts.sources}
-          icon={SOURCE_FILTER_ICON}
-          items={FEATURED_SOURCE_TYPES.map((sourceType) => ({
-            key: sourceType,
-            label: SOURCE_TYPE_LABELS[sourceType],
-            active: selectedSourceTypes.includes(sourceType),
-            icon: SOURCE_TYPE_ICONS[sourceType],
-            onClick: () => {
-              onToggleFilter("source_types", sourceType);
-            },
-          }))}
-        />
       </div>
     </div>
   );

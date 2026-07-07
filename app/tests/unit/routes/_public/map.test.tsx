@@ -17,11 +17,20 @@ vi.mock("@/domains/catalog", () => {
 });
 
 vi.mock("@/domains/catalog/components/map/map-page", () => ({
-  MapPage: ({ search, initialPoints }: { search: unknown; initialPoints: unknown }) => (
+  MapPage: ({
+    search,
+    initialPoints,
+    initialPointsLoadFailed,
+  }: {
+    initialPoints: unknown;
+    initialPointsLoadFailed?: boolean;
+    search: unknown;
+  }) => (
     <div
       data-testid="map-page"
       data-search={JSON.stringify(search)}
       data-seeded={JSON.stringify(initialPoints)}
+      data-load-failed={String(initialPointsLoadFailed ?? false)}
     />
   ),
 }));
@@ -135,6 +144,23 @@ describe("routes/_public/map", () => {
     });
   });
 
+  it("keeps the map route mounted when the initial points request is unavailable", async () => {
+    const routeModule = await import("@/routes/_public/map");
+    const { asRouteStub } = await import("@/../tests/helpers/router-harness");
+    const Route = asRouteStub(routeModule.Route);
+    mocks.loadMapPoints.mockRejectedValue(new Error("Atlas is temporarily unavailable."));
+
+    const loader = Route.options.loader;
+    if (!loader) throw new Error("Expected Route.options.loader");
+    const result = await loader({
+      deps: {
+        search: {},
+      },
+    });
+
+    expect(result).toEqual({ initialPointsLoadFailed: true });
+  });
+
   it("renders MapPage with the search params and the seeded points", async () => {
     const routeModule = await import("@/routes/_public/map");
     const { readRouterMocks, asRouteStub } = await import("@/../tests/helpers/router-harness");
@@ -142,7 +168,8 @@ describe("routes/_public/map", () => {
     const router = readRouterMocks();
     router.useSearch.mockReturnValue({ issue_areas: "housing-affordability" });
     router.useLoaderData.mockReturnValue({
-      initialPoints: { points: [], total: 0, capped: false },
+      initialPoints: undefined,
+      initialPointsLoadFailed: true,
     });
 
     const Component = Route.options.component;
@@ -150,6 +177,7 @@ describe("routes/_public/map", () => {
     const view = render(<Component />);
     const node = view.getByTestId("map-page");
     expect(node.dataset.search).toBe(JSON.stringify({ issue_areas: "housing-affordability" }));
-    expect(node.dataset.seeded).toBe(JSON.stringify({ points: [], total: 0, capped: false }));
+    expect(node.dataset.seeded).toBeUndefined();
+    expect(node.dataset.loadFailed).toBe("true");
   });
 });

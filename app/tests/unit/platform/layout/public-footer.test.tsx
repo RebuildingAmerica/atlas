@@ -4,6 +4,7 @@ import type { Status } from "@openstatus/react";
 import { cleanup, render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { ATLAS_STATUS_MONITOR_ID, ATLAS_STATUS_PAGE_URL } from "@/platform/status/status-config";
 
 vi.mock("@openstatus/react", () => ({
   getStatus: vi.fn(),
@@ -103,7 +104,11 @@ describe("PublicFooter", () => {
     await renderPublicFooter({ localMode: false });
 
     expect(screen.getByRole("link", { name: /Status unavailable/i })).toBeInTheDocument();
-    expect(getStatus).toHaveBeenCalledWith("atlasapp");
+    expect(getStatus).toHaveBeenCalledWith(ATLAS_STATUS_MONITOR_ID);
+    expect(screen.getByRole("link", { name: /Status unavailable/i })).toHaveAttribute(
+      "href",
+      ATLAS_STATUS_PAGE_URL,
+    );
   });
 
   it("updates the status after the footer probe resolves", async () => {

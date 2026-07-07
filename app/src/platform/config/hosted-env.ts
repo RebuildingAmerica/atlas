@@ -1,18 +1,10 @@
 export interface HostedAtlasEnv {
   ATLAS_AUTH_JWT_AUDIENCES?: string;
   ATLAS_DEPLOY_MODE?: string;
-  ATLAS_MAP_STYLE_URL?: string;
   ATLAS_PUBLIC_URL?: string;
   ATLAS_SERVER_API_PROXY_TARGET?: string;
   VERCEL_ENV?: string;
 }
-
-export interface HostedAtlasEnvOptions {
-  requireMapStyle: boolean;
-}
-
-export const PLACEHOLDER_MAP_STYLE_URL =
-  "https://maptiler.invalid/maps/atlas-placeholder/style.json";
 
 function isLocalHost(hostname: string): boolean {
   return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
@@ -89,7 +81,7 @@ export function normalizeApiProxyOrigin(env: HostedAtlasEnv): string | undefined
   return url.origin;
 }
 
-export function validateHostedAtlasEnv(env: HostedAtlasEnv, options: HostedAtlasEnvOptions): void {
+export function validateHostedAtlasEnv(env: HostedAtlasEnv): void {
   if (!isHostedAtlasEnv(env)) {
     return;
   }
@@ -114,19 +106,5 @@ export function validateHostedAtlasEnv(env: HostedAtlasEnv, options: HostedAtlas
     throw new Error(
       `ATLAS_AUTH_JWT_AUDIENCES must put the canonical MCP resource first: ${expectedMcpAudience}`,
     );
-  }
-
-  if (!options.requireMapStyle) {
-    return;
-  }
-
-  const mapStyleUrl = requiredValue(env, "ATLAS_MAP_STYLE_URL", context);
-  if (mapStyleUrl === PLACEHOLDER_MAP_STYLE_URL) {
-    throw new Error(
-      "ATLAS_MAP_STYLE_URL must not use the placeholder in hosted Atlas deployments.",
-    );
-  }
-  if (!/^https?:\/\//.test(mapStyleUrl)) {
-    throw new Error("ATLAS_MAP_STYLE_URL must be an absolute http(s) URL.");
   }
 }

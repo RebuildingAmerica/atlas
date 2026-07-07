@@ -3,7 +3,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 import { ActorMapSurface } from "@/domains/catalog/components/map/actor-map-surface";
-import { PLACEHOLDER_MAP_STYLE_URL } from "@/domains/catalog/map/map-config";
+import { ATLAS_BASEMAP_STYLE_URL } from "@/domains/catalog/map/map-config";
 import type { MockMapProps } from "../../../../../helpers/catalog/actor-map-surface-harness";
 
 const mapCapture = vi.hoisted(() => ({ props: null as MockMapProps | null }));
@@ -30,7 +30,7 @@ afterEach(() => {
 
 describe("ActorMapSurface", () => {
   it("renders a flat, north-up basemap framed on the continental US", () => {
-    render(<ActorMapSurface />);
+    render(<ActorMapSurface mapStyleUrl={ATLAS_BASEMAP_STYLE_URL} />);
 
     expect(screen.getByLabelText("Map of people and groups across the United States")).toBeTruthy();
     const props = mapCapture.props;
@@ -47,20 +47,14 @@ describe("ActorMapSurface", () => {
     expect(props?.maxPitch).toBe(0);
   });
 
-  it("uses the documented placeholder style URL when no env value is configured", () => {
-    render(<ActorMapSurface styleUrlEnv={{}} />);
-    expect(mapCapture.props?.mapStyle).toBe(PLACEHOLDER_MAP_STYLE_URL);
-  });
-
-  it("threads a configured basemap style URL into the map", () => {
-    const configured = "https://api.maptiler.com/maps/atlas/style.json?key=abc123";
-    render(<ActorMapSurface styleUrlEnv={{ ATLAS_MAP_STYLE_URL: configured }} />);
-    expect(mapCapture.props?.mapStyle).toBe(configured);
+  it("threads the Atlas basemap style into the map", () => {
+    render(<ActorMapSurface mapStyleUrl={ATLAS_BASEMAP_STYLE_URL} />);
+    expect(mapCapture.props?.mapStyle).toBe(ATLAS_BASEMAP_STYLE_URL);
   });
 
   it("composes overlay chrome in as children", () => {
     render(
-      <ActorMapSurface styleUrlEnv={{}}>
+      <ActorMapSurface mapStyleUrl={ATLAS_BASEMAP_STYLE_URL}>
         <div data-testid="overlay-chrome">legend</div>
       </ActorMapSurface>,
     );
@@ -70,7 +64,7 @@ describe("ActorMapSurface", () => {
   it("opens at a restored center and zoom when one is supplied", () => {
     render(
       <ActorMapSurface
-        styleUrlEnv={{}}
+        mapStyleUrl={ATLAS_BASEMAP_STYLE_URL}
         initialView={{ center: { lng: -96.8, lat: 32.78 }, zoom: 9 }}
       />,
     );
@@ -83,7 +77,13 @@ describe("ActorMapSurface", () => {
   it("forwards the load and move-end handlers to the map", () => {
     const onLoad = vi.fn();
     const onMoveEnd = vi.fn();
-    render(<ActorMapSurface styleUrlEnv={{}} onLoad={onLoad} onMoveEnd={onMoveEnd} />);
+    render(
+      <ActorMapSurface
+        mapStyleUrl={ATLAS_BASEMAP_STYLE_URL}
+        onLoad={onLoad}
+        onMoveEnd={onMoveEnd}
+      />,
+    );
     expect(mapCapture.props?.onLoad).toBe(onLoad);
     expect(mapCapture.props?.onMoveEnd).toBe(onMoveEnd);
   });

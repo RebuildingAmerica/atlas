@@ -151,13 +151,43 @@ describe("routes/_public/browse", () => {
     expect(loaderResult).toEqual({ initialEntries });
   });
 
+  it("keeps the browse route mounted when the initial entries request is unavailable", async () => {
+    const routeModule = await import("@/routes/_public/browse");
+    const { asRouteStub } = await import("@/../tests/helpers/router-harness");
+    const Route = asRouteStub(routeModule.Route);
+    mocks.buildBrowseSearch.mockReturnValue({
+      cities: [],
+      entry_types: [],
+      issue_areas: [],
+      offset: 0,
+      query: undefined,
+      regions: [],
+      source_patterns: [],
+      source_types: [],
+      states: [],
+      view: "list",
+    });
+    mocks.api.entries.list.mockRejectedValue(new Error("Atlas is temporarily unavailable."));
+
+    const loaderResult = await Route.options.loader?.({
+      deps: {
+        search: {},
+      },
+    });
+
+    expect(loaderResult).toEqual({ initialEntriesLoadFailed: true });
+  });
+
   it("renders BrowsePage with the search params from useSearch", async () => {
     const routeModule = await import("@/routes/_public/browse");
     const { readRouterMocks, asRouteStub } = await import("@/../tests/helpers/router-harness");
     const Route = asRouteStub(routeModule.Route);
     const router = readRouterMocks();
     router.useSearch.mockReturnValue({ query: "hello", offset: 0 });
-    router.useLoaderData.mockReturnValue({ initialEntries: { data: [] } });
+    router.useLoaderData.mockReturnValue({
+      initialEntries: undefined,
+      initialEntriesLoadFailed: true,
+    });
 
     const Component = Route.options.component;
     if (!Component) throw new Error("Expected Route.options.component");
@@ -165,7 +195,8 @@ describe("routes/_public/browse", () => {
     const node = view.getByTestId("browse-page");
     expect(node.dataset.search).toBe(JSON.stringify({ query: "hello", offset: 0 }));
     expect(mocks.browsePageProps).toHaveBeenCalledWith({
-      initialEntries: { data: [] },
+      initialEntries: undefined,
+      initialEntriesLoadFailed: true,
       search: { query: "hello", offset: 0 },
     });
   });

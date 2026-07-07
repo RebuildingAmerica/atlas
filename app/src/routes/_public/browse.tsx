@@ -6,6 +6,7 @@ import {
   type BrowseRouteSearch,
 } from "@/domains/catalog/search-state";
 import { api } from "@/lib/api";
+import { isRecoverablePublicLoaderError } from "@/platform/routes/public-loader-errors";
 import { buildPageHead } from "@/platform/seo";
 import type {
   EntryFilterParams,
@@ -20,7 +21,8 @@ interface BrowseLoaderDeps {
 }
 
 interface BrowseLoaderData {
-  initialEntries: EntryListResponse;
+  initialEntries?: EntryListResponse;
+  initialEntriesLoadFailed?: boolean;
 }
 
 function buildEntryFilters(search: BrowseRouteSearch): EntryFilterParams {
@@ -44,9 +46,16 @@ export const Route = createFileRoute("/_public/browse")({
   validateSearch: browseSearchSchema,
   loaderDeps: ({ search }): BrowseLoaderDeps => ({ search }),
   loader: async ({ deps }): Promise<BrowseLoaderData> => {
-    const initialEntries = await api.entries.list(buildEntryFilters(deps.search));
+    try {
+      const initialEntries = await api.entries.list(buildEntryFilters(deps.search));
 
-    return { initialEntries };
+      return { initialEntries };
+    } catch (error) {
+      if (isRecoverablePublicLoaderError(error)) {
+        return { initialEntriesLoadFailed: true };
+      }
+      throw error;
+    }
   },
   head: () =>
     buildPageHead({
@@ -59,7 +68,13 @@ export const Route = createFileRoute("/_public/browse")({
 
 function BrowseRoute() {
   const search = Route.useSearch();
-  const { initialEntries } = Route.useLoaderData();
+  const { initialEntries, initialEntriesLoadFailed } = Route.useLoaderData();
 
-  return <BrowsePage initialEntries={initialEntries} search={search} />;
+  return (
+    <BrowsePage
+      initialEntries={initialEntries}
+      initialEntriesLoadFailed={initialEntriesLoadFailed}
+      search={search}
+    />
+  );
 }

@@ -1,10 +1,8 @@
 import "maplibre-gl/dist/maplibre-gl.css";
 
-import { useMemo } from "react";
 import Map from "react-map-gl/maplibre";
 import type { MapEvent, ViewStateChangeEvent } from "react-map-gl/maplibre";
 import type { LngLatBoundsLike } from "maplibre-gl";
-import { getMapStyleUrl } from "@/domains/catalog/map/map-config";
 import type { MapView } from "@/domains/catalog/map/map-viewport";
 
 /**
@@ -27,8 +25,8 @@ const MIN_MAP_ZOOM = 2.5;
 const MAX_MAP_ZOOM = 16;
 
 interface ActorMapSurfaceProps {
-  /** Environment override for the basemap style URL; defaults to Vite's env. */
-  styleUrlEnv?: Parameters<typeof getMapStyleUrl>[0];
+  /** The MapLibre style URL to render under Atlas's civic points. */
+  mapStyleUrl: string;
   /**
    * A restored camera to open at — a center and zoom from a shared URL. When
    * omitted the map fits the continental-US bounds instead.
@@ -53,13 +51,12 @@ interface ActorMapSurfaceProps {
  * flashing the browser's default white.
  */
 export function ActorMapSurface({
-  styleUrlEnv,
+  mapStyleUrl,
   initialView,
   onLoad,
   onMoveEnd,
   children,
 }: ActorMapSurfaceProps) {
-  const mapStyle = useMemo(() => getMapStyleUrl(styleUrlEnv), [styleUrlEnv]);
   const initialViewState = initialView
     ? {
         longitude: initialView.center.lng,
@@ -71,7 +68,7 @@ export function ActorMapSurface({
   return (
     <div className="bg-page-bg absolute inset-0">
       <Map
-        mapStyle={mapStyle}
+        mapStyle={mapStyleUrl}
         initialViewState={initialViewState}
         minZoom={MIN_MAP_ZOOM}
         maxZoom={MAX_MAP_ZOOM}

@@ -40,11 +40,19 @@ export type { BrowsePageContent } from "./browse-page-content";
 
 interface BrowsePageProps {
   initialEntries?: EntryListResponse;
+  initialEntriesLoadFailed?: boolean;
   search: BrowseRouteSearch;
   page?: BrowsePageContent;
 }
 
-export function BrowsePage({ initialEntries, search, page }: BrowsePageProps) {
+const INITIAL_ENTRIES_ERROR = new Error("Results could not load.");
+
+export function BrowsePage({
+  initialEntries,
+  initialEntriesLoadFailed = false,
+  search,
+  page,
+}: BrowsePageProps) {
   const navigate = useNavigate();
   const { data: taxonomy } = useTaxonomy();
   const rawFilters = useMemo(() => buildBrowseSearch(search), [search]);
@@ -108,10 +116,15 @@ export function BrowsePage({ initialEntries, search, page }: BrowsePageProps) {
   };
   const entriesQuery = useEntries(
     entryFilters,
-    initialEntries ? { initialData: initialEntries } : undefined,
+    initialEntries
+      ? { initialData: initialEntries }
+      : initialEntriesLoadFailed
+        ? { enabled: false, retry: false }
+        : { retry: false },
   );
 
   const results = entriesQuery.data;
+  const resultsError = initialEntriesLoadFailed ? INITIAL_ENTRIES_ERROR : entriesQuery.error;
   const resultEntries = useMemo(() => results?.data ?? [], [results?.data]);
   const total = results?.pagination.total ?? 0;
   const facetIssueAreas = useMemo(
@@ -331,7 +344,7 @@ export function BrowsePage({ initialEntries, search, page }: BrowsePageProps) {
         <BrowseResultsAside
           emptyAction={pageContent.emptyAction}
           entries={rankedEntries}
-          error={entriesQuery.error}
+          error={resultsError}
           hasActiveSearch={hasActiveSearch}
           isLoading={entriesQuery.isLoading}
           discoveryContext={pageDetails.discoveryContext}

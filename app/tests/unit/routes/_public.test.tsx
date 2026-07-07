@@ -95,6 +95,24 @@ describe("routes/_public layout", () => {
     expect(screen.getByTestId("public-footer").dataset.localMode).toBe("true");
   });
 
+  it("lets the map own the full viewport without the public footer", async () => {
+    const router = readRouterMocks();
+    router.useLoaderData.mockReturnValue({ localMode: false });
+    router.useRouterState.mockImplementation(routerPathnameState("/map"));
+
+    const routeModule = await import("@/routes/_public");
+    const Route = asRouteStub(routeModule.Route);
+    const Component = Route.options.component;
+    if (!Component) throw new Error("Expected Route.options.component");
+    const { container } = render(<Component />);
+
+    expect(screen.getByTestId("public-top-nav").dataset.showSearch).toBe("true");
+    expect(screen.getByTestId("router-outlet")).toBeInTheDocument();
+    expect(screen.queryByTestId("public-footer")).toBeNull();
+    expect(container.firstElementChild).toHaveClass("h-dvh", "overflow-hidden");
+    expect(container.querySelector("main")).toHaveClass("min-h-0", "overflow-hidden");
+  });
+
   it("lets the public home page own search", async () => {
     const router = readRouterMocks();
     router.useLoaderData.mockReturnValue({ localMode: false });

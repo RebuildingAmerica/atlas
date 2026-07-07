@@ -3,6 +3,7 @@ import type { ComponentProps } from "react";
 import { ActorMapSurface } from "@/domains/catalog/components/map/actor-map-surface";
 import { MapControls } from "@/domains/catalog/components/map/map-controls";
 import { MapMarkerLayer } from "@/domains/catalog/components/map/map-marker-layer";
+import { useMapStyle } from "@/domains/catalog/components/map/map-style-context";
 import { usePanelCamera } from "@/domains/catalog/hooks/use-panel-camera";
 import type { FlyToCamera } from "@/domains/catalog/map/map-camera";
 import type { MapSelection } from "@/domains/catalog/map/map-selection";
@@ -84,6 +85,7 @@ export function MapInteractiveSurface({
   onSelectPoint,
   onSelectCluster,
 }: MapInteractiveSurfaceProps) {
+  const { styleUrl } = useMapStyle();
   const handleLoad = useCallback(
     (event: MapViewportEvent & { target: FlyToCamera }) => {
       onMapReady(event.target);
@@ -93,7 +95,12 @@ export function MapInteractiveSurface({
   );
 
   return (
-    <ActorMapSurface initialView={initialView} onLoad={handleLoad} onMoveEnd={onMoveEnd}>
+    <ActorMapSurface
+      mapStyleUrl={styleUrl}
+      initialView={initialView}
+      onLoad={handleLoad}
+      onMoveEnd={onMoveEnd}
+    >
       <MapCameraSync selection={selection} reducedMotion={reducedMotion} />
       {bounds ? (
         <MapMarkerLayer

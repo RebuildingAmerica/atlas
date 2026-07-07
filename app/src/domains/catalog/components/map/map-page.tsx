@@ -4,6 +4,7 @@ import { MapCommandBar } from "@/domains/catalog/components/map/map-command-bar"
 import { MapDetailPanel } from "@/domains/catalog/components/map/map-detail-panel";
 import { MapLegend } from "@/domains/catalog/components/map/map-legend";
 import { MapPageSurface } from "@/domains/catalog/components/map/map-page-surface";
+import { MapStyleProvider } from "@/domains/catalog/components/map/map-style-context";
 import {
   MAP_RESULTS_LIST_ID,
   MapResultsPanel,
@@ -18,6 +19,7 @@ import { useMapPage } from "@/domains/catalog/hooks/use-map-page";
 import { useMapReveal } from "@/domains/catalog/hooks/use-map-reveal";
 import { useReducedMotion } from "@/domains/catalog/hooks/use-reduced-motion";
 import { useTaxonomy } from "@/domains/catalog/hooks/use-taxonomy";
+import { ATLAS_BASEMAP_STYLE_URL } from "@/domains/catalog/map/map-config";
 import { announceViewport, sparsityPill } from "@/domains/catalog/map/map-summary";
 import type { MapNavigate } from "@/domains/catalog/hooks/use-map-page";
 import type { FlyToCamera } from "@/domains/catalog/map/map-camera";
@@ -29,6 +31,8 @@ interface MapPageProps {
   search: MapRouteSearch;
   /** SSR-seeded continental-US points, hydrated as the first query data. */
   initialPoints?: MapPointCollection;
+  /** Whether route-level seeding failed before the map could mount. */
+  initialPointsLoadFailed?: boolean;
 }
 
 /**
@@ -44,7 +48,7 @@ interface MapPageProps {
  * the count after every change, and the detail panel is a non-modal dialog that
  * closes on Escape and hands focus back to the map.
  */
-export function MapPage({ search, initialPoints }: MapPageProps) {
+export function MapPage({ search, initialPoints, initialPointsLoadFailed = false }: MapPageProps) {
   const routerNavigate = useNavigate();
   // Adapt the router's promise-returning navigate to the page's fire-and-forget
   // contract: a URL update is a side effect the page never awaits.
@@ -56,7 +60,13 @@ export function MapPage({ search, initialPoints }: MapPageProps) {
   );
   const { data: taxonomy } = useTaxonomy();
   const [mapCamera, setMapCamera] = useState<FlyToCamera | null>(null);
-  const page = useMapPage({ search, navigate, map: mapCamera, initialPoints });
+  const page = useMapPage({
+    search,
+    navigate,
+    map: mapCamera,
+    initialPoints,
+    initialPointsLoadFailed,
+  });
   const reducedMotion = useReducedMotion();
   const reveal = useMapReveal({ reducedMotion });
   const surfaceRef = useRef<HTMLDivElement>(null);
@@ -80,7 +90,8 @@ export function MapPage({ search, initialPoints }: MapPageProps) {
       : `cluster:${selection.clusterId}`
     : null;
   const hasFetched = pointsQuery.data !== undefined;
-  const isEmpty = hasFetched && points.length === 0 && !pointsQuery.isError;
+  const showMapError = initialPointsLoadFailed || pointsQuery.isError;
+  const isEmpty = hasFetched && points.length === 0 && !showMapError;
   const pill = sparsityPill(points);
   const activeCounts = {
     issues: filters.issue_areas.length,
@@ -100,7 +111,7 @@ export function MapPage({ search, initialPoints }: MapPageProps) {
   }, [selectionFocusKey]);
 
   return (
-    <div className="relative h-[calc(100vh-4rem)] w-full overflow-hidden">
+    <div className="relative min-h-0 flex-1 overflow-hidden">
       <a
         href={`#${MAP_RESULTS_LIST_ID}`}
         onClick={() => {
@@ -111,23 +122,25 @@ export function MapPage({ search, initialPoints }: MapPageProps) {
         Skip to results list
       </a>
 
-      <MapPageSurface
-        surfaceRef={surfaceRef}
-        initialView={page.initialView}
-        points={points}
-        bounds={page.bounds}
-        zoom={page.zoom}
-        selection={selection}
-        reducedMotion={reducedMotion}
-        controlsRevealed={reveal.chromeRevealed}
-        onMapReady={setMapCamera}
-        onLoad={page.onLoad}
-        onMoveEnd={page.onMoveEnd}
-        onSelectPoint={page.onSelectPoint}
-        onSelectCluster={page.onSelectCluster}
-      />
+      <MapStyleProvider initialStyleUrl={ATLAS_BASEMAP_STYLE_URL}>
+        <MapPageSurface
+          surfaceRef={surfaceRef}
+          initialView={page.initialView}
+          points={points}
+          bounds={page.bounds}
+          zoom={page.zoom}
+          selection={selection}
+          reducedMotion={reducedMotion}
+          controlsRevealed={reveal.chromeRevealed}
+          onMapReady={setMapCamera}
+          onLoad={page.onLoad}
+          onMoveEnd={page.onMoveEnd}
+          onSelectPoint={page.onSelectPoint}
+          onSelectCluster={page.onSelectCluster}
+        />
+      </MapStyleProvider>
 
-      {!hasFetched ? <ClusterSkeletons /> : null}
+      {!hasFetched && !showMapError ? <ClusterSkeletons /> : null}
 
       <div role="status" aria-live="polite" className="sr-only">
         {announceViewport(points.length)}
@@ -173,7 +186,7 @@ export function MapPage({ search, initialPoints }: MapPageProps) {
           </div>
         ) : null}
 
-        {pointsQuery.isError ? (
+        {showMapError ? (
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
             <MapErrorState
               onRetry={() => {

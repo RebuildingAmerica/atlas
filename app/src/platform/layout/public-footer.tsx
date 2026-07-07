@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { ArrowUpRight } from "lucide-react";
 import { useEffect, useState } from "react";
 import { getStatus, type Status } from "@openstatus/react";
+import { ATLAS_STATUS_MONITOR_ID, ATLAS_STATUS_PAGE_URL } from "@/platform/status/status-config";
 
 /* v8 ignore start -- callers always pass an animationDelay; the undefined branch exists only to satisfy the optional prop */
 function resolveFooterItemStyle(
@@ -114,7 +115,6 @@ const STATUS_CONFIG: Record<Status, { label: string; color: string; pulse: boole
   unknown: { label: "Status unavailable", color: "bg-stone-400", pulse: false },
 };
 
-const STATUS_MONITOR_ID = "atlasapp";
 const STATUS_CACHE_MS = 1000 * 60;
 const STATUS_TIMEOUT_MS = 2500;
 
@@ -144,7 +144,7 @@ async function loadFooterStatus(): Promise<Status> {
       resolve("unknown");
     }, STATUS_TIMEOUT_MS);
   });
-  const statusPromise = getStatus(STATUS_MONITOR_ID)
+  const statusPromise = getStatus(ATLAS_STATUS_MONITOR_ID)
     .then((result) => result.status)
     .catch((): Status => "unknown");
   const status = await Promise.race([statusPromise, timeoutPromise]);
@@ -210,7 +210,7 @@ export function PublicFooter({ localMode, status }: PublicFooterProps) {
             </div>
 
             <a
-              href="https://atlasapp.openstatus.dev"
+              href={ATLAS_STATUS_PAGE_URL}
               target="_blank"
               rel="noopener noreferrer"
               className="border-border-strong text-ink-muted hover:text-ink inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 no-underline transition-colors duration-150"

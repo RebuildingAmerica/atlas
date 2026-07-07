@@ -89,7 +89,12 @@ vi.mock("@/domains/catalog/components/browse/us-map-surface", () => ({
 }));
 
 vi.mock("@/domains/catalog/components/entries/entry-list", () => ({
-  EntryList: ({ total }: { total?: number }) => <div>Entry list total: {total ?? 0}</div>,
+  EntryList: ({ error, total }: { error?: Error | null; total?: number }) => (
+    <div>
+      {error ? <div role="alert">{error.message}</div> : null}
+      <div>Entry list total: {total ?? 0}</div>
+    </div>
+  ),
 }));
 
 vi.mock("@/domains/catalog/hooks/use-entries", () => ({

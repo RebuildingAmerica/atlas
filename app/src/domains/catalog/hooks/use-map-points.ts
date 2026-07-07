@@ -47,6 +47,8 @@ interface UseMapPointsOptions {
   initialData?: MapPointCollection;
   /** Pause fetching (e.g. before the map has reported its first viewport). */
   enabled?: boolean;
+  /** Whether React Query should automatically retry failed viewport reads. */
+  retry?: boolean;
 }
 
 /**
@@ -101,5 +103,6 @@ export function useMapPoints(params: MapPointParams | null, options?: UseMapPoin
     staleTime: 1000 * 60 * 5,
     enabled,
     initialData: options?.initialData,
+    retry: options?.retry ?? false,
   });
 }

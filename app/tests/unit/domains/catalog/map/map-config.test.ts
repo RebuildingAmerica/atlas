@@ -1,43 +1,25 @@
 import { describe, expect, it } from "vitest";
-import { getMapStyleUrl, PLACEHOLDER_MAP_STYLE_URL } from "@/domains/catalog/map/map-config";
+import {
+  ATLAS_BASEMAP_STYLE_URL,
+  requireAbsoluteMapStyleUrl,
+} from "@/domains/catalog/map/map-config";
 
-describe("getMapStyleUrl", () => {
-  it("returns a configured absolute https style URL verbatim", () => {
-    const configured = "https://api.maptiler.com/maps/atlas/style.json?key=abc123";
-    expect(getMapStyleUrl({ ATLAS_MAP_STYLE_URL: configured })).toBe(configured);
-  });
-
-  it("accepts a configured absolute http style URL", () => {
-    const configured = "http://tiles.localhost/style.json";
-    expect(getMapStyleUrl({ ATLAS_MAP_STYLE_URL: configured })).toBe(configured);
-  });
-
-  it("trims surrounding whitespace from a configured value", () => {
-    expect(
-      getMapStyleUrl({ ATLAS_MAP_STYLE_URL: "  https://api.maptiler.com/maps/atlas/style.json  " }),
-    ).toBe("https://api.maptiler.com/maps/atlas/style.json");
-  });
-
-  it("falls back to the documented placeholder when unset", () => {
-    expect(getMapStyleUrl({})).toBe(PLACEHOLDER_MAP_STYLE_URL);
-  });
-
-  it("falls back to the placeholder for a whitespace-only value", () => {
-    expect(getMapStyleUrl({ ATLAS_MAP_STYLE_URL: "   " })).toBe(PLACEHOLDER_MAP_STYLE_URL);
-  });
-
-  it("requires a configured style URL in production", () => {
-    expect(() => getMapStyleUrl({ ATLAS_DEPLOY_MODE: "production" })).toThrow(
-      "ATLAS_MAP_STYLE_URL is required in production.",
-    );
-    expect(() => getMapStyleUrl({ PROD: true })).toThrow(
-      "ATLAS_MAP_STYLE_URL is required in production.",
+describe("ATLAS_BASEMAP_STYLE_URL", () => {
+  it("is the versioned basemap style used by the public map", () => {
+    expect(ATLAS_BASEMAP_STYLE_URL).toBe(
+      "https://openmaptiles.github.io/osm-bright-gl-style/style-cdn.json",
     );
   });
 
-  it("rejects a relative configured style URL rather than feeding MapLibre an opaque error", () => {
-    expect(() => getMapStyleUrl({ ATLAS_MAP_STYLE_URL: "/maps/atlas/style.json" })).toThrow(
-      "ATLAS_MAP_STYLE_URL must be an absolute http(s) URL.",
+  it("is an absolute HTTPS style document URL", () => {
+    const url = new URL(ATLAS_BASEMAP_STYLE_URL);
+    expect(url.protocol).toBe("https:");
+    expect(url.pathname.endsWith(".json")).toBe(true);
+  });
+
+  it("rejects invalid style updates", () => {
+    expect(() => requireAbsoluteMapStyleUrl("/maps/atlas/style.json")).toThrow(
+      "Map style URL must be an absolute http(s) URL.",
     );
   });
 });

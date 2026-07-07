@@ -12,7 +12,6 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 export const PUBLIC_ATLAS_ENV_KEYS = [
   "ATLAS_DEPLOY_MODE",
   "ATLAS_PUBLIC_URL",
-  "ATLAS_MAP_STYLE_URL",
   "ATLAS_DOCS_URL",
   "ATLAS_AUTH_BASE_PATH",
   "ATLAS_SERVER_API_PROXY_TARGET",
@@ -25,7 +24,7 @@ export const PUBLIC_ATLAS_ENV_KEYS = [
  * @param env - Raw Vite-loaded environment values.
  */
 function validateProductionPublicEnv(env: HostedAtlasEnv): void {
-  validateHostedAtlasEnv(env, { requireMapStyle: true });
+  validateHostedAtlasEnv(env);
 }
 
 const onwarn: Rollup.WarningHandlerWithDefault = (warning, defaultHandler) => {

@@ -67,7 +67,6 @@ const commonAuthEnv = {
   ATLAS_EMAIL_CAPTURE_URL: `${mailboxUrl}/messages`,
   ATLAS_EMAIL_FROM: "Atlas <hello@localhost>",
   ATLAS_EMAIL_PROVIDER: "capture",
-  ATLAS_MAP_STYLE_URL: "https://atlas.example.test/maps/e2e/style.json",
   ATLAS_PUBLIC_URL: appUrl,
 };
 

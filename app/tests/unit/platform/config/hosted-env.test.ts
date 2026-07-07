@@ -8,115 +8,64 @@ import {
 } from "@/platform/config/hosted-env";
 
 describe("hosted Atlas environment validation", () => {
-  it("requires a real map style URL for hosted deployments", () => {
-    expect(() => {
-      validateHostedAtlasEnv(
-        {
-          ATLAS_DEPLOY_MODE: "production",
-          ATLAS_PUBLIC_URL: "https://atlas.example.com",
-          ATLAS_SERVER_API_PROXY_TARGET: "https://api.atlas.example.com",
-          ATLAS_AUTH_JWT_AUDIENCES: buildMcpResourceUrl("https://atlas.example.com"),
-        },
-        { requireMapStyle: true },
-      );
-    }).toThrow("ATLAS_MAP_STYLE_URL is required for hosted Atlas deployments.");
-
-    expect(() => {
-      validateHostedAtlasEnv(
-        {
-          ATLAS_MAP_STYLE_URL: "https://maptiler.invalid/maps/atlas-placeholder/style.json",
-          ATLAS_PUBLIC_URL: "https://atlas.example.com",
-          ATLAS_SERVER_API_PROXY_TARGET: "https://api.atlas.example.com",
-          ATLAS_AUTH_JWT_AUDIENCES: buildMcpResourceUrl("https://atlas.example.com"),
-          VERCEL_ENV: "production",
-        },
-        { requireMapStyle: true },
-      );
-    }).toThrow("ATLAS_MAP_STYLE_URL must not use the placeholder in hosted Atlas deployments.");
-  });
-
   it("requires hosted public and API routing values", () => {
     expect(() => {
-      validateHostedAtlasEnv(
-        {
-          ATLAS_DEPLOY_MODE: "production",
-          ATLAS_MAP_STYLE_URL: "https://api.maptiler.com/maps/atlas/style.json",
-        },
-        { requireMapStyle: true },
-      );
+      validateHostedAtlasEnv({
+        ATLAS_DEPLOY_MODE: "production",
+      });
     }).toThrow("ATLAS_PUBLIC_URL is required for hosted Atlas deployments.");
 
     expect(() => {
-      validateHostedAtlasEnv(
-        {
-          ATLAS_DEPLOY_MODE: "production",
-          ATLAS_MAP_STYLE_URL: "https://api.maptiler.com/maps/atlas/style.json",
-          ATLAS_PUBLIC_URL: "https://atlas.example.com",
-          ATLAS_AUTH_JWT_AUDIENCES: buildMcpResourceUrl("https://atlas.example.com"),
-        },
-        { requireMapStyle: true },
-      );
+      validateHostedAtlasEnv({
+        ATLAS_DEPLOY_MODE: "production",
+        ATLAS_PUBLIC_URL: "https://atlas.example.com",
+        ATLAS_AUTH_JWT_AUDIENCES: buildMcpResourceUrl("https://atlas.example.com"),
+      });
     }).toThrow("ATLAS_SERVER_API_PROXY_TARGET is required for hosted Atlas deployments.");
   });
 
   it("requires hosted origins to use HTTPS", () => {
     expect(() => {
-      validateHostedAtlasEnv(
-        {
-          ATLAS_DEPLOY_MODE: "production",
-          ATLAS_MAP_STYLE_URL: "https://api.maptiler.com/maps/atlas/style.json",
-          ATLAS_PUBLIC_URL: "http://atlas.example.com",
-          ATLAS_SERVER_API_PROXY_TARGET: "https://api.atlas.example.com",
-          ATLAS_AUTH_JWT_AUDIENCES: buildMcpResourceUrl("http://atlas.example.com"),
-        },
-        { requireMapStyle: true },
-      );
+      validateHostedAtlasEnv({
+        ATLAS_DEPLOY_MODE: "production",
+        ATLAS_PUBLIC_URL: "http://atlas.example.com",
+        ATLAS_SERVER_API_PROXY_TARGET: "https://api.atlas.example.com",
+        ATLAS_AUTH_JWT_AUDIENCES: buildMcpResourceUrl("http://atlas.example.com"),
+      });
     }).toThrow("ATLAS_PUBLIC_URL must use https in hosted Atlas deployments.");
 
     expect(() => {
-      validateHostedAtlasEnv(
-        {
-          ATLAS_DEPLOY_MODE: "production",
-          ATLAS_MAP_STYLE_URL: "https://api.maptiler.com/maps/atlas/style.json",
-          ATLAS_PUBLIC_URL: "https://atlas.example.com",
-          ATLAS_SERVER_API_PROXY_TARGET: "http://api.atlas.example.com",
-          ATLAS_AUTH_JWT_AUDIENCES: buildMcpResourceUrl("https://atlas.example.com"),
-        },
-        { requireMapStyle: true },
-      );
+      validateHostedAtlasEnv({
+        ATLAS_DEPLOY_MODE: "production",
+        ATLAS_PUBLIC_URL: "https://atlas.example.com",
+        ATLAS_SERVER_API_PROXY_TARGET: "http://api.atlas.example.com",
+        ATLAS_AUTH_JWT_AUDIENCES: buildMcpResourceUrl("https://atlas.example.com"),
+      });
     }).toThrow("ATLAS_SERVER_API_PROXY_TARGET must use https in hosted Atlas deployments.");
   });
 
   it("allows loopback HTTP origins for hosted-shaped end-to-end runs", () => {
     expect(() => {
-      validateHostedAtlasEnv(
-        {
-          ATLAS_DEPLOY_MODE: "production",
-          ATLAS_MAP_STYLE_URL: "https://api.maptiler.com/maps/atlas/style.json",
-          ATLAS_PUBLIC_URL: "http://localhost:3100",
-          ATLAS_SERVER_API_PROXY_TARGET: "http://127.0.0.1:38000",
-          ATLAS_AUTH_JWT_AUDIENCES: buildMcpResourceUrl("http://localhost:3100"),
-        },
-        { requireMapStyle: true },
-      );
+      validateHostedAtlasEnv({
+        ATLAS_DEPLOY_MODE: "production",
+        ATLAS_PUBLIC_URL: "http://localhost:3100",
+        ATLAS_SERVER_API_PROXY_TARGET: "http://127.0.0.1:38000",
+        ATLAS_AUTH_JWT_AUDIENCES: buildMcpResourceUrl("http://localhost:3100"),
+      });
     }).not.toThrow();
   });
 
   it("requires the canonical MCP audience first", () => {
     expect(() => {
-      validateHostedAtlasEnv(
-        {
-          ATLAS_DEPLOY_MODE: "production",
-          ATLAS_MAP_STYLE_URL: "https://api.maptiler.com/maps/atlas/style.json",
-          ATLAS_PUBLIC_URL: "https://atlas.example.com",
-          ATLAS_SERVER_API_PROXY_TARGET: "https://api.atlas.example.com",
-          ATLAS_AUTH_JWT_AUDIENCES: [
-            "https://api.atlas.example.com",
-            buildMcpResourceUrl("https://atlas.example.com"),
-          ].join(","),
-        },
-        { requireMapStyle: true },
-      );
+      validateHostedAtlasEnv({
+        ATLAS_DEPLOY_MODE: "production",
+        ATLAS_PUBLIC_URL: "https://atlas.example.com",
+        ATLAS_SERVER_API_PROXY_TARGET: "https://api.atlas.example.com",
+        ATLAS_AUTH_JWT_AUDIENCES: [
+          "https://api.atlas.example.com",
+          buildMcpResourceUrl("https://atlas.example.com"),
+        ].join(","),
+      });
     }).toThrow(
       "ATLAS_AUTH_JWT_AUDIENCES must put the canonical MCP resource first: https://atlas.example.com/mcp",
     );
@@ -124,19 +73,15 @@ describe("hosted Atlas environment validation", () => {
 
   it("accepts a complete production deploy environment", () => {
     expect(() => {
-      validateHostedAtlasEnv(
-        {
-          ATLAS_DEPLOY_MODE: "production",
-          ATLAS_MAP_STYLE_URL: "https://api.maptiler.com/maps/atlas/style.json",
-          ATLAS_PUBLIC_URL: "https://atlas.example.com",
-          ATLAS_SERVER_API_PROXY_TARGET: "https://api.atlas.example.com",
-          ATLAS_AUTH_JWT_AUDIENCES: [
-            buildMcpResourceUrl("https://atlas.example.com"),
-            "https://api.atlas.example.com",
-          ].join(","),
-        },
-        { requireMapStyle: true },
-      );
+      validateHostedAtlasEnv({
+        ATLAS_DEPLOY_MODE: "production",
+        ATLAS_PUBLIC_URL: "https://atlas.example.com",
+        ATLAS_SERVER_API_PROXY_TARGET: "https://api.atlas.example.com",
+        ATLAS_AUTH_JWT_AUDIENCES: [
+          buildMcpResourceUrl("https://atlas.example.com"),
+          "https://api.atlas.example.com",
+        ].join(","),
+      });
     }).not.toThrow();
   });
 });

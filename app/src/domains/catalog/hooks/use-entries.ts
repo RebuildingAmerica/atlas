@@ -3,8 +3,12 @@ import { api } from "@/lib/api";
 import type { Entry, EntryFilterParams, EntryListResponse, EntrySlugScope } from "@/types";
 
 interface UseEntriesOptions {
+  /** Pause the catalog query until a deliberate retry or new route load. */
+  enabled?: boolean;
   /** Hydrate the React Query cache with this server-side payload on first render. */
   initialData?: EntryListResponse;
+  /** Whether React Query should automatically retry failed catalog reads. */
+  retry?: boolean;
 }
 
 export function useEntries(params?: EntryFilterParams, options?: UseEntriesOptions) {
@@ -13,7 +17,9 @@ export function useEntries(params?: EntryFilterParams, options?: UseEntriesOptio
     queryFn: () => api.entries.list(params),
     placeholderData: keepPreviousData,
     staleTime: 1000 * 60 * 10,
+    enabled: options?.enabled ?? true,
     initialData: options?.initialData,
+    retry: options?.retry ?? false,
   });
 }
 

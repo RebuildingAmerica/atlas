@@ -77,7 +77,6 @@ Set:
 ```env
 ATLAS_DEPLOY_MODE=staging
 ATLAS_PUBLIC_URL=https://staging.atlas.rebuildingus.org
-ATLAS_MAP_STYLE_URL=https://api.maptiler.com/maps/<style-id>/style.json?key=<staging-domain-restricted-key>
 ATLAS_SERVER_API_PROXY_TARGET=https://atlas-api-staging.rebuildingus.org
 ATLAS_AUTH_JWT_AUDIENCES=https://staging.atlas.rebuildingus.org/mcp,https://atlas-api-staging.rebuildingus.org
 ATLAS_AUTH_API_KEY_INTROSPECTION_URL=https://staging.atlas.rebuildingus.org/api/auth/internal/api-key

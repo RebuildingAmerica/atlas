@@ -1,20 +1,11 @@
 // @vitest-environment jsdom
 
-import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, screen } from "@testing-library/react";
 import { makePoint } from "../../../../../helpers/catalog/map-clustering-harness";
 import { renderCommandBar } from "../../../../../helpers/catalog/map-command-bar-harness";
 import type { PlaceMatch } from "@/domains/catalog/map/map-place-search";
 import type { MapPoint } from "@/types";
-
-vi.mock("@headlessui/react", () => ({
-  Popover: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  PopoverButton: ({ children }: { children: ReactNode }) => (
-    <button type="button">{children}</button>
-  ),
-  PopoverPanel: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-}));
 
 afterEach(cleanup);
 
@@ -79,13 +70,18 @@ describe("MapCommandBar", () => {
   it("toggles an issue filter through the disclosure", () => {
     const onToggleFilter = vi.fn();
     renderCommandBar({ onToggleFilter });
+    fireEvent.click(screen.getByRole("button", { name: /Issues/ }));
     fireEvent.click(screen.getByRole("button", { name: "Housing" }));
     expect(onToggleFilter).toHaveBeenCalledWith("issue_areas", "housing-affordability");
+    expect(screen.getByRole("button", { name: /Issues/ }).getAttribute("aria-expanded")).toBe(
+      "false",
+    );
   });
 
   it("toggles a type filter through the disclosure", () => {
     const onToggleFilter = vi.fn();
     renderCommandBar({ onToggleFilter });
+    fireEvent.click(screen.getByRole("button", { name: /Types/ }));
     fireEvent.click(screen.getByRole("button", { name: "People" }));
     expect(onToggleFilter).toHaveBeenCalledWith("entry_types", "person");
   });
@@ -93,8 +89,27 @@ describe("MapCommandBar", () => {
   it("toggles a source filter through the disclosure", () => {
     const onToggleFilter = vi.fn();
     renderCommandBar({ onToggleFilter });
+    fireEvent.click(screen.getByRole("button", { name: /Sources/ }));
     fireEvent.click(screen.getByRole("button", { name: "Local news" }));
     expect(onToggleFilter).toHaveBeenCalledWith("source_types", "news_article");
+  });
+
+  it("keeps only one map filter menu open so panels do not block sibling triggers", () => {
+    renderCommandBar();
+
+    fireEvent.click(screen.getByRole("button", { name: /Issues/ }));
+    expect(screen.getByRole("button", { name: "Housing" })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: /Types/ }));
+
+    expect(screen.queryByRole("button", { name: "Housing" })).toBeNull();
+    expect(screen.getByRole("button", { name: "People" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Issues/ }).getAttribute("aria-expanded")).toBe(
+      "false",
+    );
+    expect(screen.getByRole("button", { name: /Types/ }).getAttribute("aria-expanded")).toBe(
+      "true",
+    );
   });
 
   it("hides the Types disclosure when entry-type filtering is turned off", () => {
