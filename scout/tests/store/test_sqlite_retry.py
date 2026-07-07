@@ -29,9 +29,9 @@ async def test_execute_retries_transient_sqlite_locks() -> None:
 
     store = ScoutStore(":memory:")
     connection = FlakyConnection()
-    store._conn = connection  # type: ignore[assignment]
+    store._db._conn = connection  # type: ignore[assignment]
 
-    await store._execute("UPDATE example SET value = ?", ("ok",))
+    await store._db.execute("UPDATE example SET value = ?", ("ok",))
 
     assert connection.execute_calls == 2
     assert connection.commit_calls == 1
@@ -44,15 +44,15 @@ async def test_claim_work_retries_transient_insert_locks(tmp_db_path: object) ->
     await lock_store.initialize()
     await claim_store.initialize()
     try:
-        assert lock_store._conn is not None
-        assert claim_store._conn is not None
-        await claim_store._conn.execute("PRAGMA busy_timeout=1")
-        await lock_store._conn.execute("BEGIN IMMEDIATE")
+        assert lock_store._db.connection is not None
+        assert claim_store._db.connection is not None
+        await claim_store._db.connection.execute("PRAGMA busy_timeout=1")
+        await lock_store._db.connection.execute("BEGIN IMMEDIATE")
 
         async def release_lock() -> None:
             await asyncio.sleep(0.1)
-            assert lock_store._conn is not None
-            await lock_store._conn.rollback()
+            assert lock_store._db.connection is not None
+            await lock_store._db.connection.rollback()
 
         release_task = asyncio.create_task(release_lock())
         try:
@@ -123,7 +123,7 @@ async def test_initialize_retries_transient_schema_locks(monkeypatch: Any) -> No
     async def fake_connect(_db_path: str) -> FlakyConnection:
         return connection
 
-    monkeypatch.setattr("atlas_scout.store.aiosqlite.connect", fake_connect)
+    monkeypatch.setattr("atlas_scout.store.db.aiosqlite.connect", fake_connect)
 
     store = ScoutStore("locked.db")
 

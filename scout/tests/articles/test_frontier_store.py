@@ -161,9 +161,9 @@ async def test_article_frontier_claims_are_leased_between_workers(store: ScoutSt
     assert stats_after_claim["pending"] == 2
     assert stats_after_claim["claimed"] == 2
 
-    assert store._conn is not None
+    assert store._db.connection is not None
     expired_at = (datetime.now(UTC) - timedelta(seconds=1)).isoformat()
-    await store._conn.execute(
+    await store._db.connection.execute(
         """
         UPDATE article_frontier
         SET claim_expires_at = ?
@@ -171,7 +171,7 @@ async def test_article_frontier_claims_are_leased_between_workers(store: ScoutSt
         """,
         (expired_at, urls[0]),
     )
-    await store._conn.commit()
+    await store._db.connection.commit()
 
     reclaimed = await store.claim_article_frontier_batch(
         limit=2,
@@ -208,15 +208,15 @@ async def test_article_frontier_claim_retries_transient_begin_locks(tmp_db_path:
             ]
         )
 
-        assert lock_store._conn is not None
-        assert claim_store._conn is not None
-        await claim_store._conn.execute("PRAGMA busy_timeout=1")
-        await lock_store._conn.execute("BEGIN IMMEDIATE")
+        assert lock_store._db.connection is not None
+        assert claim_store._db.connection is not None
+        await claim_store._db.connection.execute("PRAGMA busy_timeout=1")
+        await lock_store._db.connection.execute("BEGIN IMMEDIATE")
 
         async def release_lock() -> None:
             await asyncio.sleep(0.1)
-            assert lock_store._conn is not None
-            await lock_store._conn.rollback()
+            assert lock_store._db.connection is not None
+            await lock_store._db.connection.rollback()
 
         release_task = asyncio.create_task(release_lock())
         try:

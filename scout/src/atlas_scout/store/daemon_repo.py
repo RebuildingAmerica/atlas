@@ -1,28 +1,143 @@
-"""Daemon-state mixin for Atlas Scout."""
+"""Daemon lifecycle state: single-row status/heartbeat/tick tracking."""
 
 from __future__ import annotations
 
 import json
 from typing import TYPE_CHECKING, Any
 
+from atlas_scout.store._util import now, serialize_timestamp
+
 if TYPE_CHECKING:
     from datetime import datetime
 
-from atlas_scout.store_core import (
-    _DAEMON_STATE_KEY,
-    _now,
-    _serialize_timestamp,
-    _validate_interval_seconds,
-    _validate_process_id,
-    _validate_target_count,
+    from atlas_scout.store.db import Database
+
+_CREATE_DAEMON_STATE = """
+CREATE TABLE IF NOT EXISTS daemon_state (
+    key TEXT PRIMARY KEY CHECK(key = 'scout'),
+    status TEXT NOT NULL DEFAULT 'stopped' CHECK(status IN ('starting', 'running', 'stopped')),
+    started_at TEXT,
+    last_heartbeat_at TEXT,
+    config_path TEXT,
+    profile_name TEXT,
+    process_id INTEGER,
+    target_count INTEGER NOT NULL DEFAULT 0 CHECK(target_count >= 0),
+    interval_seconds INTEGER,
+    interval_basis TEXT,
+    last_tick_summary TEXT,
+    updated_at TEXT NOT NULL
 )
+"""
+
+_DAEMON_STATE_KEY = "scout"
 
 
-class ScoutStoreDaemonMixin:
+def _validate_target_count(target_count: int) -> int:
+    """Validate the daemon target count before persisting it."""
+    if target_count < 0:
+        raise ValueError("target_count must be non-negative")
+    return target_count
+
+
+def _validate_process_id(process_id: int | None) -> int | None:
+    """Validate an optional daemon process identifier."""
+    if process_id is not None and process_id <= 0:
+        raise ValueError("process_id must be positive")
+    return process_id
+
+
+def _validate_interval_seconds(interval_seconds: int | None) -> int | None:
+    """Validate an optional daemon interval in seconds."""
+    if interval_seconds is not None and interval_seconds < 0:
+        raise ValueError("interval_seconds must be non-negative")
+    return interval_seconds
+
+
+class DaemonStateRepository:
+    """Persists the single-row daemon lifecycle state."""
+
+    def __init__(self, db: Database) -> None:
+        self._db = db
+
+    async def ensure_schema(self) -> None:
+        """Create or migrate the daemon_state table to enforce current constraints."""
+        conn = self._db.connection
+        await conn.execute(_CREATE_DAEMON_STATE)
+        async with conn.execute(
+            "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'daemon_state'"
+        ) as cursor:
+            row = await cursor.fetchone()
+
+        schema_sql = str(row["sql"]) if row is not None else ""
+        if "target_count >= 0" not in schema_sql or "'starting'" not in schema_sql:
+            await conn.execute("ALTER TABLE daemon_state RENAME TO daemon_state_legacy")
+            await conn.execute(_CREATE_DAEMON_STATE)
+            await conn.execute(
+                """
+                INSERT INTO daemon_state (
+                    key,
+                    status,
+                    started_at,
+                    last_heartbeat_at,
+                    config_path,
+                    profile_name,
+                    process_id,
+                    target_count,
+                    interval_seconds,
+                    interval_basis,
+                    last_tick_summary,
+                    updated_at
+                )
+                SELECT
+                    key,
+                    status,
+                    started_at,
+                    last_heartbeat_at,
+                    config_path,
+                    profile_name,
+                    NULL,
+                    CASE
+                        WHEN target_count < 0 THEN 0
+                        ELSE target_count
+                    END,
+                    NULL,
+                    NULL,
+                    last_tick_summary,
+                    updated_at
+                FROM daemon_state_legacy
+                """
+            )
+            await conn.execute("DROP TABLE daemon_state_legacy")
+
+        async with conn.execute("PRAGMA table_info(daemon_state)") as cursor:
+            rows = await cursor.fetchall()
+        existing_columns = {str(row["name"]) for row in rows}
+
+        migration_sql: list[str] = []
+        if "process_id" not in existing_columns:
+            migration_sql.append("ALTER TABLE daemon_state ADD COLUMN process_id INTEGER")
+        if "interval_seconds" not in existing_columns:
+            migration_sql.append("ALTER TABLE daemon_state ADD COLUMN interval_seconds INTEGER")
+        if "interval_basis" not in existing_columns:
+            migration_sql.append("ALTER TABLE daemon_state ADD COLUMN interval_basis TEXT")
+
+        for statement in migration_sql:
+            await conn.execute(statement)
+
+    async def ensure_default_row(self) -> None:
+        """Insert the single daemon_state row if it doesn't already exist."""
+        await self._db.connection.execute(
+            """
+            INSERT INTO daemon_state (key, status, target_count, updated_at)
+            VALUES (?, 'stopped', 0, ?)
+            ON CONFLICT(key) DO NOTHING
+            """,
+            (_DAEMON_STATE_KEY, now()),
+        )
+
     async def get_daemon_state(self) -> dict[str, Any]:
         """Return the persisted daemon lifecycle state."""
-        assert self._conn is not None
-        async with self._conn.execute(
+        async with self._db.connection.execute(
             "SELECT * FROM daemon_state WHERE key = ?",
             (_DAEMON_STATE_KEY,),
         ) as cursor:
@@ -48,13 +163,13 @@ class ScoutStoreDaemonMixin:
         expected_updated_at: str | None = None,
     ) -> bool:
         """Atomically claim the daemon state for a new start attempt."""
-        assert self._conn is not None
+        conn = self._db.connection
         validated_target_count = _validate_target_count(target_count)
         validated_interval_seconds = _validate_interval_seconds(interval_seconds)
-        claimed_at = _now()
-        await self._conn.execute("BEGIN IMMEDIATE")
+        claimed_at = now()
+        await conn.execute("BEGIN IMMEDIATE")
         try:
-            async with self._conn.execute(
+            async with conn.execute(
                 """
                 SELECT status, process_id
                      , updated_at
@@ -73,10 +188,10 @@ class ScoutStoreDaemonMixin:
                 or row["process_id"] != expected_process_id
                 or (expected_updated_at is not None and row["updated_at"] != expected_updated_at)
             ):
-                await self._conn.rollback()
+                await conn.rollback()
                 return False
 
-            await self._conn.execute(
+            await conn.execute(
                 """
                 UPDATE daemon_state
                 SET status = 'starting',
@@ -101,9 +216,9 @@ class ScoutStoreDaemonMixin:
                     _DAEMON_STATE_KEY,
                 ),
             )
-            await self._conn.commit()
+            await conn.commit()
         except Exception:
-            await self._conn.rollback()
+            await conn.rollback()
             raise
         return True
 
@@ -122,8 +237,8 @@ class ScoutStoreDaemonMixin:
         validated_target_count = _validate_target_count(target_count)
         validated_process_id = _validate_process_id(process_id)
         validated_interval_seconds = _validate_interval_seconds(interval_seconds)
-        started_at_iso = _serialize_timestamp(started_at) or _now()
-        await self._execute(
+        started_at_iso = serialize_timestamp(started_at) or now()
+        await self._db.execute(
             """
             UPDATE daemon_state
             SET status = 'running',
@@ -154,8 +269,8 @@ class ScoutStoreDaemonMixin:
 
     async def record_daemon_heartbeat(self, *, heartbeat_at: datetime | None = None) -> None:
         """Update the daemon heartbeat timestamp."""
-        heartbeat_at_iso = _serialize_timestamp(heartbeat_at) or _now()
-        await self._execute(
+        heartbeat_at_iso = serialize_timestamp(heartbeat_at) or now()
+        await self._db.execute(
             """
             UPDATE daemon_state
             SET last_heartbeat_at = ?,
@@ -167,8 +282,8 @@ class ScoutStoreDaemonMixin:
 
     async def stop_daemon(self, *, stopped_at: datetime | None = None) -> None:
         """Mark the daemon as stopped while preserving the last active configuration."""
-        stopped_at_iso = _serialize_timestamp(stopped_at) or _now()
-        await self._execute(
+        stopped_at_iso = serialize_timestamp(stopped_at) or now()
+        await self._db.execute(
             """
             UPDATE daemon_state
             SET status = 'stopped',
@@ -190,18 +305,18 @@ class ScoutStoreDaemonMixin:
         error: str | None = None,
     ) -> None:
         """Persist a structured summary for the most recent scheduler tick."""
-        completed_at_iso = _serialize_timestamp(completed_at) or _now()
+        completed_at_iso = serialize_timestamp(completed_at) or now()
         tick_summary = json.dumps(
             {
                 "status": status,
                 "run_count": run_count,
                 "summary": summary,
-                "started_at": _serialize_timestamp(started_at),
+                "started_at": serialize_timestamp(started_at),
                 "completed_at": completed_at_iso,
                 "error": error,
             }
         )
-        await self._execute(
+        await self._db.execute(
             """
             UPDATE daemon_state
             SET last_tick_summary = ?,
@@ -210,7 +325,3 @@ class ScoutStoreDaemonMixin:
             """,
             (tick_summary, completed_at_iso, _DAEMON_STATE_KEY),
         )
-
-    # ------------------------------------------------------------------
-    # Runs
-    # ------------------------------------------------------------------

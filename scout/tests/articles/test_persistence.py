@@ -134,15 +134,15 @@ async def test_bulk_save_articles_retries_transient_insert_locks(tmp_db_path: ob
     await lock_store.initialize()
     await article_store.initialize()
     try:
-        assert lock_store._conn is not None
-        assert article_store._conn is not None
-        await article_store._conn.execute("PRAGMA busy_timeout=1")
-        await lock_store._conn.execute("BEGIN IMMEDIATE")
+        assert lock_store._db.connection is not None
+        assert article_store._db.connection is not None
+        await article_store._db.connection.execute("PRAGMA busy_timeout=1")
+        await lock_store._db.connection.execute("BEGIN IMMEDIATE")
 
         async def release_lock() -> None:
             await asyncio.sleep(0.1)
-            assert lock_store._conn is not None
-            await lock_store._conn.rollback()
+            assert lock_store._db.connection is not None
+            await lock_store._db.connection.rollback()
 
         release_task = asyncio.create_task(release_lock())
         try:

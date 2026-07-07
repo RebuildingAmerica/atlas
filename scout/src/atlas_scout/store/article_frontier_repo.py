@@ -1,17 +1,75 @@
-"""Article frontier persistence mixin for Atlas Scout."""
+"""Durable article crawl frontier: discovery, domain-balanced leasing, and stats."""
 
 from __future__ import annotations
 
 import uuid
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from urllib.parse import urlparse
 
-from atlas_scout.sqlite_retry import run_sqlite_write
-from atlas_scout.store_core import _now
+from atlas_scout.store._util import now
+
+if TYPE_CHECKING:
+    from atlas_scout.store.db import Database
+
+_CREATE_ARTICLE_FRONTIER = """
+CREATE TABLE IF NOT EXISTS article_frontier (
+    url TEXT PRIMARY KEY,
+    seed_url TEXT NOT NULL,
+    depth INTEGER NOT NULL DEFAULT 0 CHECK(depth >= 0),
+    priority INTEGER NOT NULL DEFAULT 0,
+    source_domain TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending', 'fetched', 'skipped')),
+    discovered_at TEXT NOT NULL,
+    fetched_at TEXT,
+    claimed_by TEXT,
+    claimed_at TEXT,
+    claim_expires_at TEXT,
+    updated_at TEXT NOT NULL
+)
+"""
+
+_CREATE_ARTICLE_FRONTIER_STATUS_INDEX = """
+CREATE INDEX IF NOT EXISTS idx_article_frontier_status_priority
+ON article_frontier(status, priority DESC, discovered_at ASC)
+"""
+
+_CREATE_ARTICLE_FRONTIER_DOMAIN_INDEX = """
+CREATE INDEX IF NOT EXISTS idx_article_frontier_source_domain
+ON article_frontier(source_domain, status)
+"""
+
+_CREATE_ARTICLE_FRONTIER_CLAIM_INDEX = """
+CREATE INDEX IF NOT EXISTS idx_article_frontier_claims
+ON article_frontier(status, claim_expires_at, priority DESC, discovered_at ASC)
+"""
 
 
-class ScoutStoreArticleFrontierMixin:
+class ArticleFrontierRepository:
+    """Persists a durable, resumable, domain-balanced article crawl frontier."""
+
+    def __init__(self, db: Database) -> None:
+        self._db = db
+
+    async def ensure_schema(self) -> None:
+        """Create or migrate the article frontier table and its indexes."""
+        conn = self._db.connection
+        await conn.execute(_CREATE_ARTICLE_FRONTIER)
+        async with conn.execute("PRAGMA table_info(article_frontier)") as cursor:
+            rows = await cursor.fetchall()
+        columns = {str(row["name"]) for row in rows}
+        migrations = {
+            "claimed_by": "ALTER TABLE article_frontier ADD COLUMN claimed_by TEXT",
+            "claimed_at": "ALTER TABLE article_frontier ADD COLUMN claimed_at TEXT",
+            "claim_expires_at": "ALTER TABLE article_frontier ADD COLUMN claim_expires_at TEXT",
+        }
+        for column, sql in migrations.items():
+            if column not in columns:
+                await conn.execute(sql)
+        await conn.execute(_CREATE_ARTICLE_FRONTIER_STATUS_INDEX)
+        await conn.execute(_CREATE_ARTICLE_FRONTIER_DOMAIN_INDEX)
+        await conn.execute(_CREATE_ARTICLE_FRONTIER_CLAIM_INDEX)
+
     async def upsert_article_frontier(
         self,
         items: list[dict[str, Any]],
@@ -22,10 +80,9 @@ class ScoutStoreArticleFrontierMixin:
         if batch_size <= 0:
             raise ValueError("batch_size must be positive")
 
-        assert self._conn is not None
         seen_urls: set[str] = set()
         candidate_rows: list[tuple[str, str, int, int, str, str, str]] = []
-        now = _now()
+        discovered_at = now()
         skipped = 0
         for item in items:
             url = str(item.get("url") or "").strip()
@@ -37,7 +94,9 @@ class ScoutStoreArticleFrontierMixin:
             depth = int(item.get("depth") or 0)
             priority = int(item.get("priority") or 0)
             source_domain = str(item.get("source_domain") or urlparse(url).netloc.lower())
-            candidate_rows.append((url, seed_url, depth, priority, source_domain, now, now))
+            candidate_rows.append(
+                (url, seed_url, depth, priority, source_domain, discovered_at, discovered_at)
+            )
 
         if not candidate_rows:
             return {"attempted": len(items), "saved": 0, "skipped": skipped}
@@ -46,7 +105,7 @@ class ScoutStoreArticleFrontierMixin:
         insert_rows = [row for row in candidate_rows if row[0] not in existing_urls]
         skipped += len(candidate_rows) - len(insert_rows)
         for start in range(0, len(insert_rows), batch_size):
-            await self._executemany(
+            await self._db.executemany(
                 """
                 INSERT INTO article_frontier
                     (
@@ -71,12 +130,12 @@ class ScoutStoreArticleFrontierMixin:
 
     async def _existing_frontier_urls(self, urls: list[str]) -> set[str]:
         """Return URLs that are already in the persisted article frontier."""
-        assert self._conn is not None
+        conn = self._db.connection
         existing: set[str] = set()
         for start in range(0, len(urls), 900):
             chunk = urls[start : start + 900]
             placeholders = ", ".join("?" for _ in chunk)
-            async with self._conn.execute(
+            async with conn.execute(
                 f"SELECT url FROM article_frontier WHERE url IN ({placeholders})",
                 tuple(chunk),
             ) as cursor:
@@ -102,18 +161,17 @@ class ScoutStoreArticleFrontierMixin:
         if lease_seconds <= 0:
             raise ValueError("lease_seconds must be positive")
 
-        assert self._conn is not None
         owner = worker_id or f"article-frontier-{uuid.uuid4().hex}"
-        now = datetime.now(UTC)
-        now_iso = now.isoformat()
-        lease_expires_at = (now + timedelta(seconds=lease_seconds)).isoformat()
+        current_time = datetime.now(UTC)
+        now_iso = current_time.isoformat()
+        lease_expires_at = (current_time + timedelta(seconds=lease_seconds)).isoformat()
         scan_limit = max(limit * 100, limit)
 
         async def operation() -> list[dict[str, Any]]:
-            assert self._conn is not None
-            await self._conn.execute("BEGIN IMMEDIATE")
+            conn = self._db.connection
+            await conn.execute("BEGIN IMMEDIATE")
             try:
-                async with self._conn.execute(
+                async with conn.execute(
                     """
                     SELECT *
                     FROM article_frontier
@@ -144,7 +202,7 @@ class ScoutStoreArticleFrontierMixin:
                     domain_queues[source_domain].append(item)
 
                 if skipped_existing:
-                    await self._conn.executemany(
+                    await conn.executemany(
                         """
                         UPDATE article_frontier
                         SET status = 'skipped',
@@ -173,7 +231,7 @@ class ScoutStoreArticleFrontierMixin:
                         break
 
                 if claimed:
-                    await self._conn.executemany(
+                    await conn.executemany(
                         """
                         UPDATE article_frontier
                         SET claimed_by = ?,
@@ -196,19 +254,18 @@ class ScoutStoreArticleFrontierMixin:
                             for item in claimed
                         ],
                     )
-                await self._conn.commit()
+                await conn.commit()
             except Exception:
-                await self._rollback_quietly()
+                await self._db.rollback_quietly()
                 raise
             return claimed
 
-        return await run_sqlite_write(operation, on_locked=self._rollback_quietly)
+        return await self._db.run_write(operation)
 
     async def list_article_frontier_pending(self, *, limit: int = 0) -> list[dict[str, Any]]:
         """Return pending article frontier rows ordered by current crawl priority."""
         if limit < 0:
             raise ValueError("limit must be non-negative")
-        assert self._conn is not None
         query = """
             SELECT *
             FROM article_frontier
@@ -219,7 +276,7 @@ class ScoutStoreArticleFrontierMixin:
         if limit > 0:
             query += " LIMIT ?"
             params = (limit,)
-        async with self._conn.execute(query, params) as cursor:
+        async with self._db.connection.execute(query, params) as cursor:
             rows = await cursor.fetchall()
         return [dict(row) for row in rows]
 
@@ -232,7 +289,6 @@ class ScoutStoreArticleFrontierMixin:
         """Return pending source, sitemap, feed, and robots rows for frontier expansion."""
         if limit < 0:
             raise ValueError("limit must be non-negative")
-        assert self._conn is not None
         status_clause = """
             (
                 status = 'pending'
@@ -259,11 +315,11 @@ class ScoutStoreArticleFrontierMixin:
                 )
             ORDER BY priority DESC, discovered_at ASC, url ASC
         """
-        params: tuple[str, int] | tuple[str] = (_now(),)
+        params: tuple[str, int] | tuple[str] = (now(),)
         if limit > 0:
             query += " LIMIT ?"
-            params = (_now(), limit)
-        async with self._conn.execute(query, params) as cursor:
+            params = (now(), limit)
+        async with self._db.connection.execute(query, params) as cursor:
             rows = await cursor.fetchall()
         return [dict(row) for row in rows]
 
@@ -279,14 +335,15 @@ class ScoutStoreArticleFrontierMixin:
         if not priorities:
             return 0
 
-        assert self._conn is not None
-        now = _now()
+        updated_at = now()
         updated = 0
         rows = [
-            (int(priority), now, url, int(priority)) for url, priority in priorities.items() if url
+            (int(priority), updated_at, url, int(priority))
+            for url, priority in priorities.items()
+            if url
         ]
         for start in range(0, len(rows), batch_size):
-            updated += await self._executemany(
+            updated += await self._db.executemany(
                 """
                 UPDATE article_frontier
                 SET priority = ?,
@@ -311,12 +368,11 @@ class ScoutStoreArticleFrontierMixin:
         """Release unfinished article frontier leases owned by one worker."""
         if not urls:
             return 0
-        assert self._conn is not None
-        now = _now()
+        updated_at = now()
         updated = 0
-        rows = [(now, url, worker_id) for url in urls]
+        rows = [(updated_at, url, worker_id) for url in urls]
         for start in range(0, len(rows), 5000):
-            updated += await self._executemany(
+            updated += await self._db.executemany(
                 """
                 UPDATE article_frontier
                 SET claimed_by = NULL,
@@ -335,7 +391,7 @@ class ScoutStoreArticleFrontierMixin:
         """Release all unfinished article frontier leases owned by one worker."""
         if not worker_id:
             raise ValueError("worker_id must be non-empty")
-        return await self._execute_count(
+        return await self._db.execute_count(
             """
             UPDATE article_frontier
             SET claimed_by = NULL,
@@ -345,7 +401,7 @@ class ScoutStoreArticleFrontierMixin:
             WHERE status = 'pending'
               AND claimed_by = ?
             """,
-            (_now(), worker_id),
+            (now(), worker_id),
         )
 
     async def _mark_article_frontier_urls(self, urls: list[str], *, status: str) -> None:
@@ -354,10 +410,11 @@ class ScoutStoreArticleFrontierMixin:
             raise ValueError("status must be fetched or skipped")
         if not urls:
             return
-        assert self._conn is not None
-        now = _now()
-        rows = [(status, now if status == "fetched" else None, now, url) for url in urls]
-        await self._executemany(
+        updated_at = now()
+        rows = [
+            (status, updated_at if status == "fetched" else None, updated_at, url) for url in urls
+        ]
+        await self._db.executemany(
             """
             UPDATE article_frontier
             SET status = ?,
@@ -370,3 +427,46 @@ class ScoutStoreArticleFrontierMixin:
             """,
             rows,
         )
+
+    async def article_frontier_stats(self) -> dict[str, Any]:
+        """Return pending/fetched/skipped article frontier counts."""
+        stats: dict[str, Any] = {
+            "pending": 0,
+            "fetched": 0,
+            "skipped": 0,
+            "claimed": 0,
+            "by_source_domain": {},
+        }
+        async with self._db.connection.execute(
+            "SELECT status, COUNT(*) AS count FROM article_frontier GROUP BY status"
+        ) as cursor:
+            rows = await cursor.fetchall()
+        for row in rows:
+            status = str(row["status"])
+            if status in {"pending", "fetched", "skipped"}:
+                stats[status] = int(row["count"])
+
+        async with self._db.connection.execute(
+            """
+            SELECT COUNT(*) AS count
+            FROM article_frontier
+            WHERE status = 'pending'
+              AND claim_expires_at > ?
+            """,
+            (now(),),
+        ) as cursor:
+            claim_count_row = await cursor.fetchone()
+        stats["claimed"] = int(claim_count_row["count"]) if claim_count_row is not None else 0
+
+        async with self._db.connection.execute(
+            """
+            SELECT source_domain, COUNT(*) AS count
+            FROM article_frontier
+            WHERE status = 'pending'
+            GROUP BY source_domain
+            ORDER BY count DESC, source_domain ASC
+            """
+        ) as cursor:
+            rows = await cursor.fetchall()
+        stats["by_source_domain"] = {str(row["source_domain"]): int(row["count"]) for row in rows}
+        return stats

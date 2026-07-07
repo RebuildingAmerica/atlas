@@ -1,20 +1,62 @@
-"""Run, artifact, and page-cache mixin for Atlas Scout."""
+"""Discovery run lifecycle: creation, status, artifacts, and sync metadata."""
 
 from __future__ import annotations
 
 import json
-from hashlib import sha256
 from typing import TYPE_CHECKING, Any
+
+from atlas_shared import DiscoveryRunArtifacts, DiscoverySyncInfo, compute_artifact_hash
+
+from atlas_scout.store._util import new_id, now
 
 if TYPE_CHECKING:
     from datetime import datetime
 
-from atlas_shared import DiscoveryRunArtifacts, DiscoverySyncInfo, compute_artifact_hash
+    from atlas_scout.store.db import Database
 
-from atlas_scout.store_core import _new_id, _now
+_CREATE_RUNS = """
+CREATE TABLE IF NOT EXISTS runs (
+    id TEXT PRIMARY KEY,
+    location TEXT NOT NULL,
+    issues TEXT NOT NULL,
+    search_depth TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending',
+    started_at TEXT,
+    completed_at TEXT,
+    queries INTEGER,
+    pages_fetched INTEGER,
+    entries_found INTEGER,
+    entries_after_dedup INTEGER,
+    error TEXT,
+    created_at TEXT NOT NULL
+)
+"""
+
+_CREATE_RUN_ARTIFACTS = """
+CREATE TABLE IF NOT EXISTS run_artifacts (
+    run_id TEXT PRIMARY KEY REFERENCES runs(id) ON DELETE CASCADE,
+    artifact_hash TEXT NOT NULL,
+    artifacts_json TEXT NOT NULL,
+    sync_status TEXT,
+    remote_run_id TEXT,
+    synced_at TEXT,
+    last_error TEXT,
+    updated_at TEXT NOT NULL
+)
+"""
 
 
-class ScoutStoreRunsMixin:
+class RunsRepository:
+    """Persists discovery-run lifecycle records and their synced artifact bundles."""
+
+    def __init__(self, db: Database) -> None:
+        self._db = db
+
+    async def ensure_schema(self) -> None:
+        """Create the runs and run_artifacts tables if they don't exist."""
+        await self._db.connection.execute(_CREATE_RUNS)
+        await self._db.connection.execute(_CREATE_RUN_ARTIFACTS)
+
     async def create_run(
         self,
         *,
@@ -23,20 +65,21 @@ class ScoutStoreRunsMixin:
         search_depth: str,
     ) -> str:
         """Insert a new run record and return its ID."""
-        run_id = _new_id()
-        await self._execute(
+        run_id = new_id()
+        await self._db.execute(
             """
             INSERT INTO runs (id, location, issues, search_depth, status, created_at)
             VALUES (?, ?, ?, ?, 'pending', ?)
             """,
-            (run_id, location, json.dumps(issues), search_depth, _now()),
+            (run_id, location, json.dumps(issues), search_depth, now()),
         )
         return run_id
 
     async def get_run(self, run_id: str) -> dict[str, Any]:
         """Fetch a run by ID. Raises KeyError if not found."""
-        assert self._conn is not None
-        async with self._conn.execute("SELECT * FROM runs WHERE id = ?", (run_id,)) as cursor:
+        async with self._db.connection.execute(
+            "SELECT * FROM runs WHERE id = ?", (run_id,)
+        ) as cursor:
             row = await cursor.fetchone()
         if row is None:
             raise KeyError(f"Run not found: {run_id}")
@@ -44,7 +87,7 @@ class ScoutStoreRunsMixin:
 
     async def update_run_status(self, run_id: str, status: str) -> None:
         """Update only the status field of a run."""
-        await self._execute(
+        await self._db.execute(
             "UPDATE runs SET status = ? WHERE id = ?",
             (status, run_id),
         )
@@ -59,7 +102,7 @@ class ScoutStoreRunsMixin:
         entries_after_dedup: int,
     ) -> None:
         """Mark a run as completed and record its final statistics."""
-        await self._execute(
+        await self._db.execute(
             """
             UPDATE runs
             SET status = 'completed',
@@ -70,12 +113,12 @@ class ScoutStoreRunsMixin:
                 entries_after_dedup = ?
             WHERE id = ?
             """,
-            (_now(), queries, pages_fetched, entries_found, entries_after_dedup, run_id),
+            (now(), queries, pages_fetched, entries_found, entries_after_dedup, run_id),
         )
 
     async def fail_run(self, run_id: str, error: str) -> None:
         """Mark a run as failed and record the error message."""
-        await self._execute(
+        await self._db.execute(
             """
             UPDATE runs
             SET status = 'failed',
@@ -83,12 +126,12 @@ class ScoutStoreRunsMixin:
                 error = ?
             WHERE id = ?
             """,
-            (_now(), error, run_id),
+            (now(), error, run_id),
         )
 
     async def cancel_run(self, run_id: str, error: str | None = None) -> None:
         """Mark a run as cancelled, optionally recording the cancellation reason."""
-        await self._execute(
+        await self._db.execute(
             """
             UPDATE runs
             SET status = 'cancelled',
@@ -96,13 +139,12 @@ class ScoutStoreRunsMixin:
                 error = ?
             WHERE id = ?
             """,
-            (_now(), error, run_id),
+            (now(), error, run_id),
         )
 
     async def list_runs(self, limit: int = 50) -> list[dict[str, Any]]:
         """Return the most recent runs, newest first."""
-        assert self._conn is not None
-        async with self._conn.execute(
+        async with self._db.connection.execute(
             "SELECT * FROM runs ORDER BY created_at DESC LIMIT ?", (limit,)
         ) as cursor:
             rows = await cursor.fetchall()
@@ -115,7 +157,6 @@ class ScoutStoreRunsMixin:
         include_synced: bool = False,
     ) -> list[str]:
         """Return completed run IDs with stored artifacts ready for sync."""
-        assert self._conn is not None
         sync_filter = (
             ""
             if include_synced
@@ -129,7 +170,7 @@ class ScoutStoreRunsMixin:
         )
         limit_clause = "" if limit is None else "LIMIT ?"
         params: tuple[Any, ...] = () if limit is None else (limit,)
-        async with self._conn.execute(
+        async with self._db.connection.execute(
             f"""
             SELECT r.id
             FROM runs r
@@ -163,7 +204,7 @@ class ScoutStoreRunsMixin:
                 )
             }
         )
-        await self._execute(
+        await self._db.execute(
             """
             INSERT INTO run_artifacts (
                 run_id,
@@ -192,15 +233,14 @@ class ScoutStoreRunsMixin:
                 updated_sync.remote_run_id,
                 updated_sync.synced_at.isoformat() if updated_sync.synced_at else None,
                 updated_sync.last_error,
-                _now(),
+                now(),
             ),
         )
         return artifact_hash
 
     async def get_run_artifacts(self, run_id: str) -> DiscoveryRunArtifacts | None:
         """Return the stored artifact bundle for a run, if present."""
-        assert self._conn is not None
-        async with self._conn.execute(
+        async with self._db.connection.execute(
             "SELECT artifacts_json FROM run_artifacts WHERE run_id = ?",
             (run_id,),
         ) as cursor:
@@ -249,10 +289,9 @@ class ScoutStoreRunsMixin:
         """Return a matching active direct-URL run ID when one is already in progress."""
         if not urls:
             return None
-        assert self._conn is not None
         placeholders = ", ".join("?" for _ in urls)
         params: tuple[Any, ...] = (*urls, len(set(urls)))
-        async with self._conn.execute(
+        async with self._db.connection.execute(
             f"""
             SELECT r.id
             FROM runs r
@@ -273,51 +312,13 @@ class ScoutStoreRunsMixin:
             return None
         return str(row["id"])
 
-    # ------------------------------------------------------------------
-    # Page cache
-    # ------------------------------------------------------------------
-
-    async def get_cached_page(self, url: str, ttl_days: int | None = 7) -> dict[str, Any] | None:
-        """Return a cached page if it exists and is within TTL, else None."""
-        assert self._conn is not None
-        sql = "SELECT * FROM pages WHERE url = ?"
-        params: tuple[Any, ...] = (url,)
-        if ttl_days is not None:
-            sql += f" AND fetched_at > datetime('now', '-{ttl_days} days')"
-        async with self._conn.execute(sql, params) as cursor:
-            row = await cursor.fetchone()
-        if row is None:
+    async def run_status(self, run_id: str) -> str | None:
+        """Return the owning run status when a real run record exists."""
+        if not run_id or run_id == "anonymous":
             return None
-        result = dict(row)
-        result["metadata"] = json.loads(result["metadata"])
-        return result
-
-    async def cache_page(self, url: str, text: str, metadata: dict[str, Any]) -> None:
-        """Insert or replace a page in the cache."""
-        content_hash = sha256(text.encode("utf-8")).hexdigest()
-        await self._execute(
-            """
-            INSERT OR REPLACE INTO pages (url, text, metadata, content_hash, fetched_at)
-            VALUES (?, ?, ?, ?, ?)
-            """,
-            (url, text, json.dumps(metadata), content_hash, _now()),
-        )
-
-    async def list_pages(self, limit: int = 100) -> list[dict[str, Any]]:
-        """Return cached pages ordered by most recent fetch time."""
-        assert self._conn is not None
-        async with self._conn.execute(
-            "SELECT * FROM pages ORDER BY fetched_at DESC LIMIT ?",
-            (limit,),
-        ) as cursor:
-            rows = await cursor.fetchall()
-        results: list[dict[str, Any]] = []
-        for row in rows:
-            item = dict(row)
-            item["metadata"] = json.loads(item["metadata"])
-            results.append(item)
-        return results
-
-    # ------------------------------------------------------------------
-    # Articles
-    # ------------------------------------------------------------------
+        try:
+            run = await self.get_run(run_id)
+        except KeyError:
+            return None
+        status = run.get("status")
+        return str(status) if status is not None else None

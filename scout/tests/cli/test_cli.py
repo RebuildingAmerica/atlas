@@ -884,7 +884,7 @@ def test_cli_daemon_start_reclaims_stale_starting_claim(tmp_path, monkeypatch):
             interval_seconds=300,
             interval_basis="fixed 300s override",
         )
-        await store._execute(
+        await store._db.execute(
             "UPDATE daemon_state SET updated_at = '2000-01-01T00:00:00+00:00' WHERE key = ?",
             ("scout",),
         )

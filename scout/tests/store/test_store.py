@@ -190,7 +190,7 @@ async def test_start_daemon_rejects_negative_target_count(store: ScoutStore) -> 
 
 async def test_daemon_state_table_rejects_negative_target_count(store: ScoutStore) -> None:
     with pytest.raises(aiosqlite.IntegrityError, match="CHECK constraint failed"):
-        await store._execute(
+        await store._db.execute(
             "UPDATE daemon_state SET target_count = -1 WHERE key = ?",
             ("scout",),
         )
@@ -358,7 +358,7 @@ async def test_page_cache_miss_then_hit(store: ScoutStore) -> None:
 
 async def test_page_cache_respects_ttl(store: ScoutStore) -> None:
     await store.cache_page("https://example.com", "Hello", {})
-    await store._execute(
+    await store._db.execute(
         "UPDATE pages SET fetched_at = datetime('now', '-30 days') WHERE url = ?",
         ("https://example.com",),
     )
@@ -368,7 +368,7 @@ async def test_page_cache_respects_ttl(store: ScoutStore) -> None:
 
 async def test_page_cache_can_ignore_ttl(store: ScoutStore) -> None:
     await store.cache_page("https://example.com", "Hello", {})
-    await store._execute(
+    await store._db.execute(
         "UPDATE pages SET fetched_at = datetime('now', '-30 days') WHERE url = ?",
         ("https://example.com",),
     )
@@ -564,14 +564,14 @@ async def test_close_is_idempotent(tmp_db_path) -> None:
 
 async def test_get_daemon_state_raises_when_table_empty(store: ScoutStore) -> None:
     """get_daemon_state raises KeyError when the row is missing."""
-    await store._execute("DELETE FROM daemon_state WHERE key = ?", ("scout",))
+    await store._db.execute("DELETE FROM daemon_state WHERE key = ?", ("scout",))
     with pytest.raises(KeyError, match="not initialized"):
         await store.get_daemon_state()
 
 
 async def test_claim_daemon_start_raises_when_table_empty(store: ScoutStore) -> None:
     """claim_daemon_start raises KeyError when the row is missing."""
-    await store._execute("DELETE FROM daemon_state WHERE key = ?", ("scout",))
+    await store._db.execute("DELETE FROM daemon_state WHERE key = ?", ("scout",))
     with pytest.raises(KeyError, match="not initialized"):
         await store.claim_daemon_start(
             config_path="/cfg",
@@ -771,14 +771,14 @@ async def test_get_page_task_summary_groups_by_status(store: ScoutStore) -> None
 
 
 async def test_run_status_returns_none_for_anonymous_owner(store: ScoutStore) -> None:
-    """The internal _run_status helper short-circuits for anonymous owners."""
-    assert await store._run_status("") is None
-    assert await store._run_status("anonymous") is None
+    """The RunsRepository.run_status helper short-circuits for anonymous owners."""
+    assert await store._runs.run_status("") is None
+    assert await store._runs.run_status("anonymous") is None
 
 
 async def test_run_status_returns_none_for_missing_run(store: ScoutStore) -> None:
-    """When no run exists for the given id, _run_status returns None."""
-    assert await store._run_status("nonexistent-run") is None
+    """When no run exists for the given id, run_status returns None."""
+    assert await store._runs.run_status("nonexistent-run") is None
 
 
 async def test_list_entries_returns_all_runs_when_run_id_omitted(store: ScoutStore) -> None:
@@ -828,7 +828,7 @@ async def test_claim_daemon_start_rolls_back_on_unexpected_exception(
 ) -> None:
     """An unexpected exception during the BEGIN IMMEDIATE block triggers rollback."""
     # Force fetchone to raise to exercise the except/rollback path.
-    original_execute = store._conn.execute
+    original_execute = store._db.connection.execute
 
     call_count = {"value": 0}
 
@@ -850,7 +850,7 @@ async def test_claim_daemon_start_rolls_back_on_unexpected_exception(
             return _RaisingCursor()
         return original_execute(*args, **kwargs)
 
-    monkeypatch.setattr(store._conn, "execute", _patched_execute)
+    monkeypatch.setattr(store._db.connection, "execute", _patched_execute)
 
     with pytest.raises(RuntimeError, match="simulated cursor failure"):
         await store.claim_daemon_start(

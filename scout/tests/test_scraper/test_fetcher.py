@@ -90,7 +90,7 @@ async def test_fetch_uses_stale_cache_by_default(tmp_db_path: Path) -> None:
     store = ScoutStore(str(tmp_db_path))
     await store.initialize()
     await store.cache_page("https://example.com/stale", "Cached body " * 55, {"title": "Cached"})
-    await store._execute(
+    await store._db.execute(
         "UPDATE pages SET fetched_at = datetime('now', '-30 days') WHERE url = ?",
         ("https://example.com/stale",),
     )
@@ -125,7 +125,7 @@ async def test_fetch_refresh_override_refetches_stale_page(tmp_db_path: Path) ->
     store = ScoutStore(str(tmp_db_path))
     await store.initialize()
     await store.cache_page("https://example.com/stale", "Cached body " * 55, {"title": "Cached"})
-    await store._execute(
+    await store._db.execute(
         "UPDATE pages SET fetched_at = datetime('now', '-30 days') WHERE url = ?",
         ("https://example.com/stale",),
     )

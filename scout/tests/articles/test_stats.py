@@ -75,7 +75,7 @@ def _article_row(url: str, title: str) -> dict[str, Any]:
 
 async def test_article_stats_counts_unique_urls_from_reported_rows() -> None:
     store = ScoutStore(":memory:")
-    store._conn = _StatsConnection()  # type: ignore[assignment]
+    store._db._conn = _StatsConnection()  # type: ignore[assignment]
 
     stats = await store.article_stats()
 

@@ -262,7 +262,7 @@ async def _delete_articles(store: Any, article_ids: list[str]) -> int:
     for start in range(0, len(article_ids), 500):
         chunk = article_ids[start : start + 500]
         placeholders = ",".join("?" for _id in chunk)
-        deleted += await store._execute_count(
+        deleted += await store._db.execute_count(
             f"DELETE FROM articles WHERE id IN ({placeholders})",
             tuple(chunk),
         )

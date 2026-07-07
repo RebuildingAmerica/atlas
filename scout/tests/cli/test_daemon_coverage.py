@@ -520,7 +520,7 @@ async def test_daemon_stop_with_missing_pid(
     store = ScoutStore(config.store.path)
     await store.initialize()
     # Force "running" status with no PID via direct SQL.
-    await store._execute(
+    await store._db.execute(
         "INSERT INTO daemon_state (key, status, process_id, target_count, "
         "interval_seconds, interval_basis, updated_at) "
         "VALUES (?, ?, ?, ?, ?, ?, ?) "

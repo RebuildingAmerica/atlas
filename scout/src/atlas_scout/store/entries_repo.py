@@ -1,15 +1,75 @@
-"""Entry insert, dedupe, and stats mixin for Atlas Scout."""
+"""Discovered entries: CRUD, source-key dedup lookups, and launch-quality stats."""
 
 from __future__ import annotations
 
 import json
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from urllib.parse import urlparse
 
-from atlas_scout.store_core import _entry_exact_key, _has_source_context, _new_id, _now
+from atlas_scout.store._util import new_id, now
+
+if TYPE_CHECKING:
+    from atlas_scout.store.db import Database
+
+_CREATE_ENTRIES = """
+CREATE TABLE IF NOT EXISTS entries (
+    id TEXT PRIMARY KEY,
+    run_id TEXT NOT NULL REFERENCES runs(id),
+    name TEXT NOT NULL,
+    entry_type TEXT NOT NULL,
+    description TEXT NOT NULL,
+    city TEXT,
+    state TEXT,
+    score REAL NOT NULL DEFAULT 0.0,
+    data TEXT NOT NULL DEFAULT '{}',
+    created_at TEXT NOT NULL
+)
+"""
 
 
-class ScoutStoreEntriesMixin:
+def _has_source_context(data: dict[str, Any]) -> bool:
+    """Return whether an entry has source-local context beyond a bare URL."""
+    source_context = data.get("source_context")
+    if isinstance(source_context, str) and source_context.strip():
+        return True
+
+    extraction_context = data.get("extraction_context")
+    if isinstance(extraction_context, str) and extraction_context.strip():
+        return True
+
+    source_contexts = data.get("source_contexts")
+    if isinstance(source_contexts, dict):
+        return any(isinstance(value, str) and value.strip() for value in source_contexts.values())
+
+    return False
+
+
+def _entry_exact_key(
+    *,
+    name: str,
+    city: str | None,
+    state: str | None,
+    entry_type: str,
+) -> tuple[str, str, str, str]:
+    """Return the conservative exact key used for entry uniqueness stats."""
+    return (
+        name.strip().lower(),
+        city.strip().upper() if city else "",
+        state.strip().upper() if state else "",
+        entry_type.strip().lower(),
+    )
+
+
+class EntryRepository:
+    """Persists discovered entries and computes launch-quality aggregate stats."""
+
+    def __init__(self, db: Database) -> None:
+        self._db = db
+
+    async def ensure_schema(self) -> None:
+        """Create the entries table if it doesn't exist."""
+        await self._db.connection.execute(_CREATE_ENTRIES)
+
     async def save_entry(
         self,
         *,
@@ -23,8 +83,8 @@ class ScoutStoreEntriesMixin:
         data: dict[str, Any],
     ) -> str:
         """Insert an entry and return its ID."""
-        entry_id = _new_id()
-        await self._execute(
+        entry_id = new_id()
+        await self._db.execute(
             """
             INSERT INTO entries
                 (id, run_id, name, entry_type, description, city, state, score, data, created_at)
@@ -40,7 +100,7 @@ class ScoutStoreEntriesMixin:
                 state,
                 score,
                 json.dumps(data),
-                _now(),
+                now(),
             ),
         )
         return entry_id
@@ -71,12 +131,12 @@ class ScoutStoreEntriesMixin:
         if batch_size <= 0:
             raise ValueError("batch_size must be positive")
 
-        assert self._conn is not None
+        conn = self._db.connection
         entry_ids: list[str] = []
-        now = _now()
+        created_at = now()
         rows: list[tuple[Any, ...]] = []
         for entry in entries:
-            entry_id = _new_id()
+            entry_id = new_id()
             entry_ids.append(entry_id)
             rows.append(
                 (
@@ -89,12 +149,12 @@ class ScoutStoreEntriesMixin:
                     entry.get("state"),
                     entry.get("score", 0.0),
                     json.dumps(entry.get("data", {})),
-                    now,
+                    created_at,
                 )
             )
 
         for start in range(0, len(rows), batch_size):
-            await self._conn.executemany(
+            await conn.executemany(
                 """
                 INSERT INTO entries
                     (id, run_id, name, entry_type, description, city, state, score, data, created_at)
@@ -102,7 +162,7 @@ class ScoutStoreEntriesMixin:
                 """,
                 rows[start : start + batch_size],
             )
-            await self._conn.commit()
+            await conn.commit()
 
         return entry_ids
 
@@ -119,7 +179,6 @@ class ScoutStoreEntriesMixin:
         set[str]
             Existing structured-source keys.
         """
-        assert self._conn is not None
         if entry_type is None:
             sql = "SELECT data FROM entries"
             params: tuple[Any, ...] = ()
@@ -128,7 +187,7 @@ class ScoutStoreEntriesMixin:
             params = (entry_type,)
 
         keys: set[str] = set()
-        async with self._conn.execute(sql, params) as cursor:
+        async with self._db.connection.execute(sql, params) as cursor:
             rows = await cursor.fetchall()
         for row in rows:
             data = json.loads(row["data"])
@@ -154,8 +213,7 @@ class ScoutStoreEntriesMixin:
         if not resolved_source_dataset:
             raise ValueError("source_dataset must not be blank")
 
-        assert self._conn is not None
-        async with self._conn.execute("SELECT data FROM entries") as cursor:
+        async with self._db.connection.execute("SELECT data FROM entries") as cursor:
             rows = list(await cursor.fetchall())
 
         matches = 0
@@ -182,8 +240,8 @@ class ScoutStoreEntriesMixin:
         if not resolved_source_dataset:
             raise ValueError("source_dataset must not be blank")
 
-        assert self._conn is not None
-        async with self._conn.execute("SELECT id, data FROM entries") as cursor:
+        conn = self._db.connection
+        async with conn.execute("SELECT id, data FROM entries") as cursor:
             rows = list(await cursor.fetchall())
 
         delete_rows = [
@@ -194,12 +252,12 @@ class ScoutStoreEntriesMixin:
         if not delete_rows:
             return 0
 
-        await self._conn.execute("BEGIN IMMEDIATE")
+        await conn.execute("BEGIN IMMEDIATE")
         try:
-            await self._conn.executemany("DELETE FROM entries WHERE id = ?", delete_rows)
-            await self._conn.commit()
+            await conn.executemany("DELETE FROM entries WHERE id = ?", delete_rows)
+            await conn.commit()
         except Exception:
-            await self._conn.rollback()
+            await conn.rollback()
             raise
 
         return len(delete_rows)
@@ -224,7 +282,6 @@ class ScoutStoreEntriesMixin:
         dict[str, Any]
             Entry totals grouped by type, source provenance, run, location, and metro.
         """
-        assert self._conn is not None
         if run_id is None:
             sql = """
                 SELECT e.run_id, e.name, e.entry_type, e.description, e.city, e.state, e.data,
@@ -243,7 +300,7 @@ class ScoutStoreEntriesMixin:
             """
             params = (run_id,)
 
-        async with self._conn.execute(sql, params) as cursor:
+        async with self._db.connection.execute(sql, params) as cursor:
             rows = list(await cursor.fetchall())
 
         excluded_datasets = excluded_source_datasets or set()
@@ -350,7 +407,6 @@ class ScoutStoreEntriesMixin:
         min_score: float = 0.0,
     ) -> list[dict[str, Any]]:
         """Return entries, optionally filtered by run and minimum score."""
-        assert self._conn is not None
         if run_id is not None:
             sql = "SELECT * FROM entries WHERE run_id = ? AND score >= ? ORDER BY score DESC"
             params: tuple[Any, ...] = (run_id, min_score)
@@ -358,7 +414,7 @@ class ScoutStoreEntriesMixin:
             sql = "SELECT * FROM entries WHERE score >= ? ORDER BY score DESC"
             params = (min_score,)
 
-        async with self._conn.execute(sql, params) as cursor:
+        async with self._db.connection.execute(sql, params) as cursor:
             rows = await cursor.fetchall()
 
         results = []
