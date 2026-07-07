@@ -13,6 +13,7 @@ import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as RobotsDottxtRouteImport } from './routes/robots[.]txt'
 import { Route as OpenapiDotjsonRouteImport } from './routes/openapi[.]json'
 import { Route as LlmsDottxtRouteImport } from './routes/llms[.]txt'
+import { Route as HealthRouteImport } from './routes/health'
 import { Route as FirehoseDotrssRouteImport } from './routes/firehose[.]rss'
 import { Route as DocsRouteImport } from './routes/docs'
 import { Route as DashboardRouteImport } from './routes/dashboard'
@@ -112,6 +113,11 @@ const OpenapiDotjsonRoute = OpenapiDotjsonRouteImport.update({
 const LlmsDottxtRoute = LlmsDottxtRouteImport.update({
   id: '/llms.txt',
   path: '/llms.txt',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HealthRoute = HealthRouteImport.update({
+  id: '/health',
+  path: '/health',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FirehoseDotrssRoute = FirehoseDotrssRouteImport.update({
@@ -542,6 +548,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof DashboardRoute
   '/docs': typeof DocsRouteWithChildren
   '/firehose.rss': typeof FirehoseDotrssRoute
+  '/health': typeof HealthRoute
   '/llms.txt': typeof LlmsDottxtRoute
   '/openapi.json': typeof OpenapiDotjsonRoute
   '/robots.txt': typeof RobotsDottxtRoute
@@ -625,6 +632,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof DashboardRoute
   '/docs': typeof DocsRouteWithChildren
   '/firehose.rss': typeof FirehoseDotrssRoute
+  '/health': typeof HealthRoute
   '/llms.txt': typeof LlmsDottxtRoute
   '/openapi.json': typeof OpenapiDotjsonRoute
   '/robots.txt': typeof RobotsDottxtRoute
@@ -707,6 +715,7 @@ export interface FileRoutesById {
   '/dashboard': typeof DashboardRoute
   '/docs': typeof DocsRouteWithChildren
   '/firehose.rss': typeof FirehoseDotrssRoute
+  '/health': typeof HealthRoute
   '/llms.txt': typeof LlmsDottxtRoute
   '/openapi.json': typeof OpenapiDotjsonRoute
   '/robots.txt': typeof RobotsDottxtRoute
@@ -793,6 +802,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/docs'
     | '/firehose.rss'
+    | '/health'
     | '/llms.txt'
     | '/openapi.json'
     | '/robots.txt'
@@ -876,6 +886,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/docs'
     | '/firehose.rss'
+    | '/health'
     | '/llms.txt'
     | '/openapi.json'
     | '/robots.txt'
@@ -957,6 +968,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/docs'
     | '/firehose.rss'
+    | '/health'
     | '/llms.txt'
     | '/openapi.json'
     | '/robots.txt'
@@ -1044,6 +1056,7 @@ export interface RootRouteChildren {
   DashboardRoute: typeof DashboardRoute
   DocsRoute: typeof DocsRouteWithChildren
   FirehoseDotrssRoute: typeof FirehoseDotrssRoute
+  HealthRoute: typeof HealthRoute
   LlmsDottxtRoute: typeof LlmsDottxtRoute
   OpenapiDotjsonRoute: typeof OpenapiDotjsonRoute
   RobotsDottxtRoute: typeof RobotsDottxtRoute
@@ -1093,6 +1106,13 @@ declare module '@tanstack/react-router' {
       path: '/llms.txt'
       fullPath: '/llms.txt'
       preLoaderRoute: typeof LlmsDottxtRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/health': {
+      id: '/health'
+      path: '/health'
+      fullPath: '/health'
+      preLoaderRoute: typeof HealthRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/firehose.rss': {
@@ -1892,6 +1912,7 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardRoute: DashboardRoute,
   DocsRoute: DocsRouteWithChildren,
   FirehoseDotrssRoute: FirehoseDotrssRoute,
+  HealthRoute: HealthRoute,
   LlmsDottxtRoute: LlmsDottxtRoute,
   OpenapiDotjsonRoute: OpenapiDotjsonRoute,
   RobotsDottxtRoute: RobotsDottxtRoute,
