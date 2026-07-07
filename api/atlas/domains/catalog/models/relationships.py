@@ -328,7 +328,19 @@ class RelationshipCRUD:
         row = await cursor.fetchone()
         assert row is not None, "upserted relationship edge should be readable"
         await conn.commit()
-        return str(row[0])
+        stored_edge_id = str(row[0])
+        from atlas.domains.firehose.producers import record_catalog_relationship_observation
+
+        await record_catalog_relationship_observation(
+            conn,
+            edge_id=stored_edge_id,
+            source_entry_id=source_entry_id,
+            target_entry_id=target_entry_id,
+            relationship_type=normalized_type,
+            source_id=source_id,
+            evidence_label=normalized_label,
+        )
+        return stored_edge_id
 
     @staticmethod
     async def list_edges_for_entry(

@@ -19,6 +19,12 @@ FirehoseSignalType = Literal[
     "new_source",
     "role_change",
     "freshness_change",
+    "actor_discovered",
+    "source_attached",
+    "relationship_observed",
+    "profile_claimed",
+    "review_decision",
+    "coverage_gap",
 ]
 FirehoseSort = Literal["detected_at_desc", "occurred_at_desc", "relevance_desc"]
 FirehoseUsageMeter = Literal[

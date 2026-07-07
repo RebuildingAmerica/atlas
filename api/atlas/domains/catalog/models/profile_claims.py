@@ -133,6 +133,15 @@ class ProfileClaimCRUD:
             ),
         )
         await conn.commit()
+        from atlas.domains.firehose.producers import record_profile_claim_observation
+
+        await record_profile_claim_observation(
+            conn,
+            claim_id=claim_id,
+            entry_id=entry_id,
+            status="pending",
+            observed_at=now,
+        )
         return ProfileClaimModel(
             id=claim_id,
             entry_id=entry_id,
@@ -332,7 +341,18 @@ class ProfileClaimCRUD:
             ),
         )
         await conn.commit()
-        return await ProfileClaimCRUD.get_by_id(conn, claim_id)
+        claim = await ProfileClaimCRUD.get_by_id(conn, claim_id)
+        if claim is not None:
+            from atlas.domains.firehose.producers import record_profile_claim_observation
+
+            await record_profile_claim_observation(
+                conn,
+                claim_id=claim_id,
+                entry_id=claim.entry_id,
+                status="verified",
+                observed_at=now,
+            )
+        return claim
 
     @staticmethod
     async def mark_rejected(
@@ -355,7 +375,18 @@ class ProfileClaimCRUD:
         await conn.commit()
         if cursor.rowcount == 0:
             return None
-        return await ProfileClaimCRUD.get_by_id(conn, claim_id)
+        claim = await ProfileClaimCRUD.get_by_id(conn, claim_id)
+        if claim is not None:
+            from atlas.domains.firehose.producers import record_profile_claim_observation
+
+            await record_profile_claim_observation(
+                conn,
+                claim_id=claim_id,
+                entry_id=claim.entry_id,
+                status="rejected",
+                observed_at=now,
+            )
+        return claim
 
     @staticmethod
     async def revoke(
@@ -376,7 +407,18 @@ class ProfileClaimCRUD:
         await conn.commit()
         if cursor.rowcount == 0:
             return None
-        return await ProfileClaimCRUD.get_by_id(conn, claim_id)
+        claim = await ProfileClaimCRUD.get_by_id(conn, claim_id)
+        if claim is not None:
+            from atlas.domains.firehose.producers import record_profile_claim_observation
+
+            await record_profile_claim_observation(
+                conn,
+                claim_id=claim_id,
+                entry_id=claim.entry_id,
+                status="revoked",
+                observed_at=now,
+            )
+        return claim
 
 
 def _row_to_claim(row: dict[str, Any]) -> ProfileClaimModel:

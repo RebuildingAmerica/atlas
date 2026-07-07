@@ -122,6 +122,14 @@ OPENAPI_TAGS = [
         ),
     },
     {
+        "name": "firehose-internal",
+        "description": (
+            "Trusted Firehose production endpoints for workers, schedulers, and message-bus "
+            "deliveries. These routes keep stored observations as the canonical evidence record "
+            "while creating idempotent signal resources that can later power user-facing feeds."
+        ),
+    },
+    {
         "name": "health",
         "description": (
             "Small operational health checks for clients and monitors. Health responses are "

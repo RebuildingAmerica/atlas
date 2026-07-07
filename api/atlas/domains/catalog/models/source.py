@@ -336,6 +336,18 @@ class SourceCRUD:
             source_id=source_id,
             summary=extraction_context,
         )
+        source = await SourceCRUD.get_by_id(conn, source_id)
+        if source is not None:
+            from atlas.domains.firehose.producers import record_catalog_source_observation
+
+            await record_catalog_source_observation(
+                conn,
+                entry_id=entry_id,
+                source_id=source_id,
+                source_url=source.url,
+                source_class=source.type,
+                summary=extraction_context,
+            )
 
     @staticmethod
     async def unlink_from_entry(conn: aiosqlite.Connection, entry_id: str, source_id: str) -> bool:

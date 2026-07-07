@@ -5582,6 +5582,41 @@
         "title": "FirehoseLinkSet",
         "type": "object"
       },
+      "FirehoseObservationSignalsResponse": {
+        "description": "Result of creating signal resources for one Firehose observation.",
+        "properties": {
+          "observation_id": {
+            "description": "Stored Firehose observation used as the canonical evidence input.",
+            "title": "Observation Id",
+            "type": "string"
+          },
+          "routes_created": {
+            "description": "Number of workspace or public route records created for the observation.",
+            "minimum": 0.0,
+            "title": "Routes Created",
+            "type": "integer"
+          },
+          "signals_created": {
+            "description": "Number of signal records created from the observation.",
+            "minimum": 0.0,
+            "title": "Signals Created",
+            "type": "integer"
+          },
+          "unchanged": {
+            "description": "Whether all requested signal and route resources already existed.",
+            "title": "Unchanged",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "observation_id",
+          "routes_created",
+          "signals_created",
+          "unchanged"
+        ],
+        "title": "FirehoseObservationSignalsResponse",
+        "type": "object"
+      },
       "FirehoseQuery": {
         "description": "Normalized Firehose query filters.",
         "properties": {
@@ -5648,7 +5683,13 @@
                 "coalition_activity",
                 "new_source",
                 "role_change",
-                "freshness_change"
+                "freshness_change",
+                "actor_discovered",
+                "source_attached",
+                "relationship_observed",
+                "profile_claimed",
+                "review_decision",
+                "coverage_gap"
               ],
               "type": "string"
             },
@@ -5919,7 +5960,13 @@
               "coalition_activity",
               "new_source",
               "role_change",
-              "freshness_change"
+              "freshness_change",
+              "actor_discovered",
+              "source_attached",
+              "relationship_observed",
+              "profile_claimed",
+              "review_decision",
+              "coverage_gap"
             ],
             "title": "Type",
             "type": "string"
@@ -6028,6 +6075,477 @@
           "links"
         ],
         "title": "FirehoseSnapshot",
+        "type": "object"
+      },
+      "FirehoseSourceTargetCollectionResponse": {
+        "description": "Collection of workspace Firehose source targets.",
+        "properties": {
+          "items": {
+            "description": "items for this firehose source target collection.",
+            "items": {
+              "$ref": "#/components/schemas/FirehoseSourceTargetResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "total": {
+            "description": "total for this firehose source target collection.",
+            "minimum": 0.0,
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total"
+        ],
+        "title": "FirehoseSourceTargetCollectionResponse",
+        "type": "object"
+      },
+      "FirehoseSourceTargetRequest": {
+        "description": "Request to create or update a workspace Firehose source target.",
+        "properties": {
+          "cadence_seconds": {
+            "default": 60,
+            "description": "cadence seconds for this firehose source target.",
+            "maximum": 86400.0,
+            "minimum": 30.0,
+            "title": "Cadence Seconds",
+            "type": "integer"
+          },
+          "coverage_target_id": {
+            "description": "coverage target id for this firehose source target.",
+            "minLength": 1,
+            "title": "Coverage Target Id",
+            "type": "string"
+          },
+          "enabled": {
+            "default": true,
+            "description": "enabled for this firehose source target.",
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "issues": {
+            "description": "issues for this firehose source target.",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "title": "Issues",
+            "type": "array"
+          },
+          "label": {
+            "description": "label for this firehose source target.",
+            "minLength": 1,
+            "title": "Label",
+            "type": "string"
+          },
+          "origin_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "origin note for this firehose source target.",
+            "title": "Origin Note"
+          },
+          "places": {
+            "description": "places for this firehose source target.",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "title": "Places",
+            "type": "array"
+          },
+          "priority": {
+            "default": "hot",
+            "description": "priority for this firehose source target.",
+            "pattern": "^(hot|warm)$",
+            "title": "Priority",
+            "type": "string"
+          },
+          "public_route_enabled": {
+            "default": false,
+            "description": "public route enabled for this firehose source target.",
+            "title": "Public Route Enabled",
+            "type": "boolean"
+          },
+          "safety_policy": {
+            "default": "standard",
+            "description": "safety policy for this firehose source target.",
+            "pattern": "^(standard|person_review_required|review_all)$",
+            "title": "Safety Policy",
+            "type": "string"
+          },
+          "source_class": {
+            "description": "source class for this firehose source target.",
+            "minLength": 1,
+            "title": "Source Class",
+            "type": "string"
+          },
+          "source_kind": {
+            "description": "source kind for this firehose source target.",
+            "pattern": "^(rss|atom|web_page)$",
+            "title": "Source Kind",
+            "type": "string"
+          },
+          "url": {
+            "description": "url for this firehose source target.",
+            "minLength": 1,
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "coverage_target_id",
+          "label",
+          "url",
+          "source_kind",
+          "source_class",
+          "places",
+          "issues"
+        ],
+        "title": "FirehoseSourceTargetRequest",
+        "type": "object"
+      },
+      "FirehoseSourceTargetResponse": {
+        "description": "Stored workspace Firehose source target.",
+        "properties": {
+          "cadence_seconds": {
+            "description": "cadence seconds for this firehose source target.",
+            "title": "Cadence Seconds",
+            "type": "integer"
+          },
+          "content_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "content hash for this firehose source target.",
+            "title": "Content Hash"
+          },
+          "coverage_target_id": {
+            "description": "coverage target id for this firehose source target.",
+            "title": "Coverage Target Id",
+            "type": "string"
+          },
+          "created_at": {
+            "description": "created at for this firehose source target.",
+            "title": "Created At",
+            "type": "string"
+          },
+          "created_by": {
+            "description": "created by for this firehose source target.",
+            "title": "Created By",
+            "type": "string"
+          },
+          "enabled": {
+            "description": "enabled for this firehose source target.",
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "etag": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "etag for this firehose source target.",
+            "title": "Etag"
+          },
+          "id": {
+            "description": "id for this firehose source target.",
+            "title": "Id",
+            "type": "string"
+          },
+          "issues": {
+            "description": "issues for this firehose source target.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Issues",
+            "type": "array"
+          },
+          "label": {
+            "description": "label for this firehose source target.",
+            "title": "Label",
+            "type": "string"
+          },
+          "last_checked_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "last checked at for this firehose source target.",
+            "title": "Last Checked At"
+          },
+          "last_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "last error for this firehose source target.",
+            "title": "Last Error"
+          },
+          "last_http_status": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "last http status for this firehose source target.",
+            "title": "Last Http Status"
+          },
+          "last_modified": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "last modified for this firehose source target.",
+            "title": "Last Modified"
+          },
+          "last_success_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "last success at for this firehose source target.",
+            "title": "Last Success At"
+          },
+          "org_id": {
+            "description": "org id for this firehose source target.",
+            "title": "Org Id",
+            "type": "string"
+          },
+          "origin": {
+            "description": "origin for this firehose source target.",
+            "title": "Origin",
+            "type": "string"
+          },
+          "origin_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "origin note for this firehose source target.",
+            "title": "Origin Note"
+          },
+          "places": {
+            "description": "places for this firehose source target.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Places",
+            "type": "array"
+          },
+          "priority": {
+            "description": "priority for this firehose source target.",
+            "title": "Priority",
+            "type": "string"
+          },
+          "public_route_enabled": {
+            "description": "public route enabled for this firehose source target.",
+            "title": "Public Route Enabled",
+            "type": "boolean"
+          },
+          "safety_policy": {
+            "description": "safety policy for this firehose source target.",
+            "title": "Safety Policy",
+            "type": "string"
+          },
+          "source_class": {
+            "description": "source class for this firehose source target.",
+            "title": "Source Class",
+            "type": "string"
+          },
+          "source_kind": {
+            "description": "source kind for this firehose source target.",
+            "title": "Source Kind",
+            "type": "string"
+          },
+          "updated_at": {
+            "description": "updated at for this firehose source target.",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "url": {
+            "description": "url for this firehose source target.",
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "org_id",
+          "coverage_target_id",
+          "label",
+          "url",
+          "source_kind",
+          "source_class",
+          "places",
+          "issues",
+          "priority",
+          "cadence_seconds",
+          "enabled",
+          "safety_policy",
+          "public_route_enabled",
+          "origin",
+          "origin_note",
+          "last_checked_at",
+          "last_success_at",
+          "last_error",
+          "last_http_status",
+          "etag",
+          "last_modified",
+          "content_hash",
+          "created_by",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "FirehoseSourceTargetResponse",
+        "type": "object"
+      },
+      "FirehoseSourceTargetRunRequest": {
+        "description": "Fetched source content for an MVP run-once source check.",
+        "properties": {
+          "body": {
+            "description": "body for this firehose source target run.",
+            "minLength": 1,
+            "title": "Body",
+            "type": "string"
+          },
+          "content_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "content type for this firehose source target run.",
+            "title": "Content Type"
+          },
+          "etag": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "etag for this firehose source target run.",
+            "title": "Etag"
+          },
+          "fetched_at": {
+            "description": "fetched at for this firehose source target run.",
+            "title": "Fetched At",
+            "type": "string"
+          },
+          "last_modified": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "last modified for this firehose source target run.",
+            "title": "Last Modified"
+          },
+          "status_code": {
+            "description": "status code for this firehose source target run.",
+            "maximum": 599.0,
+            "minimum": 100.0,
+            "title": "Status Code",
+            "type": "integer"
+          },
+          "url": {
+            "description": "url for this firehose source target run.",
+            "minLength": 1,
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "body",
+          "fetched_at",
+          "status_code",
+          "url"
+        ],
+        "title": "FirehoseSourceTargetRunRequest",
+        "type": "object"
+      },
+      "FirehoseSourceTargetRunResponse": {
+        "description": "Run-once source check result.",
+        "properties": {
+          "artifacts_created": {
+            "description": "artifacts created for this firehose source target run.",
+            "minimum": 0.0,
+            "title": "Artifacts Created",
+            "type": "integer"
+          },
+          "routes_created": {
+            "description": "routes created for this firehose source target run.",
+            "minimum": 0.0,
+            "title": "Routes Created",
+            "type": "integer"
+          },
+          "signals_created": {
+            "description": "signals created for this firehose source target run.",
+            "minimum": 0.0,
+            "title": "Signals Created",
+            "type": "integer"
+          },
+          "unchanged": {
+            "description": "unchanged for this firehose source target run.",
+            "title": "Unchanged",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "artifacts_created",
+          "routes_created",
+          "signals_created",
+          "unchanged"
+        ],
+        "title": "FirehoseSourceTargetRunResponse",
         "type": "object"
       },
       "FirehoseSummary": {
@@ -18132,6 +18650,608 @@
         ]
       }
     },
+    "/api/firehose/source-targets": {
+      "get": {
+        "description": "List Firehose source targets owned by the actor's workspace.\n\nUse this Firehose operation to query or observe source-backed civic signals for an authenticated workspace. Preserve workspace, usage, signal, and evidence context so billing and trust stay tied to the query that produced the data.",
+        "operationId": "listFirehoseSourceTargets",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "coverage_target_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Coverage Target Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-internal-secret",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Internal-Secret"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-email",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Email"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-organization-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Organization-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FirehoseSourceTargetCollectionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Firehose source targets",
+        "tags": [
+          "firehose"
+        ]
+      },
+      "post": {
+        "description": "Create or update a workspace Firehose source target.\n\nUse this Firehose operation to query or observe source-backed civic signals for an authenticated workspace. Preserve workspace, usage, signal, and evidence context so billing and trust stay tied to the query that produced the data.",
+        "operationId": "createFirehoseSourceTarget",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-atlas-internal-secret",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Internal-Secret"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-email",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Email"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-organization-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Organization-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FirehoseSourceTargetRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FirehoseSourceTargetResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Firehose source target",
+        "tags": [
+          "firehose"
+        ]
+      }
+    },
+    "/api/firehose/source-targets/{source_target_id}/runs": {
+      "post": {
+        "description": "Run one source-target check with caller-supplied fetched content.\n\nUse this Firehose operation to query or observe source-backed civic signals for an authenticated workspace. Preserve workspace, usage, signal, and evidence context so billing and trust stay tied to the query that produced the data.",
+        "operationId": "runFirehoseSourceTargetOnce",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "source_target_id",
+            "required": true,
+            "schema": {
+              "title": "Source Target Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-internal-secret",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Internal-Secret"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-email",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Email"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-organization-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Organization-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FirehoseSourceTargetRunRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FirehoseSourceTargetRunResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Run Firehose source target once",
+        "tags": [
+          "firehose"
+        ]
+      }
+    },
+    "/api/internal/firehose/observation-deliveries": {
+      "post": {
+        "description": "Accept one message-bus delivery for a stored Firehose observation and create signal resources from the delivered observation id. The delivery payload contains only the observation id; Atlas reloads canonical evidence and routing context before writing.",
+        "operationId": "createFirehoseObservationDelivery",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-atlas-internal-secret",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Internal-Secret"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-email",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Email"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-organization-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Organization-Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Payload",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FirehoseObservationSignalsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create a Firehose observation delivery",
+        "tags": [
+          "firehose-internal"
+        ]
+      }
+    },
+    "/api/internal/firehose/observations/{observation_id}/signals": {
+      "post": {
+        "description": "Create idempotent Firehose signal resources for one stored observation. This internal endpoint is used after a producer has written the observation row; it preserves the observation as the source of truth and only creates or reuses signal and route records.",
+        "operationId": "createFirehoseObservationSignals",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "observation_id",
+            "required": true,
+            "schema": {
+              "title": "Observation Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-internal-secret",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Internal-Secret"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-email",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Email"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-organization-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Organization-Id"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FirehoseObservationSignalsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Firehose signals for an observation",
+        "tags": [
+          "firehose-internal"
+        ]
+      }
+    },
     "/api/issue-areas": {
       "get": {
         "description": "List Atlas issue areas or resolve natural-language issue queries.\n\nUse this issue-area operation to translate user intent into stable Atlas filters. Fetch the taxonomy from the API instead of maintaining a second copy in an app or agent prompt.",
@@ -27394,6 +28514,10 @@
     {
       "description": "Live civic-intelligence query APIs. Firehose lets a workspace ask what changed in a public civic field, receive source-backed signals with billing context attached, and observe the same query through standards-based HTTP streams.",
       "name": "firehose"
+    },
+    {
+      "description": "Trusted Firehose production endpoints for workers, schedulers, and message-bus deliveries. These routes keep stored observations as the canonical evidence record while creating idempotent signal resources that can later power user-facing feeds.",
+      "name": "firehose-internal"
     },
     {
       "description": "Small operational health checks for clients and monitors. Health responses are intentionally minimal and do not expose user, workspace, or discovery data.",

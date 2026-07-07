@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 from datetime import UTC, datetime, timedelta
-from typing import TYPE_CHECKING, Annotated
+from typing import TYPE_CHECKING, Annotated, Any
 from urllib.parse import urlencode
 
 from fastapi import (
@@ -26,6 +26,7 @@ from atlas.domains.access.api_keys import verify_api_key
 from atlas.domains.access.internal import build_local_actor, verify_internal_actor
 from atlas.domains.access.jwt import verify_bearer_jwt
 from atlas.domains.access.permissions import require_permission
+from atlas.models import get_db_connection
 from atlas.platform.config import Settings, get_settings
 
 from .http import (
@@ -46,6 +47,8 @@ from .schemas import (
     FirehoseReadyEvent,
     FirehoseSession,
     FirehoseSessionRequest,
+    FirehoseSignal,
+    FirehoseSignalEvent,
     FirehoseSnapshot,
     FirehoseSort,
     FirehoseSummary,
@@ -54,9 +57,10 @@ from .schemas import (
     FirehoseVisibility,
     FirehoseWorkspaceContext,
 )
+from .serving import list_stored_signals, signal_summary
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterator
+    from collections.abc import AsyncGenerator, AsyncIterator
 
     from atlas.domains.access.principals import ApiKeyPrincipal
 
@@ -124,6 +128,23 @@ def _empty_summary() -> FirehoseSummary:
         held_signals=0,
         latest_cursor=None,
     )
+
+
+def _signals_version(signals: list[FirehoseSignal]) -> str:
+    """Return a compact validator fragment for one stored signal result set."""
+    payload = "|".join(f"{signal.id}:{signal.detected_at}" for signal in signals)
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:24]
+
+
+async def get_firehose_db(
+    settings: Settings = Depends(get_settings),
+) -> AsyncGenerator[Any, None]:
+    """Yield a per-request Firehose database connection."""
+    conn = await get_db_connection(settings.database_url, backend=settings.database_backend)
+    try:
+        yield conn
+    finally:
+        await conn.close()
 
 
 def _links(*, query: FirehoseQuery, session_id: str | None = None) -> FirehoseLinkSet:
@@ -211,16 +232,18 @@ def _snapshot_response(
     workspace: FirehoseWorkspaceContext,
     meter: FirehoseUsageMeter,
     session: FirehoseSession | None = None,
+    signals: list[FirehoseSignal] | None = None,
 ) -> FirehoseSnapshot:
     """Build an empty but fully typed Firehose snapshot."""
+    visible_signals = signals or []
     return FirehoseSnapshot(
         query=query,
         workspace=workspace,
         usage=_usage_context(query, meter),
         generated_at=_iso(_now()),
         cursor=query.cursor,
-        summary=_empty_summary(),
-        signals=[],
+        summary=signal_summary(visible_signals) if signals is not None else _empty_summary(),
+        signals=visible_signals,
         links=_links(query=query, session_id=session.id if session else None),
         session=session,
     )
@@ -231,10 +254,12 @@ def _apply_firehose_headers(
     *,
     query: FirehoseQuery,
     header_context: FirehoseResponseHeaderContext,
+    signals: list[FirehoseSignal] | None = None,
     session_id: str | None = None,
 ) -> str:
     """Apply cache, validator, and pagination headers to one response."""
-    etag_source = f"{session_id or 'firehose'}:{_query_fingerprint(query)}"
+    signal_version = _signals_version(signals) if signals is not None else "empty"
+    etag_source = f"{session_id or 'firehose'}:{_query_fingerprint(query)}:{signal_version}"
     etag = f'"firehose-{hashlib.sha256(etag_source.encode("utf-8")).hexdigest()[:32]}"'
     response.headers["Cache-Control"] = "no-store"
     response.headers["Vary"] = FIREHOSE_VARY
@@ -264,6 +289,7 @@ def _sse_message(
 async def _sse_stream(
     *,
     query: FirehoseQuery,
+    signals: list[FirehoseSignal],
     workspace: FirehoseWorkspaceContext,
     session_id: str | None,
     last_event_id: str | None,
@@ -284,6 +310,22 @@ async def _sse_stream(
         retry_ms=FIREHOSE_SSE_RETRY_MS,
     )
 
+    for signal in signals:
+        event = FirehoseSignalEvent(
+            event_id=signal.id,
+            session_id=session_id,
+            workspace=workspace,
+            usage=usage,
+            query=query,
+            signal=signal,
+            delivered_at=_iso(_now()),
+        )
+        yield _sse_message(
+            event="firehose.signal",
+            event_id=signal.id,
+            data=event.model_dump_json(),
+        )
+
     heartbeat = FirehoseHeartbeatEvent(session_id=session_id)
     yield _sse_message(
         event="heartbeat",
@@ -292,9 +334,10 @@ async def _sse_stream(
     )
 
 
-def _streaming_response(
+def _streaming_response(  # noqa: PLR0913
     *,
     query: FirehoseQuery,
+    signals: list[FirehoseSignal],
     workspace: FirehoseWorkspaceContext,
     http_context: FirehoseHttpContext,
     session_id: str | None,
@@ -304,6 +347,7 @@ def _streaming_response(
     response = StreamingResponse(
         _sse_stream(
             query=query,
+            signals=signals,
             workspace=workspace,
             session_id=session_id,
             last_event_id=last_event_id,
@@ -424,6 +468,7 @@ async def head_firehose(  # noqa: PLR0913
     sort: FirehoseSort = Query("detected_at_desc"),
     http_context: FirehoseHttpContext = Depends(firehose_http_context),
     actor: AuthenticatedActor = Depends(require_org_actor_permission("firehose", "read")),
+    db: Any = Depends(get_firehose_db),
 ) -> Response:
     """Return Firehose snapshot metadata for cheap freshness checks."""
     query = FirehoseQueryParams(
@@ -440,6 +485,7 @@ async def head_firehose(  # noqa: PLR0913
         sort=sort,
     ).to_query()
     workspace = _workspace_context(actor)
+    signals = await list_stored_signals(db, org_id=workspace.org_id, query=query)
     etag = _apply_firehose_headers(
         response,
         query=query,
@@ -451,6 +497,7 @@ async def head_firehose(  # noqa: PLR0913
             content_location=_snapshot_content_location(query, None),
             preference_applied=http_context.preferences.applied_header(include_return=False),
         ),
+        signals=signals,
     )
     if request.headers.get("if-none-match") == etag:
         return Response(status_code=status.HTTP_304_NOT_MODIFIED, headers=dict(response.headers))
@@ -485,6 +532,7 @@ async def get_firehose(  # noqa: PLR0913
     last_event_id: str | None = Header(None, alias="Last-Event-ID"),
     http_context: FirehoseHttpContext = Depends(firehose_http_context),
     actor: AuthenticatedActor = Depends(require_org_actor_permission("firehose", "read")),
+    db: Any = Depends(get_firehose_db),
 ) -> FirehoseSnapshot | Response:
     """Query or observe the Firehose surface for one workspace-owned actor."""
     query = FirehoseQueryParams(
@@ -501,9 +549,11 @@ async def get_firehose(  # noqa: PLR0913
         sort=sort,
     ).to_query()
     workspace = _workspace_context(actor)
+    signals = await list_stored_signals(db, org_id=workspace.org_id, query=query)
     if http_context.representation == "sse":
         return _streaming_response(
             query=query,
+            signals=signals,
             workspace=workspace,
             http_context=http_context,
             session_id=None,
@@ -521,12 +571,18 @@ async def get_firehose(  # noqa: PLR0913
             content_location=_snapshot_content_location(query, None),
             preference_applied=http_context.preferences.applied_header(include_return=False),
         ),
+        signals=signals,
     )
     if request.headers.get("if-none-match") == etag:
         response.status_code = status.HTTP_304_NOT_MODIFIED
         return Response(status_code=status.HTTP_304_NOT_MODIFIED, headers=dict(response.headers))
 
-    return _snapshot_response(query=query, workspace=workspace, meter="firehose_snapshot")
+    return _snapshot_response(
+        query=query,
+        workspace=workspace,
+        meter="firehose_snapshot",
+        signals=signals,
+    )
 
 
 @router.post(
@@ -647,6 +703,7 @@ async def stream_firehose_session_events(
     query = FirehoseQuery()
     return _streaming_response(
         query=query,
+        signals=[],
         workspace=_workspace_context(actor),
         http_context=http_context,
         session_id=session_id,

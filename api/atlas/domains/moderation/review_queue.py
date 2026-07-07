@@ -240,6 +240,14 @@ class ReviewQueueCRUD:
             (status, db.now_iso(), reviewed_by, item_id),
         )
         await conn.commit()
+        from atlas.domains.firehose.producers import record_review_decision_observation
+
+        await record_review_decision_observation(
+            conn,
+            review_item_id=item_id,
+            status=status,
+            reviewed_by=reviewed_by,
+        )
 
     @staticmethod
     async def count_pending(conn: Any) -> int:

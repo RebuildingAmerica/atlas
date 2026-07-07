@@ -695,7 +695,13 @@
                 "coalition_activity",
                 "new_source",
                 "role_change",
-                "freshness_change"
+                "freshness_change",
+                "actor_discovered",
+                "source_attached",
+                "relationship_observed",
+                "profile_claimed",
+                "review_decision",
+                "coverage_gap"
               ],
               "type": "string"
             },
@@ -987,7 +993,13 @@
               "coalition_activity",
               "new_source",
               "role_change",
-              "freshness_change"
+              "freshness_change",
+              "actor_discovered",
+              "source_attached",
+              "relationship_observed",
+              "profile_claimed",
+              "review_decision",
+              "coverage_gap"
             ],
             "title": "Type",
             "type": "string"

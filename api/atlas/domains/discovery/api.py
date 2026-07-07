@@ -271,6 +271,29 @@ async def _sync_entry_links(
     return links
 
 
+async def _record_firehose_discovery_observations(
+    db: aiosqlite.Connection,
+    *,
+    run_id: str,
+    org_id: str | None,
+    entry_links: list[SyncedEntryLink],
+    issue_areas: list[str],
+) -> None:
+    """Record synced discovery entries as Firehose observations."""
+    from atlas.domains.firehose.producers import record_discovery_actor_observation
+
+    for link in entry_links:
+        await record_discovery_actor_observation(
+            db,
+            org_id=org_id,
+            run_id=run_id,
+            entry_id=link.id,
+            entry_name=link.name,
+            places=[],
+            issues=issue_areas,
+        )
+
+
 async def get_db(
     settings: Settings = Depends(get_settings),
 ) -> AsyncGenerator[aiosqlite.Connection, None]:
@@ -435,6 +458,13 @@ async def sync_discovery_run(  # noqa: PLR0913
             workspace_id=sync_workspace_id,
             actor=actor,
         )
+        await _record_firehose_discovery_observations(
+            db,
+            run_id=existing_sync.remote_run_id,
+            org_id=sync_workspace_id or actor.org_id,
+            entry_links=entry_links,
+            issue_areas=req.artifacts.manifest.run.issue_areas,
+        )
         apply_no_store_headers(response)
         return DiscoveryRunSyncResponse(
             run_id=existing_sync.remote_run_id,
@@ -477,6 +507,13 @@ async def sync_discovery_run(  # noqa: PLR0913
             entry_ids=confirmed_entry_ids,
             workspace_id=sync_workspace_id,
             actor=actor,
+        )
+        await _record_firehose_discovery_observations(
+            db,
+            run_id=remote_run_id,
+            org_id=sync_workspace_id or actor.org_id,
+            entry_links=entry_links,
+            issue_areas=req.artifacts.manifest.run.issue_areas,
         )
         await DiscoveryRunSyncCRUD.create(
             db,
