@@ -85,7 +85,7 @@ export function MapInteractiveSurface({
   onSelectPoint,
   onSelectCluster,
 }: MapInteractiveSurfaceProps) {
-  const { styleUrl } = useMapStyle();
+  const { style } = useMapStyle();
   const handleLoad = useCallback(
     (event: MapViewportEvent & { target: FlyToCamera }) => {
       onMapReady(event.target);
@@ -96,7 +96,7 @@ export function MapInteractiveSurface({
 
   return (
     <ActorMapSurface
-      mapStyleUrl={styleUrl}
+      mapStyle={style}
       initialView={initialView}
       onLoad={handleLoad}
       onMoveEnd={onMoveEnd}

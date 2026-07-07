@@ -2,7 +2,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 
 import Map from "react-map-gl/maplibre";
 import type { MapEvent, ViewStateChangeEvent } from "react-map-gl/maplibre";
-import type { LngLatBoundsLike } from "maplibre-gl";
+import type { LngLatBoundsLike, StyleSpecification } from "maplibre-gl";
 import type { MapView } from "@/domains/catalog/map/map-viewport";
 
 /**
@@ -25,8 +25,8 @@ const MIN_MAP_ZOOM = 2.5;
 const MAX_MAP_ZOOM = 16;
 
 interface ActorMapSurfaceProps {
-  /** The MapLibre style URL to render under Atlas's civic points. */
-  mapStyleUrl: string;
+  /** The MapLibre style to render under Atlas's civic points. */
+  mapStyle: StyleSpecification;
   /**
    * A restored camera to open at — a center and zoom from a shared URL. When
    * omitted the map fits the continental-US bounds instead.
@@ -51,7 +51,7 @@ interface ActorMapSurfaceProps {
  * flashing the browser's default white.
  */
 export function ActorMapSurface({
-  mapStyleUrl,
+  mapStyle,
   initialView,
   onLoad,
   onMoveEnd,
@@ -68,7 +68,7 @@ export function ActorMapSurface({
   return (
     <div className="bg-page-bg absolute inset-0">
       <Map
-        mapStyle={mapStyleUrl}
+        mapStyle={mapStyle}
         initialViewState={initialViewState}
         minZoom={MIN_MAP_ZOOM}
         maxZoom={MAX_MAP_ZOOM}

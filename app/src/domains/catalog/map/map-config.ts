@@ -1,25 +1,38 @@
-/** The product-owned MapLibre style document used by the public Atlas map. */
-export const ATLAS_BASEMAP_STYLE_URL =
-  "https://openmaptiles.github.io/osm-bright-gl-style/style-cdn.json";
+import type { StyleSpecification } from "maplibre-gl";
 
-function isAbsoluteUrl(value: string): boolean {
-  return /^https?:\/\//.test(value);
-}
-
-/**
- * Validates a style URL before it reaches MapLibre.
- *
- * Style switching is product UI state, not deployment env. Invalid style URLs
- * fail at the state boundary rather than producing an opaque canvas error.
- *
- * @param value MapLibre style document URL.
- * @returns The validated style URL.
- */
-export function requireAbsoluteMapStyleUrl(value: string): string {
-  const trimmed = value.trim();
-  if (!trimmed || !isAbsoluteUrl(trimmed)) {
-    throw new Error("Map style URL must be an absolute http(s) URL.");
-  }
-
-  return trimmed;
-}
+/** The product-owned MapLibre style used by the public Atlas map. */
+export const ATLAS_BASEMAP_STYLE: StyleSpecification = {
+  version: 8,
+  sources: {
+    "atlas-basemap": {
+      type: "raster",
+      tiles: [
+        "https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
+        "https://b.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
+        "https://c.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
+        "https://d.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
+      ],
+      tileSize: 256,
+      attribution: "© OpenStreetMap contributors © CARTO",
+    },
+  },
+  layers: [
+    {
+      id: "atlas-paper",
+      type: "background",
+      paint: {
+        "background-color": "#f7f3ea",
+      },
+    },
+    {
+      id: "atlas-basemap",
+      type: "raster",
+      source: "atlas-basemap",
+      paint: {
+        "raster-opacity": 0.92,
+        "raster-saturation": -0.55,
+        "raster-contrast": -0.08,
+      },
+    },
+  ],
+};

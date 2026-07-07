@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import type { StyleSpecification } from "maplibre-gl";
 
 /** The view-state shape the mocked map records, covering both framings. */
 export interface MockInitialViewState {
@@ -11,7 +12,7 @@ export interface MockInitialViewState {
 
 /** The subset of react-map-gl `<Map>` props the surface test asserts on. */
 export interface MockMapProps {
-  mapStyle: string;
+  mapStyle: StyleSpecification;
   initialViewState: MockInitialViewState;
   dragRotate: boolean;
   pitchWithRotate: boolean;

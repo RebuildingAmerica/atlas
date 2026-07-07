@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MapStyleProvider, useMapStyle } from "@/domains/catalog/components/map/map-style-context";
-import { ATLAS_BASEMAP_STYLE_URL } from "@/domains/catalog/map/map-config";
+import { ATLAS_BASEMAP_STYLE } from "@/domains/catalog/map/map-config";
 
 afterEach(() => {
   cleanup();
@@ -12,15 +12,25 @@ afterEach(() => {
 
 describe("MapStyleProvider", () => {
   function MapStyleReader() {
-    const { setStyleUrl, styleUrl } = useMapStyle();
+    const { setStyle, style } = useMapStyle();
 
     return (
       <div>
-        <output aria-label="Current style">{styleUrl}</output>
+        <output aria-label="Current style">{style.layers[0]?.id}</output>
         <button
           type="button"
           onClick={() => {
-            setStyleUrl("https://tiles.example.com/atlas/style.json");
+            setStyle({
+              version: 8,
+              sources: {},
+              layers: [
+                {
+                  id: "alternate-paper",
+                  type: "background",
+                  paint: { "background-color": "#ffffff" },
+                },
+              ],
+            });
           }}
         >
           Change style
@@ -36,37 +46,25 @@ describe("MapStyleProvider", () => {
 
   it("provides the configured Atlas basemap style", () => {
     render(
-      <MapStyleProvider initialStyleUrl={ATLAS_BASEMAP_STYLE_URL}>
+      <MapStyleProvider initialStyle={ATLAS_BASEMAP_STYLE}>
         <MapStyleReader />
       </MapStyleProvider>,
     );
 
-    expect(screen.getByLabelText("Current style").textContent).toBe(ATLAS_BASEMAP_STYLE_URL);
+    expect(screen.getByLabelText("Current style").textContent).toBe("atlas-paper");
   });
 
   it("updates the current map style through context", async () => {
     const user = userEvent.setup();
     render(
-      <MapStyleProvider initialStyleUrl={ATLAS_BASEMAP_STYLE_URL}>
+      <MapStyleProvider initialStyle={ATLAS_BASEMAP_STYLE}>
         <MapStyleReader />
       </MapStyleProvider>,
     );
 
     await user.click(screen.getByRole("button", { name: "Change style" }));
 
-    expect(screen.getByLabelText("Current style").textContent).toBe(
-      "https://tiles.example.com/atlas/style.json",
-    );
-  });
-
-  it("rejects relative initial styles", () => {
-    expect(() =>
-      render(
-        <MapStyleProvider initialStyleUrl="/maps/atlas/style.json">
-          <MapStyleReader />
-        </MapStyleProvider>,
-      ),
-    ).toThrow("Map style URL must be an absolute http(s) URL.");
+    expect(screen.getByLabelText("Current style").textContent).toBe("alternate-paper");
   });
 
   it("requires an explicit provider", () => {

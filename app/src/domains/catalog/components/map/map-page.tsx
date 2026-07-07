@@ -19,7 +19,7 @@ import { useMapPage } from "@/domains/catalog/hooks/use-map-page";
 import { useMapReveal } from "@/domains/catalog/hooks/use-map-reveal";
 import { useReducedMotion } from "@/domains/catalog/hooks/use-reduced-motion";
 import { useTaxonomy } from "@/domains/catalog/hooks/use-taxonomy";
-import { ATLAS_BASEMAP_STYLE_URL } from "@/domains/catalog/map/map-config";
+import { ATLAS_BASEMAP_STYLE } from "@/domains/catalog/map/map-config";
 import { announceViewport, sparsityPill } from "@/domains/catalog/map/map-summary";
 import type { MapNavigate } from "@/domains/catalog/hooks/use-map-page";
 import type { FlyToCamera } from "@/domains/catalog/map/map-camera";
@@ -122,7 +122,7 @@ export function MapPage({ search, initialPoints, initialPointsLoadFailed = false
         Skip to results list
       </a>
 
-      <MapStyleProvider initialStyleUrl={ATLAS_BASEMAP_STYLE_URL}>
+      <MapStyleProvider initialStyle={ATLAS_BASEMAP_STYLE}>
         <MapPageSurface
           surfaceRef={surfaceRef}
           initialView={page.initialView}

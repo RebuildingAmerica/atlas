@@ -1,32 +1,28 @@
 import { createContext, useContext, useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import { requireAbsoluteMapStyleUrl } from "@/domains/catalog/map/map-config";
+import type { StyleSpecification } from "maplibre-gl";
 
 interface MapStyleContextValue {
-  setStyleUrl: (styleUrl: string) => void;
-  styleUrl: string;
+  setStyle: (style: StyleSpecification) => void;
+  style: StyleSpecification;
 }
 
 const MapStyleContext = createContext<MapStyleContextValue | null>(null);
 
 export function MapStyleProvider({
   children,
-  initialStyleUrl,
+  initialStyle,
 }: {
   children: ReactNode;
-  initialStyleUrl: string;
+  initialStyle: StyleSpecification;
 }) {
-  const [styleUrl, setValidatedStyleUrl] = useState(() =>
-    requireAbsoluteMapStyleUrl(initialStyleUrl),
-  );
+  const [style, setStyle] = useState<StyleSpecification>(initialStyle);
   const value = useMemo<MapStyleContextValue>(
     () => ({
-      setStyleUrl: (nextStyleUrl: string) => {
-        setValidatedStyleUrl(requireAbsoluteMapStyleUrl(nextStyleUrl));
-      },
-      styleUrl,
+      setStyle,
+      style,
     }),
-    [styleUrl],
+    [style],
   );
 
   return <MapStyleContext.Provider value={value}>{children}</MapStyleContext.Provider>;
