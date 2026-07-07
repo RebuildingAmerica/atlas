@@ -23,11 +23,14 @@ from atlas.platform.mcp.server import build_mcp
 from atlas.platform.mcp.tasks import (
     _START_DISCOVERY_RUN_TOOL,
     MISSING_REQUIRED_CLIENT_CAPABILITY,
+    DiscoveryRunPreflight,
     _actor_claims_from_request_context,
+    _apply_discovery_run_preflight,
     _budget_exceeded_result,
     _create_discovery_run_task,
     _derive_idempotency_key,
     _job_to_task,
+    _preflight_discovery_run_arguments,
     _resolve_task,
     _run_to_task,
     _tool_error,
@@ -39,7 +42,6 @@ if TYPE_CHECKING:
 
 ARBITRARY_TTL_MS = 30 * 60 * 1000
 ARBITRARY_POLL_INTERVAL_MS = 5_000
-EXPECTED_TOTAL_TOOL_COUNT = 13
 HTTP_OK = 200
 HTTP_NO_CONTENT = 204
 TASKS_EXTENSION = "io.modelcontextprotocol/tasks"
@@ -55,6 +57,12 @@ def _tasks_meta() -> dict[str, Any]:
     }
 
 
+def _tasks_and_elicitation_meta() -> dict[str, Any]:
+    meta = _tasks_meta()
+    meta["io.modelcontextprotocol/clientCapabilities"]["elicitation"] = {"form": {}}
+    return meta
+
+
 def _call_tool_request(name: str, arguments: dict[str, Any] | None = None) -> types.CallToolRequest:
     return types.CallToolRequest.model_validate(
         {
@@ -63,6 +71,23 @@ def _call_tool_request(name: str, arguments: dict[str, Any] | None = None) -> ty
                 "name": name,
                 "arguments": arguments,
                 "_meta": _tasks_meta(),
+            },
+        }
+    )
+
+
+def _call_tool_request_with_meta(
+    name: str,
+    arguments: dict[str, Any] | None,
+    meta: dict[str, Any],
+) -> types.CallToolRequest:
+    return types.CallToolRequest.model_validate(
+        {
+            "method": "tools/call",
+            "params": {
+                "name": name,
+                "arguments": arguments,
+                "_meta": meta,
             },
         }
     )
@@ -104,6 +129,37 @@ def _start_request(**overrides: Any) -> dict[str, Any]:
     }
     payload.update(overrides)
     return payload
+
+
+class FakeElicitationSession:
+    def __init__(self, result: types.ElicitResult) -> None:
+        self.result = result
+        self.calls: list[dict[str, Any]] = []
+
+    async def elicit_form(
+        self,
+        *,
+        message: str,
+        requestedSchema: dict[str, Any],  # noqa: N803
+        related_request_id: object,
+    ) -> types.ElicitResult:
+        self.calls.append(
+            {
+                "message": message,
+                "requestedSchema": requestedSchema,
+                "related_request_id": related_request_id,
+            }
+        )
+        return self.result
+
+
+class FakePreflightServer:
+    def __init__(self, result: types.ElicitResult) -> None:
+        self.session = FakeElicitationSession(result)
+
+    @property
+    def request_context(self) -> Any:
+        return MagicMock(session=self.session, request_id="req_1")
 
 
 class TestStartDiscoveryRunToolDefinition:
@@ -320,6 +376,123 @@ class TestTaskCapabilityMetadata:
         )
 
 
+class TestDiscoveryRunPreflight:
+    def test_preflight_trims_overrides(self) -> None:
+        arguments = _apply_discovery_run_preflight(
+            _start_request(),
+            DiscoveryRunPreflight(
+                confirm_run=True,
+                location_query=" Springfield, MA ",
+                state="ma",
+                issue_areas=[" housing_affordability ", "public_transit"],
+                research_goal="landscape_scan",
+                search_depth="deep",
+            ),
+        )
+
+        assert arguments["location_query"] == "Springfield, MA"
+        assert arguments["state"] == "MA"
+        assert arguments["issue_areas"] == ["housing_affordability", "public_transit"]
+        assert arguments["search_depth"] == "deep"
+
+    @pytest.mark.asyncio
+    async def test_preflight_needs_client_support(self) -> None:
+        server = FakePreflightServer(types.ElicitResult(action="decline"))
+
+        result = await _preflight_discovery_run_arguments(
+            server,
+            params=types.CallToolRequestParams(name="start_discovery_run", _meta=_tasks_meta()),
+            arguments=_start_request(),
+        )
+
+        assert result == _start_request()
+        assert server.session.calls == []
+
+    @pytest.mark.asyncio
+    async def test_preflight_accept_applies_args(self) -> None:
+        server = FakePreflightServer(
+            types.ElicitResult(
+                action="accept",
+                content={
+                    "confirm_run": True,
+                    "location_query": "Portland, ME",
+                    "state": "ME",
+                    "issue_areas": ["housing_affordability"],
+                    "research_goal": "landscape_scan",
+                    "search_depth": "standard",
+                },
+            )
+        )
+
+        result = await _preflight_discovery_run_arguments(
+            server,
+            params=types.CallToolRequestParams(
+                name="start_discovery_run", _meta=_tasks_and_elicitation_meta()
+            ),
+            arguments=_start_request(location_query="Portland", state="OR"),
+        )
+
+        assert isinstance(result, dict)
+        assert result["location_query"] == "Portland, ME"
+        assert result["state"] == "ME"
+        assert server.session.calls[0]["message"] == (
+            "Confirm this discovery run before using a monthly research run."
+        )
+        properties = server.session.calls[0]["requestedSchema"]["properties"]
+        assert {"confirm_run", "location_query", "state", "issue_areas"} <= set(properties)
+
+    @pytest.mark.parametrize("action", ["decline", "cancel"])
+    @pytest.mark.asyncio
+    async def test_preflight_decline_stops(self, action: str) -> None:
+        server = FakePreflightServer(types.ElicitResult(action=action))
+
+        result = await _preflight_discovery_run_arguments(
+            server,
+            params=types.CallToolRequestParams(
+                name="start_discovery_run", _meta=_tasks_and_elicitation_meta()
+            ),
+            arguments=_start_request(),
+        )
+
+        assert isinstance(result, types.ServerResult)
+        assert result.root.isError is True
+        assert result.root.content[0].text == "Discovery run not started."
+
+    @pytest.mark.asyncio
+    async def test_preflight_unconfirmed_stops(self) -> None:
+        server = FakePreflightServer(
+            types.ElicitResult(action="accept", content={"confirm_run": False})
+        )
+
+        result = await _preflight_discovery_run_arguments(
+            server,
+            params=types.CallToolRequestParams(
+                name="start_discovery_run", _meta=_tasks_and_elicitation_meta()
+            ),
+            arguments=_start_request(),
+        )
+
+        assert isinstance(result, types.ServerResult)
+        assert result.root.isError is True
+        assert result.root.content[0].text == "Discovery run not started."
+
+    @pytest.mark.asyncio
+    async def test_preflight_invalid_response_errors(self) -> None:
+        server = FakePreflightServer(types.ElicitResult(action="accept", content={}))
+
+        result = await _preflight_discovery_run_arguments(
+            server,
+            params=types.CallToolRequestParams(
+                name="start_discovery_run", _meta=_tasks_and_elicitation_meta()
+            ),
+            arguments=_start_request(),
+        )
+
+        assert isinstance(result, types.ServerResult)
+        assert result.root.isError is True
+        assert "Invalid discovery run preflight response" in result.root.content[0].text
+
+
 class TestCreateDiscoveryRunTask:
     @pytest.mark.asyncio
     async def test_creates_job_and_returns_working_task(
@@ -397,7 +570,7 @@ class TestCreateDiscoveryRunTask:
         assert first.root.task.task_id == second.root.task.task_id
 
     @pytest.mark.asyncio
-    async def test_budget_exhaustion_returns_error_without_creating_job(
+    async def test_budget_exhaustion_skips_job(
         self, test_db: object, test_settings: Settings
     ) -> None:
         test_settings.discovery_inline = False
@@ -461,9 +634,7 @@ class TestCreateDiscoveryRunTask:
         assert result.root.result_type == "task"
 
     @pytest.mark.asyncio
-    async def test_records_org_usage_event_with_target_metadata(
-        self, test_db: object, test_settings: Settings
-    ) -> None:
+    async def test_records_usage_event(self, test_db: object, test_settings: Settings) -> None:
         test_settings.discovery_inline = False
         with patch.object(OrgUsageEventCRUD, "record", new=AsyncMock()) as record_mock:
             await _create_discovery_run_task(
@@ -524,9 +695,10 @@ class TestInstallTasksExtension:
         self,
     ) -> None:
         mcp = build_mcp()
+        registered_tools = await mcp.list_tools()
         handler = _handler_for(mcp, types.ListToolsRequest)
         result = await handler(types.ListToolsRequest(method="tools/list"))
-        assert len(result.root.tools) == EXPECTED_TOTAL_TOOL_COUNT
+        assert len(result.root.tools) == len(registered_tools)
         assert result.root.nextCursor is None
 
     @pytest.mark.asyncio
@@ -554,13 +726,14 @@ class TestInstallTasksExtension:
     @pytest.mark.asyncio
     async def test_list_tools_request_handler_last_page_has_no_next_cursor(self) -> None:
         mcp = build_mcp()
+        registered_tools = await mcp.list_tools()
         handler = _handler_for(mcp, types.ListToolsRequest)
 
         with patch.object(tasks_module, "_TOOLS_PAGE_SIZE", 2):
             result = await handler(
                 types.ListToolsRequest(
                     method="tools/list",
-                    params=types.PaginatedRequestParams(cursor=str(EXPECTED_TOTAL_TOOL_COUNT - 1)),
+                    params=types.PaginatedRequestParams(cursor=str(len(registered_tools) - 1)),
                 )
             )
             assert len(result.root.tools) == 1
@@ -584,12 +757,13 @@ class TestInstallTasksExtension:
         """_get_cached_tool_definition calls this handler with req=None to refresh
         its cache; it must return everything, not paginate or raise."""
         mcp = build_mcp()
+        registered_tools = await mcp.list_tools()
         handler = _handler_for(mcp, types.ListToolsRequest)
 
         with patch.object(tasks_module, "_TOOLS_PAGE_SIZE", 2):
             result = await handler(None)
 
-        assert len(result.root.tools) == EXPECTED_TOTAL_TOOL_COUNT
+        assert len(result.root.tools) == len(registered_tools)
         assert result.root.nextCursor is None
 
     @pytest.mark.asyncio
@@ -651,6 +825,80 @@ class TestInstallTasksExtension:
         assert result.root.result_type == "task"
         assert result.root.task.status == "working"
         assert result.root.task.ttl_ms == ARBITRARY_TTL_MS
+
+    @pytest.mark.asyncio
+    async def test_call_tool_preflight_decline_stops(self, test_settings: Settings) -> None:
+        mcp = build_mcp()
+        handler = _handler_for(mcp, types.CallToolRequest)
+        request = _call_tool_request_with_meta(
+            "start_discovery_run",
+            _start_request(),
+            _tasks_and_elicitation_meta(),
+        )
+        with (
+            patch.object(tasks_module, "get_settings", return_value=test_settings),
+            patch.object(
+                tasks_module, "_actor_claims_from_request_context", return_value=("org_1", "user_1")
+            ),
+            patch.object(
+                tasks_module,
+                "_preflight_discovery_run_arguments",
+                new=AsyncMock(return_value=_tool_error("Discovery run not started.")),
+            ) as preflight_mock,
+            patch.object(
+                tasks_module, "_create_discovery_run_task", new=AsyncMock()
+            ) as create_mock,
+        ):
+            result = await handler(request)
+
+        assert result.root.isError is True
+        assert result.root.content[0].text == "Discovery run not started."
+        preflight_mock.assert_awaited_once()
+        create_mock.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_call_tool_uses_preflight_args(self, test_settings: Settings) -> None:
+        mcp = build_mcp()
+        handler = _handler_for(mcp, types.CallToolRequest)
+        request = _call_tool_request_with_meta(
+            "start_discovery_run",
+            _start_request(location_query="Portland", state="OR"),
+            _tasks_and_elicitation_meta(),
+        )
+        confirmed = _start_request(location_query="Portland, ME", state="ME")
+        task = tasks_module.DraftTask(
+            task_id="job_1",
+            status="working",
+            created_at=datetime(2026, 1, 1, tzinfo=UTC),
+            last_updated_at=datetime(2026, 1, 1, tzinfo=UTC),
+            ttl_ms=ARBITRARY_TTL_MS,
+            poll_interval_ms=ARBITRARY_POLL_INTERVAL_MS,
+        )
+        with (
+            patch.object(tasks_module, "get_settings", return_value=test_settings),
+            patch.object(
+                tasks_module, "_actor_claims_from_request_context", return_value=("org_1", "user_1")
+            ),
+            patch.object(
+                tasks_module,
+                "_preflight_discovery_run_arguments",
+                new=AsyncMock(return_value=confirmed),
+            ),
+            patch.object(
+                tasks_module,
+                "_create_discovery_run_task",
+                new=AsyncMock(
+                    return_value=tasks_module.DraftServerResult(
+                        tasks_module.DraftCreateTaskResult(task=task)
+                    )
+                ),
+            ) as create_mock,
+        ):
+            result = await handler(request)
+
+        assert result.root.task.task_id == "job_1"
+        create_mock.assert_awaited_once()
+        assert create_mock.await_args.kwargs["arguments"] == confirmed
 
     @pytest.mark.asyncio
     async def test_get_task_wire_handler(self, test_db: object, test_settings: Settings) -> None:

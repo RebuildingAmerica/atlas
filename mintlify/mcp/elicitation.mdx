@@ -1,0 +1,142 @@
+---
+title: "Confirmations and follow-up questions"
+description: "What to expect when Atlas asks for clarification, workspace confirmation, or browser consent during an assistant session."
+---
+
+## Overview
+
+Atlas can ask for a small decision before your assistant continues. These
+requests make answers more trustworthy, prevent accidental workspace changes,
+and keep sensitive account actions on Atlas-owned browser pages.
+
+You may see a follow-up question when Atlas needs to:
+
+- Clarify an ambiguous search, place, issue area, guided starter, or research
+  run.
+- Confirm a workspace action such as saving actors, creating a coverage target,
+  watching a resource, or spending a research run.
+- Ask consent before opening Atlas account settings in your browser.
+
+If your MCP client does not support a particular interaction, Atlas falls back
+to the safest available behavior. Read-only requests continue when they can.
+Budgeted or workspace-writing actions do not proceed without confirmation.
+
+## In-client questions
+
+Some follow-up questions appear inside your MCP client. Atlas uses them for
+non-sensitive choices such as:
+
+| Flow                      | What Atlas may ask                                                       |
+| ------------------------- | ------------------------------------------------------------------------ |
+| Search and place requests | The specific place, issue areas, actor types, or result depth            |
+| Issue-area matching       | Which categories reflect your intent                                     |
+| New research runs         | Whether to spend a research run and which inputs to use                  |
+| Guided research starters  | Missing place, query, actor, research run, or optional focus             |
+| Saved lists               | Whether to save selected actors to an existing private list              |
+| Coverage targets          | Whether to create a private workspace coverage target                    |
+| Watches                   | Whether to watch an actor or coverage target and notification preference |
+
+Atlas treats **decline** and **cancel** as normal outcomes. Declining or
+canceling a workspace action means nothing is created. Declining optional
+research context keeps the request usable with the information already provided.
+
+<Warning>
+  Atlas will not request passwords, API keys, access tokens, payment
+  credentials, or private keys inside the MCP client. If a flow needs secrets,
+  credentials, payments, or third-party authorization, Atlas sends you to a
+  browser page instead.
+</Warning>
+
+## Browser handoffs
+
+Some actions happen outside the MCP client on an Atlas-owned web page.
+
+The shipped browser handoffs open Atlas account settings for billing and API
+key management. Your client should show the Atlas URL and ask before opening
+it. The URL contains an opaque `mcpElicitationId`; it does not contain payment
+data, credentials, user identity, workspace identity, or submitted form content.
+
+Some API-key setup requests are blocking: Atlas tells the MCP client that a
+browser handoff is required before the agent can continue. After you complete
+the account-page handoff, the agent can retry the request.
+
+Atlas does not ask for API keys, passwords, access tokens, payment details, or
+other credentials through MCP forms. Those actions stay on Atlas-owned browser
+pages.
+
+After you open Atlas in the browser, Atlas verifies that the signed-in browser
+session matches the MCP user and workspace that started the request. If the
+identity does not match, the completion is rejected.
+
+## What gets logged
+
+Atlas records privacy-safe lifecycle events so clients and operators can
+understand what happened:
+
+- requested
+- accepted
+- declined
+- canceled
+- unsupported client fallback
+- completed URL flow
+- expired browser handoff
+- browser sign-in mismatch
+- unavailable completion notification
+
+These logs are meant to be useful for support and client troubleshooting. They
+can show that a request was shown, accepted, declined, canceled, unsupported, or
+completed, and they can explain why a browser handoff did not finish. They do
+not include submitted form content, raw prompts, private notes, credentials,
+payment data, browser session contents, or session replay.
+
+Workspace admins can also see aggregate integration activity. That activity
+shows whether the workspace is using API or MCP access, not the private content
+of the session. See [Workspace integration activity](/workspace/integration-activity).
+
+## Troubleshooting
+
+**The client did not show a form.**  
+Your client may not support in-client follow-up questions. Atlas will keep
+read-only requests on the safest normal path and will stop state-changing
+actions that need confirmation.
+
+**The client did not open a browser.**  
+Make sure the client supports URL-mode elicitation and can open HTTPS URLs in
+your default browser. You can always open Atlas directly and manage billing from
+account settings.
+
+**A workspace action did not happen.**  
+Check whether the confirmation was declined, canceled, or unsupported. Atlas
+does not infer consent for saved lists, coverage targets, watches, or research
+runs.
+
+**A URL flow did not complete.**  
+Sign in to Atlas with the same account and workspace that started the MCP
+request. Atlas rejects unknown, expired, already completed, or identity-mismatched
+request IDs.
+
+## Related
+
+<CardGroup cols={2}>
+
+<Card title="Atlas capabilities reference" icon="wrench" href="/mcp/tools">
+  Review what your assistant can ask Atlas to do.
+</Card>
+
+<Card title="Guided research starters" icon="sparkles" href="/mcp/prompts">
+  See the starting points that can ask for missing context.
+</Card>
+
+<Card title="Troubleshooting" icon="wrench" href="/mcp/troubleshooting">
+  Resolve connection, permission, and client-support issues.
+</Card>
+
+<Card
+  title="Workspace integration activity"
+  icon="chart-line"
+  href="/workspace/integration-activity"
+>
+  Understand what admins can see about MCP adoption.
+</Card>
+
+</CardGroup>

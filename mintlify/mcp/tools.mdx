@@ -1,6 +1,6 @@
 ---
-title: "Available tools"
-description: "Reference for all 13 Atlas MCP tools with parameters and example prompts."
+title: "Atlas capabilities reference"
+description: "What users can ask an MCP-compatible assistant to do with Atlas, plus the operation names agents call behind the scenes."
 ---
 
 import PlaceKeyFormat from "/snippets/place-key-format.mdx";
@@ -8,29 +8,34 @@ import PlaceKeyFormat from "/snippets/place-key-format.mdx";
 ## Overview
 
 Once you've connected Atlas to an MCP client ([setup guide](/mcp/overview)),
-these tools are available.
+you can ask your assistant for civic research help in natural language. The
+assistant chooses the matching Atlas operation.
 
-Ask for the city, issue area, source trail, or research run you need. Your
-client chooses the matching Atlas tool.
+For guided starting points available through some clients, see [Guided research
+starters](/mcp/prompts).
 
-For guided workflows available through your client's prompt or slash-command
-picker, see [Available prompts](/mcp/prompts).
-
-Some tool responses include a `resource_uri`. Pass it to `resources/read` to
-open the same research output later. See [Available resources](/mcp/resources).
+Some Atlas responses include a `resource_uri`. Compatible clients can use that
+URI to open the same research output later. See [Available resources](/mcp/resources).
 
 <Note>
-  Tool access depends on your plan, OAuth scopes, and workspace. See [Scopes and
+  Access depends on your plan, OAuth scopes, and workspace. See [Scopes and
   permissions](/mcp/scopes), [Authentication](/api/authentication), and
-  [Workspace integration activity](/workspace/integration-activity) when a tool
-  is missing or returns a permission error.
+  [Workspace integration activity](/workspace/integration-activity) when an
+  Atlas action is missing or returns a permission error.
 </Note>
 
-## Entity tools
+<Tip>
+  Some requests can ask for clarification or confirmation before they continue.
+  See [Confirmations and follow-up questions](/mcp/elicitation) for decline,
+  cancel, and unsupported-client behavior.
+</Tip>
+
+## Find Civic Actors
 
 ### search_entities
 
-Search Atlas entities by place, topic, or free text.
+Ask for people, organizations, initiatives, campaigns, or events by place,
+topic, source type, actor type, or free-text search.
 
 **Parameters:**
 | Parameter | Type | Description |
@@ -43,7 +48,7 @@ Search Atlas entities by place, topic, or free text.
 | `limit` | integer | Max results (default: 20) |
 | `cursor` | string | Pagination cursor from a previous response |
 
-**Example prompts:**
+**Example requests:**
 
 - "Find labor organizers in Detroit"
 - "Search for organizations working on housing affordability in Kansas City"
@@ -51,7 +56,8 @@ Search Atlas entities by place, topic, or free text.
 
 ### get_entity
 
-Get full details for a specific entity by ID.
+Open the full Atlas record for a specific actor the assistant has already
+found.
 
 **Parameters:**
 | Parameter | Type | Description |
@@ -60,14 +66,14 @@ Get full details for a specific entity by ID.
 | `relation_types` | string[] | Optional relationship types to include |
 | `limit` | integer | Max results (default: 20) |
 
-**Example prompts:**
+**Example requests:**
 
 - "Tell me more about that first organization"
 - "Get the full details for Prairie Workers Cooperative"
 
 ### get_entity_sources
 
-Get all sources backing a specific entity.
+Review the public sources behind a specific Atlas actor.
 
 **Parameters:**
 | Parameter | Type | Description |
@@ -76,14 +82,14 @@ Get all sources backing a specific entity.
 | `limit` | integer | Max results (default: 20) |
 | `cursor` | string | Pagination cursor from a previous response |
 
-**Example prompts:**
+**Example requests:**
 
 - "What are the sources for KC Tenants?"
 - "Show me where this information came from"
 
 ### get_related_entities
 
-Find entities related through Atlas relationships.
+Explore other actors connected through Atlas relationships.
 
 **Parameters:**
 | Parameter | Type | Description |
@@ -92,16 +98,16 @@ Find entities related through Atlas relationships.
 | `limit` | integer | Max results (default: 20) |
 | `cursor` | string | Pagination cursor from a previous response |
 
-**Example prompts:**
+**Example requests:**
 
 - "Who else is connected to this organization?"
 - "What other entities are related to Maria Gonzalez?"
 
-## Source tools
+## Verify Sources
 
 ### search_sources
 
-Search across all Atlas sources.
+Search the public sources Atlas has indexed.
 
 **Parameters:**
 | Parameter | Type | Description |
@@ -113,16 +119,16 @@ Search across all Atlas sources.
 | `limit` | integer | Max results (default: 20) |
 | `cursor` | string | Pagination cursor from a previous response |
 
-**Example prompts:**
+**Example requests:**
 
 - "Find news articles about tenant organizing in Kansas City"
 - "Search for nonprofit listings related to environmental justice"
 
-## Place tools
+## Understand A Place
 
 ### get_place_entities
 
-Get entities for a specific place. Alias for `search_entities` with a place filter.
+Find actors tied to a specific place.
 
 **Parameters:**
 | Parameter | Type | Description |
@@ -135,7 +141,7 @@ Get entities for a specific place. Alias for `search_entities` with a place filt
 | `limit` | integer | Max results |
 | `cursor` | string | Pagination cursor from a previous response |
 
-**Example prompts:**
+**Example requests:**
 
 - "What civic organizations are active in Boise, Idaho?"
 - "Show me all entities in Kansas City working on housing"
@@ -149,14 +155,14 @@ Get demographic and socioeconomic context for a place.
 |-----------|------|-------------|
 | `place` | string | Natural-language place or normalized place key |
 
-**Example prompts:**
+**Example requests:**
 
 - "What's the demographic profile of Garden City, Kansas?"
 - "Tell me about the socioeconomic context of this city"
 
 ### get_place_coverage
 
-Get coverage gaps and entity counts for a place.
+Compare where Atlas coverage is strong, thin, or uneven for a place.
 
 **Parameters:**
 | Parameter | Type | Description |
@@ -164,7 +170,7 @@ Get coverage gaps and entity counts for a place.
 | `place` | string | Natural-language place or normalized place key |
 | `issue_areas` | string[] | Optional issue area slugs to focus the coverage summary |
 
-**Example prompts:**
+**Example requests:**
 
 - "What issue areas are underrepresented in Kansas City?"
 - "Where are the coverage gaps in Boise?"
@@ -172,7 +178,7 @@ Get coverage gaps and entity counts for a place.
 
 ### get_place_issue_signals
 
-Get an issue area summary for a place.
+Summarize issue-area signals for a place, with example actors where available.
 
 **Parameters:**
 | Parameter | Type | Description |
@@ -181,16 +187,16 @@ Get an issue area summary for a place.
 | `issue_areas` | string[] | Optional issue area slugs to include |
 | `top_entities_per_issue` | integer | Number of example entities per issue (default: 5) |
 
-**Example prompts:**
+**Example requests:**
 
 - "What are the main civic issues in Kansas City?"
 - "Give me an issue area breakdown for this city"
 
-## Taxonomy tools
+## Match Issue Areas
 
 ### resolve_issue_areas
 
-Map natural language to Atlas issue area slugs.
+Translate plain-language topics into Atlas issue-area categories.
 
 **Parameters:**
 | Parameter | Type | Description |
@@ -198,17 +204,17 @@ Map natural language to Atlas issue area slugs.
 | `text` | string | Natural language description of issues |
 | `limit` | integer | Max issue areas to return (default: 10) |
 
-**Example prompts:**
+**Example requests:**
 
 - "What Atlas issue areas relate to affordable childcare?"
 - "Map 'clean water' to Atlas categories"
 - "What issue areas cover worker rights?"
 
-## Research run tools
+## Reopen Or Start Research
 
 ### list_discovery_runs
 
-List source-linked Atlas research runs and their structured outputs.
+List source-linked Atlas research runs your workspace can access.
 
 **Parameters:**
 | Parameter | Type | Description |
@@ -218,32 +224,40 @@ List source-linked Atlas research runs and their structured outputs.
 | `limit` | integer | Max runs to return (default: 20) |
 | `cursor` | string | Pagination cursor from a previous response |
 
-**Example prompts:**
+**Example requests:**
 
 - "Show recent completed research runs in Missouri"
 - "What research has Atlas run for this state?"
 
 ### get_discovery_run
 
-Get one source-linked Atlas research run and its structured output.
+Open one source-linked research run and its structured output.
 
 **Parameters:**
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | `run_id` | string | The research run ID |
 
-**Example prompts:**
+**Example requests:**
 
 - "Open that research run"
 - "Summarize the entities and sources from this run"
 
 ### start_discovery_run
 
-Trigger a new Atlas research run for a place and issue areas. Unlike the other tools, this one does real work — it kicks off the same LLM extraction and source-fetching pipeline behind the Atlas dashboard, which can take minutes rather than seconds.
+Start a new Atlas research run for a place and issue areas. Unlike read-only
+requests, this spends from your workspace research budget and can take minutes
+to complete.
 
-Because of that, `start_discovery_run` requires an MCP client that supports the [MCP Tasks extension](https://tasks.extensions.modelcontextprotocol.io/specification/draft/tasks): the call returns a task handle immediately, and the client can poll until the run finishes. If your client doesn't support tasks yet, use `list_discovery_runs` or `get_discovery_run` to check on runs you started elsewhere, such as the dashboard.
+Because of that, compatible clients receive a task handle and can check progress
+while the run finishes. If your client cannot track long-running work yet, use
+the Atlas dashboard to start the run, then ask your assistant to list or open
+completed runs later.
 
-This tool requires the `discovery:write` scope, on top of the `discovery:read` + `api.mcp` scopes every other tool needs, and it's metered against your org's monthly discovery-run budget — see [Scopes and permissions](/mcp/scopes).
+Starting a research run requires the `discovery:write` scope, on top of the
+`discovery:read` + `api.mcp` access used by read-only Atlas requests. It is
+metered against your org's monthly discovery-run budget. See [Scopes and
+permissions](/mcp/scopes).
 
 **Parameters:**
 | Parameter | Type | Description |
@@ -253,10 +267,180 @@ This tool requires the `discovery:write` scope, on top of the `discovery:read` +
 | `issue_areas` | string[] | Issue area slugs to research |
 | `research_goal` | string | Research focus (default: `landscape_scan`) |
 
-**Example prompts:**
+**Example requests:**
 
 - "Start a new research run for civic organizations in Topeka, Kansas"
 - "Research worker cooperatives in Wichita — I don't see much coverage yet"
+
+## Save And Track Work
+
+### save_entities_to_list
+
+Save selected Atlas actors to an existing private workspace list after
+confirmation.
+
+**Parameters:**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `list_id` | string | Existing saved-list ID |
+| `entry_ids` | string[] | Actor IDs to save |
+| `note` | string | Optional private note for the saved-list item |
+
+**Example requests:**
+
+- "Save these three organizations to my follow-up list"
+- "Add the tenant groups from this search to my private list"
+
+### create_research_brief
+
+Create a private workspace brief from source-linked Atlas results after
+confirmation.
+
+**Parameters:**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `title` | string | Brief title |
+| `scope` | object | Place, issue, actor, or source scope for the brief |
+| `summary` | string | Source-linked summary text |
+| `linked_entry_ids` | string[] | Optional actor IDs to attach |
+| `linked_source_ids` | string[] | Optional source IDs to attach |
+| `linked_discovery_run_ids` | string[] | Optional discovery-run IDs to attach |
+| `confidence_summary` | object | Optional confidence and review state |
+| `gaps` | object[] | Optional known gaps or unknowns |
+
+**Example requests:**
+
+- "Create a private brief from this completed research run"
+- "Turn these source-backed results into a workspace brief"
+
+### export_research_brief
+
+Export a private workspace brief with its source linkage after confirmation.
+
+**Parameters:**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `brief_id` | string | Private workspace brief ID |
+
+**Example requests:**
+
+- "Export this brief with its sources"
+- "Give me the structured export for this workspace brief"
+
+### create_coverage_target
+
+Create a private workspace coverage target with linked evidence after
+confirmation.
+
+**Parameters:**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `name` | string | Target name |
+| `geography` | string | Place or region to track |
+| `issue_areas` | string[] | Atlas issue-area slugs |
+| `actor_types` | string[] | Actor types to include |
+| `source_types` | string[] | Source types to review |
+| `linked_discovery_run_ids` | string[] | Optional discovery-run IDs to attach |
+| `linked_entry_ids` | string[] | Optional actor IDs to attach |
+| `gaps` | object[] | Optional gap labels and details |
+| `next_actions` | string[] | Optional private next-action notes |
+
+**Example requests:**
+
+- "Create a coverage target for Kansas City tenant organizations from this run"
+- "Track this place and issue as a coverage gap for our workspace"
+
+### export_coverage_report
+
+Export the active workspace coverage report after confirmation.
+
+**Parameters:** None.
+
+**Example requests:**
+
+- "Export our coverage report"
+- "Give me the coverage report with gaps and source counts"
+
+### sync_scout_artifacts
+
+Sync a reviewed Scout run artifact bundle into the active workspace after
+confirmation. Synced runs and entries stay private to the workspace unless a
+separate review path makes them public.
+
+**Parameters:**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `artifacts` | object | Canonical Scout run artifact bundle |
+
+**Example requests:**
+
+- "Sync this reviewed Scout run to our workspace"
+- "Import these reviewed Scout artifacts without publishing them"
+
+### watch_workspace_resource
+
+Watch an actor or coverage target after confirmation.
+
+**Parameters:**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `resource_type` | string | `entry` or `coverage_target` |
+| `resource_id` | string | Actor or coverage-target ID |
+| `notification_preference` | string | `digest`, `immediate`, or `muted` |
+
+**Example requests:**
+
+- "Watch this organization for new source-backed changes"
+- "Add this coverage target to our digest"
+
+## Manage Account Actions
+
+### open_billing_settings
+
+Open Atlas account settings after browser consent.
+
+Atlas does not send payment credentials, workspace identity, user identity, or
+submitted form content through the MCP client.
+
+**Parameters:** none
+
+**Example requests:**
+
+- "Open Atlas billing settings"
+- "Take me to account settings so I can manage my plan"
+
+### open_api_key_settings
+
+Open Atlas account settings for API key management after browser consent.
+
+Atlas never asks for API keys, access tokens, or other credentials through MCP
+forms or chat. Create and copy API keys only on the Atlas account page.
+
+**Parameters:** none
+
+**Example requests:**
+
+- "Open API key settings"
+- "Take me to Atlas so I can create an API key"
+
+### require_api_key_settings
+
+Require Atlas API-key setup before an agent continues a request that depends on
+account-page API-key management.
+
+When setup is still needed, Atlas returns a browser-required response. Your MCP
+client should ask before opening the Atlas account page. After the browser
+handoff completes, the agent can retry the original request.
+
+Atlas does not send API keys, access tokens, user identity, workspace identity,
+or submitted account-page content through the MCP client.
+
+**Parameters:** none
+
+**Example requests:**
+
+- "I need to create an Atlas API key before continuing"
+- "Set up API-key access, then retry this"
 
 ## Place key format
 
@@ -269,19 +453,19 @@ Most clients handle this normalization. You can say "Kansas City" naturally.
 <CardGroup cols={2}>
 
 <Card title="Research a city" icon="map" href="/mcp/tutorials/research-city">
-  Try the tools in a complete MCP workflow.
+  Walk through a complete assistant research session.
 </Card>
 
 <Card title="Scopes and permissions" icon="lock" href="/mcp/scopes">
-  See which capabilities unlock each tool family.
+  See which plans and permissions unlock each capability.
 </Card>
 
-<Card title="MCP prompts" icon="sparkles" href="/mcp/prompts">
-  Start common Atlas research workflows from user-selected prompts.
+<Card title="Guided research starters" icon="sparkles" href="/mcp/prompts">
+  Start common Atlas research workflows from supported clients.
 </Card>
 
 <Card title="MCP troubleshooting" icon="wrench" href="/mcp/troubleshooting">
-  Resolve connection, consent, and tool-availability issues.
+  Resolve connection, consent, and availability issues.
 </Card>
 
 <Card title="Discovery API guide" icon="terminal" href="/api/guides/discovery">

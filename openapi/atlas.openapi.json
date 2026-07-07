@@ -5968,6 +5968,35 @@
         "title": "MapPointCollectionResponse",
         "type": "object"
       },
+      "McpElicitationCompleteResponse": {
+        "additionalProperties": false,
+        "description": "Response returned when a browser flow completes an MCP URL elicitation.",
+        "properties": {
+          "elicitation_id": {
+            "description": "elicitation id for this mcp elicitation complete.",
+            "title": "Elicitation Id",
+            "type": "string"
+          },
+          "status": {
+            "const": "completed",
+            "description": "status for this mcp elicitation complete.",
+            "title": "Status",
+            "type": "string"
+          },
+          "target_flow": {
+            "description": "target flow for this mcp elicitation complete.",
+            "title": "Target Flow",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "elicitation_id",
+          "target_flow"
+        ],
+        "title": "McpElicitationCompleteResponse",
+        "type": "object"
+      },
       "OrgBriefCollectionResponse": {
         "description": "Collection response for private Atlas Brief artifacts.",
         "properties": {
@@ -16407,6 +16436,129 @@
         "summary": "Remove an entry from a saved list",
         "tags": [
           "lists"
+        ]
+      }
+    },
+    "/api/mcp/elicitations/{elicitation_id}/complete": {
+      "post": {
+        "description": "Complete a URL-mode MCP elicitation after first-party identity verification.\n\nUse this access operation before relying on protected workflows. It explains or changes the caller's ability to use authenticated Atlas features, so integrations should surface authorization failures clearly instead of treating them as empty data.",
+        "operationId": "complete_mcp_url_elicitation_api_mcp_elicitations__elicitation_id__complete_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "elicitation_id",
+            "required": true,
+            "schema": {
+              "title": "Elicitation Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-internal-secret",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Internal-Secret"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-email",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Email"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-organization-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Organization-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/McpElicitationCompleteResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Complete Mcp Url Elicitation",
+        "tags": [
+          "access"
         ]
       }
     },

@@ -49,7 +49,7 @@ want to do.
 - [Code Quality](./development/code-quality.md) — Pass the quality gates
 - [Deployment](./deployment/README.md) — Production deploys, releases, SSO setup
 - [Runbooks](./runbooks/) — Operational procedures (incident response, registry
-  publish)
+  publish, MCP elicitation support)
 
 ### Reference — information-oriented
 

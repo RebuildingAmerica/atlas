@@ -249,6 +249,24 @@ class Settings(BaseSettings):
     with the module, or the monorepo dev build output).
     """
 
+    mcp_form_elicitation_enabled: bool = Field(
+        default=True,
+        validation_alias="ATLAS_MCP_FORM_ELICITATION_ENABLED",
+    )
+    """Enable form-mode MCP elicitation for clarification and confirmation flows."""
+
+    mcp_url_elicitation_enabled: bool = Field(
+        default=True,
+        validation_alias="ATLAS_MCP_URL_ELICITATION_ENABLED",
+    )
+    """Enable URL-mode MCP elicitation for browser handoff flows."""
+
+    mcp_workbench_handoffs_enabled: bool = Field(
+        default=True,
+        validation_alias="ATLAS_MCP_WORKBENCH_HANDOFFS_ENABLED",
+    )
+    """Enable MCP-originated Workbench write handoffs."""
+
     model_config = SettingsConfigDict(
         env_file_encoding="utf-8",
         case_sensitive=False,

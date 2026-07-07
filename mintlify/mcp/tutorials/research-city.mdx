@@ -6,6 +6,7 @@ description: "Walk through a complete civic research session using Claude and At
 This tutorial walks through a complete research session using Claude and Atlas MCP. By the end, you'll have a structured picture of civic work in a city, including who's active, what sources back them, and where the gaps are.
 
 **Prerequisites:**
+
 - Atlas account with Pro or Team plan
 - Claude Desktop or Claude Code connected to Atlas ([setup guide](/mcp/overview))
 
@@ -15,14 +16,15 @@ Open Claude and ask about the city you're researching:
 
 > **You:** Who's working on housing and labor issues in Kansas City?
 
-Claude will use Atlas's `search_entities` tool to find matching entities and return a summary. You might see something like:
+Claude can ask Atlas for matching actors and return a summary. You might see
+something like:
 
 > **Claude:** I found 31 entities related to housing and labor in Kansas City. Here are the most prominent:
 >
 > 1. **KC Tenants** (organization) — Tenant organizing collective fighting for housing justice. Sources: Kansas City Star, KCUR
 > 2. **Stand Up KC** (campaign) — Fight for $15 minimum wage campaign. Sources: The Pitch KC, KSHB
 > 3. **Habitat for Humanity KC** (organization) — Affordable housing construction. Sources: Kansas City Business Journal
-> ...
+>    ...
 
 ## Step 2: Drill into specifics
 
@@ -35,16 +37,17 @@ Claude will use `get_entity` and `get_entity_sources` to retrieve the full recor
 > **Claude:** **KC Tenants** is a citywide tenant organizing collective in Kansas City, MO focused on housing justice and tenant rights.
 >
 > **Sources (4):**
-> 1. "KC Tenants escalates fight against corporate landlords" — *Kansas City Star*, March 2026
-> 2. "Inside Kansas City's tenant organizing movement" — *KCUR*, January 2026
-> 3. "Housing advocates push for rent stabilization" — *The Pitch KC*, December 2025
-> 4. "Tenant union wins first eviction moratorium" — *Flatland KC*, November 2025
+>
+> 1. "KC Tenants escalates fight against corporate landlords" — _Kansas City Star_, March 2026
+> 2. "Inside Kansas City's tenant organizing movement" — _KCUR_, January 2026
+> 3. "Housing advocates push for rent stabilization" — _The Pitch KC_, December 2025
+> 4. "Tenant union wins first eviction moratorium" — _Flatland KC_, November 2025
 
 Notice that every claim is backed by specific, dated, verifiable sources.
 
 ## Step 3: Check coverage gaps
 
-Ask what Atlas *doesn't* know about:
+Ask what Atlas _doesn't_ know about:
 
 > **You:** What issue areas have low coverage in Kansas City?
 
@@ -81,6 +84,7 @@ Each question gives Claude a new angle to query Atlas, building up a layered pic
 ## What you've accomplished
 
 In a single conversation, you've:
+
 - Identified 30+ people and organizations working on your issues
 - Verified entries against specific, dated sources
 - Discovered coverage gaps that might inform further research
@@ -93,19 +97,20 @@ All without opening a browser tab, scrolling through search results, or maintain
 <CardGroup cols={2}>
 
 <Card title="For journalists" icon="newspaper" href="/use-cases/journalists">
-How to use Atlas for investigative source discovery.
+  How to use Atlas for investigative source discovery.
 </Card>
 
 <Card title="For organizers" icon="people-group" href="/use-cases/organizers">
-How to use Atlas for scoping a new city.
+  How to use Atlas for scoping a new city.
 </Card>
 
-<Card title="MCP tools reference" icon="wrench" href="/mcp/tools">
-All 12 Atlas tools with parameters and example prompts.
+<Card title="Atlas capabilities reference" icon="wrench" href="/mcp/tools">
+  What your assistant can ask Atlas to do, with operation details for compatible
+  clients.
 </Card>
 
 <Card title="API quickstart" icon="code" href="/api/quickstart">
-Automate research programmatically.
+  Automate research programmatically.
 </Card>
 
 </CardGroup>

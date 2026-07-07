@@ -5,10 +5,10 @@ description: "Atlas MCP resources you can open again after a search or research 
 
 ## Overview
 
-Atlas resources give MCP clients a stable way to open the same research output
-again. Search first, keep the returned URI, then pass it to `resources/read`
-when you need the full record, source trail, coverage summary, or research
-brief.
+Atlas resources give compatible clients a stable way to open the same research
+output again. Ask your assistant to find the record first; when Atlas returns a
+resource URI, the client can reopen the full record, source trail, coverage
+summary, or research brief later.
 
 `resources/list` returns only a short set of recent research runs and Atlas UI
 resources. It does not list every entity, source, place, or run in Atlas.
@@ -27,11 +27,12 @@ MCP clients can discover these resource patterns through
 | `atlas://cities/{place_key}/coverage`     | Coverage summary for one city, such as `gary-in`      |
 | `atlas://states/{state}/coverage`         | Coverage summary for one state, such as `IN`          |
 
-## How clients use resources
+## How resources are reopened
 
-Atlas tools return `resource_uri` fields for outputs that can be opened again.
-For example, `get_discovery_run` returns `atlas://discovery-runs/{run_id}`, and
-place coverage responses return `atlas://cities/{place_key}/coverage` or
+Atlas operations return `resource_uri` fields for outputs that can be opened
+again. For example, a research-run lookup returns
+`atlas://discovery-runs/{run_id}`, and place coverage responses return
+`atlas://cities/{place_key}/coverage` or
 `atlas://states/{state}/coverage`.
 
 Pass one of those URIs to `resources/read` to reopen the same output without
@@ -48,11 +49,11 @@ returned `resource_uri` later.
 
 <CardGroup cols={2}>
 
-<Card title="MCP tools" icon="wrench" href="/mcp/tools">
-  Search and inspect Atlas data.
+<Card title="Atlas capabilities reference" icon="wrench" href="/mcp/tools">
+  See what your assistant can ask Atlas to do.
 </Card>
 
-<Card title="MCP prompts" icon="sparkles" href="/mcp/prompts">
+<Card title="Guided research starters" icon="sparkles" href="/mcp/prompts">
   Start guided civic research workflows.
 </Card>
 

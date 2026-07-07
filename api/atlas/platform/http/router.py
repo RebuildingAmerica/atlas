@@ -4,6 +4,7 @@ from fastapi import APIRouter
 
 from atlas.domains.access.api.health import router as auth_health_router
 from atlas.domains.access.api.lists import router as lists_router
+from atlas.domains.access.api.mcp_elicitations import router as mcp_elicitations_router
 from atlas.domains.access.api.org_usage import router as org_usage_router
 from atlas.domains.access.api.org_watch_digest import router as org_watch_digest_router
 from atlas.domains.access.api.org_watches import router as org_watches_router
@@ -51,6 +52,7 @@ def create_router() -> APIRouter:
     router.include_router(flags_router, prefix="/api")
     router.include_router(taxonomy_router, prefix="/api")
     router.include_router(public_router, prefix="/api")
+    router.include_router(mcp_elicitations_router, prefix="/api")
 
     # Subject-claim, manage, follow, and feed surfaces
     router.include_router(profiles_router, prefix="/api/profiles")

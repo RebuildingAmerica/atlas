@@ -1,11 +1,11 @@
 ---
 title: "Troubleshooting"
-description: "Resolve authentication, plan, workspace, and tool discovery issues while connecting an MCP client to Atlas."
+description: "Resolve authentication, plan, workspace, consent, and availability issues while connecting an MCP client to Atlas."
 ---
 
 ## Overview
 
-Most MCP clients summarize connection failures as "tool not available" or "authentication required". This page maps the most common signals to their root cause and the next step.
+Most MCP clients summarize connection failures as "action not available" or "authentication required". This page maps the most common signals to their root cause and the next step.
 
 ## Check the Atlas endpoint first
 
@@ -33,7 +33,7 @@ If you authenticated and still see 401, disconnect and reconnect to trigger a fr
 
 Authentication succeeded; authorization didn't.
 
-**What it means.** Your client does not have the permission needed for that tool or operation.
+**What it means.** Your client does not have the permission needed for that Atlas action.
 
 **What to do.** Reconnect the MCP server. On the consent screen, approve the requested access.
 
@@ -45,7 +45,7 @@ Authentication succeeded; authorization didn't.
 
 ## 403 "Organization context required"
 
-You see this when an MCP tool that needs a workspace can't find one in your token.
+You see this when an Atlas action that needs a workspace can't find one in your token.
 
 **What it means.** Atlas could not determine which workspace should own the request. This usually means:
 
@@ -62,15 +62,22 @@ You typed your email into Atlas's sign-in page during the OAuth flow, no error a
 
 **What to do.** Request access at [atlas.rebuildingus.org](https://atlas.rebuildingus.org) — once your email is approved, retry the OAuth flow.
 
-## "I authenticated but tools don't appear"
+## "I authenticated but Atlas actions don't appear"
 
-Authentication succeeded and tool calls don't return errors, but the client UI shows no Atlas tools.
+Authentication succeeded and requests do not return errors, but the client UI does not show Atlas actions.
 
-**What it means.** Most MCP clients cache the tool list and only refetch on a restart. After a successful authorization the client may not have picked up the newly available tools yet.
+**What it means.** Most MCP clients cache the available action list and only refetch on a restart. After a successful authorization the client may not have picked up the newly available Atlas actions yet.
 
-**What to do.** Restart the client. If tools still don't appear, reconnect Atlas from the client's MCP settings.
+**What to do.** Restart the client. If Atlas actions still don't appear, reconnect Atlas from the client's MCP settings.
+
+## "Atlas asked for confirmation and nothing changed"
+
+Atlas does not infer consent for workspace changes. If you decline, cancel, or use a client that does not support the needed confirmation, Atlas does not save list items, create coverage targets, watch resources, or spend research runs.
+
+**What to do.** Try the request again in a client that supports MCP follow-up questions, or complete the equivalent action in the Atlas web app when available.
 
 ## Still stuck?
 
 - See the [authentication reference](/api/authentication) for Atlas sign-in and token behavior.
 - Check the [MCP Registry](/mcp/registry) page for the prepared namespace and direct server URL.
+- Review [Confirmations and follow-up questions](/mcp/elicitation) for consent, decline, cancel, and browser handoff behavior.

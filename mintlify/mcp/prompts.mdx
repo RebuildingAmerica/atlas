@@ -1,55 +1,69 @@
 ---
-title: "Available prompts"
-description: "User-selectable Atlas MCP prompts for guided civic research workflows."
+title: "Guided research starters"
+description: "Selectable Atlas starting points for common civic research workflows in compatible MCP clients."
 ---
 
 ## Overview
 
-Atlas MCP prompts are guided research workflows exposed to compatible clients as
-user-selected commands. They help you start with a clear civic research shape
-while keeping Atlas sources, trust signals, and coverage limits attached to the
-answer.
+Some MCP clients can show Atlas-guided research starters as selectable commands.
+They help you begin with a clear civic research shape while keeping Atlas
+sources, trust signals, and coverage limits attached to the answer.
 
-Prompts do not create or modify Atlas data. They guide your assistant through
-read-only Atlas tools such as search, source inspection, place context, coverage
-analysis, and existing discovery-run lookup.
+Research starters do not create or modify Atlas data. They guide your assistant
+through read-only Atlas capabilities such as search, source inspection, place
+context, coverage analysis, and existing research-run lookup.
 
-## Prompts
+Compatible clients may let Atlas ask for missing details before the starter
+runs. For example, Atlas can ask for a missing place, search query, actor, or
+research-run ID. When the client has candidate actors or completed runs, Atlas
+can show titled choices instead of asking you to paste an ID.
 
-| Prompt | What it helps with | Required arguments | Optional arguments |
-| ------ | ------------------ | ------------------ | ------------------ |
-| `research_place` | Build a source-linked civic landscape for a place. | `place` | `issue_focus` |
-| `find_civic_actors` | Find people, organizations, initiatives, campaigns, or events for a topic. | `query` | `place`, `issue_focus` |
-| `inspect_source_trail` | Verify what Atlas knows about one civic actor and where it came from. | `entity` | `place` |
-| `assess_coverage_gaps` | Explain strong and weak Atlas coverage for a place or issue focus. | `place` | `issue_focus` |
-| `create_research_brief` | Create a source-linked brief from an existing Atlas discovery run. | `run_id` | - |
+## Starting points
+
+| Starting point          | What it helps with                                                         | What Atlas needs | Optional focus     |
+| ----------------------- | -------------------------------------------------------------------------- | ---------------- | ------------------ |
+| Research a place        | Build a source-linked civic landscape for a place.                         | Place            | Issue focus        |
+| Find civic actors       | Find people, organizations, initiatives, campaigns, or events for a topic. | Search topic     | Place, issue focus |
+| Inspect a source trail  | Verify what Atlas knows about one civic actor and where it came from.      | Actor            | Place              |
+| Assess coverage gaps    | Explain strong and weak Atlas coverage for a place or issue focus.         | Place            | Issue focus        |
+| Create a research brief | Create a source-linked brief from an existing Atlas research run.          | Research run     | -                  |
 
 ## How to use them
 
-Open your MCP client's prompt or slash-command picker, choose an Atlas prompt,
-and fill in the requested arguments. For example:
+Open your MCP client's prompt or slash-command picker, choose an Atlas starter,
+and fill in the requested details. For example:
 
 ```text
-Prompt: research_place
+Starter: Research a place
 place: Kansas City, MO
 issue_focus: housing and labor
 ```
 
-The assistant can then use Atlas tools to gather place context, search matching
-actors, inspect sources, and explain coverage gaps. Good answers should show
-where claims came from and distinguish weak Atlas coverage from evidence that
-civic work does not exist.
+The assistant can then ask Atlas for place context, matching actors, source
+inspection, and coverage gaps. Good answers should show where claims came from
+and distinguish weak Atlas coverage from evidence that civic work does not
+exist.
 
-## Permissions
+## Access
 
-Prompt access follows the same requirements as Atlas MCP read tools:
+Guided research starters follow the same requirements as Atlas MCP read access:
 
 - `discovery:read` OAuth scope
 - `api.mcp` workspace package capability
 - An active workspace selected during consent
 
-Prompts do not call `start_discovery_run` in this version, so they do not require
-`discovery:write` or MCP Tasks support.
+They do not start new research runs in this version, so they do not require
+`discovery:write` or long-running task support.
+
+## Follow-up questions
+
+Follow-up questions for guided starters are read-only. If you decline or cancel
+a required detail, Atlas returns the normal missing-detail error. If you decline
+optional context, Atlas keeps the starter usable with the information already
+provided.
+
+See [Confirmations and follow-up questions](/mcp/elicitation) for how Atlas
+handles clarification, decline, cancel, and unsupported clients.
 
 ## Related
 
@@ -59,8 +73,8 @@ Prompts do not call `start_discovery_run` in this version, so they do not requir
   Connect an assistant to Atlas.
 </Card>
 
-<Card title="MCP tools" icon="wrench" href="/mcp/tools">
-  Review the tools prompts can guide your assistant to use.
+<Card title="Atlas capabilities reference" icon="wrench" href="/mcp/tools">
+  Review what your assistant can ask Atlas to do.
 </Card>
 
 </CardGroup>

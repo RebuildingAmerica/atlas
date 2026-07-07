@@ -57,6 +57,9 @@ first.
 - [Firehose Architecture And Pipeline Suite](firehose/README.md) (2026-07-05) —
   High-level PRD companion and deep technical design for collection, analysis,
   storage, serving, governance, and operations.
+- [MCP Elicitation SDK Audit](2026-07-06-mcp-elicitation-sdk-audit.md)
+  (2026-07-06) — Protocol, Python SDK, capability negotiation, security, and
+  fallback findings behind Atlas's MCP elicitation rollout.
 - [Atlas Scout CLI Worker Auth And Discovery Spec](2026-07-04-atlas-scout-cli-worker-discovery.md)
   (2026-07-04) — Turnkey Scout login, worker enrollment, upload destinations,
   sync receipts, web handoff, search connection behavior, and the review-gated
@@ -82,4 +85,4 @@ first.
 
 ---
 
-Last updated: July 5, 2026
+Last updated: July 6, 2026

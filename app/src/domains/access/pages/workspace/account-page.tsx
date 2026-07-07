@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { createApiKey, deleteApiKey, listApiKeys } from "@/domains/access/api-keys.functions";
 import { type ApiKeyScope } from "@/domains/access/api-key-scopes";
 import { hasSerializedCapability } from "@/domains/access/capabilities";
@@ -18,6 +18,10 @@ import { AccountProfileSection } from "./components/account/profile";
 import { AccountScoutSection, type AccountScoutDeviceRecord } from "./components/account/scout";
 import { AccountSecuritySection } from "./components/account/security";
 import type { AccountTab } from "./components/account/tabs";
+import {
+  type McpElicitationCompleteResponse,
+  useMcpElicitationCompletion,
+} from "./mcp-elicitation-completion";
 
 const PASSKEYS_QUERY_KEY = ["auth", "passkeys"] as const;
 const API_KEYS_QUERY_KEY = ["auth", "api-keys"] as const;
@@ -39,6 +43,16 @@ function readCreatedApiKeySecret(result: unknown): string | null {
   return typeof key === "string" ? key : null;
 }
 
+function mcpCompletionMessage(targetFlow: string): string {
+  if (targetFlow === "billing_settings") {
+    return "You can return to your assistant to continue billing setup.";
+  }
+  if (targetFlow === "api_key_settings") {
+    return "You can return to your assistant to continue API key setup.";
+  }
+  return "You can return to your assistant to continue from account settings.";
+}
+
 export function AccountPage() {
   const queryClient = useQueryClient();
   const atlasSession = useAtlasSession();
@@ -58,6 +72,10 @@ export function AccountPage() {
   const [isAddingPasskey, setIsAddingPasskey] = useState(false);
   const [editingPasskeyId, setEditingPasskeyId] = useState<string | null>(null);
   const [editingPasskeyName, setEditingPasskeyName] = useState("");
+  const hasSession = atlasSession.data != null;
+  const handleMcpCompletion = useCallback((response: McpElicitationCompleteResponse) => {
+    setFlashMessage(mcpCompletionMessage(response.target_flow));
+  }, []);
 
   const passkeysQuery = useQuery<AccountPasskeyRecord[]>({
     queryKey: PASSKEYS_QUERY_KEY,
@@ -139,6 +157,11 @@ export function AccountPage() {
     },
   });
 
+  useMcpElicitationCompletion({
+    enabled: hasSession,
+    onComplete: handleMcpCompletion,
+  });
+
   const handlePasskeyAdd = async () => {
     setFlashMessage(null);
     setErrorMessage(null);
@@ -165,7 +188,6 @@ export function AccountPage() {
     }
   };
 
-  const hasSession = atlasSession.data != null;
   const showSecuritySection = hasSession && !isLocal;
   const showDeveloperSection = hasSession && !isLocal && canCreateApiKeys;
   const showScoutSection = hasSession && !isLocal;

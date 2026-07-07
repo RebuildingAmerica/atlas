@@ -12,6 +12,9 @@ Start here:
 - [Trust, Safety, And Verification System](./trust-safety-verification-system.md)
   explains the layers that make source evidence, identity, stewardship,
   corrections, and review trustworthy.
+- [MCP Elicitation Strategy](./mcp-elicitation-strategy.md) defines how Atlas
+  should use MCP elicitation to clarify assistant workflows, preserve trust
+  boundaries, and handle sensitive flows safely.
 - [PRD Suite](./prds/README.md) defines the experience-first product surfaces.
 - [ATProto-Native Identity Transition](./atproto-native-identity-transition.md)
   describes the decentralized identity architecture and migration path.

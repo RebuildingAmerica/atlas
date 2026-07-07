@@ -38,6 +38,7 @@ from atlas.platform.config import get_settings
 from atlas.platform.database import db as db_util
 from atlas.platform.mcp.auth_middleware import _string_claim
 from atlas.platform.mcp.data import DatabaseSession, _discovery_run_record
+from atlas.platform.mcp.elicitation import declares_form_elicitation, log_elicitation_event
 from atlas.platform.mcp.logging_support import log_operation
 from atlas.platform.mcp.pagination import decode_cursor, encode_cursor
 from atlas.schemas import DiscoveryRunStartRequest
@@ -150,6 +151,45 @@ class DraftEmptyResult(BaseModel):
 
 
 DraftResultRoot = DraftCreateTaskResult | DraftGetTaskResult | DraftEmptyResult
+
+
+class DiscoveryRunPreflight(BaseModel):
+    """Form-mode confirmation before starting a budgeted discovery run."""
+
+    confirm_run: bool = Field(
+        title="Start discovery run",
+        description="Confirm using a monthly discovery run.",
+    )
+    location_query: str | None = Field(
+        default=None,
+        title="Place",
+        description="City and state, state, county, or region.",
+        max_length=120,
+    )
+    state: str | None = Field(
+        default=None,
+        title="State",
+        description="Two-letter state code.",
+        min_length=2,
+        max_length=2,
+    )
+    issue_areas: list[str] | None = Field(
+        default=None,
+        title="Issue areas",
+        description="Atlas issue area slugs for this run.",
+    )
+    research_goal: str | None = Field(
+        default=None,
+        title="Research goal",
+        description="The research job this run should support.",
+        max_length=80,
+    )
+    search_depth: str | None = Field(
+        default=None,
+        title="Search depth",
+        description="standard or deep.",
+        max_length=20,
+    )
 
 
 class DraftServerResult:
@@ -312,6 +352,93 @@ def _require_tasks_extension(params: object) -> None:
         raise _missing_required_tasks_capability()
 
 
+def _apply_discovery_run_preflight(
+    arguments: dict[str, Any],
+    preflight: DiscoveryRunPreflight,
+) -> dict[str, Any]:
+    """Return discovery-run arguments confirmed or amended by form preflight."""
+    confirmed = {**arguments}
+    if preflight.location_query and preflight.location_query.strip():
+        confirmed["location_query"] = preflight.location_query.strip()
+    if preflight.state and preflight.state.strip():
+        confirmed["state"] = preflight.state.strip().upper()
+    if preflight.issue_areas:
+        confirmed["issue_areas"] = [issue_area.strip() for issue_area in preflight.issue_areas]
+    if preflight.research_goal and preflight.research_goal.strip():
+        confirmed["research_goal"] = preflight.research_goal.strip()
+    if preflight.search_depth and preflight.search_depth.strip():
+        confirmed["search_depth"] = preflight.search_depth.strip()
+    return confirmed
+
+
+async def _preflight_discovery_run_arguments(
+    server: LowLevelServer,
+    *,
+    params: object,
+    arguments: dict[str, Any],
+) -> dict[str, Any] | types.ServerResult:
+    """Confirm a budgeted discovery run before reserving budget or creating jobs."""
+    if not declares_form_elicitation(_params_meta(params)):
+        await log_elicitation_event(
+            interaction="discovery_run_preflight",
+            mode="form",
+            action="unsupported",
+        )
+        return arguments
+
+    try:
+        request_context = server.request_context
+    except LookupError:
+        await log_elicitation_event(
+            interaction="discovery_run_preflight",
+            mode="form",
+            action="unavailable",
+        )
+        return arguments
+
+    await log_elicitation_event(
+        interaction="discovery_run_preflight",
+        mode="form",
+        action="requested",
+    )
+    result = await request_context.session.elicit_form(
+        message="Confirm this discovery run before using a monthly research run.",
+        requestedSchema=DiscoveryRunPreflight.model_json_schema(),
+        related_request_id=request_context.request_id,
+    )
+    if result.action != "accept":
+        await log_elicitation_event(
+            interaction="discovery_run_preflight",
+            mode="form",
+            action=result.action,
+        )
+        return _tool_error("Discovery run not started.")
+
+    try:
+        preflight = DiscoveryRunPreflight.model_validate(result.content)
+    except ValidationError as exc:
+        await log_elicitation_event(
+            interaction="discovery_run_preflight",
+            mode="form",
+            action="invalid_response",
+        )
+        return _tool_error(f"Invalid discovery run preflight response: {exc}")
+
+    if not preflight.confirm_run:
+        await log_elicitation_event(
+            interaction="discovery_run_preflight",
+            mode="form",
+            action="decline",
+        )
+        return _tool_error("Discovery run not started.")
+    await log_elicitation_event(
+        interaction="discovery_run_preflight",
+        mode="form",
+        action="accept",
+    )
+    return _apply_discovery_run_preflight(arguments, preflight)
+
+
 async def _resolve_task(conn: aiosqlite.Connection, task_id: str) -> DraftTask:
     """Resolve a task id to its current state.
 
@@ -422,6 +549,14 @@ async def _handle_start_discovery_run(
     if org_id is None or user_id is None:
         return _tool_error("start_discovery_run requires an authenticated org context.")
 
+    arguments = await _preflight_discovery_run_arguments(
+        server,
+        params=req.params,
+        arguments=req.params.arguments or {},
+    )
+    if isinstance(arguments, types.ServerResult):
+        return arguments
+
     settings = get_settings()
     async with DatabaseSession(settings.database_url) as conn:
         return await _create_discovery_run_task(
@@ -429,7 +564,7 @@ async def _handle_start_discovery_run(
             org_id=org_id,
             user_id=user_id,
             settings=settings,
-            arguments=req.params.arguments or {},
+            arguments=arguments,
         )
 
 

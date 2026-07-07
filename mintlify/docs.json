@@ -159,6 +159,7 @@
               "mcp/tools",
               "mcp/resources",
               "mcp/prompts",
+              "mcp/elicitation",
               "mcp/scopes",
               "mcp/troubleshooting"
             ]

@@ -16,14 +16,14 @@ This keeps public browsing open while making agent and integration access explic
 
 Atlas requires both of these for MCP requests:
 
-| Requirement      | Where it appears        | Why it matters                                         |
-| ---------------- | ----------------------- | ------------------------------------------------------ |
-| `discovery:read` | Consent screen          | Allows read-only discovery and catalog retrieval tools |
-| `api.mcp`        | Atlas workspace package | Confirms the workspace includes MCP access             |
+| Requirement      | Where it appears        | Why it matters                                   |
+| ---------------- | ----------------------- | ------------------------------------------------ |
+| `discovery:read` | Consent screen          | Allows read-only discovery and catalog retrieval |
+| `api.mcp`        | Atlas workspace package | Confirms the workspace includes MCP access       |
 
 If either check is missing, your client shows a permission or plan-required error. Reconnect the client after approving the missing access or upgrading the workspace.
 
-The `start_discovery_run` tool additionally requires `discovery:write` — every other MCP tool only needs `discovery:read` + `api.mcp`.
+Starting a new research run additionally requires `discovery:write`. Read-only Atlas requests need `discovery:read` + `api.mcp`.
 
 ## OAuth scopes
 
@@ -37,11 +37,11 @@ The `start_discovery_run` tool additionally requires `discovery:write` — every
 | `discovery:write` | Create and manage discovery runs where enabled     |
 | `entities:write`  | Create or update catalog entries where enabled     |
 
-Most MCP read tools use `discovery:read`. Write permissions are not enough to access MCP unless the workspace package also includes MCP access.
+Most read-only Atlas requests use `discovery:read`. Write permissions are not enough to access MCP unless the workspace package also includes MCP access.
 
 ## Workspace binding
 
-Atlas connects each MCP session to a workspace. Single-workspace users are selected automatically. Multi-workspace users pick the workspace during consent.
+Atlas connects each assistant authorization to a workspace. Single-workspace users are selected automatically. Multi-workspace users pick the workspace during consent.
 
 ## Package capabilities
 

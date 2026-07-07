@@ -16,6 +16,9 @@ OrgUsageEventType = Literal[
     "evidence_opened",
     "list_item_saved",
     "watch_created",
+    "coverage_report_exported",
+    "coverage_target_created",
+    "scout_artifacts_synced",
     "digest_viewed",
     "coverage_gap_closed",
     "api_call",
@@ -29,6 +32,8 @@ OrgUsageResourceType = Literal[
     "watch",
     "digest",
     "coverage_target",
+    "coverage_report",
+    "discovery_run",
     "api",
     "public_record",
 ]

@@ -1,6 +1,6 @@
 ---
-title: "Use Atlas with MCP clients"
-description: "Connect Claude, Copilot, Gemini, Codex, and other MCP clients to Atlas."
+title: "Use Atlas with an AI assistant"
+description: "Ask an MCP-compatible assistant to find civic actors, verify sources, save research, and track coverage in Atlas."
 ---
 
 import RequiresPaidPlan from "/snippets/requires-paid-plan.mdx";
@@ -9,10 +9,13 @@ import McpServerUrl from "/snippets/mcp-server-url.mdx";
 ## Overview
 
 Atlas supports the [Model Context Protocol](https://modelcontextprotocol.io/)
-(MCP), an open standard for connecting clients to external data and tools.
-Claude, GitHub Copilot, Google Gemini, Codex, and other MCP clients can use
-Atlas to search civic actors, inspect sources, and start research runs. Ask
-questions in natural language and get structured answers backed by Atlas data.
+(MCP), an open standard that lets compatible assistants work with external
+systems. In Atlas, that means you can ask an assistant to find civic actors,
+check source trails, compare place coverage, save useful records, and start
+new source-linked research from the conversation.
+
+The assistant performs the MCP operations. You stay in control of the choices
+that affect your workspace, budget, account, or saved research.
 
 **Example conversation with Claude:**
 
@@ -29,7 +32,7 @@ questions in natural language and get structured answers backed by Atlas data.
 <RequiresPaidPlan />
 
 1. **An Atlas account** — [Sign up](https://atlas.rebuildingus.org) if you haven't already.
-2. **Atlas Pro or Team plan** — MCP access requires a paid plan ([see pricing](/account/pricing)). Free-tier sign-ins can complete, but Atlas tools stay unavailable until a plan is active.
+2. **Atlas Pro or Team plan** — MCP access requires a paid plan ([see pricing](/account/pricing)). Free-tier sign-ins can complete, but Atlas assistant capabilities stay unavailable until a plan is active.
 3. **An MCP-compatible client** — Claude Desktop, Claude Code, VS Code with Copilot, Gemini CLI, Codex CLI, or Copilot CLI.
 
 <Note>
@@ -41,49 +44,63 @@ questions in natural language and get structured answers backed by Atlas data.
 
 </Note>
 
-## How it works
+## What Atlas can help with
+
+After you connect Atlas, you can ask an assistant to:
+
+- Find people, organizations, initiatives, campaigns, and events by place,
+  issue area, source type, or search text.
+- Show where a claim came from by opening the sources behind an actor or
+  research run.
+- Compare civic coverage across places and issue areas, including where Atlas
+  has strong evidence and where coverage is thin.
+- Save selected actors to private workspace lists.
+- Create private coverage targets that help your workspace track a place,
+  issue, actor type, or evidence gap.
+- Watch actors or coverage targets for source-backed changes.
+- Start a new research run when existing Atlas coverage is not enough.
+- Open Atlas account settings from the conversation when you need to manage
+  billing or API-key setup.
+
+## Connection details
 
 Atlas runs a remote MCP server at:
 
 <McpServerUrl />
 
-When you connect this server, your MCP client can use Atlas search, discovery,
-and place-level civic data tools. On first use, the client opens a browser for
-Atlas sign-in and access approval.
+When you connect this server, your assistant can request Atlas search,
+discovery, workspace, and account actions through the MCP client. On first use,
+the client opens a browser for Atlas sign-in and access approval.
 
-Atlas also lets MCP clients reopen selected research outputs. Search tools find
-the relevant records; returned resource URIs open source-linked briefs, source
-trails, and place coverage summaries later. Atlas does not list the entire
-entity catalog as MCP resources.
+Atlas also lets compatible clients reopen selected research outputs later,
+including source-linked briefs, source trails, and place coverage summaries.
+Atlas does not publish the entire entity catalog as a browsable MCP resource.
 
-## Available tools
+## Available capabilities
 
-Once connected, Atlas tools include:
+Once connected, your assistant can use these Atlas capabilities:
 
-| Tool                      | What it does                                      |
-| ------------------------- | ------------------------------------------------- |
-| `search_entities`         | Search Atlas entities by place, topic, or text    |
-| `get_entity`              | Get details for a specific entity                 |
-| `get_entity_sources`      | Get the sources backing an entity                 |
-| `search_sources`          | Search across all Atlas sources                   |
-| `get_place_entities`      | Get entities for a specific place                 |
-| `list_discovery_runs`     | List source-linked research runs                  |
-| `get_discovery_run`       | Get one research run and its structured output    |
-| `get_place_profile`       | Demographic and socioeconomic context for a place |
-| `get_place_coverage`      | Coverage gaps and entity counts for a place       |
-| `get_place_issue_signals` | Issue area summary for a place                    |
-| `get_related_entities`    | Entities related through Atlas relationships      |
-| `resolve_issue_areas`     | Map natural language to Atlas issue area slugs    |
-| `start_discovery_run`     | Start a source-linked research run                |
+| Capability             | What you can ask for                                                    |
+| ---------------------- | ----------------------------------------------------------------------- |
+| Actor search           | Find civic actors by place, issue, type, source, or text                |
+| Source verification    | See the public sources behind an actor, source trail, or research run   |
+| Place context          | Get demographic context, issue signals, and coverage gaps for a place   |
+| Relationship discovery | Explore how actors are connected through Atlas relationships            |
+| Issue-area mapping     | Turn plain-language topics into Atlas issue categories                  |
+| Research history       | Reopen completed Atlas research runs and briefs                         |
+| New research           | Start a source-linked research run when existing coverage is not enough |
+| Saved work             | Save selected actors to private workspace lists                         |
+| Coverage tracking      | Create private coverage targets and watch them for changes              |
+| Account handoff        | Open Atlas account settings with browser consent                        |
 
 <Tip>
-  See [Available tools](/mcp/tools) for detailed parameter descriptions and
-  example prompts for each tool.
+  See [Atlas capabilities reference](/mcp/tools) for the operation names,
+  parameters, and example requests used by MCP-compatible assistants.
 </Tip>
 
 ## Available resources
 
-Atlas resources let MCP clients reopen saved research outputs:
+Atlas resources let compatible clients reopen selected research outputs:
 
 | Resource                                  | What it provides                    |
 | ----------------------------------------- | ----------------------------------- |
@@ -95,36 +112,49 @@ Atlas resources let MCP clients reopen saved research outputs:
 | `atlas://states/{state}/coverage`         | State coverage summary              |
 
 `resources/list` returns only a short set of recent research runs and Atlas UI
-resources. Use tools to find records, then use returned `resource_uri` values to
-open the same records later.
+resources. Ask your assistant to find the relevant records first, then use
+returned `resource_uri` values to open the same records later.
 
 <Tip>
   See [Available resources](/mcp/resources) for resource templates and large
   catalog behavior.
 </Tip>
 
-## Guided prompts
+## Guided research starters
 
-Compatible MCP clients can also show Atlas prompts as user-selected commands.
-Use them when you want a guided starting point for common civic research jobs:
+Some MCP clients can show Atlas research starters as selectable commands. Use
+them when you want a guided starting point for common civic research jobs:
 researching a place, finding civic actors, inspecting an entity's source trail,
 assessing coverage gaps, or creating a brief from an existing discovery run.
 
-Prompts are read-only in this version. They point clients toward the right
-Atlas tools and source-checking steps, but they do not create discovery runs or
+Research starters are read-only in this version. They help the assistant follow
+the right Atlas source-checking steps, but they do not create discovery runs or
 modify workspace data.
 
 <Tip>
-  See [Available prompts](/mcp/prompts) for prompt names, arguments, and usage
-  examples.
+  See [Guided research starters](/mcp/prompts) for the available starting points
+  and what information they may ask for.
 </Tip>
+
+## Clarification and confirmations
+
+Atlas may ask for a small clarification or confirmation before the assistant
+continues. Read-only requests use this only when a choice materially changes
+the result, such as an ambiguous place or issue-area match. Workspace actions
+require explicit confirmation before saving actors, creating coverage targets,
+watching resources, or spending a research run.
+
+Sensitive interactions stay on Atlas-owned browser pages. Billing settings use
+browser consent instead of passing payment information through the MCP client.
+
+See [Confirmations and follow-up questions](/mcp/elicitation) for the full
+privacy and troubleshooting boundary.
 
 ## Long-running research runs
 
-Most tools answer from Atlas data that already exists. `start_discovery_run`
-starts new source-linked research, so it returns a task handle for clients that
-support MCP task-augmented tool calls. Task-aware clients can poll until the run
-finishes instead of leaving the conversation blocked.
+Most Atlas answers come from data that already exists. New research runs create
+fresh source-linked research, so compatible clients receive a task handle and
+can check progress while the run finishes.
 
 Clients without task support receive an explicit error. Use
 `list_discovery_runs` or `get_discovery_run` to check on runs started elsewhere.
@@ -148,7 +178,7 @@ Atlas expects a client that can connect to hosted MCP servers and complete
 browser sign-in. Local-only MCP clients cannot connect to the hosted Atlas
 server.
 
-After connecting, see [Available tools](/mcp/tools), [Available resources](/mcp/resources), or [Tutorial: Research a city](/mcp/tutorials/research-city) for a complete session.
+After connecting, see [Atlas capabilities reference](/mcp/tools), [Available resources](/mcp/resources), or [Tutorial: Research a city](/mcp/tutorials/research-city) for a complete session.
 
 ## Troubleshooting
 
@@ -161,14 +191,14 @@ Make sure your default browser is set correctly and your MCP client supports rem
 **"Unauthorized" after connecting**
 Your OAuth token may have expired. Disconnect and reconnect the server in your client to trigger a fresh authorization flow.
 
-**Tools don't appear**
-Restart your MCP client after connecting. Some clients require a reload to discover newly available tools.
+**Atlas actions don't appear**
+Restart your MCP client after connecting. Some clients require a reload to discover newly available Atlas actions.
 
 For more help, see [MCP troubleshooting](/mcp/troubleshooting) or the general [Troubleshooting](/resources/troubleshooting) guide.
 
 ## References
 
-Atlas publishes the hosted server URL, required plan, available tools, scopes, and Atlas-side troubleshooting. Client-specific menus and command names belong in the client documentation.
+Atlas publishes the hosted server URL, required plan, available capabilities, scopes, and Atlas-side troubleshooting. Client-specific menus and command names belong in the client documentation.
 
 - [MCP Registry](/mcp/registry) — Atlas's prepared registry namespace and metadata status.
 - [MCP resources](/mcp/resources) — Research outputs that can be opened again.

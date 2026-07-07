@@ -321,8 +321,8 @@ CREATE TABLE IF NOT EXISTS org_usage_events (
     id TEXT PRIMARY KEY,
     org_id TEXT NOT NULL,
     actor_id TEXT,
-    event_type TEXT NOT NULL CHECK(event_type IN ('brief_opened', 'brief_exported', 'evidence_opened', 'list_item_saved', 'watch_created', 'digest_viewed', 'coverage_gap_closed', 'api_call', 'public_record_improved')),
-    resource_type TEXT CHECK(resource_type IS NULL OR resource_type IN ('brief', 'source', 'saved_list', 'watch', 'digest', 'coverage_target', 'api', 'public_record')),
+    event_type TEXT NOT NULL CHECK(event_type IN ('brief_opened', 'brief_exported', 'evidence_opened', 'list_item_saved', 'watch_created', 'coverage_report_exported', 'coverage_target_created', 'scout_artifacts_synced', 'digest_viewed', 'coverage_gap_closed', 'api_call', 'public_record_improved')),
+    resource_type TEXT CHECK(resource_type IS NULL OR resource_type IN ('brief', 'source', 'saved_list', 'watch', 'digest', 'coverage_target', 'coverage_report', 'discovery_run', 'api', 'public_record')),
     resource_id TEXT,
     metadata_json TEXT NOT NULL DEFAULT '{}',
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()

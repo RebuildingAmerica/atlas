@@ -4,17 +4,35 @@ from __future__ import annotations
 
 import contextlib
 import re
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 from urllib.parse import urlsplit
 
-from mcp.server.fastmcp import FastMCP
+from atlas_shared import DiscoveryRunArtifacts  # noqa: TC002
+from mcp.server.fastmcp import Context, FastMCP
 from mcp.server.transport_security import TransportSecuritySettings
 from starlette.middleware.cors import CORSMiddleware
 
+from atlas.domains.access.models.watches import (  # noqa: TC001
+    WatchNotificationPreference,
+    WatchResourceType,
+)
 from atlas.platform.config import Settings, get_settings
 
-from .auth_middleware import McpBearerAuthMiddleware
+from .auth_middleware import McpBearerAuthMiddleware, _string_claim
 from .data import AtlasDataService
+from .elicitation import (
+    build_first_party_elicitation_url,
+    build_url_elicitation_request,
+    build_url_elicitation_required_error,
+    clarify_place_argument,
+    clarify_resolve_issue_areas_result,
+    clarify_search_entities_arguments,
+    create_url_elicitation_state,
+    declares_url_elicitation,
+    has_completed_url_elicitation,
+    log_elicitation_event,
+)
 from .logging_support import install_logging_extension
 from .prompts import install_prompts
 from .resources import install_data_resources
@@ -24,6 +42,27 @@ from .widgets import (
     ENTITY_CARD_RESOURCE_URI,
     SEARCH_RESULTS_RESOURCE_URI,
     install_widget_extension,
+)
+from .workbench import (
+    create_coverage_target as create_coverage_target_handoff,
+)
+from .workbench import (
+    create_research_brief as create_research_brief_handoff,
+)
+from .workbench import (
+    export_coverage_report as export_coverage_report_handoff,
+)
+from .workbench import (
+    export_research_brief as export_research_brief_handoff,
+)
+from .workbench import (
+    save_entities_to_list as save_entities_to_list_handoff,
+)
+from .workbench import (
+    sync_scout_artifacts as sync_scout_artifacts_handoff,
+)
+from .workbench import (
+    watch_workspace_resource as watch_workspace_resource_handoff,
 )
 
 if TYPE_CHECKING:
@@ -48,6 +87,43 @@ _CORS_ALLOWED_METHODS = ["GET", "POST", "OPTIONS"]
 """Streamable HTTP only needs GET (SSE listen) and POST (JSON-RPC calls); the
 server runs stateless so there's no session to DELETE. OPTIONS is required
 for CORS preflight itself."""
+
+
+@dataclass(frozen=True)
+class AccountElicitationFlow:
+    """User-facing copy and routing metadata for account URL handoffs."""
+
+    interaction: str
+    target_flow: str
+    target_path: str
+    request_message: str
+    fallback_message: str
+    declined_message: str
+    accepted_message: str
+    unavailable_message: str
+
+
+API_KEY_SETTINGS_FLOW = AccountElicitationFlow(
+    interaction="api_key_settings_url",
+    target_flow="api_key_settings",
+    target_path="/account",
+    request_message="Open Atlas account settings to manage API keys.",
+    fallback_message="Open Atlas account settings to manage API keys.",
+    declined_message="Atlas API key settings were not opened.",
+    accepted_message="Atlas API key settings opened in the browser.",
+    unavailable_message="Atlas account settings are unavailable right now.",
+)
+
+BILLING_SETTINGS_FLOW = AccountElicitationFlow(
+    interaction="billing_settings_url",
+    target_flow="billing_settings",
+    target_path="/account",
+    request_message="Open Atlas account settings to manage billing.",
+    fallback_message="Open Atlas account settings to manage billing.",
+    declined_message="Atlas billing settings were not opened.",
+    accepted_message="Atlas billing settings opened in the browser.",
+    unavailable_message="Atlas account settings are unavailable right now.",
+)
 
 
 def _origin_and_host(value: str) -> tuple[str | None, str | None]:
@@ -77,6 +153,222 @@ def _build_data_service() -> AtlasDataService:
     """
     settings = get_settings()
     return AtlasDataService(settings.database_url, public_url=_atlas_public_origin(settings))
+
+
+def _actor_claims_from_context(ctx: Context[Any, Any, Any] | None) -> tuple[str | None, str | None]:
+    """Return (org_id, user_id) from the verified MCP request payload."""
+    if ctx is None:
+        return None, None
+    try:
+        request = ctx.request_context.request
+    except ValueError:
+        return None, None
+    if request is None:
+        return None, None
+    payload = getattr(request.state, "mcp_auth_payload", None)
+    return _string_claim(payload, "org_id"), _string_claim(payload, "sub")
+
+
+def _request_context_and_meta(
+    ctx: Context[Any, Any, Any] | None,
+) -> tuple[Any | None, object | None]:
+    try:
+        request_context = ctx.request_context if ctx is not None else None
+        request_meta = request_context.meta if request_context is not None else None
+    except ValueError:
+        return None, None
+    return request_context, request_meta
+
+
+def _create_account_elicitation_state(
+    *,
+    ctx: Context[Any, Any, Any] | None,
+    target_flow: str,
+    target_url: str = "/account",
+) -> Any:
+    org_id, user_id = _actor_claims_from_context(ctx)
+    request_context, _request_meta = _request_context_and_meta(ctx)
+    return create_url_elicitation_state(
+        user_id=user_id,
+        org_id=org_id,
+        target_flow=target_flow,
+        target_url=target_url,
+        session=getattr(request_context, "session", None),
+    )
+
+
+async def _open_account_url(
+    *,
+    ctx: Context[Any, Any, Any] | None,
+    settings: Settings,
+    flow: AccountElicitationFlow,
+) -> dict[str, Any]:
+    """Use URL-mode elicitation to open a first-party Atlas account surface."""
+    public_origin = _atlas_public_origin(settings)
+    if public_origin is None:
+        return {
+            "status": "unavailable",
+            "message": flow.unavailable_message,
+        }
+    if not settings.mcp_url_elicitation_enabled:
+        await log_elicitation_event(
+            interaction=flow.interaction,
+            mode="url",
+            action="unsupported",
+        )
+        return {
+            "status": "unsupported",
+            "message": flow.fallback_message,
+            "path": flow.target_path,
+        }
+
+    _request_context, request_meta = _request_context_and_meta(ctx)
+
+    if not declares_url_elicitation(request_meta):
+        await log_elicitation_event(
+            interaction=flow.interaction,
+            mode="url",
+            action="unsupported",
+        )
+        return {
+            "status": "unsupported",
+            "message": flow.fallback_message,
+            "path": flow.target_path,
+        }
+
+    assert ctx is not None
+    state = _create_account_elicitation_state(
+        ctx=ctx,
+        target_flow=flow.target_flow,
+        target_url=flow.target_path,
+    )
+    url = build_first_party_elicitation_url(
+        public_url=public_origin,
+        path=flow.target_path,
+        elicitation_id=state.elicitation_id,
+    )
+    await log_elicitation_event(
+        interaction=flow.interaction,
+        mode="url",
+        action="requested",
+    )
+    result = await ctx.elicit_url(
+        message=flow.request_message,
+        url=url,
+        elicitation_id=state.elicitation_id,
+    )
+    if result.action != "accept":
+        await log_elicitation_event(
+            interaction=flow.interaction,
+            mode="url",
+            action=result.action,
+        )
+        return {
+            "status": result.action,
+            "message": flow.declined_message,
+        }
+
+    await log_elicitation_event(
+        interaction=flow.interaction,
+        mode="url",
+        action="accept",
+    )
+    return {
+        "status": "accepted",
+        "message": flow.accepted_message,
+        "elicitation_id": state.elicitation_id,
+    }
+
+
+async def _open_billing_settings_url(
+    *,
+    ctx: Context[Any, Any, Any] | None,
+    settings: Settings,
+) -> dict[str, Any]:
+    """Use URL-mode elicitation to open Atlas billing settings."""
+    return await _open_account_url(
+        ctx=ctx,
+        settings=settings,
+        flow=BILLING_SETTINGS_FLOW,
+    )
+
+
+async def _open_api_key_settings_url(
+    *,
+    ctx: Context[Any, Any, Any] | None,
+    settings: Settings,
+) -> dict[str, Any]:
+    """Use URL-mode elicitation to open Atlas API key settings."""
+    return await _open_account_url(
+        ctx=ctx,
+        settings=settings,
+        flow=API_KEY_SETTINGS_FLOW,
+    )
+
+
+async def _require_api_key_settings_url(
+    *,
+    ctx: Context[Any, Any, Any] | None,
+    settings: Settings,
+) -> dict[str, Any]:
+    """Require API-key setup to be completed through Atlas account settings."""
+    public_origin = _atlas_public_origin(settings)
+    if public_origin is None:
+        return {
+            "status": "unavailable",
+            "message": API_KEY_SETTINGS_FLOW.unavailable_message,
+        }
+    request_context, request_meta = _request_context_and_meta(ctx)
+    org_id, user_id = _actor_claims_from_context(ctx)
+    if has_completed_url_elicitation(
+        target_flow=API_KEY_SETTINGS_FLOW.target_flow,
+        user_id=user_id,
+        org_id=org_id,
+    ):
+        return {
+            "status": "ready",
+            "message": "Atlas API key settings are ready.",
+            "path": "/account",
+        }
+    if not settings.mcp_url_elicitation_enabled or not declares_url_elicitation(request_meta):
+        await log_elicitation_event(
+            interaction=API_KEY_SETTINGS_FLOW.interaction,
+            mode="url",
+            action="unsupported",
+        )
+        return {
+            "status": "unsupported",
+            "message": API_KEY_SETTINGS_FLOW.fallback_message,
+            "path": "/account",
+        }
+
+    state = create_url_elicitation_state(
+        user_id=user_id,
+        org_id=org_id,
+        target_flow=API_KEY_SETTINGS_FLOW.target_flow,
+        target_url="/account",
+        session=getattr(request_context, "session", None),
+    )
+    url = build_first_party_elicitation_url(
+        public_url=public_origin,
+        path="/account",
+        elicitation_id=state.elicitation_id,
+    )
+    await log_elicitation_event(
+        interaction=API_KEY_SETTINGS_FLOW.interaction,
+        mode="url",
+        action="requested",
+    )
+    raise build_url_elicitation_required_error(
+        message="Atlas API key setup must be completed in the browser.",
+        elicitations=[
+            build_url_elicitation_request(
+                message=API_KEY_SETTINGS_FLOW.request_message,
+                url=url,
+                elicitation_id=state.elicitation_id,
+            )
+        ],
+    )
 
 
 def build_transport_security_settings(settings: Settings) -> TransportSecuritySettings:
@@ -161,7 +453,7 @@ def split_cors_origins(allowed_origins: Iterable[str]) -> tuple[list[str], str |
     return exact_origins, "|".join(wildcard_patterns)
 
 
-def build_mcp() -> FastMCP:
+def build_mcp() -> FastMCP:  # noqa: PLR0915
     """Construct a FastMCP server with Atlas's tools, resources, Tasks, and logging.
 
     The server is configured for stateless Streamable HTTP so it can run behind
@@ -196,10 +488,12 @@ def build_mcp() -> FastMCP:
         source_types: list[str] | None = None,
         limit: int = 20,
         cursor: str | None = None,
+        ctx: Context[Any, Any, Any] | None = None,
     ) -> dict[str, Any]:
         """Search Atlas entities by place, issue area, and free-text query."""
         service = _build_data_service()
-        return await service.search_entities(
+        arguments = await clarify_search_entities_arguments(
+            ctx,
             place=place,
             issue_areas=issue_areas,
             text=text,
@@ -208,6 +502,7 @@ def build_mcp() -> FastMCP:
             limit=limit,
             cursor=cursor,
         )
+        return await service.search_entities(**arguments)
 
     @mcp.tool(meta={"ui": {"resourceUri": ENTITY_CARD_RESOURCE_URI}})
     async def get_entity(entity_id: str) -> dict[str, Any]:
@@ -252,10 +547,13 @@ def build_mcp() -> FastMCP:
         source_types: list[str] | None = None,
         limit: int = 20,
         cursor: str | None = None,
+        ctx: Context[Any, Any, Any] | None = None,
     ) -> dict[str, Any]:
         """Get entities Atlas tracks for a specific place."""
         service = _build_data_service()
-        return await service.search_entities(
+        place = await clarify_place_argument(ctx, place=place)
+        arguments = await clarify_search_entities_arguments(
+            ctx,
             place=place,
             issue_areas=issue_areas,
             text=text,
@@ -263,7 +561,9 @@ def build_mcp() -> FastMCP:
             source_types=source_types,
             limit=limit,
             cursor=cursor,
+            allow_place_scoped_clarification=True,
         )
+        return await service.search_entities(**arguments)
 
     @mcp.tool()
     async def list_discovery_runs(
@@ -288,18 +588,24 @@ def build_mcp() -> FastMCP:
         return await service.get_discovery_run(run_id)
 
     @mcp.tool()
-    async def get_place_profile(place: str) -> dict[str, Any]:
+    async def get_place_profile(
+        place: str,
+        ctx: Context[Any, Any, Any] | None = None,
+    ) -> dict[str, Any]:
         """Return demographic and socioeconomic context for a place."""
         service = _build_data_service()
+        place = await clarify_place_argument(ctx, place=place)
         return await service.get_place_profile(place)
 
     @mcp.tool()
     async def get_place_coverage(
         place: str,
         issue_areas: list[str] | None = None,
+        ctx: Context[Any, Any, Any] | None = None,
     ) -> dict[str, Any]:
         """Summarize Atlas coverage gaps and entity counts for a place."""
         service = _build_data_service()
+        place = await clarify_place_argument(ctx, place=place)
         return await service.get_place_coverage(place, issue_areas=issue_areas)
 
     @mcp.tool()
@@ -307,9 +613,11 @@ def build_mcp() -> FastMCP:
         place: str,
         issue_areas: list[str] | None = None,
         top_entities_per_issue: int = 5,
+        ctx: Context[Any, Any, Any] | None = None,
     ) -> dict[str, Any]:
         """Summarize which issues Atlas represents for a place."""
         service = _build_data_service()
+        place = await clarify_place_argument(ctx, place=place)
         return await service.get_place_issue_signals(
             place,
             issue_areas=issue_areas,
@@ -333,10 +641,176 @@ def build_mcp() -> FastMCP:
         )
 
     @mcp.tool()
-    async def resolve_issue_areas(text: str, limit: int = 10) -> dict[str, Any]:
+    async def resolve_issue_areas(
+        text: str,
+        limit: int = 10,
+        ctx: Context[Any, Any, Any] | None = None,
+    ) -> dict[str, Any]:
         """Resolve free-text into ranked Atlas issue area slugs."""
         service = _build_data_service()
-        return await service.resolve_issue_areas(text, limit=limit)
+        payload = await service.resolve_issue_areas(text, limit=limit)
+        return await clarify_resolve_issue_areas_result(ctx, payload)
+
+    @mcp.tool()
+    async def open_billing_settings(
+        ctx: Context[Any, Any, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Open Atlas billing settings through URL-mode elicitation."""
+        return await _open_billing_settings_url(ctx=ctx, settings=get_settings())
+
+    @mcp.tool()
+    async def open_api_key_settings(
+        ctx: Context[Any, Any, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Open Atlas API key settings through URL-mode elicitation."""
+        return await _open_api_key_settings_url(ctx=ctx, settings=get_settings())
+
+    @mcp.tool()
+    async def require_api_key_settings(
+        ctx: Context[Any, Any, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Require Atlas API key settings completion before continuing."""
+        return await _require_api_key_settings_url(ctx=ctx, settings=get_settings())
+
+    @mcp.tool()
+    async def save_entities_to_list(
+        list_id: str,
+        entry_ids: list[str],
+        note: str | None = None,
+        ctx: Context[Any, Any, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Save selected Atlas actors to an existing saved list after confirmation."""
+        if not settings.mcp_workbench_handoffs_enabled:
+            return {
+                "status": "disabled",
+                "message": "MCP Workbench handoffs are disabled.",
+            }
+        return await save_entities_to_list_handoff(
+            ctx,
+            list_id=list_id,
+            entry_ids=entry_ids,
+            note=note,
+        )
+
+    @mcp.tool()
+    async def create_coverage_target(  # noqa: PLR0913
+        name: str,
+        geography: str,
+        issue_areas: list[str],
+        actor_types: list[str],
+        source_types: list[str],
+        linked_discovery_run_ids: list[str] | None = None,
+        linked_entry_ids: list[str] | None = None,
+        gaps: list[dict[str, str]] | None = None,
+        next_actions: list[str] | None = None,
+        ctx: Context[Any, Any, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Create a private workspace coverage target after confirmation."""
+        if not settings.mcp_workbench_handoffs_enabled:
+            return {
+                "status": "disabled",
+                "message": "MCP Workbench handoffs are disabled.",
+            }
+        return await create_coverage_target_handoff(
+            ctx,
+            name=name,
+            geography=geography,
+            issue_areas=issue_areas,
+            actor_types=actor_types,
+            source_types=source_types,
+            linked_discovery_run_ids=linked_discovery_run_ids,
+            linked_entry_ids=linked_entry_ids,
+            gaps=gaps,
+            next_actions=next_actions,
+        )
+
+    @mcp.tool()
+    async def create_research_brief(  # noqa: PLR0913
+        title: str,
+        scope: dict[str, Any],
+        summary: str,
+        linked_entry_ids: list[str] | None = None,
+        linked_source_ids: list[str] | None = None,
+        linked_discovery_run_ids: list[str] | None = None,
+        confidence_summary: dict[str, Any] | None = None,
+        gaps: list[dict[str, Any]] | None = None,
+        ctx: Context[Any, Any, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Create a private workspace research brief after confirmation."""
+        if not settings.mcp_workbench_handoffs_enabled:
+            return {
+                "status": "disabled",
+                "message": "MCP Workbench handoffs are disabled.",
+            }
+        return await create_research_brief_handoff(
+            ctx,
+            title=title,
+            scope=scope,
+            summary=summary,
+            linked_entry_ids=linked_entry_ids,
+            linked_source_ids=linked_source_ids,
+            linked_discovery_run_ids=linked_discovery_run_ids,
+            confidence_summary=confidence_summary,
+            gaps=gaps,
+        )
+
+    @mcp.tool()
+    async def export_research_brief(
+        brief_id: str,
+        ctx: Context[Any, Any, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Export a private workspace research brief after confirmation."""
+        if not settings.mcp_workbench_handoffs_enabled:
+            return {
+                "status": "disabled",
+                "message": "MCP Workbench handoffs are disabled.",
+            }
+        return await export_research_brief_handoff(ctx, brief_id=brief_id)
+
+    @mcp.tool()
+    async def export_coverage_report(
+        ctx: Context[Any, Any, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Export the active workspace coverage report after confirmation."""
+        if not settings.mcp_workbench_handoffs_enabled:
+            return {
+                "status": "disabled",
+                "message": "MCP Workbench handoffs are disabled.",
+            }
+        return await export_coverage_report_handoff(ctx)
+
+    @mcp.tool()
+    async def sync_scout_artifacts(
+        artifacts: DiscoveryRunArtifacts,
+        ctx: Context[Any, Any, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Sync reviewed Scout artifacts to the active workspace after confirmation."""
+        if not settings.mcp_workbench_handoffs_enabled:
+            return {
+                "status": "disabled",
+                "message": "MCP Workbench handoffs are disabled.",
+            }
+        return await sync_scout_artifacts_handoff(ctx, artifacts=artifacts)
+
+    @mcp.tool()
+    async def watch_workspace_resource(
+        resource_type: WatchResourceType,
+        resource_id: str,
+        notification_preference: WatchNotificationPreference = "digest",
+        ctx: Context[Any, Any, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Watch an Atlas workspace resource after confirmation."""
+        if not settings.mcp_workbench_handoffs_enabled:
+            return {
+                "status": "disabled",
+                "message": "MCP Workbench handoffs are disabled.",
+            }
+        return await watch_workspace_resource_handoff(
+            ctx,
+            resource_type=resource_type,
+            resource_id=resource_id,
+            notification_preference=notification_preference,
+        )
 
     install_tasks_extension(mcp)
     install_logging_extension(mcp)

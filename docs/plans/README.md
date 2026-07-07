@@ -15,5 +15,6 @@ challenged, and revised as the product and business model become more real.
 
 ## Current Documents
 
+- [MCP Elicitation Implementation Plan](./2026-07-06-mcp-elicitation-implementation-plan.md)
 - [Firehose MVP Implementation Plan](./2026-07-05-firehose-mvp-implementation-plan.md)
 - [Atlas One-Page Strategy And Roadmap](./2026-04-10-atlas-one-page-strategy-and-roadmap.md)

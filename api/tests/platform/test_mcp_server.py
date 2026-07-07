@@ -7,16 +7,24 @@ import json
 import re
 from types import SimpleNamespace
 from typing import TYPE_CHECKING
+from urllib.parse import parse_qs, urlsplit
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
 import pytest
+from mcp.shared.exceptions import McpError
 from starlette.middleware.cors import CORSMiddleware
 from starlette.responses import Response
 
 from atlas.config import Settings
 from atlas.platform.mcp import server as server_module
 from atlas.platform.mcp.auth_middleware import McpBearerAuthMiddleware
+from atlas.platform.mcp.elicitation import (
+    CLIENT_CAPABILITIES_META_KEY,
+    URL_ELICITATION_REQUIRED,
+    complete_url_elicitation_state,
+    get_url_elicitation_state,
+)
 from atlas.platform.mcp.server import (
     build_mcp,
     get_mcp,
@@ -39,6 +47,10 @@ HTTP_OK = 200
 EXPECTED_ASGI_APP_MIDDLEWARE_COUNT = 3  # draft-Tasks, auth, CORS
 
 EXPECTED_TOOL_NAMES = {
+    "create_coverage_target",
+    "create_research_brief",
+    "export_coverage_report",
+    "export_research_brief",
     "get_discovery_run",
     "search_entities",
     "get_entity",
@@ -50,14 +62,42 @@ EXPECTED_TOOL_NAMES = {
     "get_place_coverage",
     "get_place_issue_signals",
     "get_related_entities",
+    "open_api_key_settings",
+    "open_billing_settings",
+    "require_api_key_settings",
     "resolve_issue_areas",
+    "save_entities_to_list",
     "start_discovery_run",
+    "sync_scout_artifacts",
+    "watch_workspace_resource",
 }
+
+
+class FakeUrlContext:
+    def __init__(self, *, action: str, meta: dict[str, object] | None = None) -> None:
+        self.actions: list[dict[str, str]] = []
+        self.session = SimpleNamespace(send_elicit_complete=AsyncMock())
+        self.request_context = SimpleNamespace(
+            meta=meta,
+            session=self.session,
+            request=SimpleNamespace(
+                state=SimpleNamespace(mcp_auth_payload={"org_id": "org_1", "sub": "user_1"})
+            ),
+        )
+        self._action = action
+
+    async def elicit_url(self, *, message: str, url: str, elicitation_id: str) -> object:
+        self.actions.append({"message": message, "url": url, "elicitation_id": elicitation_id})
+        return SimpleNamespace(action=self._action)
+
+
+def _url_elicitation_meta() -> dict[str, object]:
+    return {CLIENT_CAPABILITIES_META_KEY: {"elicitation": {"url": {}}}}
 
 
 @pytest.mark.asyncio
 async def test_build_mcp_registers_all_atlas_tools() -> None:
-    """build_mcp() registers exactly Atlas's 12 read tools plus start_discovery_run."""
+    """build_mcp() registers the expected Atlas MCP surface."""
     mcp = build_mcp()
     tools = await mcp.list_tools()
     tool_names = {tool.name for tool in tools}
@@ -109,6 +149,599 @@ async def test_search_entities_tool_has_expected_schema() -> None:
     properties = tool.inputSchema.get("properties", {})
     expected = {"place", "issue_areas", "text", "entity_types", "source_types", "limit", "cursor"}
     assert expected <= set(properties)
+    assert "ctx" not in properties
+
+
+@pytest.mark.asyncio
+async def test_place_tools_hide_context() -> None:
+    """Injected FastMCP context should not appear as user-editable tool input."""
+    mcp = build_mcp()
+    tools = await mcp.list_tools()
+    tool_names = {
+        "get_place_entities",
+        "get_place_profile",
+        "get_place_coverage",
+        "get_place_issue_signals",
+    }
+
+    for tool in tools:
+        if tool.name in tool_names:
+            assert "ctx" not in tool.inputSchema.get("properties", {})
+
+
+@pytest.mark.asyncio
+async def test_billing_tool_hides_context() -> None:
+    """URL-mode billing helper should not expose FastMCP context as tool input."""
+    mcp = build_mcp()
+    tools = await mcp.list_tools()
+    tool = next(tool for tool in tools if tool.name == "open_billing_settings")
+    assert tool.inputSchema.get("properties", {}) == {}
+
+
+@pytest.mark.asyncio
+async def test_issue_tool_hides_context() -> None:
+    """Injected FastMCP context should not appear on resolve_issue_areas."""
+    mcp = build_mcp()
+    tools = await mcp.list_tools()
+    tool = next(tool for tool in tools if tool.name == "resolve_issue_areas")
+    assert "ctx" not in tool.inputSchema.get("properties", {})
+
+
+@pytest.mark.asyncio
+async def test_save_list_schema() -> None:
+    """Workbench write helper exposes only user-supplied fields."""
+    mcp = build_mcp()
+    tools = await mcp.list_tools()
+    tool = next(tool for tool in tools if tool.name == "save_entities_to_list")
+    properties = tool.inputSchema.get("properties", {})
+    assert {"list_id", "entry_ids", "note"} <= set(properties)
+    assert "ctx" not in properties
+
+
+@pytest.mark.asyncio
+async def test_save_list_routes(
+    patched_settings: Settings,  # noqa: ARG001
+) -> None:
+    expected = {"status": "saved", "saved_count": 1}
+    with patch.object(
+        server_module,
+        "save_entities_to_list_handoff",
+        new=AsyncMock(return_value=expected),
+    ) as handoff_mock:
+        mcp = build_mcp()
+        _content, payload = await mcp.call_tool(
+            "save_entities_to_list",
+            {"list_id": "list_1", "entry_ids": ["entry_1"], "note": "follow up"},
+        )
+
+    assert payload == expected
+    handoff_mock.assert_awaited_once()
+    assert handoff_mock.await_args.kwargs == {
+        "list_id": "list_1",
+        "entry_ids": ["entry_1"],
+        "note": "follow up",
+    }
+
+
+@pytest.mark.asyncio
+async def test_handoff_flag_blocks_save(
+    patched_settings: Settings,
+) -> None:
+    patched_settings.mcp_workbench_handoffs_enabled = False
+    with patch.object(
+        server_module,
+        "save_entities_to_list_handoff",
+        new=AsyncMock(return_value={"status": "saved"}),
+    ) as handoff_mock:
+        mcp = build_mcp()
+        _content, payload = await mcp.call_tool(
+            "save_entities_to_list",
+            {"list_id": "list_1", "entry_ids": ["entry_1"]},
+        )
+
+    assert payload == {
+        "status": "disabled",
+        "message": "MCP Workbench handoffs are disabled.",
+    }
+    handoff_mock.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_coverage_target_schema() -> None:
+    """Coverage target helper exposes workspace target fields, not injected context."""
+    mcp = build_mcp()
+    tools = await mcp.list_tools()
+    tool = next(tool for tool in tools if tool.name == "create_coverage_target")
+    properties = tool.inputSchema.get("properties", {})
+    assert {
+        "name",
+        "geography",
+        "issue_areas",
+        "actor_types",
+        "source_types",
+        "linked_discovery_run_ids",
+        "linked_entry_ids",
+        "gaps",
+        "next_actions",
+    } <= set(properties)
+    assert "ctx" not in properties
+
+
+@pytest.mark.asyncio
+async def test_coverage_target_routes(
+    patched_settings: Settings,  # noqa: ARG001
+) -> None:
+    expected = {"status": "created", "target_id": "target_1"}
+    with patch.object(
+        server_module,
+        "create_coverage_target_handoff",
+        new=AsyncMock(return_value=expected),
+    ) as handoff_mock:
+        mcp = build_mcp()
+        _content, payload = await mcp.call_tool(
+            "create_coverage_target",
+            {
+                "name": "Kansas City tenant power",
+                "geography": "Kansas City, MO",
+                "issue_areas": ["housing_affordability"],
+                "actor_types": ["organization"],
+                "source_types": ["community_archive"],
+                "linked_entry_ids": ["entry_1"],
+            },
+        )
+
+    assert payload == expected
+    handoff_mock.assert_awaited_once()
+    assert handoff_mock.await_args.kwargs == {
+        "name": "Kansas City tenant power",
+        "geography": "Kansas City, MO",
+        "issue_areas": ["housing_affordability"],
+        "actor_types": ["organization"],
+        "source_types": ["community_archive"],
+        "linked_discovery_run_ids": None,
+        "linked_entry_ids": ["entry_1"],
+        "gaps": None,
+        "next_actions": None,
+    }
+
+
+@pytest.mark.asyncio
+async def test_brief_schema() -> None:
+    mcp = build_mcp()
+    tools = await mcp.list_tools()
+    tool = next(tool for tool in tools if tool.name == "create_research_brief")
+    properties = tool.inputSchema.get("properties", {})
+    assert {
+        "title",
+        "scope",
+        "summary",
+        "linked_entry_ids",
+        "linked_source_ids",
+        "linked_discovery_run_ids",
+        "confidence_summary",
+        "gaps",
+    } <= set(properties)
+    assert "ctx" not in properties
+
+
+@pytest.mark.asyncio
+async def test_brief_routes(
+    patched_settings: Settings,  # noqa: ARG001
+) -> None:
+    expected = {"status": "created", "brief_id": "brief_1"}
+    with patch.object(
+        server_module,
+        "create_research_brief_handoff",
+        new=AsyncMock(return_value=expected),
+    ) as handoff_mock:
+        mcp = build_mcp()
+        _content, payload = await mcp.call_tool(
+            "create_research_brief",
+            {
+                "title": "Kansas City housing brief",
+                "scope": {"geography": "Kansas City, MO"},
+                "summary": "One source-backed lead is ready for review.",
+                "linked_entry_ids": ["entry_1"],
+            },
+        )
+
+    assert payload == expected
+    handoff_mock.assert_awaited_once()
+    assert handoff_mock.await_args.kwargs == {
+        "title": "Kansas City housing brief",
+        "scope": {"geography": "Kansas City, MO"},
+        "summary": "One source-backed lead is ready for review.",
+        "linked_entry_ids": ["entry_1"],
+        "linked_source_ids": None,
+        "linked_discovery_run_ids": None,
+        "confidence_summary": None,
+        "gaps": None,
+    }
+
+
+@pytest.mark.asyncio
+async def test_export_brief_schema() -> None:
+    mcp = build_mcp()
+    tools = await mcp.list_tools()
+    tool = next(tool for tool in tools if tool.name == "export_research_brief")
+    properties = tool.inputSchema.get("properties", {})
+    assert {"brief_id"} <= set(properties)
+    assert "ctx" not in properties
+
+
+@pytest.mark.asyncio
+async def test_export_brief_routes(
+    patched_settings: Settings,  # noqa: ARG001
+) -> None:
+    expected = {"status": "exported", "brief": {"id": "brief_1"}}
+    with patch.object(
+        server_module,
+        "export_research_brief_handoff",
+        new=AsyncMock(return_value=expected),
+    ) as handoff_mock:
+        mcp = build_mcp()
+        _content, payload = await mcp.call_tool(
+            "export_research_brief",
+            {"brief_id": "brief_1"},
+        )
+
+    assert payload == expected
+    handoff_mock.assert_awaited_once()
+    assert handoff_mock.await_args.kwargs == {"brief_id": "brief_1"}
+
+
+@pytest.mark.asyncio
+async def test_export_report_schema() -> None:
+    mcp = build_mcp()
+    tools = await mcp.list_tools()
+    tool = next(tool for tool in tools if tool.name == "export_coverage_report")
+    properties = tool.inputSchema.get("properties", {})
+    assert "ctx" not in properties
+    assert properties == {}
+
+
+@pytest.mark.asyncio
+async def test_export_report_routes(
+    patched_settings: Settings,  # noqa: ARG001
+) -> None:
+    expected = {"status": "exported", "report": {"org_id": "org_1"}}
+    with patch.object(
+        server_module,
+        "export_coverage_report_handoff",
+        new=AsyncMock(return_value=expected),
+    ) as handoff_mock:
+        mcp = build_mcp()
+        _content, payload = await mcp.call_tool("export_coverage_report", {})
+
+    assert payload == expected
+    handoff_mock.assert_awaited_once()
+    assert handoff_mock.await_args.kwargs == {}
+
+
+@pytest.mark.asyncio
+async def test_scout_sync_schema() -> None:
+    mcp = build_mcp()
+    tools = await mcp.list_tools()
+    tool = next(tool for tool in tools if tool.name == "sync_scout_artifacts")
+    properties = tool.inputSchema.get("properties", {})
+    assert {"artifacts"} <= set(properties)
+    assert "ctx" not in properties
+
+
+@pytest.mark.asyncio
+async def test_scout_sync_routes(
+    patched_settings: Settings,  # noqa: ARG001
+) -> None:
+    expected = {"status": "synced", "run_id": "run_1"}
+    artifacts = {
+        "manifest": {
+            "runner": "atlas-scout",
+            "run": {
+                "location_query": "Wichita, KS",
+                "state": "KS",
+                "issue_areas": ["worker_cooperatives"],
+            },
+            "status": "completed",
+            "sync": {"local_run_id": "local_1", "sync_status": "ready"},
+        },
+        "stats": {},
+        "sources": [],
+        "ranked_entries": [],
+    }
+    with patch.object(
+        server_module,
+        "sync_scout_artifacts_handoff",
+        new=AsyncMock(return_value=expected),
+    ) as handoff_mock:
+        mcp = build_mcp()
+        _content, payload = await mcp.call_tool("sync_scout_artifacts", {"artifacts": artifacts})
+
+    assert payload == expected
+    handoff_mock.assert_awaited_once()
+    routed_artifacts = handoff_mock.await_args.kwargs["artifacts"]
+    assert routed_artifacts.manifest.runner == "atlas-scout"
+    assert routed_artifacts.manifest.sync.local_run_id == "local_1"
+
+
+@pytest.mark.asyncio
+async def test_watch_schema() -> None:
+    """Workspace watch helper exposes typed resource and notification choices."""
+    mcp = build_mcp()
+    tools = await mcp.list_tools()
+    tool = next(tool for tool in tools if tool.name == "watch_workspace_resource")
+    properties = tool.inputSchema.get("properties", {})
+    assert {"resource_type", "resource_id", "notification_preference"} <= set(properties)
+    assert properties["resource_type"]["enum"] == ["entry", "coverage_target"]
+    assert properties["notification_preference"]["enum"] == ["digest", "immediate", "muted"]
+    assert "ctx" not in properties
+
+
+@pytest.mark.asyncio
+async def test_watch_routes(
+    patched_settings: Settings,  # noqa: ARG001
+) -> None:
+    expected = {"status": "watched", "watch_id": "watch_1"}
+    with patch.object(
+        server_module,
+        "watch_workspace_resource_handoff",
+        new=AsyncMock(return_value=expected),
+    ) as handoff_mock:
+        mcp = build_mcp()
+        _content, payload = await mcp.call_tool(
+            "watch_workspace_resource",
+            {
+                "resource_type": "entry",
+                "resource_id": "entry_1",
+                "notification_preference": "immediate",
+            },
+        )
+
+    assert payload == expected
+    handoff_mock.assert_awaited_once()
+    assert handoff_mock.await_args.kwargs == {
+        "resource_type": "entry",
+        "resource_id": "entry_1",
+        "notification_preference": "immediate",
+    }
+
+
+@pytest.mark.asyncio
+async def test_billing_needs_url_capability(
+    patched_settings: Settings,
+) -> None:
+    """Atlas should not try URL mode when the client did not declare support."""
+    patched_settings.auth_jwt_issuer = "https://atlas.example.com/api/auth"
+    result = await server_module._open_billing_settings_url(  # noqa: SLF001
+        ctx=FakeUrlContext(action="accept"),
+        settings=patched_settings,
+    )
+
+    assert result == {
+        "status": "unsupported",
+        "message": "Open Atlas account settings to manage billing.",
+        "path": "/account",
+    }
+
+
+@pytest.mark.asyncio
+async def test_url_elicitation_flag_blocks_billing(
+    patched_settings: Settings,
+) -> None:
+    """Operators can roll back URL-mode browser handoffs without URL prompts."""
+    patched_settings.auth_jwt_issuer = "https://atlas.example.com/api/auth"
+    patched_settings.mcp_url_elicitation_enabled = False
+    ctx = FakeUrlContext(action="accept", meta=_url_elicitation_meta())
+
+    result = await server_module._open_billing_settings_url(  # noqa: SLF001
+        ctx=ctx,
+        settings=patched_settings,
+    )
+
+    assert result == {
+        "status": "unsupported",
+        "message": "Open Atlas account settings to manage billing.",
+        "path": "/account",
+    }
+    assert ctx.actions == []
+
+
+@pytest.mark.asyncio
+async def test_account_url_unavailable_hides_config(
+    patched_settings: Settings,
+) -> None:
+    patched_settings.auth_jwt_issuer = ""
+
+    result = await server_module._open_billing_settings_url(  # noqa: SLF001
+        ctx=FakeUrlContext(action="accept", meta=_url_elicitation_meta()),
+        settings=patched_settings,
+    )
+
+    assert result == {
+        "status": "unavailable",
+        "message": "Atlas account settings are unavailable right now.",
+    }
+
+
+@pytest.mark.asyncio
+async def test_billing_uses_atlas_url(
+    patched_settings: Settings,
+) -> None:
+    """URL mode should point at Atlas and bind server-side state to the MCP actor."""
+    patched_settings.auth_jwt_issuer = "https://atlas.example.com/api/auth"
+    ctx = FakeUrlContext(action="accept", meta=_url_elicitation_meta())
+
+    result = await server_module._open_billing_settings_url(  # noqa: SLF001
+        ctx=ctx,
+        settings=patched_settings,
+    )
+
+    assert result["status"] == "accepted"
+    elicitation_id = result["elicitation_id"]
+    requested = ctx.actions[0]
+    assert requested["url"] == (
+        f"https://atlas.example.com/account?mcpElicitationId={elicitation_id}"
+    )
+    assert requested["elicitation_id"] == elicitation_id
+
+    state = get_url_elicitation_state(elicitation_id)
+    assert state is not None
+    assert state.user_id == "user_1"
+    assert state.org_id == "org_1"
+    assert state.target_flow == "billing_settings"
+    assert state.target_url == "/account"
+    assert state.session is ctx.session
+
+
+@pytest.mark.asyncio
+async def test_smoke_url_client(patched_settings: Settings) -> None:
+    patched_settings.auth_jwt_issuer = "https://atlas.example.com/api/auth"
+    ctx = FakeUrlContext(action="accept", meta=_url_elicitation_meta())
+
+    result = await server_module._open_billing_settings_url(  # noqa: SLF001
+        ctx=ctx,
+        settings=patched_settings,
+    )
+
+    assert result["status"] == "accepted"
+    assert ctx.actions[0]["message"] == "Open Atlas account settings to manage billing."
+    assert ctx.actions[0]["url"].startswith("https://atlas.example.com/account?")
+
+
+@pytest.mark.asyncio
+async def test_billing_decline_not_opened(
+    patched_settings: Settings,
+) -> None:
+    """Declined URL consent should be explicit and non-misleading."""
+    patched_settings.auth_jwt_issuer = "https://atlas.example.com/api/auth"
+    ctx = FakeUrlContext(action="decline", meta=_url_elicitation_meta())
+
+    result = await server_module._open_billing_settings_url(  # noqa: SLF001
+        ctx=ctx,
+        settings=patched_settings,
+    )
+
+    assert result == {
+        "status": "decline",
+        "message": "Atlas billing settings were not opened.",
+    }
+
+
+@pytest.mark.asyncio
+async def test_api_key_settings_uses_atlas_url(
+    patched_settings: Settings,
+) -> None:
+    patched_settings.auth_jwt_issuer = "https://atlas.example.com/api/auth"
+    ctx = FakeUrlContext(action="accept", meta=_url_elicitation_meta())
+
+    result = await server_module._open_api_key_settings_url(  # noqa: SLF001
+        ctx=ctx,
+        settings=patched_settings,
+    )
+
+    assert result["status"] == "accepted"
+    elicitation_id = result["elicitation_id"]
+    requested = ctx.actions[0]
+    assert requested["url"] == (
+        f"https://atlas.example.com/account?mcpElicitationId={elicitation_id}"
+    )
+    assert requested["elicitation_id"] == elicitation_id
+
+    state = get_url_elicitation_state(elicitation_id)
+    assert state is not None
+    assert state.user_id == "user_1"
+    assert state.org_id == "org_1"
+    assert state.target_flow == "api_key_settings"
+    assert state.target_url == "/account"
+    assert state.session is ctx.session
+
+
+@pytest.mark.asyncio
+async def test_api_key_setup_requires_url_completion(
+    patched_settings: Settings,
+) -> None:
+    patched_settings.auth_jwt_issuer = "https://atlas.example.com/api/auth"
+    ctx = FakeUrlContext(action="accept", meta=_url_elicitation_meta())
+
+    with pytest.raises(McpError) as exc_info:
+        await server_module._require_api_key_settings_url(  # noqa: SLF001
+            ctx=ctx,
+            settings=patched_settings,
+        )
+
+    error = exc_info.value.error
+    assert error.code == URL_ELICITATION_REQUIRED
+    assert error.message == "Atlas API key setup must be completed in the browser."
+    assert error.data is not None
+    elicitations = error.data["elicitations"]
+    assert len(elicitations) == 1
+    elicitation = elicitations[0]
+    assert elicitation["mode"] == "url"
+    assert elicitation["message"] == "Open Atlas account settings to manage API keys."
+    url = urlsplit(elicitation["url"])
+    query = parse_qs(url.query)
+    assert url.scheme == "https"
+    assert url.netloc == "atlas.example.com"
+    assert url.path == "/account"
+    assert set(query) == {"mcpElicitationId"}
+    assert query["mcpElicitationId"] == [elicitation["elicitationId"]]
+    assert "user_1" not in elicitation["url"]
+    assert "org_1" not in elicitation["url"]
+
+    state = get_url_elicitation_state(elicitation["elicitationId"])
+    assert state is not None
+    assert state.user_id == "user_1"
+    assert state.org_id == "org_1"
+    assert state.target_flow == "api_key_settings"
+    assert state.target_url == "/account"
+
+
+@pytest.mark.asyncio
+async def test_api_key_setup_needs_url_capability(
+    patched_settings: Settings,
+) -> None:
+    patched_settings.auth_jwt_issuer = "https://atlas.example.com/api/auth"
+    ctx = FakeUrlContext(action="accept")
+
+    result = await server_module._require_api_key_settings_url(  # noqa: SLF001
+        ctx=ctx,
+        settings=patched_settings,
+    )
+
+    assert result == {
+        "status": "unsupported",
+        "message": "Open Atlas account settings to manage API keys.",
+        "path": "/account",
+    }
+    assert ctx.actions == []
+
+
+@pytest.mark.asyncio
+async def test_api_key_setup_retry_after_completion(
+    patched_settings: Settings,
+) -> None:
+    patched_settings.auth_jwt_issuer = "https://atlas.example.com/api/auth"
+    state = server_module._create_account_elicitation_state(  # noqa: SLF001
+        ctx=FakeUrlContext(action="accept", meta=_url_elicitation_meta()),
+        target_flow="api_key_settings",
+    )
+    await complete_url_elicitation_state(
+        state.elicitation_id,
+        user_id="user_1",
+        org_id="org_1",
+    )
+    ctx = FakeUrlContext(action="accept", meta=_url_elicitation_meta())
+
+    result = await server_module._require_api_key_settings_url(  # noqa: SLF001
+        ctx=ctx,
+        settings=patched_settings,
+    )
+
+    assert result == {
+        "status": "ready",
+        "message": "Atlas API key settings are ready.",
+        "path": "/account",
+    }
+    assert ctx.actions == []
 
 
 @pytest.mark.asyncio
@@ -868,6 +1501,40 @@ async def test_get_place_entities_tool_returns_collection(patched_settings: Sett
 
 
 @pytest.mark.asyncio
+async def test_place_entities_can_clarify(
+    patched_settings: Settings,  # noqa: ARG001
+) -> None:
+    service = SimpleNamespace(search_entities=AsyncMock(return_value={"items": []}))
+    clarified = {
+        "place": "Detroit, MI",
+        "issue_areas": None,
+        "text": None,
+        "entity_types": ["organization"],
+        "source_types": None,
+        "limit": 10,
+        "cursor": None,
+    }
+
+    with (
+        patch.object(server_module, "_build_data_service", return_value=service),
+        patch.object(
+            server_module,
+            "clarify_search_entities_arguments",
+            new=AsyncMock(return_value=clarified),
+        ) as clarify_mock,
+    ):
+        mcp = build_mcp()
+        _content, payload = await mcp.call_tool(
+            "get_place_entities",
+            {"place": "Detroit, MI", "limit": 20},
+        )
+
+    assert payload == {"items": []}
+    assert clarify_mock.await_args.kwargs["allow_place_scoped_clarification"] is True
+    service.search_entities.assert_awaited_once_with(**clarified)
+
+
+@pytest.mark.asyncio
 async def test_get_place_profile_tool_returns_seed(patched_settings: Settings) -> None:  # noqa: ARG001
     mcp = build_mcp()
     _content, payload = await mcp.call_tool("get_place_profile", {"place": "Gary, IN"})
@@ -908,3 +1575,41 @@ async def test_resolve_issue_areas_tool_returns_matches(patched_settings: Settin
         "resolve_issue_areas", {"text": "affordable housing", "limit": 3}
     )
     assert "items" in payload
+
+
+@pytest.mark.asyncio
+async def test_issue_tool_applies_matches(
+    patched_settings: Settings,  # noqa: ARG001
+) -> None:
+    resolved = {
+        "items": [
+            {"slug": "housing_affordability", "name": "Housing", "match_score": 5},
+            {
+                "slug": "homelessness_and_housing_insecurity",
+                "name": "Homelessness",
+                "match_score": 4,
+            },
+        ],
+        "total": 2,
+        "next_cursor": None,
+    }
+    clarified = {**resolved, "items": [resolved["items"][1]], "total": 1}
+    service = SimpleNamespace(resolve_issue_areas=AsyncMock(return_value=resolved))
+
+    with (
+        patch.object(server_module, "_build_data_service", return_value=service),
+        patch.object(
+            server_module,
+            "clarify_resolve_issue_areas_result",
+            new=AsyncMock(return_value=clarified),
+        ) as clarify_mock,
+    ):
+        mcp = build_mcp()
+        _content, payload = await mcp.call_tool(
+            "resolve_issue_areas",
+            {"text": "housing", "limit": 5},
+        )
+
+    assert payload == clarified
+    service.resolve_issue_areas.assert_awaited_once_with("housing", limit=5)
+    clarify_mock.assert_awaited_once()
