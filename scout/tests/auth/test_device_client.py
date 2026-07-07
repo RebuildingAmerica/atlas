@@ -6,7 +6,6 @@ import httpx
 import pytest
 import respx
 
-from atlas_scout.atlas_urls import verify_for_atlas_url
 from atlas_scout.auth import (
     DEVICE_GRANT_TYPE,
     SCOUT_CLIENT_ID,
@@ -14,6 +13,7 @@ from atlas_scout.auth import (
     DeviceAuthClient,
     DeviceAuthError,
 )
+from atlas_scout.shared.atlas_urls import verify_for_atlas_url
 
 
 @pytest.mark.asyncio

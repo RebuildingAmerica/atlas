@@ -9,7 +9,6 @@ from typing import TYPE_CHECKING, Literal
 
 import httpx
 
-from atlas_scout.atlas_urls import verify_for_atlas_url
 from atlas_scout.config import SCOUT_CONFIG_DIR
 from atlas_scout.credentials import (
     SESSION_TOKEN_ACCOUNT,
@@ -17,6 +16,7 @@ from atlas_scout.credentials import (
     CredentialStoreError,
     SystemCredentialStore,
 )
+from atlas_scout.shared.atlas_urls import verify_for_atlas_url
 
 if TYPE_CHECKING:
     from pathlib import Path

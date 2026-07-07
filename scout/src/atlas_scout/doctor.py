@@ -10,7 +10,6 @@ from typing import TYPE_CHECKING, Literal, cast
 
 import httpx
 
-from atlas_scout.atlas_urls import DEFAULT_ATLAS_URL
 from atlas_scout.auth import ScoutSession, load_session
 from atlas_scout.config import SCOUT_CONFIG_DIR, ScoutConfig
 from atlas_scout.credentials import CredentialStoreError, SystemCredentialStore
@@ -22,6 +21,7 @@ from atlas_scout.local_models import (
     provider_label,
 )
 from atlas_scout.search_keys import has_search_api_key
+from atlas_scout.shared.atlas_urls import DEFAULT_ATLAS_URL
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Mapping

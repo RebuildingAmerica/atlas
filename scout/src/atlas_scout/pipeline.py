@@ -32,11 +32,10 @@ from atlas_scout.pipeline_support import (
     same_domain,
 )
 from atlas_scout.steps import source_fetch
-from atlas_scout.steps.dedup import deduplicate_stream
+from atlas_scout.steps.discovery_engine_adapters import deduplicate_stream, rank_entries_stream
 from atlas_scout.steps.entry_extract import extract_page_entries
 from atlas_scout.steps.gap_analysis import analyze_gaps
 from atlas_scout.steps.query_gen import generate_queries
-from atlas_scout.steps.rank import rank_entries_stream
 from atlas_scout.steps.source_fetch import results_per_query_for_depth
 
 if TYPE_CHECKING:

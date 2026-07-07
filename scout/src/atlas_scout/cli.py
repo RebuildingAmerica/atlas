@@ -29,7 +29,6 @@ import click
 from rich.table import Table
 
 from atlas_scout import cli_daemon as _daemon_helpers
-from atlas_scout.atlas_urls import DEFAULT_ATLAS_URL
 from atlas_scout.auth import (
     DeviceAuthClient,
     DeviceAuthError,
@@ -114,6 +113,7 @@ from atlas_scout.search_keys import (
     resolve_search_api_key,
     save_search_api_key,
 )
+from atlas_scout.shared.atlas_urls import DEFAULT_ATLAS_URL
 from atlas_scout.shell_integration import (
     CompletionInstallResult,
     CompletionShellOption,
