@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import csv
 import json
 import sys
 from pathlib import Path
@@ -12,6 +11,7 @@ import click
 
 from atlas_scout.cli_common import _run_async
 from atlas_scout.cli_context import console
+from atlas_scout.shared.export_writer import write_export_rows
 
 if TYPE_CHECKING:
     from atlas_scout.config import ScoutConfig
@@ -110,20 +110,13 @@ async def export_articles(
 
 def write_article_export(rows: list[dict[str, Any]], output_format: str, handle: Any) -> None:
     """Write article rows to a text handle."""
-    if output_format == "json":
-        json.dump(rows, handle, indent=2)
-        handle.write("\n")
-        return
-    if output_format == "jsonl":
-        for row in rows:
-            handle.write(json.dumps(row, sort_keys=True))
-            handle.write("\n")
-        return
-
-    writer = csv.DictWriter(handle, fieldnames=_ARTICLE_EXPORT_CSV_FIELDS)
-    writer.writeheader()
-    for row in rows:
-        writer.writerow(article_export_csv_row(row))
+    write_export_rows(
+        rows,
+        output_format,
+        handle,
+        csv_fields=_ARTICLE_EXPORT_CSV_FIELDS,
+        csv_row=article_export_csv_row,
+    )
 
 
 def article_export_csv_row(row: dict[str, Any]) -> dict[str, str]:

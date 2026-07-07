@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import csv
 import json
 import sys
 from typing import TYPE_CHECKING, Any
@@ -15,6 +14,7 @@ from atlas_scout.entries.query import (
     _load_entries,
     _select_entries_for_output,
 )
+from atlas_scout.shared.export_writer import write_export_rows
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -116,21 +116,13 @@ def _entry_export_row(entry: dict[str, Any]) -> dict[str, Any]:
 
 def _write_entry_export(rows: list[dict[str, Any]], output_format: str, handle: Any) -> None:
     """Write entry export rows to a text handle."""
-    if output_format == "json":
-        json.dump(rows, handle, indent=2)
-        handle.write("\n")
-        return
-
-    if output_format == "jsonl":
-        for row in rows:
-            handle.write(json.dumps(row, sort_keys=True))
-            handle.write("\n")
-        return
-
-    writer = csv.DictWriter(handle, fieldnames=_ENTRY_EXPORT_CSV_FIELDS)
-    writer.writeheader()
-    for row in rows:
-        writer.writerow(_entry_export_csv_row(row))
+    write_export_rows(
+        rows,
+        output_format,
+        handle,
+        csv_fields=_ENTRY_EXPORT_CSV_FIELDS,
+        csv_row=_entry_export_csv_row,
+    )
 
 
 def _entry_export_csv_row(row: dict[str, Any]) -> dict[str, str]:
