@@ -5,15 +5,19 @@ from __future__ import annotations
 import asyncio
 import importlib.util
 import logging
-import re
-from datetime import datetime
-from typing import TYPE_CHECKING, Any
-from urllib.parse import urlparse
+from typing import Any, Protocol
 
 import httpx
 from atlas_shared import PageContent, SourceType
 
 from atlas_scout.articles.discovery_records import discovery_articles_from_resource
+from atlas_scout.scraper.browser_fallback_heuristics import (
+    BROWSER_FALLBACK_REASONS,
+    BROWSER_FALLBACK_STATUS_CODES,
+    looks_like_app_shell,
+    looks_like_high_value_url,
+    looks_like_sparse_civic_roster,
+)
 from atlas_scout.scraper.browser_render import render_url_with_browser
 from atlas_scout.scraper.discovery_resources import extract_discovery_links
 from atlas_scout.scraper.extractor import (
@@ -21,42 +25,33 @@ from atlas_scout.scraper.extractor import (
     extract_content_verbose,
     extract_structured_content,
 )
-
-if TYPE_CHECKING:
-    from atlas_scout.store import ScoutStore
+from atlas_scout.scraper.fetch_outcome import (
+    coerce_discovered_links,
+    coerce_discovery_articles,
+    parse_cached_datetime,
+    parse_source_type,
+)
+from atlas_scout.scraper.pdf_extraction import extract_pdf_content
 
 logger = logging.getLogger(__name__)
 
 USER_AGENT = "AtlasScout/1.0 (+https://atlas.rebuildingus.org/scout)"
 _CLAIM_POLL_SECONDS = 0.25
-_BROWSER_FALLBACK_REASONS = frozenset(
-    {"content_not_extractable", "content_below_min_words", "empty_body", "sparse_civic_roster"}
-)
-_BROWSER_FALLBACK_STATUS_CODES = frozenset({"http_401", "http_403"})
-_APP_SHELL_MARKERS = (
-    'id="__next"',
-    "id='__next'",
-    'id="root"',
-    "id='root'",
-    "data-reactroot",
-    "__NUXT__",
-    "__NEXT_DATA__",
-    "webpackJsonp",
-    "window.__",
-    "ng-version",
-)
-_NEWS_DOMAIN_MARKERS = (
-    "news",
-    "times",
-    "post",
-    "tribune",
-    "journal",
-    "gazette",
-    "herald",
-    "observer",
-    "daily",
-    "weekly",
-)
+
+
+class FetcherStore(Protocol):
+    """Narrow store interface AsyncFetcher needs: page cache plus work claims."""
+
+    async def get_cached_page(
+        self, url: str, ttl_days: int | None = 7
+    ) -> dict[str, Any] | None: ...
+    async def cache_page(self, url: str, text: str, metadata: dict[str, Any]) -> None: ...
+    async def claim_work(
+        self, key: str, *, owner_run_id: str, lease_seconds: int = 120
+    ) -> bool: ...
+    async def complete_work(self, key: str) -> None: ...
+    async def fail_work(self, key: str, error: str) -> None: ...
+    async def get_work_claim(self, key: str) -> dict[str, Any] | None: ...
 
 
 class AsyncFetcher:
@@ -68,7 +63,7 @@ class AsyncFetcher:
         request_delay_ms: int = 200,
         timeout: float = 30.0,
         page_cache_ttl_days: int = 7,
-        store: ScoutStore | None = None,
+        store: FetcherStore | None = None,
         revisit_cached_urls: bool = False,
         force_refresh: bool = False,
         run_id: str | None = None,
@@ -123,7 +118,7 @@ class AsyncFetcher:
         self,
         url: str,
         task_id: str,
-        _store: ScoutStore | None,
+        _store: FetcherStore | None,
     ) -> PageContent | None:
         """Fetch a URL and stamp the current page-task ID on the result."""
         outcome = await self.fetch_tracked_verbose(url, task_id=task_id, _store=_store)
@@ -134,7 +129,7 @@ class AsyncFetcher:
         self,
         url: str,
         task_id: str,
-        _store: ScoutStore | None,
+        _store: FetcherStore | None,
     ) -> dict[str, Any]:
         """Fetch a URL and return a structured outcome for pipeline progress/reporting."""
         cache_hit, cached = await self._get_cached_outcome(url, task_id)
@@ -273,7 +268,7 @@ class AsyncFetcher:
             if structured is not None:
                 extracted = structured
             elif "application/pdf" in content_type:
-                extracted = _extract_pdf_content(response.content, url=url)
+                extracted = extract_pdf_content(response.content, url=url)
             else:
                 extracted = extract_content_verbose(response.text, url=url)
             if extracted.page is None:
@@ -323,7 +318,7 @@ class AsyncFetcher:
                     "discovered_links": extracted.discovered_links,
                 }
             )
-            if _looks_like_sparse_civic_roster(page.text):
+            if looks_like_sparse_civic_roster(page.text):
                 rendered = await self._maybe_render_with_browser(
                     url,
                     html=response.text,
@@ -367,8 +362,8 @@ class AsyncFetcher:
             return False, {}
 
         metadata = cached["metadata"]
-        discovered_links = _coerce_discovered_links(metadata.get("discovered_links"))
-        discovery_articles = _coerce_discovery_articles(metadata.get("discovery_articles"))
+        discovered_links = coerce_discovered_links(metadata.get("discovered_links"))
+        discovery_articles = coerce_discovery_articles(metadata.get("discovery_articles"))
         status = str(metadata.get("status") or "fetched")
         reason = metadata.get("reason")
 
@@ -381,8 +376,8 @@ class AsyncFetcher:
                 task_id=task_id or None,
                 discovered_links=discovered_links,
                 publication=metadata.get("publication"),
-                published_date=_parse_cached_datetime(metadata.get("published_date")),
-                source_type=_parse_source_type(metadata.get("source_type")),
+                published_date=parse_cached_datetime(metadata.get("published_date")),
+                source_type=parse_source_type(metadata.get("source_type")),
             )
             return True, self._make_outcome(
                 url=url,
@@ -475,11 +470,11 @@ class AsyncFetcher:
         """Return whether a failed fetch/extract deserves browser CPU."""
         if not self._browser_fallback_enabled or self._max_browser_renders_per_run <= 0:
             return False
-        if reason in _BROWSER_FALLBACK_STATUS_CODES:
-            return _looks_like_high_value_url(url)
-        if reason not in _BROWSER_FALLBACK_REASONS:
+        if reason in BROWSER_FALLBACK_STATUS_CODES:
+            return looks_like_high_value_url(url)
+        if reason not in BROWSER_FALLBACK_REASONS:
             return False
-        return _looks_like_high_value_url(url) or _looks_like_app_shell(html)
+        return looks_like_high_value_url(url) or looks_like_app_shell(html)
 
     @staticmethod
     def _make_outcome(
@@ -513,131 +508,3 @@ class AsyncFetcher:
         if isinstance(exc, httpx.TimeoutException):
             return "timeout"
         return "request_error"
-
-
-def _parse_cached_datetime(value: Any) -> datetime | None:
-    """Parse cached ISO datetimes back into ``datetime`` objects."""
-    if not value:
-        return None
-    if isinstance(value, datetime):
-        return value
-    if isinstance(value, str):
-        try:
-            return datetime.fromisoformat(value)
-        except ValueError:
-            return None
-    return None
-
-
-def _parse_source_type(value: Any) -> SourceType:
-    """Parse a stored source type string back into the enum."""
-    if isinstance(value, SourceType):
-        return value
-    if isinstance(value, str):
-        try:
-            return SourceType(value)
-        except ValueError:
-            return SourceType.WEBSITE
-    return SourceType.WEBSITE
-
-
-def _looks_like_high_value_url(url: str) -> bool:
-    """Return whether a URL is worth bounded browser rendering."""
-    parsed = urlparse(url)
-    domain = parsed.netloc.lower()
-    path = parsed.path.lower()
-    if any(marker in domain for marker in _NEWS_DOMAIN_MARKERS):
-        return True
-    return any(
-        segment in path
-        for segment in (
-            "/news/",
-            "/article/",
-            "/articles/",
-            "/story/",
-            "/stories/",
-            "/local/",
-            "/politics/",
-            "/government/",
-        )
-    )
-
-
-def _looks_like_app_shell(html: str) -> bool:
-    """Return whether HTML looks like a JavaScript-rendered app shell."""
-    lower_html = html.lower()
-    if any(marker.lower() in lower_html for marker in _APP_SHELL_MARKERS):
-        return True
-    script_count = lower_html.count("<script")
-    visible_word_count = len(lower_html.replace("<", " ").replace(">", " ").split())
-    return script_count >= 3 and visible_word_count < 120
-
-
-def _looks_like_sparse_civic_roster(text: str) -> bool:
-    """Return whether extracted text kept offices but likely lost rendered names."""
-    lines = [line.strip() for line in text.splitlines() if line.strip()]
-    office_lines = [
-        line
-        for line in lines
-        if re.search(r"\b(mayor|council(?:man|woman)?|trustee|commissioner)\b", line, re.I)
-    ]
-    if len(office_lines) < 2:
-        return False
-    person_like_lines = [
-        line
-        for line in lines
-        if re.fullmatch(r"[A-Z][A-Za-z.'-]+(?:\s+[A-Z][A-Za-z.'-]+){1,4}", line)
-    ]
-    return len(person_like_lines) < 2
-
-
-def _coerce_discovered_links(value: Any) -> list[str]:
-    """Normalize cached discovered-link metadata into a string list."""
-    if isinstance(value, list):
-        return [str(item) for item in value if str(item)]
-    return []
-
-
-def _coerce_discovery_articles(value: Any) -> list[dict[str, Any]]:
-    """Normalize cached discovery-article metadata into record dictionaries."""
-    if not isinstance(value, list):
-        return []
-    return [item for item in value if isinstance(item, dict)]
-
-
-def _extract_pdf_content(data: bytes, *, url: str) -> ContentExtraction:
-    """Extract text from PDF bytes using pymupdf if available, otherwise skip."""
-    try:
-        import pymupdf  # type: ignore[import-not-found]
-    except ImportError:
-        logger.debug("pymupdf not installed — skipping PDF: %s", url)
-        return ContentExtraction(
-            page=None, reason="pdf_extraction_unavailable", discovered_links=[]
-        )
-
-    try:
-        doc = pymupdf.open(stream=data, filetype="pdf")
-        pages_text = [page.get_text() for page in doc]
-        text = "\n\n".join(pages_text).strip()
-        title = doc.metadata.get("title", "") or ""
-        doc.close()
-    except Exception as exc:
-        logger.debug("PDF extraction failed for %s: %s", url, exc)
-        return ContentExtraction(page=None, reason="pdf_extraction_failed", discovered_links=[])
-
-    from atlas_scout.scraper.extractor import content_quality_reason
-
-    quality_reason = content_quality_reason(text) if text else "content_below_min_words"
-    if quality_reason is not None:
-        return ContentExtraction(page=None, reason=quality_reason, discovered_links=[])
-
-    return ContentExtraction(
-        page=PageContent(
-            url=url,
-            text=text,
-            title=title,
-            source_type=SourceType.REPORT,
-        ),
-        reason=None,
-        discovered_links=[],
-    )

@@ -14,13 +14,13 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 from atlas_scout.scraper import fetcher as fetcher_module
-from atlas_scout.scraper.fetcher import (
-    AsyncFetcher,
-    _coerce_discovered_links,
-    _extract_pdf_content,
-    _parse_cached_datetime,
-    _parse_source_type,
+from atlas_scout.scraper.fetch_outcome import (
+    coerce_discovered_links,
+    parse_cached_datetime,
+    parse_source_type,
 )
+from atlas_scout.scraper.fetcher import AsyncFetcher
+from atlas_scout.scraper.pdf_extraction import extract_pdf_content
 
 
 @respx.mock
@@ -459,7 +459,7 @@ async def test_fetch_pdf_content_type_routes_to_pdf_extractor(
 
         return ContentExtraction(page=pdf_page, reason=None, discovered_links=[])
 
-    monkeypatch.setattr(fetcher_module, "_extract_pdf_content", fake_pdf)
+    monkeypatch.setattr(fetcher_module, "extract_pdf_content", fake_pdf)
     respx.get("https://example.com/doc.pdf").mock(
         return_value=httpx.Response(
             200,
@@ -686,28 +686,28 @@ async def test_fetch_polls_when_claim_status_not_inflight() -> None:
 
 
 def test_parse_cached_datetime_variants() -> None:
-    assert _parse_cached_datetime(None) is None
-    assert _parse_cached_datetime("") is None
+    assert parse_cached_datetime(None) is None
+    assert parse_cached_datetime("") is None
     when = datetime(2024, 1, 2, 3, 4, 5)  # noqa: DTZ001 — naive parser output
-    assert _parse_cached_datetime(when) == when
+    assert parse_cached_datetime(when) == when
     expected = datetime(2024, 1, 2, 3, 4, 5)  # noqa: DTZ001 — naive parser output
-    assert _parse_cached_datetime("2024-01-02T03:04:05") == expected
-    assert _parse_cached_datetime("not-a-date") is None
-    assert _parse_cached_datetime(12345) is None
+    assert parse_cached_datetime("2024-01-02T03:04:05") == expected
+    assert parse_cached_datetime("not-a-date") is None
+    assert parse_cached_datetime(12345) is None
 
 
 def test_parse_source_type_variants() -> None:
-    assert _parse_source_type(SourceType.NEWS_ARTICLE) == SourceType.NEWS_ARTICLE
-    assert _parse_source_type("website") == SourceType.WEBSITE
-    assert _parse_source_type("not-a-real-type") == SourceType.WEBSITE
-    assert _parse_source_type(None) == SourceType.WEBSITE
+    assert parse_source_type(SourceType.NEWS_ARTICLE) == SourceType.NEWS_ARTICLE
+    assert parse_source_type("website") == SourceType.WEBSITE
+    assert parse_source_type("not-a-real-type") == SourceType.WEBSITE
+    assert parse_source_type(None) == SourceType.WEBSITE
 
 
 def test_coerce_discovered_links_variants() -> None:
-    assert _coerce_discovered_links(["a", "b"]) == ["a", "b"]
-    assert _coerce_discovered_links(["a", "", None]) == ["a", "None"]
-    assert _coerce_discovered_links(None) == []
-    assert _coerce_discovered_links("not a list") == []
+    assert coerce_discovered_links(["a", "b"]) == ["a", "b"]
+    assert coerce_discovered_links(["a", "", None]) == ["a", "None"]
+    assert coerce_discovered_links(None) == []
+    assert coerce_discovered_links("not a list") == []
 
 
 # ----- PDF extractor helpers -----
@@ -715,7 +715,7 @@ def test_coerce_discovered_links_variants() -> None:
 
 def test_extract_pdf_content_no_pymupdf_returns_unavailable() -> None:
     # pymupdf is not installed in the test env — exercise the ImportError path directly.
-    result = _extract_pdf_content(b"data", url="https://example.com/x.pdf")
+    result = extract_pdf_content(b"data", url="https://example.com/x.pdf")
     assert result.page is None
     assert result.reason == "pdf_extraction_unavailable"
 
@@ -730,7 +730,7 @@ def test_extract_pdf_content_open_failure(monkeypatch: pytest.MonkeyPatch) -> No
     import sys
 
     monkeypatch.setitem(sys.modules, "pymupdf", fake_module)
-    result = _extract_pdf_content(b"data", url="https://example.com/x.pdf")
+    result = extract_pdf_content(b"data", url="https://example.com/x.pdf")
     assert result.page is None
     assert result.reason == "pdf_extraction_failed"
 
@@ -754,7 +754,7 @@ def test_extract_pdf_content_text_too_short(monkeypatch: pytest.MonkeyPatch) -> 
     import sys
 
     monkeypatch.setitem(sys.modules, "pymupdf", fake_module)
-    result = _extract_pdf_content(b"data", url="https://example.com/x.pdf")
+    result = extract_pdf_content(b"data", url="https://example.com/x.pdf")
     assert result.page is None
     assert result.reason == "content_below_min_words"
 
@@ -778,7 +778,7 @@ def test_extract_pdf_content_empty_text(monkeypatch: pytest.MonkeyPatch) -> None
     import sys
 
     monkeypatch.setitem(sys.modules, "pymupdf", fake_module)
-    result = _extract_pdf_content(b"data", url="https://example.com/x.pdf")
+    result = extract_pdf_content(b"data", url="https://example.com/x.pdf")
     assert result.page is None
     assert result.reason == "content_below_min_words"
 
@@ -804,7 +804,7 @@ def test_extract_pdf_content_success(monkeypatch: pytest.MonkeyPatch) -> None:
     import sys
 
     monkeypatch.setitem(sys.modules, "pymupdf", fake_module)
-    result = _extract_pdf_content(b"data", url="https://example.com/x.pdf")
+    result = extract_pdf_content(b"data", url="https://example.com/x.pdf")
     assert result.page is not None
     assert result.page.title == "Annual Report"
     assert result.page.source_type == SourceType.REPORT
@@ -831,6 +831,6 @@ def test_extract_pdf_content_missing_title_metadata(monkeypatch: pytest.MonkeyPa
     import sys
 
     monkeypatch.setitem(sys.modules, "pymupdf", fake_module)
-    result = _extract_pdf_content(b"data", url="https://example.com/x.pdf")
+    result = extract_pdf_content(b"data", url="https://example.com/x.pdf")
     assert result.page is not None
     assert result.page.title == ""
