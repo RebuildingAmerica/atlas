@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from http import HTTPStatus
 
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from atlas.main import create_app
+from atlas.domains.firehose.public import router as public_firehose_router
 
 PUBLIC_FIREHOSE_PROTOCOL = "atlas.firehose.public.v1"
 
@@ -53,7 +54,8 @@ async def test_public_firehose_events_stream_ready_signal_and_heartbeat(
 
 def test_public_firehose_socket_uses_public_subprotocol() -> None:
     """The public WebSocket should prove a live stream without auth."""
-    app = create_app()
+    app = FastAPI()
+    app.include_router(public_firehose_router, prefix="/api")
 
     with (
         TestClient(app) as client,
