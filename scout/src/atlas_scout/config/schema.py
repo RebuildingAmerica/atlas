@@ -84,7 +84,7 @@ class PipelineConfig(BaseModel):
     """Configuration for pipeline behavior (dedup, scoring, gap analysis)."""
 
     dedup_batch_size: int = 50
-    min_entry_score: float = 0.3
+    min_entry_score: float = 0.15
     gap_analysis: bool = True
     iterative_deepening: bool = False
     reuse_cached_extractions: bool = True

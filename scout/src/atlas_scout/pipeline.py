@@ -101,7 +101,7 @@ async def run_pipeline(
     store: ScoutStore,
     search_api_key: str = "",
     search_depth: str = "standard",
-    min_entry_score: float = 0.3,
+    min_entry_score: float = 0.15,
     reuse_cached_extractions: bool = True,
     fetcher: AsyncFetcher | None = None,
     direct_urls: list[str] | None = None,

@@ -22,7 +22,7 @@ def test_load_config_defaults():
     assert config.scraper.browser_render_timeout_ms == 15000
     assert config.scraper.max_browser_renders_per_run == 8
     assert config.scraper.max_browser_concurrent == 1
-    assert config.pipeline.min_entry_score == 0.3
+    assert config.pipeline.min_entry_score == 0.15
 
 
 def test_load_config_from_toml(tmp_path: Path):
