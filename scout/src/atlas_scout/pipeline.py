@@ -17,6 +17,7 @@ from atlas_shared import (
     RawEntry,
 )
 
+from atlas_scout.article_backlog import article_page_from_record
 from atlas_scout.pipeline_artifacts import (
     build_run_artifacts,
     can_build_run_artifacts,
@@ -39,7 +40,12 @@ from atlas_scout.pipeline_support import (
 )
 from atlas_scout.steps import source_fetch
 from atlas_scout.steps.discovery_engine_adapters import deduplicate_stream, rank_entries_stream
-from atlas_scout.steps.entry_extract import extract_page_entries
+from atlas_scout.steps.entry_extract import (
+    _build_system_prompt,
+    _prompt_key,
+    _provider_cache_key,
+    extract_page_entries,
+)
 from atlas_scout.steps.gap_analysis import analyze_gaps
 from atlas_scout.steps.query_gen import generate_queries
 from atlas_scout.steps.source_fetch import results_per_query_for_depth
@@ -56,6 +62,9 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 _STATUS_INTERVAL_SECONDS = 0.5
+_DEFAULT_LOCATION_TARGET_COUNT = 250
+_ARTICLE_BACKLOG_BATCH_LIMIT = 500
+_ARTICLE_EXTRACTION_LEASE_SECONDS = 600
 
 __all__ = ["_STATUS_INTERVAL_SECONDS", "PipelineResult", "_parse_location", "run_pipeline"]
 
@@ -106,8 +115,9 @@ async def run_pipeline(
     contribution_config: ContributionConfig | None = None,
     remote_run_id: str | None = None,
     structured_columns: list[str] | None = None,
+    target_count: int | None = None,
 ) -> PipelineResult:
-    """Run Scout discovery in search mode or direct-URL mode."""
+    """Run Scout discovery for known URLs or a place and issue set."""
     from atlas_scout.scraper.fetcher import AsyncFetcher as DefaultFetcher
 
     city, state = parse_location(location)
@@ -144,8 +154,15 @@ async def run_pipeline(
         "extract_active": 0,
         "pages_fetched": 0,
     }
+    effective_target_count = _effective_target_count(
+        target_count=target_count,
+        direct_mode=bool(direct_urls),
+    )
     phase = {"value": "starting"}
     status_stop = asyncio.Event()
+
+    def target_reached() -> bool:
+        return effective_target_count is not None and len(raw_entries) >= effective_target_count
 
     def emit(event: str, payload: dict[str, object]) -> None:
         if on_progress is None:
@@ -570,6 +587,142 @@ async def run_pipeline(
                 stats["extract_active"] -= 1
                 extract_queue.task_done()
 
+    async def process_article_backlog() -> int:
+        if direct_urls:
+            return 0
+
+        provider_key, prompt_key = _extraction_identity(
+            provider,
+            city=city,
+            state=state,
+            extraction_directive=extraction_directive,
+        )
+        processed = 0
+        while not target_reached():
+            claim_limit = _article_backlog_claim_limit(
+                target_count=effective_target_count,
+                current_entries=len(raw_entries),
+            )
+            article_rows = await store.claim_article_extraction_batch(
+                owner_run_id=run_id,
+                provider_key=provider_key,
+                prompt_key=prompt_key,
+                limit=claim_limit,
+                lease_seconds=_ARTICLE_EXTRACTION_LEASE_SECONDS,
+                retry_failed=not reuse_cached_extractions,
+            )
+            if not article_rows:
+                return processed
+
+            for article in article_rows:
+                if target_reached():
+                    return processed
+                article_url = str(article.get("url") or "")
+                if not article_url:
+                    continue
+                task_id = await store.create_page_task(run_id, article_url)
+                page_outcomes_by_task[task_id] = {
+                    "task_id": task_id,
+                    "url": article_url,
+                    "depth": 0,
+                    "status": "queued",
+                    "error": None,
+                    "entries": 0,
+                    "user_visible": True,
+                }
+                visible_page_tasks.add(task_id)
+                emit(
+                    "page_found",
+                    {
+                        "url": article_url,
+                        "depth": 0,
+                        "task_id": task_id,
+                    },
+                )
+
+                page = article_page_from_record(article)
+                if page is None:
+                    page = await _refetch_article_page(fetcher, article_url)
+                if page is None:
+                    reason = "article_text_unavailable"
+                    await store.update_page_task(task_id, "fetch_failed", error=reason)
+                    page_outcomes_by_task[task_id].update(status="fetch_failed", error=reason)
+                    await store.fail_article_extraction(
+                        article_url=article_url,
+                        provider_key=provider_key,
+                        prompt_key=prompt_key,
+                        error=reason,
+                    )
+                    continue
+
+                page = page.model_copy(update={"task_id": task_id})
+                remember_page(page)
+                stats["pages_fetched"] += 1
+                processed += 1
+                await store.update_page_task(task_id, "extracting")
+                page_outcomes_by_task[task_id]["status"] = "extracting"
+                try:
+                    entries = await extract_page_entries(
+                        page_with_structured_columns(page, structured_columns),
+                        provider,
+                        city,
+                        state,
+                        store=store,
+                        run_id=run_id,
+                        reuse_cached_extractions=reuse_cached_extractions,
+                        extraction_directive=extraction_directive,
+                    )
+                except Exception as exc:
+                    reason = error_reason(exc)
+                    await store.update_page_task(task_id, "extract_failed", error=reason)
+                    page_outcomes_by_task[task_id].update(status="extract_failed", error=reason)
+                    await store.fail_article_extraction(
+                        article_url=article_url,
+                        provider_key=provider_key,
+                        prompt_key=prompt_key,
+                        error=reason,
+                    )
+                    emit(
+                        "extract_failed",
+                        {
+                            "url": article_url,
+                            "task_id": task_id,
+                            "reason": reason,
+                        },
+                    )
+                    continue
+
+                raw_entries.extend(entries)
+                status = "extracted" if entries else "extract_empty"
+                await store.update_page_task(task_id, status, entries_extracted=len(entries))
+                page_outcomes_by_task[task_id].update(status=status, entries=len(entries))
+                await store.complete_article_extraction(
+                    article_url=article_url,
+                    provider_key=provider_key,
+                    prompt_key=prompt_key,
+                    entries_extracted=len(entries),
+                )
+                emit(
+                    "extract_completed" if entries else "extract_empty",
+                    {
+                        "url": article_url,
+                        "task_id": task_id,
+                        "entries": len(entries),
+                    },
+                )
+                for entry in entries:
+                    emit(
+                        "entity_found",
+                        {
+                            "url": article_url,
+                            "task_id": task_id,
+                            "name": entry.name,
+                            "entry_type": str(entry.entry_type),
+                        },
+                    )
+
+        return processed
+
     status_task: asyncio.Task[None] | None = None
     fetch_workers: list[asyncio.Task[None]] = []
     extract_workers: list[asyncio.Task[None]] = []
@@ -595,17 +748,25 @@ async def run_pipeline(
                         normalized, depth=0, seed_url=normalized, discovered_from=None
                     )
         else:
-            queries = generate_queries(city=city, state=state, issue_areas=issues)
-            queries_count = len(queries)
-            if not search_api_key:
-                raise ValueError("search_api_key is required in search mode")
-            await produce_search_frontier(
-                queries=[query.query for query in queries],
-                search_api_key=search_api_key,
-                enqueue=enqueue_url,
-                max_concurrent=search_concurrency or 8,
-                results_per_query=results_per_query_for_depth(search_depth),
-            )
+            phase["value"] = "article_backlog"
+            article_pages_processed = await process_article_backlog()
+            phase["value"] = "building_frontier"
+            if not target_reached():
+                if not search_api_key:
+                    if article_pages_processed == 0:
+                        raise ValueError(
+                            "Connect search or build a local article corpus before running by place and issue."
+                        )
+                else:
+                    queries = generate_queries(city=city, state=state, issue_areas=issues)
+                    queries_count = len(queries)
+                    await produce_search_frontier(
+                        queries=[query.query for query in queries],
+                        search_api_key=search_api_key,
+                        enqueue=enqueue_url,
+                        max_concurrent=search_concurrency or 8,
+                        results_per_query=results_per_query_for_depth(search_depth),
+                    )
 
         emit(
             "status",
@@ -694,9 +855,9 @@ async def run_pipeline(
                     await fetch_and_extract(url)
 
             # --- 2. LLM-driven follow-up queries ---
-            # Search mode raises earlier when search_api_key is empty, and deepening
-            # only runs in search mode. The assert documents that invariant.
-            assert search_api_key, "deepening only runs in search mode with a non-empty key"
+            # Iterative deepening needs connected search because it follows new
+            # source leads after the initial frontier has drained.
+            assert search_api_key, "iterative deepening requires a non-empty search key"
             emit("status", {"phase": "llm_query_gen"})
             followup_queries = await generate_followup_queries(
                 provider,
@@ -833,7 +994,7 @@ async def run_pipeline(
             await store.save_run_artifacts(run_id, artifacts)
         else:
             logger.info(
-                "Skipping artifact persistence for run %s because direct URL mode lacks canonical run metadata",
+                "Skipping artifact persistence for run %s because known-URL runs lack canonical run metadata",
                 run_id,
             )
 
@@ -923,6 +1084,46 @@ async def run_pipeline(
             close = getattr(fetcher, "close", None)
             if callable(close):
                 await close()
+
+
+def _extraction_identity(
+    provider: LLMProvider,
+    *,
+    city: str,
+    state: str,
+    extraction_directive: str | None = None,
+) -> tuple[str, str]:
+    """Return the provider/prompt identity used by extraction caching."""
+    system_prompt = _build_system_prompt(city, state, extraction_directive=extraction_directive)
+    return _provider_cache_key(provider), _prompt_key(system_prompt)
+
+
+def _effective_target_count(*, target_count: int | None, direct_mode: bool) -> int | None:
+    """Return the entry target for this run, if one should bound discovery."""
+    if target_count is not None and target_count > 0:
+        return target_count
+    if direct_mode:
+        return None
+    return _DEFAULT_LOCATION_TARGET_COUNT
+
+
+def _article_backlog_claim_limit(*, target_count: int | None, current_entries: int) -> int:
+    """Return how many article rows to claim for the next recovery batch."""
+    if target_count is None:
+        return _ARTICLE_BACKLOG_BATCH_LIMIT
+    remaining = max(target_count - current_entries, 0)
+    if remaining <= 0:
+        return 0
+    return min(_ARTICLE_BACKLOG_BATCH_LIMIT, remaining)
+
+
+async def _refetch_article_page(fetcher: AsyncFetcher, article_url: str) -> PageContent | None:
+    """Fetch an article page when the stored article row lacks usable text."""
+    fetch = getattr(fetcher, "fetch", None)
+    if not callable(fetch):
+        return None
+    page = await fetch(article_url)
+    return page if isinstance(page, PageContent) else None
 
 
 _parse_location = parse_location

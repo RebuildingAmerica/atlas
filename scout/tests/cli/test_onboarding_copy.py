@@ -35,10 +35,11 @@ def test_login_success_points_to_doctor_next() -> None:
     assert "scout doctor" in output
 
 
-def test_run_without_inputs_explains_discovery_modes() -> None:
-    """Run validation should describe direct URL and search-backed discovery modes."""
+def test_run_without_inputs_explains_run_inputs() -> None:
+    """Run validation should show the two useful ways to start a run."""
     result = CliRunner().invoke(main, ["run"])
 
     assert result.exit_code != 0
-    assert "Direct URL discovery" in result.output
-    assert "Search-backed discovery" in result.output
+    assert "Pass one or more URLs" in result.output
+    assert "--location" in result.output
+    assert "--issues" in result.output

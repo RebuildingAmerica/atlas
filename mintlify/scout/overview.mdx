@@ -4,9 +4,9 @@ description: "Run Atlas discovery locally, review source evidence, and sync sele
 ---
 
 Scout is the local Atlas discovery CLI. It can run on its own against public
-URLs, files of URLs, or search-backed place and issue queries. When connected to
-Atlas, it can sync reviewed local research into a public review flow or a
-private workspace.
+URLs, files of URLs, stored article corpora, or place and issue queries. When
+connected to Atlas, it can sync reviewed local research into a public review
+flow or a private workspace.
 
 Use Scout when you need local control over discovery: a specific city, a narrow
 research question, a repeatable script, or a reviewable source trail before
@@ -17,6 +17,8 @@ anything enters Atlas.
 - Fetches public sources and extracts possible civic actors.
 - Reads structured public resources such as CSV, TSV, pipe-delimited text, and
   ZIP files that contain those formats.
+- Extracts entries from stored news article corpora during normal
+  `scout run --location ... --issues ...` runs.
 - Follows same-domain links when configured.
 - Uses a local or configured model provider to structure results.
 - Stores local runs, pages, and entries in a local Scout database.
@@ -28,12 +30,13 @@ Scout is not only an Atlas API client. You can run local discovery without
 syncing anything. Atlas becomes useful when you want shared review, workspace
 visibility, or contribution receipts.
 
-## Standalone And Atlas-Connected Modes
+## Ways To Use Scout
 
-| Mode | Best for | Atlas account |
+| Workflow | Best for | Atlas account |
 | --- | --- | --- |
-| Local direct URL run | Inspecting known public pages and saving local artifacts. | Not required |
-| Local search-backed run | Finding sources for a place and issue set. | Not required, but a search key is required |
+| Known URLs | Inspecting known public pages and saving local artifacts. | Not required |
+| Stored article corpus | Turning dated article records into sourced people, organizations, initiatives, campaigns, and events. | Not required |
+| Place and issue discovery | Finding sources for a place and issue set. | Not required, but search connection is needed for new-source discovery |
 | Sync to Atlas | Moving reviewed local artifacts into Atlas review or a workspace. | Required |
 | Worker mode | Letting Atlas assign discovery jobs to this machine. | Required |
 
@@ -71,11 +74,11 @@ use case.
 </Card>
 
 <Card title="Run discovery" icon="terminal" href="/scout/run">
-  Run direct URL, file, and search-backed discovery.
+  Run URLs, files, article corpus recovery, and place-and-issue discovery.
 </Card>
 
 <Card title="Build article corpora" icon="newspaper" href="/scout/articles">
-  Collect dated news article records for review and later extraction.
+  Collect dated news article records that normal Scout runs can extract from.
 </Card>
 
 <Card title="Review and sync" icon="rotate" href="/scout/review-sync">

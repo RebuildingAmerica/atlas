@@ -1,11 +1,11 @@
 ---
 title: "Build article corpora with Scout"
-description: "Collect dated news article records for later source review and extraction."
+description: "Collect dated news article records that normal Scout runs can extract from."
 ---
 
 Scout can store a local article corpus separately from discovered entries. Use
-this when you need dated news records first, then want to review or mine those
-articles for people, organizations, and initiatives later.
+this when you need dated news records first, then want `scout run` to mine those
+articles for people, organizations, and initiatives.
 
 Article records are not Atlas profiles. They are source artifacts with a URL,
 title, publication date, source domain, provider id, provider metadata, and
@@ -45,7 +45,7 @@ scout articles import guardian \
 
 ## Crawl News Sites
 
-Use crawl mode when you have public news sitemaps, RSS feeds, Atom feeds, or
+Use the crawler when you have public news sitemaps, RSS feeds, Atom feeds, or
 article index pages and want Scout to discover article URLs itself:
 
 ```bash
@@ -71,6 +71,22 @@ Scout fetches ordinary HTML first. If browser fallback is enabled in the active
 Scout profile and the page looks useful but JavaScript-dependent, Scout may use
 bounded headless Chromium rendering through Playwright. `--browser-renders`
 sets the crawl-level render budget; use `0` for a no-browser crawl.
+
+## Extract From Stored Articles
+
+After a corpus exists, run the normal discovery command for the place and issue
+set you care about:
+
+```bash
+scout run \
+  --location "Las Vegas, NV" \
+  --issues housing_affordability,public_transit \
+  --target-count 250
+```
+
+Scout extracts from stored articles first. If the target has not been reached
+and search is connected, the same run can continue into new public-source
+discovery.
 
 ## Verify Coverage
 

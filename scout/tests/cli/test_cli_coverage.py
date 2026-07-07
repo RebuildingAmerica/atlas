@@ -326,12 +326,12 @@ def test_run_no_urls_no_search_key_errors(tmp_path: Path, monkeypatch: pytest.Mo
         },
     )
     assert result.exit_code != 0
-    assert "Direct URL discovery" in result.output
-    assert "Search-backed discovery" in result.output
-    assert "scout doctor" in result.output
+    assert "Pass one or more URLs" in result.output
+    assert "--location" in result.output
+    assert "--issues" in result.output
 
 
-def test_run_search_mode_missing_location(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_run_missing_location(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(cli_module, "load_config", lambda _path: _make_config(tmp_path))
     result = CliRunner().invoke(
         main,
@@ -344,10 +344,10 @@ def test_run_search_mode_missing_location(tmp_path: Path, monkeypatch: pytest.Mo
         ],
     )
     assert result.exit_code != 0
-    assert "--location is required" in result.output
+    assert "Pass one or more URLs" in result.output
 
 
-def test_run_search_mode_missing_issues(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_run_missing_issues(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(cli_module, "load_config", lambda _path: _make_config(tmp_path))
     result = CliRunner().invoke(
         main,

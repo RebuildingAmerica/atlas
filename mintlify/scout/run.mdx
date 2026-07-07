@@ -1,14 +1,19 @@
 ---
 title: "Run discovery with Scout"
-description: "Run direct URL, file, and search-backed local discovery."
+description: "Run URLs, files, article corpus recovery, and place-and-issue discovery."
 ---
 
 Scout runs discovery locally and stores the results on your machine. You can
 review them before deciding whether anything should sync to Atlas.
 
-## Direct URL Runs
+When you run by place and issue, Scout first checks the local article corpus for
+usable source text and turns those articles into normal source-linked entries. If
+the target has not been reached and search is connected, Scout then finds more
+public sources.
 
-Use direct URL mode when you already know which public source to inspect:
+## Known URLs
+
+Pass a public source when you already know what to inspect:
 
 ```bash
 scout run https://example.org/article
@@ -72,15 +77,28 @@ Structured public records may be historical. A row from an old archive is useful
 evidence, but it should not be treated as current contact, employment, role, or
 location information unless the source date and row context support that claim.
 
-## Search-Backed Runs
+## Place And Issue Runs
 
-Connect search first:
+Run against a place and issue set:
+
+```bash
+scout run \
+  --location "Las Vegas, NV" \
+  --issues housing_affordability,public_transit \
+  --target-count 250
+```
+
+If you have already built an article corpus with `scout articles crawl` or
+`scout articles import`, this command can extract entries from those stored
+articles without a search key.
+
+Connect search when you also want Scout to find new public sources:
 
 ```bash
 scout search connect
 ```
 
-Then run a place and issue search:
+Then run the same command:
 
 ```bash
 scout run \
@@ -88,13 +106,7 @@ scout run \
   --issues housing_affordability
 ```
 
-Use comma-separated issue area slugs:
-
-```bash
-scout run \
-  --location "Las Vegas, NV" \
-  --issues housing_affordability,public_transit
-```
+Use `--refresh` when you want Scout to ignore cached fetches and extractions.
 
 ## Crawl Controls
 

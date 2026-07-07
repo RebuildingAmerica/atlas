@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -10,7 +9,7 @@ import click
 
 from atlas_scout.auth_commands import _resolve_search_connection
 from atlas_scout.cli_common import _exit_with_error, _run_async
-from atlas_scout.cli_context import console, err_console
+from atlas_scout.cli_context import console
 from atlas_scout.cli_errors import CliError
 from atlas_scout.cli_progress import ProgressRenderer
 from atlas_scout.local_model_commands import (
@@ -72,7 +71,7 @@ def _runtime_profile_for_run(config: ScoutConfig, *, direct_mode: bool) -> Runti
     type=click.Choice(["standard", "deep"]),
     default="standard",
     show_default=True,
-    help="Discovery depth (search mode).",
+    help="Discovery depth for place and issue runs.",
 )
 @click.option(
     "--search-api-key",
@@ -119,7 +118,13 @@ def _runtime_profile_for_run(config: ScoutConfig, *, direct_mode: bool) -> Runti
     default=None,
     help="Sync canonical run artifacts to Atlas after the run finishes.",
 )
-@click.option("--quiet", "-q", is_flag=True, help="Headless mode — suppress progress.")
+@click.option(
+    "--target-count",
+    type=click.IntRange(1),
+    default=None,
+    help="Target confirmed entries for a location run.",
+)
+@click.option("--quiet", "-q", is_flag=True, help="Suppress progress output.")
 @click.pass_context
 def run(
     ctx: click.Context,
@@ -140,6 +145,7 @@ def run(
     structured_columns: str | None,
     verbose_progress: bool,
     sync_after_run: bool | None,
+    target_count: int | None,
     quiet: bool,
 ) -> None:
     """Run a discovery pipeline.
@@ -152,7 +158,7 @@ def run(
     Focus the extraction:
         scout run --prompt "Find free legal aid orgs" https://example.com
     \b
-    Search mode:
+    Discover by place and issue:
         scout search connect
         scout run --location "Austin, TX" --issues housing_affordability
     """
@@ -190,24 +196,25 @@ def run(
     resolved_search_key = search_api_key
     if not url_list:
         resolved_search_key = _resolve_search_connection(search_api_key)
-        if not resolved_search_key:
-            err_console.print(
-                "[bold]Direct URL discovery[/]\n"
-                "  scout run <url> [<url> ...]\n"
-                "  scout run -f urls.txt\n\n"
-                "[bold]Search-backed discovery[/]\n"
-                "  scout search connect\n"
-                "  scout run --location 'City, ST' --issues <slugs>\n\n"
-                "Run `scout doctor` to check model, search, sync, and local data readiness."
-            )
-            sys.exit(1)
         if not location:
             _exit_with_error(
-                CliError(title="Missing option", message="--location is required for search mode.")
+                CliError(
+                    title="Missing input",
+                    message="Pass one or more URLs, or pass --location with --issues.",
+                    hint=(
+                        "Examples: scout run https://example.org/article | "
+                        'scout run --location "Austin, TX" --issues housing_affordability. '
+                        "Run `scout search connect` when you want Scout to find new sources."
+                    ),
+                )
             )
         if not issue_list:
             _exit_with_error(
-                CliError(title="Missing option", message="--issues is required for search mode.")
+                CliError(
+                    title="Missing option",
+                    message="--issues is required with --location.",
+                    hint='Example: scout run --location "Austin, TX" --issues housing_affordability',
+                )
             )
 
     try:
@@ -248,6 +255,7 @@ def run(
             structured_columns=structured_column_list,
             verbose_progress=verbose_progress,
             sync_after_run=sync_after_run,
+            target_count=target_count,
         )
     )
 
@@ -266,6 +274,7 @@ async def _run_pipeline(
     verbose_progress: bool = False,
     sync_after_run: bool | None = None,
     sync_remote_run_id: str | None = None,
+    target_count: int | None = None,
 ) -> None:
     """Create infrastructure, run the pipeline, print results."""
     from atlas_scout.pipeline import run_pipeline
@@ -305,28 +314,32 @@ async def _run_pipeline(
     progress = ProgressRenderer(console=console, quiet=quiet, verbose=verbose_progress)
 
     try:
-        result = await run_pipeline(
-            location=location,
-            issues=issues,
-            provider=provider,
-            store=store,
-            search_api_key=search_api_key or "",
-            search_depth=depth,
-            min_entry_score=config.pipeline.min_entry_score,
-            reuse_cached_extractions=config.pipeline.reuse_cached_extractions and not refresh,
-            fetcher=fetcher,
-            direct_urls=direct_urls,
-            on_progress=progress.emit,
-            extraction_directive=directive,
-            search_concurrency=profile.search_concurrency,
-            follow_links=config.scraper.follow_links,
-            max_link_depth=config.scraper.max_link_depth,
-            max_pages_per_seed=config.scraper.max_pages_per_seed,
-            iterative_deepening=config.pipeline.iterative_deepening,
-            contribution_config=config.contribution,
-            remote_run_id=sync_remote_run_id,
-            structured_columns=structured_columns,
-        )
+        try:
+            result = await run_pipeline(
+                location=location,
+                issues=issues,
+                provider=provider,
+                store=store,
+                search_api_key=search_api_key or "",
+                search_depth=depth,
+                min_entry_score=config.pipeline.min_entry_score,
+                reuse_cached_extractions=config.pipeline.reuse_cached_extractions and not refresh,
+                fetcher=fetcher,
+                direct_urls=direct_urls,
+                on_progress=progress.emit,
+                extraction_directive=directive,
+                search_concurrency=profile.search_concurrency,
+                follow_links=config.scraper.follow_links,
+                max_link_depth=config.scraper.max_link_depth,
+                max_pages_per_seed=config.scraper.max_pages_per_seed,
+                iterative_deepening=config.pipeline.iterative_deepening,
+                contribution_config=config.contribution,
+                remote_run_id=sync_remote_run_id,
+                structured_columns=structured_columns,
+                target_count=target_count,
+            )
+        except ValueError as exc:
+            _exit_with_error(CliError(title="Run could not start", message=str(exc)))
     finally:
         await _close_if_supported(fetcher)
         await _close_if_supported(provider)

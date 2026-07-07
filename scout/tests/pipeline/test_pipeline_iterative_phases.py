@@ -485,14 +485,11 @@ async def test_run_pipeline_iterative_deepening_skips_followup_results_with_none
 async def test_run_pipeline_iterative_deepening_no_search_api_key_skips_followup(
     monkeypatch: pytest.MonkeyPatch, tmp_db_path: Path
 ) -> None:
-    """When entered via direct_urls=None and no search_api_key, deepening still runs
-    but skips the followup-search phase. NOTE: The pipeline raises before deepening
-    when search mode + no api key — so to exercise the no-api-key branch within
-    deepening, we need to provide a key for initial search and then clear it."""
+    """Document why the no-search-key deepening branch is not directly reachable."""
     # The simpler way to reach `if search_api_key:` False inside deepening is to
     # call run_pipeline in direct-url mode while iterative_deepening=True. But
     # the pipeline gates deepening on `not direct_urls`, so direct-url mode skips
     # deepening entirely. The only practical exercise of `if search_api_key:` False
-    # is via search mode with empty key — which raises before the deepening block.
+    # is via a place/issue run with an empty key, which raises before deepening.
     # So this branch is exercised by no test today; record the constraint as a
     # placeholder so future maintainers see why.

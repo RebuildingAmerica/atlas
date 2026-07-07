@@ -569,13 +569,15 @@ async def test_run_pipeline_skips_malformed_search_results(
 
 
 @pytest.mark.asyncio
-async def test_run_pipeline_search_mode_requires_api_key(tmp_db_path: Path) -> None:
+async def test_run_pipeline_place_issue_run_requires_search_or_local_articles(
+    tmp_db_path: Path,
+) -> None:
     from atlas_scout.store import ScoutStore
 
     store = ScoutStore(str(tmp_db_path))
     await store.initialize()
 
-    with pytest.raises(ValueError, match="search_api_key is required in search mode"):
+    with pytest.raises(ValueError, match="Connect search or build a local article corpus"):
         await run_pipeline(
             location="Austin, TX",
             issues=["housing_affordability"],

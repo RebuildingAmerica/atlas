@@ -43,6 +43,7 @@ def test_cli_run_help():
     result = CliRunner().invoke(main, ["run", "--help"])
     assert result.exit_code == 0
     assert "--location" in result.output
+    assert "--target-count" in result.output
 
 
 def test_cli_runs_list_help():
@@ -107,6 +108,8 @@ def test_cli_run_missing_api_key_exits_nonzero():
         catch_exceptions=False,
     )
     assert result.exit_code != 0
+    assert "Run could not start" in result.output
+    assert "Connect search or build a local article corpus" in result.output
 
 
 # ---------------------------------------------------------------------------

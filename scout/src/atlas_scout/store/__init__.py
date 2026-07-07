@@ -13,6 +13,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from atlas_scout.sqlite_retry import run_sqlite_write
+from atlas_scout.store.article_extractions_repo import ArticleExtractionRepository
 from atlas_scout.store.article_frontier_repo import ArticleFrontierRepository
 from atlas_scout.store.articles_repo import ArticleRepository
 from atlas_scout.store.daemon_repo import DaemonStateRepository
@@ -46,6 +47,7 @@ class ScoutStore:
         self._work_claims = WorkClaimsRepository(self._db, run_status_lookup=self._runs.run_status)
         self._entries = EntryRepository(self._db)
         self._articles = ArticleRepository(self._db)
+        self._article_extractions = ArticleExtractionRepository(self._db)
         self._article_frontier = ArticleFrontierRepository(self._db)
 
     async def initialize(self, *, create_schema: bool = True) -> None:
@@ -63,6 +65,7 @@ class ScoutStore:
             await self._page_tasks.ensure_schema()
             await self._entries.ensure_schema()
             await self._articles.ensure_schema()
+            await self._article_extractions.ensure_schema()
             await self._article_frontier.ensure_schema()
             await self._extraction_cache.ensure_schema()
             await self._work_claims.ensure_schema()
@@ -316,6 +319,58 @@ class ScoutStore:
     async def dedupe_articles_by_title_date(self, *, dry_run: bool) -> dict[str, int | bool]:
         """Delete duplicate article rows sharing the same normalized title and timestamp."""
         return await self._articles.dedupe_articles_by_title_date(dry_run=dry_run)
+
+    async def claim_article_extraction_batch(
+        self,
+        *,
+        owner_run_id: str,
+        provider_key: str,
+        prompt_key: str,
+        limit: int,
+        lease_seconds: int = 600,
+        retry_failed: bool = False,
+    ) -> list[dict[str, Any]]:
+        """Lease stored article rows for entry extraction."""
+        return await self._article_extractions.claim_article_extraction_batch(
+            owner_run_id=owner_run_id,
+            provider_key=provider_key,
+            prompt_key=prompt_key,
+            limit=limit,
+            lease_seconds=lease_seconds,
+            retry_failed=retry_failed,
+        )
+
+    async def complete_article_extraction(
+        self,
+        *,
+        article_url: str,
+        provider_key: str,
+        prompt_key: str,
+        entries_extracted: int,
+    ) -> None:
+        """Mark a stored article as processed for a provider and prompt."""
+        await self._article_extractions.complete_article_extraction(
+            article_url=article_url,
+            provider_key=provider_key,
+            prompt_key=prompt_key,
+            entries_extracted=entries_extracted,
+        )
+
+    async def fail_article_extraction(
+        self,
+        *,
+        article_url: str,
+        provider_key: str,
+        prompt_key: str,
+        error: str,
+    ) -> None:
+        """Mark a stored article extraction attempt as failed."""
+        await self._article_extractions.fail_article_extraction(
+            article_url=article_url,
+            provider_key=provider_key,
+            prompt_key=prompt_key,
+            error=error,
+        )
 
     # ------------------------------------------------------------------
     # Article frontier
