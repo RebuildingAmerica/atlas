@@ -2,22 +2,9 @@
 
 from __future__ import annotations
 
-import asyncio
 from datetime import date
-from typing import TYPE_CHECKING, Any
 
 import click
-
-if TYPE_CHECKING:
-    from collections.abc import Coroutine
-
-
-def run_async[AsyncResult](coro: Coroutine[Any, Any, AsyncResult]) -> AsyncResult:
-    """Run an async article command through Scout's interrupt boundary."""
-    try:
-        return asyncio.run(coro)
-    except KeyboardInterrupt as exc:
-        raise click.Abort from exc
 
 
 def parse_date_option(value: str, *, option_name: str) -> date:

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import csv
 import io
 import json
@@ -14,22 +13,13 @@ from typing import TYPE_CHECKING, Any
 import click
 from rich.table import Table
 
+from atlas_scout.cli_common import _run_async
 from atlas_scout.cli_context import console
 
 if TYPE_CHECKING:
-    from collections.abc import Coroutine
-
     from atlas_scout.config import ScoutConfig
 
 __all__ = ["entries", "entries_purge_command", "entries_stats_command", "export_group"]
-
-
-def _run_async[AsyncResult](coro: Coroutine[Any, Any, AsyncResult]) -> AsyncResult:
-    """Run an async entry command through Scout's interrupt boundary."""
-    try:
-        return asyncio.run(coro)
-    except KeyboardInterrupt as exc:
-        raise click.Abort from exc
 
 
 async def entries_stats_command(

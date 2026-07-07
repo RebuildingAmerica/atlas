@@ -6,12 +6,9 @@ from typing import TYPE_CHECKING
 
 import click
 
-from atlas_scout.article_command_support import (
-    article_crawl_seed_urls,
-    parse_date_option,
-    run_async,
-)
+from atlas_scout.article_command_support import article_crawl_seed_urls, parse_date_option
 from atlas_scout.article_crawl_runner import run_article_crawl
+from atlas_scout.cli_common import _run_async
 
 if TYPE_CHECKING:
     from datetime import date
@@ -107,7 +104,7 @@ def crawl(
     to_date = _parse_optional_date(to_date_value, option_name="to-date")
     if from_date is not None and to_date is not None and from_date > to_date:
         raise click.ClickException("--from-date must be on or before --to-date.")
-    run_async(
+    _run_async(
         run_article_crawl(
             config,
             seed_urls=seeds,

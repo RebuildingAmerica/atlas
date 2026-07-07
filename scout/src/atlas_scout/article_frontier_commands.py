@@ -6,11 +6,7 @@ from typing import TYPE_CHECKING
 
 import click
 
-from atlas_scout.article_command_support import (
-    article_crawl_seed_urls,
-    parse_date_option,
-    run_async,
-)
+from atlas_scout.article_command_support import article_crawl_seed_urls, parse_date_option
 from atlas_scout.article_frontier_expand import expand_frontier
 from atlas_scout.article_frontier_runtime import (
     release_frontier_claims,
@@ -18,6 +14,7 @@ from atlas_scout.article_frontier_runtime import (
     seed_frontier,
     show_frontier_stats,
 )
+from atlas_scout.cli_common import _run_async
 
 if TYPE_CHECKING:
     from datetime import date
@@ -36,7 +33,7 @@ def frontier() -> None:
 def stats(ctx: click.Context, json_output: bool) -> None:
     """Show pending, fetched, and skipped article frontier counts."""
     config: ScoutConfig = ctx.obj["config"]
-    run_async(show_frontier_stats(config, json_output=json_output))
+    _run_async(show_frontier_stats(config, json_output=json_output))
 
 
 @frontier.command("release-claims")
@@ -48,7 +45,7 @@ def stats(ctx: click.Context, json_output: bool) -> None:
 def release_claims(ctx: click.Context, worker_id: str, json_output: bool) -> None:
     """Release unfinished article frontier claims for a stopped worker."""
     config: ScoutConfig = ctx.obj["config"]
-    run_async(
+    _run_async(
         release_frontier_claims(
             config,
             worker_id=worker_id,
@@ -68,7 +65,7 @@ def reprioritize(
 ) -> None:
     """Re-score pending frontier URLs so resume crawls fetch likely articles first."""
     config: ScoutConfig = ctx.obj["config"]
-    run_async(
+    _run_async(
         reprioritize_frontier(
             config,
             limit=limit,
@@ -132,7 +129,7 @@ def expand(
     to_date = _parse_optional_date(to_date_value, option_name="to-date")
     if from_date is not None and to_date is not None and from_date > to_date:
         raise click.ClickException("--from-date must be on or before --to-date.")
-    run_async(
+    _run_async(
         expand_frontier(
             config,
             limit=limit,
@@ -172,7 +169,7 @@ def seed(
     seeds = article_crawl_seed_urls(seed_urls, seed_file)
     if not seeds:
         raise click.ClickException("Provide at least one --seed or --seed-file URL.")
-    run_async(seed_frontier(config, seed_urls=seeds, json_output=json_output))
+    _run_async(seed_frontier(config, seed_urls=seeds, json_output=json_output))
 
 
 def _parse_optional_date(value: str | None, *, option_name: str) -> date | None:

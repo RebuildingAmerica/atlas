@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 import click
 
-from atlas_scout.article_command_support import parse_date_option, run_async
+from atlas_scout.article_command_support import parse_date_option
 from atlas_scout.article_stats_runtime import (
     dedupe_articles,
     prune_article_quality,
@@ -15,6 +15,7 @@ from atlas_scout.article_stats_runtime import (
     show_article_status,
 )
 from atlas_scout.article_verification import verify_articles
+from atlas_scout.cli_common import _run_async
 
 if TYPE_CHECKING:
     from datetime import date
@@ -55,7 +56,7 @@ def stats(
         if to_date_value is not None
         else None
     )
-    run_async(
+    _run_async(
         show_article_stats(
             config,
             json_output=json_output,
@@ -74,7 +75,7 @@ def stats(
 def status(ctx: click.Context, json_output: bool) -> None:
     """Show fast live article and frontier counts."""
     config: ScoutConfig = ctx.obj["config"]
-    run_async(show_article_status(config, json_output=json_output))
+    _run_async(show_article_status(config, json_output=json_output))
 
 
 @click.command("verify")
@@ -133,7 +134,7 @@ def verify(
         and published_from > published_through
     ):
         raise click.ClickException("--published-from must be on or before --published-through.")
-    run_async(
+    _run_async(
         verify_articles(
             config,
             json_output=json_output,
@@ -158,7 +159,7 @@ def verify(
 def dedupe(ctx: click.Context, yes: bool, json_output: bool) -> None:
     """Remove duplicate article rows with the same title and publication timestamp."""
     config: ScoutConfig = ctx.obj["config"]
-    run_async(dedupe_articles(config, dry_run=not yes, json_output=json_output))
+    _run_async(dedupe_articles(config, dry_run=not yes, json_output=json_output))
 
 
 @click.command("prune-quality")
@@ -174,7 +175,7 @@ def prune_quality(
 ) -> None:
     """Prune article rows that fail selected quality gates."""
     config: ScoutConfig = ctx.obj["config"]
-    run_async(
+    _run_async(
         prune_article_quality(
             config,
             dry_run=not yes,
@@ -190,7 +191,7 @@ def prune_quality(
 def refresh_mentions(ctx: click.Context, json_output: bool) -> None:
     """Recompute stored article mention candidates from local article text fields."""
     config: ScoutConfig = ctx.obj["config"]
-    run_async(refresh_article_mentions(config, json_output=json_output))
+    _run_async(refresh_article_mentions(config, json_output=json_output))
 
 
 def _parse_optional_date(value: str | None, *, option_name: str) -> date | None:

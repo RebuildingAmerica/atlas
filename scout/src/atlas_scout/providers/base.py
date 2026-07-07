@@ -31,10 +31,19 @@ class LLMProvider(Protocol):
         """Maximum number of concurrent requests the provider supports."""
         ...  # pragma: no cover
 
+    @property
+    def cache_identity(self) -> str:
+        """Stable cache key fragment for reuse of extraction results."""
+        ...  # pragma: no cover
+
     async def complete(
         self,
         messages: list[Message],
         response_schema: type[BaseModel] | None = None,
     ) -> Completion:
         """Send a list of messages to the LLM and return a Completion."""
+        ...  # pragma: no cover
+
+    async def aclose(self) -> None:
+        """Release provider-held resources such as an open HTTP client."""
         ...  # pragma: no cover

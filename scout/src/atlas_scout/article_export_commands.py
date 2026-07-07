@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, Any
 
 import click
 
-from atlas_scout.article_command_support import run_async
+from atlas_scout.cli_common import _run_async
 from atlas_scout.cli_context import console
 
 if TYPE_CHECKING:
@@ -61,7 +61,7 @@ def export(
 ) -> None:
     """Export stored article records."""
     config: ScoutConfig = ctx.obj["config"]
-    run_async(
+    _run_async(
         export_articles(
             config,
             output_format=output_format,

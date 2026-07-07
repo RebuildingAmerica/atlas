@@ -10,8 +10,9 @@ from typing import TYPE_CHECKING, Any
 
 import click
 
-from atlas_scout.article_command_support import parse_date_option, run_async
+from atlas_scout.article_command_support import parse_date_option
 from atlas_scout.article_records import guardian_articles_from_response
+from atlas_scout.cli_common import _run_async
 from atlas_scout.cli_context import console
 
 if TYPE_CHECKING:
@@ -54,7 +55,7 @@ def guardian(
     config: ScoutConfig = ctx.obj["config"]
     from_date = parse_date_option(from_date_value, option_name="from-date")
     to_date = parse_date_option(to_date_value, option_name="to-date")
-    run_async(
+    _run_async(
         import_guardian_articles(
             config,
             api_key=api_key,
