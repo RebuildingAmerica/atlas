@@ -6,7 +6,6 @@ import asyncio
 import contextlib
 from typing import TYPE_CHECKING
 
-from atlas_scout.cli_common import ScoutSyncError
 from atlas_scout.pipeline_commands import _run_pipeline
 from atlas_scout.worker.api_client import (
     _worker_api_token,
@@ -14,6 +13,7 @@ from atlas_scout.worker.api_client import (
     _worker_fail_job,
     _worker_heartbeat_job,
 )
+from atlas_scout.worker.errors import WorkerJobError
 from atlas_scout.worker.state import _now_iso, _write_worker_state
 
 if TYPE_CHECKING:
@@ -25,7 +25,7 @@ def _worker_job_issues(job: dict[str, object]) -> list[str]:
     """Return issue slugs from a worker job payload."""
     raw_issues = job.get("issue_areas")
     if not isinstance(raw_issues, list) or not all(isinstance(item, str) for item in raw_issues):
-        raise ScoutSyncError("Atlas worker job is missing issue areas.")
+        raise WorkerJobError("Atlas worker job is missing issue areas.")
     return list(raw_issues)
 
 
@@ -33,7 +33,7 @@ def _worker_job_execution_mode(job: dict[str, object]) -> str:
     """Return the worker execution mode for a claimed job."""
     raw_mode = job.get("execution_mode", "search")
     if raw_mode not in {"search", "direct_url"}:
-        raise ScoutSyncError(f"Unsupported Atlas worker job mode: {raw_mode}")
+        raise WorkerJobError(f"Unsupported Atlas worker job mode: {raw_mode}")
     return str(raw_mode)
 
 
@@ -41,13 +41,13 @@ def _worker_job_direct_urls(job: dict[str, object]) -> list[str]:
     """Return seed URLs from a direct-URL worker job payload."""
     payload = job.get("input_payload")
     if not isinstance(payload, dict):
-        raise ScoutSyncError("Atlas direct-URL job is missing input payload.")
+        raise WorkerJobError("Atlas direct-URL job is missing input payload.")
     raw_urls = payload.get("direct_urls")
     if not isinstance(raw_urls, list) or not all(isinstance(url, str) for url in raw_urls):
-        raise ScoutSyncError("Atlas direct-URL job is missing direct URLs.")
+        raise WorkerJobError("Atlas direct-URL job is missing direct URLs.")
     urls = [url.strip() for url in raw_urls if url.strip()]
     if not urls:
-        raise ScoutSyncError("Atlas direct-URL job has no usable direct URLs.")
+        raise WorkerJobError("Atlas direct-URL job has no usable direct URLs.")
     return urls
 
 

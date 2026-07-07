@@ -16,6 +16,7 @@ from atlas_scout.worker.api_client import (
     _worker_heartbeat_job,
     _worker_post,
 )
+from atlas_scout.worker.errors import WorkerJobError
 from atlas_scout.worker.job import (
     _worker_heartbeat_loop,
     _worker_job_direct_urls,
@@ -42,6 +43,7 @@ from atlas_scout.worker.state import (
 
 __all__ = [
     "WORKER_STATE_PATH",
+    "WorkerJobError",
     "_now_iso",
     "_read_worker_state",
     "_resolve_optional_worker_search_key",

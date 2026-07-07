@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, cast
 
 from atlas_scout.auth import DeviceAuthClient
 from atlas_scout.auth_commands import _default_worker_name
-from atlas_scout.cli_common import ScoutSyncError
+from atlas_scout.worker.errors import WorkerJobError
 
 if TYPE_CHECKING:
     from atlas_scout.auth import ScoutSession, UploadTarget
@@ -50,10 +50,10 @@ async def _worker_post(
             json=payload,
         )
     if response.is_error:
-        raise ScoutSyncError(f"Atlas worker API failed: HTTP {response.status_code}")
+        raise WorkerJobError(f"Atlas worker API failed: HTTP {response.status_code}")
     body = response.json()
     if not isinstance(body, dict):
-        raise ScoutSyncError("Atlas worker API returned an invalid response.")
+        raise WorkerJobError("Atlas worker API returned an invalid response.")
     return cast("dict[str, object]", body)
 
 
@@ -80,7 +80,7 @@ async def _worker_claim_job(
     if job is None:
         return None
     if not isinstance(job, dict):
-        raise ScoutSyncError("Atlas worker claim returned an invalid job.")
+        raise WorkerJobError("Atlas worker claim returned an invalid job.")
     return cast("dict[str, object]", job)
 
 
