@@ -260,6 +260,114 @@
         "title": "AnnotationUpdateRequest",
         "type": "object"
       },
+      "AtprotoIdentityLinkRequest": {
+        "description": "Persist a DID-backed ATProto identity linked by the authenticated user.",
+        "properties": {
+          "current_handle": {
+            "description": "current handle for this atproto identity link.",
+            "title": "Current Handle",
+            "type": "string"
+          },
+          "did": {
+            "description": "did for this atproto identity link.",
+            "title": "Did",
+            "type": "string"
+          },
+          "pds_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "pds url for this atproto identity link.",
+            "title": "Pds Url"
+          }
+        },
+        "required": [
+          "did",
+          "current_handle"
+        ],
+        "title": "AtprotoIdentityLinkRequest",
+        "type": "object"
+      },
+      "AtprotoIdentityResponse": {
+        "description": "DID-backed ATProto identity linked to the authenticated user.",
+        "properties": {
+          "created_at": {
+            "description": "created at for this atproto identity.",
+            "title": "Created At",
+            "type": "string"
+          },
+          "current_handle": {
+            "description": "current handle for this atproto identity.",
+            "title": "Current Handle",
+            "type": "string"
+          },
+          "did": {
+            "description": "did for this atproto identity.",
+            "title": "Did",
+            "type": "string"
+          },
+          "did_resolved_at": {
+            "description": "did resolved at for this atproto identity.",
+            "title": "Did Resolved At",
+            "type": "string"
+          },
+          "handle_verified_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "handle verified at for this atproto identity.",
+            "title": "Handle Verified At"
+          },
+          "id": {
+            "description": "id for this atproto identity.",
+            "title": "Id",
+            "type": "string"
+          },
+          "pds_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "pds url for this atproto identity.",
+            "title": "Pds Url"
+          },
+          "updated_at": {
+            "description": "updated at for this atproto identity.",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "user_id": {
+            "description": "user id for this atproto identity.",
+            "title": "User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "user_id",
+          "did",
+          "current_handle",
+          "did_resolved_at",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "AtprotoIdentityResponse",
+        "type": "object"
+      },
       "ClaimEvidence": {
         "description": "Evidence metadata for one visible profile claim.",
         "properties": {
@@ -9547,9 +9655,142 @@
         "title": "ProfileAnswers",
         "type": "object"
       },
-      "ProfileClaimRequest": {
-        "description": "Initiate a claim for a profile.",
+      "ProfileAtprotoRevalidationResponse": {
+        "description": "Result from rechecking linked ATProto profile identities.",
         "properties": {
+          "checked": {
+            "description": "checked for this profile atproto revalidation.",
+            "title": "Checked",
+            "type": "integer"
+          },
+          "cleared": {
+            "description": "cleared for this profile atproto revalidation.",
+            "title": "Cleared",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "checked",
+          "cleared"
+        ],
+        "title": "ProfileAtprotoRevalidationResponse",
+        "type": "object"
+      },
+      "ProfileClaimProofRequest": {
+        "description": "Request body for a profile verification proof check.",
+        "properties": {
+          "txt_records": {
+            "description": "txt records for this profile claim proof.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Txt Records",
+            "type": "array"
+          }
+        },
+        "title": "ProfileClaimProofRequest",
+        "type": "object"
+      },
+      "ProfileClaimProofResponse": {
+        "description": "One proof record supporting a profile verification decision.",
+        "properties": {
+          "created_at": {
+            "description": "created at for this profile claim proof.",
+            "title": "Created At",
+            "type": "string"
+          },
+          "expires_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "expires at for this profile claim proof.",
+            "title": "Expires At"
+          },
+          "id": {
+            "description": "id for this profile claim proof.",
+            "title": "Id",
+            "type": "string"
+          },
+          "metadata": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "description": "metadata for this profile claim proof.",
+            "title": "Metadata"
+          },
+          "proof_status": {
+            "description": "proof status for this profile claim proof.",
+            "title": "Proof Status",
+            "type": "string"
+          },
+          "proof_summary": {
+            "description": "proof summary for this profile claim proof.",
+            "title": "Proof Summary",
+            "type": "string"
+          },
+          "proof_type": {
+            "description": "proof type for this profile claim proof.",
+            "title": "Proof Type",
+            "type": "string"
+          },
+          "reviewed_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "reviewed at for this profile claim proof.",
+            "title": "Reviewed At"
+          }
+        },
+        "required": [
+          "id",
+          "proof_type",
+          "proof_status",
+          "proof_summary",
+          "created_at"
+        ],
+        "title": "ProfileClaimProofResponse",
+        "type": "object"
+      },
+      "ProfileClaimRequest": {
+        "description": "Start profile verification.",
+        "properties": {
+          "atproto_identity_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "DID-backed ATProto identity linked by the authenticated user.",
+            "title": "Atproto Identity Id"
+          },
+          "dns_domain": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Organization domain verified with an Atlas TXT record.",
+            "title": "Dns Domain"
+          },
           "evidence": {
             "anyOf": [
               {
@@ -9609,13 +9850,19 @@
             ],
             "description": "requested changes for this profile claim.",
             "title": "Requested Changes"
+          },
+          "use_active_workspace": {
+            "default": false,
+            "description": "Use the authenticated active workspace as organization-admin proof.",
+            "title": "Use Active Workspace",
+            "type": "boolean"
           }
         },
         "title": "ProfileClaimRequest",
         "type": "object"
       },
       "ProfileClaimResponse": {
-        "description": "Profile-claim resource.",
+        "description": "Profile verification resource.",
         "properties": {
           "created_at": {
             "description": "created at for this profile claim.",
@@ -9658,6 +9905,50 @@
             "description": "id for this profile claim.",
             "title": "Id",
             "type": "string"
+          },
+          "linked_atproto_did": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "linked atproto did for this profile claim.",
+            "title": "Linked Atproto Did"
+          },
+          "linked_atproto_handle": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "linked atproto handle for this profile claim.",
+            "title": "Linked Atproto Handle"
+          },
+          "linked_atproto_verified_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "linked atproto verified at for this profile claim.",
+            "title": "Linked Atproto Verified At"
+          },
+          "proofs": {
+            "description": "proofs for this profile claim.",
+            "items": {
+              "$ref": "#/components/schemas/ProfileClaimProofResponse"
+            },
+            "title": "Proofs",
+            "type": "array"
           },
           "rejected_reason": {
             "anyOf": [
@@ -9723,6 +10014,48 @@
         "title": "ProfileClaimResponse",
         "type": "object"
       },
+      "ProfileClaimReviewDecisionRequest": {
+        "description": "Reviewer decision payload for a pending profile verification.",
+        "properties": {
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "note for this profile claim review decision.",
+            "title": "Note"
+          }
+        },
+        "title": "ProfileClaimReviewDecisionRequest",
+        "type": "object"
+      },
+      "ProfileClaimReviewListResponse": {
+        "description": "Pending profile verifications for reviewer action.",
+        "properties": {
+          "items": {
+            "description": "items for this profile claim review list.",
+            "items": {
+              "$ref": "#/components/schemas/ProfileClaimResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "total": {
+            "description": "total for this profile claim review list.",
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total"
+        ],
+        "title": "ProfileClaimReviewListResponse",
+        "type": "object"
+      },
       "ProfileClaimVerifyRequest": {
         "description": "Tier-1 email-link callback payload.",
         "properties": {
@@ -9772,7 +10105,7 @@
         "type": "object"
       },
       "ProfileManageRequest": {
-        "description": "Subject-managed mutable fields on a claimed profile.",
+        "description": "Representative updates for a verified profile.",
         "properties": {
           "clear_custom_bio": {
             "default": false,
@@ -26759,9 +27092,133 @@
         ]
       }
     },
+    "/api/profiles/atproto/identities": {
+      "post": {
+        "description": "Stores a DID-backed ATProto identity for the authenticated user.\n\nUse this profile-claim operation when a real profile subject needs controlled access to their own Atlas presence. Keep subject-managed fields distinct from source-backed public claims so user edits do not overwrite provenance.",
+        "operationId": "linkAtprotoIdentity",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-atlas-internal-secret",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Internal-Secret"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-email",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Email"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-organization-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Organization-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AtprotoIdentityLinkRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AtprotoIdentityResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Link an ATProto identity",
+        "tags": [
+          "claims"
+        ]
+      }
+    },
     "/api/profiles/claims/me": {
       "get": {
-        "description": "Returns all profile claims belonging to the authenticated user.\n\nUse this profile-claim operation when a real profile subject needs controlled access to their own Atlas presence. Keep subject-managed fields distinct from source-backed public claims so user edits do not overwrite provenance.",
+        "description": "Returns all profile verifications belonging to the authenticated user.\n\nUse this profile-claim operation when a real profile subject needs controlled access to their own Atlas presence. Keep subject-managed fields distinct from source-backed public claims so user edits do not overwrite provenance.",
         "operationId": "listMyProfileClaims",
         "parameters": [
           {
@@ -26871,7 +27328,524 @@
             "description": "Validation Error"
           }
         },
-        "summary": "List my claims",
+        "summary": "List my profile verifications",
+        "tags": [
+          "claims"
+        ]
+      }
+    },
+    "/api/profiles/claims/review": {
+      "get": {
+        "description": "List pending profile representative verifications for reviewer action.\n\nUse this profile-claim operation when a real profile subject needs controlled access to their own Atlas presence. Keep subject-managed fields distinct from source-backed public claims so user edits do not overwrite provenance.",
+        "operationId": "listProfileClaimReviews",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-internal-secret",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Internal-Secret"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-email",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Email"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-organization-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Organization-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileClaimReviewListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List profile verifications for review",
+        "tags": [
+          "claims"
+        ]
+      }
+    },
+    "/api/profiles/claims/review/atproto/revalidate": {
+      "post": {
+        "description": "Remove linked ATProto profiles whose current handle and DID no longer match.\n\nUse this profile-claim operation when a real profile subject needs controlled access to their own Atlas presence. Keep subject-managed fields distinct from source-backed public claims so user edits do not overwrite provenance.",
+        "operationId": "revalidateProfileAtprotoLinks",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-atlas-internal-secret",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Internal-Secret"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-email",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Email"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-organization-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Organization-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileAtprotoRevalidationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Recheck linked ATProto profiles",
+        "tags": [
+          "claims"
+        ]
+      }
+    },
+    "/api/profiles/claims/review/{claim_id}/approve": {
+      "post": {
+        "description": "Verify a pending profile representative after reviewer confirmation.\n\nUse this profile-claim operation when a real profile subject needs controlled access to their own Atlas presence. Keep subject-managed fields distinct from source-backed public claims so user edits do not overwrite provenance.",
+        "operationId": "approveProfileClaimReview",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "claim_id",
+            "required": true,
+            "schema": {
+              "title": "Claim Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-internal-secret",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Internal-Secret"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-email",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Email"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-organization-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Organization-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProfileClaimReviewDecisionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileClaimResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Approve a profile verification",
+        "tags": [
+          "claims"
+        ]
+      }
+    },
+    "/api/profiles/claims/review/{claim_id}/reject": {
+      "post": {
+        "description": "Reject a pending profile representative when the evidence does not match.\n\nUse this profile-claim operation when a real profile subject needs controlled access to their own Atlas presence. Keep subject-managed fields distinct from source-backed public claims so user edits do not overwrite provenance.",
+        "operationId": "rejectProfileClaimReview",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "claim_id",
+            "required": true,
+            "schema": {
+              "title": "Claim Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-internal-secret",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Internal-Secret"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-email",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Email"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-organization-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Organization-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProfileClaimReviewDecisionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileClaimResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reject a profile verification",
         "tags": [
           "claims"
         ]
@@ -26879,7 +27853,7 @@
     },
     "/api/profiles/claims/verify-email": {
       "post": {
-        "description": "Completes a tier-1 claim by exchanging a verification token (delivered to the subject's email) for a verified claim record.\n\nUse this profile-claim operation when a real profile subject needs controlled access to their own Atlas presence. Keep subject-managed fields distinct from source-backed public claims so user edits do not overwrite provenance.",
+        "description": "Exchanges an email verification token for verified representative access.\n\nUse this profile-claim operation when a real profile subject needs controlled access to their own Atlas presence. Keep subject-managed fields distinct from source-backed public claims so user edits do not overwrite provenance.",
         "operationId": "verifyProfileClaim",
         "requestBody": {
           "content": {
@@ -26913,7 +27887,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Verify a tier-1 claim",
+        "summary": "Verify by email",
         "tags": [
           "claims"
         ]
@@ -26921,7 +27895,7 @@
     },
     "/api/profiles/{slug}/claim": {
       "post": {
-        "description": "Creates a pending profile claim for the authenticated user. If the user's email domain matches the profile's email or website domain, the claim is tier 1 (email verification); otherwise it is tier 2 (manual review).\n\nUse this profile-claim operation when a real profile subject needs controlled access to their own Atlas presence. Keep subject-managed fields distinct from source-backed public claims so user edits do not overwrite provenance.",
+        "description": "Starts profile verification for the authenticated user.\n\nUse this profile-claim operation when a real profile subject needs controlled access to their own Atlas presence. Keep subject-managed fields distinct from source-backed public claims so user edits do not overwrite provenance.",
         "operationId": "initiateProfileClaim",
         "parameters": [
           {
@@ -27046,7 +28020,149 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Initiate a profile claim",
+        "summary": "Start profile verification",
+        "tags": [
+          "claims"
+        ]
+      }
+    },
+    "/api/profiles/{slug}/claims/{claim_id}/verify-domain": {
+      "post": {
+        "description": "Checks the DNS record for an organization profile verification.\n\nUse this profile-claim operation when a real profile subject needs controlled access to their own Atlas presence. Keep subject-managed fields distinct from source-backed public claims so user edits do not overwrite provenance.",
+        "operationId": "verifyProfileClaimDomain",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "claim_id",
+            "required": true,
+            "schema": {
+              "title": "Claim Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-internal-secret",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Internal-Secret"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-email",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Email"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-organization-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Organization-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProfileClaimProofRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileClaimResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Verify an organization domain",
         "tags": [
           "claims"
         ]
@@ -27420,7 +28536,7 @@
     },
     "/api/profiles/{slug}/manage": {
       "patch": {
-        "description": "Update subject-managed fields on a profile (custom bio, photo URL, suppressed sources, preferred contact). Requires a verified claim.\n\nUse this profile-claim operation when a real profile subject needs controlled access to their own Atlas presence. Keep subject-managed fields distinct from source-backed public claims so user edits do not overwrite provenance.",
+        "description": "Update fields on a verified profile: custom bio, photo URL, suppressed sources, and preferred contact. Requires verified representative access.\n\nUse this profile-claim operation when a real profile subject needs controlled access to their own Atlas presence. Keep subject-managed fields distinct from source-backed public claims so user edits do not overwrite provenance.",
         "operationId": "manageProfile",
         "parameters": [
           {
@@ -27547,7 +28663,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Manage subject-controlled fields",
+        "summary": "Update verified profile fields",
         "tags": [
           "claims"
         ]
