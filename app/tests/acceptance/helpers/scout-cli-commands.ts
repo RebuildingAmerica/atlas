@@ -1,3 +1,4 @@
+import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import { expect, type Page } from "@playwright/test";
 import {
@@ -5,20 +6,184 @@ import {
   expectJsonResponse,
   jsonHeaders,
   parseScoutSession,
-  spawnScout,
-} from "./scout-cli";
-import type {
-  DiscoveryJobResponse,
-  DiscoveryRunCreateResponse,
-  DiscoveryRunResponse,
-  ScoutApiTokenResponse,
-  ScoutCommandResult,
-  ScoutHome,
-  ScoutSessionFile,
-} from "./scout-cli";
+  type ScoutSessionFile,
+} from "./scout-cli-core";
+import { type ScoutHome } from "./scout-cli-fixtures";
+import path from "node:path";
+import { stripVTControlCharacters } from "node:util";
+
+export interface ScoutCommandResult {
+  exitCode: number | null;
+  output: string;
+  stderr: string;
+  stdout: string;
+}
+
+interface ScoutProcess {
+  kill: () => void;
+  waitForExit: (timeoutMs?: number) => Promise<ScoutCommandResult>;
+  waitForOutput: (pattern: RegExp, timeoutMs?: number) => Promise<RegExpMatchArray>;
+}
+
+interface ScoutCommand {
+  args: string[];
+  command: string;
+}
+
+function scoutCommand(): ScoutCommand {
+  const override = process.env.ATLAS_E2E_SCOUT_BIN?.trim();
+  if (override) {
+    return { args: [], command: override };
+  }
+
+  return {
+    args: ["--directory", path.join(process.cwd(), "..", "scout"), "run", "scout"],
+    command: "uv",
+  };
+}
+
+function spawnScout(args: string[], env: NodeJS.ProcessEnv): ScoutProcess {
+  const command = scoutCommand();
+  const child = spawn(command.command, [...command.args, ...args], {
+    cwd: path.join(process.cwd(), ".."),
+    env,
+    stdio: "pipe",
+  });
+  let stdout = "";
+  let stderr = "";
+
+  child.stdout.on("data", (chunk: Buffer) => {
+    stdout += chunk.toString("utf8");
+  });
+  child.stderr.on("data", (chunk: Buffer) => {
+    stderr += chunk.toString("utf8");
+  });
+
+  const output = () => `${stdout}${stderr}`;
+  const closePromise = new Promise<ScoutCommandResult>((resolve, reject) => {
+    child.once("error", reject);
+    child.once("close", (exitCode) => {
+      resolve({
+        exitCode,
+        output: output(),
+        stderr,
+        stdout,
+      });
+    });
+  });
+
+  return {
+    kill: () => {
+      if (!child.killed) {
+        child.kill("SIGTERM");
+      }
+    },
+    waitForExit: (timeoutMs = 30_000) => waitForExit(child, closePromise, timeoutMs),
+    waitForOutput: (pattern: RegExp, timeoutMs = 15_000) =>
+      waitForOutput(child, output, pattern, timeoutMs),
+  };
+}
+
+function waitForExit(
+  child: ChildProcessWithoutNullStreams,
+  closePromise: Promise<ScoutCommandResult>,
+  timeoutMs: number,
+): Promise<ScoutCommandResult> {
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  const timeoutPromise = new Promise<ScoutCommandResult>((_, reject) => {
+    timeout = setTimeout(() => {
+      child.kill("SIGTERM");
+      void closePromise
+        .then((result) => {
+          reject(
+            new Error(
+              `Scout command timed out after ${timeoutMs}ms. Output before termination:\n${result.output}`,
+            ),
+          );
+        })
+        .catch(() => {
+          reject(new Error(`Scout command timed out after ${timeoutMs}ms.`));
+        });
+    }, timeoutMs);
+  });
+  return Promise.race([closePromise, timeoutPromise]).finally(() => {
+    if (timeout) {
+      clearTimeout(timeout);
+    }
+  });
+}
+
+function waitForOutput(
+  child: ChildProcessWithoutNullStreams,
+  output: () => string,
+  pattern: RegExp,
+  timeoutMs: number,
+): Promise<RegExpMatchArray> {
+  return new Promise((resolve, reject) => {
+    const check = () => {
+      const match = stripVTControlCharacters(output()).match(pattern);
+      if (match) {
+        cleanup();
+        resolve(match);
+      }
+    };
+    const timeout = setTimeout(() => {
+      child.kill("SIGTERM");
+      cleanup();
+      reject(
+        new Error(`Timed out waiting for Scout output matching ${pattern}. Output:\n${output()}`),
+      );
+    }, timeoutMs);
+    const cleanup = () => {
+      clearTimeout(timeout);
+      child.stdout.off("data", check);
+      child.stderr.off("data", check);
+      child.off("close", onClose);
+    };
+    const onClose = () => {
+      cleanup();
+      reject(new Error(`Scout exited before output matched ${pattern}. Output:\n${output()}`));
+    };
+    child.stdout.on("data", check);
+    child.stderr.on("data", check);
+    child.once("close", onClose);
+    check();
+  });
+}
 
 interface ScoutCredentialFile {
   "session-token"?: unknown;
+}
+
+export interface ScoutApiTokenResponse {
+  token: string;
+  user: {
+    email: string;
+    id: string;
+  };
+  worker_id: string;
+  workspace_id: string | null;
+}
+
+export interface DiscoveryRunCreateResponse {
+  id: string;
+}
+
+export interface DiscoveryJobResponse {
+  completed_at: string | null;
+  id: string;
+  progress: Record<string, unknown> | null;
+  run_id: string;
+  status: string;
+}
+
+export interface DiscoveryRunResponse {
+  entries_confirmed: number;
+  id: string;
+  research_summary: {
+    ranked_leads: { name: string }[];
+  } | null;
+  status: string;
 }
 
 export async function approveScoutLogin(
@@ -176,7 +341,7 @@ export async function getRun(
   return expectJsonResponse<DiscoveryRunResponse>(response);
 }
 
-export async function startScoutWorker(
+export function startScoutWorker(
   scoutHome: ScoutHome,
   appUrl: string,
 ): Promise<ScoutCommandResult> {
@@ -197,7 +362,7 @@ export async function startScoutWorker(
   ).waitForExit();
 }
 
-export async function stopScoutWorker(scoutHome: ScoutHome): Promise<ScoutCommandResult> {
+export function stopScoutWorker(scoutHome: ScoutHome): Promise<ScoutCommandResult> {
   return spawnScout(
     ["--config", scoutHome.configPath, "worker", "stop"],
     scoutHome.env,
