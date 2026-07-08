@@ -59,7 +59,8 @@ request, and auto-merge request.
 
 ## Local Checks
 
-Before pushing a Scout tag, run:
+Before pushing a Scout tag, complete
+[Scout Production Dry Run](scout-production-dry-run.md). Then run:
 
 ```bash
 pnpm release:homebrew:test
