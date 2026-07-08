@@ -1,0 +1,3 @@
+{
+  "routeFileIgnorePattern": "^(claim-page(-rail|-panels|-utils)?|list-detail-page-(panels|utils|workflow))\\.(ts|tsx)$"
+}
