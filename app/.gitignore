@@ -11,6 +11,7 @@ coverage/
 !tests/unit/routes/_workspace/coverage/
 !tests/unit/routes/_workspace/coverage/**
 test-results/
+.auth/
 .tanstack/
 src/lib/generated/
 .vercel/output/
