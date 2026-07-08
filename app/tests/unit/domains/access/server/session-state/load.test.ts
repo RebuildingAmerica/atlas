@@ -5,8 +5,8 @@ import {
   createBetterAuthInvitation,
   createBetterAuthOrganization,
   createBetterAuthSession,
-} from "../../../../fixtures/access/sessions";
-import { createSessionStateAuthApi } from "../../../../mocks/access/session-state-auth";
+} from "../../../../../fixtures/access/sessions";
+import { createSessionStateAuthApi } from "../../../../../mocks/access/session-state-auth";
 
 const mocks = vi.hoisted(() => ({
   canEmailAccessAtlas: vi.fn(),
@@ -36,7 +36,7 @@ vi.mock("@/domains/access/server/workspace-products", () => ({
   queryActiveProducts: vi.fn().mockResolvedValue([]),
 }));
 
-describe("session-state", () => {
+describe("session-state loading", () => {
   const browserSessionHeaders = new Headers({
     cookie: "better-auth.session_token=test-token",
   });
@@ -227,9 +227,6 @@ describe("session-state", () => {
     authApi.listUserInvitations.mockResolvedValue([]);
 
     const expectedSession = createAtlasSessionFixture({
-      // accountReady tracks email verification only; passkey enrollment is
-      // recommended but optional, so a verified email with no passkey is
-      // still considered ready for resource creation.
       accountReady: true,
       hasPasskey: false,
       passkeyCount: 0,
@@ -252,187 +249,5 @@ describe("session-state", () => {
 
     const { loadAtlasSession } = await import("@/domains/access/server/session-state");
     await expect(loadAtlasSession()).resolves.toEqual(expectedSession);
-  });
-
-  it("rejects unauthorized session requirements", async () => {
-    authApi.getSession.mockResolvedValue(null);
-
-    const { requireAtlasSessionState } = await import("@/domains/access/server/session-state");
-    await expect(requireAtlasSessionState()).rejects.toThrow("Unauthorized");
-  });
-
-  it("rejects incomplete session requirements until account setup finishes", async () => {
-    authApi.getSession.mockResolvedValue(
-      createBetterAuthSession({
-        emailVerified: false,
-      }),
-    );
-    authApi.listPasskeys.mockResolvedValue([]);
-
-    const { requireReadyAtlasSessionState } = await import("@/domains/access/server/session-state");
-    await expect(requireReadyAtlasSessionState()).rejects.toThrow(
-      "Complete account setup before creating Atlas resources.",
-    );
-  });
-
-  it("returns ready session requirements once account setup is complete", async () => {
-    authApi.getSession.mockResolvedValue(createBetterAuthSession());
-    authApi.listPasskeys.mockResolvedValue([{}]);
-
-    const readySession = createAtlasSessionFixture();
-
-    const { requireReadyAtlasSessionState } = await import("@/domains/access/server/session-state");
-    await expect(requireReadyAtlasSessionState()).resolves.toEqual(readySession);
-  });
-
-  it("rejects magic-link requests while auth is disabled", async () => {
-    mocks.getAuthRuntimeConfig.mockReturnValue({
-      localMode: true,
-    });
-
-    const { requestMagicLinkForEmail } = await import("@/domains/access/server/session-state");
-    await expect(
-      requestMagicLinkForEmail({
-        email: "operator@atlas.test",
-      }),
-    ).rejects.toThrow("LOCAL_MODE");
-  });
-
-  it("hides auth misconfiguration behind a temporary sign-in error", async () => {
-    mocks.validateAuthRuntimeConfig.mockImplementation(() => {
-      throw new Error("missing config");
-    });
-
-    const { requestMagicLinkForEmail } = await import("@/domains/access/server/session-state");
-    await expect(
-      requestMagicLinkForEmail({
-        email: "operator@atlas.test",
-      }),
-    ).rejects.toThrow("AUTH_UNAVAILABLE");
-  });
-
-  it("returns success without touching auth for emails without workspace access", async () => {
-    mocks.canEmailAccessAtlas.mockResolvedValue(false);
-
-    const { requestMagicLinkForEmail } = await import("@/domains/access/server/session-state");
-    await expect(
-      requestMagicLinkForEmail({
-        email: "outside@atlas.test",
-      }),
-    ).resolves.toEqual({ ok: true, captureMailboxUrl: null });
-
-    expect(mocks.ensureAuthReady).not.toHaveBeenCalled();
-  });
-
-  it("starts the Better Auth magic-link flow for allowlisted or invited emails", async () => {
-    const { requestMagicLinkForEmail } = await import("@/domains/access/server/session-state");
-    await expect(
-      requestMagicLinkForEmail({
-        callbackURL: "/account",
-        email: "operator@atlas.test",
-        name: "Operator",
-      }),
-    ).resolves.toEqual({ ok: true, captureMailboxUrl: null });
-
-    expect(authApi.signInMagicLink).toHaveBeenCalledWith({
-      body: {
-        callbackURL: "/account",
-        email: "operator@atlas.test",
-        name: "Operator",
-      },
-      headers: browserSessionHeaders,
-    });
-  });
-
-  it("returns success immediately when local mode requests verification email delivery", async () => {
-    mocks.getAuthRuntimeConfig.mockReturnValue({
-      localMode: true,
-    });
-
-    const { sendVerificationEmailForCurrentSession } =
-      await import("@/domains/access/server/session-state");
-    await expect(sendVerificationEmailForCurrentSession()).resolves.toEqual({ ok: true });
-  });
-
-  it("skips verification delivery for already-verified operators", async () => {
-    authApi.getSession.mockResolvedValue(createBetterAuthSession());
-
-    const { sendVerificationEmailForCurrentSession } =
-      await import("@/domains/access/server/session-state");
-    await expect(sendVerificationEmailForCurrentSession()).resolves.toEqual({ ok: true });
-
-    expect(authApi.sendVerificationEmail).not.toHaveBeenCalled();
-  });
-
-  it("sends verification email for unverified signed-in operators", async () => {
-    authApi.getSession.mockResolvedValue(
-      createBetterAuthSession({
-        emailVerified: false,
-      }),
-    );
-
-    const { sendVerificationEmailForCurrentSession } =
-      await import("@/domains/access/server/session-state");
-    await expect(sendVerificationEmailForCurrentSession()).resolves.toEqual({ ok: true });
-
-    expect(authApi.sendVerificationEmail).toHaveBeenCalledWith({
-      body: {
-        callbackURL: "/account-setup",
-        email: "operator@atlas.test",
-      },
-      headers: browserSessionHeaders,
-    });
-  });
-
-  it("wraps verification-delivery failures as EMAIL_DELIVERY_FAILED", async () => {
-    authApi.getSession.mockResolvedValue(
-      createBetterAuthSession({
-        emailVerified: false,
-      }),
-    );
-    authApi.sendVerificationEmail.mockRejectedValue(new Error("smtp down"));
-
-    const { sendVerificationEmailForCurrentSession } =
-      await import("@/domains/access/server/session-state");
-    await expect(sendVerificationEmailForCurrentSession()).rejects.toThrow("EMAIL_DELIVERY_FAILED");
-  });
-
-  it("wraps magic-link delivery failures as EMAIL_DELIVERY_FAILED", async () => {
-    authApi.signInMagicLink.mockRejectedValue(new Error("smtp down"));
-
-    const { requestMagicLinkForEmail } = await import("@/domains/access/server/session-state");
-    await expect(
-      requestMagicLinkForEmail({
-        email: "operator@atlas.test",
-      }),
-    ).rejects.toThrow("EMAIL_DELIVERY_FAILED");
-  });
-
-  it("returns the capture mailbox url when ATLAS_EMAIL_CAPTURE_URL is set", async () => {
-    mocks.getAuthRuntimeConfig.mockReturnValue({
-      captureUrl: "http://127.0.0.1:8025",
-      localMode: false,
-    });
-
-    const { requestMagicLinkForEmail } = await import("@/domains/access/server/session-state");
-    await expect(
-      requestMagicLinkForEmail({
-        email: "operator@atlas.test",
-      }),
-    ).resolves.toEqual({
-      ok: true,
-      captureMailboxUrl: "http://127.0.0.1:8025/messages",
-    });
-  });
-
-  it("checkEmailAccountExists delegates to hasExistingAccount", async () => {
-    mocks.hasExistingAccount.mockResolvedValue(true);
-
-    const { checkEmailAccountExists } = await import("@/domains/access/server/session-state");
-    await expect(checkEmailAccountExists("operator@atlas.test")).resolves.toBe(true);
-    expect(mocks.hasExistingAccount).toHaveBeenCalledWith("operator@atlas.test");
-
-    mocks.hasExistingAccount.mockResolvedValue(false);
-    await expect(checkEmailAccountExists("missing@atlas.test")).resolves.toBe(false);
   });
 });

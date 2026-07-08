@@ -105,10 +105,11 @@ API_PYTHON_FILES=$(get_staged_api_python_files)
 
 if [ -n "$API_PYTHON_FILES" ]; then
     print_info "Found $(echo "$API_PYTHON_FILES" | wc -l) api/ Python file(s) to check"
+    API_RELATIVE_FILES=$(echo "$API_PYTHON_FILES" | sed 's|^api/||')
 
     # 1. Ruff Format (auto-fix staged files)
     print_info "Running ruff format..."
-    if ! (cd "$API_DIR" && uv run ruff format . > /dev/null 2>&1); then
+    if ! (cd "$API_DIR" && echo "$API_RELATIVE_FILES" | xargs uv run ruff format > /dev/null 2>&1); then
         print_error "Ruff format failed"
         FAILED=1
     else
@@ -119,7 +120,7 @@ if [ -n "$API_PYTHON_FILES" ]; then
 
     # 2. Ruff Lint Check (zero tolerance)
     print_info "Running ruff lint (strict mode)..."
-    if ! (cd "$API_DIR" && uv run ruff check . > /dev/null 2>&1); then
+    if ! (cd "$API_DIR" && echo "$API_RELATIVE_FILES" | xargs uv run ruff check > /dev/null 2>&1); then
         print_error "Ruff lint found issues"
         echo ""
         echo -e "${YELLOW}HOW TO FIX:${NC}"
