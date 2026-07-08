@@ -3,6 +3,7 @@
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  approveProfileClaimReview,
   addSavedListItem,
   createSavedList,
   deleteSavedList,
@@ -13,15 +14,22 @@ import {
   getSavedListMembership,
   initiateProfileClaim,
   listMyProfileClaims,
+  listProfileClaimReviews,
   listSavedLists,
   manageProfile,
   removeSavedListItem,
+  rejectProfileClaimReview,
+  revalidateProfileAtprotoLinks,
   unfollowProfile,
   verifyProfileClaim,
+  verifyProfileClaimDomain,
   type ProfileClaimRequest,
   type ProfileManageRequest,
   type ProfileClaimResponse,
+  type ProfileClaimReviewDecisionRequest,
+  type ProfileClaimReviewListResponse,
   type ProfileClaimVerifyRequest,
+  type ProfileAtprotoRevalidationResponse,
   type ProfileFollowResponse,
   type SavedListCreateRequest,
   type SavedListItemRequest,
@@ -30,6 +38,7 @@ import {
 } from "@/lib/generated/atlas";
 
 const CLAIMS_KEY = ["profile-claims"] as const;
+const CLAIM_REVIEW_KEY = ["profile-claim-review"] as const;
 const LISTS_KEY = ["saved-lists"] as const;
 const FEED_KEY = ["following-feed"] as const;
 const FOLLOW_KEY = ["profile-follow"] as const;
@@ -59,6 +68,56 @@ export function useVerifyClaimEmail() {
     mutationFn: (body: ProfileClaimVerifyRequest) => verifyProfileClaim(body),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: CLAIMS_KEY });
+    },
+  });
+}
+
+export function useVerifyClaimDomain() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ slug, claimId }: { slug: string; claimId: string }) =>
+      verifyProfileClaimDomain(slug, claimId, {}),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: CLAIMS_KEY });
+    },
+  });
+}
+
+export function useProfileClaimReviews() {
+  return useQuery<ProfileClaimReviewListResponse>({
+    queryKey: CLAIM_REVIEW_KEY,
+    queryFn: () => listProfileClaimReviews(),
+  });
+}
+
+export function useApproveProfileClaimReview() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ claimId, body }: { claimId: string; body: ProfileClaimReviewDecisionRequest }) =>
+      approveProfileClaimReview(claimId, body),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: CLAIM_REVIEW_KEY });
+    },
+  });
+}
+
+export function useRejectProfileClaimReview() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ claimId, body }: { claimId: string; body: ProfileClaimReviewDecisionRequest }) =>
+      rejectProfileClaimReview(claimId, body),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: CLAIM_REVIEW_KEY });
+    },
+  });
+}
+
+export function useRevalidateProfileAtprotoLinks() {
+  const queryClient = useQueryClient();
+  return useMutation<ProfileAtprotoRevalidationResponse>({
+    mutationFn: () => revalidateProfileAtprotoLinks(),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: CLAIM_REVIEW_KEY });
     },
   });
 }

@@ -74,9 +74,9 @@ describe("ProfileHistory", () => {
       JSON.stringify({ slug: "jane-doe-a3f2" }),
     );
     expect(screen.getByText("Verification review")).toBeInTheDocument();
-    expect(screen.getByText("Representation claim awaiting review.")).toBeInTheDocument();
+    expect(screen.getByText("Representation verification under review.")).toBeInTheDocument();
     expect(screen.getByText("Representation changes")).toBeInTheDocument();
-    expect(screen.getByText("Public profile fields changed Apr 2026.")).toBeInTheDocument();
+    expect(screen.getByText("Profile details changed Apr 2026.")).toBeInTheDocument();
   });
 
   it("uses an honest history state when dated source and verification evidence is absent", () => {

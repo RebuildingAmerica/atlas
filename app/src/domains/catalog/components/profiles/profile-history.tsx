@@ -119,7 +119,7 @@ function buildHistoryEvents(entry: Entry): HistoryEvent[] {
       id: "representation-updated",
       label: "Representation updated",
       date: entry.updated_at,
-      description: "Public profile fields changed.",
+      description: "Profile details changed.",
       tone: "updated",
     });
   }
@@ -129,7 +129,7 @@ function buildHistoryEvents(entry: Entry): HistoryEvent[] {
 
 function verificationAuditDescription(entry: Entry): string {
   if (entry.claim.status === "pending") {
-    return "Representation claim awaiting review.";
+    return "Representation verification under review.";
   }
   if (entry.claim.status === "verified") {
     const verifiedAt = entry.claim.claim_verified_at ?? entry.last_verified;
@@ -138,7 +138,7 @@ function verificationAuditDescription(entry: Entry): string {
       : "Representation verified.";
   }
   if (entry.claim.status === "revoked") {
-    return "Representation claim no longer active.";
+    return "Representation verification no longer active.";
   }
   if (entry.trust.level === "atlas_verified" && entry.last_verified) {
     return `Public evidence reviewed ${formatHistoryDate(entry.last_verified)}.`;
@@ -148,9 +148,9 @@ function verificationAuditDescription(entry: Entry): string {
 
 function representationAuditDescription(entry: Entry): string {
   if (entry.updated_at && entry.updated_at !== entry.created_at) {
-    return `Public profile fields changed ${formatHistoryDate(entry.updated_at)}.`;
+    return `Profile details changed ${formatHistoryDate(entry.updated_at)}.`;
   }
-  return "No public profile field changes since listing.";
+  return "No profile detail changes since listing.";
 }
 
 function buildAuditItems(entry: Entry): AuditItem[] {

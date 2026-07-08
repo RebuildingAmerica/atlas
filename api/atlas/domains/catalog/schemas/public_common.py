@@ -248,6 +248,15 @@ class ClaimStatusInfo(BaseModel):
         "source-derived",
         description="Trust tier: source-derived, atlas-verified, subject-verified.",
     )
+    linked_atproto_handle: str | None = Field(
+        None,
+        description="Verified ATProto handle linked to the profile.",
+    )
+    linked_atproto_did: str | None = Field(
+        None,
+        description="Stable ATProto DID behind the verified linked handle.",
+    )
+    linked_atproto_verified_at: str | None = None
 
 
 class ClaimEvidence(BaseModel):

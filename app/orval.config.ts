@@ -10,11 +10,9 @@ export default defineConfig({
       target: "./src/lib/generated/atlas/index.ts",
       client: "fetch",
       clean: true,
-      prettier: true,
       schemas: {
         path: "./src/lib/generated/atlas-schemas",
         splitByTags: true,
-        indexFiles: false,
       },
       override: {
         fetch: {

@@ -84,7 +84,7 @@ describe("ProfileResearchContext", () => {
     expect(screen.getByText("Related people and groups")).toBeInTheDocument();
     expect(screen.getByText("Sources")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Add missing context" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Claim representation" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Verify representation" })).toBeInTheDocument();
     expect(screen.queryByText("Record reuse loop")).not.toBeInTheDocument();
     expect(screen.queryByText("Reusable research record")).not.toBeInTheDocument();
     expect(screen.queryByText("Reuse with more confidence")).not.toBeInTheDocument();

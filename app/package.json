@@ -46,6 +46,8 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@atproto/api": "^0.20.26",
+    "@atproto/oauth-client-node": "^0.4.6",
     "@better-auth/api-key": "catalog:",
     "@better-auth/oauth-provider": "catalog:",
     "@better-auth/passkey": "catalog:",

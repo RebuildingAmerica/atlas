@@ -160,6 +160,15 @@ def _entity_record(entry: EntryModel, context: EntityRecordContext) -> dict[str,
             "claimed_by_user_id": entry.claimed_by_user_id,
             "claim_verified_at": entry.claim_verified_at,
             "verification_level": verification_level,
+            "linked_atproto_handle": entry.linked_atproto_handle
+            if entry.claim_status == "verified"
+            else None,
+            "linked_atproto_did": entry.linked_atproto_did
+            if entry.claim_status == "verified"
+            else None,
+            "linked_atproto_verified_at": entry.linked_atproto_verified_at
+            if entry.claim_status == "verified"
+            else None,
         },
         claim_evidence=claim_evidence,
         profile_answers=_profile_answers(

@@ -1,7 +1,9 @@
 import { CheckCircle2, ShieldCheck, ShieldQuestion } from "lucide-react";
-import type { TrustLevel } from "@/types";
+import type { EntryType, TrustLevel } from "@/types";
 
 interface MapTrustLineProps {
+  /** The actor type lets subject verification use person/org-specific language. */
+  actorType: EntryType;
   /** The actor's canonical trust tier, mirrored straight from its dot. */
   trustLevel: TrustLevel;
 }
@@ -23,7 +25,7 @@ const TRUST_PRESENTATION: Record<TrustLevel, TrustPresentation> = {
   subject_verified: {
     Icon: ShieldCheck,
     iconClass: "text-civic",
-    label: "Verified by subject",
+    label: "",
     toneClass: "text-ink-strong",
   },
   atlas_verified: {
@@ -53,12 +55,20 @@ const TRUST_PRESENTATION: Record<TrustLevel, TrustPresentation> = {
  *
  * @param trustLevel The actor's canonical trust tier.
  */
-export function MapTrustLine({ trustLevel }: MapTrustLineProps) {
-  const { Icon, iconClass, label, toneClass } = TRUST_PRESENTATION[trustLevel];
+export function MapTrustLine({ actorType, trustLevel }: MapTrustLineProps) {
+  const { Icon, iconClass, toneClass } = TRUST_PRESENTATION[trustLevel];
+  const label =
+    trustLevel === "subject_verified"
+      ? subjectVerifiedLabel(actorType)
+      : TRUST_PRESENTATION[trustLevel].label;
   return (
     <span className={`type-body-medium inline-flex items-center gap-1.5 ${toneClass}`}>
       <Icon className={`h-4 w-4 ${iconClass}`} aria-hidden />
       {label}
     </span>
   );
+}
+
+function subjectVerifiedLabel(type: EntryType): string {
+  return type === "organization" ? "Verified representative" : "Verified person";
 }

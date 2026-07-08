@@ -14,6 +14,12 @@ export function loadTurboConfig(): TurboConfig {
   ) as TurboConfig;
 }
 
+export function loadRootTurboConfig(): TurboConfig {
+  return JSON.parse(
+    readFileSync(new URL("../../../turbo.json", import.meta.url), "utf8"),
+  ) as TurboConfig;
+}
+
 export function envForTask(config: TurboConfig, taskName: string): string[] {
   const task = config.tasks[taskName];
   if (!task) {

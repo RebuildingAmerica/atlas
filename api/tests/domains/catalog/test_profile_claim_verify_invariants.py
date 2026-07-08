@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import pytest
 
-from atlas.domains.catalog.api import profiles as profile_api
+from atlas.domains.catalog.api import profile_claims as profile_claim_api
 from atlas.domains.catalog.models.profile_claims import ProfileClaimCRUD
 from atlas.domains.catalog.services.profile_claims import ProfileClaimPolicy
 from atlas.models import EntryCRUD
@@ -25,7 +25,7 @@ class TestVerifyClaimRefetchInvariants:
         from atlas.domains.catalog.schemas.public import ProfileClaimVerifyRequest
 
         await EntryCRUD.update(test_db, claimable_org, email="info@atlas.rebuildingus.org")
-        # Seed a tier-1 claim so we have a valid verification token to pass in.
+        # Seed an email-verification record so we have a valid token to pass in.
         claim = await ProfileClaimCRUD.create(
             test_db,
             entry_id=claimable_org,
@@ -39,14 +39,14 @@ class TestVerifyClaimRefetchInvariants:
             return None
 
         monkeypatch.setattr(
-            "atlas.domains.catalog.api.profiles.ProfileClaimCRUD.mark_verified",
+            "atlas.domains.catalog.api.profile_claims.ProfileClaimCRUD.mark_verified",
             fake_mark_verified,
         )
 
         from fastapi import HTTPException
 
         with pytest.raises(HTTPException) as exc_info:
-            await profile_api.verify_claim(
+            await profile_claim_api.verify_claim(
                 ProfileClaimVerifyRequest(token=claim.verification_token),
                 response=None,
                 db=test_db,
@@ -78,14 +78,14 @@ class TestVerifyClaimRefetchInvariants:
             return None
 
         monkeypatch.setattr(
-            "atlas.domains.catalog.api.profiles.EntryCRUD.get_by_id",
+            "atlas.domains.catalog.api.profile_claims.EntryCRUD.get_by_id",
             fake_get_by_id,
         )
 
         from fastapi import HTTPException
 
         with pytest.raises(HTTPException) as exc_info:
-            await profile_api.verify_claim(
+            await profile_claim_api.verify_claim(
                 ProfileClaimVerifyRequest(token=claim.verification_token),
                 response=None,
                 db=test_db,

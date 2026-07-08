@@ -15,11 +15,23 @@ vi.mock("@/domains/access", () => ({
 vi.mock("@/domains/catalog/hooks/use-claims", () => ({
   useInitiateClaim: vi.fn(),
   useMyClaims: vi.fn(),
+  useVerifyClaimDomain: vi.fn(),
   useVerifyClaimEmail: vi.fn(),
 }));
 
 vi.mock("@/domains/catalog/server/profiles/profile-loaders", () => ({
   loadEntryBySlugAny: vi.fn(),
+}));
+
+vi.mock("@/lib/clipboard", () => ({
+  copyToClipboard: vi.fn().mockResolvedValue(true),
+}));
+
+vi.mock("@/platform/ui/toast", () => ({
+  useToast: () => ({
+    error: vi.fn(),
+    success: vi.fn(),
+  }),
 }));
 
 vi.mock("@/platform/layout/page-layout", () => ({
@@ -61,6 +73,10 @@ describe("routes/_public/claim/$slug verification", () => {
       mutateAsync: vi.fn().mockResolvedValue(undefined),
       isPending: false,
     } as unknown as ReturnType<typeof claims.useVerifyClaimEmail>);
+    vi.mocked(claims.useVerifyClaimDomain).mockReturnValue({
+      mutateAsync: vi.fn().mockResolvedValue(undefined),
+      isPending: false,
+    } as unknown as ReturnType<typeof claims.useVerifyClaimDomain>);
     vi.mocked(claims.useMyClaims).mockReturnValue({
       data: [],
     } as unknown as ReturnType<typeof claims.useMyClaims>);
@@ -87,7 +103,18 @@ describe("routes/_public/claim/$slug verification", () => {
 
     const { Route } = await loadClaimRoute();
     const validator = Route.options.validateSearch as { parse: (input: unknown) => unknown };
-    expect(validator.parse({ from: "email", token: "tok" })).toEqual({
+    expect(
+      validator.parse({
+        from: "email",
+        token: "tok",
+        atprotoIdentityId: "atp_1",
+        atprotoHandle: "acme.org",
+        atprotoError: "ATProto identity could not be verified.",
+      }),
+    ).toEqual({
+      atprotoError: "ATProto identity could not be verified.",
+      atprotoHandle: "acme.org",
+      atprotoIdentityId: "atp_1",
       from: "email",
       token: "tok",
     });
@@ -104,7 +131,7 @@ describe("routes/_public/claim/$slug verification", () => {
     };
     expect(head.meta).toEqual(
       expect.arrayContaining([
-        { title: "Claim Acme | Atlas" },
+        { title: "Verify Acme | Atlas" },
         { property: "og:url", content: "https://atlas.rebuildingamerica.com/claim/acme" },
         { name: "robots", content: "noindex,nofollow" },
       ]),
@@ -123,7 +150,10 @@ describe("routes/_public/claim/$slug verification", () => {
 
     const { router, Route } = await loadClaimRoute();
     router.useParams.mockReturnValue({ slug: "acme" });
-    router.useSearch.mockReturnValue({});
+    router.useSearch.mockReturnValue({
+      atprotoHandle: "acme.bsky.social",
+      atprotoIdentityId: "identity_1",
+    });
     router.useLoaderData.mockReturnValue({
       entry: { id: "e1", name: "Acme", slug: "acme", type: "organization" },
     });
@@ -131,9 +161,15 @@ describe("routes/_public/claim/$slug verification", () => {
     const Component = Route.options.component;
     if (!Component) throw new Error("Expected Route.options.component");
     render(<Component />);
-    expect(screen.getByText("Sign in to claim this profile")).toBeInTheDocument();
-    expect(screen.getByText("Profile being claimed")).toBeInTheDocument();
-    expect(screen.getByText("Sign in to continue")).toBeInTheDocument();
+    expect(screen.getByText("Sign in to verify this profile")).toBeInTheDocument();
+    expect(screen.getByText("Profile being verified")).toBeInTheDocument();
+    const signInLink = screen.getByText("Sign in to continue");
+    expect(signInLink).toHaveAttribute(
+      "data-link-search",
+      JSON.stringify({
+        redirect: "/claim/acme?atprotoIdentityId=identity_1&atprotoHandle=acme.bsky.social",
+      }),
+    );
   });
 
   it("shows the verification CTA when a token is present and the claim is unverified", async () => {
@@ -223,7 +259,7 @@ describe("routes/_public/claim/$slug verification", () => {
     const Component = Route.options.component;
     if (!Component) throw new Error("Expected Route.options.component");
     render(<Component />);
-    expect(screen.getByText("Claim under review")).toBeInTheDocument();
+    expect(screen.getByText("Verification under review")).toBeInTheDocument();
     expect(verifyMock).not.toHaveBeenCalled();
   });
 
@@ -255,7 +291,7 @@ describe("routes/_public/claim/$slug verification", () => {
     const Component = Route.options.component;
     if (!Component) throw new Error("Expected Route.options.component");
     const view = render(<Component />);
-    expect(view.getByRole("button", { name: "Verifying…" })).toBeDisabled();
+    expect(view.getByRole("button", { name: "Verifying..." })).toBeDisabled();
   });
 
   it("uses the generic verify-failure copy when the rejection is not an Error", async () => {

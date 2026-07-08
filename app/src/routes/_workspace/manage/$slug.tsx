@@ -66,11 +66,11 @@ function ManageProfileRoute() {
       <div className="mx-auto max-w-3xl space-y-4 py-12">
         <h1 className="type-display-small text-ink-strong">This profile is not yours to manage</h1>
         <p className="type-body-medium text-ink-soft">
-          Profile management is only available after a verified claim. Visit the{" "}
+          Profile management is available after verification. Visit the{" "}
           <Link to="/claim/$slug" params={{ slug }} className="underline">
-            claim flow
+            verification page
           </Link>{" "}
-          to get verified.
+          to continue.
         </p>
       </div>
     );
@@ -122,6 +122,8 @@ function ManageProfileRoute() {
 
   const sources = entry.sources ?? [];
   const profilePath = `/profiles/${entry.type === "organization" ? "organizations" : "people"}/${entry.slug}`;
+  const verificationBadge =
+    entry.type === "organization" ? "Verified representative" : "Verified person";
 
   return (
     <div className="mx-auto max-w-3xl space-y-8 py-12">
@@ -134,7 +136,7 @@ function ManageProfileRoute() {
       </Link>
 
       <div className="space-y-3">
-        <Badge variant="success">Verified subject</Badge>
+        <Badge variant="success">{verificationBadge}</Badge>
         <h1 className="type-display-small text-ink-strong">Manage {entry.name}</h1>
         <p className="type-body-large text-ink-soft">
           Choose the details people see first, how they should reach you, and which sources belong
@@ -143,7 +145,7 @@ function ManageProfileRoute() {
       </div>
 
       <FormSection
-        title="Public profile fields"
+        title="Profile details"
         description="These details appear on the public profile after you save them."
       >
         <div className="grid gap-5">
@@ -198,8 +200,8 @@ function ManageProfileRoute() {
       </FormSection>
 
       <FormSection
-        title="Source visibility"
-        description="Checked sources stay out of the public profile."
+        title="Public sources"
+        description="Hide sources that should stay with reviewer notes."
       >
         <div className="border-outline-variant bg-surface-container-lowest inline-flex items-center gap-2 rounded-full border px-3 py-1.5">
           <ShieldCheck className="text-ink-muted h-4 w-4" aria-hidden />

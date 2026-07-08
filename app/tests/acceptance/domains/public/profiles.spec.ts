@@ -53,10 +53,10 @@ test.describe("public profile routes", () => {
 
     await page.goto("/profiles/people/maya-thompson");
 
-    // Claim CTA — when present (unclaimed profile), it lives inside the
+    // Verification CTA, when present, lives inside the
     // Data Quality panel as an inline link, not a top-of-page banner.
     if ((await page.getByText(/Are you Maya Thompson/i).count()) > 0) {
-      const cta = page.getByRole("link", { name: /claim this profile/i });
+      const cta = page.getByRole("link", { name: /verify this profile/i });
       await expect(cta.first()).toBeVisible();
       await expect(cta.first()).toHaveAttribute("href", /\/claim/);
     }
@@ -93,7 +93,7 @@ test.describe("public profile routes", () => {
     await expect(
       page.getByRole("heading", { name: "Eastside Housing Network", level: 1 }),
     ).toBeVisible();
-    await expect(page.getByRole("link", { name: "ORGANIZATIONS" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "ORGANIZATIONS", exact: true })).toBeVisible();
 
     // Stacked panels still render their identifying labels
     await expect(page.getByText(/Issue footprint/i).first()).toBeVisible();
@@ -147,7 +147,7 @@ test.describe("public profile routes", () => {
       },
       {
         path: "/claim/maya-thompson",
-        needles: [/Maya Thompson/, /Profile claim/i],
+        needles: [/Maya Thompson/, /Profile verification/i],
       },
     ];
 

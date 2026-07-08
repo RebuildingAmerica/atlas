@@ -40,6 +40,9 @@ CREATE TABLE IF NOT EXISTS entries (
     last_confirmed_at DATETIME,
     suppressed_source_ids TEXT,
     preferred_contact_channel TEXT,
+    linked_atproto_did TEXT,
+    linked_atproto_handle TEXT,
+    linked_atproto_verified_at TEXT,
     FOREIGN KEY (affiliated_org_id) REFERENCES entries(id)
 );
 

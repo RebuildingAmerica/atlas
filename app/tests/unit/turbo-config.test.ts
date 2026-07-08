@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { envForTask, loadTurboConfig } from "../helpers/turbo-config-harness";
+import { envForTask, loadRootTurboConfig, loadTurboConfig } from "../helpers/turbo-config-harness";
 
 describe("turbo config", () => {
   it("does not model the public map style as deployment environment", () => {
@@ -10,5 +10,11 @@ describe("turbo config", () => {
     expect(envForTask(config, "start:e2e")).not.toContain("ATLAS_MAP_STYLE_URL");
     expect(envForTask(config, "test:acceptance")).not.toContain("ATLAS_MAP_STYLE_URL");
     expect(envForTask(config, "test:acceptance:headed")).not.toContain("ATLAS_MAP_STYLE_URL");
+  });
+
+  it("forwards the ATProto OAuth harness flag to the API acceptance server", () => {
+    const config = loadRootTurboConfig();
+
+    expect(envForTask(config, "//#e2e:api")).toContain("ATLAS_ATPROTO_OAUTH_E2E_HARNESS");
   });
 });

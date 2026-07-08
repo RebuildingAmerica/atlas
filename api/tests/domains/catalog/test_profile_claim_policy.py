@@ -8,6 +8,7 @@ from atlas.domains.catalog.services.profile_claims import (
     CLAIM_TIER_EMAIL_DOMAIN,
     CLAIM_TIER_MANUAL_REVIEW,
     ProfileClaimPolicy,
+    entry_claim_domains,
 )
 
 
@@ -56,3 +57,27 @@ def test_claim_policy_keeps_person_profiles_in_manual_review() -> None:
     assert decision.tier == CLAIM_TIER_MANUAL_REVIEW
     assert decision.requires_manual_evidence is True
     assert policy.email_domain_proof(entry, "operator@atlas.rebuildingus.org") is None
+
+
+def test_entry_claim_domains_include_website_and_email_domains() -> None:
+    """Organization proof checks compare handles and DNS records to public org domains."""
+    entry = _ClaimPolicyEntry(
+        type="organization",
+        email="hello@mail.mississippirising.org",
+        website="https://www.mississippirising.org/about",
+    )
+
+    assert entry_claim_domains(entry) == {"mail.mississippirising.org", "mississippirising.org"}
+
+
+def test_atproto_handle_domain_match_respects_org_domain_boundary() -> None:
+    """A branded ATProto handle can support a claim; a generic host cannot."""
+    policy = ProfileClaimPolicy()
+    entry = _ClaimPolicyEntry(
+        type="organization",
+        email="info@mississippirising.org",
+        website="https://mississippirising.org",
+    )
+
+    assert policy.atproto_handle_domain_matches_entry(entry, "news.mississippirising.org") is True
+    assert policy.atproto_handle_domain_matches_entry(entry, "@mississippi.bsky.social") is False

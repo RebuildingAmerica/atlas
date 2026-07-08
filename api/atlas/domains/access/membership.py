@@ -29,6 +29,8 @@ class MembershipResult:
     name: str
     workspace_type: str
     active_products: list[str] = field(default_factory=list)
+    workspace_domain: str | None = None
+    verified_sso_domains: list[str] = field(default_factory=list)
 
 
 @dataclass(slots=True)
@@ -117,6 +119,10 @@ async def verify_org_membership(
         name=str(payload["name"]),
         workspace_type=str(payload["workspaceType"]),
         active_products=[str(p) for p in payload.get("activeProducts", [])],
+        workspace_domain=(
+            str(payload["workspaceDomain"]) if payload.get("workspaceDomain") is not None else None
+        ),
+        verified_sso_domains=[str(domain) for domain in payload.get("verifiedSsoDomains", [])],
     )
 
     _set_cached(user_id, org_id, result)

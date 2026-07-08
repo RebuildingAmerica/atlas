@@ -162,6 +162,9 @@ function mapEntity(entity: EntityResponse): Entry {
       claim_verified_at: claim?.claim_verified_at ?? undefined,
       verification_level: (claim?.verification_level ??
         "source-derived") as Entry["claim"]["verification_level"],
+      linked_atproto_handle: claim?.linked_atproto_handle ?? undefined,
+      linked_atproto_did: claim?.linked_atproto_did ?? undefined,
+      linked_atproto_verified_at: claim?.linked_atproto_verified_at ?? undefined,
     },
     claim_evidence: entity.claim_evidence as Entry["claim_evidence"],
     profile_answers: entity.profile_answers,

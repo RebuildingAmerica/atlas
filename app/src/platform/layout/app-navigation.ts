@@ -22,6 +22,8 @@ const CORE_APP_NAV: AppNavItem[] = [
   { label: "Activity", to: "/feed" },
 ];
 
+const LOCAL_REVIEW_NAV: AppNavItem[] = [{ label: "Verifications", to: "/admin/profile-claims" }];
+
 /**
  * Returns whether the app shell should surface the organization tab for
  * the current session.
@@ -48,8 +50,11 @@ export function shouldShowOrganizationNav(session: AppNavigationSession): boolea
 export function buildAuthenticatedAppNav(
   session: AppNavigationSession | null | undefined,
 ): AppNavItem[] {
-  if (!session || session.isLocal) {
+  if (!session) {
     return CORE_APP_NAV;
+  }
+  if (session.isLocal) {
+    return [...CORE_APP_NAV, ...LOCAL_REVIEW_NAV];
   }
 
   const items: AppNavItem[] = [...CORE_APP_NAV];

@@ -218,6 +218,44 @@ async def test_200_response_returns_membership_result(
     assert result.active_products == ["atlas_team"]
 
 
+async def test_200_response_returns_workspace_domain_proof_fields(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Membership responses should preserve verified workspace-domain proof fields."""
+    settings = _make_settings()
+    response = httpx.Response(
+        200,
+        json={
+            "role": "owner",
+            "slug": "acme-corp",
+            "name": "Acme Corp",
+            "workspaceType": "team",
+            "activeProducts": ["atlas_team"],
+            "workspaceDomain": "acme.org",
+            "verifiedSsoDomains": ["acme.org", "staff.acme.org"],
+        },
+        request=httpx.Request(
+            "GET",
+            "http://localhost:3000/api/auth/internal/memberships/org_4/members/user_4",
+        ),
+    )
+
+    def factory(*, timeout: float) -> _FakeAsyncClient:
+        del timeout
+        return _FakeAsyncClient(response)
+
+    monkeypatch.setattr(
+        "atlas.domains.access.membership.httpx.AsyncClient",
+        factory,
+    )
+
+    result = await verify_org_membership("user_4", "org_4", settings)
+
+    assert result is not None
+    assert result.workspace_domain == "acme.org"
+    assert result.verified_sso_domains == ["acme.org", "staff.acme.org"]
+
+
 async def test_expired_cache_entry_is_refetched(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

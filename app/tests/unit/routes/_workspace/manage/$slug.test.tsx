@@ -54,6 +54,18 @@ describe("routes/_workspace/manage/$slug", () => {
     cleanup();
   });
 
+  async function renderManageRoute(slug = "acme") {
+    const routeModule = await import("@/routes/_workspace/manage/$slug");
+    const { readRouterMocks, asRouteStub } = await import("@/../tests/helpers/router-harness");
+    const router = readRouterMocks();
+    router.useParams.mockReturnValue({ slug });
+
+    const Route = asRouteStub(routeModule.Route);
+    const Component = Route.options.component;
+    if (!Component) throw new Error("Expected Route.options.component");
+    render(<Component />);
+  }
+
   it("shows the loading copy while neither person nor org query has data", async () => {
     const entriesHooks = await import("@/domains/catalog/hooks/use-entries");
     vi.mocked(entriesHooks.useEntryBySlug).mockReturnValue({
@@ -61,15 +73,7 @@ describe("routes/_workspace/manage/$slug", () => {
       isLoading: false,
     } as unknown as ReturnType<typeof entriesHooks.useEntryBySlug>);
 
-    const routeModule = await import("@/routes/_workspace/manage/$slug");
-    const { readRouterMocks, asRouteStub } = await import("@/../tests/helpers/router-harness");
-    const router = readRouterMocks();
-    router.useParams.mockReturnValue({ slug: "acme" });
-
-    const Route = asRouteStub(routeModule.Route);
-    const Component = Route.options.component;
-    if (!Component) throw new Error("Expected Route.options.component");
-    render(<Component />);
+    await renderManageRoute();
     expect(screen.getByText(/Loading profile…/)).toBeInTheDocument();
   });
 
@@ -90,16 +94,12 @@ describe("routes/_workspace/manage/$slug", () => {
       isLoading: false,
     } as unknown as ReturnType<typeof entriesHooks.useEntryBySlug>);
 
-    const routeModule = await import("@/routes/_workspace/manage/$slug");
-    const { readRouterMocks, asRouteStub } = await import("@/../tests/helpers/router-harness");
-    const router = readRouterMocks();
-    router.useParams.mockReturnValue({ slug: "acme" });
-
-    const Route = asRouteStub(routeModule.Route);
-    const Component = Route.options.component;
-    if (!Component) throw new Error("Expected Route.options.component");
-    render(<Component />);
+    await renderManageRoute();
     expect(screen.getByText("This profile is not yours to manage")).toBeInTheDocument();
+    expect(screen.getByText(/after verification/i)).toBeInTheDocument();
+    expect(screen.getByText("verification page")).toBeInTheDocument();
+    expect(screen.queryByText(/verified claim/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/claim flow/i)).not.toBeInTheDocument();
   });
 
   it("renders the verified-management form with sources and saves trimmed input", async () => {
@@ -140,18 +140,14 @@ describe("routes/_workspace/manage/$slug", () => {
       isLoading: false,
     } as unknown as ReturnType<typeof entriesHooks.useEntryBySlug>);
 
-    const routeModule = await import("@/routes/_workspace/manage/$slug");
-    const { readRouterMocks, asRouteStub } = await import("@/../tests/helpers/router-harness");
-    const router = readRouterMocks();
-    router.useParams.mockReturnValue({ slug: "acme" });
-
-    const Route = asRouteStub(routeModule.Route);
-    const Component = Route.options.component;
-    if (!Component) throw new Error("Expected Route.options.component");
-    render(<Component />);
+    await renderManageRoute();
     expect(screen.getByText("Manage Acme")).toBeInTheDocument();
-    expect(screen.getByText("Public profile fields")).toBeInTheDocument();
-    expect(screen.getByText("Source visibility")).toBeInTheDocument();
+    expect(screen.getByText("Verified representative")).toBeInTheDocument();
+    expect(screen.queryByText("Verified subject")).not.toBeInTheDocument();
+    expect(screen.getByText("Profile details")).toBeInTheDocument();
+    expect(screen.queryByText("Public profile fields")).not.toBeInTheDocument();
+    expect(screen.getByText("Public sources")).toBeInTheDocument();
+    expect(screen.queryByText("Source visibility")).not.toBeInTheDocument();
     expect(screen.getByText("Private to Atlas reviewers")).toBeInTheDocument();
     expect(screen.getByText("Story")).toBeInTheDocument();
     expect(screen.getByText(/Unknown publication/)).toBeInTheDocument();
@@ -210,15 +206,7 @@ describe("routes/_workspace/manage/$slug", () => {
       isLoading: false,
     } as unknown as ReturnType<typeof entriesHooks.useEntryBySlug>);
 
-    const routeModule = await import("@/routes/_workspace/manage/$slug");
-    const { readRouterMocks, asRouteStub } = await import("@/../tests/helpers/router-harness");
-    const router = readRouterMocks();
-    router.useParams.mockReturnValue({ slug: "jane" });
-
-    const Route = asRouteStub(routeModule.Route);
-    const Component = Route.options.component;
-    if (!Component) throw new Error("Expected Route.options.component");
-    render(<Component />);
+    await renderManageRoute("jane");
     fireEvent.click(screen.getByLabelText("Suppress Story"));
     fireEvent.click(screen.getByLabelText("Suppress Story"));
 
@@ -258,15 +246,7 @@ describe("routes/_workspace/manage/$slug", () => {
       isLoading: false,
     } as unknown as ReturnType<typeof entriesHooks.useEntryBySlug>);
 
-    const routeModule = await import("@/routes/_workspace/manage/$slug");
-    const { readRouterMocks, asRouteStub } = await import("@/../tests/helpers/router-harness");
-    const router = readRouterMocks();
-    router.useParams.mockReturnValue({ slug: "acme" });
-
-    const Route = asRouteStub(routeModule.Route);
-    const Component = Route.options.component;
-    if (!Component) throw new Error("Expected Route.options.component");
-    render(<Component />);
+    await renderManageRoute();
 
     fireEvent.change(screen.getByPlaceholderText(/Write a short bio/), {
       target: { value: "New bio" },
@@ -308,15 +288,7 @@ describe("routes/_workspace/manage/$slug", () => {
       isLoading: false,
     } as unknown as ReturnType<typeof entriesHooks.useEntryBySlug>);
 
-    const routeModule = await import("@/routes/_workspace/manage/$slug");
-    const { readRouterMocks, asRouteStub } = await import("@/../tests/helpers/router-harness");
-    const router = readRouterMocks();
-    router.useParams.mockReturnValue({ slug: "acme" });
-
-    const Route = asRouteStub(routeModule.Route);
-    const Component = Route.options.component;
-    if (!Component) throw new Error("Expected Route.options.component");
-    render(<Component />);
+    await renderManageRoute();
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: /Save changes/ }));
       await Promise.resolve();
@@ -346,15 +318,7 @@ describe("routes/_workspace/manage/$slug", () => {
       isLoading: false,
     } as unknown as ReturnType<typeof entriesHooks.useEntryBySlug>);
 
-    const routeModule = await import("@/routes/_workspace/manage/$slug");
-    const { readRouterMocks, asRouteStub } = await import("@/../tests/helpers/router-harness");
-    const router = readRouterMocks();
-    router.useParams.mockReturnValue({ slug: "acme" });
-
-    const Route = asRouteStub(routeModule.Route);
-    const Component = Route.options.component;
-    if (!Component) throw new Error("Expected Route.options.component");
-    render(<Component />);
+    await renderManageRoute();
     expect(screen.getByRole("button", { name: /Saving…/ })).toBeDisabled();
   });
 
@@ -380,15 +344,7 @@ describe("routes/_workspace/manage/$slug", () => {
       isLoading: false,
     } as unknown as ReturnType<typeof entriesHooks.useEntryBySlug>);
 
-    const routeModule = await import("@/routes/_workspace/manage/$slug");
-    const { readRouterMocks, asRouteStub } = await import("@/../tests/helpers/router-harness");
-    const router = readRouterMocks();
-    router.useParams.mockReturnValue({ slug: "acme" });
-
-    const Route = asRouteStub(routeModule.Route);
-    const Component = Route.options.component;
-    if (!Component) throw new Error("Expected Route.options.component");
-    render(<Component />);
+    await renderManageRoute();
     expect(screen.getByText(/No sources listed yet/)).toBeInTheDocument();
 
     await act(async () => {

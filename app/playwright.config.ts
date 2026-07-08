@@ -3,6 +3,7 @@ import { randomBytes } from "node:crypto";
 import path from "node:path";
 import { defineConfig } from "@playwright/test";
 import { buildAtlasAuthJwtAudiences } from "./src/domains/access/oauth-resource-config";
+import { resolveAtprotoOAuthHarnessMode } from "./playwright-atproto-env";
 
 const e2eEnvFile = path.join(process.cwd(), ".env.e2e");
 if (existsSync(e2eEnvFile)) {
@@ -49,6 +50,7 @@ if (!apiPort) {
 }
 const e2eInternalSecret =
   process.env.ATLAS_E2E_INTERNAL_SECRET?.trim() || randomBytes(32).toString("hex");
+const atprotoOAuthHarness = resolveAtprotoOAuthHarnessMode(process.env);
 const baseWebServerEnv = { ...process.env };
 delete baseWebServerEnv.NO_COLOR;
 delete baseWebServerEnv.FORCE_COLOR;
@@ -105,6 +107,7 @@ export default defineConfig({
         ATLAS_AUTH_INTERNAL_SECRET: e2eInternalSecret,
         ATLAS_AUTH_MEMBERSHIP_URL: appUrl,
         ATLAS_AUTH_JWT_AUDIENCES: authJwtAudiences,
+        ATLAS_ATPROTO_OAUTH_E2E_HARNESS: atprotoOAuthHarness,
         ATLAS_DEPLOY_MODE: "production",
         ATLAS_PUBLIC_URL: appUrl,
         CORS_ORIGINS: `["${appUrl}"]`,
@@ -126,6 +129,7 @@ export default defineConfig({
         ...baseWebServerEnv,
         ...commonAuthEnv,
         ATLAS_SERVER_API_PROXY_TARGET: apiUrl,
+        ATLAS_ATPROTO_OAUTH_E2E_HARNESS: atprotoOAuthHarness,
         NODE_ENV: "development",
         PORT: appPort,
         ATLAS_AUTH_DB_PATH: authDbPath,

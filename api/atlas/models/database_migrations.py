@@ -74,6 +74,12 @@ async def _ensure_entry_columns(conn: Any) -> None:
             "preferred_contact_channel",
             "ALTER TABLE entries ADD COLUMN preferred_contact_channel TEXT",
         ),
+        ("linked_atproto_did", "ALTER TABLE entries ADD COLUMN linked_atproto_did TEXT"),
+        ("linked_atproto_handle", "ALTER TABLE entries ADD COLUMN linked_atproto_handle TEXT"),
+        (
+            "linked_atproto_verified_at",
+            "ALTER TABLE entries ADD COLUMN linked_atproto_verified_at TEXT",
+        ),
         ("latitude", "ALTER TABLE entries ADD COLUMN latitude REAL"),
         ("longitude", "ALTER TABLE entries ADD COLUMN longitude REAL"),
         ("geocode_precision", "ALTER TABLE entries ADD COLUMN geocode_precision TEXT"),

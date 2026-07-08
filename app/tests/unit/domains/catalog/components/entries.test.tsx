@@ -265,13 +265,28 @@ describe("catalog entry components", () => {
     expect(screen.queryByText(/research/i)).toBeNull();
   });
 
-  it("shows a 'Verified by subject' badge for the subject_verified tier", () => {
+  it("shows a representative badge for organization subject verification", () => {
     render(
       <EntryCard
         entry={{ ...sampleEntry, trust: { ...sampleEntry.trust, level: "subject_verified" } }}
       />,
     );
-    expect(screen.getByText("Verified by subject")).not.toBeNull();
+    expect(screen.getByText("Verified representative")).not.toBeNull();
+    expect(screen.queryByText("Verified by subject")).toBeNull();
+  });
+
+  it("shows a person badge for person subject verification", () => {
+    render(
+      <EntryCard
+        entry={{
+          ...sampleEntry,
+          type: "person",
+          trust: { ...sampleEntry.trust, level: "subject_verified" },
+        }}
+      />,
+    );
+    expect(screen.getByText("Verified person")).not.toBeNull();
+    expect(screen.queryByText("Verified by subject")).toBeNull();
   });
 
   it("shows an 'Atlas-verified' badge for the atlas_verified tier", () => {
@@ -307,7 +322,7 @@ describe("catalog entry components", () => {
     expect(screen.queryByText("Corroborated")).toBeNull();
   });
 
-  it("surfaces pending claim review markers on entry cards and detail pages", () => {
+  it("surfaces pending verification review markers on entry cards and detail pages", () => {
     const pendingEntry: Entry = {
       ...sampleEntry,
       claim: {
@@ -319,11 +334,11 @@ describe("catalog entry components", () => {
     };
     const { rerender } = render(<EntryCard entry={pendingEntry} />);
 
-    expect(screen.getByText("Claim under review")).not.toBeNull();
+    expect(screen.getByText("Verification under review")).not.toBeNull();
 
     rerender(<EntryDetail entry={pendingEntry} />);
 
-    expect(screen.getAllByText("Claim under review").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Verification under review").length).toBeGreaterThan(0);
     expect(screen.queryByText("Source-linked")).toBeNull();
   });
 });

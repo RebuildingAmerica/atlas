@@ -38,6 +38,55 @@ describe("DataQualityBlock", () => {
     expect(screen.getByText("Corroborated · 3 independent sources")).toBeInTheDocument();
   });
 
+  it("shows the representative ATProto handle for verified organization profiles", () => {
+    render(
+      <DataQualityBlock
+        entry={buildEntry({
+          type: "organization",
+          claim: {
+            status: "verified",
+            verification_level: "subject-verified",
+            claim_verified_at: "2026-07-07T12:00:00Z",
+            linked_atproto_handle: "mississippirising.org",
+            linked_atproto_did: "did:plc:mississippirising",
+            linked_atproto_verified_at: "2026-07-07T12:00:00Z",
+          },
+        })}
+      />,
+    );
+
+    expect(screen.getByText(/Verified representative/)).toBeInTheDocument();
+    expect(screen.queryByText(/Verified by subject/)).not.toBeInTheDocument();
+    expect(screen.getByText("Representative ATProto account")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /mississippirising.org/ })).toHaveAttribute(
+      "href",
+      "https://bsky.app/profile/mississippirising.org",
+    );
+    expect(screen.getByText("Verified Jul 2026")).toBeInTheDocument();
+  });
+
+  it("shows a personal ATProto label for verified person profiles", () => {
+    render(
+      <DataQualityBlock
+        entry={buildEntry({
+          type: "person",
+          claim: {
+            status: "verified",
+            verification_level: "subject-verified",
+            claim_verified_at: "2026-07-07T12:00:00Z",
+            linked_atproto_handle: "jane.example",
+            linked_atproto_did: "did:plc:jane",
+            linked_atproto_verified_at: "2026-07-07T12:00:00Z",
+          },
+        })}
+      />,
+    );
+
+    expect(screen.getByText("ATProto account")).toBeInTheDocument();
+    expect(screen.queryByText("Representative ATProto account")).not.toBeInTheDocument();
+    expect(screen.getByText("jane.example")).toBeInTheDocument();
+  });
+
   it("uses the singular for a single corroborating source", () => {
     render(
       <DataQualityBlock
@@ -145,7 +194,7 @@ describe("DataQualityBlock", () => {
       />,
     );
 
-    expect(screen.getByText("Claim evidence")).toBeInTheDocument();
+    expect(screen.getByText("Verification evidence")).toBeInTheDocument();
     expect(screen.getByText("Summary")).toBeInTheDocument();
     expect(screen.getAllByText("Place").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Issues").length).toBeGreaterThan(0);
@@ -212,9 +261,11 @@ describe("DataQualityBlock", () => {
     expect(screen.queryByText(/still gathering/i)).not.toBeInTheDocument();
   });
 
-  it("renders the inline claim CTA for unclaimed profiles", () => {
+  it("renders the inline verification CTA for unverified profiles", () => {
     render(<DataQualityBlock entry={buildEntry()} />);
-    const cta = screen.getByRole("link", { name: /Are you Jane Doe\? Claim this profile/i });
+    const cta = screen.getByRole("link", {
+      name: /Represent Jane Doe\? Verify this profile/i,
+    });
     expect(cta).toHaveAttribute("href", expect.stringContaining("/claim"));
   });
 
@@ -224,7 +275,7 @@ describe("DataQualityBlock", () => {
     expect(screen.getByText("Corrections")).toBeInTheDocument();
     expect(screen.queryByText("Improve this record")).not.toBeInTheDocument();
 
-    const claim = screen.getByRole("link", { name: "Claim or correct representation" });
+    const claim = screen.getByRole("link", { name: "Verify or correct representation" });
     expect(claim).toHaveAttribute("href", "/claim/$slug");
     expect(claim).toHaveAttribute("data-link-params", JSON.stringify({ slug: "jane-doe-a3f2" }));
 
@@ -241,7 +292,7 @@ describe("DataQualityBlock", () => {
     );
   });
 
-  it("hides the claim CTA once the profile is verified by subject", () => {
+  it("hides the verification CTA once the profile is verified by subject", () => {
     render(
       <DataQualityBlock
         entry={buildEntry({
@@ -249,11 +300,12 @@ describe("DataQualityBlock", () => {
         })}
       />,
     );
-    expect(screen.queryByRole("link", { name: /claim this profile/i })).not.toBeInTheDocument();
-    expect(screen.getByText(/Verified by subject/i)).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /verify this profile/i })).not.toBeInTheDocument();
+    expect(screen.getByText(/Verified person/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Verified by subject/i)).not.toBeInTheDocument();
   });
 
-  it("shows the pending status without a claim CTA while the claim is under review", () => {
+  it("shows the pending status without a verification CTA while verification is under review", () => {
     render(
       <DataQualityBlock
         entry={buildEntry({
@@ -261,8 +313,8 @@ describe("DataQualityBlock", () => {
         })}
       />,
     );
-    expect(screen.getByText(/Claim under review/i)).toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: /claim this profile/i })).not.toBeInTheDocument();
+    expect(screen.getByText(/Verification under review/i)).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /verify this profile/i })).not.toBeInTheDocument();
   });
 
   it("appends the verification date when verified_at is present", () => {
@@ -277,10 +329,10 @@ describe("DataQualityBlock", () => {
         })}
       />,
     );
-    expect(screen.getByText(/Verified by subject —/)).toBeInTheDocument();
+    expect(screen.getByText(/Verified person —/)).toBeInTheDocument();
   });
 
-  it("renders the revoked claim CTA without the entry name", () => {
+  it("renders the revoked verification CTA without the entry name", () => {
     render(
       <DataQualityBlock
         entry={buildEntry({
@@ -288,7 +340,7 @@ describe("DataQualityBlock", () => {
         })}
       />,
     );
-    expect(screen.getByRole("link", { name: /^Claim this profile/ })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /^Verify this profile/ })).toBeInTheDocument();
   });
 
   it("uses the singular 'source' label when there is exactly one source", () => {

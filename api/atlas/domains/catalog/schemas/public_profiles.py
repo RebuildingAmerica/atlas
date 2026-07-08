@@ -9,8 +9,16 @@ from pydantic import BaseModel, ConfigDict, Field
 from .public_entities import EntityResponse  # noqa: TC001
 
 __all__ = [
+    "AtprotoIdentityLinkRequest",
+    "AtprotoIdentityResponse",
+    "ProfileAtprotoRevalidationResponse",
+    "ProfileClaimDomainVerifyRequest",
+    "ProfileClaimProofRequest",
+    "ProfileClaimProofResponse",
     "ProfileClaimRequest",
     "ProfileClaimResponse",
+    "ProfileClaimReviewDecisionRequest",
+    "ProfileClaimReviewListResponse",
     "ProfileClaimVerifyRequest",
     "ProfileFollowResponse",
     "ProfileManageRequest",
@@ -25,14 +33,58 @@ __all__ = [
 ]
 
 
+class AtprotoIdentityLinkRequest(BaseModel):
+    """Persist a DID-backed ATProto identity linked by the authenticated user."""
+
+    did: str
+    current_handle: str
+    pds_url: str | None = None
+
+
+class AtprotoIdentityResponse(BaseModel):
+    """DID-backed ATProto identity linked to the authenticated user."""
+
+    id: str
+    user_id: str
+    did: str
+    current_handle: str
+    pds_url: str | None = None
+    did_resolved_at: str
+    handle_verified_at: str | None = None
+    created_at: str
+    updated_at: str
+
+
 class ProfileClaimRequest(BaseModel):
-    """Initiate a claim for a profile."""
+    """Start profile verification."""
 
     relationship: str | None = None
     evidence: str | None = None
     requested_changes: str | None = None
     preferred_contact_channel: str | None = None
     private_note: str | None = None
+    atproto_identity_id: str | None = Field(
+        None,
+        description="DID-backed ATProto identity linked by the authenticated user.",
+    )
+    dns_domain: str | None = Field(
+        None,
+        description="Organization domain verified with an Atlas TXT record.",
+    )
+    use_active_workspace: bool = Field(
+        False,
+        description="Use the authenticated active workspace as organization-admin proof.",
+    )
+
+
+class ProfileClaimProofRequest(BaseModel):
+    """Request body for a profile verification proof check."""
+
+    txt_records: list[str] = Field(default_factory=list)
+
+
+class ProfileClaimDomainVerifyRequest(ProfileClaimProofRequest):
+    """Compatibility model for DNS record verification requests."""
 
 
 class ProfileClaimVerifyRequest(BaseModel):
@@ -41,8 +93,27 @@ class ProfileClaimVerifyRequest(BaseModel):
     token: str
 
 
+class ProfileClaimReviewDecisionRequest(BaseModel):
+    """Reviewer decision payload for a pending profile verification."""
+
+    note: str | None = None
+
+
+class ProfileClaimProofResponse(BaseModel):
+    """One proof record supporting a profile verification decision."""
+
+    id: str
+    proof_type: str
+    proof_status: str
+    proof_summary: str
+    metadata: Any | None = None
+    created_at: str
+    reviewed_at: str | None = None
+    expires_at: str | None = None
+
+
 class ProfileClaimResponse(BaseModel):
-    """Profile-claim resource."""
+    """Profile verification resource."""
 
     id: str
     entry_id: str
@@ -53,14 +124,32 @@ class ProfileClaimResponse(BaseModel):
     status: str
     tier: int
     evidence: Any | None = None
+    proofs: list[ProfileClaimProofResponse] = Field(default_factory=list)
+    linked_atproto_handle: str | None = None
+    linked_atproto_did: str | None = None
+    linked_atproto_verified_at: str | None = None
     verified_at: str | None = None
     rejected_reason: str | None = None
     created_at: str
     updated_at: str
 
 
+class ProfileClaimReviewListResponse(BaseModel):
+    """Pending profile verifications for reviewer action."""
+
+    items: list[ProfileClaimResponse] = Field(default_factory=list)
+    total: int
+
+
+class ProfileAtprotoRevalidationResponse(BaseModel):
+    """Result from rechecking linked ATProto profile identities."""
+
+    checked: int
+    cleared: int
+
+
 class ProfileManageRequest(BaseModel):
-    """Subject-managed mutable fields on a claimed profile."""
+    """Representative updates for a verified profile."""
 
     photo_url: str | None = None
     custom_bio: str | None = None

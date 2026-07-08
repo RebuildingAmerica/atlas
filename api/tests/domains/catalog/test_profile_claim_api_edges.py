@@ -184,7 +184,7 @@ class TestProfileClaimAPIEdgeCases:
             return None
 
         monkeypatch.setattr(
-            "atlas.domains.catalog.api.profiles.EntryCRUD.get_by_id",
+            "atlas.domains.catalog.api.profile_claims.EntryCRUD.get_by_id",
             fake_get_by_id,
         )
         resp = await test_client.get("/api/profiles/claims/me")

@@ -105,6 +105,7 @@ nodeLinker: isolated
 allowBuilds:
   "@scarf/scarf": false
   better-sqlite3: true
+  core-js: false
   esbuild: true
   keytar: true
   puppeteer: true

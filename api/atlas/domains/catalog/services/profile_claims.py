@@ -76,6 +76,28 @@ class ProfileClaimPolicy:
             },
         )
 
+    def atproto_handle_domain_matches_entry(
+        self,
+        entry: ClaimPolicyEntry,
+        handle: str | None,
+    ) -> bool:
+        """Return whether an ATProto handle belongs to a profile's public domains."""
+        handle_domain = _domain_of(handle)
+        entry_domains = entry_claim_domains(entry)
+        return (
+            entry.type in EMAIL_DOMAIN_VERIFIABLE_ENTRY_TYPES
+            and handle_domain is not None
+            and any(
+                handle_domain == entry_domain or handle_domain.endswith(f".{entry_domain}")
+                for entry_domain in entry_domains
+            )
+        )
+
+
+def entry_claim_domains(entry: ClaimPolicyEntry) -> set[str]:
+    """Return public domains usable for organization stewardship proof."""
+    return _entry_email_domains(entry)
+
 
 def _domain_of(value: str | None) -> str | None:
     if not value:

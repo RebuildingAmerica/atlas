@@ -355,6 +355,9 @@ class TestEnsureEntryColumns:
             "last_confirmed_at",
             "suppressed_source_ids",
             "preferred_contact_channel",
+            "linked_atproto_did",
+            "linked_atproto_handle",
+            "linked_atproto_verified_at",
         ):
             assert column in columns
 

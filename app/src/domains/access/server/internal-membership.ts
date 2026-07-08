@@ -15,6 +15,8 @@ interface MembershipVerificationResponse {
   name: string;
   role: string;
   slug: string;
+  verifiedSsoDomains: string[];
+  workspaceDomain: string | null;
   workspaceType: "individual" | "team";
 }
 
@@ -23,6 +25,12 @@ interface StoredMembershipVerificationRow {
   name: string;
   role: string;
   slug: string;
+}
+
+interface StoredVerifiedSsoProviderRow {
+  domain: string;
+  domainVerified?: boolean | number | null;
+  organizationId?: string | null;
 }
 
 function parseStoredMetadata(metadata: unknown): unknown {
@@ -72,6 +80,55 @@ async function queryStoredMembership(
   return row ?? null;
 }
 
+function normalizeProviderDomains(domainValue: string): string[] {
+  return domainValue
+    .split(",")
+    .map((domain) => domain.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+async function queryVerifiedSsoDomains(organizationId: string): Promise<string[]> {
+  const pgPool = getAuthPgPool();
+  let rows: StoredVerifiedSsoProviderRow[];
+  if (pgPool) {
+    const result = await pgPool.query<StoredVerifiedSsoProviderRow>(
+      `
+        SELECT domain
+        FROM "ssoProvider"
+        WHERE "organizationId" = $1 AND "domainVerified" = true
+      `,
+      [organizationId],
+    );
+    rows = result.rows;
+  } else {
+    const database = getAuthDatabase();
+    const statement = database?.prepare(
+      `
+        SELECT domain, domainVerified, organizationId
+        FROM ssoProvider
+        WHERE organizationId = ? AND domainVerified = 1
+      `,
+    );
+    if (!statement || typeof statement.all !== "function") {
+      return [];
+    }
+    rows = statement.all(organizationId) as StoredVerifiedSsoProviderRow[];
+  }
+
+  const verifiedRows = rows.filter((row) => {
+    const matchesOrganization =
+      row.organizationId === undefined ||
+      row.organizationId === null ||
+      row.organizationId === organizationId;
+    const verified =
+      row.domainVerified === undefined || row.domainVerified === true || row.domainVerified === 1;
+    return matchesOrganization && verified;
+  });
+  return Array.from(
+    new Set(verifiedRows.flatMap((row) => normalizeProviderDomains(row.domain))),
+  ).sort();
+}
+
 /**
  * Private app-to-API membership verification endpoint.
  *
@@ -105,12 +162,15 @@ export async function verifyMembershipRequest(
     parseStoredMetadata(storedMembership.metadata),
   );
   const activeProducts = await queryActiveProducts(organizationId);
+  const verifiedSsoDomains = await queryVerifiedSsoDomains(organizationId);
 
   const body: MembershipVerificationResponse = {
     activeProducts,
     name: storedMembership.name,
     role: storedMembership.role,
     slug: storedMembership.slug,
+    verifiedSsoDomains,
+    workspaceDomain: metadata.workspaceDomain ?? null,
     workspaceType: metadata.workspaceType,
   };
 

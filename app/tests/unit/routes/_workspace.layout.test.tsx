@@ -47,6 +47,7 @@ describe("routes/_workspace layout", () => {
       "Lists",
       "Watching",
       "Activity",
+      "Verifications",
     ]);
     expect(screen.getByTestId("identity-slot")).toBeEmptyDOMElement();
   });

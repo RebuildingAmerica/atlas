@@ -22,7 +22,7 @@ USER_ID = "local-operator"
 
 @pytest_asyncio.fixture
 async def claimable_org(test_db: object) -> str:
-    """Create an org with a clear email/website domain to support tier-1 claims."""
+    """Create an org with a clear email and website domain for verification tests."""
     return await EntryCRUD.create(
         test_db,
         entry_type="organization",

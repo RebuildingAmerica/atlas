@@ -43,7 +43,7 @@ function ResultRow({
             {point.name}
           </span>
         )}
-        <MapTrustLine trustLevel={point.trust_level} />
+        <MapTrustLine actorType={point.type} trustLevel={point.trust_level} />
       </span>
       <button
         type="button"

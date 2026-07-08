@@ -16,6 +16,9 @@ export interface ClaimStatusInfo {
   claimed_by_user_id?: string;
   claim_verified_at?: string;
   verification_level: VerificationLevel;
+  linked_atproto_handle?: string;
+  linked_atproto_did?: string;
+  linked_atproto_verified_at?: string;
 }
 
 export type ClaimEvidenceConfidence =
@@ -118,6 +121,9 @@ export interface ProfileClaim {
   status: "pending" | "verified" | "rejected" | "revoked";
   tier: 1 | 2;
   evidence?: unknown;
+  linked_atproto_handle?: string;
+  linked_atproto_did?: string;
+  linked_atproto_verified_at?: string;
   verified_at?: string;
   rejected_reason?: string;
   created_at: string;

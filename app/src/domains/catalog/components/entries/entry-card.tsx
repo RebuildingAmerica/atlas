@@ -47,16 +47,16 @@ interface EntryBadgeInfo {
 /** Map verification and trust state to a browse-card badge. */
 function trustBadge(entry: Entry): EntryBadgeInfo | null {
   if (entry.claim?.status === "pending") {
-    return { variant: "warning", label: "Claim under review" };
+    return { variant: "warning", label: "Verification under review" };
   }
   if (entry.claim?.status === "verified") {
-    return { variant: "success", label: "Verified by subject" };
+    return { variant: "success", label: subjectVerifiedLabel(entry.type) };
   }
 
   const level = entry.trust?.level;
   switch (level) {
     case "subject_verified":
-      return { variant: "success", label: "Verified by subject" };
+      return { variant: "success", label: subjectVerifiedLabel(entry.type) };
     case "atlas_verified":
       return { variant: "success", label: "Atlas-verified" };
     case "corroborated":
@@ -64,6 +64,10 @@ function trustBadge(entry: Entry): EntryBadgeInfo | null {
     default:
       return null;
   }
+}
+
+function subjectVerifiedLabel(type: EntryType): string {
+  return type === "organization" ? "Verified representative" : "Verified person";
 }
 
 function trustLabel(entry: Entry): string {

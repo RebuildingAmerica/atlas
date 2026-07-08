@@ -65,6 +65,7 @@ import { Route as WorkspaceListsIdRouteImport } from './routes/_workspace/lists/
 import { Route as WorkspaceCoverageTargetIdRouteImport } from './routes/_workspace/coverage/$targetId'
 import { Route as WorkspaceBriefsNewRouteImport } from './routes/_workspace/briefs/new'
 import { Route as WorkspaceBriefsBriefIdRouteImport } from './routes/_workspace/briefs/$briefId'
+import { Route as WorkspaceAdminProfileClaimsRouteImport } from './routes/_workspace/admin/profile-claims'
 import { Route as WorkspaceAdminDiscountsRouteImport } from './routes/_workspace/admin/discounts'
 import { Route as PublicProfilesPeopleRouteImport } from './routes/_public/profiles/people'
 import { Route as PublicProfilesOrganizationsRouteImport } from './routes/_public/profiles/organizations'
@@ -80,6 +81,9 @@ import { Route as DotwellKnownOauthProtectedResourceMcpRouteImport } from './rou
 import { Route as PublicProfilesPeopleIndexRouteImport } from './routes/_public/profiles/people/index'
 import { Route as PublicProfilesOrganizationsIndexRouteImport } from './routes/_public/profiles/organizations/index'
 import { Route as ApiAuthInternalApiKeyRouteImport } from './routes/api/auth/internal/api-key'
+import { Route as ApiAtprotoOauthStartRouteImport } from './routes/api/atproto/oauth/start'
+import { Route as ApiAtprotoOauthClientMetadataDotjsonRouteImport } from './routes/api/atproto/oauth/client-metadata[.]json'
+import { Route as ApiAtprotoOauthCallbackRouteImport } from './routes/api/atproto/oauth/callback'
 import { Route as PublicProfilesPeopleSlugRouteImport } from './routes/_public/profiles/people/$slug'
 import { Route as PublicProfilesOrganizationsSlugRouteImport } from './routes/_public/profiles/organizations/$slug'
 import { Route as PublicProfilesInitiativesSlugRouteImport } from './routes/_public/profiles/initiatives/$slug'
@@ -93,6 +97,7 @@ import { Route as PublicPlacesCountiesPlaceSlugRouteImport } from './routes/_pub
 import { Route as PublicPlacesCitiesPlaceSlugRouteImport } from './routes/_public/places/cities/$placeSlug'
 import { Route as PublicPlacesBoroughsPlaceSlugRouteImport } from './routes/_public/places/boroughs/$placeSlug'
 import { Route as DotwellKnownOauthAuthorizationServerApiAuthRouteImport } from './routes/[.]well-known/oauth-authorization-server/api/auth'
+import { Route as ApiAtprotoOauthHarnessAuthorizeRouteImport } from './routes/api/atproto/oauth/harness/authorize'
 import { Route as ApiAuthInternalMembershipsOrganizationIdMembersUserIdRouteImport } from './routes/api/auth/internal/memberships/$organizationId/members/$userId'
 
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
@@ -378,6 +383,12 @@ const WorkspaceBriefsBriefIdRoute = WorkspaceBriefsBriefIdRouteImport.update({
   path: '/$briefId',
   getParentRoute: () => WorkspaceBriefsRoute,
 } as any)
+const WorkspaceAdminProfileClaimsRoute =
+  WorkspaceAdminProfileClaimsRouteImport.update({
+    id: '/admin/profile-claims',
+    path: '/admin/profile-claims',
+    getParentRoute: () => WorkspaceRoute,
+  } as any)
 const WorkspaceAdminDiscountsRoute = WorkspaceAdminDiscountsRouteImport.update({
   id: '/admin/discounts',
   path: '/admin/discounts',
@@ -458,6 +469,22 @@ const ApiAuthInternalApiKeyRoute = ApiAuthInternalApiKeyRouteImport.update({
   path: '/api/auth/internal/api-key',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAtprotoOauthStartRoute = ApiAtprotoOauthStartRouteImport.update({
+  id: '/api/atproto/oauth/start',
+  path: '/api/atproto/oauth/start',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAtprotoOauthClientMetadataDotjsonRoute =
+  ApiAtprotoOauthClientMetadataDotjsonRouteImport.update({
+    id: '/api/atproto/oauth/client-metadata.json',
+    path: '/api/atproto/oauth/client-metadata.json',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiAtprotoOauthCallbackRoute = ApiAtprotoOauthCallbackRouteImport.update({
+  id: '/api/atproto/oauth/callback',
+  path: '/api/atproto/oauth/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PublicProfilesPeopleSlugRoute =
   PublicProfilesPeopleSlugRouteImport.update({
     id: '/$slug',
@@ -536,6 +563,12 @@ const DotwellKnownOauthAuthorizationServerApiAuthRoute =
     path: '/.well-known/oauth-authorization-server/api/auth',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiAtprotoOauthHarnessAuthorizeRoute =
+  ApiAtprotoOauthHarnessAuthorizeRouteImport.update({
+    id: '/api/atproto/oauth/harness/authorize',
+    path: '/api/atproto/oauth/harness/authorize',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiAuthInternalMembershipsOrganizationIdMembersUserIdRoute =
   ApiAuthInternalMembershipsOrganizationIdMembersUserIdRouteImport.update({
     id: '/api/auth/internal/memberships/$organizationId/members/$userId',
@@ -596,6 +629,7 @@ export interface FileRoutesByFullPath {
   '/profiles/organizations': typeof PublicProfilesOrganizationsRouteWithChildren
   '/profiles/people': typeof PublicProfilesPeopleRouteWithChildren
   '/admin/discounts': typeof WorkspaceAdminDiscountsRoute
+  '/admin/profile-claims': typeof WorkspaceAdminProfileClaimsRoute
   '/briefs/$briefId': typeof WorkspaceBriefsBriefIdRoute
   '/briefs/new': typeof WorkspaceBriefsNewRoute
   '/coverage/$targetId': typeof WorkspaceCoverageTargetIdRoute
@@ -622,9 +656,13 @@ export interface FileRoutesByFullPath {
   '/profiles/initiatives/$slug': typeof PublicProfilesInitiativesSlugRoute
   '/profiles/organizations/$slug': typeof PublicProfilesOrganizationsSlugRoute
   '/profiles/people/$slug': typeof PublicProfilesPeopleSlugRoute
+  '/api/atproto/oauth/callback': typeof ApiAtprotoOauthCallbackRoute
+  '/api/atproto/oauth/client-metadata.json': typeof ApiAtprotoOauthClientMetadataDotjsonRoute
+  '/api/atproto/oauth/start': typeof ApiAtprotoOauthStartRoute
   '/api/auth/internal/api-key': typeof ApiAuthInternalApiKeyRoute
   '/profiles/organizations/': typeof PublicProfilesOrganizationsIndexRoute
   '/profiles/people/': typeof PublicProfilesPeopleIndexRoute
+  '/api/atproto/oauth/harness/authorize': typeof ApiAtprotoOauthHarnessAuthorizeRoute
   '/api/auth/internal/memberships/$organizationId/members/$userId': typeof ApiAuthInternalMembershipsOrganizationIdMembersUserIdRoute
 }
 export interface FileRoutesByTo {
@@ -676,6 +714,7 @@ export interface FileRoutesByTo {
   '/feedback/$slug': typeof PublicFeedbackSlugRoute
   '/places/$placeSlug': typeof PublicPlacesPlaceSlugRoute
   '/admin/discounts': typeof WorkspaceAdminDiscountsRoute
+  '/admin/profile-claims': typeof WorkspaceAdminProfileClaimsRoute
   '/briefs/$briefId': typeof WorkspaceBriefsBriefIdRoute
   '/briefs/new': typeof WorkspaceBriefsNewRoute
   '/coverage/$targetId': typeof WorkspaceCoverageTargetIdRoute
@@ -702,9 +741,13 @@ export interface FileRoutesByTo {
   '/profiles/initiatives/$slug': typeof PublicProfilesInitiativesSlugRoute
   '/profiles/organizations/$slug': typeof PublicProfilesOrganizationsSlugRoute
   '/profiles/people/$slug': typeof PublicProfilesPeopleSlugRoute
+  '/api/atproto/oauth/callback': typeof ApiAtprotoOauthCallbackRoute
+  '/api/atproto/oauth/client-metadata.json': typeof ApiAtprotoOauthClientMetadataDotjsonRoute
+  '/api/atproto/oauth/start': typeof ApiAtprotoOauthStartRoute
   '/api/auth/internal/api-key': typeof ApiAuthInternalApiKeyRoute
   '/profiles/organizations': typeof PublicProfilesOrganizationsIndexRoute
   '/profiles/people': typeof PublicProfilesPeopleIndexRoute
+  '/api/atproto/oauth/harness/authorize': typeof ApiAtprotoOauthHarnessAuthorizeRoute
   '/api/auth/internal/memberships/$organizationId/members/$userId': typeof ApiAuthInternalMembershipsOrganizationIdMembersUserIdRoute
 }
 export interface FileRoutesById {
@@ -764,6 +807,7 @@ export interface FileRoutesById {
   '/_public/profiles/organizations': typeof PublicProfilesOrganizationsRouteWithChildren
   '/_public/profiles/people': typeof PublicProfilesPeopleRouteWithChildren
   '/_workspace/admin/discounts': typeof WorkspaceAdminDiscountsRoute
+  '/_workspace/admin/profile-claims': typeof WorkspaceAdminProfileClaimsRoute
   '/_workspace/briefs/$briefId': typeof WorkspaceBriefsBriefIdRoute
   '/_workspace/briefs/new': typeof WorkspaceBriefsNewRoute
   '/_workspace/coverage/$targetId': typeof WorkspaceCoverageTargetIdRoute
@@ -790,9 +834,13 @@ export interface FileRoutesById {
   '/_public/profiles/initiatives/$slug': typeof PublicProfilesInitiativesSlugRoute
   '/_public/profiles/organizations/$slug': typeof PublicProfilesOrganizationsSlugRoute
   '/_public/profiles/people/$slug': typeof PublicProfilesPeopleSlugRoute
+  '/api/atproto/oauth/callback': typeof ApiAtprotoOauthCallbackRoute
+  '/api/atproto/oauth/client-metadata.json': typeof ApiAtprotoOauthClientMetadataDotjsonRoute
+  '/api/atproto/oauth/start': typeof ApiAtprotoOauthStartRoute
   '/api/auth/internal/api-key': typeof ApiAuthInternalApiKeyRoute
   '/_public/profiles/organizations/': typeof PublicProfilesOrganizationsIndexRoute
   '/_public/profiles/people/': typeof PublicProfilesPeopleIndexRoute
+  '/api/atproto/oauth/harness/authorize': typeof ApiAtprotoOauthHarnessAuthorizeRoute
   '/api/auth/internal/memberships/$organizationId/members/$userId': typeof ApiAuthInternalMembershipsOrganizationIdMembersUserIdRoute
 }
 export interface FileRouteTypes {
@@ -850,6 +898,7 @@ export interface FileRouteTypes {
     | '/profiles/organizations'
     | '/profiles/people'
     | '/admin/discounts'
+    | '/admin/profile-claims'
     | '/briefs/$briefId'
     | '/briefs/new'
     | '/coverage/$targetId'
@@ -876,9 +925,13 @@ export interface FileRouteTypes {
     | '/profiles/initiatives/$slug'
     | '/profiles/organizations/$slug'
     | '/profiles/people/$slug'
+    | '/api/atproto/oauth/callback'
+    | '/api/atproto/oauth/client-metadata.json'
+    | '/api/atproto/oauth/start'
     | '/api/auth/internal/api-key'
     | '/profiles/organizations/'
     | '/profiles/people/'
+    | '/api/atproto/oauth/harness/authorize'
     | '/api/auth/internal/memberships/$organizationId/members/$userId'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -930,6 +983,7 @@ export interface FileRouteTypes {
     | '/feedback/$slug'
     | '/places/$placeSlug'
     | '/admin/discounts'
+    | '/admin/profile-claims'
     | '/briefs/$briefId'
     | '/briefs/new'
     | '/coverage/$targetId'
@@ -956,9 +1010,13 @@ export interface FileRouteTypes {
     | '/profiles/initiatives/$slug'
     | '/profiles/organizations/$slug'
     | '/profiles/people/$slug'
+    | '/api/atproto/oauth/callback'
+    | '/api/atproto/oauth/client-metadata.json'
+    | '/api/atproto/oauth/start'
     | '/api/auth/internal/api-key'
     | '/profiles/organizations'
     | '/profiles/people'
+    | '/api/atproto/oauth/harness/authorize'
     | '/api/auth/internal/memberships/$organizationId/members/$userId'
   id:
     | '__root__'
@@ -1017,6 +1075,7 @@ export interface FileRouteTypes {
     | '/_public/profiles/organizations'
     | '/_public/profiles/people'
     | '/_workspace/admin/discounts'
+    | '/_workspace/admin/profile-claims'
     | '/_workspace/briefs/$briefId'
     | '/_workspace/briefs/new'
     | '/_workspace/coverage/$targetId'
@@ -1043,9 +1102,13 @@ export interface FileRouteTypes {
     | '/_public/profiles/initiatives/$slug'
     | '/_public/profiles/organizations/$slug'
     | '/_public/profiles/people/$slug'
+    | '/api/atproto/oauth/callback'
+    | '/api/atproto/oauth/client-metadata.json'
+    | '/api/atproto/oauth/start'
     | '/api/auth/internal/api-key'
     | '/_public/profiles/organizations/'
     | '/_public/profiles/people/'
+    | '/api/atproto/oauth/harness/authorize'
     | '/api/auth/internal/memberships/$organizationId/members/$userId'
   fileRoutesById: FileRoutesById
 }
@@ -1074,7 +1137,11 @@ export interface RootRouteChildren {
   DotwellKnownOauthAuthorizationServerIndexRoute: typeof DotwellKnownOauthAuthorizationServerIndexRoute
   DotwellKnownOauthProtectedResourceIndexRoute: typeof DotwellKnownOauthProtectedResourceIndexRoute
   DotwellKnownOauthAuthorizationServerApiAuthRoute: typeof DotwellKnownOauthAuthorizationServerApiAuthRoute
+  ApiAtprotoOauthCallbackRoute: typeof ApiAtprotoOauthCallbackRoute
+  ApiAtprotoOauthClientMetadataDotjsonRoute: typeof ApiAtprotoOauthClientMetadataDotjsonRoute
+  ApiAtprotoOauthStartRoute: typeof ApiAtprotoOauthStartRoute
   ApiAuthInternalApiKeyRoute: typeof ApiAuthInternalApiKeyRoute
+  ApiAtprotoOauthHarnessAuthorizeRoute: typeof ApiAtprotoOauthHarnessAuthorizeRoute
   ApiAuthInternalMembershipsOrganizationIdMembersUserIdRoute: typeof ApiAuthInternalMembershipsOrganizationIdMembersUserIdRoute
 }
 
@@ -1472,6 +1539,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WorkspaceBriefsBriefIdRouteImport
       parentRoute: typeof WorkspaceBriefsRoute
     }
+    '/_workspace/admin/profile-claims': {
+      id: '/_workspace/admin/profile-claims'
+      path: '/admin/profile-claims'
+      fullPath: '/admin/profile-claims'
+      preLoaderRoute: typeof WorkspaceAdminProfileClaimsRouteImport
+      parentRoute: typeof WorkspaceRoute
+    }
     '/_workspace/admin/discounts': {
       id: '/_workspace/admin/discounts'
       path: '/admin/discounts'
@@ -1577,6 +1651,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthInternalApiKeyRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/atproto/oauth/start': {
+      id: '/api/atproto/oauth/start'
+      path: '/api/atproto/oauth/start'
+      fullPath: '/api/atproto/oauth/start'
+      preLoaderRoute: typeof ApiAtprotoOauthStartRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/atproto/oauth/client-metadata.json': {
+      id: '/api/atproto/oauth/client-metadata.json'
+      path: '/api/atproto/oauth/client-metadata.json'
+      fullPath: '/api/atproto/oauth/client-metadata.json'
+      preLoaderRoute: typeof ApiAtprotoOauthClientMetadataDotjsonRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/atproto/oauth/callback': {
+      id: '/api/atproto/oauth/callback'
+      path: '/api/atproto/oauth/callback'
+      fullPath: '/api/atproto/oauth/callback'
+      preLoaderRoute: typeof ApiAtprotoOauthCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_public/profiles/people/$slug': {
       id: '/_public/profiles/people/$slug'
       path: '/$slug'
@@ -1666,6 +1761,13 @@ declare module '@tanstack/react-router' {
       path: '/.well-known/oauth-authorization-server/api/auth'
       fullPath: '/.well-known/oauth-authorization-server/api/auth'
       preLoaderRoute: typeof DotwellKnownOauthAuthorizationServerApiAuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/atproto/oauth/harness/authorize': {
+      id: '/api/atproto/oauth/harness/authorize'
+      path: '/api/atproto/oauth/harness/authorize'
+      fullPath: '/api/atproto/oauth/harness/authorize'
+      preLoaderRoute: typeof ApiAtprotoOauthHarnessAuthorizeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/auth/internal/memberships/$organizationId/members/$userId': {
@@ -1873,6 +1975,7 @@ interface WorkspaceRouteChildren {
   WorkspaceOrganizationRoute: typeof WorkspaceOrganizationRouteWithChildren
   WorkspaceWatchingRoute: typeof WorkspaceWatchingRoute
   WorkspaceAdminDiscountsRoute: typeof WorkspaceAdminDiscountsRoute
+  WorkspaceAdminProfileClaimsRoute: typeof WorkspaceAdminProfileClaimsRoute
   WorkspaceManageSlugRoute: typeof WorkspaceManageSlugRoute
 }
 
@@ -1888,6 +1991,7 @@ const WorkspaceRouteChildren: WorkspaceRouteChildren = {
   WorkspaceOrganizationRoute: WorkspaceOrganizationRouteWithChildren,
   WorkspaceWatchingRoute: WorkspaceWatchingRoute,
   WorkspaceAdminDiscountsRoute: WorkspaceAdminDiscountsRoute,
+  WorkspaceAdminProfileClaimsRoute: WorkspaceAdminProfileClaimsRoute,
   WorkspaceManageSlugRoute: WorkspaceManageSlugRoute,
 }
 
@@ -1934,7 +2038,12 @@ const rootRouteChildren: RootRouteChildren = {
     DotwellKnownOauthProtectedResourceIndexRoute,
   DotwellKnownOauthAuthorizationServerApiAuthRoute:
     DotwellKnownOauthAuthorizationServerApiAuthRoute,
+  ApiAtprotoOauthCallbackRoute: ApiAtprotoOauthCallbackRoute,
+  ApiAtprotoOauthClientMetadataDotjsonRoute:
+    ApiAtprotoOauthClientMetadataDotjsonRoute,
+  ApiAtprotoOauthStartRoute: ApiAtprotoOauthStartRoute,
   ApiAuthInternalApiKeyRoute: ApiAuthInternalApiKeyRoute,
+  ApiAtprotoOauthHarnessAuthorizeRoute: ApiAtprotoOauthHarnessAuthorizeRoute,
   ApiAuthInternalMembershipsOrganizationIdMembersUserIdRoute:
     ApiAuthInternalMembershipsOrganizationIdMembersUserIdRoute,
 }

@@ -50,6 +50,9 @@ class EntryModel:
     claimed_by_user_id: str | None = None
     claim_verified_at: str | None = None
     last_confirmed_at: str | None = None
+    linked_atproto_did: str | None = None
+    linked_atproto_handle: str | None = None
+    linked_atproto_verified_at: str | None = None
     suppressed_source_ids: list[str] = field(default_factory=list)
     preferred_contact_channel: str | None = None
 
@@ -153,6 +156,9 @@ def _row_to_entry(row: dict[str, Any]) -> EntryModel:
         claimed_by_user_id=row.get("claimed_by_user_id"),
         claim_verified_at=row.get("claim_verified_at"),
         last_confirmed_at=row.get("last_confirmed_at"),
+        linked_atproto_did=row.get("linked_atproto_did"),
+        linked_atproto_handle=row.get("linked_atproto_handle"),
+        linked_atproto_verified_at=row.get("linked_atproto_verified_at"),
         suppressed_source_ids=suppressed,
         preferred_contact_channel=row.get("preferred_contact_channel"),
     )

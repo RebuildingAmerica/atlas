@@ -265,7 +265,7 @@ export function ProfileResearchContext({ entry, issueAreaLabels }: ProfileResear
               params={{ slug: entry.slug }}
               className="type-label-medium border-border hover:border-civic hover:text-civic text-ink-soft rounded-full border px-3 py-1.5 transition-colors"
             >
-              Claim representation
+              Verify representation
             </Link>
           </div>
         </div>

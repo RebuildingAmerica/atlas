@@ -254,6 +254,43 @@ class ProfileClaimCRUD:
         return [_row_to_claim_proof(row) for row in rows]
 
     @staticmethod
+    async def mark_proof_verified(
+        conn: aiosqlite.Connection,
+        proof_id: str,
+        *,
+        proof_metadata: Any | None = None,
+    ) -> ProfileClaimProofModel | None:
+        """Transition one pending proof record to verified."""
+        now = db.now_iso()
+        metadata_json = json.dumps(proof_metadata, sort_keys=True) if proof_metadata else None
+        cursor = await conn.execute(
+            """
+            UPDATE profile_claim_proofs
+            SET proof_status = 'verified',
+                proof_metadata_json = COALESCE(?, proof_metadata_json),
+                reviewed_at = ?
+            WHERE id = ?
+            """,
+            (metadata_json, now, proof_id),
+        )
+        await conn.commit()
+        if cursor.rowcount == 0:
+            return None
+        cursor = await conn.execute(
+            """
+            SELECT id, claim_id, proof_type, proof_status, proof_summary,
+                   proof_metadata_json, created_at, reviewed_at, expires_at
+            FROM profile_claim_proofs
+            WHERE id = ?
+            """,
+            (proof_id,),
+        )
+        row = await cursor.fetchone()
+        if row is None:
+            return None
+        return _row_to_claim_proof(row)
+
+    @staticmethod
     async def mark_verified(
         conn: aiosqlite.Connection,
         claim_id: str,

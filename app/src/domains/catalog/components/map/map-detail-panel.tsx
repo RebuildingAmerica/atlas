@@ -153,7 +153,7 @@ function ActorView({ headingId, selection }: { headingId: string; selection: Act
 
       <MapFacts point={point} />
 
-      <MapTrustRow trustLevel={point.trust_level} />
+      <MapTrustRow actorType={point.type} trustLevel={point.trust_level} />
 
       {point.issue_areas.length > 0 ? (
         <ul className="flex flex-wrap gap-1.5" aria-label="Issue areas">
@@ -200,11 +200,17 @@ function ActorView({ headingId, selection }: { headingId: string; selection: Act
 }
 
 /** The single trust line, importing the profile's verification language. */
-function MapTrustRow({ trustLevel }: { trustLevel: MapPoint["trust_level"] }) {
+function MapTrustRow({
+  actorType,
+  trustLevel,
+}: {
+  actorType: MapPoint["type"];
+  trustLevel: MapPoint["trust_level"];
+}) {
   return (
     <div className="space-y-1">
       <p className="type-label-small text-ink-muted">Verification</p>
-      <MapTrustLine trustLevel={trustLevel} />
+      <MapTrustLine actorType={actorType} trustLevel={trustLevel} />
     </div>
   );
 }
@@ -230,7 +236,7 @@ function ClusterMemberRow({
         <span className="type-body-small text-ink-strong block truncate font-semibold">
           {point.name}
         </span>
-        <MapTrustLine trustLevel={point.trust_level} />
+        <MapTrustLine actorType={point.type} trustLevel={point.trust_level} />
       </span>
       <ArrowRight className="text-ink-soft h-4 w-4 shrink-0" aria-hidden />
     </button>

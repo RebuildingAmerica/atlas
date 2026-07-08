@@ -92,10 +92,13 @@ function sourceNoteLabel(source: NonNullable<Entry["sources"]>[number]): string 
 
 function verificationBadge(entry: Entry): VerificationBadgeInfo {
   if (entry.claim.status === "pending") {
-    return { variant: "warning", label: "Claim under review" };
+    return { variant: "warning", label: "Verification under review" };
   }
   if (entry.claim.status === "verified" || entry.trust.level === "subject_verified") {
-    return { variant: "success", label: "Verified by subject" };
+    return {
+      variant: "success",
+      label: entry.type === "organization" ? "Verified representative" : "Verified person",
+    };
   }
   if (entry.trust.level === "atlas_verified" || entry.verified) {
     return { variant: "success", label: "Atlas-verified" };

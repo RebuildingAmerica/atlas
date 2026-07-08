@@ -26,12 +26,13 @@ function humanize(value: string): string {
 }
 
 /** Map a trust tier to its browse-card badge; unverified renders no badge (silence is honest). */
-function trustBadge(
-  level: Entry["trust"]["level"],
-): { variant: "success" | "info"; label: string } | null {
-  switch (level) {
+function trustBadge(entry: Entry): { variant: "success" | "info"; label: string } | null {
+  switch (entry.trust.level) {
     case "subject_verified":
-      return { variant: "success", label: "Verified by subject" };
+      return {
+        variant: "success",
+        label: entry.type === "organization" ? "Verified representative" : "Verified person",
+      };
     case "atlas_verified":
       return { variant: "success", label: "Atlas-verified" };
     case "corroborated":
@@ -42,7 +43,7 @@ function trustBadge(
 }
 
 export function EntryCard({ entry, issueAreaLabels = {} }: EntryCardProps) {
-  const tier = trustBadge(entry.trust.level);
+  const tier = trustBadge(entry);
   return (
     <Card className="border-stone-200 bg-white/95 p-5 shadow-sm">
       <div className="flex flex-col gap-4">

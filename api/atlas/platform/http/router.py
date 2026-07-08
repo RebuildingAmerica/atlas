@@ -56,7 +56,7 @@ def create_router() -> APIRouter:
     router.include_router(mcp_elicitations_router, prefix="/api")
     router.include_router(firehose_router, prefix="/api")
 
-    # Subject-claim, manage, follow, and feed surfaces
+    # Profile verification, manage, follow, and feed surfaces
     router.include_router(profiles_router, prefix="/api/profiles")
     router.include_router(feed_router, prefix="/api/feed")
     router.include_router(lists_router, prefix="/api/lists")

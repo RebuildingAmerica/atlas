@@ -1,10 +1,7 @@
-"""Slug-based profile actions: claim, verify, manage, follow."""
+"""Slug-based profile actions: verify, manage, follow."""
 
 from __future__ import annotations
 
-import json
-import logging
-from collections.abc import AsyncGenerator  # noqa: TC003
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
@@ -12,23 +9,15 @@ from fastapi import APIRouter, Depends, HTTPException, Response, status
 
 from atlas.domains.access.dependencies import require_actor
 from atlas.domains.access.models.follows import FollowCRUD
-from atlas.domains.catalog.models.profile_claims import (
-    VERIFICATION_TOKEN_TTL,
-    ProfileClaimCRUD,
-)
+from atlas.domains.catalog.api.profile_atproto import router as atproto_router
+from atlas.domains.catalog.api.profile_claim_helpers import get_db
+from atlas.domains.catalog.api.profile_claim_review import router as claim_review_router
+from atlas.domains.catalog.api.profile_claims import router as claim_router
 from atlas.domains.catalog.schemas.public import (
-    ProfileClaimRequest,
-    ProfileClaimResponse,
-    ProfileClaimVerifyRequest,
     ProfileFollowResponse,
     ProfileManageRequest,
 )
-from atlas.domains.catalog.services.profile_claims import (
-    CLAIM_TIER_EMAIL_DOMAIN,
-    ProfileClaimPolicy,
-)
-from atlas.models import EntryCRUD, get_db_connection
-from atlas.platform.config import Settings, get_settings
+from atlas.models import EntryCRUD
 from atlas.platform.http.cache import apply_no_store_headers
 
 if TYPE_CHECKING:
@@ -36,236 +25,20 @@ if TYPE_CHECKING:
 
     from atlas.domains.access.principals import AuthenticatedActor
 
-logger = logging.getLogger(__name__)
-
 router = APIRouter()
+router.include_router(atproto_router)
+router.include_router(claim_review_router)
+router.include_router(claim_router)
 
 __all__ = ["router"]
 
 
-async def get_db(
-    settings: Settings = Depends(get_settings),
-) -> AsyncGenerator[aiosqlite.Connection, None]:
-    """Yield a per-request database connection."""
-    conn = await get_db_connection(settings.database_url, backend=settings.database_backend)
-    try:
-        yield conn
-    finally:
-        await conn.close()
-
-
-def get_profile_claim_policy() -> ProfileClaimPolicy:
-    """Build the profile-claim policy service for request handlers."""
-    return ProfileClaimPolicy()
-
-
-def _claim_to_response(claim: Any, entry: Any) -> ProfileClaimResponse:
-    return ProfileClaimResponse(
-        id=claim.id,
-        entry_id=claim.entry_id,
-        entry_slug=entry.slug,
-        entry_name=entry.name,
-        user_id=claim.user_id,
-        user_email=claim.user_email,
-        status=claim.status,
-        tier=claim.tier,
-        evidence=(json.loads(claim.evidence_json) if claim.evidence_json else None),
-        verified_at=claim.verified_at,
-        rejected_reason=claim.rejected_reason,
-        created_at=claim.created_at,
-        updated_at=claim.updated_at,
-    )
-
-
-def _blank_to_none(value: str | None) -> str | None:
-    if value is None:
-        return None
-    stripped = value.strip()
-    return stripped or None
-
-
-def _claim_evidence_payload(payload: ProfileClaimRequest) -> dict[str, str] | str | None:
-    structured = {
-        "relationship": _blank_to_none(payload.relationship),
-        "evidence": _blank_to_none(payload.evidence),
-        "requested_changes": _blank_to_none(payload.requested_changes),
-        "preferred_contact_channel": _blank_to_none(payload.preferred_contact_channel),
-        "private_note": _blank_to_none(payload.private_note),
-    }
-    intent = {key: value for key, value in structured.items() if value is not None}
-    if intent:
-        return intent
-    return None
-
-
-@router.post(
-    "/{slug}/claim",
-    response_model=ProfileClaimResponse,
-    summary="Initiate a profile claim",
-    description=(
-        "Creates a pending profile claim for the authenticated user. "
-        "If the user's email domain matches the profile's email or website "
-        "domain, the claim is tier 1 (email verification); otherwise it is "
-        "tier 2 (manual review)."
-    ),
-    operation_id="initiateProfileClaim",
-    status_code=status.HTTP_201_CREATED,
-    tags=["claims"],
-)
-async def initiate_claim(  # noqa: PLR0913
-    slug: str,
-    payload: ProfileClaimRequest,
-    response: Response,
-    actor: AuthenticatedActor = Depends(require_actor),
-    db: aiosqlite.Connection = Depends(get_db),
-    claim_policy: ProfileClaimPolicy = Depends(get_profile_claim_policy),
-) -> ProfileClaimResponse:
-    """Initiate a claim for the profile identified by ``slug``."""
-    entry = await EntryCRUD.get_by_slug(db, slug)
-    if entry is None:
-        raise HTTPException(status_code=404, detail="Profile not found")
-
-    if entry.claim_status == "verified":
-        existing = await ProfileClaimCRUD.get_active_for_entry(db, entry.id)
-        if existing is not None and existing.user_id == actor.user_id:
-            apply_no_store_headers(response)
-            return _claim_to_response(existing, entry)
-        raise HTTPException(
-            status_code=409,
-            detail="This profile is already verified by another user.",
-        )
-
-    claim_decision = claim_policy.classify(entry, actor.email)
-    tier = claim_decision.tier
-
-    if claim_decision.requires_manual_evidence and not (
-        payload.evidence and payload.evidence.strip()
-    ):
-        raise HTTPException(
-            status_code=400,
-            detail="Evidence is required for manual-review claims.",
-        )
-
-    claim = await ProfileClaimCRUD.create(
-        db,
-        entry_id=entry.id,
-        user_id=actor.user_id,
-        user_email=actor.email,
-        tier=tier,
-        evidence=_claim_evidence_payload(payload),
-        token_ttl=VERIFICATION_TOKEN_TTL,
-    )
-
-    await EntryCRUD.update(
-        db,
-        entry.id,
-        claim_status="pending",
-        claimed_by_user_id=actor.user_id,
-    )
-
-    apply_no_store_headers(response)
-    return _claim_to_response(claim, entry)
-
-
-@router.post(
-    "/claims/verify-email",
-    response_model=ProfileClaimResponse,
-    summary="Verify a tier-1 claim",
-    description=(
-        "Completes a tier-1 claim by exchanging a verification token (delivered "
-        "to the subject's email) for a verified claim record."
-    ),
-    operation_id="verifyProfileClaim",
-    tags=["claims"],
-)
-async def verify_claim(
-    payload: ProfileClaimVerifyRequest,
-    response: Response,
-    db: aiosqlite.Connection = Depends(get_db),
-    claim_policy: ProfileClaimPolicy = Depends(get_profile_claim_policy),
-) -> ProfileClaimResponse:
-    """Verify a tier-1 claim using its emailed token."""
-    claim = await ProfileClaimCRUD.get_by_token(db, payload.token)
-    if claim is None:
-        raise HTTPException(status_code=404, detail="Verification token not found.")
-
-    if claim.status != "pending":
-        raise HTTPException(status_code=409, detail=f"Claim is {claim.status}.")
-
-    entry = await EntryCRUD.get_by_id(db, claim.entry_id)
-    if entry is None:
-        raise HTTPException(status_code=404, detail="Profile not found")
-
-    proof = claim_policy.email_domain_proof(entry, claim.user_email)
-    if claim.tier != CLAIM_TIER_EMAIL_DOMAIN or proof is None:
-        raise HTTPException(
-            status_code=409,
-            detail="Email verification is only available for low-risk organization claims.",
-        )
-
-    expires = (
-        datetime.fromisoformat(claim.verification_token_expires_at)
-        if claim.verification_token_expires_at
-        else None
-    )
-    if expires is None or expires < datetime.now(UTC):
-        await ProfileClaimCRUD.mark_rejected(db, claim.id, reason="Verification token expired.")
-        raise HTTPException(status_code=410, detail="Verification token expired.")
-
-    verified = await ProfileClaimCRUD.mark_verified(
-        db,
-        claim.id,
-        proof_type=proof.proof_type,
-        proof_summary=proof.summary,
-        proof_metadata=proof.metadata,
-    )
-    if verified is None:
-        raise HTTPException(status_code=500, detail="Failed to verify claim.")
-
-    await EntryCRUD.update(
-        db,
-        verified.entry_id,
-        claim_status="verified",
-        claimed_by_user_id=verified.user_id,
-        claim_verified_at=verified.verified_at,
-        last_confirmed_at=verified.verified_at,
-    )
-
-    apply_no_store_headers(response)
-    return _claim_to_response(verified, entry)
-
-
-@router.get(
-    "/claims/me",
-    response_model=list[ProfileClaimResponse],
-    summary="List my claims",
-    description="Returns all profile claims belonging to the authenticated user.",
-    operation_id="listMyProfileClaims",
-    tags=["claims"],
-)
-async def list_my_claims(
-    response: Response,
-    actor: AuthenticatedActor = Depends(require_actor),
-    db: aiosqlite.Connection = Depends(get_db),
-) -> list[ProfileClaimResponse]:
-    """List claims belonging to the current actor."""
-    claims = await ProfileClaimCRUD.list_by_user(db, actor.user_id)
-    apply_no_store_headers(response)
-    out: list[ProfileClaimResponse] = []
-    for claim in claims:
-        entry = await EntryCRUD.get_by_id(db, claim.entry_id)
-        if entry is None:
-            continue
-        out.append(_claim_to_response(claim, entry))
-    return out
-
-
 @router.patch(
     "/{slug}/manage",
-    summary="Manage subject-controlled fields",
+    summary="Update verified profile fields",
     description=(
-        "Update subject-managed fields on a profile (custom bio, photo URL, "
-        "suppressed sources, preferred contact). Requires a verified claim."
+        "Update fields on a verified profile: custom bio, photo URL, suppressed sources, "
+        "and preferred contact. Requires verified representative access."
     ),
     operation_id="manageProfile",
     tags=["claims"],
@@ -277,7 +50,7 @@ async def manage_profile(
     actor: AuthenticatedActor = Depends(require_actor),
     db: aiosqlite.Connection = Depends(get_db),
 ) -> dict[str, Any]:
-    """Update subject-controlled fields on a verified profile."""
+    """Update editable fields on a verified profile."""
     entry = await EntryCRUD.get_by_slug(db, slug)
     if entry is None:
         raise HTTPException(status_code=404, detail="Profile not found")
@@ -285,7 +58,7 @@ async def manage_profile(
     if entry.claim_status != "verified" or entry.claimed_by_user_id != actor.user_id:
         raise HTTPException(
             status_code=403,
-            detail="Only the verified subject of a claim can manage this profile.",
+            detail="Only a verified representative can manage this profile.",
         )
 
     update_fields: dict[str, Any] = {}

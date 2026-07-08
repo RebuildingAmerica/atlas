@@ -2,9 +2,8 @@
  * DataQualityBlock — provenance + verification panel for profile pages.
  *
  * Surfaces first-seen, last-activity freshness, source count, and the
- * verification line. The verification row also carries an inline claim link
- * for unclaimed profiles, so the claim affordance lives in context (a subject
- * looking at how they're represented) rather than as a top-of-page banner.
+ * verification line. The verification row also carries an inline verification
+ * link when a subject can represent the profile.
  */
 import { Link } from "@tanstack/react-router";
 import { CheckCircle2, MessageSquareWarning, ShieldCheck, ShieldQuestion } from "lucide-react";
@@ -13,6 +12,7 @@ import {
   formatFreshness,
 } from "@/domains/catalog/components/profiles/detail/profile-detail-primitives";
 import { LeadQualitySignals } from "@/domains/catalog/components/profiles/lead-quality-signals";
+import { LinkedAtprotoAccount } from "@/domains/catalog/components/profiles/linked-atproto-account";
 import type { ClaimEvidenceInfo, Entry } from "@/types";
 
 interface DataQualityBlockProps {
@@ -49,10 +49,15 @@ function VerificationLine({ entry }: { entry: Entry }) {
   if (status === "verified") {
     const verifiedAt = entry.claim.claim_verified_at;
     const dateLabel = verifiedAt ? formatAbsoluteDate(verifiedAt) : null;
+    const label = entry.type === "organization" ? "Verified representative" : "Verified person";
     return (
-      <span className="type-body-medium text-ink-strong inline-flex items-center gap-1.5">
-        <ShieldCheck className="text-civic h-4 w-4" aria-hidden />
-        Verified by subject{dateLabel ? ` — ${dateLabel}` : ""}
+      <span className="inline-flex flex-col gap-1">
+        <span className="type-body-medium text-ink-strong inline-flex items-center gap-1.5">
+          <ShieldCheck className="text-civic h-4 w-4" aria-hidden />
+          {label}
+          {dateLabel ? ` — ${dateLabel}` : ""}
+        </span>
+        <LinkedAtprotoAccount entry={entry} />
       </span>
     );
   }
@@ -61,7 +66,7 @@ function VerificationLine({ entry }: { entry: Entry }) {
     return (
       <span className="type-body-medium text-ink-soft inline-flex items-center gap-1.5">
         <ShieldQuestion className="text-ink-muted h-4 w-4" aria-hidden />
-        Claim under review
+        Verification under review
       </span>
     );
   }
@@ -124,7 +129,7 @@ function ClaimEvidenceBlock({ entry }: { entry: Entry }) {
   return (
     <div className="space-y-2">
       <dt>
-        <h3 className="type-label-small text-ink-muted">Claim evidence</h3>
+        <h3 className="type-label-small text-ink-muted">Verification evidence</h3>
       </dt>
       <dd className="grid gap-2">
         {rows.map(([label, item]) => (
@@ -243,7 +248,7 @@ function ClaimLink({ entry }: { entry: Entry }) {
   if (status === "verified" || status === "pending") return null;
 
   const label =
-    status === "revoked" ? "Claim this profile →" : `Are you ${entry.name}? Claim this profile →`;
+    status === "revoked" ? "Verify this profile" : `Represent ${entry.name}? Verify this profile`;
 
   return (
     <Link
@@ -274,7 +279,7 @@ function StewardshipBlock({ entry }: { entry: Entry }) {
           params={{ slug: entry.slug }}
           className="type-body-small text-civic hover:text-civic-deep font-medium underline-offset-2 hover:underline"
         >
-          Claim or correct representation
+          Verify or correct representation
         </Link>
         <Link
           to="/feedback/$slug"

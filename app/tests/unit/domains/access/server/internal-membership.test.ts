@@ -87,7 +87,54 @@ describe("internal-membership", () => {
       name: "Atlas",
       role: "admin",
       slug: "atlas",
+      verifiedSsoDomains: [],
+      workspaceDomain: null,
       workspaceType: "team",
+    });
+  });
+
+  it("includes workspace domain and verified SSO domains in membership details", async () => {
+    const membershipGet = vi.fn().mockReturnValue({
+      metadata: { workspaceDomain: "atlas.test", workspaceType: "team" },
+      name: "Atlas",
+      role: "owner",
+      slug: "atlas",
+    });
+    const providersAll = vi.fn().mockReturnValue([
+      {
+        domain: "atlas.test, ignored.test",
+        domainVerified: 1,
+        organizationId: "org_1",
+      },
+      {
+        domain: "pending.test",
+        domainVerified: 0,
+        organizationId: "org_1",
+      },
+      {
+        domain: "other.test",
+        domainVerified: 1,
+        organizationId: "other_org",
+      },
+    ]);
+    const prepare = vi.fn((sql: string) => {
+      if (sql.includes("ssoProvider")) {
+        return { all: providersAll };
+      }
+      return { get: membershipGet };
+    });
+    mocks.getAuthDatabase.mockReturnValue({ prepare });
+
+    const request = new Request("http://localhost", {
+      headers: { "x-atlas-internal-secret": "test-secret" },
+    });
+    const response = await verifyMembershipRequest(request, "org_1", "user_1");
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      role: "owner",
+      verifiedSsoDomains: ["atlas.test", "ignored.test"],
+      workspaceDomain: "atlas.test",
     });
   });
 
@@ -107,7 +154,7 @@ describe("internal-membership", () => {
     const response = await verifyMembershipRequest(request, "org_1", "user_1");
 
     expect(response.status).toBe(200);
-    expect(prepare).toHaveBeenCalledOnce();
+    expect(prepare).toHaveBeenCalledTimes(2);
     expect(get).toHaveBeenCalledWith("org_1", "user_1");
     await expect(response.json()).resolves.toMatchObject({
       role: "owner",
