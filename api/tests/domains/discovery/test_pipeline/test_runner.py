@@ -1,11 +1,7 @@
-"""Pipeline behavior tests."""
+"""Tests for end-to-end discovery execution."""
 
 from __future__ import annotations
 
-import importlib
-import importlib.util
-
-import httpx
 import pytest
 from atlas_shared import RawEntry
 
@@ -13,22 +9,11 @@ from atlas.domains.discovery.pipeline.runner import (
     DiscoveryPipelineCredentials,
     DiscoveryPipelineJob,
 )
-from atlas.domains.discovery.pipeline.source_fetcher import (
-    FetchedSource,
-)
+from atlas.domains.discovery.pipeline.source_fetcher import FetchedSource
 from atlas.models import DiscoveryRunCRUD, EntryCRUD
 from atlas.platform.config import Settings
 
-EXPECTED_TWO_RECORDS = 2
-EXPECTED_ACCEPTED_STATUS = 202
-SEARCH_OFFLINE_ERROR = "search offline"
-
-
-def _load_runner_module() -> object:
-    """Load the pipeline runner module or fail with a clear assertion."""
-    if importlib.util.find_spec("atlas.domains.discovery.pipeline.runner") is None:
-        pytest.fail("atlas.domains.discovery.pipeline.runner module is missing")
-    return importlib.import_module("atlas.domains.discovery.pipeline.runner")
+from .support import EXPECTED_TWO_RECORDS, load_runner_module
 
 
 class TestDiscoveryRunner:
@@ -41,7 +26,7 @@ class TestDiscoveryRunner:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """A run should fetch, extract, deduplicate, persist, and complete."""
-        runner_module = _load_runner_module()
+        runner_module = load_runner_module()
 
         async def fake_fetch_sources(
             queries: list[object],
@@ -122,8 +107,6 @@ class TestDiscoveryRunner:
         assert run.entries_extracted == EXPECTED_TWO_RECORDS
         assert run.entries_after_dedup == 1
 
-        # The trust gate holds an uncorroborated web-only org: it is persisted with
-        # its sources but stays out of public search until a curator approves it.
         from atlas.domains.moderation.review_queue import ReviewQueueCRUD
 
         public_results = await EntryCRUD.search_public(test_db, states=["MO"])
@@ -148,7 +131,7 @@ class TestDiscoveryRunner:
         """A completed run records search and model spend against the cost ledger."""
         from atlas.domains.discovery.cost import run_cost
 
-        runner_module = _load_runner_module()
+        runner_module = load_runner_module()
 
         async def fake_fetch_sources(
             queries: list[object],
@@ -212,7 +195,7 @@ class TestDiscoveryRunner:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Crossing a ceiling ends the run as a controlled stop, not an exception storm."""
-        runner_module = _load_runner_module()
+        runner_module = load_runner_module()
 
         async def fake_fetch_sources(
             queries: list[object],
@@ -252,7 +235,6 @@ class TestDiscoveryRunner:
             issue_areas=["housing_affordability"],
         )
 
-        # A near-zero ceiling trips after the first metered call.
         await runner_module.run_discovery_pipeline(
             test_db,
             job=DiscoveryPipelineJob(
@@ -261,10 +243,7 @@ class TestDiscoveryRunner:
                 state="MO",
                 issue_areas=["housing_affordability"],
             ),
-            credentials=DiscoveryPipelineCredentials(
-                search_api_key="test-search-key",
-                anthropic_api_key="test-anthropic-key",
-            ),
+            credentials=DiscoveryPipelineCredentials(search_api_key="test-search-key"),
             settings=Settings(
                 database_url="sqlite:///tmp/test.db",
                 discovery_max_run_cost=0.001,
@@ -276,7 +255,6 @@ class TestDiscoveryRunner:
         assert run.status == "failed"
         assert run.error_message is not None
         assert run.error_message.startswith("cost_ceiling")
-        # The controlled stop halts before any model spend on this source.
         assert extraction_calls["count"] == 0
 
     @pytest.mark.asyncio
@@ -286,7 +264,7 @@ class TestDiscoveryRunner:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """The kill switch halts a run before any search spend is incurred."""
-        runner_module = _load_runner_module()
+        runner_module = load_runner_module()
         fetch_calls = {"count": 0}
 
         async def fake_fetch_sources(
@@ -325,83 +303,3 @@ class TestDiscoveryRunner:
         assert run.status == "failed"
         assert run.error_message == "cost_ceiling:kill_switch"
         assert fetch_calls["count"] == 0
-
-
-class TestDiscoveryApiIntegration:
-    """Tests for API-triggered discovery execution."""
-
-    @pytest.mark.asyncio
-    async def test_start_discovery_run_can_execute_inline(
-        self,
-        db_url: str,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Inline mode should run the pipeline before returning the response."""
-        from atlas.main import create_app
-        from atlas.platform.config import get_settings
-
-        async def fake_runner(**_kwargs: object) -> None:
-            job = _kwargs["job"]
-            conn = await _get_db_connection(db_url)
-            try:
-                run = await DiscoveryRunCRUD.get_by_id(conn, job.run_id)
-                assert run is not None
-                entry_id = await EntryCRUD.create(
-                    conn,
-                    entry_type="organization",
-                    name="Inline Discovery Result",
-                    description="Created during inline execution.",
-                    city="Kansas City",
-                    state="MO",
-                    geo_specificity="local",
-                )
-                await conn.execute(
-                    """
-                    INSERT INTO entry_issue_areas (entry_id, issue_area, created_at)
-                    VALUES (?, ?, datetime('now'))
-                    """,
-                    (entry_id, "housing_affordability"),
-                )
-                await conn.commit()
-                await DiscoveryRunCRUD.complete(
-                    conn, job.run_id, queries_generated=1, entries_confirmed=1
-                )
-            finally:
-                await conn.close()
-
-        monkeypatch.setattr(
-            "atlas.domains.discovery.run_creation.run_discovery_pipeline_for_run", fake_runner
-        )
-
-        settings = Settings(
-            database_url=db_url,
-            anthropic_api_key="test-key",
-            search_api_key="test-search",
-            discovery_inline=True,
-            deploy_mode="local",
-        )
-        app = create_app()
-        app.dependency_overrides[get_settings] = lambda: settings
-
-        transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
-            response = await client.post(
-                "/api/discovery-runs",
-                json={
-                    "location_query": "Kansas City, MO",
-                    "state": "MO",
-                    "issue_areas": ["housing_affordability"],
-                },
-            )
-
-        assert response.status_code == EXPECTED_ACCEPTED_STATUS
-        data = response.json()
-        assert data["status"] == "completed"
-        assert data["entries_confirmed"] == 1
-
-
-async def _get_db_connection(database_url: str) -> object:
-    """Import lazily to avoid cluttering the top-level test dependencies."""
-    from atlas.models import get_db_connection
-
-    return await get_db_connection(database_url)
