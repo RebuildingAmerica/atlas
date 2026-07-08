@@ -3,16 +3,17 @@ import { vi } from "vitest";
 /**
  * Shared dependency mocks for the organization page unit tests.
  */
-export const organizationPageDependencyMocks = {
+export const organizationPageDependencyMocks = vi.hoisted(() => ({
   acceptWorkspaceInvitation: vi.fn(),
   cancelWorkspaceInvitation: vi.fn(),
   convertWorkspaceToTeam: vi.fn(),
   createWorkspace: vi.fn(),
   deleteWorkspaceSSOProvider: vi.fn(),
   getOrganizationDetails: vi.fn(),
+  getWorkspaceSAMLAllowedIssuers: vi.fn(),
   invalidateQueries: vi.fn(),
   inviteWorkspaceMember: vi.fn(),
-  getWorkspaceSAMLAllowedIssuers: vi.fn(),
+  leaveWorkspace: vi.fn(),
   registerWorkspaceGoogleOIDCProvider: vi.fn(),
   registerWorkspaceSAMLProvider: vi.fn(),
   rejectWorkspaceInvitation: vi.fn(),
@@ -29,5 +30,4 @@ export const organizationPageDependencyMocks = {
   useQuery: vi.fn(),
   useQueryClient: vi.fn(),
   verifyWorkspaceSSODomain: vi.fn(),
-  leaveWorkspace: vi.fn(),
-} as const;
+}));
