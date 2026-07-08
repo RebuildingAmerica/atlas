@@ -9,12 +9,12 @@ from fastapi import HTTPException
 
 from atlas.domains.catalog.models.ownership import OwnershipCRUD
 from atlas.domains.discovery.api_org import (
-    OrgDiscoveryBudgetCRUD,
     OrgDiscoveryRunResponse,
     OrgDiscoveryRunStartRequest,
     _current_budget_month,
     start_org_discovery_run,
 )
+from atlas.domains.discovery.budget import OrgDiscoveryBudgetCRUD
 from tests.domains.discovery.api_org_support import ORG_ID, _make_actor
 
 
