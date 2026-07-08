@@ -180,6 +180,11 @@ export function createRouterMocks(): RouterMockApi {
 
 let activeRouterMocks: RouterMockApi | null = null;
 
+function ensureRouterMocks(): RouterMockApi {
+  activeRouterMocks ??= createRouterMocks();
+  return activeRouterMocks;
+}
+
 /**
  * Installs `vi.mock("@tanstack/react-router", ...)` with the harness module
  * factory and returns the live `RouterMockApi` so tests can assert on
@@ -193,24 +198,20 @@ let activeRouterMocks: RouterMockApi | null = null;
  * router.useLoaderData.mockReturnValue({ ... });
  * ```
  *
- * The mock factory is called eagerly by vitest before any test imports, so
- * `readRouterMocks()` returns the same instance the route file received.
+ * Some test files configure router hooks before their route module import
+ * triggers Vitest's mock factory. Reusing an existing active mock keeps those
+ * early hook values attached to the module surface the route file receives.
  */
 export function installRouterMocks(): Record<string, unknown> {
-  activeRouterMocks = createRouterMocks();
-  return buildRouterMockModule(activeRouterMocks);
+  return buildRouterMockModule(ensureRouterMocks());
 }
 
 /**
- * Returns the `RouterMockApi` installed by the most recent
- * `installRouterMocks()` call.  Throws if no mocks are active so failures
- * surface immediately.
+ * Returns the active `RouterMockApi`, creating it when a test configures
+ * router hooks before Vitest has invoked the route mock factory.
  */
 export function readRouterMocks(): RouterMockApi {
-  if (!activeRouterMocks) {
-    throw new Error("Router mocks have not been installed for this test file.");
-  }
-  return activeRouterMocks;
+  return ensureRouterMocks();
 }
 
 /**
@@ -219,15 +220,15 @@ export function readRouterMocks(): RouterMockApi {
  * test isolation.
  */
 export function resetRouterMocks(): void {
-  if (!activeRouterMocks) return;
-  activeRouterMocks.useLoaderData.mockReset();
-  activeRouterMocks.useSearch.mockReset();
-  activeRouterMocks.useParams.mockReset();
-  activeRouterMocks.useRouteContext.mockReset();
-  activeRouterMocks.useRouterState.mockReset();
-  activeRouterMocks.useRouterState.mockImplementation(routerPathnameState("/"));
-  activeRouterMocks.redirect.mockClear();
-  activeRouterMocks.redirect.mockImplementation((options: Record<string, unknown>) => {
+  const routerMocks = ensureRouterMocks();
+  routerMocks.useLoaderData.mockReset();
+  routerMocks.useSearch.mockReset();
+  routerMocks.useParams.mockReset();
+  routerMocks.useRouteContext.mockReset();
+  routerMocks.useRouterState.mockReset();
+  routerMocks.useRouterState.mockImplementation(routerPathnameState("/"));
+  routerMocks.redirect.mockClear();
+  routerMocks.redirect.mockImplementation((options: Record<string, unknown>) => {
     throwRouterRedirect(options);
   });
 }
