@@ -67,6 +67,36 @@ def test_doctor_command_outputs_json(monkeypatch) -> None:
     payload = json.loads(result.output)
     assert payload["checks"][0]["id"] == "atlas-account"
     assert payload["capabilities"][0]["id"] == "direct-url-runs"
+    assert payload["exit_code"] == 0
+
+
+def test_doctor_require_ready_capability_keeps_success(monkeypatch) -> None:
+    """Required ready capabilities should keep doctor usable as an automation gate."""
+    monkeypatch.setattr(cli_module, "run_doctor", lambda *_args, **_kwargs: _report())
+
+    result = CliRunner().invoke(main, ["doctor", "--require", "direct-url-runs"])
+
+    assert result.exit_code == 0
+
+
+def test_doctor_require_unready_capability_exits_nonzero(monkeypatch) -> None:
+    """Required unready capabilities should fail even when checks are warnings."""
+    monkeypatch.setattr(cli_module, "run_doctor", lambda *_args, **_kwargs: _report())
+
+    result = CliRunner().invoke(main, ["doctor", "--require", "atlas-sync"])
+
+    assert result.exit_code == 1
+
+
+def test_doctor_json_require_reports_effective_exit_code(monkeypatch) -> None:
+    """JSON output should expose the same exit code the shell receives."""
+    monkeypatch.setattr(cli_module, "run_doctor", lambda *_args, **_kwargs: _report())
+
+    result = CliRunner().invoke(main, ["doctor", "--json", "--require", "atlas-sync"])
+
+    assert result.exit_code == 1
+    payload = json.loads(result.output)
+    assert payload["exit_code"] == 1
 
 
 def test_doctor_failure_exits_nonzero(monkeypatch) -> None:

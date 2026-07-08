@@ -64,7 +64,12 @@ export ATLAS_API_KEY=...
 Check the target environment:
 
 ```bash
-uv --directory scout run scout doctor --atlas-url https://atlas.rebuildingus.org --json
+uv --directory scout run scout doctor \
+  --atlas-url https://atlas.rebuildingus.org \
+  --require direct-url-runs \
+  --require search-discovery \
+  --require atlas-sync \
+  --json
 ```
 
 Required capabilities before continuing:

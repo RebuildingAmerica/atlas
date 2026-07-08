@@ -59,6 +59,16 @@ class DoctorReport:
         """Return the process exit code implied by hard failures."""
         return 1 if any(check.status == "fail" for check in self.checks) else 0
 
+    def exit_code_for(self, required_capability_ids: tuple[str, ...] = ()) -> int:
+        """Return the process exit code for hard failures and required capabilities."""
+        if self.exit_code != 0:
+            return self.exit_code
+        for capability_id in required_capability_ids:
+            capability = self.capability(capability_id)
+            if capability is None or not capability.ready:
+                return 1
+        return 0
+
     def check(self, check_id: str) -> DoctorCheck | None:
         """Return one check by id."""
         return next((check for check in self.checks if check.id == check_id), None)
@@ -70,12 +80,12 @@ class DoctorReport:
             None,
         )
 
-    def to_json(self) -> str:
+    def to_json(self, *, exit_code: int | None = None) -> str:
         """Return a stable JSON representation without secrets."""
         payload = {
             "checks": [asdict(check) for check in self.checks],
             "capabilities": [asdict(capability) for capability in self.capabilities],
-            "exit_code": self.exit_code,
+            "exit_code": self.exit_code if exit_code is None else exit_code,
         }
         return json.dumps(payload, indent=2, sort_keys=True)
 
