@@ -3,12 +3,59 @@ title: "Install Scout"
 description: "Install the Scout CLI and verify the local command."
 ---
 
-Scout is packaged as the `atlas-scout` Python application and exposes the
-`scout` command.
+Scout is packaged as the `atlas-scout` application and exposes the `scout`
+command.
 
-## Current Install Path
+## Install With Homebrew
 
-Until the Homebrew tap is published, install Scout from the Atlas repository:
+```bash
+brew install rebuildingamerica/tap/atlas-scout
+```
+
+Verify the command:
+
+```bash
+scout --help
+scout db path
+```
+
+Run the setup flow:
+
+```bash
+scout setup
+```
+
+## Requirements
+
+- macOS with Homebrew.
+- A local model provider, such as LM Studio or Ollama, for local discovery.
+- A search key for search-backed discovery.
+- An Atlas account only when you want login, sync, or worker mode.
+
+Scout stores configuration and local data in OS-standard user directories. Run:
+
+```bash
+scout db path
+scout config show
+```
+
+## JavaScript-Rendered Pages
+
+Scout fetches pages without a browser first. When a page needs JavaScript,
+Scout can use headless Chromium through Playwright.
+
+The Homebrew formula installs the Playwright Python package, but it does not
+download Chromium during install. Add Chromium when you want JavaScript
+rendering:
+
+```bash
+$(brew --prefix atlas-scout)/libexec/bin/playwright install chromium
+```
+
+## Source Install
+
+Use the source install path when you are contributing to Atlas or need the
+repo-local `scout-dev` command:
 
 ```bash
 brew install python@3.12 uv
@@ -23,46 +70,14 @@ uv tool install --reinstall --editable ./scout \
   --with-editable ./libs/discovery-engine
 ```
 
-Verify the command:
+Verify the source install:
 
 ```bash
 scout --help
 ```
 
-## Requirements
-
-- Python 3.12 or newer.
-- `uv` for the current source install path.
-- A local model provider, such as LM Studio or Ollama, for normal local
-  discovery.
-- Chromium for the optional JavaScript-rendered page fallback.
-- A search key for search-backed discovery.
-- An Atlas account only when you want login, sync, or worker mode.
-
-Scout stores configuration and local data in OS-standard user directories. Run:
-
-```bash
-scout db path
-scout config show
-```
-
-Install the optional headless browser used for JavaScript-rendered pages:
-
-```bash
-uvx --from playwright playwright install chromium
-```
-
-## Homebrew Target
-
-The intended public install path is a RebuildingAmerica Homebrew tap:
-
-```bash
-brew install rebuildingamerica/tap/atlas-scout
-```
-
-That tap is not published yet. Until it exists, use the source install path
-above. The tap should install only the production `scout` command; `scout-dev`
-is for contributors working inside the Atlas repository.
+`scout-dev` is for Atlas contributors working inside the repository. It is not
+installed by Homebrew.
 
 ## Optional Shell Integration
 
@@ -81,12 +96,4 @@ scout setup \
   --completion-dir ~/.zfunc \
   --install-man \
   --man-dir ~/.local/share/man/man1
-```
-
-## Next Step
-
-Run the setup flow:
-
-```bash
-scout setup
 ```

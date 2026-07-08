@@ -37,6 +37,8 @@
     "scout-dev:install": "bash ./install-scout-dev.sh",
     "scout-dev:uninstall": "bash ./uninstall-scout-dev.sh",
     "scout-dev:test": "uv --directory ./scout run pytest --no-cov tests/e2e/test_scout_dev_installer.py -q",
+    "release:homebrew": "sh scripts/release/scout-homebrew.sh",
+    "release:homebrew:test": "sh scripts/release/tests/test-scout-homebrew.sh",
     "turbo:validate": "node ./scripts/validate-turbo-selectors.mjs",
     "e2e:api": "uv --directory ./api run python -m atlas.seed_profiles --database-url ${DATABASE_URL:-sqlite:///atlas.db} && uv --directory ./api run python -m atlas.main",
     "seed:profiles": "uv --directory ./api run python -m atlas.seed_profiles",

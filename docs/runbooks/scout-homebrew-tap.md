@@ -1,137 +1,130 @@
 # Scout Homebrew Tap Runbook
 
-Scout should be installable as a normal user-facing CLI, not as a hidden
-developer command. The intended install path is:
+Scout is a user-facing CLI. The public install path is:
 
 ```bash
 brew install rebuildingamerica/tap/atlas-scout
 ```
 
-The tap does not exist yet. This runbook defines the release path so the public
-Mintlify docs can switch to Homebrew once the formula is live.
+The formula installs only `scout`. `scout-dev` stays repo-local because it
+injects local Atlas development URLs and certificates.
 
-## Product Boundary
+## Release Shape
 
-- Homebrew installs only `scout`.
-- `scout-dev` stays repo-local because it injects local Atlas development URLs
-  and certificates.
-- The formula must preserve Scout's trust boundary: local runs stay local until
-  a user logs in and syncs them.
+Scout releases use Atlas tags shaped like:
 
-## Packaging Prerequisites
+```bash
+atlas-scout-vX.Y.Z
+```
 
-Scout currently depends on local monorepo packages:
+The release workflow:
 
-- `libs/shared` -> `atlas-shared`
-- `libs/discovery-engine` -> `atlas-discovery-engine`
-- `scout` -> `atlas-scout`
+1. Runs the shared, discovery-engine, and Scout package tests.
+2. Builds `atlas-scout-X.Y.Z.tar.gz` from the Atlas source tree.
+3. Generates a deterministic SHA256 checksum.
+4. Renders `Formula/atlas-scout.rb` from the Scout lockfile.
+5. Publishes the archive and checksum to a GitHub release.
+6. Creates a build provenance attestation for both artifacts.
+7. Opens a pull request in `RebuildingAmerica/homebrew-tap`.
+8. Enables auto-merge so the tap updates after its CI passes.
 
-Before publishing the tap, choose one stable packaging shape:
+The release archive contains:
 
-1. Publish all three Python packages to PyPI, then generate Homebrew Python
-   resources from `atlas-scout`.
-2. Build a GitHub release source archive that contains the monorepo paths and
-   install those local packages in order from the formula.
+- `LICENSE`
+- `README.md`
+- `libs/shared`
+- `libs/discovery-engine`
+- `scout`
 
-Use option 2 for the first tap release. It avoids creating public PyPI packages
-before the CLI versioning story is stable.
+It excludes virtual environments, caches, coverage output, node modules, and
+generated release artifacts.
+
+## GitHub App
+
+The Atlas release workflow writes to the tap with a GitHub App installation
+token. Configure these Atlas repository settings before the first tag release:
+
+- Variable: `REBUILDING_AMERICA_RELEASE_APP_CLIENT_ID`
+- Secret: `REBUILDING_AMERICA_RELEASE_APP_PRIVATE_KEY`
+
+Install the app on `RebuildingAmerica/homebrew-tap` with:
+
+- Contents: read and write
+- Pull requests: read and write
+- Metadata: read
+
+The normal repository `GITHUB_TOKEN` creates the Atlas release and provenance
+attestation. The app token is only for the tap checkout, branch push, pull
+request, and auto-merge request.
+
+## Local Checks
+
+Before pushing a Scout tag, run:
+
+```bash
+pnpm release:homebrew:test
+pnpm exec turbo run @rebuildingamerica/atlas-shared#test @rebuildingamerica/atlas-discovery-engine#test @rebuildingamerica/atlas-scout#test
+uv --directory scout run scout --help
+pnpm release:homebrew --tag atlas-scout-v0.1.0 --output-dir dist/scout-homebrew
+```
+
+Use the real version tag in the final command. The generated `dist/` files are
+ignored and should not be committed.
 
 ## Tap Repository
 
-Create the public repository:
+The tap repository should contain:
 
-```bash
-gh repo create RebuildingAmerica/homebrew-tap \
-  --public \
-  --description "Homebrew tap for Rebuilding America tools"
-```
+- `Formula/atlas-scout.rb`
+- `.github/workflows/ci.yml`
+- `README.md`
 
-Clone it:
-
-```bash
-git clone git@github.com:RebuildingAmerica/homebrew-tap.git
-cd homebrew-tap
-mkdir -p Formula
-```
-
-## Formula Shape
-
-Create `Formula/atlas-scout.rb` in the tap.
-
-The formula should:
-
-- Include `Language::Python::Virtualenv`.
-- Depend on `python@3.12`.
-- Install or document the Playwright Chromium browser dependency for the
-  optional JavaScript rendering fallback.
-- Use a tagged Atlas source archive.
-- Install resources into `libexec`.
-- Install local packages in this order: `libs/shared`,
-  `libs/discovery-engine`, `scout`.
-- Link only the `scout` executable.
-- Test `scout --help` and `scout doctor --json`.
-
-Do not add `scout-dev` to the formula.
-
-## Resource Generation
-
-After cutting a Scout release archive, generate dependency resources from a
-temporary formula:
-
-```bash
-brew update-python-resources Formula/atlas-scout.rb --print-only
-```
-
-Copy the printed resources into the formula, then audit:
-
-```bash
-brew audit --strict --online Formula/atlas-scout.rb
-```
-
-Install from the local tap checkout:
-
-```bash
-brew install --build-from-source Formula/atlas-scout.rb
-scout --help
-scout doctor --json
-```
-
-Uninstall and confirm user data is not deleted:
-
-```bash
-brew uninstall atlas-scout
-```
-
-## Release Checklist
-
-1. Update Scout version in `scout/pyproject.toml`.
-2. Confirm `atlas-shared` and `atlas-discovery-engine` versions match the Scout
-   release archive.
-3. Run focused Scout tests.
-4. Create an Atlas GitHub release tag for the Scout package.
-5. Update the tap formula URL and SHA256.
-6. Regenerate Python resources.
-7. Open a pull request against `RebuildingAmerica/homebrew-tap`.
-8. After merge, update Mintlify `scout/install` from source install to
-   Homebrew-first install.
-
-## Verification Commands
-
-Run from the Atlas checkout before release:
-
-```bash
-cd scout
-uv run pytest --no-cov tests/test_config.py tests/test_scraper/test_fetcher.py -q
-uv run scout --help
-uv run scout doctor --json
-```
-
-Run from the tap checkout before merge:
+Tap CI should run on macOS and check:
 
 ```bash
 brew audit --strict --online Formula/atlas-scout.rb
 brew install --build-from-source Formula/atlas-scout.rb
 scout --help
-scout doctor --json
+scout db path
 brew uninstall atlas-scout
+```
+
+Do not use `scout doctor --json` as a formula or tap CI gate. `doctor` is a
+readiness check and correctly exits nonzero on a clean machine without a local
+model, search credentials, or Atlas login.
+
+## Cut A Release
+
+1. Update the version in `scout/pyproject.toml`, `libs/shared/pyproject.toml`,
+   and `libs/discovery-engine/pyproject.toml`.
+2. Run the local checks above.
+3. Commit the version bump.
+4. Tag the commit:
+
+   ```bash
+   git tag atlas-scout-vX.Y.Z
+   git push origin atlas-scout-vX.Y.Z
+   ```
+
+5. Watch the Scout Release workflow.
+6. Wait for the tap pull request to pass CI and auto-merge.
+7. Verify the user install path:
+
+   ```bash
+   brew update
+   brew install rebuildingamerica/tap/atlas-scout
+   scout --help
+   scout setup
+   ```
+
+## Browser Dependency
+
+The formula installs the Playwright Python package because Scout can use
+headless Chromium for JavaScript-rendered pages. It does not download Chromium
+during `brew install`.
+
+Users who need JavaScript rendering should run:
+
+```bash
+$(brew --prefix atlas-scout)/libexec/bin/playwright install chromium
 ```

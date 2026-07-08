@@ -1,0 +1,123 @@
+name: Scout Release
+
+on:
+  push:
+    tags:
+      - "atlas-scout-v*.*.*"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: scout-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  homebrew:
+    runs-on: macos-15
+    timeout-minutes: 45
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+      artifact-metadata: write
+    env:
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - uses: ./.github/actions/setup-toolchain
+
+      - name: Test Homebrew release tooling
+        run: pnpm release:homebrew:test
+
+      - name: Test Scout packages
+        run: pnpm exec turbo run @rebuildingamerica/atlas-shared#test @rebuildingamerica/atlas-discovery-engine#test @rebuildingamerica/atlas-scout#test
+
+      - name: Smoke Scout CLI
+        run: uv --directory scout run scout --help
+
+      - name: Build Homebrew release artifacts
+        id: artifacts
+        run: pnpm release:homebrew --tag "$GITHUB_REF_NAME" --output-dir dist/scout-homebrew
+
+      - name: Write release notes
+        env:
+          VERSION: ${{ steps.artifacts.outputs.version }}
+        run: |
+          cat > dist/scout-homebrew/release-notes.md <<EOF
+          Atlas Scout ${VERSION}
+
+          Install after the tap pull request merges:
+
+              brew install rebuildingamerica/tap/atlas-scout
+
+          The formula installs the production scout command. It does not install scout-dev.
+          EOF
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            "${{ steps.artifacts.outputs.archive }}" \
+            "${{ steps.artifacts.outputs.checksum }}" \
+            --repo "$GH_REPO" \
+            --title "Atlas Scout ${{ steps.artifacts.outputs.version }}" \
+            --notes-file dist/scout-homebrew/release-notes.md \
+            --verify-tag
+
+      - name: Attest Scout release archive
+        uses: actions/attest-build-provenance@977bb373ede98d70efdf65b84cb5f73e068dcc2a # v3.0.0
+        with:
+          subject-path: |
+            ${{ steps.artifacts.outputs.archive }}
+            ${{ steps.artifacts.outputs.checksum }}
+
+      - name: Create tap token
+        id: tap-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.0.0
+        with:
+          client-id: ${{ vars.REBUILDING_AMERICA_RELEASE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.REBUILDING_AMERICA_RELEASE_APP_PRIVATE_KEY }}
+          owner: RebuildingAmerica
+          repositories: homebrew-tap
+          permission-contents: write
+          permission-pull-requests: write
+
+      - name: Checkout Homebrew tap
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          repository: RebuildingAmerica/homebrew-tap
+          token: ${{ steps.tap-token.outputs.token }}
+          path: homebrew-tap
+
+      - name: Update tap formula
+        env:
+          FORMULA_PATH: ${{ steps.artifacts.outputs.formula }}
+          VERSION: ${{ steps.artifacts.outputs.version }}
+          GH_TOKEN: ${{ steps.tap-token.outputs.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p homebrew-tap/Formula
+          cp "$FORMULA_PATH" homebrew-tap/Formula/atlas-scout.rb
+          cd homebrew-tap
+          git config user.name "rebuildingamerica-release[bot]"
+          git config user.email "rebuildingamerica-release[bot]@users.noreply.github.com"
+          branch="atlas-scout-${VERSION}"
+          git checkout -B "$branch"
+          git add Formula/atlas-scout.rb
+          if git diff --cached --quiet; then
+            echo "Formula already matches atlas-scout ${VERSION}."
+            exit 0
+          fi
+          git commit -m "Update atlas-scout to ${VERSION}"
+          git push --force-with-lease origin "$branch"
+          pr_url="$(gh pr create \
+            --repo RebuildingAmerica/homebrew-tap \
+            --base main \
+            --head "$branch" \
+            --title "Update atlas-scout to ${VERSION}" \
+            --body "Updates atlas-scout to ${VERSION} from ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/releases/tag/${GITHUB_REF_NAME}." \
+            2>/dev/null || gh pr view "$branch" --repo RebuildingAmerica/homebrew-tap --json url --jq .url)"
+          gh pr merge "$pr_url" --repo RebuildingAmerica/homebrew-tap --auto --squash --delete-branch
