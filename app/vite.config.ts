@@ -77,9 +77,16 @@ export default defineConfig(({ mode }) => {
       },
     },
     resolve: {
-      alias: {
-        "@": resolve(__dirname, "src"),
-      },
+      alias: [
+        {
+          find: /^maplibre-gl$/,
+          replacement: resolve(__dirname, "node_modules/maplibre-gl/dist/maplibre-gl-csp.js"),
+        },
+        {
+          find: "@",
+          replacement: resolve(__dirname, "src"),
+        },
+      ],
     },
   };
 });

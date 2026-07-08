@@ -54,6 +54,11 @@ describe("ActorMapSurface", () => {
     expect(mapCapture.props?.mapStyle).toBe(ATLAS_BASEMAP_STYLE);
   });
 
+  it("uses MapLibre's self-hosted worker asset", () => {
+    render(<ActorMapSurface mapStyle={ATLAS_BASEMAP_STYLE} />);
+    expect(mapCapture.props?.workerUrl).toContain("maplibre-gl-csp-worker");
+  });
+
   it("composes overlay chrome in as children", () => {
     render(
       <ActorMapSurface mapStyle={ATLAS_BASEMAP_STYLE}>

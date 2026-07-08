@@ -1,5 +1,6 @@
 import "maplibre-gl/dist/maplibre-gl.css";
 
+import maplibreWorkerUrl from "maplibre-gl/dist/maplibre-gl-csp-worker.js?url";
 import Map from "react-map-gl/maplibre";
 import type { MapEvent, ViewStateChangeEvent } from "react-map-gl/maplibre";
 import type { LngLatBoundsLike, StyleSpecification } from "maplibre-gl";
@@ -68,6 +69,7 @@ export function ActorMapSurface({
   return (
     <div className="bg-page-bg absolute inset-0">
       <Map
+        workerUrl={maplibreWorkerUrl}
         mapStyle={mapStyle}
         initialViewState={initialViewState}
         minZoom={MIN_MAP_ZOOM}

@@ -22,6 +22,7 @@ export interface MockMapProps {
   attributionControl: boolean;
   minZoom: number;
   maxZoom: number;
+  workerUrl: string;
   onLoad?: () => void;
   onMoveEnd?: () => void;
   "aria-label": string;
