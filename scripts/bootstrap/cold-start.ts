@@ -6,6 +6,10 @@
  *
  * | Command                                                   | What it does |
  * | --------------------------------------------------------- | ------------ |
+ * | `pnpm setup`                                              | Local dev setup, including local Stripe test-mode sync. |
+ * | `pnpm setup:staging`                                      | Staging setup, including Stripe test-mode sync and Vercel Preview env sync. |
+ * | `pnpm setup:prod`                                         | Production setup, including Stripe live-mode sync and Vercel Production env sync. |
+ * | `pnpm doctor`                                             | Checks readiness without changing local or hosted state. |
  * | `pnpm bootstrap`                                          | Full interactive setup. |
  * | `pnpm bootstrap --local-only`                             | Local dev setup, including local Stripe test-mode sync. |
  * | `pnpm bootstrap --doctor`                                 | Checks readiness without changing local or hosted state. |
@@ -37,6 +41,7 @@ import {
 } from "./lib/cold-start.js";
 import { runCommand } from "./lib/shell.js";
 import { loadReadiness, markPhase, saveReadiness } from "./state.js";
+import type { PhaseState } from "./state.js";
 import { runInstallPhase } from "./phases/install.js";
 import { runAuthPhase } from "./phases/auth.js";
 import { runEnvPhase } from "./phases/env.js";
@@ -48,6 +53,18 @@ import { runMcpRegistryPhase } from "./phases/mcp-registry.js";
 import { runCiCachePhase } from "./phases/ci-cache.js";
 import { runApiDomainPhase } from "./phases/api-domain.js";
 import { runApiEdgePhase } from "./phases/api-edge.js";
+
+type BootstrapPhaseStatus = Exclude<PhaseState["status"], "skipped">;
+
+function phaseStatus(
+  success: boolean,
+  doctorMode: boolean,
+): BootstrapPhaseStatus {
+  if (success) {
+    return "complete";
+  }
+  return doctorMode ? "partial" : "failed";
+}
 
 async function main(): Promise<void> {
   const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -160,7 +177,7 @@ async function main(): Promise<void> {
       args.stripeTarget,
       args.assumeYes,
     );
-    markPhase(state, "product", result.success ? "complete" : "failed");
+    markPhase(state, "product", phaseStatus(result.success, args.doctorMode));
     saveReadiness(projectRoot, state);
     if (result.followUpItems.length > 0) {
       note(result.followUpItems.join("\n"), "Follow-up");
@@ -242,7 +259,7 @@ async function main(): Promise<void> {
       "local",
       args.assumeYes,
     );
-    markPhase(state, "product", result.success ? "complete" : "failed");
+    markPhase(state, "product", phaseStatus(result.success, args.doctorMode));
     saveReadiness(projectRoot, state);
     allFollowUp.push(...result.followUpItems);
   }
@@ -290,7 +307,7 @@ async function main(): Promise<void> {
         args.stripeTarget,
         args.assumeYes,
       );
-      markPhase(state, "product", result.success ? "complete" : "failed");
+      markPhase(state, "product", phaseStatus(result.success, args.doctorMode));
       saveReadiness(projectRoot, state);
       allFollowUp.push(...result.followUpItems);
     }

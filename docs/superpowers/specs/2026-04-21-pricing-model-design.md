@@ -249,8 +249,9 @@ without shared workspace, SSO, or SCIM.
 
 Stripe has separate test and live modes with independent product catalogs. The
 billing bootstrap creates products in test mode for local and staging. Use
-`pnpm bootstrap:stripe:prod` with a live key for production. Each mode gets its
-own product IDs. Test IDs cannot be used in live mode and vice versa.
+`STRIPE_API_KEY=sk_live_... pnpm setup:prod` with a live key for production.
+Each mode gets its own product IDs. Test IDs cannot be used in live mode and
+vice versa.
 
 | Stripe Product             | Prices                              | Bootstrap Action               |
 | -------------------------- | ----------------------------------- | ------------------------------ |

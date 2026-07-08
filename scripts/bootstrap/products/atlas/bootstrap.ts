@@ -61,7 +61,7 @@ export async function runProductPhase(
   let apiKey = resolveStripeApiKey(projectRoot, live, envFileTargets);
   const missingKeyFollowUp =
     target === "prod"
-      ? "Set STRIPE_API_KEY in .env.production or run `STRIPE_API_KEY=sk_live_... pnpm bootstrap:stripe:prod` with a Dashboard-created live key"
+      ? "Set STRIPE_API_KEY in .env.production or run `STRIPE_API_KEY=sk_live_... pnpm setup:prod` with a Dashboard-created live key"
       : "Set STRIPE_API_KEY in .env or run `stripe login`";
 
   if (!apiKey) {
@@ -131,7 +131,7 @@ export async function runProductPhase(
 
   if (doctorMode) {
     followUpItems.push(
-      `Run \`pnpm bootstrap:stripe:${target}\` to converge Stripe ${envMode} products, coupons, and webhooks.`,
+      `Run \`${setupCommandForTarget(target)}\` to converge Stripe ${envMode} products, coupons, and webhooks.`,
     );
     markPhase(state, "product", "partial", "Doctor mode did not mutate Stripe");
     return { success: false, followUpItems };
@@ -222,10 +222,19 @@ export async function runProductPhase(
   );
 
   if (!allSucceeded) {
-    followUpItems.push("Re-run product bootstrap to retry failed Stripe syncs");
+    followUpItems.push(
+      `Re-run \`${setupCommandForTarget(target)}\` to retry failed Stripe syncs`,
+    );
   }
 
   return { success: allSucceeded, followUpItems };
+}
+
+function setupCommandForTarget(target: StripeBootstrapTarget): string {
+  if (target === "prod") {
+    return "STRIPE_API_KEY=sk_live_... pnpm setup:prod";
+  }
+  return target === "staging" ? "pnpm setup:staging" : "pnpm setup";
 }
 
 interface ResolveWebhookSecretParams {
@@ -376,7 +385,7 @@ async function syncHostedStripeEnv(
   });
   if (!synced) {
     followUpItems.push(
-      `Stripe ${target} env values were not fully synced to Vercel — re-run \`pnpm bootstrap:stripe:${target}\` after checking Vercel CLI output`,
+      `Stripe ${target} env values were not fully synced to Vercel — re-run \`${setupCommandForTarget(target)}\` after checking Vercel CLI output`,
     );
   }
   return synced;

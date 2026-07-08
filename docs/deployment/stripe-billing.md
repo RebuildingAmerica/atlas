@@ -88,12 +88,6 @@ syncs the Stripe test-mode catalog:
 pnpm setup
 ```
 
-To run only the local Stripe product sync:
-
-```bash
-pnpm bootstrap:stripe:local
-```
-
 This writes Stripe values to `.env` and `app/.env.local`.
 
 Keep webhook delivery open while testing Checkout locally:
