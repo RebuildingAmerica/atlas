@@ -2,27 +2,34 @@
 
 [Docs](../README.md) > Standards
 
-Standards that apply across the project. Follow these before choosing a pattern or naming convention.
+Standards that apply across the project. Follow these before choosing a pattern
+or naming convention.
 
 ## Standards Documents
 
 ### Commit Messages
-How we format commit messages. Enforced by pre-commit hook.
+
+How we format commit messages. Enforced by the `commit-msg` hook.
 
 → [Read: Commit Messages](./commit-messages.md)
 
 ### Code Style
+
 Python and TypeScript style rules. Enforced by ruff and eslint.
 
 → [Read: Code Style](./code-style.md)
 
 ### API Conventions
+
 REST API design standards. Base path, pagination, errors, versioning.
 
 → [Read: API Conventions](./api-conventions.md)
 
 ### Documentation (Diátaxis)
-How we organize and write docs. Every page is one of four modes — tutorial, how-to, reference, or explanation — and content lives in exactly one canonical home (no duplication).
+
+How we organize and write docs. Every page is one of four modes — tutorial,
+how-to, reference, or explanation — and content lives in exactly one canonical
+home (no duplication).
 
 → [Read: Documentation Standard](./documentation.md)
 
@@ -36,10 +43,11 @@ How we organize and write docs. Every page is one of four modes — tutorial, ho
 [optional body]
 ```
 
-Valid types: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, `perf`
-Valid scopes: `api`, `app`, `pipeline`, `db`, `taxonomy`, `devops`, `docs`
+Valid types: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, `perf` Valid
+scopes: `api`, `app`, `pipeline`, `db`, `taxonomy`, `devops`, `docs`
 
 Example:
+
 ```
 feat(pipeline): add query generation step
 
@@ -69,16 +77,19 @@ Queries target different source types (news, nonprofits, etc).
 **Base path:** `/api/v1`
 
 **Method conventions:**
+
 - `GET` — Fetch data (idempotent)
 - `POST` — Create new resource
 - `PUT` — Update resource
 - `DELETE` — Delete resource
 
 **Pagination:**
+
 - Query params: `page`, `page_size`
 - Response includes: `total`, `has_more`
 
 **Error format:**
+
 ```json
 {
   "error": {
@@ -93,12 +104,12 @@ Queries target different source types (news, nonprofits, etc).
 
 ## When to Reference Each Standard
 
-| I need to... | Read this |
-|---|---|
-| Understand commit message format | [Commit Messages](./commit-messages.md) |
-| Format code consistently | [Code Style](./code-style.md) |
-| Design a REST endpoint | [API Conventions](./api-conventions.md) |
-| Write or organize documentation | [Documentation (Diátaxis)](./documentation.md) |
+| I need to...                     | Read this                                      |
+| -------------------------------- | ---------------------------------------------- |
+| Understand commit message format | [Commit Messages](./commit-messages.md)        |
+| Format code consistently         | [Code Style](./code-style.md)                  |
+| Design a REST endpoint           | [API Conventions](./api-conventions.md)        |
+| Write or organize documentation  | [Documentation (Diátaxis)](./documentation.md) |
 
 ---
 
@@ -111,7 +122,8 @@ All standards are enforced automatically:
 - **Pre-push hook** — Full test suite and build before pushing
 - **Code review** — Reviewers check for standard compliance
 
-If your code doesn't follow standards, the hooks will reject it. Fix it and try again.
+If your code doesn't follow standards, the hooks will reject it. Fix it and try
+again.
 
 ---
 
@@ -124,6 +136,7 @@ If a standard doesn't fit your use case:
 3. **Plan to converge** — Describe when/how you'll align with the standard
 
 **Example:**
+
 ```python
 # TODO: This function lacks type annotations because it uses a third-party
 # library that doesn't expose types. When we upgrade the library (v2.0),

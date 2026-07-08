@@ -16,8 +16,22 @@ else
   NC=''
 fi
 
+REPO_ROOT="$(git rev-parse --show-toplevel)"
 COMMIT_MSG_FILE="$1"
+FORMATTER="$REPO_ROOT/scripts/validation/format-commit-message.sh"
+
+if [[ -x "$FORMATTER" ]]; then
+    FORMATTER_OUTPUT="$("$FORMATTER" "$COMMIT_MSG_FILE" 2>&1)"
+    if [[ -n "$FORMATTER_OUTPUT" ]]; then
+        echo "$FORMATTER_OUTPUT"
+    fi
+fi
+
 COMMIT_HEADER=$(head -n 1 "$COMMIT_MSG_FILE")
+
+if [[ "$COMMIT_HEADER" =~ ^(Merge|Revert[[:space:]]|fixup!|squash!) ]]; then
+    exit 0
+fi
 
 # Conventional Commits pattern
 # Format: type(scope)?: message
@@ -59,5 +73,63 @@ if ! echo "$COMMIT_HEADER" | grep -qE "$PATTERN"; then
 
     exit 1
 fi
+
+is_footer_line() {
+    local line="$1"
+    [[ "$line" =~ ^(BREAKING[[:space:]]CHANGE:|[A-Za-z][A-Za-z-]*:|Fixes[[:space:]]#|Closes[[:space:]]#|Related[[:space:]]to[[:space:]]#|Refs:|Co-Authored-By:|Co-authored-by:|Signed-off-by:|Reviewed-by:|Acked-by:) ]]
+}
+
+is_fence_line() {
+    local line="$1"
+    local trimmed="${line#"${line%%[![:space:]]*}"}"
+    [[ "$trimmed" == '```'* || "$trimmed" == '~~~'* ]]
+}
+
+validate_body_line_length() {
+    local line=""
+    local line_number=0
+    local in_fence=0
+    local failed=0
+
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        line_number=$((line_number + 1))
+
+        if [[ $line_number -eq 1 ]]; then
+            continue
+        fi
+
+        if is_fence_line "$line"; then
+            if [[ $in_fence -eq 0 ]]; then
+                in_fence=1
+            else
+                in_fence=0
+            fi
+            continue
+        fi
+
+        if [[ $in_fence -eq 1 || -z "$line" || "$line" == \#* ]]; then
+            continue
+        fi
+
+        if is_footer_line "$line"; then
+            continue
+        fi
+
+        if [[ ${#line} -gt 72 ]]; then
+            if [[ $failed -eq 0 ]]; then
+                echo ""
+                echo "Commit body lines must be 72 characters or fewer."
+            fi
+            echo "  Line $line_number is ${#line} characters: $line"
+            failed=1
+        fi
+    done < "$COMMIT_MSG_FILE"
+
+    if [[ $failed -ne 0 ]]; then
+        exit 1
+    fi
+}
+
+validate_body_line_length
 
 exit 0

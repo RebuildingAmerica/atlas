@@ -49,7 +49,7 @@ git checkout -b chore/add-api-integration-tests
 
 ## Commit Messages
 
-Use Conventional Commits format. Enforced by pre-commit hook.
+Use Conventional Commits format. Enforced by the `commit-msg` hook.
 
 **Format:**
 
@@ -114,7 +114,7 @@ git commit -m "test(api): add 15 new tests for deduplicator"
 - ✅ `fix(api): handle empty query string`
 - ✅ `docs: clarify deployment process`
 
-The pre-commit hook will reject non-conformant messages.
+The `commit-msg` hook will reject non-conformant messages.
 
 ## Pull Request Process
 

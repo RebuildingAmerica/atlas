@@ -2,7 +2,8 @@
 
 [Docs](../README.md) > [Standards](./README.md) > Commit Messages
 
-How we format commit messages. Follows Conventional Commits. Enforced by pre-commit hook.
+How we format commit messages. Follows Conventional Commits. Enforced by the
+`commit-msg` hook.
 
 ## Format
 
@@ -18,43 +19,45 @@ How we format commit messages. Follows Conventional Commits. Enforced by pre-com
 
 What kind of change is this?
 
-| Type | Meaning | Example |
-|---|---|---|
-| `feat` | New feature | `feat: add search endpoint` |
-| `fix` | Bug fix | `fix: handle null entries in list` |
-| `docs` | Documentation only | `docs: update README` |
+| Type       | Meaning                              | Example                                  |
+| ---------- | ------------------------------------ | ---------------------------------------- |
+| `feat`     | New feature                          | `feat: add search endpoint`              |
+| `fix`      | Bug fix                              | `fix: handle null entries in list`       |
+| `docs`     | Documentation only                   | `docs: update README`                    |
 | `refactor` | Code refactoring (no feature change) | `refactor: simplify entry deduplication` |
-| `test` | Adding or updating tests | `test: add 15 tests for pipeline` |
-| `chore` | Dependencies, config, tooling | `chore: upgrade FastAPI to 0.100` |
-| `perf` | Performance improvement | `perf: add database index on state` |
-| `ci` | CI/CD changes | `ci: add GitHub Actions workflow` |
-| `build` | Build system changes | `build: update Docker Compose config` |
+| `test`     | Adding or updating tests             | `test: add 15 tests for pipeline`        |
+| `chore`    | Dependencies, config, tooling        | `chore: upgrade FastAPI to 0.100`        |
+| `perf`     | Performance improvement              | `perf: add database index on state`      |
+| `ci`       | CI/CD changes                        | `ci: add GitHub Actions workflow`        |
+| `build`    | Build system changes                 | `build: update Docker Compose config`    |
 
 ## Scope (Optional but Recommended)
 
 What part of the code does this change?
 
-| Scope | Applies to |
-|---|---|
-| `api` | Python/FastAPI code |
-| `app` | React/TypeScript code |
-| `pipeline` | Autodiscovery pipeline |
-| `db` | Database/schema |
-| `taxonomy` | Issue areas or search terms |
-| `devops` | Docker, Makefile, infrastructure |
-| `docs` | Documentation files |
+| Scope      | Applies to                       |
+| ---------- | -------------------------------- |
+| `api`      | Python/FastAPI code              |
+| `app`      | React/TypeScript code            |
+| `pipeline` | Autodiscovery pipeline           |
+| `db`       | Database/schema                  |
+| `taxonomy` | Issue areas or search terms      |
+| `devops`   | Docker, Makefile, infrastructure |
+| `docs`     | Documentation files              |
 
 ## Description
 
 Short (under 50 chars), imperative, present tense.
 
 **Good:**
+
 - `add search endpoint`
 - `fix null pointer exception`
 - `update README with quick start`
 - `handle duplicate entries`
 
 **Bad:**
+
 - `added new feature` (past tense)
 - `fixes bug` (present tense but sounds awkward)
 - `This adds a new feature for searching` (too long)
@@ -186,7 +189,7 @@ All tests passing.
 
 ## Enforcement
 
-The pre-commit hook validates every commit:
+The `commit-msg` hook formats and validates every commit message:
 
 ```bash
 git commit -m "added new feature"
