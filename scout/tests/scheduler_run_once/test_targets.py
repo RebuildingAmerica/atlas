@@ -2,14 +2,24 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
 from atlas_scout.config import ScoutConfig
 from atlas_scout.scheduler import run_schedule_once
 
-from .support import FakeFetcher, FakeProvider, FakeStore, build_config, build_runtime_profile, make_run_result
+from .support import (
+    FakeFetcher,
+    FakeProvider,
+    FakeStore,
+    build_config,
+    build_runtime_profile,
+    make_run_result,
+)
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 @pytest.mark.asyncio
@@ -46,7 +56,7 @@ async def test_run_schedule_once_logs_target_exception_from_gather(
     monkeypatch.setattr("atlas_scout.runtime.build_runtime_profile", lambda _: build_runtime_profile())
     monkeypatch.setattr(
         "atlas_scout.providers.create_provider",
-        lambda _creds, *, max_concurrent=None: LoggingProvider(),
+        lambda _creds, **_kwargs: LoggingProvider(),
     )
     monkeypatch.setattr("atlas_scout.scraper.fetcher.AsyncFetcher", LoggingFetcher)
     monkeypatch.setattr("atlas_scout.store.ScoutStore", LoggingStore)
@@ -82,7 +92,7 @@ async def test_run_schedule_targets_records_failure_when_target_raises(
     monkeypatch.setattr("atlas_scout.runtime.build_runtime_profile", lambda _: build_runtime_profile())
     monkeypatch.setattr(
         "atlas_scout.providers.create_provider",
-        lambda _creds, *, max_concurrent=None: TargetProvider(),
+        lambda _creds, **_kwargs: TargetProvider(),
     )
     monkeypatch.setattr("atlas_scout.scraper.fetcher.AsyncFetcher", TargetFetcher)
     monkeypatch.setattr("atlas_scout.store.ScoutStore", TargetStore)

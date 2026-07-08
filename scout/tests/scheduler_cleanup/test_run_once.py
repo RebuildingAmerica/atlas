@@ -3,13 +3,23 @@
 from __future__ import annotations
 
 import asyncio
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
 from atlas_scout.scheduler import run_schedule_loop, run_schedule_once
 
-from .support import FakeFetcher, FakeProvider, FakeStore, build_config, build_runtime_profile, make_run_result
+from .support import (
+    FakeFetcher,
+    FakeProvider,
+    FakeStore,
+    build_config,
+    build_runtime_profile,
+    make_run_result,
+)
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 @pytest.mark.asyncio
@@ -22,7 +32,7 @@ async def test_close_scheduler_resources_logs_when_store_close_fails_after_provi
     monkeypatch.setattr("atlas_scout.runtime.build_runtime_profile", lambda _: build_runtime_profile())
     monkeypatch.setattr(
         "atlas_scout.providers.create_provider",
-        lambda _creds, *, max_concurrent=None: FakeProvider(close_error="provider close failed"),
+        lambda _creds, **_kwargs: FakeProvider(close_error="provider close failed"),
     )
     monkeypatch.setattr("atlas_scout.scraper.fetcher.AsyncFetcher", FakeFetcher)
     monkeypatch.setattr(
@@ -62,7 +72,7 @@ async def test_run_schedule_loop_propagates_cleanup_error_when_no_stop_error(
     monkeypatch.setattr("atlas_scout.runtime.build_runtime_profile", lambda _: build_runtime_profile())
     monkeypatch.setattr(
         "atlas_scout.providers.create_provider",
-        lambda _creds, *, max_concurrent=None: FakeProvider(close_error="provider close failed"),
+        lambda _creds, **_kwargs: FakeProvider(close_error="provider close failed"),
     )
     monkeypatch.setattr("atlas_scout.scraper.fetcher.AsyncFetcher", FakeFetcher)
     monkeypatch.setattr("atlas_scout.store.ScoutStore", FakeStore)
@@ -88,7 +98,7 @@ async def test_close_scheduler_resources_propagates_store_error_when_provider_su
     monkeypatch.setattr("atlas_scout.runtime.build_runtime_profile", lambda _: build_runtime_profile())
     monkeypatch.setattr(
         "atlas_scout.providers.create_provider",
-        lambda _creds, *, max_concurrent=None: FakeProvider(),
+        lambda _creds, **_kwargs: FakeProvider(),
     )
     monkeypatch.setattr("atlas_scout.scraper.fetcher.AsyncFetcher", FakeFetcher)
     monkeypatch.setattr(
@@ -111,7 +121,7 @@ async def test_close_scheduler_resources_logs_when_store_close_fails_after_provi
     monkeypatch.setattr("atlas_scout.runtime.build_runtime_profile", lambda _: build_runtime_profile())
     monkeypatch.setattr(
         "atlas_scout.providers.create_provider",
-        lambda _creds, *, max_concurrent=None: FakeProvider(close_error="provider close failed"),
+        lambda _creds, **_kwargs: FakeProvider(close_error="provider close failed"),
     )
     monkeypatch.setattr("atlas_scout.scraper.fetcher.AsyncFetcher", FakeFetcher)
     monkeypatch.setattr(

@@ -2,15 +2,17 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
-from atlas_shared import PageContent
 
 from atlas_scout.pipeline import PipelineResult, run_pipeline
 from atlas_scout.store import ScoutStore
 
 from .support import MockFetcher, StructuredFetcher, build_mock_provider
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 @pytest.mark.asyncio

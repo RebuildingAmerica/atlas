@@ -3,13 +3,23 @@
 from __future__ import annotations
 
 import asyncio
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
 from atlas_scout.scheduler import run_schedule_loop
 
-from .support import FakeFetcher, FakeProvider, FakeStore, build_config, build_runtime_profile, make_run_result
+from .support import (
+    FakeFetcher,
+    FakeProvider,
+    FakeStore,
+    build_config,
+    build_runtime_profile,
+    make_run_result,
+)
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 @pytest.mark.asyncio

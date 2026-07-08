@@ -2,13 +2,16 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
 from atlas_scout.scheduler import run_schedule_once
 
 from .support import FakeFetcher, FakeProvider, FakeStore, build_config, build_runtime_profile
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 @pytest.mark.asyncio

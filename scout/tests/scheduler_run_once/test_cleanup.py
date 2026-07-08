@@ -3,13 +3,23 @@
 from __future__ import annotations
 
 import asyncio
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
 from atlas_scout.scheduler import run_schedule_once
 
-from .support import FakeFetcher, FakeProvider, FakeStore, build_config, build_runtime_profile, make_run_result
+from .support import (
+    FakeFetcher,
+    FakeProvider,
+    FakeStore,
+    build_config,
+    build_runtime_profile,
+    make_run_result,
+)
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 @pytest.mark.asyncio
@@ -28,7 +38,7 @@ async def test_run_schedule_once_closes_store_when_provider_close_fails(
     monkeypatch.setattr("atlas_scout.runtime.build_runtime_profile", lambda _: build_runtime_profile())
     monkeypatch.setattr(
         "atlas_scout.providers.create_provider",
-        lambda _creds, *, max_concurrent=None: FakeProvider(close_error="provider close failed"),
+        lambda _creds, **_kwargs: FakeProvider(close_error="provider close failed"),
     )
     monkeypatch.setattr("atlas_scout.scraper.fetcher.AsyncFetcher", FakeFetcher)
     monkeypatch.setattr("atlas_scout.store.ScoutStore", ClosingStore)
@@ -60,7 +70,7 @@ async def test_run_schedule_once_closes_provider_when_store_initialize_is_cancel
     monkeypatch.setattr("atlas_scout.runtime.build_runtime_profile", lambda _: build_runtime_profile())
     monkeypatch.setattr(
         "atlas_scout.providers.create_provider",
-        lambda _creds, *, max_concurrent=None: ClosingProvider(),
+        lambda _creds, **_kwargs: ClosingProvider(),
     )
     monkeypatch.setattr("atlas_scout.store.ScoutStore", CancellingStore)
 

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-from pathlib import Path
+from typing import TYPE_CHECKING
 from unittest.mock import patch
 
 import pytest
@@ -12,6 +12,9 @@ from atlas_scout.pipeline import run_pipeline
 from atlas_scout.store import ScoutStore
 
 from .support import MockFetcher, build_mock_provider
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 @pytest.mark.asyncio
@@ -104,7 +107,7 @@ async def test_run_pipeline_cancels_workers_before_returning_on_interrupt(
         async def complete(self, _messages, _response_schema=None):
             started.set()
             await asyncio.Future()
-            return None  # pragma: no cover
+            return  # pragma: no cover
 
     store = ScoutStore(str(tmp_db_path))
     await store.initialize()
