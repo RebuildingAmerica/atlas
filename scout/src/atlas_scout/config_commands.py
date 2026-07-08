@@ -26,10 +26,8 @@ from atlas_scout.config import (
     set_scalar_config_value,
     update_schedule_settings,
 )
-from atlas_scout.local_model_commands import (
-    _apply_and_persist_local_model,
-    _choose_local_model_interactively,
-)
+from atlas_scout.local_model_commands import _apply_and_persist_local_model
+from atlas_scout.local_model_commands_support import _choose_local_model_interactively
 from atlas_scout.local_models import (
     LOCAL_PROVIDER_NAMES,
     resolve_local_model,

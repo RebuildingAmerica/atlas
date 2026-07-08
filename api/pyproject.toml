@@ -118,6 +118,15 @@ ignore = [
     "PLC0415", # import-not-at-top (needed for lazy imports to avoid circular deps)
 ]
 
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = [
+    "ANN001",  # pytest fixtures are named by convention
+    "PLR2004", # assertion literals are often clearer in tests
+    "RUF100",  # older test modules may keep local noqa notes after test-wide ignores
+    "SLF001",  # private helpers are covered directly when behavior has no public seam
+    "TC001",   # test modules can import runtime types directly
+]
+
 [tool.mypy]
 python_version = "3.12"
 strict = true

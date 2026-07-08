@@ -76,7 +76,10 @@
         "ATLAS_PUBLIC_URL",
         "ATLAS_SERVER_API_PROXY_TARGET"
       ],
-      "outputs": ["src/lib/generated/atlas.ts"]
+      "outputs": [
+        "src/lib/generated/atlas/**/*",
+        "src/lib/generated/atlas-schemas/**/*"
+      ]
     },
     "openapi:lint": {
       "dependsOn": ["//#openapi"],

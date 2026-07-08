@@ -6,10 +6,16 @@ export default defineConfig({
       target: "../openapi/atlas.openapi.json",
     },
     output: {
-      target: "./src/lib/generated/atlas.ts",
+      mode: "tags-split",
+      target: "./src/lib/generated/atlas/index.ts",
       client: "fetch",
       clean: true,
       prettier: true,
+      schemas: {
+        path: "./src/lib/generated/atlas-schemas",
+        splitByTags: true,
+        indexFiles: false,
+      },
       override: {
         fetch: {
           includeHttpResponseReturnType: false,

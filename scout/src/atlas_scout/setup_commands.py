@@ -30,8 +30,10 @@ from atlas_scout.config_commands import (
 from atlas_scout.credentials import CredentialStoreError
 from atlas_scout.local_model_commands import (
     _apply_and_persist_local_model,
-    _choose_local_model_interactively,
     _setup_local_model_provider,
+)
+from atlas_scout.local_model_commands_support import (
+    _choose_local_model_interactively,
     _should_prompt_for_setup_model_choice,
 )
 from atlas_scout.local_model_output import print_local_model_setup_help

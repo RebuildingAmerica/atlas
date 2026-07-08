@@ -8,13 +8,14 @@ and stored in the local SQLite store.
 from __future__ import annotations
 
 import json
-from hashlib import sha256
 from datetime import date, datetime
+from hashlib import sha256
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
-from atlas_shared.types import DiscoveryRunStatus, EntityType, GeoSpecificity, SourceType
+from atlas_shared.page_content import PageContent
+from atlas_shared.types import DiscoveryRunStatus, EntityType, GeoSpecificity
 
 DiscoveryResearchGoal = Literal[
     "landscape_scan",
@@ -25,18 +26,17 @@ DiscoveryResearchGoal = Literal[
 
 __all__ = [
     "CoverageGap",
+    "DeduplicatedEntry",
     "DiscoveryContributionRequest",
     "DiscoveryContributionResponse",
+    "DiscoveryResearchGoal",
     "DiscoveryRunArtifacts",
     "DiscoveryRunInput",
     "DiscoveryRunManifest",
-    "DiscoveryResearchGoal",
+    "DiscoveryRunStats",
     "DiscoveryRunSyncRequest",
     "DiscoveryRunSyncResponse",
-    "DiscoveryRunStats",
     "DiscoverySyncInfo",
-    "compute_artifact_hash",
-    "DeduplicatedEntry",
     "GapReport",
     "PageContent",
     "PageTaskOutcome",
@@ -44,6 +44,7 @@ __all__ = [
     "RawEntry",
     "RunCheckpoint",
     "SyncedEntryLink",
+    "compute_artifact_hash",
 ]
 
 
@@ -248,7 +249,7 @@ class DiscoveryRunArtifacts(BaseModel):
         default_factory=list,
         description="Canonical page-task outcomes.",
     )
-    sources: list["PageContent"] = Field(
+    sources: list[PageContent] = Field(
         default_factory=list,
         description="Fetched pages that form the source bundle.",
     )
@@ -260,7 +261,7 @@ class DiscoveryRunArtifacts(BaseModel):
         default_factory=list,
         description="Final ranked entries for persistence or sync.",
     )
-    gap_report: "GapReport | None" = Field(None, description="Optional coverage report for the run.")
+    gap_report: GapReport | None = Field(None, description="Optional coverage report for the run.")
 
 
 class DiscoveryRunSyncRequest(BaseModel):
@@ -314,7 +315,7 @@ class DiscoveryContributionRequest(BaseModel):
         default_factory=DiscoveryRunStats,
         description="Execution summary from the contributing runner.",
     )
-    sources: list["PageContent"] = Field(
+    sources: list[PageContent] = Field(
         default_factory=list,
         description="Fetched source pages that support the contributed entries.",
     )
@@ -375,27 +376,4 @@ class GapReport(BaseModel):
     uncovered_domains: list[str] = Field(
         default_factory=list,
         description="Domains with no covered issue areas.",
-    )
-
-
-class PageContent(BaseModel):
-    """Extracted text content from a single web page."""
-
-    url: str = Field(..., description="Source URL.")
-    title: str = Field(default="", description="Page title.")
-    text: str = Field(default="", description="Main extracted text content.")
-    task_id: str | None = Field(None, description="Owning Scout page-task ID.")
-    discovered_links: list[str] = Field(
-        default_factory=list,
-        description="Same-domain links discovered while fetching this page.",
-    )
-    publication: str | None = Field(None, description="Publication or site name.")
-    published_date: datetime | None = Field(None, description="Article publication datetime.")
-    source_type: SourceType = Field(
-        default=SourceType.WEBSITE,
-        description="Classified source type.",
-    )
-    structured_data: dict[str, Any] = Field(
-        default_factory=dict,
-        description="Structured data extracted from HTML (JSON-LD, OpenGraph, meta tags).",
     )

@@ -16,7 +16,9 @@ on, or troubleshoot.
 
 Do not put internal debugging, CI behavior, test harness details, implementation
 workarounds, agent-to-agent notes, private operational history, or maintainer
-troubleshooting into Mintlify docs.
+troubleshooting into Mintlify docs. Do not hide core functionality behind
+maintainer language or explain how the repository works when the reader only
+needs to use Atlas.
 
 Examples that do not belong here:
 
@@ -42,6 +44,9 @@ Examples that do belong here:
 - "Runs with `--location` and `--issues` require search-backed discovery."
 - Public API authentication, scopes, rate limits, error codes, payload fields,
   and CLI command behavior.
+
+If a detail is technical but helps a reader decide what to do next, keep it. If
+it only helps a maintainer, move it out of Mintlify.
 
 ## What Belongs Here
 
