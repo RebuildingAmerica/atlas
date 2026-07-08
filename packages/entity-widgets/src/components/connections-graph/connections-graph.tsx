@@ -1,8 +1,9 @@
-import type { ConnectionItem, ConnectionsData } from "../../types";
+import type { ConnectionRelationship } from "../../lib/relationship-labels";
 import { formatEntityTypeAndPlace } from "../../lib/entity-type-labels";
 import { formatRelationshipLabel } from "../../lib/relationship-labels";
 import { TrustBadgeRow } from "../trust-badge-row/trust-badge-row";
 import { PaginatedListShell } from "../paginated-list-shell/paginated-list-shell";
+import type { SearchResultRow } from "../search-results-list/search-results-list";
 
 export interface ConnectionsGraphProps {
   data: ConnectionsData;
@@ -18,6 +19,19 @@ export interface ConnectionsGraphProps {
 
 export interface ConnectionRowContentProps {
   item: ConnectionItem;
+}
+
+export interface ConnectionItem {
+  entity: SearchResultRow;
+  relationships: ConnectionRelationship[];
+}
+
+export interface ConnectionsData {
+  entity_id: string;
+  items: ConnectionItem[];
+  total: number;
+  /** Opaque pagination cursor for the next page; null when there isn't one. */
+  next_cursor: string | null;
 }
 
 /**

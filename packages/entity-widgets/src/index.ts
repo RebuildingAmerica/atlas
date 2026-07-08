@@ -27,11 +27,13 @@ export {
 export { WidgetStatus, type WidgetStatusProps } from "./lib/widget-status";
 export type {
   ConnectionItem,
-  ConnectionRelationship,
   ConnectionsData,
-  EntityCardData,
-  EntityType,
+} from "./components/connections-graph/connections-graph";
+export type { ConnectionRelationship } from "./lib/relationship-labels";
+export type { EntityCardData } from "./components/entity-card/entity-card";
+export type {
   SearchResultRow,
   SearchResultsData,
-  TrustLevel,
-} from "./types";
+} from "./components/search-results-list/search-results-list";
+export type { EntityType } from "./lib/entity-type-labels";
+export type { TrustLevel } from "./components/trust-badge-row/trust-badge-row";

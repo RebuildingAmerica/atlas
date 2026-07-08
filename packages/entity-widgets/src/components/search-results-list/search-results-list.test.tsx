@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { SearchResultsList } from "./search-results-list";
-import type { SearchResultsData } from "../../types";
+import type { SearchResultsData } from "./search-results-list";
 
 afterEach(() => {
   cleanup();

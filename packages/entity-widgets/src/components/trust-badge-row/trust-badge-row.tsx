@@ -1,5 +1,11 @@
 import { humanizeSlug } from "../../lib/humanize-slug";
 
+export type TrustLevel =
+  | "subject_verified"
+  | "atlas_verified"
+  | "corroborated"
+  | "unverified";
+
 /**
  * Human labels for Atlas's known verification tiers. Covers both
  * `trust.level` (underscored: `atlas_verified`) and `claim.verification_level`

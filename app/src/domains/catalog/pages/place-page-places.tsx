@@ -1,13 +1,5 @@
 import { ExternalLink, MapPin } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type {
-  GovernmentListProps,
-  IssueGridProps,
-  IssueLineProps,
-  PlaceCardProps,
-  PlaceGridProps,
-  PlaceHighlightsProps,
-} from "./place-page.types";
 import {
   PLACE_ACCENT_CLASSES,
   PLACE_THUMBNAIL_HEIGHT,
@@ -17,6 +9,33 @@ import {
   hasCoordinates,
   relatedCoordinatePlaces,
 } from "./place-page-utils";
+import type { PlaceGovernmentSummary, PlaceIssueSummary, PlaceRelatedSummary } from "@/types";
+
+interface IssueLineProps {
+  label: string;
+  values: string[];
+}
+
+interface IssueGridProps {
+  issues: PlaceIssueSummary[];
+}
+
+interface GovernmentListProps {
+  governments: PlaceGovernmentSummary[];
+}
+
+interface PlaceHighlightsProps {
+  places: PlaceRelatedSummary[];
+}
+
+interface PlaceCardProps {
+  place: PlaceRelatedSummary;
+  places: PlaceRelatedSummary[];
+}
+
+interface PlaceGridProps {
+  places: PlaceRelatedSummary[];
+}
 
 function IssueLine({ label, values }: IssueLineProps) {
   return (

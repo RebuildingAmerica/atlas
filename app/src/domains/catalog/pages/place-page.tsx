@@ -1,15 +1,33 @@
+import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import type { PlaceFact, PlacePageData, PlaceScopeLink } from "@/types";
 import { ActorDirectory } from "./place-page-actors";
 import { LatestFeed } from "./place-page-latest";
 import { GovernmentList, IssueGrid, PlaceGrid, PlaceHighlights } from "./place-page-places";
 import { SECTION_NAV_ITEMS } from "./place-page-utils";
-import type {
-  FactGridProps,
-  PlacePageProps,
-  PlaceSectionProps,
-  ScopeNavProps,
-  SummaryFactStripProps,
-} from "./place-page.types";
+
+interface PlacePageProps {
+  data: PlacePageData;
+}
+
+interface PlaceSectionProps {
+  children: ReactNode;
+  id: string;
+  title: string;
+}
+
+interface ScopeNavProps {
+  name: string;
+  scopes: PlaceScopeLink[];
+}
+
+interface SummaryFactStripProps {
+  facts: PlaceFact[];
+}
+
+interface FactGridProps {
+  facts: PlaceFact[];
+}
 
 function PlaceSection({ children, id, title }: PlaceSectionProps) {
   return (

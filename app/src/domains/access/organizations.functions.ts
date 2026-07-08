@@ -7,7 +7,6 @@ import {
   normalizeAtlasOrganizationMetadata,
 } from "./organization-metadata";
 import {
-  invitationResultSchema,
   organizationDetailsSchema,
   toAtlasOrganizationDetails,
   workspaceSlugSchema,
@@ -17,11 +16,10 @@ import {
   assertOrganizationManagementEnabled,
   loadOrganizationRequestContext,
   requireActiveWorkspace,
-  requireManagedTeamWorkspace,
 } from "./organization-server-helpers";
 import { computeTeamSeatCostSummary, teamSeatCostSummarySchema } from "@/domains/billing/team-cost";
 
-async function loadOrganizationsServerModules() {
+export async function loadOrganizationsServerModules() {
   if (import.meta.env.SSR) {
     const [stripeCustomer, teamSeats, auth, requestHeaders, runtime, sessionState] =
       await Promise.all([
@@ -48,7 +46,7 @@ async function loadOrganizationsServerModules() {
  *
  * @param workspaceId - The workspace whose seats should be synchronized.
  */
-async function syncTeamSeatsBestEffort(workspaceId: string): Promise<void> {
+export async function syncTeamSeatsBestEffort(workspaceId: string): Promise<void> {
   try {
     const { teamSeats } = await loadOrganizationsServerModules();
     const { syncTeamSeats } = teamSeats;
@@ -312,297 +310,15 @@ export const createWorkspace = createServerFn({ method: "POST" })
     };
   });
 
-/**
- * Switches the current operator into another workspace they already belong to.
- */
-export const setActiveWorkspace = createServerFn({ method: "POST" })
-  .validator(
-    z.object({
-      organizationId: z.string().min(1),
-    }),
-  )
-  .handler(async ({ data }) => {
-    const { auth, headers } = await loadOrganizationRequestContext();
-
-    await auth.api.setActiveOrganization({
-      body: {
-        organizationId: data.organizationId,
-      },
-      headers,
-    });
-
-    return { ok: true };
-  });
-
-/**
- * Updates the active team's basic workspace profile.
- */
-export const updateWorkspaceProfile = createServerFn({ method: "POST" })
-  .validator(
-    z.object({
-      name: z.string().trim().min(1).max(80),
-      slug: workspaceSlugSchema,
-    }),
-  )
-  .handler(async ({ data }) => {
-    const { auth, headers, session } = await loadOrganizationRequestContext();
-    const activeWorkspace = requireManagedTeamWorkspace(session);
-
-    await auth.api.updateOrganization({
-      body: {
-        data: {
-          name: data.name,
-          slug: data.slug,
-        },
-        organizationId: activeWorkspace.id,
-      },
-      headers,
-    });
-
-    return { ok: true };
-  });
-
-/**
- * Invites a new member into the active team workspace.
- */
-export const inviteWorkspaceMember = createServerFn({ method: "POST" })
-  .validator(
-    z.object({
-      email: z.string().email(),
-      role: z.enum(["admin", "member"]),
-    }),
-  )
-  .handler(async ({ data }) => {
-    const { auth, headers, session } = await loadOrganizationRequestContext();
-    const activeWorkspace = requireManagedTeamWorkspace(session);
-
-    // Inviting members is a paid Team capability: a free team workspace can
-    // exist, but the first invite requires an active Atlas Team subscription.
-    if (!session.workspace.activeProducts.includes("atlas_team")) {
-      throw new Error("Subscribe to Atlas Team to invite members to this workspace.");
-    }
-
-    // Hold the workspace within its seat limit: current members plus the
-    // invitations still awaiting acceptance must stay under the cap.
-    const maxMembers = session.workspace.resolvedCapabilities.limits.max_members;
-    if (maxMembers !== null) {
-      const details = organizationDetailsSchema.parse(
-        await auth.api.getFullOrganization({
-          headers,
-          query: { organizationId: activeWorkspace.id },
-        }),
-      );
-      if (details) {
-        const pendingInvites = details.invitations.filter(
-          (invitation) => invitation.status === "pending",
-        ).length;
-        if (details.members.length + pendingInvites >= maxMembers) {
-          throw new Error(
-            `This workspace has reached its limit of ${maxMembers} members. Remove a member or cancel a pending invitation before inviting someone new.`,
-          );
-        }
-      }
-    }
-
-    const invitationValue = await auth.api.createInvitation({
-      body: {
-        email: data.email,
-        organizationId: activeWorkspace.id,
-        role: data.role,
-      },
-      headers,
-    });
-    const invitation = invitationResultSchema.parse(invitationValue);
-
-    return {
-      id: invitation.id,
-      status: invitation.status,
-    };
-  });
-
-/**
- * Re-sends the email for a pending invitation to the active team workspace.
- *
- * Resending is atomic (Better Auth re-issues the existing invitation when
- * `resend` is set), so a transient failure can never destroy a teammate's
- * outstanding invitation the way a cancel-then-reinvite would.
- */
-export const resendWorkspaceInvitation = createServerFn({ method: "POST" })
-  .validator(
-    z.object({
-      email: z.string().email(),
-      role: z.enum(["admin", "member"]),
-    }),
-  )
-  .handler(async ({ data }) => {
-    const { auth, headers, session } = await loadOrganizationRequestContext();
-    const activeWorkspace = requireManagedTeamWorkspace(session);
-
-    if (!session.workspace.activeProducts.includes("atlas_team")) {
-      throw new Error("Subscribe to Atlas Team to invite members to this workspace.");
-    }
-
-    await auth.api.createInvitation({
-      body: {
-        email: data.email,
-        organizationId: activeWorkspace.id,
-        role: data.role,
-        resend: true,
-      },
-      headers,
-    });
-
-    return { ok: true };
-  });
-
-/**
- * Cancels an outstanding invitation for the active team workspace.
- */
-export const cancelWorkspaceInvitation = createServerFn({ method: "POST" })
-  .validator(
-    z.object({
-      invitationId: z.string().min(1),
-    }),
-  )
-  .handler(async ({ data }) => {
-    const { auth, headers, session } = await loadOrganizationRequestContext();
-
-    requireManagedTeamWorkspace(session);
-
-    await auth.api.cancelInvitation({
-      body: {
-        invitationId: data.invitationId,
-      },
-      headers,
-    });
-
-    return { ok: true };
-  });
-
-/**
- * Accepts one of the current operator's pending workspace invitations.
- */
-export const acceptWorkspaceInvitation = createServerFn({ method: "POST" })
-  .validator(
-    z.object({
-      invitationId: z.string().min(1),
-    }),
-  )
-  .handler(async ({ data }) => {
-    const { auth, headers, session } = await loadOrganizationRequestContext();
-
-    await auth.api.acceptInvitation({
-      body: {
-        invitationId: data.invitationId,
-      },
-      headers,
-    });
-
-    // Joining a team adds a billable seat. Resolve the workspace from the
-    // pending invitation captured before acceptance and reconcile its seats.
-    const organizationId = session.workspace.pendingInvitations.find(
-      (invitation) => invitation.id === data.invitationId,
-    )?.organizationId;
-    if (organizationId) {
-      await syncTeamSeatsBestEffort(organizationId);
-    }
-
-    return { ok: true };
-  });
-
-/**
- * Rejects one of the current operator's pending workspace invitations.
- */
-export const rejectWorkspaceInvitation = createServerFn({ method: "POST" })
-  .validator(
-    z.object({
-      invitationId: z.string().min(1),
-    }),
-  )
-  .handler(async ({ data }) => {
-    const { auth, headers } = await loadOrganizationRequestContext();
-
-    await auth.api.rejectInvitation({
-      body: {
-        invitationId: data.invitationId,
-      },
-      headers,
-    });
-
-    return { ok: true };
-  });
-
-/**
- * Updates one team member's role inside the active workspace.
- */
-export const updateWorkspaceMemberRole = createServerFn({ method: "POST" })
-  .validator(
-    z.object({
-      memberId: z.string().min(1),
-      role: z.enum(["admin", "member"]),
-    }),
-  )
-  .handler(async ({ data }) => {
-    const { auth, headers, session } = await loadOrganizationRequestContext();
-    const activeWorkspace = requireManagedTeamWorkspace(session);
-
-    await auth.api.updateMemberRole({
-      body: {
-        memberId: data.memberId,
-        organizationId: activeWorkspace.id,
-        role: data.role,
-      },
-      headers,
-    });
-
-    return { ok: true };
-  });
-
-/**
- * Removes a member from the active team workspace.
- */
-export const removeWorkspaceMember = createServerFn({ method: "POST" })
-  .validator(
-    z.object({
-      memberIdOrEmail: z.string().min(1),
-    }),
-  )
-  .handler(async ({ data }) => {
-    const { auth, headers, session } = await loadOrganizationRequestContext();
-    const activeWorkspace = requireManagedTeamWorkspace(session);
-
-    await auth.api.removeMember({
-      body: {
-        memberIdOrEmail: data.memberIdOrEmail,
-        organizationId: activeWorkspace.id,
-      },
-      headers,
-    });
-
-    await syncTeamSeatsBestEffort(activeWorkspace.id);
-
-    return { ok: true };
-  });
-
-/**
- * Removes the current non-owner operator from the active team workspace.
- */
-export const leaveWorkspace = createServerFn({ method: "POST" }).handler(async () => {
-  const { auth, headers, session } = await loadOrganizationRequestContext();
-  const activeWorkspace = requireManagedTeamWorkspace(session);
-
-  if (activeWorkspace.role === "owner") {
-    throw new Error("Transfer workspace ownership before leaving this team.");
-  }
-
-  await auth.api.leaveOrganization({
-    body: {
-      organizationId: activeWorkspace.id,
-    },
-    headers,
-  });
-
-  await syncTeamSeatsBestEffort(activeWorkspace.id);
-
-  return { ok: true };
-});
+export {
+  acceptWorkspaceInvitation,
+  cancelWorkspaceInvitation,
+  inviteWorkspaceMember,
+  leaveWorkspace,
+  rejectWorkspaceInvitation,
+  removeWorkspaceMember,
+  resendWorkspaceInvitation,
+  setActiveWorkspace,
+  updateWorkspaceMemberRole,
+  updateWorkspaceProfile,
+} from "./organizations-members.functions";

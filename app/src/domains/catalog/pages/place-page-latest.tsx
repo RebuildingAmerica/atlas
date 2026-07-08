@@ -2,9 +2,24 @@ import { useRef, useState, type FormEvent } from "react";
 import { ExternalLink, Search } from "lucide-react";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import type { LatestFeedProps, LatestLoadParams, LatestListProps } from "./place-page.types";
 import { LATEST_SOURCE_TYPES, formatSourceType, latestStatusText } from "./place-page-utils";
-import type { SourceType } from "@/types";
+import type { PlaceKind, PlaceLatestItem, PlaceLatestList, SourceType } from "@/types";
+
+interface LatestListProps {
+  items: PlaceLatestItem[];
+}
+
+interface LatestFeedProps {
+  initialLatest: PlaceLatestList;
+  placeKind: PlaceKind;
+  placeSlug: string;
+}
+
+interface LatestLoadParams {
+  cursor?: string;
+  nextQuery?: string;
+  nextSourceType?: SourceType | null;
+}
 
 function LatestList({ items }: LatestListProps) {
   if (items.length === 0) {

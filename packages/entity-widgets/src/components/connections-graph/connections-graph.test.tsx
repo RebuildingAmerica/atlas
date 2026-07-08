@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { ConnectionsGraph } from "./connections-graph";
-import type { ConnectionsData } from "../../types";
+import type { ConnectionsData } from "./connections-graph";
 
 afterEach(() => {
   cleanup();

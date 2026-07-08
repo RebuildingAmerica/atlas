@@ -1,5 +1,12 @@
-import type { ConnectionRelationship } from "../types";
 import { humanizeSlug } from "./humanize-slug";
+
+export interface ConnectionRelationship {
+  type: string;
+  /** Populated only for `shared_issue_area`; empty array for every other type. */
+  issue_area_ids: string[];
+  /** Populated only for `shared_source`; empty array for every other type. */
+  source_ids: string[];
+}
 
 /**
  * Human labels for Atlas's mechanically-derived relationship types.

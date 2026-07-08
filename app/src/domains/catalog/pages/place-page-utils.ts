@@ -1,6 +1,26 @@
-import type { CoordinateBounds, CoordinatePlace, SectionNavItem } from "./place-page.types";
-import type { PlaceRelatedSummary } from "@/types";
-import type { EntryType, PlaceActorSort, SourceType } from "@/types";
+import type { EntryType, PlaceActorSort, PlaceRelatedSummary, SourceType } from "@/types";
+
+interface SectionNavItem {
+  id: string;
+  label: string;
+}
+
+interface CoordinateBounds {
+  maxLat: number;
+  maxLng: number;
+  minLat: number;
+  minLng: number;
+}
+
+interface SvgPoint {
+  x: number;
+  y: number;
+}
+
+type CoordinatePlace = PlaceRelatedSummary & {
+  latitude: number;
+  longitude: number;
+};
 
 export const ACTOR_TYPES: { label: string; value: EntryType }[] = [
   { label: "Organizations", value: "organization" },
@@ -98,7 +118,7 @@ export function coordinateBounds(places: CoordinatePlace[]): CoordinateBounds {
   };
 }
 
-export function coordinatePoint(place: CoordinatePlace, bounds: CoordinateBounds) {
+export function coordinatePoint(place: CoordinatePlace, bounds: CoordinateBounds): SvgPoint {
   const drawableWidth = PLACE_THUMBNAIL_WIDTH - PLACE_THUMBNAIL_PADDING * 2;
   const drawableHeight = PLACE_THUMBNAIL_HEIGHT - PLACE_THUMBNAIL_PADDING * 2;
   const lngRange = bounds.maxLng - bounds.minLng;

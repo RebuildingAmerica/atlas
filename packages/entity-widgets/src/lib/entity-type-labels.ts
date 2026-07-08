@@ -1,4 +1,9 @@
-import type { EntityType } from "../types";
+export type EntityType =
+  | "person"
+  | "organization"
+  | "initiative"
+  | "campaign"
+  | "event";
 
 /**
  * Human-readable labels for each `EntityType`.

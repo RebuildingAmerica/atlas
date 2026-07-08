@@ -1,9 +1,26 @@
-import type { EntityCardData } from "../../types";
+import type { EntityType } from "../../lib/entity-type-labels";
 import { formatEntityTypeAndPlace } from "../../lib/entity-type-labels";
+import type { TrustLevel } from "../trust-badge-row/trust-badge-row";
 import { TrustBadgeRow } from "../trust-badge-row/trust-badge-row";
 
 export interface EntityCardProps {
   data: EntityCardData;
+}
+
+export interface EntityCardData {
+  id: string;
+  name: string;
+  type: EntityType;
+  /** Plain-text summary; null when the entity has none yet. */
+  description: string | null;
+  /** Subject-uploaded photo or org logo; null renders a placeholder avatar. */
+  photo_url: string | null;
+  /** Pre-formatted "City, State" display string, from `address.display`. */
+  place_label: string | null;
+  trust_level: TrustLevel;
+  source_count: number;
+  /** Absolute URL to the full profile; omit the link entirely when null. */
+  profile_url: string | null;
 }
 
 /**

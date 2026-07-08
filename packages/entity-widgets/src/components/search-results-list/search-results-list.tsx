@@ -1,5 +1,6 @@
-import type { SearchResultRow, SearchResultsData } from "../../types";
+import type { EntityType } from "../../lib/entity-type-labels";
 import { formatEntityTypeAndPlace } from "../../lib/entity-type-labels";
+import type { TrustLevel } from "../trust-badge-row/trust-badge-row";
 import { TrustBadgeRow } from "../trust-badge-row/trust-badge-row";
 import { PaginatedListShell } from "../paginated-list-shell/paginated-list-shell";
 
@@ -17,6 +18,23 @@ export interface SearchResultsListProps {
 
 export interface SearchResultRowContentProps {
   row: SearchResultRow;
+}
+
+export interface SearchResultRow {
+  id: string;
+  name: string;
+  type: EntityType;
+  /** Pre-formatted "City, State" display string, from `address.display`. */
+  place_label: string | null;
+  trust_level: TrustLevel;
+  source_count: number;
+}
+
+export interface SearchResultsData {
+  items: SearchResultRow[];
+  total: number;
+  /** Opaque pagination cursor for the next page; null when there isn't one. */
+  next_cursor: string | null;
 }
 
 /**

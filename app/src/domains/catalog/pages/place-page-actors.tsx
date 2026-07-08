@@ -2,15 +2,42 @@ import { useRef, useState, type FormEvent } from "react";
 import { Search } from "lucide-react";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import type {
-  ActorCardProps,
-  ActorDirectoryProps,
-  ActorGroup,
-  ActorListProps,
-  ActorLoadParams,
-} from "./place-page.types";
 import { ACTOR_SORTS, ACTOR_TYPES, actorStatusText } from "./place-page-utils";
-import type { EntryType, PlaceActorParams, PlaceActorSort } from "@/types";
+import type {
+  EntryType,
+  PlaceActorList,
+  PlaceActorParams,
+  PlaceActorSort,
+  PlaceActorSummary,
+  PlaceKind,
+} from "@/types";
+
+interface ActorCardProps {
+  actor: PlaceActorSummary;
+}
+
+interface ActorDirectoryProps {
+  initialActors: PlaceActorList;
+  placeKind: PlaceKind;
+  placeSlug: string;
+}
+
+interface ActorGroup {
+  actors: PlaceActorSummary[];
+  label: string;
+}
+
+interface ActorListProps {
+  actors: PlaceActorSummary[];
+  sort: PlaceActorSort;
+}
+
+interface ActorLoadParams {
+  cursor?: string;
+  nextQuery?: string;
+  nextSort?: PlaceActorSort;
+  nextType?: EntryType | null;
+}
 
 function ActorCard({ actor }: ActorCardProps) {
   return (

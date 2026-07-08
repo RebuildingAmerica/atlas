@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 import { EntityCard } from "./entity-card";
-import type { EntityCardData } from "../../types";
+import type { EntityCardData } from "./entity-card";
 
 afterEach(() => {
   cleanup();

@@ -365,12 +365,7 @@ export function runAtlasCustomMigrations(
   }
 }
 
-/**
- * Runs pending Atlas custom migrations against a PostgreSQL connection pool.
- *
- * @param pool - The pg Pool instance.
- * @param migrations - Ordered list of migrations to apply.
- */
+/** Runs pending Atlas custom migrations against a PostgreSQL connection pool. */
 export async function runAtlasCustomMigrationsPg(
   pool: Pool,
   migrations: AtlasMigration[],
