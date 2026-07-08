@@ -1,10 +1,10 @@
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { stripVTControlCharacters } from "node:util";
-import { expect, type Page } from "@playwright/test";
+import { expect } from "@playwright/test";
 
 export interface ScoutHome {
   cleanup: () => Promise<void>;
@@ -88,10 +88,6 @@ interface ScoutCommand {
   command: string;
 }
 
-interface ScoutCredentialFile {
-  "session-token"?: unknown;
-}
-
 interface FileSystemError extends Error {
   code?: string;
 }
@@ -134,14 +130,14 @@ function scoutEnv(homeDir: string): NodeJS.ProcessEnv {
   return env;
 }
 
-function assertString(value: unknown, field: string): string {
+export function assertString(value: unknown, field: string): string {
   if (typeof value !== "string") {
     throw new Error(`${field} must be a string.`);
   }
   return value;
 }
 
-function assertNullableString(value: unknown, field: string): string | null {
+export function assertNullableString(value: unknown, field: string): string | null {
   if (value === null || value === undefined) {
     return null;
   }
@@ -151,7 +147,7 @@ function assertNullableString(value: unknown, field: string): string | null {
   return value;
 }
 
-function parseScoutSession(payload: unknown, accessToken: string): ScoutSessionFile {
+export function parseScoutSession(payload: unknown, accessToken: string): ScoutSessionFile {
   if (!payload || typeof payload !== "object") {
     throw new Error("Scout session file must be an object.");
   }
@@ -172,14 +168,14 @@ function parseScoutSession(payload: unknown, accessToken: string): ScoutSessionF
   };
 }
 
-function jsonHeaders(token: string): Record<string, string> {
+export function jsonHeaders(token: string): Record<string, string> {
   return {
     Authorization: `Bearer ${token}`,
     "Content-Type": "application/json",
   };
 }
 
-async function readBody(request: IncomingMessage): Promise<string> {
+export async function readBody(request: IncomingMessage): Promise<string> {
   const chunks: Buffer[] = [];
   for await (const chunk of request as AsyncIterable<Buffer | string>) {
     chunks.push(typeof chunk === "string" ? Buffer.from(chunk) : chunk);
@@ -187,16 +183,16 @@ async function readBody(request: IncomingMessage): Promise<string> {
   return Buffer.concat(chunks).toString("utf8");
 }
 
-function sendJson(response: ServerResponse, payload: unknown): void {
+export function sendJson(response: ServerResponse, payload: unknown): void {
   response.writeHead(200, { "Content-Type": "application/json" });
   response.end(JSON.stringify(payload));
 }
 
-function delay(ms: number): Promise<void> {
+export function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function isRetriableCleanupError(error: unknown): boolean {
+export function isRetriableCleanupError(error: unknown): boolean {
   if (!(error instanceof Error)) {
     return false;
   }
@@ -204,7 +200,7 @@ function isRetriableCleanupError(error: unknown): boolean {
   return code === "ENOTEMPTY" || code === "EBUSY" || code === "EPERM";
 }
 
-async function removeScoutHome(homeDir: string): Promise<void> {
+export async function removeScoutHome(homeDir: string): Promise<void> {
   let lastError: unknown;
   for (let attempt = 0; attempt <= SCOUT_HOME_CLEANUP_RETRIES; attempt += 1) {
     try {
@@ -221,13 +217,13 @@ async function removeScoutHome(homeDir: string): Promise<void> {
   throw lastError;
 }
 
-async function expectJsonResponse<T>(response: Response): Promise<T> {
+export async function expectJsonResponse<T>(response: Response): Promise<T> {
   const body = await response.text();
   expect(response.ok, body).toBe(true);
   return JSON.parse(body) as T;
 }
 
-function listen(server: Server): Promise<string> {
+export function listen(server: Server): Promise<string> {
   return new Promise((resolve, reject) => {
     server.once("error", reject);
     server.listen(0, "127.0.0.1", () => {
@@ -241,7 +237,7 @@ function listen(server: Server): Promise<string> {
   });
 }
 
-function closeServer(server: Server): Promise<void> {
+export function closeServer(server: Server): Promise<void> {
   return new Promise((resolve, reject) => {
     server.close((error) => {
       if (error) {
@@ -253,14 +249,14 @@ function closeServer(server: Server): Promise<void> {
   });
 }
 
-function allMessageContent(request: OllamaChatRequest): string {
+export function allMessageContent(request: OllamaChatRequest): string {
   const messages = request.messages ?? [];
   return messages
     .map((message) => (typeof message.content === "string" ? message.content : ""))
     .join("\n");
 }
 
-function ollamaContentFor(request: OllamaChatRequest): string {
+export function ollamaContentFor(request: OllamaChatRequest): string {
   if (allMessageContent(request).includes("IDENTIFIED ENTITIES")) {
     return JSON.stringify({
       discovery_leads: [],
@@ -292,7 +288,7 @@ function ollamaContentFor(request: OllamaChatRequest): string {
   ]);
 }
 
-function spawnScout(args: string[], env: NodeJS.ProcessEnv): ScoutProcess {
+export function spawnScout(args: string[], env: NodeJS.ProcessEnv): ScoutProcess {
   const command = scoutCommand();
   const child = spawn(command.command, [...command.args, ...args], {
     cwd: path.join(process.cwd(), ".."),
@@ -334,7 +330,7 @@ function spawnScout(args: string[], env: NodeJS.ProcessEnv): ScoutProcess {
   };
 }
 
-function waitForExit(
+export function waitForExit(
   child: ChildProcessWithoutNullStreams,
   closePromise: Promise<ScoutCommandResult>,
   timeoutMs: number,
@@ -363,7 +359,7 @@ function waitForExit(
   });
 }
 
-function waitForOutput(
+export function waitForOutput(
   child: ChildProcessWithoutNullStreams,
   output: () => string,
   pattern: RegExp,
@@ -521,185 +517,6 @@ export async function startFixtureOllamaServer(): Promise<FixtureServer> {
   };
 }
 
-export async function approveScoutLogin(
-  page: Page,
-  scoutHome: ScoutHome,
-  appUrl: string,
-): Promise<ScoutSessionFile> {
-  const login = spawnScout(["login", "--atlas-url", appUrl, "--no-browser"], scoutHome.env);
-  const match = await login.waitForOutput(
-    /https?:\/\/\S+[\s\S]*\b[A-Z0-9]{4}-[A-Z0-9]{4}\b/,
-    45_000,
-  );
-  const approvalUrl = extractScoutApprovalUrl(match.input ?? "");
-  const userCode =
-    extractScoutUserCodeFromUrl(approvalUrl) ?? extractScoutUserCode(match.input ?? "");
-  await page.goto(approvalUrl);
-  await expect(page.getByRole("heading", { name: "Approve device" })).toBeVisible();
-  const deviceCodeInput = page.getByRole("textbox", { name: "Device code" });
-  if (!(await deviceCodeInput.inputValue())) {
-    await deviceCodeInput.fill(userCode);
-  }
-  await page.getByRole("button", { name: "Approve device" }).click();
-  await page.waitForURL((url) => url.pathname === "/device/approved");
-  await expect(page.getByRole("heading", { name: "Device approved" })).toBeVisible();
-
-  const result = await login.waitForExit(90_000);
-  expect(result.exitCode, result.output).toBe(0);
-  return readScoutSession(scoutHome.sessionPath);
-}
-
-function extractScoutApprovalUrl(output: string): string {
-  const urls = output.match(/https?:\/\/\S+/g) ?? [];
-  const approvalUrl = urls.find((url) => {
-    if (!url.includes("user_code=")) {
-      return false;
-    }
-    try {
-      return new URL(url).pathname === "/device";
-    } catch {
-      return false;
-    }
-  });
-  if (approvalUrl) {
-    return approvalUrl;
-  }
-  const fallbackApprovalUrl = urls.find((url) => {
-    if (url.includes("user_code=")) {
-      return false;
-    }
-    try {
-      return new URL(url).pathname === "/device";
-    } catch {
-      return false;
-    }
-  });
-  return assertString(fallbackApprovalUrl, "approval URL");
-}
-
-function extractScoutUserCodeFromUrl(url: string): string | null {
-  try {
-    return new URL(url).searchParams.get("user_code");
-  } catch {
-    return null;
-  }
-}
-
-function extractScoutUserCode(output: string): string {
-  const match = /\b[A-Z0-9]{4}-[A-Z0-9]{4}\b/.exec(output);
-  return assertString(match?.[0], "user code");
-}
-
-export async function readScoutSession(sessionPath: string): Promise<ScoutSessionFile> {
-  const credentialPath = sessionPath.replace(/\.json$/, ".credentials.json");
-  const credentials = JSON.parse(await readFile(credentialPath, "utf8")) as ScoutCredentialFile;
-  const accessToken = assertString(credentials["session-token"], "session-token");
-  return parseScoutSession(JSON.parse(await readFile(sessionPath, "utf8")), accessToken);
-}
-
-export async function exchangeScoutApiToken(
-  appUrl: string,
-  session: ScoutSessionFile,
-): Promise<ScoutApiTokenResponse> {
-  const response = await fetch(`${appUrl}/api/auth/scout/token`, {
-    body: JSON.stringify({
-      default_upload_target: "public",
-      search_key_configured: false,
-      worker_id: session.worker_id,
-      worker_name: session.worker_name ?? "Atlas Scout E2E",
-      workspace_id: null,
-    }),
-    headers: {
-      Authorization: `Bearer ${session.access_token}`,
-      "Content-Type": "application/json",
-    },
-    method: "POST",
-  });
-  return expectJsonResponse<ScoutApiTokenResponse>(response);
-}
-
-export async function queueDirectUrlJob(
-  apiUrl: string,
-  token: string,
-  seedUrl: string,
-): Promise<DiscoveryRunCreateResponse> {
-  const response = await fetch(`${apiUrl}/api/discovery-runs`, {
-    body: JSON.stringify({
-      direct_urls: [seedUrl],
-      execution_mode: "direct_url",
-      issue_areas: ["housing_affordability"],
-      location_query: "Austin, TX",
-      research_goal: "landscape_scan",
-      state: "TX",
-    }),
-    headers: jsonHeaders(token),
-    method: "POST",
-  });
-  return expectJsonResponse<DiscoveryRunCreateResponse>(response);
-}
-
-export async function findQueuedJob(
-  apiUrl: string,
-  token: string,
-  runId: string,
-): Promise<DiscoveryJobResponse> {
-  const response = await fetch(`${apiUrl}/api/discovery-runs/jobs?limit=25`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  const payload = await expectJsonResponse<{ items: DiscoveryJobResponse[] }>(response);
-  const job = payload.items.find((item) => item.run_id === runId);
-  if (!job) {
-    throw new Error(`Queued job for run ${runId} was not visible in the job queue.`);
-  }
-  return job;
-}
-
-export async function getJob(
-  apiUrl: string,
-  token: string,
-  jobId: string,
-): Promise<DiscoveryJobResponse> {
-  const response = await fetch(`${apiUrl}/api/discovery-runs/jobs/${jobId}`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  return expectJsonResponse<DiscoveryJobResponse>(response);
-}
-
-export async function getRun(
-  apiUrl: string,
-  token: string,
-  runId: string,
-): Promise<DiscoveryRunResponse> {
-  const response = await fetch(`${apiUrl}/api/discovery-runs/${runId}`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  return expectJsonResponse<DiscoveryRunResponse>(response);
-}
-
-export async function startScoutWorker(
-  scoutHome: ScoutHome,
-  appUrl: string,
-): Promise<ScoutCommandResult> {
-  return spawnScout(
-    [
-      "--config",
-      scoutHome.configPath,
-      "worker",
-      "start",
-      "--atlas-url",
-      appUrl,
-      "--interval",
-      "1",
-      "--lease-seconds",
-      "30",
-    ],
-    scoutHome.env,
-  ).waitForExit();
-}
-
-export async function stopScoutWorker(scoutHome: ScoutHome): Promise<ScoutCommandResult> {
-  return spawnScout(
-    ["--config", scoutHome.configPath, "worker", "stop"],
-    scoutHome.env,
-  ).waitForExit();
-}
+export * from "./scout-cli-core";
+export * from "./scout-cli-fixtures";
+export * from "./scout-cli-commands";
