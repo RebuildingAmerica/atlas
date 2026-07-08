@@ -17,13 +17,21 @@ from typing import TYPE_CHECKING, Any
 
 from atlas.platform.database import db
 
+from .profile_claim_proofs import (
+    list_proofs as _list_profile_claim_proofs,
+)
+from .profile_claim_proofs import (
+    mark_proof_verified as _mark_profile_claim_proof_verified,
+)
+from .profile_claim_proofs import (
+    record_proof as _record_profile_claim_proof,
+)
 from .profile_claims_support import (
     VERIFICATION_TOKEN_TTL,
     ProfileClaimModel,
     ProfileClaimProofModel,
     _default_verified_proof_summary,
     _row_to_claim,
-    _row_to_claim_proof,
 )
 
 if TYPE_CHECKING:
@@ -199,37 +207,13 @@ class ProfileClaimCRUD:
         expires_at: str | None = None,
     ) -> ProfileClaimProofModel:
         """Record one proof artifact or reviewer decision for a claim."""
-        proof_id = db.generate_uuid()
-        now = db.now_iso()
-        metadata_json = json.dumps(proof_metadata, sort_keys=True) if proof_metadata else None
-        await conn.execute(
-            """
-            INSERT INTO profile_claim_proofs (
-                id, claim_id, proof_type, proof_status, proof_summary,
-                proof_metadata_json, created_at, reviewed_at, expires_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                proof_id,
-                claim_id,
-                proof_type,
-                proof_status,
-                proof_summary,
-                metadata_json,
-                now,
-                reviewed_at,
-                expires_at,
-            ),
-        )
-        await conn.commit()
-        return ProfileClaimProofModel(
-            id=proof_id,
+        return await _record_profile_claim_proof(
+            conn,
             claim_id=claim_id,
             proof_type=proof_type,
             proof_status=proof_status,
             proof_summary=proof_summary,
-            proof_metadata_json=metadata_json,
-            created_at=now,
+            proof_metadata=proof_metadata,
             reviewed_at=reviewed_at,
             expires_at=expires_at,
         )
@@ -240,18 +224,7 @@ class ProfileClaimCRUD:
         claim_id: str,
     ) -> list[ProfileClaimProofModel]:
         """Return proof records for one claim, newest first."""
-        cursor = await conn.execute(
-            """
-            SELECT id, claim_id, proof_type, proof_status, proof_summary,
-                   proof_metadata_json, created_at, reviewed_at, expires_at
-            FROM profile_claim_proofs
-            WHERE claim_id = ?
-            ORDER BY created_at DESC
-            """,
-            (claim_id,),
-        )
-        rows = await cursor.fetchall()
-        return [_row_to_claim_proof(row) for row in rows]
+        return await _list_profile_claim_proofs(conn, claim_id)
 
     @staticmethod
     async def mark_proof_verified(
@@ -261,34 +234,11 @@ class ProfileClaimCRUD:
         proof_metadata: Any | None = None,
     ) -> ProfileClaimProofModel | None:
         """Transition one pending proof record to verified."""
-        now = db.now_iso()
-        metadata_json = json.dumps(proof_metadata, sort_keys=True) if proof_metadata else None
-        cursor = await conn.execute(
-            """
-            UPDATE profile_claim_proofs
-            SET proof_status = 'verified',
-                proof_metadata_json = COALESCE(?, proof_metadata_json),
-                reviewed_at = ?
-            WHERE id = ?
-            """,
-            (metadata_json, now, proof_id),
+        return await _mark_profile_claim_proof_verified(
+            conn,
+            proof_id,
+            proof_metadata=proof_metadata,
         )
-        await conn.commit()
-        if cursor.rowcount == 0:
-            return None
-        cursor = await conn.execute(
-            """
-            SELECT id, claim_id, proof_type, proof_status, proof_summary,
-                   proof_metadata_json, created_at, reviewed_at, expires_at
-            FROM profile_claim_proofs
-            WHERE id = ?
-            """,
-            (proof_id,),
-        )
-        row = await cursor.fetchone()
-        if row is None:
-            return None
-        return _row_to_claim_proof(row)
 
     @staticmethod
     async def mark_verified(
