@@ -3,31 +3,33 @@ import "@tanstack/react-start/server-only";
 import type { AtlasSelfServeProduct } from "@/domains/access/capabilities";
 import type { PricingCheckoutInterval } from "../checkout-types";
 import type { DiscountSegment } from "../discount-segments";
+import { getAtlasDiscountCouponIds } from "../products";
+import type { AtlasDiscountCouponIds } from "../products";
 
 interface DiscountCouponRule {
-  envKey: string;
+  couponKey: keyof AtlasDiscountCouponIds;
   intervals: readonly PricingCheckoutInterval[];
   products: readonly AtlasSelfServeProduct[];
 }
 
 const DISCOUNT_COUPON_RULES: Record<DiscountSegment, DiscountCouponRule> = {
   student: {
-    envKey: "STRIPE_COUPON_STUDENT",
+    couponKey: "student",
     intervals: ["four_month"],
     products: ["atlas_pro"],
   },
   independent_journalist: {
-    envKey: "STRIPE_COUPON_JOURNALIST",
+    couponKey: "independent_journalist",
     intervals: ["monthly", "yearly"],
     products: ["atlas_pro"],
   },
   grassroots_nonprofit: {
-    envKey: "STRIPE_COUPON_NONPROFIT",
+    couponKey: "grassroots_nonprofit",
     intervals: ["monthly", "yearly"],
     products: ["atlas_pro"],
   },
   civic_tech_worker: {
-    envKey: "STRIPE_COUPON_CIVIC_TECH",
+    couponKey: "civic_tech_worker",
     intervals: ["monthly", "yearly"],
     products: ["atlas_pro"],
   },
@@ -39,7 +41,8 @@ const DISCOUNT_COUPON_RULES: Record<DiscountSegment, DiscountCouponRule> = {
  * Returns null if no coupon is configured for the segment.
  */
 export function getDiscountCouponId(segment: DiscountSegment): string | null {
-  return process.env[DISCOUNT_COUPON_RULES[segment].envKey]?.trim() || null;
+  const rule = DISCOUNT_COUPON_RULES[segment];
+  return getAtlasDiscountCouponIds()[rule.couponKey];
 }
 
 /**
@@ -54,5 +57,5 @@ export function getDiscountCouponIdForCheckout(
   if (!rule.products.includes(product) || !rule.intervals.includes(interval)) {
     return null;
   }
-  return process.env[rule.envKey]?.trim() || null;
+  return getAtlasDiscountCouponIds()[rule.couponKey];
 }

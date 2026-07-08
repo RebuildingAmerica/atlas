@@ -1,4 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import {
+  STRIPE_ATLAS_CATALOG_ENV_KEY,
+  createStripeAtlasCatalogFixture,
+} from "../../../../fixtures/billing/stripe-price-envs";
 
 import { getDiscountCouponIdForCheckout } from "@/domains/billing/server/discount-coupons";
 
@@ -10,7 +14,7 @@ describe("discount coupons", () => {
   });
 
   it("applies the student coupon only to the four-month Atlas Pro checkout", () => {
-    vi.stubEnv("STRIPE_COUPON_STUDENT", "coupon_student");
+    vi.stubEnv(STRIPE_ATLAS_CATALOG_ENV_KEY, createStripeAtlasCatalogFixture());
 
     expect(getDiscountCouponIdForCheckout("student", "atlas_pro", "four_month")).toBe(
       "coupon_student",
@@ -20,7 +24,7 @@ describe("discount coupons", () => {
   });
 
   it("applies the journalist coupon to individual Pro checkout and never to Team", () => {
-    vi.stubEnv("STRIPE_COUPON_JOURNALIST", "coupon_journalist");
+    vi.stubEnv(STRIPE_ATLAS_CATALOG_ENV_KEY, createStripeAtlasCatalogFixture());
 
     expect(getDiscountCouponIdForCheckout("independent_journalist", "atlas_pro", "monthly")).toBe(
       "coupon_journalist",

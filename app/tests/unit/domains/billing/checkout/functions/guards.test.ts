@@ -1,7 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ServerFnExecutionResponse } from "../../../../../helpers/server-fn-stub";
 import { createAtlasSessionFixture } from "../../../../../fixtures/access/sessions";
-import { STRIPE_PRICE_ENVS } from "../../../../../fixtures/billing/stripe-price-envs";
+import {
+  STRIPE_ATLAS_CATALOG_ENV_KEY,
+  createStripeAtlasCatalogFixture,
+} from "../../../../../fixtures/billing/stripe-price-envs";
+import type { CreateCheckoutOptions } from "@/domains/billing/server/checkout";
 
 const mocks = vi.hoisted(() => ({
   createCheckoutSession: vi.fn(),
@@ -39,7 +43,7 @@ vi.mock("@/domains/billing/server/checkout", () => ({
 }));
 
 vi.mock("@/domains/billing/server/discount-coupons", () => ({
-  getDiscountCouponId: mocks.getDiscountCouponId,
+  getDiscountCouponIdForCheckout: mocks.getDiscountCouponId,
 }));
 
 vi.mock("@/domains/billing/server/stripe-customer", () => ({
@@ -57,9 +61,7 @@ describe("checkout.functions guards", () => {
     Object.values(mocks).forEach((mock) => mock.mockReset());
     Object.values(authApi).forEach((mock) => mock.mockReset());
 
-    for (const [key, value] of Object.entries(STRIPE_PRICE_ENVS)) {
-      vi.stubEnv(key, value);
-    }
+    vi.stubEnv(STRIPE_ATLAS_CATALOG_ENV_KEY, createStripeAtlasCatalogFixture());
 
     mocks.getAuthRuntimeConfig.mockReturnValue({ publicBaseUrl: "https://atlas.test" });
     mocks.getBrowserSessionHeaders.mockReturnValue(browserSessionHeaders);
@@ -69,20 +71,6 @@ describe("checkout.functions guards", () => {
 
   afterEach(() => {
     vi.unstubAllEnvs();
-  });
-
-  it("rejects checkout when Stripe price is not configured", async () => {
-    vi.stubEnv("STRIPE_PRICE_ATLAS_PRO_YEARLY", "");
-    mocks.requireAtlasSessionState.mockResolvedValue(createAtlasSessionFixture());
-
-    const { startCheckout } = await import("@/domains/billing/checkout.functions");
-    const response = (await startCheckout.__executeServer({
-      method: "POST",
-      data: { product: "atlas_pro", interval: "yearly" },
-    })) as ServerFnExecutionResponse;
-
-    expect(response.error).toBeInstanceOf(Error);
-    expect((response.error as Error).message).toContain("Stripe price not configured");
   });
 
   it("rejects checkout without an active workspace", async () => {
@@ -141,15 +129,13 @@ describe("checkout.functions guards", () => {
     })) as ServerFnExecutionResponse;
 
     expect(response.error).toBeUndefined();
-    interface CheckoutCall {
-      stripeCustomerId: string | null;
-    }
     expect(mocks.ensureStripeCustomerForWorkspace).toHaveBeenCalledWith(
       "org_team",
       "operator@atlas.test",
       "Atlas Team",
     );
-    const call = mocks.createCheckoutSession.mock.calls[0]?.[0] as CheckoutCall | undefined;
+    const call = mocks.createCheckoutSession.mock.calls[0]?.[0] as
+      CreateCheckoutOptions | undefined;
     expect(call?.stripeCustomerId).toBe("cus_new");
   });
 
@@ -168,10 +154,8 @@ describe("checkout.functions guards", () => {
     })) as ServerFnExecutionResponse;
 
     expect(response.error).toBeUndefined();
-    interface CheckoutCall {
-      stripeCustomerId: string | null;
-    }
-    const call = mocks.createCheckoutSession.mock.calls[0]?.[0] as CheckoutCall | undefined;
+    const call = mocks.createCheckoutSession.mock.calls[0]?.[0] as
+      CreateCheckoutOptions | undefined;
     expect(call?.stripeCustomerId).toBeNull();
   });
 

@@ -7,7 +7,7 @@
  * | Command                                                   | What it does |
  * | --------------------------------------------------------- | ------------ |
  * | `pnpm bootstrap`                                          | Full interactive setup. |
- * | `pnpm bootstrap --local-only`                             | Local dev only; skips deploy and product phases. |
+ * | `pnpm bootstrap --local-only`                             | Local dev setup, including local Stripe test-mode sync. |
  * | `pnpm bootstrap --doctor`                                 | Checks readiness without changing local or hosted state. |
  * | `pnpm bootstrap --resume`                                 | Skips phases already marked complete. |
  * | `pnpm bootstrap --product atlas`                          | Runs local Stripe test-mode sync only. |
@@ -228,6 +228,21 @@ async function main(): Promise<void> {
       !args.localOnly,
     );
     markPhase(state, "env", result.success ? "complete" : "partial");
+    saveReadiness(projectRoot, state);
+    allFollowUp.push(...result.followUpItems);
+  }
+
+  if (args.localOnly) {
+    log.step("Phase 4: Stripe Products");
+    const result = await runProductPhase(
+      projectRoot,
+      state,
+      args.doctorMode,
+      false,
+      "local",
+      args.assumeYes,
+    );
+    markPhase(state, "product", result.success ? "complete" : "failed");
     saveReadiness(projectRoot, state);
     allFollowUp.push(...result.followUpItems);
   }

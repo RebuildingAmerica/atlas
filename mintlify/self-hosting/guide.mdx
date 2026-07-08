@@ -52,26 +52,27 @@ This creates your `.env.production` file, generates auth secrets, and sets up th
 
 Atlas uses Stripe Checkout, Stripe Billing, coupons, and webhooks for Pro, Team,
 and Research Pass access. The bootstrap scripts create the canonical products,
-prices, discount coupons, and webhook endpoints, then write the resulting IDs to
-the correct env files.
+prices, discount coupons, and webhook endpoints, then write the generated Stripe
+catalog to the correct env files.
 
-Local development uses Stripe test mode and a local webhook secret:
+Local development uses Stripe test mode and a local webhook secret. The guided
+setup command covers the local Stripe catalog too:
 
 ```bash
-pnpm bootstrap:stripe:local
+pnpm setup
 pnpm stripe:listen
 ```
 
 Hosted staging uses Stripe test mode and Vercel Preview env vars:
 
 ```bash
-pnpm bootstrap:stripe:staging
+pnpm setup:staging
 ```
 
 Hosted production uses Stripe live mode and Vercel Production env vars:
 
 ```bash
-STRIPE_API_KEY=sk_live_replace_me pnpm bootstrap:stripe:prod
+STRIPE_API_KEY=sk_live_replace_me pnpm setup:prod
 ```
 
 Use a live secret key, or a live restricted key with permission to manage
@@ -115,8 +116,8 @@ ATLAS_EMAIL_FROM=Atlas <hello@mail.your-atlas-domain.com>
 ATLAS_EMAIL_RESEND_API_KEY=<your Resend API key>
 ```
 
-`pnpm bootstrap:stripe:staging` and `pnpm bootstrap:stripe:prod` sync the
-`STRIPE_*` billing variables to the linked Vercel project automatically.
+`pnpm setup:staging` and `pnpm setup:prod` sync the Stripe billing variables to
+the linked Vercel project automatically.
 
 **Deploy the API to your VM:**
 

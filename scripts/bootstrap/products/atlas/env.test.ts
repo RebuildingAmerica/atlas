@@ -2,8 +2,10 @@ import assert from "node:assert/strict";
 import path from "node:path";
 import { describe, it } from "node:test";
 import {
+  STRIPE_ATLAS_CATALOG_ENV_KEY,
   buildStripeEnvUpdates,
   buildStripeVercelEnvVars,
+  expandStripeCatalogEnv,
   resolveStripeEnvFileTargets,
   resolveStripeMode,
   stripeWebhookUrlForOrigin,
@@ -58,7 +60,7 @@ void describe("Stripe bootstrap environment helpers", () => {
     ]);
   });
 
-  void it("builds complete Stripe runtime env updates", () => {
+  void it("builds complete Stripe runtime env updates with one generated catalog value", () => {
     const ids = new Map([
       ["STRIPE_PRODUCT_ATLAS_PRO", "prod_pro"],
       ["STRIPE_PRICE_ATLAS_PRO_MONTHLY", "price_pro_month"],
@@ -70,20 +72,19 @@ void describe("Stripe bootstrap environment helpers", () => {
       ["STRIPE_COUPON_JOURNALIST", "coupon_journalist"],
     ]);
 
+    const updates = buildStripeEnvUpdates("sk_test_123", "whsec_123", ids);
+
     assert.deepEqual(
-      [...buildStripeEnvUpdates("sk_test_123", "whsec_123", ids).entries()],
-      [
-        ["STRIPE_API_KEY", "sk_test_123"],
-        ["STRIPE_WEBHOOK_SECRET", "whsec_123"],
-        ["STRIPE_PRODUCT_ATLAS_PRO", "prod_pro"],
-        ["STRIPE_PRICE_ATLAS_PRO_MONTHLY", "price_pro_month"],
-        [
-          "STRIPE_PRICE_ATLAS_PRO_STUDENT_FOUR_MONTH",
-          "price_pro_student_four_month",
-        ],
-        ["STRIPE_COUPON_STUDENT", "coupon_student"],
-        ["STRIPE_COUPON_JOURNALIST", "coupon_journalist"],
-      ],
+      [...updates.keys()],
+      ["STRIPE_API_KEY", "STRIPE_WEBHOOK_SECRET", STRIPE_ATLAS_CATALOG_ENV_KEY],
+    );
+    assert.deepEqual(
+      expandStripeCatalogEnv(updates).get("STRIPE_PRICE_ATLAS_PRO_MONTHLY"),
+      "price_pro_month",
+    );
+    assert.deepEqual(
+      expandStripeCatalogEnv(updates).get("STRIPE_COUPON_STUDENT"),
+      "coupon_student",
     );
   });
 
@@ -91,36 +92,16 @@ void describe("Stripe bootstrap environment helpers", () => {
     const env = new Map([
       ["STRIPE_API_KEY", "sk_test_123"],
       ["STRIPE_WEBHOOK_SECRET", "whsec_123"],
-      ["STRIPE_PRICE_ATLAS_PRO_MONTHLY", "price_pro_month"],
-      [
-        "STRIPE_PRICE_ATLAS_PRO_STUDENT_FOUR_MONTH",
-        "price_pro_student_four_month",
-      ],
-      ["STRIPE_COUPON_STUDENT", "coupon_student"],
-      ["STRIPE_COUPON_JOURNALIST", "coupon_journalist"],
+      [STRIPE_ATLAS_CATALOG_ENV_KEY, "{}"],
     ]);
 
     assert.deepEqual(
       buildStripeVercelEnvVars(env, "staging").map((item) => item.environments),
-      [
-        ["preview"],
-        ["preview"],
-        ["preview"],
-        ["preview"],
-        ["preview"],
-        ["preview"],
-      ],
+      [["preview"], ["preview"], ["preview"]],
     );
     assert.deepEqual(
       buildStripeVercelEnvVars(env, "prod").map((item) => item.environments),
-      [
-        ["production"],
-        ["production"],
-        ["production"],
-        ["production"],
-        ["production"],
-        ["production"],
-      ],
+      [["production"], ["production"], ["production"]],
     );
     assert.deepEqual(buildStripeVercelEnvVars(env, "local"), []);
   });

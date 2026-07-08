@@ -1,7 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ServerFnExecutionResponse } from "../../../../../helpers/server-fn-stub";
 import { createAtlasSessionFixture } from "../../../../../fixtures/access/sessions";
-import { STRIPE_PRICE_ENVS } from "../../../../../fixtures/billing/stripe-price-envs";
+import {
+  STRIPE_ATLAS_CATALOG_ENV_KEY,
+  createStripeAtlasCatalogFixture,
+} from "../../../../../fixtures/billing/stripe-price-envs";
 import type { CreateCheckoutOptions } from "@/domains/billing/server/checkout";
 
 const mocks = vi.hoisted(() => ({
@@ -58,9 +61,7 @@ describe("checkout.functions pricing", () => {
     Object.values(mocks).forEach((mock) => mock.mockReset());
     Object.values(authApi).forEach((mock) => mock.mockReset());
 
-    for (const [key, value] of Object.entries(STRIPE_PRICE_ENVS)) {
-      vi.stubEnv(key, value);
-    }
+    vi.stubEnv(STRIPE_ATLAS_CATALOG_ENV_KEY, createStripeAtlasCatalogFixture());
 
     mocks.getAuthRuntimeConfig.mockReturnValue({ publicBaseUrl: "https://atlas.test" });
     mocks.getBrowserSessionHeaders.mockReturnValue(browserSessionHeaders);
@@ -113,7 +114,6 @@ describe("checkout.functions pricing", () => {
   });
 
   it("uses student four-month pricing with the student coupon", async () => {
-    vi.stubEnv("STRIPE_PRICE_ATLAS_PRO_STUDENT_FOUR_MONTH", "price_pro_student_four_month");
     mocks.requireAtlasSessionState.mockResolvedValue(createAtlasSessionFixture());
     authApi.getFullOrganization.mockResolvedValue({
       metadata: {
@@ -270,6 +270,25 @@ describe("checkout.functions pricing", () => {
     expect(call?.interval).toBe("once");
   });
 
+  it("rejects checkout when Stripe price is not configured", async () => {
+    vi.stubEnv(
+      STRIPE_ATLAS_CATALOG_ENV_KEY,
+      createStripeAtlasCatalogFixture({
+        prices: { "pro-yearly": "" },
+      }),
+    );
+    mocks.requireAtlasSessionState.mockResolvedValue(createAtlasSessionFixture());
+
+    const { startCheckout } = await import("@/domains/billing/checkout.functions");
+    const response = (await startCheckout.__executeServer({
+      method: "POST",
+      data: { product: "atlas_pro", interval: "yearly" },
+    })) as ServerFnExecutionResponse;
+
+    expect(response.error).toBeInstanceOf(Error);
+    expect((response.error as Error).message).toContain("STRIPE_ATLAS_CATALOG.prices.pro-yearly");
+  });
+
   it("bills additional Team seats by member count for a monthly subscription", async () => {
     mocks.requireAtlasSessionState.mockResolvedValue(createAtlasSessionFixture());
     authApi.getFullOrganization.mockResolvedValue({
@@ -355,7 +374,12 @@ describe("checkout.functions pricing", () => {
   });
 
   it("rejects checkout when the Team seat price is unconfigured", async () => {
-    vi.stubEnv("STRIPE_PRICE_ATLAS_TEAM_SEAT_MONTHLY", "");
+    vi.stubEnv(
+      STRIPE_ATLAS_CATALOG_ENV_KEY,
+      createStripeAtlasCatalogFixture({
+        prices: { "team-seat-monthly": "" },
+      }),
+    );
     mocks.requireAtlasSessionState.mockResolvedValue(createAtlasSessionFixture());
     authApi.getFullOrganization.mockResolvedValue({
       metadata: { stripeCustomerId: "cus_123", workspaceType: "team" },
@@ -369,6 +393,8 @@ describe("checkout.functions pricing", () => {
     })) as ServerFnExecutionResponse;
 
     expect(response.error).toBeInstanceOf(Error);
-    expect((response.error as Error).message).toContain("seat price not configured");
+    expect((response.error as Error).message).toContain(
+      "STRIPE_ATLAS_CATALOG.prices.team-seat-monthly",
+    );
   });
 });

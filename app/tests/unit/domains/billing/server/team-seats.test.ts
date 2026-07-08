@@ -1,5 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { STRIPE_PRICE_ENVS } from "../../../../fixtures/billing/stripe-price-envs";
+import {
+  STRIPE_ATLAS_CATALOG_ENV_KEY,
+  createStripeAtlasCatalogFixture,
+} from "../../../../fixtures/billing/stripe-price-envs";
 
 const mocks = vi.hoisted(() => ({
   getStripeClient: vi.fn(),
@@ -38,9 +41,7 @@ describe("syncTeamSeats", () => {
 
   beforeEach(() => {
     vi.resetModules();
-    for (const [key, value] of Object.entries(STRIPE_PRICE_ENVS)) {
-      vi.stubEnv(key, value);
-    }
+    vi.stubEnv(STRIPE_ATLAS_CATALOG_ENV_KEY, createStripeAtlasCatalogFixture());
     mocks.getStripeClient.mockReset();
     mocks.ensureAuthReady.mockReset();
     mocks.queryActiveTeamSubscriptionId.mockReset();
@@ -188,11 +189,18 @@ describe("syncTeamSeats", () => {
   });
 
   it("throws when the seat price is not configured but seats are needed", async () => {
-    vi.stubEnv("STRIPE_PRICE_ATLAS_TEAM_SEAT_MONTHLY", "");
+    vi.stubEnv(
+      STRIPE_ATLAS_CATALOG_ENV_KEY,
+      createStripeAtlasCatalogFixture({
+        prices: { "team-seat-monthly": "" },
+      }),
+    );
     mocks.queryActiveTeamSubscriptionId.mockResolvedValue("sub_1");
     withSubscription([baseItem(BASE_MONTHLY)], 3);
 
-    await expect(syncTeamSeats("org_1")).rejects.toThrow(/seat price not configured/i);
+    await expect(syncTeamSeats("org_1")).rejects.toThrow(
+      /STRIPE_ATLAS_CATALOG\.prices\.team-seat-monthly/,
+    );
   });
 
   it("falls back to the monthly seat price when no recognized base item is present", async () => {
@@ -218,9 +226,7 @@ describe("resolveActiveTeamBillingInterval", () => {
 
   beforeEach(() => {
     vi.resetModules();
-    for (const [key, value] of Object.entries(STRIPE_PRICE_ENVS)) {
-      vi.stubEnv(key, value);
-    }
+    vi.stubEnv(STRIPE_ATLAS_CATALOG_ENV_KEY, createStripeAtlasCatalogFixture());
     mocks.getStripeClient.mockReset();
     mocks.queryActiveTeamSubscriptionId.mockReset();
     retrieve.mockReset();

@@ -2,7 +2,8 @@ import "@tanstack/react-start/server-only";
 
 import type Stripe from "stripe";
 import { getStripeClient } from "./stripe-client";
-import { ATLAS_PRODUCTS } from "../products";
+import { getAtlasBillingProducts } from "../products";
+import type { AtlasBillingProducts } from "../products";
 import type { TeamBillingInterval } from "../team-cost";
 import { ensureAuthReady } from "../../access/server/auth";
 import { queryActiveTeamSubscriptionId } from "../../access/server/workspace-products";
@@ -10,12 +11,9 @@ import { queryActiveTeamSubscriptionId } from "../../access/server/workspace-pro
 /**
  * Returns the seat prices Atlas bills for additional Team members.
  */
-function seatPriceIds(): Set<string> {
+function seatPriceIds(products: AtlasBillingProducts): Set<string> {
   return new Set(
-    [
-      ATLAS_PRODUCTS.atlas_team.monthlySeatPriceId,
-      ATLAS_PRODUCTS.atlas_team.yearlySeatPriceId,
-    ].filter(Boolean),
+    [products.atlas_team.monthlySeatPriceId, products.atlas_team.yearlySeatPriceId].filter(Boolean),
   );
 }
 
@@ -28,16 +26,19 @@ function seatPriceIds(): Set<string> {
  *
  * @param subscription - The Stripe subscription being reconciled.
  */
-function resolveSeatPriceId(subscription: Stripe.Subscription): string {
+function resolveSeatPriceId(
+  products: AtlasBillingProducts,
+  subscription: Stripe.Subscription,
+): string {
   const baseItem = subscription.items.data.find(
     (item) =>
-      item.price.id === ATLAS_PRODUCTS.atlas_team.monthlyPriceId ||
-      item.price.id === ATLAS_PRODUCTS.atlas_team.yearlyPriceId,
+      item.price.id === products.atlas_team.monthlyPriceId ||
+      item.price.id === products.atlas_team.yearlyPriceId,
   );
-  const isYearly = baseItem?.price.id === ATLAS_PRODUCTS.atlas_team.yearlyPriceId;
+  const isYearly = baseItem?.price.id === products.atlas_team.yearlyPriceId;
   const seatPriceId = isYearly
-    ? ATLAS_PRODUCTS.atlas_team.yearlySeatPriceId
-    : ATLAS_PRODUCTS.atlas_team.monthlySeatPriceId;
+    ? products.atlas_team.yearlySeatPriceId
+    : products.atlas_team.monthlySeatPriceId;
   if (!seatPriceId) {
     throw new Error(
       "Stripe seat price not configured for Atlas Team. Check environment variables.",
@@ -77,7 +78,8 @@ export async function syncTeamSeats(workspaceId: string): Promise<void> {
 
   const stripe = getStripeClient();
   const subscription = await stripe.subscriptions.retrieve(subscriptionId);
-  const seats = seatPriceIds();
+  const products = getAtlasBillingProducts();
+  const seats = seatPriceIds(products);
   const existingSeatItem = subscription.items.data.find((item) => seats.has(item.price.id));
 
   if (existingSeatItem) {
@@ -99,7 +101,7 @@ export async function syncTeamSeats(workspaceId: string): Promise<void> {
   if (targetSeats >= 1) {
     await stripe.subscriptionItems.create({
       subscription: subscriptionId,
-      price: resolveSeatPriceId(subscription),
+      price: resolveSeatPriceId(products, subscription),
       quantity: targetSeats,
       proration_behavior: "create_prorations",
     });
@@ -122,10 +124,11 @@ export async function resolveActiveTeamBillingInterval(
 
   const stripe = getStripeClient();
   const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+  const products = getAtlasBillingProducts();
   const baseItem = subscription.items.data.find(
     (item) =>
-      item.price.id === ATLAS_PRODUCTS.atlas_team.monthlyPriceId ||
-      item.price.id === ATLAS_PRODUCTS.atlas_team.yearlyPriceId,
+      item.price.id === products.atlas_team.monthlyPriceId ||
+      item.price.id === products.atlas_team.yearlyPriceId,
   );
-  return baseItem?.price.id === ATLAS_PRODUCTS.atlas_team.yearlyPriceId ? "yearly" : "monthly";
+  return baseItem?.price.id === products.atlas_team.yearlyPriceId ? "yearly" : "monthly";
 }

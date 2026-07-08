@@ -2,7 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { normalizeAtlasOrganizationMetadata } from "../access/organization-metadata";
 import type { PricingCheckoutInterval } from "./checkout-types";
-import { ATLAS_PRODUCTS } from "./products";
+import { getAtlasBillingProducts } from "./products";
+import type { AtlasBillingProducts } from "./products";
 
 const checkoutInputSchema = z.object({
   product: z.enum(["atlas_pro", "atlas_team", "atlas_research_pass"]),
@@ -38,25 +39,29 @@ async function loadCheckoutServerModules() {
 /**
  * Resolves the Stripe price ID for a product and billing interval.
  */
-function resolvePriceId(product: string, interval: PricingCheckoutInterval): string {
+function resolvePriceId(
+  products: AtlasBillingProducts,
+  product: string,
+  interval: PricingCheckoutInterval,
+): string {
   if (product === "atlas_pro") {
     if (interval === "four_month") {
-      return ATLAS_PRODUCTS.atlas_pro.studentFourMonthPriceId;
+      return products.atlas_pro.studentFourMonthPriceId;
     }
     return interval === "yearly"
-      ? ATLAS_PRODUCTS.atlas_pro.yearlyPriceId
-      : ATLAS_PRODUCTS.atlas_pro.monthlyPriceId;
+      ? products.atlas_pro.yearlyPriceId
+      : products.atlas_pro.monthlyPriceId;
   }
   if (product === "atlas_team") {
     return interval === "yearly"
-      ? ATLAS_PRODUCTS.atlas_team.yearlyPriceId
-      : ATLAS_PRODUCTS.atlas_team.monthlyPriceId;
+      ? products.atlas_team.yearlyPriceId
+      : products.atlas_team.monthlyPriceId;
   }
   /* v8 ignore start -- checkoutInputSchema gates `product` to the literal union above; tsc cannot prove all branches return without the unreachable trailing throw */
   if (product === "atlas_research_pass") {
     return interval === "weekly"
-      ? ATLAS_PRODUCTS.atlas_research_pass.weeklyPriceId
-      : ATLAS_PRODUCTS.atlas_research_pass.oncePriceId;
+      ? products.atlas_research_pass.weeklyPriceId
+      : products.atlas_research_pass.oncePriceId;
   }
   throw new Error(`Unknown product: ${product}`);
   /* v8 ignore stop */
@@ -65,10 +70,10 @@ function resolvePriceId(product: string, interval: PricingCheckoutInterval): str
 /**
  * Resolves the Stripe per-seat price ID for an Atlas Team billing interval.
  */
-function resolveSeatPriceId(interval: string): string {
+function resolveSeatPriceId(products: AtlasBillingProducts, interval: string): string {
   return interval === "yearly"
-    ? ATLAS_PRODUCTS.atlas_team.yearlySeatPriceId
-    : ATLAS_PRODUCTS.atlas_team.monthlySeatPriceId;
+    ? products.atlas_team.yearlySeatPriceId
+    : products.atlas_team.monthlySeatPriceId;
 }
 
 /**
@@ -96,7 +101,8 @@ export const startCheckout = createServerFn({ method: "POST" })
     const { getBrowserSessionHeaders } = requestHeaders;
     const { getAuthRuntimeConfig } = runtimeModule;
     const { requireAtlasSessionState } = sessionState;
-    const priceId = resolvePriceId(data.product, data.interval);
+    const products = getAtlasBillingProducts();
+    const priceId = resolvePriceId(products, data.product, data.interval);
     if (!priceId) {
       throw new Error("Stripe price not configured for this product. Check environment variables.");
     }
@@ -153,7 +159,7 @@ export const startCheckout = createServerFn({ method: "POST" })
       const members = fullOrganization?.members;
       seatQuantity = Array.isArray(members) ? Math.max(0, members.length - 1) : 0;
       if (seatQuantity >= 1) {
-        seatPriceId = resolveSeatPriceId(data.interval);
+        seatPriceId = resolveSeatPriceId(products, data.interval);
         if (!seatPriceId) {
           throw new Error(
             "Stripe seat price not configured for Atlas Team. Check environment variables.",

@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { ATLAS_COUPONS, ATLAS_PRODUCTS } from "../../config/products.js";
+import {
+  STRIPE_ATLAS_CATALOG_ENV_KEY,
+  buildStripeEnvUpdates,
+  expandStripeCatalogEnv,
+} from "./env.js";
 import type {
   StripeCatalogSnapshot,
   StripeCouponSnapshot,
@@ -10,20 +15,17 @@ import type {
 import { verifyStripeCatalogSnapshot } from "./verify.js";
 
 function completeEnv(): Map<string, string> {
-  const env = new Map<string, string>([
-    ["STRIPE_API_KEY", "sk_test_123"],
-    ["STRIPE_WEBHOOK_SECRET", "whsec_123"],
-  ]);
+  const stripeIds = new Map<string, string>();
   for (const product of ATLAS_PRODUCTS) {
-    env.set(product.envProductKey, `stripe_${product.envProductKey}`);
+    stripeIds.set(product.envProductKey, `stripe_${product.envProductKey}`);
     for (const price of product.prices) {
-      env.set(price.envKey, `stripe_${price.envKey}`);
+      stripeIds.set(price.envKey, `stripe_${price.envKey}`);
     }
   }
   for (const coupon of ATLAS_COUPONS) {
-    env.set(coupon.envKey, coupon.id);
+    stripeIds.set(coupon.envKey, coupon.id);
   }
-  return env;
+  return buildStripeEnvUpdates("sk_test_123", "whsec_123", stripeIds);
 }
 
 function productSnapshots(
@@ -97,19 +99,21 @@ function matchingSnapshot(env: Map<string, string>): StripeCatalogSnapshot {
 void describe("Stripe catalog verifier", () => {
   void it("accepts a complete catalog snapshot", () => {
     const env = completeEnv();
+    const expandedEnv = expandStripeCatalogEnv(env);
 
     assert.deepEqual(
-      verifyStripeCatalogSnapshot(env, matchingSnapshot(env)),
+      verifyStripeCatalogSnapshot(env, matchingSnapshot(expandedEnv)),
       [],
     );
   });
 
-  void it("flags missing env keys", () => {
+  void it("flags a missing generated catalog env", () => {
     const env = completeEnv();
-    env.delete("STRIPE_COUPON_STUDENT");
+    env.delete(STRIPE_ATLAS_CATALOG_ENV_KEY);
+    const expandedEnv = expandStripeCatalogEnv(completeEnv());
 
     assert.deepEqual(
-      verifyStripeCatalogSnapshot(env, matchingSnapshot(completeEnv())).map(
+      verifyStripeCatalogSnapshot(env, matchingSnapshot(expandedEnv)).map(
         (issue) => issue.code,
       ),
       ["missing_env"],
@@ -118,7 +122,8 @@ void describe("Stripe catalog verifier", () => {
 
   void it("flags price drift", () => {
     const env = completeEnv();
-    const snapshot = matchingSnapshot(env);
+    const expandedEnv = expandStripeCatalogEnv(env);
+    const snapshot = matchingSnapshot(expandedEnv);
     const proMonthly = snapshot.prices.get("STRIPE_PRICE_ATLAS_PRO_MONTHLY");
     assert.ok(proMonthly);
     snapshot.prices.set("STRIPE_PRICE_ATLAS_PRO_MONTHLY", {
@@ -135,12 +140,15 @@ void describe("Stripe catalog verifier", () => {
 
   void it("flags discount coupons that apply outside Atlas Pro", () => {
     const env = completeEnv();
-    const snapshot = matchingSnapshot(env);
+    const expandedEnv = expandStripeCatalogEnv(env);
+    const snapshot = matchingSnapshot(expandedEnv);
     const journalistCoupon = snapshot.coupons.get("STRIPE_COUPON_JOURNALIST");
     assert.ok(journalistCoupon);
     snapshot.coupons.set("STRIPE_COUPON_JOURNALIST", {
       ...journalistCoupon,
-      appliesToProductIds: [env.get("STRIPE_PRODUCT_ATLAS_TEAM_BASE") ?? ""],
+      appliesToProductIds: [
+        expandedEnv.get("STRIPE_PRODUCT_ATLAS_TEAM_BASE") ?? "",
+      ],
     });
 
     assert.deepEqual(

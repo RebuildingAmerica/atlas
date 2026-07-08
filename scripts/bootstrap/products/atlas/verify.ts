@@ -5,7 +5,9 @@ import Stripe from "stripe";
 import { parseEnvFile } from "../../lib/env-file.js";
 import { ATLAS_COUPONS, ATLAS_PRODUCTS } from "../../config/products.js";
 import {
+  STRIPE_ATLAS_CATALOG_ENV_KEY,
   STRIPE_ENV_KEYS,
+  expandStripeCatalogEnv,
   resolveStripeEnvFileTargets,
   resolveStripeMode,
   validateStripeApiKeyMode,
@@ -19,6 +21,7 @@ import type {
 
 export type StripeCatalogIssueCode =
   | "missing_env"
+  | "invalid_catalog"
   | "missing_product"
   | "product_id_mismatch"
   | "product_inactive"
@@ -108,6 +111,7 @@ export function verifyStripeCatalogSnapshot(
 ): StripeCatalogVerificationIssue[] {
   const issues: StripeCatalogVerificationIssue[] = [];
   const missingEnvKeys = new Set<string>();
+  let expandedEnv: Map<string, string>;
 
   for (const key of STRIPE_ENV_KEYS) {
     if (!env.get(key)?.trim()) {
@@ -116,10 +120,69 @@ export function verifyStripeCatalogSnapshot(
     }
   }
 
-  verifyProducts(env, snapshot, missingEnvKeys, issues);
-  verifyPrices(env, snapshot, missingEnvKeys, issues);
-  verifyCoupons(env, snapshot, missingEnvKeys, issues);
+  try {
+    expandedEnv = expandStripeCatalogEnv(env);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    issues.push(
+      issue("invalid_catalog", STRIPE_ATLAS_CATALOG_ENV_KEY, message),
+    );
+    return issues;
+  }
+
+  if (missingEnvKeys.has(STRIPE_ATLAS_CATALOG_ENV_KEY)) {
+    return issues;
+  }
+
+  collectMissingCatalogEntries(expandedEnv, missingEnvKeys, issues);
+  verifyProducts(expandedEnv, snapshot, missingEnvKeys, issues);
+  verifyPrices(expandedEnv, snapshot, missingEnvKeys, issues);
+  verifyCoupons(expandedEnv, snapshot, missingEnvKeys, issues);
   return issues;
+}
+
+function collectMissingCatalogEntries(
+  env: Map<string, string>,
+  missingEnvKeys: Set<string>,
+  issues: StripeCatalogVerificationIssue[],
+): void {
+  for (const product of ATLAS_PRODUCTS) {
+    if (!env.get(product.envProductKey)?.trim()) {
+      missingEnvKeys.add(product.envProductKey);
+      issues.push(
+        issue(
+          "missing_env",
+          STRIPE_ATLAS_CATALOG_ENV_KEY,
+          `${STRIPE_ATLAS_CATALOG_ENV_KEY}.products.${product.id} is missing.`,
+        ),
+      );
+    }
+    for (const price of product.prices) {
+      if (!env.get(price.envKey)?.trim()) {
+        missingEnvKeys.add(price.envKey);
+        issues.push(
+          issue(
+            "missing_env",
+            STRIPE_ATLAS_CATALOG_ENV_KEY,
+            `${STRIPE_ATLAS_CATALOG_ENV_KEY}.prices.${price.id} is missing.`,
+          ),
+        );
+      }
+    }
+  }
+
+  for (const coupon of ATLAS_COUPONS) {
+    if (!env.get(coupon.envKey)?.trim()) {
+      missingEnvKeys.add(coupon.envKey);
+      issues.push(
+        issue(
+          "missing_env",
+          STRIPE_ATLAS_CATALOG_ENV_KEY,
+          `${STRIPE_ATLAS_CATALOG_ENV_KEY}.coupons.${coupon.segment} is missing.`,
+        ),
+      );
+    }
+  }
 }
 
 function verifyProducts(
@@ -488,7 +551,10 @@ async function verifyEnvFile(
   }
   validateStripeApiKeyMode(apiKey, mode);
   const stripe = new Stripe(apiKey, { apiVersion: "2026-06-24.dahlia" });
-  const snapshot = await fetchStripeCatalogSnapshot(stripe, env);
+  const snapshot = await fetchStripeCatalogSnapshot(
+    stripe,
+    expandStripeCatalogEnv(env),
+  );
   return verifyStripeCatalogSnapshot(env, snapshot);
 }
 

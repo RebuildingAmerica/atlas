@@ -13,10 +13,13 @@ export function parseEnvFile(filePath: string): Map<string, string> {
     const key = trimmed.slice(0, eqIndex).trim();
     let value = trimmed.slice(eqIndex + 1).trim();
     // Strip surrounding quotes
-    if (
-      (value.startsWith('"') && value.endsWith('"')) ||
-      (value.startsWith("'") && value.endsWith("'"))
-    ) {
+    if (value.startsWith('"') && value.endsWith('"')) {
+      value = value
+        .slice(1, -1)
+        .replace(/\\n/g, "\n")
+        .replace(/\\"/g, '"')
+        .replace(/\\\\/g, "\\");
+    } else if (value.startsWith("'") && value.endsWith("'")) {
       value = value.slice(1, -1);
     }
     entries.set(key, value);
@@ -79,7 +82,10 @@ function quoteEnvValue(value: string): string {
     value.includes("#") ||
     value.includes("\n")
   ) {
-    return `"${value.replace(/"/g, '\\"')}"`;
+    if (!value.includes("'") && !value.includes("\n")) {
+      return `'${value}'`;
+    }
+    return `"${value.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\n/g, "\\n")}"`;
   }
   return value;
 }
