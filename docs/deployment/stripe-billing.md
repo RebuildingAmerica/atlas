@@ -150,7 +150,7 @@ After each bootstrap run, verify the app-facing contract:
 
 ```bash
 pnpm bootstrap:test
-cd app && pnpm vitest run tests/unit/domains/billing/checkout.functions.test.ts tests/unit/domains/billing/server/discount-coupons.test.ts
+cd app && pnpm vitest run tests/unit/domains/billing/checkout/functions/guards.test.ts tests/unit/domains/billing/checkout/functions/prices.test.ts tests/unit/domains/billing/server/discount-coupons.test.ts
 ```
 
 Then verify the target Stripe catalog from the env file Atlas will actually
