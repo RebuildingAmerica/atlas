@@ -1,0 +1,2 @@
+-- sqlite_schema.sql is assembled from sqlite_schema_parts/ for runtime loading.
+-- Keep this file small; the loader concatenates the fragments.

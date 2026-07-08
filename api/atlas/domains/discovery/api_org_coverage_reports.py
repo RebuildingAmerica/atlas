@@ -17,8 +17,8 @@ from atlas.domains.discovery.api_org_coverage import (
     build_coverage_report_response,
 )
 from atlas.domains.discovery.coverage_targets import CoverageTargetCRUD
-from atlas.models import get_db_connection
 from atlas.platform.config import Settings, get_settings
+from atlas.platform.database import get_db_connection
 from atlas.platform.http.cache import apply_no_store_headers
 
 if TYPE_CHECKING:

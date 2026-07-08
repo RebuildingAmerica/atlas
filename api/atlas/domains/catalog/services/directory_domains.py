@@ -84,8 +84,9 @@ class DirectoryDomainVerificationService:
         txt_records = await self.txt_resolver.resolve_txt_records(
             directory_domain_verification_host(configured_domain.domain),
         )
-        return await self.ownership.verify_directory_domain(
+        verified = await self.ownership.verify_directory_domain(
             conn,
             org_id=org_id,
             txt_records=txt_records,
         )
+        return cast("DirectoryDomainModel | None", verified)

@@ -5,33 +5,14 @@ from __future__ import annotations
 import logging
 import time
 from dataclasses import dataclass
-from datetime import UTC, date, datetime
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 from atlas_shared import (
-    DeduplicatedEntry as SharedDeduplicatedEntry,
-)
-from atlas_shared import (
-    DiscoveryRunArtifacts,
-    DiscoveryRunInput,
-    DiscoveryRunManifest,
     DiscoveryRunStats,
     DiscoveryRunStatus,
-    DiscoverySyncInfo,
-    PageContent,
-    PageTaskOutcome,
-    RunCheckpoint,
-    SourceType,
-)
-from atlas_shared import (
-    RankedEntry as SharedRankedEntry,
-)
-from atlas_shared import (
-    RawEntry as SharedRawEntry,
 )
 
-from atlas.domains.catalog.geo import geocode_entry
-from atlas.domains.catalog.models.relationships import RelationshipCRUD
 from atlas.domains.discovery.cost import (
     CostCeilingExceeded,
     assert_within_budget,
@@ -39,17 +20,39 @@ from atlas.domains.discovery.cost import (
     estimate_search_cost,
     record_cost,
 )
-from atlas.domains.discovery.pipeline.deduplicator import DedupResult, deduplicate_entries
+from atlas.domains.discovery.pipeline.deduplicator import deduplicate_entries
 from atlas.domains.discovery.pipeline.extractor import extract_entries
-from atlas.domains.discovery.pipeline.gap_analyzer import analyze_gaps
 from atlas.domains.discovery.pipeline.query_generator import generate_queries
 from atlas.domains.discovery.pipeline.ranker import rank_entries
 from atlas.domains.discovery.pipeline.source_fetcher import build_search_provider, fetch_sources
 from atlas.domains.discovery.trust_gate import evaluate_publication
-from atlas.domains.moderation.review_queue import ReviewQueueCRUD
-from atlas.models import DiscoveryRunCRUD, EntryCRUD, SourceCRUD
+from atlas.models import DiscoveryRunCRUD, EntryCRUD
 from atlas.platform.config import Settings, get_settings
-from atlas.platform.database import db, get_db_connection
+from atlas.platform.database import get_db_connection
+
+from . import runner_storage_persistence as _runner_storage_persistence
+from .runner_persistence import (
+    _research_gap_payloads,
+    _research_lead_confidence,
+    _research_lead_payload,
+    _research_source_payloads,
+    persist_discovery_artifacts,
+    persist_discovery_results,
+)
+from .runner_storage import (
+    _build_discovery_run_artifacts,
+    _dedup_suspect_lookup,
+    _fetched_source_to_page_content,
+    _ranked_entry_to_shared,
+    _today_iso_date,
+)
+from .runner_storage_artifacts import _build_page_task_outcomes, _raw_entry_to_shared
+from .runner_storage_persistence import (
+    _find_existing_entry,
+)
+from .runner_storage_persistence import (
+    _upsert_entry as _storage_upsert_entry,
+)
 
 _SEARCH_PROVIDER_NAME = "brave"
 _LLM_PROVIDER_NAME = "anthropic"
@@ -58,6 +61,24 @@ if TYPE_CHECKING:
     from aiosqlite import Connection
 
 logger = logging.getLogger(__name__)
+
+__all__ = [
+    "DiscoveryPipelineCredentials",
+    "DiscoveryPipelineJob",
+    "_build_page_task_outcomes",
+    "_find_existing_entry",
+    "_raw_entry_to_shared",
+    "_research_gap_payloads",
+    "_research_lead_confidence",
+    "_research_lead_payload",
+    "_research_source_payloads",
+    "_upsert_entry",
+    "evaluate_publication",
+    "persist_discovery_artifacts",
+    "persist_discovery_results",
+    "run_discovery_pipeline",
+    "run_discovery_pipeline_for_run",
+]
 
 
 @dataclass(frozen=True)
@@ -79,6 +100,29 @@ class DiscoveryPipelineCredentials:
     anthropic_api_key: str | None = None
 
 
+async def _upsert_entry(
+    conn: Connection,
+    entry: Any,
+    *,
+    score: float = 0.0,
+    dedup_suspect: bool = False,
+    dedup_note: str | None = None,
+) -> str:
+    """Compatibility wrapper for tests that patch runner-level publication gating."""
+    previous_evaluator = _runner_storage_persistence.evaluate_publication
+    _runner_storage_persistence.evaluate_publication = evaluate_publication
+    try:
+        return await _storage_upsert_entry(
+            conn,
+            entry,
+            score=score,
+            dedup_suspect=dedup_suspect,
+            dedup_note=dedup_note,
+        )
+    finally:
+        _runner_storage_persistence.evaluate_publication = previous_evaluator
+
+
 async def run_discovery_pipeline(  # noqa: PLR0915
     conn: Connection,
     *,
@@ -90,21 +134,9 @@ async def run_discovery_pipeline(  # noqa: PLR0915
 
     Search and model calls are metered against the cost ledger and gated by the
     configured ceilings and kill switch. Crossing a ceiling ends the run as a
-    controlled stop — the run is marked failed with a ``cost_ceiling`` reason
+    controlled stop -- the run is marked failed with a ``cost_ceiling`` reason
     rather than raising, so a budget breach never strands the worker or storms
     the logs.
-
-    Parameters
-    ----------
-    conn : Connection
-        Database connection.
-    job : DiscoveryPipelineJob
-        The run inputs to execute.
-    credentials : DiscoveryPipelineCredentials | None, optional
-        Service credentials for search and extraction. Default is empty.
-    settings : Settings | None, optional
-        Resolved application settings carrying the cost ceilings and kill
-        switch. Defaults to the canonical application settings when omitted.
     """
     active_credentials = credentials or DiscoveryPipelineCredentials()
     active_settings = settings or get_settings()
@@ -320,716 +352,3 @@ async def run_discovery_pipeline_for_run(
         )
     finally:
         await conn.close()
-
-
-async def persist_discovery_results(  # noqa: PLR0913
-    conn: Connection,
-    *,
-    run_id: str,
-    ranked_entries: list[SharedRankedEntry],
-    sources: list[PageContent],
-    stats: DiscoveryRunStats,
-    dedup_suspects: dict[tuple[str, str | None], str] | None = None,
-) -> tuple[list[str], int]:
-    """Persist shared discovery results into Atlas tables for an existing run."""
-    source_by_url = {source.url: source for source in sources}
-    suspects = dedup_suspects or {}
-    confirmed_entry_ids: list[str] = []
-    linked_source_urls: set[str] = set()
-
-    for ranked_entry in ranked_entries:
-        dedup_note = suspects.get(_dedup_suspect_key(ranked_entry.entry))
-        entry_id = await _upsert_entry(
-            conn,
-            ranked_entry.entry,
-            score=ranked_entry.score,
-            dedup_suspect=dedup_note is not None,
-            dedup_note=dedup_note,
-        )
-        confirmed_entry_ids.append(entry_id)
-        await _persist_issue_areas(conn, entry_id, ranked_entry.entry.issue_areas)
-        linked_source_urls.update(
-            await _persist_sources(
-                conn,
-                entry_id=entry_id,
-                entry=ranked_entry.entry,
-                source_by_url=source_by_url,
-            )
-        )
-
-    final_entries_confirmed = stats.entries_confirmed or len(confirmed_entry_ids)
-    final_sources_processed = (
-        stats.sources_processed or stats.sources_fetched or len(linked_source_urls)
-    )
-
-    if stats.status == DiscoveryRunStatus.COMPLETED:
-        await DiscoveryRunCRUD.complete(
-            conn,
-            run_id,
-            queries_generated=stats.queries_generated,
-            sources_fetched=stats.sources_fetched,
-            sources_processed=final_sources_processed,
-            entries_extracted=stats.entries_extracted,
-            entries_after_dedup=stats.entries_after_dedup,
-            entries_confirmed=final_entries_confirmed,
-        )
-    else:
-        await DiscoveryRunCRUD.update(
-            conn,
-            run_id,
-            status=stats.status.value,
-            completed_at=db.now_iso(),
-            queries_generated=stats.queries_generated,
-            sources_fetched=stats.sources_fetched,
-            sources_processed=final_sources_processed,
-            entries_extracted=stats.entries_extracted,
-            entries_after_dedup=stats.entries_after_dedup,
-            entries_confirmed=final_entries_confirmed,
-            error_message=stats.error_message,
-        )
-
-    return confirmed_entry_ids, len(linked_source_urls)
-
-
-async def persist_discovery_artifacts(
-    conn: Connection,
-    *,
-    run_id: str,
-    artifacts: DiscoveryRunArtifacts,
-    dedup_suspects: dict[tuple[str, str | None], str] | None = None,
-) -> tuple[list[str], int]:
-    """Persist a canonical discovery artifact bundle into Atlas tables."""
-    confirmed_entry_ids, source_count = await persist_discovery_results(
-        conn,
-        run_id=run_id,
-        ranked_entries=artifacts.ranked_entries,
-        sources=artifacts.sources,
-        stats=artifacts.stats,
-        dedup_suspects=dedup_suspects,
-    )
-    if artifacts.stats.status == DiscoveryRunStatus.COMPLETED:
-        research_summary = await _build_research_summary(
-            conn,
-            artifacts=artifacts,
-            confirmed_entry_ids=confirmed_entry_ids,
-        )
-        await DiscoveryRunCRUD.update_research_summary(conn, run_id, research_summary)
-    return confirmed_entry_ids, source_count
-
-
-async def _build_research_summary(
-    conn: Connection,
-    *,
-    artifacts: DiscoveryRunArtifacts,
-    confirmed_entry_ids: list[str],
-) -> dict[str, Any]:
-    """Build source-linked research output from persisted discovery artifacts."""
-    ranked_leads = [
-        _research_lead_payload(ranked_entry, entry_id)
-        for ranked_entry, entry_id in zip(
-            artifacts.ranked_entries, confirmed_entry_ids, strict=False
-        )
-    ][:5]
-    key_sources = await _research_source_payloads(conn, artifacts)
-    gaps = _research_gap_payloads(artifacts)
-    location = artifacts.manifest.run.location_query
-    lead_count = len(ranked_leads)
-    source_count = len(key_sources)
-    return {
-        "brief": (
-            f"{location} returned {lead_count} ranked {_plural('lead', lead_count)} backed by "
-            f"{source_count} {_plural('source', source_count)}."
-        ),
-        "ranked_leads": ranked_leads,
-        "key_sources": key_sources,
-        "gaps": gaps,
-        "reasoning_signals": _research_reasoning_signals(
-            ranked_leads=ranked_leads,
-            key_sources=key_sources,
-            gaps=gaps,
-        ),
-    }
-
-
-def _research_lead_payload(
-    ranked_entry: SharedRankedEntry,
-    entry_id: str,
-) -> dict[str, Any]:
-    """Build the summary payload for one ranked lead."""
-    entry = ranked_entry.entry
-    source_count = len(set(entry.source_urls))
-    latest_source_date = max(entry.source_dates).isoformat() if entry.source_dates else None
-    return {
-        "entry_id": entry_id,
-        "name": entry.name,
-        "type": str(entry.entry_type),
-        "why_it_matters": _lead_reason(entry),
-        "source_count": source_count,
-        "confidence": _research_lead_confidence(source_count),
-        "latest_source_date": latest_source_date,
-    }
-
-
-def _research_lead_confidence(source_count: int) -> str:
-    """Return a conservative confidence state for a research lead."""
-    if source_count >= 2:  # noqa: PLR2004
-        return "corroborated"
-    if source_count == 1:
-        return "partial"
-    return "unverified"
-
-
-def _lead_reason(entry: SharedDeduplicatedEntry) -> str:
-    """Return the most useful source-backed reason for a ranked lead."""
-    for source_url in entry.source_urls:
-        context = entry.source_contexts.get(source_url)
-        if context:
-            return context
-    source_count = len(set(entry.source_urls))
-    return f"Ranked from {source_count} supporting {_plural('source', source_count)}."
-
-
-async def _research_source_payloads(
-    conn: Connection,
-    artifacts: DiscoveryRunArtifacts,
-) -> list[dict[str, Any]]:
-    """Build summary source payloads using persisted source IDs."""
-    source_urls = {
-        url for ranked_entry in artifacts.ranked_entries for url in ranked_entry.entry.source_urls
-    }
-    source_by_url = {source.url: source for source in artifacts.sources}
-    payloads: list[dict[str, Any]] = []
-    for source_url in sorted(source_urls):
-        page = source_by_url.get(source_url)
-        persisted = await SourceCRUD.get_by_url(conn, source_url)
-        if page is None or persisted is None or not (page.title or "").strip():
-            continue
-        published_date = _page_published_date(page)
-        payloads.append(
-            {
-                "source_id": persisted.id,
-                "title": page.title,
-                "url": page.url,
-                "publication": page.publication,
-                "published_date": published_date.isoformat() if published_date else None,
-                "why_it_matters": "Supports one or more ranked leads.",
-            }
-        )
-    return payloads[:5]
-
-
-def _research_gap_payloads(artifacts: DiscoveryRunArtifacts) -> list[dict[str, str]]:
-    """Build plain-language gap payloads from the coverage report."""
-    gap_report = artifacts.gap_report
-    if gap_report is None:
-        return []
-
-    gaps: list[dict[str, str]] = []
-    if gap_report.missing_issues:
-        gaps.append(
-            {
-                "label": "Missing issue coverage",
-                "detail": f"No ranked leads for: {', '.join(gap_report.missing_issues)}.",
-            }
-        )
-    if gap_report.thin_issues:
-        gaps.append(
-            {
-                "label": "Thin issue coverage",
-                "detail": f"Limited lead coverage for: {', '.join(gap_report.thin_issues)}.",
-            }
-        )
-    if gap_report.uncovered_domains:
-        gaps.append(
-            {
-                "label": "Uncovered domains",
-                "detail": f"No source-backed leads in: {', '.join(gap_report.uncovered_domains)}.",
-            }
-        )
-    return gaps
-
-
-def _research_reasoning_signals(
-    *,
-    ranked_leads: list[dict[str, Any]],
-    key_sources: list[dict[str, Any]],
-    gaps: list[dict[str, str]],
-) -> list[str]:
-    """Build concise signals explaining why the research output is inspectable."""
-    signals = [
-        f"Ranked {len(ranked_leads)} {_plural('lead', len(ranked_leads))}.",
-        f"Linked {len(key_sources)} key {_plural('source', len(key_sources))}.",
-    ]
-    if gaps:
-        signals.append(f"Flagged {len(gaps)} {_plural('gap', len(gaps))}.")
-    return signals
-
-
-def _plural(word: str, count: int) -> str:
-    """Return a simple English plural for count-aware labels."""
-    return word if count == 1 else f"{word}s"
-
-
-async def _upsert_entry(
-    conn: Connection,
-    entry: SharedDeduplicatedEntry,
-    *,
-    score: float = 0.0,
-    dedup_suspect: bool = False,
-    dedup_note: str | None = None,
-) -> str:
-    """Create or update an entry based on exact location/type/name matching.
-
-    Newly created records pass through the publication gate: a person, an
-    uncorroborated organization, or a dedup-suspect record is written inactive
-    and enqueued for human review rather than published. Re-discovery of an
-    already-published record only refreshes its fields and never unpublishes it.
-
-    Parameters
-    ----------
-    conn : Connection
-        Database connection.
-    entry : SharedDeduplicatedEntry
-        The deduplicated record to persist.
-    score : float, optional
-        The record's confidence score from ranking. Default is 0.0.
-    dedup_suspect : bool, optional
-        True when deduplication flagged the record as a possible duplicate.
-        Default is False.
-    dedup_note : str | None, optional
-        Human-readable reason the record looks like a duplicate. Default is None.
-
-    Returns
-    -------
-    str
-        The persisted entry id.
-    """
-    city = entry.city
-    state = entry.state
-    match = await _find_existing_entry(conn, entry)
-
-    if match is None:
-        today_iso = _today_iso_date()
-        decision = evaluate_publication(
-            kind=str(entry.entry_type),
-            registry_corroborated=False,
-            dedup_suspect=dedup_suspect,
-            score=score,
-        )
-        located = await geocode_entry(city, state, None, allow_remote=False)
-        entity_id = str(
-            await EntryCRUD.create(
-                conn,
-                entry_type=str(entry.entry_type),
-                name=entry.name,
-                description=entry.description,
-                city=city,
-                state=state,
-                geo_specificity=str(entry.geo_specificity),
-                region=entry.region,
-                latitude=located.latitude if located else None,
-                longitude=located.longitude if located else None,
-                geocode_precision=located.precision if located else None,
-                geocode_source=located.source if located else None,
-                website=entry.website,
-                email=entry.email,
-                social_media=entry.social_media,
-                first_seen=_first_seen_for_entry(entry, today_iso),
-                last_seen=entry.last_seen or _parse_date(today_iso),
-                active=decision.publish,
-            )
-        )
-        if not decision.publish:
-            assert decision.hold_reason is not None, "a held record always carries a hold reason"
-            await ReviewQueueCRUD.enqueue(
-                conn,
-                entity_id=entity_id,
-                kind=str(entry.entry_type),
-                hold_reason=decision.hold_reason,
-                score=score,
-                dedup_suspect=dedup_suspect,
-                dedup_note=dedup_note,
-            )
-        return entity_id
-
-    today_iso = _today_iso_date()
-    coordinate_fields: dict[str, Any] = {}
-    if match.latitude is None or match.longitude is None:
-        located = await geocode_entry(city, state, None, allow_remote=False)
-        if located is not None:
-            coordinate_fields = {
-                "latitude": located.latitude,
-                "longitude": located.longitude,
-                "geocode_precision": located.precision,
-                "geocode_source": located.source,
-            }
-    await EntryCRUD.update(
-        conn,
-        match.id,
-        description=entry.description,
-        region=entry.region,
-        website=entry.website or match.website,
-        email=entry.email or match.email,
-        social_media=entry.social_media or match.social_media,
-        last_seen=entry.last_seen or _parse_date(today_iso),
-        **coordinate_fields,
-    )
-    return str(match.id)
-
-
-async def _find_existing_entry(
-    conn: Connection,
-    entry: SharedDeduplicatedEntry,
-) -> Any | None:
-    """Find a stored actor that should absorb a repeated public mention.
-
-    Parameters
-    ----------
-    conn : Connection
-        Database connection.
-    entry : SharedDeduplicatedEntry
-        Newly discovered entry candidate.
-
-    Returns
-    -------
-    Any | None
-        Existing entry model when a name/location or stable identity key matches.
-    """
-    candidates = await EntryCRUD.list(
-        conn,
-        state=entry.state,
-        city=entry.city,
-        active_only=False,
-        limit=500,
-    )
-    exact_match = next(
-        (
-            candidate
-            for candidate in candidates
-            if candidate.type == str(entry.entry_type)
-            and candidate.name.strip().lower() == entry.name.strip().lower()
-        ),
-        None,
-    )
-    if exact_match is not None:
-        return exact_match
-
-    if not entry.website:
-        return None
-
-    resolved_id = await RelationshipCRUD.resolve_identity_key(
-        conn,
-        key_type="domain",
-        key_value=entry.website,
-    )
-    if resolved_id is None:
-        return None
-
-    resolved = await EntryCRUD.get_by_id(conn, resolved_id)
-    if resolved is None or resolved.type != str(entry.entry_type):
-        return None
-    return resolved
-
-
-def _dedup_suspect_key(entry: SharedDeduplicatedEntry) -> tuple[str, str | None]:
-    """Build the (name, city) key used to look up dedup-suspect status."""
-    return (entry.name.strip().lower(), entry.city)
-
-
-def _dedup_suspect_lookup(
-    deduped: DedupResult,
-    extracted: list[dict[str, Any]],
-    existing: list[dict[str, Any]],
-) -> dict[tuple[str, str | None], str]:
-    """Map dedup-flagged records to the flag reason that held them.
-
-    A deduplication flag references positions in the combined extracted+existing
-    list. This resolves each flagged position back to its name/city so the gate
-    can hold the matching discovered record as a possible duplicate.
-
-    Parameters
-    ----------
-    deduped : DedupResult
-        The deduplication output carrying any review flags.
-    extracted : list[dict[str, Any]]
-        The freshly extracted records, in their original order.
-    existing : list[dict[str, Any]]
-        The already-stored records compared against, appended after extracted.
-
-    Returns
-    -------
-    dict[tuple[str, str | None], str]
-        A (name, city) key to flag-reason mapping for every flagged record.
-    """
-    combined = [*extracted, *existing]
-    suspects: dict[tuple[str, str | None], str] = {}
-    for flag in deduped.flags:
-        for index in flag.entry_indices:
-            record = combined[index]
-            name = str(record.get("name", "")).strip().lower()
-            city = record.get("city")
-            suspects[(name, city)] = flag.reason
-    return suspects
-
-
-async def _persist_issue_areas(conn: Connection, entry_id: str, issue_areas: list[str]) -> None:
-    """Ensure issue area links exist for an entry."""
-    for issue_area in sorted(set(issue_areas)):
-        await conn.execute(
-            """
-            INSERT OR IGNORE INTO entry_issue_areas (entry_id, issue_area, created_at)
-            VALUES (?, ?, datetime('now'))
-            """,
-            (entry_id, issue_area),
-        )
-    await conn.commit()
-
-
-async def _persist_sources(
-    conn: Connection,
-    *,
-    entry_id: str,
-    entry: SharedDeduplicatedEntry,
-    source_by_url: dict[str, PageContent],
-) -> set[str]:
-    """Create/link sources for an entry."""
-    linked_source_urls: set[str] = set()
-    for source_url in sorted(set(entry.source_urls)):
-        source = source_by_url.get(
-            source_url,
-            PageContent(url=source_url, source_type=SourceType.ORG_WEBSITE),
-        )
-        existing = await SourceCRUD.get_by_url(conn, source_url)
-        if existing is None:
-            source_id = await SourceCRUD.create(
-                conn,
-                url=source.url,
-                source_type=str(source.source_type),
-                extraction_method="autodiscovery",
-                title=source.title,
-                publication=source.publication,
-                published_date=_page_published_date(source),
-                raw_content=source.text or None,
-            )
-        else:
-            source_id = existing.id
-            await SourceCRUD.update(
-                conn,
-                source_id,
-                title=source.title or existing.title,
-                publication=source.publication or existing.publication,
-                published_date=_page_published_date(source) or existing.published_date,
-                raw_content=source.text or existing.raw_content,
-            )
-        await SourceCRUD.link_to_entry(
-            conn,
-            entry_id,
-            source_id,
-            extraction_context=entry.source_contexts.get(source_url),
-        )
-        if entry.website:
-            await RelationshipCRUD.upsert_identity_key(
-                conn,
-                entry_id=entry_id,
-                key_type="domain",
-                key_value=entry.website,
-                source_id=source_id,
-                confidence=0.9,
-            )
-        linked_source_urls.add(source_url)
-    return linked_source_urls
-
-
-def _parse_date(value: str) -> date:
-    """Parse an ISO date string into a date."""
-    return date.fromisoformat(value)
-
-
-def _today_iso_date() -> str:
-    """Return the current UTC calendar date as an ISO string."""
-    return datetime.now(UTC).date().isoformat()
-
-
-def _first_seen_for_entry(entry: SharedDeduplicatedEntry, today_iso: str) -> date:
-    """Return the earliest available source date for a deduplicated entry."""
-    if entry.source_dates:
-        return min(entry.source_dates)
-    return _parse_date(today_iso)
-
-
-def _page_published_date(page: PageContent) -> date | None:
-    """Convert a page timestamp to the source-table published date shape."""
-    if page.published_date is None:
-        return None
-    return page.published_date.date()
-
-
-def _build_discovery_run_artifacts(  # noqa: PLR0913
-    *,
-    job: DiscoveryPipelineJob,
-    started_at: datetime,
-    completed_at: datetime,
-    stats: DiscoveryRunStats,
-    raw_entries: list[dict[str, Any]],
-    ranked_entries: list[SharedRankedEntry],
-    sources: list[PageContent],
-) -> DiscoveryRunArtifacts:
-    """Build the canonical artifact bundle emitted by the Atlas-triggered runner."""
-    gap_report = analyze_gaps(
-        job.location_query,
-        [
-            {
-                "issue_areas": ranked_entry.entry.issue_areas,
-            }
-            for ranked_entry in ranked_entries
-        ],
-    )
-    return DiscoveryRunArtifacts(
-        manifest=DiscoveryRunManifest(
-            runner="atlas-api",
-            run=DiscoveryRunInput(
-                location_query=job.location_query,
-                state=job.state,
-                issue_areas=job.issue_areas,
-                research_goal=job.research_goal,
-            ),
-            status=stats.status,
-            started_at=started_at,
-            completed_at=completed_at,
-            sync=DiscoverySyncInfo(
-                remote_run_id=job.run_id,
-                sync_status="atlas-managed",
-            ),
-        ),
-        stats=stats,
-        checkpoints=[
-            RunCheckpoint(
-                phase="completed",
-                status=stats.status,
-                metrics={
-                    "queries_generated": stats.queries_generated,
-                    "sources_fetched": stats.sources_fetched,
-                    "entries_confirmed": stats.entries_confirmed,
-                },
-                created_at=completed_at,
-            )
-        ],
-        page_tasks=_build_page_task_outcomes(sources, raw_entries),
-        sources=sources,
-        raw_entries=[_raw_entry_to_shared(item) for item in raw_entries],
-        ranked_entries=ranked_entries,
-        gap_report=gap_report,
-    )
-
-
-def _build_page_task_outcomes(
-    sources: list[PageContent],
-    raw_entries: list[dict[str, Any]],
-) -> list[PageTaskOutcome]:
-    """Build lightweight page outcomes for Atlas-managed runs."""
-    entries_by_source: dict[str, int] = {}
-    for entry in raw_entries:
-        source_urls = entry.get("source_urls")
-        if not isinstance(source_urls, list):
-            continue
-        for source_url in source_urls:
-            normalized_url = str(source_url)
-            entries_by_source[normalized_url] = entries_by_source.get(normalized_url, 0) + 1
-
-    return [
-        PageTaskOutcome(
-            task_id=source.task_id or source.url,
-            url=source.url,
-            status="processed",
-            entries_extracted=entries_by_source.get(source.url, 0),
-            user_visible=True,
-        )
-        for source in sources
-    ]
-
-
-def _raw_entry_to_shared(entry: dict[str, Any]) -> SharedRawEntry:
-    """Convert an internal extracted-entry payload into the shared raw-entry shape."""
-    source_dates = entry.get("source_dates")
-    source_date = None
-    if isinstance(source_dates, list) and source_dates:
-        source_date_value = source_dates[0]
-        source_date = (
-            source_date_value
-            if isinstance(source_date_value, date)
-            else _parse_date(str(source_date_value))
-        )
-
-    source_contexts = entry.get("source_contexts")
-    source_url = str(entry.get("source_urls", [""])[0]) if entry.get("source_urls") else ""
-    extraction_context = ""
-    if isinstance(source_contexts, dict) and source_url:
-        extraction_context = str(source_contexts.get(source_url) or "")
-
-    return SharedRawEntry.model_validate(
-        {
-            "name": entry.get("name") or "",
-            "entry_type": entry.get("entry_type"),
-            "description": entry.get("description") or "",
-            "city": entry.get("city"),
-            "state": entry.get("state"),
-            "geo_specificity": entry.get("geo_specificity"),
-            "issue_areas": entry.get("issue_areas") or [],
-            "region": entry.get("region"),
-            "website": entry.get("website"),
-            "email": entry.get("email"),
-            "social_media": entry.get("social_media") or {},
-            "affiliated_org": entry.get("affiliated_org"),
-            "extraction_context": extraction_context,
-            "source_url": source_url,
-            "source_date": source_date,
-        }
-    )
-
-
-def _ranked_entry_to_shared(entry: Any) -> SharedRankedEntry:
-    """Convert the API ranker output into the shared RankedEntry model."""
-    payload = dict(entry.entry)
-    normalized_payload = {
-        **payload,
-        "description": payload.get("description") or "",
-        "issue_areas": payload.get("issue_areas") or [],
-        "social_media": payload.get("social_media") or {},
-        "source_urls": payload.get("source_urls") or [],
-        "source_contexts": payload.get("source_contexts") or {},
-    }
-    source_dates = [
-        value if isinstance(value, date) else _parse_date(str(value))
-        for value in payload.get("source_dates", [])
-    ]
-    last_seen_value = payload.get("last_seen")
-    last_seen = (
-        last_seen_value
-        if isinstance(last_seen_value, date)
-        else _parse_date(str(last_seen_value))
-        if last_seen_value
-        else None
-    )
-    shared_entry = SharedDeduplicatedEntry.model_validate(
-        {
-            **normalized_payload,
-            "source_dates": source_dates,
-            "last_seen": last_seen,
-        }
-    )
-    return SharedRankedEntry(entry=shared_entry, score=entry.score, components=entry.components)
-
-
-def _fetched_source_to_page_content(source: Any) -> PageContent:
-    """Convert fetched-source metadata into the shared page/source model."""
-    published_date = (
-        datetime.fromisoformat(source.published_date) if source.published_date else None
-    )
-    return PageContent(
-        url=source.url,
-        title=source.title or "",
-        text=source.content,
-        publication=source.publication,
-        published_date=published_date,
-        source_type=SourceType(source.source_type),
-    )

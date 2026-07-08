@@ -4,16 +4,27 @@ from __future__ import annotations
 
 import asyncio
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Annotated, Any, Literal, cast
+from typing import TYPE_CHECKING, Annotated, Any, cast
 
 from fastapi import APIRouter, Depends, Query, WebSocket, WebSocketDisconnect, status
 from fastapi.responses import JSONResponse, StreamingResponse
-from pydantic import BaseModel, Field, field_validator
 
-from atlas.models import get_db_connection
-from atlas.platform.config import Settings, get_settings
-
+from .api_helpers import get_firehose_db
 from .models import FirehoseSignalCRUD, FirehoseSignalModel, FirehoseSignalQuery
+from .public_models import (
+    PUBLIC_FIREHOSE_FIXTURES,
+    PublicFirehoseEvidence,
+    PublicFirehoseHeartbeatEvent,
+    PublicFirehoseIssue,
+    PublicFirehosePlace,
+    PublicFirehoseQueryParams,
+    PublicFirehoseReadyEvent,
+    PublicFirehoseSignal,
+    PublicFirehoseSignalEvent,
+    PublicFirehoseSnapshot,
+    PublicFirehoseSummary,
+    PublicSignalType,
+)
 
 router = APIRouter()
 
@@ -22,165 +33,59 @@ PUBLIC_FIREHOSE_CACHE = "public, max-age=30, s-maxage=30"
 PUBLIC_FIREHOSE_SENSITIVITY_THRESHOLD = 0.5
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator, AsyncIterator
-
-STATE_ABBREVIATION_LENGTH = 2
-
-PublicSignalType = Literal[
-    "public_meeting",
-    "coalition_activity",
-    "grant_award",
-    "new_source",
-]
-PublicReviewState = Literal["not_required", "pending", "approved", "held"]
-PublicVisibility = Literal["public", "workspace", "reviewer"]
+    from collections.abc import AsyncIterator
 
 
-def _now_iso() -> str:
-    """Return the current UTC time for public Firehose snapshots."""
-    return datetime.now(UTC).isoformat().replace("+00:00", "Z")
+def _matches(values: list[str], filters: list[str]) -> bool:
+    """Return whether any candidate value matches the active filters."""
+    return not filters or any(value in filters for value in values)
 
 
-class PublicFirehoseQueryParams(BaseModel):
-    """Raw public Firehose query parameters."""
-
-    place: list[str] = Field(default_factory=list)
-    issue: list[str] = Field(default_factory=list)
-    signal_type: list[str] = Field(default_factory=list)
-    source_class: list[str] = Field(default_factory=list)
-    limit: int = Field(default=50, ge=1, le=50)
-
-    @field_validator("place", "issue", "signal_type", "source_class", mode="before")
-    @classmethod
-    def normalize_multi_value(cls, value: Any) -> list[str]:
-        """Accept repeated or comma-delimited query values."""
-        if value is None:
-            return []
-        values = value if isinstance(value, list) else [value]
-        normalized: list[str] = []
-        for item in values:
-            normalized.extend(part.strip() for part in str(item).split(",") if part.strip())
-        return normalized
-
-
-class PublicFirehosePlace(BaseModel):
-    """Public place label attached to a signal."""
-
-    label: str
-    slug: str
-
-
-class PublicFirehoseIssue(BaseModel):
-    """Public issue label attached to a signal."""
-
-    label: str
-    slug: str
-
-
-class PublicFirehoseEvidence(BaseModel):
-    """Public source evidence for one signal."""
-
-    captured_at: str
-    content_hash: str
-    passage: str
-    published_at: str | None
-    publisher: str
-    source_class: str
-    source_url: str
-    title: str
-
-
-class PublicFirehoseSignal(BaseModel):
-    """Public-safe Firehose signal."""
-
-    confidence: float = Field(..., ge=0, le=1)
-    detected_at: str
-    evidence: PublicFirehoseEvidence
-    id: str
-    issues: list[PublicFirehoseIssue]
-    occurred_at: str | None
-    places: list[PublicFirehosePlace]
-    public_realm_basis: str
-    review_state: PublicReviewState
-    sensitivity: float = Field(..., ge=0, le=1)
-    signal_type: PublicSignalType
-    summary: str
-    title: str
-    visibility: PublicVisibility
-
-
-class PublicFirehoseSummary(BaseModel):
-    """Summary of the public Firehose snapshot."""
-
-    latest_detected_at: str | None
-    total_signals: int = Field(..., ge=0)
-    visible_signals: int = Field(..., ge=0)
-
-
-class PublicFirehoseSnapshot(BaseModel):
-    """Public Firehose feed snapshot."""
-
-    generated_at: str
-    query: PublicFirehoseQueryParams
-    signals: list[PublicFirehoseSignal]
-    summary: PublicFirehoseSummary
-
-
-class PublicFirehoseReadyEvent(BaseModel):
-    """Public Firehose stream readiness event."""
-
-    query: PublicFirehoseQueryParams
-    type: Literal["firehose.ready"] = "firehose.ready"
-
-
-class PublicFirehoseSignalEvent(BaseModel):
-    """Public Firehose signal event."""
-
-    signal: PublicFirehoseSignal
-    type: Literal["firehose.signal"] = "firehose.signal"
-
-
-class PublicFirehoseHeartbeatEvent(BaseModel):
-    """Public Firehose heartbeat event."""
-
-    type: Literal["heartbeat"] = "heartbeat"
-
-
-async def get_public_firehose_db(
-    settings: Settings = Depends(get_settings),
-) -> AsyncGenerator[Any, None]:
-    """Yield a per-request public Firehose database connection."""
-    conn = await get_db_connection(settings.database_url, backend=settings.database_backend)
-    try:
-        yield conn
-    finally:
-        await conn.close()
-
-
-def _label_from_slug(slug: str) -> str:
-    """Return a readable label for a stored place or issue slug."""
-    normalized = slug.replace("_", "-")
-    parts = normalized.split("-")
-    if len(parts) > 1 and len(parts[-1]) == STATE_ABBREVIATION_LENGTH:
-        return f"{' '.join(parts[:-1]).title()}, {parts[-1].upper()}"
-    return normalized.replace("-", " ").title()
-
-
-def _stored_signal_is_public_safe(signal: FirehoseSignalModel) -> bool:
-    """Return whether a stored signal is safe for the public proof feed."""
+def _public_safe(signal: PublicFirehoseSignal) -> bool:
+    """Return whether a signal is safe for the public proof feed."""
     return (
         signal.visibility == "public"
         and signal.review_state == "not_required"
         and signal.sensitivity < PUBLIC_FIREHOSE_SENSITIVITY_THRESHOLD
-        and any(
-            destination.type == "public" and destination.state == "active"
-            for destination in signal.destinations
-        )
     )
 
 
-def _stored_public_signal(signal: FirehoseSignalModel) -> PublicFirehoseSignal:
-    """Convert one stored Firehose signal into the public proof-feed shape."""
+def _signal_matches_query(
+    signal: PublicFirehoseSignal,
+    query: PublicFirehoseQueryParams,
+) -> bool:
+    """Return whether a public signal matches a query."""
+    return (
+        _matches([place.slug for place in signal.places], query.place)
+        and _matches([issue.slug for issue in signal.issues], query.issue)
+        and _matches([signal.signal_type], query.signal_type)
+        and _matches([signal.evidence.source_class], query.source_class)
+    )
+
+
+def _generated_at() -> str:
+    """Return the current UTC timestamp for public snapshot metadata."""
+    return datetime.now(UTC).isoformat().replace("+00:00", "Z")
+
+
+def _label_from_slug(slug: str) -> str:
+    """Return a readable label for a stored public feed slug."""
+    return " ".join(part.capitalize() for part in slug.replace("_", "-").split("-"))
+
+
+def _has_public_route(signal: FirehoseSignalModel) -> bool:
+    """Return whether a stored signal is explicitly routed to the public feed."""
+    return any(
+        destination.type == "public" and destination.state == "active"
+        for destination in signal.destinations
+    )
+
+
+def _stored_public_signal(signal: FirehoseSignalModel) -> PublicFirehoseSignal | None:
+    """Adapt a stored Firehose signal into the public proof-feed shape."""
+    if not _has_public_route(signal) or not signal.evidence:
+        return None
+
     evidence = signal.evidence[0]
     return PublicFirehoseSignal(
         confidence=signal.confidence,
@@ -190,10 +95,10 @@ def _stored_public_signal(signal: FirehoseSignalModel) -> PublicFirehoseSignal:
             content_hash=evidence.content_hash,
             passage=evidence.passage,
             published_at=evidence.published_at,
-            publisher=evidence.publisher or "Unknown source",
+            publisher=evidence.publisher or "",
             source_class=evidence.source_class,
             source_url=evidence.source_url,
-            title=evidence.title or signal.title,
+            title=evidence.title or "",
         ),
         id=signal.id,
         issues=[
@@ -206,22 +111,22 @@ def _stored_public_signal(signal: FirehoseSignalModel) -> PublicFirehoseSignal:
             for place in signal.places
         ],
         public_realm_basis=signal.public_realm_basis,
-        review_state=cast("PublicReviewState", signal.review_state),
+        review_state=signal.review_state,
         sensitivity=signal.sensitivity,
         signal_type=cast("PublicSignalType", signal.type),
         summary=signal.summary,
         title=signal.title,
-        visibility=cast("PublicVisibility", signal.visibility),
+        visibility=signal.visibility,
     )
 
 
-async def _snapshot(
-    conn: Any,
+async def _stored_signals(
+    db: Any,
     query: PublicFirehoseQueryParams,
-) -> PublicFirehoseSnapshot:
-    """Build a stored public Firehose snapshot."""
+) -> list[PublicFirehoseSignal]:
+    """Return stored public-routed signals for the public proof feed."""
     stored = await FirehoseSignalCRUD.list_for_query(
-        conn,
+        db,
         FirehoseSignalQuery(
             org_id=None,
             places=query.place,
@@ -232,11 +137,33 @@ async def _snapshot(
             limit=query.limit,
         ),
     )
-    signals = [
-        _stored_public_signal(signal) for signal in stored if _stored_signal_is_public_safe(signal)
-    ][: query.limit]
+    signals = [_stored_public_signal(signal) for signal in stored]
+    return [signal for signal in signals if signal is not None]
+
+
+async def _snapshot(
+    query: PublicFirehoseQueryParams,
+    *,
+    db: Any | None = None,
+) -> PublicFirehoseSnapshot:
+    """Build a public Firehose snapshot from stored signals and proof fixtures."""
+    stored_signals = await _stored_signals(db, query) if db is not None else []
+    fixture_signals = [
+        signal
+        for signal in sorted(
+            PUBLIC_FIREHOSE_FIXTURES,
+            key=lambda item: item.detected_at,
+            reverse=True,
+        )
+        if _public_safe(signal) and _signal_matches_query(signal, query)
+    ]
+    signals = sorted(
+        [*stored_signals, *fixture_signals],
+        key=lambda item: item.detected_at,
+        reverse=True,
+    )[: query.limit]
     return PublicFirehoseSnapshot(
-        generated_at=_now_iso(),
+        generated_at=_generated_at(),
         query=query,
         signals=signals,
         summary=PublicFirehoseSummary(
@@ -294,7 +221,7 @@ async def get_public_firehose(  # noqa: PLR0913
     signal_type: Annotated[list[str] | None, Query()] = None,
     source_class: Annotated[list[str] | None, Query()] = None,
     limit: Annotated[int, Query(ge=1, le=50)] = 50,
-    db: Any = Depends(get_public_firehose_db),
+    db: Any = Depends(get_firehose_db),
 ) -> JSONResponse:
     """Return a public-safe Firehose proof snapshot."""
     query = _query_from_params(
@@ -304,7 +231,7 @@ async def get_public_firehose(  # noqa: PLR0913
         signal_type=signal_type,
         source_class=source_class,
     )
-    snapshot = await _snapshot(db, query)
+    snapshot = await _snapshot(query, db=db)
     headers = {"Cache-Control": PUBLIC_FIREHOSE_CACHE}
 
     return JSONResponse(snapshot.model_dump(mode="json"), headers=headers)
@@ -321,11 +248,10 @@ async def stream_public_firehose_events(  # noqa: PLR0913
     signal_type: Annotated[list[str] | None, Query()] = None,
     source_class: Annotated[list[str] | None, Query()] = None,
     limit: Annotated[int, Query(ge=1, le=50)] = 50,
-    db: Any = Depends(get_public_firehose_db),
+    db: Any = Depends(get_firehose_db),
 ) -> StreamingResponse:
     """Stream public-safe Firehose proof events."""
     snapshot = await _snapshot(
-        db,
         _query_from_params(
             issue=issue,
             limit=limit,
@@ -333,6 +259,7 @@ async def stream_public_firehose_events(  # noqa: PLR0913
             signal_type=signal_type,
             source_class=source_class,
         ),
+        db=db,
     )
     response = StreamingResponse(_event_stream(snapshot), media_type="text/event-stream")
     response.headers["Cache-Control"] = "no-store, no-transform"
@@ -348,7 +275,7 @@ async def public_firehose_socket(  # noqa: PLR0913
     signal_type: Annotated[list[str] | None, Query()] = None,
     source_class: Annotated[list[str] | None, Query()] = None,
     limit: Annotated[int, Query(ge=1, le=50)] = 50,
-    db: Any = Depends(get_public_firehose_db),
+    db: Any = Depends(get_firehose_db),
 ) -> None:
     """Open the public Firehose proof WebSocket."""
     requested_protocols = websocket.headers.get("sec-websocket-protocol", "")
@@ -359,7 +286,6 @@ async def public_firehose_socket(  # noqa: PLR0913
         return
 
     snapshot = await _snapshot(
-        db,
         _query_from_params(
             issue=issue,
             limit=limit,
@@ -367,6 +293,7 @@ async def public_firehose_socket(  # noqa: PLR0913
             signal_type=signal_type,
             source_class=source_class,
         ),
+        db=db,
     )
     await websocket.accept(subprotocol=PUBLIC_FIREHOSE_WEBSOCKET_PROTOCOL)
     await websocket.send_json(
