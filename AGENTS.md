@@ -235,8 +235,9 @@ system was trying to do.
 ## Conventions
 
 - **pnpm only.** Never use npm or yarn.
-- **No inline type definitions.** Always extract types into named interfaces or
-  use existing ones.
+- **Keep types colocated with the code that uses them.** Prefer named interfaces
+  or type aliases in the same file or nearest module, and avoid dedicated
+  `types.ts` buckets.
 - **No fallbacks or silent defaults.** Fail explicitly. Work against defined
   specs, not guessed defaults.
 - **No CSS `transform: scale()`.** Resize actual dimensions. No overlapping
