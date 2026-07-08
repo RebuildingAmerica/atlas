@@ -1,6 +1,7 @@
 import { note } from "@clack/prompts";
 import pc from "picocolors";
 import { COMMAND_CAPABILITY_MAP } from "../config/prerequisites.js";
+import type { StripeBootstrapTarget } from "../products/atlas/env.js";
 import type { ApiDomainTarget } from "../phases/api-domain.js";
 import { promptConfirm } from "./ui.js";
 import type { PhaseId, ReadinessState } from "../state.js";
@@ -15,14 +16,25 @@ export interface CliArgs {
   apiDomainOnly: boolean;
   apiEdgeOnly: boolean;
   apiDomainTarget: ApiDomainTarget;
+  assumeYes: boolean;
+  stripeTarget: StripeBootstrapTarget;
   live: boolean;
 }
 
 export function parseArgs(argv: string[]): CliArgs {
   const targetIdx = argv.indexOf("--target");
-  const targetArg = targetIdx >= 0 ? (argv[targetIdx + 1] ?? "prod") : "prod";
+  const explicitTarget =
+    targetIdx >= 0 ? (argv[targetIdx + 1] ?? "prod") : null;
+  const targetArg =
+    explicitTarget ?? (argv.includes("--live") ? "prod" : "local");
   const apiDomainTarget: ApiDomainTarget =
     targetArg === "staging" ? "staging" : "prod";
+  const stripeTarget: StripeBootstrapTarget =
+    targetArg === "staging"
+      ? "staging"
+      : targetArg === "prod"
+        ? "prod"
+        : "local";
   return {
     localOnly: argv.includes("--local-only"),
     doctorMode: argv.includes("--doctor"),
@@ -35,6 +47,8 @@ export function parseArgs(argv: string[]): CliArgs {
     apiDomainOnly: argv.includes("--api-domain"),
     apiEdgeOnly: argv.includes("--api-edge"),
     apiDomainTarget,
+    assumeYes: argv.includes("--yes"),
+    stripeTarget,
     live: argv.includes("--live"),
   };
 }

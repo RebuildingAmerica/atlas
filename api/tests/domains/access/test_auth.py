@@ -5,7 +5,10 @@ from http import HTTPStatus
 import pytest
 
 from atlas.domains.access import ApiKeyPrincipal
+from atlas.domains.access.capabilities import ResolvedCapabilities
+from atlas.domains.access.dependencies import _enforce_external_api_call_quota
 from atlas.domains.access.models.usage_events import OrgUsageEventCRUD
+from atlas.domains.access.principals import AuthenticatedActor
 from atlas.platform.config import Settings
 
 
@@ -118,6 +121,7 @@ async def test_protected_discovery_accepts_valid_api_key(
             user_id="user_123",
             user_email="operator@example.com",
             org_id="org_123",
+            active_products=["atlas_pro"],
         )
 
     monkeypatch.setattr("atlas.domains.access.dependencies.verify_api_key", fake_verify_api_key)
@@ -134,6 +138,67 @@ async def test_protected_discovery_accepts_valid_api_key(
 
     assert response.status_code == HTTPStatus.ACCEPTED
     assert await OrgUsageEventCRUD.count_by_type(test_db, org_id="org_123") == {"api_call": 1}
+
+
+@pytest.mark.asyncio
+async def test_api_key_requests_stop_when_daily_plan_quota_is_exhausted(
+    monkeypatch: pytest.MonkeyPatch,
+    test_client: object,
+    test_settings: Settings,
+    test_db: object,
+) -> None:
+    """API keys from workspaces without an active API quota should be rejected."""
+    test_settings.deploy_mode = ""
+    test_settings.auth_internal_secret = "internal-test-secret"
+    test_settings.auth_api_key_introspection_url = "http://auth.test/internal/api-keys/introspect"
+
+    async def fake_verify_api_key(api_key: str, settings: Settings) -> ApiKeyPrincipal | None:
+        assert api_key == "atlas_test_key"
+        assert settings.auth_internal_secret == "internal-test-secret"
+        return ApiKeyPrincipal(
+            key_id="key_123",
+            name="Test Key",
+            permissions={"discovery": ["write"]},
+            user_id="user_123",
+            user_email="operator@example.com",
+            org_id="org_123",
+            active_products=[],
+        )
+
+    monkeypatch.setattr("atlas.domains.access.dependencies.verify_api_key", fake_verify_api_key)
+
+    response = await test_client.post(
+        "/api/discovery-runs",
+        headers={"X-API-Key": "atlas_test_key"},
+        json={
+            "location_query": "Gary, IN",
+            "state": "IN",
+            "issue_areas": ["housing_affordability"],
+        },
+    )
+
+    assert response.status_code == HTTPStatus.TOO_MANY_REQUESTS
+    assert response.json()["detail"]["limit"] == "api_requests_per_day"
+    assert await OrgUsageEventCRUD.count_by_type(test_db, org_id="org_123") == {}
+
+
+@pytest.mark.asyncio
+async def test_api_key_quota_allows_explicit_unlimited_limit(test_db: object) -> None:
+    """Future unlimited API-key plans should skip daily quota counting."""
+    actor = AuthenticatedActor(
+        user_id="user_123",
+        email="operator@example.com",
+        auth_type="api_key",
+        api_key_id="key_123",
+        org_id="org_123",
+        active_products=["atlas_team"],
+        resolved_capabilities=ResolvedCapabilities(
+            capabilities=frozenset({"api.keys"}),
+            limits={"api_requests_per_day": None},
+        ),
+    )
+
+    await _enforce_external_api_call_quota(test_db, actor)
 
 
 @pytest.mark.asyncio

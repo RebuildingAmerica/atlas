@@ -163,8 +163,8 @@ export function prepareOrganizationPageTestState(): OrganizationPageTestState {
           "api.keys",
           "api.mcp",
           "monitoring.watchlists",
-          "integrations.slack",
           "auth.sso",
+          "auth.scim",
         ],
         limits: {
           research_runs_per_month: null,

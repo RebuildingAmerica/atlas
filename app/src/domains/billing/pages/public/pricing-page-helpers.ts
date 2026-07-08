@@ -1,11 +1,9 @@
 import type { AtlasSelfServeProduct } from "@/domains/access/capabilities";
-
-export type PricingCheckoutInterval = "monthly" | "yearly" | "once" | "weekly";
-
-export interface PricingCheckoutParams {
-  product: AtlasSelfServeProduct;
-  interval: PricingCheckoutInterval;
-}
+export type {
+  PricingCheckoutInterval,
+  PricingCheckoutParams,
+} from "@/domains/billing/checkout-types";
+import type { PricingCheckoutInterval } from "@/domains/billing/checkout-types";
 
 /**
  * Readable error string for the checkout error banner.  Falls back to a
@@ -56,6 +54,12 @@ export function describeCheckoutCost(
   interval: PricingCheckoutInterval,
 ): CheckoutCostPreview {
   if (product === "atlas_pro") {
+    if (interval === "four_month") {
+      return {
+        priceLine: "$12.80 every four months after student verification.",
+        detailLine: "This is 80% of the annual Pro rate, split into three payments per year.",
+      };
+    }
     if (interval === "yearly") {
       return {
         priceLine: "$48 per year — about $4 per month.",

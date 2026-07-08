@@ -22,6 +22,11 @@ export interface VercelVar {
   environments: VercelEnvironment[];
 }
 
+export interface VercelSyncOptions {
+  assumeYes?: boolean;
+  cwd?: string;
+}
+
 interface VercelProjectJson {
   orgId: string;
   projectId: string;
@@ -161,11 +166,17 @@ function vercelEnvAdd(
   value: string,
   environment: VercelEnvironment,
   scope: string,
+  options: VercelSyncOptions,
 ): boolean {
   const result = spawnSync(
     "vercel",
     ["env", "add", key, environment, "--scope", scope, "--force"],
-    { input: value, stdio: ["pipe", "pipe", "pipe"], encoding: "utf8" },
+    {
+      cwd: options.cwd,
+      input: value,
+      stdio: ["pipe", "pipe", "pipe"],
+      encoding: "utf8",
+    },
   );
   if (result.error) {
     throw new Error(`Failed to spawn vercel CLI: ${result.error.message}`);
@@ -174,15 +185,28 @@ function vercelEnvAdd(
 }
 
 // Returns a Set of "KEY:environment" strings for vars already present on the project.
-function fetchExistingKeys(scope: string): Set<string> {
+function fetchExistingKeys(
+  scope: string,
+  options: VercelSyncOptions,
+): Set<string> {
   assertSafeCliArg(scope, "scope");
   const existing = new Set<string>();
-  const result = runCommand(`vercel env ls --scope "${scope}" 2>/dev/null`);
-  if (!result.ok) return existing;
+  const result = spawnSync("vercel", ["env", "ls", "--scope", scope], {
+    cwd: options.cwd,
+    stdio: ["ignore", "pipe", "pipe"],
+    encoding: "utf8",
+  });
+  if (result.error) {
+    throw new Error(`Failed to spawn vercel CLI: ${result.error.message}`);
+  }
+  if (result.status !== 0) {
+    return existing;
+  }
+  const stdout = result.stdout.trim();
 
   // Try JSON first (supported in recent CLI versions)
   try {
-    const parsed = JSON.parse(result.stdout) as {
+    const parsed = JSON.parse(stdout) as {
       key: string;
       target: string[];
     }[];
@@ -198,7 +222,7 @@ function fetchExistingKeys(scope: string): Set<string> {
 
   // Text parsing: "name  value  environments  created"
   // environments column may say "Production", "Preview", "Development"
-  for (const line of result.stdout.split("\n")) {
+  for (const line of stdout.split("\n")) {
     const trimmed = line.trim();
     if (
       !trimmed ||
@@ -225,8 +249,12 @@ interface SyncPreview {
   toOverwrite: VercelVar[];
 }
 
-function buildSyncPreview(vars: VercelVar[], scope: string): SyncPreview {
-  const existing = fetchExistingKeys(scope);
+function buildSyncPreview(
+  vars: VercelVar[],
+  scope: string,
+  options: VercelSyncOptions,
+): SyncPreview {
+  const existing = fetchExistingKeys(scope, options);
   const toAdd: VercelVar[] = [];
   const toOverwrite: VercelVar[] = [];
 
@@ -247,15 +275,16 @@ function buildSyncPreview(vars: VercelVar[], scope: string): SyncPreview {
 export async function syncEnvVars(
   vars: VercelVar[],
   scope: string,
-): Promise<void> {
+  options: VercelSyncOptions = {},
+): Promise<boolean> {
   assertSafeCliArg(scope, "scope");
-  if (vars.length === 0) return;
+  if (vars.length === 0) return true;
 
-  const { toAdd, toOverwrite } = buildSyncPreview(vars, scope);
+  const { toAdd, toOverwrite } = buildSyncPreview(vars, scope, options);
 
   if (toAdd.length === 0 && toOverwrite.length === 0) {
     logSubline("Vercel env vars already up to date");
-    return;
+    return true;
   }
 
   // Print preview table
@@ -272,10 +301,12 @@ export async function syncEnvVars(
   }
   log.message(lines.join("\n"));
 
-  const confirmed = await promptConfirm("Apply these changes to Vercel?", true);
+  const confirmed =
+    options.assumeYes ??
+    (await promptConfirm("Apply these changes to Vercel?", true));
   if (!confirmed) {
     logSubline("Skipped Vercel env sync");
-    return;
+    return false;
   }
 
   const s = spinner();
@@ -284,16 +315,18 @@ export async function syncEnvVars(
   let failed = 0;
   for (const v of [...toAdd, ...toOverwrite]) {
     for (const env of v.environments) {
-      if (!vercelEnvAdd(v.key, v.value, env, scope)) failed++;
+      if (!vercelEnvAdd(v.key, v.value, env, scope, options)) failed++;
     }
   }
 
   const total = toAdd.length + toOverwrite.length;
   if (failed === 0) {
     s.stop(`Synced ${total} env var${total === 1 ? "" : "s"} to Vercel`);
+    return true;
   } else {
     s.stop(
       `Synced with ${failed} error${failed === 1 ? "" : "s"} — check Vercel dashboard`,
     );
+    return false;
   }
 }

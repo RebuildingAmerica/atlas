@@ -93,6 +93,32 @@ class TestStartOrgDiscoveryRun:
         }
 
     @pytest.mark.asyncio
+    async def test_unlimited_plan_skips_monthly_budget(self, db: object) -> None:
+        """Team, Pro, and Research Pass run quotas should not spend org monthly budget."""
+        actor = _make_actor()
+        req = OrgDiscoveryRunStartRequest(
+            location_query="Kansas City, MO",
+            state="MO",
+            issue_areas=["housing_affordability"],
+        )
+
+        await start_org_discovery_run(
+            org_id=ORG_ID,
+            req=req,
+            response=None,
+            actor=actor,
+            db=db,
+            _run_limit=None,
+        )
+
+        budget = await OrgDiscoveryBudgetCRUD.get_budget(
+            db,
+            org_id=ORG_ID,
+            month=_current_budget_month(),
+        )
+        assert budget is None
+
+    @pytest.mark.asyncio
     async def test_invalid_issue_area_raises_400(self, db: object) -> None:
         """An invalid issue area slug should trigger a 400 error."""
         actor = _make_actor()

@@ -44,6 +44,7 @@ class TestSavedLists:
             email="operator@example.com",
             auth_type="oauth_jwt",
             org_id=None,
+            active_products=["atlas_team"],
         )
         response = Response()
         monkeypatch.setattr(lists_api.SavedListCRUD, "get_by_id", AsyncMock(return_value=None))
@@ -67,6 +68,7 @@ class TestSavedLists:
             email="operator@example.com",
             auth_type="oauth_jwt",
             org_id="org-1",
+            active_products=["atlas_team"],
         )
         saved_list = SavedListModel(
             id="list-1",

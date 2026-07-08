@@ -154,7 +154,12 @@ export async function runDatabasePhase(
             environments: ["production"],
           },
         ];
-        await syncEnvVars(vars, scope);
+        const synced = await syncEnvVars(vars, scope, { cwd: appDir });
+        if (!synced) {
+          result.followUpItems.push(
+            "DATABASE_URL was not synced to Vercel — re-run bootstrap from a linked app/ directory",
+          );
+        }
       } else {
         result.followUpItems.push(
           "Vercel project not linked — DATABASE_URL not synced to Vercel",

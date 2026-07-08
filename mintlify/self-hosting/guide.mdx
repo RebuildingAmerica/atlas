@@ -48,7 +48,43 @@ pnpm bootstrap
 
 This creates your `.env.production` file, generates auth secrets, and sets up the initial configuration. Follow the prompts to fill in required values.
 
-### 3. Choose a deployment path
+### 3. Configure Stripe billing
+
+Atlas uses Stripe Checkout, Stripe Billing, coupons, and webhooks for Pro, Team,
+and Research Pass access. The bootstrap scripts create the canonical products,
+prices, discount coupons, and webhook endpoints, then write the resulting IDs to
+the correct env files.
+
+Local development uses Stripe test mode and a local webhook secret:
+
+```bash
+pnpm bootstrap:stripe:local
+pnpm stripe:listen
+```
+
+Hosted staging uses Stripe test mode and Vercel Preview env vars:
+
+```bash
+pnpm bootstrap:stripe:staging
+```
+
+Hosted production uses Stripe live mode and Vercel Production env vars:
+
+```bash
+STRIPE_API_KEY=sk_live_replace_me pnpm bootstrap:stripe:prod
+```
+
+Use a live secret key, or a live restricted key with permission to manage
+products, prices, coupons, Checkout/Billing customers, and webhook endpoints.
+Stripe CLI OAuth keys are enough for local and staging checks, but production
+bootstrap should use a Dashboard-created live API key.
+
+See the repository's
+[`docs/deployment/stripe-billing.md`](https://github.com/RebuildingAmerica/atlas/blob/main/docs/deployment/stripe-billing.md)
+runbook for the exact product catalog, discount policy, and verification
+commands.
+
+### 4. Choose a deployment path
 
 <Tabs>
 
@@ -79,11 +115,18 @@ ATLAS_EMAIL_FROM=Atlas <hello@mail.your-atlas-domain.com>
 ATLAS_EMAIL_RESEND_API_KEY=<your Resend API key>
 ```
 
+`pnpm bootstrap:stripe:staging` and `pnpm bootstrap:stripe:prod` sync the
+`STRIPE_*` billing variables to the linked Vercel project automatically.
+
 **Deploy the API to your VM:**
 
 ```bash
 cp .env.production.example .env.production
-# Fill in real values
+```
+
+Fill in `.env.production`, then start the API:
+
+```bash
 docker compose --env-file .env.production up -d --build atlas-api
 ```
 
@@ -97,7 +140,11 @@ Run everything on one machine with Docker Compose:
 
 ```bash
 cp .env.production.example .env.production
-# Fill in real values
+```
+
+Fill in `.env.production`, then start the stack:
+
+```bash
 docker compose --env-file .env.production -f compose.yaml up -d --build
 ```
 

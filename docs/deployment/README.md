@@ -11,6 +11,8 @@ afterward.
   and production verification
 - [Staging Deployment](./staging.md) — Manual staging deploys, required
   environment secrets, and staging verification
+- [Stripe Billing Setup](./stripe-billing.md) — Product catalog, discounts,
+  webhook setup, and local/staging/production billing bootstrap
 - [Email Domain Setup](./email-domain-setup.md) — Operator runbook for Resend
   DNS, sender-domain verification, and Atlas email configuration
 - [Google Workspace OIDC SSO](./google-workspace-oidc-sso.md) — Copy-paste setup

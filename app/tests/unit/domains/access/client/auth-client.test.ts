@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   apiKeyClient: vi.fn(() => ({ name: "api-key" })),
   oauthProviderClient: vi.fn(() => ({ name: "oauth-provider" })),
   organizationClient: vi.fn(() => ({ name: "organization" })),
+  scimClient: vi.fn(() => ({ name: "scim" })),
   ssoClient: vi.fn(() => ({ name: "sso" })),
   lastLoginMethodClient: vi.fn(() => ({ name: "last-login-method" })),
 }));
@@ -32,6 +33,10 @@ vi.mock("@better-auth/oauth-provider/client", () => ({
 
 vi.mock("@better-auth/passkey/client", () => ({
   passkeyClient: mocks.passkeyClient,
+}));
+
+vi.mock("@better-auth/scim/client", () => ({
+  scimClient: mocks.scimClient,
 }));
 
 vi.mock("@better-auth/sso/client", () => ({
@@ -60,7 +65,7 @@ describe("getAuthClient", () => {
     expect(client).toEqual({ kind: "auth-client" });
     expect(mocks.createAuthClient).toHaveBeenCalledWith(
       expect.objectContaining({
-        plugins: expect.arrayContaining([{ name: "magic-link" }]) as unknown[],
+        plugins: expect.arrayContaining([{ name: "magic-link" }, { name: "scim" }]) as unknown[],
       }),
     );
   });

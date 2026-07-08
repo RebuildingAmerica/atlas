@@ -72,6 +72,11 @@ export async function runEnvPhase(
 
   const envFiles: EnvFileSpec[] = [
     { target: ".env", example: ".env.example", label: "Root .env" },
+    {
+      target: ".env.staging",
+      example: ".env.staging.example",
+      label: "Staging .env",
+    },
     { target: "api/.env", example: "api/.env.example", label: "API .env" },
     {
       target: "app/.env.local",
@@ -197,7 +202,12 @@ export async function runEnvPhase(
     if (scope) {
       const mergedEnv = getMergedEnv(rootEnvPath, prodEnvPath);
       const varsToSync = buildVercelEnvVars(mergedEnv);
-      await syncEnvVars(varsToSync, scope);
+      const synced = await syncEnvVars(varsToSync, scope, { cwd: appDir });
+      if (!synced) {
+        followUpItems.push(
+          "Vercel env sync did not complete — run bootstrap again from a linked app/ directory",
+        );
+      }
     } else {
       followUpItems.push(
         "Vercel project not linked — run `vercel link` in app/ then re-run bootstrap",

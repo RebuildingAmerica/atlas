@@ -27,8 +27,8 @@ export function RequestDiscountPage() {
           <p className="type-label-medium text-ink-muted">Discount access</p>
           <h1 className="type-display-small text-ink-strong">Get discounted access to Atlas</h1>
           <p className="type-body-large text-ink-soft">
-            If you're an independent journalist, work at a grassroots nonprofit, or build civic
-            tech, Atlas offers discounted access to support public-interest work.
+            If you're a student, independent creator, journalist, grassroots nonprofit worker, or
+            civic technologist, Atlas offers discounted Pro access to support public-interest work.
           </p>
         </div>
 
@@ -42,20 +42,23 @@ export function RequestDiscountPage() {
 
           <ul className="space-y-2 pl-4">
             <li className="type-body-medium text-ink-soft">
-              <strong>Independent journalists</strong> — 50% off Atlas Pro
+              <strong>Students</strong> - $12.80 every four months after verification
             </li>
             <li className="type-body-medium text-ink-soft">
-              <strong>Grassroots nonprofits</strong> under $2M annual budget — 40% off Atlas Pro
+              <strong>Independent creators and journalists</strong> - 50% off Atlas Pro
             </li>
             <li className="type-body-medium text-ink-soft">
-              <strong>Civic tech workers</strong> building tools for government accountability — 50%
+              <strong>Grassroots nonprofits</strong> under $2M annual budget - 40% off Atlas Pro
+            </li>
+            <li className="type-body-medium text-ink-soft">
+              <strong>Civic tech workers</strong> building tools for government accountability - 50%
               off Atlas Pro
             </li>
           </ul>
 
           <p className="type-body-medium text-ink-soft mt-4">
             To request a discount, you'll need to create an Atlas account and verify your
-            eligibility. We review each request and email you within 24 hours.
+            eligibility. We review each request and email you within a few business days.
           </p>
         </div>
 
@@ -85,7 +88,7 @@ export function RequestDiscountPage() {
         <h1 className="type-display-small text-ink-strong">Request discount access</h1>
         <p className="type-body-large text-ink-soft">
           If you qualify for a discount, submit your information and we'll review your request
-          within 24 hours.
+          within a few business days.
         </p>
       </div>
 
@@ -95,12 +98,16 @@ export function RequestDiscountPage() {
         <p className="type-title-small text-ink-strong">How verification works</p>
         <p className="type-body-medium text-ink-soft mt-2">
           When you submit a discount request, our team reviews the information you provide. We'll
-          email you to confirm whether you qualify. Verification can take up to 24 hours.
+          email you to confirm whether you qualify.
         </p>
 
         <div className="mt-4 space-y-2">
           <p className="type-body-small text-ink-soft">
-            <strong>Independent journalists:</strong> We'll verify your published work and byline.
+            <strong>Students:</strong> We'll verify your school email and school or program.
+          </p>
+          <p className="type-body-small text-ink-soft">
+            <strong>Independent creators and journalists:</strong> We'll verify your published work
+            and byline.
           </p>
           <p className="type-body-small text-ink-soft">
             <strong>Grassroots nonprofits:</strong> We'll verify your 501(c)(3) status and annual

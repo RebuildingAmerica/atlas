@@ -1,18 +1,19 @@
 import "@tanstack/react-start/server-only";
 
+import { apiKey } from "@better-auth/api-key";
+import { oauthProvider } from "@better-auth/oauth-provider";
+import { passkey } from "@better-auth/passkey";
+import { scim } from "@better-auth/scim";
 import { betterAuth } from "better-auth";
+import { admin, bearer, deviceAuthorization, organization } from "better-auth/plugins";
 import { jwt } from "better-auth/plugins/jwt";
 import { magicLink } from "better-auth/plugins/magic-link";
-import { bearer, deviceAuthorization, organization } from "better-auth/plugins";
+import { tanstackStartCookies } from "better-auth/tanstack-start";
 import { API_KEY_SCOPES, scopesToPermissions } from "../api-key-scopes";
-import { oauthProvider } from "@better-auth/oauth-provider";
 import { SUPPORTED_OAUTH_SCOPES } from "../oauth-as-metadata";
 import { buildAtlasAccessTokenClaims } from "./oauth-claims";
 import { resolvePrimaryWorkspaceId } from "./workspace-lookup";
 import { queryActiveProducts } from "./workspace-products";
-import { tanstackStartCookies } from "better-auth/tanstack-start";
-import { apiKey } from "@better-auth/api-key";
-import { passkey } from "@better-auth/passkey";
 import { type AuthRuntimeConfig, getAuthRuntimeConfig, validateAuthRuntimeConfig } from "./runtime";
 import { getAuthDatabaseConfig, getAuthDatabase, getAuthPgPool } from "./auth-db";
 import {
@@ -35,6 +36,26 @@ export {
   createVerificationEmailSender,
   hasExistingAccount,
 } from "./auth-callbacks";
+
+/**
+ * Return whether Atlas should allow a SCIM token for the workspace.
+ *
+ * The product contract is intentionally narrow: SCIM is included with Atlas
+ * Team, while Research Pass keeps Team-level individual quota without
+ * organization-management controls.
+ *
+ * @param organizationId - Better Auth organization id the SCIM token would manage.
+ */
+export async function canGenerateScimTokenForWorkspace(
+  organizationId: string | undefined,
+): Promise<boolean> {
+  if (!organizationId) {
+    return false;
+  }
+
+  const activeProducts = await queryActiveProducts(organizationId);
+  return activeProducts.includes("atlas_team");
+}
 
 /**
  * Builds the Better Auth runtime for Atlas.
@@ -106,6 +127,15 @@ async function createAtlasAuth(runtime: AuthRuntimeConfig) {
         teams: {
           enabled: false,
         },
+      }),
+      admin(),
+      scim({
+        canGenerateToken: ({ organizationId }) => canGenerateScimTokenForWorkspace(organizationId),
+        linkExistingUsers: {
+          requireExistingOrgMembership: true,
+        },
+        requiredRole: ["admin", "owner"],
+        storeSCIMToken: "hashed",
       }),
       sso({
         disableImplicitSignUp: true,

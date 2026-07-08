@@ -7,6 +7,9 @@ This guide walks through getting Atlas running in production.
 If you are looking for release workflow rather than environment setup, see
 [Release Process](./release.md).
 
+For Stripe products, discounts, webhooks, and billing env sync, use
+[Stripe Billing Setup](./stripe-billing.md).
+
 Atlas supports two production paths:
 
 - `Managed hosted`: deploy the app from `app/` to Vercel, deploy the API to

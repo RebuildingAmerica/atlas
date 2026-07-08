@@ -3,6 +3,7 @@ import type { DiscountSegment } from "../discount-segments";
 import { IndependentJournalistForm } from "./independent-journalist-form";
 import { GrassrootsNonprofitForm } from "./grassroots-nonprofit-form";
 import { CivicTechForm } from "./civic-tech-form";
+import { StudentForm } from "./student-form";
 
 interface VerificationFormProps {
   segment: DiscountSegment;
@@ -28,6 +29,10 @@ export function VerificationForm({ segment, onSubmit, isLoading = false }: Verif
   async function handleSubmit(data: Record<string, string>) {
     await onSubmit(data);
     setSubmitted(true);
+  }
+
+  if (segment === "student") {
+    return <StudentForm onSubmit={handleSubmit} isLoading={isLoading} />;
   }
 
   if (segment === "independent_journalist") {

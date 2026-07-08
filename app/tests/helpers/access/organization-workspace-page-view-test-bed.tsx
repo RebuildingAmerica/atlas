@@ -219,3 +219,28 @@ export const buildController = (overrides = {}): OrganizationPageController => {
     ...overrides,
   };
 };
+
+const TEAM_SSO_LIMITS = {
+  research_runs_per_month: null,
+  max_shortlists: null,
+  max_shortlist_entries: null,
+  max_api_keys: null,
+  api_requests_per_day: 10000,
+  public_api_requests_per_hour: null,
+  max_members: 50,
+};
+
+export function buildSsoController(overrides = {}): OrganizationPageController {
+  return buildController({
+    session: {
+      user: { id: "user_1" },
+      workspace: {
+        resolvedCapabilities: {
+          capabilities: ["research.run", "workspace.shared", "auth.sso"],
+          limits: TEAM_SSO_LIMITS,
+        },
+      },
+    },
+    ...overrides,
+  });
+}

@@ -2,13 +2,23 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { render, screen, cleanup, fireEvent } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
-import type { OrganizationPageController } from "@/domains/access/components/organization/organization-page-controller";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  buildController,
+  buildSsoController,
+} from "../../../../../helpers/access/organization-workspace-page-view-test-bed";
 import { OrganizationSSOPageView } from "@/domains/access/components/organization/organization-sso-page-view";
 
-vi.mock("@tanstack/react-router", () => ({
-  Link: ({ children, to }: { children: React.ReactNode; to: string }) => (
-    <a href={to}>{children}</a>
-  ),
+const mocks = vi.hoisted(() => ({
+  deleteWorkspaceSCIMProviderConnection: vi.fn(),
+  generateWorkspaceSCIMToken: vi.fn(),
+  loadWorkspaceSCIMSetup: vi.fn(),
+}));
+
+vi.mock("@/domains/access/scim.functions", () => ({
+  deleteWorkspaceSCIMProviderConnection: mocks.deleteWorkspaceSCIMProviderConnection,
+  generateWorkspaceSCIMToken: mocks.generateWorkspaceSCIMToken,
+  loadWorkspaceSCIMSetup: mocks.loadWorkspaceSCIMSetup,
 }));
 
 vi.mock("@/platform/ui/confirm-dialog", () => ({
@@ -17,88 +27,16 @@ vi.mock("@/platform/ui/confirm-dialog", () => ({
   }),
 }));
 
-vi.mock("@/platform/ui/toast", () => ({
-  useToast: () => ({
-    show: vi.fn(),
-    success: vi.fn(),
-    error: vi.fn(),
-  }),
-}));
-
 describe("OrganizationSSOPageView", () => {
-  const buildController = (overrides = {}) => ({
-    needsWorkspace: false,
-    canUseTeamFeatures: true,
-    canSwitchOrganizations: false,
-    hasPendingInvitations: false,
-    organizationLoading: false,
-    session: {
-      user: { id: "user_1" },
-      workspace: {
-        resolvedCapabilities: {
-          capabilities: ["research.run", "workspace.shared", "auth.sso"],
-          limits: {
-            research_runs_per_month: null,
-            max_shortlists: null,
-            max_shortlist_entries: null,
-            max_api_keys: null,
-            api_requests_per_day: 10000,
-            public_api_requests_per_hour: null,
-            max_members: 50,
-          },
-        },
-      },
-    },
-    organization: {
-      id: "org_1",
-      name: "Atlas",
-      slug: "atlas",
-      sso: {
-        providers: [],
-        setup: {
-          googleWorkspaceIssuer: "https://accounts.google.com",
-          googleWorkspaceScopes: ["openid", "email", "profile"],
-          oidcProviderIdSuggestion: "google",
-          oidcRedirectUrl: "https://atlas.test/callback",
-          samlAcsUrl: "https://atlas.test/acs",
-          samlEntityId: "https://atlas.test/metadata",
-          samlMetadataUrl: "https://atlas.test/metadata.xml",
-          samlProviderIdSuggestion: "saml",
-          workspaceDomainSuggestion: "atlas.test",
-        },
-      },
-      metadata: { workspaceType: "team" },
-      capabilities: { canUseTeamFeatures: true },
-      role: "owner",
-      workspaceType: "team",
-    },
-    domainVerificationTokens: {},
-    oidcSetupForm: {
-      clientId: "",
-      clientSecret: "",
-      domain: "",
-      providerId: "",
-      setAsPrimary: false,
-    },
-    samlAllowedIssuerOrigins: ["https://accounts.google.com"] as readonly string[],
-    samlSetupForm: {
-      certificate: "",
-      domain: "",
-      entryPoint: "",
-      issuer: "",
-      providerId: "",
-      setAsPrimary: false,
-    },
-    canManageOrganization: true,
-    ...overrides,
-  });
-
   afterEach(() => {
     cleanup();
+    mocks.deleteWorkspaceSCIMProviderConnection.mockReset();
+    mocks.generateWorkspaceSCIMToken.mockReset();
+    mocks.loadWorkspaceSCIMSetup.mockReset();
   });
 
   it("renders the header and basic structure", () => {
-    const controller = buildController() as unknown as OrganizationPageController;
+    const controller = buildSsoController();
     render(<OrganizationSSOPageView controller={controller} />);
     expect(screen.getByText("Enterprise SSO setup")).toBeInTheDocument();
     expect(screen.getAllByText(/Configure enterprise sign-in/i).length).toBeGreaterThan(0);
@@ -114,8 +52,57 @@ describe("OrganizationSSOPageView", () => {
     );
   });
 
+  it("renders SCIM setup for Team workspaces with SCIM capability", async () => {
+    mocks.loadWorkspaceSCIMSetup.mockResolvedValue({
+      defaultProviderId: "atlas-scim",
+      providers: [
+        {
+          id: "conn_1",
+          organizationId: "org_1",
+          providerId: "google-workspace",
+        },
+      ],
+      scimBaseUrl: "https://atlas.test/api/auth/scim/v2",
+      serviceProviderConfigUrl: "https://atlas.test/api/auth/scim/v2/ServiceProviderConfig",
+      usersUrl: "https://atlas.test/api/auth/scim/v2/Users",
+    });
+    const controller = buildSsoController({
+      session: {
+        user: { id: "user_1" },
+        workspace: {
+          resolvedCapabilities: {
+            capabilities: ["research.run", "workspace.shared", "auth.sso", "auth.scim"],
+            limits: {
+              research_runs_per_month: null,
+              max_shortlists: null,
+              max_shortlist_entries: null,
+              max_api_keys: null,
+              api_requests_per_day: 10000,
+              public_api_requests_per_hour: null,
+              max_members: 50,
+            },
+          },
+        },
+      },
+    });
+    const queryClient = new QueryClient();
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <OrganizationSSOPageView controller={controller} />
+      </QueryClientProvider>,
+    );
+
+    expect(await screen.findByText("SCIM provisioning")).toBeInTheDocument();
+    expect(
+      await screen.findByDisplayValue("https://atlas.test/api/auth/scim/v2"),
+    ).toBeInTheDocument();
+    expect(await screen.findByDisplayValue("atlas-scim")).toBeInTheDocument();
+    expect(await screen.findByText("google-workspace")).toBeInTheDocument();
+  });
+
   it("shows team requirement message for personal workspaces", () => {
-    const controller = buildController({
+    const controller = buildSsoController({
       canUseTeamFeatures: false,
       session: {
         user: { id: "user_1" },
@@ -134,7 +121,7 @@ describe("OrganizationSSOPageView", () => {
           },
         },
       },
-    }) as unknown as OrganizationPageController;
+    });
     render(<OrganizationSSOPageView controller={controller} />);
     expect(
       screen.getByText(
@@ -144,7 +131,7 @@ describe("OrganizationSSOPageView", () => {
   });
 
   it("renders the auth-disabled headline only when canConfigureSSO is false", () => {
-    const controller = buildController({
+    const controller = buildSsoController({
       session: {
         user: { id: "user_1" },
         workspace: {
@@ -162,7 +149,7 @@ describe("OrganizationSSOPageView", () => {
           },
         },
       },
-    }) as unknown as OrganizationPageController;
+    });
     render(<OrganizationSSOPageView controller={controller} />);
     expect(
       screen.getByText(
@@ -172,7 +159,7 @@ describe("OrganizationSSOPageView", () => {
   });
 
   it("renders the workspace switcher when the operator can switch", () => {
-    const controller = buildController({
+    const controller = buildSsoController({
       canSwitchOrganizations: true,
       memberships: [
         { id: "org_1", name: "Atlas", slug: "atlas", workspaceType: "team", role: "owner" },
@@ -181,13 +168,13 @@ describe("OrganizationSSOPageView", () => {
       selectedOrganizationId: "org_1",
       selectWorkspacePending: false,
       onSelectWorkspace: vi.fn(),
-    }) as unknown as OrganizationPageController;
+    });
     render(<OrganizationSSOPageView controller={controller} />);
     expect(screen.getByText(/Other/)).toBeInTheDocument();
   });
 
   it("renders the pending invitations section when invitations exist", () => {
-    const controller = buildController({
+    const controller = buildSsoController({
       hasPendingInvitations: true,
       pendingInvitations: [
         {
@@ -201,13 +188,13 @@ describe("OrganizationSSOPageView", () => {
       ],
       pendingInvitationMutationPending: false,
       onInvitationDecision: vi.fn(),
-    }) as unknown as OrganizationPageController;
+    });
     render(<OrganizationSSOPageView controller={controller} />);
     expect(screen.getAllByText(/Atlas Future/).length).toBeGreaterThan(0);
   });
 
   it("renders the workspace creation form when needsWorkspace is true", () => {
-    const controller = buildController({
+    const controller = buildSsoController({
       needsWorkspace: true,
       organization: null,
       createWorkspacePending: false,
@@ -222,27 +209,27 @@ describe("OrganizationSSOPageView", () => {
       onUpdateWorkspaceSlug: vi.fn(),
       onCreateWorkspace: vi.fn(),
       onUpdateWorkspaceType: vi.fn(),
-    }) as unknown as OrganizationPageController;
+    });
     render(<OrganizationSSOPageView controller={controller} />);
     expect(screen.getAllByText(/Workspace/i).length).toBeGreaterThan(0);
   });
 
   it("renders the loading state when organizationLoading is true", () => {
-    const controller = buildController({
+    const controller = buildSsoController({
       organization: null,
       organizationLoading: true,
-    }) as unknown as OrganizationPageController;
+    });
     render(<OrganizationSSOPageView controller={controller} />);
     expect(screen.getByText(/Loading workspace/i)).toBeInTheDocument();
   });
 
   it("renders the empty-state when there is no workspace, no invitations, and no loading", () => {
-    const controller = buildController({
+    const controller = buildSsoController({
       organization: null,
       organizationLoading: false,
       needsWorkspace: false,
       hasPendingInvitations: false,
-    }) as unknown as OrganizationPageController;
+    });
     render(<OrganizationSSOPageView controller={controller} />);
     expect(screen.getAllByText(/workspace/i).length).toBeGreaterThan(0);
   });
@@ -254,7 +241,7 @@ describe("OrganizationSSOPageView", () => {
     const onUpdateWorkspaceName = vi.fn();
 
     // 1) Workspace switcher: rendered via canSwitchOrganizations.
-    const switcherController = buildController({
+    const switcherController = buildSsoController({
       canSwitchOrganizations: true,
       memberships: [
         { id: "org_1", name: "Atlas", slug: "atlas", workspaceType: "team", role: "owner" },
@@ -263,7 +250,7 @@ describe("OrganizationSSOPageView", () => {
       selectedOrganizationId: "org_1",
       selectWorkspacePending: false,
       onSelectWorkspace,
-    }) as unknown as OrganizationPageController;
+    });
     const switcherView = render(<OrganizationSSOPageView controller={switcherController} />);
     const switcherSelect = switcherView.container.querySelector("select");
     if (!switcherSelect) throw new Error("Expected the workspace switcher select");
@@ -272,7 +259,7 @@ describe("OrganizationSSOPageView", () => {
     cleanup();
 
     // 2) Pending invitations: clicking Accept dispatches the controller.
-    const pendingController = buildController({
+    const pendingController = buildSsoController({
       hasPendingInvitations: true,
       pendingInvitations: [
         {
@@ -286,14 +273,14 @@ describe("OrganizationSSOPageView", () => {
       ],
       pendingInvitationMutationPending: false,
       onInvitationDecision,
-    }) as unknown as OrganizationPageController;
+    });
     render(<OrganizationSSOPageView controller={pendingController} />);
     fireEvent.click(screen.getByText("Accept"));
     expect(onInvitationDecision).toHaveBeenCalledWith("inv_1", "accept");
     cleanup();
 
     // 3) Workspace creation form submit dispatches through the controller.
-    const creationController = buildController({
+    const creationController = buildSsoController({
       needsWorkspace: true,
       organization: null,
       createWorkspacePending: false,
@@ -308,7 +295,7 @@ describe("OrganizationSSOPageView", () => {
       onUpdateWorkspaceSlug: vi.fn(),
       onCreateWorkspace,
       onUpdateWorkspaceType: vi.fn(),
-    }) as unknown as OrganizationPageController;
+    });
     const creationView = render(<OrganizationSSOPageView controller={creationController} />);
     const form = creationView.container.querySelector("form");
     if (!form) throw new Error("Expected workspace creation form");
@@ -317,7 +304,7 @@ describe("OrganizationSSOPageView", () => {
   });
 
   it("falls back to the auth-disabled headline when the session is missing", () => {
-    const controller = buildController({ session: null }) as unknown as OrganizationPageController;
+    const controller = buildController({ session: null });
     render(<OrganizationSSOPageView controller={controller} />);
     expect(
       screen.getByText(
@@ -327,10 +314,10 @@ describe("OrganizationSSOPageView", () => {
   });
 
   it("renders the team-required panel for non-team workspaces with auth.sso capability", () => {
-    const controller = buildController({
+    const controller = buildSsoController({
       canUseTeamFeatures: false,
       // canConfigureSSO is true via auth.sso, so the early return is skipped.
-    }) as unknown as OrganizationPageController;
+    });
     render(<OrganizationSSOPageView controller={controller} />);
     expect(
       screen.getByText(/Enterprise SSO is available only for team workspaces/i),

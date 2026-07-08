@@ -7,9 +7,10 @@ import { getStripeClient } from "./stripe-client";
  * Parameters required to create a Stripe Checkout Session for an Atlas
  * product purchase.
  */
-interface CreateCheckoutOptions {
+export interface CreateCheckoutOptions {
   workspaceId: string;
   product: string;
+  interval?: string;
   priceId: string;
   successUrl: string;
   cancelUrl: string;
@@ -40,10 +41,14 @@ export async function createCheckoutSession(
   const stripe = getStripeClient();
   const mode: Stripe.Checkout.SessionCreateParams["mode"] =
     options.product === "atlas_research_pass" ? "payment" : "subscription";
+  if (options.product === "atlas_research_pass" && !options.interval) {
+    throw new Error("Research Pass checkout requires an interval.");
+  }
 
   const workspaceMetadata = {
     workspace_id: options.workspaceId,
     product: options.product,
+    ...(options.interval ? { interval: options.interval } : {}),
   };
 
   // Base price covers the workspace (and the owner's seat). For Atlas Team,

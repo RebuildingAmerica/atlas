@@ -5,6 +5,8 @@ from typing import Literal
 from fastapi import APIRouter, HTTPException, Query, Response
 from pydantic import BaseModel, Field
 
+from atlas.domains.access.verification import DiscountSegment
+
 router = APIRouter(tags=["access"])
 
 __all__ = ["router"]
@@ -14,7 +16,7 @@ class VerificationRecordResponse(BaseModel):
     """Response payload for a verification record."""
 
     user_id: str = Field(description="User ID who submitted the verification")
-    segment: Literal["independent_journalist", "grassroots_nonprofit", "civic_tech_worker"]
+    segment: DiscountSegment
     status: str = Field(description="Verification status")
     method: str = Field(description="Verification method used")
     submitted_at: str = Field(description="ISO timestamp of submission")

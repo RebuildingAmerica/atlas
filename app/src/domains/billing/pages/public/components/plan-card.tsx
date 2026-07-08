@@ -4,7 +4,7 @@ import type { AtlasSelfServeProduct } from "@/domains/access/capabilities";
 import { Button } from "@/platform/ui/button";
 import type { PricingCheckoutInterval, PricingCheckoutParams } from "../pricing-page-helpers";
 
-export type BillingPeriod = "monthly" | "annual";
+export type BillingPeriod = "monthly" | "annual" | "student";
 
 export interface PlanCardLinkCta {
   label: string;
@@ -19,6 +19,8 @@ interface PlanCardProps {
   monthlyPrice: string | ReactNode;
   annualPrice?: string | ReactNode;
   annualNote?: string;
+  studentPrice?: string | ReactNode;
+  studentNote?: string;
   billing: BillingPeriod;
   ctaText: string;
   ctaProduct?: AtlasSelfServeProduct;
@@ -51,6 +53,8 @@ export function PlanCard({
   monthlyPrice,
   annualPrice,
   annualNote,
+  studentPrice,
+  studentNote,
   billing,
   ctaText,
   ctaProduct,
@@ -71,7 +75,12 @@ export function PlanCard({
   const priceColorClass = isDark ? "text-surface-container-lowest" : "text-ink-strong";
   const priceSubColorClass = isDark ? "text-ink-muted" : "text-ink-soft";
 
-  const showPrice = billing === "monthly" ? monthlyPrice : annualPrice || monthlyPrice;
+  const showPrice =
+    billing === "student"
+      ? (studentPrice ?? monthlyPrice)
+      : billing === "annual"
+        ? (annualPrice ?? monthlyPrice)
+        : monthlyPrice;
 
   const handleCta = async () => {
     if (ctaProduct && ctaInterval && onCheckout) {
@@ -99,6 +108,9 @@ export function PlanCard({
         <div className={`${priceColorClass} type-title-medium font-medium`}>{showPrice}</div>
         {annualNote && billing === "annual" && (
           <p className={`${priceSubColorClass} type-body-small mt-1`}>{annualNote}</p>
+        )}
+        {studentNote && billing === "student" && (
+          <p className={`${priceSubColorClass} type-body-small mt-1`}>{studentNote}</p>
         )}
       </div>
 

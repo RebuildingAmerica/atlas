@@ -1,11 +1,10 @@
 """Discount verification API endpoints."""
 
-from typing import Literal
-
 from fastapi import APIRouter, HTTPException, Response
 from pydantic import BaseModel, Field
 
 from atlas.domains.access.verification import (
+    DiscountSegment,
     DiscountVerifier,
     VerificationMethod,
     VerificationStatus,
@@ -20,7 +19,7 @@ __all__ = ["router"]
 class VerificationRequestPayload(BaseModel):
     """Request payload for discount verification submission."""
 
-    segment: Literal["independent_journalist", "grassroots_nonprofit", "civic_tech_worker"]
+    segment: DiscountSegment
     user_id: str
     data: dict[str, str] = Field(description="Segment-specific verification data")
 
@@ -48,6 +47,26 @@ def _validate_independent_journalist(
         return error_message or "Validation failed", VerificationMethod.PORTFOLIO
 
     return None, VerificationMethod.PORTFOLIO
+
+
+def _validate_student(
+    data: dict[str, str], verifier: DiscountVerifier
+) -> tuple[str | None, VerificationMethod]:
+    """Validate student data. Returns error message or None."""
+    school_email = data.get("schoolEmail")
+    school_name = data.get("schoolName")
+
+    if not school_email:
+        return "School email is required", VerificationMethod.SCHOOL_EMAIL
+
+    if not school_name:
+        return "School or program is required", VerificationMethod.SCHOOL_EMAIL
+
+    is_valid, error_message = verifier.verify_student(school_email, school_name)
+    if not is_valid:
+        return error_message or "Validation failed", VerificationMethod.SCHOOL_EMAIL
+
+    return None, VerificationMethod.SCHOOL_EMAIL
 
 
 def _validate_grassroots_nonprofit(
@@ -107,7 +126,9 @@ async def submit_discount_verification(
     verifier = DiscountVerifier()
 
     # Validate based on segment
-    if request.segment == "independent_journalist":
+    if request.segment == "student":
+        error, method = _validate_student(request.data, verifier)
+    elif request.segment == "independent_journalist":
         error, method = _validate_independent_journalist(request.data, verifier)
     elif request.segment == "grassroots_nonprofit":
         error, method = _validate_grassroots_nonprofit(request.data, verifier)

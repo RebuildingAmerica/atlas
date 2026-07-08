@@ -2,6 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   DEFAULT_CAPABILITIES,
   DEFAULT_LIMITS,
+  PRODUCT_CAPABILITIES,
+  PRODUCT_LIMITS,
+  SELF_SERVE_PRODUCTS,
   deserializeResolvedCapabilities,
   getLimit,
   getSerializedLimit,
@@ -9,10 +12,17 @@ import {
   hasSerializedCapability,
   resolveCapabilities,
 } from "@/domains/access/capabilities";
-import { ENTERPRISE_PACKAGE_EXPECTATIONS } from "../../../fixtures/access/enterprise-package-expectations";
 
 describe("capabilities", () => {
   describe("resolveCapabilities", () => {
+    it("only configures the real Atlas plans", () => {
+      const expectedProducts = ["atlas_pro", "atlas_research_pass", "atlas_team"];
+
+      expect([...SELF_SERVE_PRODUCTS].sort()).toEqual(expectedProducts);
+      expect(Object.keys(PRODUCT_CAPABILITIES).sort()).toEqual(expectedProducts);
+      expect(Object.keys(PRODUCT_LIMITS).sort()).toEqual(expectedProducts);
+    });
+
     it("returns defaults when no products are active", () => {
       const resolved = resolveCapabilities([]);
       expect(resolved.capabilities).toEqual(DEFAULT_CAPABILITIES);
@@ -28,22 +38,40 @@ describe("capabilities", () => {
       expect(resolved.capabilities.has("api.mcp")).toBe(true);
       expect(resolved.capabilities.has("workspace.shared")).toBe(false);
       expect(resolved.capabilities.has("monitoring.watchlists")).toBe(false);
-      expect(resolved.capabilities.has("integrations.slack")).toBe(false);
       expect(resolved.capabilities.has("auth.sso")).toBe(false);
+      expect([...resolved.capabilities]).not.toContain("auth.scim");
+      expect([...resolved.capabilities]).not.toContain("integrations.slack");
     });
 
-    it("resolves atlas_team capabilities including team-only", () => {
+    it("resolves atlas_team capabilities including team-only identity", () => {
       const resolved = resolveCapabilities(["atlas_team"]);
       expect(resolved.capabilities.has("workspace.shared")).toBe(true);
       expect(resolved.capabilities.has("monitoring.watchlists")).toBe(true);
-      expect(resolved.capabilities.has("integrations.slack")).toBe(true);
       expect(resolved.capabilities.has("auth.sso")).toBe(true);
+      expect(resolved.capabilities.has("auth.scim")).toBe(true);
+      expect([...resolved.capabilities]).not.toContain("integrations.slack");
     });
 
-    it("resolves atlas_research_pass same as pro", () => {
-      const pro = resolveCapabilities(["atlas_pro"]);
+    it("resolves atlas_research_pass with team-level individual access", () => {
+      const team = resolveCapabilities(["atlas_team"]);
       const pass = resolveCapabilities(["atlas_research_pass"]);
-      expect(pass.capabilities).toEqual(pro.capabilities);
+
+      expect(pass.capabilities.has("research.unlimited")).toBe(true);
+      expect(pass.capabilities.has("workspace.notes")).toBe(true);
+      expect(pass.capabilities.has("workspace.export")).toBe(true);
+      expect(pass.capabilities.has("api.keys")).toBe(true);
+      expect(pass.capabilities.has("api.mcp")).toBe(true);
+      expect(pass.capabilities.has("monitoring.watchlists")).toBe(true);
+      expect(pass.capabilities.has("workspace.shared")).toBe(false);
+      expect(pass.capabilities.has("auth.sso")).toBe(false);
+      expect(pass.capabilities.has("auth.scim")).toBe(false);
+      expect([...pass.capabilities]).not.toContain("integrations.slack");
+      expect(pass.limits.research_runs_per_month).toBe(team.limits.research_runs_per_month);
+      expect(pass.limits.max_shortlists).toBe(team.limits.max_shortlists);
+      expect(pass.limits.max_shortlist_entries).toBe(team.limits.max_shortlist_entries);
+      expect(pass.limits.max_api_keys).toBe(team.limits.max_api_keys);
+      expect(pass.limits.api_requests_per_day).toBe(team.limits.api_requests_per_day);
+      expect(pass.limits.max_members).toBe(1);
     });
 
     it("unions capabilities from multiple products", () => {
@@ -66,22 +94,12 @@ describe("capabilities", () => {
       expect(resolved.limits.api_requests_per_day).toBe(1000);
     });
 
-    it.each(ENTERPRISE_PACKAGE_EXPECTATIONS)(
-      "resolves the $product enterprise package",
-      ({ excludedCapabilities, includedCapabilities, maxMembers, product }) => {
-        const resolved = resolveCapabilities([product]);
-
-        for (const capability of includedCapabilities) {
-          expect(resolved.capabilities.has(capability)).toBe(true);
-        }
-
-        for (const capability of excludedCapabilities) {
-          expect(resolved.capabilities.has(capability)).toBe(false);
-        }
-
-        expect(resolved.limits.max_members).toBe(maxMembers);
-      },
-    );
+    it("team limits guarantee SCIM-ready workspace capacity", () => {
+      const resolved = resolveCapabilities(["atlas_team"]);
+      expect(resolved.limits.max_members).toBe(50);
+      expect(resolved.limits.max_api_keys).toBeNull();
+      expect(resolved.limits.api_requests_per_day).toBe(10000);
+    });
   });
 
   describe("hasCapability", () => {

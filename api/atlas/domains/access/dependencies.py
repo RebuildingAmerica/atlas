@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from fastapi import Depends, Header, HTTPException, Request, status
@@ -18,7 +19,7 @@ from atlas.platform.config import Settings, get_settings
 from atlas.platform.database import db as db_util
 
 from .api_keys import verify_api_key
-from .capabilities import resolve_capabilities
+from .capabilities import get_limit, resolve_capabilities
 from .challenges import build_bearer_challenge
 from .internal import build_local_actor, verify_internal_actor
 from .jwt import verify_bearer_jwt
@@ -53,6 +54,47 @@ def _route_usage_resource_id(request: Request) -> str:
     return request.url.path
 
 
+def _current_utc_day_start_iso() -> str:
+    """Return the start of the current UTC day for daily quota windows."""
+    return datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
+
+
+def _api_quota_exceeded_detail(limit: int) -> dict[str, int | str]:
+    """Build the structured detail returned when API-key quota is exhausted."""
+    return {
+        "error": "rate_limit_exceeded",
+        "limit": "api_requests_per_day",
+        "maximum": limit,
+    }
+
+
+async def _enforce_external_api_call_quota(
+    conn: aiosqlite.Connection,
+    actor: AuthenticatedActor,
+) -> None:
+    """Block external API-key requests that have exhausted plan daily quota."""
+    if actor.auth_type != "api_key" or actor.org_id is None or actor.api_key_id is None:
+        return
+
+    resolved = actor.resolved_capabilities or resolve_capabilities(actor.active_products or [])
+    actor.resolved_capabilities = resolved
+    daily_limit = get_limit(resolved, "api_requests_per_day")
+    if daily_limit is None:
+        return
+
+    used = await OrgUsageEventCRUD.count_api_key_calls_since(
+        conn,
+        org_id=actor.org_id,
+        api_key_id=actor.api_key_id,
+        since=_current_utc_day_start_iso(),
+    )
+    if used >= daily_limit:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=_api_quota_exceeded_detail(daily_limit),
+        )
+
+
 async def _record_external_api_call_usage(
     conn: aiosqlite.Connection,
     *,
@@ -66,6 +108,14 @@ async def _record_external_api_call_usage(
         return
 
     setattr(request.state, _API_USAGE_RECORDED_STATE_KEY, True)
+    metadata = {
+        "auth_type": actor.auth_type,
+        "method": request.method,
+        "surface": "api",
+    }
+    if actor.api_key_id is not None:
+        metadata["api_key_id"] = actor.api_key_id
+
     await OrgUsageEventCRUD.record(
         conn,
         OrgUsageEventRecord(
@@ -74,13 +124,7 @@ async def _record_external_api_call_usage(
             event_type="api_call",
             resource_type="api",
             resource_id=_route_usage_resource_id(request),
-            metadata_json=db_util.encode_json(
-                {
-                    "auth_type": actor.auth_type,
-                    "method": request.method,
-                    "surface": "api",
-                }
-            ),
+            metadata_json=db_util.encode_json(metadata),
         ),
     )
 
@@ -102,6 +146,8 @@ def _authenticated_actor_from_api_key_principal(principal: ApiKeyPrincipal) -> A
         api_key_id=principal.key_id,
         permissions=principal.permissions,
         org_id=principal.org_id,
+        active_products=principal.active_products or [],
+        resolved_capabilities=resolve_capabilities(principal.active_products or []),
     )
 
 
@@ -178,6 +224,7 @@ def require_actor_permission(
         usage_db: aiosqlite.Connection = Depends(get_usage_db),
     ) -> AsyncGenerator[AuthenticatedActor, None]:
         permitted_actor = require_permission(actor, resource, action, settings=settings)
+        await _enforce_external_api_call_quota(usage_db, permitted_actor)
         yield permitted_actor
         await _record_external_api_call_usage(
             usage_db,
@@ -201,6 +248,7 @@ def require_org_actor_permission(
         usage_db: aiosqlite.Connection = Depends(get_usage_db),
     ) -> AsyncGenerator[AuthenticatedActor, None]:
         permitted_actor = require_permission(actor, resource, action, settings=settings)
+        await _enforce_external_api_call_quota(usage_db, permitted_actor)
         yield permitted_actor
         await _record_external_api_call_usage(
             usage_db,
@@ -237,7 +285,7 @@ async def require_org_actor(
             actor.workspace_type = "individual"
             actor.active_products = ["atlas_team"]
         else:
-            actor.active_products = []
+            actor.active_products = actor.active_products or []
         actor.resolved_capabilities = resolve_capabilities(actor.active_products)
         return actor
 

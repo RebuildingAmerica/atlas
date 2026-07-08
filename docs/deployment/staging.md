@@ -5,6 +5,9 @@
 Staging exists so operators can verify hosted auth, MCP metadata, API changes,
 and discovery flows before production visitors depend on them.
 
+For Stripe test-mode products, discounts, webhooks, and Vercel Preview env sync,
+use [Stripe Billing Setup](./stripe-billing.md).
+
 ## What staging owns
 
 The staging API deploy is a manual GitHub Actions workflow:

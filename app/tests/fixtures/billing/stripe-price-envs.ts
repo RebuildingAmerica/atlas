@@ -6,6 +6,7 @@
 export const STRIPE_PRICE_ENVS = {
   STRIPE_PRICE_ATLAS_PRO_MONTHLY: "price_pro_monthly",
   STRIPE_PRICE_ATLAS_PRO_YEARLY: "price_pro_yearly",
+  STRIPE_PRICE_ATLAS_PRO_STUDENT_FOUR_MONTH: "price_pro_student_four_month",
   STRIPE_PRICE_ATLAS_TEAM_BASE_MONTHLY: "price_team_monthly",
   STRIPE_PRICE_ATLAS_TEAM_BASE_YEARLY: "price_team_yearly",
   STRIPE_PRICE_ATLAS_TEAM_SEAT_MONTHLY: "price_team_seat_monthly",

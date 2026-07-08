@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
+  admin: vi.fn(() => ({ kind: "admin" })),
   apiKey: vi.fn(() => ({ kind: "api-key" })),
   bearer: vi.fn(() => ({ kind: "bearer" })),
   betterAuth: vi.fn(),
@@ -25,6 +26,7 @@ const mocks = vi.hoisted(() => ({
   passkey: vi.fn(() => ({ kind: "passkey" })),
   resolvePrimaryWorkspaceId: vi.fn(),
   runMigrations: vi.fn(),
+  scim: vi.fn(() => ({ kind: "scim" })),
   sso: vi.fn(() => ({ kind: "sso" })),
   tanstackStartCookies: vi.fn(() => ({ kind: "cookies" })),
   validateAuthRuntimeConfig: vi.fn(),
@@ -38,6 +40,7 @@ vi.mock("node:fs", () => ({
 vi.mock("better-sqlite3", () => ({ default: mocks.Database }));
 vi.mock("better-auth", () => ({ betterAuth: mocks.betterAuth }));
 vi.mock("better-auth/plugins", () => ({
+  admin: mocks.admin,
   bearer: mocks.bearer,
   deviceAuthorization: mocks.deviceAuthorization,
   organization: mocks.organization,
@@ -47,6 +50,7 @@ vi.mock("better-auth/plugins/magic-link", () => ({ magicLink: mocks.magicLink })
 vi.mock("@better-auth/api-key", () => ({ apiKey: mocks.apiKey }));
 vi.mock("@better-auth/oauth-provider", () => ({ oauthProvider: mocks.oauthProvider }));
 vi.mock("@better-auth/passkey", () => ({ passkey: mocks.passkey }));
+vi.mock("@better-auth/scim", () => ({ scim: mocks.scim }));
 vi.mock("@better-auth/sso", () => ({ sso: mocks.sso }));
 vi.mock("better-auth/tanstack-start", () => ({
   tanstackStartCookies: mocks.tanstackStartCookies,

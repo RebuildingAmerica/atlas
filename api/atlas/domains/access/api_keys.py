@@ -56,6 +56,12 @@ async def verify_api_key(api_key: str, settings: Settings) -> ApiKeyPrincipal | 
         return None
 
     raw_org_id = payload.get("organizationId")
+    raw_active_products = payload.get("activeProducts")
+    active_products = (
+        [str(product) for product in raw_active_products]
+        if isinstance(raw_active_products, list)
+        else []
+    )
     return ApiKeyPrincipal(
         key_id=str(payload["keyId"]),
         name=str(payload["name"]),
@@ -63,4 +69,5 @@ async def verify_api_key(api_key: str, settings: Settings) -> ApiKeyPrincipal | 
         user_id=str(payload["userId"]),
         user_email=str(payload["userEmail"]),
         org_id=str(raw_org_id) if raw_org_id is not None else None,
+        active_products=active_products,
     )

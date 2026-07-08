@@ -26,9 +26,10 @@ __all__ = [
     "OrgDiscoveryBudgetCRUD",
     "OrgDiscoveryBudgetExceededResponse",
     "OrgDiscoveryBudgetModel",
+    "reserve_run_if_limited",
 ]
 
-DEFAULT_ORG_DISCOVERY_MONTHLY_LIMIT = 3
+DEFAULT_ORG_DISCOVERY_MONTHLY_LIMIT = 2
 """Default monthly private discovery runs per workspace."""
 
 
@@ -158,3 +159,35 @@ class OrgDiscoveryBudgetCRUD:
         reserved = await OrgDiscoveryBudgetCRUD.get_budget(conn, org_id=org_id, month=month)
         assert reserved is not None, "budget existed before reservation"
         return reserved
+
+
+def _resolve_dependency_limit(run_limit: object) -> int | None:
+    """Normalize a FastAPI dependency value into a concrete monthly run limit."""
+    if run_limit is None:
+        return None
+    if isinstance(run_limit, int):
+        return run_limit
+    return DEFAULT_ORG_DISCOVERY_MONTHLY_LIMIT
+
+
+async def reserve_run_if_limited(
+    conn: aiosqlite.Connection,
+    *,
+    org_id: str | None,
+    month: str,
+    run_limit: object,
+) -> OrgDiscoveryBudgetModel | None:
+    """Reserve one monthly discovery run when the active plan has a finite cap."""
+    if org_id is None:
+        return None
+
+    monthly_run_limit = _resolve_dependency_limit(run_limit)
+    if monthly_run_limit is None:
+        return None
+
+    return await OrgDiscoveryBudgetCRUD.reserve_run(
+        conn,
+        org_id=org_id,
+        month=month,
+        default_monthly_limit=monthly_run_limit,
+    )

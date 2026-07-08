@@ -5,6 +5,11 @@ import { runCommand } from "../lib/shell.js";
 import { parseEnvFile } from "../lib/env-file.js";
 import type { CommandResult } from "../lib/shell.js";
 
+export interface StripeCliProfile {
+  sectionName: string;
+  values: Map<string, string>;
+}
+
 /**
  * Check whether the Stripe CLI is authenticated by hitting the /v1/account
  * endpoint. Returns true when the CLI can reach the API for the requested mode.
@@ -17,10 +22,130 @@ export function isStripeCliAuthenticated(live: boolean): boolean {
   return result.ok;
 }
 
+function unquoteTomlValue(value: string): string {
+  const trimmed = value.trim();
+  if (
+    (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+    (trimmed.startsWith("'") && trimmed.endsWith("'"))
+  ) {
+    return trimmed.slice(1, -1);
+  }
+  return trimmed;
+}
+
+function normalizeProfileName(name: string): string {
+  return name.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function sectionNameFromHeader(header: string): string {
+  const rawName = header.trim().slice(1, -1).trim();
+  return unquoteTomlValue(rawName);
+}
+
+export function parseStripeCliProfiles(content: string): StripeCliProfile[] {
+  const profiles: StripeCliProfile[] = [];
+  let current: StripeCliProfile | null = null;
+
+  for (const line of content.split("\n")) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#")) {
+      continue;
+    }
+
+    if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
+      current = {
+        sectionName: sectionNameFromHeader(trimmed),
+        values: new Map(),
+      };
+      profiles.push(current);
+      continue;
+    }
+
+    if (!current) {
+      continue;
+    }
+
+    const eqIndex = trimmed.indexOf("=");
+    if (eqIndex === -1) {
+      continue;
+    }
+    const key = trimmed.slice(0, eqIndex).trim();
+    const value = unquoteTomlValue(trimmed.slice(eqIndex + 1));
+    current.values.set(key, value);
+  }
+
+  return profiles;
+}
+
+function readActiveStripeCliProfileName(): string | null {
+  const result = runCommand("stripe login list 2>/dev/null");
+  if (!result.ok) {
+    return null;
+  }
+
+  for (const line of result.stdout.split("\n")) {
+    const match = /^\s*\*\s+(.+?)(?:\s+\(active\))?\s*$/.exec(line);
+    if (match?.[1]) {
+      return match[1].trim();
+    }
+  }
+  return null;
+}
+
+function findProfileByName(
+  profiles: StripeCliProfile[],
+  profileName: string,
+): StripeCliProfile | null {
+  const normalizedTarget = normalizeProfileName(profileName);
+  const explicitProfile =
+    profiles.find((profile) =>
+      [profile.sectionName, profile.values.get("profile_name") ?? ""].some(
+        (candidate) =>
+          candidate.length > 0 &&
+          normalizeProfileName(candidate) === normalizedTarget,
+      ),
+    ) ?? null;
+  if (explicitProfile) {
+    return explicitProfile;
+  }
+
+  return (
+    profiles.find(
+      (profile) =>
+        normalizeProfileName(profile.values.get("display_name") ?? "") ===
+        normalizedTarget,
+    ) ?? null
+  );
+}
+
+export function selectStripeCliProfileKey(
+  profiles: StripeCliProfile[],
+  activeProfileName: string | null,
+  live: boolean,
+): string | null {
+  const keyName = live ? "live_mode_api_key" : "test_mode_api_key";
+  const activeProfile = activeProfileName
+    ? findProfileByName(profiles, activeProfileName)
+    : null;
+  const defaultProfile =
+    profiles.find(
+      (profile) => normalizeProfileName(profile.sectionName) === "default",
+    ) ?? null;
+  const candidates = [activeProfile, defaultProfile, ...profiles];
+
+  for (const profile of candidates) {
+    const value = profile?.values.get(keyName)?.trim();
+    if (value) {
+      return value;
+    }
+  }
+  return null;
+}
+
 /**
  * Read the Stripe secret API key directly from the Stripe CLI config file
- * (~/.config/stripe/config.toml). The CLI stores keys per-project; this reads
- * the default profile.
+ * (~/.config/stripe/config.toml). The CLI stores keys per profile; this reads
+ * the active CLI profile first, then falls back to the default profile.
  *
  * Returns `null` if the file doesn't exist or the key isn't found.
  */
@@ -29,64 +154,52 @@ export function readStripeApiKeyFromCliConfig(live: boolean): string | null {
   if (!existsSync(configPath)) return null;
 
   const content = readFileSync(configPath, "utf8");
-
-  // The config.toml file has sections like [default] with key = "value" pairs.
-  // We look for test_mode_api_key or live_mode_api_key depending on mode.
-  const keyName = live ? "live_mode_api_key" : "test_mode_api_key";
-  const lines = content.split("\n");
-
-  let inDefaultSection = false;
-  for (const line of lines) {
-    const trimmed = line.trim();
-
-    // Track which TOML section we're in
-    if (trimmed.startsWith("[")) {
-      inDefaultSection = trimmed === "[default]";
-      continue;
-    }
-
-    if (!inDefaultSection) continue;
-
-    if (trimmed.startsWith(keyName)) {
-      const eqIndex = trimmed.indexOf("=");
-      if (eqIndex === -1) continue;
-      let value = trimmed.slice(eqIndex + 1).trim();
-      // Strip surrounding quotes
-      if (
-        (value.startsWith('"') && value.endsWith('"')) ||
-        (value.startsWith("'") && value.endsWith("'"))
-      ) {
-        value = value.slice(1, -1);
-      }
-      if (value.length > 0) return value;
-    }
-  }
-
-  return null;
+  return selectStripeCliProfileKey(
+    parseStripeCliProfiles(content),
+    readActiveStripeCliProfileName(),
+    live,
+  );
 }
 
 /**
  * Resolve the Stripe API key from multiple sources, in priority order:
  *
- * 1. Stripe CLI config file (~/.config/stripe/config.toml)
- * 2. STRIPE_API_KEY environment variable
- * 3. Root .env file in the project
+ * 1. STRIPE_API_KEY environment variable
+ * 2. Target env files, such as .env.production or .env.staging
+ * 3. Stripe CLI config file (~/.config/stripe/config.toml), test mode only
+ * 4. Root .env file in the project, test mode only
+ *
+ * Production bootstrap intentionally skips Stripe CLI config and root `.env`
+ * fallback state. The hosted app needs a Dashboard-created live key at runtime,
+ * and CLI live OAuth keys can be accepted by the CLI while still being rejected
+ * by the Stripe SDK.
  *
  * Returns `null` if no key could be resolved.
  */
 export function resolveStripeApiKey(
   projectRoot: string,
   live: boolean,
+  envFilePaths: string[] = [],
 ): string | null {
-  // 1. Try Stripe CLI config
-  const cliKey = readStripeApiKeyFromCliConfig(live);
-  if (cliKey) return cliKey;
-
-  // 2. Try environment variable
+  // 1. Try explicit environment variable
   const envKey = process.env.STRIPE_API_KEY;
   if (envKey && envKey.length > 0) return envKey;
 
-  // 3. Try root .env file
+  // 2. Try target env files
+  for (const envFilePath of envFilePaths) {
+    const fileKey = parseEnvFile(envFilePath).get("STRIPE_API_KEY");
+    if (fileKey && fileKey.length > 0) return fileKey;
+  }
+
+  if (live) {
+    return null;
+  }
+
+  // 3. Try Stripe CLI config
+  const cliKey = readStripeApiKeyFromCliConfig(false);
+  if (cliKey) return cliKey;
+
+  // 4. Try root .env file
   const envFilePath = path.join(projectRoot, ".env");
   const envEntries = parseEnvFile(envFilePath);
   const fileKey = envEntries.get("STRIPE_API_KEY");

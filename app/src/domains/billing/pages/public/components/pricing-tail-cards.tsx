@@ -4,21 +4,17 @@ import { checkoutKey, type PricingCheckoutInterval } from "../pricing-page-helpe
 
 interface ResearchPassCardProps {
   pendingCheckoutKey: string | null;
-  researchPassInterval: PricingCheckoutInterval;
-  onPurchase: () => void;
+  onPurchase: (interval: PricingCheckoutInterval) => void;
 }
 
 /**
  * "Project access" card on the pricing surface, exposing the one-time
- * Atlas Research Pass purchase for operators who need full Pro access
- * for a fixed window without committing to a subscription.
+ * Atlas Research Pass purchase for operators who need Team-level individual
+ * access for a fixed window without committing to a subscription.
  */
-export function PricingResearchPassCard({
-  pendingCheckoutKey,
-  researchPassInterval,
-  onPurchase,
-}: ResearchPassCardProps) {
-  const isPending = pendingCheckoutKey === checkoutKey("atlas_research_pass", researchPassInterval);
+export function PricingResearchPassCard({ pendingCheckoutKey, onPurchase }: ResearchPassCardProps) {
+  const weeklyKey = checkoutKey("atlas_research_pass", "weekly");
+  const onceKey = checkoutKey("atlas_research_pass", "once");
   return (
     <div className="mb-10">
       <p className="type-label-medium text-ink-muted mb-4 tracking-wider uppercase">
@@ -28,19 +24,32 @@ export function PricingResearchPassCard({
         <div className="mb-4 flex-1 sm:mb-0">
           <p className="type-title-small text-ink-strong mb-2 font-medium">Atlas Research Pass</p>
           <p className="type-body-small text-ink-soft leading-relaxed">
-            Full Pro access without a subscription — useful for one-time investigations,
-            grant-funded projects, or trying Atlas before committing. Your shortlists and notes stay
-            readable after the pass expires.
+            Team-level quotas for one person without shared seats, SSO, or SCIM. Useful for one-time
+            investigations, grant-funded projects, or trying Atlas before committing. Your
+            shortlists and notes stay readable after the pass expires.
           </p>
         </div>
-        <div className="flex-shrink-0 text-right">
-          <p className="type-title-small text-ink-strong mb-1 font-medium">
-            $9 <span className="type-body-small text-ink-soft font-normal">/ 30 days</span>
-          </p>
-          <p className="type-body-small text-ink-soft mb-3">or $4 / 7 days</p>
-          <Button variant="primary" onClick={onPurchase} disabled={isPending}>
-            {isPending ? "Opening checkout…" : "Get a pass"}
+        <div className="grid flex-shrink-0 gap-2 sm:w-44">
+          <Button
+            variant="secondary"
+            onClick={() => {
+              onPurchase("weekly");
+            }}
+            disabled={pendingCheckoutKey === weeklyKey}
+          >
+            {pendingCheckoutKey === weeklyKey ? "Opening checkout…" : "Get 7-day pass"}
           </Button>
+          <p className="type-body-small text-ink-soft text-center">$4</p>
+          <Button
+            variant="primary"
+            onClick={() => {
+              onPurchase("once");
+            }}
+            disabled={pendingCheckoutKey === onceKey}
+          >
+            {pendingCheckoutKey === onceKey ? "Opening checkout…" : "Get 30-day pass"}
+          </Button>
+          <p className="type-body-small text-ink-soft text-center">$9</p>
         </div>
       </div>
     </div>
@@ -77,8 +86,8 @@ export function PricingEnterpriseCard() {
 }
 
 /**
- * Discounted-access card pointing public-interest researchers and
- * organisations at the discount-request flow.
+ * Discounted-access card pointing eligible individuals and civic workers at
+ * the discount-request flow.
  */
 export function PricingDiscountsCard() {
   return (
@@ -88,11 +97,11 @@ export function PricingDiscountsCard() {
       </p>
       <div className="border-border rounded-[1rem] border bg-white p-5">
         <p className="type-title-small text-ink-strong mb-2 font-medium">
-          Are you an independent journalist, grassroots nonprofit, or civic tech worker?
+          Are you a student, independent creator, journalist, nonprofit, or civic technologist?
         </p>
         <p className="type-body-small text-ink-soft mb-4 leading-relaxed">
-          Atlas offers 40–50% discounts for public-interest researchers and organizations. Submit
-          your information and we'll verify your eligibility within 24 hours.
+          Verified students pay $12.80 every four months. Independent creators, journalists,
+          grassroots nonprofits, and civic tech workers can request discounted Pro access.
         </p>
         <Link to="/request-discount">
           <Button variant="secondary">Request a discount</Button>

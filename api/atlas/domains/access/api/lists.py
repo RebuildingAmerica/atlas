@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 
+from atlas.domains.access.capabilities import ResolvedCapabilities, get_limit, resolve_capabilities
 from atlas.domains.access.dependencies import require_actor
 from atlas.domains.access.models.saved_lists import SavedListCRUD
 from atlas.domains.access.models.usage_events import OrgUsageEventCRUD, OrgUsageEventRecord
@@ -41,6 +42,40 @@ router = APIRouter()
 __all__ = ["router"]
 
 
+def _actor_capabilities(actor: AuthenticatedActor) -> ResolvedCapabilities:
+    """Return the actor's resolved capabilities for saved-list gates."""
+    if actor.resolved_capabilities is not None:
+        return actor.resolved_capabilities
+    active_products = ["atlas_team"] if actor.is_local else (actor.active_products or [])
+    actor.resolved_capabilities = resolve_capabilities(active_products)
+    return actor.resolved_capabilities
+
+
+def _raise_capability_required(capability: str) -> None:
+    """Raise a plan-required error for a missing saved-list capability."""
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail={
+            "error": "plan_required",
+            "capability": capability,
+            "message": f"This request requires the {capability} capability.",
+        },
+    )
+
+
+def _raise_limit_reached(limit: str, maximum: int) -> None:
+    """Raise a structured saved-list limit error."""
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail={
+            "error": "limit_reached",
+            "limit": limit,
+            "maximum": maximum,
+            "message": f"This request exceeds the {limit} limit.",
+        },
+    )
+
+
 @router.post(
     "",
     response_model=SavedListResponse,
@@ -58,6 +93,12 @@ async def create_list(
     """Create a saved list owned by the current user."""
     if not payload.name.strip():
         raise HTTPException(status_code=400, detail="List name is required.")
+    capabilities = _actor_capabilities(actor)
+    max_shortlists = get_limit(capabilities, "max_shortlists")
+    if max_shortlists is not None:
+        list_count = await SavedListCRUD.count_for_user(db, actor.user_id)
+        if list_count >= max_shortlists:
+            _raise_limit_reached("max_shortlists", max_shortlists)
     record = await SavedListCRUD.create(
         db, user_id=actor.user_id, name=payload.name.strip(), description=payload.description
     )
@@ -124,6 +165,9 @@ async def export_list(
     db: aiosqlite.Connection = Depends(get_db),
 ) -> SavedListExportResponse | Response:
     """Export one saved list with notes and compact source-count provenance."""
+    capabilities = _actor_capabilities(actor)
+    if "workspace.export" not in capabilities.capabilities:
+        _raise_capability_required("workspace.export")
     record = await SavedListCRUD.get_by_id(db, list_id)
     if record is None or record.user_id != actor.user_id:
         raise HTTPException(status_code=404, detail="List not found.")
@@ -186,9 +230,21 @@ async def add_item(
     record = await SavedListCRUD.get_by_id(db, list_id)
     if record is None or record.user_id != actor.user_id:
         raise HTTPException(status_code=404, detail="List not found.")
+    capabilities = _actor_capabilities(actor)
+    if payload.note is not None and "workspace.notes" not in capabilities.capabilities:
+        _raise_capability_required("workspace.notes")
     entry = await EntryCRUD.get_by_id(db, payload.entry_id)
     if entry is None:
         raise HTTPException(status_code=404, detail="Entry not found.")
+    max_entries = get_limit(capabilities, "max_shortlist_entries")
+    if max_entries is not None:
+        has_existing_item = await SavedListCRUD.has_item(
+            db, list_id=list_id, entry_id=payload.entry_id
+        )
+        if not has_existing_item:
+            item_count = await SavedListCRUD.count_items(db, list_id)
+            if item_count >= max_entries:
+                _raise_limit_reached("max_shortlist_entries", max_entries)
     item = await SavedListCRUD.add_item(
         db, list_id=list_id, entry_id=payload.entry_id, note=payload.note
     )

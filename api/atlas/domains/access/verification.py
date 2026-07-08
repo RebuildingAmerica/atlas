@@ -14,6 +14,13 @@ MIN_MISSION_LENGTH = 20
 MAX_NONPROFIT_BUDGET = 2_000_000
 EIN_LENGTH = 9
 
+DiscountSegment = Literal[
+    "student",
+    "independent_journalist",
+    "grassroots_nonprofit",
+    "civic_tech_worker",
+]
+
 
 class VerificationStatus(StrEnum):
     """Status of a discount verification."""
@@ -28,6 +35,7 @@ class VerificationMethod(StrEnum):
     """Method used to verify a discount claim."""
 
     PORTFOLIO = "portfolio"
+    SCHOOL_EMAIL = "school_email"
     EIN_SUBMISSION = "ein_submission"
     MISSION_STATEMENT = "mission_statement"
 
@@ -36,7 +44,7 @@ class VerificationMethod(StrEnum):
 class VerificationRequest:
     """Request to verify a discount claim."""
 
-    segment: Literal["independent_journalist", "grassroots_nonprofit", "civic_tech_worker"]
+    segment: DiscountSegment
     user_id: str
     data: dict[str, str]  # Segment-specific data (portfolio_url, ein, etc.)
     submitted_at: datetime
@@ -47,7 +55,7 @@ class VerificationRecord:
     """Record of a verified (or pending) discount claim."""
 
     user_id: str
-    segment: Literal["independent_journalist", "grassroots_nonprofit", "civic_tech_worker"]
+    segment: DiscountSegment
     status: VerificationStatus
     method: VerificationMethod
     submitted_at: datetime
@@ -81,6 +89,30 @@ class DiscountVerifier:
         # Basic URL validation
         if not portfolio_url.startswith(("http://", "https://")):
             return False, "Portfolio URL must be a valid HTTP(S) URL"
+
+        return True, None
+
+    def verify_student(self, school_email: str, school_name: str) -> tuple[bool, str | None]:
+        """
+        Verify a student discount claim.
+
+        NOTE: Manual review required. This validates format only.
+
+        Args:
+            school_email: Email address connected to the student's school/program.
+            school_name: School, college, program, or fellowship name.
+
+        Returns:
+            (is_valid, error_message) tuple. If valid, error_message is None.
+        """
+        if not school_email or not school_email.strip():
+            return False, "School email is required"
+
+        if "@" not in school_email or "." not in school_email.rsplit("@", maxsplit=1)[-1]:
+            return False, "School email must be a valid email address"
+
+        if not school_name or not school_name.strip():
+            return False, "School or program is required"
 
         return True, None
 
@@ -159,7 +191,7 @@ class DiscountVerifier:
 
     def create_verification_request(
         self,
-        segment: Literal["independent_journalist", "grassroots_nonprofit", "civic_tech_worker"],
+        segment: DiscountSegment,
         user_id: str,
         data: dict[str, str],
     ) -> VerificationRequest:
@@ -174,7 +206,7 @@ class DiscountVerifier:
     def create_verification_record(  # noqa: PLR0913
         self,
         user_id: str,
-        segment: Literal["independent_journalist", "grassroots_nonprofit", "civic_tech_worker"],
+        segment: DiscountSegment,
         method: VerificationMethod,
         status: VerificationStatus = VerificationStatus.PENDING,
         verification_data: dict[str, str] | None = None,

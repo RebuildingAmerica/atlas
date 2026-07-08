@@ -152,7 +152,7 @@ describe("demo workspace provisioning", () => {
       organizationId: "first-customer-demo",
       organizationName: "First Customer Demo",
       organizationSlug: "first-customer-demo",
-      product: "atlas_field_intelligence",
+      product: "atlas_team",
       userEmail: "Director@Example.Org",
       userId: "customer-operator",
       userName: "Customer Operator",
@@ -166,7 +166,7 @@ describe("demo workspace provisioning", () => {
         "Milwaukee democracy follow-up",
       ],
       organizationId: "first-customer-demo",
-      product: "atlas_field_intelligence",
+      product: "atlas_team",
       seedCommand:
         "uv --directory ./api run python -m atlas.seed_briefing_room_demo --org-id first-customer-demo --user-id customer-operator",
       userId: "customer-operator",
@@ -186,7 +186,7 @@ describe("demo workspace provisioning", () => {
               "Atlanta housing follow-up",
               "Milwaukee democracy follow-up",
             ],
-            product: "atlas_field_intelligence",
+            product: "atlas_team",
             provisionedAt: "2026-07-03T12:00:00.000Z",
           },
           workspaceType: "team",
@@ -196,7 +196,7 @@ describe("demo workspace provisioning", () => {
       },
     });
     expect(mocks.grantWorkspaceProduct).toHaveBeenCalledWith({
-      product: "atlas_field_intelligence",
+      product: "atlas_team",
       workspaceId: "first-customer-demo",
     });
   });
@@ -276,7 +276,7 @@ describe("demo workspace provisioning", () => {
       organizationId: "first-customer-demo",
       organizationName: "First Customer Demo",
       organizationSlug: "first-customer-demo",
-      product: "atlas_field_intelligence",
+      product: "atlas_team",
       userEmail: "Director@Example.Org",
       userId: "customer-operator",
       userName: "Customer Operator",
@@ -303,7 +303,7 @@ describe("demo workspace provisioning", () => {
       onboarding: {
         demoDataSeed: "briefing_room",
         firstSavedViews: ["Detroit mutual aid follow-up"],
-        product: "atlas_field_intelligence",
+        product: "atlas_team",
         provisionedAt: "2026-07-03T12:00:00.000Z",
       },
       publicDirectoryDraftId: "directory_draft_123",

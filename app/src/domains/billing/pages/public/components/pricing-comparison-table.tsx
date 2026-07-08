@@ -18,11 +18,10 @@ const COMPARISON_TABLE: readonly ComparisonFeatureRow[] = [
     team: "Shared, unlimited",
   },
   { feature: "CSV / JSON export", free: "—", pro: "✓", team: "✓" },
-  { feature: "Public API", free: "100 / hour", pro: "1,000 / day key", team: "1,000 / day key" },
+  { feature: "Public API", free: "100 / hour", pro: "1,000 / day key", team: "10,000 / day key" },
   { feature: "OAuth & MCP access", free: "—", pro: "✓", team: "✓" },
   { feature: "Watchlists & monitoring digests", free: "—", pro: "—", team: "✓" },
-  { feature: "Slack integration", free: "—", pro: "—", team: "✓" },
-  { feature: "Single Sign-On (SAML / OIDC)", free: "—", pro: "—", team: "Up to 50 members" },
+  { feature: "Single Sign-On and SCIM", free: "—", pro: "—", team: "Up to 50 members" },
   {
     feature: "Member management",
     free: "—",

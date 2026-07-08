@@ -8,6 +8,7 @@ import {
 import { apiKeyClient } from "@better-auth/api-key/client";
 import { oauthProviderClient } from "@better-auth/oauth-provider/client";
 import { passkeyClient } from "@better-auth/passkey/client";
+import { scimClient } from "@better-auth/scim/client";
 import { getAuthConfig } from "../config";
 
 /**
@@ -37,6 +38,7 @@ function createAtlasAuthClient() {
           enabled: true,
         },
       }),
+      scimClient(),
       lastLoginMethodClient(),
     ],
   });

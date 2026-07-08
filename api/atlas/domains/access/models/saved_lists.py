@@ -114,6 +114,16 @@ class SavedListCRUD:
         ]
 
     @staticmethod
+    async def count_for_user(conn: aiosqlite.Connection, user_id: str) -> int:
+        """Return the number of lists owned by the user."""
+        cursor = await conn.execute(
+            "SELECT COUNT(*) FROM saved_lists WHERE user_id = ?",
+            (user_id,),
+        )
+        row = await cursor.fetchone()
+        return int(row[0]) if row else 0
+
+    @staticmethod
     async def update(
         conn: aiosqlite.Connection,
         list_id: str,
@@ -223,6 +233,16 @@ class SavedListCRUD:
         )
         row = await cursor.fetchone()
         return int(row[0]) if row else 0
+
+    @staticmethod
+    async def has_item(conn: aiosqlite.Connection, *, list_id: str, entry_id: str) -> bool:
+        """Return whether a list already contains an entry."""
+        cursor = await conn.execute(
+            "SELECT 1 FROM saved_list_items WHERE list_id = ? AND entry_id = ? LIMIT 1",
+            (list_id, entry_id),
+        )
+        row = await cursor.fetchone()
+        return row is not None
 
     @staticmethod
     async def lists_containing_entry(

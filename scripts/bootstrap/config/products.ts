@@ -1,3 +1,5 @@
+import type Stripe from "stripe";
+
 export interface AtlasPriceDefinition {
   readonly id: string;
   readonly envKey: string;
@@ -5,6 +7,7 @@ export interface AtlasPriceDefinition {
   readonly currency: "usd";
   readonly recurring?: {
     readonly interval: "month" | "year" | "week";
+    readonly intervalCount?: number;
     readonly usageType?: "metered" | "licensed";
   };
 }
@@ -15,9 +18,20 @@ export interface AtlasProductDefinition {
   readonly description: string;
   readonly envProductKey: string;
   readonly prices: readonly AtlasPriceDefinition[];
-  readonly action: "create" | "keep" | "archive";
-  readonly existingProductId?: string;
   readonly perUnit?: boolean;
+}
+
+export interface AtlasCouponDefinition {
+  readonly id: string;
+  readonly name: string;
+  readonly envKey: string;
+  readonly percentOff: number;
+  readonly segment:
+    | "student"
+    | "independent_journalist"
+    | "grassroots_nonprofit"
+    | "civic_tech_worker";
+  readonly appliesToProductIds: readonly AtlasProductDefinition["id"][];
 }
 
 export const ATLAS_PRODUCTS: AtlasProductDefinition[] = [
@@ -27,8 +41,6 @@ export const ATLAS_PRODUCTS: AtlasProductDefinition[] = [
     description:
       "The Atlas plan for people doing a short-term research project that can fit in a month.",
     envProductKey: "STRIPE_PRODUCT_ATLAS_RESEARCH_PASS",
-    action: "keep",
-    existingProductId: "prod_UMkuPoP6VUIIyT",
     prices: [
       {
         id: "research-pass-once",
@@ -50,7 +62,6 @@ export const ATLAS_PRODUCTS: AtlasProductDefinition[] = [
     description:
       "Professional workspace for individual researchers with unlimited research runs, exports, and API access.",
     envProductKey: "STRIPE_PRODUCT_ATLAS_PRO",
-    action: "create",
     prices: [
       {
         id: "pro-monthly",
@@ -66,6 +77,13 @@ export const ATLAS_PRODUCTS: AtlasProductDefinition[] = [
         currency: "usd",
         recurring: { interval: "year" },
       },
+      {
+        id: "pro-student-four-month",
+        envKey: "STRIPE_PRICE_ATLAS_PRO_STUDENT_FOUR_MONTH",
+        unitAmountCents: 1600,
+        currency: "usd",
+        recurring: { interval: "month", intervalCount: 4 },
+      },
     ],
   },
   {
@@ -74,7 +92,6 @@ export const ATLAS_PRODUCTS: AtlasProductDefinition[] = [
     description:
       "Shared workspace for newsrooms, nonprofits, and research teams.",
     envProductKey: "STRIPE_PRODUCT_ATLAS_TEAM_BASE",
-    action: "create",
     prices: [
       {
         id: "team-base-monthly",
@@ -97,7 +114,6 @@ export const ATLAS_PRODUCTS: AtlasProductDefinition[] = [
     stripeName: "Atlas Team Seat",
     description: "Per-member seat for Atlas Team workspaces.",
     envProductKey: "STRIPE_PRODUCT_ATLAS_TEAM_SEAT",
-    action: "create",
     perUnit: true,
     prices: [
       {
@@ -116,128 +132,46 @@ export const ATLAS_PRODUCTS: AtlasProductDefinition[] = [
       },
     ],
   },
+];
+
+export const ATLAS_COUPONS: AtlasCouponDefinition[] = [
   {
-    id: "team-legacy",
-    stripeName: "Atlas Team",
-    description: "Legacy team product — to be archived.",
-    envProductKey: "",
-    action: "archive",
-    existingProductId: "prod_UMku0d4n2sHTkm",
-    prices: [],
+    id: "atlas-pro-student-20",
+    name: "Atlas Student Discount",
+    envKey: "STRIPE_COUPON_STUDENT",
+    percentOff: 20,
+    segment: "student",
+    appliesToProductIds: ["pro"],
   },
   {
-    id: "independent-journalist-pro",
-    stripeName: "Atlas Pro (Independent Journalist)",
-    description: "Discounted Pro tier for independent journalists — 50% off",
-    envProductKey: "STRIPE_PRODUCT_INDEPENDENT_JOURNALIST_PRO",
-    action: "create",
-    prices: [
-      {
-        id: "independent-journalist-pro-monthly",
-        envKey: "STRIPE_PRICE_INDEPENDENT_JOURNALIST_PRO_MONTHLY",
-        unitAmountCents: 250, // $2.50 = 50% of $5
-        currency: "usd",
-        recurring: { interval: "month" },
-      },
-      {
-        id: "independent-journalist-pro-yearly",
-        envKey: "STRIPE_PRICE_INDEPENDENT_JOURNALIST_PRO_YEARLY",
-        unitAmountCents: 2400, // $24 = 50% of $48
-        currency: "usd",
-        recurring: { interval: "year" },
-      },
-    ],
+    id: "atlas-pro-independent-creator-journalist-50",
+    name: "Atlas Creator and Journalist Discount",
+    envKey: "STRIPE_COUPON_JOURNALIST",
+    percentOff: 50,
+    segment: "independent_journalist",
+    appliesToProductIds: ["pro"],
   },
   {
-    id: "independent-journalist-team",
-    stripeName: "Atlas Team (Independent Journalist)",
-    description: "Discounted Team tier for independent journalists — 50% off",
-    envProductKey: "STRIPE_PRODUCT_INDEPENDENT_JOURNALIST_TEAM",
-    action: "create",
-    prices: [
-      {
-        id: "independent-journalist-team-monthly",
-        envKey: "STRIPE_PRICE_INDEPENDENT_JOURNALIST_TEAM_MONTHLY",
-        unitAmountCents: 1250, // $12.50 base = 50% of $25
-        currency: "usd",
-        recurring: { interval: "month" },
-      },
-      {
-        id: "independent-journalist-team-yearly",
-        envKey: "STRIPE_PRICE_INDEPENDENT_JOURNALIST_TEAM_YEARLY",
-        unitAmountCents: 12500, // $125 base = 50% of $250
-        currency: "usd",
-        recurring: { interval: "year" },
-      },
-    ],
+    id: "atlas-pro-grassroots-nonprofit-40",
+    name: "Atlas Grassroots Nonprofit Discount",
+    envKey: "STRIPE_COUPON_NONPROFIT",
+    percentOff: 40,
+    segment: "grassroots_nonprofit",
+    appliesToProductIds: ["pro"],
   },
   {
-    id: "grassroots-nonprofit-team",
-    stripeName: "Atlas Team (Grassroots Nonprofit)",
-    description: "Discounted Team tier for nonprofits <$2M — 40% off",
-    envProductKey: "STRIPE_PRODUCT_GRASSROOTS_NONPROFIT_TEAM",
-    action: "create",
-    prices: [
-      {
-        id: "grassroots-nonprofit-team-monthly",
-        envKey: "STRIPE_PRICE_GRASSROOTS_NONPROFIT_TEAM_MONTHLY",
-        unitAmountCents: 1500, // $15 base = 40% of $25
-        currency: "usd",
-        recurring: { interval: "month" },
-      },
-      {
-        id: "grassroots-nonprofit-team-yearly",
-        envKey: "STRIPE_PRICE_GRASSROOTS_NONPROFIT_TEAM_YEARLY",
-        unitAmountCents: 15000, // $150 base = 40% of $250
-        currency: "usd",
-        recurring: { interval: "year" },
-      },
-    ],
-  },
-  {
-    id: "civic-tech-pro",
-    stripeName: "Atlas Pro (Civic Tech Worker)",
-    description: "Discounted Pro tier for civic tech workers — 50% off",
-    envProductKey: "STRIPE_PRODUCT_CIVIC_TECH_PRO",
-    action: "create",
-    prices: [
-      {
-        id: "civic-tech-pro-monthly",
-        envKey: "STRIPE_PRICE_CIVIC_TECH_PRO_MONTHLY",
-        unitAmountCents: 250, // $2.50 = 50% of $5
-        currency: "usd",
-        recurring: { interval: "month" },
-      },
-      {
-        id: "civic-tech-pro-yearly",
-        envKey: "STRIPE_PRICE_CIVIC_TECH_PRO_YEARLY",
-        unitAmountCents: 2400, // $24 = 50% of $48
-        currency: "usd",
-        recurring: { interval: "year" },
-      },
-    ],
-  },
-  {
-    id: "civic-tech-team",
-    stripeName: "Atlas Team (Civic Tech Worker)",
-    description: "Discounted Team tier for civic tech workers — 50% off",
-    envProductKey: "STRIPE_PRODUCT_CIVIC_TECH_TEAM",
-    action: "create",
-    prices: [
-      {
-        id: "civic-tech-team-monthly",
-        envKey: "STRIPE_PRICE_CIVIC_TECH_TEAM_MONTHLY",
-        unitAmountCents: 1250, // $12.50 base = 50% of $25
-        currency: "usd",
-        recurring: { interval: "month" },
-      },
-      {
-        id: "civic-tech-team-yearly",
-        envKey: "STRIPE_PRICE_CIVIC_TECH_TEAM_YEARLY",
-        unitAmountCents: 12500, // $125 base = 50% of $250
-        currency: "usd",
-        recurring: { interval: "year" },
-      },
-    ],
+    id: "atlas-pro-civic-tech-50",
+    name: "Atlas Civic Tech Worker Discount",
+    envKey: "STRIPE_COUPON_CIVIC_TECH",
+    percentOff: 50,
+    segment: "civic_tech_worker",
+    appliesToProductIds: ["pro"],
   },
 ];
+
+export const STRIPE_BILLING_WEBHOOK_EVENTS = [
+  "checkout.session.completed",
+  "customer.subscription.created",
+  "customer.subscription.updated",
+  "customer.subscription.deleted",
+] satisfies Stripe.WebhookEndpointCreateParams.EnabledEvent[];

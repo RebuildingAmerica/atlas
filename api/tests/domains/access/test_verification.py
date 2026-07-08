@@ -39,6 +39,34 @@ class TestIndependentJournalistVerification:
         assert "valid HTTP(S) URL" in error
 
 
+class TestStudentVerification:
+    """Test student verification (format validation only)."""
+
+    def test_valid_school_email_and_name(self, verifier: DiscountVerifier) -> None:
+        """Student verification accepts school contact plus institution name."""
+        is_valid, error = verifier.verify_student("maya@university.edu", "Howard University")
+        assert is_valid
+        assert error is None
+
+    def test_missing_school_email(self, verifier: DiscountVerifier) -> None:
+        """Student verification requires a school email."""
+        is_valid, error = verifier.verify_student("", "Howard University")
+        assert not is_valid
+        assert error == "School email is required"
+
+    def test_invalid_school_email(self, verifier: DiscountVerifier) -> None:
+        """Student verification rejects non-email input."""
+        is_valid, error = verifier.verify_student("not-an-email", "Howard University")
+        assert not is_valid
+        assert error == "School email must be a valid email address"
+
+    def test_missing_school_name(self, verifier: DiscountVerifier) -> None:
+        """Student verification requires a school or program name."""
+        is_valid, error = verifier.verify_student("maya@university.edu", "")
+        assert not is_valid
+        assert error == "School or program is required"
+
+
 class TestGrassrootsNonprofitVerification:
     """Test grassroots nonprofit verification (format validation + manual review)."""
 
@@ -133,13 +161,13 @@ class TestVerificationRecord:
     def test_create_verification_request(self, verifier: DiscountVerifier) -> None:
         """Test creating a verification request."""
         req = verifier.create_verification_request(
-            "independent_journalist",
+            "student",
             "user123",
-            {"portfolio_url": "https://example.com"},
+            {"schoolEmail": "maya@university.edu"},
         )
         assert req.user_id == "user123"
-        assert req.segment == "independent_journalist"
-        assert req.data["portfolio_url"] == "https://example.com"
+        assert req.segment == "student"
+        assert req.data["schoolEmail"] == "maya@university.edu"
 
     def test_create_verification_record(self, verifier: DiscountVerifier) -> None:
         """Test creating a verification record (starts as PENDING)."""

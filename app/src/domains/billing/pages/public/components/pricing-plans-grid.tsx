@@ -11,7 +11,8 @@ interface PricingPlansGridProps {
   billing: BillingPeriod;
   freeCta: PlanCardLinkCta;
   pendingCheckoutKey: string | null;
-  subscriptionInterval: PricingCheckoutInterval;
+  proCheckoutInterval: PricingCheckoutInterval;
+  teamCheckoutInterval: PricingCheckoutInterval;
   onBillingChange: (period: BillingPeriod) => void;
   onCheckout: (params: PricingCheckoutParams) => Promise<void>;
 }
@@ -26,7 +27,8 @@ export function PricingPlansGrid({
   billing,
   freeCta,
   pendingCheckoutKey,
-  subscriptionInterval,
+  proCheckoutInterval,
+  teamCheckoutInterval,
   onBillingChange,
   onCheckout,
 }: PricingPlansGridProps) {
@@ -75,6 +77,20 @@ export function PricingPlansGrid({
           >
             Annual <span className="type-body-small text-accent-soft">— save 20%</span>
           </button>
+          <button
+            type="button"
+            aria-pressed={billing === "student"}
+            onClick={() => {
+              onBillingChange("student");
+            }}
+            className={`type-label-small rounded-full px-4 py-1.5 font-medium transition-colors ${
+              billing === "student"
+                ? "bg-accent text-white"
+                : "text-ink-muted hover:text-ink-strong"
+            }`}
+          >
+            Student
+          </button>
         </div>
       </div>
 
@@ -121,13 +137,20 @@ export function PricingPlansGrid({
             </>
           }
           annualNote="$4/month, billed annually"
+          studentPrice={
+            <>
+              $12.80
+              <span className="type-body-small text-ink-soft">/4 months</span>
+            </>
+          }
+          studentNote="80% of the annual rate, paid every 4 months"
           billing={billing}
           ctaText="Get Atlas Pro"
           ctaProduct="atlas_pro"
-          ctaInterval={subscriptionInterval}
+          ctaInterval={proCheckoutInterval}
           onCheckout={onCheckout}
-          isPending={pendingCheckoutKey === checkoutKey("atlas_pro", subscriptionInterval)}
-          discountNote="Qualified journalists, nonprofits, and civic tech workers get 40–50% off"
+          isPending={pendingCheckoutKey === checkoutKey("atlas_pro", proCheckoutInterval)}
+          discountNote="Verified students pay $12.80 every 4 months; independent creators and journalists get 50% off individual Pro"
         />
 
         <PlanCard
@@ -138,8 +161,8 @@ export function PricingPlansGrid({
             "Everything in Atlas Pro",
             "Shared workspace and notes",
             "Watchlists and monitoring digests",
-            "Slack integration",
-            "SSO (SAML/OIDC) · Up to 50 members",
+            "SSO (SAML/OIDC) and SCIM",
+            "Up to 50 members",
           ]}
           monthlyPrice={
             <>
@@ -163,10 +186,10 @@ export function PricingPlansGrid({
           billing={billing}
           ctaText="Get Atlas Team"
           ctaProduct="atlas_team"
-          ctaInterval={subscriptionInterval}
+          ctaInterval={teamCheckoutInterval}
           onCheckout={onCheckout}
-          isPending={pendingCheckoutKey === checkoutKey("atlas_team", subscriptionInterval)}
-          discountNote="Qualified nonprofits and newsrooms get 40% off"
+          isPending={pendingCheckoutKey === checkoutKey("atlas_team", teamCheckoutInterval)}
+          discountNote="Team is priced the same for every organization"
           isTeam
         />
       </div>

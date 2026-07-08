@@ -11,6 +11,8 @@ from fastapi import HTTPException
 from atlas.domains.access.capabilities import (
     DEFAULT_CAPABILITIES,
     DEFAULT_LIMITS,
+    PRODUCT_CAPABILITIES,
+    PRODUCT_LIMITS,
     get_limit,
     has_capability,
     require_capability,
@@ -19,62 +21,13 @@ from atlas.domains.access.capabilities import (
 from atlas.domains.access.principals import AuthenticatedActor
 from atlas.platform.config import Settings
 
-ENTERPRISE_PACKAGE_EXPECTATIONS = [
-    {
-        "product": "atlas_briefing_room",
-        "included": {
-            "workspace.export",
-            "workspace.shared",
-            "monitoring.watchlists",
-            "api.keys",
-            "api.mcp",
-        },
-        "excluded": {"auth.sso", "coverage.underwriting"},
-        "max_members": 10,
-    },
-    {
-        "product": "atlas_field_intelligence",
-        "included": {
-            "workspace.export",
-            "workspace.shared",
-            "monitoring.watchlists",
-            "coverage.targets",
-            "integrations.slack",
-        },
-        "excluded": {"auth.sso", "coverage.underwriting"},
-        "max_members": 25,
-    },
-    {
-        "product": "atlas_civic_operating_layer",
-        "included": {
-            "workspace.export",
-            "workspace.shared",
-            "monitoring.watchlists",
-            "coverage.targets",
-            "public.directories",
-            "api.keys",
-            "api.mcp",
-            "auth.sso",
-        },
-        "excluded": {"coverage.underwriting"},
-        "max_members": 75,
-    },
-    {
-        "product": "atlas_coverage_underwriting",
-        "included": {
-            "workspace.export",
-            "workspace.shared",
-            "coverage.targets",
-            "public.directories",
-            "coverage.underwriting",
-        },
-        "excluded": {"auth.sso"},
-        "max_members": 10,
-    },
-]
-
 
 class TestResolveCapabilities:
+    def test_only_real_atlas_plans_are_configured(self) -> None:
+        expected_products = ["atlas_pro", "atlas_research_pass", "atlas_team"]
+        assert sorted(PRODUCT_CAPABILITIES) == expected_products
+        assert sorted(PRODUCT_LIMITS) == expected_products
+
     def test_defaults_when_no_products(self) -> None:
         resolved = resolve_capabilities([])
         assert resolved.capabilities == DEFAULT_CAPABILITIES
@@ -89,18 +42,36 @@ class TestResolveCapabilities:
         assert "api.mcp" in resolved.capabilities
         assert "workspace.shared" not in resolved.capabilities
         assert "monitoring.watchlists" not in resolved.capabilities
+        assert "auth.scim" not in resolved.capabilities
+        assert "integrations.slack" not in resolved.capabilities
 
     def test_atlas_team_capabilities(self) -> None:
         resolved = resolve_capabilities(["atlas_team"])
         assert "workspace.shared" in resolved.capabilities
         assert "monitoring.watchlists" in resolved.capabilities
-        assert "integrations.slack" in resolved.capabilities
         assert "auth.sso" in resolved.capabilities
+        assert "auth.scim" in resolved.capabilities
+        assert "integrations.slack" not in resolved.capabilities
 
-    def test_research_pass_same_as_pro(self) -> None:
-        pro = resolve_capabilities(["atlas_pro"])
+    def test_research_pass_has_team_level_individual_access(self) -> None:
+        team = resolve_capabilities(["atlas_team"])
         rp = resolve_capabilities(["atlas_research_pass"])
-        assert pro.capabilities == rp.capabilities
+        assert "research.unlimited" in rp.capabilities
+        assert "workspace.notes" in rp.capabilities
+        assert "workspace.export" in rp.capabilities
+        assert "api.keys" in rp.capabilities
+        assert "api.mcp" in rp.capabilities
+        assert "monitoring.watchlists" in rp.capabilities
+        assert "workspace.shared" not in rp.capabilities
+        assert "auth.sso" not in rp.capabilities
+        assert "auth.scim" not in rp.capabilities
+        assert "integrations.slack" not in rp.capabilities
+        assert rp.limits["research_runs_per_month"] == team.limits["research_runs_per_month"]
+        assert rp.limits["max_shortlists"] == team.limits["max_shortlists"]
+        assert rp.limits["max_shortlist_entries"] == team.limits["max_shortlist_entries"]
+        assert rp.limits["max_api_keys"] == team.limits["max_api_keys"]
+        assert rp.limits["api_requests_per_day"] == team.limits["api_requests_per_day"]
+        assert rp.limits["max_members"] == 1
 
     def test_union_across_products(self) -> None:
         resolved = resolve_capabilities(["atlas_pro", "atlas_team"])
@@ -118,17 +89,11 @@ class TestResolveCapabilities:
         assert resolved.limits["max_api_keys"] == 1
         assert resolved.limits["api_requests_per_day"] == 1000  # noqa: PLR2004
 
-    @pytest.mark.parametrize("expectation", ENTERPRISE_PACKAGE_EXPECTATIONS)
-    def test_enterprise_package_capabilities(self, expectation: dict[str, object]) -> None:
-        resolved = resolve_capabilities([cast("str", expectation["product"])])
-
-        for capability in cast("set[str]", expectation["included"]):
-            assert capability in resolved.capabilities
-
-        for capability in cast("set[str]", expectation["excluded"]):
-            assert capability not in resolved.capabilities
-
-        assert resolved.limits["max_members"] == expectation["max_members"]
+    def test_team_limits_guarantee_scim_ready_workspace_capacity(self) -> None:
+        resolved = resolve_capabilities(["atlas_team"])
+        assert resolved.limits["max_members"] == 50  # noqa: PLR2004
+        assert resolved.limits["max_api_keys"] is None
+        assert resolved.limits["api_requests_per_day"] == 10000  # noqa: PLR2004
 
 
 class TestHasCapability:
@@ -241,8 +206,8 @@ class TestRequireCapabilityDependency:
         assert detail["plan_required"] == "pro"
 
     @pytest.mark.asyncio
-    async def test_enterprise_only_capability_names_required_package(self) -> None:
-        actor = _build_actor(auth_type="oauth_jwt", products=["atlas_field_intelligence"])
+    async def test_ungranted_team_capability_names_team_plan(self) -> None:
+        actor = _build_actor(auth_type="oauth_jwt", products=["atlas_pro"])
         dependency = require_capability("coverage.underwriting")
 
         with pytest.raises(HTTPException) as excinfo:
@@ -250,8 +215,8 @@ class TestRequireCapabilityDependency:
 
         detail = cast("dict[str, object]", excinfo.value.detail)
         assert detail["error"] == "plan_required"
-        assert detail["plan_required"] == "coverage_underwriting"
-        assert "Atlas Coverage Underwriting" in cast("str", detail["message"])
+        assert detail["plan_required"] == "team"
+        assert "Atlas Team" in cast("str", detail["message"])
 
 
 class TestEnforceLimitDependency:

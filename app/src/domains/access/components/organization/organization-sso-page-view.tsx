@@ -13,6 +13,7 @@ import { PendingWorkspaceInvitationsSection } from "./pending-workspace-invitati
 import { SsoDiagnosticsDisclosure } from "./sso-diagnostics-disclosure";
 import { SsoShareLinkButton } from "./sso-share-link";
 import { WorkspaceCreationSection } from "./workspace-creation-section";
+import { WorkspaceSCIMSection } from "./workspace-scim-section";
 import { WorkspaceSSOSection } from "./workspace-sso-section";
 import { WorkspaceSwitcherSection } from "./workspace-switcher-section";
 
@@ -81,6 +82,9 @@ function SsoSetupOverview() {
 export function OrganizationSSOPageView({ controller }: OrganizationSSOPageViewProps) {
   const canConfigureSSO = controller.session
     ? hasSerializedCapability(controller.session.workspace.resolvedCapabilities, "auth.sso")
+    : false;
+  const canConfigureSCIM = controller.session
+    ? hasSerializedCapability(controller.session.workspace.resolvedCapabilities, "auth.scim")
     : false;
   if (!canConfigureSSO) {
     return (
@@ -167,6 +171,10 @@ export function OrganizationSSOPageView({ controller }: OrganizationSSOPageViewP
         errorMessage={controller.errorMessage}
         flashMessage={controller.flashMessage}
       />
+
+      {controller.organization && controller.canUseTeamFeatures && canConfigureSCIM ? (
+        <WorkspaceSCIMSection canManageOrganization={controller.canManageOrganization} />
+      ) : null}
 
       {controller.canSwitchOrganizations ? (
         <WorkspaceSwitcherSection

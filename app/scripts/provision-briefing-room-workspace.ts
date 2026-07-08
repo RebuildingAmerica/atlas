@@ -102,10 +102,6 @@ function parseProduct(value: string): AtlasProduct {
     case "atlas_pro":
     case "atlas_team":
     case "atlas_research_pass":
-    case "atlas_briefing_room":
-    case "atlas_field_intelligence":
-    case "atlas_civic_operating_layer":
-    case "atlas_coverage_underwriting":
       return value;
     default:
       throw new Error(`Unsupported Atlas product: ${value}.`);

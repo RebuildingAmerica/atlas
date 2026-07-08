@@ -9,6 +9,15 @@ You never pay to _see_ civic data. You pay to _work with_ it professionally.
 
 Browsing, searching, and reading the Atlas directory is free for everyone, forever. Paid plans unlock professional research tools, API access, and team collaboration.
 
+Atlas follows a simple funding rule: if Atlas supports paid work for you or your
+organization, you should pay for that use. That revenue keeps the public
+directory open and keeps short-term projects, small civic groups, independent
+journalists, and public-interest researchers from being locked out.
+
+That means the public map stays free, individuals get low-friction Pro and
+Research Pass options, and funded teams pay the Team rate for shared
+administration, SSO, and SCIM.
+
 ## Plan comparison
 
 |                                  | **Free**                                | **Pro**               | **Team**                           |
@@ -23,8 +32,7 @@ Browsing, searching, and reading the Atlas directory is free for everyone, forev
 | **API keys**                     | —                                       | 1 key (1,000 req/day) | Unlimited (10,000 req/day per key) |
 | **MCP / OAuth**                  | —                                       | Yes                   | Yes                                |
 | **Watchlists & monitoring**      | —                                       | —                     | Yes                                |
-| **Slack integration**            | —                                       | —                     | Yes                                |
-| **SSO (SAML / OIDC)**            | —                                       | —                     | Yes                                |
+| **SSO (SAML / OIDC) + SCIM**     | —                                       | —                     | Yes                                |
 | **Workspace**                    | Individual                              | Individual            | Shared team workspace              |
 | **Members**                      | 1                                       | 1                     | Up to 50                           |
 | **Public API (unauthenticated)** | 30 reads/min, 10 writes/min, 120 req/hr | Same public limit     | Same public limit                  |
@@ -62,9 +70,8 @@ Everything in Pro, plus:
 
 - **Shared workspace** — collaborative shortlists and notes across your team
 - **Unlimited API keys** with 10,000 requests per day per key
-- **Watchlists and monitoring digests** — get notified when Atlas discovers new entries matching your criteria
-- **Slack integration** — pipe digests and alerts to your team channels
-- **SSO (SAML / OIDC)** — enterprise single sign-on
+- **Watchlists and monitoring digests** — track new entries matching your criteria
+- **SSO (SAML / OIDC) and SCIM** — managed sign-in and user provisioning
 - **Up to 50 members**
 - **Priority support**
 
@@ -72,25 +79,33 @@ The base price covers the workspace. Each member beyond the first is one seat. A
 
 ### Atlas Research Pass
 
-For short-term projects that need Pro capabilities without a subscription.
+For short-term projects that need Team-level individual access without a subscription.
 
 - **30-day pass**: $9 one-time
 - **7-day pass**: $4 one-time
 
-Grants Pro-level capabilities for the pass duration. When it expires, your workspace reverts to Free. Shortlists, notes, and saved research remain accessible read-only until you subscribe or buy another pass.
+Grants Team-level quotas for one person for the pass duration: unlimited research, unlimited shortlists and notes, export, MCP/OAuth, watchlists, unlimited API keys, and 10,000 requests per day per key. It does not include shared seats, SSO, or SCIM. When it expires, your workspace reverts to Free. Shortlists, notes, and saved research remain accessible read-only until you subscribe or buy another pass.
 
 <Tip>
-  If you know you'll need access for more than a month, Atlas Pro at $5/month is
-  more cost-effective than buying passes.
+  If you know you'll need individual access for more than a month and do not
+  need Team-level quotas, Atlas Pro at $5/month is more cost-effective than
+  buying passes.
 </Tip>
 
 ## Discounts
 
-Atlas offers 40–50% discounts for people doing civic work:
+Atlas offers verified discounts for individual Pro access:
 
-- **Journalists** — verified working journalists and media professionals
-- **Grassroots nonprofits** — organizations with limited budgets
-- **Civic tech workers** — people building tools for public benefit
+- **Students** — $12.80 every four months after verification, equivalent to 80%
+  of annual Pro split into three payments per year
+- **Independent creators and journalists** — 50% off Pro monthly or annual
+  billing
+- **Grassroots nonprofits** — 40% off Pro monthly or annual billing
+- **Civic tech workers** — 50% off Pro monthly or annual billing
+
+Team pricing is the same for every organization. If a workspace needs shared
+seats, SSO, or SCIM, it should use Atlas Team rather than an individual
+discount.
 
 To apply, visit the [discount request page](https://atlas.rebuildingus.org/request-discount) and provide verification details. Applications are reviewed within a few business days.
 

@@ -14,7 +14,10 @@ export function PricingPlansGridHarness() {
       billing={billing}
       freeCta={{ label: "Create account", to: "/sign-up" }}
       pendingCheckoutKey={null}
-      subscriptionInterval={billing === "annual" ? "yearly" : "monthly"}
+      proCheckoutInterval={
+        billing === "student" ? "four_month" : billing === "annual" ? "yearly" : "monthly"
+      }
+      teamCheckoutInterval={billing === "annual" ? "yearly" : "monthly"}
       onBillingChange={setBilling}
       onCheckout={completeCheckout}
     />

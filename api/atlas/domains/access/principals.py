@@ -19,6 +19,7 @@ class ApiKeyPrincipal:
     user_id: str
     user_email: str
     org_id: str | None = None
+    active_products: list[str] | None = None
 
 
 @dataclass(slots=True)

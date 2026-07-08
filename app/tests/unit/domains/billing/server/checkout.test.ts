@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type Stripe from "stripe";
 
 const mocks = vi.hoisted(() => ({
   getStripeClient: vi.fn(),
@@ -12,16 +13,6 @@ vi.mock("@/domains/billing/server/stripe-client", () => ({
 import { createCheckoutSession } from "@/domains/billing/server/checkout";
 
 describe("createCheckoutSession", () => {
-  interface SessionParams {
-    mode: string;
-    line_items: { price: string; quantity: number }[];
-    customer?: string;
-    customer_email?: string;
-    discounts?: { coupon: string }[];
-    subscription_data?: { metadata: Record<string, string> };
-    metadata: Record<string, string>;
-  }
-
   const create = vi.fn();
 
   beforeEach(() => {
@@ -34,8 +25,8 @@ describe("createCheckoutSession", () => {
     vi.clearAllMocks();
   });
 
-  function sessionParams(): SessionParams {
-    return create.mock.calls[0]?.[0] as SessionParams;
+  function sessionParams(): Stripe.Checkout.SessionCreateParams {
+    return create.mock.calls[0]?.[0] as Stripe.Checkout.SessionCreateParams;
   }
 
   it("adds a seat line item for a Team subscription with seats and existing customer", async () => {
@@ -75,6 +66,7 @@ describe("createCheckoutSession", () => {
     const result = await createCheckoutSession({
       workspaceId: "org_solo",
       product: "atlas_research_pass",
+      interval: "weekly",
       priceId: "price_pass_once",
       successUrl: "https://atlas.test/checkout-complete?product=atlas_research_pass",
       cancelUrl: "https://atlas.test/pricing",
@@ -89,6 +81,11 @@ describe("createCheckoutSession", () => {
     expect(params.customer_email).toBe("solo@atlas.test");
     expect(params.discounts).toBeUndefined();
     expect(params.subscription_data).toBeUndefined();
+    expect(params.metadata).toEqual({
+      interval: "weekly",
+      product: "atlas_research_pass",
+      workspace_id: "org_solo",
+    });
   });
 
   it("omits the seat line item when the seat quantity is zero", async () => {

@@ -40,52 +40,21 @@ _TEAM_CAPABILITIES: frozenset[str] = _PRO_CAPABILITIES | frozenset(
     {
         "workspace.shared",
         "monitoring.watchlists",
-        "integrations.slack",
         "auth.sso",
+        "auth.scim",
     }
 )
 
-_BRIEFING_ROOM_CAPABILITIES: frozenset[str] = _PRO_CAPABILITIES | frozenset(
+_RESEARCH_PASS_CAPABILITIES: frozenset[str] = _PRO_CAPABILITIES | frozenset(
     {
-        "workspace.shared",
         "monitoring.watchlists",
-    }
-)
-
-_FIELD_INTELLIGENCE_CAPABILITIES: frozenset[str] = _BRIEFING_ROOM_CAPABILITIES | frozenset(
-    {
-        "coverage.targets",
-        "integrations.slack",
-    }
-)
-
-_CIVIC_OPERATING_LAYER_CAPABILITIES: frozenset[str] = _FIELD_INTELLIGENCE_CAPABILITIES | frozenset(
-    {
-        "public.directories",
-        "auth.sso",
-    }
-)
-
-_COVERAGE_UNDERWRITING_CAPABILITIES: frozenset[str] = frozenset(
-    {
-        "research.run",
-        "research.unlimited",
-        "workspace.export",
-        "workspace.shared",
-        "coverage.targets",
-        "public.directories",
-        "coverage.underwriting",
     }
 )
 
 PRODUCT_CAPABILITIES: dict[str, frozenset[str]] = {
     "atlas_pro": _PRO_CAPABILITIES,
-    "atlas_research_pass": _PRO_CAPABILITIES,
+    "atlas_research_pass": _RESEARCH_PASS_CAPABILITIES,
     "atlas_team": _TEAM_CAPABILITIES,
-    "atlas_briefing_room": _BRIEFING_ROOM_CAPABILITIES,
-    "atlas_field_intelligence": _FIELD_INTELLIGENCE_CAPABILITIES,
-    "atlas_civic_operating_layer": _CIVIC_OPERATING_LAYER_CAPABILITIES,
-    "atlas_coverage_underwriting": _COVERAGE_UNDERWRITING_CAPABILITIES,
 }
 
 DEFAULT_CAPABILITIES: frozenset[str] = frozenset({"research.run"})
@@ -114,54 +83,20 @@ _TEAM_LIMITS: dict[str, int | None] = {
     "max_members": 50,
 }
 
-_BRIEFING_ROOM_LIMITS: dict[str, int | None] = {
-    "research_runs_per_month": None,
-    "max_shortlists": None,
-    "max_shortlist_entries": None,
-    "max_api_keys": 1,
-    "api_requests_per_day": 5000,
-    "public_api_requests_per_hour": None,
-    "max_members": 10,
-}
-
-_FIELD_INTELLIGENCE_LIMITS: dict[str, int | None] = {
+_RESEARCH_PASS_LIMITS: dict[str, int | None] = {
     "research_runs_per_month": None,
     "max_shortlists": None,
     "max_shortlist_entries": None,
     "max_api_keys": None,
     "api_requests_per_day": 10000,
     "public_api_requests_per_hour": None,
-    "max_members": 25,
-}
-
-_CIVIC_OPERATING_LAYER_LIMITS: dict[str, int | None] = {
-    "research_runs_per_month": None,
-    "max_shortlists": None,
-    "max_shortlist_entries": None,
-    "max_api_keys": None,
-    "api_requests_per_day": 50000,
-    "public_api_requests_per_hour": None,
-    "max_members": 75,
-}
-
-_COVERAGE_UNDERWRITING_LIMITS: dict[str, int | None] = {
-    "research_runs_per_month": None,
-    "max_shortlists": None,
-    "max_shortlist_entries": None,
-    "max_api_keys": 1,
-    "api_requests_per_day": 5000,
-    "public_api_requests_per_hour": None,
-    "max_members": 10,
+    "max_members": 1,
 }
 
 PRODUCT_LIMITS: dict[str, dict[str, int | None]] = {
     "atlas_pro": _PRO_LIMITS,
-    "atlas_research_pass": _PRO_LIMITS,
+    "atlas_research_pass": _RESEARCH_PASS_LIMITS,
     "atlas_team": _TEAM_LIMITS,
-    "atlas_briefing_room": _BRIEFING_ROOM_LIMITS,
-    "atlas_field_intelligence": _FIELD_INTELLIGENCE_LIMITS,
-    "atlas_civic_operating_layer": _CIVIC_OPERATING_LAYER_LIMITS,
-    "atlas_coverage_underwriting": _COVERAGE_UNDERWRITING_LIMITS,
 }
 
 DEFAULT_LIMITS: dict[str, int | None] = {
@@ -258,19 +193,16 @@ _REQUIRED_PLAN_FOR_CAPABILITY: dict[str, str] = {
     "workspace.export": "pro",
     "workspace.shared": "team",
     "monitoring.watchlists": "team",
-    "integrations.slack": "team",
     "auth.sso": "team",
-    "coverage.targets": "field_intelligence",
-    "public.directories": "civic_operating_layer",
-    "coverage.underwriting": "coverage_underwriting",
+    "auth.scim": "team",
+    "coverage.targets": "team",
+    "public.directories": "team",
+    "coverage.underwriting": "team",
 }
 
 _REQUIRED_PLAN_LABELS: dict[str, str] = {
     "pro": "Pro",
     "team": "Team",
-    "field_intelligence": "Field Intelligence",
-    "civic_operating_layer": "Civic Operating Layer",
-    "coverage_underwriting": "Coverage Underwriting",
 }
 
 

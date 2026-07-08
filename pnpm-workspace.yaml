@@ -10,6 +10,7 @@ catalog:
   "@better-auth/api-key": "^1.6.23"
   "@better-auth/oauth-provider": "^1.6.23"
   "@better-auth/passkey": "^1.6.23"
+  "@better-auth/scim": "^1.6.23"
   "@better-auth/sso": "^1.6.23"
   "@clack/prompts": "1.7.0"
   "@eslint/js": "^10.0.1"

@@ -124,6 +124,11 @@ def _integration_surface_sql() -> str:
     """
 
 
+def _escape_sql_like(value: str) -> str:
+    """Escape LIKE wildcards in a value that will be embedded in a pattern."""
+    return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
 def _row_to_integration_resource_usage(row: Any) -> OrgIntegrationResourceUsage:
     """Convert a grouped integration resource row into a usage rollup."""
     surface: OrgIntegrationSurface = "mcp" if str(row[1]) == "mcp" else "api"
@@ -214,6 +219,30 @@ class OrgUsageEventCRUD:
             WHERE org_id = ?
             """,
             (org_id,),
+        )
+        row = await cursor.fetchone()
+        return int(row[0]) if row is not None else 0
+
+    @staticmethod
+    async def count_api_key_calls_since(
+        conn: aiosqlite.Connection,
+        *,
+        org_id: str,
+        api_key_id: str,
+        since: str,
+    ) -> int:
+        """Return API-call usage for one API key from a timestamp onward."""
+        normalized_api_key_id = _escape_sql_like(api_key_id.lower())
+        cursor = await conn.execute(
+            """
+            SELECT COUNT(*)
+            FROM org_usage_events
+            WHERE org_id = ?
+              AND event_type = 'api_call'
+              AND created_at >= ?
+              AND LOWER(REPLACE(metadata_json, ' ', '')) LIKE ? ESCAPE '\\'
+            """,
+            (org_id, since, f'%"api_key_id":"{normalized_api_key_id}"%'),
         )
         row = await cursor.fetchone()
         return int(row[0]) if row is not None else 0

@@ -25,8 +25,8 @@ interface WorkspacePackageSummarySectionProps {
 const PACKAGE_ACCESS_ITEMS: PackageAccessItem[] = [
   { capability: "workspace.export", label: "Exports" },
   { capability: "monitoring.watchlists", label: "Monitoring" },
-  { capability: "coverage.targets", label: "Coverage targets" },
   { capability: "auth.sso", label: "SSO" },
+  { capability: "auth.scim", label: "SCIM" },
 ];
 
 /**

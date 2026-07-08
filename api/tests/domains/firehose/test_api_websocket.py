@@ -301,8 +301,14 @@ async def test_firehose_requires_firehose_read_scope_for_api_keys(
             user_id="user_123",
             user_email="operator@example.com",
             org_id="org_123",
+            active_products=["atlas_team"],
         )
 
+    monkeypatch.setattr(
+        "atlas.platform.http.anonymous_rate_limit.verify_api_key",
+        fake_verify_api_key,
+        raising=False,
+    )
     monkeypatch.setattr("atlas.domains.access.dependencies.verify_api_key", fake_verify_api_key)
 
     response = await test_client.get(

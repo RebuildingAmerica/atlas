@@ -29,12 +29,12 @@ describe("OrganizationWorkspacePageView", () => {
     expect(screen.getByText(/1 of 50 seats used/i)).toBeInTheDocument();
   });
 
-  it("shows enterprise package access and limits to workspace admins", () => {
+  it("shows team package access and limits to workspace admins", () => {
     const controller = buildController({
       session: {
         user: { id: "user_1" },
         workspace: {
-          activeProducts: ["atlas_field_intelligence"],
+          activeProducts: ["atlas_team"],
           resolvedCapabilities: {
             capabilities: [
               "research.run",
@@ -42,8 +42,8 @@ describe("OrganizationWorkspacePageView", () => {
               "workspace.export",
               "workspace.shared",
               "monitoring.watchlists",
-              "coverage.targets",
-              "integrations.slack",
+              "auth.sso",
+              "auth.scim",
             ],
             limits: {
               research_runs_per_month: null,
@@ -52,7 +52,7 @@ describe("OrganizationWorkspacePageView", () => {
               max_api_keys: null,
               api_requests_per_day: 10000,
               public_api_requests_per_hour: null,
-              max_members: 25,
+              max_members: 50,
             },
           },
         },
@@ -62,14 +62,14 @@ describe("OrganizationWorkspacePageView", () => {
     render(<OrganizationWorkspacePageView controller={controller} />);
 
     expect(screen.getByRole("heading", { level: 2, name: "Package access" })).toBeInTheDocument();
-    expect(screen.getByText("Atlas Field Intelligence")).toBeInTheDocument();
-    expect(screen.getByText("25 members")).toBeInTheDocument();
+    expect(screen.getByText("Atlas Team")).toBeInTheDocument();
+    expect(screen.getByText("50 members")).toBeInTheDocument();
     expect(screen.getByText("10,000 API requests/day")).toBeInTheDocument();
     expect(screen.getByText("Exports")).toBeInTheDocument();
     expect(screen.getByText("Monitoring")).toBeInTheDocument();
-    expect(screen.getByText("Coverage targets")).toBeInTheDocument();
     expect(screen.getByText("SSO")).toBeInTheDocument();
-    expect(screen.getByText("Not included")).toBeInTheDocument();
+    expect(screen.getByText("SCIM")).toBeInTheDocument();
+    expect(screen.queryByText("Not included")).not.toBeInTheDocument();
   });
 
   it("shows renewal proof to workspace admins", () => {

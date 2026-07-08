@@ -3,9 +3,12 @@ import type { BetterAuthOptions } from "better-auth/types";
 import type { ApiKeyOptions as ApiKeyPluginOptions } from "@better-auth/api-key";
 import type { OAuthOptions as OAuthProviderOptions } from "@better-auth/oauth-provider";
 import type { PasskeyOptions as PasskeyPluginOptions } from "@better-auth/passkey";
+import type { SCIMOptions } from "@better-auth/scim";
 import type { MagicLinkOptions as MagicLinkPluginOptions } from "better-auth/plugins/magic-link";
+import { buildScimTokenAuthorizationPayload } from "../../../../fixtures/access/scim-token-authorization";
 
 const mocks = vi.hoisted(() => ({
+  admin: vi.fn(() => ({ kind: "admin" })),
   apiKey: vi.fn((options: ApiKeyPluginOptions) => ({ kind: "api-key", options })),
   bearer: vi.fn(() => ({ kind: "bearer" })),
   betterAuth: vi.fn(),
@@ -42,7 +45,9 @@ const mocks = vi.hoisted(() => ({
   jwt: vi.fn((options: Record<string, unknown>) => ({ kind: "jwt", options })),
   oauthProvider: vi.fn((options: OAuthProviderOptions) => ({ kind: "oauth-provider", options })),
   passkey: vi.fn((options: PasskeyPluginOptions) => ({ kind: "passkey", options })),
+  queryActiveProducts: vi.fn(),
   runMigrations: vi.fn(),
+  scim: vi.fn((options: SCIMOptions) => ({ kind: "scim", options })),
   sso: vi.fn((options: Record<string, unknown>) => ({ kind: "sso", options })),
   tanstackStartCookies: vi.fn(() => ({ kind: "cookies" })),
   validateAuthRuntimeConfig: vi.fn(),
@@ -73,6 +78,7 @@ vi.mock("better-auth/plugins/jwt", () => ({
 }));
 
 vi.mock("better-auth/plugins", () => ({
+  admin: mocks.admin,
   bearer: mocks.bearer,
   deviceAuthorization: mocks.deviceAuthorization,
   organization: mocks.organization,
@@ -98,8 +104,16 @@ vi.mock("@better-auth/passkey", () => ({
   passkey: mocks.passkey,
 }));
 
+vi.mock("@better-auth/scim", () => ({
+  scim: mocks.scim,
+}));
+
 vi.mock("@/platform/email/server/service", () => ({
   createEmailService: mocks.createEmailService,
+}));
+
+vi.mock("@/domains/access/server/workspace-products", () => ({
+  queryActiveProducts: mocks.queryActiveProducts,
 }));
 
 vi.mock("@/domains/access/server/runtime", () => ({
@@ -111,6 +125,7 @@ vi.mock("@/domains/access/server/runtime", () => ({
 describe("auth runtime wiring", () => {
   beforeEach(() => {
     vi.resetModules();
+    mocks.admin.mockClear();
     mocks.apiKey.mockClear();
     mocks.bearer.mockClear();
     mocks.betterAuth.mockClear();
@@ -127,7 +142,9 @@ describe("auth runtime wiring", () => {
     mocks.organization.mockClear();
     mocks.oauthProvider.mockClear();
     mocks.passkey.mockClear();
+    mocks.queryActiveProducts.mockReset();
     mocks.runMigrations.mockReset();
+    mocks.scim.mockClear();
     mocks.sso.mockClear();
     mocks.tanstackStartCookies.mockClear();
     mocks.validateAuthRuntimeConfig.mockReset();
@@ -145,6 +162,7 @@ describe("auth runtime wiring", () => {
       resendApiKey: null,
     });
     mocks.validateAuthRuntimeConfig.mockReturnValue(undefined);
+    mocks.queryActiveProducts.mockResolvedValue([]);
     mocks.createEmailService.mockReturnValue({
       send: mocks.emailSend,
     });
@@ -192,6 +210,7 @@ describe("auth runtime wiring", () => {
       "https://www.googleapis.com",
     ]);
     expect((typedOptions.plugins ?? []).length).toBeGreaterThanOrEqual(6);
+    expect(mocks.admin).toHaveBeenCalledTimes(1);
     expect(mocks.jwt).toHaveBeenCalledTimes(1);
     expect(mocks.passkey).toHaveBeenCalledWith({
       rpID: "atlas.test",
@@ -268,6 +287,39 @@ describe("auth runtime wiring", () => {
       },
       redirectURI: "/sso/callback",
     });
+  });
+
+  it("registers SCIM as an Atlas Team-only organization capability", async () => {
+    const mod = await import("@/domains/access/server/auth");
+    await mod.getAuth();
+
+    const scimOptions = mocks.scim.mock.calls.at(0)?.[0];
+    expect(scimOptions).toBeDefined();
+    if (!scimOptions?.canGenerateToken) {
+      throw new TypeError("Expected the SCIM plugin to include a token authorization hook.");
+    }
+
+    expect(scimOptions).toMatchObject({
+      linkExistingUsers: {
+        requireExistingOrgMembership: true,
+      },
+      requiredRole: ["admin", "owner"],
+      storeSCIMToken: "hashed",
+    });
+
+    mocks.queryActiveProducts.mockResolvedValueOnce(["atlas_team"]);
+    await expect(
+      scimOptions.canGenerateToken(buildScimTokenAuthorizationPayload("org_team")),
+    ).resolves.toBe(true);
+
+    mocks.queryActiveProducts.mockResolvedValueOnce(["atlas_research_pass"]);
+    await expect(
+      scimOptions.canGenerateToken(buildScimTokenAuthorizationPayload("org_research")),
+    ).resolves.toBe(false);
+
+    await expect(
+      scimOptions.canGenerateToken(buildScimTokenAuthorizationPayload(undefined)),
+    ).resolves.toBe(false);
   });
 
   it("runs Better Auth migrations only once per process", async () => {

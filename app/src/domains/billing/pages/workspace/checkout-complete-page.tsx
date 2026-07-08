@@ -18,8 +18,8 @@ const PRODUCT_FEATURES: Record<AtlasSelfServeProduct, string[]> = {
   ],
   atlas_team: [
     "Everything in Atlas Pro for your workspace",
-    "Shared notes, watchlists, and Slack digests",
-    "SSO and up to 50 members",
+    "Shared notes, watchlists, SSO, and SCIM",
+    "Up to 50 members",
   ],
   atlas_research_pass: [
     "Unlimited research while your pass is active",

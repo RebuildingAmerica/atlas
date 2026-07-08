@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { OrganizationPendingInvitationPluginConfig as OrganizationPluginConfig } from "@/../tests/helpers/access/sso-provider-mocks";
 
 const mocks = vi.hoisted(() => ({
+  admin: vi.fn(() => ({ kind: "admin" })),
   apiKey: vi.fn(() => ({ kind: "api-key" })),
   bearer: vi.fn(() => ({ kind: "bearer" })),
   betterAuth: vi.fn(),
@@ -23,6 +24,7 @@ const mocks = vi.hoisted(() => ({
   pgPoolQuery: vi.fn(),
   render: vi.fn().mockResolvedValue("<html></html>"),
   runMigrations: vi.fn(),
+  scim: vi.fn(() => ({ kind: "scim" })),
   sso: vi.fn(() => ({ kind: "sso" })),
   sqliteGet: vi.fn(),
   sqlitePrepare: vi.fn(),
@@ -65,6 +67,7 @@ vi.mock("better-auth/plugins/jwt", () => ({
 }));
 
 vi.mock("better-auth/plugins", () => ({
+  admin: mocks.admin,
   bearer: mocks.bearer,
   deviceAuthorization: mocks.deviceAuthorization,
   organization: mocks.organization,
@@ -76,6 +79,10 @@ vi.mock("@better-auth/oauth-provider", () => ({
 
 vi.mock("@better-auth/sso", () => ({
   sso: mocks.sso,
+}));
+
+vi.mock("@better-auth/scim", () => ({
+  scim: mocks.scim,
 }));
 
 vi.mock("better-auth/tanstack-start", () => ({

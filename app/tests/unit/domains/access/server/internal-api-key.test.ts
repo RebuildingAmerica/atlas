@@ -1,10 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { introspectApiKeyRequest } from "@/domains/access/server/internal-api-key";
-import type { ApiKeyIntrospectionResult } from "../../../../helpers/access/api-key-introspection";
+import type {
+  ApiKeyIntrospectionResponse,
+  ApiKeyIntrospectionResult,
+} from "../../../../helpers/access/api-key-introspection";
 
 const mocks = vi.hoisted(() => ({
   ensureAuthReady: vi.fn(),
   getAuthRuntimeConfig: vi.fn(),
+  queryActiveProducts: vi.fn(),
 }));
 
 vi.mock("@/domains/access/server/auth", () => ({
@@ -13,6 +17,9 @@ vi.mock("@/domains/access/server/auth", () => ({
 
 vi.mock("@/domains/access/server/runtime", () => ({
   getAuthRuntimeConfig: mocks.getAuthRuntimeConfig,
+}));
+vi.mock("@/domains/access/server/workspace-products", () => ({
+  queryActiveProducts: mocks.queryActiveProducts,
 }));
 
 describe("introspect-api-key", () => {
@@ -23,6 +30,7 @@ describe("introspect-api-key", () => {
     mocks.getAuthRuntimeConfig.mockReturnValue({
       internalSecret: "internal-test-secret",
     });
+    mocks.queryActiveProducts.mockResolvedValue([]);
   });
 
   it("verifies the internal secret and returns 401 on mismatch", async () => {
@@ -35,7 +43,7 @@ describe("introspect-api-key", () => {
     const response = await introspectApiKeyRequest(request);
 
     expect(response.status).toBe(401);
-    const body = (await response.json()) as { valid: boolean };
+    const body = (await response.json()) as ApiKeyIntrospectionResponse;
     expect(body.valid).toBe(false);
   });
 
@@ -67,11 +75,11 @@ describe("introspect-api-key", () => {
     const response = await introspectApiKeyRequest(request);
 
     expect(response.status).toBe(200);
-    const body = (await response.json()) as Record<string, unknown>;
+    const body = (await response.json()) as ApiKeyIntrospectionResult;
     expect(body).toEqual({
+      activeProducts: [],
       keyId: "key_123",
       name: "Test Key",
-      organizationId: undefined,
       permissions: { discovery: ["read"] },
       scopes: ["discovery:read"],
       userEmail: "operator@atlas.test",
@@ -105,7 +113,7 @@ describe("introspect-api-key", () => {
     const response = await introspectApiKeyRequest(request);
 
     expect(response.status).toBe(401);
-    const body = (await response.json()) as { valid: boolean };
+    const body = (await response.json()) as ApiKeyIntrospectionResponse;
     expect(body.valid).toBe(false);
   });
 
@@ -119,7 +127,7 @@ describe("introspect-api-key", () => {
     const response = await introspectApiKeyRequest(request);
 
     expect(response.status).toBe(400);
-    const body = (await response.json()) as { valid: boolean };
+    const body = (await response.json()) as ApiKeyIntrospectionResponse;
     expect(body.valid).toBe(false);
   });
 
@@ -147,6 +155,7 @@ describe("introspect-api-key", () => {
   });
 
   it("includes organizationId and userEmail from metadata when present", async () => {
+    mocks.queryActiveProducts.mockResolvedValue(["atlas_research_pass"]);
     mocks.ensureAuthReady.mockResolvedValue({
       api: {
         verifyApiKey: vi.fn().mockResolvedValue({
@@ -172,10 +181,11 @@ describe("introspect-api-key", () => {
     });
 
     const response = await introspectApiKeyRequest(request);
-    const body = (await response.json()) as { organizationId: string; userEmail: string };
+    const body = (await response.json()) as ApiKeyIntrospectionResult;
 
     expect(body.organizationId).toBe("org_1");
     expect(body.userEmail).toBe("user@atlas.test");
+    expect(body.activeProducts).toEqual(["atlas_research_pass"]);
   });
 
   it("handles missing optional fields in introspection result", async () => {

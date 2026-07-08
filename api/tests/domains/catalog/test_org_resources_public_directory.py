@@ -165,7 +165,7 @@ class TestOrgEntriesPublicDirectory:
         detail = publish_resp.json()["detail"]
         assert detail["error"] == "plan_required"
         assert detail["capability"] == "public.directories"
-        assert detail["plan_required"] == "civic_operating_layer"
+        assert detail["plan_required"] == "team"
 
     @pytest.mark.asyncio
     async def test_publish_records_public_map_improvement(

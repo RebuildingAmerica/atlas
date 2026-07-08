@@ -7,8 +7,18 @@ import { getAuthDatabase, getAuthPgPool } from "./auth";
 /**
  * Row shape returned by the workspace_products query.
  */
-interface WorkspaceProductRow {
+export interface WorkspaceProductRow {
   product: string;
+}
+
+/**
+ * Row shape returned when tests or admin flows need the persisted product
+ * status, not just the active product id.
+ */
+export interface WorkspaceProductStatusRow extends WorkspaceProductRow {
+  expires_at: string | null;
+  status: string;
+  stripe_event_at: string | null;
 }
 
 /**

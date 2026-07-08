@@ -219,6 +219,7 @@ async def test_valid_api_key_bypasses_anonymous_limits(
             user_id="user_123",
             user_email="operator@example.com",
             org_id="org_123",
+            active_products=["atlas_team"],
         )
 
     async def fake_verify_org_membership(

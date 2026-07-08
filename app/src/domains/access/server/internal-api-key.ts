@@ -5,6 +5,7 @@ import { verifyApiKeyResultSchema } from "./api-key-schema";
 import { ensureAuthReady } from "./auth";
 import { permissionsToScopes } from "../api-key-scopes";
 import { getAuthRuntimeConfig } from "./runtime";
+import { queryActiveProducts } from "./workspace-products";
 
 /**
  * Private app-to-API API-key verification endpoint.
@@ -67,8 +68,10 @@ export async function introspectApiKeyRequest(request: Request) {
     typeof result.key.metadata?.organizationId === "string"
       ? result.key.metadata.organizationId
       : undefined;
+  const activeProducts = organizationId ? await queryActiveProducts(organizationId) : [];
 
   return Response.json({
+    activeProducts,
     keyId: result.key.id,
     name: result.key.name ?? "Atlas API Key",
     organizationId,

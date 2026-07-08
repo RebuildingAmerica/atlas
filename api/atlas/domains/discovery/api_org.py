@@ -15,7 +15,7 @@ from atlas.domains.access.capabilities import enforce_limit, require_capability
 from atlas.domains.access.dependencies import require_org_actor
 from atlas.domains.catalog.models.ownership import OwnershipCRUD
 from atlas.domains.catalog.taxonomy import ALL_ISSUE_SLUGS
-from atlas.domains.discovery.budget import OrgDiscoveryBudgetCRUD
+from atlas.domains.discovery.budget import reserve_run_if_limited
 from atlas.domains.discovery.schemas import DiscoveryResearchSummary  # noqa: TC001
 from atlas.models import DiscoveryRunCRUD, get_db_connection
 from atlas.platform.config import Settings, get_settings
@@ -230,10 +230,11 @@ async def start_org_discovery_run(
         if issue_area not in ALL_ISSUE_SLUGS:
             raise HTTPException(status_code=400, detail=f"Invalid issue area: {issue_area}")
 
-    await OrgDiscoveryBudgetCRUD.reserve_run(
+    await reserve_run_if_limited(
         db,
         org_id=org_id,
         month=_current_budget_month(),
+        run_limit=_run_limit,
     )
 
     run_id = await DiscoveryRunCRUD.create(

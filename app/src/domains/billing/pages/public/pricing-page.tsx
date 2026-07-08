@@ -32,7 +32,7 @@ import {
  */
 export const pricingSearchSchema = z.object({
   intent: z.enum(["atlas_pro", "atlas_team", "atlas_research_pass"]).optional(),
-  interval: z.enum(["monthly", "yearly", "once", "weekly"]).optional(),
+  interval: z.enum(["monthly", "yearly", "four_month", "once", "weekly"]).optional(),
 });
 
 export type PricingSearch = z.infer<typeof pricingSearchSchema>;
@@ -148,8 +148,9 @@ export function PricingPage({ intent, interval: intentInterval }: PricingPagePro
 
   const activeWorkspace = session.data?.workspace.activeOrganization ?? null;
   const isAuthed = Boolean(session.data);
-  const subscriptionInterval: PricingCheckoutInterval = billing === "annual" ? "yearly" : "monthly";
-  const researchPassInterval: PricingCheckoutInterval = "once";
+  const proCheckoutInterval: PricingCheckoutInterval =
+    billing === "student" ? "four_month" : billing === "annual" ? "yearly" : "monthly";
+  const teamCheckoutInterval: PricingCheckoutInterval = billing === "annual" ? "yearly" : "monthly";
   const freeCta: PlanCardLinkCta = isAuthed
     ? { label: "Open your workspace", to: "/discovery" }
     : { label: "Browse the Atlas", to: "/browse" };
@@ -198,8 +199,9 @@ export function PricingPage({ intent, interval: intentInterval }: PricingPagePro
           </h1>
           <p className="type-body-large text-ink-soft mb-4 leading-relaxed">
             The costs of running Atlas — the pipeline, the infrastructure, the research tools — are
-            covered by researchers, journalists, and organizations who use it professionally. If
-            that's you, consider supporting the work.
+            covered by researchers, journalists, and organizations using it in paid work. If Atlas
+            supports funded work for you or your organization, that use should help keep the public
+            directory free for everyone.
           </p>
         </div>
 
@@ -214,18 +216,18 @@ export function PricingPage({ intent, interval: intentInterval }: PricingPagePro
           billing={billing}
           freeCta={freeCta}
           pendingCheckoutKey={pendingCheckoutKey}
-          subscriptionInterval={subscriptionInterval}
+          proCheckoutInterval={proCheckoutInterval}
+          teamCheckoutInterval={teamCheckoutInterval}
           onBillingChange={setBilling}
           onCheckout={handleCheckout}
         />
 
         <PricingResearchPassCard
           pendingCheckoutKey={pendingCheckoutKey}
-          researchPassInterval={researchPassInterval}
-          onPurchase={() => {
+          onPurchase={(interval) => {
             void handleCheckout({
               product: "atlas_research_pass",
-              interval: researchPassInterval,
+              interval,
             });
           }}
         />

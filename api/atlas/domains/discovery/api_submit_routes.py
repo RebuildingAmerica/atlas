@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from atlas_shared import (
@@ -17,6 +18,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Response
 
 from atlas.domains.access import AuthenticatedActor, require_actor_permission
 from atlas.domains.access.capabilities import enforce_limit, require_capability
+from atlas.domains.discovery.budget import reserve_run_if_limited
 from atlas.domains.discovery.models import (
     DiscoveryRunSyncCRUD,
 )
@@ -51,6 +53,11 @@ router = APIRouter()
 __all__ = ["router"]
 
 
+def _current_budget_month() -> str:
+    """Return the current UTC budget month in YYYY-MM format."""
+    return datetime.now(UTC).strftime("%Y-%m")
+
+
 @router.post(
     "",
     response_model=DiscoveryRunResponse,
@@ -76,7 +83,12 @@ async def start_discovery_run(
     Returns immediately with run ID. The pipeline runs asynchronously
     via the durable job worker, or inline if discovery_inline is set.
     """
-    _ = actor
+    await reserve_run_if_limited(
+        db,
+        org_id=actor.org_id,
+        month=_current_budget_month(),
+        run_limit=_run_limit,
+    )
     run = await create_discovery_run_records(db, req=req, settings=settings)
     apply_no_store_headers(response)
     return _run_to_response(run)

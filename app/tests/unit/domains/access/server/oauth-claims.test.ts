@@ -76,7 +76,7 @@ describe("buildAtlasAccessTokenClaims", () => {
   });
 
   it("adds requested MCP capability only when the workspace product grants it", async () => {
-    const resolveActiveProductsForWorkspace = vi.fn().mockResolvedValue(["atlas_briefing_room"]);
+    const resolveActiveProductsForWorkspace = vi.fn().mockResolvedValue(["atlas_pro"]);
 
     const claims = await buildAtlasAccessTokenClaims(
       {

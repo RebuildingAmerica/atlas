@@ -97,8 +97,8 @@ describe("session-state loading", () => {
             "api.mcp",
             "workspace.shared",
             "monitoring.watchlists",
-            "integrations.slack",
             "auth.sso",
+            "auth.scim",
           ],
           limits: {
             research_runs_per_month: null,

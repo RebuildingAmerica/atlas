@@ -1,11 +1,12 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { normalizeAtlasOrganizationMetadata } from "../access/organization-metadata";
+import type { PricingCheckoutInterval } from "./checkout-types";
 import { ATLAS_PRODUCTS } from "./products";
 
 const checkoutInputSchema = z.object({
   product: z.enum(["atlas_pro", "atlas_team", "atlas_research_pass"]),
-  interval: z.enum(["monthly", "yearly", "once", "weekly"]),
+  interval: z.enum(["monthly", "yearly", "four_month", "once", "weekly"]),
 });
 
 async function loadCheckoutServerModules() {
@@ -37,8 +38,11 @@ async function loadCheckoutServerModules() {
 /**
  * Resolves the Stripe price ID for a product and billing interval.
  */
-function resolvePriceId(product: string, interval: string): string {
+function resolvePriceId(product: string, interval: PricingCheckoutInterval): string {
   if (product === "atlas_pro") {
+    if (interval === "four_month") {
+      return ATLAS_PRODUCTS.atlas_pro.studentFourMonthPriceId;
+    }
     return interval === "yearly"
       ? ATLAS_PRODUCTS.atlas_pro.yearlyPriceId
       : ATLAS_PRODUCTS.atlas_pro.monthlyPriceId;
@@ -86,7 +90,7 @@ export const startCheckout = createServerFn({ method: "POST" })
       sessionState,
     } = await loadCheckoutServerModules();
     const { createCheckoutSession } = checkout;
-    const { getDiscountCouponId } = discountCoupons;
+    const { getDiscountCouponIdForCheckout } = discountCoupons;
     const { ensureStripeCustomerForWorkspace } = stripeCustomer;
     const { ensureAuthReady } = authModule;
     const { getBrowserSessionHeaders } = requestHeaders;
@@ -117,7 +121,11 @@ export const startCheckout = createServerFn({ method: "POST" })
 
     let discountCouponId: string | null = null;
     if (orgMetadata.verificationStatus === "verified" && orgMetadata.discountSegment) {
-      discountCouponId = getDiscountCouponId(orgMetadata.discountSegment);
+      discountCouponId = getDiscountCouponIdForCheckout(
+        orgMetadata.discountSegment,
+        data.product,
+        data.interval,
+      );
     }
 
     // Ensure a Stripe customer exists before creating the checkout session.
@@ -161,6 +169,7 @@ export const startCheckout = createServerFn({ method: "POST" })
     const result = await createCheckoutSession({
       workspaceId: activeWorkspace.id,
       product: data.product,
+      interval: data.interval,
       priceId,
       successUrl: successUrl.toString(),
       cancelUrl: cancelUrl.toString(),

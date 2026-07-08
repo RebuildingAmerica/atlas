@@ -1,0 +1,151 @@
+import assert from "node:assert/strict";
+import { describe, it } from "node:test";
+import { ATLAS_COUPONS, ATLAS_PRODUCTS } from "../../config/products.js";
+import type {
+  StripeCatalogSnapshot,
+  StripeCouponSnapshot,
+  StripePriceSnapshot,
+  StripeProductSnapshot,
+} from "./verify.js";
+import { verifyStripeCatalogSnapshot } from "./verify.js";
+
+function completeEnv(): Map<string, string> {
+  const env = new Map<string, string>([
+    ["STRIPE_API_KEY", "sk_test_123"],
+    ["STRIPE_WEBHOOK_SECRET", "whsec_123"],
+  ]);
+  for (const product of ATLAS_PRODUCTS) {
+    env.set(product.envProductKey, `stripe_${product.envProductKey}`);
+    for (const price of product.prices) {
+      env.set(price.envKey, `stripe_${price.envKey}`);
+    }
+  }
+  for (const coupon of ATLAS_COUPONS) {
+    env.set(coupon.envKey, coupon.id);
+  }
+  return env;
+}
+
+function productSnapshots(
+  env: Map<string, string>,
+): Map<string, StripeProductSnapshot> {
+  return new Map(
+    ATLAS_PRODUCTS.map((product) => [
+      product.envProductKey,
+      {
+        active: true,
+        envKey: product.envProductKey,
+        id: env.get(product.envProductKey) ?? "",
+        metadata: { atlas_product_id: product.id },
+        name: product.stripeName,
+      },
+    ]),
+  );
+}
+
+function priceSnapshots(
+  env: Map<string, string>,
+): Map<string, StripePriceSnapshot> {
+  const prices = new Map<string, StripePriceSnapshot>();
+  for (const product of ATLAS_PRODUCTS) {
+    for (const price of product.prices) {
+      prices.set(price.envKey, {
+        active: true,
+        currency: price.currency,
+        envKey: price.envKey,
+        id: env.get(price.envKey) ?? "",
+        metadata: { atlas_price_id: price.id },
+        productId: env.get(product.envProductKey) ?? "",
+        recurringInterval: price.recurring?.interval ?? null,
+        recurringIntervalCount: price.recurring
+          ? (price.recurring.intervalCount ?? 1)
+          : null,
+        unitAmount: price.unitAmountCents,
+      });
+    }
+  }
+  return prices;
+}
+
+function couponSnapshots(
+  env: Map<string, string>,
+): Map<string, StripeCouponSnapshot> {
+  const proProductId = env.get("STRIPE_PRODUCT_ATLAS_PRO") ?? "";
+  return new Map(
+    ATLAS_COUPONS.map((coupon) => [
+      coupon.envKey,
+      {
+        appliesToProductIds: [proProductId],
+        duration: "forever",
+        envKey: coupon.envKey,
+        id: env.get(coupon.envKey) ?? "",
+        metadata: { atlas_discount_segment: coupon.segment },
+        percentOff: coupon.percentOff,
+      },
+    ]),
+  );
+}
+
+function matchingSnapshot(env: Map<string, string>): StripeCatalogSnapshot {
+  return {
+    coupons: couponSnapshots(env),
+    prices: priceSnapshots(env),
+    products: productSnapshots(env),
+  };
+}
+
+void describe("Stripe catalog verifier", () => {
+  void it("accepts a complete catalog snapshot", () => {
+    const env = completeEnv();
+
+    assert.deepEqual(
+      verifyStripeCatalogSnapshot(env, matchingSnapshot(env)),
+      [],
+    );
+  });
+
+  void it("flags missing env keys", () => {
+    const env = completeEnv();
+    env.delete("STRIPE_COUPON_STUDENT");
+
+    assert.deepEqual(
+      verifyStripeCatalogSnapshot(env, matchingSnapshot(completeEnv())).map(
+        (issue) => issue.code,
+      ),
+      ["missing_env"],
+    );
+  });
+
+  void it("flags price drift", () => {
+    const env = completeEnv();
+    const snapshot = matchingSnapshot(env);
+    const proMonthly = snapshot.prices.get("STRIPE_PRICE_ATLAS_PRO_MONTHLY");
+    assert.ok(proMonthly);
+    snapshot.prices.set("STRIPE_PRICE_ATLAS_PRO_MONTHLY", {
+      ...proMonthly,
+      recurringInterval: null,
+      recurringIntervalCount: null,
+    });
+
+    assert.deepEqual(
+      verifyStripeCatalogSnapshot(env, snapshot).map((issue) => issue.code),
+      ["price_recurring_mismatch"],
+    );
+  });
+
+  void it("flags discount coupons that apply outside Atlas Pro", () => {
+    const env = completeEnv();
+    const snapshot = matchingSnapshot(env);
+    const journalistCoupon = snapshot.coupons.get("STRIPE_COUPON_JOURNALIST");
+    assert.ok(journalistCoupon);
+    snapshot.coupons.set("STRIPE_COUPON_JOURNALIST", {
+      ...journalistCoupon,
+      appliesToProductIds: [env.get("STRIPE_PRODUCT_ATLAS_TEAM_BASE") ?? ""],
+    });
+
+    assert.deepEqual(
+      verifyStripeCatalogSnapshot(env, snapshot).map((issue) => issue.code),
+      ["coupon_product_scope_mismatch"],
+    );
+  });
+});

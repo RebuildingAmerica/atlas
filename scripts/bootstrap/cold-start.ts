@@ -3,18 +3,24 @@
  * Atlas Bootstrap CLI — Complete product development, deployment, and operations setup.
  *
  * Usage:
- *   pnpm bootstrap                     Full interactive setup
- *   pnpm bootstrap --local-only        Local dev only (skip deploy/product phases)
- *   pnpm bootstrap --doctor            Check readiness without changes
- *   pnpm bootstrap --resume            Skip completed phases
- *   pnpm bootstrap --product atlas     Run Stripe product sync only
- *   pnpm bootstrap --mcp-registry      Run MCP Registry publisher setup only
- *   pnpm bootstrap --ci-cache          Wire Vercel Remote Cache into Actions
- *   pnpm bootstrap --api-domain        Ensure atlas-api Cloud Run + Cloudflare CNAME
- *   pnpm bootstrap --api-domain --target staging  Same, for atlas-api-staging
- *   pnpm bootstrap --api-edge          Enable Cloudflare proxy + API rate limits
- *   pnpm bootstrap --api-edge --target staging  Same, for atlas-api-staging
- *   pnpm bootstrap --live              Use Stripe live mode (default: test)
+ *
+ * | Command                                                   | What it does |
+ * | --------------------------------------------------------- | ------------ |
+ * | `pnpm bootstrap`                                          | Full interactive setup. |
+ * | `pnpm bootstrap --local-only`                             | Local dev only; skips deploy and product phases. |
+ * | `pnpm bootstrap --doctor`                                 | Checks readiness without changing local or hosted state. |
+ * | `pnpm bootstrap --resume`                                 | Skips phases already marked complete. |
+ * | `pnpm bootstrap --product atlas`                          | Runs local Stripe test-mode sync only. |
+ * | `pnpm bootstrap --product atlas --target staging`         | Runs staging Stripe test-mode sync. |
+ * | `pnpm bootstrap --product atlas --target staging --yes`   | Applies hosted staging env sync without prompting. |
+ * | `pnpm bootstrap --product atlas --target prod --live`     | Runs production Stripe live sync. |
+ * | `pnpm bootstrap --mcp-registry`                           | Runs MCP Registry publisher setup only. |
+ * | `pnpm bootstrap --ci-cache`                               | Wires Vercel Remote Cache into Actions. |
+ * | `pnpm bootstrap --api-domain`                             | Ensures atlas-api Cloud Run and Cloudflare CNAME. |
+ * | `pnpm bootstrap --api-domain --target staging`            | Ensures the staging atlas-api Cloud Run and Cloudflare CNAME. |
+ * | `pnpm bootstrap --api-edge`                               | Enables Cloudflare proxy and API rate limits. |
+ * | `pnpm bootstrap --api-edge --target staging`              | Enables staging Cloudflare proxy and API rate limits. |
+ * | `pnpm bootstrap --live`                                   | Uses Stripe live mode instead of test mode. |
  */
 
 import path from "node:path";
@@ -151,6 +157,8 @@ async function main(): Promise<void> {
       state,
       args.doctorMode,
       args.live,
+      args.stripeTarget,
+      args.assumeYes,
     );
     markPhase(state, "product", result.success ? "complete" : "failed");
     saveReadiness(projectRoot, state);
@@ -264,6 +272,8 @@ async function main(): Promise<void> {
         state,
         args.doctorMode,
         args.live,
+        args.stripeTarget,
+        args.assumeYes,
       );
       markPhase(state, "product", result.success ? "complete" : "failed");
       saveReadiness(projectRoot, state);

@@ -37,6 +37,16 @@ function eventCreatedToIso(createdEpochSeconds: number): string {
   return new Date(createdEpochSeconds * 1000).toISOString();
 }
 
+interface WorkspaceProductUpsert {
+  workspaceId: string;
+  product: string;
+  status: string;
+  stripeSubscriptionId: string | null;
+  stripeCustomerId: string | null;
+  expiresAt: string | null;
+  eventAt: string;
+}
+
 /**
  * Upserts a row in workspace_products for the given workspace and product.
  *
@@ -46,30 +56,41 @@ function eventCreatedToIso(createdEpochSeconds: number): string {
  *
  * @param params - The workspace product row values.
  */
-async function upsertWorkspaceProduct(params: {
-  workspaceId: string;
-  product: string;
-  status: string;
-  stripeSubscriptionId: string | null;
-  stripeCustomerId: string | null;
-  eventAt: string;
-}): Promise<void> {
-  const { workspaceId, product, status, stripeSubscriptionId, stripeCustomerId, eventAt } = params;
+async function upsertWorkspaceProduct(params: WorkspaceProductUpsert): Promise<void> {
+  const {
+    workspaceId,
+    product,
+    status,
+    stripeSubscriptionId,
+    stripeCustomerId,
+    expiresAt,
+    eventAt,
+  } = params;
   const id = crypto.randomUUID();
 
   const pool = getAuthPgPool();
   if (pool) {
     await pool.query(
-      `INSERT INTO workspace_products (id, workspace_id, product, status, stripe_subscription_id, stripe_customer_id, stripe_event_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
+      `INSERT INTO workspace_products (id, workspace_id, product, status, stripe_subscription_id, stripe_customer_id, expires_at, stripe_event_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
        ON CONFLICT (workspace_id, product) DO UPDATE
        SET status = EXCLUDED.status,
            stripe_subscription_id = EXCLUDED.stripe_subscription_id,
            stripe_customer_id = EXCLUDED.stripe_customer_id,
+           expires_at = EXCLUDED.expires_at,
            stripe_event_at = EXCLUDED.stripe_event_at
        WHERE workspace_products.stripe_event_at IS NULL
           OR workspace_products.stripe_event_at <= EXCLUDED.stripe_event_at`,
-      [id, workspaceId, product, status, stripeSubscriptionId, stripeCustomerId, eventAt],
+      [
+        id,
+        workspaceId,
+        product,
+        status,
+        stripeSubscriptionId,
+        stripeCustomerId,
+        expiresAt,
+        eventAt,
+      ],
     );
     return;
   }
@@ -80,16 +101,43 @@ async function upsertWorkspaceProduct(params: {
   }
 
   db.prepare(
-    `INSERT INTO workspace_products (id, workspace_id, product, status, stripe_subscription_id, stripe_customer_id, stripe_event_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?)
+    `INSERT INTO workspace_products (id, workspace_id, product, status, stripe_subscription_id, stripe_customer_id, expires_at, stripe_event_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT (workspace_id, product) DO UPDATE
      SET status = excluded.status,
          stripe_subscription_id = excluded.stripe_subscription_id,
          stripe_customer_id = excluded.stripe_customer_id,
+         expires_at = excluded.expires_at,
          stripe_event_at = excluded.stripe_event_at
      WHERE workspace_products.stripe_event_at IS NULL
         OR workspace_products.stripe_event_at <= excluded.stripe_event_at`,
-  ).run(id, workspaceId, product, status, stripeSubscriptionId, stripeCustomerId, eventAt);
+  ).run(
+    id,
+    workspaceId,
+    product,
+    status,
+    stripeSubscriptionId,
+    stripeCustomerId,
+    expiresAt,
+    eventAt,
+  );
+}
+
+/**
+ * Returns the Research Pass expiry anchored to the Stripe event time.
+ *
+ * @param interval - Checkout interval stored in Stripe metadata.
+ * @param eventAt - ISO timestamp for the verified Stripe event.
+ */
+function resolveResearchPassExpiry(interval: string | undefined, eventAt: string): string {
+  if (interval !== "weekly" && interval !== "once") {
+    throw new Error("Research Pass checkout metadata must include interval 'weekly' or 'once'.");
+  }
+
+  const eventTime = new Date(eventAt);
+  const days = interval === "weekly" ? 7 : 30;
+  eventTime.setUTCDate(eventTime.getUTCDate() + days);
+  return eventTime.toISOString();
 }
 
 /**
@@ -158,6 +206,10 @@ async function handleCheckoutCompleted(
     typeof session.subscription === "string"
       ? session.subscription
       : (session.subscription?.id ?? null);
+  const expiresAt =
+    product === "atlas_research_pass"
+      ? resolveResearchPassExpiry(session.metadata?.interval, eventAt)
+      : null;
 
   await upsertWorkspaceProduct({
     workspaceId,
@@ -165,6 +217,7 @@ async function handleCheckoutCompleted(
     status: "active",
     stripeSubscriptionId,
     stripeCustomerId,
+    expiresAt,
     eventAt,
   });
 
@@ -229,6 +282,7 @@ async function handleSubscriptionCreated(
     status: mapSubscriptionStatus(subscription.status),
     stripeSubscriptionId: subscription.id,
     stripeCustomerId,
+    expiresAt: null,
     eventAt,
   });
 }

@@ -1,7 +1,11 @@
 import { useMutation } from "@tanstack/react-query";
 import { useState } from "react";
-import type { DiscountSegment } from "../discount-segments";
-import { DISCOUNT_SEGMENT_LABELS } from "../discount-segments";
+import {
+  DISCOUNT_SEGMENT_LABELS,
+  DISCOUNT_SEGMENTS,
+  SEGMENT_DESCRIPTIONS,
+  type DiscountSegment,
+} from "../discount-segments";
 import { VerificationForm } from "./verification-form";
 
 interface DiscountVerificationSectionProps {
@@ -10,6 +14,44 @@ interface DiscountVerificationSectionProps {
 
 interface ErrorResponse {
   detail: string;
+}
+
+interface DiscountStepperStep {
+  id: string;
+  label: string;
+}
+
+interface DiscountStepperProps {
+  selectedSegment: DiscountSegment | null;
+  hasSubmitted: boolean;
+}
+
+const DISCOUNT_STEPS: readonly DiscountStepperStep[] = [
+  { id: "1", label: "Choose" },
+  { id: "2", label: "Verify" },
+  { id: "3", label: "Review" },
+];
+
+function DiscountStepper({ selectedSegment, hasSubmitted }: DiscountStepperProps) {
+  const activeIndex = hasSubmitted ? 2 : selectedSegment ? 1 : 0;
+  return (
+    <ol className="mb-4 grid grid-cols-3 gap-2" aria-label="Discount request steps">
+      {DISCOUNT_STEPS.map((step, index) => (
+        <li key={step.id} className="flex items-center gap-2">
+          <span
+            className={`type-label-small flex h-7 w-7 items-center justify-center rounded-full border ${
+              index <= activeIndex
+                ? "border-accent bg-accent text-white"
+                : "border-border text-ink-muted"
+            }`}
+          >
+            {step.id}
+          </span>
+          <span className="type-label-small text-ink-muted">{step.label}</span>
+        </li>
+      ))}
+    </ol>
+  );
 }
 
 export function DiscountVerificationSection({ userId }: DiscountVerificationSectionProps) {
@@ -45,6 +87,7 @@ export function DiscountVerificationSection({ userId }: DiscountVerificationSect
           className="border-border bg-surface-container-lowest rounded-[1.4rem] border p-5"
           role="status"
         >
+          <DiscountStepper selectedSegment={selectedSegment} hasSubmitted={hasSubmitted} />
           <p className="type-title-small text-ink-strong">Verification submitted</p>
           <p className="type-body-medium text-ink-soft mt-2">
             We've received your verification request for discount access. We'll review it and email
@@ -69,6 +112,7 @@ export function DiscountVerificationSection({ userId }: DiscountVerificationSect
             Change
           </button>
         </div>
+        <DiscountStepper selectedSegment={selectedSegment} hasSubmitted={hasSubmitted} />
         <VerificationForm
           segment={selectedSegment}
           onSubmit={async (data) => {
@@ -92,29 +136,27 @@ export function DiscountVerificationSection({ userId }: DiscountVerificationSect
     <div className="space-y-3">
       <p className="type-label-medium text-ink-muted">Discount access</p>
       <div className="border-border bg-surface-container-lowest rounded-[1.4rem] border p-5">
+        <DiscountStepper selectedSegment={selectedSegment} hasSubmitted={hasSubmitted} />
         <p className="type-title-small text-ink-strong">Request discount access</p>
         <p className="type-body-medium text-ink-soft mt-2">
-          Atlas offers discounted access for independent journalists, grassroots nonprofits, and
-          civic tech workers. If that describes you, submit verification and we'll review your
-          request.
+          Atlas offers discounted individual access for students, independent creators and
+          journalists, grassroots nonprofits, and civic tech workers. If that describes you, submit
+          verification and we'll review your request.
         </p>
 
         <div className="mt-4 space-y-2">
-          {(["independent_journalist", "grassroots_nonprofit", "civic_tech_worker"] as const).map(
-            (segment) => (
-              <button
-                key={segment}
-                onClick={() => {
-                  setSelectedSegment(segment);
-                }}
-                className="border-border hover:border-ink-muted hover:bg-surface-container-lowest w-full rounded-lg border px-4 py-3 text-left transition-colors"
-              >
-                <p className="type-body-medium text-ink-strong">
-                  {DISCOUNT_SEGMENT_LABELS[segment]}
-                </p>
-              </button>
-            ),
-          )}
+          {DISCOUNT_SEGMENTS.map((segment) => (
+            <button
+              key={segment}
+              onClick={() => {
+                setSelectedSegment(segment);
+              }}
+              className="border-border hover:border-ink-muted hover:bg-surface-container-lowest w-full rounded-lg border px-4 py-3 text-left transition-colors"
+            >
+              <p className="type-body-medium text-ink-strong">{DISCOUNT_SEGMENT_LABELS[segment]}</p>
+              <p className="type-body-small text-ink-soft mt-1">{SEGMENT_DESCRIPTIONS[segment]}</p>
+            </button>
+          ))}
         </div>
 
         <p className="type-body-small text-ink-soft mt-4">

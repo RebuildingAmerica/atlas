@@ -13,6 +13,7 @@ from atlas.domains.access.api.verification import (
     _validate_civic_tech_worker,
     _validate_grassroots_nonprofit,
     _validate_independent_journalist,
+    _validate_student,
     submit_discount_verification,
 )
 from atlas.domains.access.verification import DiscountVerifier, VerificationMethod
@@ -24,6 +25,14 @@ def test_validate_independent_journalist_requires_portfolio_url() -> None:
 
     assert error == "Portfolio URL is required"
     assert method is VerificationMethod.PORTFOLIO
+
+
+def test_validate_student_requires_school_email() -> None:
+    """Student validation requires a school email."""
+    error, method = _validate_student({"schoolName": "Howard University"}, DiscountVerifier())
+
+    assert error == "School email is required"
+    assert method is VerificationMethod.SCHOOL_EMAIL
 
 
 def test_validate_grassroots_nonprofit_requires_budget() -> None:
@@ -167,6 +176,22 @@ async def test_submit_discount_verification_routes_grassroots_segment() -> None:
 
     assert response.status == "pending"
     assert response.verification_method == "ein_submission"
+
+
+@pytest.mark.asyncio
+async def test_submit_discount_verification_routes_student_segment() -> None:
+    """The student branch is exercised by a valid school payload."""
+    response = await submit_discount_verification(
+        VerificationRequestPayload(
+            segment="student",
+            user_id="user-303",
+            data={"schoolEmail": "maya@university.edu", "schoolName": "Howard University"},
+        ),
+        Response(),
+    )
+
+    assert response.status == "pending"
+    assert response.verification_method == "school_email"
 
 
 @pytest.mark.asyncio

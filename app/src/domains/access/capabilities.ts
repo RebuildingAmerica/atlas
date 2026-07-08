@@ -1,25 +1,12 @@
 /**
  * Atlas product identifiers that drive capability and limit resolution.
  */
-export type AtlasProduct =
-  | "atlas_pro"
-  | "atlas_team"
-  | "atlas_research_pass"
-  | "atlas_briefing_room"
-  | "atlas_field_intelligence"
-  | "atlas_civic_operating_layer"
-  | "atlas_coverage_underwriting";
+export type AtlasProduct = "atlas_pro" | "atlas_team" | "atlas_research_pass";
 
 /**
  * Products sold through the public Stripe checkout flow.
- *
- * Enterprise packages use operator-created grants so sales commitments can be
- * tied to contract scope without pretending every package is self-serve.
  */
-export type AtlasSelfServeProduct = Extract<
-  AtlasProduct,
-  "atlas_pro" | "atlas_team" | "atlas_research_pass"
->;
+export type AtlasSelfServeProduct = AtlasProduct;
 
 export const SELF_SERVE_PRODUCTS: readonly AtlasSelfServeProduct[] = [
   "atlas_pro",
@@ -42,8 +29,8 @@ export type AtlasCapability =
   | "public.directories"
   | "coverage.underwriting"
   | "monitoring.watchlists"
-  | "integrations.slack"
-  | "auth.sso";
+  | "auth.sso"
+  | "auth.scim";
 
 /**
  * The full set of numeric limit keys Atlas enforces.
@@ -92,46 +79,19 @@ const TEAM_CAPABILITIES: AtlasCapability[] = [
   ...PRO_CAPABILITIES,
   "workspace.shared",
   "monitoring.watchlists",
-  "integrations.slack",
   "auth.sso",
+  "auth.scim",
 ];
 
-const BRIEFING_ROOM_CAPABILITIES: AtlasCapability[] = [
+const RESEARCH_PASS_CAPABILITIES: AtlasCapability[] = [
   ...PRO_CAPABILITIES,
-  "workspace.shared",
   "monitoring.watchlists",
-];
-
-const FIELD_INTELLIGENCE_CAPABILITIES: AtlasCapability[] = [
-  ...BRIEFING_ROOM_CAPABILITIES,
-  "coverage.targets",
-  "integrations.slack",
-];
-
-const CIVIC_OPERATING_LAYER_CAPABILITIES: AtlasCapability[] = [
-  ...FIELD_INTELLIGENCE_CAPABILITIES,
-  "public.directories",
-  "auth.sso",
-];
-
-const COVERAGE_UNDERWRITING_CAPABILITIES: AtlasCapability[] = [
-  "research.run",
-  "research.unlimited",
-  "workspace.export",
-  "workspace.shared",
-  "coverage.targets",
-  "public.directories",
-  "coverage.underwriting",
 ];
 
 export const PRODUCT_CAPABILITIES: Record<AtlasProduct, AtlasCapability[]> = {
   atlas_pro: PRO_CAPABILITIES,
   atlas_team: TEAM_CAPABILITIES,
-  atlas_research_pass: PRO_CAPABILITIES,
-  atlas_briefing_room: BRIEFING_ROOM_CAPABILITIES,
-  atlas_field_intelligence: FIELD_INTELLIGENCE_CAPABILITIES,
-  atlas_civic_operating_layer: CIVIC_OPERATING_LAYER_CAPABILITIES,
-  atlas_coverage_underwriting: COVERAGE_UNDERWRITING_CAPABILITIES,
+  atlas_research_pass: RESEARCH_PASS_CAPABILITIES,
 };
 
 // ---------------------------------------------------------------------------
@@ -158,54 +118,20 @@ const TEAM_LIMITS: Record<AtlasLimit, number | null> = {
   max_members: 50,
 };
 
-const BRIEFING_ROOM_LIMITS: Record<AtlasLimit, number | null> = {
-  research_runs_per_month: null,
-  max_shortlists: null,
-  max_shortlist_entries: null,
-  max_api_keys: 1,
-  api_requests_per_day: 5000,
-  public_api_requests_per_hour: null,
-  max_members: 10,
-};
-
-const FIELD_INTELLIGENCE_LIMITS: Record<AtlasLimit, number | null> = {
+const RESEARCH_PASS_LIMITS: Record<AtlasLimit, number | null> = {
   research_runs_per_month: null,
   max_shortlists: null,
   max_shortlist_entries: null,
   max_api_keys: null,
   api_requests_per_day: 10000,
   public_api_requests_per_hour: null,
-  max_members: 25,
-};
-
-const CIVIC_OPERATING_LAYER_LIMITS: Record<AtlasLimit, number | null> = {
-  research_runs_per_month: null,
-  max_shortlists: null,
-  max_shortlist_entries: null,
-  max_api_keys: null,
-  api_requests_per_day: 50000,
-  public_api_requests_per_hour: null,
-  max_members: 75,
-};
-
-const COVERAGE_UNDERWRITING_LIMITS: Record<AtlasLimit, number | null> = {
-  research_runs_per_month: null,
-  max_shortlists: null,
-  max_shortlist_entries: null,
-  max_api_keys: 1,
-  api_requests_per_day: 5000,
-  public_api_requests_per_hour: null,
-  max_members: 10,
+  max_members: 1,
 };
 
 export const PRODUCT_LIMITS: Record<AtlasProduct, Record<AtlasLimit, number | null>> = {
   atlas_pro: PRO_LIMITS,
   atlas_team: TEAM_LIMITS,
-  atlas_research_pass: PRO_LIMITS,
-  atlas_briefing_room: BRIEFING_ROOM_LIMITS,
-  atlas_field_intelligence: FIELD_INTELLIGENCE_LIMITS,
-  atlas_civic_operating_layer: CIVIC_OPERATING_LAYER_LIMITS,
-  atlas_coverage_underwriting: COVERAGE_UNDERWRITING_LIMITS,
+  atlas_research_pass: RESEARCH_PASS_LIMITS,
 };
 
 // ---------------------------------------------------------------------------

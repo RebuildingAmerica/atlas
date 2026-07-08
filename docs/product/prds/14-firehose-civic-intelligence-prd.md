@@ -92,7 +92,7 @@ The product promise is:
    - Place and issue pages can show recent civic activity, emerging actors, new
      sources, and coverage gaps.
    - Personal follows can show calm change summaries.
-   - Workspace watches can produce field digests, Slack-ready summaries,
+   - Workspace watches can produce field digests, team-chat-ready summaries,
      coverage reports, and brief leads.
    - Briefing Room can turn selected signals into source-linked research
      artifacts.

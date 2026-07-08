@@ -59,7 +59,8 @@ export interface AtlasOrganizationMetadata {
    */
   workspaceDomain?: string;
   // Discount verification fields
-  discountSegment?: "independent_journalist" | "grassroots_nonprofit" | "civic_tech_worker";
+  discountSegment?:
+    "student" | "independent_journalist" | "grassroots_nonprofit" | "civic_tech_worker";
   verificationStatus?: "pending" | "verified" | "rejected" | "expired";
   verifiedAt?: string; // ISO timestamp
   verificationMethod?: "portfolio" | "irs_lookup" | "self_attestation";
@@ -89,7 +90,7 @@ const atlasOrganizationMetadataSchema = z
       )
       .optional(),
     discountSegment: z
-      .enum(["independent_journalist", "grassroots_nonprofit", "civic_tech_worker"])
+      .enum(["student", "independent_journalist", "grassroots_nonprofit", "civic_tech_worker"])
       .optional(),
     verificationStatus: z.enum(["pending", "verified", "rejected", "expired"]).optional(),
     verifiedAt: z.string().optional(),
