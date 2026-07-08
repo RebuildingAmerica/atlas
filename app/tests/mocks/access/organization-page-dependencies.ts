@@ -6,6 +6,7 @@ import { vi } from "vitest";
 export const organizationPageDependencyMocks = {
   acceptWorkspaceInvitation: vi.fn(),
   cancelWorkspaceInvitation: vi.fn(),
+  convertWorkspaceToTeam: vi.fn(),
   createWorkspace: vi.fn(),
   deleteWorkspaceSSOProvider: vi.fn(),
   getOrganizationDetails: vi.fn(),

@@ -82,6 +82,7 @@ vi.mock("@/domains/access/organizations.functions", () => ({
   acceptWorkspaceInvitation: organizationPageDependencyMocks.acceptWorkspaceInvitation,
   cancelWorkspaceInvitation: organizationPageDependencyMocks.cancelWorkspaceInvitation,
   checkWorkspaceSlugAvailability: () => Promise.resolve({ available: true }),
+  convertWorkspaceToTeam: organizationPageDependencyMocks.convertWorkspaceToTeam,
   createWorkspace: organizationPageDependencyMocks.createWorkspace,
   getOrganizationDetails: organizationPageDependencyMocks.getOrganizationDetails,
   inviteWorkspaceMember: organizationPageDependencyMocks.inviteWorkspaceMember,
