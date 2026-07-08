@@ -141,7 +141,7 @@ export function AtlasTopBar({
         aria-label="Primary navigation"
         data-chrome-frame={frame}
         className={cn(
-          "atlas-top-bar border-border-strong bg-surface-container-high/92 shadow-soft flex flex-nowrap items-center gap-3 border-b px-4 py-3 backdrop-blur-md sm:px-6",
+          "atlas-top-bar border-border-strong bg-surface-container-high/92 shadow-soft flex flex-nowrap items-center gap-4 border-b px-4 py-4 backdrop-blur-md sm:px-8",
           frame === "showcase" ? "atlas-top-bar-showcase border" : null,
         )}
       >

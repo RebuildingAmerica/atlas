@@ -1,305 +1,168 @@
-import { Link } from "@tanstack/react-router";
 import { ArrowUpRight } from "lucide-react";
-import { useEffect, useState } from "react";
-import { getStatus, type Status } from "@openstatus/react";
-import { ATLAS_STATUS_MONITOR_ID, ATLAS_STATUS_PAGE_URL } from "@/platform/status/status-config";
 
-/* v8 ignore start -- callers always pass an animationDelay; the undefined branch exists only to satisfy the optional prop */
-function resolveFooterItemStyle(
-  animationDelay: string | undefined,
-): React.CSSProperties | undefined {
-  return animationDelay ? { animationDelay } : undefined;
-}
-/* v8 ignore stop */
-
-interface FooterInternalLinkProps {
-  to: string;
+interface FooterInternalLink {
+  href: `/${string}`;
   label: string;
-  animationDelay?: string;
-  native?: boolean;
+  kind: "internal" | "native";
 }
 
-function FooterInternalLink({
-  to,
-  label,
-  animationDelay,
-  native = false,
-}: FooterInternalLinkProps) {
-  const className =
-    "type-body-small text-ink-muted hover:text-ink no-underline transition-colors duration-150 hover:underline";
-
-  if (native) {
-    return (
-      <li className="footer-fade-item" style={resolveFooterItemStyle(animationDelay)}>
-        <a href={to} className={className}>
-          {label}
-        </a>
-      </li>
-    );
-  }
-
-  return (
-    <li className="footer-fade-item" style={resolveFooterItemStyle(animationDelay)}>
-      <Link to={to} className={className}>
-        {label}
-      </Link>
-    </li>
-  );
-}
-
-interface FooterExternalLinkProps {
-  href: string;
+interface FooterExternalLink {
+  href: `https://${string}`;
   label: string;
-  animationDelay?: string;
+  kind: "external";
 }
 
-function FooterExternalLink({ href, label, animationDelay }: FooterExternalLinkProps) {
-  return (
-    <li className="footer-fade-item" style={resolveFooterItemStyle(animationDelay)}>
-      <a
-        href={href}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="type-body-small text-ink-muted hover:text-ink group inline-flex items-center gap-1 no-underline transition-colors duration-150 hover:underline"
-      >
-        {label}
-        <ArrowUpRight className="h-3 w-3 opacity-0 transition-all duration-150 group-hover:translate-x-px group-hover:-translate-y-px group-hover:opacity-70" />
-      </a>
-    </li>
-  );
-}
+type FooterLink = FooterInternalLink | FooterExternalLink;
 
-interface FooterNavColumnProps {
+interface FooterColumn {
   heading: string;
-  children: React.ReactNode;
-  baseDelay?: number;
-}
-
-function FooterNavColumn({ heading, children, baseDelay = 0 }: FooterNavColumnProps) {
-  return (
-    <div className="footer-fade-item" style={{ animationDelay: `${baseDelay}ms` }}>
-      <p className="type-label-small text-ink-muted mb-3 [letter-spacing:0.08em] uppercase">
-        {heading}
-      </p>
-      <ul className="m-0 list-none space-y-2.5 p-0">{children}</ul>
-    </div>
-  );
-}
-
-/**
- * Inline SVG topographic contour-line texture as a decorative background.
- *
- * Sinusoidal Q-curve paths simulate map contour lines. Opacity is kept
- * at 3.5% so the effect reads as texture, not decoration.
- */
-function TopographicTexture() {
-  return (
-    <div
-      aria-hidden="true"
-      className="pointer-events-none absolute inset-0 opacity-[0.035]"
-      style={{
-        backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Cpath d='M0 200 Q50 150 100 200 Q150 250 200 200 Q250 150 300 200 Q350 250 400 200' fill='none' stroke='%2344403c' stroke-width='1.5'/%3E%3Cpath d='M0 240 Q50 190 100 240 Q150 290 200 240 Q250 190 300 240 Q350 290 400 240' fill='none' stroke='%2344403c' stroke-width='1.5'/%3E%3Cpath d='M0 160 Q50 110 100 160 Q150 210 200 160 Q250 110 300 160 Q350 210 400 160' fill='none' stroke='%2344403c' stroke-width='1.5'/%3E%3Cpath d='M0 280 Q50 230 100 280 Q150 330 200 280 Q250 230 300 280 Q350 330 400 280' fill='none' stroke='%2344403c' stroke-width='1.5'/%3E%3Cpath d='M0 120 Q50 70 100 120 Q150 170 200 120 Q250 70 300 120 Q350 170 400 120' fill='none' stroke='%2344403c' stroke-width='1.5'/%3E%3Cpath d='M0 320 Q50 270 100 320 Q150 370 200 320 Q250 270 300 320 Q350 370 400 320' fill='none' stroke='%2344403c' stroke-width='1.5'/%3E%3C/svg%3E")`,
-        backgroundSize: "400px 400px",
-      }}
-    />
-  );
-}
-
-const STATUS_CONFIG: Record<Status, { label: string; color: string; pulse: boolean }> = {
-  operational: { label: "All systems operational", color: "bg-green-500", pulse: true },
-  degraded_performance: { label: "Degraded performance", color: "bg-yellow-500", pulse: false },
-  partial_outage: { label: "Partial outage", color: "bg-yellow-500", pulse: false },
-  major_outage: { label: "Major outage", color: "bg-red-500", pulse: false },
-  under_maintenance: { label: "Under maintenance", color: "bg-blue-400", pulse: false },
-  incident: { label: "Active incident", color: "bg-red-500", pulse: false },
-  unknown: { label: "Status unavailable", color: "bg-stone-400", pulse: false },
-};
-
-const STATUS_CACHE_MS = 1000 * 60;
-const STATUS_TIMEOUT_MS = 2500;
-
-interface StatusCacheEntry {
-  status: Status;
-  updatedAt: number;
-}
-
-let statusCache: StatusCacheEntry | null = null;
-
-function cachedFooterStatus(now: number): Status | null {
-  if (!statusCache) {
-    return null;
-  }
-
-  return now - statusCache.updatedAt <= STATUS_CACHE_MS ? statusCache.status : null;
-}
-
-async function loadFooterStatus(): Promise<Status> {
-  const cached = cachedFooterStatus(Date.now());
-  if (cached) {
-    return cached;
-  }
-
-  const timeoutPromise = new Promise<Status>((resolve) => {
-    window.setTimeout(() => {
-      resolve("unknown");
-    }, STATUS_TIMEOUT_MS);
-  });
-  const statusPromise = getStatus(ATLAS_STATUS_MONITOR_ID)
-    .then((result) => result.status)
-    .catch((): Status => "unknown");
-  const status = await Promise.race([statusPromise, timeoutPromise]);
-  statusCache = { status, updatedAt: Date.now() };
-  return status;
+  links: FooterLink[];
 }
 
 interface PublicFooterProps {
   localMode: boolean;
-  status?: Status;
+  status?: unknown;
 }
 
-/**
- * Grounded public footer for Atlas.
- *
- * Brand + mission left column; three nav columns right. Faint topographic
- * SVG pattern for texture. Staggered fade-in via CSS scroll-driven animations.
- * Sits flush at page bottom — no border-radius, not floating.
- */
-export function PublicFooter({ localMode, status }: PublicFooterProps) {
-  const [footerStatus, setFooterStatus] = useState<Status>(status ?? "unknown");
-  const { label, color, pulse } = STATUS_CONFIG[footerStatus];
+const PRODUCT_LINKS: FooterLink[] = [
+  { href: "/browse", label: "Search", kind: "internal" },
+  { href: "/map", label: "Map", kind: "internal" },
+  { href: "/firehose", label: "Firehose", kind: "internal" },
+  { href: "/docs", label: "Docs", kind: "native" },
+  { href: "/docs/how-it-works", label: "How it works", kind: "native" },
+  { href: "/docs/resources/trust", label: "Trust & sources", kind: "native" },
+  { href: "/pricing", label: "Pricing", kind: "internal" },
+];
 
-  useEffect(() => {
-    let cancelled = false;
+const COMMUNITY_LINKS: FooterLink[] = [
+  { href: "/docs/resources/open-source", label: "Open source", kind: "native" },
+  { href: "https://github.com/RebuildingAmerica/atlas", label: "GitHub", kind: "external" },
+  { href: "https://github.com/RebuildingAmerica/atlas/issues", label: "Issues", kind: "external" },
+  { href: "https://climate.stripe.com/IbySpr", label: "Carbon removal", kind: "external" },
+];
 
-    void loadFooterStatus().then((nextStatus) => {
-      if (!cancelled) {
-        setFooterStatus(nextStatus);
-      }
-    });
+const LEGAL_LINKS: FooterLink[] = [
+  { href: "/privacy", label: "Privacy", kind: "internal" },
+  { href: "/terms", label: "Terms", kind: "internal" },
+  { href: "/security", label: "Security", kind: "internal" },
+];
 
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+function footerColumns(localMode: boolean): FooterColumn[] {
+  return [
+    {
+      heading: "Product",
+      links: localMode ? PRODUCT_LINKS.filter((link) => link.href !== "/pricing") : PRODUCT_LINKS,
+    },
+    { heading: "Community", links: COMMUNITY_LINKS },
+    { heading: "Legal", links: LEGAL_LINKS },
+  ];
+}
+
+function FooterNavigationLink({ link }: { link: FooterLink }) {
+  const className =
+    "type-body-medium text-surface/80 hover:text-surface inline-flex w-fit items-center gap-1.5 no-underline transition-colors duration-150 hover:underline";
+
+  if (link.kind === "external") {
+    return (
+      <a href={link.href} target="_blank" rel="noopener noreferrer" className={className}>
+        {link.label}
+        <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />
+      </a>
+    );
+  }
+
+  if (link.kind === "native") {
+    return (
+      <a href={link.href} className={className}>
+        {link.label}
+      </a>
+    );
+  }
+
+  return (
+    <a href={link.href} className={className}>
+      {link.label}
+    </a>
+  );
+}
+
+export function PublicFooter({ localMode }: PublicFooterProps) {
+  const columns = footerColumns(localMode);
 
   return (
     <footer
       aria-label="Site footer"
-      className="border-border-strong bg-surface-container-high relative overflow-hidden border-t"
+      className="bg-accent-deep/95 text-surface relative flex h-[100svh] max-h-[100svh] flex-col overflow-hidden"
     >
-      <TopographicTexture />
+      <div
+        aria-hidden="true"
+        className="border-surface/25 pointer-events-none absolute inset-5 border"
+      />
 
-      <div className="relative mx-auto w-full max-w-[88rem] px-6 py-14 lg:px-8 lg:py-16">
-        <div className="grid grid-cols-1 gap-12 lg:grid-cols-[1fr_auto] lg:gap-16">
-          {/* Brand + mission */}
-          <div className="footer-fade-item max-w-sm space-y-5" style={{ animationDelay: "0ms" }}>
-            <Link to="/" className="inline-flex items-center gap-2.5 no-underline">
-              <div className="bg-accent flex h-8 w-8 items-center justify-center rounded-xl text-white">
-                <span className="type-label-medium leading-none">A</span>
-              </div>
-              <span className="type-title-medium text-ink-strong">Atlas</span>
-            </Link>
+      <div className="border-surface/15 relative flex items-center justify-between gap-4 border-b px-8 pt-7 pb-5 md:px-12 md:pt-8">
+        <a
+          href="https://rebuildingus.org"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="type-label-medium text-surface/75 hover:text-surface no-underline transition-colors duration-150 hover:underline"
+        >
+          Rebuilding America Project
+        </a>
+        <p className="type-label-small text-surface/45 hidden sm:block">38°54N 77°02W</p>
+      </div>
 
-            <div className="space-y-2">
-              <p className="type-body-medium text-ink-strong">
-                Source-linked local civic intelligence for the issues that matter most.
-              </p>
-              <p className="type-body-small text-ink-soft">
-                Free, open-source civic research built for communities across America.
-              </p>
-            </div>
-
-            <a
-              href={ATLAS_STATUS_PAGE_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="border-border-strong text-ink-muted hover:text-ink inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 no-underline transition-colors duration-150"
-            >
-              <span className="relative flex h-1.5 w-1.5">
-                {pulse && (
-                  <span
-                    className={`absolute inline-flex h-full w-full animate-ping rounded-full opacity-60 ${color}`}
-                  />
-                )}
-                <span className={`relative inline-flex h-1.5 w-1.5 rounded-full ${color}`} />
-              </span>
-              <span className="type-label-small">{label}</span>
-            </a>
-          </div>
-
-          {/* Nav columns */}
-          <nav
-            aria-label="Footer navigation"
-            className="grid grid-cols-2 gap-8 sm:grid-cols-3 sm:gap-10"
-          >
-            <FooterNavColumn heading="Product" baseDelay={80}>
-              <FooterInternalLink to="/browse" label="Search" animationDelay="120ms" />
-              <FooterInternalLink to="/map" label="Map" animationDelay="140ms" />
-              <FooterInternalLink to="/firehose" label="Firehose" animationDelay="160ms" />
-              <FooterInternalLink to="/docs" label="Docs" native animationDelay="180ms" />
-              <FooterInternalLink
-                to="/docs/how-it-works"
-                label="How it works"
-                native
-                animationDelay="200ms"
-              />
-              <FooterInternalLink
-                to="/docs/resources/trust"
-                label="Trust & sources"
-                native
-                animationDelay="220ms"
-              />
-              {!localMode ? (
-                <FooterInternalLink to="/pricing" label="Pricing" animationDelay="240ms" />
-              ) : null}
-            </FooterNavColumn>
-
-            <FooterNavColumn heading="Community" baseDelay={140}>
-              <FooterInternalLink
-                to="/docs/resources/open-source"
-                label="Open source"
-                native
-                animationDelay="240ms"
-              />
-              <FooterExternalLink
-                href="https://github.com/RebuildingAmerica/atlas"
-                label="GitHub"
-                animationDelay="260ms"
-              />
-              <FooterExternalLink
-                href="https://climate.stripe.com/IbySpr"
-                label="Carbon removal"
-                animationDelay="280ms"
-              />
-              <FooterExternalLink
-                href="https://github.com/RebuildingAmerica/atlas/issues"
-                label="Issues"
-                animationDelay="300ms"
-              />
-            </FooterNavColumn>
-
-            <FooterNavColumn heading="Legal" baseDelay={200}>
-              <FooterInternalLink to="/privacy" label="Privacy" animationDelay="240ms" />
-              <FooterInternalLink to="/terms" label="Terms" animationDelay="260ms" />
-              <FooterInternalLink to="/security" label="Security" animationDelay="280ms" />
-            </FooterNavColumn>
-          </nav>
+      <div className="relative grid flex-1 items-center gap-10 px-8 py-7 md:grid-cols-[minmax(0,1.08fr)_minmax(24rem,0.92fr)] md:px-12 md:py-10">
+        <div className="max-w-3xl">
+          <blockquote className="font-serif text-[clamp(1.45rem,3.2svh,2.7rem)] leading-snug text-balance italic">
+            “Never doubt that a small group of thoughtful, committed citizens can change the world.
+            Indeed, it is the only thing that ever has.”
+          </blockquote>
+          <div className="bg-surface/35 mt-7 h-px w-10" />
+          <p className="type-label-small text-surface/60 mt-5">Margaret Mead</p>
         </div>
 
-        {/* Bottom bar */}
-        <div className="border-border mt-12 flex flex-wrap items-center justify-between gap-4 border-t pt-6">
-          <p className="type-body-small text-ink-muted">
-            &copy; 2026{" "}
+        <nav aria-label="Footer navigation" className="grid grid-cols-3 gap-5 md:gap-7">
+          {columns.map((column) => (
+            <div key={column.heading}>
+              <p className="type-label-medium text-surface mb-4">{column.heading}</p>
+              <ul className="m-0 flex list-none flex-col gap-2.5 p-0">
+                {column.links.map((link) => (
+                  <li key={link.href}>
+                    <FooterNavigationLink link={link} />
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </nav>
+      </div>
+
+      <div className="border-surface/20 relative border-t px-8 pt-3 md:px-12 md:pt-4">
+        <a
+          href="/"
+          aria-label="Atlas"
+          className="text-surface flex w-full justify-between overflow-hidden font-serif text-[clamp(4.25rem,15vw,13rem)] leading-[0.82] font-bold no-underline"
+        >
+          {"ATLAS".split("").map((letter, index) => (
+            <span key={`${letter}-${String(index)}`}>{letter}</span>
+          ))}
+        </a>
+      </div>
+
+      <div className="border-surface/15 relative flex flex-col justify-between gap-3 border-t px-8 pt-3 pb-7 md:flex-row md:px-12 md:pt-4">
+        <p className="type-body-small text-surface/60 max-w-4xl">
+          Public records, organized for civic discovery.
+        </p>
+        <div className="flex shrink-0 gap-5">
+          {LEGAL_LINKS.map((link) => (
             <a
-              href="https://rebuildingus.org"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-ink-muted hover:text-ink decoration-ink-muted/40 hover:decoration-ink/40 underline decoration-dotted underline-offset-2 transition-colors duration-150 hover:decoration-solid"
+              key={link.href}
+              href={link.href}
+              className="type-body-small text-surface/65 hover:text-surface no-underline transition-colors duration-150 hover:underline"
             >
-              Rebuilding America Project
+              {link.label}
             </a>
-          </p>
-          <p className="type-body-small text-ink-muted">Civic infrastructure, openly built.</p>
+          ))}
         </div>
       </div>
     </footer>

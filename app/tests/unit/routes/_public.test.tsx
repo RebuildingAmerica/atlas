@@ -89,6 +89,16 @@ describe("routes/_public layout", () => {
     const Component = Route.options.component;
     if (!Component) throw new Error("Expected Route.options.component");
     render(<Component />);
+    expect(screen.getByTestId("public-global-grid")).toBeInTheDocument();
+    expect(screen.getByTestId("public-sticky-nav-boundary")).toContainElement(
+      screen.getByTestId("public-top-nav"),
+    );
+    expect(screen.getByTestId("public-sticky-nav-boundary")).toContainElement(
+      screen.getByTestId("router-outlet"),
+    );
+    expect(screen.getByTestId("public-sticky-nav-boundary")).not.toContainElement(
+      screen.getByTestId("public-footer"),
+    );
     expect(screen.getByTestId("public-top-nav").dataset.localMode).toBe("true");
     expect(screen.getByTestId("public-top-nav").dataset.showSearch).toBe("true");
     expect(screen.getByTestId("router-outlet")).toBeInTheDocument();

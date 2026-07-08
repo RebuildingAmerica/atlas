@@ -1,14 +1,8 @@
 // @vitest-environment jsdom
 /* eslint-disable atlas-tests/no-test-file-locals */
-import type { Status } from "@openstatus/react";
 import { cleanup, render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ATLAS_STATUS_MONITOR_ID, ATLAS_STATUS_PAGE_URL } from "@/platform/status/status-config";
-
-vi.mock("@openstatus/react", () => ({
-  getStatus: vi.fn(),
-}));
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@tanstack/react-router", () => ({
   Link: ({
@@ -18,41 +12,40 @@ vi.mock("@tanstack/react-router", () => ({
     children: React.ReactNode;
     to?: string;
     className?: string;
+    "aria-label"?: string;
   }) => (
-    <a href={props.to} className={props.className} data-router-link="">
+    <a
+      href={props.to}
+      className={props.className}
+      data-router-link=""
+      aria-label={props["aria-label"]}
+    >
       {children}
     </a>
   ),
 }));
 
-async function renderPublicFooter(props: { localMode: boolean; status?: Status }) {
+async function renderPublicFooter(props: { localMode: boolean; status?: unknown }) {
   const { PublicFooter } = await import("@/platform/layout/public-footer");
   return render(<PublicFooter {...props} />);
 }
 
-async function mockOpenStatus(status: Status = "operational") {
-  const { getStatus } = await import("@openstatus/react");
-  vi.mocked(getStatus).mockResolvedValue({
-    status,
-  });
-  return getStatus;
-}
-
 describe("PublicFooter", () => {
-  beforeEach(async () => {
-    vi.resetModules();
-    await mockOpenStatus();
-  });
-
   afterEach(() => {
     cleanup();
     vi.clearAllMocks();
   });
 
-  it("hides workspace footer links in single-user mode", async () => {
-    await renderPublicFooter({ localMode: true });
+  it("renders the full-viewport editorial footer frame", async () => {
+    const { container } = await renderPublicFooter({ localMode: false });
+    const footer = container.querySelector("footer");
 
-    expect(screen.queryByRole("link", { name: /workspace/i })).not.toBeInTheDocument();
+    expect(footer).toHaveClass("h-[100svh]");
+    expect(footer).toHaveClass("max-h-[100svh]");
+    expect(footer).toHaveClass("bg-accent-deep/95");
+    expect(screen.getByText("Rebuilding America Project")).toBeInTheDocument();
+    expect(screen.getByText("38°54N 77°02W")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Atlas" })).toBeInTheDocument();
   });
 
   it("keeps public product links focused on discovery when not in local mode", async () => {
@@ -67,55 +60,40 @@ describe("PublicFooter", () => {
       "href",
       "/docs/how-it-works",
     );
-    expect(screen.getByRole("link", { name: "How it works" })).not.toHaveAttribute(
-      "data-router-link",
-    );
     expect(screen.getByRole("link", { name: "Trust & sources" })).toHaveAttribute(
       "href",
       "/docs/resources/trust",
-    );
-    expect(screen.getByRole("link", { name: "Trust & sources" })).not.toHaveAttribute(
-      "data-router-link",
     );
     expect(screen.getByRole("link", { name: "Open source" })).toHaveAttribute(
       "href",
       "/docs/resources/open-source",
     );
-    expect(screen.getByRole("link", { name: "Open source" })).not.toHaveAttribute(
-      "data-router-link",
-    );
     expect(screen.getByRole("link", { name: "Pricing" })).toHaveAttribute("href", "/pricing");
-    expect(screen.getByRole("link", { name: "Pricing" })).toHaveAttribute("data-router-link");
     expect(screen.queryByRole("link", { name: /workspace/i })).not.toBeInTheDocument();
   });
 
-  it("describes Atlas as source-linked local civic intelligence", async () => {
+  it("hides pricing in single-user mode", async () => {
+    await renderPublicFooter({ localMode: true });
+
+    expect(screen.queryByRole("link", { name: "Pricing" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /workspace/i })).not.toBeInTheDocument();
+  });
+
+  it("anchors the footer with the Rebuilding America quote", async () => {
     await renderPublicFooter({ localMode: false });
 
     expect(
-      screen.getByText("Source-linked local civic intelligence for the issues that matter most."),
+      screen.getByText(/Never doubt that a small group of thoughtful, committed citizens/),
     ).toBeInTheDocument();
+    expect(screen.getByText("Margaret Mead")).toBeInTheDocument();
   });
 
-  it("renders immediately with an unknown status while the probe is pending", async () => {
-    const { getStatus } = await import("@openstatus/react");
-    vi.mocked(getStatus).mockReturnValue(new Promise(() => undefined));
-
+  it("uses plain source language instead of banned jargon or copyright copy", async () => {
     await renderPublicFooter({ localMode: false });
 
-    expect(screen.getByRole("link", { name: /Status unavailable/i })).toBeInTheDocument();
-    expect(getStatus).toHaveBeenCalledWith(ATLAS_STATUS_MONITOR_ID);
-    expect(screen.getByRole("link", { name: /Status unavailable/i })).toHaveAttribute(
-      "href",
-      ATLAS_STATUS_PAGE_URL,
-    );
-  });
-
-  it("updates the status after the footer probe resolves", async () => {
-    await renderPublicFooter({ localMode: false });
-
-    expect(
-      await screen.findByRole("link", { name: /All systems operational/i }),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Public records, organized for civic discovery.")).toBeInTheDocument();
+    expect(screen.queryByText(/©/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/copyright/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/with sources/i)).not.toBeInTheDocument();
   });
 });
