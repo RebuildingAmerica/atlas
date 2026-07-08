@@ -2,6 +2,7 @@
   "name": "@rebuildingamerica/atlas-scout",
   "private": true,
   "scripts": {
-    "test": "uv run pytest --no-cov"
+    "test": "uv run pytest",
+    "test:coverage": "uv run pytest --cov=atlas_scout --cov-branch --cov-report=term-missing --cov-fail-under=100"
   }
 }

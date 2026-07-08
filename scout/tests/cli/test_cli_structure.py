@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+import tomllib
 from pathlib import Path
 
 
@@ -65,3 +67,22 @@ def test_article_modules_stay_under_three_hundred_lines() -> None:
 
     assert oversized == {}
     assert len(article_modules) > 0
+
+
+def test_default_pytest_does_not_force_coverage_gate() -> None:
+    """Keep normal Scout tests fast while making coverage an explicit gate."""
+    scout_root = Path(__file__).parents[2]
+    package_scripts = json.loads((scout_root / "package.json").read_text(encoding="utf-8"))[
+        "scripts"
+    ]
+    pyproject = tomllib.loads((scout_root / "pyproject.toml").read_text(encoding="utf-8"))
+    addopts = pyproject["tool"]["pytest"]["ini_options"].get("addopts", "")
+    coverage_report = pyproject["tool"]["coverage"]["report"]
+
+    assert "--cov" not in addopts
+    assert package_scripts["test"] == "uv run pytest"
+    assert package_scripts["test:coverage"] == (
+        "uv run pytest --cov=atlas_scout --cov-branch "
+        "--cov-report=term-missing --cov-fail-under=100"
+    )
+    assert coverage_report["fail_under"] == 100
