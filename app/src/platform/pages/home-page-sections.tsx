@@ -1,0 +1,400 @@
+import { Link } from "@tanstack/react-router";
+import { Search } from "lucide-react";
+import { ArrowRight, MapPinned } from "./home-page-data";
+import {
+  BRIEF_ACTORS,
+  FIELD_ACTORS,
+  FEATURE_WORKFLOWS,
+  ISSUE_CHIPS,
+  SEARCH_EXAMPLES,
+  browseUrl,
+  formatStatCount,
+} from "./home-page-data";
+import type { Entry } from "@/types";
+import { HomeDiscoverySection } from "./home-page-discovery";
+
+interface HomeHeroActionsProps {
+  query: string;
+  onQueryChange: (value: string) => void;
+}
+
+interface HomePageShellProps {
+  entries: Entry[];
+  isSignedIn: boolean;
+  localMode: boolean;
+  onQueryChange: (value: string) => void;
+  query: string;
+  recentEntriesLoading: boolean;
+  stateCount: number | undefined;
+  totalEntries: number | undefined;
+  organizationCount: number | undefined;
+}
+
+function HomeHeroActions({ onQueryChange, query }: HomeHeroActionsProps) {
+  return (
+    <>
+      <form action="/browse" className="mx-auto mt-10 max-w-3xl" method="get">
+        <div className="border-border-strong bg-surface-container-lowest shadow-soft flex flex-col border sm:flex-row">
+          <input type="hidden" name="offset" value="0" />
+          <label className="flex min-w-0 flex-1 items-center gap-3 px-4 py-4 sm:px-5">
+            <span className="sr-only">Search Atlas by name, place, issue, or organization</span>
+            <Search className="text-ink-soft h-4 w-4 shrink-0" aria-hidden="true" />
+            <input
+              name="query"
+              value={query}
+              onChange={(event) => {
+                onQueryChange(event.target.value);
+              }}
+              placeholder="Search by name, place, issue, or organization..."
+              className="type-body-large text-ink-strong placeholder:text-ink-muted w-full bg-transparent outline-none"
+            />
+          </label>
+          <button
+            type="submit"
+            className="type-label-large bg-ink-strong text-surface hover:bg-ink border-border-strong inline-flex min-h-12 items-center justify-center gap-2 border-t px-6 transition-colors duration-150 sm:border-t-0 sm:border-l"
+          >
+            Search
+            <ArrowRight className="h-4 w-4" aria-hidden="true" />
+          </button>
+        </div>
+      </form>
+
+      <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
+        {ISSUE_CHIPS.map((issue) => (
+          <a
+            key={issue}
+            href={browseUrl(issue)}
+            className="type-label-medium border-border-strong text-ink hover:bg-surface-container inline-flex min-h-8 items-center border px-3 py-1.5 no-underline transition-colors duration-150"
+          >
+            {issue}
+          </a>
+        ))}
+      </div>
+    </>
+  );
+}
+export function HomePageShell({
+  entries,
+  isSignedIn,
+  localMode,
+  onQueryChange,
+  query,
+  recentEntriesLoading,
+  stateCount,
+  totalEntries,
+  organizationCount,
+}: HomePageShellProps) {
+  const homeStats = [
+    {
+      stat: formatStatCount(totalEntries),
+      label: "civic actors indexed",
+      loading: totalEntries === undefined,
+    },
+    {
+      stat: formatStatCount(organizationCount),
+      label: "organizations",
+      loading: organizationCount === undefined,
+    },
+    {
+      stat: stateCount && stateCount >= 50 ? "All 50" : formatStatCount(stateCount),
+      label: stateCount && stateCount >= 50 ? "states covered" : "states represented",
+      loading: stateCount === undefined,
+    },
+  ];
+
+  return (
+    <div className="text-ink-strong">
+      <section className="border-border flex min-h-[calc(88svh-5rem)] items-center overflow-hidden border-b px-4 py-16 md:px-8 md:py-20">
+        <div className="mx-auto w-full max-w-4xl text-center">
+          <h1
+            aria-label="Find the people rebuilding America."
+            className="text-ink-strong text-5xl leading-tight text-balance md:text-7xl"
+          >
+            Find the people
+            <br />
+            <em className="font-serif italic">rebuilding America.</em>
+          </h1>
+
+          <p className="type-body-large text-ink-soft mx-auto mt-6 max-w-2xl text-balance">
+            Atlas indexes civic actors: individuals, organizations, and initiatives working on
+            public problems in every corner of the country.
+          </p>
+
+          <HomeHeroActions onQueryChange={onQueryChange} query={query} />
+
+          {isSignedIn ? (
+            <div className="mt-7 flex justify-center">
+              <Link
+                to="/home"
+                className="type-label-large bg-accent text-accent-ink hover:bg-accent-deep inline-flex items-center justify-center px-6 py-3 no-underline transition-colors duration-150"
+              >
+                Go to your research &rarr;
+              </Link>
+            </div>
+          ) : !localMode ? (
+            <p className="type-body-medium text-ink-soft mt-7 text-center">
+              Want to save your work?{" "}
+              <Link to="/sign-up" className="text-accent-deep type-label-medium hover:underline">
+                Create a free account &rarr;
+              </Link>
+            </p>
+          ) : null}
+        </div>
+      </section>
+
+      <section className="border-border flex min-h-[100svh] items-center border-b px-4 py-20 md:px-8">
+        <div className="mx-auto grid w-full max-w-[88rem] gap-16 md:grid-cols-[minmax(0,40rem)_minmax(0,44rem)] md:items-center">
+          <div>
+            <h2 className="max-w-4xl text-3xl leading-tight text-balance md:text-5xl">
+              Good people are doing good work everywhere.{" "}
+              <em className="font-serif italic">Atlas helps you find them.</em>
+            </h2>
+            <p className="type-body-large text-ink-soft mt-8 max-w-3xl">
+              In every state, in cities and small towns, there are organizers, advocates, attorneys,
+              researchers, and community leaders working on the problems that matter most. Most of
+              them are invisible to anyone outside their immediate circles.
+            </p>
+            <p className="type-body-large text-ink-soft mt-5 max-w-3xl">
+              Atlas makes them findable by place, by issue, by name, or by the organizations they
+              belong to. Search, save people you find, and look at who else is active in the same
+              place or on the same problem.
+            </p>
+          </div>
+
+          <div className="border-border bg-surface-container-lowest border">
+            <div className="border-border border-b px-8 py-6">
+              <div className="border-border-strong bg-surface flex items-center gap-3 border px-4 py-3">
+                <Search className="text-ink-muted h-4 w-4" aria-hidden="true" />
+                <span className="type-body-medium text-ink-soft">
+                  housing organizers in Detroit
+                </span>
+              </div>
+            </div>
+            <div className="bg-border grid gap-px sm:grid-cols-2">
+              {SEARCH_EXAMPLES.slice(0, 4).map((example) => (
+                <a
+                  key={example.query}
+                  href={browseUrl(example.query)}
+                  className="bg-surface-container-lowest hover:bg-surface-container min-h-32 p-8 no-underline transition-colors duration-150"
+                >
+                  <p className="text-ink-strong font-serif text-lg leading-snug">{example.query}</p>
+                  <p className="type-label-small text-accent-deep mt-5">{example.result}</p>
+                </a>
+              ))}
+            </div>
+            <div className="border-border flex flex-wrap items-center justify-between gap-4 border-t px-8 py-4">
+              <span className="type-label-small text-ink-soft">
+                People · organizations · initiatives · coalitions
+              </span>
+              <span className="type-label-small text-accent-deep">All 50 states</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="border-border bg-surface-container border-y">
+        <div className="divide-border mx-auto grid max-w-[88rem] divide-y md:grid-cols-[repeat(3,minmax(0,28rem))] md:justify-between md:divide-x md:divide-y-0">
+          {homeStats.map(({ label, loading, stat }) => (
+            <div key={label} className="flex min-h-32 flex-col justify-end px-8 py-8 md:min-h-40">
+              <div className="font-serif text-[clamp(2.75rem,7vw,5.75rem)] leading-none">
+                {loading ? (
+                  <span
+                    aria-label={`${label} loading`}
+                    className="type-title-large text-ink-muted/70 font-sans"
+                  >
+                    Loading
+                  </span>
+                ) : (
+                  stat
+                )}
+              </div>
+              <div className="type-title-medium text-ink-soft mt-4">{label}</div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="border-border border-b px-4 py-24 md:px-8">
+        <div className="mx-auto grid w-full max-w-[88rem] gap-16 md:grid-cols-[minmax(0,28rem)_minmax(0,56rem)]">
+          <div>
+            <h2 className="font-serif text-3xl leading-snug text-balance md:text-4xl">
+              Map the field.
+            </h2>
+            <p className="type-body-large text-ink-soft mt-6">
+              Atlas is not a flat directory. It treats civic work as a field: people belong to
+              organizations, organizations join coalitions, coalitions work across places, and gaps
+              matter as much as what is already well documented.
+            </p>
+            <p className="type-body-large text-ink-soft mt-5">
+              Use it to understand structure. Who leads, who staffs, who collaborates, where
+              coverage is strong, and where the public record still needs work.
+            </p>
+          </div>
+
+          <div className="border-border bg-surface-container-lowest border">
+            <div className="border-border flex items-center justify-between gap-4 border-b px-8 py-4">
+              <span className="font-serif text-sm">Housing · Detroit, MI</span>
+              <span className="type-label-small text-ink-soft">34 actors · 9 orgs</span>
+            </div>
+            {FIELD_ACTORS.map((actor) => (
+              <div
+                key={actor.name}
+                className="border-border flex items-center justify-between gap-4 border-b px-8 py-4 last:border-b-0"
+              >
+                <div>
+                  <p className="font-serif text-sm">{actor.name}</p>
+                  <p className="type-label-small text-ink-soft mt-1">{actor.role}</p>
+                </div>
+                <span className="type-label-small text-ink-soft shrink-0">{actor.connections}</span>
+              </div>
+            ))}
+            <p className="type-label-small bg-surface-container text-ink-soft border-border border-t px-8 py-4">
+              Coverage gap · transit + housing overlap: 2 known actors, weakly sourced
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section className="border-border border-b px-4 py-24 md:px-8">
+        <div className="mx-auto grid w-full max-w-[88rem] gap-16 md:grid-cols-[minmax(0,40rem)_minmax(0,44rem)] md:items-center">
+          <div>
+            <h2 className="text-3xl leading-snug text-balance md:text-4xl">Prepare for action.</h2>
+            <p className="type-body-large text-ink-soft mt-6">
+              When your team is entering a new city, planning a campaign, preparing a story, or
+              looking for partners, Atlas helps turn a broad question into a usable short list. You
+              get the people to know, the groups around them, and the gaps to check before anyone
+              makes a call.
+            </p>
+            <div className="border-border bg-border mt-10 grid gap-px overflow-hidden border sm:grid-cols-2">
+              {FEATURE_WORKFLOWS.map((feature) => (
+                <div key={feature.name} className="bg-surface-container-lowest p-8">
+                  <feature.Icon className="text-accent-deep mb-5 h-5 w-5" aria-hidden="true" />
+                  <p className="font-serif text-lg">{feature.name}</p>
+                  <p className="type-body-small text-ink-soft mt-3">{feature.description}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="border-border bg-surface-container-lowest border">
+            <div className="border-border flex items-center justify-between gap-4 border-b px-8 py-4">
+              <p className="flex items-center gap-2 font-serif text-sm">
+                <MapPinned className="text-accent-deep h-4 w-4" aria-hidden="true" />
+                Meeting prep · Wayne County housing
+              </p>
+              <span className="type-label-small text-ink-soft">Prepared today</span>
+            </div>
+            <div className="bg-border grid gap-px md:grid-cols-[0.9fr_1.1fr]">
+              <div className="bg-surface-container-lowest p-8">
+                <p className="font-serif text-xl leading-snug">
+                  Who should we talk to before Thursday&apos;s tenant-protection hearing?
+                </p>
+                <div className="mt-6 flex flex-wrap gap-2">
+                  {["Wayne County", "Housing", "Tenant groups", "Legal aid"].map((tag) => (
+                    <span
+                      key={tag}
+                      className="type-label-small border-border-strong text-ink-soft border px-2.5 py-1"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              <div className="bg-surface-container-lowest p-8">
+                <div className="space-y-4">
+                  {[
+                    ["34", "people and groups"],
+                    ["11", "strong records"],
+                    ["3", "gaps to check"],
+                  ].map(([value, label]) => (
+                    <div key={label} className="flex items-baseline justify-between gap-4">
+                      <span className="font-serif text-3xl">{value}</span>
+                      <span className="type-label-small text-ink-soft">{label}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div className="divide-border divide-y">
+              {["Save the shortlist", "Share with the team", "Keep watching this issue"].map(
+                (action) => (
+                  <div key={action} className="flex items-center justify-between gap-4 px-8 py-4">
+                    <span className="type-label-medium text-ink-strong">{action}</span>
+                    <ArrowRight className="text-accent-deep h-3.5 w-3.5" aria-hidden="true" />
+                  </div>
+                ),
+              )}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="border-border border-b px-4 py-24 md:px-8">
+        <div className="mx-auto max-w-[88rem]">
+          <div className="mb-16 grid gap-16 md:grid-cols-[minmax(0,50rem)_minmax(0,14rem)_minmax(0,16rem)]">
+            <div className="md:col-span-2">
+              <h2 className="text-3xl leading-snug text-balance md:text-4xl">Work as a team.</h2>
+              <p className="type-body-large text-ink-soft mt-6">
+                Pro and Team plans give civic research a shared workspace: assign follow-ups, keep
+                private notes beside Atlas records, review additions before they leave the team, and
+                export clean packets for a story, funder update, coalition meeting, or partner
+                handoff.
+              </p>
+            </div>
+            <div className="flex items-end">
+              {!localMode ? (
+                <Link
+                  to="/pricing"
+                  className="type-label-medium text-accent-deep inline-flex items-center gap-2 hover:underline"
+                >
+                  Pro and Team plans
+                  <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+                </Link>
+              ) : null}
+            </div>
+          </div>
+
+          <div className="border-border bg-surface-container-lowest border">
+            <div className="border-border flex flex-col gap-4 border-b px-8 py-4 lg:flex-row lg:items-center lg:justify-between">
+              <p className="font-serif text-sm">Workspace · Wayne County Housing</p>
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="type-label-small text-ink-soft">3 teammates · updated 2h ago</span>
+                {["Export", "Share", "Assign"].map((action) => (
+                  <button
+                    key={action}
+                    type="button"
+                    className="type-label-small border-border-strong text-ink-soft hover:bg-surface-container border px-3 py-1.5 transition-colors duration-150"
+                  >
+                    {action}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="bg-border grid gap-px md:grid-cols-3">
+              {BRIEF_ACTORS.map((actor) => (
+                <div key={actor.name} className="bg-surface-container-lowest px-8 py-6">
+                  <div className="mb-2 flex items-start justify-between gap-3">
+                    <p className="font-serif text-sm">{actor.name}</p>
+                    <span className="type-label-small text-ink-soft shrink-0">
+                      {typeof actor.sources === "number"
+                        ? `${actor.sources} sources`
+                        : actor.sources}
+                    </span>
+                  </div>
+                  <p className="type-label-small text-accent-deep mb-2">{actor.type}</p>
+                  <p className="type-body-small text-ink-soft">{actor.note}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <HomeDiscoverySection
+        entries={entries}
+        recentEntriesLoading={recentEntriesLoading}
+        totalEntries={totalEntries}
+      />
+    </div>
+  );
+}
