@@ -1,3 +1,5 @@
+import { Link } from "@tanstack/react-router";
+import { ArrowLeft } from "lucide-react";
 import { useState } from "react";
 import { useAtlasSession } from "@/domains/access";
 import {
@@ -79,6 +81,14 @@ export function ClaimPage({ slug, entry, search }: ClaimPageProps) {
   return (
     <PageLayout className="pt-0 pb-12">
       <div className="mx-auto max-w-6xl py-10 lg:py-12">
+        <Link
+          to={profilePath as "/profiles"}
+          className="type-label-medium text-ink-soft hover:text-ink-strong inline-flex items-center gap-2 transition-colors"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to profile
+        </Link>
+
         <ClaimHero entry={entry} />
 
         <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_23rem] lg:items-start">

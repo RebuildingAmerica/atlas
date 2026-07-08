@@ -1,5 +1,4 @@
-import { Link, createFileRoute } from "@tanstack/react-router";
-import { ArrowLeft } from "lucide-react";
+import { createFileRoute } from "@tanstack/react-router";
 import { ClaimPage } from "./claim-page";
 import { loadEntryBySlugAny } from "@/domains/catalog/server/profiles/profile-loaders";
 import { buildPageHead } from "@/platform/seo";
@@ -34,19 +33,5 @@ function ClaimRoute() {
   const search = Route.useSearch();
   const { entry } = Route.useLoaderData();
 
-  return (
-    <div className="mx-auto max-w-6xl px-6 py-10 lg:py-12">
-      <Link
-        to={
-          `/profiles/${entry.type === "organization" ? "organizations" : "people"}/${entry.slug}` as "/profiles"
-        }
-        className="type-label-medium text-ink-soft hover:text-ink-strong inline-flex items-center gap-2 transition-colors"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Back to profile
-      </Link>
-
-      <ClaimPage slug={slug} entry={entry} search={search} />
-    </div>
-  );
+  return <ClaimPage slug={slug} entry={entry} search={search} />;
 }
