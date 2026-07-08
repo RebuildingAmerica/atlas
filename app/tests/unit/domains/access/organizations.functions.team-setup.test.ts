@@ -14,7 +14,7 @@ describe("organizations.functions team setup", () => {
     authApi.createInvitation.mockResolvedValue(undefined);
 
     const { createWorkspace } = await import("@/domains/access/organizations.functions");
-    const response = await createWorkspace.__executeServer({
+    const response = (await createWorkspace.__executeServer({
       method: "POST",
       data: {
         delegatedAdminEmail: "delegate@atlas.test",
@@ -23,7 +23,7 @@ describe("organizations.functions team setup", () => {
         workspaceDomain: "example.com",
         workspaceType: "team",
       },
-    });
+    })) as ServerFnExecutionResponse;
 
     expect(response.error).toBeUndefined();
     expect(response.result).toEqual({ id: "new_org", slug: "new-workspace" });

@@ -188,10 +188,10 @@ describe("organizations.functions members", () => {
     mocks.ensureAtlasSession.mockResolvedValue(createAtlasSessionFixture());
 
     const { updateWorkspaceMemberRole } = await import("@/domains/access/organizations.functions");
-    const response = await updateWorkspaceMemberRole.__executeServer({
+    const response = (await updateWorkspaceMemberRole.__executeServer({
       method: "POST",
       data: { memberId: "mem_123", role: "admin" },
-    });
+    })) as ServerFnExecutionResponse;
 
     expect(response.result).toEqual({ ok: true });
     interface UpdateMemberRoleCall {
@@ -215,10 +215,10 @@ describe("organizations.functions members", () => {
     mocks.ensureAtlasSession.mockResolvedValue(createAtlasSessionFixture());
 
     const { removeWorkspaceMember } = await import("@/domains/access/organizations.functions");
-    const response = await removeWorkspaceMember.__executeServer({
+    const response = (await removeWorkspaceMember.__executeServer({
       method: "POST",
       data: { memberIdOrEmail: "mem_123" },
-    });
+    })) as ServerFnExecutionResponse;
 
     expect(response.result).toEqual({ ok: true });
     interface RemoveMemberCall {

@@ -2,10 +2,8 @@ import { type NavigateOptions } from "@tanstack/react-router";
 import type {
   acceptWorkspaceInvitation,
   cancelWorkspaceInvitation,
-  convertWorkspaceToTeam,
   createWorkspace,
   inviteWorkspaceMember,
-  leaveWorkspace,
   rejectWorkspaceInvitation,
   removeWorkspaceMember,
   resendWorkspaceInvitation,
@@ -34,7 +32,7 @@ export interface OrganizationPageWorkspaceActionDependencies {
   refreshWorkspaceData: () => Promise<void>;
   navigate: (options: NavigateOptions) => Promise<void>;
   createWorkspaceMutation: WorkspaceMutationLike<Parameters<typeof createWorkspace>>;
-  convertWorkspaceToTeamMutation: WorkspaceMutationLike<Parameters<typeof convertWorkspaceToTeam>>;
+  convertWorkspaceToTeamMutation: WorkspaceMutationLike;
   setActiveWorkspaceMutation: WorkspaceMutationLike<Parameters<typeof setActiveWorkspace>>;
   updateWorkspaceProfileMutation: WorkspaceMutationLike<Parameters<typeof updateWorkspaceProfile>>;
   updateDirectoryConfigMutation: WorkspaceMutationLike<
@@ -57,7 +55,7 @@ export interface OrganizationPageWorkspaceActionDependencies {
     Parameters<typeof updateWorkspaceMemberRole>
   >;
   removeWorkspaceMemberMutation: WorkspaceMutationLike<Parameters<typeof removeWorkspaceMember>>;
-  leaveWorkspaceMutation: WorkspaceMutationLike<Parameters<typeof leaveWorkspace>>;
+  leaveWorkspaceMutation: WorkspaceMutationLike;
 }
 
 function parseDirectoryList(value: string, separator = ","): string[] {

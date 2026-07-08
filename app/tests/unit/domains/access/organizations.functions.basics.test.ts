@@ -69,10 +69,10 @@ describe("organizations.functions basics", () => {
     );
 
     const { updateWorkspaceProfile } = await import("@/domains/access/organizations.functions");
-    const response = await updateWorkspaceProfile.__executeServer({
+    const response = (await updateWorkspaceProfile.__executeServer({
       method: "POST",
       data: { name: "New Name", slug: "new-slug" },
-    });
+    })) as ServerFnExecutionResponse;
 
     expect(response.result).toEqual({ ok: true });
     interface UpdateOrganizationCall {
@@ -102,10 +102,10 @@ describe("organizations.functions basics", () => {
     );
 
     const { leaveWorkspace } = await import("@/domains/access/organizations.functions");
-    const response = await leaveWorkspace.__executeServer({
+    const response = (await leaveWorkspace.__executeServer({
       method: "POST",
       data: undefined,
-    });
+    })) as ServerFnExecutionResponse;
 
     expect(response.result).toEqual({ ok: true });
     interface LeaveOrganizationCall {
