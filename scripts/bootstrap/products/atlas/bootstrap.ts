@@ -2,10 +2,9 @@ import path from "node:path";
 import Stripe from "stripe";
 import { log, spinner, password } from "@clack/prompts";
 import pc from "picocolors";
-import type { PhaseResult } from "../../lib/types.js";
 import { mergeEnvFile } from "../../lib/env-file.js";
 import { logSubline, promptOrExit } from "../../lib/ui.js";
-import type { ReadinessState } from "../../state.js";
+import type { PhaseResult, ReadinessState } from "../../state.js";
 import { markPhase } from "../../state.js";
 import { resolveStripeApiKey } from "../stripe-cli-client.js";
 import {

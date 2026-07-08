@@ -1,4 +1,22 @@
-import type { CapabilityId, CommandGroup } from "../lib/types.js";
+export type CapabilityId =
+  | "core-node"
+  | "core-pnpm"
+  | "core-python"
+  | "core-uv"
+  | "core-docker"
+  | "deploy-gcloud"
+  | "deploy-gh"
+  | "deploy-actionlint"
+  | "deploy-wrangler"
+  | "deploy-vercel"
+  | "deploy-mcp-publisher"
+  | "deploy-dig"
+  | "deploy-jq"
+  | "product-stripe"
+  | "product-neonctl"
+  | "product-psql";
+
+export type CommandGroup = "dev" | "test" | "build" | "deploy" | "product";
 
 export interface AuthSpec {
   checkCommand: string;

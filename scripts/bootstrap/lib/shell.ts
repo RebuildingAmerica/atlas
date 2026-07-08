@@ -1,5 +1,10 @@
 import { spawnSync } from "node:child_process";
-import type { CommandResult } from "./types.js";
+
+export interface CommandResult {
+  ok: boolean;
+  stdout: string;
+  stderr: string;
+}
 
 function resolveShell(): string {
   return process.env.SHELL ?? "sh";

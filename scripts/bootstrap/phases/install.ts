@@ -4,13 +4,11 @@ import {
   CAPABILITY_SPECS,
   type CapabilityConfig,
 } from "../config/prerequisites.js";
-import type { SupportedOs } from "../lib/types.js";
-import type { PhaseResult } from "../lib/types.js";
 import { runCommand, summarizeOutputLine } from "../lib/shell.js";
-import { isVersionGte } from "../lib/os.js";
+import { isVersionGte, type SupportedOs } from "../lib/os.js";
 import { promptConfirm, logSubline } from "../lib/ui.js";
 import { markCapability } from "../state.js";
-import type { ReadinessState } from "../state.js";
+import type { PhaseResult, ReadinessState } from "../state.js";
 
 export async function runInstallPhase(
   state: ReadinessState,

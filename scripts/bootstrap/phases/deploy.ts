@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { log, spinner } from "@clack/prompts";
 import pc from "picocolors";
-import type { PhaseResult } from "../lib/types.js";
+import type { PhaseResult } from "../state.js";
 import { runCommand, commandOutput } from "../lib/shell.js";
 import { parseEnvFile } from "../lib/env-file.js";
 import { promptConfirm, logSubline } from "../lib/ui.js";

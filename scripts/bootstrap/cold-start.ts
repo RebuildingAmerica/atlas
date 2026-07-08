@@ -22,11 +22,15 @@ import { fileURLToPath } from "node:url";
 import { intro, log, note, outro } from "@clack/prompts";
 import pc from "picocolors";
 import { detectOs } from "./lib/os.js";
-import type { PhaseId } from "./lib/types.js";
+import {
+  confirmResumeSkip,
+  parseArgs,
+  printSummary,
+  recomputeCommandReadiness,
+  shouldSkipPhase,
+} from "./lib/cold-start.js";
 import { runCommand } from "./lib/shell.js";
-import { promptConfirm } from "./lib/ui.js";
 import { loadReadiness, markPhase, saveReadiness } from "./state.js";
-import { COMMAND_CAPABILITY_MAP } from "./config/prerequisites.js";
 import { runInstallPhase } from "./phases/install.js";
 import { runAuthPhase } from "./phases/auth.js";
 import { runEnvPhase } from "./phases/env.js";
@@ -36,97 +40,8 @@ import { runProductPhase } from "./products/atlas/bootstrap.js";
 import { runDeployPhase } from "./phases/deploy.js";
 import { runMcpRegistryPhase } from "./phases/mcp-registry.js";
 import { runCiCachePhase } from "./phases/ci-cache.js";
-import {
-  runApiDomainPhase,
-  type ApiDomainTarget,
-} from "./phases/api-domain.js";
+import { runApiDomainPhase } from "./phases/api-domain.js";
 import { runApiEdgePhase } from "./phases/api-edge.js";
-
-interface CliArgs {
-  localOnly: boolean;
-  doctorMode: boolean;
-  resume: boolean;
-  productOnly: string | null;
-  mcpRegistryOnly: boolean;
-  ciCacheOnly: boolean;
-  apiDomainOnly: boolean;
-  apiEdgeOnly: boolean;
-  apiDomainTarget: ApiDomainTarget;
-  live: boolean;
-}
-
-function parseArgs(argv: string[]): CliArgs {
-  const targetIdx = argv.indexOf("--target");
-  const targetArg = targetIdx >= 0 ? (argv[targetIdx + 1] ?? "prod") : "prod";
-  const apiDomainTarget: ApiDomainTarget =
-    targetArg === "staging" ? "staging" : "prod";
-  return {
-    localOnly: argv.includes("--local-only"),
-    doctorMode: argv.includes("--doctor"),
-    resume: argv.includes("--resume"),
-    productOnly: argv.includes("--product")
-      ? (argv[argv.indexOf("--product") + 1] ?? null)
-      : null,
-    mcpRegistryOnly: argv.includes("--mcp-registry"),
-    ciCacheOnly: argv.includes("--ci-cache"),
-    apiDomainOnly: argv.includes("--api-domain"),
-    apiEdgeOnly: argv.includes("--api-edge"),
-    apiDomainTarget,
-    live: argv.includes("--live"),
-  };
-}
-
-function shouldSkipPhase(
-  phaseId: PhaseId,
-  state: ReturnType<typeof loadReadiness>,
-  resume: boolean,
-): boolean {
-  if (!resume) return false;
-  return state.phases[phaseId]?.status === "complete";
-}
-
-async function confirmResumeSkip(phaseName: string): Promise<boolean> {
-  return !(await promptConfirm(
-    `${phaseName} was already completed. Re-run it?`,
-    false,
-  ));
-}
-
-function recomputeCommandReadiness(
-  state: ReturnType<typeof loadReadiness>,
-): void {
-  for (const [group, requiredCaps] of Object.entries(COMMAND_CAPABILITY_MAP)) {
-    const allReady = requiredCaps.every(
-      (capId) => state.capabilities[capId]?.status === "ready",
-    );
-    state.commandReadiness[group as keyof typeof state.commandReadiness] =
-      allReady ? "ready" : "blocked";
-  }
-}
-
-function printSummary(state: ReturnType<typeof loadReadiness>): void {
-  const lines: string[] = [];
-
-  lines.push(pc.bold("Command Readiness:"));
-  for (const [group, status] of Object.entries(state.commandReadiness)) {
-    const icon = status === "ready" ? pc.green("ready") : pc.yellow("blocked");
-    lines.push(`  ${group}: ${icon}`);
-  }
-
-  lines.push("");
-  lines.push(pc.bold("Phases:"));
-  for (const [phase, phaseState] of Object.entries(state.phases)) {
-    const icon =
-      phaseState.status === "complete"
-        ? pc.green("complete")
-        : phaseState.status === "failed"
-          ? pc.red("failed")
-          : pc.yellow(phaseState.status);
-    lines.push(`  ${phase}: ${icon}`);
-  }
-
-  note(lines.join("\n"), "Bootstrap Status");
-}
 
 async function main(): Promise<void> {
   const __dirname = path.dirname(fileURLToPath(import.meta.url));

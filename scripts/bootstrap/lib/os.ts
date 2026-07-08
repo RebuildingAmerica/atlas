@@ -1,5 +1,6 @@
 import { spawnSync } from "node:child_process";
-import type { SupportedOs } from "./types.js";
+
+export type SupportedOs = "macos" | "linux";
 
 export function parseSemver(raw: string): number[] {
   return raw

@@ -1,12 +1,43 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import type {
-  CapabilityId,
-  CapabilityState,
-  CommandGroup,
-  PhaseId,
-  PhaseState,
-} from "./lib/types.js";
+import type { CapabilityId, CommandGroup } from "./config/prerequisites.js";
+
+export type CapabilityStatus = "ready" | "failed" | "deferred" | "skipped";
+
+export interface CapabilityState {
+  status: CapabilityStatus;
+  installStatus: CapabilityStatus;
+  authStatus: CapabilityStatus | "not_required";
+  detectedVersion?: string;
+  details?: string;
+  nextAction?: string;
+  checkedAt: string;
+}
+
+export interface PhaseState {
+  status: "complete" | "partial" | "skipped" | "failed";
+  completedAt: string;
+  details?: string;
+}
+
+export type PhaseId =
+  | "install"
+  | "auth"
+  | "env"
+  | "infra"
+  | "database"
+  | "product"
+  | "deploy"
+  | "mcp-registry"
+  | "ci-cache"
+  | "api-domain"
+  | "api-edge";
+
+export interface PhaseResult {
+  success: boolean;
+  followUpItems: string[];
+  details?: string;
+}
 
 const STATE_VERSION = 1;
 

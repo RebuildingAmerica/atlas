@@ -1,7 +1,7 @@
 import { spawnSync } from "node:child_process";
 import { log, spinner } from "@clack/prompts";
 import pc from "picocolors";
-import type { PhaseResult } from "../lib/types.js";
+import type { PhaseResult } from "../state.js";
 import { commandOutput, runCommand } from "../lib/shell.js";
 import { logSubline, promptConfirm, promptOrExit } from "../lib/ui.js";
 import { getVercelScope, isVercelLinked } from "../lib/vercel.js";

@@ -2,7 +2,7 @@ import path from "node:path";
 import { existsSync } from "node:fs";
 import { log, spinner } from "@clack/prompts";
 import pc from "picocolors";
-import type { PhaseResult } from "../lib/types.js";
+import type { PhaseResult } from "../state.js";
 import { commandOutput, runCommand } from "../lib/shell.js";
 import { logSubline, promptConfirm } from "../lib/ui.js";
 import { parseEnvFile } from "../lib/env-file.js";

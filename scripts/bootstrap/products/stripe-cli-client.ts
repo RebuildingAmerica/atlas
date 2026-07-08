@@ -3,7 +3,7 @@ import path from "node:path";
 import { homedir } from "node:os";
 import { runCommand } from "../lib/shell.js";
 import { parseEnvFile } from "../lib/env-file.js";
-import type { CommandResult } from "../lib/types.js";
+import type { CommandResult } from "../lib/shell.js";
 
 /**
  * Check whether the Stripe CLI is authenticated by hitting the /v1/account

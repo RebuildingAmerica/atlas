@@ -1,6 +1,6 @@
 import { log } from "@clack/prompts";
 import { CAPABILITY_SPECS } from "../config/prerequisites.js";
-import type { PhaseResult } from "../lib/types.js";
+import type { PhaseResult } from "../state.js";
 import { runCommand, runInteractiveCommand } from "../lib/shell.js";
 import { promptConfirm, logSubline } from "../lib/ui.js";
 import { markCapability } from "../state.js";
