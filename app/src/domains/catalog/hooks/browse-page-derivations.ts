@@ -2,30 +2,18 @@ import { ENTITY_TYPE_LABELS, humanize, SOURCE_TYPE_LABELS } from "@/domains/cata
 import { STATE_NAME_BY_CODE } from "@/domains/catalog/us-state-grid";
 import type { BrowseRouteSearch, BrowseFilterKey } from "@/domains/catalog/search-state";
 import { serializeList } from "@/domains/catalog/search-state";
-import type { EntryType, SourcePattern, SourceType } from "@/types";
+import type { EntryType, SourceType } from "@/types";
 import type {
   BrowseCollectionFunnel,
   BrowseIssueStarter,
 } from "@/domains/catalog/components/browse/browse-exploration-guides";
-import type {
-  BrowseIssueBrief,
-  BrowsePlaceBrief,
-} from "@/domains/catalog/components/browse/browse-results-aside";
 import type { BrowseIntentChip } from "@/domains/catalog/components/browse/browse-intent-chips";
 import type { BrowseSurfaceState } from "@/domains/catalog/components/browse/browse-surfaces";
-const SOURCE_PATTERN_BRIEF_LABELS: Record<SourcePattern, string> = {
-  multi_source: "Multi-source confirmation",
-  single_source: "Single-source leads",
-  social_only: "Social-only signals",
-};
 
 export interface BrowseIntentBadge {
   key: BrowseFilterKey;
   label: string;
   value: string;
-}
-export function sourcePatternBriefLabel(value: string): string {
-  return SOURCE_PATTERN_BRIEF_LABELS[value as SourcePattern] ?? humanize(value);
 }
 
 export function buildCollectionFunnels({
@@ -331,78 +319,5 @@ export function buildEmptyRecoveryActions({
   return actions;
 }
 
-export function buildPlaceBrief({
-  entries,
-  issueAreaLabels,
-  selectedFilters,
-  selectedStateName,
-}: {
-  entries?: {
-    facets: {
-      source_patterns?: { count: number; value: string }[];
-    };
-    pagination: { total: number };
-  };
-  issueAreaLabels: Record<string, string>;
-  selectedFilters: { issue_areas: string[] };
-  selectedStateName?: string;
-}): BrowsePlaceBrief | undefined {
-  const selectedIssueArea = selectedFilters.issue_areas[0];
-  if (!selectedStateName || !selectedIssueArea || !entries?.pagination) {
-    return undefined;
-  }
-
-  const issueLabel = issueAreaLabels[selectedIssueArea] ?? humanize(selectedIssueArea);
-  const ecosystemLabel = issueLabel.split(/\s+/)[0]?.toLowerCase() ?? "local";
-  const strongestSourcePattern = [...(entries.facets.source_patterns ?? [])].sort(
-    (left, right) => right.count - left.count,
-  )[0];
-
-  return {
-    body: `${entries.pagination.total} people or groups with sources.`,
-    signal: strongestSourcePattern
-      ? `Strongest signal: ${sourcePatternBriefLabel(strongestSourcePattern.value)}`
-      : undefined,
-    title: `${selectedStateName} ${ecosystemLabel} ecosystem`,
-  };
-}
-
-export function buildIssueBrief({
-  entries,
-  issueAreaLabels,
-  selectedFilters,
-}: {
-  entries?: {
-    facets: {
-      source_patterns?: { count: number; value: string }[];
-    };
-    pagination: { total: number };
-  };
-  issueAreaLabels: Record<string, string>;
-  selectedFilters: { issue_areas: string[] };
-}): BrowseIssueBrief | undefined {
-  const selectedIssueArea = selectedFilters.issue_areas[0];
-  if (!selectedIssueArea || !entries?.pagination) {
-    return undefined;
-  }
-
-  const issueLabel = issueAreaLabels[selectedIssueArea] ?? humanize(selectedIssueArea);
-  const strongestSourcePattern = [...(entries.facets.source_patterns ?? [])].sort(
-    (left, right) => right.count - left.count,
-  )[0];
-  const multiSourceCount =
-    entries.facets.source_patterns?.find((facet) => facet.value === "multi_source")?.count ?? 0;
-  const gap =
-    entries.pagination.total > 0 && multiSourceCount < entries.pagination.total / 2
-      ? "Gap: build more multi-source confirmation."
-      : undefined;
-
-  return {
-    body: `${entries.pagination.total} people or groups with sources.`,
-    gap,
-    signal: strongestSourcePattern
-      ? `Source signal: ${sourcePatternBriefLabel(strongestSourcePattern.value)}`
-      : undefined,
-    title: `${issueLabel} landscape`,
-  };
-}
+export { buildIssueBrief, buildPlaceBrief } from "./browse-page-derivations-briefs";
+export { sourcePatternBriefLabel } from "./browse-page-derivations-helpers";

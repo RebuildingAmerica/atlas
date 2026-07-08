@@ -35,7 +35,6 @@ import { type BrowsePageContent, DEFAULT_BROWSE_PAGE_CONTENT } from "./browse-pa
 import { BrowseResultsAside } from "./browse-results-aside";
 import { BrowseSearchHeader } from "./browse-search-header";
 import { useBrowsePageDetails } from "@/domains/catalog/hooks/use-browse-page-details";
-
 export type { BrowsePageContent } from "./browse-page-content";
 
 interface BrowsePageProps {

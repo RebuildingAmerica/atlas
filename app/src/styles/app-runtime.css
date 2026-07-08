@@ -1,0 +1,196 @@
+html {
+  font-family:
+    "Public Sans",
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+}
+
+html {
+  background-color: var(--color-page-bg);
+}
+
+body {
+  font-family: inherit;
+  color: var(--ink-strong);
+}
+
+a[href],
+button:not(:disabled),
+[role="button"]:not([aria-disabled="true"]),
+[role="link"] {
+  cursor: pointer;
+}
+
+button:disabled,
+[aria-disabled="true"] {
+  cursor: not-allowed;
+}
+
+.atlas-top-bar-shell,
+.atlas-top-bar {
+  will-change: padding, border-radius;
+}
+
+.atlas-top-bar-shell-showcase {
+  --atlas-top-bar-inline-inset: 0.75rem;
+  padding: 0.75rem var(--atlas-top-bar-inline-inset) 0;
+  animation: atlas-top-bar-shell-morph linear both;
+  animation-timeline: scroll(root block);
+  animation-range: 0 48px;
+}
+
+.atlas-top-bar-showcase {
+  border-radius: 1rem;
+  animation: atlas-top-bar-morph linear both;
+  animation-timeline: scroll(root block);
+  animation-range: 0 48px;
+}
+
+@media (min-width: 40rem) {
+  .atlas-top-bar-shell-showcase {
+    --atlas-top-bar-inline-inset: 1.5rem;
+  }
+}
+
+@keyframes atlas-top-bar-shell-morph {
+  from {
+    padding-top: 0.75rem;
+    padding-right: var(--atlas-top-bar-inline-inset);
+    padding-left: var(--atlas-top-bar-inline-inset);
+  }
+  to {
+    padding-top: 0;
+    padding-right: 0;
+    padding-left: 0;
+  }
+}
+
+@keyframes atlas-top-bar-morph {
+  from {
+    border-radius: 1rem;
+  }
+  to {
+    border-radius: 0;
+  }
+}
+
+@supports not (animation-timeline: scroll(root block)) {
+  .atlas-top-bar-shell-showcase,
+  .atlas-top-bar-showcase {
+    transition:
+      padding 180ms ease,
+      border-radius 180ms ease;
+  }
+}
+
+/* MD3 Type Scale — exact spec values */
+/* https://m3.material.io/styles/typography/type-scale-tokens */
+
+@utility type-display-large {
+  font-size: 3.5625rem; /* 57px */
+  line-height: 4rem; /* 64px */
+  font-weight: 400;
+  letter-spacing: -0.015625rem; /* -0.25px */
+}
+
+@utility type-display-medium {
+  font-size: 2.8125rem; /* 45px */
+  line-height: 3.25rem; /* 52px */
+  font-weight: 400;
+  letter-spacing: 0;
+}
+
+@utility type-display-small {
+  font-size: 2.25rem; /* 36px */
+  line-height: 2.75rem; /* 44px */
+  font-weight: 400;
+  letter-spacing: 0;
+}
+
+@utility type-headline-large {
+  font-size: 2rem; /* 32px */
+  line-height: 2.5rem; /* 40px */
+  font-weight: 400;
+  letter-spacing: 0;
+}
+
+@utility type-headline-medium {
+  font-size: 1.75rem; /* 28px */
+  line-height: 2.25rem; /* 36px */
+  font-weight: 400;
+  letter-spacing: 0;
+}
+
+@utility type-headline-small {
+  font-size: 1.5rem; /* 24px */
+  line-height: 2rem; /* 32px */
+  font-weight: 400;
+  letter-spacing: 0;
+}
+
+@utility type-title-large {
+  font-size: 1.375rem; /* 22px */
+  line-height: 1.75rem; /* 28px */
+  font-weight: 400;
+  letter-spacing: 0;
+}
+
+@utility type-title-medium {
+  font-size: 1rem; /* 16px */
+  line-height: 1.5rem; /* 24px */
+  font-weight: 500;
+  letter-spacing: 0.009375rem; /* 0.15px */
+}
+
+@utility type-title-small {
+  font-size: 0.875rem; /* 14px */
+  line-height: 1.25rem; /* 20px */
+  font-weight: 500;
+  letter-spacing: 0.00625rem; /* 0.1px */
+}
+
+@utility type-body-large {
+  font-size: 1rem; /* 16px */
+  line-height: 1.5rem; /* 24px */
+  font-weight: 400;
+  letter-spacing: 0.03125rem; /* 0.5px */
+}
+
+@utility type-body-medium {
+  font-size: 0.875rem; /* 14px */
+  line-height: 1.25rem; /* 20px */
+  font-weight: 400;
+  letter-spacing: 0.015625rem; /* 0.25px */
+}
+
+@utility type-body-small {
+  font-size: 0.75rem; /* 12px */
+  line-height: 1rem; /* 16px */
+  font-weight: 400;
+  letter-spacing: 0.025rem; /* 0.4px */
+}
+
+@utility type-label-large {
+  font-size: 0.875rem; /* 14px */
+  line-height: 1.25rem; /* 20px */
+  font-weight: 500;
+  letter-spacing: 0.00625rem; /* 0.1px */
+}
+
+@utility type-label-medium {
+  font-size: 0.75rem; /* 12px */
+  line-height: 1rem; /* 16px */
+  font-weight: 500;
+  letter-spacing: 0.03125rem; /* 0.5px */
+}
+
+@utility type-label-small {
+  font-size: 0.6875rem; /* 11px */
+  line-height: 1rem; /* 16px */
+  font-weight: 500;
+  letter-spacing: 0.03125rem; /* 0.5px */
+}
