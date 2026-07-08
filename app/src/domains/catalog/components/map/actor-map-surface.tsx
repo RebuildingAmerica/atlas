@@ -72,6 +72,7 @@ export function ActorMapSurface({
         initialViewState={initialViewState}
         minZoom={MIN_MAP_ZOOM}
         maxZoom={MAX_MAP_ZOOM}
+        dragPan={{ deceleration: 100_000, maxSpeed: 0 }}
         dragRotate={false}
         pitchWithRotate={false}
         touchPitch={false}

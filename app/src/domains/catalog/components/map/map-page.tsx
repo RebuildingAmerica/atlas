@@ -26,6 +26,8 @@ import type { FlyToCamera } from "@/domains/catalog/map/map-camera";
 import type { MapRouteSearch } from "@/domains/catalog/search-state";
 import type { MapPointCollection } from "@/types";
 
+const MAP_NOTICE_POSITION_CLASS = "absolute top-24 right-3 sm:top-24 sm:right-4";
+
 interface MapPageProps {
   /** The route's search params: shared filters plus a possibly-shared viewport. */
   search: MapRouteSearch;
@@ -177,7 +179,7 @@ export function MapPage({ search, initialPoints, initialPointsLoadFailed = false
         </div>
 
         {isEmpty ? (
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
+          <div data-testid="map-empty-notice" className={MAP_NOTICE_POSITION_CLASS}>
             <MapEmptyState
               hasActiveFilters={page.hasActiveFilters}
               onZoomOut={page.onZoomOut}
@@ -187,7 +189,7 @@ export function MapPage({ search, initialPoints, initialPointsLoadFailed = false
         ) : null}
 
         {showMapError ? (
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
+          <div data-testid="map-error-notice" className={MAP_NOTICE_POSITION_CLASS}>
             <MapErrorState
               onRetry={() => {
                 void pointsQuery.refetch();

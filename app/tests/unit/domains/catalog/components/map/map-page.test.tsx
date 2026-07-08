@@ -116,6 +116,8 @@ describe("MapPage", () => {
     render(<MapPage search={{}} />);
 
     expect(screen.getAllByText(/No people or groups here/i).length).toBeGreaterThan(0);
+    expect(screen.getByTestId("map-empty-notice").className).toContain("right-3");
+    expect(screen.getByTestId("map-empty-notice").className).not.toContain("top-1/2");
     fireEvent.click(screen.getByRole("button", { name: "Zoom out to the US" }));
     expect(requireMapPageHarness().handlers.onZoomOut).toHaveBeenCalledOnce();
   });
@@ -129,6 +131,8 @@ describe("MapPage", () => {
     render(<MapPage search={{}} />);
 
     expect(screen.getByText(/couldn.t load the map/i)).toBeTruthy();
+    expect(screen.getByTestId("map-error-notice").className).toContain("right-3");
+    expect(screen.getByTestId("map-error-notice").className).not.toContain("top-1/2");
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
     expect(refetch).toHaveBeenCalledOnce();
   });

@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import type { StyleSpecification } from "maplibre-gl";
+import type { DragPanOptions, StyleSpecification } from "maplibre-gl";
 
 /** The view-state shape the mocked map records, covering both framings. */
 export interface MockInitialViewState {
@@ -14,6 +14,7 @@ export interface MockInitialViewState {
 export interface MockMapProps {
   mapStyle: StyleSpecification;
   initialViewState: MockInitialViewState;
+  dragPan: DragPanOptions;
   dragRotate: boolean;
   pitchWithRotate: boolean;
   touchPitch: boolean;
