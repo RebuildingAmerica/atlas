@@ -129,6 +129,55 @@ export async function ensurePrice(
   return price;
 }
 
+/**
+ * Retire active prices on an Atlas product that are not part of the canonical
+ * catalog. This keeps old dashboard-created prices from staying selectable
+ * after bootstrap repairs a renamed or pre-existing product.
+ */
+export async function retireNonCatalogPrices(
+  stripe: Stripe,
+  productId: string,
+  canonicalPriceIds: readonly string[],
+): Promise<Stripe.Price[]> {
+  const canonicalIds = new Set(canonicalPriceIds);
+  const existingPrices = await fetchExistingPrices(stripe, productId);
+  const pricesToRetire = existingPrices.filter(
+    (price) => price.active && !canonicalIds.has(price.id),
+  );
+
+  return Promise.all(
+    pricesToRetire.map((price) =>
+      stripe.prices.update(price.id, {
+        active: false,
+        metadata: {
+          ...price.metadata,
+          atlas_archived_by: "atlas_catalog_sync",
+          atlas_archived_reason: "non_catalog_price",
+        },
+      }),
+    ),
+  );
+}
+
+/**
+ * Make the primary canonical price the product default shown in Stripe-hosted
+ * surfaces and Dashboard views.
+ */
+export async function ensureDefaultProductPrice(
+  stripe: Stripe,
+  product: Stripe.Product,
+  defaultPriceId: string,
+): Promise<Stripe.Product> {
+  const currentDefault =
+    typeof product.default_price === "string"
+      ? product.default_price
+      : product.default_price?.id;
+  if (currentDefault === defaultPriceId) {
+    return product;
+  }
+  return stripe.products.update(product.id, { default_price: defaultPriceId });
+}
+
 function buildPriceCreateParams(
   productId: string,
   priceDef: AtlasPriceDefinition,

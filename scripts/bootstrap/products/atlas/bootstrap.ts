@@ -15,8 +15,10 @@ import { resolveStripeApiKey, runStripeCli } from "../stripe-cli-client.js";
 import {
   ensureBillingWebhookEndpoint,
   ensureCoupon,
+  ensureDefaultProductPrice,
   ensurePrice,
   ensureProduct,
+  retireNonCatalogPrices,
 } from "./catalog.js";
 import {
   buildStripeEnvUpdates,
@@ -402,10 +404,24 @@ async function processProduct(
   );
   envValues.set(definition.envProductKey, product.id);
 
+  const canonicalPriceIds: string[] = [];
   for (const priceDef of definition.prices) {
     const price = await ensurePrice(stripe, product.id, priceDef);
     envValues.set(priceDef.envKey, price.id);
+    canonicalPriceIds.push(price.id);
     logSubline(`${priceDef.id}: ${pc.dim(price.id)}`);
+  }
+  const [defaultPriceId] = canonicalPriceIds;
+  if (defaultPriceId) {
+    await ensureDefaultProductPrice(stripe, product, defaultPriceId);
+  }
+  const retiredPrices = await retireNonCatalogPrices(
+    stripe,
+    product.id,
+    canonicalPriceIds,
+  );
+  if (retiredPrices.length > 0) {
+    logSubline(`retired ${retiredPrices.length} non-catalog price(s)`);
   }
   return product.id;
 }
