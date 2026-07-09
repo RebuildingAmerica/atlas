@@ -6,10 +6,21 @@ description: "Install the Scout CLI and verify the local command."
 Scout is packaged as the `atlas-scout` application and exposes the `scout`
 command.
 
-## Install With Homebrew
+## Install From Source
+
+Install Scout from the Atlas repository:
 
 ```bash
-brew install rebuildingamerica/tap/atlas-scout
+brew install python@3.12 uv
+```
+
+```bash
+git clone https://github.com/RebuildingAmerica/atlas.git
+cd atlas
+
+uv tool install --reinstall --editable ./scout \
+  --with-editable ./libs/shared \
+  --with-editable ./libs/discovery-engine
 ```
 
 Verify the command:
@@ -24,6 +35,20 @@ Run the setup flow:
 ```bash
 scout setup
 ```
+
+`scout-dev` is for Atlas contributors working inside the repository. It is not
+installed for end users.
+
+## Homebrew
+
+Homebrew will be the simplest install path after the first Scout formula is
+published:
+
+```bash
+brew install rebuildingamerica/tap/atlas-scout
+```
+
+If that command fails, use the source install above.
 
 ## Requirements
 
@@ -44,40 +69,19 @@ scout config show
 Scout fetches pages without a browser first. When a page needs JavaScript,
 Scout can use headless Chromium through Playwright.
 
-The Homebrew formula installs the Playwright Python package, but it does not
-download Chromium during install. Add Chromium when you want JavaScript
-rendering:
+When Scout is installed with Homebrew, the formula installs the Playwright
+Python package but does not download Chromium during install. Add Chromium when
+you want JavaScript rendering:
 
 ```bash
 $(brew --prefix atlas-scout)/libexec/bin/playwright install chromium
 ```
 
-## Source Install
-
-Use the source install path when you are contributing to Atlas or need the
-repo-local `scout-dev` command:
+For source installs, use Playwright directly through `uvx`:
 
 ```bash
-brew install python@3.12 uv
+uvx --from playwright playwright install chromium
 ```
-
-```bash
-git clone https://github.com/RebuildingAmerica/atlas.git
-cd atlas
-
-uv tool install --reinstall --editable ./scout \
-  --with-editable ./libs/shared \
-  --with-editable ./libs/discovery-engine
-```
-
-Verify the source install:
-
-```bash
-scout --help
-```
-
-`scout-dev` is for Atlas contributors working inside the repository. It is not
-installed by Homebrew.
 
 ## Optional Shell Integration
 

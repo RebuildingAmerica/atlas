@@ -1,0 +1,71 @@
+---
+title: "Review Scout results"
+description: "Inspect local runs, pages, entries, counts, sources, and currentness before export or sync."
+---
+
+Scout stores local runs, fetched pages, and extracted entries. Review those
+results before treating anything as useful data.
+
+## Runs
+
+```bash
+scout runs list
+scout runs inspect RUN_ID
+```
+
+Cancel an in-flight or stale local run record:
+
+```bash
+scout runs cancel RUN_ID
+```
+
+## Pages And Entries
+
+```bash
+scout pages list --limit 20
+scout entries list --limit 20
+scout entries stats
+```
+
+These views show what Scout fetched, which entries were extracted, and which
+sources need human judgment.
+
+## People Counts
+
+For people directories, verify exact unique people rather than raw rows:
+
+```bash
+scout entries stats \
+  --require-type person \
+  --min-source-backed 100000 \
+  --min-unique-people 100000
+```
+
+Then inspect a random source-linked sample:
+
+```bash
+scout entries list \
+  --type person \
+  --random \
+  --unique-names \
+  --limit 100 \
+  --format json
+```
+
+Source-backed counts do not prove currentness. Historical archives, old
+filings, and stale pages can be valid evidence while still being wrong for
+current outreach, reporting, or public claims.
+
+## Review Fields
+
+Keep these fields attached during review:
+
+- Source URL
+- Source title
+- Source date
+- Source type or dataset marker
+- Source context
+- Local run id
+- Local entry id
+
+The source is the evidence. A name without context is not enough.

@@ -7,8 +7,8 @@ Scout can store a local article corpus separately from discovered entries. Use
 this when you need dated news records first, then want `scout run` to mine those
 articles for people, organizations, and initiatives.
 
-Article records are not Atlas profiles. They are source artifacts with a URL,
-title, publication date, source domain, provider id, provider metadata, and
+Article records are not Atlas profiles. They are saved source records with a
+URL, title, publication date, source domain, provider id, provider metadata, and
 text-derived mention candidates.
 
 Guardian imports use the Guardian Content API. They do not open a browser or
@@ -90,7 +90,7 @@ discovery.
 
 ## Verify Coverage
 
-Use stats gates before treating the corpus as ready:
+Check corpus size and coverage before using it for extraction:
 
 ```bash
 scout articles stats \
@@ -110,7 +110,7 @@ type counts:
 scout articles stats --json
 ```
 
-Use `articles verify` when the corpus is a launch or handoff gate:
+Use `articles verify` before a large handoff:
 
 ```bash
 scout articles verify \

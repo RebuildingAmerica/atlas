@@ -175,7 +175,9 @@ class DiscoveryRunStats(BaseModel):
         default=DiscoveryRunStatus.COMPLETED,
         description="Final status reported for the run payload.",
     )
-    error_message: str | None = Field(None, description="Failure reason when the run did not complete.")
+    error_message: str | None = Field(
+        None, description="Failure reason when the run did not complete."
+    )
 
 
 class RunCheckpoint(BaseModel):
@@ -225,7 +227,9 @@ class DiscoverySyncInfo(BaseModel):
 class DiscoveryRunManifest(BaseModel):
     """Canonical manifest describing one discovery execution."""
 
-    runner: str = Field(..., description="Runner identity, for example 'atlas-api' or 'atlas-scout'.")
+    runner: str = Field(
+        ..., description="Runner identity, for example 'atlas-api' or 'atlas-scout'."
+    )
     run: DiscoveryRunInput = Field(..., description="Run targeting inputs.")
     status: DiscoveryRunStatus = Field(..., description="Current overall run status.")
     started_at: datetime | None = Field(None, description="Run start time.")
@@ -234,7 +238,7 @@ class DiscoveryRunManifest(BaseModel):
 
 
 class DiscoveryRunArtifacts(BaseModel):
-    """Portable artifact bundle for an in-progress or completed discovery run."""
+    """Portable result bundle for an in-progress or completed discovery run."""
 
     manifest: DiscoveryRunManifest = Field(..., description="Run identity and lifecycle metadata.")
     stats: DiscoveryRunStats = Field(

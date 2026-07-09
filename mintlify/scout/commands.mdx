@@ -1,0 +1,68 @@
+---
+title: "Scout command reference"
+description: "A quick map of Scout commands and what each one is for."
+---
+
+Run `scout COMMAND --help` for the exact options available in your installed
+version.
+
+## Start And Auth
+
+| Command                    | Use                                                                             |
+| -------------------------- | ------------------------------------------------------------------------------- |
+| `scout setup`              | Configure this computer, login, model provider, shell completion, and man pages |
+| `scout login`              | Open Atlas login and remember this computer                                     |
+| `scout login --no-browser` | Print the approval URL for terminal-only environments                           |
+| `scout logout`             | Remove the local Scout login session                                            |
+| `scout auth status`        | Show saved login state                                                          |
+| `scout whoami`             | Show the signed-in Atlas user                                                   |
+| `scout doctor`             | Check whether Scout is ready to discover and sync                               |
+
+## Discovery
+
+| Command                                 | Use                                              |
+| --------------------------------------- | ------------------------------------------------ |
+| `scout run URL`                         | Run discovery against known public URLs          |
+| `scout run --file urls.txt`             | Run discovery against a file of URLs             |
+| `scout run --location ... --issues ...` | Run place-and-issue discovery                    |
+| `scout run --sync URL`                  | Run discovery, then sync the saved result        |
+| `scout search connect`                  | Save search credentials for new-source discovery |
+| `scout search status`                   | Check search-backed discovery readiness          |
+| `scout search disconnect`               | Remove saved search credentials                  |
+
+## Review, Export, And Sync
+
+| Command                     | Use                                          |
+| --------------------------- | -------------------------------------------- |
+| `scout runs list`           | List recent local runs                       |
+| `scout runs inspect RUN_ID` | Inspect one run                              |
+| `scout pages list`          | List fetched pages                           |
+| `scout entries list`        | Browse extracted entries                     |
+| `scout entries stats`       | Check source-backed counts and unique people |
+| `scout export entries`      | Export reviewed entries                      |
+| `scout sync`                | Sync the latest ready run                    |
+| `scout sync RUN_ID`         | Sync a specific run                          |
+| `scout sync --all-ready`    | Sync every completed ready run               |
+
+## Article Corpora
+
+| Command                           | Use                                                        |
+| --------------------------------- | ---------------------------------------------------------- |
+| `scout articles crawl`            | Crawl seed sites and save article records                  |
+| `scout articles import guardian`  | Import Guardian Content API article metadata               |
+| `scout articles stats`            | Show article corpus counts                                 |
+| `scout articles verify`           | Check article corpus size, dates, uniqueness, and metadata |
+| `scout articles refresh-mentions` | Recompute text-derived mention candidates                  |
+| `scout articles export`           | Export article records                                     |
+
+## Operations
+
+| Command                   | Use                                         |
+| ------------------------- | ------------------------------------------- |
+| `scout worker start`      | Let this computer process Atlas worker jobs |
+| `scout worker status`     | Show tracked worker state                   |
+| `scout worker stop`       | Stop the tracked worker process             |
+| `scout schedule run-once` | Run configured schedule targets once        |
+| `scout schedule start`    | Run the local scheduler loop                |
+| `scout db path`           | Print the local database path               |
+| `scout db reset`          | Delete local Scout data                     |

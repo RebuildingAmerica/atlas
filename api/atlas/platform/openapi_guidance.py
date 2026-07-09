@@ -135,7 +135,7 @@ OPENAPI_OPERATION_NOTES = {
         "visibility receipts before using discovered actors in a public or high-stakes workflow."
     ),
     "createDiscoveryRunSync": (
-        "Sync is for reviewed local Scout artifacts. Preserve local-to-remote entry links and "
+        "Sync is for reviewed local Scout results. Preserve local-to-remote entry links and "
         "visibility receipts so a team can tell what stayed private, what was skipped, and what "
         "became public."
     ),

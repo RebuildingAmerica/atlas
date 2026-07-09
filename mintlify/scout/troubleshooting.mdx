@@ -56,7 +56,7 @@ Secret Service, then retry the command.
 
 Profile TOML is not a secret store. Do not put API keys, login tokens, or search
 keys in `scout config` files. Use `scout login`, `scout search connect`, or an
-environment variable for automation.
+environment variable in scripts.
 
 ## Structured Resource Rows Look Wrong
 
@@ -97,7 +97,7 @@ scout entries list \
 
 If source context points to an old filing, archive, historical roster, or stale
 page, treat the entry as historical evidence. Re-run discovery against current
-sources before using the data for outreach, sales, or launch claims.
+sources before using the data for outreach, reporting, or public claims.
 
 ## Browser Rendering Fails
 
@@ -105,7 +105,7 @@ Scout uses normal HTML fetching first. When a page looks useful but only exposes
 content after JavaScript runs, Scout may try headless Chromium through
 Playwright.
 
-If the browser fallback is unavailable or too expensive for your machine, turn
+If the browser fallback is unavailable or too expensive for your computer, turn
 it off:
 
 ```bash
@@ -135,7 +135,7 @@ scout doctor --atlas-url https://atlas.rebuildingus.org
 ```
 
 If doctor says the saved login cannot create an Atlas upload token, log in
-again for that environment or use `ATLAS_API_KEY` for automation.
+again for that environment or use `ATLAS_API_KEY` in scripts.
 
 Check the current saved login:
 
@@ -177,4 +177,4 @@ Resetting the database deletes local runs, entries, and pages:
 scout db reset
 ```
 
-Use reset only when you no longer need the local artifacts.
+Use reset only when you no longer need the local results.

@@ -97,7 +97,7 @@ scout search status
 ```
 
 Scout stores saved search keys in your operating system's credential store.
-`SEARCH_API_KEY` can be used as an automation override for a single shell or
+`SEARCH_API_KEY` can be used as a script override for a single shell or
 script.
 
 Disconnect stored search credentials:
@@ -108,7 +108,7 @@ scout search disconnect
 
 ## Readiness Check
 
-Run doctor before a serious run:
+Run doctor before a large run:
 
 ```bash
 scout doctor
@@ -124,7 +124,8 @@ When a saved login is present, doctor contacts Atlas and verifies that the
 login can create an upload token for the selected environment. It discards that
 token and does not sync any run data.
 
-Include worker checks only when this machine should process Atlas-assigned jobs:
+Include worker checks only when this computer should process Atlas-assigned
+jobs:
 
 ```bash
 scout doctor --worker
@@ -135,6 +136,19 @@ For scripts:
 ```bash
 scout doctor --json
 ```
+
+For scripts, require the checks the run needs:
+
+```bash
+scout doctor \
+  --atlas-url https://atlas.rebuildingus.org \
+  --require direct-url-runs \
+  --require search-discovery \
+  --require atlas-sync \
+  --json
+```
+
+See [Readiness checks](/scout/readiness) for what each check means.
 
 ## Profiles
 

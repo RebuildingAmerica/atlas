@@ -47,7 +47,7 @@ async def test_scout_sync_rejection_writes_nothing(test_db: object, action: str)
         db=test_db,
     )
 
-    assert result == {"status": action, "message": "No Scout artifacts were synced."}
+    assert result == {"status": action, "message": "No Scout results were synced."}
     runs = await DiscoveryRunCRUD.list(test_db, state=None, status=None, limit=10, offset=0)
     assert runs == []
 
@@ -70,7 +70,7 @@ async def test_scout_sync_unchecked_confirmation_writes_nothing(test_db: object)
         db=test_db,
     )
 
-    assert result == {"status": "decline", "message": "No Scout artifacts were synced."}
+    assert result == {"status": "decline", "message": "No Scout results were synced."}
     runs = await DiscoveryRunCRUD.list(test_db, state=None, status=None, limit=10, offset=0)
     assert runs == []
 

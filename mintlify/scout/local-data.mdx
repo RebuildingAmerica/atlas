@@ -1,0 +1,54 @@
+---
+title: "Local Scout data"
+description: "Find, inspect, and reset the local Scout database and profile state."
+---
+
+Scout stores local runs, fetched pages, entries, article records, and profile
+settings on this computer.
+
+## Database Path
+
+```bash
+scout db path
+```
+
+Use this when you need to back up local results or confirm which database a
+script is using.
+
+## Local Results
+
+Inspect recent local state:
+
+```bash
+scout runs list
+scout pages list --limit 20
+scout entries stats
+scout articles status
+```
+
+Local results are not automatically synced to Atlas. Use [sync](/scout/sync)
+only after review.
+
+## Profiles
+
+Profiles keep laptop, workstation, and test settings separate:
+
+```bash
+scout config profiles
+scout config create-profile studio
+scout config use-profile studio
+scout --profile studio run https://example.org
+```
+
+Profile files store non-secret settings. Login tokens and saved search keys use
+the operating system credential store.
+
+## Reset Local Data
+
+Resetting deletes local runs, entries, pages, and article records:
+
+```bash
+scout db reset
+```
+
+Use reset only when you no longer need the local results.

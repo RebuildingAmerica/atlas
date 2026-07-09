@@ -1,0 +1,78 @@
+---
+title: "Headless browser rendering"
+description: "Control Scout's bounded Playwright fallback for JavaScript-rendered public pages."
+---
+
+Scout fetches ordinary HTML first. If a public page looks useful but exposes too
+little readable text without JavaScript, Scout can render it with headless
+Chromium through Playwright.
+
+Browser rendering is a bounded fallback. It is not the primary fetch path.
+
+## Defaults
+
+| Setting                         | Default |
+| ------------------------------- | ------: |
+| Browser fallback enabled        |  `true` |
+| Browser render attempts per run |     `8` |
+| Concurrent browser renders      |     `1` |
+
+Scout does not open visible browser windows.
+
+## Install Chromium
+
+For a source install:
+
+```bash
+uvx --from playwright playwright install chromium
+```
+
+For a Homebrew install after the formula is published:
+
+```bash
+$(brew --prefix atlas-scout)/libexec/bin/playwright install chromium
+```
+
+The Homebrew formula installs the Playwright Python package, but it does not
+download Chromium during `brew install`.
+
+## Configure The Budget
+
+Disable browser fallback:
+
+```bash
+scout config set scraper.browser_fallback_enabled false
+```
+
+Set the maximum browser renders per run:
+
+```bash
+scout config set scraper.max_browser_renders_per_run 8
+```
+
+Keep browser concurrency low unless the computer is dedicated to crawling:
+
+```bash
+scout config set scraper.max_browser_concurrent 1
+```
+
+Inspect the active profile:
+
+```bash
+scout config show
+```
+
+## Article Crawls
+
+Article crawls also use static fetch first. Set a crawl-level render budget:
+
+```bash
+scout articles crawl \
+  --seed https://example-news.org/sitemap.xml \
+  --target-count 100 \
+  --max-pages 1000 \
+  --browser-renders 8 \
+  --json
+```
+
+Use `--browser-renders 0` for a no-browser crawl.

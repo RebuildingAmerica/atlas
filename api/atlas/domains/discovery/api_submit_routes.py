@@ -158,8 +158,7 @@ async def contribute_discovery_results(
     status_code=201,
     summary="Sync a local discovery run bundle",
     description=(
-        "Replay a canonical local discovery bundle into Atlas using an authenticated, idempotent "
-        "run-sync workflow."
+        "Sync reviewed local Scout results into Atlas using an authenticated, idempotent workflow."
     ),
     operation_id="createDiscoveryRunSync",
     response_description="The result of syncing the local run bundle.",
@@ -175,7 +174,7 @@ async def sync_discovery_run(  # noqa: PLR0913
     _cap: None = Depends(require_capability("research.run")),
     _run_limit: int | None = Depends(enforce_limit("research_runs_per_month")),
 ) -> DiscoveryRunSyncResponse:
-    """Persist a full discovery artifact bundle from an offline-capable runner."""
+    """Persist full discovery results from an offline-capable runner."""
     _sync_target, sync_workspace_id = _resolve_sync_destination(
         upload_target=x_atlas_upload_target,
         workspace_id=x_atlas_workspace_id,

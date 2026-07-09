@@ -344,7 +344,7 @@ def build_mcp() -> FastMCP:  # noqa: PLR0915
         artifacts: DiscoveryRunArtifacts,
         ctx: Context[Any, Any, Any] | None = None,
     ) -> dict[str, Any]:
-        """Sync reviewed Scout artifacts to the active workspace after confirmation."""
+        """Sync reviewed Scout results to the active workspace after confirmation."""
         if not settings.mcp_workbench_handoffs_enabled:
             return {"status": "disabled", "message": "MCP Workbench handoffs are disabled."}
         return await sync_scout_artifacts_handoff(ctx, artifacts=artifacts)

@@ -22,12 +22,12 @@ For exact request and response shapes, use the
 
 ## Choose hosted discovery or Scout
 
-| Need                                            | Better path                  |
-| ----------------------------------------------- | ---------------------------- |
-| Start a managed research run from Atlas         | Hosted discovery run         |
-| Inspect local research artifacts before syncing | [Scout CLI](/scout/overview) |
-| Keep records private until reviewed             | Workspace sync               |
-| Publish public-safe records with evidence       | Review, then publish         |
+| Need                                          | Better path                  |
+| --------------------------------------------- | ---------------------------- |
+| Start a managed research run from Atlas       | Hosted discovery run         |
+| Inspect local research results before syncing | [Scout CLI](/scout/overview) |
+| Keep records private until reviewed           | Workspace sync               |
+| Publish public-safe records with evidence     | Review, then publish         |
 
 Hosted discovery is simpler. Scout is better when the team needs a local,
 inspectable research process before deciding what belongs in Atlas.
@@ -76,7 +76,7 @@ After a run completes, review:
 
 A discovery run should make the review path easier. It should not remove review.
 
-## Sync Scout artifacts
+## Sync Scout results
 
 Scout is useful when a researcher wants local control over queries, cache,
 source review, or iterative deepening before syncing selected results. Read the
@@ -109,7 +109,7 @@ The safe workflow is:
 <Steps>
 
 <Step title="Run Scout locally">
-  Keep the local artifact and source evidence for review.
+  Keep the local results and source evidence for review.
 </Step>
 
 <Step title="Decide visibility">
@@ -118,7 +118,7 @@ The safe workflow is:
 </Step>
 
 <Step title="Sync selected results">
-  Sync the reviewed artifact to Atlas.
+  Sync the reviewed result to Atlas.
 
 ```bash
 curl -X POST https://atlas.rebuildingus.org/api/discovery-runs/syncs \

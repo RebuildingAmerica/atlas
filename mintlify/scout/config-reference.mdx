@@ -1,0 +1,77 @@
+---
+title: "Scout configuration reference"
+description: "Profile settings and credential rules that affect Scout behavior."
+---
+
+Scout profiles store non-secret local settings. Credentials use the operating
+system credential store or environment variables.
+
+## Inspect Profiles
+
+```bash
+scout config show
+scout config path
+scout config profiles
+```
+
+Create and activate a profile:
+
+```bash
+scout config create-profile studio
+scout config use-profile studio
+```
+
+Use a profile for one command:
+
+```bash
+scout --profile studio run https://example.org
+```
+
+## Model Provider
+
+```bash
+scout config model
+scout config model --interactive
+scout config model --provider lmstudio --model local-model-name
+```
+
+Use `scout config model` when doctor reports model problems.
+
+## Scalar Settings
+
+Use `scout config set` for known scalar values:
+
+```bash
+scout config set scraper.max_concurrent_fetches 6
+scout config set scraper.browser_fallback_enabled false
+scout config set scraper.max_browser_renders_per_run 8
+scout config set scraper.max_browser_concurrent 1
+```
+
+Use `scout config get` to inspect one setting:
+
+```bash
+scout config get llm.provider
+```
+
+`scout config set` does not save API keys, login tokens, or structured schedule
+targets.
+
+## Credentials
+
+| Credential              | Normal command         | Script override  |
+| ----------------------- | ---------------------- | ---------------- |
+| Atlas login             | `scout login`          | `ATLAS_API_KEY`  |
+| Search-backed discovery | `scout search connect` | `SEARCH_API_KEY` |
+
+Do not put secrets in profile TOML files.
+
+## Schedule Targets
+
+Scheduled discovery targets use dedicated commands:
+
+```bash
+scout config schedule set --enabled --cron "0 8 * * 1"
+scout config schedule target add --location "Austin, TX" --issues housing_affordability,transportation
+scout config schedule target list
+```

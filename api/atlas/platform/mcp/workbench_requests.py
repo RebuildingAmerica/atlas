@@ -310,7 +310,7 @@ async def _scout_artifacts_sync_request_from_context(
     if confirmation is None:
         return None, {
             "status": stop_action,
-            "message": "No Scout artifacts were synced.",
+            "message": "No Scout results were synced.",
         }
     return SyncScoutArtifactsRequest(
         user_id=user_id,

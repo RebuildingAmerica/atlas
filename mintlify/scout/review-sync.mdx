@@ -1,165 +1,28 @@
 ---
 title: "Review and sync Scout results"
-description: "Inspect local runs, pages, and entries before syncing selected artifacts to Atlas."
+description: "Review local Scout results, export files, or sync a reviewed run to Atlas."
 ---
 
-Scout keeps a local record of runs, fetched pages, and extracted entries. Review
-those artifacts before syncing anything to Atlas.
+Scout results should be reviewed before they are exported or synced. Start with
+the step that matches what you need to do next.
 
-## Inspect Local Runs
+<CardGroup cols={2}>
 
-List recent runs:
+<Card title="Review results" icon="list-checks" href="/scout/review">
+  Inspect runs, pages, entries, source context, people counts, and currentness.
+</Card>
 
-```bash
-scout runs list
-```
+<Card title="Export data" icon="file-down" href="/scout/export">
+  Export reviewed entries or article records while keeping source fields
+  attached.
+</Card>
 
-Inspect one run:
+<Card title="Sync to Atlas" icon="upload" href="/scout/sync">
+  Send reviewed local results to public review or a private workspace.
+</Card>
 
-```bash
-scout runs inspect RUN_ID
-```
+<Card title="Before a large run" icon="check-circle" href="/scout/large-runs">
+  Check Scout, run a small pass, review evidence, then scale up.
+</Card>
 
-Cancel an in-flight or stale local run record:
-
-```bash
-scout runs cancel RUN_ID
-```
-
-## Inspect Pages And Entries
-
-List fetched pages:
-
-```bash
-scout pages list --limit 20
-```
-
-List entries:
-
-```bash
-scout entries list --limit 20
-```
-
-Show aggregate counts:
-
-```bash
-scout entries stats
-```
-
-These views help answer whether Scout found source-backed actors, which sources
-were processed, and what still needs human judgment.
-
-For people directories, verify exact unique people rather than raw rows:
-
-```bash
-scout entries stats \
-  --require-type person \
-  --min-source-backed 100000 \
-  --min-unique-people 100000
-```
-
-Then review a random sample for source context and currentness:
-
-```bash
-scout entries list \
-  --type person \
-  --random \
-  --unique-names \
-  --limit 100 \
-  --format json
-```
-
-Do not sync a run as current people data only because the counts pass. Historical
-archives, old filings, and stale pages can be valid evidence while still being
-wrong for current outreach or sales workflows.
-
-## Export Reviewed Entries
-
-Export reviewed entries when the next step is audit, sharing, or offline review:
-
-```bash
-scout export entries \
-  --run-id RUN_ID \
-  --type person \
-  --unique-names \
-  --format jsonl \
-  --output people.jsonl
-```
-
-Use CSV for spreadsheet review:
-
-```bash
-scout export entries \
-  --run-id RUN_ID \
-  --type person \
-  --unique-names \
-  --format csv \
-  --output people.csv
-```
-
-The export keeps source URLs, source context, run ids, dataset markers, source
-keys, dates, and local timestamps with each row. Treat those fields as part of
-the evidence, not optional metadata.
-
-## Sync A Reviewed Run
-
-Before syncing to a shared Atlas environment, check that login and upload-token
-exchange are ready for that exact URL:
-
-```bash
-scout doctor --atlas-url https://atlas.rebuildingus.org
-```
-
-Sync the latest ready run:
-
-```bash
-scout sync
-```
-
-Sync a specific run:
-
-```bash
-scout sync RUN_ID
-```
-
-Sync every completed run with ready artifacts:
-
-```bash
-scout sync --all-ready
-```
-
-The same explicit sync path is available under `runs`:
-
-```bash
-scout runs sync RUN_ID
-```
-
-## Choose Visibility
-
-Public sync stages source-backed artifacts for Atlas review. It does not publish
-records directly:
-
-```bash
-scout sync RUN_ID --target public
-```
-
-Workspace sync keeps the reviewed run private to a workspace:
-
-```bash
-scout sync RUN_ID --target workspace --workspace WORKSPACE_ID
-```
-
-Use workspace sync when the run contains private review context, uncertain
-leads, or work that should not be visible in the public directory.
-
-## Read Sync Receipts
-
-A sync receipt should tell you:
-
-- The remote Atlas run id.
-- Which local entries mapped to Atlas entries.
-- Which records stayed private, staged for review, or were skipped.
-- Which workspace or public review surface should be opened next.
-
-Treat sync links as mappings, not proof. The sources determine whether a result
-is strong enough to use.
+</CardGroup>

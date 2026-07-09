@@ -1,0 +1,87 @@
+---
+title: "Sync Scout results to Atlas"
+description: "Send reviewed local Scout results to public review or a private workspace."
+---
+
+Sync only reviewed local runs. A completed run means Scout finished processing
+sources; it does not mean the records are ready to publish.
+
+## Check Sync Readiness
+
+```bash
+scout doctor \
+  --atlas-url https://atlas.rebuildingus.org \
+  --require atlas-sync
+```
+
+For scripts:
+
+```bash
+scout doctor \
+  --atlas-url https://atlas.rebuildingus.org \
+  --require atlas-sync \
+  --json
+```
+
+If the saved login cannot create an upload token, log in again or set
+`ATLAS_API_KEY` for the shell.
+
+## Sync Commands
+
+Sync the latest ready run:
+
+```bash
+scout sync
+```
+
+Sync a specific run:
+
+```bash
+scout sync RUN_ID
+```
+
+Sync every completed run that is ready:
+
+```bash
+scout sync --all-ready
+```
+
+The explicit alias is:
+
+```bash
+scout runs sync RUN_ID
+```
+
+## Public Review
+
+Public sync stages source-backed results for Atlas review. It does not publish
+records directly:
+
+```bash
+scout sync RUN_ID --target public
+```
+
+## Workspace Sync
+
+Workspace sync keeps the reviewed run private to a workspace:
+
+```bash
+scout sync RUN_ID \
+  --target workspace \
+  --workspace WORKSPACE_ID
+```
+
+Use workspace sync when the run contains private review context, uncertain
+leads, or data that should not enter the public review queue.
+
+## Receipts
+
+A sync receipt should tell you:
+
+- The remote Atlas run id
+- Which local entries mapped to Atlas entries
+- Which records were staged, kept private, skipped, or errored
+- Which Atlas surface should be opened next
+
+Treat sync links as mappings. The source evidence determines whether a result is
+strong enough to use.

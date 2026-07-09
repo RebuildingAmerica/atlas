@@ -3008,7 +3008,7 @@
         "type": "object"
       },
       "DiscoveryRunArtifacts": {
-        "description": "Portable artifact bundle for an in-progress or completed discovery run.",
+        "description": "Portable result bundle for an in-progress or completed discovery run.",
         "properties": {
           "checkpoints": {
             "description": "Recorded engine checkpoints for the run.",
@@ -14702,7 +14702,7 @@
     },
     "/api/discovery-runs/syncs": {
       "post": {
-        "description": "Replay a canonical local discovery bundle into Atlas using an authenticated, idempotent run-sync workflow.\n\nUse this discovery operation to create, synchronize, lease, inspect, or cancel research work. Treat discovered actors as reviewable leads until their source evidence and visibility state are checked.\n\nSync is for reviewed local Scout artifacts. Preserve local-to-remote entry links and visibility receipts so a team can tell what stayed private, what was skipped, and what became public.",
+        "description": "Sync reviewed local Scout results into Atlas using an authenticated, idempotent workflow.\n\nUse this discovery operation to create, synchronize, lease, inspect, or cancel research work. Treat discovered actors as reviewable leads until their source evidence and visibility state are checked.\n\nSync is for reviewed local Scout results. Preserve local-to-remote entry links and visibility receipts so a team can tell what stayed private, what was skipped, and what became public.",
         "operationId": "createDiscoveryRunSync",
         "parameters": [
           {

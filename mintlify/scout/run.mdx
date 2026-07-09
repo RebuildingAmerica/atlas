@@ -3,7 +3,7 @@ title: "Run discovery with Scout"
 description: "Run URLs, files, article corpus recovery, and place-and-issue discovery."
 ---
 
-Scout runs discovery locally and stores the results on your machine. You can
+Scout runs discovery locally and stores the results on your computer. You can
 review them before deciding whether anything should sync to Atlas.
 
 When you run by place and issue, Scout first checks the local article corpus for
@@ -138,11 +138,11 @@ bounded fallback for JavaScript-rendered pages, not the primary fetch path.
 
 Defaults:
 
-| Setting | Default |
-| --- | ---: |
-| Browser fallback enabled | `true` |
-| Browser render attempts per run | `8` |
-| Concurrent browser renders | `1` |
+| Setting                         | Default |
+| ------------------------------- | ------: |
+| Browser fallback enabled        |  `true` |
+| Browser render attempts per run |     `8` |
+| Concurrent browser renders      |     `1` |
 
 Scout does not open visible browser windows. Disable the fallback:
 
@@ -225,7 +225,7 @@ file.
 
 ## Verify Counts And Currentness
 
-Use `entries stats` for launch gates and audit checks:
+Use `entries stats` before a large export or sync:
 
 ```bash
 scout entries stats \
@@ -235,10 +235,9 @@ scout entries stats \
 ```
 
 `--min-source-backed` checks rows with provenance. `--min-unique-people` checks
-exact unique person keys so duplicate run artifacts do not inflate the launch
-count.
+exact unique person keys so duplicate runs do not inflate the count.
 
-Passing those gates does not certify currentness. Before syncing or exporting a
+Passing those checks does not certify currentness. Before syncing or exporting a
 people list, inspect source dates and source context for the relevant run. If a
 source is an archive, old filing, historical roster, or stale page, treat its
 entries as historical evidence rather than current outreach data.

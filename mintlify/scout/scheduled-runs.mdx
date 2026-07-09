@@ -1,0 +1,58 @@
+---
+title: "Scheduled Scout runs"
+description: "Configure repeatable local discovery targets and run them on a schedule."
+---
+
+Schedules are local Scout configuration. Use them when the same computer should
+run the same place-and-issue targets repeatedly.
+
+For Atlas-assigned jobs, use [worker mode](/scout/worker) instead.
+
+## Configure The Schedule
+
+Enable a schedule and set the cron expression:
+
+```bash
+scout config schedule set --enabled --cron "0 8 * * 1"
+```
+
+Add targets:
+
+```bash
+scout config schedule target add \
+  --location "Las Vegas, NV" \
+  --issues housing_affordability,public_transit
+```
+
+List targets:
+
+```bash
+scout config schedule target list
+```
+
+Scheduled place-and-issue runs need a working model and search connection when
+Scout must find new sources:
+
+```bash
+scout doctor --require search-discovery
+```
+
+## Run Once
+
+Run all configured targets once:
+
+```bash
+scout schedule run-once
+```
+
+Use this before leaving the scheduler running.
+
+## Start The Scheduler
+
+```bash
+scout schedule start
+```
+
+The scheduler runs until interrupted. Use a process manager such as launchd,
+systemd, or a supervised terminal session when the computer should keep running
+after logout.

@@ -121,15 +121,15 @@ workspace.
 ## Task 4: Run Scout locally, sync to Atlas, open the run
 
 Scout is useful when a researcher wants a local or scripted discovery workflow
-before syncing reviewed artifacts into Atlas. Start with the
-[Scout review and sync guide](/scout/review-sync) when the run already exists,
-or [run local discovery](/scout/run) when the team needs a new pass.
+before syncing reviewed results into Atlas. Start with
+[reviewing Scout results](/scout/review) when the run already exists, or
+[run local discovery](/scout/run) when the team needs a new pass.
 
 <Steps>
 
 <Step title="Run Scout locally">
   Run a local Scout discovery for the place and issue set. Keep the raw local
-  artifacts so the team can inspect what Scout found before syncing.
+  results so the team can inspect what Scout found before syncing.
 </Step>
 
 <Step title="Review what should become visible">
@@ -138,7 +138,7 @@ or [run local discovery](/scout/run) when the team needs a new pass.
 </Step>
 
 <Step title="Sync the run">
-  Use `POST /api/discovery-runs/syncs` to send the selected Scout artifact to
+  Use `POST /api/discovery-runs/syncs` to send the selected Scout result to
   Atlas. The response includes the remote run id, entry visibility receipts, and
   links back to the workspace run.
 </Step>
@@ -172,7 +172,7 @@ Human workflow and API workflow should describe the same model.
 
 Useful endpoints:
 
-- `POST /api/discovery-runs/syncs` syncs Scout discovery artifacts into Atlas.
+- `POST /api/discovery-runs/syncs` syncs reviewed Scout results into Atlas.
 - `GET /api/orgs/{org_id}/briefs` lists workspace briefs.
 - `GET /api/orgs/{org_id}/briefs/{brief_id}/export` returns a source-linked
   evidence export.
@@ -217,11 +217,7 @@ appearing in the wrong place, the workflow is not ready for that user.
   Use workspace APIs without leaking private context or misreading visibility.
 </Card>
 
-<Card
-  title="Discovery API and Scout sync"
-  icon="terminal"
-  href="/scout/review-sync"
->
+<Card title="Discovery API and Scout sync" icon="terminal" href="/scout/sync">
   Run local discovery, sync selected results, and open the workspace run.
 </Card>
 

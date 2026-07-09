@@ -1,0 +1,131 @@
+---
+title: "Before a large Scout run"
+description: "Check Scout, run a small pass, review evidence, and then export or sync larger results."
+---
+
+Use this checklist before a large export, a citywide research pass, or a sync to
+Atlas.
+
+## 1. Check The Command
+
+```bash
+scout --help
+scout db path
+```
+
+## 2. Prepare Scout
+
+```bash
+scout setup
+scout config model
+scout search connect
+scout login --atlas-url https://atlas.rebuildingus.org
+```
+
+For scripts, pass credentials through the shell:
+
+```bash
+export SEARCH_API_KEY=...
+export ATLAS_API_KEY=...
+```
+
+## 3. Check Readiness
+
+```bash
+scout doctor \
+  --atlas-url https://atlas.rebuildingus.org \
+  --require direct-url-runs \
+  --require search-discovery \
+  --require atlas-sync \
+  --json
+```
+
+Do not start a large run until Scout is ready for the work you plan to do.
+
+## 4. Run A Small Pass First
+
+Start with one known public page:
+
+```bash
+scout run \
+  --prompt "Find source-backed civic actors and keep the source context." \
+  https://example.org/public-page
+```
+
+Then test the place and issue set:
+
+```bash
+scout run \
+  --location "Las Vegas, NV" \
+  --issues housing_affordability,public_transit \
+  --target-count 25
+```
+
+## 5. Check Browser Rendering When Needed
+
+If the sources depend on JavaScript, test a bounded crawl:
+
+```bash
+scout articles crawl \
+  --seed https://example.org/news \
+  --target-count 5 \
+  --max-pages 20 \
+  --max-depth 1 \
+  --browser-renders 3 \
+  --json
+```
+
+Scout should use normal HTML first and keep browser renders within the budget.
+
+## 6. Review The Results
+
+```bash
+scout runs list
+scout entries stats
+scout entries list --type person --random --unique-names --limit 25 --format json
+```
+
+Check source title, URL, date, type, and context before export or sync. Do not
+treat a name as current just because Scout found it.
+
+## 7. Export Or Sync
+
+Export reviewed people:
+
+```bash
+scout export entries \
+  --run-id RUN_ID \
+  --type person \
+  --unique-names \
+  --format jsonl \
+  --output people.jsonl
+```
+
+Sync a reviewed run:
+
+```bash
+scout sync RUN_ID \
+  --atlas-url https://atlas.rebuildingus.org \
+  --target public
+```
+
+Keep uncertain work private to a workspace:
+
+```bash
+scout sync RUN_ID \
+  --atlas-url https://atlas.rebuildingus.org \
+  --target workspace \
+  --workspace WORKSPACE_ID
+```
+
+## Ready To Scale
+
+A large run is ready when:
+
+- Scout is ready for direct runs, search discovery, and sync.
+- A small direct URL run and a small place-and-issue run both produce useful
+  results.
+- Browser rendering stays bounded when it is used.
+- Sampled entries include source context that supports the claim.
+- Exported files preserve source fields.
+- Sync returns a receipt and does not directly publish public records.

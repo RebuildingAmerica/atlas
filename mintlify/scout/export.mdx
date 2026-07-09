@@ -1,0 +1,55 @@
+---
+title: "Export Scout data"
+description: "Export reviewed entries and article corpora while preserving source provenance."
+---
+
+Use exports for audits, handoffs, spreadsheets, and offline review. Exporting
+does not sync anything to Atlas.
+
+## Export Entries
+
+JSONL is the safest format for large reviewed handoffs:
+
+```bash
+scout export entries \
+  --run-id RUN_ID \
+  --type person \
+  --unique-names \
+  --format jsonl \
+  --output people.jsonl
+```
+
+Use CSV for spreadsheet review:
+
+```bash
+scout export entries \
+  --run-id RUN_ID \
+  --type person \
+  --unique-names \
+  --format csv \
+  --output people.csv
+```
+
+Entry exports include local entry ids, run ids, descriptions, issue areas,
+source URLs, source context, dataset markers, source keys, source dates, and
+local creation timestamps.
+
+## Export Articles
+
+```bash
+scout articles export \
+  --format jsonl \
+  --output articles.jsonl
+```
+
+Article exports include URLs, titles, publication dates, source domains,
+provider ids, provider metadata, body text fields, and text-derived mention
+candidates when present.
+
+Article records are not Atlas entries. Run normal discovery to extract people,
+organizations, initiatives, campaigns, or events from stored articles.
+
+## Preserve Evidence
+
+Do not strip source fields from exported files. They are what let another
+reviewer decide whether a record is current, relevant, and safe to use.

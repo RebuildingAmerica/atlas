@@ -118,6 +118,49 @@
         ]
       },
       {
+        "tab": "Scout",
+        "groups": [
+          {
+            "group": "Start",
+            "pages": [
+              "scout/overview",
+              "scout/install",
+              "scout/setup",
+              "scout/readiness"
+            ]
+          },
+          {
+            "group": "Run discovery",
+            "pages": [
+              "scout/run",
+              "scout/browser-rendering",
+              "scout/articles",
+              "scout/scheduled-runs"
+            ]
+          },
+          {
+            "group": "Review and share",
+            "pages": ["scout/review", "scout/export", "scout/sync"]
+          },
+          {
+            "group": "Operations",
+            "pages": [
+              "scout/worker",
+              "scout/local-data",
+              "scout/troubleshooting"
+            ]
+          },
+          {
+            "group": "Reference",
+            "pages": [
+              "scout/commands",
+              "scout/config-reference",
+              "scout/large-runs"
+            ]
+          }
+        ]
+      },
+      {
         "tab": "Build with Atlas",
         "groups": [
           {
@@ -137,19 +180,6 @@
               "api/authentication",
               "api/rate-limits",
               "api/errors"
-            ]
-          },
-          {
-            "group": "Scout CLI",
-            "pages": [
-              "scout/overview",
-              "scout/install",
-              "scout/setup",
-              "scout/run",
-              "scout/articles",
-              "scout/review-sync",
-              "scout/worker",
-              "scout/troubleshooting"
             ]
           },
           {

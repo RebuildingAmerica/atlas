@@ -147,23 +147,23 @@ class ExportCoverageReportConfirmation(BaseModel):
 
 
 class SyncScoutArtifactsConfirmation(BaseModel):
-    """Form confirmation before syncing reviewed Scout artifacts."""
+    """Form confirmation before syncing reviewed Scout results."""
 
     model_config = ConfigDict(extra="forbid")
 
     confirm_sync: bool = Field(
-        title="Sync Scout artifacts",
+        title="Sync Scout results",
         description="Confirm syncing this reviewed Scout run to the active Atlas workspace.",
     )
     visibility: Literal["workspace"] = Field(
         default="workspace",
         title="Visibility",
-        description="Synced Scout artifacts stay private to the active workspace.",
+        description="Synced Scout results stay private to the active workspace.",
     )
     review_state: Literal["reviewed"] = Field(
         default="reviewed",
         title="Review state",
-        description="Confirm the Scout artifact has been reviewed before syncing.",
+        description="Confirm the Scout results have been reviewed before syncing.",
     )
     source_linkage_ack: bool = Field(
         default=True,
@@ -268,7 +268,7 @@ class ExportCoverageReportRequest:
 
 @dataclass(frozen=True)
 class SyncScoutArtifactsRequest:
-    """Validated inputs for syncing reviewed Scout artifacts into a workspace."""
+    """Validated inputs for syncing reviewed Scout results into a workspace."""
 
     user_id: str
     org_id: str

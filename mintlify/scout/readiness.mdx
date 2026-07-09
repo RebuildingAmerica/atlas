@@ -1,0 +1,73 @@
+---
+title: "Scout readiness checks"
+description: "Use doctor to check whether Scout is ready for the work you want to do."
+---
+
+`scout doctor` checks this computer without changing local results or syncing
+anything to Atlas. Use it before a large run, before search-backed discovery,
+and before syncing reviewed results.
+
+## Basic Check
+
+```bash
+scout doctor
+```
+
+Check a specific Atlas environment:
+
+```bash
+scout doctor --atlas-url https://atlas.rebuildingus.org
+```
+
+Doctor checks local model access, the local database path, search connection
+state, Atlas reachability, and login or API-key readiness for sync.
+
+## Require What The Run Needs
+
+Use `--require` when a script should stop unless Scout is ready:
+
+```bash
+scout doctor \
+  --atlas-url https://atlas.rebuildingus.org \
+  --require direct-url-runs \
+  --require search-discovery \
+  --require atlas-sync \
+  --json
+```
+
+`--require` can be repeated. JSON output includes the same exit code the shell
+receives, so scripts can stop before a run starts.
+
+## What To Require
+
+| Ready for            | Required for                                                             | Usual repair                                     |
+| -------------------- | ------------------------------------------------------------------------ | ------------------------------------------------ |
+| `direct-url-runs`    | `scout run https://example.org` and URL files                            | `scout config model`                             |
+| `search-discovery`   | `scout run --location ... --issues ...` when Scout must find new sources | `scout search connect`                           |
+| `atlas-sync`         | `scout sync`, `scout run --sync`, and `scout runs sync`                  | `scout login --atlas-url ...` or `ATLAS_API_KEY` |
+| `seeded-worker-jobs` | Worker jobs from known sources                                           | `scout doctor --worker`                          |
+| `search-worker-jobs` | Worker jobs that need search-backed discovery                            | `scout search connect`                           |
+
+Known URL runs and extraction from stored article corpora can work without a
+search key. Sync and worker jobs require a valid Atlas login or API key.
+
+## Atlas Upload Token Check
+
+When a saved login exists, doctor contacts Atlas and verifies that the login can
+mint an upload token for the selected environment. It discards that token and
+does not sync run data.
+
+If the check returns `HTTP 401`, log in again for that environment:
+
+```bash
+scout login --atlas-url https://atlas.rebuildingus.org
+```
+
+For scripts, pass an API key only through the shell:
+
+```bash
+ATLAS_API_KEY=... scout doctor \
+  --atlas-url https://atlas.rebuildingus.org \
+  --require atlas-sync \
+  --json
+```

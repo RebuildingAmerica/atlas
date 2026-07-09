@@ -172,7 +172,7 @@ async def sync_scout_artifacts(
     artifacts: DiscoveryRunArtifacts,
     db: aiosqlite.Connection | None = None,
 ) -> dict[str, Any]:
-    """Confirm and sync reviewed Scout artifacts into the active workspace."""
+    """Confirm and sync reviewed Scout results into the active workspace."""
     workbench_module = _workbench_module()
     request, error = await _scout_artifacts_sync_request_from_context(ctx, artifacts=artifacts)
     if error is not None:
