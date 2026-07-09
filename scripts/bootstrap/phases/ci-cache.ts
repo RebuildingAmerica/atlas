@@ -26,6 +26,17 @@ interface TeamLookup {
   linked?: VercelTeam;
 }
 
+export function formatTurboTeamPromptMessage(): string {
+  return [
+    "Vercel team for TURBO_TEAM",
+    "",
+    "Choose the Vercel team whose remote cache should be used by GitHub Actions.",
+    "1. Use the same team that owns the Atlas Vercel project.",
+    "2. Confirm the slug in Vercel Dashboard or with `vercel teams ls` if unsure.",
+    "3. Bootstrap writes this slug to the GitHub Actions variable TURBO_TEAM.",
+  ].join("\n");
+}
+
 export async function runCiCachePhase(
   projectRoot: string,
   doctorMode: boolean,
@@ -85,7 +96,13 @@ export async function runCiCachePhase(
   }
 
   const proceed = await promptConfirm(
-    `Configure Vercel Remote Cache for ${pc.cyan(repo.nameWithOwner)}?`,
+    [
+      `Configure Vercel Remote Cache for ${repo.nameWithOwner}?`,
+      "",
+      "Bootstrap will mint a Vercel token, store it as TURBO_TOKEN in GitHub Actions, and set TURBO_TEAM.",
+      "Choose Yes only if this GitHub repository should share the Atlas remote build cache.",
+      "Choose No to leave CI cache configuration unchanged.",
+    ].join("\n"),
     false,
   );
   if (!proceed) {
@@ -195,7 +212,12 @@ async function ensureSecret(
 ): Promise<boolean> {
   if (repoHasSecret(nameWithOwner, SECRET_NAME)) {
     const replace = await promptConfirm(
-      `${SECRET_NAME} is already set on ${nameWithOwner}. Mint a new Vercel token and replace it?`,
+      [
+        `${SECRET_NAME} is already set on ${nameWithOwner}.`,
+        "",
+        "Choose Yes to mint a new Vercel token and replace the GitHub Actions secret.",
+        "Choose No to keep the existing CI remote-cache token.",
+      ].join("\n"),
       false,
     );
     if (!replace) {
@@ -319,7 +341,7 @@ async function resolveTeamSlug(
   const initial = lookup.teams.find((t) => t.current)?.slug;
   const slug = (await promptOrExit(
     select({
-      message: "Pick the Vercel team to use for TURBO_TEAM",
+      message: formatTurboTeamPromptMessage(),
       options: lookup.teams.map((t) => ({
         value: t.slug,
         label: t.slug,
@@ -338,7 +360,12 @@ async function ensureVariable(
 ): Promise<boolean> {
   if (repoHasVariable(nameWithOwner, VAR_NAME)) {
     const replace = await promptConfirm(
-      `${VAR_NAME} is already set on ${nameWithOwner}. Overwrite with "${slug}"?`,
+      [
+        `${VAR_NAME} is already set on ${nameWithOwner}.`,
+        "",
+        `Choose Yes to overwrite it with "${slug}".`,
+        "Choose No to keep the existing GitHub Actions variable.",
+      ].join("\n"),
       false,
     );
     if (!replace) {

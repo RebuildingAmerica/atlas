@@ -12,6 +12,7 @@ import {
   resolveStripeMode,
   validateStripeApiKeyMode,
 } from "./env.js";
+import { stripeLiveRestrictedKeySetupSteps } from "./bootstrap.js";
 import type { StripeBootstrapTarget } from "./env.js";
 import type {
   AtlasCouponDefinition,
@@ -529,6 +530,41 @@ function parseArgs(argv: string[]): VerifyCliArgs {
   return { live: argv.includes("--live"), target: targetValue };
 }
 
+export function formatStripeVerificationFollowUp(
+  target: StripeBootstrapTarget,
+  issues: readonly StripeCatalogVerificationIssue[],
+): string[] {
+  if (issues.length === 0) {
+    return [];
+  }
+
+  if (target === "prod") {
+    return [
+      "Production Stripe setup is incomplete.",
+      "Run the guided bootstrap flow: pnpm bootstrap",
+      ...stripeLiveRestrictedKeySetupSteps(),
+      "Verify again: pnpm stripe:verify:prod",
+    ];
+  }
+
+  if (target === "staging") {
+    return [
+      "Staging Stripe setup is incomplete.",
+      "Run the guided staging flow: pnpm bootstrap --target staging",
+      "To rerun staging noninteractively: pnpm setup:staging --yes",
+      "Verify again: pnpm stripe:verify:staging",
+    ];
+  }
+
+  return [
+    "Local Stripe setup is incomplete.",
+    "Run the guided local flow: pnpm bootstrap --local-only",
+    "Local shortcut: pnpm run setup",
+    "Run webhook forwarding while testing Checkout: pnpm stripe:listen",
+    "Verify again: pnpm stripe:verify:local",
+  ];
+}
+
 async function verifyEnvFile(
   envFile: string,
   target: StripeBootstrapTarget,
@@ -566,6 +602,7 @@ async function main(): Promise<void> {
   );
   const envFiles = resolveStripeEnvFileTargets(projectRoot, args.target);
   let hasIssues = false;
+  const allIssues: StripeCatalogVerificationIssue[] = [];
 
   for (const envFile of envFiles) {
     const issues = await verifyEnvFile(envFile, args.target, args.live);
@@ -574,6 +611,7 @@ async function main(): Promise<void> {
       continue;
     }
     hasIssues = true;
+    allIssues.push(...issues);
     console.log(`not ok ${path.relative(projectRoot, envFile)} Stripe catalog`);
     for (const verificationIssue of issues) {
       console.log(
@@ -583,6 +621,13 @@ async function main(): Promise<void> {
   }
 
   if (hasIssues) {
+    const followUp = formatStripeVerificationFollowUp(args.target, allIssues);
+    if (followUp.length > 0) {
+      console.log("");
+      for (const line of followUp) {
+        console.log(line);
+      }
+    }
     process.exitCode = 1;
   }
 }

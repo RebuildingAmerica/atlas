@@ -83,7 +83,11 @@ export async function runInfraPhase(
     return emptyResult(followUpItems, false);
   }
 
-  const region = await chooseRegion(doctorMode, persistedConfig.region);
+  const region = await chooseRegion(
+    doctorMode,
+    persistedConfig.region,
+    followUpItems,
+  );
 
   enableApis(projectId, doctorMode, followUpItems);
   ensureArtifactRegistry(region, doctorMode, followUpItems);

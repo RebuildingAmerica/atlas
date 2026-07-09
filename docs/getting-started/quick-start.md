@@ -2,7 +2,7 @@
 
 [Docs](../README.md) > [Getting Started](./README.md) > Quick Start
 
-Get The Atlas running on your machine in 4 steps.
+Get Atlas running on your machine in 3 steps.
 
 ## Prerequisites
 
@@ -15,7 +15,7 @@ First, make sure you have installed:
 
 See [Prerequisites](./prerequisites.md) if you need help with any of these.
 
-## 4-Step Setup
+## 3-Step Setup
 
 ### Step 1: Clone the repository
 
@@ -24,33 +24,19 @@ git clone https://github.com/[org]/atlas.git
 cd atlas
 ```
 
-### Step 2: Copy environment file
+### Step 2: Run bootstrap
 
 ```bash
-cp .env.example .env
+pnpm bootstrap
 ```
 
-This creates a local `.env` file with default configuration. You can edit it if
-needed, but defaults work for local development.
+This walks through the repo setup checklist, account confirmations, environment
+values, and hosted readiness checks.
 
-### Step 3: Run setup
-
-```bash
-make setup
-```
-
-This command:
-
-- Installs Python api dependencies
-- Installs Node.js app dependencies
-- Initializes the SQLite database with schema
-
-Takes about 2-3 minutes on first run.
-
-### Step 4: Start development
+### Step 3: Start local services
 
 ```bash
-make dev
+pnpm dev
 ```
 
 This starts both the api and app servers:
@@ -69,15 +55,15 @@ VITE v5.0.0  ready in 245 ms
 
 ## What Just Happened?
 
-### make setup
+### pnpm bootstrap
 
-1. Copies `.env.example` to `.env` (local configuration)
-2. Installs Python dependencies in `api/` (FastAPI, SQLite tools, testing
-   frameworks)
-3. Installs Node.js dependencies in `app/` (React, TanStack Start, build tools)
-4. Initializes SQLite database with schema (creates `atlas.db`)
+1. Installs the pnpm workspace.
+2. Creates and updates environment files.
+3. Confirms each CLI account before using it.
+4. Prompts for human-owned values and generates bootstrap-owned secrets.
+5. Checks hosted readiness and billing setup.
 
-### make dev
+### pnpm dev
 
 1. Starts the FastAPI api server under `https://api.atlas.localhost`
 2. Starts the Vite app development server under `https://atlas.localhost`
@@ -110,16 +96,15 @@ To stop development servers, press `Ctrl+C` in your terminal.
 
 ## Troubleshooting
 
-### "ModuleNotFoundError" on make setup
+### "ModuleNotFoundError" on bootstrap
 
-Make sure Python 3.12+ is installed and activated. Try:
+Make sure Python 3.12+ is installed and activated. Then rerun:
 
 ```bash
-cd api && pip install -e ".[dev]" --break-system-packages
-cd ..
+pnpm bootstrap
 ```
 
-### "command not found: pnpm" on make setup
+### "command not found: pnpm" on bootstrap
 
 Make sure Node.js 24.18+ in the Node 24 release line is installed, then run
 `npm install --global corepack@0.35.0`, `corepack enable`, and

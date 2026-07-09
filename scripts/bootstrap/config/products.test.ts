@@ -49,6 +49,36 @@ void describe("Stripe Atlas product catalog", () => {
     );
   });
 
+  void it("keeps student and journalist discounts aligned with pricing policy", () => {
+    const pro = ATLAS_PRODUCTS.find((product) => product.id === "pro");
+    const annual = pro?.prices.find((price) => price.id === "pro-yearly");
+    const studentFourMonth = pro?.prices.find(
+      (price) => price.id === "pro-student-four-month",
+    );
+    const studentCoupon = ATLAS_COUPONS.find(
+      (coupon) => coupon.segment === "student",
+    );
+    const journalistCoupon = ATLAS_COUPONS.find(
+      (coupon) => coupon.segment === "independent_journalist",
+    );
+
+    assert.equal(annual?.unitAmountCents, 4800);
+    assert.equal(studentFourMonth?.unitAmountCents, 1600);
+    assert.equal(studentFourMonth?.recurring?.interval, "month");
+    assert.equal(studentFourMonth?.recurring?.intervalCount, 4);
+    assert.equal(studentCoupon?.percentOff, 20);
+    assert.equal(
+      Math.round(
+        (studentFourMonth?.unitAmountCents ?? 0) *
+          (1 - (studentCoupon?.percentOff ?? 0) / 100),
+      ),
+      1280,
+    );
+    assert.equal(Math.round(((annual?.unitAmountCents ?? 0) * 0.8) / 3), 1280);
+    assert.equal(journalistCoupon?.percentOff, 50);
+    assert.deepEqual(journalistCoupon?.appliesToProductIds, ["pro"]);
+  });
+
   void it("registers the webhook events the app webhook handler consumes", () => {
     assert.deepEqual(STRIPE_BILLING_WEBHOOK_EVENTS, [
       "checkout.session.completed",

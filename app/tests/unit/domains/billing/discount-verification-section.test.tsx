@@ -111,6 +111,33 @@ describe("DiscountVerificationSection", () => {
     });
   });
 
+  it("submits independent creator and journalist requests through the stepper", async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(jsonResponse({ ok: true }, 200));
+    vi.stubGlobal("fetch", fetchMock);
+    renderDiscountVerificationSection();
+
+    fireEvent.click(screen.getByRole("button", { name: /Independent Creator or Journalist/i }));
+    fireEvent.change(screen.getByLabelText("Portfolio or Byline URL"), {
+      target: { value: "https://example.org/reporter/byline" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Request Verification" }));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/access/verify-discount",
+        expect.objectContaining({ method: "POST" }),
+      );
+    });
+    const body = JSON.parse(requestBodyFor(fetchMock)) as SubmittedDiscountRequestBody;
+    expect(body).toEqual({
+      data: {
+        portfolioUrl: "https://example.org/reporter/byline",
+      },
+      segment: "independent_journalist",
+      user_id: "user_123",
+    });
+  });
+
   it("announces failed verification requests as an alert", async () => {
     mockFetch(jsonResponse({ detail: "Verification failed" }, 400));
     renderDiscountVerificationSection();

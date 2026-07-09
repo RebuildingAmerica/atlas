@@ -20,6 +20,7 @@ export type CommandGroup = "dev" | "test" | "build" | "deploy" | "product";
 
 export interface AuthSpec {
   checkCommand: string;
+  identityCommand?: string;
   loginCommand: string;
   interactive?: boolean;
 }
@@ -129,6 +130,7 @@ export const CAPABILITY_SPECS: CapabilityConfig[] = [
     requiredFor: ["deploy"],
     requiredByDefault: false,
     binaryCommand: "command -v gcloud",
+    versionCommand: "gcloud --version 2>/dev/null | head -1",
     installCommands: {
       macos: ["brew install --cask google-cloud-sdk"],
       linux: ["curl https://sdk.cloud.google.com | bash"],
@@ -136,6 +138,8 @@ export const CAPABILITY_SPECS: CapabilityConfig[] = [
     auth: {
       checkCommand:
         "gcloud auth list --filter=status:ACTIVE --format='value(account)' 2>/dev/null | head -1 | grep -q .",
+      identityCommand:
+        "gcloud auth list --filter=status:ACTIVE --format='value(account)' 2>/dev/null | head -1",
       loginCommand: "gcloud auth login",
       interactive: true,
     },
@@ -147,12 +151,14 @@ export const CAPABILITY_SPECS: CapabilityConfig[] = [
     requiredFor: ["deploy"],
     requiredByDefault: false,
     binaryCommand: "command -v gh",
+    versionCommand: "gh --version 2>/dev/null | head -1",
     installCommands: {
       macos: ["brew install gh"],
       linux: ["sudo apt-get install -y gh"],
     },
     auth: {
       checkCommand: "gh auth status 2>/dev/null",
+      identityCommand: "gh api user 2>/dev/null",
       loginCommand: "gh auth login",
       interactive: true,
     },
@@ -179,12 +185,14 @@ export const CAPABILITY_SPECS: CapabilityConfig[] = [
     requiredFor: [],
     requiredByDefault: false,
     binaryCommand: "command -v wrangler",
+    versionCommand: "wrangler --version 2>/dev/null",
     installCommands: {
       macos: ["pnpm add -g wrangler"],
       linux: ["pnpm add -g wrangler"],
     },
     auth: {
       checkCommand: "wrangler whoami 2>/dev/null | grep -q 'You are logged in'",
+      identityCommand: "wrangler whoami 2>/dev/null",
       loginCommand: "wrangler login",
       interactive: true,
     },
@@ -196,6 +204,7 @@ export const CAPABILITY_SPECS: CapabilityConfig[] = [
     requiredFor: ["product"],
     requiredByDefault: false,
     binaryCommand: "command -v stripe",
+    versionCommand: "stripe --version 2>/dev/null",
     installCommands: {
       macos: ["brew install stripe/stripe-cli/stripe"],
       linux: [
@@ -204,6 +213,7 @@ export const CAPABILITY_SPECS: CapabilityConfig[] = [
     },
     auth: {
       checkCommand: "stripe get /v1/account 2>/dev/null | grep -q 'id'",
+      identityCommand: "stripe get /v1/account 2>/dev/null",
       loginCommand: "stripe login",
       interactive: true,
     },
@@ -215,6 +225,7 @@ export const CAPABILITY_SPECS: CapabilityConfig[] = [
     requiredFor: ["product"],
     requiredByDefault: false,
     binaryCommand: "command -v neonctl",
+    versionCommand: "neonctl --version 2>/dev/null",
     installCommands: {
       macos: ["brew install neonctl"],
       linux: ["pnpm add -g neonctl"],
@@ -222,6 +233,7 @@ export const CAPABILITY_SPECS: CapabilityConfig[] = [
     auth: {
       checkCommand:
         "neonctl me --output json 2>/dev/null | grep -q '\"email\"'",
+      identityCommand: "neonctl me --output json 2>/dev/null",
       loginCommand: "neonctl auth",
       interactive: true,
     },
@@ -295,6 +307,7 @@ export const CAPABILITY_SPECS: CapabilityConfig[] = [
     },
     auth: {
       checkCommand: "vercel whoami 2>/dev/null | grep -qv 'Error'",
+      identityCommand: "vercel whoami 2>/dev/null",
       loginCommand: "pnpm exec vercel login",
       interactive: true,
     },

@@ -40,7 +40,13 @@ export async function runDeployPhase(
   }
 
   const shouldDeploy = await promptConfirm(
-    "Deploy atlas-api to Cloud Run now? (atlas-web ships via Vercel auto-deploy.)",
+    [
+      "Deploy atlas-api to Cloud Run now?",
+      "",
+      "Bootstrap will build the API image, push it to Artifact Registry, and deploy the Cloud Run service.",
+      "The web app is not deployed here; atlas-web ships through Vercel on push to main.",
+      "Choose No if you only want setup values written and will deploy later.",
+    ].join("\n"),
     false,
   );
 

@@ -58,6 +58,21 @@ describe("PricingPlansGrid", () => {
     expect(screen.getByText(/paid every 4 months/i)).toBeInTheDocument();
   });
 
+  it("starts student Pro checkout with the four-month interval", async () => {
+    const user = userEvent.setup();
+    const onCheckout = vi.fn().mockResolvedValue(undefined);
+    render(<PricingPlansGridHarness onCheckout={onCheckout} />);
+
+    const billingGroup = screen.getByRole("group", { name: "Billing interval" });
+    await user.click(within(billingGroup).getByRole("button", { name: /Student/ }));
+    await user.click(screen.getByRole("button", { name: "Get Atlas Pro" }));
+
+    expect(onCheckout).toHaveBeenCalledWith({
+      product: "atlas_pro",
+      interval: "four_month",
+    });
+  });
+
   it("advertises Team SCIM without advertising Slack", () => {
     render(<PricingPlansGridHarness />);
 

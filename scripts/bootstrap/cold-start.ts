@@ -6,11 +6,11 @@
  *
  * | Command                                                   | What it does |
  * | --------------------------------------------------------- | ------------ |
- * | `pnpm setup`                                              | Local dev setup, including local Stripe test-mode sync. |
+ * | `pnpm run setup`                                          | Local dev setup, including local Stripe test-mode sync. |
  * | `pnpm setup:staging`                                      | Staging setup, including Stripe test-mode sync and Vercel Preview env sync. |
  * | `pnpm setup:prod`                                         | Production setup, including Stripe live-mode sync and Vercel Production env sync. |
  * | `pnpm doctor`                                             | Checks readiness without changing local or hosted state. |
- * | `pnpm bootstrap`                                          | Full interactive setup. |
+ * | `pnpm bootstrap`                                          | Full guided repo setup, including production readiness. |
  * | `pnpm bootstrap --local-only`                             | Local dev setup, including local Stripe test-mode sync. |
  * | `pnpm bootstrap --doctor`                                 | Checks readiness without changing local or hosted state. |
  * | `pnpm bootstrap --resume`                                 | Skips phases already marked complete. |
@@ -24,7 +24,7 @@
  * | `pnpm bootstrap --api-domain --target staging`            | Ensures the staging atlas-api Cloud Run and Cloudflare CNAME. |
  * | `pnpm bootstrap --api-edge`                               | Enables Cloudflare proxy and API rate limits. |
  * | `pnpm bootstrap --api-edge --target staging`              | Enables staging Cloudflare proxy and API rate limits. |
- * | `pnpm bootstrap --live`                                   | Uses Stripe live mode instead of test mode. |
+ * | `pnpm bootstrap --target prod --live`                     | Runs explicit production setup. |
  */
 
 import path from "node:path";
@@ -34,14 +34,16 @@ import pc from "picocolors";
 import { detectOs } from "./lib/os.js";
 import {
   confirmResumeSkip,
+  describePhase,
   parseArgs,
   printSummary,
   recomputeCommandReadiness,
+  shouldStopAfterAuthFailure,
   shouldSkipPhase,
 } from "./lib/cold-start.js";
 import { runCommand } from "./lib/shell.js";
 import { loadReadiness, markPhase, saveReadiness } from "./state.js";
-import type { PhaseState } from "./state.js";
+import type { PhaseId, PhaseState } from "./state.js";
 import { runInstallPhase } from "./phases/install.js";
 import { runAuthPhase } from "./phases/auth.js";
 import { runEnvPhase } from "./phases/env.js";
@@ -53,6 +55,7 @@ import { runMcpRegistryPhase } from "./phases/mcp-registry.js";
 import { runCiCachePhase } from "./phases/ci-cache.js";
 import { runApiDomainPhase } from "./phases/api-domain.js";
 import { runApiEdgePhase } from "./phases/api-edge.js";
+import { renderSetupGuide } from "./config/setup-manifest.js";
 
 type BootstrapPhaseStatus = Exclude<PhaseState["status"], "skipped">;
 
@@ -85,10 +88,26 @@ async function main(): Promise<void> {
 
   const state = loadReadiness(projectRoot);
   const allFollowUp: string[] = [];
+  const attemptedPhases = new Set<PhaseId>();
+
+  if (
+    !args.productOnly &&
+    !args.mcpRegistryOnly &&
+    !args.ciCacheOnly &&
+    !args.apiDomainOnly &&
+    !args.apiEdgeOnly
+  ) {
+    note(
+      renderSetupGuide(args.localOnly ? "local" : args.stripeTarget),
+      "Repo setup checklist",
+    );
+  }
 
   // MCP Registry-only mode
   if (args.mcpRegistryOnly) {
     log.info("Running MCP Registry publisher setup only.");
+    log.info(describePhase("MCP Registry Publisher"));
+    attemptedPhases.add("mcp-registry");
     const result = await runMcpRegistryPhase(projectRoot, args.doctorMode);
     markPhase(state, "mcp-registry", result.success ? "complete" : "partial");
     saveReadiness(projectRoot, state);
@@ -106,6 +125,8 @@ async function main(): Promise<void> {
   // CI cache-only mode
   if (args.ciCacheOnly) {
     log.info("Running Vercel Remote Cache wiring only.");
+    log.info(describePhase("CI Remote Cache"));
+    attemptedPhases.add("ci-cache");
     const result = await runCiCachePhase(projectRoot, args.doctorMode);
     markPhase(state, "ci-cache", result.success ? "complete" : "partial");
     saveReadiness(projectRoot, state);
@@ -125,6 +146,8 @@ async function main(): Promise<void> {
     log.info(
       `Running atlas-api domain mapping only (target=${args.apiDomainTarget}).`,
     );
+    log.info(describePhase("API Canonical Domain"));
+    attemptedPhases.add("api-domain");
     const result = await runApiDomainPhase(
       projectRoot,
       args.doctorMode,
@@ -148,6 +171,8 @@ async function main(): Promise<void> {
     log.info(
       `Running atlas-api edge protection only (target=${args.apiDomainTarget}).`,
     );
+    log.info(describePhase("API Edge Protection"));
+    attemptedPhases.add("api-edge");
     const result = await runApiEdgePhase(
       projectRoot,
       args.doctorMode,
@@ -169,6 +194,8 @@ async function main(): Promise<void> {
   // Product-only mode
   if (args.productOnly === "atlas") {
     log.info("Running Stripe product sync only.");
+    log.info(describePhase("Stripe Products"));
+    attemptedPhases.add("product");
     const result = await runProductPhase(
       projectRoot,
       state,
@@ -182,9 +209,7 @@ async function main(): Promise<void> {
     if (result.followUpItems.length > 0) {
       note(result.followUpItems.join("\n"), "Follow-up");
     }
-    outro(
-      result.success ? "Product sync complete." : "Product sync had issues.",
-    );
+    outro(result.success ? "Product sync complete." : "Stripe setup pending.");
     return;
   }
 
@@ -193,7 +218,9 @@ async function main(): Promise<void> {
     !shouldSkipPhase("install", state, args.resume) ||
     !(await confirmResumeSkip("Install"))
   ) {
-    log.step("Phase 1: System Dependencies");
+    log.step("Phase 1: Setup Prerequisites");
+    log.info(describePhase("Setup Prerequisites"));
+    attemptedPhases.add("install");
     const result = await runInstallPhase(
       state,
       os,
@@ -205,15 +232,16 @@ async function main(): Promise<void> {
     allFollowUp.push(...result.followUpItems);
   }
 
-  // Workspace install (pnpm install)
+  // Workspace packages (pnpm install)
   if (!args.doctorMode) {
-    log.step("Installing workspace dependencies...");
+    log.step("Installing workspace packages...");
+    log.info(describePhase("Workspace Packages"));
     let installOk = runCommand("pnpm install --frozen-lockfile").ok;
     if (!installOk) {
       installOk = runCommand("pnpm install").ok;
     }
     if (installOk) {
-      log.success("Workspace dependencies installed.");
+      log.success("Workspace packages installed.");
     } else {
       log.error("pnpm install failed. Fix dependency issues and re-run.");
       allFollowUp.push("Resolve pnpm install errors and re-run bootstrap.");
@@ -226,10 +254,27 @@ async function main(): Promise<void> {
     !(await confirmResumeSkip("Auth"))
   ) {
     log.step("Phase 2: CLI Authentication");
-    const result = await runAuthPhase(state, args.doctorMode, args.localOnly);
+    log.info(describePhase("CLI Authentication"));
+    attemptedPhases.add("auth");
+    const result = await runAuthPhase(
+      state,
+      args.doctorMode,
+      args.localOnly,
+      args.assumeYes,
+    );
     markPhase(state, "auth", result.success ? "complete" : "partial");
     saveReadiness(projectRoot, state);
     allFollowUp.push(...result.followUpItems);
+    if (shouldStopAfterAuthFailure(args.doctorMode, result.success)) {
+      recomputeCommandReadiness(state);
+      saveReadiness(projectRoot, state);
+      printSummary(state, attemptedPhases);
+      if (allFollowUp.length > 0) {
+        note(allFollowUp.join("\n"), "Follow-up Items");
+      }
+      outro("Bootstrap stopped before environment setup.");
+      return;
+    }
   }
 
   // Phase 3: Environment
@@ -238,11 +283,14 @@ async function main(): Promise<void> {
     !(await confirmResumeSkip("Environment"))
   ) {
     log.step("Phase 3: Environment Configuration");
+    log.info(describePhase("Environment Configuration"));
+    attemptedPhases.add("env");
     const result = await runEnvPhase(
       projectRoot,
       args.doctorMode,
       state,
       !args.localOnly,
+      args.assumeYes,
     );
     markPhase(state, "env", result.success ? "complete" : "partial");
     saveReadiness(projectRoot, state);
@@ -251,6 +299,8 @@ async function main(): Promise<void> {
 
   if (args.localOnly) {
     log.step("Phase 4: Stripe Products");
+    log.info(describePhase("Stripe Products"));
+    attemptedPhases.add("product");
     const result = await runProductPhase(
       projectRoot,
       state,
@@ -271,6 +321,8 @@ async function main(): Promise<void> {
       !(await confirmResumeSkip("Infrastructure"))
     ) {
       log.step("Phase 4: Cloud Infrastructure");
+      log.info(describePhase("Cloud Infrastructure"));
+      attemptedPhases.add("infra");
       const result = await runInfraPhase(projectRoot, state, args.doctorMode);
       markPhase(state, "infra", result.success ? "complete" : "failed");
       saveReadiness(projectRoot, state);
@@ -283,6 +335,8 @@ async function main(): Promise<void> {
       !(await confirmResumeSkip("Database"))
     ) {
       log.step("Phase 5: Database");
+      log.info(describePhase("Database"));
+      attemptedPhases.add("database");
       const result = await runDatabasePhase(
         projectRoot,
         state,
@@ -299,6 +353,8 @@ async function main(): Promise<void> {
       !(await confirmResumeSkip("Product"))
     ) {
       log.step("Phase 6: Stripe Products");
+      log.info(describePhase("Stripe Products"));
+      attemptedPhases.add("product");
       const result = await runProductPhase(
         projectRoot,
         state,
@@ -318,6 +374,8 @@ async function main(): Promise<void> {
       !(await confirmResumeSkip("MCP Registry"))
     ) {
       log.step("Phase 7: MCP Registry Publisher");
+      log.info(describePhase("MCP Registry Publisher"));
+      attemptedPhases.add("mcp-registry");
       const result = await runMcpRegistryPhase(projectRoot, args.doctorMode);
       markPhase(state, "mcp-registry", result.success ? "complete" : "partial");
       saveReadiness(projectRoot, state);
@@ -330,6 +388,8 @@ async function main(): Promise<void> {
       !(await confirmResumeSkip("Deploy"))
     ) {
       log.step("Phase 8: Initial Deployment");
+      log.info(describePhase("Initial Deployment"));
+      attemptedPhases.add("deploy");
       const result = await runDeployPhase(projectRoot, state, args.doctorMode);
       markPhase(state, "deploy", result.success ? "complete" : "skipped");
       saveReadiness(projectRoot, state);
@@ -342,6 +402,8 @@ async function main(): Promise<void> {
       !(await confirmResumeSkip("CI Cache"))
     ) {
       log.step("Phase 9: CI Remote Cache");
+      log.info(describePhase("CI Remote Cache"));
+      attemptedPhases.add("ci-cache");
       const result = await runCiCachePhase(projectRoot, args.doctorMode);
       markPhase(state, "ci-cache", result.success ? "complete" : "partial");
       saveReadiness(projectRoot, state);
@@ -354,6 +416,8 @@ async function main(): Promise<void> {
       !(await confirmResumeSkip("API Domain"))
     ) {
       log.step("Phase 10: API Canonical Domain");
+      log.info(describePhase("API Canonical Domain"));
+      attemptedPhases.add("api-domain");
       const result = await runApiDomainPhase(projectRoot, args.doctorMode);
       markPhase(state, "api-domain", result.success ? "complete" : "partial");
       saveReadiness(projectRoot, state);
@@ -366,6 +430,8 @@ async function main(): Promise<void> {
       !(await confirmResumeSkip("API Edge"))
     ) {
       log.step("Phase 11: API Edge Protection");
+      log.info(describePhase("API Edge Protection"));
+      attemptedPhases.add("api-edge");
       const result = await runApiEdgePhase(projectRoot, args.doctorMode);
       markPhase(state, "api-edge", result.success ? "complete" : "partial");
       saveReadiness(projectRoot, state);
@@ -376,7 +442,7 @@ async function main(): Promise<void> {
   // Final state
   recomputeCommandReadiness(state);
   saveReadiness(projectRoot, state);
-  printSummary(state);
+  printSummary(state, attemptedPhases);
 
   if (allFollowUp.length > 0) {
     note(allFollowUp.join("\n"), "Follow-up Items");

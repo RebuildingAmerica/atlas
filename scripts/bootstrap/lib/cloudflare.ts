@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { log, password } from "@clack/prompts";
 import pc from "picocolors";
 import { runCommand } from "./shell.js";
-import { logSubline, promptOrExit } from "./ui.js";
+import { promptOrExit } from "./ui.js";
 
 const CLOUDFLARE_API = "https://api.cloudflare.com/client/v4";
 
@@ -42,6 +42,30 @@ export interface UpsertResult {
 export interface CnameVerification {
   resolved: boolean;
   observed: string | null;
+}
+
+export function formatCloudflareTokenPromptMessage(
+  opts: {
+    permissionsHint?: string;
+    zoneHint?: string;
+  } = {},
+): string {
+  const permissions = opts.permissionsHint ?? 'template "Edit zone DNS"';
+  const zoneScope = opts.zoneHint
+    ? `Restrict the token to the ${opts.zoneHint} zone.`
+    : "Restrict the token to the Cloudflare zone bootstrap is configuring.";
+  return [
+    "Cloudflare API token",
+    "",
+    "Create a Cloudflare token for this bootstrap step:",
+    "1. Open https://dash.cloudflare.com/profile/api-tokens.",
+    "2. Create a custom token or use the closest matching template.",
+    `3. Grant ${permissions}.`,
+    `4. ${zoneScope}`,
+    "5. Create the token and copy the value once Cloudflare shows it.",
+    "",
+    "Paste the token here. Bootstrap uses it only for DNS and edge configuration, then can save it locally with chmod 600 if you choose.",
+  ].join("\n");
 }
 
 // ── Token storage ────────────────────────────────────────────────────────────
@@ -82,14 +106,9 @@ export async function acquireCloudflareToken(opts: {
     return { token: stashed.token, source: "stash", stashPath: stashed.path };
   }
 
-  logSubline(
-    pc.dim(
-      `Create one at https://dash.cloudflare.com/profile/api-tokens (${opts.permissionsHint ?? 'template "Edit zone DNS"'}${opts.zoneHint ? `, restricted to ${opts.zoneHint}` : ""}).`,
-    ),
-  );
   const token = (await promptOrExit(
     password({
-      message: "Cloudflare API token",
+      message: formatCloudflareTokenPromptMessage(opts),
       validate: (v) =>
         v && v.trim().length > 0 ? undefined : "Token is required",
     }),

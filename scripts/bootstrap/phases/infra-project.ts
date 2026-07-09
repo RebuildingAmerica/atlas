@@ -15,6 +15,56 @@ export interface ProjectChoice {
   projectId?: string;
 }
 
+export function formatGcpProjectChoicePromptMessage(): string {
+  return [
+    "GCP project",
+    "",
+    "Atlas uses one Google Cloud project for Cloud Run, Artifact Registry, Scheduler, and deploy identities.",
+    "1. Choose the active project if it is the production Atlas project.",
+    "2. Choose an existing project if another project already owns production infra.",
+    "3. Choose manual if the project is not listed.",
+    "4. Choose new only if bootstrap should create the project.",
+    "",
+    "Bootstrap will set gcloud to the chosen project before continuing.",
+  ].join("\n");
+}
+
+export function formatGcpProjectIdPromptMessage(creatingNew: boolean): string {
+  if (creatingNew) {
+    return [
+      "New GCP project ID",
+      "",
+      "Choose the globally unique Google Cloud project ID bootstrap should create.",
+      "1. Use lowercase letters, numbers, and hyphens.",
+      "2. Keep it recognizable, for example atlas-prod or atlas-production.",
+      "3. Do not use a personal or throwaway project for production.",
+      "",
+      "Paste the project ID here. Bootstrap will create it with gcloud.",
+    ].join("\n");
+  }
+
+  return [
+    "Existing GCP project ID",
+    "",
+    "Enter the Google Cloud project ID that already owns Atlas infrastructure.",
+    "1. Open https://console.cloud.google.com/cloud-resource-manager if you need to confirm it.",
+    "2. Copy the Project ID column, not the display name.",
+    "3. Make sure your active gcloud account has access to deploy into it.",
+    "",
+    "Paste the project ID here. Bootstrap will verify it before continuing.",
+  ].join("\n");
+}
+
+export function formatGcpRegionPromptMessage(): string {
+  return [
+    "GCP region",
+    "",
+    "Choose the Google Cloud region for Atlas Cloud Run and Artifact Registry.",
+    "Use us-central1 unless production has intentionally moved to another region.",
+    "Bootstrap writes this as GCP_REGION and deploys hosted services there.",
+  ].join("\n");
+}
+
 export function readPersistedInfraConfig(projectRoot: string): {
   projectId?: string;
   region?: string;
@@ -55,15 +105,31 @@ export async function setupProject(
     logSubline(`Active gcloud project: ${pc.cyan(activeProjectId)}`);
   }
 
-  logSubline(
-    pc.dim(
-      "Atlas needs a GCP project for Cloud Run hosting. You can use an existing project or create a new one. Project IDs are globally unique (e.g., 'atlas-prod-123').",
-    ),
-  );
+  if (doctorMode) {
+    const projectId = activeProjectId;
+    if (!projectId) {
+      log.warn("GCP project is not configured");
+      followUpItems.push(
+        "Set GCP_PROJECT_ID in .env.production or select one during `pnpm setup:prod`",
+      );
+      return { projectId: "", projectNumber: "" };
+    }
+
+    const describeResult = describeProject(projectId);
+    if (!describeResult.ok) {
+      handleProjectLookupFailure(projectId, describeResult, followUpItems);
+      return { projectId: "", projectNumber: "" };
+    }
+    const numResult = runCommand(
+      `gcloud projects describe "${projectId}" --format="value(projectNumber)"`,
+    );
+    log.success(`Project '${projectId}' exists`);
+    return { projectId, projectNumber: numResult.stdout };
+  }
 
   const projectChoice = (await promptOrExit(
     select({
-      message: "GCP project",
+      message: formatGcpProjectChoicePromptMessage(),
       options: buildProjectOptions(activeProjectId, projects),
     }),
   )) as ProjectChoice;
@@ -74,9 +140,7 @@ export async function setupProject(
       ? projectChoice.projectId
       : ((await promptOrExit(
           text({
-            message: creatingNew
-              ? "New GCP project ID (globally unique, lowercase, hyphens allowed)"
-              : "Existing GCP project ID",
+            message: formatGcpProjectIdPromptMessage(creatingNew),
             placeholder: "atlas-prod",
           }),
         )) as string);
@@ -106,7 +170,12 @@ export async function setupProject(
 
     if (!creatingNew) {
       const shouldCreate = await promptConfirm(
-        `Project '${projectId}' does not exist. Create it?`,
+        [
+          `GCP project '${projectId}' was not found.`,
+          "",
+          "Choose Yes to let bootstrap create this project with gcloud.",
+          "Choose No if the project ID is wrong or you need a different account.",
+        ].join("\n"),
         true,
       );
       if (!shouldCreate) {
@@ -151,7 +220,17 @@ export async function setupProject(
     logSubline(
       `Link one at: https://console.cloud.google.com/billing/linkedaccount?project=${projectId}`,
     );
-    const billingReady = await promptConfirm("Is billing now enabled?", false);
+    const billingReady = await promptConfirm(
+      [
+        "Confirm GCP billing is enabled",
+        "",
+        `Open https://console.cloud.google.com/billing/linkedaccount?project=${projectId} and link a billing account.`,
+        "Cloud Run cannot deploy until billing is linked.",
+        "",
+        "Choose Yes only after the billing page shows this project is linked.",
+      ].join("\n"),
+      false,
+    );
     if (!billingReady) {
       log.error("Cloud Run requires billing. Cannot proceed.");
       followUpItems.push(`Enable billing for GCP project: ${projectId}`);
@@ -180,7 +259,7 @@ async function reusePersistedProject(
   if (!doctorMode) {
     const action = (await promptOrExit(
       select({
-        message: "GCP project",
+        message: formatGcpProjectChoicePromptMessage(),
         options: [
           { value: "keep", label: `Keep ${projectId}` },
           { value: "change", label: "Choose a different project" },
@@ -202,13 +281,16 @@ async function reusePersistedProject(
     return { projectId: "", projectNumber: "" };
   }
 
-  runCommand(`gcloud config set project "${projectId}" --quiet`);
+  if (!doctorMode) {
+    runCommand(`gcloud config set project "${projectId}" --quiet`);
+  }
   return { projectId, projectNumber: numResult.stdout };
 }
 
 export async function chooseRegion(
   doctorMode: boolean,
   persistedRegion?: string,
+  followUpItems: string[] = [],
 ): Promise<string> {
   if (persistedRegion) {
     log.success(`GCP_REGION already configured (${persistedRegion})`);
@@ -216,7 +298,7 @@ export async function chooseRegion(
     if (!doctorMode) {
       const action = (await promptOrExit(
         select({
-          message: "GCP region",
+          message: formatGcpRegionPromptMessage(),
           options: [
             { value: "keep", label: `Keep ${persistedRegion}` },
             { value: "change", label: "Choose a different region" },
@@ -232,9 +314,17 @@ export async function chooseRegion(
     }
   }
 
+  if (doctorMode) {
+    log.warn("GCP_REGION is not configured");
+    followUpItems.push(
+      "Set GCP_REGION in .env.production or choose one during hosted setup",
+    );
+    return "us-central1";
+  }
+
   return (await promptOrExit(
     text({
-      message: "GCP region",
+      message: formatGcpRegionPromptMessage(),
       initialValue: persistedRegion || "us-central1",
     }),
   )) as string;

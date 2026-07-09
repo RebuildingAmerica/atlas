@@ -1,4 +1,4 @@
-import { log, spinner } from "@clack/prompts";
+import { log, note, spinner } from "@clack/prompts";
 import pc from "picocolors";
 import {
   CAPABILITY_SPECS,
@@ -10,21 +10,52 @@ import { promptConfirm, logSubline } from "../lib/ui.js";
 import { markCapability } from "../state.js";
 import type { PhaseResult, ReadinessState } from "../state.js";
 
+interface ReadyTool {
+  label: string;
+  version?: string;
+}
+
+export function formatToolVersion(version: string | undefined): string {
+  if (!version) return "installed";
+  const trimmed = version.trim();
+  const firstSemver = /\bv?(\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?)\b/.exec(
+    trimmed,
+  );
+  if (firstSemver) return firstSemver[1];
+  const firstNumber = /\bv?(\d+(?:\.\d+)*)\b/.exec(trimmed);
+  return firstNumber?.[1] ?? trimmed;
+}
+
+export function formatToolSummary(ready: ReadyTool[]): string {
+  return [
+    `${ready.length} tool${ready.length === 1 ? "" : "s"} ready`,
+    "",
+    ...ready.map(
+      (dependency) =>
+        `${dependency.label}: ${formatToolVersion(dependency.version)}`,
+    ),
+  ].join("\n");
+}
+
 export async function runInstallPhase(
   state: ReadinessState,
   os: SupportedOs,
   doctorMode: boolean,
-  localOnly: boolean,
+  _localOnly: boolean,
 ): Promise<PhaseResult> {
   const followUpItems: string[] = [];
   let allReady = true;
+  const readyTools: ReadyTool[] = [];
 
   for (const cap of CAPABILITY_SPECS) {
     const result = checkCapability(cap);
 
     if (result.installed) {
-      const versionInfo = result.version ? ` (${result.version})` : "";
-      log.success(`${cap.label}${versionInfo}`);
+      const versionInfo = ` (${formatToolVersion(result.version)})`;
+      readyTools.push({ label: cap.label, version: result.version });
+      if (doctorMode) {
+        log.success(`${cap.label}${versionInfo}`);
+      }
       markCapability(state, cap.id, {
         status: "ready",
         installStatus: "ready",
@@ -35,18 +66,6 @@ export async function runInstallPhase(
 
     // Not installed — decide whether to offer installation
     const isRequired = cap.requiredByDefault || cap.category === "core";
-    const skippedByLocalOnly = localOnly && cap.category !== "core";
-
-    if (skippedByLocalOnly) {
-      log.info(`${cap.label} — not installed (not needed for local dev)`);
-      markCapability(state, cap.id, {
-        status: "skipped",
-        installStatus: "skipped",
-        details: "not needed for --local-only",
-      });
-      continue;
-    }
-
     if (doctorMode) {
       log.warn(`${cap.label} — not installed`);
       if (cap.postInstallHint) logSubline(pc.dim(cap.postInstallHint));
@@ -60,7 +79,12 @@ export async function runInstallPhase(
     }
 
     const shouldInstall = await promptConfirm(
-      `${cap.label} is not installed${isRequired ? " (required)" : ""}. Install it?`,
+      [
+        `${cap.label} is not installed${isRequired ? " and is required for this setup." : "."}`,
+        "",
+        "Choose Yes to let bootstrap install it with the configured install command.",
+        "Choose No to skip this tool now and handle it manually later.",
+      ].join("\n"),
       isRequired,
     );
 
@@ -126,6 +150,10 @@ export async function runInstallPhase(
         allReady = false;
       }
     }
+  }
+
+  if (!doctorMode && readyTools.length > 0) {
+    note(formatToolSummary(readyTools), "System tools");
   }
 
   return { success: allReady, followUpItems };

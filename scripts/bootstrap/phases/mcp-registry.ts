@@ -23,6 +23,28 @@ import {
   NAMESPACE,
 } from "./mcp-registry-cloudflare.js";
 
+export function formatExistingPublisherKeypairPromptMessage(): string {
+  return [
+    "Existing MCP Registry publisher keypair",
+    "",
+    "Bootstrap found a local publisher keypair for the Atlas MCP Registry namespace.",
+    "1. Keep it if this machine already publishes the Atlas namespace.",
+    "2. Rotate only if the key was compromised or this should become the new publisher key.",
+    "3. Rotating generates new local key files and requires updating the Cloudflare TXT proof.",
+  ].join("\n");
+}
+
+export function formatMcpTxtUpdatePromptMessage(): string {
+  return [
+    "MCP Registry DNS proof",
+    "",
+    "Atlas must publish an MCPv1 TXT record on rebuildingus.org before the registry accepts the namespace.",
+    "1. Choose Cloudflare API if bootstrap should create or update the TXT record for you.",
+    "2. Choose dashboard if you want to paste the TXT record into Cloudflare manually.",
+    "3. Bootstrap will wait for DNS and verify the live TXT record before continuing.",
+  ].join("\n");
+}
+
 export async function runMcpRegistryPhase(
   projectRoot: string,
   doctorMode: boolean,
@@ -39,7 +61,13 @@ export async function runMcpRegistryPhase(
 
   if (!doctorMode) {
     const proceed = await promptConfirm(
-      "Set up MCP Registry publisher (DNS proof on rebuildingus.org)?",
+      [
+        "Set up MCP Registry publisher?",
+        "",
+        "Bootstrap will create or verify the Atlas publisher keypair and the DNS proof on rebuildingus.org.",
+        "Choose Yes if this machine should be able to publish the Atlas MCP Registry namespace.",
+        "Choose No to skip publisher setup for now.",
+      ].join("\n"),
       false,
     );
     if (!proceed) {
@@ -99,7 +127,7 @@ async function ensureKeypair(
     }
     const selected = (await promptOrExit(
       select({
-        message: "Existing keypair found",
+        message: formatExistingPublisherKeypairPromptMessage(),
         options: [
           { value: "keep", label: "Keep existing keypair" },
           {
@@ -162,7 +190,7 @@ async function ensureCloudflareTxt(
 
   const selected = (await promptOrExit(
     select({
-      message: "How should the TXT record be updated?",
+      message: formatMcpTxtUpdatePromptMessage(),
       options: [
         {
           value: "api",
@@ -226,7 +254,13 @@ async function updateViaApi(
 
   if (!isStashed) {
     const stash = await promptConfirm(
-      `Save this token to ${TOKEN_PATH} (chmod 600) for future rotations?`,
+      [
+        "Save Cloudflare token for future MCP DNS rotations?",
+        "",
+        `Bootstrap will write the token to ${TOKEN_PATH} with chmod 600.`,
+        "Choose Yes if this machine should be able to rotate the DNS proof later.",
+        "Choose No if this was a one-time token.",
+      ].join("\n"),
       true,
     );
     if (stash) {
@@ -234,7 +268,13 @@ async function updateViaApi(
       log.success(`Token saved to ${pc.dim(TOKEN_PATH)}`);
     } else {
       const revoke = await promptConfirm(
-        "Revoke the token now (recommended if not stashing)?",
+        [
+          "Revoke the Cloudflare token now?",
+          "",
+          "This is recommended when you chose not to save the token locally.",
+          "Choose Yes to ask Cloudflare to revoke it now.",
+          "Choose No only if you will manage or revoke it manually.",
+        ].join("\n"),
         true,
       );
       if (revoke) {
@@ -272,7 +312,16 @@ async function updateViaDashboard(
   log.info(`Name:   @ (apex)`);
   log.info(`Value:  ${expectedTxt}`);
 
-  const ready = await promptConfirm("TXT record added or updated?", false);
+  const ready = await promptConfirm(
+    [
+      "Confirm MCP Registry TXT record is live",
+      "",
+      "Add or update the Cloudflare TXT record shown above first.",
+      "Choose Yes after the Cloudflare dashboard shows the MCPv1 TXT record on the apex domain.",
+      "Bootstrap will verify DNS propagation before continuing.",
+    ].join("\n"),
+    false,
+  );
   if (!ready) {
     followUpItems.push(
       `Add Cloudflare TXT on ${DOMAIN} apex with: ${expectedTxt}`,

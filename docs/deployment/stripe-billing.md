@@ -61,34 +61,39 @@ the canonical Stripe products, prices, and coupons. Do not hand-author separate
 product, price, or coupon env vars for the app. The individual Stripe IDs are
 catalog internals, not operator-managed configuration.
 
-## Preconditions
+## Setup path
 
-Before running the billing bootstrap:
+Stripe setup is part of the repo bootstrap. Use the target setup command first;
+this runbook explains the Stripe portion when something needs inspection.
 
-1. Install dependencies with `pnpm install`.
-2. Install and authenticate the Stripe CLI with `stripe login`.
-3. Link the Vercel project for hosted staging and production env sync.
-4. Set `ATLAS_PUBLIC_URL` for the target environment.
-5. For production, use a live `sk_live_...` secret key or a Dashboard-created
-   live restricted key with product, price, coupon, customer, Checkout/Billing,
-   and webhook permissions.
+Before running hosted setup:
+
+1. Install and authenticate the Stripe CLI with `stripe login`.
+2. Link the Vercel project for hosted staging and production env sync.
+3. Set `ATLAS_PUBLIC_URL` for the target environment.
+4. For production, open Stripe Dashboard in Live mode, go to **Developers > API
+   keys > Restricted keys**, create a live restricted key named
+   `Atlas production bootstrap`, and grant write access for Products, Prices,
+   Coupons, Customers, Checkout Sessions, and Webhook Endpoints. A live secret
+   key (`sk_live_...`) is accepted, but restricted keys are the default
+   production path.
 
 Stripe CLI OAuth keys can work for test-mode local and staging operations.
 Production bootstrap does not fall back to Stripe CLI auth or the root `.env`
-file. Set `STRIPE_API_KEY` explicitly with a Dashboard-created live key because
-the bootstrap uses the Stripe SDK and the hosted app needs the same live runtime
-key to create Checkout sessions.
+file. Set `STRIPE_API_KEY` explicitly with a Dashboard-created live restricted
+key because the bootstrap uses the Stripe SDK and the hosted app needs the same
+live runtime key to create Checkout sessions.
 
 ## Local development
 
-The guided local setup path installs dependencies, writes local env values, and
-syncs the Stripe test-mode catalog:
+Run the local setup:
 
 ```bash
-pnpm setup
+pnpm run setup
 ```
 
-This writes Stripe values to `.env` and `app/.env.local`.
+This writes Stripe values to `.env` and `app/.env.local` and syncs the test-mode
+catalog.
 
 Keep webhook delivery open while testing Checkout locally:
 
@@ -109,17 +114,17 @@ The script forwards these events to
 Staging uses Stripe test-mode objects and Vercel Preview environment variables:
 
 ```bash
-pnpm setup:staging
+pnpm bootstrap --target staging
 ```
 
 The command writes `.env.staging`, creates or verifies the Stripe test-mode
 catalog, creates or verifies the staging webhook endpoint, and syncs the three
 runtime Stripe keys into the linked Vercel Preview environment.
 
-For noninteractive shells, append `-- --yes`:
+For targeted staging reruns:
 
 ```bash
-pnpm setup:staging -- --yes
+pnpm setup:staging
 ```
 
 ## Production
@@ -128,8 +133,20 @@ Production uses Stripe live-mode objects and Vercel Production environment
 variables:
 
 ```bash
-STRIPE_API_KEY=sk_live_replace_me pnpm setup:prod
+pnpm bootstrap
 ```
+
+If you do not have the live key yet:
+
+1. Open Stripe Dashboard and switch to Live mode for The Rebuilding America
+   Project.
+2. Go to **Developers > API keys > Restricted keys**.
+3. Create a restricted key named `Atlas production bootstrap`.
+4. Grant write access for Products, Prices, Coupons, Customers, Checkout
+   Sessions, and Webhook Endpoints.
+5. Reveal the key once, copy the `rk_live_...` value, and keep it out of chat
+   and committed files.
+6. Run `STRIPE_API_KEY=rk_live_... pnpm setup:prod --yes`.
 
 The command writes `.env.production`, creates or verifies the Stripe live-mode
 catalog, creates or verifies the production webhook endpoint, and syncs the
@@ -138,10 +155,10 @@ three runtime Stripe keys into the linked Vercel Production environment.
 Do not run production bootstrap with a test key. The script rejects mismatched
 test/live keys before mutating Stripe.
 
-For noninteractive shells, append `-- --yes` while still passing the live key:
+For interactive shells, omit `--yes` while still passing the live key:
 
 ```bash
-STRIPE_API_KEY=sk_live_replace_me pnpm setup:prod -- --yes
+STRIPE_API_KEY=rk_live_replace_me pnpm setup:prod
 ```
 
 ## Verification
@@ -159,7 +176,7 @@ load:
 ```bash
 pnpm stripe:verify:local
 pnpm stripe:verify:staging
-STRIPE_API_KEY=sk_live_replace_me pnpm stripe:verify:prod
+STRIPE_API_KEY=rk_live_replace_me pnpm stripe:verify:prod
 ```
 
 Run only the target you just bootstrapped. The verifier checks required env
@@ -192,5 +209,5 @@ to Atlas Pro. Create the current coupon ID from
 mode.
 
 If production bootstrap fails with `Invalid API Key`, confirm the key starts
-with `sk_live_` or is a live restricted key created in the Stripe Dashboard with
-the permissions listed above.
+with `rk_live_` or is a live secret key created in the Stripe Dashboard with the
+permissions listed above.

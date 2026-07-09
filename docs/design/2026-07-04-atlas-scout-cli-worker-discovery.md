@@ -121,10 +121,10 @@ and failure modes are documented in
 
 ### Install And Update
 
-Repo setup and Scout product setup are separate. `pnpm setup` prepares the Atlas
-checkout for local development; it must not sign a user into Atlas, configure a
-local model, or mutate Scout product state. Scout product onboarding starts at
-`scout setup` or `scout-dev setup`.
+Repo setup and Scout product setup are separate. `pnpm run setup` prepares the
+Atlas checkout for local development; it must not sign a user into Atlas,
+configure a local model, or mutate Scout product state. Scout product onboarding
+starts at `scout setup` or `scout-dev setup`.
 
 During local development, install the current checkout as the `scout` command
 with editable local libraries:

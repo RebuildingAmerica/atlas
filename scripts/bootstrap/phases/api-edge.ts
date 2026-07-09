@@ -63,7 +63,13 @@ export async function runApiEdgePhase(
   }
 
   const proceed = await promptConfirm(
-    `Enable Cloudflare proxy + anonymous API rate-limit rules for ${pc.cyan(config.domain)}?`,
+    [
+      `Enable Cloudflare edge protection for ${config.domain}?`,
+      "",
+      "Bootstrap will turn on the Cloudflare proxy, add anonymous API rate-limit rules, and add origin identity headers.",
+      "Choose Yes only after the canonical API domain is healthy.",
+      "Choose No to leave DNS and WAF rules unchanged for now.",
+    ].join("\n"),
     true,
   );
   if (!proceed) {
@@ -151,7 +157,13 @@ export async function runApiEdgePhase(
 
   if (acquired.source === "prompt") {
     const stash = await promptConfirm(
-      "Save the Cloudflare token to ~/.config/atlas-bootstrap/cloudflare-token (chmod 600) so future bootstrap runs don't re-prompt?",
+      [
+        "Save Cloudflare token for future API edge setup?",
+        "",
+        "Bootstrap will write it to ~/.config/atlas-bootstrap/cloudflare-token with chmod 600.",
+        "Choose Yes if this machine should manage Atlas DNS and WAF rules again later.",
+        "Choose No if this was a one-time token.",
+      ].join("\n"),
       true,
     );
     if (stash) {

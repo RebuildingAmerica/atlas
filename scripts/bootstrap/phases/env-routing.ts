@@ -1,8 +1,12 @@
-import { note, text } from "@clack/prompts";
+import { text } from "@clack/prompts";
 import { mergeEnvFile, parseEnvFile } from "../lib/env-file.js";
 import { promptOrExit } from "../lib/ui.js";
 import { isPlaceholder } from "../lib/secret.js";
 import type { VercelEnvironment, VercelVar } from "../lib/vercel.js";
+
+export const DEFAULT_PRODUCTION_APP_ORIGIN = "https://atlas.rebuildingus.org";
+export const DEFAULT_PRODUCTION_API_ORIGIN =
+  "https://atlas-api.rebuildingus.org";
 
 export function normalizeDocsOrigin(value: string): string {
   const candidate = value.trim();
@@ -47,6 +51,54 @@ export function normalizeHostedHttpsOrigin(
   return url.origin;
 }
 
+export function resolveHostedOriginPromptValue(
+  input: string,
+  fallback: string,
+  label: string,
+): string {
+  const candidate = input.trim() || fallback;
+  return normalizeHostedHttpsOrigin(candidate, label);
+}
+
+export function formatProductionAppUrlPromptMessage(): string {
+  return [
+    "Production Atlas URL",
+    "",
+    "Use the public HTTPS origin for the Atlas web app.",
+    "1. Open the Vercel project that serves Atlas production.",
+    "2. Copy the production domain, including https://.",
+    "3. Use https://atlas.rebuildingus.org unless production is intentionally on another domain.",
+    "",
+    "Press Enter to accept the shown default. Bootstrap writes this to ATLAS_PUBLIC_URL.",
+  ].join("\n");
+}
+
+export function formatProductionApiProxyPromptMessage(): string {
+  return [
+    "Public Atlas API origin",
+    "",
+    "Use the public HTTPS origin that the Vercel app should proxy /api traffic to.",
+    "1. Prefer the canonical API domain after Cloud Run domain setup: https://atlas-api.rebuildingus.org.",
+    "2. If the canonical domain is not ready yet, use the current Cloud Run service URL.",
+    "3. Do not paste a path; this value must be only the origin.",
+    "",
+    "Press Enter to accept the shown default. Bootstrap writes this to ATLAS_SERVER_API_PROXY_TARGET.",
+  ].join("\n");
+}
+
+export function formatMintlifyDocsOriginPromptMessage(): string {
+  return [
+    "Mintlify docs origin",
+    "",
+    "Use the Mintlify deployment origin that Vercel should serve at /docs.",
+    "1. Open the Mintlify project dashboard.",
+    "2. Copy the deployment origin, usually https://<subdomain>.mintlify.dev.",
+    "3. After bootstrap, enable Mintlify's Host at /docs setting for the Atlas domain.",
+    "",
+    "Paste the Mintlify origin here. Bootstrap writes this to ATLAS_DOCS_URL.",
+  ].join("\n");
+}
+
 export async function ensureProductionRoutingConfig(
   prodEnvPath: string,
   followUpItems: string[],
@@ -56,19 +108,18 @@ export async function ensureProductionRoutingConfig(
 
   let resolvedPublicUrl = prodEnv.get("ATLAS_PUBLIC_URL")?.trim();
   if (!resolvedPublicUrl) {
-    note(
-      "Atlas needs its public production origin so Vercel, Cloud Run, auth, and Mintlify all agree on the same site URL.",
-      "Production app URL",
-    );
     const value = (await promptOrExit(
       text({
-        message: "Production Atlas URL",
-        placeholder: "https://atlas.rebuildingus.org",
+        message: formatProductionAppUrlPromptMessage(),
+        initialValue: DEFAULT_PRODUCTION_APP_ORIGIN,
         validate: (input) => {
           const value = input ?? "";
-          if (!value.trim()) return "The production Atlas URL is required.";
           try {
-            normalizeHostedHttpsOrigin(value, "ATLAS_PUBLIC_URL");
+            resolveHostedOriginPromptValue(
+              value,
+              DEFAULT_PRODUCTION_APP_ORIGIN,
+              "ATLAS_PUBLIC_URL",
+            );
           } catch (error) {
             return error instanceof Error
               ? error.message
@@ -77,7 +128,11 @@ export async function ensureProductionRoutingConfig(
         },
       }),
     )) as string;
-    resolvedPublicUrl = normalizeHostedHttpsOrigin(value, "ATLAS_PUBLIC_URL");
+    resolvedPublicUrl = resolveHostedOriginPromptValue(
+      value,
+      DEFAULT_PRODUCTION_APP_ORIGIN,
+      "ATLAS_PUBLIC_URL",
+    );
     updates.set("ATLAS_PUBLIC_URL", resolvedPublicUrl);
   }
 
@@ -91,19 +146,18 @@ export async function ensureProductionRoutingConfig(
       updates.set("ATLAS_SERVER_API_PROXY_TARGET", normalizedApiProxyTarget);
     }
   } else {
-    note(
-      "The Vercel app uses this HTTPS origin to proxy browser-visible API and MCP traffic to Cloud Run.",
-      "Atlas API proxy origin",
-    );
     const value = (await promptOrExit(
       text({
-        message: "Public Atlas API origin",
-        placeholder: "https://atlas-api.rebuildingus.org",
+        message: formatProductionApiProxyPromptMessage(),
+        initialValue: DEFAULT_PRODUCTION_API_ORIGIN,
         validate: (input) => {
           const value = input ?? "";
-          if (!value.trim()) return "The public Atlas API origin is required.";
           try {
-            normalizeHostedHttpsOrigin(value, "ATLAS_SERVER_API_PROXY_TARGET");
+            resolveHostedOriginPromptValue(
+              value,
+              DEFAULT_PRODUCTION_API_ORIGIN,
+              "ATLAS_SERVER_API_PROXY_TARGET",
+            );
           } catch (error) {
             return error instanceof Error
               ? error.message
@@ -114,7 +168,11 @@ export async function ensureProductionRoutingConfig(
     )) as string;
     updates.set(
       "ATLAS_SERVER_API_PROXY_TARGET",
-      normalizeHostedHttpsOrigin(value, "ATLAS_SERVER_API_PROXY_TARGET"),
+      resolveHostedOriginPromptValue(
+        value,
+        DEFAULT_PRODUCTION_API_ORIGIN,
+        "ATLAS_SERVER_API_PROXY_TARGET",
+      ),
     );
   }
 
@@ -135,13 +193,9 @@ export async function ensureProductionRoutingConfig(
   }
 
   if (!normalizedDocsUrl) {
-    note(
-      "Mintlify's Vercel subpath setup needs the Mintlify deployment origin, usually https://<subdomain>.mintlify.dev. Bootstrap will sync this to Vercel, but you still need to enable Mintlify's 'Host at /docs' setting in the dashboard.",
-      "Mintlify docs origin",
-    );
     const value = (await promptOrExit(
       text({
-        message: "Mintlify docs origin",
+        message: formatMintlifyDocsOriginPromptMessage(),
         placeholder: "https://your-subdomain.mintlify.dev",
         validate: (input) => {
           const value = input ?? "";

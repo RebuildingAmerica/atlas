@@ -5,13 +5,18 @@ import pc from "picocolors";
 import { mergeEnvFile, parseEnvFile } from "../../lib/env-file.js";
 import {
   detectAndLink,
+  fetchExistingKeys,
   getVercelScope,
   syncEnvVars,
 } from "../../lib/vercel.js";
-import { logSubline, promptOrExit } from "../../lib/ui.js";
+import { logSubline, promptConfirm, promptOrExit } from "../../lib/ui.js";
 import type { PhaseResult, ReadinessState } from "../../state.js";
 import { markPhase } from "../../state.js";
-import { resolveStripeApiKey, runStripeCli } from "../stripe-cli-client.js";
+import {
+  resolveStripeApiKey,
+  runStripeCli,
+  stripeApiKeyResolutionNotes,
+} from "../stripe-cli-client.js";
 import {
   ensureBillingWebhookEndpoint,
   ensureCoupon,
@@ -25,12 +30,59 @@ import {
   buildStripeVercelEnvVars,
   resolveStripeEnvFileTargets,
   resolveStripeMode,
+  STRIPE_ENV_KEYS,
+  type StripeRuntimeMode,
   stripeWebhookUrlForOrigin,
   validateStripeApiKeyMode,
   type StripeBootstrapTarget,
 } from "./env.js";
 import { ATLAS_COUPONS, ATLAS_PRODUCTS } from "../../config/products.js";
+import { setupCommandForTarget as repoSetupCommandForTarget } from "../../config/setup-manifest.js";
 import type { AtlasProductDefinition } from "../../config/products.js";
+
+interface StripeAccountPrompt {
+  accountId: string;
+  accountName: string;
+  mode: StripeRuntimeMode;
+  target: StripeBootstrapTarget;
+}
+
+interface StripeMissingApiKeyGuidanceParams {
+  apiKeyResolutionNotes: readonly string[];
+  hostedEnvStatus: readonly string[];
+  target: StripeBootstrapTarget;
+}
+
+type StripeAccountForDisplay = Pick<
+  Stripe.Account,
+  "business_profile" | "id" | "settings"
+>;
+
+export function stripeAccountDisplayName(
+  account: StripeAccountForDisplay,
+): string {
+  return (
+    account.settings?.dashboard?.display_name ??
+    account.business_profile?.name ??
+    account.id
+  );
+}
+
+export function formatStripeAccountPrompt(
+  account: StripeAccountPrompt,
+): string {
+  return [
+    "Use this Stripe account?",
+    "",
+    `Account: ${account.accountName}`,
+    `Stripe ID: ${account.accountId}`,
+    `Mode: ${account.mode}`,
+    `Target: ${account.target}`,
+    "",
+    "Choose Yes only if this is the Stripe account bootstrap should modify.",
+    "Choose No to paste a different API key before any Stripe catalog changes are made.",
+  ].join("\n");
+}
 
 /**
  * Phase 6: Stripe product sync orchestrator.
@@ -63,23 +115,43 @@ export async function runProductPhase(
   let apiKey = resolveStripeApiKey(projectRoot, live, envFileTargets);
   const missingKeyFollowUp =
     target === "prod"
-      ? "Set STRIPE_API_KEY in .env.production or run `STRIPE_API_KEY=sk_live_... pnpm setup:prod` with a Dashboard-created live key"
+      ? "Production Stripe setup needs a live restricted key before bootstrap can change Stripe."
       : "Set STRIPE_API_KEY in .env or run `stripe login`";
+  const apiKeyResolutionNotes = stripeApiKeyResolutionNotes(
+    projectRoot,
+    live,
+    envFileTargets,
+  );
+  const hostedEnvStatus =
+    target === "local" ? [] : hostedStripeEnvStatus(projectRoot, target);
 
   if (!apiKey) {
     if (doctorMode) {
       log.warn("Stripe API key not found");
-      logSubline(missingKeyFollowUp);
+      for (const guidanceLine of formatStripeMissingApiKeyGuidance({
+        apiKeyResolutionNotes,
+        hostedEnvStatus,
+        target,
+      })) {
+        logSubline(guidanceLine);
+      }
       markPhase(state, "product", "failed", "Missing Stripe API key");
       return {
         success: false,
-        followUpItems: [missingKeyFollowUp],
+        followUpItems:
+          target === "prod"
+            ? [
+                ...apiKeyResolutionNotes,
+                ...hostedEnvStatus,
+                ...stripeDoctorFollowUp(target, envMode),
+              ]
+            : [...hostedEnvStatus, missingKeyFollowUp],
       };
     }
 
     const prompted = await promptOrExit(
       password({
-        message: `Stripe ${envMode} mode secret key (${envMode === "live" ? "sk_live" : "sk_test"}_...)`,
+        message: formatStripeApiKeyPromptMessage(envMode),
       }),
     );
 
@@ -104,25 +176,28 @@ export async function runProductPhase(
     return { success: false, followUpItems: [message] };
   }
 
-  const stripe = new Stripe(apiKey, {
-    apiVersion: "2026-06-24.dahlia",
-  });
-
-  const s = spinner();
-  s.start("Verifying Stripe account...");
-
+  let stripe: Stripe;
   try {
-    const account = await stripe.accounts.retrieveCurrent();
-    const accountName =
-      account.settings?.dashboard?.display_name ??
-      account.business_profile?.name ??
-      account.id;
-    s.stop(
-      `Stripe account: ${pc.cyan(accountName)} (${envMode} mode, target=${target})`,
-    );
+    const confirmed = await confirmStripeAccount({
+      apiKey,
+      assumeYes,
+      doctorMode,
+      mode: envMode,
+      target,
+    });
+    if (!confirmed) {
+      markPhase(state, "product", "failed", "Stripe account not confirmed");
+      return {
+        success: false,
+        followUpItems: [
+          "Confirm the intended Stripe account or provide a different Stripe API key.",
+        ],
+      };
+    }
+    apiKey = confirmed.apiKey;
+    stripe = confirmed.stripe;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    s.stop("Failed to verify Stripe account");
     log.error(message);
     markPhase(state, "product", "failed", message);
     return {
@@ -132,9 +207,7 @@ export async function runProductPhase(
   }
 
   if (doctorMode) {
-    followUpItems.push(
-      `Run \`${setupCommandForTarget(target)}\` to converge Stripe ${envMode} products, coupons, and webhooks.`,
-    );
+    followUpItems.push(...stripeDoctorFollowUp(target, envMode));
     markPhase(state, "product", "partial", "Doctor mode did not mutate Stripe");
     return { success: false, followUpItems };
   }
@@ -233,10 +306,252 @@ export async function runProductPhase(
 }
 
 function setupCommandForTarget(target: StripeBootstrapTarget): string {
+  const command = repoSetupCommandForTarget(target);
   if (target === "prod") {
-    return "STRIPE_API_KEY=sk_live_... pnpm setup:prod";
+    return `STRIPE_API_KEY=rk_live_... ${command} --yes`;
   }
-  return target === "staging" ? "pnpm setup:staging" : "pnpm setup";
+  if (target === "staging") {
+    return `${command} --yes`;
+  }
+  return command;
+}
+
+export function stripeLiveRestrictedKeySetupSteps(): string[] {
+  return [
+    "Open Stripe Dashboard and switch to Live mode for The Rebuilding America Project.",
+    "Go to Stripe Dashboard > Developers > API keys > Restricted keys.",
+    "Create a restricted key named Atlas production bootstrap.",
+    "Grant write access for Products, Prices, Coupons, Customers, Checkout Sessions, and Webhook Endpoints.",
+    "Reveal the key once, copy the rk_live_ value, and keep it out of chat and committed files.",
+    "Run `STRIPE_API_KEY=rk_live_... pnpm setup:prod --yes` from this repo.",
+  ];
+}
+
+export function formatStripeApiKeyPromptMessage(
+  envMode: StripeRuntimeMode,
+): string {
+  if (envMode === "live") {
+    const promptSteps = [
+      "Open https://dashboard.stripe.com/apikeys and switch to Live mode.",
+      "Choose The Rebuilding America Project account.",
+      "Open Restricted keys and create a key named Atlas production bootstrap.",
+      "Grant write access for Products, Prices, Coupons, Customers, Checkout Sessions, and Webhook Endpoints.",
+      "Reveal the key once, copy the rk_live_ value, and keep it out of chat and committed files.",
+    ];
+    return [
+      "Stripe live mode API key",
+      "",
+      "Use a Dashboard-created live restricted key for production bootstrap:",
+      ...promptSteps.map((step, index) => `${index + 1}. ${step}`),
+      "",
+      "Paste the rk_live_ value here. A full sk_live_ key is accepted, but rk_live_ is preferred.",
+      "Bootstrap will create or update the Atlas Stripe catalog, webhook, env files, and Vercel Production env vars after this.",
+    ].join("\n");
+  }
+
+  return [
+    "Stripe test mode API key",
+    "",
+    "For local and staging, run `stripe login` first so bootstrap can use your Stripe CLI test key.",
+    "If you need to paste a key manually, use a test key that starts with sk_test_ or rk_test_.",
+    "",
+    "Paste the test key here, or leave blank to skip Stripe product setup.",
+  ].join("\n");
+}
+
+export function formatStripeWebhookUrlPromptMessage(
+  target: Exclude<StripeBootstrapTarget, "local">,
+): string {
+  const label = target === "prod" ? "Production" : "Staging";
+  return [
+    `${label} Atlas app URL`,
+    "",
+    "Enter the public HTTPS origin for the deployed Atlas app.",
+    `1. Open the ${label.toLowerCase()} Atlas deployment.`,
+    "2. Copy only the origin, for example https://atlas.rebuildingus.org.",
+    "3. Do not include /api/stripe/webhook; bootstrap appends that path.",
+    "",
+    "Stripe will send webhooks to <origin>/api/stripe/webhook.",
+    "Bootstrap saves this as ATLAS_PUBLIC_URL and uses it to create the Stripe webhook endpoint.",
+  ].join("\n");
+}
+
+export function formatStripeMissingApiKeyGuidance(
+  params: StripeMissingApiKeyGuidanceParams,
+): string[] {
+  if (params.target === "prod") {
+    return [
+      "Production Stripe setup needs a live restricted key before bootstrap can change Stripe.",
+      ...stripeLiveRestrictedKeySetupSteps(),
+      ...params.apiKeyResolutionNotes,
+      ...params.hostedEnvStatus,
+    ];
+  }
+
+  return [
+    "Set STRIPE_API_KEY in .env or run `stripe login`.",
+    ...params.apiKeyResolutionNotes,
+    ...params.hostedEnvStatus,
+  ];
+}
+
+export function formatHostedStripeEnvStatus(
+  target: Exclude<StripeBootstrapTarget, "local">,
+  existingKeys: ReadonlySet<string>,
+): string[] {
+  const environment = target === "prod" ? "production" : "preview";
+  const environmentLabel = target === "prod" ? "Production" : "Preview";
+  const missing = STRIPE_ENV_KEYS.filter(
+    (key) => !existingKeys.has(`${key}:${environment}`),
+  );
+
+  if (missing.length === 0) {
+    return [
+      `Vercel ${environmentLabel} Stripe env already has ${STRIPE_ENV_KEYS.join(", ")}.`,
+    ];
+  }
+
+  const lines = [
+    `Vercel ${environmentLabel} Stripe env is missing ${missing.join(", ")}.`,
+  ];
+  const previewHasStripeEnv = STRIPE_ENV_KEYS.some((key) =>
+    existingKeys.has(`${key}:preview`),
+  );
+  if (target === "prod" && previewHasStripeEnv) {
+    lines.push(
+      "Vercel Preview Stripe env does not configure Production; run production setup to sync Production explicitly.",
+    );
+  }
+  return lines;
+}
+
+function hostedStripeEnvStatus(
+  projectRoot: string,
+  target: Exclude<StripeBootstrapTarget, "local">,
+): string[] {
+  const appDir = path.join(projectRoot, "app");
+  const scope = getVercelScope(appDir);
+  if (!scope) {
+    return [
+      "Vercel project is not linked, so bootstrap cannot check hosted Stripe env metadata.",
+    ];
+  }
+  return formatHostedStripeEnvStatus(
+    target,
+    fetchExistingKeys(scope, { cwd: appDir }),
+  );
+}
+
+interface ConfirmStripeAccountParams {
+  apiKey: string;
+  assumeYes: boolean;
+  doctorMode: boolean;
+  mode: StripeRuntimeMode;
+  target: StripeBootstrapTarget;
+}
+
+interface ConfirmedStripeAccount {
+  apiKey: string;
+  stripe: Stripe;
+}
+
+async function confirmStripeAccount(
+  params: ConfirmStripeAccountParams,
+): Promise<ConfirmedStripeAccount | null> {
+  let apiKey = params.apiKey;
+
+  while (true) {
+    const stripe = new Stripe(apiKey, {
+      apiVersion: "2026-06-24.dahlia",
+    });
+    const s = spinner();
+    s.start("Checking which Stripe account this key can change...");
+
+    let account: Stripe.Account;
+    try {
+      account = await stripe.accounts.retrieveCurrent();
+    } catch (error) {
+      s.stop("Failed to verify Stripe account");
+      throw error;
+    }
+
+    const accountName = stripeAccountDisplayName(account);
+    s.stop(`Stripe account found: ${pc.cyan(accountName)} (${params.mode})`);
+
+    if (
+      params.doctorMode ||
+      params.assumeYes ||
+      (await promptConfirm(
+        formatStripeAccountPrompt({
+          accountId: account.id,
+          accountName,
+          mode: params.mode,
+          target: params.target,
+        }),
+        true,
+      ))
+    ) {
+      return { apiKey, stripe };
+    }
+
+    const useDifferentKey = await promptConfirm(
+      [
+        "Enter a different Stripe API key now?",
+        "",
+        "Choose Yes to paste a key for the intended Stripe account.",
+        "Choose No to stop Stripe setup without changing products, prices, coupons, or webhooks.",
+      ].join("\n"),
+      true,
+    );
+    if (!useDifferentKey) {
+      return null;
+    }
+
+    const prompted = await promptOrExit(
+      password({
+        message: formatStripeApiKeyPromptMessage(params.mode),
+      }),
+    );
+    if (typeof prompted !== "string" || !prompted.trim()) {
+      return null;
+    }
+    const candidate = prompted.trim();
+    try {
+      validateStripeApiKeyMode(candidate, params.mode);
+    } catch (error) {
+      log.error(error instanceof Error ? error.message : String(error));
+      continue;
+    }
+    apiKey = candidate;
+  }
+}
+
+function stripeDoctorFollowUp(
+  target: StripeBootstrapTarget,
+  envMode: "test" | "live",
+): string[] {
+  if (target === "prod") {
+    return [
+      ...stripeLiveRestrictedKeySetupSteps(),
+      `That command converges Stripe ${envMode} products, coupons, the production webhook, .env.production, and Vercel Production env vars.`,
+      "Run `pnpm stripe:verify:prod` after setup.",
+    ];
+  }
+
+  if (target === "staging") {
+    return [
+      `Run \`${setupCommandForTarget(target)}\` to converge Stripe ${envMode} products, coupons, the staging webhook, .env.staging, and Vercel Preview env vars.`,
+      "Run `pnpm stripe:verify:staging` after setup.",
+    ];
+  }
+
+  return [
+    `Run \`${setupCommandForTarget(target)}\` to converge Stripe ${envMode} products, coupons, local env files, and the local webhook secret.`,
+    "Run `pnpm stripe:listen` in a separate terminal while testing Checkout locally.",
+    "Run `pnpm stripe:verify:local` after setup.",
+    "For staging setup: `pnpm bootstrap --target staging`.",
+    "For production setup: `pnpm bootstrap`.",
+  ];
 }
 
 interface ResolveWebhookSecretParams {
@@ -329,7 +644,7 @@ async function resolveHostedWebhookUrl(
   );
   const value = await promptOrExit(
     text({
-      message: target === "prod" ? "Production Atlas URL" : "Staging Atlas URL",
+      message: formatStripeWebhookUrlPromptMessage(target),
       placeholder:
         target === "prod"
           ? "https://atlas.rebuildingus.org"
@@ -372,7 +687,7 @@ async function syncHostedStripeEnv(
   }
 
   const appDir = path.join(projectRoot, "app");
-  await detectAndLink(appDir);
+  await detectAndLink(appDir, { assumeYes });
   const scope = getVercelScope(appDir);
   if (!scope) {
     followUpItems.push(
@@ -384,6 +699,7 @@ async function syncHostedStripeEnv(
   const synced = await syncEnvVars(varsToSync, scope, {
     assumeYes,
     cwd: appDir,
+    targetLabel: target === "prod" ? "production" : "preview",
   });
   if (!synced) {
     followUpItems.push(

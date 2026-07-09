@@ -12,7 +12,11 @@ import type {
   StripePriceSnapshot,
   StripeProductSnapshot,
 } from "./verify.js";
-import { verifyStripeCatalogSnapshot } from "./verify.js";
+import {
+  formatStripeVerificationFollowUp,
+  verifyStripeCatalogSnapshot,
+} from "./verify.js";
+import { stripeLiveRestrictedKeySetupSteps } from "./bootstrap.js";
 
 function completeEnv(): Map<string, string> {
   const stripeIds = new Map<string, string>();
@@ -155,5 +159,27 @@ void describe("Stripe catalog verifier", () => {
       verifyStripeCatalogSnapshot(env, snapshot).map((issue) => issue.code),
       ["coupon_product_scope_mismatch"],
     );
+  });
+
+  void it("explains how to finish missing production Stripe setup", () => {
+    const followUp = formatStripeVerificationFollowUp("prod", [
+      {
+        code: "missing_env",
+        envKey: "STRIPE_API_KEY",
+        message: "STRIPE_API_KEY is missing.",
+      },
+      {
+        code: "missing_env",
+        envKey: STRIPE_ATLAS_CATALOG_ENV_KEY,
+        message: `${STRIPE_ATLAS_CATALOG_ENV_KEY} is missing.`,
+      },
+    ]);
+
+    assert.deepEqual(followUp, [
+      "Production Stripe setup is incomplete.",
+      "Run the guided bootstrap flow: pnpm bootstrap",
+      ...stripeLiveRestrictedKeySetupSteps(),
+      "Verify again: pnpm stripe:verify:prod",
+    ]);
   });
 });

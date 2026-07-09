@@ -22,7 +22,13 @@ export async function setGithubSecrets(
   }
 
   const shouldSet = await promptConfirm(
-    `Set GitHub secrets for ${githubRepo}?`,
+    [
+      `Set GitHub secrets for ${githubRepo}?`,
+      "",
+      "Bootstrap will write deploy and app runtime values from local env files into GitHub Actions secrets.",
+      "Choose Yes only if this repository is the Atlas deployment repository.",
+      "Choose No to skip CI/CD secret sync for now.",
+    ].join("\n"),
     true,
   );
 

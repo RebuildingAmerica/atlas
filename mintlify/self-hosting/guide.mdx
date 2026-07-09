@@ -55,30 +55,43 @@ and Research Pass access. The bootstrap scripts create the canonical products,
 prices, discount coupons, and webhook endpoints, then write the generated Stripe
 catalog to the correct env files.
 
-Local development uses Stripe test mode and a local webhook secret. The guided
-setup command covers the local Stripe catalog too:
+Local development uses Stripe test mode. Keep Stripe's webhook forwarder open
+while testing Checkout:
 
 ```bash
 pnpm setup
 pnpm stripe:listen
+pnpm stripe:verify:local
 ```
 
 Hosted staging uses Stripe test mode and Vercel Preview env vars:
 
 ```bash
-pnpm setup:staging
+pnpm setup:staging --yes
+pnpm stripe:verify:staging
 ```
 
 Hosted production uses Stripe live mode and Vercel Production env vars:
 
 ```bash
-STRIPE_API_KEY=sk_live_replace_me pnpm setup:prod
+STRIPE_API_KEY=rk_live_replace_me pnpm setup:prod --yes
+STRIPE_API_KEY=rk_live_replace_me pnpm stripe:verify:prod
 ```
 
-Use a live secret key, or a live restricted key with permission to manage
-products, prices, coupons, Checkout/Billing customers, and webhook endpoints.
+To create the live key, open Stripe Dashboard in Live mode, go to **Developers >
+API keys > Restricted keys**, create a key named `Atlas production bootstrap`,
+grant write access for Products, Prices, Coupons, Customers, Checkout Sessions,
+and Webhook Endpoints, reveal the key once, and run setup with that `rk_live_...`
+value. A live secret key also works, but restricted keys are the default
+production path.
 Stripe CLI OAuth keys are enough for local and staging checks, but production
-bootstrap should use a Dashboard-created live API key.
+bootstrap should use a Dashboard-created live API key. Test-mode IDs cannot be
+used in production.
+
+The catalog is intentionally small: Pro, Team, Team Seat, and Research Pass.
+Discounts are Pro-only coupons. Verified students pay $12.80 every four months;
+independent creators and journalists get 50% off Pro monthly or annual billing.
+Team pricing stays the same for every organization.
 
 See the repository's
 [`docs/deployment/stripe-billing.md`](https://github.com/RebuildingAmerica/atlas/blob/main/docs/deployment/stripe-billing.md)

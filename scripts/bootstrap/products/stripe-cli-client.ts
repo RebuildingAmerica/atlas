@@ -3,6 +3,7 @@ import path from "node:path";
 import { homedir } from "node:os";
 import { runCommand } from "../lib/shell.js";
 import { parseEnvFile } from "../lib/env-file.js";
+import { isPlaceholder } from "../lib/secret.js";
 import type { CommandResult } from "../lib/shell.js";
 
 export interface StripeCliProfile {
@@ -142,6 +143,48 @@ export function selectStripeCliProfileKey(
   return null;
 }
 
+function usableStripeApiKey(value: string | undefined): string | null {
+  const trimmed = value?.trim();
+  if (
+    !trimmed ||
+    trimmed.includes("*") ||
+    isPlaceholder(trimmed) ||
+    /replace[_-]with/i.test(trimmed)
+  ) {
+    return null;
+  }
+  return trimmed;
+}
+
+function isRedactedStripeApiKey(value: string | undefined): boolean {
+  return Boolean(value?.trim().includes("*"));
+}
+
+export function stripeApiKeyResolutionNotes(
+  projectRoot: string,
+  live: boolean,
+  envFilePaths: string[] = [],
+): string[] {
+  const notes: string[] = [];
+
+  for (const envFilePath of envFilePaths) {
+    const value = parseEnvFile(envFilePath).get("STRIPE_API_KEY");
+    if (isRedactedStripeApiKey(value)) {
+      notes.push(
+        `STRIPE_API_KEY in ${path.relative(projectRoot, envFilePath)} is redacted. Replace it with a full Stripe key or remove it so bootstrap can fall back.`,
+      );
+    }
+  }
+
+  if (live && isRedactedStripeApiKey(readStripeApiKeyFromCliConfig(true))) {
+    notes.push(
+      "Stripe CLI has a redacted live key. Bootstrap cannot use redacted CLI keys with the Stripe SDK; pass a Dashboard-created live restricted key as STRIPE_API_KEY.",
+    );
+  }
+
+  return notes;
+}
+
 /**
  * Read the Stripe secret API key directly from the Stripe CLI config file
  * (~/.config/stripe/config.toml). The CLI stores keys per profile; this reads
@@ -170,9 +213,9 @@ export function readStripeApiKeyFromCliConfig(live: boolean): string | null {
  * 4. Root .env file in the project, test mode only
  *
  * Production bootstrap intentionally skips Stripe CLI config and root `.env`
- * fallback state. The hosted app needs a Dashboard-created live key at runtime,
- * and CLI live OAuth keys can be accepted by the CLI while still being rejected
- * by the Stripe SDK.
+ * fallback state. The hosted app needs a Dashboard-created live restricted key
+ * at runtime, and CLI live OAuth keys can be accepted by the CLI while still
+ * being rejected by the Stripe SDK.
  *
  * Returns `null` if no key could be resolved.
  */
@@ -182,13 +225,15 @@ export function resolveStripeApiKey(
   envFilePaths: string[] = [],
 ): string | null {
   // 1. Try explicit environment variable
-  const envKey = process.env.STRIPE_API_KEY;
-  if (envKey && envKey.length > 0) return envKey;
+  const envKey = usableStripeApiKey(process.env.STRIPE_API_KEY);
+  if (envKey) return envKey;
 
   // 2. Try target env files
   for (const envFilePath of envFilePaths) {
-    const fileKey = parseEnvFile(envFilePath).get("STRIPE_API_KEY");
-    if (fileKey && fileKey.length > 0) return fileKey;
+    const fileKey = usableStripeApiKey(
+      parseEnvFile(envFilePath).get("STRIPE_API_KEY"),
+    );
+    if (fileKey) return fileKey;
   }
 
   if (live) {
@@ -196,14 +241,14 @@ export function resolveStripeApiKey(
   }
 
   // 3. Try Stripe CLI config
-  const cliKey = readStripeApiKeyFromCliConfig(false);
+  const cliKey = usableStripeApiKey(readStripeApiKeyFromCliConfig(false));
   if (cliKey) return cliKey;
 
   // 4. Try root .env file
   const envFilePath = path.join(projectRoot, ".env");
   const envEntries = parseEnvFile(envFilePath);
-  const fileKey = envEntries.get("STRIPE_API_KEY");
-  if (fileKey && fileKey.length > 0) return fileKey;
+  const fileKey = usableStripeApiKey(envEntries.get("STRIPE_API_KEY"));
+  if (fileKey) return fileKey;
 
   return null;
 }

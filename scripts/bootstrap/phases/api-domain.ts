@@ -88,7 +88,13 @@ export async function runApiDomainPhase(
   }
 
   const proceed = await promptConfirm(
-    `Ensure canonical domain ${pc.cyan(config.domain)} → ${pc.dim(config.service)}?`,
+    [
+      `Configure canonical API domain ${config.domain}?`,
+      "",
+      `Bootstrap will create or verify Cloudflare CNAME ${config.domain} -> ${CLOUD_RUN_CNAME_TARGET}.`,
+      `Then it will create or verify the Cloud Run domain mapping for ${config.service}.`,
+      "Choose Yes only when this is the intended API domain for the target environment.",
+    ].join("\n"),
     true,
   );
   if (!proceed) {
@@ -186,7 +192,13 @@ async function ensureCloudflareCname(
 
   if (acquired.source === "prompt") {
     const stash = await promptConfirm(
-      "Save the Cloudflare token to ~/.config/atlas-bootstrap/cloudflare-token (chmod 600) so future bootstrap runs don't re-prompt?",
+      [
+        "Save Cloudflare token for future API domain setup?",
+        "",
+        "Bootstrap will write it to ~/.config/atlas-bootstrap/cloudflare-token with chmod 600.",
+        "Choose Yes if this machine should manage Atlas DNS again later.",
+        "Choose No if this was a one-time token.",
+      ].join("\n"),
       true,
     );
     if (stash) {

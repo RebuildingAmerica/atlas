@@ -9,10 +9,9 @@ help: ## Show this help
 # ============================================
 setup: ## First-time project setup
 	@echo "Setting up Atlas..."
-	cp -n .env.example .env || true
-	cd api && pip install -e ".[dev]" --break-system-packages
-	cd app && pnpm install
-	cd api && python3 -m atlas.db_init
+	corepack enable
+	pnpm install
+	pnpm run setup
 	@echo "Setup complete! Run 'make dev' to start."
 
 # ============================================

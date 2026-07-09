@@ -1,12 +1,19 @@
 import { useState } from "react";
 import { PricingPlansGrid } from "@/domains/billing/pages/public/components/pricing-plans-grid";
 import type { BillingPeriod } from "@/domains/billing/pages/public/components/plan-card";
+import type { PricingCheckoutParams } from "@/domains/billing/pages/public/pricing-page-helpers";
+
+interface PricingPlansGridHarnessProps {
+  onCheckout?: (params: PricingCheckoutParams) => Promise<void>;
+}
 
 async function completeCheckout(): Promise<void> {
   await Promise.resolve();
 }
 
-export function PricingPlansGridHarness() {
+export function PricingPlansGridHarness({
+  onCheckout = completeCheckout,
+}: PricingPlansGridHarnessProps) {
   const [billing, setBilling] = useState<BillingPeriod>("monthly");
   return (
     <PricingPlansGrid
@@ -19,7 +26,7 @@ export function PricingPlansGridHarness() {
       }
       teamCheckoutInterval={billing === "annual" ? "yearly" : "monthly"}
       onBillingChange={setBilling}
-      onCheckout={completeCheckout}
+      onCheckout={onCheckout}
     />
   );
 }

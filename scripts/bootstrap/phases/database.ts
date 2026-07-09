@@ -11,6 +11,52 @@ import { getVercelScope, syncEnvVars, type VercelVar } from "../lib/vercel.js";
 
 const SCHEMA_RELATIVE_PATH = "api/atlas/models/schema.sql";
 
+export function formatDatabaseSourcePromptMessage(): string {
+  return [
+    "Database setup",
+    "",
+    "Atlas production needs PostgreSQL. Choose how bootstrap should get DATABASE_URL.",
+    "1. Use neonctl if you want bootstrap to create the Neon project for you.",
+    "2. Choose manual if the database already exists or another teammate created it.",
+    "3. Bootstrap validates the connection and runs the schema migration after this step.",
+  ].join("\n");
+}
+
+export function formatExistingDatabasePromptMessage(): string {
+  return [
+    "Existing DATABASE_URL found",
+    "",
+    "Bootstrap found a PostgreSQL connection string in the existing env files.",
+    "1. Keep it if this is the Atlas production database.",
+    "2. Replace it if it points to a personal, staging, or obsolete database.",
+    "3. Bootstrap validates whichever connection you choose before migrating.",
+  ].join("\n");
+}
+
+export function formatNeonConnectionStringPromptMessage(): string {
+  return [
+    "Neon PostgreSQL connection string",
+    "",
+    "Create or open the production database in Neon:",
+    "1. Open https://console.neon.tech.",
+    "2. Create or choose the Atlas project database.",
+    "3. Copy the pooled PostgreSQL connection string from the dashboard.",
+    "4. Make sure it starts with postgresql:// or postgres:// and includes sslmode=require.",
+    "",
+    "Paste the full connection string here. Bootstrap writes it to local env files and Vercel when linked.",
+  ].join("\n");
+}
+
+export function formatNeonProjectNamePromptMessage(): string {
+  return [
+    "Neon project name",
+    "",
+    "Name the Neon project bootstrap should create for Atlas.",
+    "Use `atlas` unless this is a separate staging or scratch environment.",
+    "Bootstrap will ask neonctl to create the project and then read its connection string.",
+  ].join("\n");
+}
+
 export async function runDatabasePhase(
   projectRoot: string,
   state: ReadinessState,
@@ -48,7 +94,7 @@ export async function runDatabasePhase(
 
     const action = (await promptOrExit(
       select({
-        message: "A DATABASE_URL is already set. What would you like to do?",
+        message: formatExistingDatabasePromptMessage(),
         options: [
           { value: "keep", label: "Keep existing connection" },
           { value: "replace", label: "Enter a new connection string" },
@@ -75,7 +121,7 @@ export async function runDatabasePhase(
   if (hasNeonctl && !doctorMode) {
     const source = (await promptOrExit(
       select({
-        message: "How would you like to configure the database?",
+        message: formatDatabaseSourcePromptMessage(),
         options: [
           { value: "neonctl", label: "Create a new Neon project with neonctl" },
           { value: "manual", label: "Enter a connection string manually" },
@@ -95,20 +141,9 @@ export async function runDatabasePhase(
       return { success: false, followUpItems };
     }
 
-    logSubline(
-      pc.dim(
-        "Atlas needs a PostgreSQL database for production. Create a free one at https://neon.tech:\n" +
-          pc.dim("  1. Sign up or log in at https://console.neon.tech\n") +
-          pc.dim("  2. Create a project (any name, e.g., 'atlas')\n") +
-          pc.dim(
-            "  3. Copy the connection string from the dashboard (starts with postgresql://)",
-          ),
-      ),
-    );
-
     databaseUrl = (await promptOrExit(
       text({
-        message: "Paste your Neon connection string",
+        message: formatNeonConnectionStringPromptMessage(),
         placeholder:
           "postgresql://user:password@ep-xxx.us-east-2.aws.neon.tech/atlas?sslmode=require",
         validate(value) {
@@ -178,7 +213,7 @@ async function createNeonProject(
 ): Promise<string | undefined> {
   const projectName = (await promptOrExit(
     text({
-      message: "Neon project name",
+      message: formatNeonProjectNamePromptMessage(),
       initialValue: "atlas",
     }),
   )) as string;
@@ -258,7 +293,15 @@ async function validateAndMigrate(
         return { success: false, followUpItems };
       }
 
-      const shouldContinue = await promptConfirm("Continue anyway?", false);
+      const shouldContinue = await promptConfirm(
+        [
+          "Database connection validation failed.",
+          "",
+          "Choose Yes only if the database is temporarily unreachable but the connection string is correct.",
+          "Choose No to stop, fix DATABASE_URL, and rerun bootstrap before migration.",
+        ].join("\n"),
+        false,
+      );
       if (!shouldContinue) {
         followUpItems.push("Fix DATABASE_URL and re-run");
         return { success: false, followUpItems };
@@ -291,7 +334,13 @@ async function validateAndMigrate(
   }
 
   const shouldMigrate = await promptConfirm(
-    `Run schema migration (${SCHEMA_RELATIVE_PATH})?`,
+    [
+      "Run database schema migration?",
+      "",
+      `Bootstrap will apply ${SCHEMA_RELATIVE_PATH} to the configured PostgreSQL database.`,
+      "Choose Yes for a new or intentionally updated Atlas database.",
+      "Choose No only if the schema has already been applied by another process.",
+    ].join("\n"),
     true,
   );
 

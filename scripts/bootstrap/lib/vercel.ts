@@ -1,8 +1,7 @@
 import path from "node:path";
 import { existsSync, readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
-import { log, spinner } from "@clack/prompts";
-import pc from "picocolors";
+import { log, note, spinner, text } from "@clack/prompts";
 import { runCommand } from "./shell.js";
 import { promptOrExit, promptConfirm, logSubline } from "./ui.js";
 
@@ -25,11 +24,40 @@ export interface VercelVar {
 export interface VercelSyncOptions {
   assumeYes?: boolean;
   cwd?: string;
+  targetLabel?: string;
 }
 
 interface VercelProjectJson {
   orgId: string;
   projectId: string;
+}
+
+interface VercelSyncProject {
+  projectId?: string;
+  scope: string;
+  target: string;
+}
+
+interface VercelLinkOptions {
+  assumeYes?: boolean;
+}
+
+interface VercelLinkTarget {
+  team: string;
+  project: string;
+}
+
+export interface VercelProjectPrompt {
+  source: "linked" | "detected";
+  projectId?: string;
+  projectName: string;
+  teamId: string;
+  url?: string;
+}
+
+interface VercelProjectConfirmation {
+  assumeYes: boolean;
+  confirmed: boolean;
 }
 
 // ── Linking ──────────────────────────────────────────────────────────────────
@@ -39,13 +67,25 @@ export function isVercelLinked(appDir: string): boolean {
 }
 
 export function getVercelScope(appDir: string): string | undefined {
+  return readVercelProject(appDir)?.orgId;
+}
+
+function readVercelProject(appDir: string): VercelProjectJson | undefined {
   const jsonPath = path.join(appDir, ".vercel", "project.json");
   if (!existsSync(jsonPath)) return undefined;
   try {
-    const data = JSON.parse(
-      readFileSync(jsonPath, "utf8"),
-    ) as VercelProjectJson;
-    return data.orgId;
+    const parsed: unknown = JSON.parse(readFileSync(jsonPath, "utf8"));
+    if (
+      typeof parsed === "object" &&
+      parsed !== null &&
+      "orgId" in parsed &&
+      "projectId" in parsed &&
+      typeof parsed.orgId === "string" &&
+      typeof parsed.projectId === "string"
+    ) {
+      return { orgId: parsed.orgId, projectId: parsed.projectId };
+    }
+    return undefined;
   } catch {
     return undefined;
   }
@@ -90,52 +130,178 @@ function findAtlasInTeams(): { team: string; url: string } | undefined {
   return undefined;
 }
 
-export async function detectAndLink(appDir: string): Promise<void> {
-  if (isVercelLinked(appDir)) {
-    const scope = getVercelScope(appDir);
-    logSubline(`Vercel: already linked${scope ? ` (${scope})` : ""}`);
-    return;
+export function formatVercelProjectPrompt(
+  project: VercelProjectPrompt,
+): string {
+  const lines = [
+    `Use this ${project.source} Vercel project?`,
+    "",
+    `Project: ${project.projectName}`,
+  ];
+  if (project.projectId) {
+    lines.push(`Project ID: ${project.projectId}`);
+  }
+  lines.push(`Team: ${project.teamId}`);
+  if (project.url) {
+    lines.push(`URL: ${project.url}`);
+  }
+  lines.push(
+    "",
+    "Choose No if this team or project is not the Atlas deployment target.",
+  );
+  return lines.join("\n");
+}
+
+export function formatVercelTeamPromptMessage(): string {
+  return [
+    "Vercel team or scope",
+    "",
+    "Choose the Vercel team or personal scope that owns the Atlas project.",
+    "1. Open https://vercel.com/dashboard or run `vercel teams ls` in another terminal.",
+    "2. Confirm the scope that owns the Atlas project.",
+    "3. Pick that exact scope here.",
+    "",
+    "Bootstrap uses this scope to link app/ and sync environment variables.",
+  ].join("\n");
+}
+
+export function formatVercelProjectNamePromptMessage(): string {
+  return [
+    "Vercel project name",
+    "",
+    "Enter the Vercel project that should receive Atlas environment variables.",
+    "1. In the selected Vercel scope, open the project list.",
+    "2. Copy the project slug, not the display URL.",
+    "3. This is usually `atlas` unless production intentionally uses another project.",
+    "",
+    "Bootstrap will run `vercel link --project <name>` for app/ next.",
+  ].join("\n");
+}
+
+export function formatVercelProductionSyncPromptMessage(): string {
+  return [
+    "Type production to sync Vercel Production env vars",
+    "",
+    "This will add or update the production environment variables shown above.",
+    "1. Confirm the project and team in the Vercel env sync summary.",
+    "2. Confirm the keys listed under Production are intended for the live app.",
+    "3. Type production only when that target is correct.",
+    "",
+    "Bootstrap does not delete env vars or rotate secrets during this sync.",
+  ].join("\n");
+}
+
+export function shouldUseDetectedVercelProject(
+  confirmation: VercelProjectConfirmation,
+): boolean {
+  return confirmation.assumeYes || confirmation.confirmed;
+}
+
+async function confirmVercelProject(
+  project: VercelProjectPrompt,
+  options: VercelLinkOptions,
+): Promise<boolean> {
+  if (options.assumeYes) {
+    return true;
+  }
+  return shouldUseDetectedVercelProject({
+    assumeYes: false,
+    confirmed: await promptConfirm(formatVercelProjectPrompt(project), true),
+  });
+}
+
+async function promptForVercelLink(
+  defaults: Partial<VercelLinkTarget> = {},
+): Promise<VercelLinkTarget> {
+  const teams = listTeamIds();
+  let team: string;
+  if (teams.length > 0) {
+    const { select } = await import("@clack/prompts");
+    team = (await promptOrExit(
+      select({
+        message: formatVercelTeamPromptMessage(),
+        options: teams.map((value) => ({ value, label: value })),
+        initialValue:
+          defaults.team && teams.includes(defaults.team)
+            ? defaults.team
+            : undefined,
+      }),
+    )) as string;
+  } else {
+    team = (await promptOrExit(
+      text({
+        message: formatVercelTeamPromptMessage(),
+        placeholder: defaults.team ?? "team-slug",
+      }),
+    )) as string;
   }
 
-  log.info("Vercel project not linked — searching across teams...");
+  const project = (await promptOrExit(
+    text({
+      message: formatVercelProjectNamePromptMessage(),
+      placeholder: defaults.project ?? "atlas",
+    }),
+  )) as string;
 
-  const detected = findAtlasInTeams();
+  return { team, project };
+}
 
+export async function detectAndLink(
+  appDir: string,
+  options: VercelLinkOptions = {},
+): Promise<void> {
   let team: string;
   let project: string;
+  const linked = readVercelProject(appDir);
 
-  if (detected) {
-    const confirmed = await promptConfirm(
-      `Link app/ to 'atlas' on '${detected.team}'${detected.url ? ` (${detected.url})` : ""}?`,
-      true,
+  if (linked) {
+    const confirmed = await confirmVercelProject(
+      {
+        source: "linked",
+        projectId: linked.projectId,
+        projectName: "atlas",
+        teamId: linked.orgId,
+      },
+      options,
     );
     if (confirmed) {
+      log.success("Vercel project selected");
+      logSubline(`Project ID: ${linked.projectId}`);
+      logSubline(`Team ID: ${linked.orgId}`);
+      return;
+    }
+    ({ team, project } = await promptForVercelLink({
+      team: linked.orgId,
+      project: "atlas",
+    }));
+  } else {
+    if (isVercelLinked(appDir)) {
+      log.warn("Vercel project link is incomplete — choose the project again.");
+    } else {
+      log.info("Vercel project not linked — searching across teams...");
+    }
+
+    const detected = findAtlasInTeams();
+    if (
+      detected &&
+      (await confirmVercelProject(
+        {
+          source: "detected",
+          projectName: "atlas",
+          teamId: detected.team,
+          url: detected.url,
+        },
+        options,
+      ))
+    ) {
       team = detected.team;
       project = "atlas";
     } else {
-      const { text } = await import("@clack/prompts");
-      team = (await promptOrExit(
-        text({
-          message: "Vercel scope/team",
-          placeholder: "williecubed-projects",
-        }),
-      )) as string;
-      project = (await promptOrExit(
-        text({ message: "Vercel project name", placeholder: "atlas" }),
-      )) as string;
+      if (!detected) {
+        log.warn("Could not detect Vercel project automatically.");
+      }
+      ({ team, project } = await promptForVercelLink({ project: "atlas" }));
     }
-  } else {
-    log.warn("Could not detect Vercel project automatically.");
-    const { text } = await import("@clack/prompts");
-    team = (await promptOrExit(
-      text({
-        message: "Vercel scope/team",
-        placeholder: "williecubed-projects",
-      }),
-    )) as string;
-    project = (await promptOrExit(
-      text({ message: "Vercel project name", placeholder: "atlas" }),
-    )) as string;
   }
 
   assertSafeCliArg(team, "team");
@@ -185,7 +351,7 @@ function vercelEnvAdd(
 }
 
 // Returns a Set of "KEY:environment" strings for vars already present on the project.
-function fetchExistingKeys(
+export function fetchExistingKeys(
   scope: string,
   options: VercelSyncOptions,
 ): Set<string> {
@@ -245,8 +411,109 @@ function fetchExistingKeys(
 }
 
 interface SyncPreview {
+  project?: VercelSyncProject;
   toAdd: VercelVar[];
   toOverwrite: VercelVar[];
+}
+
+function environmentLabel(env: VercelEnvironment): string {
+  if (env === "production") return "Production";
+  if (env === "preview") return "Preview";
+  return "Development";
+}
+
+function keysForEnvironment(
+  vars: VercelVar[],
+  env: VercelEnvironment,
+): string[] {
+  return vars
+    .filter((v) => v.environments.includes(env))
+    .map((v) => v.key)
+    .sort();
+}
+
+export function formatVercelSyncPreview(preview: SyncPreview): string {
+  const lines: string[] = [];
+  if (preview.project) {
+    lines.push(`Project: ${preview.project.projectId ?? "linked project"}`);
+    lines.push(`Team: ${preview.project.scope}`);
+    lines.push(`Target: ${preview.project.target}`);
+    lines.push("");
+    lines.push("No deletions. No secret rotation.");
+    lines.push("");
+  }
+
+  for (const env of ["production", "preview", "development"] as const) {
+    const toAdd = keysForEnvironment(preview.toAdd, env);
+    const toOverwrite = keysForEnvironment(preview.toOverwrite, env);
+    if (toAdd.length === 0 && toOverwrite.length === 0) continue;
+
+    lines.push(environmentLabel(env));
+    for (const key of toAdd) {
+      lines.push(`  add ${key}`);
+    }
+    for (const key of toOverwrite) {
+      lines.push(`  update ${key}`);
+    }
+    lines.push("");
+  }
+
+  return lines.join("\n").trim();
+}
+
+export function requiresProductionConfirmation(vars: VercelVar[]): boolean {
+  return vars.some((v) => v.environments.includes("production"));
+}
+
+function vercelTargetLabel(
+  vars: VercelVar[],
+  explicitLabel: string | undefined,
+): string {
+  if (explicitLabel) return explicitLabel;
+  const targets = Array.from(
+    new Set(vars.flatMap((v) => v.environments.map(environmentLabel))),
+  );
+  return targets.join(", ");
+}
+
+function vercelSyncProject(
+  scope: string,
+  vars: VercelVar[],
+  options: VercelSyncOptions,
+): VercelSyncProject {
+  const project = options.cwd ? readVercelProject(options.cwd) : undefined;
+  return {
+    projectId: project?.projectId,
+    scope,
+    target: vercelTargetLabel(vars, options.targetLabel),
+  };
+}
+
+async function confirmVercelSync(vars: VercelVar[]): Promise<boolean> {
+  if (!requiresProductionConfirmation(vars)) {
+    return promptConfirm(
+      [
+        "Sync these Vercel env vars?",
+        "",
+        "Bootstrap will add or update the non-production environment variables shown above.",
+        "Confirm the project and team in the summary before choosing Yes.",
+        "No env vars are deleted and no secrets are rotated.",
+      ].join("\n"),
+      true,
+    );
+  }
+
+  const value = await promptOrExit(
+    text({
+      message: formatVercelProductionSyncPromptMessage(),
+      validate: (input) => {
+        if ((input ?? "").trim() !== "production") {
+          return "Type production to continue.";
+        }
+      },
+    }),
+  );
+  return value === "production";
 }
 
 function buildSyncPreview(
@@ -287,23 +554,17 @@ export async function syncEnvVars(
     return true;
   }
 
-  // Print preview table
-  const lines: string[] = [];
-  for (const v of toAdd) {
-    lines.push(
-      `  ${pc.green("+")} ${v.key.padEnd(45)} ${v.environments.join(", ")}  (new)`,
-    );
-  }
-  for (const v of toOverwrite) {
-    lines.push(
-      `  ${pc.yellow("~")} ${v.key.padEnd(45)} ${v.environments.join(", ")}  (overwrite)`,
-    );
-  }
-  log.message(lines.join("\n"));
+  const varsToSync = [...toAdd, ...toOverwrite];
+  note(
+    formatVercelSyncPreview({
+      project: vercelSyncProject(scope, varsToSync, options),
+      toAdd,
+      toOverwrite,
+    }),
+    "Vercel env sync",
+  );
 
-  const confirmed =
-    options.assumeYes ??
-    (await promptConfirm("Apply these changes to Vercel?", true));
+  const confirmed = options.assumeYes ?? (await confirmVercelSync(varsToSync));
   if (!confirmed) {
     logSubline("Skipped Vercel env sync");
     return false;

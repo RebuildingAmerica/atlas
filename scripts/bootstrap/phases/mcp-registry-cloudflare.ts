@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { log, password, spinner } from "@clack/prompts";
 import pc from "picocolors";
+import { formatCloudflareTokenPromptMessage } from "../lib/cloudflare.js";
 import { runCommand } from "../lib/shell.js";
 import { logSubline, promptOrExit } from "../lib/ui.js";
 
@@ -33,14 +34,12 @@ export async function acquireToken(): Promise<AcquiredToken> {
       return { token: stashed, isStashed: true };
     }
   }
-  logSubline(
-    pc.dim(
-      `Create one at https://dash.cloudflare.com/profile/api-tokens (template "Edit zone DNS", restrict to ${DOMAIN}).`,
-    ),
-  );
   const token = (await promptOrExit(
     password({
-      message: "Cloudflare API token",
+      message: formatCloudflareTokenPromptMessage({
+        permissionsHint: 'template "Edit zone DNS"',
+        zoneHint: DOMAIN,
+      }),
     }),
   )) as string;
   return { token, isStashed: false };

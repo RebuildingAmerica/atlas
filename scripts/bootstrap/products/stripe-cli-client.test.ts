@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, it } from "node:test";
@@ -7,6 +7,7 @@ import {
   parseStripeCliProfiles,
   resolveStripeApiKey,
   selectStripeCliProfileKey,
+  stripeApiKeyResolutionNotes,
 } from "./stripe-cli-client.js";
 
 const STRIPE_CONFIG = `
@@ -83,19 +84,117 @@ void describe("Stripe CLI config resolution", () => {
     }
   });
 
+  void it("ignores placeholder-looking target env keys before falling back", () => {
+    const original = process.env.STRIPE_API_KEY;
+    const originalHome = process.env.HOME;
+    const root = mkdtempSync(path.join(tmpdir(), "atlas-stripe-"));
+    const targetEnv = path.join(root, ".env.staging");
+    writeFileSync(
+      targetEnv,
+      "STRIPE_API_KEY=sk_test_replace_with_your_test_secret_or_restricted_key\n",
+    );
+    writeFileSync(path.join(root, ".env"), "STRIPE_API_KEY=sk_test_root\n");
+
+    try {
+      delete process.env.STRIPE_API_KEY;
+      process.env.HOME = root;
+      assert.equal(
+        resolveStripeApiKey(root, false, [targetEnv]),
+        "sk_test_root",
+      );
+    } finally {
+      if (original === undefined) {
+        delete process.env.STRIPE_API_KEY;
+      } else {
+        process.env.STRIPE_API_KEY = original;
+      }
+      if (originalHome === undefined) {
+        delete process.env.HOME;
+      } else {
+        process.env.HOME = originalHome;
+      }
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  void it("ignores redacted Stripe CLI config keys before falling back", () => {
+    const original = process.env.STRIPE_API_KEY;
+    const originalHome = process.env.HOME;
+    const root = mkdtempSync(path.join(tmpdir(), "atlas-stripe-"));
+    const stripeConfigDir = path.join(root, ".config", "stripe");
+
+    try {
+      delete process.env.STRIPE_API_KEY;
+      process.env.HOME = root;
+      mkdirSync(stripeConfigDir, { recursive: true });
+      writeFileSync(
+        path.join(stripeConfigDir, "config.toml"),
+        '[default]\ntest_mode_api_key = "sk_test_********redacted"\n',
+      );
+      writeFileSync(path.join(root, ".env"), "STRIPE_API_KEY=sk_test_root\n");
+
+      assert.equal(resolveStripeApiKey(root, false, []), "sk_test_root");
+    } finally {
+      if (original === undefined) {
+        delete process.env.STRIPE_API_KEY;
+      } else {
+        process.env.STRIPE_API_KEY = original;
+      }
+      if (originalHome === undefined) {
+        delete process.env.HOME;
+      } else {
+        process.env.HOME = originalHome;
+      }
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  void it("explains redacted live Stripe CLI keys during production setup", () => {
+    const originalHome = process.env.HOME;
+    const root = mkdtempSync(path.join(tmpdir(), "atlas-stripe-"));
+    const stripeConfigDir = path.join(root, ".config", "stripe");
+
+    try {
+      process.env.HOME = root;
+      mkdirSync(stripeConfigDir, { recursive: true });
+      writeFileSync(
+        path.join(stripeConfigDir, "config.toml"),
+        '[default]\nlive_mode_api_key = "rk_live_********redacted"\n',
+      );
+
+      assert.deepEqual(stripeApiKeyResolutionNotes(root, true, []), [
+        "Stripe CLI has a redacted live key. Bootstrap cannot use redacted CLI keys with the Stripe SDK; pass a Dashboard-created live restricted key as STRIPE_API_KEY.",
+      ]);
+    } finally {
+      if (originalHome === undefined) {
+        delete process.env.HOME;
+      } else {
+        process.env.HOME = originalHome;
+      }
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   void it("does not use local fallback keys for live bootstrap", () => {
     const original = process.env.STRIPE_API_KEY;
+    const originalHome = process.env.HOME;
     const root = mkdtempSync(path.join(tmpdir(), "atlas-stripe-"));
     writeFileSync(path.join(root, ".env"), "STRIPE_API_KEY=sk_test_root\n");
 
     try {
       delete process.env.STRIPE_API_KEY;
+      process.env.HOME = root;
       assert.equal(resolveStripeApiKey(root, true, []), null);
     } finally {
       if (original === undefined) {
         delete process.env.STRIPE_API_KEY;
       } else {
         process.env.STRIPE_API_KEY = original;
+      }
+      if (originalHome === undefined) {
+        delete process.env.HOME;
+      } else {
+        process.env.HOME = originalHome;
       }
       rmSync(root, { recursive: true, force: true });
     }
