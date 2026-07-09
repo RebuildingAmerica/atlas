@@ -470,6 +470,42 @@
             "description": "claimed by user id for this claim status info.",
             "title": "Claimed By User Id"
           },
+          "linked_atproto_did": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Stable ATProto DID behind the verified linked handle.",
+            "title": "Linked Atproto Did"
+          },
+          "linked_atproto_handle": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Verified ATProto handle linked to the profile.",
+            "title": "Linked Atproto Handle"
+          },
+          "linked_atproto_verified_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "linked atproto verified at for this claim status info.",
+            "title": "Linked Atproto Verified At"
+          },
           "status": {
             "default": "unclaimed",
             "description": "Lifecycle of subject ownership: unclaimed, pending, verified, revoked.",
