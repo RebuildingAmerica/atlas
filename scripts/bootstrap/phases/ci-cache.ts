@@ -50,17 +50,21 @@ export async function runCiCachePhase(
 
   if (!runCommand("command -v vercel").ok) {
     log.warn(
-      "Vercel CLI not installed. Run `pnpm add -g vercel` or `brew install vercel-cli`, then retry.",
+      "Vercel CLI not available. Run `pnpm install` from the repo root, then retry.",
     );
     followUpItems.push(
-      "Install Vercel CLI so the bootstrap can mint TURBO_TOKEN automatically",
+      "Run `pnpm install` so bootstrap can use the repo-managed Vercel CLI",
     );
     return { success: false, followUpItems };
   }
 
   if (!runCommand("vercel whoami 2>/dev/null").ok) {
-    log.warn("Vercel CLI is not authenticated. Run `vercel login` and retry.");
-    followUpItems.push("Run `vercel login`, then re-run bootstrap --ci-cache");
+    log.warn(
+      "Vercel CLI is not authenticated. Run `pnpm exec vercel login` and retry.",
+    );
+    followUpItems.push(
+      "Run `pnpm exec vercel login`, then re-run bootstrap --ci-cache",
+    );
     return { success: false, followUpItems };
   }
 
@@ -254,7 +258,7 @@ function mintVercelToken(): string | undefined {
       );
       logSubline(
         pc.dim(
-          "Re-auth with a classic PAT (`vercel logout && vercel login`, choose email) and retry.",
+          "Re-auth with a classic PAT (`pnpm exec vercel logout && pnpm exec vercel login`, choose email) and retry.",
         ),
       );
     } else {

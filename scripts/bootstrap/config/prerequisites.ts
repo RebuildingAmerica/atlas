@@ -290,12 +290,12 @@ export const CAPABILITY_SPECS: CapabilityConfig[] = [
     binaryCommand: "command -v vercel",
     versionCommand: "vercel --version",
     installCommands: {
-      macos: ["pnpm add -g vercel"],
-      linux: ["pnpm add -g vercel"],
+      macos: ["pnpm install"],
+      linux: ["pnpm install"],
     },
     auth: {
       checkCommand: "vercel whoami 2>/dev/null | grep -qv 'Error'",
-      loginCommand: "vercel login",
+      loginCommand: "pnpm exec vercel login",
       interactive: true,
     },
   },

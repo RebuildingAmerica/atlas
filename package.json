@@ -68,6 +68,7 @@
     "prettier-plugin-tailwindcss": "catalog:",
     "stripe": "catalog:",
     "tsx": "catalog:",
-    "turbo": "catalog:"
+    "turbo": "catalog:",
+    "vercel": "^54.21.1"
   }
 }
