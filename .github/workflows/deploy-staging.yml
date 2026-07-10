@@ -60,12 +60,3 @@ jobs:
           ATLAS_HOSTED_PUBLIC_URL: ${{ secrets.ATLAS_PUBLIC_URL }}
           ATLAS_HOSTED_API_URL: ${{ secrets.ATLAS_API_URL }}
         run: pnpm --filter @rebuildingamerica/atlas-app run test:hosted-smoke
-
-      - name: Notify Slack on failure
-        if: failure()
-        env:
-          ATLAS_DEPLOY_MODE: staging
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_DEPLOY_WEBHOOK_URL }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          COMMIT: ${{ github.sha }}
-        run: node scripts/deploy/cloud-run-release.mjs notify-slack

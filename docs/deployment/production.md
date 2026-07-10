@@ -242,7 +242,6 @@ accidentally inherit production URLs or databases:
 - `ATLAS_API_URL`
 - `ATLAS_AUTH_JWT_AUDIENCES`
 - `OPENSTATUS_API_KEY` when synthetics should run
-- `SLACK_DEPLOY_WEBHOOK_URL` when failed deploys should notify Slack
 
 Set `ATLAS_AUTH_JWT_AUDIENCES` to the production resource URL list the API
 accepts. Put the MCP resource first, for example:

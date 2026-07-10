@@ -45,7 +45,6 @@ Use the same secret names as production, but store staging values in the
 - `ATLAS_PUBLIC_URL`
 - `ATLAS_API_URL`
 - `ATLAS_AUTH_JWT_AUDIENCES`
-- `SLACK_DEPLOY_WEBHOOK_URL` when failed deploys should notify Slack
 
 Set `ATLAS_PUBLIC_URL` to the staging app origin. Set `ATLAS_AUTH_JWT_AUDIENCES`
 to the staging resource URL list the API accepts, with the MCP resource first:

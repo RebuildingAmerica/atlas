@@ -145,28 +145,6 @@ function writeDeploySummary() {
   );
 }
 
-async function notifySlackFailure() {
-  const webhookUrl = optionalEnv("SLACK_WEBHOOK_URL");
-  if (!webhookUrl) {
-    console.log(
-      "No SLACK_DEPLOY_WEBHOOK_URL configured; skipping notification.",
-    );
-    return;
-  }
-  const response = await fetch(webhookUrl, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      text: `Atlas ${requiredEnv("ATLAS_DEPLOY_MODE")} deploy failed for ${requiredEnv(
-        "COMMIT",
-      )}. See ${requiredEnv("RUN_URL")}`,
-    }),
-  });
-  if (!response.ok) {
-    throw new Error(`Slack notification failed with HTTP ${response.status}.`);
-  }
-}
-
 switch (command) {
   case "describe":
     describeCloudRunService();
@@ -177,11 +155,8 @@ switch (command) {
   case "summary":
     writeDeploySummary();
     break;
-  case "notify-slack":
-    await notifySlackFailure();
-    break;
   default:
     throw new Error(
-      "Usage: cloud-run-release.mjs <describe|ensure-scheduler|summary|notify-slack>",
+      "Usage: cloud-run-release.mjs <describe|ensure-scheduler|summary>",
     );
 }
