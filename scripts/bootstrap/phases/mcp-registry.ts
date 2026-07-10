@@ -31,7 +31,7 @@ export function formatExistingPublisherKeypairPromptMessage(): string {
     "1. Keep it if this machine already publishes the Atlas namespace.",
     "2. Rotate only if the key was compromised or this should become the new publisher key.",
     "3. Rotating generates new local key files and requires updating the Cloudflare TXT proof.",
-    "4. This choice does not update DNS by itself; bootstrap checks DNS next.",
+    "4. If you rotate, bootstrap will update Cloudflare next after confirming API access.",
   ].join("\n");
 }
 
@@ -71,6 +71,22 @@ export function formatMcpTxtMismatchMessage(
     "Local key bootstrap wants:",
     options.expectedTxt,
   ].join("\n");
+}
+
+export type McpPublisherKeypairAction = "created" | "kept" | "rotated";
+
+export interface McpTxtAutofixOptions {
+  keypairAction: McpPublisherKeypairAction;
+  liveTxt: string | null;
+  doctorMode: boolean;
+}
+
+export function shouldAutofixMcpTxtMismatch(
+  options: McpTxtAutofixOptions,
+): boolean {
+  if (options.doctorMode) return false;
+  if (options.keypairAction === "rotated") return true;
+  return options.keypairAction === "created" && options.liveTxt === null;
 }
 
 export async function runMcpRegistryPhase(
@@ -118,6 +134,7 @@ export async function runMcpRegistryPhase(
     expectedTxt,
     doctorMode,
     followUpItems,
+    keypairResult.action,
   );
   if (!dnsResult.ok) {
     return { success: false, followUpItems };
@@ -139,6 +156,7 @@ export async function runMcpRegistryPhase(
 interface KeypairResult {
   ok: boolean;
   pubBase64: string;
+  action: McpPublisherKeypairAction;
 }
 
 async function ensureKeypair(
@@ -151,7 +169,7 @@ async function ensureKeypair(
   if (existing) {
     log.success(`Publisher keypair present at ${pc.dim(KEY_DIR)}`);
     if (doctorMode) {
-      return { ok: true, pubBase64: readPub() };
+      return { ok: true, pubBase64: readPub(), action: "kept" };
     }
     const selected = (await promptOrExit(
       select({
@@ -167,14 +185,14 @@ async function ensureKeypair(
       }),
     )) as "keep" | "rotate";
     if (selected === "keep") {
-      return { ok: true, pubBase64: readPub() };
+      return { ok: true, pubBase64: readPub(), action: "kept" };
     }
   } else if (doctorMode) {
     log.warn(`No publisher keypair at ${pc.dim(KEY_DIR)}`);
     followUpItems.push(
       "Generate MCP publisher keypair: pnpm mcp:gen-publisher-key",
     );
-    return { ok: false, pubBase64: "" };
+    return { ok: false, pubBase64: "", action: "kept" };
   }
 
   const result = runCommand(
@@ -183,9 +201,13 @@ async function ensureKeypair(
   if (!result.ok) {
     log.error(commandOutput(result));
     followUpItems.push("Run `pnpm mcp:gen-publisher-key` manually");
-    return { ok: false, pubBase64: "" };
+    return { ok: false, pubBase64: "", action: "kept" };
   }
-  return { ok: true, pubBase64: readPub() };
+  return {
+    ok: true,
+    pubBase64: readPub(),
+    action: existing ? "rotated" : "created",
+  };
 }
 
 interface DnsResult {
@@ -196,6 +218,7 @@ async function ensureCloudflareTxt(
   expectedTxt: string,
   doctorMode: boolean,
   followUpItems: string[],
+  keypairAction: McpPublisherKeypairAction,
 ): Promise<DnsResult> {
   const liveTxt = digTxt();
   if (liveTxt === expectedTxt) {
@@ -226,6 +249,21 @@ async function ensureCloudflareTxt(
       "If no, restore the publisher keypair that matches the live Cloudflare TXT proof",
     );
     return { ok: false };
+  }
+
+  if (
+    shouldAutofixMcpTxtMismatch({
+      keypairAction,
+      liveTxt,
+      doctorMode,
+    })
+  ) {
+    log.info(
+      keypairAction === "rotated"
+        ? "Autofix: updating Cloudflare to the publisher key you just rotated."
+        : "Autofix: creating the first Cloudflare TXT proof for this publisher key.",
+    );
+    return await updateViaApi(expectedTxt, followUpItems);
   }
 
   const selected = (await promptOrExit(

@@ -4,6 +4,7 @@ import {
   formatExistingPublisherKeypairPromptMessage,
   formatMcpTxtMismatchMessage,
   formatMcpTxtUpdatePromptMessage,
+  shouldAutofixMcpTxtMismatch,
 } from "./mcp-registry.js";
 
 void describe("MCP Registry prompt guidance", () => {
@@ -13,7 +14,10 @@ void describe("MCP Registry prompt guidance", () => {
     assert.match(message, /found a local publisher keypair/);
     assert.match(message, /Rotate only if/);
     assert.match(message, /requires updating the Cloudflare TXT proof/);
-    assert.match(message, /does not update DNS by itself/);
+    assert.match(
+      message,
+      /If you rotate, bootstrap will update Cloudflare next/,
+    );
   });
 
   void it("explains the DNS proof update options", () => {
@@ -47,5 +51,48 @@ void describe("MCP Registry prompt guidance", () => {
     assert.match(message, /Stop and restore the previous local publisher key/);
     assert.match(message, /Current DNS proof/);
     assert.match(message, /Local key bootstrap wants/);
+  });
+
+  void it("autofixes DNS only when the local key change proves intent", () => {
+    assert.equal(
+      shouldAutofixMcpTxtMismatch({
+        keypairAction: "rotated",
+        liveTxt: "v=MCPv1; k=ed25519; p=old-key",
+        doctorMode: false,
+      }),
+      true,
+    );
+    assert.equal(
+      shouldAutofixMcpTxtMismatch({
+        keypairAction: "created",
+        liveTxt: null,
+        doctorMode: false,
+      }),
+      true,
+    );
+    assert.equal(
+      shouldAutofixMcpTxtMismatch({
+        keypairAction: "created",
+        liveTxt: "v=MCPv1; k=ed25519; p=old-key",
+        doctorMode: false,
+      }),
+      false,
+    );
+    assert.equal(
+      shouldAutofixMcpTxtMismatch({
+        keypairAction: "kept",
+        liveTxt: "v=MCPv1; k=ed25519; p=old-key",
+        doctorMode: false,
+      }),
+      false,
+    );
+    assert.equal(
+      shouldAutofixMcpTxtMismatch({
+        keypairAction: "rotated",
+        liveTxt: "v=MCPv1; k=ed25519; p=old-key",
+        doctorMode: true,
+      }),
+      false,
+    );
   });
 });
