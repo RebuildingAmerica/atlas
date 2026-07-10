@@ -5,8 +5,12 @@ import {
   formatDockerBuildFallbackPrompt,
   formatDockerDaemonRecovery,
   formatDockerStartPrompt,
+  formatCloudBuildSourceAccessFollowUp,
+  formatCloudBuildSourceAccessGrantCommand,
+  formatCloudBuildSourceAccessRecoveryNote,
   formatGcloudReauthenticationRecovery,
   isGcloudReauthenticationFailure,
+  parseCloudBuildSourceAccessFailure,
 } from "./deploy.js";
 
 void describe("deploy resilience", () => {
@@ -57,5 +61,45 @@ void describe("deploy resilience", () => {
     assert.match(recovery, /gcloud auth login/);
     assert.match(recovery, /retry Cloud Build/);
     assert.doesNotMatch(recovery, /cannot prompt during non-interactive/);
+  });
+
+  void it("detects Cloud Build source bucket access failures", () => {
+    const failure = parseCloudBuildSourceAccessFailure({
+      ok: false,
+      stdout: "",
+      stderr:
+        "ERROR: (gcloud.builds.submit) INVALID_ARGUMENT: could not resolve source: googleapi: Error 403: 1039543329255-compute@developer.gserviceaccount.com does not have storage.objects.get access to the Google Cloud Storage object. Permission 'storage.objects.get' denied on resource '//storage.googleapis.com/projects/_/buckets/rap-atlas-prod_cloudbuild/objects/source/1783724432.871416-16c47de283f34c848ce82c4a03592e70.tgz' (or it may not exist).",
+    });
+
+    assert.deepEqual(failure, {
+      serviceAccount: "1039543329255-compute@developer.gserviceaccount.com",
+      bucket: "rap-atlas-prod_cloudbuild",
+    });
+  });
+
+  void it("shows a narrow Cloud Build source bucket autofix", () => {
+    const failure = {
+      serviceAccount: "1039543329255-compute@developer.gserviceaccount.com",
+      bucket: "rap-atlas-prod_cloudbuild",
+    };
+
+    const command = formatCloudBuildSourceAccessGrantCommand(failure);
+    assert.match(command, /gcloud storage buckets add-iam-policy-binding/);
+    assert.match(command, /gs:\/\/rap-atlas-prod_cloudbuild/);
+    assert.match(
+      command,
+      /serviceAccount:1039543329255-compute@developer\.gserviceaccount\.com/,
+    );
+    assert.match(command, /roles\/storage\.objectViewer/);
+
+    const note = formatCloudBuildSourceAccessRecoveryNote(failure);
+    assert.match(note, /Cloud Build uploaded the source archive/);
+    assert.match(note, /rap-atlas-prod_cloudbuild/);
+    assert.match(note, /Storage Object Viewer/);
+    assert.match(note, /retry the build/);
+
+    const followUp = formatCloudBuildSourceAccessFollowUp(failure);
+    assert.match(followUp, /Storage Object Viewer/);
+    assert.match(followUp, /pnpm bootstrap --resume/);
   });
 });

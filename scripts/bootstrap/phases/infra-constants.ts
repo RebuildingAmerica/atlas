@@ -1,5 +1,6 @@
 export const REQUIRED_APIS = [
   "run.googleapis.com",
+  "cloudbuild.googleapis.com",
   "artifactregistry.googleapis.com",
   "iam.googleapis.com",
   "iamcredentials.googleapis.com",

@@ -24,6 +24,21 @@ export interface DockerPreflight {
   reason?: "daemon-unavailable" | "unknown";
 }
 
+export interface CloudBuildSourceAccessFailure {
+  serviceAccount: string;
+  bucket: string;
+}
+
+interface CloudBuildRecoveryOptions {
+  allowAuthRecovery: boolean;
+  allowSourceAccessRecovery: boolean;
+}
+
+const DEFAULT_CLOUD_BUILD_RECOVERY_OPTIONS: CloudBuildRecoveryOptions = {
+  allowAuthRecovery: true,
+  allowSourceAccessRecovery: true,
+};
+
 interface DeployConfig {
   projectId: string;
   region: string;
@@ -316,7 +331,7 @@ async function buildAndPushImageWithCloudBuild(
   contextDir: string,
   imageTag: string,
   followUpItems: string[],
-  allowAuthRecovery = true,
+  recoveryOptions: CloudBuildRecoveryOptions = DEFAULT_CLOUD_BUILD_RECOVERY_OPTIONS,
 ): Promise<boolean> {
   const s = spinner();
   s.start(`Building ${serviceName} with Google Cloud Build...`);
@@ -328,7 +343,7 @@ async function buildAndPushImageWithCloudBuild(
   if (!result.ok) {
     s.stop(`Failed to build ${serviceName} with Google Cloud Build`);
     if (
-      allowAuthRecovery &&
+      recoveryOptions.allowAuthRecovery &&
       isGcloudReauthenticationFailure(result) &&
       (await recoverGcloudAuthentication())
     ) {
@@ -337,19 +352,124 @@ async function buildAndPushImageWithCloudBuild(
         contextDir,
         imageTag,
         followUpItems,
-        false,
+        {
+          ...recoveryOptions,
+          allowAuthRecovery: false,
+        },
       );
     }
+
+    const sourceAccessFailure = parseCloudBuildSourceAccessFailure(result);
+    if (
+      recoveryOptions.allowSourceAccessRecovery &&
+      sourceAccessFailure &&
+      (await recoverCloudBuildSourceAccess(sourceAccessFailure))
+    ) {
+      return await buildAndPushImageWithCloudBuild(
+        serviceName,
+        contextDir,
+        imageTag,
+        followUpItems,
+        {
+          ...recoveryOptions,
+          allowSourceAccessRecovery: false,
+        },
+      );
+    }
+
     log.error(commandOutput(result));
     followUpItems.push(
       isGcloudReauthenticationFailure(result)
         ? "Reauthenticate gcloud: gcloud auth login"
-        : `Build ${serviceName} image with Google Cloud Build`,
+        : sourceAccessFailure
+          ? formatCloudBuildSourceAccessFollowUp(sourceAccessFailure)
+          : `Build ${serviceName} image with Google Cloud Build`,
     );
     return false;
   }
 
   s.stop(`${serviceName} image built and pushed with Google Cloud Build`);
+  return true;
+}
+
+export function parseCloudBuildSourceAccessFailure(
+  result: CommandResult,
+): CloudBuildSourceAccessFailure | undefined {
+  const output = commandOutput(result);
+  if (!/storage\.objects\.get access/i.test(output)) {
+    return undefined;
+  }
+
+  const serviceAccountMatch =
+    /\b([A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.gserviceaccount\.com)\b/.exec(output);
+  const bucketMatch = /\/buckets\/([^/\s]+)\/objects\//.exec(output);
+
+  if (!serviceAccountMatch?.[1] || !bucketMatch?.[1]) {
+    return undefined;
+  }
+
+  return {
+    serviceAccount: serviceAccountMatch[1],
+    bucket: bucketMatch[1],
+  };
+}
+
+export function formatCloudBuildSourceAccessGrantCommand(
+  failure: CloudBuildSourceAccessFailure,
+): string {
+  return (
+    `gcloud storage buckets add-iam-policy-binding "gs://${failure.bucket}" ` +
+    `--member="serviceAccount:${failure.serviceAccount}" ` +
+    `--role="roles/storage.objectViewer" ` +
+    "--quiet"
+  );
+}
+
+export function formatCloudBuildSourceAccessRecoveryNote(
+  failure: CloudBuildSourceAccessFailure,
+): string {
+  return [
+    "Cloud Build uploaded the source archive, but the build identity cannot read it back from the Cloud Build staging bucket.",
+    "",
+    `Service account: ${failure.serviceAccount}`,
+    `Bucket: gs://${failure.bucket}`,
+    "",
+    "Bootstrap can grant Storage Object Viewer on that one bucket and retry the build.",
+  ].join("\n");
+}
+
+export function formatCloudBuildSourceAccessFollowUp(
+  failure: CloudBuildSourceAccessFailure,
+): string {
+  return [
+    `Grant Storage Object Viewer on gs://${failure.bucket} to ${failure.serviceAccount}.`,
+    "Then run `pnpm bootstrap --resume`.",
+  ].join(" ");
+}
+
+async function recoverCloudBuildSourceAccess(
+  failure: CloudBuildSourceAccessFailure,
+): Promise<boolean> {
+  note(formatCloudBuildSourceAccessRecoveryNote(failure), "Cloud Build access");
+  const shouldGrant = await promptConfirm(
+    "Grant Cloud Build source bucket access now?",
+    true,
+  );
+  if (!shouldGrant) {
+    return false;
+  }
+
+  const s = spinner();
+  s.start("Granting Cloud Build source bucket access...");
+  const grantResult = runCommand(
+    formatCloudBuildSourceAccessGrantCommand(failure),
+  );
+  if (!grantResult.ok) {
+    s.stop("Failed to grant Cloud Build source bucket access");
+    log.error(commandOutput(grantResult));
+    return false;
+  }
+  s.stop("Cloud Build source bucket access granted");
   return true;
 }
 
