@@ -15,6 +15,11 @@ function assertSafeCliArg(value: string, name: string): void {
 
 export type VercelEnvironment = "production" | "preview" | "development";
 
+export interface VercelEnvKey {
+  environment: VercelEnvironment;
+  key: string;
+}
+
 export interface VercelVar {
   key: string;
   value: string;
@@ -47,6 +52,11 @@ interface VercelLinkTarget {
   project: string;
 }
 
+interface DetectedVercelProject {
+  team: string;
+  url: string;
+}
+
 export interface VercelProjectPrompt {
   source: "linked" | "detected";
   projectId?: string;
@@ -58,6 +68,11 @@ export interface VercelProjectPrompt {
 interface VercelProjectConfirmation {
   assumeYes: boolean;
   confirmed: boolean;
+}
+
+interface VercelEnvListItem {
+  key: string;
+  target: readonly string[];
 }
 
 // ── Linking ──────────────────────────────────────────────────────────────────
@@ -112,7 +127,7 @@ function listTeamIds(): string[] {
 }
 
 // Search all teams for a project named "atlas". Returns first match.
-function findAtlasInTeams(): { team: string; url: string } | undefined {
+function findAtlasInTeams(): DetectedVercelProject | undefined {
   for (const team of listTeamIds()) {
     const result = runCommand(
       `vercel project ls --scope "${team}" 2>/dev/null`,
@@ -350,13 +365,62 @@ function vercelEnvAdd(
   return result.status === 0;
 }
 
-// Returns a Set of "KEY:environment" strings for vars already present on the project.
+function normalizeVercelEnvironment(
+  value: string,
+): VercelEnvironment | undefined {
+  const normalized = value.toLowerCase();
+  if (
+    normalized === "production" ||
+    normalized === "preview" ||
+    normalized === "development"
+  ) {
+    return normalized;
+  }
+  return undefined;
+}
+
+function isVercelEnvListItem(value: unknown): value is VercelEnvListItem {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "key" in value &&
+    "target" in value &&
+    typeof value.key === "string" &&
+    Array.isArray(value.target) &&
+    value.target.every((target) => typeof target === "string")
+  );
+}
+
+function addVercelEnvKey(
+  existing: VercelEnvKey[],
+  key: string,
+  environment: string,
+): void {
+  const normalizedEnvironment = normalizeVercelEnvironment(environment);
+  if (!normalizedEnvironment) {
+    return;
+  }
+  existing.push({ environment: normalizedEnvironment, key });
+}
+
+export function hasVercelEnvKey(
+  existingKeys: readonly VercelEnvKey[],
+  key: string,
+  environment: VercelEnvironment,
+): boolean {
+  return existingKeys.some(
+    (existingKey) =>
+      existingKey.key === key && existingKey.environment === environment,
+  );
+}
+
+// Returns typed key/environment pairs for vars already present on the project.
 export function fetchExistingKeys(
   scope: string,
   options: VercelSyncOptions,
-): Set<string> {
+): VercelEnvKey[] {
   assertSafeCliArg(scope, "scope");
-  const existing = new Set<string>();
+  const existing: VercelEnvKey[] = [];
   const result = spawnSync("vercel", ["env", "ls", "--scope", scope], {
     cwd: options.cwd,
     stdio: ["ignore", "pipe", "pipe"],
@@ -372,16 +436,15 @@ export function fetchExistingKeys(
 
   // Try JSON first (supported in recent CLI versions)
   try {
-    const parsed = JSON.parse(stdout) as {
-      key: string;
-      target: string[];
-    }[];
-    for (const item of parsed) {
-      for (const env of item.target) {
-        existing.add(`${item.key}:${env.toLowerCase()}`);
+    const parsed: unknown = JSON.parse(stdout);
+    if (Array.isArray(parsed) && parsed.every(isVercelEnvListItem)) {
+      for (const item of parsed) {
+        for (const env of item.target) {
+          addVercelEnvKey(existing, item.key, env);
+        }
       }
+      return existing;
     }
-    return existing;
   } catch {
     // Fall through to text parsing
   }
@@ -402,7 +465,7 @@ export function fetchExistingKeys(
       const envCol = cols[2] ?? "";
       // Third column may be comma-separated or single value
       for (const env of envCol.split(/[,\s]+/)) {
-        existing.add(`${key}:${env.toLowerCase()}`);
+        addVercelEnvKey(existing, key, env);
       }
     }
   }
@@ -527,7 +590,7 @@ function buildSyncPreview(
 
   for (const v of vars) {
     const existsInAny = v.environments.some((env) =>
-      existing.has(`${v.key}:${env}`),
+      hasVercelEnvKey(existing, v.key, env),
     );
     if (existsInAny) {
       toOverwrite.push(v);

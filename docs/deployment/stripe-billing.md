@@ -183,11 +183,12 @@ STRIPE_API_KEY=rk_live_replace_me pnpm stripe:verify:prod
 Run only the target you just bootstrapped. The verifier checks required env
 keys, product IDs, price amounts and intervals, product-scoped coupons, and
 inactive or missing Stripe objects without printing secrets. For staging and
-production it also checks that the Stripe billing webhook endpoint exists for
+production it also checks that Vercel has the three hosted Stripe runtime keys
+for the requested target, that the Stripe billing webhook endpoint exists for
 `ATLAS_PUBLIC_URL`, is enabled for the canonical billing events, and carries the
 Atlas billing webhook metadata.
 
-For hosted targets, verify Vercel received the billing keys:
+If you want to inspect Vercel's encrypted env metadata directly:
 
 ```bash
 vercel env ls --scope rebuilding-america-project --cwd app

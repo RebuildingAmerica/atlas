@@ -7,6 +7,7 @@ import {
   detectAndLink,
   fetchExistingKeys,
   getVercelScope,
+  hasVercelEnvKey,
   syncEnvVars,
 } from "../../lib/vercel.js";
 import { logSubline, promptConfirm, promptOrExit } from "../../lib/ui.js";
@@ -38,6 +39,7 @@ import {
 } from "./env.js";
 import { ATLAS_COUPONS, ATLAS_PRODUCTS } from "../../config/products.js";
 import { setupCommandForTarget as repoSetupCommandForTarget } from "../../config/setup-manifest.js";
+import type { VercelEnvKey } from "../../lib/vercel.js";
 import type { AtlasProductDefinition } from "../../config/products.js";
 
 interface StripeAccountPrompt {
@@ -397,12 +399,12 @@ export function formatStripeMissingApiKeyGuidance(
 
 export function formatHostedStripeEnvStatus(
   target: Exclude<StripeBootstrapTarget, "local">,
-  existingKeys: ReadonlySet<string>,
+  existingKeys: readonly VercelEnvKey[],
 ): string[] {
   const environment = target === "prod" ? "production" : "preview";
   const environmentLabel = target === "prod" ? "Production" : "Preview";
   const missing = STRIPE_ENV_KEYS.filter(
-    (key) => !existingKeys.has(`${key}:${environment}`),
+    (key) => !hasVercelEnvKey(existingKeys, key, environment),
   );
 
   if (missing.length === 0) {
@@ -415,7 +417,7 @@ export function formatHostedStripeEnvStatus(
     `Vercel ${environmentLabel} Stripe env is missing ${missing.join(", ")}.`,
   ];
   const previewHasStripeEnv = STRIPE_ENV_KEYS.some((key) =>
-    existingKeys.has(`${key}:preview`),
+    hasVercelEnvKey(existingKeys, key, "preview"),
   );
   if (target === "prod" && previewHasStripeEnv) {
     lines.push(

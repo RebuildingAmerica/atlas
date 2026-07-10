@@ -54,14 +54,11 @@ void describe("Stripe bootstrap account review", () => {
 
   void it("explains when Vercel Preview has Stripe env but Production does not", () => {
     assert.deepEqual(
-      formatHostedStripeEnvStatus(
-        "prod",
-        new Set([
-          "STRIPE_API_KEY:preview",
-          "STRIPE_WEBHOOK_SECRET:preview",
-          "STRIPE_ATLAS_CATALOG:preview",
-        ]),
-      ),
+      formatHostedStripeEnvStatus("prod", [
+        { environment: "preview", key: "STRIPE_API_KEY" },
+        { environment: "preview", key: "STRIPE_WEBHOOK_SECRET" },
+        { environment: "preview", key: "STRIPE_ATLAS_CATALOG" },
+      ]),
       [
         "Vercel Production Stripe env is missing STRIPE_API_KEY, STRIPE_WEBHOOK_SECRET, STRIPE_ATLAS_CATALOG.",
         "Vercel Preview Stripe env does not configure Production; run production setup to sync Production explicitly.",

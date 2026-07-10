@@ -15,6 +15,7 @@ import type {
 } from "./verify.js";
 import {
   formatStripeVerificationFollowUp,
+  verifyHostedStripeEnvKeys,
   verifyStripeCatalogSnapshot,
   verifyStripeTargetSnapshot,
 } from "./verify.js";
@@ -241,6 +242,21 @@ void describe("Stripe catalog verifier", () => {
         "staging",
       ).map((issue) => `${issue.code}:${issue.envKey}`),
       ["missing_env:ATLAS_PUBLIC_URL"],
+    );
+  });
+
+  void it("flags hosted Vercel Stripe env missing from the requested target", () => {
+    assert.deepEqual(
+      verifyHostedStripeEnvKeys("prod", [
+        { environment: "preview", key: "STRIPE_API_KEY" },
+        { environment: "preview", key: "STRIPE_WEBHOOK_SECRET" },
+        { environment: "preview", key: "STRIPE_ATLAS_CATALOG" },
+      ]).map((issue) => `${issue.code}:${issue.envKey}`),
+      [
+        "missing_hosted_env:STRIPE_API_KEY",
+        "missing_hosted_env:STRIPE_WEBHOOK_SECRET",
+        "missing_hosted_env:STRIPE_ATLAS_CATALOG",
+      ],
     );
   });
 
