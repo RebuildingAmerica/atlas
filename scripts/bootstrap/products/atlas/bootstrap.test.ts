@@ -85,6 +85,10 @@ void describe("Stripe bootstrap account review", () => {
       ),
     );
     assert.ok(
+      steps.some((step) => step.includes("Connect > Accounts")),
+      "Production key instructions should include account-read permission",
+    );
+    assert.ok(
       steps.some((step) =>
         step.includes("STRIPE_API_KEY=rk_live_... pnpm setup:prod --yes"),
       ),
@@ -120,6 +124,7 @@ void describe("Stripe bootstrap account review", () => {
     assert.match(guidance.message, /Powering an integration you built/);
     assert.match(guidance.message, /website and app code/);
     assert.match(guidance.message, /Atlas Production Billing/);
+    assert.match(guidance.message, /Connect > Accounts/);
     assert.doesNotMatch(message, /Do not/);
     assert.doesNotMatch(guidance.message, /third-party/);
     assert.doesNotMatch(guidance.message, /AI agent/);

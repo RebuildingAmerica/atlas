@@ -81,11 +81,19 @@ STRIPE_API_KEY=rk_live_replace_me pnpm stripe:verify:prod
 ```
 
 To create the live key, open Stripe Dashboard in Live mode, go to **Developers >
-API keys > Restricted keys**, create a key named `Atlas production bootstrap`,
-grant write access for Products, Prices, Coupons, Customers, Checkout Sessions,
-and Webhook Endpoints, reveal the key once, and run setup with that `rk_live_...`
-value. A live secret key also works, but restricted keys are the default
-production path.
+API keys > Restricted keys**, create a key named `Atlas Production Billing`,
+set these permissions, reveal the key once, and run setup with that `rk_live_...`
+value:
+
+- **Read:** Connect > Accounts
+- **Write:** Products, Prices, Coupons, Customers, Checkout Sessions, Webhook
+  Endpoints
+
+`Connect > Accounts: Read` lets bootstrap confirm the friendly Stripe account
+name. If Stripe blocks that metadata lookup, bootstrap asks you to confirm the
+Stripe account ID instead. A live secret key also works, but restricted keys are
+the default production path.
+
 Stripe CLI OAuth keys are enough for local and staging checks, but production
 bootstrap should use a Dashboard-created live API key. Test-mode IDs cannot be
 used in production.

@@ -74,10 +74,13 @@ Before running hosted setup:
 4. For production, open Stripe Dashboard in Live mode, go to **Developers > API
    keys > Restricted keys**, click **Create restricted key**, choose **Powering
    an integration you built**, and name it `Atlas Production Billing`. Use this
-   key for Atlas website and app code. Grant write access for Products, Prices,
-   Coupons, Customers, Checkout Sessions, and Webhook Endpoints. A live secret
-   key (`sk_live_...`) is accepted, but restricted keys are the default
-   production path.
+   key for Atlas website and app code. Set permissions:
+   - **Read:** Connect > Accounts
+   - **Write:** Products, Prices, Coupons, Customers, Checkout Sessions, Webhook
+     Endpoints
+
+   A live secret key (`sk_live_...`) is accepted, but restricted keys are the
+   default production path.
 
 Stripe CLI OAuth keys can work for test-mode local and staging operations.
 Production bootstrap does not fall back to Stripe CLI auth or the root `.env`
@@ -146,11 +149,17 @@ If you do not have the live key yet:
 3. Click **Create restricted key**.
 4. Choose **Powering an integration you built**.
 5. Name the key `Atlas Production Billing`.
-6. Grant write access for Products, Prices, Coupons, Customers, Checkout
-   Sessions, and Webhook Endpoints.
+6. Set permissions:
+   - **Read:** Connect > Accounts
+   - **Write:** Products, Prices, Coupons, Customers, Checkout Sessions, Webhook
+     Endpoints
 7. Reveal the key once, copy the `rk_live_...` value, and keep it out of chat
    and committed files.
 8. Run `STRIPE_API_KEY=rk_live_... pnpm setup:prod --yes`.
+
+`Connect > Accounts: Read` lets bootstrap confirm the friendly Stripe account
+name before it changes billing objects. If Stripe blocks that metadata lookup,
+bootstrap falls back to showing the Stripe account ID for confirmation.
 
 The command writes `.env.production`, creates or verifies the Stripe live-mode
 catalog, creates or verifies the production webhook endpoint, and syncs the
