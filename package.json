@@ -56,7 +56,7 @@
     "stripe:verify:local": "tsx scripts/bootstrap/products/atlas/verify.ts --target local",
     "stripe:verify:staging": "tsx scripts/bootstrap/products/atlas/verify.ts --target staging",
     "stripe:verify:prod": "tsx scripts/bootstrap/products/atlas/verify.ts --target prod --live",
-    "stripe:listen": "stripe listen --skip-verify --events checkout.session.completed,customer.subscription.created,customer.subscription.updated,customer.subscription.deleted --forward-to https://atlas.localhost/api/stripe/webhook",
+    "stripe:listen": "tsx scripts/bootstrap/products/atlas/listen.ts",
     "doctor": "tsx scripts/bootstrap/cold-start.ts --doctor"
   },
   "devDependencies": {

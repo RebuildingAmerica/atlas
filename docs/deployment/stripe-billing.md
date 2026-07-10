@@ -101,8 +101,9 @@ Keep webhook delivery open while testing Checkout locally:
 pnpm stripe:listen
 ```
 
-The script forwards these events to
-`https://atlas.localhost/api/stripe/webhook`:
+The script reads `ATLAS_PUBLIC_URL` from `.env`, defaults to
+`https://atlas.localhost`, and forwards these events to
+`<local-origin>/api/stripe/webhook`:
 
 - `checkout.session.completed`
 - `customer.subscription.created`
@@ -181,7 +182,10 @@ STRIPE_API_KEY=rk_live_replace_me pnpm stripe:verify:prod
 
 Run only the target you just bootstrapped. The verifier checks required env
 keys, product IDs, price amounts and intervals, product-scoped coupons, and
-inactive or missing Stripe objects without printing secrets.
+inactive or missing Stripe objects without printing secrets. For staging and
+production it also checks that the Stripe billing webhook endpoint exists for
+`ATLAS_PUBLIC_URL`, is enabled for the canonical billing events, and carries the
+Atlas billing webhook metadata.
 
 For hosted targets, verify Vercel received the billing keys:
 
@@ -196,6 +200,9 @@ The expected state is:
 - `STRIPE_ATLAS_CATALOG` contains the student four-month Pro price and the
   discount coupon IDs.
 - Every discount coupon applies only to the Atlas Pro Stripe product.
+- The hosted Stripe webhook endpoint points at
+  `<ATLAS_PUBLIC_URL>/api/stripe/webhook` and listens for the canonical billing
+  events.
 - Team checkout never attaches student, creator/journalist, nonprofit, or civic
   tech coupons.
 - Research Pass checkout stays a one-time payment and never grants SSO or SCIM.

@@ -11,10 +11,12 @@ import type {
   StripeCouponSnapshot,
   StripePriceSnapshot,
   StripeProductSnapshot,
+  StripeWebhookEndpointSnapshot,
 } from "./verify.js";
 import {
   formatStripeVerificationFollowUp,
   verifyStripeCatalogSnapshot,
+  verifyStripeTargetSnapshot,
 } from "./verify.js";
 import { stripeLiveRestrictedKeySetupSteps } from "./bootstrap.js";
 
@@ -97,6 +99,25 @@ function matchingSnapshot(env: Map<string, string>): StripeCatalogSnapshot {
     coupons: couponSnapshots(env),
     prices: priceSnapshots(env),
     products: productSnapshots(env),
+    webhookEndpoints: new Map(),
+  };
+}
+
+function billingWebhookSnapshot(
+  overrides: Partial<StripeWebhookEndpointSnapshot> = {},
+): StripeWebhookEndpointSnapshot {
+  return {
+    enabledEvents: [
+      "checkout.session.completed",
+      "customer.subscription.created",
+      "customer.subscription.updated",
+      "customer.subscription.deleted",
+    ],
+    id: "we_123",
+    metadata: { atlas_webhook: "billing" },
+    status: "enabled",
+    url: "https://atlas.rebuildingus.org/api/stripe/webhook",
+    ...overrides,
   };
 }
 
@@ -158,6 +179,68 @@ void describe("Stripe catalog verifier", () => {
     assert.deepEqual(
       verifyStripeCatalogSnapshot(env, snapshot).map((issue) => issue.code),
       ["coupon_product_scope_mismatch"],
+    );
+  });
+
+  void it("accepts the hosted Stripe billing webhook endpoint", () => {
+    const env = completeEnv();
+    const expandedEnv = expandStripeCatalogEnv(env);
+    const snapshot = matchingSnapshot(expandedEnv);
+    snapshot.webhookEndpoints.set(
+      "https://atlas.rebuildingus.org/api/stripe/webhook",
+      billingWebhookSnapshot(),
+    );
+
+    assert.deepEqual(
+      verifyStripeCatalogSnapshot(env, snapshot, {
+        expectedWebhookUrl: "https://atlas.rebuildingus.org/api/stripe/webhook",
+      }),
+      [],
+    );
+  });
+
+  void it("flags a missing hosted Stripe billing webhook endpoint", () => {
+    const env = completeEnv();
+    const expandedEnv = expandStripeCatalogEnv(env);
+
+    assert.deepEqual(
+      verifyStripeCatalogSnapshot(env, matchingSnapshot(expandedEnv), {
+        expectedWebhookUrl: "https://atlas.rebuildingus.org/api/stripe/webhook",
+      }).map((issue) => issue.code),
+      ["missing_webhook_endpoint"],
+    );
+  });
+
+  void it("flags hosted Stripe billing webhook event drift", () => {
+    const env = completeEnv();
+    const expandedEnv = expandStripeCatalogEnv(env);
+    const snapshot = matchingSnapshot(expandedEnv);
+    snapshot.webhookEndpoints.set(
+      "https://atlas.rebuildingus.org/api/stripe/webhook",
+      billingWebhookSnapshot({
+        enabledEvents: ["checkout.session.completed"],
+      }),
+    );
+
+    assert.deepEqual(
+      verifyStripeCatalogSnapshot(env, snapshot, {
+        expectedWebhookUrl: "https://atlas.rebuildingus.org/api/stripe/webhook",
+      }).map((issue) => issue.code),
+      ["webhook_events_mismatch"],
+    );
+  });
+
+  void it("flags hosted Stripe verification without an app origin", () => {
+    const env = completeEnv();
+    const expandedEnv = expandStripeCatalogEnv(env);
+
+    assert.deepEqual(
+      verifyStripeTargetSnapshot(
+        env,
+        matchingSnapshot(expandedEnv),
+        "staging",
+      ).map((issue) => `${issue.code}:${issue.envKey}`),
+      ["missing_env:ATLAS_PUBLIC_URL"],
     );
   });
 

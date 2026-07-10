@@ -10,9 +10,11 @@ import {
   expandStripeCatalogEnv,
   resolveStripeEnvFileTargets,
   resolveStripeMode,
+  stripeWebhookUrlForOrigin,
   validateStripeApiKeyMode,
 } from "./env.js";
 import { stripeLiveRestrictedKeySetupSteps } from "./bootstrap.js";
+import { STRIPE_BILLING_WEBHOOK_EVENTS } from "../../config/products.js";
 import type { StripeBootstrapTarget } from "./env.js";
 import type {
   AtlasCouponDefinition,
@@ -40,7 +42,12 @@ export type StripeCatalogIssueCode =
   | "coupon_percent_mismatch"
   | "coupon_duration_mismatch"
   | "coupon_product_scope_mismatch"
-  | "coupon_metadata_mismatch";
+  | "coupon_metadata_mismatch"
+  | "webhook_url_invalid"
+  | "missing_webhook_endpoint"
+  | "webhook_disabled"
+  | "webhook_events_mismatch"
+  | "webhook_metadata_mismatch";
 
 export interface StripeCatalogVerificationIssue {
   code: StripeCatalogIssueCode;
@@ -77,10 +84,23 @@ export interface StripeCouponSnapshot {
   percentOff: number | null;
 }
 
+export interface StripeWebhookEndpointSnapshot {
+  enabledEvents: readonly string[];
+  id: string;
+  metadata: Stripe.Metadata;
+  status: string;
+  url: string;
+}
+
 export interface StripeCatalogSnapshot {
   coupons: Map<string, StripeCouponSnapshot>;
   prices: Map<string, StripePriceSnapshot>;
   products: Map<string, StripeProductSnapshot>;
+  webhookEndpoints: Map<string, StripeWebhookEndpointSnapshot>;
+}
+
+interface StripeCatalogVerificationOptions {
+  expectedWebhookUrl?: string;
 }
 
 interface VerifyCliArgs {
@@ -109,6 +129,7 @@ function issue(
 export function verifyStripeCatalogSnapshot(
   env: Map<string, string>,
   snapshot: StripeCatalogSnapshot,
+  options: StripeCatalogVerificationOptions = {},
 ): StripeCatalogVerificationIssue[] {
   const issues: StripeCatalogVerificationIssue[] = [];
   const missingEnvKeys = new Set<string>();
@@ -139,6 +160,20 @@ export function verifyStripeCatalogSnapshot(
   verifyProducts(expandedEnv, snapshot, missingEnvKeys, issues);
   verifyPrices(expandedEnv, snapshot, missingEnvKeys, issues);
   verifyCoupons(expandedEnv, snapshot, missingEnvKeys, issues);
+  verifyBillingWebhook(snapshot, options.expectedWebhookUrl, issues);
+  return issues;
+}
+
+export function verifyStripeTargetSnapshot(
+  env: Map<string, string>,
+  snapshot: StripeCatalogSnapshot,
+  target: StripeBootstrapTarget,
+): StripeCatalogVerificationIssue[] {
+  const issues: StripeCatalogVerificationIssue[] = [];
+  const expectedWebhookUrl = expectedWebhookUrlForEnv(env, target, issues);
+  issues.push(
+    ...verifyStripeCatalogSnapshot(env, snapshot, { expectedWebhookUrl }),
+  );
   return issues;
 }
 
@@ -400,6 +435,58 @@ function verifyCoupons(
   }
 }
 
+function verifyBillingWebhook(
+  snapshot: StripeCatalogSnapshot,
+  expectedWebhookUrl: string | undefined,
+  issues: StripeCatalogVerificationIssue[],
+): void {
+  if (!expectedWebhookUrl) {
+    return;
+  }
+
+  const actual = snapshot.webhookEndpoints.get(expectedWebhookUrl);
+  if (!actual) {
+    issues.push(
+      issue(
+        "missing_webhook_endpoint",
+        "STRIPE_WEBHOOK_SECRET",
+        `No enabled Stripe billing webhook endpoint exists for ${expectedWebhookUrl}.`,
+      ),
+    );
+    return;
+  }
+
+  if (actual.status === "disabled") {
+    issues.push(
+      issue(
+        "webhook_disabled",
+        "STRIPE_WEBHOOK_SECRET",
+        `Stripe webhook endpoint ${actual.id} is disabled.`,
+      ),
+    );
+  }
+
+  if (!sameStringSet(actual.enabledEvents, STRIPE_BILLING_WEBHOOK_EVENTS)) {
+    issues.push(
+      issue(
+        "webhook_events_mismatch",
+        "STRIPE_WEBHOOK_SECRET",
+        `Stripe webhook endpoint ${actual.id} must listen for ${STRIPE_BILLING_WEBHOOK_EVENTS.join(", ")}.`,
+      ),
+    );
+  }
+
+  if (actual.metadata.atlas_webhook !== "billing") {
+    issues.push(
+      issue(
+        "webhook_metadata_mismatch",
+        "STRIPE_WEBHOOK_SECRET",
+        `Stripe webhook endpoint ${actual.id} is missing atlas_webhook=billing.`,
+      ),
+    );
+  }
+}
+
 function priceExpectations(): PriceExpectation[] {
   return ATLAS_PRODUCTS.flatMap((product) =>
     product.prices.map((price) => ({ price, product })),
@@ -450,10 +537,12 @@ function sameStringSet(
 async function fetchStripeCatalogSnapshot(
   stripe: Stripe,
   env: Map<string, string>,
+  expectedWebhookUrl?: string,
 ): Promise<StripeCatalogSnapshot> {
   const products = new Map<string, StripeProductSnapshot>();
   const prices = new Map<string, StripePriceSnapshot>();
   const coupons = new Map<string, StripeCouponSnapshot>();
+  const webhookEndpoints = new Map<string, StripeWebhookEndpointSnapshot>();
 
   for (const product of ATLAS_PRODUCTS) {
     const productId = env.get(product.envProductKey)?.trim();
@@ -514,7 +603,23 @@ async function fetchStripeCatalogSnapshot(
     });
   }
 
-  return { coupons, prices, products };
+  if (expectedWebhookUrl) {
+    for await (const endpoint of stripe.webhookEndpoints.list({ limit: 100 })) {
+      if (endpoint.url !== expectedWebhookUrl) {
+        continue;
+      }
+      webhookEndpoints.set(endpoint.url, {
+        enabledEvents: endpoint.enabled_events,
+        id: endpoint.id,
+        metadata: endpoint.metadata,
+        status: endpoint.status,
+        url: endpoint.url,
+      });
+      break;
+    }
+  }
+
+  return { coupons, prices, products, webhookEndpoints };
 }
 
 function parseArgs(argv: string[]): VerifyCliArgs {
@@ -577,21 +682,62 @@ async function verifyEnvFile(
   }
   const mode = resolveStripeMode(target, live);
   const apiKey = env.get("STRIPE_API_KEY")?.trim();
-  const envOnlyIssues = verifyStripeCatalogSnapshot(env, {
+  const emptySnapshot: StripeCatalogSnapshot = {
     coupons: new Map(),
     prices: new Map(),
     products: new Map(),
-  }).filter((verificationIssue) => verificationIssue.code === "missing_env");
+    webhookEndpoints: new Map(),
+  };
+  const envOnlyIssues = verifyStripeTargetSnapshot(
+    env,
+    emptySnapshot,
+    target,
+  ).filter((verificationIssue) => verificationIssue.code === "missing_env");
   if (!apiKey) {
     return envOnlyIssues;
   }
   validateStripeApiKeyMode(apiKey, mode);
+  const expectedWebhookUrl = expectedWebhookUrlForEnv(env, target);
   const stripe = new Stripe(apiKey, { apiVersion: "2026-06-24.dahlia" });
   const snapshot = await fetchStripeCatalogSnapshot(
     stripe,
     expandStripeCatalogEnv(env),
+    expectedWebhookUrl,
   );
-  return verifyStripeCatalogSnapshot(env, snapshot);
+  return verifyStripeTargetSnapshot(env, snapshot, target);
+}
+
+function expectedWebhookUrlForEnv(
+  env: Map<string, string>,
+  target: StripeBootstrapTarget,
+  issues?: StripeCatalogVerificationIssue[],
+): string | undefined {
+  if (target === "local") {
+    return undefined;
+  }
+  const origin = env.get("ATLAS_PUBLIC_URL")?.trim();
+  if (!origin) {
+    issues?.push(
+      issue(
+        "missing_env",
+        "ATLAS_PUBLIC_URL",
+        "ATLAS_PUBLIC_URL is required to verify the hosted Stripe webhook endpoint.",
+      ),
+    );
+    return undefined;
+  }
+  try {
+    return stripeWebhookUrlForOrigin(origin);
+  } catch (error) {
+    issues?.push(
+      issue(
+        "webhook_url_invalid",
+        "ATLAS_PUBLIC_URL",
+        error instanceof Error ? error.message : String(error),
+      ),
+    );
+    return undefined;
+  }
 }
 
 async function main(): Promise<void> {

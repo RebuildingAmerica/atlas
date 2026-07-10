@@ -56,7 +56,9 @@ prices, discount coupons, and webhook endpoints, then write the generated Stripe
 catalog to the correct env files.
 
 Local development uses Stripe test mode. Keep Stripe's webhook forwarder open
-while testing Checkout:
+while testing Checkout. The listener reads the local app origin from `.env`,
+defaults to `https://atlas.localhost`, and forwards Stripe billing events to
+`/api/stripe/webhook`:
 
 ```bash
 pnpm setup
@@ -91,7 +93,8 @@ used in production.
 The catalog is intentionally small: Pro, Team, Team Seat, and Research Pass.
 Discounts are Pro-only coupons. Verified students pay $12.80 every four months;
 independent creators and journalists get 50% off Pro monthly or annual billing.
-Team pricing stays the same for every organization.
+Team pricing stays the same for every organization. The verification commands
+check products, prices, coupon scope, and hosted webhook endpoint drift.
 
 See the repository's
 [`docs/deployment/stripe-billing.md`](https://github.com/RebuildingAmerica/atlas/blob/main/docs/deployment/stripe-billing.md)
