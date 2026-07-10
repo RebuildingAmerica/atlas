@@ -106,6 +106,16 @@ curl "https://registry.modelcontextprotocol.io/v0.1/servers?search=org.rebuildin
 If `pnpm mcp:setup` is unavailable (CI, fresh clone before install, debugging),
 the equivalent manual steps:
 
+Create a Cloudflare token first:
+
+1. Open `https://dash.cloudflare.com/profile/api-tokens`.
+2. In **My Profile > API Tokens**, click **Create Token**.
+3. Under **API token templates**, choose **Edit zone DNS**, then click **Use
+   template**.
+4. Set **Zone Resources** to `Include > Specific zone > rebuildingus.org`.
+5. Continue to summary, create the token, and copy the one-time value into
+   `CLOUDFLARE_API_TOKEN`.
+
 ```bash
 # 1. Generate + persist keypair
 pnpm mcp:gen-publisher-key --force

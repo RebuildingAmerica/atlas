@@ -37,7 +37,7 @@ export async function acquireToken(): Promise<AcquiredToken> {
   const token = (await promptOrExit(
     password({
       message: formatCloudflareTokenPromptMessage({
-        permissionsHint: 'template "Edit zone DNS"',
+        permissionsHint: "Zone > DNS > Edit",
         zoneHint: DOMAIN,
       }),
     }),

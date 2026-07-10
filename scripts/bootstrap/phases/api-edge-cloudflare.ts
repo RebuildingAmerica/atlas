@@ -29,7 +29,7 @@ export async function prepareCloudflareToken(
 ): Promise<AcquiredCloudflareToken> {
   return acquireCloudflareToken({
     permissionsHint:
-      'with Zone DNS Edit, Zone WAF Edit, Transform Rules Edit, and Rulesets Read permissions for the "rebuildingus.org" zone',
+      "Zone > DNS > Edit, Zone > WAF > Edit, Zone > Transform Rules > Edit, and Zone > Rulesets > Edit",
     zoneHint: parentZone(domain),
   });
 }

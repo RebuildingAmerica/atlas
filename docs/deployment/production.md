@@ -417,6 +417,21 @@ Cloudflare CNAME so the Cloud Run certificate can become healthy. `--api-edge`
 then enables the Cloudflare proxy, installs anonymous and credential-present API
 rate-limit rules, and installs the signed origin identity header transform.
 
+When bootstrap asks for a Cloudflare API token:
+
+1. Open `https://dash.cloudflare.com/profile/api-tokens`.
+2. In **My Profile > API Tokens**, click **Create Token**.
+3. Under **API token templates**, choose **Edit zone DNS**, then click **Use
+   template**.
+4. Confirm **Permissions** includes `Zone > DNS > Edit`. For `--api-edge`, add
+   `Zone > WAF > Edit`, `Zone > Transform Rules > Edit`, and
+   `Zone > Rulesets > Edit`.
+5. In **Zone Resources**, choose `Include > Specific zone > rebuildingus.org`.
+6. Leave **Client IP Address Filtering** empty unless this setup needs a locked
+   operator IP.
+7. Click **Continue to summary**, create the token, and paste the token value
+   into bootstrap. Cloudflare shows the value once.
+
 For staging, add `--target staging` to both commands. For read-only checks:
 
 ```bash

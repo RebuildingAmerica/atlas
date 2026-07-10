@@ -73,9 +73,20 @@ pnpm bootstrap --api-edge --doctor
 pnpm bootstrap --api-edge --doctor --target staging
 ```
 
-The Cloudflare token needs DNS edit access and WAF edit access for the
-`rebuildingus.org` zone, plus transform rule/ruleset permissions so bootstrap
-can install the origin identity header rule.
+The Cloudflare token needs DNS edit, WAF edit, Transform Rules edit, and
+Rulesets edit access for the `rebuildingus.org` zone so bootstrap can install
+the proxy, rate-limit rules, and origin identity header rule.
+
+Create that token from Cloudflare **My Profile > API Tokens**:
+
+1. Click **Create Token**.
+2. Choose the **Edit zone DNS** template, then click **Use template**.
+3. Confirm the permission row starts with `Zone > DNS > Edit`.
+4. Add `Zone > WAF > Edit`, `Zone > Transform Rules > Edit`, and
+   `Zone > Rulesets > Edit`.
+5. Set **Zone Resources** to `Include > Specific zone > rebuildingus.org`.
+6. Continue to summary, create the token, and paste the one-time token value
+   into bootstrap.
 
 ## Verify After Deploy
 

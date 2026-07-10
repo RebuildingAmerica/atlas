@@ -44,25 +44,38 @@ export interface CnameVerification {
   observed: string | null;
 }
 
+export interface CloudflareTokenPromptOptions {
+  permissionsHint?: string;
+  zoneHint?: string;
+}
+
+export interface CloudflareTokenAcquireOptions extends CloudflareTokenPromptOptions {
+  envVar?: string;
+}
+
 export function formatCloudflareTokenPromptMessage(
-  opts: {
-    permissionsHint?: string;
-    zoneHint?: string;
-  } = {},
+  opts: CloudflareTokenPromptOptions = {},
 ): string {
-  const permissions = opts.permissionsHint ?? 'template "Edit zone DNS"';
-  const zoneScope = opts.zoneHint
-    ? `Restrict the token to the ${opts.zoneHint} zone.`
-    : "Restrict the token to the Cloudflare zone bootstrap is configuring.";
+  const permissions = opts.permissionsHint ?? "Zone > DNS > Edit";
+  const zoneScope =
+    opts.zoneHint ?? "the Cloudflare zone bootstrap is configuring";
+  const zoneResourceSelection = opts.zoneHint
+    ? `Include > Specific zone > ${opts.zoneHint}`
+    : "Include > Specific zone > the Atlas zone being configured";
   return [
     "Cloudflare API token",
     "",
-    "Create a Cloudflare token for this bootstrap step:",
+    "Create the token in Cloudflare:",
     "1. Open https://dash.cloudflare.com/profile/api-tokens.",
-    "2. Create a custom token or use the closest matching template.",
-    `3. Grant ${permissions}.`,
-    `4. ${zoneScope}`,
-    "5. Create the token and copy the value once Cloudflare shows it.",
+    "2. In My Profile > API Tokens, click Create Token.",
+    '3. Under API token templates, choose "Edit zone DNS", then click Use template.',
+    "4. Confirm the token name is Edit zone DNS.",
+    "5. Confirm Permissions includes:",
+    `   ${permissions}.`,
+    "6. In Zone Resources, set:",
+    `   ${zoneResourceSelection}.`,
+    `7. Leave Client IP Address Filtering empty unless Atlas explicitly needs a locked-down operator IP for ${zoneScope}.`,
+    "8. Click Continue to summary, create the token, and copy the token value. Cloudflare shows it once.",
     "",
     "Paste the token here. Bootstrap uses it only for DNS and edge configuration, then can save it locally with chmod 600 if you choose.",
   ].join("\n");
@@ -88,11 +101,9 @@ export function persistCloudflareToken(token: string): string {
   return PRIMARY_TOKEN_PATH;
 }
 
-export async function acquireCloudflareToken(opts: {
-  envVar?: string;
-  permissionsHint?: string;
-  zoneHint?: string;
-}): Promise<AcquiredCloudflareToken> {
+export async function acquireCloudflareToken(
+  opts: CloudflareTokenAcquireOptions,
+): Promise<AcquiredCloudflareToken> {
   const envName = opts.envVar ?? "CLOUDFLARE_API_TOKEN";
   const fromEnv = process.env[envName]?.trim();
   if (fromEnv) {
