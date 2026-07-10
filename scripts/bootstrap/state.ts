@@ -15,7 +15,7 @@ export interface CapabilityState {
 }
 
 export interface PhaseState {
-  status: "complete" | "partial" | "skipped" | "failed";
+  status: "complete" | "partial" | "skipped" | "failed" | "blocked" | "waiting";
   completedAt: string;
   details?: string;
 }
@@ -37,6 +37,7 @@ export interface PhaseResult {
   success: boolean;
   followUpItems: string[];
   details?: string;
+  status?: PhaseState["status"];
 }
 
 const STATE_VERSION = 1;

@@ -13,7 +13,10 @@ import {
   ensureProductionRoutingConfig,
 } from "./env-routing.js";
 
-const AUTO_GENERATED_SECRETS = new Set(["ATLAS_AUTH_INTERNAL_SECRET"]);
+const AUTO_GENERATED_SECRETS = new Set([
+  "ATLAS_AUTH_INTERNAL_SECRET",
+  "ATLAS_EDGE_ORIGIN_SECRET",
+]);
 
 interface EnvKeyConfig {
   prompt: string;
@@ -314,7 +317,11 @@ export async function runEnvPhase(
     logSubline(`${updates.size} value${updates.size === 1 ? "" : "s"} updated`);
 
     // Propagate shared keys to API and app env files
-    const sharedKeys = ["ATLAS_AUTH_INTERNAL_SECRET", "ANTHROPIC_API_KEY"];
+    const sharedKeys = [
+      "ATLAS_AUTH_INTERNAL_SECRET",
+      "ATLAS_EDGE_ORIGIN_SECRET",
+      "ANTHROPIC_API_KEY",
+    ];
     for (const envSpec of envFiles.slice(1)) {
       const targetPath = path.join(projectRoot, envSpec.target);
       if (!existsSync(targetPath)) continue;

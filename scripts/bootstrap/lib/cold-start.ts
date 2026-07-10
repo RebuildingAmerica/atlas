@@ -99,6 +99,32 @@ export function recomputeCommandReadiness(state: ReadinessState): void {
     state.commandReadiness[group as keyof typeof state.commandReadiness] =
       allReady ? "ready" : "blocked";
   }
+
+  if (
+    phaseHasBlockingStatus(state, [
+      "infra",
+      "database",
+      "deploy",
+      "api-domain",
+      "api-edge",
+    ])
+  ) {
+    state.commandReadiness.deploy = "blocked";
+  }
+
+  if (phaseHasBlockingStatus(state, ["product"])) {
+    state.commandReadiness.product = "blocked";
+  }
+}
+
+function phaseHasBlockingStatus(
+  state: ReadinessState,
+  phaseIds: readonly PhaseId[],
+): boolean {
+  return phaseIds.some((phaseId) => {
+    const status = state.phases[phaseId]?.status;
+    return status === "blocked" || status === "failed";
+  });
 }
 
 export function describePhase(phaseName: string): string {
@@ -167,7 +193,11 @@ export function printSummary(
         ? pc.green("complete")
         : phaseState.status === "failed"
           ? pc.red("failed")
-          : pc.yellow(phaseState.status);
+          : phaseState.status === "blocked"
+            ? pc.red("blocked")
+            : phaseState.status === "waiting"
+              ? pc.yellow("waiting")
+              : pc.yellow(phaseState.status);
     lines.push(`  ${phase}: ${icon}`);
   }
   if (attemptedPhases?.size === 0) {
@@ -175,4 +205,57 @@ export function printSummary(
   }
 
   note(lines.join("\n"), "Bootstrap Status");
+}
+
+type FollowUpSeverity = "blocking" | "waiting" | "optional";
+
+interface FollowUpGroup {
+  title: string;
+  severity: FollowUpSeverity;
+  items: string[];
+}
+
+export function formatFollowUpNote(items: readonly string[]): string {
+  const groups: FollowUpGroup[] = [
+    { title: "Blocking", severity: "blocking", items: [] },
+    { title: "Waiting", severity: "waiting", items: [] },
+    { title: "Optional", severity: "optional", items: [] },
+  ];
+
+  for (const item of items) {
+    const severity = classifyFollowUp(item);
+    groups.find((group) => group.severity === severity)?.items.push(item);
+  }
+
+  return groups
+    .filter((group) => group.items.length > 0)
+    .flatMap((group) => [
+      pc.bold(group.title),
+      ...group.items.map((item) => `- ${item}`),
+    ])
+    .join("\n");
+}
+
+function classifyFollowUp(item: string): FollowUpSeverity {
+  if (
+    /cert provisioning|try again|re-run --api-domain|still in progress/i.test(
+      item,
+    )
+  ) {
+    return "waiting";
+  }
+  if (/mintlify|docs/i.test(item)) {
+    return "optional";
+  }
+  return "blocking";
+}
+
+export function bootstrapOutroMessage(options: {
+  doctorMode: boolean;
+  hasFollowUps: boolean;
+}): string {
+  if (options.doctorMode) return "Doctor check complete.";
+  return options.hasFollowUps
+    ? "Atlas bootstrap finished with follow-ups."
+    : "Atlas bootstrap ready.";
 }

@@ -3,9 +3,12 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, it } from "node:test";
 import {
+  bootstrapOutroMessage,
   describePhase,
+  formatFollowUpNote,
   parseArgs,
   phaseEntriesForSummary,
+  recomputeCommandReadiness,
   shouldStopAfterAuthFailure,
 } from "./cold-start.js";
 import { renderSetupGuide } from "../config/setup-manifest.js";
@@ -143,6 +146,57 @@ void describe("Atlas bootstrap argument parsing", () => {
         ([phase]) => phase,
       ),
       ["env", "product"],
+    );
+  });
+
+  void it("marks deploy command readiness blocked after a blocked deploy phase", () => {
+    const state: ReadinessState = {
+      version: 1,
+      generatedAt: "2026-07-09T00:00:00.000Z",
+      capabilities: {},
+      commandReadiness: {
+        build: "ready",
+        deploy: "ready",
+        dev: "ready",
+        product: "ready",
+        test: "ready",
+      },
+      phases: {
+        deploy: {
+          completedAt: "2026-07-09T00:00:00.000Z",
+          status: "blocked",
+        },
+      },
+    };
+
+    recomputeCommandReadiness(state);
+
+    assert.equal(state.commandReadiness.deploy, "blocked");
+  });
+
+  void it("groups follow-up items by urgency instead of dumping a flat list", () => {
+    const note = formatFollowUpNote([
+      "In Mintlify, enable 'Host at /docs' for the Atlas domain.",
+      "Stripe live mode requires a sk_live_ or rk_live_ API key.",
+      "Cert provisioning still in progress for atlas-api.rebuildingus.org.",
+      "Start Docker Desktop, wait for `docker info`, then run `pnpm bootstrap --resume`.",
+    ]);
+
+    assert.match(note, /Blocking/);
+    assert.match(note, /Waiting/);
+    assert.match(note, /Optional/);
+    assert.ok(note.indexOf("Blocking") < note.indexOf("Waiting"));
+    assert.ok(note.indexOf("Waiting") < note.indexOf("Optional"));
+  });
+
+  void it("does not call bootstrap complete when follow-ups remain", () => {
+    assert.equal(
+      bootstrapOutroMessage({ doctorMode: false, hasFollowUps: true }),
+      "Atlas bootstrap finished with follow-ups.",
+    );
+    assert.equal(
+      bootstrapOutroMessage({ doctorMode: false, hasFollowUps: false }),
+      "Atlas bootstrap ready.",
     );
   });
 });

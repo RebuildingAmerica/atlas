@@ -4,12 +4,19 @@ import path from "node:path";
 import { log, spinner } from "@clack/prompts";
 import pc from "picocolors";
 import type { PhaseResult } from "../state.js";
-import { runCommand, commandOutput } from "../lib/shell.js";
+import { runCommand, commandOutput, type CommandResult } from "../lib/shell.js";
 import { parseEnvFile } from "../lib/env-file.js";
 import { promptConfirm, logSubline } from "../lib/ui.js";
 import type { ReadinessState } from "../state.js";
 
 const REPO_NAME = "atlas-images";
+
+type BuildMode = "local-docker" | "cloud-build";
+
+export interface DockerPreflight {
+  status: "ready" | "blocked";
+  reason?: "daemon-unavailable" | "unknown";
+}
 
 interface DeployConfig {
   projectId: string;
@@ -21,6 +28,7 @@ interface DeployConfig {
   authInternalSecret: string;
   authApiKeyIntrospectionUrl: string;
   authMembershipUrl: string;
+  edgeOriginSecret: string;
   publicUrl: string;
   authJwtAudiences: string;
   allowedEmails: string;
@@ -54,7 +62,17 @@ export async function runDeployPhase(
     log.info(
       "Skipped initial deploy. Push to main to trigger automated deployment.",
     );
-    return { success: true, followUpItems: [] };
+    return { success: true, status: "skipped", followUpItems: [] };
+  }
+
+  const dockerPreflight = classifyDockerPreflight(runCommand("docker info"));
+  const buildMode = await resolveBuildMode(dockerPreflight);
+  if (!buildMode) {
+    return {
+      success: false,
+      status: "blocked",
+      followUpItems: [formatDockerDaemonRecovery()],
+    };
   }
 
   // ── Read infra values ─────────────────────────────────────────────────────
@@ -67,25 +85,27 @@ export async function runDeployPhase(
     followUpItems.push(
       "Complete infrastructure and database setup before deploying",
     );
-    return { success: false, followUpItems };
+    return { success: false, status: "blocked", followUpItems };
   }
 
   // ── Configure Docker auth ─────────────────────────────────────────────────
-  const s = spinner();
-  s.start("Configuring Docker for Artifact Registry...");
+  if (buildMode === "local-docker") {
+    const s = spinner();
+    s.start("Configuring Docker for Artifact Registry...");
 
-  const dockerAuthResult = runCommand(
-    `gcloud auth configure-docker "${config.region}-docker.pkg.dev" --quiet`,
-  );
+    const dockerAuthResult = runCommand(
+      `gcloud auth configure-docker "${config.region}-docker.pkg.dev" --quiet`,
+    );
 
-  if (!dockerAuthResult.ok) {
-    s.stop("Failed to configure Docker authentication");
-    log.error(commandOutput(dockerAuthResult));
-    followUpItems.push("Configure Docker auth for Artifact Registry");
-    return { success: false, followUpItems };
+    if (!dockerAuthResult.ok) {
+      s.stop("Failed to configure Docker authentication");
+      log.error(commandOutput(dockerAuthResult));
+      followUpItems.push("Configure Docker auth for Artifact Registry");
+      return { success: false, status: "blocked", followUpItems };
+    }
+
+    s.stop("Docker configured for Artifact Registry");
   }
-
-  s.stop("Docker configured for Artifact Registry");
 
   // ── Build & Push API image ────────────────────────────────────────────────
   const apiImage = `${config.imageBase}/atlas-api:initial`;
@@ -94,11 +114,12 @@ export async function runDeployPhase(
     "atlas-api",
     path.join(projectRoot, "api"),
     apiImage,
+    buildMode,
     followUpItems,
   );
 
   if (!apiBuilt) {
-    return { success: false, followUpItems };
+    return { success: false, status: "failed", followUpItems };
   }
 
   // ── Deploy atlas-api ──────────────────────────────────────────────────────
@@ -122,6 +143,7 @@ export async function runDeployPhase(
         ATLAS_AUTH_INTERNAL_SECRET: config.authInternalSecret,
         ATLAS_AUTH_API_KEY_INTROSPECTION_URL: config.authApiKeyIntrospectionUrl,
         ATLAS_AUTH_MEMBERSHIP_URL: config.authMembershipUrl,
+        ATLAS_EDGE_ORIGIN_SECRET: config.edgeOriginSecret,
         ATLAS_PUBLIC_URL: config.publicUrl,
         ATLAS_AUTH_JWT_AUDIENCES: config.authJwtAudiences,
       },
@@ -130,7 +152,7 @@ export async function runDeployPhase(
   );
 
   if (!apiUrl) {
-    return { success: false, followUpItems };
+    return { success: false, status: "failed", followUpItems };
   }
 
   // ── Summary ───────────────────────────────────────────────────────────────
@@ -145,6 +167,42 @@ export async function runDeployPhase(
   return { success: followUpItems.length === 0, followUpItems };
 }
 
+export function classifyDockerPreflight(
+  result: CommandResult,
+): DockerPreflight {
+  if (result.ok) return { status: "ready" };
+  const output = commandOutput(result);
+  if (/docker API|docker\.sock|daemon|Cannot connect/i.test(output)) {
+    return { status: "blocked", reason: "daemon-unavailable" };
+  }
+  return { status: "blocked", reason: "unknown" };
+}
+
+export function formatDockerDaemonRecovery(): string {
+  return [
+    "Start Docker Desktop, wait until `docker info` succeeds, then run `pnpm bootstrap --resume`.",
+    "If local Docker is intentionally unavailable, choose the Google Cloud Build option when bootstrap asks how to build atlas-api.",
+  ].join("\n");
+}
+
+async function resolveBuildMode(
+  dockerPreflight: DockerPreflight,
+): Promise<BuildMode | undefined> {
+  if (dockerPreflight.status === "ready") return "local-docker";
+
+  const useCloudBuild = await promptConfirm(
+    [
+      "Docker is installed, but the Docker daemon is not running.",
+      "",
+      "Bootstrap can build atlas-api with Google Cloud Build instead of local Docker.",
+      "Choose Yes to use Cloud Build for this deploy.",
+      "Choose No to stop deployment and resume after Docker Desktop is running.",
+    ].join("\n"),
+    true,
+  );
+  return useCloudBuild ? "cloud-build" : undefined;
+}
+
 // ── Build & Push ──────────────────────────────────────────────────────────────
 
 function buildAndPushImage(
@@ -152,8 +210,18 @@ function buildAndPushImage(
   serviceName: string,
   contextDir: string,
   imageTag: string,
+  buildMode: BuildMode,
   followUpItems: string[],
 ): boolean {
+  if (buildMode === "cloud-build") {
+    return buildAndPushImageWithCloudBuild(
+      serviceName,
+      contextDir,
+      imageTag,
+      followUpItems,
+    );
+  }
+
   // Build
   const buildSpinner = spinner();
   buildSpinner.start(`Building ${serviceName}...`);
@@ -185,6 +253,30 @@ function buildAndPushImage(
   }
 
   pushSpinner.stop(`${serviceName} image pushed`);
+  return true;
+}
+
+function buildAndPushImageWithCloudBuild(
+  serviceName: string,
+  contextDir: string,
+  imageTag: string,
+  followUpItems: string[],
+): boolean {
+  const s = spinner();
+  s.start(`Building ${serviceName} with Google Cloud Build...`);
+
+  const result = runCommand(
+    `gcloud builds submit "${contextDir}" --tag="${imageTag}" --quiet`,
+  );
+
+  if (!result.ok) {
+    s.stop(`Failed to build ${serviceName} with Google Cloud Build`);
+    log.error(commandOutput(result));
+    followUpItems.push(`Build ${serviceName} image with Google Cloud Build`);
+    return false;
+  }
+
+  s.stop(`${serviceName} image built and pushed with Google Cloud Build`);
   return true;
 }
 
@@ -287,6 +379,7 @@ function readDeployConfig(projectRoot: string): DeployConfig | undefined {
     "ATLAS_AUTH_API_KEY_INTROSPECTION_URL",
   );
   const authMembershipUrl = resolve("ATLAS_AUTH_MEMBERSHIP_URL");
+  const edgeOriginSecret = resolve("ATLAS_EDGE_ORIGIN_SECRET");
   const publicUrl = resolve("ATLAS_PUBLIC_URL");
   const authJwtAudiences = resolve("ATLAS_AUTH_JWT_AUDIENCES");
 
@@ -325,6 +418,11 @@ function readDeployConfig(projectRoot: string): DeployConfig | undefined {
     return undefined;
   }
 
+  if (!edgeOriginSecret) {
+    log.error("ATLAS_EDGE_ORIGIN_SECRET not found in env files.");
+    return undefined;
+  }
+
   const imageBase = `${region}-docker.pkg.dev/${projectId}/${REPO_NAME}`;
 
   return {
@@ -337,6 +435,7 @@ function readDeployConfig(projectRoot: string): DeployConfig | undefined {
     authInternalSecret,
     authApiKeyIntrospectionUrl,
     authMembershipUrl,
+    edgeOriginSecret,
     publicUrl: publicUrl || "https://atlas.rebuildingus.org",
     authJwtAudiences,
     allowedEmails: resolve("ATLAS_AUTH_ALLOWED_EMAILS"),

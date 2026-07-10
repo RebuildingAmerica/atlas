@@ -51,7 +51,7 @@ export async function runApiDomainPhase(
     followUpItems.push(
       "Install gcloud CLI to manage Cloud Run domain mappings",
     );
-    return { success: false, followUpItems };
+    return { success: false, status: "blocked", followUpItems };
   }
 
   const config = readConfig(projectRoot, target);
@@ -60,7 +60,7 @@ export async function runApiDomainPhase(
     followUpItems.push(
       "Set GCP_PROJECT_ID in .env / .env.production before running --api-domain",
     );
-    return { success: false, followUpItems };
+    return { success: false, status: "blocked", followUpItems };
   }
 
   log.step(
@@ -80,7 +80,7 @@ export async function runApiDomainPhase(
         `Provision the production service first: pnpm bootstrap (deploy phase)`,
       );
     }
-    return { success: false, followUpItems };
+    return { success: false, status: "blocked", followUpItems };
   }
 
   if (doctorMode) {
@@ -101,14 +101,14 @@ export async function runApiDomainPhase(
     followUpItems.push(
       `Add CNAME ${config.domain} → ${CLOUD_RUN_CNAME_TARGET} in Cloudflare and Cloud Run mapping for ${config.service}.`,
     );
-    return { success: true, followUpItems };
+    return { success: true, status: "skipped", followUpItems };
   }
 
   // 1. Cloudflare CNAME first — Cloud Run cert challenge succeeds only when
   //    DNS already resolves. Mapping-then-DNS triggers a 1-hour retry hold.
   const dnsResult = await ensureCloudflareCname(config, followUpItems);
   if (!dnsResult.ok) {
-    return { success: false, followUpItems };
+    return { success: false, status: "blocked", followUpItems };
   }
 
   await waitForDns(config.domain);
@@ -118,9 +118,10 @@ export async function runApiDomainPhase(
   const mappingResult = ensureCloudRunMapping(config);
   if (!mappingResult.ok) {
     followUpItems.push(...mappingResult.followUpItems);
-    return { success: false, followUpItems };
+    return { success: false, status: "blocked", followUpItems };
   }
 
+  const certFollowUpStart = followUpItems.length;
   await waitForCertReadiness(config, followUpItems);
 
   log.success(
@@ -134,7 +135,11 @@ export async function runApiDomainPhase(
     );
   }
 
-  return { success: true, followUpItems };
+  return {
+    success: true,
+    status: followUpItems.length > certFollowUpStart ? "waiting" : "complete",
+    followUpItems,
+  };
 }
 
 // ── Cloudflare CNAME ─────────────────────────────────────────────────────────

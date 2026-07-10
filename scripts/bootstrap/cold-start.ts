@@ -34,8 +34,10 @@ import { intro, log, note, outro } from "@clack/prompts";
 import pc from "picocolors";
 import { detectOs } from "./lib/os.js";
 import {
+  bootstrapOutroMessage,
   confirmResumeSkip,
   describePhase,
+  formatFollowUpNote,
   parseArgs,
   printSummary,
   recomputeCommandReadiness,
@@ -44,7 +46,7 @@ import {
 } from "./lib/cold-start.js";
 import { runCommand } from "./lib/shell.js";
 import { loadReadiness, markPhase, saveReadiness } from "./state.js";
-import type { PhaseId, PhaseState } from "./state.js";
+import type { PhaseId, PhaseResult, PhaseState } from "./state.js";
 import { runInstallPhase } from "./phases/install.js";
 import { runAuthPhase } from "./phases/auth.js";
 import { runEnvPhase } from "./phases/env.js";
@@ -68,6 +70,13 @@ function phaseStatus(
     return "complete";
   }
   return doctorMode ? "partial" : "failed";
+}
+
+function resultPhaseStatus(
+  result: PhaseResult,
+  doctorMode: boolean,
+): PhaseState["status"] {
+  return result.status ?? phaseStatus(result.success, doctorMode);
 }
 
 async function main(): Promise<void> {
@@ -110,10 +119,14 @@ async function main(): Promise<void> {
     log.info(describePhase("MCP Registry Publisher"));
     attemptedPhases.add("mcp-registry");
     const result = await runMcpRegistryPhase(projectRoot, args.doctorMode);
-    markPhase(state, "mcp-registry", result.success ? "complete" : "partial");
+    markPhase(
+      state,
+      "mcp-registry",
+      result.status ?? (result.success ? "complete" : "partial"),
+    );
     saveReadiness(projectRoot, state);
     if (result.followUpItems.length > 0) {
-      note(result.followUpItems.join("\n"), "Follow-up");
+      note(formatFollowUpNote(result.followUpItems), "Follow-up");
     }
     outro(
       result.success
@@ -129,10 +142,14 @@ async function main(): Promise<void> {
     log.info(describePhase("CI Remote Cache"));
     attemptedPhases.add("ci-cache");
     const result = await runCiCachePhase(projectRoot, args.doctorMode);
-    markPhase(state, "ci-cache", result.success ? "complete" : "partial");
+    markPhase(
+      state,
+      "ci-cache",
+      result.status ?? (result.success ? "complete" : "partial"),
+    );
     saveReadiness(projectRoot, state);
     if (result.followUpItems.length > 0) {
-      note(result.followUpItems.join("\n"), "Follow-up");
+      note(formatFollowUpNote(result.followUpItems), "Follow-up");
     }
     outro(
       result.success
@@ -154,10 +171,14 @@ async function main(): Promise<void> {
       args.doctorMode,
       args.apiDomainTarget,
     );
-    markPhase(state, "api-domain", result.success ? "complete" : "partial");
+    markPhase(
+      state,
+      "api-domain",
+      result.status ?? (result.success ? "complete" : "partial"),
+    );
     saveReadiness(projectRoot, state);
     if (result.followUpItems.length > 0) {
-      note(result.followUpItems.join("\n"), "Follow-up");
+      note(formatFollowUpNote(result.followUpItems), "Follow-up");
     }
     outro(
       result.success
@@ -179,10 +200,14 @@ async function main(): Promise<void> {
       args.doctorMode,
       args.apiDomainTarget,
     );
-    markPhase(state, "api-edge", result.success ? "complete" : "partial");
+    markPhase(
+      state,
+      "api-edge",
+      result.status ?? (result.success ? "complete" : "partial"),
+    );
     saveReadiness(projectRoot, state);
     if (result.followUpItems.length > 0) {
-      note(result.followUpItems.join("\n"), "Follow-up");
+      note(formatFollowUpNote(result.followUpItems), "Follow-up");
     }
     outro(
       result.success
@@ -205,10 +230,10 @@ async function main(): Promise<void> {
       args.stripeTarget,
       args.assumeYes,
     );
-    markPhase(state, "product", phaseStatus(result.success, args.doctorMode));
+    markPhase(state, "product", resultPhaseStatus(result, args.doctorMode));
     saveReadiness(projectRoot, state);
     if (result.followUpItems.length > 0) {
-      note(result.followUpItems.join("\n"), "Follow-up");
+      note(formatFollowUpNote(result.followUpItems), "Follow-up");
     }
     outro(result.success ? "Product sync complete." : "Stripe setup pending.");
     return;
@@ -228,7 +253,11 @@ async function main(): Promise<void> {
       args.doctorMode,
       args.localOnly,
     );
-    markPhase(state, "install", result.success ? "complete" : "partial");
+    markPhase(
+      state,
+      "install",
+      result.status ?? (result.success ? "complete" : "partial"),
+    );
     saveReadiness(projectRoot, state);
     allFollowUp.push(...result.followUpItems);
   }
@@ -263,7 +292,11 @@ async function main(): Promise<void> {
       args.localOnly,
       args.assumeYes,
     );
-    markPhase(state, "auth", result.success ? "complete" : "partial");
+    markPhase(
+      state,
+      "auth",
+      result.status ?? (result.success ? "complete" : "partial"),
+    );
     saveReadiness(projectRoot, state);
     allFollowUp.push(...result.followUpItems);
     if (shouldStopAfterAuthFailure(args.doctorMode, result.success)) {
@@ -271,7 +304,7 @@ async function main(): Promise<void> {
       saveReadiness(projectRoot, state);
       printSummary(state, attemptedPhases);
       if (allFollowUp.length > 0) {
-        note(allFollowUp.join("\n"), "Follow-up Items");
+        note(formatFollowUpNote(allFollowUp), "Follow-up Items");
       }
       outro("Bootstrap stopped before environment setup.");
       return;
@@ -293,7 +326,11 @@ async function main(): Promise<void> {
       !args.localOnly,
       args.assumeYes,
     );
-    markPhase(state, "env", result.success ? "complete" : "partial");
+    markPhase(
+      state,
+      "env",
+      result.status ?? (result.success ? "complete" : "partial"),
+    );
     saveReadiness(projectRoot, state);
     allFollowUp.push(...result.followUpItems);
   }
@@ -310,7 +347,7 @@ async function main(): Promise<void> {
       "local",
       args.assumeYes,
     );
-    markPhase(state, "product", phaseStatus(result.success, args.doctorMode));
+    markPhase(state, "product", resultPhaseStatus(result, args.doctorMode));
     saveReadiness(projectRoot, state);
     allFollowUp.push(...result.followUpItems);
   }
@@ -325,7 +362,7 @@ async function main(): Promise<void> {
       log.info(describePhase("Cloud Infrastructure"));
       attemptedPhases.add("infra");
       const result = await runInfraPhase(projectRoot, state, args.doctorMode);
-      markPhase(state, "infra", result.success ? "complete" : "failed");
+      markPhase(state, "infra", resultPhaseStatus(result, args.doctorMode));
       saveReadiness(projectRoot, state);
       allFollowUp.push(...result.followUpItems);
     }
@@ -343,7 +380,7 @@ async function main(): Promise<void> {
         state,
         args.doctorMode,
       );
-      markPhase(state, "database", result.success ? "complete" : "failed");
+      markPhase(state, "database", resultPhaseStatus(result, args.doctorMode));
       saveReadiness(projectRoot, state);
       allFollowUp.push(...result.followUpItems);
     }
@@ -364,7 +401,7 @@ async function main(): Promise<void> {
         args.stripeTarget,
         args.assumeYes,
       );
-      markPhase(state, "product", phaseStatus(result.success, args.doctorMode));
+      markPhase(state, "product", resultPhaseStatus(result, args.doctorMode));
       saveReadiness(projectRoot, state);
       allFollowUp.push(...result.followUpItems);
     }
@@ -378,7 +415,11 @@ async function main(): Promise<void> {
       log.info(describePhase("MCP Registry Publisher"));
       attemptedPhases.add("mcp-registry");
       const result = await runMcpRegistryPhase(projectRoot, args.doctorMode);
-      markPhase(state, "mcp-registry", result.success ? "complete" : "partial");
+      markPhase(
+        state,
+        "mcp-registry",
+        result.status ?? (result.success ? "complete" : "partial"),
+      );
       saveReadiness(projectRoot, state);
       allFollowUp.push(...result.followUpItems);
     }
@@ -392,7 +433,7 @@ async function main(): Promise<void> {
       log.info(describePhase("Initial Deployment"));
       attemptedPhases.add("deploy");
       const result = await runDeployPhase(projectRoot, state, args.doctorMode);
-      markPhase(state, "deploy", result.success ? "complete" : "skipped");
+      markPhase(state, "deploy", resultPhaseStatus(result, args.doctorMode));
       saveReadiness(projectRoot, state);
       allFollowUp.push(...result.followUpItems);
     }
@@ -406,7 +447,11 @@ async function main(): Promise<void> {
       log.info(describePhase("CI Remote Cache"));
       attemptedPhases.add("ci-cache");
       const result = await runCiCachePhase(projectRoot, args.doctorMode);
-      markPhase(state, "ci-cache", result.success ? "complete" : "partial");
+      markPhase(
+        state,
+        "ci-cache",
+        result.status ?? (result.success ? "complete" : "partial"),
+      );
       saveReadiness(projectRoot, state);
       allFollowUp.push(...result.followUpItems);
     }
@@ -420,7 +465,11 @@ async function main(): Promise<void> {
       log.info(describePhase("API Canonical Domain"));
       attemptedPhases.add("api-domain");
       const result = await runApiDomainPhase(projectRoot, args.doctorMode);
-      markPhase(state, "api-domain", result.success ? "complete" : "partial");
+      markPhase(
+        state,
+        "api-domain",
+        result.status ?? (result.success ? "complete" : "partial"),
+      );
       saveReadiness(projectRoot, state);
       allFollowUp.push(...result.followUpItems);
     }
@@ -434,7 +483,11 @@ async function main(): Promise<void> {
       log.info(describePhase("API Edge Protection"));
       attemptedPhases.add("api-edge");
       const result = await runApiEdgePhase(projectRoot, args.doctorMode);
-      markPhase(state, "api-edge", result.success ? "complete" : "partial");
+      markPhase(
+        state,
+        "api-edge",
+        result.status ?? (result.success ? "complete" : "partial"),
+      );
       saveReadiness(projectRoot, state);
       allFollowUp.push(...result.followUpItems);
     }
@@ -446,13 +499,15 @@ async function main(): Promise<void> {
   printSummary(state, attemptedPhases);
 
   if (allFollowUp.length > 0) {
-    note(allFollowUp.join("\n"), "Follow-up Items");
+    note(formatFollowUpNote(allFollowUp), "Follow-up Items");
   }
 
+  const outroMessage = bootstrapOutroMessage({
+    doctorMode: args.doctorMode,
+    hasFollowUps: allFollowUp.length > 0,
+  });
   outro(
-    args.doctorMode
-      ? "Doctor check complete."
-      : pc.green("Atlas bootstrap complete."),
+    allFollowUp.length > 0 ? pc.yellow(outroMessage) : pc.green(outroMessage),
   );
 }
 

@@ -30,7 +30,7 @@ export async function runApiEdgePhase(
     followUpItems.push(
       "Set GCP_PROJECT_ID in .env / .env.production before running --api-edge",
     );
-    return { success: false, followUpItems };
+    return { success: false, status: "blocked", followUpItems };
   }
   if (!config.edgeOriginSecret) {
     log.error(
@@ -39,7 +39,7 @@ export async function runApiEdgePhase(
     followUpItems.push(
       "Set ATLAS_EDGE_ORIGIN_SECRET to a long random secret in .env / .env.production and in the hosted API environment.",
     );
-    return { success: false, followUpItems };
+    return { success: false, status: "blocked", followUpItems };
   }
 
   log.step(
@@ -55,7 +55,7 @@ export async function runApiEdgePhase(
     followUpItems.push(
       `Verify the Cloudflare Account API token is scoped to ${config.domain}'s parent zone with DNS & Zones > DNS > Edit, DNS & Zones > Zone > Read, App Security > Zone WAF Rules > Edit, and Rules & Configuration > Zone Transform Rules > Edit`,
     );
-    return { success: false, followUpItems };
+    return { success: false, status: "blocked", followUpItems };
   }
 
   if (doctorMode) {
@@ -78,7 +78,7 @@ export async function runApiEdgePhase(
         config.target === "staging" ? " --target staging" : ""
       }\` when ready to enable Cloudflare edge protection.`,
     );
-    return { success: true, followUpItems };
+    return { success: true, status: "skipped", followUpItems };
   }
 
   const preflight = preflightCanonicalDomain(config);

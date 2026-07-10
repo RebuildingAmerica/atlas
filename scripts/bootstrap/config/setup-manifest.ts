@@ -100,6 +100,16 @@ export const SETUP_VALUE_MANIFEST: SetupValueManifestItem[] = [
       "Bootstrap generates this shared app/API secret when it is missing.",
   },
   {
+    key: "ATLAS_EDGE_ORIGIN_SECRET",
+    label: "API edge origin secret",
+    targets: ["staging", "prod"],
+    required: true,
+    source: "bootstrap",
+    destinations: [".env.staging", ".env.production", "api/.env"],
+    instructions:
+      "Bootstrap generates this Cloudflare-to-API origin secret when it is missing.",
+  },
+  {
     key: "ATLAS_EMAIL_RESEND_API_KEY",
     label: "Resend API key",
     targets: ["staging", "prod"],

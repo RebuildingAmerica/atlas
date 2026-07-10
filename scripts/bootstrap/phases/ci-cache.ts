@@ -5,6 +5,7 @@ import type { PhaseResult } from "../state.js";
 import { commandOutput, runCommand } from "../lib/shell.js";
 import { logSubline, promptConfirm, promptOrExit } from "../lib/ui.js";
 import { getVercelScope, isVercelLinked } from "../lib/vercel.js";
+import type { PhaseState } from "../state.js";
 
 const SECRET_NAME = "TURBO_TOKEN"; // pragma: allowlist secret
 const VAR_NAME = "TURBO_TEAM";
@@ -37,6 +38,27 @@ export function formatTurboTeamPromptMessage(): string {
   ].join("\n");
 }
 
+export function ciCacheSecretStatusAfterMintFailure(
+  hasExistingSecret: boolean,
+): PhaseState["status"] {
+  return hasExistingSecret ? "complete" : "blocked";
+}
+
+export function formatVercelTokenMintFailureFollowUp(
+  hasExistingSecret: boolean,
+): string {
+  return [
+    ...(hasExistingSecret
+      ? [
+          "Existing TURBO_TOKEN was kept, so CI cache remains wired with the current token.",
+        ]
+      : []),
+    "Create a Vercel token named atlas-ci-remote-cache in the Vercel dashboard or with a Vercel login that can create tokens.",
+    `Then run: gh secret set ${SECRET_NAME} --repo RebuildingAmerica/atlas`,
+    "Re-run: pnpm bootstrap --ci-cache --resume",
+  ].join("\n");
+}
+
 export async function runCiCachePhase(
   projectRoot: string,
   doctorMode: boolean,
@@ -50,13 +72,13 @@ export async function runCiCachePhase(
     followUpItems.push(
       "Install GitHub CLI to wire TURBO_TOKEN/TURBO_TEAM into Actions",
     );
-    return { success: false, followUpItems };
+    return { success: false, status: "blocked", followUpItems };
   }
 
   if (!runCommand("gh auth status 2>&1 | grep -q 'Logged in'").ok) {
     log.warn("GitHub CLI is not authenticated. Run `gh auth login` and retry.");
     followUpItems.push("Run `gh auth login`, then re-run bootstrap --ci-cache");
-    return { success: false, followUpItems };
+    return { success: false, status: "blocked", followUpItems };
   }
 
   if (!runCommand("command -v vercel").ok) {
@@ -66,7 +88,7 @@ export async function runCiCachePhase(
     followUpItems.push(
       "Run `pnpm install` so bootstrap can use the repo-managed Vercel CLI",
     );
-    return { success: false, followUpItems };
+    return { success: false, status: "blocked", followUpItems };
   }
 
   if (!runCommand("vercel whoami 2>/dev/null").ok) {
@@ -76,7 +98,7 @@ export async function runCiCachePhase(
     followUpItems.push(
       "Run `pnpm exec vercel login`, then re-run bootstrap --ci-cache",
     );
-    return { success: false, followUpItems };
+    return { success: false, status: "blocked", followUpItems };
   }
 
   const repo = detectRepo();
@@ -85,7 +107,7 @@ export async function runCiCachePhase(
       "Could not detect GitHub repo. Run inside a clone with `gh` configured.",
     );
     followUpItems.push("Set up GitHub CLI in this clone, then re-run");
-    return { success: false, followUpItems };
+    return { success: false, status: "blocked", followUpItems };
   }
 
   const appDir = `${projectRoot}/app`;
@@ -117,12 +139,12 @@ export async function runCiCachePhase(
     followUpItems.push(
       "Could not determine Vercel team. Re-run after `vercel link` in app/.",
     );
-    return { success: false, followUpItems };
+    return { success: false, status: "blocked", followUpItems };
   }
 
   const tokenOk = await ensureSecret(repo.nameWithOwner, followUpItems);
   if (!tokenOk) {
-    return { success: false, followUpItems };
+    return { success: false, status: "blocked", followUpItems };
   }
 
   const teamOk = await ensureVariable(
@@ -131,7 +153,7 @@ export async function runCiCachePhase(
     followUpItems,
   );
   if (!teamOk) {
-    return { success: false, followUpItems };
+    return { success: false, status: "blocked", followUpItems };
   }
 
   log.success(`Vercel Remote Cache wired for ${pc.cyan(repo.nameWithOwner)}.`);
@@ -210,7 +232,8 @@ async function ensureSecret(
   nameWithOwner: string,
   followUpItems: string[],
 ): Promise<boolean> {
-  if (repoHasSecret(nameWithOwner, SECRET_NAME)) {
+  const hasExistingSecret = repoHasSecret(nameWithOwner, SECRET_NAME);
+  if (hasExistingSecret) {
     const replace = await promptConfirm(
       [
         `${SECRET_NAME} is already set on ${nameWithOwner}.`,
@@ -232,8 +255,17 @@ async function ensureSecret(
   const token = mintVercelToken();
   if (!token) {
     mintSpinner.stop("Failed to mint Vercel token");
-    followUpItems.push(
-      `Run: vercel tokens add ${TOKEN_NAME} --format json (then re-run bootstrap --ci-cache)`,
+    followUpItems.push(formatVercelTokenMintFailureFollowUp(hasExistingSecret));
+    if (hasExistingSecret) {
+      log.warn(
+        `${SECRET_NAME} already exists, so bootstrap kept the current CI cache secret.`,
+      );
+      return true;
+    }
+    logSubline(
+      pc.dim(
+        `Run: vercel tokens add ${TOKEN_NAME} --format json, then set ${SECRET_NAME} with gh secret set.`,
+      ),
     );
     return false;
   }
