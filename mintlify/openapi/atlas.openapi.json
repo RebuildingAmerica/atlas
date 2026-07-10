@@ -12479,6 +12479,12 @@
           "segment_filter": {
             "anyOf": [
               {
+                "enum": [
+                  "student",
+                  "independent_journalist",
+                  "grassroots_nonprofit",
+                  "civic_tech_worker"
+                ],
                 "type": "string"
               },
               {
@@ -12491,6 +12497,12 @@
           "status_filter": {
             "anyOf": [
               {
+                "enum": [
+                  "pending",
+                  "verified",
+                  "rejected",
+                  "expired"
+                ],
                 "type": "string"
               },
               {
@@ -12516,8 +12528,19 @@
       "VerificationRecordResponse": {
         "description": "Response payload for a verification record.",
         "properties": {
+          "id": {
+            "description": "Verification record ID",
+            "title": "Id",
+            "type": "string"
+          },
           "method": {
             "description": "Verification method used",
+            "enum": [
+              "portfolio",
+              "school_email",
+              "ein_submission",
+              "mission_statement"
+            ],
             "title": "Method",
             "type": "string"
           },
@@ -12533,6 +12556,11 @@
             "description": "notes for this verification record.",
             "title": "Notes"
           },
+          "organization_id": {
+            "description": "Workspace receiving the verified discount",
+            "title": "Organization Id",
+            "type": "string"
+          },
           "segment": {
             "description": "segment for this verification record.",
             "enum": [
@@ -12546,6 +12574,12 @@
           },
           "status": {
             "description": "Verification status",
+            "enum": [
+              "pending",
+              "verified",
+              "rejected",
+              "expired"
+            ],
             "title": "Status",
             "type": "string"
           },
@@ -12560,19 +12594,12 @@
             "type": "string"
           },
           "verification_data": {
-            "anyOf": [
-              {
-                "additionalProperties": {
-                  "type": "string"
-                },
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
+            "additionalProperties": {
+              "type": "string"
+            },
             "description": "verification data for this verification record.",
-            "title": "Verification Data"
+            "title": "Verification Data",
+            "type": "object"
           },
           "verified_at": {
             "anyOf": [
@@ -12588,7 +12615,9 @@
           }
         },
         "required": [
+          "id",
           "user_id",
+          "organization_id",
           "segment",
           "status",
           "method",
@@ -12607,6 +12636,11 @@
             "description": "Segment-specific verification data",
             "title": "Data",
             "type": "object"
+          },
+          "organization_id": {
+            "description": "organization id for this verification request payload.",
+            "title": "Organization Id",
+            "type": "string"
           },
           "segment": {
             "description": "segment for this verification request payload.",
@@ -12628,6 +12662,7 @@
         "required": [
           "segment",
           "user_id",
+          "organization_id",
           "data"
         ],
         "title": "VerificationRequestPayload",
@@ -12636,19 +12671,41 @@
       "VerificationResponsePayload": {
         "description": "Response payload for verification submission.",
         "properties": {
+          "id": {
+            "description": "Verification record ID",
+            "title": "Id",
+            "type": "string"
+          },
           "message": {
             "description": "Human-readable status message",
             "title": "Message",
             "type": "string"
           },
+          "organization_id": {
+            "description": "Workspace receiving the verified discount",
+            "title": "Organization Id",
+            "type": "string"
+          },
           "status": {
             "description": "Verification status (pending, verified, rejected, expired)",
+            "enum": [
+              "pending",
+              "verified",
+              "rejected",
+              "expired"
+            ],
             "title": "Status",
             "type": "string"
           },
           "verification_method": {
             "anyOf": [
               {
+                "enum": [
+                  "portfolio",
+                  "school_email",
+                  "ein_submission",
+                  "mission_statement"
+                ],
                 "type": "string"
               },
               {
@@ -12660,6 +12717,8 @@
           }
         },
         "required": [
+          "id",
+          "organization_id",
           "status",
           "message"
         ],
@@ -12705,15 +12764,24 @@
             "title": "Message",
             "type": "string"
           },
+          "record": {
+            "$ref": "#/components/schemas/VerificationRecordResponse",
+            "description": "record for this verification."
+          },
           "status": {
             "description": "status for this verification.",
+            "enum": [
+              "verified",
+              "rejected"
+            ],
             "title": "Status",
             "type": "string"
           }
         },
         "required": [
           "status",
-          "message"
+          "message",
+          "record"
         ],
         "title": "VerificationUpdateResponse",
         "type": "object"
@@ -13024,6 +13092,12 @@
             "schema": {
               "anyOf": [
                 {
+                  "enum": [
+                    "pending",
+                    "verified",
+                    "rejected",
+                    "expired"
+                  ],
                   "type": "string"
                 },
                 {
@@ -13040,6 +13114,12 @@
             "schema": {
               "anyOf": [
                 {
+                  "enum": [
+                    "student",
+                    "independent_journalist",
+                    "grassroots_nonprofit",
+                    "civic_tech_worker"
+                  ],
                   "type": "string"
                 },
                 {
@@ -13078,17 +13158,17 @@
         ]
       }
     },
-    "/api/admin/verifications/{user_id}": {
+    "/api/admin/verifications/{verification_id}": {
       "patch": {
         "description": "Update the review status for a discount verification request.\n\nUse this access operation before relying on protected workflows. It explains or changes the caller's ability to use authenticated Atlas features, so integrations should surface authorization failures clearly instead of treating them as empty data.",
         "operationId": "updateVerification",
         "parameters": [
           {
             "in": "path",
-            "name": "user_id",
+            "name": "verification_id",
             "required": true,
             "schema": {
-              "title": "User Id",
+              "title": "Verification Id",
               "type": "string"
             }
           }

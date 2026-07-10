@@ -1,15 +1,28 @@
 """Discount verification API endpoints."""
 
-from fastapi import APIRouter, HTTPException, Response
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel, Field
 
+from atlas.domains.access.dependencies import get_usage_db
+from atlas.domains.access.models.discount_verifications import (
+    DiscountVerificationCreate,
+    DiscountVerificationCRUD,
+    DiscountVerificationMethod,
+    DiscountVerificationStatus,
+)
 from atlas.domains.access.verification import (
     DiscountSegment,
     DiscountVerifier,
     VerificationMethod,
-    VerificationStatus,
 )
 from atlas.platform.http.cache import apply_no_store_headers
+
+if TYPE_CHECKING:
+    import aiosqlite
 
 router = APIRouter(tags=["access"])
 
@@ -21,15 +34,20 @@ class VerificationRequestPayload(BaseModel):
 
     segment: DiscountSegment
     user_id: str
+    organization_id: str
     data: dict[str, str] = Field(description="Segment-specific verification data")
 
 
 class VerificationResponsePayload(BaseModel):
     """Response payload for verification submission."""
 
-    status: str = Field(description="Verification status (pending, verified, rejected, expired)")
+    id: str = Field(description="Verification record ID")
+    organization_id: str = Field(description="Workspace receiving the verified discount")
+    status: DiscountVerificationStatus = Field(
+        description="Verification status (pending, verified, rejected, expired)"
+    )
     message: str = Field(description="Human-readable status message")
-    verification_method: str | None = Field(
+    verification_method: DiscountVerificationMethod | None = Field(
         description="Method used for verification", default=None
     )
 
@@ -119,6 +137,7 @@ def _validate_civic_tech_worker(
 async def submit_discount_verification(
     request: VerificationRequestPayload,
     response: Response,
+    conn: aiosqlite.Connection = Depends(get_usage_db),
 ) -> VerificationResponsePayload:
     """Validate a discount verification request and record it for manual review."""
     apply_no_store_headers(response)
@@ -142,18 +161,21 @@ async def submit_discount_verification(
 
     # Create verification record (with PENDING status for manual review)
     try:
-        record = verifier.create_verification_record(
-            user_id=request.user_id,
-            segment=request.segment,
-            method=method,
-            status=VerificationStatus.PENDING,
-            verification_data=request.data,
-            notes="Awaiting manual verification review",
+        record = await DiscountVerificationCRUD.create(
+            conn,
+            DiscountVerificationCreate(
+                user_id=request.user_id,
+                organization_id=request.organization_id,
+                segment=request.segment,
+                method=method,
+                verification_data=request.data,
+                notes="Awaiting manual verification review",
+            ),
         )
 
-        # TODO: Persist verification record to database
-
         return VerificationResponsePayload(
+            id=record.id,
+            organization_id=record.organization_id,
             status=record.status,
             message="Verification request submitted. We'll review it and email you shortly.",
             verification_method=record.method,

@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 from http import HTTPStatus
+from typing import TYPE_CHECKING
 
 import pytest
 from fastapi import HTTPException, Response
 
-from atlas.domains.access.api import verification as verification_api_module
 from atlas.domains.access.api.verification import (
     VerificationRequestPayload,
     _validate_civic_tech_worker,
@@ -16,7 +16,13 @@ from atlas.domains.access.api.verification import (
     _validate_student,
     submit_discount_verification,
 )
+from atlas.domains.access.models.discount_verifications import DiscountVerificationCRUD
 from atlas.domains.access.verification import DiscountVerifier, VerificationMethod
+
+if TYPE_CHECKING:
+    import aiosqlite
+
+    from atlas.domains.access.models.discount_verifications import DiscountVerificationCreate
 
 
 def test_validate_independent_journalist_requires_portfolio_url() -> None:
@@ -55,15 +61,19 @@ def test_validate_civic_tech_worker_requires_mission() -> None:
 
 
 @pytest.mark.asyncio
-async def test_submit_discount_verification_returns_pending_response() -> None:
+async def test_submit_discount_verification_returns_pending_response(
+    test_db: aiosqlite.Connection,
+) -> None:
     """Successful submissions return a pending verification payload."""
     response = await submit_discount_verification(
         VerificationRequestPayload(
             segment="independent_journalist",
             user_id="user-123",
+            organization_id="org-123",
             data={"portfolioUrl": "https://example.com/portfolio"},
         ),
         Response(),
+        test_db,
     )
 
     assert response.status == "pending"
@@ -72,16 +82,57 @@ async def test_submit_discount_verification_returns_pending_response() -> None:
 
 
 @pytest.mark.asyncio
-async def test_submit_discount_verification_rejects_invalid_payload() -> None:
+async def test_submit_discount_verification_persists_record(
+    test_db: aiosqlite.Connection,
+) -> None:
+    """Successful submissions create a durable record for admin review."""
+    response = await submit_discount_verification(
+        VerificationRequestPayload(
+            segment="student",
+            user_id="user-606",
+            organization_id="org-606",
+            data={"schoolEmail": "student@example.edu", "schoolName": "Example College"},
+        ),
+        Response(),
+        test_db,
+    )
+
+    cursor = await test_db.execute(
+        """
+        SELECT id, user_id, organization_id, segment, status, method,
+               verification_data_json, notes
+        FROM discount_verifications
+        WHERE id = ?
+        """,
+        (response.id,),
+    )
+    row = await cursor.fetchone()
+
+    assert row is not None
+    assert row[1] == "user-606"
+    assert row[2] == "org-606"
+    assert row[3] == "student"
+    assert row[4] == "pending"
+    assert row[5] == "school_email"
+    assert "student@example.edu" in row[6]
+    assert row[7] == "Awaiting manual verification review"
+
+
+@pytest.mark.asyncio
+async def test_submit_discount_verification_rejects_invalid_payload(
+    test_db: aiosqlite.Connection,
+) -> None:
     """Invalid submissions surface a 400 with the validation error."""
     with pytest.raises(HTTPException) as exc_info:
         await submit_discount_verification(
             VerificationRequestPayload(
                 segment="civic_tech_worker",
                 user_id="user-456",
+                organization_id="org-456",
                 data={"projectUrl": "https://github.com/example/civic-tool"},
             ),
             Response(),
+            test_db,
         )
 
     assert exc_info.value.status_code == HTTPStatus.BAD_REQUEST
@@ -163,15 +214,19 @@ def test_validate_civic_tech_worker_surfaces_verifier_error() -> None:
 
 
 @pytest.mark.asyncio
-async def test_submit_discount_verification_routes_grassroots_segment() -> None:
+async def test_submit_discount_verification_routes_grassroots_segment(
+    test_db: aiosqlite.Connection,
+) -> None:
     """The grassroots branch is exercised by a valid nonprofit payload."""
     response = await submit_discount_verification(
         VerificationRequestPayload(
             segment="grassroots_nonprofit",
             user_id="user-789",
+            organization_id="org-789",
             data={"einOrName": "04-1798922", "budget": "$500,000"},
         ),
         Response(),
+        test_db,
     )
 
     assert response.status == "pending"
@@ -179,15 +234,19 @@ async def test_submit_discount_verification_routes_grassroots_segment() -> None:
 
 
 @pytest.mark.asyncio
-async def test_submit_discount_verification_routes_student_segment() -> None:
+async def test_submit_discount_verification_routes_student_segment(
+    test_db: aiosqlite.Connection,
+) -> None:
     """The student branch is exercised by a valid school payload."""
     response = await submit_discount_verification(
         VerificationRequestPayload(
             segment="student",
             user_id="user-303",
+            organization_id="org-303",
             data={"schoolEmail": "maya@university.edu", "schoolName": "Howard University"},
         ),
         Response(),
+        test_db,
     )
 
     assert response.status == "pending"
@@ -195,18 +254,22 @@ async def test_submit_discount_verification_routes_student_segment() -> None:
 
 
 @pytest.mark.asyncio
-async def test_submit_discount_verification_routes_civic_tech_segment() -> None:
+async def test_submit_discount_verification_routes_civic_tech_segment(
+    test_db: aiosqlite.Connection,
+) -> None:
     """The civic-tech branch is exercised by a valid civic-tech payload."""
     response = await submit_discount_verification(
         VerificationRequestPayload(
             segment="civic_tech_worker",
             user_id="user-101",
+            organization_id="org-101",
             data={
                 "projectUrl": "https://github.com/example/civic-tool",
                 "mission": "Building civic engagement tools that empower local communities",
             },
         ),
         Response(),
+        test_db,
     )
 
     assert response.status == "pending"
@@ -214,16 +277,19 @@ async def test_submit_discount_verification_routes_civic_tech_segment() -> None:
 
 
 @pytest.mark.asyncio
-async def test_submit_discount_verification_rejects_unknown_segment() -> None:
+async def test_submit_discount_verification_rejects_unknown_segment(
+    test_db: aiosqlite.Connection,
+) -> None:
     """An unknown segment value is rejected with a 400 (bypasses Pydantic via construct)."""
     payload = VerificationRequestPayload.model_construct(
         segment="something_else",  # type: ignore[arg-type]
         user_id="user-202",
+        organization_id="org-202",
         data={},
     )
 
     with pytest.raises(HTTPException) as exc_info:
-        await submit_discount_verification(payload, Response())
+        await submit_discount_verification(payload, Response(), test_db)
 
     assert exc_info.value.status_code == HTTPStatus.BAD_REQUEST
     assert "Unknown segment" in str(exc_info.value.detail)
@@ -232,32 +298,29 @@ async def test_submit_discount_verification_rejects_unknown_segment() -> None:
 @pytest.mark.asyncio
 async def test_submit_discount_verification_returns_500_on_record_creation_failure(
     monkeypatch: pytest.MonkeyPatch,
+    test_db: aiosqlite.Connection,
 ) -> None:
     """Unexpected errors in record creation surface as a generic 500."""
 
-    class _BoomVerifier(DiscountVerifier):
-        def create_verification_record(  # type: ignore[override]  # noqa: PLR0913
-            self,
-            user_id: str,
-            segment: object,
-            method: object,
-            status: object = None,
-            verification_data: object = None,
-            notes: object = None,
-        ) -> object:
-            del user_id, segment, method, status, verification_data, notes
-            raise RuntimeError("storage broke")  # noqa: TRY003
+    async def create_record_failure(
+        conn: aiosqlite.Connection,
+        record_input: DiscountVerificationCreate,
+    ) -> None:
+        del conn, record_input
+        raise RuntimeError("storage broke")  # noqa: TRY003
 
-    monkeypatch.setattr(verification_api_module, "DiscountVerifier", _BoomVerifier)
+    monkeypatch.setattr(DiscountVerificationCRUD, "create", create_record_failure)
 
     with pytest.raises(HTTPException) as exc_info:
         await submit_discount_verification(
             VerificationRequestPayload(
                 segment="independent_journalist",
                 user_id="user-505",
+                organization_id="org-505",
                 data={"portfolioUrl": "https://example.com/portfolio"},
             ),
             Response(),
+            test_db,
         )
 
     assert exc_info.value.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
