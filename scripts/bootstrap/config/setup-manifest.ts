@@ -166,7 +166,7 @@ export function setupCommandForTarget(target: SetupValueTarget): string {
   if (target === "staging") {
     return "pnpm setup:staging";
   }
-  return "pnpm run setup";
+  return "pnpm setup:local";
 }
 
 export function manualSetupValues(

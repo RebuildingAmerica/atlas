@@ -89,7 +89,7 @@ live runtime key to create Checkout sessions.
 Run the local setup:
 
 ```bash
-pnpm run setup
+pnpm setup:local
 ```
 
 This writes Stripe values to `.env` and `app/.env.local` and syncs the test-mode

@@ -691,7 +691,7 @@ export function formatStripeVerificationFollowUp(
   return [
     "Local Stripe setup is incomplete.",
     "Run the guided local flow: pnpm bootstrap --local-only",
-    "Local shortcut: pnpm run setup",
+    "Local shortcut: pnpm setup:local",
     "Run webhook forwarding while testing Checkout: pnpm stripe:listen",
     "Verify again: pnpm stripe:verify:local",
   ];

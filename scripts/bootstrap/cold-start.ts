@@ -6,7 +6,8 @@
  *
  * | Command                                                   | What it does |
  * | --------------------------------------------------------- | ------------ |
- * | `pnpm run setup`                                          | Local dev setup, including local Stripe test-mode sync. |
+ * | `pnpm setup`                                              | Full guided repo setup, including production readiness. |
+ * | `pnpm setup:local`                                        | Local dev setup, including local Stripe test-mode sync. |
  * | `pnpm setup:staging`                                      | Staging setup, including Stripe test-mode sync and Vercel Preview env sync. |
  * | `pnpm setup:prod`                                         | Production setup, including Stripe live-mode sync and Vercel Production env sync. |
  * | `pnpm doctor`                                             | Checks readiness without changing local or hosted state. |

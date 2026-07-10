@@ -10,7 +10,7 @@
     "predev": "sh ./scripts/portless-reset.sh",
     "dev": "ATLAS_DEPLOY_MODE= turbo run dev e2e:mail",
     "dev:reset": "sh ./scripts/dev-reset.sh",
-    "setup": "tsx scripts/bootstrap/cold-start.ts --local-only",
+    "setup": "tsx scripts/bootstrap/cold-start.ts",
     "setup:local": "tsx scripts/bootstrap/cold-start.ts --local-only",
     "setup:staging": "tsx scripts/bootstrap/cold-start.ts --target staging",
     "setup:prod": "tsx scripts/bootstrap/cold-start.ts --target prod --live",

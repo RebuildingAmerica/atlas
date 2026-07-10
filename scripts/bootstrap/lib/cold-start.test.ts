@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { describe, it } from "node:test";
 import {
   describePhase,
@@ -8,6 +10,10 @@ import {
 } from "./cold-start.js";
 import { renderSetupGuide } from "../config/setup-manifest.js";
 import type { PhaseId, ReadinessState } from "../state.js";
+
+interface PackageJson {
+  scripts?: Record<string, string>;
+}
 
 void describe("Atlas bootstrap argument parsing", () => {
   void it("runs exhaustive production setup by default", () => {
@@ -24,6 +30,21 @@ void describe("Atlas bootstrap argument parsing", () => {
     assert.equal(args.localOnly, true);
     assert.equal(args.stripeTarget, "local");
     assert.equal(args.live, false);
+  });
+
+  void it("keeps the default package setup command exhaustive", () => {
+    const packageJson = JSON.parse(
+      readFileSync(path.resolve("package.json"), "utf8"),
+    ) as PackageJson;
+
+    assert.equal(
+      packageJson.scripts?.setup,
+      "tsx scripts/bootstrap/cold-start.ts",
+    );
+    assert.equal(
+      packageJson.scripts?.["setup:local"],
+      "tsx scripts/bootstrap/cold-start.ts --local-only",
+    );
   });
 
   void it("runs hosted setup only for an explicit hosted target", () => {
