@@ -8,6 +8,9 @@ import {
   formatCloudBuildSourceAccessFollowUp,
   formatCloudBuildSourceAccessGrantCommand,
   formatCloudBuildSourceAccessRecoveryNote,
+  formatCloudBuildDockerConfig,
+  formatCloudBuildSubmitCommand,
+  formatDockerBuildCommand,
   formatGcloudReauthenticationRecovery,
   isGcloudReauthenticationFailure,
   parseCloudBuildSourceAccessFailure,
@@ -41,6 +44,37 @@ void describe("deploy resilience", () => {
     assert.match(startPrompt, /Start Docker Desktop now/);
     assert.match(startPrompt, /wait until Docker is ready/);
     assert.match(fallbackPrompt, /Google Cloud Build/);
+  });
+
+  void it("builds atlas-api from the monorepo root with the API Dockerfile", () => {
+    const repoRoot = "/repo/atlas";
+    const imageTag =
+      "us-central1-docker.pkg.dev/rap-atlas-prod/atlas-images/atlas-api:initial";
+
+    const dockerCommand = formatDockerBuildCommand(
+      repoRoot,
+      "api/Dockerfile",
+      imageTag,
+    );
+    assert.match(dockerCommand, /docker build/);
+    assert.match(dockerCommand, /--file="\/repo\/atlas\/api\/Dockerfile"/);
+    assert.match(dockerCommand, /"\/repo\/atlas"$/);
+
+    const cloudBuildConfig = formatCloudBuildDockerConfig(
+      "api/Dockerfile",
+      imageTag,
+    );
+    assert.match(cloudBuildConfig, /"gcr.io\/cloud-builders\/docker"/);
+    assert.match(cloudBuildConfig, /"api\/Dockerfile"/);
+    assert.match(cloudBuildConfig, /"images": \[/);
+
+    const cloudBuildCommand = formatCloudBuildSubmitCommand(
+      repoRoot,
+      "/tmp/cloudbuild.json",
+    );
+    assert.match(cloudBuildCommand, /gcloud builds submit/);
+    assert.match(cloudBuildCommand, /--config="\/tmp\/cloudbuild\.json"/);
+    assert.match(cloudBuildCommand, /"\/repo\/atlas"/);
   });
 
   void it("detects gcloud reauthentication failures from Cloud Build output", () => {

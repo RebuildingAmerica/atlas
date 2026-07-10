@@ -133,7 +133,8 @@ export async function runDeployPhase(
   const apiBuilt = await buildAndPushImage(
     projectRoot,
     "atlas-api",
-    path.join(projectRoot, "api"),
+    projectRoot,
+    "api/Dockerfile",
     apiImage,
     buildMode,
     followUpItems,
@@ -276,9 +277,9 @@ async function startDockerDesktopAndWait(): Promise<boolean> {
 // ── Build & Push ──────────────────────────────────────────────────────────────
 
 async function buildAndPushImage(
-  projectRoot: string,
   serviceName: string,
   contextDir: string,
+  dockerfilePath: string,
   imageTag: string,
   buildMode: BuildMode,
   followUpItems: string[],
@@ -287,6 +288,7 @@ async function buildAndPushImage(
     return await buildAndPushImageWithCloudBuild(
       serviceName,
       contextDir,
+      dockerfilePath,
       imageTag,
       followUpItems,
     );
@@ -297,7 +299,7 @@ async function buildAndPushImage(
   buildSpinner.start(`Building ${serviceName}...`);
 
   const buildResult = runCommand(
-    `docker build -t "${imageTag}" "${contextDir}"`,
+    formatDockerBuildCommand(contextDir, dockerfilePath, imageTag),
   );
 
   if (!buildResult.ok) {
@@ -329,6 +331,7 @@ async function buildAndPushImage(
 async function buildAndPushImageWithCloudBuild(
   serviceName: string,
   contextDir: string,
+  dockerfilePath: string,
   imageTag: string,
   followUpItems: string[],
   recoveryOptions: CloudBuildRecoveryOptions = DEFAULT_CLOUD_BUILD_RECOVERY_OPTIONS,
@@ -336,9 +339,28 @@ async function buildAndPushImageWithCloudBuild(
   const s = spinner();
   s.start(`Building ${serviceName} with Google Cloud Build...`);
 
-  const result = runCommand(
-    `gcloud builds submit "${contextDir}" --tag="${imageTag}" --quiet`,
+  const cloudBuildConfigPath = path.join(
+    tmpdir(),
+    `atlas-${serviceName}-cloudbuild-${Date.now()}.json`,
   );
+  writeFileSync(
+    cloudBuildConfigPath,
+    formatCloudBuildDockerConfig(
+      formatCloudBuildDockerfilePath(contextDir, dockerfilePath),
+      imageTag,
+    ),
+    "utf8",
+  );
+
+  const result = runCommand(
+    formatCloudBuildSubmitCommand(contextDir, cloudBuildConfigPath),
+  );
+  try {
+    unlinkSync(cloudBuildConfigPath);
+  } catch {
+    // Temporary build config cleanup is best-effort; a stale file should not
+    // hide the actual Cloud Build result from the operator.
+  }
 
   if (!result.ok) {
     s.stop(`Failed to build ${serviceName} with Google Cloud Build`);
@@ -350,6 +372,7 @@ async function buildAndPushImageWithCloudBuild(
       return await buildAndPushImageWithCloudBuild(
         serviceName,
         contextDir,
+        dockerfilePath,
         imageTag,
         followUpItems,
         {
@@ -368,6 +391,7 @@ async function buildAndPushImageWithCloudBuild(
       return await buildAndPushImageWithCloudBuild(
         serviceName,
         contextDir,
+        dockerfilePath,
         imageTag,
         followUpItems,
         {
@@ -390,6 +414,52 @@ async function buildAndPushImageWithCloudBuild(
 
   s.stop(`${serviceName} image built and pushed with Google Cloud Build`);
   return true;
+}
+
+export function formatDockerBuildCommand(
+  contextDir: string,
+  dockerfilePath: string,
+  imageTag: string,
+): string {
+  const resolvedDockerfile = path.isAbsolute(dockerfilePath)
+    ? dockerfilePath
+    : path.join(contextDir, dockerfilePath);
+  return `docker build --file="${resolvedDockerfile}" -t "${imageTag}" "${contextDir}"`;
+}
+
+export function formatCloudBuildSubmitCommand(
+  contextDir: string,
+  configPath: string,
+): string {
+  return `gcloud builds submit "${contextDir}" --config="${configPath}" --quiet`;
+}
+
+export function formatCloudBuildDockerConfig(
+  dockerfilePath: string,
+  imageTag: string,
+): string {
+  return JSON.stringify(
+    {
+      steps: [
+        {
+          name: "gcr.io/cloud-builders/docker",
+          args: ["build", "--file", dockerfilePath, "-t", imageTag, "."],
+        },
+      ],
+      images: [imageTag],
+    },
+    null,
+    2,
+  );
+}
+
+function formatCloudBuildDockerfilePath(
+  contextDir: string,
+  dockerfilePath: string,
+): string {
+  return path.isAbsolute(dockerfilePath)
+    ? path.relative(contextDir, dockerfilePath)
+    : dockerfilePath;
 }
 
 export function parseCloudBuildSourceAccessFailure(
