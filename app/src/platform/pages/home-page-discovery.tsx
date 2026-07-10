@@ -2,8 +2,8 @@ import { Link } from "@tanstack/react-router";
 import { ArrowRight, ExternalLink } from "./home-page-data";
 import {
   ISSUE_CHIPS,
-  ISSUE_TILES,
   NUMBER_FORMATTER,
+  type HomeFacetTile,
   browseUrl,
   formatLocation,
   humanizeIssue,
@@ -14,6 +14,7 @@ import type { Entry } from "@/types";
 
 interface HomeDiscoverySectionProps {
   entries: Entry[];
+  issueTiles: HomeFacetTile[];
   recentEntriesLoading: boolean;
   totalEntries: number | undefined;
 }
@@ -51,6 +52,7 @@ function RecentEntryRow({ entry }: { entry: Entry }) {
 
 export function HomeDiscoverySection({
   entries,
+  issueTiles,
   recentEntriesLoading,
   totalEntries,
 }: HomeDiscoverySectionProps) {
@@ -105,28 +107,18 @@ export function HomeDiscoverySection({
         <div className="mx-auto max-w-[88rem]">
           <h2 className="font-serif text-2xl">Browse by issue</h2>
           <div className="bg-border mt-10 grid gap-px overflow-hidden md:grid-cols-4">
-            {ISSUE_TILES.map((issue, index) => {
+            {issueTiles.map((issue, index) => {
               const featured = index < 2;
               return (
                 <a
                   key={issue.label}
-                  href={`/browse?query=${encodeURIComponent(issue.label)}&offset=0`}
+                  href={issue.href}
                   className={
                     featured
                       ? "group bg-ink-strong relative flex min-h-72 flex-col justify-end overflow-hidden p-7 no-underline md:col-span-2"
                       : "group bg-surface-container-lowest hover:bg-surface-container flex min-h-32 flex-col justify-end p-6 no-underline transition-colors duration-150"
                   }
                 >
-                  {featured && issue.imageUrl ? (
-                    <>
-                      <img
-                        src={issue.imageUrl}
-                        alt=""
-                        className="absolute inset-0 h-full w-full object-cover opacity-45"
-                      />
-                      <span className="from-ink-strong via-ink-strong/70 absolute inset-0 bg-gradient-to-t to-transparent" />
-                    </>
-                  ) : null}
                   <span className="relative">
                     <span
                       className={
@@ -146,11 +138,6 @@ export function HomeDiscoverySection({
                     >
                       {issue.label}
                     </span>
-                    {issue.description ? (
-                      <span className="type-body-small text-surface/75 mt-3 block max-w-xl">
-                        {issue.description}
-                      </span>
-                    ) : null}
                     <span
                       className={
                         featured
@@ -167,7 +154,7 @@ export function HomeDiscoverySection({
             })}
           </div>
           <div className="mt-6 flex flex-wrap items-center justify-between gap-4">
-            <p className="type-label-small text-ink-soft">Showing 8 of 24 issue areas</p>
+            <p className="type-label-small text-ink-soft">{issueTiles.length} issue areas shown</p>
             <Link
               to="/browse"
               className="type-label-medium text-accent-deep inline-flex items-center gap-1.5 hover:underline"

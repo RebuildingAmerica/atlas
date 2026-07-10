@@ -7,5 +7,26 @@ export function isRecoverablePublicLoaderError(error: unknown): boolean {
     return false;
   }
 
-  return error.message.includes("Atlas is temporarily unavailable");
+  const status = readErrorStatus(error);
+
+  return (
+    error.message.includes("Atlas is temporarily unavailable") ||
+    (typeof status === "number" && status >= 500) ||
+    error.name === "HTTPError" ||
+    error.message === "HTTPError"
+  );
+}
+
+function readErrorStatus(error: Error): number | null {
+  const status = (error as Error & { status?: unknown }).status;
+  if (typeof status === "number") {
+    return status;
+  }
+
+  const response = (error as Error & { response?: { status?: unknown } }).response;
+  if (typeof response?.status === "number") {
+    return response.status;
+  }
+
+  return null;
 }

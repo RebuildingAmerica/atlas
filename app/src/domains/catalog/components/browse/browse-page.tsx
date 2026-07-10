@@ -1,23 +1,16 @@
 import { useNavigate } from "@tanstack/react-router";
-import { useCallback, useMemo } from "react";
-import { BrowseEcosystemHistorySection } from "@/domains/catalog/components/browse/browse-ecosystem-history-section";
+import { type ReactNode, useCallback, useMemo } from "react";
+import { BrowseSearchHeader } from "@/domains/catalog/components/browse/browse-search-header";
 import {
-  BrowseExplorationGuides,
-  GridSurface,
-  ListSurface,
-} from "@/domains/catalog/components/browse/browse-page-sections";
-import { BrowseMapSurface } from "@/domains/catalog/components/browse/browse-map-surface";
+  buildBrowseEditorialSections,
+  type BrowseEditorialFacet,
+} from "@/domains/catalog/components/browse/browse-editorial-sections";
+import type { BrowseIntentChip } from "@/domains/catalog/components/browse/browse-intent-chips";
+import { EntryList } from "@/domains/catalog/components/entries/entry-list";
 import { useEntries } from "@/domains/catalog/hooks/use-entries";
 import { useTaxonomy } from "@/domains/catalog/hooks/use-taxonomy";
-import {
-  ENTITY_TYPE_LABELS,
-  FEATURED_ENTRY_TYPES,
-  FEATURED_ISSUE_STARTERS,
-  SOURCE_TYPE_LABELS,
-  humanize,
-} from "@/domains/catalog/catalog";
+import { ENTITY_TYPE_LABELS, SOURCE_TYPE_LABELS, humanize } from "@/domains/catalog/catalog";
 import { trackDiscoveryEvent } from "@/domains/catalog/discovery-events";
-import { rankEntriesForDiscovery } from "@/domains/catalog/discovery-ranking";
 import {
   type BrowseFilterKey,
   type BrowseRouteSearch,
@@ -27,14 +20,9 @@ import {
   serializeList,
   toggleValue,
 } from "@/domains/catalog/search-state";
-import { buildStateDensity } from "@/domains/catalog/surface-model";
 import { STATE_NAME_BY_CODE } from "@/domains/catalog/us-state-grid";
-import type { EntryListResponse, EntryType, SourcePattern, SourceType } from "@/types";
-import { BrowseHero } from "./browse-hero";
+import type { Entry, EntryListResponse, EntryType, SourcePattern, SourceType } from "@/types";
 import { type BrowsePageContent, DEFAULT_BROWSE_PAGE_CONTENT } from "./browse-page-content";
-import { BrowseResultsAside } from "./browse-results-aside";
-import { BrowseSearchHeader } from "./browse-search-header";
-import { useBrowsePageDetails } from "@/domains/catalog/hooks/use-browse-page-details";
 export type { BrowsePageContent } from "./browse-page-content";
 
 interface BrowsePageProps {
@@ -45,6 +33,116 @@ interface BrowsePageProps {
 }
 
 const INITIAL_ENTRIES_ERROR = new Error("Results could not load.");
+
+const PROFILE_PATH_BY_TYPE: Record<EntryType, string> = {
+  campaign: "/profiles/campaigns",
+  event: "/profiles/events",
+  initiative: "/profiles/initiatives",
+  organization: "/profiles/organizations",
+  person: "/profiles/people",
+};
+
+const PRIMARY_ENTRY_TYPE_SECTION_ORDER: EntryType[] = ["organization", "person"];
+const SECONDARY_ENTRY_TYPE_SECTION_ORDER: EntryType[] = ["initiative", "campaign", "event"];
+const ENTRY_TYPE_SECTION_ORDER: EntryType[] = [
+  ...PRIMARY_ENTRY_TYPE_SECTION_ORDER,
+  ...SECONDARY_ENTRY_TYPE_SECTION_ORDER,
+];
+
+function resultLabel(count: number): string {
+  return count === 1 ? "1 record" : `${count} records`;
+}
+
+function sourceLabel(count: number): string {
+  return count === 1 ? "1 linked source" : `${count} linked sources`;
+}
+
+function actorCountLabel(count: number): string {
+  return count === 1 ? "1 person or group" : `${count} people and groups`;
+}
+
+function placeCountLabel(count: number): string {
+  return count === 1 ? "1 place" : `${count} places`;
+}
+
+function facetAriaLabel(item: BrowseEditorialFacet, variant: "issue" | "standard"): string {
+  if (variant === "standard") {
+    return `${item.label} ${resultLabel(item.count)}`;
+  }
+
+  return [
+    item.label,
+    item.actorCount ? actorCountLabel(item.actorCount) : undefined,
+    item.placeCount ? placeCountLabel(item.placeCount) : undefined,
+    item.evidenceCount ? sourceLabel(item.evidenceCount) : undefined,
+    item.latestSourceDate ? `Latest source ${dateLabel(item.latestSourceDate)}` : undefined,
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+
+function dateLabel(value: string | undefined): string | undefined {
+  if (!value) {
+    return undefined;
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+  return new Intl.DateTimeFormat("en", {
+    day: "numeric",
+    month: "short",
+    timeZone: "UTC",
+    year: "numeric",
+  }).format(date);
+}
+
+function entryLocation(entry: Entry): string {
+  return [entry.city, entry.state, entry.region].filter(Boolean).join(", ");
+}
+
+function entryProfileHref(entry: Entry): string {
+  return `${PROFILE_PATH_BY_TYPE[entry.type]}/${entry.slug}`;
+}
+
+function filterLabel(key: BrowseFilterKey, value: string, issueAreaLabels: Record<string, string>) {
+  if (key === "states") {
+    return STATE_NAME_BY_CODE[value] ?? value;
+  }
+  if (key === "issue_areas") {
+    return issueAreaLabels[value] ?? humanize(value);
+  }
+  if (key === "entry_types") {
+    return ENTITY_TYPE_LABELS[value as EntryType] ?? humanize(value);
+  }
+  if (key === "source_types") {
+    return SOURCE_TYPE_LABELS[value as SourceType] ?? humanize(value);
+  }
+  return humanize(value);
+}
+
+function browseContextLabel(
+  filters: ReturnType<typeof buildBrowseSearch>,
+  issueAreaLabels: Record<string, string>,
+): string | undefined {
+  const labels = [
+    ...filters.cities,
+    ...filters.states.map((state) => STATE_NAME_BY_CODE[state] ?? state),
+    ...filters.regions,
+    ...filters.issue_areas.map((issue) => issueAreaLabels[issue] ?? humanize(issue)),
+  ];
+  const [lead, ...rest] = labels.filter(Boolean);
+
+  if (!lead) {
+    return undefined;
+  }
+
+  return rest.length > 0 ? `${lead} + ${rest.length} more` : lead;
+}
+
+function removeValue(values: string[], value: string): string[] {
+  return values.filter((item) => item !== value);
+}
 
 export function BrowsePage({
   initialEntries,
@@ -67,10 +165,9 @@ export function BrowsePage({
   const selectedFilters = useMemo(
     () => ({
       ...rawFilters,
-      entry_types:
-        pageContent.lockedEntryTypes && pageContent.lockedEntryTypes.length > 0
-          ? pageContent.lockedEntryTypes
-          : rawFilters.entry_types,
+      entry_types: pageContent.lockedEntryTypes?.length
+        ? pageContent.lockedEntryTypes
+        : rawFilters.entry_types,
     }),
     [pageContent.lockedEntryTypes, rawFilters],
   );
@@ -88,17 +185,6 @@ export function BrowsePage({
     });
 
     return labels;
-  }, [taxonomy]);
-
-  const quickIssueAreas = useMemo(() => {
-    if (!taxonomy) {
-      return [];
-    }
-
-    return Object.values(taxonomy)
-      .flat()
-      .slice(0, 10)
-      .map((issue) => ({ slug: issue.slug, label: issue.name }));
   }, [taxonomy]);
 
   const entryFilters = {
@@ -123,66 +209,32 @@ export function BrowsePage({
   );
 
   const results = entriesQuery.data;
+  const entries = results?.data ?? [];
   const resultsError = initialEntriesLoadFailed ? INITIAL_ENTRIES_ERROR : entriesQuery.error;
-  const resultEntries = useMemo(() => results?.data ?? [], [results?.data]);
-  const total = results?.pagination.total ?? 0;
-  const facetIssueAreas = useMemo(
-    () =>
-      [...(results?.facets.issue_areas ?? [])]
-        .sort((left, right) => right.count - left.count)
-        .slice(0, 10)
-        .map((issue) => ({
-          slug: issue.value,
-          label: issueAreaLabels[issue.value] ?? humanize(issue.value),
-        })),
-    [issueAreaLabels, results?.facets.issue_areas],
-  );
-  const explorationIssueAreas = useMemo(() => {
-    if (quickIssueAreas.length > 0) {
-      return quickIssueAreas;
-    }
-    if (facetIssueAreas.length > 0) {
-      return facetIssueAreas;
-    }
-    return FEATURED_ISSUE_STARTERS.map((issue) => ({ ...issue }));
-  }, [facetIssueAreas, quickIssueAreas]);
   const searchForActivity = useMemo(
     () => ({
       ...selectedFilters,
-      entry_types:
-        pageContent.lockedEntryTypes && pageContent.lockedEntryTypes.length > 0
-          ? []
-          : selectedFilters.entry_types,
+      entry_types: pageContent.lockedEntryTypes?.length ? [] : selectedFilters.entry_types,
     }),
     [pageContent.lockedEntryTypes, selectedFilters],
   );
   const hasActiveSearch = hasActiveBrowseSearch(searchForActivity);
-  const stateDensity = useMemo(
-    () => buildStateDensity(results?.facets.states ?? []),
-    [results?.facets.states],
+  const editorialSections = useMemo(
+    () => buildBrowseEditorialSections({ issueAreaLabels, response: results }),
+    [issueAreaLabels, results],
   );
 
-  const selectedState = selectedFilters.states[0];
-  const selectedStateName = selectedState
-    ? (STATE_NAME_BY_CODE[selectedState] ?? selectedState)
-    : undefined;
-  const dominantStates = useMemo(
-    () => [...stateDensity].sort((left, right) => right.count - left.count).slice(0, 12),
-    [stateDensity],
-  );
+  const quickIssueAreas = useMemo(() => {
+    const taxonomyIssues = taxonomy ? Object.values(taxonomy).flat() : [];
+    if (taxonomyIssues.length > 0) {
+      return taxonomyIssues.slice(0, 10).map((issue) => ({ slug: issue.slug, label: issue.name }));
+    }
 
-  const rankedEntries = useMemo(
-    () =>
-      rankEntriesForDiscovery(resultEntries, {
-        cities: selectedFilters.cities,
-        issue_areas: selectedFilters.issue_areas,
-        query: selectedFilters.query,
-        regions: selectedFilters.regions,
-        source_types: selectedFilters.source_types,
-        states: selectedFilters.states,
-      }),
-    [resultEntries, selectedFilters],
-  );
+    return editorialSections.activeIssues
+      .slice(0, 10)
+      .map((issue) => ({ slug: issue.value, label: issue.label }));
+  }, [editorialSections.activeIssues, taxonomy]);
+
   const cityNames = useMemo(
     () => (results?.facets.cities ?? []).map((facet) => facet.value),
     [results?.facets.cities],
@@ -218,6 +270,7 @@ export function BrowsePage({
       updateSearch({
         [key]: serializeList(toggleValue(selectedFilters[key], value)),
         offset: 0,
+        view: "list",
       });
     },
     [selectedFilters, updateSearch],
@@ -241,6 +294,7 @@ export function BrowsePage({
       source_types: serializeList(intent.source_types),
       states: serializeList(intent.states),
       offset: 0,
+      view: "list",
     };
 
     trackDiscoveryEvent("catalog_search_submitted", {
@@ -255,27 +309,6 @@ export function BrowsePage({
     updateSearch(nextSearch);
   };
 
-  const handleSelectState = (stateCode: string) => {
-    updateSearch({
-      states: serializeList(selectedState === stateCode ? [] : [stateCode]),
-      offset: 0,
-    });
-  };
-
-  const handleSelectIssue = (issueSlug: string) => {
-    updateSearch({
-      issue_areas: serializeList([issueSlug]),
-      offset: 0,
-    });
-  };
-
-  const handleSelectEntryType = (entryType: EntryType) => {
-    updateSearch({
-      entry_types: serializeList([entryType]),
-      offset: 0,
-    });
-  };
-
   const resetBrowse = useCallback(() => {
     void navigate({
       to: ".",
@@ -286,115 +319,450 @@ export function BrowsePage({
     });
   }, [navigate]);
 
-  const pageDetails = useBrowsePageDetails({
-    dominantStates,
-    explorationIssueAreas,
-    hasActiveSearch,
-    isLoading: entriesQuery.isLoading,
-    handleToggleFilter,
-    issueAreaLabels,
-    pageContent,
-    resetBrowse,
-    results,
-    searchForActivity,
-    selectedFilters,
-    selectedState,
-    selectedStateName,
-    updateSearch,
-  });
+  const intentChips = useMemo<BrowseIntentChip[]>(() => {
+    const chips: BrowseIntentChip[] = [];
+    if (selectedFilters.query) {
+      chips.push({
+        id: "query",
+        label: selectedFilters.query,
+        onRemove: () => {
+          updateSearch({ offset: 0, query: undefined });
+        },
+      });
+    }
+
+    const filterKeys: BrowseFilterKey[] = [
+      "states",
+      "cities",
+      "regions",
+      "issue_areas",
+      "entry_types",
+      "source_types",
+      "source_patterns",
+    ];
+    filterKeys.forEach((key) => {
+      selectedFilters[key].forEach((value) => {
+        chips.push({
+          id: `${key}:${value}`,
+          label: filterLabel(key, value, issueAreaLabels),
+          onRemove: () => {
+            updateSearch({
+              [key]: serializeList(removeValue(selectedFilters[key], value)),
+              offset: 0,
+            });
+          },
+        });
+      });
+    });
+
+    return chips;
+  }, [issueAreaLabels, selectedFilters, updateSearch]);
+
+  const discoveryContext = useMemo(
+    () => ({
+      issueAreas: selectedFilters.issue_areas,
+      places: [
+        ...selectedFilters.cities,
+        ...selectedFilters.states.map((state) => STATE_NAME_BY_CODE[state] ?? state),
+        ...selectedFilters.regions,
+      ],
+      query: selectedFilters.query,
+    }),
+    [selectedFilters],
+  );
+  const indexContextLabel = useMemo(
+    () => browseContextLabel(selectedFilters, issueAreaLabels),
+    [issueAreaLabels, selectedFilters],
+  );
+
+  const emptyRecoveryActions = useMemo(
+    () =>
+      intentChips.map((chip) => ({
+        label: `Remove ${chip.label}`,
+        onClick: chip.onRemove,
+      })),
+    [intentChips],
+  );
+
+  const activeCounts = {
+    issues: selectedFilters.issue_areas.length,
+    sources: selectedFilters.source_types.length,
+    types: selectedFilters.entry_types.length,
+  };
+  const shouldShowResults = hasActiveSearch || Boolean(resultsError) || entriesQuery.isLoading;
+
+  const mapSearch: BrowseRouteSearch = {
+    ...search,
+    cities: serializeList(selectedFilters.cities),
+    entry_types: serializeList(selectedFilters.entry_types),
+    issue_areas: serializeList(selectedFilters.issue_areas),
+    query: selectedFilters.query,
+    regions: serializeList(selectedFilters.regions),
+    source_patterns: serializeList(selectedFilters.source_patterns),
+    source_types: serializeList(selectedFilters.source_types),
+    states: serializeList(selectedFilters.states),
+  };
+
+  const browseTitle = page ? pageContent.title : "Browse Atlas";
+  const browseTools = (
+    <BrowseSearchHeader
+      activeCounts={activeCounts}
+      initialQuery={search.query ?? ""}
+      intentChips={intentChips}
+      mapSearch={mapSearch}
+      placement={shouldShowResults ? "results" : "editorial"}
+      quickIssueAreas={quickIssueAreas}
+      searchPlaceholder={pageContent.searchPlaceholder}
+      selectedEntryTypes={selectedFilters.entry_types}
+      selectedIssueAreas={selectedFilters.issue_areas}
+      selectedSourceTypes={selectedFilters.source_types}
+      showEntryTypeFilter={Boolean(pageContent.showEntryTypeFilter)}
+      onResetBrowse={resetBrowse}
+      onSearch={runSearch}
+      onToggleFilter={handleToggleFilter}
+    />
+  );
+
   return (
-    <div className="mx-auto w-full max-w-[88rem] space-y-3 px-3 py-2 md:px-4 lg:space-y-4 lg:py-3">
-      <BrowseHero
-        description={pageContent.description}
-        eyebrow={pageContent.eyebrow}
-        scopeTabs={pageContent.scopeTabs}
-        title={pageContent.title}
-      />
-
-      <BrowseSearchHeader
-        activeCounts={pageDetails.activeCounts}
-        initialQuery={search.query ?? ""}
-        intentChips={pageDetails.intentChips}
-        mapSearch={pageDetails.mapSearch}
-        quickIssueAreas={quickIssueAreas}
-        searchPlaceholder={pageContent.searchPlaceholder}
-        selectedEntryTypes={selectedFilters.entry_types}
-        selectedIssueAreas={selectedFilters.issue_areas}
-        selectedSourceTypes={selectedFilters.source_types}
-        showEntryTypeFilter={Boolean(pageContent.showEntryTypeFilter)}
-        onResetBrowse={resetBrowse}
-        onSearch={runSearch}
-        onToggleFilter={handleToggleFilter}
-      />
-
-      {!hasActiveSearch ? (
-        <BrowseExplorationGuides
-          collectionFunnels={pageDetails.collectionFunnels}
-          entryTypes={pageContent.showEntryTypeFilter ? FEATURED_ENTRY_TYPES : []}
-          issues={explorationIssueAreas}
-          states={dominantStates}
-          onSelectEntryType={handleSelectEntryType}
-          onSelectIssue={handleSelectIssue}
-          onSelectState={handleSelectState}
-        />
-      ) : null}
-
-      <section className="grid gap-3 lg:grid-cols-[minmax(22rem,0.9fr)_minmax(0,1.15fr)] xl:grid-cols-[minmax(24rem,0.85fr)_minmax(0,1.35fr)]">
-        <BrowseResultsAside
-          emptyAction={pageContent.emptyAction}
-          entries={rankedEntries}
-          error={resultsError}
-          hasActiveSearch={hasActiveSearch}
-          isLoading={entriesQuery.isLoading}
-          discoveryContext={pageDetails.discoveryContext}
-          emptyRecoveryActions={pageDetails.emptyRecoveryActions}
-          issueAreaLabels={issueAreaLabels}
-          issueBrief={pageDetails.issueBrief}
-          pagination={results?.pagination}
-          placeBrief={pageDetails.placeBrief}
-          resultLabelPlural={pageContent.resultLabelPlural}
-          resultsHeading={pageContent.resultsHeading}
-          onPageChange={(offset) => {
-            updateSearch({ offset });
-          }}
-        />
-
-        <div className="min-w-0 space-y-3">
-          <div className="bg-surface-container min-w-0 overflow-hidden rounded-[1.45rem]">
-            <div className="flex items-center justify-between px-3 py-2 lg:px-4">
-              <p className="type-title-medium text-ink-strong">{pageDetails.currentContext}</p>
-              <span className="type-body-small text-ink-muted">{pageDetails.matchCountLabel}</span>
-            </div>
-
-            {selectedFilters.view === "map" ? (
-              <BrowseMapSurface
-                stateDensity={stateDensity}
-                selectedState={selectedState}
-                onSelectState={handleSelectState}
-              />
-            ) : selectedFilters.view === "grid" ? (
-              <GridSurface
-                states={dominantStates}
-                selectedState={selectedState}
-                onSelectState={handleSelectState}
-              />
-            ) : (
-              <ListSurface
-                states={dominantStates}
-                selectedState={selectedState}
-                onSelectState={handleSelectState}
-              />
-            )}
-          </div>
-
-          <BrowseEcosystemHistorySection
-            entries={rankedEntries}
-            issueLabel={pageDetails.selectedIssueLabel}
-            placeLabel={selectedStateName}
-            total={total}
-          />
+    <div className="text-ink-strong">
+      <section className="px-4 pt-4 pb-2 md:px-8">
+        <div className="mx-auto w-full max-w-[76rem]">
+          <h1 className="text-3xl leading-tight text-balance md:text-4xl">{browseTitle}</h1>
         </div>
       </section>
+
+      {shouldShowResults ? browseTools : null}
+
+      <main className="mx-auto w-full max-w-[76rem] space-y-12 px-4 py-4 md:px-8 md:py-6">
+        {shouldShowResults ? (
+          <BrowseResultsMode
+            entries={entries}
+            emptyAction={pageContent.emptyAction}
+            emptyRecoveryActions={emptyRecoveryActions}
+            error={resultsError}
+            issueAreaLabels={issueAreaLabels}
+            isLoading={entriesQuery.isLoading}
+            pagination={results?.pagination}
+            relatedSections={editorialSections}
+            indexContextLabel={indexContextLabel}
+            resultLabelPlural={pageContent.resultLabelPlural}
+            discoveryContext={discoveryContext}
+            onPageChange={(offset) => {
+              updateSearch({ offset });
+            }}
+            onSelectFacet={handleToggleFilter}
+          />
+        ) : (
+          <BrowseEditorialMode
+            sections={editorialSections}
+            indexContextLabel={indexContextLabel}
+            searchTools={browseTools}
+            onSelectFacet={handleToggleFilter}
+          />
+        )}
+      </main>
+    </div>
+  );
+}
+
+interface BrowseResultsModeProps {
+  discoveryContext: {
+    issueAreas: string[];
+    places: string[];
+    query: string | undefined;
+  };
+  emptyAction: BrowsePageContent["emptyAction"];
+  emptyRecoveryActions: { label: string; onClick: () => void }[];
+  entries: Entry[];
+  error: Error | null;
+  isLoading: boolean;
+  issueAreaLabels: Record<string, string>;
+  indexContextLabel: string | undefined;
+  pagination: EntryListResponse["pagination"] | undefined;
+  relatedSections: ReturnType<typeof buildBrowseEditorialSections>;
+  resultLabelPlural: string | undefined;
+  onPageChange: (offset: number) => void;
+  onSelectFacet: (key: BrowseFilterKey, value: string) => void;
+}
+
+function BrowseResultsMode({
+  discoveryContext,
+  emptyAction,
+  emptyRecoveryActions,
+  entries,
+  error,
+  isLoading,
+  issueAreaLabels,
+  indexContextLabel,
+  pagination,
+  relatedSections,
+  resultLabelPlural,
+  onPageChange,
+  onSelectFacet,
+}: BrowseResultsModeProps) {
+  const previousOffset =
+    pagination && pagination.offset > 0 ? Math.max(0, pagination.offset - pagination.limit) : null;
+  const nextOffset = pagination?.has_more ? pagination.offset + pagination.limit : null;
+
+  return (
+    <>
+      <section aria-label="Search results" className="max-w-4xl">
+        <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+          <h2 className="type-headline-small text-ink-strong">People and groups</h2>
+          {pagination ? (
+            <p className="type-body-medium text-ink-muted">{resultLabel(pagination.total)}</p>
+          ) : null}
+        </div>
+
+        <EntryList
+          entries={entries}
+          total={pagination?.total}
+          isLoading={isLoading}
+          error={error}
+          issueAreaLabels={issueAreaLabels}
+          hasActiveSearch
+          resultLabelPlural={resultLabelPlural}
+          discoveryContext={discoveryContext}
+          emptyAction={emptyAction}
+          emptyRecoveryActions={emptyRecoveryActions}
+        />
+
+        {pagination ? (
+          <div className="mt-4 flex gap-2">
+            <button
+              type="button"
+              disabled={previousOffset === null}
+              onClick={() => {
+                if (previousOffset !== null) {
+                  onPageChange(previousOffset);
+                }
+              }}
+              className="type-label-large border-border text-ink-soft disabled:text-ink-muted rounded-full border px-4 py-2 disabled:opacity-50"
+            >
+              Previous
+            </button>
+            <button
+              type="button"
+              disabled={nextOffset === null}
+              onClick={() => {
+                if (nextOffset !== null) {
+                  onPageChange(nextOffset);
+                }
+              }}
+              className="type-label-large border-border text-ink-soft disabled:text-ink-muted rounded-full border px-4 py-2 disabled:opacity-50"
+            >
+              Next
+            </button>
+          </div>
+        ) : null}
+      </section>
+
+      <PrimitiveFacetSection
+        title={indexContextLabel ? `Issues in ${indexContextLabel}` : "Issues"}
+        items={relatedSections.activeIssues.slice(0, 4)}
+        variant="issue"
+        onSelectFacet={onSelectFacet}
+      />
+      <PrimitiveFacetSection
+        title={indexContextLabel ? `Places in ${indexContextLabel}` : "Places"}
+        items={relatedSections.activePlaces.slice(0, 4)}
+        onSelectFacet={onSelectFacet}
+      />
+    </>
+  );
+}
+
+interface BrowseEditorialModeProps {
+  indexContextLabel: string | undefined;
+  searchTools: ReactNode;
+  sections: ReturnType<typeof buildBrowseEditorialSections>;
+  onSelectFacet: (key: BrowseFilterKey, value: string) => void;
+}
+
+function BrowseEditorialMode({
+  indexContextLabel,
+  searchTools,
+  sections,
+  onSelectFacet,
+}: BrowseEditorialModeProps) {
+  const hasAnySection =
+    sections.activeIssues.length > 0 ||
+    sections.activePlaces.length > 0 ||
+    ENTRY_TYPE_SECTION_ORDER.some((entryType) => sections.entriesByType[entryType].length > 0);
+
+  if (!hasAnySection) {
+    return (
+      <section className="border-border bg-surface-container-lowest max-w-2xl border px-8 py-10">
+        <h2 className="type-title-large text-ink-strong">No people or groups listed.</h2>
+      </section>
+    );
+  }
+
+  return (
+    <>
+      <PrimitiveFacetSection
+        title={indexContextLabel ? `Issues in ${indexContextLabel}` : "Issues"}
+        items={sections.activeIssues}
+        variant="issue"
+        onSelectFacet={onSelectFacet}
+      />
+      {searchTools}
+      {PRIMARY_ENTRY_TYPE_SECTION_ORDER.map((entryType) => (
+        <PrimitiveEntrySection
+          key={entryType}
+          entries={sections.entriesByType[entryType]}
+          title={ENTITY_TYPE_LABELS[entryType]}
+        />
+      ))}
+      <PrimitiveFacetSection
+        title={indexContextLabel ? `Places in ${indexContextLabel}` : "Places"}
+        items={sections.activePlaces}
+        onSelectFacet={onSelectFacet}
+      />
+      {SECONDARY_ENTRY_TYPE_SECTION_ORDER.map((entryType) => (
+        <PrimitiveEntrySection
+          key={entryType}
+          entries={sections.entriesByType[entryType]}
+          title={ENTITY_TYPE_LABELS[entryType]}
+        />
+      ))}
+    </>
+  );
+}
+
+function PrimitiveFacetSection({
+  items,
+  title,
+  variant = "standard",
+  onSelectFacet,
+}: {
+  items: BrowseEditorialFacet[];
+  title: string;
+  variant?: "issue" | "standard";
+  onSelectFacet: (key: BrowseFilterKey, value: string) => void;
+}) {
+  if (items.length === 0) {
+    return null;
+  }
+
+  return (
+    <section aria-label={title} className="space-y-4">
+      <SectionHeading title={title} />
+      <div
+        className={
+          variant === "issue"
+            ? "grid gap-3 md:grid-cols-2"
+            : "grid gap-3 sm:grid-cols-2 lg:grid-cols-4"
+        }
+      >
+        {items.slice(0, 8).map((item, index) => (
+          <button
+            key={`${item.filterKey}:${item.value}`}
+            type="button"
+            aria-label={facetAriaLabel(item, variant)}
+            onClick={() => {
+              onSelectFacet(item.filterKey, item.value);
+            }}
+            className={[
+              variant === "issue"
+                ? "border-border-strong bg-surface-container-high hover:bg-surface-container-highest min-h-40 border px-5 py-5 text-left transition-colors duration-150 md:min-h-36"
+                : "border-border-strong bg-surface-container hover:bg-surface-container-high min-h-28 border px-5 py-4 text-left transition-colors duration-150",
+              variant === "issue" && index === 0 ? "border-l-accent border-l-4" : "",
+            ].join(" ")}
+          >
+            <span
+              className={
+                variant === "issue"
+                  ? "text-ink-strong block font-serif text-xl leading-snug"
+                  : "text-ink-strong block font-serif text-lg leading-snug"
+              }
+            >
+              {item.label}
+            </span>
+            {item.summary ? (
+              <span className="type-body-medium text-ink-soft mt-3 block">{item.summary}</span>
+            ) : null}
+            <span className="mt-4 flex flex-wrap gap-2">
+              {item.actorCount ? (
+                <span className="type-label-small border-border-strong bg-surface-container-lowest text-ink-soft border px-2.5 py-1">
+                  {actorCountLabel(item.actorCount)}
+                </span>
+              ) : null}
+              {item.placeCount ? (
+                <span className="type-label-small border-border-strong bg-surface-container-lowest text-ink-soft border px-2.5 py-1">
+                  {placeCountLabel(item.placeCount)}
+                </span>
+              ) : null}
+              {item.evidenceCount ? (
+                <span className="type-label-small border-border-strong bg-surface-container-lowest text-ink-soft border px-2.5 py-1">
+                  {sourceLabel(item.evidenceCount)}
+                </span>
+              ) : null}
+              {item.latestSourceDate ? (
+                <span className="type-label-small border-border-strong bg-surface-container-lowest text-ink-muted border px-2.5 py-1">
+                  Latest source {dateLabel(item.latestSourceDate)}
+                </span>
+              ) : null}
+              {variant === "standard" ? (
+                <span className="type-label-small border-border-strong bg-surface-container-lowest text-ink-muted border px-2.5 py-1">
+                  {resultLabel(item.count)}
+                </span>
+              ) : null}
+            </span>
+          </button>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function PrimitiveEntrySection({ entries, title }: { entries: Entry[]; title: string }) {
+  if (entries.length === 0) {
+    return null;
+  }
+
+  return (
+    <section aria-label={title} className="space-y-4">
+      <SectionHeading title={title} />
+      <div className={entries.length === 1 ? "grid gap-3" : "grid gap-3 lg:grid-cols-2"}>
+        {entries.map((entry) => (
+          <EntryBriefCard key={entry.id} entry={entry} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function EntryBriefCard({ entry }: { entry: Entry }) {
+  const location = entryLocation(entry);
+  const latest = dateLabel(entry.latest_source_date ?? entry.updated_at);
+
+  return (
+    <article className="border-border bg-surface-container-low hover:bg-surface-container border px-5 py-4 transition-colors duration-150">
+      <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-start">
+        <div className="min-w-0">
+          <a
+            href={entryProfileHref(entry)}
+            className="text-ink-strong font-serif text-lg hover:underline"
+          >
+            {entry.name}
+          </a>
+          {location ? <p className="type-body-small text-ink-muted mt-1">{location}</p> : null}
+        </div>
+        <span className="type-label-small border-border-strong text-ink-soft w-fit border px-2.5 py-1 md:justify-self-end">
+          {sourceLabel(entry.source_count)}
+        </span>
+      </div>
+      <p className="type-body-medium text-ink-soft mt-3 line-clamp-2">{entry.description}</p>
+      {latest ? <p className="type-body-small text-ink-muted mt-3">Updated {latest}</p> : null}
+    </article>
+  );
+}
+
+function SectionHeading({ title }: { title: string }) {
+  return (
+    <div className="border-border flex items-end justify-between border-b pb-3">
+      <h2 className="text-ink-strong font-serif text-2xl">{title}</h2>
     </div>
   );
 }

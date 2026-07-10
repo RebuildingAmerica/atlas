@@ -9,23 +9,18 @@ import { BrowsePage } from "@/domains/catalog/components/browse/browse-page";
 import { getNavigateCalls, mocks } from "./browse-page-test-setup";
 
 describe("BrowsePage search intent", () => {
-  it("summarizes the active place-plus-issue search without duplicating focus panels", () => {
+  it("shows active place-plus-issue search as results without focus brief panels", () => {
     mocks.useEntries.mockReturnValue({
       data: {
-        data: [
-          {
-            id: "entry_123",
-          },
-        ],
+        data: [{ id: "entry_123" }],
         facets: {
-          states: [
-            { count: 10, value: "MO" },
-            { count: 5, value: "CA" },
-          ],
-          source_patterns: [
-            { count: 14, value: "multi_source" },
-            { count: 6, value: "single_source" },
-          ],
+          cities: [],
+          entity_types: [{ count: 15, value: "organization" }],
+          issue_areas: [{ count: 12, value: "housing_affordability" }],
+          regions: [],
+          source_patterns: [{ count: 14, value: "multi_source" }],
+          source_types: [{ count: 9, value: "news_article" }],
+          states: [{ count: 10, value: "MO" }],
         },
         pagination: {
           has_more: true,
@@ -52,17 +47,24 @@ describe("BrowsePage search intent", () => {
       />,
     );
 
-    expect(screen.queryByText("Research focus")).toBeNull();
-    expect(screen.getByDisplayValue("tenant union")).not.toBeNull();
-    expect(screen.getByText("Filters")).not.toBeNull();
+    expect(screen.getByDisplayValue("tenant union")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Filter/ })).toBeInTheDocument();
     expect(screen.getAllByText("Missouri").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Housing Affordability").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Organizations").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Local news").length).toBeGreaterThan(0);
-    expect(screen.getByText("Place brief")).not.toBeNull();
-    expect(screen.getByText("Missouri housing ecosystem")).not.toBeNull();
-    expect(screen.getAllByText("25 people or groups with sources.").length).toBeGreaterThan(0);
-    expect(screen.getByText("Strongest signal: Multi-source confirmation")).not.toBeNull();
+    expect(screen.queryByRole("button", { name: /Evidence/ })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Filter/ }));
+    expect(screen.getByRole("button", { name: /Evidence/ })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Search results" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Issues in Missouri + 1 more" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Places in Missouri + 1 more" })).toBeInTheDocument();
+    expect(
+      screen.queryByRole("region", { name: "Sources in Missouri + 1 more" }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText("Place brief")).not.toBeInTheDocument();
+    expect(screen.queryByText("Issue brief")).not.toBeInTheDocument();
+    expect(screen.queryByText(/source signal/i)).not.toBeInTheDocument();
   });
 
   it("extracts source and actor intent from plain-language search into removable chips", () => {
@@ -96,51 +98,27 @@ describe("BrowsePage search intent", () => {
       query: undefined,
       source_types: "news_article",
       states: "MO",
+      view: "list",
     });
   });
 
-  it("summarizes issue-level actors, sources, and gaps from filtered results", () => {
-    mocks.useEntries.mockReturnValue({
-      data: {
-        data: [{ id: "entry_123" }],
-        facets: {
-          states: [
-            { count: 10, value: "MO" },
-            { count: 5, value: "CA" },
-          ],
-          source_patterns: [
-            { count: 2, value: "multi_source" },
-            { count: 9, value: "single_source" },
-          ],
-        },
-        pagination: {
-          has_more: false,
-          limit: 20,
-          offset: 0,
-          total: 11,
-        },
-      },
-      error: null,
-      isLoading: false,
-    });
-
+  it("keeps legacy source-pattern URL state removable without featuring source-pattern copy", () => {
     render(
       <BrowsePage
         search={{
-          issue_areas: "housing_affordability",
+          issue_areas: undefined,
           offset: undefined,
           query: undefined,
+          source_patterns: "multi_source",
           source_types: undefined,
           states: undefined,
-          view: "map",
+          view: "list",
         }}
       />,
     );
 
-    expect(screen.getByText("Issue brief")).not.toBeNull();
-    expect(screen.getByText("Housing Affordability landscape")).not.toBeNull();
-    expect(screen.getByText("11 people or groups with sources.")).not.toBeNull();
-    expect(screen.getByText("Source signal: Single-source leads")).not.toBeNull();
-    expect(screen.getByText("Gap: build more multi-source confirmation.")).not.toBeNull();
+    expect(screen.getByRole("region", { name: "Search results" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Remove Multi Source" })).toBeInTheDocument();
+    expect(screen.queryByText(/source pattern/i)).not.toBeInTheDocument();
   });
 });

@@ -25,7 +25,7 @@ export function BrowseSearchBox({
 
   return (
     <form
-      className="bg-surface-container-lowest flex min-w-0 flex-1 items-center gap-2.5 rounded-full px-3 py-2"
+      className="border-border-strong bg-surface-container-lowest flex min-w-0 flex-1 items-center border"
       onSubmit={(event) => {
         event.preventDefault();
         const submittedValue = new FormData(event.currentTarget).get("browse-query");
@@ -35,7 +35,7 @@ export function BrowseSearchBox({
       <label htmlFor={inputId} className="sr-only">
         Search people and groups by issue, place, or name
       </label>
-      <Search className="text-ink-muted h-4 w-4 shrink-0" />
+      <Search className="text-ink-muted ml-4 h-4 w-4 shrink-0" />
       <input
         id={inputId}
         name="browse-query"
@@ -44,11 +44,11 @@ export function BrowseSearchBox({
           setQueryDraft(event.target.value);
         }}
         placeholder={placeholder}
-        className="type-body-large text-ink-strong placeholder:text-ink-muted w-full bg-transparent outline-none"
+        className="type-body-medium text-ink-strong placeholder:text-ink-muted min-h-10 w-full bg-transparent px-3 outline-none"
       />
       <button
         type="submit"
-        className="type-label-large bg-accent hover:bg-accent-deep shrink-0 rounded-full px-3 py-1 text-white transition-colors"
+        className="type-label-medium bg-ink-strong text-surface hover:bg-ink border-border-strong min-h-10 shrink-0 border-l px-4 transition-colors duration-150"
       >
         Search
       </button>

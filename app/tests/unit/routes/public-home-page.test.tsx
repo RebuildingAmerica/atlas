@@ -64,14 +64,25 @@ describe("HomePage", () => {
             { count: 3000, value: "organization" },
             { count: 37247, value: "person" },
           ],
-          issue_areas: [],
+          issue_areas: [
+            { count: 120, value: "housing_affordability" },
+            { count: 90, value: "climate_resilience" },
+            { count: 48, value: "voting_rights" },
+          ],
           regions: [],
           source_patterns: [],
-          source_types: [],
-          states: Array.from({ length: 50 }, (_, index) => ({
-            count: index + 1,
-            value: `S${String(index)}`,
-          })),
+          source_types: [
+            { count: 1240, value: "government_record" },
+            { count: 980, value: "news_article" },
+          ],
+          states: [
+            { count: 140, value: "MO" },
+            { count: 100, value: "MI" },
+            ...Array.from({ length: 48 }, (_, index) => ({
+              count: index + 1,
+              value: `S${String(index)}`,
+            })),
+          ],
         },
         pagination: {
           has_more: true,
@@ -153,6 +164,24 @@ describe("HomePage", () => {
     expect(screen.queryByText(/with sources local intelligence/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/profile directories/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/broader civic graph/i)).not.toBeInTheDocument();
+  });
+
+  it("uses catalog facets and recent records instead of hardcoded demo scenarios", () => {
+    render(<HomePage />);
+
+    expect(screen.getAllByText("Housing Affordability").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("120 records").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Missouri").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("140 records").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Government records").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("1,240 records").length).toBeGreaterThan(0);
+
+    expect(screen.queryByText("housing organizers in Detroit")).not.toBeInTheDocument();
+    expect(screen.queryByText("Meeting prep · Wayne County housing")).not.toBeInTheDocument();
+    expect(screen.queryByText("Prepared today")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Avery is confirming meeting details before outreach."),
+    ).not.toBeInTheDocument();
   });
 
   it("shows recently indexed rows from the catalog query", () => {

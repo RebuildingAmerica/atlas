@@ -11,6 +11,7 @@ export function HomePage() {
   const recentEntries = useEntries({ limit: 16, offset: 0 });
   const entries = recentEntries.data?.data ?? [];
   const totalEntries = recentEntries.data?.pagination.total;
+  const facets = recentEntries.data?.facets;
   const organizationCount = recentEntries.data?.facets.entity_types?.find(
     (facet) => facet.value === "organization",
   )?.count;
@@ -27,6 +28,7 @@ export function HomePage() {
       stateCount={stateCount}
       totalEntries={totalEntries}
       organizationCount={organizationCount}
+      facets={facets}
     />
   );
 }

@@ -175,7 +175,7 @@ describe("BrowsePage results", () => {
     expect(mocks.navigate).toHaveBeenCalled();
   });
 
-  it("falls back cleanly when browse results have not loaded yet and empty searches are submitted", () => {
+  it("keeps the page stable when browse results have not loaded yet and empty searches are submitted", () => {
     mocks.useEntries.mockReturnValue({
       data: undefined,
       error: null,
@@ -196,8 +196,6 @@ describe("BrowsePage results", () => {
       />,
     );
 
-    expect(screen.getByText("United States")).not.toBeNull();
-    expect(screen.getByText("0 matches")).not.toBeNull();
     expect(screen.getByText("Entry list total: 0")).not.toBeNull();
     expect(screen.queryByRole("button", { name: "Next" })).toBeNull();
 
@@ -252,7 +250,7 @@ describe("BrowsePage results", () => {
     );
   });
 
-  it("humanizes unknown filters and unknown state codes in grid and list browse surfaces", () => {
+  it("humanizes unknown filters and unknown state codes in result mode", () => {
     mocks.useTaxonomy.mockReturnValue({
       data: {
         Housing: [],
@@ -279,7 +277,7 @@ describe("BrowsePage results", () => {
       isLoading: false,
     });
 
-    const { rerender } = render(
+    render(
       <BrowsePage
         search={{
           entry_types: "mutual_aid",
@@ -294,26 +292,9 @@ describe("BrowsePage results", () => {
     );
 
     expect(screen.getAllByText("XX").length).toBeGreaterThan(0);
-    expect(screen.getByRole("button", { name: "XX 3 matching records" })).not.toBeNull();
     expect(screen.getAllByRole("button", { name: "Remove Mutual Aid" }).length).toBeGreaterThan(0);
     expect(screen.getAllByRole("button", { name: /Community archive/i }).length).toBeGreaterThan(0);
-    fireEvent.click(screen.getByRole("button", { name: "XX 3 matching records" }));
-
-    rerender(
-      <BrowsePage
-        search={{
-          entry_types: "mutual_aid",
-          issue_areas: undefined,
-          offset: undefined,
-          query: undefined,
-          source_types: "community_archive",
-          states: "XX",
-          view: "list",
-        }}
-      />,
-    );
-
-    expect(screen.getAllByText("XX").length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByRole("button", { name: "XX 3 records" }));
     fireEvent.click(screen.getByRole("button", { name: "Remove XX" }));
     expect(mocks.navigate).toHaveBeenCalled();
   });

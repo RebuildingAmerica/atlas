@@ -178,6 +178,36 @@ describe("routes/_public/browse", () => {
     expect(loaderResult).toEqual({ initialEntriesLoadFailed: true });
   });
 
+  it("keeps the browse route mounted when the initial entries request returns an HTTP 5xx", async () => {
+    const routeModule = await import("@/routes/_public/browse");
+    const { asRouteStub } = await import("@/../tests/helpers/router-harness");
+    const Route = asRouteStub(routeModule.Route);
+    const httpError = new Error("HTTPError") as Error & { status: number };
+    httpError.name = "HTTPError";
+    httpError.status = 502;
+    mocks.buildBrowseSearch.mockReturnValue({
+      cities: [],
+      entry_types: [],
+      issue_areas: [],
+      offset: 0,
+      query: undefined,
+      regions: [],
+      source_patterns: [],
+      source_types: [],
+      states: [],
+      view: "list",
+    });
+    mocks.api.entries.list.mockRejectedValue(httpError);
+
+    const loaderResult = await Route.options.loader?.({
+      deps: {
+        search: {},
+      },
+    });
+
+    expect(loaderResult).toEqual({ initialEntriesLoadFailed: true });
+  });
+
   it("renders BrowsePage with the search params from useSearch", async () => {
     const routeModule = await import("@/routes/_public/browse");
     const { readRouterMocks, asRouteStub } = await import("@/../tests/helpers/router-harness");

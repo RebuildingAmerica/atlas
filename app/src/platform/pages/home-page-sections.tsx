@@ -1,16 +1,20 @@
 import { Link } from "@tanstack/react-router";
 import { Search } from "lucide-react";
-import { ArrowRight, MapPinned } from "./home-page-data";
 import {
-  BRIEF_ACTORS,
-  FIELD_ACTORS,
-  FEATURE_WORKFLOWS,
   ISSUE_CHIPS,
-  SEARCH_EXAMPLES,
+  type HomeFacetTile,
+  ArrowRight,
+  MapPinned,
+  buildHomeIssueTiles,
+  buildHomePlaceTiles,
+  buildHomeSourceTiles,
+  buildHomeTypeTiles,
   browseUrl,
+  formatLocation,
   formatStatCount,
+  profileHref,
 } from "./home-page-data";
-import type { Entry } from "@/types";
+import type { Entry, EntrySearchFacets } from "@/types";
 import { HomeDiscoverySection } from "./home-page-discovery";
 
 interface HomeHeroActionsProps {
@@ -28,6 +32,7 @@ interface HomePageShellProps {
   stateCount: number | undefined;
   totalEntries: number | undefined;
   organizationCount: number | undefined;
+  facets: EntrySearchFacets | undefined;
 }
 
 function HomeHeroActions({ onQueryChange, query }: HomeHeroActionsProps) {
@@ -75,6 +80,7 @@ function HomeHeroActions({ onQueryChange, query }: HomeHeroActionsProps) {
 }
 export function HomePageShell({
   entries,
+  facets,
   isSignedIn,
   localMode,
   onQueryChange,
@@ -84,6 +90,11 @@ export function HomePageShell({
   totalEntries,
   organizationCount,
 }: HomePageShellProps) {
+  const issueTiles = buildHomeIssueTiles(facets);
+  const placeTiles = buildHomePlaceTiles(facets);
+  const sourceTiles = buildHomeSourceTiles(facets);
+  const typeTiles = buildHomeTypeTiles(facets);
+  const featuredEntries = entries.slice(0, 6);
   const homeStats = [
     {
       stat: formatStatCount(totalEntries),
@@ -166,25 +177,14 @@ export function HomePageShell({
               <div className="border-border-strong bg-surface flex items-center gap-3 border px-4 py-3">
                 <Search className="text-ink-muted h-4 w-4" aria-hidden="true" />
                 <span className="type-body-medium text-ink-soft">
-                  housing organizers in Detroit
+                  Search by name, place, issue, or organization
                 </span>
               </div>
             </div>
-            <div className="bg-border grid gap-px sm:grid-cols-2">
-              {SEARCH_EXAMPLES.slice(0, 4).map((example) => (
-                <a
-                  key={example.query}
-                  href={browseUrl(example.query)}
-                  className="bg-surface-container-lowest hover:bg-surface-container min-h-32 p-8 no-underline transition-colors duration-150"
-                >
-                  <p className="text-ink-strong font-serif text-lg leading-snug">{example.query}</p>
-                  <p className="type-label-small text-accent-deep mt-5">{example.result}</p>
-                </a>
-              ))}
-            </div>
+            <FacetTileGrid tiles={issueTiles.slice(0, 4)} />
             <div className="border-border flex flex-wrap items-center justify-between gap-4 border-t px-8 py-4">
               <span className="type-label-small text-ink-soft">
-                People · organizations · initiatives · coalitions
+                People · organizations · initiatives · campaigns
               </span>
               <span className="type-label-small text-accent-deep">All 50 states</span>
             </div>
@@ -233,23 +233,26 @@ export function HomePageShell({
 
           <div className="border-border bg-surface-container-lowest border">
             <div className="border-border flex items-center justify-between gap-4 border-b px-8 py-4">
-              <span className="font-serif text-sm">Housing · Detroit, MI</span>
-              <span className="type-label-small text-ink-soft">34 actors · 9 orgs</span>
+              <span className="font-serif text-sm">Recently indexed</span>
+              <span className="type-label-small text-ink-soft">{featuredEntries.length} shown</span>
             </div>
-            {FIELD_ACTORS.map((actor) => (
-              <div
-                key={actor.name}
-                className="border-border flex items-center justify-between gap-4 border-b px-8 py-4 last:border-b-0"
+            {featuredEntries.map((entry) => (
+              <a
+                key={entry.id}
+                href={profileHref(entry)}
+                className="border-border hover:bg-surface-container flex items-center justify-between gap-4 border-b px-8 py-4 no-underline transition-colors duration-150 last:border-b-0"
               >
                 <div>
-                  <p className="font-serif text-sm">{actor.name}</p>
-                  <p className="type-label-small text-ink-soft mt-1">{actor.role}</p>
+                  <p className="font-serif text-sm">{entry.name}</p>
+                  <p className="type-label-small text-ink-soft mt-1">{formatLocation(entry)}</p>
                 </div>
-                <span className="type-label-small text-ink-soft shrink-0">{actor.connections}</span>
-              </div>
+                <span className="type-label-small text-ink-soft shrink-0">
+                  {entry.source_count} sources
+                </span>
+              </a>
             ))}
             <p className="type-label-small bg-surface-container text-ink-soft border-border border-t px-8 py-4">
-              Coverage gap · transit + housing overlap: 2 known actors, weakly sourced
+              Open each record to inspect the public sources behind it.
             </p>
           </div>
         </div>
@@ -265,66 +268,18 @@ export function HomePageShell({
               get the people to know, the groups around them, and the gaps to check before anyone
               makes a call.
             </p>
-            <div className="border-border bg-border mt-10 grid gap-px overflow-hidden border sm:grid-cols-2">
-              {FEATURE_WORKFLOWS.map((feature) => (
-                <div key={feature.name} className="bg-surface-container-lowest p-8">
-                  <feature.Icon className="text-accent-deep mb-5 h-5 w-5" aria-hidden="true" />
-                  <p className="font-serif text-lg">{feature.name}</p>
-                  <p className="type-body-small text-ink-soft mt-3">{feature.description}</p>
-                </div>
-              ))}
-            </div>
+            <FacetTileGrid tiles={placeTiles.slice(0, 4)} className="mt-10" />
           </div>
 
           <div className="border-border bg-surface-container-lowest border">
             <div className="border-border flex items-center justify-between gap-4 border-b px-8 py-4">
               <p className="flex items-center gap-2 font-serif text-sm">
                 <MapPinned className="text-accent-deep h-4 w-4" aria-hidden="true" />
-                Meeting prep · Wayne County housing
+                Places with activity
               </p>
-              <span className="type-label-small text-ink-soft">Prepared today</span>
+              <span className="type-label-small text-ink-soft">{placeTiles.length} shown</span>
             </div>
-            <div className="bg-border grid gap-px md:grid-cols-[0.9fr_1.1fr]">
-              <div className="bg-surface-container-lowest p-8">
-                <p className="font-serif text-xl leading-snug">
-                  Who should we talk to before Thursday&apos;s tenant-protection hearing?
-                </p>
-                <div className="mt-6 flex flex-wrap gap-2">
-                  {["Wayne County", "Housing", "Tenant groups", "Legal aid"].map((tag) => (
-                    <span
-                      key={tag}
-                      className="type-label-small border-border-strong text-ink-soft border px-2.5 py-1"
-                    >
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              </div>
-              <div className="bg-surface-container-lowest p-8">
-                <div className="space-y-4">
-                  {[
-                    ["34", "people and groups"],
-                    ["11", "strong records"],
-                    ["3", "gaps to check"],
-                  ].map(([value, label]) => (
-                    <div key={label} className="flex items-baseline justify-between gap-4">
-                      <span className="font-serif text-3xl">{value}</span>
-                      <span className="type-label-small text-ink-soft">{label}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-            <div className="divide-border divide-y">
-              {["Save the shortlist", "Share with the team", "Keep watching this issue"].map(
-                (action) => (
-                  <div key={action} className="flex items-center justify-between gap-4 px-8 py-4">
-                    <span className="type-label-medium text-ink-strong">{action}</span>
-                    <ArrowRight className="text-accent-deep h-3.5 w-3.5" aria-hidden="true" />
-                  </div>
-                ),
-              )}
-            </div>
+            <FacetTileGrid tiles={placeTiles.slice(0, 6)} />
           </div>
         </div>
       </section>
@@ -335,10 +290,8 @@ export function HomePageShell({
             <div className="md:col-span-2">
               <h2 className="text-3xl leading-snug text-balance md:text-4xl">Work as a team.</h2>
               <p className="type-body-large text-ink-soft mt-6">
-                Pro and Team plans give civic research a shared workspace: assign follow-ups, keep
-                private notes beside Atlas records, review additions before they leave the team, and
-                export clean packets for a story, funder update, coalition meeting, or partner
-                handoff.
+                The same public records become shared work inside a team: save people, compare
+                sources, assign follow-ups, and keep notes beside the records everyone can inspect.
               </p>
             </div>
             <div className="flex items-end">
@@ -356,45 +309,61 @@ export function HomePageShell({
 
           <div className="border-border bg-surface-container-lowest border">
             <div className="border-border flex flex-col gap-4 border-b px-8 py-4 lg:flex-row lg:items-center lg:justify-between">
-              <p className="font-serif text-sm">Workspace · Wayne County Housing</p>
+              <p className="font-serif text-sm">Source-backed records</p>
               <div className="flex flex-wrap items-center gap-3">
-                <span className="type-label-small text-ink-soft">3 teammates · updated 2h ago</span>
-                {["Export", "Share", "Assign"].map((action) => (
-                  <button
-                    key={action}
-                    type="button"
-                    className="type-label-small border-border-strong text-ink-soft hover:bg-surface-container border px-3 py-1.5 transition-colors duration-150"
-                  >
-                    {action}
-                  </button>
-                ))}
+                <span className="type-label-small text-ink-soft">
+                  {sourceTiles.length} source types shown
+                </span>
               </div>
             </div>
-            <div className="bg-border grid gap-px md:grid-cols-3">
-              {BRIEF_ACTORS.map((actor) => (
-                <div key={actor.name} className="bg-surface-container-lowest px-8 py-6">
-                  <div className="mb-2 flex items-start justify-between gap-3">
-                    <p className="font-serif text-sm">{actor.name}</p>
-                    <span className="type-label-small text-ink-soft shrink-0">
-                      {typeof actor.sources === "number"
-                        ? `${actor.sources} sources`
-                        : actor.sources}
-                    </span>
-                  </div>
-                  <p className="type-label-small text-accent-deep mb-2">{actor.type}</p>
-                  <p className="type-body-small text-ink-soft">{actor.note}</p>
-                </div>
-              ))}
-            </div>
+            <FacetTileGrid tiles={[...sourceTiles, ...typeTiles].slice(0, 8)} columns="four" />
           </div>
         </div>
       </section>
 
       <HomeDiscoverySection
         entries={entries}
+        issueTiles={issueTiles}
         recentEntriesLoading={recentEntriesLoading}
         totalEntries={totalEntries}
       />
+    </div>
+  );
+}
+
+function FacetTileGrid({
+  className,
+  columns = "two",
+  tiles,
+}: {
+  className?: string;
+  columns?: "two" | "four";
+  tiles: HomeFacetTile[];
+}) {
+  if (tiles.length === 0) {
+    return null;
+  }
+
+  return (
+    <div
+      className={[
+        "border-border bg-border grid gap-px overflow-hidden border",
+        columns === "four" ? "sm:grid-cols-2 lg:grid-cols-4" : "sm:grid-cols-2",
+        className,
+      ]
+        .filter(Boolean)
+        .join(" ")}
+    >
+      {tiles.map((tile) => (
+        <a
+          key={`${tile.href}:${tile.label}`}
+          href={tile.href}
+          className="bg-surface-container-lowest hover:bg-surface-container min-h-32 p-8 no-underline transition-colors duration-150"
+        >
+          <p className="text-ink-strong font-serif text-lg leading-snug">{tile.label}</p>
+          <p className="type-label-small text-accent-deep mt-5">{tile.count}</p>
+        </a>
+      ))}
     </div>
   );
 }

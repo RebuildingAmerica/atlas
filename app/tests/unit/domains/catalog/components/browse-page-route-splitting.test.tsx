@@ -75,10 +75,10 @@ describe("BrowsePage route splitting", () => {
     cleanup();
   });
 
-  it("renders the list-first browse surface without evaluating the map library path", async () => {
+  it("renders browse without evaluating the map library path", async () => {
     const { BrowsePage } = await import("@/domains/catalog/components/browse/browse-page");
 
-    render(<BrowsePage search={{ view: "list" }} />);
+    render(<BrowsePage search={{ query: "housing", view: "list" }} />);
 
     expect(screen.getByText("Entry list total: 1")).not.toBeNull();
   });

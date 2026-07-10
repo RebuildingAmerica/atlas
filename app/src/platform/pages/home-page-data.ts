@@ -1,35 +1,12 @@
-import { Bell, BookOpen, FileText, Search, type LucideIcon } from "lucide-react";
-import type { Entry, EntryType } from "@/types";
+import { ArrowRight, ExternalLink, MapPinned } from "lucide-react";
+import { ENTITY_TYPE_LABELS, SOURCE_TYPE_LABELS, humanize } from "@/domains/catalog/catalog";
+import { STATE_NAME_BY_CODE } from "@/domains/catalog/us-state-grid";
+import type { Entry, EntrySearchFacets, EntryType, FacetOption, SourceType } from "@/types";
 
-interface SearchExample {
-  query: string;
-  result: string;
-}
-
-interface FieldActor {
-  name: string;
-  role: string;
-  connections: string;
-}
-
-interface BriefActor {
-  name: string;
-  type: string;
-  note: string;
-  sources: number | "manual";
-}
-
-interface FeatureWorkflow {
-  name: string;
-  description: string;
-  Icon: LucideIcon;
-}
-
-interface IssueTile {
+export interface HomeFacetTile {
   count: string;
-  description?: string;
-  imageUrl?: string;
   label: string;
+  href: string;
 }
 
 export const ISSUE_CHIPS = [
@@ -41,119 +18,6 @@ export const ISSUE_CHIPS = [
   "Immigration",
 ] as const;
 
-export const SEARCH_EXAMPLES: SearchExample[] = [
-  { query: "tenant organizers · Detroit, MI", result: "34 actors" },
-  { query: "voting rights · Georgia", result: "218 actors" },
-  { query: "climate policy · Gulf Coast", result: "91 actors" },
-  { query: "criminal justice reform · Texas", result: "174 actors" },
-  { query: "housing advocates · Phoenix, AZ", result: "56 actors" },
-];
-
-export const FIELD_ACTORS: FieldActor[] = [
-  { name: "María Martínez", role: "Community organizer", connections: "4 connections" },
-  {
-    name: "Detroit Housing Coalition",
-    role: "Organization · 8 staff indexed",
-    connections: "12 connections",
-  },
-  {
-    name: "Coalition for Property Tax Justice",
-    role: "Coalition · 6 member orgs",
-    connections: "7 connections",
-  },
-  {
-    name: "Legal Aid & Defender Assoc.",
-    role: "Organization · housing unit",
-    connections: "3 connections",
-  },
-];
-
-export const FEATURE_WORKFLOWS: FeatureWorkflow[] = [
-  {
-    description: "Start with a place and problem, not a complicated research form.",
-    Icon: Search,
-    name: "Name the need",
-  },
-  {
-    description: "See the people and organizations most relevant to the work ahead.",
-    Icon: FileText,
-    name: "Find the right people",
-  },
-  {
-    description: "Know when the public record is thin before you rely on it.",
-    Icon: Bell,
-    name: "See what is missing",
-  },
-  {
-    description: "Leave with a short list you can bring to a meeting or share with a team.",
-    Icon: BookOpen,
-    name: "Take it with you",
-  },
-];
-
-export const BRIEF_ACTORS: BriefActor[] = [
-  {
-    name: "María Martínez",
-    note: "Avery is confirming meeting details before outreach.",
-    sources: 8,
-    type: "Assigned · follow-up",
-  },
-  {
-    name: "Detroit Housing Coalition",
-    note: "Shared note added for partner briefing.",
-    sources: 12,
-    type: "Reviewed",
-  },
-  {
-    name: "Coalition for Property Tax Justice",
-    note: "Coverage gap flagged for staff research.",
-    sources: 4,
-    type: "Needs review",
-  },
-  {
-    name: "Legal Aid & Defender Assoc.",
-    note: "Exported to county hearing packet.",
-    sources: 5,
-    type: "Exported",
-  },
-  {
-    name: "James Whitfield",
-    note: "Manual lead, visible only to this workspace.",
-    sources: "manual",
-    type: "Private note",
-  },
-  {
-    name: "Wayne Co. Housing Commission",
-    note: "Morgan assigned public-record refresh.",
-    sources: 7,
-    type: "Assigned · refresh",
-  },
-];
-
-export const ISSUE_TILES: IssueTile[] = [
-  {
-    count: "5,103 actors",
-    description: "From early childhood to higher ed, the largest cluster of civic work in Atlas.",
-    imageUrl:
-      "https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&w=1200&q=80",
-    label: "Education Equity",
-  },
-  {
-    count: "4,667 actors",
-    description:
-      "Organizing, litigation, and policy documented across every region of the country.",
-    imageUrl:
-      "https://images.unsplash.com/photo-1517048676732-d65bc937f952?auto=format&fit=crop&w=1200&q=80",
-    label: "Racial Justice",
-  },
-  { count: "4,220 actors", label: "Climate & Environment" },
-  { count: "3,812 actors", label: "Housing & Homelessness" },
-  { count: "3,488 actors", label: "Economic Justice" },
-  { count: "2,940 actors", label: "Criminal Justice Reform" },
-  { count: "2,715 actors", label: "Healthcare Access" },
-  { count: "2,341 actors", label: "Immigration" },
-];
-
 export const TYPE_LABELS: Record<EntryType, string> = {
   campaign: "campaign",
   event: "event",
@@ -163,6 +27,14 @@ export const TYPE_LABELS: Record<EntryType, string> = {
 };
 
 export const NUMBER_FORMATTER = new Intl.NumberFormat("en-US");
+
+function countLabel(count: number): string {
+  return count === 1 ? "1 record" : `${NUMBER_FORMATTER.format(count)} records`;
+}
+
+function sortFacets(facets: FacetOption[] | undefined): FacetOption[] {
+  return [...(facets ?? [])].sort((a, b) => b.count - a.count || a.value.localeCompare(b.value));
+}
 
 export function formatStatCount(value: number | undefined): string {
   if (value === undefined || value <= 0) {
@@ -176,6 +48,13 @@ export function browseUrl(query: string): string {
   return `/browse?query=${encodeURIComponent(query)}&offset=0`;
 }
 
+function browseFilterUrl(
+  key: "cities" | "entry_types" | "issue_areas" | "regions" | "source_types" | "states",
+  value: string,
+): string {
+  return `/browse?${key}=${encodeURIComponent(value)}&offset=0`;
+}
+
 export function humanizeIssue(value: string | undefined): string {
   if (!value) {
     return "Unlisted";
@@ -186,6 +65,56 @@ export function humanizeIssue(value: string | undefined): string {
     .replace(/\s+/g, " ")
     .trim()
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+export function buildHomeIssueTiles(facets: EntrySearchFacets | undefined): HomeFacetTile[] {
+  return sortFacets(facets?.issue_areas)
+    .slice(0, 8)
+    .map((facet) => ({
+      count: countLabel(facet.count),
+      href: browseFilterUrl("issue_areas", facet.value),
+      label: humanizeIssue(facet.value),
+    }));
+}
+
+export function buildHomePlaceTiles(facets: EntrySearchFacets | undefined): HomeFacetTile[] {
+  return [
+    ...sortFacets(facets?.states).map((facet) => ({
+      count: countLabel(facet.count),
+      href: browseFilterUrl("states", facet.value),
+      label: STATE_NAME_BY_CODE[facet.value] ?? facet.value,
+    })),
+    ...sortFacets(facets?.cities).map((facet) => ({
+      count: countLabel(facet.count),
+      href: browseFilterUrl("cities", facet.value),
+      label: facet.value,
+    })),
+    ...sortFacets(facets?.regions).map((facet) => ({
+      count: countLabel(facet.count),
+      href: browseFilterUrl("regions", facet.value),
+      label: facet.value,
+    })),
+  ].slice(0, 8);
+}
+
+export function buildHomeSourceTiles(facets: EntrySearchFacets | undefined): HomeFacetTile[] {
+  return sortFacets(facets?.source_types)
+    .slice(0, 6)
+    .map((facet) => ({
+      count: countLabel(facet.count),
+      href: browseFilterUrl("source_types", facet.value),
+      label: SOURCE_TYPE_LABELS[facet.value as SourceType] ?? humanize(facet.value),
+    }));
+}
+
+export function buildHomeTypeTiles(facets: EntrySearchFacets | undefined): HomeFacetTile[] {
+  return sortFacets(facets?.entity_types)
+    .slice(0, 5)
+    .map((facet) => ({
+      count: countLabel(facet.count),
+      href: browseFilterUrl("entry_types", facet.value),
+      label: ENTITY_TYPE_LABELS[facet.value as EntryType] ?? humanize(facet.value),
+    }));
 }
 
 export function formatLocation(entry: Entry): string {
@@ -211,4 +140,4 @@ export function profileHref(entry: Entry): string {
   }
 }
 
-export { ArrowRight, ExternalLink, MapPinned } from "lucide-react";
+export { ArrowRight, ExternalLink, MapPinned };
