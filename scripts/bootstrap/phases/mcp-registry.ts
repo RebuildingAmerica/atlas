@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { log, select } from "@clack/prompts";
+import { log, note, select } from "@clack/prompts";
 import pc from "picocolors";
 import type { PhaseResult } from "../state.js";
 import { promptConfirm, promptOrExit } from "../lib/ui.js";
@@ -31,6 +31,7 @@ export function formatExistingPublisherKeypairPromptMessage(): string {
     "1. Keep it if this machine already publishes the Atlas namespace.",
     "2. Rotate only if the key was compromised or this should become the new publisher key.",
     "3. Rotating generates new local key files and requires updating the Cloudflare TXT proof.",
+    "4. This choice does not update DNS by itself; bootstrap checks DNS next.",
   ].join("\n");
 }
 
@@ -41,7 +42,34 @@ export function formatMcpTxtUpdatePromptMessage(): string {
     "Atlas must publish an MCPv1 TXT record on rebuildingus.org before the registry accepts the namespace.",
     "1. Choose Cloudflare API if bootstrap should create or update the TXT record for you.",
     "2. Choose dashboard if you want to paste the TXT record into Cloudflare manually.",
-    "3. Bootstrap will wait for DNS and verify the live TXT record before continuing.",
+    "3. Stop if you are not sure which publisher key is correct.",
+    "4. Bootstrap will wait for DNS and verify the live TXT record before continuing.",
+  ].join("\n");
+}
+
+export interface McpTxtMismatchMessageOptions {
+  domain: string;
+  liveTxt: string | null;
+  expectedTxt: string;
+}
+
+export function formatMcpTxtMismatchMessage(
+  options: McpTxtMismatchMessageOptions,
+): string {
+  const currentProof = options.liveTxt ?? "No MCPv1 TXT record is live.";
+  return [
+    `Cloudflare currently trusts a different publisher key for ${options.domain} than the one saved on this machine.`,
+    "Publishing will fail until DNS and the local key agree.",
+    "",
+    "Usually choose:",
+    "1. Update Cloudflare if you intentionally rotated or generated this local key.",
+    "2. Stop and restore the previous local publisher key if this machine should keep using the key already published in DNS.",
+    "",
+    "Current DNS proof:",
+    currentProof,
+    "",
+    "Local key bootstrap wants:",
+    options.expectedTxt,
   ].join("\n");
 }
 
@@ -175,16 +203,28 @@ async function ensureCloudflareTxt(
     return { ok: true };
   }
 
-  if (liveTxt) {
-    log.warn(`Cloudflare TXT on ${DOMAIN} is out of sync with local pubkey`);
-    log.info(`Live: ${liveTxt}`);
-    log.info(`Want: ${expectedTxt}`);
-  } else {
-    log.warn(`No MCPv1 TXT record found on ${DOMAIN}`);
-  }
+  log.warn(
+    `Cloudflare TXT on ${DOMAIN} does not match the local publisher key`,
+  );
+  note(
+    formatMcpTxtMismatchMessage({
+      domain: DOMAIN,
+      liveTxt,
+      expectedTxt,
+    }),
+    "MCP Registry DNS proof mismatch",
+  );
 
   if (doctorMode) {
-    followUpItems.push(`Update Cloudflare TXT on ${DOMAIN} to: ${expectedTxt}`);
+    followUpItems.push(
+      `Decide whether the local MCP publisher key should replace the Cloudflare TXT proof on ${DOMAIN}`,
+    );
+    followUpItems.push(
+      `If yes, update Cloudflare TXT on ${DOMAIN} to: ${expectedTxt}`,
+    );
+    followUpItems.push(
+      "If no, restore the publisher keypair that matches the live Cloudflare TXT proof",
+    );
     return { ok: false };
   }
 
@@ -202,9 +242,24 @@ async function ensureCloudflareTxt(
           label: "I'll add it manually in the Cloudflare dashboard",
           hint: "Bootstrap will wait and verify",
         },
+        {
+          value: "stop",
+          label: "Stop - I need to verify the publisher key first",
+          hint: "No DNS changes",
+        },
       ],
     }),
-  )) as "api" | "dashboard";
+  )) as "api" | "dashboard" | "stop";
+
+  if (selected === "stop") {
+    followUpItems.push(
+      `Verify whether ${PUB_PATH} should replace the live Cloudflare TXT proof on ${DOMAIN}`,
+    );
+    followUpItems.push(
+      "Restore the previous MCP publisher keypair if this machine should not become the publisher",
+    );
+    return { ok: false };
+  }
 
   if (selected === "api") {
     return await updateViaApi(expectedTxt, followUpItems);
