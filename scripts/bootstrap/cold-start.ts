@@ -41,6 +41,7 @@ import {
   parseArgs,
   printSummary,
   recomputeCommandReadiness,
+  shouldBlockCurrentRunDependentPhase,
   shouldStopAfterAuthFailure,
   shouldSkipPhase,
 } from "./lib/cold-start.js";
@@ -458,6 +459,23 @@ async function main(): Promise<void> {
 
     // Phase 10: API canonical domain (Cloud Run mapping + Cloudflare CNAME)
     if (
+      shouldBlockCurrentRunDependentPhase({
+        attempted: attemptedPhases.has("deploy"),
+        status: state.phases.deploy?.status,
+      }) &&
+      state.phases["api-domain"]?.status !== "complete"
+    ) {
+      log.step("Phase 10: API Canonical Domain");
+      log.warn(
+        "Waiting for atlas-api deploy before configuring the API domain.",
+      );
+      attemptedPhases.add("api-domain");
+      markPhase(state, "api-domain", "blocked", "Deploy atlas-api first");
+      saveReadiness(projectRoot, state);
+      allFollowUp.push(
+        "Finish atlas-api deploy, then re-run `pnpm bootstrap --api-domain --resume`.",
+      );
+    } else if (
       !shouldSkipPhase("api-domain", state, args.resume) ||
       !(await confirmResumeSkip("API Domain"))
     ) {
@@ -476,6 +494,26 @@ async function main(): Promise<void> {
 
     // Phase 11: API edge protection (Cloudflare proxy + WAF rate limits)
     if (
+      shouldBlockCurrentRunDependentPhase({
+        attempted: attemptedPhases.has("api-domain"),
+        status: state.phases["api-domain"]?.status,
+      }) &&
+      state.phases["api-edge"]?.status !== "complete"
+    ) {
+      log.step("Phase 11: API Edge Protection");
+      log.warn("Waiting for the API domain before enabling edge protection.");
+      attemptedPhases.add("api-edge");
+      markPhase(
+        state,
+        "api-edge",
+        "blocked",
+        "API domain must be healthy first",
+      );
+      saveReadiness(projectRoot, state);
+      allFollowUp.push(
+        "Finish the API domain setup before enabling Cloudflare edge protection.",
+      );
+    } else if (
       !shouldSkipPhase("api-edge", state, args.resume) ||
       !(await confirmResumeSkip("API Edge"))
     ) {

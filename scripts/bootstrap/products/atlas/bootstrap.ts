@@ -509,8 +509,25 @@ async function confirmStripeAccount(
     try {
       account = await stripe.accounts.retrieveCurrent();
     } catch (error) {
-      s.stop("Failed to verify Stripe account");
-      throw error;
+      const failure = formatStripeAccountVerificationFailure(error);
+      s.stop(failure.summary);
+      note(failure.message, failure.title);
+      if (params.doctorMode || params.assumeYes) {
+        throw error;
+      }
+      const retry = await promptConfirm(
+        formatStripeVerificationRetryPrompt(),
+        true,
+      );
+      if (!retry) {
+        return null;
+      }
+      const candidate = await promptForStripeApiKey(params.mode);
+      if (!candidate) {
+        return null;
+      }
+      apiKey = candidate;
+      continue;
     }
 
     const accountName = stripeAccountDisplayName(account);
@@ -545,24 +562,34 @@ async function confirmStripeAccount(
       return null;
     }
 
-    printStripeApiKeyGuidance(params.mode);
-    const prompted = await promptOrExit(
-      password({
-        message: formatStripeApiKeyPromptMessage(params.mode),
-      }),
-    );
-    if (typeof prompted !== "string" || !prompted.trim()) {
+    const candidate = await promptForStripeApiKey(params.mode);
+    if (!candidate) {
       return null;
-    }
-    const candidate = prompted.trim();
-    try {
-      validateStripeApiKeyMode(candidate, params.mode);
-    } catch (error) {
-      log.error(error instanceof Error ? error.message : String(error));
-      continue;
     }
     apiKey = candidate;
   }
+}
+
+async function promptForStripeApiKey(
+  mode: StripeRuntimeMode,
+): Promise<string | null> {
+  printStripeApiKeyGuidance(mode);
+  const prompted = await promptOrExit(
+    password({
+      message: formatStripeApiKeyPromptMessage(mode),
+    }),
+  );
+  if (typeof prompted !== "string" || !prompted.trim()) {
+    return null;
+  }
+  const candidate = prompted.trim();
+  try {
+    validateStripeApiKeyMode(candidate, mode);
+  } catch (error) {
+    log.error(error instanceof Error ? error.message : String(error));
+    return null;
+  }
+  return candidate;
 }
 
 export function formatStripeAccountVerificationFailure(
@@ -593,6 +620,16 @@ export function formatStripeAccountVerificationFailure(
     summary: "Stripe key cannot verify the Stripe account.",
     title: "Stripe key permissions",
   };
+}
+
+export function formatStripeVerificationRetryPrompt(): string {
+  return [
+    "Paste an updated Stripe API key now?",
+    "",
+    "After you add the missing permission in Stripe, bootstrap will retry",
+    "account verification in this same Stripe phase.",
+    "Leaving this pending continues the rest of bootstrap without changing Stripe.",
+  ].join("\n");
 }
 
 interface StripeMissingPermission {

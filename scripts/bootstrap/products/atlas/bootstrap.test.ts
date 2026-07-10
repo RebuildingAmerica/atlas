@@ -9,6 +9,7 @@ import {
   stripeLiveRestrictedKeySetupSteps,
   formatStripeAccountPrompt,
   formatStripeAccountVerificationFailure,
+  formatStripeVerificationRetryPrompt,
   stripeAccountDisplayName,
 } from "./bootstrap.js";
 
@@ -161,6 +162,13 @@ void describe("Stripe bootstrap account review", () => {
     );
     assert.match(failure.message, /https:\/\/dashboard\.stripe\.com/);
     assert.doesNotMatch(failure.message, /rk_live_/);
+  });
+
+  void it("offers an in-phase retry after Stripe account verification fails", () => {
+    const prompt = formatStripeVerificationRetryPrompt();
+
+    assert.match(prompt, /Paste an updated Stripe API key now/);
+    assert.match(prompt, /same Stripe phase/);
   });
 
   void it("explains the hosted Stripe webhook URL prompt", () => {

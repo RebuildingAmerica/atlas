@@ -9,6 +9,7 @@ import {
   parseArgs,
   phaseEntriesForSummary,
   recomputeCommandReadiness,
+  shouldBlockCurrentRunDependentPhase,
   shouldStopAfterAuthFailure,
 } from "./cold-start.js";
 import { renderSetupGuide } from "../config/setup-manifest.js";
@@ -197,6 +198,30 @@ void describe("Atlas bootstrap argument parsing", () => {
     assert.equal(
       bootstrapOutroMessage({ doctorMode: false, hasFollowUps: false }),
       "Atlas bootstrap ready.",
+    );
+  });
+
+  void it("blocks dependent phases after an upstream failure in the same run", () => {
+    assert.equal(
+      shouldBlockCurrentRunDependentPhase({
+        attempted: true,
+        status: "failed",
+      }),
+      true,
+    );
+    assert.equal(
+      shouldBlockCurrentRunDependentPhase({
+        attempted: true,
+        status: "complete",
+      }),
+      false,
+    );
+    assert.equal(
+      shouldBlockCurrentRunDependentPhase({
+        attempted: false,
+        status: "failed",
+      }),
+      false,
     );
   });
 });

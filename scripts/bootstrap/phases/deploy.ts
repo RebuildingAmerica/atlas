@@ -1,10 +1,16 @@
 import { existsSync, writeFileSync, unlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { log, spinner } from "@clack/prompts";
+import { setTimeout } from "node:timers/promises";
+import { log, note, spinner } from "@clack/prompts";
 import pc from "picocolors";
 import type { PhaseResult } from "../state.js";
-import { runCommand, commandOutput, type CommandResult } from "../lib/shell.js";
+import {
+  runCommand,
+  commandOutput,
+  runInteractiveCommand,
+  type CommandResult,
+} from "../lib/shell.js";
 import { parseEnvFile } from "../lib/env-file.js";
 import { promptConfirm, logSubline } from "../lib/ui.js";
 import type { ReadinessState } from "../state.js";
@@ -109,7 +115,7 @@ export async function runDeployPhase(
 
   // ── Build & Push API image ────────────────────────────────────────────────
   const apiImage = `${config.imageBase}/atlas-api:initial`;
-  const apiBuilt = buildAndPushImage(
+  const apiBuilt = await buildAndPushImage(
     projectRoot,
     "atlas-api",
     path.join(projectRoot, "api"),
@@ -185,36 +191,85 @@ export function formatDockerDaemonRecovery(): string {
   ].join("\n");
 }
 
+export function formatDockerStartPrompt(): string {
+  return [
+    "Docker Desktop is installed, but the Docker daemon is not running.",
+    "",
+    "Start Docker Desktop now?",
+    "Bootstrap will open Docker Desktop and wait until Docker is ready.",
+  ].join("\n");
+}
+
+export function formatDockerBuildFallbackPrompt(): string {
+  return [
+    "Docker is still unavailable.",
+    "",
+    "Use Google Cloud Build for this deploy?",
+    "Bootstrap will send the atlas-api build to Google Cloud, push the image",
+    "to Artifact Registry, then continue the Cloud Run deploy.",
+  ].join("\n");
+}
+
 async function resolveBuildMode(
   dockerPreflight: DockerPreflight,
 ): Promise<BuildMode | undefined> {
   if (dockerPreflight.status === "ready") return "local-docker";
 
+  if (dockerPreflight.reason === "daemon-unavailable") {
+    const shouldStartDocker = await promptConfirm(
+      formatDockerStartPrompt(),
+      true,
+    );
+    if (shouldStartDocker && (await startDockerDesktopAndWait())) {
+      return "local-docker";
+    }
+  }
+
   const useCloudBuild = await promptConfirm(
-    [
-      "Docker is installed, but the Docker daemon is not running.",
-      "",
-      "Bootstrap can build atlas-api with Google Cloud Build instead of local Docker.",
-      "Choose Yes to use Cloud Build for this deploy.",
-      "Choose No to stop deployment and resume after Docker Desktop is running.",
-    ].join("\n"),
+    formatDockerBuildFallbackPrompt(),
     true,
   );
   return useCloudBuild ? "cloud-build" : undefined;
 }
 
+async function startDockerDesktopAndWait(): Promise<boolean> {
+  if (process.platform !== "darwin") {
+    log.warn(formatDockerDaemonRecovery());
+    return false;
+  }
+
+  const openResult = runCommand("open -a Docker");
+  if (!openResult.ok) {
+    log.warn(commandOutput(openResult));
+    return false;
+  }
+
+  const s = spinner();
+  s.start("Waiting for Docker Desktop...");
+  for (let attempt = 0; attempt < 40; attempt += 1) {
+    const info = runCommand("docker info");
+    if (info.ok) {
+      s.stop("Docker Desktop is running");
+      return true;
+    }
+    await setTimeout(3000);
+  }
+  s.stop("Docker Desktop did not become ready yet");
+  return false;
+}
+
 // ── Build & Push ──────────────────────────────────────────────────────────────
 
-function buildAndPushImage(
+async function buildAndPushImage(
   projectRoot: string,
   serviceName: string,
   contextDir: string,
   imageTag: string,
   buildMode: BuildMode,
   followUpItems: string[],
-): boolean {
+): Promise<boolean> {
   if (buildMode === "cloud-build") {
-    return buildAndPushImageWithCloudBuild(
+    return await buildAndPushImageWithCloudBuild(
       serviceName,
       contextDir,
       imageTag,
@@ -256,12 +311,13 @@ function buildAndPushImage(
   return true;
 }
 
-function buildAndPushImageWithCloudBuild(
+async function buildAndPushImageWithCloudBuild(
   serviceName: string,
   contextDir: string,
   imageTag: string,
   followUpItems: string[],
-): boolean {
+  allowAuthRecovery = true,
+): Promise<boolean> {
   const s = spinner();
   s.start(`Building ${serviceName} with Google Cloud Build...`);
 
@@ -271,13 +327,55 @@ function buildAndPushImageWithCloudBuild(
 
   if (!result.ok) {
     s.stop(`Failed to build ${serviceName} with Google Cloud Build`);
+    if (
+      allowAuthRecovery &&
+      isGcloudReauthenticationFailure(result) &&
+      (await recoverGcloudAuthentication())
+    ) {
+      return await buildAndPushImageWithCloudBuild(
+        serviceName,
+        contextDir,
+        imageTag,
+        followUpItems,
+        false,
+      );
+    }
     log.error(commandOutput(result));
-    followUpItems.push(`Build ${serviceName} image with Google Cloud Build`);
+    followUpItems.push(
+      isGcloudReauthenticationFailure(result)
+        ? "Reauthenticate gcloud: gcloud auth login"
+        : `Build ${serviceName} image with Google Cloud Build`,
+    );
     return false;
   }
 
   s.stop(`${serviceName} image built and pushed with Google Cloud Build`);
   return true;
+}
+
+export function isGcloudReauthenticationFailure(
+  result: CommandResult,
+): boolean {
+  return /Reauthentication failed|cannot prompt during non-interactive|gcloud auth login/i.test(
+    commandOutput(result),
+  );
+}
+
+export function formatGcloudReauthenticationRecovery(): string {
+  return [
+    "Google Cloud needs a fresh interactive login before Cloud Build can continue.",
+    "",
+    "Bootstrap can run `gcloud auth login` now and retry Cloud Build after it succeeds.",
+  ].join("\n");
+}
+
+async function recoverGcloudAuthentication(): Promise<boolean> {
+  note(formatGcloudReauthenticationRecovery(), "Google Cloud authentication");
+  const shouldLogin = await promptConfirm("Run `gcloud auth login` now?", true);
+  if (!shouldLogin) {
+    return false;
+  }
+  return runInteractiveCommand("gcloud auth login");
 }
 
 // ── Deploy Service ────────────────────────────────────────────────────────────

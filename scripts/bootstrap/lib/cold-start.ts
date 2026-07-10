@@ -4,7 +4,7 @@ import { COMMAND_CAPABILITY_MAP } from "../config/prerequisites.js";
 import type { StripeBootstrapTarget } from "../products/atlas/env.js";
 import type { ApiDomainTarget } from "../phases/api-domain.js";
 import { promptConfirm } from "./ui.js";
-import type { PhaseId, ReadinessState } from "../state.js";
+import type { PhaseId, PhaseState, ReadinessState } from "../state.js";
 
 export interface CliArgs {
   localOnly: boolean;
@@ -77,6 +77,16 @@ export function shouldStopAfterAuthFailure(
   authSuccess: boolean,
 ): boolean {
   return !doctorMode && !authSuccess;
+}
+
+export function shouldBlockCurrentRunDependentPhase(options: {
+  attempted: boolean;
+  status: PhaseState["status"] | undefined;
+}): boolean {
+  return (
+    options.attempted &&
+    (options.status === "failed" || options.status === "blocked")
+  );
 }
 
 export async function confirmResumeSkip(phaseName: string): Promise<boolean> {
