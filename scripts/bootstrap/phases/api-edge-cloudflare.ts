@@ -28,8 +28,13 @@ export async function prepareCloudflareToken(
   domain: string,
 ): Promise<AcquiredCloudflareToken> {
   return acquireCloudflareToken({
-    permissionsHint:
-      "Zone > DNS > Edit, Zone > WAF > Edit, Zone > Transform Rules > Edit, and Zone > Rulesets > Edit",
+    permissionLines: [
+      "DNS & Zones > DNS > Edit",
+      "DNS & Zones > Zone > Read",
+      "App Security > Zone WAF Rules > Edit",
+      "Rules & Configuration > Zone Transform Rules > Edit",
+    ],
+    tokenNameHint: "Atlas Cloudflare API Edge",
     zoneHint: parentZone(domain),
   });
 }

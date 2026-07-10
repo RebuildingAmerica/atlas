@@ -106,14 +106,19 @@ curl "https://registry.modelcontextprotocol.io/v0.1/servers?search=org.rebuildin
 If `pnpm mcp:setup` is unavailable (CI, fresh clone before install, debugging),
 the equivalent manual steps:
 
-Create a Cloudflare token first:
+Create a Cloudflare account token first:
 
-1. Open `https://dash.cloudflare.com/profile/api-tokens`.
-2. In **My Profile > API Tokens**, click **Create Token**.
-3. Under **API token templates**, choose **Edit zone DNS**, then click **Use
-   template**.
-4. Set **Zone Resources** to `Include > Specific zone > rebuildingus.org`.
-5. Continue to summary, create the token, and copy the one-time value into
+1. Open
+   `https://dash.cloudflare.com/e34437d6da60fe58537bafc5eb760cfc/api-tokens`.
+2. In **Manage account > Account API tokens**, click **Create token**.
+3. Set **Token name** to `Atlas MCP Registry DNS`.
+4. In **Permission policies**, choose **Custom**.
+5. Change the policy scope from **Entire Account** to **Specified Domains**.
+6. In **Select domains**, choose `rebuildingus.org`.
+7. In **DNS & Zones**, select **DNS > Edit** and **Zone > Read**.
+8. Do not select **Entire Account**, **Read all resources**, or **HTTP DDoS
+   Managed Ruleset**.
+9. Continue to summary, create the token, and copy the one-time value into
    `CLOUDFLARE_API_TOKEN`.
 
 ```bash
@@ -121,7 +126,7 @@ Create a Cloudflare token first:
 pnpm mcp:gen-publisher-key --force
 
 # 2. Update the Cloudflare TXT record on rebuildingus.org apex (TTL 60).
-#    Either the dashboard, or with a token that has Zone:DNS:Edit:
+#    Either the dashboard, or with the account token above:
 PUB_BASE64=$(cat ~/.config/mcp-publisher/atlas.pub)
 ZONE_ID=$(curl -s -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
   "https://api.cloudflare.com/client/v4/zones?name=rebuildingus.org" | jq -r '.result[0].id')

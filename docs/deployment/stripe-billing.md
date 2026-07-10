@@ -72,8 +72,10 @@ Before running hosted setup:
 2. Link the Vercel project for hosted staging and production env sync.
 3. Set `ATLAS_PUBLIC_URL` for the target environment.
 4. For production, open Stripe Dashboard in Live mode, go to **Developers > API
-   keys > Restricted keys**, create a live restricted key named
-   `Atlas production bootstrap`, and grant write access for Products, Prices,
+   keys > Restricted keys**, click **Create restricted key**, choose **Powering
+   an integration you built**, and name it `Atlas Production Billing`. Do not
+   choose the third-party application or AI-agent options; Atlas needs this key
+   for its own website and app code. Grant write access for Products, Prices,
    Coupons, Customers, Checkout Sessions, and Webhook Endpoints. A live secret
    key (`sk_live_...`) is accepted, but restricted keys are the default
    production path.
@@ -142,18 +144,20 @@ If you do not have the live key yet:
 1. Open Stripe Dashboard and switch to Live mode for The Rebuilding America
    Project.
 2. Go to **Developers > API keys > Restricted keys**.
-3. Create a restricted key named `Atlas production bootstrap`.
-4. Grant write access for Products, Prices, Coupons, Customers, Checkout
+3. Click **Create restricted key**.
+4. Choose **Powering an integration you built**.
+5. Name the key `Atlas Production Billing`.
+6. Grant write access for Products, Prices, Coupons, Customers, Checkout
    Sessions, and Webhook Endpoints.
-5. Reveal the key once, copy the `rk_live_...` value, and keep it out of chat
+7. Reveal the key once, copy the `rk_live_...` value, and keep it out of chat
    and committed files.
-6. Run `STRIPE_API_KEY=rk_live_... pnpm setup:prod --yes`.
+8. Run `STRIPE_API_KEY=rk_live_... pnpm setup:prod --yes`.
 
 The command writes `.env.production`, creates or verifies the Stripe live-mode
 catalog, creates or verifies the production webhook endpoint, and syncs the
 three runtime Stripe keys into the linked Vercel Production environment.
 
-Do not run production bootstrap with a test key. The script rejects mismatched
+Do not run production billing with a test key. The script rejects mismatched
 test/live keys before mutating Stripe.
 
 For interactive shells, omit `--yes` while still passing the live key:
@@ -216,6 +220,6 @@ to Atlas Pro. Create the current coupon ID from
 `scripts/bootstrap/config/products.ts` or let bootstrap create it in the target
 mode.
 
-If production bootstrap fails with `Invalid API Key`, confirm the key starts
-with `rk_live_` or is a live secret key created in the Stripe Dashboard with the
+If production billing fails with `Invalid API Key`, confirm the key starts with
+`rk_live_` or is a live secret key created in the Stripe Dashboard with the
 permissions listed above.

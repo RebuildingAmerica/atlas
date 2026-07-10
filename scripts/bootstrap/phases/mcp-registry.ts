@@ -273,7 +273,7 @@ async function ensureCloudflareTxt(
         {
           value: "api",
           label: "Cloudflare API (automated)",
-          hint: "Needs an API token with Zone:DNS:Edit on rebuildingus.org",
+          hint: "Needs Account API token DNS Edit and Zone Read on rebuildingus.org",
         },
         {
           value: "dashboard",
@@ -320,7 +320,7 @@ async function updateViaApi(
   if (!zoneId) {
     log.error(`Could not resolve zone id for ${DOMAIN}. Check token scopes.`);
     followUpItems.push(
-      "Verify Cloudflare API token has Zone:DNS:Edit on rebuildingus.org",
+      "Verify the Cloudflare Account API token is scoped to rebuildingus.org with DNS & Zones > DNS > Edit and DNS & Zones > Zone > Read",
     );
     return { ok: false };
   }

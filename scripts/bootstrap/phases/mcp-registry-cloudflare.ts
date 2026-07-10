@@ -37,7 +37,11 @@ export async function acquireToken(): Promise<AcquiredToken> {
   const token = (await promptOrExit(
     password({
       message: formatCloudflareTokenPromptMessage({
-        permissionsHint: "Zone > DNS > Edit",
+        permissionLines: [
+          "DNS & Zones > DNS > Edit",
+          "DNS & Zones > Zone > Read",
+        ],
+        tokenNameHint: "Atlas MCP Registry DNS",
         zoneHint: DOMAIN,
       }),
     }),

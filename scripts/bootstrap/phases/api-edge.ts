@@ -53,7 +53,7 @@ export async function runApiEdgePhase(
       `Could not find Cloudflare zone for ${config.domain}. Is the API token scoped to ${config.domain}'s parent zone?`,
     );
     followUpItems.push(
-      `Verify the Cloudflare API token has DNS and WAF edit access to the ${config.domain} zone`,
+      `Verify the Cloudflare Account API token is scoped to ${config.domain}'s parent zone with DNS & Zones > DNS > Edit, DNS & Zones > Zone > Read, App Security > Zone WAF Rules > Edit, and Rules & Configuration > Zone Transform Rules > Edit`,
     );
     return { success: false, followUpItems };
   }

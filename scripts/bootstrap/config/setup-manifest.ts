@@ -123,7 +123,7 @@ export const SETUP_VALUE_MANIFEST: SetupValueManifestItem[] = [
       "Vercel",
     ],
     instructions:
-      "Use Stripe CLI test auth for local/staging. For production, open Stripe Dashboard in Live mode, go to Developers > API keys > Restricted keys, create a live restricted key with write access for Products, Prices, Coupons, Customers, Checkout Sessions, and Webhook Endpoints, then run setup with STRIPE_API_KEY=rk_live_...",
+      "Use Stripe CLI test auth for local/staging. For production, open Stripe Dashboard in Live mode, go to Developers > API keys > Restricted keys, click Create restricted key, choose Powering an integration you built, name it Atlas Production Billing, grant write access for Products, Prices, Coupons, Customers, Checkout Sessions, and Webhook Endpoints, then run setup with STRIPE_API_KEY=rk_live_...",
   },
   {
     key: "STRIPE_WEBHOOK_SECRET",

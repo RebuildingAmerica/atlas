@@ -45,7 +45,8 @@ export interface CnameVerification {
 }
 
 export interface CloudflareTokenPromptOptions {
-  permissionsHint?: string;
+  permissionLines?: readonly string[];
+  tokenNameHint?: string;
   zoneHint?: string;
 }
 
@@ -56,26 +57,28 @@ export interface CloudflareTokenAcquireOptions extends CloudflareTokenPromptOpti
 export function formatCloudflareTokenPromptMessage(
   opts: CloudflareTokenPromptOptions = {},
 ): string {
-  const permissions = opts.permissionsHint ?? "Zone > DNS > Edit";
-  const zoneScope =
-    opts.zoneHint ?? "the Cloudflare zone bootstrap is configuring";
-  const zoneResourceSelection = opts.zoneHint
-    ? `Include > Specific zone > ${opts.zoneHint}`
-    : "Include > Specific zone > the Atlas zone being configured";
+  const permissionLines = opts.permissionLines ?? [
+    "DNS & Zones > DNS > Edit",
+    "DNS & Zones > Zone > Read",
+  ];
+  const tokenName = opts.tokenNameHint ?? "Atlas Cloudflare DNS";
+  const zone = opts.zoneHint ?? "the Atlas domain";
   return [
-    "Cloudflare API token",
+    "Cloudflare Account API token",
     "",
-    "Create the token in Cloudflare:",
-    "1. Open https://dash.cloudflare.com/profile/api-tokens.",
-    "2. In My Profile > API Tokens, click Create Token.",
-    '3. Under API token templates, choose "Edit zone DNS", then click Use template.',
-    "4. Confirm the token name is Edit zone DNS.",
-    "5. Confirm Permissions includes:",
-    `   ${permissions}.`,
-    "6. In Zone Resources, set:",
-    `   ${zoneResourceSelection}.`,
-    `7. Leave Client IP Address Filtering empty unless Atlas explicitly needs a locked-down operator IP for ${zoneScope}.`,
-    "8. Click Continue to summary, create the token, and copy the token value. Cloudflare shows it once.",
+    "Create an account-owned Cloudflare token:",
+    "1. Open https://dash.cloudflare.com/e34437d6da60fe58537bafc5eb760cfc/api-tokens.",
+    "2. In Manage account > Account API tokens, click Create token.",
+    `3. Set Token name to "${tokenName}".`,
+    "4. In Permission policies, choose Custom.",
+    "5. Change the policy scope from Entire Account to Specified Domains.",
+    `6. In Select domains, choose ${zone}.`,
+    "7. Add these permissions exactly as shown in the Cloudflare UI:",
+    ...permissionLines.map((line) => `   - ${line}`),
+    "8. Do not select Entire Account.",
+    "9. Do not select HTTP DDoS Managed Ruleset.",
+    "10. Leave Client IP Address Filtering empty unless Atlas explicitly needs a locked-down operator IP.",
+    "11. Continue to summary, create the token, and copy the token value. Cloudflare shows it once.",
     "",
     "Paste the token here. Bootstrap uses it only for DNS and edge configuration, then can save it locally with chmod 600 if you choose.",
   ].join("\n");

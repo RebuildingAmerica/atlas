@@ -73,20 +73,26 @@ pnpm bootstrap --api-edge --doctor
 pnpm bootstrap --api-edge --doctor --target staging
 ```
 
-The Cloudflare token needs DNS edit, WAF edit, Transform Rules edit, and
-Rulesets edit access for the `rebuildingus.org` zone so bootstrap can install
-the proxy, rate-limit rules, and origin identity header rule.
+The Cloudflare token needs DNS edit, zone read, WAF rule edit, and Transform
+Rules edit access for `rebuildingus.org` so bootstrap can install the proxy,
+rate-limit rules, and origin identity header rule.
 
-Create that token from Cloudflare **My Profile > API Tokens**:
+Create an account-owned token from Cloudflare:
 
-1. Click **Create Token**.
-2. Choose the **Edit zone DNS** template, then click **Use template**.
-3. Confirm the permission row starts with `Zone > DNS > Edit`.
-4. Add `Zone > WAF > Edit`, `Zone > Transform Rules > Edit`, and
-   `Zone > Rulesets > Edit`.
-5. Set **Zone Resources** to `Include > Specific zone > rebuildingus.org`.
-6. Continue to summary, create the token, and paste the one-time token value
-   into bootstrap.
+1. Open
+   `https://dash.cloudflare.com/e34437d6da60fe58537bafc5eb760cfc/api-tokens`.
+2. In **Manage account > Account API tokens**, click **Create token**.
+3. Set **Token name** to `Atlas Cloudflare API Edge`.
+4. In **Permission policies**, choose **Custom**.
+5. Change the policy scope from **Entire Account** to **Specified Domains**.
+6. In **Select domains**, choose `rebuildingus.org`.
+7. In **DNS & Zones**, select **DNS > Edit** and **Zone > Read**.
+8. In **App Security**, select **Zone WAF Rules > Edit**.
+9. In **Rules & Configuration**, select **Zone Transform Rules > Edit**.
+10. Do not select **Entire Account**, **Read all resources**, or **HTTP DDoS
+    Managed Ruleset**.
+11. Continue to summary, create the token, and paste the one-time token value
+    into bootstrap.
 
 ## Verify After Deploy
 

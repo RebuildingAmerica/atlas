@@ -319,7 +319,9 @@ export function stripeLiveRestrictedKeySetupSteps(): string[] {
   return [
     "Open Stripe Dashboard and switch to Live mode for The Rebuilding America Project.",
     "Go to Stripe Dashboard > Developers > API keys > Restricted keys.",
-    "Create a restricted key named Atlas production bootstrap.",
+    "Click Create restricted key and choose Powering an integration you built.",
+    "Do not choose the third-party application or AI agent options; Atlas needs this for its own website or app code.",
+    "Name the key Atlas Production Billing.",
     "Grant write access for Products, Prices, Coupons, Customers, Checkout Sessions, and Webhook Endpoints.",
     "Reveal the key once, copy the rk_live_ value, and keep it out of chat and committed files.",
     "Run `STRIPE_API_KEY=rk_live_... pnpm setup:prod --yes` from this repo.",
@@ -333,14 +335,17 @@ export function formatStripeApiKeyPromptMessage(
     const promptSteps = [
       "Open https://dashboard.stripe.com/apikeys and switch to Live mode.",
       "Choose The Rebuilding America Project account.",
-      "Open Restricted keys and create a key named Atlas production bootstrap.",
+      "Open Restricted keys and click Create restricted key.",
+      "Choose Powering an integration you built.",
+      "Do not choose the third-party application or AI agent options; Atlas needs this for its own website or app code.",
+      "Name the key Atlas Production Billing.",
       "Grant write access for Products, Prices, Coupons, Customers, Checkout Sessions, and Webhook Endpoints.",
       "Reveal the key once, copy the rk_live_ value, and keep it out of chat and committed files.",
     ];
     return [
       "Stripe live mode API key",
       "",
-      "Use a Dashboard-created live restricted key for production bootstrap:",
+      "Use a Dashboard-created live restricted key for production billing:",
       ...promptSteps.map((step, index) => `${index + 1}. ${step}`),
       "",
       "Paste the rk_live_ value here. A full sk_live_ key is accepted, but rk_live_ is preferred.",
