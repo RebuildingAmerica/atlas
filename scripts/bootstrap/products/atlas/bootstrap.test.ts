@@ -9,6 +9,7 @@ import {
   stripeLiveRestrictedKeySetupSteps,
   formatStripeAccountPrompt,
   formatStripeAccountVerificationFailure,
+  formatStripeMetadataUnavailablePrompt,
   formatStripeVerificationRetryPrompt,
   stripeAccountDisplayName,
 } from "./bootstrap.js";
@@ -162,6 +163,35 @@ void describe("Stripe bootstrap account review", () => {
     );
     assert.match(failure.message, /https:\/\/dashboard\.stripe\.com/);
     assert.doesNotMatch(failure.message, /rk_live_/);
+  });
+
+  void it("treats unavailable account metadata permissions as skippable verification", () => {
+    const failure = formatStripeAccountVerificationFailure(
+      new Error(
+        [
+          "Permission denied.",
+          "The provided key does not have the required permissions for this endpoint on account 'acct_123'.",
+          'Enabling "Basic Business Contact Information Read"',
+          "('accounts_kyc_basic_read') permissions on this key would allow this request to continue.",
+        ].join(" "),
+      ),
+    );
+
+    assert.equal(failure.canContinueWithoutAccountRead, true);
+    assert.equal(failure.accountId, "acct_123");
+    assert.match(failure.message, /Stripe returned account ID: acct_123/);
+    assert.doesNotMatch(failure.message, /add the missing read permission/i);
+  });
+
+  void it("explains the guarded continue path when Stripe account metadata is unavailable", () => {
+    const prompt = formatStripeMetadataUnavailablePrompt("acct_123");
+
+    assert.match(prompt, /Continue with Stripe account acct_123/);
+    assert.match(
+      prompt,
+      /products, prices, coupons, customers, checkout sessions/,
+    );
+    assert.doesNotMatch(prompt, /Basic Business Contact Information/);
   });
 
   void it("offers an in-phase retry after Stripe account verification fails", () => {

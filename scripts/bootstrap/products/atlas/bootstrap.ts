@@ -61,6 +61,8 @@ interface StripeGuidanceNote {
 }
 
 interface StripeVerificationFailure {
+  accountId?: string;
+  canContinueWithoutAccountRead: boolean;
   message: string;
   summary: string;
   title: string;
@@ -512,6 +514,18 @@ async function confirmStripeAccount(
       const failure = formatStripeAccountVerificationFailure(error);
       s.stop(failure.summary);
       note(failure.message, failure.title);
+      if (
+        failure.canContinueWithoutAccountRead &&
+        failure.accountId &&
+        !params.doctorMode &&
+        !params.assumeYes &&
+        (await promptConfirm(
+          formatStripeMetadataUnavailablePrompt(failure.accountId),
+          true,
+        ))
+      ) {
+        return { apiKey, stripe };
+      }
       if (params.doctorMode || params.assumeYes) {
         throw error;
       }
@@ -597,29 +611,54 @@ export function formatStripeAccountVerificationFailure(
 ): StripeVerificationFailure {
   const rawMessage = error instanceof Error ? error.message : String(error);
   const missingPermission = extractStripeMissingPermission(rawMessage);
+  const accountId = extractStripeAccountId(rawMessage);
+  const canContinueWithoutAccountRead =
+    missingPermission?.scope === "accounts_kyc_basic_read" && !!accountId;
   const editUrl = extractStripeEditUrl(rawMessage);
-  const message = [
-    "Stripe could not verify this key before bootstrap makes billing changes.",
-    "For restricted keys, Atlas must be able to confirm the account first.",
-    "",
-    missingPermission
-      ? `Missing permission: ${missingPermission.label} (${missingPermission.scope})`
-      : "Missing permission: account metadata read access",
-    "",
-    "Open the restricted key in Stripe and add the missing read permission.",
-    editUrl
-      ? `Edit key: ${editUrl}`
-      : "Then paste the updated key into bootstrap again.",
-  ];
-  if (editUrl) {
+  const message = canContinueWithoutAccountRead
+    ? [
+        "Stripe accepted the key, but the key cannot read account metadata.",
+        "That permission is not always available in the restricted-key UI.",
+        `Stripe returned account ID: ${accountId}`,
+        "",
+        "Bootstrap can continue after you confirm this is the intended Stripe account.",
+      ]
+    : [
+        "Stripe could not verify this key before bootstrap makes billing changes.",
+        "For restricted keys, Atlas must be able to confirm the account first.",
+        "",
+        missingPermission
+          ? `Missing permission: ${missingPermission.label} (${missingPermission.scope})`
+          : "Missing permission: account metadata read access",
+        "",
+        "Open the restricted key in Stripe and add the missing read permission.",
+        editUrl
+          ? `Edit key: ${editUrl}`
+          : "Then paste the updated key into bootstrap again.",
+      ];
+  if (editUrl && !canContinueWithoutAccountRead) {
     message.push("Then paste the updated key into bootstrap again.");
   }
 
   return {
+    accountId: accountId ?? undefined,
+    canContinueWithoutAccountRead,
     message: message.join("\n"),
     summary: "Stripe key cannot verify the Stripe account.",
     title: "Stripe key permissions",
   };
+}
+
+export function formatStripeMetadataUnavailablePrompt(
+  accountId: string,
+): string {
+  return [
+    `Continue with Stripe account ${accountId}?`,
+    "",
+    "Bootstrap could not read the account display name with this restricted key.",
+    "It will continue by testing the permissions Atlas actually needs:",
+    "products, prices, coupons, customers, checkout sessions, and webhook endpoints.",
+  ].join("\n");
 }
 
 export function formatStripeVerificationRetryPrompt(): string {
@@ -648,6 +687,11 @@ function extractStripeMissingPermission(
     label: match[1],
     scope: match[2],
   };
+}
+
+function extractStripeAccountId(message: string): string | null {
+  const match = /account '([^']+)'/.exec(message);
+  return match?.[1] ?? null;
 }
 
 function extractStripeEditUrl(message: string): string | null {
