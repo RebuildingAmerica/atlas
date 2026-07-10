@@ -1,15 +1,16 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertCircle } from "lucide-react";
+import type { VerificationListResponse } from "@/lib/generated/atlas-schemas/access/verificationListResponse";
+import type { VerificationRecordResponse } from "@/lib/generated/atlas-schemas/access/verificationRecordResponse";
+import type { VerificationUpdateRequest } from "@/lib/generated/atlas-schemas/access/verificationUpdateRequest";
+import { DISCOUNT_SEGMENT_LABELS } from "../../discount-segments";
 
-interface VerificationRecord {
-  user_id: string;
-  segment: string;
-  status: string;
-  method: string;
-  submitted_at: string;
-  verified_at: string | null;
-  verification_data: Record<string, string> | null;
-  notes: string | null;
+type VerificationReviewStatus = VerificationUpdateRequest["status"];
+
+interface VerificationReviewInput {
+  notes: string;
+  status: VerificationReviewStatus;
+  verificationId: string;
 }
 
 /**
@@ -22,6 +23,7 @@ interface VerificationRecord {
  * - Add notes to records
  */
 export function DiscountAdminPage() {
+  const queryClient = useQueryClient();
   const verificationQuery = useQuery({
     queryKey: ["admin", "verifications"],
     queryFn: async () => {
@@ -29,10 +31,24 @@ export function DiscountAdminPage() {
       if (!response.ok) {
         throw new Error("Failed to load verifications");
       }
-      return response.json() as Promise<{
-        records: VerificationRecord[];
-        total: number;
-      }>;
+      return response.json() as Promise<VerificationListResponse>;
+    },
+  });
+
+  const reviewMutation = useMutation({
+    mutationFn: async ({ notes, status, verificationId }: VerificationReviewInput) => {
+      const response = await fetch(`/api/admin/verifications/${verificationId}`, {
+        body: JSON.stringify({ notes, status } satisfies VerificationUpdateRequest),
+        headers: { "Content-Type": "application/json" },
+        method: "PATCH",
+      });
+      if (!response.ok) {
+        throw new Error("Failed to update verification");
+      }
+      return response.json() as Promise<unknown>;
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["admin", "verifications"] });
     },
   });
 
@@ -59,6 +75,13 @@ export function DiscountAdminPage() {
 
   const records = verificationQuery.data?.records || [];
   const total = verificationQuery.data?.total || 0;
+  const reviewRecord = (record: VerificationRecordResponse, status: VerificationReviewStatus) => {
+    reviewMutation.mutate({
+      notes: status === "verified" ? "Approved from admin review." : "Rejected from admin review.",
+      status,
+      verificationId: record.id,
+    });
+  };
 
   return (
     <div className="space-y-6 py-10">
@@ -106,16 +129,13 @@ export function DiscountAdminPage() {
         ) : (
           <div className="space-y-2 overflow-x-auto">
             {records.map((record) => (
-              <div
-                key={record.user_id}
-                className="border-border rounded-lg border bg-white p-4 sm:p-5"
-              >
+              <div key={record.id} className="border-border rounded-lg border bg-white p-4 sm:p-5">
                 <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
                   <div className="flex-1 space-y-2">
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="type-title-small text-ink-strong">{record.user_id}</p>
                       <span className="type-label-small bg-surface-container-lowest text-ink-strong rounded-full px-2 py-0.5">
-                        {record.segment.replace(/_/g, " ")}
+                        {DISCOUNT_SEGMENT_LABELS[record.segment]}
                       </span>
                       <span
                         className={`type-label-small rounded-full px-2 py-0.5 ${
@@ -141,12 +161,38 @@ export function DiscountAdminPage() {
                       <p className="type-body-small text-ink-strong italic">"{record.notes}"</p>
                     )}
                   </div>
-                  <a
-                    href={`/admin/verifications/${record.user_id}`}
-                    className="type-label-small text-accent hover:text-accent-dark whitespace-nowrap underline"
-                  >
-                    View details
-                  </a>
+                  <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+                    {record.status === "pending" && (
+                      <>
+                        <button
+                          className="type-label-small border-border hover:border-ink-muted text-ink-strong rounded-lg border px-3 py-2 transition-colors disabled:opacity-60"
+                          disabled={reviewMutation.isPending}
+                          onClick={() => {
+                            reviewRecord(record, "rejected");
+                          }}
+                          type="button"
+                        >
+                          Reject
+                        </button>
+                        <button
+                          className="bg-ink-strong hover:bg-ink-muted type-label-small rounded-lg px-3 py-2 text-white transition-colors disabled:opacity-60"
+                          disabled={reviewMutation.isPending}
+                          onClick={() => {
+                            reviewRecord(record, "verified");
+                          }}
+                          type="button"
+                        >
+                          Approve
+                        </button>
+                      </>
+                    )}
+                    <a
+                      href={`/admin/verifications/${record.id}`}
+                      className="type-label-small text-accent hover:text-accent-dark whitespace-nowrap underline"
+                    >
+                      View details
+                    </a>
+                  </div>
                 </div>
               </div>
             ))}

@@ -67,6 +67,52 @@ async def test_list_verifications_returns_persisted_filtered_records(
 
 
 @pytest.mark.asyncio
+async def test_list_verifications_filters_by_organization_id(
+    test_db: aiosqlite.Connection,
+) -> None:
+    """The admin list endpoint can return records for one billing workspace."""
+    record = await DiscountVerificationCRUD.create(
+        test_db,
+        DiscountVerificationCreate(
+            user_id="user-org",
+            organization_id="org-target",
+            segment="student",
+            method="school_email",
+            verification_data={"schoolEmail": "student@example.edu"},
+            notes="Target org",
+        ),
+    )
+    await DiscountVerificationCRUD.update_status(
+        test_db,
+        record.id,
+        status="verified",
+        notes="Verified",
+    )
+    await DiscountVerificationCRUD.create(
+        test_db,
+        DiscountVerificationCreate(
+            user_id="user-other",
+            organization_id="org-other",
+            segment="student",
+            method="school_email",
+            verification_data={"schoolEmail": "other@example.edu"},
+            notes="Other org",
+        ),
+    )
+
+    response = await list_verifications(
+        Response(),
+        test_db,
+        status="verified",
+        organization_id="org-target",
+    )
+
+    assert response.total == 1
+    assert response.organization_id_filter == "org-target"
+    assert response.records[0].id == record.id
+
+
+@pytest.mark.asyncio
 async def test_update_verification_marks_record_verified(
     test_db: aiosqlite.Connection,
 ) -> None:

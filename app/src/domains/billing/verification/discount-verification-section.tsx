@@ -9,6 +9,7 @@ import {
 import { VerificationForm } from "./verification-form";
 
 interface DiscountVerificationSectionProps {
+  organizationId: string | null;
   userId: string;
 }
 
@@ -54,18 +55,26 @@ function DiscountStepper({ selectedSegment, hasSubmitted }: DiscountStepperProps
   );
 }
 
-export function DiscountVerificationSection({ userId }: DiscountVerificationSectionProps) {
+export function DiscountVerificationSection({
+  organizationId,
+  userId,
+}: DiscountVerificationSectionProps) {
   const [selectedSegment, setSelectedSegment] = useState<DiscountSegment | null>(null);
   const [hasSubmitted, setHasSubmitted] = useState(false);
 
   const submitVerificationMutation = useMutation({
     mutationFn: async (data: Record<string, string>) => {
+      if (!organizationId) {
+        throw new Error("Create a workspace before requesting discount access.");
+      }
+
       const response = await fetch("/api/access/verify-discount", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           segment: selectedSegment,
           user_id: userId,
+          organization_id: organizationId,
           data,
         }),
       });
@@ -92,6 +101,20 @@ export function DiscountVerificationSection({ userId }: DiscountVerificationSect
           <p className="type-body-medium text-ink-soft mt-2">
             We've received your verification request for discount access. We'll review it and email
             you within 24 hours to let you know if you qualify.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!organizationId) {
+    return (
+      <div className="space-y-3">
+        <p className="type-label-medium text-ink-muted">Discount access</p>
+        <div className="border-border bg-surface-container-lowest rounded-[1.4rem] border p-5">
+          <p className="type-title-small text-ink-strong">Create a workspace first</p>
+          <p className="type-body-medium text-ink-soft mt-2">
+            Discount access is applied to a workspace before checkout.
           </p>
         </div>
       </div>

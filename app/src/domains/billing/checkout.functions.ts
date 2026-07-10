@@ -12,19 +12,29 @@ const checkoutInputSchema = z.object({
 
 async function loadCheckoutServerModules() {
   if (import.meta.env.SSR) {
-    const [checkout, discountCoupons, stripeCustomer, auth, requestHeaders, runtime, sessionState] =
-      await Promise.all([
-        import("./server/checkout"),
-        import("./server/discount-coupons"),
-        import("./server/stripe-customer"),
-        import("../access/server/auth"),
-        import("../access/server/request-headers"),
-        import("../access/server/runtime"),
-        import("../access/server/session-state"),
-      ]);
+    const [
+      checkout,
+      discountCoupons,
+      discountVerifications,
+      stripeCustomer,
+      auth,
+      requestHeaders,
+      runtime,
+      sessionState,
+    ] = await Promise.all([
+      import("./server/checkout"),
+      import("./server/discount-coupons"),
+      import("./server/discount-verifications"),
+      import("./server/stripe-customer"),
+      import("../access/server/auth"),
+      import("../access/server/request-headers"),
+      import("../access/server/runtime"),
+      import("../access/server/session-state"),
+    ]);
     return {
       checkout,
       discountCoupons,
+      discountVerifications,
       stripeCustomer,
       auth,
       requestHeaders,
@@ -88,6 +98,7 @@ export const startCheckout = createServerFn({ method: "POST" })
     const {
       checkout,
       discountCoupons,
+      discountVerifications,
       stripeCustomer,
       auth: authModule,
       requestHeaders,
@@ -96,6 +107,7 @@ export const startCheckout = createServerFn({ method: "POST" })
     } = await loadCheckoutServerModules();
     const { createCheckoutSession } = checkout;
     const { getDiscountCouponIdForCheckout } = discountCoupons;
+    const { getVerifiedDiscountSegmentForWorkspace } = discountVerifications;
     const { ensureStripeCustomerForWorkspace } = stripeCustomer;
     const { ensureAuthReady } = authModule;
     const { getBrowserSessionHeaders } = requestHeaders;
@@ -126,9 +138,12 @@ export const startCheckout = createServerFn({ method: "POST" })
     const orgMetadata = normalizeAtlasOrganizationMetadata(fullOrganization?.metadata);
 
     let discountCouponId: string | null = null;
-    if (orgMetadata.verificationStatus === "verified" && orgMetadata.discountSegment) {
+    const verifiedDiscountSegment = await getVerifiedDiscountSegmentForWorkspace(
+      activeWorkspace.id,
+    );
+    if (verifiedDiscountSegment) {
       discountCouponId = getDiscountCouponIdForCheckout(
-        orgMetadata.discountSegment,
+        verifiedDiscountSegment,
         data.product,
         data.interval,
       );

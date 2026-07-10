@@ -94,6 +94,27 @@ def _row_to_discount_verification(row: Sequence[object]) -> DiscountVerification
     )
 
 
+def _build_verification_filters(
+    *,
+    organization_id: str | None,
+    segment: DiscountSegment | None,
+    status: DiscountVerificationStatus | None,
+) -> tuple[str, tuple[str, ...]]:
+    """Build the shared WHERE clause for verification list/count queries."""
+    clauses: list[str] = []
+    params: list[str] = []
+    if status is not None:
+        clauses.append("status = ?")
+        params.append(status)
+    if segment is not None:
+        clauses.append("segment = ?")
+        params.append(segment)
+    if organization_id is not None:
+        clauses.append("organization_id = ?")
+        params.append(organization_id)
+    return (f"WHERE {' AND '.join(clauses)}" if clauses else "", tuple(params))
+
+
 class DiscountVerificationCRUD:
     """CRUD operations for durable discount verification review records."""
 
@@ -154,19 +175,16 @@ class DiscountVerificationCRUD:
     async def list(
         conn: aiosqlite.Connection,
         *,
+        organization_id: str | None = None,
         status: DiscountVerificationStatus | None = None,
         segment: DiscountSegment | None = None,
     ) -> list[DiscountVerificationModel]:
         """Return discount verification records matching optional review filters."""
-        clauses: list[str] = []
-        params: list[str] = []
-        if status is not None:
-            clauses.append("status = ?")
-            params.append(status)
-        if segment is not None:
-            clauses.append("segment = ?")
-            params.append(segment)
-        where_sql = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+        where_sql, params = _build_verification_filters(
+            organization_id=organization_id,
+            segment=segment,
+            status=status,
+        )
         cursor = await conn.execute(
             f"""
             SELECT id, user_id, organization_id, segment, status, method,
@@ -175,7 +193,7 @@ class DiscountVerificationCRUD:
             {where_sql}
             ORDER BY submitted_at DESC, id DESC
             """,
-            tuple(params),
+            params,
         )
         rows = await cursor.fetchall()
         return [_row_to_discount_verification(row) for row in rows]
@@ -184,22 +202,19 @@ class DiscountVerificationCRUD:
     async def count(
         conn: aiosqlite.Connection,
         *,
+        organization_id: str | None = None,
         status: DiscountVerificationStatus | None = None,
         segment: DiscountSegment | None = None,
     ) -> int:
         """Return the count of discount verification records matching filters."""
-        clauses: list[str] = []
-        params: list[str] = []
-        if status is not None:
-            clauses.append("status = ?")
-            params.append(status)
-        if segment is not None:
-            clauses.append("segment = ?")
-            params.append(segment)
-        where_sql = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+        where_sql, params = _build_verification_filters(
+            organization_id=organization_id,
+            segment=segment,
+            status=status,
+        )
         cursor = await conn.execute(
             f"SELECT COUNT(*) FROM discount_verifications {where_sql}",
-            tuple(params),
+            params,
         )
         row = await cursor.fetchone()
         return int(row[0]) if row is not None else 0

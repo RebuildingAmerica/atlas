@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel, Field
@@ -45,6 +45,7 @@ class VerificationListResponse(BaseModel):
 
     records: list[VerificationRecordResponse]
     total: int = Field(description="Total number of records matching filters")
+    organization_id_filter: str | None = Field(default=None)
     status_filter: DiscountVerificationStatus | None = Field(default=None)
     segment_filter: DiscountSegment | None = Field(default=None)
 
@@ -93,15 +94,27 @@ async def list_verifications(
     response: Response,
     conn: aiosqlite.Connection = Depends(get_usage_db),
     *,
-    status: DiscountVerificationStatus | None = Query(default=None),
-    segment: DiscountSegment | None = Query(default=None),
+    organization_id: Annotated[str | None, Query()] = None,
+    status: Annotated[DiscountVerificationStatus | None, Query()] = None,
+    segment: Annotated[DiscountSegment | None, Query()] = None,
 ) -> VerificationListResponse:
     """List discount verification requests for manual review."""
     apply_no_store_headers(response)
     # TODO: Check admin authorization
-    records = await DiscountVerificationCRUD.list(conn, status=status, segment=segment)
-    total = await DiscountVerificationCRUD.count(conn, status=status, segment=segment)
+    records = await DiscountVerificationCRUD.list(
+        conn,
+        organization_id=organization_id,
+        status=status,
+        segment=segment,
+    )
+    total = await DiscountVerificationCRUD.count(
+        conn,
+        organization_id=organization_id,
+        status=status,
+        segment=segment,
+    )
     return VerificationListResponse(
+        organization_id_filter=organization_id,
         records=[_verification_record_response(record) for record in records],
         total=total,
         status_filter=status,

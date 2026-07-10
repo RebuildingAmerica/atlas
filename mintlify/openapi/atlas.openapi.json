@@ -12468,6 +12468,18 @@
       "VerificationListResponse": {
         "description": "Response payload for list of verification records.",
         "properties": {
+          "organization_id_filter": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "organization id filter for this verification list.",
+            "title": "Organization Id Filter"
+          },
           "records": {
             "description": "records for this verification list.",
             "items": {
@@ -13085,6 +13097,22 @@
         "description": "List discount verification requests for manual review.\n\nUse this access operation before relying on protected workflows. It explains or changes the caller's ability to use authenticated Atlas features, so integrations should surface authorization failures clearly instead of treating them as empty data.",
         "operationId": "listVerifications",
         "parameters": [
+          {
+            "in": "query",
+            "name": "organization_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Organization Id"
+            }
+          },
           {
             "in": "query",
             "name": "status",

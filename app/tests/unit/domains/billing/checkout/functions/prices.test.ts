@@ -14,6 +14,7 @@ const mocks = vi.hoisted(() => ({
   getAuthRuntimeConfig: vi.fn(),
   getBrowserSessionHeaders: vi.fn(),
   getDiscountCouponId: vi.fn(),
+  getVerifiedDiscountSegmentForWorkspace: vi.fn(),
   requireAtlasSessionState: vi.fn(),
 }));
 
@@ -46,6 +47,10 @@ vi.mock("@/domains/billing/server/discount-coupons", () => ({
   getDiscountCouponIdForCheckout: mocks.getDiscountCouponId,
 }));
 
+vi.mock("@/domains/billing/server/discount-verifications", () => ({
+  getVerifiedDiscountSegmentForWorkspace: mocks.getVerifiedDiscountSegmentForWorkspace,
+}));
+
 vi.mock("@/domains/billing/server/stripe-customer", () => ({
   ensureStripeCustomerForWorkspace: mocks.ensureStripeCustomerForWorkspace,
 }));
@@ -67,6 +72,7 @@ describe("checkout.functions pricing", () => {
     mocks.getBrowserSessionHeaders.mockReturnValue(browserSessionHeaders);
     mocks.ensureAuthReady.mockResolvedValue({ api: authApi });
     mocks.getDiscountCouponId.mockReturnValue("coupon_segment");
+    mocks.getVerifiedDiscountSegmentForWorkspace.mockResolvedValue(null);
   });
 
   afterEach(() => {
@@ -77,12 +83,11 @@ describe("checkout.functions pricing", () => {
     mocks.requireAtlasSessionState.mockResolvedValue(createAtlasSessionFixture());
     authApi.getFullOrganization.mockResolvedValue({
       metadata: {
-        discountSegment: "grassroots_nonprofit",
         stripeCustomerId: "cus_123",
-        verificationStatus: "verified",
         workspaceType: "team",
       },
     });
+    mocks.getVerifiedDiscountSegmentForWorkspace.mockResolvedValue("grassroots_nonprofit");
     mocks.createCheckoutSession.mockResolvedValue({ url: "https://checkout.stripe.test/c/abc" });
 
     const { startCheckout } = await import("@/domains/billing/checkout.functions");
@@ -111,19 +116,19 @@ describe("checkout.functions pricing", () => {
       "atlas_pro",
       "yearly",
     );
+    expect(mocks.getVerifiedDiscountSegmentForWorkspace).toHaveBeenCalledWith("org_team");
   });
 
   it("uses student four-month pricing with the student coupon", async () => {
     mocks.requireAtlasSessionState.mockResolvedValue(createAtlasSessionFixture());
     authApi.getFullOrganization.mockResolvedValue({
       metadata: {
-        discountSegment: "student",
         stripeCustomerId: "cus_123",
-        verificationStatus: "verified",
         workspaceType: "individual",
       },
     });
     mocks.getDiscountCouponId.mockReturnValue("coupon_student");
+    mocks.getVerifiedDiscountSegmentForWorkspace.mockResolvedValue("student");
     mocks.createCheckoutSession.mockResolvedValue({ url: "https://checkout.stripe.test/c/stu" });
 
     const { startCheckout } = await import("@/domains/billing/checkout.functions");
@@ -147,13 +152,12 @@ describe("checkout.functions pricing", () => {
     mocks.requireAtlasSessionState.mockResolvedValue(createAtlasSessionFixture());
     authApi.getFullOrganization.mockResolvedValue({
       metadata: {
-        discountSegment: "independent_journalist",
         stripeCustomerId: "cus_123",
-        verificationStatus: "verified",
         workspaceType: "team",
       },
     });
     mocks.getDiscountCouponId.mockReturnValue(null);
+    mocks.getVerifiedDiscountSegmentForWorkspace.mockResolvedValue("independent_journalist");
     mocks.createCheckoutSession.mockResolvedValue({ url: "https://checkout.stripe.test/c/team" });
 
     const { startCheckout } = await import("@/domains/billing/checkout.functions");

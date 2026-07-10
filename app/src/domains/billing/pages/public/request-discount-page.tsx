@@ -10,7 +10,8 @@ import { DiscountVerificationSection } from "@/domains/billing/verification/disc
  */
 export function RequestDiscountPage() {
   const atlasSession = useAtlasSession();
-  const isAuthenticated = Boolean(atlasSession.data?.user.id);
+  const userId = atlasSession.data?.user.id ?? null;
+  const activeWorkspaceId = atlasSession.data?.workspace.activeOrganization?.id ?? null;
 
   if (atlasSession.isPending) {
     return (
@@ -20,7 +21,7 @@ export function RequestDiscountPage() {
     );
   }
 
-  if (!isAuthenticated) {
+  if (!userId) {
     return (
       <div className="mx-auto w-full max-w-3xl space-y-8 py-10 lg:py-16">
         <div className="space-y-2">
@@ -92,7 +93,7 @@ export function RequestDiscountPage() {
         </p>
       </div>
 
-      <DiscountVerificationSection userId={atlasSession.data?.user.id || ""} />
+      <DiscountVerificationSection organizationId={activeWorkspaceId} userId={userId} />
 
       <div className="border-border bg-surface-container-lowest rounded-[1.4rem] border p-5">
         <p className="type-title-small text-ink-strong">How verification works</p>

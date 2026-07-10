@@ -14,6 +14,7 @@ const mocks = vi.hoisted(() => ({
   getAuthRuntimeConfig: vi.fn(),
   getBrowserSessionHeaders: vi.fn(),
   getDiscountCouponId: vi.fn(),
+  getVerifiedDiscountSegmentForWorkspace: vi.fn(),
   requireAtlasSessionState: vi.fn(),
 }));
 
@@ -46,6 +47,10 @@ vi.mock("@/domains/billing/server/discount-coupons", () => ({
   getDiscountCouponIdForCheckout: mocks.getDiscountCouponId,
 }));
 
+vi.mock("@/domains/billing/server/discount-verifications", () => ({
+  getVerifiedDiscountSegmentForWorkspace: mocks.getVerifiedDiscountSegmentForWorkspace,
+}));
+
 vi.mock("@/domains/billing/server/stripe-customer", () => ({
   ensureStripeCustomerForWorkspace: mocks.ensureStripeCustomerForWorkspace,
 }));
@@ -67,6 +72,7 @@ describe("checkout.functions guards", () => {
     mocks.getBrowserSessionHeaders.mockReturnValue(browserSessionHeaders);
     mocks.ensureAuthReady.mockResolvedValue({ api: authApi });
     mocks.getDiscountCouponId.mockReturnValue("coupon_segment");
+    mocks.getVerifiedDiscountSegmentForWorkspace.mockResolvedValue(null);
   });
 
   afterEach(() => {

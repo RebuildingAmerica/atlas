@@ -9,6 +9,7 @@ import { DiscountVerificationSection } from "@/domains/billing/verification/disc
 
 interface SubmittedDiscountRequestBody {
   data: Record<string, string>;
+  organization_id: string;
   segment: string;
   user_id: string;
 }
@@ -30,7 +31,7 @@ function renderDiscountVerificationSection() {
 
   return render(
     <QueryClientProvider client={queryClient}>
-      <DiscountVerificationSection userId="user_123" />
+      <DiscountVerificationSection organizationId="org_123" userId="user_123" />
     </QueryClientProvider>,
   );
 }
@@ -106,6 +107,7 @@ describe("DiscountVerificationSection", () => {
         schoolEmail: "maya@university.edu",
         schoolName: "Howard University",
       },
+      organization_id: "org_123",
       segment: "student",
       user_id: "user_123",
     });
@@ -133,6 +135,7 @@ describe("DiscountVerificationSection", () => {
       data: {
         portfolioUrl: "https://example.org/reporter/byline",
       },
+      organization_id: "org_123",
       segment: "independent_journalist",
       user_id: "user_123",
     });
