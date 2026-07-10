@@ -45,9 +45,6 @@ void describe("Stripe bootstrap account review", () => {
         "Stripe ID: acct_123",
         "Mode: test",
         "Target: local",
-        "",
-        "Choose Yes only if this is the Stripe account bootstrap should modify.",
-        "Choose No to paste a different API key before any Stripe catalog changes are made.",
       ].join("\n"),
     );
   });

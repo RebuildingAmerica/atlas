@@ -80,9 +80,6 @@ export function formatStripeAccountPrompt(
     `Stripe ID: ${account.accountId}`,
     `Mode: ${account.mode}`,
     `Target: ${account.target}`,
-    "",
-    "Choose Yes only if this is the Stripe account bootstrap should modify.",
-    "Choose No to paste a different API key before any Stripe catalog changes are made.",
   ].join("\n");
 }
 

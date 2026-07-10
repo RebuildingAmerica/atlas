@@ -121,9 +121,6 @@ export function formatAuthenticatedAccountPrompt(
     `Use this ${detail.label} account?`,
     "",
     `Account: ${detail.identity}`,
-    "",
-    "Choose Yes only if this is the account Atlas should use for setup.",
-    "Choose No to log in with a different account before bootstrap continues.",
   ].join("\n");
 }
 

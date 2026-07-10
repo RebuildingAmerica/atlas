@@ -81,9 +81,6 @@ void describe("bootstrap auth identity parsing", () => {
         "Use this Google Cloud SDK account?",
         "",
         "Account: admin@example.test",
-        "",
-        "Choose Yes only if this is the account Atlas should use for setup.",
-        "Choose No to log in with a different account before bootstrap continues.",
       ].join("\n"),
     );
   });
