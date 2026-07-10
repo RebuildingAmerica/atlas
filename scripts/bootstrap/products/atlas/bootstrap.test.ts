@@ -111,12 +111,11 @@ void describe("Stripe bootstrap account review", () => {
     assert.match(message, /dashboard\.stripe\.com\/apikeys/);
     assert.match(message, /The Rebuilding America Project account/);
     assert.match(message, /Powering an integration you built/);
-    assert.match(
-      message,
-      /Do not choose the third-party application or AI agent options/,
-    );
-    assert.match(message, /website or app code/);
+    assert.match(message, /website and app code/);
     assert.match(message, /Atlas Production Billing/);
+    assert.doesNotMatch(message, /Do not/);
+    assert.doesNotMatch(message, /third-party/);
+    assert.doesNotMatch(message, /AI agent/);
     assert.match(
       message,
       /Products, Prices, Coupons, Customers, Checkout Sessions/,

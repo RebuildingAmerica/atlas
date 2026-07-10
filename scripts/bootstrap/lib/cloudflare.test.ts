@@ -31,8 +31,9 @@ void describe("Cloudflare prompt guidance", () => {
       message,
       /Rules & Configuration > Zone Transform Rules > Edit/,
     );
-    assert.match(message, /Do not select Entire Account/);
-    assert.match(message, /Do not select HTTP DDoS Managed Ruleset/);
+    assert.doesNotMatch(message, /Do not/);
+    assert.doesNotMatch(message, /Entire Account/);
+    assert.doesNotMatch(message, /HTTP DDoS Managed Ruleset/);
     assert.doesNotMatch(message, /Rulesets/);
     assert.match(message, /Continue to summary/);
     assert.match(message, /Paste the token here/);

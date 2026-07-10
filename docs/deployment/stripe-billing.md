@@ -73,9 +73,8 @@ Before running hosted setup:
 3. Set `ATLAS_PUBLIC_URL` for the target environment.
 4. For production, open Stripe Dashboard in Live mode, go to **Developers > API
    keys > Restricted keys**, click **Create restricted key**, choose **Powering
-   an integration you built**, and name it `Atlas Production Billing`. Do not
-   choose the third-party application or AI-agent options; Atlas needs this key
-   for its own website and app code. Grant write access for Products, Prices,
+   an integration you built**, and name it `Atlas Production Billing`. Use this
+   key for Atlas website and app code. Grant write access for Products, Prices,
    Coupons, Customers, Checkout Sessions, and Webhook Endpoints. A live secret
    key (`sk_live_...`) is accepted, but restricted keys are the default
    production path.

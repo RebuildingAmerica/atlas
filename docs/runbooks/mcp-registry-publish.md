@@ -113,12 +113,10 @@ Create a Cloudflare account token first:
 2. In **Manage account > Account API tokens**, click **Create token**.
 3. Set **Token name** to `Atlas MCP Registry DNS`.
 4. In **Permission policies**, choose **Custom**.
-5. Change the policy scope from **Entire Account** to **Specified Domains**.
+5. Set the policy scope to **Specified Domains**.
 6. In **Select domains**, choose `rebuildingus.org`.
 7. In **DNS & Zones**, select **DNS > Edit** and **Zone > Read**.
-8. Do not select **Entire Account**, **Read all resources**, or **HTTP DDoS
-   Managed Ruleset**.
-9. Continue to summary, create the token, and copy the one-time value into
+8. Continue to summary, create the token, and copy the one-time value into
    `CLOUDFLARE_API_TOKEN`.
 
 ```bash

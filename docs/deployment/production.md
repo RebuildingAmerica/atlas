@@ -424,16 +424,14 @@ When bootstrap asks for a Cloudflare API token, create an account-owned token:
 2. In **Manage account > Account API tokens**, click **Create token**.
 3. Set **Token name** to `Atlas Cloudflare API Edge`.
 4. In **Permission policies**, choose **Custom**.
-5. Change the policy scope from **Entire Account** to **Specified Domains**.
+5. Set the policy scope to **Specified Domains**.
 6. In **Select domains**, choose `rebuildingus.org`.
 7. In **DNS & Zones**, select **DNS > Edit** and **Zone > Read**.
 8. In **App Security**, select **Zone WAF Rules > Edit**.
 9. In **Rules & Configuration**, select **Zone Transform Rules > Edit**.
-10. Do not select **Entire Account**, **Read all resources**, or **HTTP DDoS
-    Managed Ruleset**.
-11. Leave **Client IP Address Filtering** empty unless this setup needs a locked
+10. Leave **Client IP Address Filtering** empty unless this setup needs a locked
     operator IP.
-12. Click **Continue to summary**, create the token, and paste the token value
+11. Click **Continue to summary**, create the token, and paste the token value
     into bootstrap. Cloudflare shows the value once.
 
 For staging, add `--target staging` to both commands. For read-only checks:
