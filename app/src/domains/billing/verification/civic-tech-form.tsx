@@ -1,15 +1,11 @@
 import { useId, useState } from "react";
 import { Button } from "@/platform/ui/button";
+import type { CivicTechVerificationData } from "./discount-verification-payload";
 
-interface CivicTechFormData extends Record<string, string> {
-  projectUrl: string;
-  mission: string;
-}
-
-type CivicTechErrorField = keyof CivicTechFormData;
+type CivicTechErrorField = keyof CivicTechVerificationData;
 
 interface CivicTechFormProps {
-  onSubmit: (data: CivicTechFormData) => Promise<void>;
+  onSubmit: (data: CivicTechVerificationData) => Promise<void>;
   isLoading?: boolean;
 }
 

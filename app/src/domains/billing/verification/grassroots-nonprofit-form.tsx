@@ -1,15 +1,11 @@
 import { useId, useState } from "react";
 import { Button } from "@/platform/ui/button";
+import type { GrassrootsNonprofitVerificationData } from "./discount-verification-payload";
 
-interface GrassrootsNonprofitFormData extends Record<string, string> {
-  einOrName: string;
-  budget: string;
-}
-
-type GrassrootsNonprofitErrorField = keyof GrassrootsNonprofitFormData;
+type GrassrootsNonprofitErrorField = keyof GrassrootsNonprofitVerificationData;
 
 interface GrassrootsNonprofitFormProps {
-  onSubmit: (data: GrassrootsNonprofitFormData) => Promise<void>;
+  onSubmit: (data: GrassrootsNonprofitVerificationData) => Promise<void>;
   isLoading?: boolean;
 }
 

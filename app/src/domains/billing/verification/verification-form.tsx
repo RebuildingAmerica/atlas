@@ -4,10 +4,11 @@ import { IndependentJournalistForm } from "./independent-journalist-form";
 import { GrassrootsNonprofitForm } from "./grassroots-nonprofit-form";
 import { CivicTechForm } from "./civic-tech-form";
 import { StudentForm } from "./student-form";
+import type { DiscountVerificationSubmission } from "./discount-verification-payload";
 
 interface VerificationFormProps {
   segment: DiscountSegment;
-  onSubmit: (data: Record<string, string>) => Promise<void>;
+  onSubmit: (submission: DiscountVerificationSubmission) => Promise<void>;
   isLoading?: boolean;
 }
 
@@ -26,25 +27,45 @@ export function VerificationForm({ segment, onSubmit, isLoading = false }: Verif
     );
   }
 
-  async function handleSubmit(data: Record<string, string>) {
-    await onSubmit(data);
+  async function handleSubmit(submission: DiscountVerificationSubmission) {
+    await onSubmit(submission);
     setSubmitted(true);
   }
 
   if (segment === "student") {
-    return <StudentForm onSubmit={handleSubmit} isLoading={isLoading} />;
+    return (
+      <StudentForm
+        onSubmit={(data) => handleSubmit({ data, segment: "student" })}
+        isLoading={isLoading}
+      />
+    );
   }
 
   if (segment === "independent_journalist") {
-    return <IndependentJournalistForm onSubmit={handleSubmit} isLoading={isLoading} />;
+    return (
+      <IndependentJournalistForm
+        onSubmit={(data) => handleSubmit({ data, segment: "independent_journalist" })}
+        isLoading={isLoading}
+      />
+    );
   }
 
   if (segment === "grassroots_nonprofit") {
-    return <GrassrootsNonprofitForm onSubmit={handleSubmit} isLoading={isLoading} />;
+    return (
+      <GrassrootsNonprofitForm
+        onSubmit={(data) => handleSubmit({ data, segment: "grassroots_nonprofit" })}
+        isLoading={isLoading}
+      />
+    );
   }
 
   if (segment === "civic_tech_worker") {
-    return <CivicTechForm onSubmit={handleSubmit} isLoading={isLoading} />;
+    return (
+      <CivicTechForm
+        onSubmit={(data) => handleSubmit({ data, segment: "civic_tech_worker" })}
+        isLoading={isLoading}
+      />
+    );
   }
 
   return <div>Unknown segment</div>;

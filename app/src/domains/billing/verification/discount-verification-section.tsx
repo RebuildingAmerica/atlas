@@ -6,6 +6,10 @@ import {
   SEGMENT_DESCRIPTIONS,
   type DiscountSegment,
 } from "../discount-segments";
+import {
+  buildDiscountVerificationRequestBody,
+  type DiscountVerificationSubmission,
+} from "./discount-verification-payload";
 import { VerificationForm } from "./verification-form";
 
 interface DiscountVerificationSectionProps {
@@ -63,7 +67,7 @@ export function DiscountVerificationSection({
   const [hasSubmitted, setHasSubmitted] = useState(false);
 
   const submitVerificationMutation = useMutation({
-    mutationFn: async (data: Record<string, string>) => {
+    mutationFn: async (submission: DiscountVerificationSubmission) => {
       if (!organizationId) {
         throw new Error("Create a workspace before requesting discount access.");
       }
@@ -71,12 +75,13 @@ export function DiscountVerificationSection({
       const response = await fetch("/api/access/verify-discount", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          segment: selectedSegment,
-          user_id: userId,
-          organization_id: organizationId,
-          data,
-        }),
+        body: JSON.stringify(
+          buildDiscountVerificationRequestBody({
+            organizationId,
+            submission,
+            userId,
+          }),
+        ),
       });
 
       if (!response.ok) {

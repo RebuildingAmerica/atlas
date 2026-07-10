@@ -1,15 +1,11 @@
 import { useId, useState } from "react";
 import { Button } from "@/platform/ui/button";
+import type { StudentVerificationData } from "./discount-verification-payload";
 
-interface StudentFormData extends Record<string, string> {
-  schoolEmail: string;
-  schoolName: string;
-}
-
-type StudentErrorField = keyof StudentFormData;
+type StudentErrorField = keyof StudentVerificationData;
 
 interface StudentFormProps {
-  onSubmit: (data: StudentFormData) => Promise<void>;
+  onSubmit: (data: StudentVerificationData) => Promise<void>;
   isLoading?: boolean;
 }
 

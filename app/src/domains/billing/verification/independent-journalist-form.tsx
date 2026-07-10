@@ -1,14 +1,11 @@
 import { useId, useState } from "react";
 import { Button } from "@/platform/ui/button";
+import type { IndependentJournalistVerificationData } from "./discount-verification-payload";
 
-interface IndependentJournalistFormData extends Record<string, string> {
-  portfolioUrl: string;
-}
-
-type IndependentJournalistErrorField = keyof IndependentJournalistFormData;
+type IndependentJournalistErrorField = keyof IndependentJournalistVerificationData;
 
 interface IndependentJournalistFormProps {
-  onSubmit: (data: IndependentJournalistFormData) => Promise<void>;
+  onSubmit: (data: IndependentJournalistVerificationData) => Promise<void>;
   isLoading?: boolean;
 }
 
