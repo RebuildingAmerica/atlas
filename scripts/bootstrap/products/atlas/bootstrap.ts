@@ -55,6 +55,17 @@ interface StripeMissingApiKeyGuidanceParams {
   target: StripeBootstrapTarget;
 }
 
+interface StripeGuidanceNote {
+  message: string;
+  title: string;
+}
+
+interface StripeVerificationFailure {
+  message: string;
+  summary: string;
+  title: string;
+}
+
 type StripeAccountForDisplay = Pick<
   Stripe.Account,
   "business_profile" | "id" | "settings"
@@ -148,6 +159,7 @@ export async function runProductPhase(
       };
     }
 
+    printStripeApiKeyGuidance(envMode);
     const prompted = await promptOrExit(
       password({
         message: formatStripeApiKeyPromptMessage(envMode),
@@ -196,12 +208,16 @@ export async function runProductPhase(
     apiKey = confirmed.apiKey;
     stripe = confirmed.stripe;
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    log.error(message);
-    markPhase(state, "product", "failed", message);
+    const failure = formatStripeAccountVerificationFailure(error);
+    log.error(failure.summary);
+    note(failure.message, failure.title);
+    markPhase(state, "product", "failed", failure.summary);
     return {
       success: false,
-      followUpItems: ["Fix Stripe API key and re-run bootstrap"],
+      followUpItems: [
+        failure.summary,
+        "Fix Stripe API key and re-run bootstrap",
+      ],
     };
   }
 
@@ -332,35 +348,53 @@ export function formatStripeApiKeyPromptMessage(
   envMode: StripeRuntimeMode,
 ): string {
   if (envMode === "live") {
-    const promptSteps = [
-      "Open https://dashboard.stripe.com/apikeys and switch to Live mode.",
-      "Choose The Rebuilding America Project account.",
-      "Open Restricted keys and click Create restricted key.",
-      "Choose Powering an integration you built.",
-      "Use this key for Atlas website and app code.",
-      "Name the key Atlas Production Billing.",
-      "Grant write access for Products, Prices, Coupons, Customers, Checkout Sessions, and Webhook Endpoints.",
-      "Reveal the key once, copy the rk_live_ value, and keep it out of chat and committed files.",
-    ];
-    return [
-      "Stripe live mode API key",
-      "",
-      "Use a Dashboard-created live restricted key for production billing:",
-      ...promptSteps.map((step, index) => `${index + 1}. ${step}`),
-      "",
-      "Paste the rk_live_ value here. A full sk_live_ key is accepted, but rk_live_ is preferred.",
-      "Bootstrap will create or update the Atlas Stripe catalog, webhook, env files, and Vercel Production env vars after this.",
-    ].join("\n");
+    return "Paste the Stripe live mode API key";
   }
 
-  return [
-    "Stripe test mode API key",
-    "",
-    "For local and staging, run `stripe login` first so bootstrap can use your Stripe CLI test key.",
-    "If you need to paste a key manually, use a test key that starts with sk_test_ or rk_test_.",
-    "",
-    "Paste the test key here, or leave blank to skip Stripe product setup.",
-  ].join("\n");
+  return "Paste the Stripe test mode API key";
+}
+
+export function formatStripeApiKeyGuidanceNote(
+  envMode: StripeRuntimeMode,
+): StripeGuidanceNote {
+  if (envMode === "live") {
+    return {
+      title: "Stripe live mode API key",
+      message: [
+        "Create a live restricted key for Atlas production billing:",
+        "",
+        "1. Open https://dashboard.stripe.com/apikeys.",
+        "2. Switch to Live mode.",
+        "3. Choose The Rebuilding America Project account.",
+        "4. Open Restricted keys and click Create restricted key.",
+        "5. Choose Powering an integration you built.",
+        "6. Use this key for Atlas website and app code.",
+        "7. Name the key Atlas Production Billing.",
+        "8. Grant write access for:",
+        "   Products, Prices, Coupons, Customers, Checkout Sessions, Webhook Endpoints.",
+        "9. Reveal the key once and copy the rk_live_ value.",
+        "",
+        "Bootstrap will create or update the Atlas Stripe catalog, webhook,",
+        "env files, and Vercel Production env vars after this.",
+      ].join("\n"),
+    };
+  }
+
+  return {
+    title: "Stripe test mode API key",
+    message: [
+      "For local and staging, run `stripe login` first so bootstrap can use",
+      "your Stripe CLI test key.",
+      "",
+      "If you paste a key manually, use sk_test_ or rk_test_.",
+      "Leaving this blank skips Stripe product setup.",
+    ].join("\n"),
+  };
+}
+
+function printStripeApiKeyGuidance(envMode: StripeRuntimeMode): void {
+  const guidance = formatStripeApiKeyGuidanceNote(envMode);
+  note(guidance.message, guidance.title);
 }
 
 export function formatStripeWebhookUrlPromptMessage(
@@ -511,6 +545,7 @@ async function confirmStripeAccount(
       return null;
     }
 
+    printStripeApiKeyGuidance(params.mode);
     const prompted = await promptOrExit(
       password({
         message: formatStripeApiKeyPromptMessage(params.mode),
@@ -528,6 +563,66 @@ async function confirmStripeAccount(
     }
     apiKey = candidate;
   }
+}
+
+export function formatStripeAccountVerificationFailure(
+  error: unknown,
+): StripeVerificationFailure {
+  const rawMessage = error instanceof Error ? error.message : String(error);
+  const missingPermission = extractStripeMissingPermission(rawMessage);
+  const editUrl = extractStripeEditUrl(rawMessage);
+  const message = [
+    "Stripe could not verify this key before bootstrap makes billing changes.",
+    "For restricted keys, Atlas must be able to confirm the account first.",
+    "",
+    missingPermission
+      ? `Missing permission: ${missingPermission.label} (${missingPermission.scope})`
+      : "Missing permission: account metadata read access",
+    "",
+    "Open the restricted key in Stripe and add the missing read permission.",
+    editUrl
+      ? `Edit key: ${editUrl}`
+      : "Then paste the updated key into bootstrap again.",
+  ];
+  if (editUrl) {
+    message.push("Then paste the updated key into bootstrap again.");
+  }
+
+  return {
+    message: message.join("\n"),
+    summary: "Stripe key cannot verify the Stripe account.",
+    title: "Stripe key permissions",
+  };
+}
+
+interface StripeMissingPermission {
+  label: string;
+  scope: string;
+}
+
+function extractStripeMissingPermission(
+  message: string,
+): StripeMissingPermission | null {
+  const match = /Enabling "([^"]+)" \('([^']+)'\)/.exec(message);
+  if (!match?.[1] || !match[2]) {
+    return null;
+  }
+  return {
+    label: match[1],
+    scope: match[2],
+  };
+}
+
+function extractStripeEditUrl(message: string): string | null {
+  const match = /https:\/\/dashboard\.stripe\.com\/\S+/.exec(message);
+  return match?.[0] ? redactStripeKeyIds(match[0]) : null;
+}
+
+function redactStripeKeyIds(value: string): string {
+  return value.replace(
+    /mk_[A-Za-z0-9]+|rk_(?:live|test)_[A-Za-z0-9]+/g,
+    "[key]",
+  );
 }
 
 function stripeDoctorFollowUp(

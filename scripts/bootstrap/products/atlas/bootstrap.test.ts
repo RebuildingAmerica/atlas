@@ -3,10 +3,12 @@ import { describe, it } from "node:test";
 import {
   formatStripeMissingApiKeyGuidance,
   formatStripeApiKeyPromptMessage,
+  formatStripeApiKeyGuidanceNote,
   formatStripeWebhookUrlPromptMessage,
   formatHostedStripeEnvStatus,
   stripeLiveRestrictedKeySetupSteps,
   formatStripeAccountPrompt,
+  formatStripeAccountVerificationFailure,
   stripeAccountDisplayName,
 } from "./bootstrap.js";
 
@@ -105,23 +107,60 @@ void describe("Stripe bootstrap account review", () => {
     ]);
   });
 
-  void it("puts live restricted key instructions directly in the production key prompt", () => {
+  void it("keeps the live key input prompt short and moves setup guidance to a note", () => {
     const message = formatStripeApiKeyPromptMessage("live");
+    const guidance = formatStripeApiKeyGuidanceNote("live");
 
-    assert.match(message, /dashboard\.stripe\.com\/apikeys/);
-    assert.match(message, /The Rebuilding America Project account/);
-    assert.match(message, /Powering an integration you built/);
-    assert.match(message, /website and app code/);
-    assert.match(message, /Atlas Production Billing/);
+    assert.equal(message, "Paste the Stripe live mode API key");
+    assert.match(guidance.title, /Stripe live mode API key/);
+    assert.match(guidance.message, /dashboard\.stripe\.com\/apikeys/);
+    assert.match(guidance.message, /The Rebuilding America Project account/);
+    assert.match(guidance.message, /Powering an integration you built/);
+    assert.match(guidance.message, /website and app code/);
+    assert.match(guidance.message, /Atlas Production Billing/);
     assert.doesNotMatch(message, /Do not/);
-    assert.doesNotMatch(message, /third-party/);
-    assert.doesNotMatch(message, /AI agent/);
+    assert.doesNotMatch(guidance.message, /third-party/);
+    assert.doesNotMatch(guidance.message, /AI agent/);
     assert.match(
-      message,
+      guidance.message,
       /Products, Prices, Coupons, Customers, Checkout Sessions/,
     );
-    assert.match(message, /Paste the rk_live_/);
-    assert.match(message, /webhook, env files, and Vercel Production env vars/);
+    assert.match(guidance.message, /rk_live_/);
+    assert.match(
+      guidance.message,
+      /webhook,\nenv files, and Vercel Production env vars/,
+    );
+    assert.ok(
+      guidance.message.split("\n").every((line) => line.length <= 88),
+      "Stripe guidance should stay readable in narrow terminals",
+    );
+  });
+
+  void it("turns Stripe account permission errors into actionable guidance", () => {
+    const failure = formatStripeAccountVerificationFailure(
+      new Error(
+        [
+          "Permission denied.",
+          'Enabling "Basic Business Contact Information Read"',
+          "('accounts_kyc_basic_read') permissions on this key would allow this request to continue.",
+          "You can edit permissions at https://dashboard.stripe.com/b/acct_123/apikeys/rk_123/edit",
+        ].join(" "),
+      ),
+    );
+
+    assert.equal(
+      failure.summary,
+      "Stripe key cannot verify the Stripe account.",
+    );
+    assert.equal(failure.title, "Stripe key permissions");
+    assert.match(failure.message, /Basic Business Contact Information Read/);
+    assert.match(failure.message, /accounts_kyc_basic_read/);
+    assert.match(
+      failure.message,
+      /Open the restricted key in Stripe and add the missing read permission./,
+    );
+    assert.match(failure.message, /https:\/\/dashboard\.stripe\.com/);
+    assert.doesNotMatch(failure.message, /rk_live_/);
   });
 
   void it("explains the hosted Stripe webhook URL prompt", () => {
