@@ -136,8 +136,10 @@ export async function reportStatus(
   };
 }
 
-function runHealthProbe(domain: string): HealthProbe {
-  const result = runCommand(`curl -sI --max-time 10 https://${domain}/health`);
+export function runHealthProbe(domain: string): HealthProbe {
+  const result = runCommand(
+    `curl -sS --max-time 10 -D - -o /dev/null https://${domain}/health`,
+  );
   const output = commandOutput(result);
   const statusCode = statusCodeFromHeaders(output);
   return {

@@ -290,7 +290,7 @@ async function waitForCertReadiness(
   s.start("Waiting for Cloud Run cert + HTTPS to be live...");
   for (let attempt = 0; attempt < 18; attempt++) {
     const probe = runCommand(
-      `curl -sI --max-time 5 https://${config.domain}/health`,
+      `curl -sS --max-time 5 -D - -o /dev/null https://${config.domain}/health`,
     );
     if (probe.ok && /^HTTP\/[12](\.[01])? 2\d\d/m.test(probe.stdout)) {
       s.stop(`https://${config.domain}/health responding`);
