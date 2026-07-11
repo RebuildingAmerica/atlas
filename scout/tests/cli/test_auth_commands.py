@@ -133,3 +133,16 @@ def test_logout_reports_local_credential_delete_failure(monkeypatch) -> None:
 
     assert result.exit_code != 0
     assert "could not remove local credentials" in result.output
+
+
+def test_search_key_configured_treats_unavailable_store_as_not_connected(monkeypatch) -> None:
+    """Optional search-key metadata should not block browser login."""
+    import atlas_scout.cli as cli_module
+    from atlas_scout.credentials import CredentialStoreError
+
+    def fail_search_key_lookup() -> bool:
+        raise CredentialStoreError("No OS credential store is available.")
+
+    monkeypatch.setattr(cli_module, "has_search_api_key", fail_search_key_lookup)
+
+    assert cli_module._search_key_configured() is False

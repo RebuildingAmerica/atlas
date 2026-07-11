@@ -225,6 +225,7 @@ export async function ensureProductionRoutingConfig(
 export function buildVercelEnvVars(env: Map<string, string>): VercelVar[] {
   const all: VercelEnvironment[] = ["production", "preview", "development"];
   const prod: VercelEnvironment[] = ["production"];
+  const prodAndPreview: VercelEnvironment[] = ["production", "preview"];
 
   function get(key: string, fallback?: string): string | undefined {
     const v = env.get(key);
@@ -258,7 +259,7 @@ export function buildVercelEnvVars(env: Map<string, string>): VercelVar[] {
   add(
     "ATLAS_OPERATOR_ALLOWED_EMAILS",
     get("ATLAS_OPERATOR_ALLOWED_EMAILS"),
-    prod,
+    prodAndPreview,
   );
   add(
     "ATLAS_AUTH_API_KEY_INTROSPECTION_URL",

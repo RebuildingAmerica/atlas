@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   DEFAULT_PRODUCTION_API_ORIGIN,
+  buildVercelEnvVars,
   formatMintlifyDocsOriginPromptMessage,
   formatProductionApiProxyPromptMessage,
   formatProductionAppUrlPromptMessage,
@@ -42,5 +43,20 @@ void describe("hosted routing prompts", () => {
     assert.match(message, /Open the Mintlify project dashboard/);
     assert.match(message, /Host at \/docs/);
     assert.match(message, /ATLAS_DOCS_URL/);
+  });
+
+  void it("syncs operator access to production and preview apps", () => {
+    const vars = buildVercelEnvVars(
+      new Map([["ATLAS_OPERATOR_ALLOWED_EMAILS", "operator@example.org"]]),
+    );
+
+    assert.deepEqual(
+      vars.find((item) => item.key === "ATLAS_OPERATOR_ALLOWED_EMAILS"),
+      {
+        key: "ATLAS_OPERATOR_ALLOWED_EMAILS",
+        value: "operator@example.org",
+        environments: ["production", "preview"],
+      },
+    );
   });
 });

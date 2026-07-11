@@ -12,7 +12,7 @@ test.describe("public map", () => {
         await route.fulfill({
           contentType: "image/png",
           body: Buffer.from(
-            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADUlEQVR4nGN4+PDhfwAJNQP6I2mdkgAAAABJRU5ErkJggg==",
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
             "base64",
           ),
         });

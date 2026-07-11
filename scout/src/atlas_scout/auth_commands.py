@@ -55,7 +55,10 @@ def _default_worker_name() -> str:
 
 def _search_key_configured() -> bool:
     """Return whether this process has search-backed discovery available."""
-    return has_search_api_key()
+    try:
+        return has_search_api_key()
+    except CredentialStoreError:
+        return False
 
 
 def _resolve_search_connection(search_api_key: str | None) -> str:

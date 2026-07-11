@@ -195,7 +195,6 @@ def run(
     # Validation
     resolved_search_key = search_api_key
     if not url_list:
-        resolved_search_key = _resolve_search_connection(search_api_key)
         if not location:
             _exit_with_error(
                 CliError(
@@ -216,6 +215,7 @@ def run(
                     hint='Example: scout run --location "Austin, TX" --issues housing_affordability',
                 )
             )
+        resolved_search_key = _resolve_search_connection(search_api_key)
 
     try:
         resolution = _prepare_local_model_config(
