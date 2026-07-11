@@ -1,8 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertCircle } from "lucide-react";
-import type { VerificationListResponse } from "@/lib/generated/atlas-schemas/access/verificationListResponse";
 import type { VerificationRecordResponse } from "@/lib/generated/atlas-schemas/access/verificationRecordResponse";
 import type { VerificationUpdateRequest } from "@/lib/generated/atlas-schemas/access/verificationUpdateRequest";
+import {
+  listDiscountVerifications,
+  reviewDiscountVerification,
+} from "../../discount-verifications.functions";
 import { DISCOUNT_SEGMENT_LABELS } from "../../discount-segments";
 
 type VerificationReviewStatus = VerificationUpdateRequest["status"];
@@ -27,25 +30,15 @@ export function DiscountAdminPage() {
   const verificationQuery = useQuery({
     queryKey: ["admin", "verifications"],
     queryFn: async () => {
-      const response = await fetch("/api/admin/verifications");
-      if (!response.ok) {
-        throw new Error("Failed to load verifications");
-      }
-      return response.json() as Promise<VerificationListResponse>;
+      return await listDiscountVerifications({ data: {} });
     },
   });
 
   const reviewMutation = useMutation({
     mutationFn: async ({ notes, status, verificationId }: VerificationReviewInput) => {
-      const response = await fetch(`/api/admin/verifications/${verificationId}`, {
-        body: JSON.stringify({ notes, status } satisfies VerificationUpdateRequest),
-        headers: { "Content-Type": "application/json" },
-        method: "PATCH",
+      return await reviewDiscountVerification({
+        data: { notes, status, verificationId },
       });
-      if (!response.ok) {
-        throw new Error("Failed to update verification");
-      }
-      return response.json() as Promise<unknown>;
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["admin", "verifications"] });

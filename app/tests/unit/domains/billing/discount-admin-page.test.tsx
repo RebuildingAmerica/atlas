@@ -8,6 +8,16 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { DiscountAdminPage } from "@/domains/billing/pages/workspace/discount-admin-page";
 import type { VerificationListResponse } from "@/lib/generated/atlas-schemas/access/verificationListResponse";
 
+const mocks = vi.hoisted(() => ({
+  listDiscountVerifications: vi.fn(),
+  reviewDiscountVerification: vi.fn(),
+}));
+
+vi.mock("@/domains/billing/discount-verifications.functions", () => ({
+  listDiscountVerifications: mocks.listDiscountVerifications,
+  reviewDiscountVerification: mocks.reviewDiscountVerification,
+}));
+
 const verificationListResponse: VerificationListResponse = {
   records: [
     {
@@ -26,13 +36,6 @@ const verificationListResponse: VerificationListResponse = {
   total: 1,
 };
 
-function jsonResponse(body: unknown, status: number): Response {
-  return new Response(JSON.stringify(body), {
-    headers: { "content-type": "application/json" },
-    status,
-  });
-}
-
 function renderDiscountAdminPage() {
   const queryClient = new QueryClient({
     defaultOptions: {
@@ -50,54 +53,51 @@ function renderDiscountAdminPage() {
 
 afterEach(() => {
   cleanup();
+  mocks.listDiscountVerifications.mockReset();
+  mocks.reviewDiscountVerification.mockReset();
   vi.unstubAllGlobals();
 });
 
 describe("DiscountAdminPage", () => {
-  it("links verification records by verification id", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn<typeof fetch>().mockResolvedValue(jsonResponse(verificationListResponse, 200)),
-    );
+  it("loads verification records through the authenticated server function", async () => {
+    const fetchMock = vi.fn<typeof fetch>();
+    vi.stubGlobal("fetch", fetchMock);
+    mocks.listDiscountVerifications.mockResolvedValue(verificationListResponse);
 
     renderDiscountAdminPage();
 
     const detailLink = await screen.findByRole("link", { name: "View details" });
     expect(detailLink).toHaveAttribute("href", "/admin/verifications/verif_123");
+    expect(mocks.listDiscountVerifications).toHaveBeenCalledWith({ data: {} });
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("approves pending verification records by verification id", async () => {
-    const fetchMock = vi
-      .fn<typeof fetch>()
-      .mockResolvedValueOnce(jsonResponse(verificationListResponse, 200))
-      .mockResolvedValueOnce(
-        jsonResponse(
-          {
-            message: "Verification review updated.",
-            record: {
-              ...verificationListResponse.records[0],
-              status: "verified",
-              verified_at: "2026-07-02T12:00:00.000Z",
-            },
-            status: "verified",
-          },
-          200,
-        ),
-      )
-      .mockResolvedValueOnce(jsonResponse({ ...verificationListResponse, records: [] }, 200));
-    vi.stubGlobal("fetch", fetchMock);
+    mocks.listDiscountVerifications
+      .mockResolvedValueOnce(verificationListResponse)
+      .mockResolvedValueOnce({ ...verificationListResponse, records: [] });
+    mocks.reviewDiscountVerification.mockResolvedValue({
+      message: "Verification review updated.",
+      record: {
+        ...verificationListResponse.records[0],
+        status: "verified",
+        verified_at: "2026-07-02T12:00:00.000Z",
+      },
+      status: "verified",
+    });
 
     renderDiscountAdminPage();
 
     fireEvent.click(await screen.findByRole("button", { name: "Approve" }));
 
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith(
-        "/api/admin/verifications/verif_123",
-        expect.objectContaining({
-          method: "PATCH",
-        }),
-      );
+      expect(mocks.reviewDiscountVerification).toHaveBeenCalledWith({
+        data: {
+          notes: "Approved from admin review.",
+          status: "verified",
+          verificationId: "verif_123",
+        },
+      });
     });
   });
 });
