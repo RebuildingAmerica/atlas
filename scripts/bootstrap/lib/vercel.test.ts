@@ -7,6 +7,7 @@ import {
   formatVercelProjectNamePromptMessage,
   formatVercelProductionSyncPromptMessage,
   formatVercelTeamPromptMessage,
+  shouldAutoConfirmVercelSync,
   shouldUseDetectedVercelProject,
 } from "./vercel.js";
 
@@ -79,6 +80,12 @@ void describe("Vercel env sync preview", () => {
       ]),
       false,
     );
+  });
+
+  void it("only auto-confirms env sync when assume-yes is enabled", () => {
+    assert.equal(shouldAutoConfirmVercelSync(true), true);
+    assert.equal(shouldAutoConfirmVercelSync(false), false);
+    assert.equal(shouldAutoConfirmVercelSync(undefined), false);
   });
 
   void it("formats Vercel project and team confirmation separately from auth", () => {

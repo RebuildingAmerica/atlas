@@ -528,6 +528,12 @@ export function requiresProductionConfirmation(vars: VercelVar[]): boolean {
   return vars.some((v) => v.environments.includes("production"));
 }
 
+export function shouldAutoConfirmVercelSync(
+  assumeYes: boolean | undefined,
+): boolean {
+  return assumeYes === true;
+}
+
 function vercelTargetLabel(
   vars: VercelVar[],
   explicitLabel: string | undefined,
@@ -627,7 +633,9 @@ export async function syncEnvVars(
     "Vercel env sync",
   );
 
-  const confirmed = options.assumeYes ?? (await confirmVercelSync(varsToSync));
+  const confirmed = shouldAutoConfirmVercelSync(options.assumeYes)
+    ? true
+    : await confirmVercelSync(varsToSync);
   if (!confirmed) {
     logSubline("Skipped Vercel env sync");
     return false;
