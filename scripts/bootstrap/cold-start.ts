@@ -200,6 +200,7 @@ async function main(): Promise<void> {
       projectRoot,
       args.doctorMode,
       args.apiDomainTarget,
+      args.assumeYes,
     );
     markPhase(
       state,
@@ -522,7 +523,12 @@ async function main(): Promise<void> {
       log.step("Phase 11: API Edge Protection");
       log.info(describePhase("API Edge Protection"));
       attemptedPhases.add("api-edge");
-      const result = await runApiEdgePhase(projectRoot, args.doctorMode);
+      const result = await runApiEdgePhase(
+        projectRoot,
+        args.doctorMode,
+        args.apiDomainTarget,
+        args.assumeYes,
+      );
       markPhase(
         state,
         "api-edge",

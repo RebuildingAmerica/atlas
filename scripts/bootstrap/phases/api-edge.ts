@@ -22,6 +22,7 @@ export async function runApiEdgePhase(
   projectRoot: string,
   doctorMode: boolean,
   target: ApiDomainTarget = "prod",
+  assumeYes = false,
 ): Promise<PhaseResult> {
   const followUpItems: string[] = [];
   const config = readConfig(projectRoot, target);
@@ -62,16 +63,18 @@ export async function runApiEdgePhase(
     return await reportStatus(acquired.token, zoneId, config);
   }
 
-  const proceed = await promptConfirm(
-    [
-      `Enable Cloudflare edge protection for ${config.domain}?`,
-      "",
-      "Bootstrap will turn on the Cloudflare proxy, add anonymous API rate-limit rules, and add origin identity headers.",
-      "Choose Yes only after the canonical API domain is healthy.",
-      "Choose No to leave DNS and WAF rules unchanged for now.",
-    ].join("\n"),
-    true,
-  );
+  const proceed =
+    assumeYes ||
+    (await promptConfirm(
+      [
+        `Enable Cloudflare edge protection for ${config.domain}?`,
+        "",
+        "Bootstrap will turn on the Cloudflare proxy, add anonymous API rate-limit rules, and add origin identity headers.",
+        "Choose Yes only after the canonical API domain is healthy.",
+        "Choose No to leave DNS and WAF rules unchanged for now.",
+      ].join("\n"),
+      true,
+    ));
   if (!proceed) {
     followUpItems.push(
       `Re-run \`pnpm bootstrap --api-edge${
