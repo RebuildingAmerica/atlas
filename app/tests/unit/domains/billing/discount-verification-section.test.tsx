@@ -7,19 +7,15 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { DiscountVerificationSection } from "@/domains/billing/verification/discount-verification-section";
 
-interface SubmittedDiscountRequestBody {
-  data: Record<string, string>;
-  organization_id: string;
-  segment: string;
-  user_id: string;
-}
+const mocks = vi.hoisted(() => ({
+  getCurrentDiscountVerificationStatus: vi.fn(),
+  submitDiscountVerification: vi.fn(),
+}));
 
-function jsonResponse(body: unknown, status: number): Response {
-  return new Response(JSON.stringify(body), {
-    headers: { "content-type": "application/json" },
-    status,
-  });
-}
+vi.mock("@/domains/billing/discount-verifications.functions", () => ({
+  getCurrentDiscountVerificationStatus: mocks.getCurrentDiscountVerificationStatus,
+  submitDiscountVerification: mocks.submitDiscountVerification,
+}));
 
 function renderDiscountVerificationSection() {
   const queryClient = new QueryClient({
@@ -28,42 +24,45 @@ function renderDiscountVerificationSection() {
       queries: { retry: false },
     },
   });
+  if (!mocks.getCurrentDiscountVerificationStatus.getMockImplementation()) {
+    mocks.getCurrentDiscountVerificationStatus.mockResolvedValue({ record: null });
+  }
 
   return render(
     <QueryClientProvider client={queryClient}>
-      <DiscountVerificationSection organizationId="org_123" userId="user_123" />
+      <DiscountVerificationSection organizationId="org_123" />
     </QueryClientProvider>,
   );
-}
-
-function mockFetch(response: Response): void {
-  vi.stubGlobal("fetch", vi.fn<typeof fetch>().mockResolvedValue(response));
-}
-
-function requestInitFor(fetchMock: ReturnType<typeof vi.fn<typeof fetch>>): RequestInit {
-  const requestInit = fetchMock.mock.calls[0]?.[1];
-  if (!requestInit) {
-    throw new Error("Expected fetch to receive request init");
-  }
-  return requestInit;
-}
-
-function requestBodyFor(fetchMock: ReturnType<typeof vi.fn<typeof fetch>>): string {
-  const requestBody = requestInitFor(fetchMock).body;
-  if (typeof requestBody !== "string") {
-    throw new Error("Expected fetch request body to be a JSON string");
-  }
-  return requestBody;
 }
 
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
+  mocks.getCurrentDiscountVerificationStatus.mockReset();
+  mocks.submitDiscountVerification.mockReset();
 });
 
 describe("DiscountVerificationSection", () => {
+  it("shows the durable pending status for the active workspace after refresh", async () => {
+    mocks.getCurrentDiscountVerificationStatus.mockResolvedValue({
+      record: {
+        id: "verif_123",
+        segment: "student",
+        status: "pending",
+        submitted_at: "2026-07-11T12:00:00.000Z",
+      },
+    });
+
+    renderDiscountVerificationSection();
+
+    await waitFor(() => {
+      expect(screen.getByRole("status")).toHaveTextContent("Discount request under review");
+    });
+    expect(screen.queryByRole("button", { name: /Student/i })).not.toBeInTheDocument();
+  });
+
   it("announces submitted verification requests as a status", async () => {
-    mockFetch(jsonResponse({ ok: true }, 200));
+    mocks.submitDiscountVerification.mockResolvedValue({ status: "pending" });
     renderDiscountVerificationSection();
 
     fireEvent.click(screen.getByRole("button", { name: /Independent Creator or Journalist/i }));
@@ -78,8 +77,7 @@ describe("DiscountVerificationSection", () => {
   });
 
   it("submits student discount requests through the stepper", async () => {
-    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(jsonResponse({ ok: true }, 200));
-    vi.stubGlobal("fetch", fetchMock);
+    mocks.submitDiscountVerification.mockResolvedValue({ status: "pending" });
     renderDiscountVerificationSection();
 
     expect(screen.getByText("1")).toBeInTheDocument();
@@ -96,26 +94,22 @@ describe("DiscountVerificationSection", () => {
     fireEvent.click(screen.getByRole("button", { name: "Request Verification" }));
 
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith(
-        "/api/access/verify-discount",
-        expect.objectContaining({ method: "POST" }),
-      );
+      expect(mocks.submitDiscountVerification).toHaveBeenCalled();
     });
-    const body = JSON.parse(requestBodyFor(fetchMock)) as SubmittedDiscountRequestBody;
-    expect(body).toEqual({
+    expect(mocks.submitDiscountVerification).toHaveBeenCalledWith({
       data: {
-        schoolEmail: "maya@university.edu",
-        schoolName: "Howard University",
+        organizationId: "org_123",
+        segment: "student",
+        submission: {
+          schoolEmail: "maya@university.edu",
+          schoolName: "Howard University",
+        },
       },
-      organization_id: "org_123",
-      segment: "student",
-      user_id: "user_123",
     });
   });
 
   it("submits independent creator and journalist requests through the stepper", async () => {
-    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(jsonResponse({ ok: true }, 200));
-    vi.stubGlobal("fetch", fetchMock);
+    mocks.submitDiscountVerification.mockResolvedValue({ status: "pending" });
     renderDiscountVerificationSection();
 
     fireEvent.click(screen.getByRole("button", { name: /Independent Creator or Journalist/i }));
@@ -125,24 +119,21 @@ describe("DiscountVerificationSection", () => {
     fireEvent.click(screen.getByRole("button", { name: "Request Verification" }));
 
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith(
-        "/api/access/verify-discount",
-        expect.objectContaining({ method: "POST" }),
-      );
+      expect(mocks.submitDiscountVerification).toHaveBeenCalled();
     });
-    const body = JSON.parse(requestBodyFor(fetchMock)) as SubmittedDiscountRequestBody;
-    expect(body).toEqual({
+    expect(mocks.submitDiscountVerification).toHaveBeenCalledWith({
       data: {
-        portfolioUrl: "https://example.org/reporter/byline",
+        organizationId: "org_123",
+        segment: "independent_journalist",
+        submission: {
+          portfolioUrl: "https://example.org/reporter/byline",
+        },
       },
-      organization_id: "org_123",
-      segment: "independent_journalist",
-      user_id: "user_123",
     });
   });
 
   it("announces failed verification requests as an alert", async () => {
-    mockFetch(jsonResponse({ detail: "Verification failed" }, 400));
+    mocks.submitDiscountVerification.mockRejectedValue(new Error("Verification failed"));
     renderDiscountVerificationSection();
 
     fireEvent.click(screen.getByRole("button", { name: /Independent Creator or Journalist/i }));

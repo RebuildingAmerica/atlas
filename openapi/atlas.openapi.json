@@ -1931,6 +1931,87 @@
         "title": "CoverageUnderwritingReportResponse",
         "type": "object"
       },
+      "CurrentVerificationRecordResponse": {
+        "description": "Requester-safe discount verification status for one workspace.",
+        "properties": {
+          "id": {
+            "description": "Verification record ID",
+            "title": "Id",
+            "type": "string"
+          },
+          "organization_id": {
+            "description": "Workspace receiving the discount",
+            "title": "Organization Id",
+            "type": "string"
+          },
+          "segment": {
+            "description": "segment for this current verification record.",
+            "enum": [
+              "student",
+              "independent_journalist",
+              "grassroots_nonprofit",
+              "civic_tech_worker"
+            ],
+            "title": "Segment",
+            "type": "string"
+          },
+          "status": {
+            "description": "Verification status",
+            "enum": [
+              "pending",
+              "verified",
+              "rejected",
+              "expired"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "submitted_at": {
+            "description": "ISO timestamp of submission",
+            "title": "Submitted At",
+            "type": "string"
+          },
+          "verified_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "ISO timestamp of verification",
+            "title": "Verified At"
+          }
+        },
+        "required": [
+          "id",
+          "organization_id",
+          "segment",
+          "status",
+          "submitted_at"
+        ],
+        "title": "CurrentVerificationRecordResponse",
+        "type": "object"
+      },
+      "CurrentVerificationStatusResponse": {
+        "description": "Current requester's latest discount verification status.",
+        "properties": {
+          "record": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CurrentVerificationRecordResponse"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "record for this current verification status."
+          }
+        },
+        "title": "CurrentVerificationStatusResponse",
+        "type": "object"
+      },
       "DeduplicatedEntry": {
         "description": "An entry that has been deduplicated across multiple sources.",
         "properties": {
@@ -12664,16 +12745,10 @@
             ],
             "title": "Segment",
             "type": "string"
-          },
-          "user_id": {
-            "description": "user id for this verification request payload.",
-            "title": "User Id",
-            "type": "string"
           }
         },
         "required": [
           "segment",
-          "user_id",
           "organization_id",
           "data"
         ],
@@ -13050,10 +13125,206 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/access/discount-verification/current": {
+      "get": {
+        "description": "Return the signed-in requester's latest discount verification status.\n\nUse this access operation before relying on protected workflows. It explains or changes the caller's ability to use authenticated Atlas features, so integrations should surface authorization failures clearly instead of treating them as empty data.",
+        "operationId": "getCurrentDiscountVerificationStatus",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-atlas-internal-secret",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Internal-Secret"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-email",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Email"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-organization-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Organization-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CurrentVerificationStatusResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get current discount verification status",
+        "tags": [
+          "access"
+        ]
+      }
+    },
     "/api/access/verify-discount": {
       "post": {
         "description": "Validate a discount verification request and record it for manual review.\n\nUse this access operation before relying on protected workflows. It explains or changes the caller's ability to use authenticated Atlas features, so integrations should surface authorization failures clearly instead of treating them as empty data.",
         "operationId": "submitDiscountVerification",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-atlas-internal-secret",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Internal-Secret"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-email",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Email"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-organization-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Organization-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {

@@ -7,11 +7,12 @@ from typing import TYPE_CHECKING
 from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel, Field
 
-from atlas.domains.access.dependencies import get_usage_db
+from atlas.domains.access.dependencies import get_usage_db, require_actor
 from atlas.domains.access.models.discount_verifications import (
     DiscountVerificationCreate,
     DiscountVerificationCRUD,
     DiscountVerificationMethod,
+    DiscountVerificationModel,
     DiscountVerificationStatus,
 )
 from atlas.domains.access.verification import (
@@ -24,6 +25,8 @@ from atlas.platform.http.cache import apply_no_store_headers
 if TYPE_CHECKING:
     import aiosqlite
 
+    from atlas.domains.access.principals import AuthenticatedActor
+
 router = APIRouter(tags=["access"])
 
 __all__ = ["router"]
@@ -33,7 +36,6 @@ class VerificationRequestPayload(BaseModel):
     """Request payload for discount verification submission."""
 
     segment: DiscountSegment
-    user_id: str
     organization_id: str
     data: dict[str, str] = Field(description="Segment-specific verification data")
 
@@ -50,6 +52,44 @@ class VerificationResponsePayload(BaseModel):
     verification_method: DiscountVerificationMethod | None = Field(
         description="Method used for verification", default=None
     )
+
+
+class CurrentVerificationRecordResponse(BaseModel):
+    """Requester-safe discount verification status for one workspace."""
+
+    id: str = Field(description="Verification record ID")
+    organization_id: str = Field(description="Workspace receiving the discount")
+    segment: DiscountSegment
+    status: DiscountVerificationStatus = Field(description="Verification status")
+    submitted_at: str = Field(description="ISO timestamp of submission")
+    verified_at: str | None = Field(description="ISO timestamp of verification", default=None)
+
+
+class CurrentVerificationStatusResponse(BaseModel):
+    """Current requester's latest discount verification status."""
+
+    record: CurrentVerificationRecordResponse | None = Field(default=None)
+
+
+def _current_verification_record_response(
+    record: DiscountVerificationModel,
+) -> CurrentVerificationRecordResponse:
+    """Build the requester-safe status response for a verification record."""
+    return CurrentVerificationRecordResponse(
+        id=record.id,
+        organization_id=record.organization_id,
+        segment=record.segment,
+        status=record.status,
+        submitted_at=record.submitted_at,
+        verified_at=record.verified_at,
+    )
+
+
+def _require_actor_workspace(actor: AuthenticatedActor) -> str:
+    """Return the authenticated actor workspace or reject the request."""
+    if actor.org_id is None:
+        raise HTTPException(status_code=400, detail="Active workspace is required.")
+    return actor.org_id
 
 
 def _validate_independent_journalist(
@@ -138,9 +178,13 @@ async def submit_discount_verification(
     request: VerificationRequestPayload,
     response: Response,
     conn: aiosqlite.Connection = Depends(get_usage_db),
+    actor: AuthenticatedActor = Depends(require_actor),
 ) -> VerificationResponsePayload:
     """Validate a discount verification request and record it for manual review."""
     apply_no_store_headers(response)
+    actor_workspace_id = _require_actor_workspace(actor)
+    if actor_workspace_id != request.organization_id:
+        raise HTTPException(status_code=403, detail="Workspace mismatch.")
 
     verifier = DiscountVerifier()
 
@@ -164,7 +208,7 @@ async def submit_discount_verification(
         record = await DiscountVerificationCRUD.create(
             conn,
             DiscountVerificationCreate(
-                user_id=request.user_id,
+                user_id=actor.user_id,
                 organization_id=request.organization_id,
                 segment=request.segment,
                 method=method,
@@ -185,3 +229,28 @@ async def submit_discount_verification(
             status_code=500,
             detail="An error occurred while processing your verification request.",
         ) from e
+
+
+@router.get(
+    "/api/access/discount-verification/current",
+    response_model=CurrentVerificationStatusResponse,
+    operation_id="getCurrentDiscountVerificationStatus",
+    summary="Get current discount verification status",
+    description="Return the signed-in requester's latest discount verification status.",
+)
+async def get_current_discount_verification_status(
+    response: Response,
+    conn: aiosqlite.Connection = Depends(get_usage_db),
+    actor: AuthenticatedActor = Depends(require_actor),
+) -> CurrentVerificationStatusResponse:
+    """Return the latest discount verification status for the current workspace actor."""
+    apply_no_store_headers(response)
+    organization_id = _require_actor_workspace(actor)
+    record = await DiscountVerificationCRUD.latest_for_submitter(
+        conn,
+        organization_id=organization_id,
+        user_id=actor.user_id,
+    )
+    return CurrentVerificationStatusResponse(
+        record=_current_verification_record_response(record) if record is not None else None
+    )

@@ -1,24 +1,22 @@
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useState } from "react";
+import {
+  getCurrentDiscountVerificationStatus,
+  submitDiscountVerification,
+  type CurrentDiscountVerificationStatus,
+} from "../discount-verifications.functions";
 import {
   DISCOUNT_SEGMENT_LABELS,
   DISCOUNT_SEGMENTS,
   SEGMENT_DESCRIPTIONS,
   type DiscountSegment,
+  type VerificationStatus,
 } from "../discount-segments";
-import {
-  buildDiscountVerificationRequestBody,
-  type DiscountVerificationSubmission,
-} from "./discount-verification-payload";
+import type { DiscountVerificationSubmission } from "./discount-verification-payload";
 import { VerificationForm } from "./verification-form";
 
 interface DiscountVerificationSectionProps {
   organizationId: string | null;
-  userId: string;
-}
-
-interface ErrorResponse {
-  detail: string;
 }
 
 interface DiscountStepperStep {
@@ -36,6 +34,33 @@ const DISCOUNT_STEPS: readonly DiscountStepperStep[] = [
   { id: "2", label: "Verify" },
   { id: "3", label: "Review" },
 ];
+
+const BLOCKING_STATUSES = new Set<VerificationStatus>(["pending", "verified"]);
+
+const STATUS_COPY: Record<
+  VerificationStatus,
+  {
+    body: string;
+    title: string;
+  }
+> = {
+  expired: {
+    title: "Discount verification expired",
+    body: "Submit a new request to continue discounted access.",
+  },
+  pending: {
+    title: "Discount request under review",
+    body: "We will email you when review is complete.",
+  },
+  rejected: {
+    title: "Discount request not approved",
+    body: "You can submit a new request if your eligibility has changed.",
+  },
+  verified: {
+    title: "Discount approved",
+    body: "Your workspace has discounted access.",
+  },
+};
 
 function DiscountStepper({ selectedSegment, hasSubmitted }: DiscountStepperProps) {
   const activeIndex = hasSubmitted ? 2 : selectedSegment ? 1 : 0;
@@ -59,39 +84,60 @@ function DiscountStepper({ selectedSegment, hasSubmitted }: DiscountStepperProps
   );
 }
 
-export function DiscountVerificationSection({
-  organizationId,
-  userId,
-}: DiscountVerificationSectionProps) {
+function DiscountStatusCard({
+  record,
+}: {
+  record: NonNullable<CurrentDiscountVerificationStatus["record"]>;
+}) {
+  const copy = STATUS_COPY[record.status];
+  return (
+    <div
+      className="border-border bg-surface-container-lowest rounded-[1.4rem] border p-5"
+      role="status"
+    >
+      <p className="type-title-small text-ink-strong">{copy.title}</p>
+      <p className="type-body-medium text-ink-soft mt-2">{copy.body}</p>
+      <p className="type-body-small text-ink-soft mt-3">
+        Request type: {DISCOUNT_SEGMENT_LABELS[record.segment]}
+      </p>
+    </div>
+  );
+}
+
+function toSubmissionRecord(data: DiscountVerificationSubmission["data"]): Record<string, string> {
+  return Object.fromEntries(Object.entries(data));
+}
+
+export function DiscountVerificationSection({ organizationId }: DiscountVerificationSectionProps) {
   const [selectedSegment, setSelectedSegment] = useState<DiscountSegment | null>(null);
   const [hasSubmitted, setHasSubmitted] = useState(false);
+  const statusQuery = useQuery({
+    enabled: Boolean(organizationId),
+    queryFn: async () => {
+      if (!organizationId) {
+        return { record: null } satisfies CurrentDiscountVerificationStatus;
+      }
+      return await getCurrentDiscountVerificationStatus({ data: { organizationId } });
+    },
+    queryKey: ["discount-verification-status", organizationId],
+  });
 
   const submitVerificationMutation = useMutation({
     mutationFn: async (submission: DiscountVerificationSubmission) => {
       if (!organizationId) {
         throw new Error("Create a workspace before requesting discount access.");
       }
-
-      const response = await fetch("/api/access/verify-discount", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(
-          buildDiscountVerificationRequestBody({
-            organizationId,
-            submission,
-            userId,
-          }),
-        ),
+      return await submitDiscountVerification({
+        data: {
+          organizationId,
+          segment: submission.segment,
+          submission: toSubmissionRecord(submission.data),
+        },
       });
-
-      if (!response.ok) {
-        const error = (await response.json()) as ErrorResponse;
-        throw new Error(error.detail || "Verification submission failed");
-      }
-
-      return response.json() as Promise<unknown>;
     },
   });
+
+  const currentRecord = hasSubmitted ? null : (statusQuery.data?.record ?? null);
 
   if (hasSubmitted) {
     return (
@@ -108,6 +154,15 @@ export function DiscountVerificationSection({
             you within 24 hours to let you know if you qualify.
           </p>
         </div>
+      </div>
+    );
+  }
+
+  if (currentRecord && BLOCKING_STATUSES.has(currentRecord.status)) {
+    return (
+      <div className="space-y-3">
+        <p className="type-label-medium text-ink-muted">Discount access</p>
+        <DiscountStatusCard record={currentRecord} />
       </div>
     );
   }
@@ -163,6 +218,7 @@ export function DiscountVerificationSection({
   return (
     <div className="space-y-3">
       <p className="type-label-medium text-ink-muted">Discount access</p>
+      {currentRecord ? <DiscountStatusCard record={currentRecord} /> : null}
       <div className="border-border bg-surface-container-lowest rounded-[1.4rem] border p-5">
         <DiscountStepper selectedSegment={selectedSegment} hasSubmitted={hasSubmitted} />
         <p className="type-title-small text-ink-strong">Request discount access</p>

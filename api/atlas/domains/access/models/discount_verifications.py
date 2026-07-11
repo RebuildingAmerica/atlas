@@ -199,6 +199,28 @@ class DiscountVerificationCRUD:
         return [_row_to_discount_verification(row) for row in rows]
 
     @staticmethod
+    async def latest_for_submitter(
+        conn: aiosqlite.Connection,
+        *,
+        organization_id: str,
+        user_id: str,
+    ) -> DiscountVerificationModel | None:
+        """Return the latest verification record for one user in one workspace."""
+        cursor = await conn.execute(
+            """
+            SELECT id, user_id, organization_id, segment, status, method,
+                   submitted_at, verified_at, verification_data_json, notes
+            FROM discount_verifications
+            WHERE organization_id = ? AND user_id = ?
+            ORDER BY submitted_at DESC, id DESC
+            LIMIT 1
+            """,
+            (organization_id, user_id),
+        )
+        row = await cursor.fetchone()
+        return _row_to_discount_verification(row) if row is not None else None
+
+    @staticmethod
     async def count(
         conn: aiosqlite.Connection,
         *,

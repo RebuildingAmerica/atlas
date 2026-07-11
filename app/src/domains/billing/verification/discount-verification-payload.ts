@@ -37,24 +37,20 @@ export interface DiscountVerificationRequestBody {
   data: DiscountVerificationSubmission["data"];
   organization_id: string;
   segment: DiscountVerificationSubmission["segment"];
-  user_id: string;
 }
 
 interface BuildDiscountVerificationRequestBodyParams {
   organizationId: string;
   submission: DiscountVerificationSubmission;
-  userId: string;
 }
 
 export function buildDiscountVerificationRequestBody({
   organizationId,
   submission,
-  userId,
 }: BuildDiscountVerificationRequestBodyParams): DiscountVerificationRequestBody {
   return {
     data: submission.data,
     organization_id: organizationId,
     segment: submission.segment,
-    user_id: userId,
   };
 }

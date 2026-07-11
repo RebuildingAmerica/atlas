@@ -93,7 +93,7 @@ export function RequestDiscountPage() {
         </p>
       </div>
 
-      <DiscountVerificationSection organizationId={activeWorkspaceId} userId={userId} />
+      <DiscountVerificationSection organizationId={activeWorkspaceId} />
 
       <div className="border-border bg-surface-container-lowest rounded-[1.4rem] border p-5">
         <p className="type-title-small text-ink-strong">How verification works</p>

@@ -14,15 +14,28 @@ from atlas.domains.access.api.verification import (
     _validate_grassroots_nonprofit,
     _validate_independent_journalist,
     _validate_student,
+    get_current_discount_verification_status,
     submit_discount_verification,
 )
-from atlas.domains.access.models.discount_verifications import DiscountVerificationCRUD
+from atlas.domains.access.models.discount_verifications import (
+    DiscountVerificationCreate,
+    DiscountVerificationCRUD,
+)
+from atlas.domains.access.principals import AuthenticatedActor
 from atlas.domains.access.verification import DiscountVerifier, VerificationMethod
 
 if TYPE_CHECKING:
     import aiosqlite
 
-    from atlas.domains.access.models.discount_verifications import DiscountVerificationCreate
+
+def actor_for(user_id: str, organization_id: str) -> AuthenticatedActor:
+    """Return an internal actor scoped to one test workspace."""
+    return AuthenticatedActor(
+        user_id=user_id,
+        email=f"{user_id}@example.org",
+        auth_type="internal",
+        org_id=organization_id,
+    )
 
 
 def test_validate_independent_journalist_requires_portfolio_url() -> None:
@@ -68,12 +81,12 @@ async def test_submit_discount_verification_returns_pending_response(
     response = await submit_discount_verification(
         VerificationRequestPayload(
             segment="independent_journalist",
-            user_id="user-123",
             organization_id="org-123",
             data={"portfolioUrl": "https://example.com/portfolio"},
         ),
         Response(),
         test_db,
+        actor_for("user-123", "org-123"),
     )
 
     assert response.status == "pending"
@@ -86,15 +99,21 @@ async def test_submit_discount_verification_persists_record(
     test_db: aiosqlite.Connection,
 ) -> None:
     """Successful submissions create a durable record for admin review."""
+    actor = AuthenticatedActor(
+        user_id="user-606",
+        email="student@example.edu",
+        auth_type="internal",
+        org_id="org-606",
+    )
     response = await submit_discount_verification(
         VerificationRequestPayload(
             segment="student",
-            user_id="user-606",
             organization_id="org-606",
             data={"schoolEmail": "student@example.edu", "schoolName": "Example College"},
         ),
         Response(),
         test_db,
+        actor,
     )
 
     cursor = await test_db.execute(
@@ -119,6 +138,83 @@ async def test_submit_discount_verification_persists_record(
 
 
 @pytest.mark.asyncio
+async def test_current_discount_verification_status_returns_latest_actor_workspace_record(
+    test_db: aiosqlite.Connection,
+) -> None:
+    """The requester sees the latest durable status for their active workspace."""
+    actor = AuthenticatedActor(
+        user_id="user-current",
+        email="current@example.org",
+        auth_type="internal",
+        org_id="org-current",
+    )
+    await DiscountVerificationCRUD.create(
+        test_db,
+        DiscountVerificationCreate(
+            user_id="user-other",
+            organization_id="org-current",
+            segment="student",
+            method="school_email",
+            verification_data={"schoolEmail": "other@example.edu"},
+            notes="Other user",
+        ),
+    )
+    old_record = await DiscountVerificationCRUD.create(
+        test_db,
+        DiscountVerificationCreate(
+            user_id="user-current",
+            organization_id="org-current",
+            segment="student",
+            method="school_email",
+            verification_data={"schoolEmail": "current@example.edu"},
+            notes="Older request",
+        ),
+    )
+    await DiscountVerificationCRUD.update_status(
+        test_db,
+        old_record.id,
+        status="verified",
+        notes="Approved",
+    )
+    latest_record = await DiscountVerificationCRUD.create(
+        test_db,
+        DiscountVerificationCreate(
+            user_id="user-current",
+            organization_id="org-current",
+            segment="independent_journalist",
+            method="portfolio",
+            verification_data={"portfolioUrl": "https://example.org/byline"},
+            notes="Latest request",
+        ),
+    )
+
+    response = await get_current_discount_verification_status(Response(), test_db, actor)
+
+    assert response.record is not None
+    assert response.record.id == latest_record.id
+    assert response.record.status == "pending"
+    assert response.record.segment == "independent_journalist"
+
+
+@pytest.mark.asyncio
+async def test_current_discount_verification_status_requires_workspace_context(
+    test_db: aiosqlite.Connection,
+) -> None:
+    """The requester status endpoint only works for a signed-in workspace actor."""
+    actor = AuthenticatedActor(
+        user_id="user-current",
+        email="current@example.org",
+        auth_type="internal",
+    )
+
+    with pytest.raises(HTTPException) as exc_info:
+        await get_current_discount_verification_status(Response(), test_db, actor)
+
+    assert exc_info.value.status_code == HTTPStatus.BAD_REQUEST
+    assert exc_info.value.detail == "Active workspace is required."
+
+
+@pytest.mark.asyncio
 async def test_submit_discount_verification_rejects_invalid_payload(
     test_db: aiosqlite.Connection,
 ) -> None:
@@ -127,12 +223,12 @@ async def test_submit_discount_verification_rejects_invalid_payload(
         await submit_discount_verification(
             VerificationRequestPayload(
                 segment="civic_tech_worker",
-                user_id="user-456",
                 organization_id="org-456",
                 data={"projectUrl": "https://github.com/example/civic-tool"},
             ),
             Response(),
             test_db,
+            actor_for("user-456", "org-456"),
         )
 
     assert exc_info.value.status_code == HTTPStatus.BAD_REQUEST
@@ -221,12 +317,12 @@ async def test_submit_discount_verification_routes_grassroots_segment(
     response = await submit_discount_verification(
         VerificationRequestPayload(
             segment="grassroots_nonprofit",
-            user_id="user-789",
             organization_id="org-789",
             data={"einOrName": "04-1798922", "budget": "$500,000"},
         ),
         Response(),
         test_db,
+        actor_for("user-789", "org-789"),
     )
 
     assert response.status == "pending"
@@ -241,12 +337,12 @@ async def test_submit_discount_verification_routes_student_segment(
     response = await submit_discount_verification(
         VerificationRequestPayload(
             segment="student",
-            user_id="user-303",
             organization_id="org-303",
             data={"schoolEmail": "maya@university.edu", "schoolName": "Howard University"},
         ),
         Response(),
         test_db,
+        actor_for("user-303", "org-303"),
     )
 
     assert response.status == "pending"
@@ -261,7 +357,6 @@ async def test_submit_discount_verification_routes_civic_tech_segment(
     response = await submit_discount_verification(
         VerificationRequestPayload(
             segment="civic_tech_worker",
-            user_id="user-101",
             organization_id="org-101",
             data={
                 "projectUrl": "https://github.com/example/civic-tool",
@@ -270,6 +365,7 @@ async def test_submit_discount_verification_routes_civic_tech_segment(
         ),
         Response(),
         test_db,
+        actor_for("user-101", "org-101"),
     )
 
     assert response.status == "pending"
@@ -283,13 +379,14 @@ async def test_submit_discount_verification_rejects_unknown_segment(
     """An unknown segment value is rejected with a 400 (bypasses Pydantic via construct)."""
     payload = VerificationRequestPayload.model_construct(
         segment="something_else",  # type: ignore[arg-type]
-        user_id="user-202",
         organization_id="org-202",
         data={},
     )
 
     with pytest.raises(HTTPException) as exc_info:
-        await submit_discount_verification(payload, Response(), test_db)
+        await submit_discount_verification(
+            payload, Response(), test_db, actor_for("user-202", "org-202")
+        )
 
     assert exc_info.value.status_code == HTTPStatus.BAD_REQUEST
     assert "Unknown segment" in str(exc_info.value.detail)
@@ -315,12 +412,12 @@ async def test_submit_discount_verification_returns_500_on_record_creation_failu
         await submit_discount_verification(
             VerificationRequestPayload(
                 segment="independent_journalist",
-                user_id="user-505",
                 organization_id="org-505",
                 data={"portfolioUrl": "https://example.com/portfolio"},
             ),
             Response(),
             test_db,
+            actor_for("user-505", "org-505"),
         )
 
     assert exc_info.value.status_code == HTTPStatus.INTERNAL_SERVER_ERROR

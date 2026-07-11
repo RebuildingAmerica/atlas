@@ -13,7 +13,6 @@ describe("buildDiscountVerificationRequestBody", () => {
           },
           segment: "student",
         },
-        userId: "user_123",
       }),
     ).toEqual({
       data: {
@@ -22,7 +21,6 @@ describe("buildDiscountVerificationRequestBody", () => {
       },
       organization_id: "org_123",
       segment: "student",
-      user_id: "user_123",
     });
   });
 });
