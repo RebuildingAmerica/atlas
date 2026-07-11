@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
+  buildAtlasApiImageSpec,
   classifyDockerPreflight,
   formatDockerBuildFallbackPrompt,
   formatDockerDaemonRecovery,
@@ -91,6 +92,28 @@ void describe("deploy resilience", () => {
     assert.match(cloudBuildCommand, /gcloud builds submit/);
     assert.match(cloudBuildCommand, /--config="\/tmp\/cloudbuild\.json"/);
     assert.match(cloudBuildCommand, /"\/repo\/atlas"/);
+  });
+
+  void it("keeps the atlas-api Dockerfile path separate from the image tag", () => {
+    const imageBase = "us-central1-docker.pkg.dev/rap-atlas-prod/atlas-images";
+    const spec = buildAtlasApiImageSpec({
+      projectRoot: "/repo/atlas",
+      imageBase,
+      dockerfileContent: [
+        "COPY libs/shared libs/shared",
+        "COPY libs/discovery-engine libs/discovery-engine",
+        "COPY api/atlas api/atlas",
+      ].join("\n"),
+    });
+
+    assert.deepEqual(spec, {
+      serviceName: "atlas-api",
+      contextDir: "/repo/atlas",
+      dockerfilePath: "/repo/atlas/api/Dockerfile",
+      cloudBuildDockerfilePath: "api/Dockerfile",
+      imageTag: `${imageBase}/atlas-api:initial`,
+    });
+    assert.notEqual(spec.imageTag, spec.cloudBuildDockerfilePath);
   });
 
   void it("keeps Docker context scoped when the Dockerfile only copies service-local paths", () => {

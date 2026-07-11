@@ -69,6 +69,17 @@ export interface DockerBuildPlan {
   cloudBuildDockerfilePath: string;
 }
 
+export interface AtlasApiImageSpecOptions {
+  projectRoot: string;
+  imageBase: string;
+  dockerfileContent?: string;
+}
+
+export interface AtlasApiImageSpec extends DockerBuildPlan {
+  serviceName: "atlas-api";
+  imageTag: string;
+}
+
 export async function runDeployPhase(
   projectRoot: string,
   state: ReadinessState,
@@ -142,17 +153,16 @@ export async function runDeployPhase(
   }
 
   // ── Build & Push API image ────────────────────────────────────────────────
-  const apiImage = `${config.imageBase}/atlas-api:initial`;
-  const apiBuildPlan = resolveDockerBuildPlan({
+  const apiImageSpec = buildAtlasApiImageSpec({
     projectRoot,
-    serviceRoot: "api",
+    imageBase: config.imageBase,
   });
   const apiBuilt = await buildAndPushImage(
-    "atlas-api",
-    apiBuildPlan.contextDir,
-    apiBuildPlan.dockerfilePath,
-    apiBuildPlan.cloudBuildDockerfilePath,
-    apiImage,
+    apiImageSpec.serviceName,
+    apiImageSpec.contextDir,
+    apiImageSpec.dockerfilePath,
+    apiImageSpec.cloudBuildDockerfilePath,
+    apiImageSpec.imageTag,
     buildMode,
     followUpItems,
   );
@@ -167,7 +177,7 @@ export async function runDeployPhase(
   // (atlas-api.<domain>) is configured separately by the api-domain phase.
   const apiUrl = deployService(
     "atlas-api",
-    apiImage,
+    apiImageSpec.imageTag,
     config,
     {
       ingress: "all",
@@ -292,6 +302,24 @@ async function startDockerDesktopAndWait(): Promise<boolean> {
 }
 
 // ── Build & Push ──────────────────────────────────────────────────────────────
+
+export function buildAtlasApiImageSpec(
+  options: AtlasApiImageSpecOptions,
+): AtlasApiImageSpec {
+  const buildPlan = resolveDockerBuildPlan({
+    projectRoot: options.projectRoot,
+    serviceRoot: "api",
+    dockerfileContent: options.dockerfileContent,
+  });
+
+  return {
+    serviceName: "atlas-api",
+    contextDir: buildPlan.contextDir,
+    dockerfilePath: buildPlan.dockerfilePath,
+    cloudBuildDockerfilePath: buildPlan.cloudBuildDockerfilePath,
+    imageTag: `${options.imageBase}/atlas-api:initial`,
+  };
+}
 
 async function buildAndPushImage(
   serviceName: string,
