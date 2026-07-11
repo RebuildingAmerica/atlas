@@ -10,9 +10,6 @@ from atlas_shared import PageContent, RawEntry
 from atlas_discovery_engine.extraction import (
     ExtractionFailedError,
     StructuredExtractionItem,
-    _best_substring_similarity,
-    _has_proper_noun_signal,
-    _name_is_grounded,
     build_extraction_system_prompt,
     build_identify_system_prompt,
     normalize_entity_type,
@@ -21,6 +18,11 @@ from atlas_discovery_engine.extraction import (
     parse_identify_response,
     strip_code_fence,
     validate_entries,
+)
+from atlas_discovery_engine.extraction_support import (
+    _best_substring_similarity,
+    _has_proper_noun_signal,
+    _name_is_grounded,
 )
 
 
