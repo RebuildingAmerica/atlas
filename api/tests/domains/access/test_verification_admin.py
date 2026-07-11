@@ -5,9 +5,11 @@ from __future__ import annotations
 from http import HTTPStatus
 from typing import TYPE_CHECKING
 
+import httpx
 import pytest
 from fastapi import HTTPException, Response
 
+from atlas.config import Settings, get_settings
 from atlas.domains.access.api.verification_admin import (
     VerificationUpdateRequest,
     list_verifications,
@@ -17,9 +19,110 @@ from atlas.domains.access.models.discount_verifications import (
     DiscountVerificationCreate,
     DiscountVerificationCRUD,
 )
+from atlas.main import create_app
 
 if TYPE_CHECKING:
     import aiosqlite
+
+
+@pytest.mark.asyncio
+async def test_admin_verifications_requires_internal_auth_in_hosted_mode(
+    db_url: str,
+) -> None:
+    """Hosted discount review data should not be public API data."""
+    app = create_app()
+
+    def override_get_settings() -> Settings:
+        return Settings(
+            database_url=db_url,
+            deploy_mode="production",
+            auth_internal_secret="internal-test-secret",
+            auth_jwt_audience=["https://atlas.example.test/mcp"],
+            auth_jwt_issuer="https://atlas.example.test",
+            auth_api_key_introspection_url="https://atlas.example.test/api/auth/internal/api-key",
+            auth_membership_verification_url=(
+                "https://atlas.example.test/api/auth/internal/memberships"
+            ),
+        )
+
+    app.dependency_overrides[get_settings] = override_get_settings
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.get("/api/admin/verifications")
+
+    assert response.status_code == HTTPStatus.UNAUTHORIZED
+
+
+@pytest.mark.asyncio
+async def test_admin_verifications_allows_allowlisted_internal_reviewers(
+    db_url: str,
+) -> None:
+    """The app server can load discount review data for allowlisted reviewers."""
+    app = create_app()
+
+    def override_get_settings() -> Settings:
+        return Settings(
+            database_url=db_url,
+            deploy_mode="production",
+            auth_internal_secret="internal-test-secret",
+            auth_allowed_emails=["reviewer@rebuildingus.org"],
+            auth_jwt_audience=["https://atlas.example.test/mcp"],
+            auth_jwt_issuer="https://atlas.example.test",
+            auth_api_key_introspection_url="https://atlas.example.test/api/auth/internal/api-key",
+            auth_membership_verification_url=(
+                "https://atlas.example.test/api/auth/internal/memberships"
+            ),
+        )
+
+    app.dependency_overrides[get_settings] = override_get_settings
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.get(
+            "/api/admin/verifications",
+            headers={
+                "X-Atlas-Actor-Email": "reviewer@rebuildingus.org",
+                "X-Atlas-Actor-Id": "reviewer-user",
+                "X-Atlas-Internal-Secret": "internal-test-secret",
+            },
+        )
+
+    assert response.status_code == HTTPStatus.OK
+
+
+@pytest.mark.asyncio
+async def test_admin_verifications_rejects_unlisted_internal_users(
+    db_url: str,
+) -> None:
+    """Signed-in users who are not operators cannot review discount requests."""
+    app = create_app()
+
+    def override_get_settings() -> Settings:
+        return Settings(
+            database_url=db_url,
+            deploy_mode="production",
+            auth_internal_secret="internal-test-secret",
+            auth_allowed_emails=["reviewer@rebuildingus.org"],
+            auth_jwt_audience=["https://atlas.example.test/mcp"],
+            auth_jwt_issuer="https://atlas.example.test",
+            auth_api_key_introspection_url="https://atlas.example.test/api/auth/internal/api-key",
+            auth_membership_verification_url=(
+                "https://atlas.example.test/api/auth/internal/memberships"
+            ),
+        )
+
+    app.dependency_overrides[get_settings] = override_get_settings
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.get(
+            "/api/admin/verifications",
+            headers={
+                "X-Atlas-Actor-Email": "member@example.org",
+                "X-Atlas-Actor-Id": "member-user",
+                "X-Atlas-Internal-Secret": "internal-test-secret",
+            },
+        )
+
+    assert response.status_code == HTTPStatus.FORBIDDEN
 
 
 @pytest.mark.asyncio

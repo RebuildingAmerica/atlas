@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Annotated, Literal
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel, Field
 
-from atlas.domains.access.dependencies import get_usage_db
+from atlas.domains.access.dependencies import get_usage_db, require_actor
 from atlas.domains.access.models.discount_verifications import (
     DiscountVerificationCRUD,
     DiscountVerificationMethod,
@@ -15,10 +15,13 @@ from atlas.domains.access.models.discount_verifications import (
     DiscountVerificationStatus,
 )
 from atlas.domains.access.verification import DiscountSegment  # noqa: TC001
+from atlas.platform.config import Settings, get_settings
 from atlas.platform.http.cache import apply_no_store_headers
 
 if TYPE_CHECKING:
     import aiosqlite
+
+    from atlas.domains.access.principals import AuthenticatedActor
 
 router = APIRouter(tags=["access"])
 
@@ -83,6 +86,28 @@ def _verification_record_response(
     )
 
 
+def _normalized_allowed_operator_emails(settings: Settings) -> set[str]:
+    """Return the normalized operator-review allowlist."""
+    return {email.strip().lower() for email in settings.auth_allowed_emails if email.strip()}
+
+
+async def require_discount_review_actor(
+    actor: AuthenticatedActor = Depends(require_actor),
+    settings: Settings = Depends(get_settings),
+) -> AuthenticatedActor:
+    """Require an Atlas operator for discount verification review endpoints."""
+    if actor.is_local:
+        return actor
+
+    if actor.auth_type != "internal":
+        raise HTTPException(status_code=403, detail="Discount review access requires Atlas staff.")
+
+    if actor.email.strip().lower() not in _normalized_allowed_operator_emails(settings):
+        raise HTTPException(status_code=403, detail="Discount review access requires Atlas staff.")
+
+    return actor
+
+
 @router.get(
     "/api/admin/verifications",
     response_model=VerificationListResponse,
@@ -93,6 +118,7 @@ def _verification_record_response(
 async def list_verifications(
     response: Response,
     conn: aiosqlite.Connection = Depends(get_usage_db),
+    _review_actor: AuthenticatedActor = Depends(require_discount_review_actor),
     *,
     organization_id: Annotated[str | None, Query()] = None,
     status: Annotated[DiscountVerificationStatus | None, Query()] = None,
@@ -100,7 +126,6 @@ async def list_verifications(
 ) -> VerificationListResponse:
     """List discount verification requests for manual review."""
     apply_no_store_headers(response)
-    # TODO: Check admin authorization
     records = await DiscountVerificationCRUD.list(
         conn,
         organization_id=organization_id,
@@ -134,10 +159,10 @@ async def update_verification(
     verification_id: str,
     request: VerificationUpdateRequest,
     conn: aiosqlite.Connection = Depends(get_usage_db),
+    _review_actor: AuthenticatedActor = Depends(require_discount_review_actor),
 ) -> VerificationUpdateResponse:
     """Update the review status for a discount verification request."""
     apply_no_store_headers(response)
-    # TODO: Check admin authorization
     record = await DiscountVerificationCRUD.update_status(
         conn,
         verification_id,
