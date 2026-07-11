@@ -86,6 +86,7 @@ export interface DockerBuildPlan {
 export interface AtlasApiImageSpecOptions {
   projectRoot: string;
   imageBase: string;
+  imageTag: string;
   dockerfileContent?: string;
 }
 
@@ -170,6 +171,7 @@ export async function runDeployPhase(
   const apiImageSpec = buildAtlasApiImageSpec({
     projectRoot,
     imageBase: config.imageBase,
+    imageTag: formatBootstrapImageTag(config.imageBase),
   });
   const apiBuilt = await buildAndPushImage(
     apiImageSpec.serviceName,
@@ -318,8 +320,18 @@ export function buildAtlasApiImageSpec(
     contextDir: buildPlan.contextDir,
     dockerfilePath: buildPlan.dockerfilePath,
     cloudBuildDockerfilePath: buildPlan.cloudBuildDockerfilePath,
-    imageTag: `${options.imageBase}/atlas-api:initial`,
+    imageTag: options.imageTag,
   };
+}
+
+export function formatBootstrapImageTag(
+  imageBase: string,
+  date: Date = new Date(),
+): string {
+  return `${imageBase}/atlas-api:bootstrap-${date
+    .toISOString()
+    .replaceAll(/[^0-9]/g, "")
+    .slice(0, 14)}`;
 }
 
 async function buildAndPushImage(

@@ -64,4 +64,5 @@ jobs:
           ATLAS_HOSTED_EXPECT_EDGE: "true"
           ATLAS_HOSTED_PUBLIC_URL: ${{ secrets.ATLAS_PUBLIC_URL }}
           ATLAS_HOSTED_API_URL: ${{ secrets.ATLAS_API_URL }}
+          ATLAS_HOSTED_VERCEL_BYPASS_SECRET: ${{ secrets.ATLAS_HOSTED_VERCEL_BYPASS_SECRET }}
         run: pnpm --filter @rebuildingamerica/atlas-app run test:hosted-smoke

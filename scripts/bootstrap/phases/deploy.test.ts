@@ -13,6 +13,7 @@ import {
   formatCloudRunEnvVarsFileContent,
   formatCloudBuildSubmitCommand,
   formatDockerBuildCommand,
+  formatBootstrapImageTag,
   formatGcloudReauthenticationRecovery,
   isGcloudReauthenticationFailure,
   parseCloudBuildSourceAccessFailure,
@@ -97,9 +98,14 @@ void describe("deploy resilience", () => {
 
   void it("keeps the atlas-api Dockerfile path separate from the image tag", () => {
     const imageBase = "us-central1-docker.pkg.dev/rap-atlas-prod/atlas-images";
+    const imageTag = formatBootstrapImageTag(
+      imageBase,
+      new Date("2026-07-11T02:14:30.000Z"),
+    );
     const spec = buildAtlasApiImageSpec({
       projectRoot: "/repo/atlas",
       imageBase,
+      imageTag,
       dockerfileContent: [
         "COPY libs/shared libs/shared",
         "COPY libs/discovery-engine libs/discovery-engine",
@@ -112,9 +118,19 @@ void describe("deploy resilience", () => {
       contextDir: "/repo/atlas",
       dockerfilePath: "/repo/atlas/api/Dockerfile",
       cloudBuildDockerfilePath: "api/Dockerfile",
-      imageTag: `${imageBase}/atlas-api:initial`,
+      imageTag,
     });
     assert.notEqual(spec.imageTag, spec.cloudBuildDockerfilePath);
+  });
+
+  void it("formats bootstrap image tags without depending on git state", () => {
+    assert.equal(
+      formatBootstrapImageTag(
+        "us-central1-docker.pkg.dev/rap-atlas-prod/atlas-images",
+        new Date("2026-07-11T02:14:30.000Z"),
+      ),
+      "us-central1-docker.pkg.dev/rap-atlas-prod/atlas-images/atlas-api:bootstrap-20260711021430",
+    );
   });
 
   void it("keeps Docker context scoped when the Dockerfile only copies service-local paths", () => {
