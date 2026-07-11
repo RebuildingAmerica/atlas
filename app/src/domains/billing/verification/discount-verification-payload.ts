@@ -32,25 +32,3 @@ export type DiscountVerificationSubmission = {
     segment: Segment;
   };
 }[DiscountSegment];
-
-export interface DiscountVerificationRequestBody {
-  data: DiscountVerificationSubmission["data"];
-  organization_id: string;
-  segment: DiscountVerificationSubmission["segment"];
-}
-
-interface BuildDiscountVerificationRequestBodyParams {
-  organizationId: string;
-  submission: DiscountVerificationSubmission;
-}
-
-export function buildDiscountVerificationRequestBody({
-  organizationId,
-  submission,
-}: BuildDiscountVerificationRequestBodyParams): DiscountVerificationRequestBody {
-  return {
-    data: submission.data,
-    organization_id: organizationId,
-    segment: submission.segment,
-  };
-}
