@@ -155,6 +155,7 @@ runs:
           --timeout=900
           --concurrency=1
           --port=8000
+          --remove-env-vars=ATLAS_AUTH_ALLOWED_EMAILS
         env_vars: |
           ATLAS_DEPLOY_MODE=${{ inputs.environment-name }}
           ENVIRONMENT=${{ inputs.environment-name }}
