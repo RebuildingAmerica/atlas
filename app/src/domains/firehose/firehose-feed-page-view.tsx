@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type UIEvent } from "react";
-import { useVirtualizer } from "@tanstack/react-virtual";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useWindowVirtualizer } from "@tanstack/react-virtual";
 import type { FirehoseDensity, FirehoseJumpTarget } from "./feed-model";
 import { buildFirehoseFeedModel } from "./feed-model";
 import { buildPublicFirehoseSearchParams } from "./public-feed";
@@ -29,6 +29,52 @@ interface FirehoseFeedViewProps {
   snapshot: PublicFirehoseSnapshot;
 }
 
+interface FirehoseInfiniteFeedState {
+  infiniteLoadingEnabled: boolean;
+  pagesLoadedSinceResume: number;
+  visibleSignalCount: number;
+}
+
+const INFINITE_FEED_PAGE_SIZE = 12;
+const INFINITE_FEED_AUTO_PAGE_CAP = 3;
+
+function initialInfiniteFeedState(totalSignals: number): FirehoseInfiniteFeedState {
+  const visibleSignalCount = Math.min(INFINITE_FEED_PAGE_SIZE, totalSignals);
+  const pagesLoadedSinceResume = visibleSignalCount > 0 ? 1 : 0;
+  return {
+    infiniteLoadingEnabled:
+      visibleSignalCount < totalSignals && pagesLoadedSinceResume < INFINITE_FEED_AUTO_PAGE_CAP,
+    pagesLoadedSinceResume,
+    visibleSignalCount,
+  };
+}
+
+function revealNextFirehosePage(
+  current: FirehoseInfiniteFeedState,
+  totalSignals: number,
+  options: { resetPageCap: boolean },
+): FirehoseInfiniteFeedState {
+  const pagesLoadedSinceResume = options.resetPageCap ? 0 : current.pagesLoadedSinceResume;
+  const visibleSignalCount = Math.min(
+    current.visibleSignalCount + INFINITE_FEED_PAGE_SIZE,
+    totalSignals,
+  );
+  const nextPagesLoadedSinceResume = pagesLoadedSinceResume + 1;
+  return {
+    infiniteLoadingEnabled:
+      visibleSignalCount < totalSignals && nextPagesLoadedSinceResume < INFINITE_FEED_AUTO_PAGE_CAP,
+    pagesLoadedSinceResume: nextPagesLoadedSinceResume,
+    visibleSignalCount,
+  };
+}
+
+function visibleEventCountLabel(visibleCount: number, totalCount: number): string {
+  if (visibleCount >= totalCount) {
+    return eventCountLabel(totalCount);
+  }
+  return `${visibleCount} of ${eventCountLabel(totalCount)}`;
+}
+
 export function FirehoseFeedView({
   liveState,
   onApplyPendingSignals,
@@ -39,21 +85,37 @@ export function FirehoseFeedView({
 }: FirehoseFeedViewProps) {
   const [density, setDensity] = useState<FirehoseDensity>("standard");
   const [canVirtualize, setCanVirtualize] = useState(false);
+  const [feedScrollMargin, setFeedScrollMargin] = useState(0);
+  const [infiniteFeedState, setInfiniteFeedState] = useState<FirehoseInfiniteFeedState>(() =>
+    initialInfiniteFeedState(snapshot.signals.length),
+  );
+  const loadMoreSentinelRef = useRef<HTMLDivElement>(null);
   const feedViewportRef = useRef<HTMLDivElement>(null);
-  const model = useMemo(() => buildFirehoseFeedModel(snapshot.signals), [snapshot.signals]);
-  const anchorIndexes = useMemo(() => itemAnchorIndex(model), [model]);
-  const shouldVirtualize = canVirtualize && model.items.length > VIRTUALIZED_ITEM_THRESHOLD;
   const rssParams = buildPublicFirehoseSearchParams(snapshot.query).toString();
   const rssHref = rssParams ? `/firehose.rss?${rssParams}` : "/firehose.rss";
+  const totalSignalCount = snapshot.signals.length;
+  const visibleSignalCount = Math.min(infiniteFeedState.visibleSignalCount, totalSignalCount);
+  const visibleSignals = useMemo(
+    () => snapshot.signals.slice(0, visibleSignalCount),
+    [snapshot.signals, visibleSignalCount],
+  );
+  const model = useMemo(() => buildFirehoseFeedModel(visibleSignals), [visibleSignals]);
+  const anchorIndexes = useMemo(() => itemAnchorIndex(model), [model]);
+  const shouldVirtualize = canVirtualize && model.items.length > VIRTUALIZED_ITEM_THRESHOLD;
+  const hasMoreSignals = visibleSignalCount < totalSignalCount;
+  const totalSignalCountRef = useRef(totalSignalCount);
+  const canAutoObserveInfiniteScroll = typeof IntersectionObserver !== "undefined";
+  const showKeepLoading =
+    hasMoreSignals && (!infiniteFeedState.infiniteLoadingEnabled || !canAutoObserveInfiniteScroll);
   const estimateSize = useCallback(
     (index: number) => estimateFeedItemSize(model.items[index], density),
     [density, model.items],
   );
-  const rowVirtualizer = useVirtualizer({
+  const rowVirtualizer = useWindowVirtualizer({
     count: model.items.length,
     estimateSize,
-    getScrollElement: () => feedViewportRef.current,
     overscan: 10,
+    scrollMargin: feedScrollMargin,
   });
   const virtualItems = shouldVirtualize ? rowVirtualizer.getVirtualItems() : [];
 
@@ -73,21 +135,109 @@ export function FirehoseFeedView({
     },
     [anchorIndexes, rowVirtualizer, shouldVirtualize],
   );
-
-  const handleViewportScroll = useCallback(
-    (event: UIEvent<HTMLDivElement>) => {
-      onReadingLatestChange?.(event.currentTarget.scrollTop <= READING_LATEST_SCROLL_THRESHOLD);
+  const revealNextPage = useCallback(
+    (options: { resetPageCap: boolean }) => {
+      setInfiniteFeedState((current) => revealNextFirehosePage(current, totalSignalCount, options));
     },
-    [onReadingLatestChange],
+    [totalSignalCount],
   );
+  const resumeInfiniteLoading = useCallback(() => {
+    revealNextPage({ resetPageCap: true });
+  }, [revealNextPage]);
+
+  useEffect(() => {
+    totalSignalCountRef.current = totalSignalCount;
+  }, [totalSignalCount]);
+
+  useEffect(() => {
+    setInfiniteFeedState(initialInfiniteFeedState(totalSignalCountRef.current));
+  }, [rssParams]);
+
+  useEffect(() => {
+    setInfiniteFeedState((current) => {
+      if (current.visibleSignalCount <= totalSignalCount) {
+        return current;
+      }
+
+      const visibleSignalCount = Math.min(current.visibleSignalCount, totalSignalCount);
+      return {
+        infiniteLoadingEnabled:
+          visibleSignalCount < totalSignalCount &&
+          current.pagesLoadedSinceResume < INFINITE_FEED_AUTO_PAGE_CAP,
+        pagesLoadedSinceResume: current.pagesLoadedSinceResume,
+        visibleSignalCount,
+      };
+    });
+  }, [totalSignalCount]);
 
   useEffect(() => {
     setCanVirtualize(typeof ResizeObserver !== "undefined");
   }, []);
 
   useEffect(() => {
+    if (!onReadingLatestChange) {
+      return;
+    }
+
+    const handleWindowScroll = () => {
+      onReadingLatestChange(window.scrollY <= READING_LATEST_SCROLL_THRESHOLD);
+    };
+
+    handleWindowScroll();
+    window.addEventListener("scroll", handleWindowScroll, { passive: true });
+
+    return () => {
+      window.removeEventListener("scroll", handleWindowScroll);
+    };
+  }, [onReadingLatestChange]);
+
+  useEffect(() => {
+    const measureFeedOffset = () => {
+      setFeedScrollMargin(feedViewportRef.current?.offsetTop ?? 0);
+    };
+
+    measureFeedOffset();
+    window.addEventListener("resize", measureFeedOffset);
+
+    return () => {
+      window.removeEventListener("resize", measureFeedOffset);
+    };
+  }, [snapshot.signals.length]);
+
+  useEffect(() => {
     rowVirtualizer.measure();
   }, [density, rowVirtualizer]);
+
+  useEffect(() => {
+    if (
+      !hasMoreSignals ||
+      !infiniteFeedState.infiniteLoadingEnabled ||
+      !canAutoObserveInfiniteScroll
+    ) {
+      return;
+    }
+
+    const sentinel = loadMoreSentinelRef.current;
+    if (!sentinel) {
+      return;
+    }
+
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) {
+        revealNextPage({ resetPageCap: false });
+      }
+    });
+    observer.observe(sentinel);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [
+    canAutoObserveInfiniteScroll,
+    hasMoreSignals,
+    infiniteFeedState.infiniteLoadingEnabled,
+    revealNextPage,
+  ]);
 
   return (
     <div className="bg-surface min-h-screen">
@@ -114,7 +264,7 @@ export function FirehoseFeedView({
                 </button>
               ) : null}
               <span className="type-label-medium text-ink-soft border-outline-variant rounded-md border px-3 py-1.5">
-                {eventCountLabel(model.totalSignals)}
+                {visibleEventCountLabel(visibleSignalCount, totalSignalCount)}
               </span>
             </div>
           </div>
@@ -170,8 +320,7 @@ export function FirehoseFeedView({
               ) : null}
               <div
                 aria-label="Firehose events"
-                className="border-outline-variant bg-surface-container-lowest h-[72vh] min-h-[32rem] overflow-y-auto rounded-lg border"
-                onScroll={handleViewportScroll}
+                className="border-outline-variant bg-surface-container-lowest rounded-lg border"
                 ref={feedViewportRef}
                 role="feed"
               >
@@ -197,7 +346,7 @@ export function FirehoseFeedView({
                           style={{
                             left: 0,
                             position: "absolute",
-                            top: virtualItem.start,
+                            top: virtualItem.start - rowVirtualizer.options.scrollMargin,
                             width: "100%",
                           }}
                         />
@@ -210,6 +359,20 @@ export function FirehoseFeedView({
                   ))
                 )}
               </div>
+              {hasMoreSignals && infiniteFeedState.infiniteLoadingEnabled ? (
+                <div aria-hidden="true" className="h-8" ref={loadMoreSentinelRef} />
+              ) : null}
+              {showKeepLoading ? (
+                <div className="flex justify-center py-5">
+                  <button
+                    className="type-label-medium border-outline-variant bg-surface-container-lowest text-ink-strong hover:bg-surface-container focus-visible:ring-accent rounded-md border px-4 py-2 shadow-sm transition-colors focus-visible:ring-2 focus-visible:outline-none"
+                    onClick={resumeInfiniteLoading}
+                    type="button"
+                  >
+                    Keep loading
+                  </button>
+                </div>
+              ) : null}
             </section>
           </div>
         )}

@@ -59,13 +59,13 @@ export function FirehoseJumpNavigation({ onSelectTarget, targets }: FirehoseJump
   return (
     <nav
       aria-label="Firehose jump navigation"
-      className="border-outline-variant bg-surface-container-low sticky top-0 z-20 -mx-4 min-w-0 overflow-hidden border-y px-4 py-3 sm:-mx-6 sm:px-6 lg:top-6 lg:order-2 lg:mx-0 lg:self-start lg:rounded-lg lg:border lg:p-3"
+      className="border-outline-variant bg-surface-container-low sticky top-0 z-20 -mx-4 min-w-0 overflow-hidden border-y px-4 py-3 sm:-mx-6 sm:px-6 lg:top-6 lg:order-2 lg:mx-0 lg:max-h-[calc(100vh-3rem)] lg:self-start lg:overflow-y-auto lg:rounded-lg lg:border lg:p-3"
     >
       <div className="mb-2 flex items-center justify-between gap-3 lg:mb-3">
         <p className="type-label-medium text-ink-strong">Jump</p>
         <span className="type-label-small text-ink-muted">{jumpCountLabel(targets.length)}</span>
       </div>
-      <div className="flex min-w-0 gap-3 overflow-x-auto pb-1 lg:block lg:max-h-[calc(100vh-8rem)] lg:space-y-4 lg:overflow-y-auto lg:pb-0">
+      <div className="flex min-w-0 gap-3 overflow-x-auto pb-1 lg:block lg:space-y-4 lg:overflow-visible lg:pb-0">
         <FirehoseJumpGroup
           label="Time"
           onSelectTarget={onSelectTarget}
