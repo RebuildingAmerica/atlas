@@ -130,7 +130,8 @@ export default defineConfig({
       url: absoluteUrl(apiUrl, "/health"),
     },
     {
-      command: `pnpm --filter @rebuildingamerica/atlas-app exec vite dev --host 127.0.0.1 --port ${appPort} --strictPort`,
+      command:
+        "pnpm exec turbo run @rebuildingamerica/atlas-app#start:e2e --output-logs=errors-only",
       cwd: repoRoot,
       env: {
         ...baseWebServerEnv,

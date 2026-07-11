@@ -15,6 +15,7 @@ permissions:
 env:
   TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
   TURBO_TEAM: ${{ vars.TURBO_TEAM }}
+  TURBO_TELEMETRY_DISABLED: "1"
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -72,13 +73,14 @@ jobs:
       - name: Run Playwright acceptance suite
         env:
           CI: "true"
-        run: pnpm exec turbo run '@rebuildingamerica/atlas-app#test:acceptance'
-      - name: Upload Playwright report on failure
+        run: pnpm exec turbo run '@rebuildingamerica/atlas-app#test:acceptance' --output-logs=full
+      - name: Upload Playwright traces on failure
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: playwright-report
-          path: app/playwright-report/
+          name: playwright-test-results
+          path: app/test-results/
+          if-no-files-found: ignore
           retention-days: 14
 
   contract:
