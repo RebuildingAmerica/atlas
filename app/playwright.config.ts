@@ -54,6 +54,8 @@ if (!apiPort) {
 const e2eInternalSecret =
   process.env.ATLAS_E2E_INTERNAL_SECRET?.trim() || randomBytes(32).toString("hex");
 const atprotoOAuthHarness = resolveAtprotoOAuthHarnessMode(process.env);
+delete process.env.NO_COLOR;
+delete process.env.FORCE_COLOR;
 const baseWebServerEnv = { ...process.env };
 delete baseWebServerEnv.NO_COLOR;
 delete baseWebServerEnv.FORCE_COLOR;

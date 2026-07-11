@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AtlasSessionPayload } from "@/domains/access/organization-contracts";
+import { createServerOnlyFnStub } from "../../../helpers/server-fn-stub";
 import {
   assertOrganizationManagementEnabled,
   requireActiveWorkspace,
@@ -13,6 +14,10 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@/domains/access/server/runtime", () => ({
   getAuthRuntimeConfig: mocks.getAuthRuntimeConfig,
+}));
+
+vi.mock("@tanstack/react-start", () => ({
+  createServerOnlyFn: createServerOnlyFnStub(),
 }));
 
 vi.mock("@/domains/access/organization-metadata", () => ({

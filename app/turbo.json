@@ -76,6 +76,7 @@
         "src/lib/orval/**"
       ],
       "env": [
+        "ATLAS_AUTH_BASE_PATH",
         "ATLAS_AUTH_JWT_AUDIENCES",
         "ATLAS_DOCS_URL",
         "ATLAS_EMAIL_PROVIDER",
@@ -154,7 +155,8 @@
         "ATLAS_E2E_APP_URL",
         "ATLAS_E2E_AUTH_INTROSPECTION_URL",
         "ATLAS_E2E_MAILBOX_URL",
-        "ATLAS_E2E_WORKERS"
+        "ATLAS_E2E_WORKERS",
+        "ATLAS_SCOUT_E2E_FILE_CREDENTIAL_STORE"
       ],
       "outputs": ["playwright-report/**", "test-results/**"],
       "cache": false
@@ -166,7 +168,8 @@
         "ATLAS_E2E_APP_URL",
         "ATLAS_E2E_AUTH_INTROSPECTION_URL",
         "ATLAS_E2E_MAILBOX_URL",
-        "ATLAS_E2E_WORKERS"
+        "ATLAS_E2E_WORKERS",
+        "ATLAS_SCOUT_E2E_FILE_CREDENTIAL_STORE"
       ],
       "outputs": ["playwright-report/**", "test-results/**"],
       "cache": false

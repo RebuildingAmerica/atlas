@@ -11,11 +11,13 @@ import {
 } from "../../../fixtures/access/sso";
 import {
   createServerFnStub,
+  createServerOnlyFnStub,
   type ServerFnExecutionResponse,
 } from "../../../helpers/server-fn-stub";
 
 vi.mock("@tanstack/react-start", () => ({
   createServerFn: createServerFnStub(),
+  createServerOnlyFn: createServerOnlyFnStub(),
 }));
 
 vi.mock("@/domains/access/server/auth", () => ({

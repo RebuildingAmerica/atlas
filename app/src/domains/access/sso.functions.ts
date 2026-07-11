@@ -1,4 +1,4 @@
-import { createServerFn } from "@tanstack/react-start";
+import { createServerFn, createServerOnlyFn } from "@tanstack/react-start";
 import { z } from "zod";
 import {
   buildGoogleWorkspaceOIDCProviderId,
@@ -17,19 +17,15 @@ import {
   requireManagedTeamWorkspace,
 } from "./organization-server-helpers";
 
-export async function loadWorkspaceSSOServerModules() {
-  if (import.meta.env.SSR) {
-    const [auth, requestHeaders, ssoProviderStore, runtime] = await Promise.all([
-      import("./server/auth"),
-      import("./server/request-headers"),
-      import("./server/sso-provider-store"),
-      import("./server/runtime"),
-    ]);
-    return { auth, requestHeaders, ssoProviderStore, runtime };
-  }
-
-  throw new Error("Workspace SSO server modules are only available on the server.");
-}
+export const loadWorkspaceSSOServerModules = createServerOnlyFn(async () => {
+  const [auth, requestHeaders, ssoProviderStore, runtime] = await Promise.all([
+    import("./server/auth"),
+    import("./server/request-headers"),
+    import("./server/sso-provider-store"),
+    import("./server/runtime"),
+  ]);
+  return { auth, requestHeaders, ssoProviderStore, runtime };
+});
 
 const googleWorkspaceOIDCProviderSchema = z.object({
   clientId: z.string().trim().min(1),

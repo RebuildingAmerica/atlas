@@ -1,4 +1,4 @@
-import { createServerFn } from "@tanstack/react-start";
+import { createServerFn, createServerOnlyFn } from "@tanstack/react-start";
 import { z } from "zod";
 import {
   atlasWorkspaceTypeSchema,
@@ -19,22 +19,18 @@ import {
 } from "./organization-server-helpers";
 import { computeTeamSeatCostSummary, teamSeatCostSummarySchema } from "@/domains/billing/team-cost";
 
-export async function loadOrganizationsServerModules() {
-  if (import.meta.env.SSR) {
-    const [stripeCustomer, teamSeats, auth, requestHeaders, runtime, sessionState] =
-      await Promise.all([
-        import("@/domains/billing/server/stripe-customer"),
-        import("@/domains/billing/server/team-seats"),
-        import("./server/auth"),
-        import("./server/request-headers"),
-        import("./server/runtime"),
-        import("./server/session-state"),
-      ]);
-    return { stripeCustomer, teamSeats, auth, requestHeaders, runtime, sessionState };
-  }
-
-  throw new Error("Organization server modules are only available on the server.");
-}
+export const loadOrganizationsServerModules = createServerOnlyFn(async () => {
+  const [stripeCustomer, teamSeats, auth, requestHeaders, runtime, sessionState] =
+    await Promise.all([
+      import("@/domains/billing/server/stripe-customer"),
+      import("@/domains/billing/server/team-seats"),
+      import("./server/auth"),
+      import("./server/request-headers"),
+      import("./server/runtime"),
+      import("./server/session-state"),
+    ]);
+  return { stripeCustomer, teamSeats, auth, requestHeaders, runtime, sessionState };
+});
 
 /**
  * Reconciles a workspace's Atlas Team seat billing without letting a billing

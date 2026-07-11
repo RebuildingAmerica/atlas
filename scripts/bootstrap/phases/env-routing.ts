@@ -250,7 +250,6 @@ export function buildVercelEnvVars(env: Map<string, string>): VercelVar[] {
     get("ATLAS_SERVER_API_PROXY_TARGET"),
     prod,
   );
-  add("ATLAS_MAP_STYLE_URL", get("ATLAS_MAP_STYLE_URL"), prod);
   add("ATLAS_AUTH_JWT_AUDIENCES", get("ATLAS_AUTH_JWT_AUDIENCES"), prod);
   add("ATLAS_EMAIL_PROVIDER", get("ATLAS_EMAIL_PROVIDER", "resend"), prod);
   add("ATLAS_AUTH_INTERNAL_SECRET", get("ATLAS_AUTH_INTERNAL_SECRET"), prod);

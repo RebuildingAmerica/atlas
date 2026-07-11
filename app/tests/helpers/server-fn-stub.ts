@@ -115,3 +115,11 @@ export function createServerFnStub() {
     return builder;
   };
 }
+
+/**
+ * Builds a reusable `createServerOnlyFn` stub for unit tests that import Atlas
+ * server-only helpers without a full TanStack Start runtime.
+ */
+export function createServerOnlyFnStub() {
+  return <TFunction extends (...args: never[]) => unknown>(fn: TFunction): TFunction => fn;
+}

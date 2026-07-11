@@ -1,19 +1,16 @@
+import { createServerOnlyFn } from "@tanstack/react-start";
 import type { AtlasSessionPayload, AtlasWorkspaceMembership } from "./organization-contracts";
 import { canManageAtlasOrganizationRole } from "./organization-metadata";
 
-async function loadOrganizationServerModules() {
-  if (import.meta.env.SSR) {
-    const [auth, requestHeaders, runtime, sessionState] = await Promise.all([
-      import("./server/auth"),
-      import("./server/request-headers"),
-      import("./server/runtime"),
-      import("./server/session-state"),
-    ]);
-    return { auth, requestHeaders, runtime, sessionState };
-  }
-
-  throw new Error("Organization server modules are only available on the server.");
-}
+const loadOrganizationServerModules = createServerOnlyFn(async () => {
+  const [auth, requestHeaders, runtime, sessionState] = await Promise.all([
+    import("./server/auth"),
+    import("./server/request-headers"),
+    import("./server/runtime"),
+    import("./server/session-state"),
+  ]);
+  return { auth, requestHeaders, runtime, sessionState };
+});
 
 /**
  * Throws when organization management is requested while auth is disabled.

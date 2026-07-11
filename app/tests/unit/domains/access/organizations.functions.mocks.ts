@@ -13,8 +13,12 @@ export const mocks = {
 };
 
 vi.mock("@tanstack/react-start", async () => {
-  const { createServerFnStub } = await import("../../../helpers/server-fn-stub");
-  return { createServerFn: createServerFnStub() };
+  const { createServerFnStub, createServerOnlyFnStub } =
+    await import("../../../helpers/server-fn-stub");
+  return {
+    createServerFn: createServerFnStub(),
+    createServerOnlyFn: createServerOnlyFnStub(),
+  };
 });
 
 vi.mock("@/domains/access/server/auth", () => ({
