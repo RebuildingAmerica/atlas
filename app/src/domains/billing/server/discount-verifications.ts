@@ -15,7 +15,7 @@ export async function getVerifiedDiscountSegmentForWorkspace(
     status: "verified",
   });
   const response = await requestAtlasApi<VerificationListResponse>(
-    `/api/admin/verifications?${params.toString()}`,
+    `/admin/verifications?${params.toString()}`,
   );
 
   return response.records[0]?.segment ?? null;

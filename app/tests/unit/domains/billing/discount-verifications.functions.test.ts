@@ -48,7 +48,7 @@ describe("discount verification server functions", () => {
 
     expect(result).toBe(response);
     expect(mocks.requestAtlasApi).toHaveBeenCalledWith(
-      "/api/admin/verifications?organization_id=org_123&status=pending",
+      "/admin/verifications?organization_id=org_123&status=pending",
     );
   });
 
@@ -85,7 +85,7 @@ describe("discount verification server functions", () => {
       },
       status: "verified",
     });
-    expect(mocks.requestAtlasApi).toHaveBeenCalledWith("/api/admin/verifications/verif_123", {
+    expect(mocks.requestAtlasApi).toHaveBeenCalledWith("/admin/verifications/verif_123", {
       body: JSON.stringify({
         notes: "Approved from admin review.",
         status: "verified",
@@ -126,7 +126,7 @@ describe("discount verification server functions", () => {
       status: "pending",
       verification_method: "portfolio",
     });
-    expect(mocks.requestAtlasApi).toHaveBeenCalledWith("/api/access/verify-discount", {
+    expect(mocks.requestAtlasApi).toHaveBeenCalledWith("/access/verify-discount", {
       body: JSON.stringify({
         data: {
           portfolioUrl: "https://example.org/byline",

@@ -83,7 +83,7 @@ export const listDiscountVerifications = createServerFn({ method: "GET" })
   .validator(listDiscountVerificationsInputSchema)
   .handler(async ({ data }) => {
     return await requestAtlasApi<VerificationListResponse>(
-      `/api/admin/verifications${buildVerificationQuery(data)}`,
+      `/admin/verifications${buildVerificationQuery(data)}`,
     );
   });
 
@@ -96,7 +96,7 @@ export const reviewDiscountVerification = createServerFn({ method: "POST" })
     } satisfies VerificationUpdateRequest;
 
     const response = await requestAtlasApi<VerificationUpdateResponse>(
-      `/api/admin/verifications/${data.verificationId}`,
+      `/admin/verifications/${data.verificationId}`,
       {
         body: JSON.stringify(body),
         method: "PATCH",
@@ -116,7 +116,7 @@ export const submitDiscountVerification = createServerFn({ method: "POST" })
   .validator(submitDiscountVerificationInputSchema)
   .handler(async ({ data }) => {
     const response = await requestAtlasApi<VerificationSubmissionResponse>(
-      "/api/access/verify-discount",
+      "/access/verify-discount",
       {
         body: JSON.stringify({
           data: data.submission,
@@ -140,6 +140,6 @@ export const getCurrentDiscountVerificationStatus = createServerFn({ method: "GE
   .validator(currentDiscountVerificationInputSchema)
   .handler(async () => {
     return await requestAtlasApi<CurrentDiscountVerificationStatus>(
-      "/api/access/discount-verification/current",
+      "/access/discount-verification/current",
     );
   });

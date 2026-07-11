@@ -41,7 +41,7 @@ describe("discount verification lookup", () => {
 
     await expect(getVerifiedDiscountSegmentForWorkspace("org_123")).resolves.toBe("student");
     expect(mocks.requestAtlasApi).toHaveBeenCalledWith(
-      "/api/admin/verifications?organization_id=org_123&status=verified",
+      "/admin/verifications?organization_id=org_123&status=verified",
     );
   });
 
