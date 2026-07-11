@@ -1,0 +1,39 @@
+{
+  "extends": ["//"],
+  "tasks": {
+    "test": {
+      "dependsOn": [
+        "@rebuildingamerica/atlas-discovery-engine#test",
+        "@rebuildingamerica/atlas-shared#test"
+      ],
+      "env": [],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/libs/discovery-engine/**",
+        "$TURBO_ROOT$/libs/shared/**",
+        "!*.pyc",
+        "!**/__pycache__/**",
+        "!.coverage",
+        "!.coverage.*",
+        "!.hypothesis/**",
+        "!.mypy_cache/**",
+        "!.pytest_cache/**",
+        "!.ruff_cache/**",
+        "!.venv/**",
+        "!htmlcov/**",
+        "!node_modules/**",
+        "!$TURBO_ROOT$/libs/**/*.pyc",
+        "!$TURBO_ROOT$/libs/**/__pycache__/**",
+        "!$TURBO_ROOT$/libs/**/.coverage",
+        "!$TURBO_ROOT$/libs/**/.coverage.*",
+        "!$TURBO_ROOT$/libs/**/.hypothesis/**",
+        "!$TURBO_ROOT$/libs/**/.mypy_cache/**",
+        "!$TURBO_ROOT$/libs/**/.pytest_cache/**",
+        "!$TURBO_ROOT$/libs/**/.ruff_cache/**",
+        "!$TURBO_ROOT$/libs/**/.venv/**",
+        "!$TURBO_ROOT$/libs/**/htmlcov/**",
+        "!$TURBO_ROOT$/libs/**/node_modules/**"
+      ]
+    }
+  }
+}

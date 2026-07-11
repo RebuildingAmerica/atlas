@@ -1,0 +1,14 @@
+{
+  "extends": ["//"],
+  "tasks": {
+    "favicons": {
+      "inputs": ["brand/**", "scripts/build-favicons.mjs", "package.json"],
+      "outputs": ["favicons/**"]
+    },
+    "dev": {
+      "cache": false,
+      "dependsOn": ["favicons"],
+      "persistent": true
+    }
+  }
+}

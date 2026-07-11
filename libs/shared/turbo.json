@@ -1,0 +1,22 @@
+{
+  "extends": ["//"],
+  "tasks": {
+    "test": {
+      "env": [],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "!*.pyc",
+        "!**/__pycache__/**",
+        "!.coverage",
+        "!.coverage.*",
+        "!.hypothesis/**",
+        "!.mypy_cache/**",
+        "!.pytest_cache/**",
+        "!.ruff_cache/**",
+        "!.venv/**",
+        "!htmlcov/**",
+        "!node_modules/**"
+      ]
+    }
+  }
+}

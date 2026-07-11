@@ -17,7 +17,7 @@
     "dev": "portless atlas --force vite dev",
     "dev:local": "ATLAS_DEPLOY_MODE=local portless atlas --force vite dev",
     "dev:e2e": "vite dev --host 127.0.0.1 --port 3100 --strictPort",
-    "api-client": "orval",
+    "api-client": "orval && node scripts/generate-api-client-barrel.mjs",
     "openapi:lint": "spectral lint ../openapi/atlas.openapi.json --ruleset .spectral.yaml",
     "build": "vite build",
     "start": "vite preview --port 3000",

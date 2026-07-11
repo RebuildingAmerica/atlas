@@ -68,7 +68,13 @@
     },
     "api-client": {
       "dependsOn": ["//#openapi"],
-      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/openapi/atlas.openapi.json"],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/openapi/atlas.openapi.json",
+        "orval.config.ts",
+        "scripts/generate-api-client-barrel.mjs",
+        "src/lib/orval/**"
+      ],
       "env": [
         "ATLAS_AUTH_JWT_AUDIENCES",
         "ATLAS_DOCS_URL",
@@ -147,7 +153,8 @@
         "ATLAS_E2E_API_URL",
         "ATLAS_E2E_APP_URL",
         "ATLAS_E2E_AUTH_INTROSPECTION_URL",
-        "ATLAS_E2E_MAILBOX_URL"
+        "ATLAS_E2E_MAILBOX_URL",
+        "ATLAS_E2E_WORKERS"
       ],
       "outputs": ["playwright-report/**", "test-results/**"],
       "cache": false
@@ -158,7 +165,8 @@
         "ATLAS_E2E_API_URL",
         "ATLAS_E2E_APP_URL",
         "ATLAS_E2E_AUTH_INTROSPECTION_URL",
-        "ATLAS_E2E_MAILBOX_URL"
+        "ATLAS_E2E_MAILBOX_URL",
+        "ATLAS_E2E_WORKERS"
       ],
       "outputs": ["playwright-report/**", "test-results/**"],
       "cache": false

@@ -1,0 +1,35 @@
+{
+  "extends": ["//"],
+  "tasks": {
+    "test": {
+      "dependsOn": ["@rebuildingamerica/atlas-shared#test"],
+      "env": [],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/libs/shared/**",
+        "!*.pyc",
+        "!**/__pycache__/**",
+        "!.coverage",
+        "!.coverage.*",
+        "!.hypothesis/**",
+        "!.mypy_cache/**",
+        "!.pytest_cache/**",
+        "!.ruff_cache/**",
+        "!.venv/**",
+        "!htmlcov/**",
+        "!node_modules/**",
+        "!$TURBO_ROOT$/libs/shared/**/*.pyc",
+        "!$TURBO_ROOT$/libs/shared/**/__pycache__/**",
+        "!$TURBO_ROOT$/libs/shared/.coverage",
+        "!$TURBO_ROOT$/libs/shared/.coverage.*",
+        "!$TURBO_ROOT$/libs/shared/.hypothesis/**",
+        "!$TURBO_ROOT$/libs/shared/.mypy_cache/**",
+        "!$TURBO_ROOT$/libs/shared/.pytest_cache/**",
+        "!$TURBO_ROOT$/libs/shared/.ruff_cache/**",
+        "!$TURBO_ROOT$/libs/shared/.venv/**",
+        "!$TURBO_ROOT$/libs/shared/htmlcov/**",
+        "!$TURBO_ROOT$/libs/shared/node_modules/**"
+      ]
+    }
+  }
+}

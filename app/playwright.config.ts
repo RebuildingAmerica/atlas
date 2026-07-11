@@ -13,6 +13,12 @@ function envValue(name: string, fallback: string): string {
   return process.env[name]?.trim() || fallback;
 }
 
+function setDefaultEnv(name: string, value: string): void {
+  if (!process.env[name]?.trim()) {
+    process.env[name] = value;
+  }
+}
+
 const e2eDir = path.join(process.cwd(), "node_modules", ".cache", "e2e");
 mkdirSync(e2eDir, { recursive: true });
 const repoRoot = path.join(process.cwd(), "..");
@@ -31,6 +37,10 @@ const authIntrospectionUrl = envValue(
   "ATLAS_E2E_AUTH_INTROSPECTION_URL",
   absoluteUrl(appUrl, "/api/auth/internal/api-key"),
 );
+setDefaultEnv("ATLAS_E2E_APP_URL", appUrl);
+setDefaultEnv("ATLAS_E2E_API_URL", apiUrl);
+setDefaultEnv("ATLAS_E2E_MAILBOX_URL", mailboxUrl);
+setDefaultEnv("ATLAS_E2E_AUTH_INTROSPECTION_URL", authIntrospectionUrl);
 const appPort = new URL(appUrl).port || "3100";
 const apiPort = new URL(apiUrl).port;
 const mailboxPort = new URL(mailboxUrl).port || "8025";
@@ -58,6 +68,7 @@ const commonAuthEnv = {
   ATLAS_AUTH_INTERNAL_SECRET: e2eInternalSecret,
   ATLAS_AUTH_MEMBERSHIP_URL: appUrl,
   ATLAS_AUTH_JWT_AUDIENCES: authJwtAudiences,
+  ATLAS_ANON_RATE_LIMIT_ENABLED: "false",
   ATLAS_DEPLOY_MODE: "production",
   ATLAS_EMAIL_CAPTURE_URL: `${mailboxUrl}/messages`,
   ATLAS_EMAIL_FROM: "Atlas <hello@localhost>",
@@ -100,6 +111,7 @@ export default defineConfig({
         ATLAS_AUTH_INTERNAL_SECRET: e2eInternalSecret,
         ATLAS_AUTH_MEMBERSHIP_URL: appUrl,
         ATLAS_AUTH_JWT_AUDIENCES: authJwtAudiences,
+        ATLAS_ANON_RATE_LIMIT_ENABLED: "false",
         ATLAS_ATPROTO_OAUTH_E2E_HARNESS: atprotoOAuthHarness,
         ATLAS_DEPLOY_MODE: "production",
         ATLAS_PUBLIC_URL: appUrl,
