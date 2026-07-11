@@ -15,6 +15,7 @@ vi.mock("@/domains/access", () => ({
 vi.mock("@/domains/catalog/hooks/use-claims", () => ({
   useInitiateClaim: vi.fn(),
   useMyClaims: vi.fn(),
+  useVerifyClaimDomain: vi.fn(),
   useVerifyClaimEmail: vi.fn(),
 }));
 
@@ -61,6 +62,10 @@ describe("routes/_public/claim/$slug submission", () => {
       mutateAsync: vi.fn().mockResolvedValue(undefined),
       isPending: false,
     } as unknown as ReturnType<typeof claims.useVerifyClaimEmail>);
+    vi.mocked(claims.useVerifyClaimDomain).mockReturnValue({
+      mutateAsync: vi.fn().mockResolvedValue(undefined),
+      isPending: false,
+    } as unknown as ReturnType<typeof claims.useVerifyClaimDomain>);
     vi.mocked(claims.useMyClaims).mockReturnValue({
       data: [],
     } as unknown as ReturnType<typeof claims.useMyClaims>);
@@ -109,26 +114,26 @@ describe("routes/_public/claim/$slug submission", () => {
       data: [{ entry_id: "e2", status: "pending", tier: 1 }],
     } as unknown as ReturnType<typeof claims.useMyClaims>);
     const pendingView = render(<Component />);
-    expect(pendingView.getByText("Claim under review")).toBeInTheDocument();
-    expect(pendingView.getByText(/tier-1 email verification/)).toBeInTheDocument();
+    expect(pendingView.getByText("Verification under review")).toBeInTheDocument();
+    expect(pendingView.getByText("Check your email to finish verification.")).toBeInTheDocument();
     pendingView.unmount();
 
     vi.mocked(claims.useMyClaims).mockReturnValueOnce({
       data: [],
     } as unknown as ReturnType<typeof claims.useMyClaims>);
     const submitView = render(<Component />);
-    expect(submitView.getByText("Profile claim")).toBeInTheDocument();
-    expect(submitView.getByText("Verify relationship")).toBeInTheDocument();
-    expect(submitView.getByText("Suggest public changes")).toBeInTheDocument();
+    expect(submitView.getByText("Profile verification")).toBeInTheDocument();
+    expect(submitView.getByText("Show your connection")).toBeInTheDocument();
+    expect(submitView.getByText("Suggest profile updates")).toBeInTheDocument();
     expect(submitView.getByText("Private context")).toBeInTheDocument();
-    expect(submitView.getByText("Profile being claimed")).toBeInTheDocument();
+    expect(submitView.getByText("Profile being verified")).toBeInTheDocument();
     expect(submitView.getByText("What happens next")).toBeInTheDocument();
     expect(submitView.getByText("What should change?")).toBeInTheDocument();
-    expect(submitView.getByText("Public after verification")).toBeInTheDocument();
+    expect(submitView.getByText("Visible after verification")).toBeInTheDocument();
     fireEvent.change(submitView.getByLabelText("Your relationship to this profile"), {
       target: { value: "self" },
     });
-    fireEvent.change(submitView.getByRole("textbox", { name: "Evidence for this claim" }), {
+    fireEvent.change(submitView.getByRole("textbox", { name: "Source for your connection" }), {
       target: { value: "evidence" },
     });
     fireEvent.change(submitView.getByRole("textbox", { name: "What should change?" }), {
@@ -140,7 +145,7 @@ describe("routes/_public/claim/$slug submission", () => {
     fireEvent.change(submitView.getByRole("textbox", { name: "Private note" }), {
       target: { value: "Keep my direct email private." },
     });
-    const submitButton = submitView.getByRole("button", { name: "Submit claim" });
+    const submitButton = submitView.getByRole("button", { name: "Submit verification" });
     await act(async () => {
       fireEvent.click(submitButton);
       await Promise.resolve();
@@ -178,7 +183,7 @@ describe("routes/_public/claim/$slug submission", () => {
     const Component = Route.options.component;
     if (!Component) throw new Error("Expected Route.options.component");
     render(<Component />);
-    expect(screen.getByText(/manual review/)).toBeInTheDocument();
+    expect(screen.getByText("A reviewer is checking the connection.")).toBeInTheDocument();
   });
 
   it("renders the pending button copy while initiate mutation is running", async () => {
@@ -209,7 +214,7 @@ describe("routes/_public/claim/$slug submission", () => {
     const Component = Route.options.component;
     if (!Component) throw new Error("Expected Route.options.component");
     const view = render(<Component />);
-    expect(view.getByRole("button", { name: "Submitting…" })).toBeDisabled();
+    expect(view.getByRole("button", { name: "Submitting..." })).toBeDisabled();
   });
 
   it("uses the generic initiate-failure copy when the rejection is not an Error", async () => {
@@ -237,10 +242,10 @@ describe("routes/_public/claim/$slug submission", () => {
     if (!Component) throw new Error("Expected Route.options.component");
     render(<Component />);
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Submit claim" }));
+      fireEvent.click(screen.getByRole("button", { name: "Submit verification" }));
       await Promise.resolve();
     });
-    expect(screen.getByRole("alert")).toHaveTextContent("Could not initiate claim.");
+    expect(screen.getByRole("alert")).toHaveTextContent("Could not start verification.");
   });
 
   it("surfaces an initiate error message when the submit mutation rejects", async () => {
@@ -268,7 +273,7 @@ describe("routes/_public/claim/$slug submission", () => {
     if (!Component) throw new Error("Expected Route.options.component");
     render(<Component />);
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Submit claim" }));
+      fireEvent.click(screen.getByRole("button", { name: "Submit verification" }));
       await Promise.resolve();
     });
     expect(screen.getByRole("alert")).toHaveTextContent("bad");
