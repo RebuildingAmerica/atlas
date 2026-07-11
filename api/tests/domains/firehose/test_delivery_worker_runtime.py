@@ -182,6 +182,52 @@ async def test_worker_loop_logs_processed_deliveries(monkeypatch: pytest.MonkeyP
 
 
 @pytest.mark.asyncio
+async def test_worker_loop_closes_connection_without_due_deliveries(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The polling loop should close idle connections before waiting again."""
+    conn = _FakeConnection()
+    sleep_calls: list[float] = []
+
+    async def fake_get_db_connection(_database_url: str, **_kwargs: object) -> _FakeConnection:
+        return conn
+
+    async def fake_process_due_observation_deliveries(
+        _conn: object,
+        **_kwargs: object,
+    ) -> delivery_worker.FirehoseDeliveryProcessingResult:
+        return delivery_worker.FirehoseDeliveryProcessingResult(
+            processed=0,
+            delivered=0,
+            failed=0,
+        )
+
+    async def cancel_after_sleep(seconds: float) -> None:
+        sleep_calls.append(seconds)
+        raise asyncio.CancelledError
+
+    monkeypatch.setattr(delivery_worker, "get_db_connection", fake_get_db_connection)
+    monkeypatch.setattr(
+        delivery_worker,
+        "process_due_observation_deliveries",
+        fake_process_due_observation_deliveries,
+    )
+    monkeypatch.setattr(delivery_worker.asyncio, "sleep", cancel_after_sleep)
+
+    with pytest.raises(asyncio.CancelledError):
+        await delivery_worker._worker_loop(  # noqa: SLF001
+            "sqlite:///tmp/test.db",
+            database_backend=None,
+            poll_seconds=0.01,
+            lease_seconds=30,
+            batch_size=5,
+        )
+
+    assert conn.closed is True
+    assert sleep_calls == [0.01]
+
+
+@pytest.mark.asyncio
 async def test_worker_loop_retries_after_unexpected_error(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

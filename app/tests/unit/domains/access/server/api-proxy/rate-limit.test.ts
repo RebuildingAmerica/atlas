@@ -21,11 +21,17 @@ vi.mock("@/domains/access/server/session-state", () => ({
 }));
 
 describe("proxyAtlasApiRequest anonymous rate limiting", () => {
+  let warnCalls: unknown[][];
+
   beforeEach(() => {
     mocks.createInternalAuthHeaders.mockReset();
     mocks.getAuthRuntimeConfig.mockReset();
     mocks.loadAtlasSession.mockReset();
+    warnCalls = [];
     vi.spyOn(globalThis, "fetch").mockImplementation(vi.fn());
+    vi.spyOn(console, "warn").mockImplementation((...args: unknown[]) => {
+      warnCalls.push(args);
+    });
     mocks.getAuthRuntimeConfig.mockReturnValue(baseRuntimeConfig());
     mocks.loadAtlasSession.mockResolvedValue(null);
   });
@@ -75,10 +81,6 @@ describe("proxyAtlasApiRequest anonymous rate limiting", () => {
   it("logs privacy-safe anonymous proxy blocks", async () => {
     const fetchMock = vi.mocked(global.fetch);
     fetchMock.mockResolvedValue(new Response(JSON.stringify({ ok: true }), { status: 200 }));
-    const warnCalls: unknown[][] = [];
-    const warnSpy = vi.spyOn(console, "warn").mockImplementation((...args: unknown[]) => {
-      warnCalls.push(args);
-    });
     mocks.getAuthRuntimeConfig.mockReturnValue({
       anonymousRateLimit: {
         enabled: true,
@@ -105,7 +107,7 @@ describe("proxyAtlasApiRequest anonymous rate limiting", () => {
     );
 
     expect(blocked.status).toBe(429);
-    expect(warnSpy).toHaveBeenCalledWith(
+    expect(console.warn).toHaveBeenCalledWith(
       "anonymous_rate_limited",
       expect.objectContaining({
         bucket: "read-minute",
