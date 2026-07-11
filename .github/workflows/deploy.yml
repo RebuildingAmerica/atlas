@@ -51,6 +51,7 @@ jobs:
           auth-membership-url: ${{ secrets.ATLAS_AUTH_MEMBERSHIP_URL }}
           atlas-public-url: ${{ secrets.ATLAS_PUBLIC_URL }}
           atlas-api-audience: ${{ secrets.ATLAS_API_AUDIENCE || secrets.ATLAS_AUTH_JWT_AUDIENCES }}
+          operator-allowed-emails: ${{ secrets.ATLAS_OPERATOR_ALLOWED_EMAILS }}
           scheduler-job-name: atlas-discovery-scheduled
           openstatus-api-key: ${{ secrets.OPENSTATUS_API_KEY }}
 

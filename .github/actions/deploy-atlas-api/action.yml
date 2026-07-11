@@ -58,6 +58,10 @@ inputs:
     description: Accepted OAuth audience values for this environment. Defaults to <atlas-public-url>/mcp when omitted.
     required: false
     default: ""
+  operator-allowed-emails:
+    description: Comma-separated operator email allowlist for hosted admin tools.
+    required: false
+    default: ""
   scheduler-job-name:
     description: Optional Cloud Scheduler job name for autonomous discovery.
     required: false
@@ -165,6 +169,7 @@ runs:
           ATLAS_AUTH_MEMBERSHIP_URL=${{ steps.hosted-auth.outputs.auth-membership-url }}
           ATLAS_PUBLIC_URL=${{ inputs.atlas-public-url }}
           ATLAS_AUTH_JWT_AUDIENCES=${{ steps.hosted-auth.outputs.atlas-api-audience }}
+          ATLAS_OPERATOR_ALLOWED_EMAILS=${{ inputs.operator-allowed-emails }}
           ATLAS_ANON_RATE_LIMIT_ENABLED=true
           ATLAS_ANON_RATE_LIMIT_READS_PER_MINUTE=30
           ATLAS_ANON_RATE_LIMIT_WRITES_PER_MINUTE=10
