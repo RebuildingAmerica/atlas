@@ -55,7 +55,19 @@ interface DeployConfig {
   publicUrl: string;
   authJwtAudiences: string;
   operatorAllowedEmails: string;
-  resendApiKey: string;
+}
+
+interface AtlasApiCloudRunEnvConfig {
+  databaseUrl: string;
+  anthropicApiKey: string;
+  searchApiKey: string;
+  authInternalSecret: string;
+  authApiKeyIntrospectionUrl: string;
+  authMembershipUrl: string;
+  edgeOriginSecret: string;
+  publicUrl: string;
+  authJwtAudiences: string;
+  operatorAllowedEmails: string;
 }
 
 export interface DockerBuildPlanOptions {
@@ -184,20 +196,7 @@ export async function runDeployPhase(
     {
       ingress: "all",
       port: 8000,
-      envVars: {
-        ENVIRONMENT: "production",
-        LOG_LEVEL: "info",
-        DATABASE_BACKEND: "postgres",
-        DATABASE_URL: config.databaseUrl,
-        ANTHROPIC_API_KEY: config.anthropicApiKey,
-        SEARCH_API_KEY: config.searchApiKey,
-        ATLAS_AUTH_INTERNAL_SECRET: config.authInternalSecret,
-        ATLAS_AUTH_API_KEY_INTROSPECTION_URL: config.authApiKeyIntrospectionUrl,
-        ATLAS_AUTH_MEMBERSHIP_URL: config.authMembershipUrl,
-        ATLAS_EDGE_ORIGIN_SECRET: config.edgeOriginSecret,
-        ATLAS_PUBLIC_URL: config.publicUrl,
-        ATLAS_AUTH_JWT_AUDIENCES: config.authJwtAudiences,
-      },
+      envVars: buildAtlasApiCloudRunEnvVars(config),
     },
     followUpItems,
   );
@@ -768,6 +767,26 @@ export function formatCloudRunEnvVarsFileContent(
   return `${JSON.stringify(envVars, null, 2)}\n`;
 }
 
+export function buildAtlasApiCloudRunEnvVars(
+  config: AtlasApiCloudRunEnvConfig,
+): Record<string, string> {
+  return {
+    ENVIRONMENT: "production",
+    LOG_LEVEL: "info",
+    DATABASE_BACKEND: "postgres",
+    DATABASE_URL: config.databaseUrl,
+    ANTHROPIC_API_KEY: config.anthropicApiKey,
+    SEARCH_API_KEY: config.searchApiKey,
+    ATLAS_AUTH_INTERNAL_SECRET: config.authInternalSecret,
+    ATLAS_AUTH_API_KEY_INTROSPECTION_URL: config.authApiKeyIntrospectionUrl,
+    ATLAS_AUTH_MEMBERSHIP_URL: config.authMembershipUrl,
+    ATLAS_EDGE_ORIGIN_SECRET: config.edgeOriginSecret,
+    ATLAS_PUBLIC_URL: config.publicUrl,
+    ATLAS_AUTH_JWT_AUDIENCES: config.authJwtAudiences,
+    ATLAS_OPERATOR_ALLOWED_EMAILS: config.operatorAllowedEmails,
+  };
+}
+
 // ── Config Reader ─────────────────────────────────────────────────────────────
 
 function readDeployConfig(projectRoot: string): DeployConfig | undefined {
@@ -860,7 +879,6 @@ function readDeployConfig(projectRoot: string): DeployConfig | undefined {
     publicUrl,
     authJwtAudiences,
     operatorAllowedEmails: resolve("ATLAS_OPERATOR_ALLOWED_EMAILS"),
-    resendApiKey: resolve("ATLAS_EMAIL_RESEND_API_KEY"),
   };
 }
 

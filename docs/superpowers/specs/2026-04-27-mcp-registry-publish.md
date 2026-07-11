@@ -82,7 +82,7 @@ a JWT valid for ~5 minutes. (The previous version of this spec claimed JWTs last
 - `api/atlas/platform/mcp/server.py` — FastMCP server + read-tool registrations.
 - `api/atlas/platform/mcp/auth_middleware.py` — Bearer JWT auth + RFC 6750 §3
   challenge.
-- `app/vercel.ts` — public `/mcp` rewrite to the API service in Vercel
+- `app/vite.config.ts` — public `/mcp` rewrite to the API service in Vercel
   deployments.
 - `app/src/routes/[.]well-known/oauth-protected-resource/mcp.ts` —
   protected-resource metadata for compliant MCP OAuth discovery.

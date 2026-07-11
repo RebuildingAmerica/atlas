@@ -1,5 +1,6 @@
 export interface HostedAtlasEnv {
   ATLAS_AUTH_JWT_AUDIENCES?: string;
+  ATLAS_DOCS_URL?: string;
   ATLAS_DEPLOY_MODE?: string;
   ATLAS_PUBLIC_URL?: string;
   ATLAS_SERVER_API_PROXY_TARGET?: string;

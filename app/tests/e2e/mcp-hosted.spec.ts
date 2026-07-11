@@ -1,5 +1,9 @@
 import { expect, test } from "@playwright/test";
-import { absoluteHostedUrl, requiredHostedOrigin } from "../helpers/hosted-endpoints";
+import {
+  absoluteHostedUrl,
+  hostedPublicRequestInit,
+  requiredHostedOrigin,
+} from "../helpers/hosted-endpoints";
 
 const publicOrigin = requiredHostedOrigin("ATLAS_HOSTED_PUBLIC_URL");
 const apiOrigin = requiredHostedOrigin("ATLAS_HOSTED_API_URL");
@@ -15,6 +19,7 @@ test.describe("hosted MCP endpoint", () => {
   for (const path of mcpPaths) {
     test(`serves an OAuth challenge from the public Atlas MCP URL at ${path}`, async () => {
       const response = await fetch(absoluteHostedUrl(publicOrigin, path), {
+        ...hostedPublicRequestInit(),
         method: "POST",
         redirect: "manual",
       });

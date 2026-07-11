@@ -222,50 +222,95 @@ export async function ensureProductionRoutingConfig(
   );
 }
 
-export function buildVercelEnvVars(env: Map<string, string>): VercelVar[] {
-  const all: VercelEnvironment[] = ["production", "preview", "development"];
-  const prod: VercelEnvironment[] = ["production"];
-  const prodAndPreview: VercelEnvironment[] = ["production", "preview"];
+interface VercelStaticEnvSpec {
+  key: string;
+  value: string;
+  environments: VercelEnvironment[];
+}
 
-  function get(key: string, fallback?: string): string | undefined {
-    const v = env.get(key);
-    return v !== undefined && !isPlaceholder(v) ? v : fallback;
-  }
+interface VercelEnvFileSpec {
+  key: string;
+  fallback?: string;
+}
+
+export function buildVercelEnvVars(
+  productionEnv: Map<string, string>,
+  stagingEnv: Map<string, string> = productionEnv,
+): VercelVar[] {
+  const production: VercelEnvironment[] = ["production"];
+  const preview: VercelEnvironment[] = ["preview"];
 
   const vars: VercelVar[] = [];
-  function add(
+  const add = (
     key: string,
     value: string | undefined,
     environments: VercelEnvironment[],
-  ): void {
+  ): void => {
     if (value) vars.push({ key, value, environments });
+  };
+
+  for (const spec of getVercelStaticEnvSpecs(productionEnv)) {
+    add(spec.key, spec.value, spec.environments);
   }
 
-  add("NITRO_PRESET", "vercel", all);
-  add("ATLAS_AUTH_BASE_PATH", get("ATLAS_AUTH_BASE_PATH", "/api/auth"), all);
-  add("ATLAS_DEPLOY_MODE", "local", ["preview"]);
-  add("ATLAS_PUBLIC_URL", get("ATLAS_PUBLIC_URL"), prod);
-  add("ATLAS_DOCS_URL", get("ATLAS_DOCS_URL"), prod);
-  add(
-    "ATLAS_SERVER_API_PROXY_TARGET",
-    get("ATLAS_SERVER_API_PROXY_TARGET"),
-    prod,
-  );
-  add("ATLAS_AUTH_JWT_AUDIENCES", get("ATLAS_AUTH_JWT_AUDIENCES"), prod);
-  add("ATLAS_EMAIL_PROVIDER", get("ATLAS_EMAIL_PROVIDER", "resend"), prod);
-  add("ATLAS_AUTH_INTERNAL_SECRET", get("ATLAS_AUTH_INTERNAL_SECRET"), prod);
-  add("ATLAS_EMAIL_RESEND_API_KEY", get("ATLAS_EMAIL_RESEND_API_KEY"), prod);
-  add("ATLAS_EMAIL_FROM", get("ATLAS_EMAIL_FROM"), prod);
-  add(
-    "ATLAS_OPERATOR_ALLOWED_EMAILS",
-    get("ATLAS_OPERATOR_ALLOWED_EMAILS"),
-    prodAndPreview,
-  );
-  add(
-    "ATLAS_AUTH_API_KEY_INTROSPECTION_URL",
-    get("ATLAS_AUTH_API_KEY_INTROSPECTION_URL"),
-    prod,
-  );
+  for (const spec of VERCEL_HOSTED_ENV_FILE_SPECS) {
+    add(
+      spec.key,
+      readEnvValue(productionEnv, spec.key, spec.fallback),
+      production,
+    );
+    add(spec.key, readEnvValue(stagingEnv, spec.key, spec.fallback), preview);
+  }
 
   return vars;
 }
+
+function readEnvValue(
+  env: Map<string, string>,
+  key: string,
+  fallback?: string,
+): string | undefined {
+  const value = env.get(key);
+  return value !== undefined && !isPlaceholder(value) ? value : fallback;
+}
+
+function getVercelStaticEnvSpecs(
+  productionEnv: Map<string, string>,
+): VercelStaticEnvSpec[] {
+  const all: VercelEnvironment[] = ["production", "preview", "development"];
+  return [
+    { key: "NITRO_PRESET", value: "vercel", environments: all },
+    {
+      key: "ATLAS_AUTH_BASE_PATH",
+      value:
+        readEnvValue(productionEnv, "ATLAS_AUTH_BASE_PATH", "/api/auth") ??
+        "/api/auth",
+      environments: all,
+    },
+    {
+      key: "ATLAS_DEPLOY_MODE",
+      value: "production",
+      environments: ["production"],
+    },
+    { key: "ATLAS_DEPLOY_MODE", value: "staging", environments: ["preview"] },
+    {
+      key: "ATLAS_DEPLOY_MODE",
+      value: "local",
+      environments: ["development"],
+    },
+  ];
+}
+
+const VERCEL_HOSTED_ENV_FILE_SPECS: VercelEnvFileSpec[] = [
+  { key: "ATLAS_PUBLIC_URL" },
+  { key: "ATLAS_DOCS_URL" },
+  { key: "ATLAS_SERVER_API_PROXY_TARGET" },
+  { key: "ATLAS_AUTH_JWT_AUDIENCES" },
+  { key: "ATLAS_EMAIL_PROVIDER", fallback: "resend" },
+  { key: "ATLAS_AUTH_INTERNAL_SECRET" },
+  { key: "ATLAS_EMAIL_RESEND_API_KEY" },
+  { key: "ATLAS_EMAIL_FROM" },
+  { key: "ATLAS_OPERATOR_ALLOWED_EMAILS" },
+  { key: "ATLAS_AUTH_API_KEY_INTROSPECTION_URL" },
+  { key: "ATLAS_AUTH_MEMBERSHIP_URL" },
+];

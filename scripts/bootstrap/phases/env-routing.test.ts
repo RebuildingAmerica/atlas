@@ -45,18 +45,86 @@ void describe("hosted routing prompts", () => {
     assert.match(message, /ATLAS_DOCS_URL/);
   });
 
-  void it("syncs operator access to production and preview apps", () => {
+  void it("syncs operator access separately to production and preview apps", () => {
     const vars = buildVercelEnvVars(
-      new Map([["ATLAS_OPERATOR_ALLOWED_EMAILS", "operator@example.org"]]),
+      new Map([["ATLAS_OPERATOR_ALLOWED_EMAILS", "prod-operator@example.org"]]),
+      new Map([
+        ["ATLAS_OPERATOR_ALLOWED_EMAILS", "staging-operator@example.org"],
+      ]),
     );
 
     assert.deepEqual(
-      vars.find((item) => item.key === "ATLAS_OPERATOR_ALLOWED_EMAILS"),
+      vars.find(
+        (item) =>
+          item.key === "ATLAS_OPERATOR_ALLOWED_EMAILS" &&
+          item.environments.includes("production"),
+      ),
       {
         key: "ATLAS_OPERATOR_ALLOWED_EMAILS",
-        value: "operator@example.org",
-        environments: ["production", "preview"],
+        value: "prod-operator@example.org",
+        environments: ["production"],
       },
+    );
+    assert.deepEqual(
+      vars.find(
+        (item) =>
+          item.key === "ATLAS_OPERATOR_ALLOWED_EMAILS" &&
+          item.environments.includes("preview"),
+      ),
+      {
+        key: "ATLAS_OPERATOR_ALLOWED_EMAILS",
+        value: "staging-operator@example.org",
+        environments: ["preview"],
+      },
+    );
+  });
+
+  void it("syncs staging routing values to Vercel Preview", () => {
+    const vars = buildVercelEnvVars(
+      new Map([
+        ["ATLAS_DEPLOY_MODE", "production"],
+        ["ATLAS_PUBLIC_URL", "https://atlas.example.org"],
+        ["ATLAS_SERVER_API_PROXY_TARGET", "https://api.atlas.example.org"],
+        ["ATLAS_AUTH_JWT_AUDIENCES", "https://atlas.example.org/mcp"],
+      ]),
+      new Map([
+        ["ATLAS_DEPLOY_MODE", "staging"],
+        ["ATLAS_PUBLIC_URL", "https://atlas-staging.example.org"],
+        [
+          "ATLAS_SERVER_API_PROXY_TARGET",
+          "https://atlas-api-staging.example.org",
+        ],
+        [
+          "ATLAS_AUTH_JWT_AUDIENCES",
+          "https://atlas-staging.example.org/mcp,https://atlas-api-staging.example.org",
+        ],
+      ]),
+    );
+
+    assert.deepEqual(
+      vars
+        .filter((item) => item.environments.includes("preview"))
+        .map((item) => [item.key, item.value])
+        .filter(([key]) =>
+          [
+            "ATLAS_DEPLOY_MODE",
+            "ATLAS_PUBLIC_URL",
+            "ATLAS_SERVER_API_PROXY_TARGET",
+            "ATLAS_AUTH_JWT_AUDIENCES",
+          ].includes(key),
+        ),
+      [
+        ["ATLAS_DEPLOY_MODE", "staging"],
+        ["ATLAS_PUBLIC_URL", "https://atlas-staging.example.org"],
+        [
+          "ATLAS_SERVER_API_PROXY_TARGET",
+          "https://atlas-api-staging.example.org",
+        ],
+        [
+          "ATLAS_AUTH_JWT_AUDIENCES",
+          "https://atlas-staging.example.org/mcp,https://atlas-api-staging.example.org",
+        ],
+      ],
     );
   });
 });

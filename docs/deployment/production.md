@@ -185,11 +185,12 @@ Mintlify’s Vercel subpath flow requires both repo config and dashboard setup:
 4. Set `ATLAS_DOCS_URL` in Vercel to the Mintlify deployment origin
    (`https://<subdomain>.mintlify.dev`)
 
-With `ATLAS_DOCS_URL` configured, `app/vercel.ts` rewrites `/docs` and `/docs/*`
-to Mintlify while keeping the public Atlas URL in place. With
-`ATLAS_SERVER_API_PROXY_TARGET` configured, `app/vercel.ts` rewrites `/mcp`
-directly to the API origin, while the app's server routes proxy public `/api/*`
-traffic and `/openapi.json` to the Atlas API deployment.
+With `app/vite.config.ts` configured, Nitro writes Vercel Build Output routes
+from `ATLAS_DOCS_URL` so `/docs` and `/docs/*` proxy to Mintlify while keeping
+the public Atlas URL in place. With `ATLAS_SERVER_API_PROXY_TARGET` configured,
+Nitro writes `/mcp` routes directly to the API origin, while the app's server
+routes proxy public `/api/*` traffic and `/openapi.json` to the Atlas API
+deployment.
 
 Set these auth values in Vercel as well:
 

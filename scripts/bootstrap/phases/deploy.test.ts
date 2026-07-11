@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   buildAtlasApiImageSpec,
+  buildAtlasApiCloudRunEnvVars,
   classifyDockerPreflight,
   formatDockerBuildFallbackPrompt,
   formatDockerDaemonRecovery,
@@ -146,6 +147,30 @@ void describe("deploy resilience", () => {
       CORS_ORIGINS: '["https://atlas.rebuildingus.org"]',
     });
     assert.doesNotMatch(content, /^ATLAS_PUBLIC_URL=/m);
+  });
+
+  void it("passes operator access through to the atlas-api Cloud Run container", () => {
+    const envVars = buildAtlasApiCloudRunEnvVars({
+      databaseUrl: "postgresql://atlas.example/db",
+      anthropicApiKey: "sk-ant-api03-example",
+      searchApiKey: "",
+      authInternalSecret: "internal-secret",
+      authApiKeyIntrospectionUrl:
+        "https://atlas.rebuildingus.org/api/auth/internal/api-key",
+      authMembershipUrl: "https://atlas.rebuildingus.org",
+      edgeOriginSecret: "edge-secret",
+      publicUrl: "https://atlas.rebuildingus.org",
+      authJwtAudiences: "https://atlas.rebuildingus.org/mcp",
+      operatorAllowedEmails: "operator@example.org",
+    });
+
+    assert.equal(envVars.ATLAS_OPERATOR_ALLOWED_EMAILS, "operator@example.org");
+    assert.equal(envVars.ATLAS_PUBLIC_URL, "https://atlas.rebuildingus.org");
+    assert.equal(
+      envVars.ATLAS_AUTH_JWT_AUDIENCES,
+      "https://atlas.rebuildingus.org/mcp",
+    );
+    assert.equal("ATLAS_EMAIL_RESEND_API_KEY" in envVars, false);
   });
 
   void it("detects gcloud reauthentication failures from Cloud Build output", () => {

@@ -205,6 +205,7 @@ export async function runEnvPhase(
 ): Promise<PhaseResult> {
   const followUpItems: string[] = [];
   const rootEnvPath = path.join(projectRoot, ".env");
+  const stagingEnvPath = path.join(projectRoot, ".env.staging");
   const prodEnvPath = path.join(projectRoot, ".env.production");
 
   const envFiles: EnvFileSpec[] = [
@@ -342,8 +343,9 @@ export async function runEnvPhase(
 
     const scope = getVercelScope(appDir);
     if (scope) {
-      const mergedEnv = getMergedEnv(rootEnvPath, prodEnvPath);
-      const varsToSync = buildVercelEnvVars(mergedEnv);
+      const productionEnv = getMergedEnv(rootEnvPath, prodEnvPath);
+      const stagingEnv = getMergedEnv(rootEnvPath, stagingEnvPath);
+      const varsToSync = buildVercelEnvVars(productionEnv, stagingEnv);
       const synced = await syncEnvVars(varsToSync, scope, {
         cwd: appDir,
         targetLabel: "production, preview, development",

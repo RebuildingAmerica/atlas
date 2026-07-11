@@ -15,9 +15,6 @@ export default defineConfig({
         "src/lib/generated/**",
         "src/routeTree.gen.ts",
         "tests/**",
-        // Vite-only entry that pulls in `@vercel/config`; importing it in
-        // vitest crashes outside the Vite runtime.
-        "vercel.ts",
       ],
       thresholds: {
         branches: 100,

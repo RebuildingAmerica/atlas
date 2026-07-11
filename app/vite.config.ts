@@ -2,12 +2,19 @@ import { defineConfig, loadEnv, type Rollup } from "vite";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
-import { nitro } from "nitro/vite";
+import { nitro, type NitroPluginConfig } from "nitro/vite";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { validateHostedAtlasEnv, type HostedAtlasEnv } from "./src/platform/config/hosted-env";
+import {
+  buildHostedRewriteDestination,
+  normalizeApiProxyOrigin,
+  normalizeDocsOrigin,
+  validateHostedAtlasEnv,
+  type HostedAtlasEnv,
+} from "./src/platform/config/hosted-env";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+type NitroRouteRules = NonNullable<NitroPluginConfig["routeRules"]>;
 
 export const PUBLIC_ATLAS_ENV_KEYS = [
   "ATLAS_DEPLOY_MODE",
@@ -17,6 +24,11 @@ export const PUBLIC_ATLAS_ENV_KEYS = [
   "ATLAS_SERVER_API_PROXY_TARGET",
 ] as const;
 
+const DOCS_SECURITY_HEADERS: Record<string, string> = {
+  "content-security-policy":
+    "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; connect-src 'self' https:; img-src 'self' data: https:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
+};
+
 /**
  * Validates public environment values that would break primary discovery when
  * missing from a production Atlas deploy.
@@ -25,6 +37,34 @@ export const PUBLIC_ATLAS_ENV_KEYS = [
  */
 function validateProductionPublicEnv(env: HostedAtlasEnv): void {
   validateHostedAtlasEnv(env);
+}
+
+function buildHostedProxyRouteRules(env: HostedAtlasEnv): NitroRouteRules {
+  const docsOrigin = normalizeDocsOrigin(env.ATLAS_DOCS_URL);
+  const apiOrigin = normalizeApiProxyOrigin(env);
+  const rules: NitroRouteRules = {};
+
+  if (docsOrigin) {
+    rules["/docs"] = {
+      headers: DOCS_SECURITY_HEADERS,
+      proxy: buildHostedRewriteDestination(docsOrigin, "/docs"),
+    };
+    rules["/docs/**"] = {
+      headers: DOCS_SECURITY_HEADERS,
+      proxy: buildHostedRewriteDestination(docsOrigin, "/docs/**"),
+    };
+  }
+
+  if (apiOrigin) {
+    rules["/mcp"] = {
+      proxy: buildHostedRewriteDestination(apiOrigin, "/mcp/"),
+    };
+    rules["/mcp/**"] = {
+      proxy: buildHostedRewriteDestination(apiOrigin, "/mcp/**"),
+    };
+  }
+
+  return rules;
 }
 
 const onwarn: Rollup.WarningHandlerWithDefault = (warning, defaultHandler) => {
@@ -57,6 +97,7 @@ export default defineConfig(({ mode }) => {
           },
           regions: ["cle1"],
         },
+        routeRules: buildHostedProxyRouteRules(env),
       }),
       react(),
       tailwindcss(),
