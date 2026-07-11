@@ -14,6 +14,7 @@ import {
   formatGcloudReauthenticationRecovery,
   isGcloudReauthenticationFailure,
   parseCloudBuildSourceAccessFailure,
+  resolveDockerBuildPlan,
 } from "./deploy.js";
 
 void describe("deploy resilience", () => {
@@ -50,10 +51,25 @@ void describe("deploy resilience", () => {
     const repoRoot = "/repo/atlas";
     const imageTag =
       "us-central1-docker.pkg.dev/rap-atlas-prod/atlas-images/atlas-api:initial";
+    const plan = resolveDockerBuildPlan({
+      projectRoot: repoRoot,
+      serviceRoot: "api",
+      dockerfileContent: [
+        "COPY libs/shared libs/shared",
+        "COPY libs/discovery-engine libs/discovery-engine",
+        "COPY api/atlas api/atlas",
+      ].join("\n"),
+    });
+
+    assert.deepEqual(plan, {
+      contextDir: repoRoot,
+      dockerfilePath: "/repo/atlas/api/Dockerfile",
+      cloudBuildDockerfilePath: "api/Dockerfile",
+    });
 
     const dockerCommand = formatDockerBuildCommand(
-      repoRoot,
-      "api/Dockerfile",
+      plan.contextDir,
+      plan.dockerfilePath,
       imageTag,
     );
     assert.match(dockerCommand, /docker build/);
@@ -61,7 +77,7 @@ void describe("deploy resilience", () => {
     assert.match(dockerCommand, /"\/repo\/atlas"$/);
 
     const cloudBuildConfig = formatCloudBuildDockerConfig(
-      "api/Dockerfile",
+      plan.cloudBuildDockerfilePath,
       imageTag,
     );
     assert.match(cloudBuildConfig, /"gcr.io\/cloud-builders\/docker"/);
@@ -75,6 +91,24 @@ void describe("deploy resilience", () => {
     assert.match(cloudBuildCommand, /gcloud builds submit/);
     assert.match(cloudBuildCommand, /--config="\/tmp\/cloudbuild\.json"/);
     assert.match(cloudBuildCommand, /"\/repo\/atlas"/);
+  });
+
+  void it("keeps Docker context scoped when the Dockerfile only copies service-local paths", () => {
+    const repoRoot = "/repo/atlas";
+    const plan = resolveDockerBuildPlan({
+      projectRoot: repoRoot,
+      serviceRoot: "api",
+      dockerfileContent: [
+        "COPY pyproject.toml uv.lock README.md ./",
+        "COPY atlas atlas",
+      ].join("\n"),
+    });
+
+    assert.deepEqual(plan, {
+      contextDir: "/repo/atlas/api",
+      dockerfilePath: "/repo/atlas/api/Dockerfile",
+      cloudBuildDockerfilePath: "Dockerfile",
+    });
   });
 
   void it("detects gcloud reauthentication failures from Cloud Build output", () => {

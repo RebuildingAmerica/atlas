@@ -1,4 +1,4 @@
-import { existsSync, writeFileSync, unlinkSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync, unlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { setTimeout } from "node:timers/promises";
@@ -54,6 +54,19 @@ interface DeployConfig {
   authJwtAudiences: string;
   allowedEmails: string;
   resendApiKey: string;
+}
+
+export interface DockerBuildPlanOptions {
+  projectRoot: string;
+  serviceRoot: string;
+  dockerfileName?: string;
+  dockerfileContent?: string;
+}
+
+export interface DockerBuildPlan {
+  contextDir: string;
+  dockerfilePath: string;
+  cloudBuildDockerfilePath: string;
 }
 
 export async function runDeployPhase(
@@ -130,11 +143,15 @@ export async function runDeployPhase(
 
   // ── Build & Push API image ────────────────────────────────────────────────
   const apiImage = `${config.imageBase}/atlas-api:initial`;
+  const apiBuildPlan = resolveDockerBuildPlan({
+    projectRoot,
+    serviceRoot: "api",
+  });
   const apiBuilt = await buildAndPushImage(
-    projectRoot,
     "atlas-api",
-    projectRoot,
-    "api/Dockerfile",
+    apiBuildPlan.contextDir,
+    apiBuildPlan.dockerfilePath,
+    apiBuildPlan.cloudBuildDockerfilePath,
     apiImage,
     buildMode,
     followUpItems,
@@ -280,6 +297,7 @@ async function buildAndPushImage(
   serviceName: string,
   contextDir: string,
   dockerfilePath: string,
+  cloudBuildDockerfilePath: string,
   imageTag: string,
   buildMode: BuildMode,
   followUpItems: string[],
@@ -288,7 +306,7 @@ async function buildAndPushImage(
     return await buildAndPushImageWithCloudBuild(
       serviceName,
       contextDir,
-      dockerfilePath,
+      cloudBuildDockerfilePath,
       imageTag,
       followUpItems,
     );
@@ -331,7 +349,7 @@ async function buildAndPushImage(
 async function buildAndPushImageWithCloudBuild(
   serviceName: string,
   contextDir: string,
-  dockerfilePath: string,
+  dockerfilePathForContext: string,
   imageTag: string,
   followUpItems: string[],
   recoveryOptions: CloudBuildRecoveryOptions = DEFAULT_CLOUD_BUILD_RECOVERY_OPTIONS,
@@ -345,10 +363,7 @@ async function buildAndPushImageWithCloudBuild(
   );
   writeFileSync(
     cloudBuildConfigPath,
-    formatCloudBuildDockerConfig(
-      formatCloudBuildDockerfilePath(contextDir, dockerfilePath),
-      imageTag,
-    ),
+    formatCloudBuildDockerConfig(dockerfilePathForContext, imageTag),
     "utf8",
   );
 
@@ -372,7 +387,7 @@ async function buildAndPushImageWithCloudBuild(
       return await buildAndPushImageWithCloudBuild(
         serviceName,
         contextDir,
-        dockerfilePath,
+        dockerfilePathForContext,
         imageTag,
         followUpItems,
         {
@@ -391,7 +406,7 @@ async function buildAndPushImageWithCloudBuild(
       return await buildAndPushImageWithCloudBuild(
         serviceName,
         contextDir,
-        dockerfilePath,
+        dockerfilePathForContext,
         imageTag,
         followUpItems,
         {
@@ -414,6 +429,77 @@ async function buildAndPushImageWithCloudBuild(
 
   s.stop(`${serviceName} image built and pushed with Google Cloud Build`);
   return true;
+}
+
+export function resolveDockerBuildPlan(
+  options: DockerBuildPlanOptions,
+): DockerBuildPlan {
+  const dockerfileName = options.dockerfileName ?? "Dockerfile";
+  const serviceDir = path.join(options.projectRoot, options.serviceRoot);
+  const dockerfilePath = path.join(serviceDir, dockerfileName);
+  const dockerfileContent =
+    options.dockerfileContent ?? readFileSync(dockerfilePath, "utf8");
+  const copySources = parseDockerCopySources(dockerfileContent);
+  const contextDir = copySources.some((source) =>
+    copySourceNeedsProjectRoot(source, options.projectRoot, serviceDir),
+  )
+    ? options.projectRoot
+    : serviceDir;
+
+  return {
+    contextDir,
+    dockerfilePath,
+    cloudBuildDockerfilePath: path.relative(contextDir, dockerfilePath),
+  };
+}
+
+function parseDockerCopySources(dockerfileContent: string): string[] {
+  return dockerfileContent
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => /^(COPY|ADD)\s/i.test(line))
+    .filter((line) => !/\s--from(?:=|\s)/i.test(line))
+    .flatMap((line) => parseDockerCopyInstructionSources(line));
+}
+
+function parseDockerCopyInstructionSources(line: string): string[] {
+  const instruction = /^(?:COPY|ADD)\s+/i.exec(line);
+  if (!instruction) return [];
+  const args = line.slice(instruction[0].length).trim();
+  const flaglessArgs = args.replace(/^(?:--[^\s]+\s+)*/, "");
+  if (flaglessArgs.startsWith("[")) {
+    const parsed = JSON.parse(flaglessArgs) as unknown;
+    if (
+      !Array.isArray(parsed) ||
+      !parsed.every((item): item is string => typeof item === "string")
+    ) {
+      return [];
+    }
+    return parsed.slice(0, -1);
+  }
+
+  const parts = flaglessArgs.split(/\s+/).filter(Boolean);
+  return parts.slice(0, -1);
+}
+
+function copySourceNeedsProjectRoot(
+  source: string,
+  projectRoot: string,
+  serviceDir: string,
+): boolean {
+  if (/^[a-z][a-z0-9+.-]*:\/\//i.test(source)) {
+    return false;
+  }
+
+  const serviceRootName = path.basename(serviceDir);
+  const firstSegment = source.split(/[\\/]/)[0];
+  if (firstSegment === serviceRootName) {
+    return true;
+  }
+
+  const projectSource = path.join(projectRoot, source);
+  const serviceSource = path.join(serviceDir, source);
+  return existsSync(projectSource) && !existsSync(serviceSource);
 }
 
 export function formatDockerBuildCommand(
@@ -451,15 +537,6 @@ export function formatCloudBuildDockerConfig(
     null,
     2,
   );
-}
-
-function formatCloudBuildDockerfilePath(
-  contextDir: string,
-  dockerfilePath: string,
-): string {
-  return path.isAbsolute(dockerfilePath)
-    ? path.relative(contextDir, dockerfilePath)
-    : dockerfilePath;
 }
 
 export function parseCloudBuildSourceAccessFailure(
