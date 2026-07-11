@@ -325,3 +325,45 @@ async def test_export_brief_missing_brief_reports_not_found(test_db: object) -> 
     result = await export_research_brief(ctx, brief_id="missing_brief", db=test_db)
 
     assert result == {"status": "not_found", "message": "Brief not found."}
+
+
+@pytest.mark.asyncio
+async def test_export_brief_accept_returns_source_backed_payload(
+    test_db: object,
+    sample_entry: str,
+    sample_source: str,
+    sample_discovery_run: str,
+) -> None:
+    brief_id = await _create_private_brief(
+        test_db,
+        sample_entry=sample_entry,
+        sample_source=sample_source,
+        sample_discovery_run=sample_discovery_run,
+    )
+    ctx = _accepting_context(
+        SimpleNamespace(confirm_export=True, format="json", source_linkage_ack=True),
+    )
+
+    result = await export_research_brief(ctx, brief_id=brief_id, db=test_db)
+
+    assert result["status"] == "exported"
+    assert result["format"] == "json"
+    assert result["brief"]["id"] == brief_id
+    assert result["brief"]["linked_entry_ids"] == [sample_entry]
+    assert result["brief"]["linked_source_ids"] == [sample_source]
+    assert result["brief"]["linked_discovery_run_ids"] == [sample_discovery_run]
+    assert result["brief"]["confidence_summary"]["state"] == "partial"
+    assert result["brief"]["gaps"] == [
+        {"label": "County coverage", "detail": "Review county-level sources."}
+    ]
+    assert result["provenance"] == {
+        "source_count": 1,
+        "entry_count": 1,
+        "discovery_run_count": 1,
+        "confidence_state": "partial",
+        "review_status": "operator_review_required",
+    }
+    usage_events = await OrgUsageEventCRUD.list_by_org(test_db, org_id="org_1", limit=10, offset=0)
+    assert [
+        (event.event_type, event.resource_type, event.resource_id) for event in usage_events
+    ] == [("brief_exported", "brief", brief_id)]

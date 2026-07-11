@@ -9,6 +9,7 @@ from types import SimpleNamespace
 import pytest
 from fastapi import HTTPException
 
+from atlas.domains.discovery import api_org
 from atlas.domains.discovery.api_org import _run_to_org_response, _verify_org_access
 
 from tests.domains.discovery.api_org_support import ORG_ID, _make_actor
@@ -29,6 +30,34 @@ class TestVerifyOrgAccess:
             _verify_org_access(actor, "org_456")
         assert exc_info.value.status_code == HTTPStatus.FORBIDDEN
         assert "mismatch" in exc_info.value.detail
+
+
+@pytest.mark.asyncio
+async def test_get_db_yields_and_closes_connection(monkeypatch: pytest.MonkeyPatch) -> None:
+    class FakeConnection:
+        def __init__(self) -> None:
+            self.closed = False
+
+        async def close(self) -> None:
+            self.closed = True
+
+    conn = FakeConnection()
+
+    async def fake_get_db_connection(database_url: str, *, backend: str) -> FakeConnection:
+        assert database_url == "sqlite:///atlas.db"
+        assert backend == "sqlite"
+        return conn
+
+    monkeypatch.setattr(api_org, "get_db_connection", fake_get_db_connection)
+    dependency = api_org.get_db(
+        SimpleNamespace(database_url="sqlite:///atlas.db", database_backend="sqlite")
+    )
+
+    yielded = await anext(dependency)
+    assert yielded is conn
+    with pytest.raises(StopAsyncIteration):
+        await anext(dependency)
+    assert conn.closed is True
 
 
 class TestRunToOrgResponse:

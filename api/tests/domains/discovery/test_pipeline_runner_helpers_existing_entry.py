@@ -12,6 +12,7 @@ from atlas.domains.discovery.pipeline.runner import (
     DiscoveryPipelineCredentials,
     DiscoveryPipelineJob,
 )
+from atlas.domains.discovery.pipeline.runner_storage_persistence import _dedup_suspect_key
 from atlas.domains.discovery.pipeline.source_fetcher import FetchedSource
 from atlas.models import DiscoveryRunCRUD, EntryCRUD, SourceCRUD
 
@@ -23,6 +24,15 @@ from tests.domains.discovery.pipeline_runner_support import (
 
 class TestRunnerHelpersExistingEntry:
     """Runner helper tests for existing-entry paths."""
+
+    def test_dedup_suspect_key_normalizes_actor_name(self) -> None:
+        entry = SharedDeduplicatedEntry(
+            name="  Prairie Workers Cooperative  ",
+            entry_type="organization",
+            city="Kansas City",
+        )
+
+        assert _dedup_suspect_key(entry) == ("prairie workers cooperative", "Kansas City")
 
     @pytest.mark.asyncio
     async def test_run_discovery_pipeline_updates_existing_entry(

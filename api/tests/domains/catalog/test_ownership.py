@@ -123,3 +123,20 @@ async def test_delete_ownership_returns_false_for_missing(db: aiosqlite.Connecti
     """delete_ownership should return False when the record does not exist."""
     deleted = await OwnershipCRUD.delete_ownership(db, "nonexistent", "entry")
     assert deleted is False
+
+
+async def test_get_directory_domain_by_domain_returns_configured_domain(
+    db: aiosqlite.Connection,
+) -> None:
+    configured = await OwnershipCRUD.upsert_directory_domain(
+        db,
+        org_id="org_1",
+        domain="guide.example.org",
+    )
+
+    found = await OwnershipCRUD.get_directory_domain_by_domain(db, "guide.example.org")
+
+    assert found is not None
+    assert found.org_id == configured.org_id
+    assert found.domain == configured.domain
+    assert found.verification_token == configured.verification_token

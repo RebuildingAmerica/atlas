@@ -18,6 +18,7 @@ from atlas.platform.mcp.elicitation import (
 from atlas.platform.mcp.server import (
     build_mcp,
 )
+from atlas.platform.mcp.server_elicitation import _origin_and_host
 from tests.support.mcp_server import (
     FakeUrlContext,
     _url_elicitation_meta,
@@ -25,6 +26,15 @@ from tests.support.mcp_server import (
 
 if TYPE_CHECKING:
     from atlas.config import Settings
+
+
+def test_origin_and_host_rejects_non_http_urls() -> None:
+    assert _origin_and_host("https://atlas.example.com/api/auth") == (
+        "https://atlas.example.com",
+        "atlas.example.com",
+    )
+    assert _origin_and_host("mailto:operator@example.org") == (None, None)
+    assert _origin_and_host("https:///missing-host") == (None, None)
 
 
 @pytest.mark.asyncio

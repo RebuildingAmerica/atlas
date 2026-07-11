@@ -13,6 +13,7 @@ from atlas.domains.discovery.models import DiscoveryJobCRUD, DiscoveryJobInput
 from atlas.models import DiscoveryRunCRUD
 from atlas.platform.mcp import tasks as tasks_module
 from atlas.platform.mcp.server import build_mcp
+from atlas.platform.mcp.tasks_helpers import _resolve_task
 from tests.support.mcp_tasks import (
     ARBITRARY_TTL_MS,
     _cancel_task_request,
@@ -156,6 +157,25 @@ class TestInstallTasksExtensionTasks:
 
         assert result.root.status == "working"
         assert result.root.result is None
+
+    @pytest.mark.asyncio
+    async def test_resolve_task_falls_back_to_inline_run(self, test_db: object) -> None:
+        run_id = await DiscoveryRunCRUD.create(
+            test_db, location_query="KC", state="MO", issue_areas=["x"]
+        )
+
+        task = await _resolve_task(test_db, run_id)
+
+        assert task.task_id == run_id
+        assert task.status == "working"
+
+    @pytest.mark.asyncio
+    async def test_resolve_task_rejects_unknown_id(self, test_db: object) -> None:
+        with pytest.raises(McpError) as exc_info:
+            await _resolve_task(test_db, "missing-task")
+
+        assert exc_info.value.error.code == types.INVALID_PARAMS
+        assert exc_info.value.error.message == "Unknown task: missing-task"
 
     @pytest.mark.asyncio
     async def test_get_task_failed_inline_run_returns_completed_tool_error(

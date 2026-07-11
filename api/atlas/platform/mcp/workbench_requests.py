@@ -49,17 +49,7 @@ async def _watch_request_from_context(
             "status": "unsupported",
             "message": "This MCP client cannot confirm workspace watches.",
         }
-    if ctx is None:
-        await log_elicitation_event(
-            interaction="workbench_watch_resource",
-            mode="form",
-            action="unavailable",
-        )
-        return None, {
-            "status": "unavailable",
-            "message": "Atlas could not confirm this workspace action.",
-        }
-
+    assert ctx is not None
     user_id, org_id = _actor_claims_from_context(ctx)
     if user_id is None:
         return None, {
@@ -111,17 +101,7 @@ async def _coverage_target_request_from_context(  # noqa: PLR0913
             "status": "unsupported",
             "message": "This MCP client cannot confirm coverage-target writes.",
         }
-    if ctx is None:
-        await log_elicitation_event(
-            interaction="workbench_coverage_target",
-            mode="form",
-            action="unavailable",
-        )
-        return None, {
-            "status": "unavailable",
-            "message": "Atlas could not confirm this workspace action.",
-        }
-
+    assert ctx is not None
     user_id, org_id = _actor_claims_from_context(ctx)
     if user_id is None:
         return None, {
@@ -178,17 +158,7 @@ async def _research_brief_request_from_context(  # noqa: PLR0913
             "status": "unsupported",
             "message": "This MCP client cannot confirm brief writes.",
         }
-    if ctx is None:
-        await log_elicitation_event(
-            interaction="workbench_research_brief",
-            mode="form",
-            action="unavailable",
-        )
-        return None, {
-            "status": "unavailable",
-            "message": "Atlas could not confirm this workspace action.",
-        }
-
+    assert ctx is not None
     user_id, org_id = _actor_claims_from_context(ctx)
     if user_id is None:
         return None, {
@@ -232,17 +202,7 @@ async def _coverage_report_export_request_from_context(
             "status": "unsupported",
             "message": "This MCP client cannot confirm coverage report exports.",
         }
-    if ctx is None:
-        await log_elicitation_event(
-            interaction="workbench_coverage_report_export",
-            mode="form",
-            action="unavailable",
-        )
-        return None, {
-            "status": "unavailable",
-            "message": "Atlas could not confirm this workspace action.",
-        }
-
+    assert ctx is not None
     user_id, org_id = _actor_claims_from_context(ctx)
     if user_id is None:
         return None, {
@@ -283,17 +243,7 @@ async def _scout_artifacts_sync_request_from_context(
             "status": "unsupported",
             "message": "This MCP client cannot confirm Scout artifact syncs.",
         }
-    if ctx is None:
-        await log_elicitation_event(
-            interaction="workbench_scout_artifact_sync",
-            mode="form",
-            action="unavailable",
-        )
-        return None, {
-            "status": "unavailable",
-            "message": "Atlas could not confirm this workspace action.",
-        }
-
+    assert ctx is not None
     user_id, org_id = _actor_claims_from_context(ctx)
     if user_id is None:
         return None, {
@@ -335,17 +285,7 @@ async def _research_brief_export_request_from_context(
             "status": "unsupported",
             "message": "This MCP client cannot confirm brief exports.",
         }
-    if ctx is None:
-        await log_elicitation_event(
-            interaction="workbench_brief_export",
-            mode="form",
-            action="unavailable",
-        )
-        return None, {
-            "status": "unavailable",
-            "message": "Atlas could not confirm this workspace action.",
-        }
-
+    assert ctx is not None
     user_id, org_id = _actor_claims_from_context(ctx)
     if user_id is None:
         return None, {

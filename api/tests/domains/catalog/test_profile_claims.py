@@ -103,6 +103,36 @@ class TestProfileClaimCRUD:
         assert listed[with_metadata.id].expires_at == "2027-07-04T00:00:00+00:00"
 
     @pytest.mark.asyncio
+    async def test_mark_proof_verified_returns_none_for_missing_proof(
+        self, test_db: object
+    ) -> None:
+        assert await ProfileClaimCRUD.mark_proof_verified(test_db, "missing-proof") is None
+
+    @pytest.mark.asyncio
+    async def test_mark_proof_verified_returns_none_when_updated_row_disappears(self) -> None:
+        class Cursor:
+            rowcount = 1
+
+            async def fetchone(self) -> None:
+                return None
+
+        class FakeConnection:
+            def __init__(self) -> None:
+                self.calls = 0
+
+            async def execute(self, *_args: object, **_kwargs: object) -> Cursor:
+                self.calls += 1
+                return Cursor()
+
+            async def commit(self) -> None:
+                return None
+
+        conn = FakeConnection()
+
+        assert await ProfileClaimCRUD.mark_proof_verified(conn, "proof-race") is None
+        assert conn.calls == 2
+
+    @pytest.mark.asyncio
     async def test_mark_verified_can_build_default_email_domain_proof_summary(
         self, test_db: object, claimable_org: str
     ) -> None:

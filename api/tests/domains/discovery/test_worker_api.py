@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import tempfile
+from unittest.mock import AsyncMock
 
 import pytest
 import pytest_asyncio
@@ -10,6 +11,7 @@ from fastapi import HTTPException
 
 from atlas.domains.access.principals import AuthenticatedActor
 from atlas.domains.discovery import api as discovery_api
+from atlas.domains.discovery import api_worker_routes as worker_routes
 from atlas.domains.discovery.models import DiscoveryJobCRUD, DiscoveryJobInput
 from atlas.domains.discovery.schemas import (
     DiscoveryWorkerClaimRequest,
@@ -287,6 +289,56 @@ async def test_fail_discovery_job_dead_letters_non_retryable_errors(
     assert response.claimed_by is None
     assert response.claimed_until is None
     assert response.completed_at is not None
+
+
+@pytest.mark.asyncio
+async def test_worker_routes_report_jobs_deleted_after_write(
+    test_db: object,
+    actor: AuthenticatedActor,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    job = type("Job", (), {"id": "job-1"})()
+    monkeypatch.setattr(worker_routes, "_require_worker_job", AsyncMock(return_value=job))
+    monkeypatch.setattr(
+        worker_routes.DiscoveryJobCRUD, "update_progress", AsyncMock(return_value=None)
+    )
+    monkeypatch.setattr(worker_routes.DiscoveryJobCRUD, "complete", AsyncMock(return_value=None))
+    monkeypatch.setattr(worker_routes.DiscoveryJobCRUD, "fail", AsyncMock(return_value=None))
+    monkeypatch.setattr(worker_routes.DiscoveryJobCRUD, "get_by_id", AsyncMock(return_value=None))
+
+    with pytest.raises(HTTPException) as heartbeat_error:
+        await worker_routes.heartbeat_discovery_job(
+            "job-1",
+            DiscoveryWorkerHeartbeatRequest(worker_id="worker-123", progress={}),
+            response=None,
+            actor=actor,
+            db=test_db,
+        )
+    assert heartbeat_error.value.status_code == 404
+
+    with pytest.raises(HTTPException) as complete_error:
+        await worker_routes.complete_discovery_job(
+            "job-1",
+            DiscoveryWorkerCompleteRequest(worker_id="worker-123"),
+            response=None,
+            actor=actor,
+            db=test_db,
+        )
+    assert complete_error.value.status_code == 404
+
+    with pytest.raises(HTTPException) as fail_error:
+        await worker_routes.fail_discovery_job(
+            "job-1",
+            DiscoveryWorkerFailRequest(
+                worker_id="worker-123",
+                error_message="lost job",
+                retryable=False,
+            ),
+            response=None,
+            actor=actor,
+            db=test_db,
+        )
+    assert fail_error.value.status_code == 404
 
 
 @pytest.mark.asyncio

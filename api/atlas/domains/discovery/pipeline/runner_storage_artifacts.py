@@ -35,19 +35,19 @@ class DiscoveryArtifactJob(Protocol):
     """Minimal run input shape needed to build persisted discovery artifacts."""
 
     @property
-    def run_id(self) -> str: ...
+    def run_id(self) -> str: ...  # pragma: no cover
 
     @property
-    def location_query(self) -> str: ...
+    def location_query(self) -> str: ...  # pragma: no cover
 
     @property
-    def state(self) -> str: ...
+    def state(self) -> str: ...  # pragma: no cover
 
     @property
-    def issue_areas(self) -> list[str]: ...
+    def issue_areas(self) -> list[str]: ...  # pragma: no cover
 
     @property
-    def research_goal(self) -> str: ...
+    def research_goal(self) -> str: ...  # pragma: no cover
 
 
 __all__ = [

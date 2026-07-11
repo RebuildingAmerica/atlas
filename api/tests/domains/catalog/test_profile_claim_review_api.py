@@ -5,6 +5,7 @@ from __future__ import annotations
 import pytest
 from fastapi import status
 
+from atlas.domains.catalog.api import profile_claim_review
 from atlas.domains.catalog.api.profile_claim_atproto_helpers import link_entry_atproto_identity
 from atlas.domains.catalog.models.atproto_identities import AtprotoIdentityCRUD
 from atlas.domains.catalog.models.profile_claims import ProfileClaimCRUD
@@ -58,6 +59,52 @@ async def test_review_list_excludes_email_token_claims(
     body = response.json()
     assert body["total"] == 0
     assert body["items"] == []
+
+
+@pytest.mark.asyncio
+async def test_review_list_skips_claims_whose_profile_disappeared(
+    test_client: object,
+    test_db: object,
+    claimable_person: str,
+) -> None:
+    slug = (await EntryCRUD.get_by_id(test_db, claimable_person)).slug
+    claim_response = await test_client.post(
+        f"/api/profiles/{slug}/claim",
+        json={"evidence": "My staff page identifies me."},
+    )
+    assert claim_response.status_code == status.HTTP_201_CREATED
+    claim = await ProfileClaimCRUD.get_by_id(test_db, claim_response.json()["id"])
+    assert claim is not None
+
+    async def list_missing_entry_claims(*_args: object, **_kwargs: object) -> list[object]:
+        return [claim]
+
+    async def count_missing_entry_claims(*_args: object, **_kwargs: object) -> int:
+        return 1
+
+    async def missing_entry(*_args: object, **_kwargs: object) -> None:
+        return None
+
+    monkeypatch = pytest.MonkeyPatch()
+    monkeypatch.setattr(
+        profile_claim_review,
+        "list_pending_profile_claim_reviews",
+        list_missing_entry_claims,
+    )
+    monkeypatch.setattr(
+        profile_claim_review,
+        "count_pending_profile_claim_reviews",
+        count_missing_entry_claims,
+    )
+    monkeypatch.setattr(profile_claim_review.EntryCRUD, "get_by_id", missing_entry)
+
+    try:
+        response = await test_client.get("/api/profiles/claims/review")
+    finally:
+        monkeypatch.undo()
+
+    assert response.status_code == status.HTTP_200_OK, response.text
+    assert response.json() == {"items": [], "total": 1}
 
 
 @pytest.mark.asyncio
@@ -172,6 +219,41 @@ async def test_reviewer_rejection_preserves_another_pending_claim(
 
 
 @pytest.mark.asyncio
+async def test_reviewer_rejection_without_note_uses_default_reason(
+    test_client: object,
+    test_db: object,
+    claimable_person: str,
+) -> None:
+    slug = (await EntryCRUD.get_by_id(test_db, claimable_person)).slug
+    claim_response = await test_client.post(
+        f"/api/profiles/{slug}/claim",
+        json={"evidence": "This is my profile."},
+    )
+    claim_id = claim_response.json()["id"]
+
+    response = await test_client.post(
+        f"/api/profiles/claims/review/{claim_id}/reject",
+        json={},
+    )
+
+    assert response.status_code == status.HTTP_200_OK, response.text
+    assert response.json()["rejected_reason"] == "Reviewer could not confirm this representative."
+
+
+@pytest.mark.asyncio
+async def test_reviewer_decision_rejects_missing_claim(
+    test_client: object,
+) -> None:
+    response = await test_client.post(
+        "/api/profiles/claims/review/missing-claim/reject",
+        json={"note": "No claim."},
+    )
+
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+    assert response.json()["detail"] == "Claim not found"
+
+
+@pytest.mark.asyncio
 async def test_reviewer_decision_rejects_non_pending_claim(
     test_client: object,
     test_db: object,
@@ -194,6 +276,128 @@ async def test_reviewer_decision_rejects_non_pending_claim(
     )
 
     assert response.status_code == status.HTTP_409_CONFLICT
+
+
+@pytest.mark.asyncio
+async def test_reviewer_decision_rejects_claim_without_profile(
+    test_client: object,
+    test_db: object,
+    claimable_person: str,
+) -> None:
+    slug = (await EntryCRUD.get_by_id(test_db, claimable_person)).slug
+    claim_response = await test_client.post(
+        f"/api/profiles/{slug}/claim",
+        json={"evidence": "This is my profile."},
+    )
+    claim_id = claim_response.json()["id"]
+
+    async def missing_entry(*_args: object, **_kwargs: object) -> None:
+        return None
+
+    monkeypatch = pytest.MonkeyPatch()
+    monkeypatch.setattr(profile_claim_review.EntryCRUD, "get_by_id", missing_entry)
+    try:
+        response = await test_client.post(
+            f"/api/profiles/claims/review/{claim_id}/approve",
+            json={"note": "Profile disappeared."},
+        )
+    finally:
+        monkeypatch.undo()
+
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+    assert response.json()["detail"] == "Profile not found"
+
+
+@pytest.mark.asyncio
+async def test_reviewer_approval_reports_profile_deleted_after_verification(
+    test_client: object,
+    test_db: object,
+    claimable_person: str,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    entry = await EntryCRUD.get_by_id(test_db, claimable_person)
+    assert entry is not None
+    claim_response = await test_client.post(
+        f"/api/profiles/{entry.slug}/claim",
+        json={"evidence": "This is my profile."},
+    )
+    claim_id = claim_response.json()["id"]
+    calls = 0
+
+    async def entry_then_missing(*_args: object, **_kwargs: object) -> object | None:
+        nonlocal calls
+        calls += 1
+        return entry if calls == 1 else None
+
+    monkeypatch.setattr(profile_claim_review.EntryCRUD, "get_by_id", entry_then_missing)
+
+    response = await test_client.post(
+        f"/api/profiles/claims/review/{claim_id}/approve",
+        json={"note": "Verified."},
+    )
+
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+    assert response.json()["detail"] == "Profile not found"
+
+
+@pytest.mark.asyncio
+async def test_reviewer_rejection_reports_profile_deleted_after_decision(
+    test_client: object,
+    test_db: object,
+    claimable_person: str,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    entry = await EntryCRUD.get_by_id(test_db, claimable_person)
+    assert entry is not None
+    claim_response = await test_client.post(
+        f"/api/profiles/{entry.slug}/claim",
+        json={"evidence": "This is my profile."},
+    )
+    claim_id = claim_response.json()["id"]
+    calls = 0
+
+    async def entry_then_missing(*_args: object, **_kwargs: object) -> object | None:
+        nonlocal calls
+        calls += 1
+        return entry if calls == 1 else None
+
+    monkeypatch.setattr(profile_claim_review.EntryCRUD, "get_by_id", entry_then_missing)
+
+    response = await test_client.post(
+        f"/api/profiles/claims/review/{claim_id}/reject",
+        json={"note": "Rejected."},
+    )
+
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+    assert response.json()["detail"] == "Profile not found"
+
+
+@pytest.mark.asyncio
+async def test_reviewer_rejection_reports_vanished_claim(
+    test_client: object,
+    test_db: object,
+    claimable_person: str,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    slug = (await EntryCRUD.get_by_id(test_db, claimable_person)).slug
+    claim_response = await test_client.post(
+        f"/api/profiles/{slug}/claim",
+        json={"evidence": "This is my profile."},
+    )
+    claim_id = claim_response.json()["id"]
+
+    async def missing_rejected_claim(*_args: object, **_kwargs: object) -> None:
+        return None
+
+    monkeypatch.setattr(ProfileClaimCRUD, "mark_rejected", missing_rejected_claim)
+
+    response = await test_client.post(
+        f"/api/profiles/claims/review/{claim_id}/reject",
+        json={"note": "Evidence does not identify the requester."},
+    )
+
+    assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+    assert response.json()["detail"] == "Failed to reject claim."
 
 
 @pytest.mark.asyncio

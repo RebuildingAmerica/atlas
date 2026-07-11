@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from http import HTTPStatus
 
 import pytest
@@ -195,6 +196,22 @@ async def test_public_firehose_snapshot_filters_public_safe_signals(
     assert body["signals"][0]["visibility"] == "public"
     assert body["signals"][0]["review_state"] == "not_required"
     assert response.headers["cache-control"] == "public, max-age=30, s-maxage=30"
+
+
+async def test_public_firehose_adapter_rejects_signals_without_public_evidence(
+    test_db: object,
+) -> None:
+    signal_id = await _stored_public_signal(test_db)
+    signal = await FirehoseSignalCRUD.get_by_id(test_db, signal_id)
+    assert signal is not None
+
+    assert public_firehose_module._stored_public_signal(signal) is not None  # noqa: SLF001
+
+    private_signal = replace(signal, destinations=[])
+    assert public_firehose_module._stored_public_signal(private_signal) is None  # noqa: SLF001
+
+    no_evidence_signal = replace(signal, evidence=[])
+    assert public_firehose_module._stored_public_signal(no_evidence_signal) is None  # noqa: SLF001
 
 
 async def test_public_firehose_events_stream_ready_signal_and_heartbeat(

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import sys
 from collections import deque
 from types import SimpleNamespace
 from typing import TYPE_CHECKING
@@ -10,6 +11,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from atlas.platform.http import anonymous_rate_limit_support
 from atlas.platform.http.anonymous_rate_limit import (
     AnonymousRateLimitMiddleware,
     _ApiKeyCacheEntry,
@@ -109,6 +111,17 @@ def test_sliding_window_limiter_prunes_overflow_buckets() -> None:
 
     assert len(limiter._events) == 2  # noqa: SLF001, PLR2004
     assert ("client-a", "minute") not in limiter._events  # noqa: SLF001
+
+
+def test_max_tracked_rate_limit_buckets_falls_back_without_public_module(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delitem(sys.modules, "atlas.platform.http.anonymous_rate_limit", raising=False)
+
+    assert (
+        anonymous_rate_limit_support._max_tracked_rate_limit_buckets()  # noqa: SLF001
+        == anonymous_rate_limit_support._MAX_TRACKED_RATE_LIMIT_BUCKETS  # noqa: SLF001
+    )
 
 
 @pytest.mark.parametrize(

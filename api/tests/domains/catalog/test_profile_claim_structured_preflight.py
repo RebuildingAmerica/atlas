@@ -111,3 +111,25 @@ async def test_unknown_active_workspace_membership_does_not_create_profile_claim
     assert response.status_code == status.HTTP_403_FORBIDDEN
     assert response.json()["detail"] == "Active workspace membership was not found."
     await _assert_no_claim_side_effect(test_db, claimable_org)
+
+
+@pytest.mark.asyncio
+async def test_unknown_atproto_identity_does_not_create_profile_claim(
+    test_client: object,
+    test_db: object,
+    claimable_org: str,
+) -> None:
+    slug = (await EntryCRUD.get_by_id(test_db, claimable_org)).slug
+
+    response = await test_client.post(
+        f"/api/profiles/{slug}/claim",
+        json={
+            "atproto_identity_id": "missing_identity",
+            "dns_domain": "mississippirising.org",
+            "evidence": "I manage the organization account.",
+        },
+    )
+
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+    assert response.json()["detail"] == "Linked ATProto identity not found."
+    await _assert_no_claim_side_effect(test_db, claimable_org)

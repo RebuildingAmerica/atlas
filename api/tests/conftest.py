@@ -20,6 +20,14 @@ from atlas.models import (
 from atlas.platform.mcp import data as data_module
 from atlas.platform.mcp.data import AtlasDataService
 
+pytest_plugins = [
+    "tests.domains.catalog.org_resources_support",
+    "tests.domains.discovery.org_briefs_support",
+    "tests.domains.discovery.schedule_support",
+    "tests.domains.discovery.org_coverage_targets_support",
+    "tests.domains.discovery.api_org_support",
+]
+
 
 @pytest.fixture
 def tmp_db_path() -> str:

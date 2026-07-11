@@ -13,8 +13,6 @@ from atlas.domains.catalog.models.ownership import OwnershipCRUD
 from atlas.main import create_app
 from atlas.models import EntryCRUD, SourceCRUD
 
-pytest_plugins = ["tests.domains.catalog.org_resources_support"]
-
 ORG_ID = "local"
 OTHER_ORG_ID = "other-org"
 USER_ID = "local-operator"

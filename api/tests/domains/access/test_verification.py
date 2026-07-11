@@ -4,6 +4,8 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
+from atlas.domains.access.api.verification import _validate_student
+from atlas.domains.access.models.discount_verifications import _decode_verification_data
 from atlas.domains.access.verification import (
     DiscountVerifier,
     VerificationMethod,
@@ -65,6 +67,28 @@ class TestStudentVerification:
         is_valid, error = verifier.verify_student("maya@university.edu", "")
         assert not is_valid
         assert error == "School or program is required"
+
+    def test_api_student_validation_requires_name_and_valid_email(
+        self, verifier: DiscountVerifier
+    ) -> None:
+        """The submission API returns the same student-facing validation messages."""
+        missing_name, missing_name_method = _validate_student(
+            {"schoolEmail": "maya@university.edu"},
+            verifier,
+        )
+        assert missing_name == "School or program is required"
+        assert missing_name_method == VerificationMethod.SCHOOL_EMAIL
+
+        invalid_email, invalid_email_method = _validate_student(
+            {"schoolEmail": "not-an-email", "schoolName": "Howard University"},
+            verifier,
+        )
+        assert invalid_email == "School email must be a valid email address"
+        assert invalid_email_method == VerificationMethod.SCHOOL_EMAIL
+
+
+def test_decode_verification_data_rejects_non_object_json() -> None:
+    assert _decode_verification_data('["not", "an", "object"]') == {}
 
 
 class TestGrassrootsNonprofitVerification:

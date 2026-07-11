@@ -13,12 +13,14 @@ from atlas.config import Settings, get_settings
 from atlas.domains.access.api.verification_admin import (
     VerificationUpdateRequest,
     list_verifications,
+    require_discount_review_actor,
     update_verification,
 )
 from atlas.domains.access.models.discount_verifications import (
     DiscountVerificationCreate,
     DiscountVerificationCRUD,
 )
+from atlas.domains.access.principals import AuthenticatedActor
 from atlas.main import create_app
 
 if TYPE_CHECKING:
@@ -123,6 +125,35 @@ async def test_admin_verifications_rejects_unlisted_internal_users(
         )
 
     assert response.status_code == HTTPStatus.FORBIDDEN
+
+
+@pytest.mark.asyncio
+async def test_discount_review_dependency_allows_local_actor() -> None:
+    actor = AuthenticatedActor(
+        user_id="local-operator",
+        email="operator@atlas.test",
+        auth_type="local",
+        is_local=True,
+    )
+
+    allowed = await require_discount_review_actor(actor=actor, settings=Settings())
+
+    assert allowed is actor
+
+
+@pytest.mark.asyncio
+async def test_discount_review_dependency_rejects_non_internal_actor() -> None:
+    actor = AuthenticatedActor(
+        user_id="member",
+        email="member@example.org",
+        auth_type="session",
+    )
+
+    with pytest.raises(HTTPException) as exc_info:
+        await require_discount_review_actor(actor=actor, settings=Settings())
+
+    assert exc_info.value.status_code == 403
+    assert exc_info.value.detail == "Discount review access requires Atlas staff."
 
 
 @pytest.mark.asyncio
