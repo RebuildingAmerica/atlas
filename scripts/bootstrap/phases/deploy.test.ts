@@ -10,6 +10,7 @@ import {
   formatCloudBuildSourceAccessGrantCommand,
   formatCloudBuildSourceAccessRecoveryNote,
   formatCloudBuildDockerConfig,
+  formatCloudRunEnvVarsFileContent,
   formatCloudBuildSubmitCommand,
   formatDockerBuildCommand,
   formatGcloudReauthenticationRecovery,
@@ -132,6 +133,19 @@ void describe("deploy resilience", () => {
       dockerfilePath: "/repo/atlas/api/Dockerfile",
       cloudBuildDockerfilePath: "Dockerfile",
     });
+  });
+
+  void it("formats Cloud Run env vars as JSON map data", () => {
+    const content = formatCloudRunEnvVarsFileContent({
+      ATLAS_PUBLIC_URL: "https://atlas.rebuildingus.org",
+      CORS_ORIGINS: '["https://atlas.rebuildingus.org"]',
+    });
+
+    assert.deepEqual(JSON.parse(content), {
+      ATLAS_PUBLIC_URL: "https://atlas.rebuildingus.org",
+      CORS_ORIGINS: '["https://atlas.rebuildingus.org"]',
+    });
+    assert.doesNotMatch(content, /^ATLAS_PUBLIC_URL=/m);
   });
 
   void it("detects gcloud reauthentication failures from Cloud Build output", () => {

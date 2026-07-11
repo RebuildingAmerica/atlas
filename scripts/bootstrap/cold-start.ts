@@ -466,8 +466,8 @@ async function main(): Promise<void> {
       state.phases["api-domain"]?.status !== "complete"
     ) {
       log.step("Phase 10: API Canonical Domain");
-      log.warn(
-        "Waiting for atlas-api deploy before configuring the API domain.",
+      log.error(
+        "API domain setup is blocked because atlas-api did not deploy successfully in this run.",
       );
       attemptedPhases.add("api-domain");
       markPhase(state, "api-domain", "blocked", "Deploy atlas-api first");
@@ -501,7 +501,9 @@ async function main(): Promise<void> {
       state.phases["api-edge"]?.status !== "complete"
     ) {
       log.step("Phase 11: API Edge Protection");
-      log.warn("Waiting for the API domain before enabling edge protection.");
+      log.error(
+        "API edge protection is blocked because the canonical API domain is not ready yet.",
+      );
       attemptedPhases.add("api-edge");
       markPhase(
         state,

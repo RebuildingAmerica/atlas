@@ -225,11 +225,6 @@ export async function runEnvPhase(
       example: "app/.env.example",
       label: "App .env.local",
     },
-    {
-      target: "app/.env.e2e",
-      example: "app/.env.e2e.example",
-      label: "App .env.e2e",
-    },
   ];
 
   const envFilePreparation = prepareEnvFiles(projectRoot, envFiles, doctorMode);

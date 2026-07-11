@@ -1,26 +1,16 @@
-import { existsSync, mkdirSync } from "node:fs";
+import { mkdirSync } from "node:fs";
 import { randomBytes } from "node:crypto";
 import path from "node:path";
 import { defineConfig } from "@playwright/test";
 import { buildAtlasAuthJwtAudiences } from "./src/domains/access/oauth-resource-config";
 import { resolveAtprotoOAuthHarnessMode } from "./playwright-atproto-env";
 
-const e2eEnvFile = path.join(process.cwd(), ".env.e2e");
-if (existsSync(e2eEnvFile)) {
-  process.loadEnvFile(e2eEnvFile);
-}
-
-function requireEnv(name: string): string {
-  const value = process.env[name]?.trim();
-  if (!value) {
-    throw new Error(`${name} is required for Playwright end-to-end runs.`);
-  }
-
-  return value;
-}
-
 function absoluteUrl(origin: string, pathname: string): string {
   return new URL(pathname, origin).toString().replace(/\/$/, "");
+}
+
+function envValue(name: string, fallback: string): string {
+  return process.env[name]?.trim() || fallback;
 }
 
 const e2eDir = path.join(process.cwd(), "node_modules", ".cache", "e2e");
@@ -30,14 +20,17 @@ const e2eRunId = process.env.ATLAS_E2E_RUN_ID?.trim() || randomBytes(8).toString
 const apiDbPath = path.join(e2eDir, `atlas-api-${e2eRunId}.sqlite`);
 const authDbPath = path.join(e2eDir, `atlas-auth-${e2eRunId}.sqlite`);
 const mailboxFile = path.join(e2eDir, `mailbox-${e2eRunId}.json`);
-const appUrl = requireEnv("ATLAS_E2E_APP_URL");
-const apiUrl = requireEnv("ATLAS_E2E_API_URL");
+const appUrl = envValue("ATLAS_E2E_APP_URL", "http://localhost:3100");
+const apiUrl = envValue("ATLAS_E2E_API_URL", "http://localhost:38000");
 const authJwtAudiences = buildAtlasAuthJwtAudiences({
   apiBaseUrl: apiUrl,
   publicBaseUrl: appUrl,
 });
-const mailboxUrl = requireEnv("ATLAS_E2E_MAILBOX_URL");
-const authIntrospectionUrl = requireEnv("ATLAS_E2E_AUTH_INTROSPECTION_URL");
+const mailboxUrl = envValue("ATLAS_E2E_MAILBOX_URL", "http://localhost:8025");
+const authIntrospectionUrl = envValue(
+  "ATLAS_E2E_AUTH_INTROSPECTION_URL",
+  absoluteUrl(appUrl, "/api/auth/internal/api-key"),
+);
 const appPort = new URL(appUrl).port || "3100";
 const apiPort = new URL(apiUrl).port;
 const mailboxPort = new URL(mailboxUrl).port || "8025";

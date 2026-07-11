@@ -695,10 +695,11 @@ function deployService(
   );
 
   try {
-    const envFileContent = Object.entries(options.envVars)
-      .map(([key, value]) => `${key}=${value}`)
-      .join("\n");
-    writeFileSync(envFilePath, envFileContent, "utf8");
+    writeFileSync(
+      envFilePath,
+      formatCloudRunEnvVarsFileContent(options.envVars),
+      "utf8",
+    );
 
     const s = spinner();
     s.start(`Deploying ${serviceName}...`);
@@ -748,6 +749,12 @@ function deployService(
       // Ignore cleanup errors
     }
   }
+}
+
+export function formatCloudRunEnvVarsFileContent(
+  envVars: Record<string, string>,
+): string {
+  return `${JSON.stringify(envVars, null, 2)}\n`;
 }
 
 // ── Config Reader ─────────────────────────────────────────────────────────────
