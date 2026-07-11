@@ -138,6 +138,27 @@ async def test_submit_discount_verification_persists_record(
 
 
 @pytest.mark.asyncio
+async def test_submit_discount_verification_rejects_workspace_mismatch(
+    test_db: aiosqlite.Connection,
+) -> None:
+    """Discount submissions must stay scoped to the actor's active workspace."""
+    with pytest.raises(HTTPException) as exc_info:
+        await submit_discount_verification(
+            VerificationRequestPayload(
+                segment="student",
+                organization_id="org-target",
+                data={"schoolEmail": "student@example.edu", "schoolName": "Example College"},
+            ),
+            Response(),
+            test_db,
+            actor_for("user-606", "org-active"),
+        )
+
+    assert exc_info.value.status_code == HTTPStatus.FORBIDDEN
+    assert exc_info.value.detail == "Workspace mismatch."
+
+
+@pytest.mark.asyncio
 async def test_current_discount_verification_status_returns_latest_actor_workspace_record(
     test_db: aiosqlite.Connection,
 ) -> None:
