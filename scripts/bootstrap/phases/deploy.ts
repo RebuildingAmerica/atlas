@@ -12,10 +12,12 @@ import {
   type CommandResult,
 } from "../lib/shell.js";
 import { parseEnvFile } from "../lib/env-file.js";
+import { isPlaceholder } from "../lib/secret.js";
 import { promptConfirm, logSubline } from "../lib/ui.js";
 import type { ReadinessState } from "../state.js";
 
 const REPO_NAME = "atlas-images";
+const CLOUD_RUN_IMAGE_PLATFORM = "linux/amd64";
 
 type BuildMode = "local-docker" | "cloud-build";
 
@@ -538,7 +540,7 @@ export function formatDockerBuildCommand(
   const resolvedDockerfile = path.isAbsolute(dockerfilePath)
     ? dockerfilePath
     : path.join(contextDir, dockerfilePath);
-  return `docker build --file="${resolvedDockerfile}" -t "${imageTag}" "${contextDir}"`;
+  return `docker build --platform="${CLOUD_RUN_IMAGE_PLATFORM}" --file="${resolvedDockerfile}" -t "${imageTag}" "${contextDir}"`;
 }
 
 export function formatCloudBuildSubmitCommand(
@@ -557,7 +559,16 @@ export function formatCloudBuildDockerConfig(
       steps: [
         {
           name: "gcr.io/cloud-builders/docker",
-          args: ["build", "--file", dockerfilePath, "-t", imageTag, "."],
+          args: [
+            "build",
+            "--platform",
+            CLOUD_RUN_IMAGE_PLATFORM,
+            "--file",
+            dockerfilePath,
+            "-t",
+            imageTag,
+            ".",
+          ],
         },
       ],
       images: [imageTag],
@@ -766,7 +777,13 @@ function readDeployConfig(projectRoot: string): DeployConfig | undefined {
   const apiEnv = readEnvMap(path.join(projectRoot, "api", ".env"));
 
   function resolve(key: string): string {
-    return prodEnv.get(key) || rootEnv.get(key) || apiEnv.get(key) || "";
+    for (const env of [prodEnv, rootEnv, apiEnv]) {
+      const value = env.get(key)?.trim();
+      if (value && !isPlaceholder(value)) {
+        return value;
+      }
+    }
+    return "";
   }
 
   const projectId = resolve("GCP_PROJECT_ID");
@@ -775,13 +792,22 @@ function readDeployConfig(projectRoot: string): DeployConfig | undefined {
   const anthropicApiKey = resolve("ANTHROPIC_API_KEY");
   const searchApiKey = resolve("SEARCH_API_KEY");
   const authInternalSecret = resolve("ATLAS_AUTH_INTERNAL_SECRET");
-  const authApiKeyIntrospectionUrl = resolve(
-    "ATLAS_AUTH_API_KEY_INTROSPECTION_URL",
-  );
-  const authMembershipUrl = resolve("ATLAS_AUTH_MEMBERSHIP_URL");
   const edgeOriginSecret = resolve("ATLAS_EDGE_ORIGIN_SECRET");
-  const publicUrl = resolve("ATLAS_PUBLIC_URL");
-  const authJwtAudiences = resolve("ATLAS_AUTH_JWT_AUDIENCES");
+  const publicUrl =
+    resolve("ATLAS_PUBLIC_URL") || "https://atlas.rebuildingus.org";
+  const authApiKeyIntrospectionUrl = resolveHostedUrl(
+    resolve("ATLAS_AUTH_API_KEY_INTROSPECTION_URL"),
+    new URL("/api/auth/internal/api-key", publicUrl).toString(),
+  );
+  const authMembershipUrl = resolveHostedUrl(
+    resolve("ATLAS_AUTH_MEMBERSHIP_URL"),
+    publicUrl,
+  );
+  const authJwtAudiences = resolveAuthJwtAudiences(
+    resolve("ATLAS_AUTH_JWT_AUDIENCES"),
+    publicUrl,
+    resolve("ATLAS_SERVER_API_PROXY_TARGET"),
+  );
 
   if (!projectId) {
     log.error("GCP_PROJECT_ID not found in env files.");
@@ -813,11 +839,6 @@ function readDeployConfig(projectRoot: string): DeployConfig | undefined {
     return undefined;
   }
 
-  if (!authJwtAudiences) {
-    log.error("ATLAS_AUTH_JWT_AUDIENCES not found in env files.");
-    return undefined;
-  }
-
   if (!edgeOriginSecret) {
     log.error("ATLAS_EDGE_ORIGIN_SECRET not found in env files.");
     return undefined;
@@ -836,14 +857,64 @@ function readDeployConfig(projectRoot: string): DeployConfig | undefined {
     authApiKeyIntrospectionUrl,
     authMembershipUrl,
     edgeOriginSecret,
-    publicUrl: publicUrl || "https://atlas.rebuildingus.org",
+    publicUrl,
     authJwtAudiences,
     allowedEmails: resolve("ATLAS_AUTH_ALLOWED_EMAILS"),
     resendApiKey: resolve("ATLAS_EMAIL_RESEND_API_KEY"),
   };
 }
 
+function resolveAuthJwtAudiences(
+  configuredAudiences: string,
+  publicUrl: string,
+  apiBaseUrl: string,
+): string {
+  const canonicalAudiences = buildAuthJwtAudiences(publicUrl, apiBaseUrl);
+  const expectedFirstAudience = canonicalAudiences.split(",")[0];
+  const configuredFirstAudience = configuredAudiences
+    .split(",")
+    .map((value) => value.trim())
+    .find(Boolean);
+
+  return configuredFirstAudience === expectedFirstAudience
+    ? configuredAudiences
+    : canonicalAudiences;
+}
+
+function buildAuthJwtAudiences(publicUrl: string, apiBaseUrl: string): string {
+  const audiences = [new URL("/mcp", publicUrl).toString().replace(/\/$/, "")];
+  const apiOrigin = apiBaseUrl ? new URL(apiBaseUrl).origin : "";
+  if (apiOrigin) {
+    audiences.push(apiOrigin);
+  }
+  return audiences.join(",");
+}
+
 function readEnvMap(filePath: string): Map<string, string> {
   if (!existsSync(filePath)) return new Map();
   return parseEnvFile(filePath);
+}
+
+function resolveHostedUrl(
+  configuredValue: string,
+  fallbackValue: string,
+): string {
+  if (!configuredValue || isLocalUrl(configuredValue)) {
+    return fallbackValue;
+  }
+  return configuredValue;
+}
+
+function isLocalUrl(value: string): boolean {
+  try {
+    const hostname = new URL(value).hostname.toLowerCase();
+    return (
+      hostname === "localhost" ||
+      hostname === "127.0.0.1" ||
+      hostname === "::1" ||
+      hostname.endsWith(".localhost")
+    );
+  } catch {
+    return false;
+  }
 }

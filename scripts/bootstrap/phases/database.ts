@@ -1,4 +1,12 @@
-import { existsSync } from "node:fs";
+import {
+  existsSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import { log, spinner, text, select } from "@clack/prompts";
 import pc from "picocolors";
@@ -9,7 +17,7 @@ import { promptOrExit, promptConfirm, logSubline } from "../lib/ui.js";
 import type { ReadinessState } from "../state.js";
 import { getVercelScope, syncEnvVars, type VercelVar } from "../lib/vercel.js";
 
-const SCHEMA_RELATIVE_PATH = "api/atlas/models/schema.sql";
+const SCHEMA_PARTS_RELATIVE_PATH = "api/atlas/models/schema_parts";
 
 export function formatDatabaseSourcePromptMessage(): string {
   return [
@@ -312,23 +320,25 @@ async function validateAndMigrate(
   }
 
   // Run schema migration
-  const schemaPath = path.join(projectRoot, SCHEMA_RELATIVE_PATH);
+  const schemaPartsDir = path.join(projectRoot, SCHEMA_PARTS_RELATIVE_PATH);
 
-  if (!existsSync(schemaPath)) {
-    log.warn(`Schema file not found at ${SCHEMA_RELATIVE_PATH}`);
+  if (!existsSync(schemaPartsDir)) {
+    log.warn(
+      `Schema parts directory not found at ${SCHEMA_PARTS_RELATIVE_PATH}`,
+    );
     followUpItems.push("Run schema migration manually");
     return { success: followUpItems.length === 0, followUpItems };
   }
 
   if (doctorMode) {
-    logSubline("Schema file found — migration not run in doctor mode");
+    logSubline("Schema parts found — migration not run in doctor mode");
     return { success: followUpItems.length === 0, followUpItems };
   }
 
   if (!hasPsql) {
     logSubline(pc.dim("psql not available — skipping schema migration"));
     followUpItems.push(
-      `Run schema migration: psql $DATABASE_URL -f ${SCHEMA_RELATIVE_PATH}`,
+      `Run schema migration from ${SCHEMA_PARTS_RELATIVE_PATH}`,
     );
     return { success: true, followUpItems };
   }
@@ -337,7 +347,7 @@ async function validateAndMigrate(
     [
       "Run database schema migration?",
       "",
-      `Bootstrap will apply ${SCHEMA_RELATIVE_PATH} to the configured PostgreSQL database.`,
+      `Bootstrap will assemble and apply ${SCHEMA_PARTS_RELATIVE_PATH} to the configured PostgreSQL database.`,
       "Choose Yes for a new or intentionally updated Atlas database.",
       "Choose No only if the schema has already been applied by another process.",
     ].join("\n"),
@@ -346,15 +356,19 @@ async function validateAndMigrate(
 
   if (!shouldMigrate) {
     followUpItems.push(
-      `Run schema migration: psql $DATABASE_URL -f ${SCHEMA_RELATIVE_PATH}`,
+      `Run schema migration from ${SCHEMA_PARTS_RELATIVE_PATH}`,
     );
     return { success: true, followUpItems };
   }
 
+  const migrationFile = writePostgresSchemaMigration(schemaPartsDir);
   const s = spinner();
   s.start("Running schema migration...");
 
-  const migrateResult = runCommand(`psql "${databaseUrl}" -f "${schemaPath}"`);
+  const migrateResult = runCommand(
+    `psql "${databaseUrl}" -v ON_ERROR_STOP=1 -f "${migrationFile.path}"`,
+  );
+  migrationFile.cleanup();
 
   if (migrateResult.ok) {
     s.stop("Schema migration complete");
@@ -394,6 +408,34 @@ function readDatabaseUrl(envPath: string): string | undefined {
   if (!value || value === "" || value.includes("replace-with-"))
     return undefined;
   return value;
+}
+
+interface TemporaryMigrationFile {
+  path: string;
+  cleanup(): void;
+}
+
+function writePostgresSchemaMigration(
+  schemaPartsDir: string,
+): TemporaryMigrationFile {
+  const tempDir = mkdtempSync(path.join(tmpdir(), "atlas-postgres-schema-"));
+  const migrationPath = path.join(tempDir, "schema.sql");
+  const schema = readdirSync(schemaPartsDir)
+    .filter((fileName) => fileName.endsWith(".sql"))
+    .sort()
+    .map((fileName) =>
+      readFileSync(path.join(schemaPartsDir, fileName), "utf8"),
+    )
+    .join("\n\n");
+
+  writeFileSync(migrationPath, `${schema}\n`, "utf8");
+
+  return {
+    path: migrationPath,
+    cleanup() {
+      rmSync(tempDir, { recursive: true, force: true });
+    },
+  };
 }
 
 function redactConnectionString(url: string): string {

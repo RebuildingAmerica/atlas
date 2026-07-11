@@ -178,6 +178,7 @@ CREATE TABLE IF NOT EXISTS review_queue (
 );
 CREATE INDEX IF NOT EXISTS idx_review_queue_status ON review_queue(status);
 CREATE INDEX IF NOT EXISTS idx_review_queue_entity_id ON review_queue(entity_id);
+ALTER TABLE review_queue ADD COLUMN IF NOT EXISTS org_id TEXT;
 CREATE INDEX IF NOT EXISTS idx_review_queue_org_status ON review_queue(org_id, status);
 
 -- Resource ownership (organization attribution and visibility)
@@ -204,6 +205,11 @@ CREATE TABLE IF NOT EXISTS org_annotations (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+ALTER TABLE org_annotations ALTER COLUMN entry_id DROP NOT NULL;
+ALTER TABLE org_annotations ADD COLUMN IF NOT EXISTS source_id TEXT REFERENCES sources(id);
+ALTER TABLE org_annotations ADD COLUMN IF NOT EXISTS target_type TEXT NOT NULL DEFAULT 'entry';
+ALTER TABLE org_annotations ADD COLUMN IF NOT EXISTS target_id TEXT;
+UPDATE org_annotations SET target_id = entry_id WHERE target_id IS NULL AND entry_id IS NOT NULL;
 
 -- Verified custom domains for public workspace directories.
 CREATE TABLE IF NOT EXISTS org_directory_domains (
