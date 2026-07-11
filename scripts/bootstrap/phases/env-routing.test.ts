@@ -82,12 +82,16 @@ void describe("hosted routing prompts", () => {
   void it("syncs staging routing values to Vercel Preview", () => {
     const vars = buildVercelEnvVars(
       new Map([
+        ["DATABASE_BACKEND", "postgres"],
+        ["DATABASE_URL", "postgresql://prod.example.org/atlas"],
         ["ATLAS_DEPLOY_MODE", "production"],
         ["ATLAS_PUBLIC_URL", "https://atlas.example.org"],
         ["ATLAS_SERVER_API_PROXY_TARGET", "https://api.atlas.example.org"],
         ["ATLAS_AUTH_JWT_AUDIENCES", "https://atlas.example.org/mcp"],
       ]),
       new Map([
+        ["DATABASE_BACKEND", "postgres"],
+        ["DATABASE_URL", "postgresql://staging.example.org/atlas"],
         ["ATLAS_DEPLOY_MODE", "staging"],
         ["ATLAS_PUBLIC_URL", "https://atlas-staging.example.org"],
         [
@@ -108,6 +112,8 @@ void describe("hosted routing prompts", () => {
         .filter(([key]) =>
           [
             "ATLAS_DEPLOY_MODE",
+            "DATABASE_BACKEND",
+            "DATABASE_URL",
             "ATLAS_PUBLIC_URL",
             "ATLAS_SERVER_API_PROXY_TARGET",
             "ATLAS_AUTH_JWT_AUDIENCES",
@@ -115,6 +121,8 @@ void describe("hosted routing prompts", () => {
         ),
       [
         ["ATLAS_DEPLOY_MODE", "staging"],
+        ["DATABASE_BACKEND", "postgres"],
+        ["DATABASE_URL", "postgresql://staging.example.org/atlas"],
         ["ATLAS_PUBLIC_URL", "https://atlas-staging.example.org"],
         [
           "ATLAS_SERVER_API_PROXY_TARGET",
