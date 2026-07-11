@@ -16,7 +16,7 @@ The staging API deploy is a manual GitHub Actions workflow:
 - trigger: **Deploy Staging** > **Run workflow**
 - GitHub Environment: `staging`
 - Cloud Run service: `atlas-api-staging`
-- recommended app domain: `https://staging.atlas.rebuildingus.org`
+- recommended app domain: `https://atlas-staging.rebuildingus.org`
 - recommended API domain: `https://atlas-api-staging.rebuildingus.org`
 
 The workflow runs CI first, builds the same `atlas-api` image as production,
@@ -51,11 +51,11 @@ to the staging resource URL list the API accepts, with the MCP resource first:
 
 ```env
 ATLAS_DEPLOY_MODE=staging
-ATLAS_PUBLIC_URL=https://staging.atlas.rebuildingus.org
+ATLAS_PUBLIC_URL=https://atlas-staging.rebuildingus.org
 ATLAS_API_URL=https://atlas-api-staging.rebuildingus.org
-ATLAS_AUTH_JWT_AUDIENCES=https://staging.atlas.rebuildingus.org/mcp,https://atlas-api-staging.rebuildingus.org
-ATLAS_AUTH_API_KEY_INTROSPECTION_URL=https://staging.atlas.rebuildingus.org/api/auth/internal/api-key
-ATLAS_AUTH_MEMBERSHIP_URL=https://staging.atlas.rebuildingus.org
+ATLAS_AUTH_JWT_AUDIENCES=https://atlas-staging.rebuildingus.org/mcp,https://atlas-api-staging.rebuildingus.org
+ATLAS_AUTH_API_KEY_INTROSPECTION_URL=https://atlas-staging.rebuildingus.org/api/auth/internal/api-key
+ATLAS_AUTH_MEMBERSHIP_URL=https://atlas-staging.rebuildingus.org
 ATLAS_SERVER_API_PROXY_TARGET=https://atlas-api-staging.rebuildingus.org
 ATLAS_EDGE_ORIGIN_SECRET=<long random staging edge origin secret>
 ```
@@ -78,10 +78,10 @@ Set:
 
 ```env
 ATLAS_DEPLOY_MODE=staging
-ATLAS_PUBLIC_URL=https://staging.atlas.rebuildingus.org
+ATLAS_PUBLIC_URL=https://atlas-staging.rebuildingus.org
 ATLAS_SERVER_API_PROXY_TARGET=https://atlas-api-staging.rebuildingus.org
-ATLAS_AUTH_JWT_AUDIENCES=https://staging.atlas.rebuildingus.org/mcp,https://atlas-api-staging.rebuildingus.org
-ATLAS_AUTH_API_KEY_INTROSPECTION_URL=https://staging.atlas.rebuildingus.org/api/auth/internal/api-key
+ATLAS_AUTH_JWT_AUDIENCES=https://atlas-staging.rebuildingus.org/mcp,https://atlas-api-staging.rebuildingus.org
+ATLAS_AUTH_API_KEY_INTROSPECTION_URL=https://atlas-staging.rebuildingus.org/api/auth/internal/api-key
 ATLAS_AUTH_INTERNAL_SECRET=<same staging secret used by atlas-api-staging>
 ```
 
@@ -97,7 +97,7 @@ actionlint
 pnpm run compose:validate
 (cd app && pnpm vitest run tests/unit/platform/config/hosted-env.test.ts tests/unit/domains/access/server/runtime.test.ts)
 (cd api && uv run pytest tests/platform/test_production_config.py tests/platform/test_mcp_server.py -q)
-(cd app && ATLAS_HOSTED_PUBLIC_URL=https://staging.atlas.rebuildingus.org ATLAS_HOSTED_API_URL=https://atlas-api-staging.rebuildingus.org pnpm run test:hosted-smoke)
+(cd app && ATLAS_HOSTED_PUBLIC_URL=https://atlas-staging.rebuildingus.org ATLAS_HOSTED_API_URL=https://atlas-api-staging.rebuildingus.org pnpm run test:hosted-smoke)
 ```
 
 The staging deploy workflow uses `ATLAS_API_URL` for hosted smoke checks and
@@ -107,7 +107,7 @@ Cloudflare-backed API domain rather than the raw Cloud Run URL.
 To intentionally verify hosted anonymous throttling after the edge is enabled:
 
 ```bash
-(cd app && ATLAS_HOSTED_EXPECT_RATE_LIMIT=true ATLAS_HOSTED_PUBLIC_URL=https://staging.atlas.rebuildingus.org ATLAS_HOSTED_API_URL=https://atlas-api-staging.rebuildingus.org pnpm run test:hosted-smoke)
+(cd app && ATLAS_HOSTED_EXPECT_RATE_LIMIT=true ATLAS_HOSTED_PUBLIC_URL=https://atlas-staging.rebuildingus.org ATLAS_HOSTED_API_URL=https://atlas-api-staging.rebuildingus.org pnpm run test:hosted-smoke)
 ```
 
 Add `ATLAS_HOSTED_EXPECT_EDGE=true` to require Cloudflare response headers in

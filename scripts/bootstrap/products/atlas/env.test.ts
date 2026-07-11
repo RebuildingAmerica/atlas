@@ -112,8 +112,8 @@ void describe("Stripe bootstrap environment helpers", () => {
       "https://atlas.rebuildingus.org/api/stripe/webhook",
     );
     assert.equal(
-      stripeWebhookUrlForOrigin("https://staging.atlas.rebuildingus.org/base"),
-      "https://staging.atlas.rebuildingus.org/api/stripe/webhook",
+      stripeWebhookUrlForOrigin("https://atlas-staging.rebuildingus.org/base"),
+      "https://atlas-staging.rebuildingus.org/api/stripe/webhook",
     );
   });
 });

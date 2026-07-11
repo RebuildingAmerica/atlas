@@ -16,7 +16,7 @@ https://atlas.rebuildingus.org/mcp
 Staging:
 
 ```text
-https://staging.atlas.rebuildingus.org/mcp
+https://atlas-staging.rebuildingus.org/mcp
 ```
 
 ## Requirements
