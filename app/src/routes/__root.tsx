@@ -21,7 +21,7 @@ function RootDocument() {
         <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
         <link rel="alternate icon" href="/favicon.ico" />
       </head>
-      <body className="text-on-surface-variant flex min-h-screen flex-col">
+      <body className="bg-background text-on-surface flex min-h-screen flex-col">
         <Outlet />
         <Scripts />
         <Analytics />

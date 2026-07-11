@@ -28,7 +28,7 @@ function MapDecoPanel() {
       {/* Location pin */}
       <div className="bg-primary relative z-10 h-10 w-10 -rotate-45 rounded-[50%_50%_50%_0] shadow-[0_4px_16px_color-mix(in_srgb,var(--color-primary)_40%,transparent)]">
         <span className="absolute inset-0 flex rotate-45 items-center justify-center">
-          <span className="h-3.5 w-3.5 rounded-full bg-white" />
+          <span className="bg-on-primary h-3.5 w-3.5 rounded-full" />
         </span>
       </div>
     </div>
@@ -71,7 +71,7 @@ export function NotFoundPage() {
               <Link to="/">
                 <Button
                   variant="primary"
-                  className="bg-ink-strong hover:bg-ink-muted focus:ring-ink-strong text-white"
+                  className="bg-ink-strong text-background hover:bg-ink-muted focus:ring-ink-strong"
                 >
                   ← Back to home
                 </Button>

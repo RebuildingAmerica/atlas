@@ -140,9 +140,9 @@ function SourceFreshnessWarning({ source }: { source: NonNullable<Entry["sources
   }
 
   return (
-    <div className="mt-3 rounded-xl border border-stone-200 bg-stone-50 px-3 py-2">
-      <p className="type-label-medium text-stone-900">{label}</p>
-      <p className="type-body-medium mt-1 text-stone-600">{reason}</p>
+    <div className="border-outline-variant bg-warning-container mt-3 rounded-xl border px-3 py-2">
+      <p className="type-label-medium text-on-warning-container">{label}</p>
+      <p className="type-body-medium text-on-warning-container mt-1">{reason}</p>
     </div>
   );
 }
@@ -154,15 +154,19 @@ export function EntryDetail({
   issueAreaLabels = {},
 }: EntryDetailProps) {
   if (isLoading) {
-    return <p className="type-body-medium text-stone-500">Loading source-linked entry details…</p>;
+    return (
+      <p className="type-body-medium text-on-surface-variant">
+        Loading source-linked entry details…
+      </p>
+    );
   }
 
   if (error) {
-    return <p className="type-body-medium text-red-700">{error.message}</p>;
+    return <p className="type-body-medium text-on-error-container">{error.message}</p>;
   }
 
   if (!entry) {
-    return <p className="type-body-medium text-stone-500">Entry not found.</p>;
+    return <p className="type-body-medium text-on-surface-variant">Entry not found.</p>;
   }
 
   const sourceSummary = sourcePacketSummary(entry.sources);
@@ -175,8 +179,8 @@ export function EntryDetail({
 
   return (
     <div className="space-y-6">
-      <Card className="rounded-3xl border-stone-200 bg-white shadow-sm">
-        <CardHeader className="space-y-4 border-b-stone-200">
+      <Card className="rounded-3xl">
+        <CardHeader className="border-border space-y-4">
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant="info">{humanize(entry.type)}</Badge>
             <Badge variant={verification.variant}>{verification.label}</Badge>
@@ -185,27 +189,29 @@ export function EntryDetail({
           </div>
           <div className="space-y-2">
             <CardTitle className="type-headline-medium">{entry.name}</CardTitle>
-            <p className="type-body-medium font-medium text-stone-500">{formatLocation(entry)}</p>
+            <p className="type-body-medium text-on-surface-variant font-medium">
+              {formatLocation(entry)}
+            </p>
             {entry.full_address ? (
-              <p className="type-body-medium text-stone-600">{entry.full_address}</p>
+              <p className="type-body-medium text-ink-soft">{entry.full_address}</p>
             ) : null}
           </div>
         </CardHeader>
         <CardContent className="space-y-5">
           {freshnessWarning ? (
-            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
-              <p className="type-label-medium text-amber-950">Stale record</p>
-              <p className="type-body-medium mt-1 text-amber-900">{freshnessWarning}</p>
+            <div className="border-outline-variant bg-warning-container rounded-2xl border px-4 py-3">
+              <p className="type-label-medium text-on-warning-container">Stale record</p>
+              <p className="type-body-medium text-on-warning-container mt-1">{freshnessWarning}</p>
             </div>
           ) : null}
 
-          <p className="type-body-large text-stone-700">{entry.description}</p>
+          <p className="type-body-large text-ink-soft">{entry.description}</p>
 
           <section className="grid gap-4 md:grid-cols-[minmax(0,1.1fr)_minmax(16rem,0.9fr)]">
-            <div className="rounded-2xl border border-stone-200 bg-stone-50 p-4">
-              <p className="type-label-medium text-stone-500 uppercase">Research record</p>
-              <h2 className="type-title-large mt-1 text-stone-950">What you can use this for</h2>
-              <p className="type-body-medium mt-2 text-stone-700">
+            <div className="border-border bg-surface-container rounded-2xl border p-4">
+              <p className="type-label-medium text-on-surface-variant uppercase">Research record</p>
+              <h2 className="type-title-large text-ink-strong mt-1">What you can use this for</h2>
+              <p className="type-body-medium text-ink-soft mt-2">
                 {researchUseText(entry, issueAreaLabels)}
               </p>
               <div className="mt-3 flex flex-wrap gap-2">
@@ -215,8 +221,8 @@ export function EntryDetail({
               </div>
             </div>
 
-            <div className="rounded-2xl border border-stone-200 bg-white p-4">
-              <p className="type-label-medium text-stone-500 uppercase">
+            <div className="border-border bg-surface-container-lowest rounded-2xl border p-4">
+              <p className="type-label-medium text-on-surface-variant uppercase">
                 Why this record is usable
               </p>
               <div className="mt-3 flex flex-wrap gap-2">
@@ -230,14 +236,16 @@ export function EntryDetail({
           </section>
 
           {placeSearch || primaryIssue ? (
-            <section className="rounded-2xl border border-stone-200 p-4">
-              <p className="type-label-medium text-stone-500 uppercase">Pivot from this actor</p>
+            <section className="border-border rounded-2xl border p-4">
+              <p className="type-label-medium text-on-surface-variant uppercase">
+                Pivot from this actor
+              </p>
               <div className="mt-3 flex flex-wrap gap-2">
                 {placeSearch && placeLabel ? (
                   <Link
                     to="/browse"
                     search={placeSearch}
-                    className="type-label-medium rounded-full border border-stone-300 px-3 py-1.5 text-stone-700 hover:border-stone-500 hover:text-stone-950"
+                    className="type-label-medium border-border text-ink-soft hover:border-border-strong hover:text-ink-strong rounded-full border px-3 py-1.5"
                   >
                     {placeLabel}
                   </Link>
@@ -246,7 +254,7 @@ export function EntryDetail({
                   <Link
                     to="/browse"
                     search={{ issue_areas: primaryIssue }}
-                    className="type-label-medium rounded-full border border-stone-300 px-3 py-1.5 text-stone-700 hover:border-stone-500 hover:text-stone-950"
+                    className="type-label-medium border-border text-ink-soft hover:border-border-strong hover:text-ink-strong rounded-full border px-3 py-1.5"
                   >
                     {primaryIssueLabel} actors
                   </Link>
@@ -257,15 +265,15 @@ export function EntryDetail({
 
           <div className="grid gap-5 md:grid-cols-2">
             <div className="space-y-2">
-              <p className="type-label-medium text-stone-500 uppercase">Contact</p>
-              <div className="type-body-medium space-y-1 text-stone-700">
+              <p className="type-label-medium text-on-surface-variant uppercase">Contact</p>
+              <div className="type-body-medium text-ink-soft space-y-1">
                 {entry.website ? (
                   <p>
                     <a
                       href={entry.website}
                       target="_blank"
                       rel="noreferrer"
-                      className="text-blue-700 hover:text-blue-800"
+                      className="text-link hover:text-link-hover"
                     >
                       {entry.website}
                     </a>
@@ -277,7 +285,7 @@ export function EntryDetail({
             </div>
 
             <div className="space-y-2">
-              <p className="type-label-medium text-stone-500 uppercase">Mention types</p>
+              <p className="type-label-medium text-on-surface-variant uppercase">Mention types</p>
               <div className="flex flex-wrap gap-2">
                 {entry.source_types.map((sourceType) => (
                   <Badge key={sourceType}>{humanize(sourceType)}</Badge>
@@ -288,7 +296,7 @@ export function EntryDetail({
 
           {entry.issue_areas.length > 0 ? (
             <div className="space-y-2">
-              <p className="type-label-medium text-stone-500 uppercase">Issue areas</p>
+              <p className="type-label-medium text-on-surface-variant uppercase">Issue areas</p>
               <div className="flex flex-wrap gap-2">
                 {entry.issue_areas.map((issueArea) => (
                   <Badge key={issueArea} variant="warning">
@@ -303,11 +311,11 @@ export function EntryDetail({
         </CardContent>
       </Card>
 
-      <Card className="rounded-3xl border-stone-200 bg-white shadow-sm">
+      <Card className="rounded-3xl">
         <CardHeader className="space-y-3">
           <div className="space-y-1">
             <CardTitle>Source trail</CardTitle>
-            <p className="type-body-medium text-stone-500">Evidence packets</p>
+            <p className="type-body-medium text-on-surface-variant">Evidence packets</p>
           </div>
           {sourceSummary.packetCount > 0 ? (
             <div className="flex flex-wrap gap-2">
@@ -319,30 +327,34 @@ export function EntryDetail({
         <CardContent className="space-y-4">
           {entry.sources?.length ? (
             entry.sources.map((source) => (
-              <article key={source.id} className="rounded-2xl border border-stone-200 p-4">
+              <article key={source.id} className="border-border rounded-2xl border p-4">
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge>{humanize(source.type)}</Badge>
                   {source.publication ? (
-                    <span className="type-body-medium font-medium text-stone-700">
+                    <span className="type-body-medium text-ink-soft font-medium">
                       {source.publication}
                     </span>
                   ) : null}
                   {source.published_date ? (
-                    <span className="type-body-medium text-stone-500">{source.published_date}</span>
+                    <span className="type-body-medium text-on-surface-variant">
+                      {source.published_date}
+                    </span>
                   ) : null}
                 </div>
                 <a
                   href={source.url}
                   target="_blank"
                   rel="noreferrer"
-                  className="type-title-large mt-3 block text-blue-700 hover:text-blue-800"
+                  className="type-title-large text-link hover:text-link-hover mt-3 block"
                 >
                   {source.title ?? source.url}
                 </a>
                 {source.extraction_context ? (
-                  <div className="mt-3 border-l-2 border-stone-300 pl-3">
-                    <p className="type-label-medium text-stone-500 uppercase">Quoted evidence</p>
-                    <p className="type-body-medium mt-1 text-stone-600">
+                  <div className="border-border-strong mt-3 border-l-2 pl-3">
+                    <p className="type-label-medium text-on-surface-variant uppercase">
+                      Quoted evidence
+                    </p>
+                    <p className="type-body-medium text-ink-soft mt-1">
                       {source.extraction_context}
                     </p>
                   </div>
@@ -358,7 +370,7 @@ export function EntryDetail({
               </article>
             ))
           ) : (
-            <p className="type-body-medium text-stone-500">No linked sources yet.</p>
+            <p className="type-body-medium text-on-surface-variant">No linked sources yet.</p>
           )}
         </CardContent>
       </Card>

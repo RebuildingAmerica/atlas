@@ -49,7 +49,7 @@ describe("Textarea", () => {
     const error = screen.getByText("Bad cert");
 
     expect(error).toBeInTheDocument();
-    expect(node.className).toMatch(/border-red-500/);
+    expect(node.className).toMatch(/border-on-error-container/);
     expect(node).toHaveAttribute("aria-invalid", "true");
     expect(error.id).not.toBe("");
     expect(node).toHaveAttribute("aria-describedby", error.id);
@@ -57,13 +57,13 @@ describe("Textarea", () => {
 
   it("renders the required asterisk next to the label", () => {
     const { container } = render(<Textarea label="Cert" required value="" />);
-    expect(container.querySelector(".text-red-500")?.textContent).toBe("*");
+    expect(container.querySelector(".text-on-error-container")?.textContent).toBe("*");
   });
 
   it("renders without a label or error message", () => {
     const { container } = render(<Textarea value="" />);
     expect(container.querySelector("label")).toBeNull();
-    expect(container.querySelector(".text-red-500")).toBeNull();
+    expect(container.querySelector(".text-on-error-container")).toBeNull();
   });
 
   it("skips the auto-expand resize when autoExpand is disabled", () => {

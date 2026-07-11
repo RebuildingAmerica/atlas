@@ -32,15 +32,7 @@ function PublicLayout() {
   }
 
   return (
-    <div
-      className="bg-surface relative isolate flex min-h-screen flex-col"
-      style={{
-        backgroundImage:
-          "linear-gradient(rgba(28, 31, 43, 0.045) 1px, transparent 1px), linear-gradient(90deg, rgba(28, 31, 43, 0.045) 1px, transparent 1px)",
-        backgroundPosition: "max(0px, calc((100vw - 88rem) / 2)) 0",
-        backgroundSize: "32px 32px",
-      }}
-    >
+    <div className="atlas-public-shell relative isolate flex min-h-screen flex-col">
       <div
         aria-hidden="true"
         className="pointer-events-none absolute inset-0 z-0"

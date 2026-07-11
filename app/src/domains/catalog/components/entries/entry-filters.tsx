@@ -65,12 +65,12 @@ function FacetGroup({
               className={[
                 "type-label-large rounded-full border px-3 py-1.5 transition-colors",
                 isSelected
-                  ? "border-ink-strong bg-ink-strong text-surface"
-                  : "border-border text-ink-soft hover:border-border-strong hover:bg-surface-alt bg-white",
+                  ? "border-ink-strong bg-ink-strong text-background"
+                  : "border-border text-ink-soft hover:border-border-strong hover:bg-surface-alt bg-surface-container-lowest",
               ].join(" ")}
             >
               {labelMap[option.value] ?? humanize(option.value)}{" "}
-              <span className={isSelected ? "text-white/70" : "text-ink-muted"}>
+              <span className={isSelected ? "text-background/70" : "text-ink-muted"}>
                 {option.count}
               </span>
             </button>

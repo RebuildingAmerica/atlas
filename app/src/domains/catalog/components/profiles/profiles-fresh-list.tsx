@@ -28,7 +28,7 @@ export function ProfilesFreshList({
     return (
       <section className="space-y-4 pt-7">
         <SectionHeading title="New in Atlas" subtitle="Recent arrivals" />
-        <p className="type-body-medium text-red-800">{error.message}</p>
+        <p className="type-body-medium text-on-error-container">{error.message}</p>
       </section>
     );
   }

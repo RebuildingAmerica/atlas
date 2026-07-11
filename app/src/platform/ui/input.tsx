@@ -40,7 +40,7 @@ export function Input({
       {label && (
         <label htmlFor={inputId} className="type-label-large text-ink-soft block">
           {label}
-          {required && <span className="text-red-500">*</span>}
+          {required && <span className="text-on-error-container">*</span>}
         </label>
       )}
       <div className="relative">
@@ -58,15 +58,15 @@ export function Input({
           aria-invalid={error ? true : undefined}
           aria-describedby={errorId}
           className={cn(
-            "type-body-large border-border bg-surface text-ink-strong focus:border-border-strong focus:ring-accent-soft w-full rounded-2xl border px-4 py-3 focus:ring-2 disabled:cursor-not-allowed disabled:bg-stone-100",
+            "type-body-large border-border bg-surface text-ink-strong focus:border-border-strong focus:ring-accent-soft disabled:bg-surface-container w-full rounded-2xl border px-4 py-3 focus:ring-2 disabled:cursor-not-allowed",
             icon && "pl-10",
-            error && "border-red-500",
+            error && "border-on-error-container",
             className,
           )}
         />
       </div>
       {error && (
-        <span id={errorId} role="alert" className="type-body-small text-red-500">
+        <span id={errorId} role="alert" className="type-body-small text-on-error-container">
           {error}
         </span>
       )}

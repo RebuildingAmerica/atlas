@@ -56,7 +56,7 @@ export function SignedOutPanel({ slug }: SignedOutPanelProps) {
                 ? window.location.pathname + window.location.search
                 : `/claim/${slug}`,
           }}
-          className="bg-primary type-label-large inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 font-semibold text-white"
+          className="bg-primary text-on-primary type-label-large inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 font-semibold"
         >
           Sign in to continue
         </Link>
@@ -101,7 +101,7 @@ export function VerifiedClaimPanel({ entry, profilePath }: VerifiedClaimPanelPro
           <Link
             to="/manage/$slug"
             params={{ slug: entry.slug }}
-            className="bg-primary type-label-large inline-flex items-center gap-2 rounded-full px-5 py-2 font-semibold text-white"
+            className="bg-primary text-on-primary type-label-large inline-flex items-center gap-2 rounded-full px-5 py-2 font-semibold"
           >
             Manage profile
           </Link>
@@ -327,7 +327,9 @@ interface ClaimPanelProps {
 
 function ClaimPanel({ children, tone = "default" }: ClaimPanelProps) {
   const toneClass =
-    tone === "success" ? "border border-emerald-200 bg-emerald-50/70" : "bg-surface-container";
+    tone === "success"
+      ? "border-outline-variant bg-success-container border"
+      : "bg-surface-container";
 
   return <section className={`${toneClass} rounded-[1rem] p-6`}>{children}</section>;
 }

@@ -17,9 +17,13 @@ import {
 } from "@/domains/catalog/components/map/map-states";
 import { useMapPage } from "@/domains/catalog/hooks/use-map-page";
 import { useMapReveal } from "@/domains/catalog/hooks/use-map-reveal";
+import { useDeviceColorScheme } from "@/domains/catalog/hooks/use-device-color-scheme";
 import { useReducedMotion } from "@/domains/catalog/hooks/use-reduced-motion";
 import { useTaxonomy } from "@/domains/catalog/hooks/use-taxonomy";
-import { ATLAS_BASEMAP_STYLE } from "@/domains/catalog/map/map-config";
+import {
+  ATLAS_BASEMAP_BACKGROUND_TOKEN,
+  atlasBasemapStyle,
+} from "@/domains/catalog/map/map-config";
 import { announceViewport, sparsityPill } from "@/domains/catalog/map/map-summary";
 import type { MapNavigate } from "@/domains/catalog/hooks/use-map-page";
 import type { FlyToCamera } from "@/domains/catalog/map/map-camera";
@@ -27,6 +31,24 @@ import type { MapRouteSearch } from "@/domains/catalog/search-state";
 import type { MapPointCollection } from "@/types";
 
 const MAP_NOTICE_POSITION_CLASS = "absolute top-24 right-3 sm:top-24 sm:right-4";
+
+function useResolvedBasemapBackground(deviceColorScheme: string): string | null {
+  const [backgroundColor, setBackgroundColor] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const value = window
+      .getComputedStyle(document.documentElement)
+      .getPropertyValue(ATLAS_BASEMAP_BACKGROUND_TOKEN)
+      .trim();
+    setBackgroundColor(value || null);
+  }, [deviceColorScheme]);
+
+  return backgroundColor;
+}
 
 interface MapPageProps {
   /** The route's search params: shared filters plus a possibly-shared viewport. */
@@ -70,6 +92,15 @@ export function MapPage({ search, initialPoints, initialPointsLoadFailed = false
     initialPointsLoadFailed,
   });
   const reducedMotion = useReducedMotion();
+  const deviceColorScheme = useDeviceColorScheme();
+  const basemapBackground = useResolvedBasemapBackground(deviceColorScheme);
+  const mapStyle = useMemo(
+    () =>
+      atlasBasemapStyle(deviceColorScheme, {
+        backgroundColor: basemapBackground ?? undefined,
+      }),
+    [basemapBackground, deviceColorScheme],
+  );
   const reveal = useMapReveal({ reducedMotion });
   const surfaceRef = useRef<HTMLDivElement>(null);
   const resultsListRef = useRef<HTMLElement>(null);
@@ -124,7 +155,10 @@ export function MapPage({ search, initialPoints, initialPointsLoadFailed = false
         Skip to results list
       </a>
 
-      <MapStyleProvider initialStyle={ATLAS_BASEMAP_STYLE}>
+      <MapStyleProvider
+        key={`${deviceColorScheme}:${basemapBackground ?? "transparent"}`}
+        initialStyle={mapStyle}
+      >
         <MapPageSurface
           surfaceRef={surfaceRef}
           initialView={page.initialView}

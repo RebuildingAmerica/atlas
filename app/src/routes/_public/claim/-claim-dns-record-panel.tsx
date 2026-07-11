@@ -146,7 +146,7 @@ function DnsRecordValue({ copied, label, onCopy, value }: DnsRecordValueProps) {
           aria-label={copied ? `${label} copied` : `Copy ${label}`}
         >
           {copied ? (
-            <Check className="h-4 w-4 text-emerald-700" aria-hidden />
+            <Check className="text-on-success-container h-4 w-4" aria-hidden />
           ) : (
             <Copy className="h-4 w-4" aria-hidden />
           )}

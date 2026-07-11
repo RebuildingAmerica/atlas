@@ -226,7 +226,7 @@ function ClaimRoute() {
             )}
 
             {errorMessage ? (
-              <p className="type-body-medium text-rose-700" role="alert">
+              <p className="type-body-medium text-on-error-container" role="alert">
                 {errorMessage}
               </p>
             ) : null}

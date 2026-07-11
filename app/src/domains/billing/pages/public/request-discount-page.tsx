@@ -63,11 +63,11 @@ export function RequestDiscountPage() {
           </p>
         </div>
 
-        <div className="border-border rounded-[1.4rem] border bg-white p-5">
+        <div className="border-border bg-surface-container-lowest rounded-[1.4rem] border p-5">
           <p className="type-title-small text-ink-strong mb-3">Ready to get started?</p>
           <a
             href="/sign-in"
-            className="bg-ink-strong hover:bg-ink-muted type-body-medium inline-flex items-center gap-2 rounded-lg px-4 py-2 text-white transition-colors"
+            className="bg-primary text-on-primary hover:bg-primary-container hover:text-on-primary-container type-body-medium inline-flex items-center gap-2 rounded-lg px-4 py-2 transition-colors"
           >
             Create account
           </a>

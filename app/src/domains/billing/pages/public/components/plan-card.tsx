@@ -37,7 +37,7 @@ const PLAN_BUTTON_BASE_CLASSES =
 
 const SECONDARY_LINK_BUTTON_CLASSES = `${PLAN_BUTTON_BASE_CLASSES} border-outline-variant bg-surface-container-lowest text-on-surface hover:border-outline hover:bg-surface-container-high focus:ring-border-strong`;
 
-const TEAM_CTA_CLASSES = `${PLAN_BUTTON_BASE_CLASSES} border-transparent bg-surface-container-lowest text-ink-strong hover:bg-surface-container-high focus:ring-surface-container-lowest`;
+const TEAM_CTA_CLASSES = `${PLAN_BUTTON_BASE_CLASSES} border-transparent bg-surface-container-lowest text-on-surface hover:bg-surface-container-high focus:ring-surface-container-lowest`;
 
 /**
  * Single plan card on the pricing surface.  Renders the plan name,
@@ -66,14 +66,14 @@ export function PlanCard({
   discountNote,
 }: PlanCardProps) {
   const isDark = isTeam;
-  const bgClass = isDark ? "bg-ink-strong" : "bg-white";
+  const bgClass = isDark ? "bg-ink-strong" : "bg-surface-container-lowest";
   const borderClass = isDark ? "border-transparent" : "border-border";
-  const planNameColorClass = isDark ? "text-surface-container-lowest" : "text-ink-strong";
-  const descriptorColorClass = isDark ? "text-ink-muted" : "text-ink-soft";
-  const taglineColorClass = isDark ? "text-ink-muted" : "text-ink-soft";
-  const featureColorClass = isDark ? "text-ink-muted" : "text-ink-strong";
-  const priceColorClass = isDark ? "text-surface-container-lowest" : "text-ink-strong";
-  const priceSubColorClass = isDark ? "text-ink-muted" : "text-ink-soft";
+  const planNameColorClass = isDark ? "text-background" : "text-ink-strong";
+  const descriptorColorClass = isDark ? "text-border-strong" : "text-ink-soft";
+  const taglineColorClass = isDark ? "text-border-strong" : "text-ink-soft";
+  const featureColorClass = isDark ? "text-border-strong" : "text-ink-strong";
+  const priceColorClass = isDark ? "text-background" : "text-ink-strong";
+  const priceSubColorClass = isDark ? "text-border-strong" : "text-ink-soft";
 
   const showPrice =
     billing === "student"

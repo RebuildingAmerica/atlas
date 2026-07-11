@@ -88,7 +88,8 @@ describe("routes/_public layout", () => {
     const Route = asRouteStub(routeModule.Route);
     const Component = Route.options.component;
     if (!Component) throw new Error("Expected Route.options.component");
-    render(<Component />);
+    const { container } = render(<Component />);
+    expect(container.firstElementChild).toHaveClass("atlas-public-shell");
     expect(screen.getByTestId("public-global-grid")).toBeInTheDocument();
     expect(screen.getByTestId("public-sticky-nav-boundary")).toContainElement(
       screen.getByTestId("public-top-nav"),

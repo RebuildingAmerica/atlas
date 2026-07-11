@@ -30,7 +30,8 @@ export function Button({
     "type-label-large cursor-pointer rounded-full font-medium transition-[color,background-color,border-color,transform] duration-150 ease-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-transparent active:translate-y-[1px]";
 
   const variants = {
-    primary: "bg-primary text-white hover:bg-on-primary-container focus:ring-primary",
+    primary:
+      "bg-primary text-on-primary hover:bg-primary-container hover:text-on-primary-container focus:ring-primary",
     secondary:
       "border border-outline-variant bg-surface-container-lowest text-on-surface hover:border-outline hover:bg-surface-container-high focus:ring-border-strong",
     ghost:

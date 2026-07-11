@@ -60,7 +60,7 @@ function footerColumns(localMode: boolean): FooterColumn[] {
 
 function FooterNavigationLink({ link }: { link: FooterLink }) {
   const className =
-    "type-body-medium text-surface/80 hover:text-surface inline-flex w-fit items-center gap-1.5 no-underline transition-colors duration-150 hover:underline";
+    "type-body-medium text-on-footer-surface/80 hover:text-on-footer-surface inline-flex w-fit items-center gap-1.5 no-underline transition-colors duration-150 hover:underline";
 
   if (link.kind === "external") {
     return (
@@ -92,23 +92,23 @@ export function PublicFooter({ localMode }: PublicFooterProps) {
   return (
     <footer
       aria-label="Site footer"
-      className="bg-accent-deep/95 text-surface relative flex h-[100svh] max-h-[100svh] flex-col overflow-hidden"
+      className="bg-footer-surface text-on-footer-surface relative flex h-[100svh] max-h-[100svh] flex-col overflow-hidden"
     >
       <div
         aria-hidden="true"
-        className="border-surface/25 pointer-events-none absolute inset-5 border"
+        className="border-footer-outline pointer-events-none absolute inset-5 border"
       />
 
-      <div className="border-surface/15 relative flex items-center justify-between gap-4 border-b px-8 pt-7 pb-5 md:px-12 md:pt-8">
+      <div className="border-footer-outline relative flex items-center justify-between gap-4 border-b px-8 pt-7 pb-5 md:px-12 md:pt-8">
         <a
           href="https://rebuildingus.org"
           target="_blank"
           rel="noopener noreferrer"
-          className="type-label-medium text-surface/75 hover:text-surface no-underline transition-colors duration-150 hover:underline"
+          className="type-label-medium text-on-footer-surface/75 hover:text-on-footer-surface no-underline transition-colors duration-150 hover:underline"
         >
           Rebuilding America Project
         </a>
-        <p className="type-label-small text-surface/45 hidden sm:block">38°54N 77°02W</p>
+        <p className="type-label-small text-on-footer-surface/45 hidden sm:block">38°54N 77°02W</p>
       </div>
 
       <div className="relative grid flex-1 items-center gap-10 px-8 py-7 md:grid-cols-[minmax(0,1.08fr)_minmax(24rem,0.92fr)] md:px-12 md:py-10">
@@ -117,14 +117,14 @@ export function PublicFooter({ localMode }: PublicFooterProps) {
             “Never doubt that a small group of thoughtful, committed citizens can change the world.
             Indeed, it is the only thing that ever has.”
           </blockquote>
-          <div className="bg-surface/35 mt-7 h-px w-10" />
-          <p className="type-label-small text-surface/60 mt-5">Margaret Mead</p>
+          <div className="bg-on-footer-surface/35 mt-7 h-px w-10" />
+          <p className="type-label-small text-on-footer-surface/60 mt-5">Margaret Mead</p>
         </div>
 
         <nav aria-label="Footer navigation" className="grid grid-cols-3 gap-5 md:gap-7">
           {columns.map((column) => (
             <div key={column.heading}>
-              <p className="type-label-medium text-surface mb-4">{column.heading}</p>
+              <p className="type-label-medium text-on-footer-surface mb-4">{column.heading}</p>
               <ul className="m-0 flex list-none flex-col gap-2.5 p-0">
                 {column.links.map((link) => (
                   <li key={link.href}>
@@ -137,11 +137,11 @@ export function PublicFooter({ localMode }: PublicFooterProps) {
         </nav>
       </div>
 
-      <div className="border-surface/20 relative border-t px-8 pt-3 md:px-12 md:pt-4">
+      <div className="border-footer-outline relative border-t px-8 pt-3 md:px-12 md:pt-4">
         <a
           href="/"
           aria-label="Atlas"
-          className="text-surface flex w-full justify-between overflow-hidden font-serif text-[clamp(4.25rem,15vw,13rem)] leading-[0.82] font-bold no-underline"
+          className="text-on-footer-surface flex w-full justify-between overflow-hidden font-serif text-[clamp(4.25rem,15vw,13rem)] leading-[0.82] font-bold no-underline"
         >
           {"ATLAS".split("").map((letter, index) => (
             <span key={`${letter}-${String(index)}`}>{letter}</span>
@@ -149,8 +149,8 @@ export function PublicFooter({ localMode }: PublicFooterProps) {
         </a>
       </div>
 
-      <div className="border-surface/15 relative flex flex-col justify-between gap-3 border-t px-8 pt-3 pb-7 md:flex-row md:px-12 md:pt-4">
-        <p className="type-body-small text-surface/60 max-w-4xl">
+      <div className="border-footer-outline relative flex flex-col justify-between gap-3 border-t px-8 pt-3 pb-7 md:flex-row md:px-12 md:pt-4">
+        <p className="type-body-small text-on-footer-surface/60 max-w-4xl">
           Public records, organized for civic discovery.
         </p>
         <div className="flex shrink-0 gap-5">
@@ -158,7 +158,7 @@ export function PublicFooter({ localMode }: PublicFooterProps) {
             <a
               key={link.href}
               href={link.href}
-              className="type-body-small text-surface/65 hover:text-surface no-underline transition-colors duration-150 hover:underline"
+              className="type-body-small text-on-footer-surface/65 hover:text-on-footer-surface no-underline transition-colors duration-150 hover:underline"
             >
               {link.label}
             </a>

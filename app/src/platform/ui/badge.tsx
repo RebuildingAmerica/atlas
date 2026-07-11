@@ -9,11 +9,11 @@ interface BadgeProps {
 
 export function Badge({ children, variant = "default", className }: BadgeProps) {
   const variants = {
-    default: "bg-surface-alt text-ink-soft",
-    success: "bg-green-100 text-green-800",
-    warning: "bg-yellow-100 text-yellow-800",
-    error: "bg-red-100 text-red-800",
-    info: "bg-accent-soft text-accent-ink",
+    default: "bg-surface-alt text-on-surface-variant",
+    success: "bg-success-container text-on-success-container",
+    warning: "bg-warning-container text-on-warning-container",
+    error: "bg-error-container text-on-error-container",
+    info: "bg-primary-container text-on-primary-container",
   };
 
   return (

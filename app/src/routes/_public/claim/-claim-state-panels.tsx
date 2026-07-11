@@ -52,7 +52,7 @@ export function SignedOutPanel({ redirectTo }: SignedOutPanelProps) {
           search={{
             redirect: redirectTo,
           }}
-          className="bg-primary type-label-large inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 font-semibold text-white"
+          className="bg-primary text-on-primary type-label-large inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 font-semibold"
         >
           Sign in to continue
         </Link>
@@ -102,7 +102,7 @@ export function VerifiedClaimPanel({ entry, profilePath }: VerifiedClaimPanelPro
         <Link
           to="/manage/$slug"
           params={{ slug: entry.slug }}
-          className="bg-primary type-label-large inline-flex items-center gap-2 rounded-full px-5 py-2 font-semibold text-white"
+          className="bg-primary text-on-primary type-label-large inline-flex items-center gap-2 rounded-full px-5 py-2 font-semibold"
         >
           Edit profile
         </Link>

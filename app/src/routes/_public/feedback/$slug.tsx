@@ -199,7 +199,7 @@ function FeedbackRoute() {
               {submitted ? (
                 <span
                   role="status"
-                  className="type-label-medium inline-flex items-center gap-1.5 text-emerald-700"
+                  className="type-label-medium text-on-success-container inline-flex items-center gap-1.5"
                 >
                   <CheckCircle2 className="h-4 w-4" aria-hidden />
                   Received for review.
@@ -208,7 +208,7 @@ function FeedbackRoute() {
               {errorMessage ? (
                 <span
                   role="alert"
-                  className="type-label-medium inline-flex items-center gap-1.5 text-rose-700"
+                  className="type-label-medium text-on-error-container inline-flex items-center gap-1.5"
                 >
                   <MessageSquareWarning className="h-4 w-4" aria-hidden />
                   {errorMessage}

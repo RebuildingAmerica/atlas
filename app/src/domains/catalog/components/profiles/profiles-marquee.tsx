@@ -29,7 +29,7 @@ export function ProfilesMarquee({
           subtitle="Spotlight"
           title="Featured profiles"
         />
-        <p className="type-body-medium text-red-800">{error.message}</p>
+        <p className="type-body-medium text-on-error-container">{error.message}</p>
       </section>
     );
   }

@@ -114,7 +114,7 @@ export function PrivateNotesPanel({ targetId, targetLabel, type }: PrivateNotesP
             Save note
           </button>
           {errorMessage ? (
-            <span className="type-label-small text-rose-700" role="alert">
+            <span className="type-label-small text-on-error-container" role="alert">
               {errorMessage}
             </span>
           ) : null}

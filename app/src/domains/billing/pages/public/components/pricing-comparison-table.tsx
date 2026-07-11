@@ -41,7 +41,7 @@ export function PricingComparisonTable() {
       <p className="type-label-medium text-ink-muted mb-4 tracking-wider uppercase">
         Compare plans
       </p>
-      <div className="border-border overflow-x-auto rounded-[1rem] border bg-white">
+      <div className="border-border bg-surface-container-lowest overflow-x-auto rounded-[1rem] border">
         <table className="w-full text-left">
           <thead>
             <tr className="border-border border-b">

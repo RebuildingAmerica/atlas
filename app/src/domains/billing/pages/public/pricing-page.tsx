@@ -206,8 +206,11 @@ export function PricingPage({ intent, interval: intentInterval }: PricingPagePro
         </div>
 
         {checkoutError ? (
-          <div role="alert" className="mb-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3">
-            <p className="type-body-medium text-red-700">{checkoutError}</p>
+          <div
+            role="alert"
+            className="border-outline-variant bg-error-container mb-6 rounded-2xl border px-4 py-3"
+          >
+            <p className="type-body-medium text-on-error-container">{checkoutError}</p>
           </div>
         ) : null}
 

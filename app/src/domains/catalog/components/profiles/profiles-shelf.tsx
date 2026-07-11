@@ -31,7 +31,7 @@ export function ProfilesShelf({
     return (
       <section className="space-y-4 pt-7">
         <SectionHeading icon={icon} subtitle={subtitle} title={title} />
-        <p className="type-body-medium text-red-800">{error.message}</p>
+        <p className="type-body-medium text-on-error-container">{error.message}</p>
       </section>
     );
   }

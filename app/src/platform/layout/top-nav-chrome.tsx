@@ -68,7 +68,7 @@ function TopNavLink({ label, native, to }: AppNavItem) {
 export function AtlasBrandLink() {
   return (
     <Link to="/" className="flex shrink-0 items-center gap-2.5 no-underline">
-      <div className="bg-accent flex h-7 w-7 items-center justify-center rounded-[0.85rem] text-white">
+      <div className="bg-primary text-on-primary flex h-7 w-7 items-center justify-center rounded-[0.85rem]">
         <span className="type-label-medium leading-none">A</span>
       </div>
       <span className="type-title-medium text-ink-strong">Atlas</span>

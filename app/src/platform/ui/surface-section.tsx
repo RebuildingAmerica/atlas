@@ -17,7 +17,7 @@ interface SurfaceSectionProps {
 const TONE_CLASS: Record<SurfaceSectionTone, string> = {
   default: "bg-surface-container",
   plain: "border-outline-variant bg-surface-container-lowest border",
-  success: "border border-emerald-200 bg-emerald-50/70",
+  success: "border-outline-variant bg-success-container border",
 };
 
 export function SurfaceSection({

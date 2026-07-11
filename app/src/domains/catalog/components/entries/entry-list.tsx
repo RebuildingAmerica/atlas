@@ -72,7 +72,10 @@ export function EntryList({
 
   if (error) {
     return (
-      <div role="alert" className="rounded-[1.4rem] bg-red-50 px-4 py-6 text-red-800">
+      <div
+        role="alert"
+        className="bg-error-container text-on-error-container rounded-[1.4rem] px-4 py-6"
+      >
         <div className="flex items-center gap-2 font-semibold">
           <AlertCircle className="h-5 w-5" aria-hidden />
           Search unavailable

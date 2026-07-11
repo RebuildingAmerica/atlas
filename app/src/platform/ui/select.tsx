@@ -46,7 +46,7 @@ export function Select({
       {label && (
         <label htmlFor={selectId} className="type-label-large text-ink-soft block">
           {label}
-          {required && <span className="text-red-500">*</span>}
+          {required && <span className="text-on-error-container">*</span>}
         </label>
       )}
       <div className="relative">
@@ -65,12 +65,12 @@ export function Select({
           onChange={(e) => onChange?.(e.target.value)}
           disabled={disabled}
           className={cn(
-            "border-border bg-surface text-ink-strong focus:border-border-strong focus:ring-accent-soft w-full appearance-none border pr-10 focus:ring-2 disabled:cursor-not-allowed disabled:bg-gray-100",
+            "border-border bg-surface text-ink-strong focus:border-border-strong focus:ring-accent-soft disabled:bg-surface-container w-full appearance-none border pr-10 focus:ring-2 disabled:cursor-not-allowed",
             size === "compact"
               ? "type-body-medium min-h-10 rounded-lg py-2"
               : "type-body-large rounded-2xl py-3",
             Icon ? "pl-10" : "pl-4",
-            error && "border-red-500",
+            error && "border-on-error-container",
             className,
           )}
         >
@@ -86,7 +86,7 @@ export function Select({
         </span>
       </div>
       {error && (
-        <span id={errorId} role="alert" className="type-body-small text-red-500">
+        <span id={errorId} role="alert" className="type-body-small text-on-error-container">
           {error}
         </span>
       )}

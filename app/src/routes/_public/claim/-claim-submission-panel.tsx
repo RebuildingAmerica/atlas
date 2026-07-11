@@ -156,7 +156,7 @@ function OrganizationProofStep({
           </Button>
         </div>
         {atprotoConnectionChanged ? (
-          <p className="type-body-small mt-2 text-amber-800">
+          <p className="type-body-small text-on-warning-container mt-2">
             Reconnect this account to use {atprotoLoginHandle.trim()}.
           </p>
         ) : null}

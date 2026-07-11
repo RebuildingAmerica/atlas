@@ -55,6 +55,7 @@ describe("routes/__root", () => {
     expect(markup).toContain('data-testid="router-outlet"');
     expect(markup).toContain('data-testid="vercel-analytics"');
     expect(markup).toContain('data-testid="vercel-speed-insights"');
+    expect(markup).toContain('class="bg-background text-on-surface flex min-h-screen flex-col"');
   });
 
   it("leaves route titles and descriptions to HeadContent", async () => {

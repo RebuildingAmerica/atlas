@@ -13,6 +13,8 @@
 
 @theme {
   /* Surface hierarchy (warm stone palette) */
+  --color-background: #f6f1e7;
+  --color-on-background: #1c1917;
   --color-surface: #faf6ee;
   --color-surface-alt: #f5f0e6;
   --color-surface-container-lowest: #ffffff;
@@ -47,15 +49,30 @@
   --color-accent-deep: #a67b50;
   --color-accent-ink: #ffffff;
 
-  /* Semantic role aliases consumed by Button and other primitives. */
+  /* Semantic role aliases consumed by app primitives. */
   --color-primary: var(--color-accent);
-  --color-on-primary-container: var(--color-accent-deep);
+  --color-on-primary: #24150a;
+  --color-primary-container: #ead2b9;
+  --color-on-primary-container: #3f2816;
   --color-on-surface: var(--color-ink-strong);
+  --color-on-surface-variant: var(--color-ink-soft);
   --color-outline: var(--color-ink-soft);
   --color-outline-variant: var(--color-border);
+  --color-link: var(--color-civic);
+  --color-link-hover: var(--color-civic-deep);
+  --color-success-container: #dff3df;
+  --color-on-success-container: #1f5f37;
+  --color-warning-container: #f7e6bd;
+  --color-on-warning-container: #76521a;
+  --color-error-container: #f5d8d3;
+  --color-on-error-container: #8d2118;
+  --color-footer-surface: #a67b50;
+  --color-on-footer-surface: #ffffff;
+  --color-footer-outline: rgba(255, 255, 255, 0.24);
+  --color-public-grid-line: rgba(28, 31, 43, 0.045);
 
   /* Page background */
-  --color-page-bg: #f6f1e7;
+  --color-page-bg: var(--color-background);
 
   /* Font families */
   --font-sans:
@@ -112,6 +129,63 @@
   --tracking-label-small: 0.03125rem;
 }
 
+:root {
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --color-background: #17130f;
+    --color-on-background: #fff7ea;
+    --color-surface: #1f1a15;
+    --color-surface-alt: #241e18;
+    --color-surface-container-lowest: #15110d;
+    --color-surface-container-low: #211b15;
+    --color-surface-container: #2a231b;
+    --color-surface-container-high: #352d23;
+    --color-surface-container-highest: #413629;
+    --color-paper: #211b15;
+    --color-paper-deep: #17130f;
+    --color-paper-faded: #2a231b;
+    --color-ink: #e5d9c9;
+    --color-ink-strong: #fff7ea;
+    --color-ink-soft: #cfc2b1;
+    --color-ink-muted: #9b8d7d;
+    --color-border: #4a4034;
+    --color-border-strong: #6a5b49;
+    --color-border-taupe: #5c4f41;
+    --color-civic: #9ec5ff;
+    --color-civic-deep: #c4dcff;
+    --color-accent: #e0ad7b;
+    --color-accent-soft: #5b3b22;
+    --color-accent-deep: #f3c99f;
+    --color-accent-ink: #24150a;
+    --color-primary: #e0ad7b;
+    --color-on-primary: #24150a;
+    --color-primary-container: #5b3b22;
+    --color-on-primary-container: #ffe0bd;
+    --color-on-surface: #fff7ea;
+    --color-on-surface-variant: #cfc2b1;
+    --color-outline: #9b8d7d;
+    --color-outline-variant: #4a4034;
+    --color-link: #9ec5ff;
+    --color-link-hover: #c4dcff;
+    --color-success-container: #143923;
+    --color-on-success-container: #c7f1d1;
+    --color-warning-container: #4a3511;
+    --color-on-warning-container: #f7dfaa;
+    --color-error-container: #4b1914;
+    --color-on-error-container: #f3c2bb;
+    --color-footer-surface: #302116;
+    --color-on-footer-surface: #fff7ea;
+    --color-footer-outline: rgba(255, 247, 234, 0.2);
+    --color-public-grid-line: rgba(255, 247, 234, 0.055);
+    --color-page-bg: #17130f;
+    --shadow-soft: 0 1px 3px rgba(0, 0, 0, 0.32), 0 1px 2px rgba(0, 0, 0, 0.24);
+  }
+}
+
 html {
   font-family:
     "Public Sans",
@@ -131,7 +205,8 @@ html {
 
 body {
   font-family: inherit;
-  color: var(--ink-strong);
+  background-color: var(--color-background);
+  color: var(--color-on-surface);
 }
 
 ::-webkit-scrollbar {
@@ -187,6 +262,15 @@ button:disabled,
   animation: atlas-top-bar-morph linear both;
   animation-timeline: scroll(root block);
   animation-range: 0 48px;
+}
+
+.atlas-public-shell {
+  background-color: var(--color-surface);
+  background-image:
+    linear-gradient(var(--color-public-grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--color-public-grid-line) 1px, transparent 1px);
+  background-position: max(0px, calc((100vw - 88rem) / 2)) 0;
+  background-size: 32px 32px;
 }
 
 @media (min-width: 40rem) {

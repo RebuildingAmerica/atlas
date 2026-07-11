@@ -79,7 +79,7 @@ export function ErrorPage({ reset }: ErrorComponentProps) {
               <Button
                 variant="primary"
                 onClick={reset}
-                className="bg-ink-strong hover:bg-ink-muted focus:ring-ink-strong text-white"
+                className="bg-ink-strong text-background hover:bg-ink-muted focus:ring-ink-strong"
               >
                 <span className="inline-flex items-center gap-2">
                   <RotateCcw className="h-4 w-4" aria-hidden />

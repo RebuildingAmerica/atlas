@@ -20,7 +20,7 @@ export function PricingResearchPassCard({ pendingCheckoutKey, onPurchase }: Rese
       <p className="type-label-medium text-ink-muted mb-4 tracking-wider uppercase">
         Project access
       </p>
-      <div className="border-border rounded-[1rem] border bg-white p-4 sm:flex sm:items-start sm:gap-5">
+      <div className="border-border bg-surface-container-lowest rounded-[1rem] border p-4 sm:flex sm:items-start sm:gap-5">
         <div className="mb-4 flex-1 sm:mb-0">
           <p className="type-title-small text-ink-strong mb-2 font-medium">Atlas Research Pass</p>
           <p className="type-body-small text-ink-soft leading-relaxed">
@@ -66,7 +66,7 @@ export function PricingEnterpriseCard() {
   return (
     <div className="border-border mb-10 border-t pt-8">
       <p className="type-label-medium text-ink-muted mb-4 tracking-wider uppercase">Enterprise</p>
-      <div className="border-border rounded-[1rem] border bg-white p-5">
+      <div className="border-border bg-surface-container-lowest rounded-[1rem] border p-5">
         <p className="type-title-small text-ink-strong mb-2 font-medium">
           Need annual invoicing, a security review, or a custom contract?
         </p>
@@ -95,7 +95,7 @@ export function PricingDiscountsCard() {
       <p className="type-label-medium text-ink-muted mb-4 tracking-wider uppercase">
         Discounted access
       </p>
-      <div className="border-border rounded-[1rem] border bg-white p-5">
+      <div className="border-border bg-surface-container-lowest rounded-[1rem] border p-5">
         <p className="type-title-small text-ink-strong mb-2 font-medium">
           Are you a student, independent creator, journalist, nonprofit, or civic technologist?
         </p>

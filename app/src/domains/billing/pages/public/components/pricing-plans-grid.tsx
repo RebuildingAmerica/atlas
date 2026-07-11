@@ -47,7 +47,7 @@ export function PricingPlansGrid({
       <div className="mb-6 flex flex-wrap items-center justify-between gap-2 sm:gap-4">
         <p className="type-label-medium text-ink-muted tracking-wider uppercase">Plans</p>
         <div
-          className="border-border inline-flex items-center gap-0.5 rounded-full border bg-white px-1 py-1"
+          className="border-border bg-surface-container-lowest inline-flex items-center gap-0.5 rounded-full border px-1 py-1"
           role="group"
           aria-label="Billing interval"
         >
@@ -59,7 +59,7 @@ export function PricingPlansGrid({
             }}
             className={`type-label-small rounded-full px-4 py-1.5 font-medium transition-colors ${
               billing === "monthly"
-                ? "bg-accent text-white"
+                ? "bg-primary text-on-primary"
                 : "text-ink-muted hover:text-ink-strong"
             }`}
           >
@@ -72,7 +72,9 @@ export function PricingPlansGrid({
               onBillingChange("annual");
             }}
             className={`type-label-small rounded-full px-4 py-1.5 font-medium transition-colors ${
-              billing === "annual" ? "bg-accent text-white" : "text-ink-muted hover:text-ink-strong"
+              billing === "annual"
+                ? "bg-primary text-on-primary"
+                : "text-ink-muted hover:text-ink-strong"
             }`}
           >
             Annual <span className="type-body-small text-accent-soft">— save 20%</span>
@@ -85,7 +87,7 @@ export function PricingPlansGrid({
             }}
             className={`type-label-small rounded-full px-4 py-1.5 font-medium transition-colors ${
               billing === "student"
-                ? "bg-accent text-white"
+                ? "bg-primary text-on-primary"
                 : "text-ink-muted hover:text-ink-strong"
             }`}
           >

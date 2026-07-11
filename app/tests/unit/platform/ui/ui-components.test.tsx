@@ -23,7 +23,7 @@ describe("ui components", () => {
       </PageLayout>,
     );
 
-    expect(screen.getByText("Ready").className).toContain("bg-green-100");
+    expect(screen.getByText("Ready").className).toContain("bg-success-container");
     expect(screen.getByText("Ready").closest("div")?.className).toContain("extra-space");
 
     rerender(

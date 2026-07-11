@@ -7,7 +7,7 @@ export function AuthBrandPanel() {
   return (
     <div className="bg-ink-strong flex h-full flex-col px-8 py-10 lg:px-12 lg:py-14">
       <div className="flex flex-shrink-0 items-center gap-3">
-        <div className="bg-primary flex h-12 w-12 items-center justify-center rounded-2xl text-white">
+        <div className="bg-primary text-on-primary flex h-12 w-12 items-center justify-center rounded-2xl">
           <span className="type-headline-small leading-none">A</span>
         </div>
         <span className="type-title-large text-surface">Atlas</span>
@@ -30,7 +30,7 @@ export function AuthBrandPanel() {
 export function AuthBrandHeader() {
   return (
     <div className="bg-ink-strong flex items-center gap-3 px-6 py-4">
-      <div className="bg-primary flex h-7 w-7 items-center justify-center rounded-xl text-white">
+      <div className="bg-primary text-on-primary flex h-7 w-7 items-center justify-center rounded-xl">
         <span className="type-label-medium leading-none">A</span>
       </div>
       <span className="type-title-medium text-surface">Atlas</span>

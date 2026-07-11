@@ -36,6 +36,8 @@ describe("Button", () => {
   it("supports variants", () => {
     const { rerender } = render(<Button variant="primary">P</Button>);
     expect(screen.getByText("P")).toHaveClass("bg-primary");
+    expect(screen.getByText("P")).toHaveClass("text-on-primary");
+    expect(screen.getByText("P")).toHaveClass("hover:text-on-primary-container");
 
     rerender(<Button variant="secondary">S</Button>);
     expect(screen.getByText("S")).toHaveClass("bg-surface-container-lowest");

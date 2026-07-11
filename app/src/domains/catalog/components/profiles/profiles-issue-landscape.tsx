@@ -27,7 +27,7 @@ function IssueClusterColumn({
     return (
       <div className="space-y-3">
         <h3 className="type-title-large text-ink-strong">{title}</h3>
-        <p className="type-body-medium text-red-800">{error.message}</p>
+        <p className="type-body-medium text-on-error-container">{error.message}</p>
       </div>
     );
   }
