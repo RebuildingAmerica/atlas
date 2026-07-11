@@ -20,7 +20,9 @@ The staging API deploy is a manual GitHub Actions workflow:
 - recommended API domain: `https://atlas-api-staging.rebuildingus.org`
 
 The workflow runs CI first, builds the same `atlas-api` image as production,
-deploys it to the staging service, and smoke-tests `/health`.
+deploys the Vercel Preview app, assigns the staging app hostname to that
+deployment, builds and deploys the staging API service, and smoke-tests the
+hosted app/API pair.
 
 Staging does not create or update the production Cloud Scheduler job. Run
 discovery in staging deliberately so test data and external API spend stay
@@ -45,6 +47,7 @@ Use the same secret names as production, but store staging values in the
 - `ATLAS_PUBLIC_URL`
 - `ATLAS_API_URL`
 - `ATLAS_AUTH_JWT_AUDIENCES`
+- `VERCEL_TOKEN`
 
 Set `ATLAS_PUBLIC_URL` to the staging app origin. Set `ATLAS_AUTH_JWT_AUDIENCES`
 to the staging resource URL list the API accepts, with the MCP resource first:
@@ -71,10 +74,21 @@ endpoint secrets are omitted, the deploy action derives staging defaults from
 `ATLAS_PUBLIC_URL/api/auth/internal/api-key`, and `ATLAS_PUBLIC_URL`. Set the
 explicit secrets when staging uses split hosted app and API origins.
 
+Set these GitHub Environment variables on `staging`:
+
+- `VERCEL_ORG_ID`
+- `VERCEL_PROJECT_ID`
+
+Use the Vercel project linked to the Atlas app. For the current Atlas Vercel
+project, `VERCEL_ORG_ID` is the Rebuilding America Project team ID and
+`VERCEL_PROJECT_ID` is the `atlas` project ID. The `VERCEL_TOKEN` secret must
+belong to a Vercel user or service account that can deploy the `atlas` project
+under `rebuilding-america-project` and assign the staging hostname.
+
 ## Vercel staging app
 
-Use either a dedicated Vercel staging project or a Vercel Preview environment.
-Set:
+Staging uses the Atlas Vercel Preview environment. Set the Vercel Preview env
+vars to the same app/API origins used by the GitHub `staging` environment:
 
 ```env
 ATLAS_DEPLOY_MODE=staging
@@ -87,6 +101,19 @@ ATLAS_AUTH_INTERNAL_SECRET=<same staging secret used by atlas-api-staging>
 
 If the staging app proxies docs through Mintlify, set `ATLAS_DOCS_URL` for the
 staging app as well.
+
+The staging app hostname must be available to the Rebuilding America Project
+Vercel team. Verify that Vercel can assign it before relying on the workflow:
+
+```bash
+pnpm exec vercel domains ls --scope rebuilding-america-project
+pnpm exec vercel inspect atlas-staging.rebuildingus.org --scope rebuilding-america-project
+```
+
+`atlas-staging.rebuildingus.org` must inspect as an `atlas` Preview deployment
+created from the commit being tested. If Vercel reports that the team does not
+own the domain, transfer or verify the staging hostname in the Rebuilding
+America Project Vercel team, then rerun **Deploy Staging**.
 
 ## Deploy staging
 
@@ -123,12 +150,14 @@ Then:
 After the workflow completes, verify:
 
 1. `GET /health` returns `200` on the staging API.
-2. The staging app loads data through the staging API proxy.
-3. `/.well-known/oauth-protected-resource/mcp` returns staging resource
+2. `atlas-staging.rebuildingus.org` points at the Vercel Preview deployment from
+   the same commit.
+3. The staging app loads data through the staging API proxy.
+4. `/.well-known/oauth-protected-resource/mcp` returns staging resource
    metadata.
-4. Magic-link or passkey sign-in works in staging.
-5. API key creation and direct `X-API-Key` access work in staging.
-6. MCP clients discover the staging protected-resource metadata URL.
+5. Magic-link or passkey sign-in works in staging.
+6. API key creation and direct `X-API-Key` access work in staging.
+7. MCP clients discover the staging protected-resource metadata URL.
 
 If staging uses `atlas-api-staging.rebuildingus.org`, configure the domain
 mapping with:

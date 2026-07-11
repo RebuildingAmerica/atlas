@@ -29,6 +29,63 @@ jobs:
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
+      - uses: ./.github/actions/setup-toolchain
+        with:
+          python: "false"
+
+      - name: Deploy staging web app to Vercel Preview
+        id: deploy-web
+        env:
+          ATLAS_PUBLIC_URL: ${{ secrets.ATLAS_PUBLIC_URL }}
+          VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+          VERCEL_SCOPE: rebuilding-america-project
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          missing=0
+          for name in ATLAS_PUBLIC_URL VERCEL_ORG_ID VERCEL_PROJECT_ID VERCEL_TOKEN; do
+            if [[ -z "${!name:-}" ]]; then
+              echo "::error title=Missing staging deploy configuration::${name} is required for the Deploy Staging workflow." >&2
+              missing=1
+            fi
+          done
+          if [[ "${missing}" -ne 0 ]]; then
+            exit 1
+          fi
+
+          deploy_output="$(pnpm exec vercel deploy --cwd app --target preview --archive=tgz --yes --scope "${VERCEL_SCOPE}" --token "${VERCEL_TOKEN}")"
+          printf '%s\n' "${deploy_output}"
+
+          deployment_url="$(printf '%s\n' "${deploy_output}" | grep -Eo 'https://[^[:space:]]+\.vercel\.app' | tail -n 1)"
+          if [[ -z "${deployment_url}" ]]; then
+            echo "::error title=Vercel deployment URL not found::The Vercel CLI did not print a deployment URL." >&2
+            exit 1
+          fi
+
+          staging_host="${ATLAS_PUBLIC_URL#https://}"
+          staging_host="${staging_host#http://}"
+          staging_host="${staging_host%%/*}"
+          if [[ -z "${staging_host}" ]]; then
+            echo "::error title=Invalid staging app origin::ATLAS_PUBLIC_URL must be an absolute app origin." >&2
+            exit 1
+          fi
+
+          pnpm exec vercel alias set "${deployment_url}" "${staging_host}" --scope "${VERCEL_SCOPE}" --token "${VERCEL_TOKEN}"
+
+          inspect_output="$(pnpm exec vercel inspect "${staging_host}" --scope "${VERCEL_SCOPE}" --token "${VERCEL_TOKEN}")"
+          printf '%s\n' "${inspect_output}"
+          if ! grep -Fq "${deployment_url}" <<<"${inspect_output}"; then
+            echo "::error title=Staging alias mismatch::${staging_host} does not point at ${deployment_url} after alias assignment." >&2
+            exit 1
+          fi
+
+          {
+            echo "deployment-url=${deployment_url}"
+            echo "staging-host=${staging_host}"
+          } >> "${GITHUB_OUTPUT}"
+
       - uses: ./.github/actions/deploy-atlas-api
         id: deploy-api
         with:
@@ -50,10 +107,6 @@ jobs:
           atlas-public-url: ${{ secrets.ATLAS_PUBLIC_URL }}
           atlas-api-audience: ${{ secrets.ATLAS_API_AUDIENCE || secrets.ATLAS_AUTH_JWT_AUDIENCES }}
           operator-allowed-emails: ${{ secrets.ATLAS_OPERATOR_ALLOWED_EMAILS }}
-
-      - uses: ./.github/actions/setup-toolchain
-        with:
-          python: "false"
 
       - name: Run hosted Cloudflare API smoke
         env:
