@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
-  isAllowedEmail,
+  isOperatorAllowedEmail,
   resolveAuthRuntimeConfig,
   validateAuthRuntimeConfig,
 } from "@/domains/access/server/runtime";
@@ -57,7 +57,7 @@ describe("runtime additional branches", () => {
         authJwtAudience: null,
         authJwtAudiences: [],
         apiBaseUrl: null,
-        allowedEmails: new Set(),
+        operatorAllowedEmails: new Set(),
         anonymousRateLimit: {
           enabled: true,
           readsPerMinute: 30,
@@ -93,9 +93,9 @@ describe("runtime additional branches", () => {
 
     it("blocks bootstrap access", () => {
       vi.stubEnv("ATLAS_PUBLIC_URL", "https://atlas.test");
-      vi.stubEnv("ATLAS_AUTH_ALLOWED_EMAILS", "");
+      vi.stubEnv("ATLAS_OPERATOR_ALLOWED_EMAILS", "");
 
-      expect(isAllowedEmail("anyone@atlas.test")).toBe(false);
+      expect(isOperatorAllowedEmail("anyone@atlas.test")).toBe(false);
     });
   });
 
@@ -108,12 +108,12 @@ describe("runtime additional branches", () => {
       const runtime = await loadFreshRuntime({
         ATLAS_PUBLIC_URL: "https://atlas.test",
         ATLAS_AUTH_INTERNAL_SECRET: "internal", // pragma: allowlist secret
-        ATLAS_AUTH_ALLOWED_EMAILS: "ops@atlas.test, ROOT@atlas.test",
+        ATLAS_OPERATOR_ALLOWED_EMAILS: "ops@atlas.test, ROOT@atlas.test",
       });
 
-      expect(runtime.isAllowedEmail("ops@atlas.test")).toBe(true);
-      expect(runtime.isAllowedEmail(" Root@Atlas.Test ")).toBe(true);
-      expect(runtime.isAllowedEmail("intruder@atlas.test")).toBe(false);
+      expect(runtime.isOperatorAllowedEmail("ops@atlas.test")).toBe(true);
+      expect(runtime.isOperatorAllowedEmail(" Root@Atlas.Test ")).toBe(true);
+      expect(runtime.isOperatorAllowedEmail("intruder@atlas.test")).toBe(false);
     });
   });
 

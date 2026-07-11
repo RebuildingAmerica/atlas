@@ -12,7 +12,7 @@ const mocks = vi.hoisted(() => ({
   emailSend: vi.fn(),
   getActiveMemberRole: vi.fn(),
   getAuthRuntimeConfig: vi.fn(),
-  isAllowedEmail: vi.fn(),
+  isOperatorAllowedEmail: vi.fn(),
   jwt: vi.fn(() => ({ kind: "jwt" })),
   listOrganizations: vi.fn(),
   listUserInvitations: vi.fn(),
@@ -107,7 +107,7 @@ vi.mock("@/platform/email/server/service", () => ({
 
 vi.mock("@/domains/access/server/runtime", () => ({
   getAuthRuntimeConfig: mocks.getAuthRuntimeConfig,
-  isAllowedEmail: mocks.isAllowedEmail,
+  isOperatorAllowedEmail: mocks.isOperatorAllowedEmail,
   validateAuthRuntimeConfig: mocks.validateAuthRuntimeConfig,
 }));
 
@@ -128,7 +128,7 @@ describe("auth — invitation success path and organization invitation email", (
       run: mocks.sqliteRun,
     });
     mocks.getAuthRuntimeConfig.mockReturnValue({
-      allowedEmails: new Set(),
+      operatorAllowedEmails: new Set(),
       apiKeyIntrospectionUrl: "http://127.0.0.1:3100/api-key",
       authJwtAudience: null,
       apiBaseUrl: null,
@@ -153,7 +153,7 @@ describe("auth — invitation success path and organization invitation email", (
     mocks.createEmailService.mockReturnValue({
       send: mocks.emailSend,
     });
-    mocks.isAllowedEmail.mockReturnValue(false);
+    mocks.isOperatorAllowedEmail.mockReturnValue(false);
     mocks.betterAuth.mockImplementation(() => ({
       $context: Promise.resolve({
         runMigrations: mocks.runMigrations,
@@ -221,7 +221,7 @@ describe("auth — invitation success path and organization invitation email", (
 
   it("uses the Postgres pool for membership lookup when DATABASE_URL is set", async () => {
     mocks.getAuthRuntimeConfig.mockReturnValue({
-      allowedEmails: new Set(),
+      operatorAllowedEmails: new Set(),
       authJwtAudience: null,
       apiBaseUrl: null,
       apiKeyIntrospectionUrl: "http://127.0.0.1:3100/api-key",
@@ -255,7 +255,7 @@ describe("auth — invitation success path and organization invitation email", (
 
   it("forces requirePKCE = true on every existing oauthClient row in Postgres", async () => {
     mocks.getAuthRuntimeConfig.mockReturnValue({
-      allowedEmails: new Set(),
+      operatorAllowedEmails: new Set(),
       authJwtAudience: null,
       apiBaseUrl: null,
       apiKeyIntrospectionUrl: "http://127.0.0.1:3100/api-key",
@@ -288,7 +288,7 @@ describe("auth — invitation success path and organization invitation email", (
 
   it("returns the Postgres-backed account existence count", async () => {
     mocks.getAuthRuntimeConfig.mockReturnValue({
-      allowedEmails: new Set(),
+      operatorAllowedEmails: new Set(),
       authJwtAudience: null,
       apiBaseUrl: null,
       apiKeyIntrospectionUrl: "http://127.0.0.1:3100/api-key",

@@ -60,7 +60,7 @@ vi.mock("@/platform/email/server/service", () => ({
 }));
 vi.mock("@/domains/access/server/runtime", () => ({
   getAuthRuntimeConfig: mocks.getAuthRuntimeConfig,
-  isAllowedEmail: vi.fn(),
+  isOperatorAllowedEmail: vi.fn(),
   validateAuthRuntimeConfig: mocks.validateAuthRuntimeConfig,
 }));
 vi.mock("@/domains/access/server/workspace-lookup", () => ({
@@ -82,7 +82,7 @@ describe("OAuth device auth runtime wiring", () => {
     mocks.runMigrations.mockReset();
     mocks.validateAuthRuntimeConfig.mockReset();
     mocks.getAuthRuntimeConfig.mockReturnValue({
-      allowedEmails: new Set(["operator@atlas.test"]),
+      operatorAllowedEmails: new Set(["operator@atlas.test"]),
       authJwtAudience: "https://atlas.test/api",
       authJwtAudiences: ["https://atlas.test/api"],
       apiKeyIntrospectionUrl: "http://127.0.0.1:3100/api/auth/internal/api-key",

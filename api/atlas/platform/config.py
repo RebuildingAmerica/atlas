@@ -99,14 +99,14 @@ class Settings(BaseSettings):
     ``tools/list`` call before negotiating up via step-up authorization.
     """
 
-    auth_allowed_emails: Annotated[list[str], NoDecode] = Field(
+    operator_allowed_emails: Annotated[list[str], NoDecode] = Field(
         default_factory=list,
-        validation_alias="ATLAS_AUTH_ALLOWED_EMAILS",
+        validation_alias="ATLAS_OPERATOR_ALLOWED_EMAILS",
     )
     """Operator emails allowed to access Atlas-maintained review surfaces."""
 
     @field_validator(
-        "auth_allowed_emails",
+        "operator_allowed_emails",
         "auth_jwt_audience",
         "auth_jwt_default_scope",
         mode="before",

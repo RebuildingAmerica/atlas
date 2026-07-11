@@ -29,7 +29,7 @@ describe("email service error branches", () => {
         trustedProxyHops: 1,
         writesPerMinute: 10,
       },
-      allowedEmails: new Set(),
+      operatorAllowedEmails: new Set(),
       databaseUrl: null,
       localMode: false,
       openRegistration: true,

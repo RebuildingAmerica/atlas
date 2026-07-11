@@ -41,7 +41,7 @@ services:
       atlas-api:
         condition: service_healthy
     environment:
-      ATLAS_AUTH_ALLOWED_EMAILS: ${ATLAS_AUTH_ALLOWED_EMAILS}
+      ATLAS_OPERATOR_ALLOWED_EMAILS: ${ATLAS_OPERATOR_ALLOWED_EMAILS}
       ATLAS_AUTH_API_KEY_INTROSPECTION_URL: http://atlas-web:3000/api/auth/internal/api-key
       ATLAS_AUTH_BASE_PATH: /api/auth
       ATLAS_AUTH_DB_PATH: /app/data/auth/atlas-auth.sqlite

@@ -54,7 +54,7 @@ interface DeployConfig {
   edgeOriginSecret: string;
   publicUrl: string;
   authJwtAudiences: string;
-  allowedEmails: string;
+  operatorAllowedEmails: string;
   resendApiKey: string;
 }
 
@@ -859,7 +859,7 @@ function readDeployConfig(projectRoot: string): DeployConfig | undefined {
     edgeOriginSecret,
     publicUrl,
     authJwtAudiences,
-    allowedEmails: resolve("ATLAS_AUTH_ALLOWED_EMAILS"),
+    operatorAllowedEmails: resolve("ATLAS_OPERATOR_ALLOWED_EMAILS"),
     resendApiKey: resolve("ATLAS_EMAIL_RESEND_API_KEY"),
   };
 }

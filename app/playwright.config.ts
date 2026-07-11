@@ -52,7 +52,7 @@ delete baseWebServerEnv.FORCE_COLOR;
 // acceptance startup deterministic.
 const mailServerCommand = "pnpm --filter @rebuildingamerica/atlas-app e2e:mail:ci";
 const commonAuthEnv = {
-  ATLAS_AUTH_ALLOWED_EMAILS: "person@atlas.test",
+  ATLAS_OPERATOR_ALLOWED_EMAILS: "person@atlas.test",
   ATLAS_AUTH_API_KEY_INTROSPECTION_URL: authIntrospectionUrl,
   ATLAS_AUTH_BASE_PATH: "/api/auth",
   ATLAS_AUTH_INTERNAL_SECRET: e2eInternalSecret,

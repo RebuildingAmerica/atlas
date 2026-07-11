@@ -3,7 +3,7 @@ import { MagicLinkEmail } from "@/platform/email/templates/magic-link-email";
 import { VerificationEmail } from "@/platform/email/templates/verification-email";
 import { InvitationEmail } from "@/platform/email/templates/invitation-email";
 import { createEmailService } from "@/platform/email/server/service";
-import { getAuthRuntimeConfig, isAllowedEmail } from "./runtime";
+import { getAuthRuntimeConfig, isOperatorAllowedEmail } from "./runtime";
 import { normalizeEmail } from "./auth-support";
 import { getAuthDatabase, getAuthPgPool } from "./auth-db";
 import { ensureAuthReady } from "./auth";
@@ -174,7 +174,7 @@ export async function canEmailAccessAtlas(email: string): Promise<boolean> {
     return true;
   }
 
-  if (isAllowedEmail(normalizedEmail)) {
+  if (isOperatorAllowedEmail(normalizedEmail)) {
     return true;
   }
 

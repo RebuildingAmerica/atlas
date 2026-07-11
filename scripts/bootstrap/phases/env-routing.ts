@@ -256,7 +256,11 @@ export function buildVercelEnvVars(env: Map<string, string>): VercelVar[] {
   add("ATLAS_AUTH_INTERNAL_SECRET", get("ATLAS_AUTH_INTERNAL_SECRET"), prod);
   add("ATLAS_EMAIL_RESEND_API_KEY", get("ATLAS_EMAIL_RESEND_API_KEY"), prod);
   add("ATLAS_EMAIL_FROM", get("ATLAS_EMAIL_FROM"), prod);
-  add("ATLAS_AUTH_ALLOWED_EMAILS", get("ATLAS_AUTH_ALLOWED_EMAILS"), prod);
+  add(
+    "ATLAS_OPERATOR_ALLOWED_EMAILS",
+    get("ATLAS_OPERATOR_ALLOWED_EMAILS"),
+    prod,
+  );
   add(
     "ATLAS_AUTH_API_KEY_INTROSPECTION_URL",
     get("ATLAS_AUTH_API_KEY_INTROSPECTION_URL"),

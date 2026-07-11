@@ -88,7 +88,7 @@ def _verification_record_response(
 
 def _normalized_allowed_operator_emails(settings: Settings) -> set[str]:
     """Return the normalized operator-review allowlist."""
-    return {email.strip().lower() for email in settings.auth_allowed_emails if email.strip()}
+    return {email.strip().lower() for email in settings.operator_allowed_emails if email.strip()}
 
 
 async def require_discount_review_actor(

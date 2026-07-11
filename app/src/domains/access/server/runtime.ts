@@ -20,7 +20,7 @@ export interface AuthRuntimeConfig {
   authJwtAudiences: readonly string[];
   apiKeyIntrospectionUrl: string | null;
   anonymousRateLimit: AnonymousRateLimitConfig;
-  allowedEmails: Set<string>;
+  operatorAllowedEmails: Set<string>;
   apiBaseUrl: string | null;
   databaseUrl: string | null;
   localMode: boolean;
@@ -201,7 +201,7 @@ export function resolveAuthRuntimeConfig(env: NodeJS.ProcessEnv, cwd: string): A
     apiBaseUrl: resolveApiBaseUrl(env),
     apiKeyIntrospectionUrl: resolveApiKeyIntrospectionUrl(env),
     anonymousRateLimit: resolveAnonymousRateLimitConfig(env),
-    allowedEmails: normalizeEmailList(env.ATLAS_AUTH_ALLOWED_EMAILS),
+    operatorAllowedEmails: normalizeEmailList(env.ATLAS_OPERATOR_ALLOWED_EMAILS),
     databaseUrl,
     localMode,
     openRegistration: env.ATLAS_AUTH_OPEN_REGISTRATION !== "false",
@@ -299,13 +299,13 @@ export function validateAuthRuntimeConfig(runtime: AuthRuntimeConfig): void {
  * Existing workspace members and invited operators are handled by higher-level
  * auth checks, so an empty allowlist intentionally grants no bootstrap access.
  */
-export function isAllowedEmail(email: string): boolean {
-  const { allowedEmails } = getAuthRuntimeConfig();
-  if (allowedEmails.size === 0) {
+export function isOperatorAllowedEmail(email: string): boolean {
+  const { operatorAllowedEmails } = getAuthRuntimeConfig();
+  if (operatorAllowedEmails.size === 0) {
     return false;
   }
 
-  return allowedEmails.has(email.trim().toLowerCase());
+  return operatorAllowedEmails.has(email.trim().toLowerCase());
 }
 
 /**

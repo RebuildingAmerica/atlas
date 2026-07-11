@@ -89,7 +89,7 @@ Then fill in the real values.
 | `ATLAS_AUTH_INTERNAL_SECRET`           | Yes                                         | Shared secret between the app and API services. Used for trusted app-to-API requests (e.g., API key introspection). `make setup` generates this automatically.                                                                                                                              |
 | `ATLAS_AUTH_API_KEY_INTROSPECTION_URL` | Yes when `ATLAS_DEPLOY_MODE` is not `local` | Internal URL Atlas uses to validate API keys from the app server. In a Compose deployment, set this to `http://atlas-web:3000/api/auth/internal/api-key`. In a hosted app deployment, set it to the app's public auth route, such as `https://atlas.example.com/api/auth/internal/api-key`. |
 | `ATLAS_AUTH_DB_PATH`                   | Yes                                         | Path to the Better Auth SQLite database. Must point at persistent storage that survives container restarts.                                                                                                                                                                                 |
-| `ATLAS_AUTH_ALLOWED_EMAILS`            | Yes for hosted discount review              | Comma-separated allowlist for first owners and private operator access. Hosted discount reviewers must be signed in with an email in this list before `/admin/discounts` can load or update requests.                                                                                       |
+| `ATLAS_OPERATOR_ALLOWED_EMAILS`        | Yes for hosted discount review              | Comma-separated allowlist for first owners and private operator access. Hosted discount reviewers must be signed in with an email in this list before `/admin/discounts` can load or update requests.                                                                                       |
 
 ### OAuth and MCP
 
@@ -195,7 +195,7 @@ Set these auth values in Vercel as well:
 
 - `ATLAS_AUTH_API_KEY_INTROSPECTION_URL=https://atlas.example.com/api/auth/internal/api-key`
 - `ATLAS_AUTH_INTERNAL_SECRET=<same shared secret used by the API service>`
-- `ATLAS_AUTH_ALLOWED_EMAILS=<optional bootstrap allowlist for first owners>`
+- `ATLAS_OPERATOR_ALLOWED_EMAILS=<optional bootstrap allowlist for first owners>`
 - `ATLAS_EMAIL_PROVIDER=resend`
 - `ATLAS_EMAIL_FROM=Atlas <hello@atlas-mail.example.com>`
 - `ATLAS_EMAIL_RESEND_API_KEY=<your Resend API key>`

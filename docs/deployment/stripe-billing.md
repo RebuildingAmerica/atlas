@@ -235,14 +235,15 @@ https://atlas.rebuildingus.org/admin/discounts
 Hosted review access has two requirements:
 
 1. The reviewer must be signed in to Atlas.
-2. The reviewer email must appear in `ATLAS_AUTH_ALLOWED_EMAILS` in the hosted
-   API environment.
+2. The reviewer email must appear in `ATLAS_OPERATOR_ALLOWED_EMAILS` in the
+   hosted API environment.
 
-Set `ATLAS_AUTH_ALLOWED_EMAILS` as a comma-separated list in `.env.production`,
-Vercel Production, and the Cloud Run API environment through bootstrap. Example:
+Set `ATLAS_OPERATOR_ALLOWED_EMAILS` as a comma-separated list in
+`.env.production`, Vercel Production, and the Cloud Run API environment through
+bootstrap. Example:
 
 ```env
-ATLAS_AUTH_ALLOWED_EMAILS=reviewer@rebuildingus.org,billing@rebuildingus.org
+ATLAS_OPERATOR_ALLOWED_EMAILS=reviewer@rebuildingus.org,billing@rebuildingus.org
 ```
 
 The API allows local development review with the synthetic local operator, but

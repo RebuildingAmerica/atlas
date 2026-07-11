@@ -8,7 +8,7 @@
     "dev:e2e": {
       "cache": false,
       "env": [
-        "ATLAS_AUTH_ALLOWED_EMAILS",
+        "ATLAS_OPERATOR_ALLOWED_EMAILS",
         "ATLAS_AUTH_BASE_PATH",
         "ATLAS_AUTH_DB_PATH",
         "ATLAS_AUTH_API_KEY_INTROSPECTION_URL",
@@ -27,7 +27,7 @@
       "cache": false,
       "dependsOn": ["build"],
       "env": [
-        "ATLAS_AUTH_ALLOWED_EMAILS",
+        "ATLAS_OPERATOR_ALLOWED_EMAILS",
         "ATLAS_AUTH_API_KEY_INTROSPECTION_URL",
         "ATLAS_AUTH_BASE_PATH",
         "ATLAS_AUTH_DB_PATH",
