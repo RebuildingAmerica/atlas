@@ -1,8 +1,20 @@
 import "@tanstack/react-start/server-only";
 
-import type { VerificationListResponse } from "@/lib/generated/atlas-schemas/access/verificationListResponse";
 import { requestAtlasApi } from "@/domains/discovery/server/api-client";
 import type { DiscountSegment } from "../discount-segments";
+
+export interface CurrentDiscountVerificationRecord {
+  id: string;
+  organization_id: string;
+  segment: DiscountSegment;
+  status: "pending" | "verified" | "rejected" | "expired";
+  submitted_at: string;
+  verified_at?: string | null;
+}
+
+export interface CurrentDiscountVerificationResponse {
+  record: CurrentDiscountVerificationRecord | null;
+}
 
 /**
  * Returns the verified discount segment for a workspace, if one has been approved.
@@ -10,13 +22,14 @@ import type { DiscountSegment } from "../discount-segments";
 export async function getVerifiedDiscountSegmentForWorkspace(
   workspaceId: string,
 ): Promise<DiscountSegment | null> {
-  const params = new URLSearchParams({
-    organization_id: workspaceId,
-    status: "verified",
-  });
-  const response = await requestAtlasApi<VerificationListResponse>(
-    `/admin/verifications?${params.toString()}`,
+  const response = await requestAtlasApi<CurrentDiscountVerificationResponse>(
+    "/access/discount-verification/current",
   );
+  const record = response.record;
 
-  return response.records[0]?.segment ?? null;
+  if (record?.organization_id !== workspaceId || record?.status !== "verified") {
+    return null;
+  }
+
+  return record.segment;
 }
