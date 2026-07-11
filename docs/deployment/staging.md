@@ -20,9 +20,9 @@ The staging API deploy is a manual GitHub Actions workflow:
 - recommended API domain: `https://atlas-api-staging.rebuildingus.org`
 
 The workflow runs CI first, builds the same `atlas-api` image as production,
-deploys the Vercel Preview app, assigns the staging app hostname to that
-deployment, builds and deploys the staging API service, and smoke-tests the
-hosted app/API pair.
+builds and deploys the staging API service, advances the Vercel staging branch,
+waits for Vercel to finish the Preview deployment for that commit, and
+smoke-tests the hosted app/API pair.
 
 Staging does not create or update the production Cloud Scheduler job. Run
 discovery in staging deliberately so test data and external API spend stay
@@ -47,7 +47,6 @@ Use the same secret names as production, but store staging values in the
 - `ATLAS_PUBLIC_URL`
 - `ATLAS_API_URL`
 - `ATLAS_AUTH_JWT_AUDIENCES`
-- `VERCEL_TOKEN`
 
 Set `ATLAS_PUBLIC_URL` to the staging app origin. Set `ATLAS_AUTH_JWT_AUDIENCES`
 to the staging resource URL list the API accepts, with the MCP resource first:
@@ -74,21 +73,17 @@ endpoint secrets are omitted, the deploy action derives staging defaults from
 `ATLAS_PUBLIC_URL/api/auth/internal/api-key`, and `ATLAS_PUBLIC_URL`. Set the
 explicit secrets when staging uses split hosted app and API origins.
 
-Set these GitHub Environment variables on `staging`:
-
-- `VERCEL_ORG_ID`
-- `VERCEL_PROJECT_ID`
-
-Use the Vercel project linked to the Atlas app. For the current Atlas Vercel
-project, `VERCEL_ORG_ID` is the Rebuilding America Project team ID and
-`VERCEL_PROJECT_ID` is the `atlas` project ID. The `VERCEL_TOKEN` secret must
-belong to a Vercel user or service account that can deploy the `atlas` project
-under `rebuilding-america-project` and assign the staging hostname.
-
 ## Vercel staging app
 
-Staging uses the Atlas Vercel Preview environment. Set the Vercel Preview env
-vars to the same app/API origins used by the GitHub `staging` environment:
+Staging uses the Atlas Vercel Preview environment and the `develop` branch. The
+Vercel project domain `atlas-staging.rebuildingus.org` must be assigned to the
+`develop` Git branch. The **Deploy Staging** workflow deploys
+`atlas-api-staging`, then fast-forwards `develop` to the same commit so the
+Vercel Git integration builds the staging app without a GitHub Actions Vercel
+token.
+
+Set the Vercel Preview env vars to the same app/API origins used by the GitHub
+`staging` environment:
 
 ```env
 ATLAS_DEPLOY_MODE=staging
@@ -103,17 +98,20 @@ If the staging app proxies docs through Mintlify, set `ATLAS_DOCS_URL` for the
 staging app as well.
 
 The staging app hostname must be available to the Rebuilding America Project
-Vercel team. Verify that Vercel can assign it before relying on the workflow:
+Vercel team and assigned to the `develop` Git branch. Verify that before relying
+on the workflow:
 
 ```bash
 pnpm exec vercel domains ls --scope rebuilding-america-project
 pnpm exec vercel inspect atlas-staging.rebuildingus.org --scope rebuilding-america-project
+pnpm exec vercel api '/v10/projects/prj_v1sY5KyDpC3vIWj11UMUjf4QKjH3/domains/atlas-staging.rebuildingus.org?teamId=team_IA08hNlo8bXnaFX10JyZbNVz' --raw
 ```
 
 `atlas-staging.rebuildingus.org` must inspect as an `atlas` Preview deployment
-created from the commit being tested. If Vercel reports that the team does not
-own the domain, transfer or verify the staging hostname in the Rebuilding
-America Project Vercel team, then rerun **Deploy Staging**.
+created from the commit being tested. The API response must include
+`"gitBranch":"develop"`. If Vercel reports that the team does not own the
+domain, transfer or verify the staging hostname in the Rebuilding America
+Project Vercel team, then rerun **Deploy Staging**.
 
 ## Deploy staging
 
@@ -144,14 +142,19 @@ Then:
 
 1. Open GitHub Actions.
 2. Select **Deploy Staging**.
-3. Run the workflow from the branch or commit you want to test.
+3. Run the workflow from `main`.
 4. Wait for CI and the deploy job to pass.
+
+The workflow advances `develop` only after the staging API deploy succeeds. It
+also checks that `develop` can fast-forward to the workflow commit before
+pushing. If another process moved `develop` somewhere unrelated, the workflow
+fails instead of rewriting branch history.
 
 After the workflow completes, verify:
 
 1. `GET /health` returns `200` on the staging API.
-2. `atlas-staging.rebuildingus.org` points at the Vercel Preview deployment from
-   the same commit.
+2. `atlas-staging.rebuildingus.org` points at the Vercel Preview deployment for
+   the `develop` branch at the same commit.
 3. The staging app loads data through the staging API proxy.
 4. `/.well-known/oauth-protected-resource/mcp` returns staging resource
    metadata.

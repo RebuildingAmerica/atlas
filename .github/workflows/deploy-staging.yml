@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: deploy-staging
@@ -21,70 +21,15 @@ jobs:
     environment: staging
     timeout-minutes: 30
     permissions:
-      contents: read
+      contents: write
       id-token: write
       attestations: write
       packages: read
 
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-
-      - uses: ./.github/actions/setup-toolchain
         with:
-          python: "false"
-
-      - name: Deploy staging web app to Vercel Preview
-        id: deploy-web
-        env:
-          ATLAS_PUBLIC_URL: ${{ secrets.ATLAS_PUBLIC_URL }}
-          VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
-          VERCEL_SCOPE: rebuilding-america-project
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-        run: |
-          set -euo pipefail
-
-          missing=0
-          for name in ATLAS_PUBLIC_URL VERCEL_ORG_ID VERCEL_PROJECT_ID VERCEL_TOKEN; do
-            if [[ -z "${!name:-}" ]]; then
-              echo "::error title=Missing staging deploy configuration::${name} is required for the Deploy Staging workflow." >&2
-              missing=1
-            fi
-          done
-          if [[ "${missing}" -ne 0 ]]; then
-            exit 1
-          fi
-
-          deploy_output="$(pnpm exec vercel deploy --cwd app --target preview --archive=tgz --yes --scope "${VERCEL_SCOPE}" --token "${VERCEL_TOKEN}")"
-          printf '%s\n' "${deploy_output}"
-
-          deployment_url="$(printf '%s\n' "${deploy_output}" | grep -Eo 'https://[^[:space:]]+\.vercel\.app' | tail -n 1)"
-          if [[ -z "${deployment_url}" ]]; then
-            echo "::error title=Vercel deployment URL not found::The Vercel CLI did not print a deployment URL." >&2
-            exit 1
-          fi
-
-          staging_host="${ATLAS_PUBLIC_URL#https://}"
-          staging_host="${staging_host#http://}"
-          staging_host="${staging_host%%/*}"
-          if [[ -z "${staging_host}" ]]; then
-            echo "::error title=Invalid staging app origin::ATLAS_PUBLIC_URL must be an absolute app origin." >&2
-            exit 1
-          fi
-
-          pnpm exec vercel alias set "${deployment_url}" "${staging_host}" --scope "${VERCEL_SCOPE}" --token "${VERCEL_TOKEN}"
-
-          inspect_output="$(pnpm exec vercel inspect "${staging_host}" --scope "${VERCEL_SCOPE}" --token "${VERCEL_TOKEN}")"
-          printf '%s\n' "${inspect_output}"
-          if ! grep -Fq "${deployment_url}" <<<"${inspect_output}"; then
-            echo "::error title=Staging alias mismatch::${staging_host} does not point at ${deployment_url} after alias assignment." >&2
-            exit 1
-          fi
-
-          {
-            echo "deployment-url=${deployment_url}"
-            echo "staging-host=${staging_host}"
-          } >> "${GITHUB_OUTPUT}"
+          fetch-depth: 0
 
       - uses: ./.github/actions/deploy-atlas-api
         id: deploy-api
@@ -107,6 +52,66 @@ jobs:
           atlas-public-url: ${{ secrets.ATLAS_PUBLIC_URL }}
           atlas-api-audience: ${{ secrets.ATLAS_API_AUDIENCE || secrets.ATLAS_AUTH_JWT_AUDIENCES }}
           operator-allowed-emails: ${{ secrets.ATLAS_OPERATOR_ALLOWED_EMAILS }}
+
+      - name: Advance Vercel staging branch
+        id: staging-branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+          STAGING_BRANCH: develop
+        run: |
+          set -euo pipefail
+
+          previous_vercel_target="$(
+            gh api "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/status" \
+              --jq '[.statuses[] | select(.context == "Vercel")][0].target_url // ""'
+          )"
+
+          git fetch --no-tags origin "refs/heads/${STAGING_BRANCH}:refs/remotes/origin/${STAGING_BRANCH}"
+          if ! git merge-base --is-ancestor "origin/${STAGING_BRANCH}" HEAD; then
+            echo "::error title=Staging branch is not a fast-forward::origin/${STAGING_BRANCH} is not an ancestor of ${GITHUB_SHA}." >&2
+            exit 1
+          fi
+
+          git push origin "HEAD:refs/heads/${STAGING_BRANCH}"
+
+          {
+            echo "branch=${STAGING_BRANCH}"
+            echo "previous-vercel-target=${previous_vercel_target}"
+          } >> "${GITHUB_OUTPUT}"
+
+      - name: Wait for Vercel staging app
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PREVIOUS_VERCEL_TARGET: ${{ steps.staging-branch.outputs.previous-vercel-target }}
+        run: |
+          set -euo pipefail
+
+          deadline=$((SECONDS + 600))
+          while (( SECONDS < deadline )); do
+            status_json="$(gh api "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/status")"
+            vercel_state="$(jq -r '[.statuses[] | select(.context == "Vercel")][0].state // ""' <<<"${status_json}")"
+            vercel_target="$(jq -r '[.statuses[] | select(.context == "Vercel")][0].target_url // ""' <<<"${status_json}")"
+
+            if [[ "${vercel_state}" == "success" && -n "${vercel_target}" && "${vercel_target}" != "${PREVIOUS_VERCEL_TARGET}" ]]; then
+              echo "Vercel staging deployment is ready: ${vercel_target}"
+              exit 0
+            fi
+
+            if [[ "${vercel_state}" == "failure" || "${vercel_state}" == "error" ]]; then
+              echo "::error title=Vercel staging deployment failed::${vercel_target}" >&2
+              exit 1
+            fi
+
+            echo "Waiting for Vercel staging deployment (state=${vercel_state:-missing})..."
+            sleep 10
+          done
+
+          echo "::error title=Timed out waiting for Vercel staging deployment::No new successful Vercel status appeared for ${GITHUB_SHA}." >&2
+          exit 1
+
+      - uses: ./.github/actions/setup-toolchain
+        with:
+          python: "false"
 
       - name: Run hosted Cloudflare API smoke
         env:
