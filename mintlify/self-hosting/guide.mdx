@@ -85,14 +85,16 @@ API keys > Restricted keys**, create a key named `Atlas Production Billing`,
 set these permissions, reveal the key once, and run setup with that `rk_live_...`
 value:
 
-- **Read:** Connect > Accounts
+- **Read:** Accounts v2, shown by Stripe errors as Basic Business Contact
+  Information (`accounts_kyc_basic_read`)
 - **Write:** Products, Prices, Coupons, Customers, Checkout Sessions, Webhook
   Endpoints
 
-`Connect > Accounts: Read` lets bootstrap confirm the friendly Stripe account
-name. If Stripe blocks that metadata lookup, bootstrap asks you to confirm the
-Stripe account ID instead. A live secret key also works, but restricted keys are
-the default production path.
+`Accounts v2: Read` lets bootstrap show the friendly Stripe account name. If
+the restricted-key UI does not expose that permission, bootstrap can continue
+after Stripe returns the account ID and you confirm it is the intended account.
+A live secret key also works, but restricted keys are the default production
+path.
 
 Stripe CLI OAuth keys are enough for local and staging checks, but production
 bootstrap should use a Dashboard-created live API key. Test-mode IDs cannot be

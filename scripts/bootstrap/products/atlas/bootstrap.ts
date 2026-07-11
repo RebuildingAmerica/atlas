@@ -341,7 +341,7 @@ export function stripeLiveRestrictedKeySetupSteps(): string[] {
     "Use this key for Atlas website and app code.",
     "Name the key Atlas Production Billing.",
     "Set permissions:",
-    "Read: Connect > Accounts.",
+    "Read: Accounts v2 (Basic Business Contact Information).",
     "Write: Products, Prices, Coupons, Customers, Checkout Sessions, Webhook Endpoints.",
     "Reveal the key once, copy the rk_live_ value, and keep it out of chat and committed files.",
     "Run `STRIPE_API_KEY=rk_live_... pnpm setup:prod --yes` from this repo.",
@@ -375,7 +375,7 @@ export function formatStripeApiKeyGuidanceNote(
         "6. Use this key for Atlas website and app code.",
         "7. Name the key Atlas Production Billing.",
         "8. Set permissions:",
-        "   Read: Connect > Accounts.",
+        "   Read: Accounts v2 (Basic Business Contact Information).",
         "   Write: Products, Prices, Coupons, Customers, Checkout Sessions,",
         "   Webhook Endpoints.",
         "9. Reveal the key once and copy the rk_live_ value.",
@@ -635,7 +635,7 @@ export function formatStripeAccountVerificationFailure(
           ? `Missing permission: ${missingPermission.label} (${missingPermission.scope})`
           : "Missing permission: account metadata read access",
         "",
-        "Open the restricted key in Stripe and add the missing read permission.",
+        "Open the restricted key in Stripe and add Accounts v2 read access.",
         editUrl
           ? `Edit key: ${editUrl}`
           : "Then paste the updated key into bootstrap again.",

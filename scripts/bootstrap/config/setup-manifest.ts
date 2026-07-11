@@ -135,7 +135,7 @@ export const SETUP_VALUE_MANIFEST: SetupValueManifestItem[] = [
     instructions: [
       "Use Stripe CLI test auth for local/staging.",
       "For production, create a live restricted key named Atlas Production Billing.",
-      "Set permissions: Read: Connect > Accounts. Write: Products, Prices, Coupons, Customers, Checkout Sessions, Webhook Endpoints.",
+      "Set permissions: Read: Accounts v2 (Basic Business Contact Information). Write: Products, Prices, Coupons, Customers, Checkout Sessions, Webhook Endpoints.",
       "Then run setup with STRIPE_API_KEY=rk_live_...",
     ].join(" "),
   },

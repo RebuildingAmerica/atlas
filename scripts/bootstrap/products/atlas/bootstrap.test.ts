@@ -85,7 +85,7 @@ void describe("Stripe bootstrap account review", () => {
       ),
     );
     assert.ok(
-      steps.some((step) => step.includes("Connect > Accounts")),
+      steps.some((step) => step.includes("Accounts v2")),
       "Production key instructions should include account-read permission",
     );
     assert.ok(
@@ -124,7 +124,7 @@ void describe("Stripe bootstrap account review", () => {
     assert.match(guidance.message, /Powering an integration you built/);
     assert.match(guidance.message, /website and app code/);
     assert.match(guidance.message, /Atlas Production Billing/);
-    assert.match(guidance.message, /Connect > Accounts/);
+    assert.match(guidance.message, /Accounts v2/);
     assert.doesNotMatch(message, /Do not/);
     assert.doesNotMatch(guidance.message, /third-party/);
     assert.doesNotMatch(guidance.message, /AI agent/);
@@ -164,7 +164,7 @@ void describe("Stripe bootstrap account review", () => {
     assert.match(failure.message, /accounts_kyc_basic_read/);
     assert.match(
       failure.message,
-      /Open the restricted key in Stripe and add the missing read permission./,
+      /Open the restricted key in Stripe and add Accounts v2 read access./,
     );
     assert.match(failure.message, /https:\/\/dashboard\.stripe\.com/);
     assert.doesNotMatch(failure.message, /rk_live_/);
