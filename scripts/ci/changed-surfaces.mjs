@@ -83,22 +83,30 @@ const COMPOSE_PATHS = [
 
 const ACTIONS_LINT_PATHS = [/^\.github\/(?:actions|workflows)\//];
 
-const DEPLOY_PATHS = [
-  /^api\/Dockerfile$/,
-  /^api\/\.dockerignore$/,
-  /^\.dockerignore$/,
+const DEPLOY_VALIDATION_PATHS = [
   /^scripts\/deploy\//,
-  /^config\.openstatus\.ya?ml$/,
-];
-
-const GITHUB_DEPLOY_AUTOMATION_PATHS = [
   /^\.github\/actions\/build-attest-push\//,
   /^\.github\/actions\/deploy-atlas-api\//,
   /^\.github\/workflows\/deploy-(?:staging|production)\.ya?ml$/,
 ];
 
+const STAGING_API_DEPLOY_PATHS = [
+  /^api\/Dockerfile$/,
+  /^api\/\.dockerignore$/,
+  /^\.dockerignore$/,
+  /^\.github\/actions\/build-attest-push\//,
+  /^\.github\/actions\/deploy-atlas-api\//,
+  /^\.github\/workflows\/deploy-staging\.ya?ml$/,
+];
+
 const HOSTED_SMOKE_AUTOMATION_PATHS = [
   /^\.github\/actions\/vercel-trusted-oidc\//,
+  /^\.github\/workflows\/deploy-staging\.ya?ml$/,
+];
+
+const PRODUCTION_DEPLOY_AUTOMATION_PATHS = [
+  /^\.github\/workflows\/deploy-production\.ya?ml$/,
+  /^config\.openstatus\.ya?ml$/,
 ];
 
 function matchesAny(file, patterns) {
@@ -165,14 +173,17 @@ export function classifyChangedFiles(files, context = {}) {
   const touchesActions = normalized.some((file) =>
     matchesAny(file, ACTIONS_LINT_PATHS),
   );
-  const touchesDeploy = normalized.some((file) =>
-    matchesAny(file, DEPLOY_PATHS),
+  const touchesDeployValidation = normalized.some((file) =>
+    matchesAny(file, DEPLOY_VALIDATION_PATHS),
   );
-  const touchesGithubDeployAutomation = normalized.some((file) =>
-    matchesAny(file, GITHUB_DEPLOY_AUTOMATION_PATHS),
+  const touchesStagingApiDeploy = normalized.some((file) =>
+    matchesAny(file, STAGING_API_DEPLOY_PATHS),
   );
   const touchesHostedSmokeAutomation = normalized.some((file) =>
     matchesAny(file, HOSTED_SMOKE_AUTOMATION_PATHS),
+  );
+  const touchesProductionDeployAutomation = normalized.some((file) =>
+    matchesAny(file, PRODUCTION_DEPLOY_AUTOMATION_PATHS),
   );
 
   const outputs = {
@@ -188,14 +199,15 @@ export function classifyChangedFiles(files, context = {}) {
     compose: touchesCompose,
     credential_scan: true,
     actions_lint: touchesActions,
-    deploy_scripts: touchesDeploy || touchesGithubDeployAutomation,
-    staging_api_deploy:
-      touchesApi || touchesDeploy || touchesGithubDeployAutomation,
+    deploy_scripts:
+      touchesDeployValidation ||
+      touchesStagingApiDeploy ||
+      touchesProductionDeployAutomation,
+    staging_api_deploy: touchesApi || touchesStagingApiDeploy,
     hosted_smoke:
       touchesApi ||
       touchesApp ||
-      touchesDeploy ||
-      touchesGithubDeployAutomation ||
+      touchesStagingApiDeploy ||
       touchesHostedSmokeAutomation,
     use_affected:
       context.eventName === "pull_request" &&

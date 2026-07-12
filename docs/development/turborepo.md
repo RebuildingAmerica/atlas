@@ -148,8 +148,10 @@ work that cannot affect the change:
 - docs-only changes run docs validation and the secret scan
 - Compose-only changes run Compose validation and the secret scan
 - non-deploy GitHub Actions changes run workflow linting and the secret scan
-- deploy-script and deploy-workflow changes run deploy script validation, then
-  staging deploy and hosted smoke on `main`
+- deploy helper script changes run deploy script validation without rebuilding
+  the hosted API
+- staging deploy workflow and API image input changes run deploy script
+  validation, then staging deploy and hosted smoke on `main`
 - app changes run app quality, app tests, acceptance, and hosted smoke
 - API or shared Python changes run Python quality, Python tests, contract,
   OpenAPI drift, acceptance, API deploy, and hosted smoke
