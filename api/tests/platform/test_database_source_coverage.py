@@ -6,6 +6,7 @@ from datetime import date
 
 import pytest
 
+from atlas.domains.catalog.models.source import _row_to_source
 from atlas.models import SourceCRUD
 
 
@@ -131,6 +132,25 @@ class TestSourceModelCoverage:
         source = await SourceCRUD.get_by_id(test_db, sample_source)
         assert source is not None
         assert source.published_date == date(2026, 4, 5)
+
+    def test_row_to_source_accepts_postgres_date_values(self) -> None:
+        """Postgres returns DATE columns as date objects instead of SQLite-style strings."""
+        source = _row_to_source(
+            {
+                "id": "source-1",
+                "url": "https://example.com/source",
+                "title": "Source Title",
+                "publication": "Example News",
+                "published_date": date(2026, 1, 14),
+                "type": "news_article",
+                "ingested_at": "2026-01-15T00:00:00Z",
+                "extraction_method": "autodiscovery",
+                "raw_content": "Source text",
+                "created_at": "2026-01-15T00:00:00Z",
+            }
+        )
+
+        assert source.published_date == date(2026, 1, 14)
 
     @pytest.mark.asyncio
     async def test_unlink_from_entry_removes_link(
