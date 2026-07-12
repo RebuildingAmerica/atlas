@@ -47,7 +47,7 @@ class DiscoveryScheduleCRUD:
             INSERT INTO discovery_schedules (
                 id, location_query, state, issue_areas, search_depth,
                 enabled, created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, 1, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, TRUE, ?, ?)
             """,
             (
                 schedule_id,
@@ -120,7 +120,7 @@ class DiscoveryScheduleCRUD:
         if "issue_areas" in fields_to_update:
             fields_to_update["issue_areas"] = db.encode_json(fields_to_update["issue_areas"])
         if "enabled" in fields_to_update:
-            fields_to_update["enabled"] = 1 if fields_to_update["enabled"] else 0
+            fields_to_update["enabled"] = bool(fields_to_update["enabled"])
 
         fields_to_update["updated_at"] = db.now_iso()
         set_clause = ", ".join([f"{k} = ?" for k in fields_to_update])

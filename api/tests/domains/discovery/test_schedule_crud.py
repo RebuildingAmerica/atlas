@@ -62,6 +62,28 @@ class _PostgresScheduleConnection:
         return _PostgresScheduleCursor()
 
 
+class _PostgresScheduleWriteCursor:
+    rowcount = 1
+
+
+class _PostgresScheduleWriteConnection:
+    backend = "postgres"
+
+    def __init__(self) -> None:
+        self.queries: list[str] = []
+        self.params: list[object] | tuple[object, ...] | None = None
+
+    async def execute(
+        self, sql: str, params: list[object] | tuple[object, ...]
+    ) -> _PostgresScheduleWriteCursor:
+        self.queries.append(sql)
+        self.params = params
+        return _PostgresScheduleWriteCursor()
+
+    async def commit(self) -> None:
+        return None
+
+
 @pytest_asyncio.fixture
 async def db() -> object:
     """Create a temporary test database."""
@@ -145,6 +167,29 @@ class TestDiscoveryScheduleCRUD:
         assert len(enabled) == 1
         assert enabled[0].enabled is True
         assert "enabled = TRUE" in db.queries[0]
+
+    @pytest.mark.asyncio
+    async def test_create_uses_postgres_boolean_literal_for_enabled(self) -> None:
+        db = _PostgresScheduleWriteConnection()
+
+        await DiscoveryScheduleCRUD.create(
+            db,
+            location_query="Austin, TX",
+            state="TX",
+            issue_areas=["housing_affordability"],
+        )
+
+        assert "TRUE" in db.queries[0]
+
+    @pytest.mark.asyncio
+    async def test_update_passes_boolean_enabled_parameter(self) -> None:
+        db = _PostgresScheduleWriteConnection()
+
+        updated = await DiscoveryScheduleCRUD.update(db, "sched_1", enabled=False)
+
+        assert updated is True
+        assert db.params is not None
+        assert db.params[0] is False
 
     @pytest.mark.asyncio
     async def test_update_fields(self, db: object) -> None:

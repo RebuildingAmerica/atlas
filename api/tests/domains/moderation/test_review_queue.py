@@ -10,6 +10,20 @@ from atlas.domains.moderation.review_queue import ReviewQueueCRUD, _coerce_date
 from atlas.models.database import get_db_connection
 
 
+class _RecordingReviewQueueConnection:
+    """Capture ReviewQueueCRUD.enqueue parameters without needing Postgres."""
+
+    def __init__(self) -> None:
+        self.params: tuple[object, ...] | None = None
+
+    async def execute(self, _sql: str, params: tuple[object, ...]) -> object:
+        self.params = params
+        return object()
+
+    async def commit(self) -> None:
+        return None
+
+
 @pytest.mark.asyncio
 async def test_review_queue_table_exists(db_url: str) -> None:
     """init_db must create the review_queue table with the expected columns."""
@@ -67,6 +81,25 @@ async def test_enqueue_and_list_pending(db_url: str) -> None:
     assert [item.entity_id for item in pending] == [entity_id]
     assert pending[0].org_id == "org-a"
     assert pending[0].status == "pending"
+
+
+@pytest.mark.asyncio
+async def test_enqueue_passes_boolean_dedup_suspect_parameter() -> None:
+    """PostgreSQL expects dedup_suspect to be a bool, not a SQLite-style integer."""
+    conn = _RecordingReviewQueueConnection()
+
+    await ReviewQueueCRUD.enqueue(
+        conn,
+        entity_id="entry-1",
+        kind="organization",
+        hold_reason="dedup_suspect",
+        score=0.7,
+        dedup_suspect=True,
+        dedup_note="Possible duplicate",
+    )
+
+    assert conn.params is not None
+    assert conn.params[6] is True
 
 
 @pytest.mark.asyncio

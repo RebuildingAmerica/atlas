@@ -90,7 +90,7 @@ class ReviewQueueCRUD:
                 kind,
                 hold_reason,
                 score,
-                1 if dedup_suspect else 0,
+                dedup_suspect,
                 dedup_note,
                 created_at,
             ),

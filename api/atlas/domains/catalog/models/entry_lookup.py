@@ -170,7 +170,7 @@ class EntryLookupMixin:
                 phone,
                 db.encode_json(social_media) if social_media else None,
                 affiliated_org_id,
-                1 if active else 0,
+                active,
                 contact_status,
                 editorial_notes,
                 priority,
@@ -227,7 +227,7 @@ class EntryLookupMixin:
             The matching entry, or None if no active entry has this slug.
         """
         cursor = await conn.execute(
-            "SELECT * FROM entries WHERE slug = ? AND active = 1",
+            "SELECT * FROM entries WHERE slug = ? AND active = TRUE",
             (slug,),
         )
         row = await cursor.fetchone()

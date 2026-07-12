@@ -141,7 +141,7 @@ async def _add_same_organization(
             ConnectionReason(kind="same_organization", label="Their organization"),
         )
         cursor = await conn.execute(
-            "SELECT * FROM entries WHERE affiliated_org_id = ? AND id != ? AND active = 1",
+            "SELECT * FROM entries WHERE affiliated_org_id = ? AND id != ? AND active = TRUE",
             (entry.affiliated_org_id, entry.id),
         )
         rows = await cursor.fetchall()
@@ -154,7 +154,7 @@ async def _add_same_organization(
             )
     elif entry.type == "organization":
         cursor = await conn.execute(
-            "SELECT * FROM entries WHERE affiliated_org_id = ? AND active = 1",
+            "SELECT * FROM entries WHERE affiliated_org_id = ? AND active = TRUE",
             (entry.id,),
         )
         rows = await cursor.fetchall()
@@ -180,7 +180,7 @@ async def _add_co_mentioned(
         JOIN entry_sources es1 ON es1.entry_id = e.id
         JOIN entry_sources es2 ON es2.source_id = es1.source_id
         JOIN sources s ON s.id = es1.source_id
-        WHERE es2.entry_id = ? AND e.id != ? AND e.active = 1
+        WHERE es2.entry_id = ? AND e.id != ? AND e.active = TRUE
         GROUP BY e.id
         """,
         (entry_id, entry_id),
@@ -217,7 +217,7 @@ async def _add_same_issue_area(
         WHERE eia.issue_area IN ({placeholders})
         AND e.state = ?
         AND e.id != ?
-        AND e.active = 1
+        AND e.active = TRUE
         GROUP BY e.id
         """,
         (*issue_areas, entry.state, entry.id),

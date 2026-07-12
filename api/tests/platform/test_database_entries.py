@@ -7,6 +7,20 @@ import pytest
 from atlas.models import EntryCRUD
 
 
+class _RecordingEntryConnection:
+    """Capture EntryCRUD.create SQL parameters without needing Postgres."""
+
+    def __init__(self) -> None:
+        self.params: tuple[object, ...] | None = None
+
+    async def execute(self, _sql: str, params: tuple[object, ...]) -> object:
+        self.params = params
+        return object()
+
+    async def commit(self) -> None:
+        return None
+
+
 class TestEntryModel:
     """Tests for Entry model and CRUD."""
 
@@ -23,6 +37,25 @@ class TestEntryModel:
             geo_specificity="local",
         )
         assert entry_id is not None
+
+    @pytest.mark.asyncio
+    async def test_create_entry_passes_boolean_active_parameter(self) -> None:
+        """PostgreSQL expects active to be a bool, not a SQLite-style integer."""
+        conn = _RecordingEntryConnection()
+
+        await EntryCRUD.create(
+            conn,
+            entry_type="organization",
+            name="Held Org",
+            description="Held pending review.",
+            city="Las Vegas",
+            state="NV",
+            geo_specificity="local",
+            active=False,
+        )
+
+        assert conn.params is not None
+        assert conn.params[18] is False
 
     @pytest.mark.asyncio
     async def test_get_entry(self, test_db: object, sample_entry: object) -> None:

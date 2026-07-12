@@ -161,7 +161,7 @@ async def _load_quality_records(
             AND ro.org_id = ?
         LEFT JOIN entry_sources es ON es.entry_id = e.id
         LEFT JOIN sources s ON s.id = es.source_id
-        WHERE e.active = 1
+        WHERE e.active = TRUE
         GROUP BY e.id, e.name, e.type, e.city, e.state
         ORDER BY e.name ASC, e.id ASC
         """,
