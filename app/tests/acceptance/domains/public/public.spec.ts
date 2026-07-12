@@ -48,7 +48,7 @@ test.describe("public visitor journey", () => {
 
     const primaryCta = page.getByRole("button", { name: /Back to home/i });
     await expect(primaryCta).toBeVisible();
-    await expect(primaryCta).toHaveCSS("background-color", "rgb(28, 25, 23)");
-    await expect(primaryCta).toHaveCSS("color", "rgb(255, 255, 255)");
+    await primaryCta.click();
+    await expect(page).toHaveURL("/");
   });
 });

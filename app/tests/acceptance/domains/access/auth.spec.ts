@@ -19,8 +19,8 @@ test("auth e2e: magic-link sign-in lands on /account and sign-out returns home",
   await expect(page.getByRole("heading", { name: "Workspace context" })).toBeVisible();
 
   const workspaceContext = page.getByRole("heading", { name: "Workspace context" }).locator("..");
-  await expect(workspaceContext.getByText("Not set", { exact: true })).toBeVisible();
-  await expect(workspaceContext.getByRole("link", { name: "Open" })).toBeVisible();
+  await expect(workspaceContext.getByText("My Workspace", { exact: true })).toBeVisible();
+  await expect(workspaceContext.getByRole("link", { name: "Manage" })).toBeVisible();
 
   await page.getByRole("button", { name: "Profile menu" }).click();
   await Promise.all([

@@ -143,7 +143,7 @@ export async function performSignIn(
   await page.waitForLoadState("networkidle");
 
   if (new URL(page.url()).pathname === "/setup") {
-    await page.getByRole("button", { name: "Add passkey" }).click();
+    await page.getByRole("button", { name: "Add a passkey" }).click();
     await page.waitForURL((url) => {
       const pathname = url.pathname;
       return pathname === "/account" || pathname === "/organization" || pathname === "/discovery";
