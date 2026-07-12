@@ -90,7 +90,7 @@ export async function runInfraPhase(
   );
 
   enableApis(projectId, doctorMode, followUpItems);
-  ensureArtifactRegistry(region, doctorMode, followUpItems);
+  ensureArtifactRegistry(projectId, region, doctorMode, followUpItems);
 
   const saEmail = `${SA_NAME}@${projectId}.iam.gserviceaccount.com`;
   ensureServiceAccount(projectId, saEmail, doctorMode, followUpItems);

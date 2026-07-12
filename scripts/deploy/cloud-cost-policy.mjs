@@ -52,7 +52,11 @@ function parseMemoryMiB(memory) {
 }
 
 function serviceAnnotations(service) {
-  return service?.template?.annotations ?? service?.spec?.template?.metadata?.annotations ?? {};
+  return (
+    service?.template?.annotations ??
+    service?.spec?.template?.metadata?.annotations ??
+    {}
+  );
 }
 
 function serviceTemplateSpec(service) {
@@ -69,11 +73,15 @@ export function evaluateCloudRunCostPosture(service) {
 
   const minScale = annotations["autoscaling.knative.dev/minScale"] ?? "0";
   if (String(minScale) !== "0") {
-    blockers.push("Cloud Run min instances must stay at 0 unless an operator approves paid idle.");
+    blockers.push(
+      "Cloud Run min instances must stay at 0 unless an operator approves paid idle.",
+    );
   }
 
   if (annotations["run.googleapis.com/cpu-throttling"] === "false") {
-    blockers.push("Cloud Run CPU must stay request-allocated; always-allocated CPU creates idle cost.");
+    blockers.push(
+      "Cloud Run CPU must stay request-allocated; always-allocated CPU creates idle cost.",
+    );
   }
 
   const cpu = parseCpu(limits.cpu);
@@ -110,8 +118,14 @@ export function evaluateRepositoryCostPosture(repository) {
   const warnings = [];
   const cleanupPolicies = repository?.cleanupPolicies;
 
-  if (cleanupPolicies === null || cleanupPolicies === undefined || cleanupPolicies === "") {
-    blockers.push("Artifact Registry cleanup policy is required before deploy.");
+  if (
+    cleanupPolicies === null ||
+    cleanupPolicies === undefined ||
+    cleanupPolicies === ""
+  ) {
+    blockers.push(
+      "Artifact Registry cleanup policy is required before deploy. Run `pnpm bootstrap` to apply it automatically.",
+    );
   }
 
   if (repository?.cleanupPolicyDryRun === true) {
@@ -119,7 +133,8 @@ export function evaluateRepositoryCostPosture(repository) {
   }
 
   const sizeBytes = Number(repository?.sizeBytes ?? 0);
-  const freeBytes = CLOUD_COST_POLICY.artifactRegistryFreeGiB * 1024 * 1024 * 1024;
+  const freeBytes =
+    CLOUD_COST_POLICY.artifactRegistryFreeGiB * 1024 * 1024 * 1024;
   if (Number.isFinite(sizeBytes) && sizeBytes > freeBytes) {
     warnings.push(
       `Artifact Registry size ${(sizeBytes / 1024 / 1024).toFixed(1)} MiB exceeds the ${CLOUD_COST_POLICY.artifactRegistryFreeGiB} GiB free allowance.`,

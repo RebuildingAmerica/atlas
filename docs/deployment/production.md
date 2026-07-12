@@ -36,8 +36,9 @@ The recommended hosted topology is:
 
 Hosted API deploys run cloud cost preflight before Docker build and push. The
 preflight verifies Artifact Registry cleanup policy presence and blocks Cloud
-Run drift that would create paid idle capacity. Apply Artifact Registry cleanup
-policy during infrastructure setup, not during each deploy.
+Run drift that would create paid idle capacity. `pnpm bootstrap` applies the
+Artifact Registry cleanup policy during cloud infrastructure setup so normal
+deploys do not need repository-admin permissions.
 
 Why this is the recommended path:
 

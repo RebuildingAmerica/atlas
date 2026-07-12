@@ -41,6 +41,7 @@ export function enableApis(
 }
 
 export function ensureArtifactRegistry(
+  projectId: string,
   region: string,
   doctorMode: boolean,
   followUpItems: string[],
@@ -51,13 +52,19 @@ export function ensureArtifactRegistry(
 
   if (checkResult.ok) {
     log.success(`Artifact Registry '${REPO_NAME}' already exists`);
+    ensureArtifactRegistryCleanupPolicy(
+      projectId,
+      region,
+      doctorMode,
+      followUpItems,
+    );
     return;
   }
 
   if (doctorMode) {
     log.warn(`Artifact Registry '${REPO_NAME}' does not exist`);
     followUpItems.push(
-      `Create Artifact Registry: gcloud artifacts repositories create ${REPO_NAME} --repository-format=docker --location=${region}`,
+      "Run `pnpm bootstrap` to create Artifact Registry and apply its cleanup policy",
     );
     return;
   }
@@ -81,6 +88,63 @@ export function ensureArtifactRegistry(
   }
 
   s.stop(`Artifact Registry '${REPO_NAME}' created`);
+  ensureArtifactRegistryCleanupPolicy(
+    projectId,
+    region,
+    doctorMode,
+    followUpItems,
+  );
+}
+
+function ensureArtifactRegistryCleanupPolicy(
+  projectId: string,
+  region: string,
+  doctorMode: boolean,
+  followUpItems: string[],
+): void {
+  const imageRegistry = `${region}-docker.pkg.dev/${projectId}/${REPO_NAME}`;
+
+  if (doctorMode) {
+    const describeResult = runCommand(
+      `gcloud artifacts repositories describe "${REPO_NAME}" ` +
+        `--location="${region}" ` +
+        `--project="${projectId}" ` +
+        `--format="value(cleanupPolicies.delete-untagged-api-images.name)" 2>/dev/null`,
+    );
+    if (!describeResult.ok || describeResult.stdout.trim() === "") {
+      log.warn(`Artifact Registry '${REPO_NAME}' cleanup policy is missing`);
+      followUpItems.push(
+        "Run `pnpm bootstrap` to apply the Artifact Registry cleanup policy",
+      );
+    } else {
+      log.success(
+        `Artifact Registry '${REPO_NAME}' cleanup policy already exists`,
+      );
+    }
+    return;
+  }
+
+  const s = spinner();
+  s.start(`Applying Artifact Registry cleanup policy to '${REPO_NAME}'...`);
+
+  const result = runCommand(
+    `GCP_REGION="${region}" ` +
+      `IMAGE_REGISTRY="${imageRegistry}" ` +
+      `node scripts/deploy/cloud-cost-preflight.mjs apply-cleanup-policy`,
+  );
+
+  if (!result.ok) {
+    s.stop(
+      `Failed to apply Artifact Registry cleanup policy to '${REPO_NAME}'`,
+    );
+    log.error(commandOutput(result));
+    followUpItems.push(
+      "Re-run `pnpm bootstrap` with a GCP account that can update Artifact Registry repositories",
+    );
+    return;
+  }
+
+  s.stop(`Artifact Registry '${REPO_NAME}' cleanup policy ready`);
 }
 
 export function ensureServiceAccount(

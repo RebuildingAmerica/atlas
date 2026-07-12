@@ -33,7 +33,12 @@ and push. The preflight:
 - blocks CPU or memory limits above the hosted policy.
 
 Artifact Registry cleanup policies are infrastructure setup, not deploy work.
-Apply the repo cleanup policy deliberately with:
+`pnpm bootstrap` creates the repository and applies the cleanup policy
+automatically. If a provider permission issue interrupts bootstrap, rerun the
+same phase after authenticating a GCP operator account that can update Artifact
+Registry repositories.
+
+The fallback command is:
 
 ```bash
 GCP_REGION=us-central1 \

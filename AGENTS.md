@@ -50,6 +50,12 @@ outranks all others in this repo.)
    ultimately feels. Every change, at every layer, is judged by the end-user
    experience it produces.
 
+**Operational setup rule:** If any part of engineering or operations setup can
+be automated and made turnkey, it must be automated in the repo. Manual setup is
+only acceptable as a rare fallback for provider limits, permissions, or
+break-glass recovery, and the fallback must point back to the automated path
+that should normally own the work.
+
 Apply it like this:
 
 - **Judge work by its effect on the person using Atlas, not by how clean or
