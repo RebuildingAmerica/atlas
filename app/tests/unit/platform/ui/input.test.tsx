@@ -35,7 +35,7 @@ describe("Input", () => {
     const error = screen.getByText("Invalid email");
 
     expect(screen.getByText("Invalid email")).toBeInTheDocument();
-    expect(input).toHaveClass("border-red-500");
+    expect(input).toHaveClass("border-on-error-container");
     expect(input).toHaveAttribute("aria-invalid", "true");
     expect(error.id).not.toBe("");
     expect(input).toHaveAttribute("aria-describedby", error.id);

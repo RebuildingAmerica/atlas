@@ -42,7 +42,7 @@ describe("PublicFooter", () => {
 
     expect(footer).toHaveClass("h-[100svh]");
     expect(footer).toHaveClass("max-h-[100svh]");
-    expect(footer).toHaveClass("bg-accent-deep/95");
+    expect(footer).toHaveClass("bg-footer-surface");
     expect(screen.getByText("Rebuilding America Project")).toBeInTheDocument();
     expect(screen.getByText("38°54N 77°02W")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Atlas" })).toBeInTheDocument();

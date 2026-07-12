@@ -42,7 +42,7 @@ describe("Select", () => {
     const error = screen.getByText("Selection required");
 
     expect(error).toBeInTheDocument();
-    expect(select).toHaveClass("border-red-500");
+    expect(select).toHaveClass("border-on-error-container");
     expect(select).toHaveAttribute("aria-invalid", "true");
     expect(error.id).not.toBe("");
     expect(select).toHaveAttribute("aria-describedby", error.id);
