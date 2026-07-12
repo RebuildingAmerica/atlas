@@ -39,7 +39,7 @@ function validateProductionPublicEnv(env: HostedAtlasEnv): void {
   validateHostedAtlasEnv(env);
 }
 
-function buildHostedProxyRouteRules(env: HostedAtlasEnv): NitroRouteRules {
+export function buildHostedProxyRouteRules(env: HostedAtlasEnv): NitroRouteRules {
   const docsOrigin = normalizeDocsOrigin(env.ATLAS_DOCS_URL);
   const apiOrigin = normalizeApiProxyOrigin(env);
   const rules: NitroRouteRules = {};
@@ -61,6 +61,12 @@ function buildHostedProxyRouteRules(env: HostedAtlasEnv): NitroRouteRules {
     };
     rules["/mcp/**"] = {
       proxy: buildHostedRewriteDestination(apiOrigin, "/mcp/**"),
+    };
+    rules["/api/entities"] = {
+      proxy: buildHostedRewriteDestination(apiOrigin, "/api/entities"),
+    };
+    rules["/api/entities/**"] = {
+      proxy: buildHostedRewriteDestination(apiOrigin, "/api/entities/**"),
     };
   }
 
