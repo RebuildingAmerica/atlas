@@ -12,11 +12,13 @@ const mocks = vi.hoisted(() => ({
       list: vi.fn(),
     },
   },
+  queryOptions: vi.fn((options: unknown) => options),
   useQuery: vi.fn(),
 }));
 
 vi.mock("@tanstack/react-query", () => ({
   keepPreviousData: "keep-previous-data",
+  queryOptions: mocks.queryOptions,
   useQuery: mocks.useQuery,
 }));
 
@@ -30,6 +32,7 @@ describe("catalog hooks", () => {
     mocks.api.entries.get.mockReset();
     mocks.api.entries.list.mockReset();
     mocks.api.taxonomy.list.mockReset();
+    mocks.queryOptions.mockClear();
     mocks.useQuery.mockReset();
     mocks.useQuery.mockImplementation((options: { enabled?: boolean; queryFn: () => unknown }) => {
       if (options.enabled !== false) {
