@@ -2,7 +2,9 @@ import { Link } from "@tanstack/react-router";
 import { Check, ExternalLink, RefreshCw, ShieldAlert, ShieldCheck, X } from "lucide-react";
 import { useState } from "react";
 import {
+  AdminInlineStatus,
   AdminIndicatorCard,
+  AdminIndicatorPlaceholderCard,
   AdminPageHeader,
   AdminPageShell,
   AdminStatusBadge,
@@ -20,6 +22,8 @@ interface ProfileClaimReviewViewProps {
   approving: boolean;
   atprotoStatus: string;
   claims: ProfileClaimResponse[];
+  errorMessage?: string;
+  isLoading?: boolean;
   onApprove: (claim: ProfileClaimResponse, note: string) => void;
   onReject: (claim: ProfileClaimResponse, note: string) => void;
   onRevalidateAtproto: () => void;
@@ -32,6 +36,8 @@ export function ProfileClaimReviewView({
   approving,
   atprotoStatus,
   claims,
+  errorMessage,
+  isLoading = false,
   onApprove,
   onReject,
   onRevalidateAtproto,
@@ -47,12 +53,16 @@ export function ProfileClaimReviewView({
         description="Confirm representative access only when the submitted sources match the public profile."
       >
         <div className="grid gap-3 sm:min-w-80 sm:grid-cols-2">
-          <AdminIndicatorCard
-            label="Waiting"
-            value={String(total)}
-            detail="Needs source review"
-            tone={total > 0 ? "warn" : "pass"}
-          />
+          {isLoading ? (
+            <AdminIndicatorPlaceholderCard label="Waiting" detail="Needs source review" />
+          ) : (
+            <AdminIndicatorCard
+              label="Waiting"
+              value={String(total)}
+              detail="Needs source review"
+              tone={total > 0 ? "warn" : "pass"}
+            />
+          )}
           <div className="border-border bg-surface-container-lowest rounded-lg border p-5">
             <p className="type-label-small text-ink-muted">ATProto links</p>
             <p className="type-title-small text-ink-strong mt-2">{atprotoStatus}</p>
@@ -71,11 +81,13 @@ export function ProfileClaimReviewView({
         </div>
       </AdminPageHeader>
 
-      {claims.length === 0 ? (
+      {errorMessage ? (
+        <AdminInlineStatus message={errorMessage} />
+      ) : claims.length === 0 && !isLoading ? (
         <div className="border-border bg-surface-container-lowest rounded-lg border p-6 text-center">
           <p className="type-body-medium text-ink-soft">No verifications waiting.</p>
         </div>
-      ) : (
+      ) : claims.length > 0 ? (
         <div className="grid gap-4">
           {claims.map((claim) => (
             <ReviewCard
@@ -88,7 +100,7 @@ export function ProfileClaimReviewView({
             />
           ))}
         </div>
-      )}
+      ) : null}
     </AdminPageShell>
   );
 }

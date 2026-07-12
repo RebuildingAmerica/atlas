@@ -9,11 +9,16 @@ import { CloudCostsAdminPage } from "@/domains/admin/cloud-costs-page";
 import type { CloudCostPostureResponse } from "@/domains/admin/cloud-costs.functions";
 
 const mocks = vi.hoisted(() => ({
+  useHydrated: vi.fn(() => true),
   loadCloudCostPosture: vi.fn(),
 }));
 
 vi.mock("@/domains/admin/cloud-costs.functions", () => ({
   loadCloudCostPosture: mocks.loadCloudCostPosture,
+}));
+
+vi.mock("@/platform/runtime/use-hydrated", () => ({
+  useHydrated: mocks.useHydrated,
 }));
 
 const postureResponse: CloudCostPostureResponse = {
@@ -67,17 +72,40 @@ function renderCloudCostsAdminPage() {
 
 afterEach(() => {
   cleanup();
+  mocks.useHydrated.mockReset();
+  mocks.useHydrated.mockReturnValue(true);
   mocks.loadCloudCostPosture.mockReset();
 });
 
 describe("CloudCostsAdminPage", () => {
+  it("renders the cloud-cost shell while posture data is still loading", () => {
+    mocks.loadCloudCostPosture.mockReturnValue(new Promise(() => undefined));
+
+    renderCloudCostsAdminPage();
+
+    expect(screen.getByRole("heading", { name: "Cloud costs" })).toBeInTheDocument();
+    expect(screen.getByText("Discovery spend")).toBeInTheDocument();
+    expect(screen.getAllByText("-").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Loading")).not.toBeInTheDocument();
+  });
+
+  it("keeps the cloud-cost shell visible when posture data fails", async () => {
+    mocks.loadCloudCostPosture.mockRejectedValue(new Error("Cloud cost posture unavailable"));
+
+    renderCloudCostsAdminPage();
+
+    expect(screen.getByRole("heading", { name: "Cloud costs" })).toBeInTheDocument();
+    expect(await screen.findByText("Cloud cost posture unavailable")).toBeInTheDocument();
+    expect(screen.getAllByText("Cloud cost posture unavailable")).toHaveLength(1);
+  });
+
   it("renders cloud cost posture from the authenticated server function", async () => {
     mocks.loadCloudCostPosture.mockResolvedValue(postureResponse);
 
     renderCloudCostsAdminPage();
 
     expect(await screen.findByRole("heading", { name: "Cloud costs" })).toBeInTheDocument();
-    expect(screen.getByText("$2.75")).toBeInTheDocument();
+    expect(await screen.findByText("$2.75")).toBeInTheDocument();
     expect(screen.getByText("$10.00 daily ceiling")).toBeInTheDocument();
     expect(screen.getByText("Artifact Registry cleanup")).toBeInTheDocument();
     expect(screen.getAllByText("Cloud Billing BigQuery export is not connected yet.")).toHaveLength(

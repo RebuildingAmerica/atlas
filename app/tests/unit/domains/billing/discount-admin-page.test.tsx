@@ -9,6 +9,7 @@ import { DiscountAdminPage } from "@/domains/billing/pages/workspace/discount-ad
 import type { VerificationListResponse } from "@/lib/generated/atlas-schemas/access/verificationListResponse";
 
 const mocks = vi.hoisted(() => ({
+  useHydrated: vi.fn(() => true),
   listDiscountVerifications: vi.fn(),
   reviewDiscountVerification: vi.fn(),
 }));
@@ -16,6 +17,10 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/domains/billing/discount-verifications.functions", () => ({
   listDiscountVerifications: mocks.listDiscountVerifications,
   reviewDiscountVerification: mocks.reviewDiscountVerification,
+}));
+
+vi.mock("@/platform/runtime/use-hydrated", () => ({
+  useHydrated: mocks.useHydrated,
 }));
 
 const verificationListResponse: VerificationListResponse = {
@@ -53,6 +58,8 @@ function renderDiscountAdminPage() {
 
 afterEach(() => {
   cleanup();
+  mocks.useHydrated.mockReset();
+  mocks.useHydrated.mockReturnValue(true);
   mocks.listDiscountVerifications.mockReset();
   mocks.reviewDiscountVerification.mockReset();
   vi.unstubAllGlobals();

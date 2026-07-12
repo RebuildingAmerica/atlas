@@ -1,6 +1,8 @@
 import { AlertTriangle, CheckCircle2, CircleHelp } from "lucide-react";
 import {
   AdminIndicatorCard,
+  AdminIndicatorPlaceholderCard,
+  AdminInlineStatus,
   AdminPageHeader,
   AdminPageShell,
   AdminStatusBadge,
@@ -13,21 +15,70 @@ import type {
   CloudCostPostureResponse,
 } from "./cloud-costs.functions";
 
-export function CloudCostsView({ posture }: { posture: CloudCostPostureResponse }) {
-  const monthlyProjection = posture.discovery_spend.estimated_daily_usd * 30;
+interface CloudCostsViewProps {
+  errorMessage?: string;
+  isLoading?: boolean;
+  posture?: CloudCostPostureResponse;
+}
+
+export function CloudCostsView({ errorMessage, isLoading = false, posture }: CloudCostsViewProps) {
+  const monthlyProjection = posture ? posture.discovery_spend.estimated_daily_usd * 30 : 0;
   return (
     <AdminPageShell>
       <AdminPageHeader
-        badge={statusLabel(posture.posture)}
+        badge={posture ? statusLabel(posture.posture) : "Status unavailable"}
         title="Cloud costs"
         description="Operator view for infrastructure cost posture and free-tier guardrails."
       >
-        <div className="border-border bg-surface-container-lowest rounded-lg border px-4 py-3">
-          <p className="type-label-small text-ink-muted">Updated</p>
-          <p className="type-body-small text-ink-strong">{formatDateTime(posture.generated_at)}</p>
-        </div>
+        {posture ? (
+          <div className="border-border bg-surface-container-lowest rounded-lg border px-4 py-3">
+            <p className="type-label-small text-ink-muted">Updated</p>
+            <p className="type-body-small text-ink-strong">
+              {formatDateTime(posture.generated_at)}
+            </p>
+          </div>
+        ) : null}
       </AdminPageHeader>
 
+      <CloudCostPosturePanel
+        errorMessage={errorMessage}
+        isLoading={isLoading}
+        monthlyProjection={monthlyProjection}
+        posture={posture}
+      />
+    </AdminPageShell>
+  );
+}
+
+function CloudCostPosturePanel({
+  errorMessage,
+  isLoading,
+  monthlyProjection,
+  posture,
+}: {
+  errorMessage?: string;
+  isLoading: boolean;
+  monthlyProjection: number;
+  posture?: CloudCostPostureResponse;
+}) {
+  if (errorMessage || !posture) {
+    return (
+      <div className="space-y-6">
+        <AdminInlineStatus message={errorMessage} />
+        <section className="grid gap-4 md:grid-cols-3" aria-busy={isLoading}>
+          <AdminIndicatorPlaceholderCard label="Discovery spend" detail="- daily ceiling" />
+          <AdminIndicatorPlaceholderCard
+            label="30-day projection"
+            detail="Discovery ledger estimate"
+          />
+          <AdminIndicatorPlaceholderCard label="Per-run ceiling" detail="-" />
+        </section>
+      </div>
+    );
+  }
+
+  return (
+    <>
       <section className="grid gap-4 md:grid-cols-3">
         <AdminIndicatorCard
           label="Discovery spend"
@@ -78,7 +129,7 @@ export function CloudCostsView({ posture }: { posture: CloudCostPostureResponse 
           </div>
         </article>
       </section>
-    </AdminPageShell>
+    </>
   );
 }
 

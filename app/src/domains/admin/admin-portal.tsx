@@ -1,4 +1,3 @@
-import { AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ReactNode } from "react";
 
@@ -20,6 +19,11 @@ interface AdminIndicatorCardProps {
   label: string;
   tone: AdminIndicatorTone;
   value: string;
+}
+
+interface AdminIndicatorPlaceholderCardProps {
+  detail: ReactNode;
+  label: string;
 }
 
 export function AdminPageShell({ children }: AdminPageShellProps) {
@@ -52,20 +56,22 @@ export function AdminIndicatorCard({ detail, label, tone, value }: AdminIndicato
   );
 }
 
-export function AdminLoadingState() {
-  return (
-    <div className="space-y-3 py-10">
-      <p className="type-title-large text-ink-strong">Loading</p>
-    </div>
-  );
+export function AdminIndicatorPlaceholderCard({
+  detail,
+  label,
+}: AdminIndicatorPlaceholderCardProps) {
+  return <AdminIndicatorCard label={label} value="-" detail={detail} tone="neutral" />;
 }
 
-export function AdminErrorState({ message }: { message: string }) {
+export function AdminInlineStatus({ message }: { message?: string }) {
+  if (!message) {
+    return null;
+  }
+
   return (
-    <div className="flex items-center gap-3 rounded-lg border border-red-200 bg-red-50 p-4">
-      <AlertCircle className="text-red-600" aria-hidden />
-      <p className="text-sm text-red-700">{message}</p>
-    </div>
+    <p className="type-body-small text-ink-soft" aria-live="polite">
+      {message}
+    </p>
   );
 }
 

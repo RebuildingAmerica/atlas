@@ -4,25 +4,29 @@ import {
   useRejectProfileClaimReview,
   useRevalidateProfileAtprotoLinks,
 } from "@/domains/catalog/hooks/use-claims";
-import { AdminLoadingState } from "@/domains/admin/admin-portal";
+import { useHydrated } from "@/platform/runtime/use-hydrated";
 import { ProfileClaimReviewView } from "./profile-claim-review-view";
 
 export function ProfileClaimReviewPage() {
-  const reviews = useProfileClaimReviews();
+  const hydrated = useHydrated();
+  const reviews = useProfileClaimReviews({ enabled: hydrated });
   const approve = useApproveProfileClaimReview();
   const reject = useRejectProfileClaimReview();
   const revalidateAtproto = useRevalidateProfileAtprotoLinks();
   const claims = reviews.data?.items ?? [];
-
-  if (reviews.isLoading) {
-    return <AdminLoadingState />;
-  }
+  const errorMessage = reviews.isError
+    ? reviews.error instanceof Error
+      ? reviews.error.message
+      : "Profile verifications could not load."
+    : undefined;
 
   return (
     <ProfileClaimReviewView
       approving={approve.isPending}
       atprotoStatus={atprotoRevalidationLabel(revalidateAtproto.data?.cleared)}
       claims={claims}
+      errorMessage={errorMessage}
+      isLoading={reviews.isPending}
       onApprove={(claim, note) => {
         approve.mutate({
           claimId: claim.id,
