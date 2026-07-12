@@ -48,6 +48,7 @@ jobs:
       openapi: ${{ steps.classify.outputs.openapi }}
       docs: ${{ steps.classify.outputs.docs }}
       compose: ${{ steps.classify.outputs.compose }}
+      actions_lint: ${{ steps.classify.outputs.actions_lint }}
       credential_scan: ${{ steps.classify.outputs.credential_scan }}
       deploy_scripts: ${{ steps.classify.outputs.deploy_scripts }}
       staging_api_deploy: ${{ steps.classify.outputs.staging_api_deploy }}
@@ -80,9 +81,6 @@ jobs:
       - uses: ./.github/actions/setup-toolchain
       - name: Validate Turbo task selectors
         run: pnpm run turbo:validate
-      - name: Test deploy scripts
-        if: needs.changes.outputs.deploy_scripts == 'true'
-        run: pnpm run deploy:test
       - name: Typecheck and lint
         env:
           TURBO_AFFECTED_FLAG: ${{ needs.changes.outputs.use_affected == 'true' && '--affected' || '' }}
@@ -92,6 +90,34 @@ jobs:
             affected_args=("$TURBO_AFFECTED_FLAG")
           fi
           pnpm exec turbo run typecheck lint "${affected_args[@]}"
+
+  actions-lint:
+    needs: changes
+    if: needs.changes.outputs.actions_lint == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: ./.github/actions/setup-toolchain
+        with:
+          python: "false"
+          install-deps: "false"
+      - name: Lint GitHub Actions
+        run: pnpm run actionlint
+
+  deploy-scripts:
+    needs: changes
+    if: needs.changes.outputs.deploy_scripts == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: ./.github/actions/setup-toolchain
+        with:
+          python: "false"
+          install-deps: "false"
+      - name: Test deploy scripts
+        run: pnpm run deploy:test
 
   test:
     needs: changes

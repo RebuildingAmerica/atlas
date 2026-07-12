@@ -40,6 +40,7 @@
     "release:homebrew": "sh scripts/release/scout-homebrew.sh",
     "release:homebrew:test": "sh scripts/release/tests/test-scout-homebrew.sh",
     "deploy:test": "node --test scripts/deploy/*.test.mjs",
+    "actionlint": "if command -v actionlint >/dev/null 2>&1; then actionlint; else go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7; fi",
     "turbo:validate": "node ./scripts/validate-turbo-selectors.mjs",
     "e2e:api": "uv --directory ./api run python -m atlas.seed_profiles --database-url ${DATABASE_URL:-sqlite:///atlas.db} && uv --directory ./api run python -m atlas.main",
     "seed:profiles": "uv --directory ./api run python -m atlas.seed_profiles",

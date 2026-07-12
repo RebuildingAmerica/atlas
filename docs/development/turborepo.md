@@ -147,6 +147,9 @@ work that cannot affect the change:
 
 - docs-only changes run docs validation and the secret scan
 - Compose-only changes run Compose validation and the secret scan
+- non-deploy GitHub Actions changes run workflow linting and the secret scan
+- deploy-script and deploy-workflow changes run deploy script validation, then
+  staging deploy and hosted smoke on `main`
 - app changes run app quality, app tests, acceptance, and hosted smoke
 - API or shared Python changes run Python quality, Python tests, contract,
   OpenAPI drift, acceptance, API deploy, and hosted smoke
@@ -161,8 +164,10 @@ not a full-gate run. Staging and production still rely on explicit surface gates
 so hosted deploy behavior stays predictable.
 
 Cheap-path jobs should keep their setup cheap: docs validation installs only the
-`docs` workspace, Compose validation runs the shell script directly, and the
-credential scan sets up Python/uv without installing the pnpm workspace.
+`docs` workspace, Compose validation runs the shell script directly, workflow
+linting skips workspace dependency install, deploy script validation skips
+Python, and the credential scan sets up Python/uv without installing the pnpm
+workspace.
 
 The Python packages also declare their local package relationships in
 `package.json` with `workspace:*` dependencies. Those links mirror the

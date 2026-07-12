@@ -14,6 +14,7 @@ const TRUE_OUTPUTS = {
   docs: true,
   compose: true,
   credential_scan: true,
+  actions_lint: true,
   deploy_scripts: true,
   staging_api_deploy: true,
   hosted_smoke: true,
@@ -31,6 +32,7 @@ const FALSE_OUTPUTS = {
   docs: false,
   compose: false,
   credential_scan: false,
+  actions_lint: false,
   deploy_scripts: false,
   staging_api_deploy: false,
   hosted_smoke: false,
@@ -38,7 +40,6 @@ const FALSE_OUTPUTS = {
 };
 
 const GLOBAL_PATHS = [
-  /^\.github\//,
   /^scripts\/ci\//,
   /^scripts\/validate-turbo-selectors\.mjs$/,
   /^package\.json$/,
@@ -80,12 +81,24 @@ const COMPOSE_PATHS = [
   /^\.env(?:\.production)?\.example$/,
 ];
 
+const ACTIONS_LINT_PATHS = [/^\.github\/(?:actions|workflows)\//];
+
 const DEPLOY_PATHS = [
   /^api\/Dockerfile$/,
   /^api\/\.dockerignore$/,
   /^\.dockerignore$/,
   /^scripts\/deploy\//,
   /^config\.openstatus\.ya?ml$/,
+];
+
+const GITHUB_DEPLOY_AUTOMATION_PATHS = [
+  /^\.github\/actions\/build-attest-push\//,
+  /^\.github\/actions\/deploy-atlas-api\//,
+  /^\.github\/workflows\/deploy-(?:staging|production)\.ya?ml$/,
+];
+
+const HOSTED_SMOKE_AUTOMATION_PATHS = [
+  /^\.github\/actions\/vercel-trusted-oidc\//,
 ];
 
 function matchesAny(file, patterns) {
@@ -149,28 +162,44 @@ export function classifyChangedFiles(files, context = {}) {
   const touchesCompose = normalized.some((file) =>
     matchesAny(file, COMPOSE_PATHS),
   );
+  const touchesActions = normalized.some((file) =>
+    matchesAny(file, ACTIONS_LINT_PATHS),
+  );
   const touchesDeploy = normalized.some((file) =>
     matchesAny(file, DEPLOY_PATHS),
+  );
+  const touchesGithubDeployAutomation = normalized.some((file) =>
+    matchesAny(file, GITHUB_DEPLOY_AUTOMATION_PATHS),
+  );
+  const touchesHostedSmokeAutomation = normalized.some((file) =>
+    matchesAny(file, HOSTED_SMOKE_AUTOMATION_PATHS),
   );
 
   const outputs = {
     ...FALSE_OUTPUTS,
     full: false,
-    quality: touchesApi || touchesApp || touchesScout || touchesDeploy,
+    quality: touchesApi || touchesApp || touchesScout,
     python_tests: touchesApi || touchesScout,
     app_tests: touchesApp,
-    acceptance: touchesApi || touchesApp || touchesDeploy,
+    acceptance: touchesApi || touchesApp,
     contract: touchesApi,
     openapi: touchesApi,
     docs: touchesDocs,
     compose: touchesCompose,
     credential_scan: true,
-    deploy_scripts: touchesDeploy,
-    staging_api_deploy: touchesApi || touchesDeploy,
-    hosted_smoke: touchesApi || touchesApp || touchesDeploy,
+    actions_lint: touchesActions,
+    deploy_scripts: touchesDeploy || touchesGithubDeployAutomation,
+    staging_api_deploy:
+      touchesApi || touchesDeploy || touchesGithubDeployAutomation,
+    hosted_smoke:
+      touchesApi ||
+      touchesApp ||
+      touchesDeploy ||
+      touchesGithubDeployAutomation ||
+      touchesHostedSmokeAutomation,
     use_affected:
       context.eventName === "pull_request" &&
-      (touchesApi || touchesApp || touchesScout || touchesDeploy),
+      (touchesApi || touchesApp || touchesScout),
   };
 
   return {
