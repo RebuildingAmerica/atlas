@@ -1,12 +1,16 @@
 import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { useAtlasSession } from "@/domains/access/client/use-atlas-session";
+import type { AtlasProduct } from "@/domains/access/capabilities";
 import {
   clearPendingCheckout,
   readPendingCheckout,
   type PendingCheckoutRecord,
 } from "../pending-checkout";
 import { PRODUCT_LABELS } from "../product-labels";
+
+interface ResumeCheckoutBannerProps {
+  activeProducts?: readonly AtlasProduct[];
+}
 
 /**
  * Renders a one-line banner inviting the operator to finish a checkout they
@@ -20,8 +24,7 @@ import { PRODUCT_LABELS } from "../product-labels";
  * session, which lines up with the Stripe webhook delivering before the
  * operator returns from the success page.
  */
-export function ResumeCheckoutBanner() {
-  const session = useAtlasSession();
+export function ResumeCheckoutBanner({ activeProducts = [] }: ResumeCheckoutBannerProps) {
   const [pending, setPending] = useState<PendingCheckoutRecord | null>(null);
   const [dismissed, setDismissed] = useState(false);
 
@@ -29,7 +32,6 @@ export function ResumeCheckoutBanner() {
     setPending(readPendingCheckout());
   }, []);
 
-  const activeProducts = session.data?.workspace.activeProducts ?? [];
   const productAlreadyActive = pending !== null && activeProducts.includes(pending.product);
 
   useEffect(() => {

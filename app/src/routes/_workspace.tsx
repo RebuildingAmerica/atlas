@@ -67,13 +67,15 @@ function WorkspaceRoute() {
   const tabs = buildAuthenticatedAppNav(session.data);
   const sessionData = session.data;
   const showIdentity = sessionData != null && !sessionData.isLocal;
+  const activeProducts =
+    sessionData?.workspace.activeProducts ?? initialSession.workspace.activeProducts;
 
   return (
     <WorkspaceLayout
       tabs={tabs}
       identitySlot={showIdentity ? <AppBarIdentityMenu session={sessionData} /> : null}
     >
-      <ResumeCheckoutBanner />
+      <ResumeCheckoutBanner activeProducts={activeProducts} />
       <Outlet />
     </WorkspaceLayout>
   );

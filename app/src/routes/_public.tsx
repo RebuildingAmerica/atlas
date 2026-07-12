@@ -1,19 +1,24 @@
 import { Outlet, createFileRoute, useRouterState } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import { getAtlasDeployMode } from "@/domains/access/session.functions";
 import { PublicTopNav } from "@/platform/layout/public-nav";
 import { PublicFooter } from "@/platform/layout/public-footer";
+import { useHydrated } from "@/platform/runtime/use-hydrated";
 
 export const Route = createFileRoute("/_public")({
-  loader: async (): Promise<{ localMode: boolean }> => {
-    const { localMode } = await getAtlasDeployMode();
-    return { localMode };
-  },
-  staleTime: 1000 * 60 * 5,
   component: PublicLayout,
 });
 
 function PublicLayout() {
-  const { localMode } = Route.useLoaderData();
+  const hydrated = useHydrated();
+  const deployMode = useQuery({
+    enabled: hydrated,
+    queryFn: getAtlasDeployMode,
+    queryKey: ["atlas", "deploy-mode"],
+    retry: false,
+    staleTime: 1000 * 60 * 5,
+  });
+  const localMode = deployMode.data?.localMode ?? false;
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const showSearch = pathname !== "/";
   const isMapRoute = pathname === "/map";
