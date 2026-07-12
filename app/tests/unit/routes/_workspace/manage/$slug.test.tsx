@@ -4,6 +4,10 @@ import { render, screen, fireEvent, cleanup, act } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { readManageProfileCall } from "@/../tests/fixtures/routes/manage-profile-call";
 
+const buttonMocks = vi.hoisted(() => ({
+  clicks: new Map<string, (() => void) | undefined>(),
+}));
+
 vi.mock("@tanstack/react-router", async () => {
   const harness = await import("@/../tests/helpers/router-harness");
   return harness.installRouterMocks();
@@ -41,7 +45,14 @@ vi.mock("@/platform/ui/button", () => ({
     onClick?: () => void;
     disabled?: boolean;
   }) => (
-    <button type="button" onClick={onClick} disabled={disabled}>
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      ref={() => {
+        if (typeof children === "string") buttonMocks.clicks.set(children, onClick);
+      }}
+    >
       {children}
     </button>
   ),
@@ -49,6 +60,7 @@ vi.mock("@/platform/ui/button", () => ({
 
 describe("routes/_workspace/manage/$slug", () => {
   beforeEach(async () => {
+    buttonMocks.clicks.clear();
     const { resetRouterMocks } = await import("@/../tests/helpers/router-harness");
     resetRouterMocks();
     const claims = await import("@/domains/catalog/hooks/use-claims");
@@ -564,12 +576,15 @@ describe("routes/_workspace/manage/$slug", () => {
     expect(attach).not.toHaveBeenCalled();
   });
 
-  it("surfaces attachment failures without changing the public identity", async () => {
+  it.each([
+    [new Error("Identity is already attached."), "Identity is already attached."],
+    ["rejected", "Could not update public identity."],
+  ])("surfaces attachment failures without changing the public identity", async (failure, copy) => {
     const entriesHooks = await import("@/domains/catalog/hooks/use-entries");
     const claims = await import("@/domains/catalog/hooks/use-claims");
     const identities = await import("@/domains/access/atproto-identities");
     vi.mocked(claims.useAttachProfileAtprotoIdentity).mockReturnValue({
-      mutateAsync: vi.fn().mockRejectedValue(new Error("Identity is already attached.")),
+      mutateAsync: vi.fn().mockRejectedValue(failure),
       isPending: false,
     } as unknown as ReturnType<typeof claims.useAttachProfileAtprotoIdentity>);
     vi.mocked(identities.useAtprotoIdentities).mockReturnValue({
@@ -604,7 +619,7 @@ describe("routes/_workspace/manage/$slug", () => {
       await Promise.resolve();
     });
 
-    expect(screen.getByRole("alert")).toHaveTextContent("Identity is already attached.");
+    expect(screen.getByRole("alert")).toHaveTextContent(copy);
   });
 
   it("keeps the public identity when removal is cancelled", async () => {
@@ -640,33 +655,39 @@ describe("routes/_workspace/manage/$slug", () => {
     expect(detach).not.toHaveBeenCalled();
   });
 
-  it("surfaces removal failures without disconnecting the account identity", async () => {
-    const entriesHooks = await import("@/domains/catalog/hooks/use-entries");
-    const claims = await import("@/domains/catalog/hooks/use-claims");
-    vi.mocked(claims.useDetachProfileAtprotoIdentity).mockReturnValue({
-      mutateAsync: vi.fn().mockRejectedValue(new Error("Removal was rejected.")),
-      isPending: false,
-    } as unknown as ReturnType<typeof claims.useDetachProfileAtprotoIdentity>);
-    vi.mocked(entriesHooks.useEntryBySlug).mockReturnValue({
-      data: {
-        id: "e1",
-        slug: "jane",
-        type: "person",
-        name: "Jane",
-        sources: [],
-        claim: { status: "verified", linked_atproto_handle: "jane.example" },
-      },
-      isLoading: false,
-    } as unknown as ReturnType<typeof entriesHooks.useEntryBySlug>);
+  it.each([
+    [new Error("Removal was rejected."), "Removal was rejected."],
+    ["rejected", "Could not remove public identity."],
+  ])(
+    "surfaces removal failures without disconnecting the account identity",
+    async (failure, copy) => {
+      const entriesHooks = await import("@/domains/catalog/hooks/use-entries");
+      const claims = await import("@/domains/catalog/hooks/use-claims");
+      vi.mocked(claims.useDetachProfileAtprotoIdentity).mockReturnValue({
+        mutateAsync: vi.fn().mockRejectedValue(failure),
+        isPending: false,
+      } as unknown as ReturnType<typeof claims.useDetachProfileAtprotoIdentity>);
+      vi.mocked(entriesHooks.useEntryBySlug).mockReturnValue({
+        data: {
+          id: "e1",
+          slug: "jane",
+          type: "person",
+          name: "Jane",
+          sources: [],
+          claim: { status: "verified", linked_atproto_handle: "jane.example" },
+        },
+        isLoading: false,
+      } as unknown as ReturnType<typeof entriesHooks.useEntryBySlug>);
 
-    await renderManageRoute("jane");
-    await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Remove identity" }));
-      await Promise.resolve();
-    });
+      await renderManageRoute("jane");
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: "Remove identity" }));
+        await Promise.resolve();
+      });
 
-    expect(screen.getByRole("alert")).toHaveTextContent("Removal was rejected.");
-  });
+      expect(screen.getByRole("alert")).toHaveTextContent(copy);
+    },
+  );
 
   it("starts account OAuth with a return to the managed profile", async () => {
     const entriesHooks = await import("@/domains/catalog/hooks/use-entries");
@@ -689,6 +710,33 @@ describe("routes/_workspace/manage/$slug", () => {
     expect(screen.getByRole("button", { name: "Connect another account" })).toBeEnabled();
 
     fireEvent.click(screen.getByRole("button", { name: "Connect another account" }));
+  });
+
+  it("ignores identity actions when their required selection is empty", async () => {
+    const entriesHooks = await import("@/domains/catalog/hooks/use-entries");
+    const claims = await import("@/domains/catalog/hooks/use-claims");
+    const attach = vi.fn();
+    vi.mocked(claims.useAttachProfileAtprotoIdentity).mockReturnValue({
+      mutateAsync: attach,
+      isPending: false,
+    } as unknown as ReturnType<typeof claims.useAttachProfileAtprotoIdentity>);
+    vi.mocked(entriesHooks.useEntryBySlug).mockReturnValue({
+      data: {
+        id: "e1",
+        slug: "jane",
+        type: "person",
+        name: "Jane",
+        sources: [],
+        claim: { status: "verified" },
+      },
+      isLoading: false,
+    } as unknown as ReturnType<typeof entriesHooks.useEntryBySlug>);
+
+    await renderManageRoute("jane");
+    buttonMocks.clicks.get("Attach identity")?.();
+    buttonMocks.clicks.get("Connect another account")?.();
+
+    expect(attach).not.toHaveBeenCalled();
   });
 
   it("excludes disconnected and attention-required identities", async () => {
