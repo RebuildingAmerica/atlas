@@ -62,7 +62,10 @@ from .public_places import (
 )
 from .public_profiles import (
     AtprotoIdentityLinkRequest,
+    AtprotoIdentityProfileSummary,
     AtprotoIdentityResponse,
+    ProfileAtprotoIdentityAttachRequest,
+    ProfileAtprotoIdentityLinkResponse,
     ProfileAtprotoRevalidationResponse,
     ProfileClaimDomainVerifyRequest,
     ProfileClaimProofRequest,
@@ -88,6 +91,7 @@ __all__ = [
     "ActorQualityInfo",
     "Address",
     "AtprotoIdentityLinkRequest",
+    "AtprotoIdentityProfileSummary",
     "AtprotoIdentityResponse",
     "ClaimEvidence",
     "ClaimEvidenceSet",
@@ -132,6 +136,8 @@ __all__ = [
     "PlaceSummaryFactResponse",
     "PlaceTypeCount",
     "ProfileAnswers",
+    "ProfileAtprotoIdentityAttachRequest",
+    "ProfileAtprotoIdentityLinkResponse",
     "ProfileAtprotoRevalidationResponse",
     "ProfileClaimDomainVerifyRequest",
     "ProfileClaimProofRequest",

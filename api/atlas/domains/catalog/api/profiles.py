@@ -9,14 +9,22 @@ from fastapi import APIRouter, Depends, HTTPException, Response, status
 
 from atlas.domains.access.dependencies import require_actor
 from atlas.domains.access.models.follows import FollowCRUD
-from atlas.domains.catalog.api.profile_atproto import router as atproto_router
 from atlas.domains.catalog.api.profile_claim_helpers import get_db
 from atlas.domains.catalog.api.profile_claim_review import router as claim_review_router
 from atlas.domains.catalog.api.profile_claims import router as claim_router
+from atlas.domains.catalog.models.atproto_identities import AtprotoIdentityCRUD
+from atlas.domains.catalog.models.atproto_identity_controls import AtprotoIdentityControlCRUD
+from atlas.domains.catalog.models.profile_atproto_links import (
+    ProfileAtprotoLinkConflictError,
+    ProfileAtprotoLinkCRUD,
+)
 from atlas.domains.catalog.schemas.public import (
+    ProfileAtprotoIdentityAttachRequest,
+    ProfileAtprotoIdentityLinkResponse,
     ProfileFollowResponse,
     ProfileManageRequest,
 )
+from atlas.domains.catalog.services.atproto_identity import resolve_current_atproto_identity
 from atlas.models import EntryCRUD
 from atlas.platform.http.cache import apply_no_store_headers
 
@@ -26,7 +34,6 @@ if TYPE_CHECKING:
     from atlas.domains.access.principals import AuthenticatedActor
 
 router = APIRouter()
-router.include_router(atproto_router)
 router.include_router(claim_review_router)
 router.include_router(claim_router)
 
@@ -83,6 +90,114 @@ async def manage_profile(
     await EntryCRUD.update(db, entry.id, **update_fields)
     apply_no_store_headers(response)
     return {"updated": True, "fields": sorted(update_fields.keys())}
+
+
+@router.put(
+    "/{slug}/atproto-identity",
+    response_model=ProfileAtprotoIdentityLinkResponse,
+    operation_id="attachProfileAtprotoIdentity",
+    summary="Attach a verified public ATProto identity",
+    description=(
+        "Let a verified profile steward attach a currently controlled and freshly resolved ATProto "
+        "identity. Replacing another public identity requires explicit confirmation and writes a "
+        "new auditable relation without changing account control or workspace membership."
+    ),
+    tags=["identity"],
+)
+async def attach_profile_atproto_identity(
+    slug: str,
+    payload: ProfileAtprotoIdentityAttachRequest,
+    response: Response,
+    actor: AuthenticatedActor = Depends(require_actor),
+    db: aiosqlite.Connection = Depends(get_db),
+) -> ProfileAtprotoIdentityLinkResponse:
+    """Attach a currently controlled identity for a verified profile steward."""
+    entry = await _verified_steward_entry(db, slug, actor.user_id)
+    control = await AtprotoIdentityControlCRUD.get_active_for_user_and_identity(
+        db,
+        user_id=actor.user_id,
+        identity_id=payload.atproto_identity_id,
+    )
+    identity = await AtprotoIdentityCRUD.get_by_id(db, payload.atproto_identity_id)
+    if control is None or identity is None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Reconnect this ATProto account before using it for this profile.",
+        )
+    resolution = await resolve_current_atproto_identity(identity.did)
+    if resolution is None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Reconnect this ATProto account before using it for this profile.",
+        )
+    identity = await AtprotoIdentityCRUD.upsert(
+        db,
+        did=resolution.did,
+        handle=resolution.handle,
+        pds_url=resolution.pds_url,
+    )
+    try:
+        link = await ProfileAtprotoLinkCRUD.attach(
+            db,
+            entry_id=entry.id,
+            identity_id=identity.id,
+            replace=payload.replace,
+        )
+    except ProfileAtprotoLinkConflictError as error:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This profile already has an ATProto identity. Confirm replacement to continue.",
+        ) from error
+    await db.commit()
+    apply_no_store_headers(response)
+    return ProfileAtprotoIdentityLinkResponse(
+        identity_id=identity.id,
+        did=identity.did,
+        current_handle=identity.current_handle,
+        status=link.status,
+        verified_at=link.verified_at,
+    )
+
+
+@router.delete(
+    "/{slug}/atproto-identity",
+    status_code=status.HTTP_204_NO_CONTENT,
+    operation_id="detachProfileAtprotoIdentity",
+    summary="Remove a public ATProto identity",
+    description=(
+        "Let a verified profile steward remove the current public ATProto relation while retaining "
+        "its audit history. The global DID and every account-control relationship remain intact, "
+        "so this profile action cannot disconnect or transfer the external account."
+    ),
+    tags=["identity"],
+)
+async def detach_profile_atproto_identity(
+    slug: str,
+    response: Response,
+    actor: AuthenticatedActor = Depends(require_actor),
+    db: aiosqlite.Connection = Depends(get_db),
+) -> None:
+    """Remove a profile relation without deleting identity or account control."""
+    entry = await _verified_steward_entry(db, slug, actor.user_id)
+    link = await ProfileAtprotoLinkCRUD.get_current_for_entry(db, entry.id)
+    if link is None:
+        raise HTTPException(status_code=404, detail="Public ATProto identity not found.")
+    await ProfileAtprotoLinkCRUD.remove(db, link.id)
+    await db.commit()
+    apply_no_store_headers(response)
+    response.status_code = status.HTTP_204_NO_CONTENT
+
+
+async def _verified_steward_entry(db: aiosqlite.Connection, slug: str, user_id: str) -> Any:
+    entry = await EntryCRUD.get_by_slug(db, slug)
+    if entry is None:
+        raise HTTPException(status_code=404, detail="Profile not found")
+    if entry.claim_status != "verified" or entry.claimed_by_user_id != user_id:
+        raise HTTPException(
+            status_code=403,
+            detail="Only a verified representative can manage this profile.",
+        )
+    return entry
 
 
 @router.post(

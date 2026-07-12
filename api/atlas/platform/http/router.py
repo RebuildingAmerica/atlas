@@ -11,6 +11,7 @@ from atlas.domains.access.api.org_watch_digest import router as org_watch_digest
 from atlas.domains.access.api.org_watches import router as org_watches_router
 from atlas.domains.access.api.verification import router as verification_router
 from atlas.domains.access.api.verification_admin import router as verification_admin_router
+from atlas.domains.catalog.api.atproto_identities import router as atproto_identities_router
 from atlas.domains.catalog.api.entries import router as entries_router
 from atlas.domains.catalog.api.feed import router as feed_router
 from atlas.domains.catalog.api.org_annotations import router as org_annotations_router
@@ -50,6 +51,7 @@ def create_router() -> APIRouter:
     router.include_router(verification_admin_router, prefix="")
     router.include_router(cloud_cost_admin_router, prefix="")
     router.include_router(entries_router, prefix="/api/entities")
+    router.include_router(atproto_identities_router, prefix="/api/atproto/identities")
     router.include_router(discovery_router, prefix="/api/discovery-runs")
     router.include_router(schedule_router, prefix="/api/discovery-schedules")
     router.include_router(flags_router, prefix="/api")

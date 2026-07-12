@@ -10,7 +10,10 @@ from .public_entities import EntityResponse  # noqa: TC001
 
 __all__ = [
     "AtprotoIdentityLinkRequest",
+    "AtprotoIdentityProfileSummary",
     "AtprotoIdentityResponse",
+    "ProfileAtprotoIdentityAttachRequest",
+    "ProfileAtprotoIdentityLinkResponse",
     "ProfileAtprotoRevalidationResponse",
     "ProfileClaimDomainVerifyRequest",
     "ProfileClaimProofRequest",
@@ -42,17 +45,28 @@ class AtprotoIdentityLinkRequest(BaseModel):
 
 
 class AtprotoIdentityResponse(BaseModel):
-    """DID-backed ATProto identity linked to the authenticated user."""
+    """Account-visible state for one controlled ATProto identity."""
 
     id: str
-    user_id: str
     did: str
     current_handle: str
     pds_url: str | None = None
-    did_resolved_at: str
-    handle_verified_at: str | None = None
-    created_at: str
-    updated_at: str
+    resolution_status: Literal["verified", "needs_attention"]
+    control_status: Literal["active", "conflict"]
+    connected_at: str
+    verified_at: str | None = None
+    last_checked_at: str | None = None
+    last_resolution_error: str | None = None
+    profiles: list[AtprotoIdentityProfileSummary] = Field(default_factory=list)
+
+
+class AtprotoIdentityProfileSummary(BaseModel):
+    """Profile currently represented by an account identity."""
+
+    id: str
+    name: str
+    slug: str
+    type: str
 
 
 class ProfileClaimRequest(BaseModel):
@@ -145,7 +159,24 @@ class ProfileAtprotoRevalidationResponse(BaseModel):
     """Result from rechecking linked ATProto profile identities."""
 
     checked: int
-    cleared: int
+    needs_attention: int
+
+
+class ProfileAtprotoIdentityAttachRequest(BaseModel):
+    """Explicit request to attach or replace a profile's public identity."""
+
+    atproto_identity_id: str
+    replace: bool = False
+
+
+class ProfileAtprotoIdentityLinkResponse(BaseModel):
+    """Auditable public identity relation managed by a verified steward."""
+
+    identity_id: str
+    did: str
+    current_handle: str
+    status: Literal["verified", "reverification_required"]
+    verified_at: str | None = None
 
 
 class ProfileManageRequest(BaseModel):
