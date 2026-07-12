@@ -28,10 +28,12 @@ async def test_cloud_cost_posture_requires_internal_operator(db_url: str) -> Non
         return Settings(
             database_url=db_url,
             deploy_mode="production",
-            auth_internal_secret="internal-test-secret",
+            auth_internal_secret="internal-test-secret",  # pragma: allowlist secret
             auth_jwt_audience=["https://atlas.example.test/mcp"],
             auth_jwt_issuer="https://atlas.example.test",
-            auth_api_key_introspection_url="https://atlas.example.test/api/auth/internal/api-key",
+            auth_api_key_introspection_url=(  # pragma: allowlist secret
+                "https://atlas.example.test/api/auth/internal/introspect"
+            ),
             auth_membership_verification_url=(
                 "https://atlas.example.test/api/auth/internal/memberships"
             ),
@@ -54,11 +56,13 @@ async def test_cloud_cost_posture_allows_allowlisted_operator(db_url: str) -> No
         return Settings(
             database_url=db_url,
             deploy_mode="production",
-            auth_internal_secret="internal-test-secret",
+            auth_internal_secret="internal-test-secret",  # pragma: allowlist secret
             operator_allowed_emails=["ops@rebuildingus.org"],
             auth_jwt_audience=["https://atlas.example.test/mcp"],
             auth_jwt_issuer="https://atlas.example.test",
-            auth_api_key_introspection_url="https://atlas.example.test/api/auth/internal/api-key",
+            auth_api_key_introspection_url=(  # pragma: allowlist secret
+                "https://atlas.example.test/api/auth/internal/introspect"
+            ),
             auth_membership_verification_url=(
                 "https://atlas.example.test/api/auth/internal/memberships"
             ),
@@ -72,7 +76,7 @@ async def test_cloud_cost_posture_allows_allowlisted_operator(db_url: str) -> No
             headers={
                 "X-Atlas-Actor-Email": "ops@rebuildingus.org",
                 "X-Atlas-Actor-Id": "ops-user",
-                "X-Atlas-Internal-Secret": "internal-test-secret",
+                "X-Atlas-Internal-Secret": "internal-test-secret",  # pragma: allowlist secret
             },
         )
 
