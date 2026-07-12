@@ -6,7 +6,7 @@
         "@rebuildingamerica/atlas-discovery-engine#test",
         "@rebuildingamerica/atlas-shared#test"
       ],
-      "env": [],
+      "env": ["ATLAS_TEST_POSTGRES_URL"],
       "inputs": [
         "$TURBO_DEFAULT$",
         "$TURBO_ROOT$/libs/discovery-engine/**",
