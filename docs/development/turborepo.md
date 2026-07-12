@@ -160,6 +160,10 @@ PR quality checks use Turbo `--affected` when the classifier proves the run is
 not a full-gate run. Staging and production still rely on explicit surface gates
 so hosted deploy behavior stays predictable.
 
+Cheap-path jobs should keep their setup cheap: docs validation installs only the
+`docs` workspace, Compose validation runs the shell script directly, and the
+credential scan sets up Python/uv without installing the pnpm workspace.
+
 The Python packages also declare their local package relationships in
 `package.json` with `workspace:*` dependencies. Those links mirror the
 `pyproject.toml` path dependencies and are required for Turbo affected mode to

@@ -10,6 +10,10 @@ inputs:
     description: Whether to run `pnpm install --frozen-lockfile` after toolchain setup.
     required: false
     default: "true"
+  pnpm-filter:
+    description: Optional pnpm workspace filter used when installing dependencies.
+    required: false
+    default: ""
 
 runs:
   using: composite
@@ -38,7 +42,14 @@ runs:
 
     - if: inputs.install-deps == 'true'
       shell: bash
-      run: pnpm install --frozen-lockfile
+      env:
+        PNPM_FILTER: ${{ inputs.pnpm-filter }}
+      run: |
+        install_args=(install --frozen-lockfile)
+        if [ -n "$PNPM_FILTER" ]; then
+          install_args+=(--filter "$PNPM_FILTER")
+        fi
+        pnpm "${install_args[@]}"
 
     - if: inputs.install-deps == 'true' && inputs.python == 'true'
       shell: bash

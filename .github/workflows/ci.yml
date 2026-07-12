@@ -48,7 +48,7 @@ jobs:
       openapi: ${{ steps.classify.outputs.openapi }}
       docs: ${{ steps.classify.outputs.docs }}
       compose: ${{ steps.classify.outputs.compose }}
-      secrets_scan: ${{ steps.classify.outputs.secrets_scan }}
+      credential_scan: ${{ steps.classify.outputs.credential_scan }}
       deploy_scripts: ${{ steps.classify.outputs.deploy_scripts }}
       staging_api_deploy: ${{ steps.classify.outputs.staging_api_deploy }}
       hosted_smoke: ${{ steps.classify.outputs.hosted_smoke }}
@@ -202,6 +202,7 @@ jobs:
       - uses: ./.github/actions/setup-toolchain
         with:
           python: "false"
+          pnpm-filter: docs
       - name: Validate docs
         run: pnpm run docs:validate
       - name: Check for broken links
@@ -214,23 +215,24 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-      - uses: ./.github/actions/setup-toolchain
-        with:
-          python: "false"
       - name: Validate Compose configurations
-        run: pnpm run compose:validate
+        run: sh ./scripts/compose-validate.sh
 
   secrets-scan:
     needs: changes
-    if: needs.changes.outputs.secrets_scan == 'true'
+    if: needs.changes.outputs.credential_scan == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           fetch-depth: 0
-      - uses: ./.github/actions/setup-toolchain
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
-          install-deps: "false"
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
+        with:
+          enable-cache: true
+          cache-dependency-glob: "api/uv.lock"
       - name: Scan for committed secrets
-        run: pnpm run secrets:scan
+        run: sh ./scripts/secrets-scan.sh
