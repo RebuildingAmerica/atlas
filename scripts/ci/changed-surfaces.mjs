@@ -42,7 +42,6 @@ const FALSE_OUTPUTS = {
 };
 
 const GLOBAL_PATHS = [
-  /^scripts\/ci\//,
   /^scripts\/validate-turbo-selectors\.mjs$/,
   /^package\.json$/,
   /^pnpm-lock\.yaml$/,
@@ -94,7 +93,10 @@ const COMPOSE_PATHS = [
 
 const ACTIONS_LINT_PATHS = [/^\.github\/(?:actions|workflows)\//];
 
+const CI_VALIDATION_PATHS = [/^scripts\/ci\//];
+
 const DEPLOY_VALIDATION_PATHS = [
+  ...CI_VALIDATION_PATHS,
   /^scripts\/deploy\//,
   /^\.github\/actions\/build-attest-push\//,
   /^\.github\/actions\/deploy-atlas-api\//,
@@ -186,6 +188,9 @@ export function classifyChangedFiles(files, context = {}) {
   const touchesActions = normalized.some((file) =>
     matchesAny(file, ACTIONS_LINT_PATHS),
   );
+  const touchesCiValidation = normalized.some((file) =>
+    matchesAny(file, CI_VALIDATION_PATHS),
+  );
   const touchesDeployValidation = normalized.some((file) =>
     matchesAny(file, DEPLOY_VALIDATION_PATHS),
   );
@@ -212,7 +217,7 @@ export function classifyChangedFiles(files, context = {}) {
     docs: touchesDocs,
     compose: touchesCompose,
     credential_scan: true,
-    actions_lint: touchesActions,
+    actions_lint: touchesActions || touchesCiValidation,
     deploy_scripts:
       touchesDeployValidation ||
       touchesStagingApiDeploy ||

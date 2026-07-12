@@ -83,6 +83,18 @@ test("trusted-source helper changes lint actions without running hosted smoke", 
   assert.equal(outputs.hosted_smoke, false);
 });
 
+test("CI classifier changes validate CI scripts without running app deploy gates", () => {
+  const outputs = outputsFor(["scripts/ci/changed-surfaces.mjs"]);
+
+  assert.equal(outputs.deploy_scripts, true);
+  assert.equal(outputs.actions_lint, true);
+  assert.equal(outputs.quality, false);
+  assert.equal(outputs.browser_acceptance, false);
+  assert.equal(outputs.stripe_acceptance, false);
+  assert.equal(outputs.staging_api_deploy, false);
+  assert.equal(outputs.hosted_smoke, false);
+});
+
 test("production-only deploy workflow changes do not redeploy staging", () => {
   const outputs = outputsFor([".github/workflows/deploy-production.yml"]);
 
