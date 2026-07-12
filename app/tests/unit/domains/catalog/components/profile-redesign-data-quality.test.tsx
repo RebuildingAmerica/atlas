@@ -91,6 +91,7 @@ describe("DataQualityBlock", () => {
         entry={buildEntry({
           claim: {
             status: "verified",
+            verification_level: "subject-verified",
             linked_atproto_handle: "jane.example",
             linked_atproto_did: "did:plc:jane",
           },
@@ -108,6 +109,7 @@ describe("DataQualityBlock", () => {
         entry={buildEntry({
           claim: {
             status: "verified",
+            verification_level: "subject-verified",
             linked_atproto_handle: "jane.example",
             linked_atproto_did: "did:plc:jane",
             linked_atproto_verified_at: "not-a-date",
