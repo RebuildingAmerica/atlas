@@ -27,6 +27,9 @@ describe("AccountPage", () => {
     expect(within(settingsNav).getByRole("link", { name: "Profile" }).getAttribute("href")).toBe(
       "#profile",
     );
+    expect(within(settingsNav).getByRole("link", { name: "Identity" }).getAttribute("href")).toBe(
+      "#identity",
+    );
     expect(within(settingsNav).getByRole("link", { name: "Security" }).getAttribute("href")).toBe(
       "#security",
     );
@@ -40,6 +43,8 @@ describe("AccountPage", () => {
       "#billing",
     );
     expect(screen.getByRole("heading", { name: "Profile" })).not.toBeNull();
+    expect(screen.getByRole("heading", { name: "Identity" })).not.toBeNull();
+    expect(screen.getByText("No ATProto accounts connected.")).not.toBeNull();
     expect(screen.getByText("Personal details")).not.toBeNull();
     expect(screen.getByText("Workspace context")).not.toBeNull();
     expect(screen.getByText("Atlas Team")).not.toBeNull();
@@ -97,6 +102,71 @@ describe("AccountPage", () => {
 
     await waitFor(() => {
       expect(screen.getByText("API key revoked.")).not.toBeNull();
+    });
+  });
+
+  it("shows connected identity state and supports check and disconnect actions", async () => {
+    const identity = {
+      connected_at: "2026-07-10T12:00:00Z",
+      control_status: "active" as const,
+      current_handle: "person.example",
+      did: "did:plc:person",
+      id: "identity_1",
+      last_checked_at: "2026-07-11T12:00:00Z",
+      pds_url: "https://pds.example",
+      profiles: [
+        {
+          id: "profile_1",
+          name: "Person Example",
+          slug: "person-example",
+          type: "person",
+        },
+      ],
+      resolution_status: "verified" as const,
+      verified_at: "2026-07-11T12:00:00Z",
+    };
+    setQueryResults({ atprotoIdentities: [identity] });
+    mocks.refreshAtprotoIdentity.mockResolvedValue(identity);
+    const { AccountPage } = await import("@/domains/access/pages/workspace/account-page");
+
+    render(<AccountPage />);
+
+    expect(screen.getByText("person.example")).not.toBeNull();
+    expect(screen.getByText("Connected")).not.toBeNull();
+    expect(screen.getByText("Person Example")).not.toBeNull();
+    expect(screen.getByText("Technical details")).not.toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Check connection" }));
+    fireEvent.click(screen.getByRole("button", { name: "Disconnect" }));
+
+    await waitFor(() => {
+      expect(mocks.refreshAtprotoIdentity).toHaveBeenCalledWith("identity_1");
+      const confirmation = mocks.confirm.mock.calls[0]?.[0] as
+        { body: string; confirmLabel: string } | undefined;
+      expect(confirmation?.body).toContain("Person Example");
+      expect(confirmation?.confirmLabel).toBe("Disconnect");
+      expect(mocks.disconnectAtprotoIdentity).toHaveBeenCalledWith("identity_1");
+      expect(mocks.invalidateQueries).toHaveBeenCalledWith({
+        queryKey: ["auth", "atproto-identities"],
+      });
+    });
+  });
+
+  it("shows OAuth callback notices and clears callback parameters", async () => {
+    window.history.replaceState(
+      null,
+      "",
+      "/account?atprotoStatus=connected&atprotoIdentityId=identity_1#identity",
+    );
+    const { AccountPage } = await import("@/domains/access/pages/workspace/account-page");
+
+    render(<AccountPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("ATProto account connected.")).not.toBeNull();
+      expect(window.location.pathname).toBe("/account");
+      expect(window.location.search).toBe("");
+      expect(window.location.hash).toBe("#identity");
     });
   });
 
@@ -187,6 +257,7 @@ describe("AccountPage", () => {
       apiKeysError: true,
       passkeys: [],
       passkeysError: true,
+      atprotoIdentitiesError: true,
     });
     const { AccountPage } = await import("@/domains/access/pages/workspace/account-page");
 
@@ -194,6 +265,7 @@ describe("AccountPage", () => {
 
     expect(screen.getByText("Could not load passkeys.")).not.toBeNull();
     expect(screen.getByText("Could not load API keys.")).not.toBeNull();
+    expect(screen.getByText("Could not load ATProto accounts.")).not.toBeNull();
     expect(screen.getAllByText("Unavailable").length).toBeGreaterThanOrEqual(2);
   });
 

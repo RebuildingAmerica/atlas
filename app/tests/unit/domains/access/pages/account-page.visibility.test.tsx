@@ -73,6 +73,7 @@ describe("AccountPage", () => {
 
     render(<AccountPage />);
     expect(screen.queryByText("Billing")).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Identity" })).toBeNull();
     expect(screen.queryByRole("heading", { name: "Developer" })).toBeNull();
     expect(screen.queryByRole("heading", { name: "Scout" })).toBeNull();
     expect(screen.queryByLabelText("Key name")).toBeNull();

@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { atprotoIdentitiesQueryKey } from "@/domains/access/atproto-identities";
 import { createApiKey, deleteApiKey, listApiKeys } from "@/domains/access/api-keys.functions";
 import { type ApiKeyScope } from "@/domains/access/api-key-scopes";
 import { hasSerializedCapability } from "@/domains/access/capabilities";
@@ -11,6 +12,7 @@ import { deletePasskey, listPasskeys, updatePasskey } from "@/domains/access/pas
 import { listScoutDevices, revokeScoutDevice } from "@/domains/access/scout-devices.functions";
 import { AccountBillingSection } from "./components/account/billing";
 import { AccountDeveloperSection } from "./components/account/developer";
+import { AccountIdentitySection } from "./components/account/identity";
 import type { AccountApiKeyRecord } from "./components/account/keys";
 import { AccountLayout } from "./components/account/layout";
 import type { AccountPasskeyRecord } from "./components/account/passkeys";
@@ -162,6 +164,23 @@ export function AccountPage() {
     onComplete: handleMcpCompletion,
   });
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const status = params.get("atprotoStatus");
+    const error = params.get("atprotoError");
+    if (status === "connected") {
+      setErrorMessage(null);
+      setFlashMessage("ATProto account connected.");
+      void queryClient.invalidateQueries({ queryKey: atprotoIdentitiesQueryKey });
+    } else if (error) {
+      setFlashMessage(null);
+      setErrorMessage(error);
+    } else {
+      return;
+    }
+    window.history.replaceState(null, "", "/account#identity");
+  }, [queryClient]);
+
   const handlePasskeyAdd = async () => {
     setFlashMessage(null);
     setErrorMessage(null);
@@ -189,11 +208,13 @@ export function AccountPage() {
   };
 
   const showSecuritySection = hasSession && !isLocal;
+  const showIdentitySection = hasSession && !isLocal;
   const showDeveloperSection = hasSession && !isLocal && canCreateApiKeys;
   const showScoutSection = hasSession && !isLocal;
   const showBillingSection = hasSession && !isLocal;
   const tabs: AccountTab[] = [
     { id: "profile", label: "Profile" },
+    ...(showIdentitySection ? [{ id: "identity", label: "Identity" }] : []),
     ...(showSecuritySection ? [{ id: "security", label: "Security" }] : []),
     ...(showDeveloperSection ? [{ id: "developer", label: "Developer" }] : []),
     ...(showScoutSection ? [{ id: "scout", label: "Scout" }] : []),
@@ -222,6 +243,8 @@ export function AccountPage() {
         name={atlasSession.data?.user.name}
         needsWorkspace={needsWorkspace}
       />
+
+      {showIdentitySection ? <AccountIdentitySection /> : null}
 
       {showSecuritySection ? (
         <AccountSecuritySection

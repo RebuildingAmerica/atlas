@@ -7,11 +7,15 @@ import { createAtlasSessionFixture, createAtlasWorkspace } from "../../fixtures/
 
 const accountPageMocks = vi.hoisted(() => ({
   addPasskey: vi.fn(),
+  confirm: vi.fn(),
   createApiKey: vi.fn(),
+  disconnectAtprotoIdentity: vi.fn(),
   deleteApiKey: vi.fn(),
   deletePasskey: vi.fn(),
   listScoutDevices: vi.fn(),
   invalidateQueries: vi.fn(),
+  listAtprotoIdentities: vi.fn(),
+  refreshAtprotoIdentity: vi.fn(),
   revokeScoutDevice: vi.fn(),
   updatePasskey: vi.fn(),
   signalUnknownPasskey: vi.fn(),
@@ -112,6 +116,16 @@ vi.mock("@/domains/access/client/use-atlas-session", () => ({
   useAtlasSession: accountPageMocks.useAtlasSession,
 }));
 
+vi.mock("@/lib/generated/atlas/identity/identity", () => ({
+  disconnectAtprotoIdentity: accountPageMocks.disconnectAtprotoIdentity,
+  listAtprotoIdentities: accountPageMocks.listAtprotoIdentities,
+  refreshAtprotoIdentity: accountPageMocks.refreshAtprotoIdentity,
+}));
+
+vi.mock("@/platform/ui/confirm-dialog", () => ({
+  useConfirmDialog: () => ({ confirm: accountPageMocks.confirm }),
+}));
+
 vi.mock("@/domains/access/api-keys.functions", () => ({
   createApiKey: accountPageMocks.createApiKey,
   deleteApiKey: accountPageMocks.deleteApiKey,
@@ -154,6 +168,8 @@ export const setQueryResults = ({
     },
   ],
   apiKeysError = false,
+  atprotoIdentities = [],
+  atprotoIdentitiesError = false,
   passkeys = [
     {
       backedUp: true,
@@ -186,6 +202,20 @@ export const setQueryResults = ({
     scopes?: string[];
   }[];
   apiKeysError?: boolean;
+  atprotoIdentities?: {
+    connected_at: string;
+    control_status: "active" | "conflict";
+    current_handle: string;
+    did: string;
+    id: string;
+    last_checked_at?: string | null;
+    last_resolution_error?: string | null;
+    pds_url?: string | null;
+    profiles?: { id: string; name: string; slug: string; type: string }[];
+    resolution_status: "verified" | "needs_attention";
+    verified_at?: string | null;
+  }[];
+  atprotoIdentitiesError?: boolean;
   passkeys?: {
     backedUp: boolean;
     createdAt: string;
@@ -228,6 +258,14 @@ export const setQueryResults = ({
       };
     }
 
+    if (queryKey[1] === "atproto-identities") {
+      return {
+        data: atprotoIdentities,
+        isError: atprotoIdentitiesError,
+        isPending: false,
+      };
+    }
+
     throw new Error(`Unexpected query key: ${JSON.stringify(queryKey)}`);
   });
 };
@@ -250,11 +288,15 @@ export function isNewPasskeyRename(payload: unknown) {
 beforeEach(() => {
   vi.resetModules();
   accountPageMocks.addPasskey.mockReset();
+  accountPageMocks.confirm.mockReset();
   accountPageMocks.createApiKey.mockReset();
   accountPageMocks.deleteApiKey.mockReset();
   accountPageMocks.deletePasskey.mockReset();
+  accountPageMocks.disconnectAtprotoIdentity.mockReset();
   accountPageMocks.listScoutDevices.mockReset();
   accountPageMocks.invalidateQueries.mockReset();
+  accountPageMocks.listAtprotoIdentities.mockReset();
+  accountPageMocks.refreshAtprotoIdentity.mockReset();
   accountPageMocks.revokeScoutDevice.mockReset();
   accountPageMocks.updatePasskey.mockReset();
   accountPageMocks.signalUnknownPasskey.mockReset();
@@ -265,10 +307,14 @@ beforeEach(() => {
   accountPageMocks.useQueryClient.mockReturnValue({
     invalidateQueries: accountPageMocks.invalidateQueries.mockResolvedValue(undefined),
   });
+  accountPageMocks.confirm.mockResolvedValue(true);
+  accountPageMocks.disconnectAtprotoIdentity.mockResolvedValue(undefined);
+  accountPageMocks.listAtprotoIdentities.mockResolvedValue([]);
   accountPageMocks.useMutation.mockImplementation(
     (config: {
       mutationFn?: (input?: unknown) => Promise<unknown>;
       onError?: () => void;
+      onSettled?: () => void | Promise<void>;
       onSuccess?: (result?: unknown, variables?: unknown) => void | Promise<void>;
     }) => ({
       isPending: false,
@@ -279,15 +325,20 @@ beforeEach(() => {
           })
           .catch(() => {
             config.onError?.();
+          })
+          .finally(() => {
+            void config.onSettled?.();
           });
       },
       mutateAsync: async (input?: unknown) => {
         try {
           const result = await config.mutationFn?.(input);
           await config.onSuccess?.(result, input);
+          await config.onSettled?.();
           return result;
         } catch (error) {
           config.onError?.();
+          await config.onSettled?.();
           throw error;
         }
       },
