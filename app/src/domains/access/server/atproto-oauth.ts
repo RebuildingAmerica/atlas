@@ -39,6 +39,9 @@ interface RecoverableAtprotoOAuthError extends Error {
   returnTo: string;
 }
 
+export type AtprotoReturnContext =
+  { kind: "account" } | { kind: "claim"; slug: string } | { kind: "manage"; slug: string };
+
 const metadataPath = "/api/atproto/oauth/client-metadata.json";
 const callbackPath = "/api/atproto/oauth/callback";
 const harnessAuthorizePath = "/api/atproto/oauth/harness/authorize";
@@ -149,11 +152,7 @@ export async function completeAtprotoAuthorization(params: URLSearchParams): Pro
         state.requestedHandle,
       );
     });
-    const redirectUrl = new URL(state.returnTo, getAuthRuntimeConfig().publicBaseUrl);
-    redirectUrl.searchParams.delete("atprotoError");
-    redirectUrl.searchParams.set("atprotoIdentityId", identity.id);
-    redirectUrl.searchParams.set("atprotoHandle", identity.current_handle);
-    return redirectUrl.toString();
+    return atprotoSuccessRedirect(state.returnTo, identity);
   } finally {
     if (result.state) {
       await appStateStore.del(result.state);
@@ -186,11 +185,7 @@ async function completeE2EHarnessAuthorization(
     did: e2eHarnessDid(handle),
     pds_url: "https://pds.atlas-e2e.test",
   });
-  const redirectUrl = new URL(state.returnTo, getAuthRuntimeConfig().publicBaseUrl);
-  redirectUrl.searchParams.delete("atprotoError");
-  redirectUrl.searchParams.set("atprotoIdentityId", identity.id);
-  redirectUrl.searchParams.set("atprotoHandle", identity.current_handle);
-  return redirectUrl.toString();
+  return atprotoSuccessRedirect(state.returnTo, identity);
 }
 
 function e2eHarnessCallbackUrl(handle: string, state: string): URL {
@@ -275,7 +270,7 @@ async function persistLinkedAtprotoIdentity(
   const runtime = getAuthRuntimeConfig();
   const session = await requireSignedInAtlasSession();
   const target = runtime.apiBaseUrl ?? runtime.publicBaseUrl;
-  const response = await fetch(new URL("/api/profiles/atproto/identities", target), {
+  const response = await fetch(new URL("/api/atproto/identities", target), {
     body: JSON.stringify(input),
     headers: {
       "Content-Type": "application/json",
@@ -291,14 +286,44 @@ async function persistLinkedAtprotoIdentity(
   return (await response.json()) as LinkedAtprotoIdentity;
 }
 
-function sanitizeReturnTo(value: string): string {
+export function parseAtprotoReturnTo(value: string): AtprotoReturnContext {
   const runtime = getAuthRuntimeConfig();
   const publicOrigin = new URL(runtime.publicBaseUrl).origin;
-  const parsed = new URL(value || "/claim", runtime.publicBaseUrl);
+  const parsed = new URL(value, runtime.publicBaseUrl);
   if (parsed.origin !== publicOrigin) {
-    return "/claim";
+    throw new Error("ATProto return destination is not allowed.");
   }
-  return `${parsed.pathname}${parsed.search}`;
+  if (parsed.pathname === "/account") {
+    return { kind: "account" };
+  }
+  const claim = /^\/claim\/([^/]+)$/.exec(parsed.pathname);
+  if (claim?.[1]) {
+    return { kind: "claim", slug: decodeURIComponent(claim[1]) };
+  }
+  const manage = /^\/manage\/([^/]+)$/.exec(parsed.pathname);
+  if (manage?.[1]) {
+    return { kind: "manage", slug: decodeURIComponent(manage[1]) };
+  }
+  throw new Error("ATProto return destination is not allowed.");
+}
+
+function sanitizeReturnTo(value: string): string {
+  parseAtprotoReturnTo(value);
+  const parsed = new URL(value, getAuthRuntimeConfig().publicBaseUrl);
+  return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+}
+
+function atprotoSuccessRedirect(returnTo: string, identity: LinkedAtprotoIdentity): string {
+  const context = parseAtprotoReturnTo(returnTo);
+  const redirectUrl = new URL(returnTo, getAuthRuntimeConfig().publicBaseUrl);
+  redirectUrl.searchParams.delete("atprotoError");
+  redirectUrl.searchParams.delete("atprotoHandle");
+  redirectUrl.searchParams.set("atprotoStatus", "connected");
+  redirectUrl.searchParams.set("atprotoIdentityId", identity.id);
+  if (context.kind === "account") {
+    redirectUrl.hash = "identity";
+  }
+  return redirectUrl.toString();
 }
 
 function isLocalHttpUrl(value: string): boolean {

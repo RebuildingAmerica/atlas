@@ -31,12 +31,18 @@ function recoverableCallbackError(error: unknown): RecoverableAtprotoCallbackErr
   };
 }
 
-function recoverableCallbackRedirect(request: Request, error: unknown): Response | null {
+async function recoverableCallbackRedirect(
+  request: Request,
+  error: unknown,
+): Promise<Response | null> {
   const recoverable = recoverableCallbackError(error);
   if (!recoverable) return null;
   const requestUrl = new URL(request.url);
   const redirectUrl = new URL(recoverable.returnTo, requestUrl.origin);
-  if (redirectUrl.origin !== requestUrl.origin || !redirectUrl.pathname.startsWith("/claim/")) {
+  const { parseAtprotoReturnTo } = await import("@/domains/access/server/atproto-oauth");
+  try {
+    parseAtprotoReturnTo(redirectUrl.toString());
+  } catch {
     return null;
   }
   redirectUrl.searchParams.set("atprotoError", recoverable.message);
@@ -53,7 +59,7 @@ export const Route = createFileRoute("/api/atproto/oauth/callback")({
         try {
           return await completeAtprotoCallback(request);
         } catch (error) {
-          const redirect = recoverableCallbackRedirect(request, error);
+          const redirect = await recoverableCallbackRedirect(request, error);
           if (redirect) return redirect;
           return Response.json(
             { error: error instanceof Error ? error.message : "ATProto callback failed." },

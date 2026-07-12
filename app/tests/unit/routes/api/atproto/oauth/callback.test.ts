@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   completeAtprotoAuthorization: vi.fn(),
+  parseAtprotoReturnTo: vi.fn(),
   pruneAtprotoOAuthStores: vi.fn(),
 }));
 
@@ -12,12 +13,14 @@ vi.mock("@tanstack/react-router", async () => {
 
 vi.mock("@/domains/access/server/atproto-oauth", () => ({
   completeAtprotoAuthorization: mocks.completeAtprotoAuthorization,
+  parseAtprotoReturnTo: mocks.parseAtprotoReturnTo,
   pruneAtprotoOAuthStores: mocks.pruneAtprotoOAuthStores,
 }));
 
 describe("routes/api/atproto/oauth/callback", () => {
   beforeEach(() => {
     mocks.completeAtprotoAuthorization.mockReset();
+    mocks.parseAtprotoReturnTo.mockReset();
     mocks.pruneAtprotoOAuthStores.mockReset();
   });
 

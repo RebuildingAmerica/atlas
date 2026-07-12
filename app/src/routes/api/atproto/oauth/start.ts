@@ -10,7 +10,7 @@ async function redirectToAtprotoAuthorization(request: Request): Promise<Respons
   if (!handle) {
     return Response.json({ error: "ATProto handle is required." }, { status: 400 });
   }
-  const returnTo = requestUrl.searchParams.get("returnTo") ?? "/claim";
+  const returnTo = requestUrl.searchParams.get("returnTo") ?? "/account";
   const { createAtprotoAuthorizationUrl } = await import("@/domains/access/server/atproto-oauth");
   const authorizationUrl = await createAtprotoAuthorizationUrl({ handle, returnTo });
   return Response.redirect(authorizationUrl.toString(), 302);

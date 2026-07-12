@@ -17,7 +17,7 @@ describe("atproto-oauth", () => {
 
     await createAtprotoAuthorizationUrl({
       handle: "acme.org",
-      returnTo: "https://evil.example/elsewhere",
+      returnTo: "/account#identity",
     });
 
     expect(prepare).toHaveBeenCalledWith(expect.stringContaining("CREATE TABLE IF NOT EXISTS"));
@@ -28,11 +28,24 @@ describe("atproto-oauth", () => {
       expect.stringContaining("INSERT INTO atproto_oauth_app_state"),
     );
     const insertedPayload = String(run.mock.calls.at(-1)?.[1]);
-    expect(insertedPayload).toContain('"returnTo":"/claim"');
+    expect(insertedPayload).toContain('"returnTo":"/account#identity"');
     expect(insertedPayload).toContain('"requestedHandle":"acme.org"');
     const authorizeCalls = mocks().authorize.mock.calls as [string, { state: unknown }][];
     expect(authorizeCalls[0]?.[0]).toBe("acme.org");
     expect(typeof authorizeCalls[0]?.[1].state).toBe("string");
+  });
+
+  it("accepts only Account, claim, and manage return destinations", async () => {
+    const { parseAtprotoReturnTo } = await import("@/domains/access/server/atproto-oauth");
+
+    expect(parseAtprotoReturnTo("/account#identity")).toEqual({ kind: "account" });
+    expect(parseAtprotoReturnTo("/claim/org-slug")).toEqual({ kind: "claim", slug: "org-slug" });
+    expect(parseAtprotoReturnTo("/manage/org-slug")).toEqual({
+      kind: "manage",
+      slug: "org-slug",
+    });
+    expect(() => parseAtprotoReturnTo("/admin")).toThrow("not allowed");
+    expect(() => parseAtprotoReturnTo("https://evil.example/claim/org")).toThrow("not allowed");
   });
 
   it("builds an internal provider authorization URL when the end-to-end OAuth harness is enabled", async () => {
@@ -122,7 +135,7 @@ describe("atproto-oauth", () => {
     const fetchCall = fetchCalls[0];
     if (!fetchCall) throw new Error("Expected identity persistence request");
     const [fetchUrl, fetchInit] = fetchCall;
-    expect(String(fetchUrl)).toBe("https://api.atlas.test/api/profiles/atproto/identities");
+    expect(String(fetchUrl)).toBe("https://api.atlas.test/api/atproto/identities");
     expect(fetchInit.method).toBe("POST");
     if (typeof fetchInit.body !== "string") {
       throw new Error("Expected JSON identity persistence body");
@@ -133,7 +146,7 @@ describe("atproto-oauth", () => {
       pds_url: "https://pds.example",
     });
     expect(redirectUrl).toBe(
-      "https://atlas.test/claim/org?atprotoIdentityId=identity_1&atprotoHandle=org.example",
+      "https://atlas.test/claim/org?atprotoStatus=connected&atprotoIdentityId=identity_1",
     );
     expect(prepare).toHaveBeenCalledWith("DELETE FROM atproto_oauth_state WHERE key = ?");
     expect(prepare).toHaveBeenCalledWith("DELETE FROM atproto_oauth_session WHERE key = ?");
@@ -190,7 +203,7 @@ describe("atproto-oauth", () => {
     );
 
     expect(redirectUrl).toBe(
-      "https://atlas.test/claim/org?atprotoHandle=org.example&atprotoIdentityId=identity_1",
+      "https://atlas.test/claim/org?atprotoStatus=connected&atprotoIdentityId=identity_1",
     );
   });
 
@@ -239,7 +252,7 @@ describe("atproto-oauth", () => {
       pds_url: "https://pds.atlas-e2e.test",
     });
     expect(redirectUrl).toBe(
-      "https://atlas.test/claim/org?atprotoIdentityId=identity_harness&atprotoHandle=org.example",
+      "https://atlas.test/claim/org?atprotoStatus=connected&atprotoIdentityId=identity_harness",
     );
   });
 
