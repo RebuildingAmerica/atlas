@@ -1,19 +1,17 @@
 # ATProto-Native Identity Transition
 
-Status: Draft
-Date: 2026-07-04
-Owner: Rebuilding America Project
+Status: Draft Date: 2026-07-04 Owner: Rebuilding America Project
 
 ## Purpose
 
 Atlas should move toward decentralized identity without losing the practical
-auth, workspace, SSO, and governance machinery needed to serve real public
-users and institutions. This document describes the vision, transition
-architecture, refactor shape, and final state for making ATProto identity a
-native part of Atlas.
+auth, workspace, SSO, and governance machinery needed to serve real public users
+and institutions. This document describes the vision, transition architecture,
+refactor shape, and final state for making ATProto identity a native part of
+Atlas.
 
-This is not a plan to add a "Sign in with Bluesky" button and call it done.
-The goal is deeper: Atlas should treat durable decentralized identity as a
+This is not a plan to add a "Sign in with Bluesky" button and call it done. The
+goal is deeper: Atlas should treat durable decentralized identity as a
 first-class civic trust primitive. A person, organization, source submission,
 profile claim, public field note, and directory contribution should be able to
 carry a stable identity trail that survives handle changes, account migration,
@@ -25,11 +23,11 @@ The user-facing experience stays simple:
 
 - Public users see normal language: "verified linked handle," "claim with
   ATProto," "submitted by," and "source-backed."
-- Profile subjects can prove who they are without navigating enterprise
-  account setup.
+- Profile subjects can prove who they are without navigating enterprise account
+  setup.
 - Civic actors can carry a public identity across Atlas and the federated web.
-- Institutional teams can still use SSO, workspace roles, API keys, and
-  managed access controls.
+- Institutional teams can still use SSO, workspace roles, API keys, and managed
+  access controls.
 - Nobody has to understand DIDs, PDSes, Lexicons, AT URIs, or CIDs to find
   useful civic information.
 
@@ -246,8 +244,8 @@ do not become Atlas facts.
 ### Auth Boundary
 
 This is separate from Atlas's existing OAuth-provider surface. Atlas currently
-acts as an OAuth authorization server for MCP/API clients. ATProto support
-makes Atlas an OAuth client of a user's PDS. Those flows should not share route
+acts as an OAuth authorization server for MCP/API clients. ATProto support makes
+Atlas an OAuth client of a user's PDS. Those flows should not share route
 handlers, token storage, or mental models.
 
 ## Transition Step 3: ATProto-First Public Sign-In
@@ -272,17 +270,17 @@ Atlas public actions: follow, claim, submit source, steward profile
 
 ### Product Outcome
 
-A person can use Atlas with decentralized identity first. Email remains
-optional for recovery, notifications, and workspace invitations. Enterprise SSO
-remains available for workspace access.
+A person can use Atlas with decentralized identity first. Email remains optional
+for recovery, notifications, and workspace invitations. Enterprise SSO remains
+available for workspace access.
 
 ### Refactor Needed
 
 - Add a public sign-in path that starts from handle entry.
 - Link verified DID to an existing user when safe.
 - Create a new Atlas user when the DID has no existing user.
-- Avoid implicit account takeover by requiring explicit linking when an email
-  or SSO user already exists.
+- Avoid implicit account takeover by requiring explicit linking when an email or
+  SSO user already exists.
 - Update account setup so email is recommended but not mandatory for public
   actions that do not require email.
 - Keep passkey enrollment available as a local assurance/recovery layer.
@@ -321,8 +319,8 @@ durable public identity is attached to this civic action?"
 
 ### Refactor Needed
 
-- Keep Better Auth organization, SSO, role, invitation, and API-key flows as
-  the workspace authority.
+- Keep Better Auth organization, SSO, role, invitation, and API-key flows as the
+  workspace authority.
 - Model SSO identities separately from ATProto identities.
 - Allow workspace users to link ATProto DIDs, but do not require it for
   workspace access.
@@ -362,8 +360,8 @@ Atlas evidence and public profile surfaces
 
 ### Product Outcome
 
-Civic contributions become portable, source-linked records on the federated
-web. Atlas indexes and reviews them, but users do not need Atlas to be the sole
+Civic contributions become portable, source-linked records on the federated web.
+Atlas indexes and reviews them, but users do not need Atlas to be the sole
 holder of their civic identity or contribution history.
 
 ### Refactor Needed
@@ -407,8 +405,8 @@ Same Atlas AppView and review layer
 ### Product Outcome
 
 Atlas can eventually help civic actors who want decentralized identity but do
-not want to choose or operate a PDS. This is a later service capability, not
-the core identity transition.
+not want to choose or operate a PDS. This is a later service capability, not the
+core identity transition.
 
 ### Requirements Before This Ships
 
@@ -607,3 +605,18 @@ identity across the federated web.
 
 Each step must preserve public discovery, profile trust, correction paths, and
 workspace SSO behavior before advancing.
+
+## Milestone 1 Product Contract
+
+Account settings are the home for identities controlled by an Atlas user. OAuth
+completion records a durable DID and an explicit user-control relationship; it
+does not make that identity public by itself. Person and organization claim
+flows consume a selected controlled identity, while a verified steward
+separately attaches or removes the identity displayed on a public profile.
+
+Handles remain presentation data resolved from the DID. Resolution failures
+retain the relationship, mark it as needing attention, and suppress stale public
+links. Identity state is global to the user and must not change the active
+workspace or alter enterprise SSO boundaries. Atlas supports external ATProto
+providers first; an Atlas-managed PDS remains deferred until hosting, recovery,
+moderation, and portability guarantees are specified.

@@ -1,8 +1,6 @@
 # ATProto Federated Web PRD
 
-Status: Draft
-Date: 2026-07-03
-Owner: Rebuilding America Project
+Status: Draft Date: 2026-07-03 Owner: Rebuilding America Project
 
 ## User Outcome
 
@@ -170,3 +168,12 @@ ATProto outbound artifact:
 - ATProto source submissions enter review and do not modify profiles directly.
 - Accepted ATProto source candidates preserve AT URI, CID, DID, collection, and
   review metadata.
+- Account settings list every ATProto identity controlled by the user and allow
+  refresh, disconnect, and reconnect without changing the active workspace.
+- Claim and steward workflows select identities by durable identity ID rather
+  than accepting an unverified public handle.
+- Public profile attachment is an explicit relationship separate from account
+  control, and a verified steward can replace or remove it.
+- Resolution failures preserve DID provenance, show a needs-attention state, and
+  do not publish a stale provider-specific link.
+- Managed Atlas PDS hosting is outside this milestone.

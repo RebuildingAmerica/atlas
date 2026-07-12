@@ -1,8 +1,6 @@
 # Profile Claiming And Stewardship PRD
 
-Status: Draft
-Date: 2026-07-03
-Owner: Rebuilding America Project
+Status: Draft Date: 2026-07-03 Owner: Rebuilding America Project
 
 ## User Outcome
 
@@ -116,8 +114,8 @@ Initial workflow defaults:
 
 - Email verification tokens expire after 7 days.
 - Reviewer requests for more information expire after 30 days.
-- Manual review should be triaged within 5 business days for ordinary claims
-  and sooner for safety-sensitive or high-visibility profiles.
+- Manual review should be triaged within 5 business days for ordinary claims and
+  sooner for safety-sensitive or high-visibility profiles.
 - Denied claims can be resubmitted when the claimant provides new evidence,
   unless the claimant or profile is under a safety restriction.
 - Approval updates public stewardship state only after the reviewer or automatic
@@ -321,8 +319,8 @@ Reviewer-facing fields:
   context must not appear on public profiles or public exports.
 - Public APIs may expose stewardship state and subject-provided field markers,
   but not private proof details or denied claimant identities.
-- A steward cannot use managed fields to publish unsupported allegations,
-  expose private personal information, or remove public-interest context.
+- A steward cannot use managed fields to publish unsupported allegations, expose
+  private personal information, or remove public-interest context.
 - Correction, dispute, source-suppression, and restricted-use decisions follow
   the Governance, Corrections, And Safety PRD.
 
@@ -394,3 +392,11 @@ subject control as current.
   exposing private workflow details.
 - Claim proof, review event, public profile, claimant-facing, and
   reviewer-facing data needs are specified for implementation planning.
+- A claimant chooses from ATProto identities already connected in Account; claim
+  drafts persist the durable identity selection.
+- Organization representatives can combine an ATProto identity with domain or
+  additional relationship proof without treating the provider as authority.
+- A verified steward can attach, replace, or remove a public profile identity
+  without disconnecting it from the controlling user's Account.
+- A public profile exposes identity relationship health but never private
+  controller metadata or a stale application-specific link.

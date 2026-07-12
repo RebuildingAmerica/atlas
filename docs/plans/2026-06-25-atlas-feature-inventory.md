@@ -932,3 +932,14 @@ the PDLC):
 > risk is trying to serve four segments and a platform at once — the roadmap
 > holds that line, and the platform layer must not outrun the product layer's
 > trust maturity.
+
+## Account-first ATProto identity milestone
+
+The first identity slice is now defined as a global user capability rather than
+workspace configuration. Account settings own connect, refresh, disconnect, and
+reconnect. Claims for people and organizations consume a controlled identity,
+and verified stewardship owns the distinct public-profile attachment. This
+separation keeps workspace membership, SSO, and public civic provenance from
+becoming accidental aliases of one another. External ATProto providers are
+supported first; managed Atlas PDS hosting stays in the deferred platform
+inventory.
