@@ -46,8 +46,8 @@ def _row_to_item(row: tuple[Any, ...]) -> ReviewQueueItemModel:
         score=row[6],
         dedup_suspect=bool(row[7]),
         dedup_note=row[8],
-        created_at=row[9],
-        reviewed_at=row[10],
+        created_at=_row_timestamp(row[9]),
+        reviewed_at=_row_timestamp(row[10]) if row[10] is not None else None,
         reviewed_by=row[11],
     )
 
@@ -56,6 +56,13 @@ _SELECT_COLUMNS = (
     "id, org_id, entity_id, kind, status, hold_reason, score, dedup_suspect, "
     "dedup_note, created_at, reviewed_at, reviewed_by"
 )
+
+
+def _row_timestamp(value: datetime | str) -> str:
+    """Normalize SQLite/Postgres timestamp column values to strings."""
+    if isinstance(value, datetime):
+        return value.isoformat()
+    return value
 
 
 class ReviewQueueCRUD:

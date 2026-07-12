@@ -1,12 +1,13 @@
 """Tests for the pre-publication review queue table and CRUD."""
 # ruff: noqa
 
-from datetime import date
+from datetime import UTC, date, datetime
 
 import pytest
 
+from atlas.domains.catalog.schemas.public_review import ReviewQueueItemResponse
 from atlas.domains.catalog.models.entry import EntryCRUD
-from atlas.domains.moderation.review_queue import ReviewQueueCRUD, _coerce_date
+from atlas.domains.moderation.review_queue import ReviewQueueCRUD, _coerce_date, _row_to_item
 from atlas.models.database import get_db_connection
 
 
@@ -100,6 +101,30 @@ async def test_enqueue_passes_boolean_dedup_suspect_parameter() -> None:
 
     assert conn.params is not None
     assert conn.params[6] is True
+
+
+def test_row_to_item_accepts_postgres_timestamp_values_for_api_response() -> None:
+    """Postgres returns TIMESTAMPTZ columns as datetimes instead of SQLite-style strings."""
+    item = _row_to_item(
+        (
+            "review-1",
+            None,
+            "entry-1",
+            "organization",
+            "pending",
+            "uncorroborated_web_only",
+            0.8,
+            False,
+            None,
+            datetime(2026, 7, 12, 2, 41, tzinfo=UTC),
+            None,
+            None,
+        )
+    )
+
+    response = ReviewQueueItemResponse.model_validate(item.__dict__)
+
+    assert response.created_at == "2026-07-12T02:41:00+00:00"
 
 
 @pytest.mark.asyncio
