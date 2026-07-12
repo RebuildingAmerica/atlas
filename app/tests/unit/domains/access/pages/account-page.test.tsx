@@ -205,6 +205,24 @@ describe("AccountPage", () => {
     });
   });
 
+  it("shows OAuth callback errors and clears callback parameters", async () => {
+    window.history.replaceState(
+      null,
+      "",
+      "/account?atprotoError=Identity+verification+failed.#identity",
+    );
+    const { AccountPage } = await import("@/domains/access/pages/workspace/account-page");
+
+    render(<AccountPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Identity verification failed.")).not.toBeNull();
+      expect(window.location.pathname).toBe("/account");
+      expect(window.location.search).toBe("");
+      expect(window.location.hash).toBe("#identity");
+    });
+  });
+
   it("renders fallback labels, cancel flows, and disabled create state when scopes are cleared", async () => {
     mocks.useAtlasSession.mockReturnValue({
       data: createAtlasSessionFixture({
