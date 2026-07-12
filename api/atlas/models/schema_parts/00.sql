@@ -141,6 +141,11 @@ CREATE TABLE IF NOT EXISTS discovery_runs (
     created_at TIMESTAMPTZ NOT NULL
 );
 
+ALTER TABLE discovery_runs
+    ADD COLUMN IF NOT EXISTS research_goal TEXT NOT NULL DEFAULT 'landscape_scan';
+ALTER TABLE discovery_runs
+    ADD COLUMN IF NOT EXISTS research_summary TEXT;
+
 CREATE TABLE IF NOT EXISTS discovery_run_syncs (
     id TEXT PRIMARY KEY,
     local_run_id TEXT NOT NULL,

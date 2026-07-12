@@ -251,6 +251,8 @@ class TestInitDb:
         """PostgreSQL startup should create the Scout sync idempotency table."""
         schema = _load_postgres_schema()
 
+        assert "ADD COLUMN IF NOT EXISTS research_goal" in schema
+        assert "ADD COLUMN IF NOT EXISTS research_summary" in schema
         assert "CREATE TABLE IF NOT EXISTS discovery_run_syncs" in schema
         assert "UNIQUE(local_run_id, artifact_hash)" in schema
         assert "idx_discovery_run_syncs_local_run_id" in schema
