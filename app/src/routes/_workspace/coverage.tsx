@@ -1,10 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { workspaceCoverageQueryOptions } from "@/domains/workspace/hooks/use-coverage-targets";
 import { CoveragePage } from "@/domains/workspace/pages/coverage-page";
-import { loadWorkspaceCoverage } from "@/domains/workspace/server/coverage-targets";
 
 export const Route = createFileRoute("/_workspace/coverage")({
-  loader: async () => {
-    return { coverageWorkspace: await loadWorkspaceCoverage() };
+  loader: ({ context }) => {
+    return context.queryClient.ensureQueryData(workspaceCoverageQueryOptions());
   },
   head: () => ({
     meta: [{ title: "Coverage Workspace | Atlas" }],
@@ -13,11 +13,5 @@ export const Route = createFileRoute("/_workspace/coverage")({
 });
 
 function CoverageRoute() {
-  const { coverageWorkspace } = Route.useLoaderData();
-  return (
-    <CoveragePage
-      initialCoverageTargets={coverageWorkspace.coverageTargets}
-      orgId={coverageWorkspace.orgId}
-    />
-  );
+  return <CoveragePage />;
 }

@@ -1,8 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
+import { taxonomyQueryOptions } from "@/domains/catalog/hooks/use-taxonomy";
 import { DiscoveryPage } from "@/domains/discovery";
-import { listDiscoveryRuns } from "@/domains/discovery/functions";
-import { api } from "@/lib/api";
+import { discoveryRunsQueryOptions } from "@/domains/discovery/hooks/use-discovery";
 import type { DiscoveryResearchGoal } from "@/types";
 
 interface DiscoverySearch {
@@ -46,12 +46,11 @@ export const discoverySearchSchema = z
 
 export const Route = createFileRoute("/_workspace/discovery")({
   validateSearch: discoverySearchSchema,
-  loader: async () => {
-    const [initialRuns, initialTaxonomy] = await Promise.all([
-      listDiscoveryRuns(),
-      api.taxonomy.list(),
+  loader: ({ context }) => {
+    return Promise.all([
+      context.queryClient.ensureQueryData(discoveryRunsQueryOptions()),
+      context.queryClient.ensureQueryData(taxonomyQueryOptions()),
     ]);
-    return { initialRuns, initialTaxonomy };
   },
   head: () => ({
     meta: [
@@ -66,15 +65,7 @@ export const Route = createFileRoute("/_workspace/discovery")({
 });
 
 function DiscoveryRoute() {
-  const { initialRuns, initialTaxonomy } = Route.useLoaderData();
   const search = Route.useSearch();
   const { run, ...initialRequest } = search;
-  return (
-    <DiscoveryPage
-      initialRequest={initialRequest}
-      initialRuns={initialRuns}
-      initialTaxonomy={initialTaxonomy}
-      selectedRunId={run}
-    />
-  );
+  return <DiscoveryPage initialRequest={initialRequest} selectedRunId={run} />;
 }

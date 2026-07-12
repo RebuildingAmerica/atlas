@@ -1,55 +1,48 @@
 import { Link } from "@tanstack/react-router";
-import { useQueryClient } from "@tanstack/react-query";
+import { queryOptions, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { z } from "zod";
 import { atlasSessionQueryKey, useAtlasSession } from "@/domains/access/client/use-atlas-session";
 import { loadPurchaseOnboarding } from "@/domains/billing/purchase-onboarding.functions";
 import { PRODUCT_LABELS } from "@/domains/billing/product-labels";
 import { Button } from "@/platform/ui/button";
+import type { PurchaseIntentRecord } from "@/domains/billing/server/purchase-intents";
 
-export const startPurchaseCompleteSearchSchema = z.object({
+export const setupCompleteSearchSchema = z.object({
   purchase: z.string().optional(),
 });
 
-interface StartPurchaseCompletePageProps {
+interface SetupCompletePageProps {
   purchase?: string;
 }
 
-interface PurchaseCompletionIntent {
-  id: string;
-  product: keyof typeof PRODUCT_LABELS;
-  status: string;
-  workspaceId: string | null;
-}
+type PurchaseCompletionIntent = PurchaseIntentRecord | null;
 
 type Phase = "waiting" | "ready" | "timeout";
 
 const POLL_INTERVAL_MS = 1500;
 const TIMEOUT_MS = 30_000;
 
-export function StartPurchaseCompletePage({ purchase }: StartPurchaseCompletePageProps) {
+export const purchaseOnboardingIntentQueryKey = ["onboarding", "purchase-intent"] as const;
+
+export function purchaseOnboardingIntentQueryOptions(purchaseId: string) {
+  return queryOptions<PurchaseCompletionIntent>({
+    queryKey: [...purchaseOnboardingIntentQueryKey, purchaseId],
+    queryFn: () => loadPurchaseOnboarding({ data: { purchaseId } }),
+  });
+}
+
+export function SetupCompletePage({ purchase }: SetupCompletePageProps) {
   const queryClient = useQueryClient();
   const session = useAtlasSession();
-  const [intent, setIntent] = useState<PurchaseCompletionIntent | null>(null);
   const [phase, setPhase] = useState<Phase>("waiting");
   const startedAtRef = useRef(Date.now());
-
-  useEffect(() => {
-    if (!purchase) {
-      return;
-    }
-    let cancelled = false;
-    const load = async () => {
-      const record = await loadPurchaseOnboarding({ data: { purchaseId: purchase } });
-      if (!cancelled) {
-        setIntent(record);
-      }
-    };
-    void load();
-    return () => {
-      cancelled = true;
-    };
-  }, [purchase]);
+  const intentQuery = useQuery({
+    ...purchaseOnboardingIntentQueryOptions(purchase ?? ""),
+    enabled: Boolean(purchase),
+  });
+  const intent = intentQuery.data ?? null;
+  const refetchIntent = intentQuery.refetch;
 
   const activeProducts = session.data?.workspace.activeProducts ?? [];
   const activeWorkspaceId = session.data?.workspace.activeOrganization?.id ?? null;
@@ -75,15 +68,13 @@ export function StartPurchaseCompletePage({ purchase }: StartPurchaseCompletePag
       return;
     }
     const handle = window.setTimeout(() => {
-      if (purchase) {
-        void loadPurchaseOnboarding({ data: { purchaseId: purchase } }).then(setIntent);
-      }
+      void refetchIntent();
       void queryClient.invalidateQueries({ queryKey: atlasSessionQueryKey });
     }, POLL_INTERVAL_MS);
     return () => {
       window.clearTimeout(handle);
     };
-  }, [purchase, purchaseIsComplete, queryClient, session.data]);
+  }, [purchase, purchaseIsComplete, queryClient, refetchIntent, session.data]);
 
   if (!purchase) {
     return (
@@ -150,7 +141,7 @@ export function StartPurchaseCompletePage({ purchase }: StartPurchaseCompletePag
             Refresh
           </Button>
           {purchase ? (
-            <Link to="/start" search={{ purchase, step: "payment" }} className="no-underline">
+            <Link to="/onboarding" search={{ purchase, step: "payment" }} className="no-underline">
               <Button variant="secondary">Return to payment</Button>
             </Link>
           ) : null}

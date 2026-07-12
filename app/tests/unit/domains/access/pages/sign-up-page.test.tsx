@@ -380,7 +380,7 @@ describe("SignUpPage", () => {
     mocks.useAtlasSession.mockReturnValue({ data: { accountReady: false, user: { id: "u1" } } });
     rerender(<SignUpPage intent="team-sso" />);
 
-    expect(assignSpy).toHaveBeenCalledWith("/start?product=atlas_team&interval=monthly");
+    expect(assignSpy).toHaveBeenCalledWith("/onboarding?product=atlas_team&interval=monthly");
   });
 
   it("renders the generic submit-error when the magic-link send rejects on the form", async () => {

@@ -12,7 +12,7 @@ const mocks = vi.hoisted(() => ({
   exportOrgCoverageTargets: vi.fn(),
   getExportOrgCoverageTargetsUrl: vi.fn(),
   useImportCoverageTargets: vi.fn(),
-  useCoverageTargets: vi.fn(),
+  useWorkspaceCoverage: vi.fn(),
 }));
 
 vi.mock("@tanstack/react-router", async () => {
@@ -22,7 +22,7 @@ vi.mock("@tanstack/react-router", async () => {
 
 vi.mock("@/domains/workspace/hooks/use-coverage-targets", () => ({
   useImportCoverageTargets: mocks.useImportCoverageTargets,
-  useCoverageTargets: mocks.useCoverageTargets,
+  useWorkspaceCoverage: mocks.useWorkspaceCoverage,
 }));
 
 vi.mock("@/lib/generated/atlas", () => ({
@@ -38,7 +38,7 @@ describe("CoveragePage", () => {
       (orgId: string, params?: { format?: string }) =>
         `/api/orgs/${orgId}/coverage-targets/export${params?.format ? `?format=${params.format}` : ""}`,
     );
-    mocks.useCoverageTargets.mockReset();
+    mocks.useWorkspaceCoverage.mockReset();
     mocks.useImportCoverageTargets.mockReset();
     mocks.useImportCoverageTargets.mockReturnValue({
       isPending: false,
@@ -138,11 +138,13 @@ describe("CoveragePage", () => {
 
   it("renders workspace coverage targets with plain status language and operator actions", () => {
     const initialCoverageTargets = collection();
-    mocks.useCoverageTargets.mockReturnValue({ data: initialCoverageTargets });
+    mocks.useWorkspaceCoverage.mockReturnValue({
+      data: { coverageTargets: initialCoverageTargets, orgId: "org_123" },
+    });
 
-    render(<CoveragePage initialCoverageTargets={initialCoverageTargets} orgId="org_123" />);
+    render(<CoveragePage />);
 
-    expect(mocks.useCoverageTargets).toHaveBeenCalledWith(initialCoverageTargets, "org_123");
+    expect(mocks.useWorkspaceCoverage).toHaveBeenCalledWith();
     expect(screen.getByRole("heading", { name: "Coverage Workspace" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Research" })).toHaveAttribute(
       "data-link-to",
@@ -180,9 +182,11 @@ describe("CoveragePage", () => {
 
   it("renders a plain empty state", () => {
     const initialCoverageTargets: CoverageTargetCollection = { items: [], total: 0 };
-    mocks.useCoverageTargets.mockReturnValue({ data: initialCoverageTargets });
+    mocks.useWorkspaceCoverage.mockReturnValue({
+      data: { coverageTargets: initialCoverageTargets, orgId: "org_123" },
+    });
 
-    render(<CoveragePage initialCoverageTargets={initialCoverageTargets} orgId="org_123" />);
+    render(<CoveragePage />);
 
     expect(screen.getByText("No coverage targets yet.")).toBeInTheDocument();
     expect(screen.getAllByRole("link", { name: "Research" })[0]).toHaveAttribute(
@@ -212,7 +216,9 @@ describe("CoveragePage", () => {
       configurable: true,
       value: revokeObjectUrl,
     });
-    mocks.useCoverageTargets.mockReturnValue({ data: initialCoverageTargets });
+    mocks.useWorkspaceCoverage.mockReturnValue({
+      data: { coverageTargets: initialCoverageTargets, orgId: "org_123" },
+    });
     mocks.exportOrgCoverageTargets.mockResolvedValue({
       format: "json",
       org_id: "org_123",
@@ -221,7 +227,7 @@ describe("CoveragePage", () => {
       targets: [{ id: "coverage_covered", name: "Kansas City tenant power" }],
     });
 
-    render(<CoveragePage initialCoverageTargets={initialCoverageTargets} orgId="org_123" />);
+    render(<CoveragePage />);
 
     fireEvent.click(screen.getByRole("button", { name: "Download CSV" }));
     await waitFor(() => {
@@ -248,13 +254,15 @@ describe("CoveragePage", () => {
     const initialCoverageTargets = collection();
     const mutateAsync = vi.fn().mockResolvedValue({ created: [], imported: 2 });
     const csvText = "name,geography,issue_areas,actor_types,source_types\n";
-    mocks.useCoverageTargets.mockReturnValue({ data: initialCoverageTargets });
+    mocks.useWorkspaceCoverage.mockReturnValue({
+      data: { coverageTargets: initialCoverageTargets, orgId: "org_123" },
+    });
     mocks.useImportCoverageTargets.mockReturnValue({
       isPending: false,
       mutateAsync,
     });
 
-    render(<CoveragePage initialCoverageTargets={initialCoverageTargets} orgId="org_123" />);
+    render(<CoveragePage />);
 
     fireEvent.change(screen.getByLabelText("Coverage target CSV"), {
       target: { value: csvText },
@@ -264,14 +272,16 @@ describe("CoveragePage", () => {
     await waitFor(() => {
       expect(mutateAsync).toHaveBeenCalledWith({ csv_text: csvText });
     });
-    expect(screen.getByText("2 targets imported.")).toBeInTheDocument();
+    expect(await screen.findByText("2 targets imported.")).toBeInTheDocument();
   });
 
   it("shows the coverage import CSV contract before import", () => {
     const initialCoverageTargets = collection();
-    mocks.useCoverageTargets.mockReturnValue({ data: initialCoverageTargets });
+    mocks.useWorkspaceCoverage.mockReturnValue({
+      data: { coverageTargets: initialCoverageTargets, orgId: "org_123" },
+    });
 
-    render(<CoveragePage initialCoverageTargets={initialCoverageTargets} orgId="org_123" />);
+    render(<CoveragePage />);
 
     expect(screen.getByText("Required columns")).toBeInTheDocument();
     expect(

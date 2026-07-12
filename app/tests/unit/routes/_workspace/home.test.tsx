@@ -2,10 +2,9 @@
 import "@testing-library/jest-dom/vitest";
 import { render, screen, cleanup } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { ResearchSummary } from "@/domains/workspace/server/research-summary";
 
 const mocks = vi.hoisted(() => ({
-  loadResearchSummary: vi.fn(),
+  researchSummaryQueryOptions: vi.fn(),
 }));
 
 vi.mock("@tanstack/react-router", async () => {
@@ -13,31 +12,19 @@ vi.mock("@tanstack/react-router", async () => {
   return harness.installRouterMocks();
 });
 
-vi.mock("@/domains/workspace/server/research-summary", () => ({
-  loadResearchSummary: mocks.loadResearchSummary,
+vi.mock("@/domains/workspace/hooks/use-research-summary", () => ({
+  researchSummaryQueryOptions: mocks.researchSummaryQueryOptions,
 }));
 
 vi.mock("@/domains/workspace/pages/research-home-page", () => ({
-  ResearchHomePage: ({ initialSummary }: { initialSummary: ResearchSummary }) => (
-    <div data-testid="research-home" data-list-count={initialSummary.totals.listCount} />
-  ),
+  ResearchHomePage: () => <div data-testid="research-home" />,
 }));
 
 describe("routes/_workspace/home", () => {
-  function summary(): ResearchSummary {
-    return {
-      lists: [],
-      activity: { newSourcesThisWeek: 0, recentItems: [], followedActorCount: 0 },
-      recentRuns: [],
-      totals: { savedActors: 0, listCount: 3, runsThisMonth: 0 },
-      watchlists: [],
-    };
-  }
-
   beforeEach(async () => {
     const { resetRouterMocks } = await import("@/../tests/helpers/router-harness");
     resetRouterMocks();
-    mocks.loadResearchSummary.mockReset();
+    mocks.researchSummaryQueryOptions.mockReset();
   });
 
   afterEach(() => {
@@ -54,28 +41,31 @@ describe("routes/_workspace/home", () => {
     expect(head.meta).toContainEqual({ title: "My Research | Atlas" });
   });
 
-  it("loads the research summary through the server function", async () => {
-    mocks.loadResearchSummary.mockResolvedValue(summary());
+  it("seeds the research summary query through the router context", async () => {
+    const queryOptions = { queryKey: ["workspace", "research-summary"] };
+    const ensureQueryData = vi.fn().mockResolvedValue({ totals: { listCount: 3 } });
+    mocks.researchSummaryQueryOptions.mockReturnValue(queryOptions);
 
     const routeModule = await import("@/routes/_workspace/home");
     const { asRouteStub } = await import("@/../tests/helpers/router-harness");
     const Route = asRouteStub(routeModule.Route);
 
     if (!Route.options.loader) throw new Error("Expected loader");
-    const data = (await Route.options.loader()) as { summary: ResearchSummary };
-    expect(mocks.loadResearchSummary).toHaveBeenCalledTimes(1);
-    expect(data.summary.totals.listCount).toBe(3);
+    const data = await Route.options.loader({ context: { queryClient: { ensureQueryData } } });
+
+    expect(mocks.researchSummaryQueryOptions).toHaveBeenCalledWith();
+    expect(ensureQueryData).toHaveBeenCalledWith(queryOptions);
+    expect(data).toEqual({ totals: { listCount: 3 } });
   });
 
-  it("renders the research home page seeded with the loader summary", async () => {
+  it("renders the research home page", async () => {
     const routeModule = await import("@/routes/_workspace/home");
-    const { asRouteStub, readRouterMocks } = await import("@/../tests/helpers/router-harness");
+    const { asRouteStub } = await import("@/../tests/helpers/router-harness");
     const Route = asRouteStub(routeModule.Route);
-    readRouterMocks().useLoaderData.mockReturnValue({ summary: summary() });
 
     const Component = Route.options.component;
     if (!Component) throw new Error("Expected Route.options.component");
     render(<Component />);
-    expect(screen.getByTestId("research-home")).toHaveAttribute("data-list-count", "3");
+    expect(screen.getByTestId("research-home")).toBeInTheDocument();
   });
 });

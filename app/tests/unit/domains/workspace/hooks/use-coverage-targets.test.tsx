@@ -9,20 +9,26 @@ import type {
 const mocks = vi.hoisted(() => ({
   createWorkspaceCoverageTarget: vi.fn(),
   invalidateQueries: vi.fn(),
+  loadWorkspaceCoverage: vi.fn(),
   loadWorkspaceCoverageTargets: vi.fn(),
+  queryOptions: vi.fn((options: unknown) => options),
   useMutation: vi.fn(),
   useQuery: vi.fn(),
   useQueryClient: vi.fn(),
+  useSuspenseQuery: vi.fn(),
 }));
 
 vi.mock("@tanstack/react-query", () => ({
+  queryOptions: mocks.queryOptions,
   useMutation: mocks.useMutation,
   useQuery: mocks.useQuery,
   useQueryClient: mocks.useQueryClient,
+  useSuspenseQuery: mocks.useSuspenseQuery,
 }));
 
 vi.mock("@/domains/workspace/server/coverage-targets", () => ({
   createWorkspaceCoverageTarget: mocks.createWorkspaceCoverageTarget,
+  loadWorkspaceCoverage: mocks.loadWorkspaceCoverage,
   loadWorkspaceCoverageTargets: mocks.loadWorkspaceCoverageTargets,
 }));
 
@@ -43,12 +49,18 @@ describe("coverage target hooks", () => {
     vi.resetModules();
     mocks.createWorkspaceCoverageTarget.mockReset();
     mocks.invalidateQueries.mockReset();
+    mocks.loadWorkspaceCoverage.mockReset();
     mocks.loadWorkspaceCoverageTargets.mockReset();
+    mocks.queryOptions.mockClear();
     mocks.useMutation.mockReset();
     mocks.useQuery.mockReset();
     mocks.useQueryClient.mockReset();
+    mocks.useSuspenseQuery.mockReset();
     mocks.useQuery.mockReturnValue({ data: null });
     mocks.useQueryClient.mockReturnValue({ invalidateQueries: mocks.invalidateQueries });
+    mocks.useSuspenseQuery.mockReturnValue({
+      data: { coverageTargets: collection(), orgId: "org_123" },
+    });
     mocks.useMutation.mockImplementation((config: CreateCoverageTargetMutationConfig) => config);
   });
 
@@ -96,6 +108,34 @@ describe("coverage target hooks", () => {
     expect(config.initialData).toBeUndefined();
     await config.queryFn();
     expect(mocks.loadWorkspaceCoverageTargets).toHaveBeenCalledWith();
+  });
+
+  it("builds shared workspace coverage query options", async () => {
+    const workspaceCoverage = { coverageTargets: collection(), orgId: "org_123" };
+    mocks.loadWorkspaceCoverage.mockResolvedValue(workspaceCoverage);
+    const mod = await import("@/domains/workspace/hooks/use-coverage-targets");
+
+    const options = mod.workspaceCoverageQueryOptions();
+
+    expect(mocks.queryOptions).toHaveBeenCalledWith(
+      expect.objectContaining({
+        queryKey: ["workspace", "coverage-targets", "workspace"],
+      }),
+    );
+    const queryFn = options.queryFn as () => Promise<unknown>;
+    await expect(queryFn()).resolves.toBe(workspaceCoverage);
+    expect(mocks.loadWorkspaceCoverage).toHaveBeenCalledWith();
+  });
+
+  it("reads shared workspace coverage through suspense query", async () => {
+    const mod = await import("@/domains/workspace/hooks/use-coverage-targets");
+    renderHook(() => mod.useWorkspaceCoverage());
+
+    expect(mocks.useSuspenseQuery).toHaveBeenCalledWith(
+      expect.objectContaining({
+        queryKey: ["workspace", "coverage-targets", "workspace"],
+      }),
+    );
   });
 
   it("creates a coverage target and refreshes the workspace list", async () => {

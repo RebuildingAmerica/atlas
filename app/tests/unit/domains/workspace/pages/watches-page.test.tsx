@@ -92,9 +92,9 @@ describe("WorkspaceWatchesPage", () => {
     mocks.useWorkspaceWatches.mockReturnValue({ data: watches });
 
     const { WorkspaceWatchesPage } = await import("@/domains/workspace/pages/watches-page");
-    render(<WorkspaceWatchesPage initialWatches={watches} />);
+    render(<WorkspaceWatchesPage />);
 
-    expect(mocks.useWorkspaceWatches).toHaveBeenCalledWith(watches);
+    expect(mocks.useWorkspaceWatches).toHaveBeenCalledWith();
     expect(screen.getByRole("heading", { name: "Watching" })).toBeInTheDocument();
     expect(screen.getByText("2 watched resources")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Open proof" })).toHaveAttribute(
@@ -126,7 +126,7 @@ describe("WorkspaceWatchesPage", () => {
     mocks.useWorkspaceWatches.mockReturnValue({ data: watches });
 
     const { WorkspaceWatchesPage } = await import("@/domains/workspace/pages/watches-page");
-    render(<WorkspaceWatchesPage initialWatches={watches} />);
+    render(<WorkspaceWatchesPage />);
 
     expect(screen.getByText("No watched resources.")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Open coverage" })).toHaveAttribute(
@@ -150,7 +150,7 @@ describe("WorkspaceWatchesPage", () => {
     });
 
     const { WorkspaceWatchesPage } = await import("@/domains/workspace/pages/watches-page");
-    render(<WorkspaceWatchesPage initialWatches={watches} />);
+    render(<WorkspaceWatchesPage />);
 
     expect(screen.getByRole("link", { name: "Open coverage" })).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Open proof" })).not.toBeInTheDocument();

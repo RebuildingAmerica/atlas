@@ -51,6 +51,35 @@ describe("router", () => {
     expect(router).toMatchObject({ __atlasRouter: true });
   });
 
+  it("threads the QueryClient into router context for route loaders", async () => {
+    const { getRouter } = await import("@/router");
+    const { useQueryClient } = await import("@tanstack/react-query");
+
+    getRouter();
+    const options = routerState.lastOptions;
+    if (options === null) {
+      throw new Error("createRouter was not invoked");
+    }
+
+    const routerQueryClient = options.context?.queryClient;
+    expect(routerQueryClient).toBeDefined();
+
+    function Probe() {
+      const queryClient = useQueryClient();
+      return (
+        <span data-testid="same-query-client">{String(queryClient === routerQueryClient)}</span>
+      );
+    }
+
+    render(
+      <options.Wrap>
+        <Probe />
+      </options.Wrap>,
+    );
+
+    expect(screen.getByTestId("same-query-client")).toHaveTextContent("true");
+  });
+
   it("createRouter delegates to getRouter so SSR and client share configuration", async () => {
     const routerModule = await import("@/router");
 

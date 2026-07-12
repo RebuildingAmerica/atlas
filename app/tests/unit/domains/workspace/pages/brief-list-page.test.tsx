@@ -5,14 +5,23 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { BriefListPage } from "@/domains/workspace/pages/brief-list-page";
 import type { AtlasBriefCollection } from "@/domains/workspace/server/briefs";
 
+const mocks = vi.hoisted(() => ({
+  useWorkspaceBriefCollection: vi.fn(),
+}));
+
 vi.mock("@tanstack/react-router", async () => {
   const harness = await import("@/../tests/helpers/router-harness");
   return harness.installRouterMocks();
 });
 
+vi.mock("@/domains/workspace/hooks/use-briefs", () => ({
+  useWorkspaceBriefCollection: mocks.useWorkspaceBriefCollection,
+}));
+
 describe("BriefListPage", () => {
   afterEach(() => {
     cleanup();
+    mocks.useWorkspaceBriefCollection.mockReset();
   });
 
   function briefCollection(): AtlasBriefCollection {
@@ -48,8 +57,11 @@ describe("BriefListPage", () => {
   }
 
   it("renders brief history with links, scope, and provenance counts", () => {
-    render(<BriefListPage briefCollection={briefCollection()} />);
+    mocks.useWorkspaceBriefCollection.mockReturnValue({ data: briefCollection() });
 
+    render(<BriefListPage />);
+
+    expect(mocks.useWorkspaceBriefCollection).toHaveBeenCalledWith();
     expect(screen.getByRole("heading", { name: "Atlas Briefs" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "New brief" })).toHaveAttribute(
       "data-link-to",
@@ -67,7 +79,9 @@ describe("BriefListPage", () => {
   });
 
   it("renders a plain empty state", () => {
-    render(<BriefListPage briefCollection={{ items: [], total: 0 }} />);
+    mocks.useWorkspaceBriefCollection.mockReturnValue({ data: { items: [], total: 0 } });
+
+    render(<BriefListPage />);
 
     expect(screen.getByText("No briefs yet.")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "New brief" })).toHaveAttribute(

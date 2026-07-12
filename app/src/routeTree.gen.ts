@@ -19,6 +19,7 @@ import { Route as DocsRouteImport } from './routes/docs'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as WorkspaceRouteImport } from './routes/_workspace'
 import { Route as PublicRouteImport } from './routes/_public'
+import { Route as OnboardingRouteImport } from './routes/_onboarding'
 import { Route as AuthRouteImport } from './routes/_auth'
 import { Route as PublicIndexRouteImport } from './routes/_public/index'
 import { Route as DocsSplatRouteImport } from './routes/docs/$'
@@ -48,7 +49,7 @@ import { Route as PublicPostLogoutRouteImport } from './routes/_public/post-logo
 import { Route as PublicMapRouteImport } from './routes/_public/map'
 import { Route as PublicFirehoseRouteImport } from './routes/_public/firehose'
 import { Route as PublicBrowseRouteImport } from './routes/_public/browse'
-import { Route as AuthStartRouteImport } from './routes/_auth/start'
+import { Route as OnboardingOnboardingRouteImport } from './routes/_onboarding/onboarding'
 import { Route as AuthSignUpRouteImport } from './routes/_auth/sign-up'
 import { Route as AuthSignInRouteImport } from './routes/_auth/sign-in'
 import { Route as AuthSetupRouteImport } from './routes/_auth/setup'
@@ -56,6 +57,7 @@ import { Route as AuthDeviceRouteImport } from './routes/_auth/device'
 import { Route as WorkspaceOrganizationIndexRouteImport } from './routes/_workspace/organization/index'
 import { Route as WorkspaceAdminIndexRouteImport } from './routes/_workspace/admin/index'
 import { Route as PublicProfilesIndexRouteImport } from './routes/_public/profiles/index'
+import { Route as OnboardingOnboardingIndexRouteImport } from './routes/_onboarding/onboarding/index'
 import { Route as AuthDeviceIndexRouteImport } from './routes/_auth/device/index'
 import { Route as DotwellKnownOauthProtectedResourceIndexRouteImport } from './routes/[.]well-known/oauth-protected-resource/index'
 import { Route as DotwellKnownOauthAuthorizationServerIndexRouteImport } from './routes/[.]well-known/oauth-authorization-server/index'
@@ -77,7 +79,7 @@ import { Route as PublicFeedbackSlugRouteImport } from './routes/_public/feedbac
 import { Route as PublicEntriesEntryIdRouteImport } from './routes/_public/entries/$entryId'
 import { Route as PublicDirectoriesOrgIdRouteImport } from './routes/_public/directories/$orgId'
 import { Route as PublicClaimSlugRouteImport } from './routes/_public/claim/$slug'
-import { Route as AuthStartCompleteRouteImport } from './routes/_auth/start/complete'
+import { Route as OnboardingOnboardingCompleteRouteImport } from './routes/_onboarding/onboarding/complete'
 import { Route as AuthOauthConsentRouteImport } from './routes/_auth/oauth/consent'
 import { Route as AuthDeviceApprovedRouteImport } from './routes/_auth/device/approved'
 import { Route as AuthAcceptInvitationInvitationIdRouteImport } from './routes/_auth/accept-invitation/$invitationId'
@@ -150,6 +152,10 @@ const WorkspaceRoute = WorkspaceRouteImport.update({
 } as any)
 const PublicRoute = PublicRouteImport.update({
   id: '/_public',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OnboardingRoute = OnboardingRouteImport.update({
+  id: '/_onboarding',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRoute = AuthRouteImport.update({
@@ -297,10 +303,10 @@ const PublicBrowseRoute = PublicBrowseRouteImport.update({
   path: '/browse',
   getParentRoute: () => PublicRoute,
 } as any)
-const AuthStartRoute = AuthStartRouteImport.update({
-  id: '/start',
-  path: '/start',
-  getParentRoute: () => AuthRoute,
+const OnboardingOnboardingRoute = OnboardingOnboardingRouteImport.update({
+  id: '/onboarding',
+  path: '/onboarding',
+  getParentRoute: () => OnboardingRoute,
 } as any)
 const AuthSignUpRoute = AuthSignUpRouteImport.update({
   id: '/sign-up',
@@ -338,6 +344,12 @@ const PublicProfilesIndexRoute = PublicProfilesIndexRouteImport.update({
   path: '/profiles/',
   getParentRoute: () => PublicRoute,
 } as any)
+const OnboardingOnboardingIndexRoute =
+  OnboardingOnboardingIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => OnboardingOnboardingRoute,
+  } as any)
 const AuthDeviceIndexRoute = AuthDeviceIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -450,11 +462,12 @@ const PublicClaimSlugRoute = PublicClaimSlugRouteImport.update({
   path: '/claim/$slug',
   getParentRoute: () => PublicRoute,
 } as any)
-const AuthStartCompleteRoute = AuthStartCompleteRouteImport.update({
-  id: '/complete',
-  path: '/complete',
-  getParentRoute: () => AuthStartRoute,
-} as any)
+const OnboardingOnboardingCompleteRoute =
+  OnboardingOnboardingCompleteRouteImport.update({
+    id: '/complete',
+    path: '/complete',
+    getParentRoute: () => OnboardingOnboardingRoute,
+  } as any)
 const AuthOauthConsentRoute = AuthOauthConsentRouteImport.update({
   id: '/oauth/consent',
   path: '/oauth/consent',
@@ -615,7 +628,7 @@ export interface FileRoutesByFullPath {
   '/setup': typeof AuthSetupRoute
   '/sign-in': typeof AuthSignInRoute
   '/sign-up': typeof AuthSignUpRoute
-  '/start': typeof AuthStartRouteWithChildren
+  '/onboarding': typeof OnboardingOnboardingRouteWithChildren
   '/browse': typeof PublicBrowseRoute
   '/firehose': typeof PublicFirehoseRoute
   '/map': typeof PublicMapRoute
@@ -647,7 +660,7 @@ export interface FileRoutesByFullPath {
   '/accept-invitation/$invitationId': typeof AuthAcceptInvitationInvitationIdRoute
   '/device/approved': typeof AuthDeviceApprovedRoute
   '/oauth/consent': typeof AuthOauthConsentRoute
-  '/start/complete': typeof AuthStartCompleteRoute
+  '/onboarding/complete': typeof OnboardingOnboardingCompleteRoute
   '/claim/$slug': typeof PublicClaimSlugRoute
   '/directories/$orgId': typeof PublicDirectoriesOrgIdRoute
   '/entries/$entryId': typeof PublicEntriesEntryIdRoute
@@ -669,6 +682,7 @@ export interface FileRoutesByFullPath {
   '/.well-known/oauth-authorization-server/': typeof DotwellKnownOauthAuthorizationServerIndexRoute
   '/.well-known/oauth-protected-resource/': typeof DotwellKnownOauthProtectedResourceIndexRoute
   '/device/': typeof AuthDeviceIndexRoute
+  '/onboarding/': typeof OnboardingOnboardingIndexRoute
   '/profiles/': typeof PublicProfilesIndexRoute
   '/admin/': typeof WorkspaceAdminIndexRoute
   '/organization/': typeof WorkspaceOrganizationIndexRoute
@@ -707,7 +721,6 @@ export interface FileRoutesByTo {
   '/setup': typeof AuthSetupRoute
   '/sign-in': typeof AuthSignInRoute
   '/sign-up': typeof AuthSignUpRoute
-  '/start': typeof AuthStartRouteWithChildren
   '/browse': typeof PublicBrowseRoute
   '/firehose': typeof PublicFirehoseRoute
   '/map': typeof PublicMapRoute
@@ -738,7 +751,7 @@ export interface FileRoutesByTo {
   '/accept-invitation/$invitationId': typeof AuthAcceptInvitationInvitationIdRoute
   '/device/approved': typeof AuthDeviceApprovedRoute
   '/oauth/consent': typeof AuthOauthConsentRoute
-  '/start/complete': typeof AuthStartCompleteRoute
+  '/onboarding/complete': typeof OnboardingOnboardingCompleteRoute
   '/claim/$slug': typeof PublicClaimSlugRoute
   '/directories/$orgId': typeof PublicDirectoriesOrgIdRoute
   '/entries/$entryId': typeof PublicEntriesEntryIdRoute
@@ -758,6 +771,7 @@ export interface FileRoutesByTo {
   '/.well-known/oauth-authorization-server': typeof DotwellKnownOauthAuthorizationServerIndexRoute
   '/.well-known/oauth-protected-resource': typeof DotwellKnownOauthProtectedResourceIndexRoute
   '/device': typeof AuthDeviceIndexRoute
+  '/onboarding': typeof OnboardingOnboardingIndexRoute
   '/profiles': typeof PublicProfilesIndexRoute
   '/admin': typeof WorkspaceAdminIndexRoute
   '/organization': typeof WorkspaceOrganizationIndexRoute
@@ -786,6 +800,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_auth': typeof AuthRouteWithChildren
+  '/_onboarding': typeof OnboardingRouteWithChildren
   '/_public': typeof PublicRouteWithChildren
   '/_workspace': typeof WorkspaceRouteWithChildren
   '/dashboard': typeof DashboardRoute
@@ -800,7 +815,7 @@ export interface FileRoutesById {
   '/_auth/setup': typeof AuthSetupRoute
   '/_auth/sign-in': typeof AuthSignInRoute
   '/_auth/sign-up': typeof AuthSignUpRoute
-  '/_auth/start': typeof AuthStartRouteWithChildren
+  '/_onboarding/onboarding': typeof OnboardingOnboardingRouteWithChildren
   '/_public/browse': typeof PublicBrowseRoute
   '/_public/firehose': typeof PublicFirehoseRoute
   '/_public/map': typeof PublicMapRoute
@@ -833,7 +848,7 @@ export interface FileRoutesById {
   '/_auth/accept-invitation/$invitationId': typeof AuthAcceptInvitationInvitationIdRoute
   '/_auth/device/approved': typeof AuthDeviceApprovedRoute
   '/_auth/oauth/consent': typeof AuthOauthConsentRoute
-  '/_auth/start/complete': typeof AuthStartCompleteRoute
+  '/_onboarding/onboarding/complete': typeof OnboardingOnboardingCompleteRoute
   '/_public/claim/$slug': typeof PublicClaimSlugRoute
   '/_public/directories/$orgId': typeof PublicDirectoriesOrgIdRoute
   '/_public/entries/$entryId': typeof PublicEntriesEntryIdRoute
@@ -855,6 +870,7 @@ export interface FileRoutesById {
   '/.well-known/oauth-authorization-server/': typeof DotwellKnownOauthAuthorizationServerIndexRoute
   '/.well-known/oauth-protected-resource/': typeof DotwellKnownOauthProtectedResourceIndexRoute
   '/_auth/device/': typeof AuthDeviceIndexRoute
+  '/_onboarding/onboarding/': typeof OnboardingOnboardingIndexRoute
   '/_public/profiles/': typeof PublicProfilesIndexRoute
   '/_workspace/admin/': typeof WorkspaceAdminIndexRoute
   '/_workspace/organization/': typeof WorkspaceOrganizationIndexRoute
@@ -896,7 +912,7 @@ export interface FileRouteTypes {
     | '/setup'
     | '/sign-in'
     | '/sign-up'
-    | '/start'
+    | '/onboarding'
     | '/browse'
     | '/firehose'
     | '/map'
@@ -928,7 +944,7 @@ export interface FileRouteTypes {
     | '/accept-invitation/$invitationId'
     | '/device/approved'
     | '/oauth/consent'
-    | '/start/complete'
+    | '/onboarding/complete'
     | '/claim/$slug'
     | '/directories/$orgId'
     | '/entries/$entryId'
@@ -950,6 +966,7 @@ export interface FileRouteTypes {
     | '/.well-known/oauth-authorization-server/'
     | '/.well-known/oauth-protected-resource/'
     | '/device/'
+    | '/onboarding/'
     | '/profiles/'
     | '/admin/'
     | '/organization/'
@@ -988,7 +1005,6 @@ export interface FileRouteTypes {
     | '/setup'
     | '/sign-in'
     | '/sign-up'
-    | '/start'
     | '/browse'
     | '/firehose'
     | '/map'
@@ -1019,7 +1035,7 @@ export interface FileRouteTypes {
     | '/accept-invitation/$invitationId'
     | '/device/approved'
     | '/oauth/consent'
-    | '/start/complete'
+    | '/onboarding/complete'
     | '/claim/$slug'
     | '/directories/$orgId'
     | '/entries/$entryId'
@@ -1039,6 +1055,7 @@ export interface FileRouteTypes {
     | '/.well-known/oauth-authorization-server'
     | '/.well-known/oauth-protected-resource'
     | '/device'
+    | '/onboarding'
     | '/profiles'
     | '/admin'
     | '/organization'
@@ -1066,6 +1083,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/_auth'
+    | '/_onboarding'
     | '/_public'
     | '/_workspace'
     | '/dashboard'
@@ -1080,7 +1098,7 @@ export interface FileRouteTypes {
     | '/_auth/setup'
     | '/_auth/sign-in'
     | '/_auth/sign-up'
-    | '/_auth/start'
+    | '/_onboarding/onboarding'
     | '/_public/browse'
     | '/_public/firehose'
     | '/_public/map'
@@ -1113,7 +1131,7 @@ export interface FileRouteTypes {
     | '/_auth/accept-invitation/$invitationId'
     | '/_auth/device/approved'
     | '/_auth/oauth/consent'
-    | '/_auth/start/complete'
+    | '/_onboarding/onboarding/complete'
     | '/_public/claim/$slug'
     | '/_public/directories/$orgId'
     | '/_public/entries/$entryId'
@@ -1135,6 +1153,7 @@ export interface FileRouteTypes {
     | '/.well-known/oauth-authorization-server/'
     | '/.well-known/oauth-protected-resource/'
     | '/_auth/device/'
+    | '/_onboarding/onboarding/'
     | '/_public/profiles/'
     | '/_workspace/admin/'
     | '/_workspace/organization/'
@@ -1163,6 +1182,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   AuthRoute: typeof AuthRouteWithChildren
+  OnboardingRoute: typeof OnboardingRouteWithChildren
   PublicRoute: typeof PublicRouteWithChildren
   WorkspaceRoute: typeof WorkspaceRouteWithChildren
   DashboardRoute: typeof DashboardRoute
@@ -1264,6 +1284,13 @@ declare module '@tanstack/react-router' {
       path: ''
       fullPath: '/'
       preLoaderRoute: typeof PublicRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_onboarding': {
+      id: '/_onboarding'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof OnboardingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_auth': {
@@ -1469,12 +1496,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PublicBrowseRouteImport
       parentRoute: typeof PublicRoute
     }
-    '/_auth/start': {
-      id: '/_auth/start'
-      path: '/start'
-      fullPath: '/start'
-      preLoaderRoute: typeof AuthStartRouteImport
-      parentRoute: typeof AuthRoute
+    '/_onboarding/onboarding': {
+      id: '/_onboarding/onboarding'
+      path: '/onboarding'
+      fullPath: '/onboarding'
+      preLoaderRoute: typeof OnboardingOnboardingRouteImport
+      parentRoute: typeof OnboardingRoute
     }
     '/_auth/sign-up': {
       id: '/_auth/sign-up'
@@ -1524,6 +1551,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/profiles/'
       preLoaderRoute: typeof PublicProfilesIndexRouteImport
       parentRoute: typeof PublicRoute
+    }
+    '/_onboarding/onboarding/': {
+      id: '/_onboarding/onboarding/'
+      path: '/'
+      fullPath: '/onboarding/'
+      preLoaderRoute: typeof OnboardingOnboardingIndexRouteImport
+      parentRoute: typeof OnboardingOnboardingRoute
     }
     '/_auth/device/': {
       id: '/_auth/device/'
@@ -1672,12 +1706,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PublicClaimSlugRouteImport
       parentRoute: typeof PublicRoute
     }
-    '/_auth/start/complete': {
-      id: '/_auth/start/complete'
+    '/_onboarding/onboarding/complete': {
+      id: '/_onboarding/onboarding/complete'
       path: '/complete'
-      fullPath: '/start/complete'
-      preLoaderRoute: typeof AuthStartCompleteRouteImport
-      parentRoute: typeof AuthStartRoute
+      fullPath: '/onboarding/complete'
+      preLoaderRoute: typeof OnboardingOnboardingCompleteRouteImport
+      parentRoute: typeof OnboardingOnboardingRoute
     }
     '/_auth/oauth/consent': {
       id: '/_auth/oauth/consent'
@@ -1871,24 +1905,11 @@ const AuthDeviceRouteWithChildren = AuthDeviceRoute._addFileChildren(
   AuthDeviceRouteChildren,
 )
 
-interface AuthStartRouteChildren {
-  AuthStartCompleteRoute: typeof AuthStartCompleteRoute
-}
-
-const AuthStartRouteChildren: AuthStartRouteChildren = {
-  AuthStartCompleteRoute: AuthStartCompleteRoute,
-}
-
-const AuthStartRouteWithChildren = AuthStartRoute._addFileChildren(
-  AuthStartRouteChildren,
-)
-
 interface AuthRouteChildren {
   AuthDeviceRoute: typeof AuthDeviceRouteWithChildren
   AuthSetupRoute: typeof AuthSetupRoute
   AuthSignInRoute: typeof AuthSignInRoute
   AuthSignUpRoute: typeof AuthSignUpRoute
-  AuthStartRoute: typeof AuthStartRouteWithChildren
   AuthAcceptInvitationInvitationIdRoute: typeof AuthAcceptInvitationInvitationIdRoute
   AuthOauthConsentRoute: typeof AuthOauthConsentRoute
 }
@@ -1898,12 +1919,36 @@ const AuthRouteChildren: AuthRouteChildren = {
   AuthSetupRoute: AuthSetupRoute,
   AuthSignInRoute: AuthSignInRoute,
   AuthSignUpRoute: AuthSignUpRoute,
-  AuthStartRoute: AuthStartRouteWithChildren,
   AuthAcceptInvitationInvitationIdRoute: AuthAcceptInvitationInvitationIdRoute,
   AuthOauthConsentRoute: AuthOauthConsentRoute,
 }
 
 const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
+
+interface OnboardingOnboardingRouteChildren {
+  OnboardingOnboardingCompleteRoute: typeof OnboardingOnboardingCompleteRoute
+  OnboardingOnboardingIndexRoute: typeof OnboardingOnboardingIndexRoute
+}
+
+const OnboardingOnboardingRouteChildren: OnboardingOnboardingRouteChildren = {
+  OnboardingOnboardingCompleteRoute: OnboardingOnboardingCompleteRoute,
+  OnboardingOnboardingIndexRoute: OnboardingOnboardingIndexRoute,
+}
+
+const OnboardingOnboardingRouteWithChildren =
+  OnboardingOnboardingRoute._addFileChildren(OnboardingOnboardingRouteChildren)
+
+interface OnboardingRouteChildren {
+  OnboardingOnboardingRoute: typeof OnboardingOnboardingRouteWithChildren
+}
+
+const OnboardingRouteChildren: OnboardingRouteChildren = {
+  OnboardingOnboardingRoute: OnboardingOnboardingRouteWithChildren,
+}
+
+const OnboardingRouteWithChildren = OnboardingRoute._addFileChildren(
+  OnboardingRouteChildren,
+)
 
 interface PublicProfilesOrganizationsRouteChildren {
   PublicProfilesOrganizationsSlugRoute: typeof PublicProfilesOrganizationsSlugRoute
@@ -2106,6 +2151,7 @@ const DocsRouteWithChildren = DocsRoute._addFileChildren(DocsRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRouteWithChildren,
+  OnboardingRoute: OnboardingRouteWithChildren,
   PublicRoute: PublicRouteWithChildren,
   WorkspaceRoute: WorkspaceRouteWithChildren,
   DashboardRoute: DashboardRoute,

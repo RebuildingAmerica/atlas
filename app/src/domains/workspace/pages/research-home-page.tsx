@@ -1,10 +1,10 @@
 /**
  * Orchestrator for the authenticated "Your Research" home.
  *
- * Accepts the SSR loader payload, seeds React Query from it via
- * {@link useResearchSummary} so the page paints fully populated from the server
- * HTML and only revalidates on the client, and reads the operator session for
- * the greeting name and capability context. Each section is server-default:
+ * Reads route-seeded React Query data via {@link useResearchSummary} so the
+ * page paints fully populated from the server HTML and only revalidates on the
+ * client, and reads the operator session for the greeting name and capability
+ * context. Each section is server-default:
  * it renders from the summary the loader already computed, never a client-fetch
  * shell, and degrades to honest empty states.
  */
@@ -15,7 +15,6 @@ import { useWorkspaceCoverageTargets } from "../hooks/use-coverage-targets";
 import { useResearchSummary } from "../hooks/use-research-summary";
 import { useWorkspaceUsageSummary } from "../hooks/use-workspace-usage-summary";
 import { useWorkspaceWatchesSnapshot } from "../hooks/use-workspace-watches";
-import type { ResearchSummary } from "../server/research-summary";
 import { ResearchHomeHero } from "../components/research-home-hero";
 import { ActivitySummarySection } from "../components/activity-summary-section";
 import { ListsSummarySection } from "../components/lists-summary-section";
@@ -26,11 +25,6 @@ import { RecentSearchesSection } from "../components/recent-searches-section";
 import { NextActionsSection } from "../components/next-actions-section";
 import { WorkspaceOperatingPictureSection } from "../components/workspace-operating-picture-section";
 import type { OperatingPictureResource } from "../components/workspace-operating-picture-section";
-
-interface ResearchHomePageProps {
-  /** The SSR loader payload used to seed the summary query. */
-  initialSummary: ResearchSummary;
-}
 
 /**
  * Derives the operator's first name from their full name.
@@ -72,8 +66,8 @@ function operatingPictureWorkspaceLabel(workspaceType: AtlasWorkspaceType): stri
 /**
  * The full "Your Research" home surface, server-default and capability-aware.
  */
-export function ResearchHomePage({ initialSummary }: ResearchHomePageProps) {
-  const summaryQuery = useResearchSummary(initialSummary);
+export function ResearchHomePage() {
+  const summaryQuery = useResearchSummary();
   const summary = summaryQuery.data;
   const session = useAtlasSession();
 

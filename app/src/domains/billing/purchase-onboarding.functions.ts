@@ -243,9 +243,9 @@ export const startPurchaseCheckout = createServerFn({ method: "POST" })
       }
     }
 
-    const successUrl = new URL("/start/complete", runtime.publicBaseUrl);
+    const successUrl = new URL("/onboarding/complete", runtime.publicBaseUrl);
     successUrl.searchParams.set("purchase", intent.id);
-    const cancelUrl = new URL("/start", runtime.publicBaseUrl);
+    const cancelUrl = new URL("/onboarding", runtime.publicBaseUrl);
     cancelUrl.searchParams.set("purchase", intent.id);
     cancelUrl.searchParams.set("product", intent.product);
     cancelUrl.searchParams.set("interval", intent.interval);

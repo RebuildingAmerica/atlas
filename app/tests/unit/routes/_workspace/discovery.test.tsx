@@ -12,16 +12,12 @@ vi.mock("@/domains/discovery", () => ({
   DiscoveryPage: vi.fn(() => null),
 }));
 
-vi.mock("@/domains/discovery/functions", () => ({
-  listDiscoveryRuns: vi.fn(),
+vi.mock("@/domains/discovery/hooks/use-discovery", () => ({
+  discoveryRunsQueryOptions: vi.fn(() => ({ queryKey: ["discovery", "runs"] })),
 }));
 
-vi.mock("@/lib/api", () => ({
-  api: {
-    taxonomy: {
-      list: vi.fn(),
-    },
-  },
+vi.mock("@/domains/catalog/hooks/use-taxonomy", () => ({
+  taxonomyQueryOptions: vi.fn(() => ({ queryKey: ["taxonomy"] })),
 }));
 
 describe("routes/_workspace/discovery", () => {
@@ -73,30 +69,37 @@ describe("routes/_workspace/discovery", () => {
     expect(validator.parse({ research_goal: "not_a_goal" })).toEqual({});
   });
 
-  it("loads initial runs and taxonomy for SSR", async () => {
-    const discovery = await import("@/domains/discovery/functions");
-    const { api } = await import("@/lib/api");
-    vi.mocked(discovery.listDiscoveryRuns).mockResolvedValue({
-      items: [],
-      total: 0,
-    });
-    vi.mocked(api.taxonomy.list).mockResolvedValue({
-      Housing: [{ name: "Housing affordability", slug: "housing_affordability", description: "" }],
-    });
+  it("preloads discovery runs and taxonomy into the router query cache", async () => {
+    const discoveryHooks = await import("@/domains/discovery/hooks/use-discovery");
+    const taxonomyHooks = await import("@/domains/catalog/hooks/use-taxonomy");
+    const ensureQueryData = vi
+      .fn()
+      .mockResolvedValueOnce({ items: [], total: 0 })
+      .mockResolvedValueOnce({
+        Housing: [
+          { name: "Housing affordability", slug: "housing_affordability", description: "" },
+        ],
+      });
 
     const routeModule = await import("@/routes/_workspace/discovery");
     const { asRouteStub } = await import("@/../tests/helpers/router-harness");
     const Route = asRouteStub(routeModule.Route);
 
     if (!Route.options.loader) throw new Error("Expected loader");
-    await expect(Route.options.loader()).resolves.toEqual({
-      initialRuns: { items: [], total: 0 },
-      initialTaxonomy: {
+    await expect(
+      Route.options.loader({ context: { queryClient: { ensureQueryData } } }),
+    ).resolves.toEqual([
+      { items: [], total: 0 },
+      {
         Housing: [
           { name: "Housing affordability", slug: "housing_affordability", description: "" },
         ],
       },
-    });
+    ]);
+    expect(discoveryHooks.discoveryRunsQueryOptions).toHaveBeenCalledWith();
+    expect(taxonomyHooks.taxonomyQueryOptions).toHaveBeenCalledWith();
+    expect(ensureQueryData).toHaveBeenCalledWith({ queryKey: ["discovery", "runs"] });
+    expect(ensureQueryData).toHaveBeenCalledWith({ queryKey: ["taxonomy"] });
   });
 
   it("passes validated search params into the discovery page", async () => {
@@ -104,10 +107,6 @@ describe("routes/_workspace/discovery", () => {
     const routeModule = await import("@/routes/_workspace/discovery");
     const { asRouteStub, readRouterMocks } = await import("@/../tests/helpers/router-harness");
     const Route = asRouteStub(routeModule.Route);
-    readRouterMocks().useLoaderData.mockReturnValue({
-      initialRuns: { items: [], total: 0 },
-      initialTaxonomy: {},
-    });
     readRouterMocks().useSearch.mockReturnValue({
       issue_areas: "housing_affordability",
       location: "Kansas City, MO",
@@ -128,8 +127,6 @@ describe("routes/_workspace/discovery", () => {
           research_goal: "partner_scan",
           state: "MO",
         },
-        initialRuns: { items: [], total: 0 },
-        initialTaxonomy: {},
         selectedRunId: "run_123",
       },
       undefined,

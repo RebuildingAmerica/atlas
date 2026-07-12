@@ -5,7 +5,8 @@ const ONE_HOUR = 3600;
 const DISALLOWED_PATHS = [
   "/api/",
   "/account",
-  "/setup",
+  "/onboarding",
+  "/onboarding/complete",
   "/admin.discounts",
   "/briefs",
   "/checkout-complete",
@@ -19,8 +20,7 @@ const DISALLOWED_PATHS = [
   "/organization",
   "/sign-in",
   "/sign-up",
-  "/start",
-  "/start/complete",
+  "/setup",
   "/watching",
 ];
 

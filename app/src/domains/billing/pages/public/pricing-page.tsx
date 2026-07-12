@@ -57,7 +57,7 @@ export function PricingPage({ intent, interval: intentInterval }: PricingPagePro
   async function handleCheckout({ product, interval }: PricingCheckoutParams) {
     setPendingCheckoutKey(checkoutKey(product, interval));
     try {
-      await navigate({ to: "/start", search: { product, interval } });
+      await navigate({ to: "/onboarding", search: { product, interval } });
     } finally {
       setPendingCheckoutKey(null);
     }
@@ -67,7 +67,7 @@ export function PricingPage({ intent, interval: intentInterval }: PricingPagePro
     if (!intent || !intentInterval) {
       return;
     }
-    void navigate({ to: "/start", search: { product: intent, interval: intentInterval } });
+    void navigate({ to: "/onboarding", search: { product: intent, interval: intentInterval } });
   }, [intent, intentInterval, navigate]);
 
   const activeWorkspace = session.data?.workspace.activeOrganization ?? null;

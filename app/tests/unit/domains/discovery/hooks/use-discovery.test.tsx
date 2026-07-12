@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   invalidateQueries: vi.fn(),
   listDiscoveryJobQueue: vi.fn(),
   listDiscoveryRuns: vi.fn(),
+  queryOptions: vi.fn((options: unknown) => options),
   startDiscoveryRun: vi.fn(),
   useMutation: vi.fn(),
   useQuery: vi.fn(),
@@ -15,6 +16,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@tanstack/react-query", () => ({
+  queryOptions: mocks.queryOptions,
   useMutation: mocks.useMutation,
   useQuery: mocks.useQuery,
   useQueryClient: mocks.useQueryClient,
@@ -73,6 +75,7 @@ describe("discovery hooks", () => {
     mocks.invalidateQueries.mockReset();
     mocks.listDiscoveryJobQueue.mockReset();
     mocks.listDiscoveryRuns.mockReset();
+    mocks.queryOptions.mockClear();
     mocks.startDiscoveryRun.mockReset();
     mocks.useMutation.mockReset();
     mocks.useQuery.mockReset();
@@ -138,6 +141,21 @@ describe("discovery hooks", () => {
         state: { data: { items: [{ status: "completed" }] }, dataUpdatedAt: 0 },
       }),
     ).toBe(false);
+  });
+
+  it("exposes discovery run list query options for route preloading", async () => {
+    const mod = await import("@/domains/discovery/hooks/use-discovery");
+
+    const options = mod.discoveryRunsQueryOptions();
+
+    expect(mocks.queryOptions).toHaveBeenCalledWith(
+      expect.objectContaining({
+        queryKey: ["discovery", "runs"],
+      }),
+    );
+    const queryFn = options.queryFn as () => Promise<unknown>;
+    await queryFn();
+    expect(mocks.listDiscoveryRuns).toHaveBeenCalledTimes(1);
   });
 
   it("configures single-run polling intervals and keyed fetching", async () => {

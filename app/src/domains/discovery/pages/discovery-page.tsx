@@ -22,7 +22,7 @@ import { DiscoveryRunForm } from "./components/discovery-run-form";
 import { DiscoveryRunsPanel } from "./components/discovery-runs-panel";
 import { IngestionQualityPanel, ResearchOperationsPanel } from "./discovery-page-panels";
 import { prefilledIssueAreas } from "./discovery-page-utils";
-import type { DiscoveryResearchGoal, DiscoveryRunListResponse, TaxonomyResponse } from "@/types";
+import type { DiscoveryResearchGoal } from "@/types";
 import type { DiscoveryRunRecord } from "@/domains/discovery/discovery-run-summary";
 import type { AtlasBriefCreateInput } from "@/domains/workspace/server/briefs";
 import type { CoverageTargetCreateInput } from "@/domains/workspace/server/coverage-targets";
@@ -45,27 +45,20 @@ export interface DiscoveryPrefillRequest {
 }
 
 interface DiscoveryPageProps {
-  initialRuns?: DiscoveryRunListResponse;
   initialRequest?: DiscoveryPrefillRequest;
-  initialTaxonomy?: TaxonomyResponse;
   selectedRunId?: string;
 }
 
-export function DiscoveryPage({
-  initialRequest,
-  initialRuns,
-  initialTaxonomy,
-  selectedRunId,
-}: DiscoveryPageProps = {}) {
+export function DiscoveryPage({ initialRequest, selectedRunId }: DiscoveryPageProps = {}) {
   const atlasSession = useAtlasSession();
-  const runsQuery = useDiscoveryRuns({ initialData: initialRuns });
+  const runsQuery = useDiscoveryRuns();
   const jobQueueQuery = useDiscoveryJobQueue();
   const startDiscovery = useStartDiscovery();
   const createBrief = useCreateWorkspaceBrief();
   const createCoverageTarget = useCreateCoverageTarget();
   const watchWorkspaceResource = useWatchWorkspaceResource();
   const qualitySummaryQuery = useWorkspaceQualitySummary();
-  const taxonomyQuery = useTaxonomy({ initialData: initialTaxonomy });
+  const taxonomyQuery = useTaxonomy();
 
   const [locationQuery, setLocationQuery] = useState(initialRequest?.location ?? "");
   const [researchGoal, setResearchGoal] = useState<DiscoveryResearchGoal>(

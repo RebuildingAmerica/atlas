@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   getDiscoveryRun,
   listDiscoveryJobQueue,
@@ -12,12 +12,8 @@ import type {
   StartDiscoveryRequest,
 } from "@/types";
 
-interface UseDiscoveryRunsOptions {
-  initialData?: DiscoveryRunListResponse;
-}
-
-export function useDiscoveryRuns(options?: UseDiscoveryRunsOptions) {
-  return useQuery<DiscoveryRunListResponse>({
+export function discoveryRunsQueryOptions() {
+  return queryOptions<DiscoveryRunListResponse>({
     queryKey: ["discovery", "runs"],
     queryFn: () => listDiscoveryRuns(),
     refetchInterval: (query) => {
@@ -29,12 +25,15 @@ export function useDiscoveryRuns(options?: UseDiscoveryRunsOptions) {
       return Date.now() - updatedAt > 60_000 ? 10_000 : 3_000;
     },
     staleTime: 0,
-    initialData: options?.initialData,
   });
 }
 
-export function useDiscoveryRun(id: string) {
-  return useQuery<DiscoveryRun>({
+export function useDiscoveryRuns() {
+  return useQuery(discoveryRunsQueryOptions());
+}
+
+export function discoveryRunQueryOptions(id: string) {
+  return queryOptions<DiscoveryRun>({
     queryKey: ["discovery", "runs", id],
     queryFn: () => getDiscoveryRun({ data: { id } }),
     refetchInterval: (query) => {
@@ -47,6 +46,10 @@ export function useDiscoveryRun(id: string) {
     },
     staleTime: 0,
   });
+}
+
+export function useDiscoveryRun(id: string) {
+  return useQuery(discoveryRunQueryOptions(id));
 }
 
 export function useDiscoveryJobQueue() {

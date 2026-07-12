@@ -113,11 +113,11 @@ describe("purchase onboarding functions", () => {
       CreateCheckoutOptions | undefined;
     expect(checkoutOptions).toMatchObject({
       cancelUrl:
-        "https://atlas.test/start?purchase=pi_123&product=atlas_team&interval=monthly&step=payment",
+        "https://atlas.test/onboarding?purchase=pi_123&product=atlas_team&interval=monthly&step=payment",
       customerEmail: "operator@atlas.test",
       product: "atlas_team",
       purchaseIntentId: "pi_123",
-      successUrl: "https://atlas.test/start/complete?purchase=pi_123",
+      successUrl: "https://atlas.test/onboarding/complete?purchase=pi_123",
       workspaceId: "org_team",
     });
     expect(mocks.markPurchaseCheckoutCreated).toHaveBeenCalledWith({
@@ -379,7 +379,7 @@ describe("purchase onboarding functions", () => {
     const checkoutOptions = mocks.createCheckoutSession.mock.calls[0]?.[0] as
       CreateCheckoutOptions | undefined;
     expect(checkoutOptions?.cancelUrl).toBe(
-      "https://atlas.test/start?purchase=pi_pro&product=atlas_pro&interval=yearly&step=payment",
+      "https://atlas.test/onboarding?purchase=pi_pro&product=atlas_pro&interval=yearly&step=payment",
     );
   });
 });

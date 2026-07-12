@@ -1,10 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { workspaceWatchesQueryOptions } from "@/domains/workspace/hooks/use-workspace-watches";
 import { WorkspaceWatchesPage } from "@/domains/workspace/pages/watches-page";
-import { loadWorkspaceWatches } from "@/domains/workspace/server/watches";
 
 export const Route = createFileRoute("/_workspace/watching")({
-  loader: async () => {
-    return { workspaceWatches: await loadWorkspaceWatches() };
+  loader: ({ context }) => {
+    return context.queryClient.ensureQueryData(workspaceWatchesQueryOptions());
   },
   head: () => ({
     meta: [{ title: "Watching | Atlas" }],
@@ -13,6 +13,5 @@ export const Route = createFileRoute("/_workspace/watching")({
 });
 
 function WatchingRoute() {
-  const { workspaceWatches } = Route.useLoaderData();
-  return <WorkspaceWatchesPage initialWatches={workspaceWatches} />;
+  return <WorkspaceWatchesPage />;
 }

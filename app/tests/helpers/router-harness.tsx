@@ -128,6 +128,7 @@ export function buildRouterMockModule(api: RouterMockApi): Record<string, unknow
   return {
     createFileRoute: (_path: string) => (options: unknown) => attachHooks(options),
     createRootRoute: (options: unknown) => attachHooks(options),
+    createRootRouteWithContext: () => (options: unknown) => attachHooks(options),
     useRouterState: api.useRouterState,
     redirect: api.redirect,
     Outlet: () => <div data-testid="router-outlet" />,

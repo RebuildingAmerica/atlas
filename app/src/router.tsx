@@ -45,6 +45,9 @@ export function getRouter() {
   }
 
   const router = createTanStackRouter({
+    context: {
+      queryClient,
+    },
     routeTree,
     scrollRestoration: true,
     Wrap,

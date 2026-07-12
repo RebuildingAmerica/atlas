@@ -1,16 +1,21 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderHook } from "@testing-library/react";
-import { useResearchSummary } from "@/domains/workspace/hooks/use-research-summary";
+import {
+  researchSummaryQueryOptions,
+  useResearchSummary,
+} from "@/domains/workspace/hooks/use-research-summary";
 import type { ResearchSummary } from "@/domains/workspace/server/research-summary";
 
 const mocks = vi.hoisted(() => ({
-  useQuery: vi.fn(),
   loadResearchSummary: vi.fn(),
+  queryOptions: vi.fn((options: unknown) => options),
+  useSuspenseQuery: vi.fn(),
 }));
 
 vi.mock("@tanstack/react-query", () => ({
-  useQuery: mocks.useQuery,
+  queryOptions: mocks.queryOptions,
+  useSuspenseQuery: mocks.useSuspenseQuery,
 }));
 
 vi.mock("@/domains/workspace/server/research-summary", () => ({
@@ -27,37 +32,37 @@ describe("useResearchSummary", () => {
   };
 
   beforeEach(() => {
-    mocks.useQuery.mockReset();
     mocks.loadResearchSummary.mockReset();
-    mocks.useQuery.mockReturnValue({ data: initialSummary });
+    mocks.queryOptions.mockClear();
+    mocks.useSuspenseQuery.mockReset();
+    mocks.useSuspenseQuery.mockReturnValue({ data: initialSummary });
   });
 
-  it("seeds React Query with the loader payload as initialData", () => {
-    renderHook(() => useResearchSummary(initialSummary));
+  it("builds reusable query options for the research summary", async () => {
+    const options = researchSummaryQueryOptions();
 
-    expect(mocks.useQuery).toHaveBeenCalledWith(
+    expect(mocks.queryOptions).toHaveBeenCalledWith(
       expect.objectContaining({
         queryKey: ["workspace", "research-summary"],
-        initialData: initialSummary,
       }),
     );
+    const queryFn = options.queryFn as () => Promise<unknown>;
+    await queryFn();
+    expect(mocks.loadResearchSummary).toHaveBeenCalledWith();
   });
 
   it("returns the cached summary to callers", () => {
-    const { result } = renderHook(() => useResearchSummary(initialSummary));
+    const { result } = renderHook(() => useResearchSummary());
     expect(result.current.data).toBe(initialSummary);
   });
 
-  it("revalidates through the server loader", () => {
-    const queryFn = vi.fn();
-    mocks.useQuery.mockImplementation(({ queryFn: fn }: { queryFn: () => unknown }) => {
-      queryFn.mockImplementation(fn);
-      return { data: initialSummary };
-    });
+  it("reads the summary through suspense query", () => {
+    renderHook(() => useResearchSummary());
 
-    renderHook(() => useResearchSummary(initialSummary));
-    queryFn();
-
-    expect(mocks.loadResearchSummary).toHaveBeenCalled();
+    expect(mocks.useSuspenseQuery).toHaveBeenCalledWith(
+      expect.objectContaining({
+        queryKey: ["workspace", "research-summary"],
+      }),
+    );
   });
 });

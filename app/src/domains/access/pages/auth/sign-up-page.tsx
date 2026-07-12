@@ -38,10 +38,10 @@ const CROSS_DEVICE_POLL_INTERVAL_MS = 3000;
 
 const SIGN_UP_ERROR_LABELS = buildAuthErrorLabels("sign-up");
 
-const TEAM_SSO_REDIRECT = "/start?product=atlas_team&interval=monthly";
+const TEAM_SSO_REDIRECT = "/onboarding?product=atlas_team&interval=monthly";
 
 function isPurchaseStartRedirect(redirect: string): boolean {
-  return redirect === "/start" || redirect.startsWith("/start?");
+  return redirect === "/onboarding" || redirect.startsWith("/onboarding?");
 }
 
 function buildPostCredentialTarget(accountReady: boolean, redirectTo: string | undefined): string {

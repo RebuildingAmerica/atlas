@@ -50,7 +50,7 @@ describe("PricingPage start handoff", () => {
     await user.click(screen.getByRole("button", { name: "Get Atlas Team" }));
 
     expect(mocks.navigate).toHaveBeenCalledWith({
-      to: "/start",
+      to: "/onboarding",
       search: { interval: "monthly", product: "atlas_team" },
     });
     expect(mocks.confirm).not.toHaveBeenCalled();
@@ -70,7 +70,7 @@ describe("PricingPage start handoff", () => {
     await user.click(screen.getByRole("button", { name: "Get Atlas Pro" }));
 
     expect(mocks.navigate).toHaveBeenCalledWith({
-      to: "/start",
+      to: "/onboarding",
       search: { interval: "monthly", product: "atlas_pro" },
     });
     expect(mocks.confirm).not.toHaveBeenCalled();

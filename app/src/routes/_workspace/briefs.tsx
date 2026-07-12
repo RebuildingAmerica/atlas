@@ -1,10 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { workspaceBriefsQueryOptions } from "@/domains/workspace/hooks/use-briefs";
 import { BriefListPage } from "@/domains/workspace/pages/brief-list-page";
-import { loadWorkspaceBriefs } from "@/domains/workspace/server/briefs";
 
 export const Route = createFileRoute("/_workspace/briefs")({
-  loader: async () => {
-    return { briefCollection: await loadWorkspaceBriefs() };
+  loader: ({ context }) => {
+    return context.queryClient.ensureQueryData(workspaceBriefsQueryOptions());
   },
   head: () => ({
     meta: [{ title: "Atlas Briefs | Atlas" }],
@@ -13,6 +13,5 @@ export const Route = createFileRoute("/_workspace/briefs")({
 });
 
 function BriefsRoute() {
-  const { briefCollection } = Route.useLoaderData();
-  return <BriefListPage briefCollection={briefCollection} />;
+  return <BriefListPage />;
 }

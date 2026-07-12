@@ -48,6 +48,11 @@ const workerCount = Number.parseInt(process.env.ATLAS_E2E_WORKERS || "4", 10);
 if (!Number.isInteger(workerCount) || workerCount < 1) {
   throw new Error("ATLAS_E2E_WORKERS must be a positive integer.");
 }
+const slowMoMs = Number.parseInt(process.env.ATLAS_E2E_SLOW_MO_MS || "0", 10);
+if (!Number.isInteger(slowMoMs) || slowMoMs < 0) {
+  throw new Error("ATLAS_E2E_SLOW_MO_MS must be a non-negative integer.");
+}
+const videoMode = process.env.ATLAS_E2E_VIDEO === "1";
 if (!apiPort) {
   throw new Error("ATLAS_E2E_API_URL must include an explicit port.");
 }
@@ -89,7 +94,9 @@ export default defineConfig({
   use: {
     baseURL: appUrl,
     headless: true,
+    launchOptions: slowMoMs > 0 ? { slowMo: slowMoMs } : undefined,
     trace: "retain-on-failure",
+    video: videoMode ? "on" : "off",
   },
   webServer: [
     {

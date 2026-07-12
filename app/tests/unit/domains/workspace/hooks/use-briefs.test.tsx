@@ -9,15 +9,19 @@ import type {
 const mocks = vi.hoisted(() => ({
   createWorkspaceBrief: vi.fn(),
   loadWorkspaceBriefs: vi.fn(),
+  queryOptions: vi.fn((options: unknown) => options),
   recordWorkspaceEvidenceOpen: vi.fn(),
   updateWorkspaceBrief: vi.fn(),
   useMutation: vi.fn(),
   useQuery: vi.fn(),
+  useSuspenseQuery: vi.fn(),
 }));
 
 vi.mock("@tanstack/react-query", () => ({
+  queryOptions: mocks.queryOptions,
   useMutation: mocks.useMutation,
   useQuery: mocks.useQuery,
+  useSuspenseQuery: mocks.useSuspenseQuery,
 }));
 
 vi.mock("@/domains/workspace/server/briefs", () => ({
@@ -47,9 +51,12 @@ describe("workspace brief hooks", () => {
     mocks.loadWorkspaceBriefs.mockReset();
     mocks.recordWorkspaceEvidenceOpen.mockReset();
     mocks.updateWorkspaceBrief.mockReset();
+    mocks.queryOptions.mockClear();
     mocks.useMutation.mockReset();
     mocks.useQuery.mockReset();
+    mocks.useSuspenseQuery.mockReset();
     mocks.useQuery.mockReturnValue({ data: null });
+    mocks.useSuspenseQuery.mockReturnValue({ data: { items: [], total: 0 } });
     mocks.useMutation.mockImplementation((config: BriefMutationConfig<unknown>) => config);
   });
 
@@ -80,6 +87,32 @@ describe("workspace brief hooks", () => {
     expect(config.enabled).toBe(true);
     await config.queryFn();
     expect(mocks.loadWorkspaceBriefs).toHaveBeenCalledWith();
+  });
+
+  it("builds shared workspace brief query options", async () => {
+    const mod = await import("@/domains/workspace/hooks/use-briefs");
+
+    const options = mod.workspaceBriefsQueryOptions();
+
+    expect(mocks.queryOptions).toHaveBeenCalledWith(
+      expect.objectContaining({
+        queryKey: ["workspace", "briefs", "list"],
+      }),
+    );
+    const queryFn = options.queryFn as () => Promise<unknown>;
+    await queryFn();
+    expect(mocks.loadWorkspaceBriefs).toHaveBeenCalledWith();
+  });
+
+  it("reads the shared workspace brief collection through suspense query", async () => {
+    const mod = await import("@/domains/workspace/hooks/use-briefs");
+    renderHook(() => mod.useWorkspaceBriefCollection());
+
+    expect(mocks.useSuspenseQuery).toHaveBeenCalledWith(
+      expect.objectContaining({
+        queryKey: ["workspace", "briefs", "list"],
+      }),
+    );
   });
 
   it("creates a workspace brief", async () => {

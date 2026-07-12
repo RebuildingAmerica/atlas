@@ -7,17 +7,21 @@ const mocks = vi.hoisted(() => ({
   invalidateQueries: vi.fn(),
   loadWorkspaceWatchStatus: vi.fn(),
   loadWorkspaceWatches: vi.fn(),
+  queryOptions: vi.fn((options: unknown) => options),
   unwatchWorkspaceResource: vi.fn(),
   useMutation: vi.fn(),
   useQuery: vi.fn(),
   useQueryClient: vi.fn(),
+  useSuspenseQuery: vi.fn(),
   watchWorkspaceResource: vi.fn(),
 }));
 
 vi.mock("@tanstack/react-query", () => ({
+  queryOptions: mocks.queryOptions,
   useMutation: mocks.useMutation,
   useQuery: mocks.useQuery,
   useQueryClient: mocks.useQueryClient,
+  useSuspenseQuery: mocks.useSuspenseQuery,
 }));
 
 vi.mock("@/domains/workspace/server/watches", () => ({
@@ -51,12 +55,15 @@ describe("workspace watch hooks", () => {
     mocks.invalidateQueries.mockReset();
     mocks.loadWorkspaceWatchStatus.mockReset();
     mocks.loadWorkspaceWatches.mockReset();
+    mocks.queryOptions.mockClear();
     mocks.unwatchWorkspaceResource.mockReset();
     mocks.useMutation.mockReset();
     mocks.useQuery.mockReset();
     mocks.useQueryClient.mockReset();
+    mocks.useSuspenseQuery.mockReset();
     mocks.watchWorkspaceResource.mockReset();
     mocks.useQuery.mockReturnValue({ data: null });
+    mocks.useSuspenseQuery.mockReturnValue({ data: { items: [], orgId: "org_123", total: 0 } });
     mocks.useQueryClient.mockReturnValue({ invalidateQueries: mocks.invalidateQueries });
     mocks.useMutation.mockImplementation((config: WatchMutationConfig) => config);
   });
@@ -117,16 +124,30 @@ describe("workspace watch hooks", () => {
     });
   });
 
-  it("hydrates the shared workspace watch list under the active workspace key", async () => {
-    const collection = { items: [], orgId: "org_123", total: 0 };
+  it("builds shared workspace watch query options", async () => {
     const mod = await import("@/domains/workspace/hooks/use-workspace-watches");
-    renderHook(() => mod.useWorkspaceWatches(collection));
 
-    const config = watchListQueryConfig();
-    expect(config.queryKey).toEqual(["workspace", "watches", "list", "org_123"]);
-    expect(config.initialData).toBe(collection);
-    await config.queryFn();
+    const options = mod.workspaceWatchesQueryOptions();
+
+    expect(mocks.queryOptions).toHaveBeenCalledWith(
+      expect.objectContaining({
+        queryKey: ["workspace", "watches", "list"],
+      }),
+    );
+    const queryFn = options.queryFn as () => Promise<unknown>;
+    await queryFn();
     expect(mocks.loadWorkspaceWatches).toHaveBeenCalledWith();
+  });
+
+  it("reads the shared workspace watch list through suspense query", async () => {
+    const mod = await import("@/domains/workspace/hooks/use-workspace-watches");
+    renderHook(() => mod.useWorkspaceWatches());
+
+    expect(mocks.useSuspenseQuery).toHaveBeenCalledWith(
+      expect.objectContaining({
+        queryKey: ["workspace", "watches", "list"],
+      }),
+    );
   });
 
   it("loads a shared workspace watch snapshot when enabled", async () => {

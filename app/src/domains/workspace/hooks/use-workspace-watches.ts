@@ -1,4 +1,10 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  queryOptions,
+  useMutation,
+  useQuery,
+  useQueryClient,
+  useSuspenseQuery,
+} from "@tanstack/react-query";
 import {
   loadWorkspaceWatches,
   loadWorkspaceWatchStatus,
@@ -44,18 +50,20 @@ export function useWorkspaceWatchStatus(
   });
 }
 
+export function workspaceWatchesQueryOptions() {
+  return queryOptions<WorkspaceWatchCollection>({
+    queryFn: () => loadWorkspaceWatches(),
+    queryKey: [...WORKSPACE_WATCHES_KEY, "list"],
+  });
+}
+
 /**
  * Fetch and cache the shared workspace watch list.
  *
- * @param initialData - Route-loaded watch collection.
  * @returns React Query result wrapping enriched workspace watches.
  */
-export function useWorkspaceWatches(initialData: WorkspaceWatchCollection) {
-  return useQuery<WorkspaceWatchCollection>({
-    initialData,
-    queryFn: () => loadWorkspaceWatches(),
-    queryKey: [...WORKSPACE_WATCHES_KEY, "list", initialData.orgId],
-  });
+export function useWorkspaceWatches() {
+  return useSuspenseQuery(workspaceWatchesQueryOptions());
 }
 
 export function useWorkspaceWatchesSnapshot(enabled: boolean, workspaceId: string | null) {

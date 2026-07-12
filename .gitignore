@@ -94,7 +94,10 @@ data/
 # Testing & Coverage
 # ============================================
 .playwright-mcp/
+blob-report/
+playwright-report/
 screenshots/
+test-results/
 
 # ============================================
 # Docker

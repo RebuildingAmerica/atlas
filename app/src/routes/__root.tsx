@@ -1,11 +1,16 @@
-import { createRootRoute, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
+import type { QueryClient } from "@tanstack/react-query";
+import { createRootRouteWithContext, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/react";
 import { NotFoundPage } from "@/platform/pages/not-found-page";
 import { ErrorPage } from "@/platform/pages/error-page";
 import "@/styles/app.css";
 
-export const Route = createRootRoute({
+export interface AtlasRouterContext {
+  queryClient: QueryClient;
+}
+
+export const Route = createRootRouteWithContext<AtlasRouterContext>()({
   component: RootDocument,
   notFoundComponent: NotFoundPage,
   errorComponent: ErrorPage,

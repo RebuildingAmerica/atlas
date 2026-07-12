@@ -97,14 +97,14 @@ describe("createCheckoutSession", () => {
       interval: "monthly",
       priceId: "price_team_base",
       purchaseIntentId: "pi_123",
-      successUrl: "https://atlas.test/start/complete?purchase=pi_123",
-      cancelUrl: "https://atlas.test/start?purchase=pi_123&step=payment",
+      successUrl: "https://atlas.test/onboarding/complete?purchase=pi_123",
+      cancelUrl: "https://atlas.test/onboarding?purchase=pi_123&step=payment",
       customerEmail: "owner@atlas.test",
     });
 
     const params = sessionParams();
-    expect(params.success_url).toBe("https://atlas.test/start/complete?purchase=pi_123");
-    expect(params.cancel_url).toBe("https://atlas.test/start?purchase=pi_123&step=payment");
+    expect(params.success_url).toBe("https://atlas.test/onboarding/complete?purchase=pi_123");
+    expect(params.cancel_url).toBe("https://atlas.test/onboarding?purchase=pi_123&step=payment");
     expect(params.metadata).toEqual({
       interval: "monthly",
       product: "atlas_team",

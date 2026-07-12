@@ -1,14 +1,9 @@
 import { Link } from "@tanstack/react-router";
 import { MapPinned, ShieldCheck } from "lucide-react";
 import { useAtlasSession } from "@/domains/access";
-import type { WorkspaceWatchCollection } from "@/domains/workspace/server/watches";
 import { useWorkspaceWatches } from "@/domains/workspace/hooks/use-workspace-watches";
 import { pluralize } from "@/lib/pluralize";
 import { Badge } from "@/platform/ui/badge";
-
-interface WorkspaceWatchesPageProps {
-  initialWatches: WorkspaceWatchCollection;
-}
 
 function preferenceLabel(preference: string): string {
   if (preference === "immediate") return "Immediate";
@@ -16,10 +11,10 @@ function preferenceLabel(preference: string): string {
   return "Digest";
 }
 
-export function WorkspaceWatchesPage({ initialWatches }: WorkspaceWatchesPageProps) {
+export function WorkspaceWatchesPage() {
   const session = useAtlasSession();
-  const watchesQuery = useWorkspaceWatches(initialWatches);
-  const watches = watchesQuery.data ?? initialWatches;
+  const watchesQuery = useWorkspaceWatches();
+  const watches = watchesQuery.data;
   const items = watches.items;
   const showRenewalProof = session.data?.workspace.activeOrganization?.workspaceType === "team";
 

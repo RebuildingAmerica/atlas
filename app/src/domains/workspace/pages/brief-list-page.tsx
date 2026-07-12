@@ -1,11 +1,8 @@
 import { Link } from "@tanstack/react-router";
 import { ArrowLeft, FileText, Plus, ShieldCheck } from "lucide-react";
-import type { AtlasBrief, AtlasBriefCollection } from "@/domains/workspace/server/briefs";
+import { useWorkspaceBriefCollection } from "@/domains/workspace/hooks/use-briefs";
+import type { AtlasBrief } from "@/domains/workspace/server/briefs";
 import { Badge } from "@/platform/ui/badge";
-
-interface BriefListPageProps {
-  briefCollection: AtlasBriefCollection;
-}
 
 interface CountLabelOptions {
   plural?: string;
@@ -125,7 +122,8 @@ function BriefListItem({ brief }: { brief: AtlasBrief }) {
   );
 }
 
-export function BriefListPage({ briefCollection }: BriefListPageProps) {
+export function BriefListPage() {
+  const { data: briefCollection } = useWorkspaceBriefCollection();
   const briefs = briefCollection.items;
   const stats = collectionStats(briefs);
 

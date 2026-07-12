@@ -30,7 +30,7 @@
     "test:integration": "vitest run tests/integration",
     "test:e2e": "pnpm run test:acceptance",
     "test:e2e:headed": "pnpm run test:acceptance:headed",
-    "test:acceptance": "playwright test",
+    "test:acceptance": "tsx scripts/e2e/stripe-playwright.ts",
     "test:acceptance:headed": "playwright test --headed",
     "test:hosted-smoke": "playwright test --config playwright.hosted.config.ts",
     "test:watch": "vitest --watch",
@@ -107,6 +107,7 @@
     "prettier-plugin-tailwindcss": "catalog:",
     "rollup": "catalog:",
     "tailwindcss": "catalog:",
+    "tsx": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
     "vitest": "catalog:"

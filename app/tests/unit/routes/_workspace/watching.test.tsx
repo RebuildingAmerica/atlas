@@ -2,10 +2,9 @@
 import "@testing-library/jest-dom/vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { WorkspaceWatchCollection } from "@/domains/workspace/server/watches";
 
 const mocks = vi.hoisted(() => ({
-  loadWorkspaceWatches: vi.fn(),
+  workspaceWatchesQueryOptions: vi.fn(),
 }));
 
 vi.mock("@tanstack/react-router", async () => {
@@ -13,50 +12,41 @@ vi.mock("@tanstack/react-router", async () => {
   return harness.installRouterMocks();
 });
 
-vi.mock("@/domains/workspace/server/watches", () => ({
-  loadWorkspaceWatches: mocks.loadWorkspaceWatches,
+vi.mock("@/domains/workspace/hooks/use-workspace-watches", () => ({
+  workspaceWatchesQueryOptions: mocks.workspaceWatchesQueryOptions,
 }));
 
 vi.mock("@/domains/workspace/pages/watches-page", () => ({
-  WorkspaceWatchesPage: ({ initialWatches }: { initialWatches: WorkspaceWatchCollection }) => (
-    <div data-testid="watches-page" data-total={initialWatches.total} />
-  ),
+  WorkspaceWatchesPage: () => <div data-testid="watches-page" />,
 }));
 
 describe("routes/_workspace/watching", () => {
-  function collection(): WorkspaceWatchCollection {
-    return {
-      items: [],
-      orgId: "org_123",
-      total: 0,
-    };
-  }
-
   beforeEach(async () => {
     const { resetRouterMocks } = await import("@/../tests/helpers/router-harness");
     resetRouterMocks();
-    mocks.loadWorkspaceWatches.mockReset();
+    mocks.workspaceWatchesQueryOptions.mockReset();
   });
 
   afterEach(() => {
     cleanup();
   });
 
-  it("loads shared workspace watches through the server helper", async () => {
-    const data = collection();
-    mocks.loadWorkspaceWatches.mockResolvedValue(data);
+  it("seeds shared workspace watches through the router context", async () => {
+    const data = { items: [], orgId: "org_123", total: 0 };
+    const queryOptions = { queryKey: ["workspace", "watches", "list"] };
+    const ensureQueryData = vi.fn().mockResolvedValue(data);
+    mocks.workspaceWatchesQueryOptions.mockReturnValue(queryOptions);
 
     const routeModule = await import("@/routes/_workspace/watching");
     const { asRouteStub } = await import("@/../tests/helpers/router-harness");
     const Route = asRouteStub(routeModule.Route);
 
     if (!Route.options.loader) throw new Error("Expected loader");
-    const result = (await Route.options.loader({})) as {
-      workspaceWatches: WorkspaceWatchCollection;
-    };
+    const result = await Route.options.loader({ context: { queryClient: { ensureQueryData } } });
 
-    expect(result.workspaceWatches).toBe(data);
-    expect(mocks.loadWorkspaceWatches).toHaveBeenCalledWith();
+    expect(result).toBe(data);
+    expect(mocks.workspaceWatchesQueryOptions).toHaveBeenCalledWith();
+    expect(ensureQueryData).toHaveBeenCalledWith(queryOptions);
   });
 
   it("sets the watching page title", async () => {
@@ -69,18 +59,15 @@ describe("routes/_workspace/watching", () => {
     });
   });
 
-  it("renders the watches page with loader data", async () => {
+  it("renders the watches page", async () => {
     const routeModule = await import("@/routes/_workspace/watching");
-    const { asRouteStub, readRouterMocks } = await import("@/../tests/helpers/router-harness");
+    const { asRouteStub } = await import("@/../tests/helpers/router-harness");
     const Route = asRouteStub(routeModule.Route);
-    readRouterMocks().useLoaderData.mockReturnValue({
-      workspaceWatches: collection(),
-    });
 
     const Component = Route.options.component;
     if (!Component) throw new Error("Expected Route.options.component");
     render(<Component />);
 
-    expect(screen.getByTestId("watches-page")).toHaveAttribute("data-total", "0");
+    expect(screen.getByTestId("watches-page")).toBeInTheDocument();
   });
 });

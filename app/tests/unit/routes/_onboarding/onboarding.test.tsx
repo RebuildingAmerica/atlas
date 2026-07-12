@@ -8,8 +8,8 @@ vi.mock("@tanstack/react-router", async () => {
   return harness.installRouterMocks();
 });
 
-vi.mock("@/domains/billing/pages/auth/start-purchase-page", () => ({
-  StartPurchasePage: ({
+vi.mock("@/domains/onboarding/pages/setup-page", () => ({
+  SetupPage: ({
     interval,
     product,
     purchase,
@@ -19,20 +19,20 @@ vi.mock("@/domains/billing/pages/auth/start-purchase-page", () => ({
     purchase?: string;
   }) => (
     <div
-      data-testid="start-purchase-page"
+      data-testid="setup-page"
       data-interval={interval ?? ""}
       data-product={product ?? ""}
       data-purchase={purchase ?? ""}
     />
   ),
-  startPurchaseSearchSchema: { __schema: "start" },
+  setupSearchSchema: { __schema: "setup" },
 }));
 
 vi.mock("@/domains/access/server", () => ({
   redirectIfLocalSession: vi.fn(),
 }));
 
-describe("routes/_auth/start", () => {
+describe("routes/_onboarding/onboarding", () => {
   beforeEach(async () => {
     const { resetRouterMocks } = await import("@/../tests/helpers/router-harness");
     resetRouterMocks();
@@ -44,21 +44,22 @@ describe("routes/_auth/start", () => {
     cleanup();
   });
 
-  it("registers the start purchase search schema and local-mode guard", async () => {
-    const routeModule = await import("@/routes/_auth/start");
-    const { startPurchaseSearchSchema } =
-      await import("@/domains/billing/pages/auth/start-purchase-page");
+  it("registers the setup search schema and local-mode guard", async () => {
+    const parentRouteModule = await import("@/routes/_onboarding/onboarding");
+    const indexRouteModule = await import("@/routes/_onboarding/onboarding/index");
+    const { setupSearchSchema } = await import("@/domains/onboarding/pages/setup-page");
     const access = await import("@/domains/access/server");
     const { asRouteStub } = await import("@/../tests/helpers/router-harness");
-    const Route = asRouteStub(routeModule.Route);
+    const ParentRoute = asRouteStub(parentRouteModule.Route);
+    const IndexRoute = asRouteStub(indexRouteModule.Route);
 
-    expect(Route.options.validateSearch).toBe(startPurchaseSearchSchema);
-    Route.options.beforeLoad?.({});
+    expect(IndexRoute.options.validateSearch).toBe(setupSearchSchema);
+    ParentRoute.options.beforeLoad?.({});
     expect(access.redirectIfLocalSession).toHaveBeenCalledWith("/discovery");
   });
 
   it("passes product, interval, and purchase search params into the page", async () => {
-    const routeModule = await import("@/routes/_auth/start");
+    const routeModule = await import("@/routes/_onboarding/onboarding/index");
     const { readRouterMocks, asRouteStub } = await import("@/../tests/helpers/router-harness");
     const Route = asRouteStub(routeModule.Route);
     readRouterMocks().useSearch.mockReturnValue({
@@ -71,7 +72,7 @@ describe("routes/_auth/start", () => {
     if (!Component) throw new Error("Expected route component");
     const view = render(<Component />);
 
-    const node = view.getByTestId("start-purchase-page");
+    const node = view.getByTestId("setup-page");
     expect(node.dataset.product).toBe("atlas_team");
     expect(node.dataset.interval).toBe("monthly");
     expect(node.dataset.purchase).toBe("pi_123");

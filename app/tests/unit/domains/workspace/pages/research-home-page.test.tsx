@@ -247,13 +247,12 @@ describe("ResearchHomePage", () => {
     };
   }
 
-  it("seeds the summary query from the loader payload and renders every section", () => {
+  it("reads the summary query and renders every section", () => {
     mocks.useAtlasSession.mockReturnValue({ data: sessionWith({}) });
 
-    render(<ResearchHomePage initialSummary={summary()} />);
+    render(<ResearchHomePage />);
 
-    const seed = summary();
-    expect(mocks.useResearchSummary).toHaveBeenCalledWith(seed);
+    expect(mocks.useResearchSummary).toHaveBeenCalledWith();
     expect(screen.getByTestId("hero")).toHaveTextContent("Ada");
     expect(screen.getByTestId("activity")).toBeInTheDocument();
     expect(screen.getByTestId("lists")).toBeInTheDocument();
@@ -267,7 +266,7 @@ describe("ResearchHomePage", () => {
   it("passes the free-tier monthly run limit through to the recent-searches strip", () => {
     mocks.useAtlasSession.mockReturnValue({ data: sessionWith({ runsPerMonth: 2 }) });
 
-    render(<ResearchHomePage initialSummary={summary()} />);
+    render(<ResearchHomePage />);
 
     const recent = screen.getByTestId("recent");
     expect(recent).toHaveAttribute("data-runs-this-month", "1");
@@ -279,7 +278,7 @@ describe("ResearchHomePage", () => {
       data: sessionWith({ activeProducts: ["atlas_pro"], runsPerMonth: null }),
     });
 
-    render(<ResearchHomePage initialSummary={summary()} />);
+    render(<ResearchHomePage />);
 
     expect(screen.getByTestId("recent")).toHaveAttribute("data-runs-limit", "null");
   });
@@ -287,7 +286,7 @@ describe("ResearchHomePage", () => {
   it("hides the run counter in local mode and shows a name-less greeting without a session", () => {
     mocks.useAtlasSession.mockReturnValue({ data: null });
 
-    render(<ResearchHomePage initialSummary={summary()} />);
+    render(<ResearchHomePage />);
 
     expect(screen.getByTestId("hero")).toHaveTextContent("no-name");
     expect(screen.getByTestId("recent")).toHaveAttribute("data-runs-limit", "null");
@@ -296,7 +295,7 @@ describe("ResearchHomePage", () => {
   it("derives a name-less greeting from a blank session name", () => {
     mocks.useAtlasSession.mockReturnValue({ data: sessionWith({ name: "   " }) });
 
-    render(<ResearchHomePage initialSummary={summary()} />);
+    render(<ResearchHomePage />);
 
     expect(screen.getByTestId("hero")).toHaveTextContent("no-name");
   });
@@ -304,7 +303,7 @@ describe("ResearchHomePage", () => {
   it("renders a workspace operating picture for active team workspaces", () => {
     mocks.useAtlasSession.mockReturnValue({ data: sessionWith({ activeWorkspace: true }) });
 
-    render(<ResearchHomePage initialSummary={summary()} />);
+    render(<ResearchHomePage />);
 
     expect(
       screen.getByRole("heading", { name: "Workspace operating picture" }),
@@ -328,7 +327,7 @@ describe("ResearchHomePage", () => {
     mocks.useWorkspaceUsageSummary.mockReturnValue({ data: undefined, isError: true });
     mocks.useWorkspaceWatchesSnapshot.mockReturnValue({ data: undefined, isError: true });
 
-    render(<ResearchHomePage initialSummary={summary()} />);
+    render(<ResearchHomePage />);
 
     expect(screen.getAllByText("Unavailable")).toHaveLength(4);
     expect(screen.getByText("Briefs could not load.")).toBeInTheDocument();
@@ -343,7 +342,7 @@ describe("ResearchHomePage", () => {
       data: sessionWith({ activeWorkspace: true, workspaceType: "individual" }),
     });
 
-    render(<ResearchHomePage initialSummary={summary()} />);
+    render(<ResearchHomePage />);
 
     expect(screen.getByText("Personal workspace")).toBeInTheDocument();
     expect(screen.queryByText("Team workspace")).not.toBeInTheDocument();

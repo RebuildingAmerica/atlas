@@ -2,13 +2,13 @@ import { Link } from "@tanstack/react-router";
 import { ArrowLeft, Download, FileJson, Search, Upload } from "lucide-react";
 import { useState } from "react";
 import {
-  useCoverageTargets,
   useImportCoverageTargets,
+  useWorkspaceCoverage,
 } from "@/domains/workspace/hooks/use-coverage-targets";
 import { exportOrgCoverageTargets, getExportOrgCoverageTargetsUrl } from "@/lib/generated/atlas";
 import { Badge } from "@/platform/ui/badge";
 import { Textarea } from "@/platform/ui/textarea";
-import type { CoveragePageProps, ImportFeedback } from "./coverage-page-utils";
+import type { ImportFeedback } from "./coverage-page-utils";
 import {
   COVERAGE_TARGET_CSV_COLUMNS,
   COVERAGE_TARGET_CSV_EXAMPLE,
@@ -23,13 +23,13 @@ import {
   CoverageTargetsList,
 } from "./coverage-page-panels";
 
-export function CoveragePage({ initialCoverageTargets, orgId }: CoveragePageProps) {
-  const coverageTargetsQuery = useCoverageTargets(initialCoverageTargets, orgId);
+export function CoveragePage() {
+  const coverageWorkspaceQuery = useWorkspaceCoverage();
   const importCoverageTargets = useImportCoverageTargets();
   const [exportError, setExportError] = useState<string | null>(null);
   const [importCsvText, setImportCsvText] = useState("");
   const [importFeedback, setImportFeedback] = useState<ImportFeedback | null>(null);
-  const coverageTargets = coverageTargetsQuery.data;
+  const { coverageTargets, orgId } = coverageWorkspaceQuery.data;
   const targets = coverageTargets.items;
   const summary = summarizeCoverage(targets);
 

@@ -2,10 +2,9 @@
 import "@testing-library/jest-dom/vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { CoverageTargetCollection } from "@/domains/workspace/server/coverage-targets";
 
 const mocks = vi.hoisted(() => ({
-  loadWorkspaceCoverage: vi.fn(),
+  workspaceCoverageQueryOptions: vi.fn(),
 }));
 
 vi.mock("@tanstack/react-router", async () => {
@@ -13,59 +12,41 @@ vi.mock("@tanstack/react-router", async () => {
   return harness.installRouterMocks();
 });
 
-vi.mock("@/domains/workspace/server/coverage-targets", () => ({
-  loadWorkspaceCoverage: mocks.loadWorkspaceCoverage,
+vi.mock("@/domains/workspace/hooks/use-coverage-targets", () => ({
+  workspaceCoverageQueryOptions: mocks.workspaceCoverageQueryOptions,
 }));
 
 vi.mock("@/domains/workspace/pages/coverage-page", () => ({
-  CoveragePage: ({
-    initialCoverageTargets,
-    orgId,
-  }: {
-    initialCoverageTargets: CoverageTargetCollection;
-    orgId: string;
-  }) => (
-    <div
-      data-testid="coverage-page"
-      data-org-id={orgId}
-      data-total={initialCoverageTargets.total}
-    />
-  ),
+  CoveragePage: () => <div data-testid="coverage-page" />,
 }));
 
 describe("routes/_workspace/coverage", () => {
-  function collection(): CoverageTargetCollection {
-    return {
-      items: [],
-      total: 0,
-    };
-  }
-
   beforeEach(async () => {
     const { resetRouterMocks } = await import("@/../tests/helpers/router-harness");
     resetRouterMocks();
-    mocks.loadWorkspaceCoverage.mockReset();
+    mocks.workspaceCoverageQueryOptions.mockReset();
   });
 
   afterEach(() => {
     cleanup();
   });
 
-  it("loads workspace coverage targets through the server helper", async () => {
-    const data = collection();
-    mocks.loadWorkspaceCoverage.mockResolvedValue({ coverageTargets: data, orgId: "org_123" });
+  it("seeds workspace coverage through the router context", async () => {
+    const data = { coverageTargets: { items: [], total: 0 }, orgId: "org_123" };
+    const queryOptions = { queryKey: ["workspace", "coverage-targets", "workspace"] };
+    const ensureQueryData = vi.fn().mockResolvedValue(data);
+    mocks.workspaceCoverageQueryOptions.mockReturnValue(queryOptions);
 
     const routeModule = await import("@/routes/_workspace/coverage");
     const { asRouteStub } = await import("@/../tests/helpers/router-harness");
     const Route = asRouteStub(routeModule.Route);
 
     if (!Route.options.loader) throw new Error("Expected loader");
-    const result = (await Route.options.loader({})) as {
-      coverageWorkspace: { coverageTargets: CoverageTargetCollection; orgId: string };
-    };
+    const result = await Route.options.loader({ context: { queryClient: { ensureQueryData } } });
 
-    expect(result.coverageWorkspace).toEqual({ coverageTargets: data, orgId: "org_123" });
-    expect(mocks.loadWorkspaceCoverage).toHaveBeenCalledWith();
+    expect(result).toBe(data);
+    expect(mocks.workspaceCoverageQueryOptions).toHaveBeenCalledWith();
+    expect(ensureQueryData).toHaveBeenCalledWith(queryOptions);
   });
 
   it("sets the coverage workspace page title", async () => {
@@ -78,19 +59,15 @@ describe("routes/_workspace/coverage", () => {
     });
   });
 
-  it("renders the coverage page with loader data", async () => {
+  it("renders the coverage page", async () => {
     const routeModule = await import("@/routes/_workspace/coverage");
-    const { asRouteStub, readRouterMocks } = await import("@/../tests/helpers/router-harness");
+    const { asRouteStub } = await import("@/../tests/helpers/router-harness");
     const Route = asRouteStub(routeModule.Route);
-    readRouterMocks().useLoaderData.mockReturnValue({
-      coverageWorkspace: { coverageTargets: collection(), orgId: "org_123" },
-    });
 
     const Component = Route.options.component;
     if (!Component) throw new Error("Expected Route.options.component");
     render(<Component />);
 
-    expect(screen.getByTestId("coverage-page")).toHaveAttribute("data-total", "0");
-    expect(screen.getByTestId("coverage-page")).toHaveAttribute("data-org-id", "org_123");
+    expect(screen.getByTestId("coverage-page")).toBeInTheDocument();
   });
 });

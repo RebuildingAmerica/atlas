@@ -31,6 +31,9 @@ export const START_HANDLER_SENTINEL = { __atlasHandler: true } as const;
  * component) without instantiating the real router.
  */
 export interface CapturedRouterOptions {
+  context?: {
+    queryClient?: unknown;
+  };
   routeTree: unknown;
   scrollRestoration: boolean;
   Wrap: (props: { children: ReactNode }) => ReactNode;

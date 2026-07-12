@@ -1,14 +1,33 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  queryOptions,
+  useMutation,
+  useQuery,
+  useQueryClient,
+  useSuspenseQuery,
+} from "@tanstack/react-query";
 import {
   createWorkspaceCoverageTarget,
   importWorkspaceCoverageTargets,
+  loadWorkspaceCoverage,
   loadWorkspaceCoverageTargets,
   type CoverageTargetCollection,
   type CoverageTargetCreateInput,
   type CoverageTargetImportInput,
+  type CoverageWorkspacePayload,
 } from "@/domains/workspace/server/coverage-targets";
 
 export const COVERAGE_TARGETS_KEY = ["workspace", "coverage-targets"] as const;
+
+export function workspaceCoverageQueryOptions() {
+  return queryOptions<CoverageWorkspacePayload>({
+    queryKey: [...COVERAGE_TARGETS_KEY, "workspace"],
+    queryFn: () => loadWorkspaceCoverage(),
+  });
+}
+
+export function useWorkspaceCoverage() {
+  return useSuspenseQuery(workspaceCoverageQueryOptions());
+}
 
 export function useWorkspaceCoverageTargets(enabled: boolean, workspaceId: string | null) {
   return useQuery<CoverageTargetCollection>({

@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { queryOptions, useMutation, useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import {
   createWorkspaceBrief,
   loadWorkspaceBriefs,
@@ -17,6 +17,17 @@ export interface UpdateWorkspaceBriefVariables extends AtlasBriefUpdateInput {
 }
 
 export const WORKSPACE_BRIEFS_KEY = ["workspace", "briefs"] as const;
+
+export function workspaceBriefsQueryOptions() {
+  return queryOptions<AtlasBriefCollection>({
+    queryKey: [...WORKSPACE_BRIEFS_KEY, "list"],
+    queryFn: () => loadWorkspaceBriefs(),
+  });
+}
+
+export function useWorkspaceBriefCollection() {
+  return useSuspenseQuery(workspaceBriefsQueryOptions());
+}
 
 export function useWorkspaceBriefs(enabled: boolean, workspaceId: string | null) {
   return useQuery<AtlasBriefCollection>({

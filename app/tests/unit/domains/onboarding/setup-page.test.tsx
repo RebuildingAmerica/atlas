@@ -3,7 +3,7 @@ import "@testing-library/jest-dom/vitest";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { StartPurchasePage } from "@/domains/billing/pages/auth/start-purchase-page";
+import { SetupPage } from "@/domains/onboarding/pages/setup-page";
 
 const mocks = vi.hoisted(() => ({
   attachPurchaseWorkspace: vi.fn(),
@@ -44,7 +44,7 @@ vi.mock("@/domains/billing/purchase-onboarding.functions", () => ({
   startPurchaseCheckout: mocks.startPurchaseCheckout,
 }));
 
-describe("StartPurchasePage", () => {
+describe("SetupPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.ensurePurchaseOnboarding.mockResolvedValue({ id: "pi_123" });
@@ -64,7 +64,7 @@ describe("StartPurchasePage", () => {
       },
     });
 
-    render(<StartPurchasePage product="atlas_research_pass" />);
+    render(<SetupPage product="atlas_research_pass" />);
 
     expect(screen.getByText("Billing: once")).toBeInTheDocument();
     await waitFor(() => {
@@ -83,7 +83,7 @@ describe("StartPurchasePage", () => {
       },
     });
 
-    render(<StartPurchasePage product="atlas_team" interval="weekly" />);
+    render(<SetupPage product="atlas_team" interval="weekly" />);
 
     expect(screen.getByText("Choose a billing option")).toBeInTheDocument();
     expect(
@@ -110,7 +110,7 @@ describe("StartPurchasePage", () => {
       workspaceId: "org_personal",
     });
 
-    render(<StartPurchasePage purchase="pi_pro" step="payment" />);
+    render(<SetupPage purchase="pi_pro" step="payment" />);
 
     await waitFor(() => {
       expect(screen.getByText("Atlas Pro")).toBeInTheDocument();
@@ -128,10 +128,60 @@ describe("StartPurchasePage", () => {
       },
     });
 
-    render(<StartPurchasePage product="atlas_team" interval="monthly" step="payment" />);
+    render(<SetupPage product="atlas_team" interval="monthly" step="payment" />);
 
     expect(await screen.findByLabelText(/Workspace name/)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/Workspace slug/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Stripe will handle/)).not.toBeInTheDocument();
+  });
+
+  it("creates a team workspace from the visible name without asking for a slug", async () => {
+    mocks.useAtlasSession.mockReturnValue({
+      data: {
+        accountReady: true,
+        hasPasskey: true,
+        workspace: { activeOrganization: null },
+      },
+    });
+    mocks.ensurePurchaseOnboarding.mockResolvedValue({
+      id: "pi_team",
+      interval: "monthly",
+      product: "atlas_team",
+      status: "started",
+      stripeCheckoutSessionId: null,
+      userId: "user_123",
+      workspaceId: null,
+    });
+    mocks.createWorkspace.mockResolvedValue({ id: "org_team", slug: "rebuilding-las-vegas" });
+    mocks.attachPurchaseWorkspace.mockResolvedValue({
+      id: "pi_team",
+      interval: "monthly",
+      product: "atlas_team",
+      status: "workspace_ready",
+      stripeCheckoutSessionId: null,
+      userId: "user_123",
+      workspaceId: "org_team",
+    });
+
+    render(<SetupPage product="atlas_team" interval="monthly" />);
+
+    const nameInput = await screen.findByLabelText(/Workspace name/);
+    expect(screen.queryByLabelText(/Workspace slug/)).not.toBeInTheDocument();
+    fireEvent.change(nameInput, { target: { value: "Rebuilding Las Vegas!" } });
+    fireEvent.click(screen.getByRole("button", { name: "Continue to payment" }));
+
+    await waitFor(() => {
+      expect(mocks.createWorkspace).toHaveBeenCalledWith({
+        data: {
+          name: "Rebuilding Las Vegas!",
+          slug: "rebuilding-las-vegas",
+          workspaceType: "team",
+        },
+      });
+    });
+    expect(mocks.attachPurchaseWorkspace).toHaveBeenCalledWith({
+      data: { purchaseId: "pi_team", workspaceId: "org_team" },
+    });
   });
 
   it("does not create a workspace when the purchase param cannot be loaded", async () => {
@@ -144,7 +194,7 @@ describe("StartPurchasePage", () => {
     });
     mocks.loadPurchaseOnboarding.mockResolvedValue(null);
 
-    render(<StartPurchasePage purchase="pi_missing" />);
+    render(<SetupPage purchase="pi_missing" />);
 
     await waitFor(() => {
       expect(mocks.loadPurchaseOnboarding).toHaveBeenCalledWith({
@@ -188,7 +238,7 @@ describe("StartPurchasePage", () => {
       workspaceId: "org_personal",
     });
 
-    render(<StartPurchasePage product="atlas_pro" interval="monthly" />);
+    render(<SetupPage product="atlas_pro" interval="monthly" />);
 
     const useWorkspaceButton = await screen.findByRole("button", { name: "Use My Workspace" });
     fireEvent.click(useWorkspaceButton);
