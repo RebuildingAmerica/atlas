@@ -3,9 +3,9 @@ description: Mint a GitHub Actions OIDC token for Vercel Trusted Sources.
 
 inputs:
   audience:
-    description: Optional custom OIDC audience configured in Vercel Trusted Sources.
+    description: OIDC audience configured in Vercel Trusted Sources.
     required: false
-    default: ""
+    default: "https://github.com/RebuildingAmerica"
 
 outputs:
   token:
