@@ -219,3 +219,45 @@ async def test_profile_identity_rejects_non_steward_and_disconnected_control(
         json={"atproto_identity_id": identity.id},
     )
     assert disconnected.status_code == status.HTTP_409_CONFLICT
+
+
+@pytest.mark.asyncio
+async def test_profile_identity_handles_missing_profile_link_and_stale_resolution(
+    test_client: object,
+    test_db: object,
+    claimable_org: str,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    missing = await test_client.put(
+        "/api/profiles/not-a-profile/atproto-identity",
+        json={"atproto_identity_id": "missing"},
+    )
+    assert missing.status_code == status.HTTP_404_NOT_FOUND
+
+    await EntryCRUD.update(
+        test_db,
+        claimable_org,
+        claim_status="verified",
+        claimed_by_user_id="local-operator",
+    )
+    entry = await EntryCRUD.get_by_id(test_db, claimable_org)
+    assert entry is not None
+    identity = await _controlled_identity(
+        test_db, did="did:plc:stale-profile", handle="stale-profile.example"
+    )
+
+    async def unresolved(_did: str) -> None:
+        return None
+
+    monkeypatch.setattr(
+        "atlas.domains.catalog.api.profiles.resolve_current_atproto_identity",
+        unresolved,
+    )
+    stale = await test_client.put(
+        f"/api/profiles/{entry.slug}/atproto-identity",
+        json={"atproto_identity_id": identity.id},
+    )
+    assert stale.status_code == status.HTTP_409_CONFLICT
+
+    no_link = await test_client.delete(f"/api/profiles/{entry.slug}/atproto-identity")
+    assert no_link.status_code == status.HTTP_404_NOT_FOUND

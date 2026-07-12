@@ -7,6 +7,8 @@ from fastapi import HTTPException, Response, status
 
 from atlas.domains.access.principals import AuthenticatedActor
 from atlas.domains.catalog.api.atproto_identities import (
+    _e2e_harness_identity_matches,
+    _verify_linked_atproto_identity,
     disconnect_atproto_identity,
     link_atproto_identity,
     list_atproto_identities,
@@ -201,3 +203,68 @@ async def test_local_client_uses_account_identity_route(test_client: object) -> 
     assert response.status_code == status.HTTP_200_OK
     assert response.json() == []
     assert response.headers["cache-control"] == "no-store"
+
+
+@pytest.mark.asyncio
+async def test_list_skips_a_control_whose_identity_was_removed(
+    test_db: object,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def controls(_db: object, _user_id: str) -> list[object]:
+        return [type("Control", (), {"identity_id": "missing"})()]
+
+    async def missing(_db: object, _identity_id: str) -> None:
+        return None
+
+    monkeypatch.setattr(AtprotoIdentityControlCRUD, "list_for_user", controls)
+    monkeypatch.setattr(AtprotoIdentityCRUD, "get_by_id", missing)
+    assert await list_atproto_identities(Response(), actor=_actor(), db=test_db) == []
+
+
+def test_e2e_harness_match_is_explicit_and_normalized(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("ATLAS_ATPROTO_OAUTH_E2E_HARNESS", raising=False)
+    assert not _e2e_harness_identity_matches("Person.Example", "did:web:person.example")
+    monkeypatch.setenv("ATLAS_ATPROTO_OAUTH_E2E_HARNESS", "1")
+    assert _e2e_harness_identity_matches(" @Person.Example ", "did:web:person.example")
+
+
+@pytest.mark.asyncio
+async def test_e2e_harness_verification_short_circuits_network(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("ATLAS_ATPROTO_OAUTH_E2E_HARNESS", "1")
+    assert await _verify_linked_atproto_identity("Person.Example", "did:web:person.example")
+
+
+@pytest.mark.asyncio
+async def test_refresh_raises_if_identity_disappears_after_update(
+    test_db: object,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    linked, _ = await _connect(test_db, monkeypatch)
+
+    async def resolved(_did: str) -> AtprotoIdentityResolution:
+        return AtprotoIdentityResolution(
+            did="did:plc:person", handle="person.example", pds_url=None
+        )
+
+    original_get = AtprotoIdentityCRUD.get_by_id
+    calls = 0
+
+    async def disappears(conn: object, identity_id: str) -> object | None:
+        nonlocal calls
+        calls += 1
+        if calls <= 2:
+            return await original_get(conn, identity_id)
+        return None
+
+    monkeypatch.setattr(
+        "atlas.domains.catalog.api.atproto_identities.resolve_current_atproto_identity",
+        resolved,
+    )
+    monkeypatch.setattr(AtprotoIdentityCRUD, "get_by_id", disappears)
+    with pytest.raises(HTTPException) as error:
+        await refresh_atproto_identity(linked.id, Response(), actor=_actor(), db=test_db)
+    assert error.value.status_code == status.HTTP_404_NOT_FOUND

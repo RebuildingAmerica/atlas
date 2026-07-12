@@ -18,6 +18,7 @@ from atlas.domains.catalog.models.atproto_identity_controls import (
     AtprotoIdentityControlConflictError,
     AtprotoIdentityControlCRUD,
 )
+from atlas.domains.catalog.models.entry_model import _hydrate_atproto_identities
 from atlas.domains.catalog.models.profile_atproto_links import (
     ProfileAtprotoLinkConflictError,
     ProfileAtprotoLinkCRUD,
@@ -160,6 +161,13 @@ async def test_second_user_control_conflict_does_not_replace_active_controller(
             did=identity.did,
             handle=identity.current_handle,
         )
+    with pytest.raises(AtprotoIdentityControlConflictError):
+        await AtprotoIdentityControlCRUD.connect(
+            test_db,
+            user_id="user_2",
+            did=identity.did,
+            handle=identity.current_handle,
+        )
 
     active = await AtprotoIdentityControlCRUD.get_active_for_identity(test_db, identity.id)
     competing = await AtprotoIdentityControlCRUD.get_for_user_and_identity(
@@ -194,6 +202,11 @@ async def test_profile_link_requires_explicit_replacement_and_retains_history(
     assert removed.status == "removed"
     assert replacement.identity_id == second.id
     assert replacement.status == "verified"
+
+    refreshed = await ProfileAtprotoLinkCRUD.attach(
+        test_db, entry_id=claimable_org, identity_id=second.id
+    )
+    assert refreshed.id == replacement.id
 
 
 @pytest.mark.asyncio
@@ -264,6 +277,29 @@ async def test_verify_current_atproto_identity_rejects_wrong_did_document() -> N
 
 
 @pytest.mark.asyncio
+async def test_verify_current_atproto_identity_rejects_forward_did_mismatch() -> None:
+    resolver = _Resolver(
+        did="did:plc:other",
+        did_doc={"id": "did:plc:org", "alsoKnownAs": ["at://org.example"]},
+    )
+    assert not await verify_current_atproto_identity(
+        "org.example", "did:plc:org", resolver=resolver
+    )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "document",
+    [None, {"id": "did:plc:other"}, {"id": "did:plc:org", "alsoKnownAs": "bad"}],
+)
+async def test_did_first_resolution_rejects_invalid_documents(
+    document: dict[str, Any] | None,
+) -> None:
+    resolver = _Resolver(did="did:plc:org", did_doc=document)
+    assert await resolve_current_atproto_identity("did:plc:org", resolver=resolver) is None
+
+
+@pytest.mark.asyncio
 async def test_network_resolver_fetches_did_documents_and_rejects_bad_responses(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -317,6 +353,26 @@ async def test_atproto_handle_resolution_uses_dns_then_https(
     _FakeHttpClient.responses = [_FakeHttpResponse(status_code=500, text="did:web:org.example")]
     assert await _resolve_handle_https("org.example") is None
 
+    _FakeHttpClient.responses = [atproto_identity.httpx.HTTPError("network")]
+    assert await _resolve_handle_https("org.example") is None
+
+
+@pytest.mark.asyncio
+async def test_network_handle_resolver_falls_back_to_https(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def no_dns(_handle: str) -> None:
+        return None
+
+    async def from_https(handle: str) -> str:
+        assert handle == "org.example"
+        return "did:web:org.example"
+
+    monkeypatch.setattr(atproto_identity, "_resolve_handle_dns", no_dns)
+    monkeypatch.setattr(atproto_identity, "_resolve_handle_https", from_https)
+    resolver = NetworkAtprotoIdentityResolver()
+    assert await resolver.handle_resolves_to_did(" @Org.Example ") == "did:web:org.example"
+
     _FakeHttpClient.responses = [_FakeHttpResponse(status_code=200, text="not-a-did")]
     assert await _resolve_handle_https("org.example") is None
 
@@ -331,6 +387,27 @@ def test_atproto_identity_helper_branches() -> None:
     assert _txt_answer_value(_TxtAnswer(chunks=(b"did:", b"plc:org"))) == "did:plc:org"
     assert _txt_answer_value(_TxtAnswer(chunks=(b"\xff",))) is None
     assert _txt_answer_value(_TxtAnswer('"did:plc:text"')) == "did:plc:text"
+
+
+def test_pds_service_selection_ignores_invalid_entries() -> None:
+    assert atproto_identity._pds_url_from_did_document({}) is None
+    assert (
+        atproto_identity._pds_url_from_did_document(
+            {
+                "service": [
+                    "bad",
+                    {"type": "Other", "serviceEndpoint": "https://other.example"},
+                    {"type": "AtprotoPersonalDataServer", "serviceEndpoint": 42},
+                ]
+            }
+        )
+        is None
+    )
+
+
+@pytest.mark.asyncio
+async def test_empty_entry_hydration_is_a_noop(test_db: object) -> None:
+    assert await _hydrate_atproto_identities(test_db, []) == []
 
 
 @pytest.mark.asyncio
@@ -381,6 +458,44 @@ async def test_atproto_identity_crud_raises_when_refresh_disappears(
             test_db,
             did="did:plc:vanishing",
             handle="new.example",
+        )
+
+
+@pytest.mark.asyncio
+async def test_control_connect_raises_when_created_row_disappears(
+    test_db: object,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def missing(*_args: object, **_kwargs: object) -> None:
+        return None
+
+    monkeypatch.setattr(AtprotoIdentityControlCRUD, "get_by_id", missing)
+    with pytest.raises(RuntimeError, match="control disappeared"):
+        await AtprotoIdentityControlCRUD.connect(
+            test_db,
+            user_id="user_1",
+            did="did:plc:missing-control",
+            handle="missing-control.example",
+        )
+
+
+@pytest.mark.asyncio
+async def test_profile_attach_raises_when_created_row_disappears(
+    test_db: object,
+    claimable_org: str,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    identity = await AtprotoIdentityCRUD.upsert(
+        test_db, did="did:plc:missing-link", handle="missing-link.example"
+    )
+
+    async def missing(*_args: object, **_kwargs: object) -> None:
+        return None
+
+    monkeypatch.setattr(ProfileAtprotoLinkCRUD, "get_by_id", missing)
+    with pytest.raises(RuntimeError, match="profile link disappeared"):
+        await ProfileAtprotoLinkCRUD.attach(
+            test_db, entry_id=claimable_org, identity_id=identity.id
         )
 
 
@@ -564,3 +679,23 @@ async def test_revalidate_linked_atproto_profiles_keeps_current_public_link(
     )
     assert public_identity is not None
     assert public_identity.handle == "org.example"
+
+
+@pytest.mark.asyncio
+async def test_revalidation_skips_orphaned_profile_link(
+    test_db: object,
+    claimable_org: str,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    identity = await AtprotoIdentityCRUD.upsert(
+        test_db, did="did:plc:orphan", handle="orphan.example"
+    )
+    await ProfileAtprotoLinkCRUD.attach(test_db, entry_id=claimable_org, identity_id=identity.id)
+
+    async def missing(_conn: object, _identity_id: str) -> None:
+        return None
+
+    monkeypatch.setattr(AtprotoIdentityCRUD, "get_by_id", missing)
+    result = await revalidate_linked_atproto_profiles(test_db)
+    assert result.checked == 0
+    assert result.needs_attention == 0
