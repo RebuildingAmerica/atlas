@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
+from datetime import date
 
 from datetime import UTC, datetime
 
@@ -265,6 +266,22 @@ class TestEntityRecordClaimEvidence:
         )
 
         assert record["claim_evidence"]["summary"]["confidence"] == "unverified"
+
+    def test_claim_evidence_accepts_postgres_date_latest_source_date(self) -> None:
+        """Postgres aggregate dates should serialize into public claim evidence."""
+        entry = _build_entry()
+        record = data_module._entity_record(  # noqa: SLF001
+            entry,
+            data_module.EntityRecordContext(
+                issue_area_ids=["mental_health_crisis_and_access"],
+                source_types=["news_article"],
+                source_count=1,
+                latest_source_date=date(2026, 1, 14),
+                independent_source_count=1,
+            ),
+        )
+
+        assert record["claim_evidence"]["summary"]["as_of"] == "2026-01-14"
 
     def test_claim_evidence_marks_fully_grounded_contact(self) -> None:
         entry = replace(

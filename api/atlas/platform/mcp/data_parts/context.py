@@ -8,6 +8,8 @@ from typing import TYPE_CHECKING, Any, TypedDict
 from atlas.models import get_db_connection
 
 if TYPE_CHECKING:
+    from datetime import date, datetime
+
     from aiosqlite import Connection
 
 
@@ -45,7 +47,7 @@ class EntityRecordContext:
         issue_area_ids: list[str],
         source_types: list[str],
         source_count: int,
-        latest_source_date: str | None,
+        latest_source_date: date | datetime | str | None,
         source_ids: list[str] | None = None,
         contact_source_ids: list[str] | None = None,
         flag_summary: Mapping[str, Any] | None = None,

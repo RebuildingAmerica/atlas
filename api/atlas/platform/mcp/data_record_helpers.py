@@ -44,7 +44,7 @@ class EntityRecordContext:
         issue_area_ids: list[str],
         source_types: list[str],
         source_count: int,
-        latest_source_date: str | None,
+        latest_source_date: date | datetime | str | None,
         source_ids: list[str] | None = None,
         contact_source_ids: list[str] | None = None,
         flag_summary: Mapping[str, Any] | None = None,
@@ -307,11 +307,14 @@ def _latest_source_date(sources: Sequence[Mapping[str, Any]], fallback: str) -> 
     return fallback
 
 
-def _entity_freshness(*, entry: EntryModel, latest_source_date: str | None) -> FreshnessInfo:
+def _entity_freshness(
+    *, entry: EntryModel, latest_source_date: date | datetime | str | None
+) -> FreshnessInfo:
+    latest_source_date_value = _date_string(latest_source_date)
     reference = (
         (entry.last_confirmed_at[:10] if entry.last_confirmed_at else None)
         or (entry.last_verified.isoformat() if entry.last_verified else None)
-        or latest_source_date
+        or latest_source_date_value
         or entry.last_seen.isoformat()
         or entry.updated_at
     )
@@ -321,7 +324,7 @@ def _entity_freshness(*, entry: EntryModel, latest_source_date: str | None) -> F
         created_at=entry.created_at,
         last_seen=entry.last_seen.isoformat(),
         last_verified=entry.last_verified.isoformat() if entry.last_verified else None,
-        latest_source_date=latest_source_date,
+        latest_source_date=latest_source_date_value,
         staleness_status=status,
         staleness_reason=reason,
     )
@@ -341,7 +344,7 @@ def _source_freshness(source: Mapping[str, Any]) -> FreshnessInfo:
     )
 
 
-def _staleness(reference: str | None, label: str) -> tuple[str, str]:
+def _staleness(reference: date | datetime | str | None, label: str) -> tuple[str, str]:
     reference_date = _coerce_date(reference)
     if reference_date is None:
         return "unknown", f"No date available for {label} freshness."
@@ -353,9 +356,13 @@ def _staleness(reference: str | None, label: str) -> tuple[str, str]:
     return "stale", f"Most recent {label} date is more than a year old."
 
 
-def _coerce_date(value: str | None) -> date | None:
+def _coerce_date(value: date | datetime | str | None) -> date | None:
     if value is None:
         return None
+    if isinstance(value, datetime):
+        return value.date()
+    if isinstance(value, date):
+        return value
     cleaned = value[:10]
     try:
         return date.fromisoformat(cleaned)
@@ -365,6 +372,11 @@ def _coerce_date(value: str | None) -> date | None:
 
 def _string_or_none(value: object | None) -> str | None:
     return None if value is None else str(value)
+
+
+def _date_string(value: date | datetime | str | None) -> str | None:
+    coerced = _coerce_date(value)
+    return coerced.isoformat() if coerced is not None else None
 
 
 def _rows_to_dicts(cursor: Any, rows: Iterable[Any]) -> list[dict[str, Any]]:

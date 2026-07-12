@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence  # noqa: TC003
-from datetime import datetime
+from datetime import date, datetime
 from typing import TYPE_CHECKING, Any
 from urllib.parse import urlparse
 
@@ -129,6 +129,7 @@ def _claim_evidence_set(
     verification_level: str,
 ) -> ClaimEvidenceSet:
     """Build evidence metadata for the visible facts on a profile."""
+    as_of = _claim_as_of(context.latest_source_date)
     base = ClaimEvidence(
         source_count=context.source_count,
         source_ids=context.source_ids,
@@ -137,7 +138,7 @@ def _claim_evidence_set(
             independent_source_count=context.independent_source_count,
             source_count=context.source_count,
         ),
-        as_of=context.latest_source_date,
+        as_of=as_of,
         verification_level=verification_level,
     )
     return ClaimEvidenceSet(
@@ -152,10 +153,19 @@ def _claim_evidence_set(
             ),
             source_ids=context.contact_source_ids,
             confidence=_contact_claim_confidence(entry, context),
-            as_of=context.latest_source_date,
+            as_of=as_of,
             verification_level=verification_level,
         ),
     )
+
+
+def _claim_as_of(value: date | datetime | str | None) -> str | None:
+    """Normalize latest-source values for public evidence metadata."""
+    if isinstance(value, datetime):
+        return value.date().isoformat()
+    if isinstance(value, date):
+        return value.isoformat()
+    return value
 
 
 def _humanize_identifier(value: str) -> str:
