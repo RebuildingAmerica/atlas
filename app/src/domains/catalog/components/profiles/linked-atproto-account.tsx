@@ -7,6 +7,14 @@ interface LinkedAtprotoAccountProps {
 
 export function LinkedAtprotoAccount({ entry }: LinkedAtprotoAccountProps) {
   const handle = entry.claim.linked_atproto_handle;
+  if (entry.claim.linked_atproto_status === "needs_attention") {
+    return (
+      <span className="inline-flex flex-col gap-0.5">
+        <span className="type-label-small text-ink-muted">ATProto identity</span>
+        <span className="type-body-small text-ink-soft">Needs attention</span>
+      </span>
+    );
+  }
   if (!handle) {
     return null;
   }
@@ -17,24 +25,15 @@ export function LinkedAtprotoAccount({ entry }: LinkedAtprotoAccountProps) {
       <span className="type-label-small text-ink-muted">
         {entry.type === "organization" ? "Representative ATProto account" : "ATProto account"}
       </span>
-      <a
-        href={atprotoProfileUrl(handle)}
-        target="_blank"
-        rel="noreferrer"
-        className="type-body-small text-ink-soft hover:text-ink-strong inline-flex items-center gap-1.5 underline-offset-2 hover:underline"
-      >
+      <span className="type-body-small text-ink-soft inline-flex items-center gap-1.5">
         <AtSign className="text-ink-muted h-3.5 w-3.5" aria-hidden />
         {handle}
-      </a>
+      </span>
       {verifiedAt ? (
         <span className="type-label-small text-ink-muted">Verified {verifiedAt}</span>
       ) : null}
     </span>
   );
-}
-
-function atprotoProfileUrl(handle: string): string {
-  return `https://bsky.app/profile/${encodeURIComponent(handle.trim().replace(/^@/, ""))}`;
 }
 
 function formatVerifiedAt(value: string | undefined): string | null {

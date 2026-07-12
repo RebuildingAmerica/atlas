@@ -10,7 +10,17 @@ vi.mock("@tanstack/react-router", async () => {
 });
 
 vi.mock("@/domains/catalog/hooks/use-claims", () => ({
+  useAttachProfileAtprotoIdentity: vi.fn(),
+  useDetachProfileAtprotoIdentity: vi.fn(),
   useManageProfile: vi.fn(),
+}));
+
+vi.mock("@/domains/access/atproto-identities", () => ({
+  useAtprotoIdentities: vi.fn(),
+}));
+
+vi.mock("@/platform/ui/confirm-dialog", () => ({
+  useConfirmDialog: vi.fn(),
 }));
 
 vi.mock("@/domains/catalog/hooks/use-entries", () => ({
@@ -42,10 +52,26 @@ describe("routes/_workspace/manage/$slug", () => {
     const { resetRouterMocks } = await import("@/../tests/helpers/router-harness");
     resetRouterMocks();
     const claims = await import("@/domains/catalog/hooks/use-claims");
+    const identities = await import("@/domains/access/atproto-identities");
+    const dialogs = await import("@/platform/ui/confirm-dialog");
     vi.mocked(claims.useManageProfile).mockReturnValue({
       mutateAsync: vi.fn().mockResolvedValue(undefined),
       isPending: false,
     } as unknown as ReturnType<typeof claims.useManageProfile>);
+    vi.mocked(claims.useAttachProfileAtprotoIdentity).mockReturnValue({
+      mutateAsync: vi.fn().mockResolvedValue(undefined),
+      isPending: false,
+    } as unknown as ReturnType<typeof claims.useAttachProfileAtprotoIdentity>);
+    vi.mocked(claims.useDetachProfileAtprotoIdentity).mockReturnValue({
+      mutateAsync: vi.fn().mockResolvedValue(undefined),
+      isPending: false,
+    } as unknown as ReturnType<typeof claims.useDetachProfileAtprotoIdentity>);
+    vi.mocked(identities.useAtprotoIdentities).mockReturnValue({
+      data: [],
+    } as unknown as ReturnType<typeof identities.useAtprotoIdentities>);
+    vi.mocked(dialogs.useConfirmDialog).mockReturnValue({
+      confirm: vi.fn().mockResolvedValue(true),
+    });
     vi.useFakeTimers();
   });
 
@@ -254,7 +280,9 @@ describe("routes/_workspace/manage/$slug", () => {
     fireEvent.change(screen.getByPlaceholderText("https://your-domain.example/your-photo.jpg"), {
       target: { value: "https://img.test/photo.jpg" },
     });
-    fireEvent.change(screen.getByRole("combobox"), { target: { value: "form" } });
+    fireEvent.change(screen.getByLabelText("Preferred contact channel"), {
+      target: { value: "form" },
+    });
 
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: /Save changes/ }));
@@ -352,5 +380,87 @@ describe("routes/_workspace/manage/$slug", () => {
       await Promise.resolve();
     });
     expect(screen.getByRole("alert")).toHaveTextContent("nope");
+  });
+
+  it("attaches a verified controlled identity", async () => {
+    const entriesHooks = await import("@/domains/catalog/hooks/use-entries");
+    const claims = await import("@/domains/catalog/hooks/use-claims");
+    const identities = await import("@/domains/access/atproto-identities");
+    const attach = vi.fn().mockResolvedValue(undefined);
+    vi.mocked(claims.useAttachProfileAtprotoIdentity).mockReturnValue({
+      mutateAsync: attach,
+      isPending: false,
+    } as unknown as ReturnType<typeof claims.useAttachProfileAtprotoIdentity>);
+    vi.mocked(identities.useAtprotoIdentities).mockReturnValue({
+      data: [
+        {
+          id: "identity-1",
+          did: "did:plc:jane",
+          current_handle: "jane.example",
+          resolution_status: "verified",
+          control_status: "active",
+        },
+      ],
+    } as unknown as ReturnType<typeof identities.useAtprotoIdentities>);
+    vi.mocked(entriesHooks.useEntryBySlug).mockReturnValue({
+      data: {
+        id: "e1",
+        slug: "jane",
+        type: "person",
+        name: "Jane",
+        sources: [],
+        claim: { status: "verified" },
+      },
+      isLoading: false,
+    } as unknown as ReturnType<typeof entriesHooks.useEntryBySlug>);
+
+    await renderManageRoute("jane");
+    fireEvent.change(screen.getByLabelText("ATProto identity"), {
+      target: { value: "identity-1" },
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Attach identity" }));
+      await Promise.resolve();
+    });
+    expect(attach).toHaveBeenCalledWith({
+      slug: "jane",
+      body: { atproto_identity_id: "identity-1", replace: false },
+    });
+  });
+
+  it("confirms and removes a public identity without disconnecting it", async () => {
+    const entriesHooks = await import("@/domains/catalog/hooks/use-entries");
+    const claims = await import("@/domains/catalog/hooks/use-claims");
+    const dialogs = await import("@/platform/ui/confirm-dialog");
+    const detach = vi.fn().mockResolvedValue(undefined);
+    const confirm = vi.fn().mockResolvedValue(true);
+    vi.mocked(dialogs.useConfirmDialog).mockReturnValue({
+      confirm,
+    });
+    vi.mocked(claims.useDetachProfileAtprotoIdentity).mockReturnValue({
+      mutateAsync: detach,
+      isPending: false,
+    } as unknown as ReturnType<typeof claims.useDetachProfileAtprotoIdentity>);
+    vi.mocked(entriesHooks.useEntryBySlug).mockReturnValue({
+      data: {
+        id: "e1",
+        slug: "jane",
+        type: "person",
+        name: "Jane",
+        sources: [],
+        claim: { status: "verified", linked_atproto_handle: "jane.example" },
+      },
+      isLoading: false,
+    } as unknown as ReturnType<typeof entriesHooks.useEntryBySlug>);
+
+    await renderManageRoute("jane");
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Remove identity" }));
+      await Promise.resolve();
+    });
+    expect(confirm).toHaveBeenCalledWith(
+      expect.objectContaining({ title: "Remove public identity?", destructive: true }),
+    );
+    expect(detach).toHaveBeenCalledWith("jane");
   });
 });

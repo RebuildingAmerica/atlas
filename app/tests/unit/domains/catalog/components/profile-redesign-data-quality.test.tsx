@@ -58,10 +58,8 @@ describe("DataQualityBlock", () => {
     expect(screen.getByText(/Verified representative/)).toBeInTheDocument();
     expect(screen.queryByText(/Verified by subject/)).not.toBeInTheDocument();
     expect(screen.getByText("Representative ATProto account")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /mississippirising.org/ })).toHaveAttribute(
-      "href",
-      "https://bsky.app/profile/mississippirising.org",
-    );
+    expect(screen.getByText("mississippirising.org")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /mississippirising.org/ })).toBeNull();
     expect(screen.getByText("Verified Jul 2026")).toBeInTheDocument();
   });
 
@@ -85,6 +83,24 @@ describe("DataQualityBlock", () => {
     expect(screen.getByText("ATProto account")).toBeInTheDocument();
     expect(screen.queryByText("Representative ATProto account")).not.toBeInTheDocument();
     expect(screen.getByText("jane.example")).toBeInTheDocument();
+  });
+
+  it("shows identity health without publishing a stale handle", () => {
+    render(
+      <DataQualityBlock
+        entry={buildEntry({
+          claim: {
+            status: "verified",
+            verification_level: "subject-verified",
+            linked_atproto_handle: "stale.example",
+            linked_atproto_status: "needs_attention",
+          },
+        })}
+      />,
+    );
+
+    expect(screen.getByText("Needs attention")).toBeInTheDocument();
+    expect(screen.queryByText("stale.example")).toBeNull();
   });
 
   it("uses the singular for a single corroborating source", () => {

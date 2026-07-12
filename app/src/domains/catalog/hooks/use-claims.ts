@@ -3,11 +3,14 @@
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { UseQueryOptions } from "@tanstack/react-query";
+import { atprotoIdentitiesQueryKey } from "@/domains/access/atproto-identities";
 import {
+  attachProfileAtprotoIdentity,
   approveProfileClaimReview,
   addSavedListItem,
   createSavedList,
   deleteSavedList,
+  detachProfileAtprotoIdentity,
   followProfile,
   getFollowingFeed,
   getProfileFollow,
@@ -31,6 +34,7 @@ import {
   type ProfileClaimReviewListResponse,
   type ProfileClaimVerifyRequest,
   type ProfileAtprotoRevalidationResponse,
+  type ProfileAtprotoIdentityAttachRequest,
   type ProfileFollowResponse,
   type SavedListCreateRequest,
   type SavedListItemRequest,
@@ -133,6 +137,33 @@ export function useManageProfile() {
       manageProfile(slug, body),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: CLAIMS_KEY });
+    },
+  });
+}
+
+export function useAttachProfileAtprotoIdentity() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ slug, body }: { slug: string; body: ProfileAtprotoIdentityAttachRequest }) =>
+      attachProfileAtprotoIdentity(slug, body),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: atprotoIdentitiesQueryKey }),
+        queryClient.invalidateQueries({ queryKey: ["entries"] }),
+      ]);
+    },
+  });
+}
+
+export function useDetachProfileAtprotoIdentity() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (slug: string) => detachProfileAtprotoIdentity(slug),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: atprotoIdentitiesQueryKey }),
+        queryClient.invalidateQueries({ queryKey: ["entries"] }),
+      ]);
     },
   });
 }

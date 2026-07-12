@@ -19,6 +19,7 @@ export interface ClaimStatusInfo {
   linked_atproto_handle?: string;
   linked_atproto_did?: string;
   linked_atproto_verified_at?: string;
+  linked_atproto_status?: "verified" | "needs_attention";
 }
 
 export type ClaimEvidenceConfidence =
@@ -124,6 +125,7 @@ export interface ProfileClaim {
   linked_atproto_handle?: string;
   linked_atproto_did?: string;
   linked_atproto_verified_at?: string;
+  linked_atproto_status?: "verified" | "needs_attention";
   verified_at?: string;
   rejected_reason?: string;
   created_at: string;

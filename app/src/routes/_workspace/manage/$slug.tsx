@@ -2,10 +2,16 @@ import { Link, createFileRoute } from "@tanstack/react-router";
 import { ArrowLeft, Contact, FileText, Image, Save, ShieldCheck } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { useManageProfile } from "@/domains/catalog/hooks/use-claims";
+import { useAtprotoIdentities } from "@/domains/access/atproto-identities";
+import {
+  useAttachProfileAtprotoIdentity,
+  useDetachProfileAtprotoIdentity,
+  useManageProfile,
+} from "@/domains/catalog/hooks/use-claims";
 import { useEntryBySlug } from "@/domains/catalog/hooks/use-entries";
 import { Badge } from "@/platform/ui/badge";
 import { Button } from "@/platform/ui/button";
+import { useConfirmDialog } from "@/platform/ui/confirm-dialog";
 import { Select } from "@/platform/ui/select";
 import type { Entry, Source } from "@/types";
 
@@ -37,6 +43,17 @@ function ManageProfileRoute() {
   });
   const entry = personQuery.data ?? orgQuery.data;
   const manageMutation = useManageProfile();
+  const identities = useAtprotoIdentities();
+  const attachIdentity = useAttachProfileAtprotoIdentity();
+  const detachIdentity = useDetachProfileAtprotoIdentity();
+  const { confirm } = useConfirmDialog();
+  const [selectedIdentityId, setSelectedIdentityId] = useState(
+    () =>
+      (typeof window === "undefined"
+        ? null
+        : new URLSearchParams(window.location.search).get("atprotoIdentityId")) ?? "",
+  );
+  const [connectHandle, setConnectHandle] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
 
@@ -75,6 +92,7 @@ function ManageProfileRoute() {
       </div>
     );
   }
+  const managedEntry = entry;
 
   function toggleSuppressed(sourceId: string) {
     setForm((current) => {
@@ -118,6 +136,60 @@ function ManageProfileRoute() {
     } catch (err) {
       setErrorMessage(err instanceof Error ? err.message : "Could not save changes.");
     }
+  }
+
+  async function handleAttachIdentity() {
+    if (!selectedIdentityId) return;
+    setErrorMessage(null);
+    const selected = identities.data?.find((identity) => identity.id === selectedIdentityId);
+    const replacing = Boolean(
+      managedEntry.claim.linked_atproto_handle &&
+      selected &&
+      managedEntry.claim.linked_atproto_handle !== selected.current_handle,
+    );
+    if (replacing) {
+      const accepted = await confirm({
+        title: "Replace public identity?",
+        body: `Replace ${managedEntry.claim.linked_atproto_handle} with ${selected?.current_handle}?`,
+        confirmLabel: "Replace",
+      });
+      if (!accepted) return;
+    }
+    try {
+      await attachIdentity.mutateAsync({
+        slug: managedEntry.slug,
+        body: { atproto_identity_id: selectedIdentityId, replace: replacing },
+      });
+      setSavedMessage("Public identity updated.");
+    } catch (err) {
+      setErrorMessage(err instanceof Error ? err.message : "Could not update public identity.");
+    }
+  }
+
+  async function handleRemoveIdentity() {
+    const accepted = await confirm({
+      title: "Remove public identity?",
+      body: "The ATProto account stays connected to your Atlas account.",
+      confirmLabel: "Remove",
+      destructive: true,
+    });
+    if (!accepted) return;
+    try {
+      await detachIdentity.mutateAsync(managedEntry.slug);
+      setSelectedIdentityId("");
+      setSavedMessage("Public identity removed.");
+    } catch (err) {
+      setErrorMessage(err instanceof Error ? err.message : "Could not remove public identity.");
+    }
+  }
+
+  function connectAnotherIdentity() {
+    const handle = connectHandle.trim();
+    if (!handle) return;
+    const startUrl = new URL("/api/atproto/oauth/start", window.location.origin);
+    startUrl.searchParams.set("handle", handle);
+    startUrl.searchParams.set("returnTo", `/manage/${managedEntry.slug}`);
+    window.location.assign(startUrl.toString());
   }
 
   const sources = entry.sources ?? [];
@@ -196,6 +268,77 @@ function ManageProfileRoute() {
               size="compact"
             />
           </ProfileField>
+        </div>
+      </FormSection>
+
+      <FormSection
+        title="Public identity"
+        description="Choose the verified ATProto identity shown on this public profile."
+      >
+        {entry.claim.linked_atproto_handle ? (
+          <p className="type-body-medium text-ink-soft">
+            Current identity: {entry.claim.linked_atproto_handle}
+          </p>
+        ) : null}
+        <label className="type-label-medium text-ink-strong grid gap-2">
+          ATProto identity
+          <select
+            value={selectedIdentityId}
+            onChange={(event) => {
+              setSelectedIdentityId(event.target.value);
+            }}
+            className="border-outline-variant focus:ring-accent bg-surface-container-lowest text-on-surface w-full rounded-lg border px-3 py-2 focus:ring-2 focus:outline-none"
+          >
+            <option value="">Choose an identity</option>
+            {identities.data
+              ?.filter(
+                (identity) =>
+                  identity.control_status === "active" && identity.resolution_status === "verified",
+              )
+              .map((identity) => (
+                <option key={identity.id} value={identity.id}>
+                  {identity.current_handle}
+                </option>
+              ))}
+          </select>
+        </label>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            disabled={!selectedIdentityId || attachIdentity.isPending}
+            onClick={() => {
+              void handleAttachIdentity();
+            }}
+          >
+            {entry.claim.linked_atproto_handle ? "Replace identity" : "Attach identity"}
+          </Button>
+          {entry.claim.linked_atproto_handle ? (
+            <Button
+              disabled={detachIdentity.isPending}
+              variant="ghost"
+              onClick={() => {
+                void handleRemoveIdentity();
+              }}
+            >
+              Remove identity
+            </Button>
+          ) : null}
+        </div>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <input
+            aria-label="Another ATProto handle"
+            value={connectHandle}
+            onChange={(event) => {
+              setConnectHandle(event.target.value);
+            }}
+            className="border-outline-variant focus:ring-accent bg-surface-container-lowest text-on-surface w-full rounded-lg border px-3 py-2 focus:ring-2 focus:outline-none"
+          />
+          <Button
+            variant="secondary"
+            disabled={!connectHandle.trim()}
+            onClick={connectAnotherIdentity}
+          >
+            Connect another account
+          </Button>
         </div>
       </FormSection>
 

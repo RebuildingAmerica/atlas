@@ -165,6 +165,11 @@ function mapEntity(entity: EntityResponse): Entry {
       linked_atproto_handle: claim?.linked_atproto_handle ?? undefined,
       linked_atproto_did: claim?.linked_atproto_did ?? undefined,
       linked_atproto_verified_at: claim?.linked_atproto_verified_at ?? undefined,
+      linked_atproto_status:
+        claim?.linked_atproto_status === "verified" ||
+        claim?.linked_atproto_status === "needs_attention"
+          ? claim.linked_atproto_status
+          : undefined,
     },
     claim_evidence: entity.claim_evidence as Entry["claim_evidence"],
     profile_answers: entity.profile_answers,
