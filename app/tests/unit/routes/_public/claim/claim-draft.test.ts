@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   clearClaimDraft,
   loadClaimDraft,
@@ -10,6 +10,7 @@ import {
 
 describe("claim draft storage", () => {
   afterEach(() => {
+    vi.unstubAllGlobals();
     window.sessionStorage.clear();
   });
 
@@ -42,5 +43,30 @@ describe("claim draft storage", () => {
 
     expect(loadClaimDraft("bad-json")).toBeNull();
     expect(loadClaimDraft("incomplete")).toBeNull();
+  });
+
+  it("ignores primitive draft data", () => {
+    window.sessionStorage.setItem("atlas:claim-draft:null", "null");
+
+    expect(loadClaimDraft("null")).toBeNull();
+  });
+
+  it("treats draft storage as unavailable during server rendering", () => {
+    vi.stubGlobal("window", undefined);
+
+    expect(loadClaimDraft("person")).toBeNull();
+    expect(() => {
+      saveClaimDraft("person", {
+        atprotoIdentityId: "",
+        dnsDomain: "",
+        evidence: "",
+        preferredContactChannel: "",
+        privateNote: "",
+        relationship: "self",
+        requestedChanges: "",
+        useActiveWorkspace: false,
+      });
+      clearClaimDraft("person");
+    }).not.toThrow();
   });
 });
