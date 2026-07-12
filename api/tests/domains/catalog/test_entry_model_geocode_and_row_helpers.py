@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import date
+
 import pytest
 
 from atlas.domains.catalog.models.entry import EntryCRUD, _row_to_entry
@@ -167,6 +169,55 @@ def test_row_to_entry_coerces_integer_coordinates_to_float() -> None:
     unplaced = _row_to_entry(missing)
     assert unplaced.latitude is None
     assert unplaced.longitude is None
+
+
+def test_row_to_entry_accepts_postgres_date_values() -> None:
+    """Postgres returns DATE columns as date objects instead of SQLite-style strings."""
+    row = {
+        "id": "postgres-date-entry",
+        "type": "organization",
+        "name": "Postgres Date Org",
+        "description": "Row builder date coercion.",
+        "city": "Las Vegas",
+        "state": "NV",
+        "region": None,
+        "geo_specificity": "local",
+        "latitude": None,
+        "longitude": None,
+        "geocode_precision": None,
+        "geocode_source": None,
+        "full_address": None,
+        "website": None,
+        "email": None,
+        "phone": None,
+        "social_media": None,
+        "affiliated_org_id": None,
+        "active": False,
+        "verified": False,
+        "last_verified": date(2026, 1, 3),
+        "contact_status": "not_contacted",
+        "editorial_notes": None,
+        "priority": None,
+        "first_seen": date(2026, 1, 1),
+        "last_seen": date(2026, 1, 2),
+        "created_at": "2026-01-01T00:00:00Z",
+        "updated_at": "2026-01-02T00:00:00Z",
+        "slug": "postgres-date-org-aaaa",
+        "photo_url": None,
+        "custom_bio": None,
+        "claim_status": "unclaimed",
+        "claimed_by_user_id": None,
+        "claim_verified_at": None,
+        "last_confirmed_at": None,
+        "suppressed_source_ids": None,
+        "preferred_contact_channel": None,
+    }
+
+    entry = _row_to_entry(row)
+
+    assert entry.last_verified == date(2026, 1, 3)
+    assert entry.first_seen == date(2026, 1, 1)
+    assert entry.last_seen == date(2026, 1, 2)
 
 
 def test_row_to_entry_ignores_non_list_suppressed_payload() -> None:
