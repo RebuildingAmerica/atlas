@@ -155,6 +155,11 @@ work that cannot affect the change:
   OpenAPI drift, acceptance, API deploy, and hosted smoke
 - production release tags always run the full gate
 
+CodeQL is also path-gated for push and pull request events so docs-only,
+Mintlify-only, Compose-only, and env-example-only changes do not start a
+two-language security scan. The scheduled weekly CodeQL scan still runs
+regardless of changed paths.
+
 Keep this classifier aligned with `turbo.json`, package `turbo.json` files, and
 the deploy workflows. If a new package can affect the hosted app or API, add it
 to the classifier before relying on CI to skip work.

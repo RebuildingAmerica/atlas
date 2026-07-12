@@ -3,7 +3,25 @@ name: CodeQL
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - "docs/**"
+      - "mintlify/**"
+      - "*.md"
+      - "compose.y*ml"
+      - "deploy/Caddyfile"
+      - ".env*.example"
+      - "api/.env.example"
+      - "app/.env.example"
   pull_request:
+    paths-ignore:
+      - "docs/**"
+      - "mintlify/**"
+      - "*.md"
+      - "compose.y*ml"
+      - "deploy/Caddyfile"
+      - ".env*.example"
+      - "api/.env.example"
+      - "app/.env.example"
   schedule:
     - cron: "0 6 * * 1"
 
