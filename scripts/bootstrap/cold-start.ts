@@ -121,7 +121,12 @@ async function main(): Promise<void> {
     log.info("Running cloud infrastructure setup only.");
     log.info(describePhase("Cloud Infrastructure"));
     attemptedPhases.add("infra");
-    const result = await runInfraPhase(projectRoot, state, args.doctorMode);
+    const result = await runInfraPhase(
+      projectRoot,
+      state,
+      args.doctorMode,
+      args.assumeYes,
+    );
     markPhase(state, "infra", resultPhaseStatus(result, args.doctorMode));
     saveReadiness(projectRoot, state);
     if (result.followUpItems.length > 0) {
@@ -384,7 +389,12 @@ async function main(): Promise<void> {
       log.step("Phase 4: Cloud Infrastructure");
       log.info(describePhase("Cloud Infrastructure"));
       attemptedPhases.add("infra");
-      const result = await runInfraPhase(projectRoot, state, args.doctorMode);
+      const result = await runInfraPhase(
+        projectRoot,
+        state,
+        args.doctorMode,
+        args.assumeYes,
+      );
       markPhase(state, "infra", resultPhaseStatus(result, args.doctorMode));
       saveReadiness(projectRoot, state);
       allFollowUp.push(...result.followUpItems);

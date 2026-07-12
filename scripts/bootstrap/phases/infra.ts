@@ -31,6 +31,7 @@ export async function runInfraPhase(
   projectRoot: string,
   state: ReadinessState,
   doctorMode: boolean,
+  assumeYes = false,
 ): Promise<InfraResult> {
   const followUpItems: string[] = [];
   const persistedConfig = readPersistedInfraConfig(projectRoot);
@@ -78,6 +79,7 @@ export async function runInfraPhase(
     doctorMode,
     followUpItems,
     persistedConfig.projectId,
+    assumeYes,
   );
   if (!projectId) {
     return emptyResult(followUpItems, false);
@@ -87,6 +89,7 @@ export async function runInfraPhase(
     doctorMode,
     persistedConfig.region,
     followUpItems,
+    assumeYes,
   );
 
   enableApis(projectId, doctorMode, followUpItems);
@@ -112,6 +115,7 @@ export async function runInfraPhase(
     wifProvider,
     doctorMode,
     followUpItems,
+    assumeYes,
   );
 
   if (!doctorMode) {

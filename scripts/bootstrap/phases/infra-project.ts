@@ -84,12 +84,14 @@ export async function setupProject(
   doctorMode: boolean,
   followUpItems: string[],
   persistedProjectId?: string,
+  assumeYes = false,
 ): Promise<ProjectInfo> {
   if (persistedProjectId) {
     const persistedProject = await reusePersistedProject(
       doctorMode,
       followUpItems,
       persistedProjectId,
+      assumeYes,
     );
     if (persistedProject) {
       return persistedProject;
@@ -247,6 +249,7 @@ async function reusePersistedProject(
   doctorMode: boolean,
   followUpItems: string[],
   projectId: string,
+  assumeYes: boolean,
 ): Promise<ProjectInfo | undefined> {
   const describeResult = describeProject(projectId);
   if (!describeResult.ok) {
@@ -256,7 +259,7 @@ async function reusePersistedProject(
 
   log.success(`GCP_PROJECT_ID already configured (${projectId})`);
 
-  if (!doctorMode) {
+  if (!doctorMode && !assumeYes) {
     const action = (await promptOrExit(
       select({
         message: formatGcpProjectChoicePromptMessage(),
@@ -291,9 +294,14 @@ export async function chooseRegion(
   doctorMode: boolean,
   persistedRegion?: string,
   followUpItems: string[] = [],
+  assumeYes = false,
 ): Promise<string> {
   if (persistedRegion) {
     log.success(`GCP_REGION already configured (${persistedRegion})`);
+
+    if (assumeYes) {
+      return persistedRegion;
+    }
 
     if (!doctorMode) {
       const action = (await promptOrExit(

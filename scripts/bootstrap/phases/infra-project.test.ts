@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
+  chooseRegion,
   formatGcpProjectChoicePromptMessage,
   formatGcpProjectIdPromptMessage,
   formatGcpRegionPromptMessage,
@@ -37,5 +38,11 @@ void describe("GCP infrastructure prompt guidance", () => {
     assert.match(message, /Cloud Run and Artifact Registry/);
     assert.match(message, /us-central1/);
     assert.match(message, /GCP_REGION/);
+  });
+
+  void it("uses the persisted region without prompting when defaults are assumed", async () => {
+    const region = await chooseRegion(false, "us-central1", [], true);
+
+    assert.equal(region, "us-central1");
   });
 });

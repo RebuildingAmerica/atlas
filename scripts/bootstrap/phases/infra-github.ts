@@ -14,6 +14,7 @@ export async function setGithubSecrets(
   wifProvider: string,
   doctorMode: boolean,
   followUpItems: string[],
+  assumeYes = false,
 ): Promise<void> {
   if (doctorMode) {
     log.info("Skipping GitHub secrets in doctor mode");
@@ -21,16 +22,18 @@ export async function setGithubSecrets(
     return;
   }
 
-  const shouldSet = await promptConfirm(
-    [
-      `Set GitHub secrets for ${githubRepo}?`,
-      "",
-      "Bootstrap will write deploy and app runtime values from local env files into GitHub Actions secrets.",
-      "Choose Yes only if this repository is the Atlas deployment repository.",
-      "Choose No to skip CI/CD secret sync for now.",
-    ].join("\n"),
-    true,
-  );
+  const shouldSet =
+    assumeYes ||
+    (await promptConfirm(
+      [
+        `Set GitHub secrets for ${githubRepo}?`,
+        "",
+        "Bootstrap will write deploy and app runtime values from local env files into GitHub Actions secrets.",
+        "Choose Yes only if this repository is the Atlas deployment repository.",
+        "Choose No to skip CI/CD secret sync for now.",
+      ].join("\n"),
+      true,
+    ));
 
   if (!shouldSet) {
     log.warn("Skipped GitHub secrets. Set them manually before deploying.");
