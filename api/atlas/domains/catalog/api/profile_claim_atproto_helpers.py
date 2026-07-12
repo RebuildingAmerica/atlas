@@ -10,6 +10,11 @@ from atlas.domains.catalog.models.atproto_identities import (
     AtprotoIdentityCRUD,
     AtprotoIdentityModel,
 )
+from atlas.domains.catalog.models.atproto_identity_controls import AtprotoIdentityControlCRUD
+from atlas.domains.catalog.models.profile_atproto_links import (
+    ProfileAtprotoLinkCRUD,
+    ProfileAtprotoLinkEvidence,
+)
 from atlas.domains.catalog.models.profile_claims import ProfileClaimCRUD
 from atlas.domains.catalog.services.atproto_identity import verify_current_atproto_identity
 from atlas.domains.catalog.services.profile_claims import ProfileClaimPolicy, entry_claim_domains
@@ -24,21 +29,15 @@ async def link_entry_atproto_identity(
     db: aiosqlite.Connection,
     entry_id: str,
     *,
-    did: str,
-    handle: str,
-    verified_at: str | None,
+    identity_id: str,
+    evidence: ProfileAtprotoLinkEvidence | None = None,
 ) -> None:
     """Attach the verified ATProto identity displayed on a public profile."""
-    await db.execute(
-        """
-        UPDATE entries
-        SET linked_atproto_did = ?,
-            linked_atproto_handle = ?,
-            linked_atproto_verified_at = ?,
-            updated_at = CURRENT_TIMESTAMP
-        WHERE id = ?
-        """,
-        (did, handle, verified_at, entry_id),
+    await ProfileAtprotoLinkCRUD.attach(
+        db,
+        entry_id=entry_id,
+        identity_id=identity_id,
+        evidence=evidence,
     )
     await db.commit()
 
@@ -47,19 +46,20 @@ async def link_entry_atproto_identity_if_current(
     db: aiosqlite.Connection,
     entry_id: str,
     *,
-    did: str,
-    handle: str,
-    verified_at: str | None,
+    identity_id: str,
+    evidence: ProfileAtprotoLinkEvidence | None = None,
 ) -> bool:
     """Attach an ATProto identity only while its public handle/DID still agree."""
-    if not await verify_current_atproto_identity(handle, did):
+    identity = await AtprotoIdentityCRUD.get_by_id(db, identity_id)
+    if identity is None or not await verify_current_atproto_identity(
+        identity.current_handle, identity.did
+    ):
         return False
     await link_entry_atproto_identity(
         db,
         entry_id,
-        did=did,
-        handle=handle,
-        verified_at=verified_at,
+        identity_id=identity.id,
+        evidence=evidence,
     )
     return True
 
@@ -76,16 +76,18 @@ async def link_atproto_proof_if_present(
     atproto_proof = next((proof for proof in proofs if proof.proof_type == "atproto"), None)
     if atproto_proof is None or not isinstance(atproto_proof.metadata, dict):
         return
-    did = atproto_proof.metadata.get("did")
-    handle = atproto_proof.metadata.get("handle")
-    if not isinstance(did, str) or not isinstance(handle, str):
+    identity_id = atproto_proof.metadata.get("identity_id")
+    if not isinstance(identity_id, str):
         return
     linked = await link_entry_atproto_identity_if_current(
         db,
         entry_id,
-        did=did,
-        handle=handle,
-        verified_at=verified_at,
+        identity_id=identity_id,
+        evidence=ProfileAtprotoLinkEvidence(
+            claim_id=claim_id,
+            proof_id=atproto_proof.id,
+            verified_at=verified_at,
+        ),
     )
     if not linked:
         return
@@ -130,7 +132,10 @@ async def apply_atproto_claim_proof(  # noqa: PLR0913
 ) -> tuple[AtprotoIdentityModel, bool]:
     """Attach ATProto proof to a profile claim."""
     identity = await AtprotoIdentityCRUD.get_by_id(db, identity_id)
-    if identity is None or identity.user_id != actor.user_id:
+    control = await AtprotoIdentityControlCRUD.get_active_for_user_and_identity(
+        db, user_id=actor.user_id, identity_id=identity_id
+    )
+    if identity is None or control is None:
         raise HTTPException(status_code=404, detail="Linked ATProto identity not found.")
     domain_matches = claim_policy.atproto_handle_domain_matches_entry(
         entry, identity.current_handle
@@ -149,6 +154,7 @@ async def apply_atproto_claim_proof(  # noqa: PLR0913
             detail="Reconnect this ATProto account before using it for verification.",
         )
     proof_metadata: dict[str, object] = {
+        "identity_id": identity.id,
         "did": identity.did,
         "handle": identity.current_handle,
         "handle_is_generic": is_generic_atproto_handle(identity.current_handle),

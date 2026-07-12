@@ -84,6 +84,9 @@ def _entity_record(entry: EntryModel, context: EntityRecordContext) -> dict[str,
             "linked_atproto_verified_at": entry.linked_atproto_verified_at
             if entry.claim_status == "verified"
             else None,
+            "linked_atproto_status": entry.linked_atproto_status
+            if entry.claim_status == "verified"
+            else None,
         },
         claim_evidence=claim_evidence,
         profile_answers=_profile_answers(

@@ -6,7 +6,7 @@ import pytest
 from fastapi import status
 
 from atlas.domains.access.membership import MembershipResult
-from atlas.domains.catalog.models.atproto_identities import AtprotoIdentityCRUD
+from atlas.domains.catalog.models.atproto_identity_controls import AtprotoIdentityControlCRUD
 from atlas.domains.catalog.models.profile_claims import ProfileClaimCRUD
 from atlas.models import EntryCRUD
 
@@ -34,13 +34,14 @@ async def test_generic_atproto_handle_links_when_workspace_domain_verifies(
         "atlas.domains.catalog.api.profile_claim_atproto_helpers.verify_current_atproto_identity",
         _valid_atproto_identity,
     )
-    identity = await AtprotoIdentityCRUD.upsert(
+    identity, _control = await AtprotoIdentityControlCRUD.connect(
         test_db,
         user_id="user_1",
         did="did:plc:generic",
         handle="mississippi-rising.bsky.social",
         pds_url="https://bsky.social",
     )
+    await test_db.commit()
 
     membership_checks = 0
 
@@ -116,13 +117,14 @@ async def test_stale_atproto_handle_does_not_link_when_workspace_domain_verifies
         "atlas.domains.catalog.api.profile_claim_atproto_helpers.verify_current_atproto_identity",
         changing_identity,
     )
-    identity = await AtprotoIdentityCRUD.upsert(
+    identity, _control = await AtprotoIdentityControlCRUD.connect(
         test_db,
         user_id="user_1",
         did="did:plc:generic",
         handle="mississippi-rising.bsky.social",
         pds_url="https://bsky.social",
     )
+    await test_db.commit()
 
     async def fake_verify_org_membership(
         _user_id: str,
@@ -180,13 +182,14 @@ async def test_generic_atproto_handle_links_when_dns_domain_verifies(
         "atlas.domains.catalog.api.profile_claim_atproto_helpers.verify_current_atproto_identity",
         _valid_atproto_identity,
     )
-    identity = await AtprotoIdentityCRUD.upsert(
+    identity, _control = await AtprotoIdentityControlCRUD.connect(
         test_db,
         user_id="local-operator",
         did="did:plc:dnsgeneric",
         handle="mississippi-rising.bsky.social",
         pds_url="https://bsky.social",
     )
+    await test_db.commit()
 
     class FakeClaimDnsResolver:
         async def resolve_txt_records(self, _domain: str) -> set[str]:
@@ -241,13 +244,14 @@ async def test_generic_atproto_handle_requires_domain_or_workspace_backing(
         "atlas.domains.catalog.api.profile_claim_atproto_helpers.verify_current_atproto_identity",
         fail_identity_check,
     )
-    identity = await AtprotoIdentityCRUD.upsert(
+    identity, _control = await AtprotoIdentityControlCRUD.connect(
         test_db,
         user_id="local-operator",
         did="did:plc:generic-alone",
         handle="mississippi-rising.bsky.social",
         pds_url="https://bsky.social",
     )
+    await test_db.commit()
     slug = (await EntryCRUD.get_by_id(test_db, claimable_org)).slug
 
     response = await test_client.post(

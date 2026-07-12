@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 from fastapi import status
 
-from atlas.domains.catalog.models.atproto_identities import AtprotoIdentityCRUD
+from atlas.domains.catalog.models.atproto_identity_controls import AtprotoIdentityControlCRUD
 from atlas.models import EntryCRUD
 
 
@@ -16,13 +16,14 @@ async def test_matching_atproto_identity_is_rechecked_before_profile_verifies(
     claimable_org: str,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    identity = await AtprotoIdentityCRUD.upsert(
+    identity, _control = await AtprotoIdentityControlCRUD.connect(
         test_db,
         user_id="local-operator",
         did="did:plc:stale",
         handle="mississippirising.org",
         pds_url="https://bsky.social",
     )
+    await test_db.commit()
     calls: list[tuple[str, str]] = []
 
     async def fake_verify_current_identity(handle: str, did: str) -> bool:

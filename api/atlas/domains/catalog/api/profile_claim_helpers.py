@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Any
 from fastapi import Depends, HTTPException
 
 from atlas.domains.access.membership import MembershipResult, verify_org_membership
+from atlas.domains.catalog.models.profile_atproto_links import ProfileAtprotoLinkCRUD
 from atlas.domains.catalog.models.profile_claims import (
     ProfileClaimCRUD,
     ProfileClaimModel,
@@ -72,6 +73,7 @@ async def claim_to_response(
 ) -> ProfileClaimResponse:
     """Convert a claim record into its public API schema."""
     proofs = await ProfileClaimCRUD.list_proofs(db, claim.id)
+    linked_identity = await ProfileAtprotoLinkCRUD.get_verified_public_identity(db, entry.id)
     return ProfileClaimResponse(
         id=claim.id,
         entry_id=claim.entry_id,
@@ -83,9 +85,9 @@ async def claim_to_response(
         tier=claim.tier,
         evidence=(json.loads(claim.evidence_json) if claim.evidence_json else None),
         proofs=[proof_to_response(proof) for proof in proofs],
-        linked_atproto_handle=entry.linked_atproto_handle,
-        linked_atproto_did=entry.linked_atproto_did,
-        linked_atproto_verified_at=entry.linked_atproto_verified_at,
+        linked_atproto_handle=linked_identity.handle if linked_identity else None,
+        linked_atproto_did=linked_identity.did if linked_identity else None,
+        linked_atproto_verified_at=linked_identity.verified_at if linked_identity else None,
         verified_at=claim.verified_at,
         rejected_reason=claim.rejected_reason,
         created_at=claim.created_at,

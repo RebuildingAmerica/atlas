@@ -257,6 +257,10 @@ class ClaimStatusInfo(BaseModel):
         description="Stable ATProto DID behind the verified linked handle.",
     )
     linked_atproto_verified_at: str | None = None
+    linked_atproto_status: str | None = Field(
+        None,
+        description="verified when the DID relation is healthy; needs_attention otherwise.",
+    )
 
 
 class ClaimEvidence(BaseModel):

@@ -17,7 +17,7 @@ from atlas.domains.catalog.api.profile_claim_helpers import (
     validate_workspace_claim_backing,
     verify_claim_with_entry,
 )
-from atlas.domains.catalog.models.atproto_identities import AtprotoIdentityCRUD
+from atlas.domains.catalog.models.atproto_identity_controls import AtprotoIdentityControlCRUD
 from atlas.domains.catalog.models.profile_claims import ProfileClaimCRUD
 from atlas.models import EntryCRUD
 
@@ -189,13 +189,14 @@ class TestProfileClaimAPI:
             "atlas.domains.catalog.api.profile_claim_atproto_helpers.verify_current_atproto_identity",
             _valid_atproto_identity,
         )
-        identity = await AtprotoIdentityCRUD.upsert(
+        identity, _control = await AtprotoIdentityControlCRUD.connect(
             test_db,
             user_id="local-operator",
             did="did:plc:mississippirising",
             handle="mississippirising.org",
             pds_url="https://bsky.social",
         )
+        await test_db.commit()
         slug = (await EntryCRUD.get_by_id(test_db, claimable_org)).slug
 
         resp = await test_client.post(

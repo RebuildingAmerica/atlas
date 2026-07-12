@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, Any
 
 from atlas.platform.database import db
 
-from .entry_model import EntryModel, _row_to_entry
+from .entry_model import EntryModel, _hydrate_atproto_identities, _row_to_entry
 
 if TYPE_CHECKING:
     import aiosqlite
@@ -208,7 +208,7 @@ class EntryLookupMixin:
 
         columns = [col[0] for col in cursor.description]
         data = dict(zip(columns, row, strict=False))
-        return _row_to_entry(data)
+        return (await _hydrate_atproto_identities(conn, [_row_to_entry(data)]))[0]
 
     @staticmethod
     async def get_by_slug(conn: aiosqlite.Connection, slug: str) -> EntryModel | None:
@@ -234,7 +234,8 @@ class EntryLookupMixin:
         if row is None:
             return None
         columns = [desc[0] for desc in cursor.description]
-        return _row_to_entry(dict(zip(columns, row, strict=False)))
+        entry = _row_to_entry(dict(zip(columns, row, strict=False)))
+        return (await _hydrate_atproto_identities(conn, [entry]))[0]
 
     @staticmethod
     async def resolve_slug(conn: aiosqlite.Connection, slug: str) -> dict[str, Any] | None:

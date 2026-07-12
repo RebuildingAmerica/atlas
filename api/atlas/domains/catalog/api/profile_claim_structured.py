@@ -21,6 +21,8 @@ from atlas.domains.catalog.models.atproto_identities import (
     AtprotoIdentityCRUD,
     AtprotoIdentityModel,
 )
+from atlas.domains.catalog.models.atproto_identity_controls import AtprotoIdentityControlCRUD
+from atlas.domains.catalog.models.profile_atproto_links import ProfileAtprotoLinkEvidence
 from atlas.domains.catalog.services.profile_claims import ProfileClaimPolicy, entry_claim_domains
 from atlas.models import EntryCRUD
 
@@ -45,7 +47,10 @@ async def validate_atproto_organization_backing(  # noqa: PLR0913
 ) -> None:
     """Reject weak organization ATProto proof before a claim row is created."""
     identity = await AtprotoIdentityCRUD.get_by_id(db, identity_id)
-    if identity is None or identity.user_id != actor.user_id:
+    control = await AtprotoIdentityControlCRUD.get_active_for_user_and_identity(
+        db, user_id=actor.user_id, identity_id=identity_id
+    )
+    if identity is None or control is None:
         raise HTTPException(status_code=404, detail="Linked ATProto identity not found.")
     domain_matches = claim_policy.atproto_handle_domain_matches_entry(
         entry, identity.current_handle
@@ -137,9 +142,11 @@ async def apply_structured_proofs(  # noqa: PLR0913
         linked = await link_entry_atproto_identity_if_current(
             db,
             entry.id,
-            did=linked_identity.did,
-            handle=linked_identity.current_handle,
-            verified_at=verified_claim.verified_at,
+            identity_id=linked_identity.id,
+            evidence=ProfileAtprotoLinkEvidence(
+                claim_id=claim.id,
+                verified_at=verified_claim.verified_at,
+            ),
         )
         if linked:
             await mark_atproto_proof_verified_if_present(db, claim.id)

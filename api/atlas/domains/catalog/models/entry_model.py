@@ -11,7 +11,13 @@ from atlas.platform.dates import require_date
 if TYPE_CHECKING:
     from datetime import date
 
-__all__ = ["EntryModel", "_row_to_entry", "actor_quality", "trust_tier"]
+__all__ = [
+    "EntryModel",
+    "_hydrate_atproto_identities",
+    "_row_to_entry",
+    "actor_quality",
+    "trust_tier",
+]
 
 
 @dataclass
@@ -56,6 +62,7 @@ class EntryModel:
     linked_atproto_did: str | None = None
     linked_atproto_handle: str | None = None
     linked_atproto_verified_at: str | None = None
+    linked_atproto_status: str | None = None
     suppressed_source_ids: list[str] = field(default_factory=list)
     preferred_contact_channel: str | None = None
 
@@ -162,9 +169,42 @@ def _row_to_entry(row: dict[str, Any]) -> EntryModel:
         linked_atproto_did=row.get("linked_atproto_did"),
         linked_atproto_handle=row.get("linked_atproto_handle"),
         linked_atproto_verified_at=row.get("linked_atproto_verified_at"),
+        linked_atproto_status=row.get("linked_atproto_status"),
         suppressed_source_ids=suppressed,
         preferred_contact_channel=row.get("preferred_contact_channel"),
     )
+
+
+async def _hydrate_atproto_identities(conn: Any, entries: list[EntryModel]) -> list[EntryModel]:
+    """Derive public ATProto fields from healthy verified profile relations."""
+    if not entries:
+        return entries
+    placeholders = ", ".join("?" for _entry in entries)
+    cursor = await conn.execute(
+        f"""
+        SELECT links.entry_id, identities.did, identities.current_handle, links.verified_at,
+               links.status, identities.resolution_status
+        FROM profile_atproto_links AS links
+        JOIN atproto_identities AS identities ON identities.id = links.identity_id
+        WHERE links.entry_id IN ({placeholders})
+          AND links.status <> 'removed'
+        """,
+        [entry.id for entry in entries],
+    )
+    linked = {row[0]: row[1:] for row in await cursor.fetchall()}
+    for entry in entries:
+        identity = linked.get(entry.id)
+        if identity is not None and identity[3] == "verified" and identity[4] == "verified":
+            entry.linked_atproto_did = identity[0]
+            entry.linked_atproto_handle = identity[1]
+            entry.linked_atproto_verified_at = identity[2]
+            entry.linked_atproto_status = "verified"
+        else:
+            entry.linked_atproto_did = None
+            entry.linked_atproto_handle = None
+            entry.linked_atproto_verified_at = None
+            entry.linked_atproto_status = "needs_attention" if identity else None
+    return entries
 
 
 _MIN_CORROBORATING_SOURCES = 2

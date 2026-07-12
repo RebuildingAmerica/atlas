@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from .entry_model import EntryModel, _row_to_entry
+from .entry_model import EntryModel, _hydrate_atproto_identities, _row_to_entry
 
 if TYPE_CHECKING:
     from builtins import list as builtin_list
@@ -75,7 +75,8 @@ class EntryListingMixin:
             return []
 
         columns = [col[0] for col in cursor.description]
-        return [_row_to_entry(dict(zip(columns, row, strict=False))) for row in rows]
+        entries = [_row_to_entry(dict(zip(columns, row, strict=False))) for row in rows]
+        return await _hydrate_atproto_identities(conn, entries)
 
     @staticmethod
     async def search_fts(
@@ -120,7 +121,8 @@ class EntryListingMixin:
             return []
 
         columns = [col[0] for col in cursor.description]
-        return [_row_to_entry(dict(zip(columns, row, strict=False))) for row in rows]
+        entries = [_row_to_entry(dict(zip(columns, row, strict=False))) for row in rows]
+        return await _hydrate_atproto_identities(conn, entries)
 
     @staticmethod
     async def filter_by_issue_area(
@@ -172,7 +174,8 @@ class EntryListingMixin:
             return []
 
         columns = [col[0] for col in cursor.description]
-        return [_row_to_entry(dict(zip(columns, row, strict=False))) for row in rows]
+        entries = [_row_to_entry(dict(zip(columns, row, strict=False))) for row in rows]
+        return await _hydrate_atproto_identities(conn, entries)
 
     @staticmethod
     async def get_with_sources(
@@ -205,6 +208,7 @@ class EntryListingMixin:
 
         columns = [col[0] for col in cursor.description]
         entry = _row_to_entry(dict(zip(columns, row, strict=False)))
+        entry = (await _hydrate_atproto_identities(conn, [entry]))[0]
 
         cursor = await conn.execute(
             """

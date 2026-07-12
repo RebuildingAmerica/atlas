@@ -68,7 +68,7 @@ async def list_profile_claim_reviews(
     "/claims/review/atproto/revalidate",
     response_model=ProfileAtprotoRevalidationResponse,
     summary="Recheck linked ATProto profiles",
-    description="Remove linked ATProto profiles whose current handle and DID no longer match.",
+    description="Flag linked ATProto profiles whose current handle and DID no longer match.",
     operation_id="revalidateProfileAtprotoLinks",
     tags=["claims"],
 )
@@ -77,11 +77,13 @@ async def revalidate_profile_atproto_links(
     actor: AuthenticatedActor = Depends(require_actor_permission("discovery", "write")),
     db: aiosqlite.Connection = Depends(get_db),
 ) -> ProfileAtprotoRevalidationResponse:
-    """Recheck public ATProto profile links and clear stale identities."""
+    """Recheck public ATProto profile links without deleting identity provenance."""
     _ = actor
     result = await revalidate_linked_atproto_profiles(db)
     apply_no_store_headers(response)
-    return ProfileAtprotoRevalidationResponse(checked=result.checked, cleared=result.cleared)
+    return ProfileAtprotoRevalidationResponse(
+        checked=result.checked, needs_attention=result.needs_attention
+    )
 
 
 @router.post(

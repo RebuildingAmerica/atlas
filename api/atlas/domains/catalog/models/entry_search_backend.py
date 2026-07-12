@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from atlas.domains.catalog.models.entry_model import _row_to_entry
+from atlas.domains.catalog.models.entry_model import _hydrate_atproto_identities, _row_to_entry
 
 from .entry_search_helpers import (
     _empty_facets,
@@ -148,6 +148,8 @@ async def load_entries_with_metrics(
                 "latest_source_date": data["latest_source_date"],
             }
         )
+    entries = [record["entry"] for record in records]
+    await _hydrate_atproto_identities(conn, entries)
     return records
 
 
