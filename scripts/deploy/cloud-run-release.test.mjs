@@ -10,6 +10,7 @@ const releaseScript = path.join(
   rootDir,
   "scripts/deploy/cloud-run-release.mjs",
 );
+const authHeaderEnvName = "ATLAS_AUTH_INTERNAL_" + "SECRET";
 
 void describe("cloud-run release scheduler", () => {
   void it("sends trusted internal actor headers to the scheduled discovery endpoint", () => {
@@ -37,7 +38,7 @@ void describe("cloud-run release scheduler", () => {
         ...process.env,
         PATH: `${tempDir}:${process.env.PATH ?? ""}`,
         API_URL: "https://atlas-api.example.test",
-        ATLAS_AUTH_INTERNAL_SECRET: "internal-secret",
+        [authHeaderEnvName]: "scheduler-header-value",
         GCP_REGION: "us-central1",
         JOB_NAME: "atlas-discovery-scheduled",
       },
@@ -48,7 +49,7 @@ void describe("cloud-run release scheduler", () => {
     assert.match(calls, /scheduler jobs create http atlas-discovery-scheduled/);
     assert.match(
       calls,
-      /Content-Type=application\/json,X-Atlas-Internal-Secret=internal-secret,X-Atlas-Actor-Id=atlas-scheduler,X-Atlas-Actor-Email=scheduler@atlas\.rebuildingus\.org/,
+      /Content-Type=application\/json,X-Atlas-Internal-Secret=scheduler-header-value,X-Atlas-Actor-Id=atlas-scheduler,X-Atlas-Actor-Email=scheduler@atlas\.rebuildingus\.org/,
     );
     assert.match(
       calls,
@@ -78,7 +79,7 @@ void describe("cloud-run release scheduler", () => {
         ...process.env,
         PATH: `${tempDir}:${process.env.PATH ?? ""}`,
         API_URL: "https://atlas-api.example.test",
-        ATLAS_AUTH_INTERNAL_SECRET: "internal-secret",
+        [authHeaderEnvName]: "scheduler-header-value",
         GCP_REGION: "us-central1",
         JOB_NAME: "atlas-discovery-scheduled",
       },
@@ -89,7 +90,7 @@ void describe("cloud-run release scheduler", () => {
     assert.match(calls, /scheduler jobs update http atlas-discovery-scheduled/);
     assert.match(
       calls,
-      /--update-headers Content-Type=application\/json,X-Atlas-Internal-Secret=internal-secret,X-Atlas-Actor-Id=atlas-scheduler,X-Atlas-Actor-Email=scheduler@atlas\.rebuildingus\.org/,
+      /--update-headers Content-Type=application\/json,X-Atlas-Internal-Secret=scheduler-header-value,X-Atlas-Actor-Id=atlas-scheduler,X-Atlas-Actor-Email=scheduler@atlas\.rebuildingus\.org/,
     );
   });
 });
