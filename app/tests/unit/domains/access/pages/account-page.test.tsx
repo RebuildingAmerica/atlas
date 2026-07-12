@@ -45,6 +45,10 @@ describe("AccountPage", () => {
     expect(screen.getByRole("heading", { name: "Profile" })).not.toBeNull();
     expect(screen.getByRole("heading", { name: "Identity" })).not.toBeNull();
     expect(screen.getByText("No ATProto accounts connected.")).not.toBeNull();
+    fireEvent.change(screen.getByRole("textbox", { name: "ATProto handle" }), {
+      target: { value: "person.example" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Connect ATProto account" }));
     expect(screen.getByText("Personal details")).not.toBeNull();
     expect(screen.getByText("Workspace context")).not.toBeNull();
     expect(screen.getByText("Atlas Team")).not.toBeNull();
