@@ -19,7 +19,9 @@ test("deploy helper scripts validate without redeploying staging", () => {
 });
 
 test("ordinary app changes run browser acceptance without Stripe acceptance", () => {
-  const outputs = outputsFor(["app/src/domains/catalog/pages/profile-page.tsx"]);
+  const outputs = outputsFor([
+    "app/src/domains/catalog/pages/profile-page.tsx",
+  ]);
 
   assert.equal(outputs.app_tests, true);
   assert.equal(outputs.browser_acceptance, true);
@@ -28,7 +30,9 @@ test("ordinary app changes run browser acceptance without Stripe acceptance", ()
 });
 
 test("billing app changes run browser and Stripe acceptance", () => {
-  const outputs = outputsFor(["app/src/domains/billing/server/webhook-handler.ts"]);
+  const outputs = outputsFor([
+    "app/src/domains/billing/server/webhook-handler.ts",
+  ]);
 
   assert.equal(outputs.app_tests, true);
   assert.equal(outputs.browser_acceptance, true);
@@ -36,7 +40,9 @@ test("billing app changes run browser and Stripe acceptance", () => {
 });
 
 test("billing acceptance spec changes run Stripe acceptance", () => {
-  const outputs = outputsFor(["app/tests/acceptance/domains/billing/oobe.spec.ts"]);
+  const outputs = outputsFor([
+    "app/tests/acceptance/domains/billing/oobe.spec.ts",
+  ]);
 
   assert.equal(outputs.browser_acceptance, true);
   assert.equal(outputs.stripe_acceptance, true);
@@ -64,6 +70,17 @@ test("staging deploy workflow changes exercise the staging deploy path", () => {
   assert.equal(outputs.deploy_scripts, true);
   assert.equal(outputs.staging_api_deploy, true);
   assert.equal(outputs.hosted_smoke, true);
+});
+
+test("trusted-source helper changes lint actions without running hosted smoke", () => {
+  const outputs = outputsFor([
+    ".github/actions/vercel-trusted-oidc/action.yml",
+  ]);
+
+  assert.equal(outputs.actions_lint, true);
+  assert.equal(outputs.deploy_scripts, false);
+  assert.equal(outputs.staging_api_deploy, false);
+  assert.equal(outputs.hosted_smoke, false);
 });
 
 test("production-only deploy workflow changes do not redeploy staging", () => {

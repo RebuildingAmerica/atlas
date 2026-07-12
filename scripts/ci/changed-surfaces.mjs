@@ -111,7 +111,6 @@ const STAGING_API_DEPLOY_PATHS = [
 ];
 
 const HOSTED_SMOKE_AUTOMATION_PATHS = [
-  /^\.github\/actions\/vercel-trusted-oidc\//,
   /^\.github\/workflows\/deploy-staging\.ya?ml$/,
 ];
 

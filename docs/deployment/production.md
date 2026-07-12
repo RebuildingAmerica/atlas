@@ -298,8 +298,10 @@ Atlas workflows explicitly mint GitHub OIDC tokens with
 `https://github.com/RebuildingAmerica` as the audience. Keep the Trusted Sources
 audience on that exact value.
 
-12. Add one environment mapping to `staging` or `preview`, depending on how the
-    Vercel UI names the custom environment.
+12. Add one environment mapping to `staging`. The Atlas Vercel project has a
+    custom environment with slug `staging`; a rule that only applies to generic
+    `preview` deployments will not bypass protection for
+    `atlas-staging.rebuildingus.org`.
 13. Add a second environment mapping to `production`.
 
 Those settings make `main` the continuous staging target while keeping
