@@ -463,4 +463,102 @@ describe("routes/_workspace/manage/$slug", () => {
     );
     expect(detach).toHaveBeenCalledWith("jane");
   });
+
+  it("requires confirmation before replacing the public identity", async () => {
+    const entriesHooks = await import("@/domains/catalog/hooks/use-entries");
+    const claims = await import("@/domains/catalog/hooks/use-claims");
+    const identities = await import("@/domains/access/atproto-identities");
+    const dialogs = await import("@/platform/ui/confirm-dialog");
+    const attach = vi.fn().mockResolvedValue(undefined);
+    const confirm = vi.fn().mockResolvedValue(true);
+    vi.mocked(dialogs.useConfirmDialog).mockReturnValue({ confirm });
+    vi.mocked(claims.useAttachProfileAtprotoIdentity).mockReturnValue({
+      mutateAsync: attach,
+      isPending: false,
+    } as unknown as ReturnType<typeof claims.useAttachProfileAtprotoIdentity>);
+    vi.mocked(identities.useAtprotoIdentities).mockReturnValue({
+      data: [
+        {
+          id: "identity-new",
+          did: "did:plc:new",
+          current_handle: "new.example",
+          resolution_status: "verified",
+          control_status: "active",
+        },
+      ],
+    } as unknown as ReturnType<typeof identities.useAtprotoIdentities>);
+    vi.mocked(entriesHooks.useEntryBySlug).mockReturnValue({
+      data: {
+        id: "e1",
+        slug: "jane",
+        type: "person",
+        name: "Jane",
+        sources: [],
+        claim: { status: "verified", linked_atproto_handle: "old.example" },
+      },
+      isLoading: false,
+    } as unknown as ReturnType<typeof entriesHooks.useEntryBySlug>);
+
+    await renderManageRoute("jane");
+    fireEvent.change(screen.getByLabelText("ATProto identity"), {
+      target: { value: "identity-new" },
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Replace identity" }));
+      await Promise.resolve();
+    });
+    expect(confirm).toHaveBeenCalledWith(
+      expect.objectContaining({ title: "Replace public identity?" }),
+    );
+    expect(attach).toHaveBeenCalledWith({
+      slug: "jane",
+      body: { atproto_identity_id: "identity-new", replace: true },
+    });
+  });
+
+  it("excludes disconnected and attention-required identities", async () => {
+    const entriesHooks = await import("@/domains/catalog/hooks/use-entries");
+    const identities = await import("@/domains/access/atproto-identities");
+    vi.mocked(identities.useAtprotoIdentities).mockReturnValue({
+      data: [
+        {
+          id: "identity-active",
+          did: "did:plc:active",
+          current_handle: "active.example",
+          resolution_status: "verified",
+          control_status: "active",
+        },
+        {
+          id: "identity-disconnected",
+          did: "did:plc:disconnected",
+          current_handle: "disconnected.example",
+          resolution_status: "verified",
+          control_status: "disconnected",
+        },
+        {
+          id: "identity-stale",
+          did: "did:plc:stale",
+          current_handle: "stale.example",
+          resolution_status: "needs_attention",
+          control_status: "active",
+        },
+      ],
+    } as unknown as ReturnType<typeof identities.useAtprotoIdentities>);
+    vi.mocked(entriesHooks.useEntryBySlug).mockReturnValue({
+      data: {
+        id: "e1",
+        slug: "jane",
+        type: "person",
+        name: "Jane",
+        sources: [],
+        claim: { status: "verified" },
+      },
+      isLoading: false,
+    } as unknown as ReturnType<typeof entriesHooks.useEntryBySlug>);
+
+    await renderManageRoute("jane");
+    expect(screen.getByRole("option", { name: "active.example" })).toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: "disconnected.example" })).toBeNull();
+    expect(screen.queryByRole("option", { name: "stale.example" })).toBeNull();
+  });
 });
