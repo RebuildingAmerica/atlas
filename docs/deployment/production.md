@@ -267,15 +267,30 @@ Configure these in the Vercel dashboard for the `atlas` project:
 4. Assign `atlas.rebuildingus.org` to Production.
 5. Assign `atlas-staging.rebuildingus.org` to the `main` Preview branch.
 6. Open **Settings > Deployment Protection > Trusted Sources**.
-7. Add a GitHub Actions external service for `RebuildingAmerica/atlas` with
-   audience `https://github.com/RebuildingAmerica`.
-8. Add one rule for GitHub Actions environment `staging` that applies to Vercel
-   Preview.
-9. Add one rule for GitHub Actions environment `production` that applies to
-   Vercel Production.
+7. Add a GitHub Actions external service with:
+   - provider: `GitHub Actions`
+   - issuer: `https://token.actions.githubusercontent.com`
+   - account: `RebuildingAmerica`
+   - repository: `atlas`
+   - workflow: Any workflow
+   - branch: Any branch
+   - audience: `https://github.com/RebuildingAmerica`
+8. Add one environment mapping to `preview`.
+9. Add a second environment mapping to `production`.
 
 Those settings make `main` the continuous staging target while keeping
 production behind explicit `v*` release tags.
+
+Vercel has two different OIDC surfaces:
+
+- **Trusted Sources** lets GitHub Actions reach protected Vercel deployments
+  during hosted smoke checks. Atlas uses this with the
+  `x-vercel-trusted-oidc-idp-token` request header.
+- **Vercel OIDC Federation** gives code running on Vercel a `VERCEL_OIDC_TOKEN`
+  for backend/cloud access. Atlas does not use that token for Vercel CLI
+  deployments.
+
+The Vercel CLI still needs `VERCEL_TOKEN` for `vercel deploy --prod`.
 
 The project also keeps this Ignored Build Step as a safety guard:
 
@@ -285,6 +300,20 @@ if [ "$VERCEL_ENV" = "production" ] && [ "$VERCEL_GIT_COMMIT_REF" = "main" ]; th
 
 That guard skips only production builds from `main`. After Branch Tracking moves
 production away from `main`, `main` Preview builds continue normally.
+
+Verify the Vercel project state with:
+
+```bash
+pnpm exec vercel api '/v9/projects/prj_v1sY5KyDpC3vIWj11UMUjf4QKjH3?teamId=team_IA08hNlo8bXnaFX10JyZbNVz' --raw \
+  | jq '{productionBranch: .link.productionBranch, commandForIgnoringBuildStep, productionRef: .targets.production.meta.githubCommitRef, previewRef: .targets.preview.meta.githubCommitRef, productionAliases: .targets.production.alias, previewAliases: .targets.preview.alias}'
+```
+
+The expected final state is:
+
+- `productionBranch` is not `main`
+- `commandForIgnoringBuildStep` skips only production builds from `main`
+- `atlas.rebuildingus.org` is a Production alias
+- `atlas-staging.rebuildingus.org` is a Preview alias for `main`
 
 Set `ATLAS_AUTH_JWT_AUDIENCES` to the production resource URL list the API
 accepts. Put the MCP resource first, for example:

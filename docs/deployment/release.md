@@ -58,6 +58,20 @@ should look like this:
      deploys `atlas-api` and the Vercel production app from that tagged checkout
 3. Record the release tag and any known follow-up items
 
+Production release tags should point at a commit that has already passed the
+staging lane on `main`:
+
+```bash
+git checkout main
+git pull --ff-only
+git tag vYYYY.MM.DD-N
+git push origin vYYYY.MM.DD-N
+```
+
+The production workflow requires `VERCEL_TOKEN` in the GitHub `production`
+environment. GitHub OIDC is used only for Vercel Trusted Sources during hosted
+smoke checks.
+
 ## Post-Release Verification
 
 After deployment, verify in this order:

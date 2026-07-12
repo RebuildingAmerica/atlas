@@ -108,6 +108,12 @@ pnpm exec vercel api '/v10/projects/prj_v1sY5KyDpC3vIWj11UMUjf4QKjH3/domains/atl
 from `main`. If Vercel reports that the team does not own the domain, transfer
 or verify the staging hostname in the Rebuilding America Project Vercel team.
 
+If Vercel still reports `main` as the Production branch, change **Settings >
+Environments > Production > Branch Tracking** first. Atlas keeps an Ignored
+Build Step that prevents production Git builds from `main`, but Vercel will not
+create the desired `main` Preview deployment until the project stops treating
+`main` as production.
+
 ## Deploy staging
 
 Before running the workflow, validate the deploy surfaces locally:
